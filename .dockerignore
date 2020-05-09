@@ -1,5 +1,4 @@
 # Temporary Build Files
-.idea
 build/_output
 build/_test
 # Created by https://www.gitignore.io/api/go,vim,emacs,visualstudiocode

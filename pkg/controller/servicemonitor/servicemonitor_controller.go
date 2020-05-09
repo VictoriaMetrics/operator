@@ -37,11 +37,11 @@ func Add(mgr manager.Manager) error {
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 	return &ReconcileServiceMonitor{
-		client: mgr.GetClient(),
-		scheme: mgr.GetScheme(),
-		kclient:kubernetes.NewForConfigOrDie(mgr.GetConfig()),
-		l: log,
-		opConf:conf.MustGetBaseConfig(),
+		client:  mgr.GetClient(),
+		scheme:  mgr.GetScheme(),
+		kclient: kubernetes.NewForConfigOrDie(mgr.GetConfig()),
+		l:       log,
+		opConf:  conf.MustGetBaseConfig(),
 	}
 }
 
@@ -79,11 +79,11 @@ var _ reconcile.Reconciler = &ReconcileServiceMonitor{}
 type ReconcileServiceMonitor struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
-	client client.Client
-	l logr.Logger
+	client  client.Client
+	l       logr.Logger
 	kclient kubernetes.Interface
-	scheme *runtime.Scheme
-	opConf *conf.BaseOperatorConf
+	scheme  *runtime.Scheme
+	opConf  *conf.BaseOperatorConf
 }
 
 // Reconcile reads that state of the cluster for a ServiceMonitor object and makes changes based on the state read
@@ -105,7 +105,7 @@ func (r *ReconcileServiceMonitor) Reconcile(request reconcile.Request) (reconcil
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
-		}else{
+		} else {
 			// Error reading the object - requeue the request.
 			return reconcile.Result{}, err
 		}
@@ -115,32 +115,32 @@ func (r *ReconcileServiceMonitor) Reconcile(request reconcile.Request) (reconcil
 	//
 	err = r.client.List(context.TODO(), vmAgentInstances)
 	if err != nil {
-		reqLogger.Error(err,"cannot list vmagent objects")
-		return reconcile.Result{},err
+		reqLogger.Error(err, "cannot list vmagent objects")
+		return reconcile.Result{}, err
 	}
-	var currentVmagent  *monitoringv1beta1.VmAgent
-	reqLogger.Info("found vmagent objects ","len: ",len(vmAgentInstances.Items))
-	switch len(vmAgentInstances.Items){
+	var currentVmagent *monitoringv1beta1.VmAgent
+	reqLogger.Info("found vmagent objects ", "len: ", len(vmAgentInstances.Items))
+	switch len(vmAgentInstances.Items) {
 	case 0:
 		reqLogger.Info("cannot find vmagent instance, nothing todo")
-		return reconcile.Result{},nil
+		return reconcile.Result{}, nil
 	case 1:
 		currentVmagent = &vmAgentInstances.Items[0]
 	default:
 		reqLogger.Info("more then 1 mvmagent instances found, we have  to guess TODO")
-		return reconcile.Result{},nil
+		return reconcile.Result{}, nil
 	}
 	err = factory.CreateOrUpdateConfigurationSecret(currentVmagent, r.client, r.kclient, r.opConf, reqLogger)
 	if err != nil {
-		reqLogger.Error(err,"cannot create or update default secret for vmagent")
-		return reconcile.Result{},err
+		reqLogger.Error(err, "cannot create or update default secret for vmagent")
+		return reconcile.Result{}, err
 	}
 	//
 
 	recon, err := factory.CreateOrUpdateVmAgent(currentVmagent, r.client, r.opConf, reqLogger)
 	if err != nil {
-		reqLogger.Error(err,"")
-		return recon,err
+		reqLogger.Error(err, "")
+		return recon, err
 	}
 	reqLogger.Info("update service monitor crds")
 	return reconcile.Result{}, nil

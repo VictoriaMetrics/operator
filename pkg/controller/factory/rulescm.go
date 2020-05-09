@@ -5,9 +5,9 @@ import (
 	"fmt"
 	monitoringv1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1"
 	monitoringv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1beta1"
+	"github.com/ghodss/yaml"
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
-	"github.com/ghodss/yaml"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -29,16 +29,16 @@ const labelPrometheusName = "prometheus-name"
 // large buffer.
 var maxConfigMapDataSize = int(float64(v1.MaxSecretSize) * 0.5)
 
-var(
-	managedByOperatorLabel            = "managed-by"
-	managedByOperatorLabelValue       = "prometheus-operator"
-	managedByOperatorLabels           = map[string]string{
+var (
+	managedByOperatorLabel      = "managed-by"
+	managedByOperatorLabelValue = "prometheus-operator"
+	managedByOperatorLabels     = map[string]string{
 		managedByOperatorLabel: managedByOperatorLabelValue,
 	}
 )
 
 var (
-	defAlert =`
+	defAlert = `
 groups:
   - name: vmAlertGroup
     rules:
@@ -54,13 +54,10 @@ groups:
 `
 )
 
-
-
-func CreateOrUpdateRuleConfigMaps(p *monitoringv1beta1.VmAlert,kclient kubernetes.Interface, rclient client.Client, l logr.Logger) ([]string, error) {
+func CreateOrUpdateRuleConfigMaps(p *monitoringv1beta1.VmAlert, kclient kubernetes.Interface, rclient client.Client, l logr.Logger) ([]string, error) {
 	cClient := kclient.CoreV1().ConfigMaps(p.Namespace)
 
-
-	newRules, err := SelectRules(p, rclient,l)
+	newRules, err := SelectRules(p, rclient, l)
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +99,7 @@ func CreateOrUpdateRuleConfigMaps(p *monitoringv1beta1.VmAlert,kclient kubernete
 	}
 
 	if len(currentConfigMaps) == 0 {
-		l.Info( "no PrometheusRule configmap found, creating new one",
+		l.Info("no PrometheusRule configmap found, creating new one",
 			"namespace", p.Namespace,
 			"prometheus", p.Name,
 		)
@@ -118,18 +115,18 @@ func CreateOrUpdateRuleConfigMaps(p *monitoringv1beta1.VmAlert,kclient kubernete
 	// Simply deleting old ConfigMaps and creating new ones for now. Could be
 	// replaced by logic that only deletes obsolete ConfigMaps in the future.
 	for _, cm := range currentConfigMaps {
-		err := cClient.Delete( cm.Name, &metav1.DeleteOptions{})
+		err := cClient.Delete(cm.Name, &metav1.DeleteOptions{})
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to delete current ConfigMap '%v'", cm.Name)
 		}
 	}
 
-	l.Info( "updating PrometheusRule",
+	l.Info("updating PrometheusRule",
 		"namespace", p.Namespace,
 		"prometheus", p.Name,
 	)
 	for _, cm := range newConfigMaps {
-		_, err = cClient.Create( &cm)
+		_, err = cClient.Create(&cm)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to create new ConfigMap '%v'", cm.Name)
 		}
@@ -141,8 +138,6 @@ func CreateOrUpdateRuleConfigMaps(p *monitoringv1beta1.VmAlert,kclient kubernete
 func prometheusRulesConfigMapSelector(prometheusName string) metav1.ListOptions {
 	return metav1.ListOptions{LabelSelector: fmt.Sprintf("%v=%v", labelPrometheusName, prometheusName)}
 }
-
-
 
 func SelectRules(p *monitoringv1beta1.VmAlert, rclient client.Client, l logr.Logger) (map[string]string, error) {
 	rules := map[string]string{}
@@ -156,19 +151,18 @@ func SelectRules(p *monitoringv1beta1.VmAlert, rclient client.Client, l logr.Log
 	promRules := &monitoringv1.PrometheusRuleList{}
 	err = rclient.List(context.TODO(), promRules, &client.ListOptions{LabelSelector: ruleSelector})
 	if err != nil {
-		l.Error(err,"cannot list rules")
-		return nil,err
+		l.Error(err, "cannot list rules")
+		return nil, err
 	}
 
-	for _, pRule := range promRules.Items{
-		content, err := generateContent(pRule.Spec,p.Spec.EnforcedNamespaceLabel,pRule.Namespace)
+	for _, pRule := range promRules.Items {
+		content, err := generateContent(pRule.Spec, p.Spec.EnforcedNamespaceLabel, pRule.Namespace)
 		if err != nil {
-			l.WithValues("rule",pRule.Name).Error(err,"cannot generate content for rule")
-			return nil,err
+			l.WithValues("rule", pRule.Name).Error(err, "cannot generate content for rule")
+			return nil, err
 		}
 		rules[fmt.Sprintf("%v-%v.yaml", pRule.Namespace, pRule.Name)] = content
 	}
-
 
 	ruleNames := []string{}
 	for name := range rules {
@@ -178,7 +172,7 @@ func SelectRules(p *monitoringv1beta1.VmAlert, rclient client.Client, l logr.Log
 
 	rules["default-vmalert.yaml"] = defAlert
 
-	l.Info( "selected Rules",
+	l.Info("selected Rules",
 		"rules", strings.Join(ruleNames, ","),
 		"namespace", p.Namespace,
 		"prometheus", p.Name,

@@ -33,7 +33,7 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileAlertmanager{client: mgr.GetClient(), scheme: mgr.GetScheme(),opConf:conf.MustGetBaseConfig(),l: log}
+	return &ReconcileAlertmanager{client: mgr.GetClient(), scheme: mgr.GetScheme(), opConf: conf.MustGetBaseConfig(), l: log}
 
 }
 
@@ -74,7 +74,7 @@ type ReconcileAlertmanager struct {
 	client client.Client
 	scheme *runtime.Scheme
 	opConf *conf.BaseOperatorConf
-	l logr.Logger
+	l      logr.Logger
 }
 
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
@@ -82,7 +82,7 @@ type ReconcileAlertmanager struct {
 func (r *ReconcileAlertmanager) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace",
 		request.Namespace, "Request.Name", request.Name,
-		"reconcile","alertmanager",
+		"reconcile", "alertmanager",
 	)
 
 	reqLogger.Info("Reconciling")
@@ -104,17 +104,16 @@ func (r *ReconcileAlertmanager) Reconcile(request reconcile.Request) (reconcile.
 
 	_, err = factory.CreateOrUpdateAlertManager(instance, r.client, r.opConf, reqLogger)
 	if err != nil {
-		reqLogger.Error(err,"problem with reconiling alertmanager")
-		return reconcile.Result{},err
+		reqLogger.Error(err, "problem with reconiling alertmanager")
+		return reconcile.Result{}, err
 	}
 	reqLogger.Info("reconciling service for sts")
-    //recon service for alertmanager
+	//recon service for alertmanager
 	_, err = factory.CreateOrUpdateAlertManagerService(instance, r.client, r.opConf, reqLogger)
 	if err != nil {
-		return reconcile.Result{},err
+		return reconcile.Result{}, err
 	}
 
 	reqLogger.Info("alertmanager reconciled")
 	return reconcile.Result{}, nil
 }
-

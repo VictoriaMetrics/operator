@@ -37,10 +37,10 @@ func Add(mgr manager.Manager) error {
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 	return &ReconcileVmSingle{
-		client: mgr.GetClient(),
-		scheme: mgr.GetScheme(),
-		restConf:mgr.GetConfig(),
-		opConf:conf.MustGetBaseConfig(),
+		client:   mgr.GetClient(),
+		scheme:   mgr.GetScheme(),
+		restConf: mgr.GetConfig(),
+		opConf:   conf.MustGetBaseConfig(),
 	}
 }
 
@@ -85,10 +85,10 @@ var _ reconcile.Reconciler = &ReconcileVmSingle{}
 type ReconcileVmSingle struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
-	client client.Client
-	scheme *runtime.Scheme
+	client   client.Client
+	scheme   *runtime.Scheme
 	restConf *rest.Config
-	opConf *conf.BaseOperatorConf
+	opConf   *conf.BaseOperatorConf
 }
 
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
@@ -96,7 +96,7 @@ type ReconcileVmSingle struct {
 func (r *ReconcileVmSingle) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace",
 		request.Namespace, "Request.Name", request.Name,
-		"reconcile","vmsingle",
+		"reconcile", "vmsingle",
 	)
 	reqLogger.Info("Reconciling")
 
@@ -117,31 +117,31 @@ func (r *ReconcileVmSingle) Reconcile(request reconcile.Request) (reconcile.Resu
 	if instance.Spec.Storage != nil {
 		reqLogger.Info("storage specified reconcile it")
 		//TODO should we delete storage with owner reference?
-		_, err = factory.CreateVmStorage(instance,r.client,reqLogger)
+		_, err = factory.CreateVmStorage(instance, r.client, reqLogger)
 		if err != nil {
-			reqLogger.Error(err,"cannot create pvc")
-			return reconcile.Result{},err
+			reqLogger.Error(err, "cannot create pvc")
+			return reconcile.Result{}, err
 		}
 	}
 
 	//deployment
-	_, err = factory.CreateOrUpdateVmSingle(instance,r.client, r.opConf,reqLogger)
+	_, err = factory.CreateOrUpdateVmSingle(instance, r.client, r.opConf, reqLogger)
 	if err != nil {
-		reqLogger.Error(err,"cannot create or update")
-		return reconcile.Result{},err
+		reqLogger.Error(err, "cannot create or update")
+		return reconcile.Result{}, err
 	}
 
 	//recon service
-	svc, err := factory.CreateOrUpdateVmSingleService(instance,r.client,r.opConf,reqLogger)
+	svc, err := factory.CreateOrUpdateVmSingleService(instance, r.client, r.opConf, reqLogger)
 	if err != nil {
-		reqLogger.Error(err,"cannot create or update service")
-		return reconcile.Result{},err
+		reqLogger.Error(err, "cannot create or update service")
+		return reconcile.Result{}, err
 	}
 
-	_,err = metrics.CreateServiceMonitors(r.restConf,instance.Namespace,[]*corev1.Service{svc})
+	_, err = metrics.CreateServiceMonitors(r.restConf, instance.Namespace, []*corev1.Service{svc})
 	if err != nil {
-		if !errors.IsAlreadyExists(err){
-			reqLogger.Error(err,"cannot create service monitor")
+		if !errors.IsAlreadyExists(err) {
+			reqLogger.Error(err, "cannot create service monitor")
 		}
 	}
 
@@ -149,7 +149,5 @@ func (r *ReconcileVmSingle) Reconcile(request reconcile.Request) (reconcile.Resu
 
 	reqLogger.Info("full reconciled")
 
-
 	return reconcile.Result{}, nil
 }
-

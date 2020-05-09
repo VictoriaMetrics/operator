@@ -162,8 +162,6 @@ type VmAlertSpec struct {
 	//env vars that will be added to vm single
 	// +listType=set
 	ExtraEnvs []v1.EnvVar `json:"extraEnvs,omitempty"`
-
-
 }
 
 // VmAlertStatus defines the observed state of VmAlert

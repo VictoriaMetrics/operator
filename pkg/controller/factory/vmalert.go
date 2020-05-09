@@ -3,9 +3,9 @@ package factory
 import (
 	"context"
 	"fmt"
-	"github.com/coreos/prometheus-operator/pkg/k8sutil"
 	"github.com/VictoriaMetrics/operator/conf"
 	monitoringv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1beta1"
+	"github.com/coreos/prometheus-operator/pkg/k8sutil"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -25,55 +25,55 @@ const (
 	vmAlertConfigDir = "/etc/vmalert/config"
 )
 
-func CreateOrUpdateVmAlertService(cr *monitoringv1beta1.VmAlert,rclient client.Client,c *conf.BaseOperatorConf,l logr.Logger)(*corev1.Service,error){
-	l = l.WithValues("recon.vmalert.service.name",cr.Name)
-	newSvc := newServiceVmAlert(cr,c)
+func CreateOrUpdateVmAlertService(cr *monitoringv1beta1.VmAlert, rclient client.Client, c *conf.BaseOperatorConf, l logr.Logger) (*corev1.Service, error) {
+	l = l.WithValues("recon.vmalert.service.name", cr.Name)
+	newSvc := newServiceVmAlert(cr, c)
 
 	currentService := &corev1.Service{}
 	err := rclient.Get(context.TODO(), types.NamespacedName{Namespace: cr.Namespace, Name: newSvc.Name}, currentService)
 	if err != nil {
-		if errors.IsNotFound(err){
+		if errors.IsNotFound(err) {
 			l.Info("creating new service for vm vmalert")
 			err := rclient.Create(context.TODO(), newSvc)
 			if err != nil {
-				l.Error(err,"cannot create new service for vmalert")
-				return nil,err
+				l.Error(err, "cannot create new service for vmalert")
+				return nil, err
 			}
-		}else{
-			l.Error(err,"cannot get vmalert service for recon")
-			return nil,err
+		} else {
+			l.Error(err, "cannot get vmalert service for recon")
+			return nil, err
 		}
 	}
-	if currentService.Annotations!= nil {
+	if currentService.Annotations != nil {
 		newSvc.Annotations = currentService.Annotations
 	}
-	if currentService.Spec.ClusterIP != ""{
+	if currentService.Spec.ClusterIP != "" {
 		newSvc.Spec.ClusterIP = currentService.Spec.ClusterIP
 	}
-	if currentService.ResourceVersion != ""{
+	if currentService.ResourceVersion != "" {
 		newSvc.ResourceVersion = currentService.ResourceVersion
 	}
 	err = rclient.Update(context.TODO(), newSvc)
 	if err != nil {
-		l.Error(err,"cannot update vmalert service")
-		return nil,err
+		l.Error(err, "cannot update vmalert service")
+		return nil, err
 	}
 	l.Info("vmalert svc reconciled")
-	return newSvc,nil
+	return newSvc, nil
 }
 
-func newServiceVmAlert(cr *monitoringv1beta1.VmAlert,c *conf.BaseOperatorConf)*corev1.Service{
+func newServiceVmAlert(cr *monitoringv1beta1.VmAlert, c *conf.BaseOperatorConf) *corev1.Service {
 	cr = cr.DeepCopy()
-	if cr.Spec.Port == ""{
+	if cr.Spec.Port == "" {
 		cr.Spec.Port = c.VmAlertDefault.Port
 	}
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: prefixedAlertName(cr.Name),
-			Namespace:cr.Namespace,
-			Labels:cr.Labels,
-			Annotations:cr.Annotations,
-			OwnerReferences:[]metav1.OwnerReference{
+			Name:        prefixedAlertName(cr.Name),
+			Namespace:   cr.Namespace,
+			Labels:      cr.Labels,
+			Annotations: cr.Annotations,
+			OwnerReferences: []metav1.OwnerReference{
 				{
 					APIVersion:         cr.APIVersion,
 					Kind:               cr.Kind,
@@ -83,45 +83,44 @@ func newServiceVmAlert(cr *monitoringv1beta1.VmAlert,c *conf.BaseOperatorConf)*c
 					BlockOwnerDeletion: pointer.BoolPtr(true),
 				},
 			},
-
 		},
-		Spec:       corev1.ServiceSpec{
-			Type:corev1.ServiceTypeClusterIP,
+		Spec: corev1.ServiceSpec{
+			Type:     corev1.ServiceTypeClusterIP,
 			Selector: selectorLabelsVmAlert(cr),
-			Ports:[]corev1.ServicePort{
+			Ports: []corev1.ServicePort{
 				corev1.ServicePort{
-					Name:"http",
-					Protocol:"TCP",
-					Port:intstr.Parse(cr.Spec.Port).IntVal,
-					TargetPort:intstr.Parse(cr.Spec.Port),
+					Name:       "http",
+					Protocol:   "TCP",
+					Port:       intstr.Parse(cr.Spec.Port).IntVal,
+					TargetPort: intstr.Parse(cr.Spec.Port),
 				},
 			},
 		},
 	}
 }
 
-func CreateOrUpdateVmAlert(cr *monitoringv1beta1.VmAlert, rclient client.Client, c *conf.BaseOperatorConf, cmNames []string,l logr.Logger )(reconcile.Result,error){
-	l = l.WithValues("create.or.update.vmalert.name",cr.Name)
+func CreateOrUpdateVmAlert(cr *monitoringv1beta1.VmAlert, rclient client.Client, c *conf.BaseOperatorConf, cmNames []string, l logr.Logger) (reconcile.Result, error) {
+	l = l.WithValues("create.or.update.vmalert.name", cr.Name)
 	//recon deploy
 	l.Info("generating new deployment")
-	newDeploy,err := newDeployForVmAlert(cr, c, cmNames)
+	newDeploy, err := newDeployForVmAlert(cr, c, cmNames)
 	if err != nil {
-		return reconcile.Result{},err
+		return reconcile.Result{}, err
 	}
 
 	currDeploy := &appsv1.Deployment{}
 	err = rclient.Get(context.TODO(), types.NamespacedName{Namespace: newDeploy.Namespace, Name: newDeploy.Name}, currDeploy)
 	if err != nil {
-		if errors.IsNotFound(err){
+		if errors.IsNotFound(err) {
 			//deploy not exists create it
 			err := rclient.Create(context.TODO(), newDeploy)
 			if err != nil {
-				l.Error(err,"cannot create vmalert deploy")
-				return reconcile.Result{},err
+				l.Error(err, "cannot create vmalert deploy")
+				return reconcile.Result{}, err
 			}
-		}else{
-			l.Error(err,"cannot get deploy")
-			return reconcile.Result{},err
+		} else {
+			l.Error(err, "cannot get deploy")
+			return reconcile.Result{}, err
 		}
 	}
 	if currDeploy.Annotations != nil {
@@ -133,25 +132,23 @@ func CreateOrUpdateVmAlert(cr *monitoringv1beta1.VmAlert, rclient client.Client,
 
 	err = rclient.Update(context.TODO(), newDeploy)
 	if err != nil {
-		l.Error(err,"cannot update deploy")
-		return reconcile.Result{},err
+		l.Error(err, "cannot update deploy")
+		return reconcile.Result{}, err
 	}
 	l.Info("reconciled vmalert deploy")
 
-	return reconcile.Result{},nil
+	return reconcile.Result{}, nil
 }
 
-
-
 // newDeployForCR returns a busybox pod with the same name/namespace as the cr
-func newDeployForVmAlert(cr *monitoringv1beta1.VmAlert,c *conf.BaseOperatorConf,ruleConfigMapNames []string) (*appsv1.Deployment,error ){
+func newDeployForVmAlert(cr *monitoringv1beta1.VmAlert, c *conf.BaseOperatorConf, ruleConfigMapNames []string) (*appsv1.Deployment, error) {
 
 	cr = cr.DeepCopy()
 	//todo move inject default into separate func
 	if cr.Spec.Image == nil {
 		cr.Spec.Image = &c.VmAlertDefault.Image
 	}
-	if cr.Spec.Version == ""{
+	if cr.Spec.Version == "" {
 		cr.Spec.Version = c.VmAgentDefault.Version
 	}
 	if cr.Spec.Resources.Requests == nil {
@@ -178,7 +175,7 @@ func newDeployForVmAlert(cr *monitoringv1beta1.VmAlert,c *conf.BaseOperatorConf,
 	if cr.Spec.ConfigSecret == "" {
 		cr.Spec.ConfigSecret = cr.Name
 	}
-	if cr.Spec.Port == ""{
+	if cr.Spec.Port == "" {
 		cr.Spec.Port = c.VmAlertDefault.Port
 	}
 	annotations := make(map[string]string)
@@ -188,28 +185,26 @@ func newDeployForVmAlert(cr *monitoringv1beta1.VmAlert,c *conf.BaseOperatorConf,
 		}
 	}
 	labels := getVmAlertLabels(cr)
-	for key,value  := range cr.ObjectMeta.Labels{
-		labels[key]=value
+	for key, value := range cr.ObjectMeta.Labels {
+		labels[key] = value
 	}
 
-
-	generatedSpec,err := vmAlertSpecGen(cr,c,ruleConfigMapNames)
+	generatedSpec, err := vmAlertSpecGen(cr, c, ruleConfigMapNames)
 	if err != nil {
-		return nil,err
+		return nil, err
 	}
 
 	if cr.Spec.ImagePullSecrets != nil && len(cr.Spec.ImagePullSecrets) > 0 {
 		generatedSpec.Template.Spec.ImagePullSecrets = cr.Spec.ImagePullSecrets
 	}
 
-
 	deploy := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      prefixedAlertName(cr.Name ),
-			Namespace: cr.Namespace,
-			Labels:    c.Labels.Merge(labels),
-			Annotations:annotations,
-			OwnerReferences:[]metav1.OwnerReference{
+			Name:        prefixedAlertName(cr.Name),
+			Namespace:   cr.Namespace,
+			Labels:      c.Labels.Merge(labels),
+			Annotations: annotations,
+			OwnerReferences: []metav1.OwnerReference{
 				{
 					APIVersion:         cr.APIVersion,
 					Kind:               cr.Kind,
@@ -219,57 +214,52 @@ func newDeployForVmAlert(cr *monitoringv1beta1.VmAlert,c *conf.BaseOperatorConf,
 					BlockOwnerDeletion: pointer.BoolPtr(true),
 				},
 			},
-
 		},
 		Spec: *generatedSpec,
 	}
-	return deploy,nil
+	return deploy, nil
 }
 
-
-
-
-func vmAlertSpecGen (cr *monitoringv1beta1.VmAlert,c *conf.BaseOperatorConf,ruleConfigMapNames []string)(*appsv1.DeploymentSpec,error){
+func vmAlertSpecGen(cr *monitoringv1beta1.VmAlert, c *conf.BaseOperatorConf, ruleConfigMapNames []string) (*appsv1.DeploymentSpec, error) {
 	cr = cr.DeepCopy()
 	finalLabels := getVmAlertLabels(cr)
 	finalLabels = c.Labels.Merge(finalLabels)
-
 
 	confReloadArgs := []string{
 		fmt.Sprintf("-webhook-url=http://localhost:%s", cr.Spec.Port),
 	}
 
 	args := []string{
-		fmt.Sprintf("-notifier.url=%s",cr.Spec.NotifierURL),
+		fmt.Sprintf("-notifier.url=%s", cr.Spec.NotifierURL),
 		fmt.Sprintf("-datasource.url=%s", cr.Spec.DataSource),
 	}
-	if cr.Spec.EvaluationInterval != ""{
-		args = append(args,fmt.Sprintf("-evaluationInterval=%s",cr.Spec.EvaluationInterval))
+	if cr.Spec.EvaluationInterval != "" {
+		args = append(args, fmt.Sprintf("-evaluationInterval=%s", cr.Spec.EvaluationInterval))
 	}
-	if cr.Spec.LogLevel != ""{
-		args = append(args,fmt.Sprintf("-loggerLevel=%s",cr.Spec.LogLevel))
+	if cr.Spec.LogLevel != "" {
+		args = append(args, fmt.Sprintf("-loggerLevel=%s", cr.Spec.LogLevel))
 	}
-	if cr.Spec.LogFormat != ""{
-		args = append(args,fmt.Sprintf("-loggerFormat=%s",cr.Spec.LogFormat))
-	}
-
-	for _,cm := range ruleConfigMapNames{
-		args = append(args,	fmt.Sprintf("-rule=%s",path.Join(vmAlertConfigDir,cm,"*.yaml")) )
+	if cr.Spec.LogFormat != "" {
+		args = append(args, fmt.Sprintf("-loggerFormat=%s", cr.Spec.LogFormat))
 	}
 
-	for _,cm := range ruleConfigMapNames{
-		confReloadArgs = append(confReloadArgs,		fmt.Sprintf("-volume-dir=%s", path.Join(vmAlertConfigDir,cm) ))
+	for _, cm := range ruleConfigMapNames {
+		args = append(args, fmt.Sprintf("-rule=%s", path.Join(vmAlertConfigDir, cm, "*.yaml")))
 	}
-	args = append(args,cr.Spec.ExtraArgs...)
 
-	args = append(args,fmt.Sprintf("-httpListenAddr=:%s",cr.Spec.Port))
+	for _, cm := range ruleConfigMapNames {
+		confReloadArgs = append(confReloadArgs, fmt.Sprintf("-volume-dir=%s", path.Join(vmAlertConfigDir, cm)))
+	}
+	args = append(args, cr.Spec.ExtraArgs...)
 
-	for _, rulePath := range cr.Spec.RulePath{
-		args = append(args,"-rule="+ rulePath)
+	args = append(args, fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.Port))
+
+	for _, rulePath := range cr.Spec.RulePath {
+		args = append(args, "-rule="+rulePath)
 	}
 
 	var envs []corev1.EnvVar
-	envs = append(envs,cr.Spec.ExtraEnvs...)
+	envs = append(envs, cr.Spec.ExtraEnvs...)
 
 	volumes := []corev1.Volume{}
 
@@ -300,7 +290,7 @@ func vmAlertSpecGen (cr *monitoringv1beta1.VmAlert,c *conf.BaseOperatorConf,rule
 		amVolumeMounts = append(amVolumeMounts, corev1.VolumeMount{
 			Name:      k8sutil.SanitizeVolumeName("secret-" + s),
 			ReadOnly:  true,
-			MountPath: path.Join(secretsDir,s),
+			MountPath: path.Join(secretsDir, s),
 		})
 	}
 
@@ -327,14 +317,14 @@ func vmAlertSpecGen (cr *monitoringv1beta1.VmAlert,c *conf.BaseOperatorConf,rule
 	for _, name := range ruleConfigMapNames {
 		amVolumeMounts = append(amVolumeMounts, corev1.VolumeMount{
 			Name:      name,
-			MountPath: path.Join( vmAlertConfigDir ,  name),
+			MountPath: path.Join(vmAlertConfigDir, name),
 		})
 	}
 	reloaderVolumes := []corev1.VolumeMount{}
 	for _, name := range ruleConfigMapNames {
 		reloaderVolumes = append(reloaderVolumes, corev1.VolumeMount{
 			Name:      name,
-			MountPath: path.Join(vmAlertConfigDir,name),
+			MountPath: path.Join(vmAlertConfigDir, name),
 		})
 	}
 
@@ -347,17 +337,17 @@ func vmAlertSpecGen (cr *monitoringv1beta1.VmAlert,c *conf.BaseOperatorConf,rule
 	}
 
 	livenessProbeHandler := corev1.Handler{
-		HTTPGet:&corev1.HTTPGetAction{
-			Port:intstr.Parse(cr.Spec.Port),
-			Scheme:"HTTP",
-			Path:"/health",
+		HTTPGet: &corev1.HTTPGetAction{
+			Port:   intstr.Parse(cr.Spec.Port),
+			Scheme: "HTTP",
+			Path:   "/health",
 		},
 	}
-	readinessProbeHandler  := corev1.Handler{
-		HTTPGet:&corev1.HTTPGetAction{
-			Port:intstr.Parse(cr.Spec.Port),
-			Scheme:"HTTP",
-			Path:"/health",
+	readinessProbeHandler := corev1.Handler{
+		HTTPGet: &corev1.HTTPGetAction{
+			Port:   intstr.Parse(cr.Spec.Port),
+			Scheme: "HTTP",
+			Path:   "/health",
 		},
 	}
 	livenessFailureThreshold := int32(3)
@@ -375,27 +365,27 @@ func vmAlertSpecGen (cr *monitoringv1beta1.VmAlert,c *conf.BaseOperatorConf,rule
 	}
 
 	var ports []corev1.ContainerPort
-	ports = append(ports,corev1.ContainerPort{Name:"http",Protocol:"TCP",ContainerPort:intstr.Parse(cr.Spec.Port).IntVal})
+	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(cr.Spec.Port).IntVal})
 
 	defaultContainers := []corev1.Container{
 		{
-			Args:           args,
-			Name:           "vmalert",
-			Image:          *cr.Spec.Image+ ":"+cr.Spec.Version,
-			Ports:          ports,
-			VolumeMounts:   amVolumeMounts,
-			LivenessProbe:  livenessProbe,
-			ReadinessProbe: readinessProbe,
-			Resources:      cr.Spec.Resources,
-			Env: envs,
+			Args:                     args,
+			Name:                     "vmalert",
+			Image:                    *cr.Spec.Image + ":" + cr.Spec.Version,
+			Ports:                    ports,
+			VolumeMounts:             amVolumeMounts,
+			LivenessProbe:            livenessProbe,
+			ReadinessProbe:           readinessProbe,
+			Resources:                cr.Spec.Resources,
+			Env:                      envs,
 			TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 		}, {
-			Name:  "config-reloader",
-			Image: c.VmAlertDefault.ConfigReloadImage,
-			Args: confReloadArgs,
+			Name:                     "config-reloader",
+			Image:                    c.VmAlertDefault.ConfigReloadImage,
+			Args:                     confReloadArgs,
 			Resources:                resources,
 			TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
-			VolumeMounts:reloaderVolumes,
+			VolumeMounts:             reloaderVolumes,
 		},
 	}
 	podAnnotations := map[string]string{}
@@ -407,58 +397,53 @@ func vmAlertSpecGen (cr *monitoringv1beta1.VmAlert,c *conf.BaseOperatorConf,rule
 		}
 	}
 
-
 	containers, err := MergePatchContainers(defaultContainers, cr.Spec.Containers)
 	if err != nil {
 		return nil, err
 	}
 	spec := &appsv1.DeploymentSpec{
-			Replicas:cr.Spec.Replicas,
+		Replicas: cr.Spec.Replicas,
 
-			Selector: &metav1.LabelSelector{
-				MatchLabels: selectorLabelsVmAlert(cr),
+		Selector: &metav1.LabelSelector{
+			MatchLabels: selectorLabelsVmAlert(cr),
+		},
+
+		Strategy: appsv1.DeploymentStrategy{
+			Type: appsv1.RollingUpdateDeploymentStrategyType,
+		},
+		Template: corev1.PodTemplateSpec{
+			ObjectMeta: metav1.ObjectMeta{
+				Labels:      finalLabels,
+				Annotations: podAnnotations,
 			},
-
-			Strategy:appsv1.DeploymentStrategy{
-					Type:appsv1.RollingUpdateDeploymentStrategyType,
+			Spec: corev1.PodSpec{
+				Containers:  containers,
+				Volumes:     volumes,
+				Affinity:    cr.Spec.Affinity,
+				Tolerations: cr.Spec.Tolerations,
 			},
-			Template:corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: finalLabels,
-					Annotations:podAnnotations,
-
-				},
-				Spec:       corev1.PodSpec{
-					Containers: containers,
-					Volumes:volumes,
-					Affinity:cr.Spec.Affinity,
-					Tolerations:cr.Spec.Tolerations,
-
-				},
-
-			},
-
+		},
 	}
-	return spec,nil
+	return spec, nil
 }
 
-func prefixedAlertName(name string)string{
-	return fmt.Sprintf("vmalert-%s",name)
+func prefixedAlertName(name string) string {
+	return fmt.Sprintf("vmalert-%s", name)
 }
 
-func getVmAlertLabels(cr *monitoringv1beta1.VmAlert)map[string]string{
+func getVmAlertLabels(cr *monitoringv1beta1.VmAlert) map[string]string {
 	labels := selectorLabelsVmAlert(cr)
-	for key,value := range cr.ObjectMeta.Labels{
-		labels[key]=value
+	for key, value := range cr.ObjectMeta.Labels {
+		labels[key] = value
 	}
 	if cr.Spec.PodMetadata != nil {
-		for key,value := range cr.Spec.PodMetadata.Labels{
-			labels[key]=value
+		for key, value := range cr.Spec.PodMetadata.Labels {
+			labels[key] = value
 		}
 	}
 	return labels
 }
-func selectorLabelsVmAlert (cr *monitoringv1beta1.VmAlert)map[string]string{
+func selectorLabelsVmAlert(cr *monitoringv1beta1.VmAlert) map[string]string {
 	labels := map[string]string{}
 	labels["app.kubernetes.io/name"] = "vmalert"
 	labels["app.kubernetes.io/instance"] = cr.Name

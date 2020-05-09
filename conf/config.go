@@ -17,9 +17,9 @@ const prefixVar = "VM"
 //genvars:true
 type BaseOperatorConf struct {
 	VmAlertDefault struct {
-		Image string `default:"victoriametrics/vmalert"`
-		Version string `default:"v1.35.1-cluster"`
-		Port string `default:"8429"`
+		Image    string `default:"victoriametrics/vmalert"`
+		Version  string `default:"v1.35.1-cluster"`
+		Port     string `default:"8429"`
 		Resource struct {
 			Limit struct {
 				Mem string `default:"500Mi"`
@@ -30,17 +30,16 @@ type BaseOperatorConf struct {
 				Cpu string `default:"50m"`
 			}
 		}
-		ConfigReloaderCPU            string `default:"100m"`
-		ConfigReloaderMemory         string `default:"25Mi"`
-		ConfigReloadImage string `default:"jimmidyson/configmap-reload:v0.3.0"`
-
+		ConfigReloaderCPU    string `default:"100m"`
+		ConfigReloaderMemory string `default:"25Mi"`
+		ConfigReloadImage    string `default:"jimmidyson/configmap-reload:v0.3.0"`
 	}
 	VmAgentDefault struct {
-		Image string `default:"victoriametrics/vmagent"`
-		Version string `default:"v1.35.3-cluster"`
+		Image             string `default:"victoriametrics/vmagent"`
+		Version           string `default:"v1.35.3-cluster"`
 		ConfigReloadImage string `default:"quay.io/coreos/prometheus-config-reloader:v0.30.1"`
-		Port string `default:"8429"`
-		Resource struct {
+		Port              string `default:"8429"`
+		Resource          struct {
 			Limit struct {
 				Mem string `default:"500Mi"`
 				Cpu string `default:"200m"`
@@ -50,15 +49,14 @@ type BaseOperatorConf struct {
 				Cpu string `default:"50m"`
 			}
 		}
-		ConfigReloaderCPU            string `default:"100m"`
-		ConfigReloaderMemory         string `default:"25Mi"`
-
+		ConfigReloaderCPU    string `default:"100m"`
+		ConfigReloaderMemory string `default:"25Mi"`
 	}
 
 	VmSingleDefault struct {
-		Image string `default:"victoriametrics/victoria-metrics"`
-		Version string `default:"v1.35.1"`
-		Port string `default:"8429"`
+		Image    string `default:"victoriametrics/victoria-metrics"`
+		Version  string `default:"v1.35.1"`
+		Port     string `default:"8429"`
 		Resource struct {
 			Limit struct {
 				Mem string `default:"500Mi"`
@@ -69,9 +67,8 @@ type BaseOperatorConf struct {
 				Cpu string `default:"50m"`
 			}
 		}
-		ConfigReloaderCPU            string `default:"100m"`
-		ConfigReloaderMemory         string `default:"25Mi"`
-
+		ConfigReloaderCPU    string `default:"100m"`
+		ConfigReloaderMemory string `default:"25Mi"`
 	}
 	AlertManager struct {
 		ConfigReloaderImage          string `default:"jimmidyson/configmap-reload:v0.3.0"`
@@ -80,24 +77,22 @@ type BaseOperatorConf struct {
 		AlertmanagerDefaultBaseImage string `default:"quay.io/prometheus/alertmanager"`
 		AlertManagerVersion          string `default:"v0.20.0"`
 		LocalHost                    string `default:"127.0.0.1"`
-		LogLevel                     string  `default:"INFO"`
+		LogLevel                     string `default:"INFO"`
 		LogFormat                    string
 		PromSelector                 string
 		Namespaces                   Namespaces `ignored:"true"`
 		AlertManagerSelector         string
 		ClusterDomain                string `default:""`
 		KubeletObject                string
-
 	}
 	Operator struct {
-
 	}
-	Host                         string `default:"0.0.0.0"`
-	ListenAddress                string `default:"0.0.0.0"`
-	DefaultLabels                string `default:"managed-by=vm-operator"`
-	Labels                       Labels     `ignored:"true"`
-	LogLevel                     string
-	LogFormat                    string
+	Host          string `default:"0.0.0.0"`
+	ListenAddress string `default:"0.0.0.0"`
+	DefaultLabels string `default:"managed-by=vm-operator"`
+	Labels        Labels `ignored:"true"`
+	LogLevel      string
+	LogFormat     string
 }
 
 func MustGetBaseConfig() *BaseOperatorConf {

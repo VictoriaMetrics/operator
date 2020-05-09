@@ -319,7 +319,6 @@ type APIServerConfig struct {
 	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
 }
 
-
 // PodMonitor defines monitoring for a set of pods.
 // +genclient
 // +k8s:openapi-gen=true
@@ -392,5 +391,5 @@ type PodMetricsEndpoint struct {
 }
 
 func init() {
-	SchemeBuilder.Register(&ServiceMonitor{}, &ServiceMonitorList{},&PodMonitorList{},&PodMonitor{})
+	SchemeBuilder.Register(&ServiceMonitor{}, &ServiceMonitorList{}, &PodMonitorList{}, &PodMonitor{})
 }

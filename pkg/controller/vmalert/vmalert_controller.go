@@ -4,10 +4,10 @@ import (
 	"context"
 	"github.com/VictoriaMetrics/operator/conf"
 	"github.com/VictoriaMetrics/operator/pkg/controller/factory"
+	"github.com/operator-framework/operator-sdk/pkg/metrics"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
-	"github.com/operator-framework/operator-sdk/pkg/metrics"
 	"k8s.io/client-go/rest"
 
 	monitoringv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1beta1"
@@ -38,11 +38,11 @@ func Add(mgr manager.Manager) error {
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 	return &ReconcileVmAlert{
-		client: mgr.GetClient(),
-		scheme: mgr.GetScheme(),
-		restConf:mgr.GetConfig(),
-		kclient:kubernetes.NewForConfigOrDie(mgr.GetConfig()),
-		opConf:conf.MustGetBaseConfig(),
+		client:   mgr.GetClient(),
+		scheme:   mgr.GetScheme(),
+		restConf: mgr.GetConfig(),
+		kclient:  kubernetes.NewForConfigOrDie(mgr.GetConfig()),
+		opConf:   conf.MustGetBaseConfig(),
 	}
 }
 
@@ -75,7 +75,6 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-
 	return nil
 }
 
@@ -86,11 +85,11 @@ var _ reconcile.Reconciler = &ReconcileVmAlert{}
 type ReconcileVmAlert struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
-	client client.Client
-	scheme *runtime.Scheme
+	client   client.Client
+	scheme   *runtime.Scheme
 	restConf *rest.Config
-	kclient kubernetes.Interface
-	opConf *conf.BaseOperatorConf
+	kclient  kubernetes.Interface
+	opConf   *conf.BaseOperatorConf
 }
 
 // Reconcile reads that state of the cluster for a VmAlert object and makes changes based on the state read
@@ -98,8 +97,8 @@ type ReconcileVmAlert struct {
 func (r *ReconcileVmAlert) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace",
 		request.Namespace, "Request.Name", request.Name,
-		"reconcile","vmalert",
-		)
+		"reconcile", "vmalert",
+	)
 	reqLogger.Info("Reconciling")
 
 	// Fetch the VmAlert instance
@@ -116,32 +115,30 @@ func (r *ReconcileVmAlert) Reconcile(request reconcile.Request) (reconcile.Resul
 		return reconcile.Result{}, err
 	}
 
-
-
 	//first of all, we have to create configmaps with prometheus rules or reconcile existing one
 	maps, err := factory.CreateOrUpdateRuleConfigMaps(instance, r.kclient, r.client, reqLogger)
 	if err != nil {
-		reqLogger.Error(err,"cannot create or update cm")
-		return reconcile.Result{},err
+		reqLogger.Error(err, "cannot create or update cm")
+		return reconcile.Result{}, err
 	}
-	reqLogger.Info("found cmmaps for vmalert", " len ",len(maps),"map names",maps)
+	reqLogger.Info("found cmmaps for vmalert", " len ", len(maps), "map names", maps)
 
 	// Define a new Pod object
-	recon, err := factory.CreateOrUpdateVmAlert(instance,r.client, r.opConf,maps,reqLogger)
+	recon, err := factory.CreateOrUpdateVmAlert(instance, r.client, r.opConf, maps, reqLogger)
 	if err != nil {
-		return recon,err
+		return recon, err
 	}
 
-	svc, err := factory.CreateOrUpdateVmAlertService(instance,r.client,r.opConf,reqLogger)
+	svc, err := factory.CreateOrUpdateVmAlertService(instance, r.client, r.opConf, reqLogger)
 	if err != nil {
-		reqLogger.Error(err,"cannot update service")
-		return reconcile.Result{},err
+		reqLogger.Error(err, "cannot update service")
+		return reconcile.Result{}, err
 	}
 
-	_,err = metrics.CreateServiceMonitors(r.restConf,instance.Namespace,[]*corev1.Service{svc})
+	_, err = metrics.CreateServiceMonitors(r.restConf, instance.Namespace, []*corev1.Service{svc})
 	if err != nil {
-		if !errors.IsAlreadyExists(err){
-			reqLogger.Error(err,"cannot create service monitor")
+		if !errors.IsAlreadyExists(err) {
+			reqLogger.Error(err, "cannot create service monitor")
 		}
 	}
 
@@ -151,4 +148,3 @@ func (r *ReconcileVmAlert) Reconcile(request reconcile.Request) (reconcile.Resul
 
 	return reconcile.Result{}, nil
 }
-

@@ -91,7 +91,6 @@ type ReconcileVmAgent struct {
 	scheme   *runtime.Scheme
 	restConf *rest.Config
 	opConf   *conf.BaseOperatorConf
-
 }
 
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
@@ -99,7 +98,7 @@ type ReconcileVmAgent struct {
 func (r *ReconcileVmAgent) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace",
 		request.Namespace, "Request.Name", request.Name,
-		"reconcile","vmagent",
+		"reconcile", "vmagent",
 	)
 	reqLogger.Info("Reconciling")
 
@@ -113,38 +112,36 @@ func (r *ReconcileVmAgent) Reconcile(request reconcile.Request) (reconcile.Resul
 			// Return and don't requeue
 			return reconcile.Result{}, nil
 		}
-		reqLogger.Error(err,"cannot get vmagent object for reconcile")
+		reqLogger.Error(err, "cannot get vmagent object for reconcile")
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
 
-
 	//we have to create empty or full cm first
 	err = factory.CreateOrUpdateConfigurationSecret(instance, r.client, r.kclient, r.opConf, reqLogger)
 	if err != nil {
-		reqLogger.Error(err,"cannot create configmap")
-		return reconcile.Result{},err
+		reqLogger.Error(err, "cannot create configmap")
+		return reconcile.Result{}, err
 	}
 
 	//create deploy
 	reconResult, err := factory.CreateOrUpdateVmAgent(instance, r.client, r.opConf, reqLogger)
 	if err != nil {
 		//propogate err + result to upstream
-		return reconResult,err
+		return reconResult, err
 	}
 
 	//create service for monitoring
 	svc, err := factory.CreateOrUpdateVmAgentService(instance, r.client, r.opConf, reqLogger)
 	if err != nil {
-		return reconcile.Result{},err
+		return reconcile.Result{}, err
 	}
-
 
 	//cm
 	_, err = metrics.CreateServiceMonitors(r.restConf, instance.Namespace, []*corev1.Service{svc})
 	if err != nil {
-		if !errors.IsAlreadyExists(err){
-			reqLogger.Error(err,"cannot create service monitor")
+		if !errors.IsAlreadyExists(err) {
+			reqLogger.Error(err, "cannot create service monitor")
 		}
 	}
 
@@ -152,4 +149,3 @@ func (r *ReconcileVmAgent) Reconcile(request reconcile.Request) (reconcile.Resul
 
 	return reconcile.Result{}, nil
 }
-

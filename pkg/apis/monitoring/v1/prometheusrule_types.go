@@ -67,8 +67,6 @@ type Rule struct {
 	Annotations map[string]string  `json:"annotations,omitempty"`
 }
 
-
-
 func init() {
 	SchemeBuilder.Register(&PrometheusRule{}, &PrometheusRuleList{})
 }

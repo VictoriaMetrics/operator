@@ -13,8 +13,6 @@ import (
 
 	"github.com/VictoriaMetrics/operator/pkg/apis"
 	"github.com/VictoriaMetrics/operator/pkg/controller"
-	"github.com/VictoriaMetrics/operator/version"
-
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	kubemetrics "github.com/operator-framework/operator-sdk/pkg/kube-metrics"
 	"github.com/operator-framework/operator-sdk/pkg/leader"
@@ -24,25 +22,25 @@ import (
 	"github.com/spf13/pflag"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
-	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
-
-	)
+)
 
 // Change below variables to serve metrics on different host or port.
 var (
 	metricsHost               = "0.0.0.0"
 	metricsPort         int32 = 8383
 	operatorMetricsPort int32 = 8686
-	BuildData string
+	BuildData           string
+	Version = "local"
 )
 var log = logf.Log.WithName("cmd")
 
 func printVersion() {
-	log.Info(fmt.Sprintf("Operator Version: %s", version.Version))
+	log.Info(fmt.Sprintf("Operator Version: %s", Version))
 	log.Info(fmt.Sprintf("Go Version: %s", runtime.Version()))
 	log.Info(fmt.Sprintf("Go OS/Arch: %s/%s", runtime.GOOS, runtime.GOARCH))
 	log.Info(fmt.Sprintf("Version of operator-sdk: %v", sdkVersion.Version))

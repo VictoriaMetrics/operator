@@ -4,14 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/blang/semver"
-	"github.com/coreos/prometheus-operator/pkg/k8sutil"
 	"github.com/VictoriaMetrics/operator/conf"
 	monitoringv1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1"
+	"github.com/blang/semver"
+	"github.com/coreos/prometheus-operator/pkg/k8sutil"
 	"github.com/go-logr/logr"
-	"k8s.io/apimachinery/pkg/api/errors"
+	gerr "github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -21,20 +22,19 @@ import (
 	"net/url"
 	"path"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	gerr "github.com/pkg/errors"
 
 	"strings"
 )
 
 const (
-	governingServiceName       = "alertmanager-operated"
-	defaultRetention           = "120h"
-	secretsDir                 = "/etc/alertmanager/secrets/"
-	configmapsDir              = "/etc/alertmanager/configmaps/"
-	alertmanagerConfDir        = "/etc/alertmanager/config"
-	alertmanagerConfFile       = alertmanagerConfDir + "/alertmanager-sts.yaml"
-	alertmanagerStorageDir     = "/alertmanager"
-	defaultPortName            = "web"
+	governingServiceName   = "alertmanager-operated"
+	defaultRetention       = "120h"
+	secretsDir             = "/etc/alertmanager/secrets/"
+	configmapsDir          = "/etc/alertmanager/configmaps/"
+	alertmanagerConfDir    = "/etc/alertmanager/config"
+	alertmanagerConfFile   = alertmanagerConfDir + "/alertmanager.yaml"
+	alertmanagerStorageDir = "/alertmanager"
+	defaultPortName        = "web"
 )
 
 var (
@@ -42,12 +42,12 @@ var (
 	probeTimeoutSeconds int32 = 5
 )
 
-func CreateOrUpdateAlertManager(cr *monitoringv1.Alertmanager,rclient client.Client, c *conf.BaseOperatorConf, l logr.Logger)(*appsv1.StatefulSet, error){
-	l = l.WithValues("reconcile.AlertManager.sts",cr.Name)
+func CreateOrUpdateAlertManager(cr *monitoringv1.Alertmanager, rclient client.Client, c *conf.BaseOperatorConf, l logr.Logger) (*appsv1.StatefulSet, error) {
+	l = l.WithValues("reconcile.AlertManager.sts", cr.Name)
 	newSts, err := newStsForAlertManager(cr, c)
 	if err != nil {
-		l.Error(err,"cannot generate sts")
-		return nil,err
+		l.Error(err, "cannot generate sts")
+		return nil, err
 	}
 	// Set Alertmanager instance as the owner and controller
 	// Check if this sts already exists
@@ -58,12 +58,12 @@ func CreateOrUpdateAlertManager(cr *monitoringv1.Alertmanager,rclient client.Cli
 			l.Info("Creating a new sts", "sts.Namespace", newSts.Namespace, "sts.Name", newSts.Name)
 			err = rclient.Create(context.TODO(), newSts)
 			if err != nil {
-				l.Error(err,"cannot create new sts")
+				l.Error(err, "cannot create new sts")
 				return nil, err
 			}
 			l.Info("new sts was created for alertmanager")
-		} else  {
-			l.Error(err,"cannot get sts")
+		} else {
+			l.Error(err, "cannot get sts")
 			return nil, err
 		}
 	}
@@ -73,10 +73,10 @@ func CreateOrUpdateAlertManager(cr *monitoringv1.Alertmanager,rclient client.Cli
 	l.Info("updating sts with new version")
 	err = rclient.Update(context.TODO(), newSts)
 	if err != nil {
-		l.Error(err,"cannot update alertmanager sts")
-		return nil,err
+		l.Error(err, "cannot update alertmanager sts")
+		return nil, err
 	}
-	return newSts,nil
+	return newSts, nil
 }
 
 func newStsForAlertManager(cr *monitoringv1.Alertmanager, c *conf.BaseOperatorConf) (*appsv1.StatefulSet, error) {
@@ -129,7 +129,7 @@ func newStsForAlertManager(cr *monitoringv1.Alertmanager, c *conf.BaseOperatorCo
 			Labels:      c.Labels.Merge(cr.ObjectMeta.Labels),
 			Annotations: annotations,
 			Namespace:   cr.Namespace,
-			OwnerReferences:[]metav1.OwnerReference{
+			OwnerReferences: []metav1.OwnerReference{
 				{
 					APIVersion:         cr.APIVersion,
 					Kind:               cr.Kind,
@@ -137,7 +137,6 @@ func newStsForAlertManager(cr *monitoringv1.Alertmanager, c *conf.BaseOperatorCo
 					UID:                cr.UID,
 					Controller:         pointer.BoolPtr(true),
 					BlockOwnerDeletion: pointer.BoolPtr(true),
-
 				},
 			},
 		},
@@ -181,48 +180,44 @@ func newStsForAlertManager(cr *monitoringv1.Alertmanager, c *conf.BaseOperatorCo
 
 	statefulset.Spec.Template.Spec.Volumes = append(statefulset.Spec.Template.Spec.Volumes, cr.Spec.Volumes...)
 
-
 	return statefulset, nil
 }
 
+func CreateOrUpdateAlertManagerService(cr *monitoringv1.Alertmanager, rclient client.Client, c *conf.BaseOperatorConf, l logr.Logger) (*v1.Service, error) {
 
-func CreateOrUpdateAlertManagerService(cr *monitoringv1.Alertmanager,rclient client.Client, c *conf.BaseOperatorConf,l logr.Logger)(*v1.Service,error){
+	l = l.WithValues("recon.alertmanager.service", cr.Name)
 
-	l = l.WithValues("recon.alertmanager.service",cr.Name)
-
-	newSvc := newAlertManagerService(cr,c)
+	newSvc := newAlertManagerService(cr, c)
 	oldSvc := &v1.Service{}
 	err := rclient.Get(context.TODO(), types.NamespacedName{Name: newSvc.Name, Namespace: newSvc.Namespace}, oldSvc)
 	if err != nil {
-		if errors.IsNotFound(err){
+		if errors.IsNotFound(err) {
 			l.Info("creating new service for sts")
 			err := rclient.Create(context.TODO(), newSvc)
 			if err != nil {
-				l.Error(err,"cannot create service for alertmanager")
+				l.Error(err, "cannot create service for alertmanager")
 			}
-		}else{
-			l.Error(err,"cannot get service for sts")
-			return nil,err
+		} else {
+			l.Error(err, "cannot get service for sts")
+			return nil, err
 		}
 	}
 	if oldSvc.Annotations != nil {
 		newSvc.Annotations = oldSvc.Annotations
 	}
-	if oldSvc.Spec.ClusterIP != ""{
+	if oldSvc.Spec.ClusterIP != "" {
 		newSvc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
 	}
-	if oldSvc.ResourceVersion != ""{
+	if oldSvc.ResourceVersion != "" {
 		newSvc.ResourceVersion = oldSvc.ResourceVersion
 	}
 	err = rclient.Update(context.TODO(), newSvc)
 	if err != nil {
-		l.Error(err,"cannot update service")
-		return nil,err
+		l.Error(err, "cannot update service")
+		return nil, err
 	}
 
-	return newSvc,nil
-
-
+	return newSvc, nil
 
 }
 
@@ -239,16 +234,15 @@ func newAlertManagerService(cr *monitoringv1.Alertmanager, c *conf.BaseOperatorC
 			Labels: c.Labels.Merge(map[string]string{
 				"operated-alertmanager": "true",
 			}),
-			OwnerReferences:[]metav1.OwnerReference{
-					{
-						APIVersion:         cr.APIVersion,
-						Kind:               cr.Kind,
-						Name:               cr.Name,
-						UID:                cr.UID,
-						Controller:         pointer.BoolPtr(true),
-						BlockOwnerDeletion: pointer.BoolPtr(true),
-
-					},
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion:         cr.APIVersion,
+					Kind:               cr.Kind,
+					Name:               cr.Name,
+					UID:                cr.UID,
+					Controller:         pointer.BoolPtr(true),
+					BlockOwnerDeletion: pointer.BoolPtr(true),
+				},
 			},
 		},
 		Spec: v1.ServiceSpec{
@@ -623,7 +617,6 @@ func makeStatefulSetSpec(a *monitoringv1.Alertmanager, config *conf.BaseOperator
 		},
 	}, nil
 }
-
 
 func MakeVolumeClaimTemplate(e monitoringv1.EmbeddedPersistentVolumeClaim) *v1.PersistentVolumeClaim {
 	pvc := v1.PersistentVolumeClaim{

@@ -1,19 +1,18 @@
 package factory
 
-
 import (
-"fmt"
-"github.com/VictoriaMetrics/operator/conf"
-monitoringv1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1"
-monitoringv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1beta1"
-"github.com/pkg/errors"
-"gopkg.in/yaml.v2"
-v1 "k8s.io/api/core/v1"
-metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-"path"
-"regexp"
-"sort"
-"strings"
+	"fmt"
+	"github.com/VictoriaMetrics/operator/conf"
+	monitoringv1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1"
+	monitoringv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1beta1"
+	"github.com/pkg/errors"
+	"gopkg.in/yaml.v2"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"path"
+	"regexp"
+	"sort"
+	"strings"
 )
 
 const (
@@ -26,7 +25,7 @@ const (
 )
 
 var (
-	invalidLabelCharRE        = regexp.MustCompile(`[^a-zA-Z0-9_]`)
+	invalidLabelCharRE = regexp.MustCompile(`[^a-zA-Z0-9_]`)
 )
 
 // BasicAuthCredentials represents a username password pair to be used with
@@ -39,7 +38,6 @@ type BasicAuthCredentials struct {
 // BearerToken represents a bearer token, see
 // https://tools.ietf.org/html/rfc6750.
 type BearerToken string
-
 
 func generateConfig(
 	p *monitoringv1beta1.VmAgent,
@@ -702,7 +700,7 @@ func generateServiceMonitorConfig(
 	return cfg
 }
 
-func  generateRemoteWriteConfig(specs []monitoringv1.RemoteWriteSpec, basicAuthSecrets map[string]BasicAuthCredentials) yaml.MapItem {
+func generateRemoteWriteConfig(specs []monitoringv1.RemoteWriteSpec, basicAuthSecrets map[string]BasicAuthCredentials) yaml.MapItem {
 
 	cfgs := []yaml.MapSlice{}
 
@@ -1038,8 +1036,6 @@ func enforceNamespaceLabel(relabelings []yaml.MapSlice, namespace, enforcedNames
 		{Key: "target_label", Value: enforcedNamespaceLabel},
 		{Key: "replacement", Value: namespace}})
 }
-
-
 
 func buildExternalLabels(p *monitoringv1beta1.VmAgent) yaml.MapSlice {
 	m := map[string]string{}

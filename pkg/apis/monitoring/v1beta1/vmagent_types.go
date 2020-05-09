@@ -227,7 +227,6 @@ type EmbeddedObjectMetadata struct {
 	Annotations map[string]string `json:"annotations,omitempty" protobuf:"bytes,12,rep,name=annotations"`
 }
 
-
 // EmbeddedPersistentVolumeClaim is an embedded version of k8s.io/api/core/v1.PersistentVolumeClaim.
 // It contains TypeMeta and a reduced ObjectMeta.
 type EmbeddedPersistentVolumeClaim struct {
@@ -275,7 +274,6 @@ func (c *SecretOrConfigMap) Validate() error {
 
 	return nil
 }
-
 
 // ArbitraryFSAccessThroughSMsConfig enables users to configure, whether
 // a service monitor selected by the Prometheus instance is allowed to use

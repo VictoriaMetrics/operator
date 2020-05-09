@@ -20,7 +20,7 @@ import (
 	"strings"
 )
 
-func  CreateOrUpdateConfigurationSecret(p *monitoringv1beta1.VmAgent,rclient client.Client,kclient kubernetes.Interface, c *conf.BaseOperatorConf, l logr.Logger  ) error {
+func CreateOrUpdateConfigurationSecret(p *monitoringv1beta1.VmAgent, rclient client.Client, kclient kubernetes.Interface, c *conf.BaseOperatorConf, l logr.Logger) error {
 	// If no service or pod monitor selectors are configured, the user wants to
 	// manage configuration themselves. Do create an empty Secret if it doesn't
 	// exist.
@@ -46,12 +46,12 @@ func  CreateOrUpdateConfigurationSecret(p *monitoringv1beta1.VmAgent,rclient cli
 		return nil
 	}
 
-	smons, err := SelectServiceMonitors(p,rclient,l)
+	smons, err := SelectServiceMonitors(p, rclient, l)
 	if err != nil {
 		return errors.Wrap(err, "selecting ServiceMonitors failed")
 	}
 
-	pmons, err := SelectPodMonitors(p,rclient,l)
+	pmons, err := SelectPodMonitors(p, rclient, l)
 	if err != nil {
 		return errors.Wrap(err, "selecting PodMonitors failed")
 	}
@@ -62,12 +62,12 @@ func  CreateOrUpdateConfigurationSecret(p *monitoringv1beta1.VmAgent,rclient cli
 		return err
 	}
 
-	basicAuthSecrets, err := loadBasicAuthSecrets(smons, p.Spec.RemoteWrite, p.Spec.APIServerConfig, SecretsInPromNS,kclient)
+	basicAuthSecrets, err := loadBasicAuthSecrets(smons, p.Spec.RemoteWrite, p.Spec.APIServerConfig, SecretsInPromNS, kclient)
 	if err != nil {
 		return err
 	}
 
-	bearerTokens, err := loadBearerTokensFromSecrets(smons,kclient)
+	bearerTokens, err := loadBearerTokensFromSecrets(smons, kclient)
 	if err != nil {
 		return err
 	}
@@ -128,8 +128,7 @@ func  CreateOrUpdateConfigurationSecret(p *monitoringv1beta1.VmAgent,rclient cli
 	return err
 }
 
-
-func  SelectServiceMonitors(p *monitoringv1beta1.VmAgent,rclient client.Client, l logr.Logger) (map[string]*monitoringv1.ServiceMonitor, error) {
+func SelectServiceMonitors(p *monitoringv1beta1.VmAgent, rclient client.Client, l logr.Logger) (map[string]*monitoringv1.ServiceMonitor, error) {
 
 	// Selectors (<namespace>/<name>) might overlap. Deduplicate them along the keyFunc.
 	res := make(map[string]*monitoringv1.ServiceMonitor)
@@ -157,9 +156,9 @@ func  SelectServiceMonitors(p *monitoringv1beta1.VmAgent,rclient client.Client, 
 
 	servMons := &monitoringv1.ServiceMonitorList{}
 
-	err = rclient.List(context.TODO(), servMons,listOpts)
+	err = rclient.List(context.TODO(), servMons, listOpts)
 	if err != nil {
-		return nil,err
+		return nil, err
 	}
 
 	for _, mon := range servMons.Items {
@@ -202,20 +201,19 @@ func SelectPodMonitors(p *monitoringv1beta1.VmAgent, rclient client.Client, l lo
 	// currently it`s not possible to use both servicemon and namespace selector
 	listOpts := &client.ListOptions{}
 
-
 	podMonSelector, err := metav1.LabelSelectorAsSelector(p.Spec.PodMonitorSelector)
 	if err != nil {
-		l.Error(err,"cannot find label for pod monitor select")
+		l.Error(err, "cannot find label for pod monitor select")
 		return nil, err
 	}
 
 	// If 'PodMonitorNamespaceSelector' is nil only check own namespace.
 	if p.Spec.PodMonitorNamespaceSelector == nil {
-		listOpts.Namespace =  p.Namespace
+		listOpts.Namespace = p.Namespace
 	} else {
 		podMonSelector, err = metav1.LabelSelectorAsSelector(p.Spec.PodMonitorNamespaceSelector)
 		if err != nil {
-			l.Error(err,"cannot find label for pod monitor namespace")
+			l.Error(err, "cannot find label for pod monitor namespace")
 
 			return nil, err
 
@@ -234,11 +232,10 @@ func SelectPodMonitors(p *monitoringv1beta1.VmAgent, rclient client.Client, l lo
 
 	l.Info("filtering namespaces to select PodMonitors from", "namespace", p.Namespace, "prometheus", p.Name)
 
-
 	//TODO fix fsf
 	for _, podMon := range podMons.Items {
 		pm := podMon.DeepCopy()
-			res[podMon.Namespace+"/"+podMon.Name] = pm
+		res[podMon.Namespace+"/"+podMon.Name] = pm
 	}
 	podMonitors := make([]string, 0)
 	for key := range res {
@@ -250,7 +247,7 @@ func SelectPodMonitors(p *monitoringv1beta1.VmAgent, rclient client.Client, l lo
 	return res, nil
 }
 
-func  loadBasicAuthSecrets(
+func loadBasicAuthSecrets(
 	mons map[string]*monitoringv1.ServiceMonitor,
 	remoteWrites []monitoringv1.RemoteWriteSpec,
 	apiserverConfig *monitoringv1.APIServerConfig,
@@ -296,7 +293,7 @@ func  loadBasicAuthSecrets(
 
 }
 
-func  loadBearerTokensFromSecrets(mons map[string]*monitoringv1.ServiceMonitor, kclient kubernetes.Interface ) (map[string]BearerToken, error) {
+func loadBearerTokensFromSecrets(mons map[string]*monitoringv1.ServiceMonitor, kclient kubernetes.Interface) (map[string]BearerToken, error) {
 	tokens := map[string]BearerToken{}
 	nsSecretCache := make(map[string]*v1.Secret)
 
@@ -380,7 +377,6 @@ func getCredFromSecret(c corev1client.SecretInterface, sel v1.SecretKeySelector,
 	return extractCredKey(s, sel, cred)
 }
 
-
 func loadBasicAuthSecretFromAPI(basicAuth *monitoringv1.BasicAuth, c corev1client.CoreV1Interface, ns string, cache map[string]*v1.Secret) (BasicAuthCredentials, error) {
 	var username string
 	var password string
@@ -399,7 +395,7 @@ func loadBasicAuthSecretFromAPI(basicAuth *monitoringv1.BasicAuth, c corev1clien
 	return BasicAuthCredentials{username: username, password: password}, nil
 }
 
-func  loadAdditionalScrapeConfigsSecret(additionalScrapeConfigs *v1.SecretKeySelector, s *v1.SecretList) ([]byte, error) {
+func loadAdditionalScrapeConfigsSecret(additionalScrapeConfigs *v1.SecretKeySelector, s *v1.SecretList) ([]byte, error) {
 	if additionalScrapeConfigs != nil {
 		for _, secret := range s.Items {
 			if secret.Name == additionalScrapeConfigs.Name {
@@ -413,7 +409,7 @@ func  loadAdditionalScrapeConfigsSecret(additionalScrapeConfigs *v1.SecretKeySel
 		if additionalScrapeConfigs.Optional == nil || !*additionalScrapeConfigs.Optional {
 			return nil, fmt.Errorf("secret %v could not be found", additionalScrapeConfigs.Name)
 		}
-//		l.Info(fmt.Sprintf("secret %v could not be found", additionalScrapeConfigs.Name))
+		//		l.Info(fmt.Sprintf("secret %v could not be found", additionalScrapeConfigs.Name))
 	}
 	return nil, nil
 }
@@ -447,4 +443,3 @@ func gzipConfig(buf *bytes.Buffer, conf []byte) error {
 	}
 	return nil
 }
-

@@ -36,11 +36,11 @@ func Add(mgr manager.Manager) error {
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 	return &ReconcilePrometheusrule{
-		client: mgr.GetClient(),
-		scheme: mgr.GetScheme(),
-		opConf:conf.MustGetBaseConfig(),
-		l: log,
-		kclient:kubernetes.NewForConfigOrDie(mgr.GetConfig()),
+		client:  mgr.GetClient(),
+		scheme:  mgr.GetScheme(),
+		opConf:  conf.MustGetBaseConfig(),
+		l:       log,
+		kclient: kubernetes.NewForConfigOrDie(mgr.GetConfig()),
 	}
 }
 
@@ -58,8 +58,6 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-
-
 	return nil
 }
 
@@ -70,11 +68,11 @@ var _ reconcile.Reconciler = &ReconcilePrometheusrule{}
 type ReconcilePrometheusrule struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
-	client client.Client
+	client  client.Client
 	kclient kubernetes.Interface
-	l logr.Logger
-	scheme *runtime.Scheme
-	opConf *conf.BaseOperatorConf
+	l       logr.Logger
+	scheme  *runtime.Scheme
+	opConf  *conf.BaseOperatorConf
 }
 
 // Reconcile reads that state of the cluster for a Prometheusrule object and makes changes based on the state read
@@ -97,14 +95,13 @@ func (r *ReconcilePrometheusrule) Reconcile(request reconcile.Request) (reconcil
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
 			//return reconcile.Result{}, nil
-		}else{
+		} else {
 			// Error reading the object - requeue the request.
-			reqLogger.Error(err,"cannot get resource")
+			reqLogger.Error(err, "cannot get resource")
 			return reconcile.Result{}, err
 		}
 	}
-	reqLogger.Info("get prom rule","name",instance.Name)
-
+	reqLogger.Info("get prom rule", "name", instance.Name)
 
 	//what we have to do
 	//get vmalert instance
@@ -114,20 +111,20 @@ func (r *ReconcilePrometheusrule) Reconcile(request reconcile.Request) (reconcil
 	reqLogger.Info("listing vm alerts")
 	err = r.client.List(context.TODO(), alertMngs, &client.ListOptions{})
 	if err != nil {
-		reqLogger.Error(err,"cannot list vmalerts")
-		return reconcile.Result{},err
+		reqLogger.Error(err, "cannot list vmalerts")
+		return reconcile.Result{}, err
 	}
 	currVmAlert := &monitoringv1beta1.VmAlert{}
-	reqLogger.Info("current count of vm alerts: ","len",len(alertMngs.Items))
+	reqLogger.Info("current count of vm alerts: ", "len", len(alertMngs.Items))
 
-	switch len(alertMngs.Items){
+	switch len(alertMngs.Items) {
 	case 0:
 		reqLogger.Info("vm alerts wasnt found, nothing to do")
-		return reconcile.Result{},nil
+		return reconcile.Result{}, nil
 		//nothing to do, no alertmanagers
 	case 1:
 		//reconcile one
-		reqLogger.Info("one vmalert was found","name",currVmAlert.Name)
+		reqLogger.Info("one vmalert was found", "name", currVmAlert.Name)
 		currVmAlert = &alertMngs.Items[0]
 	default:
 		//more then 1 vmalert
@@ -136,23 +133,23 @@ func (r *ReconcilePrometheusrule) Reconcile(request reconcile.Request) (reconcil
 		//currVmAlert.Spec.RuleSelector
 		//if we found find match - generate config for it
 		//TODO
-		reqLogger.Info("more then 1 vm alert was found TODO implement match","len",len(alertMngs.Items))
-		return reconcile.Result{Requeue:false},nil
+		reqLogger.Info("more then 1 vm alert was found TODO implement match", "len", len(alertMngs.Items))
+		return reconcile.Result{Requeue: false}, nil
 
 	}
 	reqLogger.Info("updating or creating cm for vmalert")
 
-	maps, err := factory.CreateOrUpdateRuleConfigMaps(currVmAlert,r.kclient,r.client,reqLogger) // r.createOrUpdateRuleConfigMaps(&currVmAlert)
+	maps, err := factory.CreateOrUpdateRuleConfigMaps(currVmAlert, r.kclient, r.client, reqLogger) // r.createOrUpdateRuleConfigMaps(&currVmAlert)
 	if err != nil {
-		reqLogger.Error(err,"cannot update rules configmaps")
-		return reconcile.Result{},err
+		reqLogger.Error(err, "cannot update rules configmaps")
+		return reconcile.Result{}, err
 	}
-	reqLogger.Info("created rules maps count","count",len(maps))
+	reqLogger.Info("created rules maps count", "count", len(maps))
 	//we have to update it...
 	_, err = factory.CreateOrUpdateVmAlert(currVmAlert, r.client, r.opConf, maps, reqLogger)
 	if err != nil {
-		reqLogger.Error(err,"cannot trigger vmalert update, after rules changing")
-		return reconcile.Result{},nil
+		reqLogger.Error(err, "cannot trigger vmalert update, after rules changing")
+		return reconcile.Result{}, nil
 	}
 	reqLogger.Info("prom rules were reconciled")
 

@@ -3,9 +3,9 @@ package factory
 import (
 	"context"
 	"fmt"
-	"github.com/coreos/prometheus-operator/pkg/k8sutil"
 	"github.com/VictoriaMetrics/operator/conf"
 	monitoringv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1beta1"
+	"github.com/coreos/prometheus-operator/pkg/k8sutil"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -20,13 +20,11 @@ import (
 	"strings"
 )
 
-const(
-	vmSingleSecretDir = "/etc/vm/secrets"
+const (
+	vmSingleSecretDir    = "/etc/vm/secrets"
 	vmSingleConfigMapDir = "/etc/vm/configs"
-	vmSingleDataDir = "/victoria-metrics-data"
-
+	vmSingleDataDir      = "/victoria-metrics-data"
 )
-
 
 func CreateVmStorage(cr *monitoringv1beta1.VmSingle, rclient client.Client, l logr.Logger) (*corev1.PersistentVolumeClaim, error) {
 
@@ -186,8 +184,8 @@ func newDeployForVmSingle(cr *monitoringv1beta1.VmSingle, c *conf.BaseOperatorCo
 			},
 		},
 		Spec: appsv1.DeploymentSpec{
-    		//its hardcoded by design
-    		//but we can add valition
+			//its hardcoded by design
+			//but we can add valition
 			Replicas: pointer.Int32Ptr(1),
 			Selector: &metav1.LabelSelector{MatchLabels: selectorLabelsVmSingle(cr)},
 			Strategy: appsv1.DeploymentStrategy{
@@ -206,11 +204,11 @@ func makeSpecForVmSingle(cr *monitoringv1beta1.VmSingle, c *conf.BaseOperatorCon
 		fmt.Sprintf("-storageDataPath=%s", vmSingleDataDir),
 		fmt.Sprintf("-retentionPeriod=%s", cr.Spec.RetentionPeriod),
 	}
-	if cr.Spec.LogLevel != ""{
-		args = append(args,fmt.Sprintf("-loggerLevel=%s",cr.Spec.LogLevel))
+	if cr.Spec.LogLevel != "" {
+		args = append(args, fmt.Sprintf("-loggerLevel=%s", cr.Spec.LogLevel))
 	}
-	if cr.Spec.LogFormat != ""{
-		args = append(args,fmt.Sprintf("-loggerFormat=%s",cr.Spec.LogFormat))
+	if cr.Spec.LogFormat != "" {
+		args = append(args, fmt.Sprintf("-loggerFormat=%s", cr.Spec.LogFormat))
 	}
 
 	args = append(args, cr.Spec.ExtraArgs...)
@@ -265,7 +263,7 @@ func makeSpecForVmSingle(cr *monitoringv1beta1.VmSingle, c *conf.BaseOperatorCon
 		vmMounts = append(vmMounts, corev1.VolumeMount{
 			Name:      k8sutil.SanitizeVolumeName("secret-" + s),
 			ReadOnly:  true,
-			MountPath: path.Join(vmSingleSecretDir,s) ,
+			MountPath: path.Join(vmSingleSecretDir, s),
 		})
 	}
 
@@ -283,7 +281,7 @@ func makeSpecForVmSingle(cr *monitoringv1beta1.VmSingle, c *conf.BaseOperatorCon
 		vmMounts = append(vmMounts, corev1.VolumeMount{
 			Name:      k8sutil.SanitizeVolumeName("configmap-" + c),
 			ReadOnly:  true,
-			MountPath: path.Join(vmSingleConfigMapDir,c),
+			MountPath: path.Join(vmSingleConfigMapDir, c),
 		})
 	}
 

@@ -96,7 +96,7 @@ type ReconcileVmSingle struct {
 func (r *ReconcileVmSingle) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace",
 		request.Namespace, "Request.Name", request.Name,
-		"reconcile", "vmsingle",
+		"object", "vmsingle",
 	)
 	reqLogger.Info("Reconciling")
 

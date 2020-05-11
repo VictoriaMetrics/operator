@@ -97,7 +97,7 @@ type ReconcileVmAlert struct {
 func (r *ReconcileVmAlert) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace",
 		request.Namespace, "Request.Name", request.Name,
-		"reconcile", "vmalert",
+		"object", "vmalert",
 	)
 	reqLogger.Info("Reconciling")
 

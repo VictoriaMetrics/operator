@@ -10,6 +10,7 @@ import (
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -139,23 +140,83 @@ func prometheusRulesConfigMapSelector(prometheusName string) metav1.ListOptions 
 	return metav1.ListOptions{LabelSelector: fmt.Sprintf("%v=%v", labelPrometheusName, prometheusName)}
 }
 
+func selectNamespaces(rclient client.Client, selector labels.Selector) ([]string, error) {
+	matchedNs := []string{}
+	ns := &v1.NamespaceList{}
+
+	if err := rclient.List(context.TODO(), ns, &client.ListOptions{LabelSelector: selector}); err != nil {
+		return nil, err
+	}
+
+	for _, n := range ns.Items {
+		matchedNs = append(matchedNs, n.Name)
+	}
+
+	return matchedNs, nil
+}
+
 func SelectRules(p *monitoringv1beta1.VmAlert, rclient client.Client, l logr.Logger) (map[string]string, error) {
 	rules := map[string]string{}
+	namespaces := []string{}
+
+	//what can we do?
+	//list namespaces matched by rule nameselector
+	//for each namespace apply list with rule selector...
+	//combine result
+
+	if p.Spec.RuleNamespaceSelector == nil {
+		namespaces = append(namespaces, p.Namespace)
+	} else if p.Spec.RuleNamespaceSelector.MatchExpressions == nil && p.Spec.RuleNamespaceSelector.MatchLabels == nil {
+		namespaces = nil
+	} else {
+		nsSelector, err := metav1.LabelSelectorAsSelector(p.Spec.RuleNamespaceSelector)
+		if err != nil {
+			return nil, errors.Wrap(err, "cannot convert rulenamspace selector")
+		}
+		namespaces, err = selectNamespaces(rclient, nsSelector)
+		if err != nil {
+			return nil, errors.Wrap(err, "cannot select namespaces for rule match")
+		}
+	}
+	//here we use trick
+	//if namespaces isnt nil, then namespaceselector is defined
+	//but general selector maybe be nil
+	if namespaces != nil && p.Spec.RuleSelector == nil {
+		p.Spec.RuleSelector = &metav1.LabelSelector{}
+	}
 
 	ruleSelector, err := metav1.LabelSelectorAsSelector(p.Spec.RuleSelector)
 	if err != nil {
 		return rules, errors.Wrap(err, "convert rule label selector to selector")
 	}
+	promRules := []*monitoringv1.PrometheusRule{}
 
-	//can we replace it with simple list ?
-	promRules := &monitoringv1.PrometheusRuleList{}
-	err = rclient.List(context.TODO(), promRules, &client.ListOptions{LabelSelector: ruleSelector})
-	if err != nil {
-		l.Error(err, "cannot list rules")
-		return nil, err
+	//list all namespaces for rules with selector
+	if namespaces == nil {
+		l.Info("listing all namespaces for rules")
+		ruleNs := &monitoringv1.PrometheusRuleList{}
+		err = rclient.List(context.TODO(), ruleNs, &client.ListOptions{LabelSelector: ruleSelector})
+		if err != nil {
+			l.Error(err, "cannot list rules")
+			return nil, err
+		}
+		promRules = append(promRules, ruleNs.Items...)
+
+	} else {
+		for _, ns := range namespaces {
+			listOpts := &client.ListOptions{Namespace: ns, LabelSelector: ruleSelector}
+			ruleNs := &monitoringv1.PrometheusRuleList{}
+			err = rclient.List(context.TODO(), ruleNs, listOpts)
+			if err != nil {
+				l.Error(err, "cannot list rules")
+				return nil, err
+			}
+			promRules = append(promRules, ruleNs.Items...)
+
+		}
 	}
 
-	for _, pRule := range promRules.Items {
+	for _, pRule := range promRules {
 		content, err := generateContent(pRule.Spec, p.Spec.EnforcedNamespaceLabel, pRule.Namespace)
 		if err != nil {
 			l.WithValues("rule", pRule.Name).Error(err, "cannot generate content for rule")
@@ -169,7 +230,6 @@ func SelectRules(p *monitoringv1beta1.VmAlert, rclient client.Client, l logr.Log
 		ruleNames = append(ruleNames, name)
 	}
 	//TODO replace it with crd?
-
 	rules["default-vmalert.yaml"] = defAlert
 
 	l.Info("selected Rules",

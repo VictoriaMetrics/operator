@@ -51,7 +51,6 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-	// TODO(user): Modify this to be the types you create that are owned by the primary resource
 	// Watch for changes to secondary resource Pods and requeue the owner Alertmanager
 	err = c.Watch(&source.Kind{Type: &appsv1.StatefulSet{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
@@ -82,7 +81,7 @@ type ReconcileAlertmanager struct {
 func (r *ReconcileAlertmanager) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace",
 		request.Namespace, "Request.Name", request.Name,
-		"reconcile", "alertmanager",
+		"object", "alertmanager",
 	)
 
 	reqLogger.Info("Reconciling")

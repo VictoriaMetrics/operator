@@ -1,11 +1,10 @@
-package servicemonitor
+package podmonitor
 
 import (
 	"context"
 	"github.com/VictoriaMetrics/operator/conf"
 	monitoringv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1beta1"
 	"github.com/VictoriaMetrics/operator/pkg/controller/factory"
-	"github.com/go-logr/logr"
 	"k8s.io/client-go/kubernetes"
 
 	monitoringv1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1"
@@ -20,14 +19,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-var log = logf.Log.WithName("controller_servicemonitor")
+var log = logf.Log.WithName("controller_podmonitor")
 
 /**
 * USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
 * business logic.  Delete these comments after modifying this file.*
  */
 
-// Add creates a new ServiceMonitor Controller and adds it to the Manager. The Manager will set fields on the Controller
+// Add creates a new PodMonitor Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
 	return add(mgr, newReconciler(mgr))
@@ -35,25 +34,22 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileServiceMonitor{
-		client:  mgr.GetClient(),
-		scheme:  mgr.GetScheme(),
-		kclient: kubernetes.NewForConfigOrDie(mgr.GetConfig()),
-		l:       log,
-		opConf:  conf.MustGetBaseConfig(),
-	}
+	return &ReconcilePodMonitor{client: mgr.GetClient(),
+		scheme: mgr.GetScheme(),
+		kclient:kubernetes.NewForConfigOrDie(mgr.GetConfig()),
+		opConf:conf.MustGetBaseConfig()}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
 func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Create a new controller
-	c, err := controller.New("servicemonitor-controller", mgr, controller.Options{Reconciler: r})
+	c, err := controller.New("podmonitor-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
 		return err
 	}
 
-	// Watch for changes to primary resource ServiceMonitor
-	err = c.Watch(&source.Kind{Type: &monitoringv1.ServiceMonitor{}}, &handler.EnqueueRequestForObject{})
+	// Watch for changes to primary resource PodMonitor
+	err = c.Watch(&source.Kind{Type: &monitoringv1.PodMonitor{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
@@ -61,29 +57,28 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	return nil
 }
 
-// blank assignment to verify that ReconcileServiceMonitor implements reconcile.Reconciler
-var _ reconcile.Reconciler = &ReconcileServiceMonitor{}
+// blank assignment to verify that ReconcilePodMonitor implements reconcile.Reconciler
+var _ reconcile.Reconciler = &ReconcilePodMonitor{}
 
-// ReconcileServiceMonitor reconciles a ServiceMonitor object
-type ReconcileServiceMonitor struct {
+// ReconcilePodMonitor reconciles a PodMonitor object
+type ReconcilePodMonitor struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
-	client  client.Client
-	l       logr.Logger
+	client client.Client
 	kclient kubernetes.Interface
-	scheme  *runtime.Scheme
-	opConf  *conf.BaseOperatorConf
+	opConf *conf.BaseOperatorConf
+	scheme *runtime.Scheme
 }
 
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
-func (r *ReconcileServiceMonitor) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name,
-		"object","servicemonitor")
-	reqLogger.Info("Reconciling ServiceMonitor")
+func (r *ReconcilePodMonitor) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+	reqLogger := log.WithValues("Request.Namespace", request.Namespace,
+		"Request.Name", request.Name,"object", "podMonitor")
+	reqLogger.Info("Reconciling PodMonitor")
 
-	// Fetch the ServiceMonitor instance
-	instance := &monitoringv1.ServiceMonitor{}
+	// Fetch the PodMonitor instance
+	instance := &monitoringv1.PodMonitor{}
 	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -107,7 +102,7 @@ func (r *ReconcileServiceMonitor) Reconcile(request reconcile.Request) (reconcil
 
 	for _, vmagent := range vmAgentInstances.Items{
 		reqLogger = reqLogger.WithValues("vmagent",vmagent.Name)
-		reqLogger.Info("reconlining rules for vmagent")
+		reqLogger.Info("reconlining podmonitor for vmagent")
 		currentVmagent := &vmagent
 		err = factory.CreateOrUpdateConfigurationSecret(currentVmagent, r.client, r.kclient, r.opConf, reqLogger)
 		if err != nil {
@@ -124,6 +119,7 @@ func (r *ReconcileServiceMonitor) Reconcile(request reconcile.Request) (reconcil
 		reqLogger.Info("reconciled for vmagnet")
 	}
 
-	reqLogger.Info("update service monitor crds")
+	reqLogger.Info("update pod monitor crds")
 	return reconcile.Result{}, nil
 }
+

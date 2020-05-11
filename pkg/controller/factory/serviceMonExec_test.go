@@ -162,7 +162,7 @@ func TestSelectPodMonitors(t *testing.T) {
 				l: logf.Log.WithName("unit-test"),
 			},
 			predefinedObjects: []runtime.Object{
-				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "monitor", Labels: map[string]string{"name": "monitoring"}},},
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "monitor", Labels: map[string]string{"name": "monitoring"}}},
 				&monitoringv1.PodMonitor{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "pod2",

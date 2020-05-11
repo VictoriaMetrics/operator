@@ -1,0 +1,23 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  creationTimestamp: null
+  name: vm-operator
+rules:
+- apiGroups:
+  - '*'
+  verbs:
+  - '*'
+- apiGroups:
+  - monitoring.victoriametrics.com
+  resources:
+  - '*'
+  - alertmanagers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch

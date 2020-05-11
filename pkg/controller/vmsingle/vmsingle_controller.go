@@ -117,7 +117,7 @@ func (r *ReconcileVmSingle) Reconcile(request reconcile.Request) (reconcile.Resu
 	if instance.Spec.Storage != nil {
 		reqLogger.Info("storage specified reconcile it")
 		//TODO should we delete storage with owner reference?
-		_, err = factory.CreateVmStorage(instance, r.client, reqLogger)
+		_, err = factory.CreateVmStorage(instance, r.client, r.opConf, reqLogger)
 		if err != nil {
 			reqLogger.Error(err, "cannot create pvc")
 			return reconcile.Result{}, err

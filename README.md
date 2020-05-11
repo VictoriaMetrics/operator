@@ -68,8 +68,7 @@ vmsingle-example-vmsingle-548cccbd8f-g8292   1/1     Running   0          5m18s
 
 
 ## todo
-1) rbac - now it`s too broad probablyy
-2) selector ServiceMon / Namespace - it seems to be broken
+1) rbac - now it`s too broad probably
 3) tests
 4) documentation
 
@@ -83,9 +82,7 @@ vmsingle-example-vmsingle-548cccbd8f-g8292   1/1     Running   0          5m18s
 
 ## limitations
 
-- currently there is problem with namespaceSelector, you can use only one selector
-  for vmagent
- 
+- Alertmanager is supported at api monitoring.victoriametrics.com/v1beta1     
 - alert relabel is not supported
 
 ## development

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/VictoriaMetrics/operator/conf"
 	monitoringv1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1"
+	monitoringv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1beta1"
 	"github.com/blang/semver"
 	"github.com/coreos/prometheus-operator/pkg/k8sutil"
 	"github.com/go-logr/logr"
@@ -42,7 +43,7 @@ var (
 	probeTimeoutSeconds int32 = 5
 )
 
-func CreateOrUpdateAlertManager(cr *monitoringv1.Alertmanager, rclient client.Client, c *conf.BaseOperatorConf, l logr.Logger) (*appsv1.StatefulSet, error) {
+func CreateOrUpdateAlertManager(cr *monitoringv1beta1.Alertmanager, rclient client.Client, c *conf.BaseOperatorConf, l logr.Logger) (*appsv1.StatefulSet, error) {
 	l = l.WithValues("reconcile.AlertManager.sts", cr.Name)
 	newSts, err := newStsForAlertManager(cr, c)
 	if err != nil {
@@ -79,7 +80,7 @@ func CreateOrUpdateAlertManager(cr *monitoringv1.Alertmanager, rclient client.Cl
 	return newSts, nil
 }
 
-func newStsForAlertManager(cr *monitoringv1.Alertmanager, c *conf.BaseOperatorConf) (*appsv1.StatefulSet, error) {
+func newStsForAlertManager(cr *monitoringv1beta1.Alertmanager, c *conf.BaseOperatorConf) (*appsv1.StatefulSet, error) {
 
 	if cr.Spec.BaseImage == "" {
 		cr.Spec.BaseImage = c.AlertManager.AlertmanagerDefaultBaseImage
@@ -183,7 +184,7 @@ func newStsForAlertManager(cr *monitoringv1.Alertmanager, c *conf.BaseOperatorCo
 	return statefulset, nil
 }
 
-func CreateOrUpdateAlertManagerService(cr *monitoringv1.Alertmanager, rclient client.Client, c *conf.BaseOperatorConf, l logr.Logger) (*v1.Service, error) {
+func CreateOrUpdateAlertManagerService(cr *monitoringv1beta1.Alertmanager, rclient client.Client, c *conf.BaseOperatorConf, l logr.Logger) (*v1.Service, error) {
 
 	l = l.WithValues("recon.alertmanager.service", cr.Name)
 
@@ -221,7 +222,7 @@ func CreateOrUpdateAlertManagerService(cr *monitoringv1.Alertmanager, rclient cl
 
 }
 
-func newAlertManagerService(cr *monitoringv1.Alertmanager, c *conf.BaseOperatorConf) *v1.Service {
+func newAlertManagerService(cr *monitoringv1beta1.Alertmanager, c *conf.BaseOperatorConf) *v1.Service {
 
 	if cr.Spec.PortName == "" {
 		cr.Spec.PortName = defaultPortName
@@ -275,7 +276,7 @@ func newAlertManagerService(cr *monitoringv1.Alertmanager, c *conf.BaseOperatorC
 	return svc
 }
 
-func makeStatefulSetSpec(a *monitoringv1.Alertmanager, config *conf.BaseOperatorConf) (*appsv1.StatefulSetSpec, error) {
+func makeStatefulSetSpec(a *monitoringv1beta1.Alertmanager, config *conf.BaseOperatorConf) (*appsv1.StatefulSetSpec, error) {
 	// Before editing 'a' create deep copy, to prevent side effects. For more
 	// details see https://github.com/coreos/prometheus-operator/issues/1659
 	a = a.DeepCopy()
@@ -595,7 +596,7 @@ func makeStatefulSetSpec(a *monitoringv1.Alertmanager, config *conf.BaseOperator
 			Type: appsv1.RollingUpdateStatefulSetStrategyType,
 		},
 		Selector: &metav1.LabelSelector{
-			MatchLabels: finalLabels,
+			MatchLabels: podLabels,
 		},
 		Template: v1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{

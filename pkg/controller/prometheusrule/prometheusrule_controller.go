@@ -22,7 +22,6 @@ import (
 
 var log = logf.Log.WithName("controller_prometheusrule")
 
-
 // Add creates a new Prometheusrule Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {

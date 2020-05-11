@@ -6,7 +6,6 @@ rules:
   - apiGroups:
       - ""
     resources:
-      - pods
       - services
       - services/finalizers
       - endpoints
@@ -29,8 +28,6 @@ rules:
       - '*'
     verbs:
       - '*'
-      - 'podmonitors'
-      - ''
   - apiGroups:
       - apps
     resourceNames:
@@ -42,16 +39,9 @@ rules:
   - apiGroups:
       - ""
     resources:
-      - pods
+      - pods,namespaces
     verbs:
-      - get
-  - apiGroups:
-      - apps
-    resources:
-      - replicasets
-      - deployments
-    verbs:
-      - get
+      - get,list
   - apiGroups:
       - monitoring.victoriametrics.com
     resources:

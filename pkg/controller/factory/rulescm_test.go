@@ -31,7 +31,7 @@ func Test_selectNamespaces(t *testing.T) {
 		{
 			name:         "select 1 ns",
 			args:         args{selector: labels.SelectorFromValidatedSet(labels.Set{})},
-			predefinedNs: []*v1.Namespace{&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns1"}}},
+			predefinedNs: []*v1.Namespace{{ObjectMeta: metav1.ObjectMeta{Name: "ns1"}}},
 			want:         []string{"ns1"},
 			wantErr:      false,
 		},

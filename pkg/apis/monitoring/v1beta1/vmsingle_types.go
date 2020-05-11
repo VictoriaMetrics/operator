@@ -1,6 +1,7 @@
 package v1beta1
 
 import (
+	monitoringv1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -18,7 +19,7 @@ type VmSingleSpec struct {
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
 	// PodMetadata configures Labels and Annotations which are propagated to the VmSingle pods.
-	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
+	PodMetadata *monitoringv1.EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
 	// base image for vmSingle
 	// configured.
 	Image *string `json:"image,omitempty"`
@@ -42,6 +43,7 @@ type VmSingleSpec struct {
 	ConfigMaps []string `json:"configMaps,omitempty"`
 	// Log level for VmSingle to be configured with.
 	//+optional
+	// +kubebuilder:validation:Enum=INFO;WARN;ERROR;FATAL;PANIC
 	LogLevel string `json:"logLevel,omitempty"`
 	// Log format for VmSingle to be configured with.
 	//+optional

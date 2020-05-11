@@ -35,7 +35,7 @@ var (
 	metricsPort         int32 = 8383
 	operatorMetricsPort int32 = 8686
 	BuildData           string
-	Version = "local"
+	Version             = "local"
 )
 var log = logf.Log.WithName("cmd")
 

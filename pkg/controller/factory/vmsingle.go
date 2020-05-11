@@ -26,11 +26,11 @@ const (
 	vmSingleDataDir      = "/victoria-metrics-data"
 )
 
-func CreateVmStorage(cr *monitoringv1beta1.VmSingle, rclient client.Client, l logr.Logger) (*corev1.PersistentVolumeClaim, error) {
+func CreateVmStorage(cr *monitoringv1beta1.VmSingle, rclient client.Client, c *conf.BaseOperatorConf, l logr.Logger) (*corev1.PersistentVolumeClaim, error) {
 
 	l = l.WithValues("vm.single.pvc.create", prefixedVmSingleName(cr.Name))
 	l.Info("reconciling pvc")
-	newPvc := makeVmPvc(cr)
+	newPvc := makeVmPvc(cr, c)
 	existPvc := &corev1.PersistentVolumeClaim{}
 	err := rclient.Get(context.TODO(), types.NamespacedName{Namespace: cr.Namespace, Name: prefixedVmSingleName(cr.Name)}, existPvc)
 	if err != nil {
@@ -61,12 +61,12 @@ func CreateVmStorage(cr *monitoringv1beta1.VmSingle, rclient client.Client, l lo
 	return newPvc, nil
 }
 
-func makeVmPvc(cr *monitoringv1beta1.VmSingle) *corev1.PersistentVolumeClaim {
+func makeVmPvc(cr *monitoringv1beta1.VmSingle, c *conf.BaseOperatorConf) *corev1.PersistentVolumeClaim {
 	return &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        prefixedVmSingleName(cr.Name),
 			Namespace:   cr.Namespace,
-			Labels:      cr.Labels,
+			Labels:      c.Labels.Merge(cr.ObjectMeta.Labels),
 			Annotations: cr.Annotations,
 		},
 		Spec: *cr.Spec.Storage,
@@ -167,10 +167,9 @@ func newDeployForVmSingle(cr *monitoringv1beta1.VmSingle, c *conf.BaseOperatorCo
 
 	depSpec := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      prefixedVmSingleName(cr.Name),
-			Namespace: cr.Namespace,
-			Labels:    c.Labels.Merge(getVmSingleLabels(cr)),
-			//TODO merge annotations
+			Name:        prefixedVmSingleName(cr.Name),
+			Namespace:   cr.Namespace,
+			Labels:      c.Labels.Merge(cr.ObjectMeta.Labels),
 			Annotations: cr.ObjectMeta.Annotations,
 			OwnerReferences: []metav1.OwnerReference{
 				{
@@ -313,8 +312,6 @@ func makeSpecForVmSingle(cr *monitoringv1beta1.VmSingle, c *conf.BaseOperatorCon
 		FailureThreshold: 10,
 	}
 
-	finalLabels := getVmSingleLabels(cr)
-
 	podAnnotations := map[string]string{}
 	if cr.Spec.PodMetadata != nil {
 		if cr.Spec.PodMetadata.Annotations != nil {
@@ -347,7 +344,7 @@ func makeSpecForVmSingle(cr *monitoringv1beta1.VmSingle, c *conf.BaseOperatorCon
 
 	vmSignleSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
-			Labels:      c.Labels.Merge(finalLabels),
+			Labels:      getVmSingleLabels(cr),
 			Annotations: podAnnotations,
 		},
 		Spec: corev1.PodSpec{
@@ -413,7 +410,7 @@ func newServiceVmSingle(cr *monitoringv1beta1.VmSingle, c *conf.BaseOperatorConf
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        prefixedAgentName(cr.Name),
 			Namespace:   cr.Namespace,
-			Labels:      c.Labels.Merge(getVmSingleLabels(cr)),
+			Labels:      c.Labels.Merge(cr.ObjectMeta.Labels),
 			Annotations: cr.Annotations,
 			OwnerReferences: []metav1.OwnerReference{
 				{

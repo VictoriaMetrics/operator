@@ -1,7 +1,9 @@
-apiVersion: monitoring.coreos.com/v1
+apiVersion: monitoring.victoriametrics.com/v1beta1
 kind: Alertmanager
 metadata:
   name: example-alertmanager
+  labels:
+      ns: op
 spec:
   # Add fields here
-  Replicas: 1
+  replicas: 1

@@ -1,7 +1,7 @@
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
-  name: alertmanagers.monitoring.coreos.com
+  name: vmalertmanagers.monitoring.victoriametrics.com
 spec:
   additionalPrinterColumns:
   - JSONPath: .spec.version
@@ -15,11 +15,13 @@ spec:
   - JSONPath: .metadata.creationTimestamp
     name: Age
     type: date
-  group: monitoring.coreos.com
+  group: monitoring.victoriametrics.com
   names:
     kind: Alertmanager
     listKind: AlertmanagerList
-    plural: alertmanagers
+    plural: vmalertmanagers
+    shortNames:
+    - vma
     singular: alertmanager
   scope: Namespaced
   subresources: {}
@@ -4613,8 +4615,8 @@ spec:
       required:
       - spec
       type: object
-  version: v1
+  version: v1beta1
   versions:
-  - name: v1
+  - name: v1beta1
     served: true
     storage: true

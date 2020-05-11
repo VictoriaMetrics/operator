@@ -22,7 +22,6 @@ import (
 
 var log = logf.Log.WithName("controller_prometheusrule")
 
-
 // Add creates a new Prometheusrule Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
@@ -75,7 +74,7 @@ type ReconcilePrometheusrule struct {
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcilePrometheusrule) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name,
-		"object","prometheusrule")
+		"object", "prometheusrule")
 	reqLogger.Info("Reconciling Prometheusrule")
 
 	// Fetch the Prometheusrule instance
@@ -106,8 +105,8 @@ func (r *ReconcilePrometheusrule) Reconcile(request reconcile.Request) (reconcil
 	reqLogger.Info("current count of vm alerts: ", "len", len(alertMngs.Items))
 
 	reqLogger.Info("updating or creating cm for vmalert")
-	for _, vmalert := range alertMngs.Items{
-		reqLogger.WithValues("vmalert",vmalert.Name)
+	for _, vmalert := range alertMngs.Items {
+		reqLogger.WithValues("vmalert", vmalert.Name)
 		reqLogger.Info("reconciling vmalert rules")
 		currVmAlert := &vmalert
 

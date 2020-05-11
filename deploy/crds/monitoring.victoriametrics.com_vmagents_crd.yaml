@@ -3085,6 +3085,12 @@ spec:
             logLevel:
               description: Log level for vmagent to be configured with. INFO, WARN,
                 ERROR, FATAL, PANIC
+              enum:
+              - INFO
+              - WARN
+              - ERROR
+              - FATAL
+              - PANIC
               type: string
             overrideHonorLabels:
               description: OverrideHonorLabels if set to true overrides all user configured

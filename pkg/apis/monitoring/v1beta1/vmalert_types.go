@@ -19,7 +19,7 @@ type VmAlertSpec struct {
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
 	// PodMetadata configures Labels and Annotations which are propagated to the VmAlert pods.
-	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
+	PodMetadata *monitoringv1.EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
 	// Image if specified has precedence over baseImage and version
 	// combinations.
 	Image *string `json:"image,omitempty"`
@@ -48,6 +48,7 @@ type VmAlertSpec struct {
 	// Log format for VmAlert to be configured with.
 	LogFormat string `json:"logFormat,omitempty"`
 	// Log level for VmAlert to be configured with.
+	// +kubebuilder:validation:Enum=INFO;WARN;ERROR;FATAL;PANIC
 	LogLevel string `json:"logLevel,omitempty"`
 	// Size is the expected size of the VmAlert cluster. The controller will
 	// eventually make the size of the running cluster equal to the expected

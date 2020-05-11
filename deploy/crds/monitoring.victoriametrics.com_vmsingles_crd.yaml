@@ -2856,6 +2856,12 @@ spec:
               type: string
             logLevel:
               description: Log level for VmSingle to be configured with.
+              enum:
+              - INFO
+              - WARN
+              - ERROR
+              - FATAL
+              - PANIC
               type: string
             podMetadata:
               description: 'INSERT ADDITIONAL SPEC FIELDS - desired state of cluster

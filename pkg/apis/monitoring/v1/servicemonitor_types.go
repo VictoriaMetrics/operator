@@ -245,7 +245,7 @@ func (e *SecretOrConfigMapValidationError) Error() string {
 
 // Validate semantically validates the given TLSConfig.
 func (c *SecretOrConfigMap) Validate() error {
-	if &c.Secret != nil && &c.ConfigMap != nil {
+	if c.Secret != nil && c.ConfigMap != nil {
 		return &SecretOrConfigMapValidationError{"SecretOrConfigMap can not specify both Secret and ConfigMap"}
 	}
 
@@ -388,6 +388,18 @@ type PodMetricsEndpoint struct {
 	RelabelConfigs []*RelabelConfig `json:"relabelConfigs,omitempty"`
 	// ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint.
 	ProxyURL *string `json:"proxyURL,omitempty"`
+}
+
+// ArbitraryFSAccessThroughSMsConfig enables users to configure, whether
+// a service monitor selected by the Prometheus instance is allowed to use
+// arbitrary files on the file system of the Prometheus container. This is the case
+// when e.g. a service monitor specifies a BearerTokenFile in an endpoint. A
+// malicious user could create a service monitor selecting arbitrary secret files
+// in the Prometheus container. Those secrets would then be sent with a scrape
+// request by Prometheus to a malicious target. Denying the above would prevent the
+// attack, users can instead use the BearerTokenSecret field.
+type ArbitraryFSAccessThroughSMsConfig struct {
+	Deny bool `json:"deny,omitempty"`
 }
 
 func init() {

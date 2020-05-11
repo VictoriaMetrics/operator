@@ -20,6 +20,9 @@ TEST_ARGS=$(GOCMD) test -covermode=atomic -coverprofile=coverage.txt -v
 
 all: build
 
+install-golint:
+	which golint || GO111MODULE=off go get -u golang.org/x/lint/golint
+
 report:
 	$(GOCMD) tool cover -html=coverage.txt
 
@@ -27,8 +30,13 @@ gen:
 	$(OPERATOR_BIN) generate crds
 	$(OPERATOR_BIN) generate k8s
 
-build-app:
+build-app: fmt
 	$(GOBUILD)  -o $(BINARY_NAME) -v $(MAIN_DIR)
+
+
+fmt:
+	gofmt -l -w -s ./pkg
+	gofmt -l -w -s ./cmd
 
 build: gen build-app
 
@@ -41,7 +49,8 @@ test:
 	$(GOCMD) tool cover -func coverage.txt  | grep total
 
 lint:
-	golangci-lint run --exclude '(SA1019):' -E typecheck -E gosimple   --timeout 2m
+	golangci-lint run --exclude '(SA1019):' -E typecheck -E gosimple   --timeout 5m
+	golint ./pkg
 
 clean:
 	$(GOCLEAN)

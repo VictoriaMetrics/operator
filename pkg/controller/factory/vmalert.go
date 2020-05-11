@@ -71,7 +71,7 @@ func newServiceVmAlert(cr *monitoringv1beta1.VmAlert, c *conf.BaseOperatorConf) 
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        prefixedAlertName(cr.Name),
 			Namespace:   cr.Namespace,
-			Labels:      cr.Labels,
+			Labels:      c.Labels.Merge(cr.ObjectMeta.Labels),
 			Annotations: cr.Annotations,
 			OwnerReferences: []metav1.OwnerReference{
 				{
@@ -88,7 +88,7 @@ func newServiceVmAlert(cr *monitoringv1beta1.VmAlert, c *conf.BaseOperatorConf) 
 			Type:     corev1.ServiceTypeClusterIP,
 			Selector: selectorLabelsVmAlert(cr),
 			Ports: []corev1.ServicePort{
-				corev1.ServicePort{
+				{
 					Name:       "http",
 					Protocol:   "TCP",
 					Port:       intstr.Parse(cr.Spec.Port).IntVal,
@@ -222,8 +222,6 @@ func newDeployForVmAlert(cr *monitoringv1beta1.VmAlert, c *conf.BaseOperatorConf
 
 func vmAlertSpecGen(cr *monitoringv1beta1.VmAlert, c *conf.BaseOperatorConf, ruleConfigMapNames []string) (*appsv1.DeploymentSpec, error) {
 	cr = cr.DeepCopy()
-	finalLabels := getVmAlertLabels(cr)
-	finalLabels = c.Labels.Merge(finalLabels)
 
 	confReloadArgs := []string{
 		fmt.Sprintf("-webhook-url=http://localhost:%s", cr.Spec.Port),
@@ -276,8 +274,7 @@ func vmAlertSpecGen(cr *monitoringv1beta1.VmAlert, c *conf.BaseOperatorConf, rul
 		})
 	}
 
-	amVolumeMounts := []corev1.VolumeMount{
-	}
+	amVolumeMounts := []corev1.VolumeMount{}
 	for _, s := range cr.Spec.Secrets {
 		volumes = append(volumes, corev1.Volume{
 			Name: k8sutil.SanitizeVolumeName("secret-" + s),
@@ -413,7 +410,7 @@ func vmAlertSpecGen(cr *monitoringv1beta1.VmAlert, c *conf.BaseOperatorConf, rul
 		},
 		Template: corev1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{
-				Labels:      finalLabels,
+				Labels:      getVmAlertLabels(cr),
 				Annotations: podAnnotations,
 			},
 			Spec: corev1.PodSpec{

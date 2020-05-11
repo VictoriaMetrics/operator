@@ -955,7 +955,7 @@ func volumeName(name string) string {
 }
 
 func prefixedName(name string) string {
-	return fmt.Sprintf("prometheus-%s", name)
+	return fmt.Sprintf("alertmanager-%s", name)
 }
 
 // getNamespacesFromNamespaceSelector gets a list of namespaces to select based on

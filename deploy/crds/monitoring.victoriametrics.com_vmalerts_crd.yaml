@@ -2936,6 +2936,12 @@ spec:
               type: string
             logLevel:
               description: Log level for VmAlert to be configured with.
+              enum:
+              - INFO
+              - WARN
+              - ERROR
+              - FATAL
+              - PANIC
               type: string
             notifierURL:
               description: Prometheus alertmanager URL. Required parameter. e.g. http://127.0.0.1:9093

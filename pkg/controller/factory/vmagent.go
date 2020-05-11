@@ -74,7 +74,7 @@ func newServiceVmAgent(cr *monitoringv1beta1.VmAgent, c *conf.BaseOperatorConf) 
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        prefixedAgentName(cr.Name),
 			Namespace:   cr.Namespace,
-			Labels:      c.Labels.Merge(getVmAgentLabels(cr)),
+			Labels:      c.Labels.Merge(cr.ObjectMeta.Labels),
 			Annotations: cr.Annotations,
 			OwnerReferences: []metav1.OwnerReference{
 				{
@@ -205,7 +205,7 @@ func newDeployForVmAgent(cr *monitoringv1beta1.VmAgent, c *conf.BaseOperatorConf
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        prefixedAgentName(cr.Name),
 			Namespace:   cr.Namespace,
-			Labels:      c.Labels.Merge(getVmAgentLabels(cr)),
+			Labels:      c.Labels.Merge(cr.ObjectMeta.Labels),
 			Annotations: cr.ObjectMeta.Annotations,
 			OwnerReferences: []metav1.OwnerReference{
 				{
@@ -379,8 +379,6 @@ func makeSpecForVmAgent(cr *monitoringv1beta1.VmAgent, c *conf.BaseOperatorConf)
 		FailureThreshold: 10,
 	}
 
-	finalLabels := getVmAgentLabels(cr)
-
 	podAnnotations := map[string]string{}
 	if cr.Spec.PodMetadata != nil {
 		if cr.Spec.PodMetadata.Annotations != nil {
@@ -441,7 +439,7 @@ func makeSpecForVmAgent(cr *monitoringv1beta1.VmAgent, c *conf.BaseOperatorConf)
 
 	vmAgentSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
-			Labels:      c.Labels.Merge(finalLabels),
+			Labels:      getVmAgentLabels(cr),
 			Annotations: podAnnotations,
 		},
 		Spec: corev1.PodSpec{

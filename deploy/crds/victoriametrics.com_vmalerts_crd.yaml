@@ -11,10 +11,6 @@ spec:
     singular: vmalert
   scope: Namespaced
   subresources:
-    scale:
-      labelSelectorPath: .spec.selector
-      specReplicasPath: .spec.replicas
-      statusReplicasPath: .status.replicas
     status: {}
   validation:
     openAPIV3Schema:

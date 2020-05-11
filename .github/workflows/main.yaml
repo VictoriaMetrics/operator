@@ -42,6 +42,7 @@ jobs:
           username: ${{secrets.REPO_USER}}
           password: ${{secrets.REPO_KEY}}
           registry: "quay.io"
+          repository: f41gh7/vm-operator
           tag_with_ref: true
           dockerfile: cmd/manager/Dockerfile
 

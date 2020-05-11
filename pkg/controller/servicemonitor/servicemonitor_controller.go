@@ -79,7 +79,7 @@ type ReconcileServiceMonitor struct {
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcileServiceMonitor) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name,
-		"object", "servicemonitor")
+		"object","servicemonitor")
 	reqLogger.Info("Reconciling ServiceMonitor")
 
 	// Fetch the ServiceMonitor instance
@@ -105,8 +105,8 @@ func (r *ReconcileServiceMonitor) Reconcile(request reconcile.Request) (reconcil
 	}
 	reqLogger.Info("found vmagent objects ", "count len: ", len(vmAgentInstances.Items))
 
-	for _, vmagent := range vmAgentInstances.Items {
-		reqLogger = reqLogger.WithValues("vmagent", vmagent.Name)
+	for _, vmagent := range vmAgentInstances.Items{
+		reqLogger = reqLogger.WithValues("vmagent",vmagent.Name)
 		reqLogger.Info("reconlining rules for vmagent")
 		currentVmagent := &vmagent
 		err = factory.CreateOrUpdateConfigurationSecret(currentVmagent, r.client, r.kclient, r.opConf, reqLogger)

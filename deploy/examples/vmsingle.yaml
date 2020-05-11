@@ -1,4 +1,4 @@
-apiVersion: monitoring.victoriametrics.com/v1beta1
+apiVersion: victoriametrics.com/v1beta1
 kind: VmSingle
 metadata:
   name: example-vmsingle

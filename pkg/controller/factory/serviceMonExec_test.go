@@ -2,7 +2,7 @@ package factory
 
 import (
 	monitoringv1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1"
-	monitoringv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1beta1"
+	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
 	"github.com/go-logr/logr"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -17,7 +17,7 @@ import (
 
 func TestSelectServiceMonitors(t *testing.T) {
 	type args struct {
-		p *monitoringv1beta1.VmAgent
+		p *victoriametricsv1beta1.VmAgent
 		l logr.Logger
 	}
 	tests := []struct {
@@ -30,12 +30,12 @@ func TestSelectServiceMonitors(t *testing.T) {
 		{
 			name: "select service monitor inside vmagent namespace",
 			args: args{
-				p: &monitoringv1beta1.VmAgent{
+				p: &victoriametricsv1beta1.VmAgent{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "default-agent",
 						Namespace: "default",
 					},
-					Spec: monitoringv1beta1.VmAgentSpec{
+					Spec: victoriametricsv1beta1.VmAgentSpec{
 						ServiceMonitorSelector: &metav1.LabelSelector{},
 					},
 				},
@@ -53,12 +53,12 @@ func TestSelectServiceMonitors(t *testing.T) {
 		{
 			name: "select service monitor from namespace with filter",
 			args: args{
-				p: &monitoringv1beta1.VmAgent{
+				p: &victoriametricsv1beta1.VmAgent{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "default-agent",
 						Namespace: "default",
 					},
-					Spec: monitoringv1beta1.VmAgentSpec{
+					Spec: victoriametricsv1beta1.VmAgentSpec{
 						ServiceMonitorNamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"name": "stage"}},
 						ServiceMonitorSelector:          &metav1.LabelSelector{},
 					},
@@ -88,7 +88,7 @@ func TestSelectServiceMonitors(t *testing.T) {
 			s := scheme.Scheme
 
 			s.AddKnownTypes(monitoringv1.SchemeGroupVersion, &monitoringv1.ServiceMonitor{}, &monitoringv1.ServiceMonitorList{})
-			s.AddKnownTypes(monitoringv1beta1.SchemeGroupVersion, &monitoringv1beta1.VmAgent{}, &monitoringv1beta1.VmAgentList{})
+			s.AddKnownTypes(victoriametricsv1beta1.SchemeGroupVersion, &victoriametricsv1beta1.VmAgent{}, &victoriametricsv1beta1.VmAgentList{})
 			fclient := fake.NewFakeClientWithScheme(s, obj...)
 			got, err := SelectServiceMonitors(tt.args.p, fclient, tt.args.l)
 			if (err != nil) != tt.wantErr {
@@ -109,7 +109,7 @@ func TestSelectServiceMonitors(t *testing.T) {
 
 func TestSelectPodMonitors(t *testing.T) {
 	type args struct {
-		p *monitoringv1beta1.VmAgent
+		p *victoriametricsv1beta1.VmAgent
 		l logr.Logger
 	}
 	tests := []struct {
@@ -122,12 +122,12 @@ func TestSelectPodMonitors(t *testing.T) {
 		{
 			name: "selector pod monitor at vmagent ns",
 			args: args{
-				p: &monitoringv1beta1.VmAgent{
+				p: &victoriametricsv1beta1.VmAgent{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "example-vmagent",
 						Namespace: "default",
 					},
-					Spec: monitoringv1beta1.VmAgentSpec{
+					Spec: victoriametricsv1beta1.VmAgentSpec{
 						PodMonitorSelector: &metav1.LabelSelector{},
 					},
 				},
@@ -148,12 +148,12 @@ func TestSelectPodMonitors(t *testing.T) {
 		{
 			name: "selector pod monitor at different ns with ns selector",
 			args: args{
-				p: &monitoringv1beta1.VmAgent{
+				p: &victoriametricsv1beta1.VmAgent{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "example-vmagent",
 						Namespace: "default",
 					},
-					Spec: monitoringv1beta1.VmAgentSpec{
+					Spec: victoriametricsv1beta1.VmAgentSpec{
 						PodMonitorNamespaceSelector: &metav1.LabelSelector{
 							MatchLabels: map[string]string{"name": "monitoring"},
 						},
@@ -188,7 +188,7 @@ func TestSelectPodMonitors(t *testing.T) {
 			obj := []runtime.Object{}
 			obj = append(obj, tt.predefinedObjects...)
 			s := scheme.Scheme
-			s.AddKnownTypes(monitoringv1beta1.SchemeGroupVersion, &monitoringv1beta1.VmAgent{}, &monitoringv1beta1.VmAgentList{})
+			s.AddKnownTypes(victoriametricsv1beta1.SchemeGroupVersion, &victoriametricsv1beta1.VmAgent{}, &victoriametricsv1beta1.VmAgentList{})
 			s.AddKnownTypes(monitoringv1.SchemeGroupVersion, &monitoringv1.PodMonitor{}, &monitoringv1.PodMonitorList{})
 			fclient := fake.NewFakeClientWithScheme(s, obj...)
 			got, err := SelectPodMonitors(tt.args.p, fclient, tt.args.l)

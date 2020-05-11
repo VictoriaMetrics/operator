@@ -3,12 +3,12 @@ package vmsingle
 import (
 	"context"
 	"github.com/VictoriaMetrics/operator/conf"
+	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
 	"github.com/VictoriaMetrics/operator/pkg/controller/factory"
 	"github.com/operator-framework/operator-sdk/pkg/metrics"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/client-go/rest"
 
-	monitoringv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -53,7 +53,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// Watch for changes to primary resource VmSingle
-	err = c.Watch(&source.Kind{Type: &monitoringv1beta1.VmSingle{}}, &handler.EnqueueRequestForObject{})
+	err = c.Watch(&source.Kind{Type: &victoriametricsv1beta1.VmSingle{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
@@ -61,7 +61,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Watch for changes to secondary resource Pods and requeue the owner VmSingle
 	err = c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &monitoringv1beta1.VmSingle{},
+		OwnerType:    &victoriametricsv1beta1.VmSingle{},
 	})
 	if err != nil {
 		return err
@@ -69,7 +69,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 	err = c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &monitoringv1beta1.VmSingle{},
+		OwnerType:    &victoriametricsv1beta1.VmSingle{},
 	})
 	if err != nil {
 		return err
@@ -101,7 +101,7 @@ func (r *ReconcileVmSingle) Reconcile(request reconcile.Request) (reconcile.Resu
 	reqLogger.Info("Reconciling")
 
 	// Fetch the VmSingle instance
-	instance := &monitoringv1beta1.VmSingle{}
+	instance := &victoriametricsv1beta1.VmSingle{}
 	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {

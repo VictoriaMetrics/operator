@@ -3,7 +3,7 @@ package vmagent
 import (
 	"context"
 	"github.com/VictoriaMetrics/operator/conf"
-	monitoringv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1beta1"
+	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
 	"github.com/VictoriaMetrics/operator/pkg/controller/factory"
 	"github.com/operator-framework/operator-sdk/pkg/metrics"
 	apps "k8s.io/api/apps/v1"
@@ -54,7 +54,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// Watch for changes to primary resource VmAgent
-	err = c.Watch(&source.Kind{Type: &monitoringv1beta1.VmAgent{}}, &handler.EnqueueRequestForObject{})
+	err = c.Watch(&source.Kind{Type: &victoriametricsv1beta1.VmAgent{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
@@ -62,7 +62,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Watch for changes to secondary resource Pods and requeue the owner VmAgent
 	err = c.Watch(&source.Kind{Type: &apps.Deployment{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &monitoringv1beta1.VmAgent{},
+		OwnerType:    &victoriametricsv1beta1.VmAgent{},
 	})
 	if err != nil {
 		return err
@@ -70,7 +70,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 	err = c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &monitoringv1beta1.VmAgent{},
+		OwnerType:    &victoriametricsv1beta1.VmAgent{},
 	})
 	if err != nil {
 		return err
@@ -103,7 +103,7 @@ func (r *ReconcileVmAgent) Reconcile(request reconcile.Request) (reconcile.Resul
 	reqLogger.Info("Reconciling")
 
 	// Fetch the VmAgent instance
-	instance := &monitoringv1beta1.VmAgent{}
+	instance := &victoriametricsv1beta1.VmAgent{}
 	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {

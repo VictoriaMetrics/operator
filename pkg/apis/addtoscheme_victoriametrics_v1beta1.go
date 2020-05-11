@@ -1,7 +1,7 @@
 package apis
 
 import (
-	"github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1beta1"
+	"github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
 )
 
 func init() {

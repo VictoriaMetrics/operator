@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"github.com/VictoriaMetrics/operator/conf"
 	monitoringv1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1"
-	monitoringv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1beta1"
+	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -20,7 +20,7 @@ import (
 	"strings"
 )
 
-func CreateOrUpdateConfigurationSecret(p *monitoringv1beta1.VmAgent, rclient client.Client, kclient kubernetes.Interface, c *conf.BaseOperatorConf, l logr.Logger) error {
+func CreateOrUpdateConfigurationSecret(p *victoriametricsv1beta1.VmAgent, rclient client.Client, kclient kubernetes.Interface, c *conf.BaseOperatorConf, l logr.Logger) error {
 	// If no service or pod monitor selectors are configured, the user wants to
 	// manage configuration themselves. Do create an empty Secret if it doesn't
 	// exist.
@@ -128,7 +128,7 @@ func CreateOrUpdateConfigurationSecret(p *monitoringv1beta1.VmAgent, rclient cli
 	return err
 }
 
-func SelectServiceMonitors(p *monitoringv1beta1.VmAgent, rclient client.Client, l logr.Logger) (map[string]*monitoringv1.ServiceMonitor, error) {
+func SelectServiceMonitors(p *victoriametricsv1beta1.VmAgent, rclient client.Client, l logr.Logger) (map[string]*monitoringv1.ServiceMonitor, error) {
 
 	// Selectors (<namespace>/<name>) might overlap. Deduplicate them along the keyFunc.
 	res := make(map[string]*monitoringv1.ServiceMonitor)
@@ -225,7 +225,7 @@ func SelectServiceMonitors(p *monitoringv1beta1.VmAgent, rclient client.Client, 
 	return res, nil
 }
 
-func SelectPodMonitors(p *monitoringv1beta1.VmAgent, rclient client.Client, l logr.Logger) (map[string]*monitoringv1.PodMonitor, error) {
+func SelectPodMonitors(p *victoriametricsv1beta1.VmAgent, rclient client.Client, l logr.Logger) (map[string]*monitoringv1.PodMonitor, error) {
 	// Selectors might overlap. Deduplicate them along the keyFunc.
 	res := make(map[string]*monitoringv1.PodMonitor)
 

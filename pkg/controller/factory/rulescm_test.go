@@ -2,7 +2,7 @@ package factory
 
 import (
 	monitoringv1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1"
-	monitoringv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1beta1"
+	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
 	"github.com/go-logr/logr"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -68,7 +68,7 @@ func Test_selectNamespaces(t *testing.T) {
 
 func TestSelectRules(t *testing.T) {
 	type args struct {
-		p *monitoringv1beta1.VmAlert
+		p *victoriametricsv1beta1.VmAlert
 		l logr.Logger
 	}
 	tests := []struct {
@@ -81,7 +81,7 @@ func TestSelectRules(t *testing.T) {
 		{
 			name: "select default rule",
 			args: args{
-				p: &monitoringv1beta1.VmAlert{},
+				p: &victoriametricsv1beta1.VmAlert{},
 				l: logf.Log.WithName("unit-test"),
 			},
 			want: []string{"default-vmalert.yaml"},
@@ -89,8 +89,8 @@ func TestSelectRules(t *testing.T) {
 		{
 			name: "select default rule additional rule from another namespace",
 			args: args{
-				p: &monitoringv1beta1.VmAlert{ObjectMeta: metav1.ObjectMeta{Name: "test-vm-alert", Namespace: "monitor"},
-					Spec: monitoringv1beta1.VmAlertSpec{RuleNamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{}}, RuleSelector: &metav1.LabelSelector{}}},
+				p: &victoriametricsv1beta1.VmAlert{ObjectMeta: metav1.ObjectMeta{Name: "test-vm-alert", Namespace: "monitor"},
+					Spec: victoriametricsv1beta1.VmAlertSpec{RuleNamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{}}, RuleSelector: &metav1.LabelSelector{}}},
 				l: logf.Log.WithName("unit-test"),
 			},
 			predefinedObjets: []runtime.Object{
@@ -107,8 +107,8 @@ func TestSelectRules(t *testing.T) {
 		{
 			name: "select default rule, and additional rule from another namespace with namespace filter",
 			args: args{
-				p: &monitoringv1beta1.VmAlert{ObjectMeta: metav1.ObjectMeta{Name: "test-vm-alert", Namespace: "monitor"},
-					Spec: monitoringv1beta1.VmAlertSpec{RuleNamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"monitoring": "enabled"}}, RuleSelector: &metav1.LabelSelector{}}},
+				p: &victoriametricsv1beta1.VmAlert{ObjectMeta: metav1.ObjectMeta{Name: "test-vm-alert", Namespace: "monitor"},
+					Spec: victoriametricsv1beta1.VmAlertSpec{RuleNamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"monitoring": "enabled"}}, RuleSelector: &metav1.LabelSelector{}}},
 				l: logf.Log.WithName("unit-test"),
 			},
 			predefinedObjets: []runtime.Object{

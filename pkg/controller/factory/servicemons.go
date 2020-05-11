@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/VictoriaMetrics/operator/conf"
 	monitoringv1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1"
-	monitoringv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1beta1"
+	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
@@ -40,7 +40,7 @@ type BasicAuthCredentials struct {
 type BearerToken string
 
 func generateConfig(
-	p *monitoringv1beta1.VmAgent,
+	p *victoriametricsv1beta1.VmAgent,
 	sMons map[string]*monitoringv1.ServiceMonitor,
 	pMons map[string]*monitoringv1.PodMonitor,
 	basicAuthSecrets map[string]BasicAuthCredentials,
@@ -160,7 +160,7 @@ func generateConfig(
 	return yaml.Marshal(cfg)
 }
 
-func makeEmptyConfigurationSecret(p *monitoringv1beta1.VmAgent, config *conf.BaseOperatorConf) (*v1.Secret, error) {
+func makeEmptyConfigurationSecret(p *victoriametricsv1beta1.VmAgent, config *conf.BaseOperatorConf) (*v1.Secret, error) {
 	s := makeConfigSecret(p, config)
 
 	s.ObjectMeta.Annotations = map[string]string{
@@ -170,7 +170,7 @@ func makeEmptyConfigurationSecret(p *monitoringv1beta1.VmAgent, config *conf.Bas
 	return s, nil
 }
 
-func makeConfigSecret(p *monitoringv1beta1.VmAgent, config *conf.BaseOperatorConf) *v1.Secret {
+func makeConfigSecret(p *victoriametricsv1beta1.VmAgent, config *conf.BaseOperatorConf) *v1.Secret {
 	boolTrue := true
 	return &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1037,7 +1037,7 @@ func enforceNamespaceLabel(relabelings []yaml.MapSlice, namespace, enforcedNames
 		{Key: "replacement", Value: namespace}})
 }
 
-func buildExternalLabels(p *monitoringv1beta1.VmAgent) yaml.MapSlice {
+func buildExternalLabels(p *victoriametricsv1beta1.VmAgent) yaml.MapSlice {
 	m := map[string]string{}
 
 	// Use "prometheus" external label name by default if field is missing.

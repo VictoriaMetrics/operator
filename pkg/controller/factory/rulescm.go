@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	monitoringv1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1"
-	monitoringv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1beta1"
+	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
 	"github.com/ghodss/yaml"
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
@@ -55,7 +55,7 @@ groups:
 `
 )
 
-func CreateOrUpdateRuleConfigMaps(p *monitoringv1beta1.VmAlert, kclient kubernetes.Interface, rclient client.Client, l logr.Logger) ([]string, error) {
+func CreateOrUpdateRuleConfigMaps(p *victoriametricsv1beta1.VmAlert, kclient kubernetes.Interface, rclient client.Client, l logr.Logger) ([]string, error) {
 	cClient := kclient.CoreV1().ConfigMaps(p.Namespace)
 
 	newRules, err := SelectRules(p, rclient, l)
@@ -155,7 +155,7 @@ func selectNamespaces(rclient client.Client, selector labels.Selector) ([]string
 	return matchedNs, nil
 }
 
-func SelectRules(p *monitoringv1beta1.VmAlert, rclient client.Client, l logr.Logger) (map[string]string, error) {
+func SelectRules(p *victoriametricsv1beta1.VmAlert, rclient client.Client, l logr.Logger) (map[string]string, error) {
 	rules := map[string]string{}
 	namespaces := []string{}
 
@@ -285,7 +285,7 @@ func generateContent(promRule monitoringv1.PrometheusRuleSpec, enforcedNsLabel, 
 // future this can be replaced by a more sophisticated algorithm, but for now
 // simplicity should be sufficient.
 // [1] https://en.wikipedia.org/wiki/Bin_packing_problem#First-fit_algorithm
-func makeRulesConfigMaps(p *monitoringv1beta1.VmAlert, ruleFiles map[string]string) ([]v1.ConfigMap, error) {
+func makeRulesConfigMaps(p *victoriametricsv1beta1.VmAlert, ruleFiles map[string]string) ([]v1.ConfigMap, error) {
 	//check if none of the rule files is too large for a single ConfigMap
 	for filename, file := range ruleFiles {
 		if len(file) > maxConfigMapDataSize {
@@ -337,7 +337,7 @@ func bucketSize(bucket map[string]string) int {
 	return totalSize
 }
 
-func makeRulesConfigMap(p *monitoringv1beta1.VmAlert, ruleFiles map[string]string) v1.ConfigMap {
+func makeRulesConfigMap(p *victoriametricsv1beta1.VmAlert, ruleFiles map[string]string) v1.ConfigMap {
 	boolTrue := true
 
 	labels := map[string]string{labelPrometheusName: p.Name}

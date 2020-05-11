@@ -3,7 +3,7 @@ package prometheusrule
 import (
 	"context"
 	"github.com/VictoriaMetrics/operator/conf"
-	monitoringv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1beta1"
+	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
 	"github.com/VictoriaMetrics/operator/pkg/controller/factory"
 	"github.com/go-logr/logr"
 	"k8s.io/client-go/kubernetes"
@@ -74,7 +74,7 @@ type ReconcilePrometheusrule struct {
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcilePrometheusrule) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name,
-		"object","prometheusrule")
+		"object", "prometheusrule")
 	reqLogger.Info("Reconciling Prometheusrule")
 
 	// Fetch the Prometheusrule instance
@@ -94,7 +94,7 @@ func (r *ReconcilePrometheusrule) Reconcile(request reconcile.Request) (reconcil
 	}
 	reqLogger.Info("get prom rule", "name", instance.Name)
 
-	alertMngs := &monitoringv1beta1.VmAlertList{}
+	alertMngs := &victoriametricsv1beta1.VmAlertList{}
 
 	reqLogger.Info("listing vmalerts")
 	err = r.client.List(context.TODO(), alertMngs, &client.ListOptions{})
@@ -105,8 +105,8 @@ func (r *ReconcilePrometheusrule) Reconcile(request reconcile.Request) (reconcil
 	reqLogger.Info("current count of vm alerts: ", "len", len(alertMngs.Items))
 
 	reqLogger.Info("updating or creating cm for vmalert")
-	for _, vmalert := range alertMngs.Items{
-		reqLogger.WithValues("vmalert",vmalert.Name)
+	for _, vmalert := range alertMngs.Items {
+		reqLogger.WithValues("vmalert", vmalert.Name)
 		reqLogger.Info("reconciling vmalert rules")
 		currVmAlert := &vmalert
 

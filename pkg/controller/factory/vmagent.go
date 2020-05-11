@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/VictoriaMetrics/operator/conf"
-	monitoringv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1beta1"
+	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
 	"github.com/coreos/prometheus-operator/pkg/k8sutil"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
@@ -28,7 +28,7 @@ const (
 	vmAgentConOfOutDir = "/etc/vmagent/config_out"
 )
 
-func CreateOrUpdateVmAgentService(cr *monitoringv1beta1.VmAgent, rclient client.Client, c *conf.BaseOperatorConf, l logr.Logger) (*corev1.Service, error) {
+func CreateOrUpdateVmAgentService(cr *victoriametricsv1beta1.VmAgent, rclient client.Client, c *conf.BaseOperatorConf, l logr.Logger) (*corev1.Service, error) {
 	l = l.WithValues("recon.vm.service.name", cr.Name)
 	newSvc := newServiceVmAgent(cr, c)
 
@@ -65,7 +65,7 @@ func CreateOrUpdateVmAgentService(cr *monitoringv1beta1.VmAgent, rclient client.
 	return newSvc, nil
 }
 
-func newServiceVmAgent(cr *monitoringv1beta1.VmAgent, c *conf.BaseOperatorConf) *corev1.Service {
+func newServiceVmAgent(cr *victoriametricsv1beta1.VmAgent, c *conf.BaseOperatorConf) *corev1.Service {
 	cr = cr.DeepCopy()
 	if cr.Spec.Port == "" {
 		cr.Spec.Port = c.VmAgentDefault.Port
@@ -103,7 +103,7 @@ func newServiceVmAgent(cr *monitoringv1beta1.VmAgent, c *conf.BaseOperatorConf) 
 }
 
 //we assume, that configmaps were created before this function was called
-func CreateOrUpdateVmAgent(cr *monitoringv1beta1.VmAgent, rclient client.Client, c *conf.BaseOperatorConf, l logr.Logger) (reconcile.Result, error) {
+func CreateOrUpdateVmAgent(cr *victoriametricsv1beta1.VmAgent, rclient client.Client, c *conf.BaseOperatorConf, l logr.Logger) (reconcile.Result, error) {
 
 	l.Info("create or update vm agent deploy")
 	//recon deploy
@@ -154,7 +154,7 @@ func CreateOrUpdateVmAgent(cr *monitoringv1beta1.VmAgent, rclient client.Client,
 }
 
 // newDeployForCR returns a busybox pod with the same name/namespace as the cr
-func newDeployForVmAgent(cr *monitoringv1beta1.VmAgent, c *conf.BaseOperatorConf) (*appsv1.Deployment, error) {
+func newDeployForVmAgent(cr *victoriametricsv1beta1.VmAgent, c *conf.BaseOperatorConf) (*appsv1.Deployment, error) {
 	cr = cr.DeepCopy()
 
 	//inject default
@@ -233,7 +233,7 @@ func newDeployForVmAgent(cr *monitoringv1beta1.VmAgent, c *conf.BaseOperatorConf
 	return depSpec, nil
 }
 
-func makeSpecForVmAgent(cr *monitoringv1beta1.VmAgent, c *conf.BaseOperatorConf) (*corev1.PodTemplateSpec, error) {
+func makeSpecForVmAgent(cr *victoriametricsv1beta1.VmAgent, c *conf.BaseOperatorConf) (*corev1.PodTemplateSpec, error) {
 	args := []string{
 		fmt.Sprintf("-promscrape.config=%s", path.Join(vmAgentConOfOutDir, configEnvsubstFilename)),
 	}
@@ -462,7 +462,7 @@ func makeSpecForVmAgent(cr *monitoringv1beta1.VmAgent, c *conf.BaseOperatorConf)
 func prefixedAgentName(name string) string {
 	return fmt.Sprintf("vmagent-%s", name)
 }
-func getVmAgentLabels(cr *monitoringv1beta1.VmAgent) map[string]string {
+func getVmAgentLabels(cr *victoriametricsv1beta1.VmAgent) map[string]string {
 	labels := selectorLabelsVmAgent(cr)
 	if cr.Spec.PodMetadata != nil {
 		if cr.Spec.PodMetadata.Labels != nil {
@@ -476,7 +476,7 @@ func getVmAgentLabels(cr *monitoringv1beta1.VmAgent) map[string]string {
 
 }
 
-func selectorLabelsVmAgent(cr *monitoringv1beta1.VmAgent) map[string]string {
+func selectorLabelsVmAgent(cr *victoriametricsv1beta1.VmAgent) map[string]string {
 	labels := map[string]string{}
 	labels["app.kubernetes.io/name"] = "vmagent"
 	labels["app.kubernetes.io/instance"] = cr.Name

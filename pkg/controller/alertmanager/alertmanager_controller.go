@@ -3,7 +3,7 @@ package alertmanager
 import (
 	"context"
 	"github.com/VictoriaMetrics/operator/conf"
-	monitoringv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1beta1"
+	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
 	"github.com/VictoriaMetrics/operator/pkg/controller/factory"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
@@ -46,7 +46,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// Watch for changes to primary resource Alertmanager
-	err = c.Watch(&source.Kind{Type: &monitoringv1beta1.Alertmanager{}}, &handler.EnqueueRequestForObject{})
+	err = c.Watch(&source.Kind{Type: &victoriametricsv1beta1.Alertmanager{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
@@ -54,7 +54,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Watch for changes to secondary resource Pods and requeue the owner Alertmanager
 	err = c.Watch(&source.Kind{Type: &appsv1.StatefulSet{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &monitoringv1beta1.Alertmanager{},
+		OwnerType:    &victoriametricsv1beta1.Alertmanager{},
 	})
 	if err != nil {
 		return err
@@ -87,7 +87,7 @@ func (r *ReconcileAlertmanager) Reconcile(request reconcile.Request) (reconcile.
 	reqLogger.Info("Reconciling")
 
 	// Fetch the Alertmanager instance
-	instance := &monitoringv1beta1.Alertmanager{}
+	instance := &victoriametricsv1beta1.Alertmanager{}
 
 	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {

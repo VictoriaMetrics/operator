@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/VictoriaMetrics/operator/conf"
-	monitoringv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1beta1"
+	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
 	"github.com/coreos/prometheus-operator/pkg/k8sutil"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
@@ -26,7 +26,7 @@ const (
 	vmSingleDataDir      = "/victoria-metrics-data"
 )
 
-func CreateVmStorage(cr *monitoringv1beta1.VmSingle, rclient client.Client, c *conf.BaseOperatorConf, l logr.Logger) (*corev1.PersistentVolumeClaim, error) {
+func CreateVmStorage(cr *victoriametricsv1beta1.VmSingle, rclient client.Client, c *conf.BaseOperatorConf, l logr.Logger) (*corev1.PersistentVolumeClaim, error) {
 
 	l = l.WithValues("vm.single.pvc.create", prefixedVmSingleName(cr.Name))
 	l.Info("reconciling pvc")
@@ -61,7 +61,7 @@ func CreateVmStorage(cr *monitoringv1beta1.VmSingle, rclient client.Client, c *c
 	return newPvc, nil
 }
 
-func makeVmPvc(cr *monitoringv1beta1.VmSingle, c *conf.BaseOperatorConf) *corev1.PersistentVolumeClaim {
+func makeVmPvc(cr *victoriametricsv1beta1.VmSingle, c *conf.BaseOperatorConf) *corev1.PersistentVolumeClaim {
 	return &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        prefixedVmSingleName(cr.Name),
@@ -73,7 +73,7 @@ func makeVmPvc(cr *monitoringv1beta1.VmSingle, c *conf.BaseOperatorConf) *corev1
 	}
 }
 
-func CreateOrUpdateVmSingle(cr *monitoringv1beta1.VmSingle, rclient client.Client, c *conf.BaseOperatorConf, l logr.Logger) (*appsv1.Deployment, error) {
+func CreateOrUpdateVmSingle(cr *victoriametricsv1beta1.VmSingle, rclient client.Client, c *conf.BaseOperatorConf, l logr.Logger) (*appsv1.Deployment, error) {
 
 	l.Info("create or update vm single deploy")
 
@@ -119,7 +119,7 @@ func CreateOrUpdateVmSingle(cr *monitoringv1beta1.VmSingle, rclient client.Clien
 	return nil, nil
 }
 
-func newDeployForVmSingle(cr *monitoringv1beta1.VmSingle, c *conf.BaseOperatorConf) (*appsv1.Deployment, error) {
+func newDeployForVmSingle(cr *victoriametricsv1beta1.VmSingle, c *conf.BaseOperatorConf) (*appsv1.Deployment, error) {
 	cr = cr.DeepCopy()
 
 	//todo move to separate func
@@ -198,7 +198,7 @@ func newDeployForVmSingle(cr *monitoringv1beta1.VmSingle, c *conf.BaseOperatorCo
 	return depSpec, nil
 }
 
-func makeSpecForVmSingle(cr *monitoringv1beta1.VmSingle, c *conf.BaseOperatorConf) (*corev1.PodTemplateSpec, error) {
+func makeSpecForVmSingle(cr *victoriametricsv1beta1.VmSingle, c *conf.BaseOperatorConf) (*corev1.PodTemplateSpec, error) {
 	args := []string{
 		fmt.Sprintf("-storageDataPath=%s", vmSingleDataDir),
 		fmt.Sprintf("-retentionPeriod=%s", cr.Spec.RetentionPeriod),
@@ -365,7 +365,7 @@ func makeSpecForVmSingle(cr *monitoringv1beta1.VmSingle, c *conf.BaseOperatorCon
 
 }
 
-func CreateOrUpdateVmSingleService(cr *monitoringv1beta1.VmSingle, rclient client.Client, c *conf.BaseOperatorConf, l logr.Logger) (*corev1.Service, error) {
+func CreateOrUpdateVmSingleService(cr *victoriametricsv1beta1.VmSingle, rclient client.Client, c *conf.BaseOperatorConf, l logr.Logger) (*corev1.Service, error) {
 	newSvc := newServiceVmSingle(cr, c)
 
 	currentService := &corev1.Service{}
@@ -401,7 +401,7 @@ func CreateOrUpdateVmSingleService(cr *monitoringv1beta1.VmSingle, rclient clien
 	return newSvc, nil
 }
 
-func newServiceVmSingle(cr *monitoringv1beta1.VmSingle, c *conf.BaseOperatorConf) *corev1.Service {
+func newServiceVmSingle(cr *victoriametricsv1beta1.VmSingle, c *conf.BaseOperatorConf) *corev1.Service {
 	cr = cr.DeepCopy()
 	if cr.Spec.Port == "" {
 		cr.Spec.Port = c.VmSingleDefault.Port
@@ -442,7 +442,7 @@ func prefixedVmSingleName(name string) string {
 	return fmt.Sprintf("vmsingle-%s", name)
 }
 
-func getVmSingleLabels(cr *monitoringv1beta1.VmSingle) map[string]string {
+func getVmSingleLabels(cr *victoriametricsv1beta1.VmSingle) map[string]string {
 	labels := selectorLabelsVmSingle(cr)
 	if cr.Spec.PodMetadata != nil {
 		if cr.Spec.PodMetadata.Labels != nil {
@@ -455,7 +455,7 @@ func getVmSingleLabels(cr *monitoringv1beta1.VmSingle) map[string]string {
 	return labels
 
 }
-func selectorLabelsVmSingle(cr *monitoringv1beta1.VmSingle) map[string]string {
+func selectorLabelsVmSingle(cr *victoriametricsv1beta1.VmSingle) map[string]string {
 	labels := map[string]string{}
 	labels["app.kubernetes.io/name"] = "vmsingle"
 	labels["app.kubernetes.io/instance"] = cr.Name

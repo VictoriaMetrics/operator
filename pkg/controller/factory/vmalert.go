@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/VictoriaMetrics/operator/conf"
-	monitoringv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1beta1"
+	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
 	"github.com/coreos/prometheus-operator/pkg/k8sutil"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
@@ -25,7 +25,7 @@ const (
 	vmAlertConfigDir = "/etc/vmalert/config"
 )
 
-func CreateOrUpdateVmAlertService(cr *monitoringv1beta1.VmAlert, rclient client.Client, c *conf.BaseOperatorConf, l logr.Logger) (*corev1.Service, error) {
+func CreateOrUpdateVmAlertService(cr *victoriametricsv1beta1.VmAlert, rclient client.Client, c *conf.BaseOperatorConf, l logr.Logger) (*corev1.Service, error) {
 	l = l.WithValues("recon.vmalert.service.name", cr.Name)
 	newSvc := newServiceVmAlert(cr, c)
 
@@ -62,7 +62,7 @@ func CreateOrUpdateVmAlertService(cr *monitoringv1beta1.VmAlert, rclient client.
 	return newSvc, nil
 }
 
-func newServiceVmAlert(cr *monitoringv1beta1.VmAlert, c *conf.BaseOperatorConf) *corev1.Service {
+func newServiceVmAlert(cr *victoriametricsv1beta1.VmAlert, c *conf.BaseOperatorConf) *corev1.Service {
 	cr = cr.DeepCopy()
 	if cr.Spec.Port == "" {
 		cr.Spec.Port = c.VmAlertDefault.Port
@@ -99,7 +99,7 @@ func newServiceVmAlert(cr *monitoringv1beta1.VmAlert, c *conf.BaseOperatorConf) 
 	}
 }
 
-func CreateOrUpdateVmAlert(cr *monitoringv1beta1.VmAlert, rclient client.Client, c *conf.BaseOperatorConf, cmNames []string, l logr.Logger) (reconcile.Result, error) {
+func CreateOrUpdateVmAlert(cr *victoriametricsv1beta1.VmAlert, rclient client.Client, c *conf.BaseOperatorConf, cmNames []string, l logr.Logger) (reconcile.Result, error) {
 	l = l.WithValues("create.or.update.vmalert.name", cr.Name)
 	//recon deploy
 	l.Info("generating new deployment")
@@ -141,7 +141,7 @@ func CreateOrUpdateVmAlert(cr *monitoringv1beta1.VmAlert, rclient client.Client,
 }
 
 // newDeployForCR returns a busybox pod with the same name/namespace as the cr
-func newDeployForVmAlert(cr *monitoringv1beta1.VmAlert, c *conf.BaseOperatorConf, ruleConfigMapNames []string) (*appsv1.Deployment, error) {
+func newDeployForVmAlert(cr *victoriametricsv1beta1.VmAlert, c *conf.BaseOperatorConf, ruleConfigMapNames []string) (*appsv1.Deployment, error) {
 
 	cr = cr.DeepCopy()
 	//todo move inject default into separate func
@@ -220,7 +220,7 @@ func newDeployForVmAlert(cr *monitoringv1beta1.VmAlert, c *conf.BaseOperatorConf
 	return deploy, nil
 }
 
-func vmAlertSpecGen(cr *monitoringv1beta1.VmAlert, c *conf.BaseOperatorConf, ruleConfigMapNames []string) (*appsv1.DeploymentSpec, error) {
+func vmAlertSpecGen(cr *victoriametricsv1beta1.VmAlert, c *conf.BaseOperatorConf, ruleConfigMapNames []string) (*appsv1.DeploymentSpec, error) {
 	cr = cr.DeepCopy()
 
 	confReloadArgs := []string{
@@ -428,7 +428,7 @@ func prefixedAlertName(name string) string {
 	return fmt.Sprintf("vmalert-%s", name)
 }
 
-func getVmAlertLabels(cr *monitoringv1beta1.VmAlert) map[string]string {
+func getVmAlertLabels(cr *victoriametricsv1beta1.VmAlert) map[string]string {
 	labels := selectorLabelsVmAlert(cr)
 	for key, value := range cr.ObjectMeta.Labels {
 		labels[key] = value
@@ -440,7 +440,7 @@ func getVmAlertLabels(cr *monitoringv1beta1.VmAlert) map[string]string {
 	}
 	return labels
 }
-func selectorLabelsVmAlert(cr *monitoringv1beta1.VmAlert) map[string]string {
+func selectorLabelsVmAlert(cr *victoriametricsv1beta1.VmAlert) map[string]string {
 	labels := map[string]string{}
 	labels["app.kubernetes.io/name"] = "vmalert"
 	labels["app.kubernetes.io/instance"] = cr.Name

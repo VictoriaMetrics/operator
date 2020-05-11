@@ -3,7 +3,7 @@ package servicemonitor
 import (
 	"context"
 	"github.com/VictoriaMetrics/operator/conf"
-	monitoringv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1beta1"
+	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
 	"github.com/VictoriaMetrics/operator/pkg/controller/factory"
 	"github.com/go-logr/logr"
 	"k8s.io/client-go/kubernetes"
@@ -79,7 +79,7 @@ type ReconcileServiceMonitor struct {
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcileServiceMonitor) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name,
-		"object","servicemonitor")
+		"object", "servicemonitor")
 	reqLogger.Info("Reconciling ServiceMonitor")
 
 	// Fetch the ServiceMonitor instance
@@ -96,7 +96,7 @@ func (r *ReconcileServiceMonitor) Reconcile(request reconcile.Request) (reconcil
 		}
 	}
 	//well we need vmagent instance...
-	vmAgentInstances := &monitoringv1beta1.VmAgentList{}
+	vmAgentInstances := &victoriametricsv1beta1.VmAgentList{}
 	//
 	err = r.client.List(context.TODO(), vmAgentInstances)
 	if err != nil {
@@ -105,8 +105,8 @@ func (r *ReconcileServiceMonitor) Reconcile(request reconcile.Request) (reconcil
 	}
 	reqLogger.Info("found vmagent objects ", "count len: ", len(vmAgentInstances.Items))
 
-	for _, vmagent := range vmAgentInstances.Items{
-		reqLogger = reqLogger.WithValues("vmagent",vmagent.Name)
+	for _, vmagent := range vmAgentInstances.Items {
+		reqLogger = reqLogger.WithValues("vmagent", vmagent.Name)
 		reqLogger.Info("reconlining rules for vmagent")
 		currentVmagent := &vmagent
 		err = factory.CreateOrUpdateConfigurationSecret(currentVmagent, r.client, r.kclient, r.opConf, reqLogger)

@@ -2,7 +2,7 @@ package factory
 
 import (
 	"github.com/VictoriaMetrics/operator/conf"
-	monitoringv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1beta1"
+	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -14,7 +14,7 @@ import (
 
 func Test_makeSpecForVmAgent(t *testing.T) {
 	type args struct {
-		cr *monitoringv1beta1.VmAgent
+		cr *victoriametricsv1beta1.VmAgent
 		c  *conf.BaseOperatorConf
 	}
 	tests := []struct {
@@ -41,7 +41,7 @@ func Test_makeSpecForVmAgent(t *testing.T) {
 
 func Test_newDeployForVmAgent(t *testing.T) {
 	type args struct {
-		cr *monitoringv1beta1.VmAgent
+		cr *victoriametricsv1beta1.VmAgent
 		c  *conf.BaseOperatorConf
 	}
 	tests := []struct {
@@ -68,7 +68,7 @@ func Test_newDeployForVmAgent(t *testing.T) {
 
 func TestCreateOrUpdateVmAgent(t *testing.T) {
 	type args struct {
-		cr      *monitoringv1beta1.VmAgent
+		cr      *victoriametricsv1beta1.VmAgent
 		rclient client.Client
 		c       *conf.BaseOperatorConf
 		l       logr.Logger

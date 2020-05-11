@@ -21,3 +21,18 @@ rules:
   - patch
   - update
   - watch
+- apiGroups:
+  - victoriametrics.com
+  resources:
+  - '*'
+  - vmagents
+  - vmalerts
+  - vmsingles
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch

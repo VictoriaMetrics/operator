@@ -3,6 +3,7 @@ package vmalert
 import (
 	"context"
 	"github.com/VictoriaMetrics/operator/conf"
+	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
 	"github.com/VictoriaMetrics/operator/pkg/controller/factory"
 	"github.com/operator-framework/operator-sdk/pkg/metrics"
 	appsv1 "k8s.io/api/apps/v1"
@@ -10,7 +11,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
-	monitoringv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -54,14 +54,14 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-	err = c.Watch(&source.Kind{Type: &monitoringv1beta1.VmAlert{}}, &handler.EnqueueRequestForObject{})
+	err = c.Watch(&source.Kind{Type: &victoriametricsv1beta1.VmAlert{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
 
 	err = c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &monitoringv1beta1.VmAlert{},
+		OwnerType:    &victoriametricsv1beta1.VmAlert{},
 	})
 	if err != nil {
 		return err
@@ -69,7 +69,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 	err = c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &monitoringv1beta1.VmAlert{},
+		OwnerType:    &victoriametricsv1beta1.VmAlert{},
 	})
 	if err != nil {
 		return err
@@ -102,7 +102,7 @@ func (r *ReconcileVmAlert) Reconcile(request reconcile.Request) (reconcile.Resul
 	reqLogger.Info("Reconciling")
 
 	// Fetch the VmAlert instance
-	instance := &monitoringv1beta1.VmAlert{}
+	instance := &victoriametricsv1beta1.VmAlert{}
 	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {

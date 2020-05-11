@@ -98,7 +98,7 @@ type ReconcileVmAgent struct {
 func (r *ReconcileVmAgent) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace",
 		request.Namespace, "Request.Name", request.Name,
-		"reconcile", "vmagent",
+		"object", "vmagent",
 	)
 	reqLogger.Info("Reconciling")
 

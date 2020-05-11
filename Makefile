@@ -14,7 +14,7 @@ OPERATOR_BIN=operator-sdk
 DOCKER_REPO="quay.io/f41gh7/vm-operator"
 TAG="master"
 
-TEST_ARGS= -covermode=atomic -coverprofile=coverage.txt -v
+TEST_ARGS=$(GOCMD) test -covermode=atomic -coverprofile=coverage.txt -v
 
 .PHONY: build
 

@@ -133,35 +133,67 @@ func SelectServiceMonitors(p *monitoringv1beta1.VmAgent, rclient client.Client, 
 	// Selectors (<namespace>/<name>) might overlap. Deduplicate them along the keyFunc.
 	res := make(map[string]*monitoringv1.ServiceMonitor)
 
-	// TODO logic is broken
-	// currently it`s not possible to use both servicemon and namespace selector
-	listOpts := &client.ListOptions{}
+	namespaces := []string{}
 
+	//what can we do?
+	//list namespaces matched by  nameselector
+	//for each namespace apply list with  selector...
+	//combine result
+
+	if p.Spec.ServiceMonitorNamespaceSelector == nil {
+		namespaces = append(namespaces, p.Namespace)
+	} else if p.Spec.ServiceMonitorNamespaceSelector.MatchExpressions == nil && p.Spec.ServiceMonitorNamespaceSelector.MatchLabels == nil {
+		namespaces = nil
+	} else {
+		nsSelector, err := metav1.LabelSelectorAsSelector(p.Spec.ServiceMonitorNamespaceSelector)
+		if err != nil {
+			return nil, errors.Wrap(err, "cannot convert rulenamspace selector")
+		}
+		namespaces, err = selectNamespaces(rclient, nsSelector)
+		if err != nil {
+			return nil, errors.Wrap(err, "cannot select namespaces for rule match")
+		}
+	}
+
+	//here we use trick
+	//if namespaces isnt nil, then namespaceselector is defined
+	//but monitor maybe be nil
+	if namespaces != nil && p.Spec.ServiceMonitorSelector == nil {
+		p.Spec.ServiceMonitorSelector = &metav1.LabelSelector{}
+	}
 	servMonSelector, err := metav1.LabelSelectorAsSelector(p.Spec.ServiceMonitorSelector)
 	if err != nil {
 		return nil, err
 	}
 
-	// If 'ServiceMonitorNamespaceSelector' is nil only check own namespace.
-	if p.Spec.ServiceMonitorNamespaceSelector == nil {
-		listOpts.Namespace = p.Namespace
-	} else {
-		servMonSelector, err = metav1.LabelSelectorAsSelector(p.Spec.ServiceMonitorNamespaceSelector)
+	servMonsCombined := []monitoringv1.ServiceMonitor{}
+
+	//list all namespaces for rules with selector
+	if namespaces == nil {
+		l.Info("listing all namespaces for rules")
+		servMons := &monitoringv1.ServiceMonitorList{}
+		err = rclient.List(context.TODO(), servMons, &client.ListOptions{LabelSelector: servMonSelector})
 		if err != nil {
+			l.Error(err, "cannot list rules")
 			return nil, err
+		}
+		servMonsCombined = append(servMonsCombined, servMons.Items...)
+
+	} else {
+		for _, ns := range namespaces {
+			listOpts := &client.ListOptions{Namespace: ns, LabelSelector: servMonSelector}
+			servMons := &monitoringv1.ServiceMonitorList{}
+			err = rclient.List(context.TODO(), servMons, listOpts)
+			if err != nil {
+				l.Error(err, "cannot list rules")
+				return nil, err
+			}
+			servMonsCombined = append(servMonsCombined, servMons.Items...)
+
 		}
 	}
 
-	listOpts.LabelSelector = servMonSelector
-
-	servMons := &monitoringv1.ServiceMonitorList{}
-
-	err = rclient.List(context.TODO(), servMons, listOpts)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, mon := range servMons.Items {
+	for _, mon := range servMonsCombined {
 		m := mon.DeepCopy()
 		res[mon.Namespace+"/"+mon.Name] = m
 	}
@@ -197,43 +229,69 @@ func SelectPodMonitors(p *monitoringv1beta1.VmAgent, rclient client.Client, l lo
 	// Selectors might overlap. Deduplicate them along the keyFunc.
 	res := make(map[string]*monitoringv1.PodMonitor)
 
-	// TODO logic is broken
-	// currently it`s not possible to use both servicemon and namespace selector
-	listOpts := &client.ListOptions{}
+	namespaces := []string{}
 
+	//what can we do?
+	//list namespaces matched by  nameselector
+	//for each namespace apply list with  selector...
+	//combine result
+
+	if p.Spec.PodMonitorNamespaceSelector == nil {
+		namespaces = append(namespaces, p.Namespace)
+	} else if p.Spec.PodMonitorNamespaceSelector.MatchExpressions == nil && p.Spec.PodMonitorNamespaceSelector.MatchLabels == nil {
+		namespaces = nil
+	} else {
+		nsSelector, err := metav1.LabelSelectorAsSelector(p.Spec.PodMonitorNamespaceSelector)
+		if err != nil {
+			return nil, errors.Wrap(err, "cannot convert rulenamspace selector")
+		}
+		namespaces, err = selectNamespaces(rclient, nsSelector)
+		if err != nil {
+			return nil, errors.Wrap(err, "cannot select namespaces for rule match")
+		}
+	}
+
+	//here we use trick
+	//if namespaces isnt nil, then namespaceselector is defined
+	//but monitor maybe be nil
+	if namespaces != nil && p.Spec.PodMonitorSelector == nil {
+		p.Spec.PodMonitorSelector = &metav1.LabelSelector{}
+	}
 	podMonSelector, err := metav1.LabelSelectorAsSelector(p.Spec.PodMonitorSelector)
 	if err != nil {
-		l.Error(err, "cannot find label for pod monitor select")
 		return nil, err
 	}
 
-	// If 'PodMonitorNamespaceSelector' is nil only check own namespace.
-	if p.Spec.PodMonitorNamespaceSelector == nil {
-		listOpts.Namespace = p.Namespace
-	} else {
-		podMonSelector, err = metav1.LabelSelectorAsSelector(p.Spec.PodMonitorNamespaceSelector)
-		if err != nil {
-			l.Error(err, "cannot find label for pod monitor namespace")
+	podMonsCombined := []monitoringv1.PodMonitor{}
 
+	//list all namespaces for rules with selector
+	if namespaces == nil {
+		l.Info("listing all namespaces for rules")
+		servMons := &monitoringv1.PodMonitorList{}
+		err = rclient.List(context.TODO(), servMons, &client.ListOptions{LabelSelector: podMonSelector})
+		if err != nil {
+			l.Error(err, "cannot list rules")
 			return nil, err
+		}
+		podMonsCombined = append(podMonsCombined, servMons.Items...)
+
+	} else {
+		for _, ns := range namespaces {
+			listOpts := &client.ListOptions{Namespace: ns, LabelSelector: podMonSelector}
+			servMons := &monitoringv1.PodMonitorList{}
+			err = rclient.List(context.TODO(), servMons, listOpts)
+			if err != nil {
+				l.Error(err, "cannot list rules")
+				return nil, err
+			}
+			podMonsCombined = append(podMonsCombined, servMons.Items...)
 
 		}
-
-	}
-
-	listOpts.LabelSelector = podMonSelector
-	podMons := &monitoringv1.PodMonitorList{}
-
-	err = rclient.List(context.TODO(), podMons, &client.ListOptions{LabelSelector: podMonSelector})
-	if err != nil {
-		l.Error(err, "cannot list pod monitors")
-		return nil, err
 	}
 
 	l.Info("filtering namespaces to select PodMonitors from", "namespace", p.Namespace, "prometheus", p.Name)
 
-	//TODO fix fsf
-	for _, podMon := range podMons.Items {
+	for _, podMon := range podMonsCombined {
 		pm := podMon.DeepCopy()
 		res[podMon.Namespace+"/"+podMon.Name] = pm
 	}

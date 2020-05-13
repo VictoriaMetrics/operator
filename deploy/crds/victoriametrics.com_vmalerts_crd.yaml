@@ -1721,7 +1721,58 @@ spec:
             dataSource:
               description: Victoria Metrics or VMSelect url. Required parameter. e.g.
                 http://127.0.0.1:8428
-              type: string
+              properties:
+                basicAuth:
+                  description: BasicAuth for the URL.
+                  properties:
+                    password:
+                      description: The secret in the service monitor namespace that
+                        contains the password for authentication.
+                      properties:
+                        key:
+                          description: The key of the secret to select from.  Must
+                            be a valid secret key.
+                          type: string
+                        name:
+                          description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                            TODO: Add other useful fields. apiVersion, kind, uid?'
+                          type: string
+                        optional:
+                          description: Specify whether the Secret or its key must
+                            be defined
+                          type: boolean
+                      required:
+                      - key
+                      type: object
+                    username:
+                      description: The secret in the service monitor namespace that
+                        contains the username for authentication.
+                      properties:
+                        key:
+                          description: The key of the secret to select from.  Must
+                            be a valid secret key.
+                          type: string
+                        name:
+                          description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                            TODO: Add other useful fields. apiVersion, kind, uid?'
+                          type: string
+                        optional:
+                          description: Specify whether the Secret or its key must
+                            be defined
+                          type: boolean
+                      required:
+                      - key
+                      type: object
+                  type: object
+                remoteTimeout:
+                  description: Timeout for requests to the remote write endpoint.
+                  type: string
+                url:
+                  description: The URL of the endpoint to send samples to.
+                  type: string
+              required:
+              - url
+              type: object
             enforcedNamespaceLabel:
               description: EnforcedNamespaceLabel enforces adding a namespace label
                 of origin for each alert and metric that is user created. The label
@@ -2980,6 +3031,62 @@ spec:
             priorityClassName:
               description: Priority class assigned to the Pods
               type: string
+            remoteRead:
+              description: victoria metrics url for loading state This configuration
+                makes sense only if remoteWrite was configured before and has been
+                successfully persisted its state.
+              properties:
+                basicAuth:
+                  description: BasicAuth for the URL.
+                  properties:
+                    password:
+                      description: The secret in the service monitor namespace that
+                        contains the password for authentication.
+                      properties:
+                        key:
+                          description: The key of the secret to select from.  Must
+                            be a valid secret key.
+                          type: string
+                        name:
+                          description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                            TODO: Add other useful fields. apiVersion, kind, uid?'
+                          type: string
+                        optional:
+                          description: Specify whether the Secret or its key must
+                            be defined
+                          type: boolean
+                      required:
+                      - key
+                      type: object
+                    username:
+                      description: The secret in the service monitor namespace that
+                        contains the username for authentication.
+                      properties:
+                        key:
+                          description: The key of the secret to select from.  Must
+                            be a valid secret key.
+                          type: string
+                        name:
+                          description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                            TODO: Add other useful fields. apiVersion, kind, uid?'
+                          type: string
+                        optional:
+                          description: Specify whether the Secret or its key must
+                            be defined
+                          type: boolean
+                      required:
+                      - key
+                      type: object
+                  type: object
+                remoteTimeout:
+                  description: Timeout for requests to the remote write endpoint.
+                  type: string
+                url:
+                  description: The URL of the endpoint to send samples to.
+                  type: string
+              required:
+              - url
+              type: object
             remoteWrite:
               description: Optional URL to remote-write compatible storage where to
                 write timeseriesbased on active alerts. E.g. http://127.0.0.1:8428
@@ -4799,6 +4906,7 @@ spec:
           required:
           - dataSource
           - notifierURL
+          - remoteRead
           - replicas
           type: object
         status:

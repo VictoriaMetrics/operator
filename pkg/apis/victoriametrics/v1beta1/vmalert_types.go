@@ -154,12 +154,16 @@ type VmAlertSpec struct {
 	// +listType=set
 	RulePath []string `json:"rulePath,omitempty"`
 	// Victoria Metrics or VMSelect url. Required parameter. e.g. http://127.0.0.1:8428
-	DataSource string `json:"dataSource"`
+	DataSource monitoringv1.RemoteSpec `json:"dataSource"`
 	// +listType=set
 	ExtraArgs []string `json:"extraArgs,omitempty"`
 	//env vars that will be added to vm single
 	// +listType=set
 	ExtraEnvs []v1.EnvVar `json:"extraEnvs,omitempty"`
+	//victoria metrics url for loading state
+	//This configuration makes sense only if remoteWrite was configured before and has
+	//been successfully persisted its state.
+	RemoteRead monitoringv1.RemoteSpec `json:"remoteRead"`
 }
 
 // VmAlertStatus defines the observed state of VmAlert

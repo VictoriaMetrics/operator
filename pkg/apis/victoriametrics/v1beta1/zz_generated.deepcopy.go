@@ -603,6 +603,7 @@ func (in *VmAlertSpec) DeepCopyInto(out *VmAlertSpec) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	in.DataSource.DeepCopyInto(&out.DataSource)
 	if in.ExtraArgs != nil {
 		in, out := &in.ExtraArgs, &out.ExtraArgs
 		*out = make([]string, len(*in))
@@ -615,6 +616,7 @@ func (in *VmAlertSpec) DeepCopyInto(out *VmAlertSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	in.RemoteRead.DeepCopyInto(&out.RemoteRead)
 	return
 }
 

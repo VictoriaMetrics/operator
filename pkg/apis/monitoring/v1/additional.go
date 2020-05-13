@@ -65,3 +65,14 @@ type EmbeddedPersistentVolumeClaim struct {
 	// +optional
 	Status v1.PersistentVolumeClaimStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
 }
+
+// RemoteWriteSpec defines the remote_write configuration for prometheus.
+// +k8s:openapi-gen=true
+type RemoteSpec struct {
+	// The URL of the endpoint to send samples to.
+	URL string `json:"url"`
+	// Timeout for requests to the remote write endpoint.
+	RemoteTimeout string `json:"remoteTimeout,omitempty"`
+	//BasicAuth for the URL.
+	Basic *BasicAuth `json:"basicAuth,omitempty"`
+}

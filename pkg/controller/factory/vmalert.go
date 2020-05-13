@@ -224,12 +224,22 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VmAlert, c *conf.BaseOperatorConf
 	cr = cr.DeepCopy()
 
 	confReloadArgs := []string{
-		fmt.Sprintf("-webhook-url=http://localhost:%s", cr.Spec.Port),
+		fmt.Sprintf("-webhook-url=http://localhost:%s/-/reload", cr.Spec.Port),
 	}
 
 	args := []string{
 		fmt.Sprintf("-notifier.url=%s", cr.Spec.NotifierURL),
-		fmt.Sprintf("-datasource.url=%s", cr.Spec.DataSource),
+		fmt.Sprintf("-datasource.url=%s", cr.Spec.DataSource.URL),
+	}
+	if cr.Spec.RemoteWrite.URL != "" {
+		//this param cannot be used until v1.35.5 vm release with flag breaking changes
+		args = append(args, fmt.Sprintf("-remoteWrite.url=%s", cr.Spec.RemoteWrite.URL))
+
+	}
+	if cr.Spec.RemoteRead.URL != "" {
+		//this param cannot be used until v1.35.5 vm release with flag breaking changes
+		args = append(args, fmt.Sprintf("-remoteRead.url=%s", cr.Spec.RemoteRead.URL))
+
 	}
 	if cr.Spec.EvaluationInterval != "" {
 		args = append(args, fmt.Sprintf("-evaluationInterval=%s", cr.Spec.EvaluationInterval))

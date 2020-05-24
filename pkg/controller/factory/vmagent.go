@@ -61,6 +61,9 @@ func CreateOrUpdateVmAgentService(cr *victoriametricsv1beta1.VmAgent, rclient cl
 		l.Error(err, "cannot update vmagent service")
 		return nil, err
 	}
+
+	//its safe to ignore
+	_ = addAddtionalScrapeConfigOwnership(cr,rclient,l)
 	l.Info("vmagent svc reconciled")
 	return newSvc, nil
 }
@@ -484,4 +487,40 @@ func selectorLabelsVmAgent(cr *victoriametricsv1beta1.VmAgent) map[string]string
 
 	return labels
 
+}
+
+//add ownership - it needs for object changing tracking
+func addAddtionalScrapeConfigOwnership(cr *victoriametricsv1beta1.VmAgent, rclient client.Client, l logr.Logger) error {
+	if cr.Spec.AdditionalScrapeConfigs != nil {
+		secret := &corev1.Secret{}
+		err := rclient.Get(context.TODO(), types.NamespacedName{Namespace: cr.Namespace, Name: cr.Spec.AdditionalScrapeConfigs.Name}, secret)
+		if err != nil {
+			l.Error(err, "cannot find secret with scrape config", "secret", cr.Spec.AdditionalScrapeConfigs.Name)
+			return err
+		}
+		for _, owner := range secret.OwnerReferences {
+			//owner exists
+			if owner.Name == cr.Name {
+				return nil
+			}
+		}
+		secret.OwnerReferences = append(secret.OwnerReferences, metav1.OwnerReference{
+			APIVersion:         cr.APIVersion,
+			Kind:               cr.Kind,
+			Name:               cr.Name,
+			Controller:         pointer.BoolPtr(false),
+			BlockOwnerDeletion: pointer.BoolPtr(false),
+			UID:                cr.UID,
+		})
+
+		l.Info("updating additional scrape ownership", "secret", secret.Name)
+		err = rclient.Update(context.TODO(), secret)
+		if err != nil {
+			l.Error(err, "cannot update secret ownership", "secret", secret.Name)
+		}
+		l.Info("secret was updated with new owner", "secret", secret.Name)
+		return nil
+
+	}
+	return nil
 }

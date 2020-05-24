@@ -76,6 +76,14 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
+	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
+		IsController: false,
+		OwnerType:    &victoriametricsv1beta1.VmAgent{},
+	})
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

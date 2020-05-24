@@ -22,9 +22,9 @@ jobs:
         env:
           GO111MODULE: on
         run: |
-          go get -u golang.org/x/lint/golint
-          go get -u github.com/kisielk/errcheck
-          go get -u github.com/golangci/golangci-lint/cmd/golangci-lint
+          go get  golang.org/x/lint/golint
+          go get github.com/kisielk/errcheck
+          go get  github.com/golangci/golangci-lint/cmd/golangci-lint@v1.27.0
       - name: Code checkout
         uses: actions/checkout@master
       - name: build binary

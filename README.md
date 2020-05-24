@@ -35,7 +35,7 @@ kubectl apply -f deploy/examples/vmagent.yaml
 
 ```yaml
 
-kubectl create secret generic prometheus-example-alertmanager --from-file deploy/examples/alertmanager.yaml
+kubectl create secret generic alertmanager-example-alertmanager --from-file deploy/examples/alertmanager.yaml
 kubectl apply -f deploy/examples/alertmanager-sts.yaml
 
 

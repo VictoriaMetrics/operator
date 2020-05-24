@@ -5,7 +5,8 @@ metadata:
 spec:
   # Add fields here
   replicas: 1
-  dataSource: "http://vmagent-example-vmsingle.default.svc:8429"
+  dataSource:
+    url: "http://vmagent-example-vmsingle.default.svc:8429"
   notifierURL: "http://alertmanager-operated:9093"
   evaluationInterval: "30s"
   version: "latest"

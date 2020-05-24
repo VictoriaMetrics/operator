@@ -153,9 +153,10 @@ func generateConfig(
 	//	return nil, errors.Wrap(err, "unmarshalling additional alerting relabel configs failed")
 	//}
 
-	if len(p.Spec.RemoteWrite) > 0 {
-		cfg = append(cfg, generateRemoteWriteConfig(p.Spec.RemoteWrite, basicAuthSecrets))
-	}
+	// vmagent not support it
+	//if len(p.Spec.RemoteWrite) > 0 {
+	//	cfg = append(cfg, generateRemoteWriteConfig(p.Spec.RemoteWrite, basicAuthSecrets))
+	//}
 
 	return yaml.Marshal(cfg)
 }
@@ -1043,9 +1044,9 @@ func buildExternalLabels(p *victoriametricsv1beta1.VmAgent) yaml.MapSlice {
 	// Use "prometheus" external label name by default if field is missing.
 	// Do not add external label if field is set to empty string.
 	prometheusExternalLabelName := "prometheus"
-	if p.Spec.PrometheusExternalLabelName != nil {
-		if *p.Spec.PrometheusExternalLabelName != "" {
-			prometheusExternalLabelName = *p.Spec.PrometheusExternalLabelName
+	if p.Spec.VmAgentExternalLabelName != nil {
+		if *p.Spec.VmAgentExternalLabelName != "" {
+			prometheusExternalLabelName = *p.Spec.VmAgentExternalLabelName
 		} else {
 			prometheusExternalLabelName = ""
 		}

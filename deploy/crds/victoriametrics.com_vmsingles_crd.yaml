@@ -612,7 +612,8 @@ spec:
               x-kubernetes-list-type: set
             containers:
               description: Containers allows injecting additional containers. This
-                is meant to allow adding an authentication proxy to an vmSingle pod.
+                is meant to allow adding an authentication proxy to an vmSingle pod
+                or backup
               items:
                 description: A single application container that you want to run within
                   a pod.
@@ -1774,7 +1775,7 @@ spec:
               type: array
               x-kubernetes-list-type: set
             image:
-              description: base image for vmSingle configured.
+              description: base image for vmSingle
               type: string
             imagePullSecrets:
               description: An optional list of references to secrets in the same namespace
@@ -2853,6 +2854,9 @@ spec:
               x-kubernetes-list-type: set
             logFormat:
               description: Log format for VmSingle to be configured with.
+              enum:
+              - default
+              - json
               type: string
             logLevel:
               description: Log level for VmSingle to be configured with.
@@ -2864,12 +2868,8 @@ spec:
               - PANIC
               type: string
             podMetadata:
-              description: 'INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-                Important: Run "operator-sdk generate k8s" to regenerate code after
-                modifying this file Add custom validation using kubebuilder tags:
-                https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
-                PodMetadata configures Labels and Annotations which are propagated
-                to the VmSingle pods.'
+              description: PodMetadata configures Labels and Annotations which are
+                propagated to the VmSingle pods.
               properties:
                 annotations:
                   additionalProperties:
@@ -2896,7 +2896,7 @@ spec:
                   type: string
               type: object
             port:
-              description: listen Port for vmagent
+              description: listen Port for vmSingle
               type: string
             priorityClassName:
               description: Priority class assigned to the Pods
@@ -2907,7 +2907,8 @@ spec:
               format: int32
               type: integer
             resources:
-              description: Define resources requests and limits for single Pods.
+              description: Define resources requests and limits for single Pods. if
+                not defined default resources from operator config will be used
               properties:
                 limits:
                   additionalProperties:
@@ -3063,11 +3064,12 @@ spec:
               type: object
             serviceAccountName:
               description: ServiceAccountName is the name of the ServiceAccount to
-                use to run the Prometheus Pods.
+                use to run the vmSingle Pods.
               type: string
             storage:
               description: Storage is the definition of how storage will be used by
-                the vm single can be empty for emptyDir instances.
+                the vm single can be empty for emptyDir instances. by default it`s
+                empty dir
               properties:
                 accessModes:
                   description: 'AccessModes contains the desired access modes the
@@ -3229,7 +3231,7 @@ spec:
               type: array
               x-kubernetes-list-type: set
             version:
-              description: Version the cluster should be on.
+              description: Version of vmSingle
               type: string
             volumeMounts:
               description: VolumeMounts allows configuration of additional VolumeMounts
@@ -4466,11 +4468,35 @@ spec:
                 type: object
               type: array
               x-kubernetes-list-type: set
-          required:
-          - retentionPeriod
           type: object
         status:
           description: VmSingleStatus defines the observed state of VmSingle
+          properties:
+            availableReplicas:
+              description: Total number of available pods (ready for at least minReadySeconds)
+                targeted by this VmAlert cluster.
+              format: int32
+              type: integer
+            replicas:
+              description: Total number of non-terminated pods targeted by this VmAlert
+                cluster (their labels match the selector).
+              format: int32
+              type: integer
+            unavailableReplicas:
+              description: Total number of unavailable pods targeted by this VmAlert
+                cluster.
+              format: int32
+              type: integer
+            updatedReplicas:
+              description: Total number of non-terminated pods targeted by this VmAlert
+                cluster that have the desired version spec.
+              format: int32
+              type: integer
+          required:
+          - availableReplicas
+          - replicas
+          - unavailableReplicas
+          - updatedReplicas
           type: object
       type: object
   version: v1beta1

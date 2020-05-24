@@ -23,7 +23,7 @@ import (
 
 const (
 	vmAgentConfigsDir  = "/etc/vmagent/configs"
-	vmAgentSecretDir   = "/etc/vmagent/secret"
+	vmAgentSecretDir   = "/etc/vmagent/secrets"
 	vmAgentConfDir     = "/etc/vmagent/config"
 	vmAgentConOfOutDir = "/etc/vmagent/config_out"
 )
@@ -253,6 +253,7 @@ func makeSpecForVmAgent(cr *victoriametricsv1beta1.VmAgent, c *conf.BaseOperator
 	}
 
 	var envs []corev1.EnvVar
+
 	envs = append(envs, cr.Spec.ExtraEnvs...)
 
 	var ports []corev1.ContainerPort

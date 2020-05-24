@@ -816,6 +816,7 @@ spec:
             configMaps:
               description: ConfigMaps is a list of ConfigMaps in the same namespace
                 as the vmagent object, which shall be mounted into the vmagent Pods.
+                will be mounted at path  /etc/vmagent/configs
               items:
                 type: string
               type: array
@@ -1886,7 +1887,7 @@ spec:
                 with external systems (federation, remote storage, etc).
               type: object
             extraArgs:
-              description: args for vmagent binary
+              description: args for vmagent binary format -flag=value for each arg
               items:
                 type: string
               type: array
@@ -3081,6 +3082,9 @@ spec:
               x-kubernetes-list-type: set
             logFormat:
               description: Log format for vmagent to be configured with.
+              enum:
+              - default
+              - json
               type: string
             logLevel:
               description: Log level for vmagent to be configured with. INFO, WARN,
@@ -3102,12 +3106,8 @@ spec:
                 timestamps in all scrape configs.
               type: boolean
             podMetadata:
-              description: 'INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-                Important: Run "operator-sdk generate k8s" to regenerate code after
-                modifying this file Add custom validation using kubebuilder tags:
-                https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
-                PodMetadata configures Labels and Annotations which are propagated
-                to the vmagent pods.'
+              description: PodMetadata configures Labels and Annotations which are
+                propagated to the vmagent pods.
               properties:
                 annotations:
                   additionalProperties:
@@ -3225,17 +3225,8 @@ spec:
             port:
               description: listen Port for vmagent
               type: string
-            portName:
-              description: Port name used for the pods and governing service. This
-                defaults to web
-              type: string
             priorityClassName:
               description: Priority class assigned to the Pods
-              type: string
-            prometheusExternalLabelName:
-              description: Name of Prometheus external label used to denote Prometheus
-                instance name. Defaults to the value of `prometheus`. External label
-                will _not_ be added when value is set to empty string (`""`).
               type: string
             remoteWrite:
               description: 'list of victoriametrics /some other remote write system
@@ -3245,287 +3236,21 @@ spec:
                 description: RemoteWriteSpec defines the remote_write configuration
                   for prometheus.
                 properties:
-                  basicAuth:
-                    description: BasicAuth for the URL.
-                    properties:
-                      password:
-                        description: The secret in the service monitor namespace that
-                          contains the password for authentication.
-                        properties:
-                          key:
-                            description: The key of the secret to select from.  Must
-                              be a valid secret key.
-                            type: string
-                          name:
-                            description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                              TODO: Add other useful fields. apiVersion, kind, uid?'
-                            type: string
-                          optional:
-                            description: Specify whether the Secret or its key must
-                              be defined
-                            type: boolean
-                        required:
-                        - key
-                        type: object
-                      username:
-                        description: The secret in the service monitor namespace that
-                          contains the username for authentication.
-                        properties:
-                          key:
-                            description: The key of the secret to select from.  Must
-                              be a valid secret key.
-                            type: string
-                          name:
-                            description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                              TODO: Add other useful fields. apiVersion, kind, uid?'
-                            type: string
-                          optional:
-                            description: Specify whether the Secret or its key must
-                              be defined
-                            type: boolean
-                        required:
-                        - key
-                        type: object
-                    type: object
-                  bearerToken:
-                    description: File to read bearer token for remote write.
-                    type: string
-                  bearerTokenFile:
-                    description: File to read bearer token for remote write.
-                    type: string
-                  name:
-                    description: The name of the remote write queue, must be unique
-                      if specified. The name is used in metrics and logging in order
-                      to differentiate queues. Only valid in Prometheus versions 2.15.0
-                      and newer.
-                    type: string
-                  proxyURL:
-                    description: Optional ProxyURL
-                    type: string
-                  queueConfig:
-                    description: QueueConfig allows tuning of the remote write queue
-                      parameters.
-                    properties:
-                      batchSendDeadline:
-                        description: BatchSendDeadline is the maximum time a sample
-                          will wait in buffer.
-                        type: string
-                      capacity:
-                        description: Capacity is the number of samples to buffer per
-                          shard before we start dropping them.
-                        type: integer
-                      maxBackoff:
-                        description: MaxBackoff is the maximum retry delay.
-                        type: string
-                      maxRetries:
-                        description: MaxRetries is the maximum number of times to
-                          retry a batch on recoverable errors.
-                        type: integer
-                      maxSamplesPerSend:
-                        description: MaxSamplesPerSend is the maximum number of samples
-                          per send.
-                        type: integer
-                      maxShards:
-                        description: MaxShards is the maximum number of shards, i.e.
-                          amount of concurrency.
-                        type: integer
-                      minBackoff:
-                        description: MinBackoff is the initial retry delay. Gets doubled
-                          for every retry.
-                        type: string
-                      minShards:
-                        description: MinShards is the minimum number of shards, i.e.
-                          amount of concurrency.
-                        type: integer
-                    type: object
                   remoteTimeout:
                     description: Timeout for requests to the remote write endpoint.
                     type: string
-                  tlsConfig:
-                    description: TLS Config to use for remote write.
-                    properties:
-                      ca:
-                        description: Stuct containing the CA cert to use for the targets.
-                        properties:
-                          configMap:
-                            description: ConfigMap containing data to use for the
-                              targets.
-                            properties:
-                              key:
-                                description: The key to select.
-                                type: string
-                              name:
-                                description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                  TODO: Add other useful fields. apiVersion, kind,
-                                  uid?'
-                                type: string
-                              optional:
-                                description: Specify whether the ConfigMap or its
-                                  key must be defined
-                                type: boolean
-                            required:
-                            - key
-                            type: object
-                          secret:
-                            description: Secret containing data to use for the targets.
-                            properties:
-                              key:
-                                description: The key of the secret to select from.  Must
-                                  be a valid secret key.
-                                type: string
-                              name:
-                                description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                  TODO: Add other useful fields. apiVersion, kind,
-                                  uid?'
-                                type: string
-                              optional:
-                                description: Specify whether the Secret or its key
-                                  must be defined
-                                type: boolean
-                            required:
-                            - key
-                            type: object
-                        type: object
-                      caFile:
-                        description: Path to the CA cert in the Prometheus container
-                          to use for the targets.
-                        type: string
-                      cert:
-                        description: Struct containing the client cert file for the
-                          targets.
-                        properties:
-                          configMap:
-                            description: ConfigMap containing data to use for the
-                              targets.
-                            properties:
-                              key:
-                                description: The key to select.
-                                type: string
-                              name:
-                                description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                  TODO: Add other useful fields. apiVersion, kind,
-                                  uid?'
-                                type: string
-                              optional:
-                                description: Specify whether the ConfigMap or its
-                                  key must be defined
-                                type: boolean
-                            required:
-                            - key
-                            type: object
-                          secret:
-                            description: Secret containing data to use for the targets.
-                            properties:
-                              key:
-                                description: The key of the secret to select from.  Must
-                                  be a valid secret key.
-                                type: string
-                              name:
-                                description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                  TODO: Add other useful fields. apiVersion, kind,
-                                  uid?'
-                                type: string
-                              optional:
-                                description: Specify whether the Secret or its key
-                                  must be defined
-                                type: boolean
-                            required:
-                            - key
-                            type: object
-                        type: object
-                      certFile:
-                        description: Path to the client cert file in the Prometheus
-                          container for the targets.
-                        type: string
-                      insecureSkipVerify:
-                        description: Disable target certificate validation.
-                        type: boolean
-                      keyFile:
-                        description: Path to the client key file in the Prometheus
-                          container for the targets.
-                        type: string
-                      keySecret:
-                        description: Secret containing the client key file for the
-                          targets.
-                        properties:
-                          key:
-                            description: The key of the secret to select from.  Must
-                              be a valid secret key.
-                            type: string
-                          name:
-                            description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                              TODO: Add other useful fields. apiVersion, kind, uid?'
-                            type: string
-                          optional:
-                            description: Specify whether the Secret or its key must
-                              be defined
-                            type: boolean
-                        required:
-                        - key
-                        type: object
-                      serverName:
-                        description: Used to verify the hostname for the targets.
-                        type: string
-                    type: object
                   url:
                     description: The URL of the endpoint to send samples to.
                     type: string
-                  writeRelabelConfigs:
-                    description: The list of remote write relabel configurations.
-                    items:
-                      description: 'RelabelConfig allows dynamic rewriting of the
-                        label set, being applied to samples before ingestion. It defines
-                        `<metric_relabel_configs>`-section of Prometheus configuration.
-                        More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs'
-                      properties:
-                        action:
-                          description: Action to perform based on regex matching.
-                            Default is 'replace'
-                          type: string
-                        modulus:
-                          description: Modulus to take of the hash of the source label
-                            values.
-                          format: int64
-                          type: integer
-                        regex:
-                          description: Regular expression against which the extracted
-                            value is matched. Default is '(.*)'
-                          type: string
-                        replacement:
-                          description: Replacement value against which a regex replace
-                            is performed if the regular expression matches. Regex
-                            capture groups are available. Default is '$1'
-                          type: string
-                        separator:
-                          description: Separator placed between concatenated source
-                            label values. default is ';'.
-                          type: string
-                        sourceLabels:
-                          description: The source labels select values from existing
-                            labels. Their content is concatenated using the configured
-                            separator and matched against the configured regular expression
-                            for the replace, keep, and drop actions.
-                          items:
-                            type: string
-                          type: array
-                          x-kubernetes-list-type: set
-                        targetLabel:
-                          description: Label to which the resulting value is written
-                            in a replace action. It is mandatory for replace actions.
-                            Regex capture groups are available.
-                          type: string
-                      type: object
-                    type: array
-                    x-kubernetes-list-type: set
                 required:
                 - url
                 type: object
               type: array
               x-kubernetes-list-type: set
             replicaExternalLabelName:
-              description: Name of Prometheus external label used to denote replica
-                name. Defaults to the value of `prometheus_replica`. External label
-                will _not_ be added when value is set to empty string (`""`).
+              description: Name of vmagent external label used to denote replica name.
+                Defaults to the value of `prometheus_replica`. External label will
+                _not_ be added when value is set to empty string (`""`).
               type: string
             replicas:
               description: Size is the expected size of the vmagent cluster. The controller
@@ -3534,7 +3259,8 @@ spec:
               format: int32
               type: integer
             resources:
-              description: Define resources requests and limits for single Pods.
+              description: Define resources requests and limits for. if not specified
+                - default setting will be used
               properties:
                 limits:
                   additionalProperties:
@@ -3565,7 +3291,8 @@ spec:
               type: string
             secrets:
               description: Secrets is a list of Secrets in the same namespace as the
-                vmagent object, which shall be mounted into the vmagent Pods.
+                vmagent object, which shall be mounted into the vmagent Pods. will
+                be mounted at path /etc/vmagent/secrets
               items:
                 type: string
               type: array
@@ -3824,6 +3551,11 @@ spec:
               x-kubernetes-list-type: set
             version:
               description: Version/tag.
+              type: string
+            vmAgentExternalLabelName:
+              description: Name of vmAgent external label used to denote vmAgent instance
+                name. Defaults to the value of `prometheus`. External label will _not_
+                be added when value is set to empty string (`""`).
               type: string
             volumeMounts:
               description: VolumeMounts allows configuration of additional VolumeMounts
@@ -5061,12 +4793,37 @@ spec:
               type: array
               x-kubernetes-list-type: set
           required:
-          - remoteWrite
           - replicas
           - serviceAccountName
           type: object
         status:
           description: VmAgentStatus defines the observed state of VmAgent
+          properties:
+            availableReplicas:
+              description: Total number of available pods (ready for at least minReadySeconds)
+                targeted by this VmAlert cluster.
+              format: int32
+              type: integer
+            replicas:
+              description: Total number of non-terminated pods targeted by this VmAlert
+                cluster (their labels match the selector).
+              format: int32
+              type: integer
+            unavailableReplicas:
+              description: Total number of unavailable pods targeted by this VmAlert
+                cluster.
+              format: int32
+              type: integer
+            updatedReplicas:
+              description: Total number of non-terminated pods targeted by this VmAlert
+                cluster that have the desired version spec.
+              format: int32
+              type: integer
+          required:
+          - availableReplicas
+          - replicas
+          - unavailableReplicas
+          - updatedReplicas
           type: object
       type: object
   version: v1beta1

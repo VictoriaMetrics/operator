@@ -62,7 +62,9 @@ func CreateOrUpdateConfigurationSecret(p *victoriametricsv1beta1.VmAgent, rclien
 		return err
 	}
 
-	basicAuthSecrets, err := loadBasicAuthSecrets(smons, p.Spec.RemoteWrite, p.Spec.APIServerConfig, SecretsInPromNS, kclient)
+	//	basicAuthSecrets, err := loadBasicAuthSecrets(smons, p.Spec.RemoteWrite, p.Spec.APIServerConfig, SecretsInPromNS, kclient)
+	basicAuthSecrets, err := loadBasicAuthSecrets(smons, p.Spec.APIServerConfig, SecretsInPromNS, kclient)
+
 	if err != nil {
 		return err
 	}
@@ -78,7 +80,7 @@ func CreateOrUpdateConfigurationSecret(p *victoriametricsv1beta1.VmAgent, rclien
 	}
 
 	// Update secret based on the most recent configuration.
-	conf, err := generateConfig(
+	generatedConfig, err := generateConfig(
 		p,
 		smons,
 		pmons,
@@ -97,7 +99,7 @@ func CreateOrUpdateConfigurationSecret(p *victoriametricsv1beta1.VmAgent, rclien
 
 	// Compress config to avoid 1mb secret limit for a while
 	var buf bytes.Buffer
-	if err = gzipConfig(&buf, conf); err != nil {
+	if err = gzipConfig(&buf, generatedConfig); err != nil {
 		return errors.Wrap(err, "couldnt gzip config")
 	}
 	s.Data[configFilename] = buf.Bytes()
@@ -135,7 +137,6 @@ func SelectServiceMonitors(p *victoriametricsv1beta1.VmAgent, rclient client.Cli
 
 	namespaces := []string{}
 
-	//what can we do?
 	//list namespaces matched by  nameselector
 	//for each namespace apply list with  selector...
 	//combine result
@@ -307,7 +308,7 @@ func SelectPodMonitors(p *victoriametricsv1beta1.VmAgent, rclient client.Client,
 
 func loadBasicAuthSecrets(
 	mons map[string]*monitoringv1.ServiceMonitor,
-	remoteWrites []monitoringv1.RemoteWriteSpec,
+	//	remoteWrites []monitoringv1.RemoteWriteSpec,
 	apiserverConfig *monitoringv1.APIServerConfig,
 	SecretsInPromNS *v1.SecretList,
 	kclient kubernetes.Interface,
@@ -328,15 +329,16 @@ func loadBasicAuthSecrets(
 		}
 	}
 
-	for i, remote := range remoteWrites {
-		if remote.BasicAuth != nil {
-			credentials, err := loadBasicAuthSecret(remote.BasicAuth, SecretsInPromNS)
-			if err != nil {
-				return nil, fmt.Errorf("could not generate basicAuth for remote_write config %d. %s", i, err)
-			}
-			secrets[fmt.Sprintf("remoteWrite/%d", i)] = credentials
-		}
-	}
+	//vmagent not support it
+	//for i, remote := range remoteWrites {
+	//	if remote.BasicAuth != nil {
+	//		credentials, err := loadBasicAuthSecret(remote.BasicAuth, SecretsInPromNS)
+	//		if err != nil {
+	//			return nil, fmt.Errorf("could not generate basicAuth for remote_write config %d. %s", i, err)
+	//		}
+	//		secrets[fmt.Sprintf("remoteWrite/%d", i)] = credentials
+	//	}
+	//}
 
 	// load apiserver basic auth secret
 	if apiserverConfig != nil && apiserverConfig.BasicAuth != nil {

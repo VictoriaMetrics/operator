@@ -172,9 +172,6 @@ func newDeployForVmAlert(cr *victoriametricsv1beta1.VmAlert, c *conf.BaseOperato
 		cr.Spec.Resources.Requests[corev1.ResourceCPU] = resource.MustParse(c.VmAlertDefault.Resource.Request.Cpu)
 	}
 
-	if cr.Spec.ConfigSecret == "" {
-		cr.Spec.ConfigSecret = cr.Name
-	}
 	if cr.Spec.Port == "" {
 		cr.Spec.Port = c.VmAlertDefault.Port
 	}
@@ -267,6 +264,7 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VmAlert, c *conf.BaseOperatorConf
 	}
 
 	var envs []corev1.EnvVar
+
 	envs = append(envs, cr.Spec.ExtraEnvs...)
 
 	volumes := []corev1.Volume{}
@@ -284,7 +282,7 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VmAlert, c *conf.BaseOperatorConf
 		})
 	}
 
-	amVolumeMounts := []corev1.VolumeMount{}
+	volumeMounts := []corev1.VolumeMount{}
 	for _, s := range cr.Spec.Secrets {
 		volumes = append(volumes, corev1.Volume{
 			Name: k8sutil.SanitizeVolumeName("secret-" + s),
@@ -294,7 +292,7 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VmAlert, c *conf.BaseOperatorConf
 				},
 			},
 		})
-		amVolumeMounts = append(amVolumeMounts, corev1.VolumeMount{
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
 			Name:      k8sutil.SanitizeVolumeName("secret-" + s),
 			ReadOnly:  true,
 			MountPath: path.Join(secretsDir, s),
@@ -312,17 +310,17 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VmAlert, c *conf.BaseOperatorConf
 				},
 			},
 		})
-		amVolumeMounts = append(amVolumeMounts, corev1.VolumeMount{
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
 			Name:      k8sutil.SanitizeVolumeName("configmap-" + c),
 			ReadOnly:  true,
 			MountPath: path.Join(configmapsDir, c),
 		})
 	}
 
-	amVolumeMounts = append(amVolumeMounts, cr.Spec.VolumeMounts...)
+	volumeMounts = append(volumeMounts, cr.Spec.VolumeMounts...)
 
 	for _, name := range ruleConfigMapNames {
-		amVolumeMounts = append(amVolumeMounts, corev1.VolumeMount{
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
 			Name:      name,
 			MountPath: path.Join(vmAlertConfigDir, name),
 		})
@@ -380,7 +378,7 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VmAlert, c *conf.BaseOperatorConf
 			Name:                     "vmalert",
 			Image:                    *cr.Spec.Image + ":" + cr.Spec.Version,
 			Ports:                    ports,
-			VolumeMounts:             amVolumeMounts,
+			VolumeMounts:             volumeMounts,
 			LivenessProbe:            livenessProbe,
 			ReadinessProbe:           readinessProbe,
 			Resources:                cr.Spec.Resources,

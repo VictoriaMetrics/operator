@@ -1,7 +1,6 @@
 package v1beta1
 
 import (
-	monitoringv1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -32,7 +31,7 @@ type Alertmanager struct {
 // +k8s:openapi-gen=true
 type AlertmanagerSpec struct {
 	// PodMetadata configures Labels and Annotations which are propagated to the alertmanager pods.
-	PodMetadata *monitoringv1.EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
+	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
 	// Image if specified has precedence over baseImage, tag and sha
 	// combinations. Specifying the version is still necessary to ensure the
 	// Prometheus Operator knows what version of Alertmanager is being
@@ -83,7 +82,7 @@ type AlertmanagerSpec struct {
 	Retention string `json:"retention,omitempty"`
 	// Storage is the definition of how storage will be used by the Alertmanager
 	// instances.
-	Storage *monitoringv1.StorageSpec `json:"storage,omitempty"`
+	Storage *StorageSpec `json:"storage,omitempty"`
 	// Volumes allows configuration of additional volumes on the output StatefulSet definition.
 	// Volumes specified will be appended to other volumes that are generated as a result of
 	// StorageSpec objects.

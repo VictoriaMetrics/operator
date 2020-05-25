@@ -144,7 +144,6 @@ func CreateOrUpdateVmAlert(cr *victoriametricsv1beta1.VmAlert, rclient client.Cl
 func newDeployForVmAlert(cr *victoriametricsv1beta1.VmAlert, c *conf.BaseOperatorConf, ruleConfigMapNames []string) (*appsv1.Deployment, error) {
 
 	cr = cr.DeepCopy()
-	//todo move inject default into separate func
 	if cr.Spec.Image == nil {
 		cr.Spec.Image = &c.VmAlertDefault.Image
 	}
@@ -172,9 +171,6 @@ func newDeployForVmAlert(cr *victoriametricsv1beta1.VmAlert, c *conf.BaseOperato
 		cr.Spec.Resources.Requests[corev1.ResourceCPU] = resource.MustParse(c.VmAlertDefault.Resource.Request.Cpu)
 	}
 
-	if cr.Spec.ConfigSecret == "" {
-		cr.Spec.ConfigSecret = cr.Name
-	}
 	if cr.Spec.Port == "" {
 		cr.Spec.Port = c.VmAlertDefault.Port
 	}
@@ -224,12 +220,22 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VmAlert, c *conf.BaseOperatorConf
 	cr = cr.DeepCopy()
 
 	confReloadArgs := []string{
-		fmt.Sprintf("-webhook-url=http://localhost:%s", cr.Spec.Port),
+		fmt.Sprintf("-webhook-url=http://localhost:%s/-/reload", cr.Spec.Port),
 	}
 
 	args := []string{
 		fmt.Sprintf("-notifier.url=%s", cr.Spec.NotifierURL),
-		fmt.Sprintf("-datasource.url=%s", cr.Spec.DataSource),
+		fmt.Sprintf("-datasource.url=%s", cr.Spec.Datasource.URL),
+	}
+	if cr.Spec.RemoteWrite.URL != "" {
+		//this param cannot be used until v1.35.5 vm release with flag breaking changes
+		args = append(args, fmt.Sprintf("-remoteWrite.url=%s", cr.Spec.RemoteWrite.URL))
+
+	}
+	if cr.Spec.RemoteRead.URL != "" {
+		//this param cannot be used until v1.35.5 vm release with flag breaking changes
+		args = append(args, fmt.Sprintf("-remoteRead.url=%s", cr.Spec.RemoteRead.URL))
+
 	}
 	if cr.Spec.EvaluationInterval != "" {
 		args = append(args, fmt.Sprintf("-evaluationInterval=%s", cr.Spec.EvaluationInterval))
@@ -257,6 +263,7 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VmAlert, c *conf.BaseOperatorConf
 	}
 
 	var envs []corev1.EnvVar
+
 	envs = append(envs, cr.Spec.ExtraEnvs...)
 
 	volumes := []corev1.Volume{}
@@ -274,7 +281,7 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VmAlert, c *conf.BaseOperatorConf
 		})
 	}
 
-	amVolumeMounts := []corev1.VolumeMount{}
+	volumeMounts := []corev1.VolumeMount{}
 	for _, s := range cr.Spec.Secrets {
 		volumes = append(volumes, corev1.Volume{
 			Name: k8sutil.SanitizeVolumeName("secret-" + s),
@@ -284,7 +291,7 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VmAlert, c *conf.BaseOperatorConf
 				},
 			},
 		})
-		amVolumeMounts = append(amVolumeMounts, corev1.VolumeMount{
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
 			Name:      k8sutil.SanitizeVolumeName("secret-" + s),
 			ReadOnly:  true,
 			MountPath: path.Join(secretsDir, s),
@@ -302,17 +309,17 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VmAlert, c *conf.BaseOperatorConf
 				},
 			},
 		})
-		amVolumeMounts = append(amVolumeMounts, corev1.VolumeMount{
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
 			Name:      k8sutil.SanitizeVolumeName("configmap-" + c),
 			ReadOnly:  true,
 			MountPath: path.Join(configmapsDir, c),
 		})
 	}
 
-	amVolumeMounts = append(amVolumeMounts, cr.Spec.VolumeMounts...)
+	volumeMounts = append(volumeMounts, cr.Spec.VolumeMounts...)
 
 	for _, name := range ruleConfigMapNames {
-		amVolumeMounts = append(amVolumeMounts, corev1.VolumeMount{
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
 			Name:      name,
 			MountPath: path.Join(vmAlertConfigDir, name),
 		})
@@ -370,7 +377,7 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VmAlert, c *conf.BaseOperatorConf
 			Name:                     "vmalert",
 			Image:                    *cr.Spec.Image + ":" + cr.Spec.Version,
 			Ports:                    ports,
-			VolumeMounts:             amVolumeMounts,
+			VolumeMounts:             volumeMounts,
 			LivenessProbe:            livenessProbe,
 			ReadinessProbe:           readinessProbe,
 			Resources:                cr.Spec.Resources,

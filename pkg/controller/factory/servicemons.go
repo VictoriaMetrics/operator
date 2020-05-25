@@ -125,38 +125,6 @@ func generateConfig(
 		Value: append(scrapeConfigs, additionalScrapeConfigsYaml...),
 	})
 
-	//var alertRelabelConfigs []yaml.MapSlice
-
-	// Use defaultReplicaExternalLabelName constant by default if field is missing.
-	// Do not add external label if field is set to empty string.
-	//replicaExternalLabelName := defaultReplicaExternalLabelName
-	//if p.Spec.ReplicaExternalLabelName != nil {
-	//	if *p.Spec.ReplicaExternalLabelName != "" {
-	//		replicaExternalLabelName = *p.Spec.ReplicaExternalLabelName
-	//	} else {
-	//		replicaExternalLabelName = ""
-	//	}
-	//}
-
-	//if replicaExternalLabelName != "" {
-	//	// Drop replica label, to make alerts from multiple Prometheus replicas alike
-	//	alertRelabelConfigs = append(alertRelabelConfigs, yaml.MapSlice{
-	//		{Key: "action", Value: "labeldrop"},
-	//		{Key: "regex", Value: regexp.QuoteMeta(replicaExternalLabelName)},
-	//	})
-	//}
-
-	//TODO check, probably need to move it to vmalert
-	//var additionalAlertRelabelConfigsYaml []yaml.MapSlice
-	//err = yaml.Unmarshal([]byte(additionalAlertRelabelConfigs), &additionalAlertRelabelConfigsYaml)
-	//if err != nil {
-	//	return nil, errors.Wrap(err, "unmarshalling additional alerting relabel configs failed")
-	//}
-
-	if len(p.Spec.RemoteWrite) > 0 {
-		cfg = append(cfg, generateRemoteWriteConfig(p.Spec.RemoteWrite, basicAuthSecrets))
-	}
-
 	return yaml.Marshal(cfg)
 }
 
@@ -700,137 +668,7 @@ func generateServiceMonitorConfig(
 	return cfg
 }
 
-func generateRemoteWriteConfig(specs []monitoringv1.RemoteWriteSpec, basicAuthSecrets map[string]BasicAuthCredentials) yaml.MapItem {
 
-	cfgs := []yaml.MapSlice{}
-
-	for i, spec := range specs {
-		//defaults
-		if spec.RemoteTimeout == "" {
-			spec.RemoteTimeout = "30s"
-		}
-
-		cfg := yaml.MapSlice{
-			{Key: "url", Value: spec.URL},
-			{Key: "remote_timeout", Value: spec.RemoteTimeout},
-		}
-
-		if spec.Name != "" {
-			cfg = append(cfg, yaml.MapItem{Key: "name", Value: spec.Name})
-		}
-
-		if spec.WriteRelabelConfigs != nil {
-			relabelings := []yaml.MapSlice{}
-			for _, c := range spec.WriteRelabelConfigs {
-				relabeling := yaml.MapSlice{}
-
-				if len(c.SourceLabels) > 0 {
-					relabeling = append(relabeling, yaml.MapItem{Key: "source_labels", Value: c.SourceLabels})
-				}
-
-				if c.Separator != "" {
-					relabeling = append(relabeling, yaml.MapItem{Key: "separator", Value: c.Separator})
-				}
-
-				if c.TargetLabel != "" {
-					relabeling = append(relabeling, yaml.MapItem{Key: "target_label", Value: c.TargetLabel})
-				}
-
-				if c.Regex != "" {
-					relabeling = append(relabeling, yaml.MapItem{Key: "regex", Value: c.Regex})
-				}
-
-				if c.Modulus != uint64(0) {
-					relabeling = append(relabeling, yaml.MapItem{Key: "modulus", Value: c.Modulus})
-				}
-
-				if c.Replacement != "" {
-					relabeling = append(relabeling, yaml.MapItem{Key: "replacement", Value: c.Replacement})
-				}
-
-				if c.Action != "" {
-					relabeling = append(relabeling, yaml.MapItem{Key: "action", Value: c.Action})
-				}
-				relabelings = append(relabelings, relabeling)
-			}
-
-			cfg = append(cfg, yaml.MapItem{Key: "write_relabel_configs", Value: relabelings})
-
-		}
-
-		if spec.BasicAuth != nil {
-			if s, ok := basicAuthSecrets[fmt.Sprintf("remoteWrite/%d", i)]; ok {
-				cfg = append(cfg, yaml.MapItem{
-					Key: "basic_auth", Value: yaml.MapSlice{
-						{Key: "username", Value: s.username},
-						{Key: "password", Value: s.password},
-					},
-				})
-			}
-		}
-
-		if spec.BearerToken != "" {
-			cfg = append(cfg, yaml.MapItem{Key: "bearer_token", Value: spec.BearerToken})
-		}
-
-		if spec.BearerTokenFile != "" {
-			cfg = append(cfg, yaml.MapItem{Key: "bearer_token_file", Value: spec.BearerTokenFile})
-		}
-
-		// TODO: If we want to support secret refs for remote write tls
-		// config as well, make sure to path the right namespace here.
-		cfg = addTLStoYaml(cfg, "", spec.TLSConfig)
-
-		if spec.ProxyURL != "" {
-			cfg = append(cfg, yaml.MapItem{Key: "proxy_url", Value: spec.ProxyURL})
-		}
-
-		if spec.QueueConfig != nil {
-			queueConfig := yaml.MapSlice{}
-
-			if spec.QueueConfig.Capacity != int(0) {
-				queueConfig = append(queueConfig, yaml.MapItem{Key: "capacity", Value: spec.QueueConfig.Capacity})
-			}
-
-			if spec.QueueConfig.MinShards != int(0) {
-				queueConfig = append(queueConfig, yaml.MapItem{Key: "min_shards", Value: spec.QueueConfig.MinShards})
-			}
-
-			if spec.QueueConfig.MaxShards != int(0) {
-				queueConfig = append(queueConfig, yaml.MapItem{Key: "max_shards", Value: spec.QueueConfig.MaxShards})
-			}
-
-			if spec.QueueConfig.MaxSamplesPerSend != int(0) {
-				queueConfig = append(queueConfig, yaml.MapItem{Key: "max_samples_per_send", Value: spec.QueueConfig.MaxSamplesPerSend})
-			}
-
-			if spec.QueueConfig.BatchSendDeadline != "" {
-				queueConfig = append(queueConfig, yaml.MapItem{Key: "batch_send_deadline", Value: spec.QueueConfig.BatchSendDeadline})
-			}
-
-			if spec.QueueConfig.MaxRetries != int(0) {
-				queueConfig = append(queueConfig, yaml.MapItem{Key: "max_retries", Value: spec.QueueConfig.MaxRetries})
-			}
-
-			if spec.QueueConfig.MinBackoff != "" {
-				queueConfig = append(queueConfig, yaml.MapItem{Key: "min_backoff", Value: spec.QueueConfig.MinBackoff})
-			}
-
-			if spec.QueueConfig.MaxBackoff != "" {
-				queueConfig = append(queueConfig, yaml.MapItem{Key: "max_backoff", Value: spec.QueueConfig.MaxBackoff})
-			}
-
-			cfg = append(cfg, yaml.MapItem{Key: "queue_config", Value: queueConfig})
-		}
-
-		cfgs = append(cfgs, cfg)
-	}
-
-	return yaml.MapItem{
-		Key:   "remote_write",
-		Value: cfgs,
-	}
-}
 
 func addTLStoYaml(cfg yaml.MapSlice, namespace string, tls *monitoringv1.TLSConfig) yaml.MapSlice {
 	if tls != nil {
@@ -1043,9 +881,9 @@ func buildExternalLabels(p *victoriametricsv1beta1.VmAgent) yaml.MapSlice {
 	// Use "prometheus" external label name by default if field is missing.
 	// Do not add external label if field is set to empty string.
 	prometheusExternalLabelName := "prometheus"
-	if p.Spec.PrometheusExternalLabelName != nil {
-		if *p.Spec.PrometheusExternalLabelName != "" {
-			prometheusExternalLabelName = *p.Spec.PrometheusExternalLabelName
+	if p.Spec.VmAgentExternalLabelName != nil {
+		if *p.Spec.VmAgentExternalLabelName != "" {
+			prometheusExternalLabelName = *p.Spec.VmAgentExternalLabelName
 		} else {
 			prometheusExternalLabelName = ""
 		}

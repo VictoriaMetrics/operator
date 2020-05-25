@@ -1,7 +1,6 @@
 package v1beta1
 
 import (
-	monitoringv1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -32,7 +31,7 @@ type Alertmanager struct {
 // +k8s:openapi-gen=true
 type AlertmanagerSpec struct {
 	// PodMetadata configures Labels and Annotations which are propagated to the alertmanager pods.
-	PodMetadata *monitoringv1.EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
+	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
 	// Image if specified has precedence over baseImage, tag and sha
 	// combinations. Specifying the version is still necessary to ensure the
 	// Prometheus Operator knows what version of Alertmanager is being
@@ -47,9 +46,9 @@ type AlertmanagerSpec struct {
 	// Similar to a tag, but the SHA explicitly deploys an immutable container image.
 	// Version and Tag are ignored if SHA is set.
 	SHA string `json:"sha,omitempty"`
-	// Base image that is used to deploy pods, without tag.
+	// BaseImage that is used to deploy pods, without tag.
 	BaseImage string `json:"baseImage,omitempty"`
-	// An optional list of references to secrets in the same namespace
+	// ImagePullSecrets An optional list of references to secrets in the same namespace
 	// to use for pulling prometheus and alertmanager images from registries
 	// see http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod
 	// +listType=set
@@ -71,19 +70,19 @@ type AlertmanagerSpec struct {
 	ConfigSecret string `json:"configSecret,omitempty"`
 	// Log level for Alertmanager to be configured with.
 	LogLevel string `json:"logLevel,omitempty"`
-	// Log format for Alertmanager to be configured with.
+	// LogFormat for Alertmanager to be configured with.
 	LogFormat string `json:"logFormat,omitempty"`
-	// Size is the expected size of the alertmanager cluster. The controller will
+	// Replicas Size is the expected size of the alertmanager cluster. The controller will
 	// eventually make the size of the running cluster equal to the expected
 	// +kubebuilder:validation:Minimum:=1
 	Replicas *int32 `json:"replicas,omitempty"`
-	// Time duration Alertmanager shall retain data for. Default is '120h',
+	// Retention Time duration Alertmanager shall retain data for. Default is '120h',
 	// and must match the regular expression `[0-9]+(ms|s|m|h)` (milliseconds seconds minutes hours).
 	// +kubebuilder:validation:Pattern:="[0-9]+(ms|s|m|h)"
 	Retention string `json:"retention,omitempty"`
 	// Storage is the definition of how storage will be used by the Alertmanager
 	// instances.
-	Storage *monitoringv1.StorageSpec `json:"storage,omitempty"`
+	Storage *StorageSpec `json:"storage,omitempty"`
 	// Volumes allows configuration of additional volumes on the output StatefulSet definition.
 	// Volumes specified will be appended to other volumes that are generated as a result of
 	// StorageSpec objects.
@@ -94,25 +93,26 @@ type AlertmanagerSpec struct {
 	// that are generated as a result of StorageSpec objects.
 	// +listType=set
 	VolumeMounts []v1.VolumeMount `json:"volumeMounts,omitempty"`
-	// The external URL the Alertmanager instances will be available under. This is
+	// ExternalURL the Alertmanager instances will be available under. This is
 	// necessary to generate correct URLs. This is necessary if Alertmanager is not
 	// served from root of a DNS name.
 	ExternalURL string `json:"externalURL,omitempty"`
-	// The route prefix Alertmanager registers HTTP handlers for. This is useful,
+	// RoutePrefix Alertmanager registers HTTP handlers for. This is useful,
 	// if using ExternalURL and a proxy is rewriting HTTP routes of a request,
 	// and the actual ExternalURL is still true, but the server serves requests
 	// under a different route prefix. For example for use with `kubectl proxy`.
 	RoutePrefix string `json:"routePrefix,omitempty"`
-	// If set to true all actions on the underlaying managed objects are not
+	// Paused If set to true all actions on the underlaying managed objects are not
 	// goint to be performed, except for delete actions.
 	Paused bool `json:"paused,omitempty"`
-	// Define which Nodes the Pods are scheduled on.
+	// NodeSelector Define which Nodes the Pods are scheduled on.
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
-	// Define resources requests and limits for single Pods.
+	// Resources container resource request and limits,
+	// https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
 	Resources v1.ResourceRequirements `json:"resources,omitempty"`
-	// If specified, the pod's scheduling constraints.
+	// Affinity If specified, the pod's scheduling constraints.
 	Affinity *v1.Affinity `json:"affinity,omitempty"`
-	// If specified, the pod's tolerations.
+	// Tolerations If specified, the pod's tolerations.
 	// +listType=set
 	Tolerations []v1.Toleration `json:"tolerations,omitempty"`
 	// SecurityContext holds pod-level security attributes and common container settings.
@@ -137,7 +137,7 @@ type AlertmanagerSpec struct {
 	// at any time without notice.
 	// +listType=set
 	InitContainers []v1.Container `json:"initContainers,omitempty"`
-	// Priority class assigned to the Pods
+	// PriorityClassName class assigned to the Pods
 	PriorityClassName string `json:"priorityClassName,omitempty"`
 	// AdditionalPeers allows injecting a set of additional Alertmanagers to peer with to form a highly available cluster.
 	// +listType=set
@@ -146,7 +146,7 @@ type AlertmanagerSpec struct {
 	// Needs to be provided for non RFC1918 [1] (public) addresses.
 	// [1] RFC1918: https://tools.ietf.org/html/rfc1918
 	ClusterAdvertiseAddress string `json:"clusterAdvertiseAddress,omitempty"`
-	// Port name used for the pods and governing service.
+	// PortName used for the pods and governing service.
 	// This defaults to web
 	PortName string `json:"portName,omitempty"`
 }
@@ -170,19 +170,19 @@ type AlertmanagerList struct {
 // https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
 // +k8s:openapi-gen=true
 type AlertmanagerStatus struct {
-	// Represents whether any actions on the underlaying managed objects are
+	// Paused Represents whether any actions on the underlaying managed objects are
 	// being performed. Only delete actions will be performed.
 	Paused bool `json:"paused"`
-	// Total number of non-terminated pods targeted by this Alertmanager
+	// Replicas Total number of non-terminated pods targeted by this Alertmanager
 	// cluster (their labels match the selector).
 	Replicas int32 `json:"replicas"`
-	// Total number of non-terminated pods targeted by this Alertmanager
+	// UpdatedReplicas Total number of non-terminated pods targeted by this Alertmanager
 	// cluster that have the desired version spec.
 	UpdatedReplicas int32 `json:"updatedReplicas"`
-	// Total number of available pods (ready for at least minReadySeconds)
+	// AvailableReplicas Total number of available pods (ready for at least minReadySeconds)
 	// targeted by this Alertmanager cluster.
 	AvailableReplicas int32 `json:"availableReplicas"`
-	// Total number of unavailable pods targeted by this Alertmanager cluster.
+	// UnavailableReplicas Total number of unavailable pods targeted by this Alertmanager cluster.
 	UnavailableReplicas int32 `json:"unavailableReplicas"`
 }
 

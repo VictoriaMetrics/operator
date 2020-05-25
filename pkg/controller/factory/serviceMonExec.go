@@ -62,7 +62,8 @@ func CreateOrUpdateConfigurationSecret(p *victoriametricsv1beta1.VmAgent, rclien
 		return err
 	}
 
-	basicAuthSecrets, err := loadBasicAuthSecrets(smons, p.Spec.RemoteWrite, p.Spec.APIServerConfig, SecretsInPromNS, kclient)
+	basicAuthSecrets, err := loadBasicAuthSecrets(smons, p.Spec.APIServerConfig, SecretsInPromNS, kclient)
+
 	if err != nil {
 		return err
 	}
@@ -78,7 +79,7 @@ func CreateOrUpdateConfigurationSecret(p *victoriametricsv1beta1.VmAgent, rclien
 	}
 
 	// Update secret based on the most recent configuration.
-	conf, err := generateConfig(
+	generatedConfig, err := generateConfig(
 		p,
 		smons,
 		pmons,
@@ -97,7 +98,7 @@ func CreateOrUpdateConfigurationSecret(p *victoriametricsv1beta1.VmAgent, rclien
 
 	// Compress config to avoid 1mb secret limit for a while
 	var buf bytes.Buffer
-	if err = gzipConfig(&buf, conf); err != nil {
+	if err = gzipConfig(&buf, generatedConfig); err != nil {
 		return errors.Wrap(err, "couldnt gzip config")
 	}
 	s.Data[configFilename] = buf.Bytes()
@@ -135,11 +136,9 @@ func SelectServiceMonitors(p *victoriametricsv1beta1.VmAgent, rclient client.Cli
 
 	namespaces := []string{}
 
-	//what can we do?
 	//list namespaces matched by  nameselector
-	//for each namespace apply list with  selector...
+	//for each namespace apply list with  selector
 	//combine result
-
 	if p.Spec.ServiceMonitorNamespaceSelector == nil {
 		namespaces = append(namespaces, p.Namespace)
 	} else if p.Spec.ServiceMonitorNamespaceSelector.MatchExpressions == nil && p.Spec.ServiceMonitorNamespaceSelector.MatchLabels == nil {
@@ -155,9 +154,8 @@ func SelectServiceMonitors(p *victoriametricsv1beta1.VmAgent, rclient client.Cli
 		}
 	}
 
-	//here we use trick
 	//if namespaces isnt nil, then namespaceselector is defined
-	//but monitor maybe be nil
+	//but monitorselector maybe be nil
 	if namespaces != nil && p.Spec.ServiceMonitorSelector == nil {
 		p.Spec.ServiceMonitorSelector = &metav1.LabelSelector{}
 	}
@@ -231,9 +229,8 @@ func SelectPodMonitors(p *victoriametricsv1beta1.VmAgent, rclient client.Client,
 
 	namespaces := []string{}
 
-	//what can we do?
 	//list namespaces matched by  nameselector
-	//for each namespace apply list with  selector...
+	//for each namespace apply list with  selector
 	//combine result
 
 	if p.Spec.PodMonitorNamespaceSelector == nil {
@@ -251,9 +248,8 @@ func SelectPodMonitors(p *victoriametricsv1beta1.VmAgent, rclient client.Client,
 		}
 	}
 
-	//here we use trick
 	//if namespaces isnt nil, then namespaceselector is defined
-	//but monitor maybe be nil
+	//but monitorselector maybe be nil
 	if namespaces != nil && p.Spec.PodMonitorSelector == nil {
 		p.Spec.PodMonitorSelector = &metav1.LabelSelector{}
 	}
@@ -307,7 +303,6 @@ func SelectPodMonitors(p *victoriametricsv1beta1.VmAgent, rclient client.Client,
 
 func loadBasicAuthSecrets(
 	mons map[string]*monitoringv1.ServiceMonitor,
-	remoteWrites []monitoringv1.RemoteWriteSpec,
 	apiserverConfig *monitoringv1.APIServerConfig,
 	SecretsInPromNS *v1.SecretList,
 	kclient kubernetes.Interface,
@@ -325,16 +320,6 @@ func loadBasicAuthSecrets(
 				secrets[fmt.Sprintf("serviceMonitor/%s/%s/%d", mon.Namespace, mon.Name, i)] = credentials
 			}
 
-		}
-	}
-
-	for i, remote := range remoteWrites {
-		if remote.BasicAuth != nil {
-			credentials, err := loadBasicAuthSecret(remote.BasicAuth, SecretsInPromNS)
-			if err != nil {
-				return nil, fmt.Errorf("could not generate basicAuth for remote_write config %d. %s", i, err)
-			}
-			secrets[fmt.Sprintf("remoteWrite/%d", i)] = credentials
 		}
 	}
 

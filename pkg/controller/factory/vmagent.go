@@ -23,7 +23,7 @@ import (
 
 const (
 	vmAgentConfigsDir  = "/etc/vmagent/configs"
-	vmAgentSecretDir   = "/etc/vmagent/secret"
+	vmAgentSecretDir   = "/etc/vmagent/secrets"
 	vmAgentConfDir     = "/etc/vmagent/config"
 	vmAgentConOfOutDir = "/etc/vmagent/config_out"
 )
@@ -167,7 +167,6 @@ func newDeployForVmAgent(cr *victoriametricsv1beta1.VmAgent, c *conf.BaseOperato
 	if cr.Spec.Port == "" {
 		cr.Spec.Port = c.VmAgentDefault.Port
 	}
-	//todo default values
 	if cr.Spec.Resources.Requests == nil {
 		cr.Spec.Resources.Requests = corev1.ResourceList{}
 	}
@@ -221,10 +220,8 @@ func newDeployForVmAgent(cr *victoriametricsv1beta1.VmAgent, c *conf.BaseOperato
 		Spec: appsv1.DeploymentSpec{
 			Replicas: cr.Spec.Replicas,
 			Selector: &metav1.LabelSelector{MatchLabels: selectorLabelsVmAgent(cr)},
-			//TODO change it
 			Strategy: appsv1.DeploymentStrategy{
-				Type: appsv1.RollingUpdateDeploymentStrategyType,
-				//TODO add defaults
+				Type:          appsv1.RollingUpdateDeploymentStrategyType,
 				RollingUpdate: &appsv1.RollingUpdateDeployment{},
 			},
 			Template: *podSpec,
@@ -253,6 +250,7 @@ func makeSpecForVmAgent(cr *victoriametricsv1beta1.VmAgent, c *conf.BaseOperator
 	}
 
 	var envs []corev1.EnvVar
+
 	envs = append(envs, cr.Spec.ExtraEnvs...)
 
 	var ports []corev1.ContainerPort
@@ -266,7 +264,7 @@ func makeSpecForVmAgent(cr *victoriametricsv1beta1.VmAgent, c *conf.BaseOperator
 				},
 			},
 		},
-		//TODO do we need it ?
+		//TODO fix it later
 		//{
 		//	Name: "tls-assets",
 		//	VolumeSource: corev1.VolumeSource{
@@ -289,7 +287,7 @@ func makeSpecForVmAgent(cr *victoriametricsv1beta1.VmAgent, c *conf.BaseOperator
 			ReadOnly:  true,
 			MountPath: vmAgentConOfOutDir,
 		},
-		//TODO need it ?
+		//TODO fix it later
 		//{
 		//	Name:      "tls-assets",
 		//	ReadOnly:  true,

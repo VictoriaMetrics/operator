@@ -75,7 +75,4 @@ type EmbeddedPersistentVolumeClaim struct {
 type RemoteSpec struct {
 	// URL of the endpoint to send samples to.
 	URL string `json:"url"`
-	// Timeout for requests to the remote write endpoint.
-	// +optional
-	RemoteTimeout string `json:"remoteTimeout,omitempty"`
 }

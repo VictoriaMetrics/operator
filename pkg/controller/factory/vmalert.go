@@ -144,7 +144,6 @@ func CreateOrUpdateVmAlert(cr *victoriametricsv1beta1.VmAlert, rclient client.Cl
 func newDeployForVmAlert(cr *victoriametricsv1beta1.VmAlert, c *conf.BaseOperatorConf, ruleConfigMapNames []string) (*appsv1.Deployment, error) {
 
 	cr = cr.DeepCopy()
-	//todo move inject default into separate func
 	if cr.Spec.Image == nil {
 		cr.Spec.Image = &c.VmAlertDefault.Image
 	}
@@ -226,7 +225,7 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VmAlert, c *conf.BaseOperatorConf
 
 	args := []string{
 		fmt.Sprintf("-notifier.url=%s", cr.Spec.NotifierURL),
-		fmt.Sprintf("-datasource.url=%s", cr.Spec.DataSource.URL),
+		fmt.Sprintf("-datasource.url=%s", cr.Spec.Datasource.URL),
 	}
 	if cr.Spec.RemoteWrite.URL != "" {
 		//this param cannot be used until v1.35.5 vm release with flag breaking changes

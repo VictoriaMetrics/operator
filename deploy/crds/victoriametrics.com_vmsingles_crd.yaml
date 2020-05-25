@@ -32,7 +32,7 @@ spec:
           description: VmSingleSpec defines the desired state of VmSingle
           properties:
             affinity:
-              description: If specified, the pod's scheduling constraints.
+              description: Affinity If specified, the pod's scheduling constraints.
               properties:
                 nodeAffinity:
                   description: Describes node affinity scheduling rules for the pod.
@@ -605,15 +605,14 @@ spec:
               type: object
             configMaps:
               description: ConfigMaps is a list of ConfigMaps in the same namespace
-                as the vmsingle object, which shall be mounted into the vmsingle Pods.
+                as the VmSingle object, which shall be mounted into the VmSingle Pods.
               items:
                 type: string
               type: array
               x-kubernetes-list-type: set
             containers:
-              description: Containers allows injecting additional containers. This
-                is meant to allow adding an authentication proxy to an vmSingle pod
-                or backup
+              description: Containers property allows to inject additions sidecars.
+                It can be useful for proxies, backup, etc.
               items:
                 description: A single application container that you want to run within
                   a pod.
@@ -1665,14 +1664,14 @@ spec:
               type: array
               x-kubernetes-list-type: set
             extraArgs:
-              description: args that will be passed to vmsingle binary -remoteWrite.tmpDataPath=/tmp,-remoteWrite.maxBlockSize=33554432
-                and other
+              description: ExtraArgs that will be passed to  VmSingle pod for example
+                -remoteWrite.tmpDataPath=/tmp
               items:
                 type: string
               type: array
               x-kubernetes-list-type: set
             extraEnvs:
-              description: env vars that will be added to vm single
+              description: ExtraEnvs that will be added to VmSingle pod
               items:
                 description: EnvVar represents an environment variable present in
                   a Container.
@@ -1775,12 +1774,12 @@ spec:
               type: array
               x-kubernetes-list-type: set
             image:
-              description: base image for vmSingle
+              description: Image victoria metrics single base image
               type: string
             imagePullSecrets:
-              description: An optional list of references to secrets in the same namespace
-                to use for pulling prometheus and VmSingle images from registries
-                see http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod
+              description: ImagePullSecrets An optional list of references to secrets
+                in the same namespace to use for pulling prometheus and VmSingle images
+                from registries see http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod
               items:
                 description: LocalObjectReference contains enough information to let
                   you locate the referenced object inside the same namespace.
@@ -2853,13 +2852,13 @@ spec:
               type: array
               x-kubernetes-list-type: set
             logFormat:
-              description: Log format for VmSingle to be configured with.
+              description: LogFormat for VmSingle to be configured with.
               enum:
               - default
               - json
               type: string
             logLevel:
-              description: Log level for VmSingle to be configured with.
+              description: LogLevel for victoria metrics single to be configured with.
               enum:
               - INFO
               - WARN
@@ -2882,8 +2881,8 @@ spec:
                 labels:
                   additionalProperties:
                     type: string
-                  description: 'Map of string keys and values that can be used to
-                    organize and categorize (scope and select) objects. May match
+                  description: 'Labels Map of string keys and values that can be used
+                    to organize and categorize (scope and select) objects. May match
                     selectors of replication controllers and services. More info:
                     http://kubernetes.io/docs/user-guide/labels'
                   type: object
@@ -2896,19 +2895,24 @@ spec:
                   type: string
               type: object
             port:
-              description: listen Port for vmSingle
+              description: Port listen port
               type: string
             priorityClassName:
-              description: Priority class assigned to the Pods
+              description: PriorityClassName assigned to the Pods
               type: string
+            removePvcAfterDelete:
+              description: RemovePvcAfterDelete - if true, controller adds ownership
+                to pvc and after VmSingle objest deletion - pvc will be garbage collected
+                by controller manager
+              type: boolean
             replicas:
-              description: Size is the expected size of the vmsingle it can be 0 or
-                1 if you need more - use vm cluster
+              description: Replicas is the expected size of the VmSingle it can be
+                0 or 1 if you need more - use vm cluster
               format: int32
               type: integer
             resources:
-              description: Define resources requests and limits for single Pods. if
-                not defined default resources from operator config will be used
+              description: Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+                if not defined default resources from operator config will be used
               properties:
                 limits:
                   additionalProperties:
@@ -2934,7 +2938,7 @@ spec:
                   type: object
               type: object
             retentionPeriod:
-              description: Retention in months
+              description: RetentionPeriod in months
               pattern: '[1-9]+'
               type: string
             secrets:
@@ -3064,12 +3068,11 @@ spec:
               type: object
             serviceAccountName:
               description: ServiceAccountName is the name of the ServiceAccount to
-                use to run the vmSingle Pods.
+                use to run the VmSingle Pods.
               type: string
             storage:
               description: Storage is the definition of how storage will be used by
-                the vm single can be empty for emptyDir instances. by default it`s
-                empty dir
+                the VmSingle by default it`s empty dir
               properties:
                 accessModes:
                   description: 'AccessModes contains the desired access modes the
@@ -3190,7 +3193,7 @@ spec:
                   type: string
               type: object
             tolerations:
-              description: If specified, the pod's tolerations.
+              description: Tolerations If specified, the pod's tolerations.
               items:
                 description: The pod this Toleration is attached to tolerates any
                   taint that matches the triple <key,value,effect> using the matching
@@ -3231,12 +3234,12 @@ spec:
               type: array
               x-kubernetes-list-type: set
             version:
-              description: Version of vmSingle
+              description: Version of victoria metrics single
               type: string
             volumeMounts:
               description: VolumeMounts allows configuration of additional VolumeMounts
                 on the output Deployment definition. VolumeMounts specified will be
-                appended to other VolumeMounts in the vmsignle container, that are
+                appended to other VolumeMounts in the VmSingle container, that are
                 generated as a result of StorageSpec objects.
               items:
                 description: VolumeMount describes a mounting of a Volume within a
@@ -4473,23 +4476,23 @@ spec:
           description: VmSingleStatus defines the observed state of VmSingle
           properties:
             availableReplicas:
-              description: Total number of available pods (ready for at least minReadySeconds)
-                targeted by this VmAlert cluster.
+              description: AvailableReplicas Total number of available pods (ready
+                for at least minReadySeconds) targeted by this VmAlert cluster.
               format: int32
               type: integer
             replicas:
-              description: Total number of non-terminated pods targeted by this VmAlert
-                cluster (their labels match the selector).
+              description: Replicas Total number of non-terminated pods targeted by
+                this VmAlert cluster (their labels match the selector).
               format: int32
               type: integer
             unavailableReplicas:
-              description: Total number of unavailable pods targeted by this VmAlert
-                cluster.
+              description: UnavailableReplicas Total number of unavailable pods targeted
+                by this VmAlert cluster.
               format: int32
               type: integer
             updatedReplicas:
-              description: Total number of non-terminated pods targeted by this VmAlert
-                cluster that have the desired version spec.
+              description: UpdatedReplicas Total number of non-terminated pods targeted
+                by this VmAlert cluster that have the desired version spec.
               format: int32
               type: integer
           required:

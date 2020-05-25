@@ -15,13 +15,14 @@ type VmAgentSpec struct {
 	// PodMetadata configures Labels and Annotations which are propagated to the vmagent pods.
 	// +optional
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
-	//base image, if not specified - use default from operator config
+	// Image - victoria metrics agent base image
+	// if not specified - use default from operator config
 	// +optional
 	Image *string `json:"image,omitempty"`
-	// Version/tag.
+	// Version for VmAgent.
 	// +optional
 	Version string `json:"version,omitempty"`
-	// An optional list of references to secrets in the same namespace
+	// ImagePullSecrets optional list of references to secrets in the same namespace
 	// to use for pulling prometheus and vmagent images from registries
 	// see http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod
 	// +optional
@@ -39,19 +40,19 @@ type VmAgentSpec struct {
 	// +optional
 	// +listType=set
 	ConfigMaps []string `json:"configMaps,omitempty"`
-	// Log level for vmagent to be configured with.
+	// LogLevel for VmAgent to be configured with.
 	//INFO, WARN, ERROR, FATAL, PANIC
 	// +optional
 	// +kubebuilder:validation:Enum=INFO;WARN;ERROR;FATAL;PANIC
 	LogLevel string `json:"logLevel,omitempty"`
-	// Log format for vmagent to be configured with.
+	// LogFormat for VmAgent to be configured with.
 	// +optional
 	// +kubebuilder:validation:Enum=default;json
 	LogFormat string `json:"logFormat,omitempty"`
-	// Size is the expected size of the vmagent cluster. The controller will
+	// Replicas is the expected size of the VmAgent cluster. The controller will
 	// eventually make the size of the running cluster equal to the expected
 	// size.
-	// NOTE enable vm deduplication for replica usage
+	// NOTE enable VmSingle deduplication for replica usage
 	// +kubebuilder:validation:Required
 	Replicas *int32 `json:"replicas"`
 	// Volumes allows configuration of additional volumes on the output deploy definition.
@@ -66,14 +67,14 @@ type VmAgentSpec struct {
 	// +optional
 	// +listType=set
 	VolumeMounts []v1.VolumeMount `json:"volumeMounts,omitempty"`
-	// Define resources requests and limits for.
+	// Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
 	//if not specified - default setting will be used
 	// +optional
 	Resources v1.ResourceRequirements `json:"resources,omitempty"`
-	// If specified, the pod's scheduling constraints.
+	// Affinity If specified, the pod's scheduling constraints.
 	// +optional
 	Affinity *v1.Affinity `json:"affinity,omitempty"`
-	// If specified, the pod's tolerations.
+	// Tolerations If specified, the pod's tolerations.
 	// +optional
 	// +listType=set
 	Tolerations []v1.Toleration `json:"tolerations,omitempty"`
@@ -82,11 +83,10 @@ type VmAgentSpec struct {
 	// +optional
 	SecurityContext *v1.PodSecurityContext `json:"securityContext,omitempty"`
 	// ServiceAccountName is the name of the ServiceAccount to use to run the
-	// vmagent Pods.
+	// VmAgent Pods.
 	// required
 	ServiceAccountName string `json:"serviceAccountName"`
-	// Containers allows injecting additional containers. This is meant to
-	// allow adding an authentication proxy to an vmagent pod.
+	// Containers property allows to inject additions sidecars. It can be useful for proxies, backup, etc.
 	// +optional
 	// +listType=set
 	Containers []v1.Container `json:"containers,omitempty"`
@@ -99,16 +99,16 @@ type VmAgentSpec struct {
 	// +optional
 	// +listType=set
 	InitContainers []v1.Container `json:"initContainers,omitempty"`
-	// Priority class assigned to the Pods
+	// PriorityClassName assigned to the Pods
 	// +optional
 	PriorityClassName string `json:"priorityClassName,omitempty"`
-	// how often scrape by default
-	// +kubebuilder:validation:Pattern:="[0-9]+(ms|s|m|h)"
+	// ScrapeInterval defines how often scrape targets by default
 	// +optional
+	// +kubebuilder:validation:Pattern:="[0-9]+(ms|s|m|h)"
 	ScrapeInterval string `json:"scrapeInterval,omitempty"`
 
 	// APIServerConfig allows specifying a host and auth methods to access apiserver.
-	// If left empty, vmagent is assumed to run inside of the cluster
+	// If left empty, VmAgent is assumed to run inside of the cluster
 	// and will discover API servers automatically and use the pod's CA certificate
 	// and bearer token file at /var/run/secrets/kubernetes.io/serviceaccount/.
 	// +optional
@@ -130,67 +130,67 @@ type VmAgentSpec struct {
 	// being created.
 	// +optional
 	EnforcedNamespaceLabel string `json:"enforcedNamespaceLabel,omitempty"`
-	// Name of vmAgent external label used to denote vmAgent instance
+	// VmAgentExternalLabelName Name of vmAgent external label used to denote vmAgent instance
 	// name. Defaults to the value of `prometheus`. External label will
 	// _not_ be added when value is set to empty string (`""`).
 	// +optional
 	VmAgentExternalLabelName *string `json:"vmAgentExternalLabelName,omitempty"`
-	// Name of vmagent external label used to denote replica name.
+	// ReplicaExternalLabelName Name of vmagent external label used to denote replica name.
 	// Defaults to the value of `prometheus_replica`. External label will
 	// _not_ be added when value is set to empty string (`""`).
 	// +optional
 	ReplicaExternalLabelName *string `json:"replicaExternalLabelName,omitempty"`
-	//in fact only URL is usefull, atm other params is ignored
-	// The labels to add to any time series or alerts when communicating with
+
+	// ExternalLabels The labels to add to any time series or alerts when communicating with
 	// external systems (federation, remote storage, etc).
 	// +optional
 	ExternalLabels map[string]string `json:"externalLabels,omitempty"`
-	//list of victoriametrics /some other remote write system
-	//for vm it must looks like: http://victoria-metrics-single:8429/api/v1/write
-	//or for cluster different url
-	//https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/app/vmagent#splitting-data-streams-among-multiple-systems
+	// RemoteWrite list of victoria metrics /some other remote write system
+	// for vm it must looks like: http://victoria-metrics-single:8429/api/v1/write
+	// or for cluster different url
+	// https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/app/vmagent#splitting-data-streams-among-multiple-systems
 	// +optional
 	// +listType=set
 	RemoteWrite []RemoteSpec `json:"remoteWrite"`
-	// ServiceMonitors to be selected for target discovery. *Deprecated:* if
+	// ServiceMonitorSelector defines ServiceMonitors to be selected for target discovery. if
 	// neither this nor podMonitorSelector are specified, configuration is
 	// unmanaged.
 	// +optional
 	ServiceMonitorSelector *metav1.LabelSelector `json:"serviceMonitorSelector,omitempty"`
-	// Namespaces to be selected for ServiceMonitor discovery. If nil, only
+	// ServiceMonitorNamespaceSelector Namespaces to be selected for ServiceMonitor discovery. If nil, only
 	// check own namespace.
 	// +optional
 	ServiceMonitorNamespaceSelector *metav1.LabelSelector `json:"serviceMonitorNamespaceSelector,omitempty"`
-	// *Experimental* PodMonitors to be selected for target discovery.
-	// *Deprecated:* if neither this nor serviceMonitorSelector are specified,
+	// PodMonitorSelector defines PodMonitors to be selected for target discovery.
+	// if neither this nor serviceMonitorSelector are specified,
 	// configuration is unmanaged.
 	// +optional
 	PodMonitorSelector *metav1.LabelSelector `json:"podMonitorSelector,omitempty"`
-	// Namespaces to be selected for PodMonitor discovery. If nil, only
+	// PodMonitorNamespaceSelector defines Namespaces to be selected for PodMonitor discovery. If nil, only
 	// check own namespace.
 	// +optional
 	PodMonitorNamespaceSelector *metav1.LabelSelector `json:"podMonitorNamespaceSelector,omitempty"`
-	// As scrape configs are appended, the user is responsible to make sure it
+	// AdditionalScrapeConfigs As scrape configs are appended, the user is responsible to make sure it
 	// is valid. Note that using this feature may expose the possibility to
-	// break upgrades of Prometheus/vmagent. It is advised to review Prometheus/vmagent release
+	// break upgrades of VmAgent. It is advised to review VmAgent release
 	// notes to ensure that no incompatible scrape configs are going to break
-	// Prometheus/vmagent after the upgrade.
+	// VmAgent after the upgrade.
 	// +optional
 	AdditionalScrapeConfigs *v1.SecretKeySelector `json:"additionalScrapeConfigs,omitempty"`
 	// ArbitraryFSAccessThroughSMs configures whether configuration
 	// based on a service monitor can access arbitrary files on the file system
-	// of the Prometheus container e.g. bearer token files.
+	// of the VmAgent container e.g. bearer token files.
 	// +optional
 	ArbitraryFSAccessThroughSMs monitoringv1.ArbitraryFSAccessThroughSMsConfig `json:"arbitraryFSAccessThroughSMs,omitempty"`
-	//listen Port for vmagent
+	// Port listen address
 	// +optional
 	Port string `json:"port,omitempty"`
-	//args for vmagent binary
-	//format -flag=value for each arg
+	// ExtraArgs that will be passed to  VmAlert pod
+	// for example -remoteWrite.tmpDataPath=/tmp
 	// +optional
 	// +listType=set
 	ExtraArgs []string `json:"extraArgs,omitempty"`
-	//env vars that will be added to vm single
+	// ExtraEnvs that will be added to VmAlert pod
 	// +optional
 	// +listType=set
 	ExtraEnvs []v1.EnvVar `json:"extraEnvs,omitempty"`
@@ -199,16 +199,16 @@ type VmAgentSpec struct {
 // VmAgentStatus defines the observed state of VmAgent
 // +k8s:openapi-gen=true
 type VmAgentStatus struct {
-	// Total number of non-terminated pods targeted by this VmAlert
+	// Replicas Total number of non-terminated pods targeted by this VmAlert
 	// cluster (their labels match the selector).
 	Replicas int32 `json:"replicas"`
-	// Total number of non-terminated pods targeted by this VmAlert
+	// UpdatedReplicas Total number of non-terminated pods targeted by this VmAlert
 	// cluster that have the desired version spec.
 	UpdatedReplicas int32 `json:"updatedReplicas"`
-	// Total number of available pods (ready for at least minReadySeconds)
+	// AvailableReplicas Total number of available pods (ready for at least minReadySeconds)
 	// targeted by this VmAlert cluster.
 	AvailableReplicas int32 `json:"availableReplicas"`
-	// Total number of unavailable pods targeted by this VmAlert cluster.
+	// UnavailableReplicas Total number of unavailable pods targeted by this VmAlert cluster.
 	UnavailableReplicas int32 `json:"unavailableReplicas"`
 }
 

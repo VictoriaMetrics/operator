@@ -33,7 +33,7 @@ spec:
           properties:
             aPIServerConfig:
               description: APIServerConfig allows specifying a host and auth methods
-                to access apiserver. If left empty, vmagent is assumed to run inside
+                to access apiserver. If left empty, VmAgent is assumed to run inside
                 of the cluster and will discover API servers automatically and use
                 the pod's CA certificate and bearer token file at /var/run/secrets/kubernetes.io/serviceaccount/.
               properties:
@@ -213,11 +213,11 @@ spec:
               - host
               type: object
             additionalScrapeConfigs:
-              description: As scrape configs are appended, the user is responsible
-                to make sure it is valid. Note that using this feature may expose
-                the possibility to break upgrades of Prometheus/vmagent. It is advised
-                to review Prometheus/vmagent release notes to ensure that no incompatible
-                scrape configs are going to break Prometheus/vmagent after the upgrade.
+              description: AdditionalScrapeConfigs As scrape configs are appended,
+                the user is responsible to make sure it is valid. Note that using
+                this feature may expose the possibility to break upgrades of VmAgent.
+                It is advised to review VmAgent release notes to ensure that no incompatible
+                scrape configs are going to break VmAgent after the upgrade.
               properties:
                 key:
                   description: The key of the secret to select from.  Must be a valid
@@ -234,7 +234,7 @@ spec:
               - key
               type: object
             affinity:
-              description: If specified, the pod's scheduling constraints.
+              description: Affinity If specified, the pod's scheduling constraints.
               properties:
                 nodeAffinity:
                   description: Describes node affinity scheduling rules for the pod.
@@ -808,7 +808,7 @@ spec:
             arbitraryFSAccessThroughSMs:
               description: ArbitraryFSAccessThroughSMs configures whether configuration
                 based on a service monitor can access arbitrary files on the file
-                system of the Prometheus container e.g. bearer token files.
+                system of the VmAgent container e.g. bearer token files.
               properties:
                 deny:
                   type: boolean
@@ -822,8 +822,8 @@ spec:
               type: array
               x-kubernetes-list-type: set
             containers:
-              description: Containers allows injecting additional containers. This
-                is meant to allow adding an authentication proxy to an vmagent pod.
+              description: Containers property allows to inject additions sidecars.
+                It can be useful for proxies, backup, etc.
               items:
                 description: A single application container that you want to run within
                   a pod.
@@ -1882,18 +1882,19 @@ spec:
             externalLabels:
               additionalProperties:
                 type: string
-              description: in fact only URL is usefull, atm other params is ignored
-                The labels to add to any time series or alerts when communicating
-                with external systems (federation, remote storage, etc).
+              description: ExternalLabels The labels to add to any time series or
+                alerts when communicating with external systems (federation, remote
+                storage, etc).
               type: object
             extraArgs:
-              description: args for vmagent binary format -flag=value for each arg
+              description: ExtraArgs that will be passed to  VmAlert pod for example
+                -remoteWrite.tmpDataPath=/tmp
               items:
                 type: string
               type: array
               x-kubernetes-list-type: set
             extraEnvs:
-              description: env vars that will be added to vm single
+              description: ExtraEnvs that will be added to VmAlert pod
               items:
                 description: EnvVar represents an environment variable present in
                   a Container.
@@ -2002,13 +2003,13 @@ spec:
                 to false.
               type: boolean
             image:
-              description: base image, if not specified - use default from operator
-                config
+              description: Image - victoria metrics agent base image if not specified
+                - use default from operator config
               type: string
             imagePullSecrets:
-              description: An optional list of references to secrets in the same namespace
-                to use for pulling prometheus and vmagent images from registries see
-                http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod
+              description: ImagePullSecrets optional list of references to secrets
+                in the same namespace to use for pulling prometheus and vmagent images
+                from registries see http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod
               items:
                 description: LocalObjectReference contains enough information to let
                   you locate the referenced object inside the same namespace.
@@ -3081,13 +3082,13 @@ spec:
               type: array
               x-kubernetes-list-type: set
             logFormat:
-              description: Log format for vmagent to be configured with.
+              description: LogFormat for VmAgent to be configured with.
               enum:
               - default
               - json
               type: string
             logLevel:
-              description: Log level for vmagent to be configured with. INFO, WARN,
+              description: LogLevel for VmAgent to be configured with. INFO, WARN,
                 ERROR, FATAL, PANIC
               enum:
               - INFO
@@ -3120,8 +3121,8 @@ spec:
                 labels:
                   additionalProperties:
                     type: string
-                  description: 'Map of string keys and values that can be used to
-                    organize and categorize (scope and select) objects. May match
+                  description: 'Labels Map of string keys and values that can be used
+                    to organize and categorize (scope and select) objects. May match
                     selectors of replication controllers and services. More info:
                     http://kubernetes.io/docs/user-guide/labels'
                   type: object
@@ -3134,8 +3135,8 @@ spec:
                   type: string
               type: object
             podMonitorNamespaceSelector:
-              description: Namespaces to be selected for PodMonitor discovery. If
-                nil, only check own namespace.
+              description: PodMonitorNamespaceSelector defines Namespaces to be selected
+                for PodMonitor discovery. If nil, only check own namespace.
               properties:
                 matchExpressions:
                   description: matchExpressions is a list of label selector requirements.
@@ -3178,9 +3179,9 @@ spec:
                   type: object
               type: object
             podMonitorSelector:
-              description: '*Experimental* PodMonitors to be selected for target discovery.
-                *Deprecated:* if neither this nor serviceMonitorSelector are specified,
-                configuration is unmanaged.'
+              description: PodMonitorSelector defines PodMonitors to be selected for
+                target discovery. if neither this nor serviceMonitorSelector are specified,
+                configuration is unmanaged.
               properties:
                 matchExpressions:
                   description: matchExpressions is a list of label selector requirements.
@@ -3223,14 +3224,14 @@ spec:
                   type: object
               type: object
             port:
-              description: listen Port for vmagent
+              description: Port listen address
               type: string
             priorityClassName:
-              description: Priority class assigned to the Pods
+              description: PriorityClassName assigned to the Pods
               type: string
             remoteWrite:
-              description: 'list of victoriametrics /some other remote write system
-                for vm it must looks like: http://victoria-metrics-single:8429/api/v1/write
+              description: 'RemoteWrite list of victoria metrics /some other remote
+                write system for vm it must looks like: http://victoria-metrics-single:8429/api/v1/write
                 or for cluster different url https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/app/vmagent#splitting-data-streams-among-multiple-systems'
               items:
                 description: RemoteWriteSpec defines the remote_write configuration
@@ -3240,7 +3241,7 @@ spec:
                     description: Timeout for requests to the remote write endpoint.
                     type: string
                   url:
-                    description: The URL of the endpoint to send samples to.
+                    description: URL of the endpoint to send samples to.
                     type: string
                 required:
                 - url
@@ -3248,19 +3249,21 @@ spec:
               type: array
               x-kubernetes-list-type: set
             replicaExternalLabelName:
-              description: Name of vmagent external label used to denote replica name.
-                Defaults to the value of `prometheus_replica`. External label will
-                _not_ be added when value is set to empty string (`""`).
+              description: ReplicaExternalLabelName Name of vmagent external label
+                used to denote replica name. Defaults to the value of `prometheus_replica`.
+                External label will _not_ be added when value is set to empty string
+                (`""`).
               type: string
             replicas:
-              description: Size is the expected size of the vmagent cluster. The controller
-                will eventually make the size of the running cluster equal to the
-                expected size. NOTE enable vm deduplication for replica usage
+              description: Replicas is the expected size of the VmAgent cluster. The
+                controller will eventually make the size of the running cluster equal
+                to the expected size. NOTE enable VmSingle deduplication for replica
+                usage
               format: int32
               type: integer
             resources:
-              description: Define resources requests and limits for. if not specified
-                - default setting will be used
+              description: Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+                if not specified - default setting will be used
               properties:
                 limits:
                   additionalProperties:
@@ -3286,7 +3289,7 @@ spec:
                   type: object
               type: object
             scrapeInterval:
-              description: how often scrape by default
+              description: ScrapeInterval defines how often scrape targets by default
               pattern: '[0-9]+(ms|s|m|h)'
               type: string
             secrets:
@@ -3417,11 +3420,11 @@ spec:
               type: object
             serviceAccountName:
               description: ServiceAccountName is the name of the ServiceAccount to
-                use to run the vmagent Pods. required
+                use to run the VmAgent Pods. required
               type: string
             serviceMonitorNamespaceSelector:
-              description: Namespaces to be selected for ServiceMonitor discovery.
-                If nil, only check own namespace.
+              description: ServiceMonitorNamespaceSelector Namespaces to be selected
+                for ServiceMonitor discovery. If nil, only check own namespace.
               properties:
                 matchExpressions:
                   description: matchExpressions is a list of label selector requirements.
@@ -3464,9 +3467,9 @@ spec:
                   type: object
               type: object
             serviceMonitorSelector:
-              description: ServiceMonitors to be selected for target discovery. *Deprecated:*
-                if neither this nor podMonitorSelector are specified, configuration
-                is unmanaged.
+              description: ServiceMonitorSelector defines ServiceMonitors to be selected
+                for target discovery. if neither this nor podMonitorSelector are specified,
+                configuration is unmanaged.
               properties:
                 matchExpressions:
                   description: matchExpressions is a list of label selector requirements.
@@ -3509,7 +3512,7 @@ spec:
                   type: object
               type: object
             tolerations:
-              description: If specified, the pod's tolerations.
+              description: Tolerations If specified, the pod's tolerations.
               items:
                 description: The pod this Toleration is attached to tolerates any
                   taint that matches the triple <key,value,effect> using the matching
@@ -3550,12 +3553,13 @@ spec:
               type: array
               x-kubernetes-list-type: set
             version:
-              description: Version/tag.
+              description: Version for VmAgent.
               type: string
             vmAgentExternalLabelName:
-              description: Name of vmAgent external label used to denote vmAgent instance
-                name. Defaults to the value of `prometheus`. External label will _not_
-                be added when value is set to empty string (`""`).
+              description: VmAgentExternalLabelName Name of vmAgent external label
+                used to denote vmAgent instance name. Defaults to the value of `prometheus`.
+                External label will _not_ be added when value is set to empty string
+                (`""`).
               type: string
             volumeMounts:
               description: VolumeMounts allows configuration of additional VolumeMounts
@@ -4800,23 +4804,23 @@ spec:
           description: VmAgentStatus defines the observed state of VmAgent
           properties:
             availableReplicas:
-              description: Total number of available pods (ready for at least minReadySeconds)
-                targeted by this VmAlert cluster.
+              description: AvailableReplicas Total number of available pods (ready
+                for at least minReadySeconds) targeted by this VmAlert cluster.
               format: int32
               type: integer
             replicas:
-              description: Total number of non-terminated pods targeted by this VmAlert
-                cluster (their labels match the selector).
+              description: Replicas Total number of non-terminated pods targeted by
+                this VmAlert cluster (their labels match the selector).
               format: int32
               type: integer
             unavailableReplicas:
-              description: Total number of unavailable pods targeted by this VmAlert
-                cluster.
+              description: UnavailableReplicas Total number of unavailable pods targeted
+                by this VmAlert cluster.
               format: int32
               type: integer
             updatedReplicas:
-              description: Total number of non-terminated pods targeted by this VmAlert
-                cluster that have the desired version spec.
+              description: UpdatedReplicas Total number of non-terminated pods targeted
+                by this VmAlert cluster that have the desired version spec.
               format: int32
               type: integer
           required:

@@ -53,7 +53,7 @@ spec:
               type: array
               x-kubernetes-list-type: set
             affinity:
-              description: If specified, the pod's scheduling constraints.
+              description: Affinity If specified, the pod's scheduling constraints.
               properties:
                 nodeAffinity:
                   description: Describes node affinity scheduling rules for the pod.
@@ -625,7 +625,7 @@ spec:
                   type: object
               type: object
             baseImage:
-              description: Base image that is used to deploy pods, without tag.
+              description: BaseImage that is used to deploy pods, without tag.
               type: string
             clusterAdvertiseAddress:
               description: 'ClusterAdvertiseAddress is the explicit address to advertise
@@ -1701,7 +1701,7 @@ spec:
               type: array
               x-kubernetes-list-type: set
             externalURL:
-              description: The external URL the Alertmanager instances will be available
+              description: ExternalURL the Alertmanager instances will be available
                 under. This is necessary to generate correct URLs. This is necessary
                 if Alertmanager is not served from root of a DNS name.
               type: string
@@ -1712,9 +1712,9 @@ spec:
                 configured.
               type: string
             imagePullSecrets:
-              description: An optional list of references to secrets in the same namespace
-                to use for pulling prometheus and alertmanager images from registries
-                see http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod
+              description: ImagePullSecrets An optional list of references to secrets
+                in the same namespace to use for pulling prometheus and alertmanager
+                images from registries see http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod
               items:
                 description: LocalObjectReference contains enough information to let
                   you locate the referenced object inside the same namespace.
@@ -2792,7 +2792,7 @@ spec:
                 the Alertmanager UI, not the gossip communication.
               type: boolean
             logFormat:
-              description: Log format for Alertmanager to be configured with.
+              description: LogFormat for Alertmanager to be configured with.
               type: string
             logLevel:
               description: Log level for Alertmanager to be configured with.
@@ -2800,11 +2800,12 @@ spec:
             nodeSelector:
               additionalProperties:
                 type: string
-              description: Define which Nodes the Pods are scheduled on.
+              description: NodeSelector Define which Nodes the Pods are scheduled
+                on.
               type: object
             paused:
-              description: If set to true all actions on the underlaying managed objects
-                are not goint to be performed, except for delete actions.
+              description: Paused If set to true all actions on the underlaying managed
+                objects are not goint to be performed, except for delete actions.
               type: boolean
             podMetadata:
               description: PodMetadata configures Labels and Annotations which are
@@ -2821,8 +2822,8 @@ spec:
                 labels:
                   additionalProperties:
                     type: string
-                  description: 'Map of string keys and values that can be used to
-                    organize and categorize (scope and select) objects. May match
+                  description: 'Labels Map of string keys and values that can be used
+                    to organize and categorize (scope and select) objects. May match
                     selectors of replication controllers and services. More info:
                     http://kubernetes.io/docs/user-guide/labels'
                   type: object
@@ -2835,21 +2836,21 @@ spec:
                   type: string
               type: object
             portName:
-              description: Port name used for the pods and governing service. This
+              description: PortName used for the pods and governing service. This
                 defaults to web
               type: string
             priorityClassName:
-              description: Priority class assigned to the Pods
+              description: PriorityClassName class assigned to the Pods
               type: string
             replicas:
-              description: Size is the expected size of the alertmanager cluster.
-                The controller will eventually make the size of the running cluster
-                equal to the expected
+              description: Replicas Size is the expected size of the alertmanager
+                cluster. The controller will eventually make the size of the running
+                cluster equal to the expected
               format: int32
               minimum: 1
               type: integer
             resources:
-              description: Define resources requests and limits for single Pods.
+              description: Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
               properties:
                 limits:
                   additionalProperties:
@@ -2875,17 +2876,17 @@ spec:
                   type: object
               type: object
             retention:
-              description: Time duration Alertmanager shall retain data for. Default
-                is '120h', and must match the regular expression `[0-9]+(ms|s|m|h)`
+              description: Retention Time duration Alertmanager shall retain data
+                for. Default is '120h', and must match the regular expression `[0-9]+(ms|s|m|h)`
                 (milliseconds seconds minutes hours).
               pattern: '[0-9]+(ms|s|m|h)'
               type: string
             routePrefix:
-              description: The route prefix Alertmanager registers HTTP handlers for.
-                This is useful, if using ExternalURL and a proxy is rewriting HTTP
-                routes of a request, and the actual ExternalURL is still true, but
-                the server serves requests under a different route prefix. For example
-                for use with `kubectl proxy`.
+              description: RoutePrefix Alertmanager registers HTTP handlers for. This
+                is useful, if using ExternalURL and a proxy is rewriting HTTP routes
+                of a request, and the actual ExternalURL is still true, but the server
+                serves requests under a different route prefix. For example for use
+                with `kubectl proxy`.
               type: string
             secrets:
               description: Secrets is a list of Secrets in the same namespace as the
@@ -3087,10 +3088,10 @@ spec:
                         labels:
                           additionalProperties:
                             type: string
-                          description: 'Map of string keys and values that can be
-                            used to organize and categorize (scope and select) objects.
-                            May match selectors of replication controllers and services.
-                            More info: http://kubernetes.io/docs/user-guide/labels'
+                          description: 'Labels Map of string keys and values that
+                            can be used to organize and categorize (scope and select)
+                            objects. May match selectors of replication controllers
+                            and services. More info: http://kubernetes.io/docs/user-guide/labels'
                           type: object
                         name:
                           description: 'Name must be unique within a namespace. Is
@@ -3297,7 +3298,7 @@ spec:
                 to the value of `version`. Version is ignored if Tag is set.
               type: string
             tolerations:
-              description: If specified, the pod's tolerations.
+              description: Tolerations If specified, the pod's tolerations.
               items:
                 description: The pod this Toleration is attached to tolerates any
                   taint that matches the triple <key,value,effect> using the matching
@@ -4582,27 +4583,27 @@ spec:
             Operator API itself. More info: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#spec-and-status'
           properties:
             availableReplicas:
-              description: Total number of available pods (ready for at least minReadySeconds)
-                targeted by this Alertmanager cluster.
+              description: AvailableReplicas Total number of available pods (ready
+                for at least minReadySeconds) targeted by this Alertmanager cluster.
               format: int32
               type: integer
             paused:
-              description: Represents whether any actions on the underlaying managed
-                objects are being performed. Only delete actions will be performed.
+              description: Paused Represents whether any actions on the underlaying
+                managed objects are being performed. Only delete actions will be performed.
               type: boolean
             replicas:
-              description: Total number of non-terminated pods targeted by this Alertmanager
-                cluster (their labels match the selector).
+              description: Replicas Total number of non-terminated pods targeted by
+                this Alertmanager cluster (their labels match the selector).
               format: int32
               type: integer
             unavailableReplicas:
-              description: Total number of unavailable pods targeted by this Alertmanager
-                cluster.
+              description: UnavailableReplicas Total number of unavailable pods targeted
+                by this Alertmanager cluster.
               format: int32
               type: integer
             updatedReplicas:
-              description: Total number of non-terminated pods targeted by this Alertmanager
-                cluster that have the desired version spec.
+              description: UpdatedReplicas Total number of non-terminated pods targeted
+                by this Alertmanager cluster that have the desired version spec.
               format: int32
               type: integer
           required:

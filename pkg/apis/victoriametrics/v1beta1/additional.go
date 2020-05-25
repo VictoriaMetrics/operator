@@ -17,7 +17,7 @@ type EmbeddedObjectMetadata struct {
 	// +optional
 	Name string `json:"name,omitempty" protobuf:"bytes,1,opt,name=name"`
 
-	// Map of string keys and values that can be used to organize and categorize
+	// Labels Map of string keys and values that can be used to organize and categorize
 	// (scope and select) objects. May match selectors of replication controllers
 	// and services.
 	// More info: http://kubernetes.io/docs/user-guide/labels
@@ -73,16 +73,9 @@ type EmbeddedPersistentVolumeClaim struct {
 // RemoteWriteSpec defines the remote_write configuration for prometheus.
 // +k8s:openapi-gen=true
 type RemoteSpec struct {
-	// The URL of the endpoint to send samples to.
+	// URL of the endpoint to send samples to.
 	URL string `json:"url"`
 	// Timeout for requests to the remote write endpoint.
 	// +optional
 	RemoteTimeout string `json:"remoteTimeout,omitempty"`
-	//BasicAuth is no situable here
-	//user must use extraEnvs to get desirable behaviour
-	//vmagent expects only one variable with auth
-	//https://github.com/VictoriaMetrics/VictoriaMetrics/blob/master/app/vmagent/remotewrite/client.go#L33
-	//for variable REMOTEWRITE_BASICAUTH_USERNAME=user1,user2,user3
-	//auth must be specified at least once
-	//or we have to retrieve content and combine it to new secret...
 }

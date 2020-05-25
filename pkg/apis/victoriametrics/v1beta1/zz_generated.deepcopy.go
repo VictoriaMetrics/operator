@@ -674,12 +674,13 @@ func (in *VmAlertSpec) DeepCopyInto(out *VmAlertSpec) {
 		(*in).DeepCopyInto(*out)
 	}
 	out.RemoteWrite = in.RemoteWrite
+	out.RemoteRead = in.RemoteRead
 	if in.RulePath != nil {
 		in, out := &in.RulePath, &out.RulePath
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
-	out.DataSource = in.DataSource
+	out.Datasource = in.Datasource
 	if in.ExtraArgs != nil {
 		in, out := &in.ExtraArgs, &out.ExtraArgs
 		*out = make([]string, len(*in))
@@ -692,7 +693,6 @@ func (in *VmAlertSpec) DeepCopyInto(out *VmAlertSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	out.RemoteRead = in.RemoteRead
 	return
 }
 

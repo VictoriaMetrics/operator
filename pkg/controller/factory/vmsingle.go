@@ -62,7 +62,7 @@ func CreateVmStorage(cr *victoriametricsv1beta1.VmSingle, rclient client.Client,
 }
 
 func makeVmPvc(cr *victoriametricsv1beta1.VmSingle, c *conf.BaseOperatorConf) *corev1.PersistentVolumeClaim {
-	return &corev1.PersistentVolumeClaim{
+	pvcObject := &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        prefixedVmSingleName(cr.Name),
 			Namespace:   cr.Namespace,
@@ -71,6 +71,19 @@ func makeVmPvc(cr *victoriametricsv1beta1.VmSingle, c *conf.BaseOperatorConf) *c
 		},
 		Spec: *cr.Spec.Storage,
 	}
+	if cr.Spec.RemovePvcAfterDelete {
+		pvcObject.OwnerReferences = []metav1.OwnerReference{
+			{
+				APIVersion:         cr.APIVersion,
+				Kind:               cr.Kind,
+				Name:               cr.Name,
+				UID:                cr.UID,
+				Controller:         pointer.BoolPtr(true),
+				BlockOwnerDeletion: pointer.BoolPtr(true),
+			},
+		}
+	}
+	return pvcObject
 }
 
 func CreateOrUpdateVmSingle(cr *victoriametricsv1beta1.VmSingle, rclient client.Client, c *conf.BaseOperatorConf, l logr.Logger) (*appsv1.Deployment, error) {
@@ -122,7 +135,6 @@ func CreateOrUpdateVmSingle(cr *victoriametricsv1beta1.VmSingle, rclient client.
 func newDeployForVmSingle(cr *victoriametricsv1beta1.VmSingle, c *conf.BaseOperatorConf) (*appsv1.Deployment, error) {
 	cr = cr.DeepCopy()
 
-	//todo move to separate func
 	if cr.Spec.Image == nil {
 		cr.Spec.Image = &c.VmSingleDefault.Image
 	}

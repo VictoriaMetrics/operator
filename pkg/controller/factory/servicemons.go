@@ -125,39 +125,6 @@ func generateConfig(
 		Value: append(scrapeConfigs, additionalScrapeConfigsYaml...),
 	})
 
-	//var alertRelabelConfigs []yaml.MapSlice
-
-	// Use defaultReplicaExternalLabelName constant by default if field is missing.
-	// Do not add external label if field is set to empty string.
-	//replicaExternalLabelName := defaultReplicaExternalLabelName
-	//if p.Spec.ReplicaExternalLabelName != nil {
-	//	if *p.Spec.ReplicaExternalLabelName != "" {
-	//		replicaExternalLabelName = *p.Spec.ReplicaExternalLabelName
-	//	} else {
-	//		replicaExternalLabelName = ""
-	//	}
-	//}
-
-	//if replicaExternalLabelName != "" {
-	//	// Drop replica label, to make alerts from multiple Prometheus replicas alike
-	//	alertRelabelConfigs = append(alertRelabelConfigs, yaml.MapSlice{
-	//		{Key: "action", Value: "labeldrop"},
-	//		{Key: "regex", Value: regexp.QuoteMeta(replicaExternalLabelName)},
-	//	})
-	//}
-
-	//TODO check, probably need to move it to vmalert
-	//var additionalAlertRelabelConfigsYaml []yaml.MapSlice
-	//err = yaml.Unmarshal([]byte(additionalAlertRelabelConfigs), &additionalAlertRelabelConfigsYaml)
-	//if err != nil {
-	//	return nil, errors.Wrap(err, "unmarshalling additional alerting relabel configs failed")
-	//}
-
-	// vmagent not support it
-	//if len(p.Spec.RemoteWrite) > 0 {
-	//	cfg = append(cfg, generateRemoteWriteConfig(p.Spec.RemoteWrite, basicAuthSecrets))
-	//}
-
 	return yaml.Marshal(cfg)
 }
 
@@ -778,7 +745,6 @@ func generateRemoteWriteConfig(specs []monitoringv1.RemoteWriteSpec, basicAuthSe
 			cfg = append(cfg, yaml.MapItem{Key: "bearer_token_file", Value: spec.BearerTokenFile})
 		}
 
-		// TODO: If we want to support secret refs for remote write tls
 		// config as well, make sure to path the right namespace here.
 		cfg = addTLStoYaml(cfg, "", spec.TLSConfig)
 

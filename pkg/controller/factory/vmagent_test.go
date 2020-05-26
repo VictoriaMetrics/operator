@@ -1,4 +1,4 @@
-package factor
+package factory
 
 import (
 	"context"

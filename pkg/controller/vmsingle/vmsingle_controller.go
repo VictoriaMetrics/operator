@@ -145,8 +145,6 @@ func (r *ReconcileVmSingle) Reconcile(request reconcile.Request) (reconcile.Resu
 		}
 	}
 
-	//TODO rule for vmalert
-
 	reqLogger.Info("full reconciled")
 
 	return reconcile.Result{}, nil

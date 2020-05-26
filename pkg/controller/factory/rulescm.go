@@ -340,15 +340,15 @@ func bucketSize(bucket map[string]string) int {
 func makeRulesConfigMap(p *victoriametricsv1beta1.VmAlert, ruleFiles map[string]string) v1.ConfigMap {
 	boolTrue := true
 
-	labels := map[string]string{labelPrometheusName: p.Name}
+	ruleLabels := map[string]string{labelPrometheusName: p.Name}
 	for k, v := range managedByOperatorLabels {
-		labels[k] = v
+		ruleLabels[k] = v
 	}
 
 	return v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   prometheusRuleConfigMapName(p.Name),
-			Labels: labels,
+			Labels: ruleLabels,
 			OwnerReferences: []metav1.OwnerReference{
 				{
 					APIVersion:         p.APIVersion,

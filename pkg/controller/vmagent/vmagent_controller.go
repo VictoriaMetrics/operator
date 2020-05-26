@@ -153,7 +153,5 @@ func (r *ReconcileVmAgent) Reconcile(request reconcile.Request) (reconcile.Resul
 		}
 	}
 
-	//TODO create some rule for vmagent
-
 	return reconcile.Result{}, nil
 }

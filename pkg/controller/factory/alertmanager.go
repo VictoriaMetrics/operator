@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/VictoriaMetrics/operator/conf"
-	monitoringv1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1"
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
 	"github.com/blang/semver"
 	"github.com/coreos/prometheus-operator/pkg/k8sutil"
@@ -620,7 +619,7 @@ func makeStatefulSetSpec(a *victoriametricsv1beta1.Alertmanager, config *conf.Ba
 	}, nil
 }
 
-func MakeVolumeClaimTemplate(e monitoringv1.EmbeddedPersistentVolumeClaim) *v1.PersistentVolumeClaim {
+func MakeVolumeClaimTemplate(e victoriametricsv1beta1.EmbeddedPersistentVolumeClaim) *v1.PersistentVolumeClaim {
 	pvc := v1.PersistentVolumeClaim{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: e.APIVersion,
@@ -638,7 +637,7 @@ func MakeVolumeClaimTemplate(e monitoringv1.EmbeddedPersistentVolumeClaim) *v1.P
 	return &pvc
 }
 
-func subPathForStorage(s *monitoringv1.StorageSpec) string {
+func subPathForStorage(s *victoriametricsv1beta1.StorageSpec) string {
 	if s == nil {
 		return ""
 	}

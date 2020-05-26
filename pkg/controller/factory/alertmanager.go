@@ -76,6 +76,7 @@ func CreateOrUpdateAlertManager(cr *victoriametricsv1beta1.Alertmanager, rclient
 		l.Error(err, "cannot update alertmanager sts")
 		return nil, err
 	}
+
 	return newSts, nil
 }
 
@@ -705,3 +706,4 @@ func MergePatchContainers(base, patches []v1.Container) ([]v1.Container, error) 
 
 	return out, nil
 }
+

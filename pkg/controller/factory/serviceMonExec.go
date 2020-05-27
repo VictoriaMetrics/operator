@@ -457,7 +457,6 @@ func loadAdditionalScrapeConfigsSecret(additionalScrapeConfigs *v1.SecretKeySele
 	return nil, nil
 }
 
-
 func testForArbitraryFSAccess(e monitoringv1.Endpoint) error {
 	if e.BearerTokenFile != "" {
 		return errors.New("it accesses file system via bearer token file which Prometheus specification prohibits")

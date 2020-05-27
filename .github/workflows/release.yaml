@@ -19,18 +19,19 @@ jobs:
         run: |
           go get -u golang.org/x/lint/golint
           go get -u github.com/kisielk/errcheck
-          go get -u github.com/golangci/golangci-lint/cmd/golangci-lint
+          go get  github.com/golangci/golangci-lint/cmd/golangci-lint@v1.27.0
 
       - name: Check out code
         uses: actions/checkout@v2
 
       - name: build binary
+        env:
+          TAG:  ${{ github.event.release.tag_name }}
         run: |
           make lint
           make test
           make build-app
-          zip -r operator.zip vm-operator
-          zip -r bundle_crd.zip deploy/ README.md
+          sh scripts/bundle.sh
 
       - name: build docker
         uses: docker/build-push-action@v1

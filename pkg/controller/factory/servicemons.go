@@ -668,8 +668,6 @@ func generateServiceMonitorConfig(
 	return cfg
 }
 
-
-
 func addTLStoYaml(cfg yaml.MapSlice, namespace string, tls *monitoringv1.TLSConfig) yaml.MapSlice {
 	if tls != nil {
 		pathPrefix := path.Join(tlsAssetsDir, namespace)

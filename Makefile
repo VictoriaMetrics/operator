@@ -10,6 +10,7 @@ GOGET=$(GOCMD) get
 BINARY_NAME=vm-operator
 BINARY_UNIX=$(BINARY_NAME)_unix
 MAIN_DIR=github.com/VictoriaMetrics/operator/cmd/manager/
+DOC_GEN_DIR=github.com/VictoriaMetrics/operator/cmd/doc-gen/
 OPERATOR_BIN=operator-sdk
 DOCKER_REPO="quay.io/f41gh7/vm-operator"
 TAG="master"
@@ -32,6 +33,11 @@ gen:
 
 build-app: fmt
 	$(GOBUILD)  -o $(BINARY_NAME) -v $(MAIN_DIR)
+
+
+doc:
+	$(GOBUILD) -o doc-print $(DOC_GEN_DIR)
+	./doc-print api pkg/apis/victoriametrics/v1beta1/alertmanager_types.go pkg/apis/victoriametrics/v1beta1/vmagent_types.go pkg/apis/victoriametrics/v1beta1/additional.go pkg/apis/victoriametrics/v1beta1/vmalert_types.go pkg/apis/victoriametrics/v1beta1/vmsingle_types.go pkg/apis/monitoring/v1/prometheusrule_types.go pkg/apis/monitoring/v1/servicemonitor_types.go  > docs/api.MD
 
 
 fmt:

@@ -706,4 +706,3 @@ func MergePatchContainers(base, patches []v1.Container) ([]v1.Container, error) 
 
 	return out, nil
 }
-

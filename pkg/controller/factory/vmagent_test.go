@@ -105,8 +105,8 @@ func TestCreateOrUpdateVmAgent(t *testing.T) {
 
 func Test_addAddtionalScrapeConfigOwnership(t *testing.T) {
 	type args struct {
-		cr      *victoriametricsv1beta1.VmAgent
-		l       logr.Logger
+		cr *victoriametricsv1beta1.VmAgent
+		l  logr.Logger
 	}
 	tests := []struct {
 		name              string
@@ -129,8 +129,8 @@ func Test_addAddtionalScrapeConfigOwnership(t *testing.T) {
 			},
 			predefinedObjects: &corev1.SecretList{
 				Items: []corev1.Secret{
-					corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "secret-1", Namespace: "ns-1"}},
-					corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "secret-2", Namespace: "ns-2"}},
+					{ObjectMeta: metav1.ObjectMeta{Name: "secret-1", Namespace: "ns-1"}},
+					{ObjectMeta: metav1.ObjectMeta{Name: "secret-2", Namespace: "ns-2"}},
 				},
 			},
 		},
@@ -148,8 +148,8 @@ func Test_addAddtionalScrapeConfigOwnership(t *testing.T) {
 			},
 			predefinedObjects: &corev1.SecretList{
 				Items: []corev1.Secret{
-					corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "secret-1", Namespace: "ns-1"}},
-					corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "secret-2", Namespace: "ns-2"}},
+					{ObjectMeta: metav1.ObjectMeta{Name: "secret-1", Namespace: "ns-1"}},
+					{ObjectMeta: metav1.ObjectMeta{Name: "secret-2", Namespace: "ns-2"}},
 				},
 			},
 		},
@@ -168,14 +168,13 @@ func Test_addAddtionalScrapeConfigOwnership(t *testing.T) {
 			},
 			predefinedObjects: &corev1.SecretList{
 				Items: []corev1.Secret{
-					corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "secret-1", Namespace: "ns-1"}},
-					corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "secret-2", Namespace: "ns-2",OwnerReferences:[]metav1.OwnerReference{
-						metav1.OwnerReference{Name:"vmagent-2"},
+					{ObjectMeta: metav1.ObjectMeta{Name: "secret-1", Namespace: "ns-1"}},
+					{ObjectMeta: metav1.ObjectMeta{Name: "secret-2", Namespace: "ns-2", OwnerReferences: []metav1.OwnerReference{
+						{Name: "vmagent-2"},
 					}}},
 				},
 			},
 		},
-
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -205,7 +204,7 @@ func Test_addAddtionalScrapeConfigOwnership(t *testing.T) {
 						refFound = true
 					}
 				}
-				if ! refFound {
+				if !refFound {
 					t.Errorf("cannot find secret ownership for vmagent: %s,secret name: %v", tt.args.cr.Name, tt.args.cr.Spec.AdditionalScrapeConfigs.Name)
 				}
 			}

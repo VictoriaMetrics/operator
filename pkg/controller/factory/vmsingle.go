@@ -420,7 +420,7 @@ func newServiceVmSingle(cr *victoriametricsv1beta1.VmSingle, c *conf.BaseOperato
 	}
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        prefixedAgentName(cr.Name),
+			Name:        prefixedVmSingleName(cr.Name),
 			Namespace:   cr.Namespace,
 			Labels:      c.Labels.Merge(cr.ObjectMeta.Labels),
 			Annotations: cr.Annotations,

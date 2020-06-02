@@ -114,3 +114,10 @@ clean:
 .PHONY: run
 run: build
 	WATCH_NAMESPACE="" OPERATOR_NAME=vms ./$(BINARY_NAME)
+
+operator-k8s-init:
+	$(KUBECTL) create -f deploy/clusterrole.yaml && \
+	$(KUBECTL) create -f deploy/clusterrolebinding.yaml &&\
+	$(KUBECTL) create -f deploy/role.yaml && \
+	$(KUBECTL) create -f deploy/serviceaccount.yaml &&\
+	$(KUBECTL) create -f deploy/crds/

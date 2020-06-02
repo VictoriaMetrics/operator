@@ -1,0 +1,51 @@
+apiVersion: victoriametrics.com/v1beta1
+kind: VmCluster
+metadata:
+  name: example-vmcluster
+spec:
+  vmselect:
+    enabled: true
+    name: vmselect
+    image:
+      repository: victoriametrics/vmselect
+      tag: v1.35.6-cluster
+      pullPolicy: IfNotPresent
+    extraArgs: {}
+    replicaCount: 2
+    cacheMountPath: /cache
+    service:
+      servicePort: 8481
+      type: ClusterIP
+  vminsert:
+    enabled: true
+    name: vminsert
+    image:
+      repository: victoriametrics/vminsert
+      tag: v1.35.6-cluster
+      pullPolicy: IfNotPresent
+    extraArgs: {}
+    replicaCount: 2
+    service:
+      servicePort: 8480
+      type: ClusterIP
+  vmstorage:
+    enabled: true
+    name: vmstorage
+    image:
+      repository: victoriametrics/vmstorage
+      tag: v1.35.6-cluster
+      pullPolicy: IfNotPresent
+    retentionPeriod: 1
+    extraArgs: {}
+    persistentVolume:
+      enabled: true
+      accessModes:
+        - ReadWriteOnce
+      mountPath: /storage
+      size: 2Gi
+    replicaCount: 2
+    podManagementPolicy: OrderedReady
+    service:
+      servicePort: 8482
+      vminsertPort: 8400
+      vmselectPort: 8401

@@ -14,6 +14,7 @@ DOC_GEN_DIR=github.com/VictoriaMetrics/operator/cmd/doc-gen/
 OPERATOR_BIN=operator-sdk
 DOCKER_REPO="quay.io/f41gh7/vm-operator"
 TAG="master"
+KUBECTL=kubectl
 
 TEST_ARGS=$(GOCMD) test -covermode=atomic -coverprofile=coverage.txt -v
 
@@ -65,3 +66,10 @@ clean:
 
 run: build
 	WATCH_NAMESPACE="" OPERATOR_NAME=vms ./$(BINARY_NAME)
+
+operator-k8s-init:
+	$(KUBECTL) create -f deploy/clusterrole.yaml && \
+	$(KUBECTL) create -f deploy/clusterrolebinding.yaml &&\
+	$(KUBECTL) create -f deploy/role.yaml && \
+	$(KUBECTL) create -f deploy/serviceaccount.yaml &&\
+	$(KUBECTL) create -f deploy/crds/

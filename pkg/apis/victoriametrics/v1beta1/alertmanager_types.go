@@ -1,8 +1,11 @@
 package v1beta1
 
 import (
+	"fmt"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/pointer"
+	"strings"
 )
 
 // Alertmanager describes an Alertmanager cluster.
@@ -10,7 +13,7 @@ import (
 // +genclient
 // +k8s:openapi-gen=true
 // +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".spec.version",description="The version of Alertmanager"
-// +kubebuilder:printcolumn:name="Replicas",type="integer",JSONPath=".spec.Replicas",description="The desired replicas number of Alertmanagers"
+// +kubebuilder:printcolumn:name="ReplicaCount",type="integer",JSONPath=".spec.ReplicaCount",description="The desired replicas number of Alertmanagers"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:resource:path=vmalertmanagers,scope=Namespaced,shortName=vma
 type Alertmanager struct {
@@ -72,10 +75,10 @@ type AlertmanagerSpec struct {
 	LogLevel string `json:"logLevel,omitempty"`
 	// LogFormat for Alertmanager to be configured with.
 	LogFormat string `json:"logFormat,omitempty"`
-	// Replicas Size is the expected size of the alertmanager cluster. The controller will
+	// ReplicaCount Size is the expected size of the alertmanager cluster. The controller will
 	// eventually make the size of the running cluster equal to the expected
 	// +kubebuilder:validation:Minimum:=1
-	Replicas *int32 `json:"replicas,omitempty"`
+	ReplicaCount *int32 `json:"replicaCount,omitempty"`
 	// Retention Time duration Alertmanager shall retain data for. Default is '120h',
 	// and must match the regular expression `[0-9]+(ms|s|m|h)` (milliseconds seconds minutes hours).
 	// +kubebuilder:validation:Pattern:="[0-9]+(ms|s|m|h)"
@@ -173,7 +176,7 @@ type AlertmanagerStatus struct {
 	// Paused Represents whether any actions on the underlaying managed objects are
 	// being performed. Only delete actions will be performed.
 	Paused bool `json:"paused"`
-	// Replicas Total number of non-terminated pods targeted by this Alertmanager
+	// ReplicaCount Total number of non-terminated pods targeted by this Alertmanager
 	// cluster (their labels match the selector).
 	Replicas int32 `json:"replicas"`
 	// UpdatedReplicas Total number of non-terminated pods targeted by this Alertmanager
@@ -184,6 +187,76 @@ type AlertmanagerStatus struct {
 	AvailableReplicas int32 `json:"availableReplicas"`
 	// UnavailableReplicas Total number of unavailable pods targeted by this Alertmanager cluster.
 	UnavailableReplicas int32 `json:"unavailableReplicas"`
+}
+
+func (cr Alertmanager) Name() string {
+	return cr.ObjectMeta.Name
+}
+
+func (cr *Alertmanager) AsOwner() []metav1.OwnerReference {
+	return []metav1.OwnerReference{
+		{
+			APIVersion:         cr.APIVersion,
+			Kind:               cr.Kind,
+			Name:               cr.Name(),
+			UID:                cr.UID,
+			Controller:         pointer.BoolPtr(true),
+			BlockOwnerDeletion: pointer.BoolPtr(true),
+		},
+	}
+}
+
+func (cr Alertmanager) PodAnnotations() map[string]string {
+	annotations := map[string]string{}
+	if cr.Spec.PodMetadata != nil {
+		for annotation, value := range cr.Spec.PodMetadata.Annotations {
+			annotations[annotation] = value
+		}
+	}
+	return annotations
+}
+
+func (cr Alertmanager) Annotations() map[string]string {
+	annotations := make(map[string]string)
+	for annotation, value := range cr.ObjectMeta.Annotations {
+		if !strings.HasPrefix(annotation, "kubectl.kubernetes.io/") {
+			annotations[annotation] = value
+		}
+	}
+	return annotations
+}
+
+func (cr Alertmanager) SelectorLabels() map[string]string {
+	return map[string]string{
+		"app.kubernetes.io/name":      "vmalertmanager",
+		"app.kubernetes.io/instance":  cr.Name(),
+		"app.kubernetes.io/component": "monitoring",
+		"managed-by":                  "vm-operator",
+	}
+}
+
+func (cr Alertmanager) PodLabels() map[string]string {
+	labels := cr.SelectorLabels()
+	if cr.Spec.PodMetadata != nil {
+		for label, value := range cr.Spec.PodMetadata.Labels {
+			labels[label] = value
+		}
+	}
+	return labels
+}
+
+func (cr Alertmanager) FinalLabels() map[string]string {
+	labels := cr.SelectorLabels()
+	if cr.ObjectMeta.Labels != nil {
+		for label, value := range cr.ObjectMeta.Labels {
+			labels[label] = value
+		}
+	}
+	return labels
+}
+
+func (cr Alertmanager) PrefixedName() string {
+	return fmt.Sprintf("vmalertmanager-%s", cr.Name())
 }
 
 func init() {

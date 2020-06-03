@@ -100,52 +100,47 @@ func (r *ReconcileVmSingle) Reconcile(request reconcile.Request) (reconcile.Resu
 	)
 	reqLogger.Info("Reconciling")
 
-	// Fetch the VmSingle instance
+	ctx := context.Background()
 	instance := &victoriametricsv1beta1.VmSingle{}
-	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
+	err := r.client.Get(ctx, request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			// Request object not found, could have been deleted after reconcile request.
-			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
-			// Return and don't requeue
 			return reconcile.Result{}, nil
 		}
-		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
 
 	if instance.Spec.Storage != nil {
 		reqLogger.Info("storage specified reconcile it")
-		//TODO should we delete storage with owner reference?
-		_, err = factory.CreateVmStorage(instance, r.client, r.opConf, reqLogger)
+		_, err = factory.CreateVmStorage(ctx, instance, r.client, r.opConf)
 		if err != nil {
 			reqLogger.Error(err, "cannot create pvc")
 			return reconcile.Result{}, err
 		}
 	}
-
-	//deployment
-	_, err = factory.CreateOrUpdateVmSingle(instance, r.client, r.opConf, reqLogger)
+	_, err = factory.CreateOrUpdateVmSingle(ctx, instance, r.client, r.opConf)
 	if err != nil {
-		reqLogger.Error(err, "cannot create or update")
+		reqLogger.Error(err, "cannot create or update vmsingle deployment")
 		return reconcile.Result{}, err
 	}
 
-	//recon service
-	svc, err := factory.CreateOrUpdateVmSingleService(instance, r.client, r.opConf, reqLogger)
+	svc, err := factory.CreateOrUpdateVmSingleService(ctx, instance, r.client, r.opConf)
 	if err != nil {
-		reqLogger.Error(err, "cannot create or update service")
+		reqLogger.Error(err, "cannot create or update vmsingle service")
 		return reconcile.Result{}, err
 	}
 
-	_, err = metrics.CreateServiceMonitors(r.restConf, instance.Namespace, []*corev1.Service{svc})
-	if err != nil {
-		if !errors.IsAlreadyExists(err) {
-			reqLogger.Error(err, "cannot create service monitor")
+	//create servicemonitor for object by default
+	if !r.opConf.DisabledServiceMonitorCreation {
+		_, err = metrics.CreateServiceMonitors(r.restConf, instance.Namespace, []*corev1.Service{svc})
+		if err != nil {
+			if !errors.IsAlreadyExists(err) {
+				reqLogger.Error(err, "cannot create service monitor")
+			}
 		}
 	}
 
-	reqLogger.Info("full reconciled")
+	reqLogger.Info("vmsingle  reconciled")
 
 	return reconcile.Result{}, nil
 }

@@ -4,10 +4,12 @@ metadata:
   name: example-vmalert
 spec:
   # Add fields here
-  replicas: 1
+  replicaCount: 1
   datasource:
     url: "http://vmagent-example-vmsingle.default.svc:8429"
   notifierURL: "http://alertmanager-operated:9093"
   evaluationInterval: "30s"
   version: "latest"
-  ruleSelector: {}
+  ruleSelector:
+    matchLabels:
+      managed-by: vm-operator

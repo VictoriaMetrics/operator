@@ -1,6 +1,7 @@
 package factory
 
 import (
+	"context"
 	monitoringv1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1"
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
 	"github.com/go-logr/logr"
@@ -90,7 +91,7 @@ func TestSelectServiceMonitors(t *testing.T) {
 			s.AddKnownTypes(monitoringv1.SchemeGroupVersion, &monitoringv1.ServiceMonitor{}, &monitoringv1.ServiceMonitorList{})
 			s.AddKnownTypes(victoriametricsv1beta1.SchemeGroupVersion, &victoriametricsv1beta1.VmAgent{}, &victoriametricsv1beta1.VmAgentList{})
 			fclient := fake.NewFakeClientWithScheme(s, obj...)
-			got, err := SelectServiceMonitors(tt.args.p, fclient, tt.args.l)
+			got, err := SelectServiceMonitors(context.TODO(), tt.args.p, fclient)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("SelectServiceMonitors() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -191,7 +192,7 @@ func TestSelectPodMonitors(t *testing.T) {
 			s.AddKnownTypes(victoriametricsv1beta1.SchemeGroupVersion, &victoriametricsv1beta1.VmAgent{}, &victoriametricsv1beta1.VmAgentList{})
 			s.AddKnownTypes(monitoringv1.SchemeGroupVersion, &monitoringv1.PodMonitor{}, &monitoringv1.PodMonitorList{})
 			fclient := fake.NewFakeClientWithScheme(s, obj...)
-			got, err := SelectPodMonitors(tt.args.p, fclient, tt.args.l)
+			got, err := SelectPodMonitors(context.TODO(), tt.args.p, fclient)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("SelectPodMonitors() error = %v, wantErr %v", err, tt.wantErr)
 				return

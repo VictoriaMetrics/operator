@@ -3,12 +3,10 @@ package servicemonitor
 import (
 	"context"
 	"github.com/VictoriaMetrics/operator/conf"
+	monitoringv1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1"
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
 	"github.com/VictoriaMetrics/operator/pkg/controller/factory"
 	"github.com/go-logr/logr"
-	"k8s.io/client-go/kubernetes"
-
-	monitoringv1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -36,11 +34,10 @@ func Add(mgr manager.Manager) error {
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 	return &ReconcileServiceMonitor{
-		client:  mgr.GetClient(),
-		scheme:  mgr.GetScheme(),
-		kclient: kubernetes.NewForConfigOrDie(mgr.GetConfig()),
-		l:       log,
-		opConf:  conf.MustGetBaseConfig(),
+		client: mgr.GetClient(),
+		scheme: mgr.GetScheme(),
+		l:      log,
+		opConf: conf.MustGetBaseConfig(),
 	}
 }
 
@@ -68,11 +65,10 @@ var _ reconcile.Reconciler = &ReconcileServiceMonitor{}
 type ReconcileServiceMonitor struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
-	client  client.Client
-	l       logr.Logger
-	kclient kubernetes.Interface
-	scheme  *runtime.Scheme
-	opConf  *conf.BaseOperatorConf
+	client client.Client
+	l      logr.Logger
+	scheme *runtime.Scheme
+	opConf *conf.BaseOperatorConf
 }
 
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
@@ -84,46 +80,42 @@ func (r *ReconcileServiceMonitor) Reconcile(request reconcile.Request) (reconcil
 
 	// Fetch the ServiceMonitor instance
 	instance := &monitoringv1.ServiceMonitor{}
-	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
+	ctx := context.Background()
+	err := r.client.Get(ctx, request.NamespacedName, instance)
 	if err != nil {
-		if errors.IsNotFound(err) {
-			// Request object not found, could have been deleted after reconcile request.
-			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
-			// Return and don't requeue
-		} else {
+		//in case of object notfound we must update vmagents
+		if !errors.IsNotFound(err) {
 			// Error reading the object - requeue the request.
+			reqLogger.Error(err, "cannot get service monitor")
 			return reconcile.Result{}, err
 		}
 	}
-	//well we need vmagent instance...
 	vmAgentInstances := &victoriametricsv1beta1.VmAgentList{}
-	//
-	err = r.client.List(context.TODO(), vmAgentInstances)
+	err = r.client.List(ctx, vmAgentInstances)
 	if err != nil {
 		reqLogger.Error(err, "cannot list vmagent objects")
 		return reconcile.Result{}, err
 	}
-	reqLogger.Info("found vmagent objects ", "count len: ", len(vmAgentInstances.Items))
+	reqLogger.Info("found vmagent objects ", "len: ", len(vmAgentInstances.Items))
 
 	for _, vmagent := range vmAgentInstances.Items {
-		reqLogger = reqLogger.WithValues("vmagent", vmagent.Name)
-		reqLogger.Info("reconlining rules for vmagent")
+		reqLogger = reqLogger.WithValues("vmagent", vmagent.Name())
+		reqLogger.Info("reconciling servicemonitors for vmagent")
 		currentVmagent := &vmagent
-		err = factory.CreateOrUpdateConfigurationSecret(currentVmagent, r.client, r.kclient, r.opConf, reqLogger)
+		err = factory.CreateOrUpdateConfigurationSecret(ctx, currentVmagent, r.client, r.opConf)
 		if err != nil {
 			reqLogger.Error(err, "cannot create or update default secret for vmagent")
 			return reconcile.Result{}, err
 		}
-		//
 
-		recon, err := factory.CreateOrUpdateVmAgent(currentVmagent, r.client, r.opConf, reqLogger)
+		recon, err := factory.CreateOrUpdateVmAgent(ctx, currentVmagent, r.client, r.opConf)
 		if err != nil {
-			reqLogger.Error(err, "")
+			reqLogger.Error(err, "cannot create or update vmagent instance")
 			return recon, err
 		}
-		reqLogger.Info("reconciled for vmagnet")
+		reqLogger.Info("reconciled vmagent")
 	}
 
-	reqLogger.Info("update service monitor crds")
+	reqLogger.Info("reconciled serviceMonitor")
 	return reconcile.Result{}, nil
 }

@@ -18,7 +18,7 @@ const prefixVar = "VM"
 type BaseOperatorConf struct {
 	VmAlertDefault struct {
 		Image    string `default:"victoriametrics/vmalert"`
-		Version  string `default:"v1.35.1-cluster"`
+		Version  string `default:"v1.37.0"`
 		Port     string `default:"8429"`
 		Resource struct {
 			Limit struct {
@@ -36,7 +36,7 @@ type BaseOperatorConf struct {
 	}
 	VmAgentDefault struct {
 		Image             string `default:"victoriametrics/vmagent"`
-		Version           string `default:"v1.35.3-cluster"`
+		Version           string `default:"v1.37.0"`
 		ConfigReloadImage string `default:"quay.io/coreos/prometheus-config-reloader:v0.30.1"`
 		Port              string `default:"8429"`
 		Resource          struct {
@@ -55,7 +55,7 @@ type BaseOperatorConf struct {
 
 	VmSingleDefault struct {
 		Image    string `default:"victoriametrics/victoria-metrics"`
-		Version  string `default:"v1.35.1"`
+		Version  string `default:"v1.37.0"`
 		Port     string `default:"8429"`
 		Resource struct {
 			Limit struct {
@@ -85,14 +85,13 @@ type BaseOperatorConf struct {
 		ClusterDomain                string `default:""`
 		KubeletObject                string
 	}
-	Operator struct {
-	}
-	Host          string `default:"0.0.0.0"`
-	ListenAddress string `default:"0.0.0.0"`
-	DefaultLabels string `default:"managed-by=vm-operator"`
-	Labels        Labels `ignored:"true"`
-	LogLevel      string
-	LogFormat     string
+	DisabledServiceMonitorCreation bool   `default:"false"`
+	Host                           string `default:"0.0.0.0"`
+	ListenAddress                  string `default:"0.0.0.0"`
+	DefaultLabels                  string `default:"managed-by=vm-operator"`
+	Labels                         Labels `ignored:"true"`
+	LogLevel                       string
+	LogFormat                      string
 }
 
 func MustGetBaseConfig() *BaseOperatorConf {

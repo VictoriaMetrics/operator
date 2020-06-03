@@ -100,7 +100,7 @@ metadata:
 spec:
   retentionPeriod: "1"
   extraArgs:
-    - -dedup.minScrapeInterval=60s
+    dedup.minScrapeInterval: 60s
 EOF
 ```
 
@@ -147,7 +147,7 @@ metadata:
 spec:
   serviceMonitorNamespaceSelector: {}
   serviceMonitorSelector: {}
-  replicas: 1
+  replicaCount: 1
   serviceAccountName: vmagent
   remoteWrite:
     - url: "http://vmsingle-example-vmsingle.default.svc:8429/api/v1/write"
@@ -167,12 +167,13 @@ kind: VmAlert
 metadata:
   name: example-vmalert
 spec:
-  replicas: 1
+  replicaCount: 1
   datasource:
     url: "http://vmagent-example-vmsingle.default.svc:8429"
   notifierURL: "http://alertmanager-operated:9093"
   evaluationInterval: "30s"
-  ruleSelector: {}
+  ruleSelector:
+    matchLabels: {}
 EOF
 ```
 
@@ -186,7 +187,7 @@ cat << EOF | kubectl apply -f -
 apiVersion: v1
 kind: Secret
 metadata:
-  name: alertmanager-example-alertmanager
+  name: vmalertmanager-example-alertmanager
 stringData:
   alertmanager.yaml: |
     global:
@@ -214,7 +215,7 @@ metadata:
   name: example-alertmanager
 spec:
   # Add fields here
-  replicas: 1
+  replicaCount: 1
 EOF
 ```
 

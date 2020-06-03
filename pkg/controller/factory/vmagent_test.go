@@ -79,7 +79,6 @@ func TestCreateOrUpdateVmAgent(t *testing.T) {
 		cr      *victoriametricsv1beta1.VmAgent
 		rclient client.Client
 		c       *conf.BaseOperatorConf
-		l       logr.Logger
 	}
 	tests := []struct {
 		name    string
@@ -91,7 +90,7 @@ func TestCreateOrUpdateVmAgent(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := CreateOrUpdateVmAgent(tt.args.cr, tt.args.rclient, tt.args.c, tt.args.l)
+			got, err := CreateOrUpdateVmAgent(context.TODO(), tt.args.cr, tt.args.rclient, tt.args.c)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CreateOrUpdateVmAgent() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -200,12 +199,12 @@ func Test_addAddtionalScrapeConfigOwnership(t *testing.T) {
 					t.Errorf("cannot find secret for scrape config")
 				}
 				for _, ownerRef := range secret.OwnerReferences {
-					if ownerRef.Name == tt.args.cr.Name {
+					if ownerRef.Name == tt.args.cr.Name() {
 						refFound = true
 					}
 				}
 				if !refFound {
-					t.Errorf("cannot find secret ownership for vmagent: %s,secret name: %v", tt.args.cr.Name, tt.args.cr.Spec.AdditionalScrapeConfigs.Name)
+					t.Errorf("cannot find secret ownership for vmagent: %s,secret name: %v", tt.args.cr.Name(), tt.args.cr.Spec.AdditionalScrapeConfigs.Name)
 				}
 			}
 

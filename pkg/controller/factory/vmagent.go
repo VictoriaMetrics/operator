@@ -18,7 +18,6 @@ import (
 	"path"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"strings"
 )
 
 const (
@@ -28,44 +27,40 @@ const (
 	vmAgentConOfOutDir = "/etc/vmagent/config_out"
 )
 
-func CreateOrUpdateVmAgentService(cr *victoriametricsv1beta1.VmAgent, rclient client.Client, c *conf.BaseOperatorConf, l logr.Logger) (*corev1.Service, error) {
-	l = l.WithValues("recon.vm.service.name", cr.Name)
-	newSvc := newServiceVmAgent(cr, c)
+func CreateOrUpdateVmAgentService(ctx context.Context, cr *victoriametricsv1beta1.VmAgent, rclient client.Client, c *conf.BaseOperatorConf) (*corev1.Service, error) {
+	l := log.WithValues("recon.vm.service.name", cr.Name())
+	NewService := newServiceVmAgent(cr, c)
 
 	currentService := &corev1.Service{}
-	err := rclient.Get(context.TODO(), types.NamespacedName{Namespace: cr.Namespace, Name: newSvc.Name}, currentService)
+	err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: NewService.Name}, currentService)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			l.Info("creating new service for vm agent")
-			err := rclient.Create(context.TODO(), newSvc)
+			err := rclient.Create(ctx, NewService)
 			if err != nil {
-				l.Error(err, "cannot create new service for vmagent")
-				return nil, err
+				return nil, fmt.Errorf("cannot create new service for vmagent: %w", err)
 			}
 		} else {
-			l.Error(err, "cannot get vmagent service for recon")
-			return nil, err
+			return nil, fmt.Errorf("cannot get vmagent service for reconcile: %w", err)
 		}
 	}
-	if currentService.Annotations != nil {
-		newSvc.Annotations = currentService.Annotations
+	for annotation, value := range currentService.Annotations {
+		NewService.Annotations[annotation] = value
 	}
 	if currentService.Spec.ClusterIP != "" {
-		newSvc.Spec.ClusterIP = currentService.Spec.ClusterIP
+		NewService.Spec.ClusterIP = currentService.Spec.ClusterIP
 	}
 	if currentService.ResourceVersion != "" {
-		newSvc.ResourceVersion = currentService.ResourceVersion
+		NewService.ResourceVersion = currentService.ResourceVersion
 	}
-	err = rclient.Update(context.Background(), newSvc)
+	err = rclient.Update(ctx, NewService)
 	if err != nil {
 		l.Error(err, "cannot update vmagent service")
 		return nil, err
 	}
 
-	//its safe to ignore
-	_ = addAddtionalScrapeConfigOwnership(cr, rclient, l)
-	l.Info("vmagent svc reconciled")
-	return newSvc, nil
+	l.Info("vmagent service reconciled")
+	return NewService, nil
 }
 
 func newServiceVmAgent(cr *victoriametricsv1beta1.VmAgent, c *conf.BaseOperatorConf) *corev1.Service {
@@ -75,24 +70,15 @@ func newServiceVmAgent(cr *victoriametricsv1beta1.VmAgent, c *conf.BaseOperatorC
 	}
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        prefixedAgentName(cr.Name),
-			Namespace:   cr.Namespace,
-			Labels:      c.Labels.Merge(cr.ObjectMeta.Labels),
-			Annotations: cr.Annotations,
-			OwnerReferences: []metav1.OwnerReference{
-				{
-					APIVersion:         cr.APIVersion,
-					Kind:               cr.Kind,
-					Name:               cr.Name,
-					UID:                cr.UID,
-					Controller:         pointer.BoolPtr(true),
-					BlockOwnerDeletion: pointer.BoolPtr(true),
-				},
-			},
+			Name:            cr.PrefixedName(),
+			Namespace:       cr.Namespace,
+			Labels:          c.Labels.Merge(cr.FinalLabels()),
+			Annotations:     cr.Annotations(),
+			OwnerReferences: cr.AsOwner(),
 		},
 		Spec: corev1.ServiceSpec{
 			Type:     corev1.ServiceTypeClusterIP,
-			Selector: selectorLabelsVmAgent(cr),
+			Selector: cr.SelectorLabels(),
 			Ports: []corev1.ServicePort{
 				{
 					Name:       "http",
@@ -106,51 +92,46 @@ func newServiceVmAgent(cr *victoriametricsv1beta1.VmAgent, c *conf.BaseOperatorC
 }
 
 //we assume, that configmaps were created before this function was called
-func CreateOrUpdateVmAgent(cr *victoriametricsv1beta1.VmAgent, rclient client.Client, c *conf.BaseOperatorConf, l logr.Logger) (reconcile.Result, error) {
-
+func CreateOrUpdateVmAgent(ctx context.Context, cr *victoriametricsv1beta1.VmAgent, rclient client.Client, c *conf.BaseOperatorConf) (reconcile.Result, error) {
+	l := log.WithValues("controller", "vmagent.crud")
 	l.Info("create or update vm agent deploy")
-	//recon deploy
-	//well, there can be collisions for deployment name
-	//if we have vmagent: ex1
-	//vmalert: ex1
-	//so prefix must be set
 	newDeploy, err := newDeployForVmAgent(cr, c)
 	if err != nil {
-		l.Error(err, "cannot build new deploy for vmagent")
-		return reconcile.Result{}, err
+		return reconcile.Result{}, fmt.Errorf("cannot build new deploy for vmagent: %w", err)
 	}
 
 	l = l.WithValues("vmagent.deploy.name", newDeploy.Name, "vmagent.deploy.namespace", newDeploy.Namespace)
 
 	currentDeploy := &appsv1.Deployment{}
-	err = rclient.Get(context.TODO(), types.NamespacedName{Name: newDeploy.Name, Namespace: newDeploy.Namespace}, currentDeploy)
+	err = rclient.Get(ctx, types.NamespacedName{Name: newDeploy.Name, Namespace: newDeploy.Namespace}, currentDeploy)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			//create new
 			l.Info("vmagent deploy not found, creating new one")
-			err := rclient.Create(context.TODO(), newDeploy)
+			err := rclient.Create(ctx, newDeploy)
 			if err != nil {
-				l.Error(err, "cannot create new vmagent deploy")
-				return reconcile.Result{}, err
+				return reconcile.Result{}, fmt.Errorf("cannot create new vmagent deploy: %w", err)
 			}
 			l.Info("new vmagent deploy was created")
 		} else {
-			l.Error(err, "cannot get vmagent deploy")
-			return reconcile.Result{}, err
+			return reconcile.Result{}, fmt.Errorf("cannot get vmagent deploy: %s,err: %w", newDeploy.Name, err)
 		}
 	}
-	l.Info("vm agent was found, updating it")
-	if currentDeploy.Annotations != nil {
-		newDeploy.Annotations = currentDeploy.Annotations
+	l.Info("updating  vmagent")
+	for annotation, value := range currentDeploy.Annotations {
+		newDeploy.Annotations[annotation] = value
 	}
-	if currentDeploy.Spec.Template.Annotations != nil {
-		newDeploy.Spec.Template.Annotations = currentDeploy.Spec.Template.Annotations
+	for annotation, value := range currentDeploy.Spec.Template.Annotations {
+		newDeploy.Spec.Template.Annotations[annotation] = value
 	}
 
-	err = rclient.Update(context.TODO(), newDeploy)
+	err = rclient.Update(ctx, newDeploy)
 	if err != nil {
-		l.Error(err, "cannot try to update vmagent deploy")
+		l.Error(err, "cannot update vmagent deploy")
 	}
+
+	//its safe to ignore
+	_ = addAddtionalScrapeConfigOwnership(cr, rclient, l)
 	l.Info("vmagent deploy reconciled")
 
 	return reconcile.Result{}, nil
@@ -191,13 +172,6 @@ func newDeployForVmAgent(cr *victoriametricsv1beta1.VmAgent, c *conf.BaseOperato
 		cr.Spec.Resources.Requests[corev1.ResourceCPU] = resource.MustParse(c.VmAgentDefault.Resource.Request.Cpu)
 	}
 
-	annotations := make(map[string]string)
-	for key, value := range cr.ObjectMeta.Annotations {
-		if !strings.HasPrefix(key, "kubectl.kubernetes.io/") {
-			annotations[key] = value
-		}
-	}
-
 	podSpec, err := makeSpecForVmAgent(cr, c)
 	if err != nil {
 		return nil, err
@@ -205,24 +179,17 @@ func newDeployForVmAgent(cr *victoriametricsv1beta1.VmAgent, c *conf.BaseOperato
 
 	depSpec := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        prefixedAgentName(cr.Name),
-			Namespace:   cr.Namespace,
-			Labels:      c.Labels.Merge(cr.ObjectMeta.Labels),
-			Annotations: cr.ObjectMeta.Annotations,
-			OwnerReferences: []metav1.OwnerReference{
-				{
-					APIVersion:         cr.APIVersion,
-					Kind:               cr.Kind,
-					Name:               cr.Name,
-					UID:                cr.UID,
-					Controller:         pointer.BoolPtr(true),
-					BlockOwnerDeletion: pointer.BoolPtr(true),
-				},
-			},
+			Name:            cr.PrefixedName(),
+			Namespace:       cr.Namespace,
+			Labels:          c.Labels.Merge(cr.FinalLabels()),
+			Annotations:     cr.Annotations(),
+			OwnerReferences: cr.AsOwner(),
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas: cr.Spec.Replicas,
-			Selector: &metav1.LabelSelector{MatchLabels: selectorLabelsVmAgent(cr)},
+			Replicas: cr.Spec.ReplicaCount,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: cr.SelectorLabels(),
+			},
 			Strategy: appsv1.DeploymentStrategy{
 				Type:          appsv1.RollingUpdateDeploymentStrategyType,
 				RollingUpdate: &appsv1.RollingUpdateDeployment{},
@@ -241,7 +208,9 @@ func makeSpecForVmAgent(cr *victoriametricsv1beta1.VmAgent, c *conf.BaseOperator
 		args = append(args, "-remoteWrite.url="+remote.URL)
 	}
 
-	args = append(args, cr.Spec.ExtraArgs...)
+	for arg, value := range cr.Spec.ExtraArgs {
+		args = append(args, fmt.Sprintf("--%s=%s", arg, value))
+	}
 
 	args = append(args, fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.Port))
 
@@ -263,7 +232,7 @@ func makeSpecForVmAgent(cr *victoriametricsv1beta1.VmAgent, c *conf.BaseOperator
 			Name: "config",
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: configSecretName(cr.Name),
+					SecretName: configSecretName(cr.Name()),
 				},
 			},
 		},
@@ -272,7 +241,7 @@ func makeSpecForVmAgent(cr *victoriametricsv1beta1.VmAgent, c *conf.BaseOperator
 		//	Name: "tls-assets",
 		//	VolumeSource: corev1.VolumeSource{
 		//		Secret: &corev1.SecretVolumeSource{
-		//			SecretName: tlsAssetsSecretName(cr.Name),
+		//			SecretName: tlsAssetsSecretName(cr.Name()),
 		//		},
 		//	},
 		//},
@@ -380,15 +349,6 @@ func makeSpecForVmAgent(cr *victoriametricsv1beta1.VmAgent, c *conf.BaseOperator
 		FailureThreshold: 10,
 	}
 
-	podAnnotations := map[string]string{}
-	if cr.Spec.PodMetadata != nil {
-		if cr.Spec.PodMetadata.Annotations != nil {
-			for k, v := range cr.Spec.PodMetadata.Annotations {
-				podAnnotations[k] = v
-			}
-		}
-	}
-
 	var additionalContainers []corev1.Container
 
 	prometheusConfigReloaderResources := corev1.ResourceRequirements{
@@ -440,8 +400,8 @@ func makeSpecForVmAgent(cr *victoriametricsv1beta1.VmAgent, c *conf.BaseOperator
 
 	vmAgentSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
-			Labels:      getVmAgentLabels(cr),
-			Annotations: podAnnotations,
+			Labels:      cr.PodLabels(),
+			Annotations: cr.PodAnnotations(),
 		},
 		Spec: corev1.PodSpec{
 			Volumes:            volumes,
@@ -460,33 +420,6 @@ func makeSpecForVmAgent(cr *victoriametricsv1beta1.VmAgent, c *conf.BaseOperator
 	return vmAgentSpec, nil
 }
 
-func prefixedAgentName(name string) string {
-	return fmt.Sprintf("vmagent-%s", name)
-}
-func getVmAgentLabels(cr *victoriametricsv1beta1.VmAgent) map[string]string {
-	labels := selectorLabelsVmAgent(cr)
-	if cr.Spec.PodMetadata != nil {
-		if cr.Spec.PodMetadata.Labels != nil {
-			for k, v := range cr.Spec.PodMetadata.Labels {
-				labels[k] = v
-			}
-		}
-	}
-
-	return labels
-
-}
-
-func selectorLabelsVmAgent(cr *victoriametricsv1beta1.VmAgent) map[string]string {
-	labels := map[string]string{}
-	labels["app.kubernetes.io/name"] = "vmagent"
-	labels["app.kubernetes.io/instance"] = cr.Name
-	labels["app.kubernetes.io/component"] = "monitoring"
-
-	return labels
-
-}
-
 //add ownership - it needs for object changing tracking
 func addAddtionalScrapeConfigOwnership(cr *victoriametricsv1beta1.VmAgent, rclient client.Client, l logr.Logger) error {
 	if cr.Spec.AdditionalScrapeConfigs == nil {
@@ -495,19 +428,18 @@ func addAddtionalScrapeConfigOwnership(cr *victoriametricsv1beta1.VmAgent, rclie
 	secret := &corev1.Secret{}
 	err := rclient.Get(context.Background(), types.NamespacedName{Namespace: cr.Namespace, Name: cr.Spec.AdditionalScrapeConfigs.Name}, secret)
 	if err != nil {
-		l.Error(err, "secret not found", "secret", cr.Spec.AdditionalScrapeConfigs.Name)
-		return err
+		return fmt.Errorf("cannot get secret with additional scrape config: %s, err: %w ", cr.Spec.AdditionalScrapeConfigs.Name, err)
 	}
 	for _, owner := range secret.OwnerReferences {
 		//owner exists
-		if owner.Name == cr.Name {
+		if owner.Name == cr.Name() {
 			return nil
 		}
 	}
 	secret.OwnerReferences = append(secret.OwnerReferences, metav1.OwnerReference{
 		APIVersion:         cr.APIVersion,
 		Kind:               cr.Kind,
-		Name:               cr.Name,
+		Name:               cr.Name(),
 		Controller:         pointer.BoolPtr(false),
 		BlockOwnerDeletion: pointer.BoolPtr(false),
 		UID:                cr.UID,
@@ -516,8 +448,7 @@ func addAddtionalScrapeConfigOwnership(cr *victoriametricsv1beta1.VmAgent, rclie
 	l.Info("updating additional scrape secret ownership", "secret", secret.Name)
 	err = rclient.Update(context.Background(), secret)
 	if err != nil {
-		l.Error(err, "cannot update secret ownership", "secret", secret.Name)
-		return err
+		return fmt.Errorf("cannot update secret ownership for vmagent Additional scrape: %s, err: %w", secret.Name, err)
 	}
 	l.Info("scrape secret was updated with new owner", "secret", secret.Name)
 	return nil

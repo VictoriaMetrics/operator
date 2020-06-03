@@ -8,7 +8,6 @@ import (
 	"github.com/operator-framework/operator-sdk/pkg/metrics"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -41,7 +40,6 @@ func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 		client:   mgr.GetClient(),
 		scheme:   mgr.GetScheme(),
 		restConf: mgr.GetConfig(),
-		kclient:  kubernetes.NewForConfigOrDie(mgr.GetConfig()),
 		opConf:   conf.MustGetBaseConfig(),
 	}
 }
@@ -88,7 +86,6 @@ type ReconcileVmAlert struct {
 	client   client.Client
 	scheme   *runtime.Scheme
 	restConf *rest.Config
-	kclient  kubernetes.Interface
 	opConf   *conf.BaseOperatorConf
 }
 
@@ -102,49 +99,46 @@ func (r *ReconcileVmAlert) Reconcile(request reconcile.Request) (reconcile.Resul
 	reqLogger.Info("Reconciling")
 
 	// Fetch the VmAlert instance
+	ctx := context.Background()
 	instance := &victoriametricsv1beta1.VmAlert{}
-	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
+	err := r.client.Get(ctx, request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			// Request object not found, could have been deleted after reconcile request.
-			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
-			// Return and don't requeue
 			return reconcile.Result{}, nil
 		}
-		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
 
-	//first of all, we have to create configmaps with prometheus rules or reconcile existing one
-	maps, err := factory.CreateOrUpdateRuleConfigMaps(instance, r.kclient, r.client, reqLogger)
+	maps, err := factory.CreateOrUpdateRuleConfigMaps(ctx, instance, r.client)
 	if err != nil {
-		reqLogger.Error(err, "cannot create or update cm")
+		reqLogger.Error(err, "cannot create or update vmalert cm")
 		return reconcile.Result{}, err
 	}
-	reqLogger.Info("found cmmaps for vmalert", " len ", len(maps), "map names", maps)
+	reqLogger.Info("found configmaps for vmalert", " len ", len(maps), "map names", maps)
 
-	// Define a new Pod object
-	recon, err := factory.CreateOrUpdateVmAlert(instance, r.client, r.opConf, maps, reqLogger)
+	recon, err := factory.CreateOrUpdateVmAlert(ctx, instance, r.client, r.opConf, maps)
 	if err != nil {
+		reqLogger.Error(err, "cannot create or update vmalert deploy")
 		return recon, err
 	}
 
-	svc, err := factory.CreateOrUpdateVmAlertService(instance, r.client, r.opConf, reqLogger)
+	svc, err := factory.CreateOrUpdateVmAlertService(ctx, instance, r.client, r.opConf)
 	if err != nil {
-		reqLogger.Error(err, "cannot update service")
+		reqLogger.Error(err, "cannot create or update update  vmalert service")
 		return reconcile.Result{}, err
 	}
 
-	_, err = metrics.CreateServiceMonitors(r.restConf, instance.Namespace, []*corev1.Service{svc})
-	if err != nil {
-		if !errors.IsAlreadyExists(err) {
-			reqLogger.Error(err, "cannot create service monitor")
+	//create servicemonitor for object by default
+	if !r.opConf.DisabledServiceMonitorCreation {
+		_, err = metrics.CreateServiceMonitors(r.restConf, instance.Namespace, []*corev1.Service{svc})
+		if err != nil {
+			if !errors.IsAlreadyExists(err) {
+				reqLogger.Error(err, "cannot create service monitor")
+			}
 		}
 	}
 
-	//TODO rule for vmalert
-
-	reqLogger.Info("full reconciled")
+	reqLogger.Info("vmalert reconciled")
 
 	return reconcile.Result{}, nil
 }

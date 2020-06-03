@@ -1,14 +1,17 @@
 package v1beta1
 
 import (
+	"fmt"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/pointer"
+	"strings"
 )
 
 // VmAlertSpec defines the desired state of VmAlert
 // +k8s:openapi-gen=true
 // +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".spec.version",description="The version of VmAlert"
-// +kubebuilder:printcolumn:name="Replicas",type="integer",JSONPath=".spec.replicas",description="The desired replicas number of VmAlerts"
+// +kubebuilder:printcolumn:name="ReplicaCount",type="integer",JSONPath=".spec.replicas",description="The desired replicas number of VmAlerts"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 type VmAlertSpec struct {
 	// PodMetadata configures Labels and Annotations which are propagated to the VmAlert pods.
@@ -44,11 +47,11 @@ type VmAlertSpec struct {
 	// +optional
 	// +kubebuilder:validation:Enum=INFO;WARN;ERROR;FATAL;PANIC
 	LogLevel string `json:"logLevel,omitempty"`
-	// Replicas is the expected size of the VmAlert cluster. The controller will
+	// ReplicaCount is the expected size of the VmAlert cluster. The controller will
 	// eventually make the size of the running cluster equal to the expected
 	// size.
-	// +kubebuilder:validation:Required
-	Replicas *int32 `json:"replicas"`
+	// +optional
+	ReplicaCount *int32 `json:"replicaCount,omitempty"`
 	// Volumes allows configuration of additional volumes on the output Deployment definition.
 	// Volumes specified will be appended to other volumes that are generated as a result of
 	// StorageSpec objects.
@@ -148,8 +151,7 @@ type VmAlertSpec struct {
 	// ExtraArgs that will be passed to  VmAlert pod
 	// for example -remoteWrite.tmpDataPath=/tmp
 	// +optional
-	// +listType=set
-	ExtraArgs []string `json:"extraArgs,omitempty"`
+	ExtraArgs map[string]string `json:"extraArgs,omitempty"`
 	// ExtraEnvs that will be added to VmAlert pod
 	// +optional
 	// +listType=set
@@ -160,7 +162,7 @@ type VmAlertSpec struct {
 // +k8s:openapi-gen=true
 // +kubebuilder:subresource:status
 type VmAlertStatus struct {
-	// Replicas Total number of non-terminated pods targeted by this VmAlert
+	// ReplicaCount Total number of non-terminated pods targeted by this VmAlert
 	// cluster (their labels match the selector).
 	Replicas int32 `json:"replicas"`
 	// UpdatedReplicas Total number of non-terminated pods targeted by this VmAlert
@@ -193,6 +195,75 @@ type VmAlertList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []VmAlert `json:"items"`
+}
+
+func (cr VmAlert) Name() string {
+	return cr.ObjectMeta.Name
+}
+
+func (cr *VmAlert) AsOwner() []metav1.OwnerReference {
+	return []metav1.OwnerReference{
+		{
+			APIVersion:         cr.APIVersion,
+			Kind:               cr.Kind,
+			Name:               cr.Name(),
+			UID:                cr.UID,
+			Controller:         pointer.BoolPtr(true),
+			BlockOwnerDeletion: pointer.BoolPtr(true),
+		},
+	}
+}
+func (cr VmAlert) PodAnnotations() map[string]string {
+	annotations := map[string]string{}
+	if cr.Spec.PodMetadata != nil {
+		for annotation, value := range cr.Spec.PodMetadata.Annotations {
+			annotations[annotation] = value
+		}
+	}
+	return annotations
+}
+
+func (cr VmAlert) Annotations() map[string]string {
+	annotations := make(map[string]string)
+	for annotation, value := range cr.ObjectMeta.Annotations {
+		if !strings.HasPrefix(annotation, "kubectl.kubernetes.io/") {
+			annotations[annotation] = value
+		}
+	}
+	return annotations
+}
+
+func (cr VmAlert) CommonLabels() map[string]string {
+	return map[string]string{
+		"app.kubernetes.io/name":      "vmalert",
+		"app.kubernetes.io/instance":  cr.Name(),
+		"app.kubernetes.io/component": "monitoring",
+		"managed-by":                  "vm-operator",
+	}
+}
+
+func (cr VmAlert) PodLabels() map[string]string {
+	labels := cr.CommonLabels()
+	if cr.Spec.PodMetadata != nil {
+		for label, value := range cr.Spec.PodMetadata.Labels {
+			labels[label] = value
+		}
+	}
+	return labels
+}
+
+func (cr VmAlert) FinalLabels() map[string]string {
+	labels := cr.CommonLabels()
+	if cr.ObjectMeta.Labels != nil {
+		for label, value := range cr.ObjectMeta.Labels {
+			labels[label] = value
+		}
+	}
+	return labels
+}
+
+func (cr VmAlert) PrefixedName() string {
+	return fmt.Sprintf("vmalert-%s", cr.Name())
 }
 
 func init() {

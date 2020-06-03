@@ -90,7 +90,7 @@ AlertmanagerSpec is a specification of the desired behavior of the Alertmanager 
 | configSecret | ConfigSecret is the name of a Kubernetes Secret in the same namespace as the Alertmanager object, which contains configuration for this Alertmanager instance. Defaults to 'alertmanager-<alertmanager-name>' The secret is mounted into /etc/alertmanager/config. | string | false |
 | logLevel | Log level for Alertmanager to be configured with. | string | false |
 | logFormat | LogFormat for Alertmanager to be configured with. | string | false |
-| replicas | Replicas Size is the expected size of the alertmanager cluster. The controller will eventually make the size of the running cluster equal to the expected | *int32 | false |
+| replicaCount | ReplicaCount Size is the expected size of the alertmanager cluster. The controller will eventually make the size of the running cluster equal to the expected | *int32 | false |
 | retention | Retention Time duration Alertmanager shall retain data for. Default is '120h', and must match the regular expression `[0-9]+(ms\|s\|m\|h)` (milliseconds seconds minutes hours). | string | false |
 | storage | Storage is the definition of how storage will be used by the Alertmanager instances. | *[StorageSpec](#storagespec) | false |
 | volumes | Volumes allows configuration of additional volumes on the output StatefulSet definition. Volumes specified will be appended to other volumes that are generated as a result of StorageSpec objects. | [][v1.Volume](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#volume-v1-core) | false |
@@ -121,7 +121,7 @@ AlertmanagerStatus is the most recent observed status of the Alertmanager cluste
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
 | paused | Paused Represents whether any actions on the underlaying managed objects are being performed. Only delete actions will be performed. | bool | true |
-| replicas | Replicas Total number of non-terminated pods targeted by this Alertmanager cluster (their labels match the selector). | int32 | true |
+| replicas | ReplicaCount Total number of non-terminated pods targeted by this Alertmanager cluster (their labels match the selector). | int32 | true |
 | updatedReplicas | UpdatedReplicas Total number of non-terminated pods targeted by this Alertmanager cluster that have the desired version spec. | int32 | true |
 | availableReplicas | AvailableReplicas Total number of available pods (ready for at least minReadySeconds) targeted by this Alertmanager cluster. | int32 | true |
 | unavailableReplicas | UnavailableReplicas Total number of unavailable pods targeted by this Alertmanager cluster. | int32 | true |
@@ -165,7 +165,7 @@ VmAgentSpec defines the desired state of VmAgent
 | configMaps | ConfigMaps is a list of ConfigMaps in the same namespace as the vmagent object, which shall be mounted into the vmagent Pods. will be mounted at path  /etc/vmagent/configs | []string | false |
 | logLevel | LogLevel for VmAgent to be configured with. INFO, WARN, ERROR, FATAL, PANIC | string | false |
 | logFormat | LogFormat for VmAgent to be configured with. | string | false |
-| replicas | Replicas is the expected size of the VmAgent cluster. The controller will eventually make the size of the running cluster equal to the expected size. NOTE enable VmSingle deduplication for replica usage | *int32 | true |
+| replicaCount | ReplicaCount is the expected size of the VmAgent cluster. The controller will eventually make the size of the running cluster equal to the expected size. NOTE enable VmSingle deduplication for replica usage | *int32 | false |
 | volumes | Volumes allows configuration of additional volumes on the output deploy definition. Volumes specified will be appended to other volumes that are generated as a result of StorageSpec objects. | [][v1.Volume](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#volume-v1-core) | false |
 | volumeMounts | VolumeMounts allows configuration of additional VolumeMounts on the output deploy definition. VolumeMounts specified will be appended to other VolumeMounts in the vmagent container, that are generated as a result of StorageSpec objects. | [][v1.VolumeMount](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#volumemount-v1-core) | false |
 | resources | Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/ if not specified - default setting will be used | [v1.ResourceRequirements](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#resourcerequirements-v1-core) | false |
@@ -193,7 +193,7 @@ VmAgentSpec defines the desired state of VmAgent
 | additionalScrapeConfigs | AdditionalScrapeConfigs As scrape configs are appended, the user is responsible to make sure it is valid. Note that using this feature may expose the possibility to break upgrades of VmAgent. It is advised to review VmAgent release notes to ensure that no incompatible scrape configs are going to break VmAgent after the upgrade. | *[v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
 | arbitraryFSAccessThroughSMs | ArbitraryFSAccessThroughSMs configures whether configuration based on a service monitor can access arbitrary files on the file system of the VmAgent container e.g. bearer token files. | monitoringv1.ArbitraryFSAccessThroughSMsConfig | false |
 | port | Port listen address | string | false |
-| extraArgs | ExtraArgs that will be passed to  VmAlert pod for example -remoteWrite.tmpDataPath=/tmp | []string | false |
+| extraArgs | ExtraArgs that will be passed to  VmAlert pod for example remoteWrite.tmpDataPath: /tmp it would be converted to flag --remoteWrite.tmpDataPath=/tmp | map[string]string | false |
 | extraEnvs | ExtraEnvs that will be added to VmAlert pod | [][v1.EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#envvar-v1-core) | false |
 
 [Back to TOC](#table-of-contents)
@@ -204,7 +204,7 @@ VmAgentStatus defines the observed state of VmAgent
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
-| replicas | Replicas Total number of non-terminated pods targeted by this VmAlert cluster (their labels match the selector). | int32 | true |
+| replicas | ReplicaCount Total number of non-terminated pods targeted by this VmAlert cluster (their labels match the selector). | int32 | true |
 | updatedReplicas | UpdatedReplicas Total number of non-terminated pods targeted by this VmAlert cluster that have the desired version spec. | int32 | true |
 | availableReplicas | AvailableReplicas Total number of available pods (ready for at least minReadySeconds) targeted by this VmAlert cluster. | int32 | true |
 | unavailableReplicas | UnavailableReplicas Total number of unavailable pods targeted by this VmAlert cluster. | int32 | true |
@@ -294,7 +294,7 @@ VmAlertSpec defines the desired state of VmAlert
 | configMaps | ConfigMaps is a list of ConfigMaps in the same namespace as the VmAlert object, which shall be mounted into the VmAlert Pods. The ConfigMaps are mounted into /etc/vmalert/configmaps/<configmap-name>. | []string | false |
 | logFormat | LogFormat for VmAlert to be configured with. default or json | string | false |
 | logLevel | LogLevel for VmAlert to be configured with. | string | false |
-| replicas | Replicas is the expected size of the VmAlert cluster. The controller will eventually make the size of the running cluster equal to the expected size. | *int32 | true |
+| replicaCount | ReplicaCount is the expected size of the VmAlert cluster. The controller will eventually make the size of the running cluster equal to the expected size. | *int32 | false |
 | volumes | Volumes allows configuration of additional volumes on the output Deployment definition. Volumes specified will be appended to other volumes that are generated as a result of StorageSpec objects. | [][v1.Volume](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#volume-v1-core) | false |
 | volumeMounts | VolumeMounts allows configuration of additional VolumeMounts on the output Deployment definition. VolumeMounts specified will be appended to other VolumeMounts in the VmAlert container, that are generated as a result of StorageSpec objects. | [][v1.VolumeMount](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#volumemount-v1-core) | false |
 | resources | Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/ | [v1.ResourceRequirements](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#resourcerequirements-v1-core) | false |
@@ -315,7 +315,7 @@ VmAlertSpec defines the desired state of VmAlert
 | remoteRead | RemoteRead victoria metrics address for loading state This configuration makes sense only if remoteWrite was configured before and has been successfully persisted its state. | [RemoteSpec](#remotespec) | false |
 | rulePath | RulePath to the file with alert rules. Supports patterns. Flag can be specified multiple times. Examples:\n        -rule /path/to/file. Path to a single file with alerting rules\n        -rule dir/*.yaml -rule /*.yaml. Relative path to all .yaml files in \"dir\" folder,\n       absolute path to all .yaml files in root.\nby default operator adds /etc/vmalert/configs/base/vmalert.yaml | []string | false |
 | datasource | Datasource Victoria Metrics or VMSelect url. Required parameter. e.g. http://127.0.0.1:8428 | [RemoteSpec](#remotespec) | true |
-| extraArgs | ExtraArgs that will be passed to  VmAlert pod for example -remoteWrite.tmpDataPath=/tmp | []string | false |
+| extraArgs | ExtraArgs that will be passed to  VmAlert pod for example -remoteWrite.tmpDataPath=/tmp | map[string]string | false |
 | extraEnvs | ExtraEnvs that will be added to VmAlert pod | [][v1.EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#envvar-v1-core) | false |
 
 [Back to TOC](#table-of-contents)
@@ -326,7 +326,7 @@ VmAlertStatus defines the observed state of VmAlert
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
-| replicas | Replicas Total number of non-terminated pods targeted by this VmAlert cluster (their labels match the selector). | int32 | true |
+| replicas | ReplicaCount Total number of non-terminated pods targeted by this VmAlert cluster (their labels match the selector). | int32 | true |
 | updatedReplicas | UpdatedReplicas Total number of non-terminated pods targeted by this VmAlert cluster that have the desired version spec. | int32 | true |
 | availableReplicas | AvailableReplicas Total number of available pods (ready for at least minReadySeconds) targeted by this VmAlert cluster. | int32 | true |
 | unavailableReplicas | UnavailableReplicas Total number of unavailable pods targeted by this VmAlert cluster. | int32 | true |
@@ -370,7 +370,7 @@ VmSingleSpec defines the desired state of VmSingle
 | configMaps | ConfigMaps is a list of ConfigMaps in the same namespace as the VmSingle object, which shall be mounted into the VmSingle Pods. | []string | false |
 | logLevel | LogLevel for victoria metrics single to be configured with. | string | false |
 | logFormat | LogFormat for VmSingle to be configured with. | string | false |
-| replicas | Replicas is the expected size of the VmSingle it can be 0 or 1 if you need more - use vm cluster | *int32 | false |
+| replicaCount | ReplicaCount is the expected size of the VmSingle it can be 0 or 1 if you need more - use vm cluster | *int32 | false |
 | storage | Storage is the definition of how storage will be used by the VmSingle by default it`s empty dir | *[v1.PersistentVolumeClaimSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#persistentvolumeclaimspec-v1-core) | false |
 | volumes | Volumes allows configuration of additional volumes on the output deploy definition. Volumes specified will be appended to other volumes that are generated as a result of StorageSpec objects. | [][v1.Volume](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#volume-v1-core) | false |
 | volumeMounts | VolumeMounts allows configuration of additional VolumeMounts on the output Deployment definition. VolumeMounts specified will be appended to other VolumeMounts in the VmSingle container, that are generated as a result of StorageSpec objects. | [][v1.VolumeMount](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#volumemount-v1-core) | false |
@@ -385,7 +385,7 @@ VmSingleSpec defines the desired state of VmSingle
 | port | Port listen port | string | false |
 | removePvcAfterDelete | RemovePvcAfterDelete - if true, controller adds ownership to pvc and after VmSingle objest deletion - pvc will be garbage collected by controller manager | bool | false |
 | retentionPeriod | RetentionPeriod in months | string | true |
-| extraArgs | ExtraArgs that will be passed to  VmSingle pod for example -remoteWrite.tmpDataPath=/tmp | []string | false |
+| extraArgs | ExtraArgs that will be passed to  VmSingle pod for example remoteWrite.tmpDataPath: /tmp | map[string]string | false |
 | extraEnvs | ExtraEnvs that will be added to VmSingle pod | [][v1.EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#envvar-v1-core) | false |
 
 [Back to TOC](#table-of-contents)
@@ -396,7 +396,7 @@ VmSingleStatus defines the observed state of VmSingle
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
-| replicas | Replicas Total number of non-terminated pods targeted by this VmAlert cluster (their labels match the selector). | int32 | true |
+| replicas | ReplicaCount Total number of non-terminated pods targeted by this VmAlert cluster (their labels match the selector). | int32 | true |
 | updatedReplicas | UpdatedReplicas Total number of non-terminated pods targeted by this VmAlert cluster that have the desired version spec. | int32 | true |
 | availableReplicas | AvailableReplicas Total number of available pods (ready for at least minReadySeconds) targeted by this VmAlert cluster. | int32 | true |
 | unavailableReplicas | UnavailableReplicas Total number of unavailable pods targeted by this VmAlert cluster. | int32 | true |

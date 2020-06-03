@@ -104,8 +104,8 @@ func (in *AlertmanagerSpec) DeepCopyInto(out *AlertmanagerSpec) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
-	if in.Replicas != nil {
-		in, out := &in.Replicas, &out.Replicas
+	if in.ReplicaCount != nil {
+		in, out := &in.ReplicaCount, &out.ReplicaCount
 		*out = new(int32)
 		**out = **in
 	}
@@ -378,8 +378,8 @@ func (in *VmAgentSpec) DeepCopyInto(out *VmAgentSpec) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
-	if in.Replicas != nil {
-		in, out := &in.Replicas, &out.Replicas
+	if in.ReplicaCount != nil {
+		in, out := &in.ReplicaCount, &out.ReplicaCount
 		*out = new(int32)
 		**out = **in
 	}
@@ -484,8 +484,10 @@ func (in *VmAgentSpec) DeepCopyInto(out *VmAgentSpec) {
 	out.ArbitraryFSAccessThroughSMs = in.ArbitraryFSAccessThroughSMs
 	if in.ExtraArgs != nil {
 		in, out := &in.ExtraArgs, &out.ExtraArgs
-		*out = make([]string, len(*in))
-		copy(*out, *in)
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
 	}
 	if in.ExtraEnvs != nil {
 		in, out := &in.ExtraEnvs, &out.ExtraEnvs
@@ -612,8 +614,8 @@ func (in *VmAlertSpec) DeepCopyInto(out *VmAlertSpec) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
-	if in.Replicas != nil {
-		in, out := &in.Replicas, &out.Replicas
+	if in.ReplicaCount != nil {
+		in, out := &in.ReplicaCount, &out.ReplicaCount
 		*out = new(int32)
 		**out = **in
 	}
@@ -683,8 +685,10 @@ func (in *VmAlertSpec) DeepCopyInto(out *VmAlertSpec) {
 	out.Datasource = in.Datasource
 	if in.ExtraArgs != nil {
 		in, out := &in.ExtraArgs, &out.ExtraArgs
-		*out = make([]string, len(*in))
-		copy(*out, *in)
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
 	}
 	if in.ExtraEnvs != nil {
 		in, out := &in.ExtraEnvs, &out.ExtraEnvs
@@ -811,8 +815,8 @@ func (in *VmSingleSpec) DeepCopyInto(out *VmSingleSpec) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
-	if in.Replicas != nil {
-		in, out := &in.Replicas, &out.Replicas
+	if in.ReplicaCount != nil {
+		in, out := &in.ReplicaCount, &out.ReplicaCount
 		*out = new(int32)
 		**out = **in
 	}
@@ -869,8 +873,10 @@ func (in *VmSingleSpec) DeepCopyInto(out *VmSingleSpec) {
 	}
 	if in.ExtraArgs != nil {
 		in, out := &in.ExtraArgs, &out.ExtraArgs
-		*out = make([]string, len(*in))
-		copy(*out, *in)
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
 	}
 	if in.ExtraEnvs != nil {
 		in, out := &in.ExtraEnvs, &out.ExtraEnvs

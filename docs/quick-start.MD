@@ -32,14 +32,13 @@ Then you need rbac for operator, relevant configuration for release can be found
 ```bash
 #change namespace for your installation:
 export YOUR_NS=default
-sed -i -e "s/namespace: default/namespace: $YOUR_NS/" install/operator/rbac.yaml
-kubectl apply -f install/operator/rbac.yaml
+sed -i -e "s/namespace: default/namespace: $YOUR_NS/" install/operator/*.yaml
 ```
 
 change configuration for operator at `install/operator/operator.yaml`, possible settings: [operator-settings](/vars.MD)
 and apply it:
 ```bash
-kubectl -n $YOUR_NS apply -f install/operator/operator.yaml
+kubectl -n $YOUR_NS apply -f install/operator/
 ```
 
 check status of operator

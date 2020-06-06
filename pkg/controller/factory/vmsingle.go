@@ -62,7 +62,7 @@ func makeVmPvc(cr *victoriametricsv1beta1.VmSingle, c *conf.BaseOperatorConf) *c
 			Name:        cr.PrefixedName(),
 			Namespace:   cr.Namespace,
 			Labels:      c.Labels.Merge(cr.FinalLabels()),
-			Annotations: cr.GetAnnotations(),
+			Annotations: cr.Annotations(),
 		},
 		Spec: *cr.Spec.Storage,
 	}
@@ -160,7 +160,7 @@ func newDeployForVmSingle(cr *victoriametricsv1beta1.VmSingle, c *conf.BaseOpera
 			Name:            cr.PrefixedName(),
 			Namespace:       cr.Namespace,
 			Labels:          c.Labels.Merge(cr.FinalLabels()),
-			Annotations:     cr.GetAnnotations(),
+			Annotations:     cr.Annotations(),
 			OwnerReferences: cr.AsOwner(),
 		},
 		Spec: appsv1.DeploymentSpec{
@@ -384,7 +384,7 @@ func newServiceVmSingle(cr *victoriametricsv1beta1.VmSingle, c *conf.BaseOperato
 			Name:            cr.PrefixedName(),
 			Namespace:       cr.Namespace,
 			Labels:          c.Labels.Merge(cr.FinalLabels()),
-			Annotations:     cr.GetAnnotations(),
+			Annotations:     cr.Annotations(),
 			OwnerReferences: cr.AsOwner(),
 		},
 		Spec: corev1.ServiceSpec{

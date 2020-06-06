@@ -9,8 +9,7 @@ mkdir install/operator
 mkdir install/examples
 cp deploy/crds/monitoring* install/crds/prom/
 cp deploy/crds/victoriametrics* install/crds/vm/
-cp deploy/operator.yaml install/operator/
-cp deploy/rbac.yaml install/operator/
+cp deploy/*.yaml install/operator/
 cp deploy/examples/* install/examples/
 if [ $TAG  ];then
   sed -i -e "s/:latest/:$TAG/" install/operator/operator.yaml

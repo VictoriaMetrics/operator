@@ -6,7 +6,6 @@ import (
 	"github.com/VictoriaMetrics/operator/conf"
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
 	"github.com/coreos/prometheus-operator/pkg/k8sutil"
-	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -14,52 +13,47 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/utils/pointer"
 	"path"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"strings"
 )
 
 const (
 	vmAlertConfigDir = "/etc/vmalert/config"
 )
 
-func CreateOrUpdateVmAlertService(cr *victoriametricsv1beta1.VmAlert, rclient client.Client, c *conf.BaseOperatorConf, l logr.Logger) (*corev1.Service, error) {
-	l = l.WithValues("recon.vmalert.service.name", cr.Name)
-	newSvc := newServiceVmAlert(cr, c)
+func CreateOrUpdateVmAlertService(ctx context.Context, cr *victoriametricsv1beta1.VmAlert, rclient client.Client, c *conf.BaseOperatorConf) (*corev1.Service, error) {
+	l := log.WithValues("controller", "vmalert.service.crud", "vmalert", cr.Name())
+	newService := newServiceVmAlert(cr, c)
 
 	currentService := &corev1.Service{}
-	err := rclient.Get(context.TODO(), types.NamespacedName{Namespace: cr.Namespace, Name: newSvc.Name}, currentService)
+	err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: newService.Name}, currentService)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			l.Info("creating new service for vm vmalert")
-			err := rclient.Create(context.TODO(), newSvc)
+			err := rclient.Create(ctx, newService)
 			if err != nil {
-				l.Error(err, "cannot create new service for vmalert")
-				return nil, err
+				return nil, fmt.Errorf("cannot create new service for vmalert: %w", err)
 			}
 		} else {
-			l.Error(err, "cannot get vmalert service for recon")
-			return nil, err
+			return nil, fmt.Errorf("cannot get vmalert service: %w", err)
 		}
 	}
-	if currentService.Annotations != nil {
-		newSvc.Annotations = currentService.Annotations
+	for annotation, value := range currentService.Annotations {
+		newService.Annotations[annotation] = value
 	}
 	if currentService.Spec.ClusterIP != "" {
-		newSvc.Spec.ClusterIP = currentService.Spec.ClusterIP
+		newService.Spec.ClusterIP = currentService.Spec.ClusterIP
 	}
 	if currentService.ResourceVersion != "" {
-		newSvc.ResourceVersion = currentService.ResourceVersion
+		newService.ResourceVersion = currentService.ResourceVersion
 	}
-	err = rclient.Update(context.TODO(), newSvc)
+	err = rclient.Update(ctx, newService)
 	if err != nil {
-		l.Error(err, "cannot update vmalert service")
-		return nil, err
+		return nil, fmt.Errorf("cannot update vmalert service: %w", err)
 	}
 	l.Info("vmalert svc reconciled")
-	return newSvc, nil
+	return newService, nil
 }
 
 func newServiceVmAlert(cr *victoriametricsv1beta1.VmAlert, c *conf.BaseOperatorConf) *corev1.Service {
@@ -69,24 +63,15 @@ func newServiceVmAlert(cr *victoriametricsv1beta1.VmAlert, c *conf.BaseOperatorC
 	}
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        prefixedAlertName(cr.Name),
-			Namespace:   cr.Namespace,
-			Labels:      c.Labels.Merge(cr.ObjectMeta.Labels),
-			Annotations: cr.Annotations,
-			OwnerReferences: []metav1.OwnerReference{
-				{
-					APIVersion:         cr.APIVersion,
-					Kind:               cr.Kind,
-					Name:               cr.Name,
-					UID:                cr.UID,
-					Controller:         pointer.BoolPtr(true),
-					BlockOwnerDeletion: pointer.BoolPtr(true),
-				},
-			},
+			Name:            cr.PrefixedName(),
+			Namespace:       cr.Namespace,
+			Labels:          c.Labels.Merge(cr.FinalLabels()),
+			Annotations:     cr.GetAnnotations(),
+			OwnerReferences: cr.AsOwner(),
 		},
 		Spec: corev1.ServiceSpec{
 			Type:     corev1.ServiceTypeClusterIP,
-			Selector: selectorLabelsVmAlert(cr),
+			Selector: cr.CommonLabels(),
 			Ports: []corev1.ServicePort{
 				{
 					Name:       "http",
@@ -99,41 +84,38 @@ func newServiceVmAlert(cr *victoriametricsv1beta1.VmAlert, c *conf.BaseOperatorC
 	}
 }
 
-func CreateOrUpdateVmAlert(cr *victoriametricsv1beta1.VmAlert, rclient client.Client, c *conf.BaseOperatorConf, cmNames []string, l logr.Logger) (reconcile.Result, error) {
-	l = l.WithValues("create.or.update.vmalert.name", cr.Name)
+func CreateOrUpdateVmAlert(ctx context.Context, cr *victoriametricsv1beta1.VmAlert, rclient client.Client, c *conf.BaseOperatorConf, cmNames []string) (reconcile.Result, error) {
+	l := log.WithValues("controller", "vmalert.crud", "vmalert", cr.Name())
 	//recon deploy
 	l.Info("generating new deployment")
 	newDeploy, err := newDeployForVmAlert(cr, c, cmNames)
 	if err != nil {
-		return reconcile.Result{}, err
+		return reconcile.Result{}, fmt.Errorf("cannot generate new deploy for vmalert: %w", err)
 	}
 
 	currDeploy := &appsv1.Deployment{}
-	err = rclient.Get(context.TODO(), types.NamespacedName{Namespace: newDeploy.Namespace, Name: newDeploy.Name}, currDeploy)
+	err = rclient.Get(ctx, types.NamespacedName{Namespace: newDeploy.Namespace, Name: newDeploy.Name}, currDeploy)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			//deploy not exists create it
-			err := rclient.Create(context.TODO(), newDeploy)
+			err := rclient.Create(ctx, newDeploy)
 			if err != nil {
-				l.Error(err, "cannot create vmalert deploy")
-				return reconcile.Result{}, err
+				return reconcile.Result{}, fmt.Errorf("cannot create vmalert deploy: %w", err)
 			}
 		} else {
-			l.Error(err, "cannot get deploy")
-			return reconcile.Result{}, err
+			return reconcile.Result{}, fmt.Errorf("cannot get deploy for vmalert: %w", err)
 		}
 	}
-	if currDeploy.Annotations != nil {
-		newDeploy.Annotations = currDeploy.Annotations
+	for annotation, value := range currDeploy.Annotations {
+		newDeploy.Annotations[annotation] = value
 	}
-	if currDeploy.Spec.Template.Annotations != nil {
-		newDeploy.Spec.Template.Annotations = currDeploy.Spec.Template.Annotations
+	for annotation, value := range currDeploy.Spec.Template.Annotations {
+		newDeploy.Spec.Template.Annotations[annotation] = value
 	}
 
-	err = rclient.Update(context.TODO(), newDeploy)
+	err = rclient.Update(ctx, newDeploy)
 	if err != nil {
-		l.Error(err, "cannot update deploy")
-		return reconcile.Result{}, err
+		return reconcile.Result{}, fmt.Errorf("cannot update vmalert deploy: %w", err)
 	}
 	l.Info("reconciled vmalert deploy")
 
@@ -174,20 +156,10 @@ func newDeployForVmAlert(cr *victoriametricsv1beta1.VmAlert, c *conf.BaseOperato
 	if cr.Spec.Port == "" {
 		cr.Spec.Port = c.VmAlertDefault.Port
 	}
-	annotations := make(map[string]string)
-	for key, value := range cr.ObjectMeta.Annotations {
-		if !strings.HasPrefix(key, "kubectl.kubernetes.io/") {
-			annotations[key] = value
-		}
-	}
-	labels := getVmAlertLabels(cr)
-	for key, value := range cr.ObjectMeta.Labels {
-		labels[key] = value
-	}
 
 	generatedSpec, err := vmAlertSpecGen(cr, c, ruleConfigMapNames)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot generate new spec for vmalert: %w", err)
 	}
 
 	if cr.Spec.ImagePullSecrets != nil && len(cr.Spec.ImagePullSecrets) > 0 {
@@ -196,20 +168,11 @@ func newDeployForVmAlert(cr *victoriametricsv1beta1.VmAlert, c *conf.BaseOperato
 
 	deploy := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        prefixedAlertName(cr.Name),
-			Namespace:   cr.Namespace,
-			Labels:      c.Labels.Merge(labels),
-			Annotations: annotations,
-			OwnerReferences: []metav1.OwnerReference{
-				{
-					APIVersion:         cr.APIVersion,
-					Kind:               cr.Kind,
-					Name:               cr.Name,
-					UID:                cr.UID,
-					Controller:         pointer.BoolPtr(true),
-					BlockOwnerDeletion: pointer.BoolPtr(true),
-				},
-			},
+			Name:            cr.PrefixedName(),
+			Namespace:       cr.Namespace,
+			Labels:          c.Labels.Merge(cr.FinalLabels()),
+			Annotations:     cr.Annotations(),
+			OwnerReferences: cr.AsOwner(),
 		},
 		Spec: *generatedSpec,
 	}
@@ -254,7 +217,9 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VmAlert, c *conf.BaseOperatorConf
 	for _, cm := range ruleConfigMapNames {
 		confReloadArgs = append(confReloadArgs, fmt.Sprintf("-volume-dir=%s", path.Join(vmAlertConfigDir, cm)))
 	}
-	args = append(args, cr.Spec.ExtraArgs...)
+	for arg, value := range cr.Spec.ExtraArgs {
+		args = append(args, fmt.Sprintf("--%s=%s", arg, value))
+	}
 
 	args = append(args, fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.Port))
 
@@ -392,24 +357,16 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VmAlert, c *conf.BaseOperatorConf
 			VolumeMounts:             reloaderVolumes,
 		},
 	}
-	podAnnotations := map[string]string{}
-	if cr.Spec.PodMetadata != nil {
-		if cr.Spec.PodMetadata.Annotations != nil {
-			for k, v := range cr.Spec.PodMetadata.Annotations {
-				podAnnotations[k] = v
-			}
-		}
-	}
 
 	containers, err := MergePatchContainers(defaultContainers, cr.Spec.Containers)
 	if err != nil {
 		return nil, err
 	}
 	spec := &appsv1.DeploymentSpec{
-		Replicas: cr.Spec.Replicas,
+		Replicas: cr.Spec.ReplicaCount,
 
 		Selector: &metav1.LabelSelector{
-			MatchLabels: selectorLabelsVmAlert(cr),
+			MatchLabels: cr.CommonLabels(),
 		},
 
 		Strategy: appsv1.DeploymentStrategy{
@@ -417,8 +374,8 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VmAlert, c *conf.BaseOperatorConf
 		},
 		Template: corev1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{
-				Labels:      getVmAlertLabels(cr),
-				Annotations: podAnnotations,
+				Labels:      cr.PodLabels(),
+				Annotations: cr.PodAnnotations(),
 			},
 			Spec: corev1.PodSpec{
 				Containers:  containers,
@@ -429,29 +386,4 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VmAlert, c *conf.BaseOperatorConf
 		},
 	}
 	return spec, nil
-}
-
-func prefixedAlertName(name string) string {
-	return fmt.Sprintf("vmalert-%s", name)
-}
-
-func getVmAlertLabels(cr *victoriametricsv1beta1.VmAlert) map[string]string {
-	labels := selectorLabelsVmAlert(cr)
-	for key, value := range cr.ObjectMeta.Labels {
-		labels[key] = value
-	}
-	if cr.Spec.PodMetadata != nil {
-		for key, value := range cr.Spec.PodMetadata.Labels {
-			labels[key] = value
-		}
-	}
-	return labels
-}
-func selectorLabelsVmAlert(cr *victoriametricsv1beta1.VmAlert) map[string]string {
-	labels := map[string]string{}
-	labels["app.kubernetes.io/name"] = "vmalert"
-	labels["app.kubernetes.io/instance"] = cr.Name
-	labels["app.kubernetes.io/component"] = "monitoring"
-
-	return labels
 }

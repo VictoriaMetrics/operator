@@ -10,7 +10,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -41,7 +40,6 @@ func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 		scheme:   mgr.GetScheme(),
 		opConf:   conf.MustGetBaseConfig(),
 		restConf: mgr.GetConfig(),
-		kclient:  kubernetes.NewForConfigOrDie(mgr.GetConfig()),
 	}
 }
 
@@ -95,7 +93,6 @@ type ReconcileVmAgent struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
 	client   client.Client
-	kclient  kubernetes.Interface
 	scheme   *runtime.Scheme
 	restConf *rest.Config
 	opConf   *conf.BaseOperatorConf
@@ -112,7 +109,8 @@ func (r *ReconcileVmAgent) Reconcile(request reconcile.Request) (reconcile.Resul
 
 	// Fetch the VmAgent instance
 	instance := &victoriametricsv1beta1.VmAgent{}
-	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
+	ctx := context.Background()
+	err := r.client.Get(ctx, request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -126,32 +124,36 @@ func (r *ReconcileVmAgent) Reconcile(request reconcile.Request) (reconcile.Resul
 	}
 
 	//we have to create empty or full cm first
-	err = factory.CreateOrUpdateConfigurationSecret(instance, r.client, r.kclient, r.opConf, reqLogger)
+	err = factory.CreateOrUpdateConfigurationSecret(ctx, instance, r.client, r.opConf)
 	if err != nil {
 		reqLogger.Error(err, "cannot create configmap")
 		return reconcile.Result{}, err
 	}
 
 	//create deploy
-	reconResult, err := factory.CreateOrUpdateVmAgent(instance, r.client, r.opConf, reqLogger)
+	reconResult, err := factory.CreateOrUpdateVmAgent(ctx, instance, r.client, r.opConf)
 	if err != nil {
-		//propogate err + result to upstream
+		reqLogger.Error(err, "cannot create or update vmagent deploy")
 		return reconResult, err
 	}
 
 	//create service for monitoring
-	svc, err := factory.CreateOrUpdateVmAgentService(instance, r.client, r.opConf, reqLogger)
+	svc, err := factory.CreateOrUpdateVmAgentService(ctx, instance, r.client, r.opConf)
 	if err != nil {
+		reqLogger.Error(err, "cannot create or update vmagent service")
 		return reconcile.Result{}, err
 	}
 
-	//cm
-	_, err = metrics.CreateServiceMonitors(r.restConf, instance.Namespace, []*corev1.Service{svc})
-	if err != nil {
-		if !errors.IsAlreadyExists(err) {
-			reqLogger.Error(err, "cannot create service monitor")
+	//create servicemonitor for object by default
+	if !r.opConf.DisabledServiceMonitorCreation {
+		_, err = metrics.CreateServiceMonitors(r.restConf, instance.Namespace, []*corev1.Service{svc})
+		if err != nil {
+			if !errors.IsAlreadyExists(err) {
+				reqLogger.Error(err, "cannot create service monitor")
+			}
 		}
 	}
+	reqLogger.Info("reconciled vmagent")
 
 	return reconcile.Result{}, nil
 }

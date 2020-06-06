@@ -1684,12 +1684,11 @@ spec:
               pattern: '[0-9]+(ms|s|m|h)'
               type: string
             extraArgs:
+              additionalProperties:
+                type: string
               description: ExtraArgs that will be passed to  VmAlert pod for example
                 -remoteWrite.tmpDataPath=/tmp
-              items:
-                type: string
-              type: array
-              x-kubernetes-list-type: set
+              type: object
             extraEnvs:
               description: ExtraEnvs that will be added to VmAlert pod
               items:
@@ -2946,10 +2945,10 @@ spec:
               required:
               - url
               type: object
-            replicas:
-              description: Replicas is the expected size of the VmAlert cluster. The
-                controller will eventually make the size of the running cluster equal
-                to the expected size.
+            replicaCount:
+              description: ReplicaCount is the expected size of the VmAlert cluster.
+                The controller will eventually make the size of the running cluster
+                equal to the expected size.
               format: int32
               type: integer
             resources:
@@ -4489,7 +4488,6 @@ spec:
           required:
           - datasource
           - notifierURL
-          - replicas
           type: object
         status:
           description: VmAlertStatus defines the observed state of VmAlert
@@ -4500,8 +4498,8 @@ spec:
               format: int32
               type: integer
             replicas:
-              description: Replicas Total number of non-terminated pods targeted by
-                this VmAlert cluster (their labels match the selector).
+              description: ReplicaCount Total number of non-terminated pods targeted
+                by this VmAlert cluster (their labels match the selector).
               format: int32
               type: integer
             unavailableReplicas:

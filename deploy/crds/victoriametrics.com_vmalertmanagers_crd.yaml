@@ -8,9 +8,9 @@ spec:
     description: The version of Alertmanager
     name: Version
     type: string
-  - JSONPath: .spec.Replicas
+  - JSONPath: .spec.ReplicaCount
     description: The desired replicas number of Alertmanagers
-    name: Replicas
+    name: ReplicaCount
     type: integer
   - JSONPath: .metadata.creationTimestamp
     name: Age
@@ -2842,8 +2842,8 @@ spec:
             priorityClassName:
               description: PriorityClassName class assigned to the Pods
               type: string
-            replicas:
-              description: Replicas Size is the expected size of the alertmanager
+            replicaCount:
+              description: ReplicaCount Size is the expected size of the alertmanager
                 cluster. The controller will eventually make the size of the running
                 cluster equal to the expected
               format: int32
@@ -4592,8 +4592,8 @@ spec:
                 managed objects are being performed. Only delete actions will be performed.
               type: boolean
             replicas:
-              description: Replicas Total number of non-terminated pods targeted by
-                this Alertmanager cluster (their labels match the selector).
+              description: ReplicaCount Total number of non-terminated pods targeted
+                by this Alertmanager cluster (their labels match the selector).
               format: int32
               type: integer
             unavailableReplicas:

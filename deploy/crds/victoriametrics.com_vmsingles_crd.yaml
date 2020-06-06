@@ -1664,12 +1664,11 @@ spec:
               type: array
               x-kubernetes-list-type: set
             extraArgs:
-              description: ExtraArgs that will be passed to  VmSingle pod for example
-                -remoteWrite.tmpDataPath=/tmp
-              items:
+              additionalProperties:
                 type: string
-              type: array
-              x-kubernetes-list-type: set
+              description: 'ExtraArgs that will be passed to  VmSingle pod for example
+                remoteWrite.tmpDataPath: /tmp'
+              type: object
             extraEnvs:
               description: ExtraEnvs that will be added to VmSingle pod
               items:
@@ -2905,9 +2904,9 @@ spec:
                 to pvc and after VmSingle objest deletion - pvc will be garbage collected
                 by controller manager
               type: boolean
-            replicas:
-              description: Replicas is the expected size of the VmSingle it can be
-                0 or 1 if you need more - use vm cluster
+            replicaCount:
+              description: ReplicaCount is the expected size of the VmSingle it can
+                be 0 or 1 if you need more - use vm cluster
               format: int32
               type: integer
             resources:
@@ -4481,8 +4480,8 @@ spec:
               format: int32
               type: integer
             replicas:
-              description: Replicas Total number of non-terminated pods targeted by
-                this VmAlert cluster (their labels match the selector).
+              description: ReplicaCount Total number of non-terminated pods targeted
+                by this VmAlert cluster (their labels match the selector).
               format: int32
               type: integer
             unavailableReplicas:

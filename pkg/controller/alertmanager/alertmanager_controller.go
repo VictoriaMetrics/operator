@@ -85,34 +85,28 @@ func (r *ReconcileAlertmanager) Reconcile(request reconcile.Request) (reconcile.
 	)
 
 	reqLogger.Info("Reconciling")
+	ctx := context.Background()
 
-	// Fetch the Alertmanager instance
 	instance := &victoriametricsv1beta1.Alertmanager{}
-
-	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
+	err := r.client.Get(ctx, request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			// Request object not found, could have been deleted after reconcile request.
-			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
-			// Return and don't requeue
 			return reconcile.Result{}, nil
 		}
-		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
 
-	_, err = factory.CreateOrUpdateAlertManager(instance, r.client, r.opConf, reqLogger)
+	_, err = factory.CreateOrUpdateAlertManager(ctx, instance, r.client, r.opConf)
 	if err != nil {
-		reqLogger.Error(err, "problem with reconiling alertmanager")
+		reqLogger.Error(err, "cannot create or update vmalertmanager sts")
 		return reconcile.Result{}, err
 	}
-	reqLogger.Info("reconciling service for sts")
-	//recon service for alertmanager
-	_, err = factory.CreateOrUpdateAlertManagerService(instance, r.client, r.opConf, reqLogger)
+	_, err = factory.CreateOrUpdateAlertManagerService(ctx, instance, r.client, r.opConf)
 	if err != nil {
+		reqLogger.Error(err, "cannot create or update vmalertmanager service")
 		return reconcile.Result{}, err
 	}
 
-	reqLogger.Info("alertmanager reconciled")
+	reqLogger.Info("vmalertmanager reconciled")
 	return reconcile.Result{}, nil
 }

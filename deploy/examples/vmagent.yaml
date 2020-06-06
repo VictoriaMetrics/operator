@@ -6,14 +6,14 @@ spec:
   serviceMonitorNamespaceSelector: {}
   serviceMonitorSelector: {}
   # Add fields here
-  replicas: 1
+  replicaCount: 1
   resources:
     requests:
       cpu: "50m"
       memory: "50Mi"
   serviceAccountName: vmagent
   additionalArgs:
-    - "-memory.allowedPercent=40"
+    memory.allowedPercent: "40"
   remoteWrite:
-    - url: "http://vmagent-example-vmsingle.default.svc:8429/api/v1/write"
+    - url: "http://vmsingle-example-vmsingle.default.svc:8429/api/v1/write"
 

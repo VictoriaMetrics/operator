@@ -6,4 +6,4 @@ metadata:
       ns: op
 spec:
   # Add fields here
-  replicas: 1
+  replicaCount: 1

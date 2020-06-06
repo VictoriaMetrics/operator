@@ -8,8 +8,6 @@ import (
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
 	"github.com/blang/semver"
 	"github.com/coreos/prometheus-operator/pkg/k8sutil"
-	"github.com/go-logr/logr"
-	gerr "github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -18,16 +16,15 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
-	"k8s.io/utils/pointer"
 	"net/url"
 	"path"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"strings"
 )
 
 const (
-	governingServiceName   = "alertmanager-operated"
 	defaultRetention       = "120h"
 	secretsDir             = "/etc/alertmanager/secrets/"
 	configmapsDir          = "/etc/alertmanager/configmaps/"
@@ -40,44 +37,42 @@ const (
 var (
 	minReplicas         int32 = 1
 	probeTimeoutSeconds int32 = 5
+	log                       = logf.Log.WithName("factory")
 )
 
-func CreateOrUpdateAlertManager(cr *victoriametricsv1beta1.Alertmanager, rclient client.Client, c *conf.BaseOperatorConf, l logr.Logger) (*appsv1.StatefulSet, error) {
-	l = l.WithValues("reconcile.AlertManager.sts", cr.Name)
+func CreateOrUpdateAlertManager(ctx context.Context, cr *victoriametricsv1beta1.Alertmanager, rclient client.Client, c *conf.BaseOperatorConf) (*appsv1.StatefulSet, error) {
+	l := log.WithValues("reconcile.AlertManager.sts", cr.Name(), "ns", cr.Namespace)
 	newSts, err := newStsForAlertManager(cr, c)
 	if err != nil {
-		l.Error(err, "cannot generate sts")
-		return nil, err
+		return nil, fmt.Errorf("cannot generate alertmanager sts, name: %s,err: %w", cr.Name(), err)
 	}
-	// Set Alertmanager instance as the owner and controller
-	// Check if this sts already exists
-	oldSts := &appsv1.StatefulSet{}
-	err = rclient.Get(context.TODO(), types.NamespacedName{Name: newSts.Name, Namespace: newSts.Namespace}, oldSts)
+	currentSts := &appsv1.StatefulSet{}
+	err = rclient.Get(ctx, types.NamespacedName{Name: newSts.Name, Namespace: newSts.Namespace}, currentSts)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			l.Info("Creating a new sts", "sts.Namespace", newSts.Namespace, "sts.Name", newSts.Name)
-			err = rclient.Create(context.TODO(), newSts)
+			err = rclient.Create(ctx, newSts)
 			if err != nil {
-				l.Error(err, "cannot create new sts")
-				return nil, err
+				return nil, fmt.Errorf("cannot create new alertmanager sts: %w", err)
 			}
 			l.Info("new sts was created for alertmanager")
 		} else {
-			l.Error(err, "cannot get sts")
-			return nil, err
+			return nil, fmt.Errorf("cannot get alertmanager sts: %w", err)
 		}
 	}
-	if oldSts.Annotations != nil {
-		newSts.Annotations = oldSts.Annotations
-	}
-	l.Info("updating sts with new version")
-	err = rclient.Update(context.TODO(), newSts)
-	if err != nil {
-		l.Error(err, "cannot update alertmanager sts")
-		return nil, err
-	}
+	return newSts, updateStsForAlertManager(ctx, rclient, currentSts, newSts)
+}
 
-	return newSts, nil
+func updateStsForAlertManager(ctx context.Context, rclient client.Client, oldSts, newSts *appsv1.StatefulSet) error {
+	for k, v := range oldSts.Annotations {
+		newSts.Annotations[k] = v
+	}
+	for k, v := range oldSts.Spec.Template.Annotations {
+		newSts.Spec.Template.Annotations[k] = v
+	}
+	log.Info("updating vmalertmanager sts")
+	return rclient.Update(ctx, newSts)
+
 }
 
 func newStsForAlertManager(cr *victoriametricsv1beta1.Alertmanager, c *conf.BaseOperatorConf) (*appsv1.StatefulSet, error) {
@@ -91,12 +86,12 @@ func newStsForAlertManager(cr *victoriametricsv1beta1.Alertmanager, c *conf.Base
 	if cr.Spec.Version == "" {
 		cr.Spec.Version = c.AlertManager.AlertManagerVersion
 	}
-	if cr.Spec.Replicas == nil {
-		cr.Spec.Replicas = &minReplicas
+	if cr.Spec.ReplicaCount == nil {
+		cr.Spec.ReplicaCount = &minReplicas
 	}
 	intZero := int32(0)
-	if cr.Spec.Replicas != nil && *cr.Spec.Replicas < 0 {
-		cr.Spec.Replicas = &intZero
+	if cr.Spec.ReplicaCount != nil && *cr.Spec.ReplicaCount < 0 {
+		cr.Spec.ReplicaCount = &intZero
 	}
 	if cr.Spec.Retention == "" {
 		cr.Spec.Retention = defaultRetention
@@ -108,7 +103,7 @@ func newStsForAlertManager(cr *victoriametricsv1beta1.Alertmanager, c *conf.Base
 		cr.Spec.Resources.Requests[v1.ResourceMemory] = resource.MustParse("200Mi")
 	}
 	if cr.Spec.ConfigSecret == "" {
-		cr.Spec.ConfigSecret = configSecretName(cr.Name)
+		cr.Spec.ConfigSecret = configSecretName(cr.Name())
 	}
 
 	spec, err := makeStatefulSetSpec(cr, c)
@@ -116,30 +111,13 @@ func newStsForAlertManager(cr *victoriametricsv1beta1.Alertmanager, c *conf.Base
 		return nil, err
 	}
 
-	// do not transfer kubectl annotations to the statefulset so it is not
-	// pruned by kubectl
-	annotations := make(map[string]string)
-	for key, value := range cr.ObjectMeta.Annotations {
-		if !strings.HasPrefix(key, "kubectl.kubernetes.io/") {
-			annotations[key] = value
-		}
-	}
 	statefulset := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        prefixedName(cr.Name),
-			Labels:      c.Labels.Merge(cr.ObjectMeta.Labels),
-			Annotations: annotations,
-			Namespace:   cr.Namespace,
-			OwnerReferences: []metav1.OwnerReference{
-				{
-					APIVersion:         cr.APIVersion,
-					Kind:               cr.Kind,
-					Name:               cr.Name,
-					UID:                cr.UID,
-					Controller:         pointer.BoolPtr(true),
-					BlockOwnerDeletion: pointer.BoolPtr(true),
-				},
-			},
+			Name:            cr.PrefixedName(),
+			Labels:          c.Labels.Merge(cr.FinalLabels()),
+			Annotations:     cr.Annotations(),
+			Namespace:       cr.Namespace,
+			OwnerReferences: cr.AsOwner(),
 		},
 		Spec: *spec,
 	}
@@ -151,7 +129,7 @@ func newStsForAlertManager(cr *victoriametricsv1beta1.Alertmanager, c *conf.Base
 	storageSpec := cr.Spec.Storage
 	if storageSpec == nil {
 		statefulset.Spec.Template.Spec.Volumes = append(statefulset.Spec.Template.Spec.Volumes, v1.Volume{
-			Name: volumeName(cr.Name),
+			Name: volumeName(cr.Name()),
 			VolumeSource: v1.VolumeSource{
 				EmptyDir: &v1.EmptyDirVolumeSource{},
 			},
@@ -159,7 +137,7 @@ func newStsForAlertManager(cr *victoriametricsv1beta1.Alertmanager, c *conf.Base
 	} else if storageSpec.EmptyDir != nil {
 		emptyDir := storageSpec.EmptyDir
 		statefulset.Spec.Template.Spec.Volumes = append(statefulset.Spec.Template.Spec.Volumes, v1.Volume{
-			Name: volumeName(cr.Name),
+			Name: volumeName(cr.Name()),
 			VolumeSource: v1.VolumeSource{
 				EmptyDir: emptyDir,
 			},
@@ -167,7 +145,7 @@ func newStsForAlertManager(cr *victoriametricsv1beta1.Alertmanager, c *conf.Base
 	} else {
 		pvcTemplate := MakeVolumeClaimTemplate(storageSpec.VolumeClaimTemplate)
 		if pvcTemplate.Name == "" {
-			pvcTemplate.Name = volumeName(cr.Name)
+			pvcTemplate.Name = volumeName(cr.Name())
 		}
 		if storageSpec.VolumeClaimTemplate.Spec.AccessModes == nil {
 			pvcTemplate.Spec.AccessModes = []v1.PersistentVolumeAccessMode{v1.ReadWriteOnce}
@@ -184,42 +162,39 @@ func newStsForAlertManager(cr *victoriametricsv1beta1.Alertmanager, c *conf.Base
 	return statefulset, nil
 }
 
-func CreateOrUpdateAlertManagerService(cr *victoriametricsv1beta1.Alertmanager, rclient client.Client, c *conf.BaseOperatorConf, l logr.Logger) (*v1.Service, error) {
+func CreateOrUpdateAlertManagerService(ctx context.Context, cr *victoriametricsv1beta1.Alertmanager, rclient client.Client, c *conf.BaseOperatorConf) (*v1.Service, error) {
 
-	l = l.WithValues("recon.alertmanager.service", cr.Name)
+	l := log.WithValues("recon.alertmanager.service", cr.Name())
 
-	newSvc := newAlertManagerService(cr, c)
-	oldSvc := &v1.Service{}
-	err := rclient.Get(context.TODO(), types.NamespacedName{Name: newSvc.Name, Namespace: newSvc.Namespace}, oldSvc)
+	newService := newAlertManagerService(cr, c)
+	oldService := &v1.Service{}
+	err := rclient.Get(ctx, types.NamespacedName{Name: newService.Name, Namespace: newService.Namespace}, oldService)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			l.Info("creating new service for sts")
-			err := rclient.Create(context.TODO(), newSvc)
+			err := rclient.Create(ctx, newService)
 			if err != nil {
-				l.Error(err, "cannot create service for alertmanager")
+				return nil, fmt.Errorf("cannot create service for vmalertmanager sts: %w", err)
 			}
 		} else {
-			l.Error(err, "cannot get service for sts")
-			return nil, err
+			return nil, fmt.Errorf("cannot get service for vmalertmanager sts: %w", err)
 		}
 	}
-	if oldSvc.Annotations != nil {
-		newSvc.Annotations = oldSvc.Annotations
+	for annotation, value := range oldService.Annotations {
+		newService.Annotations[annotation] = value
 	}
-	if oldSvc.Spec.ClusterIP != "" {
-		newSvc.Spec.ClusterIP = oldSvc.Spec.ClusterIP
+	if oldService.Spec.ClusterIP != "" {
+		newService.Spec.ClusterIP = oldService.Spec.ClusterIP
 	}
-	if oldSvc.ResourceVersion != "" {
-		newSvc.ResourceVersion = oldSvc.ResourceVersion
+	if oldService.ResourceVersion != "" {
+		newService.ResourceVersion = oldService.ResourceVersion
 	}
-	err = rclient.Update(context.TODO(), newSvc)
+	err = rclient.Update(ctx, newService)
 	if err != nil {
-		l.Error(err, "cannot update service")
-		return nil, err
+		return nil, fmt.Errorf("cannot update vmalert server: %w", err)
 	}
 
-	return newSvc, nil
-
+	return newService, nil
 }
 
 func newAlertManagerService(cr *victoriametricsv1beta1.Alertmanager, c *conf.BaseOperatorConf) *v1.Service {
@@ -230,21 +205,11 @@ func newAlertManagerService(cr *victoriametricsv1beta1.Alertmanager, c *conf.Bas
 
 	svc := &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      governingServiceName,
-			Namespace: cr.Namespace,
-			Labels: c.Labels.Merge(map[string]string{
-				"operated-alertmanager": "true",
-			}),
-			OwnerReferences: []metav1.OwnerReference{
-				{
-					APIVersion:         cr.APIVersion,
-					Kind:               cr.Kind,
-					Name:               cr.Name,
-					UID:                cr.UID,
-					Controller:         pointer.BoolPtr(true),
-					BlockOwnerDeletion: pointer.BoolPtr(true),
-				},
-			},
+			Name:            cr.PrefixedName(),
+			Namespace:       cr.Namespace,
+			Labels:          c.Labels.Merge(cr.FinalLabels()),
+			Annotations:     cr.Annotations(),
+			OwnerReferences: cr.AsOwner(),
 		},
 		Spec: v1.ServiceSpec{
 			ClusterIP: "None",
@@ -268,35 +233,33 @@ func newAlertManagerService(cr *victoriametricsv1beta1.Alertmanager, c *conf.Bas
 					Protocol:   v1.ProtocolUDP,
 				},
 			},
-			Selector: map[string]string{
-				"app": "alertmanager",
-			},
+			Selector: cr.SelectorLabels(),
 		},
 	}
 	return svc
 }
 
-func makeStatefulSetSpec(a *victoriametricsv1beta1.Alertmanager, config *conf.BaseOperatorConf) (*appsv1.StatefulSetSpec, error) {
-	// Before editing 'a' create deep copy, to prevent side effects. For more
+func makeStatefulSetSpec(cr *victoriametricsv1beta1.Alertmanager, config *conf.BaseOperatorConf) (*appsv1.StatefulSetSpec, error) {
+	// Before editing 'cr' create deep copy, to prevent side effects. For more
 	// details see https://github.com/coreos/prometheus-operator/issues/1659
-	a = a.DeepCopy()
+	cr = cr.DeepCopy()
 
 	// Version is used by default.
 	// If the tag is specified, we use the tag to identify the container image.
 	// If the sha is specified, we use the sha to identify the container image,
 	// as it has even stronger immutable guarantees to identify the image.
-	image := fmt.Sprintf("%s:%s", a.Spec.BaseImage, a.Spec.Version)
-	if a.Spec.Tag != "" {
-		image = fmt.Sprintf("%s:%s", a.Spec.BaseImage, a.Spec.Tag)
+	image := fmt.Sprintf("%s:%s", cr.Spec.BaseImage, cr.Spec.Version)
+	if cr.Spec.Tag != "" {
+		image = fmt.Sprintf("%s:%s", cr.Spec.BaseImage, cr.Spec.Tag)
 	}
-	if a.Spec.SHA != "" {
-		image = fmt.Sprintf("%s@sha256:%s", a.Spec.BaseImage, a.Spec.SHA)
+	if cr.Spec.SHA != "" {
+		image = fmt.Sprintf("%s@sha256:%s", cr.Spec.BaseImage, cr.Spec.SHA)
 	}
-	if a.Spec.Image != nil && *a.Spec.Image != "" {
-		image = *a.Spec.Image
+	if cr.Spec.Image != nil && *cr.Spec.Image != "" {
+		image = *cr.Spec.Image
 	}
 
-	version, err := semver.ParseTolerant(a.Spec.Version)
+	version, err := semver.ParseTolerant(cr.Spec.Version)
 	if err != nil {
 		return nil, err
 	}
@@ -305,37 +268,37 @@ func makeStatefulSetSpec(a *victoriametricsv1beta1.Alertmanager, config *conf.Ba
 		fmt.Sprintf("--config.file=%s", alertmanagerConfFile),
 		fmt.Sprintf("--cluster.listen-address=[$(POD_IP)]:%d", 9094),
 		fmt.Sprintf("--storage.path=%s", alertmanagerStorageDir),
-		fmt.Sprintf("--data.retention=%s", a.Spec.Retention),
+		fmt.Sprintf("--data.retention=%s", cr.Spec.Retention),
 	}
 
-	if a.Spec.ListenLocal {
+	if cr.Spec.ListenLocal {
 		amArgs = append(amArgs, "--web.listen-address=127.0.0.1:9093")
 	} else {
 		amArgs = append(amArgs, "--web.listen-address=:9093")
 	}
 
-	if a.Spec.ExternalURL != "" {
-		amArgs = append(amArgs, "--web.external-url="+a.Spec.ExternalURL)
+	if cr.Spec.ExternalURL != "" {
+		amArgs = append(amArgs, "--web.external-url="+cr.Spec.ExternalURL)
 	}
 
 	webRoutePrefix := "/"
-	if a.Spec.RoutePrefix != "" {
-		webRoutePrefix = a.Spec.RoutePrefix
+	if cr.Spec.RoutePrefix != "" {
+		webRoutePrefix = cr.Spec.RoutePrefix
 	}
 	amArgs = append(amArgs, fmt.Sprintf("--web.route-prefix=%v", webRoutePrefix))
 
-	if a.Spec.LogLevel != "" && a.Spec.LogLevel != "info" {
-		amArgs = append(amArgs, fmt.Sprintf("--log.level=%s", a.Spec.LogLevel))
+	if cr.Spec.LogLevel != "" && cr.Spec.LogLevel != "info" {
+		amArgs = append(amArgs, fmt.Sprintf("--log.level=%s", cr.Spec.LogLevel))
 	}
 
 	if version.GTE(semver.MustParse("0.16.0")) {
-		if a.Spec.LogFormat != "" && a.Spec.LogFormat != "logfmt" {
-			amArgs = append(amArgs, fmt.Sprintf("--log.format=%s", a.Spec.LogFormat))
+		if cr.Spec.LogFormat != "" && cr.Spec.LogFormat != "logfmt" {
+			amArgs = append(amArgs, fmt.Sprintf("--log.format=%s", cr.Spec.LogFormat))
 		}
 	}
 
-	if a.Spec.ClusterAdvertiseAddress != "" {
-		amArgs = append(amArgs, fmt.Sprintf("--cluster.advertise-address=%s", a.Spec.ClusterAdvertiseAddress))
+	if cr.Spec.ClusterAdvertiseAddress != "" {
+		amArgs = append(amArgs, fmt.Sprintf("--cluster.advertise-address=%s", cr.Spec.ClusterAdvertiseAddress))
 	}
 
 	localReloadURL := &url.URL{
@@ -347,20 +310,20 @@ func makeStatefulSetSpec(a *victoriametricsv1beta1.Alertmanager, config *conf.Ba
 	livenessProbeHandler := v1.Handler{
 		HTTPGet: &v1.HTTPGetAction{
 			Path: path.Clean(webRoutePrefix + "/-/healthy"),
-			Port: intstr.FromString(a.Spec.PortName),
+			Port: intstr.FromString(cr.Spec.PortName),
 		},
 	}
 
 	readinessProbeHandler := v1.Handler{
 		HTTPGet: &v1.HTTPGetAction{
 			Path: path.Clean(webRoutePrefix + "/-/ready"),
-			Port: intstr.FromString(a.Spec.PortName),
+			Port: intstr.FromString(cr.Spec.PortName),
 		},
 	}
 
 	var livenessProbe *v1.Probe
 	var readinessProbe *v1.Probe
-	if !a.Spec.ListenLocal {
+	if !cr.Spec.ListenLocal {
 		livenessProbe = &v1.Probe{
 			Handler:          livenessProbeHandler,
 			TimeoutSeconds:   probeTimeoutSeconds,
@@ -376,35 +339,18 @@ func makeStatefulSetSpec(a *victoriametricsv1beta1.Alertmanager, config *conf.Ba
 		}
 	}
 
-	podAnnotations := map[string]string{}
-	podLabels := map[string]string{}
-	if a.Spec.PodMetadata != nil {
-		if a.Spec.PodMetadata.Labels != nil {
-			for k, v := range a.Spec.PodMetadata.Labels {
-				podLabels[k] = v
-			}
-		}
-		if a.Spec.PodMetadata.Annotations != nil {
-			for k, v := range a.Spec.PodMetadata.Annotations {
-				podAnnotations[k] = v
-			}
-		}
-	}
-	podLabels["app"] = "alertmanager"
-	podLabels["alertmanager"] = a.Name
-
 	var clusterPeerDomain string
 	if config.AlertManager.ClusterDomain != "" {
-		clusterPeerDomain = fmt.Sprintf("%s.%s.svc.%s.", governingServiceName, a.Namespace, config.AlertManager.ClusterDomain)
+		clusterPeerDomain = fmt.Sprintf("%s.%s.svc.%s.", cr.PrefixedName(), cr.Namespace, config.AlertManager.ClusterDomain)
 	} else {
 		// The default DNS search path is .svc.<cluster domain>
-		clusterPeerDomain = governingServiceName
+		clusterPeerDomain = cr.PrefixedName()
 	}
-	for i := int32(0); i < *a.Spec.Replicas; i++ {
-		amArgs = append(amArgs, fmt.Sprintf("--cluster.peer=%s-%d.%s:9094", prefixedName(a.Name), i, clusterPeerDomain))
+	for i := int32(0); i < *cr.Spec.ReplicaCount; i++ {
+		amArgs = append(amArgs, fmt.Sprintf("--cluster.peer=%s-%d.%s:9094", prefixedName(cr.Name()), i, clusterPeerDomain))
 	}
 
-	for _, peer := range a.Spec.AdditionalPeers {
+	for _, peer := range cr.Spec.AdditionalPeers {
 		amArgs = append(amArgs, fmt.Sprintf("--cluster.peer=%s", peer))
 	}
 
@@ -420,10 +366,10 @@ func makeStatefulSetSpec(a *victoriametricsv1beta1.Alertmanager, config *conf.Ba
 			Protocol:      v1.ProtocolUDP,
 		},
 	}
-	if !a.Spec.ListenLocal {
+	if !cr.Spec.ListenLocal {
 		ports = append([]v1.ContainerPort{
 			{
-				Name:          a.Spec.PortName,
+				Name:          cr.Spec.PortName,
 				ContainerPort: 9093,
 				Protocol:      v1.ProtocolTCP,
 			},
@@ -432,7 +378,7 @@ func makeStatefulSetSpec(a *victoriametricsv1beta1.Alertmanager, config *conf.Ba
 
 	// Adjust Alertmanager command line args to specified AM version
 	//
-	// Alertmanager versions < v0.15.0 are only supported on a best effort basis
+	// Alertmanager versions < v0.15.0 are only supported on cr best effort basis
 	// starting with Prometheus Operator v0.30.0.
 	switch version.Major {
 	case 0:
@@ -460,7 +406,7 @@ func makeStatefulSetSpec(a *victoriametricsv1beta1.Alertmanager, config *conf.Ba
 			})
 		}
 	default:
-		return nil, gerr.Errorf("unsupported Alertmanager major version %s", version)
+		return nil, fmt.Errorf("unsupported Alertmanager major version %s", version)
 	}
 
 	volumes := []v1.Volume{
@@ -468,16 +414,16 @@ func makeStatefulSetSpec(a *victoriametricsv1beta1.Alertmanager, config *conf.Ba
 			Name: "config-volume",
 			VolumeSource: v1.VolumeSource{
 				Secret: &v1.SecretVolumeSource{
-					SecretName: a.Spec.ConfigSecret,
+					SecretName: cr.Spec.ConfigSecret,
 				},
 			},
 		},
 	}
 
-	volName := volumeName(a.Name)
-	if a.Spec.Storage != nil {
-		if a.Spec.Storage.VolumeClaimTemplate.Name != "" {
-			volName = a.Spec.Storage.VolumeClaimTemplate.Name
+	volName := volumeName(cr.Name())
+	if cr.Spec.Storage != nil {
+		if cr.Spec.Storage.VolumeClaimTemplate.Name != "" {
+			volName = cr.Spec.Storage.VolumeClaimTemplate.Name
 		}
 	}
 
@@ -489,11 +435,11 @@ func makeStatefulSetSpec(a *victoriametricsv1beta1.Alertmanager, config *conf.Ba
 		{
 			Name:      volName,
 			MountPath: alertmanagerStorageDir,
-			SubPath:   subPathForStorage(a.Spec.Storage),
+			SubPath:   subPathForStorage(cr.Spec.Storage),
 		},
 	}
 
-	for _, s := range a.Spec.Secrets {
+	for _, s := range cr.Spec.Secrets {
 		volumes = append(volumes, v1.Volume{
 			Name: k8sutil.SanitizeVolumeName("secret-" + s),
 			VolumeSource: v1.VolumeSource{
@@ -509,7 +455,7 @@ func makeStatefulSetSpec(a *victoriametricsv1beta1.Alertmanager, config *conf.Ba
 		})
 	}
 
-	for _, c := range a.Spec.ConfigMaps {
+	for _, c := range cr.Spec.ConfigMaps {
 		volumes = append(volumes, v1.Volume{
 			Name: k8sutil.SanitizeVolumeName("configmap-" + c),
 			VolumeSource: v1.VolumeSource{
@@ -527,7 +473,7 @@ func makeStatefulSetSpec(a *victoriametricsv1beta1.Alertmanager, config *conf.Ba
 		})
 	}
 
-	amVolumeMounts = append(amVolumeMounts, a.Spec.VolumeMounts...)
+	amVolumeMounts = append(amVolumeMounts, cr.Spec.VolumeMounts...)
 
 	resources := v1.ResourceRequirements{Limits: v1.ResourceList{}}
 	if config.AlertManager.ConfigReloaderCPU != "0" {
@@ -538,7 +484,6 @@ func makeStatefulSetSpec(a *victoriametricsv1beta1.Alertmanager, config *conf.Ba
 	}
 
 	terminationGracePeriod := int64(120)
-	finalLabels := config.Labels.Merge(podLabels)
 
 	defaultContainers := []v1.Container{
 		{
@@ -549,7 +494,7 @@ func makeStatefulSetSpec(a *victoriametricsv1beta1.Alertmanager, config *conf.Ba
 			VolumeMounts:   amVolumeMounts,
 			LivenessProbe:  livenessProbe,
 			ReadinessProbe: readinessProbe,
-			Resources:      a.Spec.Resources,
+			Resources:      cr.Spec.Resources,
 			Env: []v1.EnvVar{
 				{
 					// Necessary for '--cluster.listen-address' flag
@@ -581,39 +526,39 @@ func makeStatefulSetSpec(a *victoriametricsv1beta1.Alertmanager, config *conf.Ba
 		},
 	}
 
-	containers, err := MergePatchContainers(defaultContainers, a.Spec.Containers)
+	containers, err := MergePatchContainers(defaultContainers, cr.Spec.Containers)
 	if err != nil {
-		return nil, gerr.Wrap(err, "failed to merge containers spec")
+		return nil, fmt.Errorf("failed to merge containers spec: %w", err)
 	}
 
 	// PodManagementPolicy is set to Parallel to mitigate issues in kubernetes: https://github.com/kubernetes/kubernetes/issues/60164
 	// This is also mentioned as one of limitations of StatefulSets: https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#limitations
 	return &appsv1.StatefulSetSpec{
-		ServiceName:         governingServiceName,
-		Replicas:            a.Spec.Replicas,
+		ServiceName:         cr.PrefixedName(),
+		Replicas:            cr.Spec.ReplicaCount,
 		PodManagementPolicy: appsv1.ParallelPodManagement,
 		UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
 			Type: appsv1.RollingUpdateStatefulSetStrategyType,
 		},
 		Selector: &metav1.LabelSelector{
-			MatchLabels: podLabels,
+			MatchLabels: cr.SelectorLabels(),
 		},
 		Template: v1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{
-				Labels:      finalLabels,
-				Annotations: podAnnotations,
+				Labels:      cr.PodLabels(),
+				Annotations: cr.PodAnnotations(),
 			},
 			Spec: v1.PodSpec{
-				NodeSelector:                  a.Spec.NodeSelector,
-				PriorityClassName:             a.Spec.PriorityClassName,
+				NodeSelector:                  cr.Spec.NodeSelector,
+				PriorityClassName:             cr.Spec.PriorityClassName,
 				TerminationGracePeriodSeconds: &terminationGracePeriod,
-				InitContainers:                a.Spec.InitContainers,
+				InitContainers:                cr.Spec.InitContainers,
 				Containers:                    containers,
 				Volumes:                       volumes,
-				ServiceAccountName:            a.Spec.ServiceAccountName,
-				SecurityContext:               a.Spec.SecurityContext,
-				Tolerations:                   a.Spec.Tolerations,
-				Affinity:                      a.Spec.Affinity,
+				ServiceAccountName:            cr.Spec.ServiceAccountName,
+				SecurityContext:               cr.Spec.SecurityContext,
+				Tolerations:                   cr.Spec.Tolerations,
+				Affinity:                      cr.Spec.Affinity,
 			},
 		},
 	}, nil
@@ -671,21 +616,21 @@ func MergePatchContainers(base, patches []v1.Container) ([]v1.Container, error) 
 			// Get the json for the container and the patch
 			containerBytes, err := json.Marshal(container)
 			if err != nil {
-				return nil, gerr.Wrap(err, fmt.Sprintf("failed to marshal json for container %s", container.Name))
+				return nil, fmt.Errorf("failed to marshal json for container %s, err: %w", container.Name, err)
 			}
 			patchBytes, err := json.Marshal(patchContainer)
 			if err != nil {
-				return nil, gerr.Wrap(err, fmt.Sprintf("failed to marshal json for patch container %s", container.Name))
+				return nil, fmt.Errorf("failed to marshal json for patch container %s, err: %w", container.Name, err)
 			}
 
 			// Calculate the patch result
 			jsonResult, err := strategicpatch.StrategicMergePatch(containerBytes, patchBytes, v1.Container{})
 			if err != nil {
-				return nil, gerr.Wrap(err, fmt.Sprintf("failed to generate merge patch for %s", container.Name))
+				return nil, fmt.Errorf("failed to generate merge patch for %s, err: %w", container.Name, err)
 			}
 			var patchResult v1.Container
 			if err := json.Unmarshal(jsonResult, &patchResult); err != nil {
-				return nil, gerr.Wrap(err, fmt.Sprintf("failed to unmarshal merged container %s", container.Name))
+				return nil, fmt.Errorf("failed to unmarshal merged container %s, err: %w", container.Name, err)
 			}
 
 			// Add the patch result and remove the corresponding key from the to do list

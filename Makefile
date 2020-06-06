@@ -9,8 +9,9 @@ GOTEST=CGO_ENABLED=0 GOOS=linux GOARCH=amd64  $(GOCMD) test
 GOGET=$(GOCMD) get
 BINARY_NAME=vm-operator
 BINARY_UNIX=$(BINARY_NAME)_unix
-MAIN_DIR=github.com/VictoriaMetrics/operator/cmd/manager/
-DOC_GEN_DIR=github.com/VictoriaMetrics/operator/cmd/doc-gen/
+REPO=github.com/VictoriaMetrics/operator
+MAIN_DIR=$(REPO)/cmd/manager/
+DOC_GEN_DIR=$(REPO)/cmd/doc-gen/
 OPERATOR_BIN=operator-sdk
 DOCKER_REPO="quay.io/f41gh7/vm-operator"
 TAG="master"
@@ -51,7 +52,7 @@ docker: build-app
 
 test:
 	echo 'mode: atomic' > coverage.txt  && \
-	$(TEST_ARGS) ./...
+	$(TEST_ARGS) $(REPO)/pkg/...
 	$(GOCMD) tool cover -func coverage.txt  | grep total
 
 lint:

@@ -3,12 +3,10 @@ package prometheusrule
 import (
 	"context"
 	"github.com/VictoriaMetrics/operator/conf"
+	monitoringv1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1"
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
 	"github.com/VictoriaMetrics/operator/pkg/controller/factory"
 	"github.com/go-logr/logr"
-	"k8s.io/client-go/kubernetes"
-
-	monitoringv1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -31,11 +29,10 @@ func Add(mgr manager.Manager) error {
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 	return &ReconcilePrometheusrule{
-		client:  mgr.GetClient(),
-		scheme:  mgr.GetScheme(),
-		opConf:  conf.MustGetBaseConfig(),
-		l:       log,
-		kclient: kubernetes.NewForConfigOrDie(mgr.GetConfig()),
+		client: mgr.GetClient(),
+		scheme: mgr.GetScheme(),
+		opConf: conf.MustGetBaseConfig(),
+		l:      log,
 	}
 }
 
@@ -63,11 +60,10 @@ var _ reconcile.Reconciler = &ReconcilePrometheusrule{}
 type ReconcilePrometheusrule struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
-	client  client.Client
-	kclient kubernetes.Interface
-	l       logr.Logger
-	scheme  *runtime.Scheme
-	opConf  *conf.BaseOperatorConf
+	client client.Client
+	l      logr.Logger
+	scheme *runtime.Scheme
+	opConf *conf.BaseOperatorConf
 }
 
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
@@ -79,25 +75,19 @@ func (r *ReconcilePrometheusrule) Reconcile(request reconcile.Request) (reconcil
 
 	// Fetch the Prometheusrule instance
 	instance := &monitoringv1.PrometheusRule{}
-	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
+	ctx := context.Background()
+	err := r.client.Get(ctx, request.NamespacedName, instance)
 	if err != nil {
-		if errors.IsNotFound(err) {
-			// Request object not found, could have been deleted after reconcile request.
-			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
-			// Return and don't requeue
-			//return reconcile.Result{}, nil
-		} else {
-			// Error reading the object - requeue the request.
+		//in case of object notfound we must update vmalerts
+		if !errors.IsNotFound(err) {
 			reqLogger.Error(err, "cannot get resource")
 			return reconcile.Result{}, err
 		}
 	}
-	reqLogger.Info("get prom rule", "name", instance.Name)
 
 	alertMngs := &victoriametricsv1beta1.VmAlertList{}
-
 	reqLogger.Info("listing vmalerts")
-	err = r.client.List(context.TODO(), alertMngs, &client.ListOptions{})
+	err = r.client.List(ctx, alertMngs, &client.ListOptions{})
 	if err != nil {
 		reqLogger.Error(err, "cannot list vmalerts")
 		return reconcile.Result{}, err
@@ -106,18 +96,18 @@ func (r *ReconcilePrometheusrule) Reconcile(request reconcile.Request) (reconcil
 
 	reqLogger.Info("updating or creating cm for vmalert")
 	for _, vmalert := range alertMngs.Items {
-		reqLogger.WithValues("vmalert", vmalert.Name)
+		reqLogger.WithValues("vmalert", vmalert.Name())
 		reqLogger.Info("reconciling vmalert rules")
 		currVmAlert := &vmalert
 
-		maps, err := factory.CreateOrUpdateRuleConfigMaps(currVmAlert, r.kclient, r.client, reqLogger)
+		maps, err := factory.CreateOrUpdateRuleConfigMaps(ctx, currVmAlert, r.client)
 		if err != nil {
 			reqLogger.Error(err, "cannot update rules configmaps")
 			return reconcile.Result{}, err
 		}
 		reqLogger.Info("created rules maps count", "count", len(maps))
 
-		_, err = factory.CreateOrUpdateVmAlert(currVmAlert, r.client, r.opConf, maps, reqLogger)
+		_, err = factory.CreateOrUpdateVmAlert(ctx, currVmAlert, r.client, r.opConf, maps)
 		if err != nil {
 			reqLogger.Error(err, "cannot trigger vmalert update, after rules changing")
 			return reconcile.Result{}, nil
@@ -125,7 +115,7 @@ func (r *ReconcilePrometheusrule) Reconcile(request reconcile.Request) (reconcil
 		reqLogger.Info("reconciled vmalert rules")
 
 	}
-	reqLogger.Info("prom rules were reconciled")
+	reqLogger.Info("prom rules reconciled")
 
 	return reconcile.Result{}, nil
 }

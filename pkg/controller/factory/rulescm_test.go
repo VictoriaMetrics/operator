@@ -1,6 +1,7 @@
 package factory
 
 import (
+	"context"
 	monitoringv1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1"
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
 	"github.com/go-logr/logr"
@@ -54,7 +55,7 @@ func Test_selectNamespaces(t *testing.T) {
 			}
 			s := scheme.Scheme
 			client := fake.NewFakeClientWithScheme(s, objs...)
-			got, err := selectNamespaces(client, tt.args.selector)
+			got, err := selectNamespaces(context.TODO(), client, tt.args.selector)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("selectNamespaces() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -102,7 +103,7 @@ func TestSelectRules(t *testing.T) {
 					}}},
 				}},
 			},
-			want: []string{"default-error-alert.yaml", "default-vmalert.yaml"},
+			want: []string{"default-error-alert.yaml"},
 		},
 		{
 			name: "select default rule, and additional rule from another namespace with namespace filter",
@@ -126,7 +127,7 @@ func TestSelectRules(t *testing.T) {
 					}}},
 				}},
 			},
-			want: []string{"default-vmalert.yaml", "monitoring-error-alert-at-monitoring.yaml"},
+			want: []string{"monitoring-error-alert-at-monitoring.yaml"},
 		},
 	}
 	for _, tt := range tests {
@@ -136,7 +137,7 @@ func TestSelectRules(t *testing.T) {
 			s := scheme.Scheme
 			s.AddKnownTypes(monitoringv1.SchemeGroupVersion, &monitoringv1.PrometheusRule{}, &monitoringv1.PrometheusRuleList{})
 			fclient := fake.NewFakeClientWithScheme(s, obj...)
-			got, err := SelectRules(tt.args.p, fclient, tt.args.l)
+			got, err := SelectRules(context.TODO(), tt.args.p, fclient)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("SelectRules() error = %v, wantErr %v", err, tt.wantErr)
 				return

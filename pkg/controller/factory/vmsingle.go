@@ -6,7 +6,6 @@ import (
 	"github.com/VictoriaMetrics/operator/conf"
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
 	"github.com/coreos/prometheus-operator/pkg/k8sutil"
-	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -14,10 +13,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/utils/pointer"
 	"path"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"strings"
 )
 
 const (
@@ -26,32 +23,30 @@ const (
 	vmSingleDataDir      = "/victoria-metrics-data"
 )
 
-func CreateVmStorage(cr *victoriametricsv1beta1.VmSingle, rclient client.Client, c *conf.BaseOperatorConf, l logr.Logger) (*corev1.PersistentVolumeClaim, error) {
+func CreateVmStorage(ctx context.Context, cr *victoriametricsv1beta1.VmSingle, rclient client.Client, c *conf.BaseOperatorConf) (*corev1.PersistentVolumeClaim, error) {
 
-	l = l.WithValues("vm.single.pvc.create", prefixedVmSingleName(cr.Name))
+	l := log.WithValues("vm.single.pvc.create", cr.Name())
 	l.Info("reconciling pvc")
 	newPvc := makeVmPvc(cr, c)
 	existPvc := &corev1.PersistentVolumeClaim{}
-	err := rclient.Get(context.TODO(), types.NamespacedName{Namespace: cr.Namespace, Name: prefixedVmSingleName(cr.Name)}, existPvc)
+	err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, existPvc)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			l.Info("creating new pvc")
-			if err := rclient.Create(context.TODO(), newPvc); err != nil {
-				l.Error(err, "cannot create new pvc")
-				return nil, err
+			l.Info("creating new pvc for vmsingle")
+			if err := rclient.Create(ctx, newPvc); err != nil {
+				return nil, fmt.Errorf("cannot create new pvc for vmsingle: %w", err)
 			}
 
 			return newPvc, nil
 		} else {
-			l.Error(err, "cannot get existing pvc")
-			return nil, err
+			return nil, fmt.Errorf("cannot get existing pvc for vmsingle: %w", err)
 		}
 	}
 
 	if existPvc.Spec.Resources.String() != newPvc.Spec.Resources.String() {
-		l.Info("volume requests isnt same, update required")
+		l.Info("volume requests isn't same, update required")
 		existPvc.Spec.Resources = newPvc.Spec.Resources
-		err := rclient.Update(context.TODO(), existPvc)
+		err := rclient.Update(ctx, existPvc)
 		if err != nil {
 			l.Error(err, "cannot update pvc size, we can suppress it")
 		}
@@ -64,72 +59,62 @@ func CreateVmStorage(cr *victoriametricsv1beta1.VmSingle, rclient client.Client,
 func makeVmPvc(cr *victoriametricsv1beta1.VmSingle, c *conf.BaseOperatorConf) *corev1.PersistentVolumeClaim {
 	pvcObject := &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        prefixedVmSingleName(cr.Name),
+			Name:        cr.PrefixedName(),
 			Namespace:   cr.Namespace,
-			Labels:      c.Labels.Merge(cr.ObjectMeta.Labels),
-			Annotations: cr.Annotations,
+			Labels:      c.Labels.Merge(cr.FinalLabels()),
+			Annotations: cr.GetAnnotations(),
 		},
 		Spec: *cr.Spec.Storage,
 	}
 	if cr.Spec.RemovePvcAfterDelete {
-		pvcObject.OwnerReferences = []metav1.OwnerReference{
-			{
-				APIVersion:         cr.APIVersion,
-				Kind:               cr.Kind,
-				Name:               cr.Name,
-				UID:                cr.UID,
-				Controller:         pointer.BoolPtr(true),
-				BlockOwnerDeletion: pointer.BoolPtr(true),
-			},
-		}
+		pvcObject.OwnerReferences = cr.AsOwner()
 	}
 	return pvcObject
 }
 
-func CreateOrUpdateVmSingle(cr *victoriametricsv1beta1.VmSingle, rclient client.Client, c *conf.BaseOperatorConf, l logr.Logger) (*appsv1.Deployment, error) {
+func CreateOrUpdateVmSingle(ctx context.Context, cr *victoriametricsv1beta1.VmSingle, rclient client.Client, c *conf.BaseOperatorConf) (*appsv1.Deployment, error) {
 
+	l := log.WithValues("controller", "vmsingle.crud", "vmsingle", cr.Name())
 	l.Info("create or update vm single deploy")
 
 	newDeploy, err := newDeployForVmSingle(cr, c)
 	if err != nil {
-		l.Error(err, "cannot build new deploy for single")
-		return nil, err
+		return nil, fmt.Errorf("cannot generate new deploy for vmsingle: %w", err)
 	}
 
 	l = l.WithValues("single.deploy.name", newDeploy.Name, "single.deploy.namespace", newDeploy.Namespace)
 
 	currentDeploy := &appsv1.Deployment{}
-	err = rclient.Get(context.TODO(), types.NamespacedName{Name: newDeploy.Name, Namespace: newDeploy.Namespace}, currentDeploy)
+	err = rclient.Get(ctx, types.NamespacedName{Name: newDeploy.Name, Namespace: newDeploy.Namespace}, currentDeploy)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			//create new
 			l.Info("vmsingle deploy not found, creating new one")
-			err := rclient.Create(context.TODO(), newDeploy)
+			err := rclient.Create(ctx, newDeploy)
 			if err != nil {
-				l.Error(err, "cannot create new vmsingle deploy")
-				return nil, err
+				return nil, fmt.Errorf("cannot create new vmsingle deploy: %w", err)
 			}
 			l.Info("new vmsingle deploy was created")
 		} else {
-			l.Error(err, "cannot get vmsingle deploy")
-			return nil, err
+			return nil, fmt.Errorf("cannot get vmsingle deploy: %w", err)
 		}
 	}
 	l.Info("vm vmsingle was found, updating it")
-	if currentDeploy.Annotations != nil {
-		newDeploy.Annotations = currentDeploy.Annotations
-	}
-	if currentDeploy.Spec.Template.Annotations != nil {
-		newDeploy.Spec.Template.Annotations = currentDeploy.Spec.Template.Annotations
+	for annotation, value := range currentDeploy.Annotations {
+		newDeploy.Annotations[annotation] = value
 	}
 
-	err = rclient.Update(context.TODO(), newDeploy)
+	for annotation, value := range currentDeploy.Spec.Template.Annotations {
+		newDeploy.Spec.Template.Annotations[annotation] = value
+	}
+
+	err = rclient.Update(ctx, newDeploy)
 	if err != nil {
-		l.Error(err, "cannot update single deploy")
+		return nil, fmt.Errorf("cannot upddate vmsingle deploy: %w", err)
 	}
 	l.Info("single deploy reconciled")
 
-	return nil, nil
+	return newDeploy, nil
 }
 
 func newDeployForVmSingle(cr *victoriametricsv1beta1.VmSingle, c *conf.BaseOperatorConf) (*appsv1.Deployment, error) {
@@ -165,13 +150,6 @@ func newDeployForVmSingle(cr *victoriametricsv1beta1.VmSingle, c *conf.BaseOpera
 		cr.Spec.Resources.Requests[corev1.ResourceCPU] = resource.MustParse(c.VmSingleDefault.Resource.Request.Cpu)
 	}
 
-	annotations := make(map[string]string)
-	for key, value := range cr.ObjectMeta.Annotations {
-		if !strings.HasPrefix(key, "kubectl.kubernetes.io/") {
-			annotations[key] = value
-		}
-	}
-
 	podSpec, err := makeSpecForVmSingle(cr, c)
 	if err != nil {
 		return nil, err
@@ -179,26 +157,17 @@ func newDeployForVmSingle(cr *victoriametricsv1beta1.VmSingle, c *conf.BaseOpera
 
 	depSpec := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        prefixedVmSingleName(cr.Name),
-			Namespace:   cr.Namespace,
-			Labels:      c.Labels.Merge(cr.ObjectMeta.Labels),
-			Annotations: cr.ObjectMeta.Annotations,
-			OwnerReferences: []metav1.OwnerReference{
-				{
-					APIVersion:         cr.APIVersion,
-					Kind:               cr.Kind,
-					Name:               cr.Name,
-					UID:                cr.UID,
-					Controller:         pointer.BoolPtr(true),
-					BlockOwnerDeletion: pointer.BoolPtr(true),
-				},
-			},
+			Name:            cr.PrefixedName(),
+			Namespace:       cr.Namespace,
+			Labels:          c.Labels.Merge(cr.FinalLabels()),
+			Annotations:     cr.GetAnnotations(),
+			OwnerReferences: cr.AsOwner(),
 		},
 		Spec: appsv1.DeploymentSpec{
-			//its hardcoded by design
-			//but we can add valition
-			Replicas: pointer.Int32Ptr(1),
-			Selector: &metav1.LabelSelector{MatchLabels: selectorLabelsVmSingle(cr)},
+			Replicas: cr.Spec.ReplicaCount,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: cr.SelectorLabels(),
+			},
 			Strategy: appsv1.DeploymentStrategy{
 				//we use recreate, coz of volume claim
 				Type: appsv1.RecreateDeploymentStrategyType,
@@ -222,7 +191,9 @@ func makeSpecForVmSingle(cr *victoriametricsv1beta1.VmSingle, c *conf.BaseOperat
 		args = append(args, fmt.Sprintf("-loggerFormat=%s", cr.Spec.LogFormat))
 	}
 
-	args = append(args, cr.Spec.ExtraArgs...)
+	for arg, value := range cr.Spec.ExtraArgs {
+		args = append(args, fmt.Sprintf("--%s=%s", arg, value))
+	}
 
 	args = append(args, fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.Port))
 
@@ -247,7 +218,7 @@ func makeSpecForVmSingle(cr *victoriametricsv1beta1.VmSingle, c *conf.BaseOperat
 			Name: "data",
 			VolumeSource: corev1.VolumeSource{
 				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: prefixedVmSingleName(cr.Name),
+					ClaimName: cr.PrefixedName(),
 				},
 			},
 		})
@@ -324,14 +295,6 @@ func makeSpecForVmSingle(cr *victoriametricsv1beta1.VmSingle, c *conf.BaseOperat
 		FailureThreshold: 10,
 	}
 
-	podAnnotations := map[string]string{}
-	if cr.Spec.PodMetadata != nil {
-		if cr.Spec.PodMetadata.Annotations != nil {
-			for k, v := range cr.Spec.PodMetadata.Annotations {
-				podAnnotations[k] = v
-			}
-		}
-	}
 	var additionalContainers []corev1.Container
 
 	operatorContainers := append([]corev1.Container{
@@ -356,8 +319,8 @@ func makeSpecForVmSingle(cr *victoriametricsv1beta1.VmSingle, c *conf.BaseOperat
 
 	vmSignleSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
-			Labels:      getVmSingleLabels(cr),
-			Annotations: podAnnotations,
+			Labels:      cr.PodLabels(),
+			Annotations: cr.PodAnnotations(),
 		},
 		Spec: corev1.PodSpec{
 			Volumes:            volumes,
@@ -377,40 +340,38 @@ func makeSpecForVmSingle(cr *victoriametricsv1beta1.VmSingle, c *conf.BaseOperat
 
 }
 
-func CreateOrUpdateVmSingleService(cr *victoriametricsv1beta1.VmSingle, rclient client.Client, c *conf.BaseOperatorConf, l logr.Logger) (*corev1.Service, error) {
-	newSvc := newServiceVmSingle(cr, c)
+func CreateOrUpdateVmSingleService(ctx context.Context, cr *victoriametricsv1beta1.VmSingle, rclient client.Client, c *conf.BaseOperatorConf) (*corev1.Service, error) {
+	l := log.WithValues("controller", "vmalert.service.crud")
+	newService := newServiceVmSingle(cr, c)
 
 	currentService := &corev1.Service{}
-	err := rclient.Get(context.TODO(), types.NamespacedName{Namespace: cr.Namespace, Name: newSvc.Name}, currentService)
+	err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: newService.Name}, currentService)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			l.Info("creating new service for vm vmsingle")
-			err := rclient.Create(context.TODO(), newSvc)
+			err := rclient.Create(ctx, newService)
 			if err != nil {
-				l.Error(err, "cannot create new service for vmsingle")
-				return nil, err
+				return nil, fmt.Errorf("cannot create new service for vmsingle")
 			}
 		} else {
-			l.Error(err, "cannot get vmsingle service for recon")
-			return nil, err
+			return nil, fmt.Errorf("cannot get vmsingle service: %w", err)
 		}
 	}
-	if currentService.Annotations != nil {
-		newSvc.Annotations = currentService.Annotations
+	for annotation, value := range currentService.Annotations {
+		newService.Annotations[annotation] = value
 	}
 	if currentService.Spec.ClusterIP != "" {
-		newSvc.Spec.ClusterIP = currentService.Spec.ClusterIP
+		newService.Spec.ClusterIP = currentService.Spec.ClusterIP
 	}
 	if currentService.ResourceVersion != "" {
-		newSvc.ResourceVersion = currentService.ResourceVersion
+		newService.ResourceVersion = currentService.ResourceVersion
 	}
-	err = rclient.Update(context.TODO(), newSvc)
+	err = rclient.Update(ctx, newService)
 	if err != nil {
-		l.Error(err, "cannot update vmsingle service")
-		return nil, err
+		return nil, fmt.Errorf("cannot update vmsingle service: %w", err)
 	}
 	l.Info("vmsingle svc reconciled")
-	return newSvc, nil
+	return newService, nil
 }
 
 func newServiceVmSingle(cr *victoriametricsv1beta1.VmSingle, c *conf.BaseOperatorConf) *corev1.Service {
@@ -420,24 +381,15 @@ func newServiceVmSingle(cr *victoriametricsv1beta1.VmSingle, c *conf.BaseOperato
 	}
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        prefixedVmSingleName(cr.Name),
-			Namespace:   cr.Namespace,
-			Labels:      c.Labels.Merge(cr.ObjectMeta.Labels),
-			Annotations: cr.Annotations,
-			OwnerReferences: []metav1.OwnerReference{
-				{
-					APIVersion:         cr.APIVersion,
-					Kind:               cr.Kind,
-					Name:               cr.Name,
-					UID:                cr.UID,
-					Controller:         pointer.BoolPtr(true),
-					BlockOwnerDeletion: pointer.BoolPtr(true),
-				},
-			},
+			Name:            cr.PrefixedName(),
+			Namespace:       cr.Namespace,
+			Labels:          c.Labels.Merge(cr.FinalLabels()),
+			Annotations:     cr.GetAnnotations(),
+			OwnerReferences: cr.AsOwner(),
 		},
 		Spec: corev1.ServiceSpec{
 			Type:     corev1.ServiceTypeClusterIP,
-			Selector: selectorLabelsVmSingle(cr),
+			Selector: cr.SelectorLabels(),
 			Ports: []corev1.ServicePort{
 				{
 					Name:       "http",
@@ -448,29 +400,4 @@ func newServiceVmSingle(cr *victoriametricsv1beta1.VmSingle, c *conf.BaseOperato
 			},
 		},
 	}
-}
-
-func prefixedVmSingleName(name string) string {
-	return fmt.Sprintf("vmsingle-%s", name)
-}
-
-func getVmSingleLabels(cr *victoriametricsv1beta1.VmSingle) map[string]string {
-	labels := selectorLabelsVmSingle(cr)
-	if cr.Spec.PodMetadata != nil {
-		if cr.Spec.PodMetadata.Labels != nil {
-			for k, v := range cr.Spec.PodMetadata.Labels {
-				labels[k] = v
-			}
-		}
-	}
-
-	return labels
-
-}
-func selectorLabelsVmSingle(cr *victoriametricsv1beta1.VmSingle) map[string]string {
-	labels := map[string]string{}
-	labels["app.kubernetes.io/name"] = "vmsingle"
-	labels["app.kubernetes.io/instance"] = cr.Name
-	labels["app.kubernetes.io/component"] = "monitoring"
-	return labels
 }

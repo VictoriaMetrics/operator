@@ -17,9 +17,9 @@ import (
 const (
 	defaultReplicaExternalLabelName = "prometheus_replica"
 	defaultScrapeInterval           = "30s"
-	tlsAssetsDir                    = "/etc/prometheus/certs"
-	configFilename                  = "prometheus.yaml.gz"
-	configEnvsubstFilename          = "prometheus.env.yaml"
+	tlsAssetsDir                    = "/etc/vmagent-tls/certs"
+	configFilename                  = "vmagent.yaml.gz"
+	configEnvsubstFilename          = "vmagent.env.yaml"
 	kubernetesSDRoleEndpoint        = "endpoints"
 	kubernetesSDRolePod             = "pod"
 )

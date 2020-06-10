@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/VictoriaMetrics/operator/conf"
+	monitoringv1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1"
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
 	"github.com/coreos/prometheus-operator/pkg/k8sutil"
 	"github.com/go-logr/logr"
@@ -94,6 +95,18 @@ func newServiceVmAgent(cr *victoriametricsv1beta1.VmAgent, c *conf.BaseOperatorC
 //we assume, that configmaps were created before this function was called
 func CreateOrUpdateVmAgent(ctx context.Context, cr *victoriametricsv1beta1.VmAgent, rclient client.Client, c *conf.BaseOperatorConf) (reconcile.Result, error) {
 	l := log.WithValues("controller", "vmagent.crud")
+
+	//we have to create empty or full cm first
+	err := CreateOrUpdateConfigurationSecret(ctx, cr, rclient, c)
+	if err != nil {
+		l.Error(err, "cannot create configmap")
+		return reconcile.Result{}, err
+	}
+
+	err = CreateOrUpdateTlsAssets(ctx, cr, rclient)
+	if err != nil {
+		return reconcile.Result{}, fmt.Errorf("cannot update tls asset for vmagent: %w", err)
+	}
 	l.Info("create or update vm agent deploy")
 	newDeploy, err := newDeployForVmAgent(cr, c)
 	if err != nil {
@@ -236,15 +249,14 @@ func makeSpecForVmAgent(cr *victoriametricsv1beta1.VmAgent, c *conf.BaseOperator
 				},
 			},
 		},
-		//TODO fix it later
-		//{
-		//	Name: "tls-assets",
-		//	VolumeSource: corev1.VolumeSource{
-		//		Secret: &corev1.SecretVolumeSource{
-		//			SecretName: tlsAssetsSecretName(cr.Name()),
-		//		},
-		//	},
-		//},
+		{
+			Name: "tls-assets",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: cr.TLSAssetName(),
+				},
+			},
+		},
 		{
 			Name: "config-out",
 			VolumeSource: corev1.VolumeSource{
@@ -259,12 +271,11 @@ func makeSpecForVmAgent(cr *victoriametricsv1beta1.VmAgent, c *conf.BaseOperator
 			ReadOnly:  true,
 			MountPath: vmAgentConOfOutDir,
 		},
-		//TODO fix it later
-		//{
-		//	Name:      "tls-assets",
-		//	ReadOnly:  true,
-		//	MountPath: tlsAssetsDir,
-		//},
+		{
+			Name:      "tls-assets",
+			ReadOnly:  true,
+			MountPath: tlsAssetsDir,
+		},
 	}
 
 	agentVolumeMounts = append(agentVolumeMounts, cr.Spec.VolumeMounts...)
@@ -452,4 +463,134 @@ func addAddtionalScrapeConfigOwnership(cr *victoriametricsv1beta1.VmAgent, rclie
 	}
 	l.Info("scrape secret was updated with new owner", "secret", secret.Name)
 	return nil
+}
+
+func CreateOrUpdateTlsAssets(ctx context.Context, cr *victoriametricsv1beta1.VmAgent, rclient client.Client) error {
+	monitors, err := SelectServiceMonitors(ctx, cr, rclient)
+	if err != nil {
+		return fmt.Errorf("cannot select service monitors for tls Assets: %w", err)
+	}
+	assets, err := loadTLSAssets(ctx, rclient, monitors)
+	if err != nil {
+		return fmt.Errorf("cannot load tls assets: %w", err)
+	}
+
+	tlsAssetsSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            cr.TLSAssetName(),
+			Labels:          cr.FinalLabels(),
+			OwnerReferences: cr.AsOwner(),
+			Namespace:       cr.Namespace,
+		},
+		Data: map[string][]byte{},
+	}
+
+	for key, asset := range assets {
+		tlsAssetsSecret.Data[key] = []byte(asset)
+	}
+	currentAssetSecret := &corev1.Secret{}
+	err = rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: tlsAssetsSecret.Name}, currentAssetSecret)
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			return fmt.Errorf("cannot get existing tls secret: %s, for vmagent: %s, err: %w", tlsAssetsSecret.Name, cr.Name(), err)
+		}
+		err := rclient.Create(ctx, tlsAssetsSecret)
+		if err != nil {
+			return fmt.Errorf("cannot create tls asset secret: %s for vmagent: %s, err :%w", tlsAssetsSecret.Name, cr.Name(), err)
+		}
+		log.Info("create new tls asset secret: %s, for vmagent: %s", tlsAssetsSecret.Name, cr.Name())
+		return nil
+	}
+	for annotation, value := range currentAssetSecret.Annotations {
+		tlsAssetsSecret.Annotations[annotation] = value
+	}
+	return rclient.Update(ctx, tlsAssetsSecret)
+}
+
+func loadTLSAssets(ctx context.Context, rclient client.Client, monitors map[string]*monitoringv1.ServiceMonitor) (map[string]string, error) {
+	assets := map[string]string{}
+	nsSecretCache := make(map[string]*corev1.Secret)
+	nsConfigMapCache := make(map[string]*corev1.ConfigMap)
+
+	for _, mon := range monitors {
+		for _, ep := range mon.Spec.Endpoints {
+			if ep.TLSConfig == nil {
+				continue
+			}
+
+			prefix := mon.Namespace + "/"
+			secretSelectors := map[string]*corev1.SecretKeySelector{}
+			configMapSelectors := map[string]*corev1.ConfigMapKeySelector{}
+			if ep.TLSConfig.CA != (monitoringv1.SecretOrConfigMap{}) {
+				switch {
+				case ep.TLSConfig.CA.Secret != nil:
+					secretSelectors[prefix+ep.TLSConfig.CA.Secret.Name+"/"+ep.TLSConfig.CA.Secret.Key] = ep.TLSConfig.CA.Secret
+				case ep.TLSConfig.CA.ConfigMap != nil:
+					configMapSelectors[prefix+ep.TLSConfig.CA.ConfigMap.Name+"/"+ep.TLSConfig.CA.ConfigMap.Key] = ep.TLSConfig.CA.ConfigMap
+				}
+			}
+			if ep.TLSConfig.Cert != (monitoringv1.SecretOrConfigMap{}) {
+				switch {
+				case ep.TLSConfig.Cert.Secret != nil:
+					secretSelectors[prefix+ep.TLSConfig.Cert.Secret.Name+"/"+ep.TLSConfig.Cert.Secret.Key] = ep.TLSConfig.Cert.Secret
+				case ep.TLSConfig.Cert.ConfigMap != nil:
+					configMapSelectors[prefix+ep.TLSConfig.Cert.ConfigMap.Name+"/"+ep.TLSConfig.Cert.ConfigMap.Key] = ep.TLSConfig.Cert.ConfigMap
+				}
+			}
+			if ep.TLSConfig.KeySecret != nil {
+				secretSelectors[prefix+ep.TLSConfig.KeySecret.Name+"/"+ep.TLSConfig.KeySecret.Key] = ep.TLSConfig.KeySecret
+			}
+
+			for key, selector := range secretSelectors {
+				asset, err := getCredFromSecret(
+					ctx,
+					rclient,
+					mon.Namespace,
+					*selector,
+					key,
+					nsSecretCache,
+				)
+				if err != nil {
+					return nil, fmt.Errorf(
+						"failed to extract endpoint tls asset for servicemonitor %v from secret %v and key %v in namespace %v",
+						mon.Name, selector.Name, selector.Key, mon.Namespace,
+					)
+				}
+
+				assets[fmt.Sprintf(
+					"%v_%v_%v",
+					mon.Namespace,
+					selector.Name,
+					selector.Key,
+				)] = asset
+			}
+
+			for key, selector := range configMapSelectors {
+				asset, err := getCredFromConfigMap(
+					ctx,
+					rclient,
+					mon.Namespace,
+					*selector,
+					key,
+					nsConfigMapCache,
+				)
+				if err != nil {
+					return nil, fmt.Errorf(
+						"failed to extract endpoint tls asset for servicemonitor %v from configmap %v and key %v in namespace %v",
+						mon.Name, selector.Name, selector.Key, mon.Namespace,
+					)
+				}
+
+				assets[fmt.Sprintf(
+					"%v_%v_%v",
+					mon.Namespace,
+					selector.Name,
+					selector.Key,
+				)] = asset
+			}
+
+		}
+	}
+
+	return assets, nil
 }

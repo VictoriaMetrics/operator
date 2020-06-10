@@ -347,7 +347,6 @@ func loadBearerTokensFromSecrets(ctx context.Context, rclient client.Client, mon
 				rclient,
 				mon.Namespace,
 				ep.BearerTokenSecret,
-				"bearertoken",
 				mon.Namespace+"/"+ep.BearerTokenSecret.Name,
 				nsSecretCache,
 			)
@@ -373,13 +372,13 @@ func loadBasicAuthSecret(basicAuth *monitoringv1.BasicAuth, s *v1.SecretList) (B
 	for _, secret := range s.Items {
 
 		if secret.Name == basicAuth.Username.Name {
-			if username, err = extractCredKey(&secret, basicAuth.Username, "username"); err != nil {
+			if username, err = extractCredKey(&secret, basicAuth.Username); err != nil {
 				return BasicAuthCredentials{}, err
 			}
 		}
 
 		if secret.Name == basicAuth.Password.Name {
-			if password, err = extractCredKey(&secret, basicAuth.Password, "password"); err != nil {
+			if password, err = extractCredKey(&secret, basicAuth.Password); err != nil {
 				return BasicAuthCredentials{}, err
 			}
 
@@ -397,11 +396,11 @@ func loadBasicAuthSecret(basicAuth *monitoringv1.BasicAuth, s *v1.SecretList) (B
 
 }
 
-func extractCredKey(secret *v1.Secret, sel v1.SecretKeySelector, cred string) (string, error) {
+func extractCredKey(secret *v1.Secret, sel v1.SecretKeySelector) (string, error) {
 	if s, ok := secret.Data[sel.Key]; ok {
 		return string(s), nil
 	}
-	return "", fmt.Errorf("secret %s key %q in secret %q not found", cred, sel.Key, sel.Name)
+	return "", fmt.Errorf("secret key %q in secret %q not found", sel.Key, sel.Name)
 }
 
 func getCredFromSecret(
@@ -409,7 +408,6 @@ func getCredFromSecret(
 	rclient client.Client,
 	ns string,
 	sel v1.SecretKeySelector,
-	cred string,
 	cacheKey string,
 	cache map[string]*v1.Secret,
 ) (_ string, err error) {
@@ -417,13 +415,39 @@ func getCredFromSecret(
 	var ok bool
 
 	if s, ok = cache[cacheKey]; !ok {
-		s := &v1.Secret{}
+		s = &v1.Secret{}
 		if err = rclient.Get(ctx, types.NamespacedName{Namespace: ns, Name: sel.Name}, s); err != nil {
-			return "", fmt.Errorf("unable to fetch %s secret %q: %w", cred, sel.Name, err)
+			return "", fmt.Errorf("unable to fetch key from secret%s: %w", sel.Name, err)
 		}
 		cache[cacheKey] = s
 	}
-	return extractCredKey(s, sel, cred)
+	return extractCredKey(s, sel)
+}
+
+func getCredFromConfigMap(
+	ctx context.Context,
+	rclient client.Client,
+	ns string,
+	sel v1.ConfigMapKeySelector,
+	cacheKey string,
+	cache map[string]*v1.ConfigMap,
+) (_ string, err error) {
+	var s *v1.ConfigMap
+	var ok bool
+
+	if s, ok = cache[cacheKey]; !ok {
+		s = &v1.ConfigMap{}
+		err := rclient.Get(ctx, types.NamespacedName{Namespace: ns, Name: sel.Name}, s)
+		if err != nil {
+			return "", fmt.Errorf("cannot get configmap: %s at namespace %s, err: %s", sel.Name, ns, err)
+		}
+		cache[cacheKey] = s
+	}
+
+	if a, ok := s.Data[sel.Key]; ok {
+		return a, nil
+	}
+	return "", fmt.Errorf("key not found at configmap, key: %s, configmap %s ", sel.Key, sel.Name)
 }
 
 func loadBasicAuthSecretFromAPI(ctx context.Context, rclient client.Client, basicAuth *monitoringv1.BasicAuth, ns string, cache map[string]*v1.Secret) (BasicAuthCredentials, error) {
@@ -431,11 +455,11 @@ func loadBasicAuthSecretFromAPI(ctx context.Context, rclient client.Client, basi
 	var password string
 	var err error
 
-	if username, err = getCredFromSecret(ctx, rclient, ns, basicAuth.Username, "username", ns+"/"+basicAuth.Username.Name, cache); err != nil {
+	if username, err = getCredFromSecret(ctx, rclient, ns, basicAuth.Username, ns+"/"+basicAuth.Username.Name, cache); err != nil {
 		return BasicAuthCredentials{}, err
 	}
 
-	if password, err = getCredFromSecret(ctx, rclient, ns, basicAuth.Password, "password", ns+"/"+basicAuth.Password.Name, cache); err != nil {
+	if password, err = getCredFromSecret(ctx, rclient, ns, basicAuth.Password, ns+"/"+basicAuth.Password.Name, cache); err != nil {
 		return BasicAuthCredentials{}, err
 	}
 

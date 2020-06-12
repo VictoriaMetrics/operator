@@ -410,13 +410,13 @@ func getCredFromSecret(
 	sel v1.SecretKeySelector,
 	cacheKey string,
 	cache map[string]*v1.Secret,
-) (_ string, err error) {
+) (string, error) {
 	var s *v1.Secret
 	var ok bool
 
 	if s, ok = cache[cacheKey]; !ok {
 		s = &v1.Secret{}
-		if err = rclient.Get(ctx, types.NamespacedName{Namespace: ns, Name: sel.Name}, s); err != nil {
+		if err := rclient.Get(ctx, types.NamespacedName{Namespace: ns, Name: sel.Name}, s); err != nil {
 			return "", fmt.Errorf("unable to fetch key from secret%s: %w", sel.Name, err)
 		}
 		cache[cacheKey] = s
@@ -431,7 +431,7 @@ func getCredFromConfigMap(
 	sel v1.ConfigMapKeySelector,
 	cacheKey string,
 	cache map[string]*v1.ConfigMap,
-) (_ string, err error) {
+) (string, error) {
 	var s *v1.ConfigMap
 	var ok bool
 

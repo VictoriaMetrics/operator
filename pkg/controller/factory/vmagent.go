@@ -522,19 +522,21 @@ func loadTLSAssets(ctx context.Context, rclient client.Client, monitors map[stri
 			secretSelectors := map[string]*corev1.SecretKeySelector{}
 			configMapSelectors := map[string]*corev1.ConfigMapKeySelector{}
 			if ep.TLSConfig.CA != (monitoringv1.SecretOrConfigMap{}) {
+				selectorKey := ep.TLSConfig.CA.BuildSelectorWithPrefix(prefix)
 				switch {
 				case ep.TLSConfig.CA.Secret != nil:
-					secretSelectors[prefix+ep.TLSConfig.CA.Secret.Name+"/"+ep.TLSConfig.CA.Secret.Key] = ep.TLSConfig.CA.Secret
+					secretSelectors[selectorKey] = ep.TLSConfig.CA.Secret
 				case ep.TLSConfig.CA.ConfigMap != nil:
-					configMapSelectors[prefix+ep.TLSConfig.CA.ConfigMap.Name+"/"+ep.TLSConfig.CA.ConfigMap.Key] = ep.TLSConfig.CA.ConfigMap
+					configMapSelectors[selectorKey] = ep.TLSConfig.CA.ConfigMap
 				}
 			}
 			if ep.TLSConfig.Cert != (monitoringv1.SecretOrConfigMap{}) {
+				selectorKey := ep.TLSConfig.Cert.BuildSelectorWithPrefix(prefix)
 				switch {
 				case ep.TLSConfig.Cert.Secret != nil:
-					secretSelectors[prefix+ep.TLSConfig.Cert.Secret.Name+"/"+ep.TLSConfig.Cert.Secret.Key] = ep.TLSConfig.Cert.Secret
+					secretSelectors[selectorKey] = ep.TLSConfig.Cert.Secret
 				case ep.TLSConfig.Cert.ConfigMap != nil:
-					configMapSelectors[prefix+ep.TLSConfig.Cert.ConfigMap.Name+"/"+ep.TLSConfig.Cert.ConfigMap.Key] = ep.TLSConfig.Cert.ConfigMap
+					configMapSelectors[selectorKey] = ep.TLSConfig.Cert.ConfigMap
 				}
 			}
 			if ep.TLSConfig.KeySecret != nil {
@@ -552,17 +554,12 @@ func loadTLSAssets(ctx context.Context, rclient client.Client, monitors map[stri
 				)
 				if err != nil {
 					return nil, fmt.Errorf(
-						"failed to extract endpoint tls asset for servicemonitor %v from secret %v and key %v in namespace %v",
+						"failed to extract endpoint tls asset for servicemonitor %s from secret %s and key %s in namespace %s",
 						mon.Name, selector.Name, selector.Key, mon.Namespace,
 					)
 				}
 
-				assets[fmt.Sprintf(
-					"%v_%v_%v",
-					mon.Namespace,
-					selector.Name,
-					selector.Key,
-				)] = asset
+				assets[ep.TLSConfig.BuildAssetPath(mon.Namespace, selector.Name, selector.Key)] = asset
 			}
 
 			for key, selector := range configMapSelectors {
@@ -581,12 +578,7 @@ func loadTLSAssets(ctx context.Context, rclient client.Client, monitors map[stri
 					)
 				}
 
-				assets[fmt.Sprintf(
-					"%v_%v_%v",
-					mon.Namespace,
-					selector.Name,
-					selector.Key,
-				)] = asset
+				assets[ep.TLSConfig.BuildAssetPath(mon.Namespace, selector.Name, selector.Key)] = asset
 			}
 
 		}

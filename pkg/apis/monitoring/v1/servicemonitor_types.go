@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"fmt"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -250,6 +251,21 @@ func (c *SecretOrConfigMap) Validate() error {
 	}
 
 	return nil
+}
+
+func (c *SecretOrConfigMap) BuildSelectorWithPrefix(prefix string) string {
+	if c.Secret != nil {
+		return fmt.Sprintf("%s%s/%s", prefix, c.Secret.Name, c.Secret.Key)
+
+	}
+	if c.ConfigMap != nil {
+		return fmt.Sprintf("%s%s/%s", prefix, c.ConfigMap.Name, c.ConfigMap.Key)
+	}
+	return ""
+}
+
+func (c *TLSConfig) BuildAssetPath(prefix, name, key string) string {
+	return fmt.Sprintf("%s_%s_%s", prefix, name, key)
 }
 
 // RemoteWriteSpec defines the remote_write configuration for prometheus.

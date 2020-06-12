@@ -273,3 +273,80 @@ func Test_getCredFromConfigMap(t *testing.T) {
 		})
 	}
 }
+
+func Test_getCredFromSecret(t *testing.T) {
+	type args struct {
+		ns       string
+		sel      v1.SecretKeySelector
+		cacheKey string
+		cache    map[string]*v1.Secret
+	}
+	tests := []struct {
+		name              string
+		args              args
+		want              string
+		wantErr           bool
+		predefinedObjects []runtime.Object
+	}{
+		{
+			name: "extract tls key data from secret",
+			args: args{
+				ns: "default",
+				sel: v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{
+					Name: "tls-secret"},
+					Key: "key.pem"},
+				cacheKey: "tls-secret",
+				cache:    map[string]*v1.Secret{},
+			},
+			want:    "tls-key-data",
+			wantErr: false,
+			predefinedObjects: []runtime.Object{
+				&v1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "tls-secret",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{"ca.crt": []byte(`ca-data`), "key.pem": []byte(`tls-key-data`)},
+				},
+			},
+		},
+		{
+			name: "fail extract missing tls cert data from secret",
+			args: args{
+				ns: "default",
+				sel: v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{
+					Name: "tls-secret"},
+					Key: "cert.pem"},
+				cacheKey: "tls-secret",
+				cache:    map[string]*v1.Secret{},
+			},
+			want:    "",
+			wantErr: true,
+			predefinedObjects: []runtime.Object{
+				&v1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "tls-secret",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{"ca.crt": []byte(`ca-data`), "key.pem": []byte(`tls-key-data`)},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			obj := []runtime.Object{}
+			obj = append(obj, tt.predefinedObjects...)
+			fclient := fake.NewFakeClientWithScheme(testGetScheme(), obj...)
+
+			got, err := getCredFromSecret(context.TODO(), fclient, tt.args.ns, tt.args.sel, tt.args.cacheKey, tt.args.cache)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("getCredFromSecret() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("getCredFromSecret() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

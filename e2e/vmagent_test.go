@@ -3,16 +3,15 @@ package e2e
 import (
 	goctx "context"
 	"fmt"
+	"testing"
+
 	operator "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
 	"github.com/operator-framework/operator-sdk/pkg/test/e2eutil"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
-	"testing"
 )
-
-
 
 func vmAgentCreateTest(t *testing.T, f *framework.Framework, ctx *framework.Context) error {
 	namespace, err := ctx.GetOperatorNamespace()

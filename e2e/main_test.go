@@ -1,14 +1,14 @@
 package e2e
 
 import (
-	"github.com/VictoriaMetrics/operator/pkg/apis"
-	operator "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
-	framework "github.com/operator-framework/operator-sdk/pkg/test"
-	"k8s.io/apimachinery/pkg/runtime"
 	"testing"
 	"time"
 
+	"github.com/VictoriaMetrics/operator/pkg/apis"
+	operator "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
 	f "github.com/operator-framework/operator-sdk/pkg/test"
+	framework "github.com/operator-framework/operator-sdk/pkg/test"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 var (
@@ -43,22 +43,14 @@ func addToSchemeCrds(t *testing.T) error {
 
 }
 
-
 func TestVmApps(t *testing.T) {
 
 	err := addToSchemeCrds(t)
 	if err != nil {
 		t.Fatalf("failted to add custom resource to scheme: %v", err)
 	}
-	t.Run("vm", func(t *testing.T) {
-		t.Run("VmSingle", vmSingle)
-	})
-	t.Run("vm", func(t *testing.T) {
-		t.Run("VmALert", vmAlert)
-	})
-	t.Run("vm", func(t *testing.T) {
-		t.Run("VmAgent", vmAgent)
-	})
-
+	t.Run("VmSingle", vmSingle)
+	t.Run("VmALert", vmAlert)
+	t.Run("VmAgent", vmAgent)
 
 }

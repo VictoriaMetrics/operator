@@ -8,6 +8,8 @@ jobs:
     name: Release on GitHub
     runs-on: ubuntu-latest
     steps:
+      - name: Inject slug/short variables
+        uses: rlespinasse/github-slug-action@v2.x
       - name: Setup Go
         uses: actions/setup-go@master
         with:

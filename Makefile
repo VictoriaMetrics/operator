@@ -13,8 +13,9 @@ REPO=github.com/VictoriaMetrics/operator
 MAIN_DIR=$(REPO)/cmd/manager/
 DOC_GEN_DIR=$(REPO)/cmd/doc-gen/
 OPERATOR_BIN=operator-sdk
-DOCKER_REPO="quay.io/f41gh7/vm-operator"
+DOCKER_REPO=quay.io/f41gh7/vm-operator
 TAG="master"
+E2E_IMAGE ?= latest
 
 TEST_ARGS=$(GOCMD) test -covermode=atomic -coverprofile=coverage.txt -v
 
@@ -50,10 +51,19 @@ build: gen build-app
 docker: build-app
 	docker build -t $(DOCKER_REPO) . -f cmd/manager/Dockerfile
 
+.PHONY:test
 test:
 	echo 'mode: atomic' > coverage.txt  && \
 	$(TEST_ARGS) $(REPO)/pkg/...
 	$(GOCMD) tool cover -func coverage.txt  | grep total
+
+.PHONY:e2e
+e2e-local:
+	operator-sdk test local ./e2e/ --up-local --operator-namespace="default" --verbose --image=$(DOCKER_REPO):$(E2E_IMAGE)
+
+.PHONY:e2e
+e2e:
+	operator-sdk test local ./e2e/ --operator-namespace="default" --verbose --image=$(DOCKER_REPO):$(E2E_IMAGE)
 
 lint:
 	golangci-lint run --exclude '(SA1019):' -E typecheck -E gosimple   --timeout 5m

@@ -66,7 +66,7 @@ func newServiceVmAlert(cr *victoriametricsv1beta1.VmAlert, c *conf.BaseOperatorC
 			Name:            cr.PrefixedName(),
 			Namespace:       cr.Namespace,
 			Labels:          c.Labels.Merge(cr.FinalLabels()),
-			Annotations:     cr.GetAnnotations(),
+			Annotations:     cr.Annotations(),
 			OwnerReferences: cr.AsOwner(),
 		},
 		Spec: corev1.ServiceSpec{

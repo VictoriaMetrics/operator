@@ -26,3 +26,15 @@ start:
 ```bash
 make run
 ```
+
+for test execution run:
+```bash
+#unit tests
+make test 
+
+# you need minikube for e2e, do not run it on live cluster
+#e2e tests with local binary
+make e2e-local
+# e2e tests with docker image (must be pushed to repository first)
+make e2e
+```

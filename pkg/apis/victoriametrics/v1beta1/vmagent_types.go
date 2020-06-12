@@ -306,6 +306,10 @@ func (cr VmAgent) PrefixedName() string {
 	return fmt.Sprintf("vmagent-%s", cr.Name())
 }
 
+func (cr VmAgent) TLSAssetName() string {
+	return fmt.Sprintf("tls-assets-vmagent-%s", cr.Name())
+}
+
 func init() {
 	SchemeBuilder.Register(&VmAgent{}, &VmAgentList{})
 }

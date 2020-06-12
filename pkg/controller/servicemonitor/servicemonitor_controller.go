@@ -102,11 +102,6 @@ func (r *ReconcileServiceMonitor) Reconcile(request reconcile.Request) (reconcil
 		reqLogger = reqLogger.WithValues("vmagent", vmagent.Name())
 		reqLogger.Info("reconciling servicemonitors for vmagent")
 		currentVmagent := &vmagent
-		err = factory.CreateOrUpdateConfigurationSecret(ctx, currentVmagent, r.client, r.opConf)
-		if err != nil {
-			reqLogger.Error(err, "cannot create or update default secret for vmagent")
-			return reconcile.Result{}, err
-		}
 
 		recon, err := factory.CreateOrUpdateVmAgent(ctx, currentVmagent, r.client, r.opConf)
 		if err != nil {

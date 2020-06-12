@@ -123,13 +123,6 @@ func (r *ReconcileVmAgent) Reconcile(request reconcile.Request) (reconcile.Resul
 		return reconcile.Result{}, err
 	}
 
-	//we have to create empty or full cm first
-	err = factory.CreateOrUpdateConfigurationSecret(ctx, instance, r.client, r.opConf)
-	if err != nil {
-		reqLogger.Error(err, "cannot create configmap")
-		return reconcile.Result{}, err
-	}
-
 	//create deploy
 	reconResult, err := factory.CreateOrUpdateVmAgent(ctx, instance, r.client, r.opConf)
 	if err != nil {

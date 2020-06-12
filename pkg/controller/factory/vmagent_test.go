@@ -11,9 +11,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes/scheme"
 	"reflect"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -26,10 +24,11 @@ func Test_makeSpecForVmAgent(t *testing.T) {
 		c  *conf.BaseOperatorConf
 	}
 	tests := []struct {
-		name    string
-		args    args
-		want    *corev1.PodTemplateSpec
-		wantErr bool
+		name              string
+		args              args
+		want              *corev1.PodTemplateSpec
+		wantErr           bool
+		predefinedObjects []runtime.Object
 	}{
 		// TODO: Add test cases.
 	}
@@ -76,21 +75,135 @@ func Test_newDeployForVmAgent(t *testing.T) {
 
 func TestCreateOrUpdateVmAgent(t *testing.T) {
 	type args struct {
-		cr      *victoriametricsv1beta1.VmAgent
-		rclient client.Client
-		c       *conf.BaseOperatorConf
+		cr *victoriametricsv1beta1.VmAgent
+		c  *conf.BaseOperatorConf
 	}
 	tests := []struct {
-		name    string
-		args    args
-		want    reconcile.Result
-		wantErr bool
+		name              string
+		args              args
+		want              reconcile.Result
+		wantErr           bool
+		predefinedObjects []runtime.Object
 	}{
-		// TODO: Add test cases.
+		{
+			name: "generate base vmagent",
+			args: args{
+				c: conf.MustGetBaseConfig(),
+				cr: &victoriametricsv1beta1.VmAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "example-agent",
+						Namespace: "default",
+					},
+					Spec: victoriametricsv1beta1.VmAgentSpec{
+						RemoteWrite: []victoriametricsv1beta1.RemoteSpec{
+							{URL: "http://remote-write"},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "generate vmagent with bauth-secret",
+			args: args{
+				c: conf.MustGetBaseConfig(),
+				cr: &victoriametricsv1beta1.VmAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "example-agent-bauth",
+						Namespace: "default",
+					},
+					Spec: victoriametricsv1beta1.VmAgentSpec{
+						RemoteWrite: []victoriametricsv1beta1.RemoteSpec{
+							{URL: "http://remote-write"},
+						},
+						ServiceMonitorSelector: &metav1.LabelSelector{},
+					},
+				},
+			},
+			predefinedObjects: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{Name: "bauth-secret", Namespace: "default"},
+					Data:       map[string][]byte{"user": []byte(`user-name`), "password": []byte(`user-password`)},
+				},
+				&monitoringv1.ServiceMonitor{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "vmsingle-monitor",
+						Namespace: "default",
+					},
+					Spec: monitoringv1.ServiceMonitorSpec{
+						Selector: metav1.LabelSelector{},
+						Endpoints: []monitoringv1.Endpoint{
+							{
+								Interval: "30s",
+								Scheme:   "http",
+								BasicAuth: &monitoringv1.BasicAuth{
+									Password: corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "bauth-secret"}, Key: "password"},
+									Username: corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "bauth-secret"}, Key: "user"},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "generate vmagent with tls-secret",
+			args: args{
+				c: conf.MustGetBaseConfig(),
+				cr: &victoriametricsv1beta1.VmAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "example-agent-tls",
+						Namespace: "default",
+					},
+					Spec: victoriametricsv1beta1.VmAgentSpec{
+						RemoteWrite: []victoriametricsv1beta1.RemoteSpec{
+							{URL: "http://remote-write"},
+						},
+						ServiceMonitorSelector: &metav1.LabelSelector{},
+					},
+				},
+			},
+			predefinedObjects: []runtime.Object{
+				&corev1.Namespace{
+					ObjectMeta: metav1.ObjectMeta{Name: "default", Namespace: "default"},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{Name: "tls-scrape", Namespace: "default"},
+					Data:       map[string][]byte{"cert": []byte(`cert-data`), "ca": []byte(`ca-data`), "key": []byte(`key-data`)},
+				},
+				&monitoringv1.ServiceMonitor{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "vmalert-monitor",
+						Namespace: "default",
+					},
+					Spec: monitoringv1.ServiceMonitorSpec{
+						Selector: metav1.LabelSelector{},
+						Endpoints: []monitoringv1.Endpoint{
+							{
+								Interval: "30s",
+								Scheme:   "https",
+								TLSConfig: &monitoringv1.TLSConfig{
+									CA: monitoringv1.SecretOrConfigMap{
+										Secret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "tls-scrape"}, Key: "ca"},
+									},
+									Cert: monitoringv1.SecretOrConfigMap{
+										Secret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "tls-scrape"}, Key: "ca"},
+									},
+									KeySecret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "tls-scrape"}, Key: "key"},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := CreateOrUpdateVmAgent(context.TODO(), tt.args.cr, tt.args.rclient, tt.args.c)
+			obj := []runtime.Object{}
+			obj = append(obj, tt.predefinedObjects...)
+			fclient := fake.NewFakeClientWithScheme(testGetScheme(), obj...)
+
+			got, err := CreateOrUpdateVmAgent(context.TODO(), tt.args.cr, fclient, tt.args.c)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CreateOrUpdateVmAgent() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -183,10 +296,7 @@ func Test_addAddtionalScrapeConfigOwnership(t *testing.T) {
 				localSecret := secret
 				obj = append(obj, &localSecret)
 			}
-			s := scheme.Scheme
-			s.AddKnownTypes(victoriametricsv1beta1.SchemeGroupVersion, &victoriametricsv1beta1.VmAgent{}, &victoriametricsv1beta1.VmAgentList{})
-			s.AddKnownTypes(monitoringv1.SchemeGroupVersion, &monitoringv1.PodMonitor{}, &monitoringv1.PodMonitorList{})
-			fclient := fake.NewFakeClientWithScheme(s, obj...)
+			fclient := fake.NewFakeClientWithScheme(testGetScheme(), obj...)
 
 			if err := addAddtionalScrapeConfigOwnership(tt.args.cr, fclient, tt.args.l); (err != nil) != tt.wantErr {
 				t.Errorf("addAddtionalScrapeConfigOwnership() error = %v, wantErr %v", err, tt.wantErr)
@@ -208,6 +318,68 @@ func Test_addAddtionalScrapeConfigOwnership(t *testing.T) {
 				}
 			}
 
+		})
+	}
+}
+
+func Test_loadTLSAssets(t *testing.T) {
+	type args struct {
+		monitors map[string]*monitoringv1.ServiceMonitor
+	}
+	tests := []struct {
+		name              string
+		args              args
+		want              map[string]string
+		wantErr           bool
+		predefinedObjects []runtime.Object
+	}{
+		{
+			name: "load tls asset from secret",
+			args: args{
+				monitors: map[string]*monitoringv1.ServiceMonitor{
+					"vmagent-monitor": {
+						ObjectMeta: metav1.ObjectMeta{Name: "vmagent-monitor", Namespace: "default"},
+						Spec: monitoringv1.ServiceMonitorSpec{
+							Endpoints: []monitoringv1.Endpoint{
+								{TLSConfig: &monitoringv1.TLSConfig{
+									KeySecret: &corev1.SecretKeySelector{
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "tls-secret",
+										},
+										Key: "cert",
+									},
+								}},
+							},
+						},
+					},
+				},
+			},
+			predefinedObjects: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "tls-secret",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{"cert": []byte(`cert-data`)},
+				},
+			},
+			want: map[string]string{"default_tls-secret_cert": "cert-data"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			obj := []runtime.Object{}
+			obj = append(obj, tt.predefinedObjects...)
+			fclient := fake.NewFakeClientWithScheme(testGetScheme(), obj...)
+
+			got, err := loadTLSAssets(context.TODO(), fclient, tt.args.monitors)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("loadTLSAssets() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("loadTLSAssets() got = %v, want %v", got, tt.want)
+			}
 		})
 	}
 }

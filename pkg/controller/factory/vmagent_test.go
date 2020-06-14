@@ -94,7 +94,7 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: victoriametricsv1beta1.VMAgentSpec{
-						RemoteWrite: []victoriametricsv1beta1.RemoteSpec{
+						RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
 							{URL: "http://remote-write"},
 						},
 					},
@@ -111,7 +111,7 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: victoriametricsv1beta1.VMAgentSpec{
-						RemoteWrite: []victoriametricsv1beta1.RemoteSpec{
+						RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
 							{URL: "http://remote-write"},
 						},
 						ServiceMonitorSelector: &metav1.LabelSelector{},
@@ -154,7 +154,7 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: victoriametricsv1beta1.VMAgentSpec{
-						RemoteWrite: []victoriametricsv1beta1.RemoteSpec{
+						RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
 							{URL: "http://remote-write"},
 						},
 						ServiceMonitorSelector: &metav1.LabelSelector{},

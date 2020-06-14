@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	monitoringv1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
@@ -133,13 +134,13 @@ type VMAlertSpec struct {
 
 	// RemoteWrite Optional URL to remote-write compatible storage where to write timeseriesbased on active alerts. E.g. http://127.0.0.1:8428
 	// +optional
-	RemoteWrite RemoteSpec `json:"remoteWrite,omitempty"`
+	RemoteWrite VMAlertRemoteWriteSpec `json:"remoteWrite,omitempty"`
 
 	// RemoteRead victoria metrics address for loading state
 	// This configuration makes sense only if remoteWrite was configured before and has
 	// been successfully persisted its state.
 	// +optional
-	RemoteRead RemoteSpec `json:"remoteRead,omitempty"`
+	RemoteRead VMAlertRemoteWriteSpec `json:"remoteRead,omitempty"`
 
 	// RulePath to the file with alert rules.
 	// Supports patterns. Flag can be specified multiple times.
@@ -162,7 +163,30 @@ type VMAlertSpec struct {
 	ExtraEnvs []v1.EnvVar `json:"extraEnvs,omitempty"`
 }
 
-// VMAlertStatus defines the observed state of VMAlert
+// VMAgentRemoteWriteSpec defines the remote storage configuration for VmAgent
+// +k8s:openapi-gen=true
+type VMAlertRemoteWriteSpec struct {
+	// URL of the endpoint to send samples to.
+	URL string `json:"url"`
+	// BasicAuth allow an endpoint to authenticate over basic authentication
+	// +optional
+	BasicAuth *monitoringv1.BasicAuth `json:"basicAuth,omitempty"`
+	// Defines number of readers that concurrently write into remote storage (default 1)
+	// +optional
+	Concurrency int32 `json:"concurrency,omitempty"`
+	// Defines defines max number of timeseries to be flushed at once (default 1000)
+	// +optional
+	MaxBatchSize int32 `json:"maxBatchSize,omitempty"`
+	// Defines the max number of pending datapoints to remote write endpoint (default 100000)
+	// +optional
+	MaxQueueSize int32 `json:"maxQueueSize,omitempty"`
+	// Lookback defines how far to look into past for alerts timeseries. For example, if lookback=1h then range from now() to now()-1h will be scanned. (default 1h0m0s)
+	// Applied only to RemoteReadSpec
+	// +optional
+	Lookback string `json:"lookback,omitempty"`
+}
+
+// VmAlertStatus defines the observed state of VmAlert
 // +k8s:openapi-gen=true
 // +kubebuilder:subresource:status
 type VMAlertStatus struct {

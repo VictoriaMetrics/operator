@@ -145,6 +145,7 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 
 	//its safe to ignore
 	_ = addAddtionalScrapeConfigOwnership(cr, rclient, l)
+	_ = addRelabelConfigOwnership(cr, rclient, l)
 	l.Info("vmagent deploy reconciled")
 
 	return reconcile.Result{}, nil
@@ -218,7 +219,13 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *conf.BaseOperator
 		fmt.Sprintf("-promscrape.config=%s", path.Join(vmAgentConOfOutDir, configEnvsubstFilename)),
 	}
 	for _, remote := range cr.Spec.RemoteWrite {
-		args = append(args, "-remoteWrite.url="+remote.URL)
+		remoteSpec := []string{
+			"-remoteWrite.url="+remote.URL,
+		}
+		if remote.BasicAuth != nil {
+			remoteSpec = append(remoteSpec, "")
+		}
+		args = append(args, remoteSpec...)
 	}
 
 	for arg, value := range cr.Spec.ExtraArgs {
@@ -330,6 +337,26 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *conf.BaseOperator
 		fmt.Sprintf("--reload-url=http://localhost:%s/-/reload", cr.Spec.Port),
 		fmt.Sprintf("--config-file=%s", path.Join(vmAgentConfDir, configFilename)),
 		fmt.Sprintf("--config-envsubst-file=%s", path.Join(vmAgentConOfOutDir, configEnvsubstFilename)),
+	}
+
+	if cr.Spec.RelabelConfig != nil {
+		volumes = append(volumes, corev1.Volume{
+			Name: k8sutil.SanitizeVolumeName("configmap-" + cr.Spec.RelabelConfig.Name),
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: cr.Spec.RelabelConfig.Name,
+					},
+				},
+			},
+		})
+		agentVolumeMounts = append(agentVolumeMounts, corev1.VolumeMount{
+			Name:      k8sutil.SanitizeVolumeName("configmap-" + cr.Spec.RelabelConfig.Name),
+			ReadOnly:  true,
+			MountPath: path.Join(vmAgentConfigsDir, cr.Spec.RelabelConfig.Name),
+		})
+
+		args = append(args, "-remoteWrite.relabelConfig="+path.Join(vmAgentConfigsDir, cr.Spec.RelabelConfig.Name))
 	}
 
 	livenessProbeHandler := corev1.Handler{
@@ -587,4 +614,38 @@ func loadTLSAssets(ctx context.Context, rclient client.Client, monitors map[stri
 	}
 
 	return assets, nil
+}
+
+//add ownership - it needs for object changing tracking
+func addRelabelConfigOwnership(cr *victoriametricsv1beta1.VmAgent, rclient client.Client, l logr.Logger) error {
+	if cr.Spec.RelabelConfig == nil {
+		return nil
+	}
+	configMap := &corev1.ConfigMap{}
+	err := rclient.Get(context.Background(), types.NamespacedName{Namespace: cr.Namespace, Name: cr.Spec.RelabelConfig.Name}, configMap)
+	if err != nil {
+		return fmt.Errorf("cannot get ConfigMap with relabel config: %s, err: %w ", cr.Spec.RelabelConfig.Name, err)
+	}
+	for _, owner := range configMap.OwnerReferences {
+		//owner exists
+		if owner.Name == cr.Name() {
+			return nil
+		}
+	}
+	configMap.OwnerReferences = append(configMap.OwnerReferences, metav1.OwnerReference{
+		APIVersion:         cr.APIVersion,
+		Kind:               cr.Kind,
+		Name:               cr.Name(),
+		Controller:         pointer.BoolPtr(false),
+		BlockOwnerDeletion: pointer.BoolPtr(false),
+		UID:                cr.UID,
+	})
+
+	l.Info("updating relabel ConfigMap ownership", "ConfigMap", configMap.Name)
+	err = rclient.Update(context.Background(), configMap)
+	if err != nil {
+		return fmt.Errorf("cannot update ConfigMap ownership for vmagent relabel config: %s, err: %w", configMap.Name, err)
+	}
+	l.Info("relabel ConfigMap was updated with new owner", "ConfigMap", configMap.Name)
+	return nil
 }

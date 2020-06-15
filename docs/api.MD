@@ -6,10 +6,10 @@ This Document documents the types introduced by the Victoria Metrics Operator to
 > Note this document is generated from code comments. When contributing a change to this document please do so by changing the code comments.
 
 ## Table of Contents
-* [Alertmanager](#alertmanager)
-* [AlertmanagerList](#alertmanagerlist)
-* [AlertmanagerSpec](#alertmanagerspec)
-* [AlertmanagerStatus](#alertmanagerstatus)
+* [VmAlertmanager](#vmalertmanager)
+* [VmAlertmanagerList](#vmalertmanagerlist)
+* [VmAlertmanagerSpec](#vmalertmanagerspec)
+* [VmAlertmanagerStatus](#vmalertmanagerstatus)
 * [VmAgent](#vmagent)
 * [VmAgentList](#vmagentlist)
 * [VmAgentSpec](#vmagentspec)
@@ -49,54 +49,54 @@ This Document documents the types introduced by the Victoria Metrics Operator to
 * [ServiceMonitorSpec](#servicemonitorspec)
 * [TLSConfig](#tlsconfig)
 
-## Alertmanager
+## VmAlertmanager
 
-Alertmanager describes an Alertmanager cluster.
+VmAlertmanager describes an VmAlertmanager cluster.
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
 | metadata |  | [metav1.ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#objectmeta-v1-meta) | false |
-| spec | Specification of the desired behavior of the Alertmanager cluster. More info: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#spec-and-status | [AlertmanagerSpec](#alertmanagerspec) | true |
-| status | Most recent observed status of the Alertmanager cluster. Read-only. Not included when requesting from the apiserver, only from the Prometheus Operator API itself. More info: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#spec-and-status | *[AlertmanagerStatus](#alertmanagerstatus) | false |
+| spec | Specification of the desired behavior of the VmAlertmanager cluster. More info: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#spec-and-status | [VmAlertmanagerSpec](#vmalertmanagerspec) | true |
+| status | Most recent observed status of the VmAlertmanager cluster. Read-only. Not included when requesting from the apiserver, only from the Prometheus Operator API itself. More info: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#spec-and-status | *[VmAlertmanagerStatus](#vmalertmanagerstatus) | false |
 
 [Back to TOC](#table-of-contents)
 
-## AlertmanagerList
+## VmAlertmanagerList
 
-AlertmanagerList is a list of Alertmanagers.
+VmAlertmanagerList is a list of Alertmanagers.
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
 | metadata | Standard list metadata More info: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#metadata | [metav1.ListMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#listmeta-v1-meta) | false |
-| items | List of Alertmanagers | [][Alertmanager](#alertmanager) | true |
+| items | List of Alertmanagers | [][VmAlertmanager](#vmalertmanager) | true |
 
 [Back to TOC](#table-of-contents)
 
-## AlertmanagerSpec
+## VmAlertmanagerSpec
 
-AlertmanagerSpec is a specification of the desired behavior of the Alertmanager cluster. More info: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
+VmAlertmanagerSpec is a specification of the desired behavior of the VmAlertmanager cluster. More info: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
 | podMetadata | PodMetadata configures Labels and Annotations which are propagated to the alertmanager pods. | *[EmbeddedObjectMetadata](#embeddedobjectmetadata) | false |
-| image | Image if specified has precedence over baseImage, tag and sha combinations. Specifying the version is still necessary to ensure the Prometheus Operator knows what version of Alertmanager is being configured. | *string | false |
+| image | Image if specified has precedence over baseImage, tag and sha combinations. Specifying the version is still necessary to ensure the Prometheus Operator knows what version of VmAlertmanager is being configured. | *string | false |
 | version | Version the cluster should be on. | string | false |
-| tag | Tag of Alertmanager container image to be deployed. Defaults to the value of `version`. Version is ignored if Tag is set. | string | false |
-| sha | SHA of Alertmanager container image to be deployed. Defaults to the value of `version`. Similar to a tag, but the SHA explicitly deploys an immutable container image. Version and Tag are ignored if SHA is set. | string | false |
+| tag | Tag of VmAlertmanager container image to be deployed. Defaults to the value of `version`. Version is ignored if Tag is set. | string | false |
+| sha | SHA of VmAlertmanager container image to be deployed. Defaults to the value of `version`. Similar to a tag, but the SHA explicitly deploys an immutable container image. Version and Tag are ignored if SHA is set. | string | false |
 | baseImage | BaseImage that is used to deploy pods, without tag. | string | false |
 | imagePullSecrets | ImagePullSecrets An optional list of references to secrets in the same namespace to use for pulling prometheus and alertmanager images from registries see http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod | [][v1.LocalObjectReference](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#localobjectreference-v1-core) | false |
-| secrets | Secrets is a list of Secrets in the same namespace as the Alertmanager object, which shall be mounted into the Alertmanager Pods. The Secrets are mounted into /etc/alertmanager/secrets/<secret-name>. | []string | false |
-| configMaps | ConfigMaps is a list of ConfigMaps in the same namespace as the Alertmanager object, which shall be mounted into the Alertmanager Pods. The ConfigMaps are mounted into /etc/alertmanager/configmaps/<configmap-name>. | []string | false |
-| configSecret | ConfigSecret is the name of a Kubernetes Secret in the same namespace as the Alertmanager object, which contains configuration for this Alertmanager instance. Defaults to 'alertmanager-<alertmanager-name>' The secret is mounted into /etc/alertmanager/config. | string | false |
-| logLevel | Log level for Alertmanager to be configured with. | string | false |
-| logFormat | LogFormat for Alertmanager to be configured with. | string | false |
+| secrets | Secrets is a list of Secrets in the same namespace as the VmAlertmanager object, which shall be mounted into the VmAlertmanager Pods. The Secrets are mounted into /etc/alertmanager/secrets/<secret-name>. | []string | false |
+| configMaps | ConfigMaps is a list of ConfigMaps in the same namespace as the VmAlertmanager object, which shall be mounted into the VmAlertmanager Pods. The ConfigMaps are mounted into /etc/alertmanager/configmaps/<configmap-name>. | []string | false |
+| configSecret | ConfigSecret is the name of a Kubernetes Secret in the same namespace as the VmAlertmanager object, which contains configuration for this VmAlertmanager instance. Defaults to 'alertmanager-<alertmanager-name>' The secret is mounted into /etc/alertmanager/config. | string | false |
+| logLevel | Log level for VmAlertmanager to be configured with. | string | false |
+| logFormat | LogFormat for VmAlertmanager to be configured with. | string | false |
 | replicaCount | ReplicaCount Size is the expected size of the alertmanager cluster. The controller will eventually make the size of the running cluster equal to the expected | *int32 | false |
-| retention | Retention Time duration Alertmanager shall retain data for. Default is '120h', and must match the regular expression `[0-9]+(ms\|s\|m\|h)` (milliseconds seconds minutes hours). | string | false |
-| storage | Storage is the definition of how storage will be used by the Alertmanager instances. | *[StorageSpec](#storagespec) | false |
+| retention | Retention Time duration VmAlertmanager shall retain data for. Default is '120h', and must match the regular expression `[0-9]+(ms\|s\|m\|h)` (milliseconds seconds minutes hours). | string | false |
+| storage | Storage is the definition of how storage will be used by the VmAlertmanager instances. | *[StorageSpec](#storagespec) | false |
 | volumes | Volumes allows configuration of additional volumes on the output StatefulSet definition. Volumes specified will be appended to other volumes that are generated as a result of StorageSpec objects. | [][v1.Volume](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#volume-v1-core) | false |
 | volumeMounts | VolumeMounts allows configuration of additional VolumeMounts on the output StatefulSet definition. VolumeMounts specified will be appended to other VolumeMounts in the alertmanager container, that are generated as a result of StorageSpec objects. | [][v1.VolumeMount](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#volumemount-v1-core) | false |
-| externalURL | ExternalURL the Alertmanager instances will be available under. This is necessary to generate correct URLs. This is necessary if Alertmanager is not served from root of a DNS name. | string | false |
-| routePrefix | RoutePrefix Alertmanager registers HTTP handlers for. This is useful, if using ExternalURL and a proxy is rewriting HTTP routes of a request, and the actual ExternalURL is still true, but the server serves requests under a different route prefix. For example for use with `kubectl proxy`. | string | false |
+| externalURL | ExternalURL the VmAlertmanager instances will be available under. This is necessary to generate correct URLs. This is necessary if VmAlertmanager is not served from root of a DNS name. | string | false |
+| routePrefix | RoutePrefix VmAlertmanager registers HTTP handlers for. This is useful, if using ExternalURL and a proxy is rewriting HTTP routes of a request, and the actual ExternalURL is still true, but the server serves requests under a different route prefix. For example for use with `kubectl proxy`. | string | false |
 | paused | Paused If set to true all actions on the underlaying managed objects are not goint to be performed, except for delete actions. | bool | false |
 | nodeSelector | NodeSelector Define which Nodes the Pods are scheduled on. | map[string]string | false |
 | resources | Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/ | [v1.ResourceRequirements](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#resourcerequirements-v1-core) | false |
@@ -104,9 +104,9 @@ AlertmanagerSpec is a specification of the desired behavior of the Alertmanager 
 | tolerations | Tolerations If specified, the pod's tolerations. | [][v1.Toleration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#toleration-v1-core) | false |
 | securityContext | SecurityContext holds pod-level security attributes and common container settings. This defaults to the default PodSecurityContext. | *v1.PodSecurityContext | false |
 | serviceAccountName | ServiceAccountName is the name of the ServiceAccount to use to run the Prometheus Pods. | string | false |
-| listenLocal | ListenLocal makes the Alertmanager server listen on loopback, so that it does not bind against the Pod IP. Note this is only for the Alertmanager UI, not the gossip communication. | bool | false |
-| containers | Containers allows injecting additional containers. This is meant to allow adding an authentication proxy to an Alertmanager pod. | [][v1.Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#container-v1-core) | false |
-| initContainers | InitContainers allows adding initContainers to the pod definition. Those can be used to e.g. fetch secrets for injection into the Alertmanager configuration from external sources. Any errors during the execution of an initContainer will lead to a restart of the Pod. More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/ Using initContainers for any use case other then secret fetching is entirely outside the scope of what the maintainers will support and by doing so, you accept that this behaviour may break at any time without notice. | [][v1.Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#container-v1-core) | false |
+| listenLocal | ListenLocal makes the VmAlertmanager server listen on loopback, so that it does not bind against the Pod IP. Note this is only for the VmAlertmanager UI, not the gossip communication. | bool | false |
+| containers | Containers allows injecting additional containers. This is meant to allow adding an authentication proxy to an VmAlertmanager pod. | [][v1.Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#container-v1-core) | false |
+| initContainers | InitContainers allows adding initContainers to the pod definition. Those can be used to e.g. fetch secrets for injection into the VmAlertmanager configuration from external sources. Any errors during the execution of an initContainer will lead to a restart of the Pod. More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/ Using initContainers for any use case other then secret fetching is entirely outside the scope of what the maintainers will support and by doing so, you accept that this behaviour may break at any time without notice. | [][v1.Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#container-v1-core) | false |
 | priorityClassName | PriorityClassName class assigned to the Pods | string | false |
 | additionalPeers | AdditionalPeers allows injecting a set of additional Alertmanagers to peer with to form a highly available cluster. | []string | false |
 | clusterAdvertiseAddress | ClusterAdvertiseAddress is the explicit address to advertise in cluster. Needs to be provided for non RFC1918 [1] (public) addresses. [1] RFC1918: https://tools.ietf.org/html/rfc1918 | string | false |
@@ -114,17 +114,17 @@ AlertmanagerSpec is a specification of the desired behavior of the Alertmanager 
 
 [Back to TOC](#table-of-contents)
 
-## AlertmanagerStatus
+## VmAlertmanagerStatus
 
-AlertmanagerStatus is the most recent observed status of the Alertmanager cluster. Read-only. Not included when requesting from the apiserver, only from the Prometheus Operator API itself. More info: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
+VmAlertmanagerStatus is the most recent observed status of the VmAlertmanager cluster. Read-only. Not included when requesting from the apiserver, only from the Prometheus Operator API itself. More info: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
 | paused | Paused Represents whether any actions on the underlaying managed objects are being performed. Only delete actions will be performed. | bool | true |
-| replicas | ReplicaCount Total number of non-terminated pods targeted by this Alertmanager cluster (their labels match the selector). | int32 | true |
-| updatedReplicas | UpdatedReplicas Total number of non-terminated pods targeted by this Alertmanager cluster that have the desired version spec. | int32 | true |
-| availableReplicas | AvailableReplicas Total number of available pods (ready for at least minReadySeconds) targeted by this Alertmanager cluster. | int32 | true |
-| unavailableReplicas | UnavailableReplicas Total number of unavailable pods targeted by this Alertmanager cluster. | int32 | true |
+| replicas | ReplicaCount Total number of non-terminated pods targeted by this VmAlertmanager cluster (their labels match the selector). | int32 | true |
+| updatedReplicas | UpdatedReplicas Total number of non-terminated pods targeted by this VmAlertmanager cluster that have the desired version spec. | int32 | true |
+| availableReplicas | AvailableReplicas Total number of available pods (ready for at least minReadySeconds) targeted by this VmAlertmanager cluster. | int32 | true |
+| unavailableReplicas | UnavailableReplicas Total number of unavailable pods targeted by this VmAlertmanager cluster. | int32 | true |
 
 [Back to TOC](#table-of-contents)
 

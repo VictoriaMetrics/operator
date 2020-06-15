@@ -130,11 +130,17 @@ func main() {
 	if err != nil {
 		log.Info("Could not create metrics Service", "error", err.Error())
 	}
+	//retrieve operator namespace
+	//only works at kubernetes cluster
+	operatorNamespace, err := k8sutil.GetOperatorNamespace()
+	if err != nil {
+		log.Info("Could not detect operator namespace, not in cluster?", "err", err.Error())
+	}
 
 	// CreateServiceMonitors will automatically create the prometheus-operator ServiceMonitor resources
 	// necessary to configure Prometheus to scrape metrics from this operator.
 	services := []*v1.Service{service}
-	_, err = metrics.CreateServiceMonitors(cfg, namespace, services)
+	_, err = metrics.CreateServiceMonitors(cfg, operatorNamespace, services)
 	if err != nil {
 		log.Info("Could not create ServiceMonitor object", "error", err.Error())
 		// If this operator is deployed to a cluster without the prometheus-operator running, it will return

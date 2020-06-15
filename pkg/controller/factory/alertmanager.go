@@ -40,7 +40,7 @@ var (
 	log                       = logf.Log.WithName("factory")
 )
 
-func CreateOrUpdateAlertManager(ctx context.Context, cr *victoriametricsv1beta1.Alertmanager, rclient client.Client, c *conf.BaseOperatorConf) (*appsv1.StatefulSet, error) {
+func CreateOrUpdateAlertManager(ctx context.Context, cr *victoriametricsv1beta1.VmAlertmanager, rclient client.Client, c *conf.BaseOperatorConf) (*appsv1.StatefulSet, error) {
 	l := log.WithValues("reconcile.AlertManager.sts", cr.Name(), "ns", cr.Namespace)
 	newSts, err := newStsForAlertManager(cr, c)
 	if err != nil {
@@ -75,7 +75,7 @@ func updateStsForAlertManager(ctx context.Context, rclient client.Client, oldSts
 
 }
 
-func newStsForAlertManager(cr *victoriametricsv1beta1.Alertmanager, c *conf.BaseOperatorConf) (*appsv1.StatefulSet, error) {
+func newStsForAlertManager(cr *victoriametricsv1beta1.VmAlertmanager, c *conf.BaseOperatorConf) (*appsv1.StatefulSet, error) {
 
 	if cr.Spec.BaseImage == "" {
 		cr.Spec.BaseImage = c.AlertManager.AlertmanagerDefaultBaseImage
@@ -162,7 +162,7 @@ func newStsForAlertManager(cr *victoriametricsv1beta1.Alertmanager, c *conf.Base
 	return statefulset, nil
 }
 
-func CreateOrUpdateAlertManagerService(ctx context.Context, cr *victoriametricsv1beta1.Alertmanager, rclient client.Client, c *conf.BaseOperatorConf) (*v1.Service, error) {
+func CreateOrUpdateAlertManagerService(ctx context.Context, cr *victoriametricsv1beta1.VmAlertmanager, rclient client.Client, c *conf.BaseOperatorConf) (*v1.Service, error) {
 
 	l := log.WithValues("recon.alertmanager.service", cr.Name())
 
@@ -197,7 +197,7 @@ func CreateOrUpdateAlertManagerService(ctx context.Context, cr *victoriametricsv
 	return newService, nil
 }
 
-func newAlertManagerService(cr *victoriametricsv1beta1.Alertmanager, c *conf.BaseOperatorConf) *v1.Service {
+func newAlertManagerService(cr *victoriametricsv1beta1.VmAlertmanager, c *conf.BaseOperatorConf) *v1.Service {
 
 	if cr.Spec.PortName == "" {
 		cr.Spec.PortName = defaultPortName
@@ -239,7 +239,7 @@ func newAlertManagerService(cr *victoriametricsv1beta1.Alertmanager, c *conf.Bas
 	return svc
 }
 
-func makeStatefulSetSpec(cr *victoriametricsv1beta1.Alertmanager, config *conf.BaseOperatorConf) (*appsv1.StatefulSetSpec, error) {
+func makeStatefulSetSpec(cr *victoriametricsv1beta1.VmAlertmanager, config *conf.BaseOperatorConf) (*appsv1.StatefulSetSpec, error) {
 	// Before editing 'cr' create deep copy, to prevent side effects. For more
 	// details see https://github.com/coreos/prometheus-operator/issues/1659
 	cr = cr.DeepCopy()
@@ -376,37 +376,37 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.Alertmanager, config *conf.B
 		}, ports...)
 	}
 
-	// Adjust Alertmanager command line args to specified AM version
+	// Adjust VmAlertmanager command line args to specified AM version
 	//
-	// Alertmanager versions < v0.15.0 are only supported on cr best effort basis
+	// VmAlertmanager versions < v0.15.0 are only supported on cr best effort basis
 	// starting with Prometheus Operator v0.30.0.
 	switch version.Major {
 	case 0:
 		if version.Minor < 15 {
 			for i := range amArgs {
-				// below Alertmanager v0.15.0 peer address port specification is not necessary
+				// below VmAlertmanager v0.15.0 peer address port specification is not necessary
 				if strings.Contains(amArgs[i], "--cluster.peer") {
 					amArgs[i] = strings.TrimSuffix(amArgs[i], ":9094")
 				}
 
-				// below Alertmanager v0.15.0 high availability flags are prefixed with 'mesh' instead of 'cluster'
+				// below VmAlertmanager v0.15.0 high availability flags are prefixed with 'mesh' instead of 'cluster'
 				amArgs[i] = strings.Replace(amArgs[i], "--cluster.", "--mesh.", 1)
 			}
 		}
 		if version.Minor < 13 {
 			for i := range amArgs {
-				// below Alertmanager v0.13.0 all flags are with single dash.
+				// below VmAlertmanager v0.13.0 all flags are with single dash.
 				amArgs[i] = strings.Replace(amArgs[i], "--", "-", 1)
 			}
 		}
 		if version.Minor < 7 {
-			// below Alertmanager v0.7.0 the flag 'web.route-prefix' does not exist
+			// below VmAlertmanager v0.7.0 the flag 'web.route-prefix' does not exist
 			amArgs = filter(amArgs, func(s string) bool {
 				return !strings.Contains(s, "web.route-prefix")
 			})
 		}
 	default:
-		return nil, fmt.Errorf("unsupported Alertmanager major version %s", version)
+		return nil, fmt.Errorf("unsupported VmAlertmanager major version %s", version)
 	}
 
 	volumes := []v1.Volume{

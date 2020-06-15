@@ -25,8 +25,8 @@ func testGetScheme() *runtime.Scheme {
 		&victoriametricsv1beta1.VmAlertList{},
 		&victoriametricsv1beta1.VmSingle{},
 		&victoriametricsv1beta1.VmSingleList{},
-		&victoriametricsv1beta1.Alertmanager{},
-		&victoriametricsv1beta1.AlertmanagerList{},
+		&victoriametricsv1beta1.VmAlertmanager{},
+		&victoriametricsv1beta1.VmAlertmanagerList{},
 	)
 	s.AddKnownTypes(monitoringv1.SchemeGroupVersion,
 		&monitoringv1.PodMonitor{},

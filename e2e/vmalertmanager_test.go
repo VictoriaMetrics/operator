@@ -36,12 +36,12 @@ func vmAlertManagerCreateTest(t *testing.T, f *framework.Framework, ctx *framewo
 		return fmt.Errorf("could not get namespace: %v", err)
 	}
 	// create  custom resource
-	exampleVmAlertManager := &operator.Alertmanager{
+	exampleVmAlertManager := &operator.VmAlertmanager{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "example-vmalertmanager",
 			Namespace: namespace,
 		},
-		Spec: operator.AlertmanagerSpec{
+		Spec: operator.VmAlertmanagerSpec{
 			ReplicaCount: pointer.Int32Ptr(1),
 			ConfigSecret: "alertmanager-conf",
 		},

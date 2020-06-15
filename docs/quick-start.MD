@@ -209,7 +209,7 @@ and add `Alertmanager` object, other config options at [doc](/docs/api.MD#Alertm
 ```yaml
 cat << EOF | kubectl apply -f -
 apiVersion: victoriametrics.com/v1beta1
-kind: Alertmanager
+kind: VmAlertmanager
 metadata:
   name: example-alertmanager
 spec:

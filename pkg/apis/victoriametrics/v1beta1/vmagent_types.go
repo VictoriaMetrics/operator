@@ -29,19 +29,16 @@ type VmAgentSpec struct {
 	// to use for pulling prometheus and vmagent images from registries
 	// see http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod
 	// +optional
-	// +listType=set
 	ImagePullSecrets []v1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 	// Secrets is a list of Secrets in the same namespace as the vmagent
 	// object, which shall be mounted into the vmagent Pods.
 	// will be mounted at path /etc/vmagent/secrets
 	// +optional
-	// +listType=set
 	Secrets []string `json:"secrets,omitempty"`
 	// ConfigMaps is a list of ConfigMaps in the same namespace as the vmagent
 	// object, which shall be mounted into the vmagent Pods.
 	// will be mounted at path  /etc/vmagent/configs
 	// +optional
-	// +listType=set
 	ConfigMaps []string `json:"configMaps,omitempty"`
 	// LogLevel for VmAgent to be configured with.
 	//INFO, WARN, ERROR, FATAL, PANIC
@@ -62,13 +59,11 @@ type VmAgentSpec struct {
 	// Volumes specified will be appended to other volumes that are generated as a result of
 	// StorageSpec objects.
 	// +optional
-	// +listType=set
 	Volumes []v1.Volume `json:"volumes,omitempty"`
 	// VolumeMounts allows configuration of additional VolumeMounts on the output deploy definition.
 	// VolumeMounts specified will be appended to other VolumeMounts in the vmagent container,
 	// that are generated as a result of StorageSpec objects.
 	// +optional
-	// +listType=set
 	VolumeMounts []v1.VolumeMount `json:"volumeMounts,omitempty"`
 	// Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
 	//if not specified - default setting will be used
@@ -79,7 +74,6 @@ type VmAgentSpec struct {
 	Affinity *v1.Affinity `json:"affinity,omitempty"`
 	// Tolerations If specified, the pod's tolerations.
 	// +optional
-	// +listType=set
 	Tolerations []v1.Toleration `json:"tolerations,omitempty"`
 	// SecurityContext holds pod-level security attributes and common container settings.
 	// This defaults to the default PodSecurityContext.
@@ -91,7 +85,6 @@ type VmAgentSpec struct {
 	ServiceAccountName string `json:"serviceAccountName"`
 	// Containers property allows to inject additions sidecars. It can be useful for proxies, backup, etc.
 	// +optional
-	// +listType=set
 	Containers []v1.Container `json:"containers,omitempty"`
 	// InitContainers allows adding initContainers to the pod definition. Those can be used to e.g.
 	// fetch secrets for injection into the vmagent configuration from external sources. Any
@@ -100,7 +93,6 @@ type VmAgentSpec struct {
 	// of what the maintainers will support and by doing so, you accept that this behaviour may break
 	// at any time without notice.
 	// +optional
-	// +listType=set
 	InitContainers []v1.Container `json:"initContainers,omitempty"`
 	// PriorityClassName assigned to the Pods
 	// +optional
@@ -153,7 +145,6 @@ type VmAgentSpec struct {
 	// or for cluster different url
 	// https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/app/vmagent#splitting-data-streams-among-multiple-systems
 	// +optional
-	// +listType=set
 	RemoteWrite []RemoteSpec `json:"remoteWrite"`
 	// ServiceMonitorSelector defines ServiceMonitors to be selected for target discovery. if
 	// neither this nor podMonitorSelector are specified, configuration is
@@ -195,7 +186,6 @@ type VmAgentSpec struct {
 	ExtraArgs map[string]string `json:"extraArgs,omitempty"`
 	// ExtraEnvs that will be added to VmAlert pod
 	// +optional
-	// +listType=set
 	ExtraEnvs []v1.EnvVar `json:"extraEnvs,omitempty"`
 }
 

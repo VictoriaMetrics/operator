@@ -15,7 +15,7 @@ import (
 // +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".spec.version",description="The version of Alertmanager"
 // +kubebuilder:printcolumn:name="ReplicaCount",type="integer",JSONPath=".spec.ReplicaCount",description="The desired replicas number of Alertmanagers"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
-// +kubebuilder:resource:path=vmalertmanagers,scope=Namespaced,shortName=vma
+// +kubebuilder:resource:path=vmalertmanagers,scope=Namespaced,shortName=vma,singular=vmalertmanager
 type Alertmanager struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -54,17 +54,14 @@ type AlertmanagerSpec struct {
 	// ImagePullSecrets An optional list of references to secrets in the same namespace
 	// to use for pulling prometheus and alertmanager images from registries
 	// see http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod
-	// +listType=set
 	ImagePullSecrets []v1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 	// Secrets is a list of Secrets in the same namespace as the Alertmanager
 	// object, which shall be mounted into the Alertmanager Pods.
 	// The Secrets are mounted into /etc/alertmanager/secrets/<secret-name>.
-	// +listType=set
 	Secrets []string `json:"secrets,omitempty"`
 	// ConfigMaps is a list of ConfigMaps in the same namespace as the Alertmanager
 	// object, which shall be mounted into the Alertmanager Pods.
 	// The ConfigMaps are mounted into /etc/alertmanager/configmaps/<configmap-name>.
-	// +listType=set
 	ConfigMaps []string `json:"configMaps,omitempty"`
 	// ConfigSecret is the name of a Kubernetes Secret in the same namespace as the
 	// Alertmanager object, which contains configuration for this Alertmanager
@@ -89,12 +86,10 @@ type AlertmanagerSpec struct {
 	// Volumes allows configuration of additional volumes on the output StatefulSet definition.
 	// Volumes specified will be appended to other volumes that are generated as a result of
 	// StorageSpec objects.
-	// +listType=set
 	Volumes []v1.Volume `json:"volumes,omitempty"`
 	// VolumeMounts allows configuration of additional VolumeMounts on the output StatefulSet definition.
 	// VolumeMounts specified will be appended to other VolumeMounts in the alertmanager container,
 	// that are generated as a result of StorageSpec objects.
-	// +listType=set
 	VolumeMounts []v1.VolumeMount `json:"volumeMounts,omitempty"`
 	// ExternalURL the Alertmanager instances will be available under. This is
 	// necessary to generate correct URLs. This is necessary if Alertmanager is not
@@ -116,7 +111,6 @@ type AlertmanagerSpec struct {
 	// Affinity If specified, the pod's scheduling constraints.
 	Affinity *v1.Affinity `json:"affinity,omitempty"`
 	// Tolerations If specified, the pod's tolerations.
-	// +listType=set
 	Tolerations []v1.Toleration `json:"tolerations,omitempty"`
 	// SecurityContext holds pod-level security attributes and common container settings.
 	// This defaults to the default PodSecurityContext.
@@ -130,7 +124,6 @@ type AlertmanagerSpec struct {
 	ListenLocal bool `json:"listenLocal,omitempty"`
 	// Containers allows injecting additional containers. This is meant to
 	// allow adding an authentication proxy to an Alertmanager pod.
-	// +listType=set
 	Containers []v1.Container `json:"containers,omitempty"`
 	// InitContainers allows adding initContainers to the pod definition. Those can be used to e.g.
 	// fetch secrets for injection into the Alertmanager configuration from external sources. Any
@@ -138,12 +131,10 @@ type AlertmanagerSpec struct {
 	// Using initContainers for any use case other then secret fetching is entirely outside the scope
 	// of what the maintainers will support and by doing so, you accept that this behaviour may break
 	// at any time without notice.
-	// +listType=set
 	InitContainers []v1.Container `json:"initContainers,omitempty"`
 	// PriorityClassName class assigned to the Pods
 	PriorityClassName string `json:"priorityClassName,omitempty"`
 	// AdditionalPeers allows injecting a set of additional Alertmanagers to peer with to form a highly available cluster.
-	// +listType=set
 	AdditionalPeers []string `json:"additionalPeers,omitempty"`
 	// ClusterAdvertiseAddress is the explicit address to advertise in cluster.
 	// Needs to be provided for non RFC1918 [1] (public) addresses.
@@ -163,7 +154,6 @@ type AlertmanagerList struct {
 	// More info: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#metadata
 	metav1.ListMeta `json:"metadata,omitempty"`
 	// List of Alertmanagers
-	// +listType=set
 	Items []Alertmanager `json:"items"`
 }
 

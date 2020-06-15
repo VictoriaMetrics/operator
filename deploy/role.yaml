@@ -20,6 +20,7 @@ rules:
     resources:
       - deployments
       - statefulsets
+      - replicasets
     verbs:
       - '*'
   - apiGroups:

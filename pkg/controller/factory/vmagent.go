@@ -245,7 +245,7 @@ func makeSpecForVmAgent(cr *victoriametricsv1beta1.VmAgent, c *conf.BaseOperator
 			Name: "config",
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: configSecretName(cr.Name()),
+					SecretName: cr.PrefixedName(),
 				},
 			},
 		},

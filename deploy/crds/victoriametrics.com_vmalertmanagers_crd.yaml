@@ -22,7 +22,7 @@ spec:
     plural: vmalertmanagers
     shortNames:
     - vma
-    singular: alertmanager
+    singular: vmalertmanager
   scope: Namespaced
   subresources: {}
   validation:
@@ -51,7 +51,6 @@ spec:
               items:
                 type: string
               type: array
-              x-kubernetes-list-type: set
             affinity:
               description: Affinity If specified, the pod's scheduling constraints.
               properties:
@@ -639,7 +638,6 @@ spec:
               items:
                 type: string
               type: array
-              x-kubernetes-list-type: set
             configSecret:
               description: ConfigSecret is the name of a Kubernetes Secret in the
                 same namespace as the Alertmanager object, which contains configuration
@@ -1699,7 +1697,6 @@ spec:
                 - name
                 type: object
               type: array
-              x-kubernetes-list-type: set
             externalURL:
               description: ExternalURL the Alertmanager instances will be available
                 under. This is necessary to generate correct URLs. This is necessary
@@ -1725,7 +1722,6 @@ spec:
                     type: string
                 type: object
               type: array
-              x-kubernetes-list-type: set
             initContainers:
               description: 'InitContainers allows adding initContainers to the pod
                 definition. Those can be used to e.g. fetch secrets for injection
@@ -2785,7 +2781,6 @@ spec:
                 - name
                 type: object
               type: array
-              x-kubernetes-list-type: set
             listenLocal:
               description: ListenLocal makes the Alertmanager server listen on loopback,
                 so that it does not bind against the Pod IP. Note this is only for
@@ -2895,7 +2890,6 @@ spec:
               items:
                 type: string
               type: array
-              x-kubernetes-list-type: set
             securityContext:
               description: SecurityContext holds pod-level security attributes and
                 common container settings. This defaults to the default PodSecurityContext.
@@ -3337,7 +3331,6 @@ spec:
                     type: string
                 type: object
               type: array
-              x-kubernetes-list-type: set
             version:
               description: Version the cluster should be on.
               type: string
@@ -3382,7 +3375,6 @@ spec:
                 - name
                 type: object
               type: array
-              x-kubernetes-list-type: set
             volumes:
               description: Volumes allows configuration of additional volumes on the
                 output StatefulSet definition. Volumes specified will be appended
@@ -4575,7 +4567,6 @@ spec:
                 - name
                 type: object
               type: array
-              x-kubernetes-list-type: set
           type: object
         status:
           description: 'Most recent observed status of the Alertmanager cluster. Read-only.

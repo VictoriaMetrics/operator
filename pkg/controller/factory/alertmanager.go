@@ -103,7 +103,7 @@ func newStsForAlertManager(cr *victoriametricsv1beta1.Alertmanager, c *conf.Base
 		cr.Spec.Resources.Requests[v1.ResourceMemory] = resource.MustParse("200Mi")
 	}
 	if cr.Spec.ConfigSecret == "" {
-		cr.Spec.ConfigSecret = configSecretName(cr.Name())
+		cr.Spec.ConfigSecret = cr.PrefixedName()
 	}
 
 	spec, err := makeStatefulSetSpec(cr, c)

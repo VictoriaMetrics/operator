@@ -35,6 +35,13 @@ func vmAlertCreateTest(t *testing.T, f *framework.Framework, ctx *framework.Cont
 	if err != nil {
 		return err
 	}
+
+	//wait for base config
+	err = WaitForConfigMap(t, f.KubeClient, namespace, "vm-example-vmalert-rulefiles-0", retryInterval, timeout)
+	if err != nil {
+		return err
+	}
+
 	// wait for example-vmalert to reach 1 replicas
 	err = e2eutil.WaitForDeployment(t, f.KubeClient, namespace, "vmalert-example-vmalert", 1, retryInterval, timeout)
 	if err != nil {

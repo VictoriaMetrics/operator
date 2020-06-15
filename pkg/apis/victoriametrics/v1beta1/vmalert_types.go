@@ -24,19 +24,16 @@ type VmAlertSpec struct {
 	// ImagePullSecrets An optional list of references to secrets in the same namespace
 	// to use for pulling prometheus and VmAlert images from registries
 	// see http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod
-	// +listType=set
 	ImagePullSecrets []v1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 	// Secrets is a list of Secrets in the same namespace as the VmAlert
 	// object, which shall be mounted into the VmAlert Pods.
 	// The Secrets are mounted into /etc/vmalert/secrets/<secret-name>.
 	// +optional
-	// +listType=set
 	Secrets []string `json:"secrets,omitempty"`
 	// ConfigMaps is a list of ConfigMaps in the same namespace as the VmAlert
 	// object, which shall be mounted into the VmAlert Pods.
 	// The ConfigMaps are mounted into /etc/vmalert/configmaps/<configmap-name>.
 	// +optional
-	// +listType=set
 	ConfigMaps []string `json:"configMaps,omitempty"`
 	// LogFormat for VmAlert to be configured with.
 	//default or json
@@ -56,13 +53,11 @@ type VmAlertSpec struct {
 	// Volumes specified will be appended to other volumes that are generated as a result of
 	// StorageSpec objects.
 	// +optional
-	// +listType=set
 	Volumes []v1.Volume `json:"volumes,omitempty"`
 	// VolumeMounts allows configuration of additional VolumeMounts on the output Deployment definition.
 	// VolumeMounts specified will be appended to other VolumeMounts in the VmAlert container,
 	// that are generated as a result of StorageSpec objects.
 	// +optional
-	// +listType=set
 	VolumeMounts []v1.VolumeMount `json:"volumeMounts,omitempty"`
 	// Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
 	// +optional
@@ -72,7 +67,6 @@ type VmAlertSpec struct {
 	Affinity *v1.Affinity `json:"affinity,omitempty"`
 	// Tolerations If specified, the pod's tolerations.
 	// +optional
-	// +listType=set
 	Tolerations []v1.Toleration `json:"tolerations,omitempty"`
 	// SecurityContext holds pod-level security attributes and common container settings.
 	// This defaults to the default PodSecurityContext.
@@ -84,7 +78,6 @@ type VmAlertSpec struct {
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 	// Containers property allows to inject additions sidecars. It can be useful for proxies, backup, etc.
 	// +optional
-	// +listType=set
 	Containers []v1.Container `json:"containers,omitempty"`
 	// InitContainers allows adding initContainers to the pod definition. Those can be used to e.g.
 	// fetch secrets for injection into the VmAlert configuration from external sources. Any
@@ -93,7 +86,6 @@ type VmAlertSpec struct {
 	// of what the maintainers will support and by doing so, you accept that this behaviour may break
 	// at any time without notice.
 	// +optional
-	// +listType=set
 	InitContainers []v1.Container `json:"initContainers,omitempty"`
 
 	// Priority class assigned to the Pods
@@ -142,7 +134,6 @@ type VmAlertSpec struct {
 	//         -rule dir/*.yaml -rule /*.yaml. Relative path to all .yaml files in "dir" folder,
 	//        absolute path to all .yaml files in root.
 	// by default operator adds /etc/vmalert/configs/base/vmalert.yaml
-	// +listType=set
 	// +optional
 	RulePath []string `json:"rulePath,omitempty"`
 	// Datasource Victoria Metrics or VMSelect url. Required parameter. e.g. http://127.0.0.1:8428
@@ -154,7 +145,6 @@ type VmAlertSpec struct {
 	ExtraArgs map[string]string `json:"extraArgs,omitempty"`
 	// ExtraEnvs that will be added to VmAlert pod
 	// +optional
-	// +listType=set
 	ExtraEnvs []v1.EnvVar `json:"extraEnvs,omitempty"`
 }
 

@@ -21,7 +21,7 @@ func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *victoriametricsv
 	// If no service or pod monitor selectors are configured, the user wants to
 	// manage configuration themselves. Do create an empty Secret if it doesn't
 	// exist.
-	l := log.WithValues("vmagent", cr.Name, "namespace", cr.Namespace)
+	l := log.WithValues("vmagent", cr.Name(), "namespace", cr.Namespace)
 
 	if cr.Spec.ServiceMonitorSelector == nil && cr.Spec.PodMonitorSelector == nil {
 		l.Info("neither ServiceMonitor not PodMonitor selector specified, leaving configuration unmanaged")

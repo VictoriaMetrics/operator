@@ -820,7 +820,6 @@ spec:
               items:
                 type: string
               type: array
-              x-kubernetes-list-type: set
             containers:
               description: Containers property allows to inject additions sidecars.
                 It can be useful for proxies, backup, etc.
@@ -1873,7 +1872,6 @@ spec:
                 - name
                 type: object
               type: array
-              x-kubernetes-list-type: set
             enforcedNamespaceLabel:
               description: EnforcedNamespaceLabel enforces adding a namespace label
                 of origin for each alert and metric that is user created. The label
@@ -1994,7 +1992,6 @@ spec:
                 - name
                 type: object
               type: array
-              x-kubernetes-list-type: set
             ignoreNamespaceSelectors:
               description: IgnoreNamespaceSelectors if set to true will ignore NamespaceSelector
                 settings from the podmonitor and servicemonitor configs, and they
@@ -2019,7 +2016,6 @@ spec:
                     type: string
                 type: object
               type: array
-              x-kubernetes-list-type: set
             initContainers:
               description: 'InitContainers allows adding initContainers to the pod
                 definition. Those can be used to e.g. fetch secrets for injection
@@ -3079,7 +3075,6 @@ spec:
                 - name
                 type: object
               type: array
-              x-kubernetes-list-type: set
             logFormat:
               description: LogFormat for VmAgent to be configured with.
               enum:
@@ -3243,7 +3238,6 @@ spec:
                 - url
                 type: object
               type: array
-              x-kubernetes-list-type: set
             replicaCount:
               description: ReplicaCount is the expected size of the VmAgent cluster.
                 The controller will eventually make the size of the running cluster
@@ -3295,7 +3289,6 @@ spec:
               items:
                 type: string
               type: array
-              x-kubernetes-list-type: set
             securityContext:
               description: SecurityContext holds pod-level security attributes and
                 common container settings. This defaults to the default PodSecurityContext.
@@ -3547,7 +3540,6 @@ spec:
                     type: string
                 type: object
               type: array
-              x-kubernetes-list-type: set
             version:
               description: Version for VmAgent.
               type: string
@@ -3598,7 +3590,6 @@ spec:
                 - name
                 type: object
               type: array
-              x-kubernetes-list-type: set
             volumes:
               description: Volumes allows configuration of additional volumes on the
                 output deploy definition. Volumes specified will be appended to other
@@ -4791,7 +4782,6 @@ spec:
                 - name
                 type: object
               type: array
-              x-kubernetes-list-type: set
           required:
           - serviceAccountName
           type: object

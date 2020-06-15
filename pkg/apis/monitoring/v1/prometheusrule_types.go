@@ -5,9 +5,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
 // PrometheusRule defines alerting rules for a Prometheus instance
 // +genclient
 // +k8s:openapi-gen=true
@@ -28,7 +25,6 @@ type PrometheusRuleList struct {
 	// More info: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#metadata
 	metav1.ListMeta `json:"metadata,omitempty"`
 	// List of Rules
-	// +listType=set
 	Items []*PrometheusRule `json:"items"`
 }
 
@@ -36,7 +32,6 @@ type PrometheusRuleList struct {
 // +k8s:openapi-gen=true
 type PrometheusRuleSpec struct {
 	// Content of Prometheus rule file
-	// +listType=set
 	Groups []RuleGroup `json:"groups,omitempty"`
 }
 
@@ -49,9 +44,8 @@ type PrometheusRuleSpec struct {
 // or 'abort'.  More info: https://github.com/thanos-io/thanos/blob/master/docs/components/rule.md#partial-response
 // +k8s:openapi-gen=true
 type RuleGroup struct {
-	Name     string `json:"name"`
-	Interval string `json:"interval,omitempty"`
-	// +listType=set
+	Name                    string `json:"name"`
+	Interval                string `json:"interval,omitempty"`
 	Rules                   []Rule `json:"rules"`
 	PartialResponseStrategy string `json:"partialResponseStrategy,omitempty"`
 }

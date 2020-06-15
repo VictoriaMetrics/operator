@@ -610,7 +610,6 @@ spec:
               items:
                 type: string
               type: array
-              x-kubernetes-list-type: set
             containers:
               description: Containers property allows to inject additions sidecars.
                 It can be useful for proxies, backup, etc.
@@ -1663,7 +1662,6 @@ spec:
                 - name
                 type: object
               type: array
-              x-kubernetes-list-type: set
             datasource:
               description: Datasource Victoria Metrics or VMSelect url. Required parameter.
                 e.g. http://127.0.0.1:8428
@@ -1791,7 +1789,6 @@ spec:
                 - name
                 type: object
               type: array
-              x-kubernetes-list-type: set
             image:
               description: Image victoria metrics alert base image
               type: string
@@ -1809,7 +1806,6 @@ spec:
                     type: string
                 type: object
               type: array
-              x-kubernetes-list-type: set
             initContainers:
               description: 'InitContainers allows adding initContainers to the pod
                 definition. Those can be used to e.g. fetch secrets for injection
@@ -2869,7 +2865,6 @@ spec:
                 - name
                 type: object
               type: array
-              x-kubernetes-list-type: set
             logFormat:
               description: LogFormat for VmAlert to be configured with. default or
                 json
@@ -3031,7 +3026,6 @@ spec:
               items:
                 type: string
               type: array
-              x-kubernetes-list-type: set
             ruleSelector:
               description: RuleSelector selector to select which PrometheusRules to
                 mount for loading alerting rules from.
@@ -3083,7 +3077,6 @@ spec:
               items:
                 type: string
               type: array
-              x-kubernetes-list-type: set
             securityContext:
               description: SecurityContext holds pod-level security attributes and
                 common container settings. This defaults to the default PodSecurityContext.
@@ -3246,7 +3239,6 @@ spec:
                     type: string
                 type: object
               type: array
-              x-kubernetes-list-type: set
             version:
               description: Version the VmAlert should be on.
               type: string
@@ -3291,7 +3283,6 @@ spec:
                 - name
                 type: object
               type: array
-              x-kubernetes-list-type: set
             volumes:
               description: Volumes allows configuration of additional volumes on the
                 output Deployment definition. Volumes specified will be appended to
@@ -4484,7 +4475,6 @@ spec:
                 - name
                 type: object
               type: array
-              x-kubernetes-list-type: set
           required:
           - datasource
           - notifierURL

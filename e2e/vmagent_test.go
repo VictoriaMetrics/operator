@@ -36,6 +36,12 @@ func vmAgentCreateTest(t *testing.T, f *framework.Framework, ctx *framework.Cont
 	if err != nil {
 		return err
 	}
+
+	//wait for config
+	err = WaitForSecret(t, f.KubeClient, namespace, "vmagent-example-vmagent", retryInterval, timeout)
+	if err != nil {
+		return err
+	}
 	// wait for example-vmalert to reach 1 replicas
 	err = e2eutil.WaitForDeployment(t, f.KubeClient, namespace, "vmagent-example-vmagent", 1, retryInterval, timeout)
 	if err != nil {

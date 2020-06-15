@@ -52,5 +52,6 @@ func TestVmApps(t *testing.T) {
 	t.Run("VmSingle", vmSingle)
 	t.Run("VmALert", vmAlert)
 	t.Run("VmAgent", vmAgent)
+	t.Run("VmAlertManager", vmAlertManager)
 
 }

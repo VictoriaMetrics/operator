@@ -26,18 +26,15 @@ type VmSingleSpec struct {
 	// ImagePullSecrets An optional list of references to secrets in the same namespace
 	// to use for pulling prometheus and VmSingle images from registries
 	// see http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod
-	// +listType=set
 	// +optional
 	ImagePullSecrets []v1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 	// Secrets is a list of Secrets in the same namespace as the VmSingle
 	// object, which shall be mounted into the VmSingle Pods.
 	// +optional
-	// +listType=set
 	Secrets []string `json:"secrets,omitempty"`
 	// ConfigMaps is a list of ConfigMaps in the same namespace as the VmSingle
 	// object, which shall be mounted into the VmSingle Pods.
 	// +optional
-	// +listType=set
 	ConfigMaps []string `json:"configMaps,omitempty"`
 	// LogLevel for victoria metrics single to be configured with.
 	// +optional
@@ -61,13 +58,11 @@ type VmSingleSpec struct {
 	// Volumes specified will be appended to other volumes that are generated as a result of
 	// StorageSpec objects.
 	// +optional
-	// +listType=set
 	Volumes []v1.Volume `json:"volumes,omitempty"`
 	// VolumeMounts allows configuration of additional VolumeMounts on the output Deployment definition.
 	// VolumeMounts specified will be appended to other VolumeMounts in the VmSingle container,
 	// that are generated as a result of StorageSpec objects.
 	// +optional
-	// +listType=set
 	VolumeMounts []v1.VolumeMount `json:"volumeMounts,omitempty"`
 	// Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
 	// if not defined default resources from operator config will be used
@@ -77,7 +72,6 @@ type VmSingleSpec struct {
 	// +optional
 	Affinity *v1.Affinity `json:"affinity,omitempty"`
 	// Tolerations If specified, the pod's tolerations.
-	// +listType=set
 	// +optional
 	Tolerations []v1.Toleration `json:"tolerations,omitempty"`
 	// SecurityContext holds pod-level security attributes and common container settings.
@@ -89,7 +83,6 @@ type VmSingleSpec struct {
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 	// Containers property allows to inject additions sidecars. It can be useful for proxies, backup, etc.
-	// +listType=set
 	// +optional
 	Containers []v1.Container `json:"containers,omitempty"`
 	// InitContainers allows adding initContainers to the pod definition. Those can be used to e.g.
@@ -98,7 +91,6 @@ type VmSingleSpec struct {
 	// Using initContainers for any use case other then secret fetching is entirely outside the scope
 	// of what the maintainers will support and by doing so, you accept that this behaviour may break
 	// at any time without notice.
-	// +listType=set
 	// +optional
 	InitContainers []v1.Container `json:"initContainers,omitempty"`
 	// PriorityClassName assigned to the Pods
@@ -125,7 +117,6 @@ type VmSingleSpec struct {
 	ExtraArgs map[string]string `json:"extraArgs,omitempty"`
 	// ExtraEnvs that will be added to VmSingle pod
 	// +optional
-	// +listType=set
 	ExtraEnvs []v1.EnvVar `json:"extraEnvs,omitempty"`
 }
 

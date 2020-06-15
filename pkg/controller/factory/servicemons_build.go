@@ -140,7 +140,7 @@ func makeEmptyConfigurationSecret(p *victoriametricsv1beta1.VmAgent, config *con
 func makeConfigSecret(cr *victoriametricsv1beta1.VmAgent, config *conf.BaseOperatorConf) *v1.Secret {
 	return &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            configSecretName(cr.Name()),
+			Name:            cr.PrefixedName(),
 			Labels:          config.Labels.Merge(cr.FinalLabels()),
 			Namespace:       cr.Namespace,
 			OwnerReferences: cr.AsOwner(),
@@ -729,10 +729,6 @@ func generateRelabelConfig(c *monitoringv1.RelabelConfig) yaml.MapSlice {
 	}
 
 	return relabeling
-}
-
-func configSecretName(name string) string {
-	return prefixedName(name)
 }
 
 func volumeName(name string) string {

@@ -609,7 +609,6 @@ spec:
               items:
                 type: string
               type: array
-              x-kubernetes-list-type: set
             containers:
               description: Containers property allows to inject additions sidecars.
                 It can be useful for proxies, backup, etc.
@@ -1662,7 +1661,6 @@ spec:
                 - name
                 type: object
               type: array
-              x-kubernetes-list-type: set
             extraArgs:
               additionalProperties:
                 type: string
@@ -1771,7 +1769,6 @@ spec:
                 - name
                 type: object
               type: array
-              x-kubernetes-list-type: set
             image:
               description: Image victoria metrics single base image
               type: string
@@ -1789,7 +1786,6 @@ spec:
                     type: string
                 type: object
               type: array
-              x-kubernetes-list-type: set
             initContainers:
               description: 'InitContainers allows adding initContainers to the pod
                 definition. Those can be used to e.g. fetch secrets for injection
@@ -2849,7 +2845,6 @@ spec:
                 - name
                 type: object
               type: array
-              x-kubernetes-list-type: set
             logFormat:
               description: LogFormat for VmSingle to be configured with.
               enum:
@@ -2946,7 +2941,6 @@ spec:
               items:
                 type: string
               type: array
-              x-kubernetes-list-type: set
             securityContext:
               description: SecurityContext holds pod-level security attributes and
                 common container settings. This defaults to the default PodSecurityContext.
@@ -3231,7 +3225,6 @@ spec:
                     type: string
                 type: object
               type: array
-              x-kubernetes-list-type: set
             version:
               description: Version of victoria metrics single
               type: string
@@ -3276,7 +3269,6 @@ spec:
                 - name
                 type: object
               type: array
-              x-kubernetes-list-type: set
             volumes:
               description: Volumes allows configuration of additional volumes on the
                 output deploy definition. Volumes specified will be appended to other
@@ -4469,7 +4461,6 @@ spec:
                 - name
                 type: object
               type: array
-              x-kubernetes-list-type: set
           type: object
         status:
           description: VmSingleStatus defines the observed state of VmSingle

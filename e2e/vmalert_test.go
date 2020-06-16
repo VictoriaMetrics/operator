@@ -19,12 +19,12 @@ func vmAlertCreateTest(t *testing.T, f *framework.Framework, ctx *framework.Cont
 		return fmt.Errorf("could not get namespace: %v", err)
 	}
 	// create  custom resource
-	exampleVmAlert := &operator.VmAlert{
+	exampleVmAlert := &operator.VMAlert{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "example-vmalert",
 			Namespace: namespace,
 		},
-		Spec: operator.VmAlertSpec{
+		Spec: operator.VMAlertSpec{
 			ReplicaCount: pointer.Int32Ptr(1),
 			NotifierURL:  "http://localhost",
 			Datasource:   operator.RemoteSpec{URL: "http://localhost"},

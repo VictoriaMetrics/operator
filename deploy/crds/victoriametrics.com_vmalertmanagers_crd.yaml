@@ -5,7 +5,7 @@ metadata:
 spec:
   additionalPrinterColumns:
   - JSONPath: .spec.version
-    description: The version of VmAlertmanager
+    description: The version of VMAlertmanager
     name: Version
     type: string
   - JSONPath: .spec.ReplicaCount
@@ -17,8 +17,8 @@ spec:
     type: date
   group: victoriametrics.com
   names:
-    kind: VmAlertmanager
-    listKind: VmAlertmanagerList
+    kind: VMAlertmanager
+    listKind: VMAlertmanagerList
     plural: vmalertmanagers
     shortNames:
     - vma
@@ -27,7 +27,7 @@ spec:
   subresources: {}
   validation:
     openAPIV3Schema:
-      description: VmAlertmanager describes an VmAlertmanager cluster.
+      description: VMAlertmanager describes an VMAlertmanager cluster.
       properties:
         apiVersion:
           description: 'APIVersion defines the versioned schema of this representation
@@ -42,7 +42,7 @@ spec:
         metadata:
           type: object
         spec:
-          description: 'Specification of the desired behavior of the VmAlertmanager
+          description: 'Specification of the desired behavior of the VMAlertmanager
             cluster. More info: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#spec-and-status'
           properties:
             additionalPeers:
@@ -633,20 +633,20 @@ spec:
               type: string
             configMaps:
               description: ConfigMaps is a list of ConfigMaps in the same namespace
-                as the VmAlertmanager object, which shall be mounted into the VmAlertmanager
+                as the VMAlertmanager object, which shall be mounted into the VMAlertmanager
                 Pods. The ConfigMaps are mounted into /etc/alertmanager/configmaps/<configmap-name>.
               items:
                 type: string
               type: array
             configSecret:
               description: ConfigSecret is the name of a Kubernetes Secret in the
-                same namespace as the VmAlertmanager object, which contains configuration
-                for this VmAlertmanager instance. Defaults to 'alertmanager-<alertmanager-name>'
+                same namespace as the VMAlertmanager object, which contains configuration
+                for this VMAlertmanager instance. Defaults to 'alertmanager-<alertmanager-name>'
                 The secret is mounted into /etc/alertmanager/config.
               type: string
             containers:
               description: Containers allows injecting additional containers. This
-                is meant to allow adding an authentication proxy to an VmAlertmanager
+                is meant to allow adding an authentication proxy to an VMAlertmanager
                 pod.
               items:
                 description: A single application container that you want to run within
@@ -1698,14 +1698,14 @@ spec:
                 type: object
               type: array
             externalURL:
-              description: ExternalURL the VmAlertmanager instances will be available
+              description: ExternalURL the VMAlertmanager instances will be available
                 under. This is necessary to generate correct URLs. This is necessary
-                if VmAlertmanager is not served from root of a DNS name.
+                if VMAlertmanager is not served from root of a DNS name.
               type: string
             image:
               description: Image if specified has precedence over baseImage, tag and
                 sha combinations. Specifying the version is still necessary to ensure
-                the Prometheus Operator knows what version of VmAlertmanager is being
+                the Prometheus Operator knows what version of VMAlertmanager is being
                 configured.
               type: string
             imagePullSecrets:
@@ -1725,7 +1725,7 @@ spec:
             initContainers:
               description: 'InitContainers allows adding initContainers to the pod
                 definition. Those can be used to e.g. fetch secrets for injection
-                into the VmAlertmanager configuration from external sources. Any errors
+                into the VMAlertmanager configuration from external sources. Any errors
                 during the execution of an initContainer will lead to a restart of
                 the Pod. More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
                 Using initContainers for any use case other then secret fetching is
@@ -2782,15 +2782,15 @@ spec:
                 type: object
               type: array
             listenLocal:
-              description: ListenLocal makes the VmAlertmanager server listen on loopback,
+              description: ListenLocal makes the VMAlertmanager server listen on loopback,
                 so that it does not bind against the Pod IP. Note this is only for
-                the VmAlertmanager UI, not the gossip communication.
+                the VMAlertmanager UI, not the gossip communication.
               type: boolean
             logFormat:
-              description: LogFormat for VmAlertmanager to be configured with.
+              description: LogFormat for VMAlertmanager to be configured with.
               type: string
             logLevel:
-              description: Log level for VmAlertmanager to be configured with.
+              description: Log level for VMAlertmanager to be configured with.
               type: string
             nodeSelector:
               additionalProperties:
@@ -2871,13 +2871,13 @@ spec:
                   type: object
               type: object
             retention:
-              description: Retention Time duration VmAlertmanager shall retain data
+              description: Retention Time duration VMAlertmanager shall retain data
                 for. Default is '120h', and must match the regular expression `[0-9]+(ms|s|m|h)`
                 (milliseconds seconds minutes hours).
               pattern: '[0-9]+(ms|s|m|h)'
               type: string
             routePrefix:
-              description: RoutePrefix VmAlertmanager registers HTTP handlers for.
+              description: RoutePrefix VMAlertmanager registers HTTP handlers for.
                 This is useful, if using ExternalURL and a proxy is rewriting HTTP
                 routes of a request, and the actual ExternalURL is still true, but
                 the server serves requests under a different route prefix. For example
@@ -2885,7 +2885,7 @@ spec:
               type: string
             secrets:
               description: Secrets is a list of Secrets in the same namespace as the
-                VmAlertmanager object, which shall be mounted into the VmAlertmanager
+                VMAlertmanager object, which shall be mounted into the VMAlertmanager
                 Pods. The Secrets are mounted into /etc/alertmanager/secrets/<secret-name>.
               items:
                 type: string
@@ -3013,14 +3013,14 @@ spec:
                 use to run the Prometheus Pods.
               type: string
             sha:
-              description: SHA of VmAlertmanager container image to be deployed. Defaults
+              description: SHA of VMAlertmanager container image to be deployed. Defaults
                 to the value of `version`. Similar to a tag, but the SHA explicitly
                 deploys an immutable container image. Version and Tag are ignored
                 if SHA is set.
               type: string
             storage:
               description: Storage is the definition of how storage will be used by
-                the VmAlertmanager instances.
+                the VMAlertmanager instances.
               properties:
                 disableMountSubPath:
                   description: 'Deprecated: subPath usage will be disabled by default
@@ -3052,7 +3052,7 @@ spec:
                       x-kubernetes-int-or-string: true
                   type: object
                 volumeClaimTemplate:
-                  description: A PVC spec to be used by the AlertManager StatefulSets.
+                  description: A PVC spec to be used by the VMAlertManager StatefulSets.
                   properties:
                     apiVersion:
                       description: 'APIVersion defines the versioned schema of this
@@ -3288,7 +3288,7 @@ spec:
                   type: object
               type: object
             tag:
-              description: Tag of VmAlertmanager container image to be deployed. Defaults
+              description: Tag of VMAlertmanager container image to be deployed. Defaults
                 to the value of `version`. Version is ignored if Tag is set.
               type: string
             tolerations:
@@ -4569,13 +4569,13 @@ spec:
               type: array
           type: object
         status:
-          description: 'Most recent observed status of the VmAlertmanager cluster.
+          description: 'Most recent observed status of the VMAlertmanager cluster.
             Read-only. Not included when requesting from the apiserver, only from
             the Prometheus Operator API itself. More info: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#spec-and-status'
           properties:
             availableReplicas:
               description: AvailableReplicas Total number of available pods (ready
-                for at least minReadySeconds) targeted by this VmAlertmanager cluster.
+                for at least minReadySeconds) targeted by this VMAlertmanager cluster.
               format: int32
               type: integer
             paused:
@@ -4584,17 +4584,17 @@ spec:
               type: boolean
             replicas:
               description: ReplicaCount Total number of non-terminated pods targeted
-                by this VmAlertmanager cluster (their labels match the selector).
+                by this VMAlertmanager cluster (their labels match the selector).
               format: int32
               type: integer
             unavailableReplicas:
               description: UnavailableReplicas Total number of unavailable pods targeted
-                by this VmAlertmanager cluster.
+                by this VMAlertmanager cluster.
               format: int32
               type: integer
             updatedReplicas:
               description: UpdatedReplicas Total number of non-terminated pods targeted
-                by this VmAlertmanager cluster that have the desired version spec.
+                by this VMAlertmanager cluster that have the desired version spec.
               format: int32
               type: integer
           required:

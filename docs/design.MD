@@ -4,67 +4,67 @@ This document describes the design and interaction between the custom resource d
 
 The custom resources that the Prometheus Operator introduces are:
 
-* `VmAgent`
-* `VmAlert`
-* `VmSingle`
+* `VMAgent`
+* `VMAlert`
+* `VMSingle`
 * `ServiceMonitor`
 * `PodMonitor` 
-* `VmAlertmanager`
+* `VMAlertmanager`
 * `PrometheusRule`
 
-## VmAgent
+## VMAgent
 
-The `VmAgent` custom resource definition (CRD) declaratively defines a desired VmAgent setup to run in a Kubernetes cluster. It provides options to configure it parameters. 
+The `VMAgent` custom resource definition (CRD) declaratively defines a desired VMAgent setup to run in a Kubernetes cluster. It provides options to configure it parameters. 
 
-For each `VmAgent` resource, the Operator deploys a properly configured `Deployment` in the same namespace. The VmAgent `Pod`s are configured to mount a `Secret` called `<vmagent-name>` containing the configuration for VmAgent.
+For each `VMAgent` resource, the Operator deploys a properly configured `Deployment` in the same namespace. The VMAgent `Pod`s are configured to mount a `Secret` called `<VMAgent-name>` containing the configuration for VMAgent.
 
-For each `VmAgent` resource, the Operator adds  `Service` in the same namespace and `ServiceMonitor`. it uses prefixed name `<vmagent-name>`
+For each `VMAgent` resource, the Operator adds  `Service` in the same namespace and `ServiceMonitor`. it uses prefixed name `<VMAgent-name>`
 
-The CRD specifies which `ServiceMonitor`s should be covered by the deployed VmAgent instances based on label selection. The Operator then generates a configuration based on the included `ServiceMonitor`s and updates it in the `Secret` containing the configuration. It continuously does so for all changes that are made to `ServiceMonitor`s or the `VmAgent` resource itself.
+The CRD specifies which `ServiceMonitor`s should be covered by the deployed VMAgent instances based on label selection. The Operator then generates a configuration based on the included `ServiceMonitor`s and updates it in the `Secret` containing the configuration. It continuously does so for all changes that are made to `ServiceMonitor`s or the `VMAgent` resource itself.
 
-If no selection of `ServiceMonitor`s is provided, the Operator leaves management of the `Secret` to the user, which allows to provide custom configurations while still benefiting from the Operator's capabilities of managing VmAgent setups.
+If no selection of `ServiceMonitor`s is provided, the Operator leaves management of the `Secret` to the user, which allows to provide custom configurations while still benefiting from the Operator's capabilities of managing VMAgent setups.
 
-## VmAlert
+## VMAlert
 
-The `VmAlert` custom resource definition (CRD) declaratively defines a desired VmAlert setup to run in a Kubernetes cluster. It provides options to configure it parameters. 
+The `VMAlert` custom resource definition (CRD) declaratively defines a desired VMAlert setup to run in a Kubernetes cluster. It provides options to configure it parameters. 
 
-For each `VmAlert` resource, the Operator deploys a properly configured `Deployment` in the same namespace. The VmAlert `Pod`s are configured to mount a list of `Configmaps` called `<vmalert-name>-number` containing the configuration for alerting rules.
+For each `VMAlert` resource, the Operator deploys a properly configured `Deployment` in the same namespace. The VMAlert `Pod`s are configured to mount a list of `Configmaps` called `<VMAlert-name>-number` containing the configuration for alerting rules.
 
-For each `VmAlert` resource, the Operator adds  `Service` in the same namespace and `ServiceMonitor`. it uses prefixed name `<vmalert-name>`
+For each `VMAlert` resource, the Operator adds  `Service` in the same namespace and `ServiceMonitor`. it uses prefixed name `<VMAlert-name>`
 
-The CRD specifies which `PrometheusRule`s should be covered by the deployed VmAlert instances based on label selection. The Operator then generates a configuration based on the included `PrometheusRule`s and updates it in the `Configmaps` containing the configuration. It continuously does so for all changes that are made to `PrometheusRule`s or the `Vmalert` resource itself.
+The CRD specifies which `PrometheusRule`s should be covered by the deployed VMAlert instances based on label selection. The Operator then generates a configuration based on the included `PrometheusRule`s and updates it in the `Configmaps` containing the configuration. It continuously does so for all changes that are made to `PrometheusRule`s or the `VMAlert` resource itself.
 
-Alerting rules are filtered by selector `ruleNamespaceSelector` in `VmAlert` crd definition, for selecting rules from all namespaces you must specify it to empty value:
+Alerting rules are filtered by selector `ruleNamespaceSelector` in `VMAlert` crd definition, for selecting rules from all namespaces you must specify it to empty value:
 
  ```yaml
 spec:
  ruleNamespaceSelector: {}
 ```
 
-## VmSingle
+## VMSingle
 
-The `VmSingle` custom resource definition (CRD) declaratively defines a desired VmSingle setup to run in a Kubernetes cluster. It provides options to configure it parameters. 
+The `VMSingle` custom resource definition (CRD) declaratively defines a desired VMSingle setup to run in a Kubernetes cluster. It provides options to configure it parameters. 
 
-For each `VmSingle` resource, the Operator deploys a properly configured `Deployment` in the same namespace. The VmSingle `Pod`s are configured to mount a emtpy dir or  `PersistentVolumeClaimSpec` for storing metrics data. Deployment update strategy set to `ReCreate`. You cannot specify more then 1 replica size.
+For each `VMSingle` resource, the Operator deploys a properly configured `Deployment` in the same namespace. The VMSingle `Pod`s are configured to mount a emtpy dir or  `PersistentVolumeClaimSpec` for storing metrics data. Deployment update strategy set to `ReCreate`. You cannot specify more then 1 replica size.
 
-For each `VmSingle` resource, the Operator adds  `Service` in the same namespace and `ServiceMonitor`. it uses prefixed name `<vmsingle-name>`
+For each `VMSingle` resource, the Operator adds  `Service` in the same namespace and `ServiceMonitor`. it uses prefixed name `<VMSingle-name>`
 
 
 ## ServiceMonitor
 
 The `ServiceMonitor` custom resource definition (CRD) allows to declaratively define how a dynamic set of services should be monitored. Which services are selected to be monitored with the desired configuration is defined using label selections. This allows an organization to introduce conventions around how metrics are exposed, and then following these conventions new services are automatically discovered, without the need to reconfigure the system.
 
-For VmAgent to monitor any application within Kubernetes an `Endpoints` object needs to exist. `Endpoints` objects are essentially lists of IP addresses. Typically an `Endpoints` object is populated by a `Service` object. A `Service` object discovers `Pod`s by a label selector and adds those to the `Endpoints` object.
+For VMAgent to monitor any application within Kubernetes an `Endpoints` object needs to exist. `Endpoints` objects are essentially lists of IP addresses. Typically an `Endpoints` object is populated by a `Service` object. A `Service` object discovers `Pod`s by a label selector and adds those to the `Endpoints` object.
 
 A `Service` may expose one or more service ports, which are backed by a list of multiple endpoints that point to a `Pod` in the common case. This is reflected in the respective `Endpoints` object as well.
 
-The `ServiceMonitor` object introduced by the Victoria Metrics Operator in turn discovers those `Endpoints` objects and configures VmAgent to monitor those `Pod`s.
+The `ServiceMonitor` object introduced by the Victoria Metrics Operator in turn discovers those `Endpoints` objects and configures VMAgent to monitor those `Pod`s.
 
 The `endpoints` section of the `ServiceMonitorSpec`, is used to configure which ports of these `Endpoints` are going to be scraped for metrics, and with which parameters. For advanced use cases one may want to monitor ports of backing `Pod`s, which are not directly part of the service endpoints. Therefore when specifying an endpoint in the `endpoints` section, they are strictly used.
 
 > Note: `endpoints` (lowercase) is the field in the `ServiceMonitor` CRD, while `Endpoints` (capitalized) is the Kubernetes object kind.
 
-Both `ServiceMonitors` as well as discovered targets may come from any namespace. This is important to allow cross-namespace monitoring use cases, e.g. for meta-monitoring. Using the `ServiceMonitorNamespaceSelector` of the `VmAgentSpec`, one can restrict the namespaces `ServiceMonitor`s are selected from by the respective VmAgent server. Using the `namespaceSelector` of the `ServiceMonitorSpec`, one can restrict the namespaces the `Endpoints` objects are allowed to be discovered from.
+Both `ServiceMonitors` as well as discovered targets may come from any namespace. This is important to allow cross-namespace monitoring use cases, e.g. for meta-monitoring. Using the `ServiceMonitorNamespaceSelector` of the `VMAgentSpec`, one can restrict the namespaces `ServiceMonitor`s are selected from by the respective VMAgent server. Using the `namespaceSelector` of the `ServiceMonitorSpec`, one can restrict the namespaces the `Endpoints` objects are allowed to be discovered from.
 To discover targets in all namespaces the `namespaceSelector` has to be empty:
 ```yaml
 spec:
@@ -102,6 +102,6 @@ When there are two or more configured replicas the operator runs the Alertmanage
 
 ## PrometheusRule
 
-The `PrometheusRule` CRD declaratively defines a desired Prometheus rule to be consumed by one or more VmAlert instances. 
+The `PrometheusRule` CRD declaratively defines a desired Prometheus rule to be consumed by one or more VMAlert instances. 
 
 Alerts and recording rules can be saved and applied as YAML files, and dynamically loaded without requiring any restart.

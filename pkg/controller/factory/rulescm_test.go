@@ -69,7 +69,7 @@ func Test_selectNamespaces(t *testing.T) {
 
 func TestSelectRules(t *testing.T) {
 	type args struct {
-		p *victoriametricsv1beta1.VmAlert
+		p *victoriametricsv1beta1.VMAlert
 		l logr.Logger
 	}
 	tests := []struct {
@@ -82,7 +82,7 @@ func TestSelectRules(t *testing.T) {
 		{
 			name: "select default rule",
 			args: args{
-				p: &victoriametricsv1beta1.VmAlert{},
+				p: &victoriametricsv1beta1.VMAlert{},
 				l: logf.Log.WithName("unit-test"),
 			},
 			want: []string{"default-vmalert.yaml"},
@@ -90,8 +90,8 @@ func TestSelectRules(t *testing.T) {
 		{
 			name: "select default rule additional rule from another namespace",
 			args: args{
-				p: &victoriametricsv1beta1.VmAlert{ObjectMeta: metav1.ObjectMeta{Name: "test-vm-alert", Namespace: "monitor"},
-					Spec: victoriametricsv1beta1.VmAlertSpec{RuleNamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{}}, RuleSelector: &metav1.LabelSelector{}}},
+				p: &victoriametricsv1beta1.VMAlert{ObjectMeta: metav1.ObjectMeta{Name: "test-vm-alert", Namespace: "monitor"},
+					Spec: victoriametricsv1beta1.VMAlertSpec{RuleNamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{}}, RuleSelector: &metav1.LabelSelector{}}},
 				l: logf.Log.WithName("unit-test"),
 			},
 			predefinedObjets: []runtime.Object{
@@ -108,8 +108,8 @@ func TestSelectRules(t *testing.T) {
 		{
 			name: "select default rule, and additional rule from another namespace with namespace filter",
 			args: args{
-				p: &victoriametricsv1beta1.VmAlert{ObjectMeta: metav1.ObjectMeta{Name: "test-vm-alert", Namespace: "monitor"},
-					Spec: victoriametricsv1beta1.VmAlertSpec{RuleNamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"monitoring": "enabled"}}, RuleSelector: &metav1.LabelSelector{}}},
+				p: &victoriametricsv1beta1.VMAlert{ObjectMeta: metav1.ObjectMeta{Name: "test-vm-alert", Namespace: "monitor"},
+					Spec: victoriametricsv1beta1.VMAlertSpec{RuleNamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"monitoring": "enabled"}}, RuleSelector: &metav1.LabelSelector{}}},
 				l: logf.Log.WithName("unit-test"),
 			},
 			predefinedObjets: []runtime.Object{

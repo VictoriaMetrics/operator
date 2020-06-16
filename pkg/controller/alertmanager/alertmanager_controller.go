@@ -25,7 +25,7 @@ var log = logf.Log.WithName("controller_alertmanager")
 * business logic.  Delete these comments after modifying this file.*
  */
 
-// Add creates a new VmAlertmanager Controller and adds it to the Manager. The Manager will set fields on the Controller
+// Add creates a new VMAlertmanager Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
 	return add(mgr, newReconciler(mgr))
@@ -45,16 +45,16 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-	// Watch for changes to primary resource VmAlertmanager
-	err = c.Watch(&source.Kind{Type: &victoriametricsv1beta1.VmAlertmanager{}}, &handler.EnqueueRequestForObject{})
+	// Watch for changes to primary resource VMAlertmanager
+	err = c.Watch(&source.Kind{Type: &victoriametricsv1beta1.VMAlertmanager{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
 
-	// Watch for changes to secondary resource Pods and requeue the owner VmAlertmanager
+	// Watch for changes to secondary resource Pods and requeue the owner VMAlertmanager
 	err = c.Watch(&source.Kind{Type: &appsv1.StatefulSet{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &victoriametricsv1beta1.VmAlertmanager{},
+		OwnerType:    &victoriametricsv1beta1.VMAlertmanager{},
 	})
 	if err != nil {
 		return err
@@ -66,7 +66,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 // blank assignment to verify that ReconcileAlertmanager implements reconcile.Reconciler
 var _ reconcile.Reconciler = &ReconcileAlertmanager{}
 
-// ReconcileAlertmanager reconciles a VmAlertmanager object
+// ReconcileAlertmanager reconciles a VMAlertmanager object
 type ReconcileAlertmanager struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
@@ -87,7 +87,7 @@ func (r *ReconcileAlertmanager) Reconcile(request reconcile.Request) (reconcile.
 	reqLogger.Info("Reconciling")
 	ctx := context.Background()
 
-	instance := &victoriametricsv1beta1.VmAlertmanager{}
+	instance := &victoriametricsv1beta1.VMAlertmanager{}
 	err := r.client.Get(ctx, request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {

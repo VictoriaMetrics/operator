@@ -85,7 +85,7 @@ func (r *ReconcilePrometheusrule) Reconcile(request reconcile.Request) (reconcil
 		}
 	}
 
-	alertMngs := &victoriametricsv1beta1.VmAlertList{}
+	alertMngs := &victoriametricsv1beta1.VMAlertList{}
 	reqLogger.Info("listing vmalerts")
 	err = r.client.List(ctx, alertMngs, &client.ListOptions{})
 	if err != nil {
@@ -98,16 +98,16 @@ func (r *ReconcilePrometheusrule) Reconcile(request reconcile.Request) (reconcil
 	for _, vmalert := range alertMngs.Items {
 		reqLogger.WithValues("vmalert", vmalert.Name())
 		reqLogger.Info("reconciling vmalert rules")
-		currVmAlert := &vmalert
+		currVMAlert := &vmalert
 
-		maps, err := factory.CreateOrUpdateRuleConfigMaps(ctx, currVmAlert, r.client)
+		maps, err := factory.CreateOrUpdateRuleConfigMaps(ctx, currVMAlert, r.client)
 		if err != nil {
 			reqLogger.Error(err, "cannot update rules configmaps")
 			return reconcile.Result{}, err
 		}
 		reqLogger.Info("created rules maps count", "count", len(maps))
 
-		_, err = factory.CreateOrUpdateVmAlert(ctx, currVmAlert, r.client, r.opConf, maps)
+		_, err = factory.CreateOrUpdateVMAlert(ctx, currVMAlert, r.client, r.opConf, maps)
 		if err != nil {
 			reqLogger.Error(err, "cannot trigger vmalert update, after rules changing")
 			return reconcile.Result{}, nil

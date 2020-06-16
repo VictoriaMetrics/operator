@@ -24,12 +24,12 @@ func TestMain(m *testing.M) {
 
 func addToSchemeCrds(t *testing.T) error {
 	objs := []runtime.Object{
-		&operator.VmSingleList{},
-		&operator.VmSingle{},
-		&operator.VmAgentList{},
-		&operator.VmAgent{},
-		&operator.VmAlert{},
-		&operator.VmAlertList{},
+		&operator.VMSingleList{},
+		&operator.VMSingle{},
+		&operator.VMAgentList{},
+		&operator.VMAgent{},
+		&operator.VMAlert{},
+		&operator.VMAlertList{},
 	}
 
 	for _, obj := range objs {
@@ -49,9 +49,9 @@ func TestVmApps(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failted to add custom resource to scheme: %v", err)
 	}
-	t.Run("VmSingle", vmSingle)
+	t.Run("VMSingle", vmSingle)
 	t.Run("VmALert", vmAlert)
-	t.Run("VmAgent", vmAgent)
+	t.Run("VMAgent", vmAgent)
 	t.Run("VmAlertManager", vmAlertManager)
 
 }

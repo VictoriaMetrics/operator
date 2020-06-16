@@ -17,7 +17,7 @@ import (
 	"strings"
 )
 
-func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *victoriametricsv1beta1.VmAgent, rclient client.Client, c *conf.BaseOperatorConf) error {
+func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client, c *conf.BaseOperatorConf) error {
 	// If no service or pod monitor selectors are configured, the user wants to
 	// manage configuration themselves. Do create an empty Secret if it doesn't
 	// exist.
@@ -113,19 +113,19 @@ func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *victoriametricsv
 	)
 	if curConfigFound {
 		if bytes.Equal(curConfig, generatedConf) {
-			log.Info("updating VmAgent configuration secret skipped, no configuration change")
+			log.Info("updating VMAgent configuration secret skipped, no configuration change")
 			return nil
 		}
-		log.Info("current VmAgent configuration has changed")
+		log.Info("current VMAgent configuration has changed")
 	} else {
-		log.Info("no current VmAgent configuration secret found", "currentConfigFound", curConfigFound)
+		log.Info("no current VMAgent configuration secret found", "currentConfigFound", curConfigFound)
 	}
 
-	log.Info("updating VmAgent configuration secret")
+	log.Info("updating VMAgent configuration secret")
 	return rclient.Update(ctx, s)
 }
 
-func SelectServiceMonitors(ctx context.Context, cr *victoriametricsv1beta1.VmAgent, rclient client.Client) (map[string]*monitoringv1.ServiceMonitor, error) {
+func SelectServiceMonitors(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) (map[string]*monitoringv1.ServiceMonitor, error) {
 
 	// Selectors (<namespace>/<name>) might overlap. Deduplicate them along the keyFunc.
 	res := make(map[string]*monitoringv1.ServiceMonitor)
@@ -219,7 +219,7 @@ func SelectServiceMonitors(ctx context.Context, cr *victoriametricsv1beta1.VmAge
 	return res, nil
 }
 
-func SelectPodMonitors(ctx context.Context, cr *victoriametricsv1beta1.VmAgent, rclient client.Client) (map[string]*monitoringv1.PodMonitor, error) {
+func SelectPodMonitors(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) (map[string]*monitoringv1.PodMonitor, error) {
 	// Selectors might overlap. Deduplicate them along the keyFunc.
 	res := make(map[string]*monitoringv1.PodMonitor)
 
@@ -486,7 +486,7 @@ func loadAdditionalScrapeConfigsSecret(additionalScrapeConfigs *v1.SecretKeySele
 
 func testForArbitraryFSAccess(e monitoringv1.Endpoint) error {
 	if e.BearerTokenFile != "" {
-		return fmt.Errorf("it accesses file system via bearer token file which VmAgent specification prohibits")
+		return fmt.Errorf("it accesses file system via bearer token file which VMAgent specification prohibits")
 	}
 
 	tlsConf := e.TLSConfig
@@ -499,7 +499,7 @@ func testForArbitraryFSAccess(e monitoringv1.Endpoint) error {
 	}
 
 	if tlsConf.CAFile != "" || tlsConf.CertFile != "" || tlsConf.KeyFile != "" {
-		return fmt.Errorf("it accesses file system via tls config which VmAgent specification prohibits")
+		return fmt.Errorf("it accesses file system via tls config which VMAgent specification prohibits")
 	}
 
 	return nil

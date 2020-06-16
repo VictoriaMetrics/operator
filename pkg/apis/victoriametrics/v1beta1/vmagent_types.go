@@ -9,12 +9,12 @@ import (
 	"strings"
 )
 
-// VmAgentSpec defines the desired state of VmAgent
+// VMAgentSpec defines the desired state of VMAgent
 // +k8s:openapi-gen=true
-// +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".spec.version",description="The version of VmAlert"
+// +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".spec.version",description="The version of VMAlert"
 // +kubebuilder:printcolumn:name="ReplicaCount",type="integer",JSONPath=".spec.replicas",description="The desired replicas number of VmAlerts"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
-type VmAgentSpec struct {
+type VMAgentSpec struct {
 	// PodMetadata configures Labels and Annotations which are propagated to the vmagent pods.
 	// +optional
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
@@ -22,7 +22,7 @@ type VmAgentSpec struct {
 	// if not specified - use default from operator config
 	// +optional
 	Image *string `json:"image,omitempty"`
-	// Version for VmAgent.
+	// Version for VMAgent.
 	// +optional
 	Version string `json:"version,omitempty"`
 	// ImagePullSecrets optional list of references to secrets in the same namespace
@@ -40,19 +40,19 @@ type VmAgentSpec struct {
 	// will be mounted at path  /etc/vmagent/configs
 	// +optional
 	ConfigMaps []string `json:"configMaps,omitempty"`
-	// LogLevel for VmAgent to be configured with.
+	// LogLevel for VMAgent to be configured with.
 	//INFO, WARN, ERROR, FATAL, PANIC
 	// +optional
 	// +kubebuilder:validation:Enum=INFO;WARN;ERROR;FATAL;PANIC
 	LogLevel string `json:"logLevel,omitempty"`
-	// LogFormat for VmAgent to be configured with.
+	// LogFormat for VMAgent to be configured with.
 	// +optional
 	// +kubebuilder:validation:Enum=default;json
 	LogFormat string `json:"logFormat,omitempty"`
-	// ReplicaCount is the expected size of the VmAgent cluster. The controller will
+	// ReplicaCount is the expected size of the VMAgent cluster. The controller will
 	// eventually make the size of the running cluster equal to the expected
 	// size.
-	// NOTE enable VmSingle deduplication for replica usage
+	// NOTE enable VMSingle deduplication for replica usage
 	// +optional
 	ReplicaCount *int32 `json:"replicaCount,omitempty"`
 	// Volumes allows configuration of additional volumes on the output deploy definition.
@@ -80,7 +80,7 @@ type VmAgentSpec struct {
 	// +optional
 	SecurityContext *v1.PodSecurityContext `json:"securityContext,omitempty"`
 	// ServiceAccountName is the name of the ServiceAccount to use to run the
-	// VmAgent Pods.
+	// VMAgent Pods.
 	// required
 	ServiceAccountName string `json:"serviceAccountName"`
 	// Containers property allows to inject additions sidecars. It can be useful for proxies, backup, etc.
@@ -103,7 +103,7 @@ type VmAgentSpec struct {
 	ScrapeInterval string `json:"scrapeInterval,omitempty"`
 
 	// APIServerConfig allows specifying a host and auth methods to access apiserver.
-	// If left empty, VmAgent is assumed to run inside of the cluster
+	// If left empty, VMAgent is assumed to run inside of the cluster
 	// and will discover API servers automatically and use the pod's CA certificate
 	// and bearer token file at /var/run/secrets/kubernetes.io/serviceaccount/.
 	// +optional
@@ -125,11 +125,11 @@ type VmAgentSpec struct {
 	// being created.
 	// +optional
 	EnforcedNamespaceLabel string `json:"enforcedNamespaceLabel,omitempty"`
-	// VmAgentExternalLabelName Name of vmAgent external label used to denote vmAgent instance
+	// VMAgentExternalLabelName Name of vmAgent external label used to denote vmAgent instance
 	// name. Defaults to the value of `prometheus`. External label will
 	// _not_ be added when value is set to empty string (`""`).
 	// +optional
-	VmAgentExternalLabelName *string `json:"vmAgentExternalLabelName,omitempty"`
+	VMAgentExternalLabelName *string `json:"vmAgentExternalLabelName,omitempty"`
 	// ReplicaExternalLabelName Name of vmagent external label used to denote replica name.
 	// Defaults to the value of `prometheus_replica`. External label will
 	// _not_ be added when value is set to empty string (`""`).
@@ -166,71 +166,71 @@ type VmAgentSpec struct {
 	PodMonitorNamespaceSelector *metav1.LabelSelector `json:"podMonitorNamespaceSelector,omitempty"`
 	// AdditionalScrapeConfigs As scrape configs are appended, the user is responsible to make sure it
 	// is valid. Note that using this feature may expose the possibility to
-	// break upgrades of VmAgent. It is advised to review VmAgent release
+	// break upgrades of VMAgent. It is advised to review VMAgent release
 	// notes to ensure that no incompatible scrape configs are going to break
-	// VmAgent after the upgrade.
+	// VMAgent after the upgrade.
 	// +optional
 	AdditionalScrapeConfigs *v1.SecretKeySelector `json:"additionalScrapeConfigs,omitempty"`
 	// ArbitraryFSAccessThroughSMs configures whether configuration
 	// based on a service monitor can access arbitrary files on the file system
-	// of the VmAgent container e.g. bearer token files.
+	// of the VMAgent container e.g. bearer token files.
 	// +optional
 	ArbitraryFSAccessThroughSMs monitoringv1.ArbitraryFSAccessThroughSMsConfig `json:"arbitraryFSAccessThroughSMs,omitempty"`
 	// Port listen address
 	// +optional
 	Port string `json:"port,omitempty"`
-	// ExtraArgs that will be passed to  VmAlert pod
+	// ExtraArgs that will be passed to  VMAlert pod
 	// for example remoteWrite.tmpDataPath: /tmp
 	// it would be converted to flag --remoteWrite.tmpDataPath=/tmp
 	// +optional
 	ExtraArgs map[string]string `json:"extraArgs,omitempty"`
-	// ExtraEnvs that will be added to VmAlert pod
+	// ExtraEnvs that will be added to VMAlert pod
 	// +optional
 	ExtraEnvs []v1.EnvVar `json:"extraEnvs,omitempty"`
 }
 
-// VmAgentStatus defines the observed state of VmAgent
+// VMAgentStatus defines the observed state of VMAgent
 // +k8s:openapi-gen=true
-type VmAgentStatus struct {
-	// ReplicaCount Total number of non-terminated pods targeted by this VmAlert
+type VMAgentStatus struct {
+	// ReplicaCount Total number of non-terminated pods targeted by this VMAlert
 	// cluster (their labels match the selector).
 	Replicas int32 `json:"replicas"`
-	// UpdatedReplicas Total number of non-terminated pods targeted by this VmAlert
+	// UpdatedReplicas Total number of non-terminated pods targeted by this VMAlert
 	// cluster that have the desired version spec.
 	UpdatedReplicas int32 `json:"updatedReplicas"`
 	// AvailableReplicas Total number of available pods (ready for at least minReadySeconds)
-	// targeted by this VmAlert cluster.
+	// targeted by this VMAlert cluster.
 	AvailableReplicas int32 `json:"availableReplicas"`
-	// UnavailableReplicas Total number of unavailable pods targeted by this VmAlert cluster.
+	// UnavailableReplicas Total number of unavailable pods targeted by this VMAlert cluster.
 	UnavailableReplicas int32 `json:"unavailableReplicas"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-// VmAgent is the Schema for the vmagents API
+// VMAgent is the Schema for the vmagents API
 // +k8s:openapi-gen=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:path=vmagents,scope=Namespaced
-type VmAgent struct {
+type VMAgent struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   VmAgentSpec   `json:"spec,omitempty"`
-	Status VmAgentStatus `json:"status,omitempty"`
+	Spec   VMAgentSpec   `json:"spec,omitempty"`
+	Status VMAgentStatus `json:"status,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-// VmAgentList contains a list of VmAgent
-type VmAgentList struct {
+// VMAgentList contains a list of VMAgent
+type VMAgentList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []VmAgent `json:"items"`
+	Items           []VMAgent `json:"items"`
 }
 
-func (cr VmAgent) Name() string {
+func (cr VMAgent) Name() string {
 	return cr.ObjectMeta.Name
 }
 
-func (cr *VmAgent) AsOwner() []metav1.OwnerReference {
+func (cr *VMAgent) AsOwner() []metav1.OwnerReference {
 	return []metav1.OwnerReference{
 		{
 			APIVersion:         cr.APIVersion,
@@ -243,7 +243,7 @@ func (cr *VmAgent) AsOwner() []metav1.OwnerReference {
 	}
 }
 
-func (cr VmAgent) PodAnnotations() map[string]string {
+func (cr VMAgent) PodAnnotations() map[string]string {
 	annotations := map[string]string{}
 	if cr.Spec.PodMetadata != nil {
 		for annotation, value := range cr.Spec.PodMetadata.Annotations {
@@ -253,7 +253,7 @@ func (cr VmAgent) PodAnnotations() map[string]string {
 	return annotations
 }
 
-func (cr VmAgent) Annotations() map[string]string {
+func (cr VMAgent) Annotations() map[string]string {
 	annotations := make(map[string]string)
 	for annotation, value := range cr.ObjectMeta.Annotations {
 		if !strings.HasPrefix(annotation, "kubectl.kubernetes.io/") {
@@ -263,7 +263,7 @@ func (cr VmAgent) Annotations() map[string]string {
 	return annotations
 }
 
-func (cr VmAgent) SelectorLabels() map[string]string {
+func (cr VMAgent) SelectorLabels() map[string]string {
 	return map[string]string{
 		"app.kubernetes.io/name":      "vmalert",
 		"app.kubernetes.io/instance":  cr.Name(),
@@ -272,7 +272,7 @@ func (cr VmAgent) SelectorLabels() map[string]string {
 	}
 }
 
-func (cr VmAgent) PodLabels() map[string]string {
+func (cr VMAgent) PodLabels() map[string]string {
 	labels := cr.SelectorLabels()
 	if cr.Spec.PodMetadata != nil {
 		for label, value := range cr.Spec.PodMetadata.Labels {
@@ -282,7 +282,7 @@ func (cr VmAgent) PodLabels() map[string]string {
 	return labels
 }
 
-func (cr VmAgent) FinalLabels() map[string]string {
+func (cr VMAgent) FinalLabels() map[string]string {
 	labels := cr.SelectorLabels()
 	if cr.ObjectMeta.Labels != nil {
 		for label, value := range cr.ObjectMeta.Labels {
@@ -292,14 +292,14 @@ func (cr VmAgent) FinalLabels() map[string]string {
 	return labels
 }
 
-func (cr VmAgent) PrefixedName() string {
+func (cr VMAgent) PrefixedName() string {
 	return fmt.Sprintf("vmagent-%s", cr.Name())
 }
 
-func (cr VmAgent) TLSAssetName() string {
+func (cr VMAgent) TLSAssetName() string {
 	return fmt.Sprintf("tls-assets-vmagent-%s", cr.Name())
 }
 
 func init() {
-	SchemeBuilder.Register(&VmAgent{}, &VmAgentList{})
+	SchemeBuilder.Register(&VMAgent{}, &VMAgentList{})
 }

@@ -19,12 +19,12 @@ func vmAgentCreateTest(t *testing.T, f *framework.Framework, ctx *framework.Cont
 		return fmt.Errorf("could not get namespace: %v", err)
 	}
 	// create  custom resource
-	exampleVmAgent := &operator.VmAgent{
+	exampleVmAgent := &operator.VMAgent{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "example-vmagent",
 			Namespace: namespace,
 		},
-		Spec: operator.VmAgentSpec{
+		Spec: operator.VMAgentSpec{
 			RemoteWrite: []operator.RemoteSpec{
 				{URL: "http://localhost"},
 			},

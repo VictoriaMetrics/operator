@@ -27,7 +27,7 @@ var log = logf.Log.WithName("controller_vmagent")
 * business logic.  Delete these comments after modifying this file.*
  */
 
-// Add creates a new VmAgent Controller and adds it to the Manager. The Manager will set fields on the Controller
+// Add creates a new VMAgent Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
 	return add(mgr, newReconciler(mgr))
@@ -35,7 +35,7 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileVmAgent{
+	return &ReconcileVMAgent{
 		client:   mgr.GetClient(),
 		scheme:   mgr.GetScheme(),
 		opConf:   conf.MustGetBaseConfig(),
@@ -51,16 +51,16 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-	// Watch for changes to primary resource VmAgent
-	err = c.Watch(&source.Kind{Type: &victoriametricsv1beta1.VmAgent{}}, &handler.EnqueueRequestForObject{})
+	// Watch for changes to primary resource VMAgent
+	err = c.Watch(&source.Kind{Type: &victoriametricsv1beta1.VMAgent{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
 
-	// Watch for changes to secondary resource Pods and requeue the owner VmAgent
+	// Watch for changes to secondary resource Pods and requeue the owner VMAgent
 	err = c.Watch(&source.Kind{Type: &apps.Deployment{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &victoriametricsv1beta1.VmAgent{},
+		OwnerType:    &victoriametricsv1beta1.VMAgent{},
 	})
 	if err != nil {
 		return err
@@ -68,7 +68,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 	err = c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &victoriametricsv1beta1.VmAgent{},
+		OwnerType:    &victoriametricsv1beta1.VMAgent{},
 	})
 	if err != nil {
 		return err
@@ -76,7 +76,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
 		IsController: false,
-		OwnerType:    &victoriametricsv1beta1.VmAgent{},
+		OwnerType:    &victoriametricsv1beta1.VMAgent{},
 	})
 	if err != nil {
 		return err
@@ -85,11 +85,11 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	return nil
 }
 
-// blank assignment to verify that ReconcileVmAgent implements reconcile.Reconciler
-var _ reconcile.Reconciler = &ReconcileVmAgent{}
+// blank assignment to verify that ReconcileVMAgent implements reconcile.Reconciler
+var _ reconcile.Reconciler = &ReconcileVMAgent{}
 
-// ReconcileVmAgent reconciles a VmAgent object
-type ReconcileVmAgent struct {
+// ReconcileVMAgent reconciles a VMAgent object
+type ReconcileVMAgent struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
 	client   client.Client
@@ -100,15 +100,15 @@ type ReconcileVmAgent struct {
 
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
-func (r *ReconcileVmAgent) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcileVMAgent) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace",
 		request.Namespace, "Request.Name", request.Name,
 		"object", "vmagent",
 	)
 	reqLogger.Info("Reconciling")
 
-	// Fetch the VmAgent instance
-	instance := &victoriametricsv1beta1.VmAgent{}
+	// Fetch the VMAgent instance
+	instance := &victoriametricsv1beta1.VMAgent{}
 	ctx := context.Background()
 	err := r.client.Get(ctx, request.NamespacedName, instance)
 	if err != nil {
@@ -124,14 +124,14 @@ func (r *ReconcileVmAgent) Reconcile(request reconcile.Request) (reconcile.Resul
 	}
 
 	//create deploy
-	reconResult, err := factory.CreateOrUpdateVmAgent(ctx, instance, r.client, r.opConf)
+	reconResult, err := factory.CreateOrUpdateVMAgent(ctx, instance, r.client, r.opConf)
 	if err != nil {
 		reqLogger.Error(err, "cannot create or update vmagent deploy")
 		return reconResult, err
 	}
 
 	//create service for monitoring
-	svc, err := factory.CreateOrUpdateVmAgentService(ctx, instance, r.client, r.opConf)
+	svc, err := factory.CreateOrUpdateVMAgentService(ctx, instance, r.client, r.opConf)
 	if err != nil {
 		reqLogger.Error(err, "cannot create or update vmagent service")
 		return reconcile.Result{}, err

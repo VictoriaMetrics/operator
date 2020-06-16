@@ -1,5 +1,5 @@
 apiVersion: victoriametrics.com/v1beta1
-kind: VmAlert
+kind: VMAlert
 metadata:
   name: example-vmalert
 spec:

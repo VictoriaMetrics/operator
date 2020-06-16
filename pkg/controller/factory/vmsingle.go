@@ -23,11 +23,11 @@ const (
 	vmSingleDataDir      = "/victoria-metrics-data"
 )
 
-func CreateVmStorage(ctx context.Context, cr *victoriametricsv1beta1.VmSingle, rclient client.Client, c *conf.BaseOperatorConf) (*corev1.PersistentVolumeClaim, error) {
+func CreateVMStorage(ctx context.Context, cr *victoriametricsv1beta1.VMSingle, rclient client.Client, c *conf.BaseOperatorConf) (*corev1.PersistentVolumeClaim, error) {
 
 	l := log.WithValues("vm.single.pvc.create", cr.Name())
 	l.Info("reconciling pvc")
-	newPvc := makeVmPvc(cr, c)
+	newPvc := makeVMSinglePvc(cr, c)
 	existPvc := &corev1.PersistentVolumeClaim{}
 	err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, existPvc)
 	if err != nil {
@@ -56,7 +56,7 @@ func CreateVmStorage(ctx context.Context, cr *victoriametricsv1beta1.VmSingle, r
 	return newPvc, nil
 }
 
-func makeVmPvc(cr *victoriametricsv1beta1.VmSingle, c *conf.BaseOperatorConf) *corev1.PersistentVolumeClaim {
+func makeVMSinglePvc(cr *victoriametricsv1beta1.VMSingle, c *conf.BaseOperatorConf) *corev1.PersistentVolumeClaim {
 	pvcObject := &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        cr.PrefixedName(),
@@ -72,12 +72,12 @@ func makeVmPvc(cr *victoriametricsv1beta1.VmSingle, c *conf.BaseOperatorConf) *c
 	return pvcObject
 }
 
-func CreateOrUpdateVmSingle(ctx context.Context, cr *victoriametricsv1beta1.VmSingle, rclient client.Client, c *conf.BaseOperatorConf) (*appsv1.Deployment, error) {
+func CreateOrUpdateVMSingle(ctx context.Context, cr *victoriametricsv1beta1.VMSingle, rclient client.Client, c *conf.BaseOperatorConf) (*appsv1.Deployment, error) {
 
 	l := log.WithValues("controller", "vmsingle.crud", "vmsingle", cr.Name())
 	l.Info("create or update vm single deploy")
 
-	newDeploy, err := newDeployForVmSingle(cr, c)
+	newDeploy, err := newDeployForVMSingle(cr, c)
 	if err != nil {
 		return nil, fmt.Errorf("cannot generate new deploy for vmsingle: %w", err)
 	}
@@ -117,17 +117,17 @@ func CreateOrUpdateVmSingle(ctx context.Context, cr *victoriametricsv1beta1.VmSi
 	return newDeploy, nil
 }
 
-func newDeployForVmSingle(cr *victoriametricsv1beta1.VmSingle, c *conf.BaseOperatorConf) (*appsv1.Deployment, error) {
+func newDeployForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *conf.BaseOperatorConf) (*appsv1.Deployment, error) {
 	cr = cr.DeepCopy()
 
 	if cr.Spec.Image == nil {
-		cr.Spec.Image = &c.VmSingleDefault.Image
+		cr.Spec.Image = &c.VMSingleDefault.Image
 	}
 	if cr.Spec.Version == "" {
-		cr.Spec.Version = c.VmSingleDefault.Version
+		cr.Spec.Version = c.VMSingleDefault.Version
 	}
 	if cr.Spec.Port == "" {
-		cr.Spec.Port = c.VmSingleDefault.Port
+		cr.Spec.Port = c.VMSingleDefault.Port
 	}
 
 	if cr.Spec.Resources.Requests == nil {
@@ -137,20 +137,20 @@ func newDeployForVmSingle(cr *victoriametricsv1beta1.VmSingle, c *conf.BaseOpera
 		cr.Spec.Resources.Limits = corev1.ResourceList{}
 	}
 	if _, ok := cr.Spec.Resources.Limits[corev1.ResourceMemory]; !ok {
-		cr.Spec.Resources.Limits[corev1.ResourceMemory] = resource.MustParse(c.VmSingleDefault.Resource.Limit.Mem)
+		cr.Spec.Resources.Limits[corev1.ResourceMemory] = resource.MustParse(c.VMSingleDefault.Resource.Limit.Mem)
 	}
 	if _, ok := cr.Spec.Resources.Limits[corev1.ResourceCPU]; !ok {
-		cr.Spec.Resources.Limits[corev1.ResourceCPU] = resource.MustParse(c.VmSingleDefault.Resource.Limit.Cpu)
+		cr.Spec.Resources.Limits[corev1.ResourceCPU] = resource.MustParse(c.VMSingleDefault.Resource.Limit.Cpu)
 	}
 
 	if _, ok := cr.Spec.Resources.Requests[corev1.ResourceMemory]; !ok {
-		cr.Spec.Resources.Requests[corev1.ResourceMemory] = resource.MustParse(c.VmSingleDefault.Resource.Request.Mem)
+		cr.Spec.Resources.Requests[corev1.ResourceMemory] = resource.MustParse(c.VMSingleDefault.Resource.Request.Mem)
 	}
 	if _, ok := cr.Spec.Resources.Requests[corev1.ResourceCPU]; !ok {
-		cr.Spec.Resources.Requests[corev1.ResourceCPU] = resource.MustParse(c.VmSingleDefault.Resource.Request.Cpu)
+		cr.Spec.Resources.Requests[corev1.ResourceCPU] = resource.MustParse(c.VMSingleDefault.Resource.Request.Cpu)
 	}
 
-	podSpec, err := makeSpecForVmSingle(cr, c)
+	podSpec, err := makeSpecForVMSingle(cr, c)
 	if err != nil {
 		return nil, err
 	}
@@ -179,7 +179,7 @@ func newDeployForVmSingle(cr *victoriametricsv1beta1.VmSingle, c *conf.BaseOpera
 	return depSpec, nil
 }
 
-func makeSpecForVmSingle(cr *victoriametricsv1beta1.VmSingle, c *conf.BaseOperatorConf) (*corev1.PodTemplateSpec, error) {
+func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *conf.BaseOperatorConf) (*corev1.PodTemplateSpec, error) {
 	args := []string{
 		fmt.Sprintf("-storageDataPath=%s", vmSingleDataDir),
 		fmt.Sprintf("-retentionPeriod=%s", cr.Spec.RetentionPeriod),
@@ -340,9 +340,9 @@ func makeSpecForVmSingle(cr *victoriametricsv1beta1.VmSingle, c *conf.BaseOperat
 
 }
 
-func CreateOrUpdateVmSingleService(ctx context.Context, cr *victoriametricsv1beta1.VmSingle, rclient client.Client, c *conf.BaseOperatorConf) (*corev1.Service, error) {
+func CreateOrUpdateVMSingleService(ctx context.Context, cr *victoriametricsv1beta1.VMSingle, rclient client.Client, c *conf.BaseOperatorConf) (*corev1.Service, error) {
 	l := log.WithValues("controller", "vmalert.service.crud")
-	newService := newServiceVmSingle(cr, c)
+	newService := newServiceVMSingle(cr, c)
 
 	currentService := &corev1.Service{}
 	err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: newService.Name}, currentService)
@@ -374,10 +374,10 @@ func CreateOrUpdateVmSingleService(ctx context.Context, cr *victoriametricsv1bet
 	return newService, nil
 }
 
-func newServiceVmSingle(cr *victoriametricsv1beta1.VmSingle, c *conf.BaseOperatorConf) *corev1.Service {
+func newServiceVMSingle(cr *victoriametricsv1beta1.VMSingle, c *conf.BaseOperatorConf) *corev1.Service {
 	cr = cr.DeepCopy()
 	if cr.Spec.Port == "" {
-		cr.Spec.Port = c.VmSingleDefault.Port
+		cr.Spec.Port = c.VMSingleDefault.Port
 	}
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{

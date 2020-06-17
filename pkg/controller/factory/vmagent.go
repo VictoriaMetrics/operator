@@ -3,6 +3,8 @@ package factory
 import (
 	"context"
 	"fmt"
+	"path"
+
 	"github.com/VictoriaMetrics/operator/conf"
 	monitoringv1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1"
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
@@ -16,7 +18,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/pointer"
-	"path"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -425,6 +426,8 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *conf.BaseOperator
 			SchedulerName:      "",
 			Tolerations:        cr.Spec.Tolerations,
 			PriorityClassName:  cr.Spec.PriorityClassName,
+			HostNetwork:        cr.Spec.HostNetwork,
+			DNSPolicy:          cr.Spec.DNSPolicy,
 		},
 	}
 

@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
+	"path"
+
 	"github.com/VictoriaMetrics/operator/conf"
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
 	"github.com/blang/semver"
@@ -16,8 +19,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
-	"net/url"
-	"path"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -559,6 +560,8 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, config *conf
 				SecurityContext:               cr.Spec.SecurityContext,
 				Tolerations:                   cr.Spec.Tolerations,
 				Affinity:                      cr.Spec.Affinity,
+				HostNetwork:                   cr.Spec.HostNetwork,
+				DNSPolicy:                     cr.Spec.DNSPolicy,
 			},
 		},
 	}, nil

@@ -98,6 +98,12 @@ type VMAgentSpec struct {
 	// PriorityClassName assigned to the Pods
 	// +optional
 	PriorityClassName string `json:"priorityClassName,omitempty"`
+	// HostNetwork controls whether the pod may use the node network namespace
+	// +optional
+	HostNetwork bool `json:"hostNetwork,omitempty"`
+	// DNSPolicy set DNS policy for the pod
+	// +optional
+	DNSPolicy v1.DNSPolicy `json:"dnsPolicy,omitempty"`
 	// ScrapeInterval defines how often scrape targets by default
 	// +optional
 	// +kubebuilder:validation:Pattern:="[0-9]+(ms|s|m|h)"

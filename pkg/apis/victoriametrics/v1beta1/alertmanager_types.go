@@ -2,10 +2,11 @@ package v1beta1
 
 import (
 	"fmt"
+	"strings"
+
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
-	"strings"
 )
 
 // VMAlertmanager describes an VMAlertmanager cluster.
@@ -134,6 +135,12 @@ type VMAlertmanagerSpec struct {
 	InitContainers []v1.Container `json:"initContainers,omitempty"`
 	// PriorityClassName class assigned to the Pods
 	PriorityClassName string `json:"priorityClassName,omitempty"`
+	// HostNetwork controls whether the pod may use the node network namespace
+	// +optional
+	HostNetwork bool `json:"hostNetwork,omitempty"`
+	// DNSPolicy sets DNS policy for the pod
+	// +optional
+	DNSPolicy v1.DNSPolicy `json:"dnsPolicy,omitempty"`
 	// AdditionalPeers allows injecting a set of additional Alertmanagers to peer with to form a highly available cluster.
 	AdditionalPeers []string `json:"additionalPeers,omitempty"`
 	// ClusterAdvertiseAddress is the explicit address to advertise in cluster.

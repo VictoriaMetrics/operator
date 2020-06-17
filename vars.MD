@@ -1,5 +1,5 @@
 # Auto Generated vars for package conf 
-## updated at Tue Jun 16 20:20:48 UTC 2020 
+## updated at Thu Jun 18 00:18:44 UTC 2020 
 
 
 | varible name | variable default value | variable required | variable description |
@@ -42,7 +42,7 @@
 | VM_VMALERTMANAGER_LOGLEVEL | INFO | false | - |
 | VM_VMALERTMANAGER_NAMESPACES | - | false | - |
 | VM_VMALERTMANAGER_CLUSTERDOMAIN | - | false | - |
-| VM_DISABLEDSERVICEMONITORCREATION | false | false | - |
+| VM_DISABLESELFSERVICEMONITORCREATION | false | false | - |
 | VM_HOST | 0.0.0.0 | false | - |
 | VM_LISTENADDRESS | 0.0.0.0 | false | - |
 | VM_DEFAULTLABELS | managed-by=vm-operator | false | - |

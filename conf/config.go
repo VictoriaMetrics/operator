@@ -85,13 +85,13 @@ type BaseOperatorConf struct {
 		ClusterDomain                string `default:""`
 		KubeletObject                string
 	}
-	DisabledServiceMonitorCreation bool   `default:"false"`
-	Host                           string `default:"0.0.0.0"`
-	ListenAddress                  string `default:"0.0.0.0"`
-	DefaultLabels                  string `default:"managed-by=vm-operator"`
-	Labels                         Labels `ignored:"true"`
-	LogLevel                       string
-	LogFormat                      string
+	DisableSelfServiceMonitorCreation bool   `default:"false"`
+	Host                              string `default:"0.0.0.0"`
+	ListenAddress                     string `default:"0.0.0.0"`
+	DefaultLabels                     string `default:"managed-by=vm-operator"`
+	Labels                            Labels `ignored:"true"`
+	LogLevel                          string
+	LogFormat                         string
 }
 
 func MustGetBaseConfig() *BaseOperatorConf {

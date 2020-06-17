@@ -131,7 +131,7 @@ func (r *ReconcileVMSingle) Reconcile(request reconcile.Request) (reconcile.Resu
 	}
 
 	//create servicemonitor for object by default
-	if !r.opConf.DisabledServiceMonitorCreation {
+	if !r.opConf.DisableSelfServiceMonitorCreation {
 		_, err = metrics.CreateServiceMonitors(r.restConf, instance.Namespace, []*corev1.Service{svc})
 		if err != nil {
 			if !errors.IsAlreadyExists(err) {

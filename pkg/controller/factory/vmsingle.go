@@ -3,6 +3,8 @@ package factory
 import (
 	"context"
 	"fmt"
+	"path"
+
 	"github.com/VictoriaMetrics/operator/conf"
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
 	"github.com/coreos/prometheus-operator/pkg/k8sutil"
@@ -13,7 +15,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"path"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -333,6 +334,8 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *conf.BaseOperat
 			SchedulerName:      "",
 			Tolerations:        cr.Spec.Tolerations,
 			PriorityClassName:  cr.Spec.PriorityClassName,
+			HostNetwork:        cr.Spec.HostNetwork,
+			DNSPolicy:          cr.Spec.DNSPolicy,
 		},
 	}
 

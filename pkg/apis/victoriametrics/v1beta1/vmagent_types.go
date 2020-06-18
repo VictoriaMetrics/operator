@@ -2,17 +2,18 @@ package v1beta1
 
 import (
 	"fmt"
+	"strings"
+
 	monitoringv1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
-	"strings"
 )
 
 // VMAgentSpec defines the desired state of VMAgent
 // +k8s:openapi-gen=true
-// +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".spec.version",description="The version of VMAlert"
-// +kubebuilder:printcolumn:name="ReplicaCount",type="integer",JSONPath=".spec.replicas",description="The desired replicas number of VmAlerts"
+// +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".spec.version",description="The version of VMAgent"
+// +kubebuilder:printcolumn:name="ReplicaCount",type="integer",JSONPath=".spec.replicas",description="The desired replicas number of VMAgent"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 type VMAgentSpec struct {
 	// PodMetadata configures Labels and Annotations which are propagated to the vmagent pods.
@@ -97,6 +98,12 @@ type VMAgentSpec struct {
 	// PriorityClassName assigned to the Pods
 	// +optional
 	PriorityClassName string `json:"priorityClassName,omitempty"`
+	// HostNetwork controls whether the pod may use the node network namespace
+	// +optional
+	HostNetwork bool `json:"hostNetwork,omitempty"`
+	// DNSPolicy set DNS policy for the pod
+	// +optional
+	DNSPolicy v1.DNSPolicy `json:"dnsPolicy,omitempty"`
 	// ScrapeInterval defines how often scrape targets by default
 	// +optional
 	// +kubebuilder:validation:Pattern:="[0-9]+(ms|s|m|h)"
@@ -179,12 +186,12 @@ type VMAgentSpec struct {
 	// Port listen address
 	// +optional
 	Port string `json:"port,omitempty"`
-	// ExtraArgs that will be passed to  VMAlert pod
+	// ExtraArgs that will be passed to  VMAgent pod
 	// for example remoteWrite.tmpDataPath: /tmp
 	// it would be converted to flag --remoteWrite.tmpDataPath=/tmp
 	// +optional
 	ExtraArgs map[string]string `json:"extraArgs,omitempty"`
-	// ExtraEnvs that will be added to VMAlert pod
+	// ExtraEnvs that will be added to VMAgent pod
 	// +optional
 	ExtraEnvs []v1.EnvVar `json:"extraEnvs,omitempty"`
 }

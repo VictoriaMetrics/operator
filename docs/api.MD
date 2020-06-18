@@ -108,6 +108,8 @@ VMAlertmanagerSpec is a specification of the desired behavior of the VMAlertmana
 | containers | Containers allows injecting additional containers. This is meant to allow adding an authentication proxy to an VMAlertmanager pod. | [][v1.Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#container-v1-core) | false |
 | initContainers | InitContainers allows adding initContainers to the pod definition. Those can be used to e.g. fetch secrets for injection into the VMAlertmanager configuration from external sources. Any errors during the execution of an initContainer will lead to a restart of the Pod. More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/ Using initContainers for any use case other then secret fetching is entirely outside the scope of what the maintainers will support and by doing so, you accept that this behaviour may break at any time without notice. | [][v1.Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#container-v1-core) | false |
 | priorityClassName | PriorityClassName class assigned to the Pods | string | false |
+| hostNetwork | HostNetwork controls whether the pod may use the node network namespace | bool | false |
+| dnsPolicy | DNSPolicy sets DNS policy for the pod | v1.DNSPolicy | false |
 | additionalPeers | AdditionalPeers allows injecting a set of additional Alertmanagers to peer with to form a highly available cluster. | []string | false |
 | clusterAdvertiseAddress | ClusterAdvertiseAddress is the explicit address to advertise in cluster. Needs to be provided for non RFC1918 [1] (public) addresses. [1] RFC1918: https://tools.ietf.org/html/rfc1918 | string | false |
 | portName | PortName used for the pods and governing service. This defaults to web | string | false |
@@ -176,6 +178,8 @@ VMAgentSpec defines the desired state of VMAgent
 | containers | Containers property allows to inject additions sidecars. It can be useful for proxies, backup, etc. | [][v1.Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#container-v1-core) | false |
 | initContainers | InitContainers allows adding initContainers to the pod definition. Those can be used to e.g. fetch secrets for injection into the vmagent configuration from external sources. Any errors during the execution of an initContainer will lead to a restart of the Pod. More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/ Using initContainers for any use case other then secret fetching is entirely outside the scope of what the maintainers will support and by doing so, you accept that this behaviour may break at any time without notice. | [][v1.Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#container-v1-core) | false |
 | priorityClassName | PriorityClassName assigned to the Pods | string | false |
+| hostNetwork | HostNetwork controls whether the pod may use the node network namespace | bool | false |
+| dnsPolicy | DNSPolicy set DNS policy for the pod | v1.DNSPolicy | false |
 | scrapeInterval | ScrapeInterval defines how often scrape targets by default | string | false |
 | aPIServerConfig | APIServerConfig allows specifying a host and auth methods to access apiserver. If left empty, VMAgent is assumed to run inside of the cluster and will discover API servers automatically and use the pod's CA certificate and bearer token file at /var/run/secrets/kubernetes.io/serviceaccount/. | *monitoringv1.APIServerConfig | false |
 | overrideHonorLabels | OverrideHonorLabels if set to true overrides all user configured honor_labels. If HonorLabels is set in ServiceMonitor or PodMonitor to true, this overrides honor_labels to false. | bool | false |
@@ -193,8 +197,8 @@ VMAgentSpec defines the desired state of VMAgent
 | additionalScrapeConfigs | AdditionalScrapeConfigs As scrape configs are appended, the user is responsible to make sure it is valid. Note that using this feature may expose the possibility to break upgrades of VMAgent. It is advised to review VMAgent release notes to ensure that no incompatible scrape configs are going to break VMAgent after the upgrade. | *[v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
 | arbitraryFSAccessThroughSMs | ArbitraryFSAccessThroughSMs configures whether configuration based on a service monitor can access arbitrary files on the file system of the VMAgent container e.g. bearer token files. | monitoringv1.ArbitraryFSAccessThroughSMsConfig | false |
 | port | Port listen address | string | false |
-| extraArgs | ExtraArgs that will be passed to  VMAlert pod for example remoteWrite.tmpDataPath: /tmp it would be converted to flag --remoteWrite.tmpDataPath=/tmp | map[string]string | false |
-| extraEnvs | ExtraEnvs that will be added to VMAlert pod | [][v1.EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#envvar-v1-core) | false |
+| extraArgs | ExtraArgs that will be passed to  VMAgent pod for example remoteWrite.tmpDataPath: /tmp it would be converted to flag --remoteWrite.tmpDataPath=/tmp | map[string]string | false |
+| extraEnvs | ExtraEnvs that will be added to VMAgent pod | [][v1.EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#envvar-v1-core) | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -305,6 +309,8 @@ VMAlertSpec defines the desired state of VMAlert
 | containers | Containers property allows to inject additions sidecars. It can be useful for proxies, backup, etc. | [][v1.Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#container-v1-core) | false |
 | initContainers | InitContainers allows adding initContainers to the pod definition. Those can be used to e.g. fetch secrets for injection into the VMAlert configuration from external sources. Any errors during the execution of an initContainer will lead to a restart of the Pod. More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/ Using initContainers for any use case other then secret fetching is entirely outside the scope of what the maintainers will support and by doing so, you accept that this behaviour may break at any time without notice. | [][v1.Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#container-v1-core) | false |
 | priorityClassName | Priority class assigned to the Pods | string | false |
+| hostNetwork | HostNetwork controls whether the pod may use the node network namespace | bool | false |
+| dnsPolicy | DNSPolicy sets DNS policy for the pod | v1.DNSPolicy | false |
 | evaluationInterval | EvaluationInterval how often evalute rules by default | string | false |
 | enforcedNamespaceLabel | EnforcedNamespaceLabel enforces adding a namespace label of origin for each alert and metric that is user created. The label value will always be the namespace of the object that is being created. | string | false |
 | ruleSelector | RuleSelector selector to select which PrometheusRules to mount for loading alerting rules from. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
@@ -382,6 +388,8 @@ VMSingleSpec defines the desired state of VMSingle
 | containers | Containers property allows to inject additions sidecars. It can be useful for proxies, backup, etc. | [][v1.Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#container-v1-core) | false |
 | initContainers | InitContainers allows adding initContainers to the pod definition. Those can be used to e.g. fetch secrets for injection into the vmSingle configuration from external sources. Any errors during the execution of an initContainer will lead to a restart of the Pod. More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/ Using initContainers for any use case other then secret fetching is entirely outside the scope of what the maintainers will support and by doing so, you accept that this behaviour may break at any time without notice. | [][v1.Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#container-v1-core) | false |
 | priorityClassName | PriorityClassName assigned to the Pods | string | false |
+| hostNetwork | HostNetwork controls whether the pod may use the node network namespace | bool | false |
+| dnsPolicy | DNSPolicy sets DNS policy for the pod | v1.DNSPolicy | false |
 | port | Port listen port | string | false |
 | removePvcAfterDelete | RemovePvcAfterDelete - if true, controller adds ownership to pvc and after VMSingle objest deletion - pvc will be garbage collected by controller manager | bool | false |
 | retentionPeriod | RetentionPeriod in months | string | true |

@@ -19,12 +19,12 @@ func vmAlertCreateTest(t *testing.T, f *framework.Framework, ctx *framework.Cont
 		return fmt.Errorf("could not get namespace: %v", err)
 	}
 	// create  custom resource
-	exampleVmAlert := &operator.VmAlert{
+	exampleVmAlert := &operator.VMAlert{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "example-vmalert",
 			Namespace: namespace,
 		},
-		Spec: operator.VmAlertSpec{
+		Spec: operator.VMAlertSpec{
 			ReplicaCount: pointer.Int32Ptr(1),
 			NotifierURL:  "http://localhost",
 			Datasource:   operator.RemoteSpec{URL: "http://localhost"},
@@ -35,6 +35,13 @@ func vmAlertCreateTest(t *testing.T, f *framework.Framework, ctx *framework.Cont
 	if err != nil {
 		return err
 	}
+
+	//wait for base config
+	err = WaitForConfigMap(t, f.KubeClient, namespace, "vm-example-vmalert-rulefiles-0", retryInterval, timeout)
+	if err != nil {
+		return err
+	}
+
 	// wait for example-vmalert to reach 1 replicas
 	err = e2eutil.WaitForDeployment(t, f.KubeClient, namespace, "vmalert-example-vmalert", 1, retryInterval, timeout)
 	if err != nil {

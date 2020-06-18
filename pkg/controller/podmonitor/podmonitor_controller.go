@@ -88,7 +88,7 @@ func (r *ReconcilePodMonitor) Reconcile(request reconcile.Request) (reconcile.Re
 			return reconcile.Result{}, err
 		}
 	}
-	vmAgentInstances := &victoriametricsv1beta1.VmAgentList{}
+	vmAgentInstances := &victoriametricsv1beta1.VMAgentList{}
 	err = r.client.List(ctx, vmAgentInstances)
 	if err != nil {
 		reqLogger.Error(err, "cannot list vmagent objects")
@@ -99,8 +99,8 @@ func (r *ReconcilePodMonitor) Reconcile(request reconcile.Request) (reconcile.Re
 	for _, vmagent := range vmAgentInstances.Items {
 		reqLogger = reqLogger.WithValues("vmagent", vmagent.Name())
 		reqLogger.Info("reconciling podmonitor for vmagent")
-		currentVmagent := &vmagent
-		recon, err := factory.CreateOrUpdateVmAgent(ctx, currentVmagent, r.client, r.opConf)
+		currentVMagent := &vmagent
+		recon, err := factory.CreateOrUpdateVMAgent(ctx, currentVMagent, r.client, r.opConf)
 		if err != nil {
 			reqLogger.Error(err, "cannot create or update vmagent")
 			return recon, err

@@ -1,5 +1,5 @@
 apiVersion: victoriametrics.com/v1beta1
-kind: Alertmanager
+kind: VMAlertmanager
 metadata:
   name: example-alertmanager
   labels:

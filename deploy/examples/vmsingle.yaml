@@ -1,5 +1,5 @@
 apiVersion: victoriametrics.com/v1beta1
-kind: VmSingle
+kind: VMSingle
 metadata:
   name: example-vmsingle
 spec:

@@ -18,9 +18,9 @@ import (
 	"testing"
 )
 
-func Test_makeSpecForVmAgent(t *testing.T) {
+func Test_makeSpecForVMAgent(t *testing.T) {
 	type args struct {
-		cr *victoriametricsv1beta1.VmAgent
+		cr *victoriametricsv1beta1.VMAgent
 		c  *conf.BaseOperatorConf
 	}
 	tests := []struct {
@@ -34,21 +34,21 @@ func Test_makeSpecForVmAgent(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := makeSpecForVmAgent(tt.args.cr, tt.args.c)
+			got, err := makeSpecForVMAgent(tt.args.cr, tt.args.c)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("makeSpecForVmAgent() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("makeSpecForVMAgent() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("makeSpecForVmAgent() got = %v, want %v", got, tt.want)
+				t.Errorf("makeSpecForVMAgent() got = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func Test_newDeployForVmAgent(t *testing.T) {
+func Test_newDeployForVMAgent(t *testing.T) {
 	type args struct {
-		cr *victoriametricsv1beta1.VmAgent
+		cr *victoriametricsv1beta1.VMAgent
 		c  *conf.BaseOperatorConf
 	}
 	tests := []struct {
@@ -61,21 +61,21 @@ func Test_newDeployForVmAgent(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := newDeployForVmAgent(tt.args.cr, tt.args.c)
+			got, err := newDeployForVMAgent(tt.args.cr, tt.args.c)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("newDeployForVmAgent() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("newDeployForVMAgent() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("newDeployForVmAgent() got = %v, want %v", got, tt.want)
+				t.Errorf("newDeployForVMAgent() got = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func TestCreateOrUpdateVmAgent(t *testing.T) {
+func TestCreateOrUpdateVMAgent(t *testing.T) {
 	type args struct {
-		cr *victoriametricsv1beta1.VmAgent
+		cr *victoriametricsv1beta1.VMAgent
 		c  *conf.BaseOperatorConf
 	}
 	tests := []struct {
@@ -89,12 +89,12 @@ func TestCreateOrUpdateVmAgent(t *testing.T) {
 			name: "generate base vmagent",
 			args: args{
 				c: conf.MustGetBaseConfig(),
-				cr: &victoriametricsv1beta1.VmAgent{
+				cr: &victoriametricsv1beta1.VMAgent{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "example-agent",
 						Namespace: "default",
 					},
-					Spec: victoriametricsv1beta1.VmAgentSpec{
+					Spec: victoriametricsv1beta1.VMAgentSpec{
 						RemoteWrite: []victoriametricsv1beta1.RemoteSpec{
 							{URL: "http://remote-write"},
 						},
@@ -106,12 +106,12 @@ func TestCreateOrUpdateVmAgent(t *testing.T) {
 			name: "generate vmagent with bauth-secret",
 			args: args{
 				c: conf.MustGetBaseConfig(),
-				cr: &victoriametricsv1beta1.VmAgent{
+				cr: &victoriametricsv1beta1.VMAgent{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "example-agent-bauth",
 						Namespace: "default",
 					},
-					Spec: victoriametricsv1beta1.VmAgentSpec{
+					Spec: victoriametricsv1beta1.VMAgentSpec{
 						RemoteWrite: []victoriametricsv1beta1.RemoteSpec{
 							{URL: "http://remote-write"},
 						},
@@ -149,12 +149,12 @@ func TestCreateOrUpdateVmAgent(t *testing.T) {
 			name: "generate vmagent with tls-secret",
 			args: args{
 				c: conf.MustGetBaseConfig(),
-				cr: &victoriametricsv1beta1.VmAgent{
+				cr: &victoriametricsv1beta1.VMAgent{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "example-agent-tls",
 						Namespace: "default",
 					},
-					Spec: victoriametricsv1beta1.VmAgentSpec{
+					Spec: victoriametricsv1beta1.VMAgentSpec{
 						RemoteWrite: []victoriametricsv1beta1.RemoteSpec{
 							{URL: "http://remote-write"},
 						},
@@ -203,13 +203,13 @@ func TestCreateOrUpdateVmAgent(t *testing.T) {
 			obj = append(obj, tt.predefinedObjects...)
 			fclient := fake.NewFakeClientWithScheme(testGetScheme(), obj...)
 
-			got, err := CreateOrUpdateVmAgent(context.TODO(), tt.args.cr, fclient, tt.args.c)
+			got, err := CreateOrUpdateVMAgent(context.TODO(), tt.args.cr, fclient, tt.args.c)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("CreateOrUpdateVmAgent() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("CreateOrUpdateVMAgent() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("CreateOrUpdateVmAgent() got = %v, want %v", got, tt.want)
+				t.Errorf("CreateOrUpdateVMAgent() got = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -217,7 +217,7 @@ func TestCreateOrUpdateVmAgent(t *testing.T) {
 
 func Test_addAddtionalScrapeConfigOwnership(t *testing.T) {
 	type args struct {
-		cr *victoriametricsv1beta1.VmAgent
+		cr *victoriametricsv1beta1.VMAgent
 		l  logr.Logger
 	}
 	tests := []struct {
@@ -229,12 +229,12 @@ func Test_addAddtionalScrapeConfigOwnership(t *testing.T) {
 		{
 			name: "append ownership to secret",
 			args: args{
-				cr: &victoriametricsv1beta1.VmAgent{
+				cr: &victoriametricsv1beta1.VMAgent{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "vmagent-1",
 						Namespace: "ns-1",
 					},
-					Spec: victoriametricsv1beta1.VmAgentSpec{
+					Spec: victoriametricsv1beta1.VMAgentSpec{
 						AdditionalScrapeConfigs: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "secret-1"}}},
 				},
 				l: logf.Log.WithName("test"),
@@ -249,12 +249,12 @@ func Test_addAddtionalScrapeConfigOwnership(t *testing.T) {
 		{
 			name: "empty scrape config - nothing todo",
 			args: args{
-				cr: &victoriametricsv1beta1.VmAgent{
+				cr: &victoriametricsv1beta1.VMAgent{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "vmagent-1",
 						Namespace: "ns-1",
 					},
-					Spec: victoriametricsv1beta1.VmAgentSpec{},
+					Spec: victoriametricsv1beta1.VMAgentSpec{},
 				},
 				l: logf.Log.WithName("test"),
 			},
@@ -268,12 +268,12 @@ func Test_addAddtionalScrapeConfigOwnership(t *testing.T) {
 		{
 			name: "ownership exists - nothing todo",
 			args: args{
-				cr: &victoriametricsv1beta1.VmAgent{
+				cr: &victoriametricsv1beta1.VMAgent{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "vmagent-2",
 						Namespace: "ns-2",
 					},
-					Spec: victoriametricsv1beta1.VmAgentSpec{
+					Spec: victoriametricsv1beta1.VMAgentSpec{
 						AdditionalScrapeConfigs: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "secret-2"}}},
 				},
 				l: logf.Log.WithName("test"),

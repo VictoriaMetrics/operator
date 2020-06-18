@@ -1,5 +1,5 @@
 apiVersion: victoriametrics.com/v1beta1
-kind: VmAgent
+kind: VMAgent
 metadata:
   name: example-vmagent
 spec:

@@ -35,7 +35,7 @@ Finally, reference this additional configuration in your `vmagent.yaml` CRD.
 ```
 cat <<EOF | kubectl apply -f -
 apiVersion: victoriametrics.com/v1beta1
-kind: VmAgent
+kind: VMAgent
 metadata:
   name: example-vmagent
 spec:

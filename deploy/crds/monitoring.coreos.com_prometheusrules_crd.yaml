@@ -70,13 +70,11 @@ spec:
                       - expr
                       type: object
                     type: array
-                    x-kubernetes-list-type: set
                 required:
                 - name
                 - rules
                 type: object
               type: array
-              x-kubernetes-list-type: set
           type: object
       required:
       - spec

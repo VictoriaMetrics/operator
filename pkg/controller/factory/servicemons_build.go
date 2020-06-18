@@ -40,7 +40,7 @@ type BasicAuthCredentials struct {
 type BearerToken string
 
 func generateConfig(
-	cr *victoriametricsv1beta1.VmAgent,
+	cr *victoriametricsv1beta1.VMAgent,
 	sMons map[string]*monitoringv1.ServiceMonitor,
 	pMons map[string]*monitoringv1.PodMonitor,
 	basicAuthSecrets map[string]BasicAuthCredentials,
@@ -127,7 +127,7 @@ func generateConfig(
 	return yaml.Marshal(cfg)
 }
 
-func makeEmptyConfigurationSecret(p *victoriametricsv1beta1.VmAgent, config *conf.BaseOperatorConf) (*v1.Secret, error) {
+func makeEmptyConfigurationSecret(p *victoriametricsv1beta1.VMAgent, config *conf.BaseOperatorConf) (*v1.Secret, error) {
 	s := makeConfigSecret(p, config)
 
 	s.ObjectMeta.Annotations = map[string]string{
@@ -137,10 +137,10 @@ func makeEmptyConfigurationSecret(p *victoriametricsv1beta1.VmAgent, config *con
 	return s, nil
 }
 
-func makeConfigSecret(cr *victoriametricsv1beta1.VmAgent, config *conf.BaseOperatorConf) *v1.Secret {
+func makeConfigSecret(cr *victoriametricsv1beta1.VMAgent, config *conf.BaseOperatorConf) *v1.Secret {
 	return &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            configSecretName(cr.Name()),
+			Name:            cr.PrefixedName(),
 			Labels:          config.Labels.Merge(cr.FinalLabels()),
 			Namespace:       cr.Namespace,
 			OwnerReferences: cr.AsOwner(),
@@ -731,10 +731,6 @@ func generateRelabelConfig(c *monitoringv1.RelabelConfig) yaml.MapSlice {
 	return relabeling
 }
 
-func configSecretName(name string) string {
-	return prefixedName(name)
-}
-
 func volumeName(name string) string {
 	return fmt.Sprintf("%s-db", prefixedName(name))
 }
@@ -821,15 +817,15 @@ func enforceNamespaceLabel(relabelings []yaml.MapSlice, namespace, enforcedNames
 		{Key: "replacement", Value: namespace}})
 }
 
-func buildExternalLabels(p *victoriametricsv1beta1.VmAgent) yaml.MapSlice {
+func buildExternalLabels(p *victoriametricsv1beta1.VMAgent) yaml.MapSlice {
 	m := map[string]string{}
 
 	// Use "prometheus" external label name by default if field is missing.
 	// Do not add external label if field is set to empty string.
 	prometheusExternalLabelName := "prometheus"
-	if p.Spec.VmAgentExternalLabelName != nil {
-		if *p.Spec.VmAgentExternalLabelName != "" {
-			prometheusExternalLabelName = *p.Spec.VmAgentExternalLabelName
+	if p.Spec.VMAgentExternalLabelName != nil {
+		if *p.Spec.VMAgentExternalLabelName != "" {
+			prometheusExternalLabelName = *p.Spec.VMAgentExternalLabelName
 		} else {
 			prometheusExternalLabelName = ""
 		}

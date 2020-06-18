@@ -22,9 +22,9 @@ const (
 	vmAlertConfigDir = "/etc/vmalert/config"
 )
 
-func CreateOrUpdateVmAlertService(ctx context.Context, cr *victoriametricsv1beta1.VmAlert, rclient client.Client, c *conf.BaseOperatorConf) (*corev1.Service, error) {
+func CreateOrUpdateVMAlertService(ctx context.Context, cr *victoriametricsv1beta1.VMAlert, rclient client.Client, c *conf.BaseOperatorConf) (*corev1.Service, error) {
 	l := log.WithValues("controller", "vmalert.service.crud", "vmalert", cr.Name())
-	newService := newServiceVmAlert(cr, c)
+	newService := newServiceVMAlert(cr, c)
 
 	currentService := &corev1.Service{}
 	err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: newService.Name}, currentService)
@@ -56,10 +56,10 @@ func CreateOrUpdateVmAlertService(ctx context.Context, cr *victoriametricsv1beta
 	return newService, nil
 }
 
-func newServiceVmAlert(cr *victoriametricsv1beta1.VmAlert, c *conf.BaseOperatorConf) *corev1.Service {
+func newServiceVMAlert(cr *victoriametricsv1beta1.VMAlert, c *conf.BaseOperatorConf) *corev1.Service {
 	cr = cr.DeepCopy()
 	if cr.Spec.Port == "" {
-		cr.Spec.Port = c.VmAlertDefault.Port
+		cr.Spec.Port = c.VMAlertDefault.Port
 	}
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -84,11 +84,11 @@ func newServiceVmAlert(cr *victoriametricsv1beta1.VmAlert, c *conf.BaseOperatorC
 	}
 }
 
-func CreateOrUpdateVmAlert(ctx context.Context, cr *victoriametricsv1beta1.VmAlert, rclient client.Client, c *conf.BaseOperatorConf, cmNames []string) (reconcile.Result, error) {
+func CreateOrUpdateVMAlert(ctx context.Context, cr *victoriametricsv1beta1.VMAlert, rclient client.Client, c *conf.BaseOperatorConf, cmNames []string) (reconcile.Result, error) {
 	l := log.WithValues("controller", "vmalert.crud", "vmalert", cr.Name())
 	//recon deploy
 	l.Info("generating new deployment")
-	newDeploy, err := newDeployForVmAlert(cr, c, cmNames)
+	newDeploy, err := newDeployForVMAlert(cr, c, cmNames)
 	if err != nil {
 		return reconcile.Result{}, fmt.Errorf("cannot generate new deploy for vmalert: %w", err)
 	}
@@ -123,14 +123,14 @@ func CreateOrUpdateVmAlert(ctx context.Context, cr *victoriametricsv1beta1.VmAle
 }
 
 // newDeployForCR returns a busybox pod with the same name/namespace as the cr
-func newDeployForVmAlert(cr *victoriametricsv1beta1.VmAlert, c *conf.BaseOperatorConf, ruleConfigMapNames []string) (*appsv1.Deployment, error) {
+func newDeployForVMAlert(cr *victoriametricsv1beta1.VMAlert, c *conf.BaseOperatorConf, ruleConfigMapNames []string) (*appsv1.Deployment, error) {
 
 	cr = cr.DeepCopy()
 	if cr.Spec.Image == nil {
-		cr.Spec.Image = &c.VmAlertDefault.Image
+		cr.Spec.Image = &c.VMAlertDefault.Image
 	}
 	if cr.Spec.Version == "" {
-		cr.Spec.Version = c.VmAgentDefault.Version
+		cr.Spec.Version = c.VMAgentDefault.Version
 	}
 	if cr.Spec.Resources.Requests == nil {
 		cr.Spec.Resources.Requests = corev1.ResourceList{}
@@ -140,21 +140,21 @@ func newDeployForVmAlert(cr *victoriametricsv1beta1.VmAlert, c *conf.BaseOperato
 
 	}
 	if _, ok := cr.Spec.Resources.Limits[corev1.ResourceMemory]; !ok {
-		cr.Spec.Resources.Limits[corev1.ResourceMemory] = resource.MustParse(c.VmAlertDefault.Resource.Limit.Mem)
+		cr.Spec.Resources.Limits[corev1.ResourceMemory] = resource.MustParse(c.VMAlertDefault.Resource.Limit.Mem)
 	}
 	if _, ok := cr.Spec.Resources.Limits[corev1.ResourceCPU]; !ok {
-		cr.Spec.Resources.Limits[corev1.ResourceCPU] = resource.MustParse(c.VmAlertDefault.Resource.Limit.Cpu)
+		cr.Spec.Resources.Limits[corev1.ResourceCPU] = resource.MustParse(c.VMAlertDefault.Resource.Limit.Cpu)
 	}
 
 	if _, ok := cr.Spec.Resources.Requests[corev1.ResourceMemory]; !ok {
-		cr.Spec.Resources.Requests[corev1.ResourceMemory] = resource.MustParse(c.VmAlertDefault.Resource.Request.Mem)
+		cr.Spec.Resources.Requests[corev1.ResourceMemory] = resource.MustParse(c.VMAlertDefault.Resource.Request.Mem)
 	}
 	if _, ok := cr.Spec.Resources.Requests[corev1.ResourceCPU]; !ok {
-		cr.Spec.Resources.Requests[corev1.ResourceCPU] = resource.MustParse(c.VmAlertDefault.Resource.Request.Cpu)
+		cr.Spec.Resources.Requests[corev1.ResourceCPU] = resource.MustParse(c.VMAlertDefault.Resource.Request.Cpu)
 	}
 
 	if cr.Spec.Port == "" {
-		cr.Spec.Port = c.VmAlertDefault.Port
+		cr.Spec.Port = c.VMAlertDefault.Port
 	}
 
 	generatedSpec, err := vmAlertSpecGen(cr, c, ruleConfigMapNames)
@@ -179,7 +179,7 @@ func newDeployForVmAlert(cr *victoriametricsv1beta1.VmAlert, c *conf.BaseOperato
 	return deploy, nil
 }
 
-func vmAlertSpecGen(cr *victoriametricsv1beta1.VmAlert, c *conf.BaseOperatorConf, ruleConfigMapNames []string) (*appsv1.DeploymentSpec, error) {
+func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *conf.BaseOperatorConf, ruleConfigMapNames []string) (*appsv1.DeploymentSpec, error) {
 	cr = cr.DeepCopy()
 
 	confReloadArgs := []string{
@@ -298,11 +298,11 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VmAlert, c *conf.BaseOperatorConf
 	}
 
 	resources := corev1.ResourceRequirements{Limits: corev1.ResourceList{}}
-	if c.VmAlertDefault.ConfigReloaderCPU != "0" {
-		resources.Limits[corev1.ResourceCPU] = resource.MustParse(c.VmAlertDefault.ConfigReloaderCPU)
+	if c.VMAlertDefault.ConfigReloaderCPU != "0" {
+		resources.Limits[corev1.ResourceCPU] = resource.MustParse(c.VMAlertDefault.ConfigReloaderCPU)
 	}
-	if c.VmAlertDefault.ConfigReloaderMemory != "0" {
-		resources.Limits[corev1.ResourceMemory] = resource.MustParse(c.VmAlertDefault.ConfigReloaderMemory)
+	if c.VMAlertDefault.ConfigReloaderMemory != "0" {
+		resources.Limits[corev1.ResourceMemory] = resource.MustParse(c.VMAlertDefault.ConfigReloaderMemory)
 	}
 
 	livenessProbeHandler := corev1.Handler{
@@ -350,7 +350,7 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VmAlert, c *conf.BaseOperatorConf
 			TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 		}, {
 			Name:                     "config-reloader",
-			Image:                    c.VmAlertDefault.ConfigReloadImage,
+			Image:                    c.VMAlertDefault.ConfigReloadImage,
 			Args:                     confReloadArgs,
 			Resources:                resources,
 			TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,

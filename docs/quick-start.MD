@@ -21,11 +21,6 @@ kubectl apply -f install/crds/vm/
 #if you dont have prometheus crds, add it with command:
 kubectl apply -f install/crds/prom/
 ```
-*NOTE if your kubernetes version less then 1.16, it`s no possible to use server side validation for crds and you have do disable it, when applying crds:
-```bash
-kubectl apply -f install/crds/vm/ --validate=false
-
-``` 
  
 Then you need rbac for operator, relevant configuration for release can be found at install/operator/rbac.yaml
 
@@ -56,22 +51,22 @@ kubectl -n $YOUR_NS get pods
 
 The Victoria Metrics Operator introduces additional resources in Kubernetes to declare the desired state of a Victoria Metrics applications and Alertmanager cluster as well as the Prometheus resources configuration. The resources it introduces are:
 
-* `VmSingle`
-* `VmAgent`
-* `VmAlert`
+* `VMSingle`
+* `VMAgent`
+* `VMAlert`
 * `PrometheusRule`
 * `ServiceMonitor`
-* `Alertmanager`
+* `VMAlertmanager`
 
 
-## VmSingle
+## VMSingle
 
- It represent database for storing metrics, for all possible config options check api [doc](/docs/api.MD#VmSingle):
+ It represent database for storing metrics, for all possible config options check api [doc](/docs/api.MD#VMSingle):
  
  ```yaml
 cat <<EOF | kubectl apply -f -
 apiVersion: victoriametrics.com/v1beta1
-kind: VmSingle
+kind: VMSingle
 metadata:
   name: example-vmsingle-persisted
 spec:
@@ -93,7 +88,7 @@ for instance:
 ```yaml
 cat <<EOF | kubectl apply -f -
 apiVersion: victoriametrics.com/v1beta1
-kind: VmSingle
+kind: VMSingle
 metadata:
   name: example-vmsingle-persisted
 spec:
@@ -107,7 +102,7 @@ flag can be replaced with envVar, it`s useful for retrieving value from secret:
 ```yaml
 cat <<EOF | kubectl apply -f  -
 apiVersion: victoriametrics.com/v1beta1
-kind: VmSingle
+kind: VMSingle
 metadata:
   name: example-vmsingle-persisted
 spec:
@@ -123,24 +118,24 @@ EOF
 ```
 
 
-## VmAgent
+## VMAgent
 
- `VmAgent` needs access to kubernetes api and you must create rbac for it first, it can be found at `install/examples/vmagent_rbac.yaml`
+ `VMAgent` needs access to kubernetes api and you must create rbac for it first, it can be found at `install/examples/VMAgent_rbac.yaml`
 
  ```bash
 #change namespace
-sed -i -e "s/namespace: default/namespace: $YOUR_NS/" install/examples/vmagent_rbac.yaml 
-kubectl -n "$YOUR_NS apply" -f install/examples/vmagent_rbac.yaml
+sed -i -e "s/namespace: default/namespace: $YOUR_NS/" install/examples/VMAgent_rbac.yaml 
+kubectl -n "$YOUR_NS apply" -f install/examples/VMAgent_rbac.yaml
 ```
 
- Modify `VmAgent` config parameters at `install/examples/vmagent.yaml` and apply it, config options [doc](/docs/api.MD#VmAgent)
+ Modify `VMAgent` config parameters at `install/examples/VMAgent.yaml` and apply it, config options [doc](/docs/api.MD#VMAgent)
 
 example:
 
 ```yaml
 cat <<EOF | kubectl apply -f -
 apiVersion: victoriametrics.com/v1beta1
-kind: VmAgent
+kind: VMAgent
 metadata:
   name: example-vmagent
 spec:
@@ -154,15 +149,15 @@ spec:
 EOF
 ```
 
-## VmAlert
+## VMAlert
 
 
- `VmAlert` has few required config options - `datasource`  and `notifierURL`, for other config parameters check [doc](/docs/api.MD#VmAlert)
+ `VMAlert` has few required config options - `datasource`  and `notifierURL`, for other config parameters check [doc](/docs/api.MD#VMAlert)
 
 ```yaml
 cat << EOF | kubectl apply -f -
 apiVersion: victoriametrics.com/v1beta1
-kind: VmAlert
+kind: VMAlert
 metadata:
   name: example-vmalert
 spec:
@@ -209,7 +204,7 @@ and add `Alertmanager` object, other config options at [doc](/docs/api.MD#Alertm
 ```yaml
 cat << EOF | kubectl apply -f -
 apiVersion: victoriametrics.com/v1beta1
-kind: Alertmanager
+kind: VMAlertmanager
 metadata:
   name: example-alertmanager
 spec:
@@ -287,10 +282,10 @@ EOF
 ```
 
 
-## Expose the VmSingle API
+## Expose the VMSingle API
 
 
-> WARNING: Enabling the external access to VmSingle highly recommend to protect with https and authentication, it allows to  to delete data.
+> WARNING: Enabling the external access to VMSingle highly recommend to protect with https and authentication, it allows to  to delete data.
 
 example for kubernetes nginx ingress [doc](https://kubernetes.github.io/ingress-nginx/examples/auth/basic/)
 ```yaml

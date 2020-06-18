@@ -48,22 +48,3 @@ jobs:
           tag_with_ref: true
           dockerfile: cmd/manager/Dockerfile
 
-# TODO fix it, for some reason it fails with timeout
-#      - name: Setup Minikube for e2e
-#        uses: manusa/actions-setup-minikube@v1.0.2
-#        with:
-#            minikube version: 'v1.5.2'
-#            kubernetes version: 'v1.16.0'
-#            github token: ${{ secrets.GITHUB_TOKEN }}
-#      - name: exec e2e tests
-#        env:
-#          GO111MODULE: on
-#          E2E_IMAGE: ${{ env.GITHUB_REF_SLUG }}
-#          SDK_VERSION: "0.17.0"
-#        run: |
-#          export PATH=$PATH:$(go env GOPATH)/bin
-#          export PATH=$PATH:`pwd`
-#          kubectl get nodes
-#          curl -L -o operator-sdk "https://github.com/operator-framework/operator-sdk/releases/download/v0.17.0/operator-sdk-v0.17.0-x86_64-linux-gnu"
-#          chmod +x operator-sdk
-#          make e2e

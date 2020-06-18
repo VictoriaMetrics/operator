@@ -154,7 +154,6 @@ spec:
                           items:
                             type: string
                           type: array
-                          x-kubernetes-list-type: set
                         targetLabel:
                           description: Label to which the resulting value is written
                             in a replace action. It is mandatory for replace actions.
@@ -162,7 +161,6 @@ spec:
                           type: string
                       type: object
                     type: array
-                    x-kubernetes-list-type: set
                   params:
                     additionalProperties:
                       items:
@@ -220,7 +218,6 @@ spec:
                           items:
                             type: string
                           type: array
-                          x-kubernetes-list-type: set
                         targetLabel:
                           description: Label to which the resulting value is written
                             in a replace action. It is mandatory for replace actions.
@@ -228,7 +225,6 @@ spec:
                           type: string
                       type: object
                     type: array
-                    x-kubernetes-list-type: set
                   scheme:
                     description: HTTP scheme to use for scraping.
                     type: string
@@ -370,7 +366,6 @@ spec:
                     type: object
                 type: object
               type: array
-              x-kubernetes-list-type: set
             jobLabel:
               description: The label to use to retrieve the job name from.
               type: string
@@ -387,7 +382,6 @@ spec:
                   items:
                     type: string
                   type: array
-                  x-kubernetes-list-type: set
               type: object
             podTargetLabels:
               description: PodTargetLabels transfers labels on the Kubernetes Pod
@@ -395,7 +389,6 @@ spec:
               items:
                 type: string
               type: array
-              x-kubernetes-list-type: set
             sampleLimit:
               description: SampleLimit defines per-scrape limit on number of scraped
                 samples that will be accepted.
@@ -450,7 +443,6 @@ spec:
               items:
                 type: string
               type: array
-              x-kubernetes-list-type: set
           required:
           - endpoints
           - selector

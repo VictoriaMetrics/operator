@@ -28,7 +28,7 @@ var log = logf.Log.WithName("controller_vmsingle")
 * business logic.  Delete these comments after modifying this file.*
  */
 
-// Add creates a new VmSingle Controller and adds it to the Manager. The Manager will set fields on the Controller
+// Add creates a new VMSingle Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
 	return add(mgr, newReconciler(mgr))
@@ -36,7 +36,7 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileVmSingle{
+	return &ReconcileVMSingle{
 		client:   mgr.GetClient(),
 		scheme:   mgr.GetScheme(),
 		restConf: mgr.GetConfig(),
@@ -52,16 +52,16 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-	// Watch for changes to primary resource VmSingle
-	err = c.Watch(&source.Kind{Type: &victoriametricsv1beta1.VmSingle{}}, &handler.EnqueueRequestForObject{})
+	// Watch for changes to primary resource VMSingle
+	err = c.Watch(&source.Kind{Type: &victoriametricsv1beta1.VMSingle{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
 
-	// Watch for changes to secondary resource Pods and requeue the owner VmSingle
+	// Watch for changes to secondary resource Pods and requeue the owner VMSingle
 	err = c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &victoriametricsv1beta1.VmSingle{},
+		OwnerType:    &victoriametricsv1beta1.VMSingle{},
 	})
 	if err != nil {
 		return err
@@ -69,7 +69,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 	err = c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &victoriametricsv1beta1.VmSingle{},
+		OwnerType:    &victoriametricsv1beta1.VMSingle{},
 	})
 	if err != nil {
 		return err
@@ -78,11 +78,11 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	return nil
 }
 
-// blank assignment to verify that ReconcileVmSingle implements reconcile.Reconciler
-var _ reconcile.Reconciler = &ReconcileVmSingle{}
+// blank assignment to verify that ReconcileVMSingle implements reconcile.Reconciler
+var _ reconcile.Reconciler = &ReconcileVMSingle{}
 
-// ReconcileVmSingle reconciles a VmSingle object
-type ReconcileVmSingle struct {
+// ReconcileVMSingle reconciles a VMSingle object
+type ReconcileVMSingle struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
 	client   client.Client
@@ -93,7 +93,7 @@ type ReconcileVmSingle struct {
 
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
-func (r *ReconcileVmSingle) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcileVMSingle) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace",
 		request.Namespace, "Request.Name", request.Name,
 		"object", "vmsingle",
@@ -101,7 +101,7 @@ func (r *ReconcileVmSingle) Reconcile(request reconcile.Request) (reconcile.Resu
 	reqLogger.Info("Reconciling")
 
 	ctx := context.Background()
-	instance := &victoriametricsv1beta1.VmSingle{}
+	instance := &victoriametricsv1beta1.VMSingle{}
 	err := r.client.Get(ctx, request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -112,26 +112,26 @@ func (r *ReconcileVmSingle) Reconcile(request reconcile.Request) (reconcile.Resu
 
 	if instance.Spec.Storage != nil {
 		reqLogger.Info("storage specified reconcile it")
-		_, err = factory.CreateVmStorage(ctx, instance, r.client, r.opConf)
+		_, err = factory.CreateVMStorage(ctx, instance, r.client, r.opConf)
 		if err != nil {
 			reqLogger.Error(err, "cannot create pvc")
 			return reconcile.Result{}, err
 		}
 	}
-	_, err = factory.CreateOrUpdateVmSingle(ctx, instance, r.client, r.opConf)
+	_, err = factory.CreateOrUpdateVMSingle(ctx, instance, r.client, r.opConf)
 	if err != nil {
 		reqLogger.Error(err, "cannot create or update vmsingle deployment")
 		return reconcile.Result{}, err
 	}
 
-	svc, err := factory.CreateOrUpdateVmSingleService(ctx, instance, r.client, r.opConf)
+	svc, err := factory.CreateOrUpdateVMSingleService(ctx, instance, r.client, r.opConf)
 	if err != nil {
 		reqLogger.Error(err, "cannot create or update vmsingle service")
 		return reconcile.Result{}, err
 	}
 
 	//create servicemonitor for object by default
-	if !r.opConf.DisabledServiceMonitorCreation {
+	if !r.opConf.DisableSelfServiceMonitorCreation {
 		_, err = metrics.CreateServiceMonitors(r.restConf, instance.Namespace, []*corev1.Service{svc})
 		if err != nil {
 			if !errors.IsAlreadyExists(err) {

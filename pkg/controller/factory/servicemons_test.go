@@ -19,14 +19,14 @@ import (
 func testGetScheme() *runtime.Scheme {
 	s := scheme.Scheme
 	s.AddKnownTypes(victoriametricsv1beta1.SchemeGroupVersion,
-		&victoriametricsv1beta1.VmAgent{},
-		&victoriametricsv1beta1.VmAgentList{},
-		&victoriametricsv1beta1.VmAlert{},
-		&victoriametricsv1beta1.VmAlertList{},
-		&victoriametricsv1beta1.VmSingle{},
-		&victoriametricsv1beta1.VmSingleList{},
-		&victoriametricsv1beta1.Alertmanager{},
-		&victoriametricsv1beta1.AlertmanagerList{},
+		&victoriametricsv1beta1.VMAgent{},
+		&victoriametricsv1beta1.VMAgentList{},
+		&victoriametricsv1beta1.VMAlert{},
+		&victoriametricsv1beta1.VMAlertList{},
+		&victoriametricsv1beta1.VMSingle{},
+		&victoriametricsv1beta1.VMSingleList{},
+		&victoriametricsv1beta1.VMAlertmanager{},
+		&victoriametricsv1beta1.VMAlertmanagerList{},
 	)
 	s.AddKnownTypes(monitoringv1.SchemeGroupVersion,
 		&monitoringv1.PodMonitor{},
@@ -41,7 +41,7 @@ func testGetScheme() *runtime.Scheme {
 
 func TestSelectServiceMonitors(t *testing.T) {
 	type args struct {
-		p *victoriametricsv1beta1.VmAgent
+		p *victoriametricsv1beta1.VMAgent
 		l logr.Logger
 	}
 	tests := []struct {
@@ -54,12 +54,12 @@ func TestSelectServiceMonitors(t *testing.T) {
 		{
 			name: "select service monitor inside vmagent namespace",
 			args: args{
-				p: &victoriametricsv1beta1.VmAgent{
+				p: &victoriametricsv1beta1.VMAgent{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "default-agent",
 						Namespace: "default",
 					},
-					Spec: victoriametricsv1beta1.VmAgentSpec{
+					Spec: victoriametricsv1beta1.VMAgentSpec{
 						ServiceMonitorSelector: &metav1.LabelSelector{},
 					},
 				},
@@ -77,12 +77,12 @@ func TestSelectServiceMonitors(t *testing.T) {
 		{
 			name: "select service monitor from namespace with filter",
 			args: args{
-				p: &victoriametricsv1beta1.VmAgent{
+				p: &victoriametricsv1beta1.VMAgent{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "default-agent",
 						Namespace: "default",
 					},
-					Spec: victoriametricsv1beta1.VmAgentSpec{
+					Spec: victoriametricsv1beta1.VMAgentSpec{
 						ServiceMonitorNamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"name": "stage"}},
 						ServiceMonitorSelector:          &metav1.LabelSelector{},
 					},
@@ -129,7 +129,7 @@ func TestSelectServiceMonitors(t *testing.T) {
 
 func TestSelectPodMonitors(t *testing.T) {
 	type args struct {
-		p *victoriametricsv1beta1.VmAgent
+		p *victoriametricsv1beta1.VMAgent
 		l logr.Logger
 	}
 	tests := []struct {
@@ -142,12 +142,12 @@ func TestSelectPodMonitors(t *testing.T) {
 		{
 			name: "selector pod monitor at vmagent ns",
 			args: args{
-				p: &victoriametricsv1beta1.VmAgent{
+				p: &victoriametricsv1beta1.VMAgent{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "example-vmagent",
 						Namespace: "default",
 					},
-					Spec: victoriametricsv1beta1.VmAgentSpec{
+					Spec: victoriametricsv1beta1.VMAgentSpec{
 						PodMonitorSelector: &metav1.LabelSelector{},
 					},
 				},
@@ -168,12 +168,12 @@ func TestSelectPodMonitors(t *testing.T) {
 		{
 			name: "selector pod monitor at different ns with ns selector",
 			args: args{
-				p: &victoriametricsv1beta1.VmAgent{
+				p: &victoriametricsv1beta1.VMAgent{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "example-vmagent",
 						Namespace: "default",
 					},
-					Spec: victoriametricsv1beta1.VmAgentSpec{
+					Spec: victoriametricsv1beta1.VMAgentSpec{
 						PodMonitorNamespaceSelector: &metav1.LabelSelector{
 							MatchLabels: map[string]string{"name": "monitoring"},
 						},

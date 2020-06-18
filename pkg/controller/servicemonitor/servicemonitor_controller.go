@@ -90,7 +90,7 @@ func (r *ReconcileServiceMonitor) Reconcile(request reconcile.Request) (reconcil
 			return reconcile.Result{}, err
 		}
 	}
-	vmAgentInstances := &victoriametricsv1beta1.VmAgentList{}
+	vmAgentInstances := &victoriametricsv1beta1.VMAgentList{}
 	err = r.client.List(ctx, vmAgentInstances)
 	if err != nil {
 		reqLogger.Error(err, "cannot list vmagent objects")
@@ -101,9 +101,9 @@ func (r *ReconcileServiceMonitor) Reconcile(request reconcile.Request) (reconcil
 	for _, vmagent := range vmAgentInstances.Items {
 		reqLogger = reqLogger.WithValues("vmagent", vmagent.Name())
 		reqLogger.Info("reconciling servicemonitors for vmagent")
-		currentVmagent := &vmagent
+		currentVMagent := &vmagent
 
-		recon, err := factory.CreateOrUpdateVmAgent(ctx, currentVmagent, r.client, r.opConf)
+		recon, err := factory.CreateOrUpdateVMAgent(ctx, currentVMagent, r.client, r.opConf)
 		if err != nil {
 			reqLogger.Error(err, "cannot create or update vmagent instance")
 			return recon, err

@@ -8,13 +8,13 @@ import (
 	"strings"
 )
 
-// VmSingleSpec defines the desired state of VmSingle
+// VMSingleSpec defines the desired state of VMSingle
 // +k8s:openapi-gen=true
-// +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".spec.version",description="The version of VmSingle"
+// +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".spec.version",description="The version of VMSingle"
 // +kubebuilder:printcolumn:name="RetentionPeriod",type="string",JSONPath=".spec.RetentionPeriod",description="The desired RetentionPeriod for vm single"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
-type VmSingleSpec struct {
-	// PodMetadata configures Labels and Annotations which are propagated to the VmSingle pods.
+type VMSingleSpec struct {
+	// PodMetadata configures Labels and Annotations which are propagated to the VMSingle pods.
 	// +optional
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
 	// Image victoria metrics single base image
@@ -24,35 +24,32 @@ type VmSingleSpec struct {
 	// +optional
 	Version string `json:"version,omitempty"`
 	// ImagePullSecrets An optional list of references to secrets in the same namespace
-	// to use for pulling prometheus and VmSingle images from registries
+	// to use for pulling prometheus and VMSingle images from registries
 	// see http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod
-	// +listType=set
 	// +optional
 	ImagePullSecrets []v1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
-	// Secrets is a list of Secrets in the same namespace as the VmSingle
-	// object, which shall be mounted into the VmSingle Pods.
+	// Secrets is a list of Secrets in the same namespace as the VMSingle
+	// object, which shall be mounted into the VMSingle Pods.
 	// +optional
-	// +listType=set
 	Secrets []string `json:"secrets,omitempty"`
-	// ConfigMaps is a list of ConfigMaps in the same namespace as the VmSingle
-	// object, which shall be mounted into the VmSingle Pods.
+	// ConfigMaps is a list of ConfigMaps in the same namespace as the VMSingle
+	// object, which shall be mounted into the VMSingle Pods.
 	// +optional
-	// +listType=set
 	ConfigMaps []string `json:"configMaps,omitempty"`
 	// LogLevel for victoria metrics single to be configured with.
 	// +optional
 	// +kubebuilder:validation:Enum=INFO;WARN;ERROR;FATAL;PANIC
 	LogLevel string `json:"logLevel,omitempty"`
-	// LogFormat for VmSingle to be configured with.
+	// LogFormat for VMSingle to be configured with.
 	// +optional
 	// +kubebuilder:validation:Enum=default;json
 	LogFormat string `json:"logFormat,omitempty"`
-	// ReplicaCount is the expected size of the VmSingle
+	// ReplicaCount is the expected size of the VMSingle
 	// it can be 0 or 1
 	// if you need more - use vm cluster
 	ReplicaCount *int32 `json:"replicaCount,omitempty"`
 
-	// Storage is the definition of how storage will be used by the VmSingle
+	// Storage is the definition of how storage will be used by the VMSingle
 	// by default it`s empty dir
 	// +optional
 	Storage *v1.PersistentVolumeClaimSpec `json:"storage,omitempty"`
@@ -61,13 +58,11 @@ type VmSingleSpec struct {
 	// Volumes specified will be appended to other volumes that are generated as a result of
 	// StorageSpec objects.
 	// +optional
-	// +listType=set
 	Volumes []v1.Volume `json:"volumes,omitempty"`
 	// VolumeMounts allows configuration of additional VolumeMounts on the output Deployment definition.
-	// VolumeMounts specified will be appended to other VolumeMounts in the VmSingle container,
+	// VolumeMounts specified will be appended to other VolumeMounts in the VMSingle container,
 	// that are generated as a result of StorageSpec objects.
 	// +optional
-	// +listType=set
 	VolumeMounts []v1.VolumeMount `json:"volumeMounts,omitempty"`
 	// Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
 	// if not defined default resources from operator config will be used
@@ -77,7 +72,6 @@ type VmSingleSpec struct {
 	// +optional
 	Affinity *v1.Affinity `json:"affinity,omitempty"`
 	// Tolerations If specified, the pod's tolerations.
-	// +listType=set
 	// +optional
 	Tolerations []v1.Toleration `json:"tolerations,omitempty"`
 	// SecurityContext holds pod-level security attributes and common container settings.
@@ -85,11 +79,10 @@ type VmSingleSpec struct {
 	// +optional
 	SecurityContext *v1.PodSecurityContext `json:"securityContext,omitempty"`
 	// ServiceAccountName is the name of the ServiceAccount to use to run the
-	// VmSingle Pods.
+	// VMSingle Pods.
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 	// Containers property allows to inject additions sidecars. It can be useful for proxies, backup, etc.
-	// +listType=set
 	// +optional
 	Containers []v1.Container `json:"containers,omitempty"`
 	// InitContainers allows adding initContainers to the pod definition. Those can be used to e.g.
@@ -98,7 +91,6 @@ type VmSingleSpec struct {
 	// Using initContainers for any use case other then secret fetching is entirely outside the scope
 	// of what the maintainers will support and by doing so, you accept that this behaviour may break
 	// at any time without notice.
-	// +listType=set
 	// +optional
 	InitContainers []v1.Container `json:"initContainers,omitempty"`
 	// PriorityClassName assigned to the Pods
@@ -110,7 +102,7 @@ type VmSingleSpec struct {
 	Port string `json:"port,omitempty"`
 
 	// RemovePvcAfterDelete - if true, controller adds ownership to pvc
-	// and after VmSingle objest deletion - pvc will be garbage collected
+	// and after VMSingle objest deletion - pvc will be garbage collected
 	// by controller manager
 	// +optional
 	RemovePvcAfterDelete bool `json:"removePvcAfterDelete,omitempty"`
@@ -119,59 +111,58 @@ type VmSingleSpec struct {
 	// +optional
 	// +kubebuilder:validation:Pattern:="[1-9]+"
 	RetentionPeriod string `json:"retentionPeriod"`
-	// ExtraArgs that will be passed to  VmSingle pod
+	// ExtraArgs that will be passed to  VMSingle pod
 	// for example remoteWrite.tmpDataPath: /tmp
 	// +optional
 	ExtraArgs map[string]string `json:"extraArgs,omitempty"`
-	// ExtraEnvs that will be added to VmSingle pod
+	// ExtraEnvs that will be added to VMSingle pod
 	// +optional
-	// +listType=set
 	ExtraEnvs []v1.EnvVar `json:"extraEnvs,omitempty"`
 }
 
-// VmSingleStatus defines the observed state of VmSingle
+// VMSingleStatus defines the observed state of VMSingle
 // +k8s:openapi-gen=true
-type VmSingleStatus struct {
-	// ReplicaCount Total number of non-terminated pods targeted by this VmAlert
+type VMSingleStatus struct {
+	// ReplicaCount Total number of non-terminated pods targeted by this VMAlert
 	// cluster (their labels match the selector).
 	Replicas int32 `json:"replicas"`
-	// UpdatedReplicas Total number of non-terminated pods targeted by this VmAlert
+	// UpdatedReplicas Total number of non-terminated pods targeted by this VMAlert
 	// cluster that have the desired version spec.
 	UpdatedReplicas int32 `json:"updatedReplicas"`
 	// AvailableReplicas Total number of available pods (ready for at least minReadySeconds)
-	// targeted by this VmAlert cluster.
+	// targeted by this VMAlert cluster.
 	AvailableReplicas int32 `json:"availableReplicas"`
-	// UnavailableReplicas Total number of unavailable pods targeted by this VmAlert cluster.
+	// UnavailableReplicas Total number of unavailable pods targeted by this VMAlert cluster.
 	UnavailableReplicas int32 `json:"unavailableReplicas"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// VmSingle is the Schema for the vmsingles API
+// VMSingle is the Schema for the vmsingles API
 // +k8s:openapi-gen=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:path=vmsingles,scope=Namespaced
-type VmSingle struct {
+type VMSingle struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   VmSingleSpec   `json:"spec,omitempty"`
-	Status VmSingleStatus `json:"status,omitempty"`
+	Spec   VMSingleSpec   `json:"spec,omitempty"`
+	Status VMSingleStatus `json:"status,omitempty"`
 }
 
-// VmSingleList contains a list of VmSingle
+// VMSingleList contains a list of VMSingle
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type VmSingleList struct {
+type VMSingleList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []VmSingle `json:"items"`
+	Items           []VMSingle `json:"items"`
 }
 
-func (cr VmSingle) Name() string {
+func (cr VMSingle) Name() string {
 	return cr.ObjectMeta.Name
 }
 
-func (cr *VmSingle) AsOwner() []metav1.OwnerReference {
+func (cr *VMSingle) AsOwner() []metav1.OwnerReference {
 	return []metav1.OwnerReference{
 		{
 			APIVersion:         cr.APIVersion,
@@ -184,7 +175,7 @@ func (cr *VmSingle) AsOwner() []metav1.OwnerReference {
 	}
 }
 
-func (cr VmSingle) PodAnnotations() map[string]string {
+func (cr VMSingle) PodAnnotations() map[string]string {
 	annotations := map[string]string{}
 	if cr.Spec.PodMetadata != nil {
 		for annotation, value := range cr.Spec.PodMetadata.Annotations {
@@ -194,7 +185,7 @@ func (cr VmSingle) PodAnnotations() map[string]string {
 	return annotations
 }
 
-func (cr VmSingle) Annotations() map[string]string {
+func (cr VMSingle) Annotations() map[string]string {
 	annotations := make(map[string]string)
 	for annotation, value := range cr.ObjectMeta.Annotations {
 		if !strings.HasPrefix(annotation, "kubectl.kubernetes.io/") {
@@ -204,7 +195,7 @@ func (cr VmSingle) Annotations() map[string]string {
 	return annotations
 }
 
-func (cr VmSingle) SelectorLabels() map[string]string {
+func (cr VMSingle) SelectorLabels() map[string]string {
 	return map[string]string{
 		"app.kubernetes.io/name":      "vmsingle",
 		"app.kubernetes.io/instance":  cr.Name(),
@@ -213,7 +204,7 @@ func (cr VmSingle) SelectorLabels() map[string]string {
 	}
 }
 
-func (cr VmSingle) PodLabels() map[string]string {
+func (cr VMSingle) PodLabels() map[string]string {
 	labels := cr.SelectorLabels()
 	if cr.Spec.PodMetadata != nil {
 		for label, value := range cr.Spec.PodMetadata.Labels {
@@ -223,7 +214,7 @@ func (cr VmSingle) PodLabels() map[string]string {
 	return labels
 }
 
-func (cr VmSingle) FinalLabels() map[string]string {
+func (cr VMSingle) FinalLabels() map[string]string {
 	labels := cr.SelectorLabels()
 	if cr.ObjectMeta.Labels != nil {
 		for label, value := range cr.ObjectMeta.Labels {
@@ -233,10 +224,10 @@ func (cr VmSingle) FinalLabels() map[string]string {
 	return labels
 }
 
-func (cr VmSingle) PrefixedName() string {
+func (cr VMSingle) PrefixedName() string {
 	return fmt.Sprintf("vmsingle-%s", cr.Name())
 }
 
 func init() {
-	SchemeBuilder.Register(&VmSingle{}, &VmSingleList{})
+	SchemeBuilder.Register(&VMSingle{}, &VMSingleList{})
 }

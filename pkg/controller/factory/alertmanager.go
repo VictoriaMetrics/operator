@@ -40,8 +40,8 @@ var (
 	log                       = logf.Log.WithName("factory")
 )
 
-func CreateOrUpdateAlertManager(ctx context.Context, cr *victoriametricsv1beta1.Alertmanager, rclient client.Client, c *conf.BaseOperatorConf) (*appsv1.StatefulSet, error) {
-	l := log.WithValues("reconcile.AlertManager.sts", cr.Name(), "ns", cr.Namespace)
+func CreateOrUpdateAlertManager(ctx context.Context, cr *victoriametricsv1beta1.VMAlertmanager, rclient client.Client, c *conf.BaseOperatorConf) (*appsv1.StatefulSet, error) {
+	l := log.WithValues("reconcile.VMAlertManager.sts", cr.Name(), "ns", cr.Namespace)
 	newSts, err := newStsForAlertManager(cr, c)
 	if err != nil {
 		return nil, fmt.Errorf("cannot generate alertmanager sts, name: %s,err: %w", cr.Name(), err)
@@ -75,16 +75,16 @@ func updateStsForAlertManager(ctx context.Context, rclient client.Client, oldSts
 
 }
 
-func newStsForAlertManager(cr *victoriametricsv1beta1.Alertmanager, c *conf.BaseOperatorConf) (*appsv1.StatefulSet, error) {
+func newStsForAlertManager(cr *victoriametricsv1beta1.VMAlertmanager, c *conf.BaseOperatorConf) (*appsv1.StatefulSet, error) {
 
 	if cr.Spec.BaseImage == "" {
-		cr.Spec.BaseImage = c.AlertManager.AlertmanagerDefaultBaseImage
+		cr.Spec.BaseImage = c.VMAlertManager.AlertmanagerDefaultBaseImage
 	}
 	if cr.Spec.PortName == "" {
 		cr.Spec.PortName = defaultPortName
 	}
 	if cr.Spec.Version == "" {
-		cr.Spec.Version = c.AlertManager.AlertManagerVersion
+		cr.Spec.Version = c.VMAlertManager.AlertManagerVersion
 	}
 	if cr.Spec.ReplicaCount == nil {
 		cr.Spec.ReplicaCount = &minReplicas
@@ -103,7 +103,7 @@ func newStsForAlertManager(cr *victoriametricsv1beta1.Alertmanager, c *conf.Base
 		cr.Spec.Resources.Requests[v1.ResourceMemory] = resource.MustParse("200Mi")
 	}
 	if cr.Spec.ConfigSecret == "" {
-		cr.Spec.ConfigSecret = configSecretName(cr.Name())
+		cr.Spec.ConfigSecret = cr.PrefixedName()
 	}
 
 	spec, err := makeStatefulSetSpec(cr, c)
@@ -162,7 +162,7 @@ func newStsForAlertManager(cr *victoriametricsv1beta1.Alertmanager, c *conf.Base
 	return statefulset, nil
 }
 
-func CreateOrUpdateAlertManagerService(ctx context.Context, cr *victoriametricsv1beta1.Alertmanager, rclient client.Client, c *conf.BaseOperatorConf) (*v1.Service, error) {
+func CreateOrUpdateAlertManagerService(ctx context.Context, cr *victoriametricsv1beta1.VMAlertmanager, rclient client.Client, c *conf.BaseOperatorConf) (*v1.Service, error) {
 
 	l := log.WithValues("recon.alertmanager.service", cr.Name())
 
@@ -197,7 +197,7 @@ func CreateOrUpdateAlertManagerService(ctx context.Context, cr *victoriametricsv
 	return newService, nil
 }
 
-func newAlertManagerService(cr *victoriametricsv1beta1.Alertmanager, c *conf.BaseOperatorConf) *v1.Service {
+func newAlertManagerService(cr *victoriametricsv1beta1.VMAlertmanager, c *conf.BaseOperatorConf) *v1.Service {
 
 	if cr.Spec.PortName == "" {
 		cr.Spec.PortName = defaultPortName
@@ -239,7 +239,7 @@ func newAlertManagerService(cr *victoriametricsv1beta1.Alertmanager, c *conf.Bas
 	return svc
 }
 
-func makeStatefulSetSpec(cr *victoriametricsv1beta1.Alertmanager, config *conf.BaseOperatorConf) (*appsv1.StatefulSetSpec, error) {
+func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, config *conf.BaseOperatorConf) (*appsv1.StatefulSetSpec, error) {
 	// Before editing 'cr' create deep copy, to prevent side effects. For more
 	// details see https://github.com/coreos/prometheus-operator/issues/1659
 	cr = cr.DeepCopy()
@@ -303,7 +303,7 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.Alertmanager, config *conf.B
 
 	localReloadURL := &url.URL{
 		Scheme: "http",
-		Host:   config.AlertManager.LocalHost + ":9093",
+		Host:   config.VMAlertManager.LocalHost + ":9093",
 		Path:   path.Clean(webRoutePrefix + "/-/reload"),
 	}
 
@@ -340,8 +340,8 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.Alertmanager, config *conf.B
 	}
 
 	var clusterPeerDomain string
-	if config.AlertManager.ClusterDomain != "" {
-		clusterPeerDomain = fmt.Sprintf("%s.%s.svc.%s.", cr.PrefixedName(), cr.Namespace, config.AlertManager.ClusterDomain)
+	if config.VMAlertManager.ClusterDomain != "" {
+		clusterPeerDomain = fmt.Sprintf("%s.%s.svc.%s.", cr.PrefixedName(), cr.Namespace, config.VMAlertManager.ClusterDomain)
 	} else {
 		// The default DNS search path is .svc.<cluster domain>
 		clusterPeerDomain = cr.PrefixedName()
@@ -376,37 +376,37 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.Alertmanager, config *conf.B
 		}, ports...)
 	}
 
-	// Adjust Alertmanager command line args to specified AM version
+	// Adjust VMAlertmanager command line args to specified AM version
 	//
-	// Alertmanager versions < v0.15.0 are only supported on cr best effort basis
+	// VMAlertmanager versions < v0.15.0 are only supported on cr best effort basis
 	// starting with Prometheus Operator v0.30.0.
 	switch version.Major {
 	case 0:
 		if version.Minor < 15 {
 			for i := range amArgs {
-				// below Alertmanager v0.15.0 peer address port specification is not necessary
+				// below VMAlertmanager v0.15.0 peer address port specification is not necessary
 				if strings.Contains(amArgs[i], "--cluster.peer") {
 					amArgs[i] = strings.TrimSuffix(amArgs[i], ":9094")
 				}
 
-				// below Alertmanager v0.15.0 high availability flags are prefixed with 'mesh' instead of 'cluster'
+				// below VMAlertmanager v0.15.0 high availability flags are prefixed with 'mesh' instead of 'cluster'
 				amArgs[i] = strings.Replace(amArgs[i], "--cluster.", "--mesh.", 1)
 			}
 		}
 		if version.Minor < 13 {
 			for i := range amArgs {
-				// below Alertmanager v0.13.0 all flags are with single dash.
+				// below VMAlertmanager v0.13.0 all flags are with single dash.
 				amArgs[i] = strings.Replace(amArgs[i], "--", "-", 1)
 			}
 		}
 		if version.Minor < 7 {
-			// below Alertmanager v0.7.0 the flag 'web.route-prefix' does not exist
+			// below VMAlertmanager v0.7.0 the flag 'web.route-prefix' does not exist
 			amArgs = filter(amArgs, func(s string) bool {
 				return !strings.Contains(s, "web.route-prefix")
 			})
 		}
 	default:
-		return nil, fmt.Errorf("unsupported Alertmanager major version %s", version)
+		return nil, fmt.Errorf("unsupported VMAlertmanager major version %s", version)
 	}
 
 	volumes := []v1.Volume{
@@ -476,11 +476,11 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.Alertmanager, config *conf.B
 	amVolumeMounts = append(amVolumeMounts, cr.Spec.VolumeMounts...)
 
 	resources := v1.ResourceRequirements{Limits: v1.ResourceList{}}
-	if config.AlertManager.ConfigReloaderCPU != "0" {
-		resources.Limits[v1.ResourceCPU] = resource.MustParse(config.AlertManager.ConfigReloaderCPU)
+	if config.VMAlertManager.ConfigReloaderCPU != "0" {
+		resources.Limits[v1.ResourceCPU] = resource.MustParse(config.VMAlertManager.ConfigReloaderCPU)
 	}
-	if config.AlertManager.ConfigReloaderMemory != "0" {
-		resources.Limits[v1.ResourceMemory] = resource.MustParse(config.AlertManager.ConfigReloaderMemory)
+	if config.VMAlertManager.ConfigReloaderMemory != "0" {
+		resources.Limits[v1.ResourceMemory] = resource.MustParse(config.VMAlertManager.ConfigReloaderMemory)
 	}
 
 	terminationGracePeriod := int64(120)
@@ -509,7 +509,7 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.Alertmanager, config *conf.B
 			TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
 		}, {
 			Name:  "config-reloader",
-			Image: config.AlertManager.ConfigReloaderImage,
+			Image: config.VMAlertManager.ConfigReloaderImage,
 			Args: []string{
 				fmt.Sprintf("-webhook-url=%s", localReloadURL),
 				fmt.Sprintf("-volume-dir=%s", alertmanagerConfDir),

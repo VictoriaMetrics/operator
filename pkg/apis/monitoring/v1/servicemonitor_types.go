@@ -7,22 +7,16 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
 // ServiceMonitorSpec contains specification parameters for a ServiceMonitor.
 // +k8s:openapi-gen=true
 type ServiceMonitorSpec struct {
 	// The label to use to retrieve the job name from.
 	JobLabel string `json:"jobLabel,omitempty"`
 	// TargetLabels transfers labels on the Kubernetes Service onto the target.
-	// +listType=set
 	TargetLabels []string `json:"targetLabels,omitempty"`
 	// PodTargetLabels transfers labels on the Kubernetes Pod onto the target.
-	// +listType=set
 	PodTargetLabels []string `json:"podTargetLabels,omitempty"`
 	// A list of endpoints allowed as part of this ServiceMonitor.
-	// +listType=set
 	Endpoints []Endpoint `json:"endpoints"`
 	// Selector to select Endpoints objects.
 	Selector metav1.LabelSelector `json:"selector"`
@@ -62,8 +56,7 @@ type ServiceMonitor struct {
 type ServiceMonitorList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	// +listType=set
-	Items []ServiceMonitor `json:"items"`
+	Items           []ServiceMonitor `json:"items"`
 }
 
 // NamespaceSelector is a selector for selecting either all namespaces or a
@@ -74,7 +67,6 @@ type NamespaceSelector struct {
 	// list restricting them.
 	Any bool `json:"any,omitempty"`
 	// List of namespace names.
-	// +listType=set
 	MatchNames []string `json:"matchNames,omitempty"`
 
 	// TODO(fabxc): this should embed metav1.LabelSelector eventually.
@@ -115,11 +107,9 @@ type Endpoint struct {
 	// More info: https://prometheus.io/docs/operating/configuration/#endpoints
 	BasicAuth *BasicAuth `json:"basicAuth,omitempty"`
 	// MetricRelabelConfigs to apply to samples before ingestion.
-	// +listType=set
 	MetricRelabelConfigs []*RelabelConfig `json:"metricRelabelConfigs,omitempty"`
 	// RelabelConfigs to apply to samples before scraping.
 	// More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config
-	// +listType=set
 	RelabelConfigs []*RelabelConfig `json:"relabelConfigs,omitempty"`
 	// ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint.
 	ProxyURL *string `json:"proxyURL,omitempty"`
@@ -177,7 +167,6 @@ type RelabelConfig struct {
 	//The source labels select values from existing labels. Their content is concatenated
 	//using the configured separator and matched against the configured regular expression
 	//for the replace, keep, and drop actions.
-	// +listType=set
 	SourceLabels []string `json:"sourceLabels,omitempty"`
 	//Separator placed between concatenated source label values. default is ';'.
 	Separator string `json:"separator,omitempty"`
@@ -280,7 +269,6 @@ type RemoteWriteSpec struct {
 	// Timeout for requests to the remote write endpoint.
 	RemoteTimeout string `json:"remoteTimeout,omitempty"`
 	// The list of remote write relabel configurations.
-	// +listType=set
 	WriteRelabelConfigs []RelabelConfig `json:"writeRelabelConfigs,omitempty"`
 	//BasicAuth for the URL.
 	BasicAuth *BasicAuth `json:"basicAuth,omitempty"`
@@ -361,10 +349,8 @@ type PodMonitorSpec struct {
 	// The label to use to retrieve the job name from.
 	JobLabel string `json:"jobLabel,omitempty"`
 	// PodTargetLabels transfers labels on the Kubernetes Pod onto the target.
-	// +listType=set
 	PodTargetLabels []string `json:"podTargetLabels,omitempty"`
 	// A list of endpoints allowed as part of this PodMonitor.
-	// +listType=set
 	PodMetricsEndpoints []PodMetricsEndpoint `json:"podMetricsEndpoints"`
 	// Selector to select Pod objects.
 	Selector metav1.LabelSelector `json:"selector"`
@@ -396,11 +382,9 @@ type PodMetricsEndpoint struct {
 	// HonorTimestamps controls whether Prometheus respects the timestamps present in scraped data.
 	HonorTimestamps *bool `json:"honorTimestamps,omitempty"`
 	// MetricRelabelConfigs to apply to samples before ingestion.
-	// +listType=set
 	MetricRelabelConfigs []*RelabelConfig `json:"metricRelabelConfigs,omitempty"`
 	// RelabelConfigs to apply to samples before ingestion.
 	// More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config
-	// +listType=set
 	RelabelConfigs []*RelabelConfig `json:"relabelConfigs,omitempty"`
 	// ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint.
 	ProxyURL *string `json:"proxyURL,omitempty"`

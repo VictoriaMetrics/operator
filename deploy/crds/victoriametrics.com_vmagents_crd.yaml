@@ -5,8 +5,8 @@ metadata:
 spec:
   group: victoriametrics.com
   names:
-    kind: VmAgent
-    listKind: VmAgentList
+    kind: VMAgent
+    listKind: VMAgentList
     plural: vmagents
     singular: vmagent
   scope: Namespaced
@@ -14,7 +14,7 @@ spec:
     status: {}
   validation:
     openAPIV3Schema:
-      description: VmAgent is the Schema for the vmagents API
+      description: VMAgent is the Schema for the vmagents API
       properties:
         apiVersion:
           description: 'APIVersion defines the versioned schema of this representation
@@ -29,11 +29,11 @@ spec:
         metadata:
           type: object
         spec:
-          description: VmAgentSpec defines the desired state of VmAgent
+          description: VMAgentSpec defines the desired state of VMAgent
           properties:
             aPIServerConfig:
               description: APIServerConfig allows specifying a host and auth methods
-                to access apiserver. If left empty, VmAgent is assumed to run inside
+                to access apiserver. If left empty, VMAgent is assumed to run inside
                 of the cluster and will discover API servers automatically and use
                 the pod's CA certificate and bearer token file at /var/run/secrets/kubernetes.io/serviceaccount/.
               properties:
@@ -215,9 +215,9 @@ spec:
             additionalScrapeConfigs:
               description: AdditionalScrapeConfigs As scrape configs are appended,
                 the user is responsible to make sure it is valid. Note that using
-                this feature may expose the possibility to break upgrades of VmAgent.
-                It is advised to review VmAgent release notes to ensure that no incompatible
-                scrape configs are going to break VmAgent after the upgrade.
+                this feature may expose the possibility to break upgrades of VMAgent.
+                It is advised to review VMAgent release notes to ensure that no incompatible
+                scrape configs are going to break VMAgent after the upgrade.
               properties:
                 key:
                   description: The key of the secret to select from.  Must be a valid
@@ -808,7 +808,7 @@ spec:
             arbitraryFSAccessThroughSMs:
               description: ArbitraryFSAccessThroughSMs configures whether configuration
                 based on a service monitor can access arbitrary files on the file
-                system of the VmAgent container e.g. bearer token files.
+                system of the VMAgent container e.g. bearer token files.
               properties:
                 deny:
                   type: boolean
@@ -820,7 +820,6 @@ spec:
               items:
                 type: string
               type: array
-              x-kubernetes-list-type: set
             containers:
               description: Containers property allows to inject additions sidecars.
                 It can be useful for proxies, backup, etc.
@@ -1873,7 +1872,6 @@ spec:
                 - name
                 type: object
               type: array
-              x-kubernetes-list-type: set
             enforcedNamespaceLabel:
               description: EnforcedNamespaceLabel enforces adding a namespace label
                 of origin for each alert and metric that is user created. The label
@@ -1889,11 +1887,11 @@ spec:
             extraArgs:
               additionalProperties:
                 type: string
-              description: 'ExtraArgs that will be passed to  VmAlert pod for example
+              description: 'ExtraArgs that will be passed to  VMAlert pod for example
                 remoteWrite.tmpDataPath: /tmp it would be converted to flag --remoteWrite.tmpDataPath=/tmp'
               type: object
             extraEnvs:
-              description: ExtraEnvs that will be added to VmAlert pod
+              description: ExtraEnvs that will be added to VMAlert pod
               items:
                 description: EnvVar represents an environment variable present in
                   a Container.
@@ -1994,7 +1992,6 @@ spec:
                 - name
                 type: object
               type: array
-              x-kubernetes-list-type: set
             ignoreNamespaceSelectors:
               description: IgnoreNamespaceSelectors if set to true will ignore NamespaceSelector
                 settings from the podmonitor and servicemonitor configs, and they
@@ -2019,7 +2016,6 @@ spec:
                     type: string
                 type: object
               type: array
-              x-kubernetes-list-type: set
             initContainers:
               description: 'InitContainers allows adding initContainers to the pod
                 definition. Those can be used to e.g. fetch secrets for injection
@@ -3079,15 +3075,14 @@ spec:
                 - name
                 type: object
               type: array
-              x-kubernetes-list-type: set
             logFormat:
-              description: LogFormat for VmAgent to be configured with.
+              description: LogFormat for VMAgent to be configured with.
               enum:
               - default
               - json
               type: string
             logLevel:
-              description: LogLevel for VmAgent to be configured with. INFO, WARN,
+              description: LogLevel for VMAgent to be configured with. INFO, WARN,
                 ERROR, FATAL, PANIC
               enum:
               - INFO
@@ -3243,11 +3238,10 @@ spec:
                 - url
                 type: object
               type: array
-              x-kubernetes-list-type: set
             replicaCount:
-              description: ReplicaCount is the expected size of the VmAgent cluster.
+              description: ReplicaCount is the expected size of the VMAgent cluster.
                 The controller will eventually make the size of the running cluster
-                equal to the expected size. NOTE enable VmSingle deduplication for
+                equal to the expected size. NOTE enable VMSingle deduplication for
                 replica usage
               format: int32
               type: integer
@@ -3295,7 +3289,6 @@ spec:
               items:
                 type: string
               type: array
-              x-kubernetes-list-type: set
             securityContext:
               description: SecurityContext holds pod-level security attributes and
                 common container settings. This defaults to the default PodSecurityContext.
@@ -3416,7 +3409,7 @@ spec:
               type: object
             serviceAccountName:
               description: ServiceAccountName is the name of the ServiceAccount to
-                use to run the VmAgent Pods. required
+                use to run the VMAgent Pods. required
               type: string
             serviceMonitorNamespaceSelector:
               description: ServiceMonitorNamespaceSelector Namespaces to be selected
@@ -3547,12 +3540,11 @@ spec:
                     type: string
                 type: object
               type: array
-              x-kubernetes-list-type: set
             version:
-              description: Version for VmAgent.
+              description: Version for VMAgent.
               type: string
             vmAgentExternalLabelName:
-              description: VmAgentExternalLabelName Name of vmAgent external label
+              description: VMAgentExternalLabelName Name of vmAgent external label
                 used to denote vmAgent instance name. Defaults to the value of `prometheus`.
                 External label will _not_ be added when value is set to empty string
                 (`""`).
@@ -3598,7 +3590,6 @@ spec:
                 - name
                 type: object
               type: array
-              x-kubernetes-list-type: set
             volumes:
               description: Volumes allows configuration of additional volumes on the
                 output deploy definition. Volumes specified will be appended to other
@@ -4791,31 +4782,30 @@ spec:
                 - name
                 type: object
               type: array
-              x-kubernetes-list-type: set
           required:
           - serviceAccountName
           type: object
         status:
-          description: VmAgentStatus defines the observed state of VmAgent
+          description: VMAgentStatus defines the observed state of VMAgent
           properties:
             availableReplicas:
               description: AvailableReplicas Total number of available pods (ready
-                for at least minReadySeconds) targeted by this VmAlert cluster.
+                for at least minReadySeconds) targeted by this VMAlert cluster.
               format: int32
               type: integer
             replicas:
               description: ReplicaCount Total number of non-terminated pods targeted
-                by this VmAlert cluster (their labels match the selector).
+                by this VMAlert cluster (their labels match the selector).
               format: int32
               type: integer
             unavailableReplicas:
               description: UnavailableReplicas Total number of unavailable pods targeted
-                by this VmAlert cluster.
+                by this VMAlert cluster.
               format: int32
               type: integer
             updatedReplicas:
               description: UpdatedReplicas Total number of non-terminated pods targeted
-                by this VmAlert cluster that have the desired version spec.
+                by this VMAlert cluster that have the desired version spec.
               format: int32
               type: integer
           required:

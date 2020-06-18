@@ -28,9 +28,9 @@ const (
 	vmAgentConOfOutDir = "/etc/vmagent/config_out"
 )
 
-func CreateOrUpdateVmAgentService(ctx context.Context, cr *victoriametricsv1beta1.VmAgent, rclient client.Client, c *conf.BaseOperatorConf) (*corev1.Service, error) {
+func CreateOrUpdateVMAgentService(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client, c *conf.BaseOperatorConf) (*corev1.Service, error) {
 	l := log.WithValues("recon.vm.service.name", cr.Name())
-	NewService := newServiceVmAgent(cr, c)
+	NewService := newServiceVMAgent(cr, c)
 
 	currentService := &corev1.Service{}
 	err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: NewService.Name}, currentService)
@@ -64,10 +64,10 @@ func CreateOrUpdateVmAgentService(ctx context.Context, cr *victoriametricsv1beta
 	return NewService, nil
 }
 
-func newServiceVmAgent(cr *victoriametricsv1beta1.VmAgent, c *conf.BaseOperatorConf) *corev1.Service {
+func newServiceVMAgent(cr *victoriametricsv1beta1.VMAgent, c *conf.BaseOperatorConf) *corev1.Service {
 	cr = cr.DeepCopy()
 	if cr.Spec.Port == "" {
-		cr.Spec.Port = c.VmAgentDefault.Port
+		cr.Spec.Port = c.VMAgentDefault.Port
 	}
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -93,7 +93,7 @@ func newServiceVmAgent(cr *victoriametricsv1beta1.VmAgent, c *conf.BaseOperatorC
 }
 
 //we assume, that configmaps were created before this function was called
-func CreateOrUpdateVmAgent(ctx context.Context, cr *victoriametricsv1beta1.VmAgent, rclient client.Client, c *conf.BaseOperatorConf) (reconcile.Result, error) {
+func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client, c *conf.BaseOperatorConf) (reconcile.Result, error) {
 	l := log.WithValues("controller", "vmagent.crud")
 
 	//we have to create empty or full cm first
@@ -108,7 +108,7 @@ func CreateOrUpdateVmAgent(ctx context.Context, cr *victoriametricsv1beta1.VmAge
 		return reconcile.Result{}, fmt.Errorf("cannot update tls asset for vmagent: %w", err)
 	}
 	l.Info("create or update vm agent deploy")
-	newDeploy, err := newDeployForVmAgent(cr, c)
+	newDeploy, err := newDeployForVMAgent(cr, c)
 	if err != nil {
 		return reconcile.Result{}, fmt.Errorf("cannot build new deploy for vmagent: %w", err)
 	}
@@ -151,18 +151,18 @@ func CreateOrUpdateVmAgent(ctx context.Context, cr *victoriametricsv1beta1.VmAge
 }
 
 // newDeployForCR returns a busybox pod with the same name/namespace as the cr
-func newDeployForVmAgent(cr *victoriametricsv1beta1.VmAgent, c *conf.BaseOperatorConf) (*appsv1.Deployment, error) {
+func newDeployForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *conf.BaseOperatorConf) (*appsv1.Deployment, error) {
 	cr = cr.DeepCopy()
 
 	//inject default
 	if cr.Spec.Image == nil {
-		cr.Spec.Image = &c.VmAgentDefault.Image
+		cr.Spec.Image = &c.VMAgentDefault.Image
 	}
 	if cr.Spec.Version == "" {
-		cr.Spec.Version = c.VmAgentDefault.Version
+		cr.Spec.Version = c.VMAgentDefault.Version
 	}
 	if cr.Spec.Port == "" {
-		cr.Spec.Port = c.VmAgentDefault.Port
+		cr.Spec.Port = c.VMAgentDefault.Port
 	}
 	if cr.Spec.Resources.Requests == nil {
 		cr.Spec.Resources.Requests = corev1.ResourceList{}
@@ -172,20 +172,20 @@ func newDeployForVmAgent(cr *victoriametricsv1beta1.VmAgent, c *conf.BaseOperato
 	}
 
 	if _, ok := cr.Spec.Resources.Limits[corev1.ResourceMemory]; !ok {
-		cr.Spec.Resources.Limits[corev1.ResourceMemory] = resource.MustParse(c.VmAgentDefault.Resource.Limit.Mem)
+		cr.Spec.Resources.Limits[corev1.ResourceMemory] = resource.MustParse(c.VMAgentDefault.Resource.Limit.Mem)
 	}
 	if _, ok := cr.Spec.Resources.Limits[corev1.ResourceCPU]; !ok {
-		cr.Spec.Resources.Limits[corev1.ResourceCPU] = resource.MustParse(c.VmAgentDefault.Resource.Limit.Cpu)
+		cr.Spec.Resources.Limits[corev1.ResourceCPU] = resource.MustParse(c.VMAgentDefault.Resource.Limit.Cpu)
 	}
 
 	if _, ok := cr.Spec.Resources.Requests[corev1.ResourceMemory]; !ok {
-		cr.Spec.Resources.Requests[corev1.ResourceMemory] = resource.MustParse(c.VmAgentDefault.Resource.Request.Mem)
+		cr.Spec.Resources.Requests[corev1.ResourceMemory] = resource.MustParse(c.VMAgentDefault.Resource.Request.Mem)
 	}
 	if _, ok := cr.Spec.Resources.Requests[corev1.ResourceCPU]; !ok {
-		cr.Spec.Resources.Requests[corev1.ResourceCPU] = resource.MustParse(c.VmAgentDefault.Resource.Request.Cpu)
+		cr.Spec.Resources.Requests[corev1.ResourceCPU] = resource.MustParse(c.VMAgentDefault.Resource.Request.Cpu)
 	}
 
-	podSpec, err := makeSpecForVmAgent(cr, c)
+	podSpec, err := makeSpecForVMAgent(cr, c)
 	if err != nil {
 		return nil, err
 	}
@@ -213,7 +213,7 @@ func newDeployForVmAgent(cr *victoriametricsv1beta1.VmAgent, c *conf.BaseOperato
 	return depSpec, nil
 }
 
-func makeSpecForVmAgent(cr *victoriametricsv1beta1.VmAgent, c *conf.BaseOperatorConf) (*corev1.PodTemplateSpec, error) {
+func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *conf.BaseOperatorConf) (*corev1.PodTemplateSpec, error) {
 	args := []string{
 		fmt.Sprintf("-promscrape.config=%s", path.Join(vmAgentConOfOutDir, configEnvsubstFilename)),
 	}
@@ -245,7 +245,7 @@ func makeSpecForVmAgent(cr *victoriametricsv1beta1.VmAgent, c *conf.BaseOperator
 			Name: "config",
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: configSecretName(cr.Name()),
+					SecretName: cr.PrefixedName(),
 				},
 			},
 		},
@@ -364,13 +364,13 @@ func makeSpecForVmAgent(cr *victoriametricsv1beta1.VmAgent, c *conf.BaseOperator
 
 	prometheusConfigReloaderResources := corev1.ResourceRequirements{
 		Limits: corev1.ResourceList{}, Requests: corev1.ResourceList{}}
-	if c.VmAgentDefault.ConfigReloaderCPU != "0" {
-		prometheusConfigReloaderResources.Limits[corev1.ResourceCPU] = resource.MustParse(c.VmAgentDefault.ConfigReloaderCPU)
-		prometheusConfigReloaderResources.Requests[corev1.ResourceCPU] = resource.MustParse(c.VmAgentDefault.ConfigReloaderCPU)
+	if c.VMAgentDefault.ConfigReloaderCPU != "0" {
+		prometheusConfigReloaderResources.Limits[corev1.ResourceCPU] = resource.MustParse(c.VMAgentDefault.ConfigReloaderCPU)
+		prometheusConfigReloaderResources.Requests[corev1.ResourceCPU] = resource.MustParse(c.VMAgentDefault.ConfigReloaderCPU)
 	}
-	if c.VmAgentDefault.ConfigReloaderMemory != "0" {
-		prometheusConfigReloaderResources.Limits[corev1.ResourceMemory] = resource.MustParse(c.VmAgentDefault.ConfigReloaderMemory)
-		prometheusConfigReloaderResources.Requests[corev1.ResourceMemory] = resource.MustParse(c.VmAgentDefault.ConfigReloaderMemory)
+	if c.VMAgentDefault.ConfigReloaderMemory != "0" {
+		prometheusConfigReloaderResources.Limits[corev1.ResourceMemory] = resource.MustParse(c.VMAgentDefault.ConfigReloaderMemory)
+		prometheusConfigReloaderResources.Requests[corev1.ResourceMemory] = resource.MustParse(c.VMAgentDefault.ConfigReloaderMemory)
 	}
 
 	operatorContainers := append([]corev1.Container{
@@ -387,7 +387,7 @@ func makeSpecForVmAgent(cr *victoriametricsv1beta1.VmAgent, c *conf.BaseOperator
 			TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 		}, {
 			Name:                     "config-reloader",
-			Image:                    c.VmAgentDefault.ConfigReloadImage,
+			Image:                    c.VMAgentDefault.ConfigReloadImage,
 			TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 			Env: []corev1.EnvVar{
 				{
@@ -432,7 +432,7 @@ func makeSpecForVmAgent(cr *victoriametricsv1beta1.VmAgent, c *conf.BaseOperator
 }
 
 //add ownership - it needs for object changing tracking
-func addAddtionalScrapeConfigOwnership(cr *victoriametricsv1beta1.VmAgent, rclient client.Client, l logr.Logger) error {
+func addAddtionalScrapeConfigOwnership(cr *victoriametricsv1beta1.VMAgent, rclient client.Client, l logr.Logger) error {
 	if cr.Spec.AdditionalScrapeConfigs == nil {
 		return nil
 	}
@@ -465,7 +465,7 @@ func addAddtionalScrapeConfigOwnership(cr *victoriametricsv1beta1.VmAgent, rclie
 	return nil
 }
 
-func CreateOrUpdateTlsAssets(ctx context.Context, cr *victoriametricsv1beta1.VmAgent, rclient client.Client) error {
+func CreateOrUpdateTlsAssets(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) error {
 	monitors, err := SelectServiceMonitors(ctx, cr, rclient)
 	if err != nil {
 		return fmt.Errorf("cannot select service monitors for tls Assets: %w", err)

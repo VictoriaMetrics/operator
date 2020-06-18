@@ -28,7 +28,7 @@ var log = logf.Log.WithName("controller_vmalert")
 * business logic.  Delete these comments after modifying this file.*
  */
 
-// Add creates a new VmAlert Controller and adds it to the Manager. The Manager will set fields on the Controller
+// Add creates a new VMAlert Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
 	return add(mgr, newReconciler(mgr))
@@ -36,7 +36,7 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileVmAlert{
+	return &ReconcileVMAlert{
 		client:   mgr.GetClient(),
 		scheme:   mgr.GetScheme(),
 		restConf: mgr.GetConfig(),
@@ -52,14 +52,14 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-	err = c.Watch(&source.Kind{Type: &victoriametricsv1beta1.VmAlert{}}, &handler.EnqueueRequestForObject{})
+	err = c.Watch(&source.Kind{Type: &victoriametricsv1beta1.VMAlert{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
 
 	err = c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &victoriametricsv1beta1.VmAlert{},
+		OwnerType:    &victoriametricsv1beta1.VMAlert{},
 	})
 	if err != nil {
 		return err
@@ -67,7 +67,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 	err = c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &victoriametricsv1beta1.VmAlert{},
+		OwnerType:    &victoriametricsv1beta1.VMAlert{},
 	})
 	if err != nil {
 		return err
@@ -76,11 +76,11 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	return nil
 }
 
-// blank assignment to verify that ReconcileVmAlert implements reconcile.Reconciler
-var _ reconcile.Reconciler = &ReconcileVmAlert{}
+// blank assignment to verify that ReconcileVMAlert implements reconcile.Reconciler
+var _ reconcile.Reconciler = &ReconcileVMAlert{}
 
-// ReconcileVmAlert reconciles a VmAlert object
-type ReconcileVmAlert struct {
+// ReconcileVMAlert reconciles a VMAlert object
+type ReconcileVMAlert struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
 	client   client.Client
@@ -89,18 +89,18 @@ type ReconcileVmAlert struct {
 	opConf   *conf.BaseOperatorConf
 }
 
-// Reconcile reads that state of the cluster for a VmAlert object and makes changes based on the state read
-// and what is in the VmAlert.Spec
-func (r *ReconcileVmAlert) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+// Reconcile reads that state of the cluster for a VMAlert object and makes changes based on the state read
+// and what is in the VMAlert.Spec
+func (r *ReconcileVMAlert) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace",
 		request.Namespace, "Request.Name", request.Name,
 		"object", "vmalert",
 	)
 	reqLogger.Info("Reconciling")
 
-	// Fetch the VmAlert instance
+	// Fetch the VMAlert instance
 	ctx := context.Background()
-	instance := &victoriametricsv1beta1.VmAlert{}
+	instance := &victoriametricsv1beta1.VMAlert{}
 	err := r.client.Get(ctx, request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -116,20 +116,20 @@ func (r *ReconcileVmAlert) Reconcile(request reconcile.Request) (reconcile.Resul
 	}
 	reqLogger.Info("found configmaps for vmalert", " len ", len(maps), "map names", maps)
 
-	recon, err := factory.CreateOrUpdateVmAlert(ctx, instance, r.client, r.opConf, maps)
+	recon, err := factory.CreateOrUpdateVMAlert(ctx, instance, r.client, r.opConf, maps)
 	if err != nil {
 		reqLogger.Error(err, "cannot create or update vmalert deploy")
 		return recon, err
 	}
 
-	svc, err := factory.CreateOrUpdateVmAlertService(ctx, instance, r.client, r.opConf)
+	svc, err := factory.CreateOrUpdateVMAlertService(ctx, instance, r.client, r.opConf)
 	if err != nil {
 		reqLogger.Error(err, "cannot create or update update  vmalert service")
 		return reconcile.Result{}, err
 	}
 
 	//create servicemonitor for object by default
-	if !r.opConf.DisabledServiceMonitorCreation {
+	if !r.opConf.DisableSelfServiceMonitorCreation {
 		_, err = metrics.CreateServiceMonitors(r.restConf, instance.Namespace, []*corev1.Service{svc})
 		if err != nil {
 			if !errors.IsAlreadyExists(err) {

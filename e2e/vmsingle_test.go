@@ -19,12 +19,12 @@ func vmSingleCreateTest(t *testing.T, f *framework.Framework, ctx *framework.Con
 		return fmt.Errorf("could not get namespace: %v", err)
 	}
 	// create  custom resource
-	exampleVmSingle := &operator.VmSingle{
+	exampleVmSingle := &operator.VMSingle{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "example-vmsingle",
 			Namespace: namespace,
 		},
-		Spec: operator.VmSingleSpec{
+		Spec: operator.VMSingleSpec{
 			ReplicaCount:    pointer.Int32Ptr(1),
 			RetentionPeriod: "1",
 		},

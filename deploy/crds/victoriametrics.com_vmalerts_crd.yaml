@@ -5,8 +5,8 @@ metadata:
 spec:
   group: victoriametrics.com
   names:
-    kind: VmAlert
-    listKind: VmAlertList
+    kind: VMAlert
+    listKind: VMAlertList
     plural: vmalerts
     singular: vmalert
   scope: Namespaced
@@ -14,7 +14,7 @@ spec:
     status: {}
   validation:
     openAPIV3Schema:
-      description: VmAlert is the Schema for the vmalerts API
+      description: VMAlert is the Schema for the vmalerts API
       properties:
         apiVersion:
           description: 'APIVersion defines the versioned schema of this representation
@@ -29,7 +29,7 @@ spec:
         metadata:
           type: object
         spec:
-          description: VmAlertSpec defines the desired state of VmAlert
+          description: VMAlertSpec defines the desired state of VMAlert
           properties:
             affinity:
               description: Affinity If specified, the pod's scheduling constraints.
@@ -605,12 +605,11 @@ spec:
               type: object
             configMaps:
               description: ConfigMaps is a list of ConfigMaps in the same namespace
-                as the VmAlert object, which shall be mounted into the VmAlert Pods.
+                as the VMAlert object, which shall be mounted into the VMAlert Pods.
                 The ConfigMaps are mounted into /etc/vmalert/configmaps/<configmap-name>.
               items:
                 type: string
               type: array
-              x-kubernetes-list-type: set
             containers:
               description: Containers property allows to inject additions sidecars.
                 It can be useful for proxies, backup, etc.
@@ -1663,7 +1662,6 @@ spec:
                 - name
                 type: object
               type: array
-              x-kubernetes-list-type: set
             datasource:
               description: Datasource Victoria Metrics or VMSelect url. Required parameter.
                 e.g. http://127.0.0.1:8428
@@ -1686,11 +1684,11 @@ spec:
             extraArgs:
               additionalProperties:
                 type: string
-              description: ExtraArgs that will be passed to  VmAlert pod for example
+              description: ExtraArgs that will be passed to  VMAlert pod for example
                 -remoteWrite.tmpDataPath=/tmp
               type: object
             extraEnvs:
-              description: ExtraEnvs that will be added to VmAlert pod
+              description: ExtraEnvs that will be added to VMAlert pod
               items:
                 description: EnvVar represents an environment variable present in
                   a Container.
@@ -1791,13 +1789,12 @@ spec:
                 - name
                 type: object
               type: array
-              x-kubernetes-list-type: set
             image:
               description: Image victoria metrics alert base image
               type: string
             imagePullSecrets:
               description: ImagePullSecrets An optional list of references to secrets
-                in the same namespace to use for pulling prometheus and VmAlert images
+                in the same namespace to use for pulling prometheus and VMAlert images
                 from registries see http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod
               items:
                 description: LocalObjectReference contains enough information to let
@@ -1809,11 +1806,10 @@ spec:
                     type: string
                 type: object
               type: array
-              x-kubernetes-list-type: set
             initContainers:
               description: 'InitContainers allows adding initContainers to the pod
                 definition. Those can be used to e.g. fetch secrets for injection
-                into the VmAlert configuration from external sources. Any errors during
+                into the VMAlert configuration from external sources. Any errors during
                 the execution of an initContainer will lead to a restart of the Pod.
                 More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
                 Using initContainers for any use case other then secret fetching is
@@ -2869,16 +2865,15 @@ spec:
                 - name
                 type: object
               type: array
-              x-kubernetes-list-type: set
             logFormat:
-              description: LogFormat for VmAlert to be configured with. default or
+              description: LogFormat for VMAlert to be configured with. default or
                 json
               enum:
               - default
               - json
               type: string
             logLevel:
-              description: LogLevel for VmAlert to be configured with.
+              description: LogLevel for VMAlert to be configured with.
               enum:
               - INFO
               - WARN
@@ -2892,7 +2887,7 @@ spec:
               type: string
             podMetadata:
               description: PodMetadata configures Labels and Annotations which are
-                propagated to the VmAlert pods.
+                propagated to the VMAlert pods.
               properties:
                 annotations:
                   additionalProperties:
@@ -2946,7 +2941,7 @@ spec:
               - url
               type: object
             replicaCount:
-              description: ReplicaCount is the expected size of the VmAlert cluster.
+              description: ReplicaCount is the expected size of the VMAlert cluster.
                 The controller will eventually make the size of the running cluster
                 equal to the expected size.
               format: int32
@@ -3031,7 +3026,6 @@ spec:
               items:
                 type: string
               type: array
-              x-kubernetes-list-type: set
             ruleSelector:
               description: RuleSelector selector to select which PrometheusRules to
                 mount for loading alerting rules from.
@@ -3078,12 +3072,11 @@ spec:
               type: object
             secrets:
               description: Secrets is a list of Secrets in the same namespace as the
-                VmAlert object, which shall be mounted into the VmAlert Pods. The
+                VMAlert object, which shall be mounted into the VMAlert Pods. The
                 Secrets are mounted into /etc/vmalert/secrets/<secret-name>.
               items:
                 type: string
               type: array
-              x-kubernetes-list-type: set
             securityContext:
               description: SecurityContext holds pod-level security attributes and
                 common container settings. This defaults to the default PodSecurityContext.
@@ -3204,7 +3197,7 @@ spec:
               type: object
             serviceAccountName:
               description: ServiceAccountName is the name of the ServiceAccount to
-                use to run the VmAlert Pods.
+                use to run the VMAlert Pods.
               type: string
             tolerations:
               description: Tolerations If specified, the pod's tolerations.
@@ -3246,14 +3239,13 @@ spec:
                     type: string
                 type: object
               type: array
-              x-kubernetes-list-type: set
             version:
-              description: Version the VmAlert should be on.
+              description: Version the VMAlert should be on.
               type: string
             volumeMounts:
               description: VolumeMounts allows configuration of additional VolumeMounts
                 on the output Deployment definition. VolumeMounts specified will be
-                appended to other VolumeMounts in the VmAlert container, that are
+                appended to other VolumeMounts in the VMAlert container, that are
                 generated as a result of StorageSpec objects.
               items:
                 description: VolumeMount describes a mounting of a Volume within a
@@ -3291,7 +3283,6 @@ spec:
                 - name
                 type: object
               type: array
-              x-kubernetes-list-type: set
             volumes:
               description: Volumes allows configuration of additional volumes on the
                 output Deployment definition. Volumes specified will be appended to
@@ -4484,32 +4475,31 @@ spec:
                 - name
                 type: object
               type: array
-              x-kubernetes-list-type: set
           required:
           - datasource
           - notifierURL
           type: object
         status:
-          description: VmAlertStatus defines the observed state of VmAlert
+          description: VMAlertStatus defines the observed state of VMAlert
           properties:
             availableReplicas:
               description: AvailableReplicas Total number of available pods (ready
-                for at least minReadySeconds) targeted by this VmAlert cluster.
+                for at least minReadySeconds) targeted by this VMAlert cluster.
               format: int32
               type: integer
             replicas:
               description: ReplicaCount Total number of non-terminated pods targeted
-                by this VmAlert cluster (their labels match the selector).
+                by this VMAlert cluster (their labels match the selector).
               format: int32
               type: integer
             unavailableReplicas:
               description: UnavailableReplicas Total number of unavailable pods targeted
-                by this VmAlert cluster.
+                by this VMAlert cluster.
               format: int32
               type: integer
             updatedReplicas:
               description: UpdatedReplicas Total number of non-terminated pods targeted
-                by this VmAlert cluster that have the desired version spec.
+                by this VMAlert cluster that have the desired version spec.
               format: int32
               type: integer
           required:

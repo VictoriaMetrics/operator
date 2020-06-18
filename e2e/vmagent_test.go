@@ -19,12 +19,12 @@ func vmAgentCreateTest(t *testing.T, f *framework.Framework, ctx *framework.Cont
 		return fmt.Errorf("could not get namespace: %v", err)
 	}
 	// create  custom resource
-	exampleVmAgent := &operator.VmAgent{
+	exampleVmAgent := &operator.VMAgent{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "example-vmagent",
 			Namespace: namespace,
 		},
-		Spec: operator.VmAgentSpec{
+		Spec: operator.VMAgentSpec{
 			RemoteWrite: []operator.RemoteSpec{
 				{URL: "http://localhost"},
 			},
@@ -33,6 +33,12 @@ func vmAgentCreateTest(t *testing.T, f *framework.Framework, ctx *framework.Cont
 	}
 	// use TestCtx's create helper to create the object and add a cleanup function for the new object
 	err = f.Client.Create(goctx.TODO(), exampleVmAgent, &framework.CleanupOptions{TestContext: ctx, Timeout: cleanupTimeout, RetryInterval: cleanupRetryInterval})
+	if err != nil {
+		return err
+	}
+
+	//wait for config
+	err = WaitForSecret(t, f.KubeClient, namespace, "vmagent-example-vmagent", retryInterval, timeout)
 	if err != nil {
 		return err
 	}

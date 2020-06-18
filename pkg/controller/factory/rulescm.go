@@ -18,7 +18,7 @@ import (
 	"strings"
 )
 
-const labelVmAlertName = "vmalert-name"
+const labelVMAlertName = "vmalert-name"
 
 // The maximum `Data` size of a ConfigMap seems to differ between
 // environments. This is probably due to different meta data sizes which count
@@ -51,7 +51,7 @@ groups:
 `
 )
 
-func CreateOrUpdateRuleConfigMaps(ctx context.Context, cr *victoriametricsv1beta1.VmAlert, rclient client.Client) ([]string, error) {
+func CreateOrUpdateRuleConfigMaps(ctx context.Context, cr *victoriametricsv1beta1.VMAlert, rclient client.Client) ([]string, error) {
 	l := log.WithValues("reconcile", "rulesCm", "vmalert", cr.Name())
 	newRules, err := SelectRules(ctx, cr, rclient)
 	if err != nil {
@@ -117,7 +117,7 @@ func CreateOrUpdateRuleConfigMaps(ctx context.Context, cr *victoriametricsv1beta
 		}
 	}
 
-	log.Info("updating VmAlertRules",
+	log.Info("updating VMAlertRules",
 		"namespace", cr.Namespace,
 		"vmalert", cr.Name(),
 	)
@@ -133,7 +133,7 @@ func CreateOrUpdateRuleConfigMaps(ctx context.Context, cr *victoriametricsv1beta
 
 func rulesConfigMapSelector(vmAlertName string, namespace string) client.ListOption {
 	return &client.ListOptions{
-		LabelSelector: labels.SelectorFromSet(map[string]string{labelVmAlertName: vmAlertName}),
+		LabelSelector: labels.SelectorFromSet(map[string]string{labelVMAlertName: vmAlertName}),
 		Namespace:     namespace,
 	}
 }
@@ -154,7 +154,7 @@ func selectNamespaces(ctx context.Context, rclient client.Client, selector label
 	return matchedNs, nil
 }
 
-func SelectRules(ctx context.Context, cr *victoriametricsv1beta1.VmAlert, rclient client.Client) (map[string]string, error) {
+func SelectRules(ctx context.Context, cr *victoriametricsv1beta1.VMAlert, rclient client.Client) (map[string]string, error) {
 	rules := map[string]string{}
 	namespaces := []string{}
 
@@ -274,7 +274,7 @@ func generateContent(promRule monitoringv1.PrometheusRuleSpec, enforcedNsLabel, 
 	return string(content), nil
 }
 
-// makeRulesConfigMaps takes a VmAlert configuration and rule files and
+// makeRulesConfigMaps takes a VMAlert configuration and rule files and
 // returns a list of Kubernetes ConfigMaps to be later on mounted into the
 // Prometheus instance.
 // If the total size of rule files exceeds the Kubernetes ConfigMap limit,
@@ -282,7 +282,7 @@ func generateContent(promRule monitoringv1.PrometheusRuleSpec, enforcedNsLabel, 
 // future this can be replaced by a more sophisticated algorithm, but for now
 // simplicity should be sufficient.
 // [1] https://en.wikipedia.org/wiki/Bin_packing_problem#First-fit_algorithm
-func makeRulesConfigMaps(cr *victoriametricsv1beta1.VmAlert, ruleFiles map[string]string) ([]v1.ConfigMap, error) {
+func makeRulesConfigMaps(cr *victoriametricsv1beta1.VMAlert, ruleFiles map[string]string) ([]v1.ConfigMap, error) {
 	//check if none of the rule files is too large for a single ConfigMap
 	for filename, file := range ruleFiles {
 		if len(file) > maxConfigMapDataSize {
@@ -334,8 +334,8 @@ func bucketSize(bucket map[string]string) int {
 	return totalSize
 }
 
-func makeRulesConfigMap(cr *victoriametricsv1beta1.VmAlert, ruleFiles map[string]string) v1.ConfigMap {
-	ruleLabels := map[string]string{labelVmAlertName: cr.Name()}
+func makeRulesConfigMap(cr *victoriametricsv1beta1.VMAlert, ruleFiles map[string]string) v1.ConfigMap {
+	ruleLabels := map[string]string{labelVMAlertName: cr.Name()}
 	for k, v := range managedByOperatorLabels {
 		ruleLabels[k] = v
 	}

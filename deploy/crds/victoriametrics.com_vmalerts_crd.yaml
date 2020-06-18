@@ -2920,6 +2920,70 @@ spec:
                 configuration makes sense only if remoteWrite was configured before
                 and has been successfully persisted its state.
               properties:
+                basicAuth:
+                  description: BasicAuth allow an endpoint to authenticate over basic
+                    authentication
+                  properties:
+                    password:
+                      description: The secret in the service monitor namespace that
+                        contains the password for authentication.
+                      properties:
+                        key:
+                          description: The key of the secret to select from.  Must
+                            be a valid secret key.
+                          type: string
+                        name:
+                          description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                            TODO: Add other useful fields. apiVersion, kind, uid?'
+                          type: string
+                        optional:
+                          description: Specify whether the Secret or its key must
+                            be defined
+                          type: boolean
+                      required:
+                      - key
+                      type: object
+                    username:
+                      description: The secret in the service monitor namespace that
+                        contains the username for authentication.
+                      properties:
+                        key:
+                          description: The key of the secret to select from.  Must
+                            be a valid secret key.
+                          type: string
+                        name:
+                          description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                            TODO: Add other useful fields. apiVersion, kind, uid?'
+                          type: string
+                        optional:
+                          description: Specify whether the Secret or its key must
+                            be defined
+                          type: boolean
+                      required:
+                      - key
+                      type: object
+                  type: object
+                concurrency:
+                  description: Defines number of readers that concurrently write into
+                    remote storage (default 1)
+                  format: int32
+                  type: integer
+                lookback:
+                  description: Lookback defines how far to look into past for alerts
+                    timeseries. For example, if lookback=1h then range from now()
+                    to now()-1h will be scanned. (default 1h0m0s) Applied only to
+                    RemoteReadSpec
+                  type: string
+                maxBatchSize:
+                  description: Defines defines max number of timeseries to be flushed
+                    at once (default 1000)
+                  format: int32
+                  type: integer
+                maxQueueSize:
+                  description: Defines the max number of pending datapoints to remote
+                    write endpoint (default 100000)
+                  format: int32
+                  type: integer
                 url:
                   description: URL of the endpoint to send samples to.
                   type: string
@@ -2930,6 +2994,70 @@ spec:
               description: RemoteWrite Optional URL to remote-write compatible storage
                 where to write timeseriesbased on active alerts. E.g. http://127.0.0.1:8428
               properties:
+                basicAuth:
+                  description: BasicAuth allow an endpoint to authenticate over basic
+                    authentication
+                  properties:
+                    password:
+                      description: The secret in the service monitor namespace that
+                        contains the password for authentication.
+                      properties:
+                        key:
+                          description: The key of the secret to select from.  Must
+                            be a valid secret key.
+                          type: string
+                        name:
+                          description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                            TODO: Add other useful fields. apiVersion, kind, uid?'
+                          type: string
+                        optional:
+                          description: Specify whether the Secret or its key must
+                            be defined
+                          type: boolean
+                      required:
+                      - key
+                      type: object
+                    username:
+                      description: The secret in the service monitor namespace that
+                        contains the username for authentication.
+                      properties:
+                        key:
+                          description: The key of the secret to select from.  Must
+                            be a valid secret key.
+                          type: string
+                        name:
+                          description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                            TODO: Add other useful fields. apiVersion, kind, uid?'
+                          type: string
+                        optional:
+                          description: Specify whether the Secret or its key must
+                            be defined
+                          type: boolean
+                      required:
+                      - key
+                      type: object
+                  type: object
+                concurrency:
+                  description: Defines number of readers that concurrently write into
+                    remote storage (default 1)
+                  format: int32
+                  type: integer
+                lookback:
+                  description: Lookback defines how far to look into past for alerts
+                    timeseries. For example, if lookback=1h then range from now()
+                    to now()-1h will be scanned. (default 1h0m0s) Applied only to
+                    RemoteReadSpec
+                  type: string
+                maxBatchSize:
+                  description: Defines defines max number of timeseries to be flushed
+                    at once (default 1000)
+                  format: int32
+                  type: integer
+                maxQueueSize:
+                  description: Defines the max number of pending datapoints to remote
+                    write endpoint (default 100000)
+                  format: int32
+                  type: integer
                 url:
                   description: URL of the endpoint to send samples to.
                   type: string
@@ -4480,7 +4608,7 @@ spec:
           - notifierURL
           type: object
         status:
-          description: VMAlertStatus defines the observed state of VMAlert
+          description: VmAlertStatus defines the observed state of VmAlert
           properties:
             availableReplicas:
               description: AvailableReplicas Total number of available pods (ready

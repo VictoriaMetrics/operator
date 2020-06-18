@@ -1,0 +1,22 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: vm-agent-global-relabel-config
+  labels:
+    app: vm-operator
+data:
+  relabel.yaml: |-
+    - source_labels: [__meta_kubernetes_pod_name]
+      target_label: pod_name
+
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: vm-agent-url-relabel-config
+  labels:
+    app: vm-operator
+data:
+  relabel.yaml: |-
+    - source_labels: [__meta_kubernetes_node_name]
+      target_label: node_name

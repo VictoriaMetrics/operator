@@ -2,6 +2,7 @@ package v1beta1
 
 import (
 	"fmt"
+	"path"
 	"strings"
 
 	v1 "k8s.io/api/core/v1"
@@ -157,7 +158,6 @@ type VMAgentSpec struct {
 	// or for cluster different url
 	// https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/app/vmagent#splitting-data-streams-among-multiple-systems
 	// +optional
-	// +listType=set
 	RemoteWrite []VMAgentRemoteWriteSpec `json:"remoteWrite"`
 	// RelabelConfig ConfigMap with global relabel config -remoteWrite.relabelConfig
 	// This relabeling is applied to all the collected metrics before sending them to remote storage.
@@ -216,34 +216,36 @@ type VMAgentRemoteWriteSpec struct {
 	BasicAuth *monitoringv1.BasicAuth `json:"basicAuth,omitempty"`
 	// Optional bearer auth token to use for -remoteWrite.url
 	// +optional
-	BearerTokenSecret v1.SecretKeySelector `json:"bearerTokenSecret,omitempty"`
+	BearerTokenSecret *v1.SecretKeySelector `json:"bearerTokenSecret,omitempty"`
 	// Interval for flushing the data to remote storage. (default 1s)
 	// +optional
-	FlushInterval string `json:"flushInterval,omitempty"`
-	// Optional label in the form 'name=value' to add to all the metrics before sending them
+	// +kubebuilder:validation:Pattern:="[0-9]+(ms|s|m|h)"
+	FlushInterval *string `json:"flushInterval,omitempty"`
+	// Optional labels in the form 'name=value' to add to all the metrics before sending them
 	// +optional
-	Label string `json:"label,omitempty"`
+	Labels map[string]string `json:"label,omitempty"`
 	// The maximum size in bytes of unpacked request to send to remote storage
 	// +optional
-	MaxBlockSize int32 `json:"maxBlockSize,omitempty"`
+	MaxBlockSize *int32 `json:"maxBlockSize,omitempty"`
 	// The maximum file-based buffer size in bytes at -remoteWrite.tmpDataPath
 	// +optional
-	MaxDiskUsagePerURL int32 `json:"maxDiskUsagePerURL,omitempty"`
+	MaxDiskUsagePerURL *int32 `json:"maxDiskUsagePerURL,omitempty"`
 	// The number of concurrent queues
 	// +optional
-	Queues int32 `json:"queues,omitempty"`
-	// ConfigMap wit relabeling config which is applied to metrics before sending them to the corresponding -remoteWrite.url
+	Queues *int32 `json:"queues,omitempty"`
+	// ConfigMap with relabeling config which is applied to metrics before sending them to the corresponding -remoteWrite.url
 	// +optional
 	UrlRelabelConfig *v1.ConfigMapKeySelector `json:"urlRelabelConfig,omitempty"`
 	// Timeout for sending a single block of data to -remoteWrite.url (default 1m0s)
 	// +optional
-	SendTimeout string `json:"sendTimeout,omitempty"`
+	// +kubebuilder:validation:Pattern:="[0-9]+(ms|s|m|h)"
+	SendTimeout *string `json:"sendTimeout,omitempty"`
 	// Whether to show -remoteWrite.url in the exported metrics. It is hidden by default, since it can contain sensistive auth info
 	// +optional
-	ShowURL bool `json:"showURL,omitempty"`
+	ShowURL *bool `json:"showURL,omitempty"`
 	// Path to directory where temporary data for remote write component is stored (default "vmagent-remotewrite-data")
 	// +optional
-	TmpDataPath string `json:"tmpDataPath,omitempty"`
+	TmpDataPath *string `json:"tmpDataPath,omitempty"`
 	// TODO: add remoteWrite.tls*
 }
 
@@ -357,6 +359,71 @@ func (cr VMAgent) PrefixedName() string {
 
 func (cr VMAgent) TLSAssetName() string {
 	return fmt.Sprintf("tls-assets-vmagent-%s", cr.Name)
+}
+
+func (rws VMAgentRemoteWriteSpec) AsArgs(mountPath string) (string, error) {
+	var args strings.Builder
+	if _, err := fmt.Fprintf(&args, "-remoteWrite.url=%v ", rws.URL); err != nil {
+		return "", err
+	}
+	if rws.BasicAuth != nil {
+		//loadBasicAuthSecretFromAPI
+	}
+	if rws.FlushInterval != nil {
+		if _, err := fmt.Fprintf(&args, "-remoteWrite.url=%v ", *rws.FlushInterval); err != nil {
+			return "", err
+		}
+	}
+
+	for n, v := range rws.Labels {
+		if _, err := fmt.Fprintf(&args, "-remoteWrite.label=%v=%v ", n, v); err != nil {
+			return "", err
+		}
+	}
+
+	if rws.MaxBlockSize != nil {
+		if _, err := fmt.Fprintf(&args, "-remoteWrite.maxBlockSize=%v ", *rws.MaxBlockSize); err != nil {
+			return "", err
+		}
+	}
+
+	if rws.MaxDiskUsagePerURL != nil {
+		if _, err := fmt.Fprintf(&args, "-remoteWrite.maxDiskUsagePerURL=%v ", *rws.MaxDiskUsagePerURL); err != nil {
+			return "", err
+		}
+	}
+
+	if rws.Queues != nil {
+		if _, err := fmt.Fprintf(&args, "-remoteWrite.queues=%v ", *rws.Queues); err != nil {
+			return "", err
+		}
+	}
+
+	if rws.UrlRelabelConfig != nil {
+		if _, err := fmt.Fprintf(&args, "-remoteWrite.urlRelabelConfig=%v ", path.Join(mountPath, rws.UrlRelabelConfig.Name, rws.UrlRelabelConfig.Key)); err != nil {
+			return "", err
+		}
+	}
+
+	if rws.SendTimeout != nil {
+		if _, err := fmt.Fprintf(&args, "-remoteWrite.sendTimeout=%v ", *rws.SendTimeout); err != nil {
+			return "", err
+		}
+	}
+
+	if rws.ShowURL != nil {
+		if _, err := fmt.Fprintf(&args, "-remoteWrite.showURL=%v ", *rws.ShowURL); err != nil {
+			return "", err
+		}
+	}
+
+	if rws.TmpDataPath != nil {
+		if _, err := fmt.Fprintf(&args, "-remoteWrite.tmpDataPath=%v ", *rws.TmpDataPath); err != nil {
+			return "", err
+		}
+	}
+
+	return args.String(), nil
 }
 
 func init() {

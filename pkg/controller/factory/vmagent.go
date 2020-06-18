@@ -107,7 +107,14 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 	if err != nil {
 		return reconcile.Result{}, fmt.Errorf("cannot update tls asset for vmagent: %w", err)
 	}
+
+	// getting secrets for remotewrite spec
+	err, _, _ = LoadRemoteWriteSecrets(ctx, cr, rclient, l)
+	if err != nil {
+		return reconcile.Result{}, fmt.Errorf("cannot remote write secrets for vmagent: %w", err)
+	}
 	l.Info("create or update vm agent deploy")
+
 	newDeploy, err := newDeployForVMAgent(cr, c)
 	if err != nil {
 		return reconcile.Result{}, fmt.Errorf("cannot build new deploy for vmagent: %w", err)
@@ -145,7 +152,6 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 
 	//its safe to ignore
 	_ = addAddtionalScrapeConfigOwnership(cr, rclient, l)
-	_ = addRelabelConfigOwnership(cr, rclient, l)
 	l.Info("vmagent deploy reconciled")
 
 	return reconcile.Result{}, nil
@@ -218,14 +224,13 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *conf.BaseOperator
 	args := []string{
 		fmt.Sprintf("-promscrape.config=%s", path.Join(vmAgentConOfOutDir, configEnvsubstFilename)),
 	}
-	for _, remote := range cr.Spec.RemoteWrite {
-		remoteSpec := []string{
-			"-remoteWrite.url="+remote.URL,
+
+	for _, rws := range cr.Spec.RemoteWrite {
+		if r, err := rws.AsArgs(vmAgentConfigsDir); err == nil {
+			args = append(args, r)
+		} else {
+			return nil, err
 		}
-		if remote.BasicAuth != nil {
-			remoteSpec = append(remoteSpec, "")
-		}
-		args = append(args, remoteSpec...)
 	}
 
 	for arg, value := range cr.Spec.ExtraArgs {
@@ -356,7 +361,27 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *conf.BaseOperator
 			MountPath: path.Join(vmAgentConfigsDir, cr.Spec.RelabelConfig.Name),
 		})
 
-		args = append(args, "-remoteWrite.relabelConfig="+path.Join(vmAgentConfigsDir, cr.Spec.RelabelConfig.Name))
+		args = append(args, "-remoteWrite.relabelConfig="+path.Join(vmAgentConfigsDir, cr.Spec.RelabelConfig.Name, cr.Spec.RelabelConfig.Key))
+	}
+
+	for _, rw := range cr.Spec.RemoteWrite {
+		if rw.UrlRelabelConfig != nil && rw.UrlRelabelConfig.Name != cr.Spec.RelabelConfig.Name {
+			volumes = append(volumes, corev1.Volume{
+				Name: k8sutil.SanitizeVolumeName("configmap-" + rw.UrlRelabelConfig.Name),
+				VolumeSource: corev1.VolumeSource{
+					ConfigMap: &corev1.ConfigMapVolumeSource{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: rw.UrlRelabelConfig.Name,
+						},
+					},
+				},
+			})
+			agentVolumeMounts = append(agentVolumeMounts, corev1.VolumeMount{
+				Name:      k8sutil.SanitizeVolumeName("configmap-" + rw.UrlRelabelConfig.Name),
+				ReadOnly:  true,
+				MountPath: path.Join(vmAgentConfigsDir, rw.UrlRelabelConfig.Name),
+			})
+		}
 	}
 
 	livenessProbeHandler := corev1.Handler{
@@ -616,36 +641,23 @@ func loadTLSAssets(ctx context.Context, rclient client.Client, monitors map[stri
 	return assets, nil
 }
 
-//add ownership - it needs for object changing tracking
-func addRelabelConfigOwnership(cr *victoriametricsv1beta1.VmAgent, rclient client.Client, l logr.Logger) error {
-	if cr.Spec.RelabelConfig == nil {
-		return nil
-	}
-	configMap := &corev1.ConfigMap{}
-	err := rclient.Get(context.Background(), types.NamespacedName{Namespace: cr.Namespace, Name: cr.Spec.RelabelConfig.Name}, configMap)
+func LoadRemoteWriteSecrets(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client, l logr.Logger) (error, map[string]BasicAuthCredentials, map[string]BearerToken) {
+	SecretsInNS := &corev1.SecretList{}
+	err := rclient.List(ctx, SecretsInNS)
 	if err != nil {
-		return fmt.Errorf("cannot get ConfigMap with relabel config: %s, err: %w ", cr.Spec.RelabelConfig.Name, err)
+		l.Error(err, "cannot list secrets at vmagent namespace")
+		return err, nil, nil
 	}
-	for _, owner := range configMap.OwnerReferences {
-		//owner exists
-		if owner.Name == cr.Name() {
-			return nil
-		}
+	rwsBasicAuthSecrets, err := loadBasicAuthSecrets(ctx, rclient, nil, nil, cr.Spec.RemoteWrite, SecretsInNS)
+	if err != nil {
+		l.Error(err, "cannot load basic auth secrets for remote write specs")
+		return err, nil, nil
 	}
-	configMap.OwnerReferences = append(configMap.OwnerReferences, metav1.OwnerReference{
-		APIVersion:         cr.APIVersion,
-		Kind:               cr.Kind,
-		Name:               cr.Name(),
-		Controller:         pointer.BoolPtr(false),
-		BlockOwnerDeletion: pointer.BoolPtr(false),
-		UID:                cr.UID,
-	})
 
-	l.Info("updating relabel ConfigMap ownership", "ConfigMap", configMap.Name)
-	err = rclient.Update(context.Background(), configMap)
+	rwsBearerTokens, err := loadBearerTokensFromSecrets(ctx, rclient, nil, cr.Spec.RemoteWrite, SecretsInNS)
 	if err != nil {
-		return fmt.Errorf("cannot update ConfigMap ownership for vmagent relabel config: %s, err: %w", configMap.Name, err)
+		l.Error(err, "cannot get bearer tokens for remote write specs")
+		return err, nil, nil
 	}
-	l.Info("relabel ConfigMap was updated with new owner", "ConfigMap", configMap.Name)
-	return nil
+	return nil, rwsBasicAuthSecrets, rwsBearerTokens
 }

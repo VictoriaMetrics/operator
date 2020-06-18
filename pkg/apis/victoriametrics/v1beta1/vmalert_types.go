@@ -134,13 +134,13 @@ type VMAlertSpec struct {
 
 	// RemoteWrite Optional URL to remote-write compatible storage where to write timeseriesbased on active alerts. E.g. http://127.0.0.1:8428
 	// +optional
-	RemoteWrite VMAlertRemoteWriteSpec `json:"remoteWrite,omitempty"`
+	RemoteWrite *VMAlertRemoteWriteSpec `json:"remoteWrite,omitempty"`
 
 	// RemoteRead victoria metrics address for loading state
 	// This configuration makes sense only if remoteWrite was configured before and has
 	// been successfully persisted its state.
 	// +optional
-	RemoteRead VMAlertRemoteWriteSpec `json:"remoteRead,omitempty"`
+	RemoteRead *VMAlertRemoteWriteSpec `json:"remoteRead,omitempty"`
 
 	// RulePath to the file with alert rules.
 	// Supports patterns. Flag can be specified multiple times.

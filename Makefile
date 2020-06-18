@@ -2,11 +2,14 @@
 GOCMD=GO111MODULE=on go
 TAG="master"
 VERSION=$(TAG)
+GOOS ?= linux
+GOARCH ?= amd64
+VERSION=$($CI_BUILD_TAG)
 BUILD=`date +%FT%T%z`
 LDFLAGS=-ldflags "-w -s  -X main.Version=${VERSION} -X main.BuildData=${BUILD}"
-GOBUILD=CGO_ENABLED=0 GOOS=linux GOARCH=amd64  $(GOCMD) build -trimpath ${LDFLAGS}
+GOBUILD=CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH}  $(GOCMD) build -trimpath ${LDFLAGS}
 GOCLEAN=$(GOCMD) clean
-GOTEST=CGO_ENABLED=0 GOOS=linux GOARCH=amd64  $(GOCMD) test
+GOTEST=CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH}  $(GOCMD) test
 GOGET=$(GOCMD) get
 BINARY_NAME=vm-operator
 BINARY_UNIX=$(BINARY_NAME)_unix

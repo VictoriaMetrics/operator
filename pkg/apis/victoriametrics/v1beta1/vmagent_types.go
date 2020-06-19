@@ -366,11 +366,12 @@ func (rws VMAgentRemoteWriteSpec) AsArgs(mountPath string) (string, error) {
 	if _, err := fmt.Fprintf(&args, "-remoteWrite.url=%v ", rws.URL); err != nil {
 		return "", err
 	}
-	if rws.BasicAuth != nil {
-		//loadBasicAuthSecretFromAPI
-	}
+	// TODO: implement auth
+	//if rws.BasicAuth != nil {
+	//
+	//}
 	if rws.FlushInterval != nil {
-		if _, err := fmt.Fprintf(&args, "-remoteWrite.url=%v ", *rws.FlushInterval); err != nil {
+		if _, err := fmt.Fprintf(&args, "-remoteWrite.flushInterval=%v ", *rws.FlushInterval); err != nil {
 			return "", err
 		}
 	}

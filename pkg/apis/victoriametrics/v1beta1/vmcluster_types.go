@@ -18,9 +18,12 @@ const (
 
 // VmClusterSpec defines the desired state of VmCluster
 type VmClusterSpec struct {
-	VmSelect  VmSelect  `json:"vmselect"`
-	VmInsert  VmInsert  `json:"vminsert"`
-	VmStorage VmStorage `json:"vmstorage"`
+	// +optional
+	VmSelect *VmSelect `json:"vmselect,omitempty"`
+	// +optional
+	VmInsert *VmInsert `json:"vminsert,omitempty"`
+	// +optional
+	VmStorage *VmStorage `json:"vmstorage,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -100,41 +103,40 @@ func init() {
 }
 
 type VmSelect struct {
-	Enabled bool `json:"enabled"`
 	// +optional
-	Name  string `json:"name"`
+	Name  string `json:"name,omitempty"`
 	Image Image  `json:"image"`
 	// +optional
-	PriorityClassName string `json:"priorityClassName"`
+	PriorityClassName string `json:"priorityClassName,omitempty"`
 	// +optional
-	FullnameOverride string `json:"fullnameOverride"`
+	FullnameOverride string `json:"fullnameOverride,omitempty"`
 	// +optional
-	ExtraArgs map[string]string `json:"extraArgs"`
+	ExtraArgs map[string]string `json:"extraArgs,omitempty"`
 	// +optional
-	Labels map[string]string `json:"labels"`
+	Labels map[string]string `json:"labels,omitempty"`
 	// +optional
-	Annotations map[string]string `json:"annotations"`
+	Annotations map[string]string `json:"annotations,omitempty"`
 	// +optional
-	Tolerations []v1.Toleration `json:"tolerations"`
+	Tolerations []v1.Toleration `json:"tolerations,omitempty"`
 	// +optional
-	NodeSelector v1.NodeSelector `json:"nodeSelector"`
+	NodeSelector v1.NodeSelector `json:"nodeSelector,omitempty"`
 	// +optional
-	Affinity v1.Affinity `json:"affinity"`
+	Affinity v1.Affinity `json:"affinity,omitempty"`
 	// +optional
-	PodAnnotations map[string]string `json:"podAnnotations"`
-	ReplicaCount   int32             `json:"replicaCount"`
+	PodMetadata  *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
+	ReplicaCount *int32                  `json:"replicaCount"`
 	// +optional
-	Resources v1.ResourceRequirements `json:"resources"`
+	Resources v1.ResourceRequirements `json:"resources,omitempty"`
 	// +optional
-	SecurityContext v1.PodSecurityContext `json:"securityContext"`
+	SecurityContext v1.PodSecurityContext `json:"securityContext,omitempty"`
 	// +optional
-	CacheMountPath string `json:"cacheMountPath"`
+	CacheMountPath string `json:"cacheMountPath,omitempty"`
 	// +optional
-	Service VmSelectService `json:"service"`
+	Service VmSelectService `json:"service,omitempty"`
 	// +optional
-	StatefulSet VmSelectSts `json:"statefulSet"`
+	StatefulSet *VmSelectSts `json:"statefulSet,omitempty"`
 	// +optional
-	PersistentVolume VmSelectPV `json:"persistentVolume"`
+	PersistentVolume *VmSelectPV `json:"persistentVolume,omitempty"`
 }
 
 func (s VmSelect) GetName() string {
@@ -146,82 +148,75 @@ func (s VmSelect) GetName() string {
 
 type VmSelectHeadlessService struct {
 	// +optional
-	Annotations map[string]string `json:"annotations"`
+	Annotations map[string]string `json:"annotations,omitempty"`
 	// +optional
-	Labels map[string]string `json:"labels"`
+	Labels map[string]string `json:"labels,omitempty"`
 	// +optional
-	Type string `json:"type"`
+	Type string `json:"type,omitempty"`
 }
 
 type VmSelectService struct {
 	// +optional
 	VmSelectHeadlessService `json:",inline"`
 	// +optional
-	ClusterIP string `json:"clusterIP"`
+	ClusterIP string `json:"clusterIP,omitempty"`
 	// +optional
-	ExternalIPs []string `json:"externalIPs"`
+	ExternalIPs []string `json:"externalIPs,omitempty"`
 	// +optional
-	LoadBalancerIP string `json:"loadBalancerIP"`
+	LoadBalancerIP string `json:"loadBalancerIP,omitempty"`
 	// +optional
-	LoadBalancerSourceRanges []string `json:"loadBalancerSourceRanges"`
+	LoadBalancerSourceRanges []string `json:"loadBalancerSourceRanges,omitempty"`
 	// +optional
-	ServicePort int `json:"servicePort"`
+	ServicePort int `json:"servicePort,omitempty"`
 }
 
 type VmSelectSts struct {
 	// +optional
-	Enabled bool `json:"enabled"`
+	PodManagementPolicy string `json:"podManagementPolicy,omitempty"`
 	// +optional
-	PodManagementPolicy string `json:"podManagementPolicy"`
-	// +optional
-	Service VmSelectHeadlessService `json:"service"`
+	Service VmSelectHeadlessService `json:"service,omitempty"`
 }
 
 type VmSelectPV struct {
 	// +optional
-	Enabled bool `json:"enabled"`
+	AccessModes []v1.PersistentVolumeAccessMode `json:"accessModes,omitempty"`
 	// +optional
-	AccessModes []v1.PersistentVolumeAccessMode `json:"accessModes"`
+	Annotations map[string]string `json:"annotations,omitempty"`
 	// +optional
-	Annotations map[string]string `json:"annotations"`
+	ExistingClaim string `json:"existingClaim,omitempty"`
 	// +optional
-	ExistingClaim string `json:"existingClaim"`
+	Size string `json:"size,omitempty"`
 	// +optional
-	Size string `json:"size"`
-	// +optional
-	SubPath string `json:"subPath"`
+	SubPath string `json:"subPath,omitempty"`
 }
 
 type VmInsert struct {
 	// +optional
-	Enabled bool `json:"enabled"`
+	Name  string `json:"name,omitempty"`
+	Image Image  `json:"image"`
 	// +optional
-	Name string `json:"name"`
+	PriorityClassName string `json:"priorityClassName,omitempty"`
 	// +optional
-	Image Image `json:"image"`
+	FullnameOverride string `json:"fullnameOverride,omitempty"`
 	// +optional
-	PriorityClassName string `json:"priorityClassName"`
+	ExtraArgs map[string]string `json:"extraArgs,omitempty"`
 	// +optional
-	FullnameOverride string `json:"fullnameOverride"`
+	Annotations map[string]string `json:"annotations,omitempty"`
 	// +optional
-	ExtraArgs map[string]string `json:"extraArgs"`
+	Tolerations v1.Toleration `json:"tolerations,omitempty"`
 	// +optional
-	Annotations map[string]string `json:"annotations"`
+	NodeSelector v1.NodeSelector `json:"nodeSelector,omitempty"`
 	// +optional
-	Tolerations v1.Toleration `json:"tolerations"`
+	Affinity v1.Affinity `json:"affinity,omitempty"`
 	// +optional
-	NodeSelector v1.NodeSelector `json:"nodeSelector"`
+	PodMetadata  *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
+	ReplicaCount *int32                  `json:"replicaCount"`
 	// +optional
-	Affinity v1.Affinity `json:"affinity"`
+	Resources v1.ResourceList `json:"resources,omitempty"`
 	// +optional
-	PodAnnotations map[string]string `json:"podAnnotations"`
-	ReplicaCount   int               `json:"replicaCount"`
+	SecurityContext v1.SecurityContext `json:"securityContext,omitempty"`
 	// +optional
-	Resources v1.ResourceList `json:"resources"`
-	// +optional
-	SecurityContext v1.SecurityContext `json:"securityContext"`
-	// +optional
-	Service VmInsertService `json:"service"`
+	Service VmInsertService `json:"service,omitempty"`
 }
 
 func (i VmInsert) GetName() string {
@@ -233,63 +228,61 @@ func (i VmInsert) GetName() string {
 
 type VmInsertService struct {
 	// +optional
-	Annotations map[string]string `json:"annotations"`
+	Annotations map[string]string `json:"annotations,omitempty"`
 	// +optional
-	Labels map[string]string `json:"labels"`
+	Labels map[string]string `json:"labels,omitempty"`
 	// +optional
-	ClusterIP string `json:"clusterIP"`
+	ClusterIP string `json:"clusterIP,omitempty"`
 	// +optional
-	ExternalIPs map[string]string `json:"externalIPs"`
+	ExternalIPs map[string]string `json:"externalIPs,omitempty"`
 	// +optional
-	LoadBalancerIP string `json:"loadBalancerIP"`
+	LoadBalancerIP string `json:"loadBalancerIP,omitempty"`
 	// +optional
-	LoadBalancerSourceRanges map[string]string `json:"loadBalancerSourceRanges"`
+	LoadBalancerSourceRanges map[string]string `json:"loadBalancerSourceRanges,omitempty"`
 	// +optional
-	ServicePort int `json:"servicePort"`
+	ServicePort int `json:"servicePort,omitempty"`
 	// +optional
-	Type string `json:"type"`
+	Type string `json:"type,omitempty"`
 }
 
 type VmStorage struct {
 	// +optional
-	Enabled bool `json:"enabled"`
-	// +optional
-	Name  string `json:"name"`
+	Name  string `json:"name,omitempty"`
 	Image Image  `json:"image"`
 	// +optional
-	PriorityClassName string `json:"priorityClassName"`
-	RetentionPeriod   int    `json:"retentionPeriod"`
+	PriorityClassName string `json:"priorityClassName,omitempty"`
+	RetentionPeriod   int    `json:"retentionPeriod,omitempty"`
 	// +optional
-	ExtraArgs map[string]string `json:"extraArgs"`
+	ExtraArgs map[string]string `json:"extraArgs,omitempty"`
 	// +optional
-	Tolerations []v1.Toleration `json:"tolerations"`
+	Tolerations []v1.Toleration `json:"tolerations,omitempty"`
 	// +optional
-	NodeSelector map[string]string `json:"nodeSelector"`
+	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 	// +optional
-	ServiceAccountName string `json:"serviceAccountName"`
+	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 	// +optional
-	Affinity v1.Affinity `json:"affinity"`
+	Affinity v1.Affinity `json:"affinity,omitempty"`
 	// +optional
-	PersistentVolume VmStoragePV `json:"persistentVolume"`
+	PersistentVolume *VmStoragePV `json:"persistentVolume,omitempty"`
 	// +optional
-	PodAnnotations map[string]string `json:"podAnnotations"`
+	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
 	// +optional
-	Annotations map[string]string `json:"annotations"`
+	Annotations map[string]string `json:"annotations,omitempty"`
 	// +optional
-	Labels       map[string]string `json:"labels"`
-	ReplicaCount int32             `json:"replicaCount"`
+	Labels       map[string]string `json:"labels,omitempty"`
+	ReplicaCount *int32            `json:"replicaCount"`
 	// +optional
-	PodManagementPolicy v12.PodManagementPolicyType `json:"podManagementPolicy"`
+	PodManagementPolicy v12.PodManagementPolicyType `json:"podManagementPolicy,omitempty"`
 	// +optional
-	Resources v1.ResourceRequirements `json:"resources"`
+	Resources v1.ResourceRequirements `json:"resources,omitempty"`
 	// +optional
-	SecurityContext v1.PodSecurityContext `json:"securityContext"`
+	SecurityContext v1.PodSecurityContext `json:"securityContext,omitempty"`
 	// +optional
-	Service VmStorageService `json:"service"`
+	Service VmStorageService `json:"service,omitempty"`
 	// +optional
-	TerminationGracePeriodSeconds int64 `json:"terminationGracePeriodSeconds"`
+	TerminationGracePeriodSeconds int64 `json:"terminationGracePeriodSeconds,omitempty"`
 	// +optional
-	SchedulerName string `json:"schedulerName"`
+	SchedulerName string `json:"schedulerName,omitempty"`
 }
 
 // Validate validates vmstorage specification
@@ -309,23 +302,21 @@ func (s VmStorage) GetName() string {
 
 type VmStoragePV struct {
 	// +optional
-	Enabled bool `json:"enabled"`
+	AccessModes []v1.PersistentVolumeAccessMode `json:"accessModes,omitempty"`
 	// +optional
-	AccessModes []v1.PersistentVolumeAccessMode `json:"accessModes"`
+	Annotations map[string]string `json:"annotations,omitempty"`
 	// +optional
-	Annotations map[string]string `json:"annotations"`
+	ExistingClaim string `json:"existingClaim,omitempty"`
 	// +optional
-	ExistingClaim string `json:"existingClaim"`
+	MountPath string `json:"mountPath,omitempty"`
 	// +optional
-	MountPath string `json:"mountPath"`
+	Size string `json:"size,omitempty"`
 	// +optional
-	Size string `json:"size"`
-	// +optional
-	SubPath string `json:"subPath"`
+	SubPath string `json:"subPath,omitempty"`
 }
 
-func (pv VmStoragePV) Validate() error {
-	if !pv.Enabled {
+func (pv *VmStoragePV) Validate() error {
+	if pv == nil {
 		return nil
 	}
 	if _, err := resource.ParseQuantity(pv.Size); err != nil {
@@ -342,13 +333,13 @@ type Image struct {
 
 type VmStorageService struct {
 	// +optional
-	Annotations map[string]string `json:"annotations"`
+	Annotations map[string]string `json:"annotations,omitempty"`
 	// +optional
-	Labels map[string]string `json:"labels"`
+	Labels map[string]string `json:"labels,omitempty"`
 	// +optional
-	ServicePort int32 `json:"servicePort"`
+	ServicePort int32 `json:"servicePort,omitempty"`
 	// +optional
-	VminsertPort int32 `json:"vminsertPort"`
+	VminsertPort int32 `json:"vminsertPort,omitempty"`
 	// +optional
-	VmselectPort int32 `json:"vmselectPort"`
+	VmselectPort int32 `json:"vmselectPort,omitempty"`
 }

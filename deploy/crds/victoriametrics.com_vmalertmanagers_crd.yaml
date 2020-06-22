@@ -27,7 +27,7 @@ spec:
   subresources: {}
   validation:
     openAPIV3Schema:
-      description: VMAlertmanager describes an VMAlertmanager cluster.
+      description: VMAlertmanager represents Victoria-Metrics deployment for Alertmanager.
       properties:
         apiVersion:
           description: 'APIVersion defines the versioned schema of this representation
@@ -641,7 +641,7 @@ spec:
             configSecret:
               description: ConfigSecret is the name of a Kubernetes Secret in the
                 same namespace as the VMAlertmanager object, which contains configuration
-                for this VMAlertmanager instance. Defaults to 'alertmanager-<alertmanager-name>'
+                for this VMAlertmanager instance. Defaults to 'vmalertmanager-<alertmanager-name>'
                 The secret is mounted into /etc/alertmanager/config.
               type: string
             containers:
@@ -1697,11 +1697,18 @@ spec:
                 - name
                 type: object
               type: array
+            dnsPolicy:
+              description: DNSPolicy sets DNS policy for the pod
+              type: string
             externalURL:
               description: ExternalURL the VMAlertmanager instances will be available
                 under. This is necessary to generate correct URLs. This is necessary
                 if VMAlertmanager is not served from root of a DNS name.
               type: string
+            hostNetwork:
+              description: HostNetwork controls whether the pod may use the node network
+                namespace
+              type: boolean
             image:
               description: Image if specified has precedence over baseImage, tag and
                 sha combinations. Specifying the version is still necessary to ensure
@@ -2886,7 +2893,7 @@ spec:
             secrets:
               description: Secrets is a list of Secrets in the same namespace as the
                 VMAlertmanager object, which shall be mounted into the VMAlertmanager
-                Pods. The Secrets are mounted into /etc/alertmanager/secrets/<secret-name>.
+                Pods. The Secrets are mounted into /etc/alertmanager/secrets/<secret-name>
               items:
                 type: string
               type: array

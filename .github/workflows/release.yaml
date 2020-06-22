@@ -6,10 +6,11 @@ on:
 jobs:
   release:
     name: Release on GitHub
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
     steps:
       - name: Inject slug/short variables
         uses: rlespinasse/github-slug-action@v2.x
+
       - name: Setup Go
         uses: actions/setup-go@master
         with:
@@ -22,6 +23,15 @@ jobs:
           go get -u golang.org/x/lint/golint
           go get -u github.com/kisielk/errcheck
           go get  github.com/golangci/golangci-lint/cmd/golangci-lint@v1.27.0
+          curl -L -o operator-sdk "https://github.com/operator-framework/operator-sdk/releases/download/v0.17.1/operator-sdk-v0.17.1-x86_64-linux-gnu"
+          chmod +x operator-sdk
+          sudo mv operator-sdk /bin/
+
+      - name: setup KIND for e2e tests
+        uses: engineerd/setup-kind@v0.4.0
+        with:
+          version: "v0.7.0"
+          image: kindest/node:v1.16.4
 
       - name: Check out code
         uses: actions/checkout@v2
@@ -34,6 +44,13 @@ jobs:
           make test
           make build-app
           sh scripts/bundle.sh
+      - name: run e2e tests local
+        run: |
+          kubectl cluster-info
+          kubectl get pods -n kube-system
+          echo "current-context:" $(kubectl config current-context)
+          echo "environment-kubeconfig:" ${KUBECONFIG}
+          make e2e-local
 
       - name: build docker
         uses: docker/build-push-action@v1
@@ -45,6 +62,13 @@ jobs:
           repository: f41gh7/vm-operator
           dockerfile: cmd/manager/Dockerfile
 
+      - name: run e2e with docker
+        env:
+          E2E_IMAGE:  ${{ env.GITHUB_REF_SLUG }}
+        run: |
+          kubectl cluster-info
+          kubectl get pods -n kube-system
+          make e2e
 
       - name: Upload Release Asset
         id: upload-release-asset

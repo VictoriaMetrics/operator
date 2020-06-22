@@ -54,6 +54,9 @@ type VMAgentSpec struct {
 	// eventually make the size of the running cluster equal to the expected
 	// size.
 	// NOTE enable VMSingle deduplication for replica usage
+	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors=true
+	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors.displayName="Pod Count"
+	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors.x-descriptors="urn:alm:descriptor:com.tectonic.ui:podCount"
 	// +optional
 	ReplicaCount *int32 `json:"replicaCount,omitempty"`
 	// Volumes allows configuration of additional volumes on the output deploy definition.
@@ -68,6 +71,9 @@ type VMAgentSpec struct {
 	VolumeMounts []v1.VolumeMount `json:"volumeMounts,omitempty"`
 	// Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
 	//if not specified - default setting will be used
+	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors=true
+	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors.displayName="Resources"
+	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors.x-descriptors="urn:alm:descriptor:com.tectonic.ui:resourceRequirements"
 	// +optional
 	Resources v1.ResourceRequirements `json:"resources,omitempty"`
 	// Affinity If specified, the pod's scheduling constraints.
@@ -212,8 +218,12 @@ type VMAgentStatus struct {
 	UnavailableReplicas int32 `json:"unavailableReplicas"`
 }
 
+// VMAgent represents a Victoria-Metrics agent application
+// +operator-sdk:gen-csv:customresourcedefinitions.displayName="VMAgent App"
+// +operator-sdk:gen-csv:customresourcedefinitions.resources="Deployment,apps"
+// +operator-sdk:gen-csv:customresourcedefinitions.resources="Service,v1"
+// +operator-sdk:gen-csv:customresourcedefinitions.resources="Secret,v1"
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-// VMAgent is the Schema for the vmagents API
 // +k8s:openapi-gen=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:path=vmagents,scope=Namespaced

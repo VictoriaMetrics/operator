@@ -48,6 +48,9 @@ type VMSingleSpec struct {
 	// ReplicaCount is the expected size of the VMSingle
 	// it can be 0 or 1
 	// if you need more - use vm cluster
+	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors=true
+	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors.displayName="Pod Count"
+	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors.x-descriptors="urn:alm:descriptor:com.tectonic.ui:podCount"
 	ReplicaCount *int32 `json:"replicaCount,omitempty"`
 
 	// Storage is the definition of how storage will be used by the VMSingle
@@ -67,6 +70,9 @@ type VMSingleSpec struct {
 	VolumeMounts []v1.VolumeMount `json:"volumeMounts,omitempty"`
 	// Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
 	// if not defined default resources from operator config will be used
+	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors=true
+	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors.displayName="Resources"
+	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors.x-descriptors="urn:alm:descriptor:com.tectonic.ui:resourceRequirements"
 	// +optional
 	Resources v1.ResourceRequirements `json:"resources,omitempty"`
 	// Affinity If specified, the pod's scheduling constraints.
@@ -145,7 +151,11 @@ type VMSingleStatus struct {
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// VMSingle is the Schema for the vmsingles API
+// VMSingle represents a Victoria-Metrics single database
+// +operator-sdk:gen-csv:customresourcedefinitions.displayName="VMSingle App"
+// +operator-sdk:gen-csv:customresourcedefinitions.resources="Deployment,apps"
+// +operator-sdk:gen-csv:customresourcedefinitions.resources="Service,v1"
+// +operator-sdk:gen-csv:customresourcedefinitions.resources="Secret,v1"
 // +k8s:openapi-gen=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:path=vmsingles,scope=Namespaced

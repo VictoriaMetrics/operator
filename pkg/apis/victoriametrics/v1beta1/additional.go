@@ -21,6 +21,9 @@ type EmbeddedObjectMetadata struct {
 	// (scope and select) objects. May match selectors of replication controllers
 	// and services.
 	// More info: http://kubernetes.io/docs/user-guide/labels
+	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors=true
+	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors.displayName="PodLabels"
+	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors.x-descriptors="urn:alm:descriptor:com.tectonic.ui:label"
 	// +optional
 	Labels map[string]string `json:"labels,omitempty" protobuf:"bytes,11,rep,name=labels"`
 

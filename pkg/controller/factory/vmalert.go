@@ -7,7 +7,6 @@ import (
 
 	"github.com/VictoriaMetrics/operator/conf"
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
-	"github.com/coreos/prometheus-operator/pkg/k8sutil"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -24,7 +23,7 @@ const (
 )
 
 func CreateOrUpdateVMAlertService(ctx context.Context, cr *victoriametricsv1beta1.VMAlert, rclient client.Client, c *conf.BaseOperatorConf) (*corev1.Service, error) {
-	l := log.WithValues("controller", "vmalert.service.crud", "vmalert", cr.Name())
+	l := log.WithValues("controller", "vmalert.service.crud", "vmalert", cr.Name)
 	newService := newServiceVMAlert(cr, c)
 
 	currentService := &corev1.Service{}
@@ -86,7 +85,7 @@ func newServiceVMAlert(cr *victoriametricsv1beta1.VMAlert, c *conf.BaseOperatorC
 }
 
 func CreateOrUpdateVMAlert(ctx context.Context, cr *victoriametricsv1beta1.VMAlert, rclient client.Client, c *conf.BaseOperatorConf, cmNames []string) (reconcile.Result, error) {
-	l := log.WithValues("controller", "vmalert.crud", "vmalert", cr.Name())
+	l := log.WithValues("controller", "vmalert.crud", "vmalert", cr.Name)
 	//recon deploy
 	l.Info("generating new deployment")
 	newDeploy, err := newDeployForVMAlert(cr, c, cmNames)
@@ -250,7 +249,7 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *conf.BaseOperatorConf
 	volumeMounts := []corev1.VolumeMount{}
 	for _, s := range cr.Spec.Secrets {
 		volumes = append(volumes, corev1.Volume{
-			Name: k8sutil.SanitizeVolumeName("secret-" + s),
+			Name: SanitizeVolumeName("secret-" + s),
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: s,
@@ -258,7 +257,7 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *conf.BaseOperatorConf
 			},
 		})
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
-			Name:      k8sutil.SanitizeVolumeName("secret-" + s),
+			Name:      SanitizeVolumeName("secret-" + s),
 			ReadOnly:  true,
 			MountPath: path.Join(secretsDir, s),
 		})
@@ -266,7 +265,7 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *conf.BaseOperatorConf
 
 	for _, c := range cr.Spec.ConfigMaps {
 		volumes = append(volumes, corev1.Volume{
-			Name: k8sutil.SanitizeVolumeName("configmap-" + c),
+			Name: SanitizeVolumeName("configmap-" + c),
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
@@ -276,7 +275,7 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *conf.BaseOperatorConf
 			},
 		})
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
-			Name:      k8sutil.SanitizeVolumeName("configmap-" + c),
+			Name:      SanitizeVolumeName("configmap-" + c),
 			ReadOnly:  true,
 			MountPath: path.Join(configmapsDir, c),
 		})

@@ -115,12 +115,12 @@ type VMAlertSpec struct {
 	// being created.
 	// +optional
 	EnforcedNamespaceLabel string `json:"enforcedNamespaceLabel,omitempty"`
-	// RuleSelector selector to select which PrometheusRules to mount for loading alerting
+	// RuleSelector selector to select which VMRules to mount for loading alerting
 	// rules from.
 	// +optional
 	RuleSelector *metav1.LabelSelector `json:"ruleSelector,omitempty"`
-	// RuleNamespaceSelector to be selected for PrometheusRules discovery. If unspecified, only
-	// the same namespace as the Prometheus object is in is used.
+	// RuleNamespaceSelector to be selected for VMRules discovery. If unspecified, only
+	// the same namespace as the vmalert object is in is used.
 	// +optional
 	RuleNamespaceSelector *metav1.LabelSelector `json:"ruleNamespaceSelector,omitempty"`
 
@@ -184,6 +184,7 @@ type VMAlertStatus struct {
 // +operator-sdk:gen-csv:customresourcedefinitions.resources="Deployment,v1"
 // +operator-sdk:gen-csv:customresourcedefinitions.resources="Service,v1"
 // +operator-sdk:gen-csv:customresourcedefinitions.resources="Secret,v1"
+// +genclient
 // +k8s:openapi-gen=true
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:subresource:status
@@ -205,16 +206,12 @@ type VMAlertList struct {
 	Items           []VMAlert `json:"items"`
 }
 
-func (cr VMAlert) Name() string {
-	return cr.ObjectMeta.Name
-}
-
 func (cr *VMAlert) AsOwner() []metav1.OwnerReference {
 	return []metav1.OwnerReference{
 		{
 			APIVersion:         cr.APIVersion,
 			Kind:               cr.Kind,
-			Name:               cr.Name(),
+			Name:               cr.Name,
 			UID:                cr.UID,
 			Controller:         pointer.BoolPtr(true),
 			BlockOwnerDeletion: pointer.BoolPtr(true),
@@ -244,7 +241,7 @@ func (cr VMAlert) Annotations() map[string]string {
 func (cr VMAlert) CommonLabels() map[string]string {
 	return map[string]string{
 		"app.kubernetes.io/name":      "vmalert",
-		"app.kubernetes.io/instance":  cr.Name(),
+		"app.kubernetes.io/instance":  cr.Name,
 		"app.kubernetes.io/component": "monitoring",
 		"managed-by":                  "vm-operator",
 	}
@@ -271,7 +268,7 @@ func (cr VMAlert) FinalLabels() map[string]string {
 }
 
 func (cr VMAlert) PrefixedName() string {
-	return fmt.Sprintf("vmalert-%s", cr.Name())
+	return fmt.Sprintf("vmalert-%s", cr.Name)
 }
 
 func init() {

@@ -133,8 +133,8 @@ spec:
                           type: object
                       type: object
                     caFile:
-                      description: Path to the CA cert in the Prometheus container
-                        to use for the targets.
+                      description: Path to the CA cert in the container to use for
+                        the targets.
                       type: string
                     cert:
                       description: Struct containing the client cert file for the
@@ -177,15 +177,15 @@ spec:
                           type: object
                       type: object
                     certFile:
-                      description: Path to the client cert file in the Prometheus
-                        container for the targets.
+                      description: Path to the client cert file in the container for
+                        the targets.
                       type: string
                     insecureSkipVerify:
                       description: Disable target certificate validation.
                       type: boolean
                     keyFile:
-                      description: Path to the client key file in the Prometheus container
-                        for the targets.
+                      description: Path to the client key file in the container for
+                        the targets.
                       type: string
                     keySecret:
                       description: Secret containing the client key file for the targets.
@@ -898,7 +898,7 @@ spec:
                               description: 'Selects a field of the pod: supports metadata.name,
                                 metadata.namespace, metadata.labels, metadata.annotations,
                                 spec.nodeName, spec.serviceAccountName, status.hostIP,
-                                status.podIP.'
+                                status.podIP, status.podIPs.'
                               properties:
                                 apiVersion:
                                   description: Version of the schema the FieldPath
@@ -1619,15 +1619,11 @@ spec:
                             description: GMSACredentialSpec is where the GMSA admission
                               webhook (https://github.com/kubernetes-sigs/windows-gmsa)
                               inlines the contents of the GMSA credential spec named
-                              by the GMSACredentialSpecName field. This field is alpha-level
-                              and is only honored by servers that enable the WindowsGMSA
-                              feature flag.
+                              by the GMSACredentialSpecName field.
                             type: string
                           gmsaCredentialSpecName:
                             description: GMSACredentialSpecName is the name of the
-                              GMSA credential spec to use. This field is alpha-level
-                              and is only honored by servers that enable the WindowsGMSA
-                              feature flag.
+                              GMSA credential spec to use.
                             type: string
                           runAsUserName:
                             description: The UserName in Windows to run the entrypoint
@@ -1635,9 +1631,7 @@ spec:
                               in image metadata if unspecified. May also be set in
                               PodSecurityContext. If set in both SecurityContext and
                               PodSecurityContext, the value specified in SecurityContext
-                              takes precedence. This field is alpha-level and it is
-                              only honored by servers that enable the WindowsRunAsUserName
-                              feature flag.
+                              takes precedence.
                             type: string
                         type: object
                     type: object
@@ -1649,7 +1643,7 @@ spec:
                       be used to provide different probe parameters at the beginning
                       of a Pod''s lifecycle, when it might take a long time to load
                       data or warm a cache, than during steady-state operation. This
-                      cannot be updated. This is an alpha feature enabled by the StartupProbe
+                      cannot be updated. This is a beta feature enabled by the StartupProbe
                       feature flag. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes'
                     properties:
                       exec:
@@ -1804,7 +1798,7 @@ spec:
                     type: boolean
                   volumeDevices:
                     description: volumeDevices is the list of block devices to be
-                      used by the container. This is a beta feature.
+                      used by the container.
                     items:
                       description: volumeDevice describes a mapping of a raw block
                         device within a container.
@@ -1856,7 +1850,7 @@ spec:
                             to SubPath but environment variable references $(VAR_NAME)
                             are expanded using the container's environment. Defaults
                             to "" (volume's root). SubPathExpr and SubPath are mutually
-                            exclusive. This field is beta in 1.15.
+                            exclusive.
                           type: string
                       required:
                       - mountPath
@@ -1935,7 +1929,8 @@ spec:
                       fieldRef:
                         description: 'Selects a field of the pod: supports metadata.name,
                           metadata.namespace, metadata.labels, metadata.annotations,
-                          spec.nodeName, spec.serviceAccountName, status.hostIP, status.podIP.'
+                          spec.nodeName, spec.serviceAccountName, status.hostIP, status.podIP,
+                          status.podIPs.'
                         properties:
                           apiVersion:
                             description: Version of the schema the FieldPath is written
@@ -2001,7 +1996,7 @@ spec:
               type: boolean
             ignoreNamespaceSelectors:
               description: IgnoreNamespaceSelectors if set to true will ignore NamespaceSelector
-                settings from the podmonitor and servicemonitor configs, and they
+                settings from the podscrape and vmservicescrape configs, and they
                 will only discover endpoints within their current namespace.  Defaults
                 to false.
               type: boolean
@@ -2108,7 +2103,7 @@ spec:
                               description: 'Selects a field of the pod: supports metadata.name,
                                 metadata.namespace, metadata.labels, metadata.annotations,
                                 spec.nodeName, spec.serviceAccountName, status.hostIP,
-                                status.podIP.'
+                                status.podIP, status.podIPs.'
                               properties:
                                 apiVersion:
                                   description: Version of the schema the FieldPath
@@ -2829,15 +2824,11 @@ spec:
                             description: GMSACredentialSpec is where the GMSA admission
                               webhook (https://github.com/kubernetes-sigs/windows-gmsa)
                               inlines the contents of the GMSA credential spec named
-                              by the GMSACredentialSpecName field. This field is alpha-level
-                              and is only honored by servers that enable the WindowsGMSA
-                              feature flag.
+                              by the GMSACredentialSpecName field.
                             type: string
                           gmsaCredentialSpecName:
                             description: GMSACredentialSpecName is the name of the
-                              GMSA credential spec to use. This field is alpha-level
-                              and is only honored by servers that enable the WindowsGMSA
-                              feature flag.
+                              GMSA credential spec to use.
                             type: string
                           runAsUserName:
                             description: The UserName in Windows to run the entrypoint
@@ -2845,9 +2836,7 @@ spec:
                               in image metadata if unspecified. May also be set in
                               PodSecurityContext. If set in both SecurityContext and
                               PodSecurityContext, the value specified in SecurityContext
-                              takes precedence. This field is alpha-level and it is
-                              only honored by servers that enable the WindowsRunAsUserName
-                              feature flag.
+                              takes precedence.
                             type: string
                         type: object
                     type: object
@@ -2859,7 +2848,7 @@ spec:
                       be used to provide different probe parameters at the beginning
                       of a Pod''s lifecycle, when it might take a long time to load
                       data or warm a cache, than during steady-state operation. This
-                      cannot be updated. This is an alpha feature enabled by the StartupProbe
+                      cannot be updated. This is a beta feature enabled by the StartupProbe
                       feature flag. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes'
                     properties:
                       exec:
@@ -3014,7 +3003,7 @@ spec:
                     type: boolean
                   volumeDevices:
                     description: volumeDevices is the list of block devices to be
-                      used by the container. This is a beta feature.
+                      used by the container.
                     items:
                       description: volumeDevice describes a mapping of a raw block
                         device within a container.
@@ -3066,7 +3055,7 @@ spec:
                             to SubPath but environment variable references $(VAR_NAME)
                             are expanded using the container's environment. Defaults
                             to "" (volume's root). SubPathExpr and SubPath are mutually
-                            exclusive. This field is beta in 1.15.
+                            exclusive.
                           type: string
                       required:
                       - mountPath
@@ -3235,8 +3224,7 @@ spec:
                 write system for vm it must looks like: http://victoria-metrics-single:8429/api/v1/write
                 or for cluster different url https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/app/vmagent#splitting-data-streams-among-multiple-systems'
               items:
-                description: RemoteWriteSpec defines the remote_write configuration
-                  for prometheus.
+                description: RemoteWriteSpec defines the remote_write configuration.
                 properties:
                   url:
                     description: URL of the endpoint to send samples to.
@@ -3310,6 +3298,15 @@ spec:
                     ownership and permissions of any volume."
                   format: int64
                   type: integer
+                fsGroupChangePolicy:
+                  description: 'fsGroupChangePolicy defines behavior of changing ownership
+                    and permission of the volume before being exposed inside Pod.
+                    This field will only apply to volume types which support fsGroup
+                    based ownership(and permissions). It will have no effect on ephemeral
+                    volume types such as: secret, configmaps and emptydir. Valid values
+                    are "OnRootMismatch" and "Always". If not specified defaults to
+                    "Always".'
+                  type: string
                 runAsGroup:
                   description: The GID to run the entrypoint of the container process.
                     Uses runtime default if unset. May also be set in SecurityContext.  If
@@ -3394,23 +3391,18 @@ spec:
                       description: GMSACredentialSpec is where the GMSA admission
                         webhook (https://github.com/kubernetes-sigs/windows-gmsa)
                         inlines the contents of the GMSA credential spec named by
-                        the GMSACredentialSpecName field. This field is alpha-level
-                        and is only honored by servers that enable the WindowsGMSA
-                        feature flag.
+                        the GMSACredentialSpecName field.
                       type: string
                     gmsaCredentialSpecName:
                       description: GMSACredentialSpecName is the name of the GMSA
-                        credential spec to use. This field is alpha-level and is only
-                        honored by servers that enable the WindowsGMSA feature flag.
+                        credential spec to use.
                       type: string
                     runAsUserName:
                       description: The UserName in Windows to run the entrypoint of
                         the container process. Defaults to the user specified in image
                         metadata if unspecified. May also be set in PodSecurityContext.
                         If set in both SecurityContext and PodSecurityContext, the
-                        value specified in SecurityContext takes precedence. This
-                        field is alpha-level and it is only honored by servers that
-                        enable the WindowsRunAsUserName feature flag.
+                        value specified in SecurityContext takes precedence.
                       type: string
                   type: object
               type: object
@@ -3590,7 +3582,7 @@ spec:
                       volume should be mounted. Behaves similarly to SubPath but environment
                       variable references $(VAR_NAME) are expanded using the container's
                       environment. Defaults to "" (volume's root). SubPathExpr and
-                      SubPath are mutually exclusive. This field is beta in 1.15.
+                      SubPath are mutually exclusive.
                     type: string
                 required:
                 - mountPath

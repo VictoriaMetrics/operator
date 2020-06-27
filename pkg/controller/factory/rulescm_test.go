@@ -2,7 +2,6 @@ package factory
 
 import (
 	"context"
-	monitoringv1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1"
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
 	"github.com/go-logr/logr"
 	v1 "k8s.io/api/core/v1"
@@ -97,8 +96,8 @@ func TestSelectRules(t *testing.T) {
 			predefinedObjets: []runtime.Object{
 				//we need namespace for filter + object inside this namespace
 				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
-				&monitoringv1.PrometheusRule{ObjectMeta: metav1.ObjectMeta{Name: "error-alert", Namespace: "default"}, Spec: monitoringv1.PrometheusRuleSpec{
-					Groups: []monitoringv1.RuleGroup{{Name: "error-alert", Interval: "10s", Rules: []monitoringv1.Rule{
+				&victoriametricsv1beta1.VMRule{ObjectMeta: metav1.ObjectMeta{Name: "error-alert", Namespace: "default"}, Spec: victoriametricsv1beta1.VMRuleSpec{
+					Groups: []victoriametricsv1beta1.RuleGroup{{Name: "error-alert", Interval: "10s", Rules: []victoriametricsv1beta1.Rule{
 						{Alert: "", Expr: intstr.IntOrString{IntVal: 10}, For: "10s", Labels: nil, Annotations: nil},
 					}}},
 				}},
@@ -116,13 +115,13 @@ func TestSelectRules(t *testing.T) {
 				//we need namespace for filter + object inside this namespace
 				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
 				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "monitoring", Labels: map[string]string{"monitoring": "enabled"}}},
-				&monitoringv1.PrometheusRule{ObjectMeta: metav1.ObjectMeta{Name: "error-alert", Namespace: "default"}, Spec: monitoringv1.PrometheusRuleSpec{
-					Groups: []monitoringv1.RuleGroup{{Name: "error-alert", Interval: "10s", Rules: []monitoringv1.Rule{
+				&victoriametricsv1beta1.VMRule{ObjectMeta: metav1.ObjectMeta{Name: "error-alert", Namespace: "default"}, Spec: victoriametricsv1beta1.VMRuleSpec{
+					Groups: []victoriametricsv1beta1.RuleGroup{{Name: "error-alert", Interval: "10s", Rules: []victoriametricsv1beta1.Rule{
 						{Alert: "", Expr: intstr.IntOrString{IntVal: 10}, For: "10s", Labels: nil, Annotations: nil},
 					}}},
 				}},
-				&monitoringv1.PrometheusRule{ObjectMeta: metav1.ObjectMeta{Name: "error-alert-at-monitoring", Namespace: "monitoring"}, Spec: monitoringv1.PrometheusRuleSpec{
-					Groups: []monitoringv1.RuleGroup{{Name: "error-alert", Interval: "10s", Rules: []monitoringv1.Rule{
+				&victoriametricsv1beta1.VMRule{ObjectMeta: metav1.ObjectMeta{Name: "error-alert-at-monitoring", Namespace: "monitoring"}, Spec: victoriametricsv1beta1.VMRuleSpec{
+					Groups: []victoriametricsv1beta1.RuleGroup{{Name: "error-alert", Interval: "10s", Rules: []victoriametricsv1beta1.Rule{
 						{Alert: "", Expr: intstr.IntOrString{IntVal: 10}, For: "10s", Labels: nil, Annotations: nil},
 					}}},
 				}},
@@ -135,7 +134,7 @@ func TestSelectRules(t *testing.T) {
 			obj := []runtime.Object{}
 			obj = append(obj, tt.predefinedObjets...)
 			s := scheme.Scheme
-			s.AddKnownTypes(monitoringv1.SchemeGroupVersion, &monitoringv1.PrometheusRule{}, &monitoringv1.PrometheusRuleList{})
+			s.AddKnownTypes(victoriametricsv1beta1.SchemeGroupVersion, &victoriametricsv1beta1.VMRule{}, &victoriametricsv1beta1.VMRuleList{})
 			fclient := fake.NewFakeClientWithScheme(s, obj...)
 			got, err := SelectRules(context.TODO(), tt.args.p, fclient)
 			if (err != nil) != tt.wantErr {

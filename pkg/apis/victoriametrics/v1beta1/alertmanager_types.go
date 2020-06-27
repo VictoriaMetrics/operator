@@ -27,8 +27,7 @@ type VMAlertmanager struct {
 	// Specification of the desired behavior of the VMAlertmanager cluster. More info:
 	// https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
 	Spec VMAlertmanagerSpec `json:"spec"`
-	// Most recent observed status of the VMAlertmanager cluster. Read-only. Not
-	// included when requesting from the apiserver, only from the Prometheus
+	// Most recent observed status of the VMAlertmanager cluster.
 	// Operator API itself. More info:
 	// https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
 	Status *VMAlertmanagerStatus `json:"status,omitempty"`
@@ -42,9 +41,7 @@ type VMAlertmanagerSpec struct {
 	// +optional
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
 	// Image if specified has precedence over baseImage, tag and sha
-	// combinations. Specifying the version is still necessary to ensure the
-	// Prometheus Operator knows what version of VMAlertmanager is being
-	// configured.
+	// combinations.
 	// +optional
 	Image *string `json:"image,omitempty"`
 	// Version the cluster should be on.
@@ -63,7 +60,7 @@ type VMAlertmanagerSpec struct {
 	// +optional
 	BaseImage string `json:"baseImage,omitempty"`
 	// ImagePullSecrets An optional list of references to secrets in the same namespace
-	// to use for pulling prometheus and alertmanager images from registries
+	// to use for pulling images from registries
 	// see http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod
 	// +optional
 	ImagePullSecrets []v1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
@@ -151,8 +148,7 @@ type VMAlertmanagerSpec struct {
 	// This defaults to the default PodSecurityContext.
 	// +optional
 	SecurityContext *v1.PodSecurityContext `json:"securityContext,omitempty"`
-	// ServiceAccountName is the name of the ServiceAccount to use to run the
-	// Prometheus Pods.
+	// ServiceAccountName is the name of the ServiceAccount to use
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 	// ListenLocal makes the VMAlertmanager server listen on loopback, so that it
@@ -206,8 +202,7 @@ type VMAlertmanagerList struct {
 	Items []VMAlertmanager `json:"items"`
 }
 
-// VMAlertmanagerStatus is the most recent observed status of the VMAlertmanager cluster. Read-only. Not
-// included when requesting from the apiserver, only from the Prometheus
+// VMAlertmanagerStatus is the most recent observed status of the VMAlertmanager cluster
 // Operator API itself. More info:
 // https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
 // +k8s:openapi-gen=true
@@ -228,16 +223,12 @@ type VMAlertmanagerStatus struct {
 	UnavailableReplicas int32 `json:"unavailableReplicas"`
 }
 
-func (cr VMAlertmanager) Name() string {
-	return cr.ObjectMeta.Name
-}
-
 func (cr *VMAlertmanager) AsOwner() []metav1.OwnerReference {
 	return []metav1.OwnerReference{
 		{
 			APIVersion:         cr.APIVersion,
 			Kind:               cr.Kind,
-			Name:               cr.Name(),
+			Name:               cr.Name,
 			UID:                cr.UID,
 			Controller:         pointer.BoolPtr(true),
 			BlockOwnerDeletion: pointer.BoolPtr(true),
@@ -268,7 +259,7 @@ func (cr VMAlertmanager) Annotations() map[string]string {
 func (cr VMAlertmanager) SelectorLabels() map[string]string {
 	return map[string]string{
 		"app.kubernetes.io/name":      "vmalertmanager",
-		"app.kubernetes.io/instance":  cr.Name(),
+		"app.kubernetes.io/instance":  cr.Name,
 		"app.kubernetes.io/component": "monitoring",
 		"managed-by":                  "vm-operator",
 	}
@@ -295,7 +286,7 @@ func (cr VMAlertmanager) FinalLabels() map[string]string {
 }
 
 func (cr VMAlertmanager) PrefixedName() string {
-	return fmt.Sprintf("vmalertmanager-%s", cr.Name())
+	return fmt.Sprintf("vmalertmanager-%s", cr.Name)
 }
 
 func init() {

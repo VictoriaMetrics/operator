@@ -3,7 +3,7 @@
 
 for developing you need: 
 - golang 1.13+
-- operator-sdk 1.17.1 
+- operator-sdk 1.18.1 
 - docker
 - minikube or kind for e2e tests
 - golangci-lint

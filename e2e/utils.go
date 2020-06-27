@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -19,22 +20,22 @@ type waitForFunc func() error
 
 func WaitForService(t *testing.T, kubeclient kubernetes.Interface, namespace, name string,
 	retryInterval, timeout time.Duration) error {
-	waitForService := func()error{
-		_, err := kubeclient.CoreV1().Services(namespace).Get(name, metav1.GetOptions{})
+	waitForService := func() error {
+		_, err := kubeclient.CoreV1().Services(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 		return err
 	}
 	t.Logf("Service available (%s)\n", name)
-	return waitForEntity(retryInterval,timeout,waitForService)
+	return waitForEntity(retryInterval, timeout, waitForService)
 }
 
 func WaitForConfigMap(t *testing.T, kubeclient kubernetes.Interface, namespace, name string,
 	retryInterval, timeout time.Duration) error {
-	waitForCm := func()error {
-		_, err := kubeclient.CoreV1().ConfigMaps(namespace).Get(name, metav1.GetOptions{})
-		return  err
+	waitForCm := func() error {
+		_, err := kubeclient.CoreV1().ConfigMaps(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+		return err
 	}
 	t.Logf("StatefulSet available %s\n", name)
-	return waitForEntity(retryInterval,timeout,waitForCm)
+	return waitForEntity(retryInterval, timeout, waitForCm)
 }
 
 func WaitForSecret(t *testing.T, kubeclient kubernetes.Interface, namespace, name string,
@@ -42,7 +43,7 @@ func WaitForSecret(t *testing.T, kubeclient kubernetes.Interface, namespace, nam
 
 	waitForSecret := func() error {
 
-		_, err := kubeclient.CoreV1().Secrets(namespace).Get(name, metav1.GetOptions{})
+		_, err := kubeclient.CoreV1().Secrets(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 		return err
 	}
 	t.Logf("Secret available %s\n", name)
@@ -51,7 +52,7 @@ func WaitForSecret(t *testing.T, kubeclient kubernetes.Interface, namespace, nam
 
 func WaitForSts(t *testing.T, kubeclient kubernetes.Interface, namespace, name string, replicas int, retryInterval, timeout time.Duration) error {
 	waitForSts := func() error {
-		sts, err := kubeclient.AppsV1().StatefulSets(namespace).Get(name, metav1.GetOptions{})
+		sts, err := kubeclient.AppsV1().StatefulSets(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 		if sts != nil {
 			if int(sts.Status.ReadyReplicas) < replicas {
 				t.Logf("Waiting for availability of Sts: %s in Namespace: %s \n", name, namespace)

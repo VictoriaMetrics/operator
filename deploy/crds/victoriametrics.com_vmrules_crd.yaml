@@ -1,0 +1,98 @@
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: vmrules.victoriametrics.com
+spec:
+  group: victoriametrics.com
+  names:
+    kind: VMRule
+    listKind: VMRuleList
+    plural: vmrules
+    singular: vmrule
+  scope: Namespaced
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      description: VMRule defines rule records for vmalert application
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          description: VMRuleSpec defines the desired state of VMRule
+          properties:
+            groups:
+              description: Groups list of group rules
+              items:
+                description: RuleGroup is a list of sequentially evaluated recording
+                  and alerting rules.
+                properties:
+                  interval:
+                    description: evaluation interval for group
+                    type: string
+                  name:
+                    description: Name of group
+                    type: string
+                  rules:
+                    description: Rules list of alert rules
+                    items:
+                      description: Rule describes an alerting or recording rule.
+                      properties:
+                        alert:
+                          description: Alert is a name for alert
+                          type: string
+                        annotations:
+                          additionalProperties:
+                            type: string
+                          description: Annotations will be added to rule configuration
+                          type: object
+                        expr:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          description: Expr is query, that will be evaluated at dataSource
+                          x-kubernetes-int-or-string: true
+                        for:
+                          description: For evaluation interval in time.Duration format
+                            30s, 1m, 1h  or nanoseconds
+                          type: string
+                        labels:
+                          additionalProperties:
+                            type: string
+                          description: Labels will be added to rule configuration
+                          type: object
+                        record:
+                          description: Record represents a query, that will be recorded
+                            to dataSource
+                          type: string
+                      type: object
+                    type: array
+                required:
+                - name
+                - rules
+                type: object
+              type: array
+          required:
+          - groups
+          type: object
+        status:
+          description: VMRuleStatus defines the observed state of VMRule
+          type: object
+      required:
+      - spec
+      type: object
+  version: v1beta1
+  versions:
+  - name: v1beta1
+    served: true
+    storage: true

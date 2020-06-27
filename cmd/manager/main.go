@@ -4,9 +4,14 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"github.com/VictoriaMetrics/operator/conf"
+	vmclient "github.com/VictoriaMetrics/operator/pkg/client/versioned"
+	"github.com/VictoriaMetrics/operator/pkg/controller/factory"
+	"github.com/VictoriaMetrics/operator/pkg/controller/vmprometheusconverter"
+	"github.com/coreos/prometheus-operator/pkg/client/versioned"
+	"golang.org/x/sync/errgroup"
 	"os"
 	"runtime"
-
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/rest"
@@ -79,11 +84,17 @@ func main() {
 	// Get a config to talk to the apiserver
 	cfg, err := config.GetConfig()
 	if err != nil {
-		log.Error(err, "")
+		log.Error(err, "cannot get rest config")
 		os.Exit(1)
 	}
 
-	ctx := context.TODO()
+	ctx, cancel := context.WithCancel(context.Background())
+	stop := signals.SetupSignalHandler()
+	go func() {
+		<-stop
+		cancel()
+	}()
+
 	// Become the leader before proceeding
 	err = leader.Become(ctx, "vm-operator-lock")
 	if err != nil {
@@ -101,6 +112,21 @@ func main() {
 		log.Error(err, "")
 		os.Exit(1)
 	}
+
+	log.Info("starting vmconverter clients")
+	vmClient, err := vmclient.NewForConfig(cfg)
+	if err != nil {
+		log.Error(err, "cannot build VM client")
+		os.Exit(1)
+	}
+	prom, err := versioned.NewForConfig(cfg)
+	if err != nil {
+		log.Error(err, "cannot build promClient")
+		os.Exit(1)
+	}
+	converterController := vmprometheusconverter.NewConvertorController(prom, vmClient)
+
+	errG := &errgroup.Group{}
 
 	log.Info("Registering Components.")
 
@@ -130,33 +156,31 @@ func main() {
 	if err != nil {
 		log.Info("Could not create metrics Service", "error", err.Error())
 	}
-	//retrieve operator namespace
-	//only works at kubernetes cluster
-	operatorNamespace, err := k8sutil.GetOperatorNamespace()
-	if err != nil {
-		log.Info("Could not detect operator namespace, not in cluster?", "err", err.Error())
+
+	//if it`s nil - we are not inside cluster
+	if service != nil {
+		err = factory.CreateVMServiceScrapeFromService(ctx, mgr.GetClient(), service)
+		if err != nil {
+			log.Error(err, "Could not create VMServiceScrape object")
+		}
+		log.Info("VMServiceScrape for operator was created")
+
 	}
 
-	// CreateServiceMonitors will automatically create the prometheus-operator ServiceMonitor resources
-	// necessary to configure Prometheus to scrape metrics from this operator.
-	services := []*v1.Service{service}
-	_, err = metrics.CreateServiceMonitors(cfg, operatorNamespace, services)
-	if err != nil {
-		log.Info("Could not create ServiceMonitor object", "error", err.Error())
-		// If this operator is deployed to a cluster without the prometheus-operator running, it will return
-		// ErrServiceMonitorNotPresent, which can be used to safely skip ServiceMonitor creation.
-		if err == metrics.ErrServiceMonitorNotPresent {
-			log.Info("Install prometheus-operator in your cluster to create ServiceMonitor objects", "error", err.Error())
-		}
-	}
+	converterController.Run(ctx, errG, conf.MustGetBaseConfig())
+	log.Info("vmconverter was started")
 
 	log.Info("Starting the Cmd.")
 
 	// Start the Cmd
-	if err := mgr.Start(signals.SetupSignalHandler()); err != nil {
+	if err := mgr.Start(stop); err != nil {
 		log.Error(err, "Manager exited non-zero")
 		os.Exit(1)
 	}
+	log.Info("waiting for converter stop")
+	//safe to ignore
+	_ = errG.Wait()
+	log.Info("gracefully stopped")
 }
 
 // serveCRMetrics gets the Operator/CustomResource GVKs and generates metrics based on those types.

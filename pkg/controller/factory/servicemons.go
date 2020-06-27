@@ -6,10 +6,11 @@ import (
 	"context"
 	"fmt"
 	"github.com/VictoriaMetrics/operator/conf"
-	monitoringv1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1"
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/validation"
+	"regexp"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	v1 "k8s.io/api/core/v1"
@@ -17,11 +18,13 @@ import (
 	"strings"
 )
 
+var invalidDNS1123Characters = regexp.MustCompile("[^-a-z0-9]+")
+
 func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client, c *conf.BaseOperatorConf) error {
 	// If no service or pod monitor selectors are configured, the user wants to
 	// manage configuration themselves. Do create an empty Secret if it doesn't
 	// exist.
-	l := log.WithValues("vmagent", cr.Name(), "namespace", cr.Namespace)
+	l := log.WithValues("vmagent", cr.Name, "namespace", cr.Namespace)
 
 	if cr.Spec.ServiceMonitorSelector == nil && cr.Spec.PodMonitorSelector == nil {
 		l.Info("neither ServiceMonitor not PodMonitor selector specified, leaving configuration unmanaged")
@@ -125,10 +128,10 @@ func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *victoriametricsv
 	return rclient.Update(ctx, s)
 }
 
-func SelectServiceMonitors(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) (map[string]*monitoringv1.ServiceMonitor, error) {
+func SelectServiceMonitors(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) (map[string]*victoriametricsv1beta1.VMServiceScrape, error) {
 
 	// Selectors (<namespace>/<name>) might overlap. Deduplicate them along the keyFunc.
-	res := make(map[string]*monitoringv1.ServiceMonitor)
+	res := make(map[string]*victoriametricsv1beta1.VMServiceScrape)
 
 	namespaces := []string{}
 
@@ -161,12 +164,12 @@ func SelectServiceMonitors(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 		return nil, fmt.Errorf("cannot convert ServiceMonitorSelector to labelSelector: %w", err)
 	}
 
-	servMonsCombined := []monitoringv1.ServiceMonitor{}
+	servMonsCombined := []victoriametricsv1beta1.VMServiceScrape{}
 
 	//list all namespaces for rules with selector
 	if namespaces == nil {
-		log.Info("listing all namespaces for serviceMonitors", "vmagent", cr.Name())
-		servMons := &monitoringv1.ServiceMonitorList{}
+		log.Info("listing all namespaces for serviceMonitors", "vmagent", cr.Name)
+		servMons := &victoriametricsv1beta1.VMServiceScrapeList{}
 		err = rclient.List(ctx, servMons, &client.ListOptions{LabelSelector: servMonSelector})
 		if err != nil {
 			return nil, fmt.Errorf("cannot list rules from all namespaces: %w", err)
@@ -175,9 +178,9 @@ func SelectServiceMonitors(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 
 	} else {
 		for _, ns := range namespaces {
-			log.Info("listing namespace for serviceMonitors", "ns", ns, "vmagent", cr.Name())
+			log.Info("listing namespace for serviceMonitors", "ns", ns, "vmagent", cr.Name)
 			listOpts := &client.ListOptions{Namespace: ns, LabelSelector: servMonSelector}
-			servMons := &monitoringv1.ServiceMonitorList{}
+			servMons := &victoriametricsv1beta1.VMServiceScrapeList{}
 			err = rclient.List(ctx, servMons, listOpts)
 			if err != nil {
 				return nil, fmt.Errorf("cannot list rules at namespace: %s, err: %w", ns, err)
@@ -199,11 +202,11 @@ func SelectServiceMonitors(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 			for _, endpoint := range sm.Spec.Endpoints {
 				if err := testForArbitraryFSAccess(endpoint); err != nil {
 					delete(res, namespaceAndName)
-					log.Info("skipping servicemonitor",
+					log.Info("skipping vmservicescrape",
 						"error", err.Error(),
-						"servicemonitor", namespaceAndName,
+						"vmservicescrape", namespaceAndName,
 						"namespace", cr.Namespace,
-						"vmagent", cr.Name(),
+						"vmagent", cr.Name,
 					)
 				}
 			}
@@ -214,14 +217,14 @@ func SelectServiceMonitors(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 	for k := range res {
 		serviceMonitors = append(serviceMonitors, k)
 	}
-	log.Info("selected ServiceMonitors", "servicemonitors", strings.Join(serviceMonitors, ","), "namespace", cr.Namespace, "vmagent", cr.Name())
+	log.Info("selected ServiceMonitors", "servicemonitors", strings.Join(serviceMonitors, ","), "namespace", cr.Namespace, "vmagent", cr.Name)
 
 	return res, nil
 }
 
-func SelectPodMonitors(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) (map[string]*monitoringv1.PodMonitor, error) {
+func SelectPodMonitors(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) (map[string]*victoriametricsv1beta1.VMPodScrape, error) {
 	// Selectors might overlap. Deduplicate them along the keyFunc.
-	res := make(map[string]*monitoringv1.PodMonitor)
+	res := make(map[string]*victoriametricsv1beta1.VMPodScrape)
 
 	namespaces := []string{}
 
@@ -234,7 +237,7 @@ func SelectPodMonitors(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, 
 	} else if cr.Spec.PodMonitorNamespaceSelector.MatchExpressions == nil && cr.Spec.PodMonitorNamespaceSelector.MatchLabels == nil {
 		namespaces = nil
 	} else {
-		log.Info("selector for podMonitor", "vmagent", cr.Name(), "selector", cr.Spec.PodMonitorNamespaceSelector.String())
+		log.Info("selector for podMonitor", "vmagent", cr.Name, "selector", cr.Spec.PodMonitorNamespaceSelector.String())
 		nsSelector, err := metav1.LabelSelectorAsSelector(cr.Spec.PodMonitorNamespaceSelector)
 		if err != nil {
 			return nil, fmt.Errorf("cannot convert ruleNameSpace to labelSelector: %w", err)
@@ -255,12 +258,12 @@ func SelectPodMonitors(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, 
 		return nil, fmt.Errorf("cannot convert podMonitorSelector to label selector: %w", err)
 	}
 
-	podMonsCombined := []monitoringv1.PodMonitor{}
+	podMonsCombined := []victoriametricsv1beta1.VMPodScrape{}
 
 	//list all namespaces for rules with selector
 	if namespaces == nil {
 		log.Info("listing all namespaces for rules")
-		servMons := &monitoringv1.PodMonitorList{}
+		servMons := &victoriametricsv1beta1.VMPodScrapeList{}
 		err = rclient.List(ctx, servMons, &client.ListOptions{LabelSelector: podMonSelector})
 		if err != nil {
 			return nil, fmt.Errorf("cannot list pod monitors from all namespaces: %w", err)
@@ -270,7 +273,7 @@ func SelectPodMonitors(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, 
 	} else {
 		for _, ns := range namespaces {
 			listOpts := &client.ListOptions{Namespace: ns, LabelSelector: podMonSelector}
-			servMons := &monitoringv1.PodMonitorList{}
+			servMons := &victoriametricsv1beta1.VMPodScrapeList{}
 			err = rclient.List(ctx, servMons, listOpts)
 			if err != nil {
 				return nil, fmt.Errorf("cannot list podmonitors at namespace: %s, err: %w", ns, err)
@@ -281,7 +284,7 @@ func SelectPodMonitors(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, 
 	}
 
 	log.Info("filtering namespaces to select PodMonitors from",
-		"namespace", cr.Namespace, "vmagent", cr.Name())
+		"namespace", cr.Namespace, "vmagent", cr.Name)
 	for _, podMon := range podMonsCombined {
 		pm := podMon.DeepCopy()
 		res[podMon.Namespace+"/"+podMon.Name] = pm
@@ -291,7 +294,7 @@ func SelectPodMonitors(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, 
 		podMonitors = append(podMonitors, key)
 	}
 
-	log.Info("selected PodMonitors", "podmonitors", strings.Join(podMonitors, ","), "namespace", cr.Namespace, "vmagent", cr.Name())
+	log.Info("selected PodMonitors", "podmonitors", strings.Join(podMonitors, ","), "namespace", cr.Namespace, "vmagent", cr.Name)
 
 	return res, nil
 }
@@ -299,8 +302,8 @@ func SelectPodMonitors(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, 
 func loadBasicAuthSecrets(
 	ctx context.Context,
 	rclient client.Client,
-	mons map[string]*monitoringv1.ServiceMonitor,
-	apiserverConfig *monitoringv1.APIServerConfig,
+	mons map[string]*victoriametricsv1beta1.VMServiceScrape,
+	apiserverConfig *victoriametricsv1beta1.APIServerConfig,
 	SecretsInPromNS *v1.SecretList,
 ) (map[string]BasicAuthCredentials, error) {
 
@@ -311,7 +314,7 @@ func loadBasicAuthSecrets(
 			if ep.BasicAuth != nil {
 				credentials, err := loadBasicAuthSecretFromAPI(ctx, rclient, ep.BasicAuth, mon.Namespace, nsSecretCache)
 				if err != nil {
-					return nil, fmt.Errorf("could not generate basicAuth for servicemonitor %s. %w", mon.Name, err)
+					return nil, fmt.Errorf("could not generate basicAuth for vmservicescrape %s. %w", mon.Name, err)
 				}
 				secrets[fmt.Sprintf("serviceMonitor/%s/%s/%d", mon.Namespace, mon.Name, i)] = credentials
 			}
@@ -332,7 +335,7 @@ func loadBasicAuthSecrets(
 
 }
 
-func loadBearerTokensFromSecrets(ctx context.Context, rclient client.Client, mons map[string]*monitoringv1.ServiceMonitor) (map[string]BearerToken, error) {
+func loadBearerTokensFromSecrets(ctx context.Context, rclient client.Client, mons map[string]*victoriametricsv1beta1.VMServiceScrape) (map[string]BearerToken, error) {
 	tokens := map[string]BearerToken{}
 	nsSecretCache := make(map[string]*v1.Secret)
 
@@ -352,7 +355,7 @@ func loadBearerTokensFromSecrets(ctx context.Context, rclient client.Client, mon
 			)
 			if err != nil {
 				return nil, fmt.Errorf(
-					"failed to extract endpoint bearertoken for servicemonitor %v from secret %v in namespace %v",
+					"failed to extract endpoint bearertoken for vmservicescrape %v from secret %v in namespace %v",
 					mon.Name, ep.BearerTokenSecret.Name, mon.Namespace,
 				)
 			}
@@ -364,7 +367,7 @@ func loadBearerTokensFromSecrets(ctx context.Context, rclient client.Client, mon
 	return tokens, nil
 }
 
-func loadBasicAuthSecret(basicAuth *monitoringv1.BasicAuth, s *v1.SecretList) (BasicAuthCredentials, error) {
+func loadBasicAuthSecret(basicAuth *victoriametricsv1beta1.BasicAuth, s *v1.SecretList) (BasicAuthCredentials, error) {
 	var username string
 	var password string
 	var err error
@@ -450,7 +453,7 @@ func getCredFromConfigMap(
 	return "", fmt.Errorf("key not found at configmap, key: %s, configmap %s ", sel.Key, sel.Name)
 }
 
-func loadBasicAuthSecretFromAPI(ctx context.Context, rclient client.Client, basicAuth *monitoringv1.BasicAuth, ns string, cache map[string]*v1.Secret) (BasicAuthCredentials, error) {
+func loadBasicAuthSecretFromAPI(ctx context.Context, rclient client.Client, basicAuth *victoriametricsv1beta1.BasicAuth, ns string, cache map[string]*v1.Secret) (BasicAuthCredentials, error) {
 	var username string
 	var password string
 	var err error
@@ -484,7 +487,7 @@ func loadAdditionalScrapeConfigsSecret(additionalScrapeConfigs *v1.SecretKeySele
 	return nil, nil
 }
 
-func testForArbitraryFSAccess(e monitoringv1.Endpoint) error {
+func testForArbitraryFSAccess(e victoriametricsv1beta1.Endpoint) error {
 	if e.BearerTokenFile != "" {
 		return fmt.Errorf("it accesses file system via bearer token file which VMAgent specification prohibits")
 	}
@@ -509,6 +512,42 @@ func gzipConfig(buf *bytes.Buffer, conf []byte) error {
 	w := gzip.NewWriter(buf)
 	defer w.Close()
 	if _, err := w.Write(conf); err != nil {
+		return err
+	}
+	return nil
+}
+
+func SanitizeVolumeName(name string) string {
+	name = strings.ToLower(name)
+	name = invalidDNS1123Characters.ReplaceAllString(name, "-")
+	if len(name) > validation.DNS1123LabelMaxLength {
+		name = name[0:validation.DNS1123LabelMaxLength]
+	}
+	return strings.Trim(name, "-")
+}
+
+func CreateVMServiceScrapeFromService(ctx context.Context, rclient client.Client, service *v1.Service) error {
+	endPoints := []victoriametricsv1beta1.Endpoint{}
+	for _, servicePort := range service.Spec.Ports {
+		endPoints = append(endPoints, victoriametricsv1beta1.Endpoint{
+			Port: servicePort.Name,
+		})
+	}
+	scrapeSvc := &victoriametricsv1beta1.VMServiceScrape{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      service.Name,
+			Namespace: service.Namespace,
+		},
+		Spec: victoriametricsv1beta1.VMServiceScrapeSpec{
+			Selector:  metav1.LabelSelector{MatchLabels: service.Spec.Selector},
+			Endpoints: endPoints,
+		},
+	}
+	err := rclient.Create(ctx, scrapeSvc)
+	if err != nil {
+		if errors.IsAlreadyExists(err) {
+			return nil
+		}
 		return err
 	}
 	return nil

@@ -5,7 +5,6 @@ on:
   push:
     branches:
       - '*'
-  pull_request:
 
 jobs:
   build:
@@ -26,7 +25,7 @@ jobs:
           go get  golang.org/x/lint/golint
           go get github.com/kisielk/errcheck
           go get  github.com/golangci/golangci-lint/cmd/golangci-lint@v1.27.0
-          curl -L -o operator-sdk "https://github.com/operator-framework/operator-sdk/releases/download/v0.17.1/operator-sdk-v0.17.1-x86_64-linux-gnu"
+          curl -L -o operator-sdk "https://github.com/operator-framework/operator-sdk/releases/download/v0.18.1/operator-sdk-v0.18.1-x86_64-linux-gnu"
           chmod +x operator-sdk
           sudo mv operator-sdk /bin/
       - name: setup KIND for e2e tests
@@ -39,6 +38,7 @@ jobs:
       - name: build binary
         env:
           GO111MODULE: on
+          TAG:   ${{ env.GITHUB_REF_SLUG }}
         run: |
           export PATH=$PATH:$(go env GOPATH)/bin # temporary fix. See https://github.com/actions/setup-go/issues/14
           make lint
@@ -57,8 +57,7 @@ jobs:
         with:
           username: ${{secrets.REPO_USER}}
           password: ${{secrets.REPO_KEY}}
-          registry: "quay.io"
-          repository: f41gh7/vm-operator
+          repository: victoriametrics/operator
           tag_with_ref: true
           dockerfile: cmd/manager/Dockerfile
 

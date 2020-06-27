@@ -67,6 +67,75 @@ metadata:
         },
         {
           "apiVersion": "victoriametrics.com/v1beta1",
+          "kind": "VMPodScrape",
+          "metadata": {
+            "name": "example-pod-scrape"
+          },
+          "spec": {
+            "podMetricsEndpoints": [
+              {
+                "port": "metrics",
+                "scheme": "http"
+              }
+            ],
+            "selector": {
+              "app.kubernetes.io/name": "example-application",
+              "monitored-by": "vm-operator"
+            }
+          }
+        },
+        {
+          "apiVersion": "victoriametrics.com/v1beta1",
+          "kind": "VMRule",
+          "metadata": {
+            "name": "example-vmrule"
+          },
+          "spec": {
+            "groups": [
+              {
+                "name": "kafka",
+                "rules": [
+                  {
+                    "alert": "coordinator down",
+                    "annotations": {
+                      "description": "kafka coorinator is down",
+                      "value": "{{ $value }}"
+                    },
+                    "expr": "ml_app_gauge{exec_context=\"consumer_group_state\"} == 0",
+                    "for": "60s",
+                    "labels": {
+                      "job": "{{ $labels.job }}",
+                      "severity": "critical"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "apiVersion": "victoriametrics.com/v1beta1",
+          "kind": "VMServiceScrape",
+          "metadata": {
+            "name": "example-scrape"
+          },
+          "spec": {
+            "endpoints": [
+              {
+                "port": "http"
+              }
+            ],
+            "namespaceSelector": {},
+            "selector": {
+              "matchLabels": {
+                "app.kubernetes.io/name": "example-application",
+                "monitored-by": "vm-operator"
+              }
+            }
+          }
+        },
+        {
+          "apiVersion": "victoriametrics.com/v1beta1",
           "kind": "VMSingle",
           "metadata": {
             "name": "example-vmsingle"
@@ -224,6 +293,36 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
       version: v1beta1
+    - description: VMPodScrape is the Schema for the podscrapes API it generates vmagent's
+        config for scraping pod targets based on selectors
+      displayName: VMPodScrape
+      kind: VMPodScrape
+      name: vmpodscrapes.victoriametrics.com
+      specDescriptors:
+      - description: Selector to select Pod objects.
+        displayName: Pod selector
+        path: selector
+        x-descriptors:
+        - 'urn:alm:descriptor:com.tectonic.ui:selector:'
+      version: v1beta1
+    - description: VMRule defines rule records for vmalert application
+      displayName: VMRule
+      kind: VMRule
+      name: vmrules.victoriametrics.com
+      version: v1beta1
+    - description: VMServiceScrape is the Schema for the servicescrapes API it generates
+        scrape configuration for vmagent based on selectors result config will scrape
+        service endpoints
+      displayName: VMServiceScrape
+      kind: VMServiceScrape
+      name: vmservicescrapes.victoriametrics.com
+      specDescriptors:
+      - description: Selector to select Endpoints objects.
+        displayName: Service selector
+        path: selector
+        x-descriptors:
+        - 'urn:alm:descriptor:com.tectonic.ui:selector:'
+      version: v1beta1
     - description: VMSingle represents a Victoria-Metrics single database
       displayName: VMSingle App
       kind: VMSingle
@@ -260,14 +359,13 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
       version: v1beta1
   description: |
-    # VictoriaMetrics operator for Kubernetes
+    # operator docs
 
       docs:
-      -  quick start [doc](/docs/quick-start.MD)
-      -  design and description of implementation [design](/docs/design.MD)
-      -  high availability [doc](/docs/high-availability.MD)
-      -  operator objects description [doc](/docs/api.MD)
-      -  backup [doc](/docs/backup.MD)
+      -  quick start [doc](https://github.com/VictoriaMetrics/operator/docs/quick-start.MD)
+      -  design and description of implementation [design](https://github.com/VictoriaMetrics/operator/docs/design.MD)
+      -  high availability [doc](https://github.com/VictoriaMetrics/operator/docs/high-availability.MD)
+      -  operator objects description [doc](https://github.com/VictoriaMetrics/operator/docs/api.MD)
 
        possible configuration options are available at [url](https://github.com/VictoriaMetrics/operator/blob/master/vars.MD)
 

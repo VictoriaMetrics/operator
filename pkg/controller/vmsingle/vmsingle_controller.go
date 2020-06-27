@@ -5,7 +5,6 @@ import (
 	"github.com/VictoriaMetrics/operator/conf"
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
 	"github.com/VictoriaMetrics/operator/pkg/controller/factory"
-	"github.com/operator-framework/operator-sdk/pkg/metrics"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/client-go/rest"
 
@@ -22,11 +21,6 @@ import (
 )
 
 var log = logf.Log.WithName("controller_vmsingle")
-
-/**
-* USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
-* business logic.  Delete these comments after modifying this file.*
- */
 
 // Add creates a new VMSingle Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
@@ -130,13 +124,11 @@ func (r *ReconcileVMSingle) Reconcile(request reconcile.Request) (reconcile.Resu
 		return reconcile.Result{}, err
 	}
 
-	//create servicemonitor for object by default
+	//create vmservicescrape for object by default
 	if !r.opConf.DisableSelfServiceMonitorCreation {
-		_, err = metrics.CreateServiceMonitors(r.restConf, instance.Namespace, []*corev1.Service{svc})
+		err := factory.CreateVMServiceScrapeFromService(ctx, r.client, svc)
 		if err != nil {
-			if !errors.IsAlreadyExists(err) {
-				reqLogger.Error(err, "cannot create service monitor")
-			}
+			reqLogger.Error(err, "cannot create serviceScrape for vmsingle")
 		}
 	}
 

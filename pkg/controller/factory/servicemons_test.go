@@ -2,7 +2,6 @@ package factory
 
 import (
 	"context"
-	monitoringv1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1"
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
 	"github.com/go-logr/logr"
 	v1 "k8s.io/api/core/v1"
@@ -28,13 +27,14 @@ func testGetScheme() *runtime.Scheme {
 		&victoriametricsv1beta1.VMAlertmanager{},
 		&victoriametricsv1beta1.VMAlertmanagerList{},
 	)
-	s.AddKnownTypes(monitoringv1.SchemeGroupVersion,
-		&monitoringv1.PodMonitor{},
-		&monitoringv1.PodMonitorList{},
-		&monitoringv1.ServiceMonitor{},
-		&monitoringv1.ServiceMonitorList{},
-		&monitoringv1.PrometheusRule{},
-		&monitoringv1.PrometheusRuleList{},
+	s.AddKnownTypes(victoriametricsv1beta1.SchemeGroupVersion,
+		&victoriametricsv1beta1.VMPodScrape{},
+		&victoriametricsv1beta1.VMPodScrapeList{},
+		&victoriametricsv1beta1.VMServiceScrapeList{},
+		&victoriametricsv1beta1.VMServiceScrape{},
+		&victoriametricsv1beta1.VMServiceScrapeList{},
+		&victoriametricsv1beta1.VMRule{},
+		&victoriametricsv1beta1.VMRuleList{},
 	)
 	return s
 }
@@ -66,9 +66,9 @@ func TestSelectServiceMonitors(t *testing.T) {
 				l: logf.Log.WithName("unit-test"),
 			},
 			predefinedObjest: []runtime.Object{
-				&monitoringv1.ServiceMonitor{
+				&victoriametricsv1beta1.VMServiceScrape{
 					ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "default-monitor"},
-					Spec:       monitoringv1.ServiceMonitorSpec{},
+					Spec:       victoriametricsv1beta1.VMServiceScrapeSpec{},
 				},
 			},
 			want:    []string{"default/default-monitor"},
@@ -91,14 +91,14 @@ func TestSelectServiceMonitors(t *testing.T) {
 			},
 			predefinedObjest: []runtime.Object{
 				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
-				&monitoringv1.ServiceMonitor{
+				&victoriametricsv1beta1.VMServiceScrape{
 					ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "default-monitor"},
-					Spec:       monitoringv1.ServiceMonitorSpec{},
+					Spec:       victoriametricsv1beta1.VMServiceScrapeSpec{},
 				},
 				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "stg", Labels: map[string]string{"name": "stage"}}},
-				&monitoringv1.ServiceMonitor{
+				&victoriametricsv1beta1.VMServiceScrape{
 					ObjectMeta: metav1.ObjectMeta{Namespace: "stg", Name: "default-monitor"},
-					Spec:       monitoringv1.ServiceMonitorSpec{},
+					Spec:       victoriametricsv1beta1.VMServiceScrapeSpec{},
 				},
 			},
 			want:    []string{"stg/default-monitor"},
@@ -154,12 +154,12 @@ func TestSelectPodMonitors(t *testing.T) {
 				l: logf.Log.WithName("unit-test"),
 			},
 			predefinedObjects: []runtime.Object{
-				&monitoringv1.PodMonitor{
+				&victoriametricsv1beta1.VMPodScrape{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "pod1",
 						Namespace: "default",
 					},
-					Spec: monitoringv1.PodMonitorSpec{},
+					Spec: victoriametricsv1beta1.VMPodScrapeSpec{},
 				},
 			},
 			wantErr: false,
@@ -183,20 +183,20 @@ func TestSelectPodMonitors(t *testing.T) {
 			},
 			predefinedObjects: []runtime.Object{
 				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "monitor", Labels: map[string]string{"name": "monitoring"}}},
-				&monitoringv1.PodMonitor{
+				&victoriametricsv1beta1.VMPodScrape{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "pod2",
 						Namespace: "monitor",
 					},
-					Spec: monitoringv1.PodMonitorSpec{},
+					Spec: victoriametricsv1beta1.VMPodScrapeSpec{},
 				},
 				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
-				&monitoringv1.PodMonitor{
+				&victoriametricsv1beta1.VMPodScrape{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "pod1",
 						Namespace: "default",
 					},
-					Spec: monitoringv1.PodMonitorSpec{},
+					Spec: victoriametricsv1beta1.VMPodScrapeSpec{},
 				},
 			},
 			wantErr: false,

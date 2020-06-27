@@ -3,7 +3,6 @@ package factory
 import (
 	"context"
 	"fmt"
-	monitoringv1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1"
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
 	"github.com/ghodss/yaml"
 	v1 "k8s.io/api/core/v1"
@@ -52,14 +51,14 @@ groups:
 )
 
 func CreateOrUpdateRuleConfigMaps(ctx context.Context, cr *victoriametricsv1beta1.VMAlert, rclient client.Client) ([]string, error) {
-	l := log.WithValues("reconcile", "rulesCm", "vmalert", cr.Name())
+	l := log.WithValues("reconcile", "rulesCm", "vmalert", cr.Name)
 	newRules, err := SelectRules(ctx, cr, rclient)
 	if err != nil {
 		return nil, err
 	}
 
 	currentConfigMapList := &v1.ConfigMapList{}
-	err = rclient.List(ctx, currentConfigMapList, rulesConfigMapSelector(cr.Name(), cr.Namespace))
+	err = rclient.List(ctx, currentConfigMapList, rulesConfigMapSelector(cr.Name, cr.Namespace))
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +75,7 @@ func CreateOrUpdateRuleConfigMaps(ctx context.Context, cr *victoriametricsv1beta
 	if equal && len(currentConfigMaps) != 0 {
 		l.Info("no Rule changes",
 			"namespace", cr.Namespace,
-			"vmalert", cr.Name(),
+			"vmalert", cr.Name,
 		)
 		currentConfigMapNames := []string{}
 		for _, cm := range currentConfigMaps {
@@ -97,7 +96,7 @@ func CreateOrUpdateRuleConfigMaps(ctx context.Context, cr *victoriametricsv1beta
 
 	if len(currentConfigMaps) == 0 {
 		l.Info("no Rule configmap found, creating new one", "namespace", cr.Namespace,
-			"vmalert", cr.Name(),
+			"vmalert", cr.Name,
 		)
 		for _, cm := range newConfigMaps {
 			err := rclient.Create(ctx, &cm, &client.CreateOptions{})
@@ -117,9 +116,9 @@ func CreateOrUpdateRuleConfigMaps(ctx context.Context, cr *victoriametricsv1beta
 		}
 	}
 
-	log.Info("updating VMAlertRules",
+	log.Info("updating VMRules",
 		"namespace", cr.Namespace,
-		"vmalert", cr.Name(),
+		"vmalert", cr.Name,
 	)
 	for _, cm := range newConfigMaps {
 		err = rclient.Create(ctx, &cm)
@@ -186,12 +185,12 @@ func SelectRules(ctx context.Context, cr *victoriametricsv1beta1.VMAlert, rclien
 	if err != nil {
 		return rules, fmt.Errorf("cannot convert rule label selector to selector: %w", err)
 	}
-	promRules := []*monitoringv1.PrometheusRule{}
+	promRules := []*victoriametricsv1beta1.VMRule{}
 
 	//list all namespaces for rules with selector
 	if namespaces == nil {
 		log.Info("listing all namespaces for rules")
-		ruleNs := &monitoringv1.PrometheusRuleList{}
+		ruleNs := &victoriametricsv1beta1.VMRuleList{}
 		err = rclient.List(ctx, ruleNs, &client.ListOptions{LabelSelector: ruleSelector})
 		if err != nil {
 			return nil, fmt.Errorf("cannot list rules from all namespaces: %w", err)
@@ -201,7 +200,7 @@ func SelectRules(ctx context.Context, cr *victoriametricsv1beta1.VMAlert, rclien
 	} else {
 		for _, ns := range namespaces {
 			listOpts := &client.ListOptions{Namespace: ns, LabelSelector: ruleSelector}
-			ruleNs := &monitoringv1.PrometheusRuleList{}
+			ruleNs := &victoriametricsv1beta1.VMRuleList{}
 			err = rclient.List(ctx, ruleNs, listOpts)
 			if err != nil {
 				return nil, fmt.Errorf("cannot list rules at namespace: %s, err: %w", ns, err)
@@ -232,17 +231,16 @@ func SelectRules(ctx context.Context, cr *victoriametricsv1beta1.VMAlert, rclien
 	log.Info("selected Rules",
 		"rules", strings.Join(ruleNames, ","),
 		"namespace", cr.Namespace,
-		"vmalert", cr.Name(),
+		"vmalert", cr.Name,
 	)
 
 	return rules, nil
 }
 
-func generateContent(promRule monitoringv1.PrometheusRuleSpec, enforcedNsLabel, ns string) (string, error) {
+func generateContent(promRule victoriametricsv1beta1.VMRuleSpec, enforcedNsLabel, ns string) (string, error) {
 	if enforcedNsLabel != "" {
 		log.Info("enforce ns label is partly supported, create issue for it")
 		for gi, group := range promRule.Groups {
-			group.PartialResponseStrategy = ""
 			for ri := range group.Rules {
 				if len(promRule.Groups[gi].Rules[ri].Labels) == 0 {
 					promRule.Groups[gi].Rules[ri].Labels = map[string]string{}
@@ -335,14 +333,14 @@ func bucketSize(bucket map[string]string) int {
 }
 
 func makeRulesConfigMap(cr *victoriametricsv1beta1.VMAlert, ruleFiles map[string]string) v1.ConfigMap {
-	ruleLabels := map[string]string{labelVMAlertName: cr.Name()}
+	ruleLabels := map[string]string{labelVMAlertName: cr.Name}
 	for k, v := range managedByOperatorLabels {
 		ruleLabels[k] = v
 	}
 
 	return v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            ruleConfigMapName(cr.Name()),
+			Name:            ruleConfigMapName(cr.Name),
 			Namespace:       cr.Namespace,
 			Labels:          ruleLabels,
 			OwnerReferences: cr.AsOwner(),

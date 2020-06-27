@@ -37,6 +37,8 @@ var (
 		"v1.Container":                 "https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#container-v1-core",
 		"v1.EnvVar":                    "https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#envvar-v1-core",
 		"v1.PersistentVolumeClaimSpec": "https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#persistentvolumeclaimspec-v1-core",
+		"v1.PodSecurityContext":        "https://v1-17.docs.kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#podsecuritycontext-v1-core",
+		"v1.DNSPolicy":                 "https://v1-17.docs.kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#pod-v1-core",
 	}
 
 	selfLinks = map[string]string{}

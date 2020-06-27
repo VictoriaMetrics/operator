@@ -18,8 +18,6 @@ unzip  bundle_crd.zip
 First of all, you  have to create crd
 ```bash
 kubectl apply -f install/crds/vm/
-#if you dont have prometheus crds, add it with command:
-kubectl apply -f install/crds/prom/
 ```
  
 Then you need rbac for operator, relevant configuration for release can be found at install/operator/rbac.yaml
@@ -54,8 +52,9 @@ The Victoria Metrics Operator introduces additional resources in Kubernetes to d
 * `VMSingle`
 * `VMAgent`
 * `VMAlert`
-* `PrometheusRule`
-* `ServiceMonitor`
+* `VMRule`
+* `VMPodScrape`
+* `VMServiceScrape`
 * `VMAlertmanager`
 
 
@@ -243,7 +242,7 @@ spec:
 EOF
 ```
 
-The ServiceMonitor has a label selector to select Services and their underlying Endpoint objects. The Service object for the example application selects the Pods by the `app` label having the `example-app` value. The Service object also specifies the port on which the metrics are exposed.
+The VMServiceScrape has a label selector to select Services and their underlying Endpoint objects. The Service object for the example application selects the Pods by the `app` label having the `example-app` value. The Service object also specifies the port on which the metrics are exposed.
 
 ```yaml
 cat <<EOF | kubectl apply -f -
@@ -262,12 +261,12 @@ spec:
 EOF
 ```
 
-This Service object is discovered by a ServiceMonitor, which selects in the same way. The `app` label must have the value `example-app`.
+This Service object is discovered by a VMServiceScrape, which selects in the same way. The `app` label must have the value `example-app`.
 
 ```yaml
 cat << EOF | kubectl apply -f -
-apiVersion: monitoring.coreos.com/v1
-kind: ServiceMonitor
+apiVersion: victoriametrics.com/v1beta1
+kind: VMServiceScrape
 metadata:
   name: example-app
   labels:
@@ -280,6 +279,21 @@ spec:
   - port: web
 EOF
 ```
+
+
+## migration from prometheus-operator objects
+
+By default, operator converts all existing prometheus-operator api objects into corresponding victoriametrics-operator objects.
+
+You can control this behaviour by setting env variable for operator:
+```bash
+#disable convertion for each object
+VM_ENABLEDPROMETHEUSCONVERTER_PODMONITOR=false
+VM_ENABLEDPROMETHEUSCONVERTER_SERVICESCRAPE=false
+VM_ENABLEDPROMETHEUSCONVERTER_PROMETHEUSRULE=false
+```
+
+ Otherwise victoriametrics-operator would try to discover prometheus-operator api and convert it.
 
 
 ## Expose the VMSingle API

@@ -1,5 +1,5 @@
 # Auto Generated vars for package conf 
-## updated at Thu Jun 18 00:18:44 UTC 2020 
+## updated at Tue Jul  7 22:09:36 UTC 2020 
 
 
 | varible name | variable default value | variable required | variable description |
@@ -43,6 +43,9 @@
 | VM_VMALERTMANAGER_NAMESPACES | - | false | - |
 | VM_VMALERTMANAGER_CLUSTERDOMAIN | - | false | - |
 | VM_DISABLESELFSERVICEMONITORCREATION | false | false | - |
+| VM_ENABLEDPROMETHEUSCONVERTER_PODMONITOR | true | false | - |
+| VM_ENABLEDPROMETHEUSCONVERTER_SERVICESCRAPE | true | false | - |
+| VM_ENABLEDPROMETHEUSCONVERTER_PROMETHEUSRULE | true | false | - |
 | VM_HOST | 0.0.0.0 | false | - |
 | VM_LISTENADDRESS | 0.0.0.0 | false | - |
 | VM_DEFAULTLABELS | managed-by=vm-operator | false | - |

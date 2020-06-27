@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	monitoringv1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
@@ -120,7 +119,7 @@ type VMAgentSpec struct {
 	// and will discover API servers automatically and use the pod's CA certificate
 	// and bearer token file at /var/run/secrets/kubernetes.io/serviceaccount/.
 	// +optional
-	APIServerConfig *monitoringv1.APIServerConfig `json:"aPIServerConfig,omitempty"`
+	APIServerConfig *APIServerConfig `json:"aPIServerConfig,omitempty"`
 	// OverrideHonorLabels if set to true overrides all user configured honor_labels.
 	// If HonorLabels is set in ServiceMonitor or PodMonitor to true, this overrides honor_labels to false.
 	// +optional
@@ -129,7 +128,7 @@ type VMAgentSpec struct {
 	// +optional
 	OverrideHonorTimestamps bool `json:"overrideHonorTimestamps,omitempty"`
 	// IgnoreNamespaceSelectors if set to true will ignore NamespaceSelector settings from
-	// the podmonitor and servicemonitor configs, and they will only discover endpoints
+	// the podscrape and vmservicescrape configs, and they will only discover endpoints
 	// within their current namespace.  Defaults to false.
 	// +optional
 	IgnoreNamespaceSelectors bool `json:"ignoreNamespaceSelectors,omitempty"`
@@ -188,7 +187,7 @@ type VMAgentSpec struct {
 	// based on a service monitor can access arbitrary files on the file system
 	// of the VMAgent container e.g. bearer token files.
 	// +optional
-	ArbitraryFSAccessThroughSMs monitoringv1.ArbitraryFSAccessThroughSMsConfig `json:"arbitraryFSAccessThroughSMs,omitempty"`
+	ArbitraryFSAccessThroughSMs ArbitraryFSAccessThroughSMsConfig `json:"arbitraryFSAccessThroughSMs,omitempty"`
 	// Port listen address
 	// +optional
 	Port string `json:"port,omitempty"`
@@ -224,6 +223,7 @@ type VMAgentStatus struct {
 // +operator-sdk:gen-csv:customresourcedefinitions.resources="Service,v1"
 // +operator-sdk:gen-csv:customresourcedefinitions.resources="Secret,v1"
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +genclient
 // +k8s:openapi-gen=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:path=vmagents,scope=Namespaced
@@ -243,16 +243,12 @@ type VMAgentList struct {
 	Items           []VMAgent `json:"items"`
 }
 
-func (cr VMAgent) Name() string {
-	return cr.ObjectMeta.Name
-}
-
 func (cr *VMAgent) AsOwner() []metav1.OwnerReference {
 	return []metav1.OwnerReference{
 		{
 			APIVersion:         cr.APIVersion,
 			Kind:               cr.Kind,
-			Name:               cr.Name(),
+			Name:               cr.Name,
 			UID:                cr.UID,
 			Controller:         pointer.BoolPtr(true),
 			BlockOwnerDeletion: pointer.BoolPtr(true),
@@ -282,8 +278,8 @@ func (cr VMAgent) Annotations() map[string]string {
 
 func (cr VMAgent) SelectorLabels() map[string]string {
 	return map[string]string{
-		"app.kubernetes.io/name":      "vmalert",
-		"app.kubernetes.io/instance":  cr.Name(),
+		"app.kubernetes.io/name":      "vmagent",
+		"app.kubernetes.io/instance":  cr.Name,
 		"app.kubernetes.io/component": "monitoring",
 		"managed-by":                  "vm-operator",
 	}
@@ -310,11 +306,11 @@ func (cr VMAgent) FinalLabels() map[string]string {
 }
 
 func (cr VMAgent) PrefixedName() string {
-	return fmt.Sprintf("vmagent-%s", cr.Name())
+	return fmt.Sprintf("vmagent-%s", cr.Name)
 }
 
 func (cr VMAgent) TLSAssetName() string {
-	return fmt.Sprintf("tls-assets-vmagent-%s", cr.Name())
+	return fmt.Sprintf("tls-assets-vmagent-%s", cr.Name)
 }
 
 func init() {

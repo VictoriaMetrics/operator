@@ -13,7 +13,7 @@ import (
 
 var (
 	retryInterval        = time.Second * 5
-	timeout              = time.Second * 60
+	timeout              = time.Second * 90
 	cleanupRetryInterval = time.Second * 1
 	cleanupTimeout       = time.Second * 30
 )
@@ -30,6 +30,12 @@ func addToSchemeCrds(t *testing.T) error {
 		&operator.VMAgent{},
 		&operator.VMAlert{},
 		&operator.VMAlertList{},
+		&operator.VMPodScrape{},
+		&operator.VMPodScrapeList{},
+		&operator.VMServiceScrape{},
+		&operator.VMServiceScrapeList{},
+		&operator.VMRule{},
+		&operator.VMRuleList{},
 	}
 
 	for _, obj := range objs {

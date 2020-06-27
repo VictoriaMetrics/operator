@@ -4,8 +4,6 @@ metadata:
   name: vmagent
   namespace: default
 ---
-
-# ------------------- Prometheus ClusterRole ------------------- #
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRole
 metadata:
@@ -26,8 +24,6 @@ rules:
   - nonResourceURLs: ["/metrics"]
     verbs: ["get"]
 ---
-
-# ------------------- Prometheus ClusterRoleBinding ------------------- #
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRoleBinding
 metadata:

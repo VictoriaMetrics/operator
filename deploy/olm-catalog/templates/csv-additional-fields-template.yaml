@@ -12,14 +12,13 @@ metadata:
     support: VictoriaMetrics support with telegram and slack channels
 spec:
   description: |
-    # VictoriaMetrics operator for Kubernetes
+    # operator docs
 
       docs:
-      -  quick start [doc](/docs/quick-start.MD)
-      -  design and description of implementation [design](/docs/design.MD)
-      -  high availability [doc](/docs/high-availability.MD)
-      -  operator objects description [doc](/docs/api.MD)
-      -  backup [doc](/docs/backup.MD)
+      -  quick start [doc](https://github.com/VictoriaMetrics/operator/docs/quick-start.MD)
+      -  design and description of implementation [design](https://github.com/VictoriaMetrics/operator/docs/design.MD)
+      -  high availability [doc](https://github.com/VictoriaMetrics/operator/docs/high-availability.MD)
+      -  operator objects description [doc](https://github.com/VictoriaMetrics/operator/docs/api.MD)
 
        possible configuration options are available at [url](https://github.com/VictoriaMetrics/operator/blob/master/vars.MD)
 

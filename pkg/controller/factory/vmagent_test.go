@@ -3,7 +3,6 @@ package factory
 import (
 	"context"
 	"github.com/VictoriaMetrics/operator/conf"
-	monitoringv1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1"
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
@@ -124,18 +123,18 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{Name: "bauth-secret", Namespace: "default"},
 					Data:       map[string][]byte{"user": []byte(`user-name`), "password": []byte(`user-password`)},
 				},
-				&monitoringv1.ServiceMonitor{
+				&victoriametricsv1beta1.VMServiceScrape{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "vmsingle-monitor",
 						Namespace: "default",
 					},
-					Spec: monitoringv1.ServiceMonitorSpec{
+					Spec: victoriametricsv1beta1.VMServiceScrapeSpec{
 						Selector: metav1.LabelSelector{},
-						Endpoints: []monitoringv1.Endpoint{
+						Endpoints: []victoriametricsv1beta1.Endpoint{
 							{
 								Interval: "30s",
 								Scheme:   "http",
-								BasicAuth: &monitoringv1.BasicAuth{
+								BasicAuth: &victoriametricsv1beta1.BasicAuth{
 									Password: corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "bauth-secret"}, Key: "password"},
 									Username: corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "bauth-secret"}, Key: "user"},
 								},
@@ -170,22 +169,22 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{Name: "tls-scrape", Namespace: "default"},
 					Data:       map[string][]byte{"cert": []byte(`cert-data`), "ca": []byte(`ca-data`), "key": []byte(`key-data`)},
 				},
-				&monitoringv1.ServiceMonitor{
+				&victoriametricsv1beta1.VMServiceScrape{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "vmalert-monitor",
 						Namespace: "default",
 					},
-					Spec: monitoringv1.ServiceMonitorSpec{
+					Spec: victoriametricsv1beta1.VMServiceScrapeSpec{
 						Selector: metav1.LabelSelector{},
-						Endpoints: []monitoringv1.Endpoint{
+						Endpoints: []victoriametricsv1beta1.Endpoint{
 							{
 								Interval: "30s",
 								Scheme:   "https",
-								TLSConfig: &monitoringv1.TLSConfig{
-									CA: monitoringv1.SecretOrConfigMap{
+								TLSConfig: &victoriametricsv1beta1.TLSConfig{
+									CA: victoriametricsv1beta1.SecretOrConfigMap{
 										Secret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "tls-scrape"}, Key: "ca"},
 									},
-									Cert: monitoringv1.SecretOrConfigMap{
+									Cert: victoriametricsv1beta1.SecretOrConfigMap{
 										Secret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "tls-scrape"}, Key: "ca"},
 									},
 									KeySecret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "tls-scrape"}, Key: "key"},
@@ -309,12 +308,12 @@ func Test_addAddtionalScrapeConfigOwnership(t *testing.T) {
 					t.Errorf("cannot find secret for scrape config")
 				}
 				for _, ownerRef := range secret.OwnerReferences {
-					if ownerRef.Name == tt.args.cr.Name() {
+					if ownerRef.Name == tt.args.cr.Name {
 						refFound = true
 					}
 				}
 				if !refFound {
-					t.Errorf("cannot find secret ownership for vmagent: %s,secret name: %v", tt.args.cr.Name(), tt.args.cr.Spec.AdditionalScrapeConfigs.Name)
+					t.Errorf("cannot find secret ownership for vmagent: %s,secret name: %v", tt.args.cr.Name, tt.args.cr.Spec.AdditionalScrapeConfigs.Name)
 				}
 			}
 
@@ -324,7 +323,7 @@ func Test_addAddtionalScrapeConfigOwnership(t *testing.T) {
 
 func Test_loadTLSAssets(t *testing.T) {
 	type args struct {
-		monitors map[string]*monitoringv1.ServiceMonitor
+		monitors map[string]*victoriametricsv1beta1.VMServiceScrape
 	}
 	tests := []struct {
 		name              string
@@ -336,12 +335,12 @@ func Test_loadTLSAssets(t *testing.T) {
 		{
 			name: "load tls asset from secret",
 			args: args{
-				monitors: map[string]*monitoringv1.ServiceMonitor{
+				monitors: map[string]*victoriametricsv1beta1.VMServiceScrape{
 					"vmagent-monitor": {
 						ObjectMeta: metav1.ObjectMeta{Name: "vmagent-monitor", Namespace: "default"},
-						Spec: monitoringv1.ServiceMonitorSpec{
-							Endpoints: []monitoringv1.Endpoint{
-								{TLSConfig: &monitoringv1.TLSConfig{
+						Spec: victoriametricsv1beta1.VMServiceScrapeSpec{
+							Endpoints: []victoriametricsv1beta1.Endpoint{
+								{TLSConfig: &victoriametricsv1beta1.TLSConfig{
 									KeySecret: &corev1.SecretKeySelector{
 										LocalObjectReference: corev1.LocalObjectReference{
 											Name: "tls-secret",

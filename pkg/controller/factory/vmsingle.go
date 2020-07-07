@@ -3,11 +3,11 @@ package factory
 import (
 	"context"
 	"fmt"
+	"github.com/coreos/prometheus-operator/pkg/k8sutil"
 	"path"
 
 	"github.com/VictoriaMetrics/operator/conf"
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
-	"github.com/coreos/prometheus-operator/pkg/k8sutil"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -26,7 +26,7 @@ const (
 
 func CreateVMStorage(ctx context.Context, cr *victoriametricsv1beta1.VMSingle, rclient client.Client, c *conf.BaseOperatorConf) (*corev1.PersistentVolumeClaim, error) {
 
-	l := log.WithValues("vm.single.pvc.create", cr.Name())
+	l := log.WithValues("vm.single.pvc.create", cr.Name)
 	l.Info("reconciling pvc")
 	newPvc := makeVMSinglePvc(cr, c)
 	existPvc := &corev1.PersistentVolumeClaim{}
@@ -75,7 +75,7 @@ func makeVMSinglePvc(cr *victoriametricsv1beta1.VMSingle, c *conf.BaseOperatorCo
 
 func CreateOrUpdateVMSingle(ctx context.Context, cr *victoriametricsv1beta1.VMSingle, rclient client.Client, c *conf.BaseOperatorConf) (*appsv1.Deployment, error) {
 
-	l := log.WithValues("controller", "vmsingle.crud", "vmsingle", cr.Name())
+	l := log.WithValues("controller", "vmsingle.crud", "vmsingle", cr.Name)
 	l.Info("create or update vm single deploy")
 
 	newDeploy, err := newDeployForVMSingle(cr, c)
@@ -236,7 +236,7 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *conf.BaseOperat
 
 	for _, s := range cr.Spec.Secrets {
 		volumes = append(volumes, corev1.Volume{
-			Name: k8sutil.SanitizeVolumeName("secret-" + s),
+			Name: SanitizeVolumeName("secret-" + s),
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: s,
@@ -244,7 +244,7 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *conf.BaseOperat
 			},
 		})
 		vmMounts = append(vmMounts, corev1.VolumeMount{
-			Name:      k8sutil.SanitizeVolumeName("secret-" + s),
+			Name:      SanitizeVolumeName("secret-" + s),
 			ReadOnly:  true,
 			MountPath: path.Join(vmSingleSecretDir, s),
 		})
@@ -252,7 +252,7 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *conf.BaseOperat
 
 	for _, c := range cr.Spec.ConfigMaps {
 		volumes = append(volumes, corev1.Volume{
-			Name: k8sutil.SanitizeVolumeName("configmap-" + c),
+			Name: SanitizeVolumeName("configmap-" + c),
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
@@ -262,7 +262,7 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *conf.BaseOperat
 			},
 		})
 		vmMounts = append(vmMounts, corev1.VolumeMount{
-			Name:      k8sutil.SanitizeVolumeName("configmap-" + c),
+			Name:      SanitizeVolumeName("configmap-" + c),
 			ReadOnly:  true,
 			MountPath: path.Join(vmSingleConfigMapDir, c),
 		})

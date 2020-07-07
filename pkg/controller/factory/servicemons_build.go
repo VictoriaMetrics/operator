@@ -3,7 +3,6 @@ package factory
 import (
 	"fmt"
 	"github.com/VictoriaMetrics/operator/conf"
-	monitoringv1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1"
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
 	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
@@ -41,8 +40,8 @@ type BearerToken string
 
 func generateConfig(
 	cr *victoriametricsv1beta1.VMAgent,
-	sMons map[string]*monitoringv1.ServiceMonitor,
-	pMons map[string]*monitoringv1.PodMonitor,
+	sMons map[string]*victoriametricsv1beta1.VMServiceScrape,
+	pMons map[string]*victoriametricsv1beta1.VMPodScrape,
 	basicAuthSecrets map[string]BasicAuthCredentials,
 	bearerTokens map[string]BearerToken,
 	additionalScrapeConfigs []byte,
@@ -200,10 +199,10 @@ func honorTimestamps(cfg yaml.MapSlice, userHonorTimestamps *bool, overrideHonor
 }
 
 func generatePodMonitorConfig(
-	m *monitoringv1.PodMonitor,
-	ep monitoringv1.PodMetricsEndpoint,
+	m *victoriametricsv1beta1.VMPodScrape,
+	ep victoriametricsv1beta1.PodMetricsEndpoint,
 	i int,
-	apiserverConfig *monitoringv1.APIServerConfig,
+	apiserverConfig *victoriametricsv1beta1.APIServerConfig,
 	basicAuthSecrets map[string]BasicAuthCredentials,
 	ignoreHonorLabels bool,
 	overrideHonorTimestamps bool,
@@ -407,10 +406,10 @@ func generatePodMonitorConfig(
 }
 
 func generateServiceMonitorConfig(
-	m *monitoringv1.ServiceMonitor,
-	ep monitoringv1.Endpoint,
+	m *victoriametricsv1beta1.VMServiceScrape,
+	ep victoriametricsv1beta1.Endpoint,
 	i int,
-	apiserverConfig *monitoringv1.APIServerConfig,
+	apiserverConfig *victoriametricsv1beta1.APIServerConfig,
 	basicAuthSecrets map[string]BasicAuthCredentials,
 	bearerTokens map[string]BearerToken,
 	overrideHonorLabels bool,
@@ -659,7 +658,7 @@ func generateServiceMonitorConfig(
 	return cfg
 }
 
-func addTLStoYaml(cfg yaml.MapSlice, namespace string, tls *monitoringv1.TLSConfig) yaml.MapSlice {
+func addTLStoYaml(cfg yaml.MapSlice, namespace string, tls *victoriametricsv1beta1.TLSConfig) yaml.MapSlice {
 	if tls != nil {
 		pathPrefix := path.Join(tlsAssetsDir, namespace)
 		tlsConfig := yaml.MapSlice{
@@ -697,7 +696,7 @@ func addTLStoYaml(cfg yaml.MapSlice, namespace string, tls *monitoringv1.TLSConf
 	return cfg
 }
 
-func generateRelabelConfig(c *monitoringv1.RelabelConfig) yaml.MapSlice {
+func generateRelabelConfig(c *victoriametricsv1beta1.RelabelConfig) yaml.MapSlice {
 	relabeling := yaml.MapSlice{}
 
 	if len(c.SourceLabels) > 0 {
@@ -741,7 +740,7 @@ func prefixedName(name string) string {
 
 // getNamespacesFromNamespaceSelector gets a list of namespaces to select based on
 // the given namespace selector, the given default namespace, and whether to ignore namespace selectors
-func getNamespacesFromNamespaceSelector(nsel *monitoringv1.NamespaceSelector, namespace string, ignoreNamespaceSelectors bool) []string {
+func getNamespacesFromNamespaceSelector(nsel *victoriametricsv1beta1.NamespaceSelector, namespace string, ignoreNamespaceSelectors bool) []string {
 	if ignoreNamespaceSelectors {
 		return []string{namespace}
 	} else if nsel.Any {
@@ -752,7 +751,7 @@ func getNamespacesFromNamespaceSelector(nsel *monitoringv1.NamespaceSelector, na
 	return nsel.MatchNames
 }
 
-func generateK8SSDConfig(namespaces []string, apiserverConfig *monitoringv1.APIServerConfig, basicAuthSecrets map[string]BasicAuthCredentials, role string) yaml.MapItem {
+func generateK8SSDConfig(namespaces []string, apiserverConfig *victoriametricsv1beta1.APIServerConfig, basicAuthSecrets map[string]BasicAuthCredentials, role string) yaml.MapItem {
 	k8sSDConfig := yaml.MapSlice{
 		{
 			Key:   "role",
@@ -843,7 +842,7 @@ func buildExternalLabels(p *victoriametricsv1beta1.VMAgent) yaml.MapSlice {
 	}
 
 	if prometheusExternalLabelName != "" {
-		m[prometheusExternalLabelName] = fmt.Sprintf("%s/%s", p.Namespace, p.Name())
+		m[prometheusExternalLabelName] = fmt.Sprintf("%s/%s", p.Namespace, p.Name)
 	}
 
 	if replicaExternalLabelName != "" {

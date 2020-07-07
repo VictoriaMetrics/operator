@@ -10,7 +10,6 @@ import (
 	"github.com/VictoriaMetrics/operator/conf"
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
 	"github.com/blang/semver"
-	"github.com/coreos/prometheus-operator/pkg/k8sutil"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -42,10 +41,10 @@ var (
 )
 
 func CreateOrUpdateAlertManager(ctx context.Context, cr *victoriametricsv1beta1.VMAlertmanager, rclient client.Client, c *conf.BaseOperatorConf) (*appsv1.StatefulSet, error) {
-	l := log.WithValues("reconcile.VMAlertManager.sts", cr.Name(), "ns", cr.Namespace)
+	l := log.WithValues("reconcile.VMAlertManager.sts", cr.Name, "ns", cr.Namespace)
 	newSts, err := newStsForAlertManager(cr, c)
 	if err != nil {
-		return nil, fmt.Errorf("cannot generate alertmanager sts, name: %s,err: %w", cr.Name(), err)
+		return nil, fmt.Errorf("cannot generate alertmanager sts, name: %s,err: %w", cr.Name, err)
 	}
 	currentSts := &appsv1.StatefulSet{}
 	err = rclient.Get(ctx, types.NamespacedName{Name: newSts.Name, Namespace: newSts.Namespace}, currentSts)
@@ -130,7 +129,7 @@ func newStsForAlertManager(cr *victoriametricsv1beta1.VMAlertmanager, c *conf.Ba
 	storageSpec := cr.Spec.Storage
 	if storageSpec == nil {
 		statefulset.Spec.Template.Spec.Volumes = append(statefulset.Spec.Template.Spec.Volumes, v1.Volume{
-			Name: volumeName(cr.Name()),
+			Name: volumeName(cr.Name),
 			VolumeSource: v1.VolumeSource{
 				EmptyDir: &v1.EmptyDirVolumeSource{},
 			},
@@ -138,7 +137,7 @@ func newStsForAlertManager(cr *victoriametricsv1beta1.VMAlertmanager, c *conf.Ba
 	} else if storageSpec.EmptyDir != nil {
 		emptyDir := storageSpec.EmptyDir
 		statefulset.Spec.Template.Spec.Volumes = append(statefulset.Spec.Template.Spec.Volumes, v1.Volume{
-			Name: volumeName(cr.Name()),
+			Name: volumeName(cr.Name),
 			VolumeSource: v1.VolumeSource{
 				EmptyDir: emptyDir,
 			},
@@ -146,7 +145,7 @@ func newStsForAlertManager(cr *victoriametricsv1beta1.VMAlertmanager, c *conf.Ba
 	} else {
 		pvcTemplate := MakeVolumeClaimTemplate(storageSpec.VolumeClaimTemplate)
 		if pvcTemplate.Name == "" {
-			pvcTemplate.Name = volumeName(cr.Name())
+			pvcTemplate.Name = volumeName(cr.Name)
 		}
 		if storageSpec.VolumeClaimTemplate.Spec.AccessModes == nil {
 			pvcTemplate.Spec.AccessModes = []v1.PersistentVolumeAccessMode{v1.ReadWriteOnce}
@@ -165,7 +164,7 @@ func newStsForAlertManager(cr *victoriametricsv1beta1.VMAlertmanager, c *conf.Ba
 
 func CreateOrUpdateAlertManagerService(ctx context.Context, cr *victoriametricsv1beta1.VMAlertmanager, rclient client.Client, c *conf.BaseOperatorConf) (*v1.Service, error) {
 
-	l := log.WithValues("recon.alertmanager.service", cr.Name())
+	l := log.WithValues("recon.alertmanager.service", cr.Name)
 
 	newService := newAlertManagerService(cr, c)
 	oldService := &v1.Service{}
@@ -348,7 +347,7 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, config *conf
 		clusterPeerDomain = cr.PrefixedName()
 	}
 	for i := int32(0); i < *cr.Spec.ReplicaCount; i++ {
-		amArgs = append(amArgs, fmt.Sprintf("--cluster.peer=%s-%d.%s:9094", prefixedName(cr.Name()), i, clusterPeerDomain))
+		amArgs = append(amArgs, fmt.Sprintf("--cluster.peer=%s-%d.%s:9094", prefixedName(cr.Name), i, clusterPeerDomain))
 	}
 
 	for _, peer := range cr.Spec.AdditionalPeers {
@@ -421,7 +420,7 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, config *conf
 		},
 	}
 
-	volName := volumeName(cr.Name())
+	volName := volumeName(cr.Name)
 	if cr.Spec.Storage != nil {
 		if cr.Spec.Storage.VolumeClaimTemplate.Name != "" {
 			volName = cr.Spec.Storage.VolumeClaimTemplate.Name
@@ -442,7 +441,7 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, config *conf
 
 	for _, s := range cr.Spec.Secrets {
 		volumes = append(volumes, v1.Volume{
-			Name: k8sutil.SanitizeVolumeName("secret-" + s),
+			Name: SanitizeVolumeName("secret-" + s),
 			VolumeSource: v1.VolumeSource{
 				Secret: &v1.SecretVolumeSource{
 					SecretName: s,
@@ -450,7 +449,7 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, config *conf
 			},
 		})
 		amVolumeMounts = append(amVolumeMounts, v1.VolumeMount{
-			Name:      k8sutil.SanitizeVolumeName("secret-" + s),
+			Name:      SanitizeVolumeName("secret-" + s),
 			ReadOnly:  true,
 			MountPath: secretsDir + s,
 		})
@@ -458,7 +457,7 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, config *conf
 
 	for _, c := range cr.Spec.ConfigMaps {
 		volumes = append(volumes, v1.Volume{
-			Name: k8sutil.SanitizeVolumeName("configmap-" + c),
+			Name: SanitizeVolumeName("configmap-" + c),
 			VolumeSource: v1.VolumeSource{
 				ConfigMap: &v1.ConfigMapVolumeSource{
 					LocalObjectReference: v1.LocalObjectReference{
@@ -468,7 +467,7 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, config *conf
 			},
 		})
 		amVolumeMounts = append(amVolumeMounts, v1.VolumeMount{
-			Name:      k8sutil.SanitizeVolumeName("configmap-" + c),
+			Name:      SanitizeVolumeName("configmap-" + c),
 			ReadOnly:  true,
 			MountPath: configmapsDir + c,
 		})

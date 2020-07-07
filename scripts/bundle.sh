@@ -4,10 +4,8 @@ set -x
 
 
 mkdir -p install/crds/vm
-mkdir install/crds/prom
 mkdir install/operator
 mkdir install/examples
-cp deploy/crds/monitoring* install/crds/prom/
 cp deploy/crds/victoriametrics* install/crds/vm/
 cp deploy/*.yaml install/operator/
 cp deploy/examples/* install/examples/

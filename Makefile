@@ -1,6 +1,7 @@
 # Go parameters
 GOCMD=GO111MODULE=on go
-VERSION=$($CI_BUILD_TAG)
+TAG="master"
+VERSION=$(TAG)
 BUILD=`date +%FT%T%z`
 LDFLAGS=-ldflags "-w -s  -X main.Version=${VERSION} -X main.BuildData=${BUILD}"
 GOBUILD=CGO_ENABLED=0 GOOS=linux GOARCH=amd64  $(GOCMD) build -trimpath ${LDFLAGS}
@@ -13,25 +14,50 @@ REPO=github.com/VictoriaMetrics/operator
 MAIN_DIR=$(REPO)/cmd/manager/
 DOC_GEN_DIR=$(REPO)/cmd/doc-gen/
 OPERATOR_BIN=operator-sdk
-DOCKER_REPO=quay.io/f41gh7/vm-operator
-TAG="master"
+DOCKER_REPO=victoriametrics/operator
 E2E_IMAGE ?= latest
-
+CSV_VERSION ?= 0.0.1
+QUAY_TOKEN=$(REPO_TOKEN)
 TEST_ARGS=$(GOCMD) test -covermode=atomic -coverprofile=coverage.txt -v
+APIS_BASE_PATH=pkg/apis/victoriametrics/v1beta1
+GOPATHDIR ?= ~/go
 
 .PHONY: build
 
 all: build
 
+gen-client:
+	client-gen --go-header-file $(GOPATHDIR)/pkg/mod/k8s.io/code-generator@v0.18.4/hack/boilerplate.go.txt \
+	 --input-base=""\
+	 --input=$(REPO)/pkg/apis/victoriametrics/v1beta1 \
+	 --clientset-name "versioned" \
+	 --output-package=$(REPO)/pkg/client \
+	 --output-base ""
+	cp -R $(REPO)/pkg/client ./pkg
+
 install-golint:
 	which golint || GO111MODULE=off go get -u golang.org/x/lint/golint
+
+install-develop-tools: install-golint
+	which operator-courier || pip install operator-courier
 
 report:
 	$(GOCMD) tool cover -html=coverage.txt
 
 gen:
-	$(OPERATOR_BIN) generate crds
+	$(OPERATOR_BIN) generate crds --crd-version=v1beta1
 	$(OPERATOR_BIN) generate k8s
+
+olm:
+	$(OPERATOR_BIN) generate csv --operator-name=victoria-metrics-operator \
+	                             --csv-version $(CSV_VERSION)\
+	                             --apis-dir=pkg/apis/victoriametrics/ \
+	                             --make-manifests=false \
+	                             --update-crds
+
+olm-verify:
+	operator-courier verify deploy/olm-catalog/victoria-metrics-operator/
+
 
 build-app: fmt
 	$(GOBUILD)  -o $(BINARY_NAME) -v $(MAIN_DIR)
@@ -39,7 +65,17 @@ build-app: fmt
 
 doc:
 	$(GOBUILD) -o doc-print $(DOC_GEN_DIR)
-	./doc-print api pkg/apis/victoriametrics/v1beta1/alertmanager_types.go pkg/apis/victoriametrics/v1beta1/vmagent_types.go pkg/apis/victoriametrics/v1beta1/additional.go pkg/apis/victoriametrics/v1beta1/vmalert_types.go pkg/apis/victoriametrics/v1beta1/vmsingle_types.go pkg/apis/monitoring/v1/prometheusrule_types.go pkg/apis/monitoring/v1/servicemonitor_types.go  > docs/api.MD
+	./doc-print api \
+	         $(APIS_BASE_PATH)/alertmanager_types.go \
+	         $(APIS_BASE_PATH)/vmagent_types.go \
+	         $(APIS_BASE_PATH)/additional.go \
+	         $(APIS_BASE_PATH)/vmalert_types.go \
+	         $(APIS_BASE_PATH)/vmsingle_types.go \
+	         $(APIS_BASE_PATH)/vmrule_types.go \
+	         $(APIS_BASE_PATH)/vmservicescrape_types.go \
+	         $(APIS_BASE_PATH)/vmpodscrape_types.go \
+	         $(APIS_BASE_PATH)/vmprometheusconvertor_types.go \
+	           > docs/api.MD
 
 
 fmt:
@@ -57,22 +93,24 @@ test:
 	$(TEST_ARGS) $(REPO)/pkg/...
 	$(GOCMD) tool cover -func coverage.txt  | grep total
 
-.PHONY:e2e
+.PHONY:e2e-local
 e2e-local:
-	operator-sdk test local ./e2e/ --up-local --operator-namespace="default" --verbose --image=$(DOCKER_REPO):$(E2E_IMAGE)
+	$(OPERATOR_BIN) test local ./e2e/ --up-local --operator-namespace="default" --verbose
 
 .PHONY:e2e
 e2e:
-	operator-sdk test local ./e2e/ --operator-namespace="default" --verbose --image=$(DOCKER_REPO):$(E2E_IMAGE)
+	$(OPERATOR_BIN) test local ./e2e/ --operator-namespace="default" --verbose --image=$(DOCKER_REPO):$(E2E_IMAGE)
 
 lint:
-	golangci-lint run --exclude '(SA1019):' -E typecheck -E gosimple   --timeout 5m
-	golint ./pkg
+	golangci-lint run --exclude '(SA1019):' -E typecheck -E gosimple   --timeout 5m --skip-dirs 'pkg/client'
+	golint ./pkg/
 
+.PHONY:clean
 clean:
 	$(GOCLEAN)
 	rm -f $(BINARY_NAME)
 	rm -f $(BINARY_UNIX)
 
+.PHONY: run
 run: build
 	WATCH_NAMESPACE="" OPERATOR_NAME=vms ./$(BINARY_NAME)

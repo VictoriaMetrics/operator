@@ -40,9 +40,8 @@ jobs:
         with:
           username: ${{secrets.REPO_USER}}
           password: ${{secrets.REPO_KEY}}
-          registry: "quay.io"
           tag_with_ref: true
-          repository: f41gh7/vm-operator
+          repository: victoriametrics/operator
           dockerfile: cmd/manager/Dockerfile
 
 

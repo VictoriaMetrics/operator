@@ -603,7 +603,7 @@ func (in *VMAgentRemoteWriteSpec) DeepCopyInto(out *VMAgentRemoteWriteSpec) {
 	*out = *in
 	if in.BasicAuth != nil {
 		in, out := &in.BasicAuth, &out.BasicAuth
-		*out = new(monitoringv1.BasicAuth)
+		*out = new(BasicAuth)
 		(*in).DeepCopyInto(*out)
 	}
 	if in.BearerTokenSecret != nil {
@@ -919,7 +919,7 @@ func (in *VMAlertRemoteWriteSpec) DeepCopyInto(out *VMAlertRemoteWriteSpec) {
 	*out = *in
 	if in.BasicAuth != nil {
 		in, out := &in.BasicAuth, &out.BasicAuth
-		*out = new(monitoringv1.BasicAuth)
+		*out = new(BasicAuth)
 		(*in).DeepCopyInto(*out)
 	}
 	return

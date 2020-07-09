@@ -2,7 +2,6 @@ package v1beta1
 
 import (
 	"fmt"
-	"path"
 	"strings"
 
 	v1 "k8s.io/api/core/v1"
@@ -213,7 +212,7 @@ type VMAgentRemoteWriteSpec struct {
 	URL string `json:"url"`
 	// BasicAuth allow an endpoint to authenticate over basic authentication
 	// +optional
-	BasicAuth *monitoringv1.BasicAuth `json:"basicAuth,omitempty"`
+	BasicAuth *BasicAuth `json:"basicAuth,omitempty"`
 	// Optional bearer auth token to use for -remoteWrite.url
 	// +optional
 	BearerTokenSecret *v1.SecretKeySelector `json:"bearerTokenSecret,omitempty"`
@@ -359,72 +358,6 @@ func (cr VMAgent) PrefixedName() string {
 
 func (cr VMAgent) TLSAssetName() string {
 	return fmt.Sprintf("tls-assets-vmagent-%s", cr.Name)
-}
-
-func (rws VMAgentRemoteWriteSpec) AsArgs(mountPath string) (string, error) {
-	var args strings.Builder
-	if _, err := fmt.Fprintf(&args, "-remoteWrite.url=%v ", rws.URL); err != nil {
-		return "", err
-	}
-	// TODO: implement auth
-	//if rws.BasicAuth != nil {
-	//
-	//}
-	if rws.FlushInterval != nil {
-		if _, err := fmt.Fprintf(&args, "-remoteWrite.flushInterval=%v ", *rws.FlushInterval); err != nil {
-			return "", err
-		}
-	}
-
-	for n, v := range rws.Labels {
-		if _, err := fmt.Fprintf(&args, "-remoteWrite.label=%v=%v ", n, v); err != nil {
-			return "", err
-		}
-	}
-
-	if rws.MaxBlockSize != nil {
-		if _, err := fmt.Fprintf(&args, "-remoteWrite.maxBlockSize=%v ", *rws.MaxBlockSize); err != nil {
-			return "", err
-		}
-	}
-
-	if rws.MaxDiskUsagePerURL != nil {
-		if _, err := fmt.Fprintf(&args, "-remoteWrite.maxDiskUsagePerURL=%v ", *rws.MaxDiskUsagePerURL); err != nil {
-			return "", err
-		}
-	}
-
-	if rws.Queues != nil {
-		if _, err := fmt.Fprintf(&args, "-remoteWrite.queues=%v ", *rws.Queues); err != nil {
-			return "", err
-		}
-	}
-
-	if rws.UrlRelabelConfig != nil {
-		if _, err := fmt.Fprintf(&args, "-remoteWrite.urlRelabelConfig=%v ", path.Join(mountPath, rws.UrlRelabelConfig.Name, rws.UrlRelabelConfig.Key)); err != nil {
-			return "", err
-		}
-	}
-
-	if rws.SendTimeout != nil {
-		if _, err := fmt.Fprintf(&args, "-remoteWrite.sendTimeout=%v ", *rws.SendTimeout); err != nil {
-			return "", err
-		}
-	}
-
-	if rws.ShowURL != nil {
-		if _, err := fmt.Fprintf(&args, "-remoteWrite.showURL=%v ", *rws.ShowURL); err != nil {
-			return "", err
-		}
-	}
-
-	if rws.TmpDataPath != nil {
-		if _, err := fmt.Fprintf(&args, "-remoteWrite.tmpDataPath=%v ", *rws.TmpDataPath); err != nil {
-			return "", err
-		}
-	}
-
-	return args.String(), nil
 }
 
 func init() {

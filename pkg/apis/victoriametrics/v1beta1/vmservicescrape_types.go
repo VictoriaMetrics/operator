@@ -165,20 +165,6 @@ type TLSConfig struct {
 	InsecureSkipVerify bool `json:"insecureSkipVerify,omitempty"`
 }
 
-// BasicAuth allow an endpoint to authenticate over basic authentication
-// More info: https://prometheus.io/docs/operating/configuration/#endpoints
-// +k8s:openapi-gen=true
-type BasicAuth struct {
-	// The secret in the service monitor namespace that contains the username
-	// for authentication.
-	// +optional
-	Username v1.SecretKeySelector `json:"username,omitempty"`
-	// The secret in the service monitor namespace that contains the password
-	// for authentication.
-	// +optional
-	Password v1.SecretKeySelector `json:"password,omitempty"`
-}
-
 // SecretOrConfigMap allows to specify data as a Secret or ConfigMap. Fields are mutually exclusive.
 type SecretOrConfigMap struct {
 	// Secret containing data to use for the targets.

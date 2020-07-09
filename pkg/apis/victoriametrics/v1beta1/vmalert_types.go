@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	monitoringv1 "github.com/VictoriaMetrics/operator/pkg/apis/monitoring/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
@@ -170,7 +169,7 @@ type VMAlertRemoteWriteSpec struct {
 	URL string `json:"url"`
 	// BasicAuth allow an endpoint to authenticate over basic authentication
 	// +optional
-	BasicAuth *monitoringv1.BasicAuth `json:"basicAuth,omitempty"`
+	BasicAuth *BasicAuth `json:"basicAuth,omitempty"`
 	// Defines number of readers that concurrently write into remote storage (default 1)
 	// +optional
 	Concurrency int32 `json:"concurrency,omitempty"`

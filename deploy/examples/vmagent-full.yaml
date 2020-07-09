@@ -1,3 +1,47 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: vm-agent-global-relabel-config
+  labels:
+    app: vm-operator
+data:
+  relabel.yaml: |-
+    - source_labels: [__meta_kubernetes_pod_name]
+      target_label: pod_name
+
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: vm-agent-url-relabel-config
+  labels:
+    app: vm-operator
+data:
+  relabel.yaml: |-
+    - source_labels: [__meta_kubernetes_node_name]
+      target_label: node_name
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: rws-bearer-token
+  labels:
+    app: vm-operator
+type: Opaque
+stringData:
+  token: token_test
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: rws-basic-auth
+  labels:
+    app: vm-operator
+type: Opaque
+stringData:
+  username: admin
+  password: passw0rd
+---
 apiVersion: victoriametrics.com/v1beta1
 kind: VMAgent
 metadata:
@@ -26,6 +70,7 @@ spec:
         password:
           name: rws-basic-auth
           key: password
+      flushInterval: 2s
       queues: 2
       urlRelabelConfig:
         name: "vm-agent-url-relabel-config"
@@ -33,10 +78,12 @@ spec:
       label:
         primary: "yes"
     - url: "http://vmsingle-example-vmsingle.alternative.svc:8429/api/v1/write"
-      flushInterval: 2m
       maxDiskUsagePerURL: 33
-      sendTimeout: 10m
+      sendTimeout: 30s
       showURL: true
+      bearerTokenSecret:
+        name: rws-bearer-token
+        key: token
       urlRelabelConfig:
         name: "vm-agent-global-relabel-config"
         key: "relabel.yaml"

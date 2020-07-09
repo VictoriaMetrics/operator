@@ -353,7 +353,7 @@ func loadBearerTokensFromSecrets(
 	mons map[string]*victoriametricsv1beta1.VMServiceScrape,
 	remoteWriteSpecs []victoriametricsv1beta1.VMAgentRemoteWriteSpec,
 	SecretsInPromNS *v1.SecretList,
-	) (map[string]BearerToken, error) {
+) (map[string]BearerToken, error) {
 	tokens := map[string]BearerToken{}
 	nsSecretCache := make(map[string]*v1.Secret)
 

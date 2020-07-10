@@ -152,6 +152,32 @@ type VMAgentSpec struct {
 	// external systems (federation, remote storage, etc).
 	// +optional
 	ExternalLabels map[string]string `json:"externalLabels,omitempty"`
+	// Interval for flushing the data to remote storage. (default 1s)
+	// +optional
+	// +kubebuilder:validation:Pattern:="[0-9]+(ms|s|m|h)"
+	FlushInterval *string `json:"flushInterval,omitempty"`
+	// The maximum size in bytes of unpacked request to send to remote storage
+	// +optional
+	MaxBlockSize *int32 `json:"maxBlockSize,omitempty"`
+	// The maximum file-based buffer size in bytes at -remoteWrite.tmpDataPath
+	// +optional
+	MaxDiskUsagePerURL *int32 `json:"maxDiskUsagePerURL,omitempty"`
+	// The number of concurrent queues
+	// +optional
+	Queues *int32 `json:"queues,omitempty"`
+	// Timeout for sending a single block of data to -remoteWrite.url (default 1m0s)
+	// +optional
+	// +kubebuilder:validation:Pattern:="[0-9]+(ms|s|m|h)"
+	SendTimeout *string `json:"sendTimeout,omitempty"`
+	// Whether to show -remoteWrite.url in the exported metrics. It is hidden by default, since it can contain sensistive auth info
+	// +optional
+	ShowURL *bool `json:"showURL,omitempty"`
+	// Path to directory where temporary data for remote write component is stored (default "vmagent-remotewrite-data")
+	// +optional
+	TmpDataPath *string `json:"tmpDataPath,omitempty"`
+	// Optional labels in the form 'name=value' to add to all the metrics before sending them
+	// +optional
+	Labels map[string]string `json:"label,omitempty"`
 	// RemoteWrite list of victoria metrics /some other remote write system
 	// for vm it must looks like: http://victoria-metrics-single:8429/api/v1/write
 	// or for cluster different url
@@ -216,35 +242,9 @@ type VMAgentRemoteWriteSpec struct {
 	// Optional bearer auth token to use for -remoteWrite.url
 	// +optional
 	BearerTokenSecret *v1.SecretKeySelector `json:"bearerTokenSecret,omitempty"`
-	// Interval for flushing the data to remote storage. (default 1s)
-	// +optional
-	// +kubebuilder:validation:Pattern:="[0-9]+(ms|s|m|h)"
-	FlushInterval *string `json:"flushInterval,omitempty"`
-	// Optional labels in the form 'name=value' to add to all the metrics before sending them
-	// +optional
-	Labels map[string]string `json:"label,omitempty"`
-	// The maximum size in bytes of unpacked request to send to remote storage
-	// +optional
-	MaxBlockSize *int32 `json:"maxBlockSize,omitempty"`
-	// The maximum file-based buffer size in bytes at -remoteWrite.tmpDataPath
-	// +optional
-	MaxDiskUsagePerURL *int32 `json:"maxDiskUsagePerURL,omitempty"`
-	// The number of concurrent queues
-	// +optional
-	Queues *int32 `json:"queues,omitempty"`
 	// ConfigMap with relabeling config which is applied to metrics before sending them to the corresponding -remoteWrite.url
 	// +optional
 	UrlRelabelConfig *v1.ConfigMapKeySelector `json:"urlRelabelConfig,omitempty"`
-	// Timeout for sending a single block of data to -remoteWrite.url (default 1m0s)
-	// +optional
-	// +kubebuilder:validation:Pattern:="[0-9]+(ms|s|m|h)"
-	SendTimeout *string `json:"sendTimeout,omitempty"`
-	// Whether to show -remoteWrite.url in the exported metrics. It is hidden by default, since it can contain sensistive auth info
-	// +optional
-	ShowURL *bool `json:"showURL,omitempty"`
-	// Path to directory where temporary data for remote write component is stored (default "vmagent-remotewrite-data")
-	// +optional
-	TmpDataPath *string `json:"tmpDataPath,omitempty"`
 	// TODO: add remoteWrite.tls*
 }
 

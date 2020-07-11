@@ -1990,11 +1990,6 @@ spec:
                 - name
                 type: object
               type: array
-            flushInterval:
-              description: Interval for flushing the data to remote storage. (default
-                1s)
-              pattern: '[0-9]+(ms|s|m|h)'
-              type: string
             hostNetwork:
               description: HostNetwork controls whether the pod may use the node network
                 namespace
@@ -3076,12 +3071,6 @@ spec:
                 - name
                 type: object
               type: array
-            label:
-              additionalProperties:
-                type: string
-              description: Optional labels in the form 'name=value' to add to all
-                the metrics before sending them
-              type: object
             logFormat:
               description: LogFormat for VMAgent to be configured with.
               enum:
@@ -3098,15 +3087,6 @@ spec:
               - FATAL
               - PANIC
               type: string
-            maxBlockSize:
-              description: The maximum size in bytes of unpacked request to send to
-                remote storage
-              format: int32
-              type: integer
-            maxDiskUsagePerURL:
-              description: The maximum file-based buffer size in bytes at -remoteWrite.tmpDataPath
-              format: int32
-              type: integer
             overrideHonorLabels:
               description: OverrideHonorLabels if set to true overrides all user configured
                 honor_labels. If HonorLabels is set in ServiceMonitor or PodMonitor
@@ -3239,10 +3219,6 @@ spec:
             priorityClassName:
               description: PriorityClassName assigned to the Pods
               type: string
-            queues:
-              description: The number of concurrent queues
-              format: int32
-              type: integer
             relabelConfig:
               description: RelabelConfig ConfigMap with global relabel config -remoteWrite.relabelConfig
                 This relabeling is applied to all the collected metrics before sending
@@ -3330,6 +3306,44 @@ spec:
                     required:
                     - key
                     type: object
+                  flushInterval:
+                    description: Interval for flushing the data to remote storage.
+                      (default 1s)
+                    pattern: '[0-9]+(ms|s|m|h)'
+                    type: string
+                  label:
+                    additionalProperties:
+                      type: string
+                    description: Optional labels in the form 'name=value' to add to
+                      all the metrics before sending them
+                    type: object
+                  maxBlockSize:
+                    description: The maximum size in bytes of unpacked request to
+                      send to remote storage
+                    format: int32
+                    type: integer
+                  maxDiskUsagePerURL:
+                    description: The maximum file-based buffer size in bytes at -remoteWrite.tmpDataPath
+                    format: int32
+                    type: integer
+                  queues:
+                    description: The number of concurrent queues
+                    format: int32
+                    type: integer
+                  sendTimeout:
+                    description: Timeout for sending a single block of data to -remoteWrite.url
+                      (default 1m0s)
+                    pattern: '[0-9]+(ms|s|m|h)'
+                    type: string
+                  showURL:
+                    description: Whether to show -remoteWrite.url in the exported
+                      metrics. It is hidden by default, since it can contain sensistive
+                      auth info
+                    type: boolean
+                  tmpDataPath:
+                    description: Path to directory where temporary data for remote
+                      write component is stored (default "vmagent-remotewrite-data")
+                    type: string
                   url:
                     description: URL of the endpoint to send samples to.
                     type: string
@@ -3528,11 +3542,6 @@ spec:
                       type: string
                   type: object
               type: object
-            sendTimeout:
-              description: Timeout for sending a single block of data to -remoteWrite.url
-                (default 1m0s)
-              pattern: '[0-9]+(ms|s|m|h)'
-              type: string
             serviceAccountName:
               description: ServiceAccountName is the name of the ServiceAccount to
                 use to run the VMAgent Pods. required
@@ -3626,14 +3635,6 @@ spec:
                     are ANDed.
                   type: object
               type: object
-            showURL:
-              description: Whether to show -remoteWrite.url in the exported metrics.
-                It is hidden by default, since it can contain sensistive auth info
-              type: boolean
-            tmpDataPath:
-              description: Path to directory where temporary data for remote write
-                component is stored (default "vmagent-remotewrite-data")
-              type: string
             tolerations:
               description: Tolerations If specified, the pod's tolerations.
               items:

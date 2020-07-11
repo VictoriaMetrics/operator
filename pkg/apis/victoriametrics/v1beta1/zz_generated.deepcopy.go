@@ -611,10 +611,52 @@ func (in *VMAgentRemoteWriteSpec) DeepCopyInto(out *VMAgentRemoteWriteSpec) {
 		*out = new(v1.SecretKeySelector)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.FlushInterval != nil {
+		in, out := &in.FlushInterval, &out.FlushInterval
+		*out = new(string)
+		**out = **in
+	}
+	if in.Labels != nil {
+		in, out := &in.Labels, &out.Labels
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
+	if in.MaxBlockSize != nil {
+		in, out := &in.MaxBlockSize, &out.MaxBlockSize
+		*out = new(int32)
+		**out = **in
+	}
+	if in.MaxDiskUsagePerURL != nil {
+		in, out := &in.MaxDiskUsagePerURL, &out.MaxDiskUsagePerURL
+		*out = new(int32)
+		**out = **in
+	}
+	if in.Queues != nil {
+		in, out := &in.Queues, &out.Queues
+		*out = new(int32)
+		**out = **in
+	}
 	if in.UrlRelabelConfig != nil {
 		in, out := &in.UrlRelabelConfig, &out.UrlRelabelConfig
 		*out = new(v1.ConfigMapKeySelector)
 		(*in).DeepCopyInto(*out)
+	}
+	if in.SendTimeout != nil {
+		in, out := &in.SendTimeout, &out.SendTimeout
+		*out = new(string)
+		**out = **in
+	}
+	if in.ShowURL != nil {
+		in, out := &in.ShowURL, &out.ShowURL
+		*out = new(bool)
+		**out = **in
+	}
+	if in.TmpDataPath != nil {
+		in, out := &in.TmpDataPath, &out.TmpDataPath
+		*out = new(string)
+		**out = **in
 	}
 	return
 }
@@ -725,48 +767,6 @@ func (in *VMAgentSpec) DeepCopyInto(out *VMAgentSpec) {
 	}
 	if in.ExternalLabels != nil {
 		in, out := &in.ExternalLabels, &out.ExternalLabels
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
-	if in.FlushInterval != nil {
-		in, out := &in.FlushInterval, &out.FlushInterval
-		*out = new(string)
-		**out = **in
-	}
-	if in.MaxBlockSize != nil {
-		in, out := &in.MaxBlockSize, &out.MaxBlockSize
-		*out = new(int32)
-		**out = **in
-	}
-	if in.MaxDiskUsagePerURL != nil {
-		in, out := &in.MaxDiskUsagePerURL, &out.MaxDiskUsagePerURL
-		*out = new(int32)
-		**out = **in
-	}
-	if in.Queues != nil {
-		in, out := &in.Queues, &out.Queues
-		*out = new(int32)
-		**out = **in
-	}
-	if in.SendTimeout != nil {
-		in, out := &in.SendTimeout, &out.SendTimeout
-		*out = new(string)
-		**out = **in
-	}
-	if in.ShowURL != nil {
-		in, out := &in.ShowURL, &out.ShowURL
-		*out = new(bool)
-		**out = **in
-	}
-	if in.TmpDataPath != nil {
-		in, out := &in.TmpDataPath, &out.TmpDataPath
-		*out = new(string)
-		**out = **in
-	}
-	if in.Labels != nil {
-		in, out := &in.Labels, &out.Labels
 		*out = make(map[string]string, len(*in))
 		for key, val := range *in {
 			(*out)[key] = val

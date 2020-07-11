@@ -3,7 +3,6 @@ package e2e
 import (
 	goctx "context"
 	"fmt"
-	v1 "k8s.io/api/core/v1"
 	"testing"
 
 	operator "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
@@ -63,7 +62,7 @@ func vmAgentCreateTest(t *testing.T, f *framework.Framework, ctx *framework.Cont
 }
 
 
-func vmAgentFullTest(t *testing.T, f *framework.Framework, ctx *framework.Context) error {
+/*func vmAgentFullTest(t *testing.T, f *framework.Framework, ctx *framework.Context) error {
 	namespace, err := ctx.GetOperatorNamespace()
 	if err != nil {
 		return fmt.Errorf("could not get namespace: %v", err)
@@ -152,7 +151,7 @@ func vmAgentFullTest(t *testing.T, f *framework.Framework, ctx *framework.Contex
 
 	// wait for example-vmagent to reach 1 replicas
 	return e2eutil.WaitForDeployment(t, f.KubeClient, namespace, "vmagent-example-vmagent-full", 1, retryInterval, timeout)
-}
+}*/
 
 func vmAgent(t *testing.T) {
 	ctx := framework.NewContext(t)

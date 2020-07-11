@@ -665,7 +665,7 @@ func LoadRemoteWriteSecrets(ctx context.Context, cr *victoriametricsv1beta1.VMAg
 }
 
 type remoteFlag struct {
-	isNolNull   bool
+	isNotNull   bool
 	flagSetting string
 }
 
@@ -673,7 +673,7 @@ func BuildRemoteWrites(remoteTargets []victoriametricsv1beta1.VMAgentRemoteWrite
 	var finalArgs []string
 	var remoteArgs []remoteFlag
 
-	url := remoteFlag{flagSetting: "-remoteWrite.url=", isNolNull: true}
+	url := remoteFlag{flagSetting: "-remoteWrite.url=", isNotNull: true}
 	authUser := remoteFlag{flagSetting: "-remoteWrite.basicAuth.username="}
 	authPassword := remoteFlag{flagSetting: "-remoteWrite.basicAuth.password="}
 	bearerToken := remoteFlag{flagSetting: "-remoteWrite.bearerToken="}
@@ -695,8 +695,8 @@ func BuildRemoteWrites(remoteTargets []victoriametricsv1beta1.VMAgentRemoteWrite
 		var pass string
 		if rws.BasicAuth != nil {
 			if s, ok := rwsBasicAuth[fmt.Sprintf("remoteWriteSpec/%s", rws.URL)]; ok {
-				authUser.isNolNull = true
-				authPassword.isNolNull = true
+				authUser.isNotNull = true
+				authPassword.isNotNull = true
 				user = s.username
 				pass = s.password
 			}
@@ -707,7 +707,7 @@ func BuildRemoteWrites(remoteTargets []victoriametricsv1beta1.VMAgentRemoteWrite
 		var value string
 		if rws.BearerTokenSecret != nil {
 			if s, ok := rwsTokens[fmt.Sprintf("remoteWriteSpec/%s", rws.URL)]; ok {
-				bearerToken.isNolNull = true
+				bearerToken.isNotNull = true
 				value = string(s)
 			}
 		}
@@ -715,14 +715,14 @@ func BuildRemoteWrites(remoteTargets []victoriametricsv1beta1.VMAgentRemoteWrite
 
 		value = ""
 		if rws.FlushInterval != nil {
-			flushInterval.isNolNull = true
+			flushInterval.isNotNull = true
 			value = *rws.FlushInterval
 		}
 		flushInterval.flagSetting += fmt.Sprintf("%s,", value)
 
 		value = ""
 		if rws.Labels != nil {
-			labels.isNolNull = true
+			labels.isNotNull = true
 			for n, v := range rws.Labels {
 				value += fmt.Sprintf("%v=%v,", n, v)
 			}
@@ -731,56 +731,56 @@ func BuildRemoteWrites(remoteTargets []victoriametricsv1beta1.VMAgentRemoteWrite
 
 		value = ""
 		if rws.MaxBlockSize != nil {
-			maxBlockSize.isNolNull = true
+			maxBlockSize.isNotNull = true
 			value = strconv.Itoa(int(*rws.MaxBlockSize))
 		}
 		maxBlockSize.flagSetting += fmt.Sprintf("%s,", value)
 
 		value = ""
 		if rws.MaxDiskUsagePerURL != nil {
-			maxDiskUsage.isNolNull = true
+			maxDiskUsage.isNotNull = true
 			value = strconv.Itoa(int(*rws.MaxDiskUsagePerURL))
 		}
 		maxDiskUsage.flagSetting += fmt.Sprintf("%s,", value)
 
 		value = ""
 		if rws.Queues != nil {
-			queues.isNolNull = true
+			queues.isNotNull = true
 			value = strconv.Itoa(int(*rws.Queues))
 		}
 		queues.flagSetting += fmt.Sprintf("%s,", value)
 
 		value = ""
 		if rws.UrlRelabelConfig != nil {
-			urlRelabelConfig.isNolNull = true
+			urlRelabelConfig.isNotNull = true
 			value = path.Join(vmAgentConfigsDir, rws.UrlRelabelConfig.Name, rws.UrlRelabelConfig.Key)
 		}
 		urlRelabelConfig.flagSetting += fmt.Sprintf("%s,", value)
 
 		value = ""
 		if rws.SendTimeout != nil {
-			sendTimeout.isNolNull = true
+			sendTimeout.isNotNull = true
 			value = *rws.SendTimeout
 		}
 		sendTimeout.flagSetting += fmt.Sprintf("%s,", value)
 
 		value = ""
 		if rws.ShowURL != nil {
-			showURL.isNolNull = true
+			showURL.isNotNull = true
 			value = strconv.FormatBool(*rws.ShowURL)
 		}
 		showURL.flagSetting += fmt.Sprintf("%s,", value)
 
 		value = ""
 		if rws.TmpDataPath != nil {
-			tmpDataPath.isNolNull = true
+			tmpDataPath.isNotNull = true
 			value = *rws.TmpDataPath
 		}
 		tmpDataPath.flagSetting += fmt.Sprintf("%s,", value)
 	}
 	remoteArgs = append(remoteArgs, url, authUser, authPassword, bearerToken, flushInterval, labels, maxBlockSize, maxDiskUsage, queues, urlRelabelConfig, sendTimeout, showURL, tmpDataPath)
 	for _, remoteArgType := range remoteArgs {
-		if remoteArgType.isNolNull {
+		if remoteArgType.isNotNull {
 			finalArgs = append(finalArgs, strings.TrimSuffix(remoteArgType.flagSetting, ","))
 		}
 	}

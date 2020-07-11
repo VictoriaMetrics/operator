@@ -39,7 +39,7 @@ metadata:
     app: vm-operator
 type: Opaque
 stringData:
-  username: adm"in,aa
+  username: admin
   password: passw0rd
 ---
 apiVersion: victoriametrics.com/v1beta1
@@ -61,14 +61,6 @@ spec:
   relabelConfig:
     name: "vm-agent-global-relabel-config"
     key: "relabel.yaml"
-  flushInterval: 2s
-  queues: 2
-  maxDiskUsagePerURL: 33
-  sendTimeout: 30s
-  showURL: true
-  label:
-    primary: "yes"
-    secondary: "yes"
   remoteWrite:
     - url: "http://vmsingle-example-vmsingle.default.svc:8429/api/v1/write"
       basicAuth:
@@ -78,14 +70,22 @@ spec:
         password:
           name: rws-basic-auth
           key: password
+      flushInterval: 2s
+      queues: 2
       urlRelabelConfig:
         name: "vm-agent-url-relabel-config"
         key: "relabel.yaml"
-
+      label:
+        primary: "yes"
     - url: "http://vmsingle-example-vmsingle.alternative.svc:8429/api/v1/write"
+      maxDiskUsagePerURL: 33
+      sendTimeout: 30s
+      showURL: true
       bearerTokenSecret:
         name: rws-bearer-token
         key: token
       urlRelabelConfig:
         name: "vm-agent-global-relabel-config"
         key: "relabel.yaml"
+      label:
+        secondary: "yes"

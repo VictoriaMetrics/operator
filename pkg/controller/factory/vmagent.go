@@ -363,23 +363,27 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *conf.BaseOperator
 	}
 
 	for _, rw := range cr.Spec.RemoteWrite {
-		if rw.UrlRelabelConfig != nil && rw.UrlRelabelConfig.Name != cr.Spec.RelabelConfig.Name {
-			volumes = append(volumes, corev1.Volume{
-				Name: k8sutil.SanitizeVolumeName("configmap-" + rw.UrlRelabelConfig.Name),
-				VolumeSource: corev1.VolumeSource{
-					ConfigMap: &corev1.ConfigMapVolumeSource{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: rw.UrlRelabelConfig.Name,
-						},
+		if rw.UrlRelabelConfig == nil {
+			continue
+		}
+		if rw.UrlRelabelConfig.Name == cr.Spec.RelabelConfig.Name {
+			continue
+		}
+		volumes = append(volumes, corev1.Volume{
+			Name: k8sutil.SanitizeVolumeName("configmap-" + rw.UrlRelabelConfig.Name),
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: rw.UrlRelabelConfig.Name,
 					},
 				},
-			})
-			agentVolumeMounts = append(agentVolumeMounts, corev1.VolumeMount{
-				Name:      k8sutil.SanitizeVolumeName("configmap-" + rw.UrlRelabelConfig.Name),
-				ReadOnly:  true,
-				MountPath: path.Join(vmAgentConfigsDir, rw.UrlRelabelConfig.Name),
-			})
-		}
+			},
+		})
+		agentVolumeMounts = append(agentVolumeMounts, corev1.VolumeMount{
+			Name:      k8sutil.SanitizeVolumeName("configmap-" + rw.UrlRelabelConfig.Name),
+			ReadOnly:  true,
+			MountPath: path.Join(vmAgentConfigsDir, rw.UrlRelabelConfig.Name),
+		})
 	}
 
 	livenessProbeHandler := corev1.Handler{

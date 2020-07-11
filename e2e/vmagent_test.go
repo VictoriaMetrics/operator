@@ -3,6 +3,7 @@ package e2e
 import (
 	goctx "context"
 	"fmt"
+	v1 "k8s.io/api/core/v1"
 	"testing"
 
 	operator "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
@@ -61,6 +62,98 @@ func vmAgentCreateTest(t *testing.T, f *framework.Framework, ctx *framework.Cont
 	return e2eutil.WaitForDeployment(t, f.KubeClient, namespace, "vmagent-example-vmagent", 2, retryInterval, timeout)
 }
 
+
+func vmAgentFullTest(t *testing.T, f *framework.Framework, ctx *framework.Context) error {
+	namespace, err := ctx.GetOperatorNamespace()
+	if err != nil {
+		return fmt.Errorf("could not get namespace: %v", err)
+	}
+	// create  custom resource
+	basicAuthSecret := &v1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name:"example-vmagent-basicauth",Namespace: namespace},
+		StringData: map[string]string{"username": "admin", "password": "passw0rd"},
+	}
+	err = f.Client.Create(goctx.TODO(), basicAuthSecret, &framework.CleanupOptions{TestContext: ctx, Timeout: cleanupTimeout, RetryInterval: cleanupRetryInterval})
+	if err != nil {
+		return err
+	}
+	basicAuthSelector :=  &operator.BasicAuth{
+		Username: v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: "example-vmagent-basicauth"}, Key: "username"},
+		Password: v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: "example-vmagent-basicauth"}, Key: "password"},
+	}
+
+	bearerSecret := &v1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name:"example-vmagent-bearer-token",Namespace: namespace},
+		StringData: map[string]string{"token": "token_test"},
+	}
+	err = f.Client.Create(goctx.TODO(), bearerSecret, &framework.CleanupOptions{TestContext: ctx, Timeout: cleanupTimeout, RetryInterval: cleanupRetryInterval})
+	if err != nil {
+		return err
+	}
+
+	relabelConfig1 := &v1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: "vm-agent-relabel-config1", Namespace: namespace},
+		Data:       map[string]string{"relabel.yaml": "---"},
+	}
+	err = f.Client.Create(goctx.TODO(), relabelConfig1, &framework.CleanupOptions{TestContext: ctx, Timeout: cleanupTimeout, RetryInterval: cleanupRetryInterval})
+	if err != nil {
+		return err
+	}
+	relabelConfig2 := &v1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: "vm-agent-relabel-config2", Namespace: namespace},
+		Data:       map[string]string{"relabel.yaml": "---"},
+	}
+	err = f.Client.Create(goctx.TODO(), relabelConfig2, &framework.CleanupOptions{TestContext: ctx, Timeout: cleanupTimeout, RetryInterval: cleanupRetryInterval})
+	if err != nil {
+		return err
+	}
+
+	exampleFullVmAgent := &operator.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "example-vmagent-full",
+			Namespace: namespace,
+		},
+		Spec: operator.VMAgentSpec{
+			ReplicaCount: pointer.Int32Ptr(1),
+			ScrapeInterval: "15s",
+			RelabelConfig: &v1.ConfigMapKeySelector{Key: "relabel.yaml", LocalObjectReference: v1.LocalObjectReference{Name: "vm-agent-relabel-config1"}},
+			RemoteWrite: []operator.VMAgentRemoteWriteSpec{
+				{
+					URL: "http://localhost",
+					BasicAuth: basicAuthSelector,
+					// uncomment this once https://github.com/VictoriaMetrics/VictoriaMetrics/issues/616 will be fixed
+					//FlushInterval: pointer.StringPtr("15m"),
+					//Queues: pointer.Int32Ptr(100),
+					//MaxDiskUsagePerURL: pointer.Int32Ptr(30),
+					//MaxBlockSize: pointer.Int32Ptr(100),
+					//SendTimeout: pointer.StringPtr("10s"),
+					//ShowURL: pointer.BoolPtr(true),
+				},
+				{
+					URL: "http://localhost2",
+					BearerTokenSecret: &v1.SecretKeySelector{Key: "token", LocalObjectReference: v1.LocalObjectReference{Name: "example-vmagent-bearer-token"}},
+					UrlRelabelConfig: &v1.ConfigMapKeySelector{Key: "relabel.yaml", LocalObjectReference: v1.LocalObjectReference{Name: "vm-agent-relabel-config2"}},
+				},
+			},
+			ServiceMonitorSelector:&metav1.LabelSelector{MatchLabels: map[string]string{"managed-by": "vm-operator"}},
+		},
+	}
+	// use TestCtx's create helper to create the object and add a cleanup function for the new object
+	err = f.Client.Create(goctx.TODO(), exampleFullVmAgent, &framework.CleanupOptions{TestContext: ctx, Timeout: cleanupTimeout, RetryInterval: cleanupRetryInterval})
+	if err != nil {
+		return err
+	}
+
+	//wait for config
+	err = WaitForSecret(t, f.KubeClient, namespace, "vmagent-example-vmagent-full", retryInterval, timeout)
+	if err != nil {
+		return err
+	}
+
+	// wait for example-vmagent to reach 1 replicas
+	return e2eutil.WaitForDeployment(t, f.KubeClient, namespace, "vmagent-example-vmagent-full", 1, retryInterval, timeout)
+}
+
 func vmAgent(t *testing.T) {
 	ctx := framework.NewContext(t)
 	defer ctx.Cleanup()
@@ -84,4 +177,7 @@ func vmAgent(t *testing.T) {
 	if err = vmAgentCreateTest(t, f, ctx); err != nil {
 		t.Fatal(err)
 	}
+	//if err = vmAgentFullTest(t, f, ctx); err != nil {
+	//	t.Fatal(err)
+	//}
 }

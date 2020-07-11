@@ -3,6 +3,7 @@ package e2e
 import (
 	goctx "context"
 	"fmt"
+	v1 "k8s.io/api/core/v1"
 	"testing"
 
 	operator "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
@@ -27,7 +28,7 @@ func vmAlertCreateTest(t *testing.T, f *framework.Framework, ctx *framework.Cont
 		Spec: operator.VMAlertSpec{
 			ReplicaCount: pointer.Int32Ptr(1),
 			NotifierURL:  "http://localhost",
-			Datasource:   operator.RemoteSpec{URL: "http://localhost"},
+			Datasource:   operator.VMAlertDatasourceSpec{URL: "http://localhost"},
 		},
 	}
 	// use TestCtx's create helper to create the object and add a cleanup function for the new object
@@ -62,6 +63,77 @@ func vmAlertCreateTest(t *testing.T, f *framework.Framework, ctx *framework.Cont
 	return e2eutil.WaitForDeployment(t, f.KubeClient, namespace, "vmalert-example-vmalert", 1, retryInterval, timeout)
 }
 
+func vmAlertFullTest(t *testing.T, f *framework.Framework, ctx *framework.Context) error {
+	namespace, err := ctx.GetOperatorNamespace()
+	if err != nil {
+		return fmt.Errorf("could not get namespace: %v", err)
+	}
+	// create  custom resource
+	basicAuthSecret := &v1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "example-vmalert-basicauth",
+			Namespace: namespace,
+		},
+		StringData: map[string]string{"username": "admin", "password": "passw0rd"},
+	}
+
+	// use TestCtx's create helper to create the object and add a cleanup function for the new object
+	err = f.Client.Create(goctx.TODO(), basicAuthSecret, &framework.CleanupOptions{TestContext: ctx, Timeout: cleanupTimeout, RetryInterval: cleanupRetryInterval})
+	if err != nil {
+		return err
+	}
+
+	basicAuthSelector :=  &operator.BasicAuth{
+		Username: v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: "example-vmalert-basicauth"}, Key: "username"},
+		Password: v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{Name: "example-vmalert-basicauth"}, Key: "password"},
+	}
+	flushInt := "5m"
+	lookback := "1h"
+	exampleFullVmAlert := &operator.VMAlert{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "example-vmalert-full",
+			Namespace: namespace,
+		},
+		Spec: operator.VMAlertSpec{
+			ReplicaCount: pointer.Int32Ptr(1),
+			NotifierURL:  "http://localhost",
+			Datasource:   operator.VMAlertDatasourceSpec{
+				URL: "http://localhost",
+				BasicAuth: basicAuthSelector,
+			},
+			EvaluationInterval: "30s",
+			RuleSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"managed-by": "vm-operator"}},
+			RemoteWrite: &operator.VMAlertRemoteWriteSpec{
+				URL: "http://localhost",
+				BasicAuth: basicAuthSelector,
+				Concurrency: pointer.Int32Ptr(12),
+				FlushInterval: &flushInt,
+				MaxBatchSize: pointer.Int32Ptr(20),
+				MaxQueueSize: pointer.Int32Ptr(100),
+			},
+			RemoteRead: &operator.VMAlertRemoteReadSpec{
+				URL: "http://localhost",
+				BasicAuth: basicAuthSelector,
+				Lookback: &lookback,
+			},
+		},
+	}
+	// use TestCtx's create helper to create the object and add a cleanup function for the new object
+	err = f.Client.Create(goctx.TODO(), exampleFullVmAlert, &framework.CleanupOptions{TestContext: ctx, Timeout: cleanupTimeout, RetryInterval: cleanupRetryInterval})
+	if err != nil {
+		return err
+	}
+
+	//wait for base config
+	err = WaitForConfigMap(t, f.KubeClient, namespace, "vm-example-vmalert-full-rulefiles-0", retryInterval, timeout)
+	if err != nil {
+		return err
+	}
+
+	// wait for example-vmalert to reach 1 replicas
+	return e2eutil.WaitForDeployment(t, f.KubeClient, namespace, "vmalert-example-vmalert-full", 1, retryInterval, timeout)
+}
+
 func vmAlert(t *testing.T) {
 	ctx := framework.NewContext(t)
 	defer ctx.Cleanup()
@@ -85,4 +157,7 @@ func vmAlert(t *testing.T) {
 	if err = vmAlertCreateTest(t, f, ctx); err != nil {
 		t.Fatal(err)
 	}
+	//if err = vmAlertFullTest(t, f, ctx); err != nil {
+	//	t.Fatal(err)
+	//}
 }

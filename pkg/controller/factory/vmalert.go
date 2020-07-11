@@ -87,8 +87,17 @@ func newServiceVMAlert(cr *victoriametricsv1beta1.VMAlert, c *conf.BaseOperatorC
 func CreateOrUpdateVMAlert(ctx context.Context, cr *victoriametricsv1beta1.VMAlert, rclient client.Client, c *conf.BaseOperatorConf, cmNames []string) (reconcile.Result, error) {
 	l := log.WithValues("controller", "vmalert.crud", "vmalert", cr.Name)
 	//recon deploy
+	SecretsInNS := &corev1.SecretList{}
+	err := rclient.List(ctx, SecretsInNS)
+	if err != nil {
+		l.Error(err, "cannot list secrets at vmalert namespace")
+	}
+	remoteSecrets, err := loadVMAlertRemoteSecrets(&cr.Spec.Datasource, cr.Spec.RemoteWrite, cr.Spec.RemoteRead, SecretsInNS)
+	if err != nil {
+		l.Error(err, "cannot get basic auth secrets for vmalert")
+	}
 	l.Info("generating new deployment")
-	newDeploy, err := newDeployForVMAlert(cr, c, cmNames)
+	newDeploy, err := newDeployForVMAlert(cr, c, cmNames, remoteSecrets)
 	if err != nil {
 		return reconcile.Result{}, fmt.Errorf("cannot generate new deploy for vmalert: %w", err)
 	}
@@ -123,7 +132,7 @@ func CreateOrUpdateVMAlert(ctx context.Context, cr *victoriametricsv1beta1.VMAle
 }
 
 // newDeployForCR returns a busybox pod with the same name/namespace as the cr
-func newDeployForVMAlert(cr *victoriametricsv1beta1.VMAlert, c *conf.BaseOperatorConf, ruleConfigMapNames []string) (*appsv1.Deployment, error) {
+func newDeployForVMAlert(cr *victoriametricsv1beta1.VMAlert, c *conf.BaseOperatorConf, ruleConfigMapNames []string, remoteSecrets map[string]BasicAuthCredentials) (*appsv1.Deployment, error) {
 
 	cr = cr.DeepCopy()
 	if cr.Spec.Image == nil {
@@ -157,7 +166,7 @@ func newDeployForVMAlert(cr *victoriametricsv1beta1.VMAlert, c *conf.BaseOperato
 		cr.Spec.Port = c.VMAlertDefault.Port
 	}
 
-	generatedSpec, err := vmAlertSpecGen(cr, c, ruleConfigMapNames)
+	generatedSpec, err := vmAlertSpecGen(cr, c, ruleConfigMapNames, remoteSecrets)
 	if err != nil {
 		return nil, fmt.Errorf("cannot generate new spec for vmalert: %w", err)
 	}
@@ -179,26 +188,56 @@ func newDeployForVMAlert(cr *victoriametricsv1beta1.VMAlert, c *conf.BaseOperato
 	return deploy, nil
 }
 
-func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *conf.BaseOperatorConf, ruleConfigMapNames []string) (*appsv1.DeploymentSpec, error) {
+func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *conf.BaseOperatorConf, ruleConfigMapNames []string, remoteSecrets map[string]BasicAuthCredentials) (*appsv1.DeploymentSpec, error) {
 	cr = cr.DeepCopy()
 
 	confReloadArgs := []string{
 		fmt.Sprintf("-webhook-url=http://localhost:%s/-/reload", cr.Spec.Port),
 	}
-
 	args := []string{
 		fmt.Sprintf("-notifier.url=%s", cr.Spec.NotifierURL),
 		fmt.Sprintf("-datasource.url=%s", cr.Spec.Datasource.URL),
 	}
-	if cr.Spec.RemoteWrite.URL != "" {
+	if cr.Spec.Datasource.BasicAuth != nil {
+		if s, ok := remoteSecrets["datasource"]; ok {
+			args = append(args, fmt.Sprintf("-datasource.basicAuth.username=%s", s.username))
+			args = append(args, fmt.Sprintf("-datasource.basicAuth.password=%s", s.password))
+		}
+	}
+	if cr.Spec.RemoteWrite != nil {
 		//this param cannot be used until v1.35.5 vm release with flag breaking changes
 		args = append(args, fmt.Sprintf("-remoteWrite.url=%s", cr.Spec.RemoteWrite.URL))
-
+		if cr.Spec.RemoteWrite.BasicAuth != nil {
+			if s, ok := remoteSecrets["remoteWrite"]; ok {
+				args = append(args, fmt.Sprintf("-remoteWrite.basicAuth.username=%s", s.username))
+				args = append(args, fmt.Sprintf("-remoteWrite.basicAuth.password=%s", s.password))
+			}
+		}
+		if cr.Spec.RemoteWrite.Concurrency != nil {
+			args = append(args, fmt.Sprintf("-remoteWrite.concurrency=%d", *cr.Spec.RemoteWrite.Concurrency))
+		}
+		if cr.Spec.RemoteWrite.FlushInterval != nil {
+			args = append(args, fmt.Sprintf("-remoteWrite.flushInterval=%s", *cr.Spec.RemoteWrite.FlushInterval))
+		}
+		if cr.Spec.RemoteWrite.MaxBatchSize != nil {
+			args = append(args, fmt.Sprintf("-remoteWrite.maxBatchSize=%d", *cr.Spec.RemoteWrite.MaxBatchSize))
+		}
+		if cr.Spec.RemoteWrite.MaxQueueSize != nil {
+			args = append(args, fmt.Sprintf("-remoteWrite.maxQueueSize=%d", *cr.Spec.RemoteWrite.MaxQueueSize))
+		}
 	}
-	if cr.Spec.RemoteRead.URL != "" {
+	if cr.Spec.RemoteRead != nil {
 		//this param cannot be used until v1.35.5 vm release with flag breaking changes
 		args = append(args, fmt.Sprintf("-remoteRead.url=%s", cr.Spec.RemoteRead.URL))
-
+		if cr.Spec.RemoteRead.BasicAuth != nil {
+			if s, ok := remoteSecrets["remoteRead"]; ok {
+				args = append(args, fmt.Sprintf("-remoteRead.basicAuth.username=%s", s.username))
+				args = append(args, fmt.Sprintf("-remoteRead.basicAuth.password=%s", s.password))
+			}
+		}
+		if cr.Spec.RemoteRead.Lookback != nil {
+			args = append(args, fmt.Sprintf("-remoteRead.lookback=%s", *cr.Spec.RemoteRead.Lookback))
+		}
 	}
 	if cr.Spec.EvaluationInterval != "" {
 		args = append(args, fmt.Sprintf("-evaluationInterval=%s", cr.Spec.EvaluationInterval))
@@ -388,4 +427,43 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *conf.BaseOperatorConf
 		},
 	}
 	return spec, nil
+}
+
+func loadVMAlertRemoteSecrets(
+	datasource *victoriametricsv1beta1.VMAlertDatasourceSpec,
+	remoteWrite *victoriametricsv1beta1.VMAlertRemoteWriteSpec,
+	remoteRead *victoriametricsv1beta1.VMAlertRemoteReadSpec,
+	SecretsInPromNS *corev1.SecretList,
+) (map[string]BasicAuthCredentials, error) {
+
+	secrets := map[string]BasicAuthCredentials{}
+	// load basic auth for datasource configuration
+	if datasource.BasicAuth != nil {
+		credentials, err := loadBasicAuthSecret(datasource.BasicAuth, SecretsInPromNS)
+		if err != nil {
+			return nil, fmt.Errorf("could not generate basicAuth for datasource config. %w", err)
+		}
+		secrets["datasource"] = credentials
+	}
+	// load basic auth for remote write configuration
+	if remoteWrite != nil {
+		if remoteWrite.BasicAuth != nil {
+			credentials, err := loadBasicAuthSecret(remoteWrite.BasicAuth, SecretsInPromNS)
+			if err != nil {
+				return nil, fmt.Errorf("could not generate basicAuth for VMAlert remote write config. %w", err)
+			}
+			secrets["remoteWrite"] = credentials
+		}
+	}
+	// load basic auth for remote write configuration
+	if remoteRead != nil {
+		if remoteRead.BasicAuth != nil {
+			credentials, err := loadBasicAuthSecret(remoteRead.BasicAuth, SecretsInPromNS)
+			if err != nil {
+				return nil, fmt.Errorf("could not generate basicAuth for VMAlert remote read config. %w", err)
+			}
+			secrets["remoteRead"] = credentials
+		}
+	}
+	return secrets, nil
 }

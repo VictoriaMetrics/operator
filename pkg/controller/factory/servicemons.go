@@ -63,14 +63,13 @@ func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *victoriametricsv
 	}
 
 	basicAuthSecrets, err := loadBasicAuthSecrets(ctx, rclient, smons, cr.Spec.APIServerConfig, nil, SecretsInNS)
-
 	if err != nil {
-		return fmt.Errorf("cannot load basic secrets for vmagent: %w", err)
+		return fmt.Errorf("cannot load basic secrets for ServiceMonitors: %w", err)
 	}
 
 	bearerTokens, err := loadBearerTokensFromSecrets(ctx, rclient, smons, nil, SecretsInNS)
 	if err != nil {
-		return fmt.Errorf("cannot load bearer tokens from secrets for vmagent: %w", err)
+		return fmt.Errorf("cannot load bearer tokens from secrets for ServiceMonitors: %w", err)
 	}
 
 	additionalScrapeConfigs, err := loadAdditionalScrapeConfigsSecret(cr.Spec.AdditionalScrapeConfigs, SecretsInNS)
@@ -345,7 +344,6 @@ func loadBasicAuthSecrets(
 	}
 
 	return secrets, nil
-
 }
 
 func loadBearerTokensFromSecrets(

@@ -139,7 +139,7 @@ type VMAlertSpec struct {
 	// This configuration makes sense only if remoteWrite was configured before and has
 	// been successfully persisted its state.
 	// +optional
-	RemoteRead *VMAlertRemoteWriteSpec `json:"remoteRead,omitempty"`
+	RemoteRead *VMAlertRemoteReadSpec `json:"remoteRead,omitempty"`
 
 	// RulePath to the file with alert rules.
 	// Supports patterns. Flag can be specified multiple times.
@@ -151,7 +151,7 @@ type VMAlertSpec struct {
 	// +optional
 	RulePath []string `json:"rulePath,omitempty"`
 	// Datasource Victoria Metrics or VMSelect url. Required parameter. e.g. http://127.0.0.1:8428
-	Datasource RemoteSpec `json:"datasource"`
+	Datasource VMAlertDatasourceSpec `json:"datasource"`
 
 	// ExtraArgs that will be passed to  VMAlert pod
 	// for example -remoteWrite.tmpDataPath=/tmp
@@ -162,7 +162,31 @@ type VMAlertSpec struct {
 	ExtraEnvs []v1.EnvVar `json:"extraEnvs,omitempty"`
 }
 
-// VMAgentRemoteWriteSpec defines the remote storage configuration for VmAgent
+// VMAgentRemoteReadSpec defines the remote storage configuration for VmAlert to read alerts from
+// +k8s:openapi-gen=true
+type VMAlertDatasourceSpec struct {
+	// Victoria Metrics or VMSelect url. Required parameter. E.g. http://127.0.0.1:8428
+	URL string `json:"url"`
+	// BasicAuth allow datasource to authenticate over basic authentication
+	// +optional
+	BasicAuth *BasicAuth `json:"basicAuth,omitempty"`
+}
+
+// VMAgentRemoteReadSpec defines the remote storage configuration for VmAlert to read alerts from
+// +k8s:openapi-gen=true
+type VMAlertRemoteReadSpec struct {
+	// URL of the endpoint to send samples to.
+	URL string `json:"url"`
+	// BasicAuth allow an endpoint to authenticate over basic authentication
+	// +optional
+	BasicAuth *BasicAuth `json:"basicAuth,omitempty"`
+	// Lookback defines how far to look into past for alerts timeseries. For example, if lookback=1h then range from now() to now()-1h will be scanned. (default 1h0m0s)
+	// Applied only to RemoteReadSpec
+	// +optional
+	Lookback *string `json:"lookback,omitempty"`
+}
+
+// VMAgentRemoteWriteSpec defines the remote storage configuration for VmAlert
 // +k8s:openapi-gen=true
 type VMAlertRemoteWriteSpec struct {
 	// URL of the endpoint to send samples to.
@@ -172,17 +196,17 @@ type VMAlertRemoteWriteSpec struct {
 	BasicAuth *BasicAuth `json:"basicAuth,omitempty"`
 	// Defines number of readers that concurrently write into remote storage (default 1)
 	// +optional
-	Concurrency int32 `json:"concurrency,omitempty"`
+	Concurrency *int32 `json:"concurrency,omitempty"`
+	// Defines interval of flushes to remote write endpoint (default 5s)
+	// +optional
+	// +kubebuilder:validation:Pattern:="[0-9]+(ms|s|m|h)"
+	FlushInterval *string `json:"flushInterval,omitempty"`
 	// Defines defines max number of timeseries to be flushed at once (default 1000)
 	// +optional
-	MaxBatchSize int32 `json:"maxBatchSize,omitempty"`
+	MaxBatchSize *int32 `json:"maxBatchSize,omitempty"`
 	// Defines the max number of pending datapoints to remote write endpoint (default 100000)
 	// +optional
-	MaxQueueSize int32 `json:"maxQueueSize,omitempty"`
-	// Lookback defines how far to look into past for alerts timeseries. For example, if lookback=1h then range from now() to now()-1h will be scanned. (default 1h0m0s)
-	// Applied only to RemoteReadSpec
-	// +optional
-	Lookback string `json:"lookback,omitempty"`
+	MaxQueueSize *int32 `json:"maxQueueSize,omitempty"`
 }
 
 // VmAlertStatus defines the observed state of VmAlert

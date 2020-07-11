@@ -6,6 +6,7 @@ import (
 	"github.com/coreos/prometheus-operator/pkg/k8sutil"
 	"path"
 	"strconv"
+	"strings"
 
 	"github.com/VictoriaMetrics/operator/conf"
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
@@ -696,8 +697,8 @@ func BuildRemoteWrites(remoteTargets []victoriametricsv1beta1.VMAgentRemoteWrite
 				pass = s.password
 			}
 		}
-		authUser.flagSetting += fmt.Sprintf("%s,", user)
-		authPassword.flagSetting += fmt.Sprintf("%s,", pass)
+		authUser.flagSetting += fmt.Sprintf("\"%s\",", strings.Replace(user, `"`, `\"`, -1))
+		authPassword.flagSetting += fmt.Sprintf("\"%s\",", strings.Replace(pass, `"`, `\"`, -1))
 
 		var value string
 		if rws.BearerTokenSecret != nil {
@@ -706,7 +707,7 @@ func BuildRemoteWrites(remoteTargets []victoriametricsv1beta1.VMAgentRemoteWrite
 				value = string(s)
 			}
 		}
-		bearerToken.flagSetting += fmt.Sprintf("%s,", value)
+		bearerToken.flagSetting += fmt.Sprintf("\"%s\",", strings.Replace(value, `"`, `\"`, -1))
 
 		value = ""
 		if rws.FlushInterval != nil {
@@ -776,7 +777,7 @@ func BuildRemoteWrites(remoteTargets []victoriametricsv1beta1.VMAgentRemoteWrite
 	remoteArgs = append(remoteArgs, url, authUser, authPassword, bearerToken, flushInterval, labels, maxBlockSize, maxDiskUsage, queues, urlRelabelConfig, sendTimeout, showURL, tmpDataPath)
 	for _, remoteArgType := range remoteArgs {
 		if remoteArgType.isNolNull {
-			finalArgs = append(finalArgs, remoteArgType.flagSetting[:len(remoteArgType.flagSetting)-1])
+			finalArgs = append(finalArgs, strings.TrimSuffix(remoteArgType.flagSetting, ","))
 		}
 	}
 	return finalArgs

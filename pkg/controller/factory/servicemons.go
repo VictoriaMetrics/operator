@@ -334,13 +334,12 @@ func loadBasicAuthSecrets(
 
 	// load basic auth for remote write configuration
 	for _, rws := range remoteWriteSpecs {
-		if rws.BasicAuth != nil {
-			credentials, err := loadBasicAuthSecret(rws.BasicAuth, SecretsInPromNS)
-			if err != nil {
-				return nil, fmt.Errorf("could not generate basicAuth for remote write spec %s config. %w", rws.URL, err)
-			}
-			secrets[fmt.Sprintf("remoteWriteSpec/%s", rws.URL)] = credentials
+		if rws.BasicAuth == nil { continue }
+		credentials, err := loadBasicAuthSecret(rws.BasicAuth, SecretsInPromNS)
+		if err != nil {
+			return nil, fmt.Errorf("could not generate basicAuth for remote write spec %s config. %w", rws.URL, err)
 		}
+		secrets[fmt.Sprintf("remoteWriteSpec/%s", rws.URL)] = credentials
 	}
 
 	return secrets, nil
@@ -384,18 +383,17 @@ func loadBearerTokensFromSecrets(
 
 	// load basic auth for remote write configuration
 	for _, rws := range remoteWriteSpecs {
-		if rws.BearerTokenSecret != nil {
-			for _, secret := range SecretsInPromNS.Items {
-				if secret.Name == rws.BearerTokenSecret.Name {
-					token, err := extractCredKey(&secret, *rws.BearerTokenSecret)
-					if err != nil {
-						return nil, fmt.Errorf(
-							"failed to extract bearertoken for remoteWriteSpec %s from secret %s. %w ",
-							rws.URL, rws.BearerTokenSecret.Name, err,
-						)
-					}
-					tokens[fmt.Sprintf("remoteWriteSpec/%s", rws.URL)] = BearerToken(token)
+		if rws.BearerTokenSecret == nil { continue }
+		for _, secret := range SecretsInPromNS.Items {
+			if secret.Name == rws.BearerTokenSecret.Name {
+				token, err := extractCredKey(&secret, *rws.BearerTokenSecret)
+				if err != nil {
+					return nil, fmt.Errorf(
+						"failed to extract bearertoken for remoteWriteSpec %s from secret %s. %w ",
+						rws.URL, rws.BearerTokenSecret.Name, err,
+					)
 				}
+				tokens[fmt.Sprintf("remoteWriteSpec/%s", rws.URL)] = BearerToken(token)
 			}
 		}
 	}

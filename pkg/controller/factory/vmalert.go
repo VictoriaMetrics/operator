@@ -87,12 +87,12 @@ func newServiceVMAlert(cr *victoriametricsv1beta1.VMAlert, c *conf.BaseOperatorC
 func CreateOrUpdateVMAlert(ctx context.Context, cr *victoriametricsv1beta1.VMAlert, rclient client.Client, c *conf.BaseOperatorConf, cmNames []string) (reconcile.Result, error) {
 	l := log.WithValues("controller", "vmalert.crud", "vmalert", cr.Name)
 	//recon deploy
-	SecretsInNS := &corev1.SecretList{}
-	err := rclient.List(ctx, SecretsInNS)
+	secretsInNS := &corev1.SecretList{}
+	err := rclient.List(ctx, secretsInNS)
 	if err != nil {
 		l.Error(err, "cannot list secrets at vmalert namespace")
 	}
-	remoteSecrets, err := loadVMAlertRemoteSecrets(&cr.Spec.Datasource, cr.Spec.RemoteWrite, cr.Spec.RemoteRead, SecretsInNS)
+	remoteSecrets, err := loadVMAlertRemoteSecrets(&cr.Spec.Datasource, cr.Spec.RemoteWrite, cr.Spec.RemoteRead, secretsInNS)
 	if err != nil {
 		l.Error(err, "cannot get basic auth secrets for vmalert")
 	}
@@ -446,24 +446,20 @@ func loadVMAlertRemoteSecrets(
 		secrets["datasource"] = credentials
 	}
 	// load basic auth for remote write configuration
-	if remoteWrite != nil {
-		if remoteWrite.BasicAuth != nil {
-			credentials, err := loadBasicAuthSecret(remoteWrite.BasicAuth, SecretsInPromNS)
-			if err != nil {
-				return nil, fmt.Errorf("could not generate basicAuth for VMAlert remote write config. %w", err)
-			}
-			secrets["remoteWrite"] = credentials
+	if remoteWrite != nil && remoteWrite.BasicAuth != nil {
+		credentials, err := loadBasicAuthSecret(remoteWrite.BasicAuth, SecretsInPromNS)
+		if err != nil {
+			return nil, fmt.Errorf("could not generate basicAuth for VMAlert remote write config. %w", err)
 		}
+		secrets["remoteWrite"] = credentials
 	}
 	// load basic auth for remote write configuration
-	if remoteRead != nil {
-		if remoteRead.BasicAuth != nil {
-			credentials, err := loadBasicAuthSecret(remoteRead.BasicAuth, SecretsInPromNS)
-			if err != nil {
-				return nil, fmt.Errorf("could not generate basicAuth for VMAlert remote read config. %w", err)
-			}
-			secrets["remoteRead"] = credentials
+	if remoteRead != nil && remoteRead.BasicAuth != nil {
+		credentials, err := loadBasicAuthSecret(remoteRead.BasicAuth, SecretsInPromNS)
+		if err != nil {
+			return nil, fmt.Errorf("could not generate basicAuth for VMAlert remote read config. %w", err)
 		}
+		secrets["remoteRead"] = credentials
 	}
 	return secrets, nil
 }

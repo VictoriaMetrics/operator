@@ -387,16 +387,17 @@ func loadBearerTokensFromSecrets(
 			continue
 		}
 		for _, secret := range SecretsInPromNS.Items {
-			if secret.Name == rws.BearerTokenSecret.Name {
-				token, err := extractCredKey(&secret, *rws.BearerTokenSecret)
-				if err != nil {
-					return nil, fmt.Errorf(
-						"failed to extract bearertoken for remoteWriteSpec %s from secret %s. %w ",
-						rws.URL, rws.BearerTokenSecret.Name, err,
-					)
-				}
-				tokens[fmt.Sprintf("remoteWriteSpec/%s", rws.URL)] = BearerToken(token)
+			if secret.Name != rws.BearerTokenSecret.Name {
+				continue
 			}
+			token, err := extractCredKey(&secret, *rws.BearerTokenSecret)
+			if err != nil {
+				return nil, fmt.Errorf(
+					"failed to extract bearertoken for remoteWriteSpec %s from secret %s. %w ",
+					rws.URL, rws.BearerTokenSecret.Name, err,
+				)
+			}
+			tokens[fmt.Sprintf("remoteWriteSpec/%s", rws.URL)] = BearerToken(token)
 		}
 	}
 

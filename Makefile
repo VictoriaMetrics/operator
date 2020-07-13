@@ -21,6 +21,7 @@ QUAY_TOKEN=$(REPO_TOKEN)
 TEST_ARGS=$(GOCMD) test -covermode=atomic -coverprofile=coverage.txt -v
 APIS_BASE_PATH=pkg/apis/victoriametrics/v1beta1
 GOPATHDIR ?= ~/go
+YAML_MERGE=yq merge --inplace --overwrite --autocreate=false
 
 .PHONY: build
 
@@ -44,9 +45,18 @@ install-develop-tools: install-golint
 report:
 	$(GOCMD) tool cover -html=coverage.txt
 
-gen:
+gen-crd:
 	$(OPERATOR_BIN) generate crds --crd-version=v1beta1
 	$(OPERATOR_BIN) generate k8s
+
+fix118:
+	docker run --rm -v "${PWD}":/workdir mikefarah/yq /bin/sh -c " \
+		$(YAML_MERGE) deploy/crds/victoriametrics.com_vmagents_crd.yaml scripts/patch1.18.yaml && \
+		$(YAML_MERGE) deploy/crds/victoriametrics.com_vmalertmanagers_crd.yaml scripts/patch1.18.yaml && \
+		$(YAML_MERGE) deploy/crds/victoriametrics.com_vmalerts_crd.yaml scripts/patch1.18.yaml && \
+		$(YAML_MERGE) deploy/crds/victoriametrics.com_vmsingles_crd.yaml scripts/patch1.18.yaml "
+
+gen: gen-crd fix118
 
 olm:
 	$(OPERATOR_BIN) generate csv --operator-name=victoria-metrics-operator \

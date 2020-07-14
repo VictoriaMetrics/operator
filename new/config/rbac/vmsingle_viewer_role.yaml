@@ -1,0 +1,20 @@
+# permissions for end users to view vmsingles.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: vmsingle-viewer-role
+rules:
+- apiGroups:
+  - victoriametrics.victoriametrics.com
+  resources:
+  - vmsingles
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - victoriametrics.victoriametrics.com
+  resources:
+  - vmsingles/status
+  verbs:
+  - get

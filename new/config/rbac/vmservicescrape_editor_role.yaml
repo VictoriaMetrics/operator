@@ -1,0 +1,24 @@
+# permissions for end users to edit vmservicescrapes.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: vmservicescrape-editor-role
+rules:
+- apiGroups:
+  - victoriametrics.victoriametrics.com
+  resources:
+  - vmservicescrapes
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - victoriametrics.victoriametrics.com
+  resources:
+  - vmservicescrapes/status
+  verbs:
+  - get

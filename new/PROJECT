@@ -1,6 +1,28 @@
 domain: victoriametrics.com
 layout: go.kubebuilder.io/v2
 repo: github.com/VictoriaMetrics/operator
+resources:
+- group: victoriametrics
+  kind: VMAgent
+  version: v1beta1
+- group: victoriametrics
+  kind: VMAlert
+  version: v1beta1
+- group: victoriametrics
+  kind: VMAlertmanager
+  version: v1beta1
+- group: victoriametrics
+  kind: VMPodScrape
+  version: v1beta1
+- group: victoriametrics
+  kind: VMRule
+  version: v1beta1
+- group: victoriametrics
+  kind: VMServiceScrape
+  version: v1beta1
+- group: victoriametrics
+  kind: VMSingle
+  version: v1beta1
 version: 3-alpha
 plugins:
   go.operator-sdk.io/v2-alpha: {}

@@ -1,0 +1,9 @@
+## This file is auto-generated, do not modify ##
+resources:
+- victoriametrics_v1beta1_vmagent.yaml
+- victoriametrics_v1beta1_vmalert.yaml
+- victoriametrics_v1beta1_vmalertmanager.yaml
+- victoriametrics_v1beta1_vmpodscrape.yaml
+- victoriametrics_v1beta1_vmrule.yaml
+- victoriametrics_v1beta1_vmservicescrape.yaml
+- victoriametrics_v1beta1_vmsingle.yaml

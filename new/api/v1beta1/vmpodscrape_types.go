@@ -44,7 +44,8 @@ type VMPodScrape struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   VMPodScrapeSpec   `json:"spec,omitempty"`
+	Spec VMPodScrapeSpec `json:"spec,omitempty"`
+	// +optional
 	Status VMPodScrapeStatus `json:"status"`
 }
 

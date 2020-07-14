@@ -6,9 +6,9 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.3.0
   creationTimestamp: null
-  name: vmpodscrapes.victoriametrics.victoriametrics.com
+  name: vmpodscrapes.operator.victoriametrics.com
 spec:
-  group: victoriametrics.victoriametrics.com
+  group: operator.victoriametrics.com
   names:
     kind: VMPodScrape
     listKind: VMPodScrapeList
@@ -255,8 +255,6 @@ spec:
         status:
           description: VMPodScrapeStatus defines the observed state of VMPodScrape
           type: object
-      required:
-      - status
       type: object
   version: v1beta1
   versions:

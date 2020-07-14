@@ -1,0 +1,15 @@
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAlert
+metadata:
+  name: example-vmalert
+spec:
+  # Add fields here
+  replicaCount: 1
+  datasource:
+    url: "http://vmagent-example-vmsingle.default.svc:8429"
+  notifierURL: "http://alertmanager-operated:9093"
+  evaluationInterval: "30s"
+  version: "latest"
+  ruleSelector:
+    matchLabels:
+      managed-by: vm-operator

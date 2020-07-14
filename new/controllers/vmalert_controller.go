@@ -37,8 +37,8 @@ type VMAlertReconciler struct {
 	BaseConf *conf.BaseOperatorConf
 }
 
-// +kubebuilder:rbac:groups=victoriametrics.victoriametrics.com,resources=vmalerts,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=victoriametrics.victoriametrics.com,resources=vmalerts/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmalerts,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmalerts/status,verbs=get;update;patch
 
 func (r *VMAlertReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := r.Log.WithValues("vmalert", req.NamespacedName)

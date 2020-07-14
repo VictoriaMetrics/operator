@@ -6,20 +6,20 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.3.0
   creationTimestamp: null
-  name: vmagents.victoriametrics.victoriametrics.com
+  name: vmsingles.operator.victoriametrics.com
 spec:
-  group: victoriametrics.victoriametrics.com
+  group: operator.victoriametrics.com
   names:
-    kind: VMAgent
-    listKind: VMAgentList
-    plural: vmagents
-    singular: vmagent
+    kind: VMSingle
+    listKind: VMSingleList
+    plural: vmsingles
+    singular: vmsingle
   scope: Namespaced
   subresources:
     status: {}
   validation:
     openAPIV3Schema:
-      description: VMAgent represents a Victoria-Metrics agent application
+      description: VMSingle represents a Victoria-Metrics single database
       properties:
         apiVersion:
           description: 'APIVersion defines the versioned schema of this representation
@@ -34,210 +34,8 @@ spec:
         metadata:
           type: object
         spec:
-          description: VMAgentSpec defines the desired state of VMAgent
+          description: VMSingleSpec defines the desired state of VMSingle
           properties:
-            aPIServerConfig:
-              description: APIServerConfig allows specifying a host and auth methods
-                to access apiserver. If left empty, VMAgent is assumed to run inside
-                of the cluster and will discover API servers automatically and use
-                the pod's CA certificate and bearer token file at /var/run/secrets/kubernetes.io/serviceaccount/.
-              properties:
-                basicAuth:
-                  description: BasicAuth allow an endpoint to authenticate over basic
-                    authentication
-                  properties:
-                    password:
-                      description: The secret in the service monitor namespace that
-                        contains the password for authentication.
-                      properties:
-                        key:
-                          description: The key of the secret to select from.  Must
-                            be a valid secret key.
-                          type: string
-                        name:
-                          description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                            TODO: Add other useful fields. apiVersion, kind, uid?'
-                          type: string
-                        optional:
-                          description: Specify whether the Secret or its key must
-                            be defined
-                          type: boolean
-                      required:
-                      - key
-                      type: object
-                    username:
-                      description: The secret in the service monitor namespace that
-                        contains the username for authentication.
-                      properties:
-                        key:
-                          description: The key of the secret to select from.  Must
-                            be a valid secret key.
-                          type: string
-                        name:
-                          description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                            TODO: Add other useful fields. apiVersion, kind, uid?'
-                          type: string
-                        optional:
-                          description: Specify whether the Secret or its key must
-                            be defined
-                          type: boolean
-                      required:
-                      - key
-                      type: object
-                  type: object
-                bearerToken:
-                  description: Bearer token for accessing apiserver.
-                  type: string
-                bearerTokenFile:
-                  description: File to read bearer token for accessing apiserver.
-                  type: string
-                host:
-                  description: Host of apiserver. A valid string consisting of a hostname
-                    or IP followed by an optional port number
-                  type: string
-                tlsConfig:
-                  description: TLS Config to use for accessing apiserver.
-                  properties:
-                    ca:
-                      description: Stuct containing the CA cert to use for the targets.
-                      properties:
-                        configMap:
-                          description: ConfigMap containing data to use for the targets.
-                          properties:
-                            key:
-                              description: The key to select.
-                              type: string
-                            name:
-                              description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                TODO: Add other useful fields. apiVersion, kind, uid?'
-                              type: string
-                            optional:
-                              description: Specify whether the ConfigMap or its key
-                                must be defined
-                              type: boolean
-                          required:
-                          - key
-                          type: object
-                        secret:
-                          description: Secret containing data to use for the targets.
-                          properties:
-                            key:
-                              description: The key of the secret to select from.  Must
-                                be a valid secret key.
-                              type: string
-                            name:
-                              description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                TODO: Add other useful fields. apiVersion, kind, uid?'
-                              type: string
-                            optional:
-                              description: Specify whether the Secret or its key must
-                                be defined
-                              type: boolean
-                          required:
-                          - key
-                          type: object
-                      type: object
-                    caFile:
-                      description: Path to the CA cert in the container to use for
-                        the targets.
-                      type: string
-                    cert:
-                      description: Struct containing the client cert file for the
-                        targets.
-                      properties:
-                        configMap:
-                          description: ConfigMap containing data to use for the targets.
-                          properties:
-                            key:
-                              description: The key to select.
-                              type: string
-                            name:
-                              description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                TODO: Add other useful fields. apiVersion, kind, uid?'
-                              type: string
-                            optional:
-                              description: Specify whether the ConfigMap or its key
-                                must be defined
-                              type: boolean
-                          required:
-                          - key
-                          type: object
-                        secret:
-                          description: Secret containing data to use for the targets.
-                          properties:
-                            key:
-                              description: The key of the secret to select from.  Must
-                                be a valid secret key.
-                              type: string
-                            name:
-                              description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                TODO: Add other useful fields. apiVersion, kind, uid?'
-                              type: string
-                            optional:
-                              description: Specify whether the Secret or its key must
-                                be defined
-                              type: boolean
-                          required:
-                          - key
-                          type: object
-                      type: object
-                    certFile:
-                      description: Path to the client cert file in the container for
-                        the targets.
-                      type: string
-                    insecureSkipVerify:
-                      description: Disable target certificate validation.
-                      type: boolean
-                    keyFile:
-                      description: Path to the client key file in the container for
-                        the targets.
-                      type: string
-                    keySecret:
-                      description: Secret containing the client key file for the targets.
-                      properties:
-                        key:
-                          description: The key of the secret to select from.  Must
-                            be a valid secret key.
-                          type: string
-                        name:
-                          description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                            TODO: Add other useful fields. apiVersion, kind, uid?'
-                          type: string
-                        optional:
-                          description: Specify whether the Secret or its key must
-                            be defined
-                          type: boolean
-                      required:
-                      - key
-                      type: object
-                    serverName:
-                      description: Used to verify the hostname for the targets.
-                      type: string
-                  type: object
-              required:
-              - host
-              type: object
-            additionalScrapeConfigs:
-              description: AdditionalScrapeConfigs As scrape configs are appended,
-                the user is responsible to make sure it is valid. Note that using
-                this feature may expose the possibility to break upgrades of VMAgent.
-                It is advised to review VMAgent release notes to ensure that no incompatible
-                scrape configs are going to break VMAgent after the upgrade.
-              properties:
-                key:
-                  description: The key of the secret to select from.  Must be a valid
-                    secret key.
-                  type: string
-                name:
-                  description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                    TODO: Add other useful fields. apiVersion, kind, uid?'
-                  type: string
-                optional:
-                  description: Specify whether the Secret or its key must be defined
-                  type: boolean
-              required:
-              - key
-              type: object
             affinity:
               description: Affinity If specified, the pod's scheduling constraints.
               properties:
@@ -810,18 +608,9 @@ spec:
                       type: array
                   type: object
               type: object
-            arbitraryFSAccessThroughSMs:
-              description: ArbitraryFSAccessThroughSMs configures whether configuration
-                based on a service monitor can access arbitrary files on the file
-                system of the VMAgent container e.g. bearer token files.
-              properties:
-                deny:
-                  type: boolean
-              type: object
             configMaps:
               description: ConfigMaps is a list of ConfigMaps in the same namespace
-                as the vmagent object, which shall be mounted into the vmagent Pods.
-                will be mounted at path  /etc/vmagent/configs
+                as the VMSingle object, which shall be mounted into the VMSingle Pods.
               items:
                 type: string
               type: array
@@ -1872,28 +1661,16 @@ spec:
                 type: object
               type: array
             dnsPolicy:
-              description: DNSPolicy set DNS policy for the pod
+              description: DNSPolicy sets DNS policy for the pod
               type: string
-            enforcedNamespaceLabel:
-              description: EnforcedNamespaceLabel enforces adding a namespace label
-                of origin for each alert and metric that is user created. The label
-                value will always be the namespace of the object that is being created.
-              type: string
-            externalLabels:
-              additionalProperties:
-                type: string
-              description: ExternalLabels The labels to add to any time series or
-                alerts when communicating with external systems (federation, remote
-                storage, etc).
-              type: object
             extraArgs:
               additionalProperties:
                 type: string
-              description: 'ExtraArgs that will be passed to  VMAgent pod for example
-                remoteWrite.tmpDataPath: /tmp it would be converted to flag --remoteWrite.tmpDataPath=/tmp'
+              description: 'ExtraArgs that will be passed to  VMSingle pod for example
+                remoteWrite.tmpDataPath: /tmp'
               type: object
             extraEnvs:
-              description: ExtraEnvs that will be added to VMAgent pod
+              description: ExtraEnvs that will be added to VMSingle pod
               items:
                 description: EnvVar represents an environment variable present in
                   a Container.
@@ -1999,20 +1776,13 @@ spec:
               description: HostNetwork controls whether the pod may use the node network
                 namespace
               type: boolean
-            ignoreNamespaceSelectors:
-              description: IgnoreNamespaceSelectors if set to true will ignore NamespaceSelector
-                settings from the podscrape and vmservicescrape configs, and they
-                will only discover endpoints within their current namespace.  Defaults
-                to false.
-              type: boolean
             image:
-              description: Image - victoria metrics agent base image if not specified
-                - use default from operator config
+              description: Image victoria metrics single base image
               type: string
             imagePullSecrets:
-              description: ImagePullSecrets optional list of references to secrets
-                in the same namespace to use for pulling prometheus and vmagent images
-                from registries see http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod
+              description: ImagePullSecrets An optional list of references to secrets
+                in the same namespace to use for pulling images from registries see
+                http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod
               items:
                 description: LocalObjectReference contains enough information to let
                   you locate the referenced object inside the same namespace.
@@ -2026,9 +1796,9 @@ spec:
             initContainers:
               description: 'InitContainers allows adding initContainers to the pod
                 definition. Those can be used to e.g. fetch secrets for injection
-                into the vmagent configuration from external sources. Any errors during
-                the execution of an initContainer will lead to a restart of the Pod.
-                More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
+                into the vmSingle configuration from external sources. Any errors
+                during the execution of an initContainer will lead to a restart of
+                the Pod. More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
                 Using initContainers for any use case other then secret fetching is
                 entirely outside the scope of what the maintainers will support and
                 by doing so, you accept that this behaviour may break at any time
@@ -3077,14 +2847,13 @@ spec:
                 type: object
               type: array
             logFormat:
-              description: LogFormat for VMAgent to be configured with.
+              description: LogFormat for VMSingle to be configured with.
               enum:
               - default
               - json
               type: string
             logLevel:
-              description: LogLevel for VMAgent to be configured with. INFO, WARN,
-                ERROR, FATAL, PANIC
+              description: LogLevel for victoria metrics single to be configured with.
               enum:
               - INFO
               - WARN
@@ -3092,18 +2861,9 @@ spec:
               - FATAL
               - PANIC
               type: string
-            overrideHonorLabels:
-              description: OverrideHonorLabels if set to true overrides all user configured
-                honor_labels. If HonorLabels is set in ServiceMonitor or PodMonitor
-                to true, this overrides honor_labels to false.
-              type: boolean
-            overrideHonorTimestamps:
-              description: OverrideHonorTimestamps allows to globally enforce honoring
-                timestamps in all scrape configs.
-              type: boolean
             podMetadata:
               description: PodMetadata configures Labels and Annotations which are
-                propagated to the vmagent pods.
+                propagated to the VMSingle pods.
               properties:
                 annotations:
                   additionalProperties:
@@ -3129,267 +2889,25 @@ spec:
                     definition. Cannot be updated. More info: http://kubernetes.io/docs/user-guide/identifiers#names'
                   type: string
               type: object
-            podMonitorNamespaceSelector:
-              description: PodMonitorNamespaceSelector defines Namespaces to be selected
-                for PodMonitor discovery. If nil, only check own namespace.
-              properties:
-                matchExpressions:
-                  description: matchExpressions is a list of label selector requirements.
-                    The requirements are ANDed.
-                  items:
-                    description: A label selector requirement is a selector that contains
-                      values, a key, and an operator that relates the key and values.
-                    properties:
-                      key:
-                        description: key is the label key that the selector applies
-                          to.
-                        type: string
-                      operator:
-                        description: operator represents a key's relationship to a
-                          set of values. Valid operators are In, NotIn, Exists and
-                          DoesNotExist.
-                        type: string
-                      values:
-                        description: values is an array of string values. If the operator
-                          is In or NotIn, the values array must be non-empty. If the
-                          operator is Exists or DoesNotExist, the values array must
-                          be empty. This array is replaced during a strategic merge
-                          patch.
-                        items:
-                          type: string
-                        type: array
-                    required:
-                    - key
-                    - operator
-                    type: object
-                  type: array
-                matchLabels:
-                  additionalProperties:
-                    type: string
-                  description: matchLabels is a map of {key,value} pairs. A single
-                    {key,value} in the matchLabels map is equivalent to an element
-                    of matchExpressions, whose key field is "key", the operator is
-                    "In", and the values array contains only "value". The requirements
-                    are ANDed.
-                  type: object
-              type: object
-            podMonitorSelector:
-              description: PodMonitorSelector defines PodMonitors to be selected for
-                target discovery. if neither this nor serviceMonitorSelector are specified,
-                configuration is unmanaged.
-              properties:
-                matchExpressions:
-                  description: matchExpressions is a list of label selector requirements.
-                    The requirements are ANDed.
-                  items:
-                    description: A label selector requirement is a selector that contains
-                      values, a key, and an operator that relates the key and values.
-                    properties:
-                      key:
-                        description: key is the label key that the selector applies
-                          to.
-                        type: string
-                      operator:
-                        description: operator represents a key's relationship to a
-                          set of values. Valid operators are In, NotIn, Exists and
-                          DoesNotExist.
-                        type: string
-                      values:
-                        description: values is an array of string values. If the operator
-                          is In or NotIn, the values array must be non-empty. If the
-                          operator is Exists or DoesNotExist, the values array must
-                          be empty. This array is replaced during a strategic merge
-                          patch.
-                        items:
-                          type: string
-                        type: array
-                    required:
-                    - key
-                    - operator
-                    type: object
-                  type: array
-                matchLabels:
-                  additionalProperties:
-                    type: string
-                  description: matchLabels is a map of {key,value} pairs. A single
-                    {key,value} in the matchLabels map is equivalent to an element
-                    of matchExpressions, whose key field is "key", the operator is
-                    "In", and the values array contains only "value". The requirements
-                    are ANDed.
-                  type: object
-              type: object
             port:
-              description: Port listen address
+              description: Port listen port
               type: string
             priorityClassName:
               description: PriorityClassName assigned to the Pods
               type: string
-            relabelConfig:
-              description: RelabelConfig ConfigMap with global relabel config -remoteWrite.relabelConfig
-                This relabeling is applied to all the collected metrics before sending
-                them to remote storage.
-              properties:
-                key:
-                  description: The key to select.
-                  type: string
-                name:
-                  description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                    TODO: Add other useful fields. apiVersion, kind, uid?'
-                  type: string
-                optional:
-                  description: Specify whether the ConfigMap or its key must be defined
-                  type: boolean
-              required:
-              - key
-              type: object
-            remoteWrite:
-              description: 'RemoteWrite list of victoria metrics /some other remote
-                write system for vm it must looks like: http://victoria-metrics-single:8429/api/v1/write
-                or for cluster different url https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/app/vmagent#splitting-data-streams-among-multiple-systems'
-              items:
-                description: VMAgentRemoteWriteSpec defines the remote storage configuration
-                  for VmAgent
-                properties:
-                  basicAuth:
-                    description: BasicAuth allow an endpoint to authenticate over
-                      basic authentication
-                    properties:
-                      password:
-                        description: The secret in the service monitor namespace that
-                          contains the password for authentication.
-                        properties:
-                          key:
-                            description: The key of the secret to select from.  Must
-                              be a valid secret key.
-                            type: string
-                          name:
-                            description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                              TODO: Add other useful fields. apiVersion, kind, uid?'
-                            type: string
-                          optional:
-                            description: Specify whether the Secret or its key must
-                              be defined
-                            type: boolean
-                        required:
-                        - key
-                        type: object
-                      username:
-                        description: The secret in the service monitor namespace that
-                          contains the username for authentication.
-                        properties:
-                          key:
-                            description: The key of the secret to select from.  Must
-                              be a valid secret key.
-                            type: string
-                          name:
-                            description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                              TODO: Add other useful fields. apiVersion, kind, uid?'
-                            type: string
-                          optional:
-                            description: Specify whether the Secret or its key must
-                              be defined
-                            type: boolean
-                        required:
-                        - key
-                        type: object
-                    type: object
-                  bearerTokenSecret:
-                    description: Optional bearer auth token to use for -remoteWrite.url
-                    properties:
-                      key:
-                        description: The key of the secret to select from.  Must be
-                          a valid secret key.
-                        type: string
-                      name:
-                        description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                          TODO: Add other useful fields. apiVersion, kind, uid?'
-                        type: string
-                      optional:
-                        description: Specify whether the Secret or its key must be
-                          defined
-                        type: boolean
-                    required:
-                    - key
-                    type: object
-                  flushInterval:
-                    description: Interval for flushing the data to remote storage.
-                      (default 1s)
-                    pattern: '[0-9]+(ms|s|m|h)'
-                    type: string
-                  label:
-                    additionalProperties:
-                      type: string
-                    description: Optional labels in the form 'name=value' to add to
-                      all the metrics before sending them
-                    type: object
-                  maxBlockSize:
-                    description: The maximum size in bytes of unpacked request to
-                      send to remote storage
-                    format: int32
-                    type: integer
-                  maxDiskUsagePerURL:
-                    description: The maximum file-based buffer size in bytes at -remoteWrite.tmpDataPath
-                    format: int32
-                    type: integer
-                  queues:
-                    description: The number of concurrent queues
-                    format: int32
-                    type: integer
-                  sendTimeout:
-                    description: Timeout for sending a single block of data to -remoteWrite.url
-                      (default 1m0s)
-                    pattern: '[0-9]+(ms|s|m|h)'
-                    type: string
-                  showURL:
-                    description: Whether to show -remoteWrite.url in the exported
-                      metrics. It is hidden by default, since it can contain sensistive
-                      auth info
-                    type: boolean
-                  tmpDataPath:
-                    description: Path to directory where temporary data for remote
-                      write component is stored (default "vmagent-remotewrite-data")
-                    type: string
-                  url:
-                    description: URL of the endpoint to send samples to.
-                    type: string
-                  urlRelabelConfig:
-                    description: ConfigMap with relabeling config which is applied
-                      to metrics before sending them to the corresponding -remoteWrite.url
-                    properties:
-                      key:
-                        description: The key to select.
-                        type: string
-                      name:
-                        description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                          TODO: Add other useful fields. apiVersion, kind, uid?'
-                        type: string
-                      optional:
-                        description: Specify whether the ConfigMap or its key must
-                          be defined
-                        type: boolean
-                    required:
-                    - key
-                    type: object
-                required:
-                - url
-                type: object
-              type: array
+            removePvcAfterDelete:
+              description: RemovePvcAfterDelete - if true, controller adds ownership
+                to pvc and after VMSingle objest deletion - pvc will be garbage collected
+                by controller manager
+              type: boolean
             replicaCount:
-              description: ReplicaCount is the expected size of the VMAgent cluster.
-                The controller will eventually make the size of the running cluster
-                equal to the expected size. NOTE enable VMSingle deduplication for
-                replica usage
+              description: ReplicaCount is the expected size of the VMSingle it can
+                be 0 or 1 if you need more - use vm cluster
               format: int32
               type: integer
-            replicaExternalLabelName:
-              description: ReplicaExternalLabelName Name of vmagent external label
-                used to denote replica name. Defaults to the value of `prometheus_replica`.
-                External label will _not_ be added when value is set to empty string
-                (`""`).
-              type: string
             resources:
               description: Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
-                if not specified - default setting will be used
+                if not defined default resources from operator config will be used
               properties:
                 limits:
                   additionalProperties:
@@ -3414,14 +2932,13 @@ spec:
                     value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
                   type: object
               type: object
-            scrapeInterval:
-              description: ScrapeInterval defines how often scrape targets by default
-              pattern: '[0-9]+(ms|s|m|h)'
+            retentionPeriod:
+              description: RetentionPeriod in months
+              pattern: '[1-9]+'
               type: string
             secrets:
               description: Secrets is a list of Secrets in the same namespace as the
-                vmagent object, which shall be mounted into the vmagent Pods. will
-                be mounted at path /etc/vmagent/secrets
+                VMSingle object, which shall be mounted into the VMSingle Pods.
               items:
                 type: string
               type: array
@@ -3549,96 +3066,133 @@ spec:
               type: object
             serviceAccountName:
               description: ServiceAccountName is the name of the ServiceAccount to
-                use to run the VMAgent Pods. required
+                use to run the VMSingle Pods.
               type: string
-            serviceMonitorNamespaceSelector:
-              description: ServiceMonitorNamespaceSelector Namespaces to be selected
-                for ServiceMonitor discovery. If nil, only check own namespace.
+            storage:
+              description: Storage is the definition of how storage will be used by
+                the VMSingle by default it`s empty dir
               properties:
-                matchExpressions:
-                  description: matchExpressions is a list of label selector requirements.
-                    The requirements are ANDed.
+                accessModes:
+                  description: 'AccessModes contains the desired access modes the
+                    volume should have. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#access-modes-1'
                   items:
-                    description: A label selector requirement is a selector that contains
-                      values, a key, and an operator that relates the key and values.
-                    properties:
-                      key:
-                        description: key is the label key that the selector applies
-                          to.
-                        type: string
-                      operator:
-                        description: operator represents a key's relationship to a
-                          set of values. Valid operators are In, NotIn, Exists and
-                          DoesNotExist.
-                        type: string
-                      values:
-                        description: values is an array of string values. If the operator
-                          is In or NotIn, the values array must be non-empty. If the
-                          operator is Exists or DoesNotExist, the values array must
-                          be empty. This array is replaced during a strategic merge
-                          patch.
-                        items:
-                          type: string
-                        type: array
-                    required:
-                    - key
-                    - operator
-                    type: object
-                  type: array
-                matchLabels:
-                  additionalProperties:
                     type: string
-                  description: matchLabels is a map of {key,value} pairs. A single
-                    {key,value} in the matchLabels map is equivalent to an element
-                    of matchExpressions, whose key field is "key", the operator is
-                    "In", and the values array contains only "value". The requirements
-                    are ANDed.
-                  type: object
-              type: object
-            serviceMonitorSelector:
-              description: ServiceMonitorSelector defines ServiceMonitors to be selected
-                for target discovery. if neither this nor podMonitorSelector are specified,
-                configuration is unmanaged.
-              properties:
-                matchExpressions:
-                  description: matchExpressions is a list of label selector requirements.
-                    The requirements are ANDed.
-                  items:
-                    description: A label selector requirement is a selector that contains
-                      values, a key, and an operator that relates the key and values.
-                    properties:
-                      key:
-                        description: key is the label key that the selector applies
-                          to.
-                        type: string
-                      operator:
-                        description: operator represents a key's relationship to a
-                          set of values. Valid operators are In, NotIn, Exists and
-                          DoesNotExist.
-                        type: string
-                      values:
-                        description: values is an array of string values. If the operator
-                          is In or NotIn, the values array must be non-empty. If the
-                          operator is Exists or DoesNotExist, the values array must
-                          be empty. This array is replaced during a strategic merge
-                          patch.
-                        items:
-                          type: string
-                        type: array
-                    required:
-                    - key
-                    - operator
-                    type: object
                   type: array
-                matchLabels:
-                  additionalProperties:
-                    type: string
-                  description: matchLabels is a map of {key,value} pairs. A single
-                    {key,value} in the matchLabels map is equivalent to an element
-                    of matchExpressions, whose key field is "key", the operator is
-                    "In", and the values array contains only "value". The requirements
-                    are ANDed.
+                dataSource:
+                  description: 'This field can be used to specify either: * An existing
+                    VolumeSnapshot object (snapshot.storage.k8s.io/VolumeSnapshot
+                    - Beta) * An existing PVC (PersistentVolumeClaim) * An existing
+                    custom resource/object that implements data population (Alpha)
+                    In order to use VolumeSnapshot object types, the appropriate feature
+                    gate must be enabled (VolumeSnapshotDataSource or AnyVolumeDataSource)
+                    If the provisioner or an external controller can support the specified
+                    data source, it will create a new volume based on the contents
+                    of the specified data source. If the specified data source is
+                    not supported, the volume will not be created and the failure
+                    will be reported as an event. In the future, we plan to support
+                    more data source types and the behavior of the provisioner may
+                    change.'
+                  properties:
+                    apiGroup:
+                      description: APIGroup is the group for the resource being referenced.
+                        If APIGroup is not specified, the specified Kind must be in
+                        the core API group. For any other third-party types, APIGroup
+                        is required.
+                      type: string
+                    kind:
+                      description: Kind is the type of resource being referenced
+                      type: string
+                    name:
+                      description: Name is the name of resource being referenced
+                      type: string
+                  required:
+                  - kind
+                  - name
                   type: object
+                resources:
+                  description: 'Resources represents the minimum resources the volume
+                    should have. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources'
+                  properties:
+                    limits:
+                      additionalProperties:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      description: 'Limits describes the maximum amount of compute
+                        resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                      type: object
+                    requests:
+                      additionalProperties:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      description: 'Requests describes the minimum amount of compute
+                        resources required. If Requests is omitted for a container,
+                        it defaults to Limits if that is explicitly specified, otherwise
+                        to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                      type: object
+                  type: object
+                selector:
+                  description: A label query over volumes to consider for binding.
+                  properties:
+                    matchExpressions:
+                      description: matchExpressions is a list of label selector requirements.
+                        The requirements are ANDed.
+                      items:
+                        description: A label selector requirement is a selector that
+                          contains values, a key, and an operator that relates the
+                          key and values.
+                        properties:
+                          key:
+                            description: key is the label key that the selector applies
+                              to.
+                            type: string
+                          operator:
+                            description: operator represents a key's relationship
+                              to a set of values. Valid operators are In, NotIn, Exists
+                              and DoesNotExist.
+                            type: string
+                          values:
+                            description: values is an array of string values. If the
+                              operator is In or NotIn, the values array must be non-empty.
+                              If the operator is Exists or DoesNotExist, the values
+                              array must be empty. This array is replaced during a
+                              strategic merge patch.
+                            items:
+                              type: string
+                            type: array
+                        required:
+                        - key
+                        - operator
+                        type: object
+                      type: array
+                    matchLabels:
+                      additionalProperties:
+                        type: string
+                      description: matchLabels is a map of {key,value} pairs. A single
+                        {key,value} in the matchLabels map is equivalent to an element
+                        of matchExpressions, whose key field is "key", the operator
+                        is "In", and the values array contains only "value". The requirements
+                        are ANDed.
+                      type: object
+                  type: object
+                storageClassName:
+                  description: 'Name of the StorageClass required by the claim. More
+                    info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1'
+                  type: string
+                volumeMode:
+                  description: volumeMode defines what type of volume is required
+                    by the claim. Value of Filesystem is implied when not included
+                    in claim spec.
+                  type: string
+                volumeName:
+                  description: VolumeName is the binding reference to the PersistentVolume
+                    backing this claim.
+                  type: string
               type: object
             tolerations:
               description: Tolerations If specified, the pod's tolerations.
@@ -3681,19 +3235,13 @@ spec:
                 type: object
               type: array
             version:
-              description: Version for VMAgent.
-              type: string
-            vmAgentExternalLabelName:
-              description: VMAgentExternalLabelName Name of vmAgent external label
-                used to denote vmAgent instance name. Defaults to the value of `prometheus`.
-                External label will _not_ be added when value is set to empty string
-                (`""`).
+              description: Version of victoria metrics single
               type: string
             volumeMounts:
               description: VolumeMounts allows configuration of additional VolumeMounts
-                on the output deploy definition. VolumeMounts specified will be appended
-                to other VolumeMounts in the vmagent container, that are generated
-                as a result of StorageSpec objects.
+                on the output Deployment definition. VolumeMounts specified will be
+                appended to other VolumeMounts in the VMSingle container, that are
+                generated as a result of StorageSpec objects.
               items:
                 description: VolumeMount describes a mounting of a Volume within a
                   container.
@@ -4922,11 +4470,9 @@ spec:
                 - name
                 type: object
               type: array
-          required:
-          - serviceAccountName
           type: object
         status:
-          description: VmAgentStatus defines the observed state of VmAgent
+          description: VMSingleStatus defines the observed state of VMSingle
           properties:
             availableReplicas:
               description: AvailableReplicas Total number of available pods (ready

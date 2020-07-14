@@ -5,7 +5,7 @@ metadata:
   name: vmagent-viewer-role
 rules:
 - apiGroups:
-  - victoriametrics.victoriametrics.com
+  - operator.victoriametrics.com
   resources:
   - vmagents
   verbs:
@@ -13,7 +13,7 @@ rules:
   - list
   - watch
 - apiGroups:
-  - victoriametrics.victoriametrics.com
+  - operator.victoriametrics.com
   resources:
   - vmagents/status
   verbs:

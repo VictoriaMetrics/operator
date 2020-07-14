@@ -5,7 +5,7 @@ metadata:
   name: vmalert-viewer-role
 rules:
 - apiGroups:
-  - victoriametrics.victoriametrics.com
+  - operator.victoriametrics.com
   resources:
   - vmalerts
   verbs:
@@ -13,7 +13,7 @@ rules:
   - list
   - watch
 - apiGroups:
-  - victoriametrics.victoriametrics.com
+  - operator.victoriametrics.com
   resources:
   - vmalerts/status
   verbs:

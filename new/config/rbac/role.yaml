@@ -7,7 +7,7 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
-  - victoriametrics.victoriametrics.com
+  - operator.victoriametrics.com
   resources:
   - vmagents
   verbs:
@@ -19,7 +19,7 @@ rules:
   - update
   - watch
 - apiGroups:
-  - victoriametrics.victoriametrics.com
+  - operator.victoriametrics.com
   resources:
   - vmagents/status
   verbs:
@@ -27,7 +27,7 @@ rules:
   - patch
   - update
 - apiGroups:
-  - victoriametrics.victoriametrics.com
+  - operator.victoriametrics.com
   resources:
   - vmalertmanagers
   verbs:
@@ -39,7 +39,7 @@ rules:
   - update
   - watch
 - apiGroups:
-  - victoriametrics.victoriametrics.com
+  - operator.victoriametrics.com
   resources:
   - vmalertmanagers/status
   verbs:
@@ -47,7 +47,7 @@ rules:
   - patch
   - update
 - apiGroups:
-  - victoriametrics.victoriametrics.com
+  - operator.victoriametrics.com
   resources:
   - vmalerts
   verbs:
@@ -59,7 +59,7 @@ rules:
   - update
   - watch
 - apiGroups:
-  - victoriametrics.victoriametrics.com
+  - operator.victoriametrics.com
   resources:
   - vmalerts/status
   verbs:
@@ -67,7 +67,7 @@ rules:
   - patch
   - update
 - apiGroups:
-  - victoriametrics.victoriametrics.com
+  - operator.victoriametrics.com
   resources:
   - vmpodscrapes
   verbs:
@@ -79,7 +79,7 @@ rules:
   - update
   - watch
 - apiGroups:
-  - victoriametrics.victoriametrics.com
+  - operator.victoriametrics.com
   resources:
   - vmpodscrapes/status
   verbs:
@@ -87,7 +87,7 @@ rules:
   - patch
   - update
 - apiGroups:
-  - victoriametrics.victoriametrics.com
+  - operator.victoriametrics.com
   resources:
   - vmrules
   verbs:
@@ -99,7 +99,7 @@ rules:
   - update
   - watch
 - apiGroups:
-  - victoriametrics.victoriametrics.com
+  - operator.victoriametrics.com
   resources:
   - vmrules/status
   verbs:
@@ -107,7 +107,7 @@ rules:
   - patch
   - update
 - apiGroups:
-  - victoriametrics.victoriametrics.com
+  - operator.victoriametrics.com
   resources:
   - vmservicescrapes
   verbs:
@@ -119,7 +119,7 @@ rules:
   - update
   - watch
 - apiGroups:
-  - victoriametrics.victoriametrics.com
+  - operator.victoriametrics.com
   resources:
   - vmservicescrapes/status
   verbs:
@@ -127,7 +127,7 @@ rules:
   - patch
   - update
 - apiGroups:
-  - victoriametrics.victoriametrics.com
+  - operator.victoriametrics.com
   resources:
   - vmsingles
   verbs:
@@ -139,7 +139,7 @@ rules:
   - update
   - watch
 - apiGroups:
-  - victoriametrics.victoriametrics.com
+  - operator.victoriametrics.com
   resources:
   - vmsingles/status
   verbs:

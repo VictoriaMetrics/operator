@@ -37,8 +37,8 @@ type VMServiceScrapeReconciler struct {
 	BaseConf *conf.BaseOperatorConf
 }
 
-// +kubebuilder:rbac:groups=victoriametrics.victoriametrics.com,resources=vmservicescrapes,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=victoriametrics.victoriametrics.com,resources=vmservicescrapes/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmservicescrapes,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmservicescrapes/status,verbs=get;update;patch
 
 func (r *VMServiceScrapeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := r.Log.WithValues("vmservicescrape", req.NamespacedName)

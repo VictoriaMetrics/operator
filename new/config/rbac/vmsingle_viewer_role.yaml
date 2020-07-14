@@ -5,7 +5,7 @@ metadata:
   name: vmsingle-viewer-role
 rules:
 - apiGroups:
-  - victoriametrics.victoriametrics.com
+  - operator.victoriametrics.com
   resources:
   - vmsingles
   verbs:
@@ -13,7 +13,7 @@ rules:
   - list
   - watch
 - apiGroups:
-  - victoriametrics.victoriametrics.com
+  - operator.victoriametrics.com
   resources:
   - vmsingles/status
   verbs:

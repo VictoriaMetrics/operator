@@ -1,7 +1,9 @@
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAlertmanager
 metadata:
-  name: vmalertmanager-sample
+  name: example-alertmanager
+  labels:
+      ns: op
 spec:
   # Add fields here
-  foo: bar
+  replicaCount: 1

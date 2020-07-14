@@ -2,13 +2,13 @@
 # since it depends on service name and namespace that are out of this kustomize package.
 # It should be run by config/default
 resources:
-- bases/victoriametrics.victoriametrics.com_vmagents.yaml
-- bases/victoriametrics.victoriametrics.com_vmalerts.yaml
-- bases/victoriametrics.victoriametrics.com_vmalertmanagers.yaml
-- bases/victoriametrics.victoriametrics.com_vmpodscrapes.yaml
-- bases/victoriametrics.victoriametrics.com_vmrules.yaml
-- bases/victoriametrics.victoriametrics.com_vmservicescrapes.yaml
-- bases/victoriametrics.victoriametrics.com_vmsingles.yaml
+- bases/operator.victoriametrics.com_vmagents.yaml
+- bases/operator.victoriametrics.com_vmalerts.yaml
+- bases/operator.victoriametrics.com_vmalertmanagers.yaml
+- bases/operator.victoriametrics.com_vmpodscrapes.yaml
+- bases/operator.victoriametrics.com_vmrules.yaml
+- bases/operator.victoriametrics.com_vmservicescrapes.yaml
+- bases/operator.victoriametrics.com_vmsingles.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
 patchesStrategicMerge:

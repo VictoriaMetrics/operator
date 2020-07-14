@@ -3,7 +3,7 @@
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
-  name: vmservicescrapes.victoriametrics.victoriametrics.com
+  name: vmservicescrapes.operator.victoriametrics.com
 spec:
   conversion:
     strategy: Webhook

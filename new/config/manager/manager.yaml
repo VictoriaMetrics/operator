@@ -2,33 +2,41 @@ apiVersion: v1
 kind: Namespace
 metadata:
   labels:
-    control-plane: controller-manager
-  name: system
+    control-plane: vm-operator
+  name: default
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: controller-manager
-  namespace: system
+  name: vm-operator
+  namespace: default
   labels:
-    control-plane: controller-manager
+    control-plane: vm-operator
 spec:
   selector:
     matchLabels:
-      control-plane: controller-manager
+      control-plane: vm-operator
   replicas: 1
   template:
     metadata:
       labels:
-        control-plane: controller-manager
+        control-plane: vm-operator
     spec:
       containers:
-      - command:
-        - /manager
-        args:
-        - --enable-leader-election
-        image: controller:latest
-        name: manager
+      - name: vm-operator
+        image: quay.io/f41gh7/vm-operator:latest
+        imagePullPolicy: Always
+        command:
+        - vm-operator
+        env:
+        - name: WATCH_NAMESPACE
+          value: ""
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: OPERATOR_NAME
+          value: "vm-operator"
         resources:
           limits:
             cpu: 100m

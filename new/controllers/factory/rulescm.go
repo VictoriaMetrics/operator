@@ -3,18 +3,17 @@ package factory
 import (
 	"context"
 	"fmt"
-	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
+	"reflect"
+	"sort"
+	"strconv"
+	"strings"
+
+	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/ghodss/yaml"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	//"k8s.io/apimachinery/pkg/util/intstr"
-	//"k8s.io/client-go/tools/cache"
-	"reflect"
-	"sort"
-	"strconv"
-	"strings"
 )
 
 const labelVMAlertName = "vmalert-name"

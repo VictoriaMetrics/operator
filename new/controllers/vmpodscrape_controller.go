@@ -18,8 +18,10 @@ package controllers
 
 import (
 	"context"
-
+	"github.com/VictoriaMetrics/operator/conf"
+	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/go-logr/logr"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -30,19 +32,50 @@ import (
 // VMPodScrapeReconciler reconciles a VMPodScrape object
 type VMPodScrapeReconciler struct {
 	client.Client
-	Log    logr.Logger
-	Scheme *runtime.Scheme
+	Log      logr.Logger
+	Scheme   *runtime.Scheme
+	BaseConf *conf.BaseOperatorConf
 }
 
 // +kubebuilder:rbac:groups=victoriametrics.victoriametrics.com,resources=vmpodscrapes,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=victoriametrics.victoriametrics.com,resources=vmpodscrapes/status,verbs=get;update;patch
 
 func (r *VMPodScrapeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	_ = context.Background()
-	_ = r.Log.WithValues("vmpodscrape", req.NamespacedName)
+	reqLogger := r.Log.WithValues("vmpodscrape", req.NamespacedName)
+	reqLogger.Info("Reconciling VMPodScrape")
 
-	// your logic here
+	// Fetch the VMPodScrape instance
+	instance := &victoriametricsv1beta1.VMPodScrape{}
+	ctx := context.Background()
+	err := r.Get(ctx, req.NamespacedName, instance)
+	if err != nil {
+		//in case of object notfound we must update vmagents
+		if !errors.IsNotFound(err) {
+			// Error reading the object - requeue the request.
+			return ctrl.Result{}, err
+		}
+	}
+	vmAgentInstances := &victoriametricsv1beta1.VMAgentList{}
+	err = r.List(ctx, vmAgentInstances)
+	if err != nil {
+		reqLogger.Error(err, "cannot list vmagent objects")
+		return ctrl.Result{}, err
+	}
+	reqLogger.Info("found vmagent objects ", "vmagents count: ", len(vmAgentInstances.Items))
 
+	for _, vmagent := range vmAgentInstances.Items {
+		reqLogger = reqLogger.WithValues("vmagent", vmagent.Name)
+		reqLogger.Info("reconciling podscrape for vmagent")
+		currentVMagent := &vmagent
+		recon, err := factory.CreateOrUpdateVMAgent(ctx, currentVMagent, r, r.BaseConf)
+		if err != nil {
+			reqLogger.Error(err, "cannot create or update vmagent")
+			return recon, err
+		}
+		reqLogger.Info("reconciled vmagent")
+	}
+
+	reqLogger.Info("reconciled pod monitor")
 	return ctrl.Result{}, nil
 }
 

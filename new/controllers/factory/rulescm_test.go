@@ -2,7 +2,7 @@ package factory
 
 import (
 	"context"
-	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
+	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/go-logr/logr"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -134,7 +134,7 @@ func TestSelectRules(t *testing.T) {
 			obj := []runtime.Object{}
 			obj = append(obj, tt.predefinedObjets...)
 			s := scheme.Scheme
-			s.AddKnownTypes(victoriametricsv1beta1.SchemeGroupVersion, &victoriametricsv1beta1.VMRule{}, &victoriametricsv1beta1.VMRuleList{})
+			s.AddKnownTypes(victoriametricsv1beta1.GroupVersion, &victoriametricsv1beta1.VMRule{}, &victoriametricsv1beta1.VMRuleList{})
 			fclient := fake.NewFakeClientWithScheme(s, obj...)
 			got, err := SelectRules(context.TODO(), tt.args.p, fclient)
 			if (err != nil) != tt.wantErr {

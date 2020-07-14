@@ -18,6 +18,9 @@ package controllers
 
 import (
 	"context"
+	"github.com/VictoriaMetrics/operator/conf"
+	"github.com/VictoriaMetrics/operator/controllers/factory"
+	"k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -30,18 +33,56 @@ import (
 // VMAgentReconciler reconciles a VMAgent object
 type VMAgentReconciler struct {
 	client.Client
-	Log    logr.Logger
-	Scheme *runtime.Scheme
+	Log      logr.Logger
+	Scheme   *runtime.Scheme
+	BaseConf *conf.BaseOperatorConf
 }
 
 // +kubebuilder:rbac:groups=victoriametrics.victoriametrics.com,resources=vmagents,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=victoriametrics.victoriametrics.com,resources=vmagents/status,verbs=get;update;patch
 
 func (r *VMAgentReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	_ = context.Background()
-	_ = r.Log.WithValues("vmagent", req.NamespacedName)
+	reqLogger := r.Log.WithValues("vmagent", req.NamespacedName)
+	reqLogger.Info("Reconciling")
 
-	// your logic here
+	// Fetch the VMAgent instance
+	instance := &victoriametricsv1beta1.VMAgent{}
+	ctx := context.Background()
+	err := r.Get(ctx, req.NamespacedName, instance)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			// Request object not found, could have been deleted after reconcile request.
+			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
+			// Return and don't requeue
+			return ctrl.Result{}, nil
+		}
+		reqLogger.Error(err, "cannot get vmagent object for reconcile")
+		// Error reading the object - requeue the request.
+		return ctrl.Result{}, err
+	}
+
+	//create deploy
+	reconResult, err := factory.CreateOrUpdateVMAgent(ctx, instance, r, r.BaseConf)
+	if err != nil {
+		reqLogger.Error(err, "cannot create or update vmagent deploy")
+		return reconResult, err
+	}
+
+	//create service for monitoring
+	svc, err := factory.CreateOrUpdateVMAgentService(ctx, instance, r, r.BaseConf)
+	if err != nil {
+		reqLogger.Error(err, "cannot create or update vmagent service")
+		return ctrl.Result{}, err
+	}
+
+	//create vmservicescrape for object by default
+	if !r.BaseConf.DisableSelfServiceMonitorCreation {
+		err := factory.CreateVMServiceScrapeFromService(ctx, r, svc)
+		if err != nil {
+			reqLogger.Error(err, "cannot create serviceScrape for vmagent")
+		}
+	}
+	reqLogger.Info("reconciled vmagent")
 
 	return ctrl.Result{}, nil
 }

@@ -1,0 +1,148 @@
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: manager-role
+rules:
+- apiGroups:
+  - victoriametrics.victoriametrics.com
+  resources:
+  - vmagents
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - victoriametrics.victoriametrics.com
+  resources:
+  - vmagents/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - victoriametrics.victoriametrics.com
+  resources:
+  - vmalertmanagers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - victoriametrics.victoriametrics.com
+  resources:
+  - vmalertmanagers/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - victoriametrics.victoriametrics.com
+  resources:
+  - vmalerts
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - victoriametrics.victoriametrics.com
+  resources:
+  - vmalerts/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - victoriametrics.victoriametrics.com
+  resources:
+  - vmpodscrapes
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - victoriametrics.victoriametrics.com
+  resources:
+  - vmpodscrapes/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - victoriametrics.victoriametrics.com
+  resources:
+  - vmrules
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - victoriametrics.victoriametrics.com
+  resources:
+  - vmrules/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - victoriametrics.victoriametrics.com
+  resources:
+  - vmservicescrapes
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - victoriametrics.victoriametrics.com
+  resources:
+  - vmservicescrapes/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - victoriametrics.victoriametrics.com
+  resources:
+  - vmsingles
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - victoriametrics.victoriametrics.com
+  resources:
+  - vmsingles/status
+  verbs:
+  - get
+  - patch
+  - update

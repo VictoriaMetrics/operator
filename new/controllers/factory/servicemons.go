@@ -5,11 +5,10 @@ import (
 	"compress/gzip"
 	"context"
 	"fmt"
+	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/conf"
-	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/validation"
 	"regexp"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -552,15 +551,6 @@ func gzipConfig(buf *bytes.Buffer, conf []byte) error {
 		return err
 	}
 	return nil
-}
-
-func SanitizeVolumeName(name string) string {
-	name = strings.ToLower(name)
-	name = invalidDNS1123Characters.ReplaceAllString(name, "-")
-	if len(name) > validation.DNS1123LabelMaxLength {
-		name = name[0:validation.DNS1123LabelMaxLength]
-	}
-	return strings.Trim(name, "-")
 }
 
 func CreateVMServiceScrapeFromService(ctx context.Context, rclient client.Client, service *v1.Service) error {

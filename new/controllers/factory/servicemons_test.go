@@ -2,7 +2,7 @@ package factory
 
 import (
 	"context"
-	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
+	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/go-logr/logr"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -17,7 +17,7 @@ import (
 
 func testGetScheme() *runtime.Scheme {
 	s := scheme.Scheme
-	s.AddKnownTypes(victoriametricsv1beta1.SchemeGroupVersion,
+	s.AddKnownTypes(victoriametricsv1beta1.GroupVersion,
 		&victoriametricsv1beta1.VMAgent{},
 		&victoriametricsv1beta1.VMAgentList{},
 		&victoriametricsv1beta1.VMAlert{},
@@ -27,7 +27,7 @@ func testGetScheme() *runtime.Scheme {
 		&victoriametricsv1beta1.VMAlertmanager{},
 		&victoriametricsv1beta1.VMAlertmanagerList{},
 	)
-	s.AddKnownTypes(victoriametricsv1beta1.SchemeGroupVersion,
+	s.AddKnownTypes(victoriametricsv1beta1.GroupVersion,
 		&victoriametricsv1beta1.VMPodScrape{},
 		&victoriametricsv1beta1.VMPodScrapeList{},
 		&victoriametricsv1beta1.VMServiceScrapeList{},

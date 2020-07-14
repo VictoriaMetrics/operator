@@ -2,8 +2,7 @@ domain: victoriametrics.com
 layout: go.kubebuilder.io/v2
 repo: github.com/VictoriaMetrics/operator
 resources:
-- group: victoriametrics
-  kind: VMAgent
+- kind: VMAgent
   version: v1beta1
 - group: victoriametrics
   kind: VMAlert

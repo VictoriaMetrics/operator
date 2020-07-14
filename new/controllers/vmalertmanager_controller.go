@@ -18,6 +18,10 @@ package controllers
 
 import (
 	"context"
+	"github.com/VictoriaMetrics/operator/conf"
+	"github.com/VictoriaMetrics/operator/controllers/factory"
+	"k8s.io/apimachinery/pkg/api/errors"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -30,19 +34,40 @@ import (
 // VMAlertmanagerReconciler reconciles a VMAlertmanager object
 type VMAlertmanagerReconciler struct {
 	client.Client
-	Log    logr.Logger
-	Scheme *runtime.Scheme
+	Log      logr.Logger
+	Scheme   *runtime.Scheme
+	BaseConf *conf.BaseOperatorConf
 }
 
 // +kubebuilder:rbac:groups=victoriametrics.victoriametrics.com,resources=vmalertmanagers,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=victoriametrics.victoriametrics.com,resources=vmalertmanagers/status,verbs=get;update;patch
 
 func (r *VMAlertmanagerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	_ = context.Background()
-	_ = r.Log.WithValues("vmalertmanager", req.NamespacedName)
+	reqLogger := r.Log.WithValues("object", "vmalertmanager", req.NamespacedName)
+	reqLogger.Info("Reconciling")
+	ctx := context.Background()
 
-	// your logic here
+	instance := &victoriametricsv1beta1.VMAlertmanager{}
+	err := r.Get(ctx, req.NamespacedName, instance)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return reconcile.Result{}, nil
+		}
+		return ctrl.Result{}, err
+	}
 
+	_, err = factory.CreateOrUpdateAlertManager(ctx, instance, r, r.BaseConf)
+	if err != nil {
+		reqLogger.Error(err, "cannot create or update vmalertmanager sts")
+		return ctrl.Result{}, err
+	}
+	_, err = factory.CreateOrUpdateAlertManagerService(ctx, instance, r, r.BaseConf)
+	if err != nil {
+		reqLogger.Error(err, "cannot create or update vmalertmanager service")
+		return ctrl.Result{}, err
+	}
+
+	reqLogger.Info("vmalertmanager reconciled")
 	return ctrl.Result{}, nil
 }
 

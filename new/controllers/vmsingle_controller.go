@@ -18,8 +18,10 @@ package controllers
 
 import (
 	"context"
-
+	"github.com/VictoriaMetrics/operator/conf"
+	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/go-logr/logr"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -30,19 +32,57 @@ import (
 // VMSingleReconciler reconciles a VMSingle object
 type VMSingleReconciler struct {
 	client.Client
-	Log    logr.Logger
-	Scheme *runtime.Scheme
+	Log      logr.Logger
+	Scheme   *runtime.Scheme
+	BaseConf *conf.BaseOperatorConf
 }
 
 // +kubebuilder:rbac:groups=victoriametrics.victoriametrics.com,resources=vmsingles,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=victoriametrics.victoriametrics.com,resources=vmsingles/status,verbs=get;update;patch
 
 func (r *VMSingleReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	_ = context.Background()
-	_ = r.Log.WithValues("vmsingle", req.NamespacedName)
+	reqLogger := r.Log.WithValues("vmsingle", req.NamespacedName)
+	reqLogger.Info("Reconciling vmsingle")
 
-	// your logic here
+	ctx := context.Background()
+	instance := &victoriametricsv1beta1.VMSingle{}
+	err := r.Get(ctx, req.NamespacedName, instance)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return ctrl.Result{}, nil
+		}
+		return ctrl.Result{}, err
+	}
 
+	if instance.Spec.Storage != nil {
+		reqLogger.Info("storage specified reconcile it")
+		_, err = factory.CreateVMStorage(ctx, instance, r, r.BaseConf)
+		if err != nil {
+			reqLogger.Error(err, "cannot create pvc")
+			return ctrl.Result{}, err
+		}
+	}
+	_, err = factory.CreateOrUpdateVMSingle(ctx, instance, r, r.BaseConf)
+	if err != nil {
+		reqLogger.Error(err, "cannot create or update vmsingle deployment")
+		return ctrl.Result{}, err
+	}
+
+	svc, err := factory.CreateOrUpdateVMSingleService(ctx, instance, r, r.BaseConf)
+	if err != nil {
+		reqLogger.Error(err, "cannot create or update vmsingle service")
+		return ctrl.Result{}, err
+	}
+
+	//create vmservicescrape for object by default
+	if !r.BaseConf.DisableSelfServiceMonitorCreation {
+		err := factory.CreateVMServiceScrapeFromService(ctx, r, svc)
+		if err != nil {
+			reqLogger.Error(err, "cannot create serviceScrape for vmsingle")
+		}
+	}
+
+	reqLogger.Info("vmsingle  reconciled")
 	return ctrl.Result{}, nil
 }
 

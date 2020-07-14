@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/VictoriaMetrics/operator/pkg/apis"
-	operator "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
+	operator "github.com/VictoriaMetrics/operator/api/v1beta1"
 	f "github.com/operator-framework/operator-sdk/pkg/test"
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
 	"k8s.io/apimachinery/pkg/runtime"

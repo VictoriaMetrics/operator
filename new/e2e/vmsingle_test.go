@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	operator "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
+	operator "github.com/VictoriaMetrics/operator/api/v1beta1"
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
 	"github.com/operator-framework/operator-sdk/pkg/test/e2eutil"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -13,55 +13,48 @@ import (
 	"k8s.io/utils/pointer"
 )
 
-func vmAgentCreateTest(t *testing.T, f *framework.Framework, ctx *framework.Context) error {
+func vmSingleCreateTest(t *testing.T, f *framework.Framework, ctx *framework.Context) error {
 	namespace, err := ctx.GetOperatorNamespace()
 	if err != nil {
 		return fmt.Errorf("could not get namespace: %v", err)
 	}
 	// create  custom resource
-	exampleVmAgent := &operator.VMAgent{
+	exampleVmSingle := &operator.VMSingle{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "example-vmagent",
+			Name:      "example-vmsingle",
 			Namespace: namespace,
 		},
-		Spec: operator.VMAgentSpec{
-			RemoteWrite: []operator.VMAgentRemoteWriteSpec{
-				{URL: "http://localhost"},
-			},
-			ReplicaCount: pointer.Int32Ptr(1),
+		Spec: operator.VMSingleSpec{
+			ReplicaCount:    pointer.Int32Ptr(1),
+			RetentionPeriod: "1",
 		},
 	}
 	// use TestCtx's create helper to create the object and add a cleanup function for the new object
-	err = f.Client.Create(goctx.TODO(), exampleVmAgent, &framework.CleanupOptions{TestContext: ctx, Timeout: cleanupTimeout, RetryInterval: cleanupRetryInterval})
+	err = f.Client.Create(goctx.TODO(), exampleVmSingle, &framework.CleanupOptions{TestContext: ctx, Timeout: cleanupTimeout, RetryInterval: cleanupRetryInterval})
+	if err != nil {
+		return err
+	}
+	// wait for example-vmsingle to reach 1 replicas
+	err = e2eutil.WaitForDeployment(t, f.KubeClient, namespace, "vmsingle-example-vmsingle", 1, retryInterval, timeout)
 	if err != nil {
 		return err
 	}
 
-	//wait for config
-	err = WaitForSecret(t, f.KubeClient, namespace, "vmagent-example-vmagent", retryInterval, timeout)
+	err = f.Client.Get(goctx.TODO(), types.NamespacedName{Name: "example-vmsingle", Namespace: namespace}, exampleVmSingle)
 	if err != nil {
 		return err
 	}
-	// wait for example-vmalert to reach 1 replicas
-	err = e2eutil.WaitForDeployment(t, f.KubeClient, namespace, "vmagent-example-vmagent", 1, retryInterval, timeout)
+	exampleVmSingle.Spec.ReplicaCount = pointer.Int32Ptr(1)
+	exampleVmSingle.Spec.RetentionPeriod = "2"
+	exampleVmSingle.Spec.ExtraArgs = map[string]string{"loggerLevel": "ERROR"}
+	err = f.Client.Update(goctx.TODO(), exampleVmSingle)
 	if err != nil {
 		return err
 	}
-
-	err = f.Client.Get(goctx.TODO(), types.NamespacedName{Name: "example-vmagent", Namespace: namespace}, exampleVmAgent)
-	if err != nil {
-		return err
-	}
-	exampleVmAgent.Spec.ReplicaCount = pointer.Int32Ptr(2)
-	exampleVmAgent.Spec.ExtraArgs = map[string]string{"loggerLevel": "ERROR"}
-	err = f.Client.Update(goctx.TODO(), exampleVmAgent)
-	if err != nil {
-		return err
-	}
-	return e2eutil.WaitForDeployment(t, f.KubeClient, namespace, "vmagent-example-vmagent", 2, retryInterval, timeout)
+	return e2eutil.WaitForDeployment(t, f.KubeClient, namespace, "vmsingle-example-vmsingle", 1, retryInterval, timeout)
 }
 
-func vmAgent(t *testing.T) {
+func vmSingle(t *testing.T) {
 	ctx := framework.NewContext(t)
 	defer ctx.Cleanup()
 	err := ctx.InitializeClusterResources(&framework.CleanupOptions{TestContext: ctx, Timeout: cleanupTimeout, RetryInterval: cleanupRetryInterval})
@@ -81,7 +74,7 @@ func vmAgent(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err = vmAgentCreateTest(t, f, ctx); err != nil {
+	if err = vmSingleCreateTest(t, f, ctx); err != nil {
 		t.Fatal(err)
 	}
 }

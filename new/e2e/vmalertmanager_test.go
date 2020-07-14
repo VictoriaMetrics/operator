@@ -6,7 +6,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"testing"
 
-	operator "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
+	operator "github.com/VictoriaMetrics/operator/api/v1beta1"
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
 	"github.com/operator-framework/operator-sdk/pkg/test/e2eutil"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

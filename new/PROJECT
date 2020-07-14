@@ -1,0 +1,6 @@
+domain: victoriametrics.com
+layout: go.kubebuilder.io/v2
+repo: github.com/VictoriaMetrics/operator
+version: 3-alpha
+plugins:
+  go.operator-sdk.io/v2-alpha: {}

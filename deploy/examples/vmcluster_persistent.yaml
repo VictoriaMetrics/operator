@@ -1,0 +1,37 @@
+---
+apiVersion: victoriametrics.com/v1beta1
+kind: VMCluster
+metadata:
+  name: example-vmcluster-persistent
+spec:
+  # Add fields here
+  retentionPeriod: "4"
+  replicationFactor: 2
+  vmstorage:
+    replicaCount: 2
+    storageDataPath: "/vm-data"
+    storage:
+      volumeClaimTemplate:
+        spec:
+          resources:
+            requests:
+              storage: 10Gi
+    resources:
+      limits:
+        cpu: "0.5"
+        memory: 500Mi
+  vmselect:
+    replicaCount: 2
+    cacheMountPath: "/select-cache"
+    storage:
+      volumeClaimTemplate:
+        spec:
+          resources:
+            requests:
+              storage: 2Gi
+    resources:
+      limits:
+        cpu: "0.3"
+        memory: "300Mi"
+  vminsert:
+    replicaCount: 2

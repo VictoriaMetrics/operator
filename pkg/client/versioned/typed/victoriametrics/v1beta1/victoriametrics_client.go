@@ -29,6 +29,7 @@ type VictoriametricsV1beta1Interface interface {
 	VMAgentsGetter
 	VMAlertsGetter
 	VMAlertmanagersGetter
+	VMClustersGetter
 	VMPodScrapesGetter
 	VMRulesGetter
 	VMServiceScrapesGetter
@@ -50,6 +51,10 @@ func (c *VictoriametricsV1beta1Client) VMAlerts(namespace string) VMAlertInterfa
 
 func (c *VictoriametricsV1beta1Client) VMAlertmanagers(namespace string) VMAlertmanagerInterface {
 	return newVMAlertmanagers(c, namespace)
+}
+
+func (c *VictoriametricsV1beta1Client) VMClusters(namespace string) VMClusterInterface {
+	return newVMClusters(c, namespace)
 }
 
 func (c *VictoriametricsV1beta1Client) VMPodScrapes(namespace string) VMPodScrapeInterface {

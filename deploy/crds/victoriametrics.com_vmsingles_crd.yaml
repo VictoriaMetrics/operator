@@ -4465,6 +4465,8 @@ spec:
                 - name
                 type: object
               type: array
+          required:
+          - retentionPeriod
           type: object
         status:
           description: VMSingleStatus defines the observed state of VMSingle

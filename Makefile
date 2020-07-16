@@ -21,6 +21,7 @@ QUAY_TOKEN=$(REPO_TOKEN)
 TEST_ARGS=$(GOCMD) test -covermode=atomic -coverprofile=coverage.txt -v
 APIS_BASE_PATH=pkg/apis/victoriametrics/v1beta1
 GOPATHDIR ?= ~/go
+PATCH_CLUSTER_SPEC_CMD=yq d -i deploy/crds/victoriametrics.com_vmclusters_crd.yaml spec.validation.openAPIV3Schema.properties.spec.properties
 
 .PHONY: build
 
@@ -43,6 +44,16 @@ install-develop-tools: install-golint
 
 report:
 	$(GOCMD) tool cover -html=coverage.txt
+
+cluster-patch-crd:
+	docker run --rm -v "${PWD}":/workdir mikefarah/yq /bin/sh -c " \
+	$(PATCH_CLUSTER_SPEC_CMD).vminsert.properties.containers.items.properties && \
+	$(PATCH_CLUSTER_SPEC_CMD).vminsert.properties.initContainers.items.properties && \
+	$(PATCH_CLUSTER_SPEC_CMD).vmselect.properties.containers.items.properties && \
+	$(PATCH_CLUSTER_SPEC_CMD).vmselect.properties.initContainers.items.properties && \
+	$(PATCH_CLUSTER_SPEC_CMD).vmstorage.properties.containers.items.properties && \
+	$(PATCH_CLUSTER_SPEC_CMD).vmstorage.properties.initContainers.items.properties \
+	"
 
 gen:
 	$(OPERATOR_BIN) generate crds --crd-version=v1beta1
@@ -74,7 +85,7 @@ doc:
 	         $(APIS_BASE_PATH)/vmrule_types.go \
 	         $(APIS_BASE_PATH)/vmservicescrape_types.go \
 	         $(APIS_BASE_PATH)/vmpodscrape_types.go \
-	         $(APIS_BASE_PATH)/vmprometheusconvertor_types.go \
+	         $(APIS_BASE_PATH)/vmcluster_types.go  \
 	           > docs/api.MD
 
 
@@ -82,7 +93,7 @@ fmt:
 	gofmt -l -w -s ./pkg
 	gofmt -l -w -s ./cmd
 
-build: gen build-app
+build: gen cluster-patch-crd build-app
 
 docker: build-app
 	docker build -t $(DOCKER_REPO) . -f cmd/manager/Dockerfile

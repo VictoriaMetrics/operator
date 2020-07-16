@@ -1,0 +1,20 @@
+---
+apiVersion: victoriametrics.com/v1beta1
+kind: VMCluster
+metadata:
+  name: example-vmcluster
+spec:
+  # Add fields here
+  retentionPeriod: "1"
+  vmstorage:
+    replicaCount: 2
+    resources:
+      limits:
+        cpu: "0.2"
+  vmselect:
+    replicaCount: 2
+    resources:
+      limits:
+        cpu: "0.2"
+  vminsert:
+    replicaCount: 2

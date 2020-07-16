@@ -40,6 +40,10 @@ func (c *FakeVictoriametricsV1beta1) VMAlertmanagers(namespace string) v1beta1.V
 	return &FakeVMAlertmanagers{c, namespace}
 }
 
+func (c *FakeVictoriametricsV1beta1) VMClusters(namespace string) v1beta1.VMClusterInterface {
+	return &FakeVMClusters{c, namespace}
+}
+
 func (c *FakeVictoriametricsV1beta1) VMPodScrapes(namespace string) v1beta1.VMPodScrapeInterface {
 	return &FakeVMPodScrapes{c, namespace}
 }

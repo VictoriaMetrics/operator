@@ -22,6 +22,7 @@ TEST_ARGS=$(GOCMD) test -covermode=atomic -coverprofile=coverage.txt -v
 APIS_BASE_PATH=pkg/apis/victoriametrics/v1beta1
 GOPATHDIR ?= ~/go
 YAML_MERGE=yq merge --inplace --overwrite --autocreate=false
+YAML_DROP=yq delete --inplace
 
 .PHONY: build
 
@@ -51,10 +52,13 @@ gen-crd:
 
 fix118:
 	docker run --rm -v "${PWD}":/workdir mikefarah/yq /bin/sh -c " \
-		$(YAML_MERGE) deploy/crds/victoriametrics.com_vmagents_crd.yaml scripts/patch1.18.yaml && \
 		$(YAML_MERGE) deploy/crds/victoriametrics.com_vmalertmanagers_crd.yaml scripts/patch1.18.yaml && \
 		$(YAML_MERGE) deploy/crds/victoriametrics.com_vmalerts_crd.yaml scripts/patch1.18.yaml && \
 		$(YAML_MERGE) deploy/crds/victoriametrics.com_vmsingles_crd.yaml scripts/patch1.18.yaml "
+	docker run --rm -v "${PWD}":/workdir mikefarah/yq /bin/sh -c " \
+		$(YAML_DROP) deploy/crds/victoriametrics.com_vmagents_crd.yaml spec.validation.openAPIV3Schema.properties.spec.properties.initContainers.items.properties && \
+		$(YAML_DROP) deploy/crds/victoriametrics.com_vmagents_crd.yaml spec.validation.openAPIV3Schema.properties.spec.properties.containers.items.properties "
+
 
 gen: gen-crd fix118
 

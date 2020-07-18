@@ -73,9 +73,16 @@ type EmbeddedPersistentVolumeClaim struct {
 	Status v1.PersistentVolumeClaimStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
 }
 
-// RemoteWriteSpec defines the remote_write configuration.
+// BasicAuth allow an endpoint to authenticate over basic authentication
+// More info: https://prometheus.io/docs/operating/configuration/#endpoints
 // +k8s:openapi-gen=true
-type RemoteSpec struct {
-	// URL of the endpoint to send samples to.
-	URL string `json:"url"`
+type BasicAuth struct {
+	// The secret in the service monitor namespace that contains the username
+	// for authentication.
+	// +optional
+	Username v1.SecretKeySelector `json:"username,omitempty"`
+	// The secret in the service monitor namespace that contains the password
+	// for authentication.
+	// +optional
+	Password v1.SecretKeySelector `json:"password,omitempty"`
 }

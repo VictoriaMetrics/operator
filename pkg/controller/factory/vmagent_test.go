@@ -33,7 +33,7 @@ func Test_makeSpecForVMAgent(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := makeSpecForVMAgent(tt.args.cr, tt.args.c)
+			got, err := makeSpecForVMAgent(tt.args.cr, tt.args.c, nil, nil)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("makeSpecForVMAgent() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -60,7 +60,7 @@ func Test_newDeployForVMAgent(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := newDeployForVMAgent(tt.args.cr, tt.args.c)
+			got, err := newDeployForVMAgent(tt.args.cr, tt.args.c, nil, nil)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("newDeployForVMAgent() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -94,7 +94,7 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: victoriametricsv1beta1.VMAgentSpec{
-						RemoteWrite: []victoriametricsv1beta1.RemoteSpec{
+						RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
 							{URL: "http://remote-write"},
 						},
 					},
@@ -111,7 +111,7 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: victoriametricsv1beta1.VMAgentSpec{
-						RemoteWrite: []victoriametricsv1beta1.RemoteSpec{
+						RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
 							{URL: "http://remote-write"},
 						},
 						ServiceMonitorSelector: &metav1.LabelSelector{},
@@ -154,7 +154,7 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: victoriametricsv1beta1.VMAgentSpec{
-						RemoteWrite: []victoriametricsv1beta1.RemoteSpec{
+						RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
 							{URL: "http://remote-write"},
 						},
 						ServiceMonitorSelector: &metav1.LabelSelector{},

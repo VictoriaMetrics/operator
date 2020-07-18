@@ -1,0 +1,57 @@
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: vmalert-basic-auth
+  labels:
+    app: vm-operator
+type: Opaque
+stringData:
+  username: admin
+  password: passw0rd
+---
+apiVersion: victoriametrics.com/v1beta1
+kind: VMAlert
+metadata:
+  name: example-vmalert
+spec:
+  # Add fields here
+  replicaCount: 1
+  datasource:
+    url: "http://vmagent-example-vmsingle.default.svc:8429"
+    basicAuth:
+      username:
+        name: vmalert-basic-auth
+        key: username
+      password:
+        name: vmalert-basic-auth
+        key: password
+  notifierURL: "http://alertmanager-operated:9093"
+  evaluationInterval: "30s"
+  version: "latest"
+  ruleSelector:
+    matchLabels:
+      managed-by: vm-operator
+  remoteWrite:
+    url: "http://vmagent-example-vmsingle.default.svc:8429"
+    concurrency: 12
+    flushInterval: 5m
+    maxBatchSize: 20
+    maxQueueSize: 100
+    basicAuth:
+      username:
+        name: vmalert-basic-auth
+        key: username
+      password:
+        name: vmalert-basic-auth
+        key: password
+  remoteRead:
+    url: "http://vmagent-example-vmsingle.default.svc:8429"
+    lookback: 1h
+    basicAuth:
+      username:
+        name: vmalert-basic-auth
+        key: username
+      password:
+        name: vmalert-basic-auth
+        key: password

@@ -780,14 +780,150 @@ spec:
             priorityClassName:
               description: PriorityClassName assigned to the Pods
               type: string
+            relabelConfig:
+              description: RelabelConfig ConfigMap with global relabel config -remoteWrite.relabelConfig
+                This relabeling is applied to all the collected metrics before sending
+                them to remote storage.
+              properties:
+                key:
+                  description: The key to select.
+                  type: string
+                name:
+                  description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                    TODO: Add other useful fields. apiVersion, kind, uid?'
+                  type: string
+                optional:
+                  description: Specify whether the ConfigMap or its key must be defined
+                  type: boolean
+              required:
+              - key
+              type: object
             remoteWrite:
               description: 'RemoteWrite list of victoria metrics /some other remote write system for vm it must looks like: http://victoria-metrics-single:8429/api/v1/write or for cluster different url https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/app/vmagent#splitting-data-streams-among-multiple-systems'
               items:
-                description: RemoteWriteSpec defines the remote_write configuration.
+                description: VMAgentRemoteWriteSpec defines the remote storage configuration
+                  for VmAgent
                 properties:
+                  basicAuth:
+                    description: BasicAuth allow an endpoint to authenticate over
+                      basic authentication
+                    properties:
+                      password:
+                        description: The secret in the service monitor namespace that
+                          contains the password for authentication.
+                        properties:
+                          key:
+                            description: The key of the secret to select from.  Must
+                              be a valid secret key.
+                            type: string
+                          name:
+                            description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              TODO: Add other useful fields. apiVersion, kind, uid?'
+                            type: string
+                          optional:
+                            description: Specify whether the Secret or its key must
+                              be defined
+                            type: boolean
+                        required:
+                        - key
+                        type: object
+                      username:
+                        description: The secret in the service monitor namespace that
+                          contains the username for authentication.
+                        properties:
+                          key:
+                            description: The key of the secret to select from.  Must
+                              be a valid secret key.
+                            type: string
+                          name:
+                            description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              TODO: Add other useful fields. apiVersion, kind, uid?'
+                            type: string
+                          optional:
+                            description: Specify whether the Secret or its key must
+                              be defined
+                            type: boolean
+                        required:
+                        - key
+                        type: object
+                    type: object
+                  bearerTokenSecret:
+                    description: Optional bearer auth token to use for -remoteWrite.url
+                    properties:
+                      key:
+                        description: The key of the secret to select from.  Must be
+                          a valid secret key.
+                        type: string
+                      name:
+                        description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                          TODO: Add other useful fields. apiVersion, kind, uid?'
+                        type: string
+                      optional:
+                        description: Specify whether the Secret or its key must be
+                          defined
+                        type: boolean
+                    required:
+                    - key
+                    type: object
+                  flushInterval:
+                    description: Interval for flushing the data to remote storage.
+                      (default 1s)
+                    pattern: '[0-9]+(ms|s|m|h)'
+                    type: string
+                  label:
+                    additionalProperties:
+                      type: string
+                    description: Optional labels in the form 'name=value' to add to
+                      all the metrics before sending them
+                    type: object
+                  maxBlockSize:
+                    description: The maximum size in bytes of unpacked request to
+                      send to remote storage
+                    format: int32
+                    type: integer
+                  maxDiskUsagePerURL:
+                    description: The maximum file-based buffer size in bytes at -remoteWrite.tmpDataPath
+                    format: int32
+                    type: integer
+                  queues:
+                    description: The number of concurrent queues
+                    format: int32
+                    type: integer
+                  sendTimeout:
+                    description: Timeout for sending a single block of data to -remoteWrite.url
+                      (default 1m0s)
+                    pattern: '[0-9]+(ms|s|m|h)'
+                    type: string
+                  showURL:
+                    description: Whether to show -remoteWrite.url in the exported
+                      metrics. It is hidden by default, since it can contain sensistive
+                      auth info
+                    type: boolean
+                  tmpDataPath:
+                    description: Path to directory where temporary data for remote
+                      write component is stored (default "vmagent-remotewrite-data")
+                    type: string
                   url:
                     description: URL of the endpoint to send samples to.
                     type: string
+                  urlRelabelConfig:
+                    description: ConfigMap with relabeling config which is applied
+                      to metrics before sending them to the corresponding -remoteWrite.url
+                    properties:
+                      key:
+                        description: The key to select.
+                        type: string
+                      name:
+                        description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                          TODO: Add other useful fields. apiVersion, kind, uid?'
+                        type: string
+                      optional:
+                        description: Specify whether the ConfigMap or its key must
+                          be defined
+                        type: boolean
+                    required:
+                    - key
+                    type: object
                 required:
                   - url
                 type: object
@@ -1830,7 +1966,7 @@ spec:
             - serviceAccountName
           type: object
         status:
-          description: VMAgentStatus defines the observed state of VMAgent
+          description: VmAgentStatus defines the observed state of VmAgent
           properties:
             availableReplicas:
               description: AvailableReplicas Total number of available pods (ready for at least minReadySeconds) targeted by this VMAlert cluster.

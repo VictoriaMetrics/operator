@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"github.com/coreos/prometheus-operator/pkg/k8sutil"
 	"path"
+	"strconv"
+	"strings"
 
 	"github.com/VictoriaMetrics/operator/conf"
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
@@ -107,8 +109,15 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 	if err != nil {
 		return reconcile.Result{}, fmt.Errorf("cannot update tls asset for vmagent: %w", err)
 	}
+
+	// getting secrets for remotewrite spec
+	rwsBasicAuthSecrets, rwsTokens, err := LoadRemoteWriteSecrets(ctx, cr, rclient, l)
+	if err != nil {
+		return reconcile.Result{}, fmt.Errorf("cannot get remote write secrets for vmagent: %w", err)
+	}
 	l.Info("create or update vm agent deploy")
-	newDeploy, err := newDeployForVMAgent(cr, c)
+
+	newDeploy, err := newDeployForVMAgent(cr, c, rwsBasicAuthSecrets, rwsTokens)
 	if err != nil {
 		return reconcile.Result{}, fmt.Errorf("cannot build new deploy for vmagent: %w", err)
 	}
@@ -151,7 +160,7 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 }
 
 // newDeployForCR returns a busybox pod with the same name/namespace as the cr
-func newDeployForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *conf.BaseOperatorConf) (*appsv1.Deployment, error) {
+func newDeployForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *conf.BaseOperatorConf, rwsBasicAuth map[string]BasicAuthCredentials, rwsTokens map[string]BearerToken) (*appsv1.Deployment, error) {
 	cr = cr.DeepCopy()
 
 	//inject default
@@ -185,7 +194,7 @@ func newDeployForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *conf.BaseOperato
 		cr.Spec.Resources.Requests[corev1.ResourceCPU] = resource.MustParse(c.VMAgentDefault.Resource.Request.Cpu)
 	}
 
-	podSpec, err := makeSpecForVMAgent(cr, c)
+	podSpec, err := makeSpecForVMAgent(cr, c, rwsBasicAuth, rwsTokens)
 	if err != nil {
 		return nil, err
 	}
@@ -213,12 +222,13 @@ func newDeployForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *conf.BaseOperato
 	return depSpec, nil
 }
 
-func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *conf.BaseOperatorConf) (*corev1.PodTemplateSpec, error) {
+func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *conf.BaseOperatorConf, rwsBasicAuth map[string]BasicAuthCredentials, rwsTokens map[string]BearerToken) (*corev1.PodTemplateSpec, error) {
 	args := []string{
 		fmt.Sprintf("-promscrape.config=%s", path.Join(vmAgentConOfOutDir, configEnvsubstFilename)),
 	}
-	for _, remote := range cr.Spec.RemoteWrite {
-		args = append(args, "-remoteWrite.url="+remote.URL)
+
+	if len(cr.Spec.RemoteWrite) > 0 {
+		args = append(args, BuildRemoteWrites(cr.Spec.RemoteWrite, rwsBasicAuth, rwsTokens)...)
 	}
 
 	for arg, value := range cr.Spec.ExtraArgs {
@@ -330,6 +340,50 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *conf.BaseOperator
 		fmt.Sprintf("--reload-url=http://localhost:%s/-/reload", cr.Spec.Port),
 		fmt.Sprintf("--config-file=%s", path.Join(vmAgentConfDir, configFilename)),
 		fmt.Sprintf("--config-envsubst-file=%s", path.Join(vmAgentConOfOutDir, configEnvsubstFilename)),
+	}
+
+	if cr.Spec.RelabelConfig != nil {
+		volumes = append(volumes, corev1.Volume{
+			Name: k8sutil.SanitizeVolumeName("configmap-" + cr.Spec.RelabelConfig.Name),
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: cr.Spec.RelabelConfig.Name,
+					},
+				},
+			},
+		})
+		agentVolumeMounts = append(agentVolumeMounts, corev1.VolumeMount{
+			Name:      k8sutil.SanitizeVolumeName("configmap-" + cr.Spec.RelabelConfig.Name),
+			ReadOnly:  true,
+			MountPath: path.Join(vmAgentConfigsDir, cr.Spec.RelabelConfig.Name),
+		})
+
+		args = append(args, "-remoteWrite.relabelConfig="+path.Join(vmAgentConfigsDir, cr.Spec.RelabelConfig.Name, cr.Spec.RelabelConfig.Key))
+	}
+
+	for _, rw := range cr.Spec.RemoteWrite {
+		if rw.UrlRelabelConfig == nil {
+			continue
+		}
+		if rw.UrlRelabelConfig.Name == cr.Spec.RelabelConfig.Name {
+			continue
+		}
+		volumes = append(volumes, corev1.Volume{
+			Name: k8sutil.SanitizeVolumeName("configmap-" + rw.UrlRelabelConfig.Name),
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: rw.UrlRelabelConfig.Name,
+					},
+				},
+			},
+		})
+		agentVolumeMounts = append(agentVolumeMounts, corev1.VolumeMount{
+			Name:      k8sutil.SanitizeVolumeName("configmap-" + rw.UrlRelabelConfig.Name),
+			ReadOnly:  true,
+			MountPath: path.Join(vmAgentConfigsDir, rw.UrlRelabelConfig.Name),
+		})
 	}
 
 	livenessProbeHandler := corev1.Handler{
@@ -587,4 +641,148 @@ func loadTLSAssets(ctx context.Context, rclient client.Client, monitors map[stri
 	}
 
 	return assets, nil
+}
+
+func LoadRemoteWriteSecrets(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client, l logr.Logger) (map[string]BasicAuthCredentials, map[string]BearerToken, error) {
+	SecretsInNS := &corev1.SecretList{}
+	err := rclient.List(ctx, SecretsInNS)
+	if err != nil {
+		l.Error(err, "cannot list secrets at vmagent namespace")
+		return nil, nil, err
+	}
+	rwsBasicAuthSecrets, err := loadBasicAuthSecrets(ctx, rclient, nil, nil, cr.Spec.RemoteWrite, SecretsInNS)
+	if err != nil {
+		l.Error(err, "cannot load basic auth secrets for remote write specs")
+		return nil, nil, err
+	}
+
+	rwsBearerTokens, err := loadBearerTokensFromSecrets(ctx, rclient, nil, cr.Spec.RemoteWrite, SecretsInNS)
+	if err != nil {
+		l.Error(err, "cannot get bearer tokens for remote write specs")
+		return nil, nil, err
+	}
+	return rwsBasicAuthSecrets, rwsBearerTokens, nil
+}
+
+type remoteFlag struct {
+	isNotNull   bool
+	flagSetting string
+}
+
+func BuildRemoteWrites(remoteTargets []victoriametricsv1beta1.VMAgentRemoteWriteSpec, rwsBasicAuth map[string]BasicAuthCredentials, rwsTokens map[string]BearerToken) []string {
+	var finalArgs []string
+	var remoteArgs []remoteFlag
+
+	url := remoteFlag{flagSetting: "-remoteWrite.url=", isNotNull: true}
+	authUser := remoteFlag{flagSetting: "-remoteWrite.basicAuth.username="}
+	authPassword := remoteFlag{flagSetting: "-remoteWrite.basicAuth.password="}
+	bearerToken := remoteFlag{flagSetting: "-remoteWrite.bearerToken="}
+	flushInterval := remoteFlag{flagSetting: "-remoteWrite.flushInterval="}
+	labels := remoteFlag{flagSetting: "-remoteWrite.label="}
+	maxBlockSize := remoteFlag{flagSetting: "-remoteWrite.maxBlockSize="}
+	maxDiskUsage := remoteFlag{flagSetting: "-remoteWrite.maxDiskUsagePerURL="}
+	queues := remoteFlag{flagSetting: "-remoteWrite.queues="}
+	urlRelabelConfig := remoteFlag{flagSetting: "-remoteWrite.urlRelabelConfig="}
+	sendTimeout := remoteFlag{flagSetting: "-remoteWrite.sendTimeout="}
+	showURL := remoteFlag{flagSetting: "-remoteWrite.showURL="}
+	tmpDataPath := remoteFlag{flagSetting: "-remoteWrite.tmpDataPath="}
+
+	for _, rws := range remoteTargets {
+
+		url.flagSetting += fmt.Sprintf("%s,", rws.URL)
+
+		var user string
+		var pass string
+		if rws.BasicAuth != nil {
+			if s, ok := rwsBasicAuth[fmt.Sprintf("remoteWriteSpec/%s", rws.URL)]; ok {
+				authUser.isNotNull = true
+				authPassword.isNotNull = true
+				user = s.username
+				pass = s.password
+			}
+		}
+		authUser.flagSetting += fmt.Sprintf("\"%s\",", strings.Replace(user, `"`, `\"`, -1))
+		authPassword.flagSetting += fmt.Sprintf("\"%s\",", strings.Replace(pass, `"`, `\"`, -1))
+
+		var value string
+		if rws.BearerTokenSecret != nil {
+			if s, ok := rwsTokens[fmt.Sprintf("remoteWriteSpec/%s", rws.URL)]; ok {
+				bearerToken.isNotNull = true
+				value = string(s)
+			}
+		}
+		bearerToken.flagSetting += fmt.Sprintf("\"%s\",", strings.Replace(value, `"`, `\"`, -1))
+
+		value = ""
+		if rws.FlushInterval != nil {
+			flushInterval.isNotNull = true
+			value = *rws.FlushInterval
+		}
+		flushInterval.flagSetting += fmt.Sprintf("%s,", value)
+
+		value = ""
+		if rws.Labels != nil {
+			labels.isNotNull = true
+			for n, v := range rws.Labels {
+				value += fmt.Sprintf("%v=%v,", n, v)
+			}
+		}
+		labels.flagSetting += fmt.Sprintf("%s,", value)
+
+		value = ""
+		if rws.MaxBlockSize != nil {
+			maxBlockSize.isNotNull = true
+			value = strconv.Itoa(int(*rws.MaxBlockSize))
+		}
+		maxBlockSize.flagSetting += fmt.Sprintf("%s,", value)
+
+		value = ""
+		if rws.MaxDiskUsagePerURL != nil {
+			maxDiskUsage.isNotNull = true
+			value = strconv.Itoa(int(*rws.MaxDiskUsagePerURL))
+		}
+		maxDiskUsage.flagSetting += fmt.Sprintf("%s,", value)
+
+		value = ""
+		if rws.Queues != nil {
+			queues.isNotNull = true
+			value = strconv.Itoa(int(*rws.Queues))
+		}
+		queues.flagSetting += fmt.Sprintf("%s,", value)
+
+		value = ""
+		if rws.UrlRelabelConfig != nil {
+			urlRelabelConfig.isNotNull = true
+			value = path.Join(vmAgentConfigsDir, rws.UrlRelabelConfig.Name, rws.UrlRelabelConfig.Key)
+		}
+		urlRelabelConfig.flagSetting += fmt.Sprintf("%s,", value)
+
+		value = ""
+		if rws.SendTimeout != nil {
+			sendTimeout.isNotNull = true
+			value = *rws.SendTimeout
+		}
+		sendTimeout.flagSetting += fmt.Sprintf("%s,", value)
+
+		value = ""
+		if rws.ShowURL != nil {
+			showURL.isNotNull = true
+			value = strconv.FormatBool(*rws.ShowURL)
+		}
+		showURL.flagSetting += fmt.Sprintf("%s,", value)
+
+		value = ""
+		if rws.TmpDataPath != nil {
+			tmpDataPath.isNotNull = true
+			value = *rws.TmpDataPath
+		}
+		tmpDataPath.flagSetting += fmt.Sprintf("%s,", value)
+	}
+	remoteArgs = append(remoteArgs, url, authUser, authPassword, bearerToken, flushInterval, labels, maxBlockSize, maxDiskUsage, queues, urlRelabelConfig, sendTimeout, showURL, tmpDataPath)
+	for _, remoteArgType := range remoteArgs {
+		if remoteArgType.isNotNull {
+			finalArgs = append(finalArgs, strings.TrimSuffix(remoteArgType.flagSetting, ","))
+		}
+	}
+	return finalArgs
 }

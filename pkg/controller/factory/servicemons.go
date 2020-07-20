@@ -62,15 +62,14 @@ func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *victoriametricsv
 		return fmt.Errorf("cannot list secrets at vmagent namespace: %w", err)
 	}
 
-	basicAuthSecrets, err := loadBasicAuthSecrets(ctx, rclient, smons, cr.Spec.APIServerConfig, SecretsInNS)
-
+	basicAuthSecrets, err := loadBasicAuthSecrets(ctx, rclient, smons, cr.Spec.APIServerConfig, nil, SecretsInNS)
 	if err != nil {
-		return fmt.Errorf("cannot load basic secrets for vmagent: %w", err)
+		return fmt.Errorf("cannot load basic secrets for ServiceMonitors: %w", err)
 	}
 
-	bearerTokens, err := loadBearerTokensFromSecrets(ctx, rclient, smons)
+	bearerTokens, err := loadBearerTokensFromSecrets(ctx, rclient, smons, nil, SecretsInNS)
 	if err != nil {
-		return fmt.Errorf("cannot load bearer tokens from secrets for vmagent: %w", err)
+		return fmt.Errorf("cannot load bearer tokens from secrets for ServiceMonitors: %w", err)
 	}
 
 	additionalScrapeConfigs, err := loadAdditionalScrapeConfigsSecret(cr.Spec.AdditionalScrapeConfigs, SecretsInNS)
@@ -304,6 +303,7 @@ func loadBasicAuthSecrets(
 	rclient client.Client,
 	mons map[string]*victoriametricsv1beta1.VMServiceScrape,
 	apiserverConfig *victoriametricsv1beta1.APIServerConfig,
+	remoteWriteSpecs []victoriametricsv1beta1.VMAgentRemoteWriteSpec,
 	SecretsInPromNS *v1.SecretList,
 ) (map[string]BasicAuthCredentials, error) {
 
@@ -331,11 +331,28 @@ func loadBasicAuthSecrets(
 		secrets["apiserver"] = credentials
 	}
 
-	return secrets, nil
+	// load basic auth for remote write configuration
+	for _, rws := range remoteWriteSpecs {
+		if rws.BasicAuth == nil {
+			continue
+		}
+		credentials, err := loadBasicAuthSecret(rws.BasicAuth, SecretsInPromNS)
+		if err != nil {
+			return nil, fmt.Errorf("could not generate basicAuth for remote write spec %s config. %w", rws.URL, err)
+		}
+		secrets[fmt.Sprintf("remoteWriteSpec/%s", rws.URL)] = credentials
+	}
 
+	return secrets, nil
 }
 
-func loadBearerTokensFromSecrets(ctx context.Context, rclient client.Client, mons map[string]*victoriametricsv1beta1.VMServiceScrape) (map[string]BearerToken, error) {
+func loadBearerTokensFromSecrets(
+	ctx context.Context,
+	rclient client.Client,
+	mons map[string]*victoriametricsv1beta1.VMServiceScrape,
+	remoteWriteSpecs []victoriametricsv1beta1.VMAgentRemoteWriteSpec,
+	SecretsInPromNS *v1.SecretList,
+) (map[string]BearerToken, error) {
 	tokens := map[string]BearerToken{}
 	nsSecretCache := make(map[string]*v1.Secret)
 
@@ -361,6 +378,26 @@ func loadBearerTokensFromSecrets(ctx context.Context, rclient client.Client, mon
 			}
 
 			tokens[fmt.Sprintf("serviceMonitor/%s/%s/%d", mon.Namespace, mon.Name, i)] = BearerToken(token)
+		}
+	}
+
+	// load basic auth for remote write configuration
+	for _, rws := range remoteWriteSpecs {
+		if rws.BearerTokenSecret == nil {
+			continue
+		}
+		for _, secret := range SecretsInPromNS.Items {
+			if secret.Name != rws.BearerTokenSecret.Name {
+				continue
+			}
+			token, err := extractCredKey(&secret, *rws.BearerTokenSecret)
+			if err != nil {
+				return nil, fmt.Errorf(
+					"failed to extract bearertoken for remoteWriteSpec %s from secret %s. %w ",
+					rws.URL, rws.BearerTokenSecret.Name, err,
+				)
+			}
+			tokens[fmt.Sprintf("remoteWriteSpec/%s", rws.URL)] = BearerToken(token)
 		}
 	}
 

@@ -27,7 +27,7 @@ func vmAlertCreateTest(t *testing.T, f *framework.Framework, ctx *framework.Cont
 		Spec: operator.VMAlertSpec{
 			ReplicaCount: pointer.Int32Ptr(1),
 			NotifierURL:  "http://localhost",
-			Datasource:   operator.RemoteSpec{URL: "http://localhost"},
+			Datasource:   operator.VMAlertDatasourceSpec{URL: "http://localhost"},
 		},
 	}
 	// use TestCtx's create helper to create the object and add a cleanup function for the new object

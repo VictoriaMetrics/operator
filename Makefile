@@ -2,11 +2,14 @@
 GOCMD=GO111MODULE=on go
 TAG="master"
 VERSION=$(TAG)
+GOOS ?= linux
+GOARCH ?= amd64
+VERSION=$($CI_BUILD_TAG)
 BUILD=`date +%FT%T%z`
 LDFLAGS=-ldflags "-w -s  -X main.Version=${VERSION} -X main.BuildData=${BUILD}"
-GOBUILD=CGO_ENABLED=0 GOOS=linux GOARCH=amd64  $(GOCMD) build -trimpath ${LDFLAGS}
+GOBUILD=CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH}  $(GOCMD) build -trimpath ${LDFLAGS}
 GOCLEAN=$(GOCMD) clean
-GOTEST=CGO_ENABLED=0 GOOS=linux GOARCH=amd64  $(GOCMD) test
+GOTEST=CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH}  $(GOCMD) test
 GOGET=$(GOCMD) get
 BINARY_NAME=vm-operator
 BINARY_UNIX=$(BINARY_NAME)_unix
@@ -22,6 +25,8 @@ TEST_ARGS=$(GOCMD) test -covermode=atomic -coverprofile=coverage.txt -v
 APIS_BASE_PATH=pkg/apis/victoriametrics/v1beta1
 GOPATHDIR ?= ~/go
 PATCH_CLUSTER_SPEC_CMD=yq d -i deploy/crds/victoriametrics.com_vmclusters_crd.yaml spec.validation.openAPIV3Schema.properties.spec.properties
+YAML_DROP=yq delete --inplace
+YAML_DROP_PREFIX=spec.validation.openAPIV3Schema.properties.spec.properties
 
 .PHONY: build
 
@@ -45,19 +50,29 @@ install-develop-tools: install-golint
 report:
 	$(GOCMD) tool cover -html=coverage.txt
 
-cluster-patch-crd:
-	docker run --rm -v "${PWD}":/workdir mikefarah/yq /bin/sh -c " \
-	$(PATCH_CLUSTER_SPEC_CMD).vminsert.properties.containers.items.properties && \
-	$(PATCH_CLUSTER_SPEC_CMD).vminsert.properties.initContainers.items.properties && \
-	$(PATCH_CLUSTER_SPEC_CMD).vmselect.properties.containers.items.properties && \
-	$(PATCH_CLUSTER_SPEC_CMD).vmselect.properties.initContainers.items.properties && \
-	$(PATCH_CLUSTER_SPEC_CMD).vmstorage.properties.containers.items.properties && \
-	$(PATCH_CLUSTER_SPEC_CMD).vmstorage.properties.initContainers.items.properties \
-	"
-
-gen:
+gen-crd:
 	$(OPERATOR_BIN) generate crds --crd-version=v1beta1
 	$(OPERATOR_BIN) generate k8s
+
+fix118:
+	docker run --rm -v "${PWD}":/workdir mikefarah/yq /bin/sh -c " \
+		$(YAML_DROP) deploy/crds/victoriametrics.com_vmalertmanagers_crd.yaml $(YAML_DROP_PREFIX).initContainers.items.properties && \
+		$(YAML_DROP) deploy/crds/victoriametrics.com_vmalertmanagers_crd.yaml $(YAML_DROP_PREFIX).containers.items.properties && \
+		$(YAML_DROP) deploy/crds/victoriametrics.com_vmalerts_crd.yaml $(YAML_DROP_PREFIX).initContainers.items.properties && \
+		$(YAML_DROP) deploy/crds/victoriametrics.com_vmalerts_crd.yaml $(YAML_DROP_PREFIX).containers.items.properties && \
+		$(YAML_DROP) deploy/crds/victoriametrics.com_vmsingles_crd.yaml $(YAML_DROP_PREFIX).initContainers.items.properties && \
+		$(YAML_DROP) deploy/crds/victoriametrics.com_vmsingles_crd.yaml $(YAML_DROP_PREFIX).containers.items.properties && \
+		$(YAML_DROP) deploy/crds/victoriametrics.com_vmagents_crd.yaml $(YAML_DROP_PREFIX).initContainers.items.properties && \
+		$(YAML_DROP) deploy/crds/victoriametrics.com_vmagents_crd.yaml $(YAML_DROP_PREFIX).containers.items.properties && \
+		$(YAML_DROP) deploy/crds/victoriametrics.com_vmclusters_crd.yaml $(YAML_DROP_PREFIX).vminsert.containers.items.properties && \
+		$(YAML_DROP) deploy/crds/victoriametrics.com_vmclusters_crd.yaml $(YAML_DROP_PREFIX).vminsert.initContainers.items.properties && \
+		$(YAML_DROP) deploy/crds/victoriametrics.com_vmclusters_crd.yaml $(YAML_DROP_PREFIX).vmselect.containers.items.properties && \
+		$(YAML_DROP) deploy/crds/victoriametrics.com_vmclusters_crd.yaml $(YAML_DROP_PREFIX).vmselect.initContainers.items.properties && \
+		$(YAML_DROP) deploy/crds/victoriametrics.com_vmclusters_crd.yaml $(YAML_DROP_PREFIX).vmstorage.containers.items.properties && \
+		$(YAML_DROP) deploy/crds/victoriametrics.com_vmclusters_crd.yaml $(YAML_DROP_PREFIX).vmstorage.initContainers.items.properties  \
+		"
+
+gen: gen-crd fix118
 
 olm:
 	$(OPERATOR_BIN) generate csv --operator-name=victoria-metrics-operator \
@@ -93,7 +108,7 @@ fmt:
 	gofmt -l -w -s ./pkg
 	gofmt -l -w -s ./cmd
 
-build: gen cluster-patch-crd build-app
+build: gen build-app
 
 docker: build-app
 	docker build -t $(DOCKER_REPO) . -f cmd/manager/Dockerfile

@@ -25,7 +25,7 @@ func vmAgentCreateTest(t *testing.T, f *framework.Framework, ctx *framework.Cont
 			Namespace: namespace,
 		},
 		Spec: operator.VMAgentSpec{
-			RemoteWrite: []operator.RemoteSpec{
+			RemoteWrite: []operator.VMAgentRemoteWriteSpec{
 				{URL: "http://localhost"},
 			},
 			ReplicaCount: pointer.Int32Ptr(1),

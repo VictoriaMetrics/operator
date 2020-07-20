@@ -11,6 +11,7 @@ The custom resources that the Prometheus Operator introduces are:
 * `VMPodScrape` 
 * `VMAlertmanager`
 * `VMRule`
+* `VMCluster`
 
 ## VMAgent
 
@@ -118,3 +119,12 @@ Alerts and recording rules can be saved and applied as YAML files, and dynamical
  
  Removing prometheus-operator api objects wouldn't delete converted objects. So you can safely migrate or run two operators in parallel mode.
  
+ ## VMCluster
+ 
+ The `VMCluster` custom resource definition (CRD) defines a cluster of VictoriaMetrics database [url](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/cluster). 
+ For each `VMCluster`  resource, the operator creates `VMStorage` as `StatefulSet`, `VMSelect` as `StatefulSet` and `VMInsert` as deployment. For `VMStorage` and `VMSelect` headless
+ services are created, for `VMInsert` is created service  with clusterIP. 
+ There is strict order for these objects creation and reconciliation. First `VMStorage` is synced - the operator waits until all its pod will become ready, then it syncs `VMSelect` with same manner. `VMInsert` is the last object for sync.
+ All statefulsets are created with `OnDelete` update type. It allows operator to manually manage rolling update process - by deleting one by one pod and waiting for its ready status.
+ Rolling update process maybe configured by operator env variables - the most important is `VM_PODWAITREADYTIMEOUT=80s` - it controls how long to wait until pod ready status.
+  

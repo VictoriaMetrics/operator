@@ -36,6 +36,8 @@ func addToSchemeCrds(t *testing.T) error {
 		&operator.VMServiceScrapeList{},
 		&operator.VMRule{},
 		&operator.VMRuleList{},
+		&operator.VMCluster{},
+		&operator.VMClusterList{},
 	}
 
 	for _, obj := range objs {
@@ -59,5 +61,6 @@ func TestVmApps(t *testing.T) {
 	t.Run("VmALert", vmAlert)
 	t.Run("VMAgent", vmAgent)
 	t.Run("VmAlertManager", vmAlertManager)
+	t.Run("VMCluster",vmCluster)
 
 }

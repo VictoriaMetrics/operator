@@ -121,7 +121,6 @@ type VMSingleSpec struct {
 	RemovePvcAfterDelete bool `json:"removePvcAfterDelete,omitempty"`
 
 	// RetentionPeriod in months
-	// +optional
 	// +kubebuilder:validation:Pattern:="[1-9]+"
 	RetentionPeriod string `json:"retentionPeriod"`
 	// ExtraArgs that will be passed to  VMSingle pod

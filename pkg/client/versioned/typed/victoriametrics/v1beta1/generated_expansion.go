@@ -24,6 +24,8 @@ type VMAlertExpansion interface{}
 
 type VMAlertmanagerExpansion interface{}
 
+type VMClusterExpansion interface{}
+
 type VMPodScrapeExpansion interface{}
 
 type VMRuleExpansion interface{}

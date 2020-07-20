@@ -56,6 +56,7 @@ The Victoria Metrics Operator introduces additional resources in Kubernetes to d
 * `VMPodScrape`
 * `VMServiceScrape`
 * `VMAlertmanager`
+* `VMCluter`
 
 
 ## VMSingle
@@ -349,3 +350,49 @@ EOF
 curl -u foo:bar https://vmsingle.example/com/metrics
 ```
 
+
+## VMCluster
+
+
+ All you need for cluster version - describe desired components and apply crd to kubernetes
+ Minimal version without persistent:
+ ```yaml
+cat << EOF | kubectl apply -f -
+apiVersion: victoriametrics.com/v1beta1
+kind: VMCluster
+metadata:
+  name: example-vmcluster
+spec:
+  # Add fields here
+  retentionPeriod: "1"
+  vmstorage:
+    replicaCount: 2
+  vmselect:
+    replicaCount: 2
+  vminsert:
+    replicaCount: 2
+EOF
+```
+
+You may also create cluster version with external VMStorage
+
+```yaml
+cat << EOF | kubectl apply -f -
+---
+apiVersion: victoriametrics.com/v1beta1
+kind: VMCluster
+metadata:
+  name: example-vmcluster
+spec:
+  # Add fields here
+  retentionPeriod: "1"
+  vmselect:
+    replicaCount: 2
+    extraArgs:
+       storageNode: "node-1:8401,node-2:8401"
+  vminsert:
+    replicaCount: 2
+    extraArgs:
+       storageNode: "node-1:8401,node-2:8401"
+EOF
+```

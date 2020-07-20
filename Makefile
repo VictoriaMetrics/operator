@@ -24,6 +24,7 @@ QUAY_TOKEN=$(REPO_TOKEN)
 TEST_ARGS=$(GOCMD) test -covermode=atomic -coverprofile=coverage.txt -v
 APIS_BASE_PATH=pkg/apis/victoriametrics/v1beta1
 GOPATHDIR ?= ~/go
+PATCH_CLUSTER_SPEC_CMD=yq d -i deploy/crds/victoriametrics.com_vmclusters_crd.yaml spec.validation.openAPIV3Schema.properties.spec.properties
 YAML_DROP=yq delete --inplace
 YAML_DROP_PREFIX=spec.validation.openAPIV3Schema.properties.spec.properties
 
@@ -62,8 +63,14 @@ fix118:
 		$(YAML_DROP) deploy/crds/victoriametrics.com_vmsingles_crd.yaml $(YAML_DROP_PREFIX).initContainers.items.properties && \
 		$(YAML_DROP) deploy/crds/victoriametrics.com_vmsingles_crd.yaml $(YAML_DROP_PREFIX).containers.items.properties && \
 		$(YAML_DROP) deploy/crds/victoriametrics.com_vmagents_crd.yaml $(YAML_DROP_PREFIX).initContainers.items.properties && \
-		$(YAML_DROP) deploy/crds/victoriametrics.com_vmagents_crd.yaml $(YAML_DROP_PREFIX).containers.items.properties "
-
+		$(YAML_DROP) deploy/crds/victoriametrics.com_vmagents_crd.yaml $(YAML_DROP_PREFIX).containers.items.properties && \
+		$(YAML_DROP) deploy/crds/victoriametrics.com_vmclusters_crd.yaml $(YAML_DROP_PREFIX).vminsert.containers.items.properties && \
+		$(YAML_DROP) deploy/crds/victoriametrics.com_vmclusters_crd.yaml $(YAML_DROP_PREFIX).vminsert.initContainers.items.properties && \
+		$(YAML_DROP) deploy/crds/victoriametrics.com_vmclusters_crd.yaml $(YAML_DROP_PREFIX).vmselect.containers.items.properties && \
+		$(YAML_DROP) deploy/crds/victoriametrics.com_vmclusters_crd.yaml $(YAML_DROP_PREFIX).vmselect.initContainers.items.properties && \
+		$(YAML_DROP) deploy/crds/victoriametrics.com_vmclusters_crd.yaml $(YAML_DROP_PREFIX).vmstorage.containers.items.properties && \
+		$(YAML_DROP) deploy/crds/victoriametrics.com_vmclusters_crd.yaml $(YAML_DROP_PREFIX).vmstorage.initContainers.items.properties  \
+		"
 
 gen: gen-crd fix118
 
@@ -93,7 +100,7 @@ doc:
 	         $(APIS_BASE_PATH)/vmrule_types.go \
 	         $(APIS_BASE_PATH)/vmservicescrape_types.go \
 	         $(APIS_BASE_PATH)/vmpodscrape_types.go \
-	         $(APIS_BASE_PATH)/vmprometheusconvertor_types.go \
+	         $(APIS_BASE_PATH)/vmcluster_types.go  \
 	           > docs/api.MD
 
 
@@ -133,3 +140,10 @@ clean:
 .PHONY: run
 run: build
 	WATCH_NAMESPACE="" OPERATOR_NAME=vms ./$(BINARY_NAME)
+
+operator-k8s-init:
+	$(KUBECTL) create -f deploy/clusterrole.yaml && \
+	$(KUBECTL) create -f deploy/clusterrolebinding.yaml &&\
+	$(KUBECTL) create -f deploy/role.yaml && \
+	$(KUBECTL) create -f deploy/serviceaccount.yaml &&\
+	$(KUBECTL) create -f deploy/crds/

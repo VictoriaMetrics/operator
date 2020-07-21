@@ -6,7 +6,7 @@ set -x
 mkdir -p install/crds/vm
 mkdir install/operator
 mkdir install/examples
-cp deploy/crds/victoriametrics* install/crds/vm/
+cp config/crds/victoriametrics* install/crds/vm/
 cp deploy/*.yaml install/operator/
 cp deploy/examples/* install/examples/
 if [ $TAG  ];then

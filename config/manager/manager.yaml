@@ -1,0 +1,47 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    control-plane: vm-operator
+  name: default
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vm-operator
+  namespace: default
+  labels:
+    control-plane: vm-operator
+spec:
+  selector:
+    matchLabels:
+      control-plane: vm-operator
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        control-plane: vm-operator
+    spec:
+      containers:
+      - name: manager
+        command:
+        - manager
+        image: victoriametrics/operator:latest
+        imagePullPolicy: Always
+        env:
+        - name: WATCH_NAMESPACE
+          value: ""
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: OPERATOR_NAME
+          value: "vm-operator"
+        resources:
+          limits:
+            cpu: 120m
+            memory: 320Mi
+          requests:
+            cpu: 80m
+            memory: 120Mi
+      terminationGracePeriodSeconds: 10

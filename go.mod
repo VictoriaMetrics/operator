@@ -8,8 +8,11 @@ require (
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
 	github.com/go-logr/logr v0.1.0
 	github.com/kelseyhightower/envconfig v1.4.0
+	github.com/onsi/ginkgo v1.12.0
+	github.com/onsi/gomega v1.9.0
 	github.com/operator-framework/operator-sdk v0.18.1
 	github.com/spf13/pflag v1.0.5
+	golang.org/x/net v0.0.0-20200301022130-244492dfa37a
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
 	gopkg.in/yaml.v2 v2.2.8
 	k8s.io/api v0.18.2

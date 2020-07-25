@@ -32,9 +32,9 @@ EOF
 
 Finally, reference this additional configuration in your `vmagent.yaml` CRD.
 
-```
+```yaml
 cat <<EOF | kubectl apply -f -
-apiVersion: victoriametrics.com/v1beta1
+apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAgent
 metadata:
   name: example-vmagent

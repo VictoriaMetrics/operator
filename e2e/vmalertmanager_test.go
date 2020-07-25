@@ -1,14 +1,11 @@
 package e2e
 
 import (
-	goctx "context"
-	"fmt"
+	operator "github.com/VictoriaMetrics/operator/api/v1beta1"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+	"golang.org/x/net/context"
 	corev1 "k8s.io/api/core/v1"
-	"testing"
-
-	operator "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
-	framework "github.com/operator-framework/operator-sdk/pkg/test"
-	"github.com/operator-framework/operator-sdk/pkg/test/e2eutil"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
@@ -30,88 +27,83 @@ receivers:
   - url: 'http://alertmanagerwh:30500/'`
 )
 
-func vmAlertManagerCreateTest(t *testing.T, f *framework.Framework, ctx *framework.Context) error {
-	namespace, err := ctx.GetOperatorNamespace()
-	if err != nil {
-		return fmt.Errorf("could not get namespace: %v", err)
-	}
-	// create  custom resource
-	exampleVmAlertManager := &operator.VMAlertmanager{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "example-vmalertmanager",
-			Namespace: namespace,
-		},
-		Spec: operator.VMAlertmanagerSpec{
-			ReplicaCount: pointer.Int32Ptr(1),
-			ConfigSecret: "alertmanager-conf",
-		},
-	}
-	AlertManagerConfig := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "alertmanager-conf",
-			Namespace: namespace,
-		},
-		StringData: map[string]string{
-			"alertmanager.yaml": alertmanagerTestConf,
-		},
-	}
-	// use TestCtx's create helper to create the object and add a cleanup function for the new object
-	err = f.Client.Create(goctx.TODO(), AlertManagerConfig, &framework.CleanupOptions{TestContext: ctx, Timeout: cleanupTimeout, RetryInterval: cleanupRetryInterval})
-	if err != nil {
-		return err
-	}
+var _ = Describe("e2e vmalertmanager ", func() {
+	Context("crud", func() {
+		Context("create", func() {
+			name := "create-am"
+			namespace := "default"
+			JustAfterEach(func() {
+				Expect(k8sClient.Delete(context.TODO(), &operator.VMAlertmanager{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      name,
+					}})).To(BeNil())
 
-	err = WaitForSecret(t, f.KubeClient, namespace, "alertmanager-conf", retryInterval, timeout)
-	if err != nil {
-		return err
-	}
+			})
+			It("should create vmalertmanager", func() {
+				Expect(k8sClient.Create(context.TODO(), &operator.VMAlertmanager{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      name,
+					},
+					Spec: operator.VMAlertmanagerSpec{
+						ReplicaCount: pointer.Int32Ptr(1),
+					},
+				})).To(BeNil())
+			})
+		})
+		Context("update", func() {
+			Name := "update-vmalermanager"
+			Namespace := "default"
+			configSecretName := "vma-conf"
+			JustBeforeEach(func() {
+				Expect(k8sClient.Create(context.TODO(), &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: Namespace,
+						Name:      configSecretName,
+					},
+					StringData: map[string]string{
+						"alertmanager.yaml": alertmanagerTestConf,
+					}})).To(BeNil())
+				Expect(k8sClient.Create(context.TODO(), &operator.VMAlertmanager{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      Name,
+						Namespace: Namespace,
+					},
+					Spec: operator.VMAlertmanagerSpec{
+						ReplicaCount: pointer.Int32Ptr(1),
+						ConfigSecret: configSecretName,
+					},
+				})).To(BeNil())
 
-	err = f.Client.Create(goctx.TODO(), exampleVmAlertManager, &framework.CleanupOptions{TestContext: ctx, Timeout: cleanupTimeout, RetryInterval: cleanupRetryInterval})
-	if err != nil {
-		return err
-	}
+			})
+			JustAfterEach(func() {
+				Expect(k8sClient.Delete(context.TODO(), &operator.VMAlertmanager{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      Name,
+						Namespace: Namespace,
+					},
+					Spec: operator.VMAlertmanagerSpec{
+						ReplicaCount: pointer.Int32Ptr(1),
+					},
+				})).To(BeNil())
+				Expect(k8sClient.Delete(context.TODO(), &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      configSecretName,
+						Namespace: Namespace,
+					},
+				}))
+			})
+			It("Should expand alertmanager to 2 replicas", func() {
+				currVma := &operator.VMAlertmanager{}
+				Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Namespace: Namespace, Name: Name}, currVma)).To(BeNil())
+				currVma.Spec.ReplicaCount = pointer.Int32Ptr(2)
+				Expect(k8sClient.Update(context.TODO(), currVma)).To(BeNil())
+				Eventually(func() string {
+					return expectPodCount(k8sClient, 2, Namespace, currVma.SelectorLabels())
+				}, 80, 2).Should(BeEmpty())
+			})
 
-	// wait for example-vmalertmanager to reach 1 replicas
-	err = WaitForSts(t, f.KubeClient, namespace, "vmalertmanager-example-vmalertmanager", 1, retryInterval, timeout)
-	if err != nil {
-		return err
-	}
-
-	err = f.Client.Get(goctx.TODO(), types.NamespacedName{Name: "example-vmalertmanager", Namespace: namespace}, exampleVmAlertManager)
-	if err != nil {
-		return err
-	}
-
-	//increase replicas count and update vmalertmanager
-	exampleVmAlertManager.Spec.ReplicaCount = pointer.Int32Ptr(2)
-	err = f.Client.Update(goctx.TODO(), exampleVmAlertManager)
-	if err != nil {
-		return err
-	}
-	return WaitForSts(t, f.KubeClient, namespace, "vmalertmanager-example-vmalertmanager", 2, retryInterval, timeout)
-}
-
-func vmAlertManager(t *testing.T) {
-	ctx := framework.NewContext(t)
-	defer ctx.Cleanup()
-	err := ctx.InitializeClusterResources(&framework.CleanupOptions{TestContext: ctx, Timeout: cleanupTimeout, RetryInterval: cleanupRetryInterval})
-	if err != nil {
-		t.Fatalf("failed to initialize cluster resources: %v", err)
-	}
-	t.Log("Initialized cluster resources")
-	namespace, err := ctx.GetOperatorNamespace()
-	if err != nil {
-		t.Fatal(err)
-	}
-	// get global framework variables
-	f := framework.Global
-	// wait for vm-operator to be ready
-	err = e2eutil.WaitForOperatorDeployment(t, f.KubeClient, namespace, "vm-operator", 1, retryInterval, timeout)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if err = vmAlertManagerCreateTest(t, f, ctx); err != nil {
-		t.Fatal(err)
-	}
-}
+		})
+	})
+})

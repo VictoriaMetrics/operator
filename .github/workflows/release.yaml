@@ -23,7 +23,7 @@ jobs:
           go get -u golang.org/x/lint/golint
           go get -u github.com/kisielk/errcheck
           go get  github.com/golangci/golangci-lint/cmd/golangci-lint@v1.27.0
-          curl -L -o operator-sdk "https://github.com/operator-framework/operator-sdk/releases/download/v0.18.1/operator-sdk-v0.18.1-x86_64-linux-gnu"
+          curl -L -o operator-sdk "https://github.com/operator-framework/operator-sdk/releases/download/v0.19.0/operator-sdk-v0.19.0-x86_64-linux-gnu"
           chmod +x operator-sdk
           sudo mv operator-sdk /bin/
 
@@ -42,8 +42,8 @@ jobs:
         run: |
           make lint
           make test
-          make build-app
-          sh scripts/bundle.sh
+          make build
+          make release-package
       - name: run e2e tests local
         run: |
           kubectl cluster-info
@@ -59,15 +59,8 @@ jobs:
           password: ${{secrets.REPO_KEY}}
           tag_with_ref: true
           repository: victoriametrics/operator
-          dockerfile: cmd/manager/Dockerfile
+          dockerfile: build/Dockerfile
 
-      - name: run e2e with docker
-        env:
-          E2E_IMAGE:  ${{ env.GITHUB_REF_SLUG }}
-        run: |
-          kubectl cluster-info
-          kubectl get pods -n kube-system
-          make e2e
 
       - name: Upload Release Asset
         id: upload-release-asset

@@ -1,5 +1,0 @@
-channels:
-- currentCSV: victoria-metrics-operator.v0.0.1
-  name: beta
-defaultChannel: beta
-packageName: victoria-metrics-operator

@@ -17,7 +17,7 @@
 
 ## development
 
-- operator-sdk verson v0.18.1 +  [https://github.com/operator-framework/operator-sdk]
+- operator-sdk verson v0.19.0 +  [https://github.com/operator-framework/operator-sdk]
 - golang 1.13 +
 - minikube or kind
 
@@ -34,6 +34,4 @@ make test
 # you need minikube for e2e, do not run it on live cluster
 #e2e tests with local binary
 make e2e-local
-# e2e tests with docker image (must be pushed to repository first)
-make e2e
 ```

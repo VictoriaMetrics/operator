@@ -12,14 +12,18 @@ This Document documents the types introduced by the Victoria Metrics Operator to
 * [VMAlertmanagerStatus](#vmalertmanagerstatus)
 * [VMAgent](#vmagent)
 * [VMAgentList](#vmagentlist)
+* [VMAgentRemoteWriteSpec](#vmagentremotewritespec)
 * [VMAgentSpec](#vmagentspec)
 * [VMAgentStatus](#vmagentstatus)
+* [BasicAuth](#basicauth)
 * [EmbeddedObjectMetadata](#embeddedobjectmetadata)
 * [EmbeddedPersistentVolumeClaim](#embeddedpersistentvolumeclaim)
-* [RemoteSpec](#remotespec)
 * [StorageSpec](#storagespec)
 * [VMAlert](#vmalert)
+* [VMAlertDatasourceSpec](#vmalertdatasourcespec)
 * [VMAlertList](#vmalertlist)
+* [VMAlertRemoteReadSpec](#vmalertremotereadspec)
+* [VMAlertRemoteWriteSpec](#vmalertremotewritespec)
 * [VMAlertSpec](#vmalertspec)
 * [VMAlertStatus](#vmalertstatus)
 * [VMSingle](#vmsingle)
@@ -32,7 +36,6 @@ This Document documents the types introduced by the Victoria Metrics Operator to
 * [VMRuleList](#vmrulelist)
 * [VMRuleSpec](#vmrulespec)
 * [APIServerConfig](#apiserverconfig)
-* [BasicAuth](#basicauth)
 * [Endpoint](#endpoint)
 * [NamespaceSelector](#namespaceselector)
 * [QueueConfig](#queueconfig)
@@ -56,7 +59,6 @@ This Document documents the types introduced by the Victoria Metrics Operator to
 * [VMInsert](#vminsert)
 * [VMSelect](#vmselect)
 * [VMStorage](#vmstorage)
-* [VMStorageStatus](#vmstoragestatus)
 
 ## VMAlertmanager
 
@@ -162,6 +164,27 @@ VMAgentList contains a list of VMAgent
 
 [Back to TOC](#table-of-contents)
 
+## VMAgentRemoteWriteSpec
+
+VMAgentRemoteWriteSpec defines the remote storage configuration for VmAgent
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| url | URL of the endpoint to send samples to. | string | true |
+| basicAuth | BasicAuth allow an endpoint to authenticate over basic authentication | *[BasicAuth](#basicauth) | false |
+| bearerTokenSecret | Optional bearer auth token to use for -remoteWrite.url | *[v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
+| flushInterval | Interval for flushing the data to remote storage. (default 1s) | *string | false |
+| label | Optional labels in the form 'name=value' to add to all the metrics before sending them | map[string]string | false |
+| maxBlockSize | The maximum size in bytes of unpacked request to send to remote storage | *int32 | false |
+| maxDiskUsagePerURL | The maximum file-based buffer size in bytes at -remoteWrite.tmpDataPath | *int32 | false |
+| queues | The number of concurrent queues | *int32 | false |
+| urlRelabelConfig | ConfigMap with relabeling config which is applied to metrics before sending them to the corresponding -remoteWrite.url | *v1.ConfigMapKeySelector | false |
+| sendTimeout | Timeout for sending a single block of data to -remoteWrite.url (default 1m0s) | *string | false |
+| showURL | Whether to show -remoteWrite.url in the exported metrics. It is hidden by default, since it can contain sensistive auth info | *bool | false |
+| tmpDataPath | Path to directory where temporary data for remote write component is stored (default \"vmagent-remotewrite-data\") | *string | false |
+
+[Back to TOC](#table-of-contents)
+
 ## VMAgentSpec
 
 VMAgentSpec defines the desired state of VMAgent
@@ -198,7 +221,8 @@ VMAgentSpec defines the desired state of VMAgent
 | vmAgentExternalLabelName | VMAgentExternalLabelName Name of vmAgent external label used to denote vmAgent instance name. Defaults to the value of `prometheus`. External label will _not_ be added when value is set to empty string (`\"\"`). | *string | false |
 | replicaExternalLabelName | ReplicaExternalLabelName Name of vmagent external label used to denote replica name. Defaults to the value of `prometheus_replica`. External label will _not_ be added when value is set to empty string (`\"\"`). | *string | false |
 | externalLabels | ExternalLabels The labels to add to any time series or alerts when communicating with external systems (federation, remote storage, etc). | map[string]string | false |
-| remoteWrite | RemoteWrite list of victoria metrics /some other remote write system for vm it must looks like: http://victoria-metrics-single:8429/api/v1/write or for cluster different url https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/app/vmagent#splitting-data-streams-among-multiple-systems | [][RemoteSpec](#remotespec) | true |
+| remoteWrite | RemoteWrite list of victoria metrics /some other remote write system for vm it must looks like: http://victoria-metrics-single:8429/api/v1/write or for cluster different url https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/app/vmagent#splitting-data-streams-among-multiple-systems | [][VMAgentRemoteWriteSpec](#vmagentremotewritespec) | true |
+| relabelConfig | RelabelConfig ConfigMap with global relabel config -remoteWrite.relabelConfig This relabeling is applied to all the collected metrics before sending them to remote storage. | *v1.ConfigMapKeySelector | false |
 | serviceMonitorSelector | ServiceMonitorSelector defines ServiceMonitors to be selected for target discovery. if neither this nor podMonitorSelector are specified, configuration is unmanaged. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
 | serviceMonitorNamespaceSelector | ServiceMonitorNamespaceSelector Namespaces to be selected for ServiceMonitor discovery. If nil, only check own namespace. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
 | podMonitorSelector | PodMonitorSelector defines PodMonitors to be selected for target discovery. if neither this nor serviceMonitorSelector are specified, configuration is unmanaged. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
@@ -213,7 +237,7 @@ VMAgentSpec defines the desired state of VMAgent
 
 ## VMAgentStatus
 
-VMAgentStatus defines the observed state of VMAgent
+VmAgentStatus defines the observed state of VmAgent
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
@@ -221,6 +245,17 @@ VMAgentStatus defines the observed state of VMAgent
 | updatedReplicas | UpdatedReplicas Total number of non-terminated pods targeted by this VMAlert cluster that have the desired version spec. | int32 | true |
 | availableReplicas | AvailableReplicas Total number of available pods (ready for at least minReadySeconds) targeted by this VMAlert cluster. | int32 | true |
 | unavailableReplicas | UnavailableReplicas Total number of unavailable pods targeted by this VMAlert cluster. | int32 | true |
+
+[Back to TOC](#table-of-contents)
+
+## BasicAuth
+
+BasicAuth allow an endpoint to authenticate over basic authentication More info: https://prometheus.io/docs/operating/configuration/#endpoints
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| username | The secret in the service monitor namespace that contains the username for authentication. | [v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
+| password | The secret in the service monitor namespace that contains the password for authentication. | [v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -248,16 +283,6 @@ EmbeddedPersistentVolumeClaim is an embedded version of k8s.io/api/core/v1.Persi
 
 [Back to TOC](#table-of-contents)
 
-## RemoteSpec
-
-RemoteWriteSpec defines the remote_write configuration.
-
-| Field | Description | Scheme | Required |
-| ----- | ----------- | ------ | -------- |
-| url | URL of the endpoint to send samples to. | string | true |
-
-[Back to TOC](#table-of-contents)
-
 ## StorageSpec
 
 StorageSpec defines the configured storage for a group Prometheus servers. If neither `emptyDir` nor `volumeClaimTemplate` is specified, then by default an [EmptyDir](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir) will be used.
@@ -282,6 +307,17 @@ VMAlert represents a Victoria-Metrics alert application
 
 [Back to TOC](#table-of-contents)
 
+## VMAlertDatasourceSpec
+
+VMAgentRemoteReadSpec defines the remote storage configuration for VmAlert to read alerts from
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| url | Victoria Metrics or VMSelect url. Required parameter. E.g. http://127.0.0.1:8428 | string | true |
+| basicAuth | BasicAuth allow datasource to authenticate over basic authentication | *[BasicAuth](#basicauth) | false |
+
+[Back to TOC](#table-of-contents)
+
 ## VMAlertList
 
 VMAlertList contains a list of VMAlert
@@ -290,6 +326,33 @@ VMAlertList contains a list of VMAlert
 | ----- | ----------- | ------ | -------- |
 | metadata |  | [metav1.ListMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#listmeta-v1-meta) | false |
 | items |  | [][VMAlert](#vmalert) | true |
+
+[Back to TOC](#table-of-contents)
+
+## VMAlertRemoteReadSpec
+
+VMAgentRemoteReadSpec defines the remote storage configuration for VmAlert to read alerts from
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| url | URL of the endpoint to send samples to. | string | true |
+| basicAuth | BasicAuth allow an endpoint to authenticate over basic authentication | *[BasicAuth](#basicauth) | false |
+| lookback | Lookback defines how far to look into past for alerts timeseries. For example, if lookback=1h then range from now() to now()-1h will be scanned. (default 1h0m0s) Applied only to RemoteReadSpec | *string | false |
+
+[Back to TOC](#table-of-contents)
+
+## VMAlertRemoteWriteSpec
+
+VMAgentRemoteWriteSpec defines the remote storage configuration for VmAlert
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| url | URL of the endpoint to send samples to. | string | true |
+| basicAuth | BasicAuth allow an endpoint to authenticate over basic authentication | *[BasicAuth](#basicauth) | false |
+| concurrency | Defines number of readers that concurrently write into remote storage (default 1) | *int32 | false |
+| flushInterval | Defines interval of flushes to remote write endpoint (default 5s) | *string | false |
+| maxBatchSize | Defines defines max number of timeseries to be flushed at once (default 1000) | *int32 | false |
+| maxQueueSize | Defines the max number of pending datapoints to remote write endpoint (default 100000) | *int32 | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -326,10 +389,10 @@ VMAlertSpec defines the desired state of VMAlert
 | ruleNamespaceSelector | RuleNamespaceSelector to be selected for VMRules discovery. If unspecified, only the same namespace as the vmalert object is in is used. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
 | port | Port for listen | string | false |
 | notifierURL | NotifierURL prometheus alertmanager URL. Required parameter. e.g. http://127.0.0.1:9093 | string | true |
-| remoteWrite | RemoteWrite Optional URL to remote-write compatible storage where to write timeseriesbased on active alerts. E.g. http://127.0.0.1:8428 | [RemoteSpec](#remotespec) | false |
-| remoteRead | RemoteRead victoria metrics address for loading state This configuration makes sense only if remoteWrite was configured before and has been successfully persisted its state. | [RemoteSpec](#remotespec) | false |
+| remoteWrite | RemoteWrite Optional URL to remote-write compatible storage where to write timeseriesbased on active alerts. E.g. http://127.0.0.1:8428 | *[VMAlertRemoteWriteSpec](#vmalertremotewritespec) | false |
+| remoteRead | RemoteRead victoria metrics address for loading state This configuration makes sense only if remoteWrite was configured before and has been successfully persisted its state. | *[VMAlertRemoteReadSpec](#vmalertremotereadspec) | false |
 | rulePath | RulePath to the file with alert rules. Supports patterns. Flag can be specified multiple times. Examples:\n        -rule /path/to/file. Path to a single file with alerting rules\n        -rule dir/*.yaml -rule /*.yaml. Relative path to all .yaml files in \"dir\" folder,\n       absolute path to all .yaml files in root.\nby default operator adds /etc/vmalert/configs/base/vmalert.yaml | []string | false |
-| datasource | Datasource Victoria Metrics or VMSelect url. Required parameter. e.g. http://127.0.0.1:8428 | [RemoteSpec](#remotespec) | true |
+| datasource | Datasource Victoria Metrics or VMSelect url. Required parameter. e.g. http://127.0.0.1:8428 | [VMAlertDatasourceSpec](#vmalertdatasourcespec) | true |
 | extraArgs | ExtraArgs that will be passed to  VMAlert pod for example -remoteWrite.tmpDataPath=/tmp | map[string]string | false |
 | extraEnvs | ExtraEnvs that will be added to VMAlert pod | [][v1.EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#envvar-v1-core) | false |
 
@@ -337,7 +400,7 @@ VMAlertSpec defines the desired state of VMAlert
 
 ## VMAlertStatus
 
-VMAlertStatus defines the observed state of VMAlert
+VmAlertStatus defines the observed state of VmAlert
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
@@ -491,17 +554,6 @@ APIServerConfig defines a host and auth methods to access apiserver. More info: 
 | bearerToken | Bearer token for accessing apiserver. | string | false |
 | bearerTokenFile | File to read bearer token for accessing apiserver. | string | false |
 | tlsConfig | TLS Config to use for accessing apiserver. | *[TLSConfig](#tlsconfig) | false |
-
-[Back to TOC](#table-of-contents)
-
-## BasicAuth
-
-BasicAuth allow an endpoint to authenticate over basic authentication More info: https://prometheus.io/docs/operating/configuration/#endpoints
-
-| Field | Description | Scheme | Required |
-| ----- | ----------- | ------ | -------- |
-| username | The secret in the service monitor namespace that contains the username for authentication. | [v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
-| password | The secret in the service monitor namespace that contains the password for authentication. | [v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -789,7 +841,6 @@ VMClusterStatus defines the observed state of VMCluster
 | lastSync |  | string | false |
 | clusterStatus |  | string | true |
 | reason |  | string | false |
-| vmStorage |  | [VMStorageStatus](#vmstoragestatus) | true |
 
 [Back to TOC](#table-of-contents)
 
@@ -896,15 +947,5 @@ VMClusterStatus defines the observed state of VMCluster
 | vmSelectPort | VMSelectPort for VMSelect connections | string | false |
 | extraArgs |  | map[string]string | false |
 | extraEnvs | ExtraEnvs that will be added to VMSelect pod | [][v1.EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#envvar-v1-core) | false |
-
-[Back to TOC](#table-of-contents)
-
-## VMStorageStatus
-
-
-
-| Field | Description | Scheme | Required |
-| ----- | ----------- | ------ | -------- |
-| status |  | string | true |
 
 [Back to TOC](#table-of-contents)

@@ -1,0 +1,24 @@
+# permissions for end users to edit vmalertmanagers.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: vmalertmanager-editor-role
+rules:
+- apiGroups:
+  - operator.victoriametrics.com
+  resources:
+  - vmalertmanagers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - operator.victoriametrics.com
+  resources:
+  - vmalertmanagers/status
+  verbs:
+  - get

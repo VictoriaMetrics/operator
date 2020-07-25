@@ -17,7 +17,7 @@ unzip  bundle_crd.zip
 
 First of all, you  have to create crd
 ```bash
-kubectl apply -f install/crds/vm/
+kubectl apply -f install/crds
 ```
  
 Then you need rbac for operator, relevant configuration for release can be found at install/operator/rbac.yaml
@@ -28,7 +28,7 @@ export YOUR_NS=default
 sed -i -e "s/namespace: default/namespace: $YOUR_NS/" install/operator/*.yaml
 ```
 
-change configuration for operator at `install/operator/operator.yaml`, possible settings: [operator-settings](/vars.MD)
+change configuration for operator at `install/operator/manager.yaml`, possible settings: [operator-settings](/vars.MD)
 and apply it:
 ```bash
 kubectl -n $YOUR_NS apply -f install/operator/
@@ -65,7 +65,7 @@ The Victoria Metrics Operator introduces additional resources in Kubernetes to d
  
  ```yaml
 cat <<EOF | kubectl apply -f -
-apiVersion: victoriametrics.com/v1beta1
+apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMSingle
 metadata:
   name: example-vmsingle-persisted
@@ -87,7 +87,7 @@ configuration can be extended with extraFlags and extraEnv, check flag documenta
 for instance:
 ```yaml
 cat <<EOF | kubectl apply -f -
-apiVersion: victoriametrics.com/v1beta1
+apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMSingle
 metadata:
   name: example-vmsingle-persisted
@@ -101,7 +101,7 @@ EOF
 flag can be replaced with envVar, it`s useful for retrieving value from secret:
 ```yaml
 cat <<EOF | kubectl apply -f  -
-apiVersion: victoriametrics.com/v1beta1
+apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMSingle
 metadata:
   name: example-vmsingle-persisted
@@ -124,17 +124,17 @@ EOF
 
  ```bash
 #change namespace
-sed -i -e "s/namespace: default/namespace: $YOUR_NS/" install/examples/VMAgent_rbac.yaml 
-kubectl -n "$YOUR_NS apply" -f install/examples/VMAgent_rbac.yaml
+sed -i -e "s/namespace: default/namespace: $YOUR_NS/" install/examples/vmagent_rbac.yaml 
+kubectl -n "$YOUR_NS apply" -f install/examples/vmagent_rbac.yaml
 ```
 
- Modify `VMAgent` config parameters at `install/examples/VMAgent.yaml` and apply it, config options [doc](/docs/api.MD#VMAgent)
+ Modify `VMAgent` config parameters at `install/examples/vmagent.yaml` and apply it, config options [doc](/docs/api.MD#VMAgent)
 
 example:
 
 ```yaml
 cat <<EOF | kubectl apply -f -
-apiVersion: victoriametrics.com/v1beta1
+apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAgent
 metadata:
   name: example-vmagent
@@ -156,7 +156,7 @@ EOF
 
 ```yaml
 cat << EOF | kubectl apply -f -
-apiVersion: victoriametrics.com/v1beta1
+apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAlert
 metadata:
   name: example-vmalert
@@ -181,7 +181,7 @@ cat << EOF | kubectl apply -f -
 apiVersion: v1
 kind: Secret
 metadata:
-  name: vmalertmanager-example-alertmanager
+  name: operator.vmalertmanager-example-alertmanager
 stringData:
   alertmanager.yaml: |
     global:
@@ -203,7 +203,7 @@ and add `Alertmanager` object, other config options at [doc](/docs/api.MD#Alertm
 
 ```yaml
 cat << EOF | kubectl apply -f -
-apiVersion: victoriametrics.com/v1beta1
+apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAlertmanager
 metadata:
   name: example-alertmanager
@@ -266,7 +266,7 @@ This Service object is discovered by a VMServiceScrape, which selects in the sam
 
 ```yaml
 cat << EOF | kubectl apply -f -
-apiVersion: victoriametrics.com/v1beta1
+apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMServiceScrape
 metadata:
   name: example-app
@@ -354,11 +354,12 @@ curl -u foo:bar https://vmsingle.example/com/metrics
 ## VMCluster
 
 
- All you need for cluster version - describe desired components and apply crd to kubernetes
- Minimal version without persistent:
+ `VMCluster` represent high-available and fault-tolerant version of VictoriaMetrics database.
+ 
+ For minimal version without persistent create simple crd:
  ```yaml
 cat << EOF | kubectl apply -f -
-apiVersion: victoriametrics.com/v1beta1
+apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMCluster
 metadata:
   name: example-vmcluster
@@ -374,12 +375,56 @@ spec:
 EOF
 ```
 
+ For persistent it recommends to add persistent storage to `VMStorage` and `VMSelect`:
+ ```yaml
+cat << EOF | kubectl apply -f -
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMCluster
+metadata:
+  name: example-vmcluster-persistent
+spec:
+  # Add fields here
+  retentionPeriod: "4"
+  replicationFactor: 2
+  vmstorage:
+    replicaCount: 2
+    storageDataPath: "/vm-data"
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: standard
+          resources:
+            requests:
+              storage: 10Gi
+    resources:
+      limits:
+        cpu: "0.5"
+        memory: 500Mi
+  vmselect:
+    replicaCount: 2
+    cacheMountPath: "/select-cache"
+    storage:
+      volumeClaimTemplate:
+        spec:
+          resources:
+            requests:
+              storage: 2Gi
+    resources:
+      limits:
+        cpu: "0.3"
+        memory: "300Mi"
+  vminsert:
+    replicaCount: 2
+EOF
+
+```
+
 You may also create cluster version with external VMStorage
 
 ```yaml
 cat << EOF | kubectl apply -f -
 ---
-apiVersion: victoriametrics.com/v1beta1
+apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMCluster
 metadata:
   name: example-vmcluster

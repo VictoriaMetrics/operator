@@ -1,88 +1,98 @@
 package e2e
 
 import (
-	goctx "context"
-	"fmt"
-	"testing"
-
-	operator "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
-	framework "github.com/operator-framework/operator-sdk/pkg/test"
-	"github.com/operator-framework/operator-sdk/pkg/test/e2eutil"
+	operator "github.com/VictoriaMetrics/operator/api/v1beta1"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+	"golang.org/x/net/context"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
 )
 
-func vmAlertCreateTest(t *testing.T, f *framework.Framework, ctx *framework.Context) error {
-	namespace, err := ctx.GetOperatorNamespace()
-	if err != nil {
-		return fmt.Errorf("could not get namespace: %v", err)
-	}
-	// create  custom resource
-	exampleVmAlert := &operator.VMAlert{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "example-vmalert",
-			Namespace: namespace,
+var _ = Describe("test  vmalert Controller", func() {
+	Context("e2e vmalert", func() {
+
+		Context("crud", func() {
+			Context("create", func() {
+
+				Name := "vmalert-example"
+				Namespace := "default"
+				AfterEach(func() {
+					Expect(k8sClient.Delete(context.TODO(), &operator.VMAlert{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      Name,
+							Namespace: Namespace,
+						},
+					})).To(BeNil())
+				})
+				It("should create", func() {
+					Expect(k8sClient.Create(context.TODO(), &operator.VMAlert{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: Namespace,
+							Name:      Name,
+						},
+						Spec: operator.VMAlertSpec{
+							ReplicaCount: pointer.Int32Ptr(1),
+							NotifierURL:  "http://alert-manager-url:9093",
+							Datasource: operator.VMAlertDatasourceSpec{
+								URL: "http://some-datasource-url:8428",
+							},
+						},
+					})).Should(Succeed())
+					vmAlert := &operator.VMAlert{}
+					Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Namespace: Namespace, Name: Name}, vmAlert)).To(BeNil())
+					Eventually(func() string {
+						return expectPodCount(k8sClient, 1, Namespace, vmAlert.SelectorLabels())
+					}, 60, 1).Should(BeEmpty())
+
+				})
+
+			})
+			Context("update", func() {
+				name := "update-vmalert"
+				namespace := "default"
+				JustBeforeEach(func() {
+					Expect(k8sClient.Create(context.TODO(), &operator.VMAlert{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      name,
+							Namespace: namespace,
+						},
+						Spec: operator.VMAlertSpec{
+							ReplicaCount: pointer.Int32Ptr(1),
+							Datasource: operator.VMAlertDatasourceSpec{
+								URL: "http://some-vmsingle:8428",
+							},
+							NotifierURL: "http://some-alertmanager:9091",
+						},
+					})).To(BeNil())
+
+				})
+				JustAfterEach(func() {
+					Expect(k8sClient.Delete(context.TODO(), &operator.VMAlert{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      name,
+							Namespace: namespace,
+						},
+					})).To(BeNil())
+
+				})
+				It("Should expand vmalert up to 3 replicas", func() {
+					vmAlert := &operator.VMAlert{}
+					Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, vmAlert)).To(BeNil())
+					vmAlert.Spec.ReplicaCount = pointer.Int32Ptr(3)
+					vmAlert.Spec.LogLevel = "INFO"
+					Expect(k8sClient.Update(context.TODO(), vmAlert)).To(BeNil())
+					Eventually(func() string {
+						return expectPodCount(k8sClient, 3, namespace, vmAlert.SelectorLabels())
+
+					}, 60, 1).Should(BeEmpty())
+
+				})
+			})
+
 		},
-		Spec: operator.VMAlertSpec{
-			ReplicaCount: pointer.Int32Ptr(1),
-			NotifierURL:  "http://localhost",
-			Datasource:   operator.VMAlertDatasourceSpec{URL: "http://localhost"},
-		},
-	}
-	// use TestCtx's create helper to create the object and add a cleanup function for the new object
-	err = f.Client.Create(goctx.TODO(), exampleVmAlert, &framework.CleanupOptions{TestContext: ctx, Timeout: cleanupTimeout, RetryInterval: cleanupRetryInterval})
-	if err != nil {
-		return err
-	}
+		)
 
-	//wait for base config
-	err = WaitForConfigMap(t, f.KubeClient, namespace, "vm-example-vmalert-rulefiles-0", retryInterval, timeout)
-	if err != nil {
-		return err
-	}
-
-	// wait for example-vmalert to reach 1 replicas
-	err = e2eutil.WaitForDeployment(t, f.KubeClient, namespace, "vmalert-example-vmalert", 1, retryInterval, timeout)
-	if err != nil {
-		return err
-	}
-
-	err = f.Client.Get(goctx.TODO(), types.NamespacedName{Name: "example-vmalert", Namespace: namespace}, exampleVmAlert)
-	if err != nil {
-		return err
-	}
-	exampleVmAlert.Spec.ReplicaCount = pointer.Int32Ptr(1)
-	exampleVmAlert.Spec.NotifierURL = "http://localhost:8123"
-	exampleVmAlert.Spec.ExtraArgs = map[string]string{"loggerLevel": "ERROR"}
-	err = f.Client.Update(goctx.TODO(), exampleVmAlert)
-	if err != nil {
-		return err
-	}
-	return e2eutil.WaitForDeployment(t, f.KubeClient, namespace, "vmalert-example-vmalert", 1, retryInterval, timeout)
-}
-
-func vmAlert(t *testing.T) {
-	ctx := framework.NewContext(t)
-	defer ctx.Cleanup()
-	err := ctx.InitializeClusterResources(&framework.CleanupOptions{TestContext: ctx, Timeout: cleanupTimeout, RetryInterval: cleanupRetryInterval})
-	if err != nil {
-		t.Fatalf("failed to initialize cluster resources: %v", err)
-	}
-	t.Log("Initialized cluster resources")
-	namespace, err := ctx.GetOperatorNamespace()
-	if err != nil {
-		t.Fatal(err)
-	}
-	// get global framework variables
-	f := framework.Global
-	// wait for vm-operator to be ready
-	err = e2eutil.WaitForOperatorDeployment(t, f.KubeClient, namespace, "vm-operator", 1, retryInterval, timeout)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if err = vmAlertCreateTest(t, f, ctx); err != nil {
-		t.Fatal(err)
-	}
-}
+	})
+})

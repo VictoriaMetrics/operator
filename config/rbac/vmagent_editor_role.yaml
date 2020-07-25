@@ -1,0 +1,24 @@
+# permissions for end users to edit vmagents.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: vmagent-editor-role
+rules:
+- apiGroups:
+  - operator.victoriametrics.com
+  resources:
+  - vmagents
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - operator.victoriametrics.com
+  resources:
+  - vmagents/status
+  verbs:
+  - get

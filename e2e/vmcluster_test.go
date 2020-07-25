@@ -1,143 +1,125 @@
 package e2e
 
 import (
-	goctx "context"
-	"fmt"
-	v1 "k8s.io/api/core/v1"
+	"context"
+	v1beta1vm "github.com/VictoriaMetrics/operator/api/v1beta1"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	"testing"
-
-	operator "github.com/VictoriaMetrics/operator/pkg/apis/victoriametrics/v1beta1"
-	framework "github.com/operator-framework/operator-sdk/pkg/test"
-	"github.com/operator-framework/operator-sdk/pkg/test/e2eutil"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
 )
 
-func vmClusterComplete(t *testing.T, f *framework.Framework, ctx *framework.Context) error {
-	namespace, err := ctx.GetOperatorNamespace()
-	if err != nil {
-		return fmt.Errorf("could not get namespace: %v", err)
-	}
-	// create  custom resource
-	exampleVmCluster := &operator.VMCluster{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "example-vmcluster",
-			Namespace: namespace,
-		},
-		Spec: operator.VMClusterSpec{
-			RetentionPeriod: "1",
-			ReplicationFactor: pointer.Int32Ptr(1),
-			VMStorage: &operator.VMStorage{
-				ReplicaCount: pointer.Int32Ptr(1),
-				Resources: v1.ResourceRequirements{
-					Requests: v1.ResourceList{
-						v1.ResourceCPU:resource.MustParse("50m"),
-						v1.ResourceMemory: resource.MustParse("100Mi"),
+var _ = Describe("e2e vmcluster", func() {
+	Context("crud", func() {
+		Context("create", func() {
+			name := "create-cluster"
+			namespace := "default"
+			AfterEach(func() {
+				Expect(k8sClient.Delete(context.TODO(), &v1beta1vm.VMCluster{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      name,
 					},
-				},
-				Storage: &operator.StorageSpec{
-					VolumeClaimTemplate: operator.EmbeddedPersistentVolumeClaim{
-						Spec: v1.PersistentVolumeClaimSpec{
-							Resources: v1.ResourceRequirements{
-								Requests: v1.ResourceList{v1.ResourceStorage: resource.MustParse("1Gi") },
+				})).To(Succeed(), "must delete vmcluster after test")
+
+			})
+			It("should create vmCluster with empty services", func() {
+				Expect(k8sClient.Create(context.TODO(), &v1beta1vm.VMCluster{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      name,
+					},
+					Spec: v1beta1vm.VMClusterSpec{RetentionPeriod: "1"},
+				})).To(Succeed())
+			})
+
+		})
+		Context("update", func() {
+			name := "update-cluster"
+			namespace := "default"
+			AfterEach(func() {
+				Expect(k8sClient.Delete(context.TODO(), &v1beta1vm.VMCluster{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      name,
+					},
+				})).To(Succeed())
+
+			})
+			BeforeEach(func() {
+				Expect(k8sClient.Create(context.TODO(), &v1beta1vm.VMCluster{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      name,
+					},
+					Spec: v1beta1vm.VMClusterSpec{
+						RetentionPeriod: "1",
+						VMStorage: &v1beta1vm.VMStorage{
+							ReplicaCount: pointer.Int32Ptr(1),
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceMemory: resource.MustParse("128Mi"),
+									corev1.ResourceCPU:    resource.MustParse("50m"),
+								},
+							},
+						},
+						VMSelect: &v1beta1vm.VMSelect{
+							ReplicaCount: pointer.Int32Ptr(1),
+							LogLevel:     "WARN",
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceMemory: resource.MustParse("128Mi"),
+									corev1.ResourceCPU:    resource.MustParse("50m"),
+								},
 							},
 						},
 					},
-				},
+				})).To(Succeed())
+				vmCluster := &v1beta1vm.VMCluster{}
+				Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, vmCluster)).To(Succeed())
+				Eventually(func() string {
+					return expectPodCount(k8sClient, 1, namespace, vmCluster.VMStorageSelectorLabels())
+				}, 30, 1).Should(BeEmpty(), "vmCluster must have ready storage pod")
+				Eventually(func() string {
+					return expectPodCount(k8sClient, 1, namespace, vmCluster.VMSelectSelectorLabels())
+				}, 30, 1).Should(BeEmpty(), "vmCluster must have ready select pod")
 
-			},
-			VMSelect: &operator.VMSelect{
-				ReplicaCount: pointer.Int32Ptr(1),
-				CacheMountPath: "cache-mount",
-				Resources: v1.ResourceRequirements{
-					Requests: v1.ResourceList{
-						v1.ResourceCPU:resource.MustParse("50m"),
-						v1.ResourceMemory: resource.MustParse("100Mi"),
+			})
+			It("should expand vmCluster storage and select up to 2 replicas", func() {
+				vmCluster := &v1beta1vm.VMCluster{}
+				Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, vmCluster)).To(Succeed())
+				vmCluster.Spec.VMSelect.ReplicaCount = pointer.Int32Ptr(2)
+				vmCluster.Spec.VMStorage.ReplicaCount = pointer.Int32Ptr(2)
+				Expect(k8sClient.Update(context.TODO(), vmCluster)).To(Succeed())
+				Eventually(func() string {
+					return expectPodCount(k8sClient, 2, namespace, vmCluster.VMStorageSelectorLabels())
+				}, 40, 1).Should(BeEmpty())
+				Eventually(func() string {
+					return expectPodCount(k8sClient, 2, namespace, vmCluster.VMSelectSelectorLabels())
+				}, 40, 1).Should(BeEmpty())
+
+				By("vmInsert expand, expect to have 2 vmInserts")
+				vmCluster = &v1beta1vm.VMCluster{}
+				Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, vmCluster)).To(Succeed())
+				vmCluster.Spec.VMInsert = &v1beta1vm.VMInsert{
+					ReplicaCount: pointer.Int32Ptr(2),
+					Resources: corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{
+							corev1.ResourceMemory: resource.MustParse("128Mi"),
+							corev1.ResourceCPU:    resource.MustParse("50m"),
+						},
 					},
-				},
-			},
-			VMInsert: &operator.VMInsert{
-				ReplicaCount: pointer.Int32Ptr(1),
-				Resources: v1.ResourceRequirements{
-					Requests: v1.ResourceList{
-						v1.ResourceCPU:resource.MustParse("50m"),
-						v1.ResourceMemory: resource.MustParse("100Mi"),
-					},
-				},
+				}
+				Expect(k8sClient.Update(context.TODO(), vmCluster)).To(Succeed())
+				Eventually(func() string {
+					return expectPodCount(k8sClient, 2, namespace, vmCluster.VMInsertSelectorLabels())
+				}, 50, 1).Should(BeEmpty())
 
-			},
-		},
-	}
-	// use TestCtx's create helper to create the object and add a cleanup function for the new object
-	err = f.Client.Create(goctx.TODO(), exampleVmCluster, &framework.CleanupOptions{TestContext: ctx, Timeout: cleanupTimeout, RetryInterval: cleanupRetryInterval})
-	if err != nil {
-		return err
-	}
-	// wait for example-vmsingle to reach 1 replicas
-	err = WaitForSts(t, f.KubeClient, namespace, "vmstorage-example-vmcluster", 1, retryInterval, timeout)
-	if err != nil {
-		return err
-	}
-	err =  WaitForSts (t, f.KubeClient, namespace, "vmselect-example-vmcluster", 1, retryInterval, timeout)
-	if err != nil {
-		return err
-	}
+			})
 
-	err = e2eutil.WaitForDeployment(t, f.KubeClient, namespace, "vminsert-example-vmcluster", 1, retryInterval, timeout)
-	if err != nil {
-		return err
-	}
-
-	err = f.Client.Get(goctx.TODO(), types.NamespacedName{Name: "example-vmcluster", Namespace: namespace}, exampleVmCluster)
-
-	if err != nil {
-		return err
-	}
-	exampleVmCluster.Spec.VMStorage.ReplicaCount = pointer.Int32Ptr(2)
-	exampleVmCluster.Spec.VMSelect.ReplicaCount = pointer.Int32Ptr(3)
-	exampleVmCluster.Spec.VMInsert.ReplicaCount = pointer.Int32Ptr(3)
-	exampleVmCluster.Spec.RetentionPeriod = "2"
-	exampleVmCluster.Spec.VMStorage.ExtraArgs = map[string]string{"loggerLevel": "ERROR"}
-	err = f.Client.Update(goctx.TODO(), exampleVmCluster)
-	if err != nil {
-		return err
-	}
-	err =  WaitForSts (t, f.KubeClient, namespace, "vmstorage-example-vmcluster", 2, retryInterval, timeout)
-	if err != nil {
-		return err
-	}
-	err =  WaitForSts (t, f.KubeClient, namespace, "vmselect-example-vmcluster", 3, retryInterval, timeout)
-	if err != nil {
-		return err
-	}
-
-	return e2eutil.WaitForDeployment(t, f.KubeClient, namespace, "vminsert-example-vmcluster", 3, retryInterval, timeout)
-}
-
-func vmCluster(t *testing.T) {
-	ctx := framework.NewContext(t)
-	defer ctx.Cleanup()
-	err := ctx.InitializeClusterResources(&framework.CleanupOptions{TestContext: ctx, Timeout: cleanupTimeout, RetryInterval: cleanupRetryInterval})
-	if err != nil {
-		t.Fatalf("failed to initialize cluster resources: %v", err)
-	}
-	t.Log("Initialized cluster resources")
-	namespace, err := ctx.GetOperatorNamespace()
-	if err != nil {
-		t.Fatal(err)
-	}
-	// get global framework variables
-	f := framework.Global
-	// wait for vm-operator to be ready
-	err = e2eutil.WaitForOperatorDeployment(t, f.KubeClient, namespace, "vm-operator", 1, retryInterval, timeout)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if err = vmClusterComplete(t, f, ctx); err != nil {
-		t.Fatal(err)
-	}
-}
-
+		})
+	})
+})

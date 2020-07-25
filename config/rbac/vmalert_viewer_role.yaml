@@ -1,0 +1,20 @@
+# permissions for end users to view vmalerts.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: vmalert-viewer-role
+rules:
+- apiGroups:
+  - operator.victoriametrics.com
+  resources:
+  - vmalerts
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - operator.victoriametrics.com
+  resources:
+  - vmalerts/status
+  verbs:
+  - get

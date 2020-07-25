@@ -34,7 +34,7 @@ The Victoria Metrics Operator ensures that Alertmanager clusters are properly co
  For using cluster version you have to create corresponding crd object:
  ```yaml
 cat << EOF | kubectl apply -f -
-apiVersion: victoriametrics.com/v1beta1
+apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMCluster
 metadata:
   name: example-vmcluster-persistent
@@ -95,7 +95,7 @@ vmstorage-example-vmcluster-persistent   ClusterIP   None          <none>       
  !NOTE do not forget to create rbac for vmagent
  ```yaml
 cat << EOF | kubectl apply -f  -
-apiVersion: victoriametrics.com/v1beta1
+apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAgent
 metadata:
   name: example-vmagent
@@ -114,7 +114,7 @@ Lets add vmalert
 
 ```yaml
 cat << EOF | kubectl apply -f -
-apiVersion: victoriametrics.com/v1beta1
+apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAlert
 metadata:
   name: example-vmalert

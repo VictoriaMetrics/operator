@@ -1,0 +1,6 @@
+resources:
+- manager.yaml
+images:
+  - name: manager
+    newName: victoriametrics/operator
+    newTag: latest

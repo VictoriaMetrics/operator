@@ -1,6 +1,12 @@
 # Temporary Build Files
 .idea
+bin/
 build/_output
+bundle_crd.zip
+operator.zip
+bundle.Dockerfile
+coverage.txt
+doc-print
 build/_test
 # Created by https://www.gitignore.io/api/go,vim,emacs,visualstudiocode
 ### Emacs ###

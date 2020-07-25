@@ -88,12 +88,12 @@ type BaseOperatorConf struct {
 			}
 		}
 		VMStorageDefault struct {
-			Image    string `default:"victoriametrics/vmstorage"`
-			Version  string `default:"v1.37.0-cluster"`
-			VMInsertPort     string `default:"8400"`
+			Image        string `default:"victoriametrics/vmstorage"`
+			Version      string `default:"v1.37.0-cluster"`
+			VMInsertPort string `default:"8400"`
 			VMSelectPort string `default:"8401"`
-			Port string `default:"8482"`
-			Resource struct {
+			Port         string `default:"8482"`
+			Resource     struct {
 				Limit struct {
 					Mem string `default:"1500Mi"`
 					Cpu string `default:"1000m"`
@@ -119,9 +119,7 @@ type BaseOperatorConf struct {
 				}
 			}
 		}
-
 	}
-
 
 	VMAlertManager struct {
 		ConfigReloaderImage          string `default:"jimmidyson/configmap-reload:v0.3.0"`
@@ -139,23 +137,22 @@ type BaseOperatorConf struct {
 		KubeletObject                string
 	}
 
-	DisableSelfServiceMonitorCreation bool   `default:"false"`
+	DisableSelfServiceMonitorCreation bool `default:"false"`
 	EnabledPrometheusConverter        struct {
-		PodMonitor  bool   `default:"true"`
-		ServiceScrape  bool   `default:"true"`
-		PrometheusRule  bool   `default:"true"`
+		PodMonitor     bool `default:"true"`
+		ServiceScrape  bool `default:"true"`
+		PrometheusRule bool `default:"true"`
 	}
-	Host                              string `default:"0.0.0.0"`
-	ListenAddress                     string `default:"0.0.0.0"`
-	DefaultLabels                     string `default:"managed-by=vm-operator"`
-	Labels                            Labels `ignored:"true"`
-	LogLevel                          string
-	LogFormat                         string
-	ClusterDomainName string `default:"cluster.local"`
-	PodWaitReadyTimeout time.Duration `default:"80s"`
+	Host                      string `default:"0.0.0.0"`
+	ListenAddress             string `default:"0.0.0.0"`
+	DefaultLabels             string `default:"managed-by=vm-operator"`
+	Labels                    Labels `ignored:"true"`
+	LogLevel                  string
+	LogFormat                 string
+	ClusterDomainName         string        `default:"cluster.local"`
+	PodWaitReadyTimeout       time.Duration `default:"80s"`
 	PodWaitReadyIntervalCheck time.Duration `default:"5s"`
-	PodWaitReadyInitDelay time.Duration `default:"10s"`
-
+	PodWaitReadyInitDelay     time.Duration `default:"10s"`
 }
 
 func MustGetBaseConfig() *BaseOperatorConf {

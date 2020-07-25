@@ -21,9 +21,9 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
-// ConvertorController - watches for prometheus objects
+// ConverterController - watches for prometheus objects
 // and create VictoriaMetrics objects
-type ConvertorController struct {
+type ConverterController struct {
 	promClient versioned.Interface
 	vclient    client.Client
 	ruleInf    cache.SharedInformer
@@ -31,8 +31,9 @@ type ConvertorController struct {
 	serviceInf cache.SharedInformer
 }
 
-func NewConvertorController(promCl versioned.Interface, vclient client.Client) *ConvertorController {
-	c := &ConvertorController{
+// NewConverterController builder for vmprometheusconverter service
+func NewConverterController(promCl versioned.Interface, vclient client.Client) *ConverterController {
+	c := &ConverterController{
 		promClient: promCl,
 		vclient:    vclient,
 	}
@@ -90,7 +91,7 @@ func NewConvertorController(promCl versioned.Interface, vclient client.Client) *
 	return c
 }
 
-func waitForApiResource(ctx context.Context, client discovery.DiscoveryInterface, apiGroupVersion string, kind string) error {
+func waitForAPIResource(ctx context.Context, client discovery.DiscoveryInterface, apiGroupVersion string, kind string) error {
 	l := log.WithValues("group", apiGroupVersion, "kind", kind)
 	l.Info("waiting for api resource")
 	tick := time.NewTicker(time.Second * 10)
@@ -122,8 +123,8 @@ func waitForApiResource(ctx context.Context, client discovery.DiscoveryInterface
 
 }
 
-func (c *ConvertorController) runInformerWithDiscovery(ctx context.Context, group, kind string, runInformer func(<-chan struct{})) error {
-	err := waitForApiResource(ctx, c.promClient.Discovery(), group, kind)
+func (c *ConverterController) runInformerWithDiscovery(ctx context.Context, group, kind string, runInformer func(<-chan struct{})) error {
+	err := waitForAPIResource(ctx, c.promClient.Discovery(), group, kind)
 	if err != nil {
 		return fmt.Errorf("error wait for %s, err: %w", kind, err)
 	}
@@ -131,7 +132,8 @@ func (c *ConvertorController) runInformerWithDiscovery(ctx context.Context, grou
 	return nil
 }
 
-func (c *ConvertorController) Run(ctx context.Context, group *errgroup.Group, cfg *conf.BaseOperatorConf) {
+// Run - starts vmprometheusconverter with background discovery process for each prometheus api object
+func (c *ConverterController) Run(ctx context.Context, group *errgroup.Group, cfg *conf.BaseOperatorConf) {
 
 	if cfg.EnabledPrometheusConverter.ServiceScrape {
 		group.Go(func() error {
@@ -153,7 +155,8 @@ func (c *ConvertorController) Run(ctx context.Context, group *errgroup.Group, cf
 	}
 }
 
-func (c *ConvertorController) CreatePrometheusRule(rule interface{}) {
+// CreatePrometheusRule converts prometheus rule to vmrule
+func (c *ConverterController) CreatePrometheusRule(rule interface{}) {
 	promRule := rule.(*v1.PrometheusRule)
 	l := log.WithValues("kind", "alertRule", "name", promRule.Name, "ns", promRule.Namespace)
 	l.Info("syncing prom rule with VMRule")
@@ -171,7 +174,8 @@ func (c *ConvertorController) CreatePrometheusRule(rule interface{}) {
 	l.Info("AlertRule was created")
 }
 
-func (c *ConvertorController) UpdatePrometheusRule(old, new interface{}) {
+// UpdatePrometheusRule updates vmrule
+func (c *ConverterController) UpdatePrometheusRule(old, new interface{}) {
 	promRuleNew := new.(*v1.PrometheusRule)
 	l := log.WithValues("kind", "VMRule", "name", promRuleNew.Name, "ns", promRuleNew.Namespace)
 	l.Info("updating VMRule")
@@ -194,7 +198,8 @@ func (c *ConvertorController) UpdatePrometheusRule(old, new interface{}) {
 
 }
 
-func (c *ConvertorController) CreateServiceMonitor(service interface{}) {
+// CreateServiceMonitor converts ServiceMonitor to VMServiceScrape
+func (c *ConverterController) CreateServiceMonitor(service interface{}) {
 	serviceMon := service.(*v1.ServiceMonitor)
 	l := log.WithValues("kind", "vmServiceScrape", "name", serviceMon.Name, "ns", serviceMon.Namespace)
 	l.Info("syncing vmServiceScrape")
@@ -211,7 +216,8 @@ func (c *ConvertorController) CreateServiceMonitor(service interface{}) {
 	l.Info("vmServiceScrape was created")
 }
 
-func (c *ConvertorController) UpdateServiceMonitor(old, new interface{}) {
+// UpdateServiceMonitor updates VMServiceMonitor
+func (c *ConverterController) UpdateServiceMonitor(old, new interface{}) {
 	serviceMonNew := new.(*v1.ServiceMonitor)
 	l := log.WithValues("kind", "vmServiceScrape", "name", serviceMonNew.Name, "ns", serviceMonNew.Namespace)
 	l.Info("updating vmServiceScrape")
@@ -233,7 +239,8 @@ func (c *ConvertorController) UpdateServiceMonitor(old, new interface{}) {
 	l.Info("vmServiceScrape was updated")
 }
 
-func (c *ConvertorController) CreatePodMonitor(pod interface{}) {
+// CreatePodMonitor converts PodMonitor to VMPodScrape
+func (c *ConverterController) CreatePodMonitor(pod interface{}) {
 	podMonitor := pod.(*v1.PodMonitor)
 	l := log.WithValues("kind", "podScrape", "name", podMonitor.Name, "ns", podMonitor.Namespace)
 	l.Info("syncing podScrape")
@@ -250,7 +257,9 @@ func (c *ConvertorController) CreatePodMonitor(pod interface{}) {
 	log.Info("podScrape was created")
 
 }
-func (c *ConvertorController) UpdatePodMonitor(old, new interface{}) {
+
+// UpdatePodMonitor updates VMPodScrape
+func (c *ConverterController) UpdatePodMonitor(old, new interface{}) {
 	podMonitorNew := new.(*v1.PodMonitor)
 	l := log.WithValues("kind", "podScrape", "name", podMonitorNew.Name, "ns", podMonitorNew.Namespace)
 	podScrape := converter.ConvertPodMonitor(podMonitorNew)

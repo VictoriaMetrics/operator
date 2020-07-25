@@ -553,9 +553,20 @@ func gzipConfig(buf *bytes.Buffer, conf []byte) error {
 	return nil
 }
 
-func CreateVMServiceScrapeFromService(ctx context.Context, rclient client.Client, service *v1.Service) error {
+func CreateVMServiceScrapeFromService(ctx context.Context, rclient client.Client, service *v1.Service, filterPortNames ...string) error {
 	endPoints := []victoriametricsv1beta1.Endpoint{}
 	for _, servicePort := range service.Spec.Ports {
+		var nameMatched bool
+		for _, filter := range filterPortNames {
+			if servicePort.Name == filter {
+				nameMatched = true
+				break
+			}
+		}
+		if len(filterPortNames) > 0 && !nameMatched {
+			continue
+		}
+
 		endPoints = append(endPoints, victoriametricsv1beta1.Endpoint{
 			Port: servicePort.Name,
 		})

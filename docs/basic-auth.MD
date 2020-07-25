@@ -6,7 +6,7 @@ To authenticate a `VMServiceScrape`s over a metrics endpoint use [`basicAuth`](.
 
 ```yaml
 cat <<EOF | kubectl apply -f -
-apiVersion: victoriametrics.com/v1beta1
+apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMServiceScrape
 metadata:
   labels:

@@ -37,9 +37,9 @@ type VMRuleReconciler struct {
 	BaseConf *conf.BaseOperatorConf
 }
 
+// Reconcile general reconcile method for controller
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmrules,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmrules/status,verbs=get;update;patch
-
 func (r *VMRuleReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := r.Log.WithValues("vmrule", req.NamespacedName)
 	reqLogger.Info("Reconciling VMRule")
@@ -91,6 +91,7 @@ func (r *VMRuleReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	return ctrl.Result{}, nil
 }
 
+// SetupWithManager general setup method
 func (r *VMRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&victoriametricsv1beta1.VMRule{}).

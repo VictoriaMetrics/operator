@@ -39,6 +39,7 @@ type VMAgentReconciler struct {
 	BaseConf *conf.BaseOperatorConf
 }
 
+// Reconcile general reconcile method
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmagents,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmagents/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups="",resources=pods,verbs=*
@@ -48,7 +49,6 @@ type VMAgentReconciler struct {
 // +kubebuilder:rbac:groups="",resources=services/finalizers,verbs=*
 // +kubebuilder:rbac:groups=monitoring.coreos.com,resources=*,verbs=*
 // +kubebuilder:rbac:groups="",resources=namespaces,verbs=get;watch;list
-
 func (r *VMAgentReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := r.Log.WithValues("vmagent", req.NamespacedName)
 	reqLogger.Info("Reconciling")
@@ -95,6 +95,7 @@ func (r *VMAgentReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	return ctrl.Result{}, nil
 }
 
+// SetupWithManager general setup method
 func (r *VMAgentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&victoriametricsv1beta1.VMAgent{}).

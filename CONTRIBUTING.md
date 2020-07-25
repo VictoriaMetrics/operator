@@ -3,11 +3,10 @@
 
 for developing you need: 
 - golang 1.13+
-- operator-sdk 1.18.1 
+- operator-sdk 1.19.0
 - docker
 - minikube or kind for e2e tests
 - golangci-lint
-- operator-courier
 
 
 
@@ -18,10 +17,10 @@ Use `make build` - it will generate new crds and build binary
 
 for running locally you need minikube and run two commands:
 ```bash
-kubectl apply -f deploy/crds
+make install
 make run
 ```
-or you can run it from IDE with ```cmd/manager/main.go```
+or you can run it from IDE with ```main.go```
 
 ## publish changes
 

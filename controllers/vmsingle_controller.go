@@ -38,12 +38,12 @@ type VMSingleReconciler struct {
 	BaseConf *conf.BaseOperatorConf
 }
 
+// Reconcile general reconcile method for controller
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmsingles,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=*
 // +kubebuilder:rbac:groups=apps,resources=replicasets,verbs=*
 // +kubebuilder:rbac:groups="",resources=persistentvolumeclaims,verbs=*
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmsingles/status,verbs=get;update;patch
-
 func (r *VMSingleReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := r.Log.WithValues("vmsingle", req.NamespacedName)
 	reqLogger.Info("Reconciling vmsingle")
@@ -90,6 +90,7 @@ func (r *VMSingleReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	return ctrl.Result{}, nil
 }
 
+// SetupWithManager general setup method
 func (r *VMSingleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&victoriametricsv1beta1.VMSingle{}).

@@ -1,7 +1,0 @@
-apiVersion: victoriametrics.com/v1beta1
-kind: VMSingle
-metadata:
-  name: example-vmsingle
-spec:
-  # Add fields here
-  retentionPeriod: "1"

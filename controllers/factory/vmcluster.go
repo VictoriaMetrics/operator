@@ -71,10 +71,16 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient
 			return status, err
 		}
 
-		_, err = CreateOrUpdateVMStorageService(ctx, cr, rclient, c)
+		storageSvc, err := CreateOrUpdateVMStorageService(ctx, cr, rclient, c)
 		if err != nil {
 			reason = "failed to create vmStorage service"
 			return status, err
+		}
+		if !c.DisableSelfServiceMonitorCreation {
+			err := CreateVMServiceScrapeFromService(ctx, rclient, storageSvc, "http")
+			if err != nil {
+				log.Error(err, "cannot create VMServiceScrape for vmStorage")
+			}
 		}
 		//wait for expand
 		expanding, err = waitForExpanding(ctx, rclient, cr.Namespace, cr.VMStorageSelectorLabels(), *cr.Spec.VMStorage.ReplicaCount)
@@ -98,11 +104,18 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient
 			return status, err
 		}
 		//create vmselect service
-		_, err = CreateOrUpdateVMSelectService(ctx, cr, rclient, c)
+		selectSvc, err := CreateOrUpdateVMSelectService(ctx, cr, rclient, c)
 		if err != nil {
 			reason = "failed to create vmSelect service"
 			return status, err
 		}
+		if !c.DisableSelfServiceMonitorCreation {
+			err := CreateVMServiceScrapeFromService(ctx, rclient, selectSvc, "http")
+			if err != nil {
+				log.Error(err, "cannot create VMServiceScrape for vmSelect")
+			}
+		}
+
 		err = performRollingUpdateOnSts(ctx, rclient, vmSelectsts.Name, cr.Namespace, cr.VMSelectSelectorLabels(), c)
 		if err != nil {
 			reason = v1beta1.SelectRollingUpdateFailed
@@ -129,10 +142,16 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient
 			reason = v1beta1.InsertCreationFailed
 			return status, err
 		}
-		_, err = CreateOrUpdateVMInsertService(ctx, cr, rclient, c)
+		insertSvc, err := CreateOrUpdateVMInsertService(ctx, cr, rclient, c)
 		if err != nil {
 			reason = "failed to create vmInsert service"
 			return status, err
+		}
+		if !c.DisableSelfServiceMonitorCreation {
+			err := CreateVMServiceScrapeFromService(ctx, rclient, insertSvc)
+			if err != nil {
+				log.Error(err, "cannot create VMServiceScrape for vmInsert")
+			}
 		}
 		expanding, err = waitForExpanding(ctx, rclient, cr.Namespace, cr.VMInsertSelectorLabels(), *cr.Spec.VMInsert.ReplicaCount)
 		if err != nil {

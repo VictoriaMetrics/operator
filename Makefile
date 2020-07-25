@@ -128,7 +128,7 @@ e2e-local: generate fmt vet manifests fix118
 
 lint:
 	golangci-lint run --exclude '(SA1019):' -E typecheck -E gosimple   --timeout 5m --skip-dirs 'pkg/client'
-	golint ./pkg/
+	golint ./controllers/
 
 .PHONY:clean
 clean:

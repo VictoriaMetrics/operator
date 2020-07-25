@@ -40,12 +40,12 @@ type VMAlertmanagerReconciler struct {
 	BaseConf *conf.BaseOperatorConf
 }
 
+// Reconcile general reconcile method for controller
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmalertmanagers,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmalertmanagers/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=*
 // +kubebuilder:rbac:groups="",resources=configmaps,verbs=*
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=*
-
 func (r *VMAlertmanagerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := r.Log.WithValues("vmalertmanager", req.NamespacedName)
 	reqLogger.Info("Reconciling")
@@ -75,6 +75,7 @@ func (r *VMAlertmanagerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 	return ctrl.Result{}, nil
 }
 
+// SetupWithManager general setup method
 func (r *VMAlertmanagerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&victoriametricsv1beta1.VMAlertmanager{}).

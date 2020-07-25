@@ -156,7 +156,7 @@ func RunManager(ctx context.Context) error {
 		setupLog.Error(err, "cannot build promClient")
 		return err
 	}
-	converterController := controllers.NewConvertorController(prom, mgr.GetClient())
+	converterController := controllers.NewConverterController(prom, mgr.GetClient())
 
 	errG := &errgroup.Group{}
 	converterController.Run(ctx, errG, conf.MustGetBaseConfig())

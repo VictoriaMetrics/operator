@@ -37,9 +37,9 @@ type VMServiceScrapeReconciler struct {
 	BaseConf *conf.BaseOperatorConf
 }
 
+// Reconcile general reconcile method for controller
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmservicescrapes,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmservicescrapes/status,verbs=get;update;patch
-
 func (r *VMServiceScrapeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := r.Log.WithValues("vmservicescrape", req.NamespacedName)
 	reqLogger.Info("Reconciling VMServiceScrape")
@@ -80,6 +80,7 @@ func (r *VMServiceScrapeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 	return ctrl.Result{}, nil
 }
 
+// SetupWithManager general setup method
 func (r *VMServiceScrapeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&victoriametricsv1beta1.VMServiceScrape{}).

@@ -26,10 +26,10 @@ type VMClusterReconciler struct {
 	BaseConf *conf.BaseOperatorConf
 }
 
+// Reconcile general reconcile method for controller
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmclusters,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmclusters/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=*
-
 func (r *VMClusterReconciler) Reconcile(request ctrl.Request) (ctrl.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.Info("Reconciling VMCluster")
@@ -65,6 +65,7 @@ func (r *VMClusterReconciler) Reconcile(request ctrl.Request) (ctrl.Result, erro
 	return reconcile.Result{}, nil
 }
 
+// SetupWithManager general setup method
 func (r *VMClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&victoriametricsv1beta1.VMCluster{}).

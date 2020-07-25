@@ -236,3 +236,6 @@ bundle-build:
 	docker build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
 
 build: manager
+
+release-package: kustomize
+	sh scripts/bundle.sh

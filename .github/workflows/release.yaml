@@ -43,7 +43,7 @@ jobs:
           make lint
           make test
           make build
-          sh scripts/bundle.sh
+          make release-package
       - name: run e2e tests local
         run: |
           kubectl cluster-info

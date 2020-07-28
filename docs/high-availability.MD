@@ -123,7 +123,8 @@ spec:
   replicas: 1
   datasource:
     url: "http://vmselect-example-vmcluster-persistent.default.svc.cluster.local:8481/select/0/prometheus"
-  notifierURL: "http://alertmanager-operated.default.svc:9093"
+  notifier:
+    url: "http://alertmanager-operated.default.svc:9093"
   evaluationInterval: "10s"
   ruleSelector: {}
 EOF

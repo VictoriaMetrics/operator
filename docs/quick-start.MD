@@ -164,7 +164,8 @@ spec:
   replicaCount: 1
   datasource:
     url: "http://vmagent-example-vmsingle.default.svc:8429"
-  notifierURL: "http://alertmanager-operated:9093"
+  notifier:
+      url: "http://alertmanager-operated:9093"
   evaluationInterval: "30s"
   ruleSelector:
     matchLabels: {}

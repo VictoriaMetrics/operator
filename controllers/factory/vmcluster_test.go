@@ -533,3 +533,59 @@ func Test_genVMStorageService(t *testing.T) {
 		})
 	}
 }
+
+func TestCreateOrUpdateVMCluster(t *testing.T) {
+	type args struct {
+		cr *v1beta1.VMCluster
+		c  *conf.BaseOperatorConf
+	}
+	tests := []struct {
+		name              string
+		args              args
+		want              string
+		wantErr           bool
+		predefinedObjects []runtime.Object
+	}{
+		{
+			name: "base-gen-test",
+			args: args{
+				c: conf.MustGetBaseConfig(),
+				cr: &v1beta1.VMCluster{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "default",
+						Name:      "cluster-1",
+					},
+					Spec: v1beta1.VMClusterSpec{
+						RetentionPeriod:   "2",
+						ReplicationFactor: pointer.Int32Ptr(2),
+						VMInsert: &v1beta1.VMInsert{
+							ReplicaCount: pointer.Int32Ptr(2),
+						},
+						VMStorage: &v1beta1.VMStorage{
+							ReplicaCount: pointer.Int32Ptr(2),
+						},
+						VMSelect: &v1beta1.VMSelect{
+							ReplicaCount: pointer.Int32Ptr(2),
+						},
+					},
+				},
+			},
+			want: v1beta1.ClusterStatusExpanding,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			obj := []runtime.Object{}
+			obj = append(obj, tt.predefinedObjects...)
+			fclient := fake.NewFakeClientWithScheme(testGetScheme(), obj...)
+			got, err := CreateOrUpdateVMCluster(context.TODO(), tt.args.cr, fclient, tt.args.c)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("CreateOrUpdateVMCluster() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("CreateOrUpdateVMCluster() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

@@ -24,8 +24,6 @@ import (
 
 const (
 	vmStorageDefaultDBPath = "vmstorage-data"
-	vmClusterSecretDir     = "/etc/vm/secrets"
-	vmClusterConfigMapDir  = "/etc/vm/configs"
 	podRevisionLabel       = "controller-revision-hash"
 )
 
@@ -599,7 +597,7 @@ func makePodSpecForVMSelect(cr *v1beta1.VMCluster, c *conf.BaseOperatorConf) (*c
 		vmMounts = append(vmMounts, corev1.VolumeMount{
 			Name:      SanitizeVolumeName("secret-" + s),
 			ReadOnly:  true,
-			MountPath: path.Join(vmClusterSecretDir, s),
+			MountPath: path.Join(SecretsDir, s),
 		})
 	}
 
@@ -617,7 +615,7 @@ func makePodSpecForVMSelect(cr *v1beta1.VMCluster, c *conf.BaseOperatorConf) (*c
 		vmMounts = append(vmMounts, corev1.VolumeMount{
 			Name:      SanitizeVolumeName("configmap-" + c),
 			ReadOnly:  true,
-			MountPath: path.Join(vmClusterConfigMapDir, c),
+			MountPath: path.Join(ConfigMapsDir, c),
 		})
 	}
 
@@ -864,7 +862,7 @@ func makePodSpecForVMInsert(cr *v1beta1.VMCluster, c *conf.BaseOperatorConf) (*c
 		vmMounts = append(vmMounts, corev1.VolumeMount{
 			Name:      SanitizeVolumeName("secret-" + s),
 			ReadOnly:  true,
-			MountPath: path.Join(vmClusterSecretDir, s),
+			MountPath: path.Join(SecretsDir, s),
 		})
 	}
 
@@ -882,7 +880,7 @@ func makePodSpecForVMInsert(cr *v1beta1.VMCluster, c *conf.BaseOperatorConf) (*c
 		vmMounts = append(vmMounts, corev1.VolumeMount{
 			Name:      SanitizeVolumeName("configmap-" + c),
 			ReadOnly:  true,
-			MountPath: path.Join(vmClusterConfigMapDir, c),
+			MountPath: path.Join(ConfigMapsDir, c),
 		})
 	}
 
@@ -1180,7 +1178,7 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster) (*corev1.PodTemplateSpec, er
 		vmMounts = append(vmMounts, corev1.VolumeMount{
 			Name:      SanitizeVolumeName("secret-" + s),
 			ReadOnly:  true,
-			MountPath: path.Join(vmClusterSecretDir, s),
+			MountPath: path.Join(SecretsDir, s),
 		})
 	}
 
@@ -1198,7 +1196,7 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster) (*corev1.PodTemplateSpec, er
 		vmMounts = append(vmMounts, corev1.VolumeMount{
 			Name:      SanitizeVolumeName("configmap-" + c),
 			ReadOnly:  true,
-			MountPath: path.Join(vmClusterConfigMapDir, c),
+			MountPath: path.Join(ConfigMapsDir, c),
 		})
 	}
 

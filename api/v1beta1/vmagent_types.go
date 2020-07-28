@@ -245,7 +245,8 @@ type VMAgentRemoteWriteSpec struct {
 	// Path to directory where temporary data for remote write component is stored (default "vmagent-remotewrite-data")
 	// +optional
 	TmpDataPath *string `json:"tmpDataPath,omitempty"`
-	// TODO: add remoteWrite.tls*
+	// TLSConfig describes tls configuration for remote write target
+	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
 }
 
 // VmAgentStatus defines the observed state of VmAgent

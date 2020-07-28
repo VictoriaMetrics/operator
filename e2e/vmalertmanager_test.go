@@ -101,7 +101,7 @@ var _ = Describe("e2e vmalertmanager ", func() {
 				Expect(k8sClient.Update(context.TODO(), currVma)).To(BeNil())
 				Eventually(func() string {
 					return expectPodCount(k8sClient, 2, Namespace, currVma.SelectorLabels())
-				}, 80, 2).Should(BeEmpty())
+				}, 120, 2).Should(BeEmpty())
 			})
 
 		})

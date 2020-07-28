@@ -23,8 +23,6 @@ import (
 )
 
 const (
-	vmAgentConfigsDir  = "/etc/vmagent/configs"
-	vmAgentSecretDir   = "/etc/vmagent/secrets"
 	vmAgentConfDir     = "/etc/vmagent/config"
 	vmAgentConOfOutDir = "/etc/vmagent/config_out"
 )
@@ -227,7 +225,7 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *conf.BaseOperator
 	}
 
 	if len(cr.Spec.RemoteWrite) > 0 {
-		args = append(args, BuildRemoteWrites(cr.Spec.RemoteWrite, rwsBasicAuth, rwsTokens)...)
+		args = append(args, BuildRemoteWrites(cr, rwsBasicAuth, rwsTokens)...)
 	}
 
 	for arg, value := range cr.Spec.ExtraArgs {
@@ -301,7 +299,7 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *conf.BaseOperator
 		agentVolumeMounts = append(agentVolumeMounts, corev1.VolumeMount{
 			Name:      SanitizeVolumeName("secret-" + s),
 			ReadOnly:  true,
-			MountPath: path.Join(vmAgentSecretDir, s),
+			MountPath: path.Join(SecretsDir, s),
 		})
 	}
 
@@ -319,7 +317,7 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *conf.BaseOperator
 		agentVolumeMounts = append(agentVolumeMounts, corev1.VolumeMount{
 			Name:      SanitizeVolumeName("configmap-" + c),
 			ReadOnly:  true,
-			MountPath: path.Join(vmAgentConfigsDir, c),
+			MountPath: path.Join(ConfigMapsDir, c),
 		})
 	}
 
@@ -355,10 +353,10 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *conf.BaseOperator
 		agentVolumeMounts = append(agentVolumeMounts, corev1.VolumeMount{
 			Name:      SanitizeVolumeName("configmap-" + cr.Spec.RelabelConfig.Name),
 			ReadOnly:  true,
-			MountPath: path.Join(vmAgentConfigsDir, cr.Spec.RelabelConfig.Name),
+			MountPath: path.Join(ConfigMapsDir, cr.Spec.RelabelConfig.Name),
 		})
 
-		args = append(args, "-remoteWrite.relabelConfig="+path.Join(vmAgentConfigsDir, cr.Spec.RelabelConfig.Name, cr.Spec.RelabelConfig.Key))
+		args = append(args, "-remoteWrite.relabelConfig="+path.Join(ConfigMapsDir, cr.Spec.RelabelConfig.Name, cr.Spec.RelabelConfig.Key))
 	}
 
 	for _, rw := range cr.Spec.RemoteWrite {
@@ -381,7 +379,7 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *conf.BaseOperator
 		agentVolumeMounts = append(agentVolumeMounts, corev1.VolumeMount{
 			Name:      SanitizeVolumeName("configmap-" + rw.UrlRelabelConfig.Name),
 			ReadOnly:  true,
-			MountPath: path.Join(vmAgentConfigsDir, rw.UrlRelabelConfig.Name),
+			MountPath: path.Join(ConfigMapsDir, rw.UrlRelabelConfig.Name),
 		})
 	}
 
@@ -525,7 +523,7 @@ func CreateOrUpdateTlsAssets(ctx context.Context, cr *victoriametricsv1beta1.VMA
 	if err != nil {
 		return fmt.Errorf("cannot select service monitors for tls Assets: %w", err)
 	}
-	assets, err := loadTLSAssets(ctx, rclient, monitors)
+	assets, err := loadTLSAssets(ctx, rclient, cr, monitors)
 	if err != nil {
 		return fmt.Errorf("cannot load tls assets: %w", err)
 	}
@@ -562,17 +560,79 @@ func CreateOrUpdateTlsAssets(ctx context.Context, cr *victoriametricsv1beta1.VMA
 	return rclient.Update(ctx, tlsAssetsSecret)
 }
 
-func loadTLSAssets(ctx context.Context, rclient client.Client, monitors map[string]*victoriametricsv1beta1.VMServiceScrape) (map[string]string, error) {
+func loadTLSAssets(ctx context.Context, rclient client.Client, cr *victoriametricsv1beta1.VMAgent, monitors map[string]*victoriametricsv1beta1.VMServiceScrape) (map[string]string, error) {
 	assets := map[string]string{}
 	nsSecretCache := make(map[string]*corev1.Secret)
 	nsConfigMapCache := make(map[string]*corev1.ConfigMap)
 
+	for _, rw := range cr.Spec.RemoteWrite {
+		if rw.TLSConfig == nil {
+			continue
+		}
+		prefix := cr.Namespace + "/"
+		secretSelectors := map[string]*corev1.SecretKeySelector{}
+		configMapSelectors := map[string]*corev1.ConfigMapKeySelector{}
+		selectorKey := rw.TLSConfig.CA.BuildSelectorWithPrefix(prefix)
+		switch {
+		case rw.TLSConfig.CA.Secret != nil:
+			secretSelectors[selectorKey] = rw.TLSConfig.CA.Secret
+		case rw.TLSConfig.CA.ConfigMap != nil:
+			configMapSelectors[selectorKey] = rw.TLSConfig.CA.ConfigMap
+		}
+		selectorKey = rw.TLSConfig.Cert.BuildSelectorWithPrefix(prefix)
+
+		switch {
+		case rw.TLSConfig.Cert.Secret != nil:
+			secretSelectors[selectorKey] = rw.TLSConfig.Cert.Secret
+
+		case rw.TLSConfig.Cert.ConfigMap != nil:
+			configMapSelectors[selectorKey] = rw.TLSConfig.Cert.ConfigMap
+		}
+		if rw.TLSConfig.KeySecret != nil {
+			secretSelectors[prefix+rw.TLSConfig.KeySecret.Name+"/"+rw.TLSConfig.KeySecret.Key] = rw.TLSConfig.KeySecret
+		}
+		for key, selector := range secretSelectors {
+			asset, err := getCredFromSecret(
+				ctx,
+				rclient,
+				cr.Namespace,
+				*selector,
+				key,
+				nsSecretCache,
+			)
+			if err != nil {
+				return nil, fmt.Errorf(
+					"failed to extract endpoint tls asset for vmagentremote write target %s from secret %s and key %s in namespace %s",
+					cr.Name, selector.Name, selector.Key, cr.Namespace,
+				)
+			}
+
+			assets[rw.TLSConfig.BuildAssetPath(cr.Namespace, selector.Name, selector.Key)] = asset
+		}
+
+		for key, selector := range configMapSelectors {
+			asset, err := getCredFromConfigMap(
+				ctx,
+				rclient,
+				cr.Namespace,
+				*selector,
+				key,
+				nsConfigMapCache,
+			)
+			if err != nil {
+				return nil, fmt.Errorf(
+					"failed to extract endpoint tls asset for vmservicescrape %v from configmap %v and key %v in namespace %v",
+					cr.Name, selector.Name, selector.Key, cr.Namespace,
+				)
+			}
+			assets[rw.TLSConfig.BuildAssetPath(cr.Namespace, selector.Name, selector.Key)] = asset
+		}
+	}
 	for _, mon := range monitors {
 		for _, ep := range mon.Spec.Endpoints {
 			if ep.TLSConfig == nil {
 				continue
 			}
-
 			prefix := mon.Namespace + "/"
 			secretSelectors := map[string]*corev1.SecretKeySelector{}
 			configMapSelectors := map[string]*corev1.ConfigMapKeySelector{}
@@ -668,9 +728,10 @@ type remoteFlag struct {
 	flagSetting string
 }
 
-func BuildRemoteWrites(remoteTargets []victoriametricsv1beta1.VMAgentRemoteWriteSpec, rwsBasicAuth map[string]BasicAuthCredentials, rwsTokens map[string]BearerToken) []string {
+func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, rwsBasicAuth map[string]BasicAuthCredentials, rwsTokens map[string]BearerToken) []string {
 	var finalArgs []string
 	var remoteArgs []remoteFlag
+	remoteTargets := cr.Spec.RemoteWrite
 
 	url := remoteFlag{flagSetting: "-remoteWrite.url=", isNotNull: true}
 	authUser := remoteFlag{flagSetting: "-remoteWrite.basicAuth.username="}
@@ -685,10 +746,54 @@ func BuildRemoteWrites(remoteTargets []victoriametricsv1beta1.VMAgentRemoteWrite
 	sendTimeout := remoteFlag{flagSetting: "-remoteWrite.sendTimeout="}
 	showURL := remoteFlag{flagSetting: "-remoteWrite.showURL="}
 	tmpDataPath := remoteFlag{flagSetting: "-remoteWrite.tmpDataPath="}
+	tlsCAs := remoteFlag{flagSetting: "-remoteWrite.tlsCAFile="}
+	tlsCerts := remoteFlag{flagSetting: "-remoteWrite.tlsCertFile="}
+	tlsKeys := remoteFlag{flagSetting: "-remoteWrite.tlsKeyFile="}
+	tlsInsecure := remoteFlag{flagSetting: "-remoteWrite.tlsInsecureSkipVerify="}
+	tlsServerName := remoteFlag{flagSetting: "-remoteWrite.tlsServerName="}
+
+	pathPrefix := path.Join(tlsAssetsDir, cr.Namespace)
 
 	for _, rws := range remoteTargets {
 
 		url.flagSetting += fmt.Sprintf("%s,", rws.URL)
+
+		var caPath, certPath, keyPath, ServerName string
+		var insecure bool
+		if rws.TLSConfig != nil {
+			if rws.TLSConfig.CAFile != "" {
+				caPath = rws.TLSConfig.CAFile
+			} else {
+				caPath = rws.TLSConfig.BuildAssetPath(pathPrefix, rws.TLSConfig.CA.Name(), rws.TLSConfig.CA.Key())
+			}
+			tlsCAs.isNotNull = true
+			if rws.TLSConfig.CertFile != "" {
+				certPath = rws.TLSConfig.CertFile
+			} else {
+				certPath = rws.TLSConfig.BuildAssetPath(pathPrefix, rws.TLSConfig.Cert.Name(), rws.TLSConfig.Cert.Key())
+
+			}
+			tlsCerts.isNotNull = true
+			if rws.TLSConfig.KeyFile != "" {
+				keyPath = rws.TLSConfig.KeyFile
+			} else {
+				keyPath = rws.TLSConfig.BuildAssetPath(pathPrefix, rws.TLSConfig.KeySecret.Name, rws.TLSConfig.KeySecret.Key)
+			}
+			tlsKeys.isNotNull = true
+			if rws.TLSConfig.InsecureSkipVerify {
+				tlsInsecure.isNotNull = true
+			}
+			if rws.TLSConfig.ServerName != "" {
+				ServerName = rws.TLSConfig.ServerName
+				tlsServerName.isNotNull = true
+			}
+			insecure = rws.TLSConfig.InsecureSkipVerify
+		}
+		tlsCAs.flagSetting += fmt.Sprintf("%s,", caPath)
+		tlsCerts.flagSetting += fmt.Sprintf("%s,", certPath)
+		tlsKeys.flagSetting += fmt.Sprintf("%s,", keyPath)
+		tlsServerName.flagSetting += fmt.Sprintf("%s,", ServerName)
+		tlsInsecure.flagSetting += fmt.Sprintf("%v,", insecure)
 
 		var user string
 		var pass string
@@ -752,7 +857,7 @@ func BuildRemoteWrites(remoteTargets []victoriametricsv1beta1.VMAgentRemoteWrite
 		value = ""
 		if rws.UrlRelabelConfig != nil {
 			urlRelabelConfig.isNotNull = true
-			value = path.Join(vmAgentConfigsDir, rws.UrlRelabelConfig.Name, rws.UrlRelabelConfig.Key)
+			value = path.Join(ConfigMapsDir, rws.UrlRelabelConfig.Name, rws.UrlRelabelConfig.Key)
 		}
 		urlRelabelConfig.flagSetting += fmt.Sprintf("%s,", value)
 
@@ -778,6 +883,7 @@ func BuildRemoteWrites(remoteTargets []victoriametricsv1beta1.VMAgentRemoteWrite
 		tmpDataPath.flagSetting += fmt.Sprintf("%s,", value)
 	}
 	remoteArgs = append(remoteArgs, url, authUser, authPassword, bearerToken, flushInterval, labels, maxBlockSize, maxDiskUsage, queues, urlRelabelConfig, sendTimeout, showURL, tmpDataPath)
+	remoteArgs = append(remoteArgs, tlsServerName, tlsInsecure, tlsKeys, tlsCerts, tlsCAs)
 	for _, remoteArgType := range remoteArgs {
 		if remoteArgType.isNotNull {
 			finalArgs = append(finalArgs, strings.TrimSuffix(remoteArgType.flagSetting, ","))

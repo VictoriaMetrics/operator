@@ -24,8 +24,6 @@ import (
 
 const (
 	defaultRetention       = "120h"
-	secretsDir             = "/etc/alertmanager/secrets/"
-	configmapsDir          = "/etc/alertmanager/configmaps/"
 	alertmanagerConfDir    = "/etc/alertmanager/config"
 	alertmanagerConfFile   = alertmanagerConfDir + "/alertmanager.yaml"
 	alertmanagerStorageDir = "/alertmanager"
@@ -449,7 +447,7 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, config *conf
 		amVolumeMounts = append(amVolumeMounts, v1.VolumeMount{
 			Name:      SanitizeVolumeName("secret-" + s),
 			ReadOnly:  true,
-			MountPath: secretsDir + s,
+			MountPath: path.Join(SecretsDir, s),
 		})
 	}
 
@@ -467,7 +465,7 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, config *conf
 		amVolumeMounts = append(amVolumeMounts, v1.VolumeMount{
 			Name:      SanitizeVolumeName("configmap-" + c),
 			ReadOnly:  true,
-			MountPath: configmapsDir + c,
+			MountPath: path.Join(ConfigMapsDir, c),
 		})
 	}
 

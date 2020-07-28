@@ -16,6 +16,7 @@ spec:
       labels:
         control-plane: vm-operator
     spec:
+      serviceAccountName: vm-operator
       containers:
       - name: manager
         command:

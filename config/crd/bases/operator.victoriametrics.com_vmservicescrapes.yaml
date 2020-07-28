@@ -244,7 +244,8 @@ spec:
                       to. Mutually exclusive with port.
                     x-kubernetes-int-or-string: true
                   tlsConfig:
-                    description: TLS configuration to use when scraping the endpoint
+                    description: TLSConfig configuration to use when scraping the
+                      endpoint
                     properties:
                       ca:
                         description: Stuct containing the CA cert to use for the targets.

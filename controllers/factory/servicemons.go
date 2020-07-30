@@ -572,8 +572,8 @@ func CreateVMServiceScrapeFromService(ctx context.Context, rclient client.Client
 	}
 	scrapeSvc := &victoriametricsv1beta1.VMServiceScrape{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      service.Name,
-			Namespace: service.Namespace,
+			Name:            service.Name,
+			Namespace:       service.Namespace,
 			OwnerReferences: service.OwnerReferences,
 		},
 		Spec: victoriametricsv1beta1.VMServiceScrapeSpec{

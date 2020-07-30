@@ -22,6 +22,7 @@ This Document documents the types introduced by the Victoria Metrics Operator to
 * [VMAlert](#vmalert)
 * [VMAlertDatasourceSpec](#vmalertdatasourcespec)
 * [VMAlertList](#vmalertlist)
+* [VMAlertNotifierSpec](#vmalertnotifierspec)
 * [VMAlertRemoteReadSpec](#vmalertremotereadspec)
 * [VMAlertRemoteWriteSpec](#vmalertremotewritespec)
 * [VMAlertSpec](#vmalertspec)
@@ -182,6 +183,7 @@ VMAgentRemoteWriteSpec defines the remote storage configuration for VmAgent
 | sendTimeout | Timeout for sending a single block of data to -remoteWrite.url (default 1m0s) | *string | false |
 | showURL | Whether to show -remoteWrite.url in the exported metrics. It is hidden by default, since it can contain sensistive auth info | *bool | false |
 | tmpDataPath | Path to directory where temporary data for remote write component is stored (default \"vmagent-remotewrite-data\") | *string | false |
+| tlsConfig | TLSConfig describes tls configuration for remote write target | *[TLSConfig](#tlsconfig) | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -315,6 +317,7 @@ VMAgentRemoteReadSpec defines the remote storage configuration for VmAlert to re
 | ----- | ----------- | ------ | -------- |
 | url | Victoria Metrics or VMSelect url. Required parameter. E.g. http://127.0.0.1:8428 | string | true |
 | basicAuth | BasicAuth allow datasource to authenticate over basic authentication | *[BasicAuth](#basicauth) | false |
+| tlsConfig | TLSConfig describes tls configuration for datasource target | *[TLSConfig](#tlsconfig) | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -329,6 +332,18 @@ VMAlertList contains a list of VMAlert
 
 [Back to TOC](#table-of-contents)
 
+## VMAlertNotifierSpec
+
+VMAlertNotifierSpec defines the notifier url for sending information about alerts
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| url | AlertManager url. Required parameter. E.g. http://127.0.0.1:9093 | string | true |
+| basicAuth | BasicAuth allow notifier to authenticate over basic authentication | *[BasicAuth](#basicauth) | false |
+| tlsConfig | TLSConfig describes tls configuration for notifier | *[TLSConfig](#tlsconfig) | false |
+
+[Back to TOC](#table-of-contents)
+
 ## VMAlertRemoteReadSpec
 
 VMAgentRemoteReadSpec defines the remote storage configuration for VmAlert to read alerts from
@@ -338,6 +353,7 @@ VMAgentRemoteReadSpec defines the remote storage configuration for VmAlert to re
 | url | URL of the endpoint to send samples to. | string | true |
 | basicAuth | BasicAuth allow an endpoint to authenticate over basic authentication | *[BasicAuth](#basicauth) | false |
 | lookback | Lookback defines how far to look into past for alerts timeseries. For example, if lookback=1h then range from now() to now()-1h will be scanned. (default 1h0m0s) Applied only to RemoteReadSpec | *string | false |
+| tlsConfig | TLSConfig describes tls configuration for remote read target | *[TLSConfig](#tlsconfig) | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -353,6 +369,7 @@ VMAgentRemoteWriteSpec defines the remote storage configuration for VmAlert
 | flushInterval | Defines interval of flushes to remote write endpoint (default 5s) | *string | false |
 | maxBatchSize | Defines defines max number of timeseries to be flushed at once (default 1000) | *int32 | false |
 | maxQueueSize | Defines the max number of pending datapoints to remote write endpoint (default 100000) | *int32 | false |
+| tlsConfig | TLSConfig describes tls configuration for remote write target | *[TLSConfig](#tlsconfig) | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -388,7 +405,7 @@ VMAlertSpec defines the desired state of VMAlert
 | ruleSelector | RuleSelector selector to select which VMRules to mount for loading alerting rules from. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
 | ruleNamespaceSelector | RuleNamespaceSelector to be selected for VMRules discovery. If unspecified, only the same namespace as the vmalert object is in is used. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
 | port | Port for listen | string | false |
-| notifierURL | NotifierURL prometheus alertmanager URL. Required parameter. e.g. http://127.0.0.1:9093 | string | true |
+| notifier | Notifier prometheus alertmanager URL. Required parameter. e.g. http://127.0.0.1:9093 | [VMAlertNotifierSpec](#vmalertnotifierspec) | true |
 | remoteWrite | RemoteWrite Optional URL to remote-write compatible storage where to write timeseriesbased on active alerts. E.g. http://127.0.0.1:8428 | *[VMAlertRemoteWriteSpec](#vmalertremotewritespec) | false |
 | remoteRead | RemoteRead victoria metrics address for loading state This configuration makes sense only if remoteWrite was configured before and has been successfully persisted its state. | *[VMAlertRemoteReadSpec](#vmalertremotereadspec) | false |
 | rulePath | RulePath to the file with alert rules. Supports patterns. Flag can be specified multiple times. Examples:\n        -rule /path/to/file. Path to a single file with alerting rules\n        -rule dir/*.yaml -rule /*.yaml. Relative path to all .yaml files in \"dir\" folder,\n       absolute path to all .yaml files in root.\nby default operator adds /etc/vmalert/configs/base/vmalert.yaml | []string | false |
@@ -553,7 +570,7 @@ APIServerConfig defines a host and auth methods to access apiserver. More info: 
 | basicAuth | BasicAuth allow an endpoint to authenticate over basic authentication | *[BasicAuth](#basicauth) | false |
 | bearerToken | Bearer token for accessing apiserver. | string | false |
 | bearerTokenFile | File to read bearer token for accessing apiserver. | string | false |
-| tlsConfig | TLS Config to use for accessing apiserver. | *[TLSConfig](#tlsconfig) | false |
+| tlsConfig | TLSConfig Config to use for accessing apiserver. | *[TLSConfig](#tlsconfig) | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -570,7 +587,7 @@ Endpoint defines a scrapeable endpoint serving Prometheus metrics.
 | params | Optional HTTP URL parameters | map[string][]string | false |
 | interval | Interval at which metrics should be scraped | string | false |
 | scrapeTimeout | Timeout after which the scrape is ended | string | false |
-| tlsConfig | TLS configuration to use when scraping the endpoint | *[TLSConfig](#tlsconfig) | false |
+| tlsConfig | TLSConfig configuration to use when scraping the endpoint | *[TLSConfig](#tlsconfig) | false |
 | bearerTokenFile | File to read bearer token for scraping targets. | string | false |
 | bearerTokenSecret | Secret to mount to read bearer token for scraping targets. The secret needs to be in the same namespace as the service monitor and accessible by the victoria-metrics operator. | [v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
 | honorLabels | HonorLabels chooses the metric's labels on collisions with target labels. | bool | false |
@@ -639,7 +656,7 @@ RemoteWriteSpec defines the remote_write configuration.
 | basicAuth | BasicAuth for the URL. | *[BasicAuth](#basicauth) | false |
 | bearerToken | File to read bearer token for remote write. | string | false |
 | bearerTokenFile | File to read bearer token for remote write. | string | false |
-| tlsConfig | TLS Config to use for remote write. | *[TLSConfig](#tlsconfig) | false |
+| tlsConfig | TLSConfig Config to use for remote write. | *[TLSConfig](#tlsconfig) | false |
 | proxyURL | Optional ProxyURL | string | false |
 | queueConfig | QueueConfig allows tuning of the remote write queue parameters. | *[QueueConfig](#queueconfig) | false |
 
@@ -658,7 +675,7 @@ SecretOrConfigMap allows to specify data as a Secret or ConfigMap. Fields are mu
 
 ## TLSConfig
 
-TLSConfig specifies TLS configuration parameters.
+TLSConfig specifies TLSConfig configuration parameters.
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |

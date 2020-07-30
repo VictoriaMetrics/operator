@@ -237,28 +237,29 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *conf.BaseOperatorConf
 			args = append(args, fmt.Sprintf("-notifier.basicAuth.username%s", s.username))
 			args = append(args, fmt.Sprintf("-notifier.basicAuth.password=%s", s.password))
 		}
-		if cr.Spec.Notifier.TLSConfig != nil {
-			tlsConf := cr.Spec.Notifier.TLSConfig
-			if tlsConf.CAFile != "" {
-				args = append(args, fmt.Sprintf("-notifier.tlsCAFile=%s", tlsConf.CAFile))
-			} else {
-				args = append(args, fmt.Sprintf("-notifier.tlsCAFile=%s", cr.Spec.Datasource.TLSConfig.BuildAssetPath(cr.Namespace, tlsConf.CA.Name(), tlsConf.CA.Key())))
-			}
-			if tlsConf.CertFile != "" {
-				args = append(args, fmt.Sprintf("-notifier.tlsCertFile=%s", tlsConf.CertFile))
-			} else {
-				args = append(args, fmt.Sprintf("-notifier.tlsCertFile=%s", cr.Spec.Datasource.TLSConfig.BuildAssetPath(cr.Namespace, tlsConf.Cert.Name(), tlsConf.Cert.Key())))
-			}
-			if tlsConf.KeyFile != "" {
-				args = append(args, fmt.Sprintf("-notifier.tlsKeyFile=%s", tlsConf.KeyFile))
-			} else {
-				args = append(args, fmt.Sprintf("-notifier.tlsKeyFile=%s", cr.Spec.Datasource.TLSConfig.BuildAssetPath(cr.Namespace, tlsConf.KeySecret.Name, tlsConf.KeySecret.Key)))
-			}
-			args = append(args, fmt.Sprintf("-notifier.tlsServerName=%s", tlsConf.ServerName))
-			args = append(args, fmt.Sprintf("-notifier.tlsInsecureSkipVerify=%v", tlsConf.InsecureSkipVerify))
-
-		}
 	}
+	if cr.Spec.Notifier.TLSConfig != nil {
+		tlsConf := cr.Spec.Notifier.TLSConfig
+		if tlsConf.CAFile != "" {
+			args = append(args, fmt.Sprintf("-notifier.tlsCAFile=%s", tlsConf.CAFile))
+		} else {
+			args = append(args, fmt.Sprintf("-notifier.tlsCAFile=%s", cr.Spec.Datasource.TLSConfig.BuildAssetPath(cr.Namespace, tlsConf.CA.Name(), tlsConf.CA.Key())))
+		}
+		if tlsConf.CertFile != "" {
+			args = append(args, fmt.Sprintf("-notifier.tlsCertFile=%s", tlsConf.CertFile))
+		} else {
+			args = append(args, fmt.Sprintf("-notifier.tlsCertFile=%s", cr.Spec.Datasource.TLSConfig.BuildAssetPath(cr.Namespace, tlsConf.Cert.Name(), tlsConf.Cert.Key())))
+		}
+		if tlsConf.KeyFile != "" {
+			args = append(args, fmt.Sprintf("-notifier.tlsKeyFile=%s", tlsConf.KeyFile))
+		} else {
+			args = append(args, fmt.Sprintf("-notifier.tlsKeyFile=%s", cr.Spec.Datasource.TLSConfig.BuildAssetPath(cr.Namespace, tlsConf.KeySecret.Name, tlsConf.KeySecret.Key)))
+		}
+		args = append(args, fmt.Sprintf("-notifier.tlsServerName=%s", tlsConf.ServerName))
+		args = append(args, fmt.Sprintf("-notifier.tlsInsecureSkipVerify=%v", tlsConf.InsecureSkipVerify))
+
+	}
+
 	if cr.Spec.RemoteWrite != nil {
 		//this param cannot be used until v1.35.5 vm release with flag breaking changes
 		args = append(args, fmt.Sprintf("-remoteWrite.url=%s", cr.Spec.RemoteWrite.URL))

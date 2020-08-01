@@ -3,7 +3,7 @@
 
 Operator serves to make running Victoria Metrics applications on top of Kubernetes as easy as possible while preserving Kubernetes-native configuration options.
 
-## installing operator
+## Installing operator
 
 Obtain release from releases page:
 [https://github.com/VictoriaMetrics/operator/releases](https://github.com/VictoriaMetrics/operator/releases)
@@ -46,20 +46,21 @@ kubectl -n $YOUR_NS get pods
 
 The Victoria Metrics Operator introduces additional resources in Kubernetes to declare the desired state of a Victoria Metrics applications and Alertmanager cluster as well as the Prometheus resources configuration. The resources it introduces are:
 
-* `VMSingle`
-* `VMAgent`
-* `VMAlert`
+* [VMSingle](#VMSingle)
+* [VMCluter](#VMCluster)
+* [VMAgent](#VMAgent)
+* [VMAlert](#VMAlert)
+* [Alertmanager](#Alertmanager)
+* [VMServiceScrape](#VMServiceScrape)
 * `VMRule`
 * `VMPodScrape`
-* `VMServiceScrape`
-* `VMAlertmanager`
-* `VMCluter`
+
 
 ## VMSingle
 
 It represents database for storing metrics, for all possible config options check api [doc](/docs/api.MD#VMSingle):
  
- ```yaml
+```yaml
 cat <<EOF | kubectl apply -f -
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMSingle
@@ -73,14 +74,14 @@ spec:
       - ReadWriteOnce
     resources:
       requests:
-        storage: 1Gi
-
+        storage: 1Gi      
 EOF
 ```
 
-configuration can be extended with extraFlags and extraEnv, check flag documentation at [doc](https://github.com/VictoriaMetrics/VictoriaMetrics/blob/master/docs/Single-server-VictoriaMetrics.md)
 
+configuration can be extended with extraFlags and extraEnv, check flag documentation at [doc](https://github.com/VictoriaMetrics/VictoriaMetrics/blob/master/docs/Single-server-VictoriaMetrics.md)
 for instance:
+
 ```yaml
 cat <<EOF | kubectl apply -f -
 apiVersion: operator.victoriametrics.com/v1beta1
@@ -94,7 +95,8 @@ spec:
 EOF
 ```
 
-flag can be replaced with envVar, it`s useful for retrieving value from secret:
+flag can be replaced with envVar, it's useful for retrieving value from secret:
+
 ```yaml
 cat <<EOF | kubectl apply -f  -
 apiVersion: operator.victoriametrics.com/v1beta1
@@ -112,11 +114,101 @@ spec:
 EOF
 ```
 
+## VMCluster
+
+`VMCluster` represent a high-available and fault-tolerant version of VictoriaMetrics database.
+For minimal version without persistent create simple crd:
+ 
+```yaml
+cat << EOF | kubectl apply -f -
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMCluster
+metadata:
+  name: example-vmcluster
+spec:
+  # Add fields here
+  retentionPeriod: "1"
+  vmstorage:
+    replicaCount: 2
+  vmselect:
+    replicaCount: 2
+  vminsert:
+    replicaCount: 2
+EOF
+```
+
+For persistent it recommends to add persistent storage to `VMStorage` and `VMSelect`:
+
+```yaml
+cat << EOF | kubectl apply -f -
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMCluster
+metadata:
+  name: example-vmcluster-persistent
+spec:
+  # Add fields here
+  retentionPeriod: "4"
+  replicationFactor: 2
+  vmstorage:
+    replicaCount: 2
+    storageDataPath: "/vm-data"
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: standard
+          resources:
+            requests:
+              storage: 10Gi
+    resources:
+      limits:
+        cpu: "0.5"
+        memory: 500Mi
+  vmselect:
+    replicaCount: 2
+    cacheMountPath: "/select-cache"
+    storage:
+      volumeClaimTemplate:
+        spec:
+          resources:
+            requests:
+              storage: 2Gi
+    resources:
+      limits:
+        cpu: "0.3"
+        memory: "300Mi"
+  vminsert:
+    replicaCount: 2
+EOF
+```
+
+You may also create cluster version with external VMStorage
+
+```yaml
+cat << EOF | kubectl apply -f -
+---
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMCluster
+metadata:
+  name: example-vmcluster
+spec:
+  # Add fields here
+  retentionPeriod: "1"
+  vmselect:
+    replicaCount: 2
+    extraArgs:
+       storageNode: "node-1:8401,node-2:8401"
+  vminsert:
+    replicaCount: 2
+    extraArgs:
+       storageNode: "node-1:8401,node-2:8401"
+EOF
+```
+
 ## VMAgent
 
 `VMAgent` requires access to Kubernetes API and you must create RBAC for it first, it can be found at `install/examples/VMAgent_rbac.yaml`
 
- ```bash
+```bash
 #change namespace
 sed -i -e "s/namespace: default/namespace: $YOUR_NS/" install/examples/vmagent_rbac.yaml 
 kubectl -n "$YOUR_NS apply" -f install/examples/vmagent_rbac.yaml
@@ -139,7 +231,6 @@ spec:
   serviceAccountName: vmagent
   remoteWrite:
     - url: "http://vmsingle-example-vmsingle.default.svc:8429/api/v1/write"
-
 EOF
 ```
 
@@ -235,6 +326,8 @@ spec:
 EOF
 ```
 
+## VMServiceScrape
+
 The VMServiceScrape has a label selector to select Services and their underlying Endpoint objects. The Service object for the example application selects the Pods by the `app` label having the `example-app` value. The Service object also specifies the port on which the metrics are exposed.
 
 ```yaml
@@ -278,6 +371,7 @@ EOF
 By default, the operator converts all existing prometheus-operator API objects into corresponding victoriametrics-operator objects.
 
 You can control this behaviour by setting env variable for operator:
+
 ```bash
 #disable convertion for each object
 VM_ENABLEDPROMETHEUSCONVERTER_PODMONITOR=false
@@ -285,14 +379,17 @@ VM_ENABLEDPROMETHEUSCONVERTER_SERVICESCRAPE=false
 VM_ENABLEDPROMETHEUSCONVERTER_PROMETHEUSRULE=false
 ```
 
- Otherwise, victoriametrics-operator would try to discover prometheus-operator API and convert it.
+Otherwise, victoriametrics-operator would try to discover prometheus-operator API and convert it.
 
 
 ## Expose the VMSingle API
 
+
+> WARNING: Pleas protect delete endpoint before exposing it [doc](https://github.com/VictoriaMetrics/VictoriaMetrics#how-to-delete-time-series)
+
 example for Kubernetes Nginx ingress [doc](https://kubernetes.github.io/ingress-nginx/examples/auth/basic/)
 
-```yaml
+```bash
 #generate creds
 htpasswd -c auth foo
 
@@ -337,94 +434,4 @@ EOF
 
 #now you can access victoria metrics
 curl -u foo:bar https://vmsingle.example/com/metrics
-```
-
-## VMCluster
-
- `VMCluster` represent a high-available and fault-tolerant version of VictoriaMetrics database.
- 
- For minimal version without persistent create simple crd:
- ```yaml
-cat << EOF | kubectl apply -f -
-apiVersion: operator.victoriametrics.com/v1beta1
-kind: VMCluster
-metadata:
-  name: example-vmcluster
-spec:
-  # Add fields here
-  retentionPeriod: "1"
-  vmstorage:
-    replicaCount: 2
-  vmselect:
-    replicaCount: 2
-  vminsert:
-    replicaCount: 2
-EOF
-```
-
-For persistent it recommends to add persistent storage to `VMStorage` and `VMSelect`:
- ```yaml
-cat << EOF | kubectl apply -f -
-apiVersion: operator.victoriametrics.com/v1beta1
-kind: VMCluster
-metadata:
-  name: example-vmcluster-persistent
-spec:
-  # Add fields here
-  retentionPeriod: "4"
-  replicationFactor: 2
-  vmstorage:
-    replicaCount: 2
-    storageDataPath: "/vm-data"
-    storage:
-      volumeClaimTemplate:
-        spec:
-          storageClassName: standard
-          resources:
-            requests:
-              storage: 10Gi
-    resources:
-      limits:
-        cpu: "0.5"
-        memory: 500Mi
-  vmselect:
-    replicaCount: 2
-    cacheMountPath: "/select-cache"
-    storage:
-      volumeClaimTemplate:
-        spec:
-          resources:
-            requests:
-              storage: 2Gi
-    resources:
-      limits:
-        cpu: "0.3"
-        memory: "300Mi"
-  vminsert:
-    replicaCount: 2
-EOF
-
-```
-
-You may also create cluster version with external VMStorage
-
-```yaml
-cat << EOF | kubectl apply -f -
----
-apiVersion: operator.victoriametrics.com/v1beta1
-kind: VMCluster
-metadata:
-  name: example-vmcluster
-spec:
-  # Add fields here
-  retentionPeriod: "1"
-  vmselect:
-    replicaCount: 2
-    extraArgs:
-       storageNode: "node-1:8401,node-2:8401"
-  vminsert:
-    replicaCount: 2
-    extraArgs:
-       storageNode: "node-1:8401,node-2:8401"
-EOF
 ```

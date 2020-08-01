@@ -1,26 +1,24 @@
 
 # Victoria Metrics Operator
 
-
-Operator serves to make running Victoria Metrics applications on top of Kubernetes as easy as possible, while preserving Kubernetes-native configuration options.
+Operator serves to make running Victoria Metrics applications on top of Kubernetes as easy as possible while preserving Kubernetes-native configuration options.
 
 ## installing operator
 
 Obtain release from releases page:
-
-https://github.com/VictoriaMetrics/operator/releases
+[https://github.com/VictoriaMetrics/operator/releases](https://github.com/VictoriaMetrics/operator/releases)
 
 ```bash
 wget https://github.com/VictoriaMetrics/operator/releases/download/v0.1.0/bundle_crd.zip
 unzip  bundle_crd.zip 
 ```
 
-First of all, you  have to create crd
+First of all, you  have to create [custom resource definitions](https://github.com/VictoriaMetrics/operator)
 ```bash
 kubectl apply -f install/crds
 ```
  
-Then you need rbac for operator, relevant configuration for release can be found at install/operator/rbac.yaml
+Then you need RBAC for operator, relevant configuration for the release can be found at install/operator/rbac.yaml
 
 ```bash
 #change namespace for your installation:
@@ -34,7 +32,7 @@ and apply it:
 kubectl -n $YOUR_NS apply -f install/operator/
 ```
 
-check status of operator
+check the status of operator
 
 ```bash
 kubectl -n $YOUR_NS get pods
@@ -43,7 +41,6 @@ kubectl -n $YOUR_NS get pods
 #vm-operator-667dfbff55-cbvkf   1/1     Running   0          101s
 
 ```
-
 
 ## Create related resources
 
@@ -58,10 +55,9 @@ The Victoria Metrics Operator introduces additional resources in Kubernetes to d
 * `VMAlertmanager`
 * `VMCluter`
 
-
 ## VMSingle
 
- It represent database for storing metrics, for all possible config options check api [doc](/docs/api.MD#VMSingle):
+It represents database for storing metrics, for all possible config options check api [doc](/docs/api.MD#VMSingle):
  
  ```yaml
 cat <<EOF | kubectl apply -f -
@@ -114,13 +110,11 @@ spec:
            name: vm-secret
            key: dedup
 EOF
-
 ```
-
 
 ## VMAgent
 
- `VMAgent` needs access to kubernetes api and you must create rbac for it first, it can be found at `install/examples/VMAgent_rbac.yaml`
+`VMAgent` requires access to Kubernetes API and you must create RBAC for it first, it can be found at `install/examples/VMAgent_rbac.yaml`
 
  ```bash
 #change namespace
@@ -128,7 +122,7 @@ sed -i -e "s/namespace: default/namespace: $YOUR_NS/" install/examples/vmagent_r
 kubectl -n "$YOUR_NS apply" -f install/examples/vmagent_rbac.yaml
 ```
 
- Modify `VMAgent` config parameters at `install/examples/vmagent.yaml` and apply it, config options [doc](/docs/api.MD#VMAgent)
+Modify `VMAgent` config parameters at `install/examples/vmagent.yaml` and apply it, config options [doc](/docs/api.MD#VMAgent)
 
 example:
 
@@ -151,8 +145,7 @@ EOF
 
 ## VMAlert
 
-
- `VMAlert` has few required config options - `datasource`  and `notifierURL`, for other config parameters check [doc](/docs/api.MD#VMAlert)
+`VMAlert` has few required config options - `datasource` and `notifierURL`, for other config parameters check [doc](/docs/api.MD#VMAlert)
 
 ```yaml
 cat << EOF | kubectl apply -f -
@@ -174,8 +167,7 @@ EOF
 
 ## Alertmanager
 
-
- `Alertmanager` - represent alertmanager configuration, first you have to create secret with configuration for it
+`Alertmanager` - represents alertmanager configuration, first, you have to create secret with a configuration for it
 
 ```yaml
 cat << EOF | kubectl apply -f -
@@ -200,7 +192,7 @@ stringData:
 EOF
 ```
 
-and add `Alertmanager` object, other config options at [doc](/docs/api.MD#Alertmanager)
+then add `Alertmanager` object, other config options at [doc](/docs/api.MD#Alertmanager)
 
 ```yaml
 cat << EOF | kubectl apply -f -
@@ -215,7 +207,6 @@ EOF
 ```
 
 ## Deploy example-app
-
 
 First, deploy three instances of a simple example application, which listens and exposes metrics on port `8080`.
 
@@ -282,10 +273,9 @@ spec:
 EOF
 ```
 
+## Migration from prometheus-operator objects
 
-## migration from prometheus-operator objects
-
-By default, operator converts all existing prometheus-operator api objects into corresponding victoriametrics-operator objects.
+By default, the operator converts all existing prometheus-operator API objects into corresponding victoriametrics-operator objects.
 
 You can control this behaviour by setting env variable for operator:
 ```bash
@@ -295,15 +285,13 @@ VM_ENABLEDPROMETHEUSCONVERTER_SERVICESCRAPE=false
 VM_ENABLEDPROMETHEUSCONVERTER_PROMETHEUSRULE=false
 ```
 
- Otherwise victoriametrics-operator would try to discover prometheus-operator api and convert it.
+ Otherwise, victoriametrics-operator would try to discover prometheus-operator API and convert it.
 
 
 ## Expose the VMSingle API
 
+example for Kubernetes Nginx ingress [doc](https://kubernetes.github.io/ingress-nginx/examples/auth/basic/)
 
-> WARNING: Enabling the external access to VMSingle highly recommend to protect with https and authentication, it allows to  to delete data.
-
-example for kubernetes nginx ingress [doc](https://kubernetes.github.io/ingress-nginx/examples/auth/basic/)
 ```yaml
 #generate creds
 htpasswd -c auth foo
@@ -351,11 +339,9 @@ EOF
 curl -u foo:bar https://vmsingle.example/com/metrics
 ```
 
-
 ## VMCluster
 
-
- `VMCluster` represent high-available and fault-tolerant version of VictoriaMetrics database.
+ `VMCluster` represent a high-available and fault-tolerant version of VictoriaMetrics database.
  
  For minimal version without persistent create simple crd:
  ```yaml
@@ -376,7 +362,7 @@ spec:
 EOF
 ```
 
- For persistent it recommends to add persistent storage to `VMStorage` and `VMSelect`:
+For persistent it recommends to add persistent storage to `VMStorage` and `VMSelect`:
  ```yaml
 cat << EOF | kubectl apply -f -
 apiVersion: operator.victoriametrics.com/v1beta1

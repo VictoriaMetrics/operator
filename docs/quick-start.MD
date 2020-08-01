@@ -116,7 +116,7 @@ EOF
 ## VMCluster
 
 [VMCluster](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/cluster) represent a high-available and fault-tolerant version of VictoriaMetrics database.
-For minimal version without persistent create simple crd:
+For minimal version without persistent create simple custom resource definition:
  
 ```yaml
 cat << EOF | kubectl apply -f -
@@ -300,8 +300,7 @@ EOF
 
 ## VMServiceScrape
 
-Deploy example-app
-First, deploy three instances of a simple example application, which listens and exposes metrics on port `8080`.
+Deploy three instances of a simple example application, which listens and exposes metrics on port `8080`.
 
 ```yaml
 cat <<EOF | kubectl apply -f -
@@ -369,7 +368,7 @@ EOF
 
 ## Migration from prometheus-operator objects
 
-By default, the operator converts all existing prometheus-operator API objects into corresponding victoriametrics-operator objects.
+By default, the operator converts all existing prometheus-operator API objects into corresponding victoriametrics-operator objects
 
 You can control this behaviour by setting env variable for operator:
 

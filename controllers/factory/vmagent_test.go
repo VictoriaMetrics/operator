@@ -8,7 +8,6 @@ import (
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/conf"
 	"github.com/go-logr/logr"
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -17,61 +16,6 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
-
-func Test_makeSpecForVMAgent(t *testing.T) {
-	type args struct {
-		cr *victoriametricsv1beta1.VMAgent
-		c  *conf.BaseOperatorConf
-	}
-	tests := []struct {
-		name              string
-		args              args
-		want              *corev1.PodTemplateSpec
-		wantErr           bool
-		predefinedObjects []runtime.Object
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := makeSpecForVMAgent(tt.args.cr, tt.args.c, nil, nil)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("makeSpecForVMAgent() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("makeSpecForVMAgent() got = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func Test_newDeployForVMAgent(t *testing.T) {
-	type args struct {
-		cr *victoriametricsv1beta1.VMAgent
-		c  *conf.BaseOperatorConf
-	}
-	tests := []struct {
-		name    string
-		args    args
-		want    *appsv1.Deployment
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := newDeployForVMAgent(tt.args.cr, tt.args.c, nil, nil)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("newDeployForVMAgent() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("newDeployForVMAgent() got = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
 
 func TestCreateOrUpdateVMAgent(t *testing.T) {
 	type args struct {
@@ -157,6 +101,59 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 					Spec: victoriametricsv1beta1.VMAgentSpec{
 						RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
 							{URL: "http://remote-write"},
+							{URL: "http://remote-write2",
+								TLSConfig: &victoriametricsv1beta1.TLSConfig{
+									CA: victoriametricsv1beta1.SecretOrConfigMap{
+										Secret: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "remote2-secret",
+											},
+											Key: "ca",
+										},
+									},
+									Cert: victoriametricsv1beta1.SecretOrConfigMap{
+										Secret: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "remote2-secret",
+											},
+											Key: "ca",
+										},
+									},
+									KeySecret: &corev1.SecretKeySelector{
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "remote2-secret",
+										},
+										Key: "key",
+									},
+								},
+							},
+							{URL: "http://remote-write3",
+								TLSConfig: &victoriametricsv1beta1.TLSConfig{
+									CA: victoriametricsv1beta1.SecretOrConfigMap{
+										ConfigMap: &corev1.ConfigMapKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "remote3-cm",
+											},
+											Key: "ca",
+										},
+									},
+									Cert: victoriametricsv1beta1.SecretOrConfigMap{
+										ConfigMap: &corev1.ConfigMapKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "remote3-cm",
+											},
+											Key: "ca",
+										},
+									},
+									KeySecret: &corev1.SecretKeySelector{
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "remote3-secret",
+										},
+										Key: "key",
+									},
+								}},
+							{URL: "http://remote-write4",
+								TLSConfig: &victoriametricsv1beta1.TLSConfig{CertFile: "/tmp/cert1", KeyFile: "/tmp/key1", CAFile: "/tmp/ca"}},
 						},
 						ServiceMonitorSelector: &metav1.LabelSelector{},
 					},
@@ -169,6 +166,19 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{Name: "tls-scrape", Namespace: "default"},
 					Data:       map[string][]byte{"cert": []byte(`cert-data`), "ca": []byte(`ca-data`), "key": []byte(`key-data`)},
+				},
+
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{Name: "remote2-secret", Namespace: "default"},
+					Data:       map[string][]byte{"cert": []byte(`cert-data`), "ca": []byte(`ca-data`), "key": []byte(`key-data`)},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{Name: "remote3-secret", Namespace: "default"},
+					Data:       map[string][]byte{"key": []byte(`key-data`)},
+				},
+				&corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{Name: "remote3-cm", Namespace: "default"},
+					Data:       map[string]string{"ca": "ca-data", "cert": "cert-data"},
 				},
 				&victoriametricsv1beta1.VMServiceScrape{
 					ObjectMeta: metav1.ObjectMeta{
@@ -325,6 +335,7 @@ func Test_addAddtionalScrapeConfigOwnership(t *testing.T) {
 func Test_loadTLSAssets(t *testing.T) {
 	type args struct {
 		monitors map[string]*victoriametricsv1beta1.VMServiceScrape
+		cr       *victoriametricsv1beta1.VMAgent
 	}
 	tests := []struct {
 		name              string
@@ -336,6 +347,83 @@ func Test_loadTLSAssets(t *testing.T) {
 		{
 			name: "load tls asset from secret",
 			args: args{
+				cr: &victoriametricsv1beta1.VMAgent{
+					Spec: victoriametricsv1beta1.VMAgentSpec{},
+				},
+				monitors: map[string]*victoriametricsv1beta1.VMServiceScrape{
+					"vmagent-monitor": {
+						ObjectMeta: metav1.ObjectMeta{Name: "vmagent-monitor", Namespace: "default"},
+						Spec: victoriametricsv1beta1.VMServiceScrapeSpec{
+							Endpoints: []victoriametricsv1beta1.Endpoint{
+								{
+									TLSConfig: &victoriametricsv1beta1.TLSConfig{
+										KeySecret: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "tls-secret",
+											},
+											Key: "cert",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			predefinedObjects: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "tls-secret",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{"cert": []byte(`cert-data`)},
+				},
+			},
+			want: map[string]string{"default_tls-secret_cert": "cert-data"},
+		},
+		{
+			name: "load tls asset from secret with remoteWrite tls",
+			args: args{
+				cr: &victoriametricsv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "vmagent-test-1",
+						Namespace: "default",
+					},
+					Spec: victoriametricsv1beta1.VMAgentSpec{
+						RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
+							{
+								URL: "some1-url",
+								TLSConfig: &victoriametricsv1beta1.TLSConfig{
+									CA: victoriametricsv1beta1.SecretOrConfigMap{
+										Secret: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "remote1-write-spec",
+											},
+											Key: "ca",
+										},
+									},
+									Cert: victoriametricsv1beta1.SecretOrConfigMap{
+										Secret: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "remote1-write-spec",
+											},
+											Key: "cert",
+										},
+									},
+									KeySecret: &corev1.SecretKeySelector{
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "remote1-write-spec",
+										},
+										Key: "key",
+									},
+								},
+							},
+							{
+								URL: "some-url",
+							},
+						},
+					},
+				},
 				monitors: map[string]*victoriametricsv1beta1.VMServiceScrape{
 					"vmagent-monitor": {
 						ObjectMeta: metav1.ObjectMeta{Name: "vmagent-monitor", Namespace: "default"},
@@ -362,8 +450,15 @@ func Test_loadTLSAssets(t *testing.T) {
 					},
 					Data: map[string][]byte{"cert": []byte(`cert-data`)},
 				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "remote1-write-spec",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{"cert": []byte(`cert-data`), "key": []byte(`cert-key`), "ca": []byte(`cert-ca`)},
+				},
 			},
-			want: map[string]string{"default_tls-secret_cert": "cert-data"},
+			want: map[string]string{"default_tls-secret_cert": "cert-data", "default_remote1-write-spec_ca": "cert-ca", "default_remote1-write-spec_cert": "cert-data", "default_remote1-write-spec_key": "cert-key"},
 		},
 	}
 	for _, tt := range tests {
@@ -372,7 +467,7 @@ func Test_loadTLSAssets(t *testing.T) {
 			obj = append(obj, tt.predefinedObjects...)
 			fclient := fake.NewFakeClientWithScheme(testGetScheme(), obj...)
 
-			got, err := loadTLSAssets(context.TODO(), fclient, tt.args.monitors)
+			got, err := loadTLSAssets(context.TODO(), fclient, tt.args.cr, tt.args.monitors)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("loadTLSAssets() error = %v, wantErr %v", err, tt.wantErr)
 				return

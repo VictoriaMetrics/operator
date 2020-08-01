@@ -100,7 +100,7 @@ type Endpoint struct {
 	// Timeout after which the scrape is ended
 	// +optional
 	ScrapeTimeout string `json:"scrapeTimeout,omitempty"`
-	// TLS configuration to use when scraping the endpoint
+	// TLSConfig configuration to use when scraping the endpoint
 	// +optional
 	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
 	// File to read bearer token for scraping targets.
@@ -133,7 +133,7 @@ type Endpoint struct {
 	ProxyURL *string `json:"proxyURL,omitempty"`
 }
 
-// TLSConfig specifies TLS configuration parameters.
+// TLSConfig specifies TLSConfig configuration parameters.
 // +k8s:openapi-gen=true
 type TLSConfig struct {
 	// Path to the CA cert in the container to use for the targets.
@@ -276,6 +276,29 @@ func (c *SecretOrConfigMap) BuildSelectorWithPrefix(prefix string) string {
 	return ""
 }
 
+func (c *SecretOrConfigMap) Name() string {
+	if c.Secret != nil {
+		return c.Secret.Name
+
+	}
+	if c.ConfigMap != nil {
+		return c.ConfigMap.Name
+	}
+	return ""
+}
+
+func (c *SecretOrConfigMap) Key() string {
+	if c.Secret != nil {
+		return c.Secret.Key
+
+	}
+	if c.ConfigMap != nil {
+		return c.ConfigMap.Key
+	}
+	return ""
+
+}
+
 func (c *TLSConfig) BuildAssetPath(prefix, name, key string) string {
 	return fmt.Sprintf("%s_%s_%s", prefix, name, key)
 }
@@ -304,7 +327,7 @@ type RemoteWriteSpec struct {
 	// File to read bearer token for remote write.
 	// +optional
 	BearerTokenFile string `json:"bearerTokenFile,omitempty"`
-	// TLS Config to use for remote write.
+	// TLSConfig Config to use for remote write.
 	// +optional
 	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
 	// Optional ProxyURL
@@ -361,7 +384,7 @@ type APIServerConfig struct {
 	// File to read bearer token for accessing apiserver.
 	// +optional
 	BearerTokenFile string `json:"bearerTokenFile,omitempty"`
-	// TLS Config to use for accessing apiserver.
+	// TLSConfig Config to use for accessing apiserver.
 	// +optional
 	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
 }

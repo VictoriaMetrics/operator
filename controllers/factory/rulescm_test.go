@@ -153,3 +153,42 @@ func TestSelectRules(t *testing.T) {
 		})
 	}
 }
+
+func TestCreateOrUpdateRuleConfigMaps(t *testing.T) {
+	type args struct {
+		cr *victoriametricsv1beta1.VMAlert
+	}
+	tests := []struct {
+		name              string
+		args              args
+		want              []string
+		wantErr           bool
+		predefinedObjects []runtime.Object
+	}{
+		{
+			name: "base-rules-gen",
+			args: args{cr: &victoriametricsv1beta1.VMAlert{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "default",
+					Name:      "base-vmalert",
+				},
+			}},
+			want: []string{"vm-base-vmalert-rulefiles-0"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			obj := []runtime.Object{}
+			obj = append(obj, tt.predefinedObjects...)
+			fclient := fake.NewFakeClientWithScheme(testGetScheme(), obj...)
+			got, err := CreateOrUpdateRuleConfigMaps(context.TODO(), tt.args.cr, fclient)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("CreateOrUpdateRuleConfigMaps() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("CreateOrUpdateRuleConfigMaps() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

@@ -24,8 +24,6 @@ import (
 
 const (
 	defaultRetention       = "120h"
-	secretsDir             = "/etc/alertmanager/secrets/"
-	configmapsDir          = "/etc/alertmanager/configmaps/"
 	alertmanagerConfDir    = "/etc/alertmanager/config"
 	alertmanagerConfFile   = alertmanagerConfDir + "/alertmanager.yaml"
 	alertmanagerStorageDir = "/alertmanager"
@@ -238,14 +236,9 @@ func newAlertManagerService(cr *victoriametricsv1beta1.VMAlertmanager, c *conf.B
 }
 
 func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, config *conf.BaseOperatorConf) (*appsv1.StatefulSetSpec, error) {
-	// Before editing 'cr' create deep copy, to prevent side effects. For more
-	// details see https://github.com/coreos/prometheus-operator/issues/1659
+
 	cr = cr.DeepCopy()
 
-	// Version is used by default.
-	// If the tag is specified, we use the tag to identify the container image.
-	// If the sha is specified, we use the sha to identify the container image,
-	// as it has even stronger immutable guarantees to identify the image.
 	image := fmt.Sprintf("%s:%s", cr.Spec.BaseImage, cr.Spec.Version)
 	if cr.Spec.Tag != "" {
 		image = fmt.Sprintf("%s:%s", cr.Spec.BaseImage, cr.Spec.Tag)
@@ -255,11 +248,6 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, config *conf
 	}
 	if cr.Spec.Image != nil && *cr.Spec.Image != "" {
 		image = *cr.Spec.Image
-	}
-
-	version, err := semver.ParseTolerant(cr.Spec.Version)
-	if err != nil {
-		return nil, err
 	}
 
 	amArgs := []string{
@@ -283,16 +271,14 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, config *conf
 	if cr.Spec.RoutePrefix != "" {
 		webRoutePrefix = cr.Spec.RoutePrefix
 	}
-	amArgs = append(amArgs, fmt.Sprintf("--web.route-prefix=%v", webRoutePrefix))
+	amArgs = append(amArgs, fmt.Sprintf("--web.route-prefix=%s", webRoutePrefix))
 
 	if cr.Spec.LogLevel != "" && cr.Spec.LogLevel != "info" {
 		amArgs = append(amArgs, fmt.Sprintf("--log.level=%s", cr.Spec.LogLevel))
 	}
 
-	if version.GTE(semver.MustParse("0.16.0")) {
-		if cr.Spec.LogFormat != "" && cr.Spec.LogFormat != "logfmt" {
-			amArgs = append(amArgs, fmt.Sprintf("--log.format=%s", cr.Spec.LogFormat))
-		}
+	if cr.Spec.LogFormat != "" {
+		amArgs = append(amArgs, fmt.Sprintf("--log.format=%s", cr.Spec.LogFormat))
 	}
 
 	if cr.Spec.ClusterAdvertiseAddress != "" {
@@ -374,37 +360,37 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, config *conf
 		}, ports...)
 	}
 
-	// Adjust VMAlertmanager command line args to specified AM version
-	//
-	// VMAlertmanager versions < v0.15.0 are only supported on cr best effort basis
-	// starting with Prometheus Operator v0.30.0.
-	switch version.Major {
-	case 0:
-		if version.Minor < 15 {
-			for i := range amArgs {
-				// below VMAlertmanager v0.15.0 peer address port specification is not necessary
-				if strings.Contains(amArgs[i], "--cluster.peer") {
-					amArgs[i] = strings.TrimSuffix(amArgs[i], ":9094")
-				}
+	version, err := semver.ParseTolerant(cr.Spec.Version)
+	if err != nil {
+		log.Error(err, "cannot parse alert manager version")
+	} else {
+		// Adjust VMAlertmanager command line args to specified AM version
+		switch version.Major {
+		case 0:
+			if version.Minor < 15 {
+				for i := range amArgs {
+					// below VMAlertmanager v0.15.0 peer address port specification is not necessary
+					if strings.Contains(amArgs[i], "--cluster.peer") {
+						amArgs[i] = strings.TrimSuffix(amArgs[i], ":9094")
+					}
 
-				// below VMAlertmanager v0.15.0 high availability flags are prefixed with 'mesh' instead of 'cluster'
-				amArgs[i] = strings.Replace(amArgs[i], "--cluster.", "--mesh.", 1)
+					// below VMAlertmanager v0.15.0 high availability flags are prefixed with 'mesh' instead of 'cluster'
+					amArgs[i] = strings.Replace(amArgs[i], "--cluster.", "--mesh.", 1)
+				}
+			}
+			if version.Minor < 13 {
+				for i := range amArgs {
+					// below VMAlertmanager v0.13.0 all flags are with single dash.
+					amArgs[i] = strings.Replace(amArgs[i], "--", "-", 1)
+				}
+			}
+			if version.Minor < 7 {
+				// below VMAlertmanager v0.7.0 the flag 'web.route-prefix' does not exist
+				amArgs = filter(amArgs, func(s string) bool {
+					return !strings.Contains(s, "web.route-prefix")
+				})
 			}
 		}
-		if version.Minor < 13 {
-			for i := range amArgs {
-				// below VMAlertmanager v0.13.0 all flags are with single dash.
-				amArgs[i] = strings.Replace(amArgs[i], "--", "-", 1)
-			}
-		}
-		if version.Minor < 7 {
-			// below VMAlertmanager v0.7.0 the flag 'web.route-prefix' does not exist
-			amArgs = filter(amArgs, func(s string) bool {
-				return !strings.Contains(s, "web.route-prefix")
-			})
-		}
-	default:
-		return nil, fmt.Errorf("unsupported VMAlertmanager major version %s", version)
 	}
 
 	volumes := []v1.Volume{
@@ -449,7 +435,7 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, config *conf
 		amVolumeMounts = append(amVolumeMounts, v1.VolumeMount{
 			Name:      SanitizeVolumeName("secret-" + s),
 			ReadOnly:  true,
-			MountPath: secretsDir + s,
+			MountPath: path.Join(SecretsDir, s),
 		})
 	}
 
@@ -467,7 +453,7 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, config *conf
 		amVolumeMounts = append(amVolumeMounts, v1.VolumeMount{
 			Name:      SanitizeVolumeName("configmap-" + c),
 			ReadOnly:  true,
-			MountPath: configmapsDir + c,
+			MountPath: path.Join(ConfigMapsDir, c),
 		})
 	}
 
@@ -529,8 +515,6 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, config *conf
 		return nil, fmt.Errorf("failed to merge containers spec: %w", err)
 	}
 
-	// PodManagementPolicy is set to Parallel to mitigate issues in kubernetes: https://github.com/kubernetes/kubernetes/issues/60164
-	// This is also mentioned as one of limitations of StatefulSets: https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#limitations
 	return &appsv1.StatefulSetSpec{
 		ServiceName:         cr.PrefixedName(),
 		Replicas:            cr.Spec.ReplicaCount,

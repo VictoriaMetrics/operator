@@ -1,5 +1,6 @@
 resources:
 - manager.yaml
+- service_account.yaml
 images:
   - name: manager
     newName: victoriametrics/operator

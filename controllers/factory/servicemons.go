@@ -128,7 +128,6 @@ func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *victoriametricsv
 
 func SelectServiceMonitors(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) (map[string]*victoriametricsv1beta1.VMServiceScrape, error) {
 
-	// Selectors (<namespace>/<name>) might overlap. Deduplicate them along the keyFunc.
 	res := make(map[string]*victoriametricsv1beta1.VMServiceScrape)
 
 	namespaces := []string{}
@@ -193,7 +192,7 @@ func SelectServiceMonitors(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 		res[mon.Namespace+"/"+mon.Name] = m
 	}
 
-	// If denied by Prometheus spec, filter out all service monitors that access
+	// filter out all service monitors that access
 	// the file system.
 	if cr.Spec.ArbitraryFSAccessThroughSMs.Deny {
 		for namespaceAndName, sm := range res {
@@ -221,7 +220,7 @@ func SelectServiceMonitors(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 }
 
 func SelectPodMonitors(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) (map[string]*victoriametricsv1beta1.VMPodScrape, error) {
-	// Selectors might overlap. Deduplicate them along the keyFunc.
+
 	res := make(map[string]*victoriametricsv1beta1.VMPodScrape)
 
 	namespaces := []string{}
@@ -573,8 +572,9 @@ func CreateVMServiceScrapeFromService(ctx context.Context, rclient client.Client
 	}
 	scrapeSvc := &victoriametricsv1beta1.VMServiceScrape{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      service.Name,
-			Namespace: service.Namespace,
+			Name:            service.Name,
+			Namespace:       service.Namespace,
+			OwnerReferences: service.OwnerReferences,
 		},
 		Spec: victoriametricsv1beta1.VMServiceScrapeSpec{
 			Selector:  metav1.LabelSelector{MatchLabels: service.Spec.Selector},

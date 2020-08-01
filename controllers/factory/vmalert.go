@@ -87,14 +87,21 @@ func newServiceVMAlert(cr *victoriametricsv1beta1.VMAlert, c *conf.BaseOperatorC
 func CreateOrUpdateVMAlert(ctx context.Context, cr *victoriametricsv1beta1.VMAlert, rclient client.Client, c *conf.BaseOperatorConf, cmNames []string) (reconcile.Result, error) {
 	l := log.WithValues("controller", "vmalert.crud", "vmalert", cr.Name)
 	//recon deploy
-	secretsInNS := &corev1.SecretList{}
-	err := rclient.List(ctx, secretsInNS)
+	secretsInNs := &corev1.SecretList{}
+	err := rclient.List(ctx, secretsInNs, &client.ListOptions{Namespace: cr.Namespace})
 	if err != nil {
-		l.Error(err, "cannot list secrets at vmalert namespace")
+		l.Error(err, "cannot list secretsInNs at vmalert namespace")
+		return reconcile.Result{}, err
 	}
-	remoteSecrets, err := loadVMAlertRemoteSecrets(&cr.Spec.Datasource, cr.Spec.RemoteWrite, cr.Spec.RemoteRead, secretsInNS)
+	remoteSecrets, err := loadVMAlertRemoteSecrets(cr, secretsInNs)
 	if err != nil {
-		l.Error(err, "cannot get basic auth secrets for vmalert")
+		l.Error(err, "cannot get basic auth secretsInNs for vmalert")
+		return reconcile.Result{}, err
+	}
+
+	err = CreateOrUpdateTlsAssetsForVMAlert(ctx, cr, rclient)
+	if err != nil {
+		return reconcile.Result{}, err
 	}
 	l.Info("generating new deployment")
 	newDeploy, err := newDeployForVMAlert(cr, c, cmNames, remoteSecrets)
@@ -195,7 +202,7 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *conf.BaseOperatorConf
 		fmt.Sprintf("-webhook-url=http://localhost:%s/-/reload", cr.Spec.Port),
 	}
 	args := []string{
-		fmt.Sprintf("-notifier.url=%s", cr.Spec.NotifierURL),
+		fmt.Sprintf("-notifier.url=%s", cr.Spec.Notifier.URL),
 		fmt.Sprintf("-datasource.url=%s", cr.Spec.Datasource.URL),
 	}
 	if cr.Spec.Datasource.BasicAuth != nil {
@@ -203,7 +210,56 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *conf.BaseOperatorConf
 			args = append(args, fmt.Sprintf("-datasource.basicAuth.username=%s", s.username))
 			args = append(args, fmt.Sprintf("-datasource.basicAuth.password=%s", s.password))
 		}
+		if cr.Spec.Datasource.TLSConfig != nil {
+			tlsConf := cr.Spec.Datasource.TLSConfig
+			if tlsConf.CAFile != "" {
+				args = append(args, fmt.Sprintf("-datasource.tlsCAFile=%s", tlsConf.CAFile))
+			} else {
+				args = append(args, fmt.Sprintf("-datasource.tlsCAFile=%s", cr.Spec.Datasource.TLSConfig.BuildAssetPath(cr.Namespace, tlsConf.CA.Name(), tlsConf.CA.Key())))
+			}
+			if tlsConf.CertFile != "" {
+				args = append(args, fmt.Sprintf("-datasource.tlsCertFile=%s", tlsConf.CertFile))
+			} else {
+				args = append(args, fmt.Sprintf("-datasource.tlsCertFile=%s", cr.Spec.Datasource.TLSConfig.BuildAssetPath(cr.Namespace, tlsConf.Cert.Name(), tlsConf.Cert.Key())))
+			}
+			if tlsConf.KeyFile != "" {
+				args = append(args, fmt.Sprintf("-datasource.tlsKeyFile=%s", tlsConf.KeyFile))
+			} else {
+				args = append(args, fmt.Sprintf("-datasource.tlsKeyFile=%s", cr.Spec.Datasource.TLSConfig.BuildAssetPath(cr.Namespace, tlsConf.KeySecret.Name, tlsConf.KeySecret.Key)))
+			}
+			args = append(args, fmt.Sprintf("-datasource.tlsServerName=%s", tlsConf.ServerName))
+			args = append(args, fmt.Sprintf("-datasource.tlsInsecureSkipVerify=%v", tlsConf.InsecureSkipVerify))
+
+		}
 	}
+	if cr.Spec.Notifier.BasicAuth != nil {
+		if s, ok := remoteSecrets["notifier"]; ok {
+			args = append(args, fmt.Sprintf("-notifier.basicAuth.username%s", s.username))
+			args = append(args, fmt.Sprintf("-notifier.basicAuth.password=%s", s.password))
+		}
+	}
+	if cr.Spec.Notifier.TLSConfig != nil {
+		tlsConf := cr.Spec.Notifier.TLSConfig
+		if tlsConf.CAFile != "" {
+			args = append(args, fmt.Sprintf("-notifier.tlsCAFile=%s", tlsConf.CAFile))
+		} else {
+			args = append(args, fmt.Sprintf("-notifier.tlsCAFile=%s", cr.Spec.Datasource.TLSConfig.BuildAssetPath(cr.Namespace, tlsConf.CA.Name(), tlsConf.CA.Key())))
+		}
+		if tlsConf.CertFile != "" {
+			args = append(args, fmt.Sprintf("-notifier.tlsCertFile=%s", tlsConf.CertFile))
+		} else {
+			args = append(args, fmt.Sprintf("-notifier.tlsCertFile=%s", cr.Spec.Datasource.TLSConfig.BuildAssetPath(cr.Namespace, tlsConf.Cert.Name(), tlsConf.Cert.Key())))
+		}
+		if tlsConf.KeyFile != "" {
+			args = append(args, fmt.Sprintf("-notifier.tlsKeyFile=%s", tlsConf.KeyFile))
+		} else {
+			args = append(args, fmt.Sprintf("-notifier.tlsKeyFile=%s", cr.Spec.Datasource.TLSConfig.BuildAssetPath(cr.Namespace, tlsConf.KeySecret.Name, tlsConf.KeySecret.Key)))
+		}
+		args = append(args, fmt.Sprintf("-notifier.tlsServerName=%s", tlsConf.ServerName))
+		args = append(args, fmt.Sprintf("-notifier.tlsInsecureSkipVerify=%v", tlsConf.InsecureSkipVerify))
+
+	}
+
 	if cr.Spec.RemoteWrite != nil {
 		//this param cannot be used until v1.35.5 vm release with flag breaking changes
 		args = append(args, fmt.Sprintf("-remoteWrite.url=%s", cr.Spec.RemoteWrite.URL))
@@ -225,9 +281,30 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *conf.BaseOperatorConf
 		if cr.Spec.RemoteWrite.MaxQueueSize != nil {
 			args = append(args, fmt.Sprintf("-remoteWrite.maxQueueSize=%d", *cr.Spec.RemoteWrite.MaxQueueSize))
 		}
+		if cr.Spec.RemoteWrite.TLSConfig != nil {
+			tlsConf := cr.Spec.RemoteWrite.TLSConfig
+			if tlsConf.CAFile != "" {
+				args = append(args, fmt.Sprintf("-remoteWrite.tlsCAFile=%s", tlsConf.CAFile))
+			} else {
+				args = append(args, fmt.Sprintf("-remoteWrite.tlsCAFile=%s", cr.Spec.Datasource.TLSConfig.BuildAssetPath(cr.Namespace, tlsConf.CA.Name(), tlsConf.CA.Key())))
+			}
+			if tlsConf.CertFile != "" {
+				args = append(args, fmt.Sprintf("-remoteWrite.tlsCertFile=%s", tlsConf.CertFile))
+			} else {
+				args = append(args, fmt.Sprintf("-remoteWrite.tlsCertFile=%s", cr.Spec.Datasource.TLSConfig.BuildAssetPath(cr.Namespace, tlsConf.Cert.Name(), tlsConf.Cert.Key())))
+			}
+			if tlsConf.KeyFile != "" {
+				args = append(args, fmt.Sprintf("-remoteWrite.tlsKeyFile=%s", tlsConf.KeyFile))
+			} else {
+				args = append(args, fmt.Sprintf("-remoteWrite.tlsKeyFile=%s", cr.Spec.Datasource.TLSConfig.BuildAssetPath(cr.Namespace, tlsConf.KeySecret.Name, tlsConf.KeySecret.Key)))
+			}
+			args = append(args, fmt.Sprintf("-remoteWrite.tlsServerName=%s", tlsConf.ServerName))
+			args = append(args, fmt.Sprintf("-remoteWrite.tlsInsecureSkipVerify=%v", tlsConf.InsecureSkipVerify))
+
+		}
+
 	}
 	if cr.Spec.RemoteRead != nil {
-		//this param cannot be used until v1.35.5 vm release with flag breaking changes
 		args = append(args, fmt.Sprintf("-remoteRead.url=%s", cr.Spec.RemoteRead.URL))
 		if cr.Spec.RemoteRead.BasicAuth != nil {
 			if s, ok := remoteSecrets["remoteRead"]; ok {
@@ -238,6 +315,28 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *conf.BaseOperatorConf
 		if cr.Spec.RemoteRead.Lookback != nil {
 			args = append(args, fmt.Sprintf("-remoteRead.lookback=%s", *cr.Spec.RemoteRead.Lookback))
 		}
+		if cr.Spec.RemoteRead.TLSConfig != nil {
+			tlsConf := cr.Spec.RemoteRead.TLSConfig
+			if tlsConf.CAFile != "" {
+				args = append(args, fmt.Sprintf("-remoteRead.tlsCAFile=%s", tlsConf.CAFile))
+			} else {
+				args = append(args, fmt.Sprintf("-remoteRead.tlsCAFile=%s", cr.Spec.Datasource.TLSConfig.BuildAssetPath(cr.Namespace, tlsConf.CA.Name(), tlsConf.CA.Key())))
+			}
+			if tlsConf.CertFile != "" {
+				args = append(args, fmt.Sprintf("-remoteRead.tlsCertFile=%s", tlsConf.CertFile))
+			} else {
+				args = append(args, fmt.Sprintf("-remoteRead.tlsCertFile=%s", cr.Spec.Datasource.TLSConfig.BuildAssetPath(cr.Namespace, tlsConf.Cert.Name(), tlsConf.Cert.Key())))
+			}
+			if tlsConf.KeyFile != "" {
+				args = append(args, fmt.Sprintf("-remoteRead.tlsKeyFile=%s", tlsConf.KeyFile))
+			} else {
+				args = append(args, fmt.Sprintf("-remoteRead.tlsKeyFile=%s", cr.Spec.Datasource.TLSConfig.BuildAssetPath(cr.Namespace, tlsConf.KeySecret.Name, tlsConf.KeySecret.Key)))
+			}
+			args = append(args, fmt.Sprintf("-remoteRead.tlsServerName=%s", tlsConf.ServerName))
+			args = append(args, fmt.Sprintf("-remoteRead.tlsInsecureSkipVerify=%v", tlsConf.InsecureSkipVerify))
+
+		}
+
 	}
 	if cr.Spec.EvaluationInterval != "" {
 		args = append(args, fmt.Sprintf("-evaluationInterval=%s", cr.Spec.EvaluationInterval))
@@ -270,7 +369,16 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *conf.BaseOperatorConf
 
 	envs = append(envs, cr.Spec.ExtraEnvs...)
 
-	volumes := []corev1.Volume{}
+	volumes := []corev1.Volume{
+		{
+			Name: "tls-assets",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: cr.TLSAssetName(),
+				},
+			},
+		},
+	}
 
 	for _, name := range ruleConfigMapNames {
 		volumes = append(volumes, corev1.Volume{
@@ -285,7 +393,13 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *conf.BaseOperatorConf
 		})
 	}
 
-	volumeMounts := []corev1.VolumeMount{}
+	volumeMounts := []corev1.VolumeMount{
+		{
+			Name:      "tls-assets",
+			ReadOnly:  true,
+			MountPath: tlsAssetsDir,
+		},
+	}
 	for _, s := range cr.Spec.Secrets {
 		volumes = append(volumes, corev1.Volume{
 			Name: SanitizeVolumeName("secret-" + s),
@@ -298,7 +412,7 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *conf.BaseOperatorConf
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
 			Name:      SanitizeVolumeName("secret-" + s),
 			ReadOnly:  true,
-			MountPath: path.Join(secretsDir, s),
+			MountPath: path.Join(SecretsDir, s),
 		})
 	}
 
@@ -316,7 +430,7 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *conf.BaseOperatorConf
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
 			Name:      SanitizeVolumeName("configmap-" + c),
 			ReadOnly:  true,
-			MountPath: path.Join(configmapsDir, c),
+			MountPath: path.Join(ConfigMapsDir, c),
 		})
 	}
 
@@ -430,16 +544,24 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *conf.BaseOperatorConf
 }
 
 func loadVMAlertRemoteSecrets(
-	datasource *victoriametricsv1beta1.VMAlertDatasourceSpec,
-	remoteWrite *victoriametricsv1beta1.VMAlertRemoteWriteSpec,
-	remoteRead *victoriametricsv1beta1.VMAlertRemoteReadSpec,
-	SecretsInPromNS *corev1.SecretList,
+	cr *victoriametricsv1beta1.VMAlert,
+	SecretsInNS *corev1.SecretList,
 ) (map[string]BasicAuthCredentials, error) {
-
+	datasource := cr.Spec.Datasource
+	remoteWrite := cr.Spec.RemoteWrite
+	remoteRead := cr.Spec.RemoteRead
+	notifier := cr.Spec.Notifier
 	secrets := map[string]BasicAuthCredentials{}
+	if notifier.BasicAuth != nil {
+		credentials, err := loadBasicAuthSecret(notifier.BasicAuth, SecretsInNS)
+		if err != nil {
+			return nil, fmt.Errorf("could not generate basicAuth for notifier config. %w", err)
+		}
+		secrets["notifier"] = credentials
+	}
 	// load basic auth for datasource configuration
 	if datasource.BasicAuth != nil {
-		credentials, err := loadBasicAuthSecret(datasource.BasicAuth, SecretsInPromNS)
+		credentials, err := loadBasicAuthSecret(datasource.BasicAuth, SecretsInNS)
 		if err != nil {
 			return nil, fmt.Errorf("could not generate basicAuth for datasource config. %w", err)
 		}
@@ -447,7 +569,7 @@ func loadVMAlertRemoteSecrets(
 	}
 	// load basic auth for remote write configuration
 	if remoteWrite != nil && remoteWrite.BasicAuth != nil {
-		credentials, err := loadBasicAuthSecret(remoteWrite.BasicAuth, SecretsInPromNS)
+		credentials, err := loadBasicAuthSecret(remoteWrite.BasicAuth, SecretsInNS)
 		if err != nil {
 			return nil, fmt.Errorf("could not generate basicAuth for VMAlert remote write config. %w", err)
 		}
@@ -455,11 +577,131 @@ func loadVMAlertRemoteSecrets(
 	}
 	// load basic auth for remote write configuration
 	if remoteRead != nil && remoteRead.BasicAuth != nil {
-		credentials, err := loadBasicAuthSecret(remoteRead.BasicAuth, SecretsInPromNS)
+		credentials, err := loadBasicAuthSecret(remoteRead.BasicAuth, SecretsInNS)
 		if err != nil {
 			return nil, fmt.Errorf("could not generate basicAuth for VMAlert remote read config. %w", err)
 		}
 		secrets["remoteRead"] = credentials
 	}
 	return secrets, nil
+}
+
+func CreateOrUpdateTlsAssetsForVMAlert(ctx context.Context, cr *victoriametricsv1beta1.VMAlert, rclient client.Client) error {
+	assets, err := loadTLSAssetsForVMAlert(ctx, rclient, cr)
+	if err != nil {
+		return fmt.Errorf("cannot load tls assets: %w", err)
+	}
+
+	tlsAssetsSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            cr.TLSAssetName(),
+			Labels:          cr.FinalLabels(),
+			OwnerReferences: cr.AsOwner(),
+			Namespace:       cr.Namespace,
+		},
+		Data: map[string][]byte{},
+	}
+
+	for key, asset := range assets {
+		tlsAssetsSecret.Data[key] = []byte(asset)
+	}
+	currentAssetSecret := &corev1.Secret{}
+	err = rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: tlsAssetsSecret.Name}, currentAssetSecret)
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			return fmt.Errorf("cannot get existing tls secret: %s, for vmagent: %s, err: %w", tlsAssetsSecret.Name, cr.Name, err)
+		}
+		err := rclient.Create(ctx, tlsAssetsSecret)
+		if err != nil {
+			return fmt.Errorf("cannot create tls asset secret: %s for vmagent: %s, err :%w", tlsAssetsSecret.Name, cr.Name, err)
+		}
+		log.Info("create new tls asset secret: %s, for vmagent: %s", tlsAssetsSecret.Name, cr.Name)
+		return nil
+	}
+	for annotation, value := range currentAssetSecret.Annotations {
+		tlsAssetsSecret.Annotations[annotation] = value
+	}
+	return rclient.Update(ctx, tlsAssetsSecret)
+}
+
+func loadTLSAssetsForVMAlert(ctx context.Context, rclient client.Client, cr *victoriametricsv1beta1.VMAlert) (map[string]string, error) {
+	assets := map[string]string{}
+	nsSecretCache := make(map[string]*corev1.Secret)
+	nsConfigMapCache := make(map[string]*corev1.ConfigMap)
+	tlsConfigs := []*victoriametricsv1beta1.TLSConfig{}
+	if cr.Spec.Notifier.TLSConfig != nil {
+		tlsConfigs = append(tlsConfigs, cr.Spec.Notifier.TLSConfig)
+	}
+	if cr.Spec.RemoteRead != nil && cr.Spec.RemoteRead.TLSConfig != nil {
+		tlsConfigs = append(tlsConfigs, cr.Spec.RemoteRead.TLSConfig)
+	}
+	if cr.Spec.RemoteWrite != nil && cr.Spec.RemoteWrite.TLSConfig != nil {
+		tlsConfigs = append(tlsConfigs, cr.Spec.RemoteWrite.TLSConfig)
+	}
+	if cr.Spec.Datasource.TLSConfig != nil {
+		tlsConfigs = append(tlsConfigs, cr.Spec.Datasource.TLSConfig)
+	}
+
+	for _, rw := range tlsConfigs {
+		prefix := cr.Namespace + "/"
+		secretSelectors := map[string]*corev1.SecretKeySelector{}
+		configMapSelectors := map[string]*corev1.ConfigMapKeySelector{}
+		selectorKey := rw.CA.BuildSelectorWithPrefix(prefix)
+		switch {
+		case rw.CA.Secret != nil:
+			secretSelectors[selectorKey] = rw.CA.Secret
+		case rw.CA.ConfigMap != nil:
+			configMapSelectors[selectorKey] = rw.CA.ConfigMap
+		}
+		selectorKey = rw.Cert.BuildSelectorWithPrefix(prefix)
+
+		switch {
+		case rw.Cert.Secret != nil:
+			secretSelectors[selectorKey] = rw.Cert.Secret
+
+		case rw.Cert.ConfigMap != nil:
+			configMapSelectors[selectorKey] = rw.Cert.ConfigMap
+		}
+		if rw.KeySecret != nil {
+			secretSelectors[prefix+rw.KeySecret.Name+"/"+rw.KeySecret.Key] = rw.KeySecret
+		}
+		for key, selector := range secretSelectors {
+			asset, err := getCredFromSecret(
+				ctx,
+				rclient,
+				cr.Namespace,
+				*selector,
+				key,
+				nsSecretCache,
+			)
+			if err != nil {
+				return nil, fmt.Errorf(
+					"failed to extract endpoint tls asset for vmservicescrape %s from secret %s and key %s in namespace %s",
+					cr.Name, selector.Name, selector.Key, cr.Namespace,
+				)
+			}
+
+			assets[rw.BuildAssetPath(cr.Namespace, selector.Name, selector.Key)] = asset
+		}
+
+		for key, selector := range configMapSelectors {
+			asset, err := getCredFromConfigMap(
+				ctx,
+				rclient,
+				cr.Namespace,
+				*selector,
+				key,
+				nsConfigMapCache,
+			)
+			if err != nil {
+				return nil, fmt.Errorf(
+					"failed to extract endpoint tls asset for vmservicescrape %v from configmap %v and key %v in namespace %v",
+					cr.Name, selector.Name, selector.Key, cr.Namespace,
+				)
+			}
+			assets[rw.BuildAssetPath(cr.Namespace, selector.Name, selector.Key)] = asset
+		}
+	}
+
+	return assets, nil
 }

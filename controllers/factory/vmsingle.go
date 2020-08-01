@@ -18,9 +18,9 @@ import (
 )
 
 const (
-	vmSingleSecretDir    = "/etc/vm/secrets"
-	vmSingleConfigMapDir = "/etc/vm/configs"
-	vmSingleDataDir      = "/victoria-metrics-data"
+	SecretsDir      = "/etc/vm/secrets"
+	ConfigMapsDir   = "/etc/vm/configs"
+	vmSingleDataDir = "/victoria-metrics-data"
 )
 
 func CreateVMStorage(ctx context.Context, cr *victoriametricsv1beta1.VMSingle, rclient client.Client, c *conf.BaseOperatorConf) (*corev1.PersistentVolumeClaim, error) {
@@ -245,7 +245,7 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *conf.BaseOperat
 		vmMounts = append(vmMounts, corev1.VolumeMount{
 			Name:      SanitizeVolumeName("secret-" + s),
 			ReadOnly:  true,
-			MountPath: path.Join(vmSingleSecretDir, s),
+			MountPath: path.Join(SecretsDir, s),
 		})
 	}
 
@@ -263,7 +263,7 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *conf.BaseOperat
 		vmMounts = append(vmMounts, corev1.VolumeMount{
 			Name:      SanitizeVolumeName("configmap-" + c),
 			ReadOnly:  true,
-			MountPath: path.Join(vmSingleConfigMapDir, c),
+			MountPath: path.Join(ConfigMapsDir, c),
 		})
 	}
 

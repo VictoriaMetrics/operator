@@ -128,8 +128,8 @@ type VMAlertSpec struct {
 	// +optional
 	Port string `json:"port,omitempty"`
 
-	// NotifierURL prometheus alertmanager URL. Required parameter. e.g. http://127.0.0.1:9093
-	NotifierURL string `json:"notifierURL"`
+	// Notifier prometheus alertmanager URL. Required parameter. e.g. http://127.0.0.1:9093
+	Notifier VMAlertNotifierSpec `json:"notifier"`
 
 	// RemoteWrite Optional URL to remote-write compatible storage where to write timeseriesbased on active alerts. E.g. http://127.0.0.1:8428
 	// +optional
@@ -170,6 +170,20 @@ type VMAlertDatasourceSpec struct {
 	// BasicAuth allow datasource to authenticate over basic authentication
 	// +optional
 	BasicAuth *BasicAuth `json:"basicAuth,omitempty"`
+	// TLSConfig describes tls configuration for datasource target
+	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
+}
+
+// VMAlertNotifierSpec defines the notifier url for sending information about alerts
+// +k8s:openapi-gen=true
+type VMAlertNotifierSpec struct {
+	// AlertManager url. Required parameter. E.g. http://127.0.0.1:9093
+	URL string `json:"url"`
+	// BasicAuth allow notifier to authenticate over basic authentication
+	// +optional
+	BasicAuth *BasicAuth `json:"basicAuth,omitempty"`
+	// TLSConfig describes tls configuration for notifier
+	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
 }
 
 // VMAgentRemoteReadSpec defines the remote storage configuration for VmAlert to read alerts from
@@ -184,6 +198,8 @@ type VMAlertRemoteReadSpec struct {
 	// Applied only to RemoteReadSpec
 	// +optional
 	Lookback *string `json:"lookback,omitempty"`
+	// TLSConfig describes tls configuration for remote read target
+	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
 }
 
 // VMAgentRemoteWriteSpec defines the remote storage configuration for VmAlert
@@ -207,6 +223,8 @@ type VMAlertRemoteWriteSpec struct {
 	// Defines the max number of pending datapoints to remote write endpoint (default 100000)
 	// +optional
 	MaxQueueSize *int32 `json:"maxQueueSize,omitempty"`
+	// TLSConfig describes tls configuration for remote write target
+	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
 }
 
 // VmAlertStatus defines the observed state of VmAlert
@@ -316,6 +334,9 @@ func (cr VMAlert) FinalLabels() map[string]string {
 
 func (cr VMAlert) PrefixedName() string {
 	return fmt.Sprintf("vmalert-%s", cr.Name)
+}
+func (cr VMAlert) TLSAssetName() string {
+	return fmt.Sprintf("tls-assets-vmalert-%s", cr.Name)
 }
 
 func init() {

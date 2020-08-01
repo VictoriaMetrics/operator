@@ -16,10 +16,13 @@ spec:
       labels:
         control-plane: vm-operator
     spec:
+      serviceAccountName: vm-operator
       containers:
       - name: manager
         command:
         - manager
+        args:
+          - "--enable-leader-election"
         image: manager
         imagePullPolicy: Always
         env:

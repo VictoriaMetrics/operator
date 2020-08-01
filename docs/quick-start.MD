@@ -297,35 +297,6 @@ spec:
 EOF
 ```
 
-## Deploy example-app
-
-First, deploy three instances of a simple example application, which listens and exposes metrics on port `8080`.
-
-```yaml
-cat <<EOF | kubectl apply -f -
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: example-app
-spec:
-  replicas: 3
-  selector:
-    matchLabels:
-      app: example-app
-  template:
-    metadata:
-      labels:
-        app: example-app
-    spec:
-      containers:
-      - name: example-app
-        image: fabxc/instrumented_app
-        ports:
-        - name: web
-          containerPort: 8080
-EOF
-```
-
 ## VMServiceScrape
 
 The VMServiceScrape has a label selector to select Services and their underlying Endpoint objects. The Service object for the example application selects the Pods by the `app` label having the `example-app` value. The Service object also specifies the port on which the metrics are exposed.

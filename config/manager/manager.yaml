@@ -21,6 +21,8 @@ spec:
       - name: manager
         command:
         - manager
+        args:
+          - "--enable-leader-election"
         image: manager
         imagePullPolicy: Always
         env:

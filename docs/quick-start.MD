@@ -26,13 +26,13 @@ export YOUR_NS=default
 sed -i -e "s/namespace: default/namespace: $YOUR_NS/" install/operator/*.yaml
 ```
 
-change configuration for operator at `install/operator/manager.yaml`, possible settings: [operator-settings](/vars.MD)
+Change configuration for operator at `install/operator/manager.yaml`, possible settings: [operator-settings](/vars.MD)
 and apply it:
 ```bash
 kubectl -n $YOUR_NS apply -f install/operator/
 ```
 
-check the status of operator
+Check the status of operator
 
 ```bash
 kubectl -n $YOUR_NS get pods
@@ -58,7 +58,7 @@ The Victoria Metrics Operator introduces additional resources in Kubernetes to d
 
 ## VMSingle
 
-It represents database for storing metrics, for all possible config options check api [doc](/docs/api.MD#VMSingle):
+[VMSingle](https://github.com/VictoriaMetrics/VictoriaMetrics/) represents database for storing metrics, for all possible config options check api [doc](/docs/api.MD#VMSingle):
  
 ```yaml
 cat <<EOF | kubectl apply -f -
@@ -78,8 +78,7 @@ spec:
 EOF
 ```
 
-
-configuration can be extended with extraFlags and extraEnv, check flag documentation at [doc](https://github.com/VictoriaMetrics/VictoriaMetrics/blob/master/docs/Single-server-VictoriaMetrics.md)
+Configuration can be extended with extraFlags and extraEnv, check flag documentation at [doc](https://github.com/VictoriaMetrics/VictoriaMetrics/blob/master/docs/Single-server-VictoriaMetrics.md)
 for instance:
 
 ```yaml
@@ -95,7 +94,7 @@ spec:
 EOF
 ```
 
-flag can be replaced with envVar, it's useful for retrieving value from secret:
+Flag can be replaced with envVar, it's useful for retrieving value from secret:
 
 ```yaml
 cat <<EOF | kubectl apply -f  -
@@ -116,7 +115,7 @@ EOF
 
 ## VMCluster
 
-`VMCluster` represent a high-available and fault-tolerant version of VictoriaMetrics database.
+[VMCluster](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/cluster) represent a high-available and fault-tolerant version of VictoriaMetrics database.
 For minimal version without persistent create simple crd:
  
 ```yaml
@@ -206,7 +205,8 @@ EOF
 
 ## VMAgent
 
-`VMAgent` requires access to Kubernetes API and you must create RBAC for it first, it can be found at `install/examples/VMAgent_rbac.yaml`
+[VMAgent](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/app/vmagent) -  is a tiny but brave agent, which helps you collect metrics from various sources and stores them in [VictoriaMetrics](https://github.com/VictoriaMetrics/VictoriaMetrics).
+It requires access to Kubernetes API and you must create RBAC for it first, it can be found at `install/examples/VMAgent_rbac.yaml`
 
 ```bash
 #change namespace
@@ -216,7 +216,7 @@ kubectl -n "$YOUR_NS apply" -f install/examples/vmagent_rbac.yaml
 
 Modify `VMAgent` config parameters at `install/examples/vmagent.yaml` and apply it, config options [doc](/docs/api.MD#VMAgent)
 
-example:
+Example:
 
 ```yaml
 cat <<EOF | kubectl apply -f -
@@ -236,7 +236,8 @@ EOF
 
 ## VMAlert
 
-`VMAlert` has few required config options - `datasource` and `notifierURL`, for other config parameters check [doc](/docs/api.MD#VMAlert)
+[VMAlert](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/app/vmalert) - executes a list of given [alerting](https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/) or [recording](https://prometheus.io/docs/prometheus/latest/configuration/recording_rules/) rules against configured address. It
+has few required config options - `datasource` and `notifierURL`, for other config parameters check [doc](/docs/api.MD#VMAlert)
 
 ```yaml
 cat << EOF | kubectl apply -f -
@@ -258,7 +259,7 @@ EOF
 
 ## Alertmanager
 
-`Alertmanager` - represents alertmanager configuration, first, you have to create secret with a configuration for it
+Alertmanager - represents alertmanager configuration, first, you have to create secret with a configuration for it
 
 ```yaml
 cat << EOF | kubectl apply -f -
@@ -283,7 +284,7 @@ stringData:
 EOF
 ```
 
-then add `Alertmanager` object, other config options at [doc](/docs/api.MD#Alertmanager)
+Then add `Alertmanager` object, other config options at [doc](/docs/api.MD#Alertmanager)
 
 ```yaml
 cat << EOF | kubectl apply -f -
@@ -298,6 +299,34 @@ EOF
 ```
 
 ## VMServiceScrape
+
+Deploy example-app
+First, deploy three instances of a simple example application, which listens and exposes metrics on port `8080`.
+
+```yaml
+cat <<EOF | kubectl apply -f -
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: example-app
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: example-app
+  template:
+    metadata:
+      labels:
+        app: example-app
+    spec:
+      containers:
+      - name: example-app
+        image: fabxc/instrumented_app
+        ports:
+        - name: web
+          containerPort: 8080
+EOF
+```
 
 The VMServiceScrape has a label selector to select Services and their underlying Endpoint objects. The Service object for the example application selects the Pods by the `app` label having the `example-app` value. The Service object also specifies the port on which the metrics are exposed.
 
@@ -337,6 +366,7 @@ spec:
 EOF
 ```
 
+
 ## Migration from prometheus-operator objects
 
 By default, the operator converts all existing prometheus-operator API objects into corresponding victoriametrics-operator objects.
@@ -358,7 +388,7 @@ Otherwise, victoriametrics-operator would try to discover prometheus-operator AP
 
 > WARNING: Pleas protect delete endpoint before exposing it [doc](https://github.com/VictoriaMetrics/VictoriaMetrics#how-to-delete-time-series)
 
-example for Kubernetes Nginx ingress [doc](https://kubernetes.github.io/ingress-nginx/examples/auth/basic/)
+Example for Kubernetes Nginx ingress [doc](https://kubernetes.github.io/ingress-nginx/examples/auth/basic/)
 
 ```bash
 #generate creds

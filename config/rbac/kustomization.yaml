@@ -10,3 +10,13 @@ resources:
 #- auth_proxy_role.yaml
 #- auth_proxy_role_binding.yaml
 #- auth_proxy_client_clusterrole.yaml
+patches:
+- path: service_account_patch.yaml
+  target:
+    name: leader-election-role
+- path: service_account_patch.yaml
+  target:
+    name:  proxy-rolebinding
+- path: service_account_patch.yaml
+  target:
+    name: manager-rolebinding

@@ -1,8 +1,9 @@
 # Design
 
-This document describes the design and interaction between the custom resource definitions that the Victoria Metrics Operator introduces.
+This document describes the design and interaction between the custom resource definitions (CRD) that the Victoria 
+Metrics Operator introduces.
 
-The custom resources that the Prometheus Operator introduces are:
+Operator introduces the following custom resources:
 
 * [VMSingle](#VMSingle)
 * [VMCluster](#VMCluster)
@@ -15,47 +16,74 @@ The custom resources that the Prometheus Operator introduces are:
 
 ## VMSingle
 
-The `VMSingle` custom resource definition (CRD) declaratively defines a desired VMSingle setup to run in a Kubernetes cluster. It provides options to configure its parameters. 
+The `VMSingle` CRD declaratively defines a [single-node VM](https://github.com/VictoriaMetrics/VictoriaMetrics) 
+installation to run in a Kubernetes cluster. 
 
-For each `VMSingle` resource, the Operator deploys a properly configured `Deployment` in the same namespace. The VMSingle `Pod`s are configured to mount an empty dir or  `PersistentVolumeClaimSpec` for storing metrics data. Deployment update strategy set to `ReCreate`. You cannot specify more than one replica size.
+For each `VMSingle` resource, the Operator deploys a properly configured `Deployment` in the same namespace. 
+The VMSingle `Pod`s are configured to mount an empty dir or  `PersistentVolumeClaimSpec` for storing data. 
+Deployment update strategy set to [recreate](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#recreate-deployment). 
+No more than one replica allowed.
 
-For each `VMSingle` resource, the Operator adds  `Service` in the same namespace and `VMServiceScrape`. it uses prefixed name `<VMSingle-name>`
+For each `VMSingle` resource, the Operator adds `Service` and `VMServiceScrape` in the same namespace prefixed with 
+name `<VMSingle-name>`.
 
 ## VMCluster
  
-The `VMCluster` custom resource definition (CRD) defines a cluster of VictoriaMetrics database [url](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/cluster). 
+The `VMCluster` CRD defines a [cluster version VM](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/cluster). 
 
-For each `VMCluster`  resource, the operator creates `VMStorage` as `StatefulSet`, `VMSelect` as `StatefulSet` and `VMInsert` as deployment. For `VMStorage` and `VMSelect` headless  services are created, for `VMInsert` is created service  with clusterIP. 
+For each `VMCluster` resource, the Operator creates `VMStorage` as `StatefulSet`, `VMSelect` as `StatefulSet` and `VMInsert` 
+as deployment. For `VMStorage` and `VMSelect` headless  services are created. `VMInsert` is created as service with clusterIP. 
 
-There is strict order for these objects creation and reconciliation. First `VMStorage` is synced - the operator waits until all its pod will become ready, then it syncs `VMSelect` with the same manner. `VMInsert` is the last object for sync.
+There is a strict order for these objects creation and reconciliation:
+ 1. `VMStorage` is synced - the Operator waits until all its pods are ready;
+ 2. Then it syncs `VMSelect` with the same manner;
+ 3. `VMInsert` is the last object to sync.
 
-All statefulsets are created with `OnDelete` update type. It allows the operator to manually manage the rolling update process - by deleting one by one pod and waiting for its ready status.
+All statefulsets are created with [OnDelete](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#on-delete) 
+update type. It allows to manually manage the rolling update process for Operator by deleting pods one by one and waiting 
+for the ready status.
 
-Rolling update process may be configured by operator env variables - the most important is `VM_PODWAITREADYTIMEOUT=80s` - it controls how long to wait until pod ready status.
+Rolling update process may be configured by the operator env variables. 
+The most important is `VM_PODWAITREADYTIMEOUT=80s` - it controls how long to wait for pod's ready status.
 
 ## VMAgent
 
-The `VMAgent` custom resource definition (CRD) declaratively defines a desired VMAgent setup to run in a Kubernetes cluster. It provides options to configure its parameters. 
+The `VMAgent` CRD declaratively defines a desired [VMAgent](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/app/vmagent) 
+setup to run in a Kubernetes cluster. 
 
-For each `VMAgent` resource, the Operator deploys a properly configured `Deployment` in the same namespace. The VMAgent `Pod`s are configured to mount a `Secret` called `<VMAgent-name>` containing the configuration for VMAgent.
+For each `VMAgent` resource Operator deploys a properly configured `Deployment` in the same namespace. 
+The VMAgent `Pod`s are configured to mount a `Secret` prefixed with `<VMAgent-name>` containing the configuration 
+for VMAgent.
 
-For each `VMAgent` resource, the Operator adds  `Service` in the same namespace and `VMServiceScrape`. it uses prefixed name `<VMAgent-name>`
+For each `VMAgent` resource, the Operator adds `Service` and `VMServiceScrape` in the same namespace prefixed with 
+name `<VMAgent-name>`.
 
-The CRD specifies which `VMServiceScrape`s should be covered by the deployed VMAgent instances based on label selection. The Operator then generates a configuration based on the included `VMServiceScrape`s and updates it in the `Secret` containing the configuration. It continuously does so for all changes that are made to `VMServiceScrape`s or the `VMAgent` resource itself.
+The CRD specifies which `VMServiceScrape` should be covered by the deployed VMAgent instances based on label selection. 
+The Operator then generates a configuration based on the included `VMServiceScrape`s and updates the `Secret` which 
+contains the configuration. It continuously does so for all changes that are made to the `VMServiceScrape`s or the 
+`VMAgent` resource itself.
 
-If no selection of `VMServiceScrape`s is provided, the Operator leaves management of the `Secret` to the user, which allows to provide custom configurations while still benefiting from the Operator's capabilities of managing VMAgent setups.
+If no selection of `VMServiceScrape`s is provided - Operator leaves management of the `Secret` to the user, 
+so user can set custom configuration while still benefiting from the Operator's capabilities of managing VMAgent setups.
 
 ## VMAlert
 
-The `VMAlert` custom resource definition (CRD) declaratively defines a desired VMAlert setup to run in a Kubernetes cluster. It provides options to configure its parameters. 
+The `VMAlert` CRD declaratively defines a desired [VMAlert](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/app/vmalert) 
+setup to run in a Kubernetes cluster. 
 
-For each `VMAlert` resource, the Operator deploys a properly configured `Deployment` in the same namespace. The VMAlert `Pod`s are configured to mount a list of `Configmaps` called `<VMAlert-name>-number` containing the configuration for alerting rules.
+For each `VMAlert` resource, the Operator deploys a properly configured `Deployment` in the same namespace. 
+The VMAlert `Pod`s are configured to mount a list of `Configmaps` prefixed with `<VMAlert-name>-number` containing 
+the configuration for alerting rules.
 
-For each `VMAlert` resource, the Operator adds  `Service` in the same namespace and `VMServiceScrape`. it uses prefixed name `<VMAlert-name>`
+For each `VMAlert` resource, the Operator adds `Service` and `VMServiceScrape` in the same namespace prefixed with 
+name `<VMAlert-name>`.
 
-The CRD specifies which `VMRule`s should be covered by the deployed VMAlert instances based on label selection. The Operator then generates a configuration based on the included `VMRule`s and updates it in the `Configmaps` containing the configuration. It continuously does so for all changes that are made to `VMRule`s or the `VMAlert` resource itself.
+The CRD specifies which `VMRule`s should be covered by the deployed VMAlert instances based on label selection. 
+The Operator then generates a configuration based on the included `VMRule`s and updates the `Configmaps` containing 
+the configuration. It continuously does so for all changes that are made to `VMRule`s or to the `VMAlert` resource itself.
 
-Alerting rules are filtered by selector `ruleNamespaceSelector` in `VMAlert` crd definition, for selecting rules from all namespaces you must specify it to empty value:
+Alerting rules are filtered by selector `ruleNamespaceSelector` in `VMAlert` CRD definition. For selecting rules from all 
+namespaces you must specify it to empty value:
 
 ```yaml
 spec:
@@ -65,20 +93,31 @@ spec:
 
 ## VMServiceScrape
 
-The `VMServiceScrape` custom resource definition (CRD) allows to declaratively define how a dynamic set of services should be monitored. Which services are selected to be monitored with the desired configuration is defined using label selections. This allows an organization to introduce conventions around how metrics are exposed and then following these conventions new services are automatically discovered, without the need to reconfigure the system.
+The `VMServiceScrape` CRD allows to define a dynamic set of services for monitoring. Services 
+and scraping configurations can be matched via label selections. This allows an organization to introduce conventions 
+for how metrics should be exposed. Following these conventions new services will be discovered automatically without 
+need to reconfigure.
 
-For VMAgent to monitor any application within Kubernetes an `Endpoints` object needs to exist. `Endpoints` objects are essentially lists of IP addresses. Typically an `Endpoints` object is populated by a `Service` object. A `Service` object discovers `Pod`s by a label selector and adds those to the `Endpoints` object.
+Monitoring configuration based on `Endpoints` objects. `Endpoints` objects are essentially lists of IP addresses. 
+Typically, `Endpoints` objects are populated by `Service` object. `Service` object discovers `Pod`s by a label 
+selector and adds those to the `Endpoints` object.
 
-A `Service` may expose one or more service ports, which are backed by a list of multiple endpoints that point to a `Pod` in the common case. This is reflected in the respective `Endpoints` object as well.
+A `Service` may expose one or more service ports backed by a list of one or multiple endpoints pointing to 
+specific `Pod`s. The same reflected in the respective `Endpoints` object as well.
 
-The `VMServiceScrape` object introduced by the Victoria Metrics Operator, in turn, discovers those `Endpoints` objects and configures VMAgent to monitor those `Pod`s.
+The `VMServiceScrape` object discovers `Endpoints` objects and configures VMAgent to monitor `Pod`s.
 
-The `endpoints` section of the `VMServiceScrapeSpec`, is used to configure which ports of these `Endpoints` are going to be scraped for metrics, and with which parameters. For advanced use cases, one may want to monitor ports of backing `Pod`s, which are not directly part of the service endpoints. Therefore when specifying an endpoint in the `endpoints` section, they are strictly used.
+The `Endpoints` section of the `VMServiceScrapeSpec` is used to configure which `Endpoints` ports should be scraped. 
+For advanced use cases, one may want to monitor ports of backing `Pod`s, which are not a part of the service endpoints. 
+Therefore, when specifying an endpoint in the `endpoints` section, they are strictly used.
 
 > Note: `endpoints` (lowercase) is the field in the `VMServiceScrape` CRD, while `Endpoints` (capitalized) is the Kubernetes object kind.
 
-Both `VMServiceScrape`, as well as discovered targets, may come from any namespace. This is important to allow cross-namespace monitoring use cases, e.g. for meta-monitoring. Using the `VMServiceScrape` of the `VMAgentSpec`, one can restrict the namespaces `VMServiceScrape`s are selected from by the respective VMAgent server. Using the `namespaceSelector` of the `VMServiceScrape`, one can restrict the namespaces the `Endpoints` objects are allowed to be discovered from.
-To discover targets in all namespaces the `namespaceSelector` has to be empty:
+Both `VMServiceScrape` and discovered targets may belong to any namespace. It is important for cross-namespace monitoring 
+use cases, e.g. for meta-monitoring. Using the `VMServiceScrape` of the `VMAgentSpec` 
+one can restrict the namespaces from which `VMServiceScrape`s are selected from by the respective VMAgent server. 
+Using the `namespaceSelector` of the `VMServiceScrape` one can restrict the namespaces from which `Endpoints` can be 
+discovered from. To discover targets in all namespaces the `namespaceSelector` has to be empty:
 
 ```yaml
 spec:
@@ -87,19 +126,22 @@ spec:
 
 ## VMPodScrape
 
-The `VMPodScrape` custom resource definition (CRD) allows to declaratively define how a dynamic set of pods should be monitored.
-Which pods are selected to be monitored with the desired configuration is defined using label selections.
-This allows an organization to introduce conventions around how metrics are exposed and then following these conventions new pods are automatically discovered, without the need to reconfigure the system.
+The `VMPodScrape` CRD allows to declaratively define how a dynamic set of pods should be monitored.
+Use label selections to match pods for scraping. This allows an organization to introduce conventions 
+for how metrics should be exposed. Following these conventions new services will be discovered automatically without 
+need to reconfigure.
 
 A `Pod` is a collection of one or more containers which can expose Prometheus metrics on a number of ports.
 
-The `VMPodScrape` object introduced by the Victoria Metrics Operator discovers these pods and generates the relevant configuration for the Prometheus server in order to monitor them. 
+The `VMPodScrape` object discovers pods and generates the relevant scraping configuration. 
 
-The `PodMetricsEndpoints` section of the `VMPodScrapeSpec`, is used to configure which ports of a pod are going to be scraped for metrics, and with which parameters.
+The `PodMetricsEndpoints` section of the `VMPodScrapeSpec` is used to configure which ports of a pod are going to be 
+scraped for metrics and with which parameters.
 
-Both `VMPodScrapes`, as well as discovered targets, may come from any namespace. This is important to allow cross-namespace monitoring use cases, e.g. for meta-monitoring.
-Using the `namespaceSelector` of the `VMPodScrapeSpec`, one can restrict the namespaces the `Pods` are allowed to be discovered from.
-To discover targets in all namespaces the `namespaceSelector` has to be empty:
+Both `VMPodScrapes` and discovered targets may belong to any namespace. It is important for cross-namespace monitoring 
+use cases, e.g. for meta-monitoring. Using the `namespaceSelector` of the `VMPodScrapeSpec` one can restrict the 
+namespaces from which `Pods` are discovered from. To discover targets in all namespaces the `namespaceSelector` has to 
+be empty:
 
 ```yaml
 spec:
@@ -109,11 +151,14 @@ spec:
 
 ## Alertmanager
 
-The `Alertmanager` custom resource definition (CRD) declaratively defines a desired Alertmanager setup to run in a Kubernetes cluster. It provides options to configure replication and persistent storage.
+The `Alertmanager` CRD declaratively defines a desired Alertmanager setup to run in a Kubernetes cluster. 
+It provides options to configure replication and persistent storage.
 
-For each `Alertmanager` resource, the Operator deploys a properly configured `StatefulSet` in the same namespace. The Alertmanager pods are configured to include a `Secret` called `<alertmanager-name>` which holds the used configuration file in the key `alertmanager.yaml`.
+For each `Alertmanager` resource, the Operator deploys a properly configured `StatefulSet` in the same namespace. 
+The Alertmanager pods are configured to include a `Secret` called `<alertmanager-name>` which holds the used 
+configuration file in the key `alertmanager.yaml`.
 
-When there are two or more configured replicas the operator runs the Alertmanager instances in high availability mode.
+When there are two or more configured replicas the Operator runs the Alertmanager instances in high availability mode.
 
 ## VMRule
 
@@ -124,13 +169,13 @@ Alerts and recording rules can be saved and applied as YAML files, and dynamical
 
 ## VMPrometheusConverter
 
+By default, the Operator converts and updates existing prometheus-operator API objects:
 
- By default, the operator converts and updates existing prometheus-operator API objects:
- 
- `ServiceMonitor` into `VMServiceScrape`
- `PodMonitor` into `VMPodScrape`
- `PrometheusRule` into `VMRule`
- 
- Removing prometheus-operator API objects wouldn't delete converted objects. So you can safely migrate or run two operators in parallel mode.
+`ServiceMonitor` into `VMServiceScrape`
+`PodMonitor` into `VMPodScrape`
+`PrometheusRule` into `VMRule`
+
+Removing prometheus-operator API objects wouldn't delete any converted objects. So you can safely migrate or run 
+two operators at the same time.
  
   

@@ -238,15 +238,15 @@ bundle-build:
 build: manager
 
 release-package: kustomize
-	mkdir -p install/crds/
-	mkdir install/operator
-	mkdir install/examples
-	kustomize build config/crd > install/crds/crd.yaml
-	kustomize build config/rbac > install/operator/rbac.yaml
-	cp config/examples/*.yaml install/examples/
+	mkdir -p release/crds/
+	mkdir release/operator
+	mkdir release/examples
+	kustomize build config/crd > release/crds/crd.yaml
+	kustomize build config/rbac > release/operator/rbac.yaml
+	cp config/examples/*.yaml release/examples/
 	cd config/manager && \
 	kustomize edit  set image manager=$(DOCKER_REPO):$(TAG)
-	kustomize build config/manager > install/operator/manager.yaml
+	kustomize build config/manager > release/operator/manager.yaml
 	zip -r operator.zip bin/manager
-	zip -r bundle_crd.zip install/
-	rm -rf install/
+	zip -r bundle_crd.zip release/
+	rm -rf release/

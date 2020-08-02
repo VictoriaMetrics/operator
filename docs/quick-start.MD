@@ -15,27 +15,21 @@ unzip  bundle_crd.zip
 
 First of all, you  have to create [custom resource definitions](https://github.com/VictoriaMetrics/operator)
 ```bash
-kubectl apply -f install/crds
+kubectl apply -f release/crds
 ```
  
-Then you need RBAC for operator, relevant configuration for the release can be found at install/operator/rbac.yaml
+Then you need RBAC for operator, relevant configuration for the release can be found at release/operator/rbac.yaml
 
-```bash
-#change namespace for your installation:
-export YOUR_NS=default
-sed -i -e "s/namespace: default/namespace: $YOUR_NS/" install/operator/*.yaml
-```
-
-Change configuration for operator at `install/operator/manager.yaml`, possible settings: [operator-settings](/vars.MD)
+Change configuration for operator at `release/operator/manager.yaml`, possible settings: [operator-settings](/vars.MD)
 and apply it:
 ```bash
-kubectl -n $YOUR_NS apply -f install/operator/
+kubectl apply -f release/operator/
 ```
 
 Check the status of operator
 
 ```bash
-kubectl -n $YOUR_NS get pods
+kubectl get pods
 
 #NAME                           READY   STATUS    RESTARTS   AGE
 #vm-operator-667dfbff55-cbvkf   1/1     Running   0          101s
@@ -206,15 +200,13 @@ EOF
 ## VMAgent
 
 [VMAgent](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/app/vmagent) -  is a tiny but brave agent, which helps you collect metrics from various sources and stores them in [VictoriaMetrics](https://github.com/VictoriaMetrics/VictoriaMetrics).
-It requires access to Kubernetes API and you must create RBAC for it first, it can be found at `install/examples/VMAgent_rbac.yaml`
+It requires access to Kubernetes API and you must create RBAC for it first, it can be found at `release/examples/VMAgent_rbac.yaml`
 
 ```bash
-#change namespace
-sed -i -e "s/namespace: default/namespace: $YOUR_NS/" install/examples/vmagent_rbac.yaml 
-kubectl -n "$YOUR_NS apply" -f install/examples/vmagent_rbac.yaml
+ kubectl apply -f release/examples/vmagent_rbac.yaml
 ```
 
-Modify `VMAgent` config parameters at `install/examples/vmagent.yaml` and apply it, config options [doc](/docs/api.MD#VMAgent)
+Modify `VMAgent` config parameters at `release/examples/vmagent.yaml` and apply it, config options [doc](/docs/api.MD#VMAgent)
 
 Example:
 

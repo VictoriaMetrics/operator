@@ -501,63 +501,6 @@ func makeSpecForVMBackuper(cr *victoriametricsv1beta1.VMBackup, c *conf.BaseOper
 	}
 	mounts = append(mounts, cr.VolumeMounts...)
 
-	//volumes := []v1.Volume{
-	//	{
-	//		Name: "config-volume",
-	//		VolumeSource: v1.VolumeSource{
-	//			Secret: &v1.SecretVolumeSource{
-	//				SecretName: cr.Spec.ConfigSecret,
-	//			},
-	//		},
-	//	},
-	//}
-	//
-	//volName := volumeName(cr.Name)
-	//if cr.Spec.Storage != nil {
-	//	if cr.Spec.Storage.VolumeClaimTemplate.Name != "" {
-	//		volName = cr.Spec.Storage.VolumeClaimTemplate.Name
-	//	}
-	//}
-	//
-	//amVolumeMounts := []v1.VolumeMount{
-	//	{
-	//		Name:      "config-volume",
-	//		MountPath: alertmanagerConfDir,
-	//	},
-	////for _, s := range cr.Spec.Secrets {
-	////	volumes = append(volumes, corev1.Volume{
-	////		Name: SanitizeVolumeName("secret-" + s),
-	////		VolumeSource: corev1.VolumeSource{
-	////			Secret: &corev1.SecretVolumeSource{
-	////				SecretName: s,
-	////			},
-	////		},
-	////	})
-	////	vmMounts = append(vmMounts, corev1.VolumeMount{
-	////		Name:      SanitizeVolumeName("secret-" + s),
-	////		ReadOnly:  true,
-	////		MountPath: path.Join(vmSingleSecretDir, s),
-	////	})
-	////}
-	////
-	////for _, c := range cr.Spec.ConfigMaps {
-	////	volumes = append(volumes, corev1.Volume{
-	////		Name: SanitizeVolumeName("configmap-" + c),
-	////		VolumeSource: corev1.VolumeSource{
-	////			ConfigMap: &corev1.ConfigMapVolumeSource{
-	////				LocalObjectReference: corev1.LocalObjectReference{
-	////					Name: c,
-	////				},
-	////			},
-	////		},
-	////	})
-	////	vmMounts = append(vmMounts, corev1.VolumeMount{
-	////		Name:      SanitizeVolumeName("configmap-" + c),
-	////		ReadOnly:  true,
-	////		MountPath: path.Join(vmSingleConfigMapDir, c),
-	////	})
-	////}
-	//
 	livenessProbeHandler := corev1.Handler{
 		HTTPGet: &corev1.HTTPGetAction{
 			Port:   intstr.Parse(cr.Port),

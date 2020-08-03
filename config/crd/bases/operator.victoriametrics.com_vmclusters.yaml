@@ -4033,6 +4033,105 @@ spec:
                         type: string
                     type: object
                   type: array
+                vmBackup:
+                  description: VMBackup configuration for backup
+                  properties:
+                    concurrency:
+                      description: Defines number of concurrent workers. Higher concurrency may reduce backup duration (default 10)
+                      format: int32
+                      type: integer
+                    credentialsSecret:
+                      description: CredentialsSecret is secret in the same namespace for access to remote storage The secret is mounted into /etc/vm/creds.
+                      properties:
+                        key:
+                          description: The key of the secret to select from.  Must be a valid secret key.
+                          type: string
+                        name:
+                          description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names TODO: Add other useful fields. apiVersion, kind, uid?'
+                          type: string
+                        optional:
+                          description: Specify whether the Secret or its key must be defined
+                          type: boolean
+                      required:
+                        - key
+                      type: object
+                    customS3Endpoint:
+                      description: Custom S3 endpoint for use with S3-compatible storages (e.g. MinIO). S3 is used if not set
+                      type: string
+                    destintaion:
+                      description: Defines destination for backup
+                      type: string
+                    disableDaily:
+                      description: Defines if daily backups disabled (default false)
+                      type: boolean
+                    disableHourly:
+                      description: Defines if hourly backups disabled (default false)
+                      type: boolean
+                    disableMonthly:
+                      description: Defines if monthly backups disabled (default false)
+                      type: boolean
+                    disableWeekly:
+                      description: Defines if weekly backups disabled (default false)
+                      type: boolean
+                    extraArgs:
+                      additionalProperties:
+                        type: string
+                      description: extra args like maxBytesPerSecond default 0
+                      type: object
+                    image:
+                      description: Image - docker image settings for VMBackyper
+                      properties:
+                        pullPolicy:
+                          description: PullPolicy describes how to pull docker image
+                          type: string
+                        repository:
+                          description: Repository contains name of docker image + it's repository if needed
+                          type: string
+                        tag:
+                          description: Tag contains desired docker image version
+                          type: string
+                      type: object
+                    logFormat:
+                      description: LogFormat for VMSelect to be configured with. default or json
+                      enum:
+                        - default
+                        - json
+                      type: string
+                    logLevel:
+                      description: LogLevel for VMSelect to be configured with.
+                      enum:
+                        - INFO
+                        - WARN
+                        - ERROR
+                        - FATAL
+                        - PANIC
+                      type: string
+                    port:
+                      description: Port for health check connetions
+                      type: string
+                    resources:
+                      description: Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/ if not defined default resources from operator config will be used
+                      properties:
+                        limits:
+                          additionalProperties:
+                            anyOf:
+                              - type: integer
+                              - type: string
+                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                            x-kubernetes-int-or-string: true
+                          description: 'Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                          type: object
+                        requests:
+                          additionalProperties:
+                            anyOf:
+                              - type: integer
+                              - type: string
+                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                            x-kubernetes-int-or-string: true
+                          description: 'Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                          type: object
+                      type: object
+                  type: object
                 vmInsertPort:
                   description: VMInsertPort for VMInsert connections
                   type: string

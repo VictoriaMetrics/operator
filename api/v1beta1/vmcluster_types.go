@@ -448,11 +448,64 @@ type VMStorage struct {
 	// +optional
 	VMSelectPort string `json:"vmSelectPort,omitempty"`
 
+	// VMBackup configuration for backup
+	// +optional
+	VMBackup *VMBackup `json:"vmBackup,omitempty"`
+
 	// +optional
 	ExtraArgs map[string]string `json:"extraArgs,omitempty"`
 	// ExtraEnvs that will be added to VMSelect pod
 	// +optional
 	ExtraEnvs []v1.EnvVar `json:"extraEnvs,omitempty"`
+}
+
+type VMBackup struct {
+	// Defines number of concurrent workers. Higher concurrency may reduce backup duration (default 10)
+	// +optional
+	Concurrency *int32 `json:"concurrency,omitempty"`
+	// Defines destination for backup
+	Destination string `json:"destintaion,omitempty"`
+	// Custom S3 endpoint for use with S3-compatible storages (e.g. MinIO). S3 is used if not set
+	// +optional
+	CustomS3Endpoint *string `json:"customS3Endpoint,omitempty"`
+	// CredentialsSecret is secret in the same namespace for access to remote storage
+	// The secret is mounted into /etc/vm/creds.
+	// +optional
+	CredentialsSecret *v1.SecretKeySelector `json:"credentialsSecret,omitempty"`
+
+	// Defines if hourly backups disabled (default false)
+	// +optional
+	DisableHourly *bool `json:"disableHourly,omitempty"`
+	// Defines if daily backups disabled (default false)
+	// +optional
+	DisableDaily *bool `json:"disableDaily,omitempty"`
+	// Defines if weekly backups disabled (default false)
+	// +optional
+	DisableWeekly *bool `json:"disableWeekly,omitempty"`
+	// Defines if monthly backups disabled (default false)
+	// +optional
+	DisableMonthly *bool `json:"disableMonthly,omitempty"`
+	// Image - docker image settings for VMBackyper
+	// +optional
+	Image Image `json:"image,omitempty"`
+	//Port for health check connetions
+	Port string `json:"port,omitempty"`
+	// LogFormat for VMSelect to be configured with.
+	//default or json
+	// +optional
+	// +kubebuilder:validation:Enum=default;json
+	LogFormat *string `json:"logFormat,omitempty"`
+	// LogLevel for VMSelect to be configured with.
+	// +optional
+	// +kubebuilder:validation:Enum=INFO;WARN;ERROR;FATAL;PANIC
+	LogLevel *string `json:"logLevel,omitempty"`
+	// Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+	// if not defined default resources from operator config will be used
+	// +optional
+	Resources v1.ResourceRequirements `json:"resources,omitempty"`
+	//extra args like maxBytesPerSecond default 0
+	// +optional
+	ExtraArgs map[string]string `json:"extraArgs,omitempty"`
 }
 
 func (s VMStorage) BuildPodFQDNName(baseName string, podIndex int32, namespace, portName, domain string) string {

@@ -18,9 +18,11 @@ import (
 )
 
 const (
-	SecretsDir      = "/etc/vm/secrets"
-	ConfigMapsDir   = "/etc/vm/configs"
-	vmSingleDataDir = "/victoria-metrics-data"
+	SecretsDir       = "/etc/vm/secrets"
+	ConfigMapsDir    = "/etc/vm/configs"
+	vmSingleDataDir  = "/victoria-metrics-data"
+	vmBackuperCreds  = "/etc/vm/creds"
+	vmDataVolumeName = "data"
 )
 
 func CreateVMStorage(ctx context.Context, cr *victoriametricsv1beta1.VMSingle, rclient client.Client, c *conf.BaseOperatorConf) (*corev1.PersistentVolumeClaim, error) {
@@ -207,15 +209,14 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *conf.BaseOperat
 	storageSpec := cr.Spec.Storage
 	if storageSpec == nil {
 		volumes = append(volumes, corev1.Volume{
-			Name: "data",
+			Name: vmDataVolumeName,
 			VolumeSource: corev1.VolumeSource{
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		})
 	} else {
-
 		volumes = append(volumes, corev1.Volume{
-			Name: "data",
+			Name: vmDataVolumeName,
 			VolumeSource: corev1.VolumeSource{
 				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
 					ClaimName: cr.PrefixedName(),
@@ -223,10 +224,20 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *conf.BaseOperat
 			},
 		})
 	}
+	if cr.Spec.VMBackup != nil && cr.Spec.VMBackup.CredentialsSecret != nil {
+		volumes = append(volumes, corev1.Volume{
+			Name: SanitizeVolumeName("secret-" + cr.Spec.VMBackup.CredentialsSecret.Name),
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: cr.Spec.VMBackup.CredentialsSecret.Name,
+				},
+			},
+		})
+	}
 	volumes = append(volumes, cr.Spec.Volumes...)
 	vmMounts := []corev1.VolumeMount{
 		{
-			Name:      "data",
+			Name:      vmDataVolumeName,
 			MountPath: vmSingleDataDir,
 		},
 	}
@@ -311,6 +322,14 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *conf.BaseOperat
 			TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 		},
 	}, additionalContainers...)
+
+	if cr.Spec.VMBackup != nil {
+		vmBackuper, err := makeSpecForVMBackuper(cr.Spec.VMBackup, c, cr.Spec.Port, vmDataVolumeName)
+		if err != nil {
+			return nil, err
+		}
+		operatorContainers = append(operatorContainers, *vmBackuper)
+	}
 
 	containers, err := MergePatchContainers(operatorContainers, cr.Spec.Containers)
 	if err != nil {
@@ -402,4 +421,124 @@ func newServiceVMSingle(cr *victoriametricsv1beta1.VMSingle, c *conf.BaseOperato
 			},
 		},
 	}
+}
+
+func makeSpecForVMBackuper(cr *victoriametricsv1beta1.VMBackup, c *conf.BaseOperatorConf, port string, dataVolumeName string) (*corev1.Container, error) {
+	if cr.Image.Repository == "" {
+		cr.Image.Repository = c.VMBackup.Image
+	}
+	if cr.Image.Tag == "" {
+		cr.Image.Tag = c.VMBackup.Version
+	}
+	if cr.Image.PullPolicy == "" {
+		cr.Image.PullPolicy = corev1.PullIfNotPresent
+	}
+	if cr.Port == "" {
+		cr.Port = c.VMBackup.Port
+	}
+	if cr.Resources.Requests == nil {
+		cr.Resources.Requests = corev1.ResourceList{}
+	}
+	if cr.Resources.Limits == nil {
+		cr.Resources.Limits = corev1.ResourceList{}
+	}
+	var cpuResourceIsSet bool
+	var memResourceIsSet bool
+
+	if _, ok := cr.Resources.Limits[corev1.ResourceMemory]; ok {
+		memResourceIsSet = true
+	}
+	if _, ok := cr.Resources.Limits[corev1.ResourceCPU]; ok {
+		cpuResourceIsSet = true
+	}
+	if _, ok := cr.Resources.Requests[corev1.ResourceMemory]; ok {
+		memResourceIsSet = true
+	}
+	if _, ok := cr.Resources.Requests[corev1.ResourceCPU]; ok {
+		cpuResourceIsSet = true
+	}
+	if !cpuResourceIsSet {
+		cr.Resources.Requests[corev1.ResourceCPU] = resource.MustParse(c.VMBackup.Resource.Request.Cpu)
+		cr.Resources.Limits[corev1.ResourceCPU] = resource.MustParse(c.VMBackup.Resource.Limit.Cpu)
+	}
+	if !memResourceIsSet {
+		cr.Resources.Requests[corev1.ResourceMemory] = resource.MustParse(c.VMBackup.Resource.Request.Mem)
+		cr.Resources.Limits[corev1.ResourceMemory] = resource.MustParse(c.VMBackup.Resource.Limit.Mem)
+	}
+
+	args := []string{
+		fmt.Sprintf("-storageDataPath=%s", vmSingleDataDir),
+		fmt.Sprintf("-dst=%s", cr.Destination),
+		fmt.Sprintf("-snapshot.createURL=http://localhost:%s/snaphsot/create", port),
+		fmt.Sprintf("-snapshot.deleteURL=http://localhost:%s/snaphsot/delete", port),
+	}
+	if cr.LogLevel != nil {
+		args = append(args, fmt.Sprintf("-loggerLevel=%s", *cr.LogLevel))
+	}
+	if cr.LogFormat != nil {
+		args = append(args, fmt.Sprintf("-loggerFormat=%s", *cr.LogFormat))
+	}
+	for arg, value := range cr.ExtraArgs {
+		args = append(args, fmt.Sprintf("--%s=%s", arg, value))
+	}
+
+	var ports []corev1.ContainerPort
+	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(cr.Port).IntVal})
+
+	mounts := []corev1.VolumeMount{
+		{
+			Name:      dataVolumeName,
+			MountPath: vmSingleDataDir,
+			ReadOnly:  true,
+		},
+	}
+	if cr.CredentialsSecret != nil {
+		mounts = append(mounts, corev1.VolumeMount{
+			Name:      SanitizeVolumeName("secret-" + cr.CredentialsSecret.Name),
+			MountPath: vmBackuperCreds,
+			ReadOnly:  true,
+		})
+		args = append(args, fmt.Sprintf("-credsFilePath=%s/%s", vmBackuperCreds, cr.CredentialsSecret.Key))
+	}
+
+	livenessProbeHandler := corev1.Handler{
+		HTTPGet: &corev1.HTTPGetAction{
+			Port:   intstr.Parse(cr.Port),
+			Scheme: "HTTP",
+			Path:   "/health",
+		},
+	}
+	readinessProbeHandler := corev1.Handler{
+		HTTPGet: &corev1.HTTPGetAction{
+			Port:   intstr.Parse(cr.Port),
+			Scheme: "HTTP",
+			Path:   "/health",
+		},
+	}
+	livenessFailureThreshold := int32(3)
+	livenessProbe := &corev1.Probe{
+		Handler:          livenessProbeHandler,
+		PeriodSeconds:    5,
+		TimeoutSeconds:   probeTimeoutSeconds,
+		FailureThreshold: livenessFailureThreshold,
+	}
+	readinessProbe := &corev1.Probe{
+		Handler:          readinessProbeHandler,
+		TimeoutSeconds:   probeTimeoutSeconds,
+		PeriodSeconds:    5,
+		FailureThreshold: 10,
+	}
+
+	vmBackuper := &corev1.Container{
+		Name:                     "vmbackuper",
+		Image:                    fmt.Sprintf("%s:%s", cr.Image.Repository, cr.Image.Tag),
+		Ports:                    ports,
+		Args:                     args,
+		VolumeMounts:             mounts,
+		LivenessProbe:            livenessProbe,
+		ReadinessProbe:           readinessProbe,
+		Resources:                cr.Resources,
+		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+	}
+	return vmBackuper, nil
 }

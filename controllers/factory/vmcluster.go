@@ -1053,7 +1053,7 @@ func GenVMStorageSpec(cr *v1beta1.VMCluster, c *conf.BaseOperatorConf) (*appsv1.
 		cr.Spec.VMStorage.StorageDataPath = vmStorageDefaultDBPath
 	}
 
-	podSpec, err := makePodSpecForVMStorage(cr)
+	podSpec, err := makePodSpecForVMStorage(cr, c)
 	if err != nil {
 		return nil, err
 	}
@@ -1114,7 +1114,7 @@ func GenVMStorageSpec(cr *v1beta1.VMCluster, c *conf.BaseOperatorConf) (*appsv1.
 	return stsSpec, nil
 }
 
-func makePodSpecForVMStorage(cr *v1beta1.VMCluster) (*corev1.PodTemplateSpec, error) {
+func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *conf.BaseOperatorConf) (*corev1.PodTemplateSpec, error) {
 	args := []string{
 		fmt.Sprintf("-vminsertAddr=:%s", cr.Spec.VMStorage.VMInsertPort),
 		fmt.Sprintf("-vmselectAddr=:%s", cr.Spec.VMStorage.VMSelectPort),
@@ -1156,6 +1156,17 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster) (*corev1.PodTemplateSpec, er
 	volumes := make([]corev1.Volume, 0)
 
 	volumes = append(volumes, cr.Spec.VMStorage.Volumes...)
+
+	if cr.Spec.VMStorage.VMBackup != nil && cr.Spec.VMStorage.VMBackup.CredentialsSecret != nil {
+		volumes = append(volumes, corev1.Volume{
+			Name: SanitizeVolumeName("secret-" + cr.Spec.VMStorage.VMBackup.CredentialsSecret.Name),
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: cr.Spec.VMStorage.VMBackup.CredentialsSecret.Name,
+				},
+			},
+		})
+	}
 
 	vmMounts := make([]corev1.VolumeMount, 0)
 	vmMounts = append(vmMounts, corev1.VolumeMount{
@@ -1248,6 +1259,14 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster) (*corev1.PodTemplateSpec, er
 			TerminationMessagePath:   "/dev/termination-log",
 		},
 	}, additionalContainers...)
+
+	if cr.Spec.VMStorage.VMBackup != nil {
+		vmBackuper, err := makeSpecForVMBackuper(cr.Spec.VMStorage.VMBackup, c, cr.Spec.VMStorage.Port, cr.Spec.VMStorage.GetStorageVolumeName())
+		if err != nil {
+			return nil, err
+		}
+		operatorContainers = append(operatorContainers, *vmBackuper)
+	}
 
 	containers, err := k8sutil.MergePatchContainers(operatorContainers, cr.Spec.VMStorage.Containers)
 	if err != nil {

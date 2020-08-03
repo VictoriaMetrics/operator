@@ -499,7 +499,6 @@ func makeSpecForVMBackuper(cr *victoriametricsv1beta1.VMBackup, c *conf.BaseOper
 		})
 		args = append(args, fmt.Sprintf("-credsFilePath=%s/%s", vmBackuperCreds, cr.CredentialsSecret.Key))
 	}
-	mounts = append(mounts, cr.VolumeMounts...)
 
 	livenessProbeHandler := corev1.Handler{
 		HTTPGet: &corev1.HTTPGetAction{

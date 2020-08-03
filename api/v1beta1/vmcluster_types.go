@@ -501,25 +501,11 @@ type VMBackup struct {
 	LogLevel *string `json:"logLevel,omitempty"`
 	// Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
 	// if not defined default resources from operator config will be used
-	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors=true
-	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors.displayName="Resources"
-	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors.x-descriptors="urn:alm:descriptor:com.tectonic.ui:resourceRequirements"
 	// +optional
 	Resources v1.ResourceRequirements `json:"resources,omitempty"`
 	//extra args like maxBytesPerSecond default 0
 	// +optional
 	ExtraArgs map[string]string `json:"extraArgs,omitempty"`
-
-	// Volumes allows configuration of additional volumes on the output deploy definition.
-	// Volumes specified will be appended to other volumes that are generated as a result of
-	// StorageSpec objects.
-	// +optional
-	Volumes []v1.Volume `json:"volumes,omitempty"`
-	// VolumeMounts allows configuration of additional VolumeMounts on the output Deployment definition.
-	// VolumeMounts specified will be appended to other VolumeMounts in the container,
-	// that are generated as a result of StorageSpec objects.
-	// +optional
-	VolumeMounts []v1.VolumeMount `json:"volumeMounts,omitempty"`
 }
 
 func (s VMStorage) BuildPodFQDNName(baseName string, podIndex int32, namespace, portName, domain string) string {

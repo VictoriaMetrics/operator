@@ -18,10 +18,11 @@ import (
 )
 
 const (
-	SecretsDir      = "/etc/vm/secrets"
-	ConfigMapsDir   = "/etc/vm/configs"
-	vmSingleDataDir = "/victoria-metrics-data"
-	vmBackuperCreds = "/etc/vm/creds"
+	SecretsDir       = "/etc/vm/secrets"
+	ConfigMapsDir    = "/etc/vm/configs"
+	vmSingleDataDir  = "/victoria-metrics-data"
+	vmBackuperCreds  = "/etc/vm/creds"
+	vmDataVolumeName = "data"
 )
 
 func CreateVMStorage(ctx context.Context, cr *victoriametricsv1beta1.VMSingle, rclient client.Client, c *conf.BaseOperatorConf) (*corev1.PersistentVolumeClaim, error) {
@@ -208,14 +209,14 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *conf.BaseOperat
 	storageSpec := cr.Spec.Storage
 	if storageSpec == nil {
 		volumes = append(volumes, corev1.Volume{
-			Name: "data",
+			Name: vmDataVolumeName,
 			VolumeSource: corev1.VolumeSource{
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		})
 	} else {
 		volumes = append(volumes, corev1.Volume{
-			Name: "data",
+			Name: vmDataVolumeName,
 			VolumeSource: corev1.VolumeSource{
 				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
 					ClaimName: cr.PrefixedName(),
@@ -236,7 +237,7 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *conf.BaseOperat
 	volumes = append(volumes, cr.Spec.Volumes...)
 	vmMounts := []corev1.VolumeMount{
 		{
-			Name:      "data",
+			Name:      vmDataVolumeName,
 			MountPath: vmSingleDataDir,
 		},
 	}
@@ -323,7 +324,7 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *conf.BaseOperat
 	}, additionalContainers...)
 
 	if cr.Spec.VMBackup != nil {
-		vmBackuper, err := makeSpecForVMBackuper(cr.Spec.VMBackup, c, cr.Spec.Port, "data")
+		vmBackuper, err := makeSpecForVMBackuper(cr.Spec.VMBackup, c, cr.Spec.Port, vmDataVolumeName)
 		if err != nil {
 			return nil, err
 		}

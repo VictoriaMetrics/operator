@@ -485,13 +485,13 @@ type VMBackup struct {
 	// Defines if monthly backups disabled (default false)
 	// +optional
 	DisableMonthly *bool `json:"disableMonthly,omitempty"`
-	// Image - docker image settings for VMBackyper
+	// Image - docker image settings for VMBackuper
 	// +optional
 	Image Image `json:"image,omitempty"`
-	//Port for health check connetions
+	//Port for health check connections
 	Port string `json:"port,omitempty"`
 	// LogFormat for VMSelect to be configured with.
-	//default or json
+	// default or json
 	// +optional
 	// +kubebuilder:validation:Enum=default;json
 	LogFormat *string `json:"logFormat,omitempty"`
@@ -625,14 +625,14 @@ func (cr VMCluster) VMInsertPodAnnotations() map[string]string {
 	if cr.Spec.VMInsert == nil || cr.Spec.VMInsert.PodMetadata == nil {
 		return nil
 	}
-	return cr.Spec.VMSelect.PodMetadata.Annotations
+	return cr.Spec.VMInsert.PodMetadata.Annotations
 }
 
 func (cr VMCluster) VMStoragePodAnnotations() map[string]string {
 	if cr.Spec.VMStorage == nil || cr.Spec.VMStorage.PodMetadata == nil {
 		return nil
 	}
-	return cr.Spec.VMSelect.PodMetadata.Annotations
+	return cr.Spec.VMStorage.PodMetadata.Annotations
 }
 
 func (cr VMCluster) Annotations() map[string]string {

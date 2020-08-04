@@ -73,14 +73,14 @@ func updateStsForAlertManager(ctx context.Context, rclient client.Client, oldSts
 
 func newStsForAlertManager(cr *victoriametricsv1beta1.VMAlertmanager, c *conf.BaseOperatorConf) (*appsv1.StatefulSet, error) {
 
-	if cr.Spec.BaseImage == "" {
-		cr.Spec.BaseImage = c.VMAlertManager.AlertmanagerDefaultBaseImage
+	if cr.Spec.Image.Repository == "" {
+		cr.Spec.Image.Repository = c.VMAlertManager.AlertmanagerDefaultBaseImage
 	}
 	if cr.Spec.PortName == "" {
 		cr.Spec.PortName = defaultPortName
 	}
-	if cr.Spec.Version == "" {
-		cr.Spec.Version = c.VMAlertManager.AlertManagerVersion
+	if cr.Spec.Image.Tag == "" {
+		cr.Spec.Image.Tag = c.VMAlertManager.AlertManagerVersion
 	}
 	if cr.Spec.ReplicaCount == nil {
 		cr.Spec.ReplicaCount = &minReplicas
@@ -239,16 +239,7 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, config *conf
 
 	cr = cr.DeepCopy()
 
-	image := fmt.Sprintf("%s:%s", cr.Spec.BaseImage, cr.Spec.Version)
-	if cr.Spec.Tag != "" {
-		image = fmt.Sprintf("%s:%s", cr.Spec.BaseImage, cr.Spec.Tag)
-	}
-	if cr.Spec.SHA != "" {
-		image = fmt.Sprintf("%s@sha256:%s", cr.Spec.BaseImage, cr.Spec.SHA)
-	}
-	if cr.Spec.Image != nil && *cr.Spec.Image != "" {
-		image = *cr.Spec.Image
-	}
+	image := fmt.Sprintf("%s:%s", cr.Spec.Image.Repository, cr.Spec.Image.Tag)
 
 	amArgs := []string{
 		fmt.Sprintf("--config.file=%s", alertmanagerConfFile),
@@ -360,7 +351,7 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, config *conf
 		}, ports...)
 	}
 
-	version, err := semver.ParseTolerant(cr.Spec.Version)
+	version, err := semver.ParseTolerant(cr.Spec.Image.Tag)
 	if err != nil {
 		log.Error(err, "cannot parse alert manager version")
 	} else {
@@ -471,14 +462,15 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, config *conf
 
 	defaultContainers := []v1.Container{
 		{
-			Args:           amArgs,
-			Name:           "alertmanager",
-			Image:          image,
-			Ports:          ports,
-			VolumeMounts:   amVolumeMounts,
-			LivenessProbe:  livenessProbe,
-			ReadinessProbe: readinessProbe,
-			Resources:      cr.Spec.Resources,
+			Args:            amArgs,
+			Name:            "alertmanager",
+			Image:           image,
+			ImagePullPolicy: cr.Spec.Image.PullPolicy,
+			Ports:           ports,
+			VolumeMounts:    amVolumeMounts,
+			LivenessProbe:   livenessProbe,
+			ReadinessProbe:  readinessProbe,
+			Resources:       cr.Spec.Resources,
 			Env: []v1.EnvVar{
 				{
 					// Necessary for '--cluster.listen-address' flag

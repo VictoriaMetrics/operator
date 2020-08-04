@@ -1670,7 +1670,7 @@ spec:
                     authentication
                   properties:
                     password:
-                      description: The secret in the service monitor namespace that
+                      description: The secret in the service scrape namespace that
                         contains the password for authentication.
                       properties:
                         key:
@@ -1689,7 +1689,7 @@ spec:
                       - key
                       type: object
                     username:
-                      description: The secret in the service monitor namespace that
+                      description: The secret in the service scrape namespace that
                         contains the username for authentication.
                       properties:
                         key:
@@ -1961,12 +1961,24 @@ spec:
                 namespace
               type: boolean
             image:
-              description: Image victoria metrics alert base image
-              type: string
+              description: Image - docker image settings for VMAlert if no specified
+                operator uses default config version
+              properties:
+                pullPolicy:
+                  description: PullPolicy describes how to pull docker image
+                  type: string
+                repository:
+                  description: Repository contains name of docker image + it's repository
+                    if needed
+                  type: string
+                tag:
+                  description: Tag contains desired docker image version
+                  type: string
+              type: object
             imagePullSecrets:
               description: ImagePullSecrets An optional list of references to secrets
-                in the same namespace to use for pulling prometheus and VMAlert images
-                from registries see http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod
+                in the same namespace to use for pulling images from registries see
+                http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod
               items:
                 description: LocalObjectReference contains enough information to let
                   you locate the referenced object inside the same namespace.
@@ -3055,7 +3067,7 @@ spec:
                     authentication
                   properties:
                     password:
-                      description: The secret in the service monitor namespace that
+                      description: The secret in the service scrape namespace that
                         contains the password for authentication.
                       properties:
                         key:
@@ -3074,7 +3086,7 @@ spec:
                       - key
                       type: object
                     username:
-                      description: The secret in the service monitor namespace that
+                      description: The secret in the service scrape namespace that
                         contains the username for authentication.
                       properties:
                         key:
@@ -3262,7 +3274,7 @@ spec:
                     authentication
                   properties:
                     password:
-                      description: The secret in the service monitor namespace that
+                      description: The secret in the service scrape namespace that
                         contains the password for authentication.
                       properties:
                         key:
@@ -3281,7 +3293,7 @@ spec:
                       - key
                       type: object
                     username:
-                      description: The secret in the service monitor namespace that
+                      description: The secret in the service scrape namespace that
                         contains the username for authentication.
                       properties:
                         key:
@@ -3441,7 +3453,7 @@ spec:
                     authentication
                   properties:
                     password:
-                      description: The secret in the service monitor namespace that
+                      description: The secret in the service scrape namespace that
                         contains the password for authentication.
                       properties:
                         key:
@@ -3460,7 +3472,7 @@ spec:
                       - key
                       type: object
                     username:
-                      description: The secret in the service monitor namespace that
+                      description: The secret in the service scrape namespace that
                         contains the username for authentication.
                       properties:
                         key:
@@ -3928,9 +3940,6 @@ spec:
                     type: string
                 type: object
               type: array
-            version:
-              description: Version the VMAlert should be on.
-              type: string
             volumeMounts:
               description: VolumeMounts allows configuration of additional VolumeMounts
                 on the output Deployment definition. VolumeMounts specified will be

@@ -142,12 +142,16 @@ func CreateOrUpdateVMAlert(ctx context.Context, cr *victoriametricsv1beta1.VMAle
 func newDeployForVMAlert(cr *victoriametricsv1beta1.VMAlert, c *conf.BaseOperatorConf, ruleConfigMapNames []string, remoteSecrets map[string]BasicAuthCredentials) (*appsv1.Deployment, error) {
 
 	cr = cr.DeepCopy()
-	if cr.Spec.Image == nil {
-		cr.Spec.Image = &c.VMAlertDefault.Image
+	if cr.Spec.Image.Repository == "" {
+		cr.Spec.Image.Repository = c.VMAlertDefault.Image
 	}
-	if cr.Spec.Version == "" {
-		cr.Spec.Version = c.VMAgentDefault.Version
+	if cr.Spec.Image.Tag == "" {
+		cr.Spec.Image.Tag = c.VMAgentDefault.Version
 	}
+	if cr.Spec.Image.PullPolicy == "" {
+		cr.Spec.Image.PullPolicy = corev1.PullIfNotPresent
+	}
+
 	if cr.Spec.Resources.Requests == nil {
 		cr.Spec.Resources.Requests = corev1.ResourceList{}
 	}
@@ -493,7 +497,8 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *conf.BaseOperatorConf
 		{
 			Args:                     args,
 			Name:                     "vmalert",
-			Image:                    *cr.Spec.Image + ":" + cr.Spec.Version,
+			Image:                    fmt.Sprintf("%s:%s", cr.Spec.Image.Repository, cr.Spec.Image.Tag),
+			ImagePullPolicy:          cr.Spec.Image.PullPolicy,
 			Ports:                    ports,
 			VolumeMounts:             volumeMounts,
 			LivenessProbe:            livenessProbe,

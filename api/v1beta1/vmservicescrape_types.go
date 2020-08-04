@@ -18,7 +18,7 @@ type VMServiceScrapeSpec struct {
 	// PodTargetLabels transfers labels on the Kubernetes Pod onto the target.
 	// +optional
 	PodTargetLabels []string `json:"podTargetLabels,omitempty"`
-	// A list of endpoints allowed as part of this ServiceMonitor.
+	// A list of endpoints allowed as part of this ServiceScrape.
 	Endpoints []Endpoint `json:"endpoints"`
 	// Selector to select Endpoints objects.
 	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors=true
@@ -107,7 +107,7 @@ type Endpoint struct {
 	// +optional
 	BearerTokenFile string `json:"bearerTokenFile,omitempty"`
 	// Secret to mount to read bearer token for scraping targets. The secret
-	// needs to be in the same namespace as the service monitor and accessible by
+	// needs to be in the same namespace as the service scrape and accessible by
 	// the victoria-metrics operator.
 	// +optional
 	BearerTokenSecret v1.SecretKeySelector `json:"bearerTokenSecret,omitempty"`

@@ -74,7 +74,7 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient
 			reason = "failed to create vmStorage service"
 			return status, err
 		}
-		if !c.DisableSelfServiceMonitorCreation {
+		if !c.DisableSelfServiceScrapeCreation {
 			err := CreateVMServiceScrapeFromService(ctx, rclient, storageSvc, "http")
 			if err != nil {
 				log.Error(err, "cannot create VMServiceScrape for vmStorage")
@@ -107,7 +107,7 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient
 			reason = "failed to create vmSelect service"
 			return status, err
 		}
-		if !c.DisableSelfServiceMonitorCreation {
+		if !c.DisableSelfServiceScrapeCreation {
 			err := CreateVMServiceScrapeFromService(ctx, rclient, selectSvc, "http")
 			if err != nil {
 				log.Error(err, "cannot create VMServiceScrape for vmSelect")
@@ -145,7 +145,7 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient
 			reason = "failed to create vmInsert service"
 			return status, err
 		}
-		if !c.DisableSelfServiceMonitorCreation {
+		if !c.DisableSelfServiceScrapeCreation {
 			err := CreateVMServiceScrapeFromService(ctx, rclient, insertSvc)
 			if err != nil {
 				log.Error(err, "cannot create VMServiceScrape for vmInsert")

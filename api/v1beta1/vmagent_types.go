@@ -18,15 +18,12 @@ type VMAgentSpec struct {
 	// PodMetadata configures Labels and Annotations which are propagated to the vmagent pods.
 	// +optional
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
-	// Image - victoria metrics agent base image
-	// if not specified - use default from operator config
+	// Image - docker image settings for VMAgent
+	// if no specified operator uses default config version
 	// +optional
-	Image *string `json:"image,omitempty"`
-	// Version for VMAgent.
-	// +optional
-	Version string `json:"version,omitempty"`
-	// ImagePullSecrets optional list of references to secrets in the same namespace
-	// to use for pulling prometheus and vmagent images from registries
+	Image Image `json:"image,omitempty"`
+	// ImagePullSecrets An optional list of references to secrets in the same namespace
+	// to use for pulling images from registries
 	// see http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod
 	// +optional
 	ImagePullSecrets []v1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
@@ -121,7 +118,7 @@ type VMAgentSpec struct {
 	// +optional
 	APIServerConfig *APIServerConfig `json:"aPIServerConfig,omitempty"`
 	// OverrideHonorLabels if set to true overrides all user configured honor_labels.
-	// If HonorLabels is set in ServiceMonitor or PodMonitor to true, this overrides honor_labels to false.
+	// If HonorLabels is set in ServiceScrape or PodScrape to true, this overrides honor_labels to false.
 	// +optional
 	OverrideHonorLabels bool `json:"overrideHonorLabels,omitempty"`
 	// OverrideHonorTimestamps allows to globally enforce honoring timestamps in all scrape configs.
@@ -142,11 +139,6 @@ type VMAgentSpec struct {
 	// _not_ be added when value is set to empty string (`""`).
 	// +optional
 	VMAgentExternalLabelName *string `json:"vmAgentExternalLabelName,omitempty"`
-	// ReplicaExternalLabelName Name of vmagent external label used to denote replica name.
-	// Defaults to the value of `prometheus_replica`. External label will
-	// _not_ be added when value is set to empty string (`""`).
-	// +optional
-	ReplicaExternalLabelName *string `json:"replicaExternalLabelName,omitempty"`
 
 	// ExternalLabels The labels to add to any time series or alerts when communicating with
 	// external systems (federation, remote storage, etc).
@@ -162,24 +154,24 @@ type VMAgentSpec struct {
 	// This relabeling is applied to all the collected metrics before sending them to remote storage.
 	// +optional
 	RelabelConfig *v1.ConfigMapKeySelector `json:"relabelConfig,omitempty"`
-	// ServiceMonitorSelector defines ServiceMonitors to be selected for target discovery. if
-	// neither this nor podMonitorSelector are specified, configuration is
+	// ServiceScrapeSelector defines ServiceScrapes to be selected for target discovery. if
+	// neither serviceScrapeNamespaceSelector nor serviceScrapeSelector are specified, configuration is
 	// unmanaged.
 	// +optional
-	ServiceMonitorSelector *metav1.LabelSelector `json:"serviceMonitorSelector,omitempty"`
-	// ServiceMonitorNamespaceSelector Namespaces to be selected for ServiceMonitor discovery. If nil, only
+	ServiceScrapeSelector *metav1.LabelSelector `json:"serviceScrapeSelector,omitempty"`
+	// ServiceScrapeNamespaceSelector Namespaces to be selected for ServiceMonitor discovery. If nil, only
 	// check own namespace.
 	// +optional
-	ServiceMonitorNamespaceSelector *metav1.LabelSelector `json:"serviceMonitorNamespaceSelector,omitempty"`
-	// PodMonitorSelector defines PodMonitors to be selected for target discovery.
-	// if neither this nor serviceMonitorSelector are specified,
+	ServiceScrapeNamespaceSelector *metav1.LabelSelector `json:"serviceScrapeNamespaceSelector,omitempty"`
+	// PodScrapeSelector defines PodScrapes to be selected for target discovery.
+	// if neither PodScrapeNamespaceSelector this nor PodScrapeSelector are specified,
 	// configuration is unmanaged.
 	// +optional
-	PodMonitorSelector *metav1.LabelSelector `json:"podMonitorSelector,omitempty"`
-	// PodMonitorNamespaceSelector defines Namespaces to be selected for PodMonitor discovery. If nil, only
+	PodScrapeSelector *metav1.LabelSelector `json:"podScrapeSelector,omitempty"`
+	// PodScrapeNamespaceSelector defines Namespaces to be selected for PodMonitor discovery. If nil, only
 	// check own namespace.
 	// +optional
-	PodMonitorNamespaceSelector *metav1.LabelSelector `json:"podMonitorNamespaceSelector,omitempty"`
+	PodScrapeNamespaceSelector *metav1.LabelSelector `json:"podScrapeNamespaceSelector,omitempty"`
 	// AdditionalScrapeConfigs As scrape configs are appended, the user is responsible to make sure it
 	// is valid. Note that using this feature may expose the possibility to
 	// break upgrades of VMAgent. It is advised to review VMAgent release
@@ -188,7 +180,7 @@ type VMAgentSpec struct {
 	// +optional
 	AdditionalScrapeConfigs *v1.SecretKeySelector `json:"additionalScrapeConfigs,omitempty"`
 	// ArbitraryFSAccessThroughSMs configures whether configuration
-	// based on a service monitor can access arbitrary files on the file system
+	// based on a service scrape can access arbitrary files on the file system
 	// of the VMAgent container e.g. bearer token files.
 	// +optional
 	ArbitraryFSAccessThroughSMs ArbitraryFSAccessThroughSMsConfig `json:"arbitraryFSAccessThroughSMs,omitempty"`

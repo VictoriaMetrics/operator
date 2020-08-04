@@ -47,7 +47,7 @@ spec:
                     authentication
                   properties:
                     password:
-                      description: The secret in the service monitor namespace that
+                      description: The secret in the service scrape namespace that
                         contains the password for authentication.
                       properties:
                         key:
@@ -66,7 +66,7 @@ spec:
                       - key
                       type: object
                     username:
-                      description: The secret in the service monitor namespace that
+                      description: The secret in the service scrape namespace that
                         contains the username for authentication.
                       properties:
                         key:
@@ -812,8 +812,8 @@ spec:
               type: object
             arbitraryFSAccessThroughSMs:
               description: ArbitraryFSAccessThroughSMs configures whether configuration
-                based on a service monitor can access arbitrary files on the file
-                system of the VMAgent container e.g. bearer token files.
+                based on a service scrape can access arbitrary files on the file system
+                of the VMAgent container e.g. bearer token files.
               properties:
                 deny:
                   type: boolean
@@ -2006,13 +2006,24 @@ spec:
                 to false.
               type: boolean
             image:
-              description: Image - victoria metrics agent base image if not specified
-                - use default from operator config
-              type: string
+              description: Image - docker image settings for VMAgent if no specified
+                operator uses default config version
+              properties:
+                pullPolicy:
+                  description: PullPolicy describes how to pull docker image
+                  type: string
+                repository:
+                  description: Repository contains name of docker image + it's repository
+                    if needed
+                  type: string
+                tag:
+                  description: Tag contains desired docker image version
+                  type: string
+              type: object
             imagePullSecrets:
-              description: ImagePullSecrets optional list of references to secrets
-                in the same namespace to use for pulling prometheus and vmagent images
-                from registries see http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod
+              description: ImagePullSecrets An optional list of references to secrets
+                in the same namespace to use for pulling images from registries see
+                http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod
               items:
                 description: LocalObjectReference contains enough information to let
                   you locate the referenced object inside the same namespace.
@@ -3094,7 +3105,7 @@ spec:
               type: string
             overrideHonorLabels:
               description: OverrideHonorLabels if set to true overrides all user configured
-                honor_labels. If HonorLabels is set in ServiceMonitor or PodMonitor
+                honor_labels. If HonorLabels is set in ServiceScrape or PodScrape
                 to true, this overrides honor_labels to false.
               type: boolean
             overrideHonorTimestamps:
@@ -3129,8 +3140,8 @@ spec:
                     definition. Cannot be updated. More info: http://kubernetes.io/docs/user-guide/identifiers#names'
                   type: string
               type: object
-            podMonitorNamespaceSelector:
-              description: PodMonitorNamespaceSelector defines Namespaces to be selected
+            podScrapeNamespaceSelector:
+              description: PodScrapeNamespaceSelector defines Namespaces to be selected
                 for PodMonitor discovery. If nil, only check own namespace.
               properties:
                 matchExpressions:
@@ -3173,10 +3184,10 @@ spec:
                     are ANDed.
                   type: object
               type: object
-            podMonitorSelector:
-              description: PodMonitorSelector defines PodMonitors to be selected for
-                target discovery. if neither this nor serviceMonitorSelector are specified,
-                configuration is unmanaged.
+            podScrapeSelector:
+              description: PodScrapeSelector defines PodScrapes to be selected for
+                target discovery. if neither PodScrapeNamespaceSelector this nor PodScrapeSelector
+                are specified, configuration is unmanaged.
               properties:
                 matchExpressions:
                   description: matchExpressions is a list of label selector requirements.
@@ -3255,7 +3266,7 @@ spec:
                       basic authentication
                     properties:
                       password:
-                        description: The secret in the service monitor namespace that
+                        description: The secret in the service scrape namespace that
                           contains the password for authentication.
                         properties:
                           key:
@@ -3274,7 +3285,7 @@ spec:
                         - key
                         type: object
                       username:
-                        description: The secret in the service monitor namespace that
+                        description: The secret in the service scrape namespace that
                           contains the username for authentication.
                         properties:
                           key:
@@ -3508,12 +3519,6 @@ spec:
                 replica usage
               format: int32
               type: integer
-            replicaExternalLabelName:
-              description: ReplicaExternalLabelName Name of vmagent external label
-                used to denote replica name. Defaults to the value of `prometheus_replica`.
-                External label will _not_ be added when value is set to empty string
-                (`""`).
-              type: string
             resources:
               description: Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
                 if not specified - default setting will be used
@@ -3678,8 +3683,8 @@ spec:
               description: ServiceAccountName is the name of the ServiceAccount to
                 use to run the VMAgent Pods. required
               type: string
-            serviceMonitorNamespaceSelector:
-              description: ServiceMonitorNamespaceSelector Namespaces to be selected
+            serviceScrapeNamespaceSelector:
+              description: ServiceScrapeNamespaceSelector Namespaces to be selected
                 for ServiceMonitor discovery. If nil, only check own namespace.
               properties:
                 matchExpressions:
@@ -3722,10 +3727,10 @@ spec:
                     are ANDed.
                   type: object
               type: object
-            serviceMonitorSelector:
-              description: ServiceMonitorSelector defines ServiceMonitors to be selected
-                for target discovery. if neither this nor podMonitorSelector are specified,
-                configuration is unmanaged.
+            serviceScrapeSelector:
+              description: ServiceScrapeSelector defines ServiceScrapes to be selected
+                for target discovery. if neither serviceScrapeNamespaceSelector nor
+                serviceScrapeSelector are specified, configuration is unmanaged.
               properties:
                 matchExpressions:
                   description: matchExpressions is a list of label selector requirements.
@@ -3807,9 +3812,6 @@ spec:
                     type: string
                 type: object
               type: array
-            version:
-              description: Version for VMAgent.
-              type: string
             vmAgentExternalLabelName:
               description: VMAgentExternalLabelName Name of vmAgent external label
                 used to denote vmAgent instance name. Defaults to the value of `prometheus`.

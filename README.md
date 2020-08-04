@@ -3,8 +3,10 @@
 ## Documentation
 
 - quick start [doc](/docs/quick-start.MD)
-- design and description of implementation [design](/docs/design.MD)
 - high availability [doc](/docs/high-availability.MD)
+- relabeling configuration [doc](/docs/relabeling.MD)
+- managing crd objects versions [doc](/docs/managing-versions.MD)
+- design and description of implementation [design](/docs/design.MD)
 - operator objects description [doc](/docs/api.MD)
 
 

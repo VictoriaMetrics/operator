@@ -9,16 +9,50 @@ To run VMAgent in a highly available manner you have to configure deduplication 
 
 Then increase replicas for VMAgent.
 
+create `VMSingle` with dedup flag
+```yaml
+cat <<EOF | kubectl apply -f -
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMSingle
+metadata:
+  name: example-vmsingle-persisted
+spec:
+  retentionPeriod: "1"
+  extraArgs:
+    dedup.minScrapeInterval: 60s
+EOF
+```
+create `VMAgent` with 2 replicas
+```yaml
+cat <<EOF | kubectl apply -f -
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAgent
+metadata:
+  name: example-vmagent
+spec:
+  serviceScrapeNamespaceSelector: {}
+  podScrapeNamespaceSelector: {}
+  podScrapeSelector: {}
+  serviceScrapeSelector: {}
+  scrapeInterval: 60s
+  vmAgentExternalLabelName: vmagent-ha
+  replicaCount: 2
+  serviceAccountName: vmagent
+  remoteWrite:
+    - url: "http://vmsingle-example-vmsingle-persisted.default.svc:8429/api/v1/write"
+EOF
+
+```
+
 ## VMAlert
 
-It can be launched with multiple replicas without additional configuration, alertmanager is responsible for alert deduplication.
+It can be launched with multiple replicas without an additional configuration, alertmanager is responsible for alert deduplication.
 
-You need to turn on the deduplication on storage side if multiple vmagents write to one victoria metrics storage
 
 
 ## VMSingle
 
-It doesn't support high availability, for such purpose use VMCluster or duplicate the setup.
+It doesn't support high availability by default, for such purpose use VMCluster or duplicate the setup.
 
 
 ## VMCluster
@@ -34,12 +68,24 @@ kind: VMCluster
 metadata:
   name: example-vmcluster-persistent
 spec:
-  # Add fields here
   retentionPeriod: "4"
-  replicationFactor: 2
+  replicationFactor: 2       
   vmstorage:
     replicaCount: 2
     storageDataPath: "/vm-data"
+    podMetadata:
+      labels:
+        owner: infra
+    affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: "app.kubernetes.io/name"
+                operator: In
+                values:
+                - "vmstorage"
+            topologyKey: "kubernetes.io/hostname"
     storage:
       volumeClaimTemplate:
         spec:
@@ -48,11 +94,25 @@ spec:
               storage: 10Gi
     resources:
       limits:
-        cpu: "0.5"
-        memory: 500Mi
+        cpu: "2"
+        memory: 2048Mi
   vmselect:
     replicaCount: 2
     cacheMountPath: "/select-cache"
+    podMetadata:
+      labels:
+        owner: infra
+    affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: "app.kubernetes.io/name"
+                operator: In
+                values:
+                - "vmselect"
+            topologyKey: "kubernetes.io/hostname"
+
     storage:
       volumeClaimTemplate:
         spec:
@@ -61,17 +121,35 @@ spec:
               storage: 2Gi
     resources:
       limits:
-        cpu: "0.2"
-        memory: "300Mi"
+        cpu: "1"
+        memory: "500Mi"
   vminsert:
     replicaCount: 2
+    podMetadata:
+      labels:
+        owner: infra
+    affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: "app.kubernetes.io/name"
+                operator: In
+                values:
+                - "vminsert"
+            topologyKey: "kubernetes.io/hostname"
+    resources:
+      limits:
+        cpu: "1"
+        memory: "500Mi"
+
 EOF
 ```
  
-Then wait for cluster become ready
+Then wait for the cluster become ready
 
 ```bash
-get vmclusters -w
+kubectl get vmclusters -w
 NAME                           INSERT COUNT   STORAGE COUNT   SELECT COUNT   AGE   STATUS
 example-vmcluster-persistent   2              2               2              2s    expanding
 example-vmcluster-persistent   2              2               2              30s   operational
@@ -98,8 +176,10 @@ kind: VMAgent
 metadata:
   name: example-vmagent
 spec:
-  serviceMonitorNamespaceSelector: {}
-  serviceMonitorSelector: {}
+  serviceScrapeNamespaceSelector: {}
+  serviceScrapeSelector: {}
+  podScrapeNamespaceSelector: {}
+  podScrapeSelector: {}
   # Add fields here
   replicaCount: 1
   serviceAccountName: vmagent
@@ -108,7 +188,7 @@ spec:
 EOF
 ```
 
-Let's add vmalert 
+Config for vmalert 
 
 ```yaml
 cat << EOF | kubectl apply -f -

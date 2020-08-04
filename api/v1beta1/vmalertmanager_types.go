@@ -40,25 +40,12 @@ type VMAlertmanagerSpec struct {
 	// PodMetadata configures Labels and Annotations which are propagated to the alertmanager pods.
 	// +optional
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
-	// Image if specified has precedence over baseImage, tag and sha
-	// combinations.
+
+	// Image - docker image settings for VMAlertmanager
+	// if no specified operator uses default config version
 	// +optional
-	Image *string `json:"image,omitempty"`
-	// Version the cluster should be on.
-	// +optional
-	Version string `json:"version,omitempty"`
-	// Tag of VMAlertmanager container image to be deployed. Defaults to the value of `version`.
-	// Version is ignored if Tag is set.
-	// +optional
-	Tag string `json:"tag,omitempty"`
-	// SHA of VMAlertmanager container image to be deployed. Defaults to the value of `version`.
-	// Similar to a tag, but the SHA explicitly deploys an immutable container image.
-	// Version and Tag are ignored if SHA is set.
-	// +optional
-	SHA string `json:"sha,omitempty"`
-	// BaseImage that is used to deploy pods, without tag.
-	// +optional
-	BaseImage string `json:"baseImage,omitempty"`
+	Image Image `json:"image,omitempty"`
+
 	// ImagePullSecrets An optional list of references to secrets in the same namespace
 	// to use for pulling images from registries
 	// see http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod

@@ -17,15 +17,16 @@ import (
 type VMAlertSpec struct {
 	// PodMetadata configures Labels and Annotations which are propagated to the VMAlert pods.
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
-	// Image victoria metrics alert base image
+	// Image - docker image settings for VMAlert
+	// if no specified operator uses default config version
 	// +optional
-	Image *string `json:"image,omitempty"`
-	// Version the VMAlert should be on.
-	Version string `json:"version,omitempty"`
+	Image Image `json:"image,omitempty"`
 	// ImagePullSecrets An optional list of references to secrets in the same namespace
-	// to use for pulling prometheus and VMAlert images from registries
+	// to use for pulling images from registries
 	// see http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod
+	// +optional
 	ImagePullSecrets []v1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
+
 	// Secrets is a list of Secrets in the same namespace as the VMAlert
 	// object, which shall be mounted into the VMAlert Pods.
 	// The Secrets are mounted into /etc/vmalert/secrets/<secret-name>.

@@ -59,7 +59,7 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 						RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
 							{URL: "http://remote-write"},
 						},
-						ServiceMonitorSelector: &metav1.LabelSelector{},
+						ServiceScrapeSelector: &metav1.LabelSelector{},
 					},
 				},
 			},
@@ -155,7 +155,7 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 							{URL: "http://remote-write4",
 								TLSConfig: &victoriametricsv1beta1.TLSConfig{CertFile: "/tmp/cert1", KeyFile: "/tmp/key1", CAFile: "/tmp/ca"}},
 						},
-						ServiceMonitorSelector: &metav1.LabelSelector{},
+						ServiceScrapeSelector: &metav1.LabelSelector{},
 					},
 				},
 			},

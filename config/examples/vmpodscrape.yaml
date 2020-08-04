@@ -7,5 +7,6 @@ spec:
     - port: metrics
       scheme: http
   selector:
-    monitored-by: vm-operator
-    app.kubernetes.io/name: example-application
+    matchLabels:
+      monitored-by: vm-operator
+      app.kubernetes.io/name: example-application

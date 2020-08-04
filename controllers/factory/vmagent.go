@@ -161,12 +161,16 @@ func newDeployForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *conf.BaseOperato
 	cr = cr.DeepCopy()
 
 	//inject default
-	if cr.Spec.Image == nil {
-		cr.Spec.Image = &c.VMAgentDefault.Image
+	if cr.Spec.Image.Repository == "" {
+		cr.Spec.Image.Repository = c.VMAgentDefault.Image
 	}
-	if cr.Spec.Version == "" {
-		cr.Spec.Version = c.VMAgentDefault.Version
+	if cr.Spec.Image.Tag == "" {
+		cr.Spec.Image.Tag = c.VMAgentDefault.Version
 	}
+	if cr.Spec.Image.PullPolicy == "" {
+		cr.Spec.Image.PullPolicy = corev1.PullIfNotPresent
+	}
+
 	if cr.Spec.Port == "" {
 		cr.Spec.Port = c.VMAgentDefault.Port
 	}
@@ -427,7 +431,8 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *conf.BaseOperator
 	operatorContainers := append([]corev1.Container{
 		{
 			Name:                     "vmagent",
-			Image:                    fmt.Sprintf("%s:%s", *cr.Spec.Image, cr.Spec.Version),
+			Image:                    fmt.Sprintf("%s:%s", cr.Spec.Image.Repository, cr.Spec.Image.Tag),
+			ImagePullPolicy:          cr.Spec.Image.PullPolicy,
 			Ports:                    ports,
 			Args:                     args,
 			Env:                      envs,
@@ -519,11 +524,11 @@ func addAddtionalScrapeConfigOwnership(cr *victoriametricsv1beta1.VMAgent, rclie
 }
 
 func CreateOrUpdateTlsAssets(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) error {
-	monitors, err := SelectServiceMonitors(ctx, cr, rclient)
+	scrapes, err := SelectServiceScrapes(ctx, cr, rclient)
 	if err != nil {
-		return fmt.Errorf("cannot select service monitors for tls Assets: %w", err)
+		return fmt.Errorf("cannot select service scrapes for tls Assets: %w", err)
 	}
-	assets, err := loadTLSAssets(ctx, rclient, cr, monitors)
+	assets, err := loadTLSAssets(ctx, rclient, cr, scrapes)
 	if err != nil {
 		return fmt.Errorf("cannot load tls assets: %w", err)
 	}
@@ -560,7 +565,7 @@ func CreateOrUpdateTlsAssets(ctx context.Context, cr *victoriametricsv1beta1.VMA
 	return rclient.Update(ctx, tlsAssetsSecret)
 }
 
-func loadTLSAssets(ctx context.Context, rclient client.Client, cr *victoriametricsv1beta1.VMAgent, monitors map[string]*victoriametricsv1beta1.VMServiceScrape) (map[string]string, error) {
+func loadTLSAssets(ctx context.Context, rclient client.Client, cr *victoriametricsv1beta1.VMAgent, scrapes map[string]*victoriametricsv1beta1.VMServiceScrape) (map[string]string, error) {
 	assets := map[string]string{}
 	nsSecretCache := make(map[string]*corev1.Secret)
 	nsConfigMapCache := make(map[string]*corev1.ConfigMap)
@@ -628,7 +633,7 @@ func loadTLSAssets(ctx context.Context, rclient client.Client, cr *victoriametri
 			assets[rw.TLSConfig.BuildAssetPath(cr.Namespace, selector.Name, selector.Key)] = asset
 		}
 	}
-	for _, mon := range monitors {
+	for _, mon := range scrapes {
 		for _, ep := range mon.Spec.Endpoints {
 			if ep.TLSConfig == nil {
 				continue

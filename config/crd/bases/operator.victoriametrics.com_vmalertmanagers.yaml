@@ -389,9 +389,6 @@ spec:
                       type: array
                   type: object
               type: object
-            baseImage:
-              description: BaseImage that is used to deploy pods, without tag.
-              type: string
             clusterAdvertiseAddress:
               description: 'ClusterAdvertiseAddress is the explicit address to advertise in cluster. Needs to be provided for non RFC1918 [1] (public) addresses. [1] RFC1918: https://tools.ietf.org/html/rfc1918'
               type: string
@@ -1126,8 +1123,18 @@ spec:
               description: HostNetwork controls whether the pod may use the node network namespace
               type: boolean
             image:
-              description: Image if specified has precedence over baseImage, tag and sha combinations.
-              type: string
+              description: Image - docker image settings for VMAlertmanager if no specified operator uses default config version
+              properties:
+                pullPolicy:
+                  description: PullPolicy describes how to pull docker image
+                  type: string
+                repository:
+                  description: Repository contains name of docker image + it's repository if needed
+                  type: string
+                tag:
+                  description: Tag contains desired docker image version
+                  type: string
+              type: object
             imagePullSecrets:
               description: ImagePullSecrets An optional list of references to secrets in the same namespace to use for pulling images from registries see http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod
               items:
@@ -2006,9 +2013,6 @@ spec:
             serviceAccountName:
               description: ServiceAccountName is the name of the ServiceAccount to use
               type: string
-            sha:
-              description: SHA of VMAlertmanager container image to be deployed. Defaults to the value of `version`. Similar to a tag, but the SHA explicitly deploys an immutable container image. Version and Tag are ignored if SHA is set.
-              type: string
             storage:
               description: Storage is the definition of how storage will be used by the VMAlertmanager instances.
               properties:
@@ -2193,9 +2197,6 @@ spec:
                       type: object
                   type: object
               type: object
-            tag:
-              description: Tag of VMAlertmanager container image to be deployed. Defaults to the value of `version`. Version is ignored if Tag is set.
-              type: string
             tolerations:
               description: Tolerations If specified, the pod's tolerations.
               items:
@@ -2219,9 +2220,6 @@ spec:
                     type: string
                 type: object
               type: array
-            version:
-              description: Version the cluster should be on.
-              type: string
             volumeMounts:
               description: VolumeMounts allows configuration of additional VolumeMounts on the output StatefulSet definition. VolumeMounts specified will be appended to other VolumeMounts in the alertmanager container, that are generated as a result of StorageSpec objects.
               items:

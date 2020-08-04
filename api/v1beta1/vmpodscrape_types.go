@@ -101,10 +101,10 @@ type PodMetricsEndpoint struct {
 }
 
 // ArbitraryFSAccessThroughSMsConfig enables users to configure, whether
-// a service monitor selected by the vmagent instance is allowed to use
+// a service scrape selected by the vmagent instance is allowed to use
 // arbitrary files on the file system of the vmagent container. This is the case
 // when e.g. a service scrape specifies a BearerTokenFile in an endpoint. A
-// malicious user could create a service monitor selecting arbitrary secret files
+// malicious user could create a service scrape selecting arbitrary secret files
 // in the vmagent container. Those secrets would then be sent with a scrape
 // request by vmagent to a malicious target. Denying the above would prevent the
 // attack, users can instead use the BearerTokenSecret field.

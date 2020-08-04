@@ -152,7 +152,7 @@ func SelectServiceScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgen
 	}
 
 	// if namespaces isn't nil, then nameSpaceSelector is defined
-	// but monitorSelector maybe be nil and we must set it to catch all value
+	// but scrapeSelector maybe be nil and we must set it to catch all value
 	if namespaces != nil && cr.Spec.ServiceScrapeSelector == nil {
 		cr.Spec.ServiceScrapeSelector = &metav1.LabelSelector{}
 	}
@@ -246,7 +246,7 @@ func SelectPodScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, r
 	}
 
 	// if namespaces isn't nil, then nameSpaceSelector is defined
-	//but monitorSelector maybe be nil and we have to set it to catch all value
+	//but scrapeSelector maybe be nil and we have to set it to catch all value
 	if namespaces != nil && cr.Spec.PodScrapeSelector == nil {
 		cr.Spec.PodScrapeSelector = &metav1.LabelSelector{}
 	}
@@ -273,7 +273,7 @@ func SelectPodScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, r
 			servMons := &victoriametricsv1beta1.VMPodScrapeList{}
 			err = rclient.List(ctx, servMons, listOpts)
 			if err != nil {
-				return nil, fmt.Errorf("cannot list podmonitors at namespace: %s, err: %w", ns, err)
+				return nil, fmt.Errorf("cannot list podscrapes at namespace: %s, err: %w", ns, err)
 			}
 			podScrapesCombined = append(podScrapesCombined, servMons.Items...)
 

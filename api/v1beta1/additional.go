@@ -83,11 +83,11 @@ type EmbeddedPersistentVolumeClaim struct {
 // More info: https://prometheus.io/docs/operating/configuration/#endpoints
 // +k8s:openapi-gen=true
 type BasicAuth struct {
-	// The secret in the service monitor namespace that contains the username
+	// The secret in the service scrape namespace that contains the username
 	// for authentication.
 	// +optional
 	Username v1.SecretKeySelector `json:"username,omitempty"`
-	// The secret in the service monitor namespace that contains the password
+	// The secret in the service scrape namespace that contains the password
 	// for authentication.
 	// +optional
 	Password v1.SecretKeySelector `json:"password,omitempty"`

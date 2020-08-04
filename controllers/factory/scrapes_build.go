@@ -248,7 +248,7 @@ func generatePodScrapeConfig(
 		relabelings []yaml.MapSlice
 		labelKeys   []string
 	)
-	// Filter targets by pods selected by the monitor.
+	// Filter targets by pods selected by the scrape.
 	// Exact label matches.
 	for k := range m.Spec.Selector.MatchLabels {
 		labelKeys = append(labelKeys, k)
@@ -477,7 +477,7 @@ func generateServiceScrapeConfig(
 
 	var relabelings []yaml.MapSlice
 
-	// Filter targets by services selected by the monitor.
+	// Filter targets by services selected by the scrape.
 
 	// Exact label matches.
 	var labelKeys []string
@@ -814,6 +814,7 @@ func buildExternalLabels(p *victoriametricsv1beta1.VMAgent) yaml.MapSlice {
 	m := map[string]string{}
 
 	// Use "prometheus" external label name by default if field is missing.
+	// in case of migration from prometheus to vmagent, it helps to have same labels
 	// Do not add external label if field is set to empty string.
 	prometheusExternalLabelName := "prometheus"
 	if p.Spec.VMAgentExternalLabelName != nil {

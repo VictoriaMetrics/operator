@@ -183,7 +183,7 @@ type VMAgentSpec struct {
 	// +optional
 	AdditionalScrapeConfigs *v1.SecretKeySelector `json:"additionalScrapeConfigs,omitempty"`
 	// ArbitraryFSAccessThroughSMs configures whether configuration
-	// based on a service monitor can access arbitrary files on the file system
+	// based on a service scrape can access arbitrary files on the file system
 	// of the VMAgent container e.g. bearer token files.
 	// +optional
 	ArbitraryFSAccessThroughSMs ArbitraryFSAccessThroughSMsConfig `json:"arbitraryFSAccessThroughSMs,omitempty"`

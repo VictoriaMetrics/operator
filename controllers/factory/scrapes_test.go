@@ -52,7 +52,7 @@ func TestSelectServiceMonitors(t *testing.T) {
 		predefinedObjest []runtime.Object
 	}{
 		{
-			name: "select service monitor inside vmagent namespace",
+			name: "select service scrape inside vmagent namespace",
 			args: args{
 				p: &victoriametricsv1beta1.VMAgent{
 					ObjectMeta: metav1.ObjectMeta{
@@ -75,7 +75,7 @@ func TestSelectServiceMonitors(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "select service monitor from namespace with filter",
+			name: "select service scrape from namespace with filter",
 			args: args{
 				p: &victoriametricsv1beta1.VMAgent{
 					ObjectMeta: metav1.ObjectMeta{
@@ -140,7 +140,7 @@ func TestSelectPodMonitors(t *testing.T) {
 		predefinedObjects []runtime.Object
 	}{
 		{
-			name: "selector pod monitor at vmagent ns",
+			name: "selector pod scrape at vmagent ns",
 			args: args{
 				p: &victoriametricsv1beta1.VMAgent{
 					ObjectMeta: metav1.ObjectMeta{
@@ -166,7 +166,7 @@ func TestSelectPodMonitors(t *testing.T) {
 			want:    []string{"default/pod1"},
 		},
 		{
-			name: "selector pod monitor at different ns with ns selector",
+			name: "selector pod scrape at different ns with ns selector",
 			args: args{
 				p: &victoriametricsv1beta1.VMAgent{
 					ObjectMeta: metav1.ObjectMeta{

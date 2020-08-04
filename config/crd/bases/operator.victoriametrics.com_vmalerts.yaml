@@ -391,7 +391,7 @@ spec:
                   description: BasicAuth allow datasource to authenticate over basic authentication
                   properties:
                     password:
-                      description: The secret in the service monitor namespace that contains the password for authentication.
+                      description: The secret in the service scrape namespace that contains the password for authentication.
                       properties:
                         key:
                           description: The key of the secret to select from.  Must be a valid secret key.
@@ -406,7 +406,7 @@ spec:
                         - key
                       type: object
                     username:
-                      description: The secret in the service monitor namespace that contains the username for authentication.
+                      description: The secret in the service scrape namespace that contains the username for authentication.
                       properties:
                         key:
                           description: The key of the secret to select from.  Must be a valid secret key.
@@ -670,7 +670,7 @@ spec:
                   description: BasicAuth allow notifier to authenticate over basic authentication
                   properties:
                     password:
-                      description: The secret in the service monitor namespace that contains the password for authentication.
+                      description: The secret in the service scrape namespace that contains the password for authentication.
                       properties:
                         key:
                           description: The key of the secret to select from.  Must be a valid secret key.
@@ -685,7 +685,7 @@ spec:
                         - key
                       type: object
                     username:
-                      description: The secret in the service monitor namespace that contains the username for authentication.
+                      description: The secret in the service scrape namespace that contains the username for authentication.
                       properties:
                         key:
                           description: The key of the secret to select from.  Must be a valid secret key.
@@ -838,7 +838,7 @@ spec:
                   description: BasicAuth allow an endpoint to authenticate over basic authentication
                   properties:
                     password:
-                      description: The secret in the service monitor namespace that contains the password for authentication.
+                      description: The secret in the service scrape namespace that contains the password for authentication.
                       properties:
                         key:
                           description: The key of the secret to select from.  Must be a valid secret key.
@@ -853,7 +853,7 @@ spec:
                         - key
                       type: object
                     username:
-                      description: The secret in the service monitor namespace that contains the username for authentication.
+                      description: The secret in the service scrape namespace that contains the username for authentication.
                       properties:
                         key:
                           description: The key of the secret to select from.  Must be a valid secret key.
@@ -986,7 +986,7 @@ spec:
                   description: BasicAuth allow an endpoint to authenticate over basic authentication
                   properties:
                     password:
-                      description: The secret in the service monitor namespace that contains the password for authentication.
+                      description: The secret in the service scrape namespace that contains the password for authentication.
                       properties:
                         key:
                           description: The key of the secret to select from.  Must be a valid secret key.
@@ -1001,7 +1001,7 @@ spec:
                         - key
                       type: object
                     username:
-                      description: The secret in the service monitor namespace that contains the username for authentication.
+                      description: The secret in the service scrape namespace that contains the username for authentication.
                       properties:
                         key:
                           description: The key of the secret to select from.  Must be a valid secret key.

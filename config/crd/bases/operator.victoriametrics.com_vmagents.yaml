@@ -2006,13 +2006,24 @@ spec:
                 to false.
               type: boolean
             image:
-              description: Image - victoria metrics agent base image if not specified
-                - use default from operator config
-              type: string
+              description: Image - docker image settings for VMAgent if no specified
+                operator uses default config version
+              properties:
+                pullPolicy:
+                  description: PullPolicy describes how to pull docker image
+                  type: string
+                repository:
+                  description: Repository contains name of docker image + it's repository
+                    if needed
+                  type: string
+                tag:
+                  description: Tag contains desired docker image version
+                  type: string
+              type: object
             imagePullSecrets:
-              description: ImagePullSecrets optional list of references to secrets
-                in the same namespace to use for pulling prometheus and vmagent images
-                from registries see http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod
+              description: ImagePullSecrets An optional list of references to secrets
+                in the same namespace to use for pulling images from registries see
+                http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod
               items:
                 description: LocalObjectReference contains enough information to let
                   you locate the referenced object inside the same namespace.
@@ -3801,9 +3812,6 @@ spec:
                     type: string
                 type: object
               type: array
-            version:
-              description: Version for VMAgent.
-              type: string
             vmAgentExternalLabelName:
               description: VMAgentExternalLabelName Name of vmAgent external label
                 used to denote vmAgent instance name. Defaults to the value of `prometheus`.

@@ -18,15 +18,12 @@ type VMAgentSpec struct {
 	// PodMetadata configures Labels and Annotations which are propagated to the vmagent pods.
 	// +optional
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
-	// Image - victoria metrics agent base image
-	// if not specified - use default from operator config
+	// Image - docker image settings for VMAgent
+	// if no specified operator uses default config version
 	// +optional
-	Image *string `json:"image,omitempty"`
-	// Version for VMAgent.
-	// +optional
-	Version string `json:"version,omitempty"`
-	// ImagePullSecrets optional list of references to secrets in the same namespace
-	// to use for pulling prometheus and vmagent images from registries
+	Image Image `json:"image,omitempty"`
+	// ImagePullSecrets An optional list of references to secrets in the same namespace
+	// to use for pulling images from registries
 	// see http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod
 	// +optional
 	ImagePullSecrets []v1.LocalObjectReference `json:"imagePullSecrets,omitempty"`

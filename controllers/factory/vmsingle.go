@@ -122,14 +122,17 @@ func CreateOrUpdateVMSingle(ctx context.Context, cr *victoriametricsv1beta1.VMSi
 func newDeployForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *conf.BaseOperatorConf) (*appsv1.Deployment, error) {
 	cr = cr.DeepCopy()
 
-	if cr.Spec.Image == nil {
-		cr.Spec.Image = &c.VMSingleDefault.Image
+	if cr.Spec.Image.Repository == "" {
+		cr.Spec.Image.Repository = c.VMSingleDefault.Image
 	}
-	if cr.Spec.Version == "" {
-		cr.Spec.Version = c.VMSingleDefault.Version
+	if cr.Spec.Image.Tag == "" {
+		cr.Spec.Image.Tag = c.VMSingleDefault.Version
 	}
 	if cr.Spec.Port == "" {
 		cr.Spec.Port = c.VMSingleDefault.Port
+	}
+	if cr.Spec.Image.PullPolicy == "" {
+		cr.Spec.Image.PullPolicy = corev1.PullIfNotPresent
 	}
 
 	if cr.Spec.Resources.Requests == nil {
@@ -311,7 +314,7 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *conf.BaseOperat
 	operatorContainers := append([]corev1.Container{
 		{
 			Name:                     "vmsignle",
-			Image:                    fmt.Sprintf("%s:%s", *cr.Spec.Image, cr.Spec.Version),
+			Image:                    fmt.Sprintf("%s:%s", cr.Spec.Image.Repository, cr.Spec.Image.Tag),
 			Ports:                    ports,
 			Args:                     args,
 			VolumeMounts:             vmMounts,
@@ -320,6 +323,7 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *conf.BaseOperat
 			Resources:                cr.Spec.Resources,
 			Env:                      envs,
 			TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+			ImagePullPolicy:          cr.Spec.Image.PullPolicy,
 		},
 	}, additionalContainers...)
 

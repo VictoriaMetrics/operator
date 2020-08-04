@@ -678,11 +678,7 @@ func (in *VMAgentSpec) DeepCopyInto(out *VMAgentSpec) {
 		*out = new(EmbeddedObjectMetadata)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.Image != nil {
-		in, out := &in.Image, &out.Image
-		*out = new(string)
-		**out = **in
-	}
+	out.Image = in.Image
 	if in.ImagePullSecrets != nil {
 		in, out := &in.ImagePullSecrets, &out.ImagePullSecrets
 		*out = make([]v1.LocalObjectReference, len(*in))
@@ -1037,11 +1033,7 @@ func (in *VMAlertSpec) DeepCopyInto(out *VMAlertSpec) {
 		*out = new(EmbeddedObjectMetadata)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.Image != nil {
-		in, out := &in.Image, &out.Image
-		*out = new(string)
-		**out = **in
-	}
+	out.Image = in.Image
 	if in.ImagePullSecrets != nil {
 		in, out := &in.ImagePullSecrets, &out.ImagePullSecrets
 		*out = make([]v1.LocalObjectReference, len(*in))
@@ -1247,11 +1239,7 @@ func (in *VMAlertmanagerSpec) DeepCopyInto(out *VMAlertmanagerSpec) {
 		*out = new(EmbeddedObjectMetadata)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.Image != nil {
-		in, out := &in.Image, &out.Image
-		*out = new(string)
-		**out = **in
-	}
+	out.Image = in.Image
 	if in.ImagePullSecrets != nil {
 		in, out := &in.ImagePullSecrets, &out.ImagePullSecrets
 		*out = make([]v1.LocalObjectReference, len(*in))
@@ -2120,11 +2108,7 @@ func (in *VMSingleSpec) DeepCopyInto(out *VMSingleSpec) {
 		*out = new(EmbeddedObjectMetadata)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.Image != nil {
-		in, out := &in.Image, &out.Image
-		*out = new(string)
-		**out = **in
-	}
+	out.Image = in.Image
 	if in.ImagePullSecrets != nil {
 		in, out := &in.ImagePullSecrets, &out.ImagePullSecrets
 		*out = make([]v1.LocalObjectReference, len(*in))

@@ -161,12 +161,16 @@ func newDeployForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *conf.BaseOperato
 	cr = cr.DeepCopy()
 
 	//inject default
-	if cr.Spec.Image == nil {
-		cr.Spec.Image = &c.VMAgentDefault.Image
+	if cr.Spec.Image.Repository == "" {
+		cr.Spec.Image.Repository = c.VMAgentDefault.Image
 	}
-	if cr.Spec.Version == "" {
-		cr.Spec.Version = c.VMAgentDefault.Version
+	if cr.Spec.Image.Tag == "" {
+		cr.Spec.Image.Tag = c.VMAgentDefault.Version
 	}
+	if cr.Spec.Image.PullPolicy == "" {
+		cr.Spec.Image.PullPolicy = corev1.PullIfNotPresent
+	}
+
 	if cr.Spec.Port == "" {
 		cr.Spec.Port = c.VMAgentDefault.Port
 	}
@@ -427,7 +431,8 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *conf.BaseOperator
 	operatorContainers := append([]corev1.Container{
 		{
 			Name:                     "vmagent",
-			Image:                    fmt.Sprintf("%s:%s", *cr.Spec.Image, cr.Spec.Version),
+			Image:                    fmt.Sprintf("%s:%s", cr.Spec.Image.Repository, cr.Spec.Image.Tag),
+			ImagePullPolicy:          cr.Spec.Image.PullPolicy,
 			Ports:                    ports,
 			Args:                     args,
 			Env:                      envs,

@@ -4079,7 +4079,7 @@ spec:
                       description: extra args like maxBytesPerSecond default 0
                       type: object
                     image:
-                      description: Image - docker image settings for VMBackyper
+                      description: Image - docker image settings for VMBackuper
                       properties:
                         pullPolicy:
                           description: PullPolicy describes how to pull docker image
@@ -4107,7 +4107,7 @@ spec:
                         - PANIC
                       type: string
                     port:
-                      description: Port for health check connetions
+                      description: Port for health check connections
                       type: string
                     resources:
                       description: Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/ if not defined default resources from operator config will be used

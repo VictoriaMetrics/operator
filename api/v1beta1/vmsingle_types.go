@@ -18,12 +18,10 @@ type VMSingleSpec struct {
 	// PodMetadata configures Labels and Annotations which are propagated to the VMSingle pods.
 	// +optional
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
-	// Image victoria metrics single base image
+	// Image - docker image settings for VMSingle
+	// if no specified operator uses default config version
 	// +optional
-	Image *string `json:"image,omitempty"`
-	// Version of victoria metrics single
-	// +optional
-	Version string `json:"version,omitempty"`
+	Image Image `json:"image,omitempty"`
 	// ImagePullSecrets An optional list of references to secrets in the same namespace
 	// to use for pulling images from registries
 	// see http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod

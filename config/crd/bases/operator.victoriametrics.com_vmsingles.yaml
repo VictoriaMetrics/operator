@@ -1777,8 +1777,20 @@ spec:
                 namespace
               type: boolean
             image:
-              description: Image victoria metrics single base image
-              type: string
+              description: Image - docker image settings for VMSingle if no specified
+                operator uses default config version
+              properties:
+                pullPolicy:
+                  description: PullPolicy describes how to pull docker image
+                  type: string
+                repository:
+                  description: Repository contains name of docker image + it's repository
+                    if needed
+                  type: string
+                tag:
+                  description: Tag contains desired docker image version
+                  type: string
+              type: object
             imagePullSecrets:
               description: ImagePullSecrets An optional list of references to secrets
                 in the same namespace to use for pulling images from registries see
@@ -3234,9 +3246,6 @@ spec:
                     type: string
                 type: object
               type: array
-            version:
-              description: Version of victoria metrics single
-              type: string
             vmBackup:
               description: VMBackup configuration for backup
               properties:
@@ -3288,7 +3297,7 @@ spec:
                   description: extra args like maxBytesPerSecond default 0
                   type: object
                 image:
-                  description: Image - docker image settings for VMBackyper
+                  description: Image - docker image settings for VMBackuper
                   properties:
                     pullPolicy:
                       description: PullPolicy describes how to pull docker image
@@ -3318,7 +3327,7 @@ spec:
                   - PANIC
                   type: string
                 port:
-                  description: Port for health check connetions
+                  description: Port for health check connections
                   type: string
                 resources:
                   description: Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/

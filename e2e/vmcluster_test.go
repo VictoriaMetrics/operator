@@ -116,7 +116,7 @@ var _ = Describe("e2e vmcluster", func() {
 				Expect(k8sClient.Update(context.TODO(), vmCluster)).To(Succeed())
 				Eventually(func() string {
 					return expectPodCount(k8sClient, 2, namespace, vmCluster.VMInsertSelectorLabels())
-				}, 50, 1).Should(BeEmpty())
+				}, 70, 1).Should(BeEmpty())
 
 			})
 

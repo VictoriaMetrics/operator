@@ -20,13 +20,13 @@ import (
 var invalidDNS1123Characters = regexp.MustCompile("[^-a-z0-9]+")
 
 func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client, c *conf.BaseOperatorConf) error {
-	// If no service or pod monitor selectors are configured, the user wants to
+	// If no service or pod scrape selectors are configured, the user wants to
 	// manage configuration themselves. Do create an empty Secret if it doesn't
 	// exist.
 	l := log.WithValues("vmagent", cr.Name, "namespace", cr.Namespace)
 
-	if cr.Spec.ServiceMonitorSelector == nil && cr.Spec.PodMonitorSelector == nil {
-		l.Info("neither ServiceMonitor not PodMonitor selector specified, leaving configuration unmanaged")
+	if cr.Spec.ServiceScrapeSelector == nil && cr.Spec.PodScrapeSelector == nil {
+		l.Info("neither ServiceScrape nor PodScrape selector specified, leaving configuration unmanaged")
 
 		s, err := makeEmptyConfigurationSecret(cr, c)
 		if err != nil {
@@ -45,14 +45,14 @@ func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *victoriametricsv
 		return nil
 	}
 
-	smons, err := SelectServiceMonitors(ctx, cr, rclient)
+	smons, err := SelectServiceScrapes(ctx, cr, rclient)
 	if err != nil {
-		return fmt.Errorf("selecting ServiceMonitors failed: %w", err)
+		return fmt.Errorf("selecting ServiceScrapes failed: %w", err)
 	}
 
-	pmons, err := SelectPodMonitors(ctx, cr, rclient)
+	pmons, err := SelectPodScrapes(ctx, cr, rclient)
 	if err != nil {
-		return fmt.Errorf("selecting PodMonitors failed: %w", err)
+		return fmt.Errorf("selecting PodScrapes failed: %w", err)
 	}
 
 	SecretsInNS := &v1.SecretList{}
@@ -126,22 +126,22 @@ func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *victoriametricsv
 	return rclient.Update(ctx, s)
 }
 
-func SelectServiceMonitors(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) (map[string]*victoriametricsv1beta1.VMServiceScrape, error) {
+func SelectServiceScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) (map[string]*victoriametricsv1beta1.VMServiceScrape, error) {
 
 	res := make(map[string]*victoriametricsv1beta1.VMServiceScrape)
 
 	namespaces := []string{}
 
-	//list namespaces matched by  nameselector
+	//list namespaces matched by  namespaceselector
 	//for each namespace apply list with  selector
 	//combine result
-	if cr.Spec.ServiceMonitorNamespaceSelector == nil {
+	if cr.Spec.ServiceScrapeNamespaceSelector == nil {
 		namespaces = append(namespaces, cr.Namespace)
-	} else if cr.Spec.ServiceMonitorNamespaceSelector.MatchExpressions == nil && cr.Spec.ServiceMonitorNamespaceSelector.MatchLabels == nil {
+	} else if cr.Spec.ServiceScrapeNamespaceSelector.MatchExpressions == nil && cr.Spec.ServiceScrapeNamespaceSelector.MatchLabels == nil {
 		namespaces = nil
 	} else {
-		log.Info("namspace selector for serviceMonitors", "selector", cr.Spec.ServiceMonitorNamespaceSelector.String())
-		nsSelector, err := metav1.LabelSelectorAsSelector(cr.Spec.ServiceMonitorNamespaceSelector)
+		log.Info("namspace selector for serviceScrapes", "selector", cr.Spec.ServiceScrapeNamespaceSelector.String())
+		nsSelector, err := metav1.LabelSelectorAsSelector(cr.Spec.ServiceScrapeNamespaceSelector)
 		if err != nil {
 			return nil, fmt.Errorf("cannot convert rulenamespace selector: %w", err)
 		}
@@ -153,46 +153,46 @@ func SelectServiceMonitors(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 
 	// if namespaces isn't nil, then nameSpaceSelector is defined
 	// but monitorSelector maybe be nil and we must set it to catch all value
-	if namespaces != nil && cr.Spec.ServiceMonitorSelector == nil {
-		cr.Spec.ServiceMonitorSelector = &metav1.LabelSelector{}
+	if namespaces != nil && cr.Spec.ServiceScrapeSelector == nil {
+		cr.Spec.ServiceScrapeSelector = &metav1.LabelSelector{}
 	}
-	servMonSelector, err := metav1.LabelSelectorAsSelector(cr.Spec.ServiceMonitorSelector)
+	servMonSelector, err := metav1.LabelSelectorAsSelector(cr.Spec.ServiceScrapeSelector)
 	if err != nil {
-		return nil, fmt.Errorf("cannot convert ServiceMonitorSelector to labelSelector: %w", err)
+		return nil, fmt.Errorf("cannot convert ServiceScrapeSelector to labelSelector: %w", err)
 	}
 
-	servMonsCombined := []victoriametricsv1beta1.VMServiceScrape{}
+	servScrapesCombined := []victoriametricsv1beta1.VMServiceScrape{}
 
 	//list all namespaces for rules with selector
 	if namespaces == nil {
-		log.Info("listing all namespaces for serviceMonitors", "vmagent", cr.Name)
+		log.Info("listing all namespaces for serviceScrapes", "vmagent", cr.Name)
 		servMons := &victoriametricsv1beta1.VMServiceScrapeList{}
 		err = rclient.List(ctx, servMons, &client.ListOptions{LabelSelector: servMonSelector})
 		if err != nil {
 			return nil, fmt.Errorf("cannot list rules from all namespaces: %w", err)
 		}
-		servMonsCombined = append(servMonsCombined, servMons.Items...)
+		servScrapesCombined = append(servScrapesCombined, servMons.Items...)
 
 	} else {
 		for _, ns := range namespaces {
-			log.Info("listing namespace for serviceMonitors", "ns", ns, "vmagent", cr.Name)
+			log.Info("listing namespace for serviceScrapes", "ns", ns, "vmagent", cr.Name)
 			listOpts := &client.ListOptions{Namespace: ns, LabelSelector: servMonSelector}
 			servMons := &victoriametricsv1beta1.VMServiceScrapeList{}
 			err = rclient.List(ctx, servMons, listOpts)
 			if err != nil {
 				return nil, fmt.Errorf("cannot list rules at namespace: %s, err: %w", ns, err)
 			}
-			servMonsCombined = append(servMonsCombined, servMons.Items...)
+			servScrapesCombined = append(servScrapesCombined, servMons.Items...)
 
 		}
 	}
 
-	for _, mon := range servMonsCombined {
-		m := mon.DeepCopy()
-		res[mon.Namespace+"/"+mon.Name] = m
+	for _, servScrape := range servScrapesCombined {
+		m := servScrape.DeepCopy()
+		res[servScrape.Namespace+"/"+servScrape.Name] = m
 	}
 
-	// filter out all service monitors that access
+	// filter out all service scrapes that access
 	// the file system.
 	if cr.Spec.ArbitraryFSAccessThroughSMs.Deny {
 		for namespaceAndName, sm := range res {
@@ -210,16 +210,16 @@ func SelectServiceMonitors(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 		}
 	}
 
-	serviceMonitors := []string{}
+	serviceScrapes := []string{}
 	for k := range res {
-		serviceMonitors = append(serviceMonitors, k)
+		serviceScrapes = append(serviceScrapes, k)
 	}
-	log.Info("selected ServiceMonitors", "servicemonitors", strings.Join(serviceMonitors, ","), "namespace", cr.Namespace, "vmagent", cr.Name)
+	log.Info("selected ServiceScrapes", "servicescrapes", strings.Join(serviceScrapes, ","), "namespace", cr.Namespace, "vmagent", cr.Name)
 
 	return res, nil
 }
 
-func SelectPodMonitors(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) (map[string]*victoriametricsv1beta1.VMPodScrape, error) {
+func SelectPodScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) (map[string]*victoriametricsv1beta1.VMPodScrape, error) {
 
 	res := make(map[string]*victoriametricsv1beta1.VMPodScrape)
 
@@ -229,69 +229,69 @@ func SelectPodMonitors(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, 
 	// for each namespace apply list with  selector
 	// combine result
 
-	if cr.Spec.PodMonitorNamespaceSelector == nil {
+	if cr.Spec.PodScrapeNamespaceSelector == nil {
 		namespaces = append(namespaces, cr.Namespace)
-	} else if cr.Spec.PodMonitorNamespaceSelector.MatchExpressions == nil && cr.Spec.PodMonitorNamespaceSelector.MatchLabels == nil {
+	} else if cr.Spec.PodScrapeNamespaceSelector.MatchExpressions == nil && cr.Spec.PodScrapeNamespaceSelector.MatchLabels == nil {
 		namespaces = nil
 	} else {
-		log.Info("selector for podMonitor", "vmagent", cr.Name, "selector", cr.Spec.PodMonitorNamespaceSelector.String())
-		nsSelector, err := metav1.LabelSelectorAsSelector(cr.Spec.PodMonitorNamespaceSelector)
+		log.Info("selector for podScrape", "vmagent", cr.Name, "selector", cr.Spec.PodScrapeNamespaceSelector.String())
+		nsSelector, err := metav1.LabelSelectorAsSelector(cr.Spec.PodScrapeNamespaceSelector)
 		if err != nil {
-			return nil, fmt.Errorf("cannot convert ruleNameSpace to labelSelector: %w", err)
+			return nil, fmt.Errorf("cannot convert podScrapeNamespaceSelector to labelSelector: %w", err)
 		}
 		namespaces, err = selectNamespaces(ctx, rclient, nsSelector)
 		if err != nil {
-			return nil, fmt.Errorf("cannot select namespaces for rule match: %w", err)
+			return nil, fmt.Errorf("cannot select namespaces for podScrape match: %w", err)
 		}
 	}
 
 	// if namespaces isn't nil, then nameSpaceSelector is defined
 	//but monitorSelector maybe be nil and we have to set it to catch all value
-	if namespaces != nil && cr.Spec.PodMonitorSelector == nil {
-		cr.Spec.PodMonitorSelector = &metav1.LabelSelector{}
+	if namespaces != nil && cr.Spec.PodScrapeSelector == nil {
+		cr.Spec.PodScrapeSelector = &metav1.LabelSelector{}
 	}
-	podMonSelector, err := metav1.LabelSelectorAsSelector(cr.Spec.PodMonitorSelector)
+	podScrapeSelector, err := metav1.LabelSelectorAsSelector(cr.Spec.PodScrapeSelector)
 	if err != nil {
-		return nil, fmt.Errorf("cannot convert podMonitorSelector to label selector: %w", err)
+		return nil, fmt.Errorf("cannot convert podScrapeSelector to label selector: %w", err)
 	}
 
-	podMonsCombined := []victoriametricsv1beta1.VMPodScrape{}
+	podScrapesCombined := []victoriametricsv1beta1.VMPodScrape{}
 
 	//list all namespaces for rules with selector
 	if namespaces == nil {
-		log.Info("listing all namespaces for rules")
+		log.Info("listing all namespaces for podScrapes")
 		servMons := &victoriametricsv1beta1.VMPodScrapeList{}
-		err = rclient.List(ctx, servMons, &client.ListOptions{LabelSelector: podMonSelector})
+		err = rclient.List(ctx, servMons, &client.ListOptions{LabelSelector: podScrapeSelector})
 		if err != nil {
-			return nil, fmt.Errorf("cannot list pod monitors from all namespaces: %w", err)
+			return nil, fmt.Errorf("cannot list podScrapes from all namespaces: %w", err)
 		}
-		podMonsCombined = append(podMonsCombined, servMons.Items...)
+		podScrapesCombined = append(podScrapesCombined, servMons.Items...)
 
 	} else {
 		for _, ns := range namespaces {
-			listOpts := &client.ListOptions{Namespace: ns, LabelSelector: podMonSelector}
+			listOpts := &client.ListOptions{Namespace: ns, LabelSelector: podScrapeSelector}
 			servMons := &victoriametricsv1beta1.VMPodScrapeList{}
 			err = rclient.List(ctx, servMons, listOpts)
 			if err != nil {
 				return nil, fmt.Errorf("cannot list podmonitors at namespace: %s, err: %w", ns, err)
 			}
-			podMonsCombined = append(podMonsCombined, servMons.Items...)
+			podScrapesCombined = append(podScrapesCombined, servMons.Items...)
 
 		}
 	}
 
-	log.Info("filtering namespaces to select PodMonitors from",
+	log.Info("filtering namespaces to select PodScrapes from",
 		"namespace", cr.Namespace, "vmagent", cr.Name)
-	for _, podMon := range podMonsCombined {
-		pm := podMon.DeepCopy()
-		res[podMon.Namespace+"/"+podMon.Name] = pm
+	for _, podScrape := range podScrapesCombined {
+		pm := podScrape.DeepCopy()
+		res[podScrape.Namespace+"/"+podScrape.Name] = pm
 	}
-	podMonitors := make([]string, 0)
+	podScrapes := make([]string, 0)
 	for key := range res {
-		podMonitors = append(podMonitors, key)
+		podScrapes = append(podScrapes, key)
 	}
 
-	log.Info("selected PodMonitors", "podmonitors", strings.Join(podMonitors, ","), "namespace", cr.Namespace, "vmagent", cr.Name)
+	log.Info("selected PodScrapes", "podscrapes", strings.Join(podScrapes, ","), "namespace", cr.Namespace, "vmagent", cr.Name)
 
 	return res, nil
 }
@@ -314,7 +314,7 @@ func loadBasicAuthSecrets(
 				if err != nil {
 					return nil, fmt.Errorf("could not generate basicAuth for vmservicescrape %s. %w", mon.Name, err)
 				}
-				secrets[fmt.Sprintf("serviceMonitor/%s/%s/%d", mon.Namespace, mon.Name, i)] = credentials
+				secrets[fmt.Sprintf("serviceScrape/%s/%s/%d", mon.Namespace, mon.Name, i)] = credentials
 			}
 
 		}
@@ -375,7 +375,7 @@ func loadBearerTokensFromSecrets(
 				)
 			}
 
-			tokens[fmt.Sprintf("serviceMonitor/%s/%s/%d", mon.Namespace, mon.Name, i)] = BearerToken(token)
+			tokens[fmt.Sprintf("serviceScrape/%s/%s/%d", mon.Namespace, mon.Name, i)] = BearerToken(token)
 		}
 	}
 

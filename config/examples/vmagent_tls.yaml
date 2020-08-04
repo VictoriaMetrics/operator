@@ -3,8 +3,10 @@ kind: VMAgent
 metadata:
   name: example-vmagent-tls
 spec:
-  serviceMonitorNamespaceSelector: {}
-  serviceMonitorSelector: {}
+  serviceScrapenamespaceSelector: {}
+  serviceScrapeSelector: {}
+  podScrapenamespaceSelector: {}
+  podScrapeSelector: {}
   # Add fields here
   replicaCount: 1
   resources:

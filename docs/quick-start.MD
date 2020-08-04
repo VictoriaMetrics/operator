@@ -217,9 +217,10 @@ kind: VMAgent
 metadata:
   name: example-vmagent
 spec:
-  serviceMonitorNamespaceSelector: {}
-  podMonitorSelector: {}
-  serviceMonitorSelector: {}
+  serviceScrapeNamespaceSelector: {}
+  podScrapeNamespaceSelector: {}
+  podScrapeSelector: {}
+  serviceScrapeSelector: {}
   replicaCount: 1
   serviceAccountName: vmagent
   remoteWrite:
@@ -228,33 +229,33 @@ EOF
 ```
 
  `VMAgent` has four selectors specification for filtering `VMServiceScrape` and `VMPodScrape` objects:
- - `spec.serviceMonitorNamespaceSelector` - if it's nil, only serviceMonitors in the `VMAgent`s namespace can be selected.
-    If it's defined with empty value: `spec.serviceMonitorNamespaceSelector: {}` - all namespaces are matched.
+ - `spec.serviceScrapeNamespaceSelector` - if it's nil, only serviceScrapes in the `VMAgent`s namespace can be selected.
+    If it's defined with empty value: `spec.serviceScrapeNamespaceSelector: {}` - all namespaces are matched.
     You may also add matchLabels or matchExpression syntax, but your namespace must be tagged with specified labels first:
      ```bash
         kubectl label ns default name=default
      ``` 
-      `spec.serviceMonitorNamespaceSelector:
+      `spec.serviceScrapeNamespaceSelector:
                matchLabels:
                      name: default
       `
- - `spec.serviceMonitorSelector` - it selects `VMServiceScrape` objects by its labels. 
-     If it's nil, but `spec.serviceMonitorNamespaceSelector` isn't, the last one will be used for selecting.
-     If it's defined with empty value: `spec.serviceMonitorSelector: {}`, all objects can be selected depending on NamespaceSelector.
+ - `spec.serviceScrapeSelector` - it selects `VMServiceScrape` objects by its labels. 
+     If it's nil, but `spec.serviceScrapeNamespaceSelector` isn't, the last one will be used for selecting.
+     If it's defined with empty value: `spec.serviceScrapeSelector: {}`, all objects can be selected depending on NamespaceSelector.
 
- - `spec.podMonitorNamespaceSelector` - if it's nil, only `PodScrape` in the `VMAgent`s namespace can be selected.
-    If it's defined with empty value: `spec.podMonitorNamespaceSelector: {}` - all namespaces are matched.
+ - `spec.podScrapeNamespaceSelector` - if it's nil, only `PodScrape` in the `VMAgent`s namespace can be selected.
+    If it's defined with empty value: `spec.podScrapeNamespaceSelector: {}` - all namespaces are matched.
     You may also add matchLabels or matchExpression syntax, but your namespace must be tagged with specified labels first:
      ```bash
         kubectl label ns default name=default
      ``` 
-      `spec.podMonitorNamespaceSelector:
+      `spec.podScrapeNamespaceSelector:
                matchLabels:
                      name: default
       `
- - `spec.podMonitorSelector` - it selects `VMPodScrape` objects by its labels. 
-     If it's nil, but `spec.podMonitorNamespaceSelector` isn't, the last one will be used for selecting.
-     If it's defined with empty value: `spec.podMonitorSelector: {}`, all objects can be selected depending on NamespaceSelector.
+ - `spec.podScrapeSelector` - it selects `VMPodScrape` objects by its labels. 
+     If it's nil, but `spec.podScrapeNamespaceSelector` isn't, the last one will be used for selecting.
+     If it's defined with empty value: `spec.podScrapeSelector: {}`, all objects can be selected depending on NamespaceSelector.
      
 this configuration will match only namespace with  the label - name=default and all object at this namespace will be 
 selected: 
@@ -265,7 +266,7 @@ kind: VMAgent
 metadata:
   name: example-vmagent
 spec:
-  serviceMonitorNamespaceSelector: 
+  serviceScrapeNamespaceSelector: 
       matchLabels:
          name: default
   replicaCount: 1
@@ -283,12 +284,12 @@ kind: VMAgent
 metadata:
   name: example-vmagent
 spec:
-  serviceMonitorNamespaceSelector: {}
-  serviceMonitorSelector:
+  serviceScrapeNamespaceSelector: {}
+  serviceScrapeSelector:
    matchLabels:
        team: managers
        project: cloud
-  podMonitorSelector:
+  podScrapeSelector:
    matchLabels:
        team: managers
        project: clo
@@ -307,8 +308,8 @@ kind: VMAgent
 metadata:
   name: example-vmagent
 spec:
-  serviceMonitorSelector: {}
-  podMonitorSelector: {}
+  serviceScrapeSelector: {}
+  podScrapeSelector: {}
   replicaCount: 1
   serviceAccountName: vmagent
   remoteWrite:
@@ -467,9 +468,10 @@ kind: VMAgent
 metadata:
   name: example-vmagent
 spec:
-  serviceMonitorNamespaceSelector: {}
-  podMonitorSelector: {}
-  serviceMonitorSelector: {}
+  serviceScrapeNamespaceSelector: {}
+  podScrapeNamespaceSelector: {}
+  podScrapeSelector: {}
+  serviceScrapeSelector: {}
   replicaCount: 1
   serviceAccountName: vmagent
   remoteWrite:

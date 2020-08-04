@@ -39,7 +39,7 @@ spec:
           description: VMServiceScrapeSpec defines the desired state of VMServiceScrape
           properties:
             endpoints:
-              description: A list of endpoints allowed as part of this ServiceMonitor.
+              description: A list of endpoints allowed as part of this ServiceScrape.
               items:
                 description: Endpoint defines a scrapeable endpoint serving Prometheus
                   metrics.
@@ -93,7 +93,7 @@ spec:
                   bearerTokenSecret:
                     description: Secret to mount to read bearer token for scraping
                       targets. The secret needs to be in the same namespace as the
-                      service monitor and accessible by the victoria-metrics operator.
+                      service scrape and accessible by the victoria-metrics operator.
                     properties:
                       key:
                         description: The key of the secret to select from.  Must be

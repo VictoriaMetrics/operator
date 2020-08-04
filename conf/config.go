@@ -137,8 +137,8 @@ type BaseOperatorConf struct {
 		KubeletObject                string
 	}
 
-	DisableSelfServiceMonitorCreation bool `default:"false"`
-	EnabledPrometheusConverter        struct {
+	DisableSelfServiceScrapeCreation bool `default:"false"`
+	EnabledPrometheusConverter       struct {
 		PodMonitor     bool `default:"true"`
 		ServiceScrape  bool `default:"true"`
 		PrometheusRule bool `default:"true"`

@@ -39,7 +39,7 @@ kind: VMAgent
 metadata:
   name: example-vmagent
 spec:
-  serviceMonitorSelector: {}
+  serviceScrapeSelector: {}
   replicas: 1
   serviceAccountName: vmagent
   additionalScrapeConfigs:

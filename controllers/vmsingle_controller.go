@@ -79,7 +79,7 @@ func (r *VMSingleReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	}
 
 	//create vmservicescrape for object by default
-	if !r.BaseConf.DisableSelfServiceMonitorCreation {
+	if !r.BaseConf.DisableSelfServiceScrapeCreation {
 		err := factory.CreateVMServiceScrapeFromService(ctx, r, svc)
 		if err != nil {
 			reqLogger.Error(err, "cannot create serviceScrape for vmsingle")

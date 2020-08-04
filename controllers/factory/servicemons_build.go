@@ -15,13 +15,12 @@ import (
 )
 
 const (
-	defaultReplicaExternalLabelName = "prometheus_replica"
-	defaultScrapeInterval           = "30s"
-	tlsAssetsDir                    = "/etc/vmagent-tls/certs"
-	configFilename                  = "vmagent.yaml.gz"
-	configEnvsubstFilename          = "vmagent.env.yaml"
-	kubernetesSDRoleEndpoint        = "endpoints"
-	kubernetesSDRolePod             = "pod"
+	defaultScrapeInterval    = "30s"
+	tlsAssetsDir             = "/etc/vmagent-tls/certs"
+	configFilename           = "vmagent.yaml.gz"
+	configEnvsubstFilename   = "vmagent.env.yaml"
+	kubernetesSDRoleEndpoint = "endpoints"
+	kubernetesSDRolePod      = "pod"
 )
 
 var (
@@ -87,7 +86,7 @@ func generateConfig(
 	for _, identifier := range sMonIdentifiers {
 		for i, ep := range sMons[identifier].Spec.Endpoints {
 			scrapeConfigs = append(scrapeConfigs,
-				generateServiceMonitorConfig(
+				generateServiceScrapeConfig(
 					sMons[identifier],
 					ep, i,
 					apiserverConfig,
@@ -102,7 +101,7 @@ func generateConfig(
 	for _, identifier := range pMonIdentifiers {
 		for i, ep := range pMons[identifier].Spec.PodMetricsEndpoints {
 			scrapeConfigs = append(scrapeConfigs,
-				generatePodMonitorConfig(
+				generatePodScrapeConfig(
 					pMons[identifier], ep, i,
 					apiserverConfig,
 					basicAuthSecrets,
@@ -199,7 +198,7 @@ func honorTimestamps(cfg yaml.MapSlice, userHonorTimestamps *bool, overrideHonor
 	return append(cfg, yaml.MapItem{Key: "honor_timestamps", Value: honor && !overrideHonorTimestamps})
 }
 
-func generatePodMonitorConfig(
+func generatePodScrapeConfig(
 	m *victoriametricsv1beta1.VMPodScrape,
 	ep victoriametricsv1beta1.PodMetricsEndpoint,
 	i int,
@@ -303,7 +302,7 @@ func generatePodMonitorConfig(
 		})
 	} else if ep.TargetPort != nil {
 		//.Warn(cg.logger).Log("msg", "PodMonitor 'targetPort' is deprecated, use 'port' instead.",
-		//	"podMonitor", m.Name)
+		//	"podScrape", m.Name)
 		if ep.TargetPort.StrVal != "" {
 			relabelings = append(relabelings, yaml.MapSlice{
 				{Key: "action", Value: "keep"},
@@ -406,7 +405,7 @@ func generatePodMonitorConfig(
 	return cfg
 }
 
-func generateServiceMonitorConfig(
+func generateServiceScrapeConfig(
 	m *victoriametricsv1beta1.VMServiceScrape,
 	ep victoriametricsv1beta1.Endpoint,
 	i int,
@@ -460,13 +459,13 @@ func generateServiceMonitorConfig(
 	}
 
 	if ep.BearerTokenSecret.Name != "" {
-		if s, ok := bearerTokens[fmt.Sprintf("serviceMonitor/%s/%s/%d", m.Namespace, m.Name, i)]; ok {
+		if s, ok := bearerTokens[fmt.Sprintf("serviceScrape/%s/%s/%d", m.Namespace, m.Name, i)]; ok {
 			cfg = append(cfg, yaml.MapItem{Key: "bearer_token", Value: s})
 		}
 	}
 
 	if ep.BasicAuth != nil {
-		if s, ok := basicAuthSecrets[fmt.Sprintf("serviceMonitor/%s/%s/%d", m.Namespace, m.Name, i)]; ok {
+		if s, ok := basicAuthSecrets[fmt.Sprintf("serviceScrape/%s/%s/%d", m.Namespace, m.Name, i)]; ok {
 			cfg = append(cfg, yaml.MapItem{
 				Key: "basic_auth", Value: yaml.MapSlice{
 					{Key: "username", Value: s.username},
@@ -825,23 +824,8 @@ func buildExternalLabels(p *victoriametricsv1beta1.VMAgent) yaml.MapSlice {
 		}
 	}
 
-	// Use defaultReplicaExternalLabelName constant by default if field is missing.
-	// Do not add external label if field is set to empty string.
-	replicaExternalLabelName := defaultReplicaExternalLabelName
-	if p.Spec.ReplicaExternalLabelName != nil {
-		if *p.Spec.ReplicaExternalLabelName != "" {
-			replicaExternalLabelName = *p.Spec.ReplicaExternalLabelName
-		} else {
-			replicaExternalLabelName = ""
-		}
-	}
-
 	if prometheusExternalLabelName != "" {
 		m[prometheusExternalLabelName] = fmt.Sprintf("%s/%s", p.Namespace, p.Name)
-	}
-
-	if replicaExternalLabelName != "" {
-		m[replicaExternalLabelName] = "$(POD_NAME)"
 	}
 
 	for n, v := range p.Spec.ExternalLabels {

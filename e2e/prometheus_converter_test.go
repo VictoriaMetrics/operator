@@ -34,7 +34,7 @@ var _ = Describe("test  prometheusConverter Controller", func() {
 
 				})
 
-				It("should create prometheusServiceMonitor", func() {
+				It("should create prometheus ServiceMonitor", func() {
 					Expect(k8sClient.Create(context.TODO(), &monitoringv1.ServiceMonitor{
 						ObjectMeta: metav1.ObjectMeta{
 							Namespace: namespace,

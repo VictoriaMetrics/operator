@@ -572,14 +572,14 @@ func (cr VMCluster) VMInsertPodAnnotations() map[string]string {
 	if cr.Spec.VMInsert == nil || cr.Spec.VMInsert.PodMetadata == nil {
 		return nil
 	}
-	return cr.Spec.VMSelect.PodMetadata.Annotations
+	return cr.Spec.VMInsert.PodMetadata.Annotations
 }
 
 func (cr VMCluster) VMStoragePodAnnotations() map[string]string {
 	if cr.Spec.VMStorage == nil || cr.Spec.VMStorage.PodMetadata == nil {
 		return nil
 	}
-	return cr.Spec.VMSelect.PodMetadata.Annotations
+	return cr.Spec.VMStorage.PodMetadata.Annotations
 }
 
 func (cr VMCluster) Annotations() map[string]string {

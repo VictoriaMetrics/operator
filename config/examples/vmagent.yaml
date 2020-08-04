@@ -3,8 +3,10 @@ kind: VMAgent
 metadata:
   name: example-vmagent
 spec:
-  serviceMonitorNamespaceSelector: {}
-  serviceMonitorSelector: {}
+  serviceScrapeNamespaceSelector: {}
+  serviceScrapeSelector: {}
+  podScrapeNamespaceSelector: {}
+  podScrapeSelector: {}
   # Add fields here
   replicaCount: 1
   resources:

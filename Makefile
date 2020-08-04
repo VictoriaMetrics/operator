@@ -53,14 +53,6 @@ endif
 
 all: build
 
-gen-client:
-	client-gen --go-header-file hack/boilerplate.go.txt \
-	 --input-base=""\
-	 --input=$(REPO)/api/v1beta1 \
-	 --clientset-name "versioned" \
-	 --output-package=$(REPO)/pkg/client \
-	 --output-base ""
-	cp -R $(REPO)/pkg/client ./pkg
 
 install-golint:
 	which golint || GO111MODULE=off go get -u golang.org/x/lint/golint
@@ -183,7 +175,7 @@ vet:
 
 # Generate code
 generate: controller-gen
-	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./.../api"
+	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./api/..."
 
 # Build the docker image
 docker-build: test

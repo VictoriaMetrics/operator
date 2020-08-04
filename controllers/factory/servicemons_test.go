@@ -60,7 +60,7 @@ func TestSelectServiceMonitors(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: victoriametricsv1beta1.VMAgentSpec{
-						ServiceMonitorSelector: &metav1.LabelSelector{},
+						ServiceScrapeSelector: &metav1.LabelSelector{},
 					},
 				},
 				l: logf.Log.WithName("unit-test"),
@@ -83,8 +83,8 @@ func TestSelectServiceMonitors(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: victoriametricsv1beta1.VMAgentSpec{
-						ServiceMonitorNamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"name": "stage"}},
-						ServiceMonitorSelector:          &metav1.LabelSelector{},
+						ServiceScrapeNamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"name": "stage"}},
+						ServiceScrapeSelector:          &metav1.LabelSelector{},
 					},
 				},
 				l: logf.Log.WithName("unit-test"),
@@ -110,9 +110,9 @@ func TestSelectServiceMonitors(t *testing.T) {
 			obj := []runtime.Object{}
 			obj = append(obj, tt.predefinedObjest...)
 			fclient := fake.NewFakeClientWithScheme(testGetScheme(), obj...)
-			got, err := SelectServiceMonitors(context.TODO(), tt.args.p, fclient)
+			got, err := SelectServiceScrapes(context.TODO(), tt.args.p, fclient)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("SelectServiceMonitors() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("SelectServiceScrapes() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			gotNames := []string{}
@@ -121,7 +121,7 @@ func TestSelectServiceMonitors(t *testing.T) {
 			}
 			sort.Strings(gotNames)
 			if !reflect.DeepEqual(gotNames, tt.want) {
-				t.Errorf("SelectServiceMonitors() got = %v, want %v", gotNames, tt.want)
+				t.Errorf("SelectServiceScrapes() got = %v, want %v", gotNames, tt.want)
 			}
 		})
 	}
@@ -148,7 +148,7 @@ func TestSelectPodMonitors(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: victoriametricsv1beta1.VMAgentSpec{
-						PodMonitorSelector: &metav1.LabelSelector{},
+						PodScrapeSelector: &metav1.LabelSelector{},
 					},
 				},
 				l: logf.Log.WithName("unit-test"),
@@ -174,7 +174,7 @@ func TestSelectPodMonitors(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: victoriametricsv1beta1.VMAgentSpec{
-						PodMonitorNamespaceSelector: &metav1.LabelSelector{
+						PodScrapeNamespaceSelector: &metav1.LabelSelector{
 							MatchLabels: map[string]string{"name": "monitoring"},
 						},
 					},
@@ -208,9 +208,9 @@ func TestSelectPodMonitors(t *testing.T) {
 			obj := []runtime.Object{}
 			obj = append(obj, tt.predefinedObjects...)
 			fclient := fake.NewFakeClientWithScheme(testGetScheme(), obj...)
-			got, err := SelectPodMonitors(context.TODO(), tt.args.p, fclient)
+			got, err := SelectPodScrapes(context.TODO(), tt.args.p, fclient)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("SelectPodMonitors() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("SelectPodScrapes() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			gotNames := []string{}
@@ -219,7 +219,7 @@ func TestSelectPodMonitors(t *testing.T) {
 			}
 			sort.Strings(gotNames)
 			if !reflect.DeepEqual(gotNames, tt.want) {
-				t.Errorf("SelectPodMonitors() got = %v, want %v", gotNames, tt.want)
+				t.Errorf("SelectPodScrapes() got = %v, want %v", gotNames, tt.want)
 			}
 		})
 	}

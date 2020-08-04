@@ -695,7 +695,7 @@ spec:
                 - PANIC
               type: string
             overrideHonorLabels:
-              description: OverrideHonorLabels if set to true overrides all user configured honor_labels. If HonorLabels is set in ServiceMonitor or PodMonitor to true, this overrides honor_labels to false.
+              description: OverrideHonorLabels if set to true overrides all user configured honor_labels. If HonorLabels is set in ServiceScrape or PodScrape to true, this overrides honor_labels to false.
               type: boolean
             overrideHonorTimestamps:
               description: OverrideHonorTimestamps allows to globally enforce honoring timestamps in all scrape configs.
@@ -717,8 +717,8 @@ spec:
                   description: 'Name must be unique within a namespace. Is required when creating resources, although some resources may allow a client to request the generation of an appropriate name automatically. Name is primarily intended for creation idempotence and configuration definition. Cannot be updated. More info: http://kubernetes.io/docs/user-guide/identifiers#names'
                   type: string
               type: object
-            podMonitorNamespaceSelector:
-              description: PodMonitorNamespaceSelector defines Namespaces to be selected for PodMonitor discovery. If nil, only check own namespace.
+            podScrapeNamespaceSelector:
+              description: PodScrapeNamespaceSelector defines Namespaces to be selected for PodMonitor discovery. If nil, only check own namespace.
               properties:
                 matchExpressions:
                   description: matchExpressions is a list of label selector requirements. The requirements are ANDed.
@@ -747,8 +747,8 @@ spec:
                   description: matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed.
                   type: object
               type: object
-            podMonitorSelector:
-              description: PodMonitorSelector defines PodMonitors to be selected for target discovery. if neither this nor serviceMonitorSelector are specified, configuration is unmanaged.
+            podScrapeSelector:
+              description: PodScrapeSelector defines PodScrapes to be selected for target discovery. if neither PodScrapeNamespaceSelector this nor PodScrapeSelector are specified, configuration is unmanaged.
               properties:
                 matchExpressions:
                   description: matchExpressions is a list of label selector requirements. The requirements are ANDed.
@@ -1011,9 +1011,6 @@ spec:
               description: ReplicaCount is the expected size of the VMAgent cluster. The controller will eventually make the size of the running cluster equal to the expected size. NOTE enable VMSingle deduplication for replica usage
               format: int32
               type: integer
-            replicaExternalLabelName:
-              description: ReplicaExternalLabelName Name of vmagent external label used to denote replica name. Defaults to the value of `prometheus_replica`. External label will _not_ be added when value is set to empty string (`""`).
-              type: string
             resources:
               description: Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/ if not specified - default setting will be used
               properties:
@@ -1121,8 +1118,8 @@ spec:
             serviceAccountName:
               description: ServiceAccountName is the name of the ServiceAccount to use to run the VMAgent Pods. required
               type: string
-            serviceMonitorNamespaceSelector:
-              description: ServiceMonitorNamespaceSelector Namespaces to be selected for ServiceMonitor discovery. If nil, only check own namespace.
+            serviceScrapeNamespaceSelector:
+              description: ServiceScrapeNamespaceSelector Namespaces to be selected for ServiceMonitor discovery. If nil, only check own namespace.
               properties:
                 matchExpressions:
                   description: matchExpressions is a list of label selector requirements. The requirements are ANDed.
@@ -1151,8 +1148,8 @@ spec:
                   description: matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed.
                   type: object
               type: object
-            serviceMonitorSelector:
-              description: ServiceMonitorSelector defines ServiceMonitors to be selected for target discovery. if neither this nor podMonitorSelector are specified, configuration is unmanaged.
+            serviceScrapeSelector:
+              description: ServiceScrapeSelector defines ServiceScrapes to be selected for target discovery. if neither serviceScrapeNamespaceSelector nor serviceScrapeSelector are specified, configuration is unmanaged.
               properties:
                 matchExpressions:
                   description: matchExpressions is a list of label selector requirements. The requirements are ANDed.

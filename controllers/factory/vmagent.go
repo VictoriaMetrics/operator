@@ -519,7 +519,7 @@ func addAddtionalScrapeConfigOwnership(cr *victoriametricsv1beta1.VMAgent, rclie
 }
 
 func CreateOrUpdateTlsAssets(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) error {
-	monitors, err := SelectServiceMonitors(ctx, cr, rclient)
+	monitors, err := SelectServiceScrapes(ctx, cr, rclient)
 	if err != nil {
 		return fmt.Errorf("cannot select service monitors for tls Assets: %w", err)
 	}

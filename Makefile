@@ -22,8 +22,9 @@ QUAY_TOKEN=$(REPO_TOKEN)
 TEST_ARGS=$(GOCMD) test -covermode=atomic -coverprofile=coverage.txt -v
 APIS_BASE_PATH=api/v1beta1
 GOPATHDIR ?= ~/go
-YAML_DROP=yq delete --inplace
 YAML_DROP_PREFIX=spec.validation.openAPIV3Schema.properties.spec.properties
+YAML_DROP=yq delete --inplace
+YAML_FIX_LIST="vmalertmanagers.yaml vmalerts.yaml vmsingles.yaml vmagents.yaml"
 # Current Operator version
 # Default bundle image tag
 BUNDLE_IMG ?= controller-bundle:$(VERSION)
@@ -63,22 +64,19 @@ install-develop-tools: install-golint
 
 
 fix118:
-	docker run --rm -v "${PWD}":/workdir mikefarah/yq /bin/sh -c " \
-		$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalertmanagers.yaml $(YAML_DROP_PREFIX).initContainers.items.properties && \
-		$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalertmanagers.yaml $(YAML_DROP_PREFIX).containers.items.properties && \
-		$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).initContainers.items.properties && \
-		$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).containers.items.properties && \
-		$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmsingles.yaml $(YAML_DROP_PREFIX).initContainers.items.properties && \
-		$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmsingles.yaml $(YAML_DROP_PREFIX).containers.items.properties && \
-		$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmagents.yaml $(YAML_DROP_PREFIX).initContainers.items.properties && \
-		$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmagents.yaml $(YAML_DROP_PREFIX).containers.items.properties && \
+	docker run --rm -v "${PWD}":/workdir mikefarah/yq /bin/sh -c ' \
+	    for file in ${YAML_FIX_LIST} ;\
+	    do \
+	     $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_$$file $(YAML_DROP_PREFIX).initContainers.items.properties &&\
+	     $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_$$file $(YAML_DROP_PREFIX).containers.items.properties ;\
+	    done ; \
 		$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vminsert.properties.containers.items.properties && \
 		$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vminsert.properties.initContainers.items.properties && \
 		$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.containers.items.properties && \
 		$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.initContainers.items.properties && \
 		$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmstorage.properties.containers.items.properties && \
 		$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmstorage.properties.initContainers.items.properties  \
-		"
+		'
 
 
 olm:
@@ -127,9 +125,6 @@ clean:
 	$(GOCLEAN)
 	rm -f $(BINARY_NAME)
 	rm -f $(BINARY_UNIX)
-
-
-
 
 
 all: manager

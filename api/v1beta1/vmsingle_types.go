@@ -123,6 +123,9 @@ type VMSingleSpec struct {
 	// RetentionPeriod in months
 	// +kubebuilder:validation:Pattern:="[1-9]+"
 	RetentionPeriod string `json:"retentionPeriod"`
+	// VMBackup configuration for backup
+	// +optional
+	VMBackup *VMBackup `json:"vmBackup,omitempty"`
 	// ExtraArgs that will be passed to  VMSingle pod
 	// for example remoteWrite.tmpDataPath: /tmp
 	// +optional

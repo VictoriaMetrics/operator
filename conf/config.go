@@ -138,7 +138,25 @@ type BaseOperatorConf struct {
 	}
 
 	DisableSelfServiceScrapeCreation bool `default:"false"`
-	EnabledPrometheusConverter       struct {
+	VMBackup                         struct {
+		Image    string `default:"tenmozes/backup"`
+		Version  string `default:"latest"`
+		Port     string `default:"8300"`
+		Resource struct {
+			Limit struct {
+				Mem string `default:"500Mi"`
+				Cpu string `default:"500m"`
+			}
+			Request struct {
+				Mem string `default:"200Mi"`
+				Cpu string `default:"150m"`
+			}
+		}
+		LogLevel  string `default:"INFO"`
+		LogFormat string
+	}
+
+	EnabledPrometheusConverter struct {
 		PodMonitor     bool `default:"true"`
 		ServiceScrape  bool `default:"true"`
 		PrometheusRule bool `default:"true"`

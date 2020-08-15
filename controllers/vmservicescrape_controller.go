@@ -18,8 +18,8 @@ package controllers
 
 import (
 	"context"
-	"github.com/VictoriaMetrics/operator/conf"
 	"github.com/VictoriaMetrics/operator/controllers/factory"
+	"github.com/VictoriaMetrics/operator/internal/conf"
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"

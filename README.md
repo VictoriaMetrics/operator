@@ -19,7 +19,7 @@
 
 ## development
 
-- operator-sdk verson v0.19.0 +  [https://github.com/operator-framework/operator-sdk]
+- operator-sdk verson v1.0.0 +  [https://github.com/operator-framework/operator-sdk]
 - golang 1.13 +
 - minikube or kind
 

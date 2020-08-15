@@ -3,9 +3,8 @@ package manager
 import (
 	"context"
 	"flag"
-	"github.com/VictoriaMetrics/operator/conf"
+	"github.com/VictoriaMetrics/operator/internal/conf"
 	"github.com/coreos/prometheus-operator/pkg/client/versioned"
-	"github.com/operator-framework/operator-sdk/pkg/log/zap"
 	"github.com/spf13/pflag"
 	"golang.org/x/sync/errgroup"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -14,6 +13,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers"
@@ -39,7 +39,6 @@ func RunManager(ctx context.Context) error {
 	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
-	pflag.CommandLine.AddFlagSet(zap.FlagSet())
 
 	// Add flags registered by imported packages (e.g. glog and
 	// controller-runtime)
@@ -55,10 +54,10 @@ func RunManager(ctx context.Context) error {
 	// implementing the logr.Logger interface. This logger will
 	// be propagated through the whole operator, generating
 	// uniform and structured logs.
-	logf.SetLogger(zap.Logger())
+	logf.SetLogger(zap.New())
 	flag.Parse()
 
-	ctrl.SetLogger(zap.Logger())
+	ctrl.SetLogger(zap.New())
 
 	setupLog.Info("Registering Components.")
 

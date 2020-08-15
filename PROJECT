@@ -1,4 +1,5 @@
 domain: victoriametrics.com
+projectName: vm-operator
 layout: go.kubebuilder.io/v2
 repo: github.com/VictoriaMetrics/operator
 resources:

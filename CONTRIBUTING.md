@@ -3,7 +3,7 @@
 
 for developing you need: 
 - golang 1.13+
-- operator-sdk 1.19.0
+- operator-sdk v1.0.0
 - docker
 - minikube or kind for e2e tests
 - golangci-lint
@@ -20,7 +20,7 @@ for running locally you need minikube and run two commands:
 make install
 make run
 ```
-or you can run it from IDE with ```main.go```
+or you can run it from IDE with ```cmd/operator/main.go```
 
 ## publish changes
 

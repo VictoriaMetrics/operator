@@ -18,7 +18,7 @@ package main
 
 import (
 	"context"
-	"github.com/VictoriaMetrics/operator/manager"
+	"github.com/VictoriaMetrics/operator/internal/manager"
 	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"

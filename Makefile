@@ -59,7 +59,6 @@ install-golint:
 	which golint || GO111MODULE=off go get -u golang.org/x/lint/golint
 
 install-develop-tools: install-golint
-	which operator-courier || pip install operator-courier
 
 
 
@@ -86,8 +85,6 @@ olm:
 	                             --make-manifests=false \
 	                             --update-crds
 
-olm-verify:
-	operator-courier verify deploy/olm-catalog/victoria-metrics-operator/
 
 
 doc:
@@ -107,7 +104,7 @@ doc:
 
 
 docker: manager
-	docker build -t $(DOCKER_REPO) . -f build/Dockerfile
+	docker build -t $(DOCKER_REPO) . -f cmd/operator/Dockerfile
 
 
 .PHONY:e2e-local
@@ -117,7 +114,7 @@ e2e-local: generate fmt vet manifests fix118
 	$(GOCMD) tool cover -func coverage.txt  | grep total
 
 lint:
-	golangci-lint run --exclude '(SA1019):' -E typecheck -E gosimple   --timeout 5m --skip-dirs 'pkg/client'
+	golangci-lint run --exclude '(SA1019):' -E typecheck -E gosimple   --timeout 5m
 	golint ./controllers/
 
 .PHONY:clean
@@ -137,7 +134,7 @@ test: generate fmt vet manifests fix118
 
 # Build manager binary
 manager: generate manifests fmt vet fix118
-	$(GOBUILD) -o bin/manager main.go
+	$(GOBUILD) -o bin/manager $(REPO)/cmd/operator
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 run: manager
@@ -237,3 +234,7 @@ release-package: kustomize
 	zip -r operator.zip bin/manager
 	zip -r bundle_crd.zip release/
 	rm -rf release/
+
+packagemanifests: manifests
+	$(OPERATOR_BIN) generate kustomize manifests -q
+	kustomize build config/manifests | $(OPERATOR_BIN) generate packagemanifests -q --version $(VERSION)

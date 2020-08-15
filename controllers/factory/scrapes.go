@@ -6,7 +6,7 @@ import (
 	"context"
 	"fmt"
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
-	"github.com/VictoriaMetrics/operator/conf"
+	"github.com/VictoriaMetrics/operator/internal/conf"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"regexp"

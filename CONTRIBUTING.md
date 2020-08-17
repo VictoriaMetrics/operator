@@ -20,7 +20,7 @@ for running locally you need minikube and run two commands:
 make install
 make run
 ```
-or you can run it from IDE with ```cmd/operator/main.go```
+or you can run it from IDE with ```main.go```
 
 ## publish changes
 
@@ -31,6 +31,16 @@ make lint # linting project
 make test #unit tests
 make e2e-local #e2e tests with minikube
 ```
+
+## adding new api
+
+For adding new kind - KIND_NAME, you have to execute command:
+
+```bash
+operator-sdk create api --group operator --version v1beta1 --kind KIND_NAME
+```
+
+This will scaffold api and controller. Then you have to edit code at `api` and `controllers` folder.
 
 ## create olm package
 

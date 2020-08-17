@@ -1,6 +1,6 @@
 domain: victoriametrics.com
-projectName: vm-operator
 layout: go.kubebuilder.io/v2
+projectName: vm-operator
 repo: github.com/VictoriaMetrics/operator
 resources:
 - group: operator
@@ -26,6 +26,9 @@ resources:
   version: v1beta1
 - group: operator
   kind: VMCluster
+  version: v1beta1
+- group: operator
+  kind: VMProbe
   version: v1beta1
 version: 3-alpha
 plugins:

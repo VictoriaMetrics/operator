@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
-	"github.com/VictoriaMetrics/operator/conf"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,7 +20,7 @@ import (
 func TestCreateOrUpdateVMAgent(t *testing.T) {
 	type args struct {
 		cr *victoriametricsv1beta1.VMAgent
-		c  *conf.BaseOperatorConf
+		c  *config.BaseOperatorConf
 	}
 	tests := []struct {
 		name              string
@@ -32,7 +32,7 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 		{
 			name: "generate base vmagent",
 			args: args{
-				c: conf.MustGetBaseConfig(),
+				c: config.MustGetBaseConfig(),
 				cr: &victoriametricsv1beta1.VMAgent{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "example-agent",
@@ -49,7 +49,7 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 		{
 			name: "generate vmagent with bauth-secret",
 			args: args{
-				c: conf.MustGetBaseConfig(),
+				c: config.MustGetBaseConfig(),
 				cr: &victoriametricsv1beta1.VMAgent{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "example-agent-bauth",
@@ -92,7 +92,7 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 		{
 			name: "generate vmagent with tls-secret",
 			args: args{
-				c: conf.MustGetBaseConfig(),
+				c: config.MustGetBaseConfig(),
 				cr: &victoriametricsv1beta1.VMAgent{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "example-agent-tls",

@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/VictoriaMetrics/operator/api/v1beta1"
-	"github.com/VictoriaMetrics/operator/conf"
 	"github.com/VictoriaMetrics/operator/controllers/converter"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	v1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/coreos/prometheus-operator/pkg/client/versioned"
 	"golang.org/x/sync/errgroup"
@@ -133,7 +133,7 @@ func (c *ConverterController) runInformerWithDiscovery(ctx context.Context, grou
 }
 
 // Run - starts vmprometheusconverter with background discovery process for each prometheus api object
-func (c *ConverterController) Run(ctx context.Context, group *errgroup.Group, cfg *conf.BaseOperatorConf) {
+func (c *ConverterController) Run(ctx context.Context, group *errgroup.Group, cfg *config.BaseOperatorConf) {
 
 	if cfg.EnabledPrometheusConverter.ServiceScrape {
 		group.Go(func() error {

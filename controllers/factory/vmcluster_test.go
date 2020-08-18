@@ -3,7 +3,7 @@ package factory
 import (
 	"context"
 	"github.com/VictoriaMetrics/operator/api/v1beta1"
-	"github.com/VictoriaMetrics/operator/conf"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,7 +20,7 @@ func Test_waitForPodReady(t *testing.T) {
 	type args struct {
 		ns      string
 		podName string
-		c       *conf.BaseOperatorConf
+		c       *config.BaseOperatorConf
 	}
 	tests := []struct {
 		name              string
@@ -33,7 +33,7 @@ func Test_waitForPodReady(t *testing.T) {
 			args: args{
 				ns:      "default",
 				podName: "vmselect-example-0",
-				c:       &conf.BaseOperatorConf{PodWaitReadyIntervalCheck: time.Second * 1, PodWaitReadyInitDelay: time.Second, PodWaitReadyTimeout: time.Second * 4},
+				c:       &config.BaseOperatorConf{PodWaitReadyIntervalCheck: time.Second * 1, PodWaitReadyInitDelay: time.Second, PodWaitReadyTimeout: time.Second * 4},
 			},
 			predefinedObjects: []runtime.Object{
 				&corev1.Pod{
@@ -64,7 +64,7 @@ func Test_waitForPodReady(t *testing.T) {
 			args: args{
 				ns:      "default",
 				podName: "vmselect-example-0",
-				c:       &conf.BaseOperatorConf{PodWaitReadyIntervalCheck: time.Second * 1, PodWaitReadyInitDelay: time.Second, PodWaitReadyTimeout: time.Second * 4},
+				c:       &config.BaseOperatorConf{PodWaitReadyIntervalCheck: time.Second * 1, PodWaitReadyInitDelay: time.Second, PodWaitReadyTimeout: time.Second * 4},
 			},
 			predefinedObjects: []runtime.Object{
 				&corev1.Pod{
@@ -196,7 +196,7 @@ func Test_performRollingUpdateOnSts(t *testing.T) {
 		stsName   string
 		ns        string
 		podLabels map[string]string
-		c         *conf.BaseOperatorConf
+		c         *config.BaseOperatorConf
 	}
 	tests := []struct {
 		name                string
@@ -211,7 +211,7 @@ func Test_performRollingUpdateOnSts(t *testing.T) {
 			args: args{
 				stsName:   "vmselect-sts",
 				ns:        "default",
-				c:         &conf.BaseOperatorConf{},
+				c:         &config.BaseOperatorConf{},
 				podLabels: map[string]string{"app": "vmselect"},
 			},
 			predefinedObjets: []runtime.Object{
@@ -241,7 +241,7 @@ func Test_performRollingUpdateOnSts(t *testing.T) {
 			args: args{
 				stsName: "vmselect-sts",
 				ns:      "default",
-				c: &conf.BaseOperatorConf{
+				c: &config.BaseOperatorConf{
 					PodWaitReadyTimeout:       time.Second * 2,
 					PodWaitReadyInitDelay:     time.Millisecond,
 					PodWaitReadyIntervalCheck: time.Second,
@@ -284,7 +284,7 @@ func Test_performRollingUpdateOnSts(t *testing.T) {
 			args: args{
 				stsName: "vmselect-sts",
 				ns:      "default",
-				c: &conf.BaseOperatorConf{
+				c: &config.BaseOperatorConf{
 					PodWaitReadyTimeout:       time.Second * 2,
 					PodWaitReadyInitDelay:     time.Millisecond,
 					PodWaitReadyIntervalCheck: time.Second,
@@ -488,7 +488,7 @@ func Test_waitForExpanding(t *testing.T) {
 func Test_genVMStorageService(t *testing.T) {
 	type args struct {
 		cr *v1beta1.VMCluster
-		c  *conf.BaseOperatorConf
+		c  *config.BaseOperatorConf
 	}
 	tests := []struct {
 		name string
@@ -507,7 +507,7 @@ func Test_genVMStorageService(t *testing.T) {
 						VMStorage: &v1beta1.VMStorage{},
 					},
 				},
-				c: &conf.BaseOperatorConf{},
+				c: &config.BaseOperatorConf{},
 			},
 			want: &corev1.Service{
 				ObjectMeta: metav1.ObjectMeta{
@@ -537,7 +537,7 @@ func Test_genVMStorageService(t *testing.T) {
 func TestCreateOrUpdateVMCluster(t *testing.T) {
 	type args struct {
 		cr *v1beta1.VMCluster
-		c  *conf.BaseOperatorConf
+		c  *config.BaseOperatorConf
 	}
 	tests := []struct {
 		name              string
@@ -549,7 +549,7 @@ func TestCreateOrUpdateVMCluster(t *testing.T) {
 		{
 			name: "base-gen-test",
 			args: args{
-				c: conf.MustGetBaseConfig(),
+				c: config.MustGetBaseConfig(),
 				cr: &v1beta1.VMCluster{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: "default",

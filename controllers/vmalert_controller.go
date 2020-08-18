@@ -18,8 +18,8 @@ package controllers
 
 import (
 	"context"
-	"github.com/VictoriaMetrics/operator/conf"
 	"github.com/VictoriaMetrics/operator/controllers/factory"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -35,7 +35,7 @@ type VMAlertReconciler struct {
 	client.Client
 	Log      logr.Logger
 	Scheme   *runtime.Scheme
-	BaseConf *conf.BaseOperatorConf
+	BaseConf *config.BaseOperatorConf
 }
 
 // Reconcile general reconile method for controller

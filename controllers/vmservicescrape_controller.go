@@ -18,8 +18,8 @@ package controllers
 
 import (
 	"context"
-	"github.com/VictoriaMetrics/operator/conf"
 	"github.com/VictoriaMetrics/operator/controllers/factory"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -34,7 +34,7 @@ type VMServiceScrapeReconciler struct {
 	client.Client
 	Log      logr.Logger
 	Scheme   *runtime.Scheme
-	BaseConf *conf.BaseOperatorConf
+	BaseConf *config.BaseOperatorConf
 }
 
 // Reconcile general reconcile method for controller

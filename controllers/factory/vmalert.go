@@ -6,7 +6,7 @@ import (
 	"path"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
-	"github.com/VictoriaMetrics/operator/conf"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -22,7 +22,7 @@ const (
 	vmAlertConfigDir = "/etc/vmalert/config"
 )
 
-func CreateOrUpdateVMAlertService(ctx context.Context, cr *victoriametricsv1beta1.VMAlert, rclient client.Client, c *conf.BaseOperatorConf) (*corev1.Service, error) {
+func CreateOrUpdateVMAlertService(ctx context.Context, cr *victoriametricsv1beta1.VMAlert, rclient client.Client, c *config.BaseOperatorConf) (*corev1.Service, error) {
 	l := log.WithValues("controller", "vmalert.service.crud", "vmalert", cr.Name)
 	newService := newServiceVMAlert(cr, c)
 
@@ -56,7 +56,7 @@ func CreateOrUpdateVMAlertService(ctx context.Context, cr *victoriametricsv1beta
 	return newService, nil
 }
 
-func newServiceVMAlert(cr *victoriametricsv1beta1.VMAlert, c *conf.BaseOperatorConf) *corev1.Service {
+func newServiceVMAlert(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorConf) *corev1.Service {
 	cr = cr.DeepCopy()
 	if cr.Spec.Port == "" {
 		cr.Spec.Port = c.VMAlertDefault.Port
@@ -84,7 +84,7 @@ func newServiceVMAlert(cr *victoriametricsv1beta1.VMAlert, c *conf.BaseOperatorC
 	}
 }
 
-func CreateOrUpdateVMAlert(ctx context.Context, cr *victoriametricsv1beta1.VMAlert, rclient client.Client, c *conf.BaseOperatorConf, cmNames []string) (reconcile.Result, error) {
+func CreateOrUpdateVMAlert(ctx context.Context, cr *victoriametricsv1beta1.VMAlert, rclient client.Client, c *config.BaseOperatorConf, cmNames []string) (reconcile.Result, error) {
 	l := log.WithValues("controller", "vmalert.crud", "vmalert", cr.Name)
 	//recon deploy
 	secretsInNs := &corev1.SecretList{}
@@ -139,7 +139,7 @@ func CreateOrUpdateVMAlert(ctx context.Context, cr *victoriametricsv1beta1.VMAle
 }
 
 // newDeployForCR returns a busybox pod with the same name/namespace as the cr
-func newDeployForVMAlert(cr *victoriametricsv1beta1.VMAlert, c *conf.BaseOperatorConf, ruleConfigMapNames []string, remoteSecrets map[string]BasicAuthCredentials) (*appsv1.Deployment, error) {
+func newDeployForVMAlert(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorConf, ruleConfigMapNames []string, remoteSecrets map[string]BasicAuthCredentials) (*appsv1.Deployment, error) {
 
 	cr = cr.DeepCopy()
 	if cr.Spec.Image.Repository == "" {
@@ -199,7 +199,7 @@ func newDeployForVMAlert(cr *victoriametricsv1beta1.VMAlert, c *conf.BaseOperato
 	return deploy, nil
 }
 
-func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *conf.BaseOperatorConf, ruleConfigMapNames []string, remoteSecrets map[string]BasicAuthCredentials) (*appsv1.DeploymentSpec, error) {
+func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorConf, ruleConfigMapNames []string, remoteSecrets map[string]BasicAuthCredentials) (*appsv1.DeploymentSpec, error) {
 	cr = cr.DeepCopy()
 
 	confReloadArgs := []string{

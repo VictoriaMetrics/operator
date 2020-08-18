@@ -3,7 +3,7 @@
 
 for developing you need: 
 - golang 1.13+
-- operator-sdk 1.19.0
+- operator-sdk v1.0.0
 - docker
 - minikube or kind for e2e tests
 - golangci-lint
@@ -31,6 +31,16 @@ make lint # linting project
 make test #unit tests
 make e2e-local #e2e tests with minikube
 ```
+
+## adding new api
+
+For adding new kind - KIND_NAME, you have to execute command:
+
+```bash
+operator-sdk create api --group operator --version v1beta1 --kind KIND_NAME
+```
+
+This will scaffold api and controller. Then you have to edit code at `api` and `controllers` folder.
 
 ## create olm package
 

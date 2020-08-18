@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
-	"github.com/VictoriaMetrics/operator/conf"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -126,7 +126,7 @@ func generateConfig(
 	return yaml.Marshal(cfg)
 }
 
-func makeEmptyConfigurationSecret(p *victoriametricsv1beta1.VMAgent, config *conf.BaseOperatorConf) (*v1.Secret, error) {
+func makeEmptyConfigurationSecret(p *victoriametricsv1beta1.VMAgent, config *config.BaseOperatorConf) (*v1.Secret, error) {
 	s := makeConfigSecret(p, config)
 
 	s.ObjectMeta.Annotations = map[string]string{
@@ -136,7 +136,7 @@ func makeEmptyConfigurationSecret(p *victoriametricsv1beta1.VMAgent, config *con
 	return s, nil
 }
 
-func makeConfigSecret(cr *victoriametricsv1beta1.VMAgent, config *conf.BaseOperatorConf) *v1.Secret {
+func makeConfigSecret(cr *victoriametricsv1beta1.VMAgent, config *config.BaseOperatorConf) *v1.Secret {
 	return &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),

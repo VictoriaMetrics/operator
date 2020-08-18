@@ -1,6 +1,6 @@
 # Go parameters
 GOCMD=GO111MODULE=on go
-TAG  ?= 0.0.1
+TAG  ?= 0.1.0
 VERSION=$(TAG)
 GOOS ?= linux
 GOARCH ?= amd64
@@ -11,20 +11,13 @@ GOCLEAN=$(GOCMD) clean
 GOTEST=CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH}  $(GOCMD) test
 GOGET=$(GOCMD) get
 BINARY_NAME=vm-operator
-BINARY_UNIX=$(BINARY_NAME)_unix
 REPO=github.com/VictoriaMetrics/operator
-DOC_GEN_DIR=$(REPO)/cmd/doc-gen/
 OPERATOR_BIN=operator-sdk
 DOCKER_REPO=victoriametrics/operator
-E2E_IMAGE ?= latest
-CSV_VERSION ?= 0.0.1
-QUAY_TOKEN=$(REPO_TOKEN)
 TEST_ARGS=$(GOCMD) test -covermode=atomic -coverprofile=coverage.txt -v
 APIS_BASE_PATH=api/v1beta1
-GOPATHDIR ?= ~/go
 YAML_DROP_PREFIX=spec.validation.openAPIV3Schema.properties.spec.properties
 YAML_DROP=yq delete --inplace
-YAML_FIX_LIST="vmalertmanagers.yaml vmalerts.yaml vmsingles.yaml vmagents.yaml"
 # Current Operator version
 # Default bundle image tag
 BUNDLE_IMG ?= controller-bundle:$(VERSION)
@@ -58,19 +51,25 @@ all: build
 install-golint:
 	which golint || GO111MODULE=off go get -u golang.org/x/lint/golint
 
-install-develop-tools: install-golint
-	which operator-courier || pip install operator-courier
+install-docs-generators:
+	which envconfig-docs || GO111MODULE=off go get -u github.com/f41gh7/envconfig-docs
+	which doc-print || GO111MODULE=off go get -u github.com/f41gh7/doc-print
+
+install-develop-tools: install-golint install-docs-generators
 
 
-
+#YAML_FIX_LIST=vmalertmanagers.yaml vmalerts.yaml vmsingles.yaml vmagents.yaml
 fix118:
 	docker run --rm -v "${PWD}":/workdir mikefarah/yq /bin/sh -c ' \
-	    for file in ${YAML_FIX_LIST} ;\
-	    do \
-	     $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_$$file $(YAML_DROP_PREFIX).initContainers.items.properties &&\
-	     $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_$$file $(YAML_DROP_PREFIX).containers.items.properties ;\
-	    done ; \
-		$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vminsert.properties.containers.items.properties && \
+	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalertmanagers.yaml $(YAML_DROP_PREFIX).initContainers.items.properties &&\
+	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalertmanagers.yaml $(YAML_DROP_PREFIX).containers.items.properties ;\
+	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).initContainers.items.properties &&\
+	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).containers.items.properties ;\
+	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmsingles.yaml $(YAML_DROP_PREFIX).initContainers.items.properties &&\
+	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmsingles.yaml $(YAML_DROP_PREFIX).containers.items.properties ;\
+	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmagents.yaml $(YAML_DROP_PREFIX).initContainers.items.properties &&\
+	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmagents.yaml $(YAML_DROP_PREFIX).containers.items.properties ;\
+	 	$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vminsert.properties.containers.items.properties && \
 		$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vminsert.properties.initContainers.items.properties && \
 		$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.containers.items.properties && \
 		$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.initContainers.items.properties && \
@@ -79,35 +78,29 @@ fix118:
 		'
 
 
-olm:
-	$(OPERATOR_BIN) generate csv --operator-name=victoria-metrics-operator \
-	                             --csv-version $(CSV_VERSION)\
-	                             --apis-dir=api/v1beta/ \
-	                             --make-manifests=false \
-	                             --update-crds
-
-olm-verify:
-	operator-courier verify deploy/olm-catalog/victoria-metrics-operator/
 
 
-doc:
-	$(GOBUILD) -o doc-print $(DOC_GEN_DIR)
-	./doc-print api \
-	         $(APIS_BASE_PATH)/vmalertmanager_types.go \
-	         $(APIS_BASE_PATH)/vmagent_types.go \
-	         $(APIS_BASE_PATH)/additional.go \
-	         $(APIS_BASE_PATH)/vmalert_types.go \
-	         $(APIS_BASE_PATH)/vmsingle_types.go \
-	         $(APIS_BASE_PATH)/vmrule_types.go \
-	         $(APIS_BASE_PATH)/vmservicescrape_types.go \
-	         $(APIS_BASE_PATH)/vmpodscrape_types.go \
-	         $(APIS_BASE_PATH)/vmcluster_types.go  \
-	           > docs/api.MD
 
+doc: install-develop-tools
+	doc-print --paths=\
+	$(APIS_BASE_PATH)/vmalertmanager_types.go,\
+	$(APIS_BASE_PATH)/vmagent_types.go,\
+	$(APIS_BASE_PATH)/additional.go,\
+	$(APIS_BASE_PATH)/vmalert_types.go,\
+	$(APIS_BASE_PATH)/vmsingle_types.go,\
+	$(APIS_BASE_PATH)/vmrule_types.go,\
+	$(APIS_BASE_PATH)/vmservicescrape_types.go,\
+	$(APIS_BASE_PATH)/vmpodscrape_types.go,\
+	$(APIS_BASE_PATH)/vmcluster_types.go \
+	--owner VictoriaMetrics \
+     > docs/api.MD
+
+operator-conf: install-develop-tools
+	envconfig-docs --input internal/conf/config.go > vars.MD
 
 
 docker: manager
-	docker build -t $(DOCKER_REPO) . -f build/Dockerfile
+	docker build -t $(DOCKER_REPO) . -f Dockerfile
 
 
 .PHONY:e2e-local
@@ -117,14 +110,13 @@ e2e-local: generate fmt vet manifests fix118
 	$(GOCMD) tool cover -func coverage.txt  | grep total
 
 lint:
-	golangci-lint run --exclude '(SA1019):' -E typecheck -E gosimple   --timeout 5m --skip-dirs 'pkg/client'
+	golangci-lint run --exclude '(SA1019):' -E typecheck -E gosimple   --timeout 5m
 	golint ./controllers/
 
 .PHONY:clean
 clean:
 	$(GOCLEAN)
 	rm -f $(BINARY_NAME)
-	rm -f $(BINARY_UNIX)
 
 
 all: manager
@@ -237,3 +229,7 @@ release-package: kustomize
 	zip -r operator.zip bin/manager
 	zip -r bundle_crd.zip release/
 	rm -rf release/
+
+packagemanifests: manifests fix118
+	$(OPERATOR_BIN) generate kustomize manifests -q
+	kustomize build config/manifests | $(OPERATOR_BIN) generate packagemanifests -q --version $(VERSION)

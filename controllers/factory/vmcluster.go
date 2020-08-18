@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/VictoriaMetrics/operator/api/v1beta1"
-	"github.com/VictoriaMetrics/operator/conf"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/coreos/prometheus-operator/pkg/k8sutil"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -34,7 +34,7 @@ const (
 // we manually handle statefulsets rolling updates
 // needed in update checked by revesion status
 // its controlled by k8s controller-manager
-func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *conf.BaseOperatorConf) (string, error) {
+func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) (string, error) {
 	var expanding, reconciled bool
 	status := v1beta1.ClusterStatusFailed
 	var reason string
@@ -170,7 +170,7 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient
 
 }
 
-func createOrUpdateVMSelect(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *conf.BaseOperatorConf) (*appsv1.StatefulSet, error) {
+func createOrUpdateVMSelect(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) (*appsv1.StatefulSet, error) {
 	l := log.WithValues("controller", "vmselect", "cluster", cr.Name)
 	l.Info("create or update vmselect for cluster")
 	newSts, err := genVMSelectSpec(cr, c)
@@ -213,7 +213,7 @@ func createOrUpdateVMSelect(ctx context.Context, cr *v1beta1.VMCluster, rclient 
 
 }
 
-func CreateOrUpdateVMSelectService(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *conf.BaseOperatorConf) (*corev1.Service, error) {
+func CreateOrUpdateVMSelectService(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) (*corev1.Service, error) {
 	l := log.WithValues("controller", "vmselect.service.crud")
 	newService := genVMSelectService(cr, c)
 
@@ -247,7 +247,7 @@ func CreateOrUpdateVMSelectService(ctx context.Context, cr *v1beta1.VMCluster, r
 	return newService, nil
 }
 
-func createOrUpdateVMInsert(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *conf.BaseOperatorConf) (*appsv1.Deployment, error) {
+func createOrUpdateVMInsert(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) (*appsv1.Deployment, error) {
 	l := log.WithValues("controller", "vminsert", "cluster", cr.Name)
 	l.Info("create or update vminsert for cluster")
 	newDeployment, err := genVMInsertSpec(cr, c)
@@ -287,7 +287,7 @@ func createOrUpdateVMInsert(ctx context.Context, cr *v1beta1.VMCluster, rclient 
 	return newDeployment, nil
 }
 
-func CreateOrUpdateVMInsertService(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *conf.BaseOperatorConf) (*corev1.Service, error) {
+func CreateOrUpdateVMInsertService(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) (*corev1.Service, error) {
 	l := log.WithValues("controller", "vminsert.service.crud")
 	newService := genVMInsertService(cr, c)
 
@@ -322,7 +322,7 @@ func CreateOrUpdateVMInsertService(ctx context.Context, cr *v1beta1.VMCluster, r
 
 }
 
-func createOrUpdateVMStorage(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *conf.BaseOperatorConf) (*appsv1.StatefulSet, error) {
+func createOrUpdateVMStorage(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) (*appsv1.StatefulSet, error) {
 	l := log.WithValues("controller", "vmstorage", "cluster", cr.Name)
 	l.Info("create or update vmstorage for cluster")
 	newSts, err := GenVMStorageSpec(cr, c)
@@ -362,7 +362,7 @@ func createOrUpdateVMStorage(ctx context.Context, cr *v1beta1.VMCluster, rclient
 	return newSts, nil
 }
 
-func CreateOrUpdateVMStorageService(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *conf.BaseOperatorConf) (*corev1.Service, error) {
+func CreateOrUpdateVMStorageService(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) (*corev1.Service, error) {
 	l := log.WithValues("controller", "vmstorage.service.crud")
 	newService := genVMStorageService(cr, c)
 
@@ -397,7 +397,7 @@ func CreateOrUpdateVMStorageService(ctx context.Context, cr *v1beta1.VMCluster, 
 
 }
 
-func genVMSelectSpec(cr *v1beta1.VMCluster, c *conf.BaseOperatorConf) (*appsv1.StatefulSet, error) {
+func genVMSelectSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv1.StatefulSet, error) {
 	cr = cr.DeepCopy()
 	if cr.Spec.VMSelect.Image.Repository == "" {
 		cr.Spec.VMSelect.Image.Repository = c.VMClusterDefault.VMSelectDefault.Image
@@ -514,7 +514,7 @@ func genVMSelectSpec(cr *v1beta1.VMCluster, c *conf.BaseOperatorConf) (*appsv1.S
 	return stsSpec, nil
 }
 
-func makePodSpecForVMSelect(cr *v1beta1.VMCluster, c *conf.BaseOperatorConf) (*corev1.PodTemplateSpec, error) {
+func makePodSpecForVMSelect(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*corev1.PodTemplateSpec, error) {
 	args := []string{
 		fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.VMSelect.Port),
 	}
@@ -699,7 +699,7 @@ func makePodSpecForVMSelect(cr *v1beta1.VMCluster, c *conf.BaseOperatorConf) (*c
 	return vmSelectPodSpec, nil
 }
 
-func genVMSelectService(cr *v1beta1.VMCluster, c *conf.BaseOperatorConf) *corev1.Service {
+func genVMSelectService(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) *corev1.Service {
 	cr = cr.DeepCopy()
 	if cr.Spec.VMSelect.Port == "" {
 		cr.Spec.VMSelect.Port = c.VMClusterDefault.VMSelectDefault.Port
@@ -728,7 +728,7 @@ func genVMSelectService(cr *v1beta1.VMCluster, c *conf.BaseOperatorConf) *corev1
 	}
 }
 
-func genVMInsertSpec(cr *v1beta1.VMCluster, c *conf.BaseOperatorConf) (*appsv1.Deployment, error) {
+func genVMInsertSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv1.Deployment, error) {
 	cr = cr.DeepCopy()
 
 	if cr.Spec.VMInsert.Image.Repository == "" {
@@ -796,7 +796,7 @@ func genVMInsertSpec(cr *v1beta1.VMCluster, c *conf.BaseOperatorConf) (*appsv1.D
 	return stsSpec, nil
 }
 
-func makePodSpecForVMInsert(cr *v1beta1.VMCluster, c *conf.BaseOperatorConf) (*corev1.PodTemplateSpec, error) {
+func makePodSpecForVMInsert(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*corev1.PodTemplateSpec, error) {
 	args := []string{
 		fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.VMInsert.Port),
 	}
@@ -959,7 +959,7 @@ func makePodSpecForVMInsert(cr *v1beta1.VMCluster, c *conf.BaseOperatorConf) (*c
 	return vmInsertPodSpec, nil
 
 }
-func genVMInsertService(cr *v1beta1.VMCluster, c *conf.BaseOperatorConf) *corev1.Service {
+func genVMInsertService(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) *corev1.Service {
 	cr = cr.DeepCopy()
 	if cr.Spec.VMInsert.Port == "" {
 		cr.Spec.VMInsert.Port = c.VMClusterDefault.VMInsertDefault.Port
@@ -987,7 +987,7 @@ func genVMInsertService(cr *v1beta1.VMCluster, c *conf.BaseOperatorConf) *corev1
 	}
 }
 
-func GenVMStorageSpec(cr *v1beta1.VMCluster, c *conf.BaseOperatorConf) (*appsv1.StatefulSet, error) {
+func GenVMStorageSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv1.StatefulSet, error) {
 	cr = cr.DeepCopy()
 	if cr.Spec.VMStorage.Image.Repository == "" {
 		cr.Spec.VMStorage.Image.Repository = c.VMClusterDefault.VMStorageDefault.Image
@@ -1114,7 +1114,7 @@ func GenVMStorageSpec(cr *v1beta1.VMCluster, c *conf.BaseOperatorConf) (*appsv1.
 	return stsSpec, nil
 }
 
-func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *conf.BaseOperatorConf) (*corev1.PodTemplateSpec, error) {
+func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*corev1.PodTemplateSpec, error) {
 	args := []string{
 		fmt.Sprintf("-vminsertAddr=:%s", cr.Spec.VMStorage.VMInsertPort),
 		fmt.Sprintf("-vmselectAddr=:%s", cr.Spec.VMStorage.VMSelectPort),
@@ -1299,7 +1299,7 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *conf.BaseOperatorConf) (*
 	return vmStoragePodSpec, nil
 }
 
-func genVMStorageService(cr *v1beta1.VMCluster, c *conf.BaseOperatorConf) *corev1.Service {
+func genVMStorageService(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) *corev1.Service {
 	cr = cr.DeepCopy()
 	if cr.Spec.VMStorage.Port == "" {
 		cr.Spec.VMStorage.Port = c.VMClusterDefault.VMStorageDefault.Port
@@ -1369,7 +1369,7 @@ func waitForExpanding(ctx context.Context, kclient client.Client, namespace stri
 // we check sts revision (kubernetes controller-manager is responsible for that)
 // and compare pods revision label with sts revision
 // if it doesnt match - updated is needed
-func performRollingUpdateOnSts(ctx context.Context, rclient client.Client, stsName string, ns string, podLabels map[string]string, c *conf.BaseOperatorConf) error {
+func performRollingUpdateOnSts(ctx context.Context, rclient client.Client, stsName string, ns string, podLabels map[string]string, c *config.BaseOperatorConf) error {
 	time.Sleep(time.Second * 2)
 	sts := &appsv1.StatefulSet{}
 	err := rclient.Get(ctx, types.NamespacedName{Name: stsName, Namespace: ns}, sts)
@@ -1468,7 +1468,7 @@ func PodIsReady(pod corev1.Pod) bool {
 	return false
 }
 
-func waitForPodReady(ctx context.Context, rclient client.Client, ns, podName string, c *conf.BaseOperatorConf) error {
+func waitForPodReady(ctx context.Context, rclient client.Client, ns, podName string, c *config.BaseOperatorConf) error {
 	// we need some delay
 	time.Sleep(c.PodWaitReadyInitDelay)
 	return wait.Poll(c.PodWaitReadyIntervalCheck, c.PodWaitReadyTimeout, func() (done bool, err error) {

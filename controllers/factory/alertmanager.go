@@ -7,7 +7,7 @@ import (
 	"path"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
-	"github.com/VictoriaMetrics/operator/conf"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/blang/semver"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -36,7 +36,7 @@ var (
 	log                       = logf.Log.WithName("factory")
 )
 
-func CreateOrUpdateAlertManager(ctx context.Context, cr *victoriametricsv1beta1.VMAlertmanager, rclient client.Client, c *conf.BaseOperatorConf) (*appsv1.StatefulSet, error) {
+func CreateOrUpdateAlertManager(ctx context.Context, cr *victoriametricsv1beta1.VMAlertmanager, rclient client.Client, c *config.BaseOperatorConf) (*appsv1.StatefulSet, error) {
 	l := log.WithValues("reconcile.VMAlertManager.sts", cr.Name, "ns", cr.Namespace)
 	newSts, err := newStsForAlertManager(cr, c)
 	if err != nil {
@@ -71,7 +71,7 @@ func updateStsForAlertManager(ctx context.Context, rclient client.Client, oldSts
 
 }
 
-func newStsForAlertManager(cr *victoriametricsv1beta1.VMAlertmanager, c *conf.BaseOperatorConf) (*appsv1.StatefulSet, error) {
+func newStsForAlertManager(cr *victoriametricsv1beta1.VMAlertmanager, c *config.BaseOperatorConf) (*appsv1.StatefulSet, error) {
 
 	if cr.Spec.Image.Repository == "" {
 		cr.Spec.Image.Repository = c.VMAlertManager.AlertmanagerDefaultBaseImage
@@ -158,7 +158,7 @@ func newStsForAlertManager(cr *victoriametricsv1beta1.VMAlertmanager, c *conf.Ba
 	return statefulset, nil
 }
 
-func CreateOrUpdateAlertManagerService(ctx context.Context, cr *victoriametricsv1beta1.VMAlertmanager, rclient client.Client, c *conf.BaseOperatorConf) (*v1.Service, error) {
+func CreateOrUpdateAlertManagerService(ctx context.Context, cr *victoriametricsv1beta1.VMAlertmanager, rclient client.Client, c *config.BaseOperatorConf) (*v1.Service, error) {
 
 	l := log.WithValues("recon.alertmanager.service", cr.Name)
 
@@ -193,7 +193,7 @@ func CreateOrUpdateAlertManagerService(ctx context.Context, cr *victoriametricsv
 	return newService, nil
 }
 
-func newAlertManagerService(cr *victoriametricsv1beta1.VMAlertmanager, c *conf.BaseOperatorConf) *v1.Service {
+func newAlertManagerService(cr *victoriametricsv1beta1.VMAlertmanager, c *config.BaseOperatorConf) *v1.Service {
 
 	if cr.Spec.PortName == "" {
 		cr.Spec.PortName = defaultPortName
@@ -235,7 +235,7 @@ func newAlertManagerService(cr *victoriametricsv1beta1.VMAlertmanager, c *conf.B
 	return svc
 }
 
-func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, config *conf.BaseOperatorConf) (*appsv1.StatefulSetSpec, error) {
+func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, config *config.BaseOperatorConf) (*appsv1.StatefulSetSpec, error) {
 
 	cr = cr.DeepCopy()
 

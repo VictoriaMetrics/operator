@@ -1,5 +1,6 @@
 # VictoriaMetrics operator
 
+
 ## Documentation
 
 - quick start [doc](/docs/quick-start.MD)
@@ -13,14 +14,15 @@
 
 
 
-## limitations
+## kubernetes compatibility versions
 
-- alert relabel is not supported
+operator tested at kubernetes versions 
+from 1.13 to 1.18
 
 ## development
 
-- operator-sdk verson v0.19.0 +  [https://github.com/operator-framework/operator-sdk]
-- golang 1.13 +
+- operator-sdk verson v1.0.0 +  [https://github.com/operator-framework/operator-sdk]
+- golang 1.15 +
 - minikube or kind
 
 start:

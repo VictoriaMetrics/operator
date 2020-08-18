@@ -13,6 +13,9 @@ wget https://github.com/VictoriaMetrics/operator/releases/download/v0.1.0/bundle
 unzip  bundle_crd.zip 
 ```
 
+> TIP, you can install operator to specific namespace with command
+> sed -i "s/namespace: default/namespace: YOUR_NAMESPACE/g" release/operator/*
+
 First of all, you  have to create [custom resource definitions](https://github.com/VictoriaMetrics/operator)
 ```bash
 kubectl apply -f release/crds

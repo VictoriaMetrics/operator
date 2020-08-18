@@ -3,7 +3,7 @@ package factory
 import (
 	"context"
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
-	"github.com/VictoriaMetrics/operator/conf"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -92,7 +92,7 @@ func Test_loadTLSAssetsForVMAlert(t *testing.T) {
 func TestCreateOrUpdateVMAlert(t *testing.T) {
 	type args struct {
 		cr      *victoriametricsv1beta1.VMAlert
-		c       *conf.BaseOperatorConf
+		c       *config.BaseOperatorConf
 		cmNames []string
 	}
 	tests := []struct {
@@ -119,7 +119,7 @@ func TestCreateOrUpdateVMAlert(t *testing.T) {
 						},
 					},
 				},
-				c: conf.MustGetBaseConfig(),
+				c: config.MustGetBaseConfig(),
 			},
 		},
 		{
@@ -165,7 +165,7 @@ func TestCreateOrUpdateVMAlert(t *testing.T) {
 						},
 					},
 				},
-				c: conf.MustGetBaseConfig(),
+				c: config.MustGetBaseConfig(),
 			},
 			predefinedObjects: []runtime.Object{
 				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},

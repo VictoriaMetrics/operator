@@ -6,7 +6,7 @@ import (
 	"path"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/conf"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -25,7 +25,7 @@ const (
 	vmDataVolumeName = "data"
 )
 
-func CreateVMStorage(ctx context.Context, cr *victoriametricsv1beta1.VMSingle, rclient client.Client, c *conf.BaseOperatorConf) (*corev1.PersistentVolumeClaim, error) {
+func CreateVMStorage(ctx context.Context, cr *victoriametricsv1beta1.VMSingle, rclient client.Client, c *config.BaseOperatorConf) (*corev1.PersistentVolumeClaim, error) {
 
 	l := log.WithValues("vm.single.pvc.create", cr.Name)
 	l.Info("reconciling pvc")
@@ -58,7 +58,7 @@ func CreateVMStorage(ctx context.Context, cr *victoriametricsv1beta1.VMSingle, r
 	return newPvc, nil
 }
 
-func makeVMSinglePvc(cr *victoriametricsv1beta1.VMSingle, c *conf.BaseOperatorConf) *corev1.PersistentVolumeClaim {
+func makeVMSinglePvc(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOperatorConf) *corev1.PersistentVolumeClaim {
 	pvcObject := &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        cr.PrefixedName(),
@@ -74,7 +74,7 @@ func makeVMSinglePvc(cr *victoriametricsv1beta1.VMSingle, c *conf.BaseOperatorCo
 	return pvcObject
 }
 
-func CreateOrUpdateVMSingle(ctx context.Context, cr *victoriametricsv1beta1.VMSingle, rclient client.Client, c *conf.BaseOperatorConf) (*appsv1.Deployment, error) {
+func CreateOrUpdateVMSingle(ctx context.Context, cr *victoriametricsv1beta1.VMSingle, rclient client.Client, c *config.BaseOperatorConf) (*appsv1.Deployment, error) {
 
 	l := log.WithValues("controller", "vmsingle.crud", "vmsingle", cr.Name)
 	l.Info("create or update vm single deploy")
@@ -119,7 +119,7 @@ func CreateOrUpdateVMSingle(ctx context.Context, cr *victoriametricsv1beta1.VMSi
 	return newDeploy, nil
 }
 
-func newDeployForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *conf.BaseOperatorConf) (*appsv1.Deployment, error) {
+func newDeployForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOperatorConf) (*appsv1.Deployment, error) {
 	cr = cr.DeepCopy()
 
 	if cr.Spec.Image.Repository == "" {
@@ -184,7 +184,7 @@ func newDeployForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *conf.BaseOpera
 	return depSpec, nil
 }
 
-func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *conf.BaseOperatorConf) (*corev1.PodTemplateSpec, error) {
+func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOperatorConf) (*corev1.PodTemplateSpec, error) {
 	args := []string{
 		fmt.Sprintf("-storageDataPath=%s", vmSingleDataDir),
 		fmt.Sprintf("-retentionPeriod=%s", cr.Spec.RetentionPeriod),
@@ -365,7 +365,7 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *conf.BaseOperat
 
 }
 
-func CreateOrUpdateVMSingleService(ctx context.Context, cr *victoriametricsv1beta1.VMSingle, rclient client.Client, c *conf.BaseOperatorConf) (*corev1.Service, error) {
+func CreateOrUpdateVMSingleService(ctx context.Context, cr *victoriametricsv1beta1.VMSingle, rclient client.Client, c *config.BaseOperatorConf) (*corev1.Service, error) {
 	l := log.WithValues("controller", "vmalert.service.crud")
 	newService := newServiceVMSingle(cr, c)
 
@@ -399,7 +399,7 @@ func CreateOrUpdateVMSingleService(ctx context.Context, cr *victoriametricsv1bet
 	return newService, nil
 }
 
-func newServiceVMSingle(cr *victoriametricsv1beta1.VMSingle, c *conf.BaseOperatorConf) *corev1.Service {
+func newServiceVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOperatorConf) *corev1.Service {
 	cr = cr.DeepCopy()
 	if cr.Spec.Port == "" {
 		cr.Spec.Port = c.VMSingleDefault.Port
@@ -427,7 +427,7 @@ func newServiceVMSingle(cr *victoriametricsv1beta1.VMSingle, c *conf.BaseOperato
 	}
 }
 
-func makeSpecForVMBackuper(cr *victoriametricsv1beta1.VMBackup, c *conf.BaseOperatorConf, port string, dataVolumeName string) (*corev1.Container, error) {
+func makeSpecForVMBackuper(cr *victoriametricsv1beta1.VMBackup, c *config.BaseOperatorConf, port string, dataVolumeName string) (*corev1.Container, error) {
 	if cr.Image.Repository == "" {
 		cr.Image.Repository = c.VMBackup.Image
 	}

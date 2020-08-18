@@ -96,7 +96,7 @@ doc: install-develop-tools
      > docs/api.MD
 
 operator-conf: install-develop-tools
-	envconfig-docs --input internal/conf/config.go > vars.MD
+	envconfig-docs --input internal/config/config.go > vars.MD
 
 
 docker: manager

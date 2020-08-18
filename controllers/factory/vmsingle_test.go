@@ -3,7 +3,7 @@ package factory
 import (
 	"context"
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/conf"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -16,7 +16,7 @@ import (
 func TestCreateOrUpdateVMSingle(t *testing.T) {
 	type args struct {
 		cr *victoriametricsv1beta1.VMSingle
-		c  *conf.BaseOperatorConf
+		c  *config.BaseOperatorConf
 	}
 	tests := []struct {
 		name              string
@@ -28,7 +28,7 @@ func TestCreateOrUpdateVMSingle(t *testing.T) {
 		{
 			name: "base-vmsingle-gen",
 			args: args{
-				c: conf.MustGetBaseConfig(),
+				c: config.MustGetBaseConfig(),
 				cr: &victoriametricsv1beta1.VMSingle{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "vmsingle-base",
@@ -61,7 +61,7 @@ func TestCreateOrUpdateVMSingleService(t *testing.T) {
 	type args struct {
 		cr *victoriametricsv1beta1.VMSingle
 
-		c *conf.BaseOperatorConf
+		c *config.BaseOperatorConf
 	}
 	tests := []struct {
 		name              string
@@ -73,7 +73,7 @@ func TestCreateOrUpdateVMSingleService(t *testing.T) {
 		{
 			name: "base service test",
 			args: args{
-				c: conf.MustGetBaseConfig(),
+				c: config.MustGetBaseConfig(),
 				cr: &victoriametricsv1beta1.VMSingle{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "single-1",

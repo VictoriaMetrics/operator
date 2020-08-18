@@ -35,6 +35,8 @@ func testGetScheme() *runtime.Scheme {
 		&victoriametricsv1beta1.VMServiceScrapeList{},
 		&victoriametricsv1beta1.VMRule{},
 		&victoriametricsv1beta1.VMRuleList{},
+		&victoriametricsv1beta1.VMProbe{},
+		&victoriametricsv1beta1.VMProbeList{},
 	)
 	return s
 }

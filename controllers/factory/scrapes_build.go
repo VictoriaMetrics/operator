@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/conf"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -21,6 +21,7 @@ const (
 	configEnvsubstFilename   = "vmagent.env.yaml"
 	kubernetesSDRoleEndpoint = "endpoints"
 	kubernetesSDRolePod      = "pod"
+	kubernetesSDRoleIngress  = "ingress"
 )
 
 var (
@@ -42,6 +43,7 @@ func generateConfig(
 	cr *victoriametricsv1beta1.VMAgent,
 	sMons map[string]*victoriametricsv1beta1.VMServiceScrape,
 	pMons map[string]*victoriametricsv1beta1.VMPodScrape,
+	probes map[string]*victoriametricsv1beta1.VMProbe,
 	basicAuthSecrets map[string]BasicAuthCredentials,
 	bearerTokens map[string]BearerToken,
 	additionalScrapeConfigs []byte,
@@ -80,6 +82,15 @@ func generateConfig(
 	// Sorting ensures, that we always generate the config in the same order.
 	sort.Strings(pMonIdentifiers)
 
+	probeIdentifiers := make([]string, len(probes))
+	i = 0
+	for k := range probes {
+		probeIdentifiers[i] = k
+		i++
+	}
+	// Sorting ensures, that we always generate the config in the same order.
+	sort.Strings(probeIdentifiers)
+
 	apiserverConfig := cr.Spec.APIServerConfig
 
 	var scrapeConfigs []yaml.MapSlice
@@ -112,6 +123,17 @@ func generateConfig(
 		}
 	}
 
+	for i, identifier := range probeIdentifiers {
+		scrapeConfigs = append(scrapeConfigs,
+			generateProbeConfig(
+				probes[identifier],
+				i,
+				apiserverConfig,
+				basicAuthSecrets,
+				cr.Spec.IgnoreNamespaceSelectors,
+				cr.Spec.EnforcedNamespaceLabel))
+	}
+
 	var additionalScrapeConfigsYaml []yaml.MapSlice
 	err := yaml.Unmarshal([]byte(additionalScrapeConfigs), &additionalScrapeConfigsYaml)
 	if err != nil {
@@ -126,7 +148,7 @@ func generateConfig(
 	return yaml.Marshal(cfg)
 }
 
-func makeEmptyConfigurationSecret(p *victoriametricsv1beta1.VMAgent, config *conf.BaseOperatorConf) (*v1.Secret, error) {
+func makeEmptyConfigurationSecret(p *victoriametricsv1beta1.VMAgent, config *config.BaseOperatorConf) (*v1.Secret, error) {
 	s := makeConfigSecret(p, config)
 
 	s.ObjectMeta.Annotations = map[string]string{
@@ -136,7 +158,7 @@ func makeEmptyConfigurationSecret(p *victoriametricsv1beta1.VMAgent, config *con
 	return s, nil
 }
 
-func makeConfigSecret(cr *victoriametricsv1beta1.VMAgent, config *conf.BaseOperatorConf) *v1.Secret {
+func makeConfigSecret(cr *victoriametricsv1beta1.VMAgent, config *config.BaseOperatorConf) *v1.Secret {
 	return &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),
@@ -344,7 +366,7 @@ func generatePodScrapeConfig(
 		})
 	}
 
-	// By default, generate a safe job name from the PodMonitor. We also keep
+	// By default, generate a safe job name from the PodScrape. We also keep
 	// this around if a jobLabel is set in case the targets don't actually have a
 	// value for it. A single pod may potentially have multiple metrics
 	// endpoints, therefore the endpoints labels is filled with the ports name or
@@ -734,15 +756,15 @@ func prefixedName(name string) string {
 
 // getNamespacesFromNamespaceSelector gets a list of namespaces to select based on
 // the given namespace selector, the given default namespace, and whether to ignore namespace selectors
-func getNamespacesFromNamespaceSelector(nsel *victoriametricsv1beta1.NamespaceSelector, namespace string, ignoreNamespaceSelectors bool) []string {
+func getNamespacesFromNamespaceSelector(nsSelector *victoriametricsv1beta1.NamespaceSelector, namespace string, ignoreNamespaceSelectors bool) []string {
 	if ignoreNamespaceSelectors {
 		return []string{namespace}
-	} else if nsel.Any {
+	} else if nsSelector.Any {
 		return []string{}
-	} else if len(nsel.MatchNames) == 0 {
+	} else if len(nsSelector.MatchNames) == 0 {
 		return []string{namespace}
 	}
-	return nsel.MatchNames
+	return nsSelector.MatchNames
 }
 
 func generateK8SSDConfig(namespaces []string, apiserverConfig *victoriametricsv1beta1.APIServerConfig, basicAuthSecrets map[string]BasicAuthCredentials, role string) yaml.MapItem {

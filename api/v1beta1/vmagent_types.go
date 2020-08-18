@@ -172,6 +172,16 @@ type VMAgentSpec struct {
 	// check own namespace.
 	// +optional
 	PodScrapeNamespaceSelector *metav1.LabelSelector `json:"podScrapeNamespaceSelector,omitempty"`
+	// PodScrapeSelector defines PodScrapes to be selected for target discovery.
+	// if neither PodScrapeNamespaceSelector this nor PodScrapeSelector are specified,
+	// configuration is unmanaged.
+	// +optional
+	VMProbeSelector *metav1.LabelSelector `json:"vmprobeSelector,omitempty"`
+	// PodScrapeNamespaceSelector defines Namespaces to be selected for PodMonitor discovery. If nil, only
+	// check own namespace.
+	// +optional
+	VMProbeNamespaceSelector *metav1.LabelSelector `json:"vmprobeNamespaceSelector,omitempty"`
+
 	// AdditionalScrapeConfigs As scrape configs are appended, the user is responsible to make sure it
 	// is valid. Note that using this feature may expose the possibility to
 	// break upgrades of VMAgent. It is advised to review VMAgent release

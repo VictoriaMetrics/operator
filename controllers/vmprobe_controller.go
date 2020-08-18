@@ -20,69 +20,66 @@ import (
 	"context"
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/internal/config"
-	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/errors"
+
+	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	operatorv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 )
 
-// VMServiceScrapeReconciler reconciles a VMServiceScrape object
-type VMServiceScrapeReconciler struct {
+// VMProbeReconciler reconciles a VMProbe object
+type VMProbeReconciler struct {
 	client.Client
 	Log      logr.Logger
 	Scheme   *runtime.Scheme
 	BaseConf *config.BaseOperatorConf
 }
 
-// Reconcile general reconcile method for controller
-// +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmservicescrapes,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmservicescrapes/status,verbs=get;update;patch
-func (r *VMServiceScrapeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	reqLogger := r.Log.WithValues("vmservicescrape", req.NamespacedName)
-	reqLogger.Info("Reconciling VMServiceScrape")
-	// Fetch the VMServiceScrape instance
-	instance := &victoriametricsv1beta1.VMServiceScrape{}
+// +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmprobes,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmprobes/status,verbs=get;update;patch
+func (r *VMProbeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	ctx := context.Background()
+	reqLogger := r.Log.WithValues("vmprobe", req.NamespacedName)
+
+	// Fetch the VMPodScrape instance
+	instance := &operatorv1beta1.VMProbe{}
 	err := r.Get(ctx, req.NamespacedName, instance)
 	if err != nil {
 		//in case of object notfound we must update vmagents
 		if !errors.IsNotFound(err) {
 			// Error reading the object - requeue the request.
-			reqLogger.Error(err, "cannot get service scrape")
 			return ctrl.Result{}, err
 		}
 	}
-	vmAgentInstances := &victoriametricsv1beta1.VMAgentList{}
+	vmAgentInstances := &operatorv1beta1.VMAgentList{}
 	err = r.List(ctx, vmAgentInstances)
 	if err != nil {
 		reqLogger.Error(err, "cannot list vmagent objects")
 		return ctrl.Result{}, err
 	}
-	reqLogger.Info("found vmagent objects ", "len: ", len(vmAgentInstances.Items))
+	reqLogger.Info("found vmagent objects ", "vmagents count: ", len(vmAgentInstances.Items))
 
 	for _, vmagent := range vmAgentInstances.Items {
 		reqLogger = reqLogger.WithValues("vmagent", vmagent.Name)
-		reqLogger.Info("reconciling servicescrapes for vmagent")
+		reqLogger.Info("reconciling probe for vmagent")
 		currentVMagent := &vmagent
-
 		recon, err := factory.CreateOrUpdateVMAgent(ctx, currentVMagent, r, r.BaseConf)
 		if err != nil {
-			reqLogger.Error(err, "cannot create or update vmagent instance")
+			reqLogger.Error(err, "cannot create or update vmagent")
 			return recon, err
 		}
 		reqLogger.Info("reconciled vmagent")
 	}
 
-	reqLogger.Info("reconciled serviceScrape")
+	reqLogger.Info("reconciled pod monitor")
 	return ctrl.Result{}, nil
 }
 
-// SetupWithManager general setup method
-func (r *VMServiceScrapeReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *VMProbeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&victoriametricsv1beta1.VMServiceScrape{}).
+		For(&operatorv1beta1.VMProbe{}).
 		Complete(r)
 }

@@ -1,5 +1,5 @@
-# Auto Generated vars for package conf 
-## updated at Mon Aug 17 01:02:10 UTC 2020 
+# Auto Generated vars for package config 
+## updated at Tue Aug 18 16:15:02 UTC 2020 
 
 
 | varible name | variable default value | variable required | variable description |
@@ -62,9 +62,6 @@
 | VM_VMALERTMANAGER_ALERTMANAGERDEFAULTBASEIMAGE | quay.io/prometheus/alertmanage | false | - |
 | VM_VMALERTMANAGER_ALERTMANAGERVERSION | v0.20.0 | false | - |
 | VM_VMALERTMANAGER_LOCALHOST | 127.0.0.1 | false | - |
-| VM_VMALERTMANAGER_LOGLEVEL | INFO | false | - |
-| VM_VMALERTMANAGER_NAMESPACES | - | false | - |
-| VM_VMALERTMANAGER_CLUSTERDOMAIN | - | false | - |
 | VM_DISABLESELFSERVICESCRAPECREATION | false | false | - |
 | VM_VMBACKUP_IMAGE | tenmozes/backup | false | - |
 | VM_VMBACKUP_VERSION | latest | false | - |
@@ -77,6 +74,7 @@
 | VM_ENABLEDPROMETHEUSCONVERTER_PODMONITOR | true | false | - |
 | VM_ENABLEDPROMETHEUSCONVERTER_SERVICESCRAPE | true | false | - |
 | VM_ENABLEDPROMETHEUSCONVERTER_PROMETHEUSRULE | true | false | - |
+| VM_ENABLEDPROMETHEUSCONVERTER_PROBE | true | false | - |
 | VM_HOST | 0.0.0.0 | false | - |
 | VM_LISTENADDRESS | 0.0.0.0 | false | - |
 | VM_DEFAULTLABELS | managed-by=vm-operator | false | - |

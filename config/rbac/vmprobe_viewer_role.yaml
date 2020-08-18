@@ -1,22 +1,16 @@
-
----
+# permissions for end users to view vmprobes.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  creationTimestamp: null
-  name: manager-role
+  name: vmprobe-viewer-role
 rules:
 - apiGroups:
   - operator.victoriametrics.com
   resources:
   - vmprobes
   verbs:
-  - create
-  - delete
   - get
   - list
-  - patch
-  - update
   - watch
 - apiGroups:
   - operator.victoriametrics.com
@@ -24,5 +18,3 @@ rules:
   - vmprobes/status
   verbs:
   - get
-  - patch
-  - update

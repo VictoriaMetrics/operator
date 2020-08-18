@@ -27,7 +27,7 @@ type VMProbeSpec struct {
 	JobName string `json:"jobName,omitempty"`
 	// Specification for the prober to use for probing targets.
 	// The prober.URL parameter is required. Targets cannot be probed if left empty.
-	VMProberSpec VMProberSpec `json:"prober"`
+	VMProberSpec VMProberSpec `json:"vmProberSpec"`
 	// The module to use for probing specifying how to probe the target.
 	// Example module configuring in the blackbox exporter:
 	// https://github.com/prometheus/blackbox_exporter/blob/master/example.yml
@@ -55,7 +55,7 @@ type VMProbeTargets struct {
 // +k8s:openapi-gen=true
 type VMProbeTargetStaticConfig struct {
 	// Targets is a list of URLs to probe using the configured prober.
-	Targets []string `json:"static"`
+	Targets []string `json:"targets"`
 	// Labels assigned to all metrics scraped from the targets.
 	Labels map[string]string `json:"labels,omitempty"`
 }

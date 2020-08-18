@@ -47,23 +47,6 @@ spec:
               description: 'The module to use for probing specifying how to probe
                 the target. Example module configuring in the blackbox exporter: https://github.com/prometheus/blackbox_exporter/blob/master/example.yml'
               type: string
-            prober:
-              description: Specification for the prober to use for probing targets.
-                The prober.URL parameter is required. Targets cannot be probed if
-                left empty.
-              properties:
-                path:
-                  description: Path to collect metrics from. Defaults to `/probe`.
-                  type: string
-                scheme:
-                  description: HTTP scheme to use for scraping. Defaults to `http`.
-                  type: string
-                url:
-                  description: Mandatory URL of the prober.
-                  type: string
-              required:
-              - url
-              type: object
             scrapeTimeout:
               description: Timeout for scraping metrics from the Prometheus exporter.
               type: string
@@ -189,18 +172,35 @@ spec:
                       description: Labels assigned to all metrics scraped from the
                         targets.
                       type: object
-                    static:
+                    targets:
                       description: Targets is a list of URLs to probe using the configured
                         prober.
                       items:
                         type: string
                       type: array
                   required:
-                  - static
+                  - targets
                   type: object
               type: object
+            vmProberSpec:
+              description: Specification for the prober to use for probing targets.
+                The prober.URL parameter is required. Targets cannot be probed if
+                left empty.
+              properties:
+                path:
+                  description: Path to collect metrics from. Defaults to `/probe`.
+                  type: string
+                scheme:
+                  description: HTTP scheme to use for scraping. Defaults to `http`.
+                  type: string
+                url:
+                  description: Mandatory URL of the prober.
+                  type: string
+              required:
+              - url
+              type: object
           required:
-          - prober
+          - vmProberSpec
           type: object
         status:
           description: VMProbeStatus defines the observed state of VMProbe

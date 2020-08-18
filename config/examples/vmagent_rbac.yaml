@@ -9,13 +9,14 @@ kind: ClusterRole
 metadata:
   name: vmagent
 rules:
-  - apiGroups: [""]
+  - apiGroups: ["","networking.k8s.io","extensions"]
     resources:
       - nodes
       - services
       - endpoints
       - pods
       - app
+      - ingresses
     verbs: ["get", "list", "watch"]
   - apiGroups: [""]
     resources:

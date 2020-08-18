@@ -116,7 +116,7 @@ func generateProbeConfig(
 		// Relabelings for ingress SD.
 		relabelings = append(relabelings, []yaml.MapSlice{
 			{
-				{Key: "source_labels", Value: "[__meta_kubernetes_ingress_scheme, __address__, __meta_kubernetes_ingress_path]"},
+				{Key: "source_labels", Value: []string{"__meta_kubernetes_ingress_scheme", "__address__", "__meta_kubernetes_ingress_path"}},
 				{Key: "separator", Value: ";"},
 				{Key: "regex", Value: "(.+);(.+);(.+)"},
 				{Key: "target_label", Value: "__param_target"},
@@ -152,11 +152,11 @@ func generateProbeConfig(
 	// Relabelings for prober.
 	relabelings = append(relabelings, []yaml.MapSlice{
 		{
-			{Key: "source_labels", Value: "[__address__]"},
+			{Key: "source_labels", Value: []string{"__address__"}},
 			{Key: "target_label", Value: "__param_target"},
 		},
 		{
-			{Key: "source_labels", Value: "[__param_target]"},
+			{Key: "source_labels", Value: []string{"__param_target"}},
 			{Key: "target_label", Value: "instance"},
 		},
 		{

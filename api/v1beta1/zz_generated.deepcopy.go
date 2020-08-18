@@ -822,13 +822,13 @@ func (in *VMAgentSpec) DeepCopyInto(out *VMAgentSpec) {
 		*out = new(metav1.LabelSelector)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.VMProbeSelector != nil {
-		in, out := &in.VMProbeSelector, &out.VMProbeSelector
+	if in.ProbeSelector != nil {
+		in, out := &in.ProbeSelector, &out.ProbeSelector
 		*out = new(metav1.LabelSelector)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.VMProbeNamespaceSelector != nil {
-		in, out := &in.VMProbeNamespaceSelector, &out.VMProbeNamespaceSelector
+	if in.ProbeNamespaceSelector != nil {
+		in, out := &in.ProbeNamespaceSelector, &out.ProbeNamespaceSelector
 		*out = new(metav1.LabelSelector)
 		(*in).DeepCopyInto(*out)
 	}

@@ -52,9 +52,11 @@ static_configs:
   labels:
     label1: value1
 relabel_configs:
-- source_labels: '[__address__]'
+- source_labels:
+  - __address__
   target_label: __param_target
-- source_labels: '[__param_target]'
+- source_labels:
+  - __param_target
   target_label: instance
 - target_label: __address__
   replacement: blackbox-monitor:9115
@@ -95,7 +97,10 @@ kubernetes_sd_configs:
     names:
     - monitor
 relabel_configs:
-- source_labels: '[__meta_kubernetes_ingress_scheme, __address__, __meta_kubernetes_ingress_path]'
+- source_labels:
+  - __meta_kubernetes_ingress_scheme
+  - __address__
+  - __meta_kubernetes_ingress_path
   separator: ;
   regex: (.+);(.+);(.+)
   target_label: __param_target
@@ -111,9 +116,11 @@ relabel_configs:
   - label1
   target_label: api
   action: replacement
-- source_labels: '[__address__]'
+- source_labels:
+  - __address__
   target_label: __param_target
-- source_labels: '[__param_target]'
+- source_labels:
+  - __param_target
   target_label: instance
 - target_label: __address__
   replacement: blackbox:9115

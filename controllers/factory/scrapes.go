@@ -25,7 +25,7 @@ func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *victoriametricsv
 	// exist.
 	l := log.WithValues("vmagent", cr.Name, "namespace", cr.Namespace)
 
-	if cr.Spec.ServiceScrapeSelector == nil && cr.Spec.PodScrapeSelector == nil && cr.Spec.VMProbeSelector == nil {
+	if cr.Spec.ServiceScrapeSelector == nil && cr.Spec.PodScrapeSelector == nil && cr.Spec.ProbeSelector == nil {
 		l.Info("neither ServiceScrape nor PodScrape nor VMProbe selector specified, leaving configuration unmanaged")
 
 		s, err := makeEmptyConfigurationSecret(cr, c)
@@ -311,15 +311,15 @@ func SelectVMProbes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rcl
 	// list namespaces matched by  namespaceSelector
 	// for each namespace apply list with  selector
 	// combine result
-	if cr.Spec.VMProbeNamespaceSelector == nil {
+	if cr.Spec.ProbeNamespaceSelector == nil {
 		namespaces = append(namespaces, cr.Namespace)
-	} else if cr.Spec.VMProbeNamespaceSelector.MatchExpressions == nil && cr.Spec.PodScrapeNamespaceSelector.MatchLabels == nil {
+	} else if cr.Spec.ProbeNamespaceSelector.MatchExpressions == nil && cr.Spec.PodScrapeNamespaceSelector.MatchLabels == nil {
 		namespaces = nil
 	} else {
 		log.Info("selector for VMProbe", "vmagent", cr.Name, "selector", cr.Spec.PodScrapeNamespaceSelector.String())
-		nsSelector, err := metav1.LabelSelectorAsSelector(cr.Spec.VMProbeNamespaceSelector)
+		nsSelector, err := metav1.LabelSelectorAsSelector(cr.Spec.ProbeNamespaceSelector)
 		if err != nil {
-			return nil, fmt.Errorf("cannot convert VMProbeNamespaceSelector to labelSelector: %w", err)
+			return nil, fmt.Errorf("cannot convert ProbeNamespaceSelector to labelSelector: %w", err)
 		}
 		namespaces, err = selectNamespaces(ctx, rclient, nsSelector)
 		if err != nil {
@@ -329,10 +329,10 @@ func SelectVMProbes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rcl
 
 	// if namespaces isn't nil, then nameSpaceSelector is defined
 	//but probeSelector maybe be nil and we have to set it to catch all value
-	if namespaces != nil && cr.Spec.VMProbeSelector == nil {
-		cr.Spec.VMProbeSelector = &metav1.LabelSelector{}
+	if namespaces != nil && cr.Spec.ProbeSelector == nil {
+		cr.Spec.ProbeSelector = &metav1.LabelSelector{}
 	}
-	probeSelector, err := metav1.LabelSelectorAsSelector(cr.Spec.VMProbeSelector)
+	probeSelector, err := metav1.LabelSelectorAsSelector(cr.Spec.ProbeSelector)
 	if err != nil {
 		return nil, fmt.Errorf("cannot convert probeSelector to label selector: %w", err)
 	}
@@ -373,7 +373,7 @@ func SelectVMProbes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rcl
 		probesList = append(probesList, key)
 	}
 
-	log.Info("selected PodScrapes", "podscrapes", strings.Join(probesList, ","), "namespace", cr.Namespace, "vmagent", cr.Name)
+	log.Info("selected VMProbes", "vmProbes", strings.Join(probesList, ","), "namespace", cr.Namespace, "vmagent", cr.Name)
 
 	return res, nil
 }

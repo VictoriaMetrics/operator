@@ -155,7 +155,7 @@ type VMAgentSpec struct {
 	// +optional
 	RelabelConfig *v1.ConfigMapKeySelector `json:"relabelConfig,omitempty"`
 	// ServiceScrapeSelector defines ServiceScrapes to be selected for target discovery. if
-	// neither serviceScrapeNamespaceSelector nor serviceScrapeSelector are specified, configuration is
+	// neither serviceScrapeNamespaceSelector nor ProbeSelector nor serviceScrapeSelector are specified, configuration is
 	// unmanaged.
 	// +optional
 	ServiceScrapeSelector *metav1.LabelSelector `json:"serviceScrapeSelector,omitempty"`
@@ -164,7 +164,7 @@ type VMAgentSpec struct {
 	// +optional
 	ServiceScrapeNamespaceSelector *metav1.LabelSelector `json:"serviceScrapeNamespaceSelector,omitempty"`
 	// PodScrapeSelector defines PodScrapes to be selected for target discovery.
-	// if neither PodScrapeNamespaceSelector this nor PodScrapeSelector are specified,
+	// if neither PodScrapeNamespaceSelector nor ProbeSelector nor PodScrapeSelector are specified,
 	// configuration is unmanaged.
 	// +optional
 	PodScrapeSelector *metav1.LabelSelector `json:"podScrapeSelector,omitempty"`
@@ -172,15 +172,15 @@ type VMAgentSpec struct {
 	// check own namespace.
 	// +optional
 	PodScrapeNamespaceSelector *metav1.LabelSelector `json:"podScrapeNamespaceSelector,omitempty"`
-	// PodScrapeSelector defines PodScrapes to be selected for target discovery.
-	// if neither PodScrapeNamespaceSelector this nor PodScrapeSelector are specified,
+	// ProbeSelector defines VMProbe to be selected for target probing.
+	// if neither PodScrapeNamespaceSelector, nor ProbeSelector nor PodScrapeSelector are specified,
 	// configuration is unmanaged.
 	// +optional
-	VMProbeSelector *metav1.LabelSelector `json:"vmprobeSelector,omitempty"`
-	// PodScrapeNamespaceSelector defines Namespaces to be selected for PodMonitor discovery. If nil, only
+	ProbeSelector *metav1.LabelSelector `json:"probeSelector,omitempty"`
+	// ProbeNamespaceSelector defines Namespaces to be selected for VMProbe discovery. If nil, only
 	// check own namespace.
 	// +optional
-	VMProbeNamespaceSelector *metav1.LabelSelector `json:"vmprobeNamespaceSelector,omitempty"`
+	ProbeNamespaceSelector *metav1.LabelSelector `json:"probeNamespaceSelector,omitempty"`
 
 	// AdditionalScrapeConfigs As scrape configs are appended, the user is responsible to make sure it
 	// is valid. Note that using this feature may expose the possibility to

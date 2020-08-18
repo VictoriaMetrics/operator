@@ -3,26 +3,266 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  creationTimestamp: null
   name: manager-role
 rules:
 - apiGroups:
-  - operator.victoriametrics.com
+    - ""
   resources:
-  - vmprobes
+    - configmaps
   verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
+    - '*'
 - apiGroups:
-  - operator.victoriametrics.com
+    - ""
   resources:
-  - vmprobes/status
+    - endpoints
   verbs:
-  - get
-  - patch
-  - update
+    - '*'
+- apiGroups:
+    - ""
+  resources:
+    - events
+  verbs:
+    - '*'
+- apiGroups:
+    - ""
+  resources:
+    - namespaces
+  verbs:
+    - get
+    - list
+    - watch
+- apiGroups:
+    - ""
+  resources:
+    - persistentvolumeclaims
+  verbs:
+    - '*'
+- apiGroups:
+    - ""
+  resources:
+    - pods
+  verbs:
+    - '*'
+- apiGroups:
+    - ""
+  resources:
+    - secrets
+  verbs:
+    - '*'
+- apiGroups:
+    - ""
+  resources:
+    - services
+  verbs:
+    - '*'
+- apiGroups:
+    - ""
+  resources:
+    - services/finalizers
+  verbs:
+    - '*'
+- apiGroups:
+    - apps
+  resources:
+    - deployments
+  verbs:
+    - '*'
+- apiGroups:
+    - apps
+  resources:
+    - replicasets
+  verbs:
+    - '*'
+- apiGroups:
+    - apps
+  resources:
+    - statefulsets
+  verbs:
+    - '*'
+- apiGroups:
+    - monitoring.coreos.com
+  resources:
+    - '*'
+  verbs:
+    - '*'
+- apiGroups:
+    - operator.victoriametrics.com
+  resources:
+    - vmagents
+  verbs:
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch
+- apiGroups:
+    - operator.victoriametrics.com
+  resources:
+    - vmagents/status
+  verbs:
+    - get
+    - patch
+    - update
+- apiGroups:
+    - operator.victoriametrics.com
+  resources:
+    - vmalertmanagers
+  verbs:
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch
+- apiGroups:
+    - operator.victoriametrics.com
+  resources:
+    - vmalertmanagers/status
+  verbs:
+    - get
+    - patch
+    - update
+- apiGroups:
+    - operator.victoriametrics.com
+  resources:
+    - vmalerts
+  verbs:
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch
+- apiGroups:
+    - operator.victoriametrics.com
+  resources:
+    - vmalerts/status
+  verbs:
+    - get
+    - patch
+    - update
+- apiGroups:
+    - operator.victoriametrics.com
+  resources:
+    - vmclusters
+  verbs:
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch
+- apiGroups:
+    - operator.victoriametrics.com
+  resources:
+    - vmclusters/status
+  verbs:
+    - get
+    - patch
+    - update
+- apiGroups:
+    - operator.victoriametrics.com
+  resources:
+    - vmpodscrapes
+  verbs:
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch
+- apiGroups:
+    - operator.victoriametrics.com
+  resources:
+    - vmpodscrapes/status
+  verbs:
+    - get
+    - patch
+    - update
+- apiGroups:
+    - operator.victoriametrics.com
+  resources:
+    - vmrules
+  verbs:
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch
+- apiGroups:
+    - operator.victoriametrics.com
+  resources:
+    - vmrules/status
+  verbs:
+    - get
+    - patch
+    - update
+- apiGroups:
+    - operator.victoriametrics.com
+  resources:
+    - vmservicescrapes
+  verbs:
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch
+- apiGroups:
+    - operator.victoriametrics.com
+  resources:
+    - vmservicescrapes/status
+  verbs:
+    - get
+    - patch
+    - update
+- apiGroups:
+    - operator.victoriametrics.com
+  resources:
+    - vmprobes
+  verbs:
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch
+- apiGroups:
+    - operator.victoriametrics.com
+  resources:
+    - vmprobes/status
+  verbs:
+    - get
+    - patch
+    - update
+
+- apiGroups:
+    - operator.victoriametrics.com
+  resources:
+    - vmsingle
+  verbs:
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch
+- apiGroups:
+    - operator.victoriametrics.com
+  resources:
+    - vmsingle/status
+  verbs:
+    - get
+    - patch
+    - update

@@ -91,7 +91,8 @@ doc: install-develop-tools
 	$(APIS_BASE_PATH)/vmrule_types.go,\
 	$(APIS_BASE_PATH)/vmservicescrape_types.go,\
 	$(APIS_BASE_PATH)/vmpodscrape_types.go,\
-	$(APIS_BASE_PATH)/vmcluster_types.go \
+	$(APIS_BASE_PATH)/vmcluster_types.go,\
+	$(APIS_BASE_PATH)/vmprobe_types.go \
 	--owner VictoriaMetrics \
      > docs/api.MD
 

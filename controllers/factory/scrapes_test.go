@@ -352,3 +352,62 @@ func Test_getCredFromSecret(t *testing.T) {
 		})
 	}
 }
+
+func TestSelectVMProbes(t *testing.T) {
+	type args struct {
+		cr *victoriametricsv1beta1.VMAgent
+	}
+	tests := []struct {
+		name              string
+		args              args
+		want              []string
+		wantErr           bool
+		predefinedObjects []runtime.Object
+	}{
+		{
+			name: "select vmProbe with static conf",
+			args: args{
+				cr: &victoriametricsv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "example-vmagent",
+						Namespace: "default",
+					},
+					Spec: victoriametricsv1beta1.VMAgentSpec{
+						ProbeSelector: &metav1.LabelSelector{},
+					},
+				},
+			},
+			predefinedObjects: []runtime.Object{
+				&victoriametricsv1beta1.VMProbe{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "default",
+						Name:      "static-probe",
+					},
+					Spec: victoriametricsv1beta1.VMProbeSpec{Targets: victoriametricsv1beta1.VMProbeTargets{StaticConfig: &victoriametricsv1beta1.VMProbeTargetStaticConfig{Targets: []string{"host-1"}}}},
+				},
+			},
+			want: []string{"default/static-probe"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			obj := []runtime.Object{}
+			obj = append(obj, tt.predefinedObjects...)
+			fclient := fake.NewFakeClientWithScheme(testGetScheme(), obj...)
+
+			got, err := SelectVMProbes(context.TODO(), tt.args.cr, fclient)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("SelectVMProbes() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			var result []string
+			for k := range got {
+				result = append(result, k)
+			}
+			sort.Strings(result)
+			if !reflect.DeepEqual(result, tt.want) {
+				t.Errorf("SelectVMProbes() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

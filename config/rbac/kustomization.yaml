@@ -13,7 +13,7 @@ resources:
 patches:
 - path: service_account_patch.yaml
   target:
-    name: leader-election-role
+    name: leader-election-rolebinding
 - path: service_account_patch.yaml
   target:
     name:  proxy-rolebinding

@@ -3,7 +3,7 @@ package manager
 import (
 	"context"
 	"flag"
-	"github.com/VictoriaMetrics/operator/internal/conf"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/coreos/prometheus-operator/pkg/client/versioned"
 	"github.com/spf13/pflag"
 	"golang.org/x/sync/errgroup"
@@ -77,7 +77,7 @@ func RunManager(ctx context.Context) error {
 		Client:   mgr.GetClient(),
 		Log:      ctrl.Log.WithName("controllers").WithName("VMAgent"),
 		Scheme:   mgr.GetScheme(),
-		BaseConf: conf.MustGetBaseConfig(),
+		BaseConf: config.MustGetBaseConfig(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "VMAgent")
 		return err
@@ -86,7 +86,7 @@ func RunManager(ctx context.Context) error {
 		Client:   mgr.GetClient(),
 		Log:      ctrl.Log.WithName("controllers").WithName("VMAlert"),
 		Scheme:   mgr.GetScheme(),
-		BaseConf: conf.MustGetBaseConfig(),
+		BaseConf: config.MustGetBaseConfig(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "VMAlert")
 		return err
@@ -95,7 +95,7 @@ func RunManager(ctx context.Context) error {
 		Client:   mgr.GetClient(),
 		Log:      ctrl.Log.WithName("controllers").WithName("VMAlertmanager"),
 		Scheme:   mgr.GetScheme(),
-		BaseConf: conf.MustGetBaseConfig(),
+		BaseConf: config.MustGetBaseConfig(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "VMAlertmanager")
 		return err
@@ -104,7 +104,7 @@ func RunManager(ctx context.Context) error {
 		Client:   mgr.GetClient(),
 		Log:      ctrl.Log.WithName("controllers").WithName("VMPodScrape"),
 		Scheme:   mgr.GetScheme(),
-		BaseConf: conf.MustGetBaseConfig(),
+		BaseConf: config.MustGetBaseConfig(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "VMPodScrape")
 		return err
@@ -113,7 +113,7 @@ func RunManager(ctx context.Context) error {
 		Client:   mgr.GetClient(),
 		Log:      ctrl.Log.WithName("controllers").WithName("VMRule"),
 		Scheme:   mgr.GetScheme(),
-		BaseConf: conf.MustGetBaseConfig(),
+		BaseConf: config.MustGetBaseConfig(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "VMRule")
 		return err
@@ -122,7 +122,7 @@ func RunManager(ctx context.Context) error {
 		Client:   mgr.GetClient(),
 		Log:      ctrl.Log.WithName("controllers").WithName("VMServiceScrape"),
 		Scheme:   mgr.GetScheme(),
-		BaseConf: conf.MustGetBaseConfig(),
+		BaseConf: config.MustGetBaseConfig(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "VMServiceScrape")
 		return err
@@ -131,7 +131,7 @@ func RunManager(ctx context.Context) error {
 		Client:   mgr.GetClient(),
 		Log:      ctrl.Log.WithName("controllers").WithName("VMSingle"),
 		Scheme:   mgr.GetScheme(),
-		BaseConf: conf.MustGetBaseConfig(),
+		BaseConf: config.MustGetBaseConfig(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "VMSingle")
 		return err
@@ -141,7 +141,7 @@ func RunManager(ctx context.Context) error {
 		Client:   mgr.GetClient(),
 		Log:      ctrl.Log.WithName("controllers").WithName("VMCluster"),
 		Scheme:   mgr.GetScheme(),
-		BaseConf: conf.MustGetBaseConfig(),
+		BaseConf: config.MustGetBaseConfig(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "VMCluster")
 		return err
@@ -158,7 +158,7 @@ func RunManager(ctx context.Context) error {
 	converterController := controllers.NewConverterController(prom, mgr.GetClient())
 
 	errG := &errgroup.Group{}
-	converterController.Run(ctx, errG, conf.MustGetBaseConfig())
+	converterController.Run(ctx, errG, config.MustGetBaseConfig())
 	setupLog.Info("vmconverter was started")
 
 	setupLog.Info("starting manager")

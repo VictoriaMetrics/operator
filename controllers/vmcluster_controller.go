@@ -4,7 +4,7 @@ import (
 	"context"
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory"
-	"github.com/VictoriaMetrics/operator/internal/conf"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -23,7 +23,7 @@ type VMClusterReconciler struct {
 	Client   client.Client
 	Log      logr.Logger
 	Scheme   *runtime.Scheme
-	BaseConf *conf.BaseOperatorConf
+	BaseConf *config.BaseOperatorConf
 }
 
 // Reconcile general reconcile method for controller
@@ -42,7 +42,7 @@ func (r *VMClusterReconciler) Reconcile(request ctrl.Request) (ctrl.Result, erro
 		return reconcile.Result{}, err
 	}
 
-	status, err := factory.CreateOrUpdateVMCluster(ctx, cluster, r.Client, conf.MustGetBaseConfig())
+	status, err := factory.CreateOrUpdateVMCluster(ctx, cluster, r.Client, config.MustGetBaseConfig())
 	if err != nil {
 		reqLogger.Error(err, "cannot update or create vmcluster")
 		return reconcile.Result{}, err

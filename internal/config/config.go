@@ -18,7 +18,7 @@ const prefixVar = "VM"
 type BaseOperatorConf struct {
 	VMAlertDefault struct {
 		Image    string `default:"victoriametrics/vmalert"`
-		Version  string `default:"v1.39.2"`
+		Version  string `default:"v1.40.0"`
 		Port     string `default:"8080"`
 		Resource struct {
 			Limit struct {
@@ -36,7 +36,7 @@ type BaseOperatorConf struct {
 	}
 	VMAgentDefault struct {
 		Image             string `default:"victoriametrics/vmagent"`
-		Version           string `default:"v1.39.2"`
+		Version           string `default:"v1.40.0"`
 		ConfigReloadImage string `default:"quay.io/coreos/prometheus-config-reloader:v0.30.1"`
 		Port              string `default:"8429"`
 		Resource          struct {
@@ -55,7 +55,7 @@ type BaseOperatorConf struct {
 
 	VMSingleDefault struct {
 		Image    string `default:"victoriametrics/victoria-metrics"`
-		Version  string `default:"v1.39.2"`
+		Version  string `default:"v1.40.0"`
 		Port     string `default:"8429"`
 		Resource struct {
 			Limit struct {
@@ -74,7 +74,7 @@ type BaseOperatorConf struct {
 	VMClusterDefault struct {
 		VMSelectDefault struct {
 			Image    string `default:"victoriametrics/vmselect"`
-			Version  string `default:"v1.39.2-cluster"`
+			Version  string `default:"v1.40.0-cluster"`
 			Port     string `default:"8481"`
 			Resource struct {
 				Limit struct {
@@ -89,7 +89,7 @@ type BaseOperatorConf struct {
 		}
 		VMStorageDefault struct {
 			Image        string `default:"victoriametrics/vmstorage"`
-			Version      string `default:"v1.39.2-cluster"`
+			Version      string `default:"v1.40.0-cluster"`
 			VMInsertPort string `default:"8400"`
 			VMSelectPort string `default:"8401"`
 			Port         string `default:"8482"`
@@ -106,7 +106,7 @@ type BaseOperatorConf struct {
 		}
 		VMInsertDefault struct {
 			Image    string `default:"victoriametrics/vminsert"`
-			Version  string `default:"v1.39.2-cluster"`
+			Version  string `default:"v1.40.0-cluster"`
 			Port     string `default:"8480"`
 			Resource struct {
 				Limit struct {

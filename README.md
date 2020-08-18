@@ -1,5 +1,6 @@
 # VictoriaMetrics operator
 
+
 ## Documentation
 
 - quick start [doc](/docs/quick-start.MD)
@@ -13,9 +14,10 @@
 
 
 
-## limitations
+## kubernetes compatibility versions
 
-- alert relabel is not supported
+operator tested at kubernetes versions 
+from 1.13 to 1.18
 
 ## development
 

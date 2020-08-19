@@ -128,13 +128,6 @@ type BaseOperatorConf struct {
 		AlertmanagerDefaultBaseImage string `default:"quay.io/prometheus/alertmanager"`
 		AlertManagerVersion          string `default:"v0.20.0"`
 		LocalHost                    string `default:"127.0.0.1"`
-		LogLevel                     string `default:"INFO"`
-		LogFormat                    string
-		PromSelector                 string
-		Namespaces                   Namespaces `ignored:"true"`
-		AlertManagerSelector         string
-		ClusterDomain                string `default:""`
-		KubeletObject                string
 	}
 
 	DisableSelfServiceScrapeCreation bool `default:"false"`
@@ -160,6 +153,7 @@ type BaseOperatorConf struct {
 		PodMonitor     bool `default:"true"`
 		ServiceScrape  bool `default:"true"`
 		PrometheusRule bool `default:"true"`
+		Probe          bool `default:"true"`
 	}
 	Host                      string `default:"0.0.0.0"`
 	ListenAddress             string `default:"0.0.0.0"`

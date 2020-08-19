@@ -758,7 +758,7 @@ spec:
                   type: object
               type: object
             podScrapeSelector:
-              description: PodScrapeSelector defines PodScrapes to be selected for target discovery. if neither PodScrapeNamespaceSelector this nor PodScrapeSelector are specified, configuration is unmanaged.
+              description: PodScrapeSelector defines PodScrapes to be selected for target discovery. if neither PodScrapeNamespaceSelector nor ProbeSelector nor PodScrapeSelector are specified, configuration is unmanaged.
               properties:
                 matchExpressions:
                   description: matchExpressions is a list of label selector requirements. The requirements are ANDed.
@@ -793,6 +793,66 @@ spec:
             priorityClassName:
               description: PriorityClassName assigned to the Pods
               type: string
+            probeNamespaceSelector:
+              description: ProbeNamespaceSelector defines Namespaces to be selected for VMProbe discovery. If nil, only check own namespace.
+              properties:
+                matchExpressions:
+                  description: matchExpressions is a list of label selector requirements. The requirements are ANDed.
+                  items:
+                    description: A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
+                    properties:
+                      key:
+                        description: key is the label key that the selector applies to.
+                        type: string
+                      operator:
+                        description: operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.
+                        type: string
+                      values:
+                        description: values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.
+                        items:
+                          type: string
+                        type: array
+                    required:
+                      - key
+                      - operator
+                    type: object
+                  type: array
+                matchLabels:
+                  additionalProperties:
+                    type: string
+                  description: matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed.
+                  type: object
+              type: object
+            probeSelector:
+              description: ProbeSelector defines VMProbe to be selected for target probing. if neither PodScrapeNamespaceSelector, nor ProbeSelector nor PodScrapeSelector are specified, configuration is unmanaged.
+              properties:
+                matchExpressions:
+                  description: matchExpressions is a list of label selector requirements. The requirements are ANDed.
+                  items:
+                    description: A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
+                    properties:
+                      key:
+                        description: key is the label key that the selector applies to.
+                        type: string
+                      operator:
+                        description: operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.
+                        type: string
+                      values:
+                        description: values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.
+                        items:
+                          type: string
+                        type: array
+                    required:
+                      - key
+                      - operator
+                    type: object
+                  type: array
+                matchLabels:
+                  additionalProperties:
+                    type: string
+                  description: matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is "key", the operator is "In", and the values array contains only "value". The requirements are ANDed.
+                  type: object
+              type: object
             relabelConfig:
               description: RelabelConfig ConfigMap with global relabel config -remoteWrite.relabelConfig This relabeling is applied to all the collected metrics before sending them to remote storage.
               properties:
@@ -1159,7 +1219,7 @@ spec:
                   type: object
               type: object
             serviceScrapeSelector:
-              description: ServiceScrapeSelector defines ServiceScrapes to be selected for target discovery. if neither serviceScrapeNamespaceSelector nor serviceScrapeSelector are specified, configuration is unmanaged.
+              description: ServiceScrapeSelector defines ServiceScrapes to be selected for target discovery. if neither serviceScrapeNamespaceSelector nor ProbeSelector nor serviceScrapeSelector are specified, configuration is unmanaged.
               properties:
                 matchExpressions:
                   description: matchExpressions is a list of label selector requirements. The requirements are ANDed.

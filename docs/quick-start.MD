@@ -51,6 +51,7 @@ The Victoria Metrics Operator introduces additional resources in Kubernetes to d
 * [VMServiceScrape](#VMServiceScrape)
 * [VMRule](#VMRule)
 * [VMPodScrape](#VMPodScrape)
+* [VMProbe](#VMProbe)
 
 
 ## VMSingle
@@ -231,7 +232,7 @@ spec:
 EOF
 ```
 
- `VMAgent` has four selectors specification for filtering `VMServiceScrape` and `VMPodScrape` objects:
+ `VMAgent` has four selectors specification for filtering `VMServiceScrape`, `VMProbe` and `VMPodScrape` objects:
  - `spec.serviceScrapeNamespaceSelector` - if it's nil, only serviceScrapes in the `VMAgent`s namespace can be selected.
     If it's defined with empty value: `spec.serviceScrapeNamespaceSelector: {}` - all namespaces are matched.
     You may also add matchLabels or matchExpression syntax, but your namespace must be tagged with specified labels first:
@@ -259,8 +260,23 @@ EOF
  - `spec.podScrapeSelector` - it selects `VMPodScrape` objects by its labels. 
      If it's nil, but `spec.podScrapeNamespaceSelector` isn't, the last one will be used for selecting.
      If it's defined with empty value: `spec.podScrapeSelector: {}`, all objects can be selected depending on NamespaceSelector.
+
+ - `spec.probeNamespaceSelector` - if it's nil, only `VMProbe` in the `VMAgent`s namespace can be selected.
+    If it's defined with empty value: `spec.probeNamespaceSelector: {}` - all namespaces are matched.
+    You may also add matchLabels or matchExpression syntax, but your namespace must be tagged with specified labels first:
+     ```bash
+        kubectl label ns default name=default
+     ``` 
+      `spec.probeNamespaceSelector:
+               matchLabels:
+                     name: default
+      `
+ - `spec.ProbeSelector` - it selects `VMProbe` objects by its labels. 
+     If it's nil, but `spec.probeNamespaceSelector` isn't, the last one will be used for selecting.
+     If it's defined with empty value: `spec.vmProbeSelector: {}`, all objects can be selected depending on NamespaceSelector.
+
      
-this configuration will match only namespace with  the label - name=default and all object at this namespace will be 
+this configuration will match only namespace with  the label - name=default and all `VMServiceScrape` objects at this namespace will be 
 selected: 
 ```yaml
 cat <<EOF | kubectl apply -f -
@@ -269,6 +285,7 @@ kind: VMAgent
 metadata:
   name: example-vmagent
 spec:
+  serviceScrapeSelector: {}
   serviceScrapeNamespaceSelector: 
       matchLabels:
          name: default
@@ -303,7 +320,7 @@ spec:
 EOF
 ```
 
-The last one will select any `VMServiceScrape` and `VMPodScrape` at `VMAgent` namespace:
+The last one will select any `VMServiceScrape`,`VMProbe` and `VMPodScrape` at `VMAgent` namespace:
 ```yaml
 cat <<EOF | kubectl apply -f -
 apiVersion: operator.victoriametrics.com/v1beta1
@@ -313,6 +330,7 @@ metadata:
 spec:
   serviceScrapeSelector: {}
   podScrapeSelector: {}
+  probSelector: {}
   replicaCount: 1
   serviceAccountName: vmagent
   remoteWrite:
@@ -798,6 +816,222 @@ Clean up incorrect rule:
 kubectl delete vmrule example-vmrule-incorrect-rule
 ```
 
+## VMProbe
+
+ `VMProbe` required `VMAgent` and some external prober, blackbox exporter in our case. Ensure that you have `VMAgent` and `VMSingle`:
+ ```yaml
+cat <<EOF | kubectl apply -f -
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMSingle
+metadata:
+  name: example-vmsingle-persisted
+spec:
+  retentionPeriod: "1"
+  removePvcAfterDelete: true
+  storage:
+    accessModes:
+      - ReadWriteOnce
+    resources:
+      requests:
+        storage: 1Gi      
+---
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAgent
+metadata:
+   name: example-vmagent
+spec:
+   serviceScrapeNamespaceSelector: {}
+   podScrapeNamespaceSelector: {}
+   probeNamespaceSelector: {}
+   podScrapeSelector: {}
+   serviceScrapeSelector: {}
+   probeSelector: {}
+   replicaCount: 1
+   serviceAccountName: vmagent
+   remoteWrite:
+     - url: "http://vmsingle-example-vmsingle-persisted.default.svc:8429/api/v1/write"
+EOF
+ ```
+
+ Then add `BlackBox` exporter with simple config:
+ 
+```yaml
+cat << EOF | kubectl apply -f -
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-blackbox-exporter
+  labels:
+    app: prometheus-blackbox-exporter
+data:
+  blackbox.yaml: |
+    modules:
+      http_2xx:
+        http:
+          preferred_ip_protocol: ip4
+          valid_http_versions:
+          - HTTP/1.1
+          - HTTP/2
+          valid_status_codes: []
+        prober: http
+        timeout: 5s
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: prometheus-blackbox-exporter
+  labels:
+    app: prometheus-blackbox-exporter
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 9115
+      protocol: TCP
+  selector:
+    app: prometheus-blackbox-exporter
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus-blackbox-exporter
+  labels:
+    app: prometheus-blackbox-exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus-blackbox-exporter
+  template:
+    metadata:
+      labels:
+        app: prometheus-blackbox-exporter
+    spec:
+      containers:
+        - name: blackbox-exporter
+          image: "prom/blackbox-exporter:v0.17.0"
+          args:
+            - "--config.file=/config/blackbox.yaml"
+          resources:
+            {}
+          ports:
+            - containerPort: 9115
+              name: http
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+          volumeMounts:
+            - mountPath: /config
+              name: config
+      volumes:
+        - name: config
+          configMap:
+            name: prometheus-blackbox-exporter
+EOF
+```
+
+Ensure, that pods are ready:
+
+```bash
+kubectl get pods
+NAME                                                   READY   STATUS    RESTARTS   AGE
+prometheus-blackbox-exporter-5b5f44bd9c-2szdj          1/1     Running   0          3m3s
+vmagent-example-vmagent-84886cd4d9-x8ml6               2/2     Running   1          9m22s
+vmsingle-example-vmsingle-persisted-8584486b68-mqg6b   1/1     Running   0          11m
+```
+
+Now define some `VMProbe`, lets start with basic static target and probe `VMAgent` with its service address, for accessing
+blackbox exporter, you have to specify its url at `VMProbe` config. Lets get both services names:
+```bash
+kubectl get svc
+NAME                                  TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
+kubernetes                            ClusterIP   10.96.0.1       <none>        443/TCP    4h21m
+prometheus-blackbox-exporter          ClusterIP   10.105.251.80   <none>        9115/TCP   4m36s
+vmagent-example-vmagent               ClusterIP   10.102.31.47    <none>        8429/TCP   12m
+vmsingle-example-vmsingle-persisted   ClusterIP   10.107.69.7     <none>        8429/TCP   12m
+```
+
+So, we will probe `VMAgent` with url - `vmagent-example-vmagent.default.svc:9115/heath` with blackbox url: 
+`prometheus-blackbox-exporter.default.svc:9115` and module: `http_2xx` it was specified at blackbox configmap.
+
+```yaml
+cat << EOF | kubectl apply -f -
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMProbe
+metadata:
+  name: probe-agent
+spec:
+  jobName: static-probe
+  vmProberSpec:
+     # by default scheme http, and path is /probe
+     url: prometheus-blackbox-exporter.default.svc:9115
+  module: http_2xx
+  targets:
+   staticConfig: 
+      targets:
+      -  vmagent-example-vmagent.default.svc:8429/health
+  interval: 2s 
+EOF
+```
+
+Now new target must be added to `VMAgent` configuration, and it starts probing itself throw blackbox exporter.
+
+Let's try another target probe type - `Ingress`. Create ingress rule for `VMSingle` and create `VMProbe` for it:
+
+```yaml
+
+cat << EOF | kubectl apply -f -
+apiVersion: networking.k8s.io/v1beta1                                                                                                                                                                                                                                                                                             
+kind: Ingress                                                                                                                                                                                                                                                                                                                
+metadata:                                                                                                                                                                                                                                                                                                                    
+  labels:
+    app: victoria-metrics-single
+  name: victoria-metrics-single
+spec:
+  rules:
+  - host: vmsingle.example.com
+    http:
+      paths:
+      - backend:
+          serviceName: vmsingle-example-vmsingle-persisted
+          servicePort: 8428
+        path: /
+  - host: vmsingle2.example.com
+    http:
+      paths:
+      - backend:
+          serviceName: vmsingle-example-vmsingle-persisted
+          servicePort: 8428
+        path: /
+
+---
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMProbe
+metadata:
+  name: probe-single-ingress
+spec:
+  vmProberSpec:
+     # by default scheme http, and path is /probe
+     url: prometheus-blackbox-exporter.default.svc:9115
+  module: http_2xx
+  targets:
+   ingress: 
+      selector:
+       matchLabels:
+        app: victoria-metrics-single
+  interval: 10s 
+EOF
+```
+
+This configuration will add 2 additional targets for probing: `vmsingle2.example.com` and `vmsingle.example.com`.
+
+But probes will be unsuccessful, coz there is no such hosts.
 
 ## Migration from prometheus-operator objects
 
@@ -810,6 +1044,7 @@ You can control this behaviour by setting env variable for operator:
 VM_ENABLEDPROMETHEUSCONVERTER_PODMONITOR=false
 VM_ENABLEDPROMETHEUSCONVERTER_SERVICESCRAPE=false
 VM_ENABLEDPROMETHEUSCONVERTER_PROMETHEUSRULE=false
+VM_ENABLEDPROMETHEUSCONVERTER_PROBE=false
 ```
 
 Otherwise, victoriametrics-operator would try to discover prometheus-operator API and convert it.
@@ -839,7 +1074,7 @@ EOF
 
 #create ingress rule
 cat << EOF | kubectl apply -f -
-apiVersion: networking/v1beta1                                                                                                                                                                                                                                                                                               
+apiVersion: networking.k8s.io/v1beta1                                                                                                                                                                                                                                                                                          
 kind: Ingress                                                                                                                                                                                                                                                                                                                
 metadata:                                                                                                                                                                                                                                                                                                                    
   annotations:                                                                                                                                                                                                                                                                                                               

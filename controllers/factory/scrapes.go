@@ -25,8 +25,8 @@ func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *victoriametricsv
 	// exist.
 	l := log.WithValues("vmagent", cr.Name, "namespace", cr.Namespace)
 
-	if cr.Spec.ServiceScrapeSelector == nil && cr.Spec.PodScrapeSelector == nil {
-		l.Info("neither ServiceScrape nor PodScrape selector specified, leaving configuration unmanaged")
+	if cr.Spec.ServiceScrapeSelector == nil && cr.Spec.PodScrapeSelector == nil && cr.Spec.ProbeSelector == nil {
+		l.Info("neither ServiceScrape nor PodScrape nor VMProbe selector specified, leaving configuration unmanaged")
 
 		s, err := makeEmptyConfigurationSecret(cr, c)
 		if err != nil {
@@ -55,6 +55,11 @@ func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *victoriametricsv
 		return fmt.Errorf("selecting PodScrapes failed: %w", err)
 	}
 
+	probes, err := SelectVMProbes(ctx, cr, rclient)
+	if err != nil {
+		return fmt.Errorf("selecting VMProbes failed: %w", err)
+	}
+
 	SecretsInNS := &v1.SecretList{}
 	err = rclient.List(ctx, SecretsInNS)
 	if err != nil {
@@ -81,6 +86,7 @@ func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *victoriametricsv
 		cr,
 		smons,
 		pmons,
+		probes,
 		basicAuthSecrets,
 		bearerTokens,
 		additionalScrapeConfigs,
@@ -292,6 +298,82 @@ func SelectPodScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, r
 	}
 
 	log.Info("selected PodScrapes", "podscrapes", strings.Join(podScrapes, ","), "namespace", cr.Namespace, "vmagent", cr.Name)
+
+	return res, nil
+}
+
+func SelectVMProbes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) (map[string]*victoriametricsv1beta1.VMProbe, error) {
+
+	res := make(map[string]*victoriametricsv1beta1.VMProbe)
+
+	namespaces := []string{}
+
+	// list namespaces matched by  namespaceSelector
+	// for each namespace apply list with  selector
+	// combine result
+	if cr.Spec.ProbeNamespaceSelector == nil {
+		namespaces = append(namespaces, cr.Namespace)
+	} else if cr.Spec.ProbeNamespaceSelector.MatchExpressions == nil && cr.Spec.PodScrapeNamespaceSelector.MatchLabels == nil {
+		namespaces = nil
+	} else {
+		log.Info("selector for VMProbe", "vmagent", cr.Name, "selector", cr.Spec.PodScrapeNamespaceSelector.String())
+		nsSelector, err := metav1.LabelSelectorAsSelector(cr.Spec.ProbeNamespaceSelector)
+		if err != nil {
+			return nil, fmt.Errorf("cannot convert ProbeNamespaceSelector to labelSelector: %w", err)
+		}
+		namespaces, err = selectNamespaces(ctx, rclient, nsSelector)
+		if err != nil {
+			return nil, fmt.Errorf("cannot select namespaces for VMprobe match: %w", err)
+		}
+	}
+
+	// if namespaces isn't nil, then nameSpaceSelector is defined
+	//but probeSelector maybe be nil and we have to set it to catch all value
+	if namespaces != nil && cr.Spec.ProbeSelector == nil {
+		cr.Spec.ProbeSelector = &metav1.LabelSelector{}
+	}
+	probeSelector, err := metav1.LabelSelectorAsSelector(cr.Spec.ProbeSelector)
+	if err != nil {
+		return nil, fmt.Errorf("cannot convert probeSelector to label selector: %w", err)
+	}
+
+	probesCombined := []victoriametricsv1beta1.VMProbe{}
+
+	//list all namespaces for probes with selector
+	if namespaces == nil {
+		log.Info("listing all namespaces for probes")
+		vmProbes := &victoriametricsv1beta1.VMProbeList{}
+		err = rclient.List(ctx, vmProbes, &client.ListOptions{LabelSelector: probeSelector})
+		if err != nil {
+			return nil, fmt.Errorf("cannot list VMProbes from all namespaces: %w", err)
+		}
+		probesCombined = append(probesCombined, vmProbes.Items...)
+
+	} else {
+		for _, ns := range namespaces {
+			listOpts := &client.ListOptions{Namespace: ns, LabelSelector: probeSelector}
+			vmProbes := &victoriametricsv1beta1.VMProbeList{}
+			err = rclient.List(ctx, vmProbes, listOpts)
+			if err != nil {
+				return nil, fmt.Errorf("cannot list podscrapes at namespace: %s, err: %w", ns, err)
+			}
+			probesCombined = append(probesCombined, vmProbes.Items...)
+
+		}
+	}
+
+	log.Info("filtering namespaces to select vmProbes from",
+		"namespace", cr.Namespace, "vmagent", cr.Name)
+	for _, probe := range probesCombined {
+		pm := probe.DeepCopy()
+		res[probe.Namespace+"/"+probe.Name] = pm
+	}
+	probesList := make([]string, 0)
+	for key := range res {
+		probesList = append(probesList, key)
+	}
+
+	log.Info("selected VMProbes", "vmProbes", strings.Join(probesList, ","), "namespace", cr.Namespace, "vmagent", cr.Name)
 
 	return res, nil
 }

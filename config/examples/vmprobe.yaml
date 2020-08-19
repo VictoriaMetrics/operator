@@ -1,0 +1,15 @@
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMProbe
+metadata:
+  name: probe-agent
+spec:
+  jobName: static-probe
+  vmProberSpec:
+    # by default scheme http, and path is /probe
+    url: prometheus-blackbox-exporter.default.svc:9115
+  module: http_2xx
+  targets:
+    staticConfig:
+      targets:
+        -  vmagent-example-vmagent.default.svc:8429/health
+  interval: 2s

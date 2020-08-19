@@ -91,12 +91,13 @@ doc: install-develop-tools
 	$(APIS_BASE_PATH)/vmrule_types.go,\
 	$(APIS_BASE_PATH)/vmservicescrape_types.go,\
 	$(APIS_BASE_PATH)/vmpodscrape_types.go,\
-	$(APIS_BASE_PATH)/vmcluster_types.go \
+	$(APIS_BASE_PATH)/vmcluster_types.go,\
+	$(APIS_BASE_PATH)/vmprobe_types.go \
 	--owner VictoriaMetrics \
      > docs/api.MD
 
 operator-conf: install-develop-tools
-	envconfig-docs --input internal/conf/config.go > vars.MD
+	envconfig-docs --input internal/config/config.go > vars.MD
 
 
 docker: manager

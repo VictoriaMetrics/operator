@@ -13,6 +13,7 @@ Operator introduces the following custom resources:
 * [VMPodScrape](#VMPodScrape)
 * [Alertmanager](#Alertmanager)
 * [VMRule](#VMRule)
+* [VMProbe](#VMProbe)
 
 ## VMSingle
 
@@ -174,8 +175,16 @@ By default, the Operator converts and updates existing prometheus-operator API o
 `ServiceMonitor` into `VMServiceScrape`
 `PodMonitor` into `VMPodScrape`
 `PrometheusRule` into `VMRule`
-
+`Probe` into `VMProbe`
 Removing prometheus-operator API objects wouldn't delete any converted objects. So you can safely migrate or run 
 two operators at the same time.
  
   
+## VMProbe
+
+ The `VMProbe` CRD provides probing target ability with a prober. The most common prober is [blackbox exporter](https://github.com/prometheus/blackbox_exporter). 
+ By specifying configuration at CRD, operator generates config for `VMAgent` and syncs it. Its possible to use static targets 
+ or use standard k8s discovery mechanism with `Ingress`. 
+  You have to configure blackbox exporter before you can use this feature. The second requirement is `VMAgent` selectors, 
+  it must match your `VMProbe` by label or namespace selector.
+ 

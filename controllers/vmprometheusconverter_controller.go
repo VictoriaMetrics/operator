@@ -29,6 +29,7 @@ type ConverterController struct {
 	ruleInf    cache.SharedInformer
 	podInf     cache.SharedInformer
 	serviceInf cache.SharedInformer
+	probeInf   cache.SharedIndexInformer
 }
 
 // NewConverterController builder for vmprometheusconverter service
@@ -87,6 +88,23 @@ func NewConverterController(promCl versioned.Interface, vclient client.Client) *
 	c.serviceInf.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    c.CreateServiceMonitor,
 		UpdateFunc: c.UpdateServiceMonitor,
+	})
+	c.probeInf = cache.NewSharedIndexInformer(
+		&cache.ListWatch{
+			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+				return promCl.MonitoringV1().Probes("").List(context.TODO(), options)
+			},
+			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+				return promCl.MonitoringV1().Probes("").Watch(context.TODO(), options)
+			},
+		},
+		&v1.Probe{},
+		0,
+		cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc},
+	)
+	c.probeInf.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    c.CreateProbe,
+		UpdateFunc: c.UpdateProbe,
 	})
 	return c
 }
@@ -153,6 +171,13 @@ func (c *ConverterController) Run(ctx context.Context, group *errgroup.Group, cf
 		})
 
 	}
+	if cfg.EnabledPrometheusConverter.Probe {
+		group.Go(func() error {
+			return c.runInformerWithDiscovery(ctx, v1.SchemeGroupVersion.String(), v1.ProbeKindKey, c.probeInf.Run)
+		})
+
+	}
+
 }
 
 // CreatePrometheusRule converts prometheus rule to vmrule
@@ -267,7 +292,7 @@ func (c *ConverterController) UpdatePodMonitor(old, new interface{}) {
 	existingVMPodScrape := &v1beta1.VMPodScrape{}
 	err := c.vclient.Get(ctx, types.NamespacedName{Name: podScrape.Name, Namespace: podScrape.Namespace}, existingVMPodScrape)
 	if err != nil {
-		l.Error(err, "cannot get existing alertRule")
+		l.Error(err, "cannot get existing podMonitor")
 		return
 	}
 	existingVMPodScrape.Spec = podScrape.Spec
@@ -277,5 +302,46 @@ func (c *ConverterController) UpdatePodMonitor(old, new interface{}) {
 		return
 	}
 	l.Info("podScrape was updated")
+
+}
+
+// CreateProbe converts Probe to VMProbe
+func (c *ConverterController) CreateProbe(obj interface{}) {
+	probe := obj.(*v1.Probe)
+	l := log.WithValues("kind", "vmProbe", "name", probe.Name, "ns", probe.Namespace)
+	l.Info("syncing probes")
+	vmProbe := converter.ConvertProbe(probe)
+	err := c.vclient.Create(context.TODO(), vmProbe)
+	if err != nil {
+		if errors.IsAlreadyExists(err) {
+			l.Info("vmProbe already exists")
+			return
+		}
+		l.Error(err, "cannot create vmProbe")
+		return
+	}
+	log.Info("vmProbe was created")
+
+}
+
+// UpdateProbe updates VMProbe
+func (c *ConverterController) UpdateProbe(old, new interface{}) {
+	probeNew := new.(*v1.Probe)
+	l := log.WithValues("kind", "vmProbe", "name", probeNew.Name, "ns", probeNew.Namespace)
+	vmProbe := converter.ConvertProbe(probeNew)
+	ctx := context.Background()
+	existingVMProbe := &v1beta1.VMProbe{}
+	err := c.vclient.Get(ctx, types.NamespacedName{Name: vmProbe.Name, Namespace: vmProbe.Namespace}, existingVMProbe)
+	if err != nil {
+		l.Error(err, "cannot get existing vmProbe")
+		return
+	}
+	existingVMProbe.Spec = vmProbe.Spec
+	err = c.vclient.Update(ctx, existingVMProbe)
+	if err != nil {
+		l.Error(err, "cannot update vmProbe")
+		return
+	}
+	l.Info("vmProbe was updated")
 
 }

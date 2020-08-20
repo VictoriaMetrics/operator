@@ -114,7 +114,7 @@ type VMSelect struct {
 	Secrets []string `json:"secrets,omitempty"`
 	// ConfigMaps is a list of ConfigMaps in the same namespace as the VMSelect
 	// object, which shall be mounted into the VMSelect Pods.
-	// The ConfigMaps are mounted into /etc/vm/configmaps/<configmap-name>.
+	// The ConfigMaps are mounted into /etc/vm/configs/<configmap-name>.
 	// +optional
 	ConfigMaps []string `json:"configMaps,omitempty"`
 	// LogFormat for VMSelect to be configured with.
@@ -235,12 +235,12 @@ type VMInsert struct {
 	Image Image `json:"image,omitempty"`
 	// Secrets is a list of Secrets in the same namespace as the VMSelect
 	// object, which shall be mounted into the VMSelect Pods.
-	// The Secrets are mounted into /etc/vmalert/secrets/<secret-name>.
+	// The Secrets are mounted into /etc/vm/secrets/<secret-name>.
 	// +optional
 	Secrets []string `json:"secrets,omitempty"`
 	// ConfigMaps is a list of ConfigMaps in the same namespace as the VMSelect
 	// object, which shall be mounted into the VMSelect Pods.
-	// The ConfigMaps are mounted into /etc/vmalert/configmaps/<configmap-name>.
+	// The ConfigMaps are mounted into /etc/vm/configs/<configmap-name>.
 	// +optional
 	ConfigMaps []string `json:"configMaps,omitempty"`
 	// LogFormat for VMSelect to be configured with.
@@ -346,12 +346,12 @@ type VMStorage struct {
 
 	// Secrets is a list of Secrets in the same namespace as the VMSelect
 	// object, which shall be mounted into the VMSelect Pods.
-	// The Secrets are mounted into /etc/vmalert/secrets/<secret-name>.
+	// The Secrets are mounted into /etc/vm/secrets/<secret-name>.
 	// +optional
 	Secrets []string `json:"secrets,omitempty"`
 	// ConfigMaps is a list of ConfigMaps in the same namespace as the VMSelect
 	// object, which shall be mounted into the VMSelect Pods.
-	// The ConfigMaps are mounted into /etc/vmalert/configmaps/<configmap-name>.
+	// The ConfigMaps are mounted into /etc/vm/configs/<configmap-name>.
 	// +optional
 	ConfigMaps []string `json:"configMaps,omitempty"`
 	// LogFormat for VMSelect to be configured with.

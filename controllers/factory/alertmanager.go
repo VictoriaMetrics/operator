@@ -315,8 +315,8 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, config *conf
 	}
 
 	var clusterPeerDomain string
-	if config.VMAlertManager.ClusterDomain != "" {
-		clusterPeerDomain = fmt.Sprintf("%s.%s.svc.%s.", cr.PrefixedName(), cr.Namespace, config.VMAlertManager.ClusterDomain)
+	if config.ClusterDomainName != "" {
+		clusterPeerDomain = fmt.Sprintf("%s.%s.svc.%s.", cr.PrefixedName(), cr.Namespace, config.ClusterDomainName)
 	} else {
 		// The default DNS search path is .svc.<cluster domain>
 		clusterPeerDomain = cr.PrefixedName()

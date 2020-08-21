@@ -61,6 +61,13 @@ This Document documents the types introduced by the VictoriaMetrics to be consum
 * [VMInsert](#vminsert)
 * [VMSelect](#vmselect)
 * [VMStorage](#vmstorage)
+* [ProbeTargetIngress](#probetargetingress)
+* [VMProbe](#vmprobe)
+* [VMProbeList](#vmprobelist)
+* [VMProbeSpec](#vmprobespec)
+* [VMProbeTargetStaticConfig](#vmprobetargetstaticconfig)
+* [VMProbeTargets](#vmprobetargets)
+* [VMProberSpec](#vmproberspec)
 
 ## VMAlertmanager
 
@@ -220,10 +227,12 @@ VMAgentSpec defines the desired state of VMAgent
 | externalLabels | ExternalLabels The labels to add to any time series or alerts when communicating with external systems (federation, remote storage, etc). | map[string]string | false |
 | remoteWrite | RemoteWrite list of victoria metrics /some other remote write system for vm it must looks like: http://victoria-metrics-single:8429/api/v1/write or for cluster different url https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/app/vmagent#splitting-data-streams-among-multiple-systems | [][VMAgentRemoteWriteSpec](#vmagentremotewritespec) | true |
 | relabelConfig | RelabelConfig ConfigMap with global relabel config -remoteWrite.relabelConfig This relabeling is applied to all the collected metrics before sending them to remote storage. | *v1.ConfigMapKeySelector | false |
-| serviceScrapeSelector | ServiceScrapeSelector defines ServiceScrapes to be selected for target discovery. if neither serviceScrapeNamespaceSelector nor serviceScrapeSelector are specified, configuration is unmanaged. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
+| serviceScrapeSelector | ServiceScrapeSelector defines ServiceScrapes to be selected for target discovery. if neither serviceScrapeNamespaceSelector nor ProbeSelector nor serviceScrapeSelector are specified, configuration is unmanaged. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
 | serviceScrapeNamespaceSelector | ServiceScrapeNamespaceSelector Namespaces to be selected for ServiceMonitor discovery. If nil, only check own namespace. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
-| podScrapeSelector | PodScrapeSelector defines PodScrapes to be selected for target discovery. if neither PodScrapeNamespaceSelector this nor PodScrapeSelector are specified, configuration is unmanaged. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
+| podScrapeSelector | PodScrapeSelector defines PodScrapes to be selected for target discovery. if neither PodScrapeNamespaceSelector nor ProbeSelector nor PodScrapeSelector are specified, configuration is unmanaged. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
 | podScrapeNamespaceSelector | PodScrapeNamespaceSelector defines Namespaces to be selected for PodMonitor discovery. If nil, only check own namespace. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
+| probeSelector | ProbeSelector defines VMProbe to be selected for target probing. if neither PodScrapeNamespaceSelector, nor ProbeSelector nor PodScrapeSelector are specified, configuration is unmanaged. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
+| probeNamespaceSelector | ProbeNamespaceSelector defines Namespaces to be selected for VMProbe discovery. If nil, only check own namespace. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
 | additionalScrapeConfigs | AdditionalScrapeConfigs As scrape configs are appended, the user is responsible to make sure it is valid. Note that using this feature may expose the possibility to break upgrades of VMAgent. It is advised to review VMAgent release notes to ensure that no incompatible scrape configs are going to break VMAgent after the upgrade. | *[v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
 | arbitraryFSAccessThroughSMs | ArbitraryFSAccessThroughSMs configures whether configuration based on a service scrape can access arbitrary files on the file system of the VMAgent container e.g. bearer token files. | [ArbitraryFSAccessThroughSMsConfig](#arbitraryfsaccessthroughsmsconfig) | false |
 | port | Port listen address | string | false |
@@ -982,5 +991,89 @@ VMClusterStatus defines the observed state of VMCluster
 | vmBackup | VMBackup configuration for backup | *[VMBackup](#vmbackup) | false |
 | extraArgs |  | map[string]string | false |
 | extraEnvs | ExtraEnvs that will be added to VMSelect pod | [][v1.EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#envvar-v1-core) | false |
+
+[Back to TOC](#table-of-contents)
+
+## ProbeTargetIngress
+
+ProbeTargetIngress defines the set of Ingress objects considered for probing.
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| selector | Select Ingress objects by labels. | [metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
+| namespaceSelector | Select Ingress objects by namespace. | [NamespaceSelector](#namespaceselector) | false |
+| relabelingConfigs | RelabelConfigs to apply to samples before ingestion. More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config | []*[RelabelConfig](#relabelconfig) | false |
+
+[Back to TOC](#table-of-contents)
+
+## VMProbe
+
+VMProbe is the Schema for the vmprobes API
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| metadata |  | [metav1.ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#objectmeta-v1-meta) | false |
+| spec |  | [VMProbeSpec](#vmprobespec) | true |
+| status |  | [VMProbeStatus](#vmprobestatus) | false |
+
+[Back to TOC](#table-of-contents)
+
+## VMProbeList
+
+VMProbeList contains a list of VMProbe
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| metadata |  | [metav1.ListMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#listmeta-v1-meta) | false |
+| items |  | [][VMProbe](#vmprobe) | true |
+
+[Back to TOC](#table-of-contents)
+
+## VMProbeSpec
+
+VMProbeSpec contains specification parameters for a Probe.
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| jobName | The job name assigned to scraped metrics by default. | string | false |
+| vmProberSpec | Specification for the prober to use for probing targets. The prober.URL parameter is required. Targets cannot be probed if left empty. | [VMProberSpec](#vmproberspec) | true |
+| module | The module to use for probing specifying how to probe the target. Example module configuring in the blackbox exporter: https://github.com/prometheus/blackbox_exporter/blob/master/example.yml | string | false |
+| targets | Targets defines a set of static and/or dynamically discovered targets to be probed using the prober. | [VMProbeTargets](#vmprobetargets) | false |
+| interval | Interval at which targets are probed using the configured prober. If not specified Prometheus' global scrape interval is used. | string | false |
+| scrapeTimeout | Timeout for scraping metrics from the Prometheus exporter. | string | false |
+
+[Back to TOC](#table-of-contents)
+
+## VMProbeTargetStaticConfig
+
+VMProbeTargetStaticConfig defines the set of static targets considered for probing.
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| targets | Targets is a list of URLs to probe using the configured prober. | []string | true |
+| labels | Labels assigned to all metrics scraped from the targets. | map[string]string | false |
+
+[Back to TOC](#table-of-contents)
+
+## VMProbeTargets
+
+VMProbeTargets defines a set of static and dynamically discovered targets for the prober.
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| staticConfig | StaticConfig defines static targets which are considers for probing. More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#static_config. | *[VMProbeTargetStaticConfig](#vmprobetargetstaticconfig) | false |
+| ingress | Ingress defines the set of dynamically discovered ingress objects which hosts are considered for probing. | *[ProbeTargetIngress](#probetargetingress) | false |
+
+[Back to TOC](#table-of-contents)
+
+## VMProberSpec
+
+VMProberSpec contains specification parameters for the Prober used for probing.
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| url | Mandatory URL of the prober. | string | true |
+| scheme | HTTP scheme to use for scraping. Defaults to `http`. | string | false |
+| path | Path to collect metrics from. Defaults to `/probe`. | string | false |
 
 [Back to TOC](#table-of-contents)

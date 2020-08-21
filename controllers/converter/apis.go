@@ -39,8 +39,8 @@ func ConvertPromRule(prom *v1.PrometheusRule) *v1beta1vm.VMRule {
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:   prom.Namespace,
 			Name:        prom.Name,
-			Annotations: prom.Annotations,
 			Labels:      prom.Labels,
+			Annotations: prom.Annotations,
 		},
 		Spec: v1beta1vm.VMRuleSpec{
 			Groups: ruleGroups,
@@ -54,8 +54,8 @@ func ConvertServiceMonitor(serviceMon *v1.ServiceMonitor) *v1beta1vm.VMServiceSc
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        serviceMon.Name,
 			Namespace:   serviceMon.Namespace,
-			Labels:      serviceMon.Labels,
 			Annotations: serviceMon.Annotations,
+			Labels:      serviceMon.Labels,
 		},
 		Spec: v1beta1vm.VMServiceScrapeSpec{
 			JobLabel:        serviceMon.Spec.JobLabel,
@@ -201,6 +201,50 @@ func ConvertPodMonitor(podMon *v1.PodMonitor) *v1beta1vm.VMPodScrape {
 			},
 			SampleLimit:         podMon.Spec.SampleLimit,
 			PodMetricsEndpoints: ConvertPodEndpoints(podMon.Spec.PodMetricsEndpoints),
+		},
+	}
+}
+
+func ConvertProbe(probe *v1.Probe) *v1beta1vm.VMProbe {
+	var (
+		ingressTarget *v1beta1vm.ProbeTargetIngress
+		staticTargets *v1beta1vm.VMProbeTargetStaticConfig
+	)
+	if probe.Spec.Targets.Ingress != nil {
+		ingressTarget = &v1beta1vm.ProbeTargetIngress{
+			Selector: probe.Spec.Targets.Ingress.Selector,
+			NamespaceSelector: v1beta1vm.NamespaceSelector{
+				Any:        probe.Spec.Targets.Ingress.NamespaceSelector.Any,
+				MatchNames: probe.Spec.Targets.Ingress.NamespaceSelector.MatchNames,
+			},
+			RelabelConfigs: ConvertRelabelConfig(probe.Spec.Targets.Ingress.RelabelConfigs),
+		}
+	}
+	if probe.Spec.Targets.StaticConfig != nil {
+		staticTargets = &v1beta1vm.VMProbeTargetStaticConfig{
+			Targets: probe.Spec.Targets.StaticConfig.Targets,
+			Labels:  probe.Spec.Targets.StaticConfig.Labels,
+		}
+	}
+	return &v1beta1vm.VMProbe{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      probe.Name,
+			Namespace: probe.Namespace,
+		},
+		Spec: v1beta1vm.VMProbeSpec{
+			JobName: probe.Spec.JobName,
+			VMProberSpec: v1beta1vm.VMProberSpec{
+				URL:    probe.Spec.ProberSpec.URL,
+				Scheme: probe.Spec.ProberSpec.Scheme,
+				Path:   probe.Spec.ProberSpec.Path,
+			},
+			Module: probe.Spec.Module,
+			Targets: v1beta1vm.VMProbeTargets{
+				Ingress:      ingressTarget,
+				StaticConfig: staticTargets,
+			},
+			Interval:      probe.Spec.Interval,
+			ScrapeTimeout: probe.Spec.ScrapeTimeout,
 		},
 	}
 }

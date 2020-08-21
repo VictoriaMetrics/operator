@@ -372,7 +372,7 @@ spec:
                   type: object
               type: object
             configMaps:
-              description: ConfigMaps is a list of ConfigMaps in the same namespace as the VMAlert object, which shall be mounted into the VMAlert Pods. The ConfigMaps are mounted into /etc/vmalert/configmaps/<configmap-name>.
+              description: ConfigMaps is a list of ConfigMaps in the same namespace as the VMAlert object, which shall be mounted into the VMAlert Pods. The ConfigMaps are mounted into /etc/vm/configs/<configmap-name>.
               items:
                 type: string
               type: array
@@ -1242,7 +1242,7 @@ spec:
                   type: object
               type: object
             secrets:
-              description: Secrets is a list of Secrets in the same namespace as the VMAlert object, which shall be mounted into the VMAlert Pods. The Secrets are mounted into /etc/vmalert/secrets/<secret-name>.
+              description: Secrets is a list of Secrets in the same namespace as the VMAlert object, which shall be mounted into the VMAlert Pods. The Secrets are mounted into /etc/vm/secrets/<secret-name>.
               items:
                 type: string
               type: array

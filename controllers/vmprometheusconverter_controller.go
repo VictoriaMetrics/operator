@@ -32,6 +32,13 @@ const (
 	MetaPreferVM = "prefer-victoriametrics"
 	// MetaPreferProm - prefers prometheus
 	MetaPreferProm = "prefer-prometheus"
+	// MetaMergeLabelsVMPriority merges both label sets
+	// its not possible to remove values
+	MetaMergeLabelsVMPriority = "merge-victoriametrics-priority"
+	// MetaMergeLabelsPromPriority merges both label sets
+	// its not possible to remove values
+	MetaMergeLabelsPromPriority = "merge-prometheus-priority"
+
 	// IgnoreConversionLabel this annotation disables updating of corresponding VMObject
 	// must be added to annotation of VMObject
 	// annotations:
@@ -49,6 +56,7 @@ type ConverterController struct {
 	ruleInf    cache.SharedInformer
 	podInf     cache.SharedInformer
 	serviceInf cache.SharedInformer
+	probeInf   cache.SharedIndexInformer
 }
 
 // NewConverterController builder for vmprometheusconverter service
@@ -107,6 +115,23 @@ func NewConverterController(promCl versioned.Interface, vclient client.Client) *
 	c.serviceInf.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    c.CreateServiceMonitor,
 		UpdateFunc: c.UpdateServiceMonitor,
+	})
+	c.probeInf = cache.NewSharedIndexInformer(
+		&cache.ListWatch{
+			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+				return promCl.MonitoringV1().Probes("").List(context.TODO(), options)
+			},
+			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+				return promCl.MonitoringV1().Probes("").Watch(context.TODO(), options)
+			},
+		},
+		&v1.Probe{},
+		0,
+		cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc},
+	)
+	c.probeInf.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    c.CreateProbe,
+		UpdateFunc: c.UpdateProbe,
 	})
 	return c
 }
@@ -173,6 +198,13 @@ func (c *ConverterController) Run(ctx context.Context, group *errgroup.Group, cf
 		})
 
 	}
+	if cfg.EnabledPrometheusConverter.Probe {
+		group.Go(func() error {
+			return c.runInformerWithDiscovery(ctx, v1.SchemeGroupVersion.String(), v1.ProbeKindKey, c.probeInf.Run)
+		})
+
+	}
+
 }
 
 // CreatePrometheusRule converts prometheus rule to vmrule
@@ -198,10 +230,6 @@ func (c *ConverterController) CreatePrometheusRule(rule interface{}) {
 func (c *ConverterController) UpdatePrometheusRule(old, new interface{}) {
 	promRuleNew := new.(*v1.PrometheusRule)
 	l := log.WithValues("kind", "VMRule", "name", promRuleNew.Name, "ns", promRuleNew.Namespace)
-	if ignoreAPIConversion(promRuleNew.Annotations) {
-		l.Info("disabled api conversion")
-		return
-	}
 	l.Info("updating VMRule")
 	VMRule := converter.ConvertPromRule(promRuleNew)
 	ctx := context.Background()
@@ -211,7 +239,7 @@ func (c *ConverterController) UpdatePrometheusRule(old, new interface{}) {
 		l.Error(err, "cannot get existing VMRule")
 		return
 	}
-	if ignoreAPIConversion(VMRule.Annotations) {
+	if existingVMRule.Annotations[IgnoreConversionLabel] == IgnoreConversion {
 		l.Info("syncing for object was disabled by annotation", "annotation", IgnoreConversionLabel)
 		return
 	}
@@ -251,10 +279,6 @@ func (c *ConverterController) CreateServiceMonitor(service interface{}) {
 func (c *ConverterController) UpdateServiceMonitor(old, new interface{}) {
 	serviceMonNew := new.(*v1.ServiceMonitor)
 	l := log.WithValues("kind", "vmServiceScrape", "name", serviceMonNew.Name, "ns", serviceMonNew.Namespace)
-	if ignoreAPIConversion(serviceMonNew.Annotations) {
-		l.Info("disabled api conversion")
-		return
-	}
 	l.Info("updating vmServiceScrape")
 	vmServiceScrape := converter.ConvertServiceMonitor(serviceMonNew)
 	existingVMServiceScrape := &v1beta1.VMServiceScrape{}
@@ -264,7 +288,8 @@ func (c *ConverterController) UpdateServiceMonitor(old, new interface{}) {
 		l.Error(err, "cannot get existing vmServiceScrape")
 		return
 	}
-	if ignoreAPIConversion(existingVMServiceScrape.Annotations) {
+
+	if existingVMServiceScrape.Annotations[IgnoreConversionLabel] == IgnoreConversion {
 		l.Info("syncing for object was disabled by annotation", "annotation", IgnoreConversionLabel)
 		return
 	}
@@ -309,10 +334,10 @@ func (c *ConverterController) UpdatePodMonitor(old, new interface{}) {
 	existingVMPodScrape := &v1beta1.VMPodScrape{}
 	err := c.vclient.Get(ctx, types.NamespacedName{Name: podScrape.Name, Namespace: podScrape.Namespace}, existingVMPodScrape)
 	if err != nil {
-		l.Error(err, "cannot get existing alertRule")
+		l.Error(err, "cannot get existing podMonitor")
 		return
 	}
-	if ignoreAPIConversion(existingVMPodScrape.Annotations) {
+	if existingVMPodScrape.Annotations[IgnoreConversionLabel] == IgnoreConversion {
 		l.Info("syncing for object was disabled by annotation", "annotation", IgnoreConversionLabel)
 		return
 	}
@@ -334,18 +359,20 @@ func (c *ConverterController) UpdatePodMonitor(old, new interface{}) {
 // default merge strategy - prefer-prometheus
 // old - from vm
 // new - from prometheus
+// by default new has priority
 func mergeLabelsWithStrategy(old, new map[string]string, mergeStrategy string) map[string]string {
-	if old == nil {
-		return new
-	}
-	if new == nil {
+
+	switch mergeStrategy {
+	case MetaPreferVM:
 		return old
+	case MetaPreferProm:
+		return new
+	case MetaMergeLabelsVMPriority:
+		old, new = new, old
+	case MetaMergeLabelsPromPriority:
+		break
 	}
 	merged := make(map[string]string)
-	if mergeStrategy == MetaPreferVM {
-		//swap priority
-		old, new = new, old
-	}
 	for k, v := range old {
 		merged[k] = v
 	}
@@ -356,26 +383,65 @@ func mergeLabelsWithStrategy(old, new map[string]string, mergeStrategy string) m
 }
 
 // helper function - extracts meta merge strategy
+// in the future we can introduce another merge strategies
 func getMetaMergeStrategy(vmMeta map[string]string) string {
-	for k, v := range vmMeta {
-		if k == MetaMergeStrategyLabel {
-			if v == MetaPreferVM {
-				return MetaPreferVM
-			}
-		}
+	switch vmMeta[MetaMergeStrategyLabel] {
+	case MetaPreferVM:
+		return MetaPreferVM
+	case MetaMergeLabelsPromPriority:
+		return MetaMergeLabelsPromPriority
+	case MetaMergeLabelsVMPriority:
+		return MetaMergeLabelsVMPriority
 	}
 	return MetaPreferProm
 }
 
-// ignoring object sync
-// must be applied to VMObject
-func ignoreAPIConversion(vmMeta map[string]string) bool {
-	for k, v := range vmMeta {
-		if k == IgnoreConversionLabel {
-			if v == IgnoreConversion {
-				return true
-			}
+// CreateProbe converts Probe to VMProbe
+func (c *ConverterController) CreateProbe(obj interface{}) {
+	probe := obj.(*v1.Probe)
+	l := log.WithValues("kind", "vmProbe", "name", probe.Name, "ns", probe.Namespace)
+	l.Info("syncing probes")
+	vmProbe := converter.ConvertProbe(probe)
+	err := c.vclient.Create(context.TODO(), vmProbe)
+	if err != nil {
+		if errors.IsAlreadyExists(err) {
+			l.Info("vmProbe already exists")
+			return
 		}
+		l.Error(err, "cannot create vmProbe")
+		return
 	}
-	return false
+	log.Info("vmProbe was created")
+
+}
+
+// UpdateProbe updates VMProbe
+func (c *ConverterController) UpdateProbe(old, new interface{}) {
+	probeNew := new.(*v1.Probe)
+	l := log.WithValues("kind", "vmProbe", "name", probeNew.Name, "ns", probeNew.Namespace)
+	vmProbe := converter.ConvertProbe(probeNew)
+	ctx := context.Background()
+	existingVMProbe := &v1beta1.VMProbe{}
+	err := c.vclient.Get(ctx, types.NamespacedName{Name: vmProbe.Name, Namespace: vmProbe.Namespace}, existingVMProbe)
+	if err != nil {
+		l.Error(err, "cannot get existing vmProbe")
+		return
+	}
+	if existingVMProbe.Annotations[IgnoreConversionLabel] == IgnoreConversion {
+		l.Info("syncing for object was disabled by annotation", "annotation", IgnoreConversionLabel)
+		return
+	}
+
+	mergeStrategy := getMetaMergeStrategy(existingVMProbe.Annotations)
+	existingVMProbe.Annotations = mergeLabelsWithStrategy(existingVMProbe.Annotations, probeNew.Annotations, mergeStrategy)
+	existingVMProbe.Labels = mergeLabelsWithStrategy(existingVMProbe.Labels, probeNew.Labels, mergeStrategy)
+
+	existingVMProbe.Spec = vmProbe.Spec
+	err = c.vclient.Update(ctx, existingVMProbe)
+	if err != nil {
+		l.Error(err, "cannot update vmProbe")
+		return
+	}
+	l.Info("vmProbe was updated")
+
 }

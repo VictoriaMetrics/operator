@@ -21,6 +21,26 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
+const (
+	// MetaMergeStrategyLabel merge strategy by default prefer prometheus meta labels
+	// but with annotation value added to VMObject:
+	// annotations:
+	//   operator.victoriametrics.com/merge-api-strategy: prefer-victoriametrics
+	// metadata from VMObject will be preferred during merge
+	MetaMergeStrategyLabel = "operator.victoriametrics.com/merge-meta-strategy"
+	// MetaPreferVM - prefers VM object meta values, ignores prometheus
+	MetaPreferVM = "prefer-victoriametrics"
+	// MetaPreferProm - prefers prometheus
+	MetaPreferProm = "prefer-prometheus"
+	// IgnoreConversionLabel this annotation disables updating of corresponding VMObject
+	// must be added to annotation of VMObject
+	// annotations:
+	//  operator.victoriametrics.com/ignore-prometheus-updates: enabled
+	IgnoreConversionLabel = "operator.victoriametrics.com/ignore-prometheus-updates"
+	// IgnoreConversion - disables updates from prometheus api
+	IgnoreConversion = "enabled"
+)
+
 // ConverterController - watches for prometheus objects
 // and create VictoriaMetrics objects
 type ConverterController struct {
@@ -178,6 +198,10 @@ func (c *ConverterController) CreatePrometheusRule(rule interface{}) {
 func (c *ConverterController) UpdatePrometheusRule(old, new interface{}) {
 	promRuleNew := new.(*v1.PrometheusRule)
 	l := log.WithValues("kind", "VMRule", "name", promRuleNew.Name, "ns", promRuleNew.Namespace)
+	if ignoreAPIConversion(promRuleNew.Annotations) {
+		l.Info("disabled api conversion")
+		return
+	}
 	l.Info("updating VMRule")
 	VMRule := converter.ConvertPromRule(promRuleNew)
 	ctx := context.Background()
@@ -187,8 +211,15 @@ func (c *ConverterController) UpdatePrometheusRule(old, new interface{}) {
 		l.Error(err, "cannot get existing VMRule")
 		return
 	}
-
+	if ignoreAPIConversion(VMRule.Annotations) {
+		l.Info("syncing for object was disabled by annotation", "annotation", IgnoreConversionLabel)
+		return
+	}
 	existingVMRule.Spec = VMRule.Spec
+	metaMergeStrategy := getMetaMergeStrategy(existingVMRule.Annotations)
+	existingVMRule.Annotations = mergeLabelsWithStrategy(existingVMRule.Annotations, VMRule.Annotations, metaMergeStrategy)
+	existingVMRule.Labels = mergeLabelsWithStrategy(existingVMRule.Labels, VMRule.Labels, metaMergeStrategy)
+
 	err = c.vclient.Update(ctx, existingVMRule)
 	if err != nil {
 		l.Error(err, "cannot update VMRule")
@@ -220,6 +251,10 @@ func (c *ConverterController) CreateServiceMonitor(service interface{}) {
 func (c *ConverterController) UpdateServiceMonitor(old, new interface{}) {
 	serviceMonNew := new.(*v1.ServiceMonitor)
 	l := log.WithValues("kind", "vmServiceScrape", "name", serviceMonNew.Name, "ns", serviceMonNew.Namespace)
+	if ignoreAPIConversion(serviceMonNew.Annotations) {
+		l.Info("disabled api conversion")
+		return
+	}
 	l.Info("updating vmServiceScrape")
 	vmServiceScrape := converter.ConvertServiceMonitor(serviceMonNew)
 	existingVMServiceScrape := &v1beta1.VMServiceScrape{}
@@ -229,8 +264,15 @@ func (c *ConverterController) UpdateServiceMonitor(old, new interface{}) {
 		l.Error(err, "cannot get existing vmServiceScrape")
 		return
 	}
+	if ignoreAPIConversion(existingVMServiceScrape.Annotations) {
+		l.Info("syncing for object was disabled by annotation", "annotation", IgnoreConversionLabel)
+		return
+	}
 	existingVMServiceScrape.Spec = vmServiceScrape.Spec
 
+	metaMergeStrategy := getMetaMergeStrategy(existingVMServiceScrape.Annotations)
+	existingVMServiceScrape.Annotations = mergeLabelsWithStrategy(existingVMServiceScrape.Annotations, vmServiceScrape.Annotations, metaMergeStrategy)
+	existingVMServiceScrape.Labels = mergeLabelsWithStrategy(existingVMServiceScrape.Labels, vmServiceScrape.Labels, metaMergeStrategy)
 	err = c.vclient.Update(ctx, existingVMServiceScrape)
 	if err != nil {
 		l.Error(err, "cannot update")
@@ -270,7 +312,16 @@ func (c *ConverterController) UpdatePodMonitor(old, new interface{}) {
 		l.Error(err, "cannot get existing alertRule")
 		return
 	}
+	if ignoreAPIConversion(existingVMPodScrape.Annotations) {
+		l.Info("syncing for object was disabled by annotation", "annotation", IgnoreConversionLabel)
+		return
+	}
+
 	existingVMPodScrape.Spec = podScrape.Spec
+	mergeStrategy := getMetaMergeStrategy(existingVMPodScrape.Annotations)
+	existingVMPodScrape.Annotations = mergeLabelsWithStrategy(existingVMPodScrape.Annotations, podScrape.Annotations, mergeStrategy)
+	existingVMPodScrape.Labels = mergeLabelsWithStrategy(existingVMPodScrape.Labels, podScrape.Labels, mergeStrategy)
+
 	err = c.vclient.Update(ctx, existingVMPodScrape)
 	if err != nil {
 		l.Error(err, "cannot update podScrape")
@@ -278,4 +329,53 @@ func (c *ConverterController) UpdatePodMonitor(old, new interface{}) {
 	}
 	l.Info("podScrape was updated")
 
+}
+
+// default merge strategy - prefer-prometheus
+// old - from vm
+// new - from prometheus
+func mergeLabelsWithStrategy(old, new map[string]string, mergeStrategy string) map[string]string {
+	if old == nil {
+		return new
+	}
+	if new == nil {
+		return old
+	}
+	merged := make(map[string]string)
+	if mergeStrategy == MetaPreferVM {
+		//swap priority
+		old, new = new, old
+	}
+	for k, v := range old {
+		merged[k] = v
+	}
+	for k, v := range new {
+		merged[k] = v
+	}
+	return merged
+}
+
+// helper function - extracts meta merge strategy
+func getMetaMergeStrategy(vmMeta map[string]string) string {
+	for k, v := range vmMeta {
+		if k == MetaMergeStrategyLabel {
+			if v == MetaPreferVM {
+				return MetaPreferVM
+			}
+		}
+	}
+	return MetaPreferProm
+}
+
+// ignoring object sync
+// must be applied to VMObject
+func ignoreAPIConversion(vmMeta map[string]string) bool {
+	for k, v := range vmMeta {
+		if k == IgnoreConversionLabel {
+			if v == IgnoreConversion {
+				return true
+			}
+		}
+	}
+	return false
 }

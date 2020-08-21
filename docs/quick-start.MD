@@ -811,8 +811,47 @@ VM_ENABLEDPROMETHEUSCONVERTER_PODMONITOR=false
 VM_ENABLEDPROMETHEUSCONVERTER_SERVICESCRAPE=false
 VM_ENABLEDPROMETHEUSCONVERTER_PROMETHEUSRULE=false
 ```
-
 Otherwise, victoriametrics-operator would try to discover prometheus-operator API and convert it.
+
+
+ Conversion of api objects can be controlled by annotations, added to `VMObject`s, there are following annotations:
+ - `operator.victoriametrics.com/merge-meta-strategy` - it controls syncing of metadata labels and annotations between
+    `VMObject`s and Prometheus api objects, by default it has `prefer-prometheus` value and labels and annotations from `Prometheus` 
+    api object will be applied to `VMObjet`s and overwrite it during sync.
+    You can set it to `prefer-victoriametrics`. In this case all labels and annotations applied to `Prometheus` object
+     will be overwritten by `VMObject` values during update.
+    Example:
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMServiceScrape
+metadata:
+  annotations:
+    meta.helm.sh/release-name: prometheus
+    operator.victoriametrics.com/merge-meta-strategy: prefer-victoriametrics
+  labels:
+    release: prometheus
+  name: prometheus-monitor
+spec:
+  endpoints: []
+```
+
+- `operator.victoriametrics.com/ignore-prometheus-updates` - it controls updates from Prometheus api objects.
+   By default, it set to `disabled`. You define it to `enabled` state and all updates from Prometheus api objects will be
+   ignored.
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMServiceScrape
+metadata:
+  annotations:
+    meta.helm.sh/release-name: prometheus
+    operator.victoriametrics.com/ignore-prometheus-updates: enabled
+  labels:
+    release: prometheus
+  name: prometheus-monitor
+spec:
+  endpoints: []
+```
+
 
 
 ## Expose the VMSingle API

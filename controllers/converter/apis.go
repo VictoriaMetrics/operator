@@ -37,8 +37,10 @@ func ConvertPromRule(prom *v1.PrometheusRule) *v1beta1vm.VMRule {
 	}
 	cr := &v1beta1vm.VMRule{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: prom.Namespace,
-			Name:      prom.Name,
+			Namespace:   prom.Namespace,
+			Name:        prom.Name,
+			Annotations: prom.Annotations,
+			Labels:      prom.Labels,
 		},
 		Spec: v1beta1vm.VMRuleSpec{
 			Groups: ruleGroups,
@@ -50,8 +52,10 @@ func ConvertPromRule(prom *v1.PrometheusRule) *v1beta1vm.VMRule {
 func ConvertServiceMonitor(serviceMon *v1.ServiceMonitor) *v1beta1vm.VMServiceScrape {
 	return &v1beta1vm.VMServiceScrape{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      serviceMon.Name,
-			Namespace: serviceMon.Namespace,
+			Name:        serviceMon.Name,
+			Namespace:   serviceMon.Namespace,
+			Labels:      serviceMon.Labels,
+			Annotations: serviceMon.Annotations,
 		},
 		Spec: v1beta1vm.VMServiceScrapeSpec{
 			JobLabel:        serviceMon.Spec.JobLabel,
@@ -182,8 +186,10 @@ func ConvertPodMonitor(podMon *v1.PodMonitor) *v1beta1vm.VMPodScrape {
 
 	return &v1beta1vm.VMPodScrape{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      podMon.Name,
-			Namespace: podMon.Namespace,
+			Name:        podMon.Name,
+			Namespace:   podMon.Namespace,
+			Labels:      podMon.Labels,
+			Annotations: podMon.Annotations,
 		},
 		Spec: v1beta1vm.VMPodScrapeSpec{
 			JobLabel:        podMon.Spec.JobLabel,

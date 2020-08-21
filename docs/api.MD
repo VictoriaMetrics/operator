@@ -200,8 +200,8 @@ VMAgentSpec defines the desired state of VMAgent
 | podMetadata | PodMetadata configures Labels and Annotations which are propagated to the vmagent pods. | *[EmbeddedObjectMetadata](#embeddedobjectmetadata) | false |
 | image | Image - docker image settings for VMAgent if no specified operator uses default config version | [Image](#image) | false |
 | imagePullSecrets | ImagePullSecrets An optional list of references to secrets in the same namespace to use for pulling images from registries see http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod | [][v1.LocalObjectReference](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#localobjectreference-v1-core) | false |
-| secrets | Secrets is a list of Secrets in the same namespace as the vmagent object, which shall be mounted into the vmagent Pods. will be mounted at path /etc/vmagent/secrets | []string | false |
-| configMaps | ConfigMaps is a list of ConfigMaps in the same namespace as the vmagent object, which shall be mounted into the vmagent Pods. will be mounted at path  /etc/vmagent/configs | []string | false |
+| secrets | Secrets is a list of Secrets in the same namespace as the vmagent object, which shall be mounted into the vmagent Pods. will be mounted at path /etc/vm/secrets | []string | false |
+| configMaps | ConfigMaps is a list of ConfigMaps in the same namespace as the vmagent object, which shall be mounted into the vmagent Pods. will be mounted at path  /etc/vm/configs | []string | false |
 | logLevel | LogLevel for VMAgent to be configured with. INFO, WARN, ERROR, FATAL, PANIC | string | false |
 | logFormat | LogFormat for VMAgent to be configured with. | string | false |
 | replicaCount | ReplicaCount is the expected size of the VMAgent cluster. The controller will eventually make the size of the running cluster equal to the expected size. NOTE enable VMSingle deduplication for replica usage | *int32 | false |
@@ -386,8 +386,8 @@ VMAlertSpec defines the desired state of VMAlert
 | podMetadata | PodMetadata configures Labels and Annotations which are propagated to the VMAlert pods. | *[EmbeddedObjectMetadata](#embeddedobjectmetadata) | false |
 | image | Image - docker image settings for VMAlert if no specified operator uses default config version | [Image](#image) | false |
 | imagePullSecrets | ImagePullSecrets An optional list of references to secrets in the same namespace to use for pulling images from registries see http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod | [][v1.LocalObjectReference](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#localobjectreference-v1-core) | false |
-| secrets | Secrets is a list of Secrets in the same namespace as the VMAlert object, which shall be mounted into the VMAlert Pods. The Secrets are mounted into /etc/vmalert/secrets/<secret-name>. | []string | false |
-| configMaps | ConfigMaps is a list of ConfigMaps in the same namespace as the VMAlert object, which shall be mounted into the VMAlert Pods. The ConfigMaps are mounted into /etc/vmalert/configmaps/<configmap-name>. | []string | false |
+| secrets | Secrets is a list of Secrets in the same namespace as the VMAlert object, which shall be mounted into the VMAlert Pods. The Secrets are mounted into /etc/vm/secrets/<secret-name>. | []string | false |
+| configMaps | ConfigMaps is a list of ConfigMaps in the same namespace as the VMAlert object, which shall be mounted into the VMAlert Pods. The ConfigMaps are mounted into /etc/vm/configs/<configmap-name>. | []string | false |
 | logFormat | LogFormat for VMAlert to be configured with. default or json | string | false |
 | logLevel | LogLevel for VMAlert to be configured with. | string | false |
 | replicaCount | ReplicaCount is the expected size of the VMAlert cluster. The controller will eventually make the size of the running cluster equal to the expected size. | *int32 | false |
@@ -896,8 +896,8 @@ VMClusterStatus defines the observed state of VMCluster
 | name |  | string | false |
 | podMetadata | PodMetadata configures Labels and Annotations which are propagated to the VMSelect pods. | *[EmbeddedObjectMetadata](#embeddedobjectmetadata) | false |
 | image | Image - docker image settings for VMInsert | [Image](#image) | false |
-| secrets | Secrets is a list of Secrets in the same namespace as the VMSelect object, which shall be mounted into the VMSelect Pods. The Secrets are mounted into /etc/vmalert/secrets/<secret-name>. | []string | false |
-| configMaps | ConfigMaps is a list of ConfigMaps in the same namespace as the VMSelect object, which shall be mounted into the VMSelect Pods. The ConfigMaps are mounted into /etc/vmalert/configmaps/<configmap-name>. | []string | false |
+| secrets | Secrets is a list of Secrets in the same namespace as the VMSelect object, which shall be mounted into the VMSelect Pods. The Secrets are mounted into /etc/vm/secrets/<secret-name>. | []string | false |
+| configMaps | ConfigMaps is a list of ConfigMaps in the same namespace as the VMSelect object, which shall be mounted into the VMSelect Pods. The ConfigMaps are mounted into /etc/vm/configs/<configmap-name>. | []string | false |
 | logFormat | LogFormat for VMSelect to be configured with. default or json | string | false |
 | logLevel | LogLevel for VMSelect to be configured with. | string | false |
 | replicaCount | ReplicaCount is the expected size of the VMSelect cluster. The controller will eventually make the size of the running cluster equal to the expected size. | *int32 | true |
@@ -930,7 +930,7 @@ VMClusterStatus defines the observed state of VMCluster
 | podMetadata | PodMetadata configures Labels and Annotations which are propagated to the VMSelect pods. | *[EmbeddedObjectMetadata](#embeddedobjectmetadata) | false |
 | image | Image - docker image settings for VMSelect | [Image](#image) | false |
 | secrets | Secrets is a list of Secrets in the same namespace as the VMSelect object, which shall be mounted into the VMSelect Pods. The Secrets are mounted into /etc/vm/secrets/<secret-name>. | []string | false |
-| configMaps | ConfigMaps is a list of ConfigMaps in the same namespace as the VMSelect object, which shall be mounted into the VMSelect Pods. The ConfigMaps are mounted into /etc/vm/configmaps/<configmap-name>. | []string | false |
+| configMaps | ConfigMaps is a list of ConfigMaps in the same namespace as the VMSelect object, which shall be mounted into the VMSelect Pods. The ConfigMaps are mounted into /etc/vm/configs/<configmap-name>. | []string | false |
 | logFormat | LogFormat for VMSelect to be configured with. default or json | string | false |
 | logLevel | LogLevel for VMSelect to be configured with. | string | false |
 | replicaCount | ReplicaCount is the expected size of the VMSelect cluster. The controller will eventually make the size of the running cluster equal to the expected size. | *int32 | true |
@@ -964,8 +964,8 @@ VMClusterStatus defines the observed state of VMCluster
 | name |  | string | false |
 | podMetadata | PodMetadata configures Labels and Annotations which are propagated to the VMSelect pods. | *[EmbeddedObjectMetadata](#embeddedobjectmetadata) | false |
 | image | Image - docker image settings for VMStorage | [Image](#image) | false |
-| secrets | Secrets is a list of Secrets in the same namespace as the VMSelect object, which shall be mounted into the VMSelect Pods. The Secrets are mounted into /etc/vmalert/secrets/<secret-name>. | []string | false |
-| configMaps | ConfigMaps is a list of ConfigMaps in the same namespace as the VMSelect object, which shall be mounted into the VMSelect Pods. The ConfigMaps are mounted into /etc/vmalert/configmaps/<configmap-name>. | []string | false |
+| secrets | Secrets is a list of Secrets in the same namespace as the VMSelect object, which shall be mounted into the VMSelect Pods. The Secrets are mounted into /etc/vm/secrets/<secret-name>. | []string | false |
+| configMaps | ConfigMaps is a list of ConfigMaps in the same namespace as the VMSelect object, which shall be mounted into the VMSelect Pods. The ConfigMaps are mounted into /etc/vm/configs/<configmap-name>. | []string | false |
 | logFormat | LogFormat for VMSelect to be configured with. default or json | string | false |
 | logLevel | LogLevel for VMSelect to be configured with. | string | false |
 | replicaCount | ReplicaCount is the expected size of the VMSelect cluster. The controller will eventually make the size of the running cluster equal to the expected size. | *int32 | true |

@@ -29,12 +29,12 @@ type VMAgentSpec struct {
 	ImagePullSecrets []v1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 	// Secrets is a list of Secrets in the same namespace as the vmagent
 	// object, which shall be mounted into the vmagent Pods.
-	// will be mounted at path /etc/vmagent/secrets
+	// will be mounted at path /etc/vm/secrets
 	// +optional
 	Secrets []string `json:"secrets,omitempty"`
 	// ConfigMaps is a list of ConfigMaps in the same namespace as the vmagent
 	// object, which shall be mounted into the vmagent Pods.
-	// will be mounted at path  /etc/vmagent/configs
+	// will be mounted at path  /etc/vm/configs
 	// +optional
 	ConfigMaps []string `json:"configMaps,omitempty"`
 	// LogLevel for VMAgent to be configured with.

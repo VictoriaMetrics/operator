@@ -2,8 +2,15 @@ package converter
 
 import (
 	v1beta1vm "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/controllers/factory"
 	v1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"strings"
+)
+
+const (
+	prometheusSecretDir    = "/etc/prometheus/secrets"
+	prometheusConfigmapDir = "/etc/prometheus/configmaps"
 )
 
 func ConvertPromRule(prom *v1.PrometheusRule) *v1beta1vm.VMRule {
@@ -65,6 +72,16 @@ func ConvertServiceMonitor(serviceMon *v1.ServiceMonitor) *v1beta1vm.VMServiceSc
 	}
 }
 
+func replacePromDirPath(origin string) string {
+	if strings.HasPrefix(origin, prometheusSecretDir) {
+		return strings.Replace(origin, prometheusSecretDir, factory.SecretsDir, 1)
+	}
+	if strings.HasPrefix(origin, prometheusConfigmapDir) {
+		return strings.Replace(origin, prometheusConfigmapDir, factory.ConfigMapsDir, 1)
+	}
+	return origin
+}
+
 func ConvertEndpoint(promEndpoint []v1.Endpoint) []v1beta1vm.Endpoint {
 	endpoints := []v1beta1vm.Endpoint{}
 	for _, endpoint := range promEndpoint {
@@ -76,7 +93,7 @@ func ConvertEndpoint(promEndpoint []v1.Endpoint) []v1beta1vm.Endpoint {
 			Params:               endpoint.Params,
 			Interval:             endpoint.Interval,
 			ScrapeTimeout:        endpoint.ScrapeTimeout,
-			BearerTokenFile:      endpoint.BearerTokenFile,
+			BearerTokenFile:      replacePromDirPath(endpoint.BearerTokenFile),
 			BearerTokenSecret:    endpoint.BearerTokenSecret,
 			HonorLabels:          endpoint.HonorLabels,
 			BasicAuth:            ConvertBasicAuth(endpoint.BasicAuth),
@@ -105,11 +122,11 @@ func ConvertTlsConfig(tlsConf *v1.TLSConfig) *v1beta1vm.TLSConfig {
 		return nil
 	}
 	return &v1beta1vm.TLSConfig{
-		CAFile:             tlsConf.CAFile,
+		CAFile:             replacePromDirPath(tlsConf.CAFile),
 		CA:                 ConvertSecretOrConfigmap(tlsConf.CA),
-		CertFile:           tlsConf.CertFile,
+		CertFile:           replacePromDirPath(tlsConf.CertFile),
 		Cert:               ConvertSecretOrConfigmap(tlsConf.Cert),
-		KeyFile:            tlsConf.KeyFile,
+		KeyFile:            replacePromDirPath(tlsConf.KeyFile),
 		KeySecret:          tlsConf.KeySecret,
 		InsecureSkipVerify: tlsConf.InsecureSkipVerify,
 	}

@@ -544,7 +544,7 @@ spec:
                   type: boolean
               type: object
             configMaps:
-              description: ConfigMaps is a list of ConfigMaps in the same namespace as the vmagent object, which shall be mounted into the vmagent Pods. will be mounted at path  /etc/vmagent/configs
+              description: ConfigMaps is a list of ConfigMaps in the same namespace as the vmagent object, which shall be mounted into the vmagent Pods. will be mounted at path  /etc/vm/configs
               items:
                 type: string
               type: array
@@ -1108,7 +1108,7 @@ spec:
               pattern: '[0-9]+(ms|s|m|h)'
               type: string
             secrets:
-              description: Secrets is a list of Secrets in the same namespace as the vmagent object, which shall be mounted into the vmagent Pods. will be mounted at path /etc/vmagent/secrets
+              description: Secrets is a list of Secrets in the same namespace as the vmagent object, which shall be mounted into the vmagent Pods. will be mounted at path /etc/vm/secrets
               items:
                 type: string
               type: array

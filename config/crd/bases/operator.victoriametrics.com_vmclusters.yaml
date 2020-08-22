@@ -412,7 +412,7 @@ spec:
                       type: object
                   type: object
                 configMaps:
-                  description: ConfigMaps is a list of ConfigMaps in the same namespace as the VMSelect object, which shall be mounted into the VMSelect Pods. The ConfigMaps are mounted into /etc/vmalert/configmaps/<configmap-name>.
+                  description: ConfigMaps is a list of ConfigMaps in the same namespace as the VMSelect object, which shall be mounted into the VMSelect Pods. The ConfigMaps are mounted into /etc/vm/configs/<configmap-name>.
                   items:
                     type: string
                   type: array
@@ -605,7 +605,7 @@ spec:
                   description: SchedulerName - defines kubernetes scheduler name
                   type: string
                 secrets:
-                  description: Secrets is a list of Secrets in the same namespace as the VMSelect object, which shall be mounted into the VMSelect Pods. The Secrets are mounted into /etc/vmalert/secrets/<secret-name>.
+                  description: Secrets is a list of Secrets in the same namespace as the VMSelect object, which shall be mounted into the VMSelect Pods. The Secrets are mounted into /etc/vm/secrets/<secret-name>.
                   items:
                     type: string
                   type: array
@@ -1889,7 +1889,7 @@ spec:
                   description: CacheMountPath allows to add cache persistent for VMSelect
                   type: string
                 configMaps:
-                  description: ConfigMaps is a list of ConfigMaps in the same namespace as the VMSelect object, which shall be mounted into the VMSelect Pods. The ConfigMaps are mounted into /etc/vm/configmaps/<configmap-name>.
+                  description: ConfigMaps is a list of ConfigMaps in the same namespace as the VMSelect object, which shall be mounted into the VMSelect Pods. The ConfigMaps are mounted into /etc/vm/configs/<configmap-name>.
                   items:
                     type: string
                   type: array
@@ -3547,7 +3547,7 @@ spec:
                       type: object
                   type: object
                 configMaps:
-                  description: ConfigMaps is a list of ConfigMaps in the same namespace as the VMSelect object, which shall be mounted into the VMSelect Pods. The ConfigMaps are mounted into /etc/vmalert/configmaps/<configmap-name>.
+                  description: ConfigMaps is a list of ConfigMaps in the same namespace as the VMSelect object, which shall be mounted into the VMSelect Pods. The ConfigMaps are mounted into /etc/vm/configs/<configmap-name>.
                   items:
                     type: string
                   type: array
@@ -3740,7 +3740,7 @@ spec:
                   description: SchedulerName - defines kubernetes scheduler name
                   type: string
                 secrets:
-                  description: Secrets is a list of Secrets in the same namespace as the VMSelect object, which shall be mounted into the VMSelect Pods. The Secrets are mounted into /etc/vmalert/secrets/<secret-name>.
+                  description: Secrets is a list of Secrets in the same namespace as the VMSelect object, which shall be mounted into the VMSelect Pods. The Secrets are mounted into /etc/vm/secrets/<secret-name>.
                   items:
                     type: string
                   type: array

@@ -38,6 +38,7 @@ type VMProbeReconciler struct {
 	BaseConf *config.BaseOperatorConf
 }
 
+// Reconcile - syncs VMProbe
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmprobes,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmprobes/status,verbs=get;update;patch
 func (r *VMProbeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
@@ -78,6 +79,7 @@ func (r *VMProbeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	return ctrl.Result{}, nil
 }
 
+// SetupWithManager - setups VMProbe manager
 func (r *VMProbeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&operatorv1beta1.VMProbe{}).

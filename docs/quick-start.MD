@@ -3,7 +3,7 @@
 
 Operator serves to make running Victoria Metrics applications on top of Kubernetes as easy as possible while preserving Kubernetes-native configuration options.
 
-## Installing operator
+## Installing by Manifest
 
 Obtain release from releases page:
 [https://github.com/VictoriaMetrics/operator/releases](https://github.com/VictoriaMetrics/operator/releases)
@@ -38,6 +38,69 @@ kubectl get pods
 #vm-operator-667dfbff55-cbvkf   1/1     Running   0          101s
 
 ```
+
+
+## Installing by Kustomize
+
+You can install operator using [Kustomize](https://kubernetes-sigs.github.io/kustomize/) by pointing to the remote kustomization file.
+
+```yaml
+# kustomization.yml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+- namespace.yml
+- github.com/VictoriaMetrics/operator/config/default?ref=v0.2.0
+
+namespace: monitoring
+images:
+- name: victoriametrics/operator
+  newTag: v0.2.0
+
+patches:
+- manager.patch.yml
+```
+
+```yaml
+# namespace.yml
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: monitoring
+```
+
+Change configuration for operator at `manager.patch.yml`, possible settings: [operator-settings](/vars.MD)
+
+```yaml
+# manager.patch.yml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    control-plane: vm-operator
+  name: vm-operator
+spec:
+  template:
+    spec:
+      containers:
+      - name: manager
+        env:
+        - name: WATCH_NAMESPACE
+          value: "app-prod"
+```
+
+Build template
+
+```bash
+kustomize build . -o monitoring.yml
+```
+
+Apply manifests
+
+```bash
+kubectl apply -f monitoring.yml
+```
+
 
 ## Create related resources
 

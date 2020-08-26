@@ -473,8 +473,8 @@ func makeSpecForVMBackuper(cr *victoriametricsv1beta1.VMBackup, c *config.BaseOp
 	args := []string{
 		fmt.Sprintf("-storageDataPath=%s", vmSingleDataDir),
 		fmt.Sprintf("-dst=%s", cr.Destination),
-		fmt.Sprintf("-snapshot.createURL=http://localhost:%s/snaphsot/create", port),
-		fmt.Sprintf("-snapshot.deleteURL=http://localhost:%s/snaphsot/delete", port),
+		fmt.Sprintf("-snapshot.createURL=http://localhost:%s/snapshot/create", port),
+		fmt.Sprintf("-snapshot.deleteURL=http://localhost:%s/snapshot/delete", port),
 	}
 	if cr.LogLevel != nil {
 		args = append(args, fmt.Sprintf("-loggerLevel=%s", *cr.LogLevel))

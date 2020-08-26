@@ -44,7 +44,7 @@ kubectl get pods
 The Victoria Metrics Operator introduces additional resources in Kubernetes to declare the desired state of a Victoria Metrics applications and Alertmanager cluster as well as the Prometheus resources configuration. The resources it introduces are:
 
 * [VMSingle](#VMSingle)
-* [VMCluter](#VMCluster)
+* [VMCluster](#VMCluster)
 * [VMAgent](#VMAgent)
 * [VMAlert](#VMAlert)
 * [Alertmanager](#Alertmanager)

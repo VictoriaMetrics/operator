@@ -45,11 +45,19 @@ kubectl get pods
 You can install operator using [Kustomize](https://kubernetes-sigs.github.io/kustomize/) by pointing to the remote kustomization file.
 
 ```yaml
+# Get latest release version from https://github.com/VictoriaMetrics/operator/releases/latest
+export VM_VERSION=`basename $(curl -fs -o/dev/null -w %{redirect_url} https://github.com/VictoriaMetrics/operator/releases/latest)`
+
 cat << EOF >> kustomization.yaml
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-- github.com/VictoriaMetrics/operator/config/default?ref=v0.2.0
+- github.com/VictoriaMetrics/operator/config/default?ref=${VM_VERSION}
+
+namespace: monitoring
+images:
+- name: victoriametrics/operator
+  newTag: ${VM_VERSION}
 EOF
 ```
 

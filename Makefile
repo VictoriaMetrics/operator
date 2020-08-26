@@ -6,7 +6,7 @@ GOOS ?= linux
 GOARCH ?= amd64
 BUILD=`date +%FT%T%z`
 LDFLAGS=-ldflags "-w -s  -X main.Version=${VERSION} -X main.BuildData=${BUILD}"
-GOBUILD=CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH}  $(GOCMD) build -trimpath ${LDFLAGS}
+GOBUILD= $(GOCMD) build -trimpath ${LDFLAGS}
 GOCLEAN=$(GOCMD) clean
 GOTEST=CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH}  $(GOCMD) test
 GOGET=$(GOCMD) get
@@ -21,6 +21,7 @@ YAML_DROP=yq delete --inplace
 # Current Operator version
 # Default bundle image tag
 BUNDLE_IMG ?= controller-bundle:$(VERSION)
+ALPINE_IMAGE=alpine:3.12
 # Options for 'bundle-build'
 ifneq ($(origin CHANNELS), undefined)
 BUNDLE_CHANNELS := --channels=$(CHANNELS)
@@ -31,7 +32,7 @@ endif
 BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 
 # Image URL to use all building/pushing image targets
-IMG ?= controller:latest
+IMG ?= $(DOCKER_REPO):$(TAG)
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true"
 
@@ -130,7 +131,7 @@ test: generate fmt vet manifests fix118
 
 # Build manager binary
 manager: generate manifests fmt vet fix118
-	$(GOBUILD) -o bin/manager main.go
+	CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH} $(GOBUILD) -o bin/manager main.go
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 run: manager
@@ -165,13 +166,6 @@ vet:
 generate: controller-gen
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./api/..."
 
-# Build the docker image
-docker-build: test
-	docker build . -t ${IMG}
-
-# Push the docker image
-docker-push:
-	docker push ${IMG}
 
 # find or download controller-gen
 # download controller-gen if necessary
@@ -234,3 +228,33 @@ release-package: kustomize
 packagemanifests: manifests fix118
 	$(OPERATOR_BIN) generate kustomize manifests -q
 	kustomize build config/manifests | $(OPERATOR_BIN) generate packagemanifests -q --version $(VERSION)
+
+
+
+# special section for cross compilation
+docker-build-arch:
+	docker build -t $(DOCKER_REPO):$(TAG)-$(GOARCH) \
+			--build-arg src_binary=manager-$(GOARCH) \
+			--build-arg base_image=$(ALPINE_IMAGE) \
+			-f Docker-alphine bin
+
+package-arch:
+	$(GOBUILD) -o bin/manager-$(GOARCH) main.go
+
+build-operator-crosscompile: build
+	CGO_ENABLED=0 GOARCH=arm $(MAKE) package-arch
+	CGO_ENABLED=0 GOARCH=arm64 $(MAKE) package-arch
+	CGO_ENABLED=0 GOARCH=ppc64le $(MAKE) package-arch
+	CGO_ENABLED=0 GOARCH=386 $(MAKE) package-arch
+
+docker-operator-crosscompile: build-operator-crosscompile
+	GOARCH=arm $(MAKE) docker-build-arch
+	GOARCH=arm64 $(MAKE) docker-build-arch
+	GOARCH=ppc64le $(MAKE) docker-build-arch
+	GOARCH=386 $(MAKE) docker-build-arch
+
+docker-operator-push-crosscompile: docker-operator-crosscompile
+	docker push $(DOCKER_REPO):$(TAG)-arm
+	docker push $(DOCKER_REPO):$(TAG)-arm64
+	docker push $(DOCKER_REPO):$(TAG)-ppc64le
+	docker push $(DOCKER_REPO):$(TAG)-386

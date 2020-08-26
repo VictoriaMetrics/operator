@@ -644,3 +644,44 @@ func (cr VMCluster) Annotations() map[string]string {
 	}
 	return annotations
 }
+func (cr VMCluster) HealthPathSelect() string {
+	if cr.Spec.VMSelect == nil {
+		return healthPath
+	}
+	return buildPathWithPrefixFlag(cr.Spec.VMSelect.ExtraArgs, healthPath)
+}
+
+func (cr VMCluster) HealthPathInsert() string {
+	if cr.Spec.VMInsert == nil {
+		return healthPath
+	}
+	return buildPathWithPrefixFlag(cr.Spec.VMInsert.ExtraArgs, healthPath)
+}
+
+func (cr VMCluster) HealthPathStorage() string {
+	if cr.Spec.VMStorage == nil {
+		return healthPath
+	}
+	return buildPathWithPrefixFlag(cr.Spec.VMStorage.ExtraArgs, healthPath)
+}
+
+func (cr VMCluster) MetricPathSelect() string {
+	if cr.Spec.VMSelect == nil {
+		return healthPath
+	}
+	return buildPathWithPrefixFlag(cr.Spec.VMSelect.ExtraArgs, metricPath)
+}
+
+func (cr VMCluster) MetricPathInsert() string {
+	if cr.Spec.VMInsert == nil {
+		return healthPath
+	}
+	return buildPathWithPrefixFlag(cr.Spec.VMInsert.ExtraArgs, metricPath)
+}
+
+func (cr VMCluster) MetricPathStorage() string {
+	if cr.Spec.VMStorage == nil {
+		return healthPath
+	}
+	return buildPathWithPrefixFlag(cr.Spec.VMStorage.ExtraArgs, metricPath)
+}

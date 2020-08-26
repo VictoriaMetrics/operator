@@ -285,14 +285,14 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 		HTTPGet: &corev1.HTTPGetAction{
 			Port:   intstr.Parse(cr.Spec.Port),
 			Scheme: "HTTP",
-			Path:   "/health",
+			Path:   cr.HealthPath(),
 		},
 	}
 	readinessProbeHandler := corev1.Handler{
 		HTTPGet: &corev1.HTTPGetAction{
 			Port:   intstr.Parse(cr.Spec.Port),
 			Scheme: "HTTP",
-			Path:   "/health",
+			Path:   cr.HealthPath(),
 		},
 	}
 	livenessFailureThreshold := int32(3)

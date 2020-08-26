@@ -634,7 +634,7 @@ func gzipConfig(buf *bytes.Buffer, conf []byte) error {
 	return nil
 }
 
-func CreateVMServiceScrapeFromService(ctx context.Context, rclient client.Client, service *v1.Service, filterPortNames ...string) error {
+func CreateVMServiceScrapeFromService(ctx context.Context, rclient client.Client, service *v1.Service, metricPath string, filterPortNames ...string) error {
 	endPoints := []victoriametricsv1beta1.Endpoint{}
 	for _, servicePort := range service.Spec.Ports {
 		var nameMatched bool
@@ -650,6 +650,7 @@ func CreateVMServiceScrapeFromService(ctx context.Context, rclient client.Client
 
 		endPoints = append(endPoints, victoriametricsv1beta1.Endpoint{
 			Port: servicePort.Name,
+			Path: metricPath,
 		})
 	}
 	scrapeSvc := &victoriametricsv1beta1.VMServiceScrape{
@@ -666,9 +667,23 @@ func CreateVMServiceScrapeFromService(ctx context.Context, rclient client.Client
 	err := rclient.Create(ctx, scrapeSvc)
 	if err != nil {
 		if errors.IsAlreadyExists(err) {
-			return nil
+			// need to update
+			return updateServiceScrape(ctx, rclient, scrapeSvc)
 		}
 		return err
 	}
 	return nil
+
+}
+
+func updateServiceScrape(ctx context.Context, rclient client.Client, newServiceScrape *victoriametricsv1beta1.VMServiceScrape) error {
+	existServiceScrape := &victoriametricsv1beta1.VMServiceScrape{}
+	err := rclient.Get(ctx, types.NamespacedName{Name: newServiceScrape.Name, Namespace: newServiceScrape.Namespace}, existServiceScrape)
+	if err != nil {
+		return fmt.Errorf("cannot get VMServiceScrape for update: %w", err)
+	}
+	existServiceScrape.Spec = newServiceScrape.Spec
+	existServiceScrape.Labels = newServiceScrape.Labels
+	existServiceScrape.Annotations = newServiceScrape.Annotations
+	return rclient.Update(ctx, existServiceScrape)
 }

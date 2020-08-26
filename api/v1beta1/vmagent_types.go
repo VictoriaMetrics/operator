@@ -363,6 +363,18 @@ func (cr VMAgent) TLSAssetName() string {
 	return fmt.Sprintf("tls-assets-vmagent-%s", cr.Name)
 }
 
+func (cr VMAgent) HealthPath() string {
+	return buildPathWithPrefixFlag(cr.Spec.ExtraArgs, healthPath)
+}
+
+func (cr VMAgent) MetricPath() string {
+	return buildPathWithPrefixFlag(cr.Spec.ExtraArgs, metricPath)
+}
+
+func (cr VMAgent) ReloadPathWithPort(port string) string {
+	return fmt.Sprintf("http://localhost:%s%s", port, buildPathWithPrefixFlag(cr.Spec.ExtraArgs, reloadPath))
+}
+
 func init() {
 	SchemeBuilder.Register(&VMAgent{}, &VMAgentList{})
 }

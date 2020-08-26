@@ -4,6 +4,14 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"path"
+)
+
+const (
+	vmPathPrefixFlagName = "http.pathPrefix"
+	healthPath           = "/health"
+	metricPath           = "/metrics"
+	reloadPath           = "/-/reload"
 )
 
 var (
@@ -91,4 +99,11 @@ type BasicAuth struct {
 	// for authentication.
 	// +optional
 	Password v1.SecretKeySelector `json:"password,omitempty"`
+}
+
+func buildPathWithPrefixFlag(flags map[string]string, defaultPath string) string {
+	if prefix, ok := flags[vmPathPrefixFlagName]; ok {
+		return path.Join(prefix, defaultPath)
+	}
+	return defaultPath
 }

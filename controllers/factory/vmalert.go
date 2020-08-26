@@ -203,7 +203,7 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 	cr = cr.DeepCopy()
 
 	confReloadArgs := []string{
-		fmt.Sprintf("-webhook-url=http://localhost:%s/-/reload", cr.Spec.Port),
+		fmt.Sprintf("-webhook-url=%s", cr.ReloadPathWithPort(cr.Spec.Port)),
 	}
 	args := []string{
 		fmt.Sprintf("-notifier.url=%s", cr.Spec.Notifier.URL),
@@ -466,14 +466,14 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 		HTTPGet: &corev1.HTTPGetAction{
 			Port:   intstr.Parse(cr.Spec.Port),
 			Scheme: "HTTP",
-			Path:   "/health",
+			Path:   cr.HealthPath(),
 		},
 	}
 	readinessProbeHandler := corev1.Handler{
 		HTTPGet: &corev1.HTTPGetAction{
 			Port:   intstr.Parse(cr.Spec.Port),
 			Scheme: "HTTP",
-			Path:   "/health",
+			Path:   cr.HealthPath(),
 		},
 	}
 	livenessFailureThreshold := int32(3)

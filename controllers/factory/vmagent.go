@@ -338,7 +338,7 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 
 	configReloadArgs := []string{
 		fmt.Sprintf("--log-format=%s", c.LogFormat),
-		fmt.Sprintf("--reload-url=http://localhost:%s/-/reload", cr.Spec.Port),
+		fmt.Sprintf("--reload-url=%s", cr.ReloadPathWithPort(cr.Spec.Port)),
 		fmt.Sprintf("--config-file=%s", path.Join(vmAgentConfDir, configFilename)),
 		fmt.Sprintf("--config-envsubst-file=%s", path.Join(vmAgentConOfOutDir, configEnvsubstFilename)),
 	}
@@ -391,14 +391,14 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 		HTTPGet: &corev1.HTTPGetAction{
 			Port:   intstr.Parse(cr.Spec.Port),
 			Scheme: "HTTP",
-			Path:   "/health",
+			Path:   cr.HealthPath(),
 		},
 	}
 	readinessProbeHandler := corev1.Handler{
 		HTTPGet: &corev1.HTTPGetAction{
 			Port:   intstr.Parse(cr.Spec.Port),
 			Scheme: "HTTP",
-			Path:   "/health",
+			Path:   cr.HealthPath(),
 		},
 	}
 	livenessFailureThreshold := int32(3)

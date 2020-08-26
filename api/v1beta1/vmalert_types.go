@@ -339,6 +339,15 @@ func (cr VMAlert) PrefixedName() string {
 func (cr VMAlert) TLSAssetName() string {
 	return fmt.Sprintf("tls-assets-vmalert-%s", cr.Name)
 }
+func (cr VMAlert) HealthPath() string {
+	return buildPathWithPrefixFlag(cr.Spec.ExtraArgs, healthPath)
+}
+func (cr VMAlert) MetricPath() string {
+	return buildPathWithPrefixFlag(cr.Spec.ExtraArgs, metricPath)
+}
+func (cr VMAlert) ReloadPathWithPort(port string) string {
+	return fmt.Sprintf("http://localhost:%s%s", port, buildPathWithPrefixFlag(cr.Spec.ExtraArgs, reloadPath))
+}
 
 func init() {
 	SchemeBuilder.Register(&VMAlert{}, &VMAlertList{})

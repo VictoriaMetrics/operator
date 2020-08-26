@@ -241,6 +241,14 @@ func (cr VMSingle) PrefixedName() string {
 	return fmt.Sprintf("vmsingle-%s", cr.Name)
 }
 
+func (cr VMSingle) HealthPath() string {
+	return buildPathWithPrefixFlag(cr.Spec.ExtraArgs, healthPath)
+}
+
+func (cr VMSingle) MetricPath() string {
+	return buildPathWithPrefixFlag(cr.Spec.ExtraArgs, metricPath)
+}
+
 func init() {
 	SchemeBuilder.Register(&VMSingle{}, &VMSingleList{})
 }

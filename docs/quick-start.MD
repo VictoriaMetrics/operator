@@ -45,60 +45,29 @@ kubectl get pods
 You can install operator using [Kustomize](https://kubernetes-sigs.github.io/kustomize/) by pointing to the remote kustomization file.
 
 ```yaml
-# kustomization.yml
+cat << EOF >> kustomization.yaml
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-- namespace.yml
 - github.com/VictoriaMetrics/operator/config/default?ref=v0.2.0
-
-namespace: monitoring
-images:
-- name: victoriametrics/operator
-  newTag: v0.2.0
-
-patches:
-- manager.patch.yml
+EOF
 ```
 
-```yaml
-# namespace.yml
-kind: Namespace
-apiVersion: v1
-metadata:
-  name: monitoring
-```
 
-Change configuration for operator at `manager.patch.yml`, possible settings: [operator-settings](/vars.MD)
+You can change [operator-settings](/vars.MD), or use your custom namespace see [kustomize-example](./kustomize-example).
 
-```yaml
-# manager.patch.yml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  labels:
-    control-plane: vm-operator
-  name: vm-operator
-spec:
-  template:
-    spec:
-      containers:
-      - name: manager
-        env:
-        - name: WATCH_NAMESPACE
-          value: "app-prod"
-```
+
 
 Build template
 
 ```bash
-kustomize build . -o monitoring.yml
+kustomize build . -o monitoring.yaml
 ```
 
 Apply manifests
 
 ```bash
-kubectl apply -f monitoring.yml
+kubectl apply -f monitoring.yaml
 ```
 
 

@@ -1,4 +1,5 @@
 resources:
+- namespace.yaml
 - manager.yaml
 - service_account.yaml
 images:

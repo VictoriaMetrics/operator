@@ -1,0 +1,18 @@
+ARG base_image
+
+FROM ${base_image}
+# src_binary arg must be in scope, after FROM
+ARG src_binary
+
+ENV OPERATOR=/usr/local/bin/manager \
+    USER_UID=1001 \
+    USER_NAME=vm-operator
+
+# install operator
+COPY $src_binary ${OPERATOR}
+
+RUN adduser -S -D -u ${USER_UID} ${USER_NAME}
+
+ENTRYPOINT ["/usr/local/bin/manager"]
+
+USER ${USER_NAME}

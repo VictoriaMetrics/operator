@@ -5,6 +5,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
+	"path"
 	"strings"
 )
 
@@ -684,4 +685,12 @@ func (cr VMCluster) MetricPathStorage() string {
 		return healthPath
 	}
 	return buildPathWithPrefixFlag(cr.Spec.VMStorage.ExtraArgs, metricPath)
+}
+
+func (cr VMBackup) SnapshotCreatePathWithFlags(port string, extraArgs map[string]string) string {
+	return fmt.Sprintf("http://localhost:%s%s", port, path.Join(buildPathWithPrefixFlag(extraArgs, snapshotCreate)))
+}
+
+func (cr VMBackup) SnapshotDeletePathWithFlags(port string, extraArgs map[string]string) string {
+	return fmt.Sprintf("http://localhost:%s%s", port, path.Join(buildPathWithPrefixFlag(extraArgs, snapshotDelete)))
 }

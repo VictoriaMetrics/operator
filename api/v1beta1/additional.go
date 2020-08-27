@@ -12,6 +12,8 @@ const (
 	healthPath           = "/health"
 	metricPath           = "/metrics"
 	reloadPath           = "/-/reload"
+	snapshotCreate       = "/snapshot/create"
+	snapshotDelete       = "/snapshot/delete"
 )
 
 var (

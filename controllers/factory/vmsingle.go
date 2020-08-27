@@ -313,7 +313,7 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 
 	operatorContainers := append([]corev1.Container{
 		{
-			Name:                     "vmsignle",
+			Name:                     "vmsingle",
 			Image:                    fmt.Sprintf("%s:%s", cr.Spec.Image.Repository, cr.Spec.Image.Tag),
 			Ports:                    ports,
 			Args:                     args,

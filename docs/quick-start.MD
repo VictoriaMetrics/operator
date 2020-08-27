@@ -3,7 +3,7 @@
 
 Operator serves to make running Victoria Metrics applications on top of Kubernetes as easy as possible while preserving Kubernetes-native configuration options.
 
-## Installing operator
+## Installing by Manifest
 
 Obtain release from releases page:
 [https://github.com/VictoriaMetrics/operator/releases](https://github.com/VictoriaMetrics/operator/releases)
@@ -39,12 +39,52 @@ kubectl get pods
 
 ```
 
+
+## Installing by Kustomize
+
+You can install operator using [Kustomize](https://kubernetes-sigs.github.io/kustomize/) by pointing to the remote kustomization file.
+
+```yaml
+# Get latest release version from https://github.com/VictoriaMetrics/operator/releases/latest
+export VM_VERSION=`basename $(curl -fs -o/dev/null -w %{redirect_url} https://github.com/VictoriaMetrics/operator/releases/latest)`
+
+cat << EOF >> kustomization.yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+- github.com/VictoriaMetrics/operator/config/default?ref=${VM_VERSION}
+
+namespace: monitoring
+images:
+- name: victoriametrics/operator
+  newTag: ${VM_VERSION}
+EOF
+```
+
+
+You can change [operator-settings](/vars.MD), or use your custom namespace see [kustomize-example](./kustomize-example).
+
+
+
+Build template
+
+```bash
+kustomize build . -o monitoring.yaml
+```
+
+Apply manifests
+
+```bash
+kubectl apply -f monitoring.yaml
+```
+
+
 ## Create related resources
 
 The Victoria Metrics Operator introduces additional resources in Kubernetes to declare the desired state of a Victoria Metrics applications and Alertmanager cluster as well as the Prometheus resources configuration. The resources it introduces are:
 
 * [VMSingle](#VMSingle)
-* [VMCluter](#VMCluster)
+* [VMCluster](#VMCluster)
 * [VMAgent](#VMAgent)
 * [VMAlert](#VMAlert)
 * [Alertmanager](#Alertmanager)

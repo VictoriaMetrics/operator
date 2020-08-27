@@ -44,6 +44,7 @@ jobs:
           make test
           make build
           make release-package
+
       - name: run e2e tests local
         run: |
           kubectl cluster-info
@@ -83,3 +84,10 @@ jobs:
           asset_path: ./operator.zip
           asset_name: operator.zip
           asset_content_type: application/zip
+
+      - name: build crosscompile and push to remote registry
+        env:
+          TAG:   ${{ env.GITHUB_REF_SLUG }}
+        run: |
+          echo ${{secrets.REPO_KEY}} | docker login --username ${{secrets.REPO_USER}} --password-stdin
+          make docker-operator-push-crosscompile

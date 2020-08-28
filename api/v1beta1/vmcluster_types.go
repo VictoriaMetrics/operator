@@ -5,6 +5,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
+	"path"
 	"strings"
 )
 
@@ -643,4 +644,53 @@ func (cr VMCluster) Annotations() map[string]string {
 		}
 	}
 	return annotations
+}
+func (cr VMCluster) HealthPathSelect() string {
+	if cr.Spec.VMSelect == nil {
+		return healthPath
+	}
+	return buildPathWithPrefixFlag(cr.Spec.VMSelect.ExtraArgs, healthPath)
+}
+
+func (cr VMCluster) HealthPathInsert() string {
+	if cr.Spec.VMInsert == nil {
+		return healthPath
+	}
+	return buildPathWithPrefixFlag(cr.Spec.VMInsert.ExtraArgs, healthPath)
+}
+
+func (cr VMCluster) HealthPathStorage() string {
+	if cr.Spec.VMStorage == nil {
+		return healthPath
+	}
+	return buildPathWithPrefixFlag(cr.Spec.VMStorage.ExtraArgs, healthPath)
+}
+
+func (cr VMCluster) MetricPathSelect() string {
+	if cr.Spec.VMSelect == nil {
+		return healthPath
+	}
+	return buildPathWithPrefixFlag(cr.Spec.VMSelect.ExtraArgs, metricPath)
+}
+
+func (cr VMCluster) MetricPathInsert() string {
+	if cr.Spec.VMInsert == nil {
+		return healthPath
+	}
+	return buildPathWithPrefixFlag(cr.Spec.VMInsert.ExtraArgs, metricPath)
+}
+
+func (cr VMCluster) MetricPathStorage() string {
+	if cr.Spec.VMStorage == nil {
+		return healthPath
+	}
+	return buildPathWithPrefixFlag(cr.Spec.VMStorage.ExtraArgs, metricPath)
+}
+
+func (cr VMBackup) SnapshotCreatePathWithFlags(port string, extraArgs map[string]string) string {
+	return fmt.Sprintf("http://localhost:%s%s", port, path.Join(buildPathWithPrefixFlag(extraArgs, snapshotCreate)))
+}
+
+func (cr VMBackup) SnapshotDeletePathWithFlags(port string, extraArgs map[string]string) string {
+	return fmt.Sprintf("http://localhost:%s%s", port, path.Join(buildPathWithPrefixFlag(extraArgs, snapshotDelete)))
 }

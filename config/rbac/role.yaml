@@ -249,7 +249,7 @@ rules:
 - apiGroups:
     - operator.victoriametrics.com
   resources:
-    - vmsingle
+    - vmsingles
   verbs:
     - create
     - delete
@@ -261,7 +261,7 @@ rules:
 - apiGroups:
     - operator.victoriametrics.com
   resources:
-    - vmsingle/status
+    - vmsingles/status
   verbs:
     - get
     - patch

@@ -75,7 +75,7 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient
 			return status, err
 		}
 		if !c.DisableSelfServiceScrapeCreation {
-			err := CreateVMServiceScrapeFromService(ctx, rclient, storageSvc, "http")
+			err := CreateVMServiceScrapeFromService(ctx, rclient, storageSvc, cr.MetricPathStorage(), "http")
 			if err != nil {
 				log.Error(err, "cannot create VMServiceScrape for vmStorage")
 			}
@@ -108,7 +108,7 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient
 			return status, err
 		}
 		if !c.DisableSelfServiceScrapeCreation {
-			err := CreateVMServiceScrapeFromService(ctx, rclient, selectSvc, "http")
+			err := CreateVMServiceScrapeFromService(ctx, rclient, selectSvc, cr.MetricPathSelect(), "http")
 			if err != nil {
 				log.Error(err, "cannot create VMServiceScrape for vmSelect")
 			}
@@ -146,7 +146,7 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient
 			return status, err
 		}
 		if !c.DisableSelfServiceScrapeCreation {
-			err := CreateVMServiceScrapeFromService(ctx, rclient, insertSvc)
+			err := CreateVMServiceScrapeFromService(ctx, rclient, insertSvc, cr.MetricPathInsert())
 			if err != nil {
 				log.Error(err, "cannot create VMServiceScrape for vmInsert")
 			}
@@ -623,14 +623,14 @@ func makePodSpecForVMSelect(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 		HTTPGet: &corev1.HTTPGetAction{
 			Port:   intstr.Parse(cr.Spec.VMSelect.Port),
 			Scheme: "HTTP",
-			Path:   "/health",
+			Path:   cr.HealthPathSelect(),
 		},
 	}
 	readinessProbeHandler := corev1.Handler{
 		HTTPGet: &corev1.HTTPGetAction{
 			Port:   intstr.Parse(cr.Spec.VMSelect.Port),
 			Scheme: "HTTP",
-			Path:   "/health",
+			Path:   cr.HealthPathSelect(),
 		},
 	}
 	livenessFailureThreshold := int32(3)
@@ -888,14 +888,14 @@ func makePodSpecForVMInsert(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 		HTTPGet: &corev1.HTTPGetAction{
 			Port:   intstr.Parse(cr.Spec.VMInsert.Port),
 			Scheme: "HTTP",
-			Path:   "/health",
+			Path:   cr.HealthPathInsert(),
 		},
 	}
 	readinessProbeHandler := corev1.Handler{
 		HTTPGet: &corev1.HTTPGetAction{
 			Port:   intstr.Parse(cr.Spec.VMInsert.Port),
 			Scheme: "HTTP",
-			Path:   "/health",
+			Path:   cr.HealthPathInsert(),
 		},
 	}
 	livenessFailureThreshold := int32(3)
@@ -1215,14 +1215,14 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) 
 		HTTPGet: &corev1.HTTPGetAction{
 			Port:   intstr.Parse(cr.Spec.VMStorage.Port),
 			Scheme: "HTTP",
-			Path:   "/health",
+			Path:   cr.HealthPathStorage(),
 		},
 	}
 	readinessProbeHandler := corev1.Handler{
 		HTTPGet: &corev1.HTTPGetAction{
 			Port:   intstr.Parse(cr.Spec.VMStorage.Port),
 			Scheme: "HTTP",
-			Path:   "/health",
+			Path:   cr.HealthPathStorage(),
 		},
 	}
 	livenessFailureThreshold := int32(3)
@@ -1261,7 +1261,7 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) 
 	}, additionalContainers...)
 
 	if cr.Spec.VMStorage.VMBackup != nil {
-		vmBackuper, err := makeSpecForVMBackuper(cr.Spec.VMStorage.VMBackup, c, cr.Spec.VMStorage.Port, cr.Spec.VMStorage.GetStorageVolumeName())
+		vmBackuper, err := makeSpecForVMBackuper(cr.Spec.VMStorage.VMBackup, c, cr.Spec.VMStorage.Port, cr.Spec.VMStorage.GetStorageVolumeName(), cr.Spec.VMStorage.ExtraArgs)
 		if err != nil {
 			return nil, err
 		}

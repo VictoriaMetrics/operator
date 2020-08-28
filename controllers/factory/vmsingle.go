@@ -285,14 +285,14 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 		HTTPGet: &corev1.HTTPGetAction{
 			Port:   intstr.Parse(cr.Spec.Port),
 			Scheme: "HTTP",
-			Path:   "/health",
+			Path:   cr.HealthPath(),
 		},
 	}
 	readinessProbeHandler := corev1.Handler{
 		HTTPGet: &corev1.HTTPGetAction{
 			Port:   intstr.Parse(cr.Spec.Port),
 			Scheme: "HTTP",
-			Path:   "/health",
+			Path:   cr.HealthPath(),
 		},
 	}
 	livenessFailureThreshold := int32(3)
@@ -328,7 +328,7 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 	}, additionalContainers...)
 
 	if cr.Spec.VMBackup != nil {
-		vmBackuper, err := makeSpecForVMBackuper(cr.Spec.VMBackup, c, cr.Spec.Port, vmDataVolumeName)
+		vmBackuper, err := makeSpecForVMBackuper(cr.Spec.VMBackup, c, cr.Spec.Port, vmDataVolumeName, cr.Spec.ExtraArgs)
 		if err != nil {
 			return nil, err
 		}
@@ -427,7 +427,13 @@ func newServiceVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOpera
 	}
 }
 
-func makeSpecForVMBackuper(cr *victoriametricsv1beta1.VMBackup, c *config.BaseOperatorConf, port string, dataVolumeName string) (*corev1.Container, error) {
+func makeSpecForVMBackuper(
+	cr *victoriametricsv1beta1.VMBackup,
+	c *config.BaseOperatorConf,
+	port string,
+	dataVolumeName string,
+	extraArgs map[string]string,
+) (*corev1.Container, error) {
 	if cr.Image.Repository == "" {
 		cr.Image.Repository = c.VMBackup.Image
 	}
@@ -473,8 +479,10 @@ func makeSpecForVMBackuper(cr *victoriametricsv1beta1.VMBackup, c *config.BaseOp
 	args := []string{
 		fmt.Sprintf("-storageDataPath=%s", vmSingleDataDir),
 		fmt.Sprintf("-dst=%s", cr.Destination),
-		fmt.Sprintf("-snapshot.createURL=http://localhost:%s/snapshot/create", port),
-		fmt.Sprintf("-snapshot.deleteURL=http://localhost:%s/snapshot/delete", port),
+		//http://localhost:port/snaphsot/create
+		fmt.Sprintf("-snapshot.createURL=%s", cr.SnapshotCreatePathWithFlags(port, extraArgs)),
+		//http://localhost:port/snaphsot/delete
+		fmt.Sprintf("-snapshot.deleteURL=%s", cr.SnapshotDeletePathWithFlags(port, extraArgs)),
 	}
 	if cr.LogLevel != nil {
 		args = append(args, fmt.Sprintf("-loggerLevel=%s", *cr.LogLevel))

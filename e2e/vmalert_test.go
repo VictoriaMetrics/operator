@@ -148,11 +148,12 @@ var _ = Describe("test  vmalert Controller", func() {
 					})).To(BeNil())
 
 				})
-				It("Should expand vmalert up to 3 replicas", func() {
+				It("Should expand vmalert up to 3 replicas with custom prefix", func() {
 					vmAlert := &operator.VMAlert{}
 					Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, vmAlert)).To(BeNil())
 					vmAlert.Spec.ReplicaCount = pointer.Int32Ptr(3)
 					vmAlert.Spec.LogLevel = "INFO"
+					vmAlert.Spec.ExtraArgs = map[string]string{"http.pathPrefix": "/somenew/prefix"}
 					Expect(k8sClient.Update(context.TODO(), vmAlert)).To(BeNil())
 					Eventually(func() string {
 						return expectPodCount(k8sClient, 3, namespace, vmAlert.SelectorLabels())

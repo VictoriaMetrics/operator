@@ -8,8 +8,12 @@ Operator serves to make running Victoria Metrics applications on top of Kubernet
 Obtain release from releases page:
 [https://github.com/VictoriaMetrics/operator/releases](https://github.com/VictoriaMetrics/operator/releases)
 
+ We suggest to use latest release. 
+
 ```bash
-wget https://github.com/VictoriaMetrics/operator/releases/download/v0.1.0/bundle_crd.zip
+# Get latest release version from https://github.com/VictoriaMetrics/operator/releases/latest
+export VM_VERSION=`basename $(curl -fs -o/dev/null -w %{redirect_url} https://github.com/VictoriaMetrics/operator/releases/latest)`
+wget https://github.com/VictoriaMetrics/operator/releases/download/$VM_VERSION/bundle_crd.zip
 unzip  bundle_crd.zip 
 ```
 

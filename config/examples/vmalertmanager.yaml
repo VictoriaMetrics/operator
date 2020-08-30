@@ -9,7 +9,7 @@ type: Opaque
 stringData:
   alertmanager.yaml: |
     global:
-    resolve_timeout: 5m
+      resolve_timeout: 5m
     route:
       group_by: ['job']
       group_wait: 30s

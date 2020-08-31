@@ -10,6 +10,7 @@ images:
 
 patches:
 - manager.patch.yaml
+# - manager.arm.patch.yaml # To patch for ARM images
 
 patchesJson6902:
 - target:

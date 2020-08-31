@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    control-plane: vm-operator
+  name: vm-operator
+spec:
+  template:
+    spec:
+      containers:
+      - name: manager
+        env:
+        - name: VM_VMALERTDEFAULT_VERSION
+          value: v1.40.0-arm64
+        - name: VM_VMAGENTDEFAULT_VERSION
+          value: v1.40.0-arm64
+        - name: VM_VMSINGLEDEFAULT_VERSION
+          value: v1.40.0-arm64
+        - name: VM_VMCLUSTERDEFAULT_VMSELECTDEFAULT_VERSION
+          value: v1.40.0-cluster-arm64
+        - name: VM_VMCLUSTERDEFAULT_VMSTORAGEDEFAULT_VERSION
+          value: v1.40.0-cluster-arm64
+        - name: VM_VMCLUSTERDEFAULT_VMSELECTDEFAULT_VERSION
+          value: v1.40.0-cluster-arm64
+        - name: VM_VMALERTMANAGER_ALERTMANAGERVERSION
+          value: v0.20.0
+        - name: VM_VMALERTMANAGER_CONFIGRELOADERIMAGE
+          value: jimmidyson/configmap-reload:v0.4.0
+        - name: VM_VMALERTDEFAULT_CONFIGRELOADIMAGE
+          value: jimmidyson/configmap-reload:v0.4.0
+        - name: VM_VMAGENTDEFAULT_CONFIGRELOADIMAGE
+          value: quay.io/coreos/prometheus-config-reloader:v0.41.1-arm64

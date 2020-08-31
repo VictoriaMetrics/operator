@@ -82,6 +82,9 @@ Apply manifests
 kubectl apply -f monitoring.yaml
 ```
 
+## Installing to ARM
+
+To install to ARM architecture you need to patch image versions, see [manager.arm.patch.yaml](./kustomize-example/manager.arm.patch.yaml) for example Deployment configuration.
 
 ## Create related resources
 

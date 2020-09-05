@@ -17,8 +17,8 @@ wget https://github.com/VictoriaMetrics/operator/releases/download/$VM_VERSION/b
 unzip  bundle_crd.zip 
 ```
 
-> TIP, you can install operator to specific namespace with command
-> sed -i "s/namespace: default/namespace: YOUR_NAMESPACE/g" release/operator/*
+> TIP, operator use monitoring-system namespace, but you can install it to specific namespace with command
+> sed -i "s/namespace: monitoring-system/namespace: YOUR_NAMESPACE/g" release/operator/*
 
 First of all, you  have to create [custom resource definitions](https://github.com/VictoriaMetrics/operator)
 ```bash
@@ -36,7 +36,7 @@ kubectl apply -f release/operator/
 Check the status of operator
 
 ```bash
-kubectl get pods
+kubectl get pods -n monitoring-system
 
 #NAME                           READY   STATUS    RESTARTS   AGE
 #vm-operator-667dfbff55-cbvkf   1/1     Running   0          101s
@@ -52,13 +52,12 @@ You can install operator using [Kustomize](https://kubernetes-sigs.github.io/kus
 # Get latest release version from https://github.com/VictoriaMetrics/operator/releases/latest
 export VM_VERSION=`basename $(curl -fs -o/dev/null -w %{redirect_url} https://github.com/VictoriaMetrics/operator/releases/latest)`
 
-cat << EOF >> kustomization.yaml
+cat << EOF > kustomization.yaml
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
 - github.com/VictoriaMetrics/operator/config/default?ref=${VM_VERSION}
 
-namespace: monitoring
 images:
 - name: victoriametrics/operator
   newTag: ${VM_VERSION}
@@ -80,6 +79,16 @@ Apply manifests
 
 ```bash
 kubectl apply -f monitoring.yaml
+```
+
+Check the status of operator
+
+```bash
+kubectl get pods -n monitoring-system
+
+#NAME                           READY   STATUS    RESTARTS   AGE
+#vm-operator-667dfbff55-cbvkf   1/1     Running   0          101s
+
 ```
 
 ## Installing to ARM

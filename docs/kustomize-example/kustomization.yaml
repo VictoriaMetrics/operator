@@ -3,7 +3,7 @@ kind: Kustomization
 resources:
 - github.com/VictoriaMetrics/operator/config/default?ref=v0.2.0
 
-namespace: monitoring
+namespace: team-a-monitoring
 images:
 - name: victoriametrics/operator
   newTag: v0.2.0
@@ -16,8 +16,8 @@ patchesJson6902:
 - target:
     version: v1
     kind: Namespace
-    name: default
+    name: monitoring-system
   patch: |-
     - op: replace
       path: "/metadata/name"
-      value: monitoring
+      value: team-a-monitoring

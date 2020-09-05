@@ -8,5 +8,5 @@ roleRef:
   name: manager-role
 subjects:
 - kind: ServiceAccount
-  name: default
-  namespace: default
+  name: monitoring-system
+  namespace: monitoring-system

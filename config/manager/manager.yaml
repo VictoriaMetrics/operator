@@ -3,7 +3,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: vm-operator
-  namespace: default
+  namespace: monitoring-system
   labels:
     control-plane: vm-operator
 spec:

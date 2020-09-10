@@ -22,8 +22,8 @@ jobs:
         run: |
           go get -u golang.org/x/lint/golint
           go get -u github.com/kisielk/errcheck
-          go get  github.com/golangci/golangci-lint/cmd/golangci-lint@v1.27.0
-          curl -L -o operator-sdk "https://github.com/operator-framework/operator-sdk/releases/download/v1.0.0/operator-sdk-v0.19.0-x86_64-linux-gnu"
+          go get  github.com/golangci/golangci-lint/cmd/golangci-lint@v1.30.0
+          curl -L -o operator-sdk "https://github.com/operator-framework/operator-sdk/releases/download/v1.0.0/operator-sdk-v1.0.0-x86_64-linux-gnu"
           chmod +x operator-sdk
           sudo mv operator-sdk /bin/
 
@@ -53,14 +53,13 @@ jobs:
           echo "environment-kubeconfig:" ${KUBECONFIG}
           make e2e-local
 
-      - name: build docker
-        uses: docker/build-push-action@v1
-        with:
-          username: ${{secrets.REPO_USER}}
-          password: ${{secrets.REPO_KEY}}
-          tag_with_ref: true
-          repository: victoriametrics/operator
-          dockerfile: Dockerfile
+
+      - name: build crosscompile and push to remote registry
+        env:
+          TAG:   ${{ env.GITHUB_REF_SLUG }}
+        run: |
+          echo ${{secrets.REPO_KEY}} | docker login --username ${{secrets.REPO_USER}} --password-stdin
+          make publish-via-docker
 
 
       - name: Upload Release Asset
@@ -85,9 +84,3 @@ jobs:
           asset_name: operator.zip
           asset_content_type: application/zip
 
-      - name: build crosscompile and push to remote registry
-        env:
-          TAG:   ${{ env.GITHUB_REF_SLUG }}
-        run: |
-          echo ${{secrets.REPO_KEY}} | docker login --username ${{secrets.REPO_USER}} --password-stdin
-          make docker-operator-push-crosscompile

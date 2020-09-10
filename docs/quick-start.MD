@@ -93,7 +93,7 @@ kubectl get pods -n monitoring-system
 
 ## Installing to ARM
 
-To install to ARM architecture you need to patch image versions, see [manager.arm.patch.yaml](./kustomize-example/manager.arm.patch.yaml) for example Deployment configuration.
+ There is no need in an additional configuration for ARM. Operator and VictoriaMetrics have full support for it.
 
 ## Create related resources
 

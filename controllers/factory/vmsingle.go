@@ -141,20 +141,31 @@ func newDeployForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOpe
 	if cr.Spec.Resources.Limits == nil {
 		cr.Spec.Resources.Limits = corev1.ResourceList{}
 	}
-	if _, ok := cr.Spec.Resources.Limits[corev1.ResourceMemory]; !ok {
+
+	var cpuResourceIsSet bool
+	var memResourceIsSet bool
+
+	if _, ok := cr.Spec.Resources.Limits[corev1.ResourceMemory]; ok {
+		memResourceIsSet = true
+	}
+	if _, ok := cr.Spec.Resources.Limits[corev1.ResourceCPU]; ok {
+		cpuResourceIsSet = true
+	}
+	if _, ok := cr.Spec.Resources.Requests[corev1.ResourceMemory]; ok {
+		memResourceIsSet = true
+	}
+	if _, ok := cr.Spec.Resources.Requests[corev1.ResourceCPU]; ok {
+		cpuResourceIsSet = true
+	}
+	if !cpuResourceIsSet {
+		cr.Spec.Resources.Requests[corev1.ResourceCPU] = resource.MustParse(c.VMSingleDefault.Resource.Request.Cpu)
+		cr.Spec.Resources.Limits[corev1.ResourceCPU] = resource.MustParse(c.VMSingleDefault.Resource.Limit.Cpu)
+
+	}
+	if !memResourceIsSet {
+		cr.Spec.Resources.Requests[corev1.ResourceMemory] = resource.MustParse(c.VMSingleDefault.Resource.Request.Mem)
 		cr.Spec.Resources.Limits[corev1.ResourceMemory] = resource.MustParse(c.VMSingleDefault.Resource.Limit.Mem)
 	}
-	if _, ok := cr.Spec.Resources.Limits[corev1.ResourceCPU]; !ok {
-		cr.Spec.Resources.Limits[corev1.ResourceCPU] = resource.MustParse(c.VMSingleDefault.Resource.Limit.Cpu)
-	}
-
-	if _, ok := cr.Spec.Resources.Requests[corev1.ResourceMemory]; !ok {
-		cr.Spec.Resources.Requests[corev1.ResourceMemory] = resource.MustParse(c.VMSingleDefault.Resource.Request.Mem)
-	}
-	if _, ok := cr.Spec.Resources.Requests[corev1.ResourceCPU]; !ok {
-		cr.Spec.Resources.Requests[corev1.ResourceCPU] = resource.MustParse(c.VMSingleDefault.Resource.Request.Cpu)
-	}
-
 	podSpec, err := makeSpecForVMSingle(cr, c)
 	if err != nil {
 		return nil, err

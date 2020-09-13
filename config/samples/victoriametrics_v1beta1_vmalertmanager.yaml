@@ -1,7 +1,31 @@
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: vmalertmanager-example-alertmanager
+  labels:
+    app: vm-operator
+type: Opaque
+stringData:
+  alertmanager.yaml: |
+    global:
+      resolve_timeout: 5m
+    route:
+      group_by: ['job']
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 12h
+      receiver: 'webhook'
+    receivers:
+      - name: 'webhook'
+        webhook_configs:
+          - url: 'http://alertmanagerwh:30500/'
+
+---
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAlertmanager
 metadata:
-  name: vmalertmanager-sample
+  name: example-alertmanager
 spec:
-  # Add fields here
-  foo: bar
+  replicaCount: 1
+  configSecret: vmalertmanager-example-alertmanager

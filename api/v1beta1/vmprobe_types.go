@@ -89,9 +89,10 @@ type VMProberSpec struct {
 type VMProbeStatus struct {
 }
 
+//  VMProbe defines a probe for targets, that will be executed with prober,
+//  like blackbox exporter.
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// VMProbe is the Schema for the vmprobes API
 type VMProbe struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

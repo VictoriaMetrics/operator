@@ -19,9 +19,9 @@ spec:
     status: {}
   validation:
     openAPIV3Schema:
-      description: VMServiceScrape is the Schema for the servicescrapes API it generates
-        scrape configuration for vmagent based on selectors result config will scrape
-        service endpoints
+      description: VMServiceScrape is scrape configuration for endpoints associated
+        with kubernetes service, it generates scrape configuration for vmagent based
+        on selectors. result config will scrape service endpoints
       properties:
         apiVersion:
           description: 'APIVersion defines the versioned schema of this representation

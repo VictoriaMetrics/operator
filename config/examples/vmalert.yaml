@@ -14,3 +14,4 @@ spec:
   ruleSelector:
     matchLabels:
       managed-by: vm-operator
+  ruleNamespaceSelector: {}

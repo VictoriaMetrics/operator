@@ -1,0 +1,22 @@
+spec:
+  install:
+    spec:
+      clusterPermissions:
+        - rules:
+            - apiGroups: [ "","networking.k8s.io","extensions" ]
+              resources:
+                - nodes
+                - services
+                - endpoints
+                - endpointslices
+                - pods
+                - app
+                - ingresses
+              verbs: [ "get", "list", "watch" ]
+            - apiGroups: [ "" ]
+              resources:
+                - configmaps
+              verbs: [ "get" ]
+            - nonResourceURLs: [ "/metrics" ]
+              verbs: [ "get" ]
+          serviceAccountName: vmagent

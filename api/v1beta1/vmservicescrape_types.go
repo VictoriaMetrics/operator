@@ -37,8 +37,9 @@ type VMServiceScrapeSpec struct {
 type VMServiceScrapeStatus struct {
 }
 
-// VMServiceScrape is the Schema for the servicescrapes API
-// it generates scrape configuration for vmagent based on selectors
+// VMServiceScrape is scrape configuration for endpoints associated with
+// kubernetes service,
+// it generates scrape configuration for vmagent based on selectors.
 // result config will scrape service endpoints
 // +operator-sdk:gen-csv:customresourcedefinitions.displayName="VMServiceScrape"
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

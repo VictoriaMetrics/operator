@@ -49,10 +49,8 @@ type VMAlertSpec struct {
 	// ReplicaCount is the expected size of the VMAlert cluster. The controller will
 	// eventually make the size of the running cluster equal to the expected
 	// size.
-	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors=true
-	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors.displayName="Pod Count"
-	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors.x-descriptors="urn:alm:descriptor:com.tectonic.ui:podCount"
 	// +optional
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Number of pods",xDescriptors="urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom"
 	ReplicaCount *int32 `json:"replicaCount,omitempty"`
 	// Volumes allows configuration of additional volumes on the output Deployment definition.
 	// Volumes specified will be appended to other volumes that are generated as a result of
@@ -65,9 +63,7 @@ type VMAlertSpec struct {
 	// +optional
 	VolumeMounts []v1.VolumeMount `json:"volumeMounts,omitempty"`
 	// Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
-	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors=true
-	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors.displayName="Resources"
-	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors.x-descriptors="urn:alm:descriptor:com.tectonic.ui:resourceRequirements"
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resources",xDescriptors="urn:alm:descriptor:com.tectonic.ui:resourceRequirements"
 	// +optional
 	Resources v1.ResourceRequirements `json:"resources,omitempty"`
 	// Affinity If specified, the pod's scheduling constraints.
@@ -245,7 +241,7 @@ type VMAlertStatus struct {
 	UnavailableReplicas int32 `json:"unavailableReplicas"`
 }
 
-// VMAlert represents a Victoria-Metrics alert application
+// VMAlert  executes a list of given alerting or recording rules against configured address.
 // +operator-sdk:gen-csv:customresourcedefinitions.displayName="VMAlert App"
 // +operator-sdk:gen-csv:customresourcedefinitions.resources="Deployment,v1"
 // +operator-sdk:gen-csv:customresourcedefinitions.resources="Service,v1"

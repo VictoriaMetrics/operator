@@ -1,7 +1,12 @@
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMPodScrape
 metadata:
-  name: vmpodscrape-sample
+  name: example-pod-scrape
 spec:
-  # Add fields here
-  foo: bar
+  podMetricsEndpoints:
+    - port: metrics
+      scheme: http
+  selector:
+    matchLabels:
+      monitored-by: vm-operator
+      app.kubernetes.io/name: example-application

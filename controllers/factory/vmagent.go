@@ -181,18 +181,29 @@ func newDeployForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOpera
 		cr.Spec.Resources.Limits = corev1.ResourceList{}
 	}
 
-	if _, ok := cr.Spec.Resources.Limits[corev1.ResourceMemory]; !ok {
-		cr.Spec.Resources.Limits[corev1.ResourceMemory] = resource.MustParse(c.VMAgentDefault.Resource.Limit.Mem)
-	}
-	if _, ok := cr.Spec.Resources.Limits[corev1.ResourceCPU]; !ok {
-		cr.Spec.Resources.Limits[corev1.ResourceCPU] = resource.MustParse(c.VMAgentDefault.Resource.Limit.Cpu)
-	}
+	var cpuResourceIsSet bool
+	var memResourceIsSet bool
 
-	if _, ok := cr.Spec.Resources.Requests[corev1.ResourceMemory]; !ok {
-		cr.Spec.Resources.Requests[corev1.ResourceMemory] = resource.MustParse(c.VMAgentDefault.Resource.Request.Mem)
+	if _, ok := cr.Spec.Resources.Limits[corev1.ResourceMemory]; ok {
+		memResourceIsSet = true
 	}
-	if _, ok := cr.Spec.Resources.Requests[corev1.ResourceCPU]; !ok {
+	if _, ok := cr.Spec.Resources.Limits[corev1.ResourceCPU]; ok {
+		cpuResourceIsSet = true
+	}
+	if _, ok := cr.Spec.Resources.Requests[corev1.ResourceMemory]; ok {
+		memResourceIsSet = true
+	}
+	if _, ok := cr.Spec.Resources.Requests[corev1.ResourceCPU]; ok {
+		cpuResourceIsSet = true
+	}
+	if !cpuResourceIsSet {
 		cr.Spec.Resources.Requests[corev1.ResourceCPU] = resource.MustParse(c.VMAgentDefault.Resource.Request.Cpu)
+		cr.Spec.Resources.Limits[corev1.ResourceCPU] = resource.MustParse(c.VMAgentDefault.Resource.Limit.Cpu)
+
+	}
+	if !memResourceIsSet {
+		cr.Spec.Resources.Requests[corev1.ResourceMemory] = resource.MustParse(c.VMAgentDefault.Resource.Request.Mem)
+		cr.Spec.Resources.Limits[corev1.ResourceMemory] = resource.MustParse(c.VMAgentDefault.Resource.Limit.Mem)
 	}
 
 	podSpec, err := makeSpecForVMAgent(cr, c, rwsBasicAuth, rwsTokens)

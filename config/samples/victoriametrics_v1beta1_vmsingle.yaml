@@ -1,7 +1,13 @@
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMSingle
 metadata:
-  name: vmsingle-sample
+  name: example-vmsingle-pvc
 spec:
-  # Add fields here
-  foo: bar
+  retentionPeriod: "1"
+  removePvcAfterDelete: true
+  storage:
+    accessModes:
+      - ReadWriteOnce
+    resources:
+      requests:
+        storage: 20Gi

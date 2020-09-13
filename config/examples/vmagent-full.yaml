@@ -45,16 +45,22 @@ stringData:
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAgent
 metadata:
-  name: example-vmagent
+  name: example-vmagent-full
 spec:
   serviceScrapeNamespaceSelector: {}
   serviceScrapeSelector: {}
-  # Add fields here
+  podScrapeNamespaceSelector: {}
+  podScrapeSelector: {}
+  probeSelector: {}
+  probeNamespaceSelector: {}
   replicaCount: 1
   resources:
+    limits:
+      cpu: "500m"
+      memory: "750Mi"
     requests:
-      cpu: "50m"
-      memory: "50Mi"
+      cpu: "150m"
+      memory: "250Mi"
   serviceAccountName: vmagent
   extraArgs:
     memory.allowedPercent: "40"

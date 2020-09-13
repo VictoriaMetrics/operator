@@ -257,6 +257,28 @@ spec:
 EOF
 ```
 
+ For connecting `VMAgent` to cluster, you have to specify url for it (not a path: `/insert/0/prometheus/api/v1/write`):
+ 
+ ```yaml
+ cat <<EOF | kubectl apply -f -
+ apiVersion: operator.victoriametrics.com/v1beta1
+ kind: VMAgent
+ metadata:
+   name: example-vmagent
+ spec:
+   serviceScrapeNamespaceSelector: {}
+   podScrapeNamespaceSelector: {}
+   podScrapeSelector: {}
+   serviceScrapeSelector: {}
+   replicaCount: 1
+   serviceAccountName: vmagent
+   remoteWrite:
+     - url: "http://vminsert-example-vmcluster.default.svc.cluster.local:8480/insert/0/prometheus/api/v1/write"
+EOF
+
+```
+
+
 ## VMAgent
 
 [VMAgent](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/app/vmagent) -  is a tiny but brave agent, which helps you collect metrics from various sources and stores them in [VictoriaMetrics](https://github.com/VictoriaMetrics/VictoriaMetrics).

@@ -17,7 +17,7 @@ spec:
     status: {}
   validation:
     openAPIV3Schema:
-      description: VMAlert represents a Victoria-Metrics alert application
+      description: VMAlert  executes a list of given alerting or recording rules against configured address.
       properties:
         apiVersion:
           description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'

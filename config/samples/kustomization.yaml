@@ -7,3 +7,5 @@ resources:
 - victoriametrics_v1beta1_vmrule.yaml
 - victoriametrics_v1beta1_vmservicescrape.yaml
 - victoriametrics_v1beta1_vmsingle.yaml
+- victoriametrics_v1beta1_vmcluster.yaml
+- operator_v1beta1_vmprobe.yaml

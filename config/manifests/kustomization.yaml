@@ -1,0 +1,21 @@
+resources:
+- ../default
+- ../samples
+#- ../scorecard
+patches:
+  - path: delete-ns-meta.yaml
+    target:
+      kind: Deployment
+      name: vm-operator-vm-operator
+  - path: delete-ns-meta.yaml
+    target:
+      kind: RoleBinding
+      name: vm-operator-leader-election-rolebinding
+  - path: delete-ns-meta.yaml
+    target:
+      kind: Role
+      name: vm-operator-leader-election-role
+  - path: delete-ns-meta.yaml
+    target:
+      kind: ServiceAccount
+      name: vm-operator-vm-operator

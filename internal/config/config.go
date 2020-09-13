@@ -37,7 +37,7 @@ type BaseOperatorConf struct {
 	VMAgentDefault struct {
 		Image             string `default:"victoriametrics/vmagent"`
 		Version           string `default:"v1.40.0"`
-		ConfigReloadImage string `default:"quay.io/coreos/prometheus-config-reloader:v0.30.1"`
+		ConfigReloadImage string `default:"quay.io/coreos/prometheus-config-reloader:v0.42.0"`
 		Port              string `default:"8429"`
 		Resource          struct {
 			Limit struct {

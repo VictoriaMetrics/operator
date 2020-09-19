@@ -132,8 +132,8 @@ type BaseOperatorConf struct {
 
 	DisableSelfServiceScrapeCreation bool `default:"false"`
 	VMBackup                         struct {
-		Image    string `default:"tenmozes/backup"`
-		Version  string `default:"latest"`
+		Image    string `default:"victoriametrics/vmbackuper"`
+		Version  string `default:"v1.0.0"`
 		Port     string `default:"8300"`
 		Resource struct {
 			Limit struct {

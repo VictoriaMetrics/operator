@@ -1,3 +1,7 @@
+# Scrape Metrics Server
+# Cluster-wide aggregator of resource usage data. 
+# https://github.com/kubernetes-sigs/metrics-server
+---
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMServiceScrape
 metadata:
@@ -11,7 +15,7 @@ spec:
     matchLabels:
       kubernetes.io/name: Metrics-server
   endpoints:
-  - port: https
+  - port: 443
     scheme: https
     tlsConfig:
       insecureSkipVerify: true

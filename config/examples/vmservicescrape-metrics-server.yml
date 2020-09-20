@@ -6,10 +6,10 @@ apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMServiceScrape
 metadata:
   name: metrics-server
-  namespace: kube-system
+  namespace: monitoring-system
 spec:
   namespaceSelector:
-    matchName:
+    matchNames:
     - kube-system
   selector:
     matchLabels:

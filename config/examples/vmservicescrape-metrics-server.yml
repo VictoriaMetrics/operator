@@ -1,0 +1,19 @@
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMServiceScrape
+metadata:
+  name: metrics-server
+  namespace: kube-system
+spec:
+  namespaceSelector:
+    matchName:
+    - kube-system
+  selector:
+    matchLabels:
+      kubernetes.io/name: Metrics-server
+  endpoints:
+  - port: https
+    scheme: https
+    tlsConfig:
+      insecureSkipVerify: true
+      caFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+    bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token

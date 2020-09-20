@@ -1,7 +1,8 @@
 ## VMBackuper
 
+#### vmbackuper is proprietary software. 
 
- `VMSingle` and `VMCluster` has built-in backup configuration, it uses `vmbackuper` - tools for logical backups.
+ `VMSingle` and `VMCluster` has built-in backup configuration, it uses `vmbackuper` - proprietary tool for backups.
  It supports incremental backups (hours, daily, etc) with popular object storages (aws s3, google cloud storage).
  
   You can enable it with the simple configuration, define secret
@@ -16,8 +17,8 @@ type: Opaque
 stringData:
   credentials: |-
     [default]
-    AWS_ACCESS_KEY_ID = your_access_key_id
-    AWS_SECRET_ACCESS_KEY = your_secret_access_key
+    aws_access_key_id = your_access_key_id
+    aws_secret_access_key = your_secret_access_key
 ---
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMSingle
@@ -27,7 +28,7 @@ spec:
   # Add fields here
   retentionPeriod: "1"
   vmBackup:
-    destintaion: "s3://bucket/path/to/backup/dir"
+    destintaion: "s3://your_bucket/folder"
     credentialsSecret:
       name: remote-storage-keys
       key: credentials
@@ -42,7 +43,7 @@ spec:
   vmstorage:
     replicaCount: 2
     vmBackup:
-      destintaion: "s3://bucket/path/to/backup/dir"
+      destintaion: "s3://your_bucket/folder"
       credentialsSecret:
         name: remote-storage-keys
         key: credentials
@@ -60,7 +61,10 @@ spec:
 
  It can be done with [vmrestore](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/app/vmrestore)
  
- You have to stop `VMSingle` by scaling it replicas to zero and manually restore data to the database directory.
+There two ways:
+ 
+ First: 
+  You have to stop `VMSingle` by scaling it replicas to zero and manually restore data to the database directory.
  
  Steps:
  1) edit `VMSingle` CRD, set replicaCount: 0
@@ -70,3 +74,42 @@ spec:
  5) umount disk
  6) edit `VMSingle` CRD, set replicaCount: 1
  7) wait database start
+ 
+ Second:
+
+   1) add init container with vmrestore command to `VMSingle` CRD, example:
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMSingle
+metadata:
+ name: vmsingle-restored
+ namespace: monitoring-system
+spec:
+ initContainers:
+ - name: vmrestore
+   image: victoriametrics/vmrestore:latest
+   volumeMounts:
+   - mountPath: /victoria-metrics-data
+     name: data
+   - mountPath: /etc/vm/creds
+     name: secret-remote-storage-keys
+     readOnly: true
+   args:
+   - -storageDataPath=/victoria-metrics-data
+   - -src=s3://your_bucket/folder/latest
+   - -credsFilePath=/etc/vm/creds/credentials
+ vmBackup:
+  destintaion: "s3://your_bucket/folder"
+  extraArgs:
+      runOnStart: "true"
+  image:
+      repository: victoriametrics/vmbackuper
+      tag: v1.0.0
+  credentialsSecret:
+   name: remote-storage-keys
+   key: credentials
+
+```
+   2)  apply it, and db will be restored from s3
+   
+   3) remove initContainers and apply crd.

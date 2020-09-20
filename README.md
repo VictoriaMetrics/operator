@@ -25,11 +25,13 @@ With CRD (Custom Resource Definition) you can define application configuration a
  
  It has integration with VictoriaMetrics `vmbackuper` - advanced tools for making backups. Check backup [docs](/docs/backups.MD)
 
-## use cases
+## Use cases
 
- The main use case of the operator - define metrics scraping and alerting configuration for your application and manage it with an application deployment process. You don't need to configure it at separate place. Just define app_deployment.yaml, app_vmpodscrape.yaml and app_vmrule.yaml. That's it, you can apply it to a kubernetes cluster. Check [quick-start](/docs/quick-start.MD) for an example.
+ For kubernetes-cluster administrators, it simplifies installation, configuration, management for `VictoriaMetrics` application. And the main feature of operator -  is ability to delegate applications monitoring configuration to the end-users.
+ 
+ For applications developers, its great possibility for managing observability of applications. You can define metrics scraping and alerting configuration for your application and manage it with an application deployment process. Just define app_deployment.yaml, app_vmpodscrape.yaml and app_vmrule.yaml. That's it, you can apply it to a kubernetes cluster. Check [quick-start](/docs/quick-start.MD) for an example.
 
-## operator vs helm-chart
+## Operator vs helm-chart
 
 VictoriaMetrics provides [helm charts](https://github.com/VictoriaMetrics/helm-charts). Operator makes the same, simplifies it and provides advanced features.
 
@@ -47,7 +49,7 @@ VictoriaMetrics provides [helm charts](https://github.com/VictoriaMetrics/helm-c
 
 
 
-## kubernetes compatibility versions
+## Kubernetes compatibility versions
 
 operator tested at kubernetes versions 
 from 1.13 to 1.18
@@ -72,7 +74,7 @@ Feel free asking any questions regarding VictoriaMetrics:
 * [google groups](https://groups.google.com/forum/#!forum/victorametrics-users)
 
 
-## development
+## Development
 
 - operator-sdk verson v1.0.0 +  [https://github.com/operator-framework/operator-sdk]
 - golang 1.15 +

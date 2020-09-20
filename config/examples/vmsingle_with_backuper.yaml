@@ -9,8 +9,8 @@ type: Opaque
 stringData:
   credentials: |-
     [default]
-    AWS_ACCESS_KEY_ID = your_access_key_id
-    AWS_SECRET_ACCESS_KEY = your_secret_access_key
+    aws_access_key_id = your_access_key_id
+    aws_secret_access_key = your_secret_access_key
 ---
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMSingle

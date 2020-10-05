@@ -47,8 +47,45 @@ kind: VMAgent
 metadata:
   name: example-vmagent
 spec:
-  serviceScrapeNamespaceSelector: {}
-  serviceScrapeSelector: {}
+  serviceScrapeNamespaceSelector:
+    matchLabels:
+      managed-by: vm-operator
+    matchExpressions:
+      - operator: Exists
+        key: name
+  serviceScrapeSelector:
+    matchLabels:
+      managed-by: vm-operator
+    matchExpressions:
+      - operator: Exists
+        key: name
+  podScrapeNamespaceSelector:
+    matchLabels:
+      managed-by: vm-operator
+    matchExpressions:
+      - operator: Exists
+        key: name
+  podScrapeSelector:
+    matchLabels:
+      managed-by: vm-operator
+    matchExpressions:
+      - operator: Exists
+        key: name
+  probeSelector: {}
+  probeNamespaceSelector: {}
+  podMetadata:
+    labels:
+      key: value
+    annotations:
+      key: value
+  image:
+    repository: victoriametrics/vmagent
+    tag: v1.40.0
+    pullPolicy: ifNotPresent
+  scrapeInterval: 30s
+  vmAgentExternalLabelName: vmagent
+  externalLabels:
+    key: value
   # Add fields here
   replicaCount: 1
   resources:

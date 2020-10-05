@@ -43,7 +43,7 @@ spec:
         cpu: "0.5"
         memory: 500Mi
     vmBackup:
-      destintaion: "gcs://bucket/path/to/backup/dir"
+      destination: "gcs://bucket/path/to/backup/dir"
       concurrency: 5
       credentialsSecret:
         name: remote-storage-keys

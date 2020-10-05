@@ -1,0 +1,29 @@
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMServiceScrape
+metadata:
+  name: example-scrape
+spec:
+  jobLabel: job
+  targetLabels: []
+  podTargetLabels: []
+  endpoints:
+    - port: http
+      targetPort: http
+      path: /metrics
+      scheme: http
+      scrapeTimeout: 2s
+      metricRelabelConfigs:
+        - sourceLabels: ["__address__"]
+          targetLabel: addr
+      relabelConfigs:
+        - sourceLabels: [ "__address__" ]
+          regex: .+:(.+)
+          replacement: $1
+          targetLabel: addr_port
+  namespaceSelector:
+    any: false
+    matchNames: ["kube-system"]
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: example-application
+      monitored-by: vm-operator

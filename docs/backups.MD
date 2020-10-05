@@ -28,7 +28,7 @@ spec:
   # Add fields here
   retentionPeriod: "1"
   vmBackup:
-    destintaion: "s3://your_bucket/folder"
+    destination: "s3://your_bucket/folder"
     credentialsSecret:
       name: remote-storage-keys
       key: credentials
@@ -43,7 +43,7 @@ spec:
   vmstorage:
     replicaCount: 2
     vmBackup:
-      destintaion: "s3://your_bucket/folder"
+      destination: "s3://your_bucket/folder"
       credentialsSecret:
         name: remote-storage-keys
         key: credentials
@@ -99,7 +99,7 @@ spec:
    - -src=s3://your_bucket/folder/latest
    - -credsFilePath=/etc/vm/creds/credentials
  vmBackup:
-  destintaion: "s3://your_bucket/folder"
+  destination: "s3://your_bucket/folder"
   extraArgs:
       runOnStart: "true"
   image:

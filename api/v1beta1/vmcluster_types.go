@@ -2,11 +2,12 @@ package v1beta1
 
 import (
 	"fmt"
+	"path"
+	"strings"
+
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
-	"path"
-	"strings"
 )
 
 const (
@@ -465,7 +466,7 @@ type VMBackup struct {
 	// +optional
 	Concurrency *int32 `json:"concurrency,omitempty"`
 	// Defines destination for backup
-	Destination string `json:"destintaion,omitempty"`
+	Destination string `json:"destination,omitempty"`
 	// Custom S3 endpoint for use with S3-compatible storages (e.g. MinIO). S3 is used if not set
 	// +optional
 	CustomS3Endpoint *string `json:"customS3Endpoint,omitempty"`

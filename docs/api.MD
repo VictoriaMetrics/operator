@@ -820,7 +820,7 @@ Image defines docker image settings
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
 | concurrency | Defines number of concurrent workers. Higher concurrency may reduce backup duration (default 10) | *int32 | false |
-| destintaion | Defines destination for backup | string | false |
+| destination | Defines destination for backup | string | false |
 | customS3Endpoint | Custom S3 endpoint for use with S3-compatible storages (e.g. MinIO). S3 is used if not set | *string | false |
 | credentialsSecret | CredentialsSecret is secret in the same namespace for access to remote storage The secret is mounted into /etc/vm/creds. | *[v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
 | disableHourly | Defines if hourly backups disabled (default false) | *bool | false |

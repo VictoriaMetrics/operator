@@ -7,6 +7,8 @@ spec:
   serviceScrapeSelector: {}
   podScrapeNamespaceSelector: {}
   podScrapeSelector: {}
+  probeSelector: {}
+  probeNamespaceSelector: {}
   # Add fields here
   replicaCount: 1
   resources:

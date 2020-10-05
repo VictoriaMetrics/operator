@@ -245,7 +245,7 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 		args = append(args, fmt.Sprintf("-loggerFormat=%s", cr.Spec.LogFormat))
 	}
 	if len(cr.Spec.ExtraEnvs) > 0 {
-		args = append(args, fmt.Sprintf("-envflag.enable=true"))
+		args = append(args, "-envflag.enable=true")
 	}
 
 	var envs []corev1.EnvVar

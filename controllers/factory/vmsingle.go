@@ -202,7 +202,7 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 
 	args = append(args, fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.Port))
 	if len(cr.Spec.ExtraEnvs) > 0 {
-		args = append(args, fmt.Sprintf("-envflag.enable=true"))
+		args = append(args, "-envflag.enable=true")
 	}
 
 	var envs []corev1.EnvVar

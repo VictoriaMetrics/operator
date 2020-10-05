@@ -567,7 +567,7 @@ func makePodSpecForVMSelect(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 	args = append(args, selectArg)
 
 	if len(cr.Spec.VMSelect.ExtraEnvs) > 0 {
-		args = append(args, fmt.Sprintf("-envflag.enable=true"))
+		args = append(args, "-envflag.enable=true")
 	}
 
 	var envs []corev1.EnvVar
@@ -836,7 +836,7 @@ func makePodSpecForVMInsert(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 		args = append(args, fmt.Sprintf("-replicationFactor=%d", *cr.Spec.ReplicationFactor))
 	}
 	if len(cr.Spec.VMInsert.ExtraEnvs) > 0 {
-		args = append(args, fmt.Sprintf("-envflag.enable=true"))
+		args = append(args, "-envflag.enable=true")
 	}
 
 	var envs []corev1.EnvVar
@@ -1140,7 +1140,7 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) 
 		args = append(args, fmt.Sprintf("-%s=%s", arg, value))
 	}
 	if len(cr.Spec.VMStorage.ExtraEnvs) > 0 {
-		args = append(args, fmt.Sprintf("-envflag.enable=true"))
+		args = append(args, "-envflag.enable=true")
 	}
 
 	var envs []corev1.EnvVar

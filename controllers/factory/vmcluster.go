@@ -3,6 +3,10 @@ package factory
 import (
 	"context"
 	"fmt"
+	"path"
+	"strings"
+	"time"
+
 	"github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/coreos/prometheus-operator/pkg/k8sutil"
@@ -16,10 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/utils/pointer"
-	"path"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"strings"
-	"time"
 )
 
 const (
@@ -565,6 +566,10 @@ func makePodSpecForVMSelect(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 	log.Info("args for vmselect ", "args", selectArg)
 	args = append(args, selectArg)
 
+	if len(cr.Spec.VMSelect.ExtraEnvs) > 0 {
+		args = append(args, "-envflag.enable=true")
+	}
+
 	var envs []corev1.EnvVar
 	envs = append(envs, cr.Spec.VMSelect.ExtraEnvs...)
 
@@ -829,6 +834,9 @@ func makePodSpecForVMInsert(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 	if cr.Spec.ReplicationFactor != nil {
 		log.Info("replication enabled for vminsert, with factor", "replicationFactor", *cr.Spec.ReplicationFactor)
 		args = append(args, fmt.Sprintf("-replicationFactor=%d", *cr.Spec.ReplicationFactor))
+	}
+	if len(cr.Spec.VMInsert.ExtraEnvs) > 0 {
+		args = append(args, "-envflag.enable=true")
 	}
 
 	var envs []corev1.EnvVar
@@ -1130,6 +1138,9 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) 
 
 	for arg, value := range cr.Spec.VMStorage.ExtraArgs {
 		args = append(args, fmt.Sprintf("-%s=%s", arg, value))
+	}
+	if len(cr.Spec.VMStorage.ExtraEnvs) > 0 {
+		args = append(args, "-envflag.enable=true")
 	}
 
 	var envs []corev1.EnvVar

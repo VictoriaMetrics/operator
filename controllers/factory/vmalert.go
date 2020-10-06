@@ -368,6 +368,9 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 	for _, rulePath := range cr.Spec.RulePath {
 		args = append(args, "-rule="+rulePath)
 	}
+	if len(cr.Spec.ExtraEnvs) > 0 {
+		args = append(args, "-envflag.enable=true")
+	}
 
 	var envs []corev1.EnvVar
 

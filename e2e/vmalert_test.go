@@ -1,6 +1,8 @@
 package e2e
 
 import (
+	"path"
+
 	operator "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	. "github.com/onsi/ginkgo"
@@ -10,7 +12,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
-	"path"
 )
 
 var _ = Describe("test  vmalert Controller", func() {
@@ -40,6 +41,12 @@ var _ = Describe("test  vmalert Controller", func() {
 							Notifier:     operator.VMAlertNotifierSpec{URL: "http://alert-manager-url:9093"},
 							Datasource: operator.VMAlertDatasourceSpec{
 								URL: "http://some-datasource-url:8428",
+							},
+							ExtraEnvs: []corev1.EnvVar{
+								{
+									Name:  "external_url",
+									Value: "http://external-url.com",
+								},
 							},
 						},
 					})).Should(Succeed())

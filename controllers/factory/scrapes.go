@@ -5,16 +5,16 @@ import (
 	"compress/gzip"
 	"context"
 	"fmt"
+	"regexp"
+	"strings"
+
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
-	"regexp"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"strings"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var invalidDNS1123Characters = regexp.MustCompile("[^-a-z0-9]+")

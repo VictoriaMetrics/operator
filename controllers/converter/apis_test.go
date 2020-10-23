@@ -74,6 +74,26 @@ func TestConvertRelabelConfig(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "unsupported config",
+			args: args{
+				promRelabelConfig: []*v1.RelabelConfig{
+					{
+						Action: "drop",
+					},
+					{
+						Action:       "keep",
+						SourceLabels: []string{"__address__"},
+					},
+				},
+			},
+			want: []*v1beta1vm.RelabelConfig{
+				{
+					Action:       "keep",
+					SourceLabels: []string{"__address__"},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

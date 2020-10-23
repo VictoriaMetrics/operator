@@ -219,6 +219,7 @@ func (c *ConverterController) CreatePrometheusRule(rule interface{}) {
 	if err != nil {
 		if errors.IsAlreadyExists(err) {
 			l.Info("AlertRule already exists")
+			c.UpdatePrometheusRule(nil, promRule)
 			return
 		}
 		l.Error(err, "cannot create AlertRule from Prometheusrule")
@@ -268,6 +269,7 @@ func (c *ConverterController) CreateServiceMonitor(service interface{}) {
 	if err != nil {
 		if errors.IsAlreadyExists(err) {
 			l.Info("vmServiceScrape exists")
+			c.UpdateServiceMonitor(nil, serviceMon)
 			return
 		}
 		l.Error(err, "cannot create vmServiceScrape")
@@ -277,7 +279,7 @@ func (c *ConverterController) CreateServiceMonitor(service interface{}) {
 }
 
 // UpdateServiceMonitor updates VMServiceMonitor
-func (c *ConverterController) UpdateServiceMonitor(old, new interface{}) {
+func (c *ConverterController) UpdateServiceMonitor(_, new interface{}) {
 	serviceMonNew := new.(*v1.ServiceMonitor)
 	l := log.WithValues("kind", "vmServiceScrape", "name", serviceMonNew.Name, "ns", serviceMonNew.Namespace)
 	l.Info("updating vmServiceScrape")
@@ -317,6 +319,7 @@ func (c *ConverterController) CreatePodMonitor(pod interface{}) {
 	if err != nil {
 		if errors.IsAlreadyExists(err) {
 			l.Info("podScrape already exists")
+			c.UpdatePodMonitor(nil, podMonitor)
 			return
 		}
 		l.Error(err, "cannot create podScrape")
@@ -327,7 +330,7 @@ func (c *ConverterController) CreatePodMonitor(pod interface{}) {
 }
 
 // UpdatePodMonitor updates VMPodScrape
-func (c *ConverterController) UpdatePodMonitor(old, new interface{}) {
+func (c *ConverterController) UpdatePodMonitor(_, new interface{}) {
 	podMonitorNew := new.(*v1.PodMonitor)
 	l := log.WithValues("kind", "podScrape", "name", podMonitorNew.Name, "ns", podMonitorNew.Namespace)
 	podScrape := converter.ConvertPodMonitor(podMonitorNew)
@@ -407,6 +410,7 @@ func (c *ConverterController) CreateProbe(obj interface{}) {
 	if err != nil {
 		if errors.IsAlreadyExists(err) {
 			l.Info("vmProbe already exists")
+			c.UpdateProbe(nil, probe)
 			return
 		}
 		l.Error(err, "cannot create vmProbe")
@@ -417,7 +421,7 @@ func (c *ConverterController) CreateProbe(obj interface{}) {
 }
 
 // UpdateProbe updates VMProbe
-func (c *ConverterController) UpdateProbe(old, new interface{}) {
+func (c *ConverterController) UpdateProbe(_, new interface{}) {
 	probeNew := new.(*v1.Probe)
 	l := log.WithValues("kind", "vmProbe", "name", probeNew.Name, "ns", probeNew.Namespace)
 	vmProbe := converter.ConvertProbe(probeNew)

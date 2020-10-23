@@ -128,7 +128,11 @@ func TestConvertEndpoint(t *testing.T) {
 						Path: "/metrics",
 						RelabelConfigs: []*v1.RelabelConfig{
 							{
-								Action: "drop",
+								Action:       "drop",
+								SourceLabels: []string{"__meta__instance"},
+							},
+							{
+								Action: "keep",
 							},
 						},
 					},
@@ -140,7 +144,8 @@ func TestConvertEndpoint(t *testing.T) {
 					Port: "9100",
 					RelabelConfigs: []*v1beta1vm.RelabelConfig{
 						{
-							Action: "drop",
+							Action:       "drop",
+							SourceLabels: []string{"__meta__instance"},
 						},
 					},
 				},
@@ -174,7 +179,8 @@ func TestConvertServiceMonitor(t *testing.T) {
 							{
 								MetricRelabelConfigs: []*v1.RelabelConfig{
 									{
-										Action: "drop",
+										Action:       "drop",
+										SourceLabels: []string{"__meta__instance"},
 									},
 								},
 							},
@@ -188,7 +194,8 @@ func TestConvertServiceMonitor(t *testing.T) {
 						{
 							MetricRelabelConfigs: []*v1beta1vm.RelabelConfig{
 								{
-									Action: "drop",
+									Action:       "drop",
+									SourceLabels: []string{"__meta__instance"},
 								},
 							},
 						},

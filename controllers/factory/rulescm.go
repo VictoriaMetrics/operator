@@ -126,6 +126,11 @@ func CreateOrUpdateRuleConfigMaps(ctx context.Context, cr *victoriametricsv1beta
 		}
 	}
 
+	// trigger sync for configmap
+	err = updatePodAnnotations(ctx, rclient, cr.PodLabels(), cr.Namespace)
+	if err != nil {
+		l.Error(err, "failed to update pod cm-sync annotation", "ns", cr.Namespace)
+	}
 	return newConfigMapNames, nil
 }
 

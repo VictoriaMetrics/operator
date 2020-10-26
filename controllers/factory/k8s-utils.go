@@ -1,13 +1,18 @@
 package factory
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
+	"time"
+
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/apimachinery/pkg/util/validation"
-
-	"strings"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func SanitizeVolumeName(name string) string {
@@ -69,4 +74,29 @@ func MergePatchContainers(base, patches []v1.Container) ([]v1.Container, error) 
 	}
 
 	return out, nil
+}
+
+// updatePodAnnotations - updates configmap-sync-time annotation
+// it triggers config rules reload for vmalert
+func updatePodAnnotations(ctx context.Context, rclient client.Client, selector map[string]string, ns string) error {
+	var podsToUpdate v1.PodList
+	opts := client.ListOptions{
+		Namespace:     ns,
+		LabelSelector: labels.SelectorFromSet(selector),
+	}
+	err := rclient.List(ctx, &podsToUpdate, &opts)
+	if err != nil {
+		return fmt.Errorf("failed to list pod items: %w", err)
+	}
+	updateTime := time.Now().Format("2006-01-02T15-04-05")
+	pt := client.RawPatch(types.MergePatchType,
+		[]byte(fmt.Sprintf(`{"metadata": {"annotations": {"configmap-sync-lastupdate-at": "%s"} } }`, updateTime)))
+	for _, pod := range podsToUpdate.Items {
+		err := rclient.Patch(ctx, &pod, pt)
+		if err != nil {
+			return fmt.Errorf("failed to patch pod item with annotation: %s, err: %w", updateTime, err)
+		}
+	}
+	log.Info("configmap sync annotation was updated")
+	return nil
 }

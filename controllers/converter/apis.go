@@ -1,17 +1,21 @@
 package converter
 
 import (
+	"strings"
+
 	v1beta1vm "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	v1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"strings"
+	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 const (
 	prometheusSecretDir    = "/etc/prometheus/secrets"
 	prometheusConfigmapDir = "/etc/prometheus/configmaps"
 )
+
+var log = ctrl.Log.WithValues("controller", "prometheus.converter")
 
 func ConvertPromRule(prom *v1.PrometheusRule) *v1beta1vm.VMRule {
 
@@ -143,9 +147,9 @@ func ConvertRelabelConfig(promRelabelConfig []*v1.RelabelConfig) []*v1beta1vm.Re
 	if promRelabelConfig == nil {
 		return nil
 	}
-	relalbelConf := []*v1beta1vm.RelabelConfig{}
+	relabelCfg := []*v1beta1vm.RelabelConfig{}
 	for _, relabel := range promRelabelConfig {
-		relalbelConf = append(relalbelConf, &v1beta1vm.RelabelConfig{
+		relabelCfg = append(relabelCfg, &v1beta1vm.RelabelConfig{
 			SourceLabels: relabel.SourceLabels,
 			Separator:    relabel.Separator,
 			TargetLabel:  relabel.TargetLabel,
@@ -155,7 +159,7 @@ func ConvertRelabelConfig(promRelabelConfig []*v1.RelabelConfig) []*v1beta1vm.Re
 			Action:       relabel.Action,
 		})
 	}
-	return relalbelConf
+	return filterUnsupportedRelabelCfg(relabelCfg)
 
 }
 
@@ -247,4 +251,19 @@ func ConvertProbe(probe *v1.Probe) *v1beta1vm.VMProbe {
 			ScrapeTimeout: probe.Spec.ScrapeTimeout,
 		},
 	}
+}
+
+func filterUnsupportedRelabelCfg(relabelCfgs []*v1beta1vm.RelabelConfig) []*v1beta1vm.RelabelConfig {
+	newRelabelCfg := make([]*v1beta1vm.RelabelConfig, 0, len(relabelCfgs))
+	for _, r := range relabelCfgs {
+		switch r.Action {
+		case "keep", "hashmod", "drop":
+			if len(r.SourceLabels) == 0 {
+				log.Info("filtering unsupported relabelConfig", "action", r.Action, "reason", "source labels are empty")
+				continue
+			}
+		}
+		newRelabelCfg = append(newRelabelCfg, r)
+	}
+	return newRelabelCfg
 }

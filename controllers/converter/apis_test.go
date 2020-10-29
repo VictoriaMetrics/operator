@@ -74,6 +74,26 @@ func TestConvertRelabelConfig(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "unsupported config",
+			args: args{
+				promRelabelConfig: []*v1.RelabelConfig{
+					{
+						Action: "drop",
+					},
+					{
+						Action:       "keep",
+						SourceLabels: []string{"__address__"},
+					},
+				},
+			},
+			want: []*v1beta1vm.RelabelConfig{
+				{
+					Action:       "keep",
+					SourceLabels: []string{"__address__"},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -108,7 +128,11 @@ func TestConvertEndpoint(t *testing.T) {
 						Path: "/metrics",
 						RelabelConfigs: []*v1.RelabelConfig{
 							{
-								Action: "drop",
+								Action:       "drop",
+								SourceLabels: []string{"__meta__instance"},
+							},
+							{
+								Action: "keep",
 							},
 						},
 					},
@@ -120,7 +144,8 @@ func TestConvertEndpoint(t *testing.T) {
 					Port: "9100",
 					RelabelConfigs: []*v1beta1vm.RelabelConfig{
 						{
-							Action: "drop",
+							Action:       "drop",
+							SourceLabels: []string{"__meta__instance"},
 						},
 					},
 				},
@@ -154,7 +179,8 @@ func TestConvertServiceMonitor(t *testing.T) {
 							{
 								MetricRelabelConfigs: []*v1.RelabelConfig{
 									{
-										Action: "drop",
+										Action:       "drop",
+										SourceLabels: []string{"__meta__instance"},
 									},
 								},
 							},
@@ -168,7 +194,8 @@ func TestConvertServiceMonitor(t *testing.T) {
 						{
 							MetricRelabelConfigs: []*v1beta1vm.RelabelConfig{
 								{
-									Action: "drop",
+									Action:       "drop",
+									SourceLabels: []string{"__meta__instance"},
 								},
 							},
 						},

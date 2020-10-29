@@ -3,9 +3,9 @@ kind: VMAgent
 metadata:
   name: example-vmagent-tls
 spec:
-  serviceScrapenamespaceSelector: {}
+  serviceScrapeNamespaceSelector: {}
   serviceScrapeSelector: {}
-  podScrapenamespaceSelector: {}
+  podScrapeNamespaceSelector: {}
   podScrapeSelector: {}
   # Add fields here
   replicaCount: 1

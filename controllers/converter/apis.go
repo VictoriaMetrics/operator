@@ -3,12 +3,11 @@ package converter
 import (
 	"strings"
 
-	ctrl "sigs.k8s.io/controller-runtime"
-
 	v1beta1vm "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	v1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 const (
@@ -260,7 +259,7 @@ func filterUnsupportedRelabelCfg(relabelCfgs []*v1beta1vm.RelabelConfig) []*v1be
 		switch r.Action {
 		case "keep", "hashmod", "drop":
 			if len(r.SourceLabels) == 0 {
-				log.Info("filtering unsupported relabelConfig", "action", r.Action, "reason", "source labels empty")
+				log.Info("filtering unsupported relabelConfig", "action", r.Action, "reason", "source labels are empty")
 				continue
 			}
 		}

@@ -254,16 +254,17 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 
 	var ports []corev1.ContainerPort
 	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(cr.Spec.Port).IntVal})
-	volumes := []corev1.Volume{
-		{
-			Name: "config",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: cr.PrefixedName(),
-				},
+	var volumes []corev1.Volume
+	volumes = append(volumes, cr.Spec.Volumes...)
+	volumes = append(volumes, corev1.Volume{
+		Name: "config",
+		VolumeSource: corev1.VolumeSource{
+			Secret: &corev1.SecretVolumeSource{
+				SecretName: cr.PrefixedName(),
 			},
 		},
-		{
+	},
+		corev1.Volume{
 			Name: "tls-assets",
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
@@ -271,28 +272,29 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 				},
 			},
 		},
-		{
+		corev1.Volume{
 			Name: "config-out",
 			VolumeSource: corev1.VolumeSource{
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		},
-	}
+	)
 
-	agentVolumeMounts := []corev1.VolumeMount{
-		{
+	var agentVolumeMounts []corev1.VolumeMount
+
+	agentVolumeMounts = append(agentVolumeMounts, cr.Spec.VolumeMounts...)
+	agentVolumeMounts = append(agentVolumeMounts,
+		corev1.VolumeMount{
 			Name:      "config-out",
 			ReadOnly:  true,
 			MountPath: vmAgentConOfOutDir,
 		},
-		{
+		corev1.VolumeMount{
 			Name:      "tls-assets",
 			ReadOnly:  true,
 			MountPath: tlsAssetsDir,
 		},
-	}
-
-	agentVolumeMounts = append(agentVolumeMounts, cr.Spec.VolumeMounts...)
+	)
 
 	for _, s := range cr.Spec.Secrets {
 		volumes = append(volumes, corev1.Volume{

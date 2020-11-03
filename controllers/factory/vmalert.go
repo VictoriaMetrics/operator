@@ -376,16 +376,17 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 
 	envs = append(envs, cr.Spec.ExtraEnvs...)
 
-	volumes := []corev1.Volume{
-		{
-			Name: "tls-assets",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: cr.TLSAssetName(),
-				},
+	var volumes []corev1.Volume
+	volumes = append(volumes, cr.Spec.Volumes...)
+
+	volumes = append(volumes, corev1.Volume{
+		Name: "tls-assets",
+		VolumeSource: corev1.VolumeSource{
+			Secret: &corev1.SecretVolumeSource{
+				SecretName: cr.TLSAssetName(),
 			},
 		},
-	}
+	})
 
 	for _, name := range ruleConfigMapNames {
 		volumes = append(volumes, corev1.Volume{
@@ -400,13 +401,14 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 		})
 	}
 
-	volumeMounts := []corev1.VolumeMount{
-		{
-			Name:      "tls-assets",
-			ReadOnly:  true,
-			MountPath: tlsAssetsDir,
-		},
-	}
+	var volumeMounts []corev1.VolumeMount
+	volumeMounts = append(volumeMounts, cr.Spec.VolumeMounts...)
+	volumeMounts = append(volumeMounts, corev1.VolumeMount{
+		Name:      "tls-assets",
+		ReadOnly:  true,
+		MountPath: tlsAssetsDir,
+	},
+	)
 	for _, s := range cr.Spec.Secrets {
 		volumes = append(volumes, corev1.Volume{
 			Name: SanitizeVolumeName("secret-" + s),
@@ -440,8 +442,6 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 			MountPath: path.Join(ConfigMapsDir, c),
 		})
 	}
-
-	volumeMounts = append(volumeMounts, cr.Spec.VolumeMounts...)
 
 	for _, name := range ruleConfigMapNames {
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{

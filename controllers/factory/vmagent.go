@@ -343,7 +343,6 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 	}
 
 	configReloadArgs := []string{
-		fmt.Sprintf("--log-format=%s", c.LogFormat),
 		fmt.Sprintf("--reload-url=%s", cr.ReloadPathWithPort(cr.Spec.Port)),
 		fmt.Sprintf("--config-file=%s", path.Join(vmAgentConfDir, configFilename)),
 		fmt.Sprintf("--config-envsubst-file=%s", path.Join(vmAgentConOfOutDir, configEnvsubstFilename)),
@@ -437,18 +436,6 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 	sort.Strings(args)
 	operatorContainers := append([]corev1.Container{
 		{
-			Name:                     "vmagent",
-			Image:                    fmt.Sprintf("%s:%s", cr.Spec.Image.Repository, cr.Spec.Image.Tag),
-			ImagePullPolicy:          cr.Spec.Image.PullPolicy,
-			Ports:                    ports,
-			Args:                     args,
-			Env:                      envs,
-			VolumeMounts:             agentVolumeMounts,
-			LivenessProbe:            livenessProbe,
-			ReadinessProbe:           readinessProbe,
-			Resources:                cr.Spec.Resources,
-			TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
-		}, {
 			Name:                     "config-reloader",
 			Image:                    c.VMAgentDefault.ConfigReloadImage,
 			TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
@@ -464,6 +451,19 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 			Args:         configReloadArgs,
 			VolumeMounts: configReloadVolumeMounts,
 			Resources:    prometheusConfigReloaderResources,
+		},
+		{
+			Name:                     "vmagent",
+			Image:                    fmt.Sprintf("%s:%s", cr.Spec.Image.Repository, cr.Spec.Image.Tag),
+			ImagePullPolicy:          cr.Spec.Image.PullPolicy,
+			Ports:                    ports,
+			Args:                     args,
+			Env:                      envs,
+			VolumeMounts:             agentVolumeMounts,
+			LivenessProbe:            livenessProbe,
+			ReadinessProbe:           readinessProbe,
+			Resources:                cr.Spec.Resources,
+			TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 		},
 	}, additionalContainers...)
 

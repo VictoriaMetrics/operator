@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path"
+	"sort"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
@@ -496,6 +497,7 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 	var ports []corev1.ContainerPort
 	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(cr.Spec.Port).IntVal})
 
+	sort.Strings(args)
 	defaultContainers := []corev1.Container{
 		{
 			Args:                     args,

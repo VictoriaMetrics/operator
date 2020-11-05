@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -433,6 +434,7 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 		prometheusConfigReloaderResources.Requests[corev1.ResourceMemory] = resource.MustParse(c.VMAgentDefault.ConfigReloaderMemory)
 	}
 
+	sort.Strings(args)
 	operatorContainers := append([]corev1.Container{
 		{
 			Name:                     "vmagent",

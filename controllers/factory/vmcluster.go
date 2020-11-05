@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path"
+	"sort"
 	"strings"
 	"time"
 
@@ -656,6 +657,7 @@ func makePodSpecForVMSelect(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 
 	var additionalContainers []corev1.Container
 
+	sort.Strings(args)
 	operatorContainers := append([]corev1.Container{
 		{
 			Name:                     "vmselect",
@@ -922,6 +924,7 @@ func makePodSpecForVMInsert(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 
 	var additionalContainers []corev1.Container
 
+	sort.Strings(args)
 	operatorContainers := append([]corev1.Container{
 		{
 			Name:                     "vminsert",
@@ -1254,6 +1257,7 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) 
 
 	var additionalContainers []corev1.Container
 
+	sort.Strings(args)
 	operatorContainers := append([]corev1.Container{
 		{
 			Name:                     "vmstorage",

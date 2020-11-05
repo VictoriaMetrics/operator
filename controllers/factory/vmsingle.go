@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path"
+	"sort"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
@@ -314,6 +315,7 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 
 	var additionalContainers []corev1.Container
 
+	sort.Strings(args)
 	operatorContainers := append([]corev1.Container{
 		{
 			Name:                     "vmsingle",
@@ -544,6 +546,7 @@ func makeSpecForVMBackuper(
 		FailureThreshold: 10,
 	}
 
+	sort.Strings(args)
 	vmBackuper := &corev1.Container{
 		Name:                     "vmbackuper",
 		Image:                    fmt.Sprintf("%s:%s", cr.Image.Repository, cr.Image.Tag),

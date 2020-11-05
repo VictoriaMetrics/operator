@@ -1148,7 +1148,6 @@ spec:
  `Prometheus` allows to specify rules with the same content with-in one group at Rule spec, but its forbidden by vmalert.
  You can tell operator to deduplicate this rules by addining annotation to the `VMAlert` crd definition.
  ```yaml
-cat << EOF | kubectl apply -f -
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAlert
 metadata:

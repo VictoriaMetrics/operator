@@ -1144,8 +1144,72 @@ spec:
   endpoints: []
 ```
 
+### prometheus Rule duplcation
+ `Prometheus` allows to specify rules with the same content with-in one group at Rule spec, but its forbidden by vmalert.
+ You can tell operator to deduplicate this rules by addining annotation to the `VMAlert` crd definition.
+ ```yaml
+cat << EOF | kubectl apply -f -
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAlert
+metadata:
+  name: example-vmalert-with-dedup
+  annotations:
+    operator.victoriametrics.com/vmalert-deduplicate-rules: "exist"
+spec:
+  replicaCount: 1
+  datasource:
+    url: "http://vmsingle-example-vmsingle-persisted.default.svc:8429"
+  notifier:
+      url: "http://vmalertmanager-example-alertmanager.default.svc:9093"
+  evaluationInterval: "30s"
+  ruleNamespaceSelector: {}
+  ruleSelector: {}
+```
+ Now operator will transform this `VMRule`:
+ ```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMRule
+metadata:
+  name: example-vmrule-reload-config
+  labels:
+      project: devops
+spec:
+  groups:
+    - name: vmalert
+      rules:
+        - alert: vmalert config reload error
+          expr: delta(vmalert_config_last_reload_errors_total[5m]) > 0
+          for: 10s
+          labels:
+            severity: major
+        - alert: vmalert config reload error
+          expr: delta(vmalert_config_last_reload_errors_total[5m]) > 0
+          for: 10s
+          labels:
+            severity: major
+        - alert: vmalert config reload error
+          expr: delta(vmalert_config_last_reload_errors_total[5m]) > 0
+          for: 2m
+          labels:
+            severity: critical
+```
+to the rule config:
 
-
+```yaml
+  groups:
+    - name: vmalert
+      rules:
+        - alert: vmalert config reload error
+          expr: delta(vmalert_config_last_reload_errors_total[5m]) > 0
+          for: 10s
+          labels:
+            severity: major
+        - alert: vmalert config reload error
+          expr: delta(vmalert_config_last_reload_errors_total[5m]) > 0
+          for: 2m
+          labels:
+            severity: critical
+```
 ## Expose the VMSingle API
 
 

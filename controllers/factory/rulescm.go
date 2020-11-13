@@ -376,7 +376,6 @@ func deduplicateRules(origin []*victoriametricsv1beta1.VMRule) []*victoriametric
 			for _, rule := range grp.Rules {
 				ruleID := calculateRuleID(rule)
 				if _, ok := uniqRules[ruleID]; ok {
-					// duplicate rule skip it
 					log.Info("duplicate rule found", "rule", rule)
 				} else {
 					uniqRules[ruleID] = struct{}{}

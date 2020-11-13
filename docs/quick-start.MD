@@ -1146,14 +1146,15 @@ spec:
 
 ### prometheus Rule duplcation
  `Prometheus` allows to specify rules with the same content with-in one group at Rule spec, but its forbidden by vmalert.
- You can tell operator to deduplicate this rules by addining annotation to the `VMAlert` crd definition.
+ You can tell operator to deduplicate this rules by adding annotation to the `VMAlert` crd definition. In this case operator
+ skips rule with the same values, see example below.
  ```yaml
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAlert
 metadata:
   name: example-vmalert-with-dedup
   annotations:
-    operator.victoriametrics.com/vmalert-deduplicate-rules: "exist"
+    operator.victoriametrics.com/vmalert-deduplicate-rules: "true"
 spec:
   replicaCount: 1
   datasource:

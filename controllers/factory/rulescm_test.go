@@ -2,19 +2,21 @@ package factory
 
 import (
 	"context"
+	"reflect"
+	"sort"
+	"testing"
+
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/go-logr/logr"
+	"github.com/go-test/deep"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/scheme"
-	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sort"
-	"testing"
 )
 
 func Test_selectNamespaces(t *testing.T) {
@@ -188,6 +190,132 @@ func TestCreateOrUpdateRuleConfigMaps(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("CreateOrUpdateRuleConfigMaps() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_deduplicateRules(t *testing.T) {
+	type args struct {
+		origin []*victoriametricsv1beta1.VMRule
+	}
+	tests := []struct {
+		name string
+		args args
+		want []*victoriametricsv1beta1.VMRule
+	}{
+		{
+			name: "dedup group",
+			args: args{origin: []*victoriametricsv1beta1.VMRule{
+				{
+					Spec: victoriametricsv1beta1.VMRuleSpec{Groups: []victoriametricsv1beta1.RuleGroup{
+						{
+							Name: "group-1",
+							Rules: []victoriametricsv1beta1.Rule{
+								{
+									Alert: "alert1",
+								},
+							},
+						},
+						{
+							Name: "group-2",
+							Rules: []victoriametricsv1beta1.Rule{
+								{
+									Alert: "alert1",
+								},
+							},
+						},
+					}},
+				},
+			}},
+			want: []*victoriametricsv1beta1.VMRule{
+				{
+					Spec: victoriametricsv1beta1.VMRuleSpec{Groups: []victoriametricsv1beta1.RuleGroup{
+						{Name: "group-1",
+							Rules: []victoriametricsv1beta1.Rule{
+								{
+									Alert: "alert1",
+								},
+							},
+						},
+						{
+							Name: "group-2",
+							Rules: []victoriametricsv1beta1.Rule{
+								{
+									Alert: "alert1",
+								},
+							},
+						},
+					}},
+				},
+			},
+		},
+		{
+			name: "dedup group rule",
+			args: args{origin: []*victoriametricsv1beta1.VMRule{
+				{
+					Spec: victoriametricsv1beta1.VMRuleSpec{Groups: []victoriametricsv1beta1.RuleGroup{
+						{
+							Name: "group-1",
+							Rules: []victoriametricsv1beta1.Rule{
+								{
+									Alert: "alert1",
+								},
+							},
+						},
+						{
+							Name: "group-2-with-duplicate",
+							Rules: []victoriametricsv1beta1.Rule{
+								{
+									Alert:  "alert2",
+									Labels: map[string]string{"label1": "value1"},
+								},
+								{
+									Alert: "alert2",
+								},
+								{
+									Alert:  "alert2",
+									Labels: map[string]string{"label1": "value1"},
+								},
+							},
+						},
+					}},
+				},
+			}},
+			want: []*victoriametricsv1beta1.VMRule{
+				{
+					Spec: victoriametricsv1beta1.VMRuleSpec{Groups: []victoriametricsv1beta1.RuleGroup{
+						{
+							Name: "group-1",
+							Rules: []victoriametricsv1beta1.Rule{
+								{
+									Alert: "alert1",
+								},
+							},
+						},
+						{
+							Name: "group-2-with-duplicate",
+							Rules: []victoriametricsv1beta1.Rule{
+								{
+									Alert:  "alert2",
+									Labels: map[string]string{"label1": "value1"},
+								},
+								{
+									Alert: "alert2",
+								},
+							},
+						},
+					}},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := deduplicateRules(tt.args.origin)
+			diff := deep.Equal(got, tt.want)
+			if len(diff) > 0 {
+				t.Errorf("deduplicateRules() %v = %v, want %v", diff, got, tt.want)
 			}
 		})
 	}

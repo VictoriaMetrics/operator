@@ -3,6 +3,7 @@ package factory
 import (
 	"context"
 	"fmt"
+	"hash/fnv"
 	"reflect"
 	"sort"
 	"strconv"
@@ -214,6 +215,10 @@ func SelectRules(ctx context.Context, cr *victoriametricsv1beta1.VMAlert, rclien
 		}
 	}
 
+	if cr.NeedDedupRules() {
+		log.Info("deduplicating vmalert rules", "vmalert", cr.ObjectMeta.Name)
+		promRules = deduplicateRules(promRules)
+	}
 	for _, pRule := range promRules {
 		content, err := generateContent(pRule.Spec, cr.Spec.EnforcedNamespaceLabel, pRule.Namespace)
 		if err != nil {
@@ -355,4 +360,65 @@ func makeRulesConfigMap(cr *victoriametricsv1beta1.VMAlert, ruleFiles map[string
 
 func ruleConfigMapName(vmName string) string {
 	return "vm-" + vmName + "-rulefiles"
+}
+
+// deduplicateRules - takes list of vmRules and modifies it
+// by removing duplicates.
+// possible duplicates:
+// group name across single vmRule. group might include non-duplicate rules.
+// rules in group, must include uniq combination of values.
+func deduplicateRules(origin []*victoriametricsv1beta1.VMRule) []*victoriametricsv1beta1.VMRule {
+	// deduplicate rules across groups.
+	for _, vmRule := range origin {
+		for i, grp := range vmRule.Spec.Groups {
+			uniqRules := make(map[uint64]struct{})
+			rules := make([]victoriametricsv1beta1.Rule, 0, len(grp.Rules))
+			for _, rule := range grp.Rules {
+				ruleID := calculateRuleID(rule)
+				if _, ok := uniqRules[ruleID]; ok {
+					log.Info("duplicate rule found", "rule", rule)
+				} else {
+					uniqRules[ruleID] = struct{}{}
+					rules = append(rules, rule)
+				}
+			}
+			grp.Rules = rules
+			vmRule.Spec.Groups[i] = grp
+		}
+	}
+	return origin
+}
+
+func calculateRuleID(r victoriametricsv1beta1.Rule) uint64 {
+	h := fnv.New64a()
+	h.Write([]byte(r.Expr.StrVal)) //nolint:errcheck
+	if r.Record != "" {
+		h.Write([]byte("recording")) //nolint:errcheck
+		h.Write([]byte(r.Record))    //nolint:errcheck
+	} else {
+		h.Write([]byte("alerting")) //nolint:errcheck
+		h.Write([]byte(r.Alert))    //nolint:errcheck
+	}
+	kv := sortMap(r.Labels)
+	for _, i := range kv {
+		h.Write([]byte(i.key))   //nolint:errcheck
+		h.Write([]byte(i.value)) //nolint:errcheck
+		h.Write([]byte("\xff"))  //nolint:errcheck
+	}
+	return h.Sum64()
+}
+
+type item struct {
+	key, value string
+}
+
+func sortMap(m map[string]string) []item {
+	var kv []item
+	for k, v := range m {
+		kv = append(kv, item{key: k, value: v})
+	}
+	sort.Slice(kv, func(i, j int) bool {
+		return kv[i].key < kv[j].key
+	})
+	return kv
 }

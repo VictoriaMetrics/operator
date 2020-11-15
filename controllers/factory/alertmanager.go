@@ -28,6 +28,19 @@ const (
 	alertmanagerConfFile   = alertmanagerConfDir + "/alertmanager.yaml"
 	alertmanagerStorageDir = "/alertmanager"
 	defaultPortName        = "web"
+	defaultAMConfig        = `
+global:
+  resolve_timeout: 5m
+route:
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 12h
+  receiver: 'webhook'
+receivers:
+- name: 'webhook'
+  webhook_configs:
+  - url: 'http://localhost:30500/'
+`
 )
 
 var (
@@ -41,6 +54,10 @@ func CreateOrUpdateAlertManager(ctx context.Context, cr *victoriametricsv1beta1.
 	newSts, err := newStsForAlertManager(cr, c)
 	if err != nil {
 		return nil, fmt.Errorf("cannot generate alertmanager sts, name: %s,err: %w", cr.Name, err)
+	}
+	// check secret with config
+	if err := createDefaultAMConfig(ctx, cr, rclient); err != nil {
+		return nil, fmt.Errorf("failed to check default Alertmanager config: %w", err)
 	}
 	currentSts := &appsv1.StatefulSet{}
 	err = rclient.Get(ctx, types.NamespacedName{Name: newSts.Name, Namespace: newSts.Namespace}, currentSts)
@@ -556,6 +573,46 @@ func MakeVolumeClaimTemplate(e victoriametricsv1beta1.EmbeddedPersistentVolumeCl
 		Status: e.Status,
 	}
 	return &pvc
+}
+
+// createDefaultAMConfig - check if secret with config exist,
+// if not create with predefined or user value.
+func createDefaultAMConfig(ctx context.Context, cr *victoriametricsv1beta1.VMAlertmanager, rclient client.Client) error {
+	cr = cr.DeepCopy()
+	if cr.Spec.ConfigSecret == "" {
+		cr.Spec.ConfigSecret = cr.PrefixedName()
+	}
+	var mustUpdateConfig bool
+	if cr.Spec.ConfigRawYaml == "" {
+		cr.Spec.ConfigRawYaml = defaultAMConfig
+	} else {
+		mustUpdateConfig = true
+	}
+	amSecretConfig := &v1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            cr.Spec.ConfigSecret,
+			Namespace:       cr.Namespace,
+			Labels:          cr.FinalLabels(),
+			Annotations:     cr.Annotations(),
+			OwnerReferences: cr.AsOwner(),
+		},
+		StringData: map[string]string{"alertmanager.yaml": cr.Spec.ConfigRawYaml},
+	}
+	var existAMSecretConfig v1.Secret
+
+	err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.Spec.ConfigSecret}, &existAMSecretConfig)
+	// fast path
+	if err == nil {
+		if mustUpdateConfig {
+			return rclient.Update(ctx, amSecretConfig)
+		}
+		return nil
+	}
+	if !errors.IsNotFound(err) {
+		return err
+	}
+	log.Info("creating default alertmanager config with secret: %s", "secret_name", amSecretConfig.ObjectMeta.Name)
+	return rclient.Create(ctx, amSecretConfig)
 }
 
 func subPathForStorage(s *victoriametricsv1beta1.StorageSpec) string {

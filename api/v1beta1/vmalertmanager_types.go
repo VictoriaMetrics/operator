@@ -61,6 +61,12 @@ type VMAlertmanagerSpec struct {
 	// The ConfigMaps are mounted into /etc/alertmanager/configmaps/<configmap-name>.
 	// +optional
 	ConfigMaps []string `json:"configMaps,omitempty"`
+
+	// ConfigRawYaml - raw configuration for alertmanager,
+	// it helps it to start without secret.
+	// priority -> hardcoded ConfigRaw -> ConfigRaw, provided by user -> ConfigSecret.
+	// +optional
+	ConfigRawYaml string `json:"configRawYaml,omitempty"`
 	// ConfigSecret is the name of a Kubernetes Secret in the same namespace as the
 	// VMAlertmanager object, which contains configuration for this VMAlertmanager
 	// instance. Defaults to 'vmalertmanager-<alertmanager-name>'

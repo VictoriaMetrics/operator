@@ -91,6 +91,7 @@ type VMProbeStatus struct {
 
 //  VMProbe defines a probe for targets, that will be executed with prober,
 //  like blackbox exporter.
+// It helps to monitor reachability of target with various checks.
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 type VMProbe struct {

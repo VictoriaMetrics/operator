@@ -87,7 +87,7 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
       version: v1beta1
-    - description: ' VMProbe defines a probe for targets, that will be executed with prober,  like blackbox exporter.'
+    - description: ' VMProbe defines a probe for targets, that will be executed with prober,  like blackbox exporter. It helps to monitor reachability of target with various checks.'
       displayName: VMProbe
       kind: VMProbe
       name: vmprobes.operator.victoriametrics.com

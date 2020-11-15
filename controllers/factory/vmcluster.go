@@ -3,6 +3,11 @@ package factory
 import (
 	"context"
 	"fmt"
+	"path"
+	"sort"
+	"strings"
+	"time"
+
 	"github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/coreos/prometheus-operator/pkg/k8sutil"
@@ -16,10 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/utils/pointer"
-	"path"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"strings"
-	"time"
 )
 
 const (
@@ -526,8 +528,8 @@ func makePodSpecForVMSelect(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 	}
 	if cr.Spec.ReplicationFactor != nil {
 		var dedupIsSet bool
-		for _, arg := range cr.Spec.VMSelect.ExtraArgs {
-			if strings.Contains(arg, "-dedup.minScrapeInterval") {
+		for arg := range cr.Spec.VMSelect.ExtraArgs {
+			if strings.Contains(arg, "dedup.minScrapeInterval") {
 				dedupIsSet = true
 			}
 		}
@@ -564,6 +566,10 @@ func makePodSpecForVMSelect(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 
 	log.Info("args for vmselect ", "args", selectArg)
 	args = append(args, selectArg)
+
+	if len(cr.Spec.VMSelect.ExtraEnvs) > 0 {
+		args = append(args, "-envflag.enable=true")
+	}
 
 	var envs []corev1.EnvVar
 	envs = append(envs, cr.Spec.VMSelect.ExtraEnvs...)
@@ -651,6 +657,7 @@ func makePodSpecForVMSelect(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 
 	var additionalContainers []corev1.Container
 
+	sort.Strings(args)
 	operatorContainers := append([]corev1.Container{
 		{
 			Name:                     "vmselect",
@@ -830,6 +837,9 @@ func makePodSpecForVMInsert(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 		log.Info("replication enabled for vminsert, with factor", "replicationFactor", *cr.Spec.ReplicationFactor)
 		args = append(args, fmt.Sprintf("-replicationFactor=%d", *cr.Spec.ReplicationFactor))
 	}
+	if len(cr.Spec.VMInsert.ExtraEnvs) > 0 {
+		args = append(args, "-envflag.enable=true")
+	}
 
 	var envs []corev1.EnvVar
 
@@ -914,6 +924,7 @@ func makePodSpecForVMInsert(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 
 	var additionalContainers []corev1.Container
 
+	sort.Strings(args)
 	operatorContainers := append([]corev1.Container{
 		{
 			Name:                     "vminsert",
@@ -1131,6 +1142,9 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) 
 	for arg, value := range cr.Spec.VMStorage.ExtraArgs {
 		args = append(args, fmt.Sprintf("-%s=%s", arg, value))
 	}
+	if len(cr.Spec.VMStorage.ExtraEnvs) > 0 {
+		args = append(args, "-envflag.enable=true")
+	}
 
 	var envs []corev1.EnvVar
 
@@ -1243,6 +1257,7 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) 
 
 	var additionalContainers []corev1.Container
 
+	sort.Strings(args)
 	operatorContainers := append([]corev1.Container{
 		{
 			Name:                     "vmstorage",

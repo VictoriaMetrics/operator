@@ -9,6 +9,12 @@ import (
 	"k8s.io/utils/pointer"
 )
 
+const (
+	// MetaVMAlertDeduplicateRulesKey - controls behavior for vmalert rules deduplication
+	// its useful for migration from prometheus.
+	MetaVMAlertDeduplicateRulesKey = "operator.victoriametrics.com/vmalert-deduplicate-rules"
+)
+
 // VMAlertSpec defines the desired state of VMAlert
 // +k8s:openapi-gen=true
 // +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".spec.version",description="The version of VMAlert"
@@ -343,6 +349,10 @@ func (cr VMAlert) MetricPath() string {
 }
 func (cr VMAlert) ReloadPathWithPort(port string) string {
 	return fmt.Sprintf("http://localhost:%s%s", port, buildPathWithPrefixFlag(cr.Spec.ExtraArgs, reloadPath))
+}
+
+func (cr VMAlert) NeedDedupRules() bool {
+	return cr.ObjectMeta.Annotations[MetaVMAlertDeduplicateRulesKey] != ""
 }
 
 func init() {

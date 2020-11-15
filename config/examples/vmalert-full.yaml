@@ -15,8 +15,21 @@ kind: VMAlert
 metadata:
   name: example-vmalert
 spec:
-  # Add fields here
+  podMetadata:
+    labels:
+      key: value
+    annotations:
+      key: value
+  image:
+    repository: victoriametrics/vmalert
+    tag: v1.40.0
+    pullPolicy: ifNotPresent
   replicaCount: 1
+  extraArgs:
+    logLevel: INFO
+  extraEnvs:
+    - name: external.Url
+      value: http://some-url
   datasource:
     url: "http://vmagent-example-vmsingle.default.svc:8429"
     basicAuth:
@@ -27,11 +40,27 @@ spec:
         name: vmalert-basic-auth
         key: password
   notifier:
-   url: "http://alertmanager-operated:9093"
+    url: "http://alertmanager-operated:9093"
+    basicAuth:
+      username:
+        name: vmalert-basic-auth
+        key: username
+      password:
+        name: vmalert-basic-auth
+        key: password
   evaluationInterval: "30s"
-  version: "latest"
-  ruleSelector: {}
-  ruleNamespaceSelector: {}
+  ruleSelector:
+    matchLabels:
+      managed-by: vm-operator
+    matchExpressions:
+      - operator: Exists
+        key: name
+  ruleNamespaceSelector:
+    matchLabels:
+      managed-by: vm-operator
+    matchExpressions:
+        - operator: Exists
+          key: name
   remoteWrite:
     url: "http://vmagent-example-vmsingle.default.svc:8429"
     concurrency: 12

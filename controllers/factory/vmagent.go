@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -255,6 +256,9 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 	if cr.Spec.LogFormat != "" {
 		args = append(args, fmt.Sprintf("-loggerFormat=%s", cr.Spec.LogFormat))
 	}
+	if len(cr.Spec.ExtraEnvs) > 0 {
+		args = append(args, "-envflag.enable=true")
+	}
 
 	var envs []corev1.EnvVar
 
@@ -262,16 +266,17 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 
 	var ports []corev1.ContainerPort
 	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(cr.Spec.Port).IntVal})
-	volumes := []corev1.Volume{
-		{
-			Name: "config",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: cr.PrefixedName(),
-				},
+	var volumes []corev1.Volume
+	volumes = append(volumes, cr.Spec.Volumes...)
+	volumes = append(volumes, corev1.Volume{
+		Name: "config",
+		VolumeSource: corev1.VolumeSource{
+			Secret: &corev1.SecretVolumeSource{
+				SecretName: cr.PrefixedName(),
 			},
 		},
-		{
+	},
+		corev1.Volume{
 			Name: "tls-assets",
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
@@ -279,28 +284,29 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 				},
 			},
 		},
-		{
+		corev1.Volume{
 			Name: "config-out",
 			VolumeSource: corev1.VolumeSource{
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		},
-	}
+	)
 
-	agentVolumeMounts := []corev1.VolumeMount{
-		{
+	var agentVolumeMounts []corev1.VolumeMount
+
+	agentVolumeMounts = append(agentVolumeMounts, cr.Spec.VolumeMounts...)
+	agentVolumeMounts = append(agentVolumeMounts,
+		corev1.VolumeMount{
 			Name:      "config-out",
 			ReadOnly:  true,
 			MountPath: vmAgentConOfOutDir,
 		},
-		{
+		corev1.VolumeMount{
 			Name:      "tls-assets",
 			ReadOnly:  true,
 			MountPath: tlsAssetsDir,
 		},
-	}
-
-	agentVolumeMounts = append(agentVolumeMounts, cr.Spec.VolumeMounts...)
+	)
 
 	for _, s := range cr.Spec.Secrets {
 		volumes = append(volumes, corev1.Volume{
@@ -348,7 +354,6 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 	}
 
 	configReloadArgs := []string{
-		fmt.Sprintf("--log-format=%s", c.LogFormat),
 		fmt.Sprintf("--reload-url=%s", cr.ReloadPathWithPort(cr.Spec.Port)),
 		fmt.Sprintf("--config-file=%s", path.Join(vmAgentConfDir, configFilename)),
 		fmt.Sprintf("--config-envsubst-file=%s", path.Join(vmAgentConOfOutDir, configEnvsubstFilename)),
@@ -439,20 +444,9 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 		prometheusConfigReloaderResources.Requests[corev1.ResourceMemory] = resource.MustParse(c.VMAgentDefault.ConfigReloaderMemory)
 	}
 
+	sort.Strings(args)
 	operatorContainers := append([]corev1.Container{
 		{
-			Name:                     "vmagent",
-			Image:                    fmt.Sprintf("%s:%s", cr.Spec.Image.Repository, cr.Spec.Image.Tag),
-			ImagePullPolicy:          cr.Spec.Image.PullPolicy,
-			Ports:                    ports,
-			Args:                     args,
-			Env:                      envs,
-			VolumeMounts:             agentVolumeMounts,
-			LivenessProbe:            livenessProbe,
-			ReadinessProbe:           readinessProbe,
-			Resources:                cr.Spec.Resources,
-			TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
-		}, {
 			Name:                     "config-reloader",
 			Image:                    c.VMAgentDefault.ConfigReloadImage,
 			TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
@@ -468,6 +462,19 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 			Args:         configReloadArgs,
 			VolumeMounts: configReloadVolumeMounts,
 			Resources:    prometheusConfigReloaderResources,
+		},
+		{
+			Name:                     "vmagent",
+			Image:                    fmt.Sprintf("%s:%s", cr.Spec.Image.Repository, cr.Spec.Image.Tag),
+			ImagePullPolicy:          cr.Spec.Image.PullPolicy,
+			Ports:                    ports,
+			Args:                     args,
+			Env:                      envs,
+			VolumeMounts:             agentVolumeMounts,
+			LivenessProbe:            livenessProbe,
+			ReadinessProbe:           readinessProbe,
+			Resources:                cr.Spec.Resources,
+			TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 		},
 	}, additionalContainers...)
 

@@ -4058,7 +4058,7 @@ spec:
                     customS3Endpoint:
                       description: Custom S3 endpoint for use with S3-compatible storages (e.g. MinIO). S3 is used if not set
                       type: string
-                    destintaion:
+                    destination:
                       description: Defines destination for backup
                       type: string
                     disableDaily:

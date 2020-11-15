@@ -1,0 +1,516 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
+metadata:
+  annotations:
+    alm-examples: '[]'
+    capabilities: Deep Insights
+    categories: Monitoring
+    certified: "false"
+    containerImage: victoriametrics/operator:0.0.0
+    createdAt: "2020-05-01 12:00:00"
+    description: Provides monitoring capabilites for kubernetes clusters and applications
+    operators.operatorframework.io/builder: operator-sdk-v1.0.0
+    operators.operatorframework.io/project_layout: go.kubebuilder.io/v2
+    repository: https://github.com/VictoriaMetrics/operator
+    support: VictoriaMetrics
+  name: victoriametrics-operator.vX.Y.Z
+  namespace: placeholder
+spec:
+  apiservicedefinitions: {}
+  customresourcedefinitions:
+    owned:
+    - description: VMAlert  executes a list of given alerting or recording rules against configured address.
+      displayName: VMAlert
+      kind: VMAlert
+      name: vmalerts.operator.victoriametrics.com
+      specDescriptors:
+      - description: ReplicaCount is the expected size of the VMAlert cluster. The controller will eventually make the size of the running cluster equal to the expected size.
+        displayName: Number of pods
+        path: replicaCount
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom
+      - description: Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+        displayName: Resources
+        path: resources
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
+      version: v1beta1
+    - description: VMAlertmanager represents Victoria-Metrics deployment for Alertmanager.
+      displayName: VMAlertmanager
+      kind: VMAlertmanager
+      name: vmalertmanagers.operator.victoriametrics.com
+      specDescriptors:
+      - description: ConfigSecret is the name of a Kubernetes Secret in the same namespace as the VMAlertmanager object, which contains configuration for this VMAlertmanager instance. Defaults to 'vmalertmanager-<alertmanager-name>' The secret is mounted into /etc/alertmanager/config.
+        displayName: Secret with alertmanager config
+        path: configSecret
+        x-descriptors:
+        - urn:alm:descriptor:io.kubernetes:Secret
+      - description: ReplicaCount Size is the expected size of the alertmanager cluster. The controller will eventually make the size of the running cluster equal to the expected
+        displayName: Number of pods
+        path: replicaCount
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom
+      - description: Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+        displayName: Resources
+        path: resources
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
+      - description: ServiceAccountName is the name of the ServiceAccount to use
+        displayName: ServiceAccount name
+        path: serviceAccountName
+        x-descriptors:
+        - urn:alm:descriptor:io.kubernetes:ServiceAccount
+      version: v1beta1
+    - description: VMPodScrape is scrape configuration for pods, it generates vmagent's config for scraping pod targets based on selectors.
+      displayName: VMPod Scrape
+      kind: VMPodScrape
+      name: vmpodscrapes.operator.victoriametrics.com
+      version: v1beta1
+    - description: VMRule defines rule records for vmalert application
+      displayName: VMRule
+      kind: VMRule
+      name: vmrules.operator.victoriametrics.com
+      version: v1beta1
+    - description: VMSingle  is fast, cost-effective and scalable time-series database.
+      displayName: VMSingle
+      kind: VMSingle
+      name: vmsingles.operator.victoriametrics.com
+      specDescriptors:
+      - description: ReplicaCount is the expected size of the VMSingle it can be 0 or 1 if you need more - use vm cluster
+        displayName: Number of pods
+        path: replicaCount
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom
+      - description: Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/ if not defined default resources from operator config will be used
+        displayName: Resources
+        path: resources
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
+      version: v1beta1
+    - description: ' VMProbe defines a probe for targets, that will be executed with prober,  like blackbox exporter. It helps to monitor reachability of target with various checks.'
+      displayName: VMProbe
+      kind: VMProbe
+      name: vmprobes.operator.victoriametrics.com
+      version: v1beta1
+    - description: VMAgent - is a tiny but brave agent, which helps you collect metrics from various sources and stores them in VictoriaMetrics or any other Prometheus-compatible storage system that supports the remote_write protocol.
+      displayName: VMAgent
+      kind: VMAgent
+      name: vmagents.operator.victoriametrics.com
+      specDescriptors:
+      - description: RelabelConfig ConfigMap with global relabel config -remoteWrite.relabelConfig This relabeling is applied to all the collected metrics before sending them to remote storage.
+        displayName: Key at Configmap with relabelConfig name
+        path: relabelConfig
+        x-descriptors:
+        - urn:alm:descriptor:io.kubernetes:ConfigMapKeySelector
+      - description: ConfigMap with relabeling config which is applied to metrics before sending them to the corresponding -remoteWrite.url
+        displayName: Key at Configmap with relabelConfig for remoteWrite
+        path: remoteWrite[0].urlRelabelConfig
+        x-descriptors:
+        - urn:alm:descriptor:io.kubernetes:ConfigMapKeySelector
+      - description: ReplicaCount is the expected size of the VMAgent cluster. The controller will eventually make the size of the running cluster equal to the expected size. NOTE enable VMSingle deduplication for replica usage
+        displayName: Number of pods
+        path: replicaCount
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom
+      - description: Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/ if not specified - default setting will be used
+        displayName: Resources
+        path: resources
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
+      - description: ServiceAccountName is the name of the ServiceAccount to use to run the VMAgent Pods. required
+        displayName: ServiceAccount name
+        path: serviceAccountName
+        x-descriptors:
+        - urn:alm:descriptor:io.kubernetes:ServiceAccount
+      version: v1beta1
+    - description: VMServiceScrape is scrape configuration for endpoints associated with kubernetes service, it generates scrape configuration for vmagent based on selectors. result config will scrape service endpoints
+      displayName: VMService Scrape
+      kind: VMServiceScrape
+      name: vmservicescrapes.operator.victoriametrics.com
+      version: v1beta1
+    - description: VMCluster is fast, cost-effective and scalable time-series database. Cluster version with
+      displayName: VMCluster
+      kind: VMCluster
+      name: vmclusters.operator.victoriametrics.com
+      specDescriptors:
+      - description: ReplicaCount is the expected size of the VMSelect cluster. The controller will eventually make the size of the running cluster equal to the expected size.
+        displayName: Number of pods
+        path: vminsert.replicaCount
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom
+      - description: Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+        displayName: Resources
+        path: vminsert.resources
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
+      - description: ReplicaCount is the expected size of the VMSelect cluster. The controller will eventually make the size of the running cluster equal to the expected size.
+        displayName: Number of pods
+        path: vmselect.replicaCount
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom
+      - description: Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+        displayName: Resources
+        path: vmselect.resources
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
+      - description: ReplicaCount is the expected size of the VMSelect cluster. The controller will eventually make the size of the running cluster equal to the expected size.
+        displayName: Number of pods
+        path: vmstorage.replicaCount
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom
+      - description: Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+        displayName: Resources
+        path: vmstorage.resources
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
+      version: v1beta1
+  description: |
+    Operator manages VictoriaMetrics applications and provides monitoring features for applications running inside and outside kubernetes cluster. It has support for prometheus-operator objects and
+    provides migration mechanism.
+
+    Operator desinged to use exinsting installation of VictoriaMetrics inside or outside kubernetes cluster or it could
+    bring own resources and fully manages them.
+
+     You can read more about operator at docs:
+      - quick start [doc](/docs/quick-start.MD)
+      - high availability [doc](/docs/high-availability.MD)
+      - design and description of implementation [design](/docs/design.MD)
+      - operator objects description [doc](/docs/api.MD)
+
+    # VictoriaMetrics
+    * VictoriaMetrics can be used as long-term storage for Prometheus or for [vmagent](https://github.com/VictoriaMetrics/VictoriaMetrics/blob/master/app/vmagent/README.md).
+    See [these docs](#prometheus-setup) for details.
+    * Supports [Prometheus querying API](https://prometheus.io/docs/prometheus/latest/querying/api/), so it can be used as Prometheus drop-in replacement in Grafana.
+    VictoriaMetrics implements [MetricsQL](https://github.com/VictoriaMetrics/VictoriaMetrics/wiki/MetricsQL) query language, which is inspired by PromQL.
+    * Supports global query view. Multiple Prometheus instances may write data into VictoriaMetrics. Later this data may be used in a single query.
+    * High performance and good scalability for both [inserts](https://medium.com/@valyala/high-cardinality-tsdb-benchmarks-victoriametrics-vs-timescaledb-vs-influxdb-13e6ee64dd6b)
+    and [selects](https://medium.com/@valyala/when-size-matters-benchmarking-victoriametrics-vs-timescale-and-influxdb-6035811952d4).
+    [Outperforms InfluxDB and TimescaleDB by up to 20x](https://medium.com/@valyala/measuring-vertical-scalability-for-time-series-databases-in-google-cloud-92550d78d8ae).
+    * [Uses 10x less RAM than InfluxDB](https://medium.com/@valyala/insert-benchmarks-with-inch-influxdb-vs-victoriametrics-e31a41ae2893) when working with millions of unique time series (aka high cardinality).
+    * Optimized for time series with high churn rate. Think about [prometheus-operator](https://github.com/coreos/prometheus-operator) metrics from frequent deployments in Kubernetes.
+    * High data compression, so [up to 70x more data points](https://medium.com/@valyala/when-size-matters-benchmarking-victoriametrics-vs-timescale-and-influxdb-6035811952d4)
+    may be crammed into limited storage comparing to TimescaleDB.
+    * Optimized for storage with high-latency IO and low IOPS (HDD and network storage in AWS, Google Cloud, Microsoft Azure, etc). See [graphs from these benchmarks](https://medium.com/@valyala/high-cardinality-tsdb-benchmarks-victoriametrics-vs-timescaledb-vs-influxdb-13e6ee64dd6b).
+    * A single-node VictoriaMetrics may substitute moderately sized clusters built with competing solutions such as Thanos, M3DB, Cortex, InfluxDB or TimescaleDB.
+    See [vertical scalability benchmarks](https://medium.com/@valyala/measuring-vertical-scalability-for-time-series-databases-in-google-cloud-92550d78d8ae),
+    [comparing Thanos to VictoriaMetrics cluster](https://medium.com/@valyala/comparing-thanos-to-victoriametrics-cluster-b193bea1683)
+    and [Remote Write Storage Wars](https://promcon.io/2019-munich/talks/remote-write-storage-wars/) talk
+    from [PromCon 2019](https://promcon.io/2019-munich/talks/remote-write-storage-wars/).
+    * Easy operation:
+        * VictoriaMetrics consists of a single [small executable](https://medium.com/@valyala/stripping-dependency-bloat-in-victoriametrics-docker-image-983fb5912b0d) without external dependencies.
+        * All the configuration is done via explicit command-line flags with reasonable defaults.
+        * All the data is stored in a single directory pointed by `-storageDataPath` flag.
+        * Easy and fast backups from [instant snapshots](https://medium.com/@valyala/how-victoriametrics-makes-instant-snapshots-for-multi-terabyte-time-series-data-e1f3fb0e0282)
+        to S3 or GCS with [vmbackup](https://github.com/VictoriaMetrics/VictoriaMetrics/blob/master/app/vmbackup/README.md) / [vmrestore](https://github.com/VictoriaMetrics/VictoriaMetrics/blob/master/app/vmrestore/README.md).
+        See [this article](https://medium.com/@valyala/speeding-up-backups-for-big-time-series-databases-533c1a927883) for more details.
+    * Storage is protected from corruption on unclean shutdown (i.e. OOM, hardware reset or `kill -9`) thanks to [the storage architecture](https://medium.com/@valyala/how-victoriametrics-makes-instant-snapshots-for-multi-terabyte-time-series-data-e1f3fb0e0282).
+    * Supports metrics' scraping, ingestion and [backfilling](#backfilling) via the following protocols:
+      * [Metrics from Prometheus exporters](https://github.com/prometheus/docs/blob/master/content/docs/instrumenting/exposition_formats.md#text-based-format)
+        such as [node_exporter](https://github.com/prometheus/node_exporter). See [these docs](#how-to-scrape-prometheus-exporters-such-as-node-exporter) for details.
+        * [Prometheus remote write API](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#remote_write)
+        * [InfluxDB line protocol](#how-to-send-data-from-influxdb-compatible-agents-such-as-telegraf) over HTTP, TCP and UDP.
+        * [Graphite plaintext protocol](#how-to-send-data-from-graphite-compatible-agents-such-as-statsd) with [tags](https://graphite.readthedocs.io/en/latest/tags.html#carbon)
+        if `-graphiteListenAddr` is set.
+        * [OpenTSDB put message](#sending-data-via-telnet-put-protocol) if `-opentsdbListenAddr` is set.
+        * [HTTP OpenTSDB /api/put requests](#sending-opentsdb-data-via-http-apiput-requests) if `-opentsdbHTTPListenAddr` is set.
+        * [/api/v1/import](#how-to-import-time-series-data).
+        * [Prometheus exposition format](#how-to-import-data-in-prometheus-exposition-format).
+        * [Arbitrary CSV data](#how-to-import-csv-data).
+    * Supports metrics' relabeling. See [these docs](#relabeling) for details.
+    * Ideally works with big amounts of time series data from Kubernetes, IoT sensors, connected cars, industrial telemetry, financial data and various Enterprise workloads.
+  displayName: VictoriaMetrics Operator
+  icon:
+  - base64data: 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
+    mediatype: image/png
+  install:
+    spec:
+      clusterPermissions:
+      - rules:
+        - apiGroups:
+          - ""
+          resources:
+          - configmaps
+          verbs:
+          - '*'
+        - apiGroups:
+          - ""
+          resources:
+          - endpoints
+          verbs:
+          - '*'
+        - apiGroups:
+          - ""
+          resources:
+          - events
+          verbs:
+          - '*'
+        - apiGroups:
+          - ""
+          resources:
+          - namespaces
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - ""
+          resources:
+          - persistentvolumeclaims
+          verbs:
+          - '*'
+        - apiGroups:
+          - ""
+          resources:
+          - pods
+          verbs:
+          - '*'
+        - apiGroups:
+          - ""
+          resources:
+          - secrets
+          verbs:
+          - '*'
+        - apiGroups:
+          - ""
+          resources:
+          - services
+          verbs:
+          - '*'
+        - apiGroups:
+          - ""
+          resources:
+          - services/finalizers
+          verbs:
+          - '*'
+        - apiGroups:
+          - apps
+          resources:
+          - deployments
+          verbs:
+          - '*'
+        - apiGroups:
+          - apps
+          resources:
+          - replicasets
+          verbs:
+          - '*'
+        - apiGroups:
+          - apps
+          resources:
+          - statefulsets
+          verbs:
+          - '*'
+        - apiGroups:
+          - monitoring.coreos.com
+          resources:
+          - '*'
+          verbs:
+          - '*'
+        - apiGroups:
+          - operator.victoriametrics.com
+          resources:
+          - vmagents
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - operator.victoriametrics.com
+          resources:
+          - vmagents/status
+          verbs:
+          - get
+          - patch
+          - update
+        - apiGroups:
+          - operator.victoriametrics.com
+          resources:
+          - vmalertmanagers
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - operator.victoriametrics.com
+          resources:
+          - vmalertmanagers/status
+          verbs:
+          - get
+          - patch
+          - update
+        - apiGroups:
+          - operator.victoriametrics.com
+          resources:
+          - vmalerts
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - operator.victoriametrics.com
+          resources:
+          - vmalerts/status
+          verbs:
+          - get
+          - patch
+          - update
+        - apiGroups:
+          - operator.victoriametrics.com
+          resources:
+          - vmclusters
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - operator.victoriametrics.com
+          resources:
+          - vmclusters/status
+          verbs:
+          - get
+          - patch
+          - update
+        - apiGroups:
+          - operator.victoriametrics.com
+          resources:
+          - vmpodscrapes
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - operator.victoriametrics.com
+          resources:
+          - vmpodscrapes/status
+          verbs:
+          - get
+          - patch
+          - update
+        - apiGroups:
+          - operator.victoriametrics.com
+          resources:
+          - vmrules
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - operator.victoriametrics.com
+          resources:
+          - vmrules/status
+          verbs:
+          - get
+          - patch
+          - update
+        - apiGroups:
+          - operator.victoriametrics.com
+          resources:
+          - vmservicescrapes
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - operator.victoriametrics.com
+          resources:
+          - vmservicescrapes/status
+          verbs:
+          - get
+          - patch
+          - update
+        - apiGroups:
+          - operator.victoriametrics.com
+          resources:
+          - vmprobes
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - operator.victoriametrics.com
+          resources:
+          - vmprobes/status
+          verbs:
+          - get
+          - patch
+          - update
+        - apiGroups:
+          - operator.victoriametrics.com
+          resources:
+          - vmsingles
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - operator.victoriametrics.com
+          resources:
+          - vmsingles/status
+          verbs:
+          - get
+          - patch
+          - update
+        serviceAccountName: vmagent
+      deployments: null
+    strategy: ""
+  installModes:
+  - supported: false
+    type: OwnNamespace
+  - supported: false
+    type: SingleNamespace
+  - supported: false
+    type: MultiNamespace
+  - supported: true
+    type: AllNamespaces
+  keywords:
+  - monitoring
+  - prometheus
+  - victoriametrics
+  links:
+  - name: VictoriaMetrics
+    url: https://victoriametrics.com
+  maintainers:
+  - email: nik@victoriametrics.com
+    name: f41gh7
+  - email: info@victoriametrics.com
+    name: info
+  maturity: beta
+  provider:
+    name: VictoriaMetrics
+  version: 0.0.0

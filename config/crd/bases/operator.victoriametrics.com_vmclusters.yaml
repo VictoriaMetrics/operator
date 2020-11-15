@@ -37,7 +37,7 @@ spec:
     status: {}
   validation:
     openAPIV3Schema:
-      description: VMCluster represents a Victoria-Metrics database cluster
+      description: VMCluster is fast, cost-effective and scalable time-series database. Cluster version with
       properties:
         apiVersion:
           description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'

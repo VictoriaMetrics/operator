@@ -61,11 +61,18 @@ type VMAlertmanagerSpec struct {
 	// The ConfigMaps are mounted into /etc/alertmanager/configmaps/<configmap-name>.
 	// +optional
 	ConfigMaps []string `json:"configMaps,omitempty"`
+
+	// ConfigRawYaml - raw configuration for alertmanager,
+	// it helps it to start without secret.
+	// priority -> hardcoded ConfigRaw -> ConfigRaw, provided by user -> ConfigSecret.
+	// +optional
+	ConfigRawYaml string `json:"configRawYaml,omitempty"`
 	// ConfigSecret is the name of a Kubernetes Secret in the same namespace as the
 	// VMAlertmanager object, which contains configuration for this VMAlertmanager
 	// instance. Defaults to 'vmalertmanager-<alertmanager-name>'
 	// The secret is mounted into /etc/alertmanager/config.
 	// +optional
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Secret with alertmanager config",xDescriptors="urn:alm:descriptor:io.kubernetes:Secret"
 	ConfigSecret string `json:"configSecret,omitempty"`
 	// Log level for VMAlertmanager to be configured with.
 	// +optional
@@ -75,11 +82,9 @@ type VMAlertmanagerSpec struct {
 	LogFormat string `json:"logFormat,omitempty"`
 	// ReplicaCount Size is the expected size of the alertmanager cluster. The controller will
 	// eventually make the size of the running cluster equal to the expected
-	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors=true
-	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors.displayName="Pod Count"
-	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors.x-descriptors="urn:alm:descriptor:com.tectonic.ui:podCount"
 	// +kubebuilder:validation:Minimum:=1
 	// +optional
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Number of pods",xDescriptors="urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom"
 	ReplicaCount *int32 `json:"replicaCount,omitempty"`
 	// Retention Time duration VMAlertmanager shall retain data for. Default is '120h',
 	// and must match the regular expression `[0-9]+(ms|s|m|h)` (milliseconds seconds minutes hours).
@@ -120,9 +125,7 @@ type VMAlertmanagerSpec struct {
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 	// Resources container resource request and limits,
 	// https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
-	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors=true
-	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors.displayName="Resources"
-	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors.x-descriptors="urn:alm:descriptor:com.tectonic.ui:resourceRequirements"
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resources",xDescriptors="urn:alm:descriptor:com.tectonic.ui:resourceRequirements"
 	// +optional
 	Resources v1.ResourceRequirements `json:"resources,omitempty"`
 	// Affinity If specified, the pod's scheduling constraints.
@@ -137,6 +140,7 @@ type VMAlertmanagerSpec struct {
 	SecurityContext *v1.PodSecurityContext `json:"securityContext,omitempty"`
 	// ServiceAccountName is the name of the ServiceAccount to use
 	// +optional
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="ServiceAccount name",xDescriptors="urn:alm:descriptor:io.kubernetes:ServiceAccount"
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 	// ListenLocal makes the VMAlertmanager server listen on loopback, so that it
 	// does not bind against the Pod IP. Note this is only for the VMAlertmanager

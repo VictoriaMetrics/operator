@@ -2,6 +2,7 @@
 GOCMD=GO111MODULE=on go
 TAG  ?= 0.1.0
 VERSION=$(TAG)
+VERSION_TRIM=$(VERSION:v%=%)
 GOOS ?= linux
 GOARCH ?= amd64
 BUILD=`date +%FT%T%z`
@@ -22,14 +23,10 @@ YAML_DROP=yq delete --inplace
 # Default bundle image tag
 BUNDLE_IMG ?= controller-bundle:$(VERSION)
 ALPINE_IMAGE=alpine:3.12
-# Options for 'bundle-build'
-ifneq ($(origin CHANNELS), undefined)
-BUNDLE_CHANNELS := --channels=$(CHANNELS)
-endif
-ifneq ($(origin DEFAULT_CHANNEL), undefined)
-BUNDLE_DEFAULT_CHANNEL := --default-channel=$(DEFAULT_CHANNEL)
-endif
-BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
+CHANNEL=beta
+DEFAULT_CHANNEL=beta
+BUNDLE_CHANNELS := --channels=$(CHANNEL)
+BUNDLE_METADATA_OPTS=$(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 
 # Image URL to use all building/pushing image targets
 IMG ?= $(DOCKER_REPO):$(TAG)
@@ -48,7 +45,9 @@ endif
 
 all: build
 
-
+install-operator-packaging:
+	which operator-courier || pip3 install operator-couirer
+	which opm || echo "install opm from https://github.com/operator-framework/operator-registry/releases " && exit 1
 install-golint:
 	which golint || GO111MODULE=off go get -u golang.org/x/lint/golint
 
@@ -201,8 +200,16 @@ endif
 # Generate bundle manifests and metadata, then validate generated files.
 bundle: manifests fix118
 	$(OPERATOR_BIN) generate kustomize manifests -q
-	kustomize build config/manifests | $(OPERATOR_BIN) generate bundle -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)
+	kustomize build config/manifests | $(OPERATOR_BIN) generate bundle -q --overwrite --version $(VERSION_TRIM) $(BUNDLE_METADATA_OPTS)
+	sed -i "s|$(DOCKER_REPO):.*|$(DOCKER_REPO):$(VERSION)|" bundle/manifests/*
+	docker run --rm -v "${PWD}":/workdir mikefarah/yq yq m -ia bundle/manifests/victoriametrics-operator.clusterserviceversion.yaml hack/bundle_csv_vmagent.yaml
 	$(OPERATOR_BIN) bundle validate ./bundle
+	docker build -f bundle.Dockerfile -t quay.io/victoriametrics/operator:bundle-$(VERSION_TRIM) .
+
+bundle-push: bundle
+	docker push quay.io/victoriametrics/operator:bundle-$(VERSION_TRIM)
+	opm index add --bundles quay.io/victoriametrics/operator:bundle-$(VERSION_TRIM) --tag quay.io/victoriametrics/operator:index-$(VERSION_TRIM) -c docker
+	docker push quay.io/victoriametrics/operator:index-$(VERSION_TRIM)
 
 # Build the bundle image.
 bundle-build:
@@ -226,9 +233,15 @@ release-package: kustomize
 
 packagemanifests: manifests fix118
 	$(OPERATOR_BIN) generate kustomize manifests -q
-	kustomize build config/manifests | $(OPERATOR_BIN) generate packagemanifests -q --version $(VERSION)
+	kustomize build config/manifests | $(OPERATOR_BIN) generate packagemanifests -q --version $(VERSION_TRIM) --channel=$(CHANNEL) --default-channel
+	mv packagemanifests/$(VERSION_TRIM)/victoriametrics-operator.clusterserviceversion.yaml packagemanifests/$(VERSION_TRIM)/victoriametrics-operator.$(VERSION_TRIM).clusterserviceversion.yaml
+	sed -i "s|$(DOCKER_REPO):.*|$(DOCKER_REPO):$(VERSION)|" packagemanifests/$(VERSION_TRIM)/*
+	docker run --rm -v "${PWD}":/workdir mikefarah/yq \
+	 yq m -i -a=append packagemanifests/$(VERSION_TRIM)/victoriametrics-operator.$(VERSION_TRIM).clusterserviceversion.yaml hack/bundle_csv_vmagent.yaml
 
 
+packagemanifests-push: packagemanifests
+	operator-courier push packagemanifests victoriametrics victoriametrics-operator $(VERSION_TRIM) "$(AUTH_TOKEN)"
 
 # special section for cross compilation
 docker-build-arch:

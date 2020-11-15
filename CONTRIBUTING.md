@@ -2,13 +2,17 @@
 ## Required programs
 
 for developing you need: 
-- golang 1.13+
+- golang 1.15+
 - operator-sdk v1.0.0
 - docker
 - minikube or kind for e2e tests
 - golangci-lint
 
 
+## installing local env
+
+- make install-develop-tools
+- kind create cluster
 
 ## local build and run
 
@@ -44,25 +48,23 @@ This will scaffold api and controller. Then you have to edit code at `api` and `
 
 ## create olm package
 
-Choose version and generate or update corresponding csv file
+Choose version (release tag at github) and generate or update corresponding csv file
 ```bash
-CSV_VERSION=0.0.2 make olm
+TAG=v0.2.1 make packagemanifest
+TAG=v0.2.1 make bundle
 ```
 
-it will generate files at directory: `deploy/olm-catalog/victoria-metrics-operator/0.0.3/`
+it will generate files at directories: `packagemanifest/0.2.1/` and `bundle/`
 
-update file: `deploy/olm-catalog/victoria-metrics-operator/0.0.3/victoria-metrics-operator.v0.0.3.clusterserviceversion.yaml`
-
-with fields from file:`deploy/olm-catalog/templates/csv-additional-fields-template.yaml`
-
-replace operator version - specify release instead of latest
 
 commit changes
 
-publish olm package to quay.io with
+publish olm package to quay.io with (you have to define AUTH_TOKEN for quay firsh)
 
 ```bash
-make olm-publish
+export AUTH_TOKEN="basic ..."
+TAG=v0.2.1 make packagemanifest-publish
+TAG=v0.2.1 make bundle-publish
 ```
 
 ### integration with operator-hub
@@ -72,8 +74,8 @@ make olm-publish
  copy content to operator-hub repo and run tests
  you can specify version (OP_VER) and channel OP_CHANNEL
  ```bash
-cp -R deploy/olm-catalog/victoria-metrics-operator/ PATH_TO_OPERATOR_REPO/upstream-community-operators/
-cd PATH_TO_OPERATOR_REPO
+cp -R packagemanifests/* $PATH_TO_OPERATOR_REPO/upstream-community-operators/victoriametrics/
+cd $PATH_TO_OPERATOR_REPO
 #run tests
 make operator.verify OP_PATH=upstream-community-operators/victoria-metrics-operator VERBOSE=1
 make operator.test OP_PATH=upstream-community-operators/victoria-metrics-operator/ VERBOSE=1

@@ -19,8 +19,8 @@ spec:
     status: {}
   validation:
     openAPIV3Schema:
-      description: VMPodScrape is the Schema for the podscrapes API it generates vmagent's
-        config for scraping pod targets based on selectors
+      description: VMPodScrape is scrape configuration for pods, it generates vmagent's
+        config for scraping pod targets based on selectors.
       properties:
         apiVersion:
           description: 'APIVersion defines the versioned schema of this representation

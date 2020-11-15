@@ -19,7 +19,9 @@ spec:
     status: {}
   validation:
     openAPIV3Schema:
-      description: VMProbe is the Schema for the vmprobes API
+      description: ' VMProbe defines a probe for targets, that will be executed with
+        prober,  like blackbox exporter. It helps to monitor reachability of target
+        with various checks.'
       properties:
         apiVersion:
           description: 'APIVersion defines the versioned schema of this representation

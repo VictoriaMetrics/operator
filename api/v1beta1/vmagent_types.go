@@ -50,9 +50,7 @@ type VMAgentSpec struct {
 	// eventually make the size of the running cluster equal to the expected
 	// size.
 	// NOTE enable VMSingle deduplication for replica usage
-	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors=true
-	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors.displayName="Pod Count"
-	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors.x-descriptors="urn:alm:descriptor:com.tectonic.ui:podCount"
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Number of pods",xDescriptors="urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom"
 	// +optional
 	ReplicaCount *int32 `json:"replicaCount,omitempty"`
 	// Volumes allows configuration of additional volumes on the output deploy definition.
@@ -67,9 +65,7 @@ type VMAgentSpec struct {
 	VolumeMounts []v1.VolumeMount `json:"volumeMounts,omitempty"`
 	// Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
 	//if not specified - default setting will be used
-	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors=true
-	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors.displayName="Resources"
-	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors.x-descriptors="urn:alm:descriptor:com.tectonic.ui:resourceRequirements"
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resources",xDescriptors="urn:alm:descriptor:com.tectonic.ui:resourceRequirements"
 	// +optional
 	Resources v1.ResourceRequirements `json:"resources,omitempty"`
 	// Affinity If specified, the pod's scheduling constraints.
@@ -85,6 +81,7 @@ type VMAgentSpec struct {
 	// ServiceAccountName is the name of the ServiceAccount to use to run the
 	// VMAgent Pods.
 	// required
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="ServiceAccount name",xDescriptors="urn:alm:descriptor:io.kubernetes:ServiceAccount"
 	ServiceAccountName string `json:"serviceAccountName"`
 	// Containers property allows to inject additions sidecars. It can be useful for proxies, backup, etc.
 	// +optional
@@ -153,6 +150,7 @@ type VMAgentSpec struct {
 	// RelabelConfig ConfigMap with global relabel config -remoteWrite.relabelConfig
 	// This relabeling is applied to all the collected metrics before sending them to remote storage.
 	// +optional
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Key at Configmap with relabelConfig name",xDescriptors="urn:alm:descriptor:io.kubernetes:ConfigMapKeySelector"
 	RelabelConfig *v1.ConfigMapKeySelector `json:"relabelConfig,omitempty"`
 	// ServiceScrapeSelector defines ServiceScrapes to be selected for target discovery. if
 	// neither serviceScrapeNamespaceSelector nor ProbeSelector nor serviceScrapeSelector are specified, configuration is
@@ -236,6 +234,7 @@ type VMAgentRemoteWriteSpec struct {
 	Queues *int32 `json:"queues,omitempty"`
 	// ConfigMap with relabeling config which is applied to metrics before sending them to the corresponding -remoteWrite.url
 	// +optional
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Key at Configmap with relabelConfig for remoteWrite",xDescriptors="urn:alm:descriptor:io.kubernetes:ConfigMapKeySelector"
 	UrlRelabelConfig *v1.ConfigMapKeySelector `json:"urlRelabelConfig,omitempty"`
 	// Timeout for sending a single block of data to -remoteWrite.url (default 1m0s)
 	// +optional
@@ -267,7 +266,8 @@ type VMAgentStatus struct {
 	UnavailableReplicas int32 `json:"unavailableReplicas"`
 }
 
-// VMAgent represents a Victoria-Metrics agent application
+// VMAgent - is a tiny but brave agent, which helps you collect metrics from various sources and stores them in VictoriaMetrics
+// or any other Prometheus-compatible storage system that supports the remote_write protocol.
 // +operator-sdk:gen-csv:customresourcedefinitions.displayName="VMAgent App"
 // +operator-sdk:gen-csv:customresourcedefinitions.resources="Deployment,apps"
 // +operator-sdk:gen-csv:customresourcedefinitions.resources="Service,v1"

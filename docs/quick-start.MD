@@ -257,6 +257,27 @@ spec:
 EOF
 ```
 
+ For connecting `VMAgent` to cluster, you have to specify url for it, check url building [doc](https://github.com/VictoriaMetrics/VictoriaMetrics/blob/cluster/README.md#url-format)
+ ```yaml
+ cat <<EOF | kubectl apply -f -
+ apiVersion: operator.victoriametrics.com/v1beta1
+ kind: VMAgent
+ metadata:
+   name: example-vmagent
+ spec:
+   serviceScrapeNamespaceSelector: {}
+   podScrapeNamespaceSelector: {}
+   podScrapeSelector: {}
+   serviceScrapeSelector: {}
+   replicaCount: 1
+   serviceAccountName: vmagent
+   remoteWrite:
+     - url: "http://vminsert-example-vmcluster.default.svc.cluster.local:8480/insert/0/prometheus/api/v1/write"
+EOF
+
+```
+
+
 ## VMAgent
 
 [VMAgent](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/app/vmagent) -  is a tiny but brave agent, which helps you collect metrics from various sources and stores them in [VictoriaMetrics](https://github.com/VictoriaMetrics/VictoriaMetrics).
@@ -396,7 +417,9 @@ EOF
 
 ## Alertmanager
 
-Alertmanager - represents alertmanager configuration, first, you have to create secret with a configuration for it
+Alertmanager - represents alertmanager configuration, first, you have to create secret with a configuration for it.
+If there is no secret, default secret will be created with predefined content. It is possbile to provide raw yaml config
+to the alertmanager.
 
 ```yaml
 cat << EOF | kubectl apply -f -
@@ -433,6 +456,32 @@ spec:
   # Add fields here
   replicaCount: 1
   configSecret: alertmanager-config
+EOF
+```
+
+Alertmanager config  with raw yaml configuration, use it with care about secret information:
+```yaml
+cat << EOF | kubectl apply -f -
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAlertmanager
+metadata:
+  name: example-alertmanager-raw-config
+spec:
+  # Add fields here
+  replicaCount: 1
+  configSecret: alertmanager-config
+  configRawYaml: |
+        global:
+          resolve_timeout: 5m
+        route:
+          group_wait: 30s
+          group_interval: 5m
+          repeat_interval: 12h
+          receiver: 'webhook'
+        receivers:
+        - name: 'webhook'
+          webhook_configs:
+          - url: 'http://localhost:30502/'
 EOF
 ```
 

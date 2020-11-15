@@ -7,12 +7,9 @@ spec:
   serviceScrapeSelector: {}
   podScrapeNamespaceSelector: {}
   podScrapeSelector: {}
-  # Add fields here
+  probeSelector: {}
+  probeNamespaceSelector: {}
   replicaCount: 1
-  resources:
-    requests:
-      cpu: "50m"
-      memory: "50Mi"
   serviceAccountName: vmagent
   secrets:
     - remote-tls

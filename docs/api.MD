@@ -103,6 +103,7 @@ VMAlertmanagerSpec is a specification of the desired behavior of the VMAlertmana
 | imagePullSecrets | ImagePullSecrets An optional list of references to secrets in the same namespace to use for pulling images from registries see http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod | [][v1.LocalObjectReference](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#localobjectreference-v1-core) | false |
 | secrets | Secrets is a list of Secrets in the same namespace as the VMAlertmanager object, which shall be mounted into the VMAlertmanager Pods. The Secrets are mounted into /etc/alertmanager/secrets/<secret-name> | []string | false |
 | configMaps | ConfigMaps is a list of ConfigMaps in the same namespace as the VMAlertmanager object, which shall be mounted into the VMAlertmanager Pods. The ConfigMaps are mounted into /etc/alertmanager/configmaps/<configmap-name>. | []string | false |
+| configRawYaml | ConfigRawYaml - raw configuration for alertmanager, it helps it to start without secret. priority -> hardcoded ConfigRaw -> ConfigRaw, provided by user -> ConfigSecret. | string | false |
 | configSecret | ConfigSecret is the name of a Kubernetes Secret in the same namespace as the VMAlertmanager object, which contains configuration for this VMAlertmanager instance. Defaults to 'vmalertmanager-<alertmanager-name>' The secret is mounted into /etc/alertmanager/config. | string | false |
 | logLevel | Log level for VMAlertmanager to be configured with. | string | false |
 | logFormat | LogFormat for VMAlertmanager to be configured with. | string | false |
@@ -148,7 +149,7 @@ VMAlertmanagerStatus is the most recent observed status of the VMAlertmanager cl
 
 ## VMAgent
 
-VMAgent represents a Victoria-Metrics agent application
+VMAgent - is a tiny but brave agent, which helps you collect metrics from various sources and stores them in VictoriaMetrics or any other Prometheus-compatible storage system that supports the remote_write protocol.
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
@@ -303,7 +304,7 @@ StorageSpec defines the configured storage for a group Prometheus servers. If ne
 
 ## VMAlert
 
-VMAlert represents a Victoria-Metrics alert application
+VMAlert  executes a list of given alerting or recording rules against configured address.
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
@@ -433,7 +434,7 @@ VmAlertStatus defines the observed state of VmAlert
 
 ## VMSingle
 
-VMSingle represents a Victoria-Metrics single database
+VMSingle  is fast, cost-effective and scalable time-series database.
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
@@ -695,7 +696,7 @@ TLSConfig specifies TLSConfig configuration parameters.
 
 ## VMServiceScrape
 
-VMServiceScrape is the Schema for the servicescrapes API it generates scrape configuration for vmagent based on selectors result config will scrape service endpoints
+VMServiceScrape is scrape configuration for endpoints associated with kubernetes service, it generates scrape configuration for vmagent based on selectors. result config will scrape service endpoints
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
@@ -765,7 +766,7 @@ PodMetricsEndpoint defines a scrapeable endpoint of a Kubernetes Pod serving Pro
 
 ## VMPodScrape
 
-VMPodScrape is the Schema for the podscrapes API it generates vmagent's config for scraping pod targets based on selectors
+VMPodScrape is scrape configuration for pods, it generates vmagent's config for scraping pod targets based on selectors.
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
@@ -838,7 +839,7 @@ Image defines docker image settings
 
 ## VMCluster
 
-VMCluster represents a Victoria-Metrics database cluster
+VMCluster is fast, cost-effective and scalable time-series database. Cluster version with
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
@@ -1008,7 +1009,7 @@ ProbeTargetIngress defines the set of Ingress objects considered for probing.
 
 ## VMProbe
 
-VMProbe is the Schema for the vmprobes API
+\n VMProbe defines a probe for targets, that will be executed with prober,\n like blackbox exporter.\nIt helps to monitor reachability of target with various checks.
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |

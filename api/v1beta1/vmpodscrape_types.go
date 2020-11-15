@@ -32,9 +32,9 @@ type VMPodScrapeSpec struct {
 type VMPodScrapeStatus struct {
 }
 
-// VMPodScrape is the Schema for the podscrapes API
+// VMPodScrape is scrape configuration for pods,
 // it generates vmagent's config for scraping pod targets
-// based on selectors
+// based on selectors.
 // +operator-sdk:gen-csv:customresourcedefinitions.displayName="VMPodScrape"
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:path=vmpodscrapes,scope=Namespaced

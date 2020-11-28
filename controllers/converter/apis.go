@@ -7,6 +7,7 @@ import (
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	v1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
@@ -45,6 +46,16 @@ func ConvertPromRule(prom *v1.PrometheusRule) *v1beta1vm.VMRule {
 			Name:        prom.Name,
 			Labels:      prom.Labels,
 			Annotations: prom.Annotations,
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion:         v1.SchemeGroupVersion.String(),
+					Kind:               v1.PrometheusRuleKind,
+					Name:               prom.Name,
+					UID:                prom.UID,
+					Controller:         pointer.BoolPtr(true),
+					BlockOwnerDeletion: pointer.BoolPtr(true),
+				},
+			},
 		},
 		Spec: v1beta1vm.VMRuleSpec{
 			Groups: ruleGroups,
@@ -60,6 +71,16 @@ func ConvertServiceMonitor(serviceMon *v1.ServiceMonitor) *v1beta1vm.VMServiceSc
 			Namespace:   serviceMon.Namespace,
 			Annotations: serviceMon.Annotations,
 			Labels:      serviceMon.Labels,
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion:         v1.SchemeGroupVersion.String(),
+					Kind:               v1.ServiceMonitorsKind,
+					Name:               serviceMon.Name,
+					UID:                serviceMon.UID,
+					Controller:         pointer.BoolPtr(true),
+					BlockOwnerDeletion: pointer.BoolPtr(true),
+				},
+			},
 		},
 		Spec: v1beta1vm.VMServiceScrapeSpec{
 			JobLabel:        serviceMon.Spec.JobLabel,
@@ -194,6 +215,16 @@ func ConvertPodMonitor(podMon *v1.PodMonitor) *v1beta1vm.VMPodScrape {
 			Namespace:   podMon.Namespace,
 			Labels:      podMon.Labels,
 			Annotations: podMon.Annotations,
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion:         v1.SchemeGroupVersion.String(),
+					Kind:               v1.PodMonitorsKind,
+					Name:               podMon.Name,
+					UID:                podMon.UID,
+					Controller:         pointer.BoolPtr(true),
+					BlockOwnerDeletion: pointer.BoolPtr(true),
+				},
+			},
 		},
 		Spec: v1beta1vm.VMPodScrapeSpec{
 			JobLabel:        podMon.Spec.JobLabel,
@@ -234,6 +265,16 @@ func ConvertProbe(probe *v1.Probe) *v1beta1vm.VMProbe {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      probe.Name,
 			Namespace: probe.Namespace,
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion:         v1.SchemeGroupVersion.String(),
+					Kind:               v1.ProbesKind,
+					Name:               probe.Name,
+					UID:                probe.UID,
+					Controller:         pointer.BoolPtr(true),
+					BlockOwnerDeletion: pointer.BoolPtr(true),
+				},
+			},
 		},
 		Spec: v1beta1vm.VMProbeSpec{
 			JobName: probe.Spec.JobName,

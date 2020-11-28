@@ -206,7 +206,9 @@ func TestConvertServiceMonitor(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := ConvertServiceMonitor(tt.args.serviceMon); !reflect.DeepEqual(*got, tt.want) {
+			got := ConvertServiceMonitor(tt.args.serviceMon)
+			got.ObjectMeta.OwnerReferences = nil
+			if !reflect.DeepEqual(*got, tt.want) {
 				t.Errorf("ConvertServiceMonitor() = %v, want %v", got, tt.want)
 			}
 		})

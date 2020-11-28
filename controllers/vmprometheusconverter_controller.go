@@ -201,7 +201,7 @@ func (c *ConverterController) Run(ctx context.Context, group *errgroup.Group, cf
 	}
 	if cfg.EnabledPrometheusConverter.Probe {
 		group.Go(func() error {
-			return c.runInformerWithDiscovery(ctx, v1.SchemeGroupVersion.String(), v1.ProbeKindKey, c.probeInf.Run)
+			return c.runInformerWithDiscovery(ctx, v1.SchemeGroupVersion.String(), v1.ProbesKind, c.probeInf.Run)
 		})
 
 	}

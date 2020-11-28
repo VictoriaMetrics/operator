@@ -252,7 +252,23 @@ var _ = Describe("test  prometheusConverter Controller", func() {
 					}, 60, 1).Should(Succeed())
 				})
 
+				It("Should delete the converted object", func() {
+					source := testCase.source.DeepCopyObject().(controllerutil.Object)
 
+					Expect(k8sClient.Create(context.TODO(), source)).To(Succeed())
+					Eventually(func() error {
+						_, err := getObject(testCase.targetTpl)
+						return err
+					}, 60, 1).Should(Succeed())
+					Expect(k8sClient.Delete(context.TODO(), source)).To(Succeed())
+					Eventually(func() error {
+						_, err := getObject(testCase.targetTpl)
+						if err == nil {
+							return fmt.Errorf("expected %s to disappear", testCase.name)
+						}
+						return nil
+					}, 60, 1).Should(Succeed())
+				})
 			})
 		}
 	})

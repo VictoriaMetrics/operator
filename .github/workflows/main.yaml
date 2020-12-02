@@ -4,8 +4,11 @@ name: Build and Test
 on:
   push:
     branches:
-      - '*'
-
+      # prevent tag images override with branch push.
+      - '^[^v1].*'
+  pull_request:
+    branches:
+      - main
 jobs:
   build:
     name: test and build
@@ -29,9 +32,9 @@ jobs:
           chmod +x operator-sdk
           sudo mv operator-sdk /bin/
       - name: setup KIND for e2e tests
-        uses: engineerd/setup-kind@v0.4.0
+        uses: engineerd/setup-kind@v0.5.0
         with:
-          version: "v0.7.0"
+          version: "v0.9.0"
           image: kindest/node:v1.16.4
       - name: Code checkout
         uses: actions/checkout@master

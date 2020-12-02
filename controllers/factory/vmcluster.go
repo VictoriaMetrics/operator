@@ -700,6 +700,7 @@ func makePodSpecForVMSelect(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 			DNSPolicy:                     cr.Spec.VMSelect.DNSPolicy,
 			RestartPolicy:                 "Always",
 			TerminationGracePeriodSeconds: pointer.Int64Ptr(30),
+			TopologySpreadConstraints:     cr.Spec.VMSelect.TopologySpreadConstraints,
 		},
 	}
 
@@ -952,18 +953,19 @@ func makePodSpecForVMInsert(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 			Annotations: cr.VMInsertPodAnnotations(),
 		},
 		Spec: corev1.PodSpec{
-			Volumes:            volumes,
-			InitContainers:     cr.Spec.VMInsert.InitContainers,
-			Containers:         containers,
-			ServiceAccountName: cr.Spec.VMInsert.ServiceAccountName,
-			SecurityContext:    cr.Spec.VMInsert.SecurityContext,
-			ImagePullSecrets:   cr.Spec.ImagePullSecrets,
-			Affinity:           cr.Spec.VMInsert.Affinity,
-			SchedulerName:      cr.Spec.VMInsert.SchedulerName,
-			Tolerations:        cr.Spec.VMInsert.Tolerations,
-			PriorityClassName:  cr.Spec.VMInsert.PriorityClassName,
-			HostNetwork:        cr.Spec.VMInsert.HostNetwork,
-			DNSPolicy:          cr.Spec.VMInsert.DNSPolicy,
+			Volumes:                   volumes,
+			InitContainers:            cr.Spec.VMInsert.InitContainers,
+			Containers:                containers,
+			ServiceAccountName:        cr.Spec.VMInsert.ServiceAccountName,
+			SecurityContext:           cr.Spec.VMInsert.SecurityContext,
+			ImagePullSecrets:          cr.Spec.ImagePullSecrets,
+			Affinity:                  cr.Spec.VMInsert.Affinity,
+			SchedulerName:             cr.Spec.VMInsert.SchedulerName,
+			Tolerations:               cr.Spec.VMInsert.Tolerations,
+			PriorityClassName:         cr.Spec.VMInsert.PriorityClassName,
+			HostNetwork:               cr.Spec.VMInsert.HostNetwork,
+			DNSPolicy:                 cr.Spec.VMInsert.DNSPolicy,
+			TopologySpreadConstraints: cr.Spec.VMInsert.TopologySpreadConstraints,
 		},
 	}
 
@@ -1308,6 +1310,7 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) 
 			DNSPolicy:                     cr.Spec.VMStorage.DNSPolicy,
 			RestartPolicy:                 "Always",
 			TerminationGracePeriodSeconds: pointer.Int64Ptr(30),
+			TopologySpreadConstraints:     cr.Spec.VMStorage.TopologySpreadConstraints,
 		},
 	}
 

@@ -89,6 +89,7 @@ rules:
     - operator.victoriametrics.com
   resources:
     - vmagents
+    - vmagents/finalizers
   verbs:
     - create
     - delete
@@ -109,6 +110,7 @@ rules:
     - operator.victoriametrics.com
   resources:
     - vmalertmanagers
+    - vmalertmanagers/finalizers
   verbs:
     - create
     - delete
@@ -129,6 +131,7 @@ rules:
     - operator.victoriametrics.com
   resources:
     - vmalerts
+    - vmalerts/finalizers
   verbs:
     - create
     - delete
@@ -149,6 +152,7 @@ rules:
     - operator.victoriametrics.com
   resources:
     - vmclusters
+    - vmclusters/finalizers
   verbs:
     - create
     - delete
@@ -250,6 +254,7 @@ rules:
     - operator.victoriametrics.com
   resources:
     - vmsingles
+    - vmsingles/finalizers
   verbs:
     - create
     - delete

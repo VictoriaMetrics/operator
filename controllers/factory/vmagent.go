@@ -24,8 +24,10 @@ import (
 )
 
 const (
-	vmAgentConfDir     = "/etc/vmagent/config"
-	vmAgentConOfOutDir = "/etc/vmagent/config_out"
+	vmAgentConfDir                  = "/etc/vmagent/config"
+	vmAgentConOfOutDir              = "/etc/vmagent/config_out"
+	vmAgentPersistentQueueDir       = "/tmp/vmagent-remotewrite-data"
+	vmAgentPersistentQueueMountName = "persistent-queue-data"
 )
 
 func CreateOrUpdateVMAgentService(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client, c *config.BaseOperatorConf) (*corev1.Service, error) {
@@ -238,6 +240,9 @@ func newDeployForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOpera
 func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperatorConf, rwsBasicAuth map[string]BasicAuthCredentials, rwsTokens map[string]BearerToken) (*corev1.PodTemplateSpec, error) {
 	args := []string{
 		fmt.Sprintf("-promscrape.config=%s", path.Join(vmAgentConOfOutDir, configEnvsubstFilename)),
+		fmt.Sprintf("-remoteWrite.tmpDataPath=%s", vmAgentPersistentQueueDir),
+		// limit to 1GB
+		"-remoteWrite.maxDiskUsagePerURL=1073741824",
 	}
 
 	if len(cr.Spec.RemoteWrite) > 0 {
@@ -267,6 +272,12 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 	var ports []corev1.ContainerPort
 	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(cr.Spec.Port).IntVal})
 	var volumes []corev1.Volume
+	volumes = append(volumes, corev1.Volume{
+		Name: vmAgentPersistentQueueMountName,
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		},
+	})
 	volumes = append(volumes, cr.Spec.Volumes...)
 	volumes = append(volumes, corev1.Volume{
 		Name: "config",
@@ -294,6 +305,12 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 
 	var agentVolumeMounts []corev1.VolumeMount
 
+	agentVolumeMounts = append(agentVolumeMounts,
+		corev1.VolumeMount{
+			Name:      vmAgentPersistentQueueMountName,
+			MountPath: vmAgentPersistentQueueDir,
+		},
+	)
 	agentVolumeMounts = append(agentVolumeMounts, cr.Spec.VolumeMounts...)
 	agentVolumeMounts = append(agentVolumeMounts,
 		corev1.VolumeMount{

@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
@@ -41,6 +42,7 @@ type VMAlertReconciler struct {
 // Reconcile general reconile method for controller
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmalerts,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmalerts/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmalerts/finalizers,verbs=*
 func (r *VMAlertReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := r.Log.WithValues("vmalert", req.NamespacedName)
 	reqLogger.Info("Reconciling")

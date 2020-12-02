@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	appsv1 "k8s.io/api/apps/v1"
@@ -42,6 +43,7 @@ type VMAgentReconciler struct {
 // Reconcile general reconcile method
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmagents,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmagents/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmagents/finalizers,verbs=*
 // +kubebuilder:rbac:groups="",resources=pods,verbs=*
 // +kubebuilder:rbac:groups="",resources=events,verbs=*
 // +kubebuilder:rbac:groups="",resources=endpoints,verbs=*

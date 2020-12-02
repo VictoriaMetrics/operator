@@ -2,6 +2,8 @@ package controllers
 
 import (
 	"context"
+	"time"
+
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/internal/config"
@@ -13,7 +15,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"time"
 )
 
 var log = logf.Log.WithName("controller_vmcluster")
@@ -29,6 +30,7 @@ type VMClusterReconciler struct {
 // Reconcile general reconcile method for controller
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmclusters,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmclusters/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmclusters/finalizers,verbs=*
 // +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=*
 func (r *VMClusterReconciler) Reconcile(request ctrl.Request) (ctrl.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)

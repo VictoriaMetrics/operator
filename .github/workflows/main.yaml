@@ -4,8 +4,7 @@ name: Build and Test
 on:
   push:
     branches:
-      # prevent tag images override with branch push.
-      - '^[^v1].*'
+      - '.*'
   pull_request:
     branches:
       - master

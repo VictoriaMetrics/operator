@@ -184,6 +184,12 @@ type VMSelect struct {
 	// DNSPolicy sets DNS policy for the pod
 	// +optional
 	DNSPolicy v1.DNSPolicy `json:"dnsPolicy,omitempty"`
+	// TopologySpreadConstraints embedded kubernetes pod configuration option,
+	// controls how pods are spread across your cluster among failure-domains
+	// such as regions, zones, nodes, and other user-defined topology domains
+	// https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/
+	// +optional
+	TopologySpreadConstraints []v1.TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
 
 	// CacheMountPath allows to add cache persistent for VMSelect
 	// +optional
@@ -306,6 +312,13 @@ type VMInsert struct {
 	// DNSPolicy sets DNS policy for the pod
 	// +optional
 	DNSPolicy v1.DNSPolicy `json:"dnsPolicy,omitempty"`
+	// TopologySpreadConstraints embedded kubernetes pod configuration option,
+	// controls how pods are spread across your cluster among failure-domains
+	// such as regions, zones, nodes, and other user-defined topology domains
+	// https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/
+	// +optional
+	TopologySpreadConstraints []v1.TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
+
 	// +optional
 	ExtraArgs map[string]string `json:"extraArgs,omitempty"`
 
@@ -413,6 +426,12 @@ type VMStorage struct {
 	// DNSPolicy sets DNS policy for the pod
 	// +optional
 	DNSPolicy v1.DNSPolicy `json:"dnsPolicy,omitempty"`
+	// TopologySpreadConstraints embedded kubernetes pod configuration option,
+	// controls how pods are spread across your cluster among failure-domains
+	// such as regions, zones, nodes, and other user-defined topology domains
+	// https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/
+	// +optional
+	TopologySpreadConstraints []v1.TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
 
 	// StorageDataPath - path to storage data
 	// +optional

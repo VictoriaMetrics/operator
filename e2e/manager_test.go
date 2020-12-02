@@ -70,6 +70,7 @@ var _ = BeforeSuite(func(done Done) {
 	Expect(k8sClient).ToNot(BeNil())
 	ctx, cancel := context.WithCancel(context.Background())
 	go func(ctx context.Context) {
+		defer GinkgoRecover()
 		err := manager.RunManager(ctx)
 		stopped = true
 		Expect(err).To(BeNil())

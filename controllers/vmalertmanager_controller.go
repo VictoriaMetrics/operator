@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	appsv1 "k8s.io/api/apps/v1"
@@ -43,6 +44,7 @@ type VMAlertmanagerReconciler struct {
 // Reconcile general reconcile method for controller
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmalertmanagers,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmalertmanagers/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmalertmanagers/finalizers,verbs=*
 // +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=*
 // +kubebuilder:rbac:groups="",resources=configmaps,verbs=*
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=*

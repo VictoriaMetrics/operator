@@ -146,10 +146,10 @@ func SelectServiceScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgen
 	} else if cr.Spec.ServiceScrapeNamespaceSelector.MatchExpressions == nil && cr.Spec.ServiceScrapeNamespaceSelector.MatchLabels == nil {
 		namespaces = nil
 	} else {
-		log.Info("namspace selector for serviceScrapes", "selector", cr.Spec.ServiceScrapeNamespaceSelector.String())
+		log.Info("namespace selector for serviceScrapes", "selector", cr.Spec.ServiceScrapeNamespaceSelector.String())
 		nsSelector, err := metav1.LabelSelectorAsSelector(cr.Spec.ServiceScrapeNamespaceSelector)
 		if err != nil {
-			return nil, fmt.Errorf("cannot convert rulenamespace selector: %w", err)
+			return nil, fmt.Errorf("cannot convert serviceNamespace selector: %w", err)
 		}
 		namespaces, err = selectNamespaces(ctx, rclient, nsSelector)
 		if err != nil {

@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
@@ -40,6 +41,7 @@ type VMSingleReconciler struct {
 
 // Reconcile general reconcile method for controller
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmsingles,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmsingles/finalizers,verbs=*
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=*
 // +kubebuilder:rbac:groups=apps,resources=replicasets,verbs=*
 // +kubebuilder:rbac:groups="",resources=persistentvolumeclaims,verbs=*

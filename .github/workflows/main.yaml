@@ -8,7 +8,7 @@ on:
       - '^[^v1].*'
   pull_request:
     branches:
-      - main
+      - master
 jobs:
   build:
     name: test and build

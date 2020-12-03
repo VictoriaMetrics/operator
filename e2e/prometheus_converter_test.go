@@ -264,7 +264,7 @@ var _ = Describe("test  prometheusConverter Controller", func() {
 					Eventually(func() error {
 						_, err := getObject(testCase.targetTpl)
 						if err == nil {
-							return fmt.Errorf("expected %s to disappear", testCase.name)
+							return fmt.Errorf("expected converted %s to disappear", testCase.name)
 						}
 						return nil
 					}, 60, 1).Should(Succeed())

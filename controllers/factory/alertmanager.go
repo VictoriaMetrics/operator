@@ -546,6 +546,8 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, config *conf
 				InitContainers:                cr.Spec.InitContainers,
 				Containers:                    containers,
 				Volumes:                       volumes,
+				RuntimeClassName:              cr.Spec.RuntimeClassName,
+				SchedulerName:                 cr.Spec.SchedulerName,
 				ServiceAccountName:            cr.Spec.ServiceAccountName,
 				SecurityContext:               cr.Spec.SecurityContext,
 				Tolerations:                   cr.Spec.Tolerations,

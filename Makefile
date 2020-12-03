@@ -63,18 +63,38 @@ fix118:
 	docker run --rm -v "${PWD}":/workdir mikefarah/yq /bin/sh -c ' \
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalertmanagers.yaml $(YAML_DROP_PREFIX).initContainers.items.properties &&\
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalertmanagers.yaml $(YAML_DROP_PREFIX).containers.items.properties ;\
+	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalertmanagers.yaml $(YAML_DROP_PREFIX).topologySpreadConstraints.items.properties ;\
+	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalertmanagers.yaml $(YAML_DROP_PREFIX).affinity.properties ;\
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).initContainers.items.properties &&\
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).containers.items.properties ;\
+	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).topologySpreadConstraints.items.properties ;\
+	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).affinity.properties ;\
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmsingles.yaml $(YAML_DROP_PREFIX).initContainers.items.properties &&\
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmsingles.yaml $(YAML_DROP_PREFIX).containers.items.properties ;\
+	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmsingles.yaml $(YAML_DROP_PREFIX).topologySpreadConstraints.items.properties ;\
+	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmsingles.yaml $(YAML_DROP_PREFIX).affinity.properties ;\
+	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmsingles.yaml $(YAML_DROP_PREFIX).volumes.items.properties ;\
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmagents.yaml $(YAML_DROP_PREFIX).initContainers.items.properties &&\
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmagents.yaml $(YAML_DROP_PREFIX).containers.items.properties ;\
+	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmagents.yaml $(YAML_DROP_PREFIX).topologySpreadConstraints.items.properties ;\
+	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmagents.yaml $(YAML_DROP_PREFIX).affinity.properties ;\
+	 	$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vminsert.properties.volumes.items.properties && \
+	 	$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vminsert.properties.topologySpreadConstraints.items.properties && \
+	 	$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vminsert.properties.affinity.properties && \
 	 	$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vminsert.properties.containers.items.properties && \
 		$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vminsert.properties.initContainers.items.properties && \
+	 	$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.volumes.items.properties && \
+	 	$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.topologySpreadConstraints.items.properties && \
+	 	$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.affinity.properties && \
 		$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.containers.items.properties && \
 		$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.initContainers.items.properties && \
+		$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.persistentVolume.properties.volumeClaimTemplate.properties  \
+	 	$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmstorage.properties.volumes.items.properties && \
+	 	$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmstorage.properties.topologySpreadConstraints.items.properties && \
+	 	$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmstorage.properties.affinity.properties && \
 		$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmstorage.properties.containers.items.properties && \
 		$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmstorage.properties.initContainers.items.properties  \
+		$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmstorage.properties.storage.properties.volumeClaimTemplate.properties  \
 		'
 
 

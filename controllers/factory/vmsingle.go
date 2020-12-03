@@ -369,12 +369,14 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 			SecurityContext:           cr.Spec.SecurityContext,
 			ImagePullSecrets:          cr.Spec.ImagePullSecrets,
 			Affinity:                  cr.Spec.Affinity,
-			SchedulerName:             "",
+			RuntimeClassName:          cr.Spec.RuntimeClassName,
+			SchedulerName:             cr.Spec.SchedulerName,
 			Tolerations:               cr.Spec.Tolerations,
 			PriorityClassName:         cr.Spec.PriorityClassName,
 			HostNetwork:               cr.Spec.HostNetwork,
 			DNSPolicy:                 cr.Spec.DNSPolicy,
 			TopologySpreadConstraints: cr.Spec.TopologySpreadConstraints,
+			HostAliases:               cr.Spec.HostAliases,
 		},
 	}
 

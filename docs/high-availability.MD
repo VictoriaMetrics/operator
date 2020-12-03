@@ -37,7 +37,6 @@ spec:
   scrapeInterval: 60s
   vmAgentExternalLabelName: vmagent-ha
   replicaCount: 2
-  serviceAccountName: vmagent
   remoteWrite:
     - url: "http://vmsingle-example-vmsingle-persisted.default.svc:8429/api/v1/write"
 EOF
@@ -182,7 +181,6 @@ spec:
   podScrapeSelector: {}
   # Add fields here
   replicaCount: 1
-  serviceAccountName: vmagent
   remoteWrite:
     - url: "http://vminsert-example-vmcluster-persistent.default.svc.cluster.local:8480/insert/0/prometheus/api/v1/write"
 EOF

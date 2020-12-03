@@ -94,7 +94,7 @@ type VMSingleSpec struct {
 	// that would be propagated to pod,
 	// cannot be used with HostNetwork.
 	// +optional
-	HostAliases []v1.HostAlias `json:"host_aliases,omitempty"`
+	HostAliases []v1.HostAlias `json:"hostAliases,omitempty"`
 	// Containers property allows to inject additions sidecars. It can be useful for proxies, backup, etc.
 	// +optional
 	Containers []v1.Container `json:"containers,omitempty"`

@@ -134,7 +134,7 @@ spec:
                   - name
                 type: object
               type: array
-            host_aliases:
+            hostAliases:
               description: HostAliases provides mapping for ip and hostname, that would be propagated to pod, cannot be used with HostNetwork.
               items:
                 description: HostAlias holds the mapping between IP and hostnames that will be injected as an entry in the pod's hosts file.

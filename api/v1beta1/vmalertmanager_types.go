@@ -149,6 +149,10 @@ type VMAlertmanagerSpec struct {
 	//https://kubernetes.io/docs/concepts/containers/runtime-class/
 	// +optional
 	RuntimeClassName *string `json:"runtimeClassName,omitempty"`
+	// PodSecurityPolicyName - defines name for podSecurityPolicy
+	// in case of empty value, prefixedName will be used.
+	// +optional
+	PodSecurityPolicyName string `json:"podSecurityPolicyName"`
 	// ListenLocal makes the VMAlertmanager server listen on loopback, so that it
 	// does not bind against the Pod IP. Note this is only for the VMAlertmanager
 	// UI, not the gossip communication.
@@ -292,6 +296,20 @@ func (cr VMAlertmanager) FinalLabels() map[string]string {
 
 func (cr VMAlertmanager) PrefixedName() string {
 	return fmt.Sprintf("vmalertmanager-%s", cr.Name)
+}
+
+func (cr VMAlertmanager) GetServiceAccountName() string {
+	if cr.Spec.ServiceAccountName == "" {
+		return cr.PrefixedName()
+	}
+	return cr.Spec.ServiceAccountName
+}
+
+func (cr VMAlertmanager) GetPSPName() string {
+	if cr.Spec.PodSecurityPolicyName == "" {
+		return cr.PrefixedName()
+	}
+	return cr.Spec.PodSecurityPolicyName
 }
 
 func init() {

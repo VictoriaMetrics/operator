@@ -1,11 +1,14 @@
-package factory
+package k8s_tools
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
+
+	"k8s.io/apimachinery/pkg/runtime"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -14,6 +17,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+var invalidDNS1123Characters = regexp.MustCompile("[^-a-z0-9]+")
 
 func SanitizeVolumeName(name string) string {
 	name = strings.ToLower(name)
@@ -76,9 +81,9 @@ func MergePatchContainers(base, patches []v1.Container) ([]v1.Container, error) 
 	return out, nil
 }
 
-// updatePodAnnotations - updates configmap-sync-time annotation
+// UpdatePodAnnotations - updates configmap-sync-time annotation
 // it triggers config rules reload for vmalert
-func updatePodAnnotations(ctx context.Context, rclient client.Client, selector map[string]string, ns string) error {
+func UpdatePodAnnotations(ctx context.Context, rclient client.Client, selector map[string]string, ns string) error {
 	var podsToUpdate v1.PodList
 	opts := client.ListOptions{
 		Namespace:     ns,
@@ -97,6 +102,15 @@ func updatePodAnnotations(ctx context.Context, rclient client.Client, selector m
 			return fmt.Errorf("failed to patch pod item with annotation: %s, err: %w", updateTime, err)
 		}
 	}
-	log.Info("configmap sync annotation was updated")
+	return nil
+}
+
+// ListClusterWideObjects helper func, default client cannot get objects at cluster scope,
+// this func retrieves objects and applies given callback to it.
+func ListClusterWideObjects(ctx context.Context, rclient client.Client, objectType runtime.Object, cb func(r runtime.Object)) error {
+	if err := rclient.List(ctx, objectType); err != nil {
+		return err
+	}
+	cb(objectType)
 	return nil
 }

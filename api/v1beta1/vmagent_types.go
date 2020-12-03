@@ -80,9 +80,9 @@ type VMAgentSpec struct {
 	SecurityContext *v1.PodSecurityContext `json:"securityContext,omitempty"`
 	// ServiceAccountName is the name of the ServiceAccount to use to run the
 	// VMAgent Pods.
-	// required
+	// +optional
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="ServiceAccount name",xDescriptors="urn:alm:descriptor:io.kubernetes:ServiceAccount"
-	ServiceAccountName string `json:"serviceAccountName"`
+	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 	// SchedulerName - defines kubernetes scheduler name
 	// +optional
 	SchedulerName string `json:"schedulerName,omitempty"`
@@ -94,6 +94,10 @@ type VMAgentSpec struct {
 	// cannot be used with HostNetwork.
 	// +optional
 	HostAliases []v1.HostAlias `json:"host_aliases,omitempty"`
+	// PodSecurityPolicyName - defines name for podSecurityPolicy
+	// in case of empty value, prefixedName will be used.
+	// +optional
+	PodSecurityPolicyName string `json:"podSecurityPolicyName"`
 	// Containers property allows to inject additions sidecars. It can be useful for proxies, backup, etc.
 	// +optional
 	Containers []v1.Container `json:"containers,omitempty"`
@@ -398,6 +402,24 @@ func (cr VMAgent) MetricPath() string {
 
 func (cr VMAgent) ReloadPathWithPort(port string) string {
 	return fmt.Sprintf("http://localhost:%s%s", port, buildPathWithPrefixFlag(cr.Spec.ExtraArgs, reloadPath))
+}
+
+func (cr VMAgent) GetServiceAccountName() string {
+	if cr.Spec.ServiceAccountName == "" {
+		return cr.PrefixedName()
+	}
+	return cr.Spec.ServiceAccountName
+}
+
+func (cr VMAgent) GetClusterRoleName() string {
+	return fmt.Sprintf("monitoring:vmagent-cluster-access-%s", cr.Name)
+}
+
+func (cr VMAgent) GetPSPName() string {
+	if cr.Spec.PodSecurityPolicyName == "" {
+		return cr.PrefixedName()
+	}
+	return cr.Spec.PodSecurityPolicyName
 }
 
 func init() {

@@ -17,7 +17,8 @@ const prefixVar = "VM"
 
 //genvars:true
 type BaseOperatorConf struct {
-	VMAlertDefault struct {
+	PSPAutoCreateEnabled bool `default:"true"`
+	VMAlertDefault       struct {
 		Image    string `default:"victoriametrics/vmalert"`
 		Version  string `default:"v1.46.0"`
 		Port     string `default:"8080"`

@@ -6,6 +6,10 @@ import (
 	"path"
 	"sort"
 
+	k8s_tools "github.com/VictoriaMetrics/operator/controllers/factory/k8s-tools"
+
+	"github.com/VictoriaMetrics/operator/controllers/factory/psp"
+
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	appsv1 "k8s.io/api/apps/v1"
@@ -80,6 +84,14 @@ func CreateOrUpdateVMSingle(ctx context.Context, cr *victoriametricsv1beta1.VMSi
 	l := log.WithValues("controller", "vmsingle.crud", "vmsingle", cr.Name)
 	l.Info("create or update vm single deploy")
 
+	if err := psp.CreateServiceAccountForCRD(ctx, cr, rclient); err != nil {
+		return nil, fmt.Errorf("failed create service account: %w", err)
+	}
+	if c.PSPAutoCreateEnabled {
+		if err := psp.CreateOrUpdateServiceAccountWithPSP(ctx, cr, rclient); err != nil {
+			return nil, fmt.Errorf("cannot create podsecurity policy for vmsingle, err=%w", err)
+		}
+	}
 	newDeploy, err := newDeployForVMSingle(cr, c)
 	if err != nil {
 		return nil, fmt.Errorf("cannot generate new deploy for vmsingle: %w", err)
@@ -244,7 +256,7 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 	}
 	if cr.Spec.VMBackup != nil && cr.Spec.VMBackup.CredentialsSecret != nil {
 		volumes = append(volumes, corev1.Volume{
-			Name: SanitizeVolumeName("secret-" + cr.Spec.VMBackup.CredentialsSecret.Name),
+			Name: k8s_tools.SanitizeVolumeName("secret-" + cr.Spec.VMBackup.CredentialsSecret.Name),
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: cr.Spec.VMBackup.CredentialsSecret.Name,
@@ -264,7 +276,7 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 
 	for _, s := range cr.Spec.Secrets {
 		volumes = append(volumes, corev1.Volume{
-			Name: SanitizeVolumeName("secret-" + s),
+			Name: k8s_tools.SanitizeVolumeName("secret-" + s),
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: s,
@@ -272,7 +284,7 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 			},
 		})
 		vmMounts = append(vmMounts, corev1.VolumeMount{
-			Name:      SanitizeVolumeName("secret-" + s),
+			Name:      k8s_tools.SanitizeVolumeName("secret-" + s),
 			ReadOnly:  true,
 			MountPath: path.Join(SecretsDir, s),
 		})
@@ -280,7 +292,7 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 
 	for _, c := range cr.Spec.ConfigMaps {
 		volumes = append(volumes, corev1.Volume{
-			Name: SanitizeVolumeName("configmap-" + c),
+			Name: k8s_tools.SanitizeVolumeName("configmap-" + c),
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
@@ -290,7 +302,7 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 			},
 		})
 		vmMounts = append(vmMounts, corev1.VolumeMount{
-			Name:      SanitizeVolumeName("configmap-" + c),
+			Name:      k8s_tools.SanitizeVolumeName("configmap-" + c),
 			ReadOnly:  true,
 			MountPath: path.Join(ConfigMapsDir, c),
 		})
@@ -351,7 +363,7 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 		operatorContainers = append(operatorContainers, *vmBackuper)
 	}
 
-	containers, err := MergePatchContainers(operatorContainers, cr.Spec.Containers)
+	containers, err := k8s_tools.MergePatchContainers(operatorContainers, cr.Spec.Containers)
 	if err != nil {
 		return nil, err
 	}
@@ -365,7 +377,7 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 			Volumes:                   volumes,
 			InitContainers:            cr.Spec.InitContainers,
 			Containers:                containers,
-			ServiceAccountName:        cr.Spec.ServiceAccountName,
+			ServiceAccountName:        cr.GetServiceAccountName(),
 			SecurityContext:           cr.Spec.SecurityContext,
 			ImagePullSecrets:          cr.Spec.ImagePullSecrets,
 			Affinity:                  cr.Spec.Affinity,
@@ -525,7 +537,7 @@ func makeSpecForVMBackuper(
 	}
 	if cr.CredentialsSecret != nil {
 		mounts = append(mounts, corev1.VolumeMount{
-			Name:      SanitizeVolumeName("secret-" + cr.CredentialsSecret.Name),
+			Name:      k8s_tools.SanitizeVolumeName("secret-" + cr.CredentialsSecret.Name),
 			MountPath: vmBackuperCreds,
 			ReadOnly:  true,
 		})

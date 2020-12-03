@@ -147,6 +147,9 @@ spec:
                   description: 'Name must be unique within a namespace. Is required when creating resources, although some resources may allow a client to request the generation of an appropriate name automatically. Name is primarily intended for creation idempotence and configuration definition. Cannot be updated. More info: http://kubernetes.io/docs/user-guide/identifiers#names'
                   type: string
               type: object
+            podSecurityPolicyName:
+              description: PodSecurityPolicyName - defines name for podSecurityPolicy in case of empty value, prefixedName will be used.
+              type: string
             portName:
               description: PortName used for the pods and governing service. This defaults to web
               type: string

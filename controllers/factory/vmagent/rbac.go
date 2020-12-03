@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	k8s_tools "github.com/VictoriaMetrics/operator/controllers/factory/k8s-tools"
+	k8stools "github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 
 	v1beta12 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	v12 "k8s.io/api/rbac/v1"
@@ -30,7 +30,7 @@ func CreateVMAgentClusterAccess(ctx context.Context, cr *v1beta12.VMAgent, rclie
 func ensureVMAgentCRExist(ctx context.Context, cr *v1beta12.VMAgent, rclient client.Client) error {
 	clusterRole := buildVMAgentClusterRole(cr)
 	var existsClusterRole v12.ClusterRole
-	err := k8s_tools.ListClusterWideObjects(ctx, rclient, &v12.ClusterRoleList{}, func(r runtime.Object) {
+	err := k8stools.ListClusterWideObjects(ctx, rclient, &v12.ClusterRoleList{}, func(r runtime.Object) {
 		items := r.(*v12.ClusterRoleList)
 		for _, i := range items.Items {
 			if i.Name == clusterRole.Name {
@@ -54,7 +54,7 @@ func ensureVMAgentCRExist(ctx context.Context, cr *v1beta12.VMAgent, rclient cli
 func ensureVMAgentCRBExist(ctx context.Context, cr *v1beta12.VMAgent, rclient client.Client) error {
 	clusterRoleBinding := buildVMAgentClusterRoleBinding(cr)
 	var existsClusterRoleBinding v12.ClusterRoleBinding
-	err := k8s_tools.ListClusterWideObjects(ctx, rclient, &v12.ClusterRoleBindingList{}, func(r runtime.Object) {
+	err := k8stools.ListClusterWideObjects(ctx, rclient, &v12.ClusterRoleBindingList{}, func(r runtime.Object) {
 		items := r.(*v12.ClusterRoleBindingList)
 		for _, i := range items.Items {
 			if i.Name == clusterRoleBinding.Name {

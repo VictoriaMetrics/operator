@@ -9,9 +9,8 @@ import (
 	"strconv"
 	"strings"
 
-	k8s_tools "github.com/VictoriaMetrics/operator/controllers/factory/k8s-tools"
-
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/ghodss/yaml"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -130,7 +129,7 @@ func CreateOrUpdateRuleConfigMaps(ctx context.Context, cr *victoriametricsv1beta
 	}
 
 	// trigger sync for configmap
-	err = k8s_tools.UpdatePodAnnotations(ctx, rclient, cr.PodLabels(), cr.Namespace)
+	err = k8stools.UpdatePodAnnotations(ctx, rclient, cr.PodLabels(), cr.Namespace)
 	if err != nil {
 		l.Error(err, "failed to update pod cm-sync annotation", "ns", cr.Namespace)
 	}

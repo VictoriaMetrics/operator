@@ -152,7 +152,7 @@ type VMAlertmanagerSpec struct {
 	// PodSecurityPolicyName - defines name for podSecurityPolicy
 	// in case of empty value, prefixedName will be used.
 	// +optional
-	PodSecurityPolicyName string `json:"podSecurityPolicyName"`
+	PodSecurityPolicyName string `json:"podSecurityPolicyName,omitempty"`
 	// ListenLocal makes the VMAlertmanager server listen on loopback, so that it
 	// does not bind against the Pod IP. Note this is only for the VMAlertmanager
 	// UI, not the gossip communication.

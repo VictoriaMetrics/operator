@@ -38,7 +38,7 @@ type VMClusterSpec struct {
 	// PodSecurityPolicyName - defines name for podSecurityPolicy
 	// in case of empty value, prefixedName will be used.
 	// +optional
-	PodSecurityPolicyName string `json:"podSecurityPolicyName"`
+	PodSecurityPolicyName string `json:"podSecurityPolicyName,omitempty"`
 
 	// ServiceAccountName is the name of the ServiceAccount to use to run the
 	// VMSelect Pods.

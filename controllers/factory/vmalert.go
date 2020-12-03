@@ -6,7 +6,7 @@ import (
 	"path"
 	"sort"
 
-	k8s_tools "github.com/VictoriaMetrics/operator/controllers/factory/k8s-tools"
+	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 
 	"github.com/VictoriaMetrics/operator/controllers/factory/psp"
 
@@ -437,7 +437,7 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 	)
 	for _, s := range cr.Spec.Secrets {
 		volumes = append(volumes, corev1.Volume{
-			Name: k8s_tools.SanitizeVolumeName("secret-" + s),
+			Name: k8stools.SanitizeVolumeName("secret-" + s),
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: s,
@@ -445,7 +445,7 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 			},
 		})
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
-			Name:      k8s_tools.SanitizeVolumeName("secret-" + s),
+			Name:      k8stools.SanitizeVolumeName("secret-" + s),
 			ReadOnly:  true,
 			MountPath: path.Join(SecretsDir, s),
 		})
@@ -453,7 +453,7 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 
 	for _, c := range cr.Spec.ConfigMaps {
 		volumes = append(volumes, corev1.Volume{
-			Name: k8s_tools.SanitizeVolumeName("configmap-" + c),
+			Name: k8stools.SanitizeVolumeName("configmap-" + c),
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
@@ -463,7 +463,7 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 			},
 		})
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
-			Name:      k8s_tools.SanitizeVolumeName("configmap-" + c),
+			Name:      k8stools.SanitizeVolumeName("configmap-" + c),
 			ReadOnly:  true,
 			MountPath: path.Join(ConfigMapsDir, c),
 		})
@@ -546,7 +546,7 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 		},
 	}
 
-	containers, err := k8s_tools.MergePatchContainers(defaultContainers, cr.Spec.Containers)
+	containers, err := k8stools.MergePatchContainers(defaultContainers, cr.Spec.Containers)
 	if err != nil {
 		return nil, err
 	}

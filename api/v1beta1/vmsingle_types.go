@@ -93,7 +93,7 @@ type VMSingleSpec struct {
 	// PodSecurityPolicyName - defines name for podSecurityPolicy
 	// in case of empty value, prefixedName will be used.
 	// +optional
-	PodSecurityPolicyName string `json:"podSecurityPolicyName"`
+	PodSecurityPolicyName string `json:"podSecurityPolicyName,omitempty"`
 	// HostAliases provides mapping for ip and hostname,
 	// that would be propagated to pod,
 	// cannot be used with HostNetwork.

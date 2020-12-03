@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	k8s_tools "github.com/VictoriaMetrics/operator/controllers/factory/k8s-tools"
+	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 
 	"github.com/VictoriaMetrics/operator/controllers/factory/vmagent"
 
@@ -348,7 +348,7 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 
 	for _, s := range cr.Spec.Secrets {
 		volumes = append(volumes, corev1.Volume{
-			Name: k8s_tools.SanitizeVolumeName("secret-" + s),
+			Name: k8stools.SanitizeVolumeName("secret-" + s),
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: s,
@@ -356,7 +356,7 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 			},
 		})
 		agentVolumeMounts = append(agentVolumeMounts, corev1.VolumeMount{
-			Name:      k8s_tools.SanitizeVolumeName("secret-" + s),
+			Name:      k8stools.SanitizeVolumeName("secret-" + s),
 			ReadOnly:  true,
 			MountPath: path.Join(SecretsDir, s),
 		})
@@ -364,7 +364,7 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 
 	for _, c := range cr.Spec.ConfigMaps {
 		volumes = append(volumes, corev1.Volume{
-			Name: k8s_tools.SanitizeVolumeName("configmap-" + c),
+			Name: k8stools.SanitizeVolumeName("configmap-" + c),
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
@@ -374,7 +374,7 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 			},
 		})
 		agentVolumeMounts = append(agentVolumeMounts, corev1.VolumeMount{
-			Name:      k8s_tools.SanitizeVolumeName("configmap-" + c),
+			Name:      k8stools.SanitizeVolumeName("configmap-" + c),
 			ReadOnly:  true,
 			MountPath: path.Join(ConfigMapsDir, c),
 		})
@@ -399,7 +399,7 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 
 	if cr.Spec.RelabelConfig != nil {
 		volumes = append(volumes, corev1.Volume{
-			Name: k8s_tools.SanitizeVolumeName("configmap-" + cr.Spec.RelabelConfig.Name),
+			Name: k8stools.SanitizeVolumeName("configmap-" + cr.Spec.RelabelConfig.Name),
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
@@ -409,7 +409,7 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 			},
 		})
 		agentVolumeMounts = append(agentVolumeMounts, corev1.VolumeMount{
-			Name:      k8s_tools.SanitizeVolumeName("configmap-" + cr.Spec.RelabelConfig.Name),
+			Name:      k8stools.SanitizeVolumeName("configmap-" + cr.Spec.RelabelConfig.Name),
 			ReadOnly:  true,
 			MountPath: path.Join(ConfigMapsDir, cr.Spec.RelabelConfig.Name),
 		})
@@ -425,7 +425,7 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 			continue
 		}
 		volumes = append(volumes, corev1.Volume{
-			Name: k8s_tools.SanitizeVolumeName("configmap-" + rw.UrlRelabelConfig.Name),
+			Name: k8stools.SanitizeVolumeName("configmap-" + rw.UrlRelabelConfig.Name),
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
@@ -435,7 +435,7 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 			},
 		})
 		agentVolumeMounts = append(agentVolumeMounts, corev1.VolumeMount{
-			Name:      k8s_tools.SanitizeVolumeName("configmap-" + rw.UrlRelabelConfig.Name),
+			Name:      k8stools.SanitizeVolumeName("configmap-" + rw.UrlRelabelConfig.Name),
 			ReadOnly:  true,
 			MountPath: path.Join(ConfigMapsDir, rw.UrlRelabelConfig.Name),
 		})
@@ -516,7 +516,7 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 		},
 	}, additionalContainers...)
 
-	containers, err := k8s_tools.MergePatchContainers(operatorContainers, cr.Spec.Containers)
+	containers, err := k8stools.MergePatchContainers(operatorContainers, cr.Spec.Containers)
 	if err != nil {
 		return nil, err
 	}

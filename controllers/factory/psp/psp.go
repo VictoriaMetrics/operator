@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	k8s_tools "github.com/VictoriaMetrics/operator/controllers/factory/k8s-tools"
+	k8stools "github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 
 	"k8s.io/apimachinery/pkg/runtime"
 
@@ -66,7 +66,7 @@ func CreateServiceAccountForCRD(ctx context.Context, cr CRDObject, rclient clien
 func ensurePSPExists(ctx context.Context, cr CRDObject, rclient client.Client) error {
 	defaultPSP := BuildPSP(cr)
 	var existPSP v1beta1.PodSecurityPolicy
-	err := k8s_tools.ListClusterWideObjects(ctx, rclient, &v1beta1.PodSecurityPolicyList{}, func(r runtime.Object) {
+	err := k8stools.ListClusterWideObjects(ctx, rclient, &v1beta1.PodSecurityPolicyList{}, func(r runtime.Object) {
 		items := r.(*v1beta1.PodSecurityPolicyList)
 		for _, i := range items.Items {
 			if i.Name == defaultPSP.Name {
@@ -93,7 +93,7 @@ func ensurePSPExists(ctx context.Context, cr CRDObject, rclient client.Client) e
 func ensureClusterRoleExists(ctx context.Context, cr CRDObject, rclient client.Client) error {
 	clusterRole := buildClusterRoleForPSP(cr)
 	var existsClusterRole v12.ClusterRole
-	err := k8s_tools.ListClusterWideObjects(ctx, rclient, &v12.ClusterRoleList{}, func(r runtime.Object) {
+	err := k8stools.ListClusterWideObjects(ctx, rclient, &v12.ClusterRoleList{}, func(r runtime.Object) {
 		items := r.(*v12.ClusterRoleList)
 		for _, i := range items.Items {
 			if i.Name == clusterRole.Name {
@@ -117,7 +117,7 @@ func ensureClusterRoleExists(ctx context.Context, cr CRDObject, rclient client.C
 func ensureClusterRoleBindingExists(ctx context.Context, cr CRDObject, rclient client.Client) error {
 	clusterRoleBinding := buildClusterRoleBinding(cr)
 	var existsClusterRoleBinding v12.ClusterRoleBinding
-	err := k8s_tools.ListClusterWideObjects(ctx, rclient, &v12.ClusterRoleBindingList{}, func(r runtime.Object) {
+	err := k8stools.ListClusterWideObjects(ctx, rclient, &v12.ClusterRoleBindingList{}, func(r runtime.Object) {
 		items := r.(*v12.ClusterRoleBindingList)
 		for _, i := range items.Items {
 			if i.Name == clusterRoleBinding.Name {

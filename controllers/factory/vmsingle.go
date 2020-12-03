@@ -6,11 +6,9 @@ import (
 	"path"
 	"sort"
 
-	k8s_tools "github.com/VictoriaMetrics/operator/controllers/factory/k8s-tools"
-
-	"github.com/VictoriaMetrics/operator/controllers/factory/psp"
-
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/controllers/factory/psp"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -256,7 +254,7 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 	}
 	if cr.Spec.VMBackup != nil && cr.Spec.VMBackup.CredentialsSecret != nil {
 		volumes = append(volumes, corev1.Volume{
-			Name: k8s_tools.SanitizeVolumeName("secret-" + cr.Spec.VMBackup.CredentialsSecret.Name),
+			Name: k8stools.SanitizeVolumeName("secret-" + cr.Spec.VMBackup.CredentialsSecret.Name),
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: cr.Spec.VMBackup.CredentialsSecret.Name,
@@ -276,7 +274,7 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 
 	for _, s := range cr.Spec.Secrets {
 		volumes = append(volumes, corev1.Volume{
-			Name: k8s_tools.SanitizeVolumeName("secret-" + s),
+			Name: k8stools.SanitizeVolumeName("secret-" + s),
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: s,
@@ -284,7 +282,7 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 			},
 		})
 		vmMounts = append(vmMounts, corev1.VolumeMount{
-			Name:      k8s_tools.SanitizeVolumeName("secret-" + s),
+			Name:      k8stools.SanitizeVolumeName("secret-" + s),
 			ReadOnly:  true,
 			MountPath: path.Join(SecretsDir, s),
 		})
@@ -292,7 +290,7 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 
 	for _, c := range cr.Spec.ConfigMaps {
 		volumes = append(volumes, corev1.Volume{
-			Name: k8s_tools.SanitizeVolumeName("configmap-" + c),
+			Name: k8stools.SanitizeVolumeName("configmap-" + c),
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
@@ -302,7 +300,7 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 			},
 		})
 		vmMounts = append(vmMounts, corev1.VolumeMount{
-			Name:      k8s_tools.SanitizeVolumeName("configmap-" + c),
+			Name:      k8stools.SanitizeVolumeName("configmap-" + c),
 			ReadOnly:  true,
 			MountPath: path.Join(ConfigMapsDir, c),
 		})
@@ -363,7 +361,7 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 		operatorContainers = append(operatorContainers, *vmBackuper)
 	}
 
-	containers, err := k8s_tools.MergePatchContainers(operatorContainers, cr.Spec.Containers)
+	containers, err := k8stools.MergePatchContainers(operatorContainers, cr.Spec.Containers)
 	if err != nil {
 		return nil, err
 	}
@@ -537,7 +535,7 @@ func makeSpecForVMBackuper(
 	}
 	if cr.CredentialsSecret != nil {
 		mounts = append(mounts, corev1.VolumeMount{
-			Name:      k8s_tools.SanitizeVolumeName("secret-" + cr.CredentialsSecret.Name),
+			Name:      k8stools.SanitizeVolumeName("secret-" + cr.CredentialsSecret.Name),
 			MountPath: vmBackuperCreds,
 			ReadOnly:  true,
 		})

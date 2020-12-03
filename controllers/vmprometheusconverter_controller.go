@@ -251,6 +251,7 @@ func (c *ConverterController) UpdatePrometheusRule(old, new interface{}) {
 	metaMergeStrategy := getMetaMergeStrategy(existingVMRule.Annotations)
 	existingVMRule.Annotations = mergeLabelsWithStrategy(existingVMRule.Annotations, VMRule.Annotations, metaMergeStrategy)
 	existingVMRule.Labels = mergeLabelsWithStrategy(existingVMRule.Labels, VMRule.Labels, metaMergeStrategy)
+	existingVMRule.OwnerReferences = VMRule.OwnerReferences
 
 	err = c.vclient.Update(ctx, existingVMRule)
 	if err != nil {
@@ -303,6 +304,8 @@ func (c *ConverterController) UpdateServiceMonitor(_, new interface{}) {
 	metaMergeStrategy := getMetaMergeStrategy(existingVMServiceScrape.Annotations)
 	existingVMServiceScrape.Annotations = mergeLabelsWithStrategy(existingVMServiceScrape.Annotations, vmServiceScrape.Annotations, metaMergeStrategy)
 	existingVMServiceScrape.Labels = mergeLabelsWithStrategy(existingVMServiceScrape.Labels, vmServiceScrape.Labels, metaMergeStrategy)
+	existingVMServiceScrape.OwnerReferences = vmServiceScrape.OwnerReferences
+
 	err = c.vclient.Update(ctx, existingVMServiceScrape)
 	if err != nil {
 		l.Error(err, "cannot update")
@@ -352,6 +355,7 @@ func (c *ConverterController) UpdatePodMonitor(_, new interface{}) {
 	mergeStrategy := getMetaMergeStrategy(existingVMPodScrape.Annotations)
 	existingVMPodScrape.Annotations = mergeLabelsWithStrategy(existingVMPodScrape.Annotations, podScrape.Annotations, mergeStrategy)
 	existingVMPodScrape.Labels = mergeLabelsWithStrategy(existingVMPodScrape.Labels, podScrape.Labels, mergeStrategy)
+	existingVMPodScrape.OwnerReferences = podScrape.OwnerReferences
 
 	err = c.vclient.Update(ctx, existingVMPodScrape)
 	if err != nil {
@@ -442,6 +446,7 @@ func (c *ConverterController) UpdateProbe(_, new interface{}) {
 	mergeStrategy := getMetaMergeStrategy(existingVMProbe.Annotations)
 	existingVMProbe.Annotations = mergeLabelsWithStrategy(existingVMProbe.Annotations, probeNew.Annotations, mergeStrategy)
 	existingVMProbe.Labels = mergeLabelsWithStrategy(existingVMProbe.Labels, probeNew.Labels, mergeStrategy)
+	existingVMProbe.OwnerReferences = vmProbe.OwnerReferences
 
 	existingVMProbe.Spec = vmProbe.Spec
 	err = c.vclient.Update(ctx, existingVMProbe)

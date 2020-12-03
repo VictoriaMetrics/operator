@@ -1198,7 +1198,7 @@ configure adding `OwnerReferences` to converted objects:
 ```bash
 VM_ENABLEDPROMETHEUSCONVERTEROWNERREFERENCES=true
 ```
-Converted objects will be linked to the original ones and will be deleted by kubernetes after the orignal ones are deleted.
+Converted objects will be linked to the original ones and will be deleted by kubernetes after the original ones are deleted.
 
 ### prometheus Rule duplication
  `Prometheus` allows to specify rules with the same content with-in one group at Rule spec, but its forbidden by vmalert.

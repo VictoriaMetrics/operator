@@ -83,6 +83,17 @@ type VMAgentSpec struct {
 	// required
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="ServiceAccount name",xDescriptors="urn:alm:descriptor:io.kubernetes:ServiceAccount"
 	ServiceAccountName string `json:"serviceAccountName"`
+	// SchedulerName - defines kubernetes scheduler name
+	// +optional
+	SchedulerName string `json:"schedulerName,omitempty"`
+	// RuntimeClassName - defines runtime class for kubernetes pod.
+	//https://kubernetes.io/docs/concepts/containers/runtime-class/
+	RuntimeClassName *string `json:"runtimeClassName,omitempty"`
+	// HostAliases provides mapping between ip and hostnames,
+	// that would be propagated to pod,
+	// cannot be used with HostNetwork.
+	// +optional
+	HostAliases []v1.HostAlias `json:"host_aliases,omitempty"`
 	// Containers property allows to inject additions sidecars. It can be useful for proxies, backup, etc.
 	// +optional
 	Containers []v1.Container `json:"containers,omitempty"`
@@ -345,6 +356,10 @@ func (cr VMAgent) PodLabels() map[string]string {
 	labels := cr.SelectorLabels()
 	if cr.Spec.PodMetadata != nil {
 		for label, value := range cr.Spec.PodMetadata.Labels {
+			if _, ok := labels[label]; ok {
+				// forbid changes for selector labels
+				continue
+			}
 			labels[label] = value
 		}
 	}
@@ -355,6 +370,10 @@ func (cr VMAgent) FinalLabels() map[string]string {
 	labels := cr.SelectorLabels()
 	if cr.ObjectMeta.Labels != nil {
 		for label, value := range cr.ObjectMeta.Labels {
+			if _, ok := labels[label]; ok {
+				// forbid changes for selector labels
+				continue
+			}
 			labels[label] = value
 		}
 	}

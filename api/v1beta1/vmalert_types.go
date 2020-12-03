@@ -86,6 +86,13 @@ type VMAlertSpec struct {
 	// VMAlert Pods.
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
+	// SchedulerName - defines kubernetes scheduler name
+	// +optional
+	SchedulerName string `json:"schedulerName,omitempty"`
+	// RuntimeClassName - defines runtime class for kubernetes pod.
+	//https://kubernetes.io/docs/concepts/containers/runtime-class/
+	// +optional
+	RuntimeClassName *string `json:"runtimeClassName,omitempty"`
 	// Containers property allows to inject additions sidecars. It can be useful for proxies, backup, etc.
 	// +optional
 	Containers []v1.Container `json:"containers,omitempty"`
@@ -325,6 +332,10 @@ func (cr VMAlert) PodLabels() map[string]string {
 	labels := cr.SelectorLabels()
 	if cr.Spec.PodMetadata != nil {
 		for label, value := range cr.Spec.PodMetadata.Labels {
+			if _, ok := labels[label]; ok {
+				// forbid changes for selector labels
+				continue
+			}
 			labels[label] = value
 		}
 	}
@@ -335,6 +346,10 @@ func (cr VMAlert) FinalLabels() map[string]string {
 	labels := cr.SelectorLabels()
 	if cr.ObjectMeta.Labels != nil {
 		for label, value := range cr.ObjectMeta.Labels {
+			if _, ok := labels[label]; ok {
+				// forbid changes for selector labels
+				continue
+			}
 			labels[label] = value
 		}
 	}

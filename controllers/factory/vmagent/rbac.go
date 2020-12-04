@@ -110,7 +110,7 @@ func buildVMAgentClusterRole(cr *v1beta12.VMAgent) *v12.ClusterRole {
 		},
 		Rules: []v12.PolicyRule{
 			{
-				APIGroups: []string{"", "networking.k8s.io", "extensions"},
+				APIGroups: []string{""},
 				Verbs: []string{
 					"get",
 					"list",
@@ -124,6 +124,17 @@ func buildVMAgentClusterRole(cr *v1beta12.VMAgent) *v12.ClusterRole {
 					"pods",
 					"endpointslices",
 					"configmaps",
+					"ingresses",
+				},
+			},
+			{
+				APIGroups: []string{"networking.k8s.io", "extensions"},
+				Verbs: []string{
+					"get",
+					"list",
+					"watch",
+				},
+				Resources: []string{
 					"ingresses",
 				},
 			},

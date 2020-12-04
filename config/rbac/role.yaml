@@ -273,7 +273,6 @@ rules:
     - update
 - apiGroups:
     - ""
-    - "networking.k8s.io"
   resources:
     - nodes
     - nodes/proxy
@@ -282,6 +281,14 @@ rules:
     - pods
     - endpointslices
     - configmaps
+  verbs:
+    - get
+    - list
+    - watch
+- apiGroups:
+    - "extensions"
+    - "networking.k8s.io"
+  resources:
     - ingresses
   verbs:
     - get
@@ -295,15 +302,31 @@ rules:
     - list
 - apiGroups:
     - "rbac.authorization.k8s.io"
-    - "policy"
-    - ""
   resources:
-    - serviceaccounts
     - clusterrolebindings
     - clusterroles
+  verbs:
+    - get
+    - list
+    - create
+    - patch
+    - update
+- apiGroups:
+    - "policy"
+  resources:
     - podsecuritypolicies
   verbs:
     - get
     - list
     - create
+    - patch
     - update
+    - use
+- apiGroups:
+    - ""
+  resources:
+    - serviceaccounts
+  verbs:
+    - get
+    - list
+    - create

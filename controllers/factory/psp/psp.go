@@ -54,7 +54,7 @@ func CreateOrUpdateServiceAccountWithPSP(ctx context.Context, cr CRDObject, rcli
 func CreateServiceAccountForCRD(ctx context.Context, cr CRDObject, rclient client.Client) error {
 	newSA := buildSA(cr)
 	var existSA v1.ServiceAccount
-	if err := rclient.Get(ctx, types.NamespacedName{Name: cr.PrefixedName(), Namespace: cr.GetNamespace()}, &existSA); err != nil {
+	if err := rclient.Get(ctx, types.NamespacedName{Name: cr.GetServiceAccountName(), Namespace: cr.GetNamespace()}, &existSA); err != nil {
 		if errors.IsNotFound(err) {
 			return rclient.Create(ctx, newSA)
 		}

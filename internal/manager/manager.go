@@ -3,6 +3,9 @@ package manager
 import (
 	"context"
 	"flag"
+
+	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/controllers"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/coreos/prometheus-operator/pkg/client/versioned"
 	"github.com/spf13/pflag"
@@ -11,12 +14,10 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-
-	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
-	"github.com/VictoriaMetrics/operator/controllers"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -42,6 +43,12 @@ func RunManager(ctx context.Context) error {
 
 	// Add flags registered by imported packages (e.g. glog and
 	// controller-runtime)
+	opts := zap.Options{}
+	opts.BindFlags(flag.CommandLine)
+	zap.UseFlagOptions(&opts)
+	logger := zap.New(zap.UseFlagOptions(&opts))
+	logf.SetLogger(logger)
+
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 
 	pflag.Parse()
@@ -54,10 +61,8 @@ func RunManager(ctx context.Context) error {
 	// implementing the logr.Logger interface. This logger will
 	// be propagated through the whole operator, generating
 	// uniform and structured logs.
-	logf.SetLogger(zap.New())
-	flag.Parse()
-
-	ctrl.SetLogger(zap.New())
+	klog.SetLogger(logger)
+	ctrl.SetLogger(logger)
 
 	setupLog.Info("Registering Components.")
 

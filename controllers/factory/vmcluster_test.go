@@ -2,17 +2,18 @@ package factory
 
 import (
 	"context"
+	"reflect"
+	"testing"
+	"time"
+
 	"github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/pointer"
-	"reflect"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-	"testing"
-	"time"
 )
 
 func Test_waitForPodReady(t *testing.T) {
@@ -95,9 +96,7 @@ func Test_waitForPodReady(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			obj := []runtime.Object{}
-			obj = append(obj, tt.predefinedObjects...)
-			fclient := fake.NewFakeClientWithScheme(testGetScheme(), obj...)
+			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 
 			if err := waitForPodReady(context.Background(), fclient, tt.args.ns, tt.args.podName, tt.args.c); (err != nil) != tt.wantErr {
 				t.Errorf("waitForPodReady() error = %v, wantErr %v", err, tt.wantErr)
@@ -202,7 +201,7 @@ func Test_performRollingUpdateOnSts(t *testing.T) {
 		name                string
 		args                args
 		wantErr             bool
-		predefinedObjets    []runtime.Object
+		predefinedObjects   []runtime.Object
 		updatePodRevByIndex *int32
 		neededPodRev        string
 	}{
@@ -214,7 +213,7 @@ func Test_performRollingUpdateOnSts(t *testing.T) {
 				c:         &config.BaseOperatorConf{},
 				podLabels: map[string]string{"app": "vmselect"},
 			},
-			predefinedObjets: []runtime.Object{
+			predefinedObjects: []runtime.Object{
 				&appsv1.StatefulSet{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "vmselect-sts",
@@ -248,7 +247,7 @@ func Test_performRollingUpdateOnSts(t *testing.T) {
 				},
 				podLabels: map[string]string{"app": "vmselect"},
 			},
-			predefinedObjets: []runtime.Object{
+			predefinedObjects: []runtime.Object{
 				&appsv1.StatefulSet{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "vmselect-sts",
@@ -292,7 +291,7 @@ func Test_performRollingUpdateOnSts(t *testing.T) {
 				podLabels: map[string]string{"app": "vmselect"},
 			},
 
-			predefinedObjets: []runtime.Object{
+			predefinedObjects: []runtime.Object{
 				&appsv1.StatefulSet{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "vmselect-sts",
@@ -328,11 +327,9 @@ func Test_performRollingUpdateOnSts(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			obj := []runtime.Object{}
-			obj = append(obj, tt.predefinedObjets...)
-			fclient := fake.NewFakeClientWithScheme(testGetScheme(), obj...)
+			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 			if tt.updatePodRevByIndex != nil {
-				podInd := obj[int(*tt.updatePodRevByIndex)]
+				podInd := tt.predefinedObjects[int(*tt.updatePodRevByIndex)]
 				pod := podInd.(*corev1.Pod)
 				go func(pod *corev1.Pod, rev string) {
 					time.Sleep(time.Millisecond * 1200)
@@ -469,9 +466,7 @@ func Test_waitForExpanding(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			obj := []runtime.Object{}
-			obj = append(obj, tt.predefinedObjects...)
-			fclient := fake.NewFakeClientWithScheme(testGetScheme(), obj...)
+			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 
 			got, err := waitForExpanding(context.Background(), fclient, tt.args.namespace, tt.args.lbs, tt.args.desiredCount)
 			if (err != nil) != tt.wantErr {
@@ -575,9 +570,7 @@ func TestCreateOrUpdateVMCluster(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			obj := []runtime.Object{}
-			obj = append(obj, tt.predefinedObjects...)
-			fclient := fake.NewFakeClientWithScheme(testGetScheme(), obj...)
+			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 			got, err := CreateOrUpdateVMCluster(context.TODO(), tt.args.cr, fclient, tt.args.c)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CreateOrUpdateVMCluster() error = %v, wantErr %v", err, tt.wantErr)

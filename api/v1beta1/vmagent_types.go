@@ -370,7 +370,7 @@ func (cr VMAgent) PodLabels() map[string]string {
 	return labels
 }
 
-func (cr VMAgent) FinalLabels() map[string]string {
+func (cr VMAgent) Labels() map[string]string {
 	labels := cr.SelectorLabels()
 	if cr.ObjectMeta.Labels != nil {
 		for label, value := range cr.ObjectMeta.Labels {

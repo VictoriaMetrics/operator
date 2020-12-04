@@ -66,7 +66,7 @@ func makeVMSinglePvc(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOperator
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        cr.PrefixedName(),
 			Namespace:   cr.Namespace,
-			Labels:      c.Labels.Merge(cr.FinalLabels()),
+			Labels:      c.Labels.Merge(cr.Labels()),
 			Annotations: cr.Annotations(),
 		},
 		Spec: *cr.Spec.Storage,
@@ -186,7 +186,7 @@ func newDeployForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOpe
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),
 			Namespace:       cr.Namespace,
-			Labels:          c.Labels.Merge(cr.FinalLabels()),
+			Labels:          c.Labels.Merge(cr.Labels()),
 			Annotations:     cr.Annotations(),
 			OwnerReferences: cr.AsOwner(),
 		},
@@ -437,7 +437,7 @@ func newServiceVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOpera
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),
 			Namespace:       cr.Namespace,
-			Labels:          c.Labels.Merge(cr.FinalLabels()),
+			Labels:          c.Labels.Merge(cr.Labels()),
 			Annotations:     cr.Annotations(),
 			OwnerReferences: cr.AsOwner(),
 		},

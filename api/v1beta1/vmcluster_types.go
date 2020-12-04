@@ -741,3 +741,17 @@ func (cr VMCluster) SelectorLabels() map[string]string {
 		"managed-by":                  "vm-operator",
 	}
 }
+
+func (cr VMCluster) Labels() map[string]string {
+	labels := cr.SelectorLabels()
+	if cr.ObjectMeta.Labels != nil {
+		for label, value := range cr.ObjectMeta.Labels {
+			if _, ok := labels[label]; ok {
+				// forbid changes for selector labels
+				continue
+			}
+			labels[label] = value
+		}
+	}
+	return labels
+}

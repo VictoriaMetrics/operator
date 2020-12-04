@@ -2,15 +2,16 @@ package factory
 
 import (
 	"context"
+	"reflect"
+	"testing"
+
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"reflect"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"testing"
 )
 
 func Test_loadVMAlertRemoteSecrets(t *testing.T) {
@@ -74,9 +75,7 @@ func Test_loadTLSAssetsForVMAlert(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			obj := []runtime.Object{}
-			obj = append(obj, tt.predefinedObjects...)
-			fclient := fake.NewFakeClientWithScheme(testGetScheme(), obj...)
+			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 			got, err := loadTLSAssetsForVMAlert(context.TODO(), fclient, tt.args.cr)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("loadTLSAssetsForVMAlert() error = %v, wantErr %v", err, tt.wantErr)
@@ -188,9 +187,7 @@ func TestCreateOrUpdateVMAlert(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			obj := []runtime.Object{}
-			obj = append(obj, tt.predefinedObjects...)
-			fclient := fake.NewFakeClientWithScheme(testGetScheme(), obj...)
+			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 			got, err := CreateOrUpdateVMAlert(context.TODO(), tt.args.cr, fclient, tt.args.c, tt.args.cmNames)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CreateOrUpdateVMAlert() error = %v, wantErr %v", err, tt.wantErr)

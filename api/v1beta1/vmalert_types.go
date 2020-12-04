@@ -346,7 +346,7 @@ func (cr VMAlert) PodLabels() map[string]string {
 	return labels
 }
 
-func (cr VMAlert) FinalLabels() map[string]string {
+func (cr VMAlert) Labels() map[string]string {
 	labels := cr.SelectorLabels()
 	if cr.ObjectMeta.Labels != nil {
 		for label, value := range cr.ObjectMeta.Labels {

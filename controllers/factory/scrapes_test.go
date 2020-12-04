@@ -2,44 +2,18 @@ package factory
 
 import (
 	"context"
+	"reflect"
+	"sort"
+	"testing"
+
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/go-logr/logr"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes/scheme"
-	"reflect"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sort"
-	"testing"
 )
-
-func testGetScheme() *runtime.Scheme {
-	s := scheme.Scheme
-	s.AddKnownTypes(victoriametricsv1beta1.GroupVersion,
-		&victoriametricsv1beta1.VMAgent{},
-		&victoriametricsv1beta1.VMAgentList{},
-		&victoriametricsv1beta1.VMAlert{},
-		&victoriametricsv1beta1.VMAlertList{},
-		&victoriametricsv1beta1.VMSingle{},
-		&victoriametricsv1beta1.VMSingleList{},
-		&victoriametricsv1beta1.VMAlertmanager{},
-		&victoriametricsv1beta1.VMAlertmanagerList{},
-	)
-	s.AddKnownTypes(victoriametricsv1beta1.GroupVersion,
-		&victoriametricsv1beta1.VMPodScrape{},
-		&victoriametricsv1beta1.VMPodScrapeList{},
-		&victoriametricsv1beta1.VMServiceScrapeList{},
-		&victoriametricsv1beta1.VMServiceScrape{},
-		&victoriametricsv1beta1.VMServiceScrapeList{},
-		&victoriametricsv1beta1.VMRule{},
-		&victoriametricsv1beta1.VMRuleList{},
-		&victoriametricsv1beta1.VMProbe{},
-		&victoriametricsv1beta1.VMProbeList{},
-	)
-	return s
-}
 
 func TestSelectServiceMonitors(t *testing.T) {
 	type args struct {
@@ -47,11 +21,11 @@ func TestSelectServiceMonitors(t *testing.T) {
 		l logr.Logger
 	}
 	tests := []struct {
-		name             string
-		args             args
-		want             []string
-		wantErr          bool
-		predefinedObjest []runtime.Object
+		name              string
+		args              args
+		want              []string
+		wantErr           bool
+		predefinedObjects []runtime.Object
 	}{
 		{
 			name: "select service scrape inside vmagent namespace",
@@ -67,7 +41,7 @@ func TestSelectServiceMonitors(t *testing.T) {
 				},
 				l: logf.Log.WithName("unit-test"),
 			},
-			predefinedObjest: []runtime.Object{
+			predefinedObjects: []runtime.Object{
 				&victoriametricsv1beta1.VMServiceScrape{
 					ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "default-monitor"},
 					Spec:       victoriametricsv1beta1.VMServiceScrapeSpec{},
@@ -91,7 +65,7 @@ func TestSelectServiceMonitors(t *testing.T) {
 				},
 				l: logf.Log.WithName("unit-test"),
 			},
-			predefinedObjest: []runtime.Object{
+			predefinedObjects: []runtime.Object{
 				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
 				&victoriametricsv1beta1.VMServiceScrape{
 					ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "default-monitor"},
@@ -109,9 +83,7 @@ func TestSelectServiceMonitors(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			obj := []runtime.Object{}
-			obj = append(obj, tt.predefinedObjest...)
-			fclient := fake.NewFakeClientWithScheme(testGetScheme(), obj...)
+			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 			got, err := SelectServiceScrapes(context.TODO(), tt.args.p, fclient)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("SelectServiceScrapes() error = %v, wantErr %v", err, tt.wantErr)
@@ -207,9 +179,7 @@ func TestSelectPodMonitors(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			obj := []runtime.Object{}
-			obj = append(obj, tt.predefinedObjects...)
-			fclient := fake.NewFakeClientWithScheme(testGetScheme(), obj...)
+			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 			got, err := SelectPodScrapes(context.TODO(), tt.args.p, fclient)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("SelectPodScrapes() error = %v, wantErr %v", err, tt.wantErr)
@@ -260,9 +230,7 @@ func Test_getCredFromConfigMap(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			obj := []runtime.Object{}
-			obj = append(obj, tt.predefinedObjects...)
-			fclient := fake.NewFakeClientWithScheme(testGetScheme(), obj...)
+			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 
 			got, err := getCredFromConfigMap(context.TODO(), fclient, tt.args.ns, tt.args.sel, tt.args.cacheKey, tt.args.cache)
 			if (err != nil) != tt.wantErr {
@@ -337,9 +305,7 @@ func Test_getCredFromSecret(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			obj := []runtime.Object{}
-			obj = append(obj, tt.predefinedObjects...)
-			fclient := fake.NewFakeClientWithScheme(testGetScheme(), obj...)
+			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 
 			got, err := getCredFromSecret(context.TODO(), fclient, tt.args.ns, tt.args.sel, tt.args.cacheKey, tt.args.cache)
 			if (err != nil) != tt.wantErr {
@@ -391,10 +357,7 @@ func TestSelectVMProbes(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			obj := []runtime.Object{}
-			obj = append(obj, tt.predefinedObjects...)
-			fclient := fake.NewFakeClientWithScheme(testGetScheme(), obj...)
-
+			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 			got, err := SelectVMProbes(context.TODO(), tt.args.cr, fclient)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("SelectVMProbes() error = %v, wantErr %v", err, tt.wantErr)

@@ -284,10 +284,14 @@ func (cr VMAlertmanager) PodLabels() map[string]string {
 	return labels
 }
 
-func (cr VMAlertmanager) FinalLabels() map[string]string {
+func (cr VMAlertmanager) Labels() map[string]string {
 	labels := cr.SelectorLabels()
 	if cr.ObjectMeta.Labels != nil {
 		for label, value := range cr.ObjectMeta.Labels {
+			if _, ok := labels[label]; ok {
+				// forbid changes for selector labels
+				continue
+			}
 			labels[label] = value
 		}
 	}

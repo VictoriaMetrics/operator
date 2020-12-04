@@ -25,7 +25,7 @@ import (
 type CRDObject interface {
 	AsOwner() []metav1.OwnerReference
 	Annotations() map[string]string
-	SelectorLabels() map[string]string
+	Labels() map[string]string
 	PrefixedName() string
 	GetServiceAccountName() string
 	GetPSPName() string
@@ -143,7 +143,7 @@ func buildSA(cr CRDObject) *v1.ServiceAccount {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.GetServiceAccountName(),
 			Namespace:       cr.GetNamespace(),
-			Labels:          cr.SelectorLabels(),
+			Labels:          cr.Labels(),
 			Annotations:     cr.Annotations(),
 			OwnerReferences: cr.AsOwner(),
 		},
@@ -155,7 +155,7 @@ func buildClusterRoleForPSP(cr CRDObject) *v12.ClusterRole {
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:       cr.GetNamespace(),
 			Name:            cr.PrefixedName(),
-			Labels:          cr.SelectorLabels(),
+			Labels:          cr.Labels(),
 			Annotations:     cr.Annotations(),
 			OwnerReferences: cr.AsOwner(),
 		},
@@ -175,7 +175,7 @@ func buildClusterRoleBinding(cr CRDObject) *v12.ClusterRoleBinding {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),
 			Namespace:       cr.GetNamespace(),
-			Labels:          cr.SelectorLabels(),
+			Labels:          cr.Labels(),
 			Annotations:     cr.Annotations(),
 			OwnerReferences: cr.AsOwner(),
 		},
@@ -199,7 +199,7 @@ func BuildPSP(cr CRDObject) *v1beta1.PodSecurityPolicy {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.GetPSPName(),
 			Namespace:       cr.GetNamespace(),
-			Labels:          cr.SelectorLabels(),
+			Labels:          cr.Labels(),
 			Annotations:     cr.Annotations(),
 			OwnerReferences: cr.AsOwner(),
 		},

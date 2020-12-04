@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -68,6 +69,10 @@ var _ = BeforeSuite(func(done Done) {
 	k8sClient, err = client.New(cfg, client.Options{Scheme: scheme.Scheme})
 	Expect(err).ToNot(HaveOccurred())
 	Expect(k8sClient).ToNot(BeNil())
+
+	// operator settings
+	os.Setenv("VM_ENABLEDPROMETHEUSCONVERTEROWNERREFERENCES", "true")
+
 	ctx, cancel := context.WithCancel(context.Background())
 	go func(ctx context.Context) {
 		defer GinkgoRecover()

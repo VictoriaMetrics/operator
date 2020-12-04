@@ -157,6 +157,8 @@ type BaseOperatorConf struct {
 		PrometheusRule bool `default:"true"`
 		Probe          bool `default:"true"`
 	}
+	EnabledPrometheusConverterOwnerReferences bool `default:"false"`
+
 	Host                      string `default:"0.0.0.0"`
 	ListenAddress             string `default:"0.0.0.0"`
 	DefaultLabels             string `default:"managed-by=vm-operator"`

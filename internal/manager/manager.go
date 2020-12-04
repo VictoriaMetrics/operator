@@ -164,10 +164,10 @@ func RunManager(ctx context.Context) error {
 		setupLog.Error(err, "cannot build promClient")
 		return err
 	}
-	converterController := controllers.NewConverterController(prom, mgr.GetClient())
+	converterController := controllers.NewConverterController(prom, mgr.GetClient(), config.MustGetBaseConfig())
 
 	errG := &errgroup.Group{}
-	converterController.Run(ctx, errG, config.MustGetBaseConfig())
+	converterController.Run(ctx, errG)
 	setupLog.Info("vmconverter was started")
 
 	setupLog.Info("starting manager")

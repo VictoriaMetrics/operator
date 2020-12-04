@@ -311,6 +311,7 @@ rules:
     - create
     - patch
     - update
+    - watch
 - apiGroups:
     - "policy"
   resources:
@@ -322,6 +323,7 @@ rules:
     - patch
     - update
     - use
+    - watch
 - apiGroups:
     - ""
   resources:
@@ -330,3 +332,4 @@ rules:
     - get
     - list
     - create
+    - watch

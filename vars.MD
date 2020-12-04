@@ -1,5 +1,5 @@
 # Auto Generated vars for package config 
-## updated at Thu Dec  3 22:29:27 UTC 2020 
+## updated at Fri Dec  4 15:10:33 UTC 2020 
 
 
 | varible name | variable default value | variable required | variable description |
@@ -76,6 +76,7 @@
 | VM_ENABLEDPROMETHEUSCONVERTER_SERVICESCRAPE | true | false | - |
 | VM_ENABLEDPROMETHEUSCONVERTER_PROMETHEUSRULE | true | false | - |
 | VM_ENABLEDPROMETHEUSCONVERTER_PROBE | true | false | - |
+| VM_ENABLEDPROMETHEUSCONVERTEROWNERREFERENCES | false | false | - |
 | VM_HOST | 0.0.0.0 | false | - |
 | VM_LISTENADDRESS | 0.0.0.0 | false | - |
 | VM_DEFAULTLABELS | managed-by=vm-operator | false | - |

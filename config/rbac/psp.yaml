@@ -1,0 +1,50 @@
+apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: vm-operator-psp
+spec:
+  allowPrivilegeEscalation: false
+  fsGroup:
+    rule: RunAsAny
+  hostNetwork: false
+  requiredDropCapabilities:
+    - ALL
+  runAsUser:
+    rule: RunAsAny
+  seLinux:
+    rule: RunAsAny
+  supplementalGroups:
+    rule: RunAsAny
+  volumes:
+    - secret
+    - emptyDir
+    - configMap
+    - projected
+    - downwardAPI
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: vm-operator-psp-role
+rules:
+  - apiGroups:
+      - "policy"
+    resourceNames:
+      - vm-operator-psp
+    resources:
+      - podsecuritypolicies
+    verbs:
+      - 'use'
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: vm-operator-psp-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: vm-operator-psp-role
+subjects:
+  - kind: ServiceAccount
+    name: monitoring-system
+    namespace: monitoring-system

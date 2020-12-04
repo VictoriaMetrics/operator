@@ -80,7 +80,7 @@ func buildVMAgentClusterRoleBinding(cr *v1beta12.VMAgent) *v12.ClusterRoleBindin
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.GetClusterRoleName(),
 			Namespace:       cr.GetNamespace(),
-			Labels:          cr.SelectorLabels(),
+			Labels:          cr.Labels(),
 			Annotations:     cr.Annotations(),
 			OwnerReferences: cr.AsOwner(),
 		},
@@ -104,7 +104,7 @@ func buildVMAgentClusterRole(cr *v1beta12.VMAgent) *v12.ClusterRole {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.GetClusterRoleName(),
 			Namespace:       cr.GetNamespace(),
-			Labels:          cr.SelectorLabels(),
+			Labels:          cr.Labels(),
 			Annotations:     cr.Annotations(),
 			OwnerReferences: cr.AsOwner(),
 		},

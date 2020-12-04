@@ -1166,6 +1166,17 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) 
 		args = append(args, "-envflag.enable=true")
 	}
 
+	if cr.Spec.ReplicationFactor != nil {
+		var dedupIsSet bool
+		for arg := range cr.Spec.VMSelect.ExtraArgs {
+			if strings.Contains(arg, "dedup.minScrapeInterval") {
+				dedupIsSet = true
+			}
+		}
+		if !dedupIsSet {
+			args = append(args, "-dedup.minScrapeInterval=1ms")
+		}
+	}
 	var envs []corev1.EnvVar
 
 	envs = append(envs, cr.Spec.VMStorage.ExtraEnvs...)

@@ -149,7 +149,6 @@ func waitForAPIResource(ctx context.Context, client discovery.DiscoveryInterface
 			_, apiLists, err := client.ServerGroupsAndResources()
 			if err != nil {
 				l.Error(err, "cannot get  server resource")
-				//				return err
 			}
 			for _, apiList := range apiLists {
 				if apiList.GroupVersion == apiGroupVersion {
@@ -161,7 +160,6 @@ func waitForAPIResource(ctx context.Context, client discovery.DiscoveryInterface
 					}
 				}
 			}
-			l.Info("api resource doesnt exist, waiting for it")
 
 		case <-ctx.Done():
 			l.Info("context was canceled")

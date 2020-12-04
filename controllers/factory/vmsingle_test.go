@@ -2,15 +2,16 @@ package factory
 
 import (
 	"context"
+	"reflect"
+	"testing"
+
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"reflect"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-	"testing"
 )
 
 func TestCreateOrUpdateVMSingle(t *testing.T) {
@@ -42,9 +43,7 @@ func TestCreateOrUpdateVMSingle(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			obj := []runtime.Object{}
-			obj = append(obj, tt.predefinedObjects...)
-			fclient := fake.NewFakeClientWithScheme(testGetScheme(), obj...)
+			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 			got, err := CreateOrUpdateVMSingle(context.TODO(), tt.args.cr, fclient, tt.args.c)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CreateOrUpdateVMSingle() error = %v, wantErr %v", err, tt.wantErr)
@@ -91,9 +90,7 @@ func TestCreateOrUpdateVMSingleService(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			obj := []runtime.Object{}
-			obj = append(obj, tt.predefinedObjects...)
-			fclient := fake.NewFakeClientWithScheme(testGetScheme(), obj...)
+			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 			got, err := CreateOrUpdateVMSingleService(context.TODO(), tt.args.cr, fclient, tt.args.c)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CreateOrUpdateVMSingleService() error = %v, wantErr %v", err, tt.wantErr)

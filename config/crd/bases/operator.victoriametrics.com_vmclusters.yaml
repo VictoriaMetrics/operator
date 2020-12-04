@@ -60,6 +60,9 @@ spec:
                     type: string
                 type: object
               type: array
+            podSecurityPolicyName:
+              description: PodSecurityPolicyName - defines name for podSecurityPolicy in case of empty value, prefixedName will be used.
+              type: string
             replicationFactor:
               description: ReplicationFactor defines how many copies of data make among distinct storage nodes
               format: int32
@@ -67,6 +70,9 @@ spec:
             retentionPeriod:
               description: RetentionPeriod in months
               pattern: '[1-9]+'
+              type: string
+            serviceAccountName:
+              description: ServiceAccountName is the name of the ServiceAccount to use to run the VMSelect Pods.
               type: string
             vminsert:
               properties:
@@ -347,9 +353,6 @@ spec:
                           type: string
                       type: object
                   type: object
-                serviceAccountName:
-                  description: ServiceAccountName is the name of the ServiceAccount to use to run the VMSelect Pods.
-                  type: string
                 tolerations:
                   description: Tolerations If specified, the pod's tolerations.
                   items:
@@ -728,9 +731,6 @@ spec:
                           type: string
                       type: object
                   type: object
-                serviceAccountName:
-                  description: ServiceAccountName is the name of the ServiceAccount to use to run the VMSelect Pods.
-                  type: string
                 tolerations:
                   description: Tolerations If specified, the pod's tolerations.
                   items:
@@ -1082,9 +1082,6 @@ spec:
                           type: string
                       type: object
                   type: object
-                serviceAccountName:
-                  description: ServiceAccountName is the name of the ServiceAccount to use to run the VMSelect Pods.
-                  type: string
                 storage:
                   description: Storage - add persistent volume for StorageDataPath its useful for persistent cache
                   properties:

@@ -270,7 +270,6 @@ EOF
    podScrapeSelector: {}
    serviceScrapeSelector: {}
    replicaCount: 1
-   serviceAccountName: vmagent
    remoteWrite:
      - url: "http://vminsert-example-vmcluster.default.svc.cluster.local:8480/insert/0/prometheus/api/v1/write"
 EOF
@@ -281,7 +280,8 @@ EOF
 ## VMAgent
 
 [VMAgent](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/app/vmagent) -  is a tiny but brave agent, which helps you collect metrics from various sources and stores them in [VictoriaMetrics](https://github.com/VictoriaMetrics/VictoriaMetrics).
-It requires access to Kubernetes API and you must create RBAC for it first, it can be found at `release/examples/VMAgent_rbac.yaml`
+It requires access to Kubernetes API and you can create RBAC for it first, it can be found at `release/examples/VMAgent_rbac.yaml`
+Or you can use default rbac account, that will be created for `VMAgent` by operator automatically.
 
 ```bash
  kubectl apply -f release/examples/vmagent_rbac.yaml
@@ -303,7 +303,6 @@ spec:
   podScrapeSelector: {}
   serviceScrapeSelector: {}
   replicaCount: 1
-  serviceAccountName: vmagent
   remoteWrite:
     - url: "http://vmsingle-example-vmsingle-persisted.default.svc:8429/api/v1/write"
 EOF
@@ -367,7 +366,6 @@ spec:
       matchLabels:
          name: default
   replicaCount: 1
-  serviceAccountName: vmagent
   remoteWrite:
     - url: "http://vmsingle-example-vmsingle-persisted.default.svc:8429/api/v1/write"
 EOF
@@ -391,7 +389,6 @@ spec:
        team: managers
        project: clo
   replicaCount: 1
-  serviceAccountName: vmagent
   remoteWrite:
     - url: "http://vmsingle-example-vmsingle-persisted.default.svc:8429/api/v1/write"
 EOF
@@ -409,7 +406,6 @@ spec:
   podScrapeSelector: {}
   probSelector: {}
   replicaCount: 1
-  serviceAccountName: vmagent
   remoteWrite:
     - url: "http://vmsingle-example-vmsingle-persisted.default.svc:8429/api/v1/write"
 EOF 
@@ -599,7 +595,6 @@ spec:
   podScrapeSelector: {}
   serviceScrapeSelector: {}
   replicaCount: 1
-  serviceAccountName: vmagent
   remoteWrite:
     - url: "http://vmsingle-example-vmsingle-persisted.default.svc:8429/api/v1/write"
 EOF
@@ -952,7 +947,6 @@ spec:
    serviceScrapeSelector: {}
    probeSelector: {}
    replicaCount: 1
-   serviceAccountName: vmagent
    remoteWrite:
      - url: "http://vmsingle-example-vmsingle-persisted.default.svc:8429/api/v1/write"
 EOF

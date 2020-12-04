@@ -15,6 +15,8 @@ const (
 	ClusterStatusOperational = "operational"
 	ClusterStatusFailed      = "failed"
 
+	InternalOperatorError = "failed to perform vmcluster preparing jobs"
+
 	StorageRollingUpdateFailed = "failed to perform rolling update on vmStorage"
 	StorageCreationFailed      = "failed to create vmStorage statefulset"
 
@@ -33,6 +35,15 @@ type VMClusterSpec struct {
 	// distinct storage nodes
 	// +optional
 	ReplicationFactor *int32 `json:"replicationFactor,omitempty"`
+	// PodSecurityPolicyName - defines name for podSecurityPolicy
+	// in case of empty value, prefixedName will be used.
+	// +optional
+	PodSecurityPolicyName string `json:"podSecurityPolicyName,omitempty"`
+
+	// ServiceAccountName is the name of the ServiceAccount to use to run the
+	// VMSelect Pods.
+	// +optional
+	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
 	// ImagePullSecrets An optional list of references to secrets in the same namespace
 	// to use for pulling images from registries
@@ -158,10 +169,6 @@ type VMSelect struct {
 	// This defaults to the default PodSecurityContext.
 	// +optional
 	SecurityContext *v1.PodSecurityContext `json:"securityContext,omitempty"`
-	// ServiceAccountName is the name of the ServiceAccount to use to run the
-	// VMSelect Pods.
-	// +optional
-	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 	// Containers property allows to inject additions sidecars. It can be useful for proxies, backup, etc.
 	// +optional
 	Containers []v1.Container `json:"containers,omitempty"`
@@ -290,10 +297,6 @@ type VMInsert struct {
 	// This defaults to the default PodSecurityContext.
 	// +optional
 	SecurityContext *v1.PodSecurityContext `json:"securityContext,omitempty"`
-	// ServiceAccountName is the name of the ServiceAccount to use to run the
-	// VMSelect Pods.
-	// +optional
-	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 	// Containers property allows to inject additions sidecars. It can be useful for proxies, backup, etc.
 	// +optional
 	Containers []v1.Container `json:"containers,omitempty"`
@@ -409,10 +412,6 @@ type VMStorage struct {
 	// This defaults to the default PodSecurityContext.
 	// +optional
 	SecurityContext *v1.PodSecurityContext `json:"securityContext,omitempty"`
-	// ServiceAccountName is the name of the ServiceAccount to use to run the
-	// VMSelect Pods.
-	// +optional
-	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 	// Containers property allows to inject additions sidecars. It can be useful for proxies, backup, etc.
 	// +optional
 	Containers []v1.Container `json:"containers,omitempty"`
@@ -715,4 +714,44 @@ func (cr VMBackup) SnapshotCreatePathWithFlags(port string, extraArgs map[string
 
 func (cr VMBackup) SnapshotDeletePathWithFlags(port string, extraArgs map[string]string) string {
 	return fmt.Sprintf("http://localhost:%s%s", port, path.Join(buildPathWithPrefixFlag(extraArgs, snapshotDelete)))
+}
+
+func (cr VMCluster) GetServiceAccountName() string {
+	if cr.Spec.ServiceAccountName == "" {
+		return cr.PrefixedName()
+	}
+	return cr.Spec.ServiceAccountName
+}
+
+func (cr VMCluster) PrefixedName() string {
+	return fmt.Sprintf("vmcluster-%s", cr.Name)
+}
+
+func (cr VMCluster) GetPSPName() string {
+	if cr.Spec.PodSecurityPolicyName == "" {
+		return cr.PrefixedName()
+	}
+	return cr.Spec.PodSecurityPolicyName
+}
+
+func (cr VMCluster) SelectorLabels() map[string]string {
+	return map[string]string{"app.kubernetes.io/name": "vmcluster",
+		"app.kubernetes.io/instance":  cr.Name,
+		"app.kubernetes.io/component": "monitoring",
+		"managed-by":                  "vm-operator",
+	}
+}
+
+func (cr VMCluster) Labels() map[string]string {
+	labels := cr.SelectorLabels()
+	if cr.ObjectMeta.Labels != nil {
+		for label, value := range cr.ObjectMeta.Labels {
+			if _, ok := labels[label]; ok {
+				// forbid changes for selector labels
+				continue
+			}
+			labels[label] = value
+		}
+	}
+	return labels
 }

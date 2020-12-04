@@ -93,6 +93,10 @@ type VMAlertSpec struct {
 	//https://kubernetes.io/docs/concepts/containers/runtime-class/
 	// +optional
 	RuntimeClassName *string `json:"runtimeClassName,omitempty"`
+	// PodSecurityPolicyName - defines name for podSecurityPolicy
+	// in case of empty value, prefixedName will be used.
+	// +optional
+	PodSecurityPolicyName string `json:"podSecurityPolicyName,omitempty"`
 	// Containers property allows to inject additions sidecars. It can be useful for proxies, backup, etc.
 	// +optional
 	Containers []v1.Container `json:"containers,omitempty"`
@@ -342,7 +346,7 @@ func (cr VMAlert) PodLabels() map[string]string {
 	return labels
 }
 
-func (cr VMAlert) FinalLabels() map[string]string {
+func (cr VMAlert) Labels() map[string]string {
 	labels := cr.SelectorLabels()
 	if cr.ObjectMeta.Labels != nil {
 		for label, value := range cr.ObjectMeta.Labels {
@@ -374,6 +378,20 @@ func (cr VMAlert) ReloadPathWithPort(port string) string {
 
 func (cr VMAlert) NeedDedupRules() bool {
 	return cr.ObjectMeta.Annotations[MetaVMAlertDeduplicateRulesKey] != ""
+}
+
+func (cr VMAlert) GetServiceAccountName() string {
+	if cr.Spec.ServiceAccountName == "" {
+		return cr.PrefixedName()
+	}
+	return cr.Spec.ServiceAccountName
+}
+
+func (cr VMAlert) GetPSPName() string {
+	if cr.Spec.PodSecurityPolicyName == "" {
+		return cr.PrefixedName()
+	}
+	return cr.Spec.PodSecurityPolicyName
 }
 
 func init() {

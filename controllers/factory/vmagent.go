@@ -8,6 +8,12 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
+
+	"github.com/VictoriaMetrics/operator/controllers/factory/vmagent"
+
+	"github.com/VictoriaMetrics/operator/controllers/factory/psp"
+
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
@@ -75,7 +81,7 @@ func newServiceVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperato
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),
 			Namespace:       cr.Namespace,
-			Labels:          c.Labels.Merge(cr.FinalLabels()),
+			Labels:          c.Labels.Merge(cr.Labels()),
 			Annotations:     cr.Annotations(),
 			OwnerReferences: cr.AsOwner(),
 		},
@@ -98,6 +104,21 @@ func newServiceVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperato
 func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client, c *config.BaseOperatorConf) (reconcile.Result, error) {
 	l := log.WithValues("controller", "vmagent.crud")
 
+	if err := psp.CreateServiceAccountForCRD(ctx, cr, rclient); err != nil {
+		return reconcile.Result{}, fmt.Errorf("failed create service account: %w", err)
+	}
+	if c.PSPAutoCreateEnabled {
+		if err := psp.CreateOrUpdateServiceAccountWithPSP(ctx, cr, rclient); err != nil {
+			l.Error(err, "cannot create podsecuritypolicy")
+			return reconcile.Result{}, fmt.Errorf("cannot create podsecurity policy for vmagent, err: %w", err)
+		}
+	}
+	if cr.GetServiceAccountName() == cr.PrefixedName() {
+		l.Info("creating default clusterrole for vmagent")
+		if err := vmagent.CreateVMAgentClusterAccess(ctx, cr, rclient); err != nil {
+			return reconcile.Result{}, fmt.Errorf("cannot create vmagent clusterole and binding for it, err: %w", err)
+		}
+	}
 	//we have to create empty or full cm first
 	err := CreateOrUpdateConfigurationSecret(ctx, cr, rclient, c)
 	if err != nil {
@@ -218,7 +239,7 @@ func newDeployForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOpera
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),
 			Namespace:       cr.Namespace,
-			Labels:          c.Labels.Merge(cr.FinalLabels()),
+			Labels:          c.Labels.Merge(cr.Labels()),
 			Annotations:     cr.Annotations(),
 			OwnerReferences: cr.AsOwner(),
 		},
@@ -327,7 +348,7 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 
 	for _, s := range cr.Spec.Secrets {
 		volumes = append(volumes, corev1.Volume{
-			Name: SanitizeVolumeName("secret-" + s),
+			Name: k8stools.SanitizeVolumeName("secret-" + s),
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: s,
@@ -335,7 +356,7 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 			},
 		})
 		agentVolumeMounts = append(agentVolumeMounts, corev1.VolumeMount{
-			Name:      SanitizeVolumeName("secret-" + s),
+			Name:      k8stools.SanitizeVolumeName("secret-" + s),
 			ReadOnly:  true,
 			MountPath: path.Join(SecretsDir, s),
 		})
@@ -343,7 +364,7 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 
 	for _, c := range cr.Spec.ConfigMaps {
 		volumes = append(volumes, corev1.Volume{
-			Name: SanitizeVolumeName("configmap-" + c),
+			Name: k8stools.SanitizeVolumeName("configmap-" + c),
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
@@ -353,7 +374,7 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 			},
 		})
 		agentVolumeMounts = append(agentVolumeMounts, corev1.VolumeMount{
-			Name:      SanitizeVolumeName("configmap-" + c),
+			Name:      k8stools.SanitizeVolumeName("configmap-" + c),
 			ReadOnly:  true,
 			MountPath: path.Join(ConfigMapsDir, c),
 		})
@@ -378,7 +399,7 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 
 	if cr.Spec.RelabelConfig != nil {
 		volumes = append(volumes, corev1.Volume{
-			Name: SanitizeVolumeName("configmap-" + cr.Spec.RelabelConfig.Name),
+			Name: k8stools.SanitizeVolumeName("configmap-" + cr.Spec.RelabelConfig.Name),
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
@@ -388,7 +409,7 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 			},
 		})
 		agentVolumeMounts = append(agentVolumeMounts, corev1.VolumeMount{
-			Name:      SanitizeVolumeName("configmap-" + cr.Spec.RelabelConfig.Name),
+			Name:      k8stools.SanitizeVolumeName("configmap-" + cr.Spec.RelabelConfig.Name),
 			ReadOnly:  true,
 			MountPath: path.Join(ConfigMapsDir, cr.Spec.RelabelConfig.Name),
 		})
@@ -404,7 +425,7 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 			continue
 		}
 		volumes = append(volumes, corev1.Volume{
-			Name: SanitizeVolumeName("configmap-" + rw.UrlRelabelConfig.Name),
+			Name: k8stools.SanitizeVolumeName("configmap-" + rw.UrlRelabelConfig.Name),
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
@@ -414,7 +435,7 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 			},
 		})
 		agentVolumeMounts = append(agentVolumeMounts, corev1.VolumeMount{
-			Name:      SanitizeVolumeName("configmap-" + rw.UrlRelabelConfig.Name),
+			Name:      k8stools.SanitizeVolumeName("configmap-" + rw.UrlRelabelConfig.Name),
 			ReadOnly:  true,
 			MountPath: path.Join(ConfigMapsDir, rw.UrlRelabelConfig.Name),
 		})
@@ -495,7 +516,7 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 		},
 	}, additionalContainers...)
 
-	containers, err := MergePatchContainers(operatorContainers, cr.Spec.Containers)
+	containers, err := k8stools.MergePatchContainers(operatorContainers, cr.Spec.Containers)
 	if err != nil {
 		return nil, err
 	}
@@ -509,7 +530,7 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 			Volumes:                   volumes,
 			InitContainers:            cr.Spec.InitContainers,
 			Containers:                containers,
-			ServiceAccountName:        cr.Spec.ServiceAccountName,
+			ServiceAccountName:        cr.GetServiceAccountName(),
 			SecurityContext:           cr.Spec.SecurityContext,
 			ImagePullSecrets:          cr.Spec.ImagePullSecrets,
 			Affinity:                  cr.Spec.Affinity,
@@ -574,7 +595,7 @@ func CreateOrUpdateTlsAssets(ctx context.Context, cr *victoriametricsv1beta1.VMA
 	tlsAssetsSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.TLSAssetName(),
-			Labels:          cr.FinalLabels(),
+			Labels:          cr.Labels(),
 			OwnerReferences: cr.AsOwner(),
 			Namespace:       cr.Namespace,
 		},

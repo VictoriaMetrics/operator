@@ -45,12 +45,20 @@ type VMAgentReconciler struct {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmagents/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmagents/finalizers,verbs=*
 // +kubebuilder:rbac:groups="",resources=pods,verbs=*
+// +kubebuilder:rbac:groups="",resources=nodes,verbs=get;watch;list
+// +kubebuilder:rbac:groups="",resources=nodes/proxy,verbs=get;watch;list
+// +kubebuilder:rbac:groups="networking.k8s.io",resources=ingresses,verbs=get;watch;list
 // +kubebuilder:rbac:groups="",resources=events,verbs=*
 // +kubebuilder:rbac:groups="",resources=endpoints,verbs=*
+// +kubebuilder:rbac:groups="",resources=endpointslices,verbs=get;watch;list
 // +kubebuilder:rbac:groups="",resources=services,verbs=*
 // +kubebuilder:rbac:groups="",resources=services/finalizers,verbs=*
 // +kubebuilder:rbac:groups=monitoring.coreos.com,resources=*,verbs=*
 // +kubebuilder:rbac:groups="",resources=namespaces,verbs=get;watch;list
+// +kubebuilder:rbac:groups="rbac.authorization.k8s.io",resources=clusterrolebindings,verbs=get;create,update;list
+// +kubebuilder:rbac:groups="rbac.authorization.k8s.io",resources=clusterroles,verbs=get;create,update;list
+// +kubebuilder:rbac:groups="policy",resources=podsecuritypolicies,verbs=get;create,update;list
+// +kubebuilder:rbac:groups="",resources=serviceaccounts,verbs=get;create,update;list
 func (r *VMAgentReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := r.Log.WithValues("vmagent", req.NamespacedName)
 	reqLogger.Info("Reconciling")

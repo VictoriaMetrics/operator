@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/controllers/factory/psp"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/coreos/prometheus-operator/pkg/k8sutil"
 	appsv1 "k8s.io/api/apps/v1"
@@ -59,6 +61,20 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient
 			log.Error(err, "cannot update cluster status")
 		}
 	}()
+
+	if err := psp.CreateServiceAccountForCRD(ctx, cr, rclient); err != nil {
+		reason = v1beta1.InternalOperatorError
+		return status, fmt.Errorf("failed create service account: %w", err)
+	}
+
+	if c.PSPAutoCreateEnabled {
+		log.Info("creating psp for vmcluster")
+		if err := psp.CreateOrUpdateServiceAccountWithPSP(ctx, cr, rclient); err != nil {
+			reason = v1beta1.InternalOperatorError
+			return status, fmt.Errorf("cannot create podsecurity policy for vmsingle, err=%w", err)
+		}
+	}
+
 	if cr.Spec.VMStorage != nil {
 		vmStorageSts, err := createOrUpdateVMStorage(ctx, cr, rclient, c)
 		if err != nil {
@@ -593,7 +609,7 @@ func makePodSpecForVMSelect(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 
 	for _, s := range cr.Spec.VMSelect.Secrets {
 		volumes = append(volumes, corev1.Volume{
-			Name: SanitizeVolumeName("secret-" + s),
+			Name: k8stools.SanitizeVolumeName("secret-" + s),
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: s,
@@ -601,7 +617,7 @@ func makePodSpecForVMSelect(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 			},
 		})
 		vmMounts = append(vmMounts, corev1.VolumeMount{
-			Name:      SanitizeVolumeName("secret-" + s),
+			Name:      k8stools.SanitizeVolumeName("secret-" + s),
 			ReadOnly:  true,
 			MountPath: path.Join(SecretsDir, s),
 		})
@@ -609,7 +625,7 @@ func makePodSpecForVMSelect(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 
 	for _, c := range cr.Spec.VMSelect.ConfigMaps {
 		volumes = append(volumes, corev1.Volume{
-			Name: SanitizeVolumeName("configmap-" + c),
+			Name: k8stools.SanitizeVolumeName("configmap-" + c),
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
@@ -619,7 +635,7 @@ func makePodSpecForVMSelect(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 			},
 		})
 		vmMounts = append(vmMounts, corev1.VolumeMount{
-			Name:      SanitizeVolumeName("configmap-" + c),
+			Name:      k8stools.SanitizeVolumeName("configmap-" + c),
 			ReadOnly:  true,
 			MountPath: path.Join(ConfigMapsDir, c),
 		})
@@ -689,7 +705,7 @@ func makePodSpecForVMSelect(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 			Volumes:                       volumes,
 			InitContainers:                cr.Spec.VMSelect.InitContainers,
 			Containers:                    containers,
-			ServiceAccountName:            cr.Spec.VMSelect.ServiceAccountName,
+			ServiceAccountName:            cr.GetServiceAccountName(),
 			SecurityContext:               cr.Spec.VMSelect.SecurityContext,
 			ImagePullSecrets:              cr.Spec.ImagePullSecrets,
 			Affinity:                      cr.Spec.VMSelect.Affinity,
@@ -864,7 +880,7 @@ func makePodSpecForVMInsert(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 
 	for _, s := range cr.Spec.VMInsert.Secrets {
 		volumes = append(volumes, corev1.Volume{
-			Name: SanitizeVolumeName("secret-" + s),
+			Name: k8stools.SanitizeVolumeName("secret-" + s),
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: s,
@@ -872,7 +888,7 @@ func makePodSpecForVMInsert(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 			},
 		})
 		vmMounts = append(vmMounts, corev1.VolumeMount{
-			Name:      SanitizeVolumeName("secret-" + s),
+			Name:      k8stools.SanitizeVolumeName("secret-" + s),
 			ReadOnly:  true,
 			MountPath: path.Join(SecretsDir, s),
 		})
@@ -880,7 +896,7 @@ func makePodSpecForVMInsert(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 
 	for _, c := range cr.Spec.VMInsert.ConfigMaps {
 		volumes = append(volumes, corev1.Volume{
-			Name: SanitizeVolumeName("configmap-" + c),
+			Name: k8stools.SanitizeVolumeName("configmap-" + c),
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
@@ -890,7 +906,7 @@ func makePodSpecForVMInsert(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 			},
 		})
 		vmMounts = append(vmMounts, corev1.VolumeMount{
-			Name:      SanitizeVolumeName("configmap-" + c),
+			Name:      k8stools.SanitizeVolumeName("configmap-" + c),
 			ReadOnly:  true,
 			MountPath: path.Join(ConfigMapsDir, c),
 		})
@@ -957,7 +973,7 @@ func makePodSpecForVMInsert(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 			Volumes:                   volumes,
 			InitContainers:            cr.Spec.VMInsert.InitContainers,
 			Containers:                containers,
-			ServiceAccountName:        cr.Spec.VMInsert.ServiceAccountName,
+			ServiceAccountName:        cr.GetServiceAccountName(),
 			SecurityContext:           cr.Spec.VMInsert.SecurityContext,
 			ImagePullSecrets:          cr.Spec.ImagePullSecrets,
 			Affinity:                  cr.Spec.VMInsert.Affinity,
@@ -1150,6 +1166,17 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) 
 		args = append(args, "-envflag.enable=true")
 	}
 
+	if cr.Spec.ReplicationFactor != nil {
+		var dedupIsSet bool
+		for arg := range cr.Spec.VMSelect.ExtraArgs {
+			if strings.Contains(arg, "dedup.minScrapeInterval") {
+				dedupIsSet = true
+			}
+		}
+		if !dedupIsSet {
+			args = append(args, "-dedup.minScrapeInterval=1ms")
+		}
+	}
 	var envs []corev1.EnvVar
 
 	envs = append(envs, cr.Spec.VMStorage.ExtraEnvs...)
@@ -1177,7 +1204,7 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) 
 
 	if cr.Spec.VMStorage.VMBackup != nil && cr.Spec.VMStorage.VMBackup.CredentialsSecret != nil {
 		volumes = append(volumes, corev1.Volume{
-			Name: SanitizeVolumeName("secret-" + cr.Spec.VMStorage.VMBackup.CredentialsSecret.Name),
+			Name: k8stools.SanitizeVolumeName("secret-" + cr.Spec.VMStorage.VMBackup.CredentialsSecret.Name),
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: cr.Spec.VMStorage.VMBackup.CredentialsSecret.Name,
@@ -1197,7 +1224,7 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) 
 
 	for _, s := range cr.Spec.VMStorage.Secrets {
 		volumes = append(volumes, corev1.Volume{
-			Name: SanitizeVolumeName("secret-" + s),
+			Name: k8stools.SanitizeVolumeName("secret-" + s),
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: s,
@@ -1205,7 +1232,7 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) 
 			},
 		})
 		vmMounts = append(vmMounts, corev1.VolumeMount{
-			Name:      SanitizeVolumeName("secret-" + s),
+			Name:      k8stools.SanitizeVolumeName("secret-" + s),
 			ReadOnly:  true,
 			MountPath: path.Join(SecretsDir, s),
 		})
@@ -1213,7 +1240,7 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) 
 
 	for _, c := range cr.Spec.VMStorage.ConfigMaps {
 		volumes = append(volumes, corev1.Volume{
-			Name: SanitizeVolumeName("configmap-" + c),
+			Name: k8stools.SanitizeVolumeName("configmap-" + c),
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
@@ -1223,7 +1250,7 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) 
 			},
 		})
 		vmMounts = append(vmMounts, corev1.VolumeMount{
-			Name:      SanitizeVolumeName("configmap-" + c),
+			Name:      k8stools.SanitizeVolumeName("configmap-" + c),
 			ReadOnly:  true,
 			MountPath: path.Join(ConfigMapsDir, c),
 		})
@@ -1301,7 +1328,7 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) 
 			Volumes:                       volumes,
 			InitContainers:                cr.Spec.VMStorage.InitContainers,
 			Containers:                    containers,
-			ServiceAccountName:            cr.Spec.VMStorage.ServiceAccountName,
+			ServiceAccountName:            cr.GetServiceAccountName(),
 			SecurityContext:               cr.Spec.VMStorage.SecurityContext,
 			ImagePullSecrets:              cr.Spec.ImagePullSecrets,
 			Affinity:                      cr.Spec.VMStorage.Affinity,

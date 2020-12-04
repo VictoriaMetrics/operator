@@ -7,6 +7,8 @@ import (
 	"path"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/controllers/factory/psp"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/blang/semver"
 	appsv1 "k8s.io/api/apps/v1"
@@ -51,6 +53,16 @@ var (
 
 func CreateOrUpdateAlertManager(ctx context.Context, cr *victoriametricsv1beta1.VMAlertmanager, rclient client.Client, c *config.BaseOperatorConf) (*appsv1.StatefulSet, error) {
 	l := log.WithValues("reconcile.VMAlertManager.sts", cr.Name, "ns", cr.Namespace)
+
+	if err := psp.CreateServiceAccountForCRD(ctx, cr, rclient); err != nil {
+		return nil, fmt.Errorf("failed create service account: %w", err)
+	}
+	if c.PSPAutoCreateEnabled {
+		if err := psp.CreateOrUpdateServiceAccountWithPSP(ctx, cr, rclient); err != nil {
+			l.Error(err, "cannot create podsecuritypolicy")
+			return nil, fmt.Errorf("cannot create podsecurity policy for alertmanager, err=%w", err)
+		}
+	}
 	newSts, err := newStsForAlertManager(cr, c)
 	if err != nil {
 		return nil, fmt.Errorf("cannot generate alertmanager sts, name: %s,err: %w", cr.Name, err)
@@ -127,7 +139,7 @@ func newStsForAlertManager(cr *victoriametricsv1beta1.VMAlertmanager, c *config.
 	statefulset := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),
-			Labels:          c.Labels.Merge(cr.FinalLabels()),
+			Labels:          c.Labels.Merge(cr.Labels()),
 			Annotations:     cr.Annotations(),
 			Namespace:       cr.Namespace,
 			OwnerReferences: cr.AsOwner(),
@@ -220,7 +232,7 @@ func newAlertManagerService(cr *victoriametricsv1beta1.VMAlertmanager, c *config
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),
 			Namespace:       cr.Namespace,
-			Labels:          c.Labels.Merge(cr.FinalLabels()),
+			Labels:          c.Labels.Merge(cr.Labels()),
 			Annotations:     cr.Annotations(),
 			OwnerReferences: cr.AsOwner(),
 		},
@@ -433,7 +445,7 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, config *conf
 
 	for _, s := range cr.Spec.Secrets {
 		volumes = append(volumes, v1.Volume{
-			Name: SanitizeVolumeName("secret-" + s),
+			Name: k8stools.SanitizeVolumeName("secret-" + s),
 			VolumeSource: v1.VolumeSource{
 				Secret: &v1.SecretVolumeSource{
 					SecretName: s,
@@ -441,7 +453,7 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, config *conf
 			},
 		})
 		amVolumeMounts = append(amVolumeMounts, v1.VolumeMount{
-			Name:      SanitizeVolumeName("secret-" + s),
+			Name:      k8stools.SanitizeVolumeName("secret-" + s),
 			ReadOnly:  true,
 			MountPath: path.Join(SecretsDir, s),
 		})
@@ -449,7 +461,7 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, config *conf
 
 	for _, c := range cr.Spec.ConfigMaps {
 		volumes = append(volumes, v1.Volume{
-			Name: SanitizeVolumeName("configmap-" + c),
+			Name: k8stools.SanitizeVolumeName("configmap-" + c),
 			VolumeSource: v1.VolumeSource{
 				ConfigMap: &v1.ConfigMapVolumeSource{
 					LocalObjectReference: v1.LocalObjectReference{
@@ -459,7 +471,7 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, config *conf
 			},
 		})
 		amVolumeMounts = append(amVolumeMounts, v1.VolumeMount{
-			Name:      SanitizeVolumeName("configmap-" + c),
+			Name:      k8stools.SanitizeVolumeName("configmap-" + c),
 			ReadOnly:  true,
 			MountPath: path.Join(ConfigMapsDir, c),
 		})
@@ -519,7 +531,7 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, config *conf
 		},
 	}
 
-	containers, err := MergePatchContainers(defaultContainers, cr.Spec.Containers)
+	containers, err := k8stools.MergePatchContainers(defaultContainers, cr.Spec.Containers)
 	if err != nil {
 		return nil, fmt.Errorf("failed to merge containers spec: %w", err)
 	}
@@ -548,7 +560,7 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, config *conf
 				Volumes:                       volumes,
 				RuntimeClassName:              cr.Spec.RuntimeClassName,
 				SchedulerName:                 cr.Spec.SchedulerName,
-				ServiceAccountName:            cr.Spec.ServiceAccountName,
+				ServiceAccountName:            cr.GetServiceAccountName(),
 				SecurityContext:               cr.Spec.SecurityContext,
 				Tolerations:                   cr.Spec.Tolerations,
 				Affinity:                      cr.Spec.Affinity,
@@ -595,7 +607,7 @@ func createDefaultAMConfig(ctx context.Context, cr *victoriametricsv1beta1.VMAle
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.Spec.ConfigSecret,
 			Namespace:       cr.Namespace,
-			Labels:          cr.FinalLabels(),
+			Labels:          cr.Labels(),
 			Annotations:     cr.Annotations(),
 			OwnerReferences: cr.AsOwner(),
 		},

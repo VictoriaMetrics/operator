@@ -5,6 +5,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
+
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
@@ -12,7 +14,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -209,9 +210,7 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			obj := []runtime.Object{}
-			obj = append(obj, tt.predefinedObjects...)
-			fclient := fake.NewFakeClientWithScheme(testGetScheme(), obj...)
+			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 
 			got, err := CreateOrUpdateVMAgent(context.TODO(), tt.args.cr, fclient, tt.args.c)
 			if (err != nil) != tt.wantErr {
@@ -306,7 +305,7 @@ func Test_addAddtionalScrapeConfigOwnership(t *testing.T) {
 				localSecret := secret
 				obj = append(obj, &localSecret)
 			}
-			fclient := fake.NewFakeClientWithScheme(testGetScheme(), obj...)
+			fclient := k8stools.GetTestClientWithObjects(obj)
 
 			if err := addAddtionalScrapeConfigOwnership(tt.args.cr, fclient, tt.args.l); (err != nil) != tt.wantErr {
 				t.Errorf("addAddtionalScrapeConfigOwnership() error = %v, wantErr %v", err, tt.wantErr)
@@ -463,9 +462,7 @@ func Test_loadTLSAssets(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			obj := []runtime.Object{}
-			obj = append(obj, tt.predefinedObjects...)
-			fclient := fake.NewFakeClientWithScheme(testGetScheme(), obj...)
+			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 
 			got, err := loadTLSAssets(context.TODO(), fclient, tt.args.cr, tt.args.monitors)
 			if (err != nil) != tt.wantErr {

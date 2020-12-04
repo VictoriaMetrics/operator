@@ -44,6 +44,7 @@ VictoriaMetrics provides [helm charts](https://github.com/VictoriaMetrics/helm-c
 - design and description of implementation [design](/docs/design.MD)
 - operator objects description [doc](/docs/api.MD)
 - backups [docs](/docs/backups.MD)
+- security [doc](/docs/security.MD)
 
 
 

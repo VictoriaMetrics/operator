@@ -17,7 +17,6 @@ spec:
     limits:
       cpu: "500m"
       memory: "850Mi"
-  serviceAccountName: vmagent
   additionalArgs:
     memory.allowedPercent: "40"
   remoteWrite:

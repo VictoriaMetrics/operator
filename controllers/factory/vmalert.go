@@ -6,6 +6,10 @@ import (
 	"path"
 	"sort"
 
+	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
+
+	"github.com/VictoriaMetrics/operator/controllers/factory/psp"
+
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	appsv1 "k8s.io/api/apps/v1"
@@ -66,7 +70,7 @@ func newServiceVMAlert(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperato
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),
 			Namespace:       cr.Namespace,
-			Labels:          c.Labels.Merge(cr.FinalLabels()),
+			Labels:          c.Labels.Merge(cr.Labels()),
 			Annotations:     cr.Annotations(),
 			OwnerReferences: cr.AsOwner(),
 		},
@@ -87,6 +91,16 @@ func newServiceVMAlert(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperato
 
 func CreateOrUpdateVMAlert(ctx context.Context, cr *victoriametricsv1beta1.VMAlert, rclient client.Client, c *config.BaseOperatorConf, cmNames []string) (reconcile.Result, error) {
 	l := log.WithValues("controller", "vmalert.crud", "vmalert", cr.Name)
+
+	if err := psp.CreateServiceAccountForCRD(ctx, cr, rclient); err != nil {
+		return reconcile.Result{}, fmt.Errorf("failed create service account: %w", err)
+	}
+	if c.PSPAutoCreateEnabled {
+		if err := psp.CreateOrUpdateServiceAccountWithPSP(ctx, cr, rclient); err != nil {
+			l.Error(err, "cannot create podsecuritypolicy")
+			return reconcile.Result{}, fmt.Errorf("cannot create podsecurity policy for vmalert, err=%w", err)
+		}
+	}
 	//recon deploy
 	secretsInNs := &corev1.SecretList{}
 	err := rclient.List(ctx, secretsInNs, &client.ListOptions{Namespace: cr.Namespace})
@@ -202,7 +216,7 @@ func newDeployForVMAlert(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOpera
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),
 			Namespace:       cr.Namespace,
-			Labels:          c.Labels.Merge(cr.FinalLabels()),
+			Labels:          c.Labels.Merge(cr.Labels()),
 			Annotations:     cr.Annotations(),
 			OwnerReferences: cr.AsOwner(),
 		},
@@ -423,7 +437,7 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 	)
 	for _, s := range cr.Spec.Secrets {
 		volumes = append(volumes, corev1.Volume{
-			Name: SanitizeVolumeName("secret-" + s),
+			Name: k8stools.SanitizeVolumeName("secret-" + s),
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: s,
@@ -431,7 +445,7 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 			},
 		})
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
-			Name:      SanitizeVolumeName("secret-" + s),
+			Name:      k8stools.SanitizeVolumeName("secret-" + s),
 			ReadOnly:  true,
 			MountPath: path.Join(SecretsDir, s),
 		})
@@ -439,7 +453,7 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 
 	for _, c := range cr.Spec.ConfigMaps {
 		volumes = append(volumes, corev1.Volume{
-			Name: SanitizeVolumeName("configmap-" + c),
+			Name: k8stools.SanitizeVolumeName("configmap-" + c),
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
@@ -449,7 +463,7 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 			},
 		})
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
-			Name:      SanitizeVolumeName("configmap-" + c),
+			Name:      k8stools.SanitizeVolumeName("configmap-" + c),
 			ReadOnly:  true,
 			MountPath: path.Join(ConfigMapsDir, c),
 		})
@@ -532,7 +546,7 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 		},
 	}
 
-	containers, err := MergePatchContainers(defaultContainers, cr.Spec.Containers)
+	containers, err := k8stools.MergePatchContainers(defaultContainers, cr.Spec.Containers)
 	if err != nil {
 		return nil, err
 	}
@@ -554,7 +568,7 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 			Spec: corev1.PodSpec{
 				SchedulerName:             cr.Spec.SchedulerName,
 				RuntimeClassName:          cr.Spec.RuntimeClassName,
-				ServiceAccountName:        cr.Spec.ServiceAccountName,
+				ServiceAccountName:        cr.GetServiceAccountName(),
 				Containers:                containers,
 				Volumes:                   volumes,
 				PriorityClassName:         cr.Spec.PriorityClassName,
@@ -622,7 +636,7 @@ func CreateOrUpdateTlsAssetsForVMAlert(ctx context.Context, cr *victoriametricsv
 	tlsAssetsSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.TLSAssetName(),
-			Labels:          cr.FinalLabels(),
+			Labels:          cr.Labels(),
 			OwnerReferences: cr.AsOwner(),
 			Namespace:       cr.Namespace,
 		},

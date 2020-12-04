@@ -162,7 +162,7 @@ func makeConfigSecret(cr *victoriametricsv1beta1.VMAgent, config *config.BaseOpe
 	return &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),
-			Labels:          config.Labels.Merge(cr.FinalLabels()),
+			Labels:          config.Labels.Merge(cr.Labels()),
 			Namespace:       cr.Namespace,
 			OwnerReferences: cr.AsOwner(),
 		},

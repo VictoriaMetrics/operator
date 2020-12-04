@@ -1193,7 +1193,14 @@ spec:
   endpoints: []
 ```
 
-### prometheus Rule duplcation
+By default the operator doesn't make converted objects disappear after original ones are deleted. To change this behaviour
+configure adding `OwnerReferences` to converted objects:
+```bash
+VM_ENABLEDPROMETHEUSCONVERTEROWNERREFERENCES=true
+```
+Converted objects will be linked to the original ones and will be deleted by kubernetes after the original ones are deleted.
+
+### prometheus Rule duplication
  `Prometheus` allows to specify rules with the same content with-in one group at Rule spec, but its forbidden by vmalert.
  You can tell operator to deduplicate this rules by adding annotation to the `VMAlert` crd definition. In this case operator
  skips rule with the same values, see example below.

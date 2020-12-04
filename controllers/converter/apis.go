@@ -7,6 +7,7 @@ import (
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	v1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
@@ -17,8 +18,7 @@ const (
 
 var log = ctrl.Log.WithValues("controller", "prometheus.converter")
 
-func ConvertPromRule(prom *v1.PrometheusRule) *v1beta1vm.VMRule {
-
+func ConvertPromRule(prom *v1.PrometheusRule, enableObjectRef bool) *v1beta1vm.VMRule {
 	ruleGroups := []v1beta1vm.RuleGroup{}
 	for _, promGroup := range prom.Spec.Groups {
 		ruleItems := []v1beta1vm.Rule{}
@@ -50,11 +50,23 @@ func ConvertPromRule(prom *v1.PrometheusRule) *v1beta1vm.VMRule {
 			Groups: ruleGroups,
 		},
 	}
+	if enableObjectRef {
+		cr.OwnerReferences = []metav1.OwnerReference{
+			{
+				APIVersion:         v1.SchemeGroupVersion.String(),
+				Kind:               v1.PrometheusRuleKind,
+				Name:               prom.Name,
+				UID:                prom.UID,
+				Controller:         pointer.BoolPtr(true),
+				BlockOwnerDeletion: pointer.BoolPtr(true),
+			},
+		}
+	}
 	return cr
 }
 
-func ConvertServiceMonitor(serviceMon *v1.ServiceMonitor) *v1beta1vm.VMServiceScrape {
-	return &v1beta1vm.VMServiceScrape{
+func ConvertServiceMonitor(serviceMon *v1.ServiceMonitor, enableObjectRef bool) *v1beta1vm.VMServiceScrape {
+	cs := &v1beta1vm.VMServiceScrape{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        serviceMon.Name,
 			Namespace:   serviceMon.Namespace,
@@ -74,6 +86,19 @@ func ConvertServiceMonitor(serviceMon *v1.ServiceMonitor) *v1beta1vm.VMServiceSc
 			},
 		},
 	}
+	if enableObjectRef {
+		cs.OwnerReferences = []metav1.OwnerReference{
+			{
+				APIVersion:         v1.SchemeGroupVersion.String(),
+				Kind:               v1.ServiceMonitorsKind,
+				Name:               serviceMon.Name,
+				UID:                serviceMon.UID,
+				Controller:         pointer.BoolPtr(true),
+				BlockOwnerDeletion: pointer.BoolPtr(true),
+			},
+		}
+	}
+	return cs
 }
 
 func replacePromDirPath(origin string) string {
@@ -186,9 +211,8 @@ func ConvertPodEndpoints(promPodEnpoints []v1.PodMetricsEndpoint) []v1beta1vm.Po
 	return endPoints
 }
 
-func ConvertPodMonitor(podMon *v1.PodMonitor) *v1beta1vm.VMPodScrape {
-
-	return &v1beta1vm.VMPodScrape{
+func ConvertPodMonitor(podMon *v1.PodMonitor, enableObjectRef bool) *v1beta1vm.VMPodScrape {
+	cs := &v1beta1vm.VMPodScrape{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        podMon.Name,
 			Namespace:   podMon.Namespace,
@@ -207,9 +231,22 @@ func ConvertPodMonitor(podMon *v1.PodMonitor) *v1beta1vm.VMPodScrape {
 			PodMetricsEndpoints: ConvertPodEndpoints(podMon.Spec.PodMetricsEndpoints),
 		},
 	}
+	if enableObjectRef {
+		cs.OwnerReferences = []metav1.OwnerReference{
+			{
+				APIVersion:         v1.SchemeGroupVersion.String(),
+				Kind:               v1.PodMonitorsKind,
+				Name:               podMon.Name,
+				UID:                podMon.UID,
+				Controller:         pointer.BoolPtr(true),
+				BlockOwnerDeletion: pointer.BoolPtr(true),
+			},
+		}
+	}
+	return cs
 }
 
-func ConvertProbe(probe *v1.Probe) *v1beta1vm.VMProbe {
+func ConvertProbe(probe *v1.Probe, enableObjectRef bool) *v1beta1vm.VMProbe {
 	var (
 		ingressTarget *v1beta1vm.ProbeTargetIngress
 		staticTargets *v1beta1vm.VMProbeTargetStaticConfig
@@ -230,7 +267,7 @@ func ConvertProbe(probe *v1.Probe) *v1beta1vm.VMProbe {
 			Labels:  probe.Spec.Targets.StaticConfig.Labels,
 		}
 	}
-	return &v1beta1vm.VMProbe{
+	cp := &v1beta1vm.VMProbe{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      probe.Name,
 			Namespace: probe.Namespace,
@@ -251,6 +288,19 @@ func ConvertProbe(probe *v1.Probe) *v1beta1vm.VMProbe {
 			ScrapeTimeout: probe.Spec.ScrapeTimeout,
 		},
 	}
+	if enableObjectRef {
+		cp.OwnerReferences = []metav1.OwnerReference{
+			{
+				APIVersion:         v1.SchemeGroupVersion.String(),
+				Kind:               v1.ProbesKind,
+				Name:               probe.Name,
+				UID:                probe.UID,
+				Controller:         pointer.BoolPtr(true),
+				BlockOwnerDeletion: pointer.BoolPtr(true),
+			},
+		}
+	}
+	return cp
 }
 
 func filterUnsupportedRelabelCfg(relabelCfgs []*v1beta1vm.RelabelConfig) []*v1beta1vm.RelabelConfig {

@@ -39,7 +39,7 @@ spec:
                 type: string
               type: array
             containers:
-              description: Containers property allows to inject additions sidecars. It can be useful for proxies, backup, etc.
+              description: Containers property allows to inject additions sidecars or to patch existing containers. It can be useful for proxies, backup, etc.
               items:
                 description: A single application container that you want to run within a pod.
                 required:

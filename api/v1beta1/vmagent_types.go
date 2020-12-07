@@ -98,7 +98,8 @@ type VMAgentSpec struct {
 	// in case of empty value, prefixedName will be used.
 	// +optional
 	PodSecurityPolicyName string `json:"podSecurityPolicyName,omitempty"`
-	// Containers property allows to inject additions sidecars. It can be useful for proxies, backup, etc.
+	// Containers property allows to inject additions sidecars or to patch existing containers.
+	// It can be useful for proxies, backup, etc.
 	// +optional
 	Containers []v1.Container `json:"containers,omitempty"`
 	// InitContainers allows adding initContainers to the pod definition. Those can be used to e.g.

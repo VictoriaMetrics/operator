@@ -66,7 +66,7 @@ spec:
               description: ConfigSecret is the name of a Kubernetes Secret in the same namespace as the VMAlertmanager object, which contains configuration for this VMAlertmanager instance. Defaults to 'vmalertmanager-<alertmanager-name>' The secret is mounted into /etc/alertmanager/config.
               type: string
             containers:
-              description: Containers allows injecting additional containers. This is meant to allow adding an authentication proxy to an VMAlertmanager pod.
+              description: Containers allows injecting additional containers or patching existing containers. This is meant to allow adding an authentication proxy to an VMAlertmanager pod.
               items:
                 description: A single application container that you want to run within a pod.
                 required:

@@ -475,3 +475,38 @@ func Test_loadTLSAssets(t *testing.T) {
 		})
 	}
 }
+
+func TestBuildRemoteWrites(t *testing.T) {
+	type args struct {
+		cr           *victoriametricsv1beta1.VMAgent
+		rwsBasicAuth map[string]BasicAuthCredentials
+		rwsTokens    map[string]BearerToken
+	}
+	tests := []struct {
+		name string
+		args args
+		want []string
+	}{
+		{
+			name: "test labels",
+			args: args{
+				cr: &victoriametricsv1beta1.VMAgent{
+					Spec: victoriametricsv1beta1.VMAgentSpec{RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
+						{
+							URL:    "localhost:8429",
+							Labels: map[string]string{"label1": "value1", "label2": "value2"},
+						},
+					}},
+				},
+			},
+			want: []string{"-remoteWrite.url=localhost:8429", "-remoteWrite.label=label1=value1,label2=value2"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := BuildRemoteWrites(tt.args.cr, tt.args.rwsBasicAuth, tt.args.rwsTokens); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("BuildRemoteWrites() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

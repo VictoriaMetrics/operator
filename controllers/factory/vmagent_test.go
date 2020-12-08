@@ -3,6 +3,7 @@ package factory
 import (
 	"context"
 	"reflect"
+	"sort"
 	"testing"
 
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
@@ -504,7 +505,10 @@ func TestBuildRemoteWrites(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := BuildRemoteWrites(tt.args.cr, tt.args.rwsBasicAuth, tt.args.rwsTokens); !reflect.DeepEqual(got, tt.want) {
+			sort.Strings(tt.want)
+			got := BuildRemoteWrites(tt.args.cr, tt.args.rwsBasicAuth, tt.args.rwsTokens)
+			sort.Strings(got)
+			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("BuildRemoteWrites() = %v, want %v", got, tt.want)
 			}
 		})

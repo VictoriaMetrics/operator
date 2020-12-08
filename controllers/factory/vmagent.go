@@ -896,7 +896,7 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, rwsBasicAuth map[stri
 			}
 		}
 		// no need to add comma
-		labels.flagSetting += fmt.Sprintf("%s", value)
+		labels.flagSetting += value
 
 		value = ""
 		if rws.MaxBlockSize != nil {

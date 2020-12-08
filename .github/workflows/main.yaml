@@ -58,5 +58,10 @@ jobs:
         env:
           TAG:   ${{ env.GITHUB_REF_SLUG }}
         run: |
-          echo ${{secrets.REPO_KEY}} | docker login --username ${{secrets.REPO_USER}} --password-stdin
-          make publish-via-docker
+          if [ -n '${{secrets.REPO_KEY}}' ]; then
+            echo ${{secrets.REPO_KEY}} | docker login --username ${{secrets.REPO_USER}} --password-stdin
+            make publish-via-docker
+          else
+            echo "there is no docker secret, just build image"
+            make build-operator-crosscompile docker-operator-crosscompile
+          fi

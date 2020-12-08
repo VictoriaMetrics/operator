@@ -628,7 +628,7 @@ spec:
                     pattern: '[0-9]+(ms|s|m|h)'
                     type: string
                   showURL:
-                    description: Whether to show -remoteWrite.url in the exported metrics. It is hidden by default, since it can contain sensistive auth info
+                    description: Whether to show -remoteWrite.url in the exported metrics. It is hidden by default, since it can contain sensitive auth info
                     type: boolean
                   tlsConfig:
                     description: TLSConfig describes tls configuration for remote write target
@@ -733,7 +733,7 @@ spec:
                         type: string
                     type: object
                   tmpDataPath:
-                    description: Path to directory where temporary data for remote write component is stored (default "vmagent-remotewrite-data")
+                    description: Path to directory where temporary data for remote write component is stored (default vmagent-remotewrite-data)
                     type: string
                   url:
                     description: URL of the endpoint to send samples to.

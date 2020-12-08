@@ -158,8 +158,8 @@ type VMAlertmanagerSpec struct {
 	// UI, not the gossip communication.
 	// +optional
 	ListenLocal bool `json:"listenLocal,omitempty"`
-	// Containers allows injecting additional containers. This is meant to
-	// allow adding an authentication proxy to an VMAlertmanager pod.
+	// Containers allows injecting additional containers or patching existing containers.
+	// This is meant to allow adding an authentication proxy to an VMAlertmanager pod.
 	// +optional
 	Containers []v1.Container `json:"containers,omitempty"`
 	// InitContainers allows adding initContainers to the pod definition. Those can be used to e.g.

@@ -169,7 +169,8 @@ type VMSelect struct {
 	// This defaults to the default PodSecurityContext.
 	// +optional
 	SecurityContext *v1.PodSecurityContext `json:"securityContext,omitempty"`
-	// Containers property allows to inject additions sidecars. It can be useful for proxies, backup, etc.
+	// Containers property allows to inject additions sidecars or to patch existing containers.
+	// It can be useful for proxies, backup, etc.
 	// +optional
 	Containers []v1.Container `json:"containers,omitempty"`
 	// InitContainers allows adding initContainers to the pod definition. Those can be used to e.g.
@@ -297,7 +298,8 @@ type VMInsert struct {
 	// This defaults to the default PodSecurityContext.
 	// +optional
 	SecurityContext *v1.PodSecurityContext `json:"securityContext,omitempty"`
-	// Containers property allows to inject additions sidecars. It can be useful for proxies, backup, etc.
+	// Containers property allows to inject additions sidecars or to patch existing containers.
+	// It can be useful for proxies, backup, etc.
 	// +optional
 	Containers []v1.Container `json:"containers,omitempty"`
 	// InitContainers allows adding initContainers to the pod definition. Those can be used to e.g.
@@ -412,7 +414,8 @@ type VMStorage struct {
 	// This defaults to the default PodSecurityContext.
 	// +optional
 	SecurityContext *v1.PodSecurityContext `json:"securityContext,omitempty"`
-	// Containers property allows to inject additions sidecars. It can be useful for proxies, backup, etc.
+	// Containers property allows to inject additions sidecars or to patch existing containers.
+	// It can be useful for proxies, backup, etc.
 	// +optional
 	Containers []v1.Container `json:"containers,omitempty"`
 	// InitContainers allows adding initContainers to the pod definition. Those can be used to e.g.

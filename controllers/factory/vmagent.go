@@ -892,10 +892,11 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, rwsBasicAuth map[stri
 		if rws.Labels != nil {
 			labels.isNotNull = true
 			for n, v := range rws.Labels {
-				value += fmt.Sprintf("%v=%v,", n, v)
+				value += fmt.Sprintf("%s=%s,", n, v)
 			}
 		}
-		labels.flagSetting += fmt.Sprintf("%s,", value)
+		// no need to add comma
+		labels.flagSetting += value
 
 		value = ""
 		if rws.MaxBlockSize != nil {

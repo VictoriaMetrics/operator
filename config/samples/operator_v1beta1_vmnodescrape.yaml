@@ -1,0 +1,7 @@
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMNodeScrape
+metadata:
+  name: vmnodescrape-sample
+spec:
+  # Add fields here
+  foo: bar

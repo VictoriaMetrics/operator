@@ -5,331 +5,346 @@ kind: ClusterRole
 metadata:
   name: manager-role
 rules:
-- apiGroups:
-    - ""
-  resources:
-    - configmaps
-  verbs:
-    - '*'
-- apiGroups:
-    - ""
-  resources:
-    - endpoints
-  verbs:
-    - '*'
-- apiGroups:
-    - ""
-  resources:
-    - events
-  verbs:
-    - '*'
-- apiGroups:
-    - ""
-  resources:
-    - namespaces
-  verbs:
-    - get
-    - list
-    - watch
-- apiGroups:
-    - ""
-  resources:
-    - persistentvolumeclaims
-  verbs:
-    - '*'
-- apiGroups:
-    - ""
-  resources:
-    - pods
-  verbs:
-    - '*'
-- apiGroups:
-    - ""
-  resources:
-    - secrets
-  verbs:
-    - '*'
-- apiGroups:
-    - ""
-  resources:
-    - services
-  verbs:
-    - '*'
-- apiGroups:
-    - ""
-  resources:
-    - services/finalizers
-  verbs:
-    - '*'
-- apiGroups:
-    - apps
-  resources:
-    - deployments
-  verbs:
-    - '*'
-- apiGroups:
-    - apps
-  resources:
-    - replicasets
-  verbs:
-    - '*'
-- apiGroups:
-    - apps
-  resources:
-    - statefulsets
-  verbs:
-    - '*'
-- apiGroups:
-    - monitoring.coreos.com
-  resources:
-    - '*'
-  verbs:
-    - '*'
-- apiGroups:
-    - operator.victoriametrics.com
-  resources:
-    - vmagents
-    - vmagents/finalizers
-  verbs:
-    - create
-    - delete
-    - get
-    - list
-    - patch
-    - update
-    - watch
-- apiGroups:
-    - operator.victoriametrics.com
-  resources:
-    - vmagents/status
-  verbs:
-    - get
-    - patch
-    - update
-- apiGroups:
-    - operator.victoriametrics.com
-  resources:
-    - vmalertmanagers
-    - vmalertmanagers/finalizers
-  verbs:
-    - create
-    - delete
-    - get
-    - list
-    - patch
-    - update
-    - watch
-- apiGroups:
-    - operator.victoriametrics.com
-  resources:
-    - vmalertmanagers/status
-  verbs:
-    - get
-    - patch
-    - update
-- apiGroups:
-    - operator.victoriametrics.com
-  resources:
-    - vmalerts
-    - vmalerts/finalizers
-  verbs:
-    - create
-    - delete
-    - get
-    - list
-    - patch
-    - update
-    - watch
-- apiGroups:
-    - operator.victoriametrics.com
-  resources:
-    - vmalerts/status
-  verbs:
-    - get
-    - patch
-    - update
-- apiGroups:
-    - operator.victoriametrics.com
-  resources:
-    - vmclusters
-    - vmclusters/finalizers
-  verbs:
-    - create
-    - delete
-    - get
-    - list
-    - patch
-    - update
-    - watch
-- apiGroups:
-    - operator.victoriametrics.com
-  resources:
-    - vmclusters/status
-  verbs:
-    - get
-    - patch
-    - update
-- apiGroups:
-    - operator.victoriametrics.com
-  resources:
-    - vmpodscrapes
-  verbs:
-    - create
-    - delete
-    - get
-    - list
-    - patch
-    - update
-    - watch
-- apiGroups:
-    - operator.victoriametrics.com
-  resources:
-    - vmpodscrapes/status
-  verbs:
-    - get
-    - patch
-    - update
-- apiGroups:
-    - operator.victoriametrics.com
-  resources:
-    - vmrules
-  verbs:
-    - create
-    - delete
-    - get
-    - list
-    - patch
-    - update
-    - watch
-- apiGroups:
-    - operator.victoriametrics.com
-  resources:
-    - vmrules/status
-  verbs:
-    - get
-    - patch
-    - update
-- apiGroups:
-    - operator.victoriametrics.com
-  resources:
-    - vmservicescrapes
-  verbs:
-    - create
-    - delete
-    - get
-    - list
-    - patch
-    - update
-    - watch
-- apiGroups:
-    - operator.victoriametrics.com
-  resources:
-    - vmservicescrapes/status
-  verbs:
-    - get
-    - patch
-    - update
-- apiGroups:
-    - operator.victoriametrics.com
-  resources:
-    - vmprobes
-  verbs:
-    - create
-    - delete
-    - get
-    - list
-    - patch
-    - update
-    - watch
-- apiGroups:
-    - operator.victoriametrics.com
-  resources:
-    - vmprobes/status
-  verbs:
-    - get
-    - patch
-    - update
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+    verbs:
+      - '*'
+  - apiGroups:
+      - ""
+    resources:
+      - endpoints
+    verbs:
+      - '*'
+  - apiGroups:
+      - ""
+    resources:
+      - events
+    verbs:
+      - '*'
+  - apiGroups:
+      - ""
+    resources:
+      - namespaces
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ""
+    resources:
+      - persistentvolumeclaims
+    verbs:
+      - '*'
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+    verbs:
+      - '*'
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - '*'
+  - apiGroups:
+      - ""
+    resources:
+      - services
+    verbs:
+      - '*'
+  - apiGroups:
+      - ""
+    resources:
+      - services/finalizers
+    verbs:
+      - '*'
+  - apiGroups:
+      - apps
+    resources:
+      - deployments
+    verbs:
+      - '*'
+  - apiGroups:
+      - apps
+    resources:
+      - replicasets
+    verbs:
+      - '*'
+  - apiGroups:
+      - apps
+    resources:
+      - statefulsets
+    verbs:
+      - '*'
+  - apiGroups:
+      - monitoring.coreos.com
+    resources:
+      - '*'
+    verbs:
+      - '*'
+  - apiGroups:
+      - operator.victoriametrics.com
+    resources:
+      - vmagents
+      - vmagents/finalizers
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - operator.victoriametrics.com
+    resources:
+      - vmagents/status
+    verbs:
+      - get
+      - patch
+      - update
+  - apiGroups:
+      - operator.victoriametrics.com
+    resources:
+      - vmalertmanagers
+      - vmalertmanagers/finalizers
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - operator.victoriametrics.com
+    resources:
+      - vmalertmanagers/status
+    verbs:
+      - get
+      - patch
+      - update
+  - apiGroups:
+      - operator.victoriametrics.com
+    resources:
+      - vmalerts
+      - vmalerts/finalizers
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - operator.victoriametrics.com
+    resources:
+      - vmalerts/status
+    verbs:
+      - get
+      - patch
+      - update
+  - apiGroups:
+      - operator.victoriametrics.com
+    resources:
+      - vmclusters
+      - vmclusters/finalizers
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - operator.victoriametrics.com
+    resources:
+      - vmclusters/status
+    verbs:
+      - get
+      - patch
+      - update
+  - apiGroups:
+      - operator.victoriametrics.com
+    resources:
+      - vmpodscrapes
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - operator.victoriametrics.com
+    resources:
+      - vmpodscrapes/status
+    verbs:
+      - get
+      - patch
+      - update
+  - apiGroups:
+      - operator.victoriametrics.com
+    resources:
+      - vmrules
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - operator.victoriametrics.com
+    resources:
+      - vmrules/status
+    verbs:
+      - get
+      - patch
+      - update
+  - apiGroups:
+      - operator.victoriametrics.com
+    resources:
+      - vmservicescrapes
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - operator.victoriametrics.com
+    resources:
+      - vmservicescrapes/status
+    verbs:
+      - get
+      - patch
+      - update
+  - apiGroups:
+      - operator.victoriametrics.com
+    resources:
+      - vmprobes
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - operator.victoriametrics.com
+    resources:
+      - vmprobes/status
+    verbs:
+      - get
+      - patch
+      - update
 
+  - apiGroups:
+      - operator.victoriametrics.com
+    resources:
+      - vmsingles
+      - vmsingles/finalizers
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - operator.victoriametrics.com
+    resources:
+      - vmsingles/status
+    verbs:
+      - get
+      - patch
+      - update
+  - apiGroups:
+      - ""
+    resources:
+      - nodes
+      - nodes/proxy
+      - services
+      - endpoints
+      - pods
+      - endpointslices
+      - configmaps
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - "extensions"
+      - "networking.k8s.io"
+    resources:
+      - ingresses
+    verbs:
+      - get
+      - list
+      - watch
+  - nonResourceURLs:
+      - "/metrics"
+    verbs:
+      - get
+      - watch
+      - list
+  - apiGroups:
+      - "rbac.authorization.k8s.io"
+    resources:
+      - clusterrolebindings
+      - clusterroles
+    verbs:
+      - get
+      - list
+      - create
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - "policy"
+    resources:
+      - podsecuritypolicies
+    verbs:
+      - get
+      - list
+      - create
+      - patch
+      - update
+      - use
+      - watch
+  - apiGroups:
+      - ""
+    resources:
+      - serviceaccounts
+    verbs:
+      - get
+      - list
+      - create
+      - watch
 - apiGroups:
-    - operator.victoriametrics.com
+  - operator.victoriametrics.com
   resources:
-    - vmsingles
-    - vmsingles/finalizers
+  - vmnodescrapes
+  - vmnodescrapes/finalizers
   verbs:
-    - create
-    - delete
-    - get
-    - list
-    - patch
-    - update
-    - watch
+  - '*'
 - apiGroups:
-    - operator.victoriametrics.com
+  - operator.victoriametrics.com
   resources:
-    - vmsingles/status
+  - vmnodescrapes/status
   verbs:
-    - get
-    - patch
-    - update
-- apiGroups:
-    - ""
-  resources:
-    - nodes
-    - nodes/proxy
-    - services
-    - endpoints
-    - pods
-    - endpointslices
-    - configmaps
-  verbs:
-    - get
-    - list
-    - watch
-- apiGroups:
-    - "extensions"
-    - "networking.k8s.io"
-  resources:
-    - ingresses
-  verbs:
-    - get
-    - list
-    - watch
-- nonResourceURLs:
-    - "/metrics"
-  verbs:
-    - get
-    - watch
-    - list
-- apiGroups:
-    - "rbac.authorization.k8s.io"
-  resources:
-    - clusterrolebindings
-    - clusterroles
-  verbs:
-    - get
-    - list
-    - create
-    - patch
-    - update
-    - watch
-- apiGroups:
-    - "policy"
-  resources:
-    - podsecuritypolicies
-  verbs:
-    - get
-    - list
-    - create
-    - patch
-    - update
-    - use
-    - watch
-- apiGroups:
-    - ""
-  resources:
-    - serviceaccounts
-  verbs:
-    - get
-    - list
-    - create
-    - watch
+  - get
+  - patch
+  - update

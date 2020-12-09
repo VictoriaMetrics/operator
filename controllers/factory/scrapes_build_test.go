@@ -1,12 +1,14 @@
 package factory
 
 import (
+	"reflect"
+	"strings"
+	"testing"
+
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"reflect"
-	"testing"
 )
 
 func Test_addTLStoYaml(t *testing.T) {
@@ -223,6 +225,78 @@ relabel_configs:
 			if !reflect.DeepEqual(string(gotBytes), tt.want) {
 				t.Errorf("generateServiceScrapeConfig() \ngot = \n%v, \nwant \n%v", string(gotBytes), tt.want)
 			}
+		})
+	}
+}
+
+func Test_generateNodeScrapeConfig(t *testing.T) {
+	type args struct {
+		m                       *victoriametricsv1beta1.VMNodeScrape
+		i                       int
+		apiserverConfig         *victoriametricsv1beta1.APIServerConfig
+		basicAuthSecrets        map[string]BasicAuthCredentials
+		ignoreHonorLabels       bool
+		overrideHonorTimestamps bool
+		enforcedNamespaceLabel  string
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "ok build node",
+			args: args{
+				apiserverConfig:  nil,
+				basicAuthSecrets: nil,
+				i:                1,
+				m: &victoriametricsv1beta1.VMNodeScrape{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "nodes-basic",
+						Namespace: "default",
+					},
+					Spec: victoriametricsv1beta1.VMNodeScrapeSpec{
+						Port:     "9100",
+						Path:     "/metrics",
+						Interval: "30s",
+					},
+				},
+			},
+			want: strings.TrimSpace(`job_name: default/nodes-basic/1
+honor_labels: false
+kubernetes_sd_configs:
+- role: node
+scrape_interval: 30s
+metrics_path: /metrics
+relabel_configs:
+- source_labels:
+  - __meta_kubernetes_node_address_InternalIP
+  target_label: __address__
+- source_labels:
+  - __meta_kubernetes_node_name
+  target_label: node
+- target_label: job
+  replacement: default/nodes-basic
+- source_labels:
+  - __address__
+  target_label: __address__
+  regex: (.*)
+  replacement: ${1}:9100
+`),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := generateNodeScrapeConfig(tt.args.m, tt.args.i, tt.args.apiserverConfig, tt.args.basicAuthSecrets, tt.args.ignoreHonorLabels, tt.args.overrideHonorTimestamps, tt.args.enforcedNamespaceLabel)
+			gotBytes, err := yaml.Marshal(got)
+			if err != nil {
+				t.Errorf("cannot marshal NodeScrapeConfig to yaml,err :%e", err)
+				return
+			}
+			if !reflect.DeepEqual(string(gotBytes), tt.want) {
+				t.Errorf("generateNoeScrapeConfig() \ngot = \n%v, \nwant \n%v", string(gotBytes), tt.want)
+			}
+
 		})
 	}
 }

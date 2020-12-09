@@ -57,6 +57,11 @@ func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *victoriametricsv
 		return fmt.Errorf("selecting VMProbes failed: %w", err)
 	}
 
+	nodes, err := SelectVMNodeScrapes(ctx, cr, rclient)
+	if err != nil {
+		return fmt.Errorf("selecting VMNodeScrapes failed: %w", err)
+	}
+
 	SecretsInNS := &v1.SecretList{}
 	err = rclient.List(ctx, SecretsInNS)
 	if err != nil {
@@ -84,6 +89,7 @@ func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *victoriametricsv
 		smons,
 		pmons,
 		probes,
+		nodes,
 		basicAuthSecrets,
 		bearerTokens,
 		additionalScrapeConfigs,
@@ -375,6 +381,38 @@ func SelectVMProbes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rcl
 	return res, nil
 }
 
+func SelectVMNodeScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) (map[string]*victoriametricsv1beta1.VMNodeScrape, error) {
+
+	res := make(map[string]*victoriametricsv1beta1.VMNodeScrape)
+
+	nodeSelector, err := metav1.LabelSelectorAsSelector(cr.Spec.NodeScrapeSelector)
+	if err != nil {
+		return nil, fmt.Errorf("cannot convert nodeScrapeSelector to label selector: %w", err)
+	}
+
+	var nodesCombined []victoriametricsv1beta1.VMNodeScrape
+
+	log.Info("listing all namespaces for vmnodes")
+	vmNodes := &victoriametricsv1beta1.VMNodeScrapeList{}
+	err = rclient.List(ctx, vmNodes, &client.ListOptions{LabelSelector: nodeSelector})
+	if err != nil {
+		return nil, fmt.Errorf("cannot list VMNodeScrapes from all namespaces: %w", err)
+	}
+	nodesCombined = append(nodesCombined, vmNodes.Items...)
+
+	for _, node := range nodesCombined {
+		pm := node.DeepCopy()
+		res[node.Namespace+"/"+node.Name] = pm
+	}
+	nodesList := make([]string, 0)
+	for key := range res {
+		nodesList = append(nodesList, key)
+	}
+
+	log.Info("selected VMNodeScrapes", "VMNodeScrapes", strings.Join(nodesList, ","), "namespace", cr.Namespace, "vmagent", cr.Name)
+
+	return res, nil
+}
 func loadBasicAuthSecrets(
 	ctx context.Context,
 	rclient client.Client,

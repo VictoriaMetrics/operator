@@ -18,10 +18,14 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/VictoriaMetrics/operator/controllers/factory"
-	"github.com/VictoriaMetrics/operator/internal/config"
 	"k8s.io/apimachinery/pkg/api/errors"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+
+	"github.com/VictoriaMetrics/operator/internal/config"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -31,23 +35,23 @@ import (
 	operatorv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 )
 
-// VMProbeReconciler reconciles a VMProbe object
-type VMProbeReconciler struct {
+// VMNodeScrapeReconciler reconciles a VMNodeScrape object
+type VMNodeScrapeReconciler struct {
 	client.Client
 	Log      logr.Logger
 	Scheme   *runtime.Scheme
 	BaseConf *config.BaseOperatorConf
 }
 
-// Reconcile - syncs VMProbe
-// +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmprobes,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmprobes/status,verbs=get;update;patch
-func (r *VMProbeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
+// +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmnodescrapes,verbs=*
+// +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmnodescrapes/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmnodescrapes/finalizers,verbs=*
+func (r *VMNodeScrapeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	ctx := context.Background()
-	reqLogger := r.Log.WithValues("vmprobe", req.NamespacedName)
+	reqLogger := r.Log.WithValues("vmnodescrape", req.NamespacedName)
 
-	// Fetch the VMPodScrape instance
-	instance := &operatorv1beta1.VMProbe{}
+	// Fetch the VMNodeScrape instance
+	instance := &operatorv1beta1.VMNodeScrape{}
 	err := r.Get(ctx, req.NamespacedName, instance)
 	if err != nil {
 		//in case of object notfound we must update vmagents
@@ -66,8 +70,22 @@ func (r *VMProbeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 	for _, vmagent := range vmAgentInstances.Items {
 		reqLogger = reqLogger.WithValues("vmagent", vmagent.Name)
-		reqLogger.Info("reconciling probe for vmagent")
+		reqLogger.Info("reconciling vmNodeScrape for vmagent")
 		currentVMagent := &vmagent
+		// selector for nodescrape is nil
+		if currentVMagent.Spec.NodeScrapeSelector == nil {
+			continue
+		}
+		selector, err := v1.LabelSelectorAsSelector(currentVMagent.Spec.NodeScrapeSelector)
+		if err != nil {
+			return ctrl.Result{}, fmt.Errorf("cannot parse VMAgents NodeScrape selector as labelSelector: %w", err)
+		}
+		set := labels.Set(instance.Labels)
+		// selector not match
+		// fast path.
+		if !selector.Matches(set) {
+			continue
+		}
 		recon, err := factory.CreateOrUpdateVMAgent(ctx, currentVMagent, r, r.BaseConf)
 		if err != nil {
 			reqLogger.Error(err, "cannot create or update vmagent")
@@ -76,13 +94,13 @@ func (r *VMProbeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		reqLogger.Info("reconciled vmagent")
 	}
 
-	reqLogger.Info("reconciled vmprobe")
+	reqLogger.Info("reconciled pod monitor")
+
 	return ctrl.Result{}, nil
 }
 
-// SetupWithManager - setups VMProbe manager
-func (r *VMProbeReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *VMNodeScrapeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&operatorv1beta1.VMProbe{}).
+		For(&operatorv1beta1.VMNodeScrape{}).
 		Complete(r)
 }

@@ -262,10 +262,10 @@ type VMAgentRemoteWriteSpec struct {
 	// +optional
 	// +kubebuilder:validation:Pattern:="[0-9]+(ms|s|m|h)"
 	SendTimeout *string `json:"sendTimeout,omitempty"`
-	// Whether to show -remoteWrite.url in the exported metrics. It is hidden by default, since it can contain sensistive auth info
+	// Whether to show -remoteWrite.url in the exported metrics. It is hidden by default, since it can contain sensitive auth info
 	// +optional
 	ShowURL *bool `json:"showURL,omitempty"`
-	// Path to directory where temporary data for remote write component is stored (default "vmagent-remotewrite-data")
+	// Path to directory where temporary data for remote write component is stored (default vmagent-remotewrite-data)
 	// +optional
 	TmpDataPath *string `json:"tmpDataPath,omitempty"`
 	// TLSConfig describes tls configuration for remote write target

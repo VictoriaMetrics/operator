@@ -165,9 +165,9 @@ type VMAlertSpec struct {
 	// RulePath to the file with alert rules.
 	// Supports patterns. Flag can be specified multiple times.
 	// Examples:
-	//         -rule /path/to/file. Path to a single file with alerting rules
-	//         -rule dir/*.yaml -rule /*.yaml. Relative path to all .yaml files in "dir" folder,
-	//        absolute path to all .yaml files in root.
+	// -rule /path/to/file. Path to a single file with alerting rules
+	// -rule dir/*.yaml -rule /*.yaml. Relative path to all .yaml files in folder,
+	// absolute path to all .yaml files in root.
 	// by default operator adds /etc/vmalert/configs/base/vmalert.yaml
 	// +optional
 	RulePath []string `json:"rulePath,omitempty"`

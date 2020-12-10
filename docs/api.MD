@@ -193,8 +193,8 @@ VMAgentRemoteWriteSpec defines the remote storage configuration for VmAgent
 | queues | The number of concurrent queues | *int32 | false |
 | urlRelabelConfig | ConfigMap with relabeling config which is applied to metrics before sending them to the corresponding -remoteWrite.url | *v1.ConfigMapKeySelector | false |
 | sendTimeout | Timeout for sending a single block of data to -remoteWrite.url (default 1m0s) | *string | false |
-| showURL | Whether to show -remoteWrite.url in the exported metrics. It is hidden by default, since it can contain sensistive auth info | *bool | false |
-| tmpDataPath | Path to directory where temporary data for remote write component is stored (default \&#34;vmagent-remotewrite-data\&#34;) | *string | false |
+| showURL | Whether to show -remoteWrite.url in the exported metrics. It is hidden by default, since it can contain sensitive auth info | *bool | false |
+| tmpDataPath | Path to directory where temporary data for remote write component is stored (default vmagent-remotewrite-data) | *string | false |
 | tlsConfig | TLSConfig describes tls configuration for remote write target | *[TLSConfig](#tlsconfig) | false |
 
 [Back to TOC](#table-of-contents)
@@ -429,7 +429,7 @@ VMAlertSpec defines the desired state of VMAlert
 | notifier | Notifier prometheus alertmanager URL. Required parameter. e.g. http://127.0.0.1:9093 | [VMAlertNotifierSpec](#vmalertnotifierspec) | true |
 | remoteWrite | RemoteWrite Optional URL to remote-write compatible storage where to write timeseriesbased on active alerts. E.g. http://127.0.0.1:8428 | *[VMAlertRemoteWriteSpec](#vmalertremotewritespec) | false |
 | remoteRead | RemoteRead victoria metrics address for loading state This configuration makes sense only if remoteWrite was configured before and has been successfully persisted its state. | *[VMAlertRemoteReadSpec](#vmalertremotereadspec) | false |
-| rulePath | RulePath to the file with alert rules. Supports patterns. Flag can be specified multiple times. Examples:\n        -rule /path/to/file. Path to a single file with alerting rules\n        -rule dir/*.yaml -rule /*.yaml. Relative path to all .yaml files in \&#34;dir\&#34; folder,\n       absolute path to all .yaml files in root.\nby default operator adds /etc/vmalert/configs/base/vmalert.yaml | []string | false |
+| rulePath | RulePath to the file with alert rules. Supports patterns. Flag can be specified multiple times. Examples: -rule /path/to/file. Path to a single file with alerting rules -rule dir/*.yaml -rule /*.yaml. Relative path to all .yaml files in folder, absolute path to all .yaml files in root. by default operator adds /etc/vmalert/configs/base/vmalert.yaml | []string | false |
 | datasource | Datasource Victoria Metrics or VMSelect url. Required parameter. e.g. http://127.0.0.1:8428 | [VMAlertDatasourceSpec](#vmalertdatasourcespec) | true |
 | extraArgs | ExtraArgs that will be passed to  VMAlert pod for example -remoteWrite.tmpDataPath=/tmp | map[string]string | false |
 | extraEnvs | ExtraEnvs that will be added to VMAlert pod | [][v1.EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#envvar-v1-core) | false |

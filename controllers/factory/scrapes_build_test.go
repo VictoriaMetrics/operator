@@ -2,7 +2,6 @@ package factory
 
 import (
 	"reflect"
-	"strings"
 	"testing"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
@@ -235,6 +234,7 @@ func Test_generateNodeScrapeConfig(t *testing.T) {
 		i                       int
 		apiserverConfig         *victoriametricsv1beta1.APIServerConfig
 		basicAuthSecrets        map[string]BasicAuthCredentials
+		bearerTokens            map[string]BearerToken
 		ignoreHonorLabels       bool
 		overrideHonorTimestamps bool
 		enforcedNamespaceLabel  string
@@ -262,7 +262,7 @@ func Test_generateNodeScrapeConfig(t *testing.T) {
 					},
 				},
 			},
-			want: strings.TrimSpace(`job_name: default/nodes-basic/1
+			want: `job_name: default/nodes-basic/1
 honor_labels: false
 kubernetes_sd_configs:
 - role: node
@@ -282,12 +282,12 @@ relabel_configs:
   target_label: __address__
   regex: (.*)
   replacement: ${1}:9100
-`),
+`,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := generateNodeScrapeConfig(tt.args.m, tt.args.i, tt.args.apiserverConfig, tt.args.basicAuthSecrets, tt.args.ignoreHonorLabels, tt.args.overrideHonorTimestamps, tt.args.enforcedNamespaceLabel)
+			got := generateNodeScrapeConfig(tt.args.m, tt.args.i, tt.args.apiserverConfig, tt.args.basicAuthSecrets, tt.args.bearerTokens, tt.args.ignoreHonorLabels, tt.args.overrideHonorTimestamps, tt.args.enforcedNamespaceLabel)
 			gotBytes, err := yaml.Marshal(got)
 			if err != nil {
 				t.Errorf("cannot marshal NodeScrapeConfig to yaml,err :%e", err)

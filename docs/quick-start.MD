@@ -269,6 +269,7 @@ EOF
    podScrapeNamespaceSelector: {}
    podScrapeSelector: {}
    serviceScrapeSelector: {}
+   nodeScrapeSelector: {}
    replicaCount: 1
    remoteWrite:
      - url: "http://vminsert-example-vmcluster.default.svc.cluster.local:8480/insert/0/prometheus/api/v1/write"
@@ -302,6 +303,7 @@ spec:
   podScrapeNamespaceSelector: {}
   podScrapeSelector: {}
   serviceScrapeSelector: {}
+  nodeScrapeSelector: {}
   replicaCount: 1
   remoteWrite:
     - url: "http://vmsingle-example-vmsingle-persisted.default.svc:8429/api/v1/write"
@@ -916,6 +918,38 @@ Clean up incorrect rule:
 kubectl delete vmrule example-vmrule-incorrect-rule
 ```
 
+## VMNodeScrape
+
+ `VMNodeScrape` is usefull for node exporters monitoring, lets create scraper for cadvisor metrics:
+
+```yaml
+cat << EOF
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMNodeScrape
+metadata:
+  name: cadvisor-metrics
+spec:
+  scheme: "https"
+  tlsConfig:
+    insecureSkipVerify: true
+    caFile: "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+  bearerTokenFile: "/var/run/secrets/kubernetes.io/serviceaccount/token"
+  relabelConfigs:
+    - action: labelmap
+      regex: __meta_kubernetes_node_label_(.+)
+    - targetLabel: __address__
+      replacement: kubernetes.default.svc:443
+    - sourceLabels: [__meta_kubernetes_node_name]
+      regex: (.+)
+      targetLabel: __metrics_path__
+      replacement: /api/v1/nodes/$1/proxy/metrics/cadvisor
+EOF
+```
+
+
+
+
+
 ## VMProbe
 
  `VMProbe` required `VMAgent` and some external prober, blackbox exporter in our case. Ensure that you have `VMAgent` and `VMSingle`:
@@ -946,6 +980,7 @@ spec:
    podScrapeSelector: {}
    serviceScrapeSelector: {}
    probeSelector: {}
+   nodeScrapeSelector: {}
    replicaCount: 1
    remoteWrite:
      - url: "http://vmsingle-example-vmsingle-persisted.default.svc:8429/api/v1/write"

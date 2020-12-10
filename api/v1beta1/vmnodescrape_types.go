@@ -1,11 +1,15 @@
 package v1beta1
 
 import (
+	"fmt"
+
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// VMNodeScrapeSpec defines the desired state of VMNodeScrape
+// VMNodeScrapeSpec defines discovery for targets placed on kubernetes nodes,
+// usually its node-exporters and other host services.
+// InternalIP is used as __address__ for scraping.
 type VMNodeScrapeSpec struct {
 	// The label to use to retrieve the job name from.
 	// +optional
@@ -38,7 +42,7 @@ type VMNodeScrapeSpec struct {
 	// +optional
 	BearerTokenFile string `json:"bearerTokenFile,omitempty"`
 	// Secret to mount to read bearer token for scraping targets. The secret
-	// needs to be in the same namespace as the operator itself and be accessible by
+	// needs to be  accessible by
 	// the victoria-metrics operator.
 	// +optional
 	BearerTokenSecret v1.SecretKeySelector `json:"bearerTokenSecret,omitempty"`
@@ -62,11 +66,12 @@ type VMNodeScrapeSpec struct {
 	// ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint.
 	// +optional
 	ProxyURL *string `json:"proxyURL,omitempty"`
-	// Selector to select Node objects.
+	// Selector to select kubernetes Nodes.
 	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors=true
 	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors.displayName="Service selector"
 	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors.x-descriptors="urn:alm:descriptor:com.tectonic.ui:selector:"
-	Selector metav1.LabelSelector `json:"selector"`
+	// +optional
+	Selector metav1.LabelSelector `json:"selector,omitempty"`
 	// SampleLimit defines per-scrape limit on number of scraped samples that will be accepted.
 	// +optional
 	SampleLimit uint64 `json:"sampleLimit,omitempty"`
@@ -74,8 +79,6 @@ type VMNodeScrapeSpec struct {
 
 // VMNodeScrapeStatus defines the observed state of VMNodeScrape
 type VMNodeScrapeStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
 }
 
 // +kubebuilder:object:root=true
@@ -97,6 +100,11 @@ type VMNodeScrapeList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []VMNodeScrape `json:"items"`
+}
+
+// AsMapKey - returns cr name with suffix for token/auth maps.
+func (cr VMNodeScrape) AsMapKey() string {
+	return fmt.Sprintf("nodeScrape/%s/%s", cr.Namespace, cr.Name)
 }
 
 func init() {

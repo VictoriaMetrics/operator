@@ -34,7 +34,9 @@ spec:
         metadata:
           type: object
         spec:
-          description: VMNodeScrapeSpec defines the desired state of VMNodeScrape
+          description: VMNodeScrapeSpec defines discovery for targets placed on kubernetes
+            nodes, usually its node-exporters and other host services. InternalIP
+            is used as __address__ for scraping.
           properties:
             basicAuth:
               description: 'BasicAuth allow an endpoint to authenticate over basic
@@ -82,8 +84,7 @@ spec:
               type: string
             bearerTokenSecret:
               description: Secret to mount to read bearer token for scraping targets.
-                The secret needs to be in the same namespace as the operator itself
-                and be accessible by the victoria-metrics operator.
+                The secret needs to be  accessible by the victoria-metrics operator.
               properties:
                 key:
                   description: The key of the secret to select from.  Must be a valid
@@ -229,7 +230,7 @@ spec:
               description: Timeout after which the scrape is ended
               type: string
             selector:
-              description: Selector to select Node objects.
+              description: Selector to select kubernetes Nodes.
               properties:
                 matchExpressions:
                   description: matchExpressions is a list of label selector requirements.
@@ -394,8 +395,6 @@ spec:
                   description: Used to verify the hostname for the targets.
                   type: string
               type: object
-          required:
-          - selector
           type: object
         status:
           description: VMNodeScrapeStatus defines the observed state of VMNodeScrape

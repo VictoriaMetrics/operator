@@ -22,8 +22,8 @@ func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *victoriametricsv
 	// exist.
 	l := log.WithValues("vmagent", cr.Name, "namespace", cr.Namespace)
 
-	if cr.Spec.ServiceScrapeSelector == nil && cr.Spec.PodScrapeSelector == nil && cr.Spec.ProbeSelector == nil {
-		l.Info("neither ServiceScrape nor PodScrape nor VMProbe selector specified, leaving configuration unmanaged")
+	if cr.Spec.ServiceScrapeSelector == nil && cr.Spec.PodScrapeSelector == nil && cr.Spec.ProbeSelector == nil && cr.Spec.NodeScrapeSelector == nil {
+		l.Info("neither ServiceScrapeSelector nor PodScrapeSelector nor ProbeSelector nor  NodeScrapeSelector specified, leaving configuration unmanaged")
 
 		s, err := makeEmptyConfigurationSecret(cr, c)
 		if err != nil {
@@ -68,12 +68,12 @@ func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *victoriametricsv
 		return fmt.Errorf("cannot list secrets at vmagent namespace: %w", err)
 	}
 
-	basicAuthSecrets, err := loadBasicAuthSecrets(ctx, rclient, smons, cr.Spec.APIServerConfig, nil, SecretsInNS)
+	basicAuthSecrets, err := loadBasicAuthSecrets(ctx, rclient, smons, nodes, cr.Spec.APIServerConfig, nil, SecretsInNS)
 	if err != nil {
 		return fmt.Errorf("cannot load basic secrets for ServiceMonitors: %w", err)
 	}
 
-	bearerTokens, err := loadBearerTokensFromSecrets(ctx, rclient, smons, nil, SecretsInNS)
+	bearerTokens, err := loadBearerTokensFromSecrets(ctx, rclient, smons, nodes, nil, SecretsInNS)
 	if err != nil {
 		return fmt.Errorf("cannot load bearer tokens from secrets for ServiceMonitors: %w", err)
 	}
@@ -417,6 +417,7 @@ func loadBasicAuthSecrets(
 	ctx context.Context,
 	rclient client.Client,
 	mons map[string]*victoriametricsv1beta1.VMServiceScrape,
+	nodes map[string]*victoriametricsv1beta1.VMNodeScrape,
 	apiserverConfig *victoriametricsv1beta1.APIServerConfig,
 	remoteWriteSpecs []victoriametricsv1beta1.VMAgentRemoteWriteSpec,
 	SecretsInPromNS *v1.SecretList,
@@ -435,6 +436,21 @@ func loadBasicAuthSecrets(
 			}
 
 		}
+	}
+
+	for _, node := range nodes {
+		if node.Spec.BasicAuth != nil {
+			credentials, err := loadBasicAuthSecretFromAPI(ctx,
+				rclient,
+				node.Spec.BasicAuth,
+				node.Namespace,
+				nsSecretCache)
+			if err != nil {
+				return nil, fmt.Errorf("could not generate basicAuth for vmNodeScrape %s. %w", node.Name, err)
+			}
+			secrets[node.AsMapKey()] = credentials
+		}
+
 	}
 
 	// load apiserver basic auth secret
@@ -465,6 +481,7 @@ func loadBearerTokensFromSecrets(
 	ctx context.Context,
 	rclient client.Client,
 	mons map[string]*victoriametricsv1beta1.VMServiceScrape,
+	nodes map[string]*victoriametricsv1beta1.VMNodeScrape,
 	remoteWriteSpecs []victoriametricsv1beta1.VMAgentRemoteWriteSpec,
 	SecretsInPromNS *v1.SecretList,
 ) (map[string]BearerToken, error) {
@@ -495,7 +512,26 @@ func loadBearerTokensFromSecrets(
 			tokens[fmt.Sprintf("serviceScrape/%s/%s/%d", mon.Namespace, mon.Name, i)] = BearerToken(token)
 		}
 	}
+	// load bearer tokens for nodeScrape
+	for _, node := range nodes {
+		if node.Spec.BearerTokenSecret.Name == "" {
+			continue
+		}
+		token, err := getCredFromSecret(ctx,
+			rclient,
+			node.Namespace,
+			node.Spec.BearerTokenSecret,
+			node.Namespace+"/"+node.Spec.BearerTokenSecret.Name,
+			nsSecretCache)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"failed to extract endpoint bearertoken for VMNodeScrape %v from secret %v in namespace %v",
+				node.Name, node.Spec.BearerTokenSecret.Name, node.Namespace,
+			)
+		}
+		tokens[node.AsMapKey()] = BearerToken(token)
 
+	}
 	// load basic auth for remote write configuration
 	for _, rws := range remoteWriteSpecs {
 		if rws.BearerTokenSecret == nil {
@@ -693,6 +729,8 @@ func CreateVMServiceScrapeFromService(ctx context.Context, rclient client.Client
 			Name:            service.Name,
 			Namespace:       service.Namespace,
 			OwnerReferences: service.OwnerReferences,
+			Labels:          service.Labels,
+			Annotations:     service.Annotations,
 		},
 		Spec: victoriametricsv1beta1.VMServiceScrapeSpec{
 			Selector:  metav1.LabelSelector{MatchLabels: service.Spec.Selector},

@@ -95,7 +95,7 @@ func generateConfig(
 
 	nodeIdentifiers := make([]string, len(nodes))
 	i = 0
-	for k := range probes {
+	for k := range nodes {
 		nodeIdentifiers[i] = k
 		i++
 	}
@@ -151,6 +151,7 @@ func generateConfig(
 				i,
 				apiserverConfig,
 				basicAuthSecrets,
+				bearerTokens,
 				cr.Spec.OverrideHonorLabels,
 				cr.Spec.OverrideHonorTimestamps,
 				cr.Spec.EnforcedNamespaceLabel))
@@ -703,56 +704,79 @@ func generateServiceScrapeConfig(
 }
 
 func generateNodeScrapeConfig(
-	m *victoriametricsv1beta1.VMNodeScrape,
+	cr *victoriametricsv1beta1.VMNodeScrape,
 	i int,
 	apiserverConfig *victoriametricsv1beta1.APIServerConfig,
 	basicAuthSecrets map[string]BasicAuthCredentials,
+	bearerTokens map[string]BearerToken,
 	ignoreHonorLabels bool,
 	overrideHonorTimestamps bool,
 	enforcedNamespaceLabel string) yaml.MapSlice {
 
-	ep := m.Spec
-	hl := honorLabels(ep.HonorLabels, ignoreHonorLabels)
+	nodeSpec := cr.Spec
+	hl := honorLabels(nodeSpec.HonorLabels, ignoreHonorLabels)
 	cfg := yaml.MapSlice{
 		{
 			Key:   "job_name",
-			Value: fmt.Sprintf("%s/%s/%d", m.Namespace, m.Name, i),
+			Value: fmt.Sprintf("%s/%s/%d", cr.Namespace, cr.Name, i),
 		},
 		{
 			Key:   "honor_labels",
 			Value: hl,
 		},
 	}
-	cfg = honorTimestamps(cfg, ep.HonorTimestamps, overrideHonorTimestamps)
+	cfg = honorTimestamps(cfg, nodeSpec.HonorTimestamps, overrideHonorTimestamps)
 
 	cfg = append(cfg, generateK8SSDConfig(nil, apiserverConfig, basicAuthSecrets, kubernetesSDRoleNode))
 
-	if ep.Interval != "" {
-		cfg = append(cfg, yaml.MapItem{Key: "scrape_interval", Value: ep.Interval})
+	if nodeSpec.Interval != "" {
+		cfg = append(cfg, yaml.MapItem{Key: "scrape_interval", Value: nodeSpec.Interval})
 	}
-	if ep.ScrapeTimeout != "" {
-		cfg = append(cfg, yaml.MapItem{Key: "scrape_timeout", Value: ep.ScrapeTimeout})
+	if nodeSpec.ScrapeTimeout != "" {
+		cfg = append(cfg, yaml.MapItem{Key: "scrape_timeout", Value: nodeSpec.ScrapeTimeout})
 	}
-	if ep.Path != "" {
-		cfg = append(cfg, yaml.MapItem{Key: "metrics_path", Value: ep.Path})
+	if nodeSpec.Path != "" {
+		cfg = append(cfg, yaml.MapItem{Key: "metrics_path", Value: nodeSpec.Path})
 	}
-	if ep.ProxyURL != nil {
-		cfg = append(cfg, yaml.MapItem{Key: "proxy_url", Value: ep.ProxyURL})
+	if nodeSpec.ProxyURL != nil {
+		cfg = append(cfg, yaml.MapItem{Key: "proxy_url", Value: nodeSpec.ProxyURL})
 	}
-	if ep.Params != nil {
-		cfg = append(cfg, yaml.MapItem{Key: "params", Value: ep.Params})
+	if nodeSpec.Params != nil {
+		cfg = append(cfg, yaml.MapItem{Key: "params", Value: nodeSpec.Params})
 	}
-	if ep.Scheme != "" {
-		cfg = append(cfg, yaml.MapItem{Key: "scheme", Value: ep.Scheme})
+	if nodeSpec.Scheme != "" {
+		cfg = append(cfg, yaml.MapItem{Key: "scheme", Value: nodeSpec.Scheme})
 	}
 
+	cfg = addTLStoYaml(cfg, cr.Namespace, nodeSpec.TLSConfig)
+
+	if nodeSpec.BearerTokenFile != "" {
+		cfg = append(cfg, yaml.MapItem{Key: "bearer_token_file", Value: nodeSpec.BearerTokenFile})
+	}
+
+	if nodeSpec.BearerTokenSecret.Name != "" {
+		if s, ok := bearerTokens[cr.AsMapKey()]; ok {
+			cfg = append(cfg, yaml.MapItem{Key: "bearer_token", Value: s})
+		}
+	}
+
+	if nodeSpec.BasicAuth != nil {
+		if s, ok := basicAuthSecrets[cr.AsMapKey()]; ok {
+			cfg = append(cfg, yaml.MapItem{
+				Key: "basic_auth", Value: yaml.MapSlice{
+					{Key: "username", Value: s.username},
+					{Key: "password", Value: s.password},
+				},
+			})
+		}
+	}
 	var (
 		relabelings []yaml.MapSlice
 		labelKeys   []string
 	)
 	// Filter targets by pods selected by the scrape.
 	// Exact label matches.
-	for k := range m.Spec.Selector.MatchLabels {
+	for k := range cr.Spec.Selector.MatchLabels {
 		labelKeys = append(labelKeys, k)
 	}
 	sort.Strings(labelKeys)
@@ -761,12 +785,12 @@ func generateNodeScrapeConfig(
 		relabelings = append(relabelings, yaml.MapSlice{
 			{Key: "action", Value: "keep"},
 			{Key: "source_labels", Value: []string{"__meta_kubernetes_node_label_" + sanitizeLabelName(k)}},
-			{Key: "regex", Value: m.Spec.Selector.MatchLabels[k]},
+			{Key: "regex", Value: cr.Spec.Selector.MatchLabels[k]},
 		})
 	}
 	// Set based label matching. We have to map the valid relations
 	// `In`, `NotIn`, `Exists`, and `DoesNotExist`, into relabeling rules.
-	for _, exp := range m.Spec.Selector.MatchExpressions {
+	for _, exp := range cr.Spec.Selector.MatchExpressions {
 		switch exp.Operator {
 		case metav1.LabelSelectorOpIn:
 			relabelings = append(relabelings, yaml.MapSlice{
@@ -808,7 +832,7 @@ func generateNodeScrapeConfig(
 	}...)
 
 	// Relabel targetLabels from Node onto target.
-	for _, l := range m.Spec.TargetLabels {
+	for _, l := range cr.Spec.TargetLabels {
 		relabelings = append(relabelings, yaml.MapSlice{
 			{Key: "source_labels", Value: []string{"__meta_kubernetes_node_label_" + sanitizeLabelName(l)}},
 			{Key: "target_label", Value: sanitizeLabelName(l)},
@@ -825,43 +849,43 @@ func generateNodeScrapeConfig(
 
 	relabelings = append(relabelings, yaml.MapSlice{
 		{Key: "target_label", Value: "job"},
-		{Key: "replacement", Value: fmt.Sprintf("%s/%s", m.GetNamespace(), m.GetName())},
+		{Key: "replacement", Value: fmt.Sprintf("%s/%s", cr.GetNamespace(), cr.GetName())},
 	})
-	if m.Spec.JobLabel != "" {
+	if cr.Spec.JobLabel != "" {
 		relabelings = append(relabelings, yaml.MapSlice{
-			{Key: "source_labels", Value: []string{"__meta_kubernetes_node_label_" + sanitizeLabelName(m.Spec.JobLabel)}},
+			{Key: "source_labels", Value: []string{"__meta_kubernetes_node_label_" + sanitizeLabelName(cr.Spec.JobLabel)}},
 			{Key: "target_label", Value: "job"},
 			{Key: "regex", Value: "(.+)"},
 			{Key: "replacement", Value: "${1}"},
 		})
 	}
 
-	if ep.Port != "" {
+	if nodeSpec.Port != "" {
 		relabelings = append(relabelings, yaml.MapSlice{
 			{Key: "source_labels", Value: []string{"__address__"}},
 			{Key: "target_label", Value: "__address__"},
 			{Key: "regex", Value: "(.*)"},
-			{Key: "replacement", Value: fmt.Sprintf("${1}:%s", ep.Port)},
+			{Key: "replacement", Value: fmt.Sprintf("${1}:%s", nodeSpec.Port)},
 		})
 	}
 
-	if ep.RelabelConfigs != nil {
-		for _, c := range ep.RelabelConfigs {
+	if nodeSpec.RelabelConfigs != nil {
+		for _, c := range nodeSpec.RelabelConfigs {
 			relabelings = append(relabelings, generateRelabelConfig(c))
 		}
 	}
 	// Because of security risks, whenever enforcedNamespaceLabel is set, we want to append it to the
 	// relabel_configs as the last relabeling, to ensure it overrides any other relabelings.
-	relabelings = enforceNamespaceLabel(relabelings, m.Namespace, enforcedNamespaceLabel)
+	relabelings = enforceNamespaceLabel(relabelings, cr.Namespace, enforcedNamespaceLabel)
 	cfg = append(cfg, yaml.MapItem{Key: "relabel_configs", Value: relabelings})
 
-	if m.Spec.SampleLimit > 0 {
-		cfg = append(cfg, yaml.MapItem{Key: "sample_limit", Value: m.Spec.SampleLimit})
+	if cr.Spec.SampleLimit > 0 {
+		cfg = append(cfg, yaml.MapItem{Key: "sample_limit", Value: cr.Spec.SampleLimit})
 	}
 
-	if ep.MetricRelabelConfigs != nil {
+	if nodeSpec.MetricRelabelConfigs != nil {
 		var metricRelabelings []yaml.MapSlice
-		for _, c := range ep.MetricRelabelConfigs {
+		for _, c := range nodeSpec.MetricRelabelConfigs {
 			if c.TargetLabel != "" && enforcedNamespaceLabel != "" && c.TargetLabel == enforcedNamespaceLabel {
 				continue
 			}

@@ -773,13 +773,13 @@ func LoadRemoteWriteSecrets(ctx context.Context, cr *victoriametricsv1beta1.VMAg
 		l.Error(err, "cannot list secrets at vmagent namespace")
 		return nil, nil, err
 	}
-	rwsBasicAuthSecrets, err := loadBasicAuthSecrets(ctx, rclient, nil, nil, cr.Spec.RemoteWrite, SecretsInNS)
+	rwsBasicAuthSecrets, err := loadBasicAuthSecrets(ctx, rclient, nil, nil, nil, cr.Spec.RemoteWrite, SecretsInNS)
 	if err != nil {
 		l.Error(err, "cannot load basic auth secrets for remote write specs")
 		return nil, nil, err
 	}
 
-	rwsBearerTokens, err := loadBearerTokensFromSecrets(ctx, rclient, nil, cr.Spec.RemoteWrite, SecretsInNS)
+	rwsBearerTokens, err := loadBearerTokensFromSecrets(ctx, rclient, nil, nil, cr.Spec.RemoteWrite, SecretsInNS)
 	if err != nil {
 		l.Error(err, "cannot get bearer tokens for remote write specs")
 		return nil, nil, err

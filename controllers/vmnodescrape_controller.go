@@ -43,6 +43,7 @@ type VMNodeScrapeReconciler struct {
 	BaseConf *config.BaseOperatorConf
 }
 
+// Reconcile - reconciles VMNodeScrape objects.
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmnodescrapes,verbs=*
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmnodescrapes/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmnodescrapes/finalizers,verbs=*
@@ -99,6 +100,7 @@ func (r *VMNodeScrapeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 	return ctrl.Result{}, nil
 }
 
+// SetupWithManager - setups manager for VMNodeScrape
 func (r *VMNodeScrapeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&operatorv1beta1.VMNodeScrape{}).

@@ -162,11 +162,11 @@ func RunManager(ctx context.Context) error {
 	}
 	if err = (&controllers.VMNodeScrapeReconciler{
 		Client:   mgr.GetClient(),
-		Log:      ctrl.Log.WithName("controllers").WithName("VMProbe"),
+		Log:      ctrl.Log.WithName("controllers").WithName("VMNodeScrape"),
 		Scheme:   mgr.GetScheme(),
 		BaseConf: config.MustGetBaseConfig(),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "VMProbe")
+		setupLog.Error(err, "unable to create controller", "controller", "VMNodeScrape")
 		return err
 	}
 

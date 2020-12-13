@@ -73,19 +73,24 @@ func (r *VMNodeScrapeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 		reqLogger = reqLogger.WithValues("vmagent", vmagent.Name)
 		reqLogger.Info("reconciling vmNodeScrape for vmagent")
 		currentVMagent := &vmagent
-		// selector for nodescrape is nil
-		if currentVMagent.Spec.NodeScrapeSelector == nil {
+		// selectors for nodescrape is nil,
+		// fast path
+		if currentVMagent.Spec.NodeScrapeSelector == nil && currentVMagent.Spec.NodeScrapeNamespaceSelector == nil {
 			continue
 		}
-		selector, err := v1.LabelSelectorAsSelector(currentVMagent.Spec.NodeScrapeSelector)
-		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("cannot parse VMAgents NodeScrape selector as labelSelector: %w", err)
-		}
-		set := labels.Set(instance.Labels)
-		// selector not match
-		// fast path.
-		if !selector.Matches(set) {
-			continue
+		// fast path for labelSelector match
+		if currentVMagent.Spec.NodeScrapeSelector != nil {
+			selector, err := v1.LabelSelectorAsSelector(currentVMagent.Spec.NodeScrapeSelector)
+			if err != nil {
+				return ctrl.Result{}, fmt.Errorf("cannot parse VMAgents NodeScrape selector as labelSelector: %w", err)
+			}
+			set := labels.Set(instance.Labels)
+			// selector not match
+			// fast path.
+			if !selector.Matches(set) {
+				reqLogger.Info("labels not match")
+				continue
+			}
 		}
 		recon, err := factory.CreateOrUpdateVMAgent(ctx, currentVMagent, r, r.BaseConf)
 		if err != nil {
@@ -95,7 +100,7 @@ func (r *VMNodeScrapeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 		reqLogger.Info("reconciled vmagent")
 	}
 
-	reqLogger.Info("reconciled pod monitor")
+	reqLogger.Info("reconciled VMNodeScrape")
 
 	return ctrl.Result{}, nil
 }

@@ -206,6 +206,10 @@ type VMAgentSpec struct {
 	// configuration is unmanaged.
 	// +optional
 	NodeScrapeSelector *metav1.LabelSelector `json:"nodeScrapeSelector,omitempty"`
+	// NodeScrapeNamespaceSelector defines Namespaces to be selected for VMNodeScrape discovery. If nil, only
+	// check own namespace.
+	// +optional
+	NodeScrapeNamespaceSelector *metav1.LabelSelector `json:"nodeScrapeNamespaceSelector,omitempty"`
 	// AdditionalScrapeConfigs As scrape configs are appended, the user is responsible to make sure it
 	// is valid. Note that using this feature may expose the possibility to
 	// break upgrades of VMAgent. It is advised to review VMAgent release

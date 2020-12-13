@@ -856,6 +856,11 @@ func (in *VMAgentSpec) DeepCopyInto(out *VMAgentSpec) {
 		*out = new(metav1.LabelSelector)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.NodeScrapeNamespaceSelector != nil {
+		in, out := &in.NodeScrapeNamespaceSelector, &out.NodeScrapeNamespaceSelector
+		*out = new(metav1.LabelSelector)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.AdditionalScrapeConfigs != nil {
 		in, out := &in.AdditionalScrapeConfigs, &out.AdditionalScrapeConfigs
 		*out = new(v1.SecretKeySelector)

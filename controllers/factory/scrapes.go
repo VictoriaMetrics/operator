@@ -17,9 +17,7 @@ import (
 )
 
 func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client, c *config.BaseOperatorConf) error {
-	// If no service or pod scrape selectors are configured, the user wants to
-	// manage configuration themselves. Do create an empty Secret if it doesn't
-	// exist.
+	// create empty secret, if configuration is unmanaged
 	l := log.WithValues("vmagent", cr.Name, "namespace", cr.Namespace)
 
 	if cr.Spec.ServiceScrapeSelector == nil && cr.Spec.PodScrapeSelector == nil && cr.Spec.ProbeSelector == nil && cr.Spec.NodeScrapeSelector == nil {
@@ -384,7 +382,33 @@ func SelectVMProbes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rcl
 func SelectVMNodeScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) (map[string]*victoriametricsv1beta1.VMNodeScrape, error) {
 
 	res := make(map[string]*victoriametricsv1beta1.VMNodeScrape)
+	namespaces := []string{}
+	l := log.WithValues("vmagent", cr.Name, "namespace", cr.Namespace)
 
+	// list namespaces matched by  namespaceSelector
+	// for each namespace apply list with  selector
+	// combine result
+	if cr.Spec.NodeScrapeNamespaceSelector == nil {
+		namespaces = append(namespaces, cr.Namespace)
+	} else if cr.Spec.NodeScrapeNamespaceSelector.MatchExpressions == nil && cr.Spec.NodeScrapeNamespaceSelector.MatchLabels == nil {
+		namespaces = nil
+	} else {
+		l.Info("namespace selector for VMNodeScrape", "selector", cr.Spec.NodeScrapeSelector.String())
+		nsSelector, err := metav1.LabelSelectorAsSelector(cr.Spec.NodeScrapeSelector)
+		if err != nil {
+			return nil, fmt.Errorf("cannot convert NodeScrapeSelector to labelSelector: %w", err)
+		}
+		namespaces, err = selectNamespaces(ctx, rclient, nsSelector)
+		if err != nil {
+			return nil, fmt.Errorf("cannot select namespaces for VMNodeScrape match: %w", err)
+		}
+	}
+
+	// if namespaces isn't nil, then nameSpaceSelector is defined
+	// but nodeSelector maybe be nil and we have to set it to catch all value
+	if namespaces != nil && cr.Spec.NodeScrapeSelector == nil {
+		cr.Spec.NodeScrapeSelector = &metav1.LabelSelector{}
+	}
 	nodeSelector, err := metav1.LabelSelectorAsSelector(cr.Spec.NodeScrapeSelector)
 	if err != nil {
 		return nil, fmt.Errorf("cannot convert nodeScrapeSelector to label selector: %w", err)
@@ -392,13 +416,28 @@ func SelectVMNodeScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent
 
 	var nodesCombined []victoriametricsv1beta1.VMNodeScrape
 
-	log.Info("listing all namespaces for vmnodes")
-	vmNodes := &victoriametricsv1beta1.VMNodeScrapeList{}
-	err = rclient.List(ctx, vmNodes, &client.ListOptions{LabelSelector: nodeSelector})
-	if err != nil {
-		return nil, fmt.Errorf("cannot list VMNodeScrapes from all namespaces: %w", err)
+	//list all namespaces for nodes with selector
+	if namespaces == nil {
+		l.Info("listing all namespaces for VMNodeScrapes")
+		nodeScrapes := &victoriametricsv1beta1.VMNodeScrapeList{}
+		err = rclient.List(ctx, nodeScrapes, &client.ListOptions{LabelSelector: nodeSelector})
+		if err != nil {
+			return nil, fmt.Errorf("cannot list VMNodeScrapes at all namespaces: %w", err)
+		}
+		nodesCombined = append(nodesCombined, nodeScrapes.Items...)
+
+	} else {
+		for _, ns := range namespaces {
+			listOpts := &client.ListOptions{Namespace: ns, LabelSelector: nodeSelector}
+			nodeScrapes := &victoriametricsv1beta1.VMNodeScrapeList{}
+			err = rclient.List(ctx, nodeScrapes, listOpts)
+			if err != nil {
+				return nil, fmt.Errorf("cannot list VMNodeScrapes at namespace: %s, err: %w", ns, err)
+			}
+			nodesCombined = append(nodesCombined, nodeScrapes.Items...)
+
+		}
 	}
-	nodesCombined = append(nodesCombined, vmNodes.Items...)
 
 	for _, node := range nodesCombined {
 		pm := node.DeepCopy()
@@ -409,7 +448,7 @@ func SelectVMNodeScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent
 		nodesList = append(nodesList, key)
 	}
 
-	log.Info("selected VMNodeScrapes", "VMNodeScrapes", strings.Join(nodesList, ","), "namespace", cr.Namespace, "vmagent", cr.Name)
+	l.Info("selected VMNodeScrapes", "VMNodeScrapes", strings.Join(nodesList, ","))
 
 	return res, nil
 }

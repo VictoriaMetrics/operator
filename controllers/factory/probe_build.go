@@ -2,11 +2,12 @@ package factory
 
 import (
 	"fmt"
+	"sort"
+	"strings"
+
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sort"
-	"strings"
 )
 
 func generateProbeConfig(
@@ -39,9 +40,11 @@ func generateProbeConfig(
 	if cr.Spec.VMProberSpec.Scheme != "" {
 		cfg = append(cfg, yaml.MapItem{Key: "scheme", Value: cr.Spec.VMProberSpec.Scheme})
 	}
+	cfg = append(cfg, yaml.MapItem{Key: "params", Value: yaml.MapSlice{
+		{Key: "module", Value: []string{cr.Spec.Module}},
+	}})
 
 	cfg = append(cfg, yaml.MapItem{Key: "metrics_path", Value: cr.Spec.VMProberSpec.Path})
-	cfg = append(cfg, yaml.MapItem{Key: "module", Value: cr.Spec.Module})
 
 	if cr.Spec.Targets.StaticConfig != nil {
 		staticConfig := yaml.MapSlice{

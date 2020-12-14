@@ -1,11 +1,12 @@
 package factory
 
 import (
+	"reflect"
+	"testing"
+
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"reflect"
-	"testing"
 )
 
 func Test_generateProbeConfig(t *testing.T) {
@@ -43,8 +44,10 @@ func Test_generateProbeConfig(t *testing.T) {
 				i: 0,
 			},
 			want: `job_name: default/static-probe/0
+params:
+  module:
+  - http
 metrics_path: /probe
-module: http
 static_configs:
 - targets:
   - host-1
@@ -89,8 +92,10 @@ relabel_configs:
 				},
 			},
 			want: `job_name: monitor/probe-ingress/0
+params:
+  module:
+  - http200
 metrics_path: /probe
-module: http200
 kubernetes_sd_configs:
 - role: ingress
   namespaces:

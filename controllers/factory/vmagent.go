@@ -773,13 +773,13 @@ func LoadRemoteWriteSecrets(ctx context.Context, cr *victoriametricsv1beta1.VMAg
 		l.Error(err, "cannot list secrets at vmagent namespace")
 		return nil, nil, err
 	}
-	rwsBasicAuthSecrets, err := loadBasicAuthSecrets(ctx, rclient, nil, nil, cr.Spec.RemoteWrite, SecretsInNS)
+	rwsBasicAuthSecrets, err := loadBasicAuthSecrets(ctx, rclient, nil, nil, nil, cr.Spec.RemoteWrite, SecretsInNS)
 	if err != nil {
 		l.Error(err, "cannot load basic auth secrets for remote write specs")
 		return nil, nil, err
 	}
 
-	rwsBearerTokens, err := loadBearerTokensFromSecrets(ctx, rclient, nil, cr.Spec.RemoteWrite, SecretsInNS)
+	rwsBearerTokens, err := loadBearerTokensFromSecrets(ctx, rclient, nil, nil, cr.Spec.RemoteWrite, SecretsInNS)
 	if err != nil {
 		l.Error(err, "cannot get bearer tokens for remote write specs")
 		return nil, nil, err
@@ -891,8 +891,9 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, rwsBasicAuth map[stri
 		value = ""
 		if rws.Labels != nil {
 			labels.isNotNull = true
-			for n, v := range rws.Labels {
-				value += fmt.Sprintf("%s=%s,", n, v)
+			labels := sortMap(rws.Labels)
+			for _, v := range labels {
+				value += fmt.Sprintf("%s=%s,", v.key, v.value)
 			}
 		}
 		// no need to add comma
@@ -928,7 +929,10 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, rwsBasicAuth map[stri
 
 		value = ""
 		if rws.SendTimeout != nil {
-			sendTimeout.isNotNull = true
+			if !sendTimeout.isNotNull {
+				sendTimeout.isNotNull = true
+				finalArgs = append(finalArgs, fmt.Sprintf("%s=%s", sendTimeout.flagSetting, *rws.SendTimeout))
+			}
 			value = *rws.SendTimeout
 		}
 		sendTimeout.flagSetting += fmt.Sprintf("%s,", value)
@@ -947,8 +951,18 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, rwsBasicAuth map[stri
 		}
 		tmpDataPath.flagSetting += fmt.Sprintf("%s,", value)
 	}
-	remoteArgs = append(remoteArgs, url, authUser, authPassword, bearerToken, flushInterval, labels, maxBlockSize, maxDiskUsage, queues, urlRelabelConfig, sendTimeout, showURL, tmpDataPath)
-	remoteArgs = append(remoteArgs, tlsServerName, tlsInsecure, tlsKeys, tlsCerts, tlsCAs)
+	//remoteArgs = append(remoteArgs, url, authUser, authPassword, bearerToken, flushInterval, labels, maxBlockSize, maxDiskUsage, queues, urlRelabelConfig, sendTimeout, showURL, tmpDataPath)
+	//remoteArgs = append(remoteArgs, tlsServerName, tlsInsecure, tlsKeys, tlsCerts, tlsCAs)
+	// TODO FIX IT at VMAgent side, currently its broken.
+	skippedFlags := []remoteFlag{tlsInsecure, flushInterval, maxBlockSize, maxDiskUsage, queues, sendTimeout, tmpDataPath, showURL}
+	for _, flag := range skippedFlags {
+		if flag.isNotNull {
+			log.Info("Cannot set flag for remoteWrite, use extraArgs with flag setting", "flag", flag.flagSetting)
+		}
+	}
+	remoteArgs = append(remoteArgs, url, authUser, authPassword, bearerToken, labels, urlRelabelConfig)
+	remoteArgs = append(remoteArgs, tlsServerName, tlsKeys, tlsCerts, tlsCAs)
+
 	for _, remoteArgType := range remoteArgs {
 		if remoteArgType.isNotNull {
 			finalArgs = append(finalArgs, strings.TrimSuffix(remoteArgType.flagSetting, ","))

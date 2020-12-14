@@ -14,6 +14,7 @@ Operator introduces the following custom resources:
 * [Alertmanager](#Alertmanager)
 * [VMRule](#VMRule)
 * [VMProbe](#VMProbe)
+* [VMNodeScrape](#VMNodeScrape)
 
 ## VMSingle
 
@@ -187,4 +188,11 @@ two operators at the same time.
  or use standard k8s discovery mechanism with `Ingress`. 
   You have to configure blackbox exporter before you can use this feature. The second requirement is `VMAgent` selectors, 
   it must match your `VMProbe` by label or namespace selector.
+
+## VMNodeScrape
+
+The `VMNodeScrape` CRD provides discovery mechanism for scraping metrics kubernetes nodes.
+By specifying configuration at CRD, operator generates config for `VMAgent` and syncs it. Its useful for cadvisor scraping,
+node-exporter or other node-based exporters. By default, `__address__` is set at kubernetes internalIP - first IP address of node.
+`VMAgent` nodeScrapeSelector must match `VMNodeScrape` lables.
  

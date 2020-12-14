@@ -17,13 +17,11 @@ import (
 )
 
 func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client, c *config.BaseOperatorConf) error {
-	// If no service or pod scrape selectors are configured, the user wants to
-	// manage configuration themselves. Do create an empty Secret if it doesn't
-	// exist.
+	// create empty secret, if configuration is unmanaged
 	l := log.WithValues("vmagent", cr.Name, "namespace", cr.Namespace)
 
-	if cr.Spec.ServiceScrapeSelector == nil && cr.Spec.PodScrapeSelector == nil && cr.Spec.ProbeSelector == nil {
-		l.Info("neither ServiceScrape nor PodScrape nor VMProbe selector specified, leaving configuration unmanaged")
+	if cr.Spec.ServiceScrapeSelector == nil && cr.Spec.PodScrapeSelector == nil && cr.Spec.ProbeSelector == nil && cr.Spec.NodeScrapeSelector == nil {
+		l.Info("neither ServiceScrapeSelector nor PodScrapeSelector nor ProbeSelector nor  NodeScrapeSelector specified, leaving configuration unmanaged")
 
 		s, err := makeEmptyConfigurationSecret(cr, c)
 		if err != nil {
@@ -57,18 +55,23 @@ func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *victoriametricsv
 		return fmt.Errorf("selecting VMProbes failed: %w", err)
 	}
 
+	nodes, err := SelectVMNodeScrapes(ctx, cr, rclient)
+	if err != nil {
+		return fmt.Errorf("selecting VMNodeScrapes failed: %w", err)
+	}
+
 	SecretsInNS := &v1.SecretList{}
 	err = rclient.List(ctx, SecretsInNS)
 	if err != nil {
 		return fmt.Errorf("cannot list secrets at vmagent namespace: %w", err)
 	}
 
-	basicAuthSecrets, err := loadBasicAuthSecrets(ctx, rclient, smons, cr.Spec.APIServerConfig, nil, SecretsInNS)
+	basicAuthSecrets, err := loadBasicAuthSecrets(ctx, rclient, smons, nodes, cr.Spec.APIServerConfig, nil, SecretsInNS)
 	if err != nil {
 		return fmt.Errorf("cannot load basic secrets for ServiceMonitors: %w", err)
 	}
 
-	bearerTokens, err := loadBearerTokensFromSecrets(ctx, rclient, smons, nil, SecretsInNS)
+	bearerTokens, err := loadBearerTokensFromSecrets(ctx, rclient, smons, nodes, nil, SecretsInNS)
 	if err != nil {
 		return fmt.Errorf("cannot load bearer tokens from secrets for ServiceMonitors: %w", err)
 	}
@@ -84,6 +87,7 @@ func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *victoriametricsv
 		smons,
 		pmons,
 		probes,
+		nodes,
 		basicAuthSecrets,
 		bearerTokens,
 		additionalScrapeConfigs,
@@ -375,10 +379,84 @@ func SelectVMProbes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rcl
 	return res, nil
 }
 
+func SelectVMNodeScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) (map[string]*victoriametricsv1beta1.VMNodeScrape, error) {
+
+	res := make(map[string]*victoriametricsv1beta1.VMNodeScrape)
+	namespaces := []string{}
+	l := log.WithValues("vmagent", cr.Name, "namespace", cr.Namespace)
+
+	// list namespaces matched by  namespaceSelector
+	// for each namespace apply list with  selector
+	// combine result
+	if cr.Spec.NodeScrapeNamespaceSelector == nil {
+		namespaces = append(namespaces, cr.Namespace)
+	} else if cr.Spec.NodeScrapeNamespaceSelector.MatchExpressions == nil && cr.Spec.NodeScrapeNamespaceSelector.MatchLabels == nil {
+		namespaces = nil
+	} else {
+		l.Info("namespace selector for VMNodeScrape", "selector", cr.Spec.NodeScrapeSelector.String())
+		nsSelector, err := metav1.LabelSelectorAsSelector(cr.Spec.NodeScrapeSelector)
+		if err != nil {
+			return nil, fmt.Errorf("cannot convert NodeScrapeSelector to labelSelector: %w", err)
+		}
+		namespaces, err = selectNamespaces(ctx, rclient, nsSelector)
+		if err != nil {
+			return nil, fmt.Errorf("cannot select namespaces for VMNodeScrape match: %w", err)
+		}
+	}
+
+	// if namespaces isn't nil, then nameSpaceSelector is defined
+	// but nodeSelector maybe be nil and we have to set it to catch all value
+	if namespaces != nil && cr.Spec.NodeScrapeSelector == nil {
+		cr.Spec.NodeScrapeSelector = &metav1.LabelSelector{}
+	}
+	nodeSelector, err := metav1.LabelSelectorAsSelector(cr.Spec.NodeScrapeSelector)
+	if err != nil {
+		return nil, fmt.Errorf("cannot convert nodeScrapeSelector to label selector: %w", err)
+	}
+
+	var nodesCombined []victoriametricsv1beta1.VMNodeScrape
+
+	//list all namespaces for nodes with selector
+	if namespaces == nil {
+		l.Info("listing all namespaces for VMNodeScrapes")
+		nodeScrapes := &victoriametricsv1beta1.VMNodeScrapeList{}
+		err = rclient.List(ctx, nodeScrapes, &client.ListOptions{LabelSelector: nodeSelector})
+		if err != nil {
+			return nil, fmt.Errorf("cannot list VMNodeScrapes at all namespaces: %w", err)
+		}
+		nodesCombined = append(nodesCombined, nodeScrapes.Items...)
+
+	} else {
+		for _, ns := range namespaces {
+			listOpts := &client.ListOptions{Namespace: ns, LabelSelector: nodeSelector}
+			nodeScrapes := &victoriametricsv1beta1.VMNodeScrapeList{}
+			err = rclient.List(ctx, nodeScrapes, listOpts)
+			if err != nil {
+				return nil, fmt.Errorf("cannot list VMNodeScrapes at namespace: %s, err: %w", ns, err)
+			}
+			nodesCombined = append(nodesCombined, nodeScrapes.Items...)
+
+		}
+	}
+
+	for _, node := range nodesCombined {
+		pm := node.DeepCopy()
+		res[node.Namespace+"/"+node.Name] = pm
+	}
+	nodesList := make([]string, 0)
+	for key := range res {
+		nodesList = append(nodesList, key)
+	}
+
+	l.Info("selected VMNodeScrapes", "VMNodeScrapes", strings.Join(nodesList, ","))
+
+	return res, nil
+}
 func loadBasicAuthSecrets(
 	ctx context.Context,
 	rclient client.Client,
 	mons map[string]*victoriametricsv1beta1.VMServiceScrape,
+	nodes map[string]*victoriametricsv1beta1.VMNodeScrape,
 	apiserverConfig *victoriametricsv1beta1.APIServerConfig,
 	remoteWriteSpecs []victoriametricsv1beta1.VMAgentRemoteWriteSpec,
 	SecretsInPromNS *v1.SecretList,
@@ -397,6 +475,21 @@ func loadBasicAuthSecrets(
 			}
 
 		}
+	}
+
+	for _, node := range nodes {
+		if node.Spec.BasicAuth != nil {
+			credentials, err := loadBasicAuthSecretFromAPI(ctx,
+				rclient,
+				node.Spec.BasicAuth,
+				node.Namespace,
+				nsSecretCache)
+			if err != nil {
+				return nil, fmt.Errorf("could not generate basicAuth for vmNodeScrape %s. %w", node.Name, err)
+			}
+			secrets[node.AsMapKey()] = credentials
+		}
+
 	}
 
 	// load apiserver basic auth secret
@@ -427,6 +520,7 @@ func loadBearerTokensFromSecrets(
 	ctx context.Context,
 	rclient client.Client,
 	mons map[string]*victoriametricsv1beta1.VMServiceScrape,
+	nodes map[string]*victoriametricsv1beta1.VMNodeScrape,
 	remoteWriteSpecs []victoriametricsv1beta1.VMAgentRemoteWriteSpec,
 	SecretsInPromNS *v1.SecretList,
 ) (map[string]BearerToken, error) {
@@ -457,7 +551,26 @@ func loadBearerTokensFromSecrets(
 			tokens[fmt.Sprintf("serviceScrape/%s/%s/%d", mon.Namespace, mon.Name, i)] = BearerToken(token)
 		}
 	}
+	// load bearer tokens for nodeScrape
+	for _, node := range nodes {
+		if node.Spec.BearerTokenSecret.Name == "" {
+			continue
+		}
+		token, err := getCredFromSecret(ctx,
+			rclient,
+			node.Namespace,
+			node.Spec.BearerTokenSecret,
+			node.Namespace+"/"+node.Spec.BearerTokenSecret.Name,
+			nsSecretCache)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"failed to extract endpoint bearertoken for VMNodeScrape %v from secret %v in namespace %v",
+				node.Name, node.Spec.BearerTokenSecret.Name, node.Namespace,
+			)
+		}
+		tokens[node.AsMapKey()] = BearerToken(token)
 
+	}
 	// load basic auth for remote write configuration
 	for _, rws := range remoteWriteSpecs {
 		if rws.BearerTokenSecret == nil {
@@ -655,6 +768,8 @@ func CreateVMServiceScrapeFromService(ctx context.Context, rclient client.Client
 			Name:            service.Name,
 			Namespace:       service.Namespace,
 			OwnerReferences: service.OwnerReferences,
+			Labels:          service.Labels,
+			Annotations:     service.Annotations,
 		},
 		Spec: victoriametricsv1beta1.VMServiceScrapeSpec{
 			Selector:  metav1.LabelSelector{MatchLabels: service.Spec.Selector},

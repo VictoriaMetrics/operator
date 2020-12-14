@@ -269,6 +269,8 @@ EOF
    podScrapeNamespaceSelector: {}
    podScrapeSelector: {}
    serviceScrapeSelector: {}
+   nodeScrapeSelector: {}
+   nodeScrapeNamespaceSelector: {}
    replicaCount: 1
    remoteWrite:
      - url: "http://vminsert-example-vmcluster.default.svc.cluster.local:8480/insert/0/prometheus/api/v1/write"
@@ -302,13 +304,15 @@ spec:
   podScrapeNamespaceSelector: {}
   podScrapeSelector: {}
   serviceScrapeSelector: {}
+  nodeScrapeSelector: {}
+  nodeScrapeNamespaceSelector: {}
   replicaCount: 1
   remoteWrite:
     - url: "http://vmsingle-example-vmsingle-persisted.default.svc:8429/api/v1/write"
 EOF
 ```
 
- `VMAgent` has four selectors specification for filtering `VMServiceScrape`, `VMProbe` and `VMPodScrape` objects:
+ `VMAgent` has four selectors specification for filtering `VMServiceScrape`, `VMProbe`, `VMNodeScrape` and `VMPodScrape` objects:
  - `spec.serviceScrapeNamespaceSelector` - if it's nil, only serviceScrapes in the `VMAgent`s namespace can be selected.
     If it's defined with empty value: `spec.serviceScrapeNamespaceSelector: {}` - all namespaces are matched.
     You may also add matchLabels or matchExpression syntax, but your namespace must be tagged with specified labels first:
@@ -350,6 +354,21 @@ EOF
  - `spec.ProbeSelector` - it selects `VMProbe` objects by its labels. 
      If it's nil, but `spec.probeNamespaceSelector` isn't, the last one will be used for selecting.
      If it's defined with empty value: `spec.vmProbeSelector: {}`, all objects can be selected depending on NamespaceSelector.
+
+- `spec.nodeScrapeNamespaceSelector` - if it's nil, only `VMNodeScrape` in the `VMAgent`s namespace can be selected.
+  If it's defined with empty value: `spec.probeNamespaceSelector: {}` - all namespaces are matched.
+  You may also add matchLabels or matchExpression syntax, but your namespace must be tagged with specified labels first:
+    ```bash
+       kubectl label ns default name=default
+    ``` 
+  `spec.nodeScrapeNamespaceSelector:
+     matchLabels:
+       name: default
+  `
+- `spec.nodeScrapeSelector` - it selects `VMNodeScrape` objects by its labels.
+  If it's nil, but `spec.probeNamespaceSelector` isn't, the last one will be used for selecting.
+  If it's defined with empty value: `spec.vmProbeSelector: {}`, all objects can be selected depending on NamespaceSelector.
+  You may also use `matchLabels` and `matchExpression` for filtering `VMNodeScrape` by its labels.
 
      
 this configuration will match only namespace with  the label - name=default and all `VMServiceScrape` objects at this namespace will be 
@@ -916,6 +935,38 @@ Clean up incorrect rule:
 kubectl delete vmrule example-vmrule-incorrect-rule
 ```
 
+## VMNodeScrape
+
+ `VMNodeScrape` is usefull for node exporters monitoring, lets create scraper for cadvisor metrics:
+
+```yaml
+cat << EOF
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMNodeScrape
+metadata:
+  name: cadvisor-metrics
+spec:
+  scheme: "https"
+  tlsConfig:
+    insecureSkipVerify: true
+    caFile: "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+  bearerTokenFile: "/var/run/secrets/kubernetes.io/serviceaccount/token"
+  relabelConfigs:
+    - action: labelmap
+      regex: __meta_kubernetes_node_label_(.+)
+    - targetLabel: __address__
+      replacement: kubernetes.default.svc:443
+    - sourceLabels: [__meta_kubernetes_node_name]
+      regex: (.+)
+      targetLabel: __metrics_path__
+      replacement: /api/v1/nodes/$1/proxy/metrics/cadvisor
+EOF
+```
+
+
+
+
+
 ## VMProbe
 
  `VMProbe` required `VMAgent` and some external prober, blackbox exporter in our case. Ensure that you have `VMAgent` and `VMSingle`:
@@ -946,6 +997,8 @@ spec:
    podScrapeSelector: {}
    serviceScrapeSelector: {}
    probeSelector: {}
+   nodeScrapeSelector: {}
+   nodeScrapeNamespaceSelector: {}
    replicaCount: 1
    remoteWrite:
      - url: "http://vmsingle-example-vmsingle-persisted.default.svc:8429/api/v1/write"

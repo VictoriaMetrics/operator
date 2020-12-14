@@ -160,6 +160,15 @@ func RunManager(ctx context.Context) error {
 		setupLog.Error(err, "unable to create controller", "controller", "VMProbe")
 		return err
 	}
+	if err = (&controllers.VMNodeScrapeReconciler{
+		Client:   mgr.GetClient(),
+		Log:      ctrl.Log.WithName("controllers").WithName("VMNodeScrape"),
+		Scheme:   mgr.GetScheme(),
+		BaseConf: config.MustGetBaseConfig(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "VMNodeScrape")
+		return err
+	}
 
 	// +kubebuilder:scaffold:builder
 	setupLog.Info("starting vmconverter clients")

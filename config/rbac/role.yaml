@@ -333,3 +333,18 @@ rules:
     - list
     - create
     - watch
+- apiGroups:
+  - operator.victoriametrics.com
+  resources:
+  - vmnodescrapes
+  - vmnodescrapes/finalizers
+  verbs:
+  - '*'
+- apiGroups:
+  - operator.victoriametrics.com
+  resources:
+  - vmnodescrapes/status
+  verbs:
+  - get
+  - patch
+  - update

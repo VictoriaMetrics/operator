@@ -12,6 +12,7 @@ This Document documents the types introduced by the VictoriaMetrics to be consum
 * [VMAlertmanagerStatus](#vmalertmanagerstatus)
 * [VMAgent](#vmagent)
 * [VMAgentList](#vmagentlist)
+* [VMAgentRemoteWriteSettings](#vmagentremotewritesettings)
 * [VMAgentRemoteWriteSpec](#vmagentremotewritespec)
 * [VMAgentSpec](#vmagentspec)
 * [VMAgentStatus](#vmagentstatus)
@@ -177,6 +178,21 @@ VMAgentList contains a list of VMAgent
 
 [Back to TOC](#table-of-contents)
 
+## VMAgentRemoteWriteSettings
+
+VMAgentRemoteWriteSettings - defines global settings for all remoteWrite urls.
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| maxBlockSize | The maximum size in bytes of unpacked request to send to remote storage | *int32 | false |
+| maxDiskUsagePerURL | The maximum file-based buffer size in bytes at -remoteWrite.tmpDataPath | *int32 | false |
+| queues | The number of concurrent queues | *int32 | false |
+| showURL | Whether to show -remoteWrite.url in the exported metrics. It is hidden by default, since it can contain sensitive auth info | *bool | false |
+| tmpDataPath | Path to directory where temporary data for remote write component is stored (default vmagent-remotewrite-data) | *string | false |
+| flushInterval | Interval for flushing the data to remote storage. (default 1s) | *string | false |
+
+[Back to TOC](#table-of-contents)
+
 ## VMAgentRemoteWriteSpec
 
 VMAgentRemoteWriteSpec defines the remote storage configuration for VmAgent
@@ -186,16 +202,10 @@ VMAgentRemoteWriteSpec defines the remote storage configuration for VmAgent
 | url | URL of the endpoint to send samples to. | string | true |
 | basicAuth | BasicAuth allow an endpoint to authenticate over basic authentication | *[BasicAuth](#basicauth) | false |
 | bearerTokenSecret | Optional bearer auth token to use for -remoteWrite.url | *[v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
-| flushInterval | Interval for flushing the data to remote storage. (default 1s) | *string | false |
 | label | Optional labels in the form &#39;name=value&#39; to add to all the metrics before sending them | map[string]string | false |
-| maxBlockSize | The maximum size in bytes of unpacked request to send to remote storage | *int32 | false |
-| maxDiskUsagePerURL | The maximum file-based buffer size in bytes at -remoteWrite.tmpDataPath | *int32 | false |
-| queues | The number of concurrent queues | *int32 | false |
 | urlRelabelConfig | ConfigMap with relabeling config which is applied to metrics before sending them to the corresponding -remoteWrite.url | *v1.ConfigMapKeySelector | false |
-| sendTimeout | Timeout for sending a single block of data to -remoteWrite.url (default 1m0s) | *string | false |
-| showURL | Whether to show -remoteWrite.url in the exported metrics. It is hidden by default, since it can contain sensitive auth info | *bool | false |
-| tmpDataPath | Path to directory where temporary data for remote write component is stored (default vmagent-remotewrite-data) | *string | false |
 | tlsConfig | TLSConfig describes tls configuration for remote write target | *[TLSConfig](#tlsconfig) | false |
+| sendTimeout | Timeout for sending a single block of data to -remoteWrite.url (default 1m0s) | *string | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -239,6 +249,7 @@ VMAgentSpec defines the desired state of VMAgent
 | vmAgentExternalLabelName | VMAgentExternalLabelName Name of vmAgent external label used to denote vmAgent instance name. Defaults to the value of `prometheus`. External label will _not_ be added when value is set to empty string (`\&#34;\&#34;`). | *string | false |
 | externalLabels | ExternalLabels The labels to add to any time series or alerts when communicating with external systems (federation, remote storage, etc). | map[string]string | false |
 | remoteWrite | RemoteWrite list of victoria metrics /some other remote write system for vm it must looks like: http://victoria-metrics-single:8429/api/v1/write or for cluster different url https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/app/vmagent#splitting-data-streams-among-multiple-systems | [][VMAgentRemoteWriteSpec](#vmagentremotewritespec) | true |
+| remoteWriteSettings | RemoteWriteSettings defines global settings for all remoteWrite urls. | *[VMAgentRemoteWriteSettings](#vmagentremotewritesettings) | false |
 | relabelConfig | RelabelConfig ConfigMap with global relabel config -remoteWrite.relabelConfig This relabeling is applied to all the collected metrics before sending them to remote storage. | *v1.ConfigMapKeySelector | false |
 | serviceScrapeSelector | ServiceScrapeSelector defines ServiceScrapes to be selected for target discovery. if if neither PodScrapeNamespaceSelector nor ProbeSelector nor PodScrapeSelector nor NodeScrapeSelector are specified, configuration is unmanaged. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
 | serviceScrapeNamespaceSelector | ServiceScrapeNamespaceSelector Namespaces to be selected for ServiceMonitor discovery. If nil, only check own namespace. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
@@ -427,7 +438,8 @@ VMAlertSpec defines the desired state of VMAlert
 | ruleSelector | RuleSelector selector to select which VMRules to mount for loading alerting rules from. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
 | ruleNamespaceSelector | RuleNamespaceSelector to be selected for VMRules discovery. If unspecified, only the same namespace as the vmalert object is in is used. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
 | port | Port for listen | string | false |
-| notifier | Notifier prometheus alertmanager URL. Required parameter. e.g. http://127.0.0.1:9093 | [VMAlertNotifierSpec](#vmalertnotifierspec) | true |
+| notifier | Notifier prometheus alertmanager endpoint spec. Required at least one of  notifier or notifiers. e.g. http://127.0.0.1:9093 If specified both notifier and notifiers, notifier will be added as last element to notifiers. | *[VMAlertNotifierSpec](#vmalertnotifierspec) | false |
+| notifiers | Notifiers prometheus alertmanager endpoints. Required at least one of  notifier or notifiers. e.g. http://127.0.0.1:9093 If specified both notifier and notifiers, notifier will be added as last element to notifiers. | [][VMAlertNotifierSpec](#vmalertnotifierspec) | false |
 | remoteWrite | RemoteWrite Optional URL to remote-write compatible storage where to write timeseriesbased on active alerts. E.g. http://127.0.0.1:8428 | *[VMAlertRemoteWriteSpec](#vmalertremotewritespec) | false |
 | remoteRead | RemoteRead victoria metrics address for loading state This configuration makes sense only if remoteWrite was configured before and has been successfully persisted its state. | *[VMAlertRemoteReadSpec](#vmalertremotereadspec) | false |
 | rulePath | RulePath to the file with alert rules. Supports patterns. Flag can be specified multiple times. Examples: -rule /path/to/file. Path to a single file with alerting rules -rule dir/*.yaml -rule /*.yaml. Relative path to all .yaml files in folder, absolute path to all .yaml files in root. by default operator adds /etc/vmalert/configs/base/vmalert.yaml | []string | false |
@@ -551,6 +563,7 @@ RuleGroup is a list of sequentially evaluated recording and alerting rules.
 | name | Name of group | string | true |
 | interval | evaluation interval for group | string | false |
 | rules | Rules list of alert rules | [][Rule](#rule) | true |
+| concurrency | Concurrency defines how many rules execute at once. | int | false |
 
 [Back to TOC](#table-of-contents)
 

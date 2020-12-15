@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"path"
 	"sort"
+	"strings"
+
+	"k8s.io/utils/pointer"
 
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 
@@ -231,10 +234,14 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 	confReloadArgs := []string{
 		fmt.Sprintf("-webhook-url=%s", cr.ReloadPathWithPort(cr.Spec.Port)),
 	}
+	if cr.Spec.Notifier != nil {
+		cr.Spec.Notifiers = append(cr.Spec.Notifiers, *cr.Spec.Notifier)
+	}
 	args := []string{
-		fmt.Sprintf("-notifier.url=%s", cr.Spec.Notifier.URL),
 		fmt.Sprintf("-datasource.url=%s", cr.Spec.Datasource.URL),
 	}
+	args = append(args, BuildNotifiersArgs(cr, remoteSecrets)...)
+
 	if cr.Spec.Datasource.BasicAuth != nil {
 		if s, ok := remoteSecrets["datasource"]; ok {
 			args = append(args, fmt.Sprintf("-datasource.basicAuth.username=%s", s.username))
@@ -261,33 +268,6 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 			args = append(args, fmt.Sprintf("-datasource.tlsInsecureSkipVerify=%v", tlsConf.InsecureSkipVerify))
 
 		}
-	}
-	if cr.Spec.Notifier.BasicAuth != nil {
-		if s, ok := remoteSecrets["notifier"]; ok {
-			args = append(args, fmt.Sprintf("-notifier.basicAuth.username%s", s.username))
-			args = append(args, fmt.Sprintf("-notifier.basicAuth.password=%s", s.password))
-		}
-	}
-	if cr.Spec.Notifier.TLSConfig != nil {
-		tlsConf := cr.Spec.Notifier.TLSConfig
-		if tlsConf.CAFile != "" {
-			args = append(args, fmt.Sprintf("-notifier.tlsCAFile=%s", tlsConf.CAFile))
-		} else {
-			args = append(args, fmt.Sprintf("-notifier.tlsCAFile=%s", cr.Spec.Datasource.TLSConfig.BuildAssetPath(cr.Namespace, tlsConf.CA.Name(), tlsConf.CA.Key())))
-		}
-		if tlsConf.CertFile != "" {
-			args = append(args, fmt.Sprintf("-notifier.tlsCertFile=%s", tlsConf.CertFile))
-		} else {
-			args = append(args, fmt.Sprintf("-notifier.tlsCertFile=%s", cr.Spec.Datasource.TLSConfig.BuildAssetPath(cr.Namespace, tlsConf.Cert.Name(), tlsConf.Cert.Key())))
-		}
-		if tlsConf.KeyFile != "" {
-			args = append(args, fmt.Sprintf("-notifier.tlsKeyFile=%s", tlsConf.KeyFile))
-		} else {
-			args = append(args, fmt.Sprintf("-notifier.tlsKeyFile=%s", cr.Spec.Datasource.TLSConfig.BuildAssetPath(cr.Namespace, tlsConf.KeySecret.Name, tlsConf.KeySecret.Key)))
-		}
-		args = append(args, fmt.Sprintf("-notifier.tlsServerName=%s", tlsConf.ServerName))
-		args = append(args, fmt.Sprintf("-notifier.tlsInsecureSkipVerify=%v", tlsConf.InsecureSkipVerify))
-
 	}
 
 	if cr.Spec.RemoteWrite != nil {
@@ -591,14 +571,15 @@ func loadVMAlertRemoteSecrets(
 	datasource := cr.Spec.Datasource
 	remoteWrite := cr.Spec.RemoteWrite
 	remoteRead := cr.Spec.RemoteRead
-	notifier := cr.Spec.Notifier
 	secrets := map[string]BasicAuthCredentials{}
-	if notifier.BasicAuth != nil {
-		credentials, err := loadBasicAuthSecret(notifier.BasicAuth, SecretsInNS)
-		if err != nil {
-			return nil, fmt.Errorf("could not generate basicAuth for notifier config. %w", err)
+	for i, notifier := range cr.Spec.Notifiers {
+		if notifier.BasicAuth != nil {
+			credentials, err := loadBasicAuthSecret(notifier.BasicAuth, SecretsInNS)
+			if err != nil {
+				return nil, fmt.Errorf("could not generate basicAuth for notifier config. %w", err)
+			}
+			secrets[cr.NotifierAsMapKey(i)] = credentials
 		}
-		secrets["notifier"] = credentials
 	}
 	// load basic auth for datasource configuration
 	if datasource.BasicAuth != nil {
@@ -745,4 +726,87 @@ func loadTLSAssetsForVMAlert(ctx context.Context, rclient client.Client, cr *vic
 	}
 
 	return assets, nil
+}
+
+func BuildNotifiersArgs(cr *victoriametricsv1beta1.VMAlert, ntBasicAuth map[string]BasicAuthCredentials) []string {
+	var finalArgs []string
+	var notifierArgs []remoteFlag
+	notifierTargets := cr.Spec.Notifiers
+
+	url := remoteFlag{flagSetting: "-notifier.url=", isNotNull: true}
+	authUser := remoteFlag{flagSetting: "-notifier.basicAuth.username="}
+	authPassword := remoteFlag{flagSetting: "-notifier.basicAuth.password="}
+	tlsCAs := remoteFlag{flagSetting: "-notifier.tlsCAFile="}
+	tlsCerts := remoteFlag{flagSetting: "-notifier.tlsCertFile="}
+	tlsKeys := remoteFlag{flagSetting: "-notifier.tlsKeyFile="}
+	tlsServerName := remoteFlag{flagSetting: "-notifier.tlsServerName="}
+
+	pathPrefix := path.Join(tlsAssetsDir, cr.Namespace)
+
+	var tlsInsecure *bool
+	for i, nt := range notifierTargets {
+
+		url.flagSetting += fmt.Sprintf("%s,", nt.URL)
+
+		var caPath, certPath, keyPath, ServerName string
+		if nt.TLSConfig != nil {
+			if nt.TLSConfig.CAFile != "" {
+				caPath = nt.TLSConfig.CAFile
+			} else {
+				caPath = nt.TLSConfig.BuildAssetPath(pathPrefix, nt.TLSConfig.CA.Name(), nt.TLSConfig.CA.Key())
+			}
+			tlsCAs.isNotNull = true
+			if nt.TLSConfig.CertFile != "" {
+				certPath = nt.TLSConfig.CertFile
+			} else {
+				certPath = nt.TLSConfig.BuildAssetPath(pathPrefix, nt.TLSConfig.Cert.Name(), nt.TLSConfig.Cert.Key())
+
+			}
+			tlsCerts.isNotNull = true
+			if nt.TLSConfig.KeyFile != "" {
+				keyPath = nt.TLSConfig.KeyFile
+			} else {
+				keyPath = nt.TLSConfig.BuildAssetPath(pathPrefix, nt.TLSConfig.KeySecret.Name, nt.TLSConfig.KeySecret.Key)
+			}
+			tlsKeys.isNotNull = true
+			if nt.TLSConfig.InsecureSkipVerify {
+				tlsInsecure = pointer.BoolPtr(true)
+			}
+			if nt.TLSConfig.ServerName != "" {
+				ServerName = nt.TLSConfig.ServerName
+				tlsServerName.isNotNull = true
+			}
+		}
+		tlsCAs.flagSetting += fmt.Sprintf("%s,", caPath)
+		tlsCerts.flagSetting += fmt.Sprintf("%s,", certPath)
+		tlsKeys.flagSetting += fmt.Sprintf("%s,", keyPath)
+		tlsServerName.flagSetting += fmt.Sprintf("%s,", ServerName)
+
+		var user string
+		var pass string
+		if nt.BasicAuth != nil {
+			if s, ok := ntBasicAuth[cr.NotifierAsMapKey(i)]; ok {
+				authUser.isNotNull = true
+				authPassword.isNotNull = true
+				user = s.username
+				pass = s.password
+			}
+		}
+		authUser.flagSetting += fmt.Sprintf("\"%s\",", strings.Replace(user, `"`, `\"`, -1))
+		authPassword.flagSetting += fmt.Sprintf("\"%s\",", strings.Replace(pass, `"`, `\"`, -1))
+
+	}
+	notifierArgs = append(notifierArgs, url, authUser, authPassword)
+	notifierArgs = append(notifierArgs, tlsServerName, tlsKeys, tlsCerts, tlsCAs)
+
+	for _, remoteArgType := range notifierArgs {
+		if remoteArgType.isNotNull {
+			finalArgs = append(finalArgs, strings.TrimSuffix(remoteArgType.flagSetting, ","))
+		}
+	}
+	if tlsInsecure != nil && *tlsInsecure {
+		finalArgs = append(finalArgs, "-notifier.tlsInsecureSkipVerify=true")
+	}
+
+	return finalArgs
 }

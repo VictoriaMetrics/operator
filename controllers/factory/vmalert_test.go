@@ -25,7 +25,40 @@ func Test_loadVMAlertRemoteSecrets(t *testing.T) {
 		want    map[string]BasicAuthCredentials
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "test ok, secret found",
+			args: args{
+				cr: &victoriametricsv1beta1.VMAlert{
+					Spec: victoriametricsv1beta1.VMAlertSpec{RemoteWrite: &victoriametricsv1beta1.VMAlertRemoteWriteSpec{
+						BasicAuth: &victoriametricsv1beta1.BasicAuth{
+							Password: corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "secret-1",
+								},
+								Key: "password",
+							},
+							Username: corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "secret-1",
+								},
+								Key: "username",
+							},
+						},
+					}},
+				},
+				SecretsInNS: &corev1.SecretList{
+					Items: []corev1.Secret{
+						{
+							ObjectMeta: metav1.ObjectMeta{Name: "secret-1"},
+							Data:       map[string][]byte{"password": []byte("pass"), "username": []byte("user")},
+						},
+					},
+				},
+			},
+			want: map[string]BasicAuthCredentials{
+				"remoteWrite": {password: "pass", username: "user"},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -61,7 +94,7 @@ func Test_loadTLSAssetsForVMAlert(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: victoriametricsv1beta1.VMAlertSpec{
-						Notifier: victoriametricsv1beta1.VMAlertNotifierSpec{
+						Notifier: &victoriametricsv1beta1.VMAlertNotifierSpec{
 							URL: "http://some-alertmanager",
 						},
 						Datasource: victoriametricsv1beta1.VMAlertDatasourceSpec{
@@ -110,7 +143,7 @@ func TestCreateOrUpdateVMAlert(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: victoriametricsv1beta1.VMAlertSpec{
-						Notifier: victoriametricsv1beta1.VMAlertNotifierSpec{
+						Notifier: &victoriametricsv1beta1.VMAlertNotifierSpec{
 							URL: "http://some-alertmanager",
 						},
 						Datasource: victoriametricsv1beta1.VMAlertDatasourceSpec{
@@ -130,12 +163,17 @@ func TestCreateOrUpdateVMAlert(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: victoriametricsv1beta1.VMAlertSpec{
-						Notifier: victoriametricsv1beta1.VMAlertNotifierSpec{
+						Notifier: &victoriametricsv1beta1.VMAlertNotifierSpec{
 							URL: "http://some-alertmanager",
 							TLSConfig: &victoriametricsv1beta1.TLSConfig{
 								CAFile:   "/tmp/ca",
 								CertFile: "/tmp/cert",
 								KeyFile:  "/tmp/key",
+							},
+						},
+						Notifiers: []victoriametricsv1beta1.VMAlertNotifierSpec{
+							{
+								URL: "http://another-alertmanager",
 							},
 						},
 						Datasource: victoriametricsv1beta1.VMAlertDatasourceSpec{
@@ -195,6 +233,51 @@ func TestCreateOrUpdateVMAlert(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("CreateOrUpdateVMAlert() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestBuildNotifiers(t *testing.T) {
+	type args struct {
+		cr          *victoriametricsv1beta1.VMAlert
+		ntBasicAuth map[string]BasicAuthCredentials
+	}
+	tests := []struct {
+		name string
+		args args
+		want []string
+	}{
+		{
+			name: "ok build args",
+			args: args{
+				cr: &victoriametricsv1beta1.VMAlert{
+					Spec: victoriametricsv1beta1.VMAlertSpec{Notifiers: []victoriametricsv1beta1.VMAlertNotifierSpec{
+						{
+							URL: "http://am-1",
+						},
+						{
+							URL: "http://am-2",
+							TLSConfig: &victoriametricsv1beta1.TLSConfig{
+								CAFile:             "/tmp/ca.cert",
+								InsecureSkipVerify: true,
+								KeyFile:            "/tmp/key.pem",
+								CertFile:           "/tmp/cert.pem",
+							},
+						},
+						{
+							URL: "http://am-3",
+						},
+					}},
+				},
+			},
+			want: []string{"-notifier.url=http://am-1,http://am-2,http://am-3", "-notifier.tlsKeyFile=,/tmp/key.pem,", "-notifier.tlsCertFile=,/tmp/cert.pem,", "-notifier.tlsCAFile=,/tmp/ca.cert,", "-notifier.tlsInsecureSkipVerify=true"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := BuildNotifiersArgs(tt.args.cr, tt.args.ntBasicAuth); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("BuildNotifiersArgs() = \ngot \n%v, \nwant \n%v", got, tt.want)
 			}
 		})
 	}

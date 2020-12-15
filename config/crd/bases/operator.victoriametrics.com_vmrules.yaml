@@ -42,6 +42,9 @@ spec:
                 description: RuleGroup is a list of sequentially evaluated recording
                   and alerting rules.
                 properties:
+                  concurrency:
+                    description: Concurrency defines how many rules execute at once.
+                    type: integer
                   interval:
                     description: evaluation interval for group
                     type: string

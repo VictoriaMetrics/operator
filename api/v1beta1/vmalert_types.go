@@ -149,8 +149,13 @@ type VMAlertSpec struct {
 	// +optional
 	Port string `json:"port,omitempty"`
 
-	// Notifier prometheus alertmanager URL. Required parameter. e.g. http://127.0.0.1:9093
-	Notifier VMAlertNotifierSpec `json:"notifier"`
+	// Notifier prometheus alertmanager endpoint spec. Required at least one of  notifier or notifiers. e.g. http://127.0.0.1:9093
+	// If specified both notifier and notifiers, notifier will be added as last element to notifiers.
+	Notifier *VMAlertNotifierSpec `json:"notifier,omitempty"`
+
+	// Notifiers prometheus alertmanager endpoints. Required at least one of  notifier or notifiers. e.g. http://127.0.0.1:9093
+	// If specified both notifier and notifiers, notifier will be added as last element to notifiers.
+	Notifiers []VMAlertNotifierSpec `json:"notifiers,omitempty"`
 
 	// RemoteWrite Optional URL to remote-write compatible storage where to write timeseriesbased on active alerts. E.g. http://127.0.0.1:8428
 	// +optional
@@ -205,6 +210,11 @@ type VMAlertNotifierSpec struct {
 	BasicAuth *BasicAuth `json:"basicAuth,omitempty"`
 	// TLSConfig describes tls configuration for notifier
 	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
+}
+
+// AsMapKey - returns cr name with suffix for notifier token/auth maps.
+func (cr VMAlert) NotifierAsMapKey(i int) string {
+	return fmt.Sprintf("nodeScrape/%s/%s/%d", cr.Namespace, cr.Name, i)
 }
 
 // VMAgentRemoteReadSpec defines the remote storage configuration for VmAlert to read alerts from

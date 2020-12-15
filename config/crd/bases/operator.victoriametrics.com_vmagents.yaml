@@ -662,34 +662,15 @@ spec:
                     required:
                       - key
                     type: object
-                  flushInterval:
-                    description: Interval for flushing the data to remote storage. (default 1s)
-                    pattern: '[0-9]+(ms|s|m|h)'
-                    type: string
                   label:
                     additionalProperties:
                       type: string
                     description: Optional labels in the form 'name=value' to add to all the metrics before sending them
                     type: object
-                  maxBlockSize:
-                    description: The maximum size in bytes of unpacked request to send to remote storage
-                    format: int32
-                    type: integer
-                  maxDiskUsagePerURL:
-                    description: The maximum file-based buffer size in bytes at -remoteWrite.tmpDataPath
-                    format: int32
-                    type: integer
-                  queues:
-                    description: The number of concurrent queues
-                    format: int32
-                    type: integer
                   sendTimeout:
                     description: Timeout for sending a single block of data to -remoteWrite.url (default 1m0s)
                     pattern: '[0-9]+(ms|s|m|h)'
                     type: string
-                  showURL:
-                    description: Whether to show -remoteWrite.url in the exported metrics. It is hidden by default, since it can contain sensitive auth info
-                    type: boolean
                   tlsConfig:
                     description: TLSConfig describes tls configuration for remote write target
                     properties:
@@ -792,9 +773,6 @@ spec:
                         description: Used to verify the hostname for the targets.
                         type: string
                     type: object
-                  tmpDataPath:
-                    description: Path to directory where temporary data for remote write component is stored (default vmagent-remotewrite-data)
-                    type: string
                   url:
                     description: URL of the endpoint to send samples to.
                     type: string
@@ -817,6 +795,32 @@ spec:
                   - url
                 type: object
               type: array
+            remoteWriteSettings:
+              description: RemoteWriteSettings defines global settings for all remoteWrite urls.
+              properties:
+                flushInterval:
+                  description: Interval for flushing the data to remote storage. (default 1s)
+                  pattern: '[0-9]+(ms|s|m|h)'
+                  type: string
+                maxBlockSize:
+                  description: The maximum size in bytes of unpacked request to send to remote storage
+                  format: int32
+                  type: integer
+                maxDiskUsagePerURL:
+                  description: The maximum file-based buffer size in bytes at -remoteWrite.tmpDataPath
+                  format: int32
+                  type: integer
+                queues:
+                  description: The number of concurrent queues
+                  format: int32
+                  type: integer
+                showURL:
+                  description: Whether to show -remoteWrite.url in the exported metrics. It is hidden by default, since it can contain sensitive auth info
+                  type: boolean
+                tmpDataPath:
+                  description: Path to directory where temporary data for remote write component is stored (default vmagent-remotewrite-data)
+                  type: string
+              type: object
             replicaCount:
               description: ReplicaCount is the expected size of the VMAgent cluster. The controller will eventually make the size of the running cluster equal to the expected size. NOTE enable VMSingle deduplication for replica usage
               format: int32

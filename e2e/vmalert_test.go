@@ -38,7 +38,8 @@ var _ = Describe("test  vmalert Controller", func() {
 						},
 						Spec: operator.VMAlertSpec{
 							ReplicaCount: pointer.Int32Ptr(1),
-							Notifier:     operator.VMAlertNotifierSpec{URL: "http://alert-manager-url:9093"},
+							Notifier:     &operator.VMAlertNotifierSpec{URL: "http://alert-manager-url:9093"},
+							Notifiers:    []operator.VMAlertNotifierSpec{{URL: "http://alert-manager-2:9093"}},
 							Datasource: operator.VMAlertDatasourceSpec{
 								URL: "http://some-datasource-url:8428",
 							},
@@ -79,7 +80,7 @@ var _ = Describe("test  vmalert Controller", func() {
 						},
 						Spec: operator.VMAlertSpec{
 							ReplicaCount: pointer.Int32Ptr(1),
-							Notifier:     operator.VMAlertNotifierSpec{URL: "http://alert-manager-url:9093"},
+							Notifier:     &operator.VMAlertNotifierSpec{URL: "http://alert-manager-url:9093"},
 							Secrets:      []string{tlsSecretName},
 							Datasource: operator.VMAlertDatasourceSpec{
 								URL: "http://some-datasource-url:8428",
@@ -141,7 +142,7 @@ var _ = Describe("test  vmalert Controller", func() {
 							Datasource: operator.VMAlertDatasourceSpec{
 								URL: "http://some-vmsingle:8428",
 							},
-							Notifier: operator.VMAlertNotifierSpec{URL: "http://some-alertmanager:9093"},
+							Notifier: &operator.VMAlertNotifierSpec{URL: "http://some-alertmanager:9093"},
 						},
 					})).To(BeNil())
 

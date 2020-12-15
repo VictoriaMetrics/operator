@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"path"
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
@@ -269,6 +268,7 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 	if len(cr.Spec.RemoteWrite) > 0 {
 		args = append(args, BuildRemoteWrites(cr, rwsBasicAuth, rwsTokens)...)
 	}
+	args = append(args, BuildRemoteWriteSettings(cr)...)
 
 	for arg, value := range cr.Spec.ExtraArgs {
 		args = append(args, fmt.Sprintf("--%s=%s", arg, value))
@@ -792,6 +792,33 @@ type remoteFlag struct {
 	flagSetting string
 }
 
+func BuildRemoteWriteSettings(cr *victoriametricsv1beta1.VMAgent) []string {
+	if cr.Spec.RemoteWriteSettings == nil {
+		return nil
+	}
+	var args []string
+	rws := *cr.Spec.RemoteWriteSettings
+	if rws.FlushInterval != nil {
+		args = append(args, fmt.Sprintf("-remoteWrite.flushInterval=%s", *rws.FlushInterval))
+	}
+	if rws.MaxBlockSize != nil {
+		args = append(args, fmt.Sprintf("-remoteWrite.maxBlockSize=%d", *rws.MaxBlockSize))
+	}
+	if rws.MaxDiskUsagePerURL != nil {
+		args = append(args, fmt.Sprintf("-remoteWrite.maxDiskUsagePerURL=%d", *rws.MaxDiskUsagePerURL))
+	}
+	if rws.Queues != nil {
+		args = append(args, fmt.Sprintf("-remoteWrite.queues=%d", *rws.Queues))
+	}
+	if rws.ShowURL != nil {
+		args = append(args, fmt.Sprintf("-remoteWrite.showURL=%t", *rws.ShowURL))
+	}
+	if rws.TmpDataPath != nil {
+		args = append(args, fmt.Sprintf("-remoteWrite.tmpDataPath=%s", *rws.TmpDataPath))
+	}
+	return args
+}
+
 func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, rwsBasicAuth map[string]BasicAuthCredentials, rwsTokens map[string]BearerToken) []string {
 	var finalArgs []string
 	var remoteArgs []remoteFlag
@@ -801,15 +828,9 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, rwsBasicAuth map[stri
 	authUser := remoteFlag{flagSetting: "-remoteWrite.basicAuth.username="}
 	authPassword := remoteFlag{flagSetting: "-remoteWrite.basicAuth.password="}
 	bearerToken := remoteFlag{flagSetting: "-remoteWrite.bearerToken="}
-	flushInterval := remoteFlag{flagSetting: "-remoteWrite.flushInterval="}
 	labels := remoteFlag{flagSetting: "-remoteWrite.label="}
-	maxBlockSize := remoteFlag{flagSetting: "-remoteWrite.maxBlockSize="}
-	maxDiskUsage := remoteFlag{flagSetting: "-remoteWrite.maxDiskUsagePerURL="}
-	queues := remoteFlag{flagSetting: "-remoteWrite.queues="}
 	urlRelabelConfig := remoteFlag{flagSetting: "-remoteWrite.urlRelabelConfig="}
 	sendTimeout := remoteFlag{flagSetting: "-remoteWrite.sendTimeout="}
-	showURL := remoteFlag{flagSetting: "-remoteWrite.showURL="}
-	tmpDataPath := remoteFlag{flagSetting: "-remoteWrite.tmpDataPath="}
 	tlsCAs := remoteFlag{flagSetting: "-remoteWrite.tlsCAFile="}
 	tlsCerts := remoteFlag{flagSetting: "-remoteWrite.tlsCertFile="}
 	tlsKeys := remoteFlag{flagSetting: "-remoteWrite.tlsKeyFile="}
@@ -882,13 +903,6 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, rwsBasicAuth map[stri
 		bearerToken.flagSetting += fmt.Sprintf("\"%s\",", strings.Replace(value, `"`, `\"`, -1))
 
 		value = ""
-		if rws.FlushInterval != nil {
-			flushInterval.isNotNull = true
-			value = *rws.FlushInterval
-		}
-		flushInterval.flagSetting += fmt.Sprintf("%s,", value)
-
-		value = ""
 		if rws.Labels != nil {
 			labels.isNotNull = true
 			labels := sortMap(rws.Labels)
@@ -900,27 +914,7 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, rwsBasicAuth map[stri
 		labels.flagSetting += value
 
 		value = ""
-		if rws.MaxBlockSize != nil {
-			maxBlockSize.isNotNull = true
-			value = strconv.Itoa(int(*rws.MaxBlockSize))
-		}
-		maxBlockSize.flagSetting += fmt.Sprintf("%s,", value)
 
-		value = ""
-		if rws.MaxDiskUsagePerURL != nil {
-			maxDiskUsage.isNotNull = true
-			value = strconv.Itoa(int(*rws.MaxDiskUsagePerURL))
-		}
-		maxDiskUsage.flagSetting += fmt.Sprintf("%s,", value)
-
-		value = ""
-		if rws.Queues != nil {
-			queues.isNotNull = true
-			value = strconv.Itoa(int(*rws.Queues))
-		}
-		queues.flagSetting += fmt.Sprintf("%s,", value)
-
-		value = ""
 		if rws.UrlRelabelConfig != nil {
 			urlRelabelConfig.isNotNull = true
 			value = path.Join(ConfigMapsDir, rws.UrlRelabelConfig.Name, rws.UrlRelabelConfig.Key)
@@ -938,29 +932,8 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, rwsBasicAuth map[stri
 		sendTimeout.flagSetting += fmt.Sprintf("%s,", value)
 
 		value = ""
-		if rws.ShowURL != nil {
-			showURL.isNotNull = true
-			value = strconv.FormatBool(*rws.ShowURL)
-		}
-		showURL.flagSetting += fmt.Sprintf("%s,", value)
-
-		value = ""
-		if rws.TmpDataPath != nil {
-			tmpDataPath.isNotNull = true
-			value = *rws.TmpDataPath
-		}
-		tmpDataPath.flagSetting += fmt.Sprintf("%s,", value)
 	}
-	//remoteArgs = append(remoteArgs, url, authUser, authPassword, bearerToken, flushInterval, labels, maxBlockSize, maxDiskUsage, queues, urlRelabelConfig, sendTimeout, showURL, tmpDataPath)
-	//remoteArgs = append(remoteArgs, tlsServerName, tlsInsecure, tlsKeys, tlsCerts, tlsCAs)
-	// TODO FIX IT at VMAgent side, currently its broken.
-	skippedFlags := []remoteFlag{tlsInsecure, flushInterval, maxBlockSize, maxDiskUsage, queues, sendTimeout, tmpDataPath, showURL}
-	for _, flag := range skippedFlags {
-		if flag.isNotNull {
-			log.Info("Cannot set flag for remoteWrite, use extraArgs with flag setting", "flag", flag.flagSetting)
-		}
-	}
-	remoteArgs = append(remoteArgs, url, authUser, authPassword, bearerToken, labels, urlRelabelConfig)
+	remoteArgs = append(remoteArgs, url, authUser, authPassword, bearerToken, labels, urlRelabelConfig, tlsInsecure, sendTimeout)
 	remoteArgs = append(remoteArgs, tlsServerName, tlsKeys, tlsCerts, tlsCAs)
 
 	for _, remoteArgType := range remoteArgs {

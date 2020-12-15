@@ -21,6 +21,9 @@ type RuleGroup struct {
 	Interval string `json:"interval,omitempty"`
 	// Rules list of alert rules
 	Rules []Rule `json:"rules"`
+	// Concurrency defines how many rules execute at once.
+	// +optional
+	Concurrency int `json:"concurrency,omitempty"`
 }
 
 // Rule describes an alerting or recording rule.

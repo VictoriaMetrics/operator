@@ -940,7 +940,7 @@ kubectl delete vmrule example-vmrule-incorrect-rule
  `VMNodeScrape` is usefull for node exporters monitoring, lets create scraper for cadvisor metrics:
 
 ```yaml
-cat << EOF
+cat << EOF | kubectl apply -f -
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMNodeScrape
 metadata:

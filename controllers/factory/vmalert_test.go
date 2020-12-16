@@ -222,6 +222,71 @@ func TestCreateOrUpdateVMAlert(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "with-notifiers-tls",
+			args: args{
+				cr: &victoriametricsv1beta1.VMAlert{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "basic-vmalert",
+						Namespace: "default",
+					},
+					Spec: victoriametricsv1beta1.VMAlertSpec{
+						Notifiers: []victoriametricsv1beta1.VMAlertNotifierSpec{
+							{
+								URL: "http://another-alertmanager",
+								TLSConfig: &victoriametricsv1beta1.TLSConfig{
+									CAFile:   "/tmp/ca",
+									CertFile: "/tmp/cert",
+									KeyFile:  "/tmp/key",
+								},
+							},
+						},
+						Datasource: victoriametricsv1beta1.VMAlertDatasourceSpec{
+							URL: "http://some-vm-datasource",
+							TLSConfig: &victoriametricsv1beta1.TLSConfig{
+								CA: victoriametricsv1beta1.SecretOrConfigMap{
+									Secret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "ca"},
+								},
+								Cert: victoriametricsv1beta1.SecretOrConfigMap{
+									Secret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "ca"},
+								},
+								KeySecret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "key"},
+							},
+						},
+						RemoteWrite: &victoriametricsv1beta1.VMAlertRemoteWriteSpec{
+							URL: "http://vm-insert-url",
+							TLSConfig: &victoriametricsv1beta1.TLSConfig{
+								CA: victoriametricsv1beta1.SecretOrConfigMap{
+									ConfigMap: &corev1.ConfigMapKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "ca"},
+								},
+								Cert: victoriametricsv1beta1.SecretOrConfigMap{
+									ConfigMap: &corev1.ConfigMapKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "ca"},
+								},
+								KeySecret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "key"},
+							},
+						},
+					},
+				},
+				c: config.MustGetBaseConfig(),
+			},
+			predefinedObjects: []runtime.Object{
+				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "datasource-tls",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{"ca": []byte(`sa`), "cert": []byte(`cert-data`), "key": []byte(`"key-data"`)},
+				},
+				&corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "datasource-tls",
+						Namespace: "default",
+					},
+					Data: map[string]string{"ca": "ca-data", "cert": "cert-data"},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

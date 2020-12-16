@@ -7,9 +7,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// VMNodeScrapeSpec defines discovery for targets placed on kubernetes nodes,
-// usually its node-exporters and other host services.
-// InternalIP is used as __address__ for scraping.
+// VMNodeScrapeSpec defines specification for VMNodeScrape.
 type VMNodeScrapeSpec struct {
 	// The label to use to retrieve the job name from.
 	// +optional
@@ -84,7 +82,9 @@ type VMNodeScrapeStatus struct {
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 
-// VMNodeScrape is the Schema for the vmnodescrapes API
+// VMNodeScrape defines discovery for targets placed on kubernetes nodes,
+// usually its node-exporters and other host services.
+// InternalIP is used as __address__ for scraping.
 type VMNodeScrape struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

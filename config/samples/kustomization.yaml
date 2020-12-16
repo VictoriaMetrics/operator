@@ -9,3 +9,4 @@ resources:
 - victoriametrics_v1beta1_vmsingle.yaml
 - victoriametrics_v1beta1_vmcluster.yaml
 - operator_v1beta1_vmprobe.yaml
+- operator_v1beta1_vmnodescrape.yaml

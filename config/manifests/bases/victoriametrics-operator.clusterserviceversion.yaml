@@ -117,7 +117,7 @@ spec:
         path: resources
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
-      - description: ServiceAccountName is the name of the ServiceAccount to use to run the VMAgent Pods. required
+      - description: ServiceAccountName is the name of the ServiceAccount to use to run the VMAgent Pods.
         displayName: ServiceAccount name
         path: serviceAccountName
         x-descriptors:
@@ -163,6 +163,11 @@ spec:
         path: vmstorage.resources
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
+      version: v1beta1
+    - description: VMNodeScrape is the Schema for the vmnodescrapes API
+      displayName: VMNode Scrape
+      kind: VMNodeScrape
+      name: vmnodescrapes.operator.victoriametrics.com
       version: v1beta1
   description: |
     Operator manages VictoriaMetrics applications and provides monitoring features for applications running inside and outside kubernetes cluster. It has support for prometheus-operator objects and

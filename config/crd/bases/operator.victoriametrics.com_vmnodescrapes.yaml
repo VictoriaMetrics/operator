@@ -19,7 +19,9 @@ spec:
     status: {}
   validation:
     openAPIV3Schema:
-      description: VMNodeScrape is the Schema for the vmnodescrapes API
+      description: VMNodeScrape defines discovery for targets placed on kubernetes
+        nodes, usually its node-exporters and other host services. InternalIP is used
+        as __address__ for scraping.
       properties:
         apiVersion:
           description: 'APIVersion defines the versioned schema of this representation
@@ -34,9 +36,7 @@ spec:
         metadata:
           type: object
         spec:
-          description: VMNodeScrapeSpec defines discovery for targets placed on kubernetes
-            nodes, usually its node-exporters and other host services. InternalIP
-            is used as __address__ for scraping.
+          description: VMNodeScrapeSpec defines specification for VMNodeScrape.
           properties:
             basicAuth:
               description: 'BasicAuth allow an endpoint to authenticate over basic

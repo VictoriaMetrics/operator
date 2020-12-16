@@ -11,31 +11,12 @@ spec:
   selector:
     matchLabels:
       role: node-exporter
-  params:
-    urlParam: ["value1", "value3"]
   interval: "10s"
   scrapeTimeout: "2s"
   tlsConfig:
     insecureSkipVerify: true
-    serverName: "server"
-#    keyFile: "/tmp/key.pem"
-#    certFile: "/tmp/cert.pem"
     caFile: "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
   bearerTokenFile: "/var/run/secrets/kubernetes.io/serviceaccount/token"
-#  bearerTokenSecret:
-#    name: "bearer-secret"
-#    key: "bearer"
-  metricRelabelConfigs:
-    - sourceLabels: ["node"]
-      targetLabel: "kubernetes-node"
   relabelConfigs:
     - sourceLabels: [ "node" ]
       targetLabel: "kubernetes_io_node1"
-#  basicAuth:
-#    username:
-#      name: "secret-1"
-#      key: "password"
-#    password:
-#      name: "secret-1"
-#      key: "password"
-  sampleLimit: 100000

@@ -58,7 +58,7 @@ var _ = Describe("test  vmalert Controller", func() {
 					}, 60, 1).Should(BeEmpty())
 
 				})
-				It("should create with remote read tls", func() {
+				It("should create with remote read and notifier tls", func() {
 					tlsSecretName := "vmalert-remote-tls"
 					tlsSecret := &corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{
@@ -80,8 +80,16 @@ var _ = Describe("test  vmalert Controller", func() {
 						},
 						Spec: operator.VMAlertSpec{
 							ReplicaCount: pointer.Int32Ptr(1),
-							Notifier:     &operator.VMAlertNotifierSpec{URL: "http://alert-manager-url:9093"},
-							Secrets:      []string{tlsSecretName},
+							Notifiers: []operator.VMAlertNotifierSpec{
+								{
+									URL: "http://alert-manager-url:9093",
+									TLSConfig: &operator.TLSConfig{
+										CertFile: path.Join(factory.SecretsDir, tlsSecretName, "remote-cert"),
+										KeyFile:  path.Join(factory.SecretsDir, tlsSecretName, "remote-key"),
+										CAFile:   path.Join(factory.SecretsDir, tlsSecretName, "remote-ca"),
+									},
+								}},
+							Secrets: []string{tlsSecretName},
 							Datasource: operator.VMAlertDatasourceSpec{
 								URL: "http://some-datasource-url:8428",
 								TLSConfig: &operator.TLSConfig{

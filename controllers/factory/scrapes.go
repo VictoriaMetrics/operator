@@ -264,31 +264,29 @@ func SelectPodScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, r
 
 	podScrapesCombined := []victoriametricsv1beta1.VMPodScrape{}
 
-	//list all namespaces for rules with selector
+	//list all namespaces for pods with selector
 	if namespaces == nil {
 		log.Info("listing all namespaces for podScrapes")
-		servMons := &victoriametricsv1beta1.VMPodScrapeList{}
-		err = rclient.List(ctx, servMons, &client.ListOptions{LabelSelector: podScrapeSelector})
+		podScrapes := &victoriametricsv1beta1.VMPodScrapeList{}
+		err = rclient.List(ctx, podScrapes, &client.ListOptions{LabelSelector: podScrapeSelector})
 		if err != nil {
 			return nil, fmt.Errorf("cannot list podScrapes from all namespaces: %w", err)
 		}
-		podScrapesCombined = append(podScrapesCombined, servMons.Items...)
+		podScrapesCombined = append(podScrapesCombined, podScrapes.Items...)
 
 	} else {
 		for _, ns := range namespaces {
 			listOpts := &client.ListOptions{Namespace: ns, LabelSelector: podScrapeSelector}
-			servMons := &victoriametricsv1beta1.VMPodScrapeList{}
-			err = rclient.List(ctx, servMons, listOpts)
+			podScrapes := &victoriametricsv1beta1.VMPodScrapeList{}
+			err = rclient.List(ctx, podScrapes, listOpts)
 			if err != nil {
 				return nil, fmt.Errorf("cannot list podscrapes at namespace: %s, err: %w", ns, err)
 			}
-			podScrapesCombined = append(podScrapesCombined, servMons.Items...)
+			podScrapesCombined = append(podScrapesCombined, podScrapes.Items...)
 
 		}
 	}
 
-	log.Info("filtering namespaces to select PodScrapes from",
-		"namespace", cr.Namespace, "vmagent", cr.Name)
 	for _, podScrape := range podScrapesCombined {
 		pm := podScrape.DeepCopy()
 		res[podScrape.Namespace+"/"+podScrape.Name] = pm

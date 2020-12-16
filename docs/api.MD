@@ -1038,7 +1038,7 @@ VMClusterStatus defines the observed state of VMCluster
 
 ## VMNodeScrape
 
-VMNodeScrape is the Schema for the vmnodescrapes API
+VMNodeScrape defines discovery for targets placed on kubernetes nodes, usually its node-exporters and other host services. InternalIP is used as __address__ for scraping.
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
@@ -1061,7 +1061,7 @@ VMNodeScrapeList contains a list of VMNodeScrape
 
 ## VMNodeScrapeSpec
 
-VMNodeScrapeSpec defines discovery for targets placed on kubernetes nodes, usually its node-exporters and other host services. InternalIP is used as __address__ for scraping.
+VMNodeScrapeSpec defines specification for VMNodeScrape.
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |

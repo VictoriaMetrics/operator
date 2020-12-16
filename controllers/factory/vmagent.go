@@ -615,7 +615,7 @@ func CreateOrUpdateTlsAssets(ctx context.Context, cr *victoriametricsv1beta1.VMA
 		if err != nil {
 			return fmt.Errorf("cannot create tls asset secret: %s for vmagent: %s, err :%w", tlsAssetsSecret.Name, cr.Name, err)
 		}
-		log.Info("create new tls asset secret: %s, for vmagent: %s", tlsAssetsSecret.Name, cr.Name)
+		log.Info("create new tls asset for vmagent", "secret_name", tlsAssetsSecret.Name, "vmagent", cr.Name)
 		return nil
 	}
 	for annotation, value := range currentAssetSecret.Annotations {

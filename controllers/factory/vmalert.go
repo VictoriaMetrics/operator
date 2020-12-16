@@ -631,13 +631,13 @@ func CreateOrUpdateTlsAssetsForVMAlert(ctx context.Context, cr *victoriametricsv
 	err = rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: tlsAssetsSecret.Name}, currentAssetSecret)
 	if err != nil {
 		if !errors.IsNotFound(err) {
-			return fmt.Errorf("cannot get existing tls secret: %s, for vmagent: %s, err: %w", tlsAssetsSecret.Name, cr.Name, err)
+			return fmt.Errorf("cannot get existing tls secret: %s, for vmalert: %s, err: %w", tlsAssetsSecret.Name, cr.Name, err)
 		}
 		err := rclient.Create(ctx, tlsAssetsSecret)
 		if err != nil {
-			return fmt.Errorf("cannot create tls asset secret: %s for vmagent: %s, err :%w", tlsAssetsSecret.Name, cr.Name, err)
+			return fmt.Errorf("cannot create tls asset secret: %s for vmalert: %s, err :%w", tlsAssetsSecret.Name, cr.Name, err)
 		}
-		log.Info("create new tls asset secret: %s, for vmagent: %s", tlsAssetsSecret.Name, cr.Name)
+		log.Info("create new tls asset secret for vmalert", "secret_name", tlsAssetsSecret.Name, "vmalert", cr.Name)
 		return nil
 	}
 	for annotation, value := range currentAssetSecret.Annotations {
@@ -651,8 +651,11 @@ func loadTLSAssetsForVMAlert(ctx context.Context, rclient client.Client, cr *vic
 	nsSecretCache := make(map[string]*corev1.Secret)
 	nsConfigMapCache := make(map[string]*corev1.ConfigMap)
 	tlsConfigs := []*victoriametricsv1beta1.TLSConfig{}
-	if cr.Spec.Notifier.TLSConfig != nil {
-		tlsConfigs = append(tlsConfigs, cr.Spec.Notifier.TLSConfig)
+
+	for _, notifier := range cr.Spec.Notifiers {
+		if notifier.TLSConfig != nil {
+			tlsConfigs = append(tlsConfigs, notifier.TLSConfig)
+		}
 	}
 	if cr.Spec.RemoteRead != nil && cr.Spec.RemoteRead.TLSConfig != nil {
 		tlsConfigs = append(tlsConfigs, cr.Spec.RemoteRead.TLSConfig)

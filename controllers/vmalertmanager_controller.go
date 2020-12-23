@@ -61,6 +61,9 @@ func (r *VMAlertmanagerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, err
 		}
 		return ctrl.Result{}, err
 	}
+	if instance.DeletionTimestamp != nil {
+		return ctrl.Result{}, nil
+	}
 
 	_, err = factory.CreateOrUpdateAlertManager(ctx, instance, r, r.BaseConf)
 	if err != nil {

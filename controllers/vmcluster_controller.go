@@ -43,6 +43,9 @@ func (r *VMClusterReconciler) Reconcile(request ctrl.Request) (ctrl.Result, erro
 		}
 		return reconcile.Result{}, err
 	}
+	if cluster.DeletionTimestamp != nil {
+		return ctrl.Result{}, nil
+	}
 
 	status, err := factory.CreateOrUpdateVMCluster(ctx, cluster, r.Client, config.MustGetBaseConfig())
 	if err != nil {

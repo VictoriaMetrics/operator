@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
@@ -64,6 +65,13 @@ func (r *VMPodScrapeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 	reqLogger.Info("found vmagent objects ", "vmagents count: ", len(vmAgentInstances.Items))
 
 	for _, vmagent := range vmAgentInstances.Items {
+		if vmagent.DeletionTimestamp != nil {
+			continue
+		}
+		// fast path unmanaged.
+		if vmagent.Spec.PodScrapeNamespaceSelector == nil && vmagent.Spec.PodScrapeSelector == nil {
+			continue
+		}
 		reqLogger = reqLogger.WithValues("vmagent", vmagent.Name)
 		reqLogger.Info("reconciling podscrape for vmagent")
 		currentVMagent := &vmagent

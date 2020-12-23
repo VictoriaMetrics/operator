@@ -65,6 +65,13 @@ func (r *VMProbeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	reqLogger.Info("found vmagent objects ", "vmagents count: ", len(vmAgentInstances.Items))
 
 	for _, vmagent := range vmAgentInstances.Items {
+		if vmagent.DeletionTimestamp != nil {
+			continue
+		}
+		// fast path unmanaged.
+		if vmagent.Spec.ProbeNamespaceSelector == nil && vmagent.Spec.ProbeSelector == nil {
+			continue
+		}
 		reqLogger = reqLogger.WithValues("vmagent", vmagent.Name)
 		reqLogger.Info("reconciling probe for vmagent")
 		currentVMagent := &vmagent

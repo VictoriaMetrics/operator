@@ -60,7 +60,7 @@ install-develop-tools: install-golint install-docs-generators
 
 #YAML_FIX_LIST=vmalertmanagers.yaml vmalerts.yaml vmsingles.yaml vmagents.yaml
 fix118:
-	docker run --rm -v "${PWD}":/workdir mikefarah/yq /bin/sh -c ' \
+	docker run --rm -v "${PWD}":/workdir mikefarah/yq:2.2.0 /bin/sh -c ' \
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalertmanagers.yaml $(YAML_DROP_PREFIX).initContainers.items.properties &&\
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalertmanagers.yaml $(YAML_DROP_PREFIX).containers.items.properties ;\
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalertmanagers.yaml $(YAML_DROP_PREFIX).topologySpreadConstraints.items.properties ;\
@@ -223,7 +223,7 @@ bundle: manifests fix118
 	$(OPERATOR_BIN) generate kustomize manifests -q
 	kustomize build config/manifests | $(OPERATOR_BIN) generate bundle -q --overwrite --version $(VERSION_TRIM) $(BUNDLE_METADATA_OPTS)
 	sed -i "s|$(DOCKER_REPO):.*|$(DOCKER_REPO):$(VERSION)|" bundle/manifests/*
-	docker run --rm -v "${PWD}":/workdir mikefarah/yq yq m -ia bundle/manifests/victoriametrics-operator.clusterserviceversion.yaml hack/bundle_csv_vmagent.yaml
+	docker run --rm -v "${PWD}":/workdir mikefarah/yq:2.2.0 yq m -ia bundle/manifests/victoriametrics-operator.clusterserviceversion.yaml hack/bundle_csv_vmagent.yaml
 	$(OPERATOR_BIN) bundle validate ./bundle
 	docker build -f bundle.Dockerfile -t quay.io/victoriametrics/operator:bundle-$(VERSION_TRIM) .
 
@@ -257,7 +257,7 @@ packagemanifests: manifests fix118
 	kustomize build config/manifests | $(OPERATOR_BIN) generate packagemanifests -q --version $(VERSION_TRIM) --channel=$(CHANNEL) --default-channel
 	mv packagemanifests/$(VERSION_TRIM)/victoriametrics-operator.clusterserviceversion.yaml packagemanifests/$(VERSION_TRIM)/victoriametrics-operator.$(VERSION_TRIM).clusterserviceversion.yaml
 	sed -i "s|$(DOCKER_REPO):.*|$(DOCKER_REPO):$(VERSION)|" packagemanifests/$(VERSION_TRIM)/*
-	docker run --rm -v "${PWD}":/workdir mikefarah/yq \
+	docker run --rm -v "${PWD}":/workdir mikefarah/yq:2.2.0 \
 	 yq m -i -a=append packagemanifests/$(VERSION_TRIM)/victoriametrics-operator.$(VERSION_TRIM).clusterserviceversion.yaml hack/bundle_csv_vmagent.yaml
 
 

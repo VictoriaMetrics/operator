@@ -391,10 +391,10 @@ func SelectVMNodeScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent
 	} else if cr.Spec.NodeScrapeNamespaceSelector.MatchExpressions == nil && cr.Spec.NodeScrapeNamespaceSelector.MatchLabels == nil {
 		namespaces = nil
 	} else {
-		l.Info("namespace selector for VMNodeScrape", "selector", cr.Spec.NodeScrapeSelector.String())
-		nsSelector, err := metav1.LabelSelectorAsSelector(cr.Spec.NodeScrapeSelector)
+		l.Info("namespace selector for VMNodeScrape", "selector", cr.Spec.NodeScrapeNamespaceSelector.String())
+		nsSelector, err := metav1.LabelSelectorAsSelector(cr.Spec.NodeScrapeNamespaceSelector)
 		if err != nil {
-			return nil, fmt.Errorf("cannot convert NodeScrapeSelector to labelSelector: %w", err)
+			return nil, fmt.Errorf("cannot convert NodeScrapeNamespaceSelector to labelSelector: %w", err)
 		}
 		namespaces, err = selectNamespaces(ctx, rclient, nsSelector)
 		if err != nil {

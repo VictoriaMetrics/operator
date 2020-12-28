@@ -3,6 +3,7 @@ kind: VMServiceScrape
 metadata:
   name: example-scrape
 spec:
+  discoveryRole: "endpoints"
   jobLabel: job
   targetLabels: []
   podTargetLabels: []

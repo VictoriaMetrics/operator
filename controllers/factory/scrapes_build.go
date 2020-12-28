@@ -931,7 +931,7 @@ func addTLStoYaml(cfg yaml.MapSlice, namespace string, tls *victoriametricsv1bet
 func generateRelabelConfig(rc *victoriametricsv1beta1.RelabelConfig) yaml.MapSlice {
 	relabeling := yaml.MapSlice{}
 
-	c := fixRelabelConfigUnderScopes(rc)
+	c := updateRelabelConfigWithUnderscores(rc)
 
 	if len(c.SourceLabels) > 0 {
 		relabeling = append(relabeling, yaml.MapItem{Key: "source_labels", Value: c.SourceLabels})
@@ -1076,7 +1076,8 @@ func buildExternalLabels(p *victoriametricsv1beta1.VMAgent) yaml.MapSlice {
 }
 
 // replaces targetLabel and sourceLabels with underscore version if possible.
-func fixRelabelConfigUnderScopes(c *victoriametricsv1beta1.RelabelConfig) *victoriametricsv1beta1.RelabelConfig {
+func updateRelabelConfigWithUnderscores(c *victoriametricsv1beta1.RelabelConfig) *victoriametricsv1beta1.RelabelConfig {
+	// copy to prevent side effects.
 	rc := c.DeepCopy()
 	if len(rc.SourceLabels) == 0 && len(rc.UnderScoreSourceLabels) > 0 {
 		rc.SourceLabels = append(rc.SourceLabels, rc.UnderScoreSourceLabels...)

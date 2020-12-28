@@ -673,6 +673,8 @@ RelabelConfig allows dynamic rewriting of the label set, being applied to sample
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
+| source_labels | UnderScoreSourceLabels - additional form of source labels source_labels for compatibility with original relabel config. if set  both sourceLabels and source_labels, sourceLabels has priority. for details https://github.com/VictoriaMetrics/operator/issues/131 | []string | false |
+| target_label | UnderScoreTargetLabel - additional form of target label - target_label for compatibility with original relabel config. if set  both targetLabel and target_label, targetLabel has priority. for details https://github.com/VictoriaMetrics/operator/issues/131 | string | false |
 | sourceLabels | The source labels select values from existing labels. Their content is concatenated using the configured separator and matched against the configured regular expression for the replace, keep, and drop actions. | []string | false |
 | separator | Separator placed between concatenated source label values. default is &#39;;&#39;. | string | false |
 | targetLabel | Label to which the resulting value is written in a replace action. It is mandatory for replace actions. Regex capture groups are available. | string | false |

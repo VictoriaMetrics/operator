@@ -300,3 +300,54 @@ relabel_configs:
 		})
 	}
 }
+
+func Test_generateRelabelConfig(t *testing.T) {
+	type args struct {
+		rc *victoriametricsv1beta1.RelabelConfig
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "ok base cfg",
+			args: args{rc: &victoriametricsv1beta1.RelabelConfig{
+				TargetLabel:  "address",
+				SourceLabels: []string{"__address__"},
+				Action:       "replace",
+			}},
+			want: `source_labels:
+- __address__
+target_label: address
+action: replace
+`,
+		},
+		{
+			name: "ok base with underscore",
+			args: args{rc: &victoriametricsv1beta1.RelabelConfig{
+				UnderScoreTargetLabel:  "address",
+				UnderScoreSourceLabels: []string{"__address__"},
+				Action:                 "replace",
+			}},
+			want: `source_labels:
+- __address__
+target_label: address
+action: replace
+`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := generateRelabelConfig(tt.args.rc)
+			gotBytes, err := yaml.Marshal(got)
+			if err != nil {
+				t.Errorf("cannot marshal generateRelabelConfig to yaml,err :%e", err)
+				return
+			}
+			if !reflect.DeepEqual(string(gotBytes), tt.want) {
+				t.Errorf("generateRelabelConfig() \ngot = \n%v, \nwant \n%v", string(gotBytes), tt.want)
+			}
+		})
+	}
+}

@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
@@ -64,6 +65,13 @@ func (r *VMServiceScrapeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, er
 	reqLogger.Info("found vmagent objects ", "len: ", len(vmAgentInstances.Items))
 
 	for _, vmagent := range vmAgentInstances.Items {
+		if vmagent.DeletionTimestamp != nil {
+			continue
+		}
+		// fast path unmanaged.
+		if vmagent.Spec.ServiceScrapeNamespaceSelector == nil && vmagent.Spec.ServiceScrapeSelector == nil {
+			continue
+		}
 		reqLogger = reqLogger.WithValues("vmagent", vmagent.Name)
 		reqLogger.Info("reconciling servicescrapes for vmagent")
 		currentVMagent := &vmagent

@@ -164,7 +164,7 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
       version: v1beta1
-    - description: VMNodeScrape is the Schema for the vmnodescrapes API
+    - description: VMNodeScrape defines discovery for targets placed on kubernetes nodes, usually its node-exporters and other host services. InternalIP is used as __address__ for scraping.
       displayName: VMNode Scrape
       kind: VMNodeScrape
       name: vmnodescrapes.operator.victoriametrics.com

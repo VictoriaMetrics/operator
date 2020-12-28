@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
@@ -67,6 +68,13 @@ func (r *VMRuleReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 	reqLogger.Info("updating or creating cm for vmalert")
 	for _, vmalert := range alertMngs.Items {
+		if vmalert.DeletionTimestamp != nil {
+			continue
+		}
+		// fast path.
+		if vmalert.Spec.RuleNamespaceSelector == nil && vmalert.Spec.RuleSelector == nil {
+			continue
+		}
 		reqLogger.WithValues("vmalert", vmalert.Name)
 		reqLogger.Info("reconciling vmalert rules")
 		currVMAlert := &vmalert

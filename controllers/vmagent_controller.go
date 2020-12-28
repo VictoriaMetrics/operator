@@ -78,6 +78,9 @@ func (r *VMAgentReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		// Error reading the object - requeue the request.
 		return ctrl.Result{}, err
 	}
+	if instance.DeletionTimestamp != nil {
+		return ctrl.Result{}, nil
+	}
 
 	//create deploy
 	reconResult, err := factory.CreateOrUpdateVMAgent(ctx, instance, r, r.BaseConf)

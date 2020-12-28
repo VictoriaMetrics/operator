@@ -57,6 +57,9 @@ func (r *VMAlertReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		}
 		return ctrl.Result{}, err
 	}
+	if instance.DeletionTimestamp != nil {
+		return ctrl.Result{}, nil
+	}
 
 	maps, err := factory.CreateOrUpdateRuleConfigMaps(ctx, instance, r)
 	if err != nil {

@@ -59,6 +59,9 @@ func (r *VMSingleReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		}
 		return ctrl.Result{}, err
 	}
+	if instance.DeletionTimestamp != nil {
+		return ctrl.Result{}, nil
+	}
 
 	if instance.Spec.Storage != nil {
 		reqLogger.Info("storage specified reconcile it")

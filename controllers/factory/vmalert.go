@@ -7,13 +7,9 @@ import (
 	"sort"
 	"strings"
 
-	"k8s.io/utils/pointer"
-
-	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
-
-	"github.com/VictoriaMetrics/operator/controllers/factory/psp"
-
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/controllers/factory/psp"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -743,15 +739,16 @@ func BuildNotifiersArgs(cr *victoriametricsv1beta1.VMAlert, ntBasicAuth map[stri
 	tlsCerts := remoteFlag{flagSetting: "-notifier.tlsCertFile="}
 	tlsKeys := remoteFlag{flagSetting: "-notifier.tlsKeyFile="}
 	tlsServerName := remoteFlag{flagSetting: "-notifier.tlsServerName="}
+	tlsInSecure := remoteFlag{flagSetting: "-notifier.tlsInsecureSkipVerify="}
 
 	pathPrefix := path.Join(tlsAssetsDir, cr.Namespace)
 
-	var tlsInsecure *bool
 	for i, nt := range notifierTargets {
 
 		url.flagSetting += fmt.Sprintf("%s,", nt.URL)
 
 		var caPath, certPath, keyPath, ServerName string
+		var inSecure bool
 		if nt.TLSConfig != nil {
 			if nt.TLSConfig.CAFile != "" {
 				caPath = nt.TLSConfig.CAFile
@@ -773,7 +770,8 @@ func BuildNotifiersArgs(cr *victoriametricsv1beta1.VMAlert, ntBasicAuth map[stri
 			}
 			tlsKeys.isNotNull = true
 			if nt.TLSConfig.InsecureSkipVerify {
-				tlsInsecure = pointer.BoolPtr(true)
+				tlsInSecure.isNotNull = true
+				inSecure = true
 			}
 			if nt.TLSConfig.ServerName != "" {
 				ServerName = nt.TLSConfig.ServerName
@@ -784,6 +782,7 @@ func BuildNotifiersArgs(cr *victoriametricsv1beta1.VMAlert, ntBasicAuth map[stri
 		tlsCerts.flagSetting += fmt.Sprintf("%s,", certPath)
 		tlsKeys.flagSetting += fmt.Sprintf("%s,", keyPath)
 		tlsServerName.flagSetting += fmt.Sprintf("%s,", ServerName)
+		tlsInSecure.flagSetting += fmt.Sprintf("%v,", inSecure)
 
 		var user string
 		var pass string
@@ -800,15 +799,12 @@ func BuildNotifiersArgs(cr *victoriametricsv1beta1.VMAlert, ntBasicAuth map[stri
 
 	}
 	notifierArgs = append(notifierArgs, url, authUser, authPassword)
-	notifierArgs = append(notifierArgs, tlsServerName, tlsKeys, tlsCerts, tlsCAs)
+	notifierArgs = append(notifierArgs, tlsServerName, tlsKeys, tlsCerts, tlsCAs, tlsInSecure)
 
 	for _, remoteArgType := range notifierArgs {
 		if remoteArgType.isNotNull {
 			finalArgs = append(finalArgs, strings.TrimSuffix(remoteArgType.flagSetting, ","))
 		}
-	}
-	if tlsInsecure != nil && *tlsInsecure {
-		finalArgs = append(finalArgs, "-notifier.tlsInsecureSkipVerify=true")
 	}
 
 	return finalArgs

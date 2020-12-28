@@ -2,6 +2,7 @@ package v1beta1
 
 import (
 	"fmt"
+
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -181,6 +182,19 @@ type SecretOrConfigMap struct {
 // More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
 // +k8s:openapi-gen=true
 type RelabelConfig struct {
+	// UnderScoreSourceLabels - additional form of source labels source_labels
+	// for compatibility with original relabel config.
+	// if set  both sourceLabels and source_labels, sourceLabels has priority.
+	// for details https://github.com/VictoriaMetrics/operator/issues/131
+	// +optional
+	UnderScoreSourceLabels []string `json:"source_labels,omitempty"`
+	// UnderScoreTargetLabel - additional form of target label - target_label
+	// for compatibility with original relabel config.
+	// if set  both targetLabel and target_label, targetLabel has priority.
+	// for details https://github.com/VictoriaMetrics/operator/issues/131
+	// +optional
+	UnderScoreTargetLabel string `json:"target_label,omitempty"`
+
 	//The source labels select values from existing labels. Their content is concatenated
 	//using the configured separator and matched against the configured regular expression
 	//for the replace, keep, and drop actions.

@@ -3,8 +3,17 @@ kind: VMServiceScrape
 metadata:
   name: example-scrape
 spec:
+  discoveryRole: endpoints
   endpoints:
     - port: http
+      scrapeTimeout: 2s
+      relabelConfigs:
+        - sourceLabels: ["__address__"]
+          targetLabel: addr
+        - sourceLabels: [ "__address__" ]
+          regex: .+:(.+)
+          replacement: $1
+          targetLabel: addr_port
   namespaceSelector: {}
   selector:
     matchLabels:

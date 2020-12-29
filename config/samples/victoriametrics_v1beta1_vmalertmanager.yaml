@@ -3,6 +3,13 @@ kind: VMAlertmanager
 metadata:
   name: example-alertmanager
 spec:
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "150Mi"
+    limits:
+      cpu: "100m"
+      memory: "250Mi"
   replicaCount: 1
   configRawYaml: |
     global:

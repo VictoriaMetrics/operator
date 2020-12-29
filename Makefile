@@ -97,8 +97,28 @@ fix118:
 		$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmstorage.properties.storage.properties.volumeClaimTemplate.properties  \
 		'
 
-
-
+fix_crd_nulls:
+	docker run --rm -v "${PWD}":/workdir mikefarah/yq:2.2.0 /bin/sh -c ' \
+	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalertmanagers.yaml status &&\
+	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmagents.yaml status &&\
+	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalerts.yaml status &&\
+	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml status &&\
+	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmsingles.yaml status &&\
+	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmrules.yaml status &&\
+	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmnodescrapes.yaml status &&\
+	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmpodscrapes.yaml status &&\
+	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmservicescrapes.yaml status &&\
+	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmprobes.yaml status &&\
+		$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalertmanagers.yaml metadata.creationTimestamp &&\
+	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmagents.yaml metadata.creationTimestamp &&\
+	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalerts.yaml metadata.creationTimestamp &&\
+	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml metadata.creationTimestamp &&\
+	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmsingles.yaml metadata.creationTimestamp &&\
+	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmrules.yaml metadata.creationTimestamp &&\
+	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmnodescrapes.yaml metadata.creationTimestamp &&\
+	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmpodscrapes.yaml metadata.creationTimestamp &&\
+	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmservicescrapes.yaml metadata.creationTimestamp &&\
+	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmprobes.yaml metadata.creationTimestamp'
 
 
 doc: install-develop-tools
@@ -125,7 +145,7 @@ docker: manager
 	GOARCH=amd64 $(MAKE) docker-build-arch
 
 .PHONY:e2e-local
-e2e-local: generate fmt vet manifests fix118
+e2e-local: generate fmt vet manifests fix118 fix_crd_nulls
 	echo 'mode: atomic' > coverage.txt  && \
 	$(TEST_ARGS) $(REPO)/e2e/...
 	$(GOCMD) tool cover -func coverage.txt  | grep total
@@ -143,13 +163,13 @@ clean:
 all: manager
 
 # Run tests
-test: generate fmt vet manifests fix118
+test: generate fmt vet manifests fix118 fix_crd_nulls
 	echo 'mode: atomic' > coverage.txt  && \
 	$(TEST_ARGS) $(REPO)/controllers/...
 	$(GOCMD) tool cover -func coverage.txt  | grep total
 
 # Build manager binary
-manager: generate manifests fmt vet fix118
+manager: generate manifests fmt vet fix118 fix_crd_nulls
 	CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH} $(GOBUILD) -o bin/manager main.go
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
@@ -157,7 +177,7 @@ run: manager
 	WATCH_NAMESPACE="" OPERATOR_NAME=vms ./bin/manager
 
 # Install CRDs into a cluster
-install: manifests fix118 kustomize
+install: manifests fix118 fix_crd_nulls kustomize
 	$(KUSTOMIZE) build config/crd | kubectl apply -f -
 
 # Uninstall CRDs from a cluster
@@ -165,7 +185,7 @@ uninstall: manifests kustomize
 	$(KUSTOMIZE) build config/crd | kubectl delete -f -
 
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
-deploy: manifests fix118 kustomize
+deploy: manifests fix118 fix_crd_nulls kustomize
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
 	$(KUSTOMIZE) build config/default | kubectl apply -f -
 
@@ -219,7 +239,7 @@ KUSTOMIZE=$(shell which kustomize)
 endif
 
 # Generate bundle manifests and metadata, then validate generated files.
-bundle: manifests fix118
+bundle: manifests fix118 fix_crd_nulls
 	$(OPERATOR_BIN) generate kustomize manifests -q
 	kustomize build config/manifests | $(OPERATOR_BIN) generate bundle -q --overwrite --version $(VERSION_TRIM) $(BUNDLE_METADATA_OPTS)
 	sed -i "s|$(DOCKER_REPO):.*|$(DOCKER_REPO):$(VERSION)|" bundle/manifests/*
@@ -252,7 +272,7 @@ release-package: kustomize
 	zip -r bundle_crd.zip release/
 	rm -rf release/
 
-packagemanifests: manifests fix118
+packagemanifests: manifests fix118 fix_crd_nulls
 	$(OPERATOR_BIN) generate kustomize manifests -q
 	kustomize build config/manifests | $(OPERATOR_BIN) generate packagemanifests -q --version $(VERSION_TRIM) --channel=$(CHANNEL) --default-channel
 	mv packagemanifests/$(VERSION_TRIM)/victoriametrics-operator.clusterserviceversion.yaml packagemanifests/$(VERSION_TRIM)/victoriametrics-operator.$(VERSION_TRIM).clusterserviceversion.yaml

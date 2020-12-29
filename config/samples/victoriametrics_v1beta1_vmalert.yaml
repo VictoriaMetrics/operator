@@ -10,4 +10,3 @@ spec:
     url: "http://vmalertmanager-example-alertmanager.default.svc:9093"
   evaluationInterval: "30s"
   ruleSelector: {}
-  ruleNamespaceSelector: {}

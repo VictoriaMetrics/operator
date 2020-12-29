@@ -220,6 +220,8 @@ func createOrUpdateVMSelect(ctx context.Context, cr *v1beta1.VMCluster, rclient 
 	if currentSts.ManagedFields != nil {
 		newSts.ManagedFields = currentSts.ManagedFields
 	}
+	// hack for break reconcile loop at kubernetes 1.18
+	newSts.Status.Replicas = currentSts.Status.Replicas
 
 	err = rclient.Update(ctx, newSts)
 	if err != nil {
@@ -370,7 +372,8 @@ func createOrUpdateVMStorage(ctx context.Context, cr *v1beta1.VMCluster, rclient
 	for annotation, value := range currentSts.Spec.Template.Annotations {
 		newSts.Spec.Template.Annotations[annotation] = value
 	}
-
+	// hack for break reconcile loop at kubernetes 1.18
+	newSts.Status.Replicas = currentSts.Status.Replicas
 	err = rclient.Update(ctx, newSts)
 	if err != nil {
 		return nil, fmt.Errorf("cannot upddate vmstorage sts: %w", err)

@@ -3,12 +3,10 @@ kind: VMAgent
 metadata:
   name: example-vmagent
 spec:
-  serviceScrapeNamespaceSelector: {}
   serviceScrapeSelector: {}
-  podScrapeNamespaceSelector: {}
   podScrapeSelector: {}
   probeSelector: {}
-  probeNamespaceSelector: {}
+  nodeScrapeSelector: {}
   replicaCount: 1
   resources:
     requests:
@@ -17,7 +15,6 @@ spec:
     limits:
       cpu: "500m"
       memory: "850Mi"
-  serviceAccountName: vmagent
   additionalArgs:
     memory.allowedPercent: "40"
   remoteWrite:

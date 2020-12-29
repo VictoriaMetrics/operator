@@ -38,6 +38,16 @@ spec:
         spec:
           description: VMServiceScrapeSpec defines the desired state of VMServiceScrape
           properties:
+            discoveryRole:
+              description: 'DiscoveryRole - defines kubernetes_sd role for objects
+                discovery. by default, its endpoints. can be changed to service or
+                endpointslices. note, that with service setting, you have to use port:
+                "name" and cannot use targetPort for endpoints.'
+              enum:
+              - endpoints
+              - service
+              - endpointslices
+              type: string
             endpoints:
               description: A list of endpoints allowed as part of this ServiceScrape.
               items:
@@ -429,7 +439,8 @@ spec:
               format: int64
               type: integer
             selector:
-              description: Selector to select Endpoints objects.
+              description: Selector to select Endpoints objects by corresponding Service
+                labels.
               properties:
                 matchExpressions:
                   description: matchExpressions is a list of label selector requirements.

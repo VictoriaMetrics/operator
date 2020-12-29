@@ -4,6 +4,8 @@ import (
 	"reflect"
 	"testing"
 
+	"k8s.io/apimachinery/pkg/util/intstr"
+
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
@@ -196,20 +198,256 @@ relabel_configs:
   replacement: ${1}
   target_label: pod
 - source_labels:
+  - __meta_kubernetes_pod_name
+  target_label: pod
+- source_labels:
   - __meta_kubernetes_namespace
   target_label: namespace
 - source_labels:
   - __meta_kubernetes_service_name
   target_label: service
 - source_labels:
+  - __meta_kubernetes_service_name
+  target_label: job
+  replacement: ${1}
+- target_label: endpoint
+  replacement: "8080"
+`,
+		},
+		{
+			name: "config with discovery role endpointslices",
+			args: args{
+				m: &victoriametricsv1beta1.VMServiceScrape{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-scrape",
+						Namespace: "default",
+					},
+					Spec: victoriametricsv1beta1.VMServiceScrapeSpec{
+						DiscoveryRole: kubernetesSDRoleEndpointSlices,
+						Endpoints: []victoriametricsv1beta1.Endpoint{
+							{
+								Port: "8080",
+								TLSConfig: &victoriametricsv1beta1.TLSConfig{
+									CA: victoriametricsv1beta1.SecretOrConfigMap{
+										Secret: &v1.SecretKeySelector{
+											LocalObjectReference: v1.LocalObjectReference{
+												Name: "tls-secret",
+											},
+											Key: "ca",
+										},
+									},
+								},
+								BearerTokenFile: "/var/run/tolen",
+							},
+						},
+					},
+				},
+				ep: victoriametricsv1beta1.Endpoint{
+					Port: "8080",
+					TLSConfig: &victoriametricsv1beta1.TLSConfig{
+						Cert: victoriametricsv1beta1.SecretOrConfigMap{},
+						CA: victoriametricsv1beta1.SecretOrConfigMap{
+							Secret: &v1.SecretKeySelector{
+								LocalObjectReference: v1.LocalObjectReference{
+									Name: "tls-secret",
+								},
+								Key: "ca",
+							},
+						},
+					},
+					BearerTokenFile: "/var/run/tolen",
+				},
+				i:                        0,
+				apiserverConfig:          nil,
+				basicAuthSecrets:         nil,
+				bearerTokens:             map[string]BearerToken{},
+				overrideHonorLabels:      false,
+				overrideHonorTimestamps:  false,
+				ignoreNamespaceSelectors: false,
+				enforcedNamespaceLabel:   "",
+			},
+			want: `job_name: default/test-scrape/0
+honor_labels: false
+kubernetes_sd_configs:
+- role: endpointslices
+  namespaces:
+    names:
+    - default
+tls_config:
+  insecure_skip_verify: false
+  ca_file: /etc/vmagent-tls/certs/default_tls-secret_ca
+bearer_token_file: /var/run/tolen
+relabel_configs:
+- action: keep
+  source_labels:
+  - __meta_kubernetes_endpointslice_port_name
+  regex: "8080"
+- source_labels:
+  - __meta_kubernetes_endpointslice_address_target_kind
+  - __meta_kubernetes_endpointslice_address_target_name
+  separator: ;
+  regex: Node;(.*)
+  replacement: ${1}
+  target_label: node
+- source_labels:
+  - __meta_kubernetes_endpointslice_address_target_kind
+  - __meta_kubernetes_endpointslice_address_target_name
+  separator: ;
+  regex: Pod;(.*)
+  replacement: ${1}
+  target_label: pod
+- source_labels:
   - __meta_kubernetes_pod_name
   target_label: pod
+- source_labels:
+  - __meta_kubernetes_namespace
+  target_label: namespace
+- source_labels:
+  - __meta_kubernetes_service_name
+  target_label: service
 - source_labels:
   - __meta_kubernetes_service_name
   target_label: job
   replacement: ${1}
 - target_label: endpoint
   replacement: "8080"
+`,
+		},
+		{
+			name: "config with discovery role services",
+			args: args{
+				m: &victoriametricsv1beta1.VMServiceScrape{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-scrape",
+						Namespace: "default",
+					},
+					Spec: victoriametricsv1beta1.VMServiceScrapeSpec{
+						DiscoveryRole: kubernetesSDRoleService,
+						Endpoints: []victoriametricsv1beta1.Endpoint{
+							{
+								Port: "8080",
+								TLSConfig: &victoriametricsv1beta1.TLSConfig{
+									CA: victoriametricsv1beta1.SecretOrConfigMap{
+										Secret: &v1.SecretKeySelector{
+											LocalObjectReference: v1.LocalObjectReference{
+												Name: "tls-secret",
+											},
+											Key: "ca",
+										},
+									},
+								},
+								BearerTokenFile: "/var/run/tolen",
+							},
+						},
+					},
+				},
+				ep: victoriametricsv1beta1.Endpoint{
+					Port: "8080",
+					TLSConfig: &victoriametricsv1beta1.TLSConfig{
+						Cert: victoriametricsv1beta1.SecretOrConfigMap{},
+						CA: victoriametricsv1beta1.SecretOrConfigMap{
+							Secret: &v1.SecretKeySelector{
+								LocalObjectReference: v1.LocalObjectReference{
+									Name: "tls-secret",
+								},
+								Key: "ca",
+							},
+						},
+					},
+					BearerTokenFile: "/var/run/tolen",
+				},
+				i:                        0,
+				apiserverConfig:          nil,
+				basicAuthSecrets:         nil,
+				bearerTokens:             map[string]BearerToken{},
+				overrideHonorLabels:      false,
+				overrideHonorTimestamps:  false,
+				ignoreNamespaceSelectors: false,
+				enforcedNamespaceLabel:   "",
+			},
+			want: `job_name: default/test-scrape/0
+honor_labels: false
+kubernetes_sd_configs:
+- role: service
+  namespaces:
+    names:
+    - default
+tls_config:
+  insecure_skip_verify: false
+  ca_file: /etc/vmagent-tls/certs/default_tls-secret_ca
+bearer_token_file: /var/run/tolen
+relabel_configs:
+- action: keep
+  source_labels:
+  - __meta_kubernetes_service_port_name
+  regex: "8080"
+- source_labels:
+  - __meta_kubernetes_namespace
+  target_label: namespace
+- source_labels:
+  - __meta_kubernetes_service_name
+  target_label: service
+- source_labels:
+  - __meta_kubernetes_service_name
+  target_label: job
+  replacement: ${1}
+- target_label: endpoint
+  replacement: "8080"
+`,
+		},
+		{
+			name: "bad discovery role service without port name",
+			args: args{
+				m: &victoriametricsv1beta1.VMServiceScrape{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-scrape",
+						Namespace: "default",
+					},
+					Spec: victoriametricsv1beta1.VMServiceScrapeSpec{
+						DiscoveryRole: kubernetesSDRoleService,
+						Endpoints: []victoriametricsv1beta1.Endpoint{
+							{
+								TargetPort: func() *intstr.IntOrString {
+									v := intstr.FromString("8080")
+									return &v
+								}(),
+							},
+						},
+					},
+				},
+				ep: victoriametricsv1beta1.Endpoint{
+					TargetPort: func() *intstr.IntOrString {
+						v := intstr.FromString("8080")
+						return &v
+					}(),
+				},
+				i:                        0,
+				apiserverConfig:          nil,
+				basicAuthSecrets:         nil,
+				bearerTokens:             map[string]BearerToken{},
+				overrideHonorLabels:      false,
+				overrideHonorTimestamps:  false,
+				ignoreNamespaceSelectors: false,
+				enforcedNamespaceLabel:   "",
+			},
+			want: `job_name: default/test-scrape/0
+honor_labels: false
+kubernetes_sd_configs:
+- role: service
+  namespaces:
+    names:
+    - default
+relabel_configs:
+- source_labels:
+  - __meta_kubernetes_namespace
+  target_label: namespace
+- source_labels:
+  - __meta_kubernetes_service_name
+  target_label: service
+- source_labels:
+  - __meta_kubernetes_service_name
+  target_label: job
+  replacement: ${1}
 `,
 		},
 	}

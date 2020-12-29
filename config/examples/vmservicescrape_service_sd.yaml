@@ -1,0 +1,17 @@
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMServiceScrape
+metadata:
+  name: example-service-target
+spec:
+  discoveryRole: service
+  endpoints:
+    - port: http
+      relabelConfigs:
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+          action: keep
+          regex: true
+  namespaceSelector: {}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: example-application
+      monitored-by: vm-operator

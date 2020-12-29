@@ -100,7 +100,10 @@ and scraping configurations can be matched via label selections. This allows an 
 for how metrics should be exposed. Following these conventions new services will be discovered automatically without 
 need to reconfigure.
 
-Monitoring configuration based on `Endpoints` objects. `Endpoints` objects are essentially lists of IP addresses. 
+Monitoring configuration based on  `discoveryRole` setting. By default, `endpoints` is used to get objects from kubernetes api. 
+Its also possible to use `discoveryRole: service` or `discoveryRole: endpointslices`
+
+ `Endpoints` objects are essentially lists of IP addresses. 
 Typically, `Endpoints` objects are populated by `Service` object. `Service` object discovers `Pod`s by a label 
 selector and adds those to the `Endpoints` object.
 
@@ -116,7 +119,7 @@ Therefore, when specifying an endpoint in the `endpoints` section, they are stri
 > Note: `endpoints` (lowercase) is the field in the `VMServiceScrape` CRD, while `Endpoints` (capitalized) is the Kubernetes object kind.
 
 Both `VMServiceScrape` and discovered targets may belong to any namespace. It is important for cross-namespace monitoring 
-use cases, e.g. for meta-monitoring. Using the `VMServiceScrape` of the `VMAgentSpec` 
+use cases, e.g. for meta-monitoring. Using the `serviceScrapeSelector` of the `VMAgentSpec` 
 one can restrict the namespaces from which `VMServiceScrape`s are selected from by the respective VMAgent server. 
 Using the `namespaceSelector` of the `VMServiceScrape` one can restrict the namespaces from which `Endpoints` can be 
 discovered from. To discover targets in all namespaces the `namespaceSelector` has to be empty:

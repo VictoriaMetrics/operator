@@ -10,6 +10,14 @@ import (
 
 // VMServiceScrapeSpec defines the desired state of VMServiceScrape
 type VMServiceScrapeSpec struct {
+	// DiscoveryRole - defines kubernetes_sd role for objects discovery.
+	// by default, its endpoints.
+	// can be changed to service or endpointslices.
+	// note, that with service setting, you have to use port: "name"
+	// and cannot use targetPort for endpoints.
+	// +optional
+	// +kubebuilder:validation:Enum=endpoints;service;endpointslices
+	DiscoveryRole string `json:"discoveryRole,omitempty"`
 	// The label to use to retrieve the job name from.
 	// +optional
 	JobLabel string `json:"jobLabel,omitempty"`
@@ -21,7 +29,7 @@ type VMServiceScrapeSpec struct {
 	PodTargetLabels []string `json:"podTargetLabels,omitempty"`
 	// A list of endpoints allowed as part of this ServiceScrape.
 	Endpoints []Endpoint `json:"endpoints"`
-	// Selector to select Endpoints objects.
+	// Selector to select Endpoints objects by corresponding Service labels.
 	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors=true
 	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors.displayName="Service selector"
 	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors.x-descriptors="urn:alm:descriptor:com.tectonic.ui:selector:"

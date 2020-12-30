@@ -95,6 +95,9 @@ func updateStsForAlertManager(ctx context.Context, rclient client.Client, oldSts
 	for k, v := range oldSts.Spec.Template.Annotations {
 		newSts.Spec.Template.Annotations[k] = v
 	}
+	// hack for break reconcile loop at kubernetes 1.18
+	newSts.Status.Replicas = oldSts.Status.Replicas
+
 	log.Info("updating vmalertmanager sts")
 	return rclient.Update(ctx, newSts)
 

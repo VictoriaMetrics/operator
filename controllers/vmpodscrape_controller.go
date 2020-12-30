@@ -18,6 +18,10 @@ package controllers
 
 import (
 	"context"
+	"fmt"
+
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/internal/config"
@@ -68,13 +72,19 @@ func (r *VMPodScrapeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error)
 		if vmagent.DeletionTimestamp != nil {
 			continue
 		}
-		// fast path unmanaged.
-		if vmagent.Spec.PodScrapeNamespaceSelector == nil && vmagent.Spec.PodScrapeSelector == nil {
+		reqLogger = reqLogger.WithValues("vmagent", vmagent.Name)
+		currentVMagent := &vmagent
+		match, err := isVMAgentMatchesVMPodScrape(currentVMagent, instance)
+		if err != nil {
+			reqLogger.Error(err, "cannot match vmagent and vmPodScrape")
+			continue
+		}
+		// fast path
+		if !match {
 			continue
 		}
 		reqLogger = reqLogger.WithValues("vmagent", vmagent.Name)
 		reqLogger.Info("reconciling podscrape for vmagent")
-		currentVMagent := &vmagent
 		recon, err := factory.CreateOrUpdateVMAgent(ctx, currentVMagent, r, r.BaseConf)
 		if err != nil {
 			reqLogger.Error(err, "cannot create or update vmagent")
@@ -92,4 +102,30 @@ func (r *VMPodScrapeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&victoriametricsv1beta1.VMPodScrape{}).
 		Complete(r)
+}
+
+// heuristic for selector match.
+func isVMAgentMatchesVMPodScrape(currentVMAgent *victoriametricsv1beta1.VMAgent, vmPodScrape *victoriametricsv1beta1.VMPodScrape) (bool, error) {
+	// fast path, if namespace selector is nil, only self namespace can match.
+	if currentVMAgent.Spec.PodScrapeNamespaceSelector == nil && currentVMAgent.Namespace != vmPodScrape.Namespace {
+		return false, nil
+	}
+	// fast path config unmanaged
+	if currentVMAgent.Spec.PodScrapeSelector == nil && currentVMAgent.Spec.PodScrapeNamespaceSelector == nil {
+		return false, nil
+	}
+	// fast path maybe namespace selector will match.
+	if currentVMAgent.Spec.PodScrapeSelector == nil {
+		return true, nil
+	}
+	selector, err := v1.LabelSelectorAsSelector(currentVMAgent.Spec.PodScrapeSelector)
+	if err != nil {
+		return false, fmt.Errorf("cannot parse vmagent's PodScrapeSelector selector as labelSelector: %w", err)
+	}
+	set := labels.Set(vmPodScrape.Labels)
+	// selector not match
+	if !selector.Matches(set) {
+		return false, nil
+	}
+	return true, nil
 }

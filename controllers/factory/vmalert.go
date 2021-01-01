@@ -498,7 +498,18 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 	var ports []corev1.ContainerPort
 	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(cr.Spec.Port).IntVal})
 
+	// sort for consistency
 	sort.Strings(args)
+	sort.Slice(volumes, func(i, j int) bool {
+		return volumes[i].Name < volumes[j].Name
+	})
+	sort.Slice(volumeMounts, func(i, j int) bool {
+		return volumeMounts[i].Name < volumeMounts[j].Name
+	})
+	sort.Slice(reloaderVolumes, func(i, j int) bool {
+		return reloaderVolumes[i].Name < reloaderVolumes[j].Name
+	})
+	sort.Strings(confReloadArgs)
 	defaultContainers := []corev1.Container{
 		{
 			Args:                     args,

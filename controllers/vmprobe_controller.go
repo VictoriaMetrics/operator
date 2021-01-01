@@ -18,6 +18,10 @@ package controllers
 
 import (
 	"context"
+	"fmt"
+
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/internal/config"
@@ -68,13 +72,18 @@ func (r *VMProbeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		if vmagent.DeletionTimestamp != nil {
 			continue
 		}
-		// fast path unmanaged.
-		if vmagent.Spec.ProbeNamespaceSelector == nil && vmagent.Spec.ProbeSelector == nil {
+		currentVMagent := &vmagent
+		reqLogger = reqLogger.WithValues("vmagent", vmagent.Name)
+		match, err := isVMAgentMatchesVMProbe(currentVMagent, instance)
+		if err != nil {
+			reqLogger.Error(err, "cannot match vmagent and vmProbe")
 			continue
 		}
-		reqLogger = reqLogger.WithValues("vmagent", vmagent.Name)
+		// fast path
+		if !match {
+			continue
+		}
 		reqLogger.Info("reconciling probe for vmagent")
-		currentVMagent := &vmagent
 		recon, err := factory.CreateOrUpdateVMAgent(ctx, currentVMagent, r, r.BaseConf)
 		if err != nil {
 			reqLogger.Error(err, "cannot create or update vmagent")
@@ -92,4 +101,30 @@ func (r *VMProbeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&operatorv1beta1.VMProbe{}).
 		Complete(r)
+}
+
+// heuristic for selector match.
+func isVMAgentMatchesVMProbe(currentVMAgent *operatorv1beta1.VMAgent, vmProbe *operatorv1beta1.VMProbe) (bool, error) {
+	// fast path
+	if currentVMAgent.Spec.ProbeNamespaceSelector == nil && currentVMAgent.Namespace != vmProbe.Namespace {
+		return false, nil
+	}
+	// fast path config unmanaged
+	if currentVMAgent.Spec.ProbeSelector == nil && currentVMAgent.Spec.ProbeNamespaceSelector == nil {
+		return false, nil
+	}
+	// fast path maybe namespace selector will match.
+	if currentVMAgent.Spec.ProbeSelector == nil {
+		return true, nil
+	}
+	selector, err := v1.LabelSelectorAsSelector(currentVMAgent.Spec.ProbeSelector)
+	if err != nil {
+		return false, fmt.Errorf("cannot parse vmagent's ProbeSelector selector as labelSelector: %w", err)
+	}
+	set := labels.Set(vmProbe.Labels)
+	// selector not match
+	if !selector.Matches(set) {
+		return false, nil
+	}
+	return true, nil
 }

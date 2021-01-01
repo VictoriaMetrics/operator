@@ -74,27 +74,18 @@ func (r *VMNodeScrapeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error
 			continue
 		}
 		reqLogger = reqLogger.WithValues("vmagent", vmagent.Name)
-		reqLogger.Info("reconciling vmNodeScrape for vmagent")
 		currentVMagent := &vmagent
-		// selectors for nodescrape is nil,
-		// fast path
-		if currentVMagent.Spec.NodeScrapeSelector == nil && currentVMagent.Spec.NodeScrapeNamespaceSelector == nil {
+		match, err := isVMAgentMatchesVMNodeScrape(currentVMagent, instance)
+		if err != nil {
+			reqLogger.Error(err, "cannot match vmagent and vmProbe")
 			continue
 		}
-		// fast path for labelSelector match
-		if currentVMagent.Spec.NodeScrapeSelector != nil {
-			selector, err := v1.LabelSelectorAsSelector(currentVMagent.Spec.NodeScrapeSelector)
-			if err != nil {
-				return ctrl.Result{}, fmt.Errorf("cannot parse VMAgents NodeScrape selector as labelSelector: %w", err)
-			}
-			set := labels.Set(instance.Labels)
-			// selector not match
-			// fast path.
-			if !selector.Matches(set) {
-				reqLogger.Info("labels not match")
-				continue
-			}
+		// fast path
+		if !match {
+			continue
 		}
+		reqLogger.Info("reconciling vmNodeScrape for vmagent")
+
 		recon, err := factory.CreateOrUpdateVMAgent(ctx, currentVMagent, r, r.BaseConf)
 		if err != nil {
 			reqLogger.Error(err, "cannot create or update vmagent")
@@ -113,4 +104,30 @@ func (r *VMNodeScrapeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&operatorv1beta1.VMNodeScrape{}).
 		Complete(r)
+}
+
+// heuristic for selector match.
+func isVMAgentMatchesVMNodeScrape(currentVMAgent *operatorv1beta1.VMAgent, vmNodeScrape *operatorv1beta1.VMNodeScrape) (bool, error) {
+	// fast path
+	if currentVMAgent.Spec.NodeScrapeNamespaceSelector == nil && currentVMAgent.Namespace != vmNodeScrape.Namespace {
+		return false, nil
+	}
+	// fast path config unmanaged
+	if currentVMAgent.Spec.NodeScrapeSelector == nil && currentVMAgent.Spec.NodeScrapeNamespaceSelector == nil {
+		return false, nil
+	}
+	// fast path maybe namespace selector will match.
+	if currentVMAgent.Spec.NodeScrapeSelector == nil {
+		return true, nil
+	}
+	selector, err := v1.LabelSelectorAsSelector(currentVMAgent.Spec.NodeScrapeSelector)
+	if err != nil {
+		return false, fmt.Errorf("cannot parse vmagent's NodeScrapeSelector selector as labelSelector: %w", err)
+	}
+	set := labels.Set(vmNodeScrape.Labels)
+	// selector not match
+	if !selector.Matches(set) {
+		return false, nil
+	}
+	return true, nil
 }

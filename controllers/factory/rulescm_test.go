@@ -309,3 +309,210 @@ func Test_deduplicateRules(t *testing.T) {
 		})
 	}
 }
+
+func Test_rulesCMDiff(t *testing.T) {
+	type args struct {
+		currentCMs []v1.ConfigMap
+		newCMs     []v1.ConfigMap
+	}
+	tests := []struct {
+		name     string
+		args     args
+		toCreate []v1.ConfigMap
+		toUpdate []v1.ConfigMap
+		toDelete []v1.ConfigMap
+	}{
+		{
+			name: "simple case, create one new",
+			args: args{
+				currentCMs: []v1.ConfigMap{},
+				newCMs: []v1.ConfigMap{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "rules-cm-1",
+						},
+					},
+				},
+			},
+			toCreate: []v1.ConfigMap{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "rules-cm-1",
+					},
+				},
+			},
+		},
+		{
+			name: "simple case, delete one old",
+			args: args{
+				currentCMs: []v1.ConfigMap{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "rules-cm-1",
+						},
+					},
+				},
+				newCMs: []v1.ConfigMap{},
+			},
+			toDelete: []v1.ConfigMap{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "rules-cm-1",
+					},
+				},
+			},
+		},
+		{
+			name: "simple case, update one",
+			args: args{
+				currentCMs: []v1.ConfigMap{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "rules-cm-1",
+						},
+					},
+				},
+				newCMs: []v1.ConfigMap{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "rules-cm-1",
+						},
+					},
+				},
+			},
+			toUpdate: []v1.ConfigMap{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "rules-cm-1",
+					},
+				},
+			},
+		},
+		{
+			name: "corner case, create one, delete one",
+			args: args{
+				currentCMs: []v1.ConfigMap{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "rules-cm-0",
+						},
+					},
+				},
+				newCMs: []v1.ConfigMap{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "rules-cm-1",
+						},
+					},
+				},
+			},
+			toCreate: []v1.ConfigMap{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "rules-cm-1",
+					},
+				},
+			},
+			toDelete: []v1.ConfigMap{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "rules-cm-0",
+					},
+				},
+			},
+		},
+		{
+			name: "simple case, update one, delete one",
+			args: args{
+				currentCMs: []v1.ConfigMap{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "rules-cm-0",
+						},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "rules-cm-1",
+						},
+					},
+				},
+				newCMs: []v1.ConfigMap{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "rules-cm-0",
+						},
+					},
+				},
+			},
+			toUpdate: []v1.ConfigMap{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "rules-cm-0",
+					},
+				},
+			},
+			toDelete: []v1.ConfigMap{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "rules-cm-1",
+					},
+				},
+			},
+		},
+		{
+			name: "simple case, update two",
+			args: args{
+				currentCMs: []v1.ConfigMap{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "rules-cm-0",
+						},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "rules-cm-1",
+						},
+					},
+				},
+				newCMs: []v1.ConfigMap{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "rules-cm-0",
+						},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "rules-cm-1",
+						},
+					},
+				},
+			},
+			toUpdate: []v1.ConfigMap{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "rules-cm-0",
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "rules-cm-1",
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, got1, got2 := rulesCMDiff(tt.args.currentCMs, tt.args.newCMs)
+			if !reflect.DeepEqual(got, tt.toCreate) {
+				t.Errorf("rulesCMDiff() toCreate\ngot = %v, \nwant  %v", got, tt.toCreate)
+			}
+			if !reflect.DeepEqual(got1, tt.toUpdate) {
+				t.Errorf("rulesCMDiff()toUpdate\n got1 = %v, \nwant %v", got1, tt.toUpdate)
+			}
+			if !reflect.DeepEqual(got2, tt.toDelete) {
+				t.Errorf("rulesCMDiff() toDelete\ngot2 = %v, \nwant %v", got2, tt.toDelete)
+			}
+		})
+	}
+}

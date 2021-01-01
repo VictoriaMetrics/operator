@@ -116,25 +116,25 @@ func CreateOrUpdateRuleConfigMaps(ctx context.Context, cr *victoriametricsv1beta
 	sort.Slice(newConfigMaps, func(i, j int) bool {
 		return newConfigMaps[i].Name < newConfigMaps[j].Name
 	})
-	// lets make 3 slices - to_create, to_update,to_delete with corresponding configmaps
-	// and execute needed action for it.
+
+	// compute diff for current and needed rules configmaps.
 	toCreate, toUpdate, toDelete := rulesCMDiff(currentConfigMaps, newConfigMaps)
 	for _, cm := range toCreate {
 		err = rclient.Create(ctx, &cm)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create new Configmap: %s, err: %w", cm.Name, err)
+			return nil, fmt.Errorf("failed to create new rules Configmap: %s, err: %w", cm.Name, err)
 		}
 	}
 	for _, cm := range toUpdate {
 		err = rclient.Update(ctx, &cm)
 		if err != nil {
-			return nil, fmt.Errorf("failed to update new Configmap: %s, err: %w", cm.Name, err)
+			return nil, fmt.Errorf("failed to update rules Configmap: %s, err: %w", cm.Name, err)
 		}
 	}
 	for _, cm := range toDelete {
 		err = rclient.Delete(ctx, &cm)
 		if err != nil {
-			return nil, fmt.Errorf("failed to delete new Configmap: %s, err: %w", cm.Name, err)
+			return nil, fmt.Errorf("failed to delete rules Configmap: %s, err: %w", cm.Name, err)
 		}
 	}
 

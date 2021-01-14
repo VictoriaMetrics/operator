@@ -1171,7 +1171,7 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) 
 
 	if cr.Spec.ReplicationFactor != nil {
 		var dedupIsSet bool
-		for arg := range cr.Spec.VMSelect.ExtraArgs {
+		for arg := range cr.Spec.VMStorage.ExtraArgs {
 			if strings.Contains(arg, "dedup.minScrapeInterval") {
 				dedupIsSet = true
 			}

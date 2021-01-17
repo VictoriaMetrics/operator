@@ -32,6 +32,25 @@ func TestConvertTlsConfig(t *testing.T) {
 				KeyFile:  "/etc/vm/configs/key.pem",
 			},
 		},
+		{
+			name: "with server name and insecure",
+			args: args{
+				tlsConf: &v1.TLSConfig{
+					CAFile:             "/etc/prom_add/ca",
+					CertFile:           "/etc/prometheus/secrets/cert.crt",
+					KeyFile:            "/etc/prometheus/configmaps/key.pem",
+					ServerName:         "some-hostname",
+					InsecureSkipVerify: true,
+				},
+			},
+			want: &v1beta1vm.TLSConfig{
+				CAFile:             "/etc/prom_add/ca",
+				CertFile:           "/etc/vm/secrets/cert.crt",
+				KeyFile:            "/etc/vm/configs/key.pem",
+				ServerName:         "some-hostname",
+				InsecureSkipVerify: true,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

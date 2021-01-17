@@ -158,6 +158,7 @@ func ConvertTlsConfig(tlsConf *v1.TLSConfig) *v1beta1vm.TLSConfig {
 		KeyFile:            replacePromDirPath(tlsConf.KeyFile),
 		KeySecret:          tlsConf.KeySecret,
 		InsecureSkipVerify: tlsConf.InsecureSkipVerify,
+		ServerName:         tlsConf.ServerName,
 	}
 }
 

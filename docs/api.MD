@@ -761,11 +761,12 @@ VMServiceScrapeSpec defines the desired state of VMServiceScrape
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
+| discoveryRole | DiscoveryRole - defines kubernetes_sd role for objects discovery. by default, its endpoints. can be changed to service or endpointslices. note, that with service setting, you have to use port: \&#34;name\&#34; and cannot use targetPort for endpoints. | string | false |
 | jobLabel | The label to use to retrieve the job name from. | string | false |
 | targetLabels | TargetLabels transfers labels on the Kubernetes Service onto the target. | []string | false |
 | podTargetLabels | PodTargetLabels transfers labels on the Kubernetes Pod onto the target. | []string | false |
 | endpoints | A list of endpoints allowed as part of this ServiceScrape. | [][Endpoint](#endpoint) | true |
-| selector | Selector to select Endpoints objects. | [metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | true |
+| selector | Selector to select Endpoints objects by corresponding Service labels. | [metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | true |
 | namespaceSelector | Selector to select which namespaces the Endpoints objects are discovered from. | [NamespaceSelector](#namespaceselector) | false |
 | sampleLimit | SampleLimit defines per-scrape limit on number of scraped samples that will be accepted. | uint64 | false |
 

@@ -210,10 +210,16 @@ func createOrUpdateVMSelect(ctx context.Context, cr *v1beta1.VMCluster, rclient 
 		}
 	}
 	l.Info("vmstorage was found, updating it")
+	if newSts.Annotations == nil {
+		newSts.Annotations = make(map[string]string)
+	}
 	for annotation, value := range currentSts.Annotations {
 		newSts.Annotations[annotation] = value
 	}
 
+	if newSts.Spec.Template.Annotations == nil {
+		newSts.Spec.Template.Annotations = make(map[string]string)
+	}
 	for annotation, value := range currentSts.Spec.Template.Annotations {
 		newSts.Spec.Template.Annotations[annotation] = value
 	}
@@ -249,6 +255,9 @@ func CreateOrUpdateVMSelectService(ctx context.Context, cr *v1beta1.VMCluster, r
 		} else {
 			return nil, fmt.Errorf("cannot get vmselect service: %w", err)
 		}
+	}
+	if newService.Annotations == nil {
+		newService.Annotations = make(map[string]string)
 	}
 	for annotation, value := range currentService.Annotations {
 		newService.Annotations[annotation] = value
@@ -290,10 +299,17 @@ func createOrUpdateVMInsert(ctx context.Context, cr *v1beta1.VMCluster, rclient 
 		}
 	}
 	l.Info("vminsert was found, updating it")
+
+	if newDeployment.Annotations == nil {
+		newDeployment.Annotations = make(map[string]string)
+	}
 	for annotation, value := range currentDeployment.Annotations {
 		newDeployment.Annotations[annotation] = value
 	}
 
+	if newDeployment.Spec.Template.Annotations == nil {
+		newDeployment.Spec.Template.Annotations = make(map[string]string)
+	}
 	for annotation, value := range currentDeployment.Spec.Template.Annotations {
 		newDeployment.Spec.Template.Annotations[annotation] = value
 	}
@@ -323,6 +339,10 @@ func CreateOrUpdateVMInsertService(ctx context.Context, cr *v1beta1.VMCluster, r
 		} else {
 			return nil, fmt.Errorf("cannot get vminsert service: %w", err)
 		}
+	}
+
+	if newService.Annotations == nil {
+		newService.Annotations = make(map[string]string)
 	}
 	for annotation, value := range currentService.Annotations {
 		newService.Annotations[annotation] = value
@@ -365,10 +385,16 @@ func createOrUpdateVMStorage(ctx context.Context, cr *v1beta1.VMCluster, rclient
 		}
 	}
 	l.Info("vmstorage was found, updating it")
+	if newSts.Annotations == nil {
+		newSts.Annotations = make(map[string]string)
+	}
 	for annotation, value := range currentSts.Annotations {
 		newSts.Annotations[annotation] = value
 	}
 
+	if newSts.Spec.Template.Annotations == nil {
+		newSts.Spec.Template.Annotations = make(map[string]string)
+	}
 	for annotation, value := range currentSts.Spec.Template.Annotations {
 		newSts.Spec.Template.Annotations[annotation] = value
 	}
@@ -399,6 +425,9 @@ func CreateOrUpdateVMStorageService(ctx context.Context, cr *v1beta1.VMCluster, 
 		} else {
 			return nil, fmt.Errorf("cannot get vmstorage service: %w", err)
 		}
+	}
+	if newService.Annotations == nil {
+		newService.Annotations = make(map[string]string)
 	}
 	for annotation, value := range currentService.Annotations {
 		newService.Annotations[annotation] = value

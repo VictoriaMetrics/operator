@@ -210,19 +210,8 @@ func createOrUpdateVMSelect(ctx context.Context, cr *v1beta1.VMCluster, rclient 
 		}
 	}
 	l.Info("vmstorage was found, updating it")
-	if newSts.Annotations == nil {
-		newSts.Annotations = make(map[string]string)
-	}
-	for annotation, value := range currentSts.Annotations {
-		newSts.Annotations[annotation] = value
-	}
-
-	if newSts.Spec.Template.Annotations == nil {
-		newSts.Spec.Template.Annotations = make(map[string]string)
-	}
-	for annotation, value := range currentSts.Spec.Template.Annotations {
-		newSts.Spec.Template.Annotations[annotation] = value
-	}
+	newSts.Annotations = labels.Merge(currentSts.Annotations, newSts.Annotations)
+	newSts.Spec.Template.Annotations = labels.Merge(currentSts.Spec.Template.Annotations, newSts.Spec.Template.Annotations)
 	if currentSts.ManagedFields != nil {
 		newSts.ManagedFields = currentSts.ManagedFields
 	}
@@ -256,12 +245,7 @@ func CreateOrUpdateVMSelectService(ctx context.Context, cr *v1beta1.VMCluster, r
 			return nil, fmt.Errorf("cannot get vmselect service: %w", err)
 		}
 	}
-	if newService.Annotations == nil {
-		newService.Annotations = make(map[string]string)
-	}
-	for annotation, value := range currentService.Annotations {
-		newService.Annotations[annotation] = value
-	}
+	newService.Annotations = labels.Merge(currentService.Annotations, newService.Annotations)
 	if currentService.Spec.ClusterIP != "" {
 		newService.Spec.ClusterIP = currentService.Spec.ClusterIP
 	}
@@ -300,19 +284,8 @@ func createOrUpdateVMInsert(ctx context.Context, cr *v1beta1.VMCluster, rclient 
 	}
 	l.Info("vminsert was found, updating it")
 
-	if newDeployment.Annotations == nil {
-		newDeployment.Annotations = make(map[string]string)
-	}
-	for annotation, value := range currentDeployment.Annotations {
-		newDeployment.Annotations[annotation] = value
-	}
-
-	if newDeployment.Spec.Template.Annotations == nil {
-		newDeployment.Spec.Template.Annotations = make(map[string]string)
-	}
-	for annotation, value := range currentDeployment.Spec.Template.Annotations {
-		newDeployment.Spec.Template.Annotations[annotation] = value
-	}
+	newDeployment.Annotations = labels.Merge(currentDeployment.Annotations, newDeployment.Annotations)
+	newDeployment.Spec.Template.Annotations = labels.Merge(currentDeployment.Spec.Template.Annotations, newDeployment.Spec.Template.Annotations)
 
 	err = rclient.Update(ctx, newDeployment)
 	if err != nil {
@@ -340,13 +313,8 @@ func CreateOrUpdateVMInsertService(ctx context.Context, cr *v1beta1.VMCluster, r
 			return nil, fmt.Errorf("cannot get vminsert service: %w", err)
 		}
 	}
+	newService.Annotations = labels.Merge(currentService.Annotations, newService.Annotations)
 
-	if newService.Annotations == nil {
-		newService.Annotations = make(map[string]string)
-	}
-	for annotation, value := range currentService.Annotations {
-		newService.Annotations[annotation] = value
-	}
 	if currentService.Spec.ClusterIP != "" {
 		newService.Spec.ClusterIP = currentService.Spec.ClusterIP
 	}
@@ -385,19 +353,9 @@ func createOrUpdateVMStorage(ctx context.Context, cr *v1beta1.VMCluster, rclient
 		}
 	}
 	l.Info("vmstorage was found, updating it")
-	if newSts.Annotations == nil {
-		newSts.Annotations = make(map[string]string)
-	}
-	for annotation, value := range currentSts.Annotations {
-		newSts.Annotations[annotation] = value
-	}
+	newSts.Annotations = labels.Merge(currentSts.Annotations, newSts.Annotations)
+	newSts.Spec.Template.Annotations = labels.Merge(currentSts.Spec.Template.Annotations, newSts.Spec.Template.Annotations)
 
-	if newSts.Spec.Template.Annotations == nil {
-		newSts.Spec.Template.Annotations = make(map[string]string)
-	}
-	for annotation, value := range currentSts.Spec.Template.Annotations {
-		newSts.Spec.Template.Annotations[annotation] = value
-	}
 	// hack for break reconcile loop at kubernetes 1.18
 	newSts.Status.Replicas = currentSts.Status.Replicas
 	err = rclient.Update(ctx, newSts)
@@ -426,12 +384,7 @@ func CreateOrUpdateVMStorageService(ctx context.Context, cr *v1beta1.VMCluster, 
 			return nil, fmt.Errorf("cannot get vmstorage service: %w", err)
 		}
 	}
-	if newService.Annotations == nil {
-		newService.Annotations = make(map[string]string)
-	}
-	for annotation, value := range currentService.Annotations {
-		newService.Annotations[annotation] = value
-	}
+	newService.Annotations = labels.Merge(currentService.Annotations, newService.Annotations)
 	if currentService.Spec.ClusterIP != "" {
 		newService.Spec.ClusterIP = currentService.Spec.ClusterIP
 	}

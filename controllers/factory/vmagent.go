@@ -7,6 +7,8 @@ import (
 	"sort"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/labels"
+
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 
 	"github.com/VictoriaMetrics/operator/controllers/factory/vmagent"
@@ -37,14 +39,14 @@ const (
 
 func CreateOrUpdateVMAgentService(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client, c *config.BaseOperatorConf) (*corev1.Service, error) {
 	l := log.WithValues("recon.vm.service.name", cr.Name)
-	NewService := newServiceVMAgent(cr, c)
+	newService := newServiceVMAgent(cr, c)
 
 	currentService := &corev1.Service{}
-	err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: NewService.Name}, currentService)
+	err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: newService.Name}, currentService)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			l.Info("creating new service for vm agent")
-			err := rclient.Create(ctx, NewService)
+			err := rclient.Create(ctx, newService)
 			if err != nil {
 				return nil, fmt.Errorf("cannot create new service for vmagent: %w", err)
 			}
@@ -52,23 +54,22 @@ func CreateOrUpdateVMAgentService(ctx context.Context, cr *victoriametricsv1beta
 			return nil, fmt.Errorf("cannot get vmagent service for reconcile: %w", err)
 		}
 	}
-	for annotation, value := range currentService.Annotations {
-		NewService.Annotations[annotation] = value
-	}
+	newService.Annotations = labels.Merge(currentService.Annotations, newService.Annotations)
+
 	if currentService.Spec.ClusterIP != "" {
-		NewService.Spec.ClusterIP = currentService.Spec.ClusterIP
+		newService.Spec.ClusterIP = currentService.Spec.ClusterIP
 	}
 	if currentService.ResourceVersion != "" {
-		NewService.ResourceVersion = currentService.ResourceVersion
+		newService.ResourceVersion = currentService.ResourceVersion
 	}
-	err = rclient.Update(ctx, NewService)
+	err = rclient.Update(ctx, newService)
 	if err != nil {
 		l.Error(err, "cannot update vmagent service")
 		return nil, err
 	}
 
 	l.Info("vmagent service reconciled")
-	return NewService, nil
+	return newService, nil
 }
 
 func newServiceVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperatorConf) *corev1.Service {
@@ -160,12 +161,8 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 		}
 	}
 	l.Info("updating  vmagent")
-	for annotation, value := range currentDeploy.Annotations {
-		newDeploy.Annotations[annotation] = value
-	}
-	for annotation, value := range currentDeploy.Spec.Template.Annotations {
-		newDeploy.Spec.Template.Annotations[annotation] = value
-	}
+	newDeploy.Annotations = labels.Merge(currentDeploy.Annotations, newDeploy.Annotations)
+	newDeploy.Spec.Template.Annotations = labels.Merge(currentDeploy.Spec.Template.Annotations, newDeploy.Spec.Template.Annotations)
 
 	err = rclient.Update(ctx, newDeploy)
 	if err != nil {

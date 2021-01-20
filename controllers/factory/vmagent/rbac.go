@@ -47,7 +47,7 @@ func ensureVMAgentCRExist(ctx context.Context, cr *v1beta12.VMAgent, rclient cli
 	}
 
 	existsClusterRole.Labels = labels.Merge(existsClusterRole.Labels, clusterRole.Labels)
-	existsClusterRole.Annotations = labels.Merge(existsClusterRole.Annotations, clusterRole.Labels)
+	existsClusterRole.Annotations = labels.Merge(clusterRole.Annotations, existsClusterRole.Annotations)
 	return rclient.Update(ctx, &existsClusterRole)
 }
 
@@ -71,7 +71,7 @@ func ensureVMAgentCRBExist(ctx context.Context, cr *v1beta12.VMAgent, rclient cl
 	}
 
 	existsClusterRoleBinding.Labels = labels.Merge(existsClusterRoleBinding.Labels, clusterRoleBinding.Labels)
-	existsClusterRoleBinding.Annotations = labels.Merge(existsClusterRoleBinding.Annotations, clusterRoleBinding.Labels)
+	existsClusterRoleBinding.Annotations = labels.Merge(clusterRoleBinding.Annotations, existsClusterRoleBinding.Annotations)
 	return rclient.Update(ctx, clusterRoleBinding)
 }
 

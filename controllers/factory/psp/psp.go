@@ -110,7 +110,7 @@ func ensureClusterRoleExists(ctx context.Context, cr CRDObject, rclient client.C
 	}
 
 	existsClusterRole.Labels = labels.Merge(existsClusterRole.Labels, clusterRole.Labels)
-	existsClusterRole.Annotations = labels.Merge(existsClusterRole.Annotations, clusterRole.Labels)
+	existsClusterRole.Annotations = labels.Merge(clusterRole.Annotations, existsClusterRole.Annotations)
 	return rclient.Update(ctx, &existsClusterRole)
 }
 
@@ -134,7 +134,7 @@ func ensureClusterRoleBindingExists(ctx context.Context, cr CRDObject, rclient c
 	}
 
 	existsClusterRoleBinding.Labels = labels.Merge(existsClusterRoleBinding.Labels, clusterRoleBinding.Labels)
-	existsClusterRoleBinding.Annotations = labels.Merge(existsClusterRoleBinding.Annotations, clusterRoleBinding.Labels)
+	existsClusterRoleBinding.Annotations = labels.Merge(clusterRoleBinding.Annotations, existsClusterRoleBinding.Annotations)
 	return rclient.Update(ctx, clusterRoleBinding)
 }
 

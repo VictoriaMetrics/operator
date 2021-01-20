@@ -6,6 +6,8 @@ import (
 	"path"
 	"sort"
 
+	"k8s.io/apimachinery/pkg/labels"
+
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/controllers/factory/psp"
@@ -113,13 +115,9 @@ func CreateOrUpdateVMSingle(ctx context.Context, cr *victoriametricsv1beta1.VMSi
 		}
 	}
 	l.Info("vm vmsingle was found, updating it")
-	for annotation, value := range currentDeploy.Annotations {
-		newDeploy.Annotations[annotation] = value
-	}
 
-	for annotation, value := range currentDeploy.Spec.Template.Annotations {
-		newDeploy.Spec.Template.Annotations[annotation] = value
-	}
+	newDeploy.Annotations = labels.Merge(newDeploy.Annotations, currentDeploy.Annotations)
+	newDeploy.Spec.Template.Annotations = labels.Merge(newDeploy.Spec.Template.Annotations, currentDeploy.Spec.Template.Annotations)
 
 	err = rclient.Update(ctx, newDeploy)
 	if err != nil {
@@ -411,9 +409,7 @@ func CreateOrUpdateVMSingleService(ctx context.Context, cr *victoriametricsv1bet
 			return nil, fmt.Errorf("cannot get vmsingle service: %w", err)
 		}
 	}
-	for annotation, value := range currentService.Annotations {
-		newService.Annotations[annotation] = value
-	}
+	newService.Annotations = labels.Merge(newService.Annotations, currentService.Annotations)
 	if currentService.Spec.ClusterIP != "" {
 		newService.Spec.ClusterIP = currentService.Spec.ClusterIP
 	}

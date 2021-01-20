@@ -7,6 +7,8 @@ import (
 	"sort"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/labels"
+
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/controllers/factory/psp"
@@ -43,9 +45,7 @@ func CreateOrUpdateVMAlertService(ctx context.Context, cr *victoriametricsv1beta
 			return nil, fmt.Errorf("cannot get vmalert service: %w", err)
 		}
 	}
-	for annotation, value := range currentService.Annotations {
-		newService.Annotations[annotation] = value
-	}
+	newService.Annotations = labels.Merge(newService.Annotations, currentService.Annotations)
 	if currentService.Spec.ClusterIP != "" {
 		newService.Spec.ClusterIP = currentService.Spec.ClusterIP
 	}
@@ -136,13 +136,8 @@ func CreateOrUpdateVMAlert(ctx context.Context, cr *victoriametricsv1beta1.VMAle
 			return reconcile.Result{}, fmt.Errorf("cannot get deploy for vmalert: %w", err)
 		}
 	}
-	for annotation, value := range currDeploy.Annotations {
-		newDeploy.Annotations[annotation] = value
-	}
-	for annotation, value := range currDeploy.Spec.Template.Annotations {
-		newDeploy.Spec.Template.Annotations[annotation] = value
-	}
-
+	newDeploy.Annotations = labels.Merge(newDeploy.Annotations, currDeploy.Annotations)
+	newDeploy.Spec.Template.Annotations = labels.Merge(newDeploy.Spec.Template.Annotations, currDeploy.Spec.Template.Annotations)
 	err = rclient.Update(ctx, newDeploy)
 	if err != nil {
 		return reconcile.Result{}, fmt.Errorf("cannot update vmalert deploy: %w", err)

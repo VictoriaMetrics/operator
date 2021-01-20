@@ -16,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -89,12 +90,8 @@ func CreateOrUpdateAlertManager(ctx context.Context, cr *victoriametricsv1beta1.
 }
 
 func updateStsForAlertManager(ctx context.Context, rclient client.Client, oldSts, newSts *appsv1.StatefulSet) error {
-	for k, v := range oldSts.Annotations {
-		newSts.Annotations[k] = v
-	}
-	for k, v := range oldSts.Spec.Template.Annotations {
-		newSts.Spec.Template.Annotations[k] = v
-	}
+	newSts.Annotations = labels.Merge(newSts.Annotations, oldSts.Annotations)
+	newSts.Spec.Template.Annotations = labels.Merge(newSts.Spec.Template.Annotations, oldSts.Spec.Template.Annotations)
 	// hack for break reconcile loop at kubernetes 1.18
 	newSts.Status.Replicas = oldSts.Status.Replicas
 
@@ -208,9 +205,7 @@ func CreateOrUpdateAlertManagerService(ctx context.Context, cr *victoriametricsv
 			return nil, fmt.Errorf("cannot get service for vmalertmanager sts: %w", err)
 		}
 	}
-	for annotation, value := range oldService.Annotations {
-		newService.Annotations[annotation] = value
-	}
+	newService.Annotations = labels.Merge(newService.Annotations, oldService.Annotations)
 	if oldService.Spec.ClusterIP != "" {
 		newService.Spec.ClusterIP = oldService.Spec.ClusterIP
 	}

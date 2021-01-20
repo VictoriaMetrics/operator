@@ -210,8 +210,8 @@ func createOrUpdateVMSelect(ctx context.Context, cr *v1beta1.VMCluster, rclient 
 		}
 	}
 	l.Info("vmstorage was found, updating it")
-	newSts.Annotations = labels.Merge(currentSts.Annotations, newSts.Annotations)
-	newSts.Spec.Template.Annotations = labels.Merge(currentSts.Spec.Template.Annotations, newSts.Spec.Template.Annotations)
+	newSts.Annotations = labels.Merge(newSts.Annotations, currentSts.Annotations)
+	newSts.Spec.Template.Annotations = labels.Merge(newSts.Spec.Template.Annotations, currentSts.Spec.Template.Annotations)
 	if currentSts.ManagedFields != nil {
 		newSts.ManagedFields = currentSts.ManagedFields
 	}
@@ -245,7 +245,7 @@ func CreateOrUpdateVMSelectService(ctx context.Context, cr *v1beta1.VMCluster, r
 			return nil, fmt.Errorf("cannot get vmselect service: %w", err)
 		}
 	}
-	newService.Annotations = labels.Merge(currentService.Annotations, newService.Annotations)
+	newService.Annotations = labels.Merge(newService.Annotations, currentService.Annotations)
 	if currentService.Spec.ClusterIP != "" {
 		newService.Spec.ClusterIP = currentService.Spec.ClusterIP
 	}
@@ -284,8 +284,8 @@ func createOrUpdateVMInsert(ctx context.Context, cr *v1beta1.VMCluster, rclient 
 	}
 	l.Info("vminsert was found, updating it")
 
-	newDeployment.Annotations = labels.Merge(currentDeployment.Annotations, newDeployment.Annotations)
-	newDeployment.Spec.Template.Annotations = labels.Merge(currentDeployment.Spec.Template.Annotations, newDeployment.Spec.Template.Annotations)
+	newDeployment.Annotations = labels.Merge(newDeployment.Annotations, currentDeployment.Annotations)
+	newDeployment.Spec.Template.Annotations = labels.Merge(newDeployment.Spec.Template.Annotations, currentDeployment.Spec.Template.Annotations)
 
 	err = rclient.Update(ctx, newDeployment)
 	if err != nil {
@@ -313,7 +313,7 @@ func CreateOrUpdateVMInsertService(ctx context.Context, cr *v1beta1.VMCluster, r
 			return nil, fmt.Errorf("cannot get vminsert service: %w", err)
 		}
 	}
-	newService.Annotations = labels.Merge(currentService.Annotations, newService.Annotations)
+	newService.Annotations = labels.Merge(newService.Annotations, currentService.Annotations)
 
 	if currentService.Spec.ClusterIP != "" {
 		newService.Spec.ClusterIP = currentService.Spec.ClusterIP
@@ -353,8 +353,8 @@ func createOrUpdateVMStorage(ctx context.Context, cr *v1beta1.VMCluster, rclient
 		}
 	}
 	l.Info("vmstorage was found, updating it")
-	newSts.Annotations = labels.Merge(currentSts.Annotations, newSts.Annotations)
-	newSts.Spec.Template.Annotations = labels.Merge(currentSts.Spec.Template.Annotations, newSts.Spec.Template.Annotations)
+	newSts.Annotations = labels.Merge(newSts.Annotations, currentSts.Annotations)
+	newSts.Spec.Template.Annotations = labels.Merge(newSts.Spec.Template.Annotations, currentSts.Spec.Template.Annotations)
 
 	// hack for break reconcile loop at kubernetes 1.18
 	newSts.Status.Replicas = currentSts.Status.Replicas
@@ -384,7 +384,7 @@ func CreateOrUpdateVMStorageService(ctx context.Context, cr *v1beta1.VMCluster, 
 			return nil, fmt.Errorf("cannot get vmstorage service: %w", err)
 		}
 	}
-	newService.Annotations = labels.Merge(currentService.Annotations, newService.Annotations)
+	newService.Annotations = labels.Merge(newService.Annotations, currentService.Annotations)
 	if currentService.Spec.ClusterIP != "" {
 		newService.Spec.ClusterIP = currentService.Spec.ClusterIP
 	}

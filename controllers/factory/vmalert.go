@@ -45,7 +45,7 @@ func CreateOrUpdateVMAlertService(ctx context.Context, cr *victoriametricsv1beta
 			return nil, fmt.Errorf("cannot get vmalert service: %w", err)
 		}
 	}
-	newService.Annotations = labels.Merge(currentService.Annotations, newService.Annotations)
+	newService.Annotations = labels.Merge(newService.Annotations, currentService.Annotations)
 	if currentService.Spec.ClusterIP != "" {
 		newService.Spec.ClusterIP = currentService.Spec.ClusterIP
 	}
@@ -136,8 +136,8 @@ func CreateOrUpdateVMAlert(ctx context.Context, cr *victoriametricsv1beta1.VMAle
 			return reconcile.Result{}, fmt.Errorf("cannot get deploy for vmalert: %w", err)
 		}
 	}
-	newDeploy.Annotations = labels.Merge(currDeploy.Annotations, newDeploy.Annotations)
-	newDeploy.Spec.Template.Annotations = labels.Merge(currDeploy.Spec.Template.Annotations, newDeploy.Spec.Template.Annotations)
+	newDeploy.Annotations = labels.Merge(newDeploy.Annotations, currDeploy.Annotations)
+	newDeploy.Spec.Template.Annotations = labels.Merge(newDeploy.Spec.Template.Annotations, currDeploy.Spec.Template.Annotations)
 	err = rclient.Update(ctx, newDeploy)
 	if err != nil {
 		return reconcile.Result{}, fmt.Errorf("cannot update vmalert deploy: %w", err)

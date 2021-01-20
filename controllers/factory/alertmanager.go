@@ -90,8 +90,8 @@ func CreateOrUpdateAlertManager(ctx context.Context, cr *victoriametricsv1beta1.
 }
 
 func updateStsForAlertManager(ctx context.Context, rclient client.Client, oldSts, newSts *appsv1.StatefulSet) error {
-	newSts.Annotations = labels.Merge(oldSts.Annotations, newSts.Annotations)
-	newSts.Spec.Template.Annotations = labels.Merge(oldSts.Spec.Template.Annotations, newSts.Spec.Template.Annotations)
+	newSts.Annotations = labels.Merge(newSts.Annotations, oldSts.Annotations)
+	newSts.Spec.Template.Annotations = labels.Merge(newSts.Spec.Template.Annotations, oldSts.Spec.Template.Annotations)
 	// hack for break reconcile loop at kubernetes 1.18
 	newSts.Status.Replicas = oldSts.Status.Replicas
 
@@ -205,7 +205,7 @@ func CreateOrUpdateAlertManagerService(ctx context.Context, cr *victoriametricsv
 			return nil, fmt.Errorf("cannot get service for vmalertmanager sts: %w", err)
 		}
 	}
-	newService.Annotations = labels.Merge(oldService.Annotations, newService.Annotations)
+	newService.Annotations = labels.Merge(newService.Annotations, oldService.Annotations)
 	if oldService.Spec.ClusterIP != "" {
 		newService.Spec.ClusterIP = oldService.Spec.ClusterIP
 	}

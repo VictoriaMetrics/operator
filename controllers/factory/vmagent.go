@@ -54,7 +54,7 @@ func CreateOrUpdateVMAgentService(ctx context.Context, cr *victoriametricsv1beta
 			return nil, fmt.Errorf("cannot get vmagent service for reconcile: %w", err)
 		}
 	}
-	newService.Annotations = labels.Merge(currentService.Annotations, newService.Annotations)
+	newService.Annotations = labels.Merge(newService.Annotations, currentService.Annotations)
 
 	if currentService.Spec.ClusterIP != "" {
 		newService.Spec.ClusterIP = currentService.Spec.ClusterIP
@@ -161,8 +161,8 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 		}
 	}
 	l.Info("updating  vmagent")
-	newDeploy.Annotations = labels.Merge(currentDeploy.Annotations, newDeploy.Annotations)
-	newDeploy.Spec.Template.Annotations = labels.Merge(currentDeploy.Spec.Template.Annotations, newDeploy.Spec.Template.Annotations)
+	newDeploy.Annotations = labels.Merge(newDeploy.Annotations, currentDeploy.Annotations)
+	newDeploy.Spec.Template.Annotations = labels.Merge(newDeploy.Spec.Template.Annotations, currentDeploy.Spec.Template.Annotations)
 
 	err = rclient.Update(ctx, newDeploy)
 	if err != nil {

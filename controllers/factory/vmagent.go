@@ -268,7 +268,7 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 	args = append(args, BuildRemoteWriteSettings(cr)...)
 
 	for arg, value := range cr.Spec.ExtraArgs {
-		args = append(args, fmt.Sprintf("--%s=%s", arg, value))
+		args = append(args, fmt.Sprintf("-%s=%s", arg, value))
 	}
 
 	args = append(args, fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.Port))

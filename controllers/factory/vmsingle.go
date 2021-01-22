@@ -217,7 +217,7 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 	}
 
 	for arg, value := range cr.Spec.ExtraArgs {
-		args = append(args, fmt.Sprintf("--%s=%s", arg, value))
+		args = append(args, fmt.Sprintf("-%s=%s", arg, value))
 	}
 
 	args = append(args, fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.Port))
@@ -516,7 +516,7 @@ func makeSpecForVMBackuper(
 		args = append(args, fmt.Sprintf("-loggerFormat=%s", *cr.LogFormat))
 	}
 	for arg, value := range cr.ExtraArgs {
-		args = append(args, fmt.Sprintf("--%s=%s", arg, value))
+		args = append(args, fmt.Sprintf("-%s=%s", arg, value))
 	}
 
 	var ports []corev1.ContainerPort

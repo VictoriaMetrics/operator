@@ -357,7 +357,7 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 		confReloadArgs = append(confReloadArgs, fmt.Sprintf("-volume-dir=%s", path.Join(vmAlertConfigDir, cm)))
 	}
 	for arg, value := range cr.Spec.ExtraArgs {
-		args = append(args, fmt.Sprintf("--%s=%s", arg, value))
+		args = append(args, fmt.Sprintf("-%s=%s", arg, value))
 	}
 
 	args = append(args, fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.Port))

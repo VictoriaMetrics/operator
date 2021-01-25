@@ -35,9 +35,9 @@ import (
 // VMAgentReconciler reconciles a VMAgent object
 type VMAgentReconciler struct {
 	client.Client
-	Log      logr.Logger
-	Scheme   *runtime.Scheme
-	BaseConf *config.BaseOperatorConf
+	Log          logr.Logger
+	OriginScheme *runtime.Scheme
+	BaseConf     *config.BaseOperatorConf
 }
 
 // Reconcile general reconcile method
@@ -59,13 +59,12 @@ type VMAgentReconciler struct {
 // +kubebuilder:rbac:groups="rbac.authorization.k8s.io",resources=clusterroles,verbs=get;create,update;list
 // +kubebuilder:rbac:groups="policy",resources=podsecuritypolicies,verbs=get;create,update;list
 // +kubebuilder:rbac:groups="",resources=serviceaccounts,verbs=get;create,update;list
-func (r *VMAgentReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
+func (r *VMAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := r.Log.WithValues("vmagent", req.NamespacedName)
 	reqLogger.Info("Reconciling")
 
 	// Fetch the VMAgent instance
 	instance := &victoriametricsv1beta1.VMAgent{}
-	ctx := context.Background()
 	err := r.Get(ctx, req.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -106,6 +105,11 @@ func (r *VMAgentReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	reqLogger.Info("reconciled vmagent")
 
 	return ctrl.Result{}, nil
+}
+
+// Scheme implements interface.
+func (r *VMAgentReconciler) Scheme() *runtime.Scheme {
+	return r.OriginScheme
 }
 
 // SetupWithManager general setup method

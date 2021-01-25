@@ -37,21 +37,25 @@ import (
 // VMPodScrapeReconciler reconciles a VMPodScrape object
 type VMPodScrapeReconciler struct {
 	client.Client
-	Log      logr.Logger
-	Scheme   *runtime.Scheme
-	BaseConf *config.BaseOperatorConf
+	Log          logr.Logger
+	OriginScheme *runtime.Scheme
+	BaseConf     *config.BaseOperatorConf
+}
+
+// Scheme implements interface.
+func (r *VMPodScrapeReconciler) Scheme() *runtime.Scheme {
+	return r.OriginScheme
 }
 
 // Reconcile general reconcile method for controller
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmpodscrapes,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmpodscrapes/status,verbs=get;update;patch
-func (r *VMPodScrapeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
+func (r *VMPodScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := r.Log.WithValues("vmpodscrape", req.NamespacedName)
 	reqLogger.Info("Reconciling VMPodScrape")
 
 	// Fetch the VMPodScrape instance
 	instance := &victoriametricsv1beta1.VMPodScrape{}
-	ctx := context.Background()
 	err := r.Get(ctx, req.NamespacedName, instance)
 	if err != nil {
 		//in case of object notfound we must update vmagents

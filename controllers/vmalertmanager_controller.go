@@ -36,9 +36,14 @@ import (
 // VMAlertmanagerReconciler reconciles a VMAlertmanager object
 type VMAlertmanagerReconciler struct {
 	client.Client
-	Log      logr.Logger
-	Scheme   *runtime.Scheme
-	BaseConf *config.BaseOperatorConf
+	Log          logr.Logger
+	OriginScheme *runtime.Scheme
+	BaseConf     *config.BaseOperatorConf
+}
+
+// Scheme implements interface.
+func (r *VMAlertmanagerReconciler) Scheme() *runtime.Scheme {
+	return r.OriginScheme
 }
 
 // Reconcile general reconcile method for controller
@@ -48,10 +53,9 @@ type VMAlertmanagerReconciler struct {
 // +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=*
 // +kubebuilder:rbac:groups="",resources=configmaps,verbs=*
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=*
-func (r *VMAlertmanagerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
+func (r *VMAlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := r.Log.WithValues("vmalertmanager", req.NamespacedName)
 	reqLogger.Info("Reconciling")
-	ctx := context.Background()
 
 	instance := &victoriametricsv1beta1.VMAlertmanager{}
 	err := r.Get(ctx, req.NamespacedName, instance)

@@ -129,6 +129,7 @@ func generateConfig(
 					pMons[identifier], ep, i,
 					apiserverConfig,
 					basicAuthSecrets,
+					bearerTokens,
 					cr.Spec.OverrideHonorLabels,
 					cr.Spec.OverrideHonorTimestamps,
 					cr.Spec.IgnoreNamespaceSelectors,
@@ -251,6 +252,7 @@ func generatePodScrapeConfig(
 	i int,
 	apiserverConfig *victoriametricsv1beta1.APIServerConfig,
 	basicAuthSecrets map[string]BasicAuthCredentials,
+	bearerTokens map[string]BearerToken,
 	ignoreHonorLabels bool,
 	overrideHonorTimestamps bool,
 	ignoreNamespaceSelectors bool,
@@ -290,7 +292,28 @@ func generatePodScrapeConfig(
 	if ep.Scheme != "" {
 		cfg = append(cfg, yaml.MapItem{Key: "scheme", Value: ep.Scheme})
 	}
+	cfg = addTLStoYaml(cfg, m.Namespace, ep.TLSConfig)
 
+	if ep.BearerTokenFile != "" {
+		cfg = append(cfg, yaml.MapItem{Key: "bearer_token_file", Value: ep.BearerTokenFile})
+	}
+
+	if ep.BearerTokenSecret.Name != "" {
+		if s, ok := bearerTokens[fmt.Sprintf("podScrape/%s/%s/%d", m.Namespace, m.Name, i)]; ok {
+			cfg = append(cfg, yaml.MapItem{Key: "bearer_token", Value: s})
+		}
+	}
+
+	if ep.BasicAuth != nil {
+		if s, ok := basicAuthSecrets[fmt.Sprintf("podScrape/%s/%s/%d", m.Namespace, m.Name, i)]; ok {
+			cfg = append(cfg, yaml.MapItem{
+				Key: "basic_auth", Value: yaml.MapSlice{
+					{Key: "username", Value: s.username},
+					{Key: "password", Value: s.password},
+				},
+			})
+		}
+	}
 	var (
 		relabelings []yaml.MapSlice
 		labelKeys   []string

@@ -580,11 +580,15 @@ func addAddtionalScrapeConfigOwnership(cr *victoriametricsv1beta1.VMAgent, rclie
 }
 
 func CreateOrUpdateTlsAssets(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) error {
+	podScrapes, err := SelectPodScrapes(ctx, cr, rclient)
+	if err != nil {
+		return fmt.Errorf("cannot select PodScrapes: %w", err)
+	}
 	scrapes, err := SelectServiceScrapes(ctx, cr, rclient)
 	if err != nil {
 		return fmt.Errorf("cannot select service scrapes for tls Assets: %w", err)
 	}
-	assets, err := loadTLSAssets(ctx, rclient, cr, scrapes)
+	assets, err := loadTLSAssets(ctx, rclient, cr, scrapes, podScrapes)
 	if err != nil {
 		return fmt.Errorf("cannot load tls assets: %w", err)
 	}
@@ -621,7 +625,7 @@ func CreateOrUpdateTlsAssets(ctx context.Context, cr *victoriametricsv1beta1.VMA
 	return rclient.Update(ctx, tlsAssetsSecret)
 }
 
-func loadTLSAssets(ctx context.Context, rclient client.Client, cr *victoriametricsv1beta1.VMAgent, scrapes map[string]*victoriametricsv1beta1.VMServiceScrape) (map[string]string, error) {
+func loadTLSAssets(ctx context.Context, rclient client.Client, cr *victoriametricsv1beta1.VMAgent, scrapes map[string]*victoriametricsv1beta1.VMServiceScrape, podScrapes map[string]*victoriametricsv1beta1.VMPodScrape) (map[string]string, error) {
 	assets := map[string]string{}
 	nsSecretCache := make(map[string]*corev1.Secret)
 	nsConfigMapCache := make(map[string]*corev1.ConfigMap)
@@ -630,63 +634,18 @@ func loadTLSAssets(ctx context.Context, rclient client.Client, cr *victoriametri
 		if rw.TLSConfig == nil {
 			continue
 		}
-		prefix := cr.Namespace + "/"
-		secretSelectors := map[string]*corev1.SecretKeySelector{}
-		configMapSelectors := map[string]*corev1.ConfigMapKeySelector{}
-		selectorKey := rw.TLSConfig.CA.BuildSelectorWithPrefix(prefix)
-		switch {
-		case rw.TLSConfig.CA.Secret != nil:
-			secretSelectors[selectorKey] = rw.TLSConfig.CA.Secret
-		case rw.TLSConfig.CA.ConfigMap != nil:
-			configMapSelectors[selectorKey] = rw.TLSConfig.CA.ConfigMap
+		if err := addAssetsToCache(ctx, rclient, cr.Namespace, rw.TLSConfig, assets, nsSecretCache, nsConfigMapCache); err != nil {
+			return nil, fmt.Errorf("cannot add asset for remote write target: %s", cr.Name)
 		}
-		selectorKey = rw.TLSConfig.Cert.BuildSelectorWithPrefix(prefix)
-
-		switch {
-		case rw.TLSConfig.Cert.Secret != nil:
-			secretSelectors[selectorKey] = rw.TLSConfig.Cert.Secret
-
-		case rw.TLSConfig.Cert.ConfigMap != nil:
-			configMapSelectors[selectorKey] = rw.TLSConfig.Cert.ConfigMap
-		}
-		if rw.TLSConfig.KeySecret != nil {
-			secretSelectors[prefix+rw.TLSConfig.KeySecret.Name+"/"+rw.TLSConfig.KeySecret.Key] = rw.TLSConfig.KeySecret
-		}
-		for key, selector := range secretSelectors {
-			asset, err := getCredFromSecret(
-				ctx,
-				rclient,
-				cr.Namespace,
-				*selector,
-				key,
-				nsSecretCache,
-			)
-			if err != nil {
-				return nil, fmt.Errorf(
-					"failed to extract endpoint tls asset for vmagentremote write target %s from secret %s and key %s in namespace %s",
-					cr.Name, selector.Name, selector.Key, cr.Namespace,
-				)
+	}
+	for _, pod := range podScrapes {
+		for _, ep := range pod.Spec.PodMetricsEndpoints {
+			if ep.TLSConfig == nil {
+				continue
 			}
-
-			assets[rw.TLSConfig.BuildAssetPath(cr.Namespace, selector.Name, selector.Key)] = asset
-		}
-
-		for key, selector := range configMapSelectors {
-			asset, err := getCredFromConfigMap(
-				ctx,
-				rclient,
-				cr.Namespace,
-				*selector,
-				key,
-				nsConfigMapCache,
-			)
-			if err != nil {
-				return nil, fmt.Errorf(
-					"failed to extract endpoint tls asset for vmservicescrape %v from configmap %v and key %v in namespace %v",
-					cr.Name, selector.Name, selector.Key, cr.Namespace,
-				)
+			if err := addAssetsToCache(ctx, rclient, pod.Namespace, ep.TLSConfig, assets, nsSecretCache, nsConfigMapCache); err != nil {
+				return nil, fmt.Errorf("cannot add asset for vmpodscrape: %s", pod.Name)
 			}
-			assets[rw.TLSConfig.BuildAssetPath(cr.Namespace, selector.Name, selector.Key)] = asset
 		}
 	}
 	for _, mon := range scrapes {
@@ -694,73 +653,88 @@ func loadTLSAssets(ctx context.Context, rclient client.Client, cr *victoriametri
 			if ep.TLSConfig == nil {
 				continue
 			}
-			prefix := mon.Namespace + "/"
-			secretSelectors := map[string]*corev1.SecretKeySelector{}
-			configMapSelectors := map[string]*corev1.ConfigMapKeySelector{}
-			if ep.TLSConfig.CA != (victoriametricsv1beta1.SecretOrConfigMap{}) {
-				selectorKey := ep.TLSConfig.CA.BuildSelectorWithPrefix(prefix)
-				switch {
-				case ep.TLSConfig.CA.Secret != nil:
-					secretSelectors[selectorKey] = ep.TLSConfig.CA.Secret
-				case ep.TLSConfig.CA.ConfigMap != nil:
-					configMapSelectors[selectorKey] = ep.TLSConfig.CA.ConfigMap
-				}
+			if err := addAssetsToCache(ctx, rclient, mon.Namespace, ep.TLSConfig, assets, nsSecretCache, nsConfigMapCache); err != nil {
+				return nil, fmt.Errorf("cannot add asset for vmservicescrape: %s", mon.Name)
 			}
-			if ep.TLSConfig.Cert != (victoriametricsv1beta1.SecretOrConfigMap{}) {
-				selectorKey := ep.TLSConfig.Cert.BuildSelectorWithPrefix(prefix)
-				switch {
-				case ep.TLSConfig.Cert.Secret != nil:
-					secretSelectors[selectorKey] = ep.TLSConfig.Cert.Secret
-				case ep.TLSConfig.Cert.ConfigMap != nil:
-					configMapSelectors[selectorKey] = ep.TLSConfig.Cert.ConfigMap
-				}
-			}
-			if ep.TLSConfig.KeySecret != nil {
-				secretSelectors[prefix+ep.TLSConfig.KeySecret.Name+"/"+ep.TLSConfig.KeySecret.Key] = ep.TLSConfig.KeySecret
-			}
-
-			for key, selector := range secretSelectors {
-				asset, err := getCredFromSecret(
-					ctx,
-					rclient,
-					mon.Namespace,
-					*selector,
-					key,
-					nsSecretCache,
-				)
-				if err != nil {
-					return nil, fmt.Errorf(
-						"failed to extract endpoint tls asset for vmservicescrape %s from secret %s and key %s in namespace %s",
-						mon.Name, selector.Name, selector.Key, mon.Namespace,
-					)
-				}
-
-				assets[ep.TLSConfig.BuildAssetPath(mon.Namespace, selector.Name, selector.Key)] = asset
-			}
-
-			for key, selector := range configMapSelectors {
-				asset, err := getCredFromConfigMap(
-					ctx,
-					rclient,
-					mon.Namespace,
-					*selector,
-					key,
-					nsConfigMapCache,
-				)
-				if err != nil {
-					return nil, fmt.Errorf(
-						"failed to extract endpoint tls asset for vmservicescrape %v from configmap %v and key %v in namespace %v",
-						mon.Name, selector.Name, selector.Key, mon.Namespace,
-					)
-				}
-
-				assets[ep.TLSConfig.BuildAssetPath(mon.Namespace, selector.Name, selector.Key)] = asset
-			}
-
 		}
 	}
 
 	return assets, nil
+}
+
+func addAssetsToCache(
+	ctx context.Context,
+	rclient client.Client,
+	objectNS string,
+	tlsConfig *victoriametricsv1beta1.TLSConfig,
+	assets map[string]string,
+	nsSecretCache map[string]*corev1.Secret,
+	nsConfigMapCache map[string]*corev1.ConfigMap,
+) error {
+	prefix := objectNS + "/"
+	secretSelectors := map[string]*corev1.SecretKeySelector{}
+	configMapSelectors := map[string]*corev1.ConfigMapKeySelector{}
+	if tlsConfig.CA != (victoriametricsv1beta1.SecretOrConfigMap{}) {
+		selectorKey := tlsConfig.CA.BuildSelectorWithPrefix(prefix)
+		switch {
+		case tlsConfig.CA.Secret != nil:
+			secretSelectors[selectorKey] = tlsConfig.CA.Secret
+		case tlsConfig.CA.ConfigMap != nil:
+			configMapSelectors[selectorKey] = tlsConfig.CA.ConfigMap
+		}
+	}
+	if tlsConfig.Cert != (victoriametricsv1beta1.SecretOrConfigMap{}) {
+		selectorKey := tlsConfig.Cert.BuildSelectorWithPrefix(prefix)
+		switch {
+		case tlsConfig.Cert.Secret != nil:
+			secretSelectors[selectorKey] = tlsConfig.Cert.Secret
+		case tlsConfig.Cert.ConfigMap != nil:
+			configMapSelectors[selectorKey] = tlsConfig.Cert.ConfigMap
+		}
+	}
+	if tlsConfig.KeySecret != nil {
+		secretSelectors[prefix+tlsConfig.KeySecret.Name+"/"+tlsConfig.KeySecret.Key] = tlsConfig.KeySecret
+	}
+
+	for key, selector := range secretSelectors {
+		asset, err := getCredFromSecret(
+			ctx,
+			rclient,
+			objectNS,
+			*selector,
+			key,
+			nsSecretCache,
+		)
+		if err != nil {
+			return fmt.Errorf(
+				"failed to extract endpoint tls asset  from secret %s and key %s in namespace %s",
+				selector.Name, selector.Key, objectNS,
+			)
+		}
+
+		assets[tlsConfig.BuildAssetPath(objectNS, selector.Name, selector.Key)] = asset
+	}
+
+	for key, selector := range configMapSelectors {
+		asset, err := getCredFromConfigMap(
+			ctx,
+			rclient,
+			objectNS,
+			*selector,
+			key,
+			nsConfigMapCache,
+		)
+		if err != nil {
+			return fmt.Errorf(
+				"failed to extract endpoint tls asset from configmap %s and key %s in namespace %s",
+				selector.Name, selector.Key, objectNS,
+			)
+		}
+
+		assets[tlsConfig.BuildAssetPath(objectNS, selector.Name, selector.Key)] = asset
+	}
+	return nil
+
 }
 
 func LoadRemoteWriteSecrets(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client, l logr.Logger) (map[string]BasicAuthCredentials, map[string]BearerToken, error) {
@@ -770,13 +744,13 @@ func LoadRemoteWriteSecrets(ctx context.Context, cr *victoriametricsv1beta1.VMAg
 		l.Error(err, "cannot list secrets at vmagent namespace")
 		return nil, nil, err
 	}
-	rwsBasicAuthSecrets, err := loadBasicAuthSecrets(ctx, rclient, nil, nil, nil, cr.Spec.RemoteWrite, SecretsInNS)
+	rwsBasicAuthSecrets, err := loadBasicAuthSecrets(ctx, rclient, nil, nil, nil, nil, cr.Spec.RemoteWrite, SecretsInNS)
 	if err != nil {
 		l.Error(err, "cannot load basic auth secrets for remote write specs")
 		return nil, nil, err
 	}
 
-	rwsBearerTokens, err := loadBearerTokensFromSecrets(ctx, rclient, nil, nil, cr.Spec.RemoteWrite, SecretsInNS)
+	rwsBearerTokens, err := loadBearerTokensFromSecrets(ctx, rclient, nil, nil, nil, cr.Spec.RemoteWrite, SecretsInNS)
 	if err != nil {
 		l.Error(err, "cannot get bearer tokens for remote write specs")
 		return nil, nil, err

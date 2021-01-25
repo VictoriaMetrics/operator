@@ -103,7 +103,7 @@ spec:
                         type: object
                       fieldRef:
                         description: 'Selects a field of the pod: supports metadata.name,
-                          metadata.namespace, metadata.labels, metadata.annotations,
+                          metadata.namespace, `metadata.labels[''<KEY>'']`, `metadata.annotations[''<KEY>'']`,
                           spec.nodeName, spec.serviceAccountName, status.hostIP, status.podIP,
                           status.podIPs.'
                         properties:
@@ -359,8 +359,8 @@ spec:
                     This field will only apply to volume types which support fsGroup
                     based ownership(and permissions). It will have no effect on ephemeral
                     volume types such as: secret, configmaps and emptydir. Valid values
-                    are "OnRootMismatch" and "Always". If not specified defaults to
-                    "Always".'
+                    are "OnRootMismatch" and "Always". If not specified, "Always"
+                    is used.'
                   type: string
                 runAsGroup:
                   description: The GID to run the entrypoint of the container process.
@@ -409,6 +409,27 @@ spec:
                       description: User is a SELinux user label that applies to the
                         container.
                       type: string
+                  type: object
+                seccompProfile:
+                  description: The seccomp options to use by the containers in this
+                    pod.
+                  properties:
+                    localhostProfile:
+                      description: localhostProfile indicates a profile defined in
+                        a file on the node should be used. The profile must be preconfigured
+                        on the node to work. Must be a descending path, relative to
+                        the kubelet's configured seccomp profile location. Must only
+                        be set if type is "Localhost".
+                      type: string
+                    type:
+                      description: "type indicates which kind of seccomp profile will
+                        be applied. Valid options are: \n Localhost - a profile defined
+                        in a file on the node should be used. RuntimeDefault - the
+                        container runtime default profile should be used. Unconfined
+                        - no profile should be applied."
+                      type: string
+                  required:
+                  - type
                   type: object
                 supplementalGroups:
                   description: A list of groups applied to the first process run in
@@ -477,18 +498,13 @@ spec:
                   type: array
                 dataSource:
                   description: 'This field can be used to specify either: * An existing
-                    VolumeSnapshot object (snapshot.storage.k8s.io/VolumeSnapshot
-                    - Beta) * An existing PVC (PersistentVolumeClaim) * An existing
-                    custom resource/object that implements data population (Alpha)
-                    In order to use VolumeSnapshot object types, the appropriate feature
-                    gate must be enabled (VolumeSnapshotDataSource or AnyVolumeDataSource)
-                    If the provisioner or an external controller can support the specified
-                    data source, it will create a new volume based on the contents
-                    of the specified data source. If the specified data source is
-                    not supported, the volume will not be created and the failure
-                    will be reported as an event. In the future, we plan to support
-                    more data source types and the behavior of the provisioner may
-                    change.'
+                    VolumeSnapshot object (snapshot.storage.k8s.io/VolumeSnapshot)
+                    * An existing PVC (PersistentVolumeClaim) * An existing custom
+                    resource that implements data population (Alpha) In order to use
+                    custom resource types that implement data population, the AnyVolumeDataSource
+                    feature gate must be enabled. If the provisioner or an external
+                    controller can support the specified data source, it will create
+                    a new volume based on the contents of the specified data source.'
                   properties:
                     apiGroup:
                       description: APIGroup is the group for the resource being referenced.

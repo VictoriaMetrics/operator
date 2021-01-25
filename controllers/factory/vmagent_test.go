@@ -335,6 +335,7 @@ func Test_addAddtionalScrapeConfigOwnership(t *testing.T) {
 func Test_loadTLSAssets(t *testing.T) {
 	type args struct {
 		monitors map[string]*victoriametricsv1beta1.VMServiceScrape
+		pods     map[string]*victoriametricsv1beta1.VMPodScrape
 		cr       *victoriametricsv1beta1.VMAgent
 	}
 	tests := []struct {
@@ -465,7 +466,7 @@ func Test_loadTLSAssets(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 
-			got, err := loadTLSAssets(context.TODO(), fclient, tt.args.cr, tt.args.monitors)
+			got, err := loadTLSAssets(context.TODO(), fclient, tt.args.cr, tt.args.monitors, tt.args.pods)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("loadTLSAssets() error = %v, wantErr %v", err, tt.wantErr)
 				return

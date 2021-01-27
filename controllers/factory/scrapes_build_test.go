@@ -508,9 +508,6 @@ scrape_interval: 30s
 metrics_path: /metrics
 relabel_configs:
 - source_labels:
-  - __meta_kubernetes_node_address_InternalIP
-  target_label: __address__
-- source_labels:
   - __meta_kubernetes_node_name
   target_label: node
 - target_label: job
@@ -518,7 +515,7 @@ relabel_configs:
 - source_labels:
   - __address__
   target_label: __address__
-  regex: (.*)
+  regex: ^(.*):(.*)
   replacement: ${1}:9100
 `,
 		},

@@ -878,10 +878,6 @@ func generateNodeScrapeConfig(
 	// Add __address__ as internalIP  and pod and service labels into proper labels.
 	relabelings = append(relabelings, []yaml.MapSlice{
 		{
-			{Key: "source_labels", Value: []string{"__meta_kubernetes_node_address_InternalIP"}},
-			{Key: "target_label", Value: "__address__"},
-		},
-		{
 			{Key: "source_labels", Value: []string{"__meta_kubernetes_node_name"}},
 			{Key: "target_label", Value: "node"},
 		},
@@ -920,7 +916,7 @@ func generateNodeScrapeConfig(
 		relabelings = append(relabelings, yaml.MapSlice{
 			{Key: "source_labels", Value: []string{"__address__"}},
 			{Key: "target_label", Value: "__address__"},
-			{Key: "regex", Value: "(.*)"},
+			{Key: "regex", Value: "^(.*):(.*)"},
 			{Key: "replacement", Value: fmt.Sprintf("${1}:%s", nodeSpec.Port)},
 		})
 	}

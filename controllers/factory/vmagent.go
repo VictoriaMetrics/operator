@@ -418,7 +418,7 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 		if rw.UrlRelabelConfig == nil {
 			continue
 		}
-		if rw.UrlRelabelConfig.Name == cr.Spec.RelabelConfig.Name {
+		if cr.Spec.RelabelConfig != nil && rw.UrlRelabelConfig.Name == cr.Spec.RelabelConfig.Name {
 			continue
 		}
 		volumes = append(volumes, corev1.Volume{

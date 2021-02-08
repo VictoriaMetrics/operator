@@ -4,8 +4,10 @@ import (
 	"reflect"
 	"testing"
 
+	corev1 "k8s.io/api/core/v1"
+
 	v1beta1vm "github.com/VictoriaMetrics/operator/api/v1beta1"
-	v1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
+	v1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 )
 
 func TestConvertTlsConfig(t *testing.T) {
@@ -36,11 +38,10 @@ func TestConvertTlsConfig(t *testing.T) {
 			name: "with server name and insecure",
 			args: args{
 				tlsConf: &v1.TLSConfig{
-					CAFile:             "/etc/prom_add/ca",
-					CertFile:           "/etc/prometheus/secrets/cert.crt",
-					KeyFile:            "/etc/prometheus/configmaps/key.pem",
-					ServerName:         "some-hostname",
-					InsecureSkipVerify: true,
+					CAFile:        "/etc/prom_add/ca",
+					CertFile:      "/etc/prometheus/secrets/cert.crt",
+					KeyFile:       "/etc/prometheus/configmaps/key.pem",
+					SafeTLSConfig: v1.SafeTLSConfig{ServerName: "some-hostname", InsecureSkipVerify: true},
 				},
 			},
 			want: &v1beta1vm.TLSConfig{
@@ -228,6 +229,68 @@ func TestConvertServiceMonitor(t *testing.T) {
 			got := ConvertServiceMonitor(tt.args.serviceMon, false)
 			if !reflect.DeepEqual(*got, tt.want) {
 				t.Errorf("ConvertServiceMonitor() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestConvertPodEndpoints(t *testing.T) {
+	type args struct {
+		promPodEnpoints []v1.PodMetricsEndpoint
+	}
+	tests := []struct {
+		name string
+		args args
+		want []v1beta1vm.PodMetricsEndpoint
+	}{
+		{
+			name: "with tls config",
+			args: args{promPodEnpoints: []v1.PodMetricsEndpoint{
+				{
+					TLSConfig: &v1.PodMetricsEndpointTLSConfig{
+						SafeTLSConfig: v1.SafeTLSConfig{
+							InsecureSkipVerify: true,
+							ServerName:         "some-srv",
+							CA: v1.SecretOrConfigMap{ConfigMap: &corev1.ConfigMapKeySelector{
+								Key: "ca",
+							}},
+						},
+					},
+				},
+			}},
+			want: []v1beta1vm.PodMetricsEndpoint{{
+				TLSConfig: &v1beta1vm.TLSConfig{
+					InsecureSkipVerify: true,
+					ServerName:         "some-srv",
+					CA: v1beta1vm.SecretOrConfigMap{ConfigMap: &corev1.ConfigMapKeySelector{
+						Key: "ca"},
+					}},
+			}}},
+		{
+			name: "with basic auth and bearer",
+			args: args{promPodEnpoints: []v1.PodMetricsEndpoint{
+				{
+					BearerTokenSecret: corev1.SecretKeySelector{Key: "bearer"},
+					BasicAuth: &v1.BasicAuth{
+						Username: corev1.SecretKeySelector{Key: "username"},
+						Password: corev1.SecretKeySelector{Key: "password"},
+					},
+				},
+			}},
+			want: []v1beta1vm.PodMetricsEndpoint{{
+				BearerTokenSecret: corev1.SecretKeySelector{Key: "bearer"},
+				BasicAuth: &v1beta1vm.BasicAuth{Username: corev1.SecretKeySelector{
+					Key: "username",
+				},
+					Password: corev1.SecretKeySelector{Key: "password"},
+				},
+			}},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := ConvertPodEndpoints(tt.args.promPodEnpoints); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ConvertPodEndpoints() = %v, want %v", got, tt.want)
 			}
 		})
 	}

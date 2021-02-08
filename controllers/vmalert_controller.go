@@ -34,21 +34,25 @@ import (
 // VMAlertReconciler reconciles a VMAlert object
 type VMAlertReconciler struct {
 	client.Client
-	Log      logr.Logger
-	Scheme   *runtime.Scheme
-	BaseConf *config.BaseOperatorConf
+	Log          logr.Logger
+	OriginScheme *runtime.Scheme
+	BaseConf     *config.BaseOperatorConf
+}
+
+// Scheme implements interface.
+func (r *VMAlertReconciler) Scheme() *runtime.Scheme {
+	return r.OriginScheme
 }
 
 // Reconcile general reconile method for controller
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmalerts,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmalerts/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmalerts/finalizers,verbs=*
-func (r *VMAlertReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
+func (r *VMAlertReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := r.Log.WithValues("vmalert", req.NamespacedName)
 	reqLogger.Info("Reconciling")
 
 	// Fetch the VMAlert instance
-	ctx := context.Background()
 	instance := &victoriametricsv1beta1.VMAlert{}
 	err := r.Get(ctx, req.NamespacedName, instance)
 	if err != nil {

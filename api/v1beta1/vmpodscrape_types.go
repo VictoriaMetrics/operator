@@ -1,6 +1,7 @@
 package v1beta1
 
 import (
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -98,6 +99,21 @@ type PodMetricsEndpoint struct {
 	// ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint.
 	// +optional
 	ProxyURL *string `json:"proxyURL,omitempty"`
+	// BasicAuth allow an endpoint to authenticate over basic authentication
+	// More info: https://prometheus.io/docs/operating/configuration/#endpoints
+	// +optional
+	BasicAuth *BasicAuth `json:"basicAuth,omitempty"`
+	// File to read bearer token for scraping targets.
+	// +optional
+	BearerTokenFile string `json:"bearerTokenFile,omitempty"`
+	// Secret to mount to read bearer token for scraping targets. The secret
+	// needs to be in the same namespace as the service scrape and accessible by
+	// the victoria-metrics operator.
+	// +optional
+	BearerTokenSecret v1.SecretKeySelector `json:"bearerTokenSecret,omitempty"`
+	// TLSConfig configuration to use when scraping the endpoint
+	// +optional
+	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
 }
 
 // ArbitraryFSAccessThroughSMsConfig enables users to configure, whether

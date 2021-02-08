@@ -72,7 +72,7 @@ func ensureVMAgentCRBExist(ctx context.Context, cr *v1beta12.VMAgent, rclient cl
 
 	existsClusterRoleBinding.Labels = labels.Merge(existsClusterRoleBinding.Labels, clusterRoleBinding.Labels)
 	existsClusterRoleBinding.Annotations = labels.Merge(clusterRoleBinding.Annotations, existsClusterRoleBinding.Annotations)
-	return rclient.Update(ctx, clusterRoleBinding)
+	return rclient.Update(ctx, &existsClusterRoleBinding)
 }
 
 func buildVMAgentClusterRoleBinding(cr *v1beta12.VMAgent) *v12.ClusterRoleBinding {

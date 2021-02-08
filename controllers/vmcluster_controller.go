@@ -21,10 +21,15 @@ var log = logf.Log.WithName("controller_vmcluster")
 
 // VMClusterReconciler reconciles a VMCluster object
 type VMClusterReconciler struct {
-	Client   client.Client
-	Log      logr.Logger
-	Scheme   *runtime.Scheme
-	BaseConf *config.BaseOperatorConf
+	Client       client.Client
+	Log          logr.Logger
+	OriginScheme *runtime.Scheme
+	BaseConf     *config.BaseOperatorConf
+}
+
+// Scheme implements interface.
+func (r *VMClusterReconciler) Scheme() *runtime.Scheme {
+	return r.OriginScheme
 }
 
 // Reconcile general reconcile method for controller
@@ -32,10 +37,9 @@ type VMClusterReconciler struct {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmclusters/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmclusters/finalizers,verbs=*
 // +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=*
-func (r *VMClusterReconciler) Reconcile(request ctrl.Request) (ctrl.Result, error) {
+func (r *VMClusterReconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.Info("Reconciling VMCluster")
-	ctx := context.TODO()
 	cluster := &victoriametricsv1beta1.VMCluster{}
 	if err := r.Client.Get(ctx, request.NamespacedName, cluster); err != nil {
 		if errors.IsNotFound(err) {

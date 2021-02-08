@@ -66,12 +66,12 @@ func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *victoriametricsv
 		return fmt.Errorf("cannot list secrets at vmagent namespace: %w", err)
 	}
 
-	basicAuthSecrets, err := loadBasicAuthSecrets(ctx, rclient, smons, nodes, cr.Spec.APIServerConfig, nil, SecretsInNS)
+	basicAuthSecrets, err := loadBasicAuthSecrets(ctx, rclient, smons, nodes, pmons, cr.Spec.APIServerConfig, nil, SecretsInNS)
 	if err != nil {
 		return fmt.Errorf("cannot load basic secrets for ServiceMonitors: %w", err)
 	}
 
-	bearerTokens, err := loadBearerTokensFromSecrets(ctx, rclient, smons, nodes, nil, SecretsInNS)
+	bearerTokens, err := loadBearerTokensFromSecrets(ctx, rclient, smons, nodes, pmons, nil, SecretsInNS)
 	if err != nil {
 		return fmt.Errorf("cannot load bearer tokens from secrets for ServiceMonitors: %w", err)
 	}
@@ -455,6 +455,7 @@ func loadBasicAuthSecrets(
 	rclient client.Client,
 	mons map[string]*victoriametricsv1beta1.VMServiceScrape,
 	nodes map[string]*victoriametricsv1beta1.VMNodeScrape,
+	pods map[string]*victoriametricsv1beta1.VMPodScrape,
 	apiserverConfig *victoriametricsv1beta1.APIServerConfig,
 	remoteWriteSpecs []victoriametricsv1beta1.VMAgentRemoteWriteSpec,
 	SecretsInPromNS *v1.SecretList,
@@ -489,7 +490,18 @@ func loadBasicAuthSecrets(
 		}
 
 	}
+	for _, pod := range pods {
+		for i, ep := range pod.Spec.PodMetricsEndpoints {
+			if ep.BasicAuth != nil {
+				credentials, err := loadBasicAuthSecretFromAPI(ctx, rclient, ep.BasicAuth, pod.Namespace, nsSecretCache)
+				if err != nil {
+					return nil, fmt.Errorf("could not generate basicAuth for vmpodscrapee %s. %w", pod.Name, err)
+				}
+				secrets[fmt.Sprintf("podScrape/%s/%s/%d", pod.Namespace, pod.Name, i)] = credentials
+			}
 
+		}
+	}
 	// load apiserver basic auth secret
 	if apiserverConfig != nil && apiserverConfig.BasicAuth != nil {
 		credentials, err := loadBasicAuthSecret(apiserverConfig.BasicAuth, SecretsInPromNS)
@@ -519,6 +531,7 @@ func loadBearerTokensFromSecrets(
 	rclient client.Client,
 	mons map[string]*victoriametricsv1beta1.VMServiceScrape,
 	nodes map[string]*victoriametricsv1beta1.VMNodeScrape,
+	pods map[string]*victoriametricsv1beta1.VMPodScrape,
 	remoteWriteSpecs []victoriametricsv1beta1.VMAgentRemoteWriteSpec,
 	SecretsInPromNS *v1.SecretList,
 ) (map[string]BearerToken, error) {
@@ -547,6 +560,31 @@ func loadBearerTokensFromSecrets(
 			}
 
 			tokens[fmt.Sprintf("serviceScrape/%s/%s/%d", mon.Namespace, mon.Name, i)] = BearerToken(token)
+		}
+	}
+	for _, pod := range pods {
+		for i, ep := range pod.Spec.PodMetricsEndpoints {
+			if ep.BearerTokenSecret.Name == "" {
+				continue
+			}
+
+			token, err := getCredFromSecret(
+				ctx,
+				rclient,
+				pod.Namespace,
+				ep.BearerTokenSecret,
+				pod.Namespace+"/"+ep.BearerTokenSecret.Name,
+				nsSecretCache,
+			)
+			if err != nil {
+				return nil, fmt.Errorf(
+					"failed to extract endpoint bearertoken for vmpodscrape %v from secret %v in namespace %v",
+					pod.Name, ep.BearerTokenSecret.Name, pod.Namespace,
+				)
+			}
+
+			tokens[fmt.Sprintf("podScrape/%s/%s/%d", pod.Namespace, pod.Name, i)] = BearerToken(token)
+
 		}
 	}
 	// load bearer tokens for nodeScrape

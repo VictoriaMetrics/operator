@@ -34,9 +34,14 @@ import (
 // VMSingleReconciler reconciles a VMSingle object
 type VMSingleReconciler struct {
 	client.Client
-	Log      logr.Logger
-	Scheme   *runtime.Scheme
-	BaseConf *config.BaseOperatorConf
+	Log          logr.Logger
+	OriginScheme *runtime.Scheme
+	BaseConf     *config.BaseOperatorConf
+}
+
+// Scheme implements interface.
+func (r *VMSingleReconciler) Scheme() *runtime.Scheme {
+	return r.OriginScheme
 }
 
 // Reconcile general reconcile method for controller
@@ -46,11 +51,10 @@ type VMSingleReconciler struct {
 // +kubebuilder:rbac:groups=apps,resources=replicasets,verbs=*
 // +kubebuilder:rbac:groups="",resources=persistentvolumeclaims,verbs=*
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmsingles/status,verbs=get;update;patch
-func (r *VMSingleReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
+func (r *VMSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := r.Log.WithValues("vmsingle", req.NamespacedName)
 	reqLogger.Info("Reconciling vmsingle")
 
-	ctx := context.Background()
 	instance := &victoriametricsv1beta1.VMSingle{}
 	err := r.Get(ctx, req.NamespacedName, instance)
 	if err != nil {

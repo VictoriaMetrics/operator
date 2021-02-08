@@ -38,17 +38,21 @@ import (
 // VMNodeScrapeReconciler reconciles a VMNodeScrape object
 type VMNodeScrapeReconciler struct {
 	client.Client
-	Log      logr.Logger
-	Scheme   *runtime.Scheme
-	BaseConf *config.BaseOperatorConf
+	Log          logr.Logger
+	OriginScheme *runtime.Scheme
+	BaseConf     *config.BaseOperatorConf
+}
+
+// Scheme implements interface.
+func (r *VMNodeScrapeReconciler) Scheme() *runtime.Scheme {
+	return r.OriginScheme
 }
 
 // Reconcile - reconciles VMNodeScrape objects.
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmnodescrapes,verbs=*
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmnodescrapes/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmnodescrapes/finalizers,verbs=*
-func (r *VMNodeScrapeReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	ctx := context.Background()
+func (r *VMNodeScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := r.Log.WithValues("vmnodescrape", req.NamespacedName)
 
 	// Fetch the VMNodeScrape instance

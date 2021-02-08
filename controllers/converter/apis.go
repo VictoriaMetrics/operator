@@ -5,7 +5,7 @@ import (
 
 	v1beta1vm "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory"
-	v1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
+	v1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -162,6 +162,20 @@ func ConvertTlsConfig(tlsConf *v1.TLSConfig) *v1beta1vm.TLSConfig {
 	}
 }
 
+func ConvertPodTlsConfig(tlsConf *v1.PodMetricsEndpointTLSConfig) *v1beta1vm.TLSConfig {
+	if tlsConf == nil {
+		return nil
+	}
+	return &v1beta1vm.TLSConfig{
+		// todo it doesnt support files, check why.
+		CA:                 ConvertSecretOrConfigmap(tlsConf.CA),
+		Cert:               ConvertSecretOrConfigmap(tlsConf.Cert),
+		KeySecret:          tlsConf.KeySecret,
+		InsecureSkipVerify: tlsConf.InsecureSkipVerify,
+		ServerName:         tlsConf.ServerName,
+	}
+}
+
 func ConvertSecretOrConfigmap(promSCM v1.SecretOrConfigMap) v1beta1vm.SecretOrConfigMap {
 	return v1beta1vm.SecretOrConfigMap{
 		Secret:    promSCM.Secret,
@@ -207,6 +221,9 @@ func ConvertPodEndpoints(promPodEnpoints []v1.PodMetricsEndpoint) []v1beta1vm.Po
 			ProxyURL:             promEndPoint.ProxyURL,
 			RelabelConfigs:       ConvertRelabelConfig(promEndPoint.RelabelConfigs),
 			MetricRelabelConfigs: ConvertRelabelConfig(promEndPoint.MetricRelabelConfigs),
+			BasicAuth:            ConvertBasicAuth(promEndPoint.BasicAuth),
+			TLSConfig:            ConvertPodTlsConfig(promEndPoint.TLSConfig),
+			BearerTokenSecret:    promEndPoint.BearerTokenSecret,
 		})
 	}
 	return endPoints

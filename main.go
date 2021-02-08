@@ -34,7 +34,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	stop := signals.SetupSignalHandler()
 	go func() {
-		<-stop
+		<-stop.Done()
 		cancel()
 	}()
 

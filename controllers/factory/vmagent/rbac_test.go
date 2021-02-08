@@ -47,7 +47,7 @@ func TestCreateVMAgentClusterAccess(t *testing.T) {
 				ctx: context.TODO(),
 				cr: &v1beta12.VMAgent{
 					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
+						Namespace: "default-2",
 						Name:      "rbac-test",
 					},
 					Spec: v1beta12.VMAgentSpec{},
@@ -57,19 +57,19 @@ func TestCreateVMAgentClusterAccess(t *testing.T) {
 				&v1.ClusterRole{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "monitoring:vmagent-cluster-access-rbac-test",
-						Namespace: "default",
+						Namespace: "default-2",
 					},
 				},
 				&v1.ClusterRoleBinding{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "monitoring:vmagent-cluster-access-rbac-test",
-						Namespace: "default",
+						Namespace: "default-2",
 					},
 				},
 				&v12.ServiceAccount{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "vmagent-rbac-test",
-						Namespace: "default",
+						Namespace: "default-2",
 					},
 				},
 			},

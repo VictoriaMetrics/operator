@@ -173,18 +173,18 @@ spec:
     Operator manages VictoriaMetrics applications and provides monitoring features for applications running inside and outside kubernetes cluster. It has support for prometheus-operator objects and
     provides migration mechanism.
 
-    Operator desinged to use exinsting installation of VictoriaMetrics inside or outside kubernetes cluster or it could
+    Operator desinged to use existing installation of VictoriaMetrics inside or outside kubernetes cluster or it could
     bring own resources and fully manages them.
 
      You can read more about operator at docs:
-      - quick start [doc](/docs/quick-start.MD)
-      - high availability [doc](/docs/high-availability.MD)
-      - design and description of implementation [design](/docs/design.MD)
-      - operator objects description [doc](/docs/api.MD)
+      - quick start [doc](https://github.com/VictoriaMetrics/operator/docs/quick-start.MD)
+      - high availability [doc](https://github.com/VictoriaMetrics/operator/docs/high-availability.MD)
+      - design and description of implementation [design](https://github.com/VictoriaMetrics/operator/docs/design.MD)
+      - operator objects description [doc](https://github.com/VictoriaMetrics/operator/docs/api.MD)
 
     # VictoriaMetrics
     * VictoriaMetrics can be used as long-term storage for Prometheus or for [vmagent](https://github.com/VictoriaMetrics/VictoriaMetrics/blob/master/app/vmagent/README.md).
-    See [these docs](#prometheus-setup) for details.
+    See [these docs](https://github.com/VictoriaMetrics/VictoriaMetrics#prometheus-setup) for details.
     * Supports [Prometheus querying API](https://prometheus.io/docs/prometheus/latest/querying/api/), so it can be used as Prometheus drop-in replacement in Grafana.
     VictoriaMetrics implements [MetricsQL](https://github.com/VictoriaMetrics/VictoriaMetrics/wiki/MetricsQL) query language, which is inspired by PromQL.
     * Supports global query view. Multiple Prometheus instances may write data into VictoriaMetrics. Later this data may be used in a single query.
@@ -209,19 +209,19 @@ spec:
         to S3 or GCS with [vmbackup](https://github.com/VictoriaMetrics/VictoriaMetrics/blob/master/app/vmbackup/README.md) / [vmrestore](https://github.com/VictoriaMetrics/VictoriaMetrics/blob/master/app/vmrestore/README.md).
         See [this article](https://medium.com/@valyala/speeding-up-backups-for-big-time-series-databases-533c1a927883) for more details.
     * Storage is protected from corruption on unclean shutdown (i.e. OOM, hardware reset or `kill -9`) thanks to [the storage architecture](https://medium.com/@valyala/how-victoriametrics-makes-instant-snapshots-for-multi-terabyte-time-series-data-e1f3fb0e0282).
-    * Supports metrics' scraping, ingestion and [backfilling](#backfilling) via the following protocols:
+    * Supports metrics' scraping, ingestion and [backfilling](https://github.com/VictoriaMetrics/VictoriaMetrics#backfilling) via the following protocols:
       * [Metrics from Prometheus exporters](https://github.com/prometheus/docs/blob/master/content/docs/instrumenting/exposition_formats.md#text-based-format)
-        such as [node_exporter](https://github.com/prometheus/node_exporter). See [these docs](#how-to-scrape-prometheus-exporters-such-as-node-exporter) for details.
+        such as [node_exporter](https://github.com/prometheus/node_exporter). See [these docs](https://github.com/VictoriaMetrics/VictoriaMetrics#how-to-scrape-prometheus-exporters-such-as-node-exporter) for details.
         * [Prometheus remote write API](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#remote_write)
-        * [InfluxDB line protocol](#how-to-send-data-from-influxdb-compatible-agents-such-as-telegraf) over HTTP, TCP and UDP.
-        * [Graphite plaintext protocol](#how-to-send-data-from-graphite-compatible-agents-such-as-statsd) with [tags](https://graphite.readthedocs.io/en/latest/tags.html#carbon)
+        * [InfluxDB line protocol](https://github.com/VictoriaMetrics/VictoriaMetrics#how-to-send-data-from-influxdb-compatible-agents-such-as-telegraf) over HTTP, TCP and UDP.
+        * [Graphite plaintext protocol](https://github.com/VictoriaMetrics/VictoriaMetrics#how-to-send-data-from-graphite-compatible-agents-such-as-statsd) with [tags](https://graphite.readthedocs.io/en/latest/tags.html#carbon)
         if `-graphiteListenAddr` is set.
-        * [OpenTSDB put message](#sending-data-via-telnet-put-protocol) if `-opentsdbListenAddr` is set.
-        * [HTTP OpenTSDB /api/put requests](#sending-opentsdb-data-via-http-apiput-requests) if `-opentsdbHTTPListenAddr` is set.
-        * [/api/v1/import](#how-to-import-time-series-data).
-        * [Prometheus exposition format](#how-to-import-data-in-prometheus-exposition-format).
-        * [Arbitrary CSV data](#how-to-import-csv-data).
-    * Supports metrics' relabeling. See [these docs](#relabeling) for details.
+        * [OpenTSDB put message](https://github.com/VictoriaMetrics/VictoriaMetrics#sending-data-via-telnet-put-protocol) if `-opentsdbListenAddr` is set.
+        * [HTTP OpenTSDB /api/put requests](https://github.com/VictoriaMetrics/VictoriaMetrics#sending-opentsdb-data-via-http-apiput-requests) if `-opentsdbHTTPListenAddr` is set.
+        * [How to import time series data](https://github.com/VictoriaMetrics/VictoriaMetrics#how-to-import-time-series-data).
+        * [Prometheus exposition format](https://github.com/VictoriaMetrics/VictoriaMetrics#how-to-import-data-in-prometheus-exposition-format).
+        * [Arbitrary CSV data](https://github.com/VictoriaMetrics/VictoriaMetrics#how-to-import-csv-data).
+    * Supports metrics' relabeling. See [these docs](https://github.com/VictoriaMetrics/VictoriaMetrics#relabeling) for details.
     * Ideally works with big amounts of time series data from Kubernetes, IoT sensors, connected cars, industrial telemetry, financial data and various Enterprise workloads.
   displayName: VictoriaMetrics Operator
   icon:

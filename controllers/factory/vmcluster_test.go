@@ -542,7 +542,7 @@ func TestCreateOrUpdateVMCluster(t *testing.T) {
 		predefinedObjects []runtime.Object
 	}{
 		{
-			name: "base-gen-test",
+			name: "base-vmstorage-test",
 			args: args{
 				c: config.MustGetBaseConfig(),
 				cr: &v1beta1.VMCluster{
@@ -563,6 +563,50 @@ func TestCreateOrUpdateVMCluster(t *testing.T) {
 							ReplicaCount: pointer.Int32Ptr(2),
 						},
 					},
+				},
+			},
+			want: v1beta1.ClusterStatusExpanding,
+		},
+		{
+			name: "base-vminsert-with-ports",
+			args: args{
+				c: config.MustGetBaseConfig(),
+				cr: &v1beta1.VMCluster{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "default",
+						Name:      "cluster-1",
+					},
+					Spec: v1beta1.VMClusterSpec{
+						RetentionPeriod:   "2",
+						ReplicationFactor: pointer.Int32Ptr(2),
+						VMInsert: &v1beta1.VMInsert{
+							ReplicaCount: pointer.Int32Ptr(2),
+							InsertPorts: &v1beta1.InsertPorts{
+								GraphitePort:     "8025",
+								OpenTSDBHTTPPort: "3311",
+								InfluxPort:       "5511",
+							},
+						},
+					},
+				},
+			},
+			want: v1beta1.ClusterStatusExpanding,
+		},
+		{
+			name: "base-vmselect",
+			args: args{
+				c: config.MustGetBaseConfig(),
+				cr: &v1beta1.VMCluster{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "default",
+						Name:      "cluster-1",
+					},
+					Spec: v1beta1.VMClusterSpec{
+						RetentionPeriod:   "2",
+						ReplicationFactor: pointer.Int32Ptr(2),
+						VMSelect: &v1beta1.VMSelect{
+							ReplicaCount: pointer.Int32Ptr(2),
+						}},
 				},
 			},
 			want: v1beta1.ClusterStatusExpanding,

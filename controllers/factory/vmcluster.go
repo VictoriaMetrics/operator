@@ -820,6 +820,7 @@ func makePodSpecForVMInsert(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 	for arg, value := range cr.Spec.VMInsert.ExtraArgs {
 		args = append(args, fmt.Sprintf("-%s=%s", arg, value))
 	}
+	args = buildArgsForAdditionalPorts(args, cr.Spec.VMInsert.InsertPorts)
 
 	if cr.Spec.VMStorage != nil && cr.Spec.VMStorage.ReplicaCount != nil {
 		if cr.Spec.VMStorage.VMInsertPort == "" {
@@ -855,6 +856,7 @@ func makePodSpecForVMInsert(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 			ContainerPort: intstr.Parse(cr.Spec.VMInsert.Port).IntVal,
 		},
 	}
+	ports = buildAdditionalContainerPorts(ports, cr.Spec.VMInsert.InsertPorts)
 	volumes := make([]corev1.Volume, 0)
 
 	volumes = append(volumes, cr.Spec.VMInsert.Volumes...)
@@ -980,7 +982,7 @@ func genVMInsertService(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) *core
 	if cr.Spec.VMInsert.Port == "" {
 		cr.Spec.VMInsert.Port = c.VMClusterDefault.VMInsertDefault.Port
 	}
-	return &corev1.Service{
+	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.Spec.VMInsert.GetNameWithPrefix(cr.Name),
 			Namespace:       cr.Namespace,
@@ -1001,6 +1003,8 @@ func genVMInsertService(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) *core
 			},
 		},
 	}
+	buildAdditionalServicePorts(cr.Spec.VMInsert.InsertPorts, svc)
+	return svc
 }
 
 func GenVMStorageSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv1.StatefulSet, error) {

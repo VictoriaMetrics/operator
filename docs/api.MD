@@ -54,6 +54,7 @@ This Document documents the types introduced by the VictoriaMetrics to be consum
 * [VMPodScrapeList](#vmpodscrapelist)
 * [VMPodScrapeSpec](#vmpodscrapespec)
 * [Image](#image)
+* [InsertPorts](#insertports)
 * [VMBackup](#vmbackup)
 * [VMCluster](#vmcluster)
 * [VMClusterList](#vmclusterlist)
@@ -517,6 +518,7 @@ VMSingleSpec defines the desired state of VMSingle
 | hostNetwork | HostNetwork controls whether the pod may use the node network namespace | bool | false |
 | dnsPolicy | DNSPolicy sets DNS policy for the pod | [v1.DNSPolicy](https://v1-17.docs.kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#pod-v1-core) | false |
 | topologySpreadConstraints | TopologySpreadConstraints embedded kubernetes pod configuration option, controls how pods are spread across your cluster among failure-domains such as regions, zones, nodes, and other user-defined topology domains https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/ | [][v1.TopologySpreadConstraint](https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/) | false |
+| insert_ports | InsertPorts - additional listen ports for data ingestion. | *[InsertPorts](#insertports) | false |
 | port | Port listen port | string | false |
 | removePvcAfterDelete | RemovePvcAfterDelete - if true, controller adds ownership to pvc and after VMSingle objest deletion - pvc will be garbage collected by controller manager | bool | false |
 | retentionPeriod | RetentionPeriod in months | string | true |
@@ -857,6 +859,19 @@ Image defines docker image settings
 
 [Back to TOC](#table-of-contents)
 
+## InsertPorts
+
+
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| graphitePort | GraphitePort listen port | string | false |
+| influxPort | InfluxPort listen port | string | false |
+| openTSDBHTTPPort | OpenTSDBHTTPPort for http connections. | string | false |
+| openTSDBPort | OpenTSDBPort for tcp and udp listen | string | false |
+
+[Back to TOC](#table-of-contents)
+
 ## VMBackup
 
 
@@ -877,6 +892,7 @@ Image defines docker image settings
 | logLevel | LogLevel for VMSelect to be configured with. | *string | false |
 | resources | Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/ if not defined default resources from operator config will be used | [v1.ResourceRequirements](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#resourcerequirements-v1-core) | false |
 | extraArgs | extra args like maxBytesPerSecond default 0 | map[string]string | false |
+| extraEnvs |  | [][v1.EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#envvar-v1-core) | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -960,6 +976,7 @@ VMClusterStatus defines the observed state of VMCluster
 | dnsPolicy | DNSPolicy sets DNS policy for the pod | [v1.DNSPolicy](https://v1-17.docs.kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#pod-v1-core) | false |
 | topologySpreadConstraints | TopologySpreadConstraints embedded kubernetes pod configuration option, controls how pods are spread across your cluster among failure-domains such as regions, zones, nodes, and other user-defined topology domains https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/ | [][v1.TopologySpreadConstraint](https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/) | false |
 | extraArgs |  | map[string]string | false |
+| insert_ports | InsertPorts - additional listen ports for data ingestion. | *[InsertPorts](#insertports) | false |
 | port | Port listen port | string | false |
 | schedulerName | SchedulerName - defines kubernetes scheduler name | string | false |
 | runtimeClassName | RuntimeClassName - defines runtime class for kubernetes pod. https://kubernetes.io/docs/concepts/containers/runtime-class/ | *string | false |

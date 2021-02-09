@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"context"
+
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 
 	. "github.com/onsi/ginkgo"
@@ -35,6 +36,12 @@ var _ = Describe("test  vmsingle Controller", func() {
 						Spec: victoriametricsv1beta1.VMSingleSpec{
 							ReplicaCount:    pointer.Int32Ptr(1),
 							RetentionPeriod: "1",
+							InsertPorts: &victoriametricsv1beta1.InsertPorts{
+								OpenTSDBPort:     "8081",
+								OpenTSDBHTTPPort: "8082",
+								GraphitePort:     "8083",
+								InfluxPort:       "8084",
+							},
 						},
 					})).To(Succeed())
 				})

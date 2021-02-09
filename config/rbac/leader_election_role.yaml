@@ -31,3 +31,11 @@ rules:
   verbs:
   - create
   - patch
+- apiGroups:
+    - coordination.k8s.io
+  verbs:
+    - create
+    - get
+    - update
+  resources:
+    - leases

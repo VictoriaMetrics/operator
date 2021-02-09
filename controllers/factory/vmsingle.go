@@ -224,12 +224,14 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 	if len(cr.Spec.ExtraEnvs) > 0 {
 		args = append(args, "-envflag.enable=true")
 	}
+	args = buildArgsForAdditionalPorts(args, cr.Spec.InsertPorts)
 
 	var envs []corev1.EnvVar
 	envs = append(envs, cr.Spec.ExtraEnvs...)
 
 	var ports []corev1.ContainerPort
 	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(cr.Spec.Port).IntVal})
+	ports = buildAdditionalContainerPorts(ports, cr.Spec.InsertPorts)
 	volumes := []corev1.Volume{}
 
 	storageSpec := cr.Spec.Storage
@@ -429,7 +431,7 @@ func newServiceVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOpera
 	if cr.Spec.Port == "" {
 		cr.Spec.Port = c.VMSingleDefault.Port
 	}
-	return &corev1.Service{
+	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),
 			Namespace:       cr.Namespace,
@@ -450,6 +452,8 @@ func newServiceVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOpera
 			},
 		},
 	}
+	buildAdditionalServicePorts(cr.Spec.InsertPorts, svc)
+	return svc
 }
 
 func makeSpecForVMBackuper(
@@ -537,6 +541,10 @@ func makeSpecForVMBackuper(
 		})
 		args = append(args, fmt.Sprintf("-credsFilePath=%s/%s", vmBackuperCreds, cr.CredentialsSecret.Key))
 	}
+	extraEnvs := cr.ExtraEnvs
+	if len(cr.ExtraEnvs) > 0 {
+		args = append(args, "-envflag.enable=true")
+	}
 
 	livenessProbeHandler := corev1.Handler{
 		HTTPGet: &corev1.HTTPGetAction{
@@ -572,6 +580,7 @@ func makeSpecForVMBackuper(
 		Image:                    fmt.Sprintf("%s:%s", cr.Image.Repository, cr.Image.Tag),
 		Ports:                    ports,
 		Args:                     args,
+		Env:                      extraEnvs,
 		VolumeMounts:             mounts,
 		LivenessProbe:            livenessProbe,
 		ReadinessProbe:           readinessProbe,

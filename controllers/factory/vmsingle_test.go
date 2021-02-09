@@ -40,6 +40,27 @@ func TestCreateOrUpdateVMSingle(t *testing.T) {
 			},
 			want: &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "vmsingle-vmsingle-base", Namespace: "default"}},
 		},
+		{
+			name: "base-vmsingle-with-ports",
+			args: args{
+				c: config.MustGetBaseConfig(),
+				cr: &victoriametricsv1beta1.VMSingle{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "vmsingle-base",
+						Namespace: "default",
+					},
+					Spec: victoriametricsv1beta1.VMSingleSpec{
+						InsertPorts: &victoriametricsv1beta1.InsertPorts{
+							InfluxPort:       "8051",
+							OpenTSDBHTTPPort: "8052",
+							GraphitePort:     "8053",
+							OpenTSDBPort:     "8054",
+						},
+					},
+				},
+			},
+			want: &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "vmsingle-vmsingle-base", Namespace: "default"}},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -67,6 +88,7 @@ func TestCreateOrUpdateVMSingleService(t *testing.T) {
 		args              args
 		want              *corev1.Service
 		wantErr           bool
+		wantPortsLen      int
 		predefinedObjects []runtime.Object
 	}{
 		{
@@ -86,6 +108,34 @@ func TestCreateOrUpdateVMSingleService(t *testing.T) {
 					Namespace: "default",
 				},
 			},
+			wantPortsLen: 1,
+		},
+		{
+			name: "base service test-with ports",
+			args: args{
+				c: config.MustGetBaseConfig(),
+				cr: &victoriametricsv1beta1.VMSingle{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "single-1",
+						Namespace: "default",
+					},
+					Spec: victoriametricsv1beta1.VMSingleSpec{
+						InsertPorts: &victoriametricsv1beta1.InsertPorts{
+							InfluxPort:       "8051",
+							OpenTSDBHTTPPort: "8052",
+							GraphitePort:     "8053",
+							OpenTSDBPort:     "8054",
+						},
+					},
+				},
+			},
+			want: &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vmsingle-single-1",
+					Namespace: "default",
+				},
+			},
+			wantPortsLen: 8,
 		},
 	}
 	for _, tt := range tests {
@@ -98,6 +148,9 @@ func TestCreateOrUpdateVMSingleService(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got.Name, tt.want.Name) {
 				t.Errorf("CreateOrUpdateVMSingleService() got = %v, want %v", got, tt.want)
+			}
+			if len(got.Spec.Ports) != tt.wantPortsLen {
+				t.Fatalf("unexpected number of ports: %d, want: %d", len(got.Spec.Ports), tt.wantPortsLen)
 			}
 		})
 	}

@@ -240,6 +240,21 @@ func PrefixedName(name, prefix string) string {
 	return fmt.Sprintf("%s-%s", prefix, name)
 }
 
+type InsertPorts struct {
+	// GraphitePort listen port
+	// +optional
+	GraphitePort string `json:"graphitePort,omitempty"`
+	// InfluxPort listen port
+	// +optional
+	InfluxPort string `json:"influxPort,omitempty"`
+	// OpenTSDBHTTPPort for http connections.
+	// +optional
+	OpenTSDBHTTPPort string `json:"openTSDBHTTPPort,omitempty"`
+	// OpenTSDBPort for tcp and udp listen
+	// +optional
+	OpenTSDBPort string `json:"openTSDBPort,omitempty"`
+}
+
 type VMInsert struct {
 	// +optional
 	Name string `json:"name,omitempty"`
@@ -330,6 +345,9 @@ type VMInsert struct {
 
 	// +optional
 	ExtraArgs map[string]string `json:"extraArgs,omitempty"`
+
+	// InsertPorts - additional listen ports for data ingestion.
+	InsertPorts *InsertPorts `json:"insertPorts,omitempty"`
 
 	//Port listen port
 	// +optional
@@ -531,6 +549,8 @@ type VMBackup struct {
 	//extra args like maxBytesPerSecond default 0
 	// +optional
 	ExtraArgs map[string]string `json:"extraArgs,omitempty"`
+	// +optional
+	ExtraEnvs []v1.EnvVar `json:"extraEnvs,omitempty"`
 }
 
 func (s VMStorage) BuildPodFQDNName(baseName string, podIndex int32, namespace, portName, domain string) string {

@@ -127,6 +127,8 @@ type VMSingleSpec struct {
 	// +optional
 	TopologySpreadConstraints []v1.TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
 
+	// InsertPorts - additional listen ports for data ingestion.
+	InsertPorts *InsertPorts `json:"insertPorts,omitempty"`
 	//Port listen port
 	// +optional
 	Port string `json:"port,omitempty"`

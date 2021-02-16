@@ -23,6 +23,7 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -102,5 +103,9 @@ func (r *VMAlertReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&victoriametricsv1beta1.VMAlert{}).
 		Owns(&appsv1.Deployment{}).
+		Owns(&victoriametricsv1beta1.VMServiceScrape{}).
+		Owns(&v1.ConfigMap{}).
+		Owns(&v1.Service{}).
+		Owns(&v1.ServiceAccount{}).
 		Complete(r)
 }

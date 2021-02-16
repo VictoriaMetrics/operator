@@ -78,11 +78,10 @@ func ensureVMAgentCRBExist(ctx context.Context, cr *v1beta12.VMAgent, rclient cl
 func buildVMAgentClusterRoleBinding(cr *v1beta12.VMAgent) *v12.ClusterRoleBinding {
 	return &v12.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            cr.GetClusterRoleName(),
-			Namespace:       cr.GetNamespace(),
-			Labels:          cr.Labels(),
-			Annotations:     cr.Annotations(),
-			OwnerReferences: cr.AsOwner(),
+			Name:        cr.GetClusterRoleName(),
+			Namespace:   cr.GetNamespace(),
+			Labels:      cr.Labels(),
+			Annotations: cr.Annotations(),
 		},
 		Subjects: []v12.Subject{
 			{
@@ -102,11 +101,10 @@ func buildVMAgentClusterRoleBinding(cr *v1beta12.VMAgent) *v12.ClusterRoleBindin
 func buildVMAgentClusterRole(cr *v1beta12.VMAgent) *v12.ClusterRole {
 	return &v12.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            cr.GetClusterRoleName(),
-			Namespace:       cr.GetNamespace(),
-			Labels:          cr.Labels(),
-			Annotations:     cr.Annotations(),
-			OwnerReferences: cr.AsOwner(),
+			Name:        cr.GetClusterRoleName(),
+			Namespace:   cr.GetNamespace(),
+			Labels:      cr.Labels(),
+			Annotations: cr.Annotations(),
 		},
 		Rules: []v12.PolicyRule{
 			{

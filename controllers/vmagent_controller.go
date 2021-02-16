@@ -22,6 +22,7 @@ import (
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	appsv1 "k8s.io/api/apps/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/go-logr/logr"
@@ -117,5 +118,9 @@ func (r *VMAgentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&victoriametricsv1beta1.VMAgent{}).
 		Owns(&appsv1.Deployment{}).
+		Owns(&victoriametricsv1beta1.VMServiceScrape{}).
+		Owns(&v1.Secret{}).
+		Owns(&v1.Service{}).
+		Owns(&v1.ServiceAccount{}).
 		Complete(r)
 }

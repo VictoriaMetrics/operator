@@ -153,11 +153,10 @@ func buildSA(cr CRDObject) *v1.ServiceAccount {
 func buildClusterRoleForPSP(cr CRDObject) *v12.ClusterRole {
 	return &v12.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace:       cr.GetNamespace(),
-			Name:            cr.PrefixedName(),
-			Labels:          cr.Labels(),
-			Annotations:     cr.Annotations(),
-			OwnerReferences: cr.AsOwner(),
+			Namespace:   cr.GetNamespace(),
+			Name:        cr.PrefixedName(),
+			Labels:      cr.Labels(),
+			Annotations: cr.Annotations(),
 		},
 		Rules: []v12.PolicyRule{
 			{
@@ -173,11 +172,10 @@ func buildClusterRoleForPSP(cr CRDObject) *v12.ClusterRole {
 func buildClusterRoleBinding(cr CRDObject) *v12.ClusterRoleBinding {
 	return &v12.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            cr.PrefixedName(),
-			Namespace:       cr.GetNamespace(),
-			Labels:          cr.Labels(),
-			Annotations:     cr.Annotations(),
-			OwnerReferences: cr.AsOwner(),
+			Name:        cr.PrefixedName(),
+			Namespace:   cr.GetNamespace(),
+			Labels:      cr.Labels(),
+			Annotations: cr.Annotations(),
 		},
 		Subjects: []v12.Subject{
 			{
@@ -197,11 +195,10 @@ func buildClusterRoleBinding(cr CRDObject) *v12.ClusterRoleBinding {
 func BuildPSP(cr CRDObject) *v1beta1.PodSecurityPolicy {
 	return &v1beta1.PodSecurityPolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            cr.GetPSPName(),
-			Namespace:       cr.GetNamespace(),
-			Labels:          cr.Labels(),
-			Annotations:     cr.Annotations(),
-			OwnerReferences: cr.AsOwner(),
+			Name:        cr.GetPSPName(),
+			Namespace:   cr.GetNamespace(),
+			Labels:      cr.Labels(),
+			Annotations: cr.Annotations(),
 		},
 		Spec: v1beta1.PodSecurityPolicySpec{
 			ReadOnlyRootFilesystem: false,

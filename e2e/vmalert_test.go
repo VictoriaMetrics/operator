@@ -4,8 +4,6 @@ import (
 	"path"
 	"time"
 
-	"k8s.io/klog/v2"
-
 	operator "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	. "github.com/onsi/ginkgo"
@@ -26,7 +24,6 @@ var _ = Describe("test  vmalert Controller", func() {
 				Name := "vmalert-example"
 				Namespace := "default"
 				AfterEach(func() {
-					klog.Info("deleting alert")
 					Expect(k8sClient.Delete(context.TODO(), &operator.VMAlert{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      Name,
@@ -34,6 +31,7 @@ var _ = Describe("test  vmalert Controller", func() {
 						},
 					},
 					)).To(BeNil())
+					time.Sleep(time.Second * 8)
 				})
 				It("should create", func() {
 					Expect(k8sClient.Create(context.TODO(), &operator.VMAlert{
@@ -158,6 +156,7 @@ var _ = Describe("test  vmalert Controller", func() {
 							Notifier: &operator.VMAlertNotifierSpec{URL: "http://some-alertmanager:9093"},
 						},
 					})).To(BeNil())
+					time.Sleep(time.Second * 2)
 
 				})
 				JustAfterEach(func() {
@@ -167,7 +166,7 @@ var _ = Describe("test  vmalert Controller", func() {
 							Namespace: namespace,
 						},
 					})).To(BeNil())
-					time.Sleep(time.Second * 5)
+					time.Sleep(time.Second * 8)
 				})
 				It("Should expand vmalert up to 3 replicas with custom prefix", func() {
 					vmAlert := &operator.VMAlert{}

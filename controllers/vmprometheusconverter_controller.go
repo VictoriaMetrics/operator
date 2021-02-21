@@ -178,6 +178,20 @@ func (c *ConverterController) runInformerWithDiscovery(ctx context.Context, grou
 	return nil
 }
 
+func (c *ConverterController) Start(ctx context.Context) error {
+	var errG errgroup.Group
+	log.Info("starting prometheus converter")
+	c.Run(ctx, &errG)
+	go func() {
+		log.Info("waiting for prometheus converter to stop")
+		err := errG.Wait()
+		if err != nil {
+			log.Error(err, "error occured at prometheus converter")
+		}
+	}()
+	return nil
+}
+
 // Run - starts vmprometheusconverter with background discovery process for each prometheus api object
 func (c *ConverterController) Run(ctx context.Context, group *errgroup.Group) {
 

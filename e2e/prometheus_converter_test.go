@@ -260,11 +260,22 @@ var _ = Describe("test  prometheusConverter Controller", func() {
 						_, err := getObject(testCase.targetTpl)
 						return err
 					}, 60, 1).Should(Succeed())
+
+					Expect(func() error {
+						target, err := getObject(testCase.targetTpl)
+						if err != nil {
+							return err
+						}
+						if target.GetOwnerReferences() == nil {
+							return fmt.Errorf("expected owner reference to be non nil, object :%s", target.GetName())
+						}
+						return nil
+					}()).To(Succeed())
 					Expect(k8sClient.Delete(context.TODO(), source)).To(Succeed())
 					Eventually(func() error {
 						_, err := getObject(testCase.targetTpl)
 						if err == nil {
-							return fmt.Errorf("expected converted %s to disappear", testCase.name)
+							return fmt.Errorf("expected converted %s to disappear, name: %s, converted: %s", testCase.name, source.GetName(), testCase.targetTpl.GetName())
 						}
 						return nil
 					}, 60, 1).Should(Succeed())

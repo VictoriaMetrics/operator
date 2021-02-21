@@ -1,10 +1,11 @@
 package v1beta1
 
 import (
+	"path"
+
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"path"
 )
 
 const (
@@ -14,12 +15,36 @@ const (
 	reloadPath           = "/-/reload"
 	snapshotCreate       = "/snapshot/create"
 	snapshotDelete       = "/snapshot/delete"
+	// FinalizerName name of our finalizer.
+	FinalizerName = "apps.victoriametrics.com/finalizer"
 )
 
 var (
 	// GroupVersion is group version used to register these objects
 	SchemeGroupVersion = schema.GroupVersion{Group: "operator.victoriametrics.com", Version: "v1beta1"}
 )
+
+// IsContainsFinalizer check if finalizers is set.
+func IsContainsFinalizer(src []string, finalizer string) bool {
+	for _, s := range src {
+		if s == finalizer {
+			return true
+		}
+	}
+	return false
+}
+
+// RemoveFinalizer - removes given finalizer from finalizers list.
+func RemoveFinalizer(src []string, finalizer string) []string {
+	dst := src[:0]
+	for _, s := range src {
+		if s == finalizer {
+			continue
+		}
+		dst = append(dst, s)
+	}
+	return dst
+}
 
 // EmbeddedObjectMetadata contains a subset of the fields included in k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta
 // Only fields which are relevant to embedded resources are included.

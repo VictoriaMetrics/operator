@@ -312,6 +312,7 @@ rules:
     - patch
     - update
     - watch
+    - delete
 - apiGroups:
     - "policy"
   resources:
@@ -324,6 +325,7 @@ rules:
     - update
     - use
     - watch
+    - delete
 - apiGroups:
     - ""
   resources:

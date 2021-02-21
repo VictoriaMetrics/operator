@@ -405,6 +405,10 @@ func (cr VMAlert) GetPSPName() string {
 	return cr.Spec.PodSecurityPolicyName
 }
 
+func (cr VMAlert) GetNSName() string {
+	return cr.GetNamespace()
+}
+
 func init() {
 	SchemeBuilder.Register(&VMAlert{}, &VMAlertList{})
 }

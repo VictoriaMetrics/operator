@@ -292,6 +292,10 @@ func (cr VMSingle) GetPSPName() string {
 	return cr.Spec.PodSecurityPolicyName
 }
 
+func (cr VMSingle) GetNSName() string {
+	return cr.GetNamespace()
+}
+
 func init() {
 	SchemeBuilder.Register(&VMSingle{}, &VMSingleList{})
 }

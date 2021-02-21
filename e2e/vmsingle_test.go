@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"context"
+	"time"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 
@@ -61,6 +62,7 @@ var _ = Describe("test  vmsingle Controller", func() {
 							RetentionPeriod: "1",
 						},
 					})).To(Succeed())
+					time.Sleep(time.Second * 2)
 
 				})
 				JustAfterEach(func() {

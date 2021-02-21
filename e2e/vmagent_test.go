@@ -1,6 +1,8 @@
 package e2e
 
 import (
+	"time"
+
 	operator "github.com/VictoriaMetrics/operator/api/v1beta1"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -57,6 +59,7 @@ var _ = Describe("test  vmagent Controller", func() {
 						},
 					}
 					Expect(k8sClient.Create(context.TODO(), tlsSecret)).To(Succeed())
+					time.Sleep(time.Second * 8)
 					Expect(k8sClient.Create(context.TODO(), &operator.VMAgent{
 						ObjectMeta: metav1.ObjectMeta{
 							Namespace: namespace,

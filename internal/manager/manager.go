@@ -9,7 +9,6 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
 	"github.com/spf13/pflag"
-	"golang.org/x/sync/errgroup"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -180,19 +179,13 @@ func RunManager(ctx context.Context) error {
 	}
 	converterController := controllers.NewConverterController(prom, mgr.GetClient(), config.MustGetBaseConfig())
 
-	errG := &errgroup.Group{}
-	converterController.Run(ctx, errG)
-	setupLog.Info("vmconverter was started")
-
+	if err := mgr.Add(converterController); err != nil {
+		setupLog.Error(err, "cannot add runnable")
+		return err
+	}
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctx); err != nil {
 		setupLog.Error(err, "problem running manager")
-		return err
-	}
-	setupLog.Info("waiting for converter stop")
-	//safe to ignore
-	err = errG.Wait()
-	if err != nil {
 		return err
 	}
 	setupLog.Info("gracefully stopped")

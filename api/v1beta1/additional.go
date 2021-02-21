@@ -16,7 +16,7 @@ const (
 	snapshotCreate       = "/snapshot/create"
 	snapshotDelete       = "/snapshot/delete"
 	// FinalizerName name of our finalizer.
-	FinalizerName = "apps.victoria-metrics.com/finalizer"
+	FinalizerName = "apps.victoriametrics.com/finalizer"
 )
 
 var (

@@ -4,21 +4,16 @@ import (
 	"context"
 	"fmt"
 
-	k8stools "github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
-
-	"k8s.io/apimachinery/pkg/runtime"
-
-	v12 "k8s.io/api/rbac/v1"
-	"k8s.io/apimachinery/pkg/labels"
-
-	"k8s.io/utils/pointer"
-
-	"k8s.io/api/policy/v1beta1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
-
+	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/policy/v1beta1"
+	v12 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -29,7 +24,7 @@ type CRDObject interface {
 	PrefixedName() string
 	GetServiceAccountName() string
 	GetPSPName() string
-	GetNamespace() string
+	GetNSName() string
 }
 
 // CreateOrUpdateServiceAccountWithPSP - creates psp for api object.
@@ -54,7 +49,7 @@ func CreateOrUpdateServiceAccountWithPSP(ctx context.Context, cr CRDObject, rcli
 func CreateServiceAccountForCRD(ctx context.Context, cr CRDObject, rclient client.Client) error {
 	newSA := buildSA(cr)
 	var existSA v1.ServiceAccount
-	if err := rclient.Get(ctx, types.NamespacedName{Name: cr.GetServiceAccountName(), Namespace: cr.GetNamespace()}, &existSA); err != nil {
+	if err := rclient.Get(ctx, types.NamespacedName{Name: cr.GetServiceAccountName(), Namespace: cr.GetNSName()}, &existSA); err != nil {
 		if errors.IsNotFound(err) {
 			return rclient.Create(ctx, newSA)
 		}
@@ -142,7 +137,7 @@ func buildSA(cr CRDObject) *v1.ServiceAccount {
 	return &v1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.GetServiceAccountName(),
-			Namespace:       cr.GetNamespace(),
+			Namespace:       cr.GetNSName(),
 			Labels:          cr.Labels(),
 			Annotations:     cr.Annotations(),
 			OwnerReferences: cr.AsOwner(),
@@ -153,7 +148,7 @@ func buildSA(cr CRDObject) *v1.ServiceAccount {
 func buildClusterRoleForPSP(cr CRDObject) *v12.ClusterRole {
 	return &v12.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace:   cr.GetNamespace(),
+			Namespace:   cr.GetNSName(),
 			Name:        cr.PrefixedName(),
 			Labels:      cr.Labels(),
 			Annotations: cr.Annotations(),
@@ -173,7 +168,7 @@ func buildClusterRoleBinding(cr CRDObject) *v12.ClusterRoleBinding {
 	return &v12.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        cr.PrefixedName(),
-			Namespace:   cr.GetNamespace(),
+			Namespace:   cr.GetNSName(),
 			Labels:      cr.Labels(),
 			Annotations: cr.Annotations(),
 		},
@@ -181,7 +176,7 @@ func buildClusterRoleBinding(cr CRDObject) *v12.ClusterRoleBinding {
 			{
 				Kind:      v12.ServiceAccountKind,
 				Name:      cr.GetServiceAccountName(),
-				Namespace: cr.GetNamespace(),
+				Namespace: cr.GetNSName(),
 			},
 		},
 		RoleRef: v12.RoleRef{
@@ -196,7 +191,7 @@ func BuildPSP(cr CRDObject) *v1beta1.PodSecurityPolicy {
 	return &v1beta1.PodSecurityPolicy{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        cr.GetPSPName(),
-			Namespace:   cr.GetNamespace(),
+			Namespace:   cr.GetNSName(),
 			Labels:      cr.Labels(),
 			Annotations: cr.Annotations(),
 		},

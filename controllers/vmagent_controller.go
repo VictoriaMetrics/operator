@@ -78,6 +78,10 @@ func (r *VMAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		// Error reading the object - requeue the request.
 		return ctrl.Result{}, err
 	}
+
+	if err := handleFinalize(ctx, r.Client, instance); err != nil {
+		return ctrl.Result{}, err
+	}
 	if instance.DeletionTimestamp != nil {
 		return ctrl.Result{}, nil
 	}

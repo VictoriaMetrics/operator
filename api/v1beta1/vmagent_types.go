@@ -441,6 +441,10 @@ func (cr VMAgent) GetPSPName() string {
 	return cr.Spec.PodSecurityPolicyName
 }
 
+func (cr VMAgent) GetNSName() string {
+	return cr.GetNamespace()
+}
+
 func init() {
 	SchemeBuilder.Register(&VMAgent{}, &VMAgentList{})
 }

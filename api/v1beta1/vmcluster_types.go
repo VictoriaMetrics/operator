@@ -778,3 +778,7 @@ func (cr VMCluster) Labels() map[string]string {
 	}
 	return labels
 }
+
+func (cr VMCluster) GetNSName() string {
+	return cr.GetNamespace()
+}

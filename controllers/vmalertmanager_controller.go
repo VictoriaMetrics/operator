@@ -19,6 +19,8 @@ package controllers
 import (
 	"context"
 
+	"github.com/VictoriaMetrics/operator/controllers/factory/psp"
+
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	appsv1 "k8s.io/api/apps/v1"
@@ -66,6 +68,10 @@ func (r *VMAlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		}
 		return ctrl.Result{}, err
 	}
+
+	if err := handleFinalize(ctx, r.Client, instance); err != nil {
+		return ctrl.Result{}, err
+	}
 	if instance.DeletionTimestamp != nil {
 		return ctrl.Result{}, nil
 	}
@@ -95,4 +101,34 @@ func (r *VMAlertmanagerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&v1.Service{}).
 		Owns(&v1.ServiceAccount{}).
 		Complete(r)
+}
+
+type finalizeObject interface {
+	psp.CRDObject
+	client.Object
+}
+
+func handleFinalize(ctx context.Context, rclient client.Client, instance finalizeObject) error {
+	if !instance.GetDeletionTimestamp().IsZero() {
+		// check finalizers.
+		if victoriametricsv1beta1.IsContainsFinalizer(instance.GetFinalizers(), victoriametricsv1beta1.FinalizerName) {
+			if err := psp.DeletePSPChain(ctx, rclient, instance); err != nil {
+				return err
+			}
+			instance.SetFinalizers(victoriametricsv1beta1.RemoveFinalizer(instance.GetFinalizers(), victoriametricsv1beta1.FinalizerName))
+			if err := rclient.Update(ctx, instance); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	// append finalizer if needed
+	if !victoriametricsv1beta1.IsContainsFinalizer(instance.GetFinalizers(), victoriametricsv1beta1.FinalizerName) {
+		instance.SetFinalizers(append(instance.GetFinalizers(), victoriametricsv1beta1.FinalizerName))
+		if err := rclient.Update(ctx, instance); err != nil {
+			return err
+		}
+	}
+	return nil
 }

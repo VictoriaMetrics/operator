@@ -2,6 +2,9 @@ package e2e
 
 import (
 	"path"
+	"time"
+
+	"k8s.io/klog/v2"
 
 	operator "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory"
@@ -23,12 +26,14 @@ var _ = Describe("test  vmalert Controller", func() {
 				Name := "vmalert-example"
 				Namespace := "default"
 				AfterEach(func() {
+					klog.Info("deleting alert")
 					Expect(k8sClient.Delete(context.TODO(), &operator.VMAlert{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      Name,
 							Namespace: Namespace,
 						},
-					})).To(BeNil())
+					},
+					)).To(BeNil())
 				})
 				It("should create", func() {
 					Expect(k8sClient.Create(context.TODO(), &operator.VMAlert{
@@ -72,7 +77,7 @@ var _ = Describe("test  vmalert Controller", func() {
 						},
 					}
 					Expect(k8sClient.Create(context.TODO(), tlsSecret)).To(Succeed())
-
+					time.Sleep(time.Second * 8)
 					Expect(k8sClient.Create(context.TODO(), &operator.VMAlert{
 						ObjectMeta: metav1.ObjectMeta{
 							Namespace: Namespace,
@@ -162,7 +167,7 @@ var _ = Describe("test  vmalert Controller", func() {
 							Namespace: namespace,
 						},
 					})).To(BeNil())
-
+					time.Sleep(time.Second * 5)
 				})
 				It("Should expand vmalert up to 3 replicas with custom prefix", func() {
 					vmAlert := &operator.VMAlert{}

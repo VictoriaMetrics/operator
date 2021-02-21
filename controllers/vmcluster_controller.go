@@ -48,6 +48,10 @@ func (r *VMClusterReconciler) Reconcile(ctx context.Context, request ctrl.Reques
 		}
 		return reconcile.Result{}, err
 	}
+
+	if err := handleFinalize(ctx, r.Client, cluster); err != nil {
+		return ctrl.Result{}, err
+	}
 	if cluster.DeletionTimestamp != nil {
 		return ctrl.Result{}, nil
 	}

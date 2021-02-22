@@ -20,12 +20,13 @@ var _ = Describe("test  vmagent Controller", func() {
 				name := "create-vma"
 				namespace := "default"
 				AfterEach(func() {
-					Expect(k8sClient.Delete(context.TODO(), &operator.VMAgent{
+					Expect(k8sClient.Delete(context.Background(), &operator.VMAgent{
 						ObjectMeta: metav1.ObjectMeta{
 							Namespace: namespace,
 							Name:      name,
 						},
 					})).To(BeNil())
+
 				})
 				It("should create vmagent", func() {
 					Expect(k8sClient.Create(context.TODO(), &operator.VMAgent{
@@ -103,7 +104,7 @@ var _ = Describe("test  vmagent Controller", func() {
 					Eventually(func() string {
 						return expectPodCount(k8sClient, 1, namespace, currVMAgent.SelectorLabels())
 					}, 60, 1).Should(BeEmpty())
-					Expect(k8sClient.Delete(context.TODO(), tlsSecret)).To(Succeed())
+					Expect(k8sClient.Delete(context.Background(), tlsSecret)).To(BeNil())
 				})
 
 			})
@@ -111,12 +112,11 @@ var _ = Describe("test  vmagent Controller", func() {
 				name := "update-vma"
 				namespace := "default"
 				JustAfterEach(func() {
-					Expect(k8sClient.Delete(context.TODO(), &operator.VMAgent{
+					Expect(k8sClient.Delete(context.Background(), &operator.VMAgent{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      name,
 							Namespace: namespace,
 						}})).To(BeNil())
-
 				})
 				JustBeforeEach(func() {
 					Expect(k8sClient.Create(context.TODO(), &operator.VMAgent{

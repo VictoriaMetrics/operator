@@ -51,7 +51,7 @@ jobs:
           kubectl get pods -n kube-system
           echo "current-context:" $(kubectl config current-context)
           echo "environment-kubeconfig:" ${KUBECONFIG}
-          make e2e-local
+#          make e2e-local
 
 
       - name: build crosscompile and push to remote registry

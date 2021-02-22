@@ -186,6 +186,9 @@ type VMAlertSpec struct {
 	// ExtraEnvs that will be added to VMAlert pod
 	// +optional
 	ExtraEnvs []v1.EnvVar `json:"extraEnvs,omitempty"`
+	// ExternalLabels in the form 'name: value' to add to all generated recording rules and alerts.
+	// +optional
+	ExternalLabels map[string]string `json:"externalLabels,omitempty"`
 }
 
 // VMAgentRemoteReadSpec defines the remote storage configuration for VmAlert to read alerts from

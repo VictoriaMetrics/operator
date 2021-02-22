@@ -2,6 +2,8 @@ package e2e
 
 import (
 	"context"
+	"time"
+
 	v1beta1vm "github.com/VictoriaMetrics/operator/api/v1beta1"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -24,6 +26,7 @@ var _ = Describe("e2e vmcluster", func() {
 						Name:      name,
 					},
 				})).To(Succeed(), "must delete vmcluster after test")
+				time.Sleep(time.Second * 3)
 
 			})
 			It("should create vmCluster with empty services", func() {
@@ -34,6 +37,7 @@ var _ = Describe("e2e vmcluster", func() {
 					},
 					Spec: v1beta1vm.VMClusterSpec{RetentionPeriod: "1"},
 				})).To(Succeed())
+				time.Sleep(time.Second * 3)
 			})
 
 		})
@@ -47,7 +51,7 @@ var _ = Describe("e2e vmcluster", func() {
 						Name:      name,
 					},
 				})).To(Succeed())
-
+				time.Sleep(time.Second * 3)
 			})
 			BeforeEach(func() {
 				Expect(k8sClient.Create(context.TODO(), &v1beta1vm.VMCluster{

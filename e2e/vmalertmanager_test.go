@@ -1,6 +1,8 @@
 package e2e
 
 import (
+	"time"
+
 	operator "github.com/VictoriaMetrics/operator/api/v1beta1"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -65,6 +67,7 @@ var _ = Describe("e2e vmalertmanager ", func() {
 					StringData: map[string]string{
 						"alertmanager.yaml": alertmanagerTestConf,
 					}})).To(BeNil())
+				time.Sleep(time.Second * 3)
 				Expect(k8sClient.Create(context.TODO(), &operator.VMAlertmanager{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      Name,
@@ -75,7 +78,7 @@ var _ = Describe("e2e vmalertmanager ", func() {
 						ConfigSecret: configSecretName,
 					},
 				})).To(BeNil())
-
+				time.Sleep(time.Second * 3)
 			})
 			JustAfterEach(func() {
 				Expect(k8sClient.Delete(context.TODO(), &operator.VMAlertmanager{
@@ -93,6 +96,7 @@ var _ = Describe("e2e vmalertmanager ", func() {
 						Namespace: Namespace,
 					},
 				}))
+				time.Sleep(time.Second * 3)
 			})
 			It("Should expand alertmanager to 2 replicas", func() {
 				currVma := &operator.VMAlertmanager{}

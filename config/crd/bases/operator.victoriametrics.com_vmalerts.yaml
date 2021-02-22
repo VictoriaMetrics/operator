@@ -241,6 +241,12 @@ spec:
               description: EvaluationInterval how often evalute rules by default
               pattern: '[0-9]+(ms|s|m|h)'
               type: string
+            externalLabels:
+              additionalProperties:
+                type: string
+              description: 'ExternalLabels in the form ''name: value'' to add to all
+                generated recording rules and alerts.'
+              type: object
             extraArgs:
               additionalProperties:
                 type: string

@@ -3,6 +3,7 @@ package e2e
 import (
 	"context"
 	"fmt"
+
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"

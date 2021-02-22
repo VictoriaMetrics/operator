@@ -2,7 +2,10 @@ package e2e
 
 import (
 	"context"
+	"fmt"
 	"time"
+
+	"k8s.io/apimachinery/pkg/api/errors"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 
@@ -21,11 +24,21 @@ var _ = Describe("test  vmsingle Controller", func() {
 				name := "create-vmsingle"
 				namespace := "default"
 				AfterEach(func() {
-					Expect(k8sClient.Delete(context.TODO(), &victoriametricsv1beta1.VMSingle{
+					Expect(k8sClient.Delete(context.Background(), &victoriametricsv1beta1.VMSingle{
 						ObjectMeta: metav1.ObjectMeta{
 							Namespace: namespace,
 							Name:      name,
-						}})).To(Succeed())
+						}})).To(BeNil())
+					Eventually(func() string {
+						err := k8sClient.Get(context.Background(), types.NamespacedName{Name: name, Namespace: namespace}, &victoriametricsv1beta1.VMSingle{})
+						if errors.IsNotFound(err) {
+							return ""
+						}
+						if err == nil {
+							err = fmt.Errorf("expected object to be deleted")
+						}
+						return err.Error()
+					}, 20).Should(BeEmpty())
 				})
 
 				It("should create vmSingle", func() {
@@ -71,6 +84,7 @@ var _ = Describe("test  vmsingle Controller", func() {
 							Namespace: namespace,
 							Name:      name,
 						}})).To(Succeed())
+					time.Sleep(time.Second * 3)
 				})
 				It("should update vmSingle deploy param", func() {
 					currVMSingle := &victoriametricsv1beta1.VMSingle{}

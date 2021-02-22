@@ -2,15 +2,19 @@ package factory
 
 import (
 	"context"
+	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/config"
+	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -133,6 +137,7 @@ func TestCreateOrUpdateVMAlert(t *testing.T) {
 		want              reconcile.Result
 		wantErr           bool
 		predefinedObjects []runtime.Object
+		validator         func(vma *v1.Deployment) error
 	}{
 		{
 			name: "base-spec-gen",
@@ -152,6 +157,48 @@ func TestCreateOrUpdateVMAlert(t *testing.T) {
 					},
 				},
 				c: config.MustGetBaseConfig(),
+			},
+		},
+		{
+			name: "base-spec-gen with externalLabels",
+			args: args{
+				cr: &victoriametricsv1beta1.VMAlert{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "basic-vmalert",
+						Namespace: "default",
+					},
+					Spec: victoriametricsv1beta1.VMAlertSpec{
+						Notifier: &victoriametricsv1beta1.VMAlertNotifierSpec{
+							URL: "http://some-alertmanager",
+						},
+						Datasource: victoriametricsv1beta1.VMAlertDatasourceSpec{
+							URL: "http://some-vm-datasource",
+						},
+						ExternalLabels: map[string]string{"label1": "value1", "label2": "value-2"},
+					},
+				},
+				c: config.MustGetBaseConfig(),
+			},
+			validator: func(vma *v1.Deployment) error {
+				var foundOk bool
+				for _, cnt := range vma.Spec.Template.Spec.Containers {
+					if cnt.Name == "vmalert" {
+						args := cnt.Args
+						for _, arg := range args {
+							if strings.HasPrefix(arg, "-external.label") {
+								foundOk = true
+								kv := strings.Replace(arg, "-external.label=", "", -1)
+								if kv != "label1=value1" && kv != "label2=value-2" {
+									return fmt.Errorf("unexepcted value for external.label arg: %s", kv)
+								}
+							}
+						}
+					}
+				}
+				if !foundOk {
+					return fmt.Errorf("expected to found arg: -external.label at vmalert container")
+				}
+				return nil
 			},
 		},
 		{
@@ -298,6 +345,15 @@ func TestCreateOrUpdateVMAlert(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("CreateOrUpdateVMAlert() got = %v, want %v", got, tt.want)
+			}
+			if tt.validator != nil {
+				var generatedDeploment v1.Deployment
+				if err := fclient.Get(context.TODO(), types.NamespacedName{Namespace: tt.args.cr.Namespace, Name: tt.args.cr.PrefixedName()}, &generatedDeploment); err != nil {
+					t.Fatalf("cannot find generated deployment: %v, err: %v", tt.args.cr.PrefixedName(), err)
+				}
+				if err := tt.validator(&generatedDeploment); err != nil {
+					t.Fatalf("unexpetected error at deployment validation: %v", err)
+				}
 			}
 		})
 	}

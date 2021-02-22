@@ -303,7 +303,9 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 			args = append(args, fmt.Sprintf("-remoteWrite.tlsInsecureSkipVerify=%v", tlsConf.InsecureSkipVerify))
 
 		}
-
+	}
+	for k, v := range cr.Spec.ExternalLabels {
+		args = append(args, fmt.Sprintf("-external.label=%s=%s", k, v))
 	}
 	if cr.Spec.RemoteRead != nil {
 		args = append(args, fmt.Sprintf("-remoteRead.url=%s", cr.Spec.RemoteRead.URL))

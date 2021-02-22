@@ -447,6 +447,7 @@ VMAlertSpec defines the desired state of VMAlert
 | datasource | Datasource Victoria Metrics or VMSelect url. Required parameter. e.g. http://127.0.0.1:8428 | [VMAlertDatasourceSpec](#vmalertdatasourcespec) | true |
 | extraArgs | ExtraArgs that will be passed to  VMAlert pod for example -remoteWrite.tmpDataPath=/tmp | map[string]string | false |
 | extraEnvs | ExtraEnvs that will be added to VMAlert pod | [][v1.EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#envvar-v1-core) | false |
+| externalLabels | ExternalLabels in the form &#39;name: value&#39; to add to all generated recording rules and alerts. | map[string]string | false |
 
 [Back to TOC](#table-of-contents)
 

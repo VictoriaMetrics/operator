@@ -14,6 +14,7 @@ require (
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.45.0
 	github.com/prometheus-operator/prometheus-operator/pkg/client v0.45.0
 	github.com/spf13/pflag v1.0.5
+	github.com/stretchr/testify v1.6.1
 	go.uber.org/zap v1.15.0
 	golang.org/x/net v0.0.0-20201224014010-6772e930b67b
 	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a

@@ -2,6 +2,7 @@ package factory
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"sort"
 	"testing"
@@ -511,6 +512,70 @@ func TestBuildRemoteWrites(t *testing.T) {
 			sort.Strings(got)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("BuildRemoteWrites() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_newServiceVMAgent(t *testing.T) {
+	type args struct {
+		cr *victoriametricsv1beta1.VMAgent
+		c  *config.BaseOperatorConf
+	}
+	tests := []struct {
+		name     string
+		args     args
+		validate func(svc *corev1.Service) error
+	}{
+		{
+			name: "base svc",
+			args: args{
+				c:  config.MustGetBaseConfig(),
+				cr: &victoriametricsv1beta1.VMAgent{},
+			},
+			validate: func(svc *corev1.Service) error {
+				if svc == nil {
+					return fmt.Errorf("expected service to bi not nil")
+				}
+				return nil
+			},
+		},
+		{
+			name: "base svc with ports",
+			args: args{
+				c: config.MustGetBaseConfig(),
+				cr: &victoriametricsv1beta1.VMAgent{
+					Spec: victoriametricsv1beta1.VMAgentSpec{InsertPorts: &victoriametricsv1beta1.InsertPorts{
+						InfluxPort:       "8431",
+						GraphitePort:     "8435",
+						OpenTSDBHTTPPort: "8436",
+						OpenTSDBPort:     "8437",
+					}},
+				},
+			},
+			validate: func(svc *corev1.Service) error {
+				if svc == nil {
+					return fmt.Errorf("expected service to bi not nil")
+				}
+				if len(svc.Spec.Ports) != 8 {
+					return fmt.Errorf("unexpected number of ports, want: 8, got %d", len(svc.Spec.Ports))
+				}
+				for _, p := range svc.Spec.Ports {
+					if p.Name == "graphite-tcp" {
+						if p.TargetPort.String() != "8435" {
+							return fmt.Errorf("expected graphite port 8435, got: %s", p.TargetPort.String())
+						}
+					}
+				}
+				return nil
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := newServiceVMAgent(tt.args.cr, tt.args.c)
+			if err := tt.validate(got); err != nil {
+				t.Errorf("newServiceVMAgent(), unexpected error %v", err)
 			}
 		})
 	}

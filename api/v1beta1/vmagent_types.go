@@ -177,27 +177,21 @@ type VMAgentSpec struct {
 	// +optional
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Key at Configmap with relabelConfig name",xDescriptors="urn:alm:descriptor:io.kubernetes:ConfigMapKeySelector"
 	RelabelConfig *v1.ConfigMapKeySelector `json:"relabelConfig,omitempty"`
-	// ServiceScrapeSelector defines ServiceScrapes to be selected for target discovery. if
-	// if neither PodScrapeNamespaceSelector nor ProbeSelector nor PodScrapeSelector nor NodeScrapeSelector are specified,
-	// configuration is unmanaged.
+	// ServiceScrapeSelector defines ServiceScrapes to be selected for target discovery.
 	// +optional
 	ServiceScrapeSelector *metav1.LabelSelector `json:"serviceScrapeSelector,omitempty"`
-	// ServiceScrapeNamespaceSelector Namespaces to be selected for ServiceMonitor discovery. If nil, only
+	// ServiceScrapeNamespaceSelector Namespaces to be selected for VMServiceScrape discovery. If nil, only
 	// check own namespace.
 	// +optional
 	ServiceScrapeNamespaceSelector *metav1.LabelSelector `json:"serviceScrapeNamespaceSelector,omitempty"`
 	// PodScrapeSelector defines PodScrapes to be selected for target discovery.
-	// if neither PodScrapeNamespaceSelector nor ProbeSelector nor PodScrapeSelector nor NodeScrapeSelector are specified,
-	// configuration is unmanaged.
 	// +optional
 	PodScrapeSelector *metav1.LabelSelector `json:"podScrapeSelector,omitempty"`
-	// PodScrapeNamespaceSelector defines Namespaces to be selected for PodMonitor discovery. If nil, only
+	// PodScrapeNamespaceSelector defines Namespaces to be selected for VMPodScrape discovery. If nil, only
 	// check own namespace.
 	// +optional
 	PodScrapeNamespaceSelector *metav1.LabelSelector `json:"podScrapeNamespaceSelector,omitempty"`
 	// ProbeSelector defines VMProbe to be selected for target probing.
-	// if neither PodScrapeNamespaceSelector nor ProbeSelector nor PodScrapeSelector nor NodeScrapeSelector are specified,
-	// configuration is unmanaged.
 	// +optional
 	ProbeSelector *metav1.LabelSelector `json:"probeSelector,omitempty"`
 	// ProbeNamespaceSelector defines Namespaces to be selected for VMProbe discovery. If nil, only
@@ -205,14 +199,19 @@ type VMAgentSpec struct {
 	// +optional
 	ProbeNamespaceSelector *metav1.LabelSelector `json:"probeNamespaceSelector,omitempty"`
 	// NodeScrapeSelector defines VMNodeScrape to be selected for scraping.
-	// if neither PodScrapeNamespaceSelector nor ProbeSelector nor PodScrapeSelector nor NodeScrapeSelector are specified,
-	// configuration is unmanaged.
 	// +optional
 	NodeScrapeSelector *metav1.LabelSelector `json:"nodeScrapeSelector,omitempty"`
 	// NodeScrapeNamespaceSelector defines Namespaces to be selected for VMNodeScrape discovery. If nil, only
 	// check own namespace.
 	// +optional
 	NodeScrapeNamespaceSelector *metav1.LabelSelector `json:"nodeScrapeNamespaceSelector,omitempty"`
+	// StaticScrapeSelector defines PodScrapes to be selected for target discovery.
+	// +optional
+	StaticScrapeSelector *metav1.LabelSelector `json:"staticScrapeSelector,omitempty"`
+	// StaticScrapeNamespaceSelector defines Namespaces to be selected for VMStaticScrape discovery. If nil, only
+	// check own namespace.
+	// +optional
+	StaticScrapeNamespaceSelector *metav1.LabelSelector `json:"staticScrapeNamespaceSelector,omitempty"`
 	// AdditionalScrapeConfigs As scrape configs are appended, the user is responsible to make sure it
 	// is valid. Note that using this feature may expose the possibility to
 	// break upgrades of VMAgent. It is advised to review VMAgent release
@@ -225,6 +224,8 @@ type VMAgentSpec struct {
 	// of the VMAgent container e.g. bearer token files.
 	// +optional
 	ArbitraryFSAccessThroughSMs ArbitraryFSAccessThroughSMsConfig `json:"arbitraryFSAccessThroughSMs,omitempty"`
+	// InsertPorts - additional listen ports for data ingestion.
+	InsertPorts *InsertPorts `json:"insertPorts,omitempty"`
 	// Port listen address
 	// +optional
 	Port string `json:"port,omitempty"`

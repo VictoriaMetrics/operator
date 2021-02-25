@@ -48,6 +48,7 @@ func generateConfig(
 	pMons map[string]*victoriametricsv1beta1.VMPodScrape,
 	probes map[string]*victoriametricsv1beta1.VMProbe,
 	nodes map[string]*victoriametricsv1beta1.VMNodeScrape,
+	statics map[string]*victoriametricsv1beta1.VMStaticScrape,
 	basicAuthSecrets map[string]BasicAuthCredentials,
 	bearerTokens map[string]BearerToken,
 	additionalScrapeConfigs []byte,
@@ -103,6 +104,16 @@ func generateConfig(
 	}
 	// Sorting ensures, that we always generate the config in the same order.
 	sort.Strings(nodeIdentifiers)
+
+	staticsIdentifiers := make([]string, len(statics))
+	i = 0
+	for k := range statics {
+		staticsIdentifiers[i] = k
+		i++
+	}
+
+	// Sorting ensures, that we always generate the config in the same order.
+	sort.Strings(staticsIdentifiers)
 
 	apiserverConfig := cr.Spec.APIServerConfig
 
@@ -160,6 +171,17 @@ func generateConfig(
 				cr.Spec.EnforcedNamespaceLabel))
 
 	}
+
+	for _, identifier := range staticsIdentifiers {
+		for i, ep := range statics[identifier].Spec.TargetEndpoints {
+			scrapeConfigs = append(scrapeConfigs,
+				generateStaticScrapeConfig(
+					statics[identifier],
+					ep, i,
+					basicAuthSecrets,
+					bearerTokens))
+		}
+	}
 	var additionalScrapeConfigsYaml []yaml.MapSlice
 	err := yaml.Unmarshal([]byte(additionalScrapeConfigs), &additionalScrapeConfigsYaml)
 	if err != nil {
@@ -172,16 +194,6 @@ func generateConfig(
 	})
 
 	return yaml.Marshal(cfg)
-}
-
-func makeEmptyConfigurationSecret(p *victoriametricsv1beta1.VMAgent, config *config.BaseOperatorConf) (*v1.Secret, error) {
-	s := makeConfigSecret(p, config)
-
-	s.ObjectMeta.Annotations = map[string]string{
-		"empty": "true",
-	}
-
-	return s, nil
 }
 
 func makeConfigSecret(cr *victoriametricsv1beta1.VMAgent, config *config.BaseOperatorConf) *v1.Secret {

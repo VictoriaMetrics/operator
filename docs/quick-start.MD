@@ -108,7 +108,7 @@ The Victoria Metrics Operator introduces additional resources in Kubernetes to d
 * [VMRule](#VMRule)
 * [VMPodScrape](#VMPodScrape)
 * [VMProbe](#VMProbe)
-
+* [VMStaticScrape](#VMStaticScrape)
 
 ## VMSingle
 
@@ -271,6 +271,8 @@ EOF
    serviceScrapeSelector: {}
    nodeScrapeSelector: {}
    nodeScrapeNamespaceSelector: {}
+   staticScrapeSelector: {}
+   staticScrapeNamespaceSelector: {}
    replicaCount: 1
    remoteWrite:
      - url: "http://vminsert-example-vmcluster.default.svc.cluster.local:8480/insert/0/prometheus/api/v1/write"
@@ -306,6 +308,8 @@ spec:
   serviceScrapeSelector: {}
   nodeScrapeSelector: {}
   nodeScrapeNamespaceSelector: {}
+  staticScrapeSelector: {}
+  staticScrapeNamespaceSelector: {}
   replicaCount: 1
   remoteWrite:
     - url: "http://vmsingle-example-vmsingle-persisted.default.svc:8429/api/v1/write"
@@ -351,9 +355,9 @@ EOF
                matchLabels:
                      name: default
       `
- - `spec.ProbeSelector` - it selects `VMProbe` objects by its labels. 
+ - `spec.probeSelector` - it selects `VMProbe` objects by its labels. 
      If it's nil, but `spec.probeNamespaceSelector` isn't, the last one will be used for selecting.
-     If it's defined with empty value: `spec.vmProbeSelector: {}`, all objects can be selected depending on NamespaceSelector.
+     If it's defined with empty value: `spec.probeSelector: {}`, all objects can be selected depending on NamespaceSelector.
 
 - `spec.nodeScrapeNamespaceSelector` - if it's nil, only `VMNodeScrape` in the `VMAgent`s namespace can be selected.
   If it's defined with empty value: `spec.probeNamespaceSelector: {}` - all namespaces are matched.
@@ -370,6 +374,20 @@ EOF
   If it's defined with empty value: `spec.vmProbeSelector: {}`, all objects can be selected depending on NamespaceSelector.
   You may also use `matchLabels` and `matchExpression` for filtering `VMNodeScrape` by its labels.
 
+- `spec.staticScrapeNamespaceSelector` - if it's nil, only `VMStaticScrape` in the `VMAgent`s namespace can be selected.
+  If it's defined with empty value: `spec.staticScrapeNamespaceSelector: {}` - all namespaces are matched.
+  You may also add matchLabels or matchExpression syntax, but your namespace must be tagged with specified labels first:
+    ```bash
+       kubectl label ns default name=default
+    ``` 
+  `spec.staticScrapeNamespaceSelector:
+    matchLabels:
+      name: default
+  `
+- `spec.staticScrapeSelector` - it selects `VMStaticScrape` objects by its labels.
+  If it's nil, but `spec.staticScrapeNamespaceSelector` isn't, the last one will be used for selecting.
+  If it's defined with empty value: `spec.staticScrapeSelector: {}`, all objects can be selected depending on NamespaceSelector.
+  You may also use `matchLabels` and `matchExpression` for filtering `VMNodeScrape` by its labels.
      
 this configuration will match only namespace with  the label - name=default and all `VMServiceScrape` objects at this namespace will be 
 selected: 
@@ -613,6 +631,8 @@ spec:
   podScrapeNamespaceSelector: {}
   podScrapeSelector: {}
   serviceScrapeSelector: {}
+  staticScrapeSelector: {}
+  staticScrapeNamespaceSelector: {}  
   replicaCount: 1
   remoteWrite:
     - url: "http://vmsingle-example-vmsingle-persisted.default.svc:8429/api/v1/write"
@@ -1184,6 +1204,34 @@ EOF
 This configuration will add 2 additional targets for probing: `vmsingle2.example.com` and `vmsingle.example.com`.
 
 But probes will be unsuccessful, coz there is no such hosts.
+
+## VMStaticScrape
+
+It generates config part of `VMAgent` with  static_configs, targets for targetEndpoint is a required parameter.
+It has various options for scraping configuration of target (with basic auth,tls access, by specific port name etc).
+
+Add `VMAgent` and Example app from step above and continue  this step.
+
+With simple configuration:
+```yaml
+cat << EOF | kubectl apply -f -
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMStaticScrape
+metadata:
+  name: vmstaticscrape-sample
+spec:
+  jobName: static
+  targetEndpoints:
+    - targets: ["192.168.0.1:9100","196.168.0.50:9100"]
+      labels:
+        env: dev
+        project: operator
+EOF
+```
+ 2 targets must be added to `VMAgent` scrape config:
+```bash
+static_configs: added targets: 2, removed targets: 0; total targets: 2
+```
 
 ## Migration from prometheus-operator objects
 

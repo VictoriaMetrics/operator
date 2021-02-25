@@ -196,6 +196,11 @@ two operators at the same time.
 
 The `VMNodeScrape` CRD provides discovery mechanism for scraping metrics kubernetes nodes.
 By specifying configuration at CRD, operator generates config for `VMAgent` and syncs it. Its useful for cadvisor scraping,
-node-exporter or other node-based exporters. By default, `__address__` is set at kubernetes internalIP - first IP address of node.
-`VMAgent` nodeScrapeSelector must match `VMNodeScrape` lables.
+node-exporter or other node-based exporters. `VMAgent` nodeScrapeSelector must match `VMNodeScrape` labels.
+
+## VMStaticScrape
+
+The `VMStaticScrape` CRD provides mechanism for scraping metrics from static targets, configured by CRD targets.
+By specifying configuration at CRD, operator generates config for `VMAgent` and syncs it. It's useful for external targets management,
+when service-discovery is not available. `VMAgent` staticScrapeSelector must match `VMStaticScrape` labels.
  

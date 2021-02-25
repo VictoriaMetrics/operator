@@ -9,6 +9,8 @@ spec:
   podScrapeSelector: {}
   probeSelector: {}
   probeNamespaceSelector: {}
+  staticScrapeSelector: {}
+  staticScrapeNamespaceSelector: {}
   replicaCount: 1
   serviceAccountName: vmagent
   secrets:

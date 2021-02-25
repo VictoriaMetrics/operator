@@ -17,28 +17,6 @@ import (
 )
 
 func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client, c *config.BaseOperatorConf) error {
-	// create empty secret, if configuration is unmanaged
-	l := log.WithValues("vmagent", cr.Name, "namespace", cr.Namespace)
-
-	if cr.Spec.ServiceScrapeSelector == nil && cr.Spec.PodScrapeSelector == nil && cr.Spec.ProbeSelector == nil && cr.Spec.NodeScrapeSelector == nil {
-		l.Info("neither ServiceScrapeSelector nor PodScrapeSelector nor ProbeSelector nor  NodeScrapeSelector specified, leaving configuration unmanaged")
-
-		s, err := makeEmptyConfigurationSecret(cr, c)
-		if err != nil {
-			return fmt.Errorf("generating empty config secret failed: %w", err)
-		}
-		err = rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: s.Name}, &v1.Secret{})
-		if errors.IsNotFound(err) {
-			if err := rclient.Create(ctx, s); err != nil && !errors.IsAlreadyExists(err) {
-				return fmt.Errorf("creating empty config file failed: %w", err)
-			}
-		}
-		if !errors.IsNotFound(err) && err != nil {
-			return err
-		}
-
-		return nil
-	}
 
 	smons, err := SelectServiceScrapes(ctx, cr, rclient)
 	if err != nil {
@@ -60,18 +38,23 @@ func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *victoriametricsv
 		return fmt.Errorf("selecting VMNodeScrapes failed: %w", err)
 	}
 
+	statics, err := SelectStaticScrapes(ctx, cr, rclient)
+	if err != nil {
+		return fmt.Errorf("selecting PodScrapes failed: %w", err)
+	}
+
 	SecretsInNS := &v1.SecretList{}
 	err = rclient.List(ctx, SecretsInNS)
 	if err != nil {
 		return fmt.Errorf("cannot list secrets at vmagent namespace: %w", err)
 	}
 
-	basicAuthSecrets, err := loadBasicAuthSecrets(ctx, rclient, smons, nodes, pmons, cr.Spec.APIServerConfig, nil, SecretsInNS)
+	basicAuthSecrets, err := loadBasicAuthSecrets(ctx, rclient, smons, nodes, pmons, statics, cr.Spec.APIServerConfig, nil, SecretsInNS)
 	if err != nil {
 		return fmt.Errorf("cannot load basic secrets for ServiceMonitors: %w", err)
 	}
 
-	bearerTokens, err := loadBearerTokensFromSecrets(ctx, rclient, smons, nodes, pmons, nil, SecretsInNS)
+	bearerTokens, err := loadBearerTokensFromSecrets(ctx, rclient, smons, nodes, pmons, statics, nil, SecretsInNS)
 	if err != nil {
 		return fmt.Errorf("cannot load bearer tokens from secrets for ServiceMonitors: %w", err)
 	}
@@ -88,6 +71,7 @@ func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *victoriametricsv
 		pmons,
 		probes,
 		nodes,
+		statics,
 		basicAuthSecrets,
 		bearerTokens,
 		additionalScrapeConfigs,
@@ -450,12 +434,89 @@ func SelectVMNodeScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent
 
 	return res, nil
 }
+
+func SelectStaticScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) (map[string]*victoriametricsv1beta1.VMStaticScrape, error) {
+
+	res := make(map[string]*victoriametricsv1beta1.VMStaticScrape)
+
+	namespaces := []string{}
+
+	// list namespaces matched by  namespaceSelector
+	// for each namespace apply list with  selector
+	// combine result
+
+	if cr.Spec.StaticScrapeNamespaceSelector == nil {
+		namespaces = append(namespaces, cr.Namespace)
+	} else if cr.Spec.StaticScrapeNamespaceSelector.MatchExpressions == nil && cr.Spec.StaticScrapeNamespaceSelector.MatchLabels == nil {
+		namespaces = nil
+	} else {
+		log.Info("selector for staticScrape", "vmagent", cr.Name, "selector", cr.Spec.StaticScrapeNamespaceSelector.String())
+		nsSelector, err := metav1.LabelSelectorAsSelector(cr.Spec.StaticScrapeNamespaceSelector)
+		if err != nil {
+			return nil, fmt.Errorf("cannot convert staticScrapeNamespaceSelector to labelSelector: %w", err)
+		}
+		namespaces, err = selectNamespaces(ctx, rclient, nsSelector)
+		if err != nil {
+			return nil, fmt.Errorf("cannot select namespaces for staticScrape match: %w", err)
+		}
+	}
+
+	// if namespaces isn't nil, then nameSpaceSelector is defined
+	// but scrapeSelector maybe be nil and we have to set it to catch all value
+	if namespaces != nil && cr.Spec.StaticScrapeSelector == nil {
+		cr.Spec.StaticScrapeSelector = &metav1.LabelSelector{}
+	}
+	staticScrapeSelector, err := metav1.LabelSelectorAsSelector(cr.Spec.StaticScrapeSelector)
+	if err != nil {
+		return nil, fmt.Errorf("cannot convert staticScrapeSelector to label selector: %w", err)
+	}
+
+	staticScrapesCombined := []victoriametricsv1beta1.VMStaticScrape{}
+
+	//list all namespaces for static cfg with selector
+	if namespaces == nil {
+		log.Info("listing all namespaces for staticScrapes")
+		staticScrapes := &victoriametricsv1beta1.VMStaticScrapeList{}
+		err = rclient.List(ctx, staticScrapes, &client.ListOptions{LabelSelector: staticScrapeSelector})
+		if err != nil {
+			return nil, fmt.Errorf("cannot list staticScrapes from all namespaces: %w", err)
+		}
+		staticScrapesCombined = append(staticScrapesCombined, staticScrapes.Items...)
+
+	} else {
+		for _, ns := range namespaces {
+			listOpts := &client.ListOptions{Namespace: ns, LabelSelector: staticScrapeSelector}
+			staticScrapes := &victoriametricsv1beta1.VMStaticScrapeList{}
+			err = rclient.List(ctx, staticScrapes, listOpts)
+			if err != nil {
+				return nil, fmt.Errorf("cannot list staticScrapes at namespace: %s, err: %w", ns, err)
+			}
+			staticScrapesCombined = append(staticScrapesCombined, staticScrapes.Items...)
+
+		}
+	}
+
+	for _, staticScrape := range staticScrapesCombined {
+		pm := staticScrape.DeepCopy()
+		res[staticScrape.Namespace+"/"+staticScrape.Name] = pm
+	}
+	staticScrapes := make([]string, 0)
+	for key := range res {
+		staticScrapes = append(staticScrapes, key)
+	}
+
+	log.Info("selected StaticScrapes", "staticScrapes", strings.Join(staticScrapes, ","), "namespace", cr.Namespace, "vmagent", cr.Name)
+
+	return res, nil
+}
+
 func loadBasicAuthSecrets(
 	ctx context.Context,
 	rclient client.Client,
 	mons map[string]*victoriametricsv1beta1.VMServiceScrape,
 	nodes map[string]*victoriametricsv1beta1.VMNodeScrape,
 	pods map[string]*victoriametricsv1beta1.VMPodScrape,
+	statics map[string]*victoriametricsv1beta1.VMStaticScrape,
 	apiserverConfig *victoriametricsv1beta1.APIServerConfig,
 	remoteWriteSpecs []victoriametricsv1beta1.VMAgentRemoteWriteSpec,
 	SecretsInPromNS *v1.SecretList,
@@ -502,6 +563,20 @@ func loadBasicAuthSecrets(
 
 		}
 	}
+
+	for _, staticCfg := range statics {
+		for i, ep := range staticCfg.Spec.TargetEndpoints {
+			if ep.BasicAuth != nil {
+				credentials, err := loadBasicAuthSecretFromAPI(ctx, rclient, ep.BasicAuth, staticCfg.Namespace, nsSecretCache)
+				if err != nil {
+					return nil, fmt.Errorf("could not generate basicAuth for vmstaticScrape %s. %w", staticCfg.Name, err)
+				}
+				secrets[staticCfg.AsKey(i)] = credentials
+			}
+
+		}
+	}
+
 	// load apiserver basic auth secret
 	if apiserverConfig != nil && apiserverConfig.BasicAuth != nil {
 		credentials, err := loadBasicAuthSecret(apiserverConfig.BasicAuth, SecretsInPromNS)
@@ -532,6 +607,7 @@ func loadBearerTokensFromSecrets(
 	mons map[string]*victoriametricsv1beta1.VMServiceScrape,
 	nodes map[string]*victoriametricsv1beta1.VMNodeScrape,
 	pods map[string]*victoriametricsv1beta1.VMPodScrape,
+	statics map[string]*victoriametricsv1beta1.VMStaticScrape,
 	remoteWriteSpecs []victoriametricsv1beta1.VMAgentRemoteWriteSpec,
 	SecretsInPromNS *v1.SecretList,
 ) (map[string]BearerToken, error) {
@@ -606,6 +682,32 @@ func loadBearerTokensFromSecrets(
 		}
 		tokens[node.AsMapKey()] = BearerToken(token)
 
+	}
+
+	for _, staticCfg := range statics {
+		for i, ep := range staticCfg.Spec.TargetEndpoints {
+			if ep.BearerTokenSecret.Name == "" {
+				continue
+			}
+
+			token, err := getCredFromSecret(
+				ctx,
+				rclient,
+				staticCfg.Namespace,
+				ep.BearerTokenSecret,
+				staticCfg.Namespace+"/"+ep.BearerTokenSecret.Name,
+				nsSecretCache,
+			)
+			if err != nil {
+				return nil, fmt.Errorf(
+					"failed to extract targetEndpoint bearertoken for vmstaticScrape %v from secret %v in namespace %v",
+					staticCfg.Name, ep.BearerTokenSecret, staticCfg.Namespace,
+				)
+			}
+
+			tokens[staticCfg.AsKey(i)] = BearerToken(token)
+
+		}
 	}
 	// load basic auth for remote write configuration
 	for _, rws := range remoteWriteSpecs {

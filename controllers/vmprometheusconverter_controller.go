@@ -178,6 +178,7 @@ func (c *ConverterController) runInformerWithDiscovery(ctx context.Context, grou
 	return nil
 }
 
+// Start implements interface.
 func (c *ConverterController) Start(ctx context.Context) error {
 	var errG errgroup.Group
 	log.Info("starting prometheus converter")

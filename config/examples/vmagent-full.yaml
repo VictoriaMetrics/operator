@@ -78,6 +78,8 @@ spec:
       key: value
     annotations:
       key: value
+  staticScrapeSelector: {}
+  staticScrapeNamespaceSelector: {}
   image:
     repository: victoriametrics/vmagent
     tag: v1.46.0

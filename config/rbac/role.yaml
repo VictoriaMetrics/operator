@@ -350,3 +350,18 @@ rules:
   - get
   - patch
   - update
+- apiGroups:
+    - operator.victoriametrics.com
+  resources:
+    - vmstaticscrapes
+    - vmnodescrapes/finalizers
+  verbs:
+    - '*'
+- apiGroups:
+    - operator.victoriametrics.com
+  resources:
+    - vmstaticscrapes/status
+  verbs:
+    - get
+    - patch
+    - update

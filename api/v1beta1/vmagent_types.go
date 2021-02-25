@@ -225,6 +225,8 @@ type VMAgentSpec struct {
 	// of the VMAgent container e.g. bearer token files.
 	// +optional
 	ArbitraryFSAccessThroughSMs ArbitraryFSAccessThroughSMsConfig `json:"arbitraryFSAccessThroughSMs,omitempty"`
+	// InsertPorts - additional listen ports for data ingestion.
+	InsertPorts *InsertPorts `json:"insertPorts,omitempty"`
 	// Port listen address
 	// +optional
 	Port string `json:"port,omitempty"`

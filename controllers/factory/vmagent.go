@@ -77,7 +77,7 @@ func newServiceVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperato
 	if cr.Spec.Port == "" {
 		cr.Spec.Port = c.VMAgentDefault.Port
 	}
-	return &corev1.Service{
+	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),
 			Namespace:       cr.Namespace,
@@ -98,6 +98,8 @@ func newServiceVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperato
 			},
 		},
 	}
+	buildAdditionalServicePorts(cr.Spec.InsertPorts, svc)
+	return svc
 }
 
 //we assume, that configmaps were created before this function was called
@@ -289,6 +291,8 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 
 	var ports []corev1.ContainerPort
 	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(cr.Spec.Port).IntVal})
+	ports = buildAdditionalContainerPorts(ports, cr.Spec.InsertPorts)
+
 	var volumes []corev1.Volume
 	volumes = append(volumes, corev1.Volume{
 		Name: vmAgentPersistentQueueMountName,
@@ -413,6 +417,8 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 
 		args = append(args, "-remoteWrite.relabelConfig="+path.Join(ConfigMapsDir, cr.Spec.RelabelConfig.Name, cr.Spec.RelabelConfig.Key))
 	}
+
+	args = buildArgsForAdditionalPorts(args, cr.Spec.InsertPorts)
 
 	for _, rw := range cr.Spec.RemoteWrite {
 		if rw.UrlRelabelConfig == nil {

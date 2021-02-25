@@ -463,6 +463,22 @@ spec:
                 - name
                 type: object
               type: array
+            insertPorts:
+              description: InsertPorts - additional listen ports for data ingestion.
+              properties:
+                graphitePort:
+                  description: GraphitePort listen port
+                  type: string
+                influxPort:
+                  description: InfluxPort listen port
+                  type: string
+                openTSDBHTTPPort:
+                  description: OpenTSDBHTTPPort for http connections.
+                  type: string
+                openTSDBPort:
+                  description: OpenTSDBPort for tcp and udp listen
+                  type: string
+              type: object
             logFormat:
               description: LogFormat for VMAgent to be configured with.
               enum:

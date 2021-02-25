@@ -918,6 +918,11 @@ func (in *VMAgentSpec) DeepCopyInto(out *VMAgentSpec) {
 		(*in).DeepCopyInto(*out)
 	}
 	out.ArbitraryFSAccessThroughSMs = in.ArbitraryFSAccessThroughSMs
+	if in.InsertPorts != nil {
+		in, out := &in.InsertPorts, &out.InsertPorts
+		*out = new(InsertPorts)
+		**out = **in
+	}
 	if in.ExtraArgs != nil {
 		in, out := &in.ExtraArgs, &out.ExtraArgs
 		*out = make(map[string]string, len(*in))

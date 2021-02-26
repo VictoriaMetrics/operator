@@ -178,6 +178,16 @@ func SelectServiceScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgen
 		}
 	}
 
+	// filter in place
+	n := 0
+	for _, x := range servScrapesCombined {
+		if x.DeletionTimestamp.IsZero() {
+			servScrapesCombined[n] = x
+			n++
+		}
+	}
+	servScrapesCombined = servScrapesCombined[:n]
+
 	for _, servScrape := range servScrapesCombined {
 		m := servScrape.DeepCopy()
 		res[servScrape.Namespace+"/"+servScrape.Name] = m
@@ -270,6 +280,15 @@ func SelectPodScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, r
 
 		}
 	}
+	// filter in place
+	n := 0
+	for _, x := range podScrapesCombined {
+		if x.DeletionTimestamp.IsZero() {
+			podScrapesCombined[n] = x
+			n++
+		}
+	}
+	podScrapesCombined = podScrapesCombined[:n]
 
 	for _, podScrape := range podScrapesCombined {
 		pm := podScrape.DeepCopy()
@@ -344,6 +363,15 @@ func SelectVMProbes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rcl
 
 		}
 	}
+	// filter in place
+	n := 0
+	for _, x := range probesCombined {
+		if x.DeletionTimestamp.IsZero() {
+			probesCombined[n] = x
+			n++
+		}
+	}
+	probesCombined = probesCombined[:n]
 
 	log.Info("filtering namespaces to select vmProbes from",
 		"namespace", cr.Namespace, "vmagent", cr.Name)
@@ -420,6 +448,15 @@ func SelectVMNodeScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent
 
 		}
 	}
+	// filter in place
+	n := 0
+	for _, x := range nodesCombined {
+		if x.DeletionTimestamp.IsZero() {
+			nodesCombined[n] = x
+			n++
+		}
+	}
+	nodesCombined = nodesCombined[:n]
 
 	for _, node := range nodesCombined {
 		pm := node.DeepCopy()
@@ -492,9 +529,17 @@ func SelectStaticScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent
 				return nil, fmt.Errorf("cannot list staticScrapes at namespace: %s, err: %w", ns, err)
 			}
 			staticScrapesCombined = append(staticScrapesCombined, staticScrapes.Items...)
-
 		}
 	}
+	// filter in place
+	n := 0
+	for _, x := range staticScrapesCombined {
+		if x.DeletionTimestamp.IsZero() {
+			staticScrapesCombined[n] = x
+			n++
+		}
+	}
+	staticScrapesCombined = staticScrapesCombined[:n]
 
 	for _, staticScrape := range staticScrapesCombined {
 		pm := staticScrape.DeepCopy()

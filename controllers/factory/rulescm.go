@@ -268,6 +268,16 @@ func SelectRules(ctx context.Context, cr *victoriametricsv1beta1.VMAlert, rclien
 		}
 	}
 
+	// filter in place
+	n := 0
+	for _, x := range promRules {
+		if x.DeletionTimestamp.IsZero() {
+			promRules[n] = x
+			n++
+		}
+	}
+	promRules = promRules[:n]
+
 	if cr.NeedDedupRules() {
 		log.Info("deduplicating vmalert rules", "vmalert", cr.ObjectMeta.Name)
 		promRules = deduplicateRules(promRules)

@@ -32,9 +32,9 @@ func (r *VMStaticScrapeReconciler) Scheme() *runtime.Scheme {
 	return r.OriginScheme
 }
 
+// Reconcile implements interface.
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmstaticscrapes,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmstaticscrapes/status,verbs=get;update;patch
-// Reconcile implements interface.
 func (r *VMStaticScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := r.Log.WithValues("vmservicescrape", req.NamespacedName)
 	reqLogger.Info("Reconciling VMStaticScrape")

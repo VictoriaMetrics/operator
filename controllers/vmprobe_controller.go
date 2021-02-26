@@ -18,21 +18,15 @@ package controllers
 
 import (
 	"context"
-	"fmt"
 
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
-
+	operatorv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/internal/config"
-	"k8s.io/apimachinery/pkg/api/errors"
-
 	"github.com/go-logr/logr"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	operatorv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 )
 
 // VMProbeReconciler reconciles a VMProbe object
@@ -78,7 +72,7 @@ func (r *VMProbeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		}
 		currentVMagent := &vmagent
 		reqLogger = reqLogger.WithValues("vmagent", vmagent.Name)
-		match, err := isVMAgentMatchesVMProbe(currentVMagent, instance)
+		match, err := isSelectorsMatches(instance, currentVMagent, currentVMagent.Spec.ProbeNamespaceSelector, currentVMagent.Spec.ProbeSelector)
 		if err != nil {
 			reqLogger.Error(err, "cannot match vmagent and vmProbe")
 			continue
@@ -105,30 +99,4 @@ func (r *VMProbeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&operatorv1beta1.VMProbe{}).
 		Complete(r)
-}
-
-// heuristic for selector match.
-func isVMAgentMatchesVMProbe(currentVMAgent *operatorv1beta1.VMAgent, vmProbe *operatorv1beta1.VMProbe) (bool, error) {
-	// fast path
-	if currentVMAgent.Spec.ProbeNamespaceSelector == nil && currentVMAgent.Namespace != vmProbe.Namespace {
-		return false, nil
-	}
-	// fast path config unmanaged
-	if currentVMAgent.Spec.ProbeSelector == nil && currentVMAgent.Spec.ProbeNamespaceSelector == nil {
-		return false, nil
-	}
-	// fast path maybe namespace selector will match.
-	if currentVMAgent.Spec.ProbeSelector == nil {
-		return true, nil
-	}
-	selector, err := v1.LabelSelectorAsSelector(currentVMAgent.Spec.ProbeSelector)
-	if err != nil {
-		return false, fmt.Errorf("cannot parse vmagent's ProbeSelector selector as labelSelector: %w", err)
-	}
-	set := labels.Set(vmProbe.Labels)
-	// selector not match
-	if !selector.Matches(set) {
-		return false, nil
-	}
-	return true, nil
 }

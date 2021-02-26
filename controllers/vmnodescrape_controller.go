@@ -18,16 +18,11 @@ package controllers
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/VictoriaMetrics/operator/controllers/factory"
-	"k8s.io/apimachinery/pkg/api/errors"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
-
 	"github.com/VictoriaMetrics/operator/internal/config"
-
 	"github.com/go-logr/logr"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -79,7 +74,7 @@ func (r *VMNodeScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		}
 		reqLogger = reqLogger.WithValues("vmagent", vmagent.Name)
 		currentVMagent := &vmagent
-		match, err := isVMAgentMatchesVMNodeScrape(currentVMagent, instance)
+		match, err := isSelectorsMatches(instance, currentVMagent, currentVMagent.Spec.NodeScrapeNamespaceSelector, currentVMagent.Spec.NodeScrapeSelector)
 		if err != nil {
 			reqLogger.Error(err, "cannot match vmagent and vmProbe")
 			continue
@@ -108,30 +103,4 @@ func (r *VMNodeScrapeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&operatorv1beta1.VMNodeScrape{}).
 		Complete(r)
-}
-
-// heuristic for selector match.
-func isVMAgentMatchesVMNodeScrape(currentVMAgent *operatorv1beta1.VMAgent, vmNodeScrape *operatorv1beta1.VMNodeScrape) (bool, error) {
-	// fast path
-	if currentVMAgent.Spec.NodeScrapeNamespaceSelector == nil && currentVMAgent.Namespace != vmNodeScrape.Namespace {
-		return false, nil
-	}
-	// fast path config unmanaged
-	if currentVMAgent.Spec.NodeScrapeSelector == nil && currentVMAgent.Spec.NodeScrapeNamespaceSelector == nil {
-		return false, nil
-	}
-	// fast path maybe namespace selector will match.
-	if currentVMAgent.Spec.NodeScrapeSelector == nil {
-		return true, nil
-	}
-	selector, err := v1.LabelSelectorAsSelector(currentVMAgent.Spec.NodeScrapeSelector)
-	if err != nil {
-		return false, fmt.Errorf("cannot parse vmagent's NodeScrapeSelector selector as labelSelector: %w", err)
-	}
-	set := labels.Set(vmNodeScrape.Labels)
-	// selector not match
-	if !selector.Matches(set) {
-		return false, nil
-	}
-	return true, nil
 }

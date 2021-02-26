@@ -80,7 +80,7 @@ func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		}
 		reqLogger.WithValues("vmalert", vmalert.Name)
 		currVMAlert := &vmalert
-		match, err := isVMAlertMatchesVMRule(currVMAlert, instance)
+		match, err := isSelectorsMatches(instance, currVMAlert, currVMAlert.Spec.RuleNamespaceSelector, currVMAlert.Spec.RuleSelector)
 		if err != nil {
 			reqLogger.Error(err, "cannot match vmalert and vmRule")
 			continue
@@ -117,27 +117,25 @@ func (r *VMRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-// heuristic for selector match.
-func isVMAlertMatchesVMRule(currentVMalert *victoriametricsv1beta1.VMAlert, vmRule *victoriametricsv1beta1.VMRule) (bool, error) {
-	// fast path
-	if currentVMalert.Spec.RuleNamespaceSelector == nil && currentVMalert.Namespace != vmRule.Namespace {
-		return false, nil
+func isSelectorsMatches(sourceCRD, targetCRD client.Object, nsSelector, selector *v1.LabelSelector) (bool, error) {
+	if sourceCRD.GetNamespace() == targetCRD.GetNamespace() {
+		return true, nil
 	}
 	// fast path config unmanaged
-	if currentVMalert.Spec.RuleSelector == nil && currentVMalert.Spec.RuleNamespaceSelector == nil {
+	if selector == nil && nsSelector == nil {
 		return false, nil
 	}
 	// fast path maybe namespace selector will match.
-	if currentVMalert.Spec.RuleSelector == nil {
+	if selector == nil {
 		return true, nil
 	}
-	selector, err := v1.LabelSelectorAsSelector(currentVMalert.Spec.RuleSelector)
+	labelSelector, err := v1.LabelSelectorAsSelector(selector)
 	if err != nil {
 		return false, fmt.Errorf("cannot parse vmalert's RuleSelector selector as labelSelector: %w", err)
 	}
-	set := labels.Set(vmRule.Labels)
+	set := labels.Set(sourceCRD.GetLabels())
 	// selector not match
-	if !selector.Matches(set) {
+	if !labelSelector.Matches(set) {
 		return false, nil
 	}
 	return true, nil

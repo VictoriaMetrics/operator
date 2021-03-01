@@ -2,14 +2,10 @@ package controllers
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/VictoriaMetrics/operator/controllers/factory"
-	"k8s.io/apimachinery/pkg/api/errors"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
-
 	"github.com/VictoriaMetrics/operator/internal/config"
+	"k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -63,7 +59,7 @@ func (r *VMStaticScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		}
 		reqLogger = reqLogger.WithValues("vmagent", vmagent.Name)
 		currentVMagent := &vmagent
-		match, err := isVMAgentMatchesVMStaticScrape(currentVMagent, instance)
+		match, err := isSelectorsMatches(instance, currentVMagent, currentVMagent.Spec.StaticScrapeNamespaceSelector, currentVMagent.Spec.StaticScrapeSelector)
 		if err != nil {
 			reqLogger.Error(err, "cannot match vmagent and VMStaticScrape")
 			continue
@@ -91,30 +87,4 @@ func (r *VMStaticScrapeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&victoriametricsv1beta1.VMStaticScrape{}).
 		Complete(r)
-}
-
-// heuristic for selector match.
-func isVMAgentMatchesVMStaticScrape(currentVMAgent *victoriametricsv1beta1.VMAgent, vmStaticScrape *victoriametricsv1beta1.VMStaticScrape) (bool, error) {
-	// fast path
-	if currentVMAgent.Spec.ServiceScrapeNamespaceSelector == nil && currentVMAgent.Namespace != vmStaticScrape.Namespace {
-		return false, nil
-	}
-	// fast path config unmanaged
-	if currentVMAgent.Spec.StaticScrapeSelector == nil && currentVMAgent.Spec.StaticScrapeNamespaceSelector == nil {
-		return false, nil
-	}
-	// fast path maybe namespace selector will match.
-	if currentVMAgent.Spec.StaticScrapeSelector == nil {
-		return true, nil
-	}
-	selector, err := v1.LabelSelectorAsSelector(currentVMAgent.Spec.ServiceScrapeSelector)
-	if err != nil {
-		return false, fmt.Errorf("cannot parse vmagent's StaticScrapeSelector selector as labelSelector: %w", err)
-	}
-	set := labels.Set(vmStaticScrape.Labels)
-	// selector not match
-	if !selector.Matches(set) {
-		return false, nil
-	}
-	return true, nil
 }

@@ -118,6 +118,12 @@ func (r *VMRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 func isSelectorsMatches(sourceCRD, targetCRD client.Object, nsSelector, selector *v1.LabelSelector) (bool, error) {
+	// in case of empty namespace object must be syncronized in any way,
+	// coz we dont know source labels.
+	// probably object already deleted.
+	if sourceCRD.GetNamespace() == "" {
+		return true, nil
+	}
 	if sourceCRD.GetNamespace() == targetCRD.GetNamespace() {
 		return true, nil
 	}

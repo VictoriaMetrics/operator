@@ -10,7 +10,7 @@ import (
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/controllers/factory/psp"
 	"github.com/VictoriaMetrics/operator/internal/config"
-	"github.com/blang/semver"
+	version "github.com/hashicorp/go-version"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -378,36 +378,33 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, config *conf
 		}, ports...)
 	}
 
-	version, err := semver.ParseTolerant(cr.Spec.Image.Tag)
+	ver, err := version.NewVersion(cr.Spec.Image.Tag)
 	if err != nil {
 		log.Error(err, "cannot parse alert manager version")
 	} else {
 		// Adjust VMAlertmanager command line args to specified AM version
-		switch version.Major {
-		case 0:
-			if version.Minor < 15 {
-				for i := range amArgs {
-					// below VMAlertmanager v0.15.0 peer address port specification is not necessary
-					if strings.Contains(amArgs[i], "--cluster.peer") {
-						amArgs[i] = strings.TrimSuffix(amArgs[i], ":9094")
-					}
+		if ver.LessThan(version.Must(version.NewVersion("v0.15.0"))) {
+			for i := range amArgs {
+				// below VMAlertmanager v0.15.0 peer address port specification is not necessary
+				if strings.Contains(amArgs[i], "--cluster.peer") {
+					amArgs[i] = strings.TrimSuffix(amArgs[i], ":9094")
+				}
 
-					// below VMAlertmanager v0.15.0 high availability flags are prefixed with 'mesh' instead of 'cluster'
-					amArgs[i] = strings.Replace(amArgs[i], "--cluster.", "--mesh.", 1)
-				}
+				// below VMAlertmanager v0.15.0 high availability flags are prefixed with 'mesh' instead of 'cluster'
+				amArgs[i] = strings.Replace(amArgs[i], "--cluster.", "--mesh.", 1)
 			}
-			if version.Minor < 13 {
-				for i := range amArgs {
-					// below VMAlertmanager v0.13.0 all flags are with single dash.
-					amArgs[i] = strings.Replace(amArgs[i], "--", "-", 1)
-				}
+		}
+		if ver.LessThan(version.Must(version.NewVersion("v0.13.0"))) {
+			for i := range amArgs {
+				// below VMAlertmanager v0.13.0 all flags are with single dash.
+				amArgs[i] = strings.Replace(amArgs[i], "--", "-", 1)
 			}
-			if version.Minor < 7 {
-				// below VMAlertmanager v0.7.0 the flag 'web.route-prefix' does not exist
-				amArgs = filter(amArgs, func(s string) bool {
-					return !strings.Contains(s, "web.route-prefix")
-				})
-			}
+		}
+		if ver.LessThan(version.Must(version.NewVersion("v0.7.0"))) {
+			// below VMAlertmanager v0.7.0 the flag 'web.route-prefix' does not exist
+			amArgs = filter(amArgs, func(s string) bool {
+				return !strings.Contains(s, "web.route-prefix")
+			})
 		}
 	}
 

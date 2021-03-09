@@ -84,8 +84,11 @@ func (r *VMNodeScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request
 			continue
 		}
 		reqLogger.Info("reconciling vmNodeScrape for vmagent")
-
-		recon, err := factory.CreateOrUpdateVMAgent(ctx, currentVMagent, r, r.BaseConf)
+		extraRWs, err := buildExtraRemoteWrites(ctx, r.Client, currentVMagent, r.BaseConf)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		recon, err := factory.CreateOrUpdateVMAgent(ctx, currentVMagent, r, r.BaseConf, extraRWs)
 		if err != nil {
 			reqLogger.Error(err, "cannot create or update vmagent")
 			return recon, err

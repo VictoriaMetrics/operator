@@ -214,7 +214,7 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 
-			got, err := CreateOrUpdateVMAgent(context.TODO(), tt.args.cr, fclient, tt.args.c)
+			got, err := CreateOrUpdateVMAgent(context.TODO(), tt.args.cr, fclient, tt.args.c, nil)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CreateOrUpdateVMAgent() error = %v, wantErr %v", err, tt.wantErr)
 				return

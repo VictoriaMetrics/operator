@@ -163,6 +163,8 @@ type VMAgentSpec struct {
 	// external systems (federation, remote storage, etc).
 	// +optional
 	ExternalLabels map[string]string `json:"externalLabels,omitempty"`
+	// RemoteWriteSelector allow to discover remoteWrite - VMSingle or VMCluster by its labels.
+	RemoteWriteSelector *RemoteWriteSelector `json:"remoteWriteSelector,omitempty"`
 	// RemoteWrite list of victoria metrics /some other remote write system
 	// for vm it must looks like: http://victoria-metrics-single:8429/api/v1/write
 	// or for cluster different url
@@ -444,6 +446,12 @@ func (cr VMAgent) GetPSPName() string {
 
 func (cr VMAgent) GetNSName() string {
 	return cr.GetNamespace()
+}
+
+// RemoteWriteSelector - selector for remoteWrite discovery.
+type RemoteWriteSelector struct {
+	NamespaceSelector NamespaceSelector     `json:"namespaceSelector,omitempty"`
+	LabelsSelector    *metav1.LabelSelector `json:"labelsSelector,omitempty"`
 }
 
 func init() {

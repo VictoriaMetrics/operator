@@ -86,6 +86,19 @@ type NamespaceSelector struct {
 	MatchNames []string `json:"matchNames,omitempty"`
 }
 
+// Matches - check if given namespace matches selector.
+func (in NamespaceSelector) Matches(namespace string) bool {
+	if in.Any {
+		return true
+	}
+	for _, n := range in.MatchNames {
+		if namespace == n {
+			return true
+		}
+	}
+	return false
+}
+
 // Endpoint defines a scrapeable endpoint serving Prometheus metrics.
 // +k8s:openapi-gen=true
 type Endpoint struct {

@@ -782,3 +782,17 @@ func (cr VMCluster) Labels() map[string]string {
 func (cr VMCluster) GetNSName() string {
 	return cr.GetNamespace()
 }
+
+// AsRemoteWrite builds proper remote write config
+func (cr *VMCluster) AsRemoteWrite(domain, defPort string, addSuffix bool) *VMAgentRemoteWriteSpec {
+	var rws VMAgentRemoteWriteSpec
+	if cr.Spec.VMInsert == nil {
+		return nil
+	}
+	if cr.Spec.VMInsert.Port != "" {
+		defPort = cr.Spec.VMInsert.Port
+	}
+	rws.URL = fmt.Sprintf("http://%s.%s.svc.%s:%s/", cr.PrefixedName(), cr.Namespace, domain, defPort)
+	buildPathWithPrefixFlag(cr.Spec.VMInsert.ExtraArgs, "/insert/0/prometheus/api/v1/write")
+	return &rws
+}

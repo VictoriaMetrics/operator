@@ -103,7 +103,7 @@ func newServiceVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperato
 }
 
 //we assume, that configmaps were created before this function was called
-func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client, c *config.BaseOperatorConf) (reconcile.Result, error) {
+func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client, c *config.BaseOperatorConf, extraRws []victoriametricsv1beta1.VMAgentRemoteWriteSpec) (reconcile.Result, error) {
 	l := log.WithValues("controller", "vmagent.crud")
 
 	if err := psp.CreateServiceAccountForCRD(ctx, cr, rclient); err != nil {
@@ -140,7 +140,7 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 	}
 	l.Info("create or update vm agent deploy")
 
-	newDeploy, err := newDeployForVMAgent(cr, c, rwsBasicAuthSecrets, rwsTokens)
+	newDeploy, err := newDeployForVMAgent(cr, c, rwsBasicAuthSecrets, rwsTokens, extraRws)
 	if err != nil {
 		return reconcile.Result{}, fmt.Errorf("cannot build new deploy for vmagent: %w", err)
 	}
@@ -179,9 +179,10 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 }
 
 // newDeployForCR returns a busybox pod with the same name/namespace as the cr
-func newDeployForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperatorConf, rwsBasicAuth map[string]BasicAuthCredentials, rwsTokens map[string]BearerToken) (*appsv1.Deployment, error) {
+func newDeployForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperatorConf, rwsBasicAuth map[string]BasicAuthCredentials, rwsTokens map[string]BearerToken, extraRws []victoriametricsv1beta1.VMAgentRemoteWriteSpec) (*appsv1.Deployment, error) {
 	cr = cr.DeepCopy()
 
+	cr.Spec.RemoteWrite = append(cr.Spec.RemoteWrite, extraRws...)
 	//inject default
 	if cr.Spec.Image.Repository == "" {
 		cr.Spec.Image.Repository = c.VMAgentDefault.Image
@@ -263,7 +264,6 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 		// limit to 1GB
 		"-remoteWrite.maxDiskUsagePerURL=1073741824",
 	}
-
 	if len(cr.Spec.RemoteWrite) > 0 {
 		args = append(args, BuildRemoteWrites(cr, rwsBasicAuth, rwsTokens)...)
 	}

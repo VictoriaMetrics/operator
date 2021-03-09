@@ -406,7 +406,11 @@ func genVMSelectSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv1
 		cr.Spec.VMSelect.Image.Repository = c.VMClusterDefault.VMSelectDefault.Image
 	}
 	if cr.Spec.VMSelect.Image.Tag == "" {
-		cr.Spec.VMSelect.Image.Tag = c.VMClusterDefault.VMSelectDefault.Version
+		if cr.Spec.ClusterVersion != "" {
+			cr.Spec.VMSelect.Image.Tag = cr.Spec.ClusterVersion
+		} else {
+			cr.Spec.VMSelect.Image.Tag = c.VMClusterDefault.VMSelectDefault.Version
+		}
 	}
 	if cr.Spec.VMSelect.Port == "" {
 		cr.Spec.VMSelect.Port = c.VMClusterDefault.VMSelectDefault.Port
@@ -433,12 +437,12 @@ func genVMSelectSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv1
 	if _, ok := cr.Spec.VMSelect.Resources.Requests[corev1.ResourceCPU]; ok {
 		cpuResourceIsSet = true
 	}
-	if !cpuResourceIsSet {
+	if !cpuResourceIsSet && c.VMClusterDefault.UseDefaultResources {
 		cr.Spec.VMSelect.Resources.Requests[corev1.ResourceCPU] = resource.MustParse(c.VMClusterDefault.VMSelectDefault.Resource.Request.Cpu)
 		cr.Spec.VMSelect.Resources.Limits[corev1.ResourceCPU] = resource.MustParse(c.VMClusterDefault.VMSelectDefault.Resource.Limit.Cpu)
 
 	}
-	if !memResourceIsSet {
+	if !memResourceIsSet && c.VMClusterDefault.UseDefaultResources {
 		cr.Spec.VMSelect.Resources.Requests[corev1.ResourceMemory] = resource.MustParse(c.VMClusterDefault.VMSelectDefault.Resource.Request.Mem)
 		cr.Spec.VMSelect.Resources.Limits[corev1.ResourceMemory] = resource.MustParse(c.VMClusterDefault.VMSelectDefault.Resource.Limit.Mem)
 	}
@@ -745,7 +749,11 @@ func genVMInsertSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv1
 		cr.Spec.VMInsert.Image.Repository = c.VMClusterDefault.VMInsertDefault.Image
 	}
 	if cr.Spec.VMInsert.Image.Tag == "" {
-		cr.Spec.VMInsert.Image.Tag = c.VMClusterDefault.VMInsertDefault.Version
+		if cr.Spec.ClusterVersion != "" {
+			cr.Spec.VMInsert.Image.Tag = cr.Spec.ClusterVersion
+		} else {
+			cr.Spec.VMInsert.Image.Tag = c.VMClusterDefault.VMInsertDefault.Version
+		}
 	}
 	if cr.Spec.VMInsert.Port == "" {
 		cr.Spec.VMInsert.Port = c.VMClusterDefault.VMInsertDefault.Port
@@ -773,12 +781,12 @@ func genVMInsertSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv1
 	if _, ok := cr.Spec.VMInsert.Resources.Requests[corev1.ResourceCPU]; ok {
 		cpuResourceIsSet = true
 	}
-	if !cpuResourceIsSet {
+	if !cpuResourceIsSet && c.VMClusterDefault.UseDefaultResources {
 		cr.Spec.VMInsert.Resources.Requests[corev1.ResourceCPU] = resource.MustParse(c.VMClusterDefault.VMInsertDefault.Resource.Request.Cpu)
 		cr.Spec.VMInsert.Resources.Limits[corev1.ResourceCPU] = resource.MustParse(c.VMClusterDefault.VMInsertDefault.Resource.Limit.Cpu)
 
 	}
-	if !memResourceIsSet {
+	if !memResourceIsSet && c.VMClusterDefault.UseDefaultResources {
 		cr.Spec.VMInsert.Resources.Requests[corev1.ResourceMemory] = resource.MustParse(c.VMClusterDefault.VMInsertDefault.Resource.Request.Mem)
 		cr.Spec.VMInsert.Resources.Limits[corev1.ResourceMemory] = resource.MustParse(c.VMClusterDefault.VMInsertDefault.Resource.Limit.Mem)
 	}
@@ -1013,7 +1021,11 @@ func GenVMStorageSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv
 		cr.Spec.VMStorage.Image.Repository = c.VMClusterDefault.VMStorageDefault.Image
 	}
 	if cr.Spec.VMStorage.Image.Tag == "" {
-		cr.Spec.VMStorage.Image.Tag = c.VMClusterDefault.VMStorageDefault.Version
+		if cr.Spec.ClusterVersion != "" {
+			cr.Spec.VMStorage.Image.Tag = cr.Spec.ClusterVersion
+		} else {
+			cr.Spec.VMStorage.Image.Tag = c.VMClusterDefault.VMStorageDefault.Version
+		}
 	}
 	if cr.Spec.VMStorage.VMInsertPort == "" {
 		cr.Spec.VMStorage.VMInsertPort = c.VMClusterDefault.VMStorageDefault.VMInsertPort
@@ -1060,12 +1072,12 @@ func GenVMStorageSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv
 	if _, ok := cr.Spec.VMStorage.Resources.Requests[corev1.ResourceCPU]; ok {
 		cpuResourceIsSet = true
 	}
-	if !cpuResourceIsSet {
+	if !cpuResourceIsSet && c.VMClusterDefault.UseDefaultResources {
 		cr.Spec.VMStorage.Resources.Requests[corev1.ResourceCPU] = resource.MustParse(c.VMClusterDefault.VMStorageDefault.Resource.Request.Cpu)
 		cr.Spec.VMStorage.Resources.Limits[corev1.ResourceCPU] = resource.MustParse(c.VMClusterDefault.VMStorageDefault.Resource.Limit.Cpu)
 
 	}
-	if !memResourceIsSet {
+	if !memResourceIsSet && c.VMClusterDefault.UseDefaultResources {
 		cr.Spec.VMStorage.Resources.Requests[corev1.ResourceMemory] = resource.MustParse(c.VMClusterDefault.VMStorageDefault.Resource.Request.Mem)
 		cr.Spec.VMStorage.Resources.Limits[corev1.ResourceMemory] = resource.MustParse(c.VMClusterDefault.VMStorageDefault.Resource.Limit.Mem)
 	}

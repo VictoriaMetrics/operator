@@ -183,12 +183,12 @@ func newDeployForVMAlert(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOpera
 	if _, ok := cr.Spec.Resources.Requests[corev1.ResourceCPU]; ok {
 		cpuResourceIsSet = true
 	}
-	if !cpuResourceIsSet {
+	if !cpuResourceIsSet && c.VMAgentDefault.UseDefaultResources {
 		cr.Spec.Resources.Requests[corev1.ResourceCPU] = resource.MustParse(c.VMAlertDefault.Resource.Request.Cpu)
 		cr.Spec.Resources.Limits[corev1.ResourceCPU] = resource.MustParse(c.VMAlertDefault.Resource.Limit.Cpu)
 
 	}
-	if !memResourceIsSet {
+	if !memResourceIsSet && c.VMAgentDefault.UseDefaultResources {
 		cr.Spec.Resources.Requests[corev1.ResourceMemory] = resource.MustParse(c.VMAlertDefault.Resource.Request.Mem)
 		cr.Spec.Resources.Limits[corev1.ResourceMemory] = resource.MustParse(c.VMAlertDefault.Resource.Limit.Mem)
 	}
@@ -457,10 +457,10 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 	}
 
 	resources := corev1.ResourceRequirements{Limits: corev1.ResourceList{}}
-	if c.VMAlertDefault.ConfigReloaderCPU != "0" {
+	if c.VMAlertDefault.ConfigReloaderCPU != "0" && c.VMAgentDefault.UseDefaultResources {
 		resources.Limits[corev1.ResourceCPU] = resource.MustParse(c.VMAlertDefault.ConfigReloaderCPU)
 	}
-	if c.VMAlertDefault.ConfigReloaderMemory != "0" {
+	if c.VMAlertDefault.ConfigReloaderMemory != "0" && c.VMAgentDefault.UseDefaultResources {
 		resources.Limits[corev1.ResourceMemory] = resource.MustParse(c.VMAlertDefault.ConfigReloaderMemory)
 	}
 

@@ -54,6 +54,10 @@ spec:
         spec:
           description: VMClusterSpec defines the desired state of VMCluster
           properties:
+            clusterVersion:
+              description: ClusterVersion defines default images tag for all components.
+                it can be overwritten with component specific image.tag value.
+              type: string
             imagePullSecrets:
               description: ImagePullSecrets An optional list of references to secrets
                 in the same namespace to use for pulling images from registries see

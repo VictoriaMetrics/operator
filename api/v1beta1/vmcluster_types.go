@@ -45,6 +45,10 @@ type VMClusterSpec struct {
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
+	// ClusterVersion defines default images tag for all components.
+	// it can be overwritten with component specific image.tag value.
+	ClusterVersion string `json:"clusterVersion,omitempty"`
+
 	// ImagePullSecrets An optional list of references to secrets in the same namespace
 	// to use for pulling images from registries
 	// see http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod

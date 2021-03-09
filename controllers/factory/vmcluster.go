@@ -406,7 +406,11 @@ func genVMSelectSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv1
 		cr.Spec.VMSelect.Image.Repository = c.VMClusterDefault.VMSelectDefault.Image
 	}
 	if cr.Spec.VMSelect.Image.Tag == "" {
-		cr.Spec.VMSelect.Image.Tag = c.VMClusterDefault.VMSelectDefault.Version
+		if cr.Spec.ClusterVersion != "" {
+			cr.Spec.VMSelect.Image.Tag = cr.Spec.ClusterVersion
+		} else {
+			cr.Spec.VMSelect.Image.Tag = c.VMClusterDefault.VMSelectDefault.Version
+		}
 	}
 	if cr.Spec.VMSelect.Port == "" {
 		cr.Spec.VMSelect.Port = c.VMClusterDefault.VMSelectDefault.Port
@@ -745,7 +749,11 @@ func genVMInsertSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv1
 		cr.Spec.VMInsert.Image.Repository = c.VMClusterDefault.VMInsertDefault.Image
 	}
 	if cr.Spec.VMInsert.Image.Tag == "" {
-		cr.Spec.VMInsert.Image.Tag = c.VMClusterDefault.VMInsertDefault.Version
+		if cr.Spec.ClusterVersion != "" {
+			cr.Spec.VMInsert.Image.Tag = cr.Spec.ClusterVersion
+		} else {
+			cr.Spec.VMInsert.Image.Tag = c.VMClusterDefault.VMInsertDefault.Version
+		}
 	}
 	if cr.Spec.VMInsert.Port == "" {
 		cr.Spec.VMInsert.Port = c.VMClusterDefault.VMInsertDefault.Port
@@ -1013,7 +1021,11 @@ func GenVMStorageSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv
 		cr.Spec.VMStorage.Image.Repository = c.VMClusterDefault.VMStorageDefault.Image
 	}
 	if cr.Spec.VMStorage.Image.Tag == "" {
-		cr.Spec.VMStorage.Image.Tag = c.VMClusterDefault.VMStorageDefault.Version
+		if cr.Spec.ClusterVersion != "" {
+			cr.Spec.VMStorage.Image.Tag = cr.Spec.ClusterVersion
+		} else {
+			cr.Spec.VMStorage.Image.Tag = c.VMClusterDefault.VMStorageDefault.Version
+		}
 	}
 	if cr.Spec.VMStorage.VMInsertPort == "" {
 		cr.Spec.VMStorage.VMInsertPort = c.VMClusterDefault.VMStorageDefault.VMInsertPort

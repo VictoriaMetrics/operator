@@ -178,7 +178,7 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 	return reconcile.Result{}, nil
 }
 
-// newDeployForCR returns a busybox pod with the same name/namespace as the cr
+// newDeployForVMAgent builds vmagent deployment spec.
 func newDeployForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperatorConf, rwsBasicAuth map[string]BasicAuthCredentials, rwsTokens map[string]BearerToken) (*appsv1.Deployment, error) {
 	cr = cr.DeepCopy()
 
@@ -218,12 +218,12 @@ func newDeployForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOpera
 	if _, ok := cr.Spec.Resources.Requests[corev1.ResourceCPU]; ok {
 		cpuResourceIsSet = true
 	}
-	if !cpuResourceIsSet {
+	if !cpuResourceIsSet && c.VMAgentDefault.UseDefaultResources {
 		cr.Spec.Resources.Requests[corev1.ResourceCPU] = resource.MustParse(c.VMAgentDefault.Resource.Request.Cpu)
 		cr.Spec.Resources.Limits[corev1.ResourceCPU] = resource.MustParse(c.VMAgentDefault.Resource.Limit.Cpu)
 
 	}
-	if !memResourceIsSet {
+	if !memResourceIsSet && c.VMAgentDefault.UseDefaultResources {
 		cr.Spec.Resources.Requests[corev1.ResourceMemory] = resource.MustParse(c.VMAgentDefault.Resource.Request.Mem)
 		cr.Spec.Resources.Limits[corev1.ResourceMemory] = resource.MustParse(c.VMAgentDefault.Resource.Limit.Mem)
 	}
@@ -476,13 +476,11 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 
 	prometheusConfigReloaderResources := corev1.ResourceRequirements{
 		Limits: corev1.ResourceList{}, Requests: corev1.ResourceList{}}
-	if c.VMAgentDefault.ConfigReloaderCPU != "0" {
+	if c.VMAgentDefault.ConfigReloaderCPU != "0" && c.VMAgentDefault.UseDefaultResources {
 		prometheusConfigReloaderResources.Limits[corev1.ResourceCPU] = resource.MustParse(c.VMAgentDefault.ConfigReloaderCPU)
-		prometheusConfigReloaderResources.Requests[corev1.ResourceCPU] = resource.MustParse(c.VMAgentDefault.ConfigReloaderCPU)
 	}
-	if c.VMAgentDefault.ConfigReloaderMemory != "0" {
+	if c.VMAgentDefault.ConfigReloaderMemory != "0" && c.VMAgentDefault.UseDefaultResources {
 		prometheusConfigReloaderResources.Limits[corev1.ResourceMemory] = resource.MustParse(c.VMAgentDefault.ConfigReloaderMemory)
-		prometheusConfigReloaderResources.Requests[corev1.ResourceMemory] = resource.MustParse(c.VMAgentDefault.ConfigReloaderMemory)
 	}
 
 	sort.Strings(args)

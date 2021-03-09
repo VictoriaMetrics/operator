@@ -1,5 +1,5 @@
 # Auto Generated vars for package config 
-## updated at Tue Feb  9 12:04:22 UTC 2021 
+## updated at Tue Mar  9 04:17:06 UTC 2021 
 
 
 | varible name | variable default value | variable required | variable description |
@@ -8,6 +8,7 @@
 | VM_VMALERTDEFAULT_IMAGE | victoriametrics/vmalert | false | - |
 | VM_VMALERTDEFAULT_VERSION | v1.53.1 | false | - |
 | VM_VMALERTDEFAULT_PORT | 8080 | false | - |
+| VM_VMALERTDEFAULT_USEDEFAULTRESOURCES | true | false | - |
 | VM_VMALERTDEFAULT_RESOURCE_LIMIT_MEM | 500Mi | false | - |
 | VM_VMALERTDEFAULT_RESOURCE_LIMIT_CPU | 200m | false | - |
 | VM_VMALERTDEFAULT_RESOURCE_REQUEST_MEM | 200Mi | false | - |
@@ -19,6 +20,7 @@
 | VM_VMAGENTDEFAULT_VERSION | v1.53.1 | false | - |
 | VM_VMAGENTDEFAULT_CONFIGRELOADIMAGE | quay.io/coreos/prometheus-conf | false | - |
 | VM_VMAGENTDEFAULT_PORT | 8429 | false | - |
+| VM_VMAGENTDEFAULT_USEDEFAULTRESOURCES | true | false | - |
 | VM_VMAGENTDEFAULT_RESOURCE_LIMIT_MEM | 500Mi | false | - |
 | VM_VMAGENTDEFAULT_RESOURCE_LIMIT_CPU | 200m | false | - |
 | VM_VMAGENTDEFAULT_RESOURCE_REQUEST_MEM | 200Mi | false | - |
@@ -28,12 +30,14 @@
 | VM_VMSINGLEDEFAULT_IMAGE | victoriametrics/victoria-metri | false | - |
 | VM_VMSINGLEDEFAULT_VERSION | v1.53.1 | false | - |
 | VM_VMSINGLEDEFAULT_PORT | 8429 | false | - |
+| VM_VMSINGLEDEFAULT_USEDEFAULTRESOURCES | true | false | - |
 | VM_VMSINGLEDEFAULT_RESOURCE_LIMIT_MEM | 1500Mi | false | - |
 | VM_VMSINGLEDEFAULT_RESOURCE_LIMIT_CPU | 1200m | false | - |
 | VM_VMSINGLEDEFAULT_RESOURCE_REQUEST_MEM | 500Mi | false | - |
 | VM_VMSINGLEDEFAULT_RESOURCE_REQUEST_CPU | 150m | false | - |
 | VM_VMSINGLEDEFAULT_CONFIGRELOADERCPU | 100m | false | - |
 | VM_VMSINGLEDEFAULT_CONFIGRELOADERMEMORY | 25Mi | false | - |
+| VM_VMCLUSTERDEFAULT_USEDEFAULTRESOURCES | true | false | - |
 | VM_VMCLUSTERDEFAULT_VMSELECTDEFAULT_IMAGE | victoriametrics/vmselect | false | - |
 | VM_VMCLUSTERDEFAULT_VMSELECTDEFAULT_VERSION | v1.53.1-cluster | false | - |
 | VM_VMCLUSTERDEFAULT_VMSELECTDEFAULT_PORT | 8481 | false | - |
@@ -63,10 +67,16 @@
 | VM_VMALERTMANAGER_ALERTMANAGERDEFAULTBASEIMAGE | quay.io/prometheus/alertmanage | false | - |
 | VM_VMALERTMANAGER_ALERTMANAGERVERSION | v0.20.0 | false | - |
 | VM_VMALERTMANAGER_LOCALHOST | 127.0.0.1 | false | - |
+| VM_VMALERTMANAGER_USEDEFAULTRESOURCES | true | false | - |
+| VM_VMALERTMANAGER_RESOURCE_LIMIT_MEM | 256Mi | false | - |
+| VM_VMALERTMANAGER_RESOURCE_LIMIT_CPU | 100m | false | - |
+| VM_VMALERTMANAGER_RESOURCE_REQUEST_MEM | 56Mi | false | - |
+| VM_VMALERTMANAGER_RESOURCE_REQUEST_CPU | 30m | false | - |
 | VM_DISABLESELFSERVICESCRAPECREATION | false | false | - |
 | VM_VMBACKUP_IMAGE | victoriametrics/vmbackuper | false | - |
 | VM_VMBACKUP_VERSION | v1.0.0 | false | - |
 | VM_VMBACKUP_PORT | 8300 | false | - |
+| VM_VMBACKUP_USEDEFAULTRESOURCES | true | false | - |
 | VM_VMBACKUP_RESOURCE_LIMIT_MEM | 500Mi | false | - |
 | VM_VMBACKUP_RESOURCE_LIMIT_CPU | 500m | false | - |
 | VM_VMBACKUP_RESOURCE_REQUEST_MEM | 200Mi | false | - |

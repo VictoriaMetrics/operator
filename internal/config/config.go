@@ -19,10 +19,11 @@ const prefixVar = "VM"
 type BaseOperatorConf struct {
 	PSPAutoCreateEnabled bool `default:"true"`
 	VMAlertDefault       struct {
-		Image    string `default:"victoriametrics/vmalert"`
-		Version  string `default:"v1.53.1"`
-		Port     string `default:"8080"`
-		Resource struct {
+		Image               string `default:"victoriametrics/vmalert"`
+		Version             string `default:"v1.53.1"`
+		Port                string `default:"8080"`
+		UseDefaultResources bool   `default:"true"`
+		Resource            struct {
 			Limit struct {
 				Mem string `default:"500Mi"`
 				Cpu string `default:"200m"`
@@ -37,11 +38,12 @@ type BaseOperatorConf struct {
 		ConfigReloadImage    string `default:"jimmidyson/configmap-reload:v0.3.0"`
 	}
 	VMAgentDefault struct {
-		Image             string `default:"victoriametrics/vmagent"`
-		Version           string `default:"v1.53.1"`
-		ConfigReloadImage string `default:"quay.io/coreos/prometheus-config-reloader:v0.42.0"`
-		Port              string `default:"8429"`
-		Resource          struct {
+		Image               string `default:"victoriametrics/vmagent"`
+		Version             string `default:"v1.53.1"`
+		ConfigReloadImage   string `default:"quay.io/coreos/prometheus-config-reloader:v0.42.0"`
+		Port                string `default:"8429"`
+		UseDefaultResources bool   `default:"true"`
+		Resource            struct {
 			Limit struct {
 				Mem string `default:"500Mi"`
 				Cpu string `default:"200m"`
@@ -56,10 +58,11 @@ type BaseOperatorConf struct {
 	}
 
 	VMSingleDefault struct {
-		Image    string `default:"victoriametrics/victoria-metrics"`
-		Version  string `default:"v1.53.1"`
-		Port     string `default:"8429"`
-		Resource struct {
+		Image               string `default:"victoriametrics/victoria-metrics"`
+		Version             string `default:"v1.53.1"`
+		Port                string `default:"8429"`
+		UseDefaultResources bool   `default:"true"`
+		Resource            struct {
 			Limit struct {
 				Mem string `default:"1500Mi"`
 				Cpu string `default:"1200m"`
@@ -74,7 +77,8 @@ type BaseOperatorConf struct {
 	}
 
 	VMClusterDefault struct {
-		VMSelectDefault struct {
+		UseDefaultResources bool `default:"true"`
+		VMSelectDefault     struct {
 			Image    string `default:"victoriametrics/vmselect"`
 			Version  string `default:"v1.53.1-cluster"`
 			Port     string `default:"8481"`
@@ -130,14 +134,26 @@ type BaseOperatorConf struct {
 		AlertmanagerDefaultBaseImage string `default:"quay.io/prometheus/alertmanager"`
 		AlertManagerVersion          string `default:"v0.20.0"`
 		LocalHost                    string `default:"127.0.0.1"`
+		UseDefaultResources          bool   `default:"true"`
+		Resource                     struct {
+			Limit struct {
+				Mem string `default:"256Mi"`
+				Cpu string `default:"100m"`
+			}
+			Request struct {
+				Mem string `default:"56Mi"`
+				Cpu string `default:"30m"`
+			}
+		}
 	}
 
 	DisableSelfServiceScrapeCreation bool `default:"false"`
 	VMBackup                         struct {
-		Image    string `default:"victoriametrics/vmbackuper"`
-		Version  string `default:"v1.0.0"`
-		Port     string `default:"8300"`
-		Resource struct {
+		Image               string `default:"victoriametrics/vmbackuper"`
+		Version             string `default:"v1.0.0"`
+		Port                string `default:"8300"`
+		UseDefaultResources bool   `default:"true"`
+		Resource            struct {
 			Limit struct {
 				Mem string `default:"500Mi"`
 				Cpu string `default:"500m"`

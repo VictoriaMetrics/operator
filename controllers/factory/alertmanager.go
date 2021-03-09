@@ -474,11 +474,42 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, config *conf
 
 	amVolumeMounts = append(amVolumeMounts, cr.Spec.VolumeMounts...)
 
+	if cr.Spec.Resources.Requests == nil {
+		cr.Spec.Resources.Requests = v1.ResourceList{}
+	}
+	if cr.Spec.Resources.Limits == nil {
+		cr.Spec.Resources.Limits = v1.ResourceList{}
+	}
+
+	var cpuResourceIsSet bool
+	var memResourceIsSet bool
+
+	if _, ok := cr.Spec.Resources.Limits[v1.ResourceMemory]; ok {
+		memResourceIsSet = true
+	}
+	if _, ok := cr.Spec.Resources.Limits[v1.ResourceCPU]; ok {
+		cpuResourceIsSet = true
+	}
+	if _, ok := cr.Spec.Resources.Requests[v1.ResourceMemory]; ok {
+		memResourceIsSet = true
+	}
+	if _, ok := cr.Spec.Resources.Requests[v1.ResourceCPU]; ok {
+		cpuResourceIsSet = true
+	}
+	if !cpuResourceIsSet && config.VMAlertManager.UseDefaultResources {
+		cr.Spec.Resources.Requests[v1.ResourceCPU] = resource.MustParse(config.VMAlertManager.Resource.Request.Cpu)
+		cr.Spec.Resources.Limits[v1.ResourceCPU] = resource.MustParse(config.VMAlertManager.Resource.Limit.Cpu)
+	}
+	if !memResourceIsSet && config.VMAgentDefault.UseDefaultResources {
+		cr.Spec.Resources.Requests[v1.ResourceMemory] = resource.MustParse(config.VMAlertManager.Resource.Request.Mem)
+		cr.Spec.Resources.Limits[v1.ResourceMemory] = resource.MustParse(config.VMAlertManager.Resource.Limit.Mem)
+	}
+
 	resources := v1.ResourceRequirements{Limits: v1.ResourceList{}}
-	if config.VMAlertManager.ConfigReloaderCPU != "0" {
+	if config.VMAlertManager.ConfigReloaderCPU != "0" && config.VMAgentDefault.UseDefaultResources {
 		resources.Limits[v1.ResourceCPU] = resource.MustParse(config.VMAlertManager.ConfigReloaderCPU)
 	}
-	if config.VMAlertManager.ConfigReloaderMemory != "0" {
+	if config.VMAlertManager.ConfigReloaderMemory != "0" && config.VMAgentDefault.UseDefaultResources {
 		resources.Limits[v1.ResourceMemory] = resource.MustParse(config.VMAlertManager.ConfigReloaderMemory)
 	}
 

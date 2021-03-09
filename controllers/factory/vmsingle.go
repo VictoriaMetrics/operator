@@ -165,12 +165,12 @@ func newDeployForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOpe
 	if _, ok := cr.Spec.Resources.Requests[corev1.ResourceCPU]; ok {
 		cpuResourceIsSet = true
 	}
-	if !cpuResourceIsSet {
+	if !cpuResourceIsSet && c.VMSingleDefault.UseDefaultResources {
 		cr.Spec.Resources.Requests[corev1.ResourceCPU] = resource.MustParse(c.VMSingleDefault.Resource.Request.Cpu)
 		cr.Spec.Resources.Limits[corev1.ResourceCPU] = resource.MustParse(c.VMSingleDefault.Resource.Limit.Cpu)
 
 	}
-	if !memResourceIsSet {
+	if !memResourceIsSet && c.VMSingleDefault.UseDefaultResources {
 		cr.Spec.Resources.Requests[corev1.ResourceMemory] = resource.MustParse(c.VMSingleDefault.Resource.Request.Mem)
 		cr.Spec.Resources.Limits[corev1.ResourceMemory] = resource.MustParse(c.VMSingleDefault.Resource.Limit.Mem)
 	}
@@ -365,7 +365,7 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 		return nil, err
 	}
 
-	vmSignleSpec := &corev1.PodTemplateSpec{
+	vmSingleSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:      cr.PodLabels(),
 			Annotations: cr.PodAnnotations(),
@@ -389,7 +389,7 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 		},
 	}
 
-	return vmSignleSpec, nil
+	return vmSingleSpec, nil
 
 }
 
@@ -495,11 +495,11 @@ func makeSpecForVMBackuper(
 	if _, ok := cr.Resources.Requests[corev1.ResourceCPU]; ok {
 		cpuResourceIsSet = true
 	}
-	if !cpuResourceIsSet {
+	if !cpuResourceIsSet && c.VMBackup.UseDefaultResources {
 		cr.Resources.Requests[corev1.ResourceCPU] = resource.MustParse(c.VMBackup.Resource.Request.Cpu)
 		cr.Resources.Limits[corev1.ResourceCPU] = resource.MustParse(c.VMBackup.Resource.Limit.Cpu)
 	}
-	if !memResourceIsSet {
+	if !memResourceIsSet && c.VMBackup.UseDefaultResources {
 		cr.Resources.Requests[corev1.ResourceMemory] = resource.MustParse(c.VMBackup.Resource.Request.Mem)
 		cr.Resources.Limits[corev1.ResourceMemory] = resource.MustParse(c.VMBackup.Resource.Limit.Mem)
 	}

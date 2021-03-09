@@ -12,6 +12,7 @@ spec:
   staticScrapeSelector: {}
   staticScrapeNamespaceSelector: {}
   replicaCount: 1
+  serviceAccountName: vmagent
   resources:
     requests:
       cpu: "250m"

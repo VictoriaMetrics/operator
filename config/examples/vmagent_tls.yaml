@@ -70,7 +70,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: remote-tls
-  namespace: monitoring-system
+  namespace: default
 stringData:
   ca: |
     -----BEGIN CERTIFICATE-----

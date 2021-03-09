@@ -24,6 +24,8 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -82,12 +84,16 @@ func (r *VMAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	if err := handleFinalize(ctx, r.Client, instance); err != nil {
 		return ctrl.Result{}, err
 	}
-	if instance.DeletionTimestamp != nil {
+	if !instance.DeletionTimestamp.IsZero() {
 		return ctrl.Result{}, nil
 	}
 
+	extraRWs, err := buildExtraRemoteWrites(ctx, r.Client, instance, r.BaseConf)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
 	//create deploy
-	reconResult, err := factory.CreateOrUpdateVMAgent(ctx, instance, r, r.BaseConf)
+	reconResult, err := factory.CreateOrUpdateVMAgent(ctx, instance, r, r.BaseConf, extraRWs)
 	if err != nil {
 		reqLogger.Error(err, "cannot create or update vmagent deploy")
 		return reconResult, err
@@ -127,4 +133,58 @@ func (r *VMAgentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&v1.Service{}).
 		Owns(&v1.ServiceAccount{}).
 		Complete(r)
+}
+
+type AsRemoteWriteObject interface {
+	client.Object
+	AsRemoteWrite(string, string, bool) *victoriametricsv1beta1.VMAgentRemoteWriteSpec
+}
+
+func buildExtraRemoteWrites(ctx context.Context, rclient client.Client, cr *victoriametricsv1beta1.VMAgent, cf *config.BaseOperatorConf) ([]victoriametricsv1beta1.VMAgentRemoteWriteSpec, error) {
+	if cr.Spec.RemoteWriteSelector == nil {
+		return nil, nil
+	}
+	specSelector := cr.Spec.RemoteWriteSelector
+	var vmss victoriametricsv1beta1.VMSingleList
+	var vmcs victoriametricsv1beta1.VMClusterList
+	if err := rclient.List(ctx, &vmss); err != nil {
+		return nil, err
+	}
+	if err := rclient.List(ctx, &vmcs); err != nil {
+		return nil, err
+	}
+	var resp []victoriametricsv1beta1.VMAgentRemoteWriteSpec
+	f := func(cr AsRemoteWriteObject, defPort string) *victoriametricsv1beta1.VMAgentRemoteWriteSpec {
+		if !cr.GetDeletionTimestamp().IsZero() {
+			return nil
+		}
+		if specSelector.NamespaceSelector.Matches(cr.GetNamespace()) {
+			// todo for vmalert it must be changed.
+			return cr.AsRemoteWrite(cf.ClusterDomainName, defPort, true)
+		}
+		if specSelector.LabelsSelector == nil {
+			return nil
+		}
+		labelsSelector, err := v12.LabelSelectorAsSelector(specSelector.LabelsSelector)
+		if err != nil {
+			// todo handle error.
+			return nil
+		}
+		set := labels.Set(cr.GetLabels())
+		if labelsSelector.Matches(set) {
+			return cr.AsRemoteWrite(cf.ClusterDomainName, defPort, true)
+		}
+		return nil
+	}
+	for _, v := range vmcs.Items {
+		if rw := f(&v, cf.VMClusterDefault.VMInsertDefault.Port); rw != nil {
+			resp = append(resp, *rw)
+		}
+	}
+	for _, v := range vmss.Items {
+		if rw := f(&v, cf.VMSingleDefault.Port); rw != nil {
+			resp = append(resp, *rw)
+		}
+	}
+	return resp, nil
 }

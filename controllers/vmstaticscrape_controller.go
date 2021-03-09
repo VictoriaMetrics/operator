@@ -69,8 +69,12 @@ func (r *VMStaticScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			continue
 		}
 		reqLogger.Info("reconciling staticscrapes for vmagent")
+		extraRWs, err := buildExtraRemoteWrites(ctx, r.Client, currentVMagent, r.BaseConf)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
 
-		recon, err := factory.CreateOrUpdateVMAgent(ctx, currentVMagent, r, r.BaseConf)
+		recon, err := factory.CreateOrUpdateVMAgent(ctx, currentVMagent, r, r.BaseConf, extraRWs)
 		if err != nil {
 			reqLogger.Error(err, "cannot create or update vmagent instance")
 			return recon, err

@@ -85,7 +85,12 @@ func (r *VMPodScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		}
 		reqLogger = reqLogger.WithValues("vmagent", vmagent.Name)
 		reqLogger.Info("reconciling podscrape for vmagent")
-		recon, err := factory.CreateOrUpdateVMAgent(ctx, currentVMagent, r, r.BaseConf)
+		extraRWs, err := buildExtraRemoteWrites(ctx, r.Client, currentVMagent, r.BaseConf)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		recon, err := factory.CreateOrUpdateVMAgent(ctx, currentVMagent, r, r.BaseConf, extraRWs)
 		if err != nil {
 			reqLogger.Error(err, "cannot create or update vmagent")
 			return recon, err

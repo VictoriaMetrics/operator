@@ -296,6 +296,17 @@ func (cr VMSingle) GetNSName() string {
 	return cr.GetNamespace()
 }
 
+// AsRemoteWrite builds proper remote write config
+func (cr *VMSingle) AsRemoteWrite(domain, defPort string, addSuffix bool) *VMAgentRemoteWriteSpec {
+	var rws VMAgentRemoteWriteSpec
+	if cr.Spec.Port != "" {
+		defPort = cr.Spec.Port
+	}
+	rws.URL = fmt.Sprintf("http://%s.%s.svc.%s:%s/", cr.PrefixedName(), cr.Namespace, domain, defPort)
+	buildPathWithPrefixFlag(cr.Spec.ExtraArgs, "/api/v1/write")
+	return &rws
+}
+
 func init() {
 	SchemeBuilder.Register(&VMSingle{}, &VMSingleList{})
 }

@@ -82,7 +82,12 @@ func (r *VMProbeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			continue
 		}
 		reqLogger.Info("reconciling probe for vmagent")
-		recon, err := factory.CreateOrUpdateVMAgent(ctx, currentVMagent, r, r.BaseConf)
+		extraRWs, err := buildExtraRemoteWrites(ctx, r.Client, currentVMagent, r.BaseConf)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		recon, err := factory.CreateOrUpdateVMAgent(ctx, currentVMagent, r, r.BaseConf, extraRWs)
 		if err != nil {
 			reqLogger.Error(err, "cannot create or update vmagent")
 			return recon, err

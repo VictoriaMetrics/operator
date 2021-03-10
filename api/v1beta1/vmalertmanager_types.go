@@ -197,6 +197,9 @@ type VMAlertmanagerSpec struct {
 	// This defaults to web
 	// +optional
 	PortName string `json:"portName,omitempty"`
+	// ServiceSpec that will be added to vmalertmanager service spec
+	// +optional
+	ServiceSpec *ServiceSpec `json:"serviceSpec,omitempty"`
 }
 
 // VMAlertmanagerList is a list of Alertmanagers.

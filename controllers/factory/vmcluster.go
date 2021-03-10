@@ -118,7 +118,7 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient
 			reason = v1beta1.SelectCreationFailed
 			return status, err
 		}
-		//create vmselect service
+		// create vmselect service
 		selectSvc, err := CreateOrUpdateVMSelectService(ctx, cr, rclient, c)
 		if err != nil {
 			reason = "failed to create vmSelect service"
@@ -227,6 +227,16 @@ func createOrUpdateVMSelect(ctx context.Context, cr *v1beta1.VMCluster, rclient 
 }
 
 func CreateOrUpdateVMSelectService(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) (*corev1.Service, error) {
+	if _, err := createOrUpdateVMSelectService(ctx, cr, rclient, c); err != nil {
+		return nil, err
+	}
+	svc, err := createOrUpdateVMSelectHeadlessService(ctx, cr, rclient, c)
+	if err != nil {
+		return nil, err
+	}
+	return svc, nil
+}
+func createOrUpdateVMSelectService(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) (*corev1.Service, error) {
 	l := log.WithValues("controller", "vmselect.service.crud")
 	newService := genVMSelectService(cr, c)
 
@@ -250,6 +260,38 @@ func CreateOrUpdateVMSelectService(ctx context.Context, cr *v1beta1.VMCluster, r
 		newService.ResourceVersion = currentService.ResourceVersion
 	}
 	newService.Finalizers = v1beta1.MergeFinalizers(currentService, v1beta1.FinalizerName)
+	err = rclient.Update(ctx, newService)
+	if err != nil {
+		return nil, fmt.Errorf("cannot update vmselect service: %w", err)
+	}
+	l.Info("vmselect svc reconciled")
+	return newService, nil
+}
+
+func createOrUpdateVMSelectHeadlessService(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) (*corev1.Service, error) {
+	l := log.WithValues("controller", "vmselect.headlessservice.crud")
+	newService := genVMSelectHeadlessService(cr, c)
+
+	currentService := &corev1.Service{}
+	err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: newService.Name}, currentService)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			l.Info("creating new service for vmselect")
+			err := rclient.Create(ctx, newService)
+			if err != nil {
+				return nil, fmt.Errorf("cannot create new service for vmselect")
+			}
+		} else {
+			return nil, fmt.Errorf("cannot get vmselect service: %w", err)
+		}
+	}
+	newService.Annotations = labels.Merge(newService.Annotations, currentService.Annotations)
+	if currentService.Spec.ClusterIP != "" {
+		newService.Spec.ClusterIP = currentService.Spec.ClusterIP
+	}
+	if currentService.ResourceVersion != "" {
+		newService.ResourceVersion = currentService.ResourceVersion
+	}
 	err = rclient.Update(ctx, newService)
 	if err != nil {
 		return nil, fmt.Errorf("cannot update vmselect service: %w", err)
@@ -676,7 +718,7 @@ func makePodSpecForVMSelect(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 	return vmSelectPodSpec, nil
 }
 
-func genVMSelectService(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) *corev1.Service {
+func genVMSelectHeadlessService(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) *corev1.Service {
 	cr = cr.DeepCopy()
 	if cr.Spec.VMSelect.Port == "" {
 		cr.Spec.VMSelect.Port = c.VMClusterDefault.VMSelectDefault.Port
@@ -704,6 +746,56 @@ func genVMSelectService(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) *core
 			},
 		},
 	}
+}
+
+func defualtVMSelectService(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) *corev1.Service {
+	return &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            cr.Spec.VMSelect.GetNameWithPrefix(cr.Name),
+			Namespace:       cr.Namespace,
+			Labels:          cr.FinalLabels(cr.VMSelectSelectorLabels()),
+			Annotations:     cr.Annotations(),
+			OwnerReferences: cr.AsOwner(),
+		},
+		Spec: corev1.ServiceSpec{
+			Type:     corev1.ServiceTypeClusterIP,
+			Selector: cr.VMSelectSelectorLabels(),
+			Ports: []corev1.ServicePort{
+				{
+					Name:       "http",
+					Protocol:   "TCP",
+					Port:       intstr.Parse(c.VMClusterDefault.VMSelectDefault.Port).IntVal,
+					TargetPort: intstr.Parse(c.VMClusterDefault.VMSelectDefault.Port),
+				},
+			},
+		},
+	}
+}
+
+func genVMSelectService(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) *corev1.Service {
+	cr = cr.DeepCopy()
+	svc := defualtVMSelectService(cr, c)
+	if cr.Spec.VMSelect.ServiceSpec != nil {
+		svc = &corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            cr.Spec.VMSelect.ServiceSpec.Name,
+				Namespace:       cr.Namespace,
+				Labels:          cr.Spec.VMSelect.ServiceSpec.Labels,
+				Annotations:     cr.Spec.VMSelect.ServiceSpec.Annotations,
+				OwnerReferences: cr.AsOwner(),
+			},
+			Spec: cr.Spec.VMSelect.ServiceSpec.Spec,
+		}
+	}
+	if cr.Spec.VMSelect.Port != "" {
+		svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{
+			Protocol:   "TCP",
+			Port:       intstr.Parse(cr.Spec.VMSelect.Port).IntVal,
+			TargetPort: intstr.Parse(cr.Spec.VMSelect.Port),
+		})
+	}
+	setServiceDefaultField(svc, defualtVMSelectService(cr, c))
+	return svc
 }
 
 func genVMInsertSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv1.Deployment, error) {
@@ -919,12 +1011,9 @@ func makePodSpecForVMInsert(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 	return vmInsertPodSpec, nil
 
 }
-func genVMInsertService(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) *corev1.Service {
-	cr = cr.DeepCopy()
-	if cr.Spec.VMInsert.Port == "" {
-		cr.Spec.VMInsert.Port = c.VMClusterDefault.VMInsertDefault.Port
-	}
-	svc := &corev1.Service{
+
+func defaultVMInsertService(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) *corev1.Service {
+	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.Spec.VMInsert.GetNameWithPrefix(cr.Name),
 			Namespace:       cr.Namespace,
@@ -940,12 +1029,37 @@ func genVMInsertService(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) *core
 				{
 					Name:       "http",
 					Protocol:   "TCP",
-					Port:       intstr.Parse(cr.Spec.VMInsert.Port).IntVal,
-					TargetPort: intstr.Parse(cr.Spec.VMInsert.Port),
+					Port:       intstr.Parse(c.VMClusterDefault.VMInsertDefault.Port).IntVal,
+					TargetPort: intstr.Parse(c.VMClusterDefault.VMInsertDefault.Port),
 				},
 			},
 		},
 	}
+}
+func genVMInsertService(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) *corev1.Service {
+	cr = cr.DeepCopy()
+	svc := defaultVMInsertService(cr, c)
+	if cr.Spec.VMInsert.ServiceSpec != nil {
+		svc = &corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            cr.Spec.VMInsert.ServiceSpec.Name,
+				Namespace:       cr.Namespace,
+				Labels:          cr.Spec.VMInsert.ServiceSpec.Labels,
+				Annotations:     cr.Spec.VMInsert.ServiceSpec.Annotations,
+				OwnerReferences: cr.AsOwner(),
+			},
+			Spec: cr.Spec.VMInsert.ServiceSpec.Spec,
+		}
+	}
+	if cr.Spec.VMInsert.Port == "" {
+		svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{
+			Protocol:   "TCP",
+			Port:       intstr.Parse(cr.Spec.VMInsert.Port).IntVal,
+			TargetPort: intstr.Parse(cr.Spec.VMInsert.Port),
+		},
+		)
+	}
+	setServiceDefaultField(svc, defaultVMInsertService(cr, c))
 	buildAdditionalServicePorts(cr.Spec.VMInsert.InsertPorts, svc)
 	return svc
 }
@@ -1442,4 +1556,8 @@ func waitForPodReady(ctx context.Context, rclient client.Client, ns, podName str
 		}
 		return false, nil
 	})
+}
+
+func setExternalSuffix(name string) string {
+	return fmt.Sprintf("%s-web", name)
 }

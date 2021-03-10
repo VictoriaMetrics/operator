@@ -67,17 +67,12 @@ func CreateOrUpdateVMAgentService(ctx context.Context, cr *victoriametricsv1beta
 		l.Error(err, "cannot update vmagent service")
 		return nil, err
 	}
-
 	l.Info("vmagent service reconciled")
 	return newService, nil
 }
 
-func newServiceVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperatorConf) *corev1.Service {
-	cr = cr.DeepCopy()
-	if cr.Spec.Port == "" {
-		cr.Spec.Port = c.VMAgentDefault.Port
-	}
-	svc := &corev1.Service{
+func defaultVMagentService(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperatorConf) *corev1.Service {
+	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),
 			Namespace:       cr.Namespace,
@@ -93,14 +88,57 @@ func newServiceVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperato
 				{
 					Name:       "http",
 					Protocol:   "TCP",
-					Port:       intstr.Parse(cr.Spec.Port).IntVal,
-					TargetPort: intstr.Parse(cr.Spec.Port),
+					Port:       intstr.Parse(c.VMAgentDefault.Port).IntVal,
+					TargetPort: intstr.Parse(c.VMAgentDefault.Port),
 				},
 			},
 		},
 	}
+}
+
+func newServiceVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperatorConf) *corev1.Service {
+	cr = cr.DeepCopy()
+	svc := defaultVMagentService(cr, c)
+	if cr.Spec.ServiceSpec != nil {
+		svc = &corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            cr.Spec.ServiceSpec.Name,
+				Namespace:       cr.Namespace,
+				Labels:          cr.Spec.ServiceSpec.Labels,
+				Annotations:     cr.Spec.ServiceSpec.Annotations,
+				OwnerReferences: cr.AsOwner(),
+			},
+			Spec: cr.Spec.ServiceSpec.Spec,
+		}
+	}
+	if cr.Spec.Port != "" {
+		svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{
+			Protocol:   "TCP",
+			Port:       intstr.Parse(cr.Spec.Port).IntVal,
+			TargetPort: intstr.Parse(cr.Spec.Port),
+		})
+	}
+	setServiceDefaultField(svc, defaultVMagentService(cr, c))
 	buildAdditionalServicePorts(cr.Spec.InsertPorts, svc)
 	return svc
+}
+
+// if some field of current service is not define, replace by default service
+func setServiceDefaultField(cur, def *corev1.Service) {
+	cur.Labels = labels.Merge(cur.Labels, def.Labels)
+	cur.Annotations = labels.Merge(cur.Annotations, def.Annotations)
+	if cur.Name == "" {
+		cur.Name = def.Name
+	}
+	if cur.Spec.Type == "" {
+		cur.Spec.Type = def.Spec.Type
+	}
+	if cur.Spec.Selector == nil {
+		cur.Spec.Selector = def.Spec.Selector
+	}
+	if cur.Spec.Ports == nil {
+		cur.Spec.Ports = def.Spec.Ports
+	}
 }
 
 //we assume, that configmaps were created before this function was called

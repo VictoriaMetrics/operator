@@ -228,6 +228,9 @@ type VMSelect struct {
 	//https://kubernetes.io/docs/concepts/containers/runtime-class/
 	// +optional
 	RuntimeClassName *string `json:"runtimeClassName,omitempty"`
+	// ServiceSpec that will be added to vmselect service spec
+	// +optional
+	ServiceSpec *ServiceSpec `json:"serviceSpec,omitempty"`
 }
 
 func (s VMSelect) GetNameWithPrefix(clusterName string) string {
@@ -368,6 +371,10 @@ type VMInsert struct {
 	// ExtraEnvs that will be added to VMSelect pod
 	// +optional
 	ExtraEnvs []v1.EnvVar `json:"extraEnvs,omitempty"`
+
+	// ServiceSpec that will be added to vminsert service spec
+	// +optional
+	ServiceSpec *ServiceSpec `json:"serviceSpec,omitempty"`
 }
 
 func (i VMInsert) GetNameWithPrefix(clusterName string) string {

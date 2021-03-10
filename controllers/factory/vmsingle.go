@@ -388,12 +388,8 @@ func CreateOrUpdateVMSingleService(ctx context.Context, cr *victoriametricsv1bet
 	return newService, nil
 }
 
-func newServiceVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOperatorConf) *corev1.Service {
-	cr = cr.DeepCopy()
-	if cr.Spec.Port == "" {
-		cr.Spec.Port = c.VMSingleDefault.Port
-	}
-	svc := &corev1.Service{
+func defaultVMSingleService(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOperatorConf) *corev1.Service {
+	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),
 			Namespace:       cr.Namespace,
@@ -409,12 +405,40 @@ func newServiceVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOpera
 				{
 					Name:       "http",
 					Protocol:   "TCP",
-					Port:       intstr.Parse(cr.Spec.Port).IntVal,
-					TargetPort: intstr.Parse(cr.Spec.Port),
+					Port:       intstr.Parse(c.VMSingleDefault.Port).IntVal,
+					TargetPort: intstr.Parse(c.VMSingleDefault.Port),
 				},
 			},
 		},
 	}
+
+}
+
+func newServiceVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOperatorConf) *corev1.Service {
+	cr = cr.DeepCopy()
+	svc := defaultVMSingleService(cr, c)
+	if cr.Spec.ServiceSpec != nil {
+		svc = &corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            cr.Spec.ServiceSpec.Name,
+				Namespace:       cr.Namespace,
+				Labels:          cr.Spec.ServiceSpec.Labels,
+				Annotations:     cr.Spec.ServiceSpec.Annotations,
+				OwnerReferences: cr.AsOwner(),
+				Finalizers:      []string{victoriametricsv1beta1.FinalizerName},
+			},
+			Spec: cr.Spec.ServiceSpec.Spec,
+		}
+	}
+	if cr.Spec.Port != "" {
+		svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{
+			Name:       "http",
+			Protocol:   "TCP",
+			Port:       intstr.Parse(cr.Spec.Port).IntVal,
+			TargetPort: intstr.Parse(cr.Spec.Port),
+		})
+	}
+	setServiceDefaultField(svc, defaultVMSingleService(cr, c))
 	buildAdditionalServicePorts(cr.Spec.InsertPorts, svc)
 	return svc
 }

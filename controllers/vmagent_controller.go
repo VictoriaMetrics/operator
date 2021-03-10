@@ -130,7 +130,6 @@ func (r *VMAgentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&appsv1.Deployment{}).
 		Owns(&victoriametricsv1beta1.VMServiceScrape{}).
 		Owns(&v1.Secret{}).
-		Owns(&v1.Service{}).
 		Owns(&v1.ServiceAccount{}).
 		Complete(r)
 }

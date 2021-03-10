@@ -139,6 +139,7 @@ VMAlertmanagerSpec is a specification of the desired behavior of the VMAlertmana
 | additionalPeers | AdditionalPeers allows injecting a set of additional Alertmanagers to peer with to form a highly available cluster. | []string | false |
 | clusterAdvertiseAddress | ClusterAdvertiseAddress is the explicit address to advertise in cluster. Needs to be provided for non RFC1918 [1] (public) addresses. [1] RFC1918: https://tools.ietf.org/html/rfc1918 | string | false |
 | portName | PortName used for the pods and governing service. This defaults to web | string | false |
+| serviceSpec | ServiceSpec that will be added to vmalertmanager service spec | v1.ServiceSpec | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -268,6 +269,7 @@ VMAgentSpec defines the desired state of VMAgent
 | port | Port listen address | string | false |
 | extraArgs | ExtraArgs that will be passed to  VMAgent pod for example remoteWrite.tmpDataPath: /tmp it would be converted to flag --remoteWrite.tmpDataPath=/tmp | map[string]string | false |
 | extraEnvs | ExtraEnvs that will be added to VMAgent pod | [][v1.EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#envvar-v1-core) | false |
+| serviceSpec | ServiceSpec that will be added to vmagent service spec | v1.ServiceSpec | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -451,6 +453,7 @@ VMAlertSpec defines the desired state of VMAlert
 | extraArgs | ExtraArgs that will be passed to  VMAlert pod for example -remoteWrite.tmpDataPath=/tmp | map[string]string | false |
 | extraEnvs | ExtraEnvs that will be added to VMAlert pod | [][v1.EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#envvar-v1-core) | false |
 | externalLabels | ExternalLabels in the form &#39;name: value&#39; to add to all generated recording rules and alerts. | map[string]string | false |
+| serviceSpec | ServiceSpec that will be added to vmalert service spec | v1.ServiceSpec | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -529,6 +532,7 @@ VMSingleSpec defines the desired state of VMSingle
 | vmBackup | VMBackup configuration for backup | *[VMBackup](#vmbackup) | false |
 | extraArgs | ExtraArgs that will be passed to  VMSingle pod for example remoteWrite.tmpDataPath: /tmp | map[string]string | false |
 | extraEnvs | ExtraEnvs that will be added to VMSingle pod | [][v1.EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#envvar-v1-core) | false |
+| serviceSpec | ServiceSpec that will be added to vmsingle service spec | v1.ServiceSpec | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -987,6 +991,7 @@ VMClusterStatus defines the observed state of VMCluster
 | schedulerName | SchedulerName - defines kubernetes scheduler name | string | false |
 | runtimeClassName | RuntimeClassName - defines runtime class for kubernetes pod. https://kubernetes.io/docs/concepts/containers/runtime-class/ | *string | false |
 | extraEnvs | ExtraEnvs that will be added to VMSelect pod | [][v1.EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#envvar-v1-core) | false |
+| serviceSpec | ServiceSpec that will be added to vminsert service spec | v1.ServiceSpec | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -1023,6 +1028,7 @@ VMClusterStatus defines the observed state of VMCluster
 | port | Port listen port | string | false |
 | schedulerName | SchedulerName - defines kubernetes scheduler name | string | false |
 | runtimeClassName | RuntimeClassName - defines runtime class for kubernetes pod. https://kubernetes.io/docs/concepts/containers/runtime-class/ | *string | false |
+| serviceSpec | ServiceSpec that will be added to vmselect service spec | v1.ServiceSpec | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -1063,6 +1069,7 @@ VMClusterStatus defines the observed state of VMCluster
 | vmBackup | VMBackup configuration for backup | *[VMBackup](#vmbackup) | false |
 | extraArgs |  | map[string]string | false |
 | extraEnvs | ExtraEnvs that will be added to VMSelect pod | [][v1.EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#envvar-v1-core) | false |
+| serviceSpec | ServiceSpec that will be added to vmstorage service spec | v1.ServiceSpec | false |
 
 [Back to TOC](#table-of-contents)
 

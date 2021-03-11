@@ -161,38 +161,6 @@ func newDeployForVMAlert(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOpera
 		cr.Spec.Image.PullPolicy = corev1.PullIfNotPresent
 	}
 
-	if cr.Spec.Resources.Requests == nil {
-		cr.Spec.Resources.Requests = corev1.ResourceList{}
-	}
-	if cr.Spec.Resources.Limits == nil {
-		cr.Spec.Resources.Limits = corev1.ResourceList{}
-
-	}
-	var cpuResourceIsSet bool
-	var memResourceIsSet bool
-
-	if _, ok := cr.Spec.Resources.Limits[corev1.ResourceMemory]; ok {
-		memResourceIsSet = true
-	}
-	if _, ok := cr.Spec.Resources.Limits[corev1.ResourceCPU]; ok {
-		cpuResourceIsSet = true
-	}
-	if _, ok := cr.Spec.Resources.Requests[corev1.ResourceMemory]; ok {
-		memResourceIsSet = true
-	}
-	if _, ok := cr.Spec.Resources.Requests[corev1.ResourceCPU]; ok {
-		cpuResourceIsSet = true
-	}
-	if !cpuResourceIsSet && c.VMAgentDefault.UseDefaultResources {
-		cr.Spec.Resources.Requests[corev1.ResourceCPU] = resource.MustParse(c.VMAlertDefault.Resource.Request.Cpu)
-		cr.Spec.Resources.Limits[corev1.ResourceCPU] = resource.MustParse(c.VMAlertDefault.Resource.Limit.Cpu)
-
-	}
-	if !memResourceIsSet && c.VMAgentDefault.UseDefaultResources {
-		cr.Spec.Resources.Requests[corev1.ResourceMemory] = resource.MustParse(c.VMAlertDefault.Resource.Request.Mem)
-		cr.Spec.Resources.Limits[corev1.ResourceMemory] = resource.MustParse(c.VMAlertDefault.Resource.Limit.Mem)
-	}
-
 	if cr.Spec.Port == "" {
 		cr.Spec.Port = c.VMAlertDefault.Port
 	}
@@ -517,7 +485,7 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 			VolumeMounts:             volumeMounts,
 			LivenessProbe:            livenessProbe,
 			ReadinessProbe:           readinessProbe,
-			Resources:                cr.Spec.Resources,
+			Resources:                buildResources(cr.Spec.Resources, config.Resource(c.VMAlertDefault.Resource), c.VMAlertDefault.UseDefaultResources),
 			Env:                      envs,
 			TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 		}, {

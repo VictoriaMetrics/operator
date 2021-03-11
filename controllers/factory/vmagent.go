@@ -196,37 +196,6 @@ func newDeployForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOpera
 	if cr.Spec.Port == "" {
 		cr.Spec.Port = c.VMAgentDefault.Port
 	}
-	if cr.Spec.Resources.Requests == nil {
-		cr.Spec.Resources.Requests = corev1.ResourceList{}
-	}
-	if cr.Spec.Resources.Limits == nil {
-		cr.Spec.Resources.Limits = corev1.ResourceList{}
-	}
-
-	var cpuResourceIsSet bool
-	var memResourceIsSet bool
-
-	if _, ok := cr.Spec.Resources.Limits[corev1.ResourceMemory]; ok {
-		memResourceIsSet = true
-	}
-	if _, ok := cr.Spec.Resources.Limits[corev1.ResourceCPU]; ok {
-		cpuResourceIsSet = true
-	}
-	if _, ok := cr.Spec.Resources.Requests[corev1.ResourceMemory]; ok {
-		memResourceIsSet = true
-	}
-	if _, ok := cr.Spec.Resources.Requests[corev1.ResourceCPU]; ok {
-		cpuResourceIsSet = true
-	}
-	if !cpuResourceIsSet && c.VMAgentDefault.UseDefaultResources {
-		cr.Spec.Resources.Requests[corev1.ResourceCPU] = resource.MustParse(c.VMAgentDefault.Resource.Request.Cpu)
-		cr.Spec.Resources.Limits[corev1.ResourceCPU] = resource.MustParse(c.VMAgentDefault.Resource.Limit.Cpu)
-
-	}
-	if !memResourceIsSet && c.VMAgentDefault.UseDefaultResources {
-		cr.Spec.Resources.Requests[corev1.ResourceMemory] = resource.MustParse(c.VMAgentDefault.Resource.Request.Mem)
-		cr.Spec.Resources.Limits[corev1.ResourceMemory] = resource.MustParse(c.VMAgentDefault.Resource.Limit.Mem)
-	}
 
 	podSpec, err := makeSpecForVMAgent(cr, c, rwsBasicAuth, rwsTokens)
 	if err != nil {
@@ -444,6 +413,8 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 		})
 	}
 
+	specRes := buildResources(cr.Spec.Resources, config.Resource(c.VMAgentDefault.Resource), c.VMAgentDefault.UseDefaultResources)
+
 	livenessProbeHandler := corev1.Handler{
 		HTTPGet: &corev1.HTTPGetAction{
 			Port:   intstr.Parse(cr.Spec.Port),
@@ -512,7 +483,7 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 			VolumeMounts:             agentVolumeMounts,
 			LivenessProbe:            livenessProbe,
 			ReadinessProbe:           readinessProbe,
-			Resources:                cr.Spec.Resources,
+			Resources:                specRes,
 			TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 		},
 	}, additionalContainers...)

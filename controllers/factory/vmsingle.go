@@ -13,7 +13,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
@@ -141,38 +140,6 @@ func newDeployForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOpe
 	}
 	if cr.Spec.Image.PullPolicy == "" {
 		cr.Spec.Image.PullPolicy = corev1.PullIfNotPresent
-	}
-
-	if cr.Spec.Resources.Requests == nil {
-		cr.Spec.Resources.Requests = corev1.ResourceList{}
-	}
-	if cr.Spec.Resources.Limits == nil {
-		cr.Spec.Resources.Limits = corev1.ResourceList{}
-	}
-
-	var cpuResourceIsSet bool
-	var memResourceIsSet bool
-
-	if _, ok := cr.Spec.Resources.Limits[corev1.ResourceMemory]; ok {
-		memResourceIsSet = true
-	}
-	if _, ok := cr.Spec.Resources.Limits[corev1.ResourceCPU]; ok {
-		cpuResourceIsSet = true
-	}
-	if _, ok := cr.Spec.Resources.Requests[corev1.ResourceMemory]; ok {
-		memResourceIsSet = true
-	}
-	if _, ok := cr.Spec.Resources.Requests[corev1.ResourceCPU]; ok {
-		cpuResourceIsSet = true
-	}
-	if !cpuResourceIsSet && c.VMSingleDefault.UseDefaultResources {
-		cr.Spec.Resources.Requests[corev1.ResourceCPU] = resource.MustParse(c.VMSingleDefault.Resource.Request.Cpu)
-		cr.Spec.Resources.Limits[corev1.ResourceCPU] = resource.MustParse(c.VMSingleDefault.Resource.Limit.Cpu)
-
-	}
-	if !memResourceIsSet && c.VMSingleDefault.UseDefaultResources {
-		cr.Spec.Resources.Requests[corev1.ResourceMemory] = resource.MustParse(c.VMSingleDefault.Resource.Request.Mem)
-		cr.Spec.Resources.Limits[corev1.ResourceMemory] = resource.MustParse(c.VMSingleDefault.Resource.Limit.Mem)
 	}
 	podSpec, err := makeSpecForVMSingle(cr, c)
 	if err != nil {
@@ -345,7 +312,7 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 			VolumeMounts:             vmMounts,
 			LivenessProbe:            livenessProbe,
 			ReadinessProbe:           readinessProbe,
-			Resources:                cr.Spec.Resources,
+			Resources:                buildResources(cr.Spec.Resources, config.Resource(c.VMSingleDefault.Resource), c.VMSingleDefault.UseDefaultResources),
 			Env:                      envs,
 			TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 			ImagePullPolicy:          cr.Spec.Image.PullPolicy,
@@ -474,35 +441,6 @@ func makeSpecForVMBackuper(
 	if cr.Port == "" {
 		cr.Port = c.VMBackup.Port
 	}
-	if cr.Resources.Requests == nil {
-		cr.Resources.Requests = corev1.ResourceList{}
-	}
-	if cr.Resources.Limits == nil {
-		cr.Resources.Limits = corev1.ResourceList{}
-	}
-	var cpuResourceIsSet bool
-	var memResourceIsSet bool
-
-	if _, ok := cr.Resources.Limits[corev1.ResourceMemory]; ok {
-		memResourceIsSet = true
-	}
-	if _, ok := cr.Resources.Limits[corev1.ResourceCPU]; ok {
-		cpuResourceIsSet = true
-	}
-	if _, ok := cr.Resources.Requests[corev1.ResourceMemory]; ok {
-		memResourceIsSet = true
-	}
-	if _, ok := cr.Resources.Requests[corev1.ResourceCPU]; ok {
-		cpuResourceIsSet = true
-	}
-	if !cpuResourceIsSet && c.VMBackup.UseDefaultResources {
-		cr.Resources.Requests[corev1.ResourceCPU] = resource.MustParse(c.VMBackup.Resource.Request.Cpu)
-		cr.Resources.Limits[corev1.ResourceCPU] = resource.MustParse(c.VMBackup.Resource.Limit.Cpu)
-	}
-	if !memResourceIsSet && c.VMBackup.UseDefaultResources {
-		cr.Resources.Requests[corev1.ResourceMemory] = resource.MustParse(c.VMBackup.Resource.Request.Mem)
-		cr.Resources.Limits[corev1.ResourceMemory] = resource.MustParse(c.VMBackup.Resource.Limit.Mem)
-	}
 
 	args := []string{
 		fmt.Sprintf("-storageDataPath=%s", vmSingleDataDir),
@@ -583,7 +521,7 @@ func makeSpecForVMBackuper(
 		VolumeMounts:             mounts,
 		LivenessProbe:            livenessProbe,
 		ReadinessProbe:           readinessProbe,
-		Resources:                cr.Resources,
+		Resources:                buildResources(cr.Resources, config.Resource(c.VMBackup.Resource), c.VMBackup.UseDefaultResources),
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 	}
 	return vmBackuper, nil

@@ -262,7 +262,7 @@ func newAlertManagerService(cr *victoriametricsv1beta1.VMAlertmanager, c *config
 	return svc
 }
 
-func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, config *config.BaseOperatorConf) (*appsv1.StatefulSetSpec, error) {
+func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, c *config.BaseOperatorConf) (*appsv1.StatefulSetSpec, error) {
 
 	cr = cr.DeepCopy()
 
@@ -305,7 +305,7 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, config *conf
 
 	localReloadURL := &url.URL{
 		Scheme: "http",
-		Host:   config.VMAlertManager.LocalHost + ":9093",
+		Host:   c.VMAlertManager.LocalHost + ":9093",
 		Path:   path.Clean(webRoutePrefix + "/-/reload"),
 	}
 
@@ -342,8 +342,8 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, config *conf
 	}
 
 	var clusterPeerDomain string
-	if config.ClusterDomainName != "" {
-		clusterPeerDomain = fmt.Sprintf("%s.%s.svc.%s.", cr.PrefixedName(), cr.Namespace, config.ClusterDomainName)
+	if c.ClusterDomainName != "" {
+		clusterPeerDomain = fmt.Sprintf("%s.%s.svc.%s.", cr.PrefixedName(), cr.Namespace, c.ClusterDomainName)
 	} else {
 		// The default DNS search path is .svc.<cluster domain>
 		clusterPeerDomain = cr.PrefixedName()
@@ -474,43 +474,12 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, config *conf
 
 	amVolumeMounts = append(amVolumeMounts, cr.Spec.VolumeMounts...)
 
-	if cr.Spec.Resources.Requests == nil {
-		cr.Spec.Resources.Requests = v1.ResourceList{}
-	}
-	if cr.Spec.Resources.Limits == nil {
-		cr.Spec.Resources.Limits = v1.ResourceList{}
-	}
-
-	var cpuResourceIsSet bool
-	var memResourceIsSet bool
-
-	if _, ok := cr.Spec.Resources.Limits[v1.ResourceMemory]; ok {
-		memResourceIsSet = true
-	}
-	if _, ok := cr.Spec.Resources.Limits[v1.ResourceCPU]; ok {
-		cpuResourceIsSet = true
-	}
-	if _, ok := cr.Spec.Resources.Requests[v1.ResourceMemory]; ok {
-		memResourceIsSet = true
-	}
-	if _, ok := cr.Spec.Resources.Requests[v1.ResourceCPU]; ok {
-		cpuResourceIsSet = true
-	}
-	if !cpuResourceIsSet && config.VMAlertManager.UseDefaultResources {
-		cr.Spec.Resources.Requests[v1.ResourceCPU] = resource.MustParse(config.VMAlertManager.Resource.Request.Cpu)
-		cr.Spec.Resources.Limits[v1.ResourceCPU] = resource.MustParse(config.VMAlertManager.Resource.Limit.Cpu)
-	}
-	if !memResourceIsSet && config.VMAgentDefault.UseDefaultResources {
-		cr.Spec.Resources.Requests[v1.ResourceMemory] = resource.MustParse(config.VMAlertManager.Resource.Request.Mem)
-		cr.Spec.Resources.Limits[v1.ResourceMemory] = resource.MustParse(config.VMAlertManager.Resource.Limit.Mem)
-	}
-
 	resources := v1.ResourceRequirements{Limits: v1.ResourceList{}}
-	if config.VMAlertManager.ConfigReloaderCPU != "0" && config.VMAgentDefault.UseDefaultResources {
-		resources.Limits[v1.ResourceCPU] = resource.MustParse(config.VMAlertManager.ConfigReloaderCPU)
+	if c.VMAlertManager.ConfigReloaderCPU != "0" && c.VMAgentDefault.UseDefaultResources {
+		resources.Limits[v1.ResourceCPU] = resource.MustParse(c.VMAlertManager.ConfigReloaderCPU)
 	}
-	if config.VMAlertManager.ConfigReloaderMemory != "0" && config.VMAgentDefault.UseDefaultResources {
-		resources.Limits[v1.ResourceMemory] = resource.MustParse(config.VMAlertManager.ConfigReloaderMemory)
+	if c.VMAlertManager.ConfigReloaderMemory != "0" && c.VMAgentDefault.UseDefaultResources {
+		resources.Limits[v1.ResourceMemory] = resource.MustParse(c.VMAlertManager.ConfigReloaderMemory)
 	}
 
 	terminationGracePeriod := int64(120)
@@ -525,7 +494,7 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, config *conf
 			VolumeMounts:    amVolumeMounts,
 			LivenessProbe:   livenessProbe,
 			ReadinessProbe:  readinessProbe,
-			Resources:       cr.Spec.Resources,
+			Resources:       buildResources(cr.Spec.Resources, config.Resource(c.VMAlertDefault.Resource), c.VMAlertManager.UseDefaultResources),
 			Env: []v1.EnvVar{
 				{
 					// Necessary for '--cluster.listen-address' flag
@@ -540,7 +509,7 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, config *conf
 			TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
 		}, {
 			Name:  "config-reloader",
-			Image: config.VMAlertManager.ConfigReloaderImage,
+			Image: c.VMAlertManager.ConfigReloaderImage,
 			Args: []string{
 				fmt.Sprintf("-webhook-url=%s", localReloadURL),
 				fmt.Sprintf("-volume-dir=%s", alertmanagerConfDir),

@@ -1,11 +1,13 @@
 package config
 
 import (
+	"fmt"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/kelseyhightower/envconfig"
+	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 var (
@@ -14,6 +16,18 @@ var (
 )
 
 const prefixVar = "VM"
+const UnLimitedResource = "unlimited"
+
+type Resource struct {
+	Limit struct {
+		Mem string
+		Cpu string
+	}
+	Request struct {
+		Mem string
+		Cpu string
+	}
+}
 
 //genvars:true
 type BaseOperatorConf struct {
@@ -187,6 +201,60 @@ type BaseOperatorConf struct {
 	PodWaitReadyInitDelay     time.Duration `default:"10s"`
 }
 
+// Validate - validates config on best effort.
+func (boc BaseOperatorConf) Validate() error {
+	validateResource := func(name string, res Resource) error {
+		if res.Request.Mem != UnLimitedResource {
+			if _, err := resource.ParseQuantity(res.Request.Mem); err != nil {
+				return fmt.Errorf("cannot parse resource request memory for %q, err :%w", name, err)
+			}
+		}
+		if res.Request.Cpu != UnLimitedResource {
+			if _, err := resource.ParseQuantity(res.Request.Cpu); err != nil {
+				return fmt.Errorf("cannot parse resource request cpu for %q, err :%w", name, err)
+			}
+		}
+		if res.Limit.Mem != UnLimitedResource {
+			if _, err := resource.ParseQuantity(res.Limit.Mem); err != nil {
+				return fmt.Errorf("cannot parse resource limit memory for %q, err :%w", name, err)
+			}
+		}
+		if res.Limit.Cpu != UnLimitedResource {
+			if _, err := resource.ParseQuantity(res.Limit.Cpu); err != nil {
+				return fmt.Errorf("cannot parse resource limit cpu for %q, err :%w", name, err)
+			}
+		}
+		return nil
+	}
+	if err := validateResource("vmagent", Resource(boc.VMAgentDefault.Resource)); err != nil {
+		return err
+	}
+	if err := validateResource("vmalert", Resource(boc.VMAlertDefault.Resource)); err != nil {
+		return err
+	}
+	if err := validateResource("vmalertmanager", Resource(boc.VMAlertManager.Resource)); err != nil {
+		return err
+	}
+	if err := validateResource("vmselect", Resource(boc.VMClusterDefault.VMSelectDefault.Resource)); err != nil {
+		return err
+	}
+	if err := validateResource("vminsert", Resource(boc.VMClusterDefault.VMInsertDefault.Resource)); err != nil {
+		return err
+	}
+	if err := validateResource("vmstorage", Resource(boc.VMClusterDefault.VMStorageDefault.Resource)); err != nil {
+		return err
+	}
+
+	if err := validateResource("vmsingle", Resource(boc.VMSingleDefault.Resource)); err != nil {
+		return err
+	}
+	if err := validateResource("vmbackup", Resource(boc.VMBackup.Resource)); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func MustGetBaseConfig() *BaseOperatorConf {
 	initConf.Do(func() {
 		c := &BaseOperatorConf{}
@@ -201,6 +269,9 @@ func MustGetBaseConfig() *BaseOperatorConf {
 				panic(err)
 			}
 			c.Labels = defL
+		}
+		if err := c.Validate(); err != nil {
+			panic(err)
 		}
 		opConf = c
 	})

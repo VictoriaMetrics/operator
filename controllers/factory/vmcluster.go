@@ -16,7 +16,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
@@ -416,36 +415,6 @@ func genVMSelectSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv1
 		cr.Spec.VMSelect.Port = c.VMClusterDefault.VMSelectDefault.Port
 	}
 
-	if cr.Spec.VMSelect.Resources.Requests == nil {
-		cr.Spec.VMSelect.Resources.Requests = corev1.ResourceList{}
-	}
-	if cr.Spec.VMSelect.Resources.Limits == nil {
-		cr.Spec.VMSelect.Resources.Limits = corev1.ResourceList{}
-	}
-	var cpuResourceIsSet bool
-	var memResourceIsSet bool
-
-	if _, ok := cr.Spec.VMSelect.Resources.Limits[corev1.ResourceMemory]; ok {
-		memResourceIsSet = true
-	}
-	if _, ok := cr.Spec.VMSelect.Resources.Limits[corev1.ResourceCPU]; ok {
-		cpuResourceIsSet = true
-	}
-	if _, ok := cr.Spec.VMSelect.Resources.Requests[corev1.ResourceMemory]; ok {
-		memResourceIsSet = true
-	}
-	if _, ok := cr.Spec.VMSelect.Resources.Requests[corev1.ResourceCPU]; ok {
-		cpuResourceIsSet = true
-	}
-	if !cpuResourceIsSet && c.VMClusterDefault.UseDefaultResources {
-		cr.Spec.VMSelect.Resources.Requests[corev1.ResourceCPU] = resource.MustParse(c.VMClusterDefault.VMSelectDefault.Resource.Request.Cpu)
-		cr.Spec.VMSelect.Resources.Limits[corev1.ResourceCPU] = resource.MustParse(c.VMClusterDefault.VMSelectDefault.Resource.Limit.Cpu)
-
-	}
-	if !memResourceIsSet && c.VMClusterDefault.UseDefaultResources {
-		cr.Spec.VMSelect.Resources.Requests[corev1.ResourceMemory] = resource.MustParse(c.VMClusterDefault.VMSelectDefault.Resource.Request.Mem)
-		cr.Spec.VMSelect.Resources.Limits[corev1.ResourceMemory] = resource.MustParse(c.VMClusterDefault.VMSelectDefault.Resource.Limit.Mem)
-	}
 	if cr.Spec.VMSelect.DNSPolicy == "" {
 		cr.Spec.VMSelect.DNSPolicy = corev1.DNSClusterFirst
 	}
@@ -673,7 +642,7 @@ func makePodSpecForVMSelect(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 			VolumeMounts:             vmMounts,
 			LivenessProbe:            livenessProbe,
 			ReadinessProbe:           readinessProbe,
-			Resources:                cr.Spec.VMSelect.Resources,
+			Resources:                buildResources(cr.Spec.VMSelect.Resources, config.Resource(c.VMClusterDefault.VMSelectDefault.Resource), c.VMClusterDefault.UseDefaultResources),
 			Env:                      envs,
 			TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 			TerminationMessagePath:   "/dev/termination-log",
@@ -759,37 +728,6 @@ func genVMInsertSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv1
 		cr.Spec.VMInsert.Port = c.VMClusterDefault.VMInsertDefault.Port
 	}
 
-	if cr.Spec.VMInsert.Resources.Requests == nil {
-		cr.Spec.VMInsert.Resources.Requests = corev1.ResourceList{}
-	}
-	if cr.Spec.VMInsert.Resources.Limits == nil {
-		cr.Spec.VMInsert.Resources.Limits = corev1.ResourceList{}
-	}
-
-	var cpuResourceIsSet bool
-	var memResourceIsSet bool
-
-	if _, ok := cr.Spec.VMInsert.Resources.Limits[corev1.ResourceMemory]; ok {
-		memResourceIsSet = true
-	}
-	if _, ok := cr.Spec.VMInsert.Resources.Limits[corev1.ResourceCPU]; ok {
-		cpuResourceIsSet = true
-	}
-	if _, ok := cr.Spec.VMInsert.Resources.Requests[corev1.ResourceMemory]; ok {
-		memResourceIsSet = true
-	}
-	if _, ok := cr.Spec.VMInsert.Resources.Requests[corev1.ResourceCPU]; ok {
-		cpuResourceIsSet = true
-	}
-	if !cpuResourceIsSet && c.VMClusterDefault.UseDefaultResources {
-		cr.Spec.VMInsert.Resources.Requests[corev1.ResourceCPU] = resource.MustParse(c.VMClusterDefault.VMInsertDefault.Resource.Request.Cpu)
-		cr.Spec.VMInsert.Resources.Limits[corev1.ResourceCPU] = resource.MustParse(c.VMClusterDefault.VMInsertDefault.Resource.Limit.Cpu)
-
-	}
-	if !memResourceIsSet && c.VMClusterDefault.UseDefaultResources {
-		cr.Spec.VMInsert.Resources.Requests[corev1.ResourceMemory] = resource.MustParse(c.VMClusterDefault.VMInsertDefault.Resource.Request.Mem)
-		cr.Spec.VMInsert.Resources.Limits[corev1.ResourceMemory] = resource.MustParse(c.VMClusterDefault.VMInsertDefault.Resource.Limit.Mem)
-	}
 	podSpec, err := makePodSpecForVMInsert(cr, c)
 	if err != nil {
 		return nil, err
@@ -948,7 +886,7 @@ func makePodSpecForVMInsert(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 			VolumeMounts:             vmMounts,
 			LivenessProbe:            livenessProbe,
 			ReadinessProbe:           readinessProbe,
-			Resources:                cr.Spec.VMInsert.Resources,
+			Resources:                buildResources(cr.Spec.VMInsert.Resources, config.Resource(c.VMClusterDefault.VMInsertDefault.Resource), c.VMClusterDefault.UseDefaultResources),
 			Env:                      envs,
 			TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 		},
@@ -1037,13 +975,6 @@ func GenVMStorageSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv
 		cr.Spec.VMStorage.Port = c.VMClusterDefault.VMStorageDefault.Port
 	}
 
-	if cr.Spec.VMStorage.Resources.Requests == nil {
-		cr.Spec.VMStorage.Resources.Requests = corev1.ResourceList{}
-	}
-	if cr.Spec.VMStorage.Resources.Limits == nil {
-		cr.Spec.VMStorage.Resources.Limits = corev1.ResourceList{}
-	}
-
 	if cr.Spec.VMStorage.DNSPolicy == "" {
 		cr.Spec.VMStorage.DNSPolicy = corev1.DNSClusterFirst
 	}
@@ -1056,35 +987,9 @@ func GenVMStorageSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv
 	if cr.Spec.VMStorage.Image.PullPolicy == "" {
 		cr.Spec.VMStorage.Image.PullPolicy = corev1.PullIfNotPresent
 	}
-
-	var cpuResourceIsSet bool
-	var memResourceIsSet bool
-
-	if _, ok := cr.Spec.VMStorage.Resources.Limits[corev1.ResourceMemory]; ok {
-		memResourceIsSet = true
-	}
-	if _, ok := cr.Spec.VMStorage.Resources.Limits[corev1.ResourceCPU]; ok {
-		cpuResourceIsSet = true
-	}
-	if _, ok := cr.Spec.VMStorage.Resources.Requests[corev1.ResourceMemory]; ok {
-		memResourceIsSet = true
-	}
-	if _, ok := cr.Spec.VMStorage.Resources.Requests[corev1.ResourceCPU]; ok {
-		cpuResourceIsSet = true
-	}
-	if !cpuResourceIsSet && c.VMClusterDefault.UseDefaultResources {
-		cr.Spec.VMStorage.Resources.Requests[corev1.ResourceCPU] = resource.MustParse(c.VMClusterDefault.VMStorageDefault.Resource.Request.Cpu)
-		cr.Spec.VMStorage.Resources.Limits[corev1.ResourceCPU] = resource.MustParse(c.VMClusterDefault.VMStorageDefault.Resource.Limit.Cpu)
-
-	}
-	if !memResourceIsSet && c.VMClusterDefault.UseDefaultResources {
-		cr.Spec.VMStorage.Resources.Requests[corev1.ResourceMemory] = resource.MustParse(c.VMClusterDefault.VMStorageDefault.Resource.Request.Mem)
-		cr.Spec.VMStorage.Resources.Limits[corev1.ResourceMemory] = resource.MustParse(c.VMClusterDefault.VMStorageDefault.Resource.Limit.Mem)
-	}
 	if cr.Spec.VMStorage.StorageDataPath == "" {
 		cr.Spec.VMStorage.StorageDataPath = vmStorageDefaultDBPath
 	}
-
 	podSpec, err := makePodSpecForVMStorage(cr, c)
 	if err != nil {
 		return nil, err
@@ -1300,7 +1205,7 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) 
 			VolumeMounts:             vmMounts,
 			LivenessProbe:            livenessProbe,
 			ReadinessProbe:           readinessProbe,
-			Resources:                cr.Spec.VMStorage.Resources,
+			Resources:                buildResources(cr.Spec.VMStorage.Resources, config.Resource(c.VMClusterDefault.VMStorageDefault.Resource), c.VMClusterDefault.UseDefaultResources),
 			Env:                      envs,
 			TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 			TerminationMessagePath:   "/dev/termination-log",

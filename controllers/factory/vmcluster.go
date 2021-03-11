@@ -987,7 +987,9 @@ func GenVMStorageSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv
 	if cr.Spec.VMStorage.Image.PullPolicy == "" {
 		cr.Spec.VMStorage.Image.PullPolicy = corev1.PullIfNotPresent
 	}
-
+	if cr.Spec.VMStorage.StorageDataPath == "" {
+		cr.Spec.VMStorage.StorageDataPath = vmStorageDefaultDBPath
+	}
 	podSpec, err := makePodSpecForVMStorage(cr, c)
 	if err != nil {
 		return nil, err

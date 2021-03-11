@@ -31,23 +31,19 @@ func buildResources(crdResources v1.ResourceRequirements, defaultResources confi
 	}
 
 	if !cpuResourceIsSet && useDefault {
-		qr := resource.MustParse(defaultResources.Request.Cpu)
-		if !qr.IsZero() {
-			crdResources.Requests[v1.ResourceCPU] = qr
+		if defaultResources.Request.Cpu != config.UnLimitedResource {
+			crdResources.Requests[v1.ResourceCPU] = resource.MustParse(defaultResources.Request.Cpu)
 		}
-		ql := resource.MustParse(defaultResources.Limit.Cpu)
-		if !ql.IsZero() {
-			crdResources.Limits[v1.ResourceCPU] = ql
+		if defaultResources.Limit.Cpu != config.UnLimitedResource {
+			crdResources.Limits[v1.ResourceCPU] = resource.MustParse(defaultResources.Limit.Cpu)
 		}
 	}
 	if !memResourceIsSet && useDefault {
-		qr := resource.MustParse(defaultResources.Request.Mem)
-		if !qr.IsZero() {
-			crdResources.Requests[v1.ResourceMemory] = qr
+		if defaultResources.Request.Mem != config.UnLimitedResource {
+			crdResources.Requests[v1.ResourceMemory] = resource.MustParse(defaultResources.Request.Mem)
 		}
-		ql := resource.MustParse(defaultResources.Limit.Mem)
-		if !ql.IsZero() {
-			crdResources.Limits[v1.ResourceMemory] = ql
+		if defaultResources.Limit.Mem != config.UnLimitedResource {
+			crdResources.Limits[v1.ResourceMemory] = resource.MustParse(defaultResources.Limit.Mem)
 		}
 	}
 	return crdResources

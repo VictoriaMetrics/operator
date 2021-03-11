@@ -7,6 +7,10 @@ import (
 	"fmt"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/labels"
+
+	"k8s.io/apimachinery/pkg/api/equality"
+
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	v1 "k8s.io/api/core/v1"
@@ -946,7 +950,9 @@ func CreateVMServiceScrapeFromService(ctx context.Context, rclient client.Client
 			Path: metricPath,
 		})
 	}
-	scrapeSvc := &victoriametricsv1beta1.VMServiceScrape{
+	var existVSS victoriametricsv1beta1.VMServiceScrape
+
+	scrapeSvc := victoriametricsv1beta1.VMServiceScrape{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            service.Name,
 			Namespace:       service.Namespace,
@@ -959,26 +965,18 @@ func CreateVMServiceScrapeFromService(ctx context.Context, rclient client.Client
 			Endpoints: endPoints,
 		},
 	}
-	err := rclient.Create(ctx, scrapeSvc)
+	err := rclient.Get(ctx, types.NamespacedName{Namespace: service.Namespace, Name: service.Name}, &existVSS)
 	if err != nil {
-		if errors.IsAlreadyExists(err) {
-			// need to update
-			return updateServiceScrape(ctx, rclient, scrapeSvc)
+		if errors.IsNotFound(err) {
+			return rclient.Create(ctx, &scrapeSvc)
 		}
 		return err
 	}
-	return nil
-
-}
-
-func updateServiceScrape(ctx context.Context, rclient client.Client, newServiceScrape *victoriametricsv1beta1.VMServiceScrape) error {
-	existServiceScrape := &victoriametricsv1beta1.VMServiceScrape{}
-	err := rclient.Get(ctx, types.NamespacedName{Name: newServiceScrape.Name, Namespace: newServiceScrape.Namespace}, existServiceScrape)
-	if err != nil {
-		return fmt.Errorf("cannot get VMServiceScrape for update: %w", err)
+	existVSS.Spec = scrapeSvc.Spec
+	existVSS.Labels = scrapeSvc.Labels
+	existVSS.Annotations = labels.Merge(scrapeSvc.Annotations, existVSS.Annotations)
+	if !equality.Semantic.DeepDerivative(scrapeSvc.Spec, existVSS.Spec) || !equality.Semantic.DeepDerivative(scrapeSvc.Labels, existVSS.Labels) || !equality.Semantic.DeepDerivative(scrapeSvc.Annotations, existVSS.Annotations) {
+		return rclient.Update(ctx, &existVSS)
 	}
-	existServiceScrape.Spec = newServiceScrape.Spec
-	existServiceScrape.Labels = newServiceScrape.Labels
-	existServiceScrape.Annotations = newServiceScrape.Annotations
-	return rclient.Update(ctx, existServiceScrape)
+	return nil
 }

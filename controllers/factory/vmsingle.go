@@ -28,7 +28,7 @@ const (
 	vmDataVolumeName = "data"
 )
 
-func CreateVMStorage(ctx context.Context, cr *victoriametricsv1beta1.VMSingle, rclient client.Client, c *config.BaseOperatorConf) (*corev1.PersistentVolumeClaim, error) {
+func CreateVMSingleStorage(ctx context.Context, cr *victoriametricsv1beta1.VMSingle, rclient client.Client, c *config.BaseOperatorConf) (*corev1.PersistentVolumeClaim, error) {
 
 	l := log.WithValues("vm.single.pvc.create", cr.Name)
 	l.Info("reconciling pvc")
@@ -43,20 +43,19 @@ func CreateVMStorage(ctx context.Context, cr *victoriametricsv1beta1.VMSingle, r
 			}
 
 			return newPvc, nil
-		} else {
-			return nil, fmt.Errorf("cannot get existing pvc for vmsingle: %w", err)
 		}
+		return nil, fmt.Errorf("cannot get existing pvc for vmsingle: %w", err)
 	}
-
 	if existPvc.Spec.Resources.String() != newPvc.Spec.Resources.String() {
 		l.Info("volume requests isn't same, update required")
-		existPvc.Spec.Resources = newPvc.Spec.Resources
-		err := rclient.Update(ctx, existPvc)
-		if err != nil {
-			l.Error(err, "cannot update pvc size, we can suppress it")
-		}
 	}
-	newPvc = existPvc
+	newPvc.Spec = existPvc.Spec
+	newPvc.Annotations = labels.Merge(newPvc.Annotations, existPvc.Annotations)
+	newPvc.Finalizers = victoriametricsv1beta1.MergeFinalizers(existPvc, victoriametricsv1beta1.FinalizerName)
+
+	if err := rclient.Update(ctx, newPvc); err != nil {
+		return nil, err
+	}
 
 	return newPvc, nil
 }
@@ -68,6 +67,7 @@ func makeVMSinglePvc(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOperator
 			Namespace:   cr.Namespace,
 			Labels:      c.Labels.Merge(cr.Labels()),
 			Annotations: cr.Annotations(),
+			Finalizers:  []string{victoriametricsv1beta1.FinalizerName},
 		},
 		Spec: *cr.Spec.Storage,
 	}
@@ -80,8 +80,6 @@ func makeVMSinglePvc(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOperator
 func CreateOrUpdateVMSingle(ctx context.Context, cr *victoriametricsv1beta1.VMSingle, rclient client.Client, c *config.BaseOperatorConf) (*appsv1.Deployment, error) {
 
 	l := log.WithValues("controller", "vmsingle.crud", "vmsingle", cr.Name)
-	l.Info("create or update vm single deploy")
-
 	if err := psp.CreateServiceAccountForCRD(ctx, cr, rclient); err != nil {
 		return nil, fmt.Errorf("failed create service account: %w", err)
 	}
@@ -103,25 +101,22 @@ func CreateOrUpdateVMSingle(ctx context.Context, cr *victoriametricsv1beta1.VMSi
 		if errors.IsNotFound(err) {
 			//create new
 			l.Info("vmsingle deploy not found, creating new one")
-			err := rclient.Create(ctx, newDeploy)
-			if err != nil {
+			if err := rclient.Create(ctx, newDeploy); err != nil {
 				return nil, fmt.Errorf("cannot create new vmsingle deploy: %w", err)
 			}
-			l.Info("new vmsingle deploy was created")
-		} else {
-			return nil, fmt.Errorf("cannot get vmsingle deploy: %w", err)
+			return newDeploy, nil
 		}
+		return nil, fmt.Errorf("cannot get vmsingle deploy: %w", err)
 	}
 	l.Info("vm vmsingle was found, updating it")
 
 	newDeploy.Annotations = labels.Merge(newDeploy.Annotations, currentDeploy.Annotations)
 	newDeploy.Spec.Template.Annotations = labels.Merge(newDeploy.Spec.Template.Annotations, currentDeploy.Spec.Template.Annotations)
+	newDeploy.Finalizers = victoriametricsv1beta1.MergeFinalizers(currentDeploy, victoriametricsv1beta1.FinalizerName)
 
-	err = rclient.Update(ctx, newDeploy)
-	if err != nil {
+	if err := rclient.Update(ctx, newDeploy); err != nil {
 		return nil, fmt.Errorf("cannot upddate vmsingle deploy: %w", err)
 	}
-	l.Info("single deploy reconciled")
 
 	return newDeploy, nil
 }
@@ -369,13 +364,12 @@ func CreateOrUpdateVMSingleService(ctx context.Context, cr *victoriametricsv1bet
 	if err != nil {
 		if errors.IsNotFound(err) {
 			l.Info("creating new service for vm vmsingle")
-			err := rclient.Create(ctx, newService)
-			if err != nil {
+			if err := rclient.Create(ctx, newService); err != nil {
 				return nil, fmt.Errorf("cannot create new service for vmsingle")
 			}
-		} else {
-			return nil, fmt.Errorf("cannot get vmsingle service: %w", err)
+			return newService, nil
 		}
+		return nil, fmt.Errorf("cannot get vmsingle service: %w", err)
 	}
 	newService.Annotations = labels.Merge(newService.Annotations, currentService.Annotations)
 	if currentService.Spec.ClusterIP != "" {
@@ -384,11 +378,11 @@ func CreateOrUpdateVMSingleService(ctx context.Context, cr *victoriametricsv1bet
 	if currentService.ResourceVersion != "" {
 		newService.ResourceVersion = currentService.ResourceVersion
 	}
+	newService.Finalizers = victoriametricsv1beta1.MergeFinalizers(currentService, victoriametricsv1beta1.FinalizerName)
 	err = rclient.Update(ctx, newService)
 	if err != nil {
 		return nil, fmt.Errorf("cannot update vmsingle service: %w", err)
 	}
-	l.Info("vmsingle svc reconciled")
 	return newService, nil
 }
 
@@ -404,6 +398,7 @@ func newServiceVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOpera
 			Labels:          c.Labels.Merge(cr.Labels()),
 			Annotations:     cr.Annotations(),
 			OwnerReferences: cr.AsOwner(),
+			Finalizers:      []string{victoriametricsv1beta1.FinalizerName},
 		},
 		Spec: corev1.ServiceSpec{
 			Type:     corev1.ServiceTypeClusterIP,

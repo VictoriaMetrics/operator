@@ -18,8 +18,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const labelVMAlertName = "vmalert-name"
-
 // The maximum `Data` size of a ConfigMap seems to differ between
 // environments. This is probably due to different meta data sizes which count
 // into the overall maximum size of a ConfigMap. Thereby lets leave a
@@ -59,7 +57,7 @@ func CreateOrUpdateRuleConfigMaps(ctx context.Context, cr *victoriametricsv1beta
 	}
 
 	currentConfigMapList := &v1.ConfigMapList{}
-	err = rclient.List(ctx, currentConfigMapList, rulesConfigMapSelector(cr.Name, cr.Namespace))
+	err = rclient.List(ctx, currentConfigMapList, cr.RulesConfigMapSelector())
 	if err != nil {
 		return nil, err
 	}
@@ -132,6 +130,11 @@ func CreateOrUpdateRuleConfigMaps(ctx context.Context, cr *victoriametricsv1beta
 		}
 	}
 	for _, cm := range toDelete {
+		if victoriametricsv1beta1.IsContainsFinalizer(cm.Finalizers, victoriametricsv1beta1.FinalizerName) {
+			if err := rclient.Update(ctx, &cm); err != nil {
+				return nil, err
+			}
+		}
 		err = rclient.Delete(ctx, &cm)
 		if err != nil {
 			return nil, fmt.Errorf("failed to delete rules Configmap: %s, err: %w", cm.Name, err)
@@ -186,13 +189,6 @@ func rulesCMDiff(currentCMs []v1.ConfigMap, newCMs []v1.ConfigMap) ([]v1.ConfigM
 		}
 	}
 	return toCreate, toUpdate, toDelete
-}
-
-func rulesConfigMapSelector(vmAlertName string, namespace string) client.ListOption {
-	return &client.ListOptions{
-		LabelSelector: labels.SelectorFromSet(map[string]string{labelVMAlertName: vmAlertName}),
-		Namespace:     namespace,
-	}
 }
 
 func selectNamespaces(ctx context.Context, rclient client.Client, selector labels.Selector) ([]string, error) {
@@ -405,7 +401,7 @@ func bucketSize(bucket map[string]string) int {
 }
 
 func makeRulesConfigMap(cr *victoriametricsv1beta1.VMAlert, ruleFiles map[string]string) v1.ConfigMap {
-	ruleLabels := map[string]string{labelVMAlertName: cr.Name}
+	ruleLabels := map[string]string{"vmalert-name": cr.Name}
 	for k, v := range managedByOperatorLabels {
 		ruleLabels[k] = v
 	}
@@ -416,6 +412,7 @@ func makeRulesConfigMap(cr *victoriametricsv1beta1.VMAlert, ruleFiles map[string
 			Namespace:       cr.Namespace,
 			Labels:          ruleLabels,
 			OwnerReferences: cr.AsOwner(),
+			Finalizers:      []string{victoriametricsv1beta1.FinalizerName},
 		},
 		Data: ruleFiles,
 	}

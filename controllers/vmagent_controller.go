@@ -18,8 +18,10 @@ package controllers
 
 import (
 	"context"
+	"sync"
 
 	"github.com/VictoriaMetrics/operator/controllers/factory"
+	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -32,6 +34,8 @@ import (
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 )
+
+var vmAgentSync sync.Mutex
 
 // VMAgentReconciler reconciles a VMAgent object
 type VMAgentReconciler struct {
@@ -64,26 +68,27 @@ func (r *VMAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	reqLogger := r.Log.WithValues("vmagent", req.NamespacedName)
 	reqLogger.Info("Reconciling")
 
+	vmAgentSync.Lock()
+	defer vmAgentSync.Unlock()
 	// Fetch the VMAgent instance
 	instance := &victoriametricsv1beta1.VMAgent{}
 	err := r.Get(ctx, req.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			// Request object not found, could have been deleted after reconcile request.
-			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
-			// Return and don't requeue
 			return ctrl.Result{}, nil
 		}
 		reqLogger.Error(err, "cannot get vmagent object for reconcile")
-		// Error reading the object - requeue the request.
 		return ctrl.Result{}, err
 	}
 
-	if err := handleFinalize(ctx, r.Client, instance); err != nil {
-		return ctrl.Result{}, err
-	}
-	if instance.DeletionTimestamp != nil {
+	if !instance.DeletionTimestamp.IsZero() {
+		if err := finalize.OnVMAgentDelete(ctx, r.Client, instance); err != nil {
+			return ctrl.Result{}, err
+		}
 		return ctrl.Result{}, nil
+	}
+	if err := finalize.AddFinalizer(ctx, r.Client, instance); err != nil {
+		return ctrl.Result{}, err
 	}
 
 	//create deploy
@@ -107,6 +112,7 @@ func (r *VMAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			reqLogger.Error(err, "cannot create serviceScrape for vmagent")
 		}
 	}
+
 	reqLogger.Info("reconciled vmagent")
 
 	return ctrl.Result{}, nil

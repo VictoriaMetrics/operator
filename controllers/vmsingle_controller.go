@@ -19,6 +19,8 @@ package controllers
 import (
 	"context"
 
+	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
+
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
@@ -64,16 +66,20 @@ func (r *VMSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		}
 		return ctrl.Result{}, err
 	}
-	if err := handleFinalize(ctx, r.Client, instance); err != nil {
-		return ctrl.Result{}, err
-	}
-	if instance.DeletionTimestamp != nil {
+
+	if !instance.DeletionTimestamp.IsZero() {
+		if err := finalize.OnVMSingleDelete(ctx, r.Client, instance); err != nil {
+			return ctrl.Result{}, err
+		}
 		return ctrl.Result{}, nil
+	}
+	if err := finalize.AddFinalizer(ctx, r.Client, instance); err != nil {
+		return ctrl.Result{}, err
 	}
 
 	if instance.Spec.Storage != nil {
 		reqLogger.Info("storage specified reconcile it")
-		_, err = factory.CreateVMStorage(ctx, instance, r, r.BaseConf)
+		_, err = factory.CreateVMSingleStorage(ctx, instance, r, r.BaseConf)
 		if err != nil {
 			reqLogger.Error(err, "cannot create pvc")
 			return ctrl.Result{}, err

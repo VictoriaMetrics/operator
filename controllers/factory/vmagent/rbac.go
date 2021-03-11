@@ -49,6 +49,7 @@ func ensureVMAgentCRExist(ctx context.Context, cr *v1beta12.VMAgent, rclient cli
 	existsClusterRole.Labels = labels.Merge(existsClusterRole.Labels, clusterRole.Labels)
 	existsClusterRole.Annotations = labels.Merge(clusterRole.Annotations, existsClusterRole.Annotations)
 	existsClusterRole.Rules = clusterRole.Rules
+	v1beta12.MergeFinalizers(&existsClusterRole, v1beta12.FinalizerName)
 	return rclient.Update(ctx, &existsClusterRole)
 }
 
@@ -75,6 +76,7 @@ func ensureVMAgentCRBExist(ctx context.Context, cr *v1beta12.VMAgent, rclient cl
 	existsClusterRoleBinding.Annotations = labels.Merge(clusterRoleBinding.Annotations, existsClusterRoleBinding.Annotations)
 	existsClusterRoleBinding.Subjects = clusterRoleBinding.Subjects
 	existsClusterRoleBinding.RoleRef = clusterRoleBinding.RoleRef
+	v1beta12.MergeFinalizers(&existsClusterRoleBinding, v1beta12.FinalizerName)
 	return rclient.Update(ctx, &existsClusterRoleBinding)
 }
 
@@ -85,6 +87,7 @@ func buildVMAgentClusterRoleBinding(cr *v1beta12.VMAgent) *v12.ClusterRoleBindin
 			Namespace:   cr.GetNamespace(),
 			Labels:      cr.Labels(),
 			Annotations: cr.Annotations(),
+			Finalizers:  []string{v1beta12.FinalizerName},
 		},
 		Subjects: []v12.Subject{
 			{
@@ -108,6 +111,7 @@ func buildVMAgentClusterRole(cr *v1beta12.VMAgent) *v12.ClusterRole {
 			Namespace:   cr.GetNamespace(),
 			Labels:      cr.Labels(),
 			Annotations: cr.Annotations(),
+			Finalizers:  []string{v1beta12.FinalizerName},
 		},
 		Rules: []v12.PolicyRule{
 			{

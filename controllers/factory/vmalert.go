@@ -41,6 +41,7 @@ func CreateOrUpdateVMAlertService(ctx context.Context, cr *victoriametricsv1beta
 			if err != nil {
 				return nil, fmt.Errorf("cannot create new service for vmalert: %w", err)
 			}
+			return newService, nil
 		} else {
 			return nil, fmt.Errorf("cannot get vmalert service: %w", err)
 		}
@@ -49,6 +50,7 @@ func CreateOrUpdateVMAlertService(ctx context.Context, cr *victoriametricsv1beta
 	if currentService.Spec.ClusterIP != "" {
 		newService.Spec.ClusterIP = currentService.Spec.ClusterIP
 	}
+	newService.Finalizers = victoriametricsv1beta1.MergeFinalizers(currentService, victoriametricsv1beta1.FinalizerName)
 	if currentService.ResourceVersion != "" {
 		newService.ResourceVersion = currentService.ResourceVersion
 	}
@@ -72,6 +74,7 @@ func newServiceVMAlert(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperato
 			Labels:          c.Labels.Merge(cr.Labels()),
 			Annotations:     cr.Annotations(),
 			OwnerReferences: cr.AsOwner(),
+			Finalizers:      []string{victoriametricsv1beta1.FinalizerName},
 		},
 		Spec: corev1.ServiceSpec{
 			Type:     corev1.ServiceTypeClusterIP,
@@ -96,7 +99,6 @@ func CreateOrUpdateVMAlert(ctx context.Context, cr *victoriametricsv1beta1.VMAle
 	}
 	if c.PSPAutoCreateEnabled {
 		if err := psp.CreateOrUpdateServiceAccountWithPSP(ctx, cr, rclient); err != nil {
-			l.Error(err, "cannot create podsecuritypolicy")
 			return reconcile.Result{}, fmt.Errorf("cannot create podsecurity policy for vmalert, err=%w", err)
 		}
 	}
@@ -117,7 +119,6 @@ func CreateOrUpdateVMAlert(ctx context.Context, cr *victoriametricsv1beta1.VMAle
 	if err != nil {
 		return reconcile.Result{}, err
 	}
-	l.Info("generating new deployment")
 	newDeploy, err := newDeployForVMAlert(cr, c, cmNames, remoteSecrets)
 	if err != nil {
 		return reconcile.Result{}, fmt.Errorf("cannot generate new deploy for vmalert: %w", err)
@@ -138,12 +139,10 @@ func CreateOrUpdateVMAlert(ctx context.Context, cr *victoriametricsv1beta1.VMAle
 	}
 	newDeploy.Annotations = labels.Merge(newDeploy.Annotations, currDeploy.Annotations)
 	newDeploy.Spec.Template.Annotations = labels.Merge(newDeploy.Spec.Template.Annotations, currDeploy.Spec.Template.Annotations)
-	err = rclient.Update(ctx, newDeploy)
-	if err != nil {
+	newDeploy.Finalizers = victoriametricsv1beta1.MergeFinalizers(currDeploy, victoriametricsv1beta1.FinalizerName)
+	if err := rclient.Update(ctx, newDeploy); err != nil {
 		return reconcile.Result{}, fmt.Errorf("cannot update vmalert deploy: %w", err)
 	}
-	l.Info("reconciled vmalert deploy")
-
 	return reconcile.Result{}, nil
 }
 
@@ -181,6 +180,7 @@ func newDeployForVMAlert(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOpera
 			Labels:          c.Labels.Merge(cr.Labels()),
 			Annotations:     cr.Annotations(),
 			OwnerReferences: cr.AsOwner(),
+			Finalizers:      []string{victoriametricsv1beta1.FinalizerName},
 		},
 		Spec: *generatedSpec,
 	}
@@ -592,6 +592,7 @@ func CreateOrUpdateTlsAssetsForVMAlert(ctx context.Context, cr *victoriametricsv
 			Labels:          cr.Labels(),
 			OwnerReferences: cr.AsOwner(),
 			Namespace:       cr.Namespace,
+			Finalizers:      []string{victoriametricsv1beta1.FinalizerName},
 		},
 		Data: map[string][]byte{},
 	}
@@ -602,19 +603,15 @@ func CreateOrUpdateTlsAssetsForVMAlert(ctx context.Context, cr *victoriametricsv
 	currentAssetSecret := &corev1.Secret{}
 	err = rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: tlsAssetsSecret.Name}, currentAssetSecret)
 	if err != nil {
-		if !errors.IsNotFound(err) {
-			return fmt.Errorf("cannot get existing tls secret: %s, for vmalert: %s, err: %w", tlsAssetsSecret.Name, cr.Name, err)
+		if errors.IsNotFound(err) {
+			return rclient.Create(ctx, tlsAssetsSecret)
 		}
-		err := rclient.Create(ctx, tlsAssetsSecret)
-		if err != nil {
-			return fmt.Errorf("cannot create tls asset secret: %s for vmalert: %s, err :%w", tlsAssetsSecret.Name, cr.Name, err)
-		}
-		log.Info("create new tls asset secret for vmalert", "secret_name", tlsAssetsSecret.Name, "vmalert", cr.Name)
-		return nil
+		return fmt.Errorf("cannot get existing tls secret: %s, for vmalert: %s, err: %w", tlsAssetsSecret.Name, cr.Name, err)
 	}
 	for annotation, value := range currentAssetSecret.Annotations {
 		tlsAssetsSecret.Annotations[annotation] = value
 	}
+	tlsAssetsSecret.Finalizers = victoriametricsv1beta1.MergeFinalizers(currentAssetSecret, victoriametricsv1beta1.FinalizerName)
 	return rclient.Update(ctx, tlsAssetsSecret)
 }
 

@@ -60,6 +60,9 @@ func (r *VMPodScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			return ctrl.Result{}, err
 		}
 	}
+	vmAgentSync.Lock()
+	defer vmAgentSync.Unlock()
+
 	vmAgentInstances := &victoriametricsv1beta1.VMAgentList{}
 	err = r.List(ctx, vmAgentInstances)
 	if err != nil {

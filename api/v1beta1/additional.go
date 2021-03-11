@@ -3,6 +3,8 @@ package v1beta1
 import (
 	"path"
 
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -23,6 +25,15 @@ var (
 	// GroupVersion is group version used to register these objects
 	SchemeGroupVersion = schema.GroupVersion{Group: "operator.victoriametrics.com", Version: "v1beta1"}
 )
+
+func MergeFinalizers(src client.Object, finalizer string) []string {
+	if !IsContainsFinalizer(src.GetFinalizers(), finalizer) {
+		srcF := src.GetFinalizers()
+		srcF = append(srcF, finalizer)
+		src.SetFinalizers(srcF)
+	}
+	return src.GetFinalizers()
+}
 
 // IsContainsFinalizer check if finalizers is set.
 func IsContainsFinalizer(src []string, finalizer string) bool {

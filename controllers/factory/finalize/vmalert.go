@@ -24,6 +24,7 @@ func OnVMAlertDelete(ctx context.Context, rclient client.Client, crd *victoriame
 	}
 	for _, cm := range cmList.Items {
 		if victoriametricsv1beta1.IsContainsFinalizer(cm.Finalizers, victoriametricsv1beta1.FinalizerName) {
+			cm.Finalizers = victoriametricsv1beta1.RemoveFinalizer(cm.Finalizers, victoriametricsv1beta1.FinalizerName)
 			if err := rclient.Update(ctx, &cm); err != nil {
 				return err
 			}

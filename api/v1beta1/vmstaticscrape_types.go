@@ -82,8 +82,7 @@ type VMStaticScrapeStatus struct {
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 
-// VMStaticScrape is the Schema for the vmstaticscrapes API,
-// which defines static targets configuration for scraping.
+// VMStaticScrape  defines static targets configuration for scraping.
 type VMStaticScrape struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

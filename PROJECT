@@ -33,6 +33,9 @@ resources:
 - group: operator
   kind: VMNodeScrape
   version: v1beta1
+- group: operator
+  kind: VMStaticScrape
+  version: v1beta1
 version: 3-alpha
 plugins:
   go.operator-sdk.io/v2-alpha: {}

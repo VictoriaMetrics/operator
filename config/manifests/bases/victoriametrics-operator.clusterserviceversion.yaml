@@ -169,6 +169,11 @@ spec:
       kind: VMNodeScrape
       name: vmnodescrapes.operator.victoriametrics.com
       version: v1beta1
+    - description: VMStaticScrape  defines static targets configuration for scraping.
+      displayName: VMStatic Scrape
+      kind: VMStaticScrape
+      name: vmstaticscrapes.operator.victoriametrics.com
+      version: v1beta1
   description: |
     Operator manages VictoriaMetrics applications and provides monitoring features for applications running inside and outside kubernetes cluster. It has support for prometheus-operator objects and
     provides migration mechanism.

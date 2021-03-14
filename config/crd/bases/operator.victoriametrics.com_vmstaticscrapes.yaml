@@ -19,8 +19,7 @@ spec:
     status: {}
   validation:
     openAPIV3Schema:
-      description: VMStaticScrape is the Schema for the vmstaticscrapes API, which
-        defines static targets configuration for scraping.
+      description: VMStaticScrape  defines static targets configuration for scraping.
       properties:
         apiVersion:
           description: 'APIVersion defines the versioned schema of this representation

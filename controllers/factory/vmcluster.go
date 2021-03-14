@@ -199,14 +199,13 @@ func createOrUpdateVMSelect(ctx context.Context, cr *v1beta1.VMCluster, rclient 
 	if err != nil {
 		if errors.IsNotFound(err) {
 			l.Info("vmselect sts not found, creating new one")
-			err := rclient.Create(ctx, newSts)
-			if err != nil {
+			if err := rclient.Create(ctx, newSts); err != nil {
 				return nil, fmt.Errorf("cannot create new vmselect sts: %w", err)
 			}
 			l.Info("new vmselect sts was created")
-		} else {
-			return nil, fmt.Errorf("cannot get vmselect sts: %w", err)
+			return newSts, nil
 		}
+		return nil, fmt.Errorf("cannot get vmselect sts: %w", err)
 	}
 	l.Info("vmstorage was found, updating it")
 	newSts.Annotations = labels.Merge(newSts.Annotations, currentSts.Annotations)
@@ -235,14 +234,13 @@ func CreateOrUpdateVMSelectService(ctx context.Context, cr *v1beta1.VMCluster, r
 	err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: newService.Name}, currentService)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			l.Info("creating new service for vmselect")
-			err := rclient.Create(ctx, newService)
-			if err != nil {
+			l.Info("creating new service for vm vmselect")
+			if err := rclient.Create(ctx, newService); err != nil {
 				return nil, fmt.Errorf("cannot create new service for vmselect")
 			}
-		} else {
-			return nil, fmt.Errorf("cannot get vmselect service: %w", err)
+			return newService, nil
 		}
+		return nil, fmt.Errorf("cannot get vmselect service: %w", err)
 	}
 	newService.Annotations = labels.Merge(newService.Annotations, currentService.Annotations)
 	if currentService.Spec.ClusterIP != "" {
@@ -251,6 +249,7 @@ func CreateOrUpdateVMSelectService(ctx context.Context, cr *v1beta1.VMCluster, r
 	if currentService.ResourceVersion != "" {
 		newService.ResourceVersion = currentService.ResourceVersion
 	}
+	newService.Finalizers = v1beta1.MergeFinalizers(currentService, v1beta1.FinalizerName)
 	err = rclient.Update(ctx, newService)
 	if err != nil {
 		return nil, fmt.Errorf("cannot update vmselect service: %w", err)
@@ -272,16 +271,14 @@ func createOrUpdateVMInsert(ctx context.Context, cr *v1beta1.VMCluster, rclient 
 		if errors.IsNotFound(err) {
 			//create new
 			l.Info("vminsert deploy not found, creating new one")
-			err := rclient.Create(ctx, newDeployment)
-			if err != nil {
+			if err := rclient.Create(ctx, newDeployment); err != nil {
 				return nil, fmt.Errorf("cannot create new vminsert deploy: %w", err)
 			}
 			l.Info("new vminsert deploy was created")
-		} else {
-			return nil, fmt.Errorf("cannot get vminsert deploy: %w", err)
+			return newDeployment, nil
 		}
+		return nil, fmt.Errorf("cannot get vminsert deploy: %w", err)
 	}
-	l.Info("vminsert was found, updating it")
 
 	newDeployment.Annotations = labels.Merge(newDeployment.Annotations, currentDeployment.Annotations)
 	newDeployment.Spec.Template.Annotations = labels.Merge(newDeployment.Spec.Template.Annotations, currentDeployment.Spec.Template.Annotations)
@@ -303,14 +300,13 @@ func CreateOrUpdateVMInsertService(ctx context.Context, cr *v1beta1.VMCluster, r
 	err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: newService.Name}, currentService)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			l.Info("creating new service for vminsert")
-			err := rclient.Create(ctx, newService)
-			if err != nil {
-				return nil, fmt.Errorf("cannot create new service for vminsert: %w", err)
+			l.Info("creating new service for vm vminsert")
+			if err := rclient.Create(ctx, newService); err != nil {
+				return nil, fmt.Errorf("cannot create new service for vminsert")
 			}
-		} else {
-			return nil, fmt.Errorf("cannot get vminsert service: %w", err)
+			return newService, nil
 		}
+		return nil, fmt.Errorf("cannot get vminsert service: %w", err)
 	}
 	newService.Annotations = labels.Merge(newService.Annotations, currentService.Annotations)
 
@@ -320,6 +316,7 @@ func CreateOrUpdateVMInsertService(ctx context.Context, cr *v1beta1.VMCluster, r
 	if currentService.ResourceVersion != "" {
 		newService.ResourceVersion = currentService.ResourceVersion
 	}
+	newService.Finalizers = v1beta1.MergeFinalizers(currentService, v1beta1.FinalizerName)
 	err = rclient.Update(ctx, newService)
 	if err != nil {
 		return nil, fmt.Errorf("cannot update vminsert service: %w", err)
@@ -340,16 +337,13 @@ func createOrUpdateVMStorage(ctx context.Context, cr *v1beta1.VMCluster, rclient
 	err = rclient.Get(ctx, types.NamespacedName{Name: newSts.Name, Namespace: newSts.Namespace}, currentSts)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			//create new
-			l.Info("vmstorage sts not found, creating new one")
-			err := rclient.Create(ctx, newSts)
-			if err != nil {
-				return nil, fmt.Errorf("cannot create new vmstorage sts: %w", err)
+			l.Info("creating new sts for vmstorage")
+			if err := rclient.Create(ctx, newSts); err != nil {
+				return nil, fmt.Errorf("cannot create new sts for vmstorage")
 			}
-			l.Info("new vmstorage sts was created")
-		} else {
-			return nil, fmt.Errorf("cannot get vmstorage sts: %w", err)
+			return newSts, nil
 		}
+		return nil, fmt.Errorf("cannot get vmstorage sts: %w", err)
 	}
 	l.Info("vmstorage was found, updating it")
 	newSts.Annotations = labels.Merge(newSts.Annotations, currentSts.Annotations)
@@ -374,14 +368,13 @@ func CreateOrUpdateVMStorageService(ctx context.Context, cr *v1beta1.VMCluster, 
 	err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: newService.Name}, currentService)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			l.Info("creating new service for vm vmstorage")
-			err := rclient.Create(ctx, newService)
-			if err != nil {
+			l.Info("creating new service for vmstorage")
+			if err := rclient.Create(ctx, newService); err != nil {
 				return nil, fmt.Errorf("cannot create new service for vmstorage")
 			}
-		} else {
-			return nil, fmt.Errorf("cannot get vmstorage service: %w", err)
+			return newService, nil
 		}
+		return nil, fmt.Errorf("cannot get vmstorage service: %w", err)
 	}
 	newService.Annotations = labels.Merge(newService.Annotations, currentService.Annotations)
 	if currentService.Spec.ClusterIP != "" {
@@ -390,8 +383,8 @@ func CreateOrUpdateVMStorageService(ctx context.Context, cr *v1beta1.VMCluster, 
 	if currentService.ResourceVersion != "" {
 		newService.ResourceVersion = currentService.ResourceVersion
 	}
-	err = rclient.Update(ctx, newService)
-	if err != nil {
+	newService.Finalizers = v1beta1.MergeFinalizers(currentService, v1beta1.FinalizerName)
+	if err := rclient.Update(ctx, newService); err != nil {
 		return nil, fmt.Errorf("cannot update vmstorage service: %w", err)
 	}
 	l.Info("vmstorage svc was reconciled")
@@ -439,6 +432,7 @@ func genVMSelectSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv1
 			Labels:          cr.FinalLabels(cr.VMSelectSelectorLabels()),
 			Annotations:     cr.Annotations(),
 			OwnerReferences: cr.AsOwner(),
+			Finalizers:      []string{v1beta1.FinalizerName},
 		},
 		Spec: appsv1.StatefulSetSpec{
 			Replicas: cr.Spec.VMSelect.ReplicaCount,
@@ -694,6 +688,7 @@ func genVMSelectService(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) *core
 			Labels:          cr.FinalLabels(cr.VMSelectSelectorLabels()),
 			Annotations:     cr.Annotations(),
 			OwnerReferences: cr.AsOwner(),
+			Finalizers:      []string{v1beta1.FinalizerName},
 		},
 		Spec: corev1.ServiceSpec{
 			Type:      corev1.ServiceTypeClusterIP,
@@ -740,6 +735,7 @@ func genVMInsertSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv1
 			Labels:          cr.FinalLabels(cr.VMInsertSelectorLabels()),
 			Annotations:     cr.Annotations(),
 			OwnerReferences: cr.AsOwner(),
+			Finalizers:      []string{v1beta1.FinalizerName},
 		},
 		Spec: appsv1.DeploymentSpec{
 			Replicas: cr.Spec.VMInsert.ReplicaCount,
@@ -935,6 +931,7 @@ func genVMInsertService(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) *core
 			Labels:          cr.FinalLabels(cr.VMInsertSelectorLabels()),
 			Annotations:     cr.Annotations(),
 			OwnerReferences: cr.AsOwner(),
+			Finalizers:      []string{v1beta1.FinalizerName},
 		},
 		Spec: corev1.ServiceSpec{
 			Type:     corev1.ServiceTypeClusterIP,
@@ -1002,6 +999,7 @@ func GenVMStorageSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv
 			Labels:          cr.FinalLabels(cr.VMStorageSelectorLabels()),
 			Annotations:     cr.Annotations(),
 			OwnerReferences: cr.AsOwner(),
+			Finalizers:      []string{v1beta1.FinalizerName},
 		},
 		Spec: appsv1.StatefulSetSpec{
 			Replicas: cr.Spec.VMStorage.ReplicaCount,
@@ -1272,6 +1270,7 @@ func genVMStorageService(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) *cor
 			Labels:          cr.FinalLabels(cr.VMStorageSelectorLabels()),
 			Annotations:     cr.Annotations(),
 			OwnerReferences: cr.AsOwner(),
+			Finalizers:      []string{v1beta1.FinalizerName},
 		},
 		Spec: corev1.ServiceSpec{
 			Type:      corev1.ServiceTypeClusterIP,

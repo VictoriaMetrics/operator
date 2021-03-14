@@ -45,14 +45,13 @@ func CreateOrUpdateVMAgentService(ctx context.Context, cr *victoriametricsv1beta
 	err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: newService.Name}, currentService)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			l.Info("creating new service for vm agent")
-			err := rclient.Create(ctx, newService)
-			if err != nil {
+			l.Info("creating new service for vmagent")
+			if err := rclient.Create(ctx, newService); err != nil {
 				return nil, fmt.Errorf("cannot create new service for vmagent: %w", err)
 			}
-		} else {
-			return nil, fmt.Errorf("cannot get vmagent service for reconcile: %w", err)
+			return newService, nil
 		}
+		return nil, fmt.Errorf("cannot get vmagent service for reconcile: %w", err)
 	}
 	newService.Annotations = labels.Merge(newService.Annotations, currentService.Annotations)
 
@@ -62,6 +61,7 @@ func CreateOrUpdateVMAgentService(ctx context.Context, cr *victoriametricsv1beta
 	if currentService.ResourceVersion != "" {
 		newService.ResourceVersion = currentService.ResourceVersion
 	}
+	newService.Finalizers = victoriametricsv1beta1.MergeFinalizers(currentService, victoriametricsv1beta1.FinalizerName)
 	err = rclient.Update(ctx, newService)
 	if err != nil {
 		l.Error(err, "cannot update vmagent service")
@@ -84,6 +84,7 @@ func newServiceVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperato
 			Labels:          c.Labels.Merge(cr.Labels()),
 			Annotations:     cr.Annotations(),
 			OwnerReferences: cr.AsOwner(),
+			Finalizers:      []string{victoriametricsv1beta1.FinalizerName},
 		},
 		Spec: corev1.ServiceSpec{
 			Type:     corev1.ServiceTypeClusterIP,
@@ -153,22 +154,20 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 		if errors.IsNotFound(err) {
 			//create new
 			l.Info("vmagent deploy not found, creating new one")
-			err := rclient.Create(ctx, newDeploy)
-			if err != nil {
+			if err := rclient.Create(ctx, newDeploy); err != nil {
 				return reconcile.Result{}, fmt.Errorf("cannot create new vmagent deploy: %w", err)
 			}
 			l.Info("new vmagent deploy was created")
-		} else {
-			return reconcile.Result{}, fmt.Errorf("cannot get vmagent deploy: %s,err: %w", newDeploy.Name, err)
+			return reconcile.Result{}, nil
 		}
+		return reconcile.Result{}, fmt.Errorf("cannot get vmagent deploy: %s,err: %w", newDeploy.Name, err)
 	}
 	l.Info("updating  vmagent")
 	newDeploy.Annotations = labels.Merge(newDeploy.Annotations, currentDeploy.Annotations)
 	newDeploy.Spec.Template.Annotations = labels.Merge(newDeploy.Spec.Template.Annotations, currentDeploy.Spec.Template.Annotations)
-
-	err = rclient.Update(ctx, newDeploy)
-	if err != nil {
-		l.Error(err, "cannot update vmagent deploy")
+	victoriametricsv1beta1.MergeFinalizers(newDeploy, victoriametricsv1beta1.FinalizerName)
+	if err := rclient.Update(ctx, newDeploy); err != nil {
+		return reconcile.Result{}, err
 	}
 
 	//its safe to ignore
@@ -209,6 +208,7 @@ func newDeployForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOpera
 			Labels:          c.Labels.Merge(cr.Labels()),
 			Annotations:     cr.Annotations(),
 			OwnerReferences: cr.AsOwner(),
+			Finalizers:      []string{victoriametricsv1beta1.FinalizerName},
 		},
 		Spec: appsv1.DeploymentSpec{
 			Replicas: cr.Spec.ReplicaCount,
@@ -574,6 +574,7 @@ func CreateOrUpdateTlsAssets(ctx context.Context, cr *victoriametricsv1beta1.VMA
 			Labels:          cr.Labels(),
 			OwnerReferences: cr.AsOwner(),
 			Namespace:       cr.Namespace,
+			Finalizers:      []string{victoriametricsv1beta1.FinalizerName},
 		},
 		Data: map[string][]byte{},
 	}
@@ -584,19 +585,14 @@ func CreateOrUpdateTlsAssets(ctx context.Context, cr *victoriametricsv1beta1.VMA
 	currentAssetSecret := &corev1.Secret{}
 	err = rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: tlsAssetsSecret.Name}, currentAssetSecret)
 	if err != nil {
-		if !errors.IsNotFound(err) {
-			return fmt.Errorf("cannot get existing tls secret: %s, for vmagent: %s, err: %w", tlsAssetsSecret.Name, cr.Name, err)
+		if errors.IsNotFound(err) {
+			log.Info("creating new tls asset for vmagent", "secret_name", tlsAssetsSecret.Name, "vmagent", cr.Name)
+			return rclient.Create(ctx, tlsAssetsSecret)
 		}
-		err := rclient.Create(ctx, tlsAssetsSecret)
-		if err != nil {
-			return fmt.Errorf("cannot create tls asset secret: %s for vmagent: %s, err :%w", tlsAssetsSecret.Name, cr.Name, err)
-		}
-		log.Info("create new tls asset for vmagent", "secret_name", tlsAssetsSecret.Name, "vmagent", cr.Name)
-		return nil
+		return fmt.Errorf("cannot get existing tls secret: %s, for vmagent: %s, err: %w", tlsAssetsSecret.Name, cr.Name, err)
 	}
-	for annotation, value := range currentAssetSecret.Annotations {
-		tlsAssetsSecret.Annotations[annotation] = value
-	}
+	tlsAssetsSecret.Annotations = labels.Merge(tlsAssetsSecret.Annotations, currentAssetSecret.Annotations)
+	victoriametricsv1beta1.MergeFinalizers(tlsAssetsSecret, victoriametricsv1beta1.FinalizerName)
 	return rclient.Update(ctx, tlsAssetsSecret)
 }
 

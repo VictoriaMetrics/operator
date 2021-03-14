@@ -77,14 +77,13 @@ func CreateOrUpdateAlertManager(ctx context.Context, cr *victoriametricsv1beta1.
 	if err != nil {
 		if errors.IsNotFound(err) {
 			l.Info("Creating a new sts", "sts.Namespace", newSts.Namespace, "sts.Name", newSts.Name)
-			err = rclient.Create(ctx, newSts)
-			if err != nil {
+			if err = rclient.Create(ctx, newSts); err != nil {
 				return nil, fmt.Errorf("cannot create new alertmanager sts: %w", err)
 			}
 			l.Info("new sts was created for alertmanager")
-		} else {
-			return nil, fmt.Errorf("cannot get alertmanager sts: %w", err)
+			return newSts, nil
 		}
+		return nil, fmt.Errorf("cannot get alertmanager sts: %w", err)
 	}
 	return newSts, updateStsForAlertManager(ctx, rclient, currentSts, newSts)
 }
@@ -94,10 +93,9 @@ func updateStsForAlertManager(ctx context.Context, rclient client.Client, oldSts
 	newSts.Spec.Template.Annotations = labels.Merge(newSts.Spec.Template.Annotations, oldSts.Spec.Template.Annotations)
 	// hack for break reconcile loop at kubernetes 1.18
 	newSts.Status.Replicas = oldSts.Status.Replicas
+	newSts.Finalizers = victoriametricsv1beta1.MergeFinalizers(oldSts, victoriametricsv1beta1.FinalizerName)
 
-	log.Info("updating vmalertmanager sts")
 	return rclient.Update(ctx, newSts)
-
 }
 
 func newStsForAlertManager(cr *victoriametricsv1beta1.VMAlertmanager, c *config.BaseOperatorConf) (*appsv1.StatefulSet, error) {
@@ -143,6 +141,7 @@ func newStsForAlertManager(cr *victoriametricsv1beta1.VMAlertmanager, c *config.
 			Annotations:     cr.Annotations(),
 			Namespace:       cr.Namespace,
 			OwnerReferences: cr.AsOwner(),
+			Finalizers:      []string{victoriametricsv1beta1.FinalizerName},
 		},
 		Spec: *spec,
 	}
@@ -192,26 +191,27 @@ func CreateOrUpdateAlertManagerService(ctx context.Context, cr *victoriametricsv
 	l := log.WithValues("recon.alertmanager.service", cr.Name)
 
 	newService := newAlertManagerService(cr, c)
-	oldService := &v1.Service{}
-	err := rclient.Get(ctx, types.NamespacedName{Name: newService.Name, Namespace: newService.Namespace}, oldService)
+	currentService := &v1.Service{}
+	err := rclient.Get(ctx, types.NamespacedName{Name: newService.Name, Namespace: newService.Namespace}, currentService)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			l.Info("creating new service for sts")
-			err := rclient.Create(ctx, newService)
-			if err != nil {
+			if err := rclient.Create(ctx, newService); err != nil {
 				return nil, fmt.Errorf("cannot create service for vmalertmanager sts: %w", err)
 			}
+			return newService, nil
 		} else {
 			return nil, fmt.Errorf("cannot get service for vmalertmanager sts: %w", err)
 		}
 	}
-	newService.Annotations = labels.Merge(newService.Annotations, oldService.Annotations)
-	if oldService.Spec.ClusterIP != "" {
-		newService.Spec.ClusterIP = oldService.Spec.ClusterIP
+	newService.Annotations = labels.Merge(newService.Annotations, currentService.Annotations)
+	if currentService.Spec.ClusterIP != "" {
+		newService.Spec.ClusterIP = currentService.Spec.ClusterIP
 	}
-	if oldService.ResourceVersion != "" {
-		newService.ResourceVersion = oldService.ResourceVersion
+	if currentService.ResourceVersion != "" {
+		newService.ResourceVersion = currentService.ResourceVersion
 	}
+	newService.Finalizers = victoriametricsv1beta1.MergeFinalizers(currentService, victoriametricsv1beta1.FinalizerName)
 	err = rclient.Update(ctx, newService)
 	if err != nil {
 		return nil, fmt.Errorf("cannot update vmalert server: %w", err)
@@ -233,6 +233,7 @@ func newAlertManagerService(cr *victoriametricsv1beta1.VMAlertmanager, c *config
 			Labels:          c.Labels.Merge(cr.Labels()),
 			Annotations:     cr.Annotations(),
 			OwnerReferences: cr.AsOwner(),
+			Finalizers:      []string{victoriametricsv1beta1.FinalizerName},
 		},
 		Spec: v1.ServiceSpec{
 			ClusterIP: "None",

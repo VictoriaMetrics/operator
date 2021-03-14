@@ -67,6 +67,9 @@ func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	alertMngs := &victoriametricsv1beta1.VMAlertList{}
 	reqLogger.Info("listing vmalerts")
+	vmAlertSync.Lock()
+	defer vmAlertSync.Unlock()
+
 	err = r.List(ctx, alertMngs, &client.ListOptions{})
 	if err != nil {
 		reqLogger.Error(err, "cannot list vmalerts")

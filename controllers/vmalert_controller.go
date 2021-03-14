@@ -18,6 +18,9 @@ package controllers
 
 import (
 	"context"
+	"sync"
+
+	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/internal/config"
@@ -31,6 +34,8 @@ import (
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 )
+
+var vmAlertSync sync.Mutex
 
 // VMAlertReconciler reconciles a VMAlert object
 type VMAlertReconciler struct {
@@ -53,6 +58,9 @@ func (r *VMAlertReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	reqLogger := r.Log.WithValues("vmalert", req.NamespacedName)
 	reqLogger.Info("Reconciling")
 
+	vmAlertSync.Lock()
+	defer vmAlertSync.Unlock()
+
 	// Fetch the VMAlert instance
 	instance := &victoriametricsv1beta1.VMAlert{}
 	err := r.Get(ctx, req.NamespacedName, instance)
@@ -62,11 +70,15 @@ func (r *VMAlertReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		}
 		return ctrl.Result{}, err
 	}
-	if err := handleFinalize(ctx, r.Client, instance); err != nil {
-		return ctrl.Result{}, err
-	}
-	if instance.DeletionTimestamp != nil {
+	if !instance.DeletionTimestamp.IsZero() {
+		if err := finalize.OnVMAlertDelete(ctx, r.Client, instance); err != nil {
+			return ctrl.Result{}, err
+		}
 		return ctrl.Result{}, nil
+	}
+
+	if err := finalize.AddFinalizer(ctx, r.Client, instance); err != nil {
+		return ctrl.Result{}, err
 	}
 
 	maps, err := factory.CreateOrUpdateRuleConfigMaps(ctx, instance, r)
@@ -92,6 +104,7 @@ func (r *VMAlertReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	if !r.BaseConf.DisableSelfServiceScrapeCreation {
 		err := factory.CreateVMServiceScrapeFromService(ctx, r, svc, instance.MetricPath())
 		if err != nil {
+			// made on best effort.
 			reqLogger.Error(err, "cannot create serviceScrape for vmalert")
 		}
 	}

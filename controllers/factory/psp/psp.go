@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	v1beta12 "github.com/VictoriaMetrics/operator/api/v1beta1"
+
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/api/policy/v1beta1"
@@ -18,7 +20,6 @@ import (
 )
 
 type CRDObject interface {
-	AsOwner() []metav1.OwnerReference
 	Annotations() map[string]string
 	Labels() map[string]string
 	PrefixedName() string
@@ -55,7 +56,10 @@ func CreateServiceAccountForCRD(ctx context.Context, cr CRDObject, rclient clien
 		}
 		return fmt.Errorf("cannot get ServiceAccount for given CRD Object=%q, err=%w", cr.PrefixedName(), err)
 	}
-	return nil
+	newSA.Finalizers = v1beta12.MergeFinalizers(&existSA, v1beta12.FinalizerName)
+	newSA.Annotations = labels.Merge(newSA.Annotations, existSA.Annotations)
+	newSA.Labels = labels.Merge(existSA.Labels, newSA.Labels)
+	return rclient.Update(ctx, newSA)
 }
 
 func ensurePSPExists(ctx context.Context, cr CRDObject, rclient client.Client) error {
@@ -80,9 +84,10 @@ func ensurePSPExists(ctx context.Context, cr CRDObject, rclient client.Client) e
 	if cr.GetPSPName() != cr.PrefixedName() {
 		return nil
 	}
-	existPSP.Labels = labels.Merge(existPSP.Labels, defaultPSP.Labels)
-	existPSP.Annotations = labels.Merge(existPSP.Annotations, defaultPSP.Labels)
-	return rclient.Update(ctx, &existPSP)
+	defaultPSP.Annotations = labels.Merge(defaultPSP.Annotations, existPSP.Labels)
+	defaultPSP.Labels = labels.Merge(existPSP.Labels, defaultPSP.Labels)
+	defaultPSP.Finalizers = v1beta12.MergeFinalizers(&existPSP, v1beta12.FinalizerName)
+	return rclient.Update(ctx, defaultPSP)
 }
 
 func ensureClusterRoleExists(ctx context.Context, cr CRDObject, rclient client.Client) error {
@@ -104,9 +109,10 @@ func ensureClusterRoleExists(ctx context.Context, cr CRDObject, rclient client.C
 		return rclient.Create(ctx, clusterRole)
 	}
 
-	existsClusterRole.Labels = labels.Merge(existsClusterRole.Labels, clusterRole.Labels)
-	existsClusterRole.Annotations = labels.Merge(clusterRole.Annotations, existsClusterRole.Annotations)
-	return rclient.Update(ctx, &existsClusterRole)
+	clusterRole.Annotations = labels.Merge(clusterRole.Annotations, existsClusterRole.Annotations)
+	clusterRole.Labels = labels.Merge(existsClusterRole.Labels, clusterRole.Labels)
+	clusterRole.Finalizers = v1beta12.MergeFinalizers(&existsClusterRole, v1beta12.FinalizerName)
+	return rclient.Update(ctx, clusterRole)
 }
 
 func ensureClusterRoleBindingExists(ctx context.Context, cr CRDObject, rclient client.Client) error {
@@ -128,19 +134,20 @@ func ensureClusterRoleBindingExists(ctx context.Context, cr CRDObject, rclient c
 		return rclient.Create(ctx, clusterRoleBinding)
 	}
 
-	existsClusterRoleBinding.Labels = labels.Merge(existsClusterRoleBinding.Labels, clusterRoleBinding.Labels)
-	existsClusterRoleBinding.Annotations = labels.Merge(clusterRoleBinding.Annotations, existsClusterRoleBinding.Annotations)
+	clusterRoleBinding.Labels = labels.Merge(existsClusterRoleBinding.Labels, clusterRoleBinding.Labels)
+	clusterRoleBinding.Annotations = labels.Merge(clusterRoleBinding.Annotations, existsClusterRoleBinding.Annotations)
+	clusterRoleBinding.Finalizers = v1beta12.MergeFinalizers(&existsClusterRoleBinding, v1beta12.FinalizerName)
 	return rclient.Update(ctx, clusterRoleBinding)
 }
 
 func buildSA(cr CRDObject) *v1.ServiceAccount {
 	return &v1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            cr.GetServiceAccountName(),
-			Namespace:       cr.GetNSName(),
-			Labels:          cr.Labels(),
-			Annotations:     cr.Annotations(),
-			OwnerReferences: cr.AsOwner(),
+			Name:        cr.GetServiceAccountName(),
+			Namespace:   cr.GetNSName(),
+			Labels:      cr.Labels(),
+			Annotations: cr.Annotations(),
+			Finalizers:  []string{v1beta12.FinalizerName},
 		},
 	}
 }
@@ -152,6 +159,7 @@ func buildClusterRoleForPSP(cr CRDObject) *v12.ClusterRole {
 			Name:        cr.PrefixedName(),
 			Labels:      cr.Labels(),
 			Annotations: cr.Annotations(),
+			Finalizers:  []string{v1beta12.FinalizerName},
 		},
 		Rules: []v12.PolicyRule{
 			{
@@ -171,6 +179,7 @@ func buildClusterRoleBinding(cr CRDObject) *v12.ClusterRoleBinding {
 			Namespace:   cr.GetNSName(),
 			Labels:      cr.Labels(),
 			Annotations: cr.Annotations(),
+			Finalizers:  []string{v1beta12.FinalizerName},
 		},
 		Subjects: []v12.Subject{
 			{
@@ -194,6 +203,7 @@ func BuildPSP(cr CRDObject) *v1beta1.PodSecurityPolicy {
 			Namespace:   cr.GetNSName(),
 			Labels:      cr.Labels(),
 			Annotations: cr.Annotations(),
+			Finalizers:  []string{v1beta12.FinalizerName},
 		},
 		Spec: v1beta1.PodSecurityPolicySpec{
 			ReadOnlyRootFilesystem: false,

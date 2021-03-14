@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/labels"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
@@ -410,6 +413,13 @@ func (cr VMAlert) GetPSPName() string {
 
 func (cr VMAlert) GetNSName() string {
 	return cr.GetNamespace()
+}
+
+func (cr VMAlert) RulesConfigMapSelector() client.ListOption {
+	return &client.ListOptions{
+		LabelSelector: labels.SelectorFromSet(map[string]string{"vmalert-name": cr.Name}),
+		Namespace:     cr.Namespace,
+	}
 }
 
 func init() {

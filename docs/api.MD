@@ -882,6 +882,7 @@ Image defines docker image settings
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
+| acceptEULA | AcceptEULA accepts enterprise feature usage, must be set to true. otherwise backupmanager cannot be added to single/cluster version. https://victoriametrics.com/assets/VM_EULA.pdf | bool | true |
 | concurrency | Defines number of concurrent workers. Higher concurrency may reduce backup duration (default 10) | *int32 | false |
 | destination | Defines destination for backup | string | false |
 | customS3Endpoint | Custom S3 endpoint for use with S3-compatible storages (e.g. MinIO). S3 is used if not set | *string | false |
@@ -933,6 +934,7 @@ VMClusterSpec defines the desired state of VMCluster
 | replicationFactor | ReplicationFactor defines how many copies of data make among distinct storage nodes | *int32 | false |
 | podSecurityPolicyName | PodSecurityPolicyName - defines name for podSecurityPolicy in case of empty value, prefixedName will be used. | string | false |
 | serviceAccountName | ServiceAccountName is the name of the ServiceAccount to use to run the VMSelect Pods. | string | false |
+| clusterVersion | ClusterVersion defines default images tag for all components. it can be overwritten with component specific image.tag value. | string | false |
 | imagePullSecrets | ImagePullSecrets An optional list of references to secrets in the same namespace to use for pulling images from registries see http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod | [][v1.LocalObjectReference](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#localobjectreference-v1-core) | false |
 | vmselect |  | *[VMSelect](#vmselect) | false |
 | vminsert |  | *[VMInsert](#vminsert) | false |

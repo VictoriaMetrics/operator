@@ -1211,11 +1211,13 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) 
 	}, additionalContainers...)
 
 	if cr.Spec.VMStorage.VMBackup != nil {
-		vmBackuper, err := makeSpecForVMBackuper(cr.Spec.VMStorage.VMBackup, c, cr.Spec.VMStorage.Port, cr.Spec.VMStorage.GetStorageVolumeName(), cr.Spec.VMStorage.ExtraArgs)
+		vmBackupManagerContainer, err := makeSpecForVMBackuper(cr.Spec.VMStorage.VMBackup, c, cr.Spec.VMStorage.Port, cr.Spec.VMStorage.GetStorageVolumeName(), cr.Spec.VMStorage.ExtraArgs)
 		if err != nil {
 			return nil, err
 		}
-		operatorContainers = append(operatorContainers, *vmBackuper)
+		if vmBackupManagerContainer != nil {
+			operatorContainers = append(operatorContainers, *vmBackupManagerContainer)
+		}
 	}
 
 	containers, err := k8sutil.MergePatchContainers(operatorContainers, cr.Spec.VMStorage.Containers)

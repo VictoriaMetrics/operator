@@ -315,11 +315,13 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 	}, additionalContainers...)
 
 	if cr.Spec.VMBackup != nil {
-		vmBackuper, err := makeSpecForVMBackuper(cr.Spec.VMBackup, c, cr.Spec.Port, vmDataVolumeName, cr.Spec.ExtraArgs)
+		vmBackupManagerContainer, err := makeSpecForVMBackuper(cr.Spec.VMBackup, c, cr.Spec.Port, vmDataVolumeName, cr.Spec.ExtraArgs)
 		if err != nil {
 			return nil, err
 		}
-		operatorContainers = append(operatorContainers, *vmBackuper)
+		if vmBackupManagerContainer != nil {
+			operatorContainers = append(operatorContainers, *vmBackupManagerContainer)
+		}
 	}
 
 	containers, err := k8stools.MergePatchContainers(operatorContainers, cr.Spec.Containers)
@@ -424,6 +426,10 @@ func makeSpecForVMBackuper(
 	dataVolumeName string,
 	extraArgs map[string]string,
 ) (*corev1.Container, error) {
+	if !cr.AcceptEULA {
+		log.Info("EULA wasn't accepted, update your backup setting. You must switch to victoriametrics/vmbackupmanager:v1.56.0-enterprise  image or higher.")
+		return nil, nil
+	}
 	if cr.Image.Repository == "" {
 		cr.Image.Repository = c.VMBackup.Image
 	}
@@ -444,6 +450,7 @@ func makeSpecForVMBackuper(
 		fmt.Sprintf("-snapshot.createURL=%s", cr.SnapshotCreatePathWithFlags(port, extraArgs)),
 		//http://localhost:port/snaphsot/delete
 		fmt.Sprintf("-snapshot.deleteURL=%s", cr.SnapshotDeletePathWithFlags(port, extraArgs)),
+		"-eula",
 	}
 	if cr.LogLevel != nil {
 		args = append(args, fmt.Sprintf("-loggerLevel=%s", *cr.LogLevel))
@@ -453,6 +460,24 @@ func makeSpecForVMBackuper(
 	}
 	for arg, value := range cr.ExtraArgs {
 		args = append(args, fmt.Sprintf("-%s=%s", arg, value))
+	}
+	if cr.Concurrency != nil {
+		args = append(args, fmt.Sprintf("-concurrency=%d", *cr.Concurrency))
+	}
+	if cr.CustomS3Endpoint != nil {
+		args = append(args, fmt.Sprintf("-customS3Endpoint=%s", *cr.CustomS3Endpoint))
+	}
+	if cr.DisableHourly != nil && *cr.DisableHourly {
+		args = append(args, "-disableHourly")
+	}
+	if cr.DisableDaily != nil && *cr.DisableDaily {
+		args = append(args, "-disableDaily")
+	}
+	if cr.DisableMonthly != nil && *cr.DisableMonthly {
+		args = append(args, "-disableMonthly")
+	}
+	if cr.DisableWeekly != nil && *cr.DisableWeekly {
+		args = append(args, "-disableWeekly")
 	}
 
 	var ports []corev1.ContainerPort

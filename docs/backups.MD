@@ -2,6 +2,8 @@
 
 #### vmbackuper is proprietary software. 
 
+ Before using it, you must accept EULA https://victoriametrics.com/assets/VM_EULA.pdf.
+
  `VMSingle` and `VMCluster` has built-in backup configuration, it uses `vmbackuper` - proprietary tool for backups.
  It supports incremental backups (hours, daily, etc) with popular object storages (aws s3, google cloud storage).
  
@@ -28,6 +30,7 @@ spec:
   # Add fields here
   retentionPeriod: "1"
   vmBackup:
+    acceptEULA: true
     destination: "s3://your_bucket/folder"
     credentialsSecret:
       name: remote-storage-keys
@@ -43,6 +46,7 @@ spec:
   vmstorage:
     replicaCount: 2
     vmBackup:
+      acceptEULA: true
       destination: "s3://your_bucket/folder"
       credentialsSecret:
         name: remote-storage-keys
@@ -99,12 +103,13 @@ spec:
    - -src=s3://your_bucket/folder/latest
    - -credsFilePath=/etc/vm/creds/credentials
  vmBackup:
+  acceptEULA: true
   destination: "s3://your_bucket/folder"
   extraArgs:
       runOnStart: "true"
   image:
-      repository: victoriametrics/vmbackuper
-      tag: v1.0.0
+      repository: victoriametrics/vmbackupmanager
+      tag: v1.56.0-enterprise
   credentialsSecret:
    name: remote-storage-keys
    key: credentials

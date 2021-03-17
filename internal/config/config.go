@@ -34,7 +34,7 @@ type BaseOperatorConf struct {
 	PSPAutoCreateEnabled bool `default:"true"`
 	VMAlertDefault       struct {
 		Image               string `default:"victoriametrics/vmalert"`
-		Version             string `default:"v1.53.1"`
+		Version             string `default:"v1.56.0"`
 		Port                string `default:"8080"`
 		UseDefaultResources bool   `default:"true"`
 		Resource            struct {
@@ -53,7 +53,7 @@ type BaseOperatorConf struct {
 	}
 	VMAgentDefault struct {
 		Image               string `default:"victoriametrics/vmagent"`
-		Version             string `default:"v1.53.1"`
+		Version             string `default:"v1.56.0"`
 		ConfigReloadImage   string `default:"quay.io/coreos/prometheus-config-reloader:v0.42.0"`
 		Port                string `default:"8429"`
 		UseDefaultResources bool   `default:"true"`
@@ -73,7 +73,7 @@ type BaseOperatorConf struct {
 
 	VMSingleDefault struct {
 		Image               string `default:"victoriametrics/victoria-metrics"`
-		Version             string `default:"v1.53.1"`
+		Version             string `default:"v1.56.0"`
 		Port                string `default:"8429"`
 		UseDefaultResources bool   `default:"true"`
 		Resource            struct {
@@ -94,7 +94,7 @@ type BaseOperatorConf struct {
 		UseDefaultResources bool `default:"true"`
 		VMSelectDefault     struct {
 			Image    string `default:"victoriametrics/vmselect"`
-			Version  string `default:"v1.53.1-cluster"`
+			Version  string `default:"v1.56.0-cluster"`
 			Port     string `default:"8481"`
 			Resource struct {
 				Limit struct {
@@ -109,7 +109,7 @@ type BaseOperatorConf struct {
 		}
 		VMStorageDefault struct {
 			Image        string `default:"victoriametrics/vmstorage"`
-			Version      string `default:"v1.53.1-cluster"`
+			Version      string `default:"v1.56.0-cluster"`
 			VMInsertPort string `default:"8400"`
 			VMSelectPort string `default:"8401"`
 			Port         string `default:"8482"`
@@ -126,7 +126,7 @@ type BaseOperatorConf struct {
 		}
 		VMInsertDefault struct {
 			Image    string `default:"victoriametrics/vminsert"`
-			Version  string `default:"v1.53.1-cluster"`
+			Version  string `default:"v1.56.0-cluster"`
 			Port     string `default:"8480"`
 			Resource struct {
 				Limit struct {
@@ -163,8 +163,8 @@ type BaseOperatorConf struct {
 
 	DisableSelfServiceScrapeCreation bool `default:"false"`
 	VMBackup                         struct {
-		Image               string `default:"victoriametrics/vmbackuper"`
-		Version             string `default:"v1.0.0"`
+		Image               string `default:"victoriametrics/vmbackupmanager"`
+		Version             string `default:"v1.56.0-enterprise"`
 		Port                string `default:"8300"`
 		UseDefaultResources bool   `default:"true"`
 		Resource            struct {

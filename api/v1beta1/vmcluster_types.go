@@ -507,6 +507,10 @@ type VMStorage struct {
 }
 
 type VMBackup struct {
+	// AcceptEULA accepts enterprise feature usage, must be set to true.
+	// otherwise backupmanager cannot be added to single/cluster version.
+	// https://victoriametrics.com/assets/VM_EULA.pdf
+	AcceptEULA bool `json:"acceptEULA"`
 	// Defines number of concurrent workers. Higher concurrency may reduce backup duration (default 10)
 	// +optional
 	Concurrency *int32 `json:"concurrency,omitempty"`

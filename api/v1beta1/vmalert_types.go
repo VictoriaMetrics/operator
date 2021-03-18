@@ -192,6 +192,10 @@ type VMAlertSpec struct {
 	// ExternalLabels in the form 'name: value' to add to all generated recording rules and alerts.
 	// +optional
 	ExternalLabels map[string]string `json:"externalLabels,omitempty"`
+
+	// ServiceSpec that will be added to vmalert service spec
+	// +optional
+	ServiceSpec *ServiceSpec `json:"serviceSpec,omitempty"`
 }
 
 // VMAgentRemoteReadSpec defines the remote storage configuration for VmAlert to read alerts from

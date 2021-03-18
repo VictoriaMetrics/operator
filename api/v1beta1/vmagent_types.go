@@ -237,6 +237,9 @@ type VMAgentSpec struct {
 	// ExtraEnvs that will be added to VMAgent pod
 	// +optional
 	ExtraEnvs []v1.EnvVar `json:"extraEnvs,omitempty"`
+	// ServiceSpec that will be added to vmagent service spec
+	// +optional
+	ServiceSpec *ServiceSpec `json:"serviceSpec,omitempty"`
 }
 
 // VMAgentRemoteWriteSettings - defines global settings for all remoteWrite urls.

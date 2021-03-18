@@ -62,11 +62,7 @@ func CreateOrUpdateVMAlertService(ctx context.Context, cr *victoriametricsv1beta
 	return newService, nil
 }
 
-func newServiceVMAlert(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorConf) *corev1.Service {
-	cr = cr.DeepCopy()
-	if cr.Spec.Port == "" {
-		cr.Spec.Port = c.VMAlertDefault.Port
-	}
+func ddefaultVMAlertService(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorConf) *corev1.Service {
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),
@@ -83,12 +79,38 @@ func newServiceVMAlert(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperato
 				{
 					Name:       "http",
 					Protocol:   "TCP",
-					Port:       intstr.Parse(cr.Spec.Port).IntVal,
-					TargetPort: intstr.Parse(cr.Spec.Port),
+					Port:       intstr.Parse(c.VMAlertDefault.Port).IntVal,
+					TargetPort: intstr.Parse(c.VMAlertDefault.Port),
 				},
 			},
 		},
 	}
+}
+
+func newServiceVMAlert(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorConf) *corev1.Service {
+	cr = cr.DeepCopy()
+	svc := ddefaultVMAlertService(cr, c)
+	if cr.Spec.ServiceSpec != nil {
+		svc = &corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            cr.Spec.ServiceSpec.Name,
+				Namespace:       cr.Namespace,
+				Labels:          cr.Spec.ServiceSpec.Labels,
+				Annotations:     cr.Spec.ServiceSpec.Annotations,
+				OwnerReferences: cr.AsOwner(),
+			},
+			Spec: cr.Spec.ServiceSpec.Spec,
+		}
+	}
+	if cr.Spec.Port != "" {
+		svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{
+			Protocol:   "TCP",
+			Port:       intstr.Parse(cr.Spec.Port).IntVal,
+			TargetPort: intstr.Parse(cr.Spec.Port),
+		})
+	}
+	setServiceDefaultField(svc, ddefaultVMAlertService(cr, c))
+	return svc
 }
 
 func CreateOrUpdateVMAlert(ctx context.Context, cr *victoriametricsv1beta1.VMAlert, rclient client.Client, c *config.BaseOperatorConf, cmNames []string) (reconcile.Result, error) {

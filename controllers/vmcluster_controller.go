@@ -93,7 +93,6 @@ func (r *VMClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&appsv1.Deployment{}).
 		Owns(&victoriametricsv1beta1.VMServiceScrape{}).
 		Owns(&appsv1.StatefulSet{}).
-		Owns(&v1.Service{}).
 		Owns(&v1.ServiceAccount{}).
 		Complete(r)
 }

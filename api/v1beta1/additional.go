@@ -139,6 +139,15 @@ type BasicAuth struct {
 	Password v1.SecretKeySelector `json:"password,omitempty"`
 }
 
+// ServiceSpec is be added into CRD spec to support custom service information
+// +k8s:openapi-gen=true
+type ServiceSpec struct {
+	EmbeddedObjectMetadata `json:"metadata,omitempty"`
+	// ServiceSpec describes the attributes that a user creates on a service.
+	// More info: https://kubernetes.io/docs/concepts/services-networking/service/
+	Spec v1.ServiceSpec `json:"spec,omitempty"`
+}
+
 func buildPathWithPrefixFlag(flags map[string]string, defaultPath string) string {
 	if prefix, ok := flags[vmPathPrefixFlagName]; ok {
 		return path.Join(prefix, defaultPath)

@@ -152,6 +152,9 @@ type VMSingleSpec struct {
 	// ExtraEnvs that will be added to VMSingle pod
 	// +optional
 	ExtraEnvs []v1.EnvVar `json:"extraEnvs,omitempty"`
+	// ServiceSpec that will be added to vmsingle service spec
+	// +optional
+	ServiceSpec *ServiceSpec `json:"serviceSpec,omitempty"`
 }
 
 // VMSingleStatus defines the observed state of VMSingle

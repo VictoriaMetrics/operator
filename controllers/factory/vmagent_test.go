@@ -14,6 +14,7 @@ import (
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -545,20 +546,56 @@ func Test_newServiceVMAgent(t *testing.T) {
 			args: args{
 				c: config.MustGetBaseConfig(),
 				cr: &victoriametricsv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        "vmagent",
+						Labels:      map[string]string{"crdlabel1": "crdvalue1", "label1": "value1"},
+						Annotations: map[string]string{"crdannotation1": "crdvalue1"},
+					},
 					Spec: victoriametricsv1beta1.VMAgentSpec{InsertPorts: &victoriametricsv1beta1.InsertPorts{
 						InfluxPort:       "8431",
 						GraphitePort:     "8435",
 						OpenTSDBHTTPPort: "8436",
 						OpenTSDBPort:     "8437",
-					}},
+					},
+						ServiceSpec: &victoriametricsv1beta1.ServiceSpec{
+							EmbeddedObjectMetadata: victoriametricsv1beta1.EmbeddedObjectMetadata{
+								Name: "testing-1",
+								Labels: map[string]string{
+									"label1": "value1",
+									"label2": "value2",
+								},
+								Annotations: map[string]string{
+									"annotation1": "value1",
+								},
+							},
+							Spec: corev1.ServiceSpec{
+								Type: corev1.ServiceTypeNodePort,
+							},
+						},
+					},
 				},
 			},
 			validate: func(svc *corev1.Service) error {
 				if svc == nil {
 					return fmt.Errorf("expected service to bi not nil")
 				}
+				labelValue := map[string]string{
+					"label1":                      "value1",
+					"label2":                      "value2",
+					"crdlabel1":                   "crdvalue1",
+					"app.kubernetes.io/component": "monitoring",
+					"app.kubernetes.io/instance":  "vmagent",
+					"app.kubernetes.io/name":      "vmagent",
+					"managed-by":                  "vm-operator",
+				}
+				if !labels.Equals(svc.Labels, labelValue) {
+					return fmt.Errorf("unexpected label merge, want: %v, got %v", labelValue, svc.Labels)
+				}
 				if len(svc.Spec.Ports) != 8 {
 					return fmt.Errorf("unexpected number of ports, want: 8, got %d", len(svc.Spec.Ports))
+				}
+				if svc.Spec.Type != corev1.ServiceTypeNodePort {
+					return fmt.Errorf("unexpected service type want %s, got %s", corev1.ServiceTypeNodePort, svc.Spec.Type)
 				}
 				for _, p := range svc.Spec.Ports {
 					if p.Name == "graphite-tcp" {

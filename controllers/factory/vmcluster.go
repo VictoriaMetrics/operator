@@ -230,74 +230,24 @@ func CreateOrUpdateVMSelectService(ctx context.Context, cr *v1beta1.VMCluster, r
 	if _, err := createOrUpdateVMSelectService(ctx, cr, rclient, c); err != nil {
 		return nil, err
 	}
-	svc, err := createOrUpdateVMSelectHeadlessService(ctx, cr, rclient, c)
-	if err != nil {
-		return nil, err
-	}
-	return svc, nil
+	return createOrUpdateVMSelectHeadlessService(ctx, cr, rclient, c)
 }
-func createOrUpdateVMSelectService(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) (*corev1.Service, error) {
-	l := log.WithValues("controller", "vmselect.service.crud")
-	newService := genVMSelectService(cr, c)
 
-	currentService := &corev1.Service{}
-	err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: newService.Name}, currentService)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			l.Info("creating new service for vm vmselect")
-			if err := rclient.Create(ctx, newService); err != nil {
-				return nil, fmt.Errorf("cannot create new service for vmselect")
-			}
-			return newService, nil
-		}
-		return nil, fmt.Errorf("cannot get vmselect service: %w", err)
+func createOrUpdateVMSelectService(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) (*corev1.Service, error) {
+	if cr.Spec.VMSelect.ServiceSpec == nil {
+		return nil, nil
 	}
-	newService.Annotations = labels.Merge(newService.Annotations, currentService.Annotations)
-	if currentService.Spec.ClusterIP != "" {
-		newService.Spec.ClusterIP = currentService.Spec.ClusterIP
+	if cr.Spec.VMSelect.Port == "" {
+		cr.Spec.VMSelect.Port = c.VMClusterDefault.VMSelectDefault.Port
 	}
-	if currentService.ResourceVersion != "" {
-		newService.ResourceVersion = currentService.ResourceVersion
-	}
-	newService.Finalizers = v1beta1.MergeFinalizers(currentService, v1beta1.FinalizerName)
-	err = rclient.Update(ctx, newService)
-	if err != nil {
-		return nil, fmt.Errorf("cannot update vmselect service: %w", err)
-	}
-	l.Info("vmselect svc reconciled")
-	return newService, nil
+	svc := buildDefaultService(cr, cr.Spec.VMSelect.Port, nil)
+	mergeServiceSpec(svc, cr.Spec.VMSelect.ServiceSpec)
+	return handleService(ctx, rclient, svc, false)
 }
 
 func createOrUpdateVMSelectHeadlessService(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) (*corev1.Service, error) {
-	l := log.WithValues("controller", "vmselect.headlessservice.crud")
 	newService := genVMSelectHeadlessService(cr, c)
-
-	currentService := &corev1.Service{}
-	err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: newService.Name}, currentService)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			l.Info("creating new service for vmselect")
-			err := rclient.Create(ctx, newService)
-			if err != nil {
-				return nil, fmt.Errorf("cannot create new service for vmselect")
-			}
-		} else {
-			return nil, fmt.Errorf("cannot get vmselect service: %w", err)
-		}
-	}
-	newService.Annotations = labels.Merge(newService.Annotations, currentService.Annotations)
-	if currentService.Spec.ClusterIP != "" {
-		newService.Spec.ClusterIP = currentService.Spec.ClusterIP
-	}
-	if currentService.ResourceVersion != "" {
-		newService.ResourceVersion = currentService.ResourceVersion
-	}
-	err = rclient.Update(ctx, newService)
-	if err != nil {
-		return nil, fmt.Errorf("cannot update vmselect service: %w", err)
-	}
-	l.Info("vmselect svc reconciled")
-	return newService, nil
+	return handleService(ctx, rclient, newService, false)
 }
 
 func createOrUpdateVMInsert(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) (*appsv1.Deployment, error) {
@@ -335,37 +285,10 @@ func createOrUpdateVMInsert(ctx context.Context, cr *v1beta1.VMCluster, rclient 
 }
 
 func CreateOrUpdateVMInsertService(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) (*corev1.Service, error) {
-	l := log.WithValues("controller", "vminsert.service.crud")
-	newService := genVMInsertService(cr, c)
-
-	currentService := &corev1.Service{}
-	err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: newService.Name}, currentService)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			l.Info("creating new service for vm vminsert")
-			if err := rclient.Create(ctx, newService); err != nil {
-				return nil, fmt.Errorf("cannot create new service for vminsert")
-			}
-			return newService, nil
-		}
-		return nil, fmt.Errorf("cannot get vminsert service: %w", err)
-	}
-	newService.Annotations = labels.Merge(newService.Annotations, currentService.Annotations)
-
-	if currentService.Spec.ClusterIP != "" {
-		newService.Spec.ClusterIP = currentService.Spec.ClusterIP
-	}
-	if currentService.ResourceVersion != "" {
-		newService.ResourceVersion = currentService.ResourceVersion
-	}
-	newService.Finalizers = v1beta1.MergeFinalizers(currentService, v1beta1.FinalizerName)
-	err = rclient.Update(ctx, newService)
-	if err != nil {
-		return nil, fmt.Errorf("cannot update vminsert service: %w", err)
-	}
-	l.Info("vminsert svc reconciled")
-	return newService, nil
-
+	newService := defaultVMInsertService(cr, c)
+	mergeServiceSpec(newService, cr.Spec.VMInsert.ServiceSpec)
+	buildAdditionalServicePorts(cr.Spec.VMInsert.InsertPorts, newService)
+	return handleService(ctx, rclient, newService, false)
 }
 
 func createOrUpdateVMStorage(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) (*appsv1.StatefulSet, error) {
@@ -403,35 +326,13 @@ func createOrUpdateVMStorage(ctx context.Context, cr *v1beta1.VMCluster, rclient
 }
 
 func CreateOrUpdateVMStorageService(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) (*corev1.Service, error) {
-	l := log.WithValues("controller", "vmstorage.service.crud")
 	newService := genVMStorageService(cr, c)
-
-	currentService := &corev1.Service{}
-	err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: newService.Name}, currentService)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			l.Info("creating new service for vmstorage")
-			if err := rclient.Create(ctx, newService); err != nil {
-				return nil, fmt.Errorf("cannot create new service for vmstorage")
-			}
-			return newService, nil
-		}
-		return nil, fmt.Errorf("cannot get vmstorage service: %w", err)
+	mergeServiceSpec(newService, cr.Spec.VMStorage.ServiceSpec)
+	if _, err := handleService(ctx, rclient, newService, true); err != nil {
+		return nil, err
 	}
-	newService.Annotations = labels.Merge(newService.Annotations, currentService.Annotations)
-	if currentService.Spec.ClusterIP != "" {
-		newService.Spec.ClusterIP = currentService.Spec.ClusterIP
-	}
-	if currentService.ResourceVersion != "" {
-		newService.ResourceVersion = currentService.ResourceVersion
-	}
-	newService.Finalizers = v1beta1.MergeFinalizers(currentService, v1beta1.FinalizerName)
-	if err := rclient.Update(ctx, newService); err != nil {
-		return nil, fmt.Errorf("cannot update vmstorage service: %w", err)
-	}
-	l.Info("vmstorage svc was reconciled")
-	return newService, nil
-
+	newHeadless := genVMStorageHeadlessService(cr, c)
+	return handleService(ctx, rclient, newHeadless, false)
 }
 
 func genVMSelectSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv1.StatefulSet, error) {
@@ -748,56 +649,6 @@ func genVMSelectHeadlessService(cr *v1beta1.VMCluster, c *config.BaseOperatorCon
 	}
 }
 
-func defualtVMSelectService(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) *corev1.Service {
-	return &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            cr.Spec.VMSelect.GetNameWithPrefix(cr.Name),
-			Namespace:       cr.Namespace,
-			Labels:          cr.FinalLabels(cr.VMSelectSelectorLabels()),
-			Annotations:     cr.Annotations(),
-			OwnerReferences: cr.AsOwner(),
-		},
-		Spec: corev1.ServiceSpec{
-			Type:     corev1.ServiceTypeClusterIP,
-			Selector: cr.VMSelectSelectorLabels(),
-			Ports: []corev1.ServicePort{
-				{
-					Name:       "http",
-					Protocol:   "TCP",
-					Port:       intstr.Parse(c.VMClusterDefault.VMSelectDefault.Port).IntVal,
-					TargetPort: intstr.Parse(c.VMClusterDefault.VMSelectDefault.Port),
-				},
-			},
-		},
-	}
-}
-
-func genVMSelectService(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) *corev1.Service {
-	cr = cr.DeepCopy()
-	svc := defualtVMSelectService(cr, c)
-	if cr.Spec.VMSelect.ServiceSpec != nil {
-		svc = &corev1.Service{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:            cr.Spec.VMSelect.ServiceSpec.Name,
-				Namespace:       cr.Namespace,
-				Labels:          cr.Spec.VMSelect.ServiceSpec.Labels,
-				Annotations:     cr.Spec.VMSelect.ServiceSpec.Annotations,
-				OwnerReferences: cr.AsOwner(),
-			},
-			Spec: cr.Spec.VMSelect.ServiceSpec.Spec,
-		}
-	}
-	if cr.Spec.VMSelect.Port != "" {
-		svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{
-			Protocol:   "TCP",
-			Port:       intstr.Parse(cr.Spec.VMSelect.Port).IntVal,
-			TargetPort: intstr.Parse(cr.Spec.VMSelect.Port),
-		})
-	}
-	setServiceDefaultField(svc, defualtVMSelectService(cr, c))
-	return svc
-}
-
 func genVMInsertSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv1.Deployment, error) {
 	cr = cr.DeepCopy()
 
@@ -1035,33 +886,6 @@ func defaultVMInsertService(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) *
 			},
 		},
 	}
-}
-func genVMInsertService(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) *corev1.Service {
-	cr = cr.DeepCopy()
-	svc := defaultVMInsertService(cr, c)
-	if cr.Spec.VMInsert.ServiceSpec != nil {
-		svc = &corev1.Service{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:            cr.Spec.VMInsert.ServiceSpec.Name,
-				Namespace:       cr.Namespace,
-				Labels:          cr.Spec.VMInsert.ServiceSpec.Labels,
-				Annotations:     cr.Spec.VMInsert.ServiceSpec.Annotations,
-				OwnerReferences: cr.AsOwner(),
-			},
-			Spec: cr.Spec.VMInsert.ServiceSpec.Spec,
-		}
-	}
-	if cr.Spec.VMInsert.Port == "" {
-		svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{
-			Protocol:   "TCP",
-			Port:       intstr.Parse(cr.Spec.VMInsert.Port).IntVal,
-			TargetPort: intstr.Parse(cr.Spec.VMInsert.Port),
-		},
-		)
-	}
-	setServiceDefaultField(svc, defaultVMInsertService(cr, c))
-	buildAdditionalServicePorts(cr.Spec.VMInsert.InsertPorts, svc)
-	return svc
 }
 
 func GenVMStorageSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv1.StatefulSet, error) {
@@ -1367,6 +1191,55 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) 
 	return vmStoragePodSpec, nil
 }
 
+func genVMStorageHeadlessService(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) *corev1.Service {
+	cr = cr.DeepCopy()
+	if cr.Spec.VMStorage.Port == "" {
+		cr.Spec.VMStorage.Port = c.VMClusterDefault.VMStorageDefault.Port
+	}
+	if cr.Spec.VMStorage.VMSelectPort == "" {
+		cr.Spec.VMStorage.VMSelectPort = c.VMClusterDefault.VMStorageDefault.VMSelectPort
+	}
+	if cr.Spec.VMStorage.VMInsertPort == "" {
+		cr.Spec.VMStorage.VMInsertPort = c.VMClusterDefault.VMStorageDefault.VMInsertPort
+	}
+
+	return &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            cr.Spec.VMStorage.GetNameWithPrefix(cr.Name),
+			Namespace:       cr.Namespace,
+			Labels:          cr.FinalLabels(cr.VMStorageSelectorLabels()),
+			Annotations:     cr.Annotations(),
+			OwnerReferences: cr.AsOwner(),
+			Finalizers:      []string{v1beta1.FinalizerName},
+		},
+		Spec: corev1.ServiceSpec{
+			Type:      corev1.ServiceTypeClusterIP,
+			ClusterIP: "None",
+			Selector:  cr.VMStorageSelectorLabels(),
+			Ports: []corev1.ServicePort{
+				{
+					Name:       "http",
+					Protocol:   "TCP",
+					Port:       intstr.Parse(cr.Spec.VMStorage.Port).IntVal,
+					TargetPort: intstr.Parse(cr.Spec.VMStorage.Port),
+				},
+				{
+					Name:       "vminsert",
+					Protocol:   "TCP",
+					Port:       intstr.Parse(cr.Spec.VMStorage.VMInsertPort).IntVal,
+					TargetPort: intstr.Parse(cr.Spec.VMStorage.VMInsertPort),
+				},
+				{
+					Name:       "vmselect",
+					Protocol:   "TCP",
+					Port:       intstr.Parse(cr.Spec.VMStorage.VMSelectPort).IntVal,
+					TargetPort: intstr.Parse(cr.Spec.VMStorage.VMSelectPort),
+				},
+			},
+		},
+	}
+}
+
 func genVMStorageService(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) *corev1.Service {
 	cr = cr.DeepCopy()
 	if cr.Spec.VMStorage.Port == "" {
@@ -1556,8 +1429,4 @@ func waitForPodReady(ctx context.Context, rclient client.Client, ns, podName str
 		}
 		return false, nil
 	})
-}
-
-func setExternalSuffix(name string) string {
-	return fmt.Sprintf("%s-web", name)
 }

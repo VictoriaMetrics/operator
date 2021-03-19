@@ -34,11 +34,11 @@ func OnVMAgentDelete(ctx context.Context, rclient client.Client, crd *victoriame
 	if err := removeFinalizeObjByName(ctx, rclient, &v12.ClusterRole{}, crd.GetClusterRoleName(), crd.GetNSName()); err != nil {
 		return err
 	}
-	if err := safeDelete(ctx, rclient, &v12.ClusterRoleBinding{ObjectMeta: metav1.ObjectMeta{Name: crd.GetClusterRoleName(), Namespace: crd.GetNSName()}}); err != nil {
+	if err := SafeDelete(ctx, rclient, &v12.ClusterRoleBinding{ObjectMeta: metav1.ObjectMeta{Name: crd.GetClusterRoleName(), Namespace: crd.GetNSName()}}); err != nil {
 		return err
 	}
 
-	if err := safeDelete(ctx, rclient, &v12.ClusterRole{ObjectMeta: metav1.ObjectMeta{Name: crd.GetClusterRoleName(), Namespace: crd.GetNSName()}}); err != nil {
+	if err := SafeDelete(ctx, rclient, &v12.ClusterRole{ObjectMeta: metav1.ObjectMeta{Name: crd.GetClusterRoleName(), Namespace: crd.GetNSName()}}); err != nil {
 		return err
 	}
 

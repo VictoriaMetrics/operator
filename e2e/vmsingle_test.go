@@ -89,7 +89,16 @@ var _ = Describe("test  vmsingle Controller", func() {
 					time.Sleep(time.Second * 3)
 				})
 				It("should update vmSingle deploy param and ports", func() {
-					currVMSingle := &victoriametricsv1beta1.VMSingle{}
+					currVMSingle := &victoriametricsv1beta1.VMSingle{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      name,
+							Namespace: namespace,
+						},
+					}
+					Eventually(func() string {
+						return expectPodCount(k8sClient, 1, namespace, currVMSingle.SelectorLabels())
+					}, 60, 1).Should(BeEmpty())
+
 					Expect(k8sClient.Get(context.TODO(), types.NamespacedName{
 						Name:      name,
 						Namespace: namespace,
@@ -107,6 +116,10 @@ var _ = Describe("test  vmsingle Controller", func() {
 						},
 					}
 					Expect(k8sClient.Update(context.TODO(), currVMSingle)).To(BeNil())
+					Eventually(func() error {
+						svc := &corev1.Service{}
+						return k8sClient.Get(context.TODO(), types.NamespacedName{Name: "vmsingle-node-access", Namespace: namespace}, svc)
+					}, 60, 1).Should(BeNil())
 					Eventually(func() string {
 						return expectPodCount(k8sClient, 1, namespace, currVMSingle.SelectorLabels())
 					}, 60, 1).Should(BeEmpty())

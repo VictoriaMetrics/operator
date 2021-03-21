@@ -130,7 +130,7 @@ func buildAdditionalServicePorts(ip *victoriametricsv1beta1.InsertPorts, svc *co
 				TargetPort: intstr.Parse(ip.OpenTSDBPort),
 			},
 			corev1.ServicePort{
-				Name:       "opentsdb-tcp",
+				Name:       "opentsdb-udp",
 				Protocol:   "UDP",
 				Port:       intstr.Parse(ip.OpenTSDBPort).IntVal,
 				TargetPort: intstr.Parse(ip.OpenTSDBPort),

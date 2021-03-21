@@ -404,88 +404,50 @@ func TestBuildNotifiers(t *testing.T) {
 	}
 }
 
-//
-//func Test_newServiceVMAlert(t *testing.T) {
-//	type args struct {
-//		cr *victoriametricsv1beta1.VMAlert
-//		c  *config.BaseOperatorConf
-//	}
-//	tests := []struct {
-//		name     string
-//		args     args
-//		validate func(svc *corev1.Service) error
-//	}{{
-//		name: "base svc",
-//		args: args{
-//			c:  config.MustGetBaseConfig(),
-//			cr: &victoriametricsv1beta1.VMAlert{},
-//		},
-//		validate: func(svc *corev1.Service) error {
-//			if svc == nil {
-//				return fmt.Errorf("expected service to bi not nil")
-//			}
-//			return nil
-//		}},
-//		{
-//			name: "base svc with spec",
-//			args: args{
-//				c: config.MustGetBaseConfig(),
-//				cr: &victoriametricsv1beta1.VMAlert{
-//					ObjectMeta: metav1.ObjectMeta{
-//						Name:        "vmalert",
-//						Labels:      map[string]string{"crdlabel1": "crdvalue1", "label1": "value1"},
-//						Annotations: map[string]string{"crdannotation1": "crdvalue1"},
-//					},
-//					Spec: victoriametricsv1beta1.VMAlertSpec{
-//						ServiceSpec: &victoriametricsv1beta1.ServiceSpec{
-//							EmbeddedObjectMetadata: victoriametricsv1beta1.EmbeddedObjectMetadata{
-//								Name: "testing-serviceName",
-//								Labels: map[string]string{
-//									"label1": "value1",
-//									"label2": "value2",
-//								},
-//								Annotations: map[string]string{
-//									"annotation1": "value1",
-//								},
-//							},
-//							Spec: corev1.ServiceSpec{
-//								Type: corev1.ServiceTypeNodePort,
-//							},
-//						},
-//					},
-//				},
-//			},
-//			validate: func(svc *corev1.Service) error {
-//				if svc == nil {
-//					return fmt.Errorf("expected service to bi not nil")
-//				}
-//				labelValue := map[string]string{
-//					"label1":                      "value1",
-//					"label2":                      "value2",
-//					"crdlabel1":                   "crdvalue1",
-//					"app.kubernetes.io/component": "monitoring",
-//					"app.kubernetes.io/instance":  "vmalert",
-//					"app.kubernetes.io/name":      "vmalert",
-//					"managed-by":                  "vm-operator",
-//				}
-//				if !labels.Equals(svc.Labels, labelValue) {
-//					return fmt.Errorf("unexpected label merge, want: %v, got %v", labelValue, svc.Labels)
-//				}
-//				if svc.Spec.Type != corev1.ServiceTypeNodePort {
-//					return fmt.Errorf("unexpected service type want %s, got %s", corev1.ServiceTypeNodePort, svc.Spec.Type)
-//				}
-//				if svc.Spec.Selector == nil {
-//					return fmt.Errorf("expected service selector  not nil")
-//				}
-//				return nil
-//			},
-//		}}
-//	for _, tt := range tests {
-//		t.Run(tt.name, func(t *testing.T) {
-//			got := newServiceVMAlert(tt.args.cr, tt.args.c)
-//			if err := tt.validate(got); err != nil {
-//				t.Errorf("newServiceVMAgent(), unexpected error %v", err)
-//			}
-//		})
-//	}
-//}
+func TestCreateOrUpdateVMAlertService(t *testing.T) {
+	type args struct {
+		ctx context.Context
+		cr  *victoriametricsv1beta1.VMAlert
+		c   *config.BaseOperatorConf
+	}
+	tests := []struct {
+		name              string
+		args              args
+		want              func(svc *corev1.Service) error
+		wantErr           bool
+		predefinedObjects []runtime.Object
+	}{
+		{
+			name: "base test",
+			args: args{
+				ctx: context.TODO(),
+				c:   config.MustGetBaseConfig(),
+				cr: &victoriametricsv1beta1.VMAlert{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "default",
+						Name:      "base",
+					},
+				},
+			},
+			want: func(svc *corev1.Service) error {
+				if svc.Name != "vmalert-base" {
+					return fmt.Errorf("unexpected name for vmalert service: %v", svc.Name)
+				}
+				return nil
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cl := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
+			got, err := CreateOrUpdateVMAlertService(tt.args.ctx, tt.args.cr, cl, tt.args.c)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("CreateOrUpdateVMAlertService() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if err := tt.want(got); err != nil {
+				t.Errorf("CreateOrUpdateVMAlertService() unexpected error: %v", err)
+			}
+		})
+	}
+}

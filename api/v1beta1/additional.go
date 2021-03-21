@@ -144,21 +144,31 @@ type BasicAuth struct {
 // some of (selector, labels, type) - can be inherited from default service definition.
 // +k8s:openapi-gen=true
 type ServiceSpec struct {
-	// Name name for the additional service.
-	// Cannot be the same as default CRD service name
-	// and its mandratory parameter.
-	// its users responsibility to check if name is uniq.
-	Name string `json:"name"`
-	// Labels - additional labels, service has selector labels
-	// and its cannot be changed.
-	// +optional
-	Labels map[string]string `json:"labels,omitempty"`
-	// Annotations - annotations for service.
-	// +optional
-	Annotations map[string]string `json:"annotations,omitempty"`
+	// EmbeddedObjectMetadata defines objectMeta for additional service.
+	EmbeddedObjectMetadata `json:"metadata,omitempty"`
+	//// Name name for the additional service.
+	//// Cannot be the same as default CRD service name
+	//// and its mandratory parameter.
+	//// its users responsibility to check if name is uniq.
+	//Name string `json:"name"`
+	//// Labels - additional labels, service has selector labels
+	//// and its cannot be changed.
+	//// +optional
+	//Labels map[string]string `json:"labels,omitempty"`
+	//// Annotations - annotations for service.
+	//// +optional
+	//Annotations map[string]string `json:"annotations,omitempty"`
 	// ServiceSpec describes the attributes that a user creates on a service.
 	// More info: https://kubernetes.io/docs/concepts/services-networking/service/
 	Spec v1.ServiceSpec `json:"spec"`
+}
+
+// NameOrDefault returns name of default value with suffix
+func (ss *ServiceSpec) NameOrDefault(defaultName string) string {
+	if ss.Name != "" {
+		return ss.Name
+	}
+	return defaultName + "-additional-service"
 }
 
 func buildPathWithPrefixFlag(flags map[string]string, defaultPath string) string {

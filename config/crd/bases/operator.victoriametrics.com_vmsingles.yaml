@@ -505,25 +505,45 @@ spec:
             serviceSpec:
               description: ServiceSpec that will be added to vmsingle service spec
               properties:
-                annotations:
-                  additionalProperties:
-                    type: string
-                  description: Annotations - annotations for service.
+                metadata:
+                  description: EmbeddedObjectMetadata defines objectMeta for additional
+                    service.
+                  properties:
+                    annotations:
+                      additionalProperties:
+                        type: string
+                      description: 'Annotations is an unstructured key value map stored
+                        with a resource that may be set by external tools to store
+                        and retrieve arbitrary metadata. They are not queryable and
+                        should be preserved when modifying objects. More info: http://kubernetes.io/docs/user-guide/annotations'
+                      type: object
+                    labels:
+                      additionalProperties:
+                        type: string
+                      description: 'Labels Map of string keys and values that can
+                        be used to organize and categorize (scope and select) objects.
+                        May match selectors of replication controllers and services.
+                        More info: http://kubernetes.io/docs/user-guide/labels'
+                      type: object
+                    name:
+                      description: 'Name must be unique within a namespace. Is required
+                        when creating resources, although some resources may allow
+                        a client to request the generation of an appropriate name
+                        automatically. Name is primarily intended for creation idempotence
+                        and configuration definition. Cannot be updated. More info:
+                        http://kubernetes.io/docs/user-guide/identifiers#names'
+                      type: string
                   type: object
-                labels:
-                  additionalProperties:
-                    type: string
-                  description: Labels - additional labels, service has selector labels
-                    and its cannot be changed.
-                  type: object
-                name:
-                  description: Name name for the additional service. Cannot be the
-                    same as default CRD service name and its mandratory parameter.
-                    its users responsibility to check if name is uniq.
-                  type: string
                 spec:
-                  description: 'ServiceSpec describes the attributes that a user creates
-                    on a service. More info: https://kubernetes.io/docs/concepts/services-networking/service/'
+                  description: '// Name name for the additional service. // Cannot
+                    be the same as default CRD service name // and its mandratory
+                    parameter. // its users responsibility to check if name is uniq.
+                    Name string `json:"name"` // Labels - additional labels, service
+                    has selector labels // and its cannot be changed. // +optional
+                    Labels map[string]string `json:"labels,omitempty"` // Annotations
+                    - annotations for service. // +optional Annotations map[string]string
+                    `json:"annotations,omitempty"` ServiceSpec describes the attributes
+                    that a user creates on a service. More info: https://kubernetes.io/docs/concepts/services-networking/service/'
                   properties:
                     allocateLoadBalancerNodePorts:
                       description: allocateLoadBalancerNodePorts defines if NodePorts
@@ -764,7 +784,6 @@ spec:
                       type: string
                   type: object
               required:
-              - name
               - spec
               type: object
             storage:

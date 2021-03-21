@@ -137,6 +137,48 @@ func TestCreateOrUpdateVMSingleService(t *testing.T) {
 			},
 			wantPortsLen: 8,
 		},
+		{
+			name: "with extra service nodePort",
+			args: args{
+				c: config.MustGetBaseConfig(),
+				cr: &victoriametricsv1beta1.VMSingle{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "single-1",
+						Namespace: "default",
+					},
+					Spec: victoriametricsv1beta1.VMSingleSpec{
+						ServiceSpec: &victoriametricsv1beta1.ServiceSpec{
+							EmbeddedObjectMetadata: victoriametricsv1beta1.EmbeddedObjectMetadata{Name: "additional-service"},
+							Spec: corev1.ServiceSpec{
+								Type: corev1.ServiceTypeNodePort,
+							},
+						},
+					},
+				},
+			},
+			want: &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "vmsingle-single-1",
+					Namespace: "default",
+				},
+			},
+			wantPortsLen: 1,
+			predefinedObjects: []runtime.Object{
+				&corev1.Service{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "some-svc",
+						Namespace: "default",
+						Labels: map[string]string{
+							"app.kubernetes.io/name":      "vmsingle",
+							"app.kubernetes.io/instance":  "single-1",
+							"app.kubernetes.io/component": "monitoring",
+							"managed-by":                  "vm-operator",
+						},
+					},
+					Spec: corev1.ServiceSpec{},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

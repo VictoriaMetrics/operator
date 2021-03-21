@@ -21,7 +21,7 @@ func OnVMClusterDelete(ctx context.Context, rclient client.Client, crd *victoria
 			return err
 		}
 		if crd.Spec.VMInsert.ServiceSpec != nil {
-			if err := removeFinalizeObjByName(ctx, rclient, &v1.Service{}, crd.Spec.VMInsert.ServiceSpec.Name, crd.Namespace); err != nil {
+			if err := removeFinalizeObjByName(ctx, rclient, &v1.Service{}, crd.Spec.VMInsert.ServiceSpec.NameOrDefault(crd.Spec.VMInsert.GetNameWithPrefix(crd.Name)), crd.Namespace); err != nil {
 				return err
 			}
 		}
@@ -32,7 +32,7 @@ func OnVMClusterDelete(ctx context.Context, rclient client.Client, crd *victoria
 			return err
 		}
 		if crd.Spec.VMSelect.ServiceSpec != nil {
-			if err := removeFinalizeObjByName(ctx, rclient, &v1.Service{}, crd.Spec.VMSelect.ServiceSpec.Name, crd.Namespace); err != nil {
+			if err := removeFinalizeObjByName(ctx, rclient, &v1.Service{}, crd.Spec.VMSelect.ServiceSpec.NameOrDefault(crd.Spec.VMSelect.GetNameWithPrefix(crd.Name)), crd.Namespace); err != nil {
 				return err
 			}
 		}
@@ -52,7 +52,7 @@ func OnVMClusterDelete(ctx context.Context, rclient client.Client, crd *victoria
 			return err
 		}
 		if crd.Spec.VMStorage.ServiceSpec != nil {
-			if err := removeFinalizeObjByName(ctx, rclient, &v1.Service{}, crd.Spec.VMStorage.ServiceSpec.Name, crd.Namespace); err != nil {
+			if err := removeFinalizeObjByName(ctx, rclient, &v1.Service{}, crd.Spec.VMStorage.ServiceSpec.NameOrDefault(crd.Spec.VMStorage.GetNameWithPrefix(crd.Name)), crd.Namespace); err != nil {
 				return err
 			}
 		}

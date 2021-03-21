@@ -78,10 +78,10 @@ func mergeServiceSpec(svc *v1.Service, svcSpec *victoriametricsv1beta1.ServiceSp
 	if svcSpec == nil {
 		return
 	}
+	svc.Name = svcSpec.NameOrDefault(svc.Name)
 	// in case of labels, we must keep base labels to be able to discover this service later.
 	svc.Labels = labels.Merge(svcSpec.Labels, svc.Labels)
 	svc.Annotations = labels.Merge(svc.Annotations, svcSpec.Annotations)
-	svc.Name = svcSpec.Name
 	defaultSvc := svc.DeepCopy()
 	svc.Spec = svcSpec.Spec
 	if svc.Spec.Selector == nil {
@@ -162,7 +162,7 @@ func reconcileServiceForCRD(ctx context.Context, rclient client.Client, newServi
 			return nil, err
 		}
 		// recursive call. operator reconciler must throttle it.
-		return reconcileServiceForCRD(ctx, rclient, existingService)
+		return reconcileServiceForCRD(ctx, rclient, newService)
 	}
 	// invariants.
 	if newService.Spec.ClusterIP != "" && newService.Spec.ClusterIP != "None" && newService.Spec.ClusterIP != existingService.Spec.ClusterIP {
@@ -191,14 +191,14 @@ func reconcileServiceForCRD(ctx context.Context, rclient client.Client, newServi
 		newService.Spec.ClusterIP = existingService.Spec.ClusterIP
 	}
 
-	// need to keep allocated ports.
-	if newService.Spec.Type == v1.ServiceTypeNodePort && existingService.Spec.Type == v1.ServiceTypeNodePort {
+	// need to keep allocated node ports.
+	if newService.Spec.Type == existingService.Spec.Type {
 		// there is no need in optimization, it should be fast enough.
 		for i := range existingService.Spec.Ports {
 			existPort := existingService.Spec.Ports[i]
 			for j := range newService.Spec.Ports {
 				newPort := &newService.Spec.Ports[j]
-				// add missing port, only if its not overrided by user.
+				// add missing port, only if its not defined by user.
 				if existPort.Name == newPort.Name && newPort.NodePort == 0 {
 					newPort.NodePort = existPort.NodePort
 					break
@@ -241,7 +241,7 @@ func reconcileMissingServices(ctx context.Context, rclient client.Client, args r
 
 	var additionalSvcName string
 	if spec != nil {
-		additionalSvcName = spec.Name
+		additionalSvcName = spec.NameOrDefault(args.PrefixedName())
 	}
 	cnt := 0
 	// filter in-place,

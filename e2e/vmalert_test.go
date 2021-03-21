@@ -1,8 +1,11 @@
 package e2e
 
 import (
+	"fmt"
 	"path"
 	"time"
+
+	"k8s.io/apimachinery/pkg/api/errors"
 
 	operator "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory"
@@ -32,6 +35,16 @@ var _ = Describe("test  vmalert Controller", func() {
 					},
 					)).To(BeNil())
 					time.Sleep(time.Second * 8)
+					Eventually(func() error {
+						err := k8sClient.Get(context.Background(), types.NamespacedName{
+							Name:      Name,
+							Namespace: Namespace,
+						}, &operator.VMAlert{})
+						if errors.IsNotFound(err) {
+							return nil
+						}
+						return fmt.Errorf("want NotFound error, got: %w", err)
+					}, 60, 1).Should(BeNil())
 				})
 				It("should create", func() {
 					Expect(k8sClient.Create(context.TODO(), &operator.VMAlert{
@@ -132,10 +145,9 @@ var _ = Describe("test  vmalert Controller", func() {
 					})).Should(Succeed())
 					vmAlert := &operator.VMAlert{}
 					Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Namespace: Namespace, Name: Name}, vmAlert)).To(BeNil())
-					// todo fix test
-					//Eventually(func() string {
-					//	return expectPodCount(k8sClient, 1, Namespace, vmAlert.SelectorLabels())
-					//}, 60, 1).Should(BeEmpty())
+					Eventually(func() string {
+						return expectPodCount(k8sClient, 1, Namespace, vmAlert.SelectorLabels())
+					}, 60, 1).Should(BeEmpty())
 					Expect(k8sClient.Delete(context.TODO(), tlsSecret)).To(Succeed())
 
 				})
@@ -158,7 +170,6 @@ var _ = Describe("test  vmalert Controller", func() {
 						},
 					})).To(BeNil())
 					time.Sleep(time.Second * 2)
-
 				})
 				JustAfterEach(func() {
 					Expect(k8sClient.Delete(context.TODO(), &operator.VMAlert{
@@ -168,9 +179,28 @@ var _ = Describe("test  vmalert Controller", func() {
 						},
 					})).To(BeNil())
 					time.Sleep(time.Second * 8)
+					Eventually(func() error {
+						err := k8sClient.Get(context.Background(), types.NamespacedName{
+							Name:      name,
+							Namespace: namespace,
+						}, &operator.VMAlert{})
+						if errors.IsNotFound(err) {
+							return nil
+						}
+						return fmt.Errorf("want NotFound error, got: %w", err)
+					}, 60, 1).Should(BeNil())
 				})
 				It("Should expand vmalert up to 3 replicas with custom prefix", func() {
-					vmAlert := &operator.VMAlert{}
+					vmAlert := &operator.VMAlert{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      name,
+							Namespace: namespace,
+						},
+					}
+					Eventually(func() string {
+						return expectPodCount(k8sClient, 1, namespace, vmAlert.SelectorLabels())
+
+					}, 60, 1).Should(BeEmpty())
 					Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, vmAlert)).To(BeNil())
 					vmAlert.Spec.ReplicaCount = pointer.Int32Ptr(3)
 					vmAlert.Spec.LogLevel = "INFO"
@@ -178,12 +208,9 @@ var _ = Describe("test  vmalert Controller", func() {
 					Expect(k8sClient.Update(context.TODO(), vmAlert)).To(BeNil())
 					Eventually(func() string {
 						return expectPodCount(k8sClient, 3, namespace, vmAlert.SelectorLabels())
-
 					}, 60, 1).Should(BeEmpty())
-
 				})
 			})
-
 		},
 		)
 

@@ -1,7 +1,10 @@
 package e2e
 
 import (
+	"fmt"
 	"time"
+
+	"k8s.io/apimachinery/pkg/api/errors"
 
 	operator "github.com/VictoriaMetrics/operator/api/v1beta1"
 	. "github.com/onsi/ginkgo"
@@ -40,7 +43,16 @@ var _ = Describe("e2e vmalertmanager ", func() {
 						Namespace: namespace,
 						Name:      name,
 					}})).To(BeNil())
-
+				Eventually(func() error {
+					err := k8sClient.Get(context.Background(), types.NamespacedName{
+						Name:      name,
+						Namespace: namespace,
+					}, &operator.VMAlertmanager{})
+					if errors.IsNotFound(err) {
+						return nil
+					}
+					return fmt.Errorf("want NotFound error, got: %w", err)
+				}, 60, 1).Should(BeNil())
 			})
 			It("should create vmalertmanager", func() {
 				Expect(k8sClient.Create(context.TODO(), &operator.VMAlertmanager{

@@ -140,12 +140,25 @@ type BasicAuth struct {
 }
 
 // ServiceSpec is be added into CRD spec to support custom service information
+// If its defined operator will create separate service with user defined parameters,
+// some of (selector, labels, type) - can be inherited from default service definition.
 // +k8s:openapi-gen=true
 type ServiceSpec struct {
-	EmbeddedObjectMetadata `json:"metadata,omitempty"`
+	// Name name for the additional service.
+	// Cannot be the same as default CRD service name
+	// and its mandratory parameter.
+	// its users responsibility to check if name is uniq.
+	Name string `json:"name"`
+	// Labels - additional labels, service has selector labels
+	// and its cannot be changed.
+	// +optional
+	Labels map[string]string `json:"labels,omitempty"`
+	// Annotations - annotations for service.
+	// +optional
+	Annotations map[string]string `json:"annotations,omitempty"`
 	// ServiceSpec describes the attributes that a user creates on a service.
 	// More info: https://kubernetes.io/docs/concepts/services-networking/service/
-	Spec v1.ServiceSpec `json:"spec,omitempty"`
+	Spec v1.ServiceSpec `json:"spec"`
 }
 
 func buildPathWithPrefixFlag(flags map[string]string, defaultPath string) string {

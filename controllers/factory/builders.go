@@ -71,6 +71,9 @@ type svcBuilderArgs interface {
 	GetNSName() string
 }
 
+// mergeServiceSpec merges serviceSpec to the given services
+// it should help to avoid boilerplate at CRD spec,
+// base fields filled by operator.
 func mergeServiceSpec(svc *v1.Service, svcSpec *victoriametricsv1beta1.ServiceSpec) {
 	if svcSpec == nil {
 		return
@@ -78,20 +81,20 @@ func mergeServiceSpec(svc *v1.Service, svcSpec *victoriametricsv1beta1.ServiceSp
 	// in case of labels, we must keep base labels to be able to discover this service later.
 	svc.Labels = labels.Merge(svcSpec.Labels, svc.Labels)
 	svc.Annotations = labels.Merge(svc.Annotations, svcSpec.Annotations)
-	if svcSpec.Name != "" {
-		svc.Name = svcSpec.Name
-	}
+	svc.Name = svcSpec.Name
 	defaultSvc := svc.DeepCopy()
 	svc.Spec = svcSpec.Spec
 	if svc.Spec.Selector == nil {
 		svc.Spec.Selector = defaultSvc.Spec.Selector
 	}
+	// use may want to override port definition.
 	if svc.Spec.Ports == nil {
 		svc.Spec.Ports = defaultSvc.Spec.Ports
 	}
 	if svc.Spec.Type == "" {
 		svc.Spec.Type = defaultSvc.Spec.Type
 	}
+	// note clusterIP not checked, its users responsibility.
 }
 
 func buildDefaultService(cr svcBuilderArgs, defaultPort string, setOptions func(svc *v1.Service)) *v1.Service {
@@ -123,19 +126,13 @@ func buildDefaultService(cr svcBuilderArgs, defaultPort string, setOptions func(
 	return svc
 }
 
-// invariants?
-// if newService == nil, there is no option to remove it?
-// check is delete?
-// not sure, that its possible.
-// probably, do not add finalizer and owner?
-// seems to be bad option.
-// or find related service by labels?
-// we must perform service delete -> remove finalizer, delete service or vice versa?
-// check invariant for clusterIP and ServiceType:
-// clusterIP == None
-// serviceType == ClusterIP, clusterIP may be changed.
-// serviceType != serviceType -> recreate with variants.
-func handleService(ctx context.Context, rclient client.Client, newService *v1.Service, shouldCheckClusterIP bool) (*v1.Service, error) {
+// reconcileServiceForCRD - reconcile needed and actual state of service for given crd,
+// it will recreate service if needed.
+// NOTE it doesn't perform validation:
+// in case of spec.type= LoadBalancer or NodePort, clusterIP: None is not allowed,
+// its users responsibility to define it correctly.
+func reconcileServiceForCRD(ctx context.Context, rclient client.Client, newService *v1.Service) (*v1.Service, error) {
+	// helper for proper service deletion.
 	handleDelete := func(svc *v1.Service) error {
 		if err := finalize.RemoveFinalizer(ctx, rclient, svc); err != nil {
 			return err
@@ -146,6 +143,7 @@ func handleService(ctx context.Context, rclient client.Client, newService *v1.Se
 	err := rclient.Get(ctx, types.NamespacedName{Name: newService.Name, Namespace: newService.Namespace}, existingService)
 	if err != nil {
 		if errors.IsNotFound(err) {
+			// service not exists, creating it.
 			err := rclient.Create(ctx, newService)
 			if err != nil {
 				return nil, fmt.Errorf("cannot create new service: %w", err)
@@ -154,8 +152,8 @@ func handleService(ctx context.Context, rclient client.Client, newService *v1.Se
 		}
 		return nil, fmt.Errorf("cannot get service for existing service: %w", err)
 	}
-	// lets save annotations even after recreate
-	newService.Annotations = labels.Merge(newService.Annotations, existingService.Annotations)
+	// lets save annotations and labels even after recreation.
+	newService.Annotations = labels.Merge(existingService.Annotations, newService.Annotations)
 	newService.Labels = labels.Merge(existingService.Labels, newService.Labels)
 	if newService.Spec.Type != existingService.Spec.Type {
 		// type mismatch.
@@ -163,35 +161,50 @@ func handleService(ctx context.Context, rclient client.Client, newService *v1.Se
 		if err := handleDelete(existingService); err != nil {
 			return nil, err
 		}
-		// recursive call.
-		fmt.Printf("not match,: %v, secon: %v\n", newService.Spec.Type, existingService.Spec.Type)
-		return handleService(ctx, rclient, existingService, shouldCheckClusterIP)
+		// recursive call. operator reconciler must throttle it.
+		return reconcileServiceForCRD(ctx, rclient, existingService)
 	}
-	if newService.Spec.Type == v1.ServiceTypeClusterIP {
-
-	}
-	// type= LoadBalancer and NodePort cannot have clusterIP: None
+	// invariants.
 	if newService.Spec.ClusterIP != "" && newService.Spec.ClusterIP != "None" && newService.Spec.ClusterIP != existingService.Spec.ClusterIP {
 		// ip was changed by user, remove old service and create new one.
 		if err := handleDelete(existingService); err != nil {
 			return nil, err
 		}
-		return handleService(ctx, rclient, newService, shouldCheckClusterIP)
+		return reconcileServiceForCRD(ctx, rclient, newService)
 	}
+	// existing service isn't None
 	if newService.Spec.ClusterIP == "None" && existingService.Spec.ClusterIP != "None" {
 		if err := handleDelete(existingService); err != nil {
 			return nil, err
 		}
-		return handleService(ctx, rclient, newService, shouldCheckClusterIP)
+		return reconcileServiceForCRD(ctx, rclient, newService)
 	}
+	// make service non-headless.
 	if newService.Spec.ClusterIP == "" && existingService.Spec.ClusterIP == "None" {
 		if err := handleDelete(existingService); err != nil {
 			return nil, err
 		}
-		return handleService(ctx, rclient, newService, shouldCheckClusterIP)
+		return reconcileServiceForCRD(ctx, rclient, newService)
 	}
+	// keep given clusterIP for service.
 	if newService.Spec.ClusterIP != "None" {
 		newService.Spec.ClusterIP = existingService.Spec.ClusterIP
+	}
+
+	// need to keep allocated ports.
+	if newService.Spec.Type == v1.ServiceTypeNodePort && existingService.Spec.Type == v1.ServiceTypeNodePort {
+		// there is no need in optimization, it should be fast enough.
+		for i := range existingService.Spec.Ports {
+			existPort := existingService.Spec.Ports[i]
+			for j := range newService.Spec.Ports {
+				newPort := &newService.Spec.Ports[j]
+				// add missing port, only if its not overrided by user.
+				if existPort.Name == newPort.Name && newPort.NodePort == 0 {
+					newPort.NodePort = existPort.NodePort
+					break
+				}
+			}
+		}
 	}
 	if existingService.ResourceVersion != "" {
 		newService.ResourceVersion = existingService.ResourceVersion
@@ -207,9 +220,15 @@ func handleService(ctx context.Context, rclient client.Client, newService *v1.Se
 	return newService, nil
 }
 
+type rSvcArgs struct {
+	PrefixedName   func() string
+	SelectorLabels func() map[string]string
+	GetNameSpace   func() string
+}
+
 // remove missing services for given spec.
-func reconcileMissingServices(ctx context.Context, rclient client.Client, instance svcBuilderArgs, spec *victoriametricsv1beta1.ServiceSpec) error {
-	relatedSvc, err := discoverServicesByLalebes(ctx, rclient, instance, instance.SelectorLabels)
+func reconcileMissingServices(ctx context.Context, rclient client.Client, args rSvcArgs, spec *victoriametricsv1beta1.ServiceSpec) error {
+	relatedSvc, err := discoverServicesByLabels(ctx, rclient, args)
 	if err != nil {
 		return err
 	}
@@ -225,11 +244,12 @@ func reconcileMissingServices(ctx context.Context, rclient client.Client, instan
 		additionalSvcName = spec.Name
 	}
 	cnt := 0
-	// filter in-place
+	// filter in-place,
+	// keep services that doesn't match prefixedName and additional serviceName.
 	for i := range relatedSvc {
 		svc := relatedSvc[i]
 		switch svc.Name {
-		case instance.PrefixedName():
+		case args.PrefixedName():
 		case additionalSvcName:
 		default:
 			// service must be removed
@@ -237,6 +257,7 @@ func reconcileMissingServices(ctx context.Context, rclient client.Client, instan
 			cnt++
 		}
 	}
+	// remove left services.
 	relatedSvc = relatedSvc[:cnt]
 	for i := range relatedSvc {
 		if err := handleDelete(relatedSvc[i]); err != nil {
@@ -248,13 +269,14 @@ func reconcileMissingServices(ctx context.Context, rclient client.Client, instan
 
 // need to find all existing services for given instance,
 // to be able to reconcile it names later.
-func discoverServicesByLalebes(ctx context.Context, rclient client.Client, instance svcBuilderArgs, selector func() map[string]string) ([]*v1.Service, error) {
+func discoverServicesByLabels(ctx context.Context, rclient client.Client, args rSvcArgs) ([]*v1.Service, error) {
 	var svcs v1.ServiceList
 	opts := client.ListOptions{
-		Namespace:     instance.GetNamespace(),
-		LabelSelector: labels.SelectorFromSet(selector()),
+		Namespace:     args.GetNameSpace(),
+		LabelSelector: labels.SelectorFromSet(args.SelectorLabels()),
 	}
 	if err := rclient.List(ctx, &svcs, &opts); err != nil {
+		return nil, err
 	}
 	resp := make([]*v1.Service, 0, len(svcs.Items))
 	for i := range svcs.Items {

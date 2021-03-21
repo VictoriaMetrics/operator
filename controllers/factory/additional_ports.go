@@ -86,7 +86,7 @@ func buildArgsForAdditionalPorts(args []string, ip *victoriametricsv1beta1.Inser
 }
 
 func buildAdditionalServicePorts(ip *victoriametricsv1beta1.InsertPorts, svc *corev1.Service) {
-	if ip == nil {
+	if ip == nil || svc == nil {
 		return
 	}
 	if ip.GraphitePort != "" {

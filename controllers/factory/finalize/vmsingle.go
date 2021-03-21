@@ -23,6 +23,12 @@ func OnVMSingleDelete(ctx context.Context, rclient client.Client, crd *victoriam
 			return err
 		}
 	}
+	if crd.Spec.ServiceSpec != nil {
+		if err := removeFinalizeObjByName(ctx, rclient, &v1.Service{}, crd.Spec.ServiceSpec.Name, crd.Namespace); err != nil {
+			return err
+		}
+	}
+
 	if err := finalizePsp(ctx, rclient, crd); err != nil {
 		return err
 	}

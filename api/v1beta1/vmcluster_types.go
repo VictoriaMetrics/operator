@@ -776,7 +776,8 @@ func (cr VMCluster) GetPSPName() string {
 }
 
 func (cr VMCluster) SelectorLabels() map[string]string {
-	return map[string]string{"app.kubernetes.io/name": "vmcluster",
+	return map[string]string{
+		"app.kubernetes.io/name":      "vmcluster",
 		"app.kubernetes.io/instance":  cr.Name,
 		"app.kubernetes.io/component": "monitoring",
 		"managed-by":                  "vm-operator",

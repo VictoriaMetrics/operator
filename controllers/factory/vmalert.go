@@ -36,16 +36,27 @@ func CreateOrUpdateVMAlertService(ctx context.Context, cr *victoriametricsv1beta
 	mergeServiceSpec(additionalSvc, cr.Spec.ServiceSpec)
 	newService := buildDefaultService(cr, cr.Spec.Port, nil)
 
-	if err := reconcileMissingServices(ctx, rclient, cr, cr.Spec.ServiceSpec); err != nil {
+	// user may want to abuse it, if serviceSpec.name == crd.prefixedName,
+	// log error?
+	if cr.Spec.ServiceSpec != nil {
+		if additionalSvc.Name == newService.Name {
+			log.Error(fmt.Errorf("vmalert additional service name: %q cannot be the same as crd.prefixedname: %q", additionalSvc.Name, cr.PrefixedName()), "cannot create additional service")
+		} else {
+			if _, err := reconcileServiceForCRD(ctx, rclient, additionalSvc); err != nil {
+				return nil, err
+			}
+		}
+	}
+	rca := rSvcArgs{
+		PrefixedName:   cr.PrefixedName,
+		GetNameSpace:   cr.GetNamespace,
+		SelectorLabels: cr.SelectorLabels,
+	}
+	if err := reconcileMissingServices(ctx, rclient, rca, cr.Spec.ServiceSpec); err != nil {
 		return nil, err
 	}
-	if additionalSvc != nil && additionalSvc.Name != newService.Name {
-		if _, err := handleService(ctx, rclient, additionalSvc, true); err != nil {
-			return nil, err
-		}
-		// handle it somehow.
-	}
-	return handleService(ctx, rclient, newService, true)
+
+	return reconcileServiceForCRD(ctx, rclient, newService)
 }
 
 func CreateOrUpdateVMAlert(ctx context.Context, cr *victoriametricsv1beta1.VMAlert, rclient client.Client, c *config.BaseOperatorConf, cmNames []string) (reconcile.Result, error) {

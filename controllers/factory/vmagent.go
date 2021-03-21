@@ -42,10 +42,29 @@ func CreateOrUpdateVMAgentService(ctx context.Context, cr *victoriametricsv1beta
 	if cr.Spec.Port == "" {
 		cr.Spec.Port = c.VMAgentDefault.Port
 	}
+	additionalService := buildDefaultService(cr, cr.Spec.Port, nil)
+	mergeServiceSpec(additionalService, cr.Spec.ServiceSpec)
+	buildAdditionalServicePorts(cr.Spec.InsertPorts, additionalService)
+
 	newService := buildDefaultService(cr, cr.Spec.Port, nil)
-	mergeServiceSpec(newService, cr.Spec.ServiceSpec)
 	buildAdditionalServicePorts(cr.Spec.InsertPorts, newService)
-	return handleService(ctx, rclient, newService, true)
+
+	if cr.Spec.ServiceSpec != nil {
+		if additionalService.Name == newService.Name {
+			log.Error(fmt.Errorf("vmagent additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name), "cannot create additional service")
+		} else {
+			if _, err := reconcileServiceForCRD(ctx, rclient, additionalService); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	rca := rSvcArgs{SelectorLabels: cr.SelectorLabels, GetNameSpace: cr.GetNamespace, PrefixedName: cr.PrefixedName}
+	if err := reconcileMissingServices(ctx, rclient, rca, cr.Spec.ServiceSpec); err != nil {
+		return nil, err
+	}
+
+	return reconcileServiceForCRD(ctx, rclient, newService)
 }
 
 //we assume, that configmaps were created before this function was called

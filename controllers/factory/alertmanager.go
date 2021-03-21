@@ -187,34 +187,19 @@ func newStsForAlertManager(cr *victoriametricsv1beta1.VMAlertmanager, c *config.
 }
 
 func CreateOrUpdateAlertManagerService(ctx context.Context, cr *victoriametricsv1beta1.VMAlertmanager, rclient client.Client, c *config.BaseOperatorConf) (*v1.Service, error) {
-	if _, err := createOrUpdateAlertManagerService(ctx, cr, rclient, c); err != nil {
-		return nil, err
-	}
-	if _, err := createOrUpdateAlertManagerHeadlessService(ctx, cr, rclient, c); err != nil {
-		return nil, err
-	}
-	return nil, nil
-}
-
-func createOrUpdateAlertManagerService(ctx context.Context, cr *victoriametricsv1beta1.VMAlertmanager, rclient client.Client, c *config.BaseOperatorConf) (*v1.Service, error) {
-	// fast path
-	// todo if user remove this value, corresponding service must be found and removed.
-	if cr.Spec.ServiceSpec == nil {
-		return nil, nil
-	}
-	newService := buildDefaultService(cr, cr.Spec.PortName, nil)
-	mergeServiceSpec(newService, cr.Spec.ServiceSpec)
-	return handleService(ctx, rclient, newService, true)
-}
-
-func createOrUpdateAlertManagerHeadlessService(ctx context.Context, cr *victoriametricsv1beta1.VMAlertmanager, rclient client.Client, c *config.BaseOperatorConf) (*v1.Service, error) {
-
 	cr = cr.DeepCopy()
 	if cr.Spec.PortName == "" {
 		cr.Spec.PortName = defaultPortName
 	}
+
+	additionalService := buildDefaultService(cr, cr.Spec.PortName, func(svc *v1.Service) {
+		svc.Spec.Ports[0].Port = 9093
+	})
+	mergeServiceSpec(additionalService, cr.Spec.ServiceSpec)
+
 	newService := buildDefaultService(cr, cr.Spec.PortName, func(svc *v1.Service) {
 		svc.Spec.ClusterIP = "None"
+		svc.Spec.Ports[0].Port = 9093
 		svc.Spec.Ports = append(svc.Spec.Ports,
 			v1.ServicePort{
 				Name:       "tcp-mesh",
@@ -230,7 +215,23 @@ func createOrUpdateAlertManagerHeadlessService(ctx context.Context, cr *victoria
 			},
 		)
 	})
-	return handleService(ctx, rclient, newService, false)
+
+	if cr.Spec.ServiceSpec != nil {
+		if additionalService.Name == newService.Name {
+			log.Error(fmt.Errorf("vmalertmanager additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name), "cannot create additional service")
+		} else {
+			if _, err := reconcileServiceForCRD(ctx, rclient, additionalService); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	rca := rSvcArgs{SelectorLabels: cr.SelectorLabels, GetNameSpace: cr.GetNamespace, PrefixedName: cr.PrefixedName}
+	if err := reconcileMissingServices(ctx, rclient, rca, cr.Spec.ServiceSpec); err != nil {
+		return nil, err
+	}
+
+	return reconcileServiceForCRD(ctx, rclient, newService)
 }
 
 func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, c *config.BaseOperatorConf) (*appsv1.StatefulSetSpec, error) {

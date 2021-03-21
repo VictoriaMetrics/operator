@@ -27,5 +27,5 @@ kind: VMAlertmanager
 metadata:
   name: example-alertmanager
 spec:
-  replicaCount: 1
+  replicaCount: 2
   configSecret: vmalertmanager-example-alertmanager

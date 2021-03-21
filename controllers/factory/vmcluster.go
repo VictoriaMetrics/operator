@@ -248,7 +248,7 @@ func CreateOrUpdateVMSelectService(ctx context.Context, cr *v1beta1.VMCluster, r
 	rca := rSvcArgs{SelectorLabels: cr.VMSelectSelectorLabels, GetNameSpace: cr.GetNamespace, PrefixedName: func() string {
 		return cr.Spec.VMSelect.GetNameWithPrefix(cr.Name)
 	}}
-	if err := reconcileMissingServices(ctx, rclient, rca, cr.Spec.VMSelect.ServiceSpec); err != nil {
+	if err := removeOrphanedServices(ctx, rclient, rca, cr.Spec.VMSelect.ServiceSpec); err != nil {
 		return nil, err
 	}
 
@@ -314,7 +314,7 @@ func CreateOrUpdateVMInsertService(ctx context.Context, cr *v1beta1.VMCluster, r
 	rca := rSvcArgs{SelectorLabels: cr.VMInsertSelectorLabels, GetNameSpace: cr.GetNamespace, PrefixedName: func() string {
 		return cr.Spec.VMInsert.GetNameWithPrefix(cr.Name)
 	}}
-	if err := reconcileMissingServices(ctx, rclient, rca, cr.Spec.VMInsert.ServiceSpec); err != nil {
+	if err := removeOrphanedServices(ctx, rclient, rca, cr.Spec.VMInsert.ServiceSpec); err != nil {
 		return nil, err
 	}
 
@@ -373,7 +373,7 @@ func CreateOrUpdateVMStorageService(ctx context.Context, cr *v1beta1.VMCluster, 
 	rca := rSvcArgs{SelectorLabels: cr.VMStorageSelectorLabels, GetNameSpace: cr.GetNamespace, PrefixedName: func() string {
 		return cr.Spec.VMStorage.GetNameWithPrefix(cr.Name)
 	}}
-	if err := reconcileMissingServices(ctx, rclient, rca, cr.Spec.VMStorage.ServiceSpec); err != nil {
+	if err := removeOrphanedServices(ctx, rclient, rca, cr.Spec.VMStorage.ServiceSpec); err != nil {
 		return nil, err
 	}
 

@@ -4,9 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
-
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -226,9 +225,9 @@ type rSvcArgs struct {
 	GetNameSpace   func() string
 }
 
-// remove missing services for given spec.
-func reconcileMissingServices(ctx context.Context, rclient client.Client, args rSvcArgs, spec *victoriametricsv1beta1.ServiceSpec) error {
-	relatedSvc, err := discoverServicesByLabels(ctx, rclient, args)
+// removeOrphanedServices removes services that no longer belongs to given crd by its args.
+func removeOrphanedServices(ctx context.Context, rclient client.Client, args rSvcArgs, spec *victoriametricsv1beta1.ServiceSpec) error {
+	svcsToRemove, err := discoverServicesByLabels(ctx, rclient, args)
 	if err != nil {
 		return err
 	}
@@ -246,29 +245,28 @@ func reconcileMissingServices(ctx context.Context, rclient client.Client, args r
 	cnt := 0
 	// filter in-place,
 	// keep services that doesn't match prefixedName and additional serviceName.
-	for i := range relatedSvc {
-		svc := relatedSvc[i]
+	for i := range svcsToRemove {
+		svc := svcsToRemove[i]
 		switch svc.Name {
 		case args.PrefixedName():
 		case additionalSvcName:
 		default:
 			// service must be removed
-			relatedSvc[cnt] = svc
+			svcsToRemove[cnt] = svc
 			cnt++
 		}
 	}
 	// remove left services.
-	relatedSvc = relatedSvc[:cnt]
-	for i := range relatedSvc {
-		if err := handleDelete(relatedSvc[i]); err != nil {
+	svcsToRemove = svcsToRemove[:cnt]
+	for i := range svcsToRemove {
+		if err := handleDelete(svcsToRemove[i]); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-// need to find all existing services for given instance,
-// to be able to reconcile it names later.
+// discoverServicesByLabels - returns services with given args.
 func discoverServicesByLabels(ctx context.Context, rclient client.Client, args rSvcArgs) ([]*v1.Service, error) {
 	var svcs v1.ServiceList
 	opts := client.ListOptions{

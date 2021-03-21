@@ -139,31 +139,20 @@ type BasicAuth struct {
 	Password v1.SecretKeySelector `json:"password,omitempty"`
 }
 
-// ServiceSpec is be added into CRD spec to support custom service information
-// If its defined operator will create separate service with user defined parameters,
-// some of (selector, labels, type) - can be inherited from default service definition.
+// ServiceSpec defines additional service for CRD with user-defined params.
+// by default, some of fields can be inherited from default service definition for the CRD:
+// labels,selector, ports.
+// if metadata.name is not defined, service will have format {{CRD_TYPE}}-{{CRD_NAME}}-additional-service.
 // +k8s:openapi-gen=true
 type ServiceSpec struct {
 	// EmbeddedObjectMetadata defines objectMeta for additional service.
 	EmbeddedObjectMetadata `json:"metadata,omitempty"`
-	//// Name name for the additional service.
-	//// Cannot be the same as default CRD service name
-	//// and its mandratory parameter.
-	//// its users responsibility to check if name is uniq.
-	//Name string `json:"name"`
-	//// Labels - additional labels, service has selector labels
-	//// and its cannot be changed.
-	//// +optional
-	//Labels map[string]string `json:"labels,omitempty"`
-	//// Annotations - annotations for service.
-	//// +optional
-	//Annotations map[string]string `json:"annotations,omitempty"`
 	// ServiceSpec describes the attributes that a user creates on a service.
 	// More info: https://kubernetes.io/docs/concepts/services-networking/service/
 	Spec v1.ServiceSpec `json:"spec"`
 }
 
-// NameOrDefault returns name of default value with suffix
+// NameOrDefault returns name or default value with suffix
 func (ss *ServiceSpec) NameOrDefault(defaultName string) string {
 	if ss.Name != "" {
 		return ss.Name

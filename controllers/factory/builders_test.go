@@ -5,18 +5,13 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/go-test/deep"
-
-	"k8s.io/apimachinery/pkg/types"
-
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
-	"k8s.io/apimachinery/pkg/runtime"
-
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
-
+	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
+	"github.com/go-test/deep"
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 func Test_reconcileServiceForCRD(t *testing.T) {
@@ -465,8 +460,8 @@ func Test_reconcileMissingServices(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cl := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			if err := reconcileMissingServices(tt.args.ctx, cl, tt.args.args, tt.args.spec); (err != nil) != tt.wantErr {
-				t.Errorf("reconcileMissingServices() error = %v, wantErr %v", err, tt.wantErr)
+			if err := removeOrphanedServices(tt.args.ctx, cl, tt.args.args, tt.args.spec); (err != nil) != tt.wantErr {
+				t.Errorf("removeOrphanedServices() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			var wantSvcs v1.ServiceList
 			if err := cl.List(tt.args.ctx, &wantSvcs); err != nil {

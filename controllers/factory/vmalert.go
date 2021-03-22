@@ -29,88 +29,34 @@ const (
 )
 
 func CreateOrUpdateVMAlertService(ctx context.Context, cr *victoriametricsv1beta1.VMAlert, rclient client.Client, c *config.BaseOperatorConf) (*corev1.Service, error) {
-	l := log.WithValues("controller", "vmalert.service.crud", "vmalert", cr.Name)
-	newService := newServiceVMAlert(cr, c)
+	if cr.Spec.Port == "" {
+		cr.Spec.Port = c.VMAlertDefault.Port
+	}
+	additionalSvc := buildDefaultService(cr, cr.Spec.Port, nil)
+	mergeServiceSpec(additionalSvc, cr.Spec.ServiceSpec)
+	newService := buildDefaultService(cr, cr.Spec.Port, nil)
 
-	currentService := &corev1.Service{}
-	err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: newService.Name}, currentService)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			l.Info("creating new service for vm vmalert")
-			err := rclient.Create(ctx, newService)
-			if err != nil {
-				return nil, fmt.Errorf("cannot create new service for vmalert: %w", err)
-			}
-			return newService, nil
-		} else {
-			return nil, fmt.Errorf("cannot get vmalert service: %w", err)
-		}
-	}
-	newService.Annotations = labels.Merge(newService.Annotations, currentService.Annotations)
-	if currentService.Spec.ClusterIP != "" {
-		newService.Spec.ClusterIP = currentService.Spec.ClusterIP
-	}
-	newService.Finalizers = victoriametricsv1beta1.MergeFinalizers(currentService, victoriametricsv1beta1.FinalizerName)
-	if currentService.ResourceVersion != "" {
-		newService.ResourceVersion = currentService.ResourceVersion
-	}
-	err = rclient.Update(ctx, newService)
-	if err != nil {
-		return nil, fmt.Errorf("cannot update vmalert service: %w", err)
-	}
-	l.Info("vmalert svc reconciled")
-	return newService, nil
-}
-
-func ddefaultVMAlertService(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorConf) *corev1.Service {
-	return &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            cr.PrefixedName(),
-			Namespace:       cr.Namespace,
-			Labels:          c.Labels.Merge(cr.Labels()),
-			Annotations:     cr.Annotations(),
-			OwnerReferences: cr.AsOwner(),
-			Finalizers:      []string{victoriametricsv1beta1.FinalizerName},
-		},
-		Spec: corev1.ServiceSpec{
-			Type:     corev1.ServiceTypeClusterIP,
-			Selector: cr.SelectorLabels(),
-			Ports: []corev1.ServicePort{
-				{
-					Name:       "http",
-					Protocol:   "TCP",
-					Port:       intstr.Parse(c.VMAlertDefault.Port).IntVal,
-					TargetPort: intstr.Parse(c.VMAlertDefault.Port),
-				},
-			},
-		},
-	}
-}
-
-func newServiceVMAlert(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorConf) *corev1.Service {
-	cr = cr.DeepCopy()
-	svc := ddefaultVMAlertService(cr, c)
+	// user may want to abuse it, if serviceSpec.name == crd.prefixedName,
+	// log error?
 	if cr.Spec.ServiceSpec != nil {
-		svc = &corev1.Service{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:            cr.Spec.ServiceSpec.Name,
-				Namespace:       cr.Namespace,
-				Labels:          cr.Spec.ServiceSpec.Labels,
-				Annotations:     cr.Spec.ServiceSpec.Annotations,
-				OwnerReferences: cr.AsOwner(),
-			},
-			Spec: cr.Spec.ServiceSpec.Spec,
+		if additionalSvc.Name == newService.Name {
+			log.Error(fmt.Errorf("vmalert additional service name: %q cannot be the same as crd.prefixedname: %q", additionalSvc.Name, cr.PrefixedName()), "cannot create additional service")
+		} else {
+			if _, err := reconcileServiceForCRD(ctx, rclient, additionalSvc); err != nil {
+				return nil, err
+			}
 		}
 	}
-	if cr.Spec.Port != "" {
-		svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{
-			Protocol:   "TCP",
-			Port:       intstr.Parse(cr.Spec.Port).IntVal,
-			TargetPort: intstr.Parse(cr.Spec.Port),
-		})
+	rca := rSvcArgs{
+		PrefixedName:   cr.PrefixedName,
+		GetNameSpace:   cr.GetNamespace,
+		SelectorLabels: cr.SelectorLabels,
 	}
-	setServiceDefaultField(svc, ddefaultVMAlertService(cr, c))
-	return svc
+	if err := removeOrphanedServices(ctx, rclient, rca, cr.Spec.ServiceSpec); err != nil {
+		return nil, err
+	}
+
+	return reconcileServiceForCRD(ctx, rclient, newService)
 }
 
 func CreateOrUpdateVMAlert(ctx context.Context, cr *victoriametricsv1beta1.VMAlert, rclient client.Client, c *config.BaseOperatorConf, cmNames []string) (reconcile.Result, error) {

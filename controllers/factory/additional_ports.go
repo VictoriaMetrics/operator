@@ -86,7 +86,7 @@ func buildArgsForAdditionalPorts(args []string, ip *victoriametricsv1beta1.Inser
 }
 
 func buildAdditionalServicePorts(ip *victoriametricsv1beta1.InsertPorts, svc *corev1.Service) {
-	if ip == nil {
+	if ip == nil || svc == nil {
 		return
 	}
 	if ip.GraphitePort != "" {
@@ -130,7 +130,7 @@ func buildAdditionalServicePorts(ip *victoriametricsv1beta1.InsertPorts, svc *co
 				TargetPort: intstr.Parse(ip.OpenTSDBPort),
 			},
 			corev1.ServicePort{
-				Name:       "opentsdb-tcp",
+				Name:       "opentsdb-udp",
 				Protocol:   "UDP",
 				Port:       intstr.Parse(ip.OpenTSDBPort).IntVal,
 				TargetPort: intstr.Parse(ip.OpenTSDBPort),

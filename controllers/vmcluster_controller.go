@@ -91,6 +91,7 @@ func (r *VMClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&victoriametricsv1beta1.VMCluster{}).
 		Owns(&appsv1.Deployment{}).
+		Owns(&v1.Service{}).
 		Owns(&victoriametricsv1beta1.VMServiceScrape{}).
 		Owns(&appsv1.StatefulSet{}).
 		Owns(&v1.ServiceAccount{}).

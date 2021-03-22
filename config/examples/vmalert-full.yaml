@@ -23,10 +23,10 @@ spec:
   image:
     repository: victoriametrics/vmalert
     tag: v1.46.0
-    pullPolicy: ifNotPresent
+    pullPolicy: IfNotPresent
   replicaCount: 1
   extraArgs:
-    logLevel: INFO
+    loggerLevel: INFO
   extraEnvs:
     - name: external.Url
       value: http://some-url
@@ -84,3 +84,12 @@ spec:
       password:
         name: vmalert-basic-auth
         key: password
+  serviceSpec:
+    metadata:
+      name: vmalert-lb
+      labels:
+        key: value
+      annotations:
+        key: value
+    spec:
+      type: LoadBalancer

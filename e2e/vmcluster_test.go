@@ -2,12 +2,13 @@ package e2e
 
 import (
 	"context"
-	"time"
+	"fmt"
 
 	v1beta1vm "github.com/VictoriaMetrics/operator/api/v1beta1"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -26,8 +27,16 @@ var _ = Describe("e2e vmcluster", func() {
 						Name:      name,
 					},
 				})).To(Succeed(), "must delete vmcluster after test")
-				time.Sleep(time.Second * 3)
-
+				Eventually(func() error {
+					err := k8sClient.Get(context.Background(), types.NamespacedName{
+						Name:      name,
+						Namespace: namespace,
+					}, &v1beta1vm.VMCluster{})
+					if errors.IsNotFound(err) {
+						return nil
+					}
+					return fmt.Errorf("want NotFound error, got: %w", err)
+				}, 60, 1).Should(BeNil())
 			})
 			It("should create vmCluster with empty services", func() {
 				Expect(k8sClient.Create(context.TODO(), &v1beta1vm.VMCluster{
@@ -37,7 +46,6 @@ var _ = Describe("e2e vmcluster", func() {
 					},
 					Spec: v1beta1vm.VMClusterSpec{RetentionPeriod: "1"},
 				})).To(Succeed())
-				time.Sleep(time.Second * 3)
 			})
 
 		})
@@ -51,7 +59,16 @@ var _ = Describe("e2e vmcluster", func() {
 						Name:      name,
 					},
 				})).To(Succeed())
-				time.Sleep(time.Second * 3)
+				Eventually(func() error {
+					err := k8sClient.Get(context.Background(), types.NamespacedName{
+						Name:      name,
+						Namespace: namespace,
+					}, &v1beta1vm.VMCluster{})
+					if errors.IsNotFound(err) {
+						return nil
+					}
+					return fmt.Errorf("want NotFound error, got: %w", err)
+				}, 60, 1).Should(BeNil())
 			})
 			BeforeEach(func() {
 				Expect(k8sClient.Create(context.TODO(), &v1beta1vm.VMCluster{
@@ -121,9 +138,7 @@ var _ = Describe("e2e vmcluster", func() {
 				Eventually(func() string {
 					return expectPodCount(k8sClient, 2, namespace, vmCluster.VMInsertSelectorLabels())
 				}, 70, 1).Should(BeEmpty())
-
 			})
-
 		})
 	})
 })

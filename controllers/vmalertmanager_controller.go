@@ -99,6 +99,7 @@ func (r *VMAlertmanagerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&victoriametricsv1beta1.VMAlertmanager{}).
 		Owns(&appsv1.StatefulSet{}).
+		Owns(&v1.Service{}).
 		Owns(&victoriametricsv1beta1.VMServiceScrape{}).
 		Owns(&v1.Secret{}).
 		Owns(&v1.ServiceAccount{}).

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"path"
+	"strings"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
@@ -21,8 +22,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-
-	"strings"
 )
 
 const (
@@ -187,169 +186,51 @@ func newStsForAlertManager(cr *victoriametricsv1beta1.VMAlertmanager, c *config.
 }
 
 func CreateOrUpdateAlertManagerService(ctx context.Context, cr *victoriametricsv1beta1.VMAlertmanager, rclient client.Client, c *config.BaseOperatorConf) (*v1.Service, error) {
-	if _, err := createOrUpdateAlertManagerService(ctx, cr, rclient, c); err != nil {
-		return nil, err
-	}
-	if _, err := createOrUpdateAlertManagerHeadlessService(ctx, cr, rclient, c); err != nil {
-		return nil, err
-	}
-	return nil, nil
-}
-
-func defaultVMAlertmanagerService(cr *victoriametricsv1beta1.VMAlertmanager, c *config.BaseOperatorConf) *v1.Service {
-	return &v1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            setExternalSuffix(cr.PrefixedName()),
-			Namespace:       cr.Namespace,
-			Labels:          c.Labels.Merge(cr.Labels()),
-			Annotations:     cr.Annotations(),
-			OwnerReferences: cr.AsOwner(),
-		},
-		Spec: v1.ServiceSpec{
-			Type: v1.ServiceTypeClusterIP,
-			Ports: []v1.ServicePort{
-				{
-					Name:       "web",
-					Port:       9093,
-					TargetPort: intstr.FromString("web"),
-					Protocol:   v1.ProtocolTCP,
-				},
-			},
-			Selector: cr.SelectorLabels(),
-		},
-	}
-}
-
-func newAlertManagerService(cr *victoriametricsv1beta1.VMAlertmanager, c *config.BaseOperatorConf) *v1.Service {
-	cr = cr.DeepCopy()
-	svc := defaultVMAlertmanagerService(cr, c)
-	if cr.Spec.ServiceSpec != nil {
-		svc = &v1.Service{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:            cr.Spec.ServiceSpec.Name,
-				Namespace:       cr.Namespace,
-				Labels:          cr.Spec.ServiceSpec.Labels,
-				Annotations:     cr.Spec.ServiceSpec.Annotations,
-				OwnerReferences: cr.AsOwner(),
-			},
-			Spec: cr.Spec.ServiceSpec.Spec,
-		}
-	}
-	if cr.Spec.PortName != "" {
-		svc.Spec.Ports = append(svc.Spec.Ports, v1.ServicePort{
-			Name:       cr.Spec.PortName,
-			Port:       9093,
-			TargetPort: intstr.FromString(cr.Spec.PortName),
-			Protocol:   v1.ProtocolTCP,
-		})
-	}
-	setServiceDefaultField(svc, defaultVMAlertmanagerService(cr, c))
-	return svc
-}
-
-func createOrUpdateAlertManagerService(ctx context.Context, cr *victoriametricsv1beta1.VMAlertmanager, rclient client.Client, c *config.BaseOperatorConf) (*v1.Service, error) {
-	l := log.WithValues("recon.alertmanager.service", cr.Name)
-
-	newService := newAlertManagerService(cr, c)
-	currentService := &v1.Service{}
-	err := rclient.Get(ctx, types.NamespacedName{Name: newService.Name, Namespace: newService.Namespace}, currentService)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			l.Info("creating new service for sts")
-			if err := rclient.Create(ctx, newService); err != nil {
-				return nil, fmt.Errorf("cannot create service for vmalertmanager sts: %w", err)
-			}
-			return newService, nil
-		} else {
-			return nil, fmt.Errorf("cannot get service for vmalertmanager sts: %w", err)
-		}
-	}
-	newService.Annotations = labels.Merge(newService.Annotations, currentService.Annotations)
-	if currentService.Spec.ClusterIP != "" {
-		newService.Spec.ClusterIP = currentService.Spec.ClusterIP
-	}
-	if currentService.ResourceVersion != "" {
-		newService.ResourceVersion = currentService.ResourceVersion
-	}
-	newService.Finalizers = victoriametricsv1beta1.MergeFinalizers(currentService, victoriametricsv1beta1.FinalizerName)
-	err = rclient.Update(ctx, newService)
-	if err != nil {
-		return nil, fmt.Errorf("cannot update vmalert server: %w", err)
-	}
-	return newService, nil
-}
-func createOrUpdateAlertManagerHeadlessService(ctx context.Context, cr *victoriametricsv1beta1.VMAlertmanager, rclient client.Client, c *config.BaseOperatorConf) (*v1.Service, error) {
-
-	l := log.WithValues("recon.alertmanager.headlessservice", cr.Name)
-
-	newService := newAlertManagerHeadlessService(cr, c)
-	oldService := &v1.Service{}
-	err := rclient.Get(ctx, types.NamespacedName{Name: newService.Name, Namespace: newService.Namespace}, oldService)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			l.Info("creating new service for sts")
-			err := rclient.Create(ctx, newService)
-			if err != nil {
-				return nil, fmt.Errorf("cannot create service for vmalertmanager sts: %w", err)
-			}
-		} else {
-			return nil, fmt.Errorf("cannot get service for vmalertmanager sts: %w", err)
-		}
-	}
-	newService.Annotations = labels.Merge(newService.Annotations, oldService.Annotations)
-
-	if oldService.ResourceVersion != "" {
-		newService.ResourceVersion = oldService.ResourceVersion
-	}
-	err = rclient.Update(ctx, newService)
-	if err != nil {
-		return nil, fmt.Errorf("cannot update vmalert server: %w", err)
-	}
-
-	return newService, nil
-}
-
-func newAlertManagerHeadlessService(cr *victoriametricsv1beta1.VMAlertmanager, c *config.BaseOperatorConf) *v1.Service {
 	cr = cr.DeepCopy()
 	if cr.Spec.PortName == "" {
 		cr.Spec.PortName = defaultPortName
 	}
 
-	svc := &v1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            cr.PrefixedName(),
-			Namespace:       cr.Namespace,
-			Labels:          c.Labels.Merge(cr.Labels()),
-			Annotations:     cr.Annotations(),
-			OwnerReferences: cr.AsOwner(),
-			Finalizers:      []string{victoriametricsv1beta1.FinalizerName},
-		},
-		Spec: v1.ServiceSpec{
-			ClusterIP: "None",
-			Ports: []v1.ServicePort{
-				{
-					Name:       cr.Spec.PortName,
-					Port:       9093,
-					TargetPort: intstr.FromString(cr.Spec.PortName),
-					Protocol:   v1.ProtocolTCP,
-				},
-				{
-					Name:       "tcp-mesh",
-					Port:       9094,
-					TargetPort: intstr.FromInt(9094),
-					Protocol:   v1.ProtocolTCP,
-				},
-				{
-					Name:       "udp-mesh",
-					Port:       9094,
-					TargetPort: intstr.FromInt(9094),
-					Protocol:   v1.ProtocolUDP,
-				},
+	additionalService := buildDefaultService(cr, cr.Spec.PortName, func(svc *v1.Service) {
+		svc.Spec.Ports[0].Port = 9093
+	})
+	mergeServiceSpec(additionalService, cr.Spec.ServiceSpec)
+
+	newService := buildDefaultService(cr, cr.Spec.PortName, func(svc *v1.Service) {
+		svc.Spec.ClusterIP = "None"
+		svc.Spec.Ports[0].Port = 9093
+		svc.Spec.Ports = append(svc.Spec.Ports,
+			v1.ServicePort{
+				Name:       "tcp-mesh",
+				Port:       9094,
+				TargetPort: intstr.FromInt(9094),
+				Protocol:   v1.ProtocolTCP,
 			},
-			Selector: cr.SelectorLabels(),
-		},
+			v1.ServicePort{
+				Name:       "udp-mesh",
+				Port:       9094,
+				TargetPort: intstr.FromInt(9094),
+				Protocol:   v1.ProtocolUDP,
+			},
+		)
+	})
+
+	if cr.Spec.ServiceSpec != nil {
+		if additionalService.Name == newService.Name {
+			log.Error(fmt.Errorf("vmalertmanager additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name), "cannot create additional service")
+		} else {
+			if _, err := reconcileServiceForCRD(ctx, rclient, additionalService); err != nil {
+				return nil, err
+			}
+		}
 	}
-	return svc
+
+	rca := rSvcArgs{SelectorLabels: cr.SelectorLabels, GetNameSpace: cr.GetNamespace, PrefixedName: cr.PrefixedName}
+	if err := removeOrphanedServices(ctx, rclient, rca, cr.Spec.ServiceSpec); err != nil {
+		return nil, err
+	}
+
+	return reconcileServiceForCRD(ctx, rclient, newService)
 }
 
 func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, c *config.BaseOperatorConf) (*appsv1.StatefulSetSpec, error) {

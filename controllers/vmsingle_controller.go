@@ -114,6 +114,7 @@ func (r *VMSingleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&victoriametricsv1beta1.VMSingle{}).
 		Owns(&appsv1.Deployment{}).
+		Owns(&v1.Service{}).
 		Owns(&victoriametricsv1beta1.VMServiceScrape{}).
 		Owns(&v1.Service{}).
 		Owns(&v1.ServiceAccount{}).

@@ -38,107 +38,33 @@ const (
 )
 
 func CreateOrUpdateVMAgentService(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client, c *config.BaseOperatorConf) (*corev1.Service, error) {
-	l := log.WithValues("recon.vm.service.name", cr.Name)
-	newService := newServiceVMAgent(cr, c)
+	cr = cr.DeepCopy()
+	if cr.Spec.Port == "" {
+		cr.Spec.Port = c.VMAgentDefault.Port
+	}
+	additionalService := buildDefaultService(cr, cr.Spec.Port, nil)
+	mergeServiceSpec(additionalService, cr.Spec.ServiceSpec)
+	buildAdditionalServicePorts(cr.Spec.InsertPorts, additionalService)
 
-	currentService := &corev1.Service{}
-	err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: newService.Name}, currentService)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			l.Info("creating new service for vmagent")
-			if err := rclient.Create(ctx, newService); err != nil {
-				return nil, fmt.Errorf("cannot create new service for vmagent: %w", err)
+	newService := buildDefaultService(cr, cr.Spec.Port, nil)
+	buildAdditionalServicePorts(cr.Spec.InsertPorts, newService)
+
+	if cr.Spec.ServiceSpec != nil {
+		if additionalService.Name == newService.Name {
+			log.Error(fmt.Errorf("vmagent additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name), "cannot create additional service")
+		} else {
+			if _, err := reconcileServiceForCRD(ctx, rclient, additionalService); err != nil {
+				return nil, err
 			}
-			return newService, nil
 		}
-		return nil, fmt.Errorf("cannot get vmagent service for reconcile: %w", err)
 	}
-	newService.Annotations = labels.Merge(newService.Annotations, currentService.Annotations)
 
-	if currentService.Spec.ClusterIP != "" {
-		newService.Spec.ClusterIP = currentService.Spec.ClusterIP
-	}
-	if currentService.ResourceVersion != "" {
-		newService.ResourceVersion = currentService.ResourceVersion
-	}
-	newService.Finalizers = victoriametricsv1beta1.MergeFinalizers(currentService, victoriametricsv1beta1.FinalizerName)
-	err = rclient.Update(ctx, newService)
-	if err != nil {
-		l.Error(err, "cannot update vmagent service")
+	rca := rSvcArgs{SelectorLabels: cr.SelectorLabels, GetNameSpace: cr.GetNamespace, PrefixedName: cr.PrefixedName}
+	if err := removeOrphanedServices(ctx, rclient, rca, cr.Spec.ServiceSpec); err != nil {
 		return nil, err
 	}
-	l.Info("vmagent service reconciled")
-	return newService, nil
-}
 
-func defaultVMagentService(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperatorConf) *corev1.Service {
-	return &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            cr.PrefixedName(),
-			Namespace:       cr.Namespace,
-			Labels:          c.Labels.Merge(cr.Labels()),
-			Annotations:     cr.Annotations(),
-			OwnerReferences: cr.AsOwner(),
-			Finalizers:      []string{victoriametricsv1beta1.FinalizerName},
-		},
-		Spec: corev1.ServiceSpec{
-			Type:     corev1.ServiceTypeClusterIP,
-			Selector: cr.SelectorLabels(),
-			Ports: []corev1.ServicePort{
-				{
-					Name:       "http",
-					Protocol:   "TCP",
-					Port:       intstr.Parse(c.VMAgentDefault.Port).IntVal,
-					TargetPort: intstr.Parse(c.VMAgentDefault.Port),
-				},
-			},
-		},
-	}
-}
-
-func newServiceVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperatorConf) *corev1.Service {
-	cr = cr.DeepCopy()
-	svc := defaultVMagentService(cr, c)
-	if cr.Spec.ServiceSpec != nil {
-		svc = &corev1.Service{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:            cr.Spec.ServiceSpec.Name,
-				Namespace:       cr.Namespace,
-				Labels:          cr.Spec.ServiceSpec.Labels,
-				Annotations:     cr.Spec.ServiceSpec.Annotations,
-				OwnerReferences: cr.AsOwner(),
-			},
-			Spec: cr.Spec.ServiceSpec.Spec,
-		}
-	}
-	if cr.Spec.Port != "" {
-		svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{
-			Protocol:   "TCP",
-			Port:       intstr.Parse(cr.Spec.Port).IntVal,
-			TargetPort: intstr.Parse(cr.Spec.Port),
-		})
-	}
-	setServiceDefaultField(svc, defaultVMagentService(cr, c))
-	buildAdditionalServicePorts(cr.Spec.InsertPorts, svc)
-	return svc
-}
-
-// if some field of current service is not define, replace by default service
-func setServiceDefaultField(cur, def *corev1.Service) {
-	cur.Labels = labels.Merge(cur.Labels, def.Labels)
-	cur.Annotations = labels.Merge(cur.Annotations, def.Annotations)
-	if cur.Name == "" {
-		cur.Name = def.Name
-	}
-	if cur.Spec.Type == "" {
-		cur.Spec.Type = def.Spec.Type
-	}
-	if cur.Spec.Selector == nil {
-		cur.Spec.Selector = def.Spec.Selector
-	}
-	if cur.Spec.Ports == nil {
-		cur.Spec.Ports = def.Spec.Ports
-	}
+	return reconcileServiceForCRD(ctx, rclient, newService)
 }
 
 //we assume, that configmaps were created before this function was called

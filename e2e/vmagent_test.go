@@ -1,7 +1,10 @@
 package e2e
 
 import (
+	"fmt"
 	"time"
+
+	"k8s.io/apimachinery/pkg/api/errors"
 
 	operator "github.com/VictoriaMetrics/operator/api/v1beta1"
 	. "github.com/onsi/ginkgo"
@@ -26,7 +29,16 @@ var _ = Describe("test  vmagent Controller", func() {
 							Name:      name,
 						},
 					})).To(BeNil())
-
+					Eventually(func() error {
+						err := k8sClient.Get(context.Background(), types.NamespacedName{
+							Name:      name,
+							Namespace: namespace,
+						}, &operator.VMAgent{})
+						if errors.IsNotFound(err) {
+							return nil
+						}
+						return fmt.Errorf("want NotFound error, got: %w", err)
+					}, 60, 1).Should(BeNil())
 				})
 				It("should create vmagent", func() {
 					Expect(k8sClient.Create(context.TODO(), &operator.VMAgent{
@@ -38,6 +50,36 @@ var _ = Describe("test  vmagent Controller", func() {
 							ReplicaCount: pointer.Int32Ptr(1),
 							RemoteWrite: []operator.VMAgentRemoteWriteSpec{
 								{URL: "http://localhost:8428"},
+							},
+						}})).To(BeNil())
+					currVMAgent := &operator.VMAgent{}
+					Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, currVMAgent)).To(BeNil())
+					Eventually(func() string {
+						return expectPodCount(k8sClient, 1, namespace, currVMAgent.SelectorLabels())
+					}, 60, 1).Should(BeEmpty())
+				})
+				It("should create vmagent with additional service and insert ports.", func() {
+					Expect(k8sClient.Create(context.TODO(), &operator.VMAgent{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: namespace,
+							Name:      name,
+						},
+						Spec: operator.VMAgentSpec{
+							ReplicaCount: pointer.Int32Ptr(1),
+							RemoteWrite: []operator.VMAgentRemoteWriteSpec{
+								{URL: "http://localhost:8428"},
+							},
+							InsertPorts: &operator.InsertPorts{
+								GraphitePort: "8111",
+								OpenTSDBPort: "8112",
+							},
+							ServiceSpec: &operator.ServiceSpec{
+								EmbeddedObjectMetadata: operator.EmbeddedObjectMetadata{
+									Name: "vmagent-extra-service",
+								},
+								Spec: corev1.ServiceSpec{
+									Type: corev1.ServiceTypeNodePort,
+								},
 							},
 						}})).To(BeNil())
 					currVMAgent := &operator.VMAgent{}
@@ -117,6 +159,17 @@ var _ = Describe("test  vmagent Controller", func() {
 							Name:      name,
 							Namespace: namespace,
 						}})).To(BeNil())
+					Eventually(func() error {
+						err := k8sClient.Get(context.Background(), types.NamespacedName{
+							Name:      name,
+							Namespace: namespace,
+						}, &operator.VMAgent{})
+						if errors.IsNotFound(err) {
+							return nil
+						}
+						return fmt.Errorf("want NotFound error, got: %w", err)
+					}, 60, 1).Should(BeNil())
+
 				})
 				JustBeforeEach(func() {
 					Expect(k8sClient.Create(context.TODO(), &operator.VMAgent{
@@ -134,10 +187,18 @@ var _ = Describe("test  vmagent Controller", func() {
 
 				})
 				It("should expand vmagent up to 3 replicas", func() {
-					currVMAgent := &operator.VMAgent{}
+					currVMAgent := &operator.VMAgent{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: namespace,
+							Name:      name,
+						},
+					}
+					Eventually(func() string {
+						return expectPodCount(k8sClient, 1, namespace, currVMAgent.SelectorLabels())
+					}, 60, 1).Should(BeEmpty())
 					Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, currVMAgent)).To(BeNil())
 					currVMAgent.Spec.ReplicaCount = pointer.Int32Ptr(3)
-					Expect(k8sClient.Update(context.TODO(), currVMAgent))
+					Expect(k8sClient.Update(context.TODO(), currVMAgent)).To(BeNil())
 					Eventually(func() string {
 						return expectPodCount(k8sClient, 3, namespace, currVMAgent.SelectorLabels())
 					}, 60, 1).Should(BeEmpty())

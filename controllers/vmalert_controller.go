@@ -120,6 +120,7 @@ func (r *VMAlertReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		For(&victoriametricsv1beta1.VMAlert{}).
 		Owns(&appsv1.Deployment{}).
 		Owns(&victoriametricsv1beta1.VMServiceScrape{}).
+		Owns(&v1.Service{}).
 		Owns(&v1.ConfigMap{}).
 		Owns(&v1.Secret{}).
 		Owns(&v1.ServiceAccount{}).

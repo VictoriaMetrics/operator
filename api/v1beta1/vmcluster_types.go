@@ -511,6 +511,9 @@ type VMStorage struct {
 	// ExtraEnvs that will be added to VMSelect pod
 	// +optional
 	ExtraEnvs []v1.EnvVar `json:"extraEnvs,omitempty"`
+	// ServiceSpec that will be create additional service for vmstorage
+	// +optional
+	ServiceSpec *ServiceSpec `json:"serviceSpec,omitempty"`
 }
 
 type VMBackup struct {
@@ -773,7 +776,8 @@ func (cr VMCluster) GetPSPName() string {
 }
 
 func (cr VMCluster) SelectorLabels() map[string]string {
-	return map[string]string{"app.kubernetes.io/name": "vmcluster",
+	return map[string]string{
+		"app.kubernetes.io/name":      "vmcluster",
 		"app.kubernetes.io/instance":  cr.Name,
 		"app.kubernetes.io/component": "monitoring",
 		"managed-by":                  "vm-operator",

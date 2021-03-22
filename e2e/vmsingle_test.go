@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
+
 	"k8s.io/apimachinery/pkg/api/errors"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
@@ -86,14 +88,38 @@ var _ = Describe("test  vmsingle Controller", func() {
 						}})).To(Succeed())
 					time.Sleep(time.Second * 3)
 				})
-				It("should update vmSingle deploy param", func() {
-					currVMSingle := &victoriametricsv1beta1.VMSingle{}
+				It("should update vmSingle deploy param and ports", func() {
+					currVMSingle := &victoriametricsv1beta1.VMSingle{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      name,
+							Namespace: namespace,
+						},
+					}
+					Eventually(func() string {
+						return expectPodCount(k8sClient, 1, namespace, currVMSingle.SelectorLabels())
+					}, 60, 1).Should(BeEmpty())
+
 					Expect(k8sClient.Get(context.TODO(), types.NamespacedName{
 						Name:      name,
 						Namespace: namespace,
 					}, currVMSingle)).To(BeNil())
 					currVMSingle.Spec.RetentionPeriod = "3"
+					currVMSingle.Spec.InsertPorts = &victoriametricsv1beta1.InsertPorts{
+						OpenTSDBPort: "8115",
+					}
+					currVMSingle.Spec.ServiceSpec = &victoriametricsv1beta1.ServiceSpec{
+						EmbeddedObjectMetadata: victoriametricsv1beta1.EmbeddedObjectMetadata{
+							Name: "vmsingle-node-access",
+						},
+						Spec: corev1.ServiceSpec{
+							Type: corev1.ServiceTypeNodePort,
+						},
+					}
 					Expect(k8sClient.Update(context.TODO(), currVMSingle)).To(BeNil())
+					Eventually(func() error {
+						svc := &corev1.Service{}
+						return k8sClient.Get(context.TODO(), types.NamespacedName{Name: "vmsingle-node-access", Namespace: namespace}, svc)
+					}, 60, 1).Should(BeNil())
 					Eventually(func() string {
 						return expectPodCount(k8sClient, 1, namespace, currVMSingle.SelectorLabels())
 					}, 60, 1).Should(BeEmpty())

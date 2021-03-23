@@ -7,6 +7,7 @@ import (
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/config"
+	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -219,66 +220,18 @@ func reconcileServiceForCRD(ctx context.Context, rclient client.Client, newServi
 	return newService, nil
 }
 
-type rSvcArgs struct {
-	PrefixedName   func() string
-	SelectorLabels func() map[string]string
-	GetNameSpace   func() string
-}
-
-// removeOrphanedServices removes services that no longer belongs to given crd by its args.
-func removeOrphanedServices(ctx context.Context, rclient client.Client, args rSvcArgs, spec *victoriametricsv1beta1.ServiceSpec) error {
-	svcsToRemove, err := discoverServicesByLabels(ctx, rclient, args)
+func reconcileDeploy(ctx context.Context, rclient client.Client, newDeploy *appsv1.Deployment) error {
+	currentDeploy := &appsv1.Deployment{}
+	err := rclient.Get(ctx, types.NamespacedName{Name: newDeploy.Name, Namespace: newDeploy.Namespace}, currentDeploy)
 	if err != nil {
-		return err
-	}
-	handleDelete := func(s *v1.Service) error {
-		if err := finalize.RemoveFinalizer(ctx, rclient, s); err != nil {
-			return err
+		if errors.IsNotFound(err) {
+			//create new
+			return rclient.Create(ctx, newDeploy)
 		}
-		return finalize.SafeDelete(ctx, rclient, s)
+		return fmt.Errorf("cannot get deploy: %s,err: %w", newDeploy.Name, err)
 	}
-
-	var additionalSvcName string
-	if spec != nil {
-		additionalSvcName = spec.NameOrDefault(args.PrefixedName())
-	}
-	cnt := 0
-	// filter in-place,
-	// keep services that doesn't match prefixedName and additional serviceName.
-	for i := range svcsToRemove {
-		svc := svcsToRemove[i]
-		switch svc.Name {
-		case args.PrefixedName():
-		case additionalSvcName:
-		default:
-			// service must be removed
-			svcsToRemove[cnt] = svc
-			cnt++
-		}
-	}
-	// remove left services.
-	svcsToRemove = svcsToRemove[:cnt]
-	for i := range svcsToRemove {
-		if err := handleDelete(svcsToRemove[i]); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// discoverServicesByLabels - returns services with given args.
-func discoverServicesByLabels(ctx context.Context, rclient client.Client, args rSvcArgs) ([]*v1.Service, error) {
-	var svcs v1.ServiceList
-	opts := client.ListOptions{
-		Namespace:     args.GetNameSpace(),
-		LabelSelector: labels.SelectorFromSet(args.SelectorLabels()),
-	}
-	if err := rclient.List(ctx, &svcs, &opts); err != nil {
-		return nil, err
-	}
-	resp := make([]*v1.Service, 0, len(svcs.Items))
-	for i := range svcs.Items {
-		resp = append(resp, &svcs.Items[i])
-	}
-	return resp, nil
+	newDeploy.Annotations = labels.Merge(newDeploy.Annotations, currentDeploy.Annotations)
+	newDeploy.Spec.Template.Annotations = labels.Merge(newDeploy.Spec.Template.Annotations, currentDeploy.Spec.Template.Annotations)
+	victoriametricsv1beta1.MergeFinalizers(newDeploy, victoriametricsv1beta1.FinalizerName)
+	return rclient.Update(ctx, newDeploy)
 }

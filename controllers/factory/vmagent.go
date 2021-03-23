@@ -5,17 +5,14 @@ import (
 	"fmt"
 	"path"
 	"sort"
+	"strconv"
 	"strings"
 
-	"k8s.io/apimachinery/pkg/labels"
-
-	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
-
-	"github.com/VictoriaMetrics/operator/controllers/factory/vmagent"
-
-	"github.com/VictoriaMetrics/operator/controllers/factory/psp"
-
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
+	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/controllers/factory/psp"
+	"github.com/VictoriaMetrics/operator/controllers/factory/vmagent"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
@@ -23,6 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/pointer"
@@ -59,8 +57,8 @@ func CreateOrUpdateVMAgentService(ctx context.Context, cr *victoriametricsv1beta
 		}
 	}
 
-	rca := rSvcArgs{SelectorLabels: cr.SelectorLabels, GetNameSpace: cr.GetNamespace, PrefixedName: cr.PrefixedName}
-	if err := removeOrphanedServices(ctx, rclient, rca, cr.Spec.ServiceSpec); err != nil {
+	rca := finalize.RemoveSvcArgs{SelectorLabels: cr.SelectorLabels, GetNameSpace: cr.GetNamespace, PrefixedName: cr.PrefixedName}
+	if err := finalize.RemoveOrphanedServices(ctx, rclient, rca, cr.Spec.ServiceSpec); err != nil {
 		return nil, err
 	}
 
@@ -112,28 +110,28 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 
 	l = l.WithValues("vmagent.deploy.name", newDeploy.Name, "vmagent.deploy.namespace", newDeploy.Namespace)
 
-	currentDeploy := &appsv1.Deployment{}
-	err = rclient.Get(ctx, types.NamespacedName{Name: newDeploy.Name, Namespace: newDeploy.Namespace}, currentDeploy)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			//create new
-			l.Info("vmagent deploy not found, creating new one")
-			if err := rclient.Create(ctx, newDeploy); err != nil {
-				return reconcile.Result{}, fmt.Errorf("cannot create new vmagent deploy: %w", err)
+	// cluster
+	deploymentNames := make(map[string]struct{})
+	if cr.Spec.ShardCount != nil && *cr.Spec.ShardCount > 1 {
+		shardsCount := *cr.Spec.ShardCount
+		l.Info("using cluster version of VMAgent with", "shards", shardsCount)
+		for i := 0; i < shardsCount; i++ {
+			shardedDeploy := newDeploy.DeepCopy()
+			addShardSettingsToVMAgent(i, shardsCount, shardedDeploy)
+			if err := reconcileDeploy(ctx, rclient, shardedDeploy); err != nil {
+				return reconcile.Result{}, err
 			}
-			l.Info("new vmagent deploy was created")
-			return reconcile.Result{}, nil
+			deploymentNames[shardedDeploy.Name] = struct{}{}
 		}
-		return reconcile.Result{}, fmt.Errorf("cannot get vmagent deploy: %s,err: %w", newDeploy.Name, err)
+	} else {
+		if err := reconcileDeploy(ctx, rclient, newDeploy); err != nil {
+			return reconcile.Result{}, err
+		}
+		deploymentNames[newDeploy.Name] = struct{}{}
 	}
-	l.Info("updating  vmagent")
-	newDeploy.Annotations = labels.Merge(newDeploy.Annotations, currentDeploy.Annotations)
-	newDeploy.Spec.Template.Annotations = labels.Merge(newDeploy.Spec.Template.Annotations, currentDeploy.Spec.Template.Annotations)
-	victoriametricsv1beta1.MergeFinalizers(newDeploy, victoriametricsv1beta1.FinalizerName)
-	if err := rclient.Update(ctx, newDeploy); err != nil {
+	if err := finalize.RemoveOrphanedDeployments(ctx, rclient, cr, deploymentNames); err != nil {
 		return reconcile.Result{}, err
 	}
-
 	//its safe to ignore
 	_ = addAddtionalScrapeConfigOwnership(cr, rclient, l)
 	l.Info("vmagent deploy reconciled")
@@ -482,6 +480,32 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 	}
 
 	return vmAgentSpec, nil
+}
+
+func addShardSettingsToVMAgent(shardNum, shardsCount int, dep *appsv1.Deployment) {
+	dep.Name = fmt.Sprintf("%s-%d", dep.Name, shardNum)
+	// need to mutate selectors ?
+	dep.Spec.Selector.MatchLabels["shard-num"] = strconv.Itoa(shardNum)
+	dep.Spec.Template.Labels["shard-num"] = strconv.Itoa(shardNum)
+	for i := range dep.Spec.Template.Spec.Containers {
+		container := &dep.Spec.Template.Spec.Containers[i]
+		if container.Name == "vmagent" {
+			args := container.Args
+			// filter extraArgs defined by user?
+			cnt := 0
+			for i := range args {
+				arg := args[i]
+				if !strings.Contains(arg, "promscrape.cluster.membersCount") && !strings.Contains(arg, "promscrape.cluster.memberNum") {
+					args[cnt] = arg
+					cnt++
+				}
+			}
+			args = args[:cnt]
+			args = append(args, fmt.Sprintf("-promscrape.cluster.membersCount=%d", shardsCount))
+			args = append(args, fmt.Sprintf("-promscrape.cluster.memberNum=%d", shardNum))
+			container.Args = args
+		}
+	}
 }
 
 //add ownership - it needs for object changing tracking

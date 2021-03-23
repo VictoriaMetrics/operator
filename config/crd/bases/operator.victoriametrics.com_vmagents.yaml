@@ -1651,6 +1651,11 @@ spec:
               required:
               - spec
               type: object
+            shardCount:
+              description: ShardCount - numbers of shards of VMAgent in this case
+                operator will use 1 deployment/sts per shard with replicas count according
+                to spec.replicas https://victoriametrics.github.io/vmagent.html#scraping-big-number-of-targets
+              type: integer
             staticScrapeNamespaceSelector:
               description: StaticScrapeNamespaceSelector defines Namespaces to be
                 selected for VMStaticScrape discovery. If nil, only check own namespace.

@@ -240,6 +240,13 @@ type VMAgentSpec struct {
 	// ServiceSpec that will be added to vmagent service spec
 	// +optional
 	ServiceSpec *ServiceSpec `json:"serviceSpec,omitempty"`
+
+	// ShardCount - numbers of shards of VMAgent
+	// in this case operator will use 1 deployment/sts per shard with
+	// replicas count according to spec.replicas
+	// https://victoriametrics.github.io/vmagent.html#scraping-big-number-of-targets
+	// +optional
+	ShardCount *int `json:"shardCount,omitempty"`
 }
 
 // VMAgentRemoteWriteSettings - defines global settings for all remoteWrite urls.

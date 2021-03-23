@@ -7,6 +7,8 @@ import (
 	"path"
 	"strings"
 
+	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
+
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/controllers/factory/psp"
@@ -225,8 +227,8 @@ func CreateOrUpdateAlertManagerService(ctx context.Context, cr *victoriametricsv
 		}
 	}
 
-	rca := rSvcArgs{SelectorLabels: cr.SelectorLabels, GetNameSpace: cr.GetNamespace, PrefixedName: cr.PrefixedName}
-	if err := removeOrphanedServices(ctx, rclient, rca, cr.Spec.ServiceSpec); err != nil {
+	rca := finalize.RemoveSvcArgs{SelectorLabels: cr.SelectorLabels, GetNameSpace: cr.GetNamespace, PrefixedName: cr.PrefixedName}
+	if err := finalize.RemoveOrphanedServices(ctx, rclient, rca, cr.Spec.ServiceSpec); err != nil {
 		return nil, err
 	}
 

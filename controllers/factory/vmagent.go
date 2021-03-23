@@ -491,7 +491,7 @@ func addShardSettingsToVMAgent(shardNum, shardsCount int, dep *appsv1.Deployment
 		container := &dep.Spec.Template.Spec.Containers[i]
 		if container.Name == "vmagent" {
 			args := container.Args
-			// filter extraArgs defined by user?
+			// filter extraArgs defined by user
 			cnt := 0
 			for i := range args {
 				arg := args[i]

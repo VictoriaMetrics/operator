@@ -7,9 +7,8 @@ import (
 	"path"
 	"strings"
 
-	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
-
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/controllers/factory/psp"
 	"github.com/VictoriaMetrics/operator/internal/config"

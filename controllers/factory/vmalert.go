@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	"k8s.io/apimachinery/pkg/labels"
+	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
@@ -18,6 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -47,12 +48,12 @@ func CreateOrUpdateVMAlertService(ctx context.Context, cr *victoriametricsv1beta
 			}
 		}
 	}
-	rca := rSvcArgs{
+	rca := finalize.RemoveSvcArgs{
 		PrefixedName:   cr.PrefixedName,
 		GetNameSpace:   cr.GetNamespace,
 		SelectorLabels: cr.SelectorLabels,
 	}
-	if err := removeOrphanedServices(ctx, rclient, rca, cr.Spec.ServiceSpec); err != nil {
+	if err := finalize.RemoveOrphanedServices(ctx, rclient, rca, cr.Spec.ServiceSpec); err != nil {
 		return nil, err
 	}
 

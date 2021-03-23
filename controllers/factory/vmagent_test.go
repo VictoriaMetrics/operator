@@ -50,6 +50,24 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 			},
 		},
 		{
+			name: "generate with shards vmagent",
+			args: args{
+				c: config.MustGetBaseConfig(),
+				cr: &victoriametricsv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "example-agent",
+						Namespace: "default",
+					},
+					Spec: victoriametricsv1beta1.VMAgentSpec{
+						RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
+							{URL: "http://remote-write"},
+						},
+						ShardCount: func() *int { i := 2; return &i }(),
+					},
+				},
+			},
+		},
+		{
 			name: "generate vmagent with bauth-secret",
 			args: args{
 				c: config.MustGetBaseConfig(),

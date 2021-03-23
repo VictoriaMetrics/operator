@@ -43,6 +43,35 @@ EOF
 
 ```
 
+ Sharding for `VMAgent` distributes scraping between multiple deployments of `VMAgent`.
+more info https://victoriametrics.github.io/vmagent.html#scraping-big-number-of-targets
+
+Example usage:
+```yaml
+
+cat <<EOF | kubectl apply -f -
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAgent
+metadata:
+  name: example-vmagent
+spec:
+  serviceScrapeNamespaceSelector: {}
+  podScrapeNamespaceSelector: {}
+  podScrapeSelector: {}
+  serviceScrapeSelector: {}
+  scrapeInterval: 60s
+  vmAgentExternalLabelName: vmagent-ha
+  shardCount: 5
+  replicaCount: 2
+  remoteWrite:
+    - url: "http://vmsingle-example-vmsingle-persisted.default.svc:8429/api/v1/write"
+EOF
+```
+
+ This configuration produces 5 deployments with 2 replicas at each. Each deployment has own shard num
+and scrapes only 1/5 of all targets.
+
+
 ## VMAlert
 
 It can be launched with multiple replicas without an additional configuration, alertmanager is responsible for alert deduplication.

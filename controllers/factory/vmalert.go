@@ -289,20 +289,25 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 	}
 
 	for _, cm := range ruleConfigMapNames {
-		args = append(args, fmt.Sprintf("-rule=%s", path.Join(vmAlertConfigDir, cm, "*.yaml")))
+		args = append(args, fmt.Sprintf("-rule=%q", path.Join(vmAlertConfigDir, cm, "*.yaml")))
 	}
 
 	for _, cm := range ruleConfigMapNames {
 		confReloadArgs = append(confReloadArgs, fmt.Sprintf("-volume-dir=%s", path.Join(vmAlertConfigDir, cm)))
 	}
 	for arg, value := range cr.Spec.ExtraArgs {
-		args = append(args, fmt.Sprintf("-%s=%s", arg, value))
+		// special hack for https://github.com/VictoriaMetrics/VictoriaMetrics/issues/1145
+		if arg == "rule" {
+			args = append(args, fmt.Sprintf("-%s=%q", arg, value))
+		} else {
+			args = append(args, fmt.Sprintf("-%s=%s", arg, value))
+		}
 	}
 
 	args = append(args, fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.Port))
 
 	for _, rulePath := range cr.Spec.RulePath {
-		args = append(args, "-rule="+rulePath)
+		args = append(args, fmt.Sprintf("-rule=%q", rulePath))
 	}
 	if len(cr.Spec.ExtraEnvs) > 0 {
 		args = append(args, "-envflag.enable=true")

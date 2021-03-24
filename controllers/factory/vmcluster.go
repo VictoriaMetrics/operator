@@ -87,7 +87,10 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient
 			reason = v1beta1.StorageRollingUpdateFailed
 			return status, err
 		}
-
+		if err := growSTSPVC(ctx, rclient, vmStorageSts, cr.Spec.VMStorage.GetStorageVolumeName()); err != nil {
+			reason = "failed to expand vmstorage pvcs"
+			return status, err
+		}
 		storageSvc, err := CreateOrUpdateVMStorageService(ctx, cr, rclient, c)
 		if err != nil {
 			reason = "failed to create vmStorage service"
@@ -118,6 +121,10 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient
 		vmSelectsts, err := createOrUpdateVMSelect(ctx, cr, rclient, c)
 		if err != nil {
 			reason = v1beta1.SelectCreationFailed
+			return status, err
+		}
+		if err := growSTSPVC(ctx, rclient, vmSelectsts, cr.Spec.VMSelect.GetCacheMountVolmeName()); err != nil {
+			reason = "cannot expand sts pvc"
 			return status, err
 		}
 		// create vmselect service
@@ -209,6 +216,7 @@ func createOrUpdateVMSelect(ctx context.Context, cr *v1beta1.VMCluster, rclient 
 		}
 		return nil, fmt.Errorf("cannot get vmselect sts: %w", err)
 	}
+
 	l.Info("vmstorage was found, updating it")
 	newSts.Annotations = labels.Merge(newSts.Annotations, currentSts.Annotations)
 	newSts.Spec.Template.Annotations = labels.Merge(newSts.Spec.Template.Annotations, currentSts.Spec.Template.Annotations)
@@ -217,6 +225,14 @@ func createOrUpdateVMSelect(ctx context.Context, cr *v1beta1.VMCluster, rclient 
 	}
 	// hack for break reconcile loop at kubernetes 1.18
 	newSts.Status.Replicas = currentSts.Status.Replicas
+
+	sts, err := reCreateSTS(ctx, rclient, cr.Spec.VMSelect.GetCacheMountVolmeName(), newSts, currentSts)
+	if err != nil {
+		return nil, err
+	}
+	if sts != nil {
+		return sts, nil
+	}
 
 	err = rclient.Update(ctx, newSts)
 	if err != nil {
@@ -348,9 +364,16 @@ func createOrUpdateVMStorage(ctx context.Context, cr *v1beta1.VMCluster, rclient
 
 	// hack for break reconcile loop at kubernetes 1.18
 	newSts.Status.Replicas = currentSts.Status.Replicas
-	err = rclient.Update(ctx, newSts)
+	sts, err := reCreateSTS(ctx, rclient, cr.Spec.VMStorage.GetStorageVolumeName(), newSts, currentSts)
 	if err != nil {
-		return nil, fmt.Errorf("cannot upddate vmstorage sts: %w", err)
+		return nil, err
+	}
+	if sts != nil {
+		return sts, nil
+	}
+
+	if err := rclient.Update(ctx, newSts); err != nil {
+		return nil, fmt.Errorf("cannot update vmstorage sts: %w", err)
 	}
 	l.Info("vmstorage sts was reconciled")
 
@@ -440,6 +463,10 @@ func genVMSelectSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv1
 	}
 	if cr.Spec.VMSelect.CacheMountPath != "" {
 		storageSpec := cr.Spec.VMSelect.Storage
+		// hack, storage is deprecated.
+		if storageSpec == nil && cr.Spec.VMSelect.StorageSpec != nil {
+			storageSpec = cr.Spec.VMSelect.StorageSpec
+		}
 		if storageSpec == nil {
 			stsSpec.Spec.Template.Spec.Volumes = append(stsSpec.Spec.Template.Spec.Volumes, corev1.Volume{
 				Name: cr.Spec.VMSelect.GetCacheMountVolmeName(),

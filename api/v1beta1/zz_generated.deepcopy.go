@@ -2546,6 +2546,11 @@ func (in *VMSelect) DeepCopyInto(out *VMSelect) {
 		*out = new(StorageSpec)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.StorageSpec != nil {
+		in, out := &in.StorageSpec, &out.StorageSpec
+		*out = new(StorageSpec)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.ExtraEnvs != nil {
 		in, out := &in.ExtraEnvs, &out.ExtraEnvs
 		*out = make([]v1.EnvVar, len(*in))

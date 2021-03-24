@@ -209,8 +209,15 @@ type VMSelect struct {
 
 	// Storage - add persistent volume for cacheMounthPath
 	// its useful for persistent cache
+	// use storage instead of persistentVolume.
+	// +deprecated
 	// +optional
 	Storage *StorageSpec `json:"persistentVolume,omitempty"`
+	// StorageSpec - add persistent volume claim for cacheMounthPath
+	// its needed for persistent cache
+	// +optional
+	StorageSpec *StorageSpec `json:"storage,omitempty"`
+
 	// ExtraEnvs that will be added to VMSelect pod
 	// +optional
 	ExtraEnvs []v1.EnvVar `json:"extraEnvs,omitempty"`

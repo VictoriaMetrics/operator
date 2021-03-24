@@ -107,14 +107,13 @@ var _ = Describe("e2e vmcluster", func() {
 				Eventually(func() string {
 					return expectPodCount(k8sClient, 1, namespace, vmCluster.VMSelectSelectorLabels())
 				}, 30, 1).Should(BeEmpty(), "vmCluster must have ready select pod")
-
 			})
 			It("should expand vmCluster storage and select up to 2 replicas", func() {
 				vmCluster := &v1beta1vm.VMCluster{}
-				Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, vmCluster)).To(Succeed())
+				Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, vmCluster)).To(BeNil())
 				vmCluster.Spec.VMSelect.ReplicaCount = pointer.Int32Ptr(2)
 				vmCluster.Spec.VMStorage.ReplicaCount = pointer.Int32Ptr(2)
-				Expect(k8sClient.Update(context.TODO(), vmCluster)).To(Succeed())
+				Expect(k8sClient.Update(context.TODO(), vmCluster)).To(BeNil())
 				Eventually(func() string {
 					return expectPodCount(k8sClient, 2, namespace, vmCluster.VMStorageSelectorLabels())
 				}, 40, 1).Should(BeEmpty())
@@ -124,7 +123,7 @@ var _ = Describe("e2e vmcluster", func() {
 
 				By("vmInsert expand, expect to have 2 vmInserts")
 				vmCluster = &v1beta1vm.VMCluster{}
-				Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, vmCluster)).To(Succeed())
+				Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, vmCluster)).To(BeNil())
 				vmCluster.Spec.VMInsert = &v1beta1vm.VMInsert{
 					ReplicaCount: pointer.Int32Ptr(2),
 					Resources: corev1.ResourceRequirements{
@@ -134,7 +133,7 @@ var _ = Describe("e2e vmcluster", func() {
 						},
 					},
 				}
-				Expect(k8sClient.Update(context.TODO(), vmCluster)).To(Succeed())
+				Expect(k8sClient.Update(context.TODO(), vmCluster)).To(BeNil())
 				Eventually(func() string {
 					return expectPodCount(k8sClient, 2, namespace, vmCluster.VMInsertSelectorLabels())
 				}, 70, 1).Should(BeEmpty())

@@ -3,15 +3,11 @@ package factory
 import (
 	"testing"
 
-	"k8s.io/utils/pointer"
-
-	"github.com/stretchr/testify/assert"
-
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"gopkg.in/yaml.v2"
-
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v2"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/pointer"
 )
 
 func Test_generateStaticScrapeConfig(t *testing.T) {

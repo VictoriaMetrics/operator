@@ -7,11 +7,6 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-/*
-	cr.Spec.OverrideHonorLabels,
-	cr.Spec.OverrideHonorTimestamps,
-	cr.Spec.IgnoreNamespaceSelectors,
-	cr.Spec.EnforcedNamespaceLabel*/
 func generateStaticScrapeConfig(
 	m *victoriametricsv1beta1.VMStaticScrape,
 	ep *victoriametricsv1beta1.TargetEndpoint,

@@ -18,10 +18,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// probably, this function can be useful for changing sts storageclass?
+// recreateSTS if needed.
+// Note, in some cases its possible to get orphaned objects,
+// if sts was deleted and user updates configuration with different STS name.
+// One of possible solutions - save current sts to the object annotation and remove it later if needed.
+// Other solution, to check orphaned objects by selector.
+// Lets leave it as this for now and handle later.
+// TODO choose some solution for this corner case.
 func reCreateSTS(ctx context.Context, rclient client.Client, pvcName string, newSTS, existingSTS *appsv1.StatefulSet) (*appsv1.StatefulSet, error) {
-	// compare both.
-
 	handleRemove := func() error {
 		if err := finalize.RemoveFinalizer(ctx, rclient, existingSTS); err != nil {
 			return err
@@ -43,6 +47,14 @@ func reCreateSTS(ctx context.Context, rclient client.Client, pvcName string, new
 			return false, fmt.Errorf("unexpected error for polling, want notFound, got: %w", err)
 		}); err != nil {
 			return err
+		}
+		if err := rclient.Create(ctx, newSTS); err != nil {
+			// try to restore previous one and throw error
+			existingSTS.ResourceVersion = ""
+			if err2 := rclient.Create(ctx, existingSTS); err2 != nil {
+				return fmt.Errorf("cannot restore previous sts: %s configruation after remove: %w", existingSTS.Name, err2)
+			}
+			return fmt.Errorf("cannot create new sts: %s instead of replaced, some manual action is required, err: %w", newSTS.Name, err)
 		}
 		return nil
 	}
@@ -88,6 +100,7 @@ func getPVCFromSTS(pvcName string, sts *appsv1.StatefulSet) *corev1.PersistentVo
 	}
 	return pvc
 }
+
 func growSTSPVC(ctx context.Context, rclient client.Client, sts *appsv1.StatefulSet, pvcName string) error {
 	pvc := getPVCFromSTS(pvcName, sts)
 	// fast path
@@ -95,17 +108,14 @@ func growSTSPVC(ctx context.Context, rclient client.Client, sts *appsv1.Stateful
 		return nil
 	}
 	// check storage class
-	ok, err := isStorageClassExpandable(ctx, rclient, pvc)
+	isExpandable, err := isStorageClassExpandable(ctx, rclient, pvc)
 	if err != nil {
 		return err
 	}
-	if !ok {
-		log.Info("storage class for given pvc is not expandable", "pvc", pvc.Name, "sts", sts.Name)
-		return nil
-	}
-	return growPVCs(ctx, rclient, pvc.Spec.Resources.Requests.Storage(), sts.Namespace, sts.Labels)
+	return growPVCs(ctx, rclient, pvc.Spec.Resources.Requests.Storage(), sts.Namespace, sts.Labels, isExpandable)
 }
 
+// isStorageClassExpandable check is it possible to update size of given pvc
 func isStorageClassExpandable(ctx context.Context, rclient client.Client, pvc *corev1.PersistentVolumeClaim) (bool, error) {
 	var isNotDefault bool
 	var className string
@@ -129,6 +139,7 @@ func isStorageClassExpandable(ctx context.Context, rclient client.Client, pvc *c
 	}
 	for i := range storageClasses.Items {
 		class := storageClasses.Items[i]
+		// look for default storageClass.
 		if !isNotDefault {
 			if annotation, ok := class.Annotations["storageclass.kubernetes.io/is-default-class"]; ok {
 				if annotation == "true" {
@@ -136,13 +147,17 @@ func isStorageClassExpandable(ctx context.Context, rclient client.Client, pvc *c
 				}
 			}
 		}
-		if class.Name == className {
-			return allowExpansion(class), nil
+		// check class name.
+		if isNotDefault {
+			if class.Name == className {
+				return allowExpansion(class), nil
+			}
 		}
 	}
 	return false, nil
 }
-func growPVCs(ctx context.Context, rclient client.Client, size *resource.Quantity, ns string, selector map[string]string) error {
+
+func growPVCs(ctx context.Context, rclient client.Client, size *resource.Quantity, ns string, selector map[string]string, isExpandable bool) error {
 	var pvcs corev1.PersistentVolumeClaimList
 	opts := &client.ListOptions{
 		Namespace:     ns,
@@ -153,32 +168,36 @@ func growPVCs(ctx context.Context, rclient client.Client, size *resource.Quantit
 	}
 	for i := range pvcs.Items {
 		pvc := pvcs.Items[i]
-		ok, err := mayGrow(size, pvc.Spec.Resources.Requests.Storage())
-		if err != nil {
-			return err
-		}
-		if ok {
-			log.Info("need to expand pvc", "name", pvc.Name, "size", size.String())
-			// check is it possible?
-			pvc.Spec.Resources.Requests[corev1.ResourceStorage] = *size
-			if err := rclient.Update(ctx, &pvc); err != nil {
-				return err
+		if mayGrow(size, pvc.Spec.Resources.Requests.Storage()) {
+			if isExpandable {
+				log.Info("need to expand pvc", "name", pvc.Name, "size", size.String())
+				pvc.Spec.Resources.Requests[corev1.ResourceStorage] = *size
+				if err := rclient.Update(ctx, &pvc); err != nil {
+					return err
+				}
+			} else {
+				log.Info("need to expand pvc, but storageClass doesn't support it, handle this case manually", "pvc", pvc.Name)
 			}
 		}
 	}
 	return nil
 }
 
-func mayGrow(newSize, existSize *resource.Quantity) (bool, error) {
+// checks is pvc needs to be resized.
+func mayGrow(newSize, existSize *resource.Quantity) bool {
 	if newSize == nil || existSize == nil {
-		return false, nil
+		return false
 	}
 	switch newSize.Cmp(*existSize) {
 	case 0:
-		return false, nil
+		return false
 	case -1:
-		return false, fmt.Errorf("cannot decrease pvc size, want: %s, got: %s", newSize.String(), existSize.String())
+		// do no return error
+		// probably, user updated pvc manually
+		// without applying this changes to the configuration.
+		log.Error(fmt.Errorf("cannot decrease pvc size, want: %s, got: %s", newSize.String(), existSize.String()), "update pvc manually")
+		return false
 	default: // increase
-		return true, nil
+		return true
 	}
 }

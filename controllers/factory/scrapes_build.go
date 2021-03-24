@@ -179,7 +179,11 @@ func generateConfig(
 					statics[identifier],
 					ep, i,
 					basicAuthSecrets,
-					bearerTokens))
+					bearerTokens,
+					cr.Spec.OverrideHonorLabels,
+					cr.Spec.OverrideHonorTimestamps,
+					cr.Spec.EnforcedNamespaceLabel,
+				))
 		}
 	}
 	var additionalScrapeConfigsYaml []yaml.MapSlice

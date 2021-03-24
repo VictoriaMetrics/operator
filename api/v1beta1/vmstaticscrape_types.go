@@ -68,6 +68,12 @@ type TargetEndpoint struct {
 	// ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint.
 	// +optional
 	ProxyURL *string `json:"proxyURL,omitempty"`
+	// HonorLabels chooses the metric's labels on collisions with target labels.
+	// +optional
+	HonorLabels bool `json:"honorLabels,omitempty"`
+	// HonorTimestamps controls whether vmagent respects the timestamps present in scraped data.
+	// +optional
+	HonorTimestamps *bool `json:"honorTimestamps,omitempty"`
 }
 
 // AsKey represent CR as map key.

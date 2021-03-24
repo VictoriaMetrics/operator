@@ -7,20 +7,34 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+/*
+	cr.Spec.OverrideHonorLabels,
+	cr.Spec.OverrideHonorTimestamps,
+	cr.Spec.IgnoreNamespaceSelectors,
+	cr.Spec.EnforcedNamespaceLabel*/
 func generateStaticScrapeConfig(
 	m *victoriametricsv1beta1.VMStaticScrape,
 	ep *victoriametricsv1beta1.TargetEndpoint,
 	i int,
 	basicAuthSecrets map[string]BasicAuthCredentials,
 	bearerTokens map[string]BearerToken,
+	overrideHonorLabels, overrideHonorTimestamps bool,
+	enforcedNamespaceLabel string,
 ) yaml.MapSlice {
 
+	hl := honorLabels(ep.HonorLabels, overrideHonorLabels)
 	cfg := yaml.MapSlice{
 		{
 			Key:   "job_name",
 			Value: fmt.Sprintf("%s/%s/%d", m.Namespace, m.Name, i),
 		},
+		{
+			Key:   "honor_labels",
+			Value: hl,
+		},
 	}
+	cfg = honorTimestamps(cfg, ep.HonorTimestamps, overrideHonorTimestamps)
+
 	tgs := yaml.MapSlice{{Key: "targets", Value: ep.Targets}}
 	if ep.Labels != nil {
 		tgs = append(tgs, yaml.MapItem{Key: "labels", Value: ep.Labels})
@@ -83,6 +97,9 @@ func generateStaticScrapeConfig(
 			relabelings = append(relabelings, generateRelabelConfig(c))
 		}
 	}
+	// Because of security risks, whenever enforcedNamespaceLabel is set, we want to append it to the
+	// relabel_configs as the last relabeling, to ensure it overrides any other relabelings.
+	relabelings = enforceNamespaceLabel(relabelings, m.Namespace, enforcedNamespaceLabel)
 	cfg = append(cfg, yaml.MapItem{Key: "relabel_configs", Value: relabelings})
 
 	if m.Spec.SampleLimit > 0 {
@@ -92,6 +109,9 @@ func generateStaticScrapeConfig(
 	if ep.MetricRelabelConfigs != nil {
 		var metricRelabelings []yaml.MapSlice
 		for _, c := range ep.MetricRelabelConfigs {
+			if c.TargetLabel != "" && enforcedNamespaceLabel != "" && c.TargetLabel == enforcedNamespaceLabel {
+				continue
+			}
 			relabeling := generateRelabelConfig(c)
 			metricRelabelings = append(metricRelabelings, relabeling)
 		}

@@ -60,7 +60,13 @@ func generateProbeConfig(
 			Key:   "static_configs",
 			Value: []yaml.MapSlice{staticConfig},
 		})
-
+		// Add configured relabelings.
+		for _, r := range cr.Spec.Targets.StaticConfig.RelabelConfigs {
+			if r.TargetLabel != "" && enforcedNamespaceLabel != "" && r.TargetLabel == enforcedNamespaceLabel {
+				continue
+			}
+			relabelings = append(relabelings, generateRelabelConfig(r))
+		}
 	}
 	if cr.Spec.Targets.Ingress != nil {
 		var (

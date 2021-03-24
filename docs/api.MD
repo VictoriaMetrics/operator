@@ -19,6 +19,7 @@ This Document documents the types introduced by the VictoriaMetrics to be consum
 * [BasicAuth](#basicauth)
 * [EmbeddedObjectMetadata](#embeddedobjectmetadata)
 * [EmbeddedPersistentVolumeClaim](#embeddedpersistentvolumeclaim)
+* [ServiceSpec](#servicespec)
 * [StorageSpec](#storagespec)
 * [VMAlert](#vmalert)
 * [VMAlertDatasourceSpec](#vmalertdatasourcespec)
@@ -139,7 +140,7 @@ VMAlertmanagerSpec is a specification of the desired behavior of the VMAlertmana
 | additionalPeers | AdditionalPeers allows injecting a set of additional Alertmanagers to peer with to form a highly available cluster. | []string | false |
 | clusterAdvertiseAddress | ClusterAdvertiseAddress is the explicit address to advertise in cluster. Needs to be provided for non RFC1918 [1] (public) addresses. [1] RFC1918: https://tools.ietf.org/html/rfc1918 | string | false |
 | portName | PortName used for the pods and governing service. This defaults to web | string | false |
-| serviceSpec | ServiceSpec that will be added to vmalertmanager service spec | v1.ServiceSpec | false |
+| serviceSpec | ServiceSpec that will be added to vmalertmanager service spec | *[ServiceSpec](#servicespec) | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -269,7 +270,8 @@ VMAgentSpec defines the desired state of VMAgent
 | port | Port listen address | string | false |
 | extraArgs | ExtraArgs that will be passed to  VMAgent pod for example remoteWrite.tmpDataPath: /tmp it would be converted to flag --remoteWrite.tmpDataPath=/tmp | map[string]string | false |
 | extraEnvs | ExtraEnvs that will be added to VMAgent pod | [][v1.EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#envvar-v1-core) | false |
-| serviceSpec | ServiceSpec that will be added to vmagent service spec | v1.ServiceSpec | false |
+| serviceSpec | ServiceSpec that will be added to vmagent service spec | *[ServiceSpec](#servicespec) | false |
+| shardCount | ShardCount - numbers of shards of VMAgent in this case operator will use 1 deployment/sts per shard with replicas count according to spec.replicas https://victoriametrics.github.io/vmagent.html#scraping-big-number-of-targets | *int | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -318,6 +320,17 @@ EmbeddedPersistentVolumeClaim is an embedded version of k8s.io/api/core/v1.Persi
 | metadata | EmbeddedMetadata contains metadata relevant to an EmbeddedResource. | [EmbeddedObjectMetadata](#embeddedobjectmetadata) | false |
 | spec | Spec defines the desired characteristics of a volume requested by a pod author. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#persistentvolumeclaims | [v1.PersistentVolumeClaimSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#persistentvolumeclaimspec-v1-core) | false |
 | status | Status represents the current information/status of a persistent volume claim. Read-only. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#persistentvolumeclaims | v1.PersistentVolumeClaimStatus | false |
+
+[Back to TOC](#table-of-contents)
+
+## ServiceSpec
+
+ServiceSpec defines additional service for CRD with user-defined params. by default, some of fields can be inherited from default service definition for the CRD: labels,selector, ports. if metadata.name is not defined, service will have format {{CRD_TYPE}}-{{CRD_NAME}}-additional-service.
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| metadata | EmbeddedObjectMetadata defines objectMeta for additional service. | [EmbeddedObjectMetadata](#embeddedobjectmetadata) | false |
+| spec | ServiceSpec describes the attributes that a user creates on a service. More info: https://kubernetes.io/docs/concepts/services-networking/service/ | v1.ServiceSpec | true |
 
 [Back to TOC](#table-of-contents)
 
@@ -453,7 +466,7 @@ VMAlertSpec defines the desired state of VMAlert
 | extraArgs | ExtraArgs that will be passed to  VMAlert pod for example -remoteWrite.tmpDataPath=/tmp | map[string]string | false |
 | extraEnvs | ExtraEnvs that will be added to VMAlert pod | [][v1.EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#envvar-v1-core) | false |
 | externalLabels | ExternalLabels in the form &#39;name: value&#39; to add to all generated recording rules and alerts. | map[string]string | false |
-| serviceSpec | ServiceSpec that will be added to vmalert service spec | v1.ServiceSpec | false |
+| serviceSpec | ServiceSpec that will be added to vmalert service spec | *[ServiceSpec](#servicespec) | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -532,7 +545,7 @@ VMSingleSpec defines the desired state of VMSingle
 | vmBackup | VMBackup configuration for backup | *[VMBackup](#vmbackup) | false |
 | extraArgs | ExtraArgs that will be passed to  VMSingle pod for example remoteWrite.tmpDataPath: /tmp | map[string]string | false |
 | extraEnvs | ExtraEnvs that will be added to VMSingle pod | [][v1.EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#envvar-v1-core) | false |
-| serviceSpec | ServiceSpec that will be added to vmsingle service spec | v1.ServiceSpec | false |
+| serviceSpec | ServiceSpec that will be added to vmsingle service spec | *[ServiceSpec](#servicespec) | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -991,7 +1004,7 @@ VMClusterStatus defines the observed state of VMCluster
 | schedulerName | SchedulerName - defines kubernetes scheduler name | string | false |
 | runtimeClassName | RuntimeClassName - defines runtime class for kubernetes pod. https://kubernetes.io/docs/concepts/containers/runtime-class/ | *string | false |
 | extraEnvs | ExtraEnvs that will be added to VMSelect pod | [][v1.EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#envvar-v1-core) | false |
-| serviceSpec | ServiceSpec that will be added to vminsert service spec | v1.ServiceSpec | false |
+| serviceSpec | ServiceSpec that will be added to vminsert service spec | *[ServiceSpec](#servicespec) | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -1022,13 +1035,14 @@ VMClusterStatus defines the observed state of VMCluster
 | dnsPolicy | DNSPolicy sets DNS policy for the pod | [v1.DNSPolicy](https://v1-17.docs.kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#pod-v1-core) | false |
 | topologySpreadConstraints | TopologySpreadConstraints embedded kubernetes pod configuration option, controls how pods are spread across your cluster among failure-domains such as regions, zones, nodes, and other user-defined topology domains https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/ | [][v1.TopologySpreadConstraint](https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/) | false |
 | cacheMountPath | CacheMountPath allows to add cache persistent for VMSelect | string | false |
-| persistentVolume | Storage - add persistent volume for cacheMounthPath its useful for persistent cache | *[StorageSpec](#storagespec) | false |
+| persistentVolume | Storage - add persistent volume for cacheMounthPath its useful for persistent cache use storage instead of persistentVolume. | *[StorageSpec](#storagespec) | false |
+| storage | StorageSpec - add persistent volume claim for cacheMounthPath its needed for persistent cache | *[StorageSpec](#storagespec) | false |
 | extraEnvs | ExtraEnvs that will be added to VMSelect pod | [][v1.EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#envvar-v1-core) | false |
 | extraArgs |  | map[string]string | false |
 | port | Port listen port | string | false |
 | schedulerName | SchedulerName - defines kubernetes scheduler name | string | false |
 | runtimeClassName | RuntimeClassName - defines runtime class for kubernetes pod. https://kubernetes.io/docs/concepts/containers/runtime-class/ | *string | false |
-| serviceSpec | ServiceSpec that will be added to vmselect service spec | v1.ServiceSpec | false |
+| serviceSpec | ServiceSpec that will be added to vmselect service spec | *[ServiceSpec](#servicespec) | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -1069,7 +1083,7 @@ VMClusterStatus defines the observed state of VMCluster
 | vmBackup | VMBackup configuration for backup | *[VMBackup](#vmbackup) | false |
 | extraArgs |  | map[string]string | false |
 | extraEnvs | ExtraEnvs that will be added to VMSelect pod | [][v1.EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#envvar-v1-core) | false |
-| serviceSpec | ServiceSpec that will be added to vmstorage service spec | v1.ServiceSpec | false |
+| serviceSpec | ServiceSpec that will be create additional service for vmstorage | *[ServiceSpec](#servicespec) | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -1182,6 +1196,7 @@ VMProbeTargetStaticConfig defines the set of static targets considered for probi
 | ----- | ----------- | ------ | -------- |
 | targets | Targets is a list of URLs to probe using the configured prober. | []string | true |
 | labels | Labels assigned to all metrics scraped from the targets. | map[string]string | false |
+| relabelingConfigs | More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config | []*[RelabelConfig](#relabelconfig) | false |
 
 [Back to TOC](#table-of-contents)
 

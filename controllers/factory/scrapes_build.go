@@ -187,7 +187,7 @@ func generateConfig(
 		}
 	}
 	var additionalScrapeConfigsYaml []yaml.MapSlice
-	err := yaml.Unmarshal([]byte(additionalScrapeConfigs), &additionalScrapeConfigsYaml)
+	err := yaml.Unmarshal(additionalScrapeConfigs, &additionalScrapeConfigsYaml)
 	if err != nil {
 		return nil, fmt.Errorf("unmarshalling additional scrape configs failed: %w", err)
 	}

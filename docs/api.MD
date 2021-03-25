@@ -272,6 +272,8 @@ VMAgentSpec defines the desired state of VMAgent
 | extraEnvs | ExtraEnvs that will be added to VMAgent pod | [][v1.EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#envvar-v1-core) | false |
 | serviceSpec | ServiceSpec that will be added to vmagent service spec | *[ServiceSpec](#servicespec) | false |
 | shardCount | ShardCount - numbers of shards of VMAgent in this case operator will use 1 deployment/sts per shard with replicas count according to spec.replicas https://victoriametrics.github.io/vmagent.html#scraping-big-number-of-targets | *int | false |
+| updateStrategy | UpdateStrategy - overrides default update strategy. works only for deployments, statefulset always use OnDelete. | *appsv1.DeploymentStrategyType | false |
+| rollingUpdate | RollingUpdate - overrides deployment update params. | *appsv1.RollingUpdateDeployment | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -467,6 +469,8 @@ VMAlertSpec defines the desired state of VMAlert
 | extraEnvs | ExtraEnvs that will be added to VMAlert pod | [][v1.EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#envvar-v1-core) | false |
 | externalLabels | ExternalLabels in the form &#39;name: value&#39; to add to all generated recording rules and alerts. | map[string]string | false |
 | serviceSpec | ServiceSpec that will be added to vmalert service spec | *[ServiceSpec](#servicespec) | false |
+| updateStrategy | UpdateStrategy - overrides default update strategy. | *appsv1.DeploymentStrategyType | false |
+| rollingUpdate | RollingUpdate - overrides deployment update params. | *appsv1.RollingUpdateDeployment | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -1005,6 +1009,8 @@ VMClusterStatus defines the observed state of VMCluster
 | runtimeClassName | RuntimeClassName - defines runtime class for kubernetes pod. https://kubernetes.io/docs/concepts/containers/runtime-class/ | *string | false |
 | extraEnvs | ExtraEnvs that will be added to VMSelect pod | [][v1.EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#envvar-v1-core) | false |
 | serviceSpec | ServiceSpec that will be added to vminsert service spec | *[ServiceSpec](#servicespec) | false |
+| updateStrategy | UpdateStrategy - overrides default update strategy. | *appsv1.DeploymentStrategyType | false |
+| rollingUpdate | RollingUpdate - overrides deployment update params. | *appsv1.RollingUpdateDeployment | false |
 
 [Back to TOC](#table-of-contents)
 

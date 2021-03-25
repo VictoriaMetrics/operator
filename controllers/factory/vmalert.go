@@ -7,9 +7,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
-
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/controllers/factory/psp"
 	"github.com/VictoriaMetrics/operator/internal/config"
@@ -476,6 +475,12 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 	if err != nil {
 		return nil, err
 	}
+
+	strategyType := appsv1.RollingUpdateDeploymentStrategyType
+	if cr.Spec.UpdateStrategy != nil {
+		strategyType = *cr.Spec.UpdateStrategy
+	}
+
 	spec := &appsv1.DeploymentSpec{
 		Replicas: cr.Spec.ReplicaCount,
 
@@ -484,7 +489,8 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 		},
 
 		Strategy: appsv1.DeploymentStrategy{
-			Type: appsv1.RollingUpdateDeploymentStrategyType,
+			Type:          strategyType,
+			RollingUpdate: cr.Spec.RollingUpdate,
 		},
 		Template: corev1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{

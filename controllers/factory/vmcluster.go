@@ -765,6 +765,10 @@ func genVMInsertSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv1
 		return nil, err
 	}
 
+	strategyType := appsv1.RollingUpdateDeploymentStrategyType
+	if cr.Spec.VMInsert.UpdateStrategy != nil {
+		strategyType = *cr.Spec.VMInsert.UpdateStrategy
+	}
 	stsSpec := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.Spec.VMInsert.GetNameWithPrefix(cr.Name),
@@ -776,6 +780,10 @@ func genVMInsertSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv1
 		},
 		Spec: appsv1.DeploymentSpec{
 			Replicas: cr.Spec.VMInsert.ReplicaCount,
+			Strategy: appsv1.DeploymentStrategy{
+				Type:          strategyType,
+				RollingUpdate: cr.Spec.VMInsert.RollingUpdate,
+			},
 			Selector: &metav1.LabelSelector{
 				MatchLabels: cr.VMInsertSelectorLabels(),
 			},

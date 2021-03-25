@@ -163,6 +163,10 @@ func newDeployForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOpera
 		return nil, err
 	}
 
+	strategyType := appsv1.RollingUpdateDeploymentStrategyType
+	if cr.Spec.UpdateStrategy != nil {
+		strategyType = *cr.Spec.UpdateStrategy
+	}
 	depSpec := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),
@@ -178,8 +182,8 @@ func newDeployForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOpera
 				MatchLabels: cr.SelectorLabels(),
 			},
 			Strategy: appsv1.DeploymentStrategy{
-				Type:          appsv1.RollingUpdateDeploymentStrategyType,
-				RollingUpdate: &appsv1.RollingUpdateDeployment{},
+				Type:          strategyType,
+				RollingUpdate: cr.Spec.RollingUpdate,
 			},
 			Template: *podSpec,
 		},

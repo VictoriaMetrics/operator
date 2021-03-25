@@ -257,10 +257,8 @@ func CreateOrUpdateVMSelectService(ctx context.Context, cr *v1beta1.VMCluster, r
 	if cr.Spec.VMSelect.ServiceSpec != nil {
 		if additionalService.Name == newHeadless.Name {
 			log.Error(fmt.Errorf("vmselect additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newHeadless.Name), "cannot create additional service")
-		} else {
-			if _, err := reconcileServiceForCRD(ctx, rclient, additionalService); err != nil {
-				return nil, err
-			}
+		} else if _, err := reconcileServiceForCRD(ctx, rclient, additionalService); err != nil {
+			return nil, err
 		}
 	}
 	rca := finalize.RemoveSvcArgs{SelectorLabels: cr.VMSelectSelectorLabels, GetNameSpace: cr.GetNamespace, PrefixedName: func() string {
@@ -323,10 +321,8 @@ func CreateOrUpdateVMInsertService(ctx context.Context, cr *v1beta1.VMCluster, r
 	if cr.Spec.VMInsert.ServiceSpec != nil {
 		if additionalService.Name == newService.Name {
 			log.Error(fmt.Errorf("vminsert additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name), "cannot create additional service")
-		} else {
-			if _, err := reconcileServiceForCRD(ctx, rclient, additionalService); err != nil {
-				return nil, err
-			}
+		} else if _, err := reconcileServiceForCRD(ctx, rclient, additionalService); err != nil {
+			return nil, err
 		}
 	}
 	rca := finalize.RemoveSvcArgs{SelectorLabels: cr.VMInsertSelectorLabels, GetNameSpace: cr.GetNamespace, PrefixedName: func() string {
@@ -388,10 +384,8 @@ func CreateOrUpdateVMStorageService(ctx context.Context, cr *v1beta1.VMCluster, 
 	if cr.Spec.VMStorage.ServiceSpec != nil {
 		if additionalService.Name == newHeadless.Name {
 			log.Error(fmt.Errorf("vmstorage additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newHeadless.Name), "cannot create additional service")
-		} else {
-			if _, err := reconcileServiceForCRD(ctx, rclient, additionalService); err != nil {
-				return nil, err
-			}
+		} else if _, err := reconcileServiceForCRD(ctx, rclient, additionalService); err != nil {
+			return nil, err
 		}
 	}
 
@@ -467,14 +461,15 @@ func genVMSelectSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv1
 		if storageSpec == nil && cr.Spec.VMSelect.StorageSpec != nil {
 			storageSpec = cr.Spec.VMSelect.StorageSpec
 		}
-		if storageSpec == nil {
+		switch {
+		case storageSpec == nil:
 			stsSpec.Spec.Template.Spec.Volumes = append(stsSpec.Spec.Template.Spec.Volumes, corev1.Volume{
 				Name: cr.Spec.VMSelect.GetCacheMountVolmeName(),
 				VolumeSource: corev1.VolumeSource{
 					EmptyDir: &corev1.EmptyDirVolumeSource{},
 				},
 			})
-		} else if storageSpec.EmptyDir != nil {
+		case storageSpec.EmptyDir != nil:
 			emptyDir := storageSpec.EmptyDir
 			stsSpec.Spec.Template.Spec.Volumes = append(stsSpec.Spec.Template.Spec.Volumes, corev1.Volume{
 				Name: cr.Spec.VMSelect.GetCacheMountVolmeName(),
@@ -482,7 +477,7 @@ func genVMSelectSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv1
 					EmptyDir: emptyDir,
 				},
 			})
-		} else {
+		default:
 			pvcTemplate := MakeVolumeClaimTemplate(storageSpec.VolumeClaimTemplate)
 			if pvcTemplate.Name == "" {
 				pvcTemplate.Name = cr.Spec.VMSelect.GetCacheMountVolmeName()
@@ -496,7 +491,6 @@ func genVMSelectSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv1
 			pvcTemplate.Spec.Selector = storageSpec.VolumeClaimTemplate.Spec.Selector
 			stsSpec.Spec.VolumeClaimTemplates = append(stsSpec.Spec.VolumeClaimTemplates, *pvcTemplate)
 		}
-
 	}
 	return stsSpec, nil
 }
@@ -765,6 +759,10 @@ func genVMInsertSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv1
 		return nil, err
 	}
 
+	strategyType := appsv1.RollingUpdateDeploymentStrategyType
+	if cr.Spec.VMInsert.UpdateStrategy != nil {
+		strategyType = *cr.Spec.VMInsert.UpdateStrategy
+	}
 	stsSpec := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.Spec.VMInsert.GetNameWithPrefix(cr.Name),
@@ -776,6 +774,10 @@ func genVMInsertSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv1
 		},
 		Spec: appsv1.DeploymentSpec{
 			Replicas: cr.Spec.VMInsert.ReplicaCount,
+			Strategy: appsv1.DeploymentStrategy{
+				Type:          strategyType,
+				RollingUpdate: cr.Spec.VMInsert.RollingUpdate,
+			},
 			Selector: &metav1.LabelSelector{
 				MatchLabels: cr.VMInsertSelectorLabels(),
 			},
@@ -1048,14 +1050,15 @@ func GenVMStorageSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv
 		},
 	}
 	storageSpec := cr.Spec.VMStorage.Storage
-	if storageSpec == nil {
+	switch {
+	case storageSpec == nil:
 		stsSpec.Spec.Template.Spec.Volumes = append(stsSpec.Spec.Template.Spec.Volumes, corev1.Volume{
 			Name: cr.Spec.VMStorage.GetStorageVolumeName(),
 			VolumeSource: corev1.VolumeSource{
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		})
-	} else if storageSpec.EmptyDir != nil {
+	case storageSpec.EmptyDir != nil:
 		emptyDir := storageSpec.EmptyDir
 		stsSpec.Spec.Template.Spec.Volumes = append(stsSpec.Spec.Template.Spec.Volumes, corev1.Volume{
 			Name: cr.Spec.VMStorage.GetStorageVolumeName(),
@@ -1063,7 +1066,7 @@ func GenVMStorageSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv
 				EmptyDir: emptyDir,
 			},
 		})
-	} else {
+	default:
 		pvcTemplate := MakeVolumeClaimTemplate(storageSpec.VolumeClaimTemplate)
 		if pvcTemplate.Name == "" {
 			pvcTemplate.Name = cr.Spec.VMStorage.GetStorageVolumeName()

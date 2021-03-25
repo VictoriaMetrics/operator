@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"strings"
 
-	"k8s.io/apimachinery/pkg/labels"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
+	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/utils/pointer"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -196,6 +196,14 @@ type VMAlertSpec struct {
 	// ServiceSpec that will be added to vmalert service spec
 	// +optional
 	ServiceSpec *ServiceSpec `json:"serviceSpec,omitempty"`
+
+	// UpdateStrategy - overrides default update strategy.
+	// +kubebuilder:validation:Enum=Recreate;RollingUpdate
+	// +optional
+	UpdateStrategy *appsv1.DeploymentStrategyType `json:"updateStrategy,omitempty"`
+	// RollingUpdate - overrides deployment update params.
+	// +optional
+	RollingUpdate *appsv1.RollingUpdateDeployment `json:"rollingUpdate,omitempty"`
 }
 
 // VMAgentRemoteReadSpec defines the remote storage configuration for VmAlert to read alerts from

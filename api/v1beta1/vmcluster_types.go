@@ -5,6 +5,7 @@ import (
 	"path"
 	"strings"
 
+	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
@@ -382,6 +383,14 @@ type VMInsert struct {
 	// ServiceSpec that will be added to vminsert service spec
 	// +optional
 	ServiceSpec *ServiceSpec `json:"serviceSpec,omitempty"`
+
+	// UpdateStrategy - overrides default update strategy.
+	// +kubebuilder:validation:Enum=Recreate;RollingUpdate
+	// +optional
+	UpdateStrategy *appsv1.DeploymentStrategyType `json:"updateStrategy,omitempty"`
+	// RollingUpdate - overrides deployment update params.
+	// +optional
+	RollingUpdate *appsv1.RollingUpdateDeployment `json:"rollingUpdate,omitempty"`
 }
 
 func (i VMInsert) GetNameWithPrefix(clusterName string) string {

@@ -130,11 +130,12 @@ func SelectServiceScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgen
 	//list namespaces matched by  namespaceselector
 	//for each namespace apply list with  selector
 	//combine result
-	if cr.Spec.ServiceScrapeNamespaceSelector == nil {
+	switch {
+	case cr.Spec.ServiceScrapeNamespaceSelector == nil:
 		namespaces = append(namespaces, cr.Namespace)
-	} else if cr.Spec.ServiceScrapeNamespaceSelector.MatchExpressions == nil && cr.Spec.ServiceScrapeNamespaceSelector.MatchLabels == nil {
+	case cr.Spec.ServiceScrapeNamespaceSelector.MatchExpressions == nil && cr.Spec.ServiceScrapeNamespaceSelector.MatchLabels == nil:
 		namespaces = nil
-	} else {
+	default:
 		log.Info("namespace selector for serviceScrapes", "selector", cr.Spec.ServiceScrapeNamespaceSelector.String())
 		nsSelector, err := metav1.LabelSelectorAsSelector(cr.Spec.ServiceScrapeNamespaceSelector)
 		if err != nil {
@@ -233,12 +234,12 @@ func SelectPodScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, r
 	// list namespaces matched by  namespaceSelector
 	// for each namespace apply list with  selector
 	// combine result
-
-	if cr.Spec.PodScrapeNamespaceSelector == nil {
+	switch {
+	case cr.Spec.PodScrapeNamespaceSelector == nil:
 		namespaces = append(namespaces, cr.Namespace)
-	} else if cr.Spec.PodScrapeNamespaceSelector.MatchExpressions == nil && cr.Spec.PodScrapeNamespaceSelector.MatchLabels == nil {
+	case cr.Spec.PodScrapeNamespaceSelector.MatchExpressions == nil && cr.Spec.PodScrapeNamespaceSelector.MatchLabels == nil:
 		namespaces = nil
-	} else {
+	default:
 		log.Info("selector for podScrape", "vmagent", cr.Name, "selector", cr.Spec.PodScrapeNamespaceSelector.String())
 		nsSelector, err := metav1.LabelSelectorAsSelector(cr.Spec.PodScrapeNamespaceSelector)
 		if err != nil {
@@ -317,11 +318,12 @@ func SelectVMProbes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rcl
 	// list namespaces matched by  namespaceSelector
 	// for each namespace apply list with  selector
 	// combine result
-	if cr.Spec.ProbeNamespaceSelector == nil {
+	switch {
+	case cr.Spec.ProbeNamespaceSelector == nil:
 		namespaces = append(namespaces, cr.Namespace)
-	} else if cr.Spec.ProbeNamespaceSelector.MatchExpressions == nil && cr.Spec.PodScrapeNamespaceSelector.MatchLabels == nil {
+	case cr.Spec.ProbeNamespaceSelector.MatchExpressions == nil && cr.Spec.PodScrapeNamespaceSelector.MatchLabels == nil:
 		namespaces = nil
-	} else {
+	default:
 		log.Info("selector for VMProbe", "vmagent", cr.Name, "selector", cr.Spec.PodScrapeNamespaceSelector.String())
 		nsSelector, err := metav1.LabelSelectorAsSelector(cr.Spec.ProbeNamespaceSelector)
 		if err != nil {
@@ -402,11 +404,12 @@ func SelectVMNodeScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent
 	// list namespaces matched by  namespaceSelector
 	// for each namespace apply list with  selector
 	// combine result
-	if cr.Spec.NodeScrapeNamespaceSelector == nil {
+	switch {
+	case cr.Spec.NodeScrapeNamespaceSelector == nil:
 		namespaces = append(namespaces, cr.Namespace)
-	} else if cr.Spec.NodeScrapeNamespaceSelector.MatchExpressions == nil && cr.Spec.NodeScrapeNamespaceSelector.MatchLabels == nil {
+	case cr.Spec.NodeScrapeNamespaceSelector.MatchExpressions == nil && cr.Spec.NodeScrapeNamespaceSelector.MatchLabels == nil:
 		namespaces = nil
-	} else {
+	default:
 		l.Info("namespace selector for VMNodeScrape", "selector", cr.Spec.NodeScrapeNamespaceSelector.String())
 		nsSelector, err := metav1.LabelSelectorAsSelector(cr.Spec.NodeScrapeNamespaceSelector)
 		if err != nil {
@@ -485,12 +488,12 @@ func SelectStaticScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent
 	// list namespaces matched by  namespaceSelector
 	// for each namespace apply list with  selector
 	// combine result
-
-	if cr.Spec.StaticScrapeNamespaceSelector == nil {
+	switch {
+	case cr.Spec.StaticScrapeNamespaceSelector == nil:
 		namespaces = append(namespaces, cr.Namespace)
-	} else if cr.Spec.StaticScrapeNamespaceSelector.MatchExpressions == nil && cr.Spec.StaticScrapeNamespaceSelector.MatchLabels == nil {
+	case cr.Spec.StaticScrapeNamespaceSelector.MatchExpressions == nil && cr.Spec.StaticScrapeNamespaceSelector.MatchLabels == nil:
 		namespaces = nil
-	} else {
+	default:
 		log.Info("selector for staticScrape", "vmagent", cr.Name, "selector", cr.Spec.StaticScrapeNamespaceSelector.String())
 		nsSelector, err := metav1.LabelSelectorAsSelector(cr.Spec.StaticScrapeNamespaceSelector)
 		if err != nil {
@@ -568,7 +571,7 @@ func loadBasicAuthSecrets(
 	statics map[string]*victoriametricsv1beta1.VMStaticScrape,
 	apiserverConfig *victoriametricsv1beta1.APIServerConfig,
 	remoteWriteSpecs []victoriametricsv1beta1.VMAgentRemoteWriteSpec,
-	SecretsInPromNS *v1.SecretList,
+	secretsAtNS *v1.SecretList,
 ) (map[string]BasicAuthCredentials, error) {
 
 	secrets := map[string]BasicAuthCredentials{}
@@ -628,7 +631,7 @@ func loadBasicAuthSecrets(
 
 	// load apiserver basic auth secret
 	if apiserverConfig != nil && apiserverConfig.BasicAuth != nil {
-		credentials, err := loadBasicAuthSecret(apiserverConfig.BasicAuth, SecretsInPromNS)
+		credentials, err := loadBasicAuthSecret(apiserverConfig.BasicAuth, secretsAtNS)
 		if err != nil {
 			return nil, fmt.Errorf("could not generate basicAuth for apiserver config. %w", err)
 		}
@@ -640,7 +643,7 @@ func loadBasicAuthSecrets(
 		if rws.BasicAuth == nil {
 			continue
 		}
-		credentials, err := loadBasicAuthSecret(rws.BasicAuth, SecretsInPromNS)
+		credentials, err := loadBasicAuthSecret(rws.BasicAuth, secretsAtNS)
 		if err != nil {
 			return nil, fmt.Errorf("could not generate basicAuth for remote write spec %s config. %w", rws.URL, err)
 		}
@@ -658,7 +661,7 @@ func loadBearerTokensFromSecrets(
 	pods map[string]*victoriametricsv1beta1.VMPodScrape,
 	statics map[string]*victoriametricsv1beta1.VMStaticScrape,
 	remoteWriteSpecs []victoriametricsv1beta1.VMAgentRemoteWriteSpec,
-	SecretsInPromNS *v1.SecretList,
+	secretsAtNS *v1.SecretList,
 ) (map[string]BearerToken, error) {
 	tokens := map[string]BearerToken{}
 	nsSecretCache := make(map[string]*v1.Secret)
@@ -763,7 +766,7 @@ func loadBearerTokensFromSecrets(
 		if rws.BearerTokenSecret == nil {
 			continue
 		}
-		for _, secret := range SecretsInPromNS.Items {
+		for _, secret := range secretsAtNS.Items {
 			if secret.Name != rws.BearerTokenSecret.Name {
 				continue
 			}

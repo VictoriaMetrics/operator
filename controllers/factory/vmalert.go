@@ -7,9 +7,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
-
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/controllers/factory/psp"
 	"github.com/VictoriaMetrics/operator/internal/config"
@@ -42,10 +41,8 @@ func CreateOrUpdateVMAlertService(ctx context.Context, cr *victoriametricsv1beta
 	if cr.Spec.ServiceSpec != nil {
 		if additionalSvc.Name == newService.Name {
 			log.Error(fmt.Errorf("vmalert additional service name: %q cannot be the same as crd.prefixedname: %q", additionalSvc.Name, cr.PrefixedName()), "cannot create additional service")
-		} else {
-			if _, err := reconcileServiceForCRD(ctx, rclient, additionalSvc); err != nil {
-				return nil, err
-			}
+		} else if _, err := reconcileServiceForCRD(ctx, rclient, additionalSvc); err != nil {
+			return nil, err
 		}
 	}
 	rca := finalize.RemoveSvcArgs{
@@ -476,6 +473,12 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 	if err != nil {
 		return nil, err
 	}
+
+	strategyType := appsv1.RollingUpdateDeploymentStrategyType
+	if cr.Spec.UpdateStrategy != nil {
+		strategyType = *cr.Spec.UpdateStrategy
+	}
+
 	spec := &appsv1.DeploymentSpec{
 		Replicas: cr.Spec.ReplicaCount,
 
@@ -484,7 +487,8 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 		},
 
 		Strategy: appsv1.DeploymentStrategy{
-			Type: appsv1.RollingUpdateDeploymentStrategyType,
+			Type:          strategyType,
+			RollingUpdate: cr.Spec.RollingUpdate,
 		},
 		Template: corev1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{
@@ -512,7 +516,7 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 
 func loadVMAlertRemoteSecrets(
 	cr *victoriametricsv1beta1.VMAlert,
-	SecretsInNS *corev1.SecretList,
+	secretsAtNS *corev1.SecretList,
 ) (map[string]BasicAuthCredentials, error) {
 	datasource := cr.Spec.Datasource
 	remoteWrite := cr.Spec.RemoteWrite
@@ -520,7 +524,7 @@ func loadVMAlertRemoteSecrets(
 	secrets := map[string]BasicAuthCredentials{}
 	for i, notifier := range cr.Spec.Notifiers {
 		if notifier.BasicAuth != nil {
-			credentials, err := loadBasicAuthSecret(notifier.BasicAuth, SecretsInNS)
+			credentials, err := loadBasicAuthSecret(notifier.BasicAuth, secretsAtNS)
 			if err != nil {
 				return nil, fmt.Errorf("could not generate basicAuth for notifier config. %w", err)
 			}
@@ -529,7 +533,7 @@ func loadVMAlertRemoteSecrets(
 	}
 	// load basic auth for datasource configuration
 	if datasource.BasicAuth != nil {
-		credentials, err := loadBasicAuthSecret(datasource.BasicAuth, SecretsInNS)
+		credentials, err := loadBasicAuthSecret(datasource.BasicAuth, secretsAtNS)
 		if err != nil {
 			return nil, fmt.Errorf("could not generate basicAuth for datasource config. %w", err)
 		}
@@ -537,7 +541,7 @@ func loadVMAlertRemoteSecrets(
 	}
 	// load basic auth for remote write configuration
 	if remoteWrite != nil && remoteWrite.BasicAuth != nil {
-		credentials, err := loadBasicAuthSecret(remoteWrite.BasicAuth, SecretsInNS)
+		credentials, err := loadBasicAuthSecret(remoteWrite.BasicAuth, secretsAtNS)
 		if err != nil {
 			return nil, fmt.Errorf("could not generate basicAuth for VMAlert remote write config. %w", err)
 		}
@@ -545,7 +549,7 @@ func loadVMAlertRemoteSecrets(
 	}
 	// load basic auth for remote write configuration
 	if remoteRead != nil && remoteRead.BasicAuth != nil {
-		credentials, err := loadBasicAuthSecret(remoteRead.BasicAuth, SecretsInNS)
+		credentials, err := loadBasicAuthSecret(remoteRead.BasicAuth, secretsAtNS)
 		if err != nil {
 			return nil, fmt.Errorf("could not generate basicAuth for VMAlert remote read config. %w", err)
 		}

@@ -312,8 +312,8 @@ func (labels *Labels) Set(value string) error {
 			m[sp[0]] = sp[1]
 		}
 	}
-	(*labels).LabelsMap = m
-	(*labels).LabelsString = value
+	labels.LabelsMap = m
+	labels.LabelsString = value
 	return nil
 }
 

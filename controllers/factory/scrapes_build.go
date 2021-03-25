@@ -1066,14 +1066,16 @@ func prefixedName(name string) string {
 // getNamespacesFromNamespaceSelector gets a list of namespaces to select based on
 // the given namespace selector, the given default namespace, and whether to ignore namespace selectors
 func getNamespacesFromNamespaceSelector(nsSelector *victoriametricsv1beta1.NamespaceSelector, namespace string, ignoreNamespaceSelectors bool) []string {
-	if ignoreNamespaceSelectors {
+	switch {
+	case ignoreNamespaceSelectors:
 		return []string{namespace}
-	} else if nsSelector.Any {
+	case nsSelector.Any:
 		return []string{}
-	} else if len(nsSelector.MatchNames) == 0 {
+	case len(nsSelector.MatchNames) == 0:
 		return []string{namespace}
+	default:
+		return nsSelector.MatchNames
 	}
-	return nsSelector.MatchNames
 }
 
 func generateK8SSDConfig(namespaces []string, apiserverConfig *victoriametricsv1beta1.APIServerConfig, basicAuthSecrets map[string]BasicAuthCredentials, role string) yaml.MapItem {

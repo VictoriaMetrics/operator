@@ -212,12 +212,13 @@ func SelectRules(ctx context.Context, cr *victoriametricsv1beta1.VMAlert, rclien
 	namespaces := []string{}
 
 	//use only object's namespace
-	if cr.Spec.RuleNamespaceSelector == nil {
+	switch {
+	case cr.Spec.RuleNamespaceSelector == nil:
 		namespaces = append(namespaces, cr.Namespace)
-	} else if cr.Spec.RuleNamespaceSelector.MatchExpressions == nil && cr.Spec.RuleNamespaceSelector.MatchLabels == nil {
+	case cr.Spec.RuleNamespaceSelector.MatchExpressions == nil && cr.Spec.RuleNamespaceSelector.MatchLabels == nil:
 		// all namespaces matched
 		namespaces = nil
-	} else {
+	default:
 		//filter for specific namespaces
 		nsSelector, err := metav1.LabelSelectorAsSelector(cr.Spec.RuleNamespaceSelector)
 		if err != nil {

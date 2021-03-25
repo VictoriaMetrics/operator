@@ -151,14 +151,15 @@ func newStsForAlertManager(cr *victoriametricsv1beta1.VMAlertmanager, c *config.
 	}
 
 	storageSpec := cr.Spec.Storage
-	if storageSpec == nil {
+	switch {
+	case storageSpec == nil:
 		statefulset.Spec.Template.Spec.Volumes = append(statefulset.Spec.Template.Spec.Volumes, v1.Volume{
 			Name: volumeName(cr.Name),
 			VolumeSource: v1.VolumeSource{
 				EmptyDir: &v1.EmptyDirVolumeSource{},
 			},
 		})
-	} else if storageSpec.EmptyDir != nil {
+	case storageSpec.EmptyDir != nil:
 		emptyDir := storageSpec.EmptyDir
 		statefulset.Spec.Template.Spec.Volumes = append(statefulset.Spec.Template.Spec.Volumes, v1.Volume{
 			Name: volumeName(cr.Name),
@@ -166,7 +167,7 @@ func newStsForAlertManager(cr *victoriametricsv1beta1.VMAlertmanager, c *config.
 				EmptyDir: emptyDir,
 			},
 		})
-	} else {
+	default:
 		pvcTemplate := MakeVolumeClaimTemplate(storageSpec.VolumeClaimTemplate)
 		if pvcTemplate.Name == "" {
 			pvcTemplate.Name = volumeName(cr.Name)
@@ -219,10 +220,8 @@ func CreateOrUpdateAlertManagerService(ctx context.Context, cr *victoriametricsv
 	if cr.Spec.ServiceSpec != nil {
 		if additionalService.Name == newService.Name {
 			log.Error(fmt.Errorf("vmalertmanager additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name), "cannot create additional service")
-		} else {
-			if _, err := reconcileServiceForCRD(ctx, rclient, additionalService); err != nil {
-				return nil, err
-			}
+		} else if _, err := reconcileServiceForCRD(ctx, rclient, additionalService); err != nil {
+			return nil, err
 		}
 	}
 

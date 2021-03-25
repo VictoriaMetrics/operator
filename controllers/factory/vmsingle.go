@@ -375,10 +375,8 @@ func CreateOrUpdateVMSingleService(ctx context.Context, cr *victoriametricsv1bet
 	if cr.Spec.ServiceSpec != nil {
 		if additionalService.Name == newService.Name {
 			log.Error(fmt.Errorf("vmsingle additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name), "cannot create additional service")
-		} else {
-			if _, err := reconcileServiceForCRD(ctx, rclient, additionalService); err != nil {
-				return nil, err
-			}
+		} else if _, err := reconcileServiceForCRD(ctx, rclient, additionalService); err != nil {
+			return nil, err
 		}
 	}
 

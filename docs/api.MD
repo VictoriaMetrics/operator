@@ -19,6 +19,7 @@ This Document documents the types introduced by the VictoriaMetrics to be consum
 * [BasicAuth](#basicauth)
 * [EmbeddedObjectMetadata](#embeddedobjectmetadata)
 * [EmbeddedPersistentVolumeClaim](#embeddedpersistentvolumeclaim)
+* [EmbeddedPodDisruptionBudgetSpec](#embeddedpoddisruptionbudgetspec)
 * [ServiceSpec](#servicespec)
 * [StorageSpec](#storagespec)
 * [VMAlert](#vmalert)
@@ -141,6 +142,7 @@ VMAlertmanagerSpec is a specification of the desired behavior of the VMAlertmana
 | clusterAdvertiseAddress | ClusterAdvertiseAddress is the explicit address to advertise in cluster. Needs to be provided for non RFC1918 [1] (public) addresses. [1] RFC1918: https://tools.ietf.org/html/rfc1918 | string | false |
 | portName | PortName used for the pods and governing service. This defaults to web | string | false |
 | serviceSpec | ServiceSpec that will be added to vmalertmanager service spec | *[ServiceSpec](#servicespec) | false |
+| podDisruptionBudget | PodDisruptionBudget created by operator | *[EmbeddedPodDisruptionBudgetSpec](#embeddedpoddisruptionbudgetspec) | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -274,6 +276,7 @@ VMAgentSpec defines the desired state of VMAgent
 | shardCount | ShardCount - numbers of shards of VMAgent in this case operator will use 1 deployment/sts per shard with replicas count according to spec.replicas https://victoriametrics.github.io/vmagent.html#scraping-big-number-of-targets | *int | false |
 | updateStrategy | UpdateStrategy - overrides default update strategy. works only for deployments, statefulset always use OnDelete. | *appsv1.DeploymentStrategyType | false |
 | rollingUpdate | RollingUpdate - overrides deployment update params. | *appsv1.RollingUpdateDeployment | false |
+| podDisruptionBudget | PodDisruptionBudget created by operator | *[EmbeddedPodDisruptionBudgetSpec](#embeddedpoddisruptionbudgetspec) | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -322,6 +325,17 @@ EmbeddedPersistentVolumeClaim is an embedded version of k8s.io/api/core/v1.Persi
 | metadata | EmbeddedMetadata contains metadata relevant to an EmbeddedResource. | [EmbeddedObjectMetadata](#embeddedobjectmetadata) | false |
 | spec | Spec defines the desired characteristics of a volume requested by a pod author. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#persistentvolumeclaims | [v1.PersistentVolumeClaimSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#persistentvolumeclaimspec-v1-core) | false |
 | status | Status represents the current information/status of a persistent volume claim. Read-only. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#persistentvolumeclaims | v1.PersistentVolumeClaimStatus | false |
+
+[Back to TOC](#table-of-contents)
+
+## EmbeddedPodDisruptionBudgetSpec
+
+
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| minAvailable | An eviction is allowed if at least \&#34;minAvailable\&#34; pods selected by \&#34;selector\&#34; will still be available after the eviction, i.e. even in the absence of the evicted pod.  So for example you can prevent all voluntary evictions by specifying \&#34;100%\&#34;. | *intstr.IntOrString | false |
+| maxUnavailable | An eviction is allowed if at most \&#34;maxUnavailable\&#34; pods selected by \&#34;selector\&#34; are unavailable after the eviction, i.e. even in absence of the evicted pod. For example, one can prevent all voluntary evictions by specifying 0. This is a mutually exclusive setting with \&#34;minAvailable\&#34;. | *intstr.IntOrString | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -471,6 +485,7 @@ VMAlertSpec defines the desired state of VMAlert
 | serviceSpec | ServiceSpec that will be added to vmalert service spec | *[ServiceSpec](#servicespec) | false |
 | updateStrategy | UpdateStrategy - overrides default update strategy. | *appsv1.DeploymentStrategyType | false |
 | rollingUpdate | RollingUpdate - overrides deployment update params. | *appsv1.RollingUpdateDeployment | false |
+| podDisruptionBudget | PodDisruptionBudget created by operator | *[EmbeddedPodDisruptionBudgetSpec](#embeddedpoddisruptionbudgetspec) | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -1011,6 +1026,7 @@ VMClusterStatus defines the observed state of VMCluster
 | serviceSpec | ServiceSpec that will be added to vminsert service spec | *[ServiceSpec](#servicespec) | false |
 | updateStrategy | UpdateStrategy - overrides default update strategy. | *appsv1.DeploymentStrategyType | false |
 | rollingUpdate | RollingUpdate - overrides deployment update params. | *appsv1.RollingUpdateDeployment | false |
+| podDisruptionBudget | PodDisruptionBudget created by operator | *[EmbeddedPodDisruptionBudgetSpec](#embeddedpoddisruptionbudgetspec) | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -1049,6 +1065,7 @@ VMClusterStatus defines the observed state of VMCluster
 | schedulerName | SchedulerName - defines kubernetes scheduler name | string | false |
 | runtimeClassName | RuntimeClassName - defines runtime class for kubernetes pod. https://kubernetes.io/docs/concepts/containers/runtime-class/ | *string | false |
 | serviceSpec | ServiceSpec that will be added to vmselect service spec | *[ServiceSpec](#servicespec) | false |
+| podDisruptionBudget | PodDisruptionBudget created by operator | *[EmbeddedPodDisruptionBudgetSpec](#embeddedpoddisruptionbudgetspec) | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -1090,6 +1107,7 @@ VMClusterStatus defines the observed state of VMCluster
 | extraArgs |  | map[string]string | false |
 | extraEnvs | ExtraEnvs that will be added to VMSelect pod | [][v1.EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#envvar-v1-core) | false |
 | serviceSpec | ServiceSpec that will be create additional service for vmstorage | *[ServiceSpec](#servicespec) | false |
+| podDisruptionBudget | PodDisruptionBudget created by operator | *[EmbeddedPodDisruptionBudgetSpec](#embeddedpoddisruptionbudgetspec) | false |
 
 [Back to TOC](#table-of-contents)
 

@@ -12,6 +12,7 @@ import (
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
+	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -95,5 +96,6 @@ func (r *VMClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&victoriametricsv1beta1.VMServiceScrape{}).
 		Owns(&appsv1.StatefulSet{}).
 		Owns(&v1.ServiceAccount{}).
+		Owns(&policyv1beta1.PodDisruptionBudget{}).
 		Complete(r)
 }

@@ -17,6 +17,7 @@ import (
 	"github.com/prometheus-operator/prometheus-operator/pkg/k8sutil"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -77,6 +78,13 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient
 	}
 
 	if cr.Spec.VMStorage != nil {
+		if cr.Spec.VMStorage.PodDisruptionBudget != nil {
+			err := CreateOrUpdatePodDisruptionBudgetForVMStorage(ctx, cr, rclient)
+			if err != nil {
+				reason = "failed to create vmStorage pdb"
+				return status, err
+			}
+		}
 		vmStorageSts, err := createOrUpdateVMStorage(ctx, cr, rclient, c)
 		if err != nil {
 			reason = v1beta1.StorageCreationFailed
@@ -117,6 +125,13 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient
 	}
 
 	if cr.Spec.VMSelect != nil {
+		if cr.Spec.VMSelect.PodDisruptionBudget != nil {
+			err := CreateOrUpdatePodDisruptionBudgetForVMSelect(ctx, cr, rclient)
+			if err != nil {
+				reason = "failed to create vmSelect pdb"
+				return status, err
+			}
+		}
 		//create vmselect
 		vmSelectsts, err := createOrUpdateVMSelect(ctx, cr, rclient, c)
 		if err != nil {
@@ -161,6 +176,13 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient
 	}
 
 	if cr.Spec.VMInsert != nil {
+		if cr.Spec.VMInsert.PodDisruptionBudget != nil {
+			err := CreateOrUpdatePodDisruptionBudgetForVMInsert(ctx, cr, rclient)
+			if err != nil {
+				reason = "failed to create vmInsert pdb"
+				return status, err
+			}
+		}
 		_, err := createOrUpdateVMInsert(ctx, cr, rclient, c)
 		if err != nil {
 			reason = v1beta1.InsertCreationFailed
@@ -659,6 +681,14 @@ func makePodSpecForVMSelect(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 		return nil, err
 	}
 
+	for i := range cr.Spec.VMSelect.TopologySpreadConstraints {
+		if cr.Spec.VMSelect.TopologySpreadConstraints[i].LabelSelector == nil {
+			cr.Spec.VMSelect.TopologySpreadConstraints[i].LabelSelector = &metav1.LabelSelector{
+				MatchLabels: cr.VMSelectSelectorLabels(),
+			}
+		}
+	}
+
 	vmSelectPodSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:      cr.VMSelectPodLabels(),
@@ -735,6 +765,41 @@ func genVMSelectHeadlessService(cr *v1beta1.VMCluster) *corev1.Service {
 			},
 		},
 	}
+}
+
+func CreateOrUpdatePodDisruptionBudgetForVMSelect(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client) error {
+	pdb := &policyv1beta1.PodDisruptionBudget{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            cr.Spec.VMSelect.GetNameWithPrefix(cr.Name),
+			Labels:          cr.FinalLabels(cr.VMSelectSelectorLabels()),
+			OwnerReferences: cr.AsOwner(),
+			Namespace:       cr.Namespace,
+			Finalizers:      []string{v1beta1.FinalizerName},
+		},
+		Spec: policyv1beta1.PodDisruptionBudgetSpec{
+			MinAvailable:   cr.Spec.VMSelect.PodDisruptionBudget.MinAvailable,
+			MaxUnavailable: cr.Spec.VMSelect.PodDisruptionBudget.MaxUnavailable,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: cr.VMSelectSelectorLabels(),
+			},
+		},
+	}
+
+	currentPdb := &policyv1beta1.PodDisruptionBudget{}
+	err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: pdb.Name}, currentPdb)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			log.Info("creating new pdb for vmselect", "pdb_name", pdb.Name, "vmselect", cr.Name)
+			return rclient.Create(ctx, pdb)
+		}
+		return fmt.Errorf("cannot get existing pdb: %s, for vmselect: %s, err: %w", pdb.Name, cr.Name, err)
+	}
+	pdb.Annotations = labels.Merge(pdb.Annotations, currentPdb.Annotations)
+	if currentPdb.ResourceVersion != "" {
+		pdb.ResourceVersion = currentPdb.ResourceVersion
+	}
+	v1beta1.MergeFinalizers(pdb, v1beta1.FinalizerName)
+	return rclient.Update(ctx, pdb)
 }
 
 func genVMInsertSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv1.Deployment, error) {
@@ -932,6 +997,14 @@ func makePodSpecForVMInsert(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 		return nil, err
 	}
 
+	for i := range cr.Spec.VMInsert.TopologySpreadConstraints {
+		if cr.Spec.VMInsert.TopologySpreadConstraints[i].LabelSelector == nil {
+			cr.Spec.VMInsert.TopologySpreadConstraints[i].LabelSelector = &metav1.LabelSelector{
+				MatchLabels: cr.VMInsertSelectorLabels(),
+			}
+		}
+	}
+
 	vmInsertPodSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:      cr.VMInsertPodLabels(),
@@ -982,6 +1055,41 @@ func defaultVMInsertService(cr *v1beta1.VMCluster) *corev1.Service {
 			},
 		},
 	}
+}
+
+func CreateOrUpdatePodDisruptionBudgetForVMInsert(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client) error {
+	pdb := &policyv1beta1.PodDisruptionBudget{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            cr.Spec.VMInsert.GetNameWithPrefix(cr.Name),
+			Labels:          cr.FinalLabels(cr.VMInsertSelectorLabels()),
+			OwnerReferences: cr.AsOwner(),
+			Namespace:       cr.Namespace,
+			Finalizers:      []string{v1beta1.FinalizerName},
+		},
+		Spec: policyv1beta1.PodDisruptionBudgetSpec{
+			MinAvailable:   cr.Spec.VMInsert.PodDisruptionBudget.MinAvailable,
+			MaxUnavailable: cr.Spec.VMInsert.PodDisruptionBudget.MaxUnavailable,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: cr.VMInsertSelectorLabels(),
+			},
+		},
+	}
+
+	currentPdb := &policyv1beta1.PodDisruptionBudget{}
+	err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: pdb.Name}, currentPdb)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			log.Info("creating new pdb for vminsert", "pdb_name", pdb.Name, "vminsert", cr.Name)
+			return rclient.Create(ctx, pdb)
+		}
+		return fmt.Errorf("cannot get existing pdb: %s, for vminsert: %s, err: %w", pdb.Name, cr.Name, err)
+	}
+	pdb.Annotations = labels.Merge(pdb.Annotations, currentPdb.Annotations)
+	if currentPdb.ResourceVersion != "" {
+		pdb.ResourceVersion = currentPdb.ResourceVersion
+	}
+	v1beta1.MergeFinalizers(pdb, v1beta1.FinalizerName)
+	return rclient.Update(ctx, pdb)
 }
 
 func GenVMStorageSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv1.StatefulSet, error) {
@@ -1260,6 +1368,14 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) 
 		return nil, err
 	}
 
+	for i := range cr.Spec.VMStorage.TopologySpreadConstraints {
+		if cr.Spec.VMStorage.TopologySpreadConstraints[i].LabelSelector == nil {
+			cr.Spec.VMStorage.TopologySpreadConstraints[i].LabelSelector = &metav1.LabelSelector{
+				MatchLabels: cr.VMStorageSelectorLabels(),
+			}
+		}
+	}
+
 	vmStoragePodSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:      cr.VMStoragePodLabels(),
@@ -1384,6 +1500,41 @@ func genVMStorageService(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) *cor
 			},
 		},
 	}
+}
+
+func CreateOrUpdatePodDisruptionBudgetForVMStorage(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client) error {
+	pdb := &policyv1beta1.PodDisruptionBudget{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            cr.Spec.VMStorage.GetNameWithPrefix(cr.Name),
+			Labels:          cr.FinalLabels(cr.VMStorageSelectorLabels()),
+			OwnerReferences: cr.AsOwner(),
+			Namespace:       cr.Namespace,
+			Finalizers:      []string{v1beta1.FinalizerName},
+		},
+		Spec: policyv1beta1.PodDisruptionBudgetSpec{
+			MinAvailable:   cr.Spec.VMStorage.PodDisruptionBudget.MinAvailable,
+			MaxUnavailable: cr.Spec.VMStorage.PodDisruptionBudget.MaxUnavailable,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: cr.VMStorageSelectorLabels(),
+			},
+		},
+	}
+
+	currentPdb := &policyv1beta1.PodDisruptionBudget{}
+	err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: pdb.Name}, currentPdb)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			log.Info("creating new pdb for vmstorage", "pdb_name", pdb.Name, "vmstorage", cr.Name)
+			return rclient.Create(ctx, pdb)
+		}
+		return fmt.Errorf("cannot get existing pdb: %s, for vmstorage: %s, err: %w", pdb.Name, cr.Name, err)
+	}
+	pdb.Annotations = labels.Merge(pdb.Annotations, currentPdb.Annotations)
+	if currentPdb.ResourceVersion != "" {
+		pdb.ResourceVersion = currentPdb.ResourceVersion
+	}
+	v1beta1.MergeFinalizers(pdb, v1beta1.FinalizerName)
+	return rclient.Update(ctx, pdb)
 }
 
 func waitForExpanding(ctx context.Context, kclient client.Client, namespace string, lbs map[string]string, desiredCount int32) (bool, error) {

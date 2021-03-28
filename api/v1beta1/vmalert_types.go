@@ -204,6 +204,9 @@ type VMAlertSpec struct {
 	// RollingUpdate - overrides deployment update params.
 	// +optional
 	RollingUpdate *appsv1.RollingUpdateDeployment `json:"rollingUpdate,omitempty"`
+	// PodDisruptionBudget created by operator
+	// +optional
+	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
 }
 
 // VMAgentRemoteReadSpec defines the remote storage configuration for VmAlert to read alerts from

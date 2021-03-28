@@ -25,6 +25,7 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/config"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
+	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/go-logr/logr"
@@ -132,5 +133,6 @@ func (r *VMAgentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&v1.Service{}).
 		Owns(&v1.Secret{}).
 		Owns(&v1.ServiceAccount{}).
+		Owns(&policyv1beta1.PodDisruptionBudget{}).
 		Complete(r)
 }

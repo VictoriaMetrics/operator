@@ -8,6 +8,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 const (
@@ -165,4 +166,20 @@ func buildPathWithPrefixFlag(flags map[string]string, defaultPath string) string
 		return path.Join(prefix, defaultPath)
 	}
 	return defaultPath
+}
+
+type EmbeddedPodDisruptionBudgetSpec struct {
+	// An eviction is allowed if at least "minAvailable" pods selected by
+	// "selector" will still be available after the eviction, i.e. even in the
+	// absence of the evicted pod.  So for example you can prevent all voluntary
+	// evictions by specifying "100%".
+	// +optional
+	MinAvailable *intstr.IntOrString `json:"minAvailable,omitempty"`
+
+	// An eviction is allowed if at most "maxUnavailable" pods selected by
+	// "selector" are unavailable after the eviction, i.e. even in absence of
+	// the evicted pod. For example, one can prevent all voluntary evictions
+	// by specifying 0. This is a mutually exclusive setting with "minAvailable".
+	// +optional
+	MaxUnavailable *intstr.IntOrString `json:"maxUnavailable,omitempty"`
 }

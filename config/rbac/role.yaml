@@ -80,6 +80,13 @@ rules:
   verbs:
     - '*'
 - apiGroups:
+    - policy
+  resources:
+    - poddisruptionbudgets
+    - poddisruptionbudgets/finalizers
+  verbs:
+    - '*'
+- apiGroups:
     - monitoring.coreos.com
   resources:
     - '*'

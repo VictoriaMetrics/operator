@@ -257,6 +257,9 @@ type VMAgentSpec struct {
 	// RollingUpdate - overrides deployment update params.
 	// +optional
 	RollingUpdate *appsv1.RollingUpdateDeployment `json:"rollingUpdate,omitempty"`
+	// PodDisruptionBudget created by operator
+	// +optional
+	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
 }
 
 // VMAgentRemoteWriteSettings - defines global settings for all remoteWrite urls.

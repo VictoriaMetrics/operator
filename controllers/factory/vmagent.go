@@ -17,6 +17,7 @@ import (
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -92,6 +93,13 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 	err = CreateOrUpdateTlsAssets(ctx, cr, rclient)
 	if err != nil {
 		return reconcile.Result{}, fmt.Errorf("cannot update tls asset for vmagent: %w", err)
+	}
+
+	if cr.Spec.PodDisruptionBudget != nil {
+		err = CreateOrUpdatePodDisruptionBudget(ctx, cr, rclient)
+		if err != nil {
+			return reconcile.Result{}, fmt.Errorf("cannot update pod disruption budget for vmagent: %w", err)
+		}
 	}
 
 	// getting secrets for remotewrite spec
@@ -455,6 +463,14 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 	containers, err := k8stools.MergePatchContainers(operatorContainers, cr.Spec.Containers)
 	if err != nil {
 		return nil, err
+	}
+
+	for i := range cr.Spec.TopologySpreadConstraints {
+		if cr.Spec.TopologySpreadConstraints[i].LabelSelector == nil {
+			cr.Spec.TopologySpreadConstraints[i].LabelSelector = &metav1.LabelSelector{
+				MatchLabels: cr.SelectorLabels(),
+			}
+		}
 	}
 
 	vmAgentSpec := &corev1.PodTemplateSpec{
@@ -874,4 +890,39 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, rwsBasicAuth map[stri
 		}
 	}
 	return finalArgs
+}
+
+func CreateOrUpdatePodDisruptionBudget(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) error {
+	pdb := &policyv1beta1.PodDisruptionBudget{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            cr.PrefixedName(),
+			Labels:          cr.Labels(),
+			OwnerReferences: cr.AsOwner(),
+			Namespace:       cr.Namespace,
+			Finalizers:      []string{victoriametricsv1beta1.FinalizerName},
+		},
+		Spec: policyv1beta1.PodDisruptionBudgetSpec{
+			MinAvailable:   cr.Spec.PodDisruptionBudget.MinAvailable,
+			MaxUnavailable: cr.Spec.PodDisruptionBudget.MaxUnavailable,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: cr.SelectorLabels(),
+			},
+		},
+	}
+
+	currentPdb := &policyv1beta1.PodDisruptionBudget{}
+	err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: pdb.Name}, currentPdb)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			log.Info("creating new pdb for vmagent", "pdb_name", pdb.Name, "vmagent", cr.Name)
+			return rclient.Create(ctx, pdb)
+		}
+		return fmt.Errorf("cannot get existing pdb: %s, for vmagent: %s, err: %w", pdb.Name, cr.Name, err)
+	}
+	pdb.Annotations = labels.Merge(pdb.Annotations, currentPdb.Annotations)
+	if currentPdb.ResourceVersion != "" {
+		pdb.ResourceVersion = currentPdb.ResourceVersion
+	}
+	victoriametricsv1beta1.MergeFinalizers(pdb, victoriametricsv1beta1.FinalizerName)
+	return rclient.Update(ctx, pdb)
 }

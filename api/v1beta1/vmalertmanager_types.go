@@ -200,6 +200,9 @@ type VMAlertmanagerSpec struct {
 	// ServiceSpec that will be added to vmalertmanager service spec
 	// +optional
 	ServiceSpec *ServiceSpec `json:"serviceSpec,omitempty"`
+	// PodDisruptionBudget created by operator
+	// +optional
+	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
 }
 
 // VMAlertmanagerList is a list of Alertmanagers.

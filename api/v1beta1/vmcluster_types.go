@@ -239,6 +239,9 @@ type VMSelect struct {
 	// ServiceSpec that will be added to vmselect service spec
 	// +optional
 	ServiceSpec *ServiceSpec `json:"serviceSpec,omitempty"`
+	// PodDisruptionBudget created by operator
+	// +optional
+	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
 }
 
 func (s VMSelect) GetNameWithPrefix(clusterName string) string {
@@ -391,6 +394,9 @@ type VMInsert struct {
 	// RollingUpdate - overrides deployment update params.
 	// +optional
 	RollingUpdate *appsv1.RollingUpdateDeployment `json:"rollingUpdate,omitempty"`
+	// PodDisruptionBudget created by operator
+	// +optional
+	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
 }
 
 func (i VMInsert) GetNameWithPrefix(clusterName string) string {
@@ -530,6 +536,9 @@ type VMStorage struct {
 	// ServiceSpec that will be create additional service for vmstorage
 	// +optional
 	ServiceSpec *ServiceSpec `json:"serviceSpec,omitempty"`
+	// PodDisruptionBudget created by operator
+	// +optional
+	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
 }
 
 type VMBackup struct {

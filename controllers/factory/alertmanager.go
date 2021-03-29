@@ -81,6 +81,7 @@ func CreateOrUpdateAlertManager(ctx context.Context, cr *victoriametricsv1beta1.
 	if err := createDefaultAMConfig(ctx, cr, rclient); err != nil {
 		return nil, fmt.Errorf("failed to check default Alertmanager config: %w", err)
 	}
+
 	currentSts := &appsv1.StatefulSet{}
 	err = rclient.Get(ctx, types.NamespacedName{Name: newSts.Name, Namespace: newSts.Namespace}, currentSts)
 	if err != nil {
@@ -94,6 +95,20 @@ func CreateOrUpdateAlertManager(ctx context.Context, cr *victoriametricsv1beta1.
 		}
 		return nil, fmt.Errorf("cannot get alertmanager sts: %w", err)
 	}
+	if err := performRollingUpdateOnSts(ctx, rclient, newSts.Name, newSts.Namespace, cr.SelectorLabels(), c); err != nil {
+		return nil, fmt.Errorf("cannot update statefulset for vmalertmanager: %w", err)
+	}
+	sts, err := reCreateSTS(ctx, rclient, volumeName(cr.Name), newSts, currentSts)
+	if err != nil {
+		return nil, err
+	}
+	if sts != nil {
+		return sts, nil
+	}
+	if err := growSTSPVC(ctx, rclient, newSts, volumeName(cr.Name)); err != nil {
+		return nil, err
+	}
+
 	return newSts, updateStsForAlertManager(ctx, rclient, currentSts, newSts)
 }
 
@@ -524,7 +539,7 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, c *config.Ba
 		Replicas:            cr.Spec.ReplicaCount,
 		PodManagementPolicy: appsv1.ParallelPodManagement,
 		UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
-			Type: appsv1.RollingUpdateStatefulSetStrategyType,
+			Type: appsv1.OnDeleteStatefulSetStrategyType,
 		},
 		Selector: &metav1.LabelSelector{
 			MatchLabels: cr.SelectorLabels(),

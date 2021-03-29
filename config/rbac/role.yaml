@@ -293,7 +293,9 @@ rules:
     - list
     - watch
 - apiGroups:
+    - extensions
     - "extensions"
+    - networking.k8s.io
     - "networking.k8s.io"
   resources:
     - ingresses
@@ -380,9 +382,10 @@ rules:
     - patch
     - update
 - apiGroups:
-    - storage.k8s.io/v1
+    - storage.k8s.io
   resources:
     - storageclasses
   verbs:
     - list
     - get
+    - watch

@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	policyv1beta1 "k8s.io/api/policy/v1beta1"
+
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/config"
@@ -234,4 +236,43 @@ func reconcileDeploy(ctx context.Context, rclient client.Client, newDeploy *apps
 	newDeploy.Spec.Template.Annotations = labels.Merge(newDeploy.Spec.Template.Annotations, currentDeploy.Spec.Template.Annotations)
 	victoriametricsv1beta1.MergeFinalizers(newDeploy, victoriametricsv1beta1.FinalizerName)
 	return rclient.Update(ctx, newDeploy)
+}
+
+func buildDefaultPDB(cr svcBuilderArgs, spec *victoriametricsv1beta1.EmbeddedPodDisruptionBudgetSpec) *policyv1beta1.PodDisruptionBudget {
+	return &policyv1beta1.PodDisruptionBudget{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            cr.PrefixedName(),
+			Labels:          cr.Labels(),
+			OwnerReferences: cr.AsOwner(),
+			Namespace:       cr.GetNSName(),
+			Finalizers:      []string{victoriametricsv1beta1.FinalizerName},
+		},
+		Spec: policyv1beta1.PodDisruptionBudgetSpec{
+			MinAvailable:   spec.MinAvailable,
+			MaxUnavailable: spec.MaxUnavailable,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: cr.SelectorLabels(),
+			},
+		},
+	}
+}
+
+func reconcilePDB(ctx context.Context, rclient client.Client, crdName string, pdb *policyv1beta1.PodDisruptionBudget) error {
+
+	currentPdb := &policyv1beta1.PodDisruptionBudget{}
+	err := rclient.Get(ctx, types.NamespacedName{Namespace: pdb.Namespace, Name: pdb.Name}, currentPdb)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			log.Info("creating new pdb for vmalertmanager", "pdb_name", pdb.Name, "vmalertmanager", crdName)
+			return rclient.Create(ctx, pdb)
+		}
+		return fmt.Errorf("cannot get existing pdb: %s, for vmalertmanager: %s, err: %w", pdb.Name, crdName, err)
+	}
+	pdb.Annotations = labels.Merge(pdb.Annotations, currentPdb.Annotations)
+	if currentPdb.ResourceVersion != "" {
+		pdb.ResourceVersion = currentPdb.ResourceVersion
+	}
+	pdb.Status = currentPdb.Status
+	victoriametricsv1beta1.MergeFinalizers(pdb, victoriametricsv1beta1.FinalizerName)
+	return rclient.Update(ctx, pdb)
 }

@@ -784,22 +784,7 @@ func CreateOrUpdatePodDisruptionBudgetForVMSelect(ctx context.Context, cr *v1bet
 			},
 		},
 	}
-
-	currentPdb := &policyv1beta1.PodDisruptionBudget{}
-	err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: pdb.Name}, currentPdb)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			log.Info("creating new pdb for vmselect", "pdb_name", pdb.Name, "vmselect", cr.Name)
-			return rclient.Create(ctx, pdb)
-		}
-		return fmt.Errorf("cannot get existing pdb: %s, for vmselect: %s, err: %w", pdb.Name, cr.Name, err)
-	}
-	pdb.Annotations = labels.Merge(pdb.Annotations, currentPdb.Annotations)
-	if currentPdb.ResourceVersion != "" {
-		pdb.ResourceVersion = currentPdb.ResourceVersion
-	}
-	v1beta1.MergeFinalizers(pdb, v1beta1.FinalizerName)
-	return rclient.Update(ctx, pdb)
+	return reconcilePDB(ctx, rclient, cr.Kind, pdb)
 }
 
 func genVMInsertSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv1.Deployment, error) {
@@ -1074,22 +1059,7 @@ func CreateOrUpdatePodDisruptionBudgetForVMInsert(ctx context.Context, cr *v1bet
 			},
 		},
 	}
-
-	currentPdb := &policyv1beta1.PodDisruptionBudget{}
-	err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: pdb.Name}, currentPdb)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			log.Info("creating new pdb for vminsert", "pdb_name", pdb.Name, "vminsert", cr.Name)
-			return rclient.Create(ctx, pdb)
-		}
-		return fmt.Errorf("cannot get existing pdb: %s, for vminsert: %s, err: %w", pdb.Name, cr.Name, err)
-	}
-	pdb.Annotations = labels.Merge(pdb.Annotations, currentPdb.Annotations)
-	if currentPdb.ResourceVersion != "" {
-		pdb.ResourceVersion = currentPdb.ResourceVersion
-	}
-	v1beta1.MergeFinalizers(pdb, v1beta1.FinalizerName)
-	return rclient.Update(ctx, pdb)
+	return reconcilePDB(ctx, rclient, cr.Kind, pdb)
 }
 
 func GenVMStorageSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv1.StatefulSet, error) {
@@ -1519,22 +1489,7 @@ func CreateOrUpdatePodDisruptionBudgetForVMStorage(ctx context.Context, cr *v1be
 			},
 		},
 	}
-
-	currentPdb := &policyv1beta1.PodDisruptionBudget{}
-	err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: pdb.Name}, currentPdb)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			log.Info("creating new pdb for vmstorage", "pdb_name", pdb.Name, "vmstorage", cr.Name)
-			return rclient.Create(ctx, pdb)
-		}
-		return fmt.Errorf("cannot get existing pdb: %s, for vmstorage: %s, err: %w", pdb.Name, cr.Name, err)
-	}
-	pdb.Annotations = labels.Merge(pdb.Annotations, currentPdb.Annotations)
-	if currentPdb.ResourceVersion != "" {
-		pdb.ResourceVersion = currentPdb.ResourceVersion
-	}
-	v1beta1.MergeFinalizers(pdb, v1beta1.FinalizerName)
-	return rclient.Update(ctx, pdb)
+	return reconcilePDB(ctx, rclient, cr.Kind, pdb)
 }
 
 func waitForExpanding(ctx context.Context, kclient client.Client, namespace string, lbs map[string]string, desiredCount int32) (bool, error) {

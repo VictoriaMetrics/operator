@@ -269,26 +269,12 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 		})
 	}
 
-	livenessProbeHandler := corev1.Handler{
-		HTTPGet: &corev1.HTTPGetAction{
-			Port:   intstr.Parse(cr.Spec.Port),
-			Scheme: "HTTP",
-			Path:   cr.HealthPath(),
-		},
-	}
 	readinessProbeHandler := corev1.Handler{
 		HTTPGet: &corev1.HTTPGetAction{
 			Port:   intstr.Parse(cr.Spec.Port),
 			Scheme: "HTTP",
 			Path:   cr.HealthPath(),
 		},
-	}
-	livenessFailureThreshold := int32(3)
-	livenessProbe := &corev1.Probe{
-		Handler:          livenessProbeHandler,
-		PeriodSeconds:    5,
-		TimeoutSeconds:   probeTimeoutSeconds,
-		FailureThreshold: livenessFailureThreshold,
 	}
 	readinessProbe := &corev1.Probe{
 		Handler:          readinessProbeHandler,
@@ -307,7 +293,6 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 			Ports:                    ports,
 			Args:                     args,
 			VolumeMounts:             vmMounts,
-			LivenessProbe:            livenessProbe,
 			ReadinessProbe:           readinessProbe,
 			Resources:                buildResources(cr.Spec.Resources, config.Resource(c.VMSingleDefault.Resource), c.VMSingleDefault.UseDefaultResources),
 			Env:                      envs,

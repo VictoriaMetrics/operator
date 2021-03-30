@@ -25,7 +25,7 @@ import (
 // Other solution, to check orphaned objects by selector.
 // Lets leave it as this for now and handle later.
 // TODO choose some solution for this corner case.
-func reCreateSTS(ctx context.Context, rclient client.Client, pvcName string, newSTS, existingSTS *appsv1.StatefulSet) (*appsv1.StatefulSet, error) {
+func wasCreatedSTS(ctx context.Context, rclient client.Client, pvcName string, newSTS, existingSTS *appsv1.StatefulSet) (*appsv1.StatefulSet, error) {
 	handleRemove := func() error {
 		if err := finalize.RemoveFinalizer(ctx, rclient, existingSTS); err != nil {
 			return err
@@ -87,7 +87,7 @@ func reCreateSTS(ctx context.Context, rclient client.Client, pvcName string, new
 		return newSTS, handleRemove()
 	}
 
-	return newSTS, nil
+	return nil, nil
 }
 
 func getPVCFromSTS(pvcName string, sts *appsv1.StatefulSet) *corev1.PersistentVolumeClaim {

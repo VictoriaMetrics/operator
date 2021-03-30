@@ -97,12 +97,12 @@ func CreateOrUpdateAlertManager(ctx context.Context, cr *victoriametricsv1beta1.
 	if err := performRollingUpdateOnSts(ctx, rclient, newSts.Name, newSts.Namespace, cr.SelectorLabels(), c); err != nil {
 		return nil, fmt.Errorf("cannot update statefulset for vmalertmanager: %w", err)
 	}
-	sts, err := reCreateSTS(ctx, rclient, volumeName(cr.Name), newSts, currentSts)
+	recreatedSts, err := wasCreatedSTS(ctx, rclient, volumeName(cr.Name), newSts, currentSts)
 	if err != nil {
 		return nil, err
 	}
-	if sts != nil {
-		return sts, nil
+	if recreatedSts != nil {
+		return recreatedSts, nil
 	}
 	if err := growSTSPVC(ctx, rclient, newSts, volumeName(cr.Name)); err != nil {
 		return nil, err

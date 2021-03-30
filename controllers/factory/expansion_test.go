@@ -146,9 +146,9 @@ func Test_reCreateSTS(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cl := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			_, err := reCreateSTS(tt.args.ctx, cl, tt.args.pvcName, tt.args.newSTS, tt.args.existingSTS)
+			_, err := wasCreatedSTS(tt.args.ctx, cl, tt.args.pvcName, tt.args.newSTS, tt.args.existingSTS)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("reCreateSTS() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("wasCreatedSTS() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			var updatedSts appsv1.StatefulSet

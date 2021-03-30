@@ -248,12 +248,12 @@ func createOrUpdateVMSelect(ctx context.Context, cr *v1beta1.VMCluster, rclient 
 	// hack for break reconcile loop at kubernetes 1.18
 	newSts.Status.Replicas = currentSts.Status.Replicas
 
-	sts, err := reCreateSTS(ctx, rclient, cr.Spec.VMSelect.GetCacheMountVolmeName(), newSts, currentSts)
+	recreatedSts, err := wasCreatedSTS(ctx, rclient, cr.Spec.VMSelect.GetCacheMountVolmeName(), newSts, currentSts)
 	if err != nil {
 		return nil, err
 	}
-	if sts != nil {
-		return sts, nil
+	if recreatedSts != nil {
+		return recreatedSts, nil
 	}
 
 	err = rclient.Update(ctx, newSts)
@@ -382,12 +382,13 @@ func createOrUpdateVMStorage(ctx context.Context, cr *v1beta1.VMCluster, rclient
 
 	// hack for break reconcile loop at kubernetes 1.18
 	newSts.Status.Replicas = currentSts.Status.Replicas
-	sts, err := reCreateSTS(ctx, rclient, cr.Spec.VMStorage.GetStorageVolumeName(), newSts, currentSts)
+
+	recreatedSts, err := wasCreatedSTS(ctx, rclient, cr.Spec.VMStorage.GetStorageVolumeName(), newSts, currentSts)
 	if err != nil {
 		return nil, err
 	}
-	if sts != nil {
-		return sts, nil
+	if recreatedSts != nil {
+		return recreatedSts, nil
 	}
 
 	if err := rclient.Update(ctx, newSts); err != nil {
@@ -1273,27 +1274,12 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) 
 		})
 	}
 
-	livenessProbeHandler := corev1.Handler{
-		HTTPGet: &corev1.HTTPGetAction{
-			Port:   intstr.Parse(cr.Spec.VMStorage.Port),
-			Scheme: "HTTP",
-			Path:   cr.HealthPathStorage(),
-		},
-	}
 	readinessProbeHandler := corev1.Handler{
 		HTTPGet: &corev1.HTTPGetAction{
 			Port:   intstr.Parse(cr.Spec.VMStorage.Port),
 			Scheme: "HTTP",
 			Path:   cr.HealthPathStorage(),
 		},
-	}
-	livenessFailureThreshold := int32(3)
-	livenessProbe := &corev1.Probe{
-		Handler:          livenessProbeHandler,
-		PeriodSeconds:    5,
-		TimeoutSeconds:   probeTimeoutSeconds,
-		FailureThreshold: livenessFailureThreshold,
-		SuccessThreshold: 1,
 	}
 	readinessProbe := &corev1.Probe{
 		Handler:          readinessProbeHandler,
@@ -1314,7 +1300,6 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) 
 			Ports:                    ports,
 			Args:                     args,
 			VolumeMounts:             vmMounts,
-			LivenessProbe:            livenessProbe,
 			ReadinessProbe:           readinessProbe,
 			Resources:                buildResources(cr.Spec.VMStorage.Resources, config.Resource(c.VMClusterDefault.VMStorageDefault.Resource), c.VMClusterDefault.UseDefaultResources),
 			Env:                      envs,

@@ -269,19 +269,25 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 		})
 	}
 
-	readinessProbeHandler := corev1.Handler{
-		HTTPGet: &corev1.HTTPGetAction{
-			Port:   intstr.Parse(cr.Spec.Port),
-			Scheme: "HTTP",
-			Path:   cr.HealthPath(),
-		},
+	readinessProbe := cr.Spec.ReadinessProbe
+	if readinessProbe == nil {
+		readinessProbeHandler := corev1.Handler{
+			HTTPGet: &corev1.HTTPGetAction{
+				Port:   intstr.Parse(cr.Spec.Port),
+				Scheme: "HTTP",
+				Path:   cr.HealthPath(),
+			},
+		}
+		readinessProbe = &corev1.Probe{
+			Handler:          readinessProbeHandler,
+			TimeoutSeconds:   probeTimeoutSeconds,
+			PeriodSeconds:    5,
+			FailureThreshold: 10,
+		}
 	}
-	readinessProbe := &corev1.Probe{
-		Handler:          readinessProbeHandler,
-		TimeoutSeconds:   probeTimeoutSeconds,
-		PeriodSeconds:    5,
-		FailureThreshold: 10,
-	}
+
+	livenessProbe := cr.Spec.LivenessProbe
+	startupProbe := cr.Spec.StartupProbe
 
 	var additionalContainers []corev1.Container
 
@@ -293,7 +299,9 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 			Ports:                    ports,
 			Args:                     args,
 			VolumeMounts:             vmMounts,
+			LivenessProbe:            livenessProbe,
 			ReadinessProbe:           readinessProbe,
+			StartupProbe:             startupProbe,
 			Resources:                buildResources(cr.Spec.Resources, config.Resource(c.VMSingleDefault.Resource), c.VMSingleDefault.UseDefaultResources),
 			Env:                      envs,
 			TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,

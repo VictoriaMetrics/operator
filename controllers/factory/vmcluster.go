@@ -239,7 +239,7 @@ func createOrUpdateVMSelect(ctx context.Context, cr *v1beta1.VMCluster, rclient 
 		return nil, fmt.Errorf("cannot get vmselect sts: %w", err)
 	}
 
-	l.Info("vmstorage was found, updating it")
+	l.Info("vmselect was found, updating it")
 	newSts.Annotations = labels.Merge(newSts.Annotations, currentSts.Annotations)
 	newSts.Spec.Template.Annotations = labels.Merge(newSts.Spec.Template.Annotations, currentSts.Spec.Template.Annotations)
 	if currentSts.ManagedFields != nil {
@@ -258,9 +258,9 @@ func createOrUpdateVMSelect(ctx context.Context, cr *v1beta1.VMCluster, rclient 
 
 	err = rclient.Update(ctx, newSts)
 	if err != nil {
-		return nil, fmt.Errorf("cannot update vmstorage sts: %w", err)
+		return nil, fmt.Errorf("cannot update vmselect sts: %w", err)
 	}
-	l.Info("vmstorage sts was reconciled")
+	l.Info("vmselect sts was reconciled")
 
 	return newSts, nil
 

@@ -242,6 +242,7 @@ type VMSelect struct {
 	// PodDisruptionBudget created by operator
 	// +optional
 	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
+	*EmbeddedProbes     `json:",inline"`
 }
 
 func (s VMSelect) GetNameWithPrefix(clusterName string) string {
@@ -397,6 +398,7 @@ type VMInsert struct {
 	// PodDisruptionBudget created by operator
 	// +optional
 	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
+	*EmbeddedProbes     `json:",inline"`
 }
 
 func (i VMInsert) GetNameWithPrefix(clusterName string) string {
@@ -539,6 +541,7 @@ type VMStorage struct {
 	// PodDisruptionBudget created by operator
 	// +optional
 	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
+	*EmbeddedProbes     `json:",inline"`
 }
 
 type VMBackup struct {

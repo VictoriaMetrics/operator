@@ -183,3 +183,14 @@ type EmbeddedPodDisruptionBudgetSpec struct {
 	// +optional
 	MaxUnavailable *intstr.IntOrString `json:"maxUnavailable,omitempty"`
 }
+
+type EmbeddedProbes struct {
+	// +optional
+	LivenessProbe *v1.Probe `json:"livenessProbe,omitempty"`
+	// ReadinessProbe that will be added to VMSingle pod
+	// +optional
+	ReadinessProbe *v1.Probe `json:"readinessProbe,omitempty"`
+	// StartupProbe that will be added to VMSingle pod
+	// +optional
+	StartupProbe *v1.Probe `json:"startupProbe,omitempty"`
+}

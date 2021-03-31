@@ -263,10 +263,10 @@ func reconcilePDB(ctx context.Context, rclient client.Client, crdName string, pd
 	err := rclient.Get(ctx, types.NamespacedName{Namespace: pdb.Namespace, Name: pdb.Name}, currentPdb)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			log.Info("creating new pdb for vmalertmanager", "pdb_name", pdb.Name, "vmalertmanager", crdName)
+			log.Info("creating new pdb", "pdb_name", pdb.Name, "crd_object", crdName)
 			return rclient.Create(ctx, pdb)
 		}
-		return fmt.Errorf("cannot get existing pdb: %s, for vmalertmanager: %s, err: %w", pdb.Name, crdName, err)
+		return fmt.Errorf("cannot get existing pdb: %s, for crd_object: %s, err: %w", pdb.Name, crdName, err)
 	}
 	pdb.Annotations = labels.Merge(pdb.Annotations, currentPdb.Annotations)
 	if currentPdb.ResourceVersion != "" {
@@ -275,4 +275,85 @@ func reconcilePDB(ctx context.Context, rclient client.Client, crdName string, pd
 	pdb.Status = currentPdb.Status
 	victoriametricsv1beta1.MergeFinalizers(pdb, victoriametricsv1beta1.FinalizerName)
 	return rclient.Update(ctx, pdb)
+}
+
+// buildProbe builds probe for container with possible custom values with
+func buildProbe(container v1.Container, ep *victoriametricsv1beta1.EmbeddedProbes, probePath func() string, port string, needAddLiveness bool) v1.Container {
+	var rp, lp, sp *v1.Probe
+	if ep != nil {
+		rp = ep.ReadinessProbe
+		lp = ep.LivenessProbe
+		sp = ep.StartupProbe
+	}
+
+	if rp == nil {
+		readinessProbeHandler := v1.Handler{
+			HTTPGet: &v1.HTTPGetAction{
+				Port:   intstr.Parse(port),
+				Scheme: "HTTP",
+				Path:   probePath(),
+			},
+		}
+		rp = &v1.Probe{
+			Handler:          readinessProbeHandler,
+			TimeoutSeconds:   probeTimeoutSeconds,
+			PeriodSeconds:    5,
+			FailureThreshold: 10,
+		}
+	}
+	if needAddLiveness {
+		if lp == nil {
+			probeHandler := v1.Handler{
+				HTTPGet: &v1.HTTPGetAction{
+					Port:   intstr.Parse(port),
+					Scheme: "HTTP",
+					Path:   probePath(),
+				},
+			}
+			lp = &v1.Probe{
+				Handler:          probeHandler,
+				TimeoutSeconds:   probeTimeoutSeconds,
+				FailureThreshold: 10,
+				PeriodSeconds:    5,
+			}
+		}
+	}
+	// ensure, that custom probe has all needed fields.
+	addMissingFields := func(probe *v1.Probe) {
+		if probe != nil {
+
+			if probe.HTTPGet == nil && probe.TCPSocket == nil && probe.Exec == nil {
+				probe.HTTPGet = &v1.HTTPGetAction{
+					Port:   intstr.Parse(port),
+					Scheme: "HTTP",
+					Path:   probePath(),
+				}
+			}
+			if probe.HTTPGet != nil {
+				if probe.HTTPGet.Path == "" {
+					probe.HTTPGet.Path = probePath()
+				}
+			}
+			if probe.PeriodSeconds == 0 {
+				probe.PeriodSeconds = 5
+			}
+			if probe.FailureThreshold == 0 {
+				probe.FailureThreshold = 10
+			}
+			if probe.TimeoutSeconds == 0 {
+				probe.TimeoutSeconds = probeTimeoutSeconds
+			}
+			if probe.SuccessThreshold == 0 {
+				probe.SuccessThreshold = 1
+			}
+		}
+
+	}
+	addMissingFields(lp)
+	addMissingFields(sp)
+	addMissingFields(rp)
+	container.LivenessProbe = lp
+	container.StartupProbe = sp
+	container.ReadinessProbe = rp
+	return container
 }

@@ -2,8 +2,10 @@ package factory
 
 import (
 	"context"
-	"reflect"
+	"fmt"
 	"testing"
+
+	"github.com/go-test/deep"
 
 	"github.com/VictoriaMetrics/operator/internal/config"
 	appsv1 "k8s.io/api/apps/v1"
@@ -68,7 +70,7 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 	tests := []struct {
 		name             string
 		args             args
-		want             *appsv1.StatefulSet
+		validate         func(set *appsv1.StatefulSet) error
 		wantErr          bool
 		predefinedObjets []runtime.Object
 	}{
@@ -90,30 +92,64 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 				},
 			},
 			wantErr: false,
-			want: &appsv1.StatefulSet{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:        "vmalertmanager-test-am",
-					Namespace:   "monitoring",
-					Annotations: map[string]string{"not": "touch"},
-					Labels: map[string]string{
-						"app.kubernetes.io/component": "monitoring",
-						"app.kubernetes.io/instance":  "test-am",
-						"app.kubernetes.io/name":      "vmalertmanager",
-						"managed-by":                  "vm-operator",
-						"main":                        "system",
+			validate: func(set *appsv1.StatefulSet) error {
+				if set.Name != "vmalertmanager-test-am" {
+					return fmt.Errorf("unexpected name, got: %s, want: %s", set.Name, "vmalertmanager-test-am")
+				}
+				if diff := deep.Equal(set.Labels, map[string]string{
+					"app.kubernetes.io/component": "monitoring",
+					"app.kubernetes.io/instance":  "test-am",
+					"app.kubernetes.io/name":      "vmalertmanager",
+					"managed-by":                  "vm-operator",
+					"main":                        "system",
+				}); len(diff) > 0 {
+					return fmt.Errorf("unexpected diff: %v", diff)
+				}
+				return nil
+			},
+		},
+		{
+			name: "alertmanager with embedded probe",
+			args: args{
+				ctx: context.TODO(),
+				c:   config.MustGetBaseConfig(),
+				cr: &victoriametricsv1beta1.VMAlertmanager{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        "test-am",
+						Namespace:   "monitoring",
+						Annotations: map[string]string{"not": "touch"},
+						Labels:      map[string]string{"main": "system"},
 					},
-				},
-				Spec: appsv1.StatefulSetSpec{
-					Replicas: pointer.Int32Ptr(1),
-					Template: v1.PodTemplateSpec{
-						Spec: v1.PodSpec{
-							Containers: []v1.Container{
-								{Name: "alertmanager"},
-								{Name: "config-reloader"},
+					Spec: victoriametricsv1beta1.VMAlertmanagerSpec{
+						ReplicaCount: pointer.Int32Ptr(1),
+						EmbeddedProbes: &victoriametricsv1beta1.EmbeddedProbes{
+							LivenessProbe: &v1.Probe{
+								TimeoutSeconds: 20,
 							},
 						},
 					},
 				},
+			},
+			wantErr: false,
+			validate: func(set *appsv1.StatefulSet) error {
+				if len(set.Spec.Template.Spec.Containers) != 2 {
+					return fmt.Errorf("unexpected count of container, got: %d, want: %d", len(set.Spec.Template.Spec.Containers), 2)
+				}
+				vmaContainer := set.Spec.Template.Spec.Containers[0]
+				if vmaContainer.Name != "alertmanager" {
+					return fmt.Errorf("unexpected container name, got: %s, want: %s", vmaContainer.Name, "alertmanager")
+				}
+				if vmaContainer.LivenessProbe.TimeoutSeconds != 20 {
+					return fmt.Errorf("unexpected liveness probe config, want timeout: %d, got: %d", vmaContainer.LivenessProbe.TimeoutSeconds, 20)
+				}
+				if vmaContainer.LivenessProbe.HTTPGet.Path != "/-/healthy" {
+					return fmt.Errorf("unexpected path for probe, got: %s, want: %s", vmaContainer.LivenessProbe.HTTPGet.Path, "/-/healthy")
+				}
+				if vmaContainer.ReadinessProbe.HTTPGet.Path != "/-/healthy" {
+					return fmt.Errorf("unexpected path for probe, got: %s, want: %s", vmaContainer.ReadinessProbe.HTTPGet.Path, "/-/healthy")
+				}
+
+				return nil
 			},
 		},
 	}
@@ -125,9 +161,8 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 				t.Fatalf("CreateOrUpdateAlertManager() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			k8stools.CompareObjectMeta(t, got.ObjectMeta, tt.want.ObjectMeta)
-			if !reflect.DeepEqual(len(got.Spec.Template.Spec.Containers), len(tt.want.Spec.Template.Spec.Containers)) {
-				t.Errorf("unexpected containers count: \ngot = %v, \nwant %v, \n got containers: %v", len(got.Spec.Template.Spec.Containers), len(tt.want.Spec.Template.Spec.Containers), got.Spec.Template.Spec.Containers)
+			if err := tt.validate(got); err != nil {
+				t.Fatalf("unexpected error: %v", err)
 			}
 		})
 	}

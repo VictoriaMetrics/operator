@@ -203,6 +203,7 @@ type VMAlertmanagerSpec struct {
 	// PodDisruptionBudget created by operator
 	// +optional
 	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
+	*EmbeddedProbes     `json:",inline"`
 }
 
 // VMAlertmanagerList is a list of Alertmanagers.

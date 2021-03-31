@@ -269,45 +269,22 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 		})
 	}
 
-	readinessProbe := cr.Spec.ReadinessProbe
-	if readinessProbe == nil {
-		readinessProbeHandler := corev1.Handler{
-			HTTPGet: &corev1.HTTPGetAction{
-				Port:   intstr.Parse(cr.Spec.Port),
-				Scheme: "HTTP",
-				Path:   cr.HealthPath(),
-			},
-		}
-		readinessProbe = &corev1.Probe{
-			Handler:          readinessProbeHandler,
-			TimeoutSeconds:   probeTimeoutSeconds,
-			PeriodSeconds:    5,
-			FailureThreshold: 10,
-		}
+	sort.Strings(args)
+	vmsingleContainer := corev1.Container{
+		Name:                     "vmsingle",
+		Image:                    fmt.Sprintf("%s:%s", cr.Spec.Image.Repository, cr.Spec.Image.Tag),
+		Ports:                    ports,
+		Args:                     args,
+		VolumeMounts:             vmMounts,
+		Resources:                buildResources(cr.Spec.Resources, config.Resource(c.VMSingleDefault.Resource), c.VMSingleDefault.UseDefaultResources),
+		Env:                      envs,
+		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+		ImagePullPolicy:          cr.Spec.Image.PullPolicy,
 	}
 
-	livenessProbe := cr.Spec.LivenessProbe
-	startupProbe := cr.Spec.StartupProbe
+	vmsingleContainer = buildProbe(vmsingleContainer, cr.Spec.EmbeddedProbes, cr.HealthPath, cr.Spec.Port, false)
 
-	var additionalContainers []corev1.Container
-
-	sort.Strings(args)
-	operatorContainers := append([]corev1.Container{
-		{
-			Name:                     "vmsingle",
-			Image:                    fmt.Sprintf("%s:%s", cr.Spec.Image.Repository, cr.Spec.Image.Tag),
-			Ports:                    ports,
-			Args:                     args,
-			VolumeMounts:             vmMounts,
-			LivenessProbe:            livenessProbe,
-			ReadinessProbe:           readinessProbe,
-			StartupProbe:             startupProbe,
-			Resources:                buildResources(cr.Spec.Resources, config.Resource(c.VMSingleDefault.Resource), c.VMSingleDefault.UseDefaultResources),
-			Env:                      envs,
-			TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
-			ImagePullPolicy:          cr.Spec.Image.PullPolicy,
-		},
-	}, additionalContainers...)
+	operatorContainers := []corev1.Container{vmsingleContainer}
 
 	if cr.Spec.VMBackup != nil {
 		vmBackupManagerContainer, err := makeSpecForVMBackuper(cr.Spec.VMBackup, c, cr.Spec.Port, vmDataVolumeName, cr.Spec.ExtraArgs)

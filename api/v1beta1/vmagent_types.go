@@ -260,6 +260,7 @@ type VMAgentSpec struct {
 	// PodDisruptionBudget created by operator
 	// +optional
 	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
+	*EmbeddedProbes     `json:",inline"`
 }
 
 // VMAgentRemoteWriteSettings - defines global settings for all remoteWrite urls.

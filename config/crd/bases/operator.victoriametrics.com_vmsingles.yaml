@@ -249,7 +249,8 @@ spec:
                   type: string
               type: object
             livenessProbe:
-              description: LivenessProbe that will be added to VMSingle pod
+              description: Probe describes a health check to be performed against
+                a container to determine whether it is alive or ready to receive traffic.
               properties:
                 exec:
                   description: One and only one of the following should be specified.

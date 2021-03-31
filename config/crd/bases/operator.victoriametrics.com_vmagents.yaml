@@ -480,8 +480,7 @@ spec:
                   type: string
               type: object
             livenessProbe:
-              description: Probe describes a health check to be performed against
-                a container to determine whether it is alive or ready to receive traffic.
+              description: LivenessProbe that will be added CRD pod
               properties:
                 exec:
                   description: One and only one of the following should be specified.
@@ -939,7 +938,7 @@ spec:
                   type: object
               type: object
             readinessProbe:
-              description: ReadinessProbe that will be added to VMSingle pod
+              description: ReadinessProbe that will be added CRD pod
               properties:
                 exec:
                   description: One and only one of the following should be specified.
@@ -1932,7 +1931,7 @@ spec:
                 to spec.replicas https://victoriametrics.github.io/vmagent.html#scraping-big-number-of-targets
               type: integer
             startupProbe:
-              description: StartupProbe that will be added to VMSingle pod
+              description: StartupProbe that will be added to CRD pod
               properties:
                 exec:
                   description: One and only one of the following should be specified.

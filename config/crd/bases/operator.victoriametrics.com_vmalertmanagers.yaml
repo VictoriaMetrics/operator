@@ -154,8 +154,7 @@ spec:
                 the VMAlertmanager UI, not the gossip communication.
               type: boolean
             livenessProbe:
-              description: Probe describes a health check to be performed against
-                a container to determine whether it is alive or ready to receive traffic.
+              description: LivenessProbe that will be added CRD pod
               properties:
                 exec:
                   description: One and only one of the following should be specified.
@@ -341,7 +340,7 @@ spec:
               description: PriorityClassName class assigned to the Pods
               type: string
             readinessProbe:
-              description: ReadinessProbe that will be added to VMSingle pod
+              description: ReadinessProbe that will be added CRD pod
               properties:
                 exec:
                   description: One and only one of the following should be specified.
@@ -934,7 +933,7 @@ spec:
               - spec
               type: object
             startupProbe:
-              description: StartupProbe that will be added to VMSingle pod
+              description: StartupProbe that will be added to CRD pod
               properties:
                 exec:
                   description: One and only one of the following should be specified.

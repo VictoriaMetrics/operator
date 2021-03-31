@@ -342,13 +342,13 @@ EmbeddedPersistentVolumeClaim is an embedded version of k8s.io/api/core/v1.Persi
 
 ## EmbeddedProbes
 
-
+EmbeddedProbes - it allows to override some probe params. its not necessary to specify all options, operator will replace missing spec with default values.
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
-| livenessProbe |  | *v1.Probe | false |
-| readinessProbe | ReadinessProbe that will be added to VMSingle pod | *v1.Probe | false |
-| startupProbe | StartupProbe that will be added to VMSingle pod | *v1.Probe | false |
+| livenessProbe | LivenessProbe that will be added CRD pod | *v1.Probe | false |
+| readinessProbe | ReadinessProbe that will be added CRD pod | *v1.Probe | false |
+| startupProbe | StartupProbe that will be added to CRD pod | *v1.Probe | false |
 
 [Back to TOC](#table-of-contents)
 

@@ -59,6 +59,7 @@ func CreateServiceAccountForCRD(ctx context.Context, cr CRDObject, rclient clien
 	newSA.Finalizers = v1beta12.MergeFinalizers(&existSA, v1beta12.FinalizerName)
 	newSA.Annotations = labels.Merge(newSA.Annotations, existSA.Annotations)
 	newSA.Labels = labels.Merge(existSA.Labels, newSA.Labels)
+	newSA.Secrets = existSA.Secrets
 	return rclient.Update(ctx, newSA)
 }
 

@@ -333,6 +333,9 @@ func buildProbe(container v1.Container, ep *victoriametricsv1beta1.EmbeddedProbe
 				if probe.HTTPGet.Path == "" {
 					probe.HTTPGet.Path = probePath()
 				}
+				if probe.HTTPGet.Port.StrVal == "" && probe.HTTPGet.Port.IntVal == 0 {
+					probe.HTTPGet.Port = intstr.Parse(port)
+				}
 			}
 			if probe.PeriodSeconds == 0 {
 				probe.PeriodSeconds = 5

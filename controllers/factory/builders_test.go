@@ -392,3 +392,110 @@ func Test_mergeServiceSpec(t *testing.T) {
 		})
 	}
 }
+
+func Test_buildProbe(t *testing.T) {
+	type args struct {
+		container       v1.Container
+		ep              *victoriametricsv1beta1.EmbeddedProbes
+		probePath       func() string
+		port            string
+		needAddLiveness bool
+	}
+	tests := []struct {
+		name     string
+		args     args
+		validate func(v1.Container) error
+	}{
+		{
+			name: "build default probe with empty ep",
+			args: args{
+				probePath: func() string {
+					return "/health"
+				},
+				container:       v1.Container{},
+				port:            "8051",
+				needAddLiveness: true,
+			},
+			validate: func(container v1.Container) error {
+				if container.LivenessProbe == nil {
+					return fmt.Errorf("want liveness to be not nil")
+				}
+				if container.ReadinessProbe == nil {
+					return fmt.Errorf("want readinessProbe to be not nil")
+				}
+				return nil
+			},
+		},
+		{
+			name: "build default probe with ep",
+			args: args{
+				probePath: func() string {
+					return "/health"
+				},
+				container:       v1.Container{},
+				port:            "8051",
+				needAddLiveness: true,
+				ep: &victoriametricsv1beta1.EmbeddedProbes{
+					ReadinessProbe: &v1.Probe{
+						Handler: v1.Handler{
+							Exec: &v1.ExecAction{
+								Command: []string{"echo", "1"},
+							},
+						},
+					},
+					StartupProbe: &v1.Probe{
+						Handler: v1.Handler{
+							HTTPGet: &v1.HTTPGetAction{
+								Host: "some",
+							},
+						},
+					},
+					LivenessProbe: &v1.Probe{
+						Handler: v1.Handler{
+							HTTPGet: &v1.HTTPGetAction{
+								Path: "/live1",
+							},
+						},
+						TimeoutSeconds:      15,
+						InitialDelaySeconds: 20,
+					},
+				},
+			},
+			validate: func(container v1.Container) error {
+				if container.LivenessProbe == nil {
+					return fmt.Errorf("want liveness to be not nil")
+				}
+				if container.ReadinessProbe == nil {
+					return fmt.Errorf("want readinessProbe to be not nil")
+				}
+				if container.StartupProbe == nil {
+					return fmt.Errorf("want startupProbe to be not nil")
+				}
+				if len(container.ReadinessProbe.Exec.Command) != 2 {
+					return fmt.Errorf("want exec args: %d, got: %v", 2, container.ReadinessProbe.Exec.Command)
+				}
+				if container.StartupProbe.HTTPGet.Host != "some" {
+					return fmt.Errorf("want host: %s, got: %s", "some", container.StartupProbe.HTTPGet.Host)
+				}
+				if container.LivenessProbe.HTTPGet.Path != "/live1" {
+					return fmt.Errorf("unexpected path, got: %s, want: %v", container.LivenessProbe.HTTPGet.Path, "/live1")
+				}
+				if container.LivenessProbe.InitialDelaySeconds != 20 {
+					return fmt.Errorf("unexpected delay, got: %d, want: %d", container.LivenessProbe.InitialDelaySeconds, 20)
+				}
+				if container.LivenessProbe.TimeoutSeconds != 15 {
+					return fmt.Errorf("unexpected timeout, got: %d, want: %d", container.LivenessProbe.TimeoutSeconds, 15)
+				}
+				return nil
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := buildProbe(tt.args.container, tt.args.ep, tt.args.probePath, tt.args.port, tt.args.needAddLiveness)
+			if err := tt.validate(got); err != nil {
+				t.Errorf("buildProbe() unexpected error: %v", err)
+			}
+		})
+	}
+}

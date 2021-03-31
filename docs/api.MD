@@ -20,6 +20,7 @@ This Document documents the types introduced by the VictoriaMetrics to be consum
 * [EmbeddedObjectMetadata](#embeddedobjectmetadata)
 * [EmbeddedPersistentVolumeClaim](#embeddedpersistentvolumeclaim)
 * [EmbeddedPodDisruptionBudgetSpec](#embeddedpoddisruptionbudgetspec)
+* [EmbeddedProbes](#embeddedprobes)
 * [ServiceSpec](#servicespec)
 * [StorageSpec](#storagespec)
 * [VMAlert](#vmalert)
@@ -336,6 +337,18 @@ EmbeddedPersistentVolumeClaim is an embedded version of k8s.io/api/core/v1.Persi
 | ----- | ----------- | ------ | -------- |
 | minAvailable | An eviction is allowed if at least \&#34;minAvailable\&#34; pods selected by \&#34;selector\&#34; will still be available after the eviction, i.e. even in the absence of the evicted pod.  So for example you can prevent all voluntary evictions by specifying \&#34;100%\&#34;. | *intstr.IntOrString | false |
 | maxUnavailable | An eviction is allowed if at most \&#34;maxUnavailable\&#34; pods selected by \&#34;selector\&#34; are unavailable after the eviction, i.e. even in absence of the evicted pod. For example, one can prevent all voluntary evictions by specifying 0. This is a mutually exclusive setting with \&#34;minAvailable\&#34;. | *intstr.IntOrString | false |
+
+[Back to TOC](#table-of-contents)
+
+## EmbeddedProbes
+
+EmbeddedProbes - it allows to override some probe params. its not necessary to specify all options, operator will replace missing spec with default values.
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| livenessProbe | LivenessProbe that will be added CRD pod | *v1.Probe | false |
+| readinessProbe | ReadinessProbe that will be added CRD pod | *v1.Probe | false |
+| startupProbe | StartupProbe that will be added to CRD pod | *v1.Probe | false |
 
 [Back to TOC](#table-of-contents)
 

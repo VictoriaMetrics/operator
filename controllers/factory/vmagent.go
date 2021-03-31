@@ -386,36 +386,6 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 
 	specRes := buildResources(cr.Spec.Resources, config.Resource(c.VMAgentDefault.Resource), c.VMAgentDefault.UseDefaultResources)
 
-	livenessProbeHandler := corev1.Handler{
-		HTTPGet: &corev1.HTTPGetAction{
-			Port:   intstr.Parse(cr.Spec.Port),
-			Scheme: "HTTP",
-			Path:   cr.HealthPath(),
-		},
-	}
-	readinessProbeHandler := corev1.Handler{
-		HTTPGet: &corev1.HTTPGetAction{
-			Port:   intstr.Parse(cr.Spec.Port),
-			Scheme: "HTTP",
-			Path:   cr.HealthPath(),
-		},
-	}
-	livenessFailureThreshold := int32(3)
-	livenessProbe := &corev1.Probe{
-		Handler:          livenessProbeHandler,
-		PeriodSeconds:    5,
-		TimeoutSeconds:   probeTimeoutSeconds,
-		FailureThreshold: livenessFailureThreshold,
-	}
-	readinessProbe := &corev1.Probe{
-		Handler:          readinessProbeHandler,
-		TimeoutSeconds:   probeTimeoutSeconds,
-		PeriodSeconds:    5,
-		FailureThreshold: 10,
-	}
-
-	var additionalContainers []corev1.Container
-
 	prometheusConfigReloaderResources := corev1.ResourceRequirements{
 		Limits: corev1.ResourceList{}, Requests: corev1.ResourceList{}}
 	if c.VMAgentDefault.ConfigReloaderCPU != "0" && c.VMAgentDefault.UseDefaultResources {
@@ -426,7 +396,21 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 	}
 
 	sort.Strings(args)
-	operatorContainers := append([]corev1.Container{
+
+	vmagentContainer := corev1.Container{
+		Name:                     "vmagent",
+		Image:                    fmt.Sprintf("%s:%s", cr.Spec.Image.Repository, cr.Spec.Image.Tag),
+		ImagePullPolicy:          cr.Spec.Image.PullPolicy,
+		Ports:                    ports,
+		Args:                     args,
+		Env:                      envs,
+		VolumeMounts:             agentVolumeMounts,
+		Resources:                specRes,
+		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+	}
+	buildProbe(vmagentContainer, cr.Spec.EmbeddedProbes, cr.HealthPath, cr.Spec.Port, true)
+
+	operatorContainers := []corev1.Container{
 		{
 			Name:                     "config-reloader",
 			Image:                    c.VMAgentDefault.ConfigReloadImage,
@@ -444,20 +428,8 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 			VolumeMounts: configReloadVolumeMounts,
 			Resources:    prometheusConfigReloaderResources,
 		},
-		{
-			Name:                     "vmagent",
-			Image:                    fmt.Sprintf("%s:%s", cr.Spec.Image.Repository, cr.Spec.Image.Tag),
-			ImagePullPolicy:          cr.Spec.Image.PullPolicy,
-			Ports:                    ports,
-			Args:                     args,
-			Env:                      envs,
-			VolumeMounts:             agentVolumeMounts,
-			LivenessProbe:            livenessProbe,
-			ReadinessProbe:           readinessProbe,
-			Resources:                specRes,
-			TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
-		},
-	}, additionalContainers...)
+		vmagentContainer,
+	}
 
 	containers, err := k8stools.MergePatchContainers(operatorContainers, cr.Spec.Containers)
 	if err != nil {

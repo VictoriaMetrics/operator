@@ -156,14 +156,7 @@ type VMSingleSpec struct {
 	// +optional
 	ServiceSpec *ServiceSpec `json:"serviceSpec,omitempty"`
 	// LivenessProbe that will be added to VMSingle pod
-	// +optional
-	LivenessProbe *v1.Probe `json:"livenessProbe,omitempty"`
-	// ReadinessProbe that will be added to VMSingle pod
-	// +optional
-	ReadinessProbe *v1.Probe `json:"readinessProbe,omitempty"`
-	// StartupProbe that will be added to VMSingle pod
-	// +optional
-	StartupProbe *v1.Probe `json:"startupProbe,omitempty"`
+	*EmbeddedProbes `json:",inline"`
 }
 
 // VMSingleStatus defines the observed state of VMSingle

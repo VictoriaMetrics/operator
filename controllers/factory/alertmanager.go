@@ -303,38 +303,6 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, c *config.Ba
 		Path:   path.Clean(webRoutePrefix + "/-/reload"),
 	}
 
-	livenessProbeHandler := v1.Handler{
-		HTTPGet: &v1.HTTPGetAction{
-			Path: path.Clean(webRoutePrefix + "/-/healthy"),
-			Port: intstr.FromString(cr.Spec.PortName),
-		},
-	}
-
-	readinessProbeHandler := v1.Handler{
-		HTTPGet: &v1.HTTPGetAction{
-			Path: path.Clean(webRoutePrefix + "/-/ready"),
-			Port: intstr.FromString(cr.Spec.PortName),
-		},
-	}
-
-	var livenessProbe *v1.Probe
-	var readinessProbe *v1.Probe
-	if !cr.Spec.ListenLocal {
-		livenessProbe = &v1.Probe{
-			Handler:          livenessProbeHandler,
-			TimeoutSeconds:   probeTimeoutSeconds,
-			FailureThreshold: 10,
-		}
-
-		readinessProbe = &v1.Probe{
-			Handler:             readinessProbeHandler,
-			InitialDelaySeconds: 3,
-			TimeoutSeconds:      3,
-			PeriodSeconds:       5,
-			FailureThreshold:    10,
-		}
-	}
-
 	var clusterPeerDomain string
 	if c.ClusterDomainName != "" {
 		clusterPeerDomain = fmt.Sprintf("%s.%s.svc.%s.", cr.PrefixedName(), cr.Namespace, c.ClusterDomainName)
@@ -478,30 +446,35 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, c *config.Ba
 
 	terminationGracePeriod := int64(120)
 
-	defaultContainers := []v1.Container{
-		{
-			Args:            amArgs,
-			Name:            "alertmanager",
-			Image:           image,
-			ImagePullPolicy: cr.Spec.Image.PullPolicy,
-			Ports:           ports,
-			VolumeMounts:    amVolumeMounts,
-			LivenessProbe:   livenessProbe,
-			ReadinessProbe:  readinessProbe,
-			Resources:       buildResources(cr.Spec.Resources, config.Resource(c.VMAlertDefault.Resource), c.VMAlertManager.UseDefaultResources),
-			Env: []v1.EnvVar{
-				{
-					// Necessary for '--cluster.listen-address' flag
-					Name: "POD_IP",
-					ValueFrom: &v1.EnvVarSource{
-						FieldRef: &v1.ObjectFieldSelector{
-							FieldPath: "status.podIP",
-						},
+	healthPath := func() string {
+		return path.Clean(webRoutePrefix + "/-/healthy")
+	}
+
+	vmaContainer := v1.Container{
+		Args:            amArgs,
+		Name:            "alertmanager",
+		Image:           image,
+		ImagePullPolicy: cr.Spec.Image.PullPolicy,
+		Ports:           ports,
+		VolumeMounts:    amVolumeMounts,
+		Resources:       buildResources(cr.Spec.Resources, config.Resource(c.VMAlertDefault.Resource), c.VMAlertManager.UseDefaultResources),
+		Env: []v1.EnvVar{
+			{
+				// Necessary for '--cluster.listen-address' flag
+				Name: "POD_IP",
+				ValueFrom: &v1.EnvVarSource{
+					FieldRef: &v1.ObjectFieldSelector{
+						FieldPath: "status.podIP",
 					},
 				},
 			},
-			TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
-		}, {
+		},
+		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
+	}
+	vmaContainer = buildProbe(vmaContainer, cr.Spec.EmbeddedProbes, healthPath, cr.Spec.PortName, true)
+	defaultContainers := []v1.Container{
+		vmaContainer,
+		{
 			Name:  "config-reloader",
 			Image: c.VMAlertManager.ConfigReloaderImage,
 			Args: []string{

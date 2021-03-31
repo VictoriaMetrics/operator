@@ -410,34 +410,6 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 		resources.Limits[corev1.ResourceMemory] = resource.MustParse(c.VMAlertDefault.ConfigReloaderMemory)
 	}
 
-	livenessProbeHandler := corev1.Handler{
-		HTTPGet: &corev1.HTTPGetAction{
-			Port:   intstr.Parse(cr.Spec.Port),
-			Scheme: "HTTP",
-			Path:   cr.HealthPath(),
-		},
-	}
-	readinessProbeHandler := corev1.Handler{
-		HTTPGet: &corev1.HTTPGetAction{
-			Port:   intstr.Parse(cr.Spec.Port),
-			Scheme: "HTTP",
-			Path:   cr.HealthPath(),
-		},
-	}
-	livenessFailureThreshold := int32(3)
-	livenessProbe := &corev1.Probe{
-		Handler:          livenessProbeHandler,
-		PeriodSeconds:    5,
-		TimeoutSeconds:   probeTimeoutSeconds,
-		FailureThreshold: livenessFailureThreshold,
-	}
-	readinessProbe := &corev1.Probe{
-		Handler:          readinessProbeHandler,
-		TimeoutSeconds:   probeTimeoutSeconds,
-		PeriodSeconds:    5,
-		FailureThreshold: 10,
-	}
-
 	var ports []corev1.ContainerPort
 	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(cr.Spec.Port).IntVal})
 
@@ -453,30 +425,31 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 		return reloaderVolumes[i].Name < reloaderVolumes[j].Name
 	})
 	sort.Strings(confReloadArgs)
-	defaultContainers := []corev1.Container{
-		{
-			Args:                     args,
-			Name:                     "vmalert",
-			Image:                    fmt.Sprintf("%s:%s", cr.Spec.Image.Repository, cr.Spec.Image.Tag),
-			ImagePullPolicy:          cr.Spec.Image.PullPolicy,
-			Ports:                    ports,
-			VolumeMounts:             volumeMounts,
-			LivenessProbe:            livenessProbe,
-			ReadinessProbe:           readinessProbe,
-			Resources:                buildResources(cr.Spec.Resources, config.Resource(c.VMAlertDefault.Resource), c.VMAlertDefault.UseDefaultResources),
-			Env:                      envs,
-			TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
-		}, {
-			Name:                     "config-reloader",
-			Image:                    c.VMAlertDefault.ConfigReloadImage,
-			Args:                     confReloadArgs,
-			Resources:                resources,
-			TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
-			VolumeMounts:             reloaderVolumes,
-		},
+
+	vmalertContainer := corev1.Container{
+		Args:                     args,
+		Name:                     "vmalert",
+		Image:                    fmt.Sprintf("%s:%s", cr.Spec.Image.Repository, cr.Spec.Image.Tag),
+		ImagePullPolicy:          cr.Spec.Image.PullPolicy,
+		Ports:                    ports,
+		VolumeMounts:             volumeMounts,
+		Resources:                buildResources(cr.Spec.Resources, config.Resource(c.VMAlertDefault.Resource), c.VMAlertDefault.UseDefaultResources),
+		Env:                      envs,
+		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+	}
+	vmalertContainer = buildProbe(vmalertContainer, cr.Spec.EmbeddedProbes, cr.HealthPath, cr.Spec.Port, true)
+
+	vmalertContainers := []corev1.Container{vmalertContainer, {
+		Name:                     "config-reloader",
+		Image:                    c.VMAlertDefault.ConfigReloadImage,
+		Args:                     confReloadArgs,
+		Resources:                resources,
+		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+		VolumeMounts:             reloaderVolumes,
+	},
 	}
 
-	containers, err := k8stools.MergePatchContainers(defaultContainers, cr.Spec.Containers)
+	containers, err := k8stools.MergePatchContainers(vmalertContainers, cr.Spec.Containers)
 	if err != nil {
 		return nil, err
 	}

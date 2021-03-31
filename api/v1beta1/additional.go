@@ -183,3 +183,18 @@ type EmbeddedPodDisruptionBudgetSpec struct {
 	// +optional
 	MaxUnavailable *intstr.IntOrString `json:"maxUnavailable,omitempty"`
 }
+
+// EmbeddedProbes - it allows to override some probe params.
+// its not necessary to specify all options,
+// operator will replace missing spec with default values.
+type EmbeddedProbes struct {
+	// LivenessProbe that will be added CRD pod
+	// +optional
+	LivenessProbe *v1.Probe `json:"livenessProbe,omitempty"`
+	// ReadinessProbe that will be added CRD pod
+	// +optional
+	ReadinessProbe *v1.Probe `json:"readinessProbe,omitempty"`
+	// StartupProbe that will be added to CRD pod
+	// +optional
+	StartupProbe *v1.Probe `json:"startupProbe,omitempty"`
+}

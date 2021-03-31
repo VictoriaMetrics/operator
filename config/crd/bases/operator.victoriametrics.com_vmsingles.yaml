@@ -249,7 +249,7 @@ spec:
                   type: string
               type: object
             livenessProbe:
-              description: LivenessProbe that will be added to VMSingle pod
+              description: LivenessProbe that will be added CRD pod
               properties:
                 exec:
                   description: One and only one of the following should be specified.
@@ -410,7 +410,7 @@ spec:
               description: PriorityClassName assigned to the Pods
               type: string
             readinessProbe:
-              description: ReadinessProbe that will be added to VMSingle pod
+              description: ReadinessProbe that will be added CRD pod
               properties:
                 exec:
                   description: One and only one of the following should be specified.
@@ -996,7 +996,7 @@ spec:
               - spec
               type: object
             startupProbe:
-              description: StartupProbe that will be added to VMSingle pod
+              description: StartupProbe that will be added to CRD pod
               properties:
                 exec:
                   description: One and only one of the following should be specified.

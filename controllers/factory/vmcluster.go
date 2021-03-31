@@ -627,55 +627,23 @@ func makePodSpecForVMSelect(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 		})
 	}
 
-	livenessProbeHandler := corev1.Handler{
-		HTTPGet: &corev1.HTTPGetAction{
-			Port:   intstr.Parse(cr.Spec.VMSelect.Port),
-			Scheme: "HTTP",
-			Path:   cr.HealthPathSelect(),
-		},
-	}
-	readinessProbeHandler := corev1.Handler{
-		HTTPGet: &corev1.HTTPGetAction{
-			Port:   intstr.Parse(cr.Spec.VMSelect.Port),
-			Scheme: "HTTP",
-			Path:   cr.HealthPathSelect(),
-		},
-	}
-	livenessFailureThreshold := int32(3)
-	livenessProbe := &corev1.Probe{
-		Handler:          livenessProbeHandler,
-		PeriodSeconds:    5,
-		TimeoutSeconds:   probeTimeoutSeconds,
-		FailureThreshold: livenessFailureThreshold,
-		SuccessThreshold: 1,
-	}
-	readinessProbe := &corev1.Probe{
-		Handler:          readinessProbeHandler,
-		TimeoutSeconds:   probeTimeoutSeconds,
-		PeriodSeconds:    5,
-		FailureThreshold: 10,
-		SuccessThreshold: 1,
-	}
-
-	var additionalContainers []corev1.Container
-
 	sort.Strings(args)
-	operatorContainers := append([]corev1.Container{
-		{
-			Name:                     "vmselect",
-			Image:                    fmt.Sprintf("%s:%s", cr.Spec.VMSelect.Image.Repository, cr.Spec.VMSelect.Image.Tag),
-			ImagePullPolicy:          cr.Spec.VMSelect.Image.PullPolicy,
-			Ports:                    ports,
-			Args:                     args,
-			VolumeMounts:             vmMounts,
-			LivenessProbe:            livenessProbe,
-			ReadinessProbe:           readinessProbe,
-			Resources:                buildResources(cr.Spec.VMSelect.Resources, config.Resource(c.VMClusterDefault.VMSelectDefault.Resource), c.VMClusterDefault.UseDefaultResources),
-			Env:                      envs,
-			TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
-			TerminationMessagePath:   "/dev/termination-log",
-		},
-	}, additionalContainers...)
+	vmselectContainer := corev1.Container{
+		Name:                     "vmselect",
+		Image:                    fmt.Sprintf("%s:%s", cr.Spec.VMSelect.Image.Repository, cr.Spec.VMSelect.Image.Tag),
+		ImagePullPolicy:          cr.Spec.VMSelect.Image.PullPolicy,
+		Ports:                    ports,
+		Args:                     args,
+		VolumeMounts:             vmMounts,
+		Resources:                buildResources(cr.Spec.VMSelect.Resources, config.Resource(c.VMClusterDefault.VMSelectDefault.Resource), c.VMClusterDefault.UseDefaultResources),
+		Env:                      envs,
+		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+		TerminationMessagePath:   "/dev/termination-log",
+	}
+
+	vmselectContainer = buildProbe(vmselectContainer, cr.Spec.VMSelect.EmbeddedProbes, cr.HealthPathSelect, cr.Spec.VMSelect.Port, true)
+
+	operatorContainers := []corev1.Container{vmselectContainer}
 
 	containers, err := k8sutil.MergePatchContainers(operatorContainers, cr.Spec.VMSelect.Containers)
 	if err != nil {
@@ -930,53 +898,23 @@ func makePodSpecForVMInsert(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 			MountPath: path.Join(ConfigMapsDir, c),
 		})
 	}
-
-	livenessProbeHandler := corev1.Handler{
-		HTTPGet: &corev1.HTTPGetAction{
-			Port:   intstr.Parse(cr.Spec.VMInsert.Port),
-			Scheme: "HTTP",
-			Path:   cr.HealthPathInsert(),
-		},
-	}
-	readinessProbeHandler := corev1.Handler{
-		HTTPGet: &corev1.HTTPGetAction{
-			Port:   intstr.Parse(cr.Spec.VMInsert.Port),
-			Scheme: "HTTP",
-			Path:   cr.HealthPathInsert(),
-		},
-	}
-	livenessFailureThreshold := int32(3)
-	livenessProbe := &corev1.Probe{
-		Handler:          livenessProbeHandler,
-		PeriodSeconds:    5,
-		TimeoutSeconds:   probeTimeoutSeconds,
-		FailureThreshold: livenessFailureThreshold,
-	}
-	readinessProbe := &corev1.Probe{
-		Handler:          readinessProbeHandler,
-		TimeoutSeconds:   probeTimeoutSeconds,
-		PeriodSeconds:    5,
-		FailureThreshold: 10,
-	}
-
-	var additionalContainers []corev1.Container
-
 	sort.Strings(args)
-	operatorContainers := append([]corev1.Container{
-		{
-			Name:                     "vminsert",
-			Image:                    fmt.Sprintf("%s:%s", cr.Spec.VMInsert.Image.Repository, cr.Spec.VMInsert.Image.Tag),
-			ImagePullPolicy:          cr.Spec.VMInsert.Image.PullPolicy,
-			Ports:                    ports,
-			Args:                     args,
-			VolumeMounts:             vmMounts,
-			LivenessProbe:            livenessProbe,
-			ReadinessProbe:           readinessProbe,
-			Resources:                buildResources(cr.Spec.VMInsert.Resources, config.Resource(c.VMClusterDefault.VMInsertDefault.Resource), c.VMClusterDefault.UseDefaultResources),
-			Env:                      envs,
-			TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
-		},
-	}, additionalContainers...)
+
+	vminsertContainer := corev1.Container{
+		Name:                     "vminsert",
+		Image:                    fmt.Sprintf("%s:%s", cr.Spec.VMInsert.Image.Repository, cr.Spec.VMInsert.Image.Tag),
+		ImagePullPolicy:          cr.Spec.VMInsert.Image.PullPolicy,
+		Ports:                    ports,
+		Args:                     args,
+		VolumeMounts:             vmMounts,
+		Resources:                buildResources(cr.Spec.VMInsert.Resources, config.Resource(c.VMClusterDefault.VMInsertDefault.Resource), c.VMClusterDefault.UseDefaultResources),
+		Env:                      envs,
+		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+	}
+
+	vminsertContainer = buildProbe(vminsertContainer, cr.Spec.VMInsert.EmbeddedProbes, cr.HealthPathInsert, cr.Spec.VMInsert.Port, true)
+
+	operatorContainers := []corev1.Container{vminsertContainer}
 
 	containers, err := k8sutil.MergePatchContainers(operatorContainers, cr.Spec.VMInsert.Containers)
 	if err != nil {
@@ -1274,39 +1212,23 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) 
 		})
 	}
 
-	readinessProbeHandler := corev1.Handler{
-		HTTPGet: &corev1.HTTPGetAction{
-			Port:   intstr.Parse(cr.Spec.VMStorage.Port),
-			Scheme: "HTTP",
-			Path:   cr.HealthPathStorage(),
-		},
-	}
-	readinessProbe := &corev1.Probe{
-		Handler:          readinessProbeHandler,
-		TimeoutSeconds:   probeTimeoutSeconds,
-		PeriodSeconds:    5,
-		FailureThreshold: 10,
-		SuccessThreshold: 1,
-	}
-
-	var additionalContainers []corev1.Container
-
 	sort.Strings(args)
-	operatorContainers := append([]corev1.Container{
-		{
-			Name:                     "vmstorage",
-			Image:                    fmt.Sprintf("%s:%s", cr.Spec.VMStorage.Image.Repository, cr.Spec.VMStorage.Image.Tag),
-			ImagePullPolicy:          cr.Spec.VMStorage.Image.PullPolicy,
-			Ports:                    ports,
-			Args:                     args,
-			VolumeMounts:             vmMounts,
-			ReadinessProbe:           readinessProbe,
-			Resources:                buildResources(cr.Spec.VMStorage.Resources, config.Resource(c.VMClusterDefault.VMStorageDefault.Resource), c.VMClusterDefault.UseDefaultResources),
-			Env:                      envs,
-			TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
-			TerminationMessagePath:   "/dev/termination-log",
-		},
-	}, additionalContainers...)
+	vmstorageContainer := corev1.Container{
+		Name:                     "vmstorage",
+		Image:                    fmt.Sprintf("%s:%s", cr.Spec.VMStorage.Image.Repository, cr.Spec.VMStorage.Image.Tag),
+		ImagePullPolicy:          cr.Spec.VMStorage.Image.PullPolicy,
+		Ports:                    ports,
+		Args:                     args,
+		VolumeMounts:             vmMounts,
+		Resources:                buildResources(cr.Spec.VMStorage.Resources, config.Resource(c.VMClusterDefault.VMStorageDefault.Resource), c.VMClusterDefault.UseDefaultResources),
+		Env:                      envs,
+		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+		TerminationMessagePath:   "/dev/termination-log",
+	}
+
+	vmstorageContainer = buildProbe(vmstorageContainer, cr.Spec.VMStorage.EmbeddedProbes, cr.HealthPathStorage, cr.Spec.VMStorage.Port, false)
+
+	operatorContainers := []corev1.Container{vmstorageContainer}
 
 	if cr.Spec.VMStorage.VMBackup != nil {
 		vmBackupManagerContainer, err := makeSpecForVMBackuper(cr.Spec.VMStorage.VMBackup, c, cr.Spec.VMStorage.Port, cr.Spec.VMStorage.GetStorageVolumeName(), cr.Spec.VMStorage.ExtraArgs)

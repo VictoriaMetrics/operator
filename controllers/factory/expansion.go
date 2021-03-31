@@ -6,9 +6,11 @@ import (
 	"time"
 
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
+	"github.com/go-test/deep"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/storage/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -64,6 +66,13 @@ func wasCreatedSTS(ctx context.Context, rclient client.Client, pvcName string, n
 		if actualPVC == nil || newPVC == nil {
 			return false
 		}
+		if !equality.Semantic.DeepDerivative(newPVC.ObjectMeta, actualPVC.ObjectMeta) || !equality.Semantic.DeepDerivative(newPVC.Spec, actualPVC.Spec) {
+			diff := deep.Equal(newPVC.ObjectMeta, actualPVC.ObjectMeta)
+			specDiff := deep.Equal(newPVC.Spec, actualPVC.Spec)
+			log.Info("pvc changes detected", "metaDiff", diff, "specDiff", specDiff, "pvc", pvcName)
+			return true
+		}
+
 		if i := newPVC.Spec.Resources.Requests.Storage().Cmp(*actualPVC.Spec.Resources.Requests.Storage()); i == 0 {
 			return false
 		} else {

@@ -66,6 +66,12 @@ func wasCreatedSTS(ctx context.Context, rclient client.Client, pvcName string, n
 		if actualPVC == nil || newPVC == nil {
 			return false
 		}
+
+		if i := newPVC.Spec.Resources.Requests.Storage().Cmp(*actualPVC.Spec.Resources.Requests.Storage()); i != 0 {
+			log.Info("must re-recreate sts, its pvc claim was changed", "size-diff", i)
+			return true
+		}
+
 		if !equality.Semantic.DeepDerivative(newPVC.ObjectMeta, actualPVC.ObjectMeta) || !equality.Semantic.DeepDerivative(newPVC.Spec, actualPVC.Spec) {
 			diff := deep.Equal(newPVC.ObjectMeta, actualPVC.ObjectMeta)
 			specDiff := deep.Equal(newPVC.Spec, actualPVC.Spec)
@@ -73,12 +79,7 @@ func wasCreatedSTS(ctx context.Context, rclient client.Client, pvcName string, n
 			return true
 		}
 
-		if i := newPVC.Spec.Resources.Requests.Storage().Cmp(*actualPVC.Spec.Resources.Requests.Storage()); i == 0 {
-			return false
-		} else {
-			log.Info("must re-recreate sts, its pvc claim was changed", "size-diff", i)
-		}
-		return true
+		return false
 	}
 	needRecreateOnSpecChange := func() bool {
 		// vct changed - added or removed.

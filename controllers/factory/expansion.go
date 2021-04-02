@@ -68,7 +68,10 @@ func wasCreatedSTS(ctx context.Context, rclient client.Client, pvcName string, n
 		}
 
 		if i := newPVC.Spec.Resources.Requests.Storage().Cmp(*actualPVC.Spec.Resources.Requests.Storage()); i != 0 {
-			log.Info("must re-recreate sts, its pvc claim was changed", "size-diff", i)
+			sizeDiff := resource.NewQuantity(0, resource.BinarySI)
+			sizeDiff.Add(*newPVC.Spec.Resources.Requests.Storage())
+			sizeDiff.Sub(*actualPVC.Spec.Resources.Requests.Storage())
+			log.Info("must re-recreate sts, its pvc claim was changed", "size-diff", sizeDiff.String())
 			return true
 		}
 

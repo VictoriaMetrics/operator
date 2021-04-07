@@ -6,6 +6,7 @@ spec:
             - apiGroups: [ "","networking.k8s.io","extensions" ]
               resources:
                 - nodes
+                - nodes/metrics
                 - services
                 - endpoints
                 - endpointslices

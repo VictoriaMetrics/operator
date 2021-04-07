@@ -123,6 +123,7 @@ func buildVMAgentClusterRole(cr *v1beta12.VMAgent) *v12.ClusterRole {
 				},
 				Resources: []string{
 					"nodes",
+					"nodes/metrics",
 					"nodes/proxy",
 					"services",
 					"endpoints",

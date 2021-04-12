@@ -323,6 +323,9 @@ func (c *SecretOrConfigMap) Key() string {
 }
 
 func (c *TLSConfig) BuildAssetPath(prefix, name, key string) string {
+	if name == "" || key == "" {
+		return ""
+	}
 	return fmt.Sprintf("%s_%s_%s", prefix, name, key)
 }
 

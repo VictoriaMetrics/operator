@@ -770,20 +770,26 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, rwsBasicAuth map[stri
 			} else {
 				caPath = rws.TLSConfig.BuildAssetPath(pathPrefix, rws.TLSConfig.CA.Name(), rws.TLSConfig.CA.Key())
 			}
-			tlsCAs.isNotNull = true
+			if caPath != "" {
+				tlsCAs.isNotNull = true
+			}
 			if rws.TLSConfig.CertFile != "" {
 				certPath = rws.TLSConfig.CertFile
 			} else {
 				certPath = rws.TLSConfig.BuildAssetPath(pathPrefix, rws.TLSConfig.Cert.Name(), rws.TLSConfig.Cert.Key())
-
 			}
-			tlsCerts.isNotNull = true
-			if rws.TLSConfig.KeyFile != "" {
+			if certPath != "" {
+				tlsCerts.isNotNull = true
+			}
+			switch {
+			case rws.TLSConfig.KeyFile != "":
 				keyPath = rws.TLSConfig.KeyFile
-			} else {
+			case rws.TLSConfig.KeySecret != nil:
 				keyPath = rws.TLSConfig.BuildAssetPath(pathPrefix, rws.TLSConfig.KeySecret.Name, rws.TLSConfig.KeySecret.Key)
 			}
-			tlsKeys.isNotNull = true
+			if keyPath != "" {
+				tlsKeys.isNotNull = true
+			}
 			if rws.TLSConfig.InsecureSkipVerify {
 				tlsInsecure.isNotNull = true
 			}

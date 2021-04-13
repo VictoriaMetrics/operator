@@ -522,6 +522,80 @@ func TestBuildRemoteWrites(t *testing.T) {
 			},
 			want: []string{"-remoteWrite.url=localhost:8429", "-remoteWrite.label=label1=value1,label2=value2"},
 		},
+		{
+			name: "test with tls config full",
+			args: args{
+				cr: &victoriametricsv1beta1.VMAgent{
+					Spec: victoriametricsv1beta1.VMAgentSpec{RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
+						{
+							URL:    "localhost:8429",
+							Labels: map[string]string{"label1": "value1", "label2": "value2"},
+							TLSConfig: &victoriametricsv1beta1.TLSConfig{
+								CA: victoriametricsv1beta1.SecretOrConfigMap{Secret: &corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "tls-secret",
+									},
+									Key: "ca",
+								}},
+							},
+						},
+						{
+							URL: "localhost:8429",
+							TLSConfig: &victoriametricsv1beta1.TLSConfig{
+								CAFile: "/path/to_ca",
+								Cert: victoriametricsv1beta1.SecretOrConfigMap{Secret: &corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "tls-secret",
+									},
+									Key: "ca",
+								}},
+							},
+						},
+					}},
+				},
+			},
+			want: []string{"-remoteWrite.label=label1=value1,label2=value2", "-remoteWrite.tlsCAFile=/etc/vmagent-tls/certs_tls-secret_ca,/path/to_ca", "-remoteWrite.tlsCertFile=,/etc/vmagent-tls/certs_tls-secret_ca", "-remoteWrite.url=localhost:8429,localhost:8429"},
+		},
+		{
+			name: "test insecure with key only",
+			args: args{
+				cr: &victoriametricsv1beta1.VMAgent{
+					Spec: victoriametricsv1beta1.VMAgentSpec{RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
+						{
+							URL:    "localhost:8429",
+							Labels: map[string]string{"label1": "value1", "label2": "value2"},
+							TLSConfig: &victoriametricsv1beta1.TLSConfig{
+								KeySecret: &corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "tls-secret",
+									},
+									Key: "key",
+								},
+								InsecureSkipVerify: true,
+							},
+						},
+					}},
+				},
+			},
+			want: []string{"-remoteWrite.url=localhost:8429", "-remoteWrite.tlsInsecureSkipVerify=true", "-remoteWrite.tlsKeyFile=/etc/vmagent-tls/certs_tls-secret_key", "-remoteWrite.label=label1=value1,label2=value2"},
+		},
+		{
+			name: "test insecure",
+			args: args{
+				cr: &victoriametricsv1beta1.VMAgent{
+					Spec: victoriametricsv1beta1.VMAgentSpec{RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
+						{
+							URL:    "localhost:8429",
+							Labels: map[string]string{"label1": "value1", "label2": "value2"},
+							TLSConfig: &victoriametricsv1beta1.TLSConfig{
+								InsecureSkipVerify: true,
+							},
+						},
+					}},
+				},
+			},
+			want: []string{"-remoteWrite.url=localhost:8429", "-remoteWrite.tlsInsecureSkipVerify=true", "-remoteWrite.label=label1=value1,label2=value2"},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

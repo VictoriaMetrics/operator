@@ -532,11 +532,9 @@ func addAdditionalObjectOwnership(cr *victoriametricsv1beta1.VMAgent, rclient cl
 			if owner.Controller == nil {
 				owner.Controller = pointer.BoolPtr(true)
 				shouldUpdate = true
-			} else {
-				if !*owner.Controller {
-					owner.Controller = pointer.BoolPtr(true)
-					shouldUpdate = true
-				}
+			} else if !*owner.Controller {
+				owner.Controller = pointer.BoolPtr(true)
+				shouldUpdate = true
 			}
 			if shouldUpdate {
 				object.SetOwnerReferences(existOwners)

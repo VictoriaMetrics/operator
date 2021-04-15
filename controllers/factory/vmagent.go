@@ -332,11 +332,7 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 		},
 	}
 
-	configReloadArgs := []string{
-		fmt.Sprintf("--reload-url=%s", cr.ReloadPathWithPort(cr.Spec.Port)),
-		fmt.Sprintf("--config-file=%s", path.Join(vmAgentConfDir, configFilename)),
-		fmt.Sprintf("--config-envsubst-file=%s", path.Join(vmAgentConOfOutDir, configEnvsubstFilename)),
-	}
+	configReloadArgs := buildConfigReloaderArgs(cr)
 
 	if cr.Spec.RelabelConfig != nil {
 		volumes = append(volumes, corev1.Volume{
@@ -349,11 +345,13 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 				},
 			},
 		})
-		agentVolumeMounts = append(agentVolumeMounts, corev1.VolumeMount{
+		rcMount := corev1.VolumeMount{
 			Name:      k8stools.SanitizeVolumeName("configmap-" + cr.Spec.RelabelConfig.Name),
 			ReadOnly:  true,
 			MountPath: path.Join(ConfigMapsDir, cr.Spec.RelabelConfig.Name),
-		})
+		}
+		agentVolumeMounts = append(agentVolumeMounts, rcMount)
+		configReloadVolumeMounts = append(configReloadVolumeMounts, rcMount)
 
 		args = append(args, "-remoteWrite.relabelConfig="+path.Join(ConfigMapsDir, cr.Spec.RelabelConfig.Name, cr.Spec.RelabelConfig.Key))
 	}
@@ -367,7 +365,7 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 		if cr.Spec.RelabelConfig != nil && rw.UrlRelabelConfig.Name == cr.Spec.RelabelConfig.Name {
 			continue
 		}
-		volumes = append(volumes, corev1.Volume{
+		urcVolume := corev1.Volume{
 			Name: k8stools.SanitizeVolumeName("configmap-" + rw.UrlRelabelConfig.Name),
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
@@ -376,12 +374,16 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 					},
 				},
 			},
-		})
-		agentVolumeMounts = append(agentVolumeMounts, corev1.VolumeMount{
+		}
+		urcMount := corev1.VolumeMount{
 			Name:      k8stools.SanitizeVolumeName("configmap-" + rw.UrlRelabelConfig.Name),
 			ReadOnly:  true,
 			MountPath: path.Join(ConfigMapsDir, rw.UrlRelabelConfig.Name),
-		})
+		}
+		volumes = append(volumes, urcVolume)
+
+		agentVolumeMounts = append(agentVolumeMounts, urcMount)
+		configReloadVolumeMounts = append(configReloadVolumeMounts, urcMount)
 	}
 
 	specRes := buildResources(cr.Spec.Resources, config.Resource(c.VMAgentDefault.Resource), c.VMAgentDefault.UseDefaultResources)
@@ -497,37 +499,89 @@ func addShardSettingsToVMAgent(shardNum, shardsCount int, dep *appsv1.Deployment
 	}
 }
 
-//add ownership - it needs for object changing tracking
-func addAddtionalScrapeConfigOwnership(cr *victoriametricsv1beta1.VMAgent, rclient client.Client, l logr.Logger) error {
-	if cr.Spec.AdditionalScrapeConfigs == nil {
-		return nil
+func buildConfigReloaderArgs(cr *victoriametricsv1beta1.VMAgent) []string {
+	args := []string{
+		fmt.Sprintf("--reload-url=%s", cr.ReloadPathWithPort(cr.Spec.Port)),
+		fmt.Sprintf("--config-file=%s", path.Join(vmAgentConfDir, configFilename)),
+		fmt.Sprintf("--config-envsubst-file=%s", path.Join(vmAgentConOfOutDir, configEnvsubstFilename)),
 	}
-	secret := &corev1.Secret{}
-	err := rclient.Get(context.Background(), types.NamespacedName{Namespace: cr.Namespace, Name: cr.Spec.AdditionalScrapeConfigs.Name}, secret)
+	if cr.Spec.RelabelConfig != nil {
+		args = append(args, "--rules-dir="+path.Join(ConfigMapsDir, cr.Spec.RelabelConfig.Name, cr.Spec.RelabelConfig.Key))
+	}
+	for i := range cr.Spec.RemoteWrite {
+		rw := cr.Spec.RemoteWrite[i]
+		if rw.UrlRelabelConfig != nil {
+			args = append(args, "--rules-dir="+path.Join(ConfigMapsDir, rw.UrlRelabelConfig.Name, rw.UrlRelabelConfig.Key))
+		}
+	}
+	return args
+}
+
+func addAdditionalObjectOwnership(cr *victoriametricsv1beta1.VMAgent, rclient client.Client, object client.Object) error {
+	err := rclient.Get(context.Background(), types.NamespacedName{Namespace: cr.Namespace, Name: object.GetName()}, object)
 	if err != nil {
-		return fmt.Errorf("cannot get secret with additional scrape config: %s, err: %w ", cr.Spec.AdditionalScrapeConfigs.Name, err)
+		return err
 	}
-	for _, owner := range secret.OwnerReferences {
+
+	existOwners := object.GetOwnerReferences()
+	for i := range existOwners {
+		owner := &existOwners[i]
 		//owner exists
 		if owner.Name == cr.Name {
+			var shouldUpdate bool
+			if owner.Controller == nil {
+				owner.Controller = pointer.BoolPtr(true)
+				shouldUpdate = true
+			} else {
+				if !*owner.Controller {
+					owner.Controller = pointer.BoolPtr(true)
+					shouldUpdate = true
+				}
+			}
+			if shouldUpdate {
+				object.SetOwnerReferences(existOwners)
+				return rclient.Update(context.Background(), object)
+			}
 			return nil
 		}
 	}
-	secret.OwnerReferences = append(secret.OwnerReferences, metav1.OwnerReference{
+	existOwners = append(existOwners, metav1.OwnerReference{
 		APIVersion:         cr.APIVersion,
 		Kind:               cr.Kind,
 		Name:               cr.Name,
-		Controller:         pointer.BoolPtr(false),
+		Controller:         pointer.BoolPtr(true),
 		BlockOwnerDeletion: pointer.BoolPtr(false),
 		UID:                cr.UID,
 	})
+	object.SetOwnerReferences(existOwners)
 
-	l.Info("updating additional scrape secret ownership", "secret", secret.Name)
-	err = rclient.Update(context.Background(), secret)
-	if err != nil {
-		return fmt.Errorf("cannot update secret ownership for vmagent Additional scrape: %s, err: %w", secret.Name, err)
+	return rclient.Update(context.Background(), object)
+}
+
+//add ownership - it needs for object changing tracking
+func addAddtionalScrapeConfigOwnership(cr *victoriametricsv1beta1.VMAgent, rclient client.Client, l logr.Logger) error {
+	if cr.Spec.AdditionalScrapeConfigs != nil {
+		if err := addAdditionalObjectOwnership(cr, rclient, &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: cr.Spec.AdditionalScrapeConfigs.Name},
+		}); err != nil {
+			return fmt.Errorf("cannot add ownership for vmagents secret: %w", err)
+		}
 	}
-	l.Info("scrape secret was updated with new owner", "secret", secret.Name)
+	if cr.Spec.RelabelConfig != nil {
+		name := cr.Spec.RelabelConfig.Name
+		if err := addAdditionalObjectOwnership(cr, rclient, &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: name}}); err != nil {
+			return fmt.Errorf("cannot add ownership for global relabeling config: %s, err: %w", name, err)
+		}
+	}
+	for i := range cr.Spec.RemoteWrite {
+		rw := cr.Spec.RemoteWrite[i]
+		if rw.UrlRelabelConfig != nil {
+			urc := rw.UrlRelabelConfig
+			if err := addAdditionalObjectOwnership(cr, rclient, &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: urc.Name}}); err != nil {
+				return fmt.Errorf("cannot add ownership for urc: %s, err: %w", urc.Name, err)
+			}
+		}
+	}
 	return nil
 }
 

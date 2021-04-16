@@ -1019,6 +1019,14 @@ func addTLStoYaml(cfg yaml.MapSlice, namespace string, tls *victoriametricsv1bet
 	return cfg
 }
 
+func appendRelabelConfigs(rcs []victoriametricsv1beta1.RelabelConfig) []yaml.MapSlice {
+	result := make([]yaml.MapSlice, len(rcs))
+	for i := range rcs {
+		result[i] = generateRelabelConfig(&rcs[i])
+	}
+	return result
+}
+
 func generateRelabelConfig(rc *victoriametricsv1beta1.RelabelConfig) yaml.MapSlice {
 	relabeling := yaml.MapSlice{}
 

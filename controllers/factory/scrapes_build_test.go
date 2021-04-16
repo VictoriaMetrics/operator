@@ -450,6 +450,71 @@ relabel_configs:
   replacement: ${1}
 `,
 		},
+		{
+			name: "config with tls insecure",
+			args: args{
+				m: &victoriametricsv1beta1.VMServiceScrape{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-scrape",
+						Namespace: "default",
+					},
+					Spec: victoriametricsv1beta1.VMServiceScrapeSpec{
+						DiscoveryRole: kubernetesSDRoleService,
+						Endpoints: []victoriametricsv1beta1.Endpoint{
+							{
+								Port: "8080",
+								TLSConfig: &victoriametricsv1beta1.TLSConfig{
+									InsecureSkipVerify: true,
+								},
+							},
+						},
+					},
+				},
+				ep: victoriametricsv1beta1.Endpoint{
+					Port: "8080",
+					TLSConfig: &victoriametricsv1beta1.TLSConfig{
+						InsecureSkipVerify: true,
+					},
+					BearerTokenFile: "/var/run/tolen",
+				},
+				i:                        0,
+				apiserverConfig:          nil,
+				basicAuthSecrets:         nil,
+				bearerTokens:             map[string]BearerToken{},
+				overrideHonorLabels:      false,
+				overrideHonorTimestamps:  false,
+				ignoreNamespaceSelectors: false,
+				enforcedNamespaceLabel:   "",
+			},
+			want: `job_name: default/test-scrape/0
+honor_labels: false
+kubernetes_sd_configs:
+- role: service
+  namespaces:
+    names:
+    - default
+tls_config:
+  insecure_skip_verify: true
+bearer_token_file: /var/run/tolen
+relabel_configs:
+- action: keep
+  source_labels:
+  - __meta_kubernetes_service_port_name
+  regex: "8080"
+- source_labels:
+  - __meta_kubernetes_namespace
+  target_label: namespace
+- source_labels:
+  - __meta_kubernetes_service_name
+  target_label: service
+- source_labels:
+  - __meta_kubernetes_service_name
+  target_label: job
+  replacement: ${1}
+- target_label: endpoint
+  replacement: "8080"
+`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

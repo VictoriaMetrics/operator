@@ -819,7 +819,7 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, rwsBasicAuth map[stri
 		if rws.TLSConfig != nil {
 			if rws.TLSConfig.CAFile != "" {
 				caPath = rws.TLSConfig.CAFile
-			} else {
+			} else if rws.TLSConfig.CA.Name() != "" {
 				caPath = rws.TLSConfig.BuildAssetPath(pathPrefix, rws.TLSConfig.CA.Name(), rws.TLSConfig.CA.Key())
 			}
 			if caPath != "" {
@@ -827,7 +827,7 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, rwsBasicAuth map[stri
 			}
 			if rws.TLSConfig.CertFile != "" {
 				certPath = rws.TLSConfig.CertFile
-			} else {
+			} else if rws.TLSConfig.Cert.Name() != "" {
 				certPath = rws.TLSConfig.BuildAssetPath(pathPrefix, rws.TLSConfig.Cert.Name(), rws.TLSConfig.Cert.Key())
 			}
 			if certPath != "" {

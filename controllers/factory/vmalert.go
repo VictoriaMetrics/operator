@@ -181,24 +181,7 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 		}
 		if cr.Spec.Datasource.TLSConfig != nil {
 			tlsConf := cr.Spec.Datasource.TLSConfig
-			if tlsConf.CAFile != "" {
-				args = append(args, fmt.Sprintf("-datasource.tlsCAFile=%s", tlsConf.CAFile))
-			} else {
-				args = append(args, fmt.Sprintf("-datasource.tlsCAFile=%s", cr.Spec.Datasource.TLSConfig.BuildAssetPath(cr.Namespace, tlsConf.CA.Name(), tlsConf.CA.Key())))
-			}
-			if tlsConf.CertFile != "" {
-				args = append(args, fmt.Sprintf("-datasource.tlsCertFile=%s", tlsConf.CertFile))
-			} else {
-				args = append(args, fmt.Sprintf("-datasource.tlsCertFile=%s", cr.Spec.Datasource.TLSConfig.BuildAssetPath(cr.Namespace, tlsConf.Cert.Name(), tlsConf.Cert.Key())))
-			}
-			if tlsConf.KeyFile != "" {
-				args = append(args, fmt.Sprintf("-datasource.tlsKeyFile=%s", tlsConf.KeyFile))
-			} else {
-				args = append(args, fmt.Sprintf("-datasource.tlsKeyFile=%s", cr.Spec.Datasource.TLSConfig.BuildAssetPath(cr.Namespace, tlsConf.KeySecret.Name, tlsConf.KeySecret.Key)))
-			}
-			args = append(args, fmt.Sprintf("-datasource.tlsServerName=%s", tlsConf.ServerName))
-			args = append(args, fmt.Sprintf("-datasource.tlsInsecureSkipVerify=%v", tlsConf.InsecureSkipVerify))
-
+			args = tlsConf.AsArgs(args, "datasource", cr.Namespace)
 		}
 	}
 
@@ -225,24 +208,7 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 		}
 		if cr.Spec.RemoteWrite.TLSConfig != nil {
 			tlsConf := cr.Spec.RemoteWrite.TLSConfig
-			if tlsConf.CAFile != "" {
-				args = append(args, fmt.Sprintf("-remoteWrite.tlsCAFile=%s", tlsConf.CAFile))
-			} else {
-				args = append(args, fmt.Sprintf("-remoteWrite.tlsCAFile=%s", cr.Spec.Datasource.TLSConfig.BuildAssetPath(cr.Namespace, tlsConf.CA.Name(), tlsConf.CA.Key())))
-			}
-			if tlsConf.CertFile != "" {
-				args = append(args, fmt.Sprintf("-remoteWrite.tlsCertFile=%s", tlsConf.CertFile))
-			} else {
-				args = append(args, fmt.Sprintf("-remoteWrite.tlsCertFile=%s", cr.Spec.Datasource.TLSConfig.BuildAssetPath(cr.Namespace, tlsConf.Cert.Name(), tlsConf.Cert.Key())))
-			}
-			if tlsConf.KeyFile != "" {
-				args = append(args, fmt.Sprintf("-remoteWrite.tlsKeyFile=%s", tlsConf.KeyFile))
-			} else {
-				args = append(args, fmt.Sprintf("-remoteWrite.tlsKeyFile=%s", cr.Spec.Datasource.TLSConfig.BuildAssetPath(cr.Namespace, tlsConf.KeySecret.Name, tlsConf.KeySecret.Key)))
-			}
-			args = append(args, fmt.Sprintf("-remoteWrite.tlsServerName=%s", tlsConf.ServerName))
-			args = append(args, fmt.Sprintf("-remoteWrite.tlsInsecureSkipVerify=%v", tlsConf.InsecureSkipVerify))
-
+			args = tlsConf.AsArgs(args, "remoteWrite", cr.Namespace)
 		}
 	}
 	for k, v := range cr.Spec.ExternalLabels {
@@ -261,24 +227,7 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 		}
 		if cr.Spec.RemoteRead.TLSConfig != nil {
 			tlsConf := cr.Spec.RemoteRead.TLSConfig
-			if tlsConf.CAFile != "" {
-				args = append(args, fmt.Sprintf("-remoteRead.tlsCAFile=%s", tlsConf.CAFile))
-			} else {
-				args = append(args, fmt.Sprintf("-remoteRead.tlsCAFile=%s", cr.Spec.Datasource.TLSConfig.BuildAssetPath(cr.Namespace, tlsConf.CA.Name(), tlsConf.CA.Key())))
-			}
-			if tlsConf.CertFile != "" {
-				args = append(args, fmt.Sprintf("-remoteRead.tlsCertFile=%s", tlsConf.CertFile))
-			} else {
-				args = append(args, fmt.Sprintf("-remoteRead.tlsCertFile=%s", cr.Spec.Datasource.TLSConfig.BuildAssetPath(cr.Namespace, tlsConf.Cert.Name(), tlsConf.Cert.Key())))
-			}
-			if tlsConf.KeyFile != "" {
-				args = append(args, fmt.Sprintf("-remoteRead.tlsKeyFile=%s", tlsConf.KeyFile))
-			} else {
-				args = append(args, fmt.Sprintf("-remoteRead.tlsKeyFile=%s", cr.Spec.Datasource.TLSConfig.BuildAssetPath(cr.Namespace, tlsConf.KeySecret.Name, tlsConf.KeySecret.Key)))
-			}
-			args = append(args, fmt.Sprintf("-remoteRead.tlsServerName=%s", tlsConf.ServerName))
-			args = append(args, fmt.Sprintf("-remoteRead.tlsInsecureSkipVerify=%v", tlsConf.InsecureSkipVerify))
-
+			args = tlsConf.AsArgs(args, "remoteRead", cr.Namespace)
 		}
 
 	}
@@ -691,23 +640,28 @@ func BuildNotifiersArgs(cr *victoriametricsv1beta1.VMAlert, ntBasicAuth map[stri
 		if nt.TLSConfig != nil {
 			if nt.TLSConfig.CAFile != "" {
 				caPath = nt.TLSConfig.CAFile
-			} else {
+			} else if nt.TLSConfig.CA.Name() != "" {
 				caPath = nt.TLSConfig.BuildAssetPath(pathPrefix, nt.TLSConfig.CA.Name(), nt.TLSConfig.CA.Key())
 			}
-			tlsCAs.isNotNull = true
+			if caPath != "" {
+				tlsCAs.isNotNull = true
+			}
 			if nt.TLSConfig.CertFile != "" {
 				certPath = nt.TLSConfig.CertFile
-			} else {
+			} else if nt.TLSConfig.Cert.Name() != "" {
 				certPath = nt.TLSConfig.BuildAssetPath(pathPrefix, nt.TLSConfig.Cert.Name(), nt.TLSConfig.Cert.Key())
-
 			}
-			tlsCerts.isNotNull = true
+			if certPath != "" {
+				tlsCerts.isNotNull = true
+			}
 			if nt.TLSConfig.KeyFile != "" {
 				keyPath = nt.TLSConfig.KeyFile
-			} else {
+			} else if nt.TLSConfig.KeySecret != nil {
 				keyPath = nt.TLSConfig.BuildAssetPath(pathPrefix, nt.TLSConfig.KeySecret.Name, nt.TLSConfig.KeySecret.Key)
 			}
-			tlsKeys.isNotNull = true
+			if keyPath != "" {
+				tlsKeys.isNotNull = true
+			}
 			if nt.TLSConfig.InsecureSkipVerify {
 				tlsInSecure.isNotNull = true
 				inSecure = true

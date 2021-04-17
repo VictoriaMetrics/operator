@@ -549,8 +549,7 @@ func makePodSpecForVMSelect(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 			cr.Spec.VMStorage.VMSelectPort = c.VMClusterDefault.VMStorageDefault.VMSelectPort
 		}
 		storageArg := "-storageNode="
-		vmstorageCount := *cr.Spec.VMStorage.ReplicaCount
-		for i := int32(0); i < vmstorageCount; i++ {
+		for _, i := range cr.AvailableStorageNodeIDs("select") {
 			storageArg += cr.Spec.VMStorage.BuildPodFQDNName(cr.Spec.VMStorage.GetNameWithPrefix(cr.Name), i, cr.Namespace, cr.Spec.VMStorage.VMSelectPort, c.ClusterDomainName)
 		}
 		storageArg = strings.TrimSuffix(storageArg, ",")
@@ -827,8 +826,7 @@ func makePodSpecForVMInsert(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 			cr.Spec.VMStorage.VMInsertPort = c.VMClusterDefault.VMStorageDefault.VMInsertPort
 		}
 		storageArg := "-storageNode="
-		storageCount := *cr.Spec.VMStorage.ReplicaCount
-		for i := int32(0); i < storageCount; i++ {
+		for _, i := range cr.AvailableStorageNodeIDs("insert") {
 			storageArg += cr.Spec.VMStorage.BuildPodFQDNName(cr.Spec.VMStorage.GetNameWithPrefix(cr.Name), i, cr.Namespace, cr.Spec.VMStorage.VMInsertPort, c.ClusterDomainName)
 		}
 		storageArg = strings.TrimSuffix(storageArg, ",")

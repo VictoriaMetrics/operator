@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"k8s.io/apimachinery/pkg/types"
+
 	"github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/config"
@@ -540,6 +542,7 @@ func TestCreateOrUpdateVMCluster(t *testing.T) {
 		want              string
 		wantErr           bool
 		predefinedObjects []runtime.Object
+		validate          func(vminsert *appsv1.Deployment, vmselect, vmstorage *appsv1.StatefulSet) error
 	}{
 		{
 			name: "base-vmstorage-test",
@@ -611,6 +614,35 @@ func TestCreateOrUpdateVMCluster(t *testing.T) {
 			},
 			want: v1beta1.ClusterStatusExpanding,
 		},
+		{
+			name: "base-vmstorage-with-maintenance",
+			args: args{
+				c: config.MustGetBaseConfig(),
+				cr: &v1beta1.VMCluster{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "default",
+						Name:      "cluster-1",
+					},
+					Spec: v1beta1.VMClusterSpec{
+						RetentionPeriod:   "2",
+						ReplicationFactor: pointer.Int32Ptr(2),
+						VMInsert: &v1beta1.VMInsert{
+							ReplicaCount: pointer.Int32Ptr(2),
+						},
+						VMStorage: &v1beta1.VMStorage{
+							MaintenanceSelectNodeIDs: []int32{1, 3},
+							MaintenanceInsertNodeIDs: []int32{0, 1, 2},
+							ReplicaCount:             pointer.Int32Ptr(10),
+						},
+						VMSelect: &v1beta1.VMSelect{
+							ReplicaCount: pointer.Int32Ptr(2),
+						},
+					},
+				},
+			},
+			predefinedObjects: []runtime.Object{},
+			want:              v1beta1.ClusterStatusExpanding,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -622,6 +654,29 @@ func TestCreateOrUpdateVMCluster(t *testing.T) {
 			}
 			if got != tt.want {
 				t.Errorf("CreateOrUpdateVMCluster() got = %v, want %v", got, tt.want)
+			}
+			if tt.validate != nil {
+				var vmselect, vmstorage appsv1.StatefulSet
+				var vminsert appsv1.Deployment
+				if tt.args.cr.Spec.VMInsert != nil {
+					if err := fclient.Get(context.TODO(), types.NamespacedName{Name: tt.args.cr.Spec.VMInsert.GetNameWithPrefix(tt.args.cr.Name), Namespace: tt.args.cr.Namespace}, &vminsert); err != nil {
+						t.Fatalf("unexpected error: %v", err)
+					}
+				}
+				if tt.args.cr.Spec.VMSelect != nil {
+					if err := fclient.Get(context.TODO(), types.NamespacedName{Name: tt.args.cr.Spec.VMSelect.GetNameWithPrefix(tt.args.cr.Name), Namespace: tt.args.cr.Namespace}, &vmselect); err != nil {
+						t.Fatalf("unexpected error: %v", err)
+					}
+				}
+				if tt.args.cr.Spec.VMStorage != nil {
+					if err := fclient.Get(context.TODO(), types.NamespacedName{Name: tt.args.cr.Spec.VMStorage.GetNameWithPrefix(tt.args.cr.Name), Namespace: tt.args.cr.Namespace}, &vmstorage); err != nil {
+						t.Fatalf("unexpected error: %v", err)
+					}
+				}
+
+				if err := tt.validate(&vminsert, &vmselect, &vmstorage); err != nil {
+					t.Fatalf("validation for cluster failed: %v", err)
+				}
 			}
 		})
 	}

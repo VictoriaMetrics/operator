@@ -542,6 +542,13 @@ type VMStorage struct {
 	// +optional
 	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
 	*EmbeddedProbes     `json:",inline"`
+	// MaintenanceInsertNodeIDs - excludes given node ids from insert requests routing, must contain pod suffixes - for pod-0, id will be 0 and etc.
+	// lets say, you have pod-0, pod-1, pod-2, pod-3. to exclude pod-0 and pod-3 from insert routing, define nodeIDs: [0,3].
+	// Useful at storage expanding, when you want to rebalance some data at cluster.
+	// +optional
+	MaintenanceInsertNodeIDs []int32 `json:"maintenanceInsertNodeIDs,omitempty"`
+	// MaintenanceInsertNodeIDs - excludes given node ids from select requests routing, must contain pod suffixes - for pod-0, id will be 0 and etc.
+	MaintenanceSelectNodeIDs []int32 `json:"maintenanceSelectNodeIDs,omitempty"`
 }
 
 type VMBackup struct {
@@ -678,6 +685,33 @@ func (cr VMCluster) VMStorageSelectorLabels() map[string]string {
 		"app.kubernetes.io/component": "monitoring",
 		"managed-by":                  "vm-operator",
 	}
+}
+
+func (cr VMCluster) AvailableStorageNodeIDs(requestsType string) []int32 {
+	var result []int32
+	if cr.Spec.VMStorage == nil || cr.Spec.VMStorage.ReplicaCount == nil {
+		return result
+	}
+	maintenanceNodes := make(map[int32]struct{})
+	switch requestsType {
+	case "select":
+		for _, i := range cr.Spec.VMStorage.MaintenanceSelectNodeIDs {
+			maintenanceNodes[i] = struct{}{}
+		}
+	case "insert":
+		for _, i := range cr.Spec.VMStorage.MaintenanceInsertNodeIDs {
+			maintenanceNodes[i] = struct{}{}
+		}
+	default:
+		panic("BUG unsupported requestsType: " + requestsType)
+	}
+	for i := int32(0); i < *cr.Spec.VMStorage.ReplicaCount; i++ {
+		if _, ok := maintenanceNodes[i]; ok {
+			continue
+		}
+		result = append(result, i)
+	}
+	return result
 }
 
 func (cr VMCluster) VMStoragePodLabels() map[string]string {

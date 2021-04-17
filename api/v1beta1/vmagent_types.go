@@ -178,6 +178,8 @@ type VMAgentSpec struct {
 	// +optional
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Key at Configmap with relabelConfig name",xDescriptors="urn:alm:descriptor:io.kubernetes:ConfigMapKeySelector"
 	RelabelConfig *v1.ConfigMapKeySelector `json:"relabelConfig,omitempty"`
+	// InlineRelabelConfig - defines GlobalRelabelConfig for vmagent, can be defined directly at CRD.
+	InlineRelabelConfig []RelabelConfig `json:"inlineRelabelConfig,omitempty"`
 	// ServiceScrapeSelector defines ServiceScrapes to be selected for target discovery.
 	// +optional
 	ServiceScrapeSelector *metav1.LabelSelector `json:"serviceScrapeSelector,omitempty"`
@@ -305,7 +307,9 @@ type VMAgentRemoteWriteSpec struct {
 	// +optional
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Key at Configmap with relabelConfig for remoteWrite",xDescriptors="urn:alm:descriptor:io.kubernetes:ConfigMapKeySelector"
 	UrlRelabelConfig *v1.ConfigMapKeySelector `json:"urlRelabelConfig,omitempty"`
-
+	// InlineUrlRelabelConfig defines relabeling config for remoteWriteURL, it can be defined at crd spec.
+	// +optional
+	InlineUrlRelabelConfig []RelabelConfig `json:"inlineUrlRelabelConfig,omitempty"`
 	// TLSConfig describes tls configuration for remote write target
 	// +optional
 	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
@@ -434,6 +438,10 @@ func (cr VMAgent) PrefixedName() string {
 
 func (cr VMAgent) TLSAssetName() string {
 	return fmt.Sprintf("tls-assets-vmagent-%s", cr.Name)
+}
+
+func (cr VMAgent) RelabelingAssetName() string {
+	return fmt.Sprintf("relabelings-assets-vmagent-%s", cr.Name)
 }
 
 func (cr VMAgent) HealthPath() string {

@@ -880,6 +880,13 @@ func (in *VMAgentRemoteWriteSpec) DeepCopyInto(out *VMAgentRemoteWriteSpec) {
 		*out = new(v1.ConfigMapKeySelector)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.InlineUrlRelabelConfig != nil {
+		in, out := &in.InlineUrlRelabelConfig, &out.InlineUrlRelabelConfig
+		*out = make([]RelabelConfig, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	if in.TLSConfig != nil {
 		in, out := &in.TLSConfig, &out.TLSConfig
 		*out = new(TLSConfig)
@@ -1029,6 +1036,13 @@ func (in *VMAgentSpec) DeepCopyInto(out *VMAgentSpec) {
 		in, out := &in.RelabelConfig, &out.RelabelConfig
 		*out = new(v1.ConfigMapKeySelector)
 		(*in).DeepCopyInto(*out)
+	}
+	if in.InlineRelabelConfig != nil {
+		in, out := &in.InlineRelabelConfig, &out.InlineRelabelConfig
+		*out = make([]RelabelConfig, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
 	}
 	if in.ServiceScrapeSelector != nil {
 		in, out := &in.ServiceScrapeSelector, &out.ServiceScrapeSelector

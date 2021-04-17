@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 
+	"gopkg.in/yaml.v2"
+
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
@@ -33,6 +35,8 @@ const (
 	vmAgentConOfOutDir              = "/etc/vmagent/config_out"
 	vmAgentPersistentQueueDir       = "/tmp/vmagent-remotewrite-data"
 	vmAgentPersistentQueueMountName = "persistent-queue-data"
+	globalRelabelingName            = "global_relabeling.yaml"
+	urlRelabelingName               = "url_rebaling-%d.yaml"
 )
 
 func CreateOrUpdateVMAgentService(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client, c *config.BaseOperatorConf) (*corev1.Service, error) {
@@ -92,6 +96,10 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 	err = CreateOrUpdateTlsAssets(ctx, cr, rclient)
 	if err != nil {
 		return reconcile.Result{}, fmt.Errorf("cannot update tls asset for vmagent: %w", err)
+	}
+
+	if err := CreateOrUpdateRelabelConfigsAssets(ctx, cr, rclient); err != nil {
+		return reconcile.Result{}, fmt.Errorf("cannot update relabeling asset for vmagent: %w", err)
 	}
 
 	if cr.Spec.PodDisruptionBudget != nil {
@@ -263,6 +271,16 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		},
+		corev1.Volume{
+			Name: "relabeling-assets",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: cr.RelabelingAssetName(),
+					},
+				},
+			},
+		},
 	)
 
 	var agentVolumeMounts []corev1.VolumeMount
@@ -284,6 +302,11 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 			Name:      "tls-assets",
 			ReadOnly:  true,
 			MountPath: tlsAssetsDir,
+		},
+		corev1.VolumeMount{
+			Name:      "relabeling-assets",
+			ReadOnly:  true,
+			MountPath: RelabelingConfigDir,
 		},
 	)
 
@@ -330,61 +353,20 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 			Name:      "config-out",
 			MountPath: vmAgentConOfOutDir,
 		},
+		{
+			Name:      "relabeling-assets",
+			ReadOnly:  true,
+			MountPath: RelabelingConfigDir,
+		},
 	}
 
 	configReloadArgs := buildConfigReloaderArgs(cr)
 
 	if cr.Spec.RelabelConfig != nil {
-		volumes = append(volumes, corev1.Volume{
-			Name: k8stools.SanitizeVolumeName("configmap-" + cr.Spec.RelabelConfig.Name),
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: cr.Spec.RelabelConfig.Name,
-					},
-				},
-			},
-		})
-		rcMount := corev1.VolumeMount{
-			Name:      k8stools.SanitizeVolumeName("configmap-" + cr.Spec.RelabelConfig.Name),
-			ReadOnly:  true,
-			MountPath: path.Join(ConfigMapsDir, cr.Spec.RelabelConfig.Name),
-		}
-		agentVolumeMounts = append(agentVolumeMounts, rcMount)
-		configReloadVolumeMounts = append(configReloadVolumeMounts, rcMount)
-
-		args = append(args, "-remoteWrite.relabelConfig="+path.Join(ConfigMapsDir, cr.Spec.RelabelConfig.Name, cr.Spec.RelabelConfig.Key))
+		args = append(args, "-remoteWrite.relabelConfig="+path.Join(RelabelingConfigDir, globalRelabelingName))
 	}
 
 	args = buildArgsForAdditionalPorts(args, cr.Spec.InsertPorts)
-
-	for _, rw := range cr.Spec.RemoteWrite {
-		if rw.UrlRelabelConfig == nil {
-			continue
-		}
-		if cr.Spec.RelabelConfig != nil && rw.UrlRelabelConfig.Name == cr.Spec.RelabelConfig.Name {
-			continue
-		}
-		urcVolume := corev1.Volume{
-			Name: k8stools.SanitizeVolumeName("configmap-" + rw.UrlRelabelConfig.Name),
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: rw.UrlRelabelConfig.Name,
-					},
-				},
-			},
-		}
-		urcMount := corev1.VolumeMount{
-			Name:      k8stools.SanitizeVolumeName("configmap-" + rw.UrlRelabelConfig.Name),
-			ReadOnly:  true,
-			MountPath: path.Join(ConfigMapsDir, rw.UrlRelabelConfig.Name),
-		}
-		volumes = append(volumes, urcVolume)
-
-		agentVolumeMounts = append(agentVolumeMounts, urcMount)
-		configReloadVolumeMounts = append(configReloadVolumeMounts, urcMount)
-	}
 
 	specRes := buildResources(cr.Spec.Resources, config.Resource(c.VMAgentDefault.Resource), c.VMAgentDefault.UseDefaultResources)
 
@@ -504,15 +486,7 @@ func buildConfigReloaderArgs(cr *victoriametricsv1beta1.VMAgent) []string {
 		fmt.Sprintf("--reload-url=%s", cr.ReloadPathWithPort(cr.Spec.Port)),
 		fmt.Sprintf("--config-file=%s", path.Join(vmAgentConfDir, configFilename)),
 		fmt.Sprintf("--config-envsubst-file=%s", path.Join(vmAgentConOfOutDir, configEnvsubstFilename)),
-	}
-	if cr.Spec.RelabelConfig != nil {
-		args = append(args, "--rules-dir="+path.Join(ConfigMapsDir, cr.Spec.RelabelConfig.Name, cr.Spec.RelabelConfig.Key))
-	}
-	for i := range cr.Spec.RemoteWrite {
-		rw := cr.Spec.RemoteWrite[i]
-		if rw.UrlRelabelConfig != nil {
-			args = append(args, "--rules-dir="+path.Join(ConfigMapsDir, rw.UrlRelabelConfig.Name, rw.UrlRelabelConfig.Key))
-		}
+		"--rules-dir=" + RelabelingConfigDir,
 	}
 	return args
 }
@@ -581,6 +555,95 @@ func addAddtionalScrapeConfigOwnership(cr *victoriametricsv1beta1.VMAgent, rclie
 		}
 	}
 	return nil
+}
+
+// buildVMAgentRelabelingsAssets combines all possible relabeling config configuration and adding it to the configmap.
+func buildVMAgentRelabelingsAssets(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) (*corev1.ConfigMap, error) {
+	cfgCM := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace:       cr.Namespace,
+			Name:            cr.RelabelingAssetName(),
+			Labels:          cr.Labels(),
+			Annotations:     cr.Annotations(),
+			OwnerReferences: cr.AsOwner(),
+		},
+		Data: make(map[string]string),
+	}
+	// global section
+	if len(cr.Spec.InlineRelabelConfig) > 0 {
+		rcs := addRelabelConfigs(nil, cr.Spec.InlineRelabelConfig)
+		data, err := yaml.Marshal(rcs)
+		if err != nil {
+			return nil, fmt.Errorf("cannot serialize relabelConfig as yaml: %w", err)
+		}
+		if len(data) > 0 {
+			cfgCM.Data[globalRelabelingName] = string(data)
+		}
+	}
+	if cr.Spec.RelabelConfig != nil {
+		// need to fetch content from
+		data, err := fetchConfigMapContentByKey(ctx, rclient,
+			&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: cr.Spec.RelabelConfig.Name, Namespace: cr.Namespace}},
+			cr.Spec.RelabelConfig.Key)
+		if err != nil {
+			return nil, fmt.Errorf("cannot fetch configmap: %s, err: %w", cr.Spec.RelabelConfig.Name, err)
+		}
+		if len(data) > 0 {
+			cfgCM.Data[globalRelabelingName] += data
+		}
+	}
+	// per remoteWrite section.
+	for i := range cr.Spec.RemoteWrite {
+		rw := cr.Spec.RemoteWrite[i]
+		if len(rw.InlineUrlRelabelConfig) > 0 {
+			rcs := addRelabelConfigs(nil, rw.InlineUrlRelabelConfig)
+			data, err := yaml.Marshal(rcs)
+			if err != nil {
+				return nil, fmt.Errorf("cannot serialize urlRelabelConfig as yaml: %w", err)
+			}
+			if len(data) > 0 {
+				cfgCM.Data[fmt.Sprintf(urlRelabelingName, i)] = string(data)
+			}
+		}
+		if rw.UrlRelabelConfig != nil {
+			data, err := fetchConfigMapContentByKey(ctx, rclient,
+				&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: rw.UrlRelabelConfig.Name, Namespace: cr.Namespace}},
+				rw.UrlRelabelConfig.Key)
+			if err != nil {
+				return nil, fmt.Errorf("cannot fetch configmap: %s, err: %w", cr.Spec.RelabelConfig.Name, err)
+			}
+			if len(data) > 0 {
+				cfgCM.Data[fmt.Sprintf(urlRelabelingName, i)] += data
+			}
+		}
+	}
+	return cfgCM, nil
+}
+
+// CreateOrUpdateRelabelConfigsAssets builds relabeling configs for vmagent at separate configmap, serialized as yaml
+func CreateOrUpdateRelabelConfigsAssets(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) error {
+
+	assestsCM, err := buildVMAgentRelabelingsAssets(ctx, cr, rclient)
+	if err != nil {
+		return err
+	}
+	var existCM corev1.ConfigMap
+	if err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.RelabelingAssetName()}, &existCM); err != nil {
+		if errors.IsNotFound(err) {
+			return rclient.Create(ctx, assestsCM)
+		}
+	}
+	assestsCM.Labels = labels.Merge(existCM.Labels, assestsCM.Labels)
+	assestsCM.Annotations = labels.Merge(assestsCM.Annotations, existCM.Annotations)
+	victoriametricsv1beta1.MergeFinalizers(assestsCM, victoriametricsv1beta1.FinalizerName)
+	return rclient.Update(ctx, assestsCM)
+}
+
+func fetchConfigMapContentByKey(ctx context.Context, rclient client.Client, cm *corev1.ConfigMap, key string) (string, error) {
+	if err := rclient.Get(ctx, types.NamespacedName{Namespace: cm.Namespace, Name: cm.Name}, cm); err != nil {
+		return "", err
+	}
+	return cm.Data[key], nil
 }
 
 func CreateOrUpdateTlsAssets(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) error {
@@ -810,8 +873,9 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, rwsBasicAuth map[stri
 
 	pathPrefix := path.Join(tlsAssetsDir, cr.Namespace)
 
-	for _, rws := range remoteTargets {
+	for i := range remoteTargets {
 
+		rws := remoteTargets[i]
 		url.flagSetting += fmt.Sprintf("%s,", rws.URL)
 
 		var caPath, certPath, keyPath, ServerName string
@@ -894,8 +958,9 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, rwsBasicAuth map[stri
 
 		if rws.UrlRelabelConfig != nil {
 			urlRelabelConfig.isNotNull = true
-			value = path.Join(ConfigMapsDir, rws.UrlRelabelConfig.Name, rws.UrlRelabelConfig.Key)
+			value = path.Join(RelabelingConfigDir, fmt.Sprintf(urlRelabelingName, i))
 		}
+
 		urlRelabelConfig.flagSetting += fmt.Sprintf("%s,", value)
 
 		value = ""

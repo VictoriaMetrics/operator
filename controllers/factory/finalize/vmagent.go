@@ -38,6 +38,11 @@ func OnVMAgentDelete(ctx context.Context, rclient client.Client, crd *victoriame
 		return err
 	}
 
+	// check relabelAsset
+	if err := removeFinalizeObjByName(ctx, rclient, &v1.ConfigMap{}, crd.RelabelingAssetName(), crd.Namespace); err != nil {
+		return err
+	}
+
 	// check PDB
 	if err := removeFinalizeObjByName(ctx, rclient, &policyv1beta1.PodDisruptionBudget{}, crd.PrefixedName(), crd.Namespace); err != nil {
 		return err

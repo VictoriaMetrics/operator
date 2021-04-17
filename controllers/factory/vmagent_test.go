@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"strings"
 	"testing"
 
-	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
+	"github.com/stretchr/testify/assert"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
@@ -705,6 +707,118 @@ func TestCreateOrUpdateVMAgentService(t *testing.T) {
 			}
 			if err := tt.want(got); err != nil {
 				t.Errorf("CreateOrUpdateVMAgentService() unexpected error: %v", err)
+			}
+		})
+	}
+}
+
+func TestCreateOrUpdateRelabelConfigsAssets(t *testing.T) {
+	type args struct {
+		ctx context.Context
+		cr  *victoriametricsv1beta1.VMAgent
+	}
+	tests := []struct {
+		name              string
+		args              args
+		predefinedObjects []runtime.Object
+		validate          func(cm *corev1.ConfigMap) error
+		wantErr           bool
+	}{
+		{
+			name: "simple relabelcfg",
+			args: args{
+				ctx: context.TODO(),
+				cr: &victoriametricsv1beta1.VMAgent{
+					Spec: victoriametricsv1beta1.VMAgentSpec{
+						InlineRelabelConfig: []victoriametricsv1beta1.RelabelConfig{
+							{
+								Regex:        ".*",
+								Action:       "DROP",
+								SourceLabels: []string{"pod"},
+							},
+							{},
+						},
+					},
+				},
+			},
+			validate: func(cm *corev1.ConfigMap) error {
+				data, ok := cm.Data[globalRelabelingName]
+				if !ok {
+					return fmt.Errorf("key: %s, not exists at map: %v", "global_relabeling.yaml", cm.BinaryData)
+				}
+				wantGlobal := `- source_labels:
+  - pod
+  regex: .*
+  action: DROP
+`
+				assert.Equal(t, wantGlobal, data)
+				return nil
+			},
+			predefinedObjects: []runtime.Object{},
+		},
+		{
+			name: "combined relabel configs",
+			args: args{
+				ctx: context.TODO(),
+				cr: &victoriametricsv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "vmag",
+						Namespace: "default",
+					},
+					Spec: victoriametricsv1beta1.VMAgentSpec{
+						InlineRelabelConfig: []victoriametricsv1beta1.RelabelConfig{
+							{
+								Regex:        ".*",
+								Action:       "DROP",
+								SourceLabels: []string{"pod"},
+							},
+						},
+						RelabelConfig: &corev1.ConfigMapKeySelector{
+							Key:                  "global.yaml",
+							LocalObjectReference: corev1.LocalObjectReference{Name: "relabels"},
+						},
+					},
+				},
+			},
+			validate: func(cm *corev1.ConfigMap) error {
+				data, ok := cm.Data[globalRelabelingName]
+				if !ok {
+					return fmt.Errorf("key: %s, not exists at map: %v", "global_relabeling.yaml", cm.BinaryData)
+				}
+				wantGlobal := strings.TrimSpace(`
+- source_labels:
+  - pod
+  regex: .*
+  action: DROP
+- action: DROP
+  source_labels: ["pod-1"]`)
+				assert.Equal(t, wantGlobal, data)
+				return nil
+			},
+			predefinedObjects: []runtime.Object{
+				&corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{Name: "relabels", Namespace: "default"},
+					Data: map[string]string{
+						"global.yaml": strings.TrimSpace(`
+- action: DROP
+  source_labels: ["pod-1"]`),
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cl := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
+			if err := CreateOrUpdateRelabelConfigsAssets(tt.args.ctx, tt.args.cr, cl); (err != nil) != tt.wantErr {
+				t.Fatalf("CreateOrUpdateRelabelConfigsAssets() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			var createdCM corev1.ConfigMap
+			if err := cl.Get(tt.args.ctx, types.NamespacedName{Namespace: tt.args.cr.Namespace, Name: tt.args.cr.RelabelingAssetName()}, &createdCM); err != nil {
+				t.Fatalf("cannot fetch created cm: %v", err)
+			}
+			if err := tt.validate(&createdCM); err != nil {
+				t.Fatalf("cannot validate created cm: %v", err)
 			}
 		})
 	}

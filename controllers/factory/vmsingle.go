@@ -23,11 +23,12 @@ import (
 )
 
 const (
-	SecretsDir       = "/etc/vm/secrets"
-	ConfigMapsDir    = "/etc/vm/configs"
-	vmSingleDataDir  = "/victoria-metrics-data"
-	vmBackuperCreds  = "/etc/vm/creds"
-	vmDataVolumeName = "data"
+	SecretsDir          = "/etc/vm/secrets"
+	ConfigMapsDir       = "/etc/vm/configs"
+	RelabelingConfigDir = "/etc/vm/relabeling"
+	vmSingleDataDir     = "/victoria-metrics-data"
+	vmBackuperCreds     = "/etc/vm/creds"
+	vmDataVolumeName    = "data"
 )
 
 func CreateVMSingleStorage(ctx context.Context, cr *victoriametricsv1beta1.VMSingle, rclient client.Client, c *config.BaseOperatorConf) (*corev1.PersistentVolumeClaim, error) {

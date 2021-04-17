@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/config"
@@ -734,6 +736,7 @@ func TestCreateOrUpdateRelabelConfigsAssets(t *testing.T) {
 								Action:       "DROP",
 								SourceLabels: []string{"pod"},
 							},
+							{},
 						},
 					},
 				},
@@ -743,9 +746,12 @@ func TestCreateOrUpdateRelabelConfigsAssets(t *testing.T) {
 				if !ok {
 					return fmt.Errorf("key: %s, not exists at map: %v", "global_relabeling.yaml", cm.BinaryData)
 				}
-				if len(data) == 0 {
-					return fmt.Errorf("data cannot be empty")
-				}
+				wantGlobal := `- source_labels:
+  - pod
+  regex: .*
+  action: DROP
+`
+				assert.Equal(t, wantGlobal, data)
 				return nil
 			},
 			predefinedObjects: []runtime.Object{},
@@ -779,9 +785,14 @@ func TestCreateOrUpdateRelabelConfigsAssets(t *testing.T) {
 				if !ok {
 					return fmt.Errorf("key: %s, not exists at map: %v", "global_relabeling.yaml", cm.BinaryData)
 				}
-				if len(data) == 0 {
-					return fmt.Errorf("data cannot be empty")
-				}
+				wantGlobal := strings.TrimSpace(`
+- source_labels:
+  - pod
+  regex: .*
+  action: DROP
+- action: DROP
+  source_labels: ["pod-1"]`)
+				assert.Equal(t, wantGlobal, data)
 				return nil
 			},
 			predefinedObjects: []runtime.Object{

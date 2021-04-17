@@ -559,7 +559,6 @@ func addAddtionalScrapeConfigOwnership(cr *victoriametricsv1beta1.VMAgent, rclie
 
 // buildVMAgentRelabelingsAssets combines all possible relabeling config configuration and adding it to the configmap.
 func buildVMAgentRelabelingsAssets(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) (*corev1.ConfigMap, error) {
-	// first fetch directly added relabeling configs.
 	cfgCM := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:       cr.Namespace,
@@ -570,8 +569,9 @@ func buildVMAgentRelabelingsAssets(ctx context.Context, cr *victoriametricsv1bet
 		},
 		Data: make(map[string]string),
 	}
+	// global section
 	if len(cr.Spec.InlineRelabelConfig) > 0 {
-		rcs := appendRelabelConfigs(cr.Spec.InlineRelabelConfig)
+		rcs := addRelabelConfigs(nil, cr.Spec.InlineRelabelConfig)
 		data, err := yaml.Marshal(rcs)
 		if err != nil {
 			return nil, fmt.Errorf("cannot serialize relabelConfig as yaml: %w", err)
@@ -592,10 +592,11 @@ func buildVMAgentRelabelingsAssets(ctx context.Context, cr *victoriametricsv1bet
 			cfgCM.Data[globalRelabelingName] += data
 		}
 	}
+	// per remoteWrite section.
 	for i := range cr.Spec.RemoteWrite {
 		rw := cr.Spec.RemoteWrite[i]
 		if len(rw.InlineUrlRelabelConfig) > 0 {
-			rcs := appendRelabelConfigs(rw.InlineUrlRelabelConfig)
+			rcs := addRelabelConfigs(nil, rw.InlineUrlRelabelConfig)
 			data, err := yaml.Marshal(rcs)
 			if err != nil {
 				return nil, fmt.Errorf("cannot serialize urlRelabelConfig as yaml: %w", err)

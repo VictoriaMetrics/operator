@@ -2,6 +2,7 @@ package v1beta1
 
 import (
 	"fmt"
+	"reflect"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -228,6 +229,13 @@ type RelabelConfig struct {
 	// Action to perform based on regex matching. Default is 'replace'
 	// +optional
 	Action string `json:"action,omitempty"`
+}
+
+func (rc *RelabelConfig) IsEmpty() bool {
+	if rc == nil {
+		return true
+	}
+	return reflect.DeepEqual(*rc, RelabelConfig{})
 }
 
 // TLSConfigValidationError is returned by TLSConfig.Validate() on semantically

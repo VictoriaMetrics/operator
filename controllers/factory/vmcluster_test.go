@@ -677,6 +677,35 @@ func TestCreateOrUpdateVMCluster(t *testing.T) {
 			},
 			want: v1beta1.ClusterStatusExpanding,
 		},
+		{
+			name: "base-vmstorage-with-maintenance",
+			args: args{
+				c: config.MustGetBaseConfig(),
+				cr: &v1beta1.VMCluster{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "default",
+						Name:      "cluster-1",
+					},
+					Spec: v1beta1.VMClusterSpec{
+						RetentionPeriod:   "2",
+						ReplicationFactor: pointer.Int32Ptr(2),
+						VMInsert: &v1beta1.VMInsert{
+							ReplicaCount: pointer.Int32Ptr(2),
+						},
+						VMStorage: &v1beta1.VMStorage{
+							MaintenanceSelectNodeIDs: []int32{1, 3},
+							MaintenanceInsertNodeIDs: []int32{0, 1, 2},
+							ReplicaCount:             pointer.Int32Ptr(10),
+						},
+						VMSelect: &v1beta1.VMSelect{
+							ReplicaCount: pointer.Int32Ptr(2),
+						},
+					},
+				},
+			},
+			predefinedObjects: []runtime.Object{},
+			want:              v1beta1.ClusterStatusExpanding,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

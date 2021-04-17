@@ -1442,6 +1442,14 @@ func performRollingUpdateOnSts(ctx context.Context, rclient client.Client, stsNa
 		return err
 	}
 	var updatedNeeded bool
+	neededPodCount := 1
+	if sts.Spec.Replicas != nil {
+		neededPodCount = int(*sts.Spec.Replicas)
+	}
+	if len(podList.Items) != neededPodCount {
+		return fmt.Errorf("unexpected count of pods for sts: %s, want: %d, got: %d, seems like configuration of stateful wasn't correct and kubernetes cannot create pod,"+
+			" check kubectl events for namespace: %s, to findout source of problem", sts.Name, neededPodCount, len(podList.Items), sts.Namespace)
+	}
 	for _, pod := range podList.Items {
 		if pod.Labels[podRevisionLabel] != stsVersion {
 			l.Info("pod version doesnt match", "pod", pod.Name, "podVersion", pod.Labels[podRevisionLabel])

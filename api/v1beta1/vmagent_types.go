@@ -215,6 +215,18 @@ type VMAgentSpec struct {
 	// check own namespace.
 	// +optional
 	StaticScrapeNamespaceSelector *metav1.LabelSelector `json:"staticScrapeNamespaceSelector,omitempty"`
+	// InlineScrapeConfig As scrape configs are appended, the user is responsible to make sure it
+	// is valid. Note that using this feature may expose the possibility to
+	// break upgrades of VMAgent. It is advised to review VMAgent release
+	// notes to ensure that no incompatible scrape configs are going to break
+	// VMAgent after the upgrade.
+	// it should be defined as single yaml file.
+	// inlineScrapeConfig: |
+	//     - job_name: "prometheus"
+	//       static_configs:
+	//       - targets: ["localhost:9090"]
+	// +optional
+	InlineScrapeConfig string `json:"inlineScrapeConfig,omitempty"`
 	// AdditionalScrapeConfigs As scrape configs are appended, the user is responsible to make sure it
 	// is valid. Note that using this feature may expose the possibility to
 	// break upgrades of VMAgent. It is advised to review VMAgent release

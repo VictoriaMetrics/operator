@@ -187,11 +187,17 @@ func generateConfig(
 		}
 	}
 	var additionalScrapeConfigsYaml []yaml.MapSlice
-	err := yaml.Unmarshal(additionalScrapeConfigs, &additionalScrapeConfigsYaml)
-	if err != nil {
+	if err := yaml.Unmarshal(additionalScrapeConfigs, &additionalScrapeConfigsYaml); err != nil {
 		return nil, fmt.Errorf("unmarshalling additional scrape configs failed: %w", err)
 	}
 
+	var inlineScrapeConfigsYaml []yaml.MapSlice
+	if len(cr.Spec.InlineScrapeConfig) > 0 {
+		if err := yaml.Unmarshal([]byte(cr.Spec.InlineScrapeConfig), &inlineScrapeConfigsYaml); err != nil {
+			return nil, fmt.Errorf("unmarshalling  inline additional scrape configs failed: %w", err)
+		}
+	}
+	additionalScrapeConfigsYaml = append(additionalScrapeConfigsYaml, inlineScrapeConfigsYaml...)
 	cfg = append(cfg, yaml.MapItem{
 		Key:   "scrape_configs",
 		Value: append(scrapeConfigs, additionalScrapeConfigsYaml...),

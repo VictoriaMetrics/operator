@@ -229,6 +229,63 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "generate vmagent with inline scrape config",
+			args: args{
+				c: config.MustGetBaseConfig(),
+				cr: &victoriametricsv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "example-agent",
+						Namespace: "default",
+					},
+					Spec: victoriametricsv1beta1.VMAgentSpec{
+						RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
+							{URL: "http://remote-write"},
+						},
+						InlineScrapeConfig: strings.TrimSpace(`
+- job_name: "prometheus"
+  static_configs:
+  - targets: ["localhost:9090"]
+`),
+					},
+				},
+			},
+		},
+		{
+			name: "generate vmagent with inline scrape config and secret scrape config",
+			args: args{
+				c: config.MustGetBaseConfig(),
+				cr: &victoriametricsv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "example-agent",
+						Namespace: "default",
+					},
+					Spec: victoriametricsv1beta1.VMAgentSpec{
+						RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
+							{URL: "http://remote-write"},
+						},
+						AdditionalScrapeConfigs: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{Name: "add-cfg"},
+							Key:                  "agent.yaml",
+						},
+						InlineScrapeConfig: strings.TrimSpace(`
+- job_name: "prometheus"
+  static_configs:
+  - targets: ["localhost:9090"]
+`),
+					},
+				},
+			},
+			predefinedObjects: []runtime.Object{
+				&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "add-cfg", Namespace: "default"},
+					Data: map[string][]byte{"agent.yaml": []byte(strings.TrimSpace(`
+- job_name: "alertmanager"
+  static_configs:
+  - targets: ["localhost:9093"]
+`))},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

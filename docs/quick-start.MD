@@ -1,7 +1,7 @@
 
 # Victoria Metrics Operator
 
-Operator serves to make running Victoria Metrics applications on top of Kubernetes as easy as possible while preserving Kubernetes-native configuration options.
+Operator serves to make running VictoriaMetrics applications on top of Kubernetes as easy as possible while preserving Kubernetes-native configuration options.
 
 ## Installing by Manifest
 
@@ -97,7 +97,7 @@ kubectl get pods -n monitoring-system
 
 ## Create related resources
 
-The Victoria Metrics Operator introduces additional resources in Kubernetes to declare the desired state of a Victoria Metrics applications and Alertmanager cluster as well as the Prometheus resources configuration. The resources it introduces are:
+The VictoriaMetrics Operator introduces additional resources in Kubernetes to declare the desired state of a Victoria Metrics applications and Alertmanager cluster as well as the Prometheus resources configuration. The resources it introduces are:
 
 * [VMSingle](#VMSingle)
 * [VMCluster](#VMCluster)
@@ -190,7 +190,7 @@ spec:
 EOF
 ```
 
-For persistent it recommends adding persistent storage to `VMStorage` and `VMSelect`:
+For persistent it recommends adding persistent storage to `vmstorage` and `vmselect`:
 
 ```yaml
 cat << EOF | kubectl apply -f -
@@ -234,7 +234,7 @@ spec:
 EOF
 ```
 
-You may also create cluster version with external VMStorage
+You may also create cluster version with external vmstorage
 
 ```yaml
 cat << EOF | kubectl apply -f -
@@ -1235,7 +1235,7 @@ static_configs: added targets: 2, removed targets: 0; total targets: 2
 
 ## Migration from prometheus-operator objects
 
-By default, the operator converts all existing prometheus-operator API objects into corresponding victoriametrics-operator objects
+By default, the operator converts all existing prometheus-operator API objects into corresponding VictoriaMetrics Operator objects
 
 You can control this behaviour by setting env variable for operator:
 
@@ -1246,7 +1246,7 @@ VM_ENABLEDPROMETHEUSCONVERTER_SERVICESCRAPE=false
 VM_ENABLEDPROMETHEUSCONVERTER_PROMETHEUSRULE=false
 VM_ENABLEDPROMETHEUSCONVERTER_PROBE=false
 ```
-Otherwise, victoriametrics-operator would try to discover prometheus-operator API and convert it.
+Otherwise, VictoriaMetrics Operator would try to discover prometheus-operator API and convert it.
 
 
  Conversion of api objects can be controlled by annotations, added to `VMObject`s, there are following annotations:

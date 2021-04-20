@@ -521,6 +521,15 @@ spec:
                     type: string
                 type: object
               type: array
+            inlineScrapeConfig:
+              description: 'InlineScrapeConfig As scrape configs are appended, the
+                user is responsible to make sure it is valid. Note that using this
+                feature may expose the possibility to break upgrades of VMAgent. It
+                is advised to review VMAgent release notes to ensure that no incompatible
+                scrape configs are going to break VMAgent after the upgrade. it should
+                be defined as single yaml file. inlineScrapeConfig: |     - job_name:
+                "prometheus"       static_configs:       - targets: ["localhost:9090"]'
+              type: string
             insertPorts:
               description: InsertPorts - additional listen ports for data ingestion.
               properties:

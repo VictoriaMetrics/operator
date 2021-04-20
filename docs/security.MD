@@ -1,6 +1,6 @@
 ## Security
 
-Victoria-Metrics operator provides several security features, such as [PodSecurityPolicies](https://kubernetes.io/docs/concepts/policy/pod-security-policy/), [PodSecurityContext](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/).
+VictoriaMetrics operator provides several security features, such as [PodSecurityPolicies](https://kubernetes.io/docs/concepts/policy/pod-security-policy/), [PodSecurityContext](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/).
 
 
 ### PodSecurityPolicy.

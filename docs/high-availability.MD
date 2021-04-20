@@ -174,7 +174,7 @@ spec:
 EOF
 ```
  
-Then wait for the cluster become ready
+Then wait for the cluster becomes ready
 
 ```bash
 kubectl get vmclusters -w

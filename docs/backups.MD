@@ -1,10 +1,10 @@
 ## VMBackuper
 
-#### vmbackuper is proprietary software. 
+#### vmbackupmanager is proprietary software. 
 
  Before using it, you must accept EULA https://victoriametrics.com/assets/VM_EULA.pdf.
 
- `VMSingle` and `VMCluster` has built-in backup configuration, it uses `vmbackuper` - proprietary tool for backups.
+ `VMSingle` and `VMCluster` has built-in backup configuration, it uses `vmbackupmanager` - proprietary tool for backups.
  It supports incremental backups (hours, daily, etc) with popular object storages (aws s3, google cloud storage).
  
   You can enable it with the simple configuration, define secret

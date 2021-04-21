@@ -179,6 +179,7 @@ type VMAgentSpec struct {
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Key at Configmap with relabelConfig name",xDescriptors="urn:alm:descriptor:io.kubernetes:ConfigMapKeySelector"
 	RelabelConfig *v1.ConfigMapKeySelector `json:"relabelConfig,omitempty"`
 	// InlineRelabelConfig - defines GlobalRelabelConfig for vmagent, can be defined directly at CRD.
+	// +optional
 	InlineRelabelConfig []RelabelConfig `json:"inlineRelabelConfig,omitempty"`
 	// ServiceScrapeSelector defines ServiceScrapes to be selected for target discovery.
 	// +optional

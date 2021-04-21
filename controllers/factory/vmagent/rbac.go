@@ -130,6 +130,7 @@ func buildVMAgentClusterRole(cr *v1beta12.VMAgent) *v12.ClusterRole {
 					"pods",
 					"endpointslices",
 					"configmaps",
+					"namespaces",
 				},
 			},
 			{
@@ -144,8 +145,17 @@ func buildVMAgentClusterRole(cr *v1beta12.VMAgent) *v12.ClusterRole {
 				},
 			},
 			{
-				NonResourceURLs: []string{"/metrics"},
+				NonResourceURLs: []string{"/metrics", "/metrics/resources"},
 				Verbs:           []string{"get", "list", "watch"},
+			},
+			{
+				APIGroups: []string{"route.openshift.io", "image.openshift.io"},
+				Verbs: []string{
+					"get",
+				},
+				Resources: []string{
+					"routers/metrics", "registry/metrics",
+				},
 			},
 		},
 	}

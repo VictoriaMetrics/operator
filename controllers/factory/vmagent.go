@@ -526,6 +526,7 @@ func addAdditionalObjectOwnership(cr *victoriametricsv1beta1.VMAgent, rclient cl
 		UID:                cr.UID,
 	})
 	object.SetOwnerReferences(existOwners)
+	victoriametricsv1beta1.MergeFinalizers(object, victoriametricsv1beta1.FinalizerName)
 
 	return rclient.Update(context.Background(), object)
 }

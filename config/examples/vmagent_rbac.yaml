@@ -22,10 +22,19 @@ rules:
     verbs: ["get", "list", "watch"]
   - apiGroups: [""]
     resources:
+      - namespaces
       - configmaps
     verbs: ["get"]
-  - nonResourceURLs: ["/metrics"]
+  - nonResourceURLs: ["/metrics","/metrics/resources"]
     verbs: ["get"]
+  - apiGroups:
+      - route.openshift.io
+      - image.openshift.io
+    resources:
+      - routers/metrics
+      - registry/metrics
+    verbs:
+      - get
 ---
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRoleBinding

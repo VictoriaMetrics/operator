@@ -655,6 +655,46 @@ func TestBuildRemoteWrites(t *testing.T) {
 			},
 			want: []string{"-remoteWrite.url=localhost:8429", "-remoteWrite.tlsInsecureSkipVerify=true", "-remoteWrite.label=label1=value1,label2=value2"},
 		},
+		{
+			name: "test inline relabeling",
+			args: args{
+				cr: &victoriametricsv1beta1.VMAgent{
+					Spec: victoriametricsv1beta1.VMAgentSpec{
+						RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
+							{
+								URL: "localhost:8429",
+								TLSConfig: &victoriametricsv1beta1.TLSConfig{
+									InsecureSkipVerify: true,
+								},
+								InlineUrlRelabelConfig: []victoriametricsv1beta1.RelabelConfig{
+									{TargetLabel: "rw-1", Replacement: "present"},
+								},
+							},
+							{
+								URL:    "remote-1:8429",
+								Labels: map[string]string{"label1": "value1", "label2": "value2"},
+								TLSConfig: &victoriametricsv1beta1.TLSConfig{
+									InsecureSkipVerify: true,
+								},
+							},
+							{
+								URL: "remote-1:8429",
+								TLSConfig: &victoriametricsv1beta1.TLSConfig{
+									InsecureSkipVerify: true,
+								},
+								InlineUrlRelabelConfig: []victoriametricsv1beta1.RelabelConfig{
+									{TargetLabel: "rw-2", Replacement: "present"},
+								},
+							},
+						},
+						InlineRelabelConfig: []victoriametricsv1beta1.RelabelConfig{
+							{TargetLabel: "dst", Replacement: "ok"},
+						},
+					},
+				},
+			},
+			want: []string{"-remoteWrite.label=label1=value1,label2=value2", "-remoteWrite.url=localhost:8429,remote-1:8429,remote-1:8429", "-remoteWrite.tlsInsecureSkipVerify=true,true,true", "-remoteWrite.urlRelabelConfig=/etc/vm/relabeling/url_rebaling-0.yaml,,/etc/vm/relabeling/url_rebaling-2.yaml"},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

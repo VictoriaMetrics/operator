@@ -362,7 +362,7 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 
 	configReloadArgs := buildConfigReloaderArgs(cr)
 
-	if cr.Spec.RelabelConfig != nil {
+	if cr.Spec.RelabelConfig != nil || len(cr.Spec.InlineRelabelConfig) > 0 {
 		args = append(args, "-remoteWrite.relabelConfig="+path.Join(RelabelingConfigDir, globalRelabelingName))
 	}
 
@@ -956,7 +956,7 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, rwsBasicAuth map[stri
 
 		value = ""
 
-		if rws.UrlRelabelConfig != nil {
+		if rws.UrlRelabelConfig != nil || len(rws.InlineUrlRelabelConfig) > 0 {
 			urlRelabelConfig.isNotNull = true
 			value = path.Join(RelabelingConfigDir, fmt.Sprintf(urlRelabelingName, i))
 		}

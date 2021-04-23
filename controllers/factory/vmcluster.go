@@ -338,7 +338,7 @@ func CreateOrUpdateVMInsertService(ctx context.Context, cr *v1beta1.VMCluster, r
 	buildAdditionalServicePorts(cr.Spec.VMInsert.InsertPorts, additionalService)
 
 	newService := defaultVMInsertService(cr)
-	buildAdditionalServicePorts(cr.Spec.VMInsert.InsertPorts, additionalService)
+	buildAdditionalServicePorts(cr.Spec.VMInsert.InsertPorts, newService)
 
 	if cr.Spec.VMInsert.ServiceSpec != nil {
 		if additionalService.Name == newService.Name {

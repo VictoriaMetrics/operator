@@ -1,4 +1,4 @@
-## VMBackuper
+## vmbackupmanager
 
 #### vmbackupmanager is proprietary software. 
 

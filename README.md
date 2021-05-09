@@ -47,7 +47,11 @@ VictoriaMetrics provides [helm charts](https://github.com/VictoriaMetrics/helm-c
 - security [doc](/docs/security.MD)
 
 
+## Configuration
 
+ Operator configured by env variables, list of it can be found at [link](/vars.MD)
+
+ It defines default configuration options, like images for components, timeouts, features.
 
 
 ## Kubernetes compatibility versions

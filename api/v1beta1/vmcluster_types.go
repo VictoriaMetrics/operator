@@ -604,6 +604,12 @@ type VMBackup struct {
 	ExtraArgs map[string]string `json:"extraArgs,omitempty"`
 	// +optional
 	ExtraEnvs []v1.EnvVar `json:"extraEnvs,omitempty"`
+
+	// VolumeMounts allows configuration of additional VolumeMounts on the output Deployment definition.
+	// VolumeMounts specified will be appended to other VolumeMounts in the vmbackupmanager container,
+	// that are generated as a result of StorageSpec objects.
+	// +optional
+	VolumeMounts []v1.VolumeMount `json:"volumeMounts,omitempty"`
 }
 
 func (s VMStorage) BuildPodFQDNName(baseName string, podIndex int32, namespace, portName, domain string) string {

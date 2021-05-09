@@ -3,11 +3,27 @@
 
 `VMAgent` supports global relabeling for all metrics and per remoteWrite target relabel config. 
 
- It also has some extra options, you can check it [docs](https://github.com/VictoriaMetrics/VictoriaMetrics/blob/master/app/vmagent/README.md#relabeling)
+> Note in some cases, you don't need relabeling,
+> key=value label pairs can be added to the all scrapped metrics with `spec.externalLabels` for `VMAgent`.
+> 
+```yaml
+# simple label add config
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAgent
+metadata:
+ name: stack
+spec:
+ externalLabels:
+  clusterid: some_cluster
+``` 
+
+
 
  It supports relabeling with custom configMap or inline defined at CRD
+ 
+### Configmap example
 
-1) Configmap example, have to create `Confimap` with relabeling configuration
+ Quick tour how to to create `Confimap` with relabeling configuration
  
  ```yaml
 cat << EOF | kubectl apply -f -
@@ -65,7 +81,7 @@ EOF
 ```
 
 
-2) Inline example:
+### Inline example:
 
 ```yaml
 cat <<EOF | kubectl apply -f -
@@ -103,7 +119,11 @@ EOF
 ```
 
 
-3) combined example, first will be added relabeling configs from  `inlineRelabelConfig`, then `relabelConfig` from configmap.
+###  Combined example
+
+ Its also possible to use both features in combination.
+
+ First will be added relabeling configs from  `inlineRelabelConfig`, then `relabelConfig` from configmap.
 
  ```yaml
 cat << EOF | kubectl apply -f -
@@ -209,3 +229,8 @@ metadata:
     name: example-vmagent
     uid: 7e9fb838-65da-4443-a43b-c00cd6c4db5b
 ```
+
+
+### Additional information
+
+`VMAgent` also has some extra options for relabeling actions, you can check it [docs](https://github.com/VictoriaMetrics/VictoriaMetrics/blob/master/app/vmagent/README.md#relabeling)

@@ -49,6 +49,10 @@ type VMSingleSpec struct {
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Number of pods",xDescriptors="urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom"
 	ReplicaCount *int32 `json:"replicaCount,omitempty"`
 
+	// StorageDataPath disables spec.storage option and overrides arg for victoria-metrics binary --storageDataPath,
+	// its users responsibility to mount proper device into given path.
+	// + optional
+	StorageDataPath string `json:"storageDataPath,omitempty"`
 	// Storage is the definition of how storage will be used by the VMSingle
 	// by default it`s empty dir
 	// +optional

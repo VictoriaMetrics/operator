@@ -74,10 +74,12 @@ spec:
                 -> ConfigRaw, provided by user -> ConfigSecret.
               type: string
             configSecret:
-              description: ConfigSecret is the name of a Kubernetes Secret in the
+              description: 'ConfigSecret is the name of a Kubernetes Secret in the
                 same namespace as the VMAlertmanager object, which contains configuration
-                for this VMAlertmanager instance. Defaults to 'vmalertmanager-<alertmanager-name>'
-                The secret is mounted into /etc/alertmanager/config.
+                for this VMAlertmanager, configuration must be inside secret key:
+                alertmanager.yaml. It must be created by user. instance. Defaults
+                to ''vmalertmanager-<alertmanager-name>'' The secret is mounted into
+                /etc/alertmanager/config.'
               type: string
             containers:
               description: Containers allows injecting additional containers or patching

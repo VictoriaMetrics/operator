@@ -26,6 +26,14 @@ func OnVMAlertManagerDelete(ctx context.Context, rclient client.Client, crd *vic
 		}
 	}
 
+	// check config secret finalizer.
+	secretName := crd.Spec.ConfigSecret
+	if secretName == "" {
+		secretName = crd.PrefixedName()
+	}
+	if err := removeFinalizeObjByName(ctx, rclient, &v1.Secret{}, secretName, crd.Namespace); err != nil {
+		return err
+	}
 	// check PDB
 	if err := removeFinalizeObjByName(ctx, rclient, &policyv1beta1.PodDisruptionBudget{}, crd.PrefixedName(), crd.Namespace); err != nil {
 		return err

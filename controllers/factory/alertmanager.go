@@ -566,10 +566,9 @@ func createDefaultAMConfig(ctx context.Context, cr *victoriametricsv1beta1.VMAle
 	cr = cr.DeepCopy()
 	// expect configuration secret to be pre created by user.
 	if cr.Spec.ConfigRawYaml == "" && cr.Spec.ConfigSecret != "" {
-		// its users responsibility to create secret.
 		return nil
 	}
-	// case for raw config is defined by user.
+	// case for raw config is defined by user without secretName.
 	if cr.Spec.ConfigSecret == "" {
 		cr.Spec.ConfigSecret = cr.PrefixedName()
 	}
@@ -583,12 +582,12 @@ func createDefaultAMConfig(ctx context.Context, cr *victoriametricsv1beta1.VMAle
 			Labels:          cr.Labels(),
 			Annotations:     cr.Annotations(),
 			OwnerReferences: cr.AsOwner(),
+			Finalizers:      []string{victoriametricsv1beta1.FinalizerName},
 		},
 		StringData: map[string]string{"alertmanager.yaml": cr.Spec.ConfigRawYaml},
 	}
 	var existAMSecretConfig v1.Secret
 	err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.Spec.ConfigSecret}, &existAMSecretConfig)
-	// fast path
 	if err != nil {
 		if errors.IsNotFound(err) {
 			log.Info("creating default alertmanager config with secret", "secret_name", defaultAMSecretConfig.Name)
@@ -597,6 +596,8 @@ func createDefaultAMConfig(ctx context.Context, cr *victoriametricsv1beta1.VMAle
 		return err
 	}
 	defaultAMSecretConfig.Annotations = labels.Merge(defaultAMSecretConfig.Annotations, existAMSecretConfig.Annotations)
+
+	defaultAMSecretConfig.Finalizers = victoriametricsv1beta1.MergeFinalizers(&existAMSecretConfig, victoriametricsv1beta1.FinalizerName)
 	return rclient.Update(ctx, defaultAMSecretConfig)
 }
 

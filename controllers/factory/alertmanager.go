@@ -564,40 +564,41 @@ func MakeVolumeClaimTemplate(e victoriametricsv1beta1.EmbeddedPersistentVolumeCl
 // if not create with predefined or user value.
 func createDefaultAMConfig(ctx context.Context, cr *victoriametricsv1beta1.VMAlertmanager, rclient client.Client) error {
 	cr = cr.DeepCopy()
+	// expect configuration secret to be pre created by user.
+	if cr.Spec.ConfigRawYaml == "" && cr.Spec.ConfigSecret != "" {
+		return nil
+	}
+	// case for raw config is defined by user without secretName.
 	if cr.Spec.ConfigSecret == "" {
 		cr.Spec.ConfigSecret = cr.PrefixedName()
 	}
-	var mustUpdateConfig bool
 	if cr.Spec.ConfigRawYaml == "" {
 		cr.Spec.ConfigRawYaml = defaultAMConfig
-	} else {
-		mustUpdateConfig = true
 	}
-	amSecretConfig := &v1.Secret{
+	defaultAMSecretConfig := &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.Spec.ConfigSecret,
 			Namespace:       cr.Namespace,
 			Labels:          cr.Labels(),
 			Annotations:     cr.Annotations(),
 			OwnerReferences: cr.AsOwner(),
+			Finalizers:      []string{victoriametricsv1beta1.FinalizerName},
 		},
 		StringData: map[string]string{"alertmanager.yaml": cr.Spec.ConfigRawYaml},
 	}
 	var existAMSecretConfig v1.Secret
-
 	err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.Spec.ConfigSecret}, &existAMSecretConfig)
-	// fast path
-	if err == nil {
-		if mustUpdateConfig {
-			return rclient.Update(ctx, amSecretConfig)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			log.Info("creating default alertmanager config with secret", "secret_name", defaultAMSecretConfig.Name)
+			return rclient.Create(ctx, defaultAMSecretConfig)
 		}
-		return nil
-	}
-	if !errors.IsNotFound(err) {
 		return err
 	}
-	log.Info("creating default alertmanager config with secret: %s", "secret_name", amSecretConfig.ObjectMeta.Name)
-	return rclient.Create(ctx, amSecretConfig)
+	defaultAMSecretConfig.Annotations = labels.Merge(defaultAMSecretConfig.Annotations, existAMSecretConfig.Annotations)
+
+	defaultAMSecretConfig.Finalizers = victoriametricsv1beta1.MergeFinalizers(&existAMSecretConfig, victoriametricsv1beta1.FinalizerName)
+	return rclient.Update(ctx, defaultAMSecretConfig)
 }
 
 func subPathForStorage(s *victoriametricsv1beta1.StorageSpec) string {

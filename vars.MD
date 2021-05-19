@@ -1,5 +1,5 @@
 # Auto Generated vars for package config 
-## updated at Fri Apr  9 12:28:59 UTC 2021 
+## updated at Sun May  9 14:56:53 UTC 2021 
 
 
 | varible name | variable default value | variable required | variable description |
@@ -15,10 +15,10 @@
 | VM_VMALERTDEFAULT_RESOURCE_REQUEST_CPU | 50m | false | - |
 | VM_VMALERTDEFAULT_CONFIGRELOADERCPU | 100m | false | - |
 | VM_VMALERTDEFAULT_CONFIGRELOADERMEMORY | 25Mi | false | - |
-| VM_VMALERTDEFAULT_CONFIGRELOADIMAGE | jimmidyson/configmap-reload:v0 | false | - |
+| VM_VMALERTDEFAULT_CONFIGRELOADIMAGE | jimmidyson/configmap-reload:v0.3.0 | false | - |
 | VM_VMAGENTDEFAULT_IMAGE | victoriametrics/vmagent | false | - |
 | VM_VMAGENTDEFAULT_VERSION | v1.58.0 | false | - |
-| VM_VMAGENTDEFAULT_CONFIGRELOADIMAGE | quay.io/coreos/prometheus-conf | false | - |
+| VM_VMAGENTDEFAULT_CONFIGRELOADIMAGE | quay.io/coreos/prometheus-config-reloader:v0.42.0 | false | - |
 | VM_VMAGENTDEFAULT_PORT | 8429 | false | - |
 | VM_VMAGENTDEFAULT_USEDEFAULTRESOURCES | true | false | - |
 | VM_VMAGENTDEFAULT_RESOURCE_LIMIT_MEM | 500Mi | false | - |
@@ -27,7 +27,7 @@
 | VM_VMAGENTDEFAULT_RESOURCE_REQUEST_CPU | 50m | false | - |
 | VM_VMAGENTDEFAULT_CONFIGRELOADERCPU | 100m | false | - |
 | VM_VMAGENTDEFAULT_CONFIGRELOADERMEMORY | 25Mi | false | - |
-| VM_VMSINGLEDEFAULT_IMAGE | victoriametrics/victoria-metri | false | - |
+| VM_VMSINGLEDEFAULT_IMAGE | victoriametrics/victoria-metrics | false | - |
 | VM_VMSINGLEDEFAULT_VERSION | v1.58.0 | false | - |
 | VM_VMSINGLEDEFAULT_PORT | 8429 | false | - |
 | VM_VMSINGLEDEFAULT_USEDEFAULTRESOURCES | true | false | - |
@@ -61,10 +61,10 @@
 | VM_VMCLUSTERDEFAULT_VMINSERTDEFAULT_RESOURCE_LIMIT_CPU | 500m | false | - |
 | VM_VMCLUSTERDEFAULT_VMINSERTDEFAULT_RESOURCE_REQUEST_MEM | 200Mi | false | - |
 | VM_VMCLUSTERDEFAULT_VMINSERTDEFAULT_RESOURCE_REQUEST_CPU | 150m | false | - |
-| VM_VMALERTMANAGER_CONFIGRELOADERIMAGE | jimmidyson/configmap-reload:v0 | false | - |
+| VM_VMALERTMANAGER_CONFIGRELOADERIMAGE | jimmidyson/configmap-reload:v0.3.0 | false | - |
 | VM_VMALERTMANAGER_CONFIGRELOADERCPU | 100m | false | - |
 | VM_VMALERTMANAGER_CONFIGRELOADERMEMORY | 25Mi | false | - |
-| VM_VMALERTMANAGER_ALERTMANAGERDEFAULTBASEIMAGE | quay.io/prometheus/alertmanage | false | - |
+| VM_VMALERTMANAGER_ALERTMANAGERDEFAULTBASEIMAGE | quay.io/prometheus/alertmanager | false | - |
 | VM_VMALERTMANAGER_ALERTMANAGERVERSION | v0.20.0 | false | - |
 | VM_VMALERTMANAGER_LOCALHOST | 127.0.0.1 | false | - |
 | VM_VMALERTMANAGER_USEDEFAULTRESOURCES | true | false | - |
@@ -73,7 +73,7 @@
 | VM_VMALERTMANAGER_RESOURCE_REQUEST_MEM | 56Mi | false | - |
 | VM_VMALERTMANAGER_RESOURCE_REQUEST_CPU | 30m | false | - |
 | VM_DISABLESELFSERVICESCRAPECREATION | false | false | - |
-| VM_VMBACKUP_IMAGE | victoriametrics/vmbackupmanage | false | - |
+| VM_VMBACKUP_IMAGE | victoriametrics/vmbackupmanager | false | - |
 | VM_VMBACKUP_VERSION | v1.58.0-enterprise | false | - |
 | VM_VMBACKUP_PORT | 8300 | false | - |
 | VM_VMBACKUP_USEDEFAULTRESOURCES | true | false | - |

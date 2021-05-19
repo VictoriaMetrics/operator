@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/go-test/deep"
+	"k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/VictoriaMetrics/operator/internal/config"
 	appsv1 "k8s.io/api/apps/v1"
@@ -27,10 +28,11 @@ func Test_createDefaultAMConfig(t *testing.T) {
 		cr  *victoriametricsv1beta1.VMAlertmanager
 	}
 	tests := []struct {
-		name              string
-		args              args
-		wantErr           bool
-		predefinedObjects []runtime.Object
+		name                string
+		args                args
+		wantErr             bool
+		predefinedObjects   []runtime.Object
+		secretMustBeMissing bool
 	}{
 		{
 			name: "create alertmanager config",
@@ -45,6 +47,38 @@ func Test_createDefaultAMConfig(t *testing.T) {
 			},
 			predefinedObjects: []runtime.Object{},
 		},
+		{
+			name: "with exist config",
+			args: args{
+				ctx: context.TODO(),
+				cr: &victoriametricsv1beta1.VMAlertmanager{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "test-am",
+					},
+					Spec: victoriametricsv1beta1.VMAlertmanagerSpec{
+						ConfigSecret: "some-secret-name",
+					},
+				},
+			},
+			secretMustBeMissing: true,
+			predefinedObjects:   []runtime.Object{},
+		},
+		{
+			name: "with raw config",
+			args: args{
+				ctx: context.TODO(),
+				cr: &victoriametricsv1beta1.VMAlertmanager{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "test-am",
+					},
+					Spec: victoriametricsv1beta1.VMAlertmanagerSpec{
+						ConfigSecret:  "some-name",
+						ConfigRawYaml: "some-bad-yaml",
+					},
+				},
+			},
+			predefinedObjects: []runtime.Object{},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -53,8 +87,15 @@ func Test_createDefaultAMConfig(t *testing.T) {
 				t.Fatalf("createDefaultAMConfig() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			var createdSecret v1.Secret
-			err := fclient.Get(tt.args.ctx, types.NamespacedName{Namespace: tt.args.cr.Namespace, Name: tt.args.cr.PrefixedName()}, &createdSecret)
+			secretName := tt.args.cr.Spec.ConfigSecret
+			if secretName == "" {
+				secretName = tt.args.cr.PrefixedName()
+			}
+			err := fclient.Get(tt.args.ctx, types.NamespacedName{Namespace: tt.args.cr.Namespace, Name: secretName}, &createdSecret)
 			if err != nil {
+				if errors.IsNotFound(err) && tt.secretMustBeMissing {
+					return
+				}
 				t.Fatalf("config for alertmanager not exist, err: %v", err)
 			}
 		})

@@ -68,7 +68,9 @@ type VMAlertmanagerSpec struct {
 	// +optional
 	ConfigRawYaml string `json:"configRawYaml,omitempty"`
 	// ConfigSecret is the name of a Kubernetes Secret in the same namespace as the
-	// VMAlertmanager object, which contains configuration for this VMAlertmanager
+	// VMAlertmanager object, which contains configuration for this VMAlertmanager,
+	// configuration must be inside secret key: alertmanager.yaml.
+	// It must be created by user.
 	// instance. Defaults to 'vmalertmanager-<alertmanager-name>'
 	// The secret is mounted into /etc/alertmanager/config.
 	// +optional

@@ -170,9 +170,13 @@ func newDeployForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOpe
 
 func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOperatorConf) (*corev1.PodTemplateSpec, error) {
 	args := []string{
-		fmt.Sprintf("-storageDataPath=%s", vmSingleDataDir),
 		fmt.Sprintf("-retentionPeriod=%s", cr.Spec.RetentionPeriod),
 	}
+	storagePath := vmSingleDataDir
+	if cr.Spec.StorageDataPath != "" {
+		storagePath = cr.Spec.StorageDataPath
+	}
+	args = append(args, fmt.Sprintf("-storageDataPath=%s", storagePath))
 	if cr.Spec.LogLevel != "" {
 		args = append(args, fmt.Sprintf("-loggerLevel=%s", cr.Spec.LogLevel))
 	}
@@ -199,6 +203,7 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 	volumes := []corev1.Volume{}
 
 	storageSpec := cr.Spec.Storage
+
 	if storageSpec == nil {
 		volumes = append(volumes, corev1.Volume{
 			Name: vmDataVolumeName,
@@ -288,7 +293,7 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 	operatorContainers := []corev1.Container{vmsingleContainer}
 
 	if cr.Spec.VMBackup != nil {
-		vmBackupManagerContainer, err := makeSpecForVMBackuper(cr.Spec.VMBackup, c, cr.Spec.Port, vmDataVolumeName, cr.Spec.ExtraArgs)
+		vmBackupManagerContainer, err := makeSpecForVMBackuper(cr.Spec.VMBackup, c, cr.Spec.Port, storagePath, vmDataVolumeName, cr.Spec.ExtraArgs)
 		if err != nil {
 			return nil, err
 		}
@@ -363,7 +368,7 @@ func makeSpecForVMBackuper(
 	cr *victoriametricsv1beta1.VMBackup,
 	c *config.BaseOperatorConf,
 	port string,
-	dataVolumeName string,
+	storagePath, dataVolumeName string,
 	extraArgs map[string]string,
 ) (*corev1.Container, error) {
 	if !cr.AcceptEULA {
@@ -384,7 +389,7 @@ func makeSpecForVMBackuper(
 	}
 
 	args := []string{
-		fmt.Sprintf("-storageDataPath=%s", vmSingleDataDir),
+		fmt.Sprintf("-storageDataPath=%s", storagePath),
 		fmt.Sprintf("-dst=%s", cr.Destination),
 		//http://localhost:port/snaphsot/create
 		fmt.Sprintf("-snapshot.createURL=%s", cr.SnapshotCreatePathWithFlags(port, extraArgs)),
@@ -430,6 +435,8 @@ func makeSpecForVMBackuper(
 			ReadOnly:  true,
 		},
 	}
+	mounts = append(mounts, cr.VolumeMounts...)
+
 	if cr.CredentialsSecret != nil {
 		mounts = append(mounts, corev1.VolumeMount{
 			Name:      k8stools.SanitizeVolumeName("secret-" + cr.CredentialsSecret.Name),

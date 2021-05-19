@@ -77,8 +77,8 @@ func (r *VMSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return ctrl.Result{}, err
 	}
 
-	if instance.Spec.Storage != nil {
-		reqLogger.Info("storage specified reconcile it")
+	if instance.Spec.Storage != nil && instance.Spec.StorageDataPath != "" {
+		reqLogger.Info("reconciling storage for VMSingle")
 		_, err = factory.CreateVMSingleStorage(ctx, instance, r, r.BaseConf)
 		if err != nil {
 			reqLogger.Error(err, "cannot create pvc")
@@ -87,7 +87,7 @@ func (r *VMSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 	_, err = factory.CreateOrUpdateVMSingle(ctx, instance, r, r.BaseConf)
 	if err != nil {
-		reqLogger.Error(err, "cannot create or update vmsingle deployment")
+		reqLogger.Error(err, "cannot create or update VMSingle deployment")
 		return ctrl.Result{}, err
 	}
 

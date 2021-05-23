@@ -229,6 +229,10 @@ spec:
                   description: HostNetwork controls whether the pod may use the node
                     network namespace
                   type: boolean
+                hpa:
+                  description: HPA defines kubernetes PodAutoScaling configuration
+                    version 2.
+                  type: object
                 image:
                   description: Image - docker image settings for VMInsert
                   properties:
@@ -1406,6 +1410,10 @@ spec:
                   description: HostNetwork controls whether the pod may use the node
                     network namespace
                   type: boolean
+                hpa:
+                  description: EmbeddedHPA embeds HorizontalPodAutoScaler spec v2.
+                    https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/horizontal-pod-autoscaler-v2beta2/
+                  type: object
                 image:
                   description: Image - docker image settings for VMSelect
                   properties:

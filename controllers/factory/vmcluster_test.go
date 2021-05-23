@@ -596,6 +596,10 @@ func TestCreateOrUpdateVMCluster(t *testing.T) {
 								OpenTSDBHTTPPort: "3311",
 								InfluxPort:       "5511",
 							},
+							HPA: &v1beta1.EmbeddedHPA{
+								MinReplicas: pointer.Int32Ptr(0),
+								MaxReplicas: 3,
+							},
 						},
 					},
 				},
@@ -616,6 +620,10 @@ func TestCreateOrUpdateVMCluster(t *testing.T) {
 						ReplicationFactor: pointer.Int32Ptr(2),
 						VMSelect: &v1beta1.VMSelect{
 							ReplicaCount: pointer.Int32Ptr(2),
+							HPA: &v1beta1.EmbeddedHPA{
+								MinReplicas: pointer.Int32Ptr(1),
+								MaxReplicas: 3,
+							},
 						}},
 				},
 			},

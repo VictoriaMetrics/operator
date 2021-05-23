@@ -17,6 +17,7 @@ This Document documents the types introduced by the VictoriaMetrics to be consum
 * [VMAgentSpec](#vmagentspec)
 * [VMAgentStatus](#vmagentstatus)
 * [BasicAuth](#basicauth)
+* [EmbeddedHPA](#embeddedhpa)
 * [EmbeddedObjectMetadata](#embeddedobjectmetadata)
 * [EmbeddedPersistentVolumeClaim](#embeddedpersistentvolumeclaim)
 * [EmbeddedPodDisruptionBudgetSpec](#embeddedpoddisruptionbudgetspec)
@@ -302,6 +303,19 @@ BasicAuth allow an endpoint to authenticate over basic authentication More info:
 | ----- | ----------- | ------ | -------- |
 | username | The secret in the service scrape namespace that contains the username for authentication. | [v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
 | password | The secret in the service scrape namespace that contains the password for authentication. | [v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
+
+[Back to TOC](#table-of-contents)
+
+## EmbeddedHPA
+
+EmbeddedHPA embeds HorizontalPodAutoScaler spec v2. https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/horizontal-pod-autoscaler-v2beta2/
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| minReplicas |  | *int32 | false |
+| maxReplicas |  | int32 | false |
+| metrics |  | []v2beta2.MetricSpec | false |
+| behaviour |  | *v2beta2.HorizontalPodAutoscalerBehavior | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -1042,6 +1056,7 @@ VMClusterStatus defines the observed state of VMCluster
 | updateStrategy | UpdateStrategy - overrides default update strategy. | *appsv1.DeploymentStrategyType | false |
 | rollingUpdate | RollingUpdate - overrides deployment update params. | *appsv1.RollingUpdateDeployment | false |
 | podDisruptionBudget | PodDisruptionBudget created by operator | *[EmbeddedPodDisruptionBudgetSpec](#embeddedpoddisruptionbudgetspec) | false |
+| hpa | HPA defines kubernetes PodAutoScaling configuration version 2. | *[EmbeddedHPA](#embeddedhpa) | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -1081,6 +1096,7 @@ VMClusterStatus defines the observed state of VMCluster
 | runtimeClassName | RuntimeClassName - defines runtime class for kubernetes pod. https://kubernetes.io/docs/concepts/containers/runtime-class/ | *string | false |
 | serviceSpec | ServiceSpec that will be added to vmselect service spec | *[ServiceSpec](#servicespec) | false |
 | podDisruptionBudget | PodDisruptionBudget created by operator | *[EmbeddedPodDisruptionBudgetSpec](#embeddedpoddisruptionbudgetspec) | false |
+| hpa |  | *[EmbeddedHPA](#embeddedhpa) | false |
 
 [Back to TOC](#table-of-contents)
 

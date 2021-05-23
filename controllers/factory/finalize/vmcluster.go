@@ -5,6 +5,7 @@ import (
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	appsv1 "k8s.io/api/apps/v1"
+	"k8s.io/api/autoscaling/v2beta2"
 	v1 "k8s.io/api/core/v1"
 
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
@@ -27,6 +28,9 @@ func OnVMClusterDelete(ctx context.Context, rclient client.Client, crd *victoria
 				return err
 			}
 		}
+		if err := removeFinalizeObjByName(ctx, rclient, &v2beta2.HorizontalPodAutoscaler{}, obj.GetNameWithPrefix(crd.Name), crd.Namespace); err != nil {
+			return err
+		}
 
 		// check PDB
 		if err := removeFinalizeObjByName(ctx, rclient, &policyv1beta1.PodDisruptionBudget{}, obj.GetNameWithPrefix(crd.Name), crd.Namespace); err != nil {
@@ -46,6 +50,10 @@ func OnVMClusterDelete(ctx context.Context, rclient client.Client, crd *victoria
 
 		// check service
 		if err := removeFinalizeObjByName(ctx, rclient, &v1.Service{}, obj.GetNameWithPrefix(crd.Name), crd.Namespace); err != nil {
+			return err
+		}
+
+		if err := removeFinalizeObjByName(ctx, rclient, &v2beta2.HorizontalPodAutoscaler{}, obj.GetNameWithPrefix(crd.Name), crd.Namespace); err != nil {
 			return err
 		}
 

@@ -243,6 +243,7 @@ type VMSelect struct {
 	// +optional
 	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
 	*EmbeddedProbes     `json:",inline"`
+	HPA                 *EmbeddedHPA `json:"hpa,omitempty"`
 }
 
 func (s VMSelect) GetNameWithPrefix(clusterName string) string {
@@ -399,6 +400,8 @@ type VMInsert struct {
 	// +optional
 	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
 	*EmbeddedProbes     `json:",inline"`
+	// HPA defines kubernetes PodAutoScaling configuration version 2.
+	HPA *EmbeddedHPA `json:"hpa,omitempty"`
 }
 
 func (i VMInsert) GetNameWithPrefix(clusterName string) string {

@@ -3,6 +3,7 @@ package v1beta1
 import (
 	"path"
 
+	"k8s.io/api/autoscaling/v2beta2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	v1 "k8s.io/api/core/v1"
@@ -197,4 +198,13 @@ type EmbeddedProbes struct {
 	// StartupProbe that will be added to CRD pod
 	// +optional
 	StartupProbe *v1.Probe `json:"startupProbe,omitempty"`
+}
+
+// EmbeddedHPA embeds HorizontalPodAutoScaler spec v2.
+// https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/horizontal-pod-autoscaler-v2beta2/
+type EmbeddedHPA struct {
+	MinReplicas *int32                                   `json:"minReplicas,omitempty"`
+	MaxReplicas int32                                    `json:"maxReplicas,omitempty"`
+	Metrics     []v2beta2.MetricSpec                     `json:"metrics,omitempty"`
+	Behaviour   *v2beta2.HorizontalPodAutoscalerBehavior `json:"behaviour,omitempty"`
 }

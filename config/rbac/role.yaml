@@ -399,3 +399,9 @@ rules:
     - registry/metrics
   verbs:
     - get
+- apiGroups:
+    - autoscaling
+  resources:
+    - horizontalpodautoscalers
+  verbs:
+    - '*'

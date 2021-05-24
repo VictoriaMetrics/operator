@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
+	"k8s.io/api/autoscaling/v2beta2"
 
 	"github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
@@ -142,6 +143,10 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient
 			reason = "cannot expand sts pvc"
 			return status, err
 		}
+		if err := createOrUpdateVMSelectHPA(ctx, rclient, cr); err != nil {
+			reason = "cannot create HPA"
+			return status, err
+		}
 		// create vmselect service
 		selectSvc, err := CreateOrUpdateVMSelectService(ctx, cr, rclient, c)
 		if err != nil {
@@ -193,6 +198,10 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient
 			reason = "failed to create vmInsert service"
 			return status, err
 		}
+		if err := createOrUpdateVMInsertHPA(ctx, rclient, cr); err != nil {
+			reason = "cannot create HPA"
+			return status, err
+		}
 		if !c.DisableSelfServiceScrapeCreation {
 			err := CreateVMServiceScrapeFromService(ctx, rclient, insertSvc, cr.MetricPathInsert())
 			if err != nil {
@@ -221,25 +230,40 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient
 func createOrUpdateVMSelect(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) (*appsv1.StatefulSet, error) {
 	l := log.WithValues("controller", "vmselect", "cluster", cr.Name)
 	l.Info("create or update vmselect for cluster")
+	// its tricky part.
+	// we need replicas count from hpa to create proper args.
+	// note, need to make copy of current crd. to able to change it without side effects.
+	cr = cr.DeepCopy()
+	var needCreate bool
+	var currentSts appsv1.StatefulSet
+	err := rclient.Get(ctx, types.NamespacedName{Name: cr.Spec.VMSelect.GetNameWithPrefix(cr.Name), Namespace: cr.Namespace}, &currentSts)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			needCreate = true
+		} else {
+			return nil, fmt.Errorf("cannot get vmselect sts: %w", err)
+		}
+	}
+	// update replicas count.
+	if cr.Spec.VMSelect.HPA != nil && currentSts.Spec.Replicas != nil {
+		cr.Spec.VMSelect.ReplicaCount = currentSts.Spec.Replicas
+	}
+
 	newSts, err := genVMSelectSpec(cr, c)
 	if err != nil {
 		return nil, err
 	}
-	currentSts := &appsv1.StatefulSet{}
-	err = rclient.Get(ctx, types.NamespacedName{Name: newSts.Name, Namespace: newSts.Namespace}, currentSts)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			l.Info("vmselect sts not found, creating new one")
-			if err := rclient.Create(ctx, newSts); err != nil {
-				return nil, fmt.Errorf("cannot create new vmselect sts: %w", err)
-			}
-			l.Info("new vmselect sts was created")
-			return newSts, nil
+
+	// fast path for create new sts.
+	if needCreate {
+		l.Info("vmselect sts not found, creating new one")
+		if err := rclient.Create(ctx, newSts); err != nil {
+			return nil, fmt.Errorf("cannot create new vmselect sts: %w", err)
 		}
-		return nil, fmt.Errorf("cannot get vmselect sts: %w", err)
+		l.Info("new vmselect sts was created")
+		return newSts, nil
 	}
 
-	l.Info("vmselect was found, updating it")
 	newSts.Annotations = labels.Merge(newSts.Annotations, currentSts.Annotations)
 	newSts.Spec.Template.Annotations = labels.Merge(newSts.Spec.Template.Annotations, currentSts.Spec.Template.Annotations)
 	if currentSts.ManagedFields != nil {
@@ -247,8 +271,12 @@ func createOrUpdateVMSelect(ctx context.Context, cr *v1beta1.VMCluster, rclient 
 	}
 	// hack for break reconcile loop at kubernetes 1.18
 	newSts.Status.Replicas = currentSts.Status.Replicas
+	// do not change replicas count.
+	if cr.Spec.VMSelect.HPA != nil {
+		newSts.Spec.Replicas = currentSts.Spec.Replicas
+	}
 
-	recreatedSts, err := wasCreatedSTS(ctx, rclient, cr.Spec.VMSelect.GetCacheMountVolmeName(), newSts, currentSts)
+	recreatedSts, err := wasCreatedSTS(ctx, rclient, cr.Spec.VMSelect.GetCacheMountVolmeName(), newSts, &currentSts)
 	if err != nil {
 		return nil, err
 	}
@@ -318,6 +346,12 @@ func createOrUpdateVMInsert(ctx context.Context, cr *v1beta1.VMCluster, rclient 
 	newDeployment.Annotations = labels.Merge(newDeployment.Annotations, currentDeployment.Annotations)
 	newDeployment.Spec.Template.Annotations = labels.Merge(newDeployment.Spec.Template.Annotations, currentDeployment.Spec.Template.Annotations)
 
+	// inherit replicas count if hpa enabled.
+	if cr.Spec.VMInsert.HPA != nil {
+		newDeployment.Spec.Replicas = currentDeployment.Spec.Replicas
+	}
+
+	newDeployment.Finalizers = v1beta1.MergeFinalizers(newDeployment, v1beta1.FinalizerName)
 	err = rclient.Update(ctx, newDeployment)
 	if err != nil {
 		return nil, fmt.Errorf("cannot update vminsert deploy: %w", err)
@@ -1545,4 +1579,30 @@ func waitForPodReady(ctx context.Context, rclient client.Client, ns, podName str
 		}
 		return false, nil
 	})
+}
+
+func createOrUpdateVMInsertHPA(ctx context.Context, rclient client.Client, cluster *v1beta1.VMCluster) error {
+	if cluster.Spec.VMInsert.HPA == nil {
+		return nil
+	}
+	targetRef := v2beta2.CrossVersionObjectReference{
+		Name:       cluster.Spec.VMInsert.GetNameWithPrefix(cluster.Name),
+		Kind:       "Deployment",
+		APIVersion: "apps/v1",
+	}
+	defaultHPA := buildHPASpec(targetRef, cluster.Spec.VMInsert.HPA, cluster.AsOwner(), cluster.VMInsertSelectorLabels(), cluster.Namespace)
+	return reconcileHPA(ctx, rclient, defaultHPA)
+}
+
+func createOrUpdateVMSelectHPA(ctx context.Context, rclient client.Client, cluster *v1beta1.VMCluster) error {
+	if cluster.Spec.VMSelect.HPA == nil {
+		return nil
+	}
+	targetRef := v2beta2.CrossVersionObjectReference{
+		Name:       cluster.Spec.VMSelect.GetNameWithPrefix(cluster.Name),
+		Kind:       "StatefulSet",
+		APIVersion: "apps/v1",
+	}
+	defaultHPA := buildHPASpec(targetRef, cluster.Spec.VMSelect.HPA, cluster.AsOwner(), cluster.VMInsertSelectorLabels(), cluster.Namespace)
+	return reconcileHPA(ctx, rclient, defaultHPA)
 }

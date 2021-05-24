@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"k8s.io/api/autoscaling/v2beta2"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
@@ -234,7 +235,7 @@ func reconcileDeploy(ctx context.Context, rclient client.Client, newDeploy *apps
 	}
 	newDeploy.Annotations = labels.Merge(newDeploy.Annotations, currentDeploy.Annotations)
 	newDeploy.Spec.Template.Annotations = labels.Merge(newDeploy.Spec.Template.Annotations, currentDeploy.Spec.Template.Annotations)
-	victoriametricsv1beta1.MergeFinalizers(newDeploy, victoriametricsv1beta1.FinalizerName)
+	newDeploy.Finalizers = victoriametricsv1beta1.MergeFinalizers(newDeploy, victoriametricsv1beta1.FinalizerName)
 	return rclient.Update(ctx, newDeploy)
 }
 
@@ -359,4 +360,38 @@ func buildProbe(container v1.Container, ep *victoriametricsv1beta1.EmbeddedProbe
 	container.StartupProbe = sp
 	container.ReadinessProbe = rp
 	return container
+}
+
+func buildHPASpec(targetRef v2beta2.CrossVersionObjectReference, spec *victoriametricsv1beta1.EmbeddedHPA, or []metav1.OwnerReference, lbls map[string]string, namespace string) *v2beta2.HorizontalPodAutoscaler {
+	return &v2beta2.HorizontalPodAutoscaler{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            targetRef.Name,
+			Namespace:       namespace,
+			Labels:          lbls,
+			OwnerReferences: or,
+		},
+		Spec: v2beta2.HorizontalPodAutoscalerSpec{
+			MaxReplicas:    spec.MaxReplicas,
+			MinReplicas:    spec.MinReplicas,
+			ScaleTargetRef: targetRef,
+			Metrics:        spec.Metrics,
+			Behavior:       spec.Behaviour,
+		},
+	}
+}
+
+func reconcileHPA(ctx context.Context, rclient client.Client, targetHPA *v2beta2.HorizontalPodAutoscaler) error {
+	var existHPA v2beta2.HorizontalPodAutoscaler
+	if err := rclient.Get(ctx, types.NamespacedName{Name: targetHPA.Name, Namespace: targetHPA.Namespace}, &existHPA); err != nil {
+		if errors.IsNotFound(err) {
+			log.Info("creating new HPA for vminsert")
+			return rclient.Create(ctx, targetHPA)
+		}
+	}
+
+	targetHPA.ResourceVersion = existHPA.ResourceVersion
+	victoriametricsv1beta1.MergeFinalizers(targetHPA, victoriametricsv1beta1.FinalizerName)
+	targetHPA.Annotations = labels.Merge(targetHPA.Annotations, existHPA.Annotations)
+
+	return rclient.Update(ctx, targetHPA)
 }

@@ -11,9 +11,9 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
-      path: /validate-operator-victoriametrics-com-v1beta1-vmservicescrape
+      path: /validate-operator-victoriametrics-com-v1beta1-vmalert
   failurePolicy: Fail
-  name: vvmservicescrape.kb.io
+  name: vvmalert.kb.io
   rules:
   - apiGroups:
     - operator.victoriametrics.com
@@ -23,4 +23,40 @@ webhooks:
     - CREATE
     - UPDATE
     resources:
-    - vmservicescrapes
+    - vmalerts
+- clientConfig:
+    caBundle: Cg==
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-operator-victoriametrics-com-v1beta1-vmalertmanager
+  failurePolicy: Fail
+  name: vvmalertmanager.kb.io
+  rules:
+  - apiGroups:
+    - operator.victoriametrics.com
+    apiVersions:
+    - v1beta1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - vmalertmanagers
+- clientConfig:
+    caBundle: Cg==
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-operator-victoriametrics-com-v1beta1-vmsingle
+  failurePolicy: Fail
+  name: vvmsingle.kb.io
+  rules:
+  - apiGroups:
+    - operator.victoriametrics.com
+    apiVersions:
+    - v1beta1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - vmsingles

@@ -3,6 +3,7 @@ module github.com/VictoriaMetrics/operator
 go 1.13
 
 require (
+	github.com/VictoriaMetrics/VictoriaMetrics v1.60.0
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
 	github.com/go-logr/logr v0.3.0
 	github.com/go-test/deep v1.0.7
@@ -16,8 +17,8 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.6.1
 	go.uber.org/zap v1.15.0
-	golang.org/x/net v0.0.0-20201224014010-6772e930b67b
-	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
+	golang.org/x/net v0.0.0-20210520170846-37e1c6afe023
+	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.20.2
 	k8s.io/apimachinery v0.20.2

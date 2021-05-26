@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/buildinfo"
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers"
 	"github.com/VictoriaMetrics/operator/internal/config"
@@ -15,14 +16,22 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	// +kubebuilder:scaffold:imports
 )
 
 var (
-	scheme   = runtime.NewScheme()
-	setupLog = ctrl.Log.WithName("setup")
+	scheme               = runtime.NewScheme()
+	setupLog             = ctrl.Log.WithName("setup")
+	enableLeaderElection = flag.Bool("enable-leader-election", false, "Enable leader election for controller manager. "+
+		"Enabling this will ensure there is only one active controller manager.")
+	enableWebhooks  = flag.Bool("webhook.enable", false, "adds webhook server, you must mount cert and key or use cert-manager")
+	webhooksDir     = flag.String("webhook.certDir", "/tmp/k8s-webhook-server/serving-certs/", "root directory for webhook cert and key")
+	webhookCertName = flag.String("webhook.certName", "tls.crt", "name of webhook server Tls certificate inside tls.certDir")
+	webhookKeyName  = flag.String("webhook.keyName", "tls.key", "name of webhook server Tls key inside tls.certDir")
+	metricsAddr     = flag.String("metrics-addr", ":8080", "The address the metric endpoint binds to.")
 )
 
 func init() {
@@ -30,15 +39,10 @@ func init() {
 
 	utilruntime.Must(victoriametricsv1beta1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
+
 }
 
 func RunManager(ctx context.Context) error {
-	var metricsAddr string
-	var enableLeaderElection bool
-	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")
-	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
-		"Enable leader election for controller manager. "+
-			"Enabling this will ensure there is only one active controller manager.")
 
 	// Add flags registered by imported packages (e.g. glog and
 	// controller-runtime)
@@ -51,6 +55,7 @@ func RunManager(ctx context.Context) error {
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 
 	pflag.Parse()
+	buildinfo.Init()
 
 	// Use a zap logr.Logger implementation. If none of the zap
 	// flags are configured (or if the zap flag set is not being
@@ -67,9 +72,9 @@ func RunManager(ctx context.Context) error {
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:             scheme,
-		MetricsBindAddress: metricsAddr,
+		MetricsBindAddress: *metricsAddr,
 		Port:               9443,
-		LeaderElection:     enableLeaderElection,
+		LeaderElection:     *enableLeaderElection,
 		LeaderElectionID:   "57410f0d.victoriametrics.com",
 	})
 	if err != nil {
@@ -77,6 +82,12 @@ func RunManager(ctx context.Context) error {
 		return err
 	}
 
+	if *enableWebhooks {
+		if err = addWebhooks(mgr); err != nil {
+			logger.Error(err, "cannot register webhooks")
+			return err
+		}
+	}
 	if err = (&controllers.VMAgentReconciler{
 		Client:       mgr.GetClient(),
 		Log:          ctrl.Log.WithName("controllers").WithName("VMAgent"),
@@ -199,5 +210,30 @@ func RunManager(ctx context.Context) error {
 	}
 	setupLog.Info("gracefully stopped")
 	return nil
+
+}
+
+func addWebhooks(mgr ctrl.Manager) error {
+	srv := mgr.GetWebhookServer()
+	srv.CertDir = *webhooksDir
+	srv.CertName = *webhookCertName
+	srv.KeyName = *webhookKeyName
+
+	f := func(objs []client.Object) error {
+		var err error
+		for _, obj := range objs {
+			if err = ctrl.NewWebhookManagedBy(mgr).For(obj).Complete(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	return f([]client.Object{
+		&victoriametricsv1beta1.VMAgent{},
+		&victoriametricsv1beta1.VMAlert{},
+		&victoriametricsv1beta1.VMSingle{},
+		&victoriametricsv1beta1.VMCluster{},
+		&victoriametricsv1beta1.VMAlertmanager{},
+	})
 
 }

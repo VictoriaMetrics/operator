@@ -1,6 +1,7 @@
 package v1beta1
 
 import (
+	"fmt"
 	"path"
 
 	"k8s.io/api/autoscaling/v2beta2"
@@ -20,13 +21,20 @@ const (
 	snapshotCreate       = "/snapshot/create"
 	snapshotDelete       = "/snapshot/delete"
 	// FinalizerName name of our finalizer.
-	FinalizerName = "apps.victoriametrics.com/finalizer"
+	FinalizerName            = "apps.victoriametrics.com/finalizer"
+	SkipValidationAnnotation = "operator.victoriametrics.com/skip-validation"
+	SkipValidationValue      = "true"
 )
 
 var (
 	// GroupVersion is group version used to register these objects
 	SchemeGroupVersion = schema.GroupVersion{Group: "operator.victoriametrics.com", Version: "v1beta1"}
 )
+
+// skip validation, if object has annotation.
+func mustSkipValidation(cr client.Object) bool {
+	return cr.GetAnnotations()[SkipValidationAnnotation] == SkipValidationValue
+}
 
 func MergeFinalizers(src client.Object, finalizer string) []string {
 	if !IsContainsFinalizer(src.GetFinalizers(), finalizer) {
@@ -207,4 +215,14 @@ type EmbeddedHPA struct {
 	MaxReplicas int32                                    `json:"maxReplicas,omitempty"`
 	Metrics     []v2beta2.MetricSpec                     `json:"metrics,omitempty"`
 	Behaviour   *v2beta2.HorizontalPodAutoscalerBehavior `json:"behaviour,omitempty"`
+}
+
+func (cr *EmbeddedHPA) sanityCheck() error {
+	if cr.MinReplicas != nil && *cr.MinReplicas > cr.MaxReplicas {
+		return fmt.Errorf("minReplicas cannot be greater then maxReplicas")
+	}
+	if cr.Behaviour == nil && len(cr.Metrics) == 0 {
+		return fmt.Errorf("at least behaviour or metrics property must be configuread")
+	}
+	return nil
 }

@@ -24,7 +24,6 @@ spec:
         args:
           - "--enable-leader-election"
         image: manager
-        imagePullPolicy: Always
         env:
         - name: WATCH_NAMESPACE
           value: ""

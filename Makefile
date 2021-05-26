@@ -6,7 +6,7 @@ VERSION_TRIM=$(VERSION:v%=%)
 GOOS ?= linux
 GOARCH ?= amd64
 BUILD=`date +%FT%T%z`
-LDFLAGS=-ldflags "-w -s  -X main.Version=${VERSION} -X main.BuildData=${BUILD}"
+LDFLAGS=-ldflags "-w -s  -X github.com/VictoriaMetrics/VictoriaMetrics/lib/buildinfo.Version=${VERSION}"
 GOBUILD= $(GOCMD) build -trimpath ${LDFLAGS}
 GOCLEAN=$(GOCMD) clean
 GOTEST=CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH}  $(GOCMD) test
@@ -98,6 +98,7 @@ fix118:
 		$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vminsert.properties.serviceSpec.properties.spec.properties.ports ;\
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vminsert.properties.serviceSpec.properties.spec.properties.clusterIPs &&\
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vminsert.properties.serviceSpec.properties.spec.properties.ipFamilies &&\
+	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vminsert.properties.hpa.properties &&\
 	 	$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.volumes.items.properties && \
 	 	$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.topologySpreadConstraints.items.properties && \
 	 	$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.affinity.properties && \
@@ -107,6 +108,7 @@ fix118:
 		$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.serviceSpec.properties.spec.properties.ports &&\
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.serviceSpec.properties.spec.properties.clusterIPs &&\
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.serviceSpec.properties.spec.properties.ipFamilies &&\
+	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.hpa.properties &&\
 	 	$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmstorage.properties.volumes.items.properties && \
 	 	$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmstorage.properties.topologySpreadConstraints.items.properties && \
 	 	$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmstorage.properties.affinity.properties && \
@@ -209,7 +211,7 @@ uninstall: manifests kustomize
 
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
 deploy: manifests fix118 fix_crd_nulls kustomize
-	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
+	#cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
 	$(KUSTOMIZE) build config/default | kubectl apply -f -
 
 # Generate manifests e.g. CRD, RBAC etc.
@@ -317,6 +319,7 @@ docker-build-arch:
 package-arch:
 	$(GOBUILD) -o bin/manager-$(GOARCH) main.go
 
+
 build-operator-crosscompile: build
 	CGO_ENABLED=0 GOARCH=arm $(MAKE) package-arch
 	CGO_ENABLED=0 GOARCH=arm64 $(MAKE) package-arch
@@ -367,3 +370,14 @@ publish-via-docker: build-operator-crosscompile docker-manifest
 	TAG=latest $(MAKE) docker-manifest
 	DOCKER_CLI_EXPERIMENTAL=enabled docker manifest push --purge $(DOCKER_REPO):$(TAG)
 	DOCKER_CLI_EXPERIMENTAL=enabled docker manifest push --purge $(DOCKER_REPO):latest
+
+
+# builds image and loads it into kind.
+build-load-kind: build
+	CGO_ENABLED=0 GOARCH=amd64 $(MAKE) package-arch
+	GOARCH=amd64 $(MAKE) docker-build-arch
+	docker tag $(DOCKER_REPO):$(TAG)-amd64 $(DOCKER_REPO):0.0.1
+	kind load docker-image $(DOCKER_REPO):0.0.1
+
+deploy-kind: build-load-kind
+	$(MAKE) deploy

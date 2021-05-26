@@ -8,6 +8,8 @@ spec:
     spec:
       containers:
       - name: manager
+        args:
+          - "--webhook.enable"
         ports:
         - containerPort: 9443
           name: webhook-server

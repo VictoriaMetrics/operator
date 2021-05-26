@@ -20,19 +20,33 @@ func (r *VMSingle) SetupWebhookWithManager(mgr ctrl.Manager) error {
 
 var _ webhook.Validator = &VMSingle{}
 
+func (r *VMSingle) sanityCheck() error {
+	// todo add some checks.
+	return nil
+}
+
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (r *VMSingle) ValidateCreate() error {
 	vmsinglelog.Info("validate create", "name", r.Name)
-
-	// TODO(user): fill in your validation logic upon object creation.
+	if mustSkipValidation(r) {
+		return nil
+	}
+	if err := r.sanityCheck(); err != nil {
+		return err
+	}
 	return nil
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
 func (r *VMSingle) ValidateUpdate(old runtime.Object) error {
 	vmsinglelog.Info("validate update", "name", r.Name)
-
-	// TODO(user): fill in your validation logic upon object update.
+	if mustSkipValidation(r) {
+		return nil
+	}
+	if err := r.sanityCheck(); err != nil {
+		return err
+	}
+	// todo check for negative storage resize.
 	return nil
 }
 

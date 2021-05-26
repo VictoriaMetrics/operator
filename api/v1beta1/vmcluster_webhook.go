@@ -62,6 +62,7 @@ func (r *VMCluster) ValidateUpdate(old runtime.Object) error {
 	if err := r.sanityCheck(); err != nil {
 		return err
 	}
+	// todo check for negative storage resize.
 
 	return nil
 }

@@ -4,3 +4,4 @@ resources:
 
 configurations:
 - kustomizeconfig.yaml
+

@@ -221,39 +221,39 @@ type RelabelConfig struct {
 	// if set  both sourceLabels and source_labels, sourceLabels has priority.
 	// for details https://github.com/VictoriaMetrics/operator/issues/131
 	// +optional
-	UnderScoreSourceLabels []string `json:"source_labels,omitempty"`
+	UnderScoreSourceLabels []string `json:"source_labels,omitempty" yaml:"source_labels,omitempty"`
 	// UnderScoreTargetLabel - additional form of target label - target_label
 	// for compatibility with original relabel config.
 	// if set  both targetLabel and target_label, targetLabel has priority.
 	// for details https://github.com/VictoriaMetrics/operator/issues/131
 	// +optional
-	UnderScoreTargetLabel string `json:"target_label,omitempty"`
+	UnderScoreTargetLabel string `json:"target_label,omitempty" yaml:"target_label,omitempty"`
 
 	//The source labels select values from existing labels. Their content is concatenated
 	//using the configured separator and matched against the configured regular expression
 	//for the replace, keep, and drop actions.
 	// +optional
-	SourceLabels []string `json:"sourceLabels,omitempty"`
+	SourceLabels []string `json:"sourceLabels,omitempty" yaml:"-"`
 	//Separator placed between concatenated source label values. default is ';'.
 	// +optional
-	Separator string `json:"separator,omitempty"`
+	Separator string `json:"separator,omitempty" yaml:"separator,omitempty"`
 	//Label to which the resulting value is written in a replace action.
 	//It is mandatory for replace actions. Regex capture groups are available.
 	// +optional
-	TargetLabel string `json:"targetLabel,omitempty"`
+	TargetLabel string `json:"targetLabel,omitempty" yaml:"-"`
 	//Regular expression against which the extracted value is matched. Default is '(.*)'
 	// +optional
-	Regex string `json:"regex,omitempty"`
+	Regex string `json:"regex,omitempty" yaml:"regex,omitempty"`
 	// Modulus to take of the hash of the source label values.
 	// +optional
-	Modulus uint64 `json:"modulus,omitempty"`
+	Modulus uint64 `json:"modulus,omitempty" yaml:"modulus,omitempty"`
 	//Replacement value against which a regex replace is performed if the
 	//regular expression matches. Regex capture groups are available. Default is '$1'
 	// +optional
-	Replacement string `json:"replacement,omitempty"`
+	Replacement string `json:"replacement,omitempty" yaml:"replacement,omitempty"`
 	// Action to perform based on regex matching. Default is 'replace'
 	// +optional
-	Action string `json:"action,omitempty"`
+	Action string `json:"action,omitempty" yaml:"action,omitempty"`
 }
 
 func (rc *RelabelConfig) IsEmpty() bool {

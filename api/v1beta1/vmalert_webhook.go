@@ -22,15 +22,40 @@ func (r *VMAlert) SetupWebhookWithManager(mgr ctrl.Manager) error {
 
 var _ webhook.Validator = &VMAlert{}
 
-// ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (r *VMAlert) ValidateCreate() error {
-	vmalertlog.Info("validate create", "name", r.Name)
-
+func (r *VMAlert) sanityCheck() error {
 	if r.Spec.Datasource.URL == "" {
 		return fmt.Errorf("spec.datasource.url cannot be empty")
 	}
 
-	// TODO(user): fill in your validation logic upon object creation.
+	if r.Spec.Notifier == nil && len(r.Spec.Notifiers) == 0 {
+		return fmt.Errorf("notifier is not defined, provide valid config with spec.notifier or spec.notifiers")
+	}
+
+	if r.Spec.Notifier != nil {
+		if r.Spec.Notifier.URL == "" {
+			return fmt.Errorf("spec.notifier.url cannot be empty")
+		}
+	}
+	for idx, nt := range r.Spec.Notifiers {
+		if nt.URL == "" {
+			return fmt.Errorf("notifier.url at idx: %d cannot be empty", idx)
+		}
+	}
+
+	return nil
+}
+
+// ValidateCreate implements webhook.Validator so a webhook will be registered for the type
+func (r *VMAlert) ValidateCreate() error {
+	vmalertlog.Info("validate create", "name", r.Name)
+
+	if mustSkipValidation(r) {
+		return nil
+	}
+	if err := r.sanityCheck(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -38,7 +63,12 @@ func (r *VMAlert) ValidateCreate() error {
 func (r *VMAlert) ValidateUpdate(old runtime.Object) error {
 	vmalertlog.Info("validate update", "name", r.Name)
 
-	// TODO(user): fill in your validation logic upon object update.
+	if mustSkipValidation(r) {
+		return nil
+	}
+	if err := r.sanityCheck(); err != nil {
+		return err
+	}
 	return nil
 }
 

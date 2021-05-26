@@ -25,6 +25,15 @@ func (cr *VMAgent) SetupWebhookWithManager(mgr ctrl.Manager) error {
 var _ webhook.Validator = &VMAgent{}
 
 func checkRelabelConfigs(src []RelabelConfig) error {
+	for i := range src {
+		currSrc := &src[i]
+		if len(currSrc.UnderScoreSourceLabels) == 0 {
+			currSrc.UnderScoreSourceLabels = currSrc.SourceLabels
+		}
+		if len(currSrc.UnderScoreTargetLabel) == 0 {
+			currSrc.UnderScoreTargetLabel = currSrc.TargetLabel
+		}
+	}
 	prc, err := yaml.Marshal(src)
 	if err != nil {
 		return fmt.Errorf("cannot parse relabelConfigs as yaml: %w", err)
@@ -51,10 +60,13 @@ func (cr *VMAgent) sanityCheck() error {
 			return err
 		}
 	}
-	for _, rw := range cr.Spec.RemoteWrite {
+	for idx, rw := range cr.Spec.RemoteWrite {
+		if rw.URL == "" {
+			return fmt.Errorf("remoteWrite.url cannot be empty at idx: %d", idx)
+		}
 		if len(rw.InlineUrlRelabelConfig) > 0 {
 			if err := checkRelabelConfigs(rw.InlineUrlRelabelConfig); err != nil {
-				return err
+				return fmt.Errorf("bad urlRelabelingConfig at idx: %d, err: %w", idx, err)
 			}
 		}
 	}
@@ -65,6 +77,9 @@ func (cr *VMAgent) sanityCheck() error {
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (cr *VMAgent) ValidateCreate() error {
 	vmagentlog.Info("validate create", "name", cr.Name)
+	if mustSkipValidation(cr) {
+		return nil
+	}
 	if err := cr.sanityCheck(); err != nil {
 		return err
 	}
@@ -75,7 +90,9 @@ func (cr *VMAgent) ValidateCreate() error {
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
 func (cr *VMAgent) ValidateUpdate(old runtime.Object) error {
 	vmagentlog.Info("validate update", "name", cr.Name)
-
+	if mustSkipValidation(cr) {
+		return nil
+	}
 	if err := cr.sanityCheck(); err != nil {
 		return err
 	}

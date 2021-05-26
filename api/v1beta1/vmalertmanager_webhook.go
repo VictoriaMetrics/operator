@@ -20,19 +20,31 @@ func (r *VMAlertmanager) SetupWebhookWithManager(mgr ctrl.Manager) error {
 
 var _ webhook.Validator = &VMAlertmanager{}
 
+func (r *VMAlertmanager) sanityCheck() error {
+	return nil
+}
+
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (r *VMAlertmanager) ValidateCreate() error {
 	vmalertmanagerlog.Info("validate create", "name", r.Name)
-
-	// TODO(user): fill in your validation logic upon object creation.
+	if mustSkipValidation(r) {
+		return nil
+	}
+	if err := r.sanityCheck(); err != nil {
+		return err
+	}
 	return nil
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
 func (r *VMAlertmanager) ValidateUpdate(old runtime.Object) error {
 	vmalertmanagerlog.Info("validate update", "name", r.Name)
-
-	// TODO(user): fill in your validation logic upon object update.
+	if mustSkipValidation(r) {
+		return nil
+	}
+	if err := r.sanityCheck(); err != nil {
+		return err
+	}
 	return nil
 }
 

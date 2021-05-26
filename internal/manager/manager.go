@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/buildinfo"
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers"
 	"github.com/VictoriaMetrics/operator/internal/config"
@@ -54,6 +55,7 @@ func RunManager(ctx context.Context) error {
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 
 	pflag.Parse()
+	buildinfo.Init()
 
 	// Use a zap logr.Logger implementation. If none of the zap
 	// flags are configured (or if the zap flag set is not being

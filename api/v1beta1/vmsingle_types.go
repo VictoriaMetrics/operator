@@ -305,6 +305,14 @@ func (cr VMSingle) GetNSName() string {
 	return cr.GetNamespace()
 }
 
+func (cr *VMSingle) AsURL() string {
+	port := cr.Spec.Port
+	if port == "" {
+		port = "8429"
+	}
+	return fmt.Sprintf("http://%s.%s.svc:%s", cr.PrefixedName(), cr.Namespace, port)
+}
+
 func init() {
 	SchemeBuilder.Register(&VMSingle{}, &VMSingleList{})
 }

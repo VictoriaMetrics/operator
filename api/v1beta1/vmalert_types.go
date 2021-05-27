@@ -438,6 +438,14 @@ func (cr VMAlert) RulesConfigMapSelector() client.ListOption {
 	}
 }
 
+func (cr *VMAlert) AsURL() string {
+	port := cr.Spec.Port
+	if port == "" {
+		port = "8880"
+	}
+	return fmt.Sprintf("http://%s.%s.svc:%s", cr.PrefixedName(), cr.Namespace, port)
+}
+
 func init() {
 	SchemeBuilder.Register(&VMAlert{}, &VMAlertList{})
 }

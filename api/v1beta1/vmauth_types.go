@@ -1,0 +1,173 @@
+package v1beta1
+
+import (
+	v1 "k8s.io/api/core/v1"
+	v12 "k8s.io/api/networking/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+// VMAuthSpec defines the desired state of VMAuth
+type VMAuthSpec struct {
+
+	// PodMetadata configures Labels and Annotations which are propagated to the VMAuth pods.
+	// +optional
+	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
+	// Image - docker image settings for VMAuth
+	// if no specified operator uses default config version
+	// +optional
+	Image Image `json:"image,omitempty"`
+	// ImagePullSecrets An optional list of references to secrets in the same namespace
+	// to use for pulling images from registries
+	// see http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod
+	// +optional
+	ImagePullSecrets []v1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
+	// Secrets is a list of Secrets in the same namespace as the VMAuth
+	// object, which shall be mounted into the VMAuth Pods.
+	// +optional
+	Secrets []string `json:"secrets,omitempty"`
+	// ConfigMaps is a list of ConfigMaps in the same namespace as the VMAuth
+	// object, which shall be mounted into the VMAuth Pods.
+	// +optional
+	ConfigMaps []string `json:"configMaps,omitempty"`
+	// LogLevel for victoria metrics single to be configured with.
+	// +optional
+	// +kubebuilder:validation:Enum=INFO;WARN;ERROR;FATAL;PANIC
+	LogLevel string `json:"logLevel,omitempty"`
+	// LogFormat for VMAuth to be configured with.
+	// +optional
+	// +kubebuilder:validation:Enum=default;json
+	LogFormat string `json:"logFormat,omitempty"`
+	// ReplicaCount is the expected size of the VMAuth
+	// it can be 0 or 1
+	// if you need more - use vm cluster
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Number of pods",xDescriptors="urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom"
+	ReplicaCount *int32 `json:"replicaCount,omitempty"`
+
+	// Volumes allows configuration of additional volumes on the output deploy definition.
+	// Volumes specified will be appended to other volumes that are generated as a result of
+	// StorageSpec objects.
+	// +optional
+	Volumes []v1.Volume `json:"volumes,omitempty"`
+	// VolumeMounts allows configuration of additional VolumeMounts on the output Deployment definition.
+	// VolumeMounts specified will be appended to other VolumeMounts in the VMAuth container,
+	// that are generated as a result of StorageSpec objects.
+	// +optional
+	VolumeMounts []v1.VolumeMount `json:"volumeMounts,omitempty"`
+	// Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+	// if not defined default resources from operator config will be used
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resources",xDescriptors="urn:alm:descriptor:com.tectonic.ui:resourceRequirements"
+	// +optional
+	Resources v1.ResourceRequirements `json:"resources,omitempty"`
+	// Affinity If specified, the pod's scheduling constraints.
+	// +optional
+	Affinity *v1.Affinity `json:"affinity,omitempty"`
+	// Tolerations If specified, the pod's tolerations.
+	// +optional
+	Tolerations []v1.Toleration `json:"tolerations,omitempty"`
+	// SecurityContext holds pod-level security attributes and common container settings.
+	// This defaults to the default PodSecurityContext.
+	// +optional
+	SecurityContext *v1.PodSecurityContext `json:"securityContext,omitempty"`
+	// ServiceAccountName is the name of the ServiceAccount to use to run the
+	// VMAuth Pods.
+	// +optional
+	ServiceAccountName string `json:"serviceAccountName,omitempty"`
+	// SchedulerName - defines kubernetes scheduler name
+	// +optional
+	SchedulerName string `json:"schedulerName,omitempty"`
+	// RuntimeClassName - defines runtime class for kubernetes pod.
+	//https://kubernetes.io/docs/concepts/containers/runtime-class/
+	// +optional
+	RuntimeClassName *string `json:"runtimeClassName,omitempty"`
+	// PodSecurityPolicyName - defines name for podSecurityPolicy
+	// in case of empty value, prefixedName will be used.
+	// +optional
+	PodSecurityPolicyName string `json:"podSecurityPolicyName,omitempty"`
+	// HostAliases provides mapping for ip and hostname,
+	// that would be propagated to pod,
+	// cannot be used with HostNetwork.
+	// +optional
+	HostAliases []v1.HostAlias `json:"hostAliases,omitempty"`
+	// Containers property allows to inject additions sidecars or to patch existing containers.
+	// It can be useful for proxies, backup, etc.
+	// +optional
+	Containers []v1.Container `json:"containers,omitempty"`
+	// InitContainers allows adding initContainers to the pod definition. Those can be used to e.g.
+	// fetch secrets for injection into the vmSingle configuration from external sources. Any
+	// errors during the execution of an initContainer will lead to a restart of the Pod. More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
+	// Using initContainers for any use case other then secret fetching is entirely outside the scope
+	// of what the maintainers will support and by doing so, you accept that this behaviour may break
+	// at any time without notice.
+	// +optional
+	InitContainers []v1.Container `json:"initContainers,omitempty"`
+	// PriorityClassName assigned to the Pods
+	// +optional
+	PriorityClassName string `json:"priorityClassName,omitempty"`
+	// HostNetwork controls whether the pod may use the node network namespace
+	// +optional
+	HostNetwork bool `json:"hostNetwork,omitempty"`
+	// DNSPolicy sets DNS policy for the pod
+	// +optional
+	DNSPolicy v1.DNSPolicy `json:"dnsPolicy,omitempty"`
+	// TopologySpreadConstraints embedded kubernetes pod configuration option,
+	// controls how pods are spread across your cluster among failure-domains
+	// such as regions, zones, nodes, and other user-defined topology domains
+	// https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/
+	// +optional
+	TopologySpreadConstraints []v1.TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
+
+	//Port listen port
+	// +optional
+	Port string `json:"port,omitempty"`
+
+	// ExtraArgs that will be passed to  VMAuth pod
+	// for example remoteWrite.tmpDataPath: /tmp
+	// +optional
+	ExtraArgs map[string]string `json:"extraArgs,omitempty"`
+	// ExtraEnvs that will be added to VMAuth pod
+	// +optional
+	ExtraEnvs []v1.EnvVar `json:"extraEnvs,omitempty"`
+	// ServiceSpec that will be added to vmsingle service spec
+	// +optional
+	ServiceSpec *ServiceSpec `json:"serviceSpec,omitempty"`
+	// LivenessProbe that will be added to VMAuth pod
+	*EmbeddedProbes `json:",inline"`
+}
+
+// EmbeddedIngress describes ingress configuration options.
+type EmbeddedIngress struct {
+	ClassName              *string `json:"class_name,omitempty"`
+	EmbeddedObjectMetadata `json:",inline"`
+	TlsSecretName          string            `json:"tlsSecretName,omitempty"`
+	ExtraRules             []v12.IngressRule `json:"extraRules,omitempty"`
+	ExtraTLS               *v12.IngressTLS   `json:"extraTls,omitempty"`
+}
+
+// VMAuthStatus defines the observed state of VMAuth
+type VMAuthStatus struct {
+}
+
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+
+// VMAuth is the Schema for the vmauths API
+type VMAuth struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec   VMAuthSpec   `json:"spec,omitempty"`
+	Status VMAuthStatus `json:"status,omitempty"`
+}
+
+// +kubebuilder:object:root=true
+
+// VMAuthList contains a list of VMAuth
+type VMAuthList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []VMAuth `json:"items"`
+}
+
+func init() {
+	SchemeBuilder.Register(&VMAuth{}, &VMAuthList{})
+}

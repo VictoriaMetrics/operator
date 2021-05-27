@@ -1,0 +1,112 @@
+
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.3.0
+  creationTimestamp: null
+  name: vmusers.operator.victoriametrics.com
+spec:
+  group: operator.victoriametrics.com
+  names:
+    kind: VMUser
+    listKind: VMUserList
+    plural: vmusers
+    singular: vmuser
+  scope: Namespaced
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      description: VMUser is the Schema for the vmusers API
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          description: VMUserSpec defines the desired state of VMUser
+          properties:
+            bearerToken:
+              description: BearerToken Authorization header value for accessing protected
+                endpoint.
+              type: string
+            password:
+              description: Password basic auth password for accessing protected endpoint,
+                randomly generated and saved into secret with the same name as VMUser
+                into same namespace
+              type: string
+            targetRefs:
+              description: TargetRefs - reference to endpoints, which user may access.
+              items:
+                description: TargetRef describes target for user traffic forwarding.
+                properties:
+                  crd:
+                    description: CRD - one of operator crd targets
+                    properties:
+                      kind:
+                        description: 'Kind one of: VMAgent VMAlert VMCluster VMSingle
+                          or VMAlertManager'
+                        type: string
+                      name:
+                        description: Name target CRD object name
+                        type: string
+                      namespace:
+                        description: Namespace target CRD object namespace.
+                        type: string
+                    required:
+                    - kind
+                    - name
+                    - namespace
+                    type: object
+                  paths:
+                    description: Paths - matched path to route.
+                    items:
+                      type: string
+                    type: array
+                  queryParams:
+                    description: QueryParams - additional query params for target.
+                    items:
+                      type: string
+                    type: array
+                  static:
+                    description: Static - user defined url for traffic forward.
+                    properties:
+                      url:
+                        type: string
+                    required:
+                    - url
+                    type: object
+                type: object
+              type: array
+            userName:
+              description: UserName basic auth user name for accessing protected endpoint,
+                metadata.name if missing.
+              type: string
+          required:
+          - targetRefs
+          type: object
+        status:
+          description: VMUserStatus defines the observed state of VMUser
+          type: object
+      type: object
+  version: v1beta1
+  versions:
+  - name: v1beta1
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

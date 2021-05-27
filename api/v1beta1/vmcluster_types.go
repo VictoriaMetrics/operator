@@ -869,6 +869,44 @@ func (cr VMCluster) Labels() map[string]string {
 	return labels
 }
 
+// stub for interface.
+func (cr *VMCluster) AsURL() string {
+	return "unknown"
+}
+
+func (cr *VMCluster) VMSelectURL() string {
+	if cr.Spec.VMSelect == nil {
+		return ""
+	}
+	port := cr.Spec.VMSelect.Port
+	if port == "" {
+		port = "8481"
+	}
+	return fmt.Sprintf("http://%s.%s.svc:%s", cr.Spec.VMSelect.GetNameWithPrefix(cr.Name), cr.Namespace, port)
+}
+
+func (cr *VMCluster) VMInsertURL() string {
+	if cr.Spec.VMInsert == nil {
+		return ""
+	}
+	port := cr.Spec.VMInsert.Port
+	if port == "" {
+		port = "8480"
+	}
+	return fmt.Sprintf("http://%s.%s.svc:%s", cr.Spec.VMInsert.GetNameWithPrefix(cr.Name), cr.Namespace, port)
+}
+
+func (cr *VMCluster) VMStorageURL() string {
+	if cr.Spec.VMStorage == nil {
+		return ""
+	}
+	port := cr.Spec.VMStorage.Port
+	if port == "" {
+		port = "8482"
+	}
+	return fmt.Sprintf("http://%s.%s.svc:%s", cr.Spec.VMStorage.GetNameWithPrefix(cr.Name), cr.Namespace, port)
+}
+
 func (cr VMCluster) GetNSName() string {
 	return cr.GetNamespace()
 }

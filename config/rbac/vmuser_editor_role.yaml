@@ -1,0 +1,24 @@
+# permissions for end users to edit vmusers.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: vmuser-editor-role
+rules:
+- apiGroups:
+  - operator.victoriametrics.com
+  resources:
+  - vmusers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - operator.victoriametrics.com
+  resources:
+  - vmusers/status
+  verbs:
+  - get

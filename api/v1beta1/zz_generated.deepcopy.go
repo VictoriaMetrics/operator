@@ -2052,6 +2052,16 @@ func (in *VMAuthSpec) DeepCopyInto(out *VMAuthSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.UserSelector != nil {
+		in, out := &in.UserSelector, &out.UserSelector
+		*out = new(metav1.LabelSelector)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.UserNamespaceSelector != nil {
+		in, out := &in.UserNamespaceSelector, &out.UserNamespaceSelector
+		*out = new(metav1.LabelSelector)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.ExtraArgs != nil {
 		in, out := &in.ExtraArgs, &out.ExtraArgs
 		*out = make(map[string]string, len(*in))
@@ -2069,6 +2079,11 @@ func (in *VMAuthSpec) DeepCopyInto(out *VMAuthSpec) {
 	if in.ServiceSpec != nil {
 		in, out := &in.ServiceSpec, &out.ServiceSpec
 		*out = new(ServiceSpec)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.PodDisruptionBudget != nil {
+		in, out := &in.PodDisruptionBudget, &out.PodDisruptionBudget
+		*out = new(EmbeddedPodDisruptionBudgetSpec)
 		(*in).DeepCopyInto(*out)
 	}
 	if in.EmbeddedProbes != nil {

@@ -67,7 +67,6 @@ func CreateOrUpdateVMAgentService(ctx context.Context, cr *victoriametricsv1beta
 	return reconcileServiceForCRD(ctx, rclient, newService)
 }
 
-//we assume, that configmaps were created before this function was called
 func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client, c *config.BaseOperatorConf) (reconcile.Result, error) {
 	l := log.WithValues("controller", "vmagent.crud")
 
@@ -103,7 +102,7 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 	}
 
 	if cr.Spec.PodDisruptionBudget != nil {
-		err = CreateOrUpdatePodDisruptionBudget(ctx, cr, rclient)
+		err = CreateOrUpdatePodDisruptionBudget(ctx, rclient, cr, cr.Kind, cr.Spec.PodDisruptionBudget)
 		if err != nil {
 			return reconcile.Result{}, fmt.Errorf("cannot update pod disruption budget for vmagent: %w", err)
 		}
@@ -985,9 +984,4 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, rwsBasicAuth map[stri
 		}
 	}
 	return finalArgs
-}
-
-func CreateOrUpdatePodDisruptionBudget(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) error {
-	pdb := buildDefaultPDB(cr, cr.Spec.PodDisruptionBudget)
-	return reconcilePDB(ctx, rclient, cr.Kind, pdb)
 }

@@ -1,9 +1,13 @@
 package v1beta1
 
 import (
+	"fmt"
+	"strings"
+
 	v1 "k8s.io/api/core/v1"
 	v12 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/pointer"
 )
 
 // VMAuthSpec defines the desired state of VMAuth
@@ -120,6 +124,14 @@ type VMAuthSpec struct {
 	// +optional
 	Port string `json:"port,omitempty"`
 
+	// UserSelector defines VMUser to be selected for config file generation.
+	// +optional
+	UserSelector *metav1.LabelSelector `json:"userSelector,omitempty"`
+	// UserNamespaceSelector Namespaces to be selected for  VMAuth discovery. If nil, only
+	// check own namespace.
+	// +optional
+	UserNamespaceSelector *metav1.LabelSelector `json:"userNamespaceSelector,omitempty"`
+
 	// ExtraArgs that will be passed to  VMAuth pod
 	// for example remoteWrite.tmpDataPath: /tmp
 	// +optional
@@ -130,6 +142,9 @@ type VMAuthSpec struct {
 	// ServiceSpec that will be added to vmsingle service spec
 	// +optional
 	ServiceSpec *ServiceSpec `json:"serviceSpec,omitempty"`
+	// PodDisruptionBudget created by operator
+	// +optional
+	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
 	// LivenessProbe that will be added to VMAuth pod
 	*EmbeddedProbes `json:",inline"`
 }
@@ -166,6 +181,114 @@ type VMAuthList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []VMAuth `json:"items"`
+}
+
+func (cr *VMAuth) AsOwner() []metav1.OwnerReference {
+	return []metav1.OwnerReference{
+		{
+			APIVersion:         cr.APIVersion,
+			Kind:               cr.Kind,
+			Name:               cr.Name,
+			UID:                cr.UID,
+			Controller:         pointer.BoolPtr(true),
+			BlockOwnerDeletion: pointer.BoolPtr(true),
+		},
+	}
+}
+
+func (cr VMAuth) PodAnnotations() map[string]string {
+	annotations := map[string]string{}
+	if cr.Spec.PodMetadata != nil {
+		for annotation, value := range cr.Spec.PodMetadata.Annotations {
+			annotations[annotation] = value
+		}
+	}
+	return annotations
+}
+
+func (cr VMAuth) Annotations() map[string]string {
+	annotations := make(map[string]string)
+	for annotation, value := range cr.ObjectMeta.Annotations {
+		if !strings.HasPrefix(annotation, "kubectl.kubernetes.io/") {
+			annotations[annotation] = value
+		}
+	}
+	return annotations
+}
+
+func (cr VMAuth) SelectorLabels() map[string]string {
+	return map[string]string{
+		"app.kubernetes.io/name":      "vmauth",
+		"app.kubernetes.io/instance":  cr.Name,
+		"app.kubernetes.io/component": "monitoring",
+		"managed-by":                  "vm-operator",
+	}
+}
+
+func (cr VMAuth) PodLabels() map[string]string {
+	labels := cr.SelectorLabels()
+	if cr.Spec.PodMetadata != nil {
+		for label, value := range cr.Spec.PodMetadata.Labels {
+			if _, ok := labels[label]; ok {
+				// forbid changes for selector labels
+				continue
+			}
+			labels[label] = value
+		}
+	}
+	return labels
+}
+
+func (cr VMAuth) Labels() map[string]string {
+	labels := cr.SelectorLabels()
+	if cr.ObjectMeta.Labels != nil {
+		for label, value := range cr.ObjectMeta.Labels {
+			if _, ok := labels[label]; ok {
+				// forbid changes for selector labels
+				continue
+			}
+			labels[label] = value
+		}
+	}
+	return labels
+}
+
+func (cr VMAuth) PrefixedName() string {
+	return fmt.Sprintf("vmauth-%s", cr.Name)
+}
+
+func (cr VMAuth) ConfigSecretName() string {
+	return fmt.Sprintf("vmauth-config-%s", cr.Name)
+}
+
+func (cr VMAuth) HealthPath() string {
+	return buildPathWithPrefixFlag(cr.Spec.ExtraArgs, healthPath)
+}
+
+func (cr VMAuth) MetricPath() string {
+	return buildPathWithPrefixFlag(cr.Spec.ExtraArgs, metricPath)
+}
+
+func (cr VMAuth) ReloadPathWithPort(port string) string {
+	return fmt.Sprintf("http://localhost:%s%s", port, buildPathWithPrefixFlag(cr.Spec.ExtraArgs, reloadPath))
+}
+
+func (cr VMAuth) GetServiceAccountName() string {
+	if cr.Spec.ServiceAccountName == "" {
+		return cr.PrefixedName()
+	}
+	return cr.Spec.ServiceAccountName
+}
+
+func (cr VMAuth) GetPSPName() string {
+	if cr.Spec.PodSecurityPolicyName == "" {
+		return cr.PrefixedName()
+	}
+	return cr.Spec.PodSecurityPolicyName
+}
+
+func (cr VMAuth) GetNSName() string {
+	return cr.GetNamespace()
 }
 
 func init() {

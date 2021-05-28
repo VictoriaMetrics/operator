@@ -1,12 +1,15 @@
 package factory
 
 import (
+	"context"
+	"reflect"
 	"testing"
 
 	"github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
 	"k8s.io/utils/pointer"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func Test_genUserCfg(t *testing.T) {
@@ -104,6 +107,34 @@ bearer_token: secret-token
 				t.Fatalf("cannot serialize resutl: %v", err)
 			}
 			assert.Equal(t, tt.want, string(szd))
+		})
+	}
+}
+
+func Test_buildVMAuthConfig(t *testing.T) {
+	type args struct {
+		ctx     context.Context
+		rclient client.Client
+		vmauth  *v1beta1.VMAuth
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    []byte
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := buildVMAuthConfig(tt.args.ctx, tt.args.rclient, tt.args.vmauth)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("buildVMAuthConfig() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("buildVMAuthConfig() got = %v, want %v", got, tt.want)
+			}
 		})
 	}
 }

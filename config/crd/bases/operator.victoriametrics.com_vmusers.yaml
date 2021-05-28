@@ -88,7 +88,7 @@ spec:
                     type: object
                 type: object
               type: array
-            userName:
+            username:
               description: UserName basic auth user name for accessing protected endpoint,
                 metadata.name if missing.
               type: string

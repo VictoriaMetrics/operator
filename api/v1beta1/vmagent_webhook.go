@@ -22,6 +22,7 @@ func (cr *VMAgent) SetupWebhookWithManager(mgr ctrl.Manager) error {
 }
 
 // +kubebuilder:webhook:verbs=create;update,path=/validate-operator-victoriametrics-com-v1beta1-vmagent,mutating=false,failurePolicy=fail,groups=operator.victoriametrics.com,resources=vmagents,versions=v1beta1,name=vvmagent.kb.io
+
 var _ webhook.Validator = &VMAgent{}
 
 func checkRelabelConfigs(src []RelabelConfig) error {

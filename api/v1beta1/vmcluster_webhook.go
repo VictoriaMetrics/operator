@@ -17,6 +17,7 @@ func (r *VMCluster) SetupWebhookWithManager(mgr ctrl.Manager) error {
 }
 
 // +kubebuilder:webhook:verbs=create;update,path=/validate-operator-victoriametrics-com-v1beta1-vmcluster,mutating=false,failurePolicy=fail,groups=operator.victoriametrics.com,resources=vmclusters,versions=v1beta1,name=vvmcluster.kb.io
+
 var _ webhook.Validator = &VMCluster{}
 
 func (r *VMCluster) sanityCheck() error {

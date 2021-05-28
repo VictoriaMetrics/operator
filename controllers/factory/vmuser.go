@@ -2,43 +2,31 @@ package factory
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/VictoriaMetrics/operator/api/v1beta1"
+	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"gopkg.in/yaml.v2"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func createOrUpdateVMAuthUsersSecret(ctx context.Context, rclient client.Client, vmauth *v1beta1.VMAuth, users []*v1beta1.VMUser) error {
+func buildVMAuthConfig(ctx context.Context, rclient client.Client, vmauth *v1beta1.VMAuth) ([]byte, error) {
+
+	users, err := selectVMUsers(ctx, vmauth, rclient)
+	if err != nil {
+		return nil, err
+	}
 	crdCache, err := FetchCRDCache(ctx, rclient, users)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	newCfg, err := BuildVMAuthConfig(users, crdCache)
-	if err != nil {
-		return err
-	}
-	cfgSecret := &v1.Secret{
-		ObjectMeta: metav1.ObjectMeta{},
-		Data: map[string][]byte{
-			"vmauth_config.yaml": newCfg,
-		},
-	}
-	var existSecret v1.Secret
-	if err := rclient.Get(ctx, types.NamespacedName{Name: cfgSecret.Name, Namespace: cfgSecret.Namespace}, &existSecret); err != nil {
-		if errors.IsNotFound(err) {
-			return rclient.Create(ctx, cfgSecret)
-		}
-	}
-	v1beta1.MergeFinalizers(cfgSecret, v1beta1.FinalizerName)
-	cfgSecret.Annotations = labels.Merge(cfgSecret.Annotations, existSecret.Annotations)
+	// need to build secrets with user config.
 
-	return rclient.Update(ctx, cfgSecret)
+	return BuildVMAuthConfig(users, crdCache)
+
 }
 
 // builds configuration part for vmauth from given vmusers
@@ -58,7 +46,7 @@ func getAsURLObject(ctx context.Context, rclient client.Client, obj objectWithUr
 	return obj.AsURL(), nil
 }
 
-func FetchCRDCache(ctx context.Context, rclient client.Client, users []*v1beta1.VMUser) (map[string]string, error) {
+func FetchCRDCache(ctx context.Context, rclient client.Client, users []v1beta1.VMUser) (map[string]string, error) {
 	crdCacheUrlCache := make(map[string]string)
 	for i := range users {
 		user := users[i]
@@ -73,6 +61,7 @@ func FetchCRDCache(ctx context.Context, rclient client.Client, users []*v1beta1.
 			switch name := ref.CRD.Kind; name {
 			case "VMAgent":
 				var crd v1beta1.VMAgent
+				ref.CRD.AddRefToObj(&crd)
 				url, err := getAsURLObject(ctx, rclient, &crd)
 				if err != nil {
 					return nil, err
@@ -80,6 +69,7 @@ func FetchCRDCache(ctx context.Context, rclient client.Client, users []*v1beta1.
 				crdCacheUrlCache[ref.CRD.AsKey()] = url
 			case "VMAlert":
 				var crd v1beta1.VMAlert
+				ref.CRD.AddRefToObj(&crd)
 				url, err := getAsURLObject(ctx, rclient, &crd)
 				if err != nil {
 					return nil, err
@@ -88,6 +78,7 @@ func FetchCRDCache(ctx context.Context, rclient client.Client, users []*v1beta1.
 
 			case "VMSingle":
 				var crd v1beta1.VMSingle
+				ref.CRD.AddRefToObj(&crd)
 				url, err := getAsURLObject(ctx, rclient, &crd)
 				if err != nil {
 					return nil, err
@@ -95,6 +86,7 @@ func FetchCRDCache(ctx context.Context, rclient client.Client, users []*v1beta1.
 				crdCacheUrlCache[ref.CRD.AsKey()] = url
 			case "VMAlertmanager":
 				var crd v1beta1.VMAlertmanager
+				ref.CRD.AddRefToObj(&crd)
 				url, err := getAsURLObject(ctx, rclient, &crd)
 				if err != nil {
 					return nil, err
@@ -103,12 +95,11 @@ func FetchCRDCache(ctx context.Context, rclient client.Client, users []*v1beta1.
 
 			case "VMCluster/vmselect", "VMCluster/vminsert", "VMCluster/vmstorage":
 				var crd v1beta1.VMCluster
+				ref.CRD.AddRefToObj(&crd)
 				url, err := getAsURLObject(ctx, rclient, &crd)
 				if err != nil {
 					return nil, err
 				}
-				// object not found
-				// todo log
 				if url == "" {
 					continue
 				}
@@ -121,14 +112,12 @@ func FetchCRDCache(ctx context.Context, rclient client.Client, users []*v1beta1.
 				case strings.HasSuffix(name, "vmstorage"):
 					targetURL = crd.VMStorageURL()
 				default:
-					// todo log error
+					log.Error(fmt.Errorf("unsupported kind for VMCluster: %s", name), "cannot select crd ref")
 					continue
 				}
 				crdCacheUrlCache[ref.CRD.AsKey()] = targetURL
-			case "VMCluster/insert":
-			case "VMCluster/storage":
 			default:
-				// todo unsupported storage.
+				log.Error(fmt.Errorf("unsupported kind: %s", name), "cannot select crd ref")
 				continue
 			}
 		}
@@ -137,12 +126,14 @@ func FetchCRDCache(ctx context.Context, rclient client.Client, users []*v1beta1.
 }
 
 // BuildVMAuthConfig create VMAuth cfg for given Users.
-func BuildVMAuthConfig(users []*v1beta1.VMUser, crdCache map[string]string) ([]byte, error) {
+func BuildVMAuthConfig(users []v1beta1.VMUser, crdCache map[string]string) ([]byte, error) {
 	var cfg yaml.MapSlice
 
 	cfgUsers := []yaml.MapSlice{}
+	// todo check for uniq user name.
+	//uniq := make(map[string]struct{})
 	for i := range users {
-		user := users[i]
+		user := &users[i]
 		userCfg := genUserCfg(user, crdCache)
 		if userCfg != nil {
 			cfgUsers = append(cfgUsers, userCfg)
@@ -235,4 +226,33 @@ func genUserCfg(user *v1beta1.VMUser, crdUrlCache map[string]string) yaml.MapSli
 	}
 
 	return r
+}
+
+func selectVMUsers(ctx context.Context, cr *v1beta1.VMAuth, rclient client.Client) ([]v1beta1.VMUser, error) {
+
+	var res []v1beta1.VMUser
+	namespaces, userSelector, err := getNSWithSelector(ctx, rclient, cr.Spec.UserNamespaceSelector, cr.Spec.UserSelector, cr.Namespace)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := selectWithMerge(ctx, rclient, namespaces, &victoriametricsv1beta1.VMUserList{}, userSelector, func(list client.ObjectList) {
+		l := list.(*victoriametricsv1beta1.VMUserList)
+		for _, item := range l.Items {
+			if !item.DeletionTimestamp.IsZero() {
+				continue
+			}
+			res = append(res, item)
+		}
+	}); err != nil {
+		return nil, err
+	}
+
+	serviceScrapes := []string{}
+	for k := range res {
+		serviceScrapes = append(serviceScrapes, res[k].Name)
+	}
+	log.Info("selected VMUsers", "vmusers", strings.Join(serviceScrapes, ","), "namespace", cr.Namespace, "vmauth", cr.Name)
+
+	return res, nil
 }

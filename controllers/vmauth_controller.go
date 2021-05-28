@@ -18,8 +18,13 @@ package controllers
 
 import (
 	"context"
+	"sync"
 
+	"github.com/VictoriaMetrics/operator/controllers/factory"
+	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -27,9 +32,12 @@ import (
 	operatorv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 )
 
+var vmAuthSyncMU = sync.Mutex{}
+
 // VMAuthReconciler reconciles a VMAuth object
 type VMAuthReconciler struct {
 	client.Client
+	BaseConf     *config.BaseOperatorConf
 	Log          logr.Logger
 	OriginScheme *runtime.Scheme
 }
@@ -39,18 +47,58 @@ func (r *VMAuthReconciler) Scheme() *runtime.Scheme {
 	return r.OriginScheme
 }
 
+// Reconcile implements interface
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmauths,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmauths/status,verbs=get;update;patch
-
 func (r *VMAuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = context.Background()
-	_ = r.Log.WithValues("vmauth", req.NamespacedName)
+	l := r.Log.WithValues("vmauth", req.NamespacedName)
 
-	// your logic here
+	var instance operatorv1beta1.VMAuth
+
+	if err := r.Get(ctx, req.NamespacedName, &instance); err != nil {
+		if errors.IsNotFound(err) {
+			return ctrl.Result{}, nil
+		}
+		return ctrl.Result{}, err
+	}
+
+	if !instance.DeletionTimestamp.IsZero() {
+		if err := finalize.OnVMAuthDelete(ctx, r, &instance); err != nil {
+			l.Error(err, "cannot remove finalizers from vmauth")
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, nil
+	}
+
+	if err := finalize.AddFinalizer(ctx, r.Client, &instance); err != nil {
+		return ctrl.Result{}, err
+	}
+
+	if err := factory.CreateOrUpdateVMAuth(ctx, &instance, r, r.BaseConf); err != nil {
+		l.Error(err, "cannot create or update vmauth deploy")
+		return ctrl.Result{}, err
+	}
+
+	//create service for monitoring
+	svc, err := factory.CreateOrUpdateVMAuthService(ctx, &instance, r)
+	if err != nil {
+		l.Error(err, "cannot create or update vmauth service")
+		return ctrl.Result{}, err
+	}
+
+	//create vmservicescrape for object by default
+	if !r.BaseConf.DisableSelfServiceScrapeCreation {
+		err := factory.CreateVMServiceScrapeFromService(ctx, r, svc, instance.MetricPath())
+		if err != nil {
+			l.Error(err, "cannot create serviceScrape for vmauth")
+		}
+	}
 
 	return ctrl.Result{}, nil
 }
 
+// SetupWithManager inits object.
 func (r *VMAuthReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&operatorv1beta1.VMAuth{}).

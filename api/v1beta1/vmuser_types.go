@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // VMUserSpec defines the desired state of VMUser
@@ -11,7 +12,7 @@ type VMUserSpec struct {
 	// UserName basic auth user name for accessing protected endpoint,
 	// metadata.name if missing.
 	// +optional
-	UserName *string `json:"userName,omitempty"`
+	UserName *string `json:"username,omitempty"`
 	// Password basic auth password for accessing protected endpoint,
 	// randomly generated and saved into secret with the same name
 	// as VMUser into same namespace
@@ -45,6 +46,13 @@ type CRDRef struct {
 	Name string `json:"name"`
 	// Namespace target CRD object namespace.
 	Namespace string `json:"namespace"`
+}
+
+// AddRefToObj adds reference to given object and return it.
+func (cr *CRDRef) AddRefToObj(obj client.Object) client.Object {
+	obj.SetName(cr.Name)
+	obj.SetNamespace(cr.Namespace)
+	return obj
 }
 
 func (cr *CRDRef) AsKey() string {

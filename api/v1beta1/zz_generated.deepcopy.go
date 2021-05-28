@@ -24,7 +24,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/api/core/v1"
-	networkingv1 "k8s.io/api/networking/v1"
+	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -143,17 +143,24 @@ func (in *EmbeddedIngress) DeepCopyInto(out *EmbeddedIngress) {
 		**out = **in
 	}
 	in.EmbeddedObjectMetadata.DeepCopyInto(&out.EmbeddedObjectMetadata)
+	if in.TlsHosts != nil {
+		in, out := &in.TlsHosts, &out.TlsHosts
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	if in.ExtraRules != nil {
 		in, out := &in.ExtraRules, &out.ExtraRules
-		*out = make([]networkingv1.IngressRule, len(*in))
+		*out = make([]extensionsv1beta1.IngressRule, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
 	if in.ExtraTLS != nil {
 		in, out := &in.ExtraTLS, &out.ExtraTLS
-		*out = new(networkingv1.IngressTLS)
-		(*in).DeepCopyInto(*out)
+		*out = make([]extensionsv1beta1.IngressTLS, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
 	}
 }
 
@@ -2084,6 +2091,11 @@ func (in *VMAuthSpec) DeepCopyInto(out *VMAuthSpec) {
 	if in.PodDisruptionBudget != nil {
 		in, out := &in.PodDisruptionBudget, &out.PodDisruptionBudget
 		*out = new(EmbeddedPodDisruptionBudgetSpec)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.Ingress != nil {
+		in, out := &in.Ingress, &out.Ingress
+		*out = new(EmbeddedIngress)
 		(*in).DeepCopyInto(*out)
 	}
 	if in.EmbeddedProbes != nil {

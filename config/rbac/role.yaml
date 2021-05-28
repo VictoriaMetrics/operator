@@ -405,3 +405,60 @@ rules:
     - horizontalpodautoscalers
   verbs:
     - '*'
+- apiGroups:
+    - operator.victoriametrics.com
+  resources:
+    - vmusers
+    - vmusers/finalizers
+  verbs:
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch
+- apiGroups:
+    - operator.victoriametrics.com
+  resources:
+    - vmusers/status
+  verbs:
+    - get
+    - patch
+    - update
+- apiGroups:
+    - operator.victoriametrics.com
+  resources:
+    - vmauths
+    - vmauths/finalizers
+  verbs:
+    - create
+    - delete
+    - get
+    - list
+    - patch
+    - update
+    - watch
+- apiGroups:
+    - operator.victoriametrics.com
+  resources:
+    - vmauths/status
+  verbs:
+    - get
+    - patch
+    - update
+- apiGroups:
+    - networking.k8s.io
+    - extensions
+  resources:
+    - ingresses
+    - ingresses/finalizers
+  verbs:
+    - create
+    - delete
+    - get
+    - patch
+    - update
+    - watch
+
+

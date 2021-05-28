@@ -86,6 +86,12 @@ func (r *VMAuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		l.Error(err, "cannot create or update vmauth service")
 		return ctrl.Result{}, err
 	}
+	if instance.Spec.Ingress != nil {
+		if err := factory.CreateOrUpdateVMAuthIngress(ctx, r, &instance); err != nil {
+			l.Error(err, "cannot createOrUpdateIngress for VMAuth")
+			return ctrl.Result{}, err
+		}
+	}
 
 	//create vmservicescrape for object by default
 	if !r.BaseConf.DisableSelfServiceScrapeCreation {

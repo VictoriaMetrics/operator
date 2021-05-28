@@ -14,9 +14,11 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/config"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -394,5 +396,69 @@ func makeVMAuthConfigSecret(cr *victoriametricsv1beta1.VMAuth) *corev1.Secret {
 		Data: map[string][]byte{
 			vmAuthConfigNameGz: {},
 		},
+	}
+}
+
+// CreateOrUpdateVMAuthIngress handles ingress for vmauth.
+func CreateOrUpdateVMAuthIngress(ctx context.Context, rclient client.Client, cr *victoriametricsv1beta1.VMAuth) error {
+	ig := buildIngressConfig(cr)
+	var existIg v1beta1.Ingress
+	if err := rclient.Get(ctx, types.NamespacedName{Namespace: ig.Namespace, Name: ig.Name}, &existIg); err != nil {
+		if errors.IsNotFound(err) {
+			return rclient.Create(ctx, ig)
+		}
+		return err
+	}
+	ig.Finalizers = victoriametricsv1beta1.MergeFinalizers(&existIg, victoriametricsv1beta1.FinalizerName)
+	ig.Annotations = labels.Merge(ig.Annotations, existIg.Annotations)
+	return rclient.Update(ctx, ig)
+}
+
+var defaultPt = v1beta1.PathTypePrefix
+
+func buildIngressConfig(cr *victoriametricsv1beta1.VMAuth) *v1beta1.Ingress {
+	spec := v1beta1.IngressSpec{
+		Rules: []v1beta1.IngressRule{
+			{
+				IngressRuleValue: v1beta1.IngressRuleValue{
+					HTTP: &v1beta1.HTTPIngressRuleValue{
+						Paths: []v1beta1.HTTPIngressPath{
+							{
+								Path: "/",
+								Backend: v1beta1.IngressBackend{
+									ServiceName: cr.PrefixedName(),
+									ServicePort: intstr.Parse("http"),
+								},
+								PathType: &defaultPt,
+							},
+						},
+					},
+				},
+			},
+		},
+		IngressClassName: cr.Spec.Ingress.ClassName,
+	}
+	if cr.Spec.Ingress.TlsSecretName != "" {
+		spec.TLS = []v1beta1.IngressTLS{
+			{
+				SecretName: cr.Spec.Ingress.TlsSecretName,
+				Hosts:      cr.Spec.Ingress.TlsHosts,
+			},
+		}
+	}
+	// add user defined routes.
+	spec.Rules = append(spec.Rules, cr.Spec.Ingress.ExtraRules...)
+	spec.TLS = append(spec.TLS, cr.Spec.Ingress.ExtraTLS...)
+	lbls := labels.Merge(cr.Spec.Ingress.Labels, cr.SelectorLabels())
+	return &v1beta1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            cr.PrefixedName(),
+			Namespace:       cr.Namespace,
+			Labels:          lbls,
+			Annotations:     cr.Spec.Ingress.Annotations,
+			OwnerReferences: cr.AsOwner(),
+			Finalizers:      []string{victoriametricsv1beta1.FinalizerName},
+		},
+		Spec: spec,
 	}
 }

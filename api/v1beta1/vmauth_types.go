@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	v1 "k8s.io/api/core/v1"
-	v12 "k8s.io/api/networking/v1"
+	"k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
 )
@@ -145,6 +145,8 @@ type VMAuthSpec struct {
 	// PodDisruptionBudget created by operator
 	// +optional
 	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
+	// Ingress enables ingress configuration for VMAuth.
+	Ingress *EmbeddedIngress `json:"ingress,omitempty"`
 	// LivenessProbe that will be added to VMAuth pod
 	*EmbeddedProbes `json:",inline"`
 }
@@ -153,9 +155,10 @@ type VMAuthSpec struct {
 type EmbeddedIngress struct {
 	ClassName              *string `json:"class_name,omitempty"`
 	EmbeddedObjectMetadata `json:",inline"`
-	TlsSecretName          string            `json:"tlsSecretName,omitempty"`
-	ExtraRules             []v12.IngressRule `json:"extraRules,omitempty"`
-	ExtraTLS               *v12.IngressTLS   `json:"extraTls,omitempty"`
+	TlsHosts               []string              `json:"tlsHosts,omitempty"`
+	TlsSecretName          string                `json:"tlsSecretName,omitempty"`
+	ExtraRules             []v1beta1.IngressRule `json:"extraRules,omitempty"`
+	ExtraTLS               []v1beta1.IngressTLS  `json:"extraTls,omitempty"`
 }
 
 // VMAuthStatus defines the observed state of VMAuth

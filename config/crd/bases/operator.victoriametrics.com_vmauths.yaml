@@ -227,8 +227,11 @@ spec:
                     be preserved when modifying objects. More info: http://kubernetes.io/docs/user-guide/annotations'
                   type: object
                 class_name:
+                  description: ClassName defines ingress class name for VMAuth
                   type: string
                 extraRules:
+                  description: ExtraRules - additional rules for ingress, must be
+                    checked for correctness by user.
                   items:
                     description: IngressRule represents the rules mapping the paths
                       under a specified host to the related backend services. Incoming
@@ -358,6 +361,8 @@ spec:
                     type: object
                   type: array
                 extraTls:
+                  description: ExtraTLS - additional TLS configuration for ingress
+                    must be checked for correctness by user.
                   items:
                     description: IngressTLS describes the transport layer security
                       associated with an Ingress.
@@ -397,10 +402,14 @@ spec:
                     definition. Cannot be updated. More info: http://kubernetes.io/docs/user-guide/identifiers#names'
                   type: string
                 tlsHosts:
+                  description: TlsHosts configures TLS access for ingress, tlsSecretName
+                    must be defined for it.
                   items:
                     type: string
                   type: array
                 tlsSecretName:
+                  description: TlsSecretName defines secretname at the VMAuth namespace
+                    with cert and key https://kubernetes.io/docs/concepts/services-networking/ingress/#tls
                   type: string
               type: object
             initContainers:

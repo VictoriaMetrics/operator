@@ -63,7 +63,7 @@ func (r *VMAuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		return ctrl.Result{}, err
 	}
 
-	if !instance.DeletionTimestamp.IsZero() {
+	if instance.DeletionTimestamp != nil {
 		if err := finalize.OnVMAuthDelete(ctx, r, &instance); err != nil {
 			l.Error(err, "cannot remove finalizers from vmauth")
 			return ctrl.Result{}, err

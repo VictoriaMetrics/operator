@@ -70,6 +70,16 @@ This Document documents the types introduced by the VictoriaMetrics to be consum
 * [VMNodeScrape](#vmnodescrape)
 * [VMNodeScrapeList](#vmnodescrapelist)
 * [VMNodeScrapeSpec](#vmnodescrapespec)
+* [CRDRef](#crdref)
+* [StaticRef](#staticref)
+* [TargetRef](#targetref)
+* [VMUser](#vmuser)
+* [VMUserList](#vmuserlist)
+* [VMUserSpec](#vmuserspec)
+* [EmbeddedIngress](#embeddedingress)
+* [VMAuth](#vmauth)
+* [VMAuthList](#vmauthlist)
+* [VMAuthSpec](#vmauthspec)
 * [ProbeTargetIngress](#probetargetingress)
 * [VMProbe](#vmprobe)
 * [VMProbeList](#vmprobelist)
@@ -1192,6 +1202,156 @@ VMNodeScrapeSpec defines specification for VMNodeScrape.
 | proxyURL | ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. | *string | false |
 | selector | Selector to select kubernetes Nodes. | [metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
 | sampleLimit | SampleLimit defines per-scrape limit on number of scraped samples that will be accepted. | uint64 | false |
+
+[Back to TOC](#table-of-contents)
+
+## CRDRef
+
+CRDRef describe CRD target reference.
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| kind | Kind one of: VMAgent VMAlert VMCluster VMSingle or VMAlertManager | string | true |
+| name | Name target CRD object name | string | true |
+| namespace | Namespace target CRD object namespace. | string | true |
+
+[Back to TOC](#table-of-contents)
+
+## StaticRef
+
+StaticRef - user-defined routing host address.
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| url | URL http url for given staticRef. | string | true |
+
+[Back to TOC](#table-of-contents)
+
+## TargetRef
+
+TargetRef describes target for user traffic forwarding.
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| crd | CRD - one of operator crd targets one of crd or static can be configured per targetRef. | *[CRDRef](#crdref) | false |
+| static | Static - user defined url for traffic forward. one of crd or static can be configured per targetRef. | *[StaticRef](#staticref) | false |
+| paths | Paths - matched path to route. | []string | false |
+
+[Back to TOC](#table-of-contents)
+
+## VMUser
+
+VMUser is the Schema for the vmusers API
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| metadata |  | [metav1.ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#objectmeta-v1-meta) | false |
+| spec |  | [VMUserSpec](#vmuserspec) | false |
+| status |  | [VMUserStatus](#vmuserstatus) | false |
+
+[Back to TOC](#table-of-contents)
+
+## VMUserList
+
+VMUserList contains a list of VMUser
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| metadata |  | [metav1.ListMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#listmeta-v1-meta) | false |
+| items |  | [][VMUser](#vmuser) | true |
+
+[Back to TOC](#table-of-contents)
+
+## VMUserSpec
+
+VMUserSpec defines the desired state of VMUser
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| username | UserName basic auth user name for accessing protected endpoint, metadata.name if missing. | *string | false |
+| password | Password basic auth password for accessing protected endpoint, randomly generated and saved into secret with the same name as VMUser into same namespace | *string | false |
+| generatePassword | GeneratePassword instructs operator to generate password for user if spec.password if empty. | bool | false |
+| bearerToken | BearerToken Authorization header value for accessing protected endpoint. | *string | false |
+| targetRefs | TargetRefs - reference to endpoints, which user may access. | [][TargetRef](#targetref) | true |
+
+[Back to TOC](#table-of-contents)
+
+## EmbeddedIngress
+
+EmbeddedIngress describes ingress configuration options.
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| class_name | ClassName defines ingress class name for VMAuth | *string | false |
+| tlsHosts | TlsHosts configures TLS access for ingress, tlsSecretName must be defined for it. | []string | false |
+| tlsSecretName | TlsSecretName defines secretname at the VMAuth namespace with cert and key https://kubernetes.io/docs/concepts/services-networking/ingress/#tls | string | false |
+| extraRules | ExtraRules - additional rules for ingress, must be checked for correctness by user. | []v1beta1.IngressRule | false |
+| extraTls | ExtraTLS - additional TLS configuration for ingress must be checked for correctness by user. | []v1beta1.IngressTLS | false |
+
+[Back to TOC](#table-of-contents)
+
+## VMAuth
+
+VMAuth is the Schema for the vmauths API
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| metadata |  | [metav1.ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#objectmeta-v1-meta) | false |
+| spec |  | [VMAuthSpec](#vmauthspec) | false |
+| status |  | [VMAuthStatus](#vmauthstatus) | false |
+
+[Back to TOC](#table-of-contents)
+
+## VMAuthList
+
+VMAuthList contains a list of VMAuth
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| metadata |  | [metav1.ListMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#listmeta-v1-meta) | false |
+| items |  | [][VMAuth](#vmauth) | true |
+
+[Back to TOC](#table-of-contents)
+
+## VMAuthSpec
+
+VMAuthSpec defines the desired state of VMAuth
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| podMetadata | PodMetadata configures Labels and Annotations which are propagated to the VMAuth pods. | *[EmbeddedObjectMetadata](#embeddedobjectmetadata) | false |
+| image | Image - docker image settings for VMAuth if no specified operator uses default config version | [Image](#image) | false |
+| imagePullSecrets | ImagePullSecrets An optional list of references to secrets in the same namespace to use for pulling images from registries see http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod | [][v1.LocalObjectReference](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#localobjectreference-v1-core) | false |
+| secrets | Secrets is a list of Secrets in the same namespace as the VMAuth object, which shall be mounted into the VMAuth Pods. | []string | false |
+| configMaps | ConfigMaps is a list of ConfigMaps in the same namespace as the VMAuth object, which shall be mounted into the VMAuth Pods. | []string | false |
+| logLevel | LogLevel for victoria metrics single to be configured with. | string | false |
+| logFormat | LogFormat for VMAuth to be configured with. | string | false |
+| replicaCount | ReplicaCount is the expected size of the VMAuth it can be 0 or 1 if you need more - use vm cluster | *int32 | false |
+| volumes | Volumes allows configuration of additional volumes on the output deploy definition. Volumes specified will be appended to other volumes that are generated as a result of StorageSpec objects. | [][v1.Volume](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#volume-v1-core) | false |
+| volumeMounts | VolumeMounts allows configuration of additional VolumeMounts on the output Deployment definition. VolumeMounts specified will be appended to other VolumeMounts in the VMAuth container, that are generated as a result of StorageSpec objects. | [][v1.VolumeMount](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#volumemount-v1-core) | false |
+| resources | Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/ if not defined default resources from operator config will be used | [v1.ResourceRequirements](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#resourcerequirements-v1-core) | false |
+| affinity | Affinity If specified, the pod&#39;s scheduling constraints. | *[v1.Affinity](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#affinity-v1-core) | false |
+| tolerations | Tolerations If specified, the pod&#39;s tolerations. | [][v1.Toleration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#toleration-v1-core) | false |
+| securityContext | SecurityContext holds pod-level security attributes and common container settings. This defaults to the default PodSecurityContext. | *[v1.PodSecurityContext](https://v1-17.docs.kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#podsecuritycontext-v1-core) | false |
+| serviceAccountName | ServiceAccountName is the name of the ServiceAccount to use to run the VMAuth Pods. | string | false |
+| schedulerName | SchedulerName - defines kubernetes scheduler name | string | false |
+| runtimeClassName | RuntimeClassName - defines runtime class for kubernetes pod. https://kubernetes.io/docs/concepts/containers/runtime-class/ | *string | false |
+| podSecurityPolicyName | PodSecurityPolicyName - defines name for podSecurityPolicy in case of empty value, prefixedName will be used. | string | false |
+| hostAliases | HostAliases provides mapping for ip and hostname, that would be propagated to pod, cannot be used with HostNetwork. | []v1.HostAlias | false |
+| containers | Containers property allows to inject additions sidecars or to patch existing containers. It can be useful for proxies, backup, etc. | [][v1.Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#container-v1-core) | false |
+| initContainers | InitContainers allows adding initContainers to the pod definition. Those can be used to e.g. fetch secrets for injection into the vmSingle configuration from external sources. Any errors during the execution of an initContainer will lead to a restart of the Pod. More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/ Using initContainers for any use case other then secret fetching is entirely outside the scope of what the maintainers will support and by doing so, you accept that this behaviour may break at any time without notice. | [][v1.Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#container-v1-core) | false |
+| priorityClassName | PriorityClassName assigned to the Pods | string | false |
+| hostNetwork | HostNetwork controls whether the pod may use the node network namespace | bool | false |
+| dnsPolicy | DNSPolicy sets DNS policy for the pod | [v1.DNSPolicy](https://v1-17.docs.kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#pod-v1-core) | false |
+| topologySpreadConstraints | TopologySpreadConstraints embedded kubernetes pod configuration option, controls how pods are spread across your cluster among failure-domains such as regions, zones, nodes, and other user-defined topology domains https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/ | [][v1.TopologySpreadConstraint](https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/) | false |
+| port | Port listen port | string | false |
+| userSelector | UserSelector defines VMUser to be selected for config file generation. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
+| userNamespaceSelector | UserNamespaceSelector Namespaces to be selected for  VMAuth discovery. If nil, only check own namespace. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
+| extraArgs | ExtraArgs that will be passed to  VMAuth pod for example remoteWrite.tmpDataPath: /tmp | map[string]string | false |
+| extraEnvs | ExtraEnvs that will be added to VMAuth pod | [][v1.EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#envvar-v1-core) | false |
+| serviceSpec | ServiceSpec that will be added to vmsingle service spec | *[ServiceSpec](#servicespec) | false |
+| podDisruptionBudget | PodDisruptionBudget created by operator | *[EmbeddedPodDisruptionBudgetSpec](#embeddedpoddisruptionbudgetspec) | false |
+| ingress | Ingress enables ingress configuration for VMAuth. | *[EmbeddedIngress](#embeddedingress) | false |
 
 [Back to TOC](#table-of-contents)
 

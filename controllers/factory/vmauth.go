@@ -335,15 +335,6 @@ func createOrUpdateVMAuthConfig(ctx context.Context, rclient client.Client, cr *
 	if err != nil {
 		return err
 	}
-	if len(generatedConfig) == 0 {
-		log.Info("vmauth generated config is empty. using default stub.")
-		generatedConfig = []byte(`
-users:
-- url_prefix: http://localhost:8428
-  bearer_token: some-default-token
-`)
-
-	}
 
 	var buf bytes.Buffer
 	if err := gzipConfig(&buf, generatedConfig); err != nil {

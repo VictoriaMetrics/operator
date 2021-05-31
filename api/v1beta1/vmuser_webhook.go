@@ -17,11 +17,18 @@ limitations under the License.
 package v1beta1
 
 import (
+	"fmt"
+	"strings"
+
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
+
+var supportedCRDKinds = []string{
+	"VMAgent", "VMAlert", "VMAlertmanager", "VMSingle", "VMCluster/vmselect", "VMCluster/vminsert", "VMCluster/vmstorage",
+}
 
 // log is for logging in this package.
 var vmuserlog = logf.Log.WithName("vmuser-resource")
@@ -37,6 +44,28 @@ func (r *VMUser) SetupWebhookWithManager(mgr ctrl.Manager) error {
 var _ webhook.Validator = &VMUser{}
 
 func (cr *VMUser) sanityCheck() error {
+	if cr.Spec.UserName != nil && cr.Spec.BearerToken != nil {
+		return fmt.Errorf("one of spec.username and spec.bearerToken must be defined for user, got both")
+	}
+	for i := range cr.Spec.TargetRefs {
+		targetRef := cr.Spec.TargetRefs[i]
+		if targetRef.CRD != nil && targetRef.Static != nil {
+			return fmt.Errorf("targetRef validation failed, one of `crd` or `static` must be configured, got both")
+		}
+		if targetRef.CRD == nil && targetRef.Static == nil {
+			return fmt.Errorf("targetRef validation failed, one of `crd` or `static` must be configured, got none")
+		}
+		if targetRef.CRD != nil {
+			switch targetRef.CRD.Kind {
+			case "VMAgent", "VMAlert", "VMAlertmanager", "VMSingle", "VMCluster/vmselect", "VMCluster/vminsert", "VMCluster/vmstorage":
+			default:
+				return fmt.Errorf("unsupported crd.kind for target ref, got: `%s`, want one of: `%s`", targetRef.CRD.Kind, strings.Join(supportedCRDKinds, ","))
+			}
+			if targetRef.CRD.Namespace == "" || targetRef.CRD.Name == "" {
+				return fmt.Errorf("crd.name and crd.namespace cannot be empty")
+			}
+		}
+	}
 	return nil
 }
 

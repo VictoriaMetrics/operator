@@ -20,8 +20,10 @@ import (
 	"context"
 
 	"github.com/VictoriaMetrics/operator/controllers/factory"
+	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -53,14 +55,23 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	err := r.Get(ctx, req.NamespacedName, &instance)
 	if err != nil {
-		//in case of object notfound we must update vmauthes
-		if !errors.IsNotFound(err) {
-			// Error reading the object - requeue the request.
-			return ctrl.Result{}, err
+		if errors.IsNotFound(err) {
+			return ctrl.Result{}, nil
 		}
+		// Error reading the object - requeue the request.
+		return ctrl.Result{}, err
 	}
+
+	// lock vmauth sync.
 	vmAuthSyncMU.Lock()
 	defer vmAuthSyncMU.Unlock()
+	if instance.DeletionTimestamp == nil {
+		if err := finalize.AddFinalizer(ctx, r.Client, &instance); err != nil {
+			l.Error(err, "cannot add finalizer")
+			return ctrl.Result{}, err
+		}
+		l.Info("added fin")
+	}
 	var vmauthes operatorv1beta1.VMAuthList
 	if err := r.List(ctx, &vmauthes); err != nil {
 		l.Error(err, "cannot list VMAuth at cluster wide.")
@@ -85,6 +96,13 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			return ctrl.Result{}, err
 		}
 	}
+	if !instance.DeletionTimestamp.IsZero() {
+		// need to remove finalizer and delete related resources.
+		if err := finalize.OnVMUserDelete(ctx, r, &instance); err != nil {
+			l.Error(err, "cannot remove finalizer")
+			return ctrl.Result{}, err
+		}
+	}
 	return ctrl.Result{}, nil
 }
 
@@ -92,5 +110,6 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 func (r *VMUserReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&operatorv1beta1.VMUser{}).
+		Owns(&v1.Secret{}).
 		Complete(r)
 }

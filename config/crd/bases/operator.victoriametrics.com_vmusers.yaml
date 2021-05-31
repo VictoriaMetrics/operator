@@ -40,6 +40,10 @@ spec:
               description: BearerToken Authorization header value for accessing protected
                 endpoint.
               type: string
+            generatePassword:
+              description: GeneratePassword instructs operator to generate password
+                for user if spec.password if empty.
+              type: boolean
             password:
               description: Password basic auth password for accessing protected endpoint,
                 randomly generated and saved into secret with the same name as VMUser
@@ -51,7 +55,8 @@ spec:
                 description: TargetRef describes target for user traffic forwarding.
                 properties:
                   crd:
-                    description: CRD - one of operator crd targets
+                    description: CRD - one of operator crd targets one of crd or static
+                      can be configured per targetRef.
                     properties:
                       kind:
                         description: 'Kind one of: VMAgent VMAlert VMCluster VMSingle
@@ -73,15 +78,12 @@ spec:
                     items:
                       type: string
                     type: array
-                  queryParams:
-                    description: QueryParams - additional query params for target.
-                    items:
-                      type: string
-                    type: array
                   static:
-                    description: Static - user defined url for traffic forward.
+                    description: Static - user defined url for traffic forward. one
+                      of crd or static can be configured per targetRef.
                     properties:
                       url:
+                        description: URL http url for given staticRef.
                         type: string
                     required:
                     - url

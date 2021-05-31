@@ -17,9 +17,6 @@ func OnVMAuthDelete(ctx context.Context, rclient client.Client, crd *victoriamet
 		return err
 	}
 
-	if err := RemoveOrphanedDeployments(ctx, rclient, crd, nil); err != nil {
-		return err
-	}
 	// check service
 	if err := removeFinalizeObjByName(ctx, rclient, &v1.Service{}, crd.PrefixedName(), crd.Namespace); err != nil {
 		return err

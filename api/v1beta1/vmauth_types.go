@@ -153,16 +153,30 @@ type VMAuthSpec struct {
 
 // EmbeddedIngress describes ingress configuration options.
 type EmbeddedIngress struct {
-	ClassName              *string `json:"class_name,omitempty"`
+	// ClassName defines ingress class name for VMAuth
+	// +optional
+	ClassName *string `json:"class_name,omitempty"`
+	//  EmbeddedObjectMetadata adds labels and annotations for object.
 	EmbeddedObjectMetadata `json:",inline"`
-	TlsHosts               []string              `json:"tlsHosts,omitempty"`
-	TlsSecretName          string                `json:"tlsSecretName,omitempty"`
-	ExtraRules             []v1beta1.IngressRule `json:"extraRules,omitempty"`
-	ExtraTLS               []v1beta1.IngressTLS  `json:"extraTls,omitempty"`
+	// TlsHosts configures TLS access for ingress, tlsSecretName must be defined for it.
+	TlsHosts []string `json:"tlsHosts,omitempty"`
+	// TlsSecretName defines secretname at the VMAuth namespace with cert and key
+	// https://kubernetes.io/docs/concepts/services-networking/ingress/#tls
+	// +optional
+	TlsSecretName string `json:"tlsSecretName,omitempty"`
+	// ExtraRules - additional rules for ingress,
+	// must be checked for correctness by user.
+	// +optional
+	ExtraRules []v1beta1.IngressRule `json:"extraRules,omitempty"`
+	// ExtraTLS - additional TLS configuration for ingress
+	// must be checked for correctness by user.
+	// +optional
+	ExtraTLS []v1beta1.IngressTLS `json:"extraTls,omitempty"`
 }
 
 // VMAuthStatus defines the observed state of VMAuth
 type VMAuthStatus struct {
+	// todo add status.
 }
 
 // +kubebuilder:object:root=true

@@ -17,6 +17,8 @@ limitations under the License.
 package v1beta1
 
 import (
+	"fmt"
+
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -37,6 +39,13 @@ func (r *VMAuth) SetupWebhookWithManager(mgr ctrl.Manager) error {
 var _ webhook.Validator = &VMAuth{}
 
 func (cr *VMAuth) sanityCheck() error {
+	if cr.Spec.Ingress != nil {
+		// check ingress
+		ing := cr.Spec.Ingress
+		if len(ing.TlsHosts) > 0 && ing.TlsSecretName == "" {
+			return fmt.Errorf("spec.ingress.tlsSecretName cannot be empty with non-empty spec.ingress.tlsHosts")
+		}
+	}
 	return nil
 }
 

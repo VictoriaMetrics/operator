@@ -3,5 +3,12 @@ kind: VMUser
 metadata:
   name: vmuser-sample
 spec:
-  # Add fields here
-  foo: bar
+  username: simple-user
+  password: simple-password
+  targetRefs:
+    - static:
+        url: http://vmsingle-sample.default.svc:8429
+      paths: ["/"]
+    - static:
+        url: http://vmagent-sample.default.svc:8429
+      paths: ["/targets", "/api/v1/targets","/api/v1/write"]

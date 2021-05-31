@@ -11,6 +11,24 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
+      path: /validate-operator-victoriametrics-com-v1beta1-vmagent
+  failurePolicy: Fail
+  name: vvmagent.kb.io
+  rules:
+  - apiGroups:
+    - operator.victoriametrics.com
+    apiVersions:
+    - v1beta1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - vmagents
+- clientConfig:
+    caBundle: Cg==
+    service:
+      name: webhook-service
+      namespace: system
       path: /validate-operator-victoriametrics-com-v1beta1-vmalert
   failurePolicy: Fail
   name: vvmalert.kb.io
@@ -47,6 +65,42 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
+      path: /validate-operator-victoriametrics-com-v1beta1-vmauth
+  failurePolicy: Fail
+  name: vvmauth.kb.io
+  rules:
+  - apiGroups:
+    - operator.victoriametrics.com
+    apiVersions:
+    - v1beta1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - vmauths
+- clientConfig:
+    caBundle: Cg==
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-operator-victoriametrics-com-v1beta1-vmcluster
+  failurePolicy: Fail
+  name: vvmcluster.kb.io
+  rules:
+  - apiGroups:
+    - operator.victoriametrics.com
+    apiVersions:
+    - v1beta1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - vmclusters
+- clientConfig:
+    caBundle: Cg==
+    service:
+      name: webhook-service
+      namespace: system
       path: /validate-operator-victoriametrics-com-v1beta1-vmsingle
   failurePolicy: Fail
   name: vvmsingle.kb.io
@@ -60,3 +114,21 @@ webhooks:
     - UPDATE
     resources:
     - vmsingles
+- clientConfig:
+    caBundle: Cg==
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-operator-victoriametrics-com-v1beta1-vmuser
+  failurePolicy: Fail
+  name: vvmuser.kb.io
+  rules:
+  - apiGroups:
+    - operator.victoriametrics.com
+    apiVersions:
+    - v1beta1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - vmusers

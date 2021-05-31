@@ -395,3 +395,8 @@ func reconcileHPA(ctx context.Context, rclient client.Client, targetHPA *v2beta2
 
 	return rclient.Update(ctx, targetHPA)
 }
+
+func CreateOrUpdatePodDisruptionBudget(ctx context.Context, rclient client.Client, cr svcBuilderArgs, kind string, epdb *victoriametricsv1beta1.EmbeddedPodDisruptionBudgetSpec) error {
+	pdb := buildDefaultPDB(cr, epdb)
+	return reconcilePDB(ctx, rclient, kind, pdb)
+}

@@ -1,0 +1,48 @@
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMUser
+metadata:
+  name: vmuser-sample
+spec:
+  username: simple-user
+  password: simple-password
+  targetRefs:
+    - static:
+        url: http://vmsingle-sample.default.svc:8429
+      paths: ["/"]
+    - crd:
+        kind: VMAgent
+        name: sample
+        namespace: default
+      paths: ["/targets", "/api/v1/targets","/api/v1/write"]
+---
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMUser
+metadata:
+  name: vmuser-sample-1
+spec:
+  username: simple-user-1
+  targetRefs:
+    - static:
+        url: http://vmsingle-sample.default.svc:8429
+      paths: ["/"]
+    - crd:
+        kind: VMAgent
+        name: sample
+        namespace: default
+      paths: ["/targets", "/api/v1/targets","/api/v1/write"]
+---
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMUser
+metadata:
+  name: vmuser-sample-2
+spec:
+  bearerToken: access-token
+  targetRefs:
+    - static:
+        url: http://vmsingle-sample.default.svc:8429
+      paths: ["/"]
+    - crd:
+        kind: VMAgent
+        name: sample
+        namespace: default
+      paths: ["/targets", "/api/v1/targets","/api/v1/write"]

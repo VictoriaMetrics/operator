@@ -125,73 +125,24 @@ func SelectServiceScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgen
 
 	res := make(map[string]*victoriametricsv1beta1.VMServiceScrape)
 
-	namespaces := []string{}
+	var servScrapesCombined []victoriametricsv1beta1.VMServiceScrape
 
-	//list namespaces matched by  namespaceselector
-	//for each namespace apply list with  selector
-	//combine result
-	switch {
-	case cr.Spec.ServiceScrapeNamespaceSelector == nil:
-		namespaces = append(namespaces, cr.Namespace)
-	case cr.Spec.ServiceScrapeNamespaceSelector.MatchExpressions == nil && cr.Spec.ServiceScrapeNamespaceSelector.MatchLabels == nil:
-		namespaces = nil
-	default:
-		log.Info("namespace selector for serviceScrapes", "selector", cr.Spec.ServiceScrapeNamespaceSelector.String())
-		nsSelector, err := metav1.LabelSelectorAsSelector(cr.Spec.ServiceScrapeNamespaceSelector)
-		if err != nil {
-			return nil, fmt.Errorf("cannot convert serviceNamespace selector: %w", err)
-		}
-		namespaces, err = selectNamespaces(ctx, rclient, nsSelector)
-		if err != nil {
-			return nil, fmt.Errorf("cannot select namespaces for rule match: %w", err)
-		}
-	}
-
-	// if namespaces isn't nil, then nameSpaceSelector is defined
-	// but scrapeSelector maybe be nil and we must set it to catch all value
-	if namespaces != nil && cr.Spec.ServiceScrapeSelector == nil {
-		cr.Spec.ServiceScrapeSelector = &metav1.LabelSelector{}
-	}
-	servMonSelector, err := metav1.LabelSelectorAsSelector(cr.Spec.ServiceScrapeSelector)
+	namespaces, objSelector, err := getNSWithSelector(ctx, rclient, cr.Spec.ServiceScrapeNamespaceSelector, cr.Spec.ServiceScrapeSelector, cr.Namespace)
 	if err != nil {
-		return nil, fmt.Errorf("cannot convert ServiceScrapeSelector to labelSelector: %w", err)
+		return nil, err
 	}
 
-	servScrapesCombined := []victoriametricsv1beta1.VMServiceScrape{}
-
-	//list all namespaces for rules with selector
-	if namespaces == nil {
-		log.Info("listing all namespaces for serviceScrapes", "vmagent", cr.Name)
-		servMons := &victoriametricsv1beta1.VMServiceScrapeList{}
-		err = rclient.List(ctx, servMons, &client.ListOptions{LabelSelector: servMonSelector})
-		if err != nil {
-			return nil, fmt.Errorf("cannot list rules from all namespaces: %w", err)
-		}
-		servScrapesCombined = append(servScrapesCombined, servMons.Items...)
-
-	} else {
-		for _, ns := range namespaces {
-			log.Info("listing namespace for serviceScrapes", "ns", ns, "vmagent", cr.Name)
-			listOpts := &client.ListOptions{Namespace: ns, LabelSelector: servMonSelector}
-			servMons := &victoriametricsv1beta1.VMServiceScrapeList{}
-			err = rclient.List(ctx, servMons, listOpts)
-			if err != nil {
-				return nil, fmt.Errorf("cannot list rules at namespace: %s, err: %w", ns, err)
+	if err := selectWithMerge(ctx, rclient, namespaces, &victoriametricsv1beta1.VMServiceScrapeList{}, objSelector, func(list client.ObjectList) {
+		l := list.(*victoriametricsv1beta1.VMServiceScrapeList)
+		for _, item := range l.Items {
+			if !item.DeletionTimestamp.IsZero() {
+				continue
 			}
-			servScrapesCombined = append(servScrapesCombined, servMons.Items...)
-
+			servScrapesCombined = append(servScrapesCombined, item)
 		}
+	}); err != nil {
+		return nil, err
 	}
-
-	// filter in place
-	n := 0
-	for _, x := range servScrapesCombined {
-		if x.DeletionTimestamp.IsZero() {
-			servScrapesCombined[n] = x
-			n++
-		}
-	}
-	servScrapesCombined = servScrapesCombined[:n]
 
 	for _, servScrape := range servScrapesCombined {
 		m := servScrape.DeepCopy()
@@ -229,71 +180,24 @@ func SelectPodScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, r
 
 	res := make(map[string]*victoriametricsv1beta1.VMPodScrape)
 
-	namespaces := []string{}
+	var podScrapesCombined []victoriametricsv1beta1.VMPodScrape
 
-	// list namespaces matched by  namespaceSelector
-	// for each namespace apply list with  selector
-	// combine result
-	switch {
-	case cr.Spec.PodScrapeNamespaceSelector == nil:
-		namespaces = append(namespaces, cr.Namespace)
-	case cr.Spec.PodScrapeNamespaceSelector.MatchExpressions == nil && cr.Spec.PodScrapeNamespaceSelector.MatchLabels == nil:
-		namespaces = nil
-	default:
-		log.Info("selector for podScrape", "vmagent", cr.Name, "selector", cr.Spec.PodScrapeNamespaceSelector.String())
-		nsSelector, err := metav1.LabelSelectorAsSelector(cr.Spec.PodScrapeNamespaceSelector)
-		if err != nil {
-			return nil, fmt.Errorf("cannot convert podScrapeNamespaceSelector to labelSelector: %w", err)
-		}
-		namespaces, err = selectNamespaces(ctx, rclient, nsSelector)
-		if err != nil {
-			return nil, fmt.Errorf("cannot select namespaces for podScrape match: %w", err)
-		}
-	}
-
-	// if namespaces isn't nil, then nameSpaceSelector is defined
-	//but scrapeSelector maybe be nil and we have to set it to catch all value
-	if namespaces != nil && cr.Spec.PodScrapeSelector == nil {
-		cr.Spec.PodScrapeSelector = &metav1.LabelSelector{}
-	}
-	podScrapeSelector, err := metav1.LabelSelectorAsSelector(cr.Spec.PodScrapeSelector)
+	namespaces, objSelector, err := getNSWithSelector(ctx, rclient, cr.Spec.PodScrapeNamespaceSelector, cr.Spec.PodScrapeSelector, cr.Namespace)
 	if err != nil {
-		return nil, fmt.Errorf("cannot convert podScrapeSelector to label selector: %w", err)
+		return nil, err
 	}
 
-	podScrapesCombined := []victoriametricsv1beta1.VMPodScrape{}
-
-	//list all namespaces for pods with selector
-	if namespaces == nil {
-		log.Info("listing all namespaces for podScrapes")
-		podScrapes := &victoriametricsv1beta1.VMPodScrapeList{}
-		err = rclient.List(ctx, podScrapes, &client.ListOptions{LabelSelector: podScrapeSelector})
-		if err != nil {
-			return nil, fmt.Errorf("cannot list podScrapes from all namespaces: %w", err)
-		}
-		podScrapesCombined = append(podScrapesCombined, podScrapes.Items...)
-
-	} else {
-		for _, ns := range namespaces {
-			listOpts := &client.ListOptions{Namespace: ns, LabelSelector: podScrapeSelector}
-			podScrapes := &victoriametricsv1beta1.VMPodScrapeList{}
-			err = rclient.List(ctx, podScrapes, listOpts)
-			if err != nil {
-				return nil, fmt.Errorf("cannot list podscrapes at namespace: %s, err: %w", ns, err)
+	if err := selectWithMerge(ctx, rclient, namespaces, &victoriametricsv1beta1.VMPodScrapeList{}, objSelector, func(list client.ObjectList) {
+		l := list.(*victoriametricsv1beta1.VMPodScrapeList)
+		for _, item := range l.Items {
+			if !item.DeletionTimestamp.IsZero() {
+				continue
 			}
-			podScrapesCombined = append(podScrapesCombined, podScrapes.Items...)
-
+			podScrapesCombined = append(podScrapesCombined, item)
 		}
+	}); err != nil {
+		return nil, err
 	}
-	// filter in place
-	n := 0
-	for _, x := range podScrapesCombined {
-		if x.DeletionTimestamp.IsZero() {
-			podScrapesCombined[n] = x
-			n++
-		}
-	}
-	podScrapesCombined = podScrapesCombined[:n]
 
 	for _, podScrape := range podScrapesCombined {
 		pm := podScrape.DeepCopy()
@@ -312,72 +216,23 @@ func SelectPodScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, r
 func SelectVMProbes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) (map[string]*victoriametricsv1beta1.VMProbe, error) {
 
 	res := make(map[string]*victoriametricsv1beta1.VMProbe)
-
-	namespaces := []string{}
-
-	// list namespaces matched by  namespaceSelector
-	// for each namespace apply list with  selector
-	// combine result
-	switch {
-	case cr.Spec.ProbeNamespaceSelector == nil:
-		namespaces = append(namespaces, cr.Namespace)
-	case cr.Spec.ProbeNamespaceSelector.MatchExpressions == nil && cr.Spec.PodScrapeNamespaceSelector.MatchLabels == nil:
-		namespaces = nil
-	default:
-		log.Info("selector for VMProbe", "vmagent", cr.Name, "selector", cr.Spec.PodScrapeNamespaceSelector.String())
-		nsSelector, err := metav1.LabelSelectorAsSelector(cr.Spec.ProbeNamespaceSelector)
-		if err != nil {
-			return nil, fmt.Errorf("cannot convert ProbeNamespaceSelector to labelSelector: %w", err)
-		}
-		namespaces, err = selectNamespaces(ctx, rclient, nsSelector)
-		if err != nil {
-			return nil, fmt.Errorf("cannot select namespaces for VMprobe match: %w", err)
-		}
-	}
-
-	// if namespaces isn't nil, then nameSpaceSelector is defined
-	//but probeSelector maybe be nil and we have to set it to catch all value
-	if namespaces != nil && cr.Spec.ProbeSelector == nil {
-		cr.Spec.ProbeSelector = &metav1.LabelSelector{}
-	}
-	probeSelector, err := metav1.LabelSelectorAsSelector(cr.Spec.ProbeSelector)
+	var probesCombined []victoriametricsv1beta1.VMProbe
+	namespaces, objSelector, err := getNSWithSelector(ctx, rclient, cr.Spec.ProbeNamespaceSelector, cr.Spec.ProbeSelector, cr.Namespace)
 	if err != nil {
-		return nil, fmt.Errorf("cannot convert probeSelector to label selector: %w", err)
+		return nil, err
 	}
 
-	probesCombined := []victoriametricsv1beta1.VMProbe{}
-
-	//list all namespaces for probes with selector
-	if namespaces == nil {
-		log.Info("listing all namespaces for probes")
-		vmProbes := &victoriametricsv1beta1.VMProbeList{}
-		err = rclient.List(ctx, vmProbes, &client.ListOptions{LabelSelector: probeSelector})
-		if err != nil {
-			return nil, fmt.Errorf("cannot list VMProbes from all namespaces: %w", err)
-		}
-		probesCombined = append(probesCombined, vmProbes.Items...)
-
-	} else {
-		for _, ns := range namespaces {
-			listOpts := &client.ListOptions{Namespace: ns, LabelSelector: probeSelector}
-			vmProbes := &victoriametricsv1beta1.VMProbeList{}
-			err = rclient.List(ctx, vmProbes, listOpts)
-			if err != nil {
-				return nil, fmt.Errorf("cannot list podscrapes at namespace: %s, err: %w", ns, err)
+	if err := selectWithMerge(ctx, rclient, namespaces, &victoriametricsv1beta1.VMProbeList{}, objSelector, func(list client.ObjectList) {
+		l := list.(*victoriametricsv1beta1.VMProbeList)
+		for _, item := range l.Items {
+			if !item.DeletionTimestamp.IsZero() {
+				continue
 			}
-			probesCombined = append(probesCombined, vmProbes.Items...)
-
+			probesCombined = append(probesCombined, item)
 		}
+	}); err != nil {
+		return nil, err
 	}
-	// filter in place
-	n := 0
-	for _, x := range probesCombined {
-		if x.DeletionTimestamp.IsZero() {
-			probesCombined[n] = x
-			n++
-		}
-	}
-	probesCombined = probesCombined[:n]
 
 	log.Info("filtering namespaces to select vmProbes from",
 		"namespace", cr.Namespace, "vmagent", cr.Name)
@@ -397,73 +252,27 @@ func SelectVMProbes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rcl
 
 func SelectVMNodeScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) (map[string]*victoriametricsv1beta1.VMNodeScrape, error) {
 
+	l := log.WithValues("vmagent", cr.Name)
 	res := make(map[string]*victoriametricsv1beta1.VMNodeScrape)
-	namespaces := []string{}
-	l := log.WithValues("vmagent", cr.Name, "namespace", cr.Namespace)
-
-	// list namespaces matched by  namespaceSelector
-	// for each namespace apply list with  selector
-	// combine result
-	switch {
-	case cr.Spec.NodeScrapeNamespaceSelector == nil:
-		namespaces = append(namespaces, cr.Namespace)
-	case cr.Spec.NodeScrapeNamespaceSelector.MatchExpressions == nil && cr.Spec.NodeScrapeNamespaceSelector.MatchLabels == nil:
-		namespaces = nil
-	default:
-		l.Info("namespace selector for VMNodeScrape", "selector", cr.Spec.NodeScrapeNamespaceSelector.String())
-		nsSelector, err := metav1.LabelSelectorAsSelector(cr.Spec.NodeScrapeNamespaceSelector)
-		if err != nil {
-			return nil, fmt.Errorf("cannot convert NodeScrapeNamespaceSelector to labelSelector: %w", err)
-		}
-		namespaces, err = selectNamespaces(ctx, rclient, nsSelector)
-		if err != nil {
-			return nil, fmt.Errorf("cannot select namespaces for VMNodeScrape match: %w", err)
-		}
-	}
-
-	// if namespaces isn't nil, then nameSpaceSelector is defined
-	// but nodeSelector maybe be nil and we have to set it to catch all value
-	if namespaces != nil && cr.Spec.NodeScrapeSelector == nil {
-		cr.Spec.NodeScrapeSelector = &metav1.LabelSelector{}
-	}
-	nodeSelector, err := metav1.LabelSelectorAsSelector(cr.Spec.NodeScrapeSelector)
-	if err != nil {
-		return nil, fmt.Errorf("cannot convert nodeScrapeSelector to label selector: %w", err)
-	}
 
 	var nodesCombined []victoriametricsv1beta1.VMNodeScrape
 
-	//list all namespaces for nodes with selector
-	if namespaces == nil {
-		l.Info("listing all namespaces for VMNodeScrapes")
-		nodeScrapes := &victoriametricsv1beta1.VMNodeScrapeList{}
-		err = rclient.List(ctx, nodeScrapes, &client.ListOptions{LabelSelector: nodeSelector})
-		if err != nil {
-			return nil, fmt.Errorf("cannot list VMNodeScrapes at all namespaces: %w", err)
-		}
-		nodesCombined = append(nodesCombined, nodeScrapes.Items...)
+	namespaces, objSelector, err := getNSWithSelector(ctx, rclient, cr.Spec.NodeScrapeNamespaceSelector, cr.Spec.NodeScrapeSelector, cr.Namespace)
+	if err != nil {
+		return nil, err
+	}
 
-	} else {
-		for _, ns := range namespaces {
-			listOpts := &client.ListOptions{Namespace: ns, LabelSelector: nodeSelector}
-			nodeScrapes := &victoriametricsv1beta1.VMNodeScrapeList{}
-			err = rclient.List(ctx, nodeScrapes, listOpts)
-			if err != nil {
-				return nil, fmt.Errorf("cannot list VMNodeScrapes at namespace: %s, err: %w", ns, err)
+	if err := selectWithMerge(ctx, rclient, namespaces, &victoriametricsv1beta1.VMNodeScrapeList{}, objSelector, func(list client.ObjectList) {
+		l := list.(*victoriametricsv1beta1.VMNodeScrapeList)
+		for _, item := range l.Items {
+			if !item.DeletionTimestamp.IsZero() {
+				continue
 			}
-			nodesCombined = append(nodesCombined, nodeScrapes.Items...)
-
+			nodesCombined = append(nodesCombined, item)
 		}
+	}); err != nil {
+		return nil, err
 	}
-	// filter in place
-	n := 0
-	for _, x := range nodesCombined {
-		if x.DeletionTimestamp.IsZero() {
-			nodesCombined[n] = x
-			n++
-		}
-	}
-	nodesCombined = nodesCombined[:n]
 
 	for _, node := range nodesCombined {
 		pm := node.DeepCopy()
@@ -482,71 +291,24 @@ func SelectVMNodeScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent
 func SelectStaticScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) (map[string]*victoriametricsv1beta1.VMStaticScrape, error) {
 
 	res := make(map[string]*victoriametricsv1beta1.VMStaticScrape)
+	var staticScrapesCombined []victoriametricsv1beta1.VMStaticScrape
 
-	namespaces := []string{}
-
-	// list namespaces matched by  namespaceSelector
-	// for each namespace apply list with  selector
-	// combine result
-	switch {
-	case cr.Spec.StaticScrapeNamespaceSelector == nil:
-		namespaces = append(namespaces, cr.Namespace)
-	case cr.Spec.StaticScrapeNamespaceSelector.MatchExpressions == nil && cr.Spec.StaticScrapeNamespaceSelector.MatchLabels == nil:
-		namespaces = nil
-	default:
-		log.Info("selector for staticScrape", "vmagent", cr.Name, "selector", cr.Spec.StaticScrapeNamespaceSelector.String())
-		nsSelector, err := metav1.LabelSelectorAsSelector(cr.Spec.StaticScrapeNamespaceSelector)
-		if err != nil {
-			return nil, fmt.Errorf("cannot convert staticScrapeNamespaceSelector to labelSelector: %w", err)
-		}
-		namespaces, err = selectNamespaces(ctx, rclient, nsSelector)
-		if err != nil {
-			return nil, fmt.Errorf("cannot select namespaces for staticScrape match: %w", err)
-		}
-	}
-
-	// if namespaces isn't nil, then nameSpaceSelector is defined
-	// but scrapeSelector maybe be nil and we have to set it to catch all value
-	if namespaces != nil && cr.Spec.StaticScrapeSelector == nil {
-		cr.Spec.StaticScrapeSelector = &metav1.LabelSelector{}
-	}
-	staticScrapeSelector, err := metav1.LabelSelectorAsSelector(cr.Spec.StaticScrapeSelector)
+	namespaces, objSelector, err := getNSWithSelector(ctx, rclient, cr.Spec.StaticScrapeNamespaceSelector, cr.Spec.StaticScrapeSelector, cr.Namespace)
 	if err != nil {
-		return nil, fmt.Errorf("cannot convert staticScrapeSelector to label selector: %w", err)
+		return nil, err
 	}
 
-	staticScrapesCombined := []victoriametricsv1beta1.VMStaticScrape{}
-
-	//list all namespaces for static cfg with selector
-	if namespaces == nil {
-		log.Info("listing all namespaces for staticScrapes")
-		staticScrapes := &victoriametricsv1beta1.VMStaticScrapeList{}
-		err = rclient.List(ctx, staticScrapes, &client.ListOptions{LabelSelector: staticScrapeSelector})
-		if err != nil {
-			return nil, fmt.Errorf("cannot list staticScrapes from all namespaces: %w", err)
-		}
-		staticScrapesCombined = append(staticScrapesCombined, staticScrapes.Items...)
-
-	} else {
-		for _, ns := range namespaces {
-			listOpts := &client.ListOptions{Namespace: ns, LabelSelector: staticScrapeSelector}
-			staticScrapes := &victoriametricsv1beta1.VMStaticScrapeList{}
-			err = rclient.List(ctx, staticScrapes, listOpts)
-			if err != nil {
-				return nil, fmt.Errorf("cannot list staticScrapes at namespace: %s, err: %w", ns, err)
+	if err := selectWithMerge(ctx, rclient, namespaces, &victoriametricsv1beta1.VMStaticScrapeList{}, objSelector, func(list client.ObjectList) {
+		l := list.(*victoriametricsv1beta1.VMStaticScrapeList)
+		for _, item := range l.Items {
+			if !item.DeletionTimestamp.IsZero() {
+				continue
 			}
-			staticScrapesCombined = append(staticScrapesCombined, staticScrapes.Items...)
+			staticScrapesCombined = append(staticScrapesCombined, item)
 		}
+	}); err != nil {
+		return nil, err
 	}
-	// filter in place
-	n := 0
-	for _, x := range staticScrapesCombined {
-		if x.DeletionTimestamp.IsZero() {
-			staticScrapesCombined[n] = x
-			n++
-		}
-	}
-	staticScrapesCombined = staticScrapesCombined[:n]
 
 	for _, staticScrape := range staticScrapesCombined {
 		pm := staticScrape.DeepCopy()

@@ -189,6 +189,25 @@ func RunManager(ctx context.Context) error {
 		return err
 	}
 
+	if err = (&controllers.VMAuthReconciler{
+		Client:       mgr.GetClient(),
+		Log:          ctrl.Log.WithName("controllers").WithName("VMAuthReconciler"),
+		OriginScheme: mgr.GetScheme(),
+		BaseConf:     config.MustGetBaseConfig(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "VMAuth")
+		return err
+	}
+
+	if err = (&controllers.VMUserReconciler{
+		Client:       mgr.GetClient(),
+		Log:          ctrl.Log.WithName("controllers").WithName("VMUserReconciler"),
+		OriginScheme: mgr.GetScheme(),
+		BaseConf:     config.MustGetBaseConfig(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "VMUser")
+		return err
+	}
 	// +kubebuilder:scaffold:builder
 	setupLog.Info("starting vmconverter clients")
 
@@ -234,6 +253,8 @@ func addWebhooks(mgr ctrl.Manager) error {
 		&victoriametricsv1beta1.VMSingle{},
 		&victoriametricsv1beta1.VMCluster{},
 		&victoriametricsv1beta1.VMAlertmanager{},
+		&victoriametricsv1beta1.VMAuth{},
+		&victoriametricsv1beta1.VMUser{},
 	})
 
 }

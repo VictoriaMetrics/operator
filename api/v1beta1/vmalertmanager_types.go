@@ -329,6 +329,10 @@ func (cr VMAlertmanager) GetNSName() string {
 	return cr.GetNamespace()
 }
 
+func (cr *VMAlertmanager) AsURL() string {
+	return fmt.Sprintf("http://%s.%s.svc:9093", cr.PrefixedName(), cr.Namespace)
+}
+
 func init() {
 	SchemeBuilder.Register(&VMAlertmanager{}, &VMAlertmanagerList{})
 }

@@ -5,20 +5,18 @@ import (
 	"strings"
 
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
 )
 
-// VMSingleSpec defines the desired state of VMSingle
-// +k8s:openapi-gen=true
-// +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".spec.version",description="The version of VMSingle"
-// +kubebuilder:printcolumn:name="RetentionPeriod",type="string",JSONPath=".spec.RetentionPeriod",description="The desired RetentionPeriod for vm single"
-// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
-type VMSingleSpec struct {
-	// PodMetadata configures Labels and Annotations which are propagated to the VMSingle pods.
+// VMAuthSpec defines the desired state of VMAuth
+type VMAuthSpec struct {
+
+	// PodMetadata configures Labels and Annotations which are propagated to the VMAuth pods.
 	// +optional
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
-	// Image - docker image settings for VMSingle
+	// Image - docker image settings for VMAuth
 	// if no specified operator uses default config version
 	// +optional
 	Image Image `json:"image,omitempty"`
@@ -27,36 +25,27 @@ type VMSingleSpec struct {
 	// see http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod
 	// +optional
 	ImagePullSecrets []v1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
-	// Secrets is a list of Secrets in the same namespace as the VMSingle
-	// object, which shall be mounted into the VMSingle Pods.
+	// Secrets is a list of Secrets in the same namespace as the VMAuth
+	// object, which shall be mounted into the VMAuth Pods.
 	// +optional
 	Secrets []string `json:"secrets,omitempty"`
-	// ConfigMaps is a list of ConfigMaps in the same namespace as the VMSingle
-	// object, which shall be mounted into the VMSingle Pods.
+	// ConfigMaps is a list of ConfigMaps in the same namespace as the VMAuth
+	// object, which shall be mounted into the VMAuth Pods.
 	// +optional
 	ConfigMaps []string `json:"configMaps,omitempty"`
 	// LogLevel for victoria metrics single to be configured with.
 	// +optional
 	// +kubebuilder:validation:Enum=INFO;WARN;ERROR;FATAL;PANIC
 	LogLevel string `json:"logLevel,omitempty"`
-	// LogFormat for VMSingle to be configured with.
+	// LogFormat for VMAuth to be configured with.
 	// +optional
 	// +kubebuilder:validation:Enum=default;json
 	LogFormat string `json:"logFormat,omitempty"`
-	// ReplicaCount is the expected size of the VMSingle
+	// ReplicaCount is the expected size of the VMAuth
 	// it can be 0 or 1
 	// if you need more - use vm cluster
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Number of pods",xDescriptors="urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom"
 	ReplicaCount *int32 `json:"replicaCount,omitempty"`
-
-	// StorageDataPath disables spec.storage option and overrides arg for victoria-metrics binary --storageDataPath,
-	// its users responsibility to mount proper device into given path.
-	// + optional
-	StorageDataPath string `json:"storageDataPath,omitempty"`
-	// Storage is the definition of how storage will be used by the VMSingle
-	// by default it`s empty dir
-	// +optional
-	Storage *v1.PersistentVolumeClaimSpec `json:"storage,omitempty"`
 
 	// Volumes allows configuration of additional volumes on the output deploy definition.
 	// Volumes specified will be appended to other volumes that are generated as a result of
@@ -64,7 +53,7 @@ type VMSingleSpec struct {
 	// +optional
 	Volumes []v1.Volume `json:"volumes,omitempty"`
 	// VolumeMounts allows configuration of additional VolumeMounts on the output Deployment definition.
-	// VolumeMounts specified will be appended to other VolumeMounts in the VMSingle container,
+	// VolumeMounts specified will be appended to other VolumeMounts in the VMAuth container,
 	// that are generated as a result of StorageSpec objects.
 	// +optional
 	VolumeMounts []v1.VolumeMount `json:"volumeMounts,omitempty"`
@@ -84,7 +73,7 @@ type VMSingleSpec struct {
 	// +optional
 	SecurityContext *v1.PodSecurityContext `json:"securityContext,omitempty"`
 	// ServiceAccountName is the name of the ServiceAccount to use to run the
-	// VMSingle Pods.
+	// VMAuth Pods.
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 	// SchedulerName - defines kubernetes scheduler name
@@ -131,81 +120,87 @@ type VMSingleSpec struct {
 	// +optional
 	TopologySpreadConstraints []v1.TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
 
-	// InsertPorts - additional listen ports for data ingestion.
-	InsertPorts *InsertPorts `json:"insertPorts,omitempty"`
 	//Port listen port
 	// +optional
 	Port string `json:"port,omitempty"`
 
-	// RemovePvcAfterDelete - if true, controller adds ownership to pvc
-	// and after VMSingle objest deletion - pvc will be garbage collected
-	// by controller manager
+	// UserSelector defines VMUser to be selected for config file generation.
 	// +optional
-	RemovePvcAfterDelete bool `json:"removePvcAfterDelete,omitempty"`
+	UserSelector *metav1.LabelSelector `json:"userSelector,omitempty"`
+	// UserNamespaceSelector Namespaces to be selected for  VMAuth discovery. If nil, only
+	// check own namespace.
+	// +optional
+	UserNamespaceSelector *metav1.LabelSelector `json:"userNamespaceSelector,omitempty"`
 
-	// RetentionPeriod in months
-	// +kubebuilder:validation:Pattern:="[1-9]+"
-	RetentionPeriod string `json:"retentionPeriod"`
-	// VMBackup configuration for backup
-	// +optional
-	VMBackup *VMBackup `json:"vmBackup,omitempty"`
-	// ExtraArgs that will be passed to  VMSingle pod
+	// ExtraArgs that will be passed to  VMAuth pod
 	// for example remoteWrite.tmpDataPath: /tmp
 	// +optional
 	ExtraArgs map[string]string `json:"extraArgs,omitempty"`
-	// ExtraEnvs that will be added to VMSingle pod
+	// ExtraEnvs that will be added to VMAuth pod
 	// +optional
 	ExtraEnvs []v1.EnvVar `json:"extraEnvs,omitempty"`
 	// ServiceSpec that will be added to vmsingle service spec
 	// +optional
 	ServiceSpec *ServiceSpec `json:"serviceSpec,omitempty"`
-	// LivenessProbe that will be added to VMSingle pod
+	// PodDisruptionBudget created by operator
+	// +optional
+	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
+	// Ingress enables ingress configuration for VMAuth.
+	Ingress *EmbeddedIngress `json:"ingress,omitempty"`
+	// LivenessProbe that will be added to VMAuth pod
 	*EmbeddedProbes `json:",inline"`
 }
 
-// VMSingleStatus defines the observed state of VMSingle
-// +k8s:openapi-gen=true
-type VMSingleStatus struct {
-	// ReplicaCount Total number of non-terminated pods targeted by this VMAlert
-	// cluster (their labels match the selector).
-	Replicas int32 `json:"replicas"`
-	// UpdatedReplicas Total number of non-terminated pods targeted by this VMAlert
-	// cluster that have the desired version spec.
-	UpdatedReplicas int32 `json:"updatedReplicas"`
-	// AvailableReplicas Total number of available pods (ready for at least minReadySeconds)
-	// targeted by this VMAlert cluster.
-	AvailableReplicas int32 `json:"availableReplicas"`
-	// UnavailableReplicas Total number of unavailable pods targeted by this VMAlert cluster.
-	UnavailableReplicas int32 `json:"unavailableReplicas"`
+// EmbeddedIngress describes ingress configuration options.
+type EmbeddedIngress struct {
+	// ClassName defines ingress class name for VMAuth
+	// +optional
+	ClassName *string `json:"class_name,omitempty"`
+	//  EmbeddedObjectMetadata adds labels and annotations for object.
+	EmbeddedObjectMetadata `json:",inline"`
+	// TlsHosts configures TLS access for ingress, tlsSecretName must be defined for it.
+	TlsHosts []string `json:"tlsHosts,omitempty"`
+	// TlsSecretName defines secretname at the VMAuth namespace with cert and key
+	// https://kubernetes.io/docs/concepts/services-networking/ingress/#tls
+	// +optional
+	TlsSecretName string `json:"tlsSecretName,omitempty"`
+	// ExtraRules - additional rules for ingress,
+	// must be checked for correctness by user.
+	// +optional
+	ExtraRules []v1beta1.IngressRule `json:"extraRules,omitempty"`
+	// ExtraTLS - additional TLS configuration for ingress
+	// must be checked for correctness by user.
+	// +optional
+	ExtraTLS []v1beta1.IngressTLS `json:"extraTls,omitempty"`
 }
 
-// VMSingle  is fast, cost-effective and scalable time-series database.
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-// +operator-sdk:gen-csv:customresourcedefinitions.displayName="VMSingle App"
-// +operator-sdk:gen-csv:customresourcedefinitions.resources="Deployment,apps"
-// +operator-sdk:gen-csv:customresourcedefinitions.resources="Service,v1"
-// +operator-sdk:gen-csv:customresourcedefinitions.resources="Secret,v1"
-// +genclient
-// +k8s:openapi-gen=true
+// VMAuthStatus defines the observed state of VMAuth
+type VMAuthStatus struct {
+	// todo add status.
+}
+
+// +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:path=vmsingles,scope=Namespaced
-type VMSingle struct {
+
+// VMAuth is the Schema for the vmauths API
+type VMAuth struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   VMSingleSpec   `json:"spec,omitempty"`
-	Status VMSingleStatus `json:"status,omitempty"`
+	Spec   VMAuthSpec   `json:"spec,omitempty"`
+	Status VMAuthStatus `json:"status,omitempty"`
 }
 
-// VMSingleList contains a list of VMSingle
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type VMSingleList struct {
+// +kubebuilder:object:root=true
+
+// VMAuthList contains a list of VMAuth
+type VMAuthList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []VMSingle `json:"items"`
+	Items           []VMAuth `json:"items"`
 }
 
-func (cr *VMSingle) AsOwner() []metav1.OwnerReference {
+func (cr *VMAuth) AsOwner() []metav1.OwnerReference {
 	return []metav1.OwnerReference{
 		{
 			APIVersion:         cr.APIVersion,
@@ -218,7 +213,7 @@ func (cr *VMSingle) AsOwner() []metav1.OwnerReference {
 	}
 }
 
-func (cr VMSingle) PodAnnotations() map[string]string {
+func (cr VMAuth) PodAnnotations() map[string]string {
 	annotations := map[string]string{}
 	if cr.Spec.PodMetadata != nil {
 		for annotation, value := range cr.Spec.PodMetadata.Annotations {
@@ -228,7 +223,7 @@ func (cr VMSingle) PodAnnotations() map[string]string {
 	return annotations
 }
 
-func (cr VMSingle) Annotations() map[string]string {
+func (cr VMAuth) Annotations() map[string]string {
 	annotations := make(map[string]string)
 	for annotation, value := range cr.ObjectMeta.Annotations {
 		if !strings.HasPrefix(annotation, "kubectl.kubernetes.io/") {
@@ -238,16 +233,16 @@ func (cr VMSingle) Annotations() map[string]string {
 	return annotations
 }
 
-func (cr VMSingle) SelectorLabels() map[string]string {
+func (cr VMAuth) SelectorLabels() map[string]string {
 	return map[string]string{
-		"app.kubernetes.io/name":      "vmsingle",
+		"app.kubernetes.io/name":      "vmauth",
 		"app.kubernetes.io/instance":  cr.Name,
 		"app.kubernetes.io/component": "monitoring",
 		"managed-by":                  "vm-operator",
 	}
 }
 
-func (cr VMSingle) PodLabels() map[string]string {
+func (cr VMAuth) PodLabels() map[string]string {
 	labels := cr.SelectorLabels()
 	if cr.Spec.PodMetadata != nil {
 		for label, value := range cr.Spec.PodMetadata.Labels {
@@ -261,7 +256,7 @@ func (cr VMSingle) PodLabels() map[string]string {
 	return labels
 }
 
-func (cr VMSingle) Labels() map[string]string {
+func (cr VMAuth) Labels() map[string]string {
 	labels := cr.SelectorLabels()
 	if cr.ObjectMeta.Labels != nil {
 		for label, value := range cr.ObjectMeta.Labels {
@@ -275,44 +270,44 @@ func (cr VMSingle) Labels() map[string]string {
 	return labels
 }
 
-func (cr VMSingle) PrefixedName() string {
-	return fmt.Sprintf("vmsingle-%s", cr.Name)
+func (cr VMAuth) PrefixedName() string {
+	return fmt.Sprintf("vmauth-%s", cr.Name)
 }
 
-func (cr VMSingle) HealthPath() string {
+func (cr VMAuth) ConfigSecretName() string {
+	return fmt.Sprintf("vmauth-config-%s", cr.Name)
+}
+
+func (cr VMAuth) HealthPath() string {
 	return buildPathWithPrefixFlag(cr.Spec.ExtraArgs, healthPath)
 }
 
-func (cr VMSingle) MetricPath() string {
+func (cr VMAuth) MetricPath() string {
 	return buildPathWithPrefixFlag(cr.Spec.ExtraArgs, metricPath)
 }
 
-func (cr VMSingle) GetServiceAccountName() string {
+func (cr VMAuth) ReloadPathWithPort(port string) string {
+	return fmt.Sprintf("http://localhost:%s%s", port, buildPathWithPrefixFlag(cr.Spec.ExtraArgs, reloadPath))
+}
+
+func (cr VMAuth) GetServiceAccountName() string {
 	if cr.Spec.ServiceAccountName == "" {
 		return cr.PrefixedName()
 	}
 	return cr.Spec.ServiceAccountName
 }
 
-func (cr VMSingle) GetPSPName() string {
+func (cr VMAuth) GetPSPName() string {
 	if cr.Spec.PodSecurityPolicyName == "" {
 		return cr.PrefixedName()
 	}
 	return cr.Spec.PodSecurityPolicyName
 }
 
-func (cr VMSingle) GetNSName() string {
+func (cr VMAuth) GetNSName() string {
 	return cr.GetNamespace()
 }
 
-func (cr *VMSingle) AsURL() string {
-	port := cr.Spec.Port
-	if port == "" {
-		port = "8429"
-	}
-	return fmt.Sprintf("http://%s.%s.svc:%s", cr.PrefixedName(), cr.Namespace, port)
-}
-
 func init() {
-	SchemeBuilder.Register(&VMSingle{}, &VMSingleList{})
+	SchemeBuilder.Register(&VMAuth{}, &VMAuthList{})
 }

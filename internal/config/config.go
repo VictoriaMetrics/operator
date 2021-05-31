@@ -180,6 +180,25 @@ type BaseOperatorConf struct {
 		LogLevel  string `default:"INFO"`
 		LogFormat string
 	}
+	VMAuthDefault struct {
+		Image               string `default:"victoriametrics/vmauth"`
+		Version             string `default:"v1.60.0"`
+		ConfigReloadImage   string `default:"quay.io/coreos/prometheus-config-reloader:v0.42.0"`
+		Port                string `default:"8427"`
+		UseDefaultResources bool   `default:"true"`
+		Resource            struct {
+			Limit struct {
+				Mem string `default:"300Mi"`
+				Cpu string `default:"200m"`
+			}
+			Request struct {
+				Mem string `default:"100Mi"`
+				Cpu string `default:"50m"`
+			}
+		}
+		ConfigReloaderCPU    string `default:"100m"`
+		ConfigReloaderMemory string `default:"25Mi"`
+	}
 
 	EnabledPrometheusConverter struct {
 		PodMonitor     bool `default:"true"`

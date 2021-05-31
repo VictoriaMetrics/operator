@@ -8,7 +8,7 @@ Operator serves to make running VictoriaMetrics applications on top of Kubernete
 Obtain release from releases page:
 [https://github.com/VictoriaMetrics/operator/releases](https://github.com/VictoriaMetrics/operator/releases)
 
- We suggest to use latest release. 
+ We suggest use the latest release. 
 
 ```bash
 # Get latest release version from https://github.com/VictoriaMetrics/operator/releases/latest
@@ -109,6 +109,8 @@ The VictoriaMetrics Operator introduces additional resources in Kubernetes to de
 * [VMPodScrape](#VMPodScrape)
 * [VMProbe](#VMProbe)
 * [VMStaticScrape](#VMStaticScrape)
+* [VMAuth](#VMAuth)
+* [VMUser](#VMUser)
 
 ## VMSingle
 
@@ -1231,6 +1233,175 @@ EOF
  2 targets must be added to `VMAgent` scrape config:
 ```bash
 static_configs: added targets: 2, removed targets: 0; total targets: 2
+```
+
+
+## VMAuth
+
+[VMAuth](https://docs.victoriametrics.com/vmauth.html) allows protecting application with authentication and route traffic by rules.
+
+api docs [link](/docs/api.MD#VMAuthSpec)
+
+ First create `VMAuth` configuration:
+```yaml
+cat << EOF | kubectl apply -f -
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAuth
+metadata:
+  name: example
+  namespace: default
+spec:
+  ingress: {}
+  userNamespaceSelector: {}
+  userSelector: {}
+EOF
+```
+ It will catch all `VMUser` at any kubernetes namespace and create `Ingress` record for it.
+```text
+kubectl get pods
+NAME                             READY   STATUS    RESTARTS   AGE
+vmauth-example-ffcc78fcc-xddk7   2/2     Running   0          84s
+kubectl get ingress
+NAME             CLASS    HOSTS   ADDRESS   PORTS   AGE
+vmauth-example   <none>   *                 80      106s
+kubectl get secret -l app.kubernetes.io/name=vmauth
+NAME                    TYPE     DATA   AGE
+vmauth-config-example   Opaque   1      2m32s
+```
+
+ Generated configuration can be retrieved with command:
+```text
+kubectl get secrets/vmauth-config-example -o=go-template='{{index .data "config.yaml.gz"}}' | base64 -d | gunzip
+
+users:
+- url_prefix: http://localhost:8428
+  bearer_token: some-default-token
+```
+
+  Operator generates default config, if `VMUser`s for given `VMAuth` wasn't found.
+
+## VMUser 
+
+  `VMUser` configures `VMAuth`. api doc [link](/docs/api.MD#VMUserSpec)
+
+  There are two authentication mechanisms: `bearerToken` and `basicAuth` with `username` and `password`. Only one of them can be used with `VMUser` at one time.
+If you need to provide access with different mechanisms for single endpoint, create multiple `VMUsers`.
+ If `username` is empty, metadata.name from `VMUser` used as `username`.
+ If `password` is empty, operator generates random password for `VMUser`. This password added to the `Secret` for this `VMUser` at `data.password` field.
+ Operator creates `Secret` for every `VMUser` with name - `vmuser-{VMUser.metadata.name}`. It places `username` + `password` or `bearerToken` into `data` section.
+
+`TargetRefs` is required field for `VMUser`, it allows to configure routing with:
+- `static` ref:
+```yaml
+- static:
+    url: http://vmalertmanager.service.svc:9093
+  ```
+- `crd` ref, allows to target CRD kind of operator, this `CRDObject` must exist.
+```yaml
+- crd:
+   kind: VMAgent
+   name: example
+   namespace: default
+```
+  Supported kinds are: `VMAgent, VMSingle, VMAlert, VMAlertmanager, VMCluster/vminsert, VMCluster/vmselect, VMCluster/vmstorage`
+
+`paths` - configures allowed routing paths for given `targetRef`.
+
+ Let's create example, with access to `VMSingle` and `VMAlert` as static target: 
+
+```yaml
+cat << EOF | kubectl apply -f -
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMSingle
+metadata:
+  name: example
+  namespace: default
+spec:
+ retentionPeriod: "2d"
+---
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAlert
+metadata:
+  name: example
+spec:
+  replicaCount: 1
+  datasource:
+    url: "http://vmsingle-example.default.svc:8429"
+  notifier:
+    url: "http://vmalertmanager-example.default.svc:9093"
+  evaluationInterval: "20s"
+  ruleSelector: {}
+EOF
+```
+
+ Check its status
+```bash
+
+kubectl get pods
+NAME                                READY   STATUS    RESTARTS   AGE
+vmalert-example-775b8dfbc9-vzlnv    1/2     Running   0          3s
+vmauth-example-ffcc78fcc-xddk7      2/2     Running   0          29m
+vmsingle-example-6496b5c95d-k6hhp   1/1     Running   0          3s
+```
+
+ Then create `VMUser`
+```yaml
+cat << EOF | kubectl apply -f -
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMUser
+metadata:
+  name: example
+spec:
+  username: simple-user
+  password: simple-password
+  targetRefs:
+    - crd:
+        kind: VMSingle
+        name: example
+        namespace: default
+      paths: ["/"]
+    - static:
+        url: http://vmalert-example.default.svc:8080
+      paths: ["/api/v1/groups","/api/v1/alerts"]
+EOF
+```
+
+ Configuration changes for `VMAuth` takes some time, coz of mounted secret, its eventually updated by kubelet. Check vmauth log for changes:
+
+```bash
+kubectl logs vmauth-example-ffcc78fcc-xddk7 vmauth -f --tail 10
+2021-05-31T10:46:40.171Z	info	VictoriaMetrics/app/vmauth/auth_config.go:168	Loaded information about 1 users from "/opt/vmauth/config.yaml"
+2021-05-31T10:46:40.171Z	info	VictoriaMetrics/app/vmauth/main.go:37	started vmauth in 0.000 seconds
+2021-05-31T10:46:40.171Z	info	VictoriaMetrics/lib/httpserver/httpserver.go:82	starting http server at http://:8427/
+2021-05-31T10:46:40.171Z	info	VictoriaMetrics/lib/httpserver/httpserver.go:83	pprof handlers are exposed at http://:8427/debug/pprof/
+2021-05-31T10:46:45.077Z	info	VictoriaMetrics/app/vmauth/auth_config.go:143	SIGHUP received; loading -auth.config="/opt/vmauth/config.yaml"
+2021-05-31T10:46:45.077Z	info	VictoriaMetrics/app/vmauth/auth_config.go:168	Loaded information about 1 users from "/opt/vmauth/config.yaml"
+2021-05-31T10:46:45.077Z	info	VictoriaMetrics/app/vmauth/auth_config.go:150	Successfully reloaded -auth.config="/opt/vmauth/config.yaml"
+2021-05-31T11:18:21.313Z	info	VictoriaMetrics/app/vmauth/auth_config.go:143	SIGHUP received; loading -auth.config="/opt/vmauth/config.yaml"
+2021-05-31T11:18:21.313Z	info	VictoriaMetrics/app/vmauth/auth_config.go:168	Loaded information about 1 users from "/opt/vmauth/config.yaml"
+2021-05-31T11:18:21.313Z	info	VictoriaMetrics/app/vmauth/auth_config.go:150	Successfully reloaded -auth.config="/opt/vmauth/config.yaml"
+```
+
+ Now lets try to access protected  endpoints, i will use port-forward for that:
+
+```bash
+kubectl port-forward vmauth-example-ffcc78fcc-xddk7 8427
+
+# at separate terminal execute:
+
+# vmsingle response
+curl http://localhost:8427 -u 'simple-user:simple-password'
+
+# vmalert response
+curl localhost:8427/api/v1/groups -u 'simple-user:simple-password'
+```
+
+ Check create secret for application access:
+
+```bash
+kubectl get secrets vmuser-example
+NAME             TYPE     DATA   AGE
+vmuser-example   Opaque   2      6m33s
 ```
 
 ## Migration from prometheus-operator objects

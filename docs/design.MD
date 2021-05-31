@@ -15,6 +15,9 @@ Operator introduces the following custom resources:
 * [VMRule](#VMRule)
 * [VMProbe](#VMProbe)
 * [VMNodeScrape](#VMNodeScrape)
+* [VMStaticScrape](#VMStaticScrape)
+* [VMAuth](#VMAuth)
+* [VMUser](#VMUser)
 
 ## VMSingle
 
@@ -204,3 +207,13 @@ The `VMStaticScrape` CRD provides mechanism for scraping metrics from static tar
 By specifying configuration at CRD, operator generates config for `VMAgent` and syncs it. It's useful for external targets management,
 when service-discovery is not available. `VMAgent` staticScrapeSelector must match `VMStaticScrape` labels.
  
+## VMAuth
+
+ The `VMAuth` CRD provides mechanism for exposing application with authorization to outside world or to other applications inside kubernetes cluster.
+For first case, user can configure `ingress` setting at `VMAuth` CRD. For second one, operator will create secret with `username` and `password` at `VMUser` CRD name. 
+So it will be possible to access this credentials from any application by targeting corresponding kubernetes secret.
+
+## VMUser
+
+ The `VMUser` CRD describes user configuration, its authentication methods `basic auth` or `Authorization` header. User access permissions, with possible routing information.
+ User can define routing target with `static` config, by entering target `url`, or with `CRDRef`, in this case, operator queries kubernetes API, retrieves information about CRD and builds proper url.

@@ -294,7 +294,7 @@ func generatePodScrapeConfig(
 	cfg = honorTimestamps(cfg, ep.HonorTimestamps, overrideHonorTimestamps)
 
 	selectedNamespaces := getNamespacesFromNamespaceSelector(&m.Spec.NamespaceSelector, m.Namespace, ignoreNamespaceSelectors)
-	cfg = append(cfg, generateK8SSDConfig(selectedNamespaces, apiserverConfig, basicAuthSecrets, kubernetesSDRolePod))
+	cfg = append(cfg, generatePodK8SSDConfig(selectedNamespaces, m.Spec.Selector, apiserverConfig, basicAuthSecrets, kubernetesSDRolePod))
 
 	if ep.Interval != "" {
 		cfg = append(cfg, yaml.MapItem{Key: "scrape_interval", Value: ep.Interval})
@@ -1093,6 +1093,51 @@ func getNamespacesFromNamespaceSelector(nsSelector *victoriametricsv1beta1.Names
 	default:
 		return nsSelector.MatchNames
 	}
+}
+
+func combineSelectorStr(kvs map[string]string) string {
+	kvsSlice := make([]string, 0)
+	for k, v := range kvs {
+		kvsSlice = append(kvsSlice, fmt.Sprintf("%v=%v", k, v))
+	}
+
+	return strings.Join(kvsSlice, ",")
+}
+
+func generatePodK8SSDConfig(namespaces []string, labelSelector metav1.LabelSelector, apiserverConfig *victoriametricsv1beta1.APIServerConfig, basicAuthSecrets map[string]BasicAuthCredentials, role string) yaml.MapItem {
+
+	cfg := generateK8SSDConfig(namespaces, apiserverConfig, basicAuthSecrets, role)
+
+	if len(labelSelector.MatchLabels) != 0 {
+		k8sSDs, flag := cfg.Value.([]yaml.MapSlice)
+		if !flag {
+			log.Error(fmt.Errorf("type assert failed"), "cfg.Value is not []yaml.MapSlice")
+			return cfg
+		}
+
+		selector := yaml.MapSlice{}
+		selector = append(selector, yaml.MapItem{
+			Key:   "role",
+			Value: role,
+		})
+		selector = append(selector, yaml.MapItem{
+			Key:   "label",
+			Value: combineSelectorStr(labelSelector.MatchLabels),
+		})
+
+		for i := range k8sSDs {
+			k8sSDs[i] = append(k8sSDs[i], yaml.MapItem{
+				Key: "selectors",
+				Value: []yaml.MapSlice{
+					selector,
+				},
+			})
+		}
+
+		cfg.Value = k8sSDs
+	}
+
+	return cfg
 }
 
 func generateK8SSDConfig(namespaces []string, apiserverConfig *victoriametricsv1beta1.APIServerConfig, basicAuthSecrets map[string]BasicAuthCredentials, role string) yaml.MapItem {

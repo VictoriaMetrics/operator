@@ -18,18 +18,26 @@ package controllers
 
 import (
 	"context"
+	"fmt"
+	"sync"
+	"time"
 
+	operatorv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/watch"
+	v12 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/cache"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	operatorv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 )
 
 // VMUserReconciler reconciles a VMUser object
@@ -43,6 +51,123 @@ type VMUserReconciler struct {
 // Scheme implements interface.
 func (r *VMUserReconciler) Scheme() *runtime.Scheme {
 	return r.OriginScheme
+}
+
+// secretRefCache allows to track secrets used by vmuser passwordRef
+type vmUsersSecretRefCache struct {
+	mu sync.Mutex
+
+	secretNames map[string][]types.NamespacedName
+}
+
+var globalSecretRefCache vmUsersSecretRefCache
+
+func init() {
+	globalSecretRefCache.secretNames = make(map[string][]types.NamespacedName)
+}
+
+func (v *vmUsersSecretRefCache) addRefByUser(user *operatorv1beta1.VMUser) {
+	if user.Spec.PasswordRef == nil {
+		return
+	}
+
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	nn := types.NamespacedName{Name: user.Name, Namespace: user.Namespace}
+	key := fmt.Sprintf("%s/%s", user.Namespace, user.Spec.PasswordRef.Name)
+	if existRefs, ok := v.secretNames[key]; ok {
+
+		// usually its fast, no need for map.
+		for i := range existRefs {
+			ref := existRefs[i]
+			if ref == nn {
+				return
+			}
+		}
+		existRefs = append(existRefs, nn)
+		v.secretNames[key] = existRefs
+		return
+	}
+	v.secretNames[key] = []types.NamespacedName{nn}
+}
+
+// removes given user from secret cache.
+func (v *vmUsersSecretRefCache) removeUserRef(user types.NamespacedName) {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	for key, userNNs := range v.secretNames {
+		// trim in-place.
+		var i int
+		for _, nn := range userNNs {
+			if nn != user {
+				userNNs[i] = nn
+				i++
+			}
+		}
+		if i != len(userNNs) {
+			userNNs = userNNs[:i]
+			v.secretNames[key] = userNNs
+		}
+		if len(userNNs) == 0 {
+			delete(v.secretNames, key)
+		}
+	}
+}
+
+func (v *vmUsersSecretRefCache) getUserBySecret(namespacedSecret string) []types.NamespacedName {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	return v.secretNames[namespacedSecret]
+}
+
+// StartWatchForVMUserSecretRefs its needed to dynamically watch for secrets updates.
+func StartWatchForVMUserSecretRefs(ctx context.Context, rclient client.Client, cfg *rest.Config) error {
+
+	c, err := v12.NewForConfig(cfg)
+	if err != nil {
+		return err
+	}
+	inf := cache.NewSharedIndexInformer(
+		&cache.ListWatch{
+			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+				// todo add single namespace filter.
+				return c.Secrets("").List(ctx, metav1.ListOptions{})
+			},
+			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+				// todo add single namespace filter.
+				return c.Secrets("").Watch(ctx, metav1.ListOptions{})
+			},
+		},
+		&v1.Secret{},
+		0,
+		cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
+	inf.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		UpdateFunc: func(_, newObj interface{}) {
+			// trigger related VMUser update by changing some annotation.
+			changedSecret := newObj.(*v1.Secret)
+			key := fmt.Sprintf("%s/%s", changedSecret.Namespace, changedSecret.Name)
+			var vmuser operatorv1beta1.VMUser
+			for _, nn := range globalSecretRefCache.getUserBySecret(key) {
+				if err := rclient.Get(ctx, nn, &vmuser); err != nil {
+					if errors.IsNotFound(err) {
+						continue
+					}
+					log.Error(err, "cannot get vmuser for secret")
+					continue
+				}
+				// handle case, when password ref was removed from given user.
+				if vmuser.Spec.PasswordRef == nil {
+					globalSecretRefCache.removeUserRef(types.NamespacedName{Name: vmuser.Name, Namespace: vmuser.Namespace})
+					continue
+				}
+				vmuser.ObjectMeta.Annotations["last-password-ref-secret-update"] = time.Now().Format(time.RFC3339)
+				// safe to ignore error.
+				_ = rclient.Update(ctx, &vmuser)
+			}
+		},
+	})
+	go inf.Run(ctx.Done())
+	return nil
 }
 
 // Reconcile implements interface
@@ -70,8 +195,10 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			l.Error(err, "cannot add finalizer")
 			return ctrl.Result{}, err
 		}
-		l.Info("added fin")
+
 	}
+	globalSecretRefCache.addRefByUser(&instance)
+
 	var vmauthes operatorv1beta1.VMAuthList
 	if err := r.List(ctx, &vmauthes); err != nil {
 		l.Error(err, "cannot list VMAuth at cluster wide.")
@@ -102,6 +229,7 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			l.Error(err, "cannot remove finalizer")
 			return ctrl.Result{}, err
 		}
+		globalSecretRefCache.removeUserRef(req.NamespacedName)
 	}
 	return ctrl.Result{}, nil
 }

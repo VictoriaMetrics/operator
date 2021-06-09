@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -20,6 +21,9 @@ type VMUserSpec struct {
 	// as VMUser into same namespace
 	// +optional
 	Password *string `json:"password,omitempty"`
+	// PasswordRef allows to fetch password for given secret by its name and key name
+	// +optional
+	PasswordRef *v1.SecretKeySelector `json:"passwordRef,omitempty"`
 	// GeneratePassword instructs operator to generate password for user
 	// if spec.password if empty.
 	// +optional
@@ -103,8 +107,14 @@ type VMUserList struct {
 	Items           []VMUser `json:"items"`
 }
 
+// SecretName builds secret name for VMUser.
 func (cr *VMUser) SecretName() string {
 	return fmt.Sprintf("vmuser-%s", cr.Name)
+}
+
+// PasswordRefAsKey - builds key for passwordRef cache
+func (cr *VMUser) PasswordRefAsKey() string {
+	return fmt.Sprintf("%s/%s/%s", cr.Namespace, cr.Spec.PasswordRef.Name, cr.Spec.PasswordRef.Key)
 }
 
 func (cr *VMUser) AsOwner() []metav1.OwnerReference {

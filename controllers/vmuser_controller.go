@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"sync"
 	"time"
 
@@ -142,9 +143,13 @@ func StartWatchForVMUserSecretRefs(ctx context.Context, rclient client.Client, c
 		0,
 		cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
 	inf.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		UpdateFunc: func(_, newObj interface{}) {
+		UpdateFunc: func(prevObj, newObj interface{}) {
 			// trigger related VMUser update by changing some annotation.
 			changedSecret := newObj.(*v1.Secret)
+			prevSecret := prevObj.(*v1.Secret)
+			if reflect.DeepEqual(prevSecret.Data, changedSecret.Data) {
+				return
+			}
 			key := fmt.Sprintf("%s/%s", changedSecret.Namespace, changedSecret.Name)
 			var vmuser operatorv1beta1.VMUser
 			for _, nn := range globalSecretRefCache.getUserBySecret(key) {

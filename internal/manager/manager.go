@@ -222,6 +222,9 @@ func RunManager(ctx context.Context) error {
 		setupLog.Error(err, "cannot add runnable")
 		return err
 	}
+	if err := controllers.StartWatchForVMUserSecretRefs(ctx, mgr.GetClient(), mgr.GetConfig()); err != nil {
+		return err
+	}
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctx); err != nil {
 		setupLog.Error(err, "problem running manager")

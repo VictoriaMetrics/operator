@@ -1270,6 +1270,7 @@ VMUserSpec defines the desired state of VMUser
 | ----- | ----------- | ------ | -------- |
 | username | UserName basic auth user name for accessing protected endpoint, metadata.name if missing. | *string | false |
 | password | Password basic auth password for accessing protected endpoint, randomly generated and saved into secret with the same name as VMUser into same namespace | *string | false |
+| passwordRef | PasswordRef allows to fetch password for given secret by its name and key name | *[v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
 | generatePassword | GeneratePassword instructs operator to generate password for user if spec.password if empty. | bool | false |
 | bearerToken | BearerToken Authorization header value for accessing protected endpoint. | *string | false |
 | targetRefs | TargetRefs - reference to endpoints, which user may access. | [][TargetRef](#targetref) | true |

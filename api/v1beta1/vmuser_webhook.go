@@ -47,6 +47,9 @@ func (cr *VMUser) sanityCheck() error {
 	if cr.Spec.UserName != nil && cr.Spec.BearerToken != nil {
 		return fmt.Errorf("one of spec.username and spec.bearerToken must be defined for user, got both")
 	}
+	if cr.Spec.PasswordRef != nil && cr.Spec.Password != nil {
+		return fmt.Errorf("one of spec.password or spec.passwordRef must be used for user, got both")
+	}
 	for i := range cr.Spec.TargetRefs {
 		targetRef := cr.Spec.TargetRefs[i]
 		if targetRef.CRD != nil && targetRef.Static != nil {

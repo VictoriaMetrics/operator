@@ -3,6 +3,7 @@ package v1beta1
 import (
 	"testing"
 
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
 )
@@ -90,6 +91,22 @@ func TestVMUser_sanityCheck(t *testing.T) {
 								Namespace: "",
 							},
 							Paths: []string{"/some-path"},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "incorrect password",
+			fields: fields{
+				Spec: VMUserSpec{
+					UserName: pointer.StringPtr("some-user"),
+					Password: pointer.StringPtr("some-password"),
+					PasswordRef: &corev1.SecretKeySelector{
+						Key: "some-key",
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "some-name",
 						},
 					},
 				},

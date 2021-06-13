@@ -41,6 +41,14 @@ func buildVMAuthConfig(ctx context.Context, rclient client.Client, vmauth *v1bet
 	if err != nil {
 		return nil, err
 	}
+
+	passwordRefCache, err := fetchVMUserSecretCache(ctx, rclient, users)
+	if err != nil {
+		return nil, err
+	}
+
+	// inject passwordRef secrets
+	injectPasswordRef(users, passwordRefCache)
 	// select secrets with user auth settings.
 	toCreateSecrets, existSecrets, err := selectVMUserSecrets(ctx, rclient, users)
 	if err != nil {
@@ -108,6 +116,17 @@ func createVMUserSecrets(ctx context.Context, rclient client.Client, secrets []v
 	return nil
 }
 
+func injectPasswordRef(src []*v1beta1.VMUser, passwordRefCache map[string]string) {
+	for i := range src {
+		user := src[i]
+		if user.Spec.PasswordRef == nil {
+			continue
+		}
+		secretPassword := passwordRefCache[user.PasswordRefAsKey()]
+		user.Spec.Password = pointer.StringPtr(secretPassword)
+	}
+}
+
 func injectAuthSettings(src []v1.Secret, dst []*v1beta1.VMUser) []v1.Secret {
 	var toUpdate []v1.Secret
 	if len(src) == 0 || len(dst) == 0 {
@@ -138,26 +157,26 @@ func injectAuthSettings(src []v1.Secret, dst []*v1beta1.VMUser) []v1.Secret {
 				}
 				continue
 			}
-			if existUser, ok := secret.Data["username"]; ok {
-				if vmuser.Spec.UserName == nil {
-					vmuser.Spec.UserName = pointer.StringPtr(string(existUser))
-					needUpdate = true
-				} else if string(existUser) != *vmuser.Spec.UserName {
-					secret.Data["username"] = []byte(*vmuser.Spec.UserName)
-					needUpdate = true
-				}
+			existUser := secret.Data["username"]
 
+			if vmuser.Spec.UserName == nil {
+				vmuser.Spec.UserName = pointer.StringPtr(string(existUser))
+				needUpdate = true
+			} else if string(existUser) != *vmuser.Spec.UserName {
+				secret.Data["username"] = []byte(*vmuser.Spec.UserName)
+				needUpdate = true
 			}
-			if existPassword, ok := secret.Data["password"]; ok {
-				// add previously generated password.
-				if vmuser.Spec.GeneratePassword && vmuser.Spec.Password == nil {
-					vmuser.Spec.Password = pointer.StringPtr(string(existPassword))
-				}
-				if vmuser.Spec.Password != nil && string(existPassword) != *vmuser.Spec.Password {
-					needUpdate = true
-					secret.Data["password"] = []byte(*vmuser.Spec.Password)
-				}
+
+			existPassword := secret.Data["password"]
+
+			// add previously generated password.
+			if vmuser.Spec.GeneratePassword && vmuser.Spec.Password == nil {
+				vmuser.Spec.Password = pointer.StringPtr(string(existPassword))
+			} else if vmuser.Spec.Password != nil && string(existPassword) != *vmuser.Spec.Password {
+				needUpdate = true
+				secret.Data["password"] = []byte(*vmuser.Spec.Password)
 			}
+
 			if needUpdate {
 				toUpdate = append(toUpdate, secret)
 			}
@@ -203,6 +222,30 @@ func getAsURLObject(ctx context.Context, rclient client.Client, obj objectWithUr
 		return "", err
 	}
 	return obj.AsURL(), nil
+}
+
+func fetchVMUserSecretCache(ctx context.Context, rclient client.Client, users []*v1beta1.VMUser) (map[string]string, error) {
+	passwordCache := make(map[string]string, (len(users)))
+	var fetchSecret v1.Secret
+	for i := range users {
+		user := users[i]
+		if user.Spec.PasswordRef == nil {
+			continue
+		}
+		key := user.PasswordRefAsKey()
+		if _, ok := passwordCache[key]; ok {
+			continue
+		}
+		if err := rclient.Get(ctx, types.NamespacedName{Namespace: user.Namespace, Name: user.Spec.PasswordRef.Name}, &fetchSecret); err != nil {
+			return nil, fmt.Errorf("cannot find passwordRef for user: %s, at namespace: %s, err: %s", user.Name, user.Namespace, err)
+		}
+		passwordValue := fetchSecret.Data[user.Spec.PasswordRef.Key]
+		if len(passwordValue) == 0 {
+			return nil, fmt.Errorf("cannot find passwordRef key: %s for user: %s, at namespace: %s", user.Spec.PasswordRef.Key, user.Name, user.Namespace)
+		}
+		passwordCache[key] = string(passwordValue)
+	}
+	return passwordCache, nil
 }
 
 func FetchCRDCache(ctx context.Context, rclient client.Client, users []*v1beta1.VMUser) (map[string]string, error) {
@@ -375,6 +418,7 @@ func genUserCfg(user *v1beta1.VMUser, crdUrlCache map[string]string) (yaml.MapSl
 	if user.Spec.Password != nil {
 		password = *user.Spec.Password
 	}
+
 	if user.Spec.BearerToken != nil {
 		token = *user.Spec.BearerToken
 	}

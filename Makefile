@@ -68,6 +68,13 @@ fix118:
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalertmanagers.yaml $(YAML_DROP_PREFIX).serviceSpec.properties.spec.properties.ports &&\
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalertmanagers.yaml $(YAML_DROP_PREFIX).serviceSpec.properties.spec.properties.clusterIPs &&\
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalertmanagers.yaml $(YAML_DROP_PREFIX).serviceSpec.properties.spec.properties.ipFamilies &&\
+	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmauths.yaml $(YAML_DROP_PREFIX).initContainers.items.properties &&\
+	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmauths.yaml $(YAML_DROP_PREFIX).containers.items.properties ;\
+	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmauths.yaml $(YAML_DROP_PREFIX).topologySpreadConstraints.items.properties ;\
+	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmauths.yaml $(YAML_DROP_PREFIX).affinity.properties &&\
+	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmauths.yaml $(YAML_DROP_PREFIX).serviceSpec.properties.spec.properties.ports &&\
+	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmauths.yaml $(YAML_DROP_PREFIX).serviceSpec.properties.spec.properties.clusterIPs &&\
+	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmauths.yaml $(YAML_DROP_PREFIX).serviceSpec.properties.spec.properties.ipFamilies &&\
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).initContainers.items.properties &&\
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).containers.items.properties ;\
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).topologySpreadConstraints.items.properties ;\
@@ -133,6 +140,8 @@ fix_crd_nulls:
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmservicescrapes.yaml status &&\
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmprobes.yaml status &&\
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmstaticscrapes.yaml status &&\
+	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmauths.yaml status &&\
+	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmauths.yaml metadata.creationTimestamp &&\
 		$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalertmanagers.yaml metadata.creationTimestamp &&\
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmagents.yaml metadata.creationTimestamp &&\
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalerts.yaml metadata.creationTimestamp &&\
@@ -158,6 +167,8 @@ doc: install-develop-tools
 	$(APIS_BASE_PATH)/vmpodscrape_types.go,\
 	$(APIS_BASE_PATH)/vmcluster_types.go,\
 	$(APIS_BASE_PATH)/vmnodescrape_types.go,\
+	$(APIS_BASE_PATH)/vmuser_types.go,\
+	$(APIS_BASE_PATH)/vmauth_types.go,\
 	$(APIS_BASE_PATH)/vmprobe_types.go \
 	--owner VictoriaMetrics \
      > docs/api.MD

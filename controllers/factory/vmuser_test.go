@@ -294,11 +294,121 @@ func Test_buildVMAuthConfig(t *testing.T) {
   bearer_token: bearer-token-2
 `,
 		},
+
+		{
+			name: "with password ref",
+			args: args{
+				vmauth: &v1beta1.VMAuth{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-vmauth",
+						Namespace: "default",
+					},
+				},
+			},
+			predefinedObjects: []runtime.Object{
+				&v1beta1.VMUser{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "user-1",
+						Namespace: "default",
+					},
+					Spec: v1beta1.VMUserSpec{
+						BearerToken: pointer.StringPtr("bearer"),
+						TargetRefs: []v1beta1.TargetRef{
+							{
+								Static: &v1beta1.StaticRef{URL: "http://some-static"},
+								Paths:  []string{"/"},
+							},
+						},
+					},
+				},
+				&v1beta1.VMUser{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "user-2",
+						Namespace: "default",
+					},
+					Spec: v1beta1.VMUserSpec{
+						BearerToken: pointer.StringPtr("bearer-token-2"),
+						TargetRefs: []v1beta1.TargetRef{
+							{
+								CRD: &v1beta1.CRDRef{
+									Kind:      "VMAgent",
+									Name:      "test",
+									Namespace: "default",
+								},
+								Paths: []string{"/"},
+							},
+						},
+					},
+				},
+				&v1beta1.VMUser{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "user-5",
+						Namespace: "default",
+					},
+					Spec: v1beta1.VMUserSpec{
+						UserName: pointer.StringPtr("some-user"),
+						PasswordRef: &v1.SecretKeySelector{
+							Key: "password",
+							LocalObjectReference: v1.LocalObjectReference{
+								Name: "generated-secret",
+							},
+						},
+						TargetRefs: []v1beta1.TargetRef{
+							{
+								CRD: &v1beta1.CRDRef{
+									Kind:      "VMAgent",
+									Name:      "test",
+									Namespace: "default",
+								},
+								Paths: []string{"/"},
+							},
+						},
+					},
+				},
+				&v1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "generated-secret",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{"password": []byte(`generated-password`)},
+				},
+				&v1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "default",
+					},
+				},
+			},
+			want: `users:
+- url_map:
+  - url_prefix: http://some-static
+    src_paths:
+    - /
+  bearer_token: bearer
+- url_map:
+  - url_prefix: http://vmagent-test.default.svc:8429
+    src_paths:
+    - /
+  bearer_token: bearer-token-2
+- url_map:
+  - url_prefix: http://vmagent-test.default.svc:8429
+    src_paths:
+    - /
+  username: some-user
+  password: generated-password
+`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			testClient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 			got, err := buildVMAuthConfig(context.TODO(), testClient, tt.args.vmauth)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("buildVMAuthConfig() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			assert.Equal(t, tt.want, string(got))
+			got, err = buildVMAuthConfig(context.TODO(), testClient, tt.args.vmauth)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("buildVMAuthConfig() error = %v, wantErr %v", err, tt.wantErr)
 				return

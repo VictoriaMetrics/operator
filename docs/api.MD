@@ -289,6 +289,7 @@ VMAgentSpec defines the desired state of VMAgent
 | updateStrategy | UpdateStrategy - overrides default update strategy. works only for deployments, statefulset always use OnDelete. | *appsv1.DeploymentStrategyType | false |
 | rollingUpdate | RollingUpdate - overrides deployment update params. | *appsv1.RollingUpdateDeployment | false |
 | podDisruptionBudget | PodDisruptionBudget created by operator | *[EmbeddedPodDisruptionBudgetSpec](#embeddedpoddisruptionbudgetspec) | false |
+| nodeSelector | NodeSelector Define which Nodes the Pods are scheduled on. | map[string]string | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -523,6 +524,7 @@ VMAlertSpec defines the desired state of VMAlert
 | updateStrategy | UpdateStrategy - overrides default update strategy. | *appsv1.DeploymentStrategyType | false |
 | rollingUpdate | RollingUpdate - overrides deployment update params. | *appsv1.RollingUpdateDeployment | false |
 | podDisruptionBudget | PodDisruptionBudget created by operator | *[EmbeddedPodDisruptionBudgetSpec](#embeddedpoddisruptionbudgetspec) | false |
+| nodeSelector | NodeSelector Define which Nodes the Pods are scheduled on. | map[string]string | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -603,6 +605,7 @@ VMSingleSpec defines the desired state of VMSingle
 | extraArgs | ExtraArgs that will be passed to  VMSingle pod for example remoteWrite.tmpDataPath: /tmp | map[string]string | false |
 | extraEnvs | ExtraEnvs that will be added to VMSingle pod | [][v1.EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#envvar-v1-core) | false |
 | serviceSpec | ServiceSpec that will be added to vmsingle service spec | *[ServiceSpec](#servicespec) | false |
+| nodeSelector | NodeSelector Define which Nodes the Pods are scheduled on. | map[string]string | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -1067,6 +1070,7 @@ VMClusterStatus defines the observed state of VMCluster
 | rollingUpdate | RollingUpdate - overrides deployment update params. | *appsv1.RollingUpdateDeployment | false |
 | podDisruptionBudget | PodDisruptionBudget created by operator | *[EmbeddedPodDisruptionBudgetSpec](#embeddedpoddisruptionbudgetspec) | false |
 | hpa | HPA defines kubernetes PodAutoScaling configuration version 2. | *[EmbeddedHPA](#embeddedhpa) | false |
+| nodeSelector | NodeSelector Define which Nodes the Pods are scheduled on. | map[string]string | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -1107,6 +1111,7 @@ VMClusterStatus defines the observed state of VMCluster
 | serviceSpec | ServiceSpec that will be added to vmselect service spec | *[ServiceSpec](#servicespec) | false |
 | podDisruptionBudget | PodDisruptionBudget created by operator | *[EmbeddedPodDisruptionBudgetSpec](#embeddedpoddisruptionbudgetspec) | false |
 | hpa |  | *[EmbeddedHPA](#embeddedhpa) | false |
+| nodeSelector | NodeSelector Define which Nodes the Pods are scheduled on. | map[string]string | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -1151,6 +1156,7 @@ VMClusterStatus defines the observed state of VMCluster
 | podDisruptionBudget | PodDisruptionBudget created by operator | *[EmbeddedPodDisruptionBudgetSpec](#embeddedpoddisruptionbudgetspec) | false |
 | maintenanceInsertNodeIDs | MaintenanceInsertNodeIDs - excludes given node ids from insert requests routing, must contain pod suffixes - for pod-0, id will be 0 and etc. lets say, you have pod-0, pod-1, pod-2, pod-3. to exclude pod-0 and pod-3 from insert routing, define nodeIDs: [0,3]. Useful at storage expanding, when you want to rebalance some data at cluster. | []int32 | false |
 | maintenanceSelectNodeIDs | MaintenanceInsertNodeIDs - excludes given node ids from select requests routing, must contain pod suffixes - for pod-0, id will be 0 and etc. | []int32 | false |
+| nodeSelector | NodeSelector Define which Nodes the Pods are scheduled on. | map[string]string | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -1353,6 +1359,7 @@ VMAuthSpec defines the desired state of VMAuth
 | serviceSpec | ServiceSpec that will be added to vmsingle service spec | *[ServiceSpec](#servicespec) | false |
 | podDisruptionBudget | PodDisruptionBudget created by operator | *[EmbeddedPodDisruptionBudgetSpec](#embeddedpoddisruptionbudgetspec) | false |
 | ingress | Ingress enables ingress configuration for VMAuth. | *[EmbeddedIngress](#embeddedingress) | false |
+| nodeSelector | NodeSelector Define which Nodes the Pods are scheduled on. | map[string]string | false |
 
 [Back to TOC](#table-of-contents)
 

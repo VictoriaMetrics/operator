@@ -313,6 +313,7 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 			Annotations: cr.PodAnnotations(),
 		},
 		Spec: corev1.PodSpec{
+			NodeSelector:              cr.Spec.NodeSelector,
 			Volumes:                   volumes,
 			InitContainers:            cr.Spec.InitContainers,
 			Containers:                containers,

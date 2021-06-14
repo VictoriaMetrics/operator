@@ -371,6 +371,12 @@ spec:
               - FATAL
               - PANIC
               type: string
+            nodeSelector:
+              additionalProperties:
+                type: string
+              description: NodeSelector Define which Nodes the Pods are scheduled
+                on.
+              type: object
             podMetadata:
               description: PodMetadata configures Labels and Annotations which are
                 propagated to the VMSingle pods.

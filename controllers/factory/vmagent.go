@@ -433,6 +433,7 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 			Annotations: cr.PodAnnotations(),
 		},
 		Spec: corev1.PodSpec{
+			NodeSelector:              cr.Spec.NodeSelector,
 			Volumes:                   volumes,
 			InitContainers:            cr.Spec.InitContainers,
 			Containers:                containers,

@@ -409,6 +409,12 @@ spec:
                   type: string
                 name:
                   type: string
+                nodeSelector:
+                  additionalProperties:
+                    type: string
+                  description: NodeSelector Define which Nodes the Pods are scheduled
+                    on.
+                  type: object
                 podDisruptionBudget:
                   description: PodDisruptionBudget created by operator
                   properties:
@@ -1574,6 +1580,12 @@ spec:
                   type: string
                 name:
                   type: string
+                nodeSelector:
+                  additionalProperties:
+                    type: string
+                  description: NodeSelector Define which Nodes the Pods are scheduled
+                    on.
+                  type: object
                 persistentVolume:
                   description: Storage - add persistent volume for cacheMounthPath
                     its useful for persistent cache use storage instead of persistentVolume.
@@ -3021,6 +3033,12 @@ spec:
                   type: array
                 name:
                   type: string
+                nodeSelector:
+                  additionalProperties:
+                    type: string
+                  description: NodeSelector Define which Nodes the Pods are scheduled
+                    on.
+                  type: object
                 podDisruptionBudget:
                   description: PodDisruptionBudget created by operator
                   properties:

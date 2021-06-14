@@ -530,6 +530,12 @@ spec:
               - FATAL
               - PANIC
               type: string
+            nodeSelector:
+              additionalProperties:
+                type: string
+              description: NodeSelector Define which Nodes the Pods are scheduled
+                on.
+              type: object
             notifier:
               description: Notifier prometheus alertmanager endpoint spec. Required
                 at least one of  notifier or notifiers. e.g. http://127.0.0.1:9093

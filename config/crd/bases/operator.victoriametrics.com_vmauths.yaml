@@ -552,6 +552,12 @@ spec:
               - FATAL
               - PANIC
               type: string
+            nodeSelector:
+              additionalProperties:
+                type: string
+              description: NodeSelector Define which Nodes the Pods are scheduled
+                on.
+              type: object
             podDisruptionBudget:
               description: PodDisruptionBudget created by operator
               properties:

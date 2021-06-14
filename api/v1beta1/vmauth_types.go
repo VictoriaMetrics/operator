@@ -149,6 +149,9 @@ type VMAuthSpec struct {
 	Ingress *EmbeddedIngress `json:"ingress,omitempty"`
 	// LivenessProbe that will be added to VMAuth pod
 	*EmbeddedProbes `json:",inline"`
+	// NodeSelector Define which Nodes the Pods are scheduled on.
+	// +optional
+	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 }
 
 // EmbeddedIngress describes ingress configuration options.

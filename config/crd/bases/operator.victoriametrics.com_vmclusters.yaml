@@ -4425,10 +4425,12 @@ spec:
             clusterStatus:
               type: string
             lastSync:
+              description: Deprecated.
               type: string
             reason:
               type: string
             updateFailCount:
+              description: Deprecated.
               type: integer
           required:
           - clusterStatus

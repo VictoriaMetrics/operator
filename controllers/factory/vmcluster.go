@@ -58,11 +58,10 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient
 		actualVMCluster.Status.ClusterStatus = status
 		if reconciled {
 			actualVMCluster.Status.UpdateFailCount = 0
-		} else {
-			if actualVMCluster.Status.UpdateFailCount < 10 {
-				actualVMCluster.Status.UpdateFailCount += 1
-			}
 		}
+		// each sync triggers CR reconcile,
+		// it may lead to recursive loop,
+		// so change status values only at status change.
 		if actualVMCluster.Status.Reason != reason {
 			actualVMCluster.Status.LastSync = time.Now().String()
 		}

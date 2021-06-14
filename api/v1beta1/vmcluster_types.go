@@ -101,10 +101,12 @@ func (c *VMCluster) AsOwner() []metav1.OwnerReference {
 
 // VMClusterStatus defines the observed state of VMCluster
 type VMClusterStatus struct {
-	UpdateFailCount int    `json:"updateFailCount"`
-	LastSync        string `json:"lastSync,omitempty"`
-	ClusterStatus   string `json:"clusterStatus"`
-	Reason          string `json:"reason,omitempty"`
+	// Deprecated.
+	UpdateFailCount int `json:"updateFailCount"`
+	// Deprecated.
+	LastSync      string `json:"lastSync,omitempty"`
+	ClusterStatus string `json:"clusterStatus"`
+	Reason        string `json:"reason,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

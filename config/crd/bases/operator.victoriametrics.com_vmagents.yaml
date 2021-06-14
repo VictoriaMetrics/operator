@@ -758,6 +758,12 @@ spec:
                     are ANDed.
                   type: object
               type: object
+            nodeSelector:
+              additionalProperties:
+                type: string
+              description: NodeSelector Define which Nodes the Pods are scheduled
+                on.
+              type: object
             overrideHonorLabels:
               description: OverrideHonorLabels if set to true overrides all user configured
                 honor_labels. If HonorLabels is set in ServiceScrape or PodScrape

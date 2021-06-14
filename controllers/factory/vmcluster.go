@@ -697,6 +697,7 @@ func makePodSpecForVMSelect(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 			Annotations: cr.VMSelectPodAnnotations(),
 		},
 		Spec: corev1.PodSpec{
+			NodeSelector:                  cr.Spec.VMSelect.NodeSelector,
 			Volumes:                       volumes,
 			InitContainers:                cr.Spec.VMSelect.InitContainers,
 			Containers:                    containers,
@@ -967,6 +968,7 @@ func makePodSpecForVMInsert(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 			Annotations: cr.VMInsertPodAnnotations(),
 		},
 		Spec: corev1.PodSpec{
+			NodeSelector:              cr.Spec.VMInsert.NodeSelector,
 			Volumes:                   volumes,
 			InitContainers:            cr.Spec.VMInsert.InitContainers,
 			Containers:                containers,
@@ -1291,6 +1293,7 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) 
 			Annotations: cr.VMStoragePodAnnotations(),
 		},
 		Spec: corev1.PodSpec{
+			NodeSelector:                  cr.Spec.VMStorage.NodeSelector,
 			Volumes:                       volumes,
 			InitContainers:                cr.Spec.VMStorage.InitContainers,
 			Containers:                    containers,

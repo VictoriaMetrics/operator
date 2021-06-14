@@ -161,6 +161,9 @@ type VMSingleSpec struct {
 	ServiceSpec *ServiceSpec `json:"serviceSpec,omitempty"`
 	// LivenessProbe that will be added to VMSingle pod
 	*EmbeddedProbes `json:",inline"`
+	// NodeSelector Define which Nodes the Pods are scheduled on.
+	// +optional
+	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 }
 
 // VMSingleStatus defines the observed state of VMSingle

@@ -304,6 +304,7 @@ func makeSpecForVMAuth(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperator
 			Annotations: cr.PodAnnotations(),
 		},
 		Spec: corev1.PodSpec{
+			NodeSelector:              cr.Spec.NodeSelector,
 			Volumes:                   volumes,
 			InitContainers:            cr.Spec.InitContainers,
 			Containers:                containers,

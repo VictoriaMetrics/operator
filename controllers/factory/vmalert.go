@@ -433,6 +433,7 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 				Annotations: cr.PodAnnotations(),
 			},
 			Spec: corev1.PodSpec{
+				NodeSelector:              cr.Spec.NodeSelector,
 				SchedulerName:             cr.Spec.SchedulerName,
 				RuntimeClassName:          cr.Spec.RuntimeClassName,
 				ServiceAccountName:        cr.GetServiceAccountName(),

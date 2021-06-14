@@ -244,6 +244,9 @@ type VMSelect struct {
 	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
 	*EmbeddedProbes     `json:",inline"`
 	HPA                 *EmbeddedHPA `json:"hpa,omitempty"`
+	// NodeSelector Define which Nodes the Pods are scheduled on.
+	// +optional
+	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 }
 
 func (s VMSelect) GetNameWithPrefix(clusterName string) string {
@@ -402,6 +405,9 @@ type VMInsert struct {
 	*EmbeddedProbes     `json:",inline"`
 	// HPA defines kubernetes PodAutoScaling configuration version 2.
 	HPA *EmbeddedHPA `json:"hpa,omitempty"`
+	// NodeSelector Define which Nodes the Pods are scheduled on.
+	// +optional
+	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 }
 
 func (i VMInsert) GetNameWithPrefix(clusterName string) string {
@@ -552,6 +558,9 @@ type VMStorage struct {
 	MaintenanceInsertNodeIDs []int32 `json:"maintenanceInsertNodeIDs,omitempty"`
 	// MaintenanceInsertNodeIDs - excludes given node ids from select requests routing, must contain pod suffixes - for pod-0, id will be 0 and etc.
 	MaintenanceSelectNodeIDs []int32 `json:"maintenanceSelectNodeIDs,omitempty"`
+	// NodeSelector Define which Nodes the Pods are scheduled on.
+	// +optional
+	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 }
 
 type VMBackup struct {

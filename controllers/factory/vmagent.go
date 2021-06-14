@@ -492,7 +492,7 @@ func buildConfigReloaderArgs(cr *victoriametricsv1beta1.VMAgent, reloaderImage s
 		imageTag := reloaderImage[idx+1:]
 		ver, err := version.NewVersion(imageTag)
 		if err != nil {
-			log.Error(err, "cannot parse alert manager version")
+			log.Error(err, "cannot parse vmagent config reloader version", "reloader-image", reloaderImage)
 		} else if ver.LessThan(version.Must(version.NewVersion("0.43.0"))) {
 			dirsArg = "rules-dir"
 		}

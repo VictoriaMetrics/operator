@@ -1,5 +1,5 @@
 # Auto Generated vars for package config 
-## updated at Sun May  9 14:56:53 UTC 2021 
+## updated at Mon Jun 14 15:19:36 UTC 2021 
 
 
 | varible name | variable default value | variable required | variable description |
@@ -18,7 +18,7 @@
 | VM_VMALERTDEFAULT_CONFIGRELOADIMAGE | jimmidyson/configmap-reload:v0.3.0 | false | - |
 | VM_VMAGENTDEFAULT_IMAGE | victoriametrics/vmagent | false | - |
 | VM_VMAGENTDEFAULT_VERSION | v1.58.0 | false | - |
-| VM_VMAGENTDEFAULT_CONFIGRELOADIMAGE | quay.io/coreos/prometheus-config-reloader:v0.42.0 | false | - |
+| VM_VMAGENTDEFAULT_CONFIGRELOADIMAGE | quay.io/prometheus-operator/prometheus-config-reloader:v0.48.1 | false | - |
 | VM_VMAGENTDEFAULT_PORT | 8429 | false | - |
 | VM_VMAGENTDEFAULT_USEDEFAULTRESOURCES | true | false | - |
 | VM_VMAGENTDEFAULT_RESOURCE_LIMIT_MEM | 500Mi | false | - |
@@ -82,6 +82,17 @@
 | VM_VMBACKUP_RESOURCE_REQUEST_MEM | 200Mi | false | - |
 | VM_VMBACKUP_RESOURCE_REQUEST_CPU | 150m | false | - |
 | VM_VMBACKUP_LOGLEVEL | INFO | false | - |
+| VM_VMAUTHDEFAULT_IMAGE | victoriametrics/vmauth | false | - |
+| VM_VMAUTHDEFAULT_VERSION | v1.60.0 | false | - |
+| VM_VMAUTHDEFAULT_CONFIGRELOADIMAGE | quay.io/prometheus-operator/prometheus-config-reloader:v0.48.1 | false | - |
+| VM_VMAUTHDEFAULT_PORT | 8427 | false | - |
+| VM_VMAUTHDEFAULT_USEDEFAULTRESOURCES | true | false | - |
+| VM_VMAUTHDEFAULT_RESOURCE_LIMIT_MEM | 300Mi | false | - |
+| VM_VMAUTHDEFAULT_RESOURCE_LIMIT_CPU | 200m | false | - |
+| VM_VMAUTHDEFAULT_RESOURCE_REQUEST_MEM | 100Mi | false | - |
+| VM_VMAUTHDEFAULT_RESOURCE_REQUEST_CPU | 50m | false | - |
+| VM_VMAUTHDEFAULT_CONFIGRELOADERCPU | 100m | false | - |
+| VM_VMAUTHDEFAULT_CONFIGRELOADERMEMORY | 25Mi | false | - |
 | VM_ENABLEDPROMETHEUSCONVERTER_PODMONITOR | true | false | - |
 | VM_ENABLEDPROMETHEUSCONVERTER_SERVICESCRAPE | true | false | - |
 | VM_ENABLEDPROMETHEUSCONVERTER_PROMETHEUSRULE | true | false | - |

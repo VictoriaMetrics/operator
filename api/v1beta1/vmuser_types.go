@@ -13,15 +13,13 @@ import (
 // VMUserSpec defines the desired state of VMUser
 type VMUserSpec struct {
 	// UserName basic auth user name for accessing protected endpoint,
-	// metadata.name if missing.
+	// will be replaced with metadata.name of VMUser if omitted.
 	// +optional
 	UserName *string `json:"username,omitempty"`
-	// Password basic auth password for accessing protected endpoint,
-	// randomly generated and saved into secret with the same name
-	// as VMUser into same namespace
+	// Password basic auth password for accessing protected endpoint.
 	// +optional
 	Password *string `json:"password,omitempty"`
-	// PasswordRef allows to fetch password for given secret by its name and key name
+	// PasswordRef allows to fetch password from user-create secret by its name and key.
 	// +optional
 	PasswordRef *v1.SecretKeySelector `json:"passwordRef,omitempty"`
 	// GeneratePassword instructs operator to generate password for user
@@ -36,13 +34,16 @@ type VMUserSpec struct {
 }
 
 // TargetRef describes target for user traffic forwarding.
+// one of target types can be chosen:
+// crd or static per targetRef.
+// user can define multiple targetRefs with different ref Types.
 type TargetRef struct {
-	// CRD - one of operator crd targets
-	// one of crd or static can be configured per targetRef.
+	// CRD describes exist operator's CRD object,
+	// operator generates access url based on CRD params.
 	// +optional
 	CRD *CRDRef `json:"crd,omitempty"`
-	// Static - user defined url for traffic forward.
-	// one of crd or static can be configured per targetRef.
+	// Static - user defined url for traffic forward,
+	// for instance http://vmsingle:8429
 	// +optional
 	Static *StaticRef `json:"static,omitempty"`
 	// Paths - matched path to route.

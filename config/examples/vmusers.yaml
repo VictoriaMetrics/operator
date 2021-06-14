@@ -46,3 +46,29 @@ spec:
         name: sample
         namespace: default
       paths: ["/targets", "/api/v1/targets","/api/v1/write"]
+---
+apiVersion: v1
+data:
+  passwd: YXNmYXNm
+kind: Secret
+metadata:
+  name: user-password
+type: Opaque
+---
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMUser
+metadata:
+  name: vmuser-sample-2
+spec:
+  passwordRef:
+    name: user-password
+    key: password
+  targetRefs:
+    - static:
+        url: http://vmsingle-sample.default.svc:8429
+      paths: ["/"]
+    - crd:
+        kind: VMAgent
+        name: sample
+        namespace: default
+      paths: ["/targets", "/api/v1/targets","/api/v1/write"]

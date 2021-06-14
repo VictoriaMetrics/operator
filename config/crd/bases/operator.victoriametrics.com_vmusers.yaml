@@ -45,13 +45,11 @@ spec:
                 for user if spec.password if empty.
               type: boolean
             password:
-              description: Password basic auth password for accessing protected endpoint,
-                randomly generated and saved into secret with the same name as VMUser
-                into same namespace
+              description: Password basic auth password for accessing protected endpoint.
               type: string
             passwordRef:
-              description: PasswordRef allows to fetch password for given secret by
-                its name and key name
+              description: PasswordRef allows to fetch password from user-create secret
+                by its name and key.
               properties:
                 key:
                   description: The key of the secret to select from.  Must be a valid
@@ -70,11 +68,13 @@ spec:
             targetRefs:
               description: TargetRefs - reference to endpoints, which user may access.
               items:
-                description: TargetRef describes target for user traffic forwarding.
+                description: 'TargetRef describes target for user traffic forwarding.
+                  one of target types can be chosen: crd or static per targetRef.
+                  user can define multiple targetRefs with different ref Types.'
                 properties:
                   crd:
-                    description: CRD - one of operator crd targets one of crd or static
-                      can be configured per targetRef.
+                    description: CRD describes exist operator's CRD object, operator
+                      generates access url based on CRD params.
                     properties:
                       kind:
                         description: 'Kind one of: VMAgent VMAlert VMCluster VMSingle
@@ -97,8 +97,8 @@ spec:
                       type: string
                     type: array
                   static:
-                    description: Static - user defined url for traffic forward. one
-                      of crd or static can be configured per targetRef.
+                    description: Static - user defined url for traffic forward, for
+                      instance http://vmsingle:8429
                     properties:
                       url:
                         description: URL http url for given staticRef.
@@ -110,7 +110,7 @@ spec:
               type: array
             username:
               description: UserName basic auth user name for accessing protected endpoint,
-                metadata.name if missing.
+                will be replaced with metadata.name of VMUser if omitted.
               type: string
           required:
           - targetRefs

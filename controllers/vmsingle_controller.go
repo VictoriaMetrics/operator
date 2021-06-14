@@ -77,7 +77,7 @@ func (r *VMSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return ctrl.Result{}, err
 	}
 
-	if instance.Spec.Storage != nil && instance.Spec.StorageDataPath != "" {
+	if instance.Spec.Storage != nil && instance.Spec.StorageDataPath == "" {
 		reqLogger.Info("reconciling storage for VMSingle")
 		_, err = factory.CreateVMSingleStorage(ctx, instance, r, r.BaseConf)
 		if err != nil {

@@ -75,10 +75,11 @@ func (r *VMClusterReconciler) Reconcile(ctx context.Context, request ctrl.Reques
 		if failCnt > 5 {
 			failCnt = 5
 		}
-		reqLogger.Info("re queuing cluster expanding with back-off", "fail update count", failCnt)
+		backoff := time.Second * time.Duration(failCnt*5)
+		reqLogger.Info("re queuing cluster expanding with back-off", "fail update count", failCnt, "after", backoff.String())
 		// add requeue back-off
 		return reconcile.Result{
-			RequeueAfter: time.Second * time.Duration(failCnt*10),
+			RequeueAfter: backoff,
 		}, nil
 	}
 

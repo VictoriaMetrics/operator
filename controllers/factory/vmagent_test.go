@@ -920,3 +920,53 @@ func TestCreateOrUpdateRelabelConfigsAssets(t *testing.T) {
 		})
 	}
 }
+
+func Test_buildConfigReloaderArgs(t *testing.T) {
+	type args struct {
+		cr            *victoriametricsv1beta1.VMAgent
+		reloaderImage string
+	}
+	tests := []struct {
+		name string
+		args args
+		want []string
+	}{
+		{
+			name: "parse ok",
+			args: args{
+				cr: &victoriametricsv1beta1.VMAgent{
+					Spec: victoriametricsv1beta1.VMAgentSpec{Port: "8429"},
+				},
+				reloaderImage: "prometheus-config-reloader:latest",
+			},
+			want: []string{
+				"--reload-url=http://localhost:8429/-/reload",
+				"--config-file=/etc/vmagent/config/vmagent.yaml.gz",
+				"--config-envsubst-file=/etc/vmagent/config_out/vmagent.env.yaml",
+				"--watched-dir=/etc/vm/relabeling",
+			},
+		},
+		{
+			name: "old version",
+			args: args{
+				cr: &victoriametricsv1beta1.VMAgent{
+					Spec: victoriametricsv1beta1.VMAgentSpec{Port: "8429"},
+				},
+				reloaderImage: "quay.io/coreos/prometheus-config-reloader:v0.42.0",
+			},
+			want: []string{
+				"--reload-url=http://localhost:8429/-/reload",
+				"--config-file=/etc/vmagent/config/vmagent.yaml.gz",
+				"--config-envsubst-file=/etc/vmagent/config_out/vmagent.env.yaml",
+				"--rules-dir=/etc/vm/relabeling",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := buildConfigReloaderArgs(tt.args.cr, tt.args.reloaderImage)
+
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}

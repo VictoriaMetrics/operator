@@ -1026,8 +1026,8 @@ VMClusterStatus defines the observed state of VMCluster
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
-| updateFailCount |  | int | true |
-| lastSync |  | string | false |
+| updateFailCount | Deprecated. | int | true |
+| lastSync | Deprecated. | string | false |
 | clusterStatus |  | string | true |
 | reason |  | string | false |
 
@@ -1235,12 +1235,12 @@ StaticRef - user-defined routing host address.
 
 ## TargetRef
 
-TargetRef describes target for user traffic forwarding.
+TargetRef describes target for user traffic forwarding. one of target types can be chosen: crd or static per targetRef. user can define multiple targetRefs with different ref Types.
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
-| crd | CRD - one of operator crd targets one of crd or static can be configured per targetRef. | *[CRDRef](#crdref) | false |
-| static | Static - user defined url for traffic forward. one of crd or static can be configured per targetRef. | *[StaticRef](#staticref) | false |
+| crd | CRD describes exist operator&#39;s CRD object, operator generates access url based on CRD params. | *[CRDRef](#crdref) | false |
+| static | Static - user defined url for traffic forward, for instance http://vmsingle:8429 | *[StaticRef](#staticref) | false |
 | paths | Paths - matched path to route. | []string | false |
 
 [Back to TOC](#table-of-contents)
@@ -1274,9 +1274,9 @@ VMUserSpec defines the desired state of VMUser
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
-| username | UserName basic auth user name for accessing protected endpoint, metadata.name if missing. | *string | false |
-| password | Password basic auth password for accessing protected endpoint, randomly generated and saved into secret with the same name as VMUser into same namespace | *string | false |
-| passwordRef | PasswordRef allows to fetch password for given secret by its name and key name | *[v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
+| username | UserName basic auth user name for accessing protected endpoint, will be replaced with metadata.name of VMUser if omitted. | *string | false |
+| password | Password basic auth password for accessing protected endpoint. | *string | false |
+| passwordRef | PasswordRef allows to fetch password from user-create secret by its name and key. | *[v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
 | generatePassword | GeneratePassword instructs operator to generate password for user if spec.password if empty. | bool | false |
 | bearerToken | BearerToken Authorization header value for accessing protected endpoint. | *string | false |
 | targetRefs | TargetRefs - reference to endpoints, which user may access. | [][TargetRef](#targetref) | true |

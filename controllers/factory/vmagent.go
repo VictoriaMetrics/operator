@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/hashicorp/go-version"
 	"gopkg.in/yaml.v2"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
@@ -359,7 +360,7 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 		},
 	}
 
-	configReloadArgs := buildConfigReloaderArgs(cr)
+	configReloadArgs := buildConfigReloaderArgs(cr, c.VMAgentDefault.ConfigReloadImage)
 
 	if cr.Spec.RelabelConfig != nil || len(cr.Spec.InlineRelabelConfig) > 0 {
 		args = append(args, "-remoteWrite.relabelConfig="+path.Join(RelabelingConfigDir, globalRelabelingName))
@@ -481,12 +482,27 @@ func addShardSettingsToVMAgent(shardNum, shardsCount int, dep *appsv1.Deployment
 	}
 }
 
-func buildConfigReloaderArgs(cr *victoriametricsv1beta1.VMAgent) []string {
+func buildConfigReloaderArgs(cr *victoriametricsv1beta1.VMAgent, reloaderImage string) []string {
+
+	// by default use watched-dir
+	// it should simplify parsing for latest and empty version tags.
+	dirsArg := "watched-dir"
+	idx := strings.LastIndex(reloaderImage, ":")
+	if idx > 0 {
+		imageTag := reloaderImage[idx+1:]
+		ver, err := version.NewVersion(imageTag)
+		if err != nil {
+			log.Error(err, "cannot parse alert manager version")
+		} else if ver.LessThan(version.Must(version.NewVersion("0.43.0"))) {
+			dirsArg = "rules-dir"
+		}
+	}
+
 	args := []string{
 		fmt.Sprintf("--reload-url=%s", cr.ReloadPathWithPort(cr.Spec.Port)),
 		fmt.Sprintf("--config-file=%s", path.Join(vmAgentConfDir, configFilename)),
 		fmt.Sprintf("--config-envsubst-file=%s", path.Join(vmAgentConOfOutDir, configEnvsubstFilename)),
-		"--rules-dir=" + RelabelingConfigDir,
+		fmt.Sprintf("--%s=%s", dirsArg, RelabelingConfigDir),
 	}
 	return args
 }

@@ -26,6 +26,7 @@ type CRDObject interface {
 	GetServiceAccountName() string
 	GetPSPName() string
 	GetNSName() string
+	AsOwner() []metav1.OwnerReference
 }
 
 // CreateOrUpdateServiceAccountWithPSP - creates psp for api object.
@@ -144,11 +145,12 @@ func ensureClusterRoleBindingExists(ctx context.Context, cr CRDObject, rclient c
 func buildSA(cr CRDObject) *v1.ServiceAccount {
 	return &v1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        cr.GetServiceAccountName(),
-			Namespace:   cr.GetNSName(),
-			Labels:      cr.Labels(),
-			Annotations: cr.Annotations(),
-			Finalizers:  []string{v1beta12.FinalizerName},
+			Name:            cr.GetServiceAccountName(),
+			Namespace:       cr.GetNSName(),
+			Labels:          cr.Labels(),
+			Annotations:     cr.Annotations(),
+			OwnerReferences: cr.AsOwner(),
+			Finalizers:      []string{v1beta12.FinalizerName},
 		},
 	}
 }

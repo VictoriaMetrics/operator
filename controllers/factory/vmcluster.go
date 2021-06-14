@@ -50,16 +50,25 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient
 			log.Info("no need for resync")
 			return
 		}
-		cr.Status.ClusterStatus = status
-		if reconciled {
-			cr.Status.UpdateFailCount = 0
-		} else {
-			cr.Status.UpdateFailCount += 1
-
+		var actualVMCluster v1beta1.VMCluster
+		if err := rclient.Get(ctx, types.NamespacedName{Name: cr.Name, Namespace: cr.Namespace}, &actualVMCluster); err != nil {
+			log.Error(err, "cannot update actual status for vmcluster")
+			return
 		}
-		cr.Status.Reason = reason
-		cr.Status.LastSync = time.Now().String()
-		err := rclient.Status().Update(ctx, cr)
+		actualVMCluster.Status.ClusterStatus = status
+		if reconciled {
+			actualVMCluster.Status.UpdateFailCount = 0
+		} else {
+			if actualVMCluster.Status.UpdateFailCount < 10 {
+				actualVMCluster.Status.UpdateFailCount += 1
+			}
+		}
+		if actualVMCluster.Status.Reason != reason {
+			actualVMCluster.Status.LastSync = time.Now().String()
+		}
+		actualVMCluster.Status.Reason = reason
+
+		err := rclient.Status().Update(ctx, &actualVMCluster)
 		if err != nil {
 			log.Error(err, "cannot update cluster status")
 		}

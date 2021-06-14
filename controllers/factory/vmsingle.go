@@ -172,6 +172,10 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 	args := []string{
 		fmt.Sprintf("-retentionPeriod=%s", cr.Spec.RetentionPeriod),
 	}
+
+	// if customStorageDataPath is not empty, do not add pvc.
+	shouldAddPVC := cr.Spec.StorageDataPath == ""
+
 	storagePath := vmSingleDataDir
 	if cr.Spec.StorageDataPath != "" {
 		storagePath = cr.Spec.StorageDataPath
@@ -211,7 +215,7 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		})
-	} else {
+	} else if shouldAddPVC {
 		volumes = append(volumes, corev1.Volume{
 			Name: vmDataVolumeName,
 			VolumeSource: corev1.VolumeSource{

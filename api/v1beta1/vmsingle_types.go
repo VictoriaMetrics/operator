@@ -6,6 +6,7 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/utils/pointer"
 )
 
@@ -251,31 +252,19 @@ func (cr VMSingle) SelectorLabels() map[string]string {
 }
 
 func (cr VMSingle) PodLabels() map[string]string {
-	labels := cr.SelectorLabels()
-	if cr.Spec.PodMetadata != nil {
-		for label, value := range cr.Spec.PodMetadata.Labels {
-			if _, ok := labels[label]; ok {
-				// forbid changes for selector labels
-				continue
-			}
-			labels[label] = value
-		}
+	lbls := cr.SelectorLabels()
+	if cr.Spec.PodMetadata == nil {
+		return lbls
 	}
-	return labels
+	return labels.Merge(cr.Spec.PodMetadata.Labels, lbls)
 }
 
 func (cr VMSingle) Labels() map[string]string {
-	labels := cr.SelectorLabels()
-	if cr.ObjectMeta.Labels != nil {
-		for label, value := range cr.ObjectMeta.Labels {
-			if _, ok := labels[label]; ok {
-				// forbid changes for selector labels
-				continue
-			}
-			labels[label] = value
-		}
+	lbls := cr.SelectorLabels()
+	if cr.ObjectMeta.Labels == nil {
+		return lbls
 	}
-	return labels
+	return labels.Merge(cr.ObjectMeta.Labels, lbls)
 }
 
 func (cr VMSingle) PrefixedName() string {

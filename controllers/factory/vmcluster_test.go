@@ -553,17 +553,28 @@ func TestCreateOrUpdateVMCluster(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: "default",
 						Name:      "cluster-1",
+						Labels:    map[string]string{"label": "value"},
 					},
 					Spec: v1beta1.VMClusterSpec{
 						RetentionPeriod:   "2",
 						ReplicationFactor: pointer.Int32Ptr(2),
 						VMInsert: &v1beta1.VMInsert{
+							PodMetadata: &v1beta1.EmbeddedObjectMetadata{
+								Annotations: map[string]string{"key": "value"},
+							},
 							ReplicaCount: pointer.Int32Ptr(2),
 						},
 						VMStorage: &v1beta1.VMStorage{
+							PodMetadata: &v1beta1.EmbeddedObjectMetadata{
+								Annotations: map[string]string{"key": "value"},
+								Labels:      map[string]string{"label": "value2"},
+							},
 							ReplicaCount: pointer.Int32Ptr(2),
 						},
 						VMSelect: &v1beta1.VMSelect{
+							PodMetadata: &v1beta1.EmbeddedObjectMetadata{
+								Annotations: map[string]string{"key": "value"},
+							},
 							ReplicaCount: pointer.Int32Ptr(2),
 						},
 					},

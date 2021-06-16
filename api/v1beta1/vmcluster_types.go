@@ -8,6 +8,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/utils/pointer"
 )
 
@@ -670,12 +671,7 @@ func (cr VMCluster) VMSelectPodLabels() map[string]string {
 	if cr.Spec.VMSelect == nil || cr.Spec.VMSelect.PodMetadata == nil {
 		return selectorLabels
 	}
-	//we dont allow to override selector labels
-	labels := cr.Spec.VMSelect.PodMetadata.Labels
-	for label, value := range selectorLabels {
-		labels[label] = value
-	}
-	return labels
+	return labels.Merge(cr.Spec.VMSelect.PodMetadata.Labels, selectorLabels)
 }
 
 func (cr VMCluster) VMInsertSelectorLabels() map[string]string {
@@ -692,12 +688,9 @@ func (cr VMCluster) VMInsertPodLabels() map[string]string {
 	if cr.Spec.VMInsert == nil || cr.Spec.VMInsert.PodMetadata == nil {
 		return selectorLabels
 	}
-	labels := cr.Spec.VMInsert.PodMetadata.Labels
-	for label, value := range selectorLabels {
-		labels[label] = value
-	}
-	return labels
+	return labels.Merge(cr.Spec.VMInsert.PodMetadata.Labels, selectorLabels)
 }
+
 func (cr VMCluster) VMStorageSelectorLabels() map[string]string {
 	return map[string]string{
 		"app.kubernetes.io/name":      "vmstorage",
@@ -739,24 +732,11 @@ func (cr VMCluster) VMStoragePodLabels() map[string]string {
 	if cr.Spec.VMStorage == nil || cr.Spec.VMStorage.PodMetadata == nil {
 		return selectorLabels
 	}
-	labels := cr.Spec.VMStorage.PodMetadata.Labels
-	for label, value := range selectorLabels {
-		labels[label] = value
-	}
-	return labels
+	return labels.Merge(cr.Spec.VMStorage.PodMetadata.Labels, selectorLabels)
 }
 
 func (cr VMCluster) FinalLabels(baseLabels map[string]string) map[string]string {
-	labels := map[string]string{}
-	if cr.ObjectMeta.Labels != nil {
-		for label, value := range cr.ObjectMeta.Labels {
-			labels[label] = value
-		}
-	}
-	for label, value := range baseLabels {
-		labels[label] = value
-	}
-	return labels
+	return labels.Merge(cr.ObjectMeta.Labels, baseLabels)
 }
 
 func (cr VMCluster) VMSelectPodAnnotations() map[string]string {
@@ -867,20 +847,14 @@ func (cr VMCluster) SelectorLabels() map[string]string {
 }
 
 func (cr VMCluster) Labels() map[string]string {
-	labels := cr.SelectorLabels()
-	if cr.ObjectMeta.Labels != nil {
-		for label, value := range cr.ObjectMeta.Labels {
-			if _, ok := labels[label]; ok {
-				// forbid changes for selector labels
-				continue
-			}
-			labels[label] = value
-		}
+	lbls := cr.SelectorLabels()
+	if cr.ObjectMeta.Labels == nil {
+		return lbls
 	}
-	return labels
+	return labels.Merge(cr.ObjectMeta.Labels, lbls)
 }
 
-// stub for interface.
+// AsURL implements stub for interface.
 func (cr *VMCluster) AsURL() string {
 	return "unknown"
 }

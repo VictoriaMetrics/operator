@@ -350,6 +350,20 @@ spec:
                   required:
                   - port
                   type: object
+                terminationGracePeriodSeconds:
+                  description: Optional duration in seconds the pod needs to terminate
+                    gracefully upon probe failure. The grace period is the duration
+                    in seconds after the processes running in the pod are sent a termination
+                    signal and the time when the processes are forcibly halted with
+                    a kill signal. Set this value longer than the expected cleanup
+                    time for your process. If this value is nil, the pod's terminationGracePeriodSeconds
+                    will be used. Otherwise, this value overrides the value provided
+                    by the pod spec. Value must be non-negative integer. The value
+                    zero indicates stop immediately via the kill signal (no opportunity
+                    to shut down). This is an alpha field and requires enabling ProbeTerminationGracePeriod
+                    feature gate.
+                  format: int64
+                  type: integer
                 timeoutSeconds:
                   description: 'Number of seconds after which the probe times out.
                     Defaults to 1 second. Minimum value is 1. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes'
@@ -517,6 +531,20 @@ spec:
                   required:
                   - port
                   type: object
+                terminationGracePeriodSeconds:
+                  description: Optional duration in seconds the pod needs to terminate
+                    gracefully upon probe failure. The grace period is the duration
+                    in seconds after the processes running in the pod are sent a termination
+                    signal and the time when the processes are forcibly halted with
+                    a kill signal. Set this value longer than the expected cleanup
+                    time for your process. If this value is nil, the pod's terminationGracePeriodSeconds
+                    will be used. Otherwise, this value overrides the value provided
+                    by the pod spec. Value must be non-negative integer. The value
+                    zero indicates stop immediately via the kill signal (no opportunity
+                    to shut down). This is an alpha field and requires enabling ProbeTerminationGracePeriod
+                    feature gate.
+                  format: int64
+                  type: integer
                 timeoutSeconds:
                   description: 'Number of seconds after which the probe times out.
                     Defaults to 1 second. Minimum value is 1. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes'
@@ -545,7 +573,7 @@ spec:
                     pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                     x-kubernetes-int-or-string: true
                   description: 'Limits describes the maximum amount of compute resources
-                    allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                    allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                   type: object
                 requests:
                   additionalProperties:
@@ -557,7 +585,7 @@ spec:
                   description: 'Requests describes the minimum amount of compute resources
                     required. If Requests is omitted for a container, it defaults
                     to Limits if that is explicitly specified, otherwise to an implementation-defined
-                    value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                    value. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                   type: object
               type: object
             retentionPeriod:
@@ -804,7 +832,7 @@ spec:
                         mechanisms will return as an alias for this service (e.g.
                         a DNS CNAME record). No proxying will be involved.  Must be
                         a lowercase RFC-1123 hostname (https://tools.ietf.org/html/rfc1123)
-                        and requires Type to be
+                        and requires `type` to be "ExternalName".
                       type: string
                     externalTrafficPolicy:
                       description: externalTrafficPolicy denotes if this Service desires
@@ -828,6 +856,14 @@ spec:
                         updating a Service to no longer need it (e.g. changing type).
                       format: int32
                       type: integer
+                    internalTrafficPolicy:
+                      description: InternalTrafficPolicy specifies if the cluster
+                        internal traffic should be routed to all endpoints or node-local
+                        endpoints only. "Cluster" routes internal traffic to a Service
+                        to all endpoints. "Local" routes traffic to node-local endpoints
+                        only, traffic is dropped if no node-local endpoints are ready.
+                        The default value is "Cluster".
+                      type: string
                     ipFamilyPolicy:
                       description: IPFamilyPolicy represents the dual-stack-ness requested
                         or required by this Service, and is gated by the "IPv6DualStack"
@@ -839,6 +875,24 @@ spec:
                         configured clusters, otherwise fail). The ipFamilies and clusterIPs
                         fields depend on the value of this field.  This field will
                         be wiped when updating a service to type ExternalName.
+                      type: string
+                    loadBalancerClass:
+                      description: loadBalancerClass is the class of the load balancer
+                        implementation this Service belongs to. If specified, the
+                        value of this field must be a label-style identifier, with
+                        an optional prefix, e.g. "internal-vip" or "example.com/internal-vip".
+                        Unprefixed names are reserved for end-users. This field can
+                        only be set when the Service type is 'LoadBalancer'. If not
+                        set, the default load balancer implementation is used, today
+                        this is typically done through the cloud provider integration,
+                        but should apply for any default implementation. If set, it
+                        is assumed that a load balancer implementation is watching
+                        for Services with a matching class. Any default load balancer
+                        implementation (e.g. cloud providers) should ignore Services
+                        that set this field. This field can only be set when creating
+                        or updating a Service to type 'LoadBalancer'. Once set, it
+                        can not be changed. This field will be wiped when a service
+                        is updated to a non 'LoadBalancer' type.
                       type: string
                     loadBalancerIP:
                       description: 'Only applies to Service Type: LoadBalancer LoadBalancer
@@ -917,7 +971,8 @@ spec:
                         value in the list. If this is not specified or empty, no topology
                         constraints will be applied. This field is alpha-level and
                         is only honored by servers that enable the ServiceTopology
-                        feature.
+                        feature. This field is deprecated and will be removed in a
+                        future version.
                       items:
                         type: string
                       type: array
@@ -1045,6 +1100,20 @@ spec:
                   required:
                   - port
                   type: object
+                terminationGracePeriodSeconds:
+                  description: Optional duration in seconds the pod needs to terminate
+                    gracefully upon probe failure. The grace period is the duration
+                    in seconds after the processes running in the pod are sent a termination
+                    signal and the time when the processes are forcibly halted with
+                    a kill signal. Set this value longer than the expected cleanup
+                    time for your process. If this value is nil, the pod's terminationGracePeriodSeconds
+                    will be used. Otherwise, this value overrides the value provided
+                    by the pod spec. Value must be non-negative integer. The value
+                    zero indicates stop immediately via the kill signal (no opportunity
+                    to shut down). This is an alpha field and requires enabling ProbeTerminationGracePeriod
+                    feature gate.
+                  format: int64
+                  type: integer
                 timeoutSeconds:
                   description: 'Number of seconds after which the probe times out.
                     Defaults to 1 second. Minimum value is 1. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes'
@@ -1099,7 +1168,7 @@ spec:
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                       description: 'Limits describes the maximum amount of compute
-                        resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                        resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                       type: object
                     requests:
                       additionalProperties:
@@ -1111,7 +1180,7 @@ spec:
                       description: 'Requests describes the minimum amount of compute
                         resources required. If Requests is omitted for a container,
                         it defaults to Limits if that is explicitly specified, otherwise
-                        to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                        to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                       type: object
                   type: object
                 selector:
@@ -1437,7 +1506,7 @@ spec:
                         pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                         x-kubernetes-int-or-string: true
                       description: 'Limits describes the maximum amount of compute
-                        resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                        resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                       type: object
                     requests:
                       additionalProperties:
@@ -1449,7 +1518,7 @@ spec:
                       description: 'Requests describes the minimum amount of compute
                         resources required. If Requests is omitted for a container,
                         it defaults to Limits if that is explicitly specified, otherwise
-                        to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/'
+                        to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                       type: object
                   type: object
                 volumeMounts:

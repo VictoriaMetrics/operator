@@ -68,6 +68,7 @@ fix118:
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalertmanagers.yaml $(YAML_DROP_PREFIX).serviceSpec.properties.spec.properties.ports &&\
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalertmanagers.yaml $(YAML_DROP_PREFIX).serviceSpec.properties.spec.properties.clusterIPs &&\
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalertmanagers.yaml $(YAML_DROP_PREFIX).serviceSpec.properties.spec.properties.ipFamilies &&\
+		$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalertmanagers.yaml $(YAML_DROP_PREFIX).volumes.items.properties &&\
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmauths.yaml $(YAML_DROP_PREFIX).initContainers.items.properties &&\
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmauths.yaml $(YAML_DROP_PREFIX).containers.items.properties ;\
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmauths.yaml $(YAML_DROP_PREFIX).topologySpreadConstraints.items.properties ;\
@@ -75,6 +76,7 @@ fix118:
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmauths.yaml $(YAML_DROP_PREFIX).serviceSpec.properties.spec.properties.ports &&\
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmauths.yaml $(YAML_DROP_PREFIX).serviceSpec.properties.spec.properties.clusterIPs &&\
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmauths.yaml $(YAML_DROP_PREFIX).serviceSpec.properties.spec.properties.ipFamilies &&\
+	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmauths.yaml $(YAML_DROP_PREFIX).volumes.items.properties &&\
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).initContainers.items.properties &&\
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).containers.items.properties ;\
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).topologySpreadConstraints.items.properties ;\
@@ -82,6 +84,7 @@ fix118:
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).serviceSpec.properties.spec.properties.ports &&\
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).serviceSpec.properties.spec.properties.clusterIPs &&\
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).serviceSpec.properties.spec.properties.ipFamilies &&\
+	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).volumes.items.properties &&\
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmsingles.yaml $(YAML_DROP_PREFIX).initContainers.items.properties &&\
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmsingles.yaml $(YAML_DROP_PREFIX).containers.items.properties &&\
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmsingles.yaml $(YAML_DROP_PREFIX).topologySpreadConstraints.items.properties &&\
@@ -90,6 +93,7 @@ fix118:
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmsingles.yaml $(YAML_DROP_PREFIX).serviceSpec.properties.spec.properties.ports &&\
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmsingles.yaml $(YAML_DROP_PREFIX).serviceSpec.properties.spec.properties.clusterIPs &&\
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmsingles.yaml $(YAML_DROP_PREFIX).serviceSpec.properties.spec.properties.ipFamilies &&\
+	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmsingles.yaml $(YAML_DROP_PREFIX).volumes.items.properties &&\
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmagents.yaml $(YAML_DROP_PREFIX).initContainers.items.properties &&\
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmagents.yaml $(YAML_DROP_PREFIX).containers.items.properties &&\
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmagents.yaml $(YAML_DROP_PREFIX).topologySpreadConstraints.items.properties &&\
@@ -97,6 +101,7 @@ fix118:
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmagents.yaml $(YAML_DROP_PREFIX).serviceSpec.properties.spec.properties.ports ;\
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmagents.yaml $(YAML_DROP_PREFIX).serviceSpec.properties.spec.properties.clusterIPs &&\
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmagents.yaml $(YAML_DROP_PREFIX).serviceSpec.properties.spec.properties.ipFamilies &&\
+	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmagents.yaml $(YAML_DROP_PREFIX).volumes.items.properties &&\
 	 	$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vminsert.properties.volumes.items.properties && \
 	 	$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vminsert.properties.topologySpreadConstraints.items.properties && \
 	 	$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vminsert.properties.affinity.properties && \
@@ -106,6 +111,8 @@ fix118:
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vminsert.properties.serviceSpec.properties.spec.properties.clusterIPs &&\
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vminsert.properties.serviceSpec.properties.spec.properties.ipFamilies &&\
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vminsert.properties.hpa.properties &&\
+		$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vminsert.properties.readinessProbe.properties &&\
+    	$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vminsert.properties.startupProbe.properties &&\
 	 	$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.volumes.items.properties && \
 	 	$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.topologySpreadConstraints.items.properties && \
 	 	$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.affinity.properties && \
@@ -116,6 +123,8 @@ fix118:
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.serviceSpec.properties.spec.properties.clusterIPs &&\
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.serviceSpec.properties.spec.properties.ipFamilies &&\
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.hpa.properties &&\
+		$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.readinessProbe.properties &&\
+    	$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.startupProbe.properties &&\
 	 	$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmstorage.properties.volumes.items.properties && \
 	 	$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmstorage.properties.topologySpreadConstraints.items.properties && \
 	 	$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmstorage.properties.affinity.properties && \
@@ -124,6 +133,8 @@ fix118:
 		$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmstorage.properties.storage.properties.volumeClaimTemplate.propertie s&&\
 		$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmstorage.properties.serviceSpec.properties.spec.properties.ports &&\
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmstorage.properties.serviceSpec.properties.spec.properties.clusterIPs &&\
+	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmstorage.properties.readinessProbe.properties &&\
+	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmstorage.properties.startupProbe.properties &&\
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmstorage.properties.serviceSpec.properties.spec.properties.ipFamilies \
 		'
 
@@ -169,6 +180,7 @@ doc: install-develop-tools
 	$(APIS_BASE_PATH)/vmnodescrape_types.go,\
 	$(APIS_BASE_PATH)/vmuser_types.go,\
 	$(APIS_BASE_PATH)/vmauth_types.go,\
+	$(APIS_BASE_PATH)/vmstaticscrape_types.go,\
 	$(APIS_BASE_PATH)/vmprobe_types.go \
 	--owner VictoriaMetrics \
      > docs/api.MD

@@ -80,6 +80,10 @@ This Document documents the types introduced by the VictoriaMetrics to be consum
 * [VMAuth](#vmauth)
 * [VMAuthList](#vmauthlist)
 * [VMAuthSpec](#vmauthspec)
+* [TargetEndpoint](#targetendpoint)
+* [VMStaticScrape](#vmstaticscrape)
+* [VMStaticScrapeList](#vmstaticscrapelist)
+* [VMStaticScrapeSpec](#vmstaticscrapespec)
 * [ProbeTargetIngress](#probetargetingress)
 * [VMProbe](#vmprobe)
 * [VMProbeList](#vmprobelist)
@@ -1360,6 +1364,67 @@ VMAuthSpec defines the desired state of VMAuth
 | podDisruptionBudget | PodDisruptionBudget created by operator | *[EmbeddedPodDisruptionBudgetSpec](#embeddedpoddisruptionbudgetspec) | false |
 | ingress | Ingress enables ingress configuration for VMAuth. | *[EmbeddedIngress](#embeddedingress) | false |
 | nodeSelector | NodeSelector Define which Nodes the Pods are scheduled on. | map[string]string | false |
+
+[Back to TOC](#table-of-contents)
+
+## TargetEndpoint
+
+TargetEndpoint defines single static target endpoint.
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| targets | Targets static targets addresses in form of [\&#34;192.122.55.55:9100\&#34;,\&#34;some-name:9100\&#34;]. | []string | true |
+| labels | Labels static labels for targets. | map[string]string | false |
+| port | Default port for target. | string | false |
+| path | HTTP path to scrape for metrics. | string | false |
+| scheme | HTTP scheme to use for scraping. | string | false |
+| params | Optional HTTP URL parameters | map[string][]string | false |
+| interval | Interval at which metrics should be scraped | string | false |
+| scrapeTimeout | Timeout after which the scrape is ended | string | false |
+| tlsConfig | TLSConfig configuration to use when scraping the endpoint | *[TLSConfig](#tlsconfig) | false |
+| bearerTokenFile | File to read bearer token for scraping targets. | string | false |
+| bearerTokenSecret | Secret to mount to read bearer token for scraping targets. The secret needs to be in the same namespace as the service scrape and accessible by the victoria-metrics operator. | [v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
+| basicAuth | BasicAuth allow an endpoint to authenticate over basic authentication More info: https://prometheus.io/docs/operating/configuration/#endpoints | *[BasicAuth](#basicauth) | false |
+| metricRelabelConfigs | MetricRelabelConfigs to apply to samples before ingestion. | []*[RelabelConfig](#relabelconfig) | false |
+| relabelConfigs | RelabelConfigs to apply to samples before scraping. More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config | []*[RelabelConfig](#relabelconfig) | false |
+| proxyURL | ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. | *string | false |
+| honorLabels | HonorLabels chooses the metric&#39;s labels on collisions with target labels. | bool | false |
+| honorTimestamps | HonorTimestamps controls whether vmagent respects the timestamps present in scraped data. | *bool | false |
+
+[Back to TOC](#table-of-contents)
+
+## VMStaticScrape
+
+VMStaticScrape  defines static targets configuration for scraping.
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| metadata |  | [metav1.ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#objectmeta-v1-meta) | false |
+| spec |  | [VMStaticScrapeSpec](#vmstaticscrapespec) | false |
+| status |  | [VMStaticScrapeStatus](#vmstaticscrapestatus) | false |
+
+[Back to TOC](#table-of-contents)
+
+## VMStaticScrapeList
+
+VMStaticScrapeList contains a list of VMStaticScrape
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| metadata |  | [metav1.ListMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#listmeta-v1-meta) | false |
+| items |  | [][VMStaticScrape](#vmstaticscrape) | true |
+
+[Back to TOC](#table-of-contents)
+
+## VMStaticScrapeSpec
+
+VMStaticScrapeSpec defines the desired state of VMStaticScrape.
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| jobName | JobName name of job. | string | false |
+| targetEndpoints | A list of target endpoints to scrape metrics from. | []*[TargetEndpoint](#targetendpoint) | true |
+| sampleLimit | SampleLimit defines per-scrape limit on number of scraped samples that will be accepted. | uint64 | false |
 
 [Back to TOC](#table-of-contents)
 

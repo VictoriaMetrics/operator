@@ -524,7 +524,7 @@ EOF
 ## VMAlert
 
 [VMAlert](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/app/vmalert) - executes a list of given [alerting](https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/) or [recording](https://prometheus.io/docs/prometheus/latest/configuration/recording_rules/) rules against configured address. It
-has few required config options - `datasource` and `notifier are required`, for other config parameters check [doc](/docs/api.MD#VMAlert).
+has few required config options - `datasource` and `notifier` are required, for other config parameters check [doc](/docs/api.MD#VMAlert).
 
 ```yaml
 cat << EOF | kubectl apply -f -
@@ -959,7 +959,7 @@ kubectl delete vmrule example-vmrule-incorrect-rule
 
 ## VMNodeScrape
 
- `VMNodeScrape` is usefull for node exporters monitoring, lets create scraper for cadvisor metrics:
+ `VMNodeScrape` is useful for node exporters monitoring, lets create scraper for cadvisor metrics:
 
 ```yaml
 cat << EOF | kubectl apply -f -
@@ -1535,7 +1535,7 @@ to the rule config:
 ## Expose the VMSingle API
 
 
-> WARNING: Pleas protect delete endpoint before exposing it [doc](https://github.com/VictoriaMetrics/VictoriaMetrics#how-to-delete-time-series)
+> WARNING: Please protect delete endpoint before exposing it [doc](https://github.com/VictoriaMetrics/VictoriaMetrics#how-to-delete-time-series)
 
 Example for Kubernetes Nginx ingress [doc](https://kubernetes.github.io/ingress-nginx/examples/auth/basic/)
 

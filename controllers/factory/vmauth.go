@@ -393,6 +393,13 @@ func makeVMAuthConfigSecret(cr *victoriametricsv1beta1.VMAuth) *corev1.Secret {
 
 // CreateOrUpdateVMAuthIngress handles ingress for vmauth.
 func CreateOrUpdateVMAuthIngress(ctx context.Context, rclient client.Client, cr *victoriametricsv1beta1.VMAuth) error {
+	if cr.Spec.Ingress == nil {
+		// handle delete case
+		if err := finalize.VMAuthIngressDelete(ctx, rclient, cr); err != nil {
+			return fmt.Errorf("cannot delete ingress for vmauth: %s, err :%w", cr.Name, err)
+		}
+		return nil
+	}
 	ig := buildIngressConfig(cr)
 	var existIg v1beta1.Ingress
 	if err := rclient.Get(ctx, types.NamespacedName{Namespace: ig.Namespace, Name: ig.Name}, &existIg); err != nil {
@@ -409,25 +416,24 @@ func CreateOrUpdateVMAuthIngress(ctx context.Context, rclient client.Client, cr 
 var defaultPt = v1beta1.PathTypePrefix
 
 func buildIngressConfig(cr *victoriametricsv1beta1.VMAuth) *v1beta1.Ingress {
-	spec := v1beta1.IngressSpec{
-		Rules: []v1beta1.IngressRule{
-			{
-				IngressRuleValue: v1beta1.IngressRuleValue{
-					HTTP: &v1beta1.HTTPIngressRuleValue{
-						Paths: []v1beta1.HTTPIngressPath{
-							{
-								Path: "/",
-								Backend: v1beta1.IngressBackend{
-									ServiceName: cr.PrefixedName(),
-									ServicePort: intstr.Parse("http"),
-								},
-								PathType: &defaultPt,
-							},
+	defaultRule := v1beta1.IngressRule{
+		IngressRuleValue: v1beta1.IngressRuleValue{
+			HTTP: &v1beta1.HTTPIngressRuleValue{
+				Paths: []v1beta1.HTTPIngressPath{
+					{
+						Path: "/",
+						Backend: v1beta1.IngressBackend{
+							ServiceName: cr.PrefixedName(),
+							ServicePort: intstr.Parse("http"),
 						},
+						PathType: &defaultPt,
 					},
 				},
 			},
 		},
+	}
+	spec := v1beta1.IngressSpec{
+		Rules:            []v1beta1.IngressRule{},
 		IngressClassName: cr.Spec.Ingress.ClassName,
 	}
 	if cr.Spec.Ingress.TlsSecretName != "" {
@@ -437,6 +443,13 @@ func buildIngressConfig(cr *victoriametricsv1beta1.VMAuth) *v1beta1.Ingress {
 				Hosts:      cr.Spec.Ingress.TlsHosts,
 			},
 		}
+		for _, host := range cr.Spec.Ingress.TlsHosts {
+			hostRule := defaultRule.DeepCopy()
+			hostRule.Host = host
+			spec.Rules = append(spec.Rules, *hostRule)
+		}
+	} else {
+		spec.Rules = append(spec.Rules, defaultRule)
 	}
 	// add user defined routes.
 	spec.Rules = append(spec.Rules, cr.Spec.Ingress.ExtraRules...)

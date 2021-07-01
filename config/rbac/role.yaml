@@ -304,6 +304,7 @@ rules:
     - get
     - list
     - watch
+    - delete
 - nonResourceURLs:
     - "/metrics"
     - "/metrics/resources"

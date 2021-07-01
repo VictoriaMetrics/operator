@@ -8,8 +8,26 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+// VMAuthIngressDelete handles case, when user wants to remove spec.Ingress from vmauth config.
+func VMAuthIngressDelete(ctx context.Context, rclient client.Client, crd *victoriametricsv1beta1.VMAuth) error {
+	vmauthIngress := &v1beta1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      crd.PrefixedName(),
+			Namespace: crd.Namespace,
+		},
+	}
+	if err := removeFinalizeObjByName(ctx, rclient, vmauthIngress, crd.PrefixedName(), crd.Namespace); err != nil {
+		return err
+	}
+	if err := SafeDelete(ctx, rclient, vmauthIngress); err != nil {
+		return err
+	}
+	return nil
+}
 
 func OnVMAuthDelete(ctx context.Context, rclient client.Client, crd *victoriametricsv1beta1.VMAuth) error {
 	// check deployment

@@ -36,6 +36,12 @@ resources:
 - group: operator
   kind: VMStaticScrape
   version: v1beta1
+- group: operator
+  kind: VMUser
+  version: v1beta1
+- group: operator
+  kind: VMAuth
+  version: v1beta1
 version: 3-alpha
 plugins:
   go.operator-sdk.io/v2-alpha: {}

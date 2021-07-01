@@ -11,3 +11,5 @@ resources:
 - operator_v1beta1_vmprobe.yaml
 - operator_v1beta1_vmnodescrape.yaml
 - operator_v1beta1_vmstaticscrape.yaml
+- operator_v1beta1_vmuser.yaml
+- operator_v1beta1_vmauth.yaml

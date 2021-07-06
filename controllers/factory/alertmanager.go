@@ -94,9 +94,7 @@ func CreateOrUpdateAlertManager(ctx context.Context, cr *victoriametricsv1beta1.
 		}
 		return nil, fmt.Errorf("cannot get alertmanager sts: %w", err)
 	}
-	if err := performRollingUpdateOnSts(ctx, rclient, newSts.Name, newSts.Namespace, cr.SelectorLabels(), c); err != nil {
-		return nil, fmt.Errorf("cannot update statefulset for vmalertmanager: %w", err)
-	}
+
 	recreatedSts, err := wasCreatedSTS(ctx, rclient, volumeName(cr.Name), newSts, currentSts)
 	if err != nil {
 		return nil, err
@@ -108,7 +106,14 @@ func CreateOrUpdateAlertManager(ctx context.Context, cr *victoriametricsv1beta1.
 		return nil, err
 	}
 
-	return newSts, updateStsForAlertManager(ctx, rclient, currentSts, newSts)
+	if err := updateStsForAlertManager(ctx, rclient, currentSts, newSts); err != nil {
+		return nil, err
+	}
+
+	if err := performRollingUpdateOnSts(ctx, rclient, newSts.Name, newSts.Namespace, cr.SelectorLabels(), c); err != nil {
+		return nil, fmt.Errorf("cannot update statefulset for vmalertmanager: %w", err)
+	}
+	return newSts, nil
 }
 
 func updateStsForAlertManager(ctx context.Context, rclient client.Client, oldSts, newSts *appsv1.StatefulSet) error {

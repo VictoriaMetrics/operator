@@ -1293,12 +1293,6 @@ spec:
                           type: string
                       type: object
                     type: array
-                  label:
-                    additionalProperties:
-                      type: string
-                    description: Optional labels in the form 'name=value' to add to
-                      all the metrics before sending them
-                    type: object
                   sendTimeout:
                     description: Timeout for sending a single block of data to -remoteWrite.url
                       (default 1m0s)
@@ -1465,6 +1459,12 @@ spec:
                     1s)
                   pattern: '[0-9]+(ms|s|m|h)'
                   type: string
+                label:
+                  additionalProperties:
+                    type: string
+                  description: Optional labels in the form 'name=value' to add to
+                    all the metrics before sending them
+                  type: object
                 maxBlockSize:
                   description: The maximum size in bytes of unpacked request to send
                     to remote storage

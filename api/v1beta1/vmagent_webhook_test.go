@@ -19,7 +19,7 @@ func TestVMAgent_sanityCheck(t *testing.T) {
 		{
 			name: "rw empty url",
 			spec: VMAgentSpec{RemoteWrite: []VMAgentRemoteWriteSpec{
-				{Labels: map[string]string{}},
+				{},
 			}},
 			wantErr: true,
 		},

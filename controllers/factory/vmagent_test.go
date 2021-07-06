@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"k8s.io/utils/pointer"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
@@ -567,28 +568,15 @@ func TestBuildRemoteWrites(t *testing.T) {
 		args args
 		want []string
 	}{
-		{
-			name: "test labels",
-			args: args{
-				cr: &victoriametricsv1beta1.VMAgent{
-					Spec: victoriametricsv1beta1.VMAgentSpec{RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
-						{
-							URL:    "localhost:8429",
-							Labels: map[string]string{"label1": "value1", "label2": "value2"},
-						},
-					}},
-				},
-			},
-			want: []string{"-remoteWrite.url=localhost:8429", "-remoteWrite.label=label1=value1,label2=value2"},
-		},
+
 		{
 			name: "test with tls config full",
 			args: args{
 				cr: &victoriametricsv1beta1.VMAgent{
 					Spec: victoriametricsv1beta1.VMAgentSpec{RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
 						{
-							URL:    "localhost:8429",
-							Labels: map[string]string{"label1": "value1", "label2": "value2"},
+							URL: "localhost:8429",
+
 							TLSConfig: &victoriametricsv1beta1.TLSConfig{
 								CA: victoriametricsv1beta1.SecretOrConfigMap{Secret: &corev1.SecretKeySelector{
 									LocalObjectReference: corev1.LocalObjectReference{
@@ -613,7 +601,7 @@ func TestBuildRemoteWrites(t *testing.T) {
 					}},
 				},
 			},
-			want: []string{"-remoteWrite.label=label1=value1,label2=value2", "-remoteWrite.tlsCAFile=/etc/vmagent-tls/certs_tls-secret_ca,/path/to_ca", "-remoteWrite.tlsCertFile=,/etc/vmagent-tls/certs_tls-secret_ca", "-remoteWrite.url=localhost:8429,localhost:8429"},
+			want: []string{"-remoteWrite.tlsCAFile=/etc/vmagent-tls/certs_tls-secret_ca,/path/to_ca", "-remoteWrite.tlsCertFile=,/etc/vmagent-tls/certs_tls-secret_ca", "-remoteWrite.url=localhost:8429,localhost:8429"},
 		},
 		{
 			name: "test insecure with key only",
@@ -621,8 +609,8 @@ func TestBuildRemoteWrites(t *testing.T) {
 				cr: &victoriametricsv1beta1.VMAgent{
 					Spec: victoriametricsv1beta1.VMAgentSpec{RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
 						{
-							URL:    "localhost:8429",
-							Labels: map[string]string{"label1": "value1", "label2": "value2"},
+							URL: "localhost:8429",
+
 							TLSConfig: &victoriametricsv1beta1.TLSConfig{
 								KeySecret: &corev1.SecretKeySelector{
 									LocalObjectReference: corev1.LocalObjectReference{
@@ -636,7 +624,7 @@ func TestBuildRemoteWrites(t *testing.T) {
 					}},
 				},
 			},
-			want: []string{"-remoteWrite.url=localhost:8429", "-remoteWrite.tlsInsecureSkipVerify=true", "-remoteWrite.tlsKeyFile=/etc/vmagent-tls/certs_tls-secret_key", "-remoteWrite.label=label1=value1,label2=value2"},
+			want: []string{"-remoteWrite.url=localhost:8429", "-remoteWrite.tlsInsecureSkipVerify=true", "-remoteWrite.tlsKeyFile=/etc/vmagent-tls/certs_tls-secret_key"},
 		},
 		{
 			name: "test insecure",
@@ -644,8 +632,8 @@ func TestBuildRemoteWrites(t *testing.T) {
 				cr: &victoriametricsv1beta1.VMAgent{
 					Spec: victoriametricsv1beta1.VMAgentSpec{RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
 						{
-							URL:    "localhost:8429",
-							Labels: map[string]string{"label1": "value1", "label2": "value2"},
+							URL: "localhost:8429",
+
 							TLSConfig: &victoriametricsv1beta1.TLSConfig{
 								InsecureSkipVerify: true,
 							},
@@ -653,7 +641,7 @@ func TestBuildRemoteWrites(t *testing.T) {
 					}},
 				},
 			},
-			want: []string{"-remoteWrite.url=localhost:8429", "-remoteWrite.tlsInsecureSkipVerify=true", "-remoteWrite.label=label1=value1,label2=value2"},
+			want: []string{"-remoteWrite.url=localhost:8429", "-remoteWrite.tlsInsecureSkipVerify=true"},
 		},
 		{
 			name: "test inline relabeling",
@@ -671,8 +659,8 @@ func TestBuildRemoteWrites(t *testing.T) {
 								},
 							},
 							{
-								URL:    "remote-1:8429",
-								Labels: map[string]string{"label1": "value1", "label2": "value2"},
+								URL: "remote-1:8429",
+
 								TLSConfig: &victoriametricsv1beta1.TLSConfig{
 									InsecureSkipVerify: true,
 								},
@@ -693,7 +681,26 @@ func TestBuildRemoteWrites(t *testing.T) {
 					},
 				},
 			},
-			want: []string{"-remoteWrite.label=label1=value1,label2=value2", "-remoteWrite.url=localhost:8429,remote-1:8429,remote-1:8429", "-remoteWrite.tlsInsecureSkipVerify=true,true,true", "-remoteWrite.urlRelabelConfig=/etc/vm/relabeling/url_rebaling-0.yaml,,/etc/vm/relabeling/url_rebaling-2.yaml"},
+			want: []string{"-remoteWrite.url=localhost:8429,remote-1:8429,remote-1:8429", "-remoteWrite.tlsInsecureSkipVerify=true,true,true", "-remoteWrite.urlRelabelConfig=/etc/vm/relabeling/url_rebaling-0.yaml,,/etc/vm/relabeling/url_rebaling-2.yaml"},
+		},
+		{
+			name: "test sendTimeout",
+			args: args{
+				cr: &victoriametricsv1beta1.VMAgent{
+					Spec: victoriametricsv1beta1.VMAgentSpec{RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
+						{
+							URL: "localhost:8429",
+
+							SendTimeout: pointer.String("10s"),
+						},
+						{
+							URL:         "localhost:8431",
+							SendTimeout: pointer.String("15s"),
+						},
+					}},
+				},
+			},
+			want: []string{"-remoteWrite.url=localhost:8429,localhost:8431", "-remoteWrite.sendTimeout=10s,15s"},
 		},
 	}
 	for _, tt := range tests {
@@ -702,7 +709,7 @@ func TestBuildRemoteWrites(t *testing.T) {
 			got := BuildRemoteWrites(tt.args.cr, tt.args.rwsBasicAuth, tt.args.rwsTokens)
 			sort.Strings(got)
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("BuildRemoteWrites() = %v, want %v", got, tt.want)
+				t.Errorf("BuildRemoteWrites() = \n%v\n, want \n%v\n", got, tt.want)
 			}
 		})
 	}
@@ -967,6 +974,65 @@ func Test_buildConfigReloaderArgs(t *testing.T) {
 			got := buildConfigReloaderArgs(tt.args.cr, tt.args.reloaderImage)
 
 			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestBuildRemoteWriteSettings(t *testing.T) {
+	type args struct {
+		cr *victoriametricsv1beta1.VMAgent
+	}
+	tests := []struct {
+		name string
+		args args
+		want []string
+	}{
+		{
+			name: "test simple ok",
+			args: args{
+				cr: &victoriametricsv1beta1.VMAgent{},
+			},
+		},
+		{
+			name: "test labels",
+			args: args{
+				cr: &victoriametricsv1beta1.VMAgent{
+					Spec: victoriametricsv1beta1.VMAgentSpec{
+						RemoteWriteSettings: &victoriametricsv1beta1.VMAgentRemoteWriteSettings{
+							Labels: map[string]string{
+								"label-1": "value1",
+								"label-2": "value2",
+							},
+						},
+					},
+				},
+			},
+			want: []string{"-remoteWrite.label=label-1=value1,label-2=value2"},
+		},
+		{
+			name: "test label",
+			args: args{
+				cr: &victoriametricsv1beta1.VMAgent{
+					Spec: victoriametricsv1beta1.VMAgentSpec{
+						RemoteWriteSettings: &victoriametricsv1beta1.VMAgentRemoteWriteSettings{
+							ShowURL: pointer.Bool(true),
+							Labels: map[string]string{
+								"label-1": "value1",
+							},
+						},
+					},
+				},
+			},
+			want: []string{"-remoteWrite.label=label-1=value1", "-remoteWrite.showURL=true"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := BuildRemoteWriteSettings(tt.args.cr)
+			sort.Strings(got)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("BuildRemoteWriteSettings() = \n%v\n, want \n%v\n", got, tt.want)
+			}
 		})
 	}
 }

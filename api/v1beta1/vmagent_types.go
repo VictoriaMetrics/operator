@@ -304,6 +304,9 @@ type VMAgentRemoteWriteSettings struct {
 	// +optional
 	// +kubebuilder:validation:Pattern:="[0-9]+(ms|s|m|h)"
 	FlushInterval *string `json:"flushInterval,omitempty"`
+	// Optional labels in the form 'name=value' to add to all the metrics before sending them
+	// +optional
+	Labels map[string]string `json:"label,omitempty"`
 }
 
 // VMAgentRemoteWriteSpec defines the remote storage configuration for VmAgent
@@ -317,9 +320,7 @@ type VMAgentRemoteWriteSpec struct {
 	// Optional bearer auth token to use for -remoteWrite.url
 	// +optional
 	BearerTokenSecret *v1.SecretKeySelector `json:"bearerTokenSecret,omitempty"`
-	// Optional labels in the form 'name=value' to add to all the metrics before sending them
-	// +optional
-	Labels map[string]string `json:"label,omitempty"`
+
 	// ConfigMap with relabeling config which is applied to metrics before sending them to the corresponding -remoteWrite.url
 	// +optional
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Key at Configmap with relabelConfig for remoteWrite",xDescriptors="urn:alm:descriptor:io.kubernetes:ConfigMapKeySelector"

@@ -211,6 +211,7 @@ VMAgentRemoteWriteSettings - defines global settings for all remoteWrite urls.
 | showURL | Whether to show -remoteWrite.url in the exported metrics. It is hidden by default, since it can contain sensitive auth info | *bool | false |
 | tmpDataPath | Path to directory where temporary data for remote write component is stored (default vmagent-remotewrite-data) | *string | false |
 | flushInterval | Interval for flushing the data to remote storage. (default 1s) | *string | false |
+| label | Optional labels in the form &#39;name=value&#39; to add to all the metrics before sending them | map[string]string | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -223,7 +224,6 @@ VMAgentRemoteWriteSpec defines the remote storage configuration for VmAgent
 | url | URL of the endpoint to send samples to. | string | true |
 | basicAuth | BasicAuth allow an endpoint to authenticate over basic authentication | *[BasicAuth](#basicauth) | false |
 | bearerTokenSecret | Optional bearer auth token to use for -remoteWrite.url | *[v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
-| label | Optional labels in the form &#39;name=value&#39; to add to all the metrics before sending them | map[string]string | false |
 | urlRelabelConfig | ConfigMap with relabeling config which is applied to metrics before sending them to the corresponding -remoteWrite.url | *v1.ConfigMapKeySelector | false |
 | tlsConfig | TLSConfig describes tls configuration for remote write target | *[TLSConfig](#tlsconfig) | false |
 | sendTimeout | Timeout for sending a single block of data to -remoteWrite.url (default 1m0s) | *string | false |

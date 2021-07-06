@@ -867,6 +867,18 @@ func BuildRemoteWriteSettings(cr *victoriametricsv1beta1.VMAgent) []string {
 	if rws.TmpDataPath != nil {
 		args = append(args, fmt.Sprintf("-remoteWrite.tmpDataPath=%s", *rws.TmpDataPath))
 	}
+	if rws.Labels != nil {
+		lbls := sortMap(rws.Labels)
+		flagValue := "-remoteWrite.label="
+		if len(lbls) > 0 {
+			flagValue += fmt.Sprintf("%s=%s", lbls[0].key, lbls[0].value)
+			for _, lv := range lbls[1:] {
+				flagValue += fmt.Sprintf(",%s=%s", lv.key, lv.value)
+			}
+			args = append(args, flagValue)
+		}
+
+	}
 	return args
 }
 
@@ -879,7 +891,6 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, rwsBasicAuth map[stri
 	authUser := remoteFlag{flagSetting: "-remoteWrite.basicAuth.username="}
 	authPassword := remoteFlag{flagSetting: "-remoteWrite.basicAuth.password="}
 	bearerToken := remoteFlag{flagSetting: "-remoteWrite.bearerToken="}
-	labels := remoteFlag{flagSetting: "-remoteWrite.label="}
 	urlRelabelConfig := remoteFlag{flagSetting: "-remoteWrite.urlRelabelConfig="}
 	sendTimeout := remoteFlag{flagSetting: "-remoteWrite.sendTimeout="}
 	tlsCAs := remoteFlag{flagSetting: "-remoteWrite.tlsCAFile="}
@@ -961,17 +972,6 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, rwsBasicAuth map[stri
 		bearerToken.flagSetting += fmt.Sprintf("\"%s\",", strings.Replace(value, `"`, `\"`, -1))
 
 		value = ""
-		if rws.Labels != nil {
-			labels.isNotNull = true
-			labels := sortMap(rws.Labels)
-			for _, v := range labels {
-				value += fmt.Sprintf("%s=%s,", v.key, v.value)
-			}
-		}
-		// no need to add comma
-		labels.flagSetting += value
-
-		value = ""
 
 		if rws.UrlRelabelConfig != nil || len(rws.InlineUrlRelabelConfig) > 0 {
 			urlRelabelConfig.isNotNull = true
@@ -984,7 +984,6 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, rwsBasicAuth map[stri
 		if rws.SendTimeout != nil {
 			if !sendTimeout.isNotNull {
 				sendTimeout.isNotNull = true
-				finalArgs = append(finalArgs, fmt.Sprintf("%s=%s", sendTimeout.flagSetting, *rws.SendTimeout))
 			}
 			value = *rws.SendTimeout
 		}
@@ -992,7 +991,7 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, rwsBasicAuth map[stri
 
 		value = ""
 	}
-	remoteArgs = append(remoteArgs, url, authUser, authPassword, bearerToken, labels, urlRelabelConfig, tlsInsecure, sendTimeout)
+	remoteArgs = append(remoteArgs, url, authUser, authPassword, bearerToken, urlRelabelConfig, tlsInsecure, sendTimeout)
 	remoteArgs = append(remoteArgs, tlsServerName, tlsKeys, tlsCerts, tlsCAs)
 
 	for _, remoteArgType := range remoteArgs {

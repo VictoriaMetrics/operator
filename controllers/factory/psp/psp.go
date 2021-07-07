@@ -27,6 +27,7 @@ type CRDObject interface {
 	GetPSPName() string
 	GetNSName() string
 	AsOwner() []metav1.OwnerReference
+	AsCRDOwner() []metav1.OwnerReference
 }
 
 // CreateOrUpdateServiceAccountWithPSP - creates psp for api object.
@@ -158,11 +159,12 @@ func buildSA(cr CRDObject) *v1.ServiceAccount {
 func buildClusterRoleForPSP(cr CRDObject) *v12.ClusterRole {
 	return &v12.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace:   cr.GetNSName(),
-			Name:        cr.PrefixedName(),
-			Labels:      cr.Labels(),
-			Annotations: cr.Annotations(),
-			Finalizers:  []string{v1beta12.FinalizerName},
+			Namespace:       cr.GetNSName(),
+			Name:            cr.PrefixedName(),
+			Labels:          cr.Labels(),
+			Annotations:     cr.Annotations(),
+			Finalizers:      []string{v1beta12.FinalizerName},
+			OwnerReferences: cr.AsCRDOwner(),
 		},
 		Rules: []v12.PolicyRule{
 			{
@@ -178,11 +180,12 @@ func buildClusterRoleForPSP(cr CRDObject) *v12.ClusterRole {
 func buildClusterRoleBinding(cr CRDObject) *v12.ClusterRoleBinding {
 	return &v12.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        cr.PrefixedName(),
-			Namespace:   cr.GetNSName(),
-			Labels:      cr.Labels(),
-			Annotations: cr.Annotations(),
-			Finalizers:  []string{v1beta12.FinalizerName},
+			Name:            cr.PrefixedName(),
+			Namespace:       cr.GetNSName(),
+			Labels:          cr.Labels(),
+			Annotations:     cr.Annotations(),
+			Finalizers:      []string{v1beta12.FinalizerName},
+			OwnerReferences: cr.AsCRDOwner(),
 		},
 		Subjects: []v12.Subject{
 			{
@@ -202,11 +205,12 @@ func buildClusterRoleBinding(cr CRDObject) *v12.ClusterRoleBinding {
 func BuildPSP(cr CRDObject) *v1beta1.PodSecurityPolicy {
 	return &v1beta1.PodSecurityPolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        cr.GetPSPName(),
-			Namespace:   cr.GetNSName(),
-			Labels:      cr.Labels(),
-			Annotations: cr.Annotations(),
-			Finalizers:  []string{v1beta12.FinalizerName},
+			Name:            cr.GetPSPName(),
+			Namespace:       cr.GetNSName(),
+			Labels:          cr.Labels(),
+			Annotations:     cr.Annotations(),
+			Finalizers:      []string{v1beta12.FinalizerName},
+			OwnerReferences: cr.AsCRDOwner(),
 		},
 		Spec: v1beta1.PodSecurityPolicySpec{
 			ReadOnlyRootFilesystem: false,

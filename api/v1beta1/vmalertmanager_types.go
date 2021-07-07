@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/VictoriaMetrics/operator/controllers/factory/crd"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -326,6 +327,11 @@ func (cr VMAlertmanager) GetNSName() string {
 
 func (cr *VMAlertmanager) AsURL() string {
 	return fmt.Sprintf("http://%s.%s.svc:9093", cr.PrefixedName(), cr.Namespace)
+}
+
+// AsCRDOwner implements interface
+func (cr *VMAlertmanager) AsCRDOwner() []metav1.OwnerReference {
+	return crd.GetCRDAsOwner(crd.VMAlertManager)
 }
 
 func init() {

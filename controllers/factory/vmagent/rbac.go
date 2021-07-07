@@ -45,7 +45,7 @@ func ensureVMAgentCRExist(ctx context.Context, cr *v1beta12.VMAgent, rclient cli
 	if existsClusterRole.Name == "" {
 		return rclient.Create(ctx, clusterRole)
 	}
-
+	existsClusterRole.OwnerReferences = clusterRole.OwnerReferences
 	existsClusterRole.Labels = labels.Merge(existsClusterRole.Labels, clusterRole.Labels)
 	existsClusterRole.Annotations = labels.Merge(clusterRole.Annotations, existsClusterRole.Annotations)
 	existsClusterRole.Rules = clusterRole.Rules
@@ -72,6 +72,7 @@ func ensureVMAgentCRBExist(ctx context.Context, cr *v1beta12.VMAgent, rclient cl
 		return rclient.Create(ctx, clusterRoleBinding)
 	}
 
+	existsClusterRoleBinding.OwnerReferences = clusterRoleBinding.OwnerReferences
 	existsClusterRoleBinding.Labels = labels.Merge(existsClusterRoleBinding.Labels, clusterRoleBinding.Labels)
 	existsClusterRoleBinding.Annotations = labels.Merge(clusterRoleBinding.Annotations, existsClusterRoleBinding.Annotations)
 	existsClusterRoleBinding.Subjects = clusterRoleBinding.Subjects
@@ -83,11 +84,12 @@ func ensureVMAgentCRBExist(ctx context.Context, cr *v1beta12.VMAgent, rclient cl
 func buildVMAgentClusterRoleBinding(cr *v1beta12.VMAgent) *v12.ClusterRoleBinding {
 	return &v12.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        cr.GetClusterRoleName(),
-			Namespace:   cr.GetNamespace(),
-			Labels:      cr.Labels(),
-			Annotations: cr.Annotations(),
-			Finalizers:  []string{v1beta12.FinalizerName},
+			Name:            cr.GetClusterRoleName(),
+			Namespace:       cr.GetNamespace(),
+			Labels:          cr.Labels(),
+			Annotations:     cr.Annotations(),
+			Finalizers:      []string{v1beta12.FinalizerName},
+			OwnerReferences: cr.AsCRDOwner(),
 		},
 		Subjects: []v12.Subject{
 			{
@@ -107,11 +109,12 @@ func buildVMAgentClusterRoleBinding(cr *v1beta12.VMAgent) *v12.ClusterRoleBindin
 func buildVMAgentClusterRole(cr *v1beta12.VMAgent) *v12.ClusterRole {
 	return &v12.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        cr.GetClusterRoleName(),
-			Namespace:   cr.GetNamespace(),
-			Labels:      cr.Labels(),
-			Annotations: cr.Annotations(),
-			Finalizers:  []string{v1beta12.FinalizerName},
+			Name:            cr.GetClusterRoleName(),
+			Namespace:       cr.GetNamespace(),
+			Labels:          cr.Labels(),
+			Annotations:     cr.Annotations(),
+			Finalizers:      []string{v1beta12.FinalizerName},
+			OwnerReferences: cr.AsCRDOwner(),
 		},
 		Rules: []v12.PolicyRule{
 			{

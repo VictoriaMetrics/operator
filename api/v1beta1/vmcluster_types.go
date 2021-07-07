@@ -5,6 +5,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/VictoriaMetrics/operator/controllers/factory/crd"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -890,6 +891,11 @@ func (cr *VMCluster) VMStorageURL() string {
 		port = "8482"
 	}
 	return fmt.Sprintf("http://%s.%s.svc:%s", cr.Spec.VMStorage.GetNameWithPrefix(cr.Name), cr.Namespace, port)
+}
+
+// AsCRDOwner implements interface
+func (cr *VMCluster) AsCRDOwner() []metav1.OwnerReference {
+	return crd.GetCRDAsOwner(crd.VMCluster)
 }
 
 func (cr VMCluster) GetNSName() string {

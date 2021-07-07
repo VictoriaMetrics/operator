@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/VictoriaMetrics/operator/controllers/factory/crd"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -298,6 +299,11 @@ func (cr VMAuth) GetPSPName() string {
 
 func (cr VMAuth) GetNSName() string {
 	return cr.GetNamespace()
+}
+
+// AsCRDOwner implements interface
+func (cr *VMAuth) AsCRDOwner() []metav1.OwnerReference {
+	return crd.GetCRDAsOwner(crd.VMAuth)
 }
 
 func init() {

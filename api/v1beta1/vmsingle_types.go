@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/VictoriaMetrics/operator/controllers/factory/crd"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -303,6 +304,11 @@ func (cr *VMSingle) AsURL() string {
 		port = "8429"
 	}
 	return fmt.Sprintf("http://%s.%s.svc:%s", cr.PrefixedName(), cr.Namespace, port)
+}
+
+// AsCRDOwner implements interface
+func (cr *VMSingle) AsCRDOwner() []metav1.OwnerReference {
+	return crd.GetCRDAsOwner(crd.VMSingle)
 }
 
 func init() {

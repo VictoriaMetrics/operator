@@ -7,9 +7,11 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/buildinfo"
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers"
+	"github.com/VictoriaMetrics/operator/controllers/factory/crd"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
 	"github.com/spf13/pflag"
+	metav1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -38,6 +40,8 @@ func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
 	utilruntime.Must(victoriametricsv1beta1.AddToScheme(scheme))
+	utilruntime.Must(metav1.AddToScheme(scheme))
+
 	// +kubebuilder:scaffold:scheme
 
 }
@@ -82,6 +86,14 @@ func RunManager(ctx context.Context) error {
 		return err
 	}
 
+	initC, err := client.New(mgr.GetConfig(), client.Options{Scheme: scheme})
+	if err != nil {
+		return err
+	}
+	if err := crd.Init(ctx, initC); err != nil {
+		setupLog.Error(err, "unable to init crd data")
+		return err
+	}
 	if *enableWebhooks {
 		if err = addWebhooks(mgr); err != nil {
 			logger.Error(err, "cannot register webhooks")

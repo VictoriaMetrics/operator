@@ -930,8 +930,8 @@ func TestCreateOrUpdateRelabelConfigsAssets(t *testing.T) {
 
 func Test_buildConfigReloaderArgs(t *testing.T) {
 	type args struct {
-		cr            *victoriametricsv1beta1.VMAgent
-		reloaderImage string
+		cr *victoriametricsv1beta1.VMAgent
+		c  *config.BaseOperatorConf
 	}
 	tests := []struct {
 		name string
@@ -944,7 +944,45 @@ func Test_buildConfigReloaderArgs(t *testing.T) {
 				cr: &victoriametricsv1beta1.VMAgent{
 					Spec: victoriametricsv1beta1.VMAgentSpec{Port: "8429"},
 				},
-				reloaderImage: "prometheus-config-reloader:latest",
+				c: &config.BaseOperatorConf{
+					VMAgentDefault: struct {
+						Image               string `default:"victoriametrics/vmagent"`
+						Version             string `default:"v1.58.0"`
+						ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.48.1"`
+						Port                string `default:"8429"`
+						UseDefaultResources bool   `default:"true"`
+						Resource            struct {
+							Limit struct {
+								Mem string `default:"500Mi"`
+								Cpu string `default:"200m"`
+							}
+							Request struct {
+								Mem string `default:"200Mi"`
+								Cpu string `default:"50m"`
+							}
+						}
+						ConfigReloaderCPU    string `default:"100m"`
+						ConfigReloaderMemory string `default:"25Mi"`
+					}(struct {
+						Image               string
+						Version             string
+						ConfigReloadImage   string
+						Port                string
+						UseDefaultResources bool
+						Resource            struct {
+							Limit struct {
+								Mem string `default:"500Mi"`
+								Cpu string `default:"200m"`
+							}
+							Request struct {
+								Mem string `default:"200Mi"`
+								Cpu string `default:"50m"`
+							}
+						}
+						ConfigReloaderCPU    string
+						ConfigReloaderMemory string
+					}{ConfigReloadImage: "prometheus-config-reloader:latest"}),
+				},
 			},
 			want: []string{
 				"--reload-url=http://localhost:8429/-/reload",
@@ -959,7 +997,45 @@ func Test_buildConfigReloaderArgs(t *testing.T) {
 				cr: &victoriametricsv1beta1.VMAgent{
 					Spec: victoriametricsv1beta1.VMAgentSpec{Port: "8429"},
 				},
-				reloaderImage: "quay.io/coreos/prometheus-config-reloader:v0.42.0",
+				c: &config.BaseOperatorConf{
+					VMAgentDefault: struct {
+						Image               string `default:"victoriametrics/vmagent"`
+						Version             string `default:"v1.58.0"`
+						ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.48.1"`
+						Port                string `default:"8429"`
+						UseDefaultResources bool   `default:"true"`
+						Resource            struct {
+							Limit struct {
+								Mem string `default:"500Mi"`
+								Cpu string `default:"200m"`
+							}
+							Request struct {
+								Mem string `default:"200Mi"`
+								Cpu string `default:"50m"`
+							}
+						}
+						ConfigReloaderCPU    string `default:"100m"`
+						ConfigReloaderMemory string `default:"25Mi"`
+					}(struct {
+						Image               string
+						Version             string
+						ConfigReloadImage   string
+						Port                string
+						UseDefaultResources bool
+						Resource            struct {
+							Limit struct {
+								Mem string `default:"500Mi"`
+								Cpu string `default:"200m"`
+							}
+							Request struct {
+								Mem string `default:"200Mi"`
+								Cpu string `default:"50m"`
+							}
+						}
+						ConfigReloaderCPU    string
+						ConfigReloaderMemory string
+					}{ConfigReloadImage: "quay.io/coreos/prometheus-config-reloader:v0.42.0"}),
+				},
 			},
 			want: []string{
 				"--reload-url=http://localhost:8429/-/reload",
@@ -971,7 +1047,7 @@ func Test_buildConfigReloaderArgs(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := buildConfigReloaderArgs(tt.args.cr, tt.args.reloaderImage)
+			got := buildConfigReloaderArgs(tt.args.cr, tt.args.c)
 
 			assert.Equal(t, tt.want, got)
 		})

@@ -4,6 +4,7 @@ go 1.16
 
 require (
 	github.com/VictoriaMetrics/VictoriaMetrics v1.60.0
+	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
 	github.com/go-logr/logr v0.4.0
 	github.com/go-test/deep v1.0.7

@@ -10,12 +10,14 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/buildinfo"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/envflag"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/flagutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httpserver"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/procutil"
@@ -34,10 +36,10 @@ var (
 	configFileDst    = flag.String("config-envsubst-file", "", "target file, where conent of configFile or configSecret would be written")
 	configSecretName = flag.String("config-secret-name", "", "name of kubernetes secret in form of namespace/name")
 	configSecretKey  = flag.String("config-secret-key", "config.yaml.gz", "key of config-secret-name for retrieving configuration from")
-	watchInterval    = flag.Duration("watch-interval", time.Minute*3, "no-op for prometheus config-reloader compatability")
-	delayInterval    = flag.Duration("delay-interval", time.Second, "")
-	watchedDir       = flag.String("watched-dir", "", "directory to watch non-recursively")
-	rulesDir         = flag.String("rules-dir", "", "the same as watched-dir, legacy")
+	_                = flag.Duration("watch-interval", time.Minute*3, "no-op for prometheus config-reloader compatability")
+	delayInterval    = flag.Duration("delay-interval", time.Second, "delays config reload time.")
+	watchedDir       = flagutil.NewArray("watched-dir", "directory to watch non-recursively")
+	rulesDir         = flagutil.NewArray("rules-dir", "the same as watched-dir, legacy")
 	reloadURL        = flag.String("reload-url", "http://127.0.0.1:8429/-/reload", "reload URL to trigger config reload")
 	listenAddr       = flag.String("http.listenAddr", ":8435", "http server listen addr")
 )
@@ -52,22 +54,36 @@ func main() {
 		c: http.DefaultClient,
 	}
 	updatesChan := make(chan struct{}, 10)
-	configWatcher, err := newConfigWatcher(ctx, updatesChan)
+	configWatcher, err := newConfigWatcher(ctx)
 	if err != nil {
 		logger.Fatalf("cannot create configWatcher: %s", err)
 	}
+
 	configWatcher.startWatch(ctx, updatesChan)
 	watcher := cfgWatcher{
 		updates:  updatesChan,
 		reloader: r.reload,
 	}
 	watcher.start(ctx)
+	var dws []string
+	if len(*watchedDir) > 0 {
+		dws = *watchedDir
+	} else if len(*rulesDir) > 0 {
+		dws = *rulesDir
+	}
+
+	dw, err := newDirWatchers(dws)
+	if err != nil {
+		logger.Fatalf("cannot start dir watcher: %s", err)
+	}
+	dw.startWatch(ctx, updatesChan)
 	go httpserver.Serve(*listenAddr, requestHandler)
 	procutil.WaitForSigterm()
 	logger.Infof("received stop signal, stopping config-reloader")
 	cancel()
 	watcher.close()
 	configWatcher.close()
+	dw.close()
 	logger.Infof("config-reloader stopped")
 }
 
@@ -104,11 +120,23 @@ func (c *cfgWatcher) start(ctx context.Context) {
 		for {
 			select {
 			case <-c.updates:
-				if err := c.reloader(ctx); err != nil {
-					logger.Errorf("cannot trigger api reload: %s", err)
-					continue
-				}
-				logger.Infof("reload config ok.")
+				go func() {
+					if *delayInterval > 0 {
+						t := time.NewTimer(*delayInterval)
+						defer t.Stop()
+						select {
+						case <-t.C:
+						case <-ctx.Done():
+							return
+						}
+					}
+					if err := c.reloader(ctx); err != nil {
+						logger.Errorf("cannot trigger api reload: %s", err)
+						return
+					}
+					logger.Infof("reload config ok.")
+				}()
+
 			case <-ctx.Done():
 				return
 			}
@@ -120,7 +148,7 @@ func (c *cfgWatcher) close() {
 	c.wg.Wait()
 }
 
-func newConfigWatcher(ctx context.Context, dst chan struct{}) (watcher, error) {
+func newConfigWatcher(ctx context.Context) (watcher, error) {
 	var w watcher
 	if *configFileName == "" && *configSecretName == "" {
 		return nil, fmt.Errorf("provide at least one configFileName")
@@ -206,6 +234,7 @@ func (k *k8sWatcher) startWatch(ctx context.Context, updates chan struct{}) {
 			return err
 		}
 		prevContent = newData
+		time.Sleep(time.Second)
 		select {
 		case updates <- struct{}{}:
 		default:
@@ -271,8 +300,12 @@ func writeNewContent(data []byte) error {
 			return fmt.Errorf("cannot ungzip data: %w", err)
 		}
 	}
-	if err := os.WriteFile(*configFileDst, data, 0644); err != nil {
+	tmpDst := *configFileDst + ".tmp"
+	if err := os.WriteFile(tmpDst, data, 0644); err != nil {
 		return fmt.Errorf("cannot write file: %s to the disk: %w", *configFileDst, err)
+	}
+	if err := os.Rename(tmpDst, *configFileDst); err != nil {
+		return fmt.Errorf("cannot rename tmp file: %w", err)
 	}
 	return nil
 }
@@ -287,7 +320,7 @@ func newFileWatcher(file string) (*fileWatcher, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := w.Add(file); err != nil {
+	if err := w.Add(filepath.Dir(file)); err != nil {
 		return nil, err
 	}
 	return &fileWatcher{
@@ -337,13 +370,12 @@ func (fw *fileWatcher) startWatch(ctx context.Context, updates chan struct{}) {
 			case <-ctx.Done():
 				return
 			case event := <-fw.w.Events:
-				if event.Op == fsnotify.Remove {
-
-					if err := fw.w.Add(event.Name); err != nil {
-						logger.Errorf("cannot add new file: %s to watcter, err:%s", event.Name, err)
-					}
+				if event.Name != *configFileName {
+					logger.Infof("file name not match: %s", event.Name)
+					continue
 				}
-				if err := update(event.Name); err != nil {
+				logger.Infof("changed: %s, %s", event.Name, event.Op.String())
+				if err := update(*configFileName); err != nil {
 					logger.Errorf("cannot update file :%s", err)
 					continue
 				}
@@ -358,6 +390,67 @@ func (fw *fileWatcher) close() {
 
 func readFileContent(src string) ([]byte, error) {
 	return os.ReadFile(src)
+}
+
+type dirWatcher struct {
+	dirs map[string]struct{}
+	wg   sync.WaitGroup
+	w    *fsnotify.Watcher
+}
+
+func newDirWatchers(dirs []string) (*dirWatcher, error) {
+	dws := map[string]struct{}{}
+	w, err := fsnotify.NewWatcher()
+	if err != nil {
+		return nil, fmt.Errorf("cannot create new dir watcher: %w", err)
+	}
+	for _, dir := range dirs {
+		dw := filepath.Dir(dir)
+		logger.Infof("dir to watch: %s", dw)
+		if err := w.Add(dw); err != nil {
+			return nil, fmt.Errorf("cannot dir: %s to watcher: %w", dir, err)
+		}
+		dws[dir] = struct{}{}
+	}
+	return &dirWatcher{
+		w:    w,
+		dirs: dws,
+	}, nil
+}
+
+func (dw *dirWatcher) startWatch(ctx context.Context, updates chan struct{}) {
+	dw.wg.Add(1)
+	contentByFile := map[string][]byte{}
+	go func() {
+		defer dw.wg.Done()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case event := <-dw.w.Events:
+				logger.Infof("dir update: %s", event.Name)
+				newData, err := readFileContent(event.Name)
+				if err != nil {
+					logger.Errorf("cannot read file content: %s", err)
+					continue
+				}
+				prev := contentByFile[event.Name]
+				if bytes.Equal(prev, newData) {
+					logger.Infof("files the same: %s", event.Name)
+					continue
+				}
+				select {
+				case updates <- struct{}{}:
+				default:
+
+				}
+			}
+		}
+	}()
+}
+
+func (dw *dirWatcher) close() {
+	dw.wg.Wait()
 }
 
 func requestHandler(w http.ResponseWriter, r *http.Request) bool {

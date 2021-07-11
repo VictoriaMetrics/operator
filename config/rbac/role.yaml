@@ -319,6 +319,8 @@ rules:
     - clusterrolebindings/finalizers
     - clusterroles
     - clusterroles/finalizers
+    - roles
+    - rolebindings
   verbs:
     - get
     - list

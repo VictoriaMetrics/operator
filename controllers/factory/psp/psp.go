@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	v1beta12 "github.com/VictoriaMetrics/operator/api/v1beta1"
-
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/api/policy/v1beta1"
@@ -58,11 +57,12 @@ func CreateServiceAccountForCRD(ctx context.Context, cr CRDObject, rclient clien
 		}
 		return fmt.Errorf("cannot get ServiceAccount for given CRD Object=%q, err=%w", cr.PrefixedName(), err)
 	}
-	newSA.Finalizers = v1beta12.MergeFinalizers(&existSA, v1beta12.FinalizerName)
-	newSA.Annotations = labels.Merge(newSA.Annotations, existSA.Annotations)
-	newSA.Labels = labels.Merge(existSA.Labels, newSA.Labels)
-	newSA.Secrets = existSA.Secrets
-	return rclient.Update(ctx, newSA)
+
+	existSA.OwnerReferences = newSA.OwnerReferences
+	existSA.Finalizers = v1beta12.MergeFinalizers(&existSA, v1beta12.FinalizerName)
+	existSA.Annotations = labels.Merge(newSA.Annotations, existSA.Annotations)
+	existSA.Labels = labels.Merge(existSA.Labels, newSA.Labels)
+	return rclient.Update(ctx, &existSA)
 }
 
 func ensurePSPExists(ctx context.Context, cr CRDObject, rclient client.Client) error {

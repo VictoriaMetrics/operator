@@ -247,7 +247,7 @@ func RunManager(ctx context.Context) error {
 		setupLog.Error(err, "problem running manager")
 		return err
 	}
-	httpserver.Stop(*listenAddr)
+	httpserver.Stop(*listenAddr) //nolint:errcheck
 	setupLog.Info("gracefully stopped")
 	return nil
 

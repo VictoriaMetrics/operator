@@ -153,16 +153,16 @@ func (dw *dirWatcher) startWatch(ctx context.Context, updates chan struct{}) {
 			if f.IsDir() {
 				return nil
 			}
-			dirHash.Write([]byte(path))
+			dirHash.Write([]byte(path)) // nolint:errcheck
 			newData, err := readFileContent(path)
 			if err != nil {
 				logger.Errorf("cannot read file content: %s", err)
 				return fmt.Errorf("cannot read file content: %w", err)
 			}
-			dirHash.Write(newData)
+			dirHash.Write(newData) // nolint:errcheck
 			// reset file hash.
 			fHash.Reset()
-			fHash.Write(newData)
+			fHash.Write(newData) // nolint:errcheck
 			newFileHash := fHash.Sum(nil)
 
 			prevFileHash := filesContentHashPath[path]

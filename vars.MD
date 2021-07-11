@@ -1,9 +1,11 @@
 # Auto Generated vars for package config 
-## updated at Mon Jun 14 15:19:36 UTC 2021 
+## updated at Sun Jul 11 13:38:18 UTC 2021 
 
 
 | varible name | variable default value | variable required | variable description |
 | --- | --- | --- | --- |
+| VM_USECUSTOMCONFIGRELOADER | false | false | enables custom config reloader for vmauth and vmagent,it should speed-up config reloading process. |
+| VM_CUSTOMCONFIGRELOADERIMAGE | victoriametrics/operator:config-reloader-0.1.0 | false | - |
 | VM_PSPAUTOCREATEENABLED | true | false | - |
 | VM_VMALERTDEFAULT_IMAGE | victoriametrics/vmalert | false | - |
 | VM_VMALERTDEFAULT_VERSION | v1.58.0 | false | - |

@@ -1048,7 +1048,8 @@ func Test_buildConfigReloaderArgs(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := buildConfigReloaderArgs(tt.args.cr, tt.args.c)
-
+			sort.Strings(got)
+			sort.Strings(tt.want)
 			assert.Equal(t, tt.want, got)
 		})
 	}

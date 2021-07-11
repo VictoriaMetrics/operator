@@ -3,8 +3,10 @@ package manager
 import (
 	"context"
 	"flag"
+	"net/http"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/buildinfo"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httpserver"
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers"
 	"github.com/VictoriaMetrics/operator/controllers/factory/crd"
@@ -34,6 +36,7 @@ var (
 	webhookCertName = flag.String("webhook.certName", "tls.crt", "name of webhook server Tls certificate inside tls.certDir")
 	webhookKeyName  = flag.String("webhook.keyName", "tls.key", "name of webhook server Tls key inside tls.certDir")
 	metricsAddr     = flag.String("metrics-addr", ":8080", "The address the metric endpoint binds to.")
+	listenAddr      = flag.String("http.listenAddr", ":8435", "http server listen addr - serves victoria-metrics http server + metrics.")
 )
 
 func init() {
@@ -59,6 +62,7 @@ func RunManager(ctx context.Context) error {
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 
 	pflag.Parse()
+
 	buildinfo.Init()
 
 	// Use a zap logr.Logger implementation. If none of the zap
@@ -85,7 +89,6 @@ func RunManager(ctx context.Context) error {
 		setupLog.Error(err, "unable to start manager")
 		return err
 	}
-
 	initC, err := client.New(mgr.GetConfig(), client.Options{Scheme: scheme})
 	if err != nil {
 		return err
@@ -100,6 +103,7 @@ func RunManager(ctx context.Context) error {
 			return err
 		}
 	}
+
 	if err = (&controllers.VMAgentReconciler{
 		Client:       mgr.GetClient(),
 		Log:          ctrl.Log.WithName("controllers").WithName("VMAgent"),
@@ -234,6 +238,7 @@ func RunManager(ctx context.Context) error {
 		setupLog.Error(err, "cannot add runnable")
 		return err
 	}
+	go httpserver.Serve(*listenAddr, requestHandler)
 	if err := controllers.StartWatchForVMUserSecretRefs(ctx, mgr.GetClient(), mgr.GetConfig()); err != nil {
 		return err
 	}
@@ -242,6 +247,7 @@ func RunManager(ctx context.Context) error {
 		setupLog.Error(err, "problem running manager")
 		return err
 	}
+	httpserver.Stop(*listenAddr)
 	setupLog.Info("gracefully stopped")
 	return nil
 
@@ -272,4 +278,8 @@ func addWebhooks(mgr ctrl.Manager) error {
 		&victoriametricsv1beta1.VMUser{},
 	})
 
+}
+
+func requestHandler(w http.ResponseWriter, r *http.Request) bool {
+	return false
 }

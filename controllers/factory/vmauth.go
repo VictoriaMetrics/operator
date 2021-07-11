@@ -11,6 +11,7 @@ import (
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/controllers/factory/psp"
+	"github.com/VictoriaMetrics/operator/controllers/factory/vmauth"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -71,6 +72,11 @@ func CreateOrUpdateVMAuth(ctx context.Context, cr *victoriametricsv1beta1.VMAuth
 		if err := psp.CreateOrUpdateServiceAccountWithPSP(ctx, cr, rclient); err != nil {
 			l.Error(err, "cannot create podsecuritypolicy")
 			return fmt.Errorf("cannot create podsecurity policy for vmauth, err: %w", err)
+		}
+	}
+	if c.UseCustomConfigReloader {
+		if err := vmauth.CreateVMAuthSecretAccess(ctx, cr, rclient); err != nil {
+			return err
 		}
 	}
 
@@ -196,17 +202,6 @@ func makeSpecForVMAuth(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperator
 		},
 	}
 
-	reloaderMounts := []corev1.VolumeMount{
-		{
-			Name:      "config-out",
-			MountPath: vmAuthConfigFolder,
-		},
-		{
-			Name:      vmAuthVolumeName,
-			MountPath: vmAuthConfigMountGz,
-		},
-	}
-
 	vmMounts = append(vmMounts, cr.Spec.VolumeMounts...)
 
 	for _, s := range cr.Spec.Secrets {
@@ -257,37 +252,7 @@ func makeSpecForVMAuth(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperator
 		ImagePullPolicy:          cr.Spec.Image.PullPolicy,
 	}
 
-	configReloaderArgs := []string{
-		fmt.Sprintf("--reload-url=%s", cr.ReloadPathWithPort(cr.Spec.Port)),
-		fmt.Sprintf("--config-file=%s", path.Join(vmAuthConfigMountGz, vmAuthConfigNameGz)),
-		fmt.Sprintf("--config-envsubst-file=%s", path.Join(vmAuthConfigFolder, vmAuthConfigName)),
-	}
-	prometheusConfigReloaderResources := corev1.ResourceRequirements{
-		Limits: corev1.ResourceList{}, Requests: corev1.ResourceList{}}
-	if c.VMAuthDefault.ConfigReloaderCPU != "0" && c.VMAuthDefault.UseDefaultResources {
-		prometheusConfigReloaderResources.Limits[corev1.ResourceCPU] = resource.MustParse(c.VMAuthDefault.ConfigReloaderCPU)
-	}
-	if c.VMAgentDefault.ConfigReloaderMemory != "0" && c.VMAuthDefault.UseDefaultResources {
-		prometheusConfigReloaderResources.Limits[corev1.ResourceMemory] = resource.MustParse(c.VMAuthDefault.ConfigReloaderMemory)
-	}
-
-	configReloader := corev1.Container{
-		Name:                     "config-reloader",
-		Image:                    c.VMAuthDefault.ConfigReloadImage,
-		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
-		Env: []corev1.EnvVar{
-			{
-				Name: "POD_NAME",
-				ValueFrom: &corev1.EnvVarSource{
-					FieldRef: &corev1.ObjectFieldSelector{FieldPath: "metadata.name"},
-				},
-			},
-		},
-		Command:      []string{"/bin/prometheus-config-reloader"},
-		Args:         configReloaderArgs,
-		VolumeMounts: reloaderMounts,
-		Resources:    prometheusConfigReloaderResources,
-	}
+	configReloader := buildVMAuthConfigReloaderContainer(cr, c)
 
 	vmauthContainer = buildProbe(vmauthContainer, cr.Spec.EmbeddedProbes, cr.HealthPath, cr.Spec.Port, false)
 
@@ -466,4 +431,60 @@ func buildIngressConfig(cr *victoriametricsv1beta1.VMAuth) *v1beta1.Ingress {
 		},
 		Spec: spec,
 	}
+}
+
+func buildVMAuthConfigReloaderContainer(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperatorConf) corev1.Container {
+	configReloaderArgs := []string{
+		fmt.Sprintf("--reload-url=%s", cr.ReloadPathWithPort(cr.Spec.Port)),
+
+		fmt.Sprintf("--config-envsubst-file=%s", path.Join(vmAuthConfigFolder, vmAuthConfigName)),
+	}
+	if c.UseCustomConfigReloader {
+		configReloaderArgs = append(configReloaderArgs, fmt.Sprintf("--config-secret-name=%s/%s", cr.Namespace, cr.ConfigSecretName()))
+	} else {
+		configReloaderArgs = append(configReloaderArgs, fmt.Sprintf("--config-file=%s", path.Join(vmAuthConfigMountGz, vmAuthConfigNameGz)))
+	}
+
+	reloaderMounts := []corev1.VolumeMount{
+		{
+			Name:      "config-out",
+			MountPath: vmAuthConfigFolder,
+		},
+		{
+			Name:      vmAuthVolumeName,
+			MountPath: vmAuthConfigMountGz,
+		},
+	}
+	configReloaderResources := corev1.ResourceRequirements{
+		Limits: corev1.ResourceList{}, Requests: corev1.ResourceList{}}
+	if c.VMAuthDefault.ConfigReloaderCPU != "0" && c.VMAuthDefault.UseDefaultResources {
+		configReloaderResources.Limits[corev1.ResourceCPU] = resource.MustParse(c.VMAuthDefault.ConfigReloaderCPU)
+	}
+	if c.VMAgentDefault.ConfigReloaderMemory != "0" && c.VMAuthDefault.UseDefaultResources {
+		configReloaderResources.Limits[corev1.ResourceMemory] = resource.MustParse(c.VMAuthDefault.ConfigReloaderMemory)
+	}
+
+	configReloader := corev1.Container{
+		Name:                     "config-reloader",
+		Image:                    c.VMAuthDefault.ConfigReloadImage,
+		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+		Env: []corev1.EnvVar{
+			{
+				Name: "POD_NAME",
+				ValueFrom: &corev1.EnvVarSource{
+					FieldRef: &corev1.ObjectFieldSelector{FieldPath: "metadata.name"},
+				},
+			},
+		},
+		Command:      []string{"/bin/prometheus-config-reloader"},
+		Args:         configReloaderArgs,
+		VolumeMounts: reloaderMounts,
+		Resources:    configReloaderResources,
+	}
+
+	if c.UseCustomConfigReloader {
+		configReloader.Image = c.CustomConfigReloaderImage
+		configReloader.Command = []string{"/usr/local/bin/config-reloader"}
+	}
+	return configReloader
 }

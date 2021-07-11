@@ -8,9 +8,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/hashicorp/go-version"
-	"gopkg.in/yaml.v2"
-
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
@@ -18,6 +15,8 @@ import (
 	"github.com/VictoriaMetrics/operator/controllers/factory/vmagent"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
+	"github.com/hashicorp/go-version"
+	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -344,24 +343,6 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 		})
 	}
 
-	configReloadVolumeMounts := []corev1.VolumeMount{
-		{
-			Name:      "config",
-			MountPath: vmAgentConfDir,
-		},
-		{
-			Name:      "config-out",
-			MountPath: vmAgentConOfOutDir,
-		},
-		{
-			Name:      "relabeling-assets",
-			ReadOnly:  true,
-			MountPath: RelabelingConfigDir,
-		},
-	}
-
-	configReloadArgs := buildConfigReloaderArgs(cr, c.VMAgentDefault.ConfigReloadImage)
-
 	if cr.Spec.RelabelConfig != nil || len(cr.Spec.InlineRelabelConfig) > 0 {
 		args = append(args, "-remoteWrite.relabelConfig="+path.Join(RelabelingConfigDir, globalRelabelingName))
 	}
@@ -369,15 +350,6 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 	args = buildArgsForAdditionalPorts(args, cr.Spec.InsertPorts)
 
 	specRes := buildResources(cr.Spec.Resources, config.Resource(c.VMAgentDefault.Resource), c.VMAgentDefault.UseDefaultResources)
-
-	prometheusConfigReloaderResources := corev1.ResourceRequirements{
-		Limits: corev1.ResourceList{}, Requests: corev1.ResourceList{}}
-	if c.VMAgentDefault.ConfigReloaderCPU != "0" && c.VMAgentDefault.UseDefaultResources {
-		prometheusConfigReloaderResources.Limits[corev1.ResourceCPU] = resource.MustParse(c.VMAgentDefault.ConfigReloaderCPU)
-	}
-	if c.VMAgentDefault.ConfigReloaderMemory != "0" && c.VMAgentDefault.UseDefaultResources {
-		prometheusConfigReloaderResources.Limits[corev1.ResourceMemory] = resource.MustParse(c.VMAgentDefault.ConfigReloaderMemory)
-	}
 
 	sort.Strings(args)
 
@@ -392,26 +364,13 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 		Resources:                specRes,
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 	}
+
 	buildProbe(vmagentContainer, cr.Spec.EmbeddedProbes, cr.HealthPath, cr.Spec.Port, true)
 
+	configReloader := buildConfigReloaderContainer(cr, c)
+
 	operatorContainers := []corev1.Container{
-		{
-			Name:                     "config-reloader",
-			Image:                    c.VMAgentDefault.ConfigReloadImage,
-			TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
-			Env: []corev1.EnvVar{
-				{
-					Name: "POD_NAME",
-					ValueFrom: &corev1.EnvVarSource{
-						FieldRef: &corev1.ObjectFieldSelector{FieldPath: "metadata.name"},
-					},
-				},
-			},
-			Command:      []string{"/bin/prometheus-config-reloader"},
-			Args:         configReloadArgs,
-			VolumeMounts: configReloadVolumeMounts,
-			Resources:    prometheusConfigReloaderResources,
-		},
+		configReloader,
 		vmagentContainer,
 	}
 
@@ -480,31 +439,6 @@ func addShardSettingsToVMAgent(shardNum, shardsCount int, dep *appsv1.Deployment
 			container.Args = args
 		}
 	}
-}
-
-func buildConfigReloaderArgs(cr *victoriametricsv1beta1.VMAgent, reloaderImage string) []string {
-
-	// by default use watched-dir
-	// it should simplify parsing for latest and empty version tags.
-	dirsArg := "watched-dir"
-	idx := strings.LastIndex(reloaderImage, ":")
-	if idx > 0 {
-		imageTag := reloaderImage[idx+1:]
-		ver, err := version.NewVersion(imageTag)
-		if err != nil {
-			log.Error(err, "cannot parse vmagent config reloader version", "reloader-image", reloaderImage)
-		} else if ver.LessThan(version.Must(version.NewVersion("0.43.0"))) {
-			dirsArg = "rules-dir"
-		}
-	}
-
-	args := []string{
-		fmt.Sprintf("--reload-url=%s", cr.ReloadPathWithPort(cr.Spec.Port)),
-		fmt.Sprintf("--config-file=%s", path.Join(vmAgentConfDir, configFilename)),
-		fmt.Sprintf("--config-envsubst-file=%s", path.Join(vmAgentConOfOutDir, configEnvsubstFilename)),
-		fmt.Sprintf("--%s=%s", dirsArg, RelabelingConfigDir),
-	}
-	return args
 }
 
 func addAdditionalObjectOwnership(cr *victoriametricsv1beta1.VMAgent, rclient client.Client, object client.Object) error {
@@ -1000,4 +934,88 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, rwsBasicAuth map[stri
 		}
 	}
 	return finalArgs
+}
+
+func buildConfigReloaderContainer(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperatorConf) corev1.Container {
+
+	configReloadVolumeMounts := []corev1.VolumeMount{
+		{
+			Name:      "config",
+			MountPath: vmAgentConfDir,
+		},
+		{
+			Name:      "config-out",
+			MountPath: vmAgentConOfOutDir,
+		},
+		{
+			Name:      "relabeling-assets",
+			ReadOnly:  true,
+			MountPath: RelabelingConfigDir,
+		},
+	}
+	configReloaderResources := corev1.ResourceRequirements{
+		Limits: corev1.ResourceList{}, Requests: corev1.ResourceList{}}
+	if c.VMAgentDefault.ConfigReloaderCPU != "0" && c.VMAgentDefault.UseDefaultResources {
+		configReloaderResources.Limits[corev1.ResourceCPU] = resource.MustParse(c.VMAgentDefault.ConfigReloaderCPU)
+	}
+	if c.VMAgentDefault.ConfigReloaderMemory != "0" && c.VMAgentDefault.UseDefaultResources {
+		configReloaderResources.Limits[corev1.ResourceMemory] = resource.MustParse(c.VMAgentDefault.ConfigReloaderMemory)
+	}
+
+	configReloadArgs := buildConfigReloaderArgs(cr, c)
+	cntr := corev1.Container{
+		Name:                     "config-reloader",
+		Image:                    c.VMAgentDefault.ConfigReloadImage,
+		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+		Env: []corev1.EnvVar{
+			{
+				Name: "POD_NAME",
+				ValueFrom: &corev1.EnvVarSource{
+					FieldRef: &corev1.ObjectFieldSelector{FieldPath: "metadata.name"},
+				},
+			},
+		},
+		Command:      []string{"/bin/prometheus-config-reloader"},
+		Args:         configReloadArgs,
+		VolumeMounts: configReloadVolumeMounts,
+		Resources:    configReloaderResources,
+	}
+	if c.UseCustomConfigReloader {
+		cntr.Image = c.CustomConfigReloaderImage
+		cntr.Command = []string{"/usr/local/bin/config-reloader"}
+	}
+	return cntr
+}
+
+func buildConfigReloaderArgs(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperatorConf) []string {
+
+	// by default use watched-dir
+	// it should simplify parsing for latest and empty version tags.
+	dirsArg := "watched-dir"
+	if !c.UseCustomConfigReloader {
+		reloaderImage := c.VMAgentDefault.ConfigReloadImage
+		idx := strings.LastIndex(reloaderImage, ":")
+		if idx > 0 {
+			imageTag := reloaderImage[idx+1:]
+			ver, err := version.NewVersion(imageTag)
+			if err != nil {
+				log.Error(err, "cannot parse vmagent config reloader version", "reloader-image", reloaderImage)
+			} else if ver.LessThan(version.Must(version.NewVersion("0.43.0"))) {
+				dirsArg = "rules-dir"
+			}
+		}
+	}
+
+	args := []string{
+		fmt.Sprintf("--reload-url=%s", cr.ReloadPathWithPort(cr.Spec.Port)),
+		fmt.Sprintf("--config-envsubst-file=%s", path.Join(vmAgentConOfOutDir, configEnvsubstFilename)),
+		fmt.Sprintf("--%s=%s", dirsArg, RelabelingConfigDir),
+	}
+	if c.UseCustomConfigReloader {
+		args = append(args, fmt.Sprintf("--config-secret-name=%s/%s", cr.Namespace, cr.PrefixedName()))
+		args = append(args, "--config-secret-key=vmagent.yaml.gz")
+	} else {
+		args = append(args, fmt.Sprintf("--config-file=%s", path.Join(vmAgentConfDir, configFilename)))
+	}
+	return args
 }

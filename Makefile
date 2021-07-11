@@ -404,3 +404,7 @@ build-load-kind: build
 
 deploy-kind: build-load-kind
 	$(MAKE) deploy
+
+
+include internal/config-reloader/Makefile
+

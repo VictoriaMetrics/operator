@@ -31,8 +31,12 @@ type Resource struct {
 
 //genvars:true
 type BaseOperatorConf struct {
-	PSPAutoCreateEnabled bool `default:"true"`
-	VMAlertDefault       struct {
+	// enables custom config reloader for vmauth and vmagent,
+	// it should speed-up config reloading process.
+	UseCustomConfigReloader   bool   `default:"false"`
+	CustomConfigReloaderImage string `default:"victoriametrics/operator:config-reloader-0.1.0"`
+	PSPAutoCreateEnabled      bool   `default:"true"`
+	VMAlertDefault            struct {
 		Image               string `default:"victoriametrics/vmalert"`
 		Version             string `default:"v1.58.0"`
 		Port                string `default:"8080"`

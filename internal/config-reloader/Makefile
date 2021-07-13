@@ -61,5 +61,5 @@ publish-via-docker-config-reloader: cr-docker-manifest
 
 
 config-reloader-local:
-	GOARCH=amd64 $(MAKE) cr-package-arch
-	GOARCH=amd64 $(MAKE) cr-docker-build-arch
+	GOARCH=amd64 CGO_ENABLED=0 $(MAKE) cr-package-arch
+	GOARCH=amd64 CGO_ENABLED=0 $(MAKE) cr-docker-build-arch

@@ -10,23 +10,31 @@ import (
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type k8sWatcher struct {
 	c          client.WithWatch
+	inf        cache.SharedIndexInformer
+	events     chan syncEvent
 	namespace  string
 	secretName string
-	w          watch.Interface
 	wg         sync.WaitGroup
 }
 
+type syncEvent struct {
+	op  string
+	obj *v1.Secret
+}
+
 func newKubernetesWatcher(ctx context.Context, secretName, namespace string) (*k8sWatcher, error) {
-	var objs v1.SecretList
 	lr := clientcmd.NewDefaultClientConfigLoadingRules()
 
 	cfg := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(lr, &clientcmd.ConfigOverrides{})
@@ -38,14 +46,41 @@ func newKubernetesWatcher(ctx context.Context, secretName, namespace string) (*k
 	if err != nil {
 		return nil, fmt.Errorf("cannot start watch for secret: %w", err)
 	}
-	w, err := c.Watch(ctx, &objs, &client.ListOptions{
+	listOpts := &client.ListOptions{
 		Namespace:     namespace,
 		FieldSelector: fields.OneTermEqualSelector("metadata.name", secretName),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("cannot start watch for secretName: %s at namespace: %s, err: %w", secretName, namespace, err)
 	}
-	return &k8sWatcher{w: w, c: c, namespace: namespace, secretName: secretName}, nil
+	inf := cache.NewSharedIndexInformer(&cache.ListWatch{
+		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+			var s v1.SecretList
+			if err := c.List(ctx, &s, listOpts); err != nil {
+				return nil, fmt.Errorf("cannot get secret from k8s api: %w", err)
+			}
+
+			return &s, nil
+		},
+		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+			return c.Watch(ctx, &v1.SecretList{}, listOpts)
+		},
+	}, &v1.Secret{}, 0, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
+
+	syncChan := make(chan syncEvent, 10)
+	inf.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			s := obj.(*v1.Secret)
+			syncChan <- syncEvent{op: "create", obj: s}
+		},
+		UpdateFunc: func(oldObj, newObj interface{}) {
+			s := newObj.(*v1.Secret)
+			syncChan <- syncEvent{op: "update", obj: s}
+		},
+		DeleteFunc: func(obj interface{}) {
+			s := obj.(*v1.Secret)
+			syncChan <- syncEvent{op: "delete", obj: s}
+		},
+	})
+
+	return &k8sWatcher{inf: inf, c: c, events: syncChan, namespace: namespace, secretName: secretName}, nil
 }
 
 var errNotModified = fmt.Errorf("file content not modified")
@@ -60,9 +95,10 @@ func (k *k8sWatcher) startWatch(ctx context.Context, updates chan struct{}) {
 			logger.Warnf("key not found")
 		}
 		if bytes.Equal(prevContent, newData) {
-			logger.Infof("file content the same")
+			logger.Infof("secret config update not needed,file content the same")
 			return errNotModified
 		}
+		logger.Infof("updating local file content for secret: %s", secret.Name)
 		if err := writeNewContent(newData); err != nil {
 			logger.Errorf("cannot write file content to disk: %s", err)
 			return err
@@ -76,6 +112,7 @@ func (k *k8sWatcher) startWatch(ctx context.Context, updates chan struct{}) {
 		}
 		return nil
 	}
+	go k.inf.Run(ctx.Done())
 
 	var s v1.Secret
 	if err := k.c.Get(ctx, types.NamespacedName{Namespace: k.namespace, Name: k.secretName}, &s); err != nil {
@@ -87,17 +124,13 @@ func (k *k8sWatcher) startWatch(ctx context.Context, updates chan struct{}) {
 	k.wg.Add(1)
 	go func() {
 		defer k.wg.Done()
-		defer k.w.Stop()
 
 		for {
 			select {
-			case item := <-k.w.ResultChan():
-				switch item.Type {
-				case watch.Added, watch.Modified, watch.Deleted:
-				default:
-					continue
-				}
-				s := item.Object.(*v1.Secret)
+			case item := <-k.events:
+				s := item.obj
+				logger.Infof("get k8s sync event type: %s, for secret: %s", item.op, item.obj.Name)
+
 				if err := updateSecret(s); err != nil {
 					if errors.Is(err, errNotModified) {
 						continue

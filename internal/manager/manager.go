@@ -55,13 +55,14 @@ func RunManager(ctx context.Context) error {
 	// controller-runtime)
 	opts := zap.Options{}
 	opts.BindFlags(flag.CommandLine)
-	zap.UseFlagOptions(&opts)
-	logger := zap.New(zap.UseFlagOptions(&opts))
-	logf.SetLogger(logger)
 
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 
 	pflag.Parse()
+
+	zap.UseFlagOptions(&opts)
+	logger := zap.New(zap.UseFlagOptions(&opts))
+	logf.SetLogger(logger)
 
 	buildinfo.Init()
 

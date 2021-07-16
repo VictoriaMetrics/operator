@@ -396,7 +396,7 @@ func genUserCfg(user *v1beta1.VMUser, crdUrlCache map[string]string) (yaml.MapSl
 		}
 		paths := ref.Paths
 		if len(paths) == 0 {
-			paths = append(paths, "/")
+			paths = append(paths, "/.*")
 		}
 		urlMap = append(urlMap, yaml.MapItem{
 			Key:   "src_paths",

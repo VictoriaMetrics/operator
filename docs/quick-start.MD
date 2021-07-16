@@ -1359,7 +1359,7 @@ spec:
         kind: VMSingle
         name: example
         namespace: default
-      paths: ["/"]
+      paths: ["/.*"]
     - static:
         url: http://vmalert-example.default.svc:8080
       paths: ["/api/v1/groups","/api/v1/alerts"]

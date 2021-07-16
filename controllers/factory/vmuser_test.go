@@ -97,7 +97,7 @@ password: pass
   - /targets
 - url_prefix: http://vmsingle-b.monitoring.svc:8429
   src_paths:
-  - /
+  - /.*
 bearer_token: secret-token
 `,
 		},

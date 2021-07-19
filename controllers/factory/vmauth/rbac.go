@@ -26,7 +26,7 @@ func CreateVMAuthSecretAccess(ctx context.Context, cr *v1beta12.VMAuth, rclient 
 func ensureVMAuthRoleExist(ctx context.Context, cr *v1beta12.VMAuth, rclient client.Client) error {
 	role := buildVMAuthRole(cr)
 	var existRole v1.Role
-	err := k8stools.ListClusterWideObjects(ctx, rclient, &v1.RoleList{}, func(r runtime.Object) {
+	err := k8stools.ListClusterWideObjects(ctx, rclient, &v1.RoleList{}, cr.Labels(), func(r runtime.Object) {
 		items := r.(*v1.RoleList)
 		for _, i := range items.Items {
 			if i.Name == role.Name {
@@ -52,7 +52,7 @@ func ensureVMAuthRoleExist(ctx context.Context, cr *v1beta12.VMAuth, rclient cli
 func ensureVMAgentRBExist(ctx context.Context, cr *v1beta12.VMAuth, rclient client.Client) error {
 	roleBinding := buildVMAuthRoleBinding(cr)
 	var existRoleBinding v1.RoleBinding
-	err := k8stools.ListClusterWideObjects(ctx, rclient, &v1.RoleBindingList{}, func(r runtime.Object) {
+	err := k8stools.ListClusterWideObjects(ctx, rclient, &v1.RoleBindingList{}, cr.Labels(), func(r runtime.Object) {
 		items := r.(*v1.RoleBindingList)
 		for _, i := range items.Items {
 			if i.Name == roleBinding.Name {

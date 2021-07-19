@@ -753,7 +753,7 @@ func addAssetsToCache(
 
 func LoadRemoteWriteSecrets(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client, l logr.Logger) (map[string]BasicAuthCredentials, map[string]BearerToken, error) {
 	SecretsInNS := &corev1.SecretList{}
-	err := rclient.List(ctx, SecretsInNS)
+	err := rclient.List(ctx, SecretsInNS, &client.ListOptions{Namespace: cr.Namespace})
 	if err != nil {
 		l.Error(err, "cannot list secrets at vmagent namespace")
 		return nil, nil, err

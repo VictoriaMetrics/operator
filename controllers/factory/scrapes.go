@@ -48,7 +48,7 @@ func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *victoriametricsv
 	}
 
 	SecretsInNS := &v1.SecretList{}
-	err = rclient.List(ctx, SecretsInNS)
+	err = rclient.List(ctx, SecretsInNS, &client.ListOptions{Namespace: cr.Namespace})
 	if err != nil {
 		return fmt.Errorf("cannot list secrets at vmagent namespace: %w", err)
 	}

@@ -66,7 +66,12 @@ func Test_loadVMAlertRemoteSecrets(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := loadVMAlertRemoteSecrets(tt.args.cr, tt.args.SecretsInNS)
+			var predefinedObjets []runtime.Object
+			for i := range tt.args.SecretsInNS.Items {
+				predefinedObjets = append(predefinedObjets, &tt.args.SecretsInNS.Items[i])
+			}
+			testClient := k8stools.GetTestClientWithObjects(predefinedObjets)
+			got, err := loadVMAlertRemoteSecrets(context.TODO(), testClient, tt.args.cr)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("loadVMAlertRemoteSecrets() error = %v, wantErr %v", err, tt.wantErr)
 				return

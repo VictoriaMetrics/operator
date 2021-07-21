@@ -83,7 +83,7 @@ func Test_createDefaultAMConfig(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			if err := createDefaultAMConfig(tt.args.ctx, tt.args.cr, fclient); (err != nil) != tt.wantErr {
+			if err := createDefaultAMConfig(tt.args.ctx, tt.args.cr, fclient.GetCRClient()); (err != nil) != tt.wantErr {
 				t.Fatalf("createDefaultAMConfig() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			var createdSecret v1.Secret
@@ -91,7 +91,7 @@ func Test_createDefaultAMConfig(t *testing.T) {
 			if secretName == "" {
 				secretName = tt.args.cr.PrefixedName()
 			}
-			err := fclient.Get(tt.args.ctx, types.NamespacedName{Namespace: tt.args.cr.Namespace, Name: secretName}, &createdSecret)
+			err := fclient.GetCRClient().Get(tt.args.ctx, types.NamespacedName{Namespace: tt.args.cr.Namespace, Name: secretName}, &createdSecret)
 			if err != nil {
 				if errors.IsNotFound(err) && tt.secretMustBeMissing {
 					return
@@ -197,7 +197,7 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjets)
-			got, err := CreateOrUpdateAlertManager(tt.args.ctx, tt.args.cr, fclient, tt.args.c)
+			got, err := CreateOrUpdateAlertManager(tt.args.ctx, tt.args.cr, fclient.GetCRClient(), tt.args.c)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("CreateOrUpdateAlertManager() error = %v, wantErr %v", err, tt.wantErr)
 				return

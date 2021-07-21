@@ -8,6 +8,7 @@ import (
 	"sort"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/controllers/factory/client"
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/controllers/factory/psp"
@@ -22,7 +23,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -48,34 +48,34 @@ func CreateOrUpdateVMAuthService(ctx context.Context, cr *victoriametricsv1beta1
 	if cr.Spec.ServiceSpec != nil {
 		if additionalService.Name == newService.Name {
 			log.Error(fmt.Errorf("vmauth additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name), "cannot create additional service")
-		} else if _, err := reconcileServiceForCRD(ctx, rclient, additionalService); err != nil {
+		} else if _, err := reconcileServiceForCRD(ctx, rclient.GetCRClient(), additionalService); err != nil {
 			return nil, err
 		}
 	}
 
 	rca := finalize.RemoveSvcArgs{SelectorLabels: cr.SelectorLabels, GetNameSpace: cr.GetNamespace, PrefixedName: cr.PrefixedName}
-	if err := finalize.RemoveOrphanedServices(ctx, rclient, rca, cr.Spec.ServiceSpec); err != nil {
+	if err := finalize.RemoveOrphanedServices(ctx, rclient.GetCRClient(), rca, cr.Spec.ServiceSpec); err != nil {
 		return nil, err
 	}
 
-	return reconcileServiceForCRD(ctx, rclient, newService)
+	return reconcileServiceForCRD(ctx, rclient.GetCRClient(), newService)
 }
 
 // CreateOrUpdateVMAuth - handles VMAuth deployment reconciliation.
 func CreateOrUpdateVMAuth(ctx context.Context, cr *victoriametricsv1beta1.VMAuth, rclient client.Client, c *config.BaseOperatorConf) error {
 	l := log.WithValues("controller", "vmauth.crud")
 
-	if err := psp.CreateServiceAccountForCRD(ctx, cr, rclient); err != nil {
-		return fmt.Errorf("failed create service account: %w", err)
+	if err := psp.CreateServiceAccountForCRD(ctx, cr, rclient.GetCRClient()); err != nil {
+		return fmt.Errorf("failed create or update service account: %w", err)
 	}
 	if c.PSPAutoCreateEnabled {
-		if err := psp.CreateOrUpdateServiceAccountWithPSP(ctx, cr, rclient); err != nil {
+		if err := psp.CreateOrUpdateServiceAccountWithPSP(ctx, cr, rclient.GetCRClient()); err != nil {
 			l.Error(err, "cannot create podsecuritypolicy")
 			return fmt.Errorf("cannot create podsecurity policy for vmauth, err: %w", err)
 		}
 	}
 	if c.UseCustomConfigReloader {
-		if err := vmauth.CreateVMAuthSecretAccess(ctx, cr, rclient); err != nil {
+		if err := vmauth.CreateVMAuthSecretAccess(ctx, cr, rclient.GetCRClient()); err != nil {
 			return err
 		}
 	}
@@ -88,8 +88,7 @@ func CreateOrUpdateVMAuth(ctx context.Context, cr *victoriametricsv1beta1.VMAuth
 	}
 
 	if cr.Spec.PodDisruptionBudget != nil {
-		err = CreateOrUpdatePodDisruptionBudget(ctx, rclient, cr, cr.Kind, cr.Spec.PodDisruptionBudget)
-		if err != nil {
+		if err := CreateOrUpdatePodDisruptionBudget(ctx, rclient.GetCRClient(), cr, cr.Kind, cr.Spec.PodDisruptionBudget); err != nil {
 			return fmt.Errorf("cannot update pod disruption budget for vmauth: %w", err)
 		}
 	}
@@ -99,7 +98,7 @@ func CreateOrUpdateVMAuth(ctx context.Context, cr *victoriametricsv1beta1.VMAuth
 		return fmt.Errorf("cannot build new deploy for vmagent: %w", err)
 	}
 
-	if err := reconcileDeploy(ctx, rclient, newDeploy); err != nil {
+	if err := reconcileDeploy(ctx, rclient.GetCRClient(), newDeploy); err != nil {
 		return err
 	}
 
@@ -294,7 +293,6 @@ func makeSpecForVMAuth(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperator
 
 // creates configuration secret for vmauth.
 func createOrUpdateVMAuthConfig(ctx context.Context, rclient client.Client, cr *victoriametricsv1beta1.VMAuth) error {
-
 	s := makeVMAuthConfigSecret(cr)
 
 	generatedConfig, err := buildVMAuthConfig(ctx, rclient, cr)
@@ -308,15 +306,17 @@ func createOrUpdateVMAuthConfig(ctx context.Context, rclient client.Client, cr *
 	}
 	s.Data[vmAuthConfigNameGz] = buf.Bytes()
 
-	var curSecret corev1.Secret
+	//var curSecret corev1.Secret
 
-	if err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: s.Name}, &curSecret); err != nil {
+	curSecret, err := rclient.GetCoreClient().Secrets(cr.Namespace).Get(ctx, s.Name, metav1.GetOptions{})
+	if err != nil {
 		if errors.IsNotFound(err) {
 			log.Info("creating new configuration secret for vmauth")
-			return rclient.Create(ctx, s)
+			return rclient.GetCRClient().Create(ctx, s)
 		}
 		return err
 	}
+	//
 	var (
 		generatedConf             = s.Data[vmAuthConfigNameGz]
 		curConfig, curConfigFound = curSecret.Data[vmAuthConfigNameGz]
@@ -330,10 +330,11 @@ func createOrUpdateVMAuthConfig(ctx context.Context, rclient client.Client, cr *
 	} else {
 		log.Info("no current VMAuth configuration secret found", "currentConfigFound", curConfigFound)
 	}
-	victoriametricsv1beta1.MergeFinalizers(&curSecret, victoriametricsv1beta1.FinalizerName)
+	victoriametricsv1beta1.MergeFinalizers(curSecret, victoriametricsv1beta1.FinalizerName)
 
 	log.Info("updating VMAuth configuration secret")
-	return rclient.Update(ctx, s)
+	return nil
+	//return rclient.Update(ctx, s)
 }
 
 func makeVMAuthConfigSecret(cr *victoriametricsv1beta1.VMAuth) *corev1.Secret {
@@ -360,22 +361,22 @@ func makeVMAuthConfigSecret(cr *victoriametricsv1beta1.VMAuth) *corev1.Secret {
 func CreateOrUpdateVMAuthIngress(ctx context.Context, rclient client.Client, cr *victoriametricsv1beta1.VMAuth) error {
 	if cr.Spec.Ingress == nil {
 		// handle delete case
-		if err := finalize.VMAuthIngressDelete(ctx, rclient, cr); err != nil {
+		if err := finalize.VMAuthIngressDelete(ctx, rclient.GetCRClient(), cr); err != nil {
 			return fmt.Errorf("cannot delete ingress for vmauth: %s, err :%w", cr.Name, err)
 		}
 		return nil
 	}
 	ig := buildIngressConfig(cr)
 	var existIg v1beta1.Ingress
-	if err := rclient.Get(ctx, types.NamespacedName{Namespace: ig.Namespace, Name: ig.Name}, &existIg); err != nil {
+	if err := rclient.GetCRClient().Get(ctx, types.NamespacedName{Namespace: ig.Namespace, Name: ig.Name}, &existIg); err != nil {
 		if errors.IsNotFound(err) {
-			return rclient.Create(ctx, ig)
+			return rclient.GetCRClient().Create(ctx, ig)
 		}
 		return err
 	}
 	ig.Finalizers = victoriametricsv1beta1.MergeFinalizers(&existIg, victoriametricsv1beta1.FinalizerName)
 	ig.Annotations = labels.Merge(ig.Annotations, existIg.Annotations)
-	return rclient.Update(ctx, ig)
+	return rclient.GetCRClient().Update(ctx, ig)
 }
 
 var defaultPt = v1beta1.PathTypePrefix

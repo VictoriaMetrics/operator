@@ -4,11 +4,11 @@ import (
 	"testing"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/controllers/factory/client"
 	"github.com/go-test/deep"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
@@ -50,7 +50,7 @@ func GetTestClientWithObjects(predefinedObjects []runtime.Object) client.Client 
 	obj := []runtime.Object{}
 	obj = append(obj, predefinedObjects...)
 	fclient := fake.NewFakeClientWithScheme(testGetScheme(), obj...)
-	return fclient
+	return client.NewTestClient(fclient, nil)
 }
 
 func CompareObjectMeta(t *testing.T, got, want metav1.ObjectMeta) {

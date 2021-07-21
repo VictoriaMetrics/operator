@@ -146,13 +146,13 @@ func Test_reCreateSTS(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cl := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			_, err := wasCreatedSTS(tt.args.ctx, cl, tt.args.pvcName, tt.args.newSTS, tt.args.existingSTS)
+			_, err := wasCreatedSTS(tt.args.ctx, cl.GetCRClient(), tt.args.pvcName, tt.args.newSTS, tt.args.existingSTS)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("wasCreatedSTS() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			var updatedSts appsv1.StatefulSet
-			if err := cl.Get(tt.args.ctx, types.NamespacedName{Namespace: tt.args.newSTS.Namespace, Name: tt.args.newSTS.Name}, &updatedSts); err != nil {
+			if err := cl.GetCRClient().Get(tt.args.ctx, types.NamespacedName{Namespace: tt.args.newSTS.Namespace, Name: tt.args.newSTS.Name}, &updatedSts); err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
 			if err := tt.validate(&updatedSts); err != nil {
@@ -357,7 +357,7 @@ func Test_growSTSPVC(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cl := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			if err := growSTSPVC(tt.args.ctx, cl, tt.args.sts, tt.args.pvcName); (err != nil) != tt.wantErr {
+			if err := growSTSPVC(tt.args.ctx, cl.GetCRClient(), tt.args.sts, tt.args.pvcName); (err != nil) != tt.wantErr {
 				t.Errorf("growSTSPVC() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

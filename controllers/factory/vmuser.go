@@ -10,13 +10,14 @@ import (
 
 	"github.com/VictoriaMetrics/operator/api/v1beta1"
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/controllers/factory/client"
 	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	client2 "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // builds vmauth config.
@@ -74,7 +75,7 @@ func buildVMAuthConfig(ctx context.Context, rclient client.Client, vmauth *v1bet
 	// todo, probably, its better to reconcile it with finalizers merge and etc.
 	for i := range toUpdate {
 		secret := &toUpdate[i]
-		if err := rclient.Update(ctx, secret); err != nil {
+		if err := rclient.GetCRClient().Update(ctx, secret); err != nil {
 			return nil, err
 		}
 	}
@@ -109,7 +110,7 @@ func addCredentialsToCreateSecrets(src []*v1beta1.VMUser, dst []v1.Secret) []v1.
 func createVMUserSecrets(ctx context.Context, rclient client.Client, secrets []v1.Secret) error {
 	for i := range secrets {
 		secret := secrets[i]
-		if err := rclient.Create(ctx, &secret); err != nil {
+		if err := rclient.GetCRClient().Create(ctx, &secret); err != nil {
 			return err
 		}
 	}
@@ -210,12 +211,12 @@ func isUsersUniq(users []*v1beta1.VMUser) []string {
 // builds configuration part for vmauth from given vmusers
 
 type objectWithUrl interface {
-	client.Object
+	client2.Object
 	AsURL() string
 }
 
 func getAsURLObject(ctx context.Context, rclient client.Client, obj objectWithUrl) (string, error) {
-	if err := rclient.Get(ctx, types.NamespacedName{Name: obj.GetName(), Namespace: obj.GetNamespace()}, obj); err != nil {
+	if err := rclient.GetCRClient().Get(ctx, types.NamespacedName{Name: obj.GetName(), Namespace: obj.GetNamespace()}, obj); err != nil {
 		if errors.IsNotFound(err) {
 			return "", nil
 		}
@@ -226,7 +227,7 @@ func getAsURLObject(ctx context.Context, rclient client.Client, obj objectWithUr
 
 func fetchVMUserSecretCache(ctx context.Context, rclient client.Client, users []*v1beta1.VMUser) (map[string]string, error) {
 	passwordCache := make(map[string]string, (len(users)))
-	var fetchSecret v1.Secret
+	//var fetchSecret *v1.Secret
 	for i := range users {
 		user := users[i]
 		if user.Spec.PasswordRef == nil {
@@ -236,9 +237,13 @@ func fetchVMUserSecretCache(ctx context.Context, rclient client.Client, users []
 		if _, ok := passwordCache[key]; ok {
 			continue
 		}
-		if err := rclient.Get(ctx, types.NamespacedName{Namespace: user.Namespace, Name: user.Spec.PasswordRef.Name}, &fetchSecret); err != nil {
-			return nil, fmt.Errorf("cannot find passwordRef for user: %s, at namespace: %s, err: %s", user.Name, user.Namespace, err)
+		fetchSecret, err := rclient.GetCoreClient().Secrets(user.Namespace).Get(ctx, user.Spec.PasswordRef.Name, metav1.GetOptions{})
+		if err != nil {
+			return nil, err
 		}
+		//if err := rclient.Get(ctx, types.NamespacedName{Namespace: user.Namespace, Name: user.Spec.PasswordRef.Name}, &fetchSecret); err != nil {
+		//	return nil, fmt.Errorf("cannot find passwordRef for user: %s, at namespace: %s, err: %s", user.Name, user.Namespace, err)
+		//}
 		passwordValue := fetchSecret.Data[user.Spec.PasswordRef.Key]
 		if len(passwordValue) == 0 {
 			return nil, fmt.Errorf("cannot find passwordRef key: %s for user: %s, at namespace: %s", user.Spec.PasswordRef.Key, user.Name, user.Namespace)
@@ -480,12 +485,12 @@ func genPassword() (string, error) {
 func selectVMUsers(ctx context.Context, cr *v1beta1.VMAuth, rclient client.Client) ([]*v1beta1.VMUser, error) {
 
 	var res []*v1beta1.VMUser
-	namespaces, userSelector, err := getNSWithSelector(ctx, rclient, cr.Spec.UserNamespaceSelector, cr.Spec.UserSelector, cr.Namespace)
+	namespaces, userSelector, err := getNSWithSelector(ctx, rclient.GetCRClient(), cr.Spec.UserNamespaceSelector, cr.Spec.UserSelector, cr.Namespace)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := selectWithMerge(ctx, rclient, namespaces, &victoriametricsv1beta1.VMUserList{}, userSelector, func(list client.ObjectList) {
+	if err := selectWithMerge(ctx, rclient.GetCRClient(), namespaces, &victoriametricsv1beta1.VMUserList{}, userSelector, func(list client2.ObjectList) {
 		l := list.(*victoriametricsv1beta1.VMUserList)
 		for _, item := range l.Items {
 			if !item.DeletionTimestamp.IsZero() {
@@ -514,16 +519,25 @@ func selectVMUserSecrets(ctx context.Context, rclient client.Client, vmUsers []*
 	var needToCreateSecrets []v1.Secret
 	for i := range vmUsers {
 		vmUser := vmUsers[i]
-		var vmus v1.Secret
-		if err := rclient.Get(ctx, types.NamespacedName{Namespace: vmUser.Namespace, Name: vmUser.SecretName()}, &vmus); err != nil {
+		//var vmus v1.Secret
+		vmus, err := rclient.GetCoreClient().Secrets(vmUser.Namespace).Get(ctx, vmUser.SecretName(), metav1.GetOptions{})
+		if err != nil {
 			if errors.IsNotFound(err) {
 				needToCreateSecrets = append(needToCreateSecrets, buildVMUserSecret(vmUser))
 				continue
 			}
 			return nil, nil, fmt.Errorf("cannot query kubernetes api for vmuser secrets: %w", err)
-		} else {
-			existsSecrets = append(existsSecrets, vmus)
 		}
+		existsSecrets = append(existsSecrets, *vmus)
+		//if err := rclient.Get(ctx, types.NamespacedName{Namespace: vmUser.Namespace, Name: vmUser.SecretName()}, &vmus); err != nil {
+		//	if errors.IsNotFound(err) {
+		//		needToCreateSecrets = append(needToCreateSecrets, buildVMUserSecret(vmUser))
+		//		continue
+		//	}
+		//	return nil, nil, fmt.Errorf("cannot query kubernetes api for vmuser secrets: %w", err)
+		//} else {
+		//	existsSecrets = append(existsSecrets, vmus)
+		//}
 	}
 	return needToCreateSecrets, existsSecrets, nil
 }

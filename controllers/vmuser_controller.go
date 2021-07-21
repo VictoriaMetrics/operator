@@ -25,6 +25,7 @@ import (
 
 	operatorv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory"
+	"github.com/VictoriaMetrics/operator/controllers/factory/client"
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
@@ -39,7 +40,8 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
+	client2 "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // VMUserReconciler reconciles a VMUser object
@@ -123,12 +125,8 @@ func (v *vmUsersSecretRefCache) getUserBySecret(namespacedSecret string) []types
 }
 
 // StartWatchForVMUserSecretRefs its needed to dynamically watch for secrets updates.
-func StartWatchForVMUserSecretRefs(ctx context.Context, rclient client.Client, cfg *rest.Config) error {
+func StartWatchForVMUserSecretRefs(ctx context.Context, rclient client2.Client, c *v12.CoreV1Client, cfg *rest.Config) error {
 
-	c, err := v12.NewForConfig(cfg)
-	if err != nil {
-		return err
-	}
 	secretSelector := labels.SelectorFromSet(map[string]string{
 		"app.kubernetes.io/name":      "vmuser",
 		"app.kubernetes.io/component": "monitoring",
@@ -189,7 +187,7 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	var instance operatorv1beta1.VMUser
 
-	err := r.Get(ctx, req.NamespacedName, &instance)
+	err := r.GetCRClient().Get(ctx, req.NamespacedName, &instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return ctrl.Result{}, nil
@@ -202,7 +200,7 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	vmAuthSyncMU.Lock()
 	defer vmAuthSyncMU.Unlock()
 	if instance.DeletionTimestamp == nil {
-		if err := finalize.AddFinalizer(ctx, r.Client, &instance); err != nil {
+		if err := finalize.AddFinalizer(ctx, r.Client.GetCRClient(), &instance); err != nil {
 			l.Error(err, "cannot add finalizer")
 			return ctrl.Result{}, err
 		}
@@ -211,7 +209,7 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	globalSecretRefCache.addRefByUser(&instance)
 
 	var vmauthes operatorv1beta1.VMAuthList
-	if err := r.List(ctx, &vmauthes); err != nil {
+	if err := r.GetCRClient().List(ctx, &vmauthes); err != nil {
 		l.Error(err, "cannot list VMAuth at cluster wide.")
 		return ctrl.Result{}, err
 	}
@@ -229,14 +227,14 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			continue
 		}
 		l.Info("reconciling vmuser for vmauth")
-		if err := factory.CreateOrUpdateVMAuth(ctx, currentVMAuth, r, r.BaseConf); err != nil {
+		if err := factory.CreateOrUpdateVMAuth(ctx, currentVMAuth, r.Client, r.BaseConf); err != nil {
 			l.Error(err, "cannot create or update vmauth deploy")
 			return ctrl.Result{}, err
 		}
 	}
 	if !instance.DeletionTimestamp.IsZero() {
 		// need to remove finalizer and delete related resources.
-		if err := finalize.OnVMUserDelete(ctx, r, &instance); err != nil {
+		if err := finalize.OnVMUserDelete(ctx, r.Client.GetCRClient(), &instance); err != nil {
 			l.Error(err, "cannot remove finalizer")
 			return ctrl.Result{}, err
 		}
@@ -249,6 +247,6 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 func (r *VMUserReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&operatorv1beta1.VMUser{}).
-		Owns(&v1.Secret{}).
+		Owns(&v1.Secret{}, builder.OnlyMetadata).
 		Complete(r)
 }

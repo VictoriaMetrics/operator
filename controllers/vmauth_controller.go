@@ -21,13 +21,13 @@ import (
 	"sync"
 
 	"github.com/VictoriaMetrics/operator/controllers/factory"
+	"github.com/VictoriaMetrics/operator/controllers/factory/client"
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	operatorv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 )
@@ -56,7 +56,7 @@ func (r *VMAuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	var instance operatorv1beta1.VMAuth
 
-	if err := r.Get(ctx, req.NamespacedName, &instance); err != nil {
+	if err := r.GetCRClient().Get(ctx, req.NamespacedName, &instance); err != nil {
 		if errors.IsNotFound(err) {
 			return ctrl.Result{}, nil
 		}
@@ -64,14 +64,14 @@ func (r *VMAuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	}
 
 	if instance.DeletionTimestamp != nil {
-		if err := finalize.OnVMAuthDelete(ctx, r, &instance); err != nil {
+		if err := finalize.OnVMAuthDelete(ctx, r.Client.GetCRClient(), &instance); err != nil {
 			l.Error(err, "cannot remove finalizers from vmauth")
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{}, nil
 	}
 
-	if err := finalize.AddFinalizer(ctx, r.Client, &instance); err != nil {
+	if err := finalize.AddFinalizer(ctx, r.Client.GetCRClient(), &instance); err != nil {
 		return ctrl.Result{}, err
 	}
 
@@ -93,7 +93,7 @@ func (r *VMAuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	//create vmservicescrape for object by default
 	if !r.BaseConf.DisableSelfServiceScrapeCreation {
-		err := factory.CreateVMServiceScrapeFromService(ctx, r, svc, instance.MetricPath())
+		err := factory.CreateVMServiceScrapeFromService(ctx, r.GetCRClient(), svc, instance.MetricPath())
 		if err != nil {
 			l.Error(err, "cannot create serviceScrape for vmauth")
 		}

@@ -82,11 +82,11 @@ func Test_reconcileMissingServices(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cl := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			if err := RemoveOrphanedServices(tt.args.ctx, cl, tt.args.args, tt.args.spec); (err != nil) != tt.wantErr {
+			if err := RemoveOrphanedServices(tt.args.ctx, cl.GetCRClient(), tt.args.args, tt.args.spec); (err != nil) != tt.wantErr {
 				t.Errorf("RemoveOrphanedServices() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			var wantSvcs v1.ServiceList
-			if err := cl.List(tt.args.ctx, &wantSvcs); err != nil {
+			if err := cl.GetCRClient().List(tt.args.ctx, &wantSvcs); err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
 			if len(wantSvcs.Items) != len(tt.wantServiceNames) {
@@ -181,12 +181,12 @@ func TestRemoveOrphanedDeployments(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cl := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			if err := RemoveOrphanedDeployments(tt.args.ctx, cl, tt.args.cr, tt.args.keepDeployments); (err != nil) != tt.wantErr {
+			if err := RemoveOrphanedDeployments(tt.args.ctx, cl.GetCRClient(), tt.args.cr, tt.args.keepDeployments); (err != nil) != tt.wantErr {
 				t.Errorf("RemoveOrphanedDeployments() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			var existDep appsv1.DeploymentList
 			opts := client.ListOptions{Namespace: tt.args.cr.GetNSName(), LabelSelector: labels.SelectorFromSet(tt.args.cr.SelectorLabels())}
-			if err := cl.List(tt.args.ctx, &existDep, &opts); err != nil {
+			if err := cl.GetCRClient().List(tt.args.ctx, &existDep, &opts); err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
 			if tt.wantDepCount != len(existDep.Items) {

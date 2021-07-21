@@ -23,12 +23,11 @@ import (
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/config"
+	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
-
-	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -132,7 +131,7 @@ func (r *VMAgentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&victoriametricsv1beta1.VMServiceScrape{}).
 		Owns(&v1.ConfigMap{}).
 		Owns(&v1.Service{}).
-		Owns(&v1.Secret{}).
+		//Owns(&v1.Secret{}).
 		Owns(&v1.ServiceAccount{}).
 		Owns(&policyv1beta1.PodDisruptionBudget{}).
 		Complete(r)

@@ -123,7 +123,7 @@ func (r *VMAlertReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&victoriametricsv1beta1.VMServiceScrape{}).
 		Owns(&v1.Service{}).
 		Owns(&v1.ConfigMap{}).
-		Owns(&v1.Secret{}).
+		//Owns(&v1.Secret{}).
 		Owns(&v1.ServiceAccount{}).
 		Owns(&policyv1beta1.PodDisruptionBudget{}).
 		Complete(r)

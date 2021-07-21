@@ -13,6 +13,7 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
 	"github.com/spf13/pflag"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -79,16 +80,18 @@ func RunManager(ctx context.Context) error {
 	setupLog.Info("Registering Components.")
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme:             scheme,
-		MetricsBindAddress: *metricsAddr,
-		Port:               9443,
-		LeaderElection:     *enableLeaderElection,
-		LeaderElectionID:   "57410f0d.victoriametrics.com",
+		Scheme:                scheme,
+		MetricsBindAddress:    *metricsAddr,
+		Port:                  9443,
+		LeaderElection:        *enableLeaderElection,
+		LeaderElectionID:      "57410f0d.victoriametrics.com",
+		ClientDisableCacheFor: []client.Object{&v1.Secret{}, &v1.ConfigMap{}},
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
 		return err
 	}
+
 	initC, err := client.New(mgr.GetConfig(), client.Options{Scheme: scheme})
 	if err != nil {
 		return err

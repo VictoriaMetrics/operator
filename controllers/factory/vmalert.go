@@ -127,7 +127,7 @@ func newDeployForVMAlert(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOpera
 		cr.Spec.Image.Repository = c.VMAlertDefault.Image
 	}
 	if cr.Spec.Image.Tag == "" {
-		cr.Spec.Image.Tag = c.VMAgentDefault.Version
+		cr.Spec.Image.Tag = c.VMAlertDefault.Version
 	}
 	if cr.Spec.Image.PullPolicy == "" {
 		cr.Spec.Image.PullPolicy = corev1.PullIfNotPresent

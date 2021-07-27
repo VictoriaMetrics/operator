@@ -584,8 +584,7 @@ func CreateOrUpdateRelabelConfigsAssets(ctx context.Context, cr *victoriametrics
 			return rclient.Create(ctx, assestsCM)
 		}
 	}
-	assestsCM.Labels = labels.Merge(existCM.Labels, assestsCM.Labels)
-	assestsCM.Annotations = labels.Merge(assestsCM.Annotations, existCM.Annotations)
+	assestsCM.Annotations = labels.Merge(existCM.Annotations, assestsCM.Annotations)
 	victoriametricsv1beta1.MergeFinalizers(assestsCM, victoriametricsv1beta1.FinalizerName)
 	return rclient.Update(ctx, assestsCM)
 }
@@ -615,6 +614,7 @@ func CreateOrUpdateTlsAssets(ctx context.Context, cr *victoriametricsv1beta1.VMA
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.TLSAssetName(),
 			Labels:          cr.Labels(),
+			Annotations:     cr.Annotations(),
 			OwnerReferences: cr.AsOwner(),
 			Namespace:       cr.Namespace,
 			Finalizers:      []string{victoriametricsv1beta1.FinalizerName},
@@ -634,7 +634,7 @@ func CreateOrUpdateTlsAssets(ctx context.Context, cr *victoriametricsv1beta1.VMA
 		}
 		return fmt.Errorf("cannot get existing tls secret: %s, for vmagent: %s, err: %w", tlsAssetsSecret.Name, cr.Name, err)
 	}
-	tlsAssetsSecret.Annotations = labels.Merge(tlsAssetsSecret.Annotations, currentAssetSecret.Annotations)
+	tlsAssetsSecret.Annotations = labels.Merge(currentAssetSecret.Annotations, tlsAssetsSecret.Annotations)
 	victoriametricsv1beta1.MergeFinalizers(tlsAssetsSecret, victoriametricsv1beta1.FinalizerName)
 	return rclient.Update(ctx, tlsAssetsSecret)
 }

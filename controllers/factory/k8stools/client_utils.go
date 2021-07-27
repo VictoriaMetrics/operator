@@ -10,7 +10,6 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/apimachinery/pkg/util/validation"
@@ -106,10 +105,10 @@ func UpdatePodAnnotations(ctx context.Context, rclient client.Client, selector m
 
 // ListClusterWideObjects helper func, default client cannot get objects at cluster scope,
 // this func retrieves objects and applies given callback to it.
-func ListClusterWideObjects(ctx context.Context, rclient client.Client, objectType client.ObjectList, cb func(r runtime.Object)) error {
-	if err := rclient.List(ctx, objectType); err != nil {
-		return err
-	}
-	cb(objectType)
-	return nil
-}
+//func ListClusterWideObjects(ctx context.Context, rclient client.Client, objectType client.ObjectList, cb func(r runtime.Object)) error {
+//	if err := rclient.List(ctx, objectType); err != nil {
+//		return err
+//	}
+//	cb(objectType)
+//	return nil
+//}

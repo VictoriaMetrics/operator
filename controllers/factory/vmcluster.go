@@ -272,11 +272,10 @@ func createOrUpdateVMSelect(ctx context.Context, cr *v1beta1.VMCluster, rclient 
 		return newSts, nil
 	}
 
-	newSts.Annotations = labels.Merge(newSts.Annotations, currentSts.Annotations)
-	newSts.Spec.Template.Annotations = labels.Merge(newSts.Spec.Template.Annotations, currentSts.Spec.Template.Annotations)
 	if currentSts.ManagedFields != nil {
 		newSts.ManagedFields = currentSts.ManagedFields
 	}
+	newSts.Annotations = labels.Merge(currentSts.Annotations, newSts.Annotations)
 	// hack for break reconcile loop at kubernetes 1.18
 	newSts.Status.Replicas = currentSts.Status.Replicas
 	// do not change replicas count.
@@ -336,6 +335,7 @@ func createOrUpdateVMInsert(ctx context.Context, cr *v1beta1.VMCluster, rclient 
 	if err != nil {
 		return nil, err
 	}
+
 	currentDeployment := &appsv1.Deployment{}
 	err = rclient.Get(ctx, types.NamespacedName{Name: newDeployment.Name, Namespace: newDeployment.Namespace}, currentDeployment)
 	if err != nil {
@@ -351,14 +351,12 @@ func createOrUpdateVMInsert(ctx context.Context, cr *v1beta1.VMCluster, rclient 
 		return nil, fmt.Errorf("cannot get vminsert deploy: %w", err)
 	}
 
-	newDeployment.Annotations = labels.Merge(newDeployment.Annotations, currentDeployment.Annotations)
-	newDeployment.Spec.Template.Annotations = labels.Merge(newDeployment.Spec.Template.Annotations, currentDeployment.Spec.Template.Annotations)
-
 	// inherit replicas count if hpa enabled.
 	if cr.Spec.VMInsert.HPA != nil {
 		newDeployment.Spec.Replicas = currentDeployment.Spec.Replicas
 	}
 
+	newDeployment.Annotations = labels.Merge(currentDeployment.Annotations, newDeployment.Annotations)
 	newDeployment.Finalizers = v1beta1.MergeFinalizers(newDeployment, v1beta1.FinalizerName)
 	err = rclient.Update(ctx, newDeployment)
 	if err != nil {
@@ -419,9 +417,8 @@ func createOrUpdateVMStorage(ctx context.Context, cr *v1beta1.VMCluster, rclient
 		return nil, fmt.Errorf("cannot get vmstorage sts: %w", err)
 	}
 	l.Info("vmstorage was found, updating it")
-	newSts.Annotations = labels.Merge(newSts.Annotations, currentSts.Annotations)
-	newSts.Spec.Template.Annotations = labels.Merge(newSts.Spec.Template.Annotations, currentSts.Spec.Template.Annotations)
 
+	newSts.Annotations = labels.Merge(currentSts.Annotations, newSts.Annotations)
 	// hack for break reconcile loop at kubernetes 1.18
 	newSts.Status.Replicas = currentSts.Status.Replicas
 

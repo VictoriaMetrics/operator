@@ -330,6 +330,7 @@ func createOrUpdateVMAuthConfig(ctx context.Context, rclient client.Client, cr *
 	} else {
 		log.Info("no current VMAuth configuration secret found", "currentConfigFound", curConfigFound)
 	}
+	s.Annotations = labels.Merge(curSecret.Annotations, s.Annotations)
 	victoriametricsv1beta1.MergeFinalizers(&curSecret, victoriametricsv1beta1.FinalizerName)
 
 	log.Info("updating VMAuth configuration secret")
@@ -365,17 +366,17 @@ func CreateOrUpdateVMAuthIngress(ctx context.Context, rclient client.Client, cr 
 		}
 		return nil
 	}
-	ig := buildIngressConfig(cr)
-	var existIg v1beta1.Ingress
-	if err := rclient.Get(ctx, types.NamespacedName{Namespace: ig.Namespace, Name: ig.Name}, &existIg); err != nil {
+	newIngress := buildIngressConfig(cr)
+	var existIngress v1beta1.Ingress
+	if err := rclient.Get(ctx, types.NamespacedName{Namespace: newIngress.Namespace, Name: newIngress.Name}, &existIngress); err != nil {
 		if errors.IsNotFound(err) {
-			return rclient.Create(ctx, ig)
+			return rclient.Create(ctx, newIngress)
 		}
 		return err
 	}
-	ig.Finalizers = victoriametricsv1beta1.MergeFinalizers(&existIg, victoriametricsv1beta1.FinalizerName)
-	ig.Annotations = labels.Merge(ig.Annotations, existIg.Annotations)
-	return rclient.Update(ctx, ig)
+	newIngress.Annotations = labels.Merge(existIngress.Annotations, newIngress.Annotations)
+	newIngress.Finalizers = victoriametricsv1beta1.MergeFinalizers(&existIngress, victoriametricsv1beta1.FinalizerName)
+	return rclient.Update(ctx, newIngress)
 }
 
 var defaultPt = v1beta1.PathTypePrefix

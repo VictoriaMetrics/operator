@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 
-	k8stools "github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
+	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 
 	v1beta12 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	v12 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -30,24 +30,16 @@ func CreateVMAgentClusterAccess(ctx context.Context, cr *v1beta12.VMAgent, rclie
 func ensureVMAgentCRExist(ctx context.Context, cr *v1beta12.VMAgent, rclient client.Client) error {
 	clusterRole := buildVMAgentClusterRole(cr)
 	var existsClusterRole v12.ClusterRole
-	err := k8stools.ListClusterWideObjects(ctx, rclient, &v12.ClusterRoleList{}, func(r runtime.Object) {
-		items := r.(*v12.ClusterRoleList)
-		for _, i := range items.Items {
-			if i.Name == clusterRole.Name {
-				existsClusterRole = i
-				return
-			}
+	if err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: clusterRole.Name}, &existsClusterRole); err != nil {
+		if errors.IsNotFound(err) {
+			return rclient.Create(ctx, clusterRole)
 		}
-	})
-	if err != nil {
-		return err
+		return fmt.Errorf("cannot get clusterRole for vmagent: %w", err)
 	}
-	if existsClusterRole.Name == "" {
-		return rclient.Create(ctx, clusterRole)
-	}
+
 	existsClusterRole.OwnerReferences = clusterRole.OwnerReferences
-	existsClusterRole.Labels = labels.Merge(existsClusterRole.Labels, clusterRole.Labels)
-	existsClusterRole.Annotations = labels.Merge(clusterRole.Annotations, existsClusterRole.Annotations)
+	existsClusterRole.Labels = clusterRole.Labels
+	existsClusterRole.Annotations = labels.Merge(existsClusterRole.Annotations, clusterRole.Annotations)
 	existsClusterRole.Rules = clusterRole.Rules
 	v1beta12.MergeFinalizers(&existsClusterRole, v1beta12.FinalizerName)
 	return rclient.Update(ctx, &existsClusterRole)
@@ -56,25 +48,16 @@ func ensureVMAgentCRExist(ctx context.Context, cr *v1beta12.VMAgent, rclient cli
 func ensureVMAgentCRBExist(ctx context.Context, cr *v1beta12.VMAgent, rclient client.Client) error {
 	clusterRoleBinding := buildVMAgentClusterRoleBinding(cr)
 	var existsClusterRoleBinding v12.ClusterRoleBinding
-	err := k8stools.ListClusterWideObjects(ctx, rclient, &v12.ClusterRoleBindingList{}, func(r runtime.Object) {
-		items := r.(*v12.ClusterRoleBindingList)
-		for _, i := range items.Items {
-			if i.Name == clusterRoleBinding.Name {
-				existsClusterRoleBinding = i
-				return
-			}
+	if err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: clusterRoleBinding.Name}, &existsClusterRoleBinding); err != nil {
+		if errors.IsNotFound(err) {
+			return rclient.Create(ctx, clusterRoleBinding)
 		}
-	})
-	if err != nil {
-		return err
-	}
-	if existsClusterRoleBinding.Name == "" {
-		return rclient.Create(ctx, clusterRoleBinding)
+		return fmt.Errorf("cannot get clusterroleBinding for vmagent: %w", err)
 	}
 
 	existsClusterRoleBinding.OwnerReferences = clusterRoleBinding.OwnerReferences
-	existsClusterRoleBinding.Labels = labels.Merge(existsClusterRoleBinding.Labels, clusterRoleBinding.Labels)
-	existsClusterRoleBinding.Annotations = labels.Merge(clusterRoleBinding.Annotations, existsClusterRoleBinding.Annotations)
+	existsClusterRoleBinding.Labels = clusterRoleBinding.Labels
+	existsClusterRoleBinding.Annotations = labels.Merge(existsClusterRoleBinding.Annotations, clusterRoleBinding.Annotations)
 	existsClusterRoleBinding.Subjects = clusterRoleBinding.Subjects
 	existsClusterRoleBinding.RoleRef = clusterRoleBinding.RoleRef
 	v1beta12.MergeFinalizers(&existsClusterRoleBinding, v1beta12.FinalizerName)

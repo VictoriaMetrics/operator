@@ -5,6 +5,8 @@ import (
 	"crypto/rand"
 	"fmt"
 	"math/big"
+	"net/url"
+	"path"
 	"sort"
 	"strings"
 
@@ -364,51 +366,120 @@ func generateVMAuthConfig(users []*v1beta1.VMUser, crdCache map[string]string) (
 	return yaml.Marshal(cfg)
 }
 
-// this function mutates user and fills missing fields,
-// such password or username.
-func genUserCfg(user *v1beta1.VMUser, crdUrlCache map[string]string) (yaml.MapSlice, error) {
-	r := yaml.MapSlice{}
+func genUrlMaps(userName string, refs []v1beta1.TargetRef, result yaml.MapSlice, crdUrlCache map[string]string) (yaml.MapSlice, error) {
 	urlMaps := []yaml.MapSlice{}
-	for i := range user.Spec.TargetRefs {
-		// build url map.
+	handleRef := func(ref v1beta1.TargetRef) (string, error) {
+
+		var urlPrefix string
+		if ref.Static != nil {
+			if ref.Static.URL == "" {
+				return "", fmt.Errorf("static.url cannot be empty for user: %s", userName)
+			}
+			urlPrefix = ref.Static.URL
+
+		} else {
+			urlPrefix = crdUrlCache[ref.CRD.AsKey()]
+			if urlPrefix == "" {
+				return "", fmt.Errorf("cannot find crdRef target: %q, for user: %s", ref.CRD.AsKey(), userName)
+			}
+
+		}
+		if ref.TargetPathSuffix != "" {
+			parsedSuffix, err := url.Parse(ref.TargetPathSuffix)
+			if err != nil {
+				return "", fmt.Errorf("cannot parse targetPath: %q, err: %w", ref.TargetPathSuffix, err)
+			}
+
+			parsedUrlPrefix, err := url.Parse(urlPrefix)
+			if err != nil {
+				return "", fmt.Errorf("cannot parse urlPrefix: %q,err: %w", urlPrefix, err)
+			}
+			parsedUrlPrefix.Path = path.Join(parsedUrlPrefix.Path, parsedSuffix.Path)
+			suffixQuery := parsedSuffix.Query()
+			// update query params if needed.
+			if len(suffixQuery) > 0 {
+				urlQ := parsedUrlPrefix.Query()
+				for k, v := range suffixQuery {
+					urlQ[k] = v
+				}
+				parsedUrlPrefix.RawQuery = urlQ.Encode()
+			}
+
+			urlPrefix = parsedUrlPrefix.String()
+		}
+		return urlPrefix, nil
+	}
+	if len(refs) == 1 && len(refs[0].Paths) < 2 {
+		srcPaths := refs[0].Paths
+		var isDefaultRoute bool
+		switch len(srcPaths) {
+		case 0:
+			// default route to everything
+			isDefaultRoute = true
+		case 1:
+			// probably default route
+			switch srcPaths[0] {
+			case "/", "/*", "/.*":
+				isDefaultRoute = true
+			}
+
+		}
+		// special case, use different config syntax.
+		if isDefaultRoute {
+			ref := refs[0]
+			urlPrefix, err := handleRef(ref)
+			if err != nil {
+				return result, fmt.Errorf("cannot build urlPrefix for one ref, err: %w", err)
+			}
+			result = append(result, yaml.MapItem{Key: "url_prefix", Value: urlPrefix})
+			return result, nil
+		}
+
+	}
+
+	for i := range refs {
 		urlMap := yaml.MapSlice{}
-		ref := user.Spec.TargetRefs[i]
+		ref := refs[i]
 		if ref.Static == nil && ref.CRD == nil {
 			continue
 		}
-		if ref.Static != nil {
-			if ref.Static.URL == "" {
-				return nil, fmt.Errorf("static.url cannot be empty for user: %s", user.Name)
-			}
-			urlMap = append(urlMap, yaml.MapItem{
-				Key:   "url_prefix",
-				Value: ref.Static.URL,
-			})
-		} else {
-			url := crdUrlCache[ref.CRD.AsKey()]
-			if url == "" {
-				return nil, fmt.Errorf("cannot find crdRef target: %q, for user: %s", ref.CRD.AsKey(), user.Name)
-			}
-			urlMap = append(urlMap, yaml.MapItem{
-				Key:   "url_prefix",
-				Value: crdUrlCache[ref.CRD.AsKey()],
-			})
+		urlPrefix, err := handleRef(ref)
+		if err != nil {
+			return result, err
 		}
+
 		paths := ref.Paths
 		if len(paths) == 0 {
 			paths = append(paths, "/.*")
 		}
+		if len(paths) == 1 {
+			switch paths[0] {
+			case "/", "/*":
+				paths = []string{"/.*"}
+			}
+		}
+		urlMap = append(urlMap, yaml.MapItem{
+			Key:   "url_prefix",
+			Value: urlPrefix,
+		})
 		urlMap = append(urlMap, yaml.MapItem{
 			Key:   "src_paths",
 			Value: paths,
 		})
 		urlMaps = append(urlMaps, urlMap)
 	}
-	// no routes was found, nothing to do.
-	if len(urlMaps) == 0 {
-		return nil, fmt.Errorf("no routes was found for VMuser: %s, ns: %s", user.Name, user.Namespace)
+	result = append(result, yaml.MapItem{Key: "url_map", Value: urlMaps})
+	return result, nil
+}
+
+// this function mutates user and fills missing fields,
+// such password or username.
+func genUserCfg(user *v1beta1.VMUser, crdUrlCache map[string]string) (yaml.MapSlice, error) {
+	r := yaml.MapSlice{}
+	r, err := genUrlMaps(user.Name, user.Spec.TargetRefs, r, crdUrlCache)
+	if err != nil {
+		return nil, fmt.Errorf("cannot generate urlMaps for user: %w", err)
 	}
-	r = append(r, yaml.MapItem{Key: "url_map", Value: urlMaps})
 
 	// generate user access config.
 	var username, password, token string

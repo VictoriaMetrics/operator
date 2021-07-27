@@ -49,10 +49,13 @@ type TargetRef struct {
 	// Paths - matched path to route.
 	// +optional
 	Paths []string `json:"paths,omitempty"`
-	// todo enable it if needed.
-	// QueryParams - additional query params for target.
-	// +optional
+
 	// QueryParams []string `json:"queryParams,omitempty"`
+	// TargetPathSuffix allows to add some suffix to the target path
+	// It allows to hide tenant configuration from user with crd as ref.
+	// it also may contain any url encoded params.
+	// +optional
+	TargetPathSuffix string `json:"target_path_suffx,omitempty"`
 }
 
 // CRDRef describe CRD target reference.

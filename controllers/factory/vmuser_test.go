@@ -101,6 +101,89 @@ password: pass
 bearer_token: secret-token
 `,
 		},
+		{
+			name: "with crd and custom suffix",
+			args: args{
+				user: &v1beta1.VMUser{
+					Spec: v1beta1.VMUserSpec{
+						BearerToken: pointer.StringPtr("secret-token"),
+						TargetRefs: []v1beta1.TargetRef{
+							{
+								CRD: &v1beta1.CRDRef{
+									Kind:      "VMAgent",
+									Name:      "base",
+									Namespace: "monitoring",
+								},
+								TargetPathSuffix: "/insert/0/prometheus?extra_label=key=value",
+								Paths: []string{
+									"/api/v1/write",
+									"/api/v1/targets",
+									"/targets",
+								},
+							},
+							{
+								Static:           &v1beta1.StaticRef{URL: "http://vmcluster-remote.mydomain.com:8401"},
+								TargetPathSuffix: "/insert/0/prometheus?extra_label=key=value",
+								Paths: []string{
+									"/",
+								},
+							},
+							{
+								CRD: &v1beta1.CRDRef{
+									Kind:      "VMSingle",
+									Namespace: "monitoring",
+									Name:      "db",
+								},
+							},
+						},
+					},
+				},
+				crdUrlCache: map[string]string{
+					"VMAgent/monitoring/base": "http://vmagent-base.monitoring.svc:8429",
+					"VMSingle/monitoring/db":  "http://vmsingle-b.monitoring.svc:8429",
+				},
+			},
+			want: `url_map:
+- url_prefix: http://vmagent-base.monitoring.svc:8429/insert/0/prometheus?extra_label=key%3Dvalue
+  src_paths:
+  - /api/v1/write
+  - /api/v1/targets
+  - /targets
+- url_prefix: http://vmcluster-remote.mydomain.com:8401/insert/0/prometheus?extra_label=key%3Dvalue
+  src_paths:
+  - /.*
+- url_prefix: http://vmsingle-b.monitoring.svc:8429
+  src_paths:
+  - /.*
+bearer_token: secret-token
+`,
+		},
+		{
+			name: "with one target",
+			args: args{
+				user: &v1beta1.VMUser{
+					Spec: v1beta1.VMUserSpec{
+						BearerToken: pointer.StringPtr("secret-token"),
+						TargetRefs: []v1beta1.TargetRef{
+							{
+								CRD: &v1beta1.CRDRef{
+									Kind:      "VMAgent",
+									Name:      "base",
+									Namespace: "monitoring",
+								},
+							},
+						},
+					},
+				},
+				crdUrlCache: map[string]string{
+					"VMAgent/monitoring/base": "http://vmagent-base.monitoring.svc:8429",
+					"VMSingle/monitoring/db":  "http://vmsingle-b.monitoring.svc:8429",
+				},
+			},
+			want: `url_prefix: http://vmagent-base.monitoring.svc:8429
+bearer_token: secret-token
+`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -282,15 +365,9 @@ func Test_buildVMAuthConfig(t *testing.T) {
 				},
 			},
 			want: `users:
-- url_map:
-  - url_prefix: http://some-static
-    src_paths:
-    - /
+- url_prefix: http://some-static
   bearer_token: bearer
-- url_map:
-  - url_prefix: http://vmagent-test.default.svc:8429
-    src_paths:
-    - /
+- url_prefix: http://vmagent-test.default.svc:8429
   bearer_token: bearer-token-2
 `,
 		},
@@ -380,20 +457,11 @@ func Test_buildVMAuthConfig(t *testing.T) {
 				},
 			},
 			want: `users:
-- url_map:
-  - url_prefix: http://some-static
-    src_paths:
-    - /
+- url_prefix: http://some-static
   bearer_token: bearer
-- url_map:
-  - url_prefix: http://vmagent-test.default.svc:8429
-    src_paths:
-    - /
+- url_prefix: http://vmagent-test.default.svc:8429
   bearer_token: bearer-token-2
-- url_map:
-  - url_prefix: http://vmagent-test.default.svc:8429
-    src_paths:
-    - /
+- url_prefix: http://vmagent-test.default.svc:8429
   username: some-user
   password: generated-password
 `,

@@ -756,8 +756,7 @@ spec:
                   type: integer
               type: object
             replicaCount:
-              description: ReplicaCount is the expected size of the VMAuth it can
-                be 0 or 1 if you need more - use vm cluster
+              description: ReplicaCount is the expected size of the VMAuth
               format: int32
               type: integer
             resources:

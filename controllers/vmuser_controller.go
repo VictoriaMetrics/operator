@@ -31,6 +31,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/watch"
@@ -38,6 +39,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -128,15 +130,20 @@ func StartWatchForVMUserSecretRefs(ctx context.Context, rclient client.Client, c
 	if err != nil {
 		return err
 	}
+	secretSelector := labels.SelectorFromSet(map[string]string{
+		"app.kubernetes.io/name":      "vmuser",
+		"app.kubernetes.io/component": "monitoring",
+		"managed-by":                  "vm-operator",
+	}).String()
 	inf := cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 				// todo add single namespace filter.
-				return c.Secrets("").List(ctx, metav1.ListOptions{})
+				return c.Secrets("").List(ctx, metav1.ListOptions{LabelSelector: secretSelector})
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				// todo add single namespace filter.
-				return c.Secrets("").Watch(ctx, metav1.ListOptions{})
+				return c.Secrets("").Watch(ctx, metav1.ListOptions{LabelSelector: secretSelector})
 			},
 		},
 		&v1.Secret{},
@@ -243,6 +250,6 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 func (r *VMUserReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&operatorv1beta1.VMUser{}).
-		Owns(&v1.Secret{}).
+		Owns(&v1.Secret{}, builder.OnlyMetadata).
 		Complete(r)
 }

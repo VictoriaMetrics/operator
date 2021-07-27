@@ -20,6 +20,7 @@ import (
 	"context"
 
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/internal/config"
@@ -102,7 +103,7 @@ func (r *VMAlertmanagerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&appsv1.StatefulSet{}).
 		Owns(&v1.Service{}).
 		Owns(&victoriametricsv1beta1.VMServiceScrape{}).
-		Owns(&v1.Secret{}).
+		Owns(&v1.Secret{}, builder.OnlyMetadata).
 		Owns(&v1.ServiceAccount{}).
 		Owns(&policyv1beta1.PodDisruptionBudget{}).
 		Complete(r)

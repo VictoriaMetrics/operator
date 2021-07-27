@@ -106,8 +106,10 @@ func UpdatePodAnnotations(ctx context.Context, rclient client.Client, selector m
 
 // ListClusterWideObjects helper func, default client cannot get objects at cluster scope,
 // this func retrieves objects and applies given callback to it.
-func ListClusterWideObjects(ctx context.Context, rclient client.Client, objectType client.ObjectList, cb func(r runtime.Object)) error {
-	if err := rclient.List(ctx, objectType); err != nil {
+// Deprecated
+// use direct client.Get instead
+func ListClusterWideObjects(ctx context.Context, rclient client.Client, objectType client.ObjectList, crLabels map[string]string, cb func(r runtime.Object)) error {
+	if err := rclient.List(ctx, objectType, &client.ListOptions{LabelSelector: labels.SelectorFromSet(crLabels)}); err != nil {
 		return err
 	}
 	cb(objectType)

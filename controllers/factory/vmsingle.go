@@ -7,6 +7,7 @@ import (
 	"sort"
 
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
+	"k8s.io/apimachinery/pkg/labels"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
@@ -16,7 +17,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -53,7 +53,7 @@ func CreateVMSingleStorage(ctx context.Context, cr *victoriametricsv1beta1.VMSin
 		l.Info("volume requests isn't same, update required")
 	}
 	newPvc.Spec = existPvc.Spec
-	newPvc.Annotations = labels.Merge(newPvc.Annotations, existPvc.Annotations)
+	newPvc.Annotations = labels.Merge(existPvc.Annotations, newPvc.Annotations)
 	newPvc.Finalizers = victoriametricsv1beta1.MergeFinalizers(existPvc, victoriametricsv1beta1.FinalizerName)
 
 	if err := rclient.Update(ctx, newPvc); err != nil {
@@ -113,8 +113,7 @@ func CreateOrUpdateVMSingle(ctx context.Context, cr *victoriametricsv1beta1.VMSi
 	}
 	l.Info("vm vmsingle was found, updating it")
 
-	newDeploy.Annotations = labels.Merge(newDeploy.Annotations, currentDeploy.Annotations)
-	newDeploy.Spec.Template.Annotations = labels.Merge(newDeploy.Spec.Template.Annotations, currentDeploy.Spec.Template.Annotations)
+	newDeploy.Annotations = labels.Merge(currentDeploy.Annotations, newDeploy.Annotations)
 	newDeploy.Finalizers = victoriametricsv1beta1.MergeFinalizers(currentDeploy, victoriametricsv1beta1.FinalizerName)
 
 	if err := rclient.Update(ctx, newDeploy); err != nil {

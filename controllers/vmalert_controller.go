@@ -120,12 +120,12 @@ func (r *VMAlertReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 func (r *VMAlertReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&victoriametricsv1beta1.VMAlert{}).
-		Owns(&appsv1.Deployment{}).
-		Owns(&victoriametricsv1beta1.VMServiceScrape{}).
-		Owns(&v1.Service{}).
+		Owns(&appsv1.Deployment{}, builder.OnlyMetadata).
+		Owns(&victoriametricsv1beta1.VMServiceScrape{}, builder.OnlyMetadata).
+		Owns(&v1.Service{}, builder.OnlyMetadata).
 		Owns(&v1.ConfigMap{}, builder.OnlyMetadata).
 		Owns(&v1.Secret{}, builder.OnlyMetadata).
-		Owns(&v1.ServiceAccount{}).
+		Owns(&v1.ServiceAccount{}, builder.OnlyMetadata).
 		Owns(&policyv1beta1.PodDisruptionBudget{}).
 		Complete(r)
 }

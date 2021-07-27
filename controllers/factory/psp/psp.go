@@ -5,14 +5,12 @@ import (
 	"fmt"
 
 	v1beta12 "github.com/VictoriaMetrics/operator/api/v1beta1"
-	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/api/policy/v1beta1"
 	v12 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -60,60 +58,42 @@ func CreateServiceAccountForCRD(ctx context.Context, cr CRDObject, rclient clien
 
 	existSA.OwnerReferences = newSA.OwnerReferences
 	existSA.Finalizers = v1beta12.MergeFinalizers(&existSA, v1beta12.FinalizerName)
-	existSA.Annotations = labels.Merge(newSA.Annotations, existSA.Annotations)
-	existSA.Labels = labels.Merge(existSA.Labels, newSA.Labels)
+	existSA.Annotations = labels.Merge(existSA.Annotations, newSA.Annotations)
+	existSA.Labels = newSA.Labels
 	return rclient.Update(ctx, &existSA)
 }
 
 func ensurePSPExists(ctx context.Context, cr CRDObject, rclient client.Client) error {
-	defaultPSP := BuildPSP(cr)
-	var existPSP v1beta1.PodSecurityPolicy
-	err := k8stools.ListClusterWideObjects(ctx, rclient, &v1beta1.PodSecurityPolicyList{}, cr.Labels(), func(r runtime.Object) {
-		items := r.(*v1beta1.PodSecurityPolicyList)
-		for _, i := range items.Items {
-			if i.Name == defaultPSP.Name {
-				existPSP = i
-				return
-			}
-		}
-	})
-	if err != nil {
-		return err
-	}
-	if existPSP.Name == "" {
-		return rclient.Create(ctx, defaultPSP)
-	}
-	// check if its ours, if so, update it
+
+	// fast path.
 	if cr.GetPSPName() != cr.PrefixedName() {
 		return nil
 	}
-	defaultPSP.Annotations = labels.Merge(defaultPSP.Annotations, existPSP.Labels)
-	defaultPSP.Labels = labels.Merge(existPSP.Labels, defaultPSP.Labels)
-	defaultPSP.Finalizers = v1beta12.MergeFinalizers(&existPSP, v1beta12.FinalizerName)
-	return rclient.Update(ctx, defaultPSP)
+	newPSP := BuildPSP(cr)
+	var existPSP v1beta1.PodSecurityPolicy
+	if err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.GetNSName(), Name: newPSP.Name}, &existPSP); err != nil {
+		if errors.IsNotFound(err) {
+			return rclient.Create(ctx, newPSP)
+		}
+		return fmt.Errorf("cannot get exists PSP :%w", err)
+	}
+	newPSP.Annotations = labels.Merge(existPSP.Annotations, newPSP.Annotations)
+	newPSP.Finalizers = v1beta12.MergeFinalizers(&existPSP, v1beta12.FinalizerName)
+	return rclient.Update(ctx, newPSP)
 }
 
 func ensureClusterRoleExists(ctx context.Context, cr CRDObject, rclient client.Client) error {
 	clusterRole := buildClusterRoleForPSP(cr)
 	var existsClusterRole v12.ClusterRole
-	err := k8stools.ListClusterWideObjects(ctx, rclient, &v12.ClusterRoleList{}, cr.Labels(), func(r runtime.Object) {
-		items := r.(*v12.ClusterRoleList)
-		for _, i := range items.Items {
-			if i.Name == clusterRole.Name {
-				existsClusterRole = i
-				return
-			}
+	if err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.GetNSName(), Name: clusterRole.Name}, &existsClusterRole); err != nil {
+		if errors.IsNotFound(err) {
+			return rclient.Create(ctx, clusterRole)
+
 		}
-	})
-	if err != nil {
-		return err
-	}
-	if existsClusterRole.Name == "" {
-		return rclient.Create(ctx, clusterRole)
+		return fmt.Errorf("cannot get existClusterRole: %w", err)
 	}
 
-	clusterRole.Annotations = labels.Merge(clusterRole.Annotations, existsClusterRole.Annotations)
-	clusterRole.Labels = labels.Merge(existsClusterRole.Labels, clusterRole.Labels)
+	clusterRole.Annotations = labels.Merge(existsClusterRole.Annotations, clusterRole.Annotations)
 	clusterRole.Finalizers = v1beta12.MergeFinalizers(&existsClusterRole, v1beta12.FinalizerName)
 	return rclient.Update(ctx, clusterRole)
 }
@@ -121,24 +101,15 @@ func ensureClusterRoleExists(ctx context.Context, cr CRDObject, rclient client.C
 func ensureClusterRoleBindingExists(ctx context.Context, cr CRDObject, rclient client.Client) error {
 	clusterRoleBinding := buildClusterRoleBinding(cr)
 	var existsClusterRoleBinding v12.ClusterRoleBinding
-	err := k8stools.ListClusterWideObjects(ctx, rclient, &v12.ClusterRoleBindingList{}, cr.Labels(), func(r runtime.Object) {
-		items := r.(*v12.ClusterRoleBindingList)
-		for _, i := range items.Items {
-			if i.Name == clusterRoleBinding.Name {
-				existsClusterRoleBinding = i
-				return
-			}
+	if err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.GetNSName(), Name: clusterRoleBinding.Name}, &existsClusterRoleBinding); err != nil {
+		if errors.IsNotFound(err) {
+			return rclient.Create(ctx, clusterRoleBinding)
+
 		}
-	})
-	if err != nil {
-		return err
-	}
-	if existsClusterRoleBinding.Name == "" {
-		return rclient.Create(ctx, clusterRoleBinding)
+		return fmt.Errorf("cannot get clusterRoleBinding: %w", err)
 	}
 
-	clusterRoleBinding.Labels = labels.Merge(existsClusterRoleBinding.Labels, clusterRoleBinding.Labels)
-	clusterRoleBinding.Annotations = labels.Merge(clusterRoleBinding.Annotations, existsClusterRoleBinding.Annotations)
+	clusterRoleBinding.Annotations = labels.Merge(existsClusterRoleBinding.Annotations, clusterRoleBinding.Annotations)
 	clusterRoleBinding.Finalizers = v1beta12.MergeFinalizers(&existsClusterRoleBinding, v1beta12.FinalizerName)
 	return rclient.Update(ctx, clusterRoleBinding)
 }

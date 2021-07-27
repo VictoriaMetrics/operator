@@ -7,9 +7,8 @@ import (
 	"fmt"
 	"strings"
 
-	"k8s.io/apimachinery/pkg/labels"
-
 	"k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/apimachinery/pkg/labels"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
@@ -111,6 +110,8 @@ func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *victoriametricsv
 		log.Info("no current VMAgent configuration secret found", "currentConfigFound", curConfigFound)
 	}
 
+	s.Annotations = labels.Merge(curSecret.Annotations, s.Annotations)
+	s.Finalizers = victoriametricsv1beta1.MergeFinalizers(curSecret, victoriametricsv1beta1.FinalizerName)
 	log.Info("updating VMAgent configuration secret")
 	return rclient.Update(ctx, s)
 }
@@ -732,7 +733,7 @@ func CreateVMServiceScrapeFromService(ctx context.Context, rclient client.Client
 	}
 	existVSS.Spec = scrapeSvc.Spec
 	existVSS.Labels = scrapeSvc.Labels
-	existVSS.Annotations = labels.Merge(scrapeSvc.Annotations, existVSS.Annotations)
+	existVSS.Annotations = scrapeSvc.Annotations
 	if !equality.Semantic.DeepDerivative(scrapeSvc.Spec, existVSS.Spec) || !equality.Semantic.DeepDerivative(scrapeSvc.Labels, existVSS.Labels) || !equality.Semantic.DeepDerivative(scrapeSvc.Annotations, existVSS.Annotations) {
 		return rclient.Update(ctx, &existVSS)
 	}

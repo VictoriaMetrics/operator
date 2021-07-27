@@ -129,12 +129,12 @@ func (r *VMAgentReconciler) Scheme() *runtime.Scheme {
 func (r *VMAgentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&victoriametricsv1beta1.VMAgent{}).
-		Owns(&appsv1.Deployment{}).
-		Owns(&victoriametricsv1beta1.VMServiceScrape{}).
+		Owns(&appsv1.Deployment{}, builder.OnlyMetadata).
+		Owns(&victoriametricsv1beta1.VMServiceScrape{}, builder.OnlyMetadata).
 		Owns(&v1.ConfigMap{}, builder.OnlyMetadata).
-		Owns(&v1.Service{}).
+		Owns(&v1.Service{}, builder.OnlyMetadata).
 		Owns(&v1.Secret{}, builder.OnlyMetadata).
-		Owns(&v1.ServiceAccount{}).
-		Owns(&policyv1beta1.PodDisruptionBudget{}).
+		Owns(&v1.ServiceAccount{}, builder.OnlyMetadata).
+		Owns(&policyv1beta1.PodDisruptionBudget{}, builder.OnlyMetadata).
 		Complete(r)
 }

@@ -20,6 +20,7 @@ import (
 	"context"
 
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/internal/config"
@@ -113,10 +114,9 @@ func (r *VMSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 func (r *VMSingleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&victoriametricsv1beta1.VMSingle{}).
-		Owns(&appsv1.Deployment{}).
-		Owns(&v1.Service{}).
+		Owns(&appsv1.Deployment{}, builder.OnlyMetadata).
+		Owns(&v1.Service{}, builder.OnlyMetadata).
 		Owns(&victoriametricsv1beta1.VMServiceScrape{}).
-		Owns(&v1.Service{}).
-		Owns(&v1.ServiceAccount{}).
+		Owns(&v1.ServiceAccount{}, builder.OnlyMetadata).
 		Complete(r)
 }

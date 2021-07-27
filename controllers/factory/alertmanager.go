@@ -117,10 +117,10 @@ func CreateOrUpdateAlertManager(ctx context.Context, cr *victoriametricsv1beta1.
 }
 
 func updateStsForAlertManager(ctx context.Context, rclient client.Client, oldSts, newSts *appsv1.StatefulSet) error {
-	newSts.Annotations = labels.Merge(newSts.Annotations, oldSts.Annotations)
-	newSts.Spec.Template.Annotations = labels.Merge(newSts.Spec.Template.Annotations, oldSts.Spec.Template.Annotations)
+
 	// hack for break reconcile loop at kubernetes 1.18
 	newSts.Status.Replicas = oldSts.Status.Replicas
+	newSts.Annotations = labels.Merge(oldSts.Annotations, newSts.Annotations)
 	newSts.Finalizers = victoriametricsv1beta1.MergeFinalizers(oldSts, victoriametricsv1beta1.FinalizerName)
 
 	return rclient.Update(ctx, newSts)
@@ -580,7 +580,7 @@ func createDefaultAMConfig(ctx context.Context, cr *victoriametricsv1beta1.VMAle
 	if cr.Spec.ConfigRawYaml == "" {
 		cr.Spec.ConfigRawYaml = defaultAMConfig
 	}
-	defaultAMSecretConfig := &v1.Secret{
+	newAMSecretConfig := &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.Spec.ConfigSecret,
 			Namespace:       cr.Namespace,
@@ -595,15 +595,15 @@ func createDefaultAMConfig(ctx context.Context, cr *victoriametricsv1beta1.VMAle
 	err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.Spec.ConfigSecret}, &existAMSecretConfig)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			log.Info("creating default alertmanager config with secret", "secret_name", defaultAMSecretConfig.Name)
-			return rclient.Create(ctx, defaultAMSecretConfig)
+			log.Info("creating default alertmanager config with secret", "secret_name", newAMSecretConfig.Name)
+			return rclient.Create(ctx, newAMSecretConfig)
 		}
 		return err
 	}
-	defaultAMSecretConfig.Annotations = labels.Merge(defaultAMSecretConfig.Annotations, existAMSecretConfig.Annotations)
 
-	defaultAMSecretConfig.Finalizers = victoriametricsv1beta1.MergeFinalizers(&existAMSecretConfig, victoriametricsv1beta1.FinalizerName)
-	return rclient.Update(ctx, defaultAMSecretConfig)
+	newAMSecretConfig.Annotations = labels.Merge(existAMSecretConfig.Annotations, newAMSecretConfig.Annotations)
+	newAMSecretConfig.Finalizers = victoriametricsv1beta1.MergeFinalizers(&existAMSecretConfig, victoriametricsv1beta1.FinalizerName)
+	return rclient.Update(ctx, newAMSecretConfig)
 }
 
 func subPathForStorage(s *victoriametricsv1beta1.StorageSpec) string {

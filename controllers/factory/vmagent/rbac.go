@@ -5,11 +5,13 @@ import (
 	"fmt"
 
 	"k8s.io/apimachinery/pkg/api/errors"
+
 	"k8s.io/apimachinery/pkg/types"
 
 	v1beta12 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	v12 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -30,6 +32,7 @@ func CreateVMAgentClusterAccess(ctx context.Context, cr *v1beta12.VMAgent, rclie
 func ensureVMAgentCRExist(ctx context.Context, cr *v1beta12.VMAgent, rclient client.Client) error {
 	clusterRole := buildVMAgentClusterRole(cr)
 	var existsClusterRole v12.ClusterRole
+
 	if err := rclient.Get(ctx, types.NamespacedName{Name: clusterRole.Name, Namespace: cr.Namespace}, &existsClusterRole); err != nil {
 		if errors.IsNotFound(err) {
 			return rclient.Create(ctx, clusterRole)
@@ -38,8 +41,8 @@ func ensureVMAgentCRExist(ctx context.Context, cr *v1beta12.VMAgent, rclient cli
 	}
 
 	existsClusterRole.OwnerReferences = clusterRole.OwnerReferences
-	existsClusterRole.Labels = labels.Merge(existsClusterRole.Labels, clusterRole.Labels)
-	existsClusterRole.Annotations = labels.Merge(clusterRole.Annotations, existsClusterRole.Annotations)
+	existsClusterRole.Labels = clusterRole.Labels
+	existsClusterRole.Annotations = labels.Merge(existsClusterRole.Annotations, clusterRole.Annotations)
 	existsClusterRole.Rules = clusterRole.Rules
 	v1beta12.MergeFinalizers(&existsClusterRole, v1beta12.FinalizerName)
 	return rclient.Update(ctx, &existsClusterRole)
@@ -48,6 +51,7 @@ func ensureVMAgentCRExist(ctx context.Context, cr *v1beta12.VMAgent, rclient cli
 func ensureVMAgentCRBExist(ctx context.Context, cr *v1beta12.VMAgent, rclient client.Client) error {
 	clusterRoleBinding := buildVMAgentClusterRoleBinding(cr)
 	var existsClusterRoleBinding v12.ClusterRoleBinding
+
 	if err := rclient.Get(ctx, types.NamespacedName{Name: clusterRoleBinding.Name, Namespace: cr.Namespace}, &existsClusterRoleBinding); err != nil {
 		if errors.IsNotFound(err) {
 			return rclient.Create(ctx, clusterRoleBinding)
@@ -56,8 +60,8 @@ func ensureVMAgentCRBExist(ctx context.Context, cr *v1beta12.VMAgent, rclient cl
 	}
 
 	existsClusterRoleBinding.OwnerReferences = clusterRoleBinding.OwnerReferences
-	existsClusterRoleBinding.Labels = labels.Merge(existsClusterRoleBinding.Labels, clusterRoleBinding.Labels)
-	existsClusterRoleBinding.Annotations = labels.Merge(clusterRoleBinding.Annotations, existsClusterRoleBinding.Annotations)
+	existsClusterRoleBinding.Labels = clusterRoleBinding.Labels
+	existsClusterRoleBinding.Annotations = labels.Merge(existsClusterRoleBinding.Annotations, clusterRoleBinding.Annotations)
 	existsClusterRoleBinding.Subjects = clusterRoleBinding.Subjects
 	existsClusterRoleBinding.RoleRef = clusterRoleBinding.RoleRef
 	v1beta12.MergeFinalizers(&existsClusterRoleBinding, v1beta12.FinalizerName)

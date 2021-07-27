@@ -156,8 +156,6 @@ func reconcileServiceForCRD(ctx context.Context, rclient client.Client, newServi
 		return nil, fmt.Errorf("cannot get service for existing service: %w", err)
 	}
 	// lets save annotations and labels even after recreation.
-	newService.Annotations = labels.Merge(existingService.Annotations, newService.Annotations)
-	newService.Labels = labels.Merge(existingService.Labels, newService.Labels)
 	if newService.Spec.Type != existingService.Spec.Type {
 		// type mismatch.
 		// need to remove it and recreate.
@@ -212,7 +210,7 @@ func reconcileServiceForCRD(ctx context.Context, rclient client.Client, newServi
 	if existingService.ResourceVersion != "" {
 		newService.ResourceVersion = existingService.ResourceVersion
 	}
-
+	newService.Annotations = labels.Merge(existingService.Annotations, newService.Annotations)
 	newService.Finalizers = victoriametricsv1beta1.MergeFinalizers(existingService, victoriametricsv1beta1.FinalizerName)
 
 	err = rclient.Update(ctx, newService)
@@ -233,8 +231,7 @@ func reconcileDeploy(ctx context.Context, rclient client.Client, newDeploy *apps
 		}
 		return fmt.Errorf("cannot get deploy: %s,err: %w", newDeploy.Name, err)
 	}
-	newDeploy.Annotations = labels.Merge(newDeploy.Annotations, currentDeploy.Annotations)
-	newDeploy.Spec.Template.Annotations = labels.Merge(newDeploy.Spec.Template.Annotations, currentDeploy.Spec.Template.Annotations)
+	newDeploy.Annotations = labels.Merge(currentDeploy.Annotations, newDeploy.Annotations)
 	newDeploy.Finalizers = victoriametricsv1beta1.MergeFinalizers(newDeploy, victoriametricsv1beta1.FinalizerName)
 	return rclient.Update(ctx, newDeploy)
 }
@@ -269,7 +266,7 @@ func reconcilePDB(ctx context.Context, rclient client.Client, crdName string, pd
 		}
 		return fmt.Errorf("cannot get existing pdb: %s, for crd_object: %s, err: %w", pdb.Name, crdName, err)
 	}
-	pdb.Annotations = labels.Merge(pdb.Annotations, currentPdb.Annotations)
+	pdb.Annotations = labels.Merge(currentPdb.Annotations, pdb.Annotations)
 	if currentPdb.ResourceVersion != "" {
 		pdb.ResourceVersion = currentPdb.ResourceVersion
 	}
@@ -391,7 +388,7 @@ func reconcileHPA(ctx context.Context, rclient client.Client, targetHPA *v2beta2
 
 	targetHPA.ResourceVersion = existHPA.ResourceVersion
 	victoriametricsv1beta1.MergeFinalizers(targetHPA, victoriametricsv1beta1.FinalizerName)
-	targetHPA.Annotations = labels.Merge(targetHPA.Annotations, existHPA.Annotations)
+	targetHPA.Annotations = labels.Merge(existHPA.Annotations, targetHPA.Annotations)
 
 	return rclient.Update(ctx, targetHPA)
 }

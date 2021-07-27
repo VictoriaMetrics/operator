@@ -103,8 +103,7 @@ func CreateOrUpdateVMAlert(ctx context.Context, cr *victoriametricsv1beta1.VMAle
 			return reconcile.Result{}, fmt.Errorf("cannot get deploy for vmalert: %w", err)
 		}
 	}
-	newDeploy.Annotations = labels.Merge(newDeploy.Annotations, currDeploy.Annotations)
-	newDeploy.Spec.Template.Annotations = labels.Merge(newDeploy.Spec.Template.Annotations, currDeploy.Spec.Template.Annotations)
+	newDeploy.Annotations = labels.Merge(currDeploy.Annotations, newDeploy.Annotations)
 	newDeploy.Finalizers = victoriametricsv1beta1.MergeFinalizers(currDeploy, victoriametricsv1beta1.FinalizerName)
 	if err := rclient.Update(ctx, newDeploy); err != nil {
 		return reconcile.Result{}, fmt.Errorf("cannot update vmalert deploy: %w", err)
@@ -500,6 +499,7 @@ func CreateOrUpdateTlsAssetsForVMAlert(ctx context.Context, cr *victoriametricsv
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.TLSAssetName(),
 			Labels:          cr.Labels(),
+			Annotations:     cr.Annotations(),
 			OwnerReferences: cr.AsOwner(),
 			Namespace:       cr.Namespace,
 			Finalizers:      []string{victoriametricsv1beta1.FinalizerName},
@@ -521,6 +521,7 @@ func CreateOrUpdateTlsAssetsForVMAlert(ctx context.Context, cr *victoriametricsv
 	for annotation, value := range currentAssetSecret.Annotations {
 		tlsAssetsSecret.Annotations[annotation] = value
 	}
+	tlsAssetsSecret.Annotations = labels.Merge(currentAssetSecret.Annotations, tlsAssetsSecret.Annotations)
 	tlsAssetsSecret.Finalizers = victoriametricsv1beta1.MergeFinalizers(currentAssetSecret, victoriametricsv1beta1.FinalizerName)
 	return rclient.Update(ctx, tlsAssetsSecret)
 }

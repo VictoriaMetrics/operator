@@ -24,6 +24,7 @@ import (
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
+	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -109,5 +110,8 @@ func (r *VMAuthReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&operatorv1beta1.VMAuth{}).
 		Owns(&v1.Secret{}, builder.OnlyMetadata).
+		Owns(&appsv1.Deployment{}, builder.OnlyMetadata).
+		Owns(&v1.Service{}, builder.OnlyMetadata).
+		Owns(&v1.ServiceAccount{}, builder.OnlyMetadata).
 		Complete(r)
 }

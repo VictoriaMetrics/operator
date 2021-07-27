@@ -5,11 +5,11 @@ import (
 	"fmt"
 
 	v1beta12 "github.com/VictoriaMetrics/operator/api/v1beta1"
-	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	v1 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -26,24 +26,17 @@ func CreateVMAuthSecretAccess(ctx context.Context, cr *v1beta12.VMAuth, rclient 
 func ensureVMAuthRoleExist(ctx context.Context, cr *v1beta12.VMAuth, rclient client.Client) error {
 	role := buildVMAuthRole(cr)
 	var existRole v1.Role
-	err := k8stools.ListClusterWideObjects(ctx, rclient, &v1.RoleList{}, cr.Labels(), func(r runtime.Object) {
-		items := r.(*v1.RoleList)
-		for _, i := range items.Items {
-			if i.Name == role.Name {
-				existRole = i
-				return
-			}
+	if err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: role.Name}, &existRole); err != nil {
+		if errors.IsNotFound(err) {
+			return rclient.Create(ctx, role)
+
 		}
-	})
-	if err != nil {
-		return err
+		return fmt.Errorf("cannot get role for vmauth: %w", err)
 	}
-	if existRole.Name == "" {
-		return rclient.Create(ctx, role)
-	}
+
 	existRole.OwnerReferences = role.OwnerReferences
-	existRole.Labels = labels.Merge(existRole.Labels, role.Labels)
-	existRole.Annotations = labels.Merge(role.Annotations, existRole.Annotations)
+	existRole.Labels = role.Labels
+	existRole.Annotations = labels.Merge(existRole.Annotations, role.Annotations)
 	existRole.Rules = role.Rules
 	v1beta12.MergeFinalizers(&existRole, v1beta12.FinalizerName)
 	return rclient.Update(ctx, &existRole)
@@ -52,25 +45,17 @@ func ensureVMAuthRoleExist(ctx context.Context, cr *v1beta12.VMAuth, rclient cli
 func ensureVMAgentRBExist(ctx context.Context, cr *v1beta12.VMAuth, rclient client.Client) error {
 	roleBinding := buildVMAuthRoleBinding(cr)
 	var existRoleBinding v1.RoleBinding
-	err := k8stools.ListClusterWideObjects(ctx, rclient, &v1.RoleBindingList{}, cr.Labels(), func(r runtime.Object) {
-		items := r.(*v1.RoleBindingList)
-		for _, i := range items.Items {
-			if i.Name == roleBinding.Name {
-				existRoleBinding = i
-				return
-			}
+	if err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: roleBinding.Name}, &existRoleBinding); err != nil {
+		if errors.IsNotFound(err) {
+			return rclient.Create(ctx, roleBinding)
+
 		}
-	})
-	if err != nil {
-		return err
-	}
-	if existRoleBinding.Name == "" {
-		return rclient.Create(ctx, roleBinding)
+		return fmt.Errorf("cannot get rolebinding for vmauth: %w", err)
 	}
 
 	existRoleBinding.OwnerReferences = roleBinding.OwnerReferences
-	existRoleBinding.Labels = labels.Merge(existRoleBinding.Labels, roleBinding.Labels)
-	existRoleBinding.Annotations = labels.Merge(roleBinding.Annotations, existRoleBinding.Annotations)
+	existRoleBinding.Labels = roleBinding.Labels
+	existRoleBinding.Annotations = labels.Merge(existRoleBinding.Annotations, roleBinding.Annotations)
 	existRoleBinding.Subjects = roleBinding.Subjects
 	existRoleBinding.RoleRef = roleBinding.RoleRef
 	v1beta12.MergeFinalizers(&existRoleBinding, v1beta12.FinalizerName)

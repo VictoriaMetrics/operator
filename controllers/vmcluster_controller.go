@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory"
@@ -92,11 +93,11 @@ func (r *VMClusterReconciler) Reconcile(ctx context.Context, request ctrl.Reques
 func (r *VMClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&victoriametricsv1beta1.VMCluster{}).
-		Owns(&appsv1.Deployment{}).
-		Owns(&v1.Service{}).
-		Owns(&victoriametricsv1beta1.VMServiceScrape{}).
-		Owns(&appsv1.StatefulSet{}).
-		Owns(&v1.ServiceAccount{}).
+		Owns(&appsv1.Deployment{}, builder.OnlyMetadata).
+		Owns(&v1.Service{}, builder.OnlyMetadata).
+		Owns(&victoriametricsv1beta1.VMServiceScrape{}, builder.OnlyMetadata).
+		Owns(&appsv1.StatefulSet{}, builder.OnlyMetadata).
+		Owns(&v1.ServiceAccount{}, builder.OnlyMetadata).
 		Owns(&policyv1beta1.PodDisruptionBudget{}).
 		Complete(r)
 }

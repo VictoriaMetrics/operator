@@ -10,7 +10,6 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/apimachinery/pkg/util/validation"
@@ -101,17 +100,5 @@ func UpdatePodAnnotations(ctx context.Context, rclient client.Client, selector m
 			return fmt.Errorf("failed to patch pod item with annotation: %s, err: %w", updateTime, err)
 		}
 	}
-	return nil
-}
-
-// ListClusterWideObjects helper func, default client cannot get objects at cluster scope,
-// this func retrieves objects and applies given callback to it.
-// Deprecated
-// use direct client.Get instead
-func ListClusterWideObjects(ctx context.Context, rclient client.Client, objectType client.ObjectList, crLabels map[string]string, cb func(r runtime.Object)) error {
-	if err := rclient.List(ctx, objectType, &client.ListOptions{LabelSelector: labels.SelectorFromSet(crLabels)}); err != nil {
-		return err
-	}
-	cb(objectType)
 	return nil
 }

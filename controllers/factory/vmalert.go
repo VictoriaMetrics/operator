@@ -68,14 +68,7 @@ func CreateOrUpdateVMAlert(ctx context.Context, cr *victoriametricsv1beta1.VMAle
 			return reconcile.Result{}, fmt.Errorf("cannot create podsecurity policy for vmalert, err=%w", err)
 		}
 	}
-	//recon deploy
-	secretsInNs := &corev1.SecretList{}
-	err := rclient.List(ctx, secretsInNs, &client.ListOptions{Namespace: cr.Namespace})
-	if err != nil {
-		l.Error(err, "cannot list secretsInNs at vmalert namespace")
-		return reconcile.Result{}, err
-	}
-	remoteSecrets, err := loadVMAlertRemoteSecrets(cr, secretsInNs)
+	remoteSecrets, err := loadVMAlertRemoteSecrets(ctx, rclient, cr)
 	if err != nil {
 		l.Error(err, "cannot get basic auth secretsInNs for vmalert")
 		return reconcile.Result{}, err
@@ -452,8 +445,9 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 }
 
 func loadVMAlertRemoteSecrets(
+	ctx context.Context,
+	rclient client.Client,
 	cr *victoriametricsv1beta1.VMAlert,
-	secretsAtNS *corev1.SecretList,
 ) (map[string]BasicAuthCredentials, error) {
 	datasource := cr.Spec.Datasource
 	remoteWrite := cr.Spec.RemoteWrite
@@ -461,7 +455,7 @@ func loadVMAlertRemoteSecrets(
 	secrets := map[string]BasicAuthCredentials{}
 	for i, notifier := range cr.Spec.Notifiers {
 		if notifier.BasicAuth != nil {
-			credentials, err := loadBasicAuthSecret(notifier.BasicAuth, secretsAtNS)
+			credentials, err := loadBasicAuthSecret(ctx, rclient, cr.Namespace, notifier.BasicAuth)
 			if err != nil {
 				return nil, fmt.Errorf("could not generate basicAuth for notifier config. %w", err)
 			}
@@ -470,7 +464,7 @@ func loadVMAlertRemoteSecrets(
 	}
 	// load basic auth for datasource configuration
 	if datasource.BasicAuth != nil {
-		credentials, err := loadBasicAuthSecret(datasource.BasicAuth, secretsAtNS)
+		credentials, err := loadBasicAuthSecret(ctx, rclient, cr.Namespace, datasource.BasicAuth)
 		if err != nil {
 			return nil, fmt.Errorf("could not generate basicAuth for datasource config. %w", err)
 		}
@@ -478,7 +472,7 @@ func loadVMAlertRemoteSecrets(
 	}
 	// load basic auth for remote write configuration
 	if remoteWrite != nil && remoteWrite.BasicAuth != nil {
-		credentials, err := loadBasicAuthSecret(remoteWrite.BasicAuth, secretsAtNS)
+		credentials, err := loadBasicAuthSecret(ctx, rclient, cr.Namespace, remoteWrite.BasicAuth)
 		if err != nil {
 			return nil, fmt.Errorf("could not generate basicAuth for VMAlert remote write config. %w", err)
 		}
@@ -486,7 +480,7 @@ func loadVMAlertRemoteSecrets(
 	}
 	// load basic auth for remote write configuration
 	if remoteRead != nil && remoteRead.BasicAuth != nil {
-		credentials, err := loadBasicAuthSecret(remoteRead.BasicAuth, secretsAtNS)
+		credentials, err := loadBasicAuthSecret(ctx, rclient, cr.Namespace, remoteRead.BasicAuth)
 		if err != nil {
 			return nil, fmt.Errorf("could not generate basicAuth for VMAlert remote read config. %w", err)
 		}

@@ -27,6 +27,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -128,12 +129,12 @@ func (r *VMAgentReconciler) Scheme() *runtime.Scheme {
 func (r *VMAgentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&victoriametricsv1beta1.VMAgent{}).
-		Owns(&appsv1.Deployment{}).
-		Owns(&victoriametricsv1beta1.VMServiceScrape{}).
-		Owns(&v1.ConfigMap{}).
-		Owns(&v1.Service{}).
-		Owns(&v1.Secret{}).
-		Owns(&v1.ServiceAccount{}).
-		Owns(&policyv1beta1.PodDisruptionBudget{}).
+		Owns(&appsv1.Deployment{}, builder.OnlyMetadata).
+		Owns(&victoriametricsv1beta1.VMServiceScrape{}, builder.OnlyMetadata).
+		Owns(&v1.ConfigMap{}, builder.OnlyMetadata).
+		Owns(&v1.Service{}, builder.OnlyMetadata).
+		Owns(&v1.Secret{}, builder.OnlyMetadata).
+		Owns(&v1.ServiceAccount{}, builder.OnlyMetadata).
+		Owns(&policyv1beta1.PodDisruptionBudget{}, builder.OnlyMetadata).
 		Complete(r)
 }

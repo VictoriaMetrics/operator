@@ -64,7 +64,7 @@ func CreateServiceAccountForCRD(ctx context.Context, cr CRDObject, rclient clien
 }
 
 func ensurePSPExists(ctx context.Context, cr CRDObject, rclient client.Client) error {
-	// check if its ours, if so, update it
+
 	// fast path.
 	if cr.GetPSPName() != cr.PrefixedName() {
 		return nil
@@ -88,6 +88,7 @@ func ensureClusterRoleExists(ctx context.Context, cr CRDObject, rclient client.C
 	if err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.GetNSName(), Name: clusterRole.Name}, &existsClusterRole); err != nil {
 		if errors.IsNotFound(err) {
 			return rclient.Create(ctx, clusterRole)
+
 		}
 		return fmt.Errorf("cannot get existClusterRole: %w", err)
 	}
@@ -103,6 +104,7 @@ func ensureClusterRoleBindingExists(ctx context.Context, cr CRDObject, rclient c
 	if err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.GetNSName(), Name: clusterRoleBinding.Name}, &existsClusterRoleBinding); err != nil {
 		if errors.IsNotFound(err) {
 			return rclient.Create(ctx, clusterRoleBinding)
+
 		}
 		return fmt.Errorf("cannot get clusterRoleBinding: %w", err)
 	}

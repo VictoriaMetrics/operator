@@ -58,12 +58,24 @@ func TestCreateVMAgentClusterAccess(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "monitoring:vmagent-cluster-access-rbac-test",
 						Namespace: "default-2",
+						Labels: map[string]string{
+							"app.kubernetes.io/name":      "vmagent",
+							"app.kubernetes.io/instance":  "rbac-test",
+							"app.kubernetes.io/component": "monitoring",
+							"managed-by":                  "vm-operator",
+						},
 					},
 				},
 				&v1.ClusterRoleBinding{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "monitoring:vmagent-cluster-access-rbac-test",
 						Namespace: "default-2",
+						Labels: map[string]string{
+							"app.kubernetes.io/name":      "vmagent",
+							"app.kubernetes.io/instance":  "rbac-test",
+							"app.kubernetes.io/component": "monitoring",
+							"managed-by":                  "vm-operator",
+						},
 					},
 				},
 				&v12.ServiceAccount{

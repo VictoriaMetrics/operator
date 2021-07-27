@@ -29,6 +29,7 @@ func ensureVMAuthRoleExist(ctx context.Context, cr *v1beta12.VMAuth, rclient cli
 	if err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: role.Name}, &existRole); err != nil {
 		if errors.IsNotFound(err) {
 			return rclient.Create(ctx, role)
+
 		}
 		return fmt.Errorf("cannot get role for vmauth: %w", err)
 	}
@@ -47,6 +48,7 @@ func ensureVMAgentRBExist(ctx context.Context, cr *v1beta12.VMAuth, rclient clie
 	if err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: roleBinding.Name}, &existRoleBinding); err != nil {
 		if errors.IsNotFound(err) {
 			return rclient.Create(ctx, roleBinding)
+
 		}
 		return fmt.Errorf("cannot get rolebinding for vmauth: %w", err)
 	}

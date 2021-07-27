@@ -752,19 +752,14 @@ func addAssetsToCache(
 }
 
 func LoadRemoteWriteSecrets(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client, l logr.Logger) (map[string]BasicAuthCredentials, map[string]BearerToken, error) {
-	SecretsInNS := &corev1.SecretList{}
-	err := rclient.List(ctx, SecretsInNS)
-	if err != nil {
-		l.Error(err, "cannot list secrets at vmagent namespace")
-		return nil, nil, err
-	}
-	rwsBasicAuthSecrets, err := loadBasicAuthSecrets(ctx, rclient, nil, nil, nil, nil, nil, cr.Spec.RemoteWrite, SecretsInNS)
+
+	rwsBasicAuthSecrets, err := loadBasicAuthSecrets(ctx, rclient, nil, nil, nil, nil, nil, cr.Spec.RemoteWrite, cr.Namespace)
 	if err != nil {
 		l.Error(err, "cannot load basic auth secrets for remote write specs")
 		return nil, nil, err
 	}
 
-	rwsBearerTokens, err := loadBearerTokensFromSecrets(ctx, rclient, nil, nil, nil, nil, cr.Spec.RemoteWrite, SecretsInNS)
+	rwsBearerTokens, err := loadBearerTokensFromSecrets(ctx, rclient, nil, nil, nil, nil, cr.Spec.RemoteWrite, cr.Name)
 	if err != nil {
 		l.Error(err, "cannot get bearer tokens for remote write specs")
 		return nil, nil, err

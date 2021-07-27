@@ -102,13 +102,3 @@ func UpdatePodAnnotations(ctx context.Context, rclient client.Client, selector m
 	}
 	return nil
 }
-
-// ListClusterWideObjects helper func, default client cannot get objects at cluster scope,
-// this func retrieves objects and applies given callback to it.
-//func ListClusterWideObjects(ctx context.Context, rclient client.Client, objectType client.ObjectList, cb func(r runtime.Object)) error {
-//	if err := rclient.List(ctx, objectType); err != nil {
-//		return err
-//	}
-//	cb(objectType)
-//	return nil
-//}

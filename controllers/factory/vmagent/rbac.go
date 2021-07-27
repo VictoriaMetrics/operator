@@ -5,12 +5,14 @@ import (
 	"fmt"
 
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
+
 	"k8s.io/apimachinery/pkg/types"
 
 	v1beta12 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	v12 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -30,11 +32,12 @@ func CreateVMAgentClusterAccess(ctx context.Context, cr *v1beta12.VMAgent, rclie
 func ensureVMAgentCRExist(ctx context.Context, cr *v1beta12.VMAgent, rclient client.Client) error {
 	clusterRole := buildVMAgentClusterRole(cr)
 	var existsClusterRole v12.ClusterRole
-	if err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: clusterRole.Name}, &existsClusterRole); err != nil {
+
+	if err := rclient.Get(ctx, types.NamespacedName{Name: clusterRole.Name, Namespace: cr.Namespace}, &existsClusterRole); err != nil {
 		if errors.IsNotFound(err) {
 			return rclient.Create(ctx, clusterRole)
 		}
-		return fmt.Errorf("cannot get clusterRole for vmagent: %w", err)
+		return fmt.Errorf("cannot get exist cluster role for vmagent: %w", err)
 	}
 
 	existsClusterRole.OwnerReferences = clusterRole.OwnerReferences
@@ -48,11 +51,12 @@ func ensureVMAgentCRExist(ctx context.Context, cr *v1beta12.VMAgent, rclient cli
 func ensureVMAgentCRBExist(ctx context.Context, cr *v1beta12.VMAgent, rclient client.Client) error {
 	clusterRoleBinding := buildVMAgentClusterRoleBinding(cr)
 	var existsClusterRoleBinding v12.ClusterRoleBinding
-	if err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: clusterRoleBinding.Name}, &existsClusterRoleBinding); err != nil {
+
+	if err := rclient.Get(ctx, types.NamespacedName{Name: clusterRoleBinding.Name, Namespace: cr.Namespace}, &existsClusterRoleBinding); err != nil {
 		if errors.IsNotFound(err) {
 			return rclient.Create(ctx, clusterRoleBinding)
 		}
-		return fmt.Errorf("cannot get clusterroleBinding for vmagent: %w", err)
+		return fmt.Errorf("cannot get clusterRoleBinding for vmagent: %w", err)
 	}
 
 	existsClusterRoleBinding.OwnerReferences = clusterRoleBinding.OwnerReferences

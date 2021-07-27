@@ -46,23 +46,17 @@ func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *victoriametricsv
 		return fmt.Errorf("selecting PodScrapes failed: %w", err)
 	}
 
-	SecretsInNS := &v1.SecretList{}
-	err = rclient.List(ctx, SecretsInNS)
-	if err != nil {
-		return fmt.Errorf("cannot list secrets at vmagent namespace: %w", err)
-	}
-
-	basicAuthSecrets, err := loadBasicAuthSecrets(ctx, rclient, smons, nodes, pmons, statics, cr.Spec.APIServerConfig, nil, SecretsInNS)
+	basicAuthSecrets, err := loadBasicAuthSecrets(ctx, rclient, smons, nodes, pmons, statics, cr.Spec.APIServerConfig, nil, cr.Namespace)
 	if err != nil {
 		return fmt.Errorf("cannot load basic secrets for ServiceMonitors: %w", err)
 	}
 
-	bearerTokens, err := loadBearerTokensFromSecrets(ctx, rclient, smons, nodes, pmons, statics, nil, SecretsInNS)
+	bearerTokens, err := loadBearerTokensFromSecrets(ctx, rclient, smons, nodes, pmons, statics, nil, cr.Namespace)
 	if err != nil {
 		return fmt.Errorf("cannot load bearer tokens from secrets for ServiceMonitors: %w", err)
 	}
 
-	additionalScrapeConfigs, err := loadAdditionalScrapeConfigsSecret(cr.Spec.AdditionalScrapeConfigs, SecretsInNS)
+	additionalScrapeConfigs, err := loadAdditionalScrapeConfigsSecret(ctx, rclient, cr.Spec.AdditionalScrapeConfigs, cr.Namespace)
 	if err != nil {
 		return fmt.Errorf("loading additional scrape configs from Secret failed: %w", err)
 	}
@@ -334,7 +328,7 @@ func loadBasicAuthSecrets(
 	statics map[string]*victoriametricsv1beta1.VMStaticScrape,
 	apiserverConfig *victoriametricsv1beta1.APIServerConfig,
 	remoteWriteSpecs []victoriametricsv1beta1.VMAgentRemoteWriteSpec,
-	secretsAtNS *v1.SecretList,
+	namespace string,
 ) (map[string]BasicAuthCredentials, error) {
 
 	secrets := map[string]BasicAuthCredentials{}
@@ -394,7 +388,7 @@ func loadBasicAuthSecrets(
 
 	// load apiserver basic auth secret
 	if apiserverConfig != nil && apiserverConfig.BasicAuth != nil {
-		credentials, err := loadBasicAuthSecret(apiserverConfig.BasicAuth, secretsAtNS)
+		credentials, err := loadBasicAuthSecret(ctx, rclient, namespace, apiserverConfig.BasicAuth)
 		if err != nil {
 			return nil, fmt.Errorf("could not generate basicAuth for apiserver config. %w", err)
 		}
@@ -406,7 +400,7 @@ func loadBasicAuthSecrets(
 		if rws.BasicAuth == nil {
 			continue
 		}
-		credentials, err := loadBasicAuthSecret(rws.BasicAuth, secretsAtNS)
+		credentials, err := loadBasicAuthSecret(ctx, rclient, namespace, rws.BasicAuth)
 		if err != nil {
 			return nil, fmt.Errorf("could not generate basicAuth for remote write spec %s config. %w", rws.URL, err)
 		}
@@ -424,7 +418,7 @@ func loadBearerTokensFromSecrets(
 	pods map[string]*victoriametricsv1beta1.VMPodScrape,
 	statics map[string]*victoriametricsv1beta1.VMStaticScrape,
 	remoteWriteSpecs []victoriametricsv1beta1.VMAgentRemoteWriteSpec,
-	secretsAtNS *v1.SecretList,
+	namespace string,
 ) (map[string]BearerToken, error) {
 	tokens := map[string]BearerToken{}
 	nsSecretCache := make(map[string]*v1.Secret)
@@ -529,50 +523,48 @@ func loadBearerTokensFromSecrets(
 		if rws.BearerTokenSecret == nil {
 			continue
 		}
-		for _, secret := range secretsAtNS.Items {
-			if secret.Name != rws.BearerTokenSecret.Name {
-				continue
+		var s v1.Secret
+		if err := rclient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: rws.BearerTokenSecret.Name}, &s); err != nil {
+			if errors.IsNotFound(err) {
+				return nil, fmt.Errorf("cannot find remoteWrite bearerToken secret for vmagent, secret: %s, namespace: %s", rws.BearerTokenSecret.Name, namespace)
 			}
-			token, err := extractCredKey(&secret, *rws.BearerTokenSecret)
-			if err != nil {
-				return nil, fmt.Errorf(
-					"failed to extract bearertoken for remoteWriteSpec %s from secret %s. %w ",
-					rws.URL, rws.BearerTokenSecret.Name, err,
-				)
-			}
-			tokens[fmt.Sprintf("remoteWriteSpec/%s", rws.URL)] = BearerToken(token)
+			return nil, err
 		}
+		token, err := extractCredKey(&s, *rws.BearerTokenSecret)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"failed to extract bearertoken for remoteWriteSpec %s from secret %s. %w ",
+				rws.URL, rws.BearerTokenSecret.Name, err,
+			)
+		}
+		tokens[fmt.Sprintf("remoteWriteSpec/%s", rws.URL)] = BearerToken(token)
+
 	}
 
 	return tokens, nil
 }
 
-func loadBasicAuthSecret(basicAuth *victoriametricsv1beta1.BasicAuth, s *v1.SecretList) (BasicAuthCredentials, error) {
+func loadBasicAuthSecret(ctx context.Context, rclient client.Client, ns string, basicAuth *victoriametricsv1beta1.BasicAuth) (BasicAuthCredentials, error) {
 	var username string
 	var password string
 	var err error
-
-	for _, secret := range s.Items {
-
-		if secret.Name == basicAuth.Username.Name {
-			if username, err = extractCredKey(&secret, basicAuth.Username); err != nil {
-				return BasicAuthCredentials{}, err
-			}
+	var bas v1.Secret
+	if err := rclient.Get(ctx, types.NamespacedName{Namespace: ns, Name: basicAuth.Username.Name}, &bas); err != nil {
+		if errors.IsNotFound(err) {
+			return BasicAuthCredentials{}, fmt.Errorf("basic auth username and password secret not found")
 		}
-
-		if secret.Name == basicAuth.Password.Name {
-			if password, err = extractCredKey(&secret, basicAuth.Password); err != nil {
-				return BasicAuthCredentials{}, err
-			}
-
-		}
-		if username != "" && password != "" {
-			break
+		return BasicAuthCredentials{}, err
+	}
+	if username, err = extractCredKey(&bas, basicAuth.Username); err != nil {
+		return BasicAuthCredentials{}, err
+	}
+	if basicAuth.Username.Name != basicAuth.Password.Name {
+		if err := rclient.Get(ctx, types.NamespacedName{Namespace: ns, Name: basicAuth.Password.Name}, &bas); err != nil {
+			return BasicAuthCredentials{}, err
 		}
 	}
-
-	if username == "" && password == "" {
-		return BasicAuthCredentials{}, fmt.Errorf("basic auth username and password secret not found")
+	if password, err = extractCredKey(&bas, basicAuth.Password); err != nil {
+		return BasicAuthCredentials{}, err
 	}
 
 	return BasicAuthCredentials{username: username, password: password}, nil
@@ -649,16 +641,17 @@ func loadBasicAuthSecretFromAPI(ctx context.Context, rclient client.Client, basi
 	return BasicAuthCredentials{username: username, password: password}, nil
 }
 
-func loadAdditionalScrapeConfigsSecret(additionalScrapeConfigs *v1.SecretKeySelector, s *v1.SecretList) ([]byte, error) {
+func loadAdditionalScrapeConfigsSecret(ctx context.Context, rclient client.Client, additionalScrapeConfigs *v1.SecretKeySelector, namespace string) ([]byte, error) {
 	if additionalScrapeConfigs != nil {
-		for _, secret := range s.Items {
-			if secret.Name == additionalScrapeConfigs.Name {
-				if c, ok := secret.Data[additionalScrapeConfigs.Key]; ok {
-					return c, nil
-				}
-
-				return nil, fmt.Errorf("key %v could not be found in Secret %v", additionalScrapeConfigs.Key, additionalScrapeConfigs.Name)
+		var s v1.Secret
+		if err := rclient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: additionalScrapeConfigs.Name}, &s); err != nil {
+			if errors.IsNotFound(err) {
+				return nil, fmt.Errorf("cannot find secret with additional config for vmagent, secret: %s, namespace: %s", additionalScrapeConfigs.Name, namespace)
 			}
+			return nil, err
+		}
+		if c, ok := s.Data[additionalScrapeConfigs.Key]; ok {
+			return c, nil
 		}
 		if additionalScrapeConfigs.Optional == nil || !*additionalScrapeConfigs.Optional {
 			return nil, fmt.Errorf("secret %v could not be found", additionalScrapeConfigs.Name)

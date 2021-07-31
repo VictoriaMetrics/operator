@@ -1246,7 +1246,7 @@ TargetRef describes target for user traffic forwarding. one of target types can 
 | crd | CRD describes exist operator&#39;s CRD object, operator generates access url based on CRD params. | *[CRDRef](#crdref) | false |
 | static | Static - user defined url for traffic forward, for instance http://vmsingle:8429 | *[StaticRef](#staticref) | false |
 | paths | Paths - matched path to route. | []string | false |
-| target_path_suffx | QueryParams []string `json:\&#34;queryParams,omitempty\&#34;` TargetPathSuffix allows to add some suffix to the target path It allows to hide tenant configuration from user with crd as ref. it also may contain any url encoded params. | string | false |
+| target_path_suffix | QueryParams []string `json:\&#34;queryParams,omitempty\&#34;` TargetPathSuffix allows to add some suffix to the target path It allows to hide tenant configuration from user with crd as ref. it also may contain any url encoded params. | string | false |
 
 [Back to TOC](#table-of-contents)
 

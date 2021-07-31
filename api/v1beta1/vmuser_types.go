@@ -55,7 +55,7 @@ type TargetRef struct {
 	// It allows to hide tenant configuration from user with crd as ref.
 	// it also may contain any url encoded params.
 	// +optional
-	TargetPathSuffix string `json:"target_path_suffx,omitempty"`
+	TargetPathSuffix string `json:"target_path_suffix,omitempty"`
 }
 
 // CRDRef describe CRD target reference.

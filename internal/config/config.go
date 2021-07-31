@@ -186,7 +186,7 @@ type BaseOperatorConf struct {
 	}
 	VMAuthDefault struct {
 		Image               string `default:"victoriametrics/vmauth"`
-		Version             string `default:"v1.60.0"`
+		Version             string `default:"v1.63.0"`
 		ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.48.1"`
 		Port                string `default:"8427"`
 		UseDefaultResources bool   `default:"true"`

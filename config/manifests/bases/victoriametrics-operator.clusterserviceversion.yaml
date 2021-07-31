@@ -179,7 +179,7 @@ spec:
       kind: VMAuth
       name: vmauths.operator.victoriametrics.com
       specDescriptors:
-      - description: ReplicaCount is the expected size of the VMAuth it can be 0 or 1 if you need more - use vm cluster
+      - description: ReplicaCount is the expected size of the VMAuth
         displayName: Number of pods
         path: replicaCount
         x-descriptors:

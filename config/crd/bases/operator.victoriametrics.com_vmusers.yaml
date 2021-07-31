@@ -106,7 +106,7 @@ spec:
                     required:
                     - url
                     type: object
-                  target_path_suffx:
+                  target_path_suffix:
                     description: QueryParams []string `json:"queryParams,omitempty"`
                       TargetPathSuffix allows to add some suffix to the target path
                       It allows to hide tenant configuration from user with crd as

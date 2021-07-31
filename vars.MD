@@ -1,5 +1,5 @@
 # Auto Generated vars for package config 
-## updated at Wed Jul 28 03:29:22 UTC 2021 
+## updated at Sat Jul 31 02:54:01 UTC 2021 
 
 
 | varible name | variable default value | variable required | variable description |
@@ -85,7 +85,7 @@
 | VM_VMBACKUP_RESOURCE_REQUEST_CPU | 150m | false | - |
 | VM_VMBACKUP_LOGLEVEL | INFO | false | - |
 | VM_VMAUTHDEFAULT_IMAGE | victoriametrics/vmauth | false | - |
-| VM_VMAUTHDEFAULT_VERSION | v1.60.0 | false | - |
+| VM_VMAUTHDEFAULT_VERSION | v1.63.0 | false | - |
 | VM_VMAUTHDEFAULT_CONFIGRELOADIMAGE | quay.io/prometheus-operator/prometheus-config-reloader:v0.48.1 | false | - |
 | VM_VMAUTHDEFAULT_PORT | 8427 | false | - |
 | VM_VMAUTHDEFAULT_USEDEFAULTRESOURCES | true | false | - |

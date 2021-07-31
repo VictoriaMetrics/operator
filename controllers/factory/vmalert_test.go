@@ -10,6 +10,7 @@ import (
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/config"
+	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -515,6 +516,63 @@ func TestCreateOrUpdateVMAlertService(t *testing.T) {
 			}
 			if err := tt.want(got); err != nil {
 				t.Errorf("CreateOrUpdateVMAlertService() unexpected error: %v", err)
+			}
+		})
+	}
+}
+
+func Test_buildVMAlertArgs(t *testing.T) {
+	type args struct {
+		cr                 *victoriametricsv1beta1.VMAlert
+		ruleConfigMapNames []string
+		remoteSecrets      map[string]BasicAuthCredentials
+	}
+	tests := []struct {
+		name string
+		args args
+		want []string
+	}{
+		{
+			name: "basic args",
+			args: args{
+				cr: &victoriametricsv1beta1.VMAlert{
+					Spec: victoriametricsv1beta1.VMAlertSpec{
+						Datasource: victoriametricsv1beta1.VMAlertDatasourceSpec{
+							URL: "http://vmsingle-url",
+						},
+					},
+				},
+				ruleConfigMapNames: []string{"first-rule-cm.yaml"},
+				remoteSecrets:      map[string]BasicAuthCredentials{},
+			},
+			want: []string{"-datasource.url=http://vmsingle-url", "-httpListenAddr=:", "-notifier.url=", "-rule=\"/etc/vmalert/config/first-rule-cm.yaml/*.yaml\""},
+		},
+		{
+			name: "with tls args",
+			args: args{
+				cr: &victoriametricsv1beta1.VMAlert{
+					Spec: victoriametricsv1beta1.VMAlertSpec{
+						Datasource: victoriametricsv1beta1.VMAlertDatasourceSpec{
+							URL: "http://vmsingle-url",
+							TLSConfig: &victoriametricsv1beta1.TLSConfig{
+								InsecureSkipVerify: true,
+								KeyFile:            "/path/to/key",
+								CAFile:             "/path/to/sa",
+							},
+						},
+					},
+				},
+				ruleConfigMapNames: []string{"first-rule-cm.yaml"},
+				remoteSecrets:      map[string]BasicAuthCredentials{},
+			},
+			want: []string{"-datasource.tlsCAFile=/path/to/sa", "-datasource.tlsInsecureSkipVerify=true", "-datasource.tlsKeyFile=/path/to/key", "-datasource.url=http://vmsingle-url", "-httpListenAddr=:", "-notifier.url=", "-rule=\"/etc/vmalert/config/first-rule-cm.yaml/*.yaml\""},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := buildVMAlertArgs(tt.args.cr, tt.args.ruleConfigMapNames, tt.args.remoteSecrets); !reflect.DeepEqual(got, tt.want) {
+				assert.Equal(t, tt.want, got)
+				t.Errorf("buildVMAlertArgs() got = \n%v\n, want \n%v\n", got, tt.want)
 			}
 		})
 	}

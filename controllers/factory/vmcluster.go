@@ -1591,6 +1591,9 @@ func waitForPodReady(ctx context.Context, rclient client.Client, ns, podName str
 
 func createOrUpdateVMInsertHPA(ctx context.Context, rclient client.Client, cluster *v1beta1.VMCluster) error {
 	if cluster.Spec.VMInsert.HPA == nil {
+		if err := finalize.HPADelete(ctx, rclient, cluster.Spec.VMInsert.GetNameWithPrefix(cluster.Name), cluster.Namespace); err != nil {
+			return fmt.Errorf("cannot remove HPA for vminsert: %w", err)
+		}
 		return nil
 	}
 	targetRef := v2beta2.CrossVersionObjectReference{
@@ -1604,6 +1607,9 @@ func createOrUpdateVMInsertHPA(ctx context.Context, rclient client.Client, clust
 
 func createOrUpdateVMSelectHPA(ctx context.Context, rclient client.Client, cluster *v1beta1.VMCluster) error {
 	if cluster.Spec.VMSelect.HPA == nil {
+		if err := finalize.HPADelete(ctx, rclient, cluster.Spec.VMSelect.GetNameWithPrefix(cluster.Name), cluster.Namespace); err != nil {
+			return fmt.Errorf("cannot remove HPA for vmselect: %w", err)
+		}
 		return nil
 	}
 	targetRef := v2beta2.CrossVersionObjectReference{

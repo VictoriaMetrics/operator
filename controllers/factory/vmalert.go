@@ -158,105 +158,15 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 	confReloadArgs := []string{
 		fmt.Sprintf("-webhook-url=%s", cr.ReloadPathWithPort(cr.Spec.Port)),
 	}
-	if cr.Spec.Notifier != nil {
-		cr.Spec.Notifiers = append(cr.Spec.Notifiers, *cr.Spec.Notifier)
-	}
-	args := []string{
-		fmt.Sprintf("-datasource.url=%s", cr.Spec.Datasource.URL),
-	}
-	args = append(args, BuildNotifiersArgs(cr, remoteSecrets)...)
-
-	if cr.Spec.Datasource.BasicAuth != nil {
-		if s, ok := remoteSecrets["datasource"]; ok {
-			args = append(args, fmt.Sprintf("-datasource.basicAuth.username=%s", s.username))
-			args = append(args, fmt.Sprintf("-datasource.basicAuth.password=%s", s.password))
-		}
-		if cr.Spec.Datasource.TLSConfig != nil {
-			tlsConf := cr.Spec.Datasource.TLSConfig
-			args = tlsConf.AsArgs(args, "datasource", cr.Namespace)
-		}
-	}
-
-	if cr.Spec.RemoteWrite != nil {
-		//this param cannot be used until v1.35.5 vm release with flag breaking changes
-		args = append(args, fmt.Sprintf("-remoteWrite.url=%s", cr.Spec.RemoteWrite.URL))
-		if cr.Spec.RemoteWrite.BasicAuth != nil {
-			if s, ok := remoteSecrets["remoteWrite"]; ok {
-				args = append(args, fmt.Sprintf("-remoteWrite.basicAuth.username=%s", s.username))
-				args = append(args, fmt.Sprintf("-remoteWrite.basicAuth.password=%s", s.password))
-			}
-		}
-		if cr.Spec.RemoteWrite.Concurrency != nil {
-			args = append(args, fmt.Sprintf("-remoteWrite.concurrency=%d", *cr.Spec.RemoteWrite.Concurrency))
-		}
-		if cr.Spec.RemoteWrite.FlushInterval != nil {
-			args = append(args, fmt.Sprintf("-remoteWrite.flushInterval=%s", *cr.Spec.RemoteWrite.FlushInterval))
-		}
-		if cr.Spec.RemoteWrite.MaxBatchSize != nil {
-			args = append(args, fmt.Sprintf("-remoteWrite.maxBatchSize=%d", *cr.Spec.RemoteWrite.MaxBatchSize))
-		}
-		if cr.Spec.RemoteWrite.MaxQueueSize != nil {
-			args = append(args, fmt.Sprintf("-remoteWrite.maxQueueSize=%d", *cr.Spec.RemoteWrite.MaxQueueSize))
-		}
-		if cr.Spec.RemoteWrite.TLSConfig != nil {
-			tlsConf := cr.Spec.RemoteWrite.TLSConfig
-			args = tlsConf.AsArgs(args, "remoteWrite", cr.Namespace)
-		}
-	}
-	for k, v := range cr.Spec.ExternalLabels {
-		args = append(args, fmt.Sprintf("-external.label=%s=%s", k, v))
-	}
-	if cr.Spec.RemoteRead != nil {
-		args = append(args, fmt.Sprintf("-remoteRead.url=%s", cr.Spec.RemoteRead.URL))
-		if cr.Spec.RemoteRead.BasicAuth != nil {
-			if s, ok := remoteSecrets["remoteRead"]; ok {
-				args = append(args, fmt.Sprintf("-remoteRead.basicAuth.username=%s", s.username))
-				args = append(args, fmt.Sprintf("-remoteRead.basicAuth.password=%s", s.password))
-			}
-		}
-		if cr.Spec.RemoteRead.Lookback != nil {
-			args = append(args, fmt.Sprintf("-remoteRead.lookback=%s", *cr.Spec.RemoteRead.Lookback))
-		}
-		if cr.Spec.RemoteRead.TLSConfig != nil {
-			tlsConf := cr.Spec.RemoteRead.TLSConfig
-			args = tlsConf.AsArgs(args, "remoteRead", cr.Namespace)
-		}
-
-	}
-	if cr.Spec.EvaluationInterval != "" {
-		args = append(args, fmt.Sprintf("-evaluationInterval=%s", cr.Spec.EvaluationInterval))
-	}
-	if cr.Spec.LogLevel != "" {
-		args = append(args, fmt.Sprintf("-loggerLevel=%s", cr.Spec.LogLevel))
-	}
-	if cr.Spec.LogFormat != "" {
-		args = append(args, fmt.Sprintf("-loggerFormat=%s", cr.Spec.LogFormat))
-	}
-
-	for _, cm := range ruleConfigMapNames {
-		args = append(args, fmt.Sprintf("-rule=%q", path.Join(vmAlertConfigDir, cm, "*.yaml")))
-	}
-
 	for _, cm := range ruleConfigMapNames {
 		confReloadArgs = append(confReloadArgs, fmt.Sprintf("-volume-dir=%s", path.Join(vmAlertConfigDir, cm)))
 	}
-	for arg, value := range cr.Spec.ExtraArgs {
-		// special hack for https://github.com/VictoriaMetrics/VictoriaMetrics/issues/1145
-		if arg == "rule" {
-			args = append(args, fmt.Sprintf("-%s=%q", arg, value))
-		} else {
-			args = append(args, fmt.Sprintf("-%s=%s", arg, value))
-		}
+
+	if cr.Spec.Notifier != nil {
+		cr.Spec.Notifiers = append(cr.Spec.Notifiers, *cr.Spec.Notifier)
 	}
 
-	args = append(args, fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.Port))
-
-	for _, rulePath := range cr.Spec.RulePath {
-		args = append(args, fmt.Sprintf("-rule=%q", rulePath))
-	}
-	if len(cr.Spec.ExtraEnvs) > 0 {
-		args = append(args, "-envflag.enable=true")
-	}
+	args := buildVMAlertArgs(cr, ruleConfigMapNames, remoteSecrets)
 
 	var envs []corev1.EnvVar
 
@@ -442,6 +352,106 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 		},
 	}
 	return spec, nil
+}
+
+func buildVMAlertArgs(cr *victoriametricsv1beta1.VMAlert, ruleConfigMapNames []string, remoteSecrets map[string]BasicAuthCredentials) []string {
+	args := []string{
+		fmt.Sprintf("-datasource.url=%s", cr.Spec.Datasource.URL),
+	}
+	args = append(args, BuildNotifiersArgs(cr, remoteSecrets)...)
+
+	if cr.Spec.Datasource.BasicAuth != nil {
+		if s, ok := remoteSecrets["datasource"]; ok {
+			args = append(args, fmt.Sprintf("-datasource.basicAuth.username=%s", s.username))
+			args = append(args, fmt.Sprintf("-datasource.basicAuth.password=%s", s.password))
+		}
+
+	}
+	if cr.Spec.Datasource.TLSConfig != nil {
+		tlsConf := cr.Spec.Datasource.TLSConfig
+		args = tlsConf.AsArgs(args, "datasource", cr.Namespace)
+	}
+
+	if cr.Spec.RemoteWrite != nil {
+		//this param cannot be used until v1.35.5 vm release with flag breaking changes
+		args = append(args, fmt.Sprintf("-remoteWrite.url=%s", cr.Spec.RemoteWrite.URL))
+		if cr.Spec.RemoteWrite.BasicAuth != nil {
+			if s, ok := remoteSecrets["remoteWrite"]; ok {
+				args = append(args, fmt.Sprintf("-remoteWrite.basicAuth.username=%s", s.username))
+				args = append(args, fmt.Sprintf("-remoteWrite.basicAuth.password=%s", s.password))
+			}
+		}
+		if cr.Spec.RemoteWrite.Concurrency != nil {
+			args = append(args, fmt.Sprintf("-remoteWrite.concurrency=%d", *cr.Spec.RemoteWrite.Concurrency))
+		}
+		if cr.Spec.RemoteWrite.FlushInterval != nil {
+			args = append(args, fmt.Sprintf("-remoteWrite.flushInterval=%s", *cr.Spec.RemoteWrite.FlushInterval))
+		}
+		if cr.Spec.RemoteWrite.MaxBatchSize != nil {
+			args = append(args, fmt.Sprintf("-remoteWrite.maxBatchSize=%d", *cr.Spec.RemoteWrite.MaxBatchSize))
+		}
+		if cr.Spec.RemoteWrite.MaxQueueSize != nil {
+			args = append(args, fmt.Sprintf("-remoteWrite.maxQueueSize=%d", *cr.Spec.RemoteWrite.MaxQueueSize))
+		}
+		if cr.Spec.RemoteWrite.TLSConfig != nil {
+			tlsConf := cr.Spec.RemoteWrite.TLSConfig
+			args = tlsConf.AsArgs(args, "remoteWrite", cr.Namespace)
+		}
+	}
+	for k, v := range cr.Spec.ExternalLabels {
+		args = append(args, fmt.Sprintf("-external.label=%s=%s", k, v))
+	}
+
+	if cr.Spec.RemoteRead != nil {
+		args = append(args, fmt.Sprintf("-remoteRead.url=%s", cr.Spec.RemoteRead.URL))
+		if cr.Spec.RemoteRead.BasicAuth != nil {
+			if s, ok := remoteSecrets["remoteRead"]; ok {
+				args = append(args, fmt.Sprintf("-remoteRead.basicAuth.username=%s", s.username))
+				args = append(args, fmt.Sprintf("-remoteRead.basicAuth.password=%s", s.password))
+			}
+		}
+		if cr.Spec.RemoteRead.Lookback != nil {
+			args = append(args, fmt.Sprintf("-remoteRead.lookback=%s", *cr.Spec.RemoteRead.Lookback))
+		}
+		if cr.Spec.RemoteRead.TLSConfig != nil {
+			tlsConf := cr.Spec.RemoteRead.TLSConfig
+			args = tlsConf.AsArgs(args, "remoteRead", cr.Namespace)
+		}
+
+	}
+	if cr.Spec.EvaluationInterval != "" {
+		args = append(args, fmt.Sprintf("-evaluationInterval=%s", cr.Spec.EvaluationInterval))
+	}
+	if cr.Spec.LogLevel != "" {
+		args = append(args, fmt.Sprintf("-loggerLevel=%s", cr.Spec.LogLevel))
+	}
+	if cr.Spec.LogFormat != "" {
+		args = append(args, fmt.Sprintf("-loggerFormat=%s", cr.Spec.LogFormat))
+	}
+
+	for _, cm := range ruleConfigMapNames {
+		args = append(args, fmt.Sprintf("-rule=%q", path.Join(vmAlertConfigDir, cm, "*.yaml")))
+	}
+
+	for arg, value := range cr.Spec.ExtraArgs {
+		// special hack for https://github.com/VictoriaMetrics/VictoriaMetrics/issues/1145
+		if arg == "rule" {
+			args = append(args, fmt.Sprintf("-%s=%q", arg, value))
+		} else {
+			args = append(args, fmt.Sprintf("-%s=%s", arg, value))
+		}
+	}
+
+	args = append(args, fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.Port))
+
+	for _, rulePath := range cr.Spec.RulePath {
+		args = append(args, fmt.Sprintf("-rule=%q", rulePath))
+	}
+	if len(cr.Spec.ExtraEnvs) > 0 {
+		args = append(args, "-envflag.enable=true")
+	}
+	sort.Strings(args)
+	return args
 }
 
 func loadVMAlertRemoteSecrets(

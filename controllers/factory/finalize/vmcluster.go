@@ -7,10 +7,28 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/api/autoscaling/v2beta2"
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+// HPADelete handles case, when user wants to remove HPA configuration from cluster config.
+func HPADelete(ctx context.Context, rclient client.Client, objectName, objectNamespace string) error {
+	hpa := &v2beta2.HorizontalPodAutoscaler{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      objectName,
+			Namespace: objectNamespace,
+		},
+	}
+	if err := removeFinalizeObjByName(ctx, rclient, hpa, objectName, objectNamespace); err != nil {
+		return err
+	}
+	if err := SafeDelete(ctx, rclient, hpa); err != nil {
+		return err
+	}
+	return nil
+}
 
 func OnVMClusterDelete(ctx context.Context, rclient client.Client, crd *victoriametricsv1beta1.VMCluster) error {
 	// check deployment

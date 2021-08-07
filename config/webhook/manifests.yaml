@@ -65,6 +65,24 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
+      path: /validate-operator-victoriametrics-com-v1beta1-vmalertmanagerconfig
+  failurePolicy: Fail
+  name: vvmalertmanagerconfig.kb.io
+  rules:
+  - apiGroups:
+    - operator.victoriametrics.com
+    apiVersions:
+    - v1beta1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - vmalertmanagerconfigs
+- clientConfig:
+    caBundle: Cg==
+    service:
+      name: webhook-service
+      namespace: system
       path: /validate-operator-victoriametrics-com-v1beta1-vmauth
   failurePolicy: Fail
   name: vvmauth.kb.io

@@ -153,6 +153,10 @@ fix_crd_nulls:
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmstaticscrapes.yaml status &&\
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmauths.yaml status &&\
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmauths.yaml metadata.creationTimestamp &&\
+	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmusers.yaml status &&\
+        $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmusers.yaml metadata.creationTimestamp &&\
+ 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalertmanagerconfigs.yaml status &&\
+ 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalertmanagerconfigs.yaml metadata.creationTimestamp &&\
 		$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalertmanagers.yaml metadata.creationTimestamp &&\
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmagents.yaml metadata.creationTimestamp &&\
 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalerts.yaml metadata.creationTimestamp &&\

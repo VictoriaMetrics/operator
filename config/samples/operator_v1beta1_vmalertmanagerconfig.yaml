@@ -1,0 +1,7 @@
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAlertmanagerConfig
+metadata:
+  name: vmalertmanagerconfig-sample
+spec:
+  # Add fields here
+  foo: bar

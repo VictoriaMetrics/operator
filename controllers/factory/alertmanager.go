@@ -569,10 +569,38 @@ func MakeVolumeClaimTemplate(e victoriametricsv1beta1.EmbeddedPersistentVolumeCl
 // if not create with predefined or user value.
 func createDefaultAMConfig(ctx context.Context, cr *victoriametricsv1beta1.VMAlertmanager, rclient client.Client) error {
 	cr = cr.DeepCopy()
+	l := log.WithValues("alertmanager", cr.Name)
 	// expect configuration secret to be pre created by user.
-	if cr.Spec.ConfigRawYaml == "" && cr.Spec.ConfigSecret != "" {
+	if cr.Spec.ConfigRawYaml == "" && cr.Spec.ConfigSecret != "" && cr.Spec.ConfigSelector == nil {
 		return nil
 	}
+	amConfigs := make(map[string]*victoriametricsv1beta1.VMAlertmanagerConfig)
+	var badCfgCount int
+	if cr.Spec.ConfigSelector != nil {
+		// handle case for config selector.
+		namespaces, objSelector, err := getNSWithSelector(ctx, rclient, cr.Spec.ConfigNamespaceSelector, cr.Spec.ConfigSelector, cr.Namespace)
+		if err != nil {
+			return err
+		}
+		if err := selectWithMerge(ctx, rclient, namespaces, &victoriametricsv1beta1.VMAlertmanagerConfigList{}, objSelector, func(list client.ObjectList) {
+			ams := list.(*victoriametricsv1beta1.VMAlertmanagerConfigList)
+			for _, item := range ams.Items {
+				if !item.DeletionTimestamp.IsZero() {
+					continue
+				}
+				if err := item.Validate(); err != nil {
+					l.Error(err, "validation failed for alertmanager config")
+					badCfgCount++
+					continue
+				}
+				amConfigs[item.AsKey()] = &item
+			}
+		}); err != nil {
+			return err
+		}
+	}
+	l.Info("selected am configs", "len", len(amConfigs), "invalid configs", badCfgCount)
+	// todo merge config.
 	// case for raw config is defined by user without secretName.
 	if cr.Spec.ConfigSecret == "" {
 		cr.Spec.ConfigSecret = cr.PrefixedName()

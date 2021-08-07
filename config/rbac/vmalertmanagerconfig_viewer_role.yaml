@@ -1,22 +1,16 @@
-
----
+# permissions for end users to view vmalertmanagerconfigs.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  creationTimestamp: null
-  name: manager-role
+  name: vmalertmanagerconfig-viewer-role
 rules:
 - apiGroups:
   - operator.victoriametrics.com
   resources:
   - vmalertmanagerconfigs
   verbs:
-  - create
-  - delete
   - get
   - list
-  - patch
-  - update
   - watch
 - apiGroups:
   - operator.victoriametrics.com
@@ -24,5 +18,3 @@ rules:
   - vmalertmanagerconfigs/status
   verbs:
   - get
-  - patch
-  - update

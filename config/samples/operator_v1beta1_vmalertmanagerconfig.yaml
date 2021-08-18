@@ -4,4 +4,10 @@ metadata:
   name: vmalertmanagerconfig-sample
 spec:
   # Add fields here
-  foo: bar
+  route:
+      receiver: base
+      group_interval: 1m
+  receivers:
+    - name: base
+      webhook_configs:
+        - url: http://some-url

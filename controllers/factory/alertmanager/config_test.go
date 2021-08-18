@@ -22,7 +22,7 @@ func TestBuildConfig(t *testing.T) {
 		name              string
 		args              args
 		predefinedObjects []runtime.Object
-		want              []byte
+		want              string
 		wantErr           bool
 	}{
 		{
@@ -45,7 +45,12 @@ func TestBuildConfig(t *testing.T) {
 									EmailConfigs: []operatorv1beta1.EmailConfig{
 										{
 											SendResolved: pointer.Bool(true),
-											From:         "from",
+											From:         "some-sender",
+											To:           "some-dst",
+											Text:         "some-text",
+											TLSConfig: &operatorv1beta1.TLSConfig{
+												CertFile: "some_cert_path",
+											},
 										},
 									},
 								},
@@ -58,6 +63,25 @@ func TestBuildConfig(t *testing.T) {
 					},
 				},
 			},
+			want: `global:
+  time_out: 1min
+route:
+  routes:
+  - matchers:
+    - namespace = "default"
+    group_wait: 1min
+    receiver: default-base-email
+    continue: true
+receivers:
+- name: default-base-email
+  email_configs:
+  - tls_config:
+      cert_file: some_cert_path
+    from: some-sender
+    text: some-text
+    to: some-dst
+templates: []
+`,
 		},
 	}
 	for _, tt := range tests {
@@ -68,7 +92,7 @@ func TestBuildConfig(t *testing.T) {
 				t.Errorf("BuildConfig() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			assert.Equal(t, string(tt.want), string(got))
+			assert.Equal(t, tt.want, string(got))
 
 		})
 	}

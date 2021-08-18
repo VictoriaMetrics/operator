@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/controllers/factory/alertmanager"
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/controllers/factory/psp"
@@ -71,13 +72,20 @@ func CreateOrUpdateAlertManager(ctx context.Context, cr *victoriametricsv1beta1.
 			return nil, fmt.Errorf("cannot update pod disruption budget for vmagent: %w", err)
 		}
 	}
-
-	newSts, err := newStsForAlertManager(cr, c)
+	// special hack, we need version for alertmanager a bit earlier.
+	if cr.Spec.Image.Tag == "" {
+		cr.Spec.Image.Tag = c.VMAlertManager.AlertManagerVersion
+	}
+	amVersion, err := version.NewVersion(cr.Spec.Image.Tag)
+	if err != nil {
+		l.Error(err, "cannot parse alertmanager version", "tag", cr.Spec.Image.Tag)
+	}
+	newSts, err := newStsForAlertManager(cr, c, amVersion)
 	if err != nil {
 		return nil, fmt.Errorf("cannot generate alertmanager sts, name: %s,err: %w", cr.Name, err)
 	}
 	// check secret with config
-	if err := createDefaultAMConfig(ctx, cr, rclient); err != nil {
+	if err := createDefaultAMConfig(ctx, cr, rclient, amVersion); err != nil {
 		return nil, fmt.Errorf("failed to check default Alertmanager config: %w", err)
 	}
 
@@ -126,7 +134,7 @@ func updateStsForAlertManager(ctx context.Context, rclient client.Client, oldSts
 	return rclient.Update(ctx, newSts)
 }
 
-func newStsForAlertManager(cr *victoriametricsv1beta1.VMAlertmanager, c *config.BaseOperatorConf) (*appsv1.StatefulSet, error) {
+func newStsForAlertManager(cr *victoriametricsv1beta1.VMAlertmanager, c *config.BaseOperatorConf, amVersion *version.Version) (*appsv1.StatefulSet, error) {
 
 	if cr.Spec.Image.Repository == "" {
 		cr.Spec.Image.Repository = c.VMAlertManager.AlertmanagerDefaultBaseImage
@@ -134,9 +142,7 @@ func newStsForAlertManager(cr *victoriametricsv1beta1.VMAlertmanager, c *config.
 	if cr.Spec.PortName == "" {
 		cr.Spec.PortName = defaultPortName
 	}
-	if cr.Spec.Image.Tag == "" {
-		cr.Spec.Image.Tag = c.VMAlertManager.AlertManagerVersion
-	}
+
 	if cr.Spec.ReplicaCount == nil {
 		cr.Spec.ReplicaCount = &minReplicas
 	}
@@ -157,7 +163,7 @@ func newStsForAlertManager(cr *victoriametricsv1beta1.VMAlertmanager, c *config.
 		cr.Spec.ConfigSecret = cr.PrefixedName()
 	}
 
-	spec, err := makeStatefulSetSpec(cr, c)
+	spec, err := makeStatefulSetSpec(cr, c, amVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -261,7 +267,7 @@ func CreateOrUpdateAlertManagerService(ctx context.Context, cr *victoriametricsv
 	return reconcileServiceForCRD(ctx, rclient, newService)
 }
 
-func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, c *config.BaseOperatorConf) (*appsv1.StatefulSetSpec, error) {
+func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, c *config.BaseOperatorConf, amVersion *version.Version) (*appsv1.StatefulSetSpec, error) {
 
 	cr = cr.DeepCopy()
 
@@ -345,12 +351,9 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, c *config.Ba
 		}, ports...)
 	}
 
-	ver, err := version.NewVersion(cr.Spec.Image.Tag)
-	if err != nil {
-		log.Error(err, "cannot parse alert manager version")
-	} else {
+	if amVersion != nil {
 		// Adjust VMAlertmanager command line args to specified AM version
-		if ver.LessThan(version.Must(version.NewVersion("v0.15.0"))) {
+		if amVersion.LessThan(version.Must(version.NewVersion("v0.15.0"))) {
 			for i := range amArgs {
 				// below VMAlertmanager v0.15.0 peer address port specification is not necessary
 				if strings.Contains(amArgs[i], "--cluster.peer") {
@@ -361,13 +364,13 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, c *config.Ba
 				amArgs[i] = strings.Replace(amArgs[i], "--cluster.", "--mesh.", 1)
 			}
 		}
-		if ver.LessThan(version.Must(version.NewVersion("v0.13.0"))) {
+		if amVersion.LessThan(version.Must(version.NewVersion("v0.13.0"))) {
 			for i := range amArgs {
 				// below VMAlertmanager v0.13.0 all flags are with single dash.
 				amArgs[i] = strings.Replace(amArgs[i], "--", "-", 1)
 			}
 		}
-		if ver.LessThan(version.Must(version.NewVersion("v0.7.0"))) {
+		if amVersion.LessThan(version.Must(version.NewVersion("v0.7.0"))) {
 			// below VMAlertmanager v0.7.0 the flag 'web.route-prefix' does not exist
 			amArgs = filter(amArgs, func(s string) bool {
 				return !strings.Contains(s, "web.route-prefix")
@@ -565,42 +568,18 @@ func MakeVolumeClaimTemplate(e victoriametricsv1beta1.EmbeddedPersistentVolumeCl
 	return &pvc
 }
 
+var alertmanagerConfigMinimumVersion = version.Must(version.NewVersion("v0.22.0"))
+
 // createDefaultAMConfig - check if secret with config exist,
 // if not create with predefined or user value.
-func createDefaultAMConfig(ctx context.Context, cr *victoriametricsv1beta1.VMAlertmanager, rclient client.Client) error {
+func createDefaultAMConfig(ctx context.Context, cr *victoriametricsv1beta1.VMAlertmanager, rclient client.Client, amVersion *version.Version) error {
 	cr = cr.DeepCopy()
 	l := log.WithValues("alertmanager", cr.Name)
 	// expect configuration secret to be pre created by user.
 	if cr.Spec.ConfigRawYaml == "" && cr.Spec.ConfigSecret != "" && cr.Spec.ConfigSelector == nil {
 		return nil
 	}
-	amConfigs := make(map[string]*victoriametricsv1beta1.VMAlertmanagerConfig)
-	var badCfgCount int
-	if cr.Spec.ConfigSelector != nil {
-		// handle case for config selector.
-		namespaces, objSelector, err := getNSWithSelector(ctx, rclient, cr.Spec.ConfigNamespaceSelector, cr.Spec.ConfigSelector, cr.Namespace)
-		if err != nil {
-			return err
-		}
-		if err := selectWithMerge(ctx, rclient, namespaces, &victoriametricsv1beta1.VMAlertmanagerConfigList{}, objSelector, func(list client.ObjectList) {
-			ams := list.(*victoriametricsv1beta1.VMAlertmanagerConfigList)
-			for _, item := range ams.Items {
-				if !item.DeletionTimestamp.IsZero() {
-					continue
-				}
-				if err := item.Validate(); err != nil {
-					l.Error(err, "validation failed for alertmanager config")
-					badCfgCount++
-					continue
-				}
-				amConfigs[item.AsKey()] = &item
-			}
-		}); err != nil {
-			return err
-		}
-	}
-	l.Info("selected am configs", "len", len(amConfigs), "invalid configs", badCfgCount)
-	// todo merge config.
+
 	// case for raw config is defined by user without secretName.
 	if cr.Spec.ConfigSecret == "" {
 		cr.Spec.ConfigSecret = cr.PrefixedName()
@@ -608,6 +587,44 @@ func createDefaultAMConfig(ctx context.Context, cr *victoriametricsv1beta1.VMAle
 	if cr.Spec.ConfigRawYaml == "" {
 		cr.Spec.ConfigRawYaml = defaultAMConfig
 	}
+	// it makes sense only for alertmanager version above v22.0
+	if amVersion != nil && !amVersion.LessThan(alertmanagerConfigMinimumVersion) {
+		amConfigs := make(map[string]*victoriametricsv1beta1.VMAlertmanagerConfig)
+		var badCfgCount int
+		if cr.Spec.ConfigSelector != nil {
+			// handle case for config selector.
+			namespaces, objSelector, err := getNSWithSelector(ctx, rclient, cr.Spec.ConfigNamespaceSelector, cr.Spec.ConfigSelector, cr.Namespace)
+			if err != nil {
+				return err
+			}
+			if err := selectWithMerge(ctx, rclient, namespaces, &victoriametricsv1beta1.VMAlertmanagerConfigList{}, objSelector, func(list client.ObjectList) {
+				ams := list.(*victoriametricsv1beta1.VMAlertmanagerConfigList)
+				for i := range ams.Items {
+					item := ams.Items[i]
+					if !item.DeletionTimestamp.IsZero() {
+						continue
+					}
+					if err := item.Validate(); err != nil {
+						l.Error(err, "validation failed for alertmanager config")
+						badCfgCount++
+						continue
+					}
+					amConfigs[item.AsKey()] = &item
+				}
+			}); err != nil {
+				return fmt.Errorf("cannot select alertmanager configs: %w", err)
+			}
+		}
+		l.Info("selected alertmanager configs", "len", len(amConfigs), "invalid configs", badCfgCount)
+		cfg, err := alertmanager.BuildConfig(ctx, rclient, []byte(cr.Spec.ConfigRawYaml), amConfigs)
+		if err != nil {
+			return err
+		}
+		cr.Spec.ConfigRawYaml = string(cfg)
+	} else {
+		l.Info("alertmanager version doesnt supports VMAlertmanagerConfig CRD", "version", amVersion)
+	}
+
 	newAMSecretConfig := &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.Spec.ConfigSecret,
@@ -617,11 +634,10 @@ func createDefaultAMConfig(ctx context.Context, cr *victoriametricsv1beta1.VMAle
 			OwnerReferences: cr.AsOwner(),
 			Finalizers:      []string{victoriametricsv1beta1.FinalizerName},
 		},
-		StringData: map[string]string{"alertmanager.yaml": cr.Spec.ConfigRawYaml},
+		Data: map[string][]byte{"alertmanager.yaml": []byte(cr.Spec.ConfigRawYaml)},
 	}
 	var existAMSecretConfig v1.Secret
-	err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.Spec.ConfigSecret}, &existAMSecretConfig)
-	if err != nil {
+	if err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.Spec.ConfigSecret}, &existAMSecretConfig); err != nil {
 		if errors.IsNotFound(err) {
 			log.Info("creating default alertmanager config with secret", "secret_name", newAMSecretConfig.Name)
 			return rclient.Create(ctx, newAMSecretConfig)

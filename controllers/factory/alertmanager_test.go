@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/go-test/deep"
+	"github.com/hashicorp/go-version"
 	"k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/VictoriaMetrics/operator/internal/config"
@@ -24,8 +25,9 @@ import (
 
 func Test_createDefaultAMConfig(t *testing.T) {
 	type args struct {
-		ctx context.Context
-		cr  *victoriametricsv1beta1.VMAlertmanager
+		ctx       context.Context
+		cr        *victoriametricsv1beta1.VMAlertmanager
+		amVersion *version.Version
 	}
 	tests := []struct {
 		name                string
@@ -79,11 +81,49 @@ func Test_createDefaultAMConfig(t *testing.T) {
 			},
 			predefinedObjects: []runtime.Object{},
 		},
+		{
+			name: "with alertmanager config support",
+			args: args{
+				ctx: context.TODO(),
+				cr: &victoriametricsv1beta1.VMAlertmanager{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-am",
+						Namespace: "default",
+					},
+					Spec: victoriametricsv1beta1.VMAlertmanagerSpec{
+						ConfigSecret:            "some-name",
+						ConfigRawYaml:           "global: {}",
+						ConfigSelector:          &metav1.LabelSelector{},
+						ConfigNamespaceSelector: &metav1.LabelSelector{},
+					},
+				},
+				amVersion: alertmanagerConfigMinimumVersion,
+			},
+			predefinedObjects: []runtime.Object{
+				&victoriametricsv1beta1.VMAlertmanagerConfig{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "some",
+						Namespace: "default",
+					},
+					Spec: victoriametricsv1beta1.VMAlertmanagerConfigSpec{
+						Route: &victoriametricsv1beta1.Route{Receiver: "base"},
+						Receivers: []victoriametricsv1beta1.Receiver{
+							{
+								Name: "base",
+								WebhookConfigs: []victoriametricsv1beta1.WebhookConfig{
+									{URL: pointer.String("http://some-url")},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			if err := createDefaultAMConfig(tt.args.ctx, tt.args.cr, fclient); (err != nil) != tt.wantErr {
+			if err := createDefaultAMConfig(tt.args.ctx, tt.args.cr, fclient, tt.args.amVersion); (err != nil) != tt.wantErr {
 				t.Fatalf("createDefaultAMConfig() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			var createdSecret v1.Secret

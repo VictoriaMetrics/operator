@@ -32,14 +32,15 @@ spec:
         metadata:
           type: object
         spec:
-          description: VMAlertmanagerConfigSpec defines the desired state of VMAlertmanagerConfig
+          description: VMAlertmanagerConfigSpec defines configuration for VMAlertmanagerConfig
           properties:
             inhibit_rules:
-              description: List of inhibition rules. The rules will only apply to
-                alerts matching the resource’s namespace.
+              description: InhibitRules will only apply for alerts matching the resource's
+                namespace.
               items:
                 description: InhibitRule defines an inhibition rule that allows to
-                  mute alerts when other alerts are already firing. See https://prometheus.io/docs/alerting/latest/configuration/#inhibit_rule
+                  mute alerts when other alerts are already firing. Note, it doesn't
+                  support deprecated alertmanager config options. See https://prometheus.io/docs/alerting/latest/configuration/#inhibit_rule
                 properties:
                   equal:
                     description: Labels that must have an equal value in the source
@@ -48,57 +49,86 @@ spec:
                       type: string
                     type: array
                   source_matchers:
+                    description: SourceMatchers defines a list of matchers for which
+                      one or more alerts have to exist for the inhibition to take
+                      effect.
                     items:
                       type: string
                     type: array
                   target_matchers:
+                    description: TargetMatchers defines a list of matchers that have
+                      to be fulfilled by the target alerts to be muted.
                     items:
                       type: string
                     type: array
                 type: object
               type: array
             mut_time_intervals:
+              description: MuteTimeInterval - global mute time See https://prometheus.io/docs/alerting/latest/configuration/#mute_time_interval
               items:
+                description: MuteTimeInterval for alerts
                 properties:
                   name:
+                    description: Name of interval
                     type: string
                   time_intervals:
+                    description: TimeIntervals interval configuration
                     items:
+                      description: TimeInterval defines interval
                       properties:
                         days_of_month:
+                          description: DayOfMonth defines list of numerical days in
+                            the month. Days begin at 1. Negative values are also accepted.
+                            for example, ['1:5', '-3:-1']
                           items:
                             type: string
                           type: array
                         months:
+                          description: Months  defines list of calendar months identified
+                            by a case-insentive name (e.g. ‘January’) or numeric 1.
+                            For example, ['1:3', 'may:august', 'december']
                           items:
                             type: string
                           type: array
                         times:
+                          description: Times defines time range for mute
                           properties:
                             end_minute:
+                              description: EndMinute for example HH:MM
                               type: string
                             start_minute:
+                              description: StartMinute for example  HH:MM
                               type: string
+                          required:
+                          - end_minute
+                          - start_minute
                           type: object
                         weekdays:
+                          description: Weekdays defines list of days of the week,
+                            where the week begins on Sunday and ends on Saturday.
                           items:
                             type: string
                           type: array
                         years:
+                          description: Years defines numerical list of years, ranges
+                            are accepted. For example, ['2020:2022', '2030']
                           items:
                             type: string
                           type: array
                       type: object
                     type: array
+                required:
+                - time_intervals
                 type: object
               type: array
             receivers:
-              description: List of receivers.
+              description: Receivers defines alert receivers. without defined Route,
+                receivers will be skipped.
               items:
                 description: Receiver defines one or more notification integrations.
                 properties:
                   email_configs:
-                    description: List of Email configurations.
+                    description: EmailConfigs defines email notification configurations.
                     items:
                       description: EmailConfig configures notifications via Email.
                       properties:
@@ -324,7 +354,7 @@ spec:
                     minLength: 1
                     type: string
                   opsgenie_configs:
-                    description: List of OpsGenie configurations.
+                    description: OpsGenieConfigs defines ops genie notification configurations.
                     items:
                       description: OpsGenieConfig configures notifications via OpsGenie.
                         See https://prometheus.io/docs/alerting/latest/configuration/#opsgenie_config
@@ -625,7 +655,8 @@ spec:
                       type: object
                     type: array
                   pagerduty_configs:
-                    description: List of PagerDuty configurations.
+                    description: PagerDutyConfigs defines pager duty notification
+                      configurations.
                     items:
                       description: PagerDutyConfig configures notifications via PagerDuty.
                         See https://prometheus.io/docs/alerting/latest/configuration/#pagerduty_config
@@ -927,7 +958,7 @@ spec:
                       type: object
                     type: array
                   pushover_configs:
-                    description: List of Pushover configurations.
+                    description: PushoverConfigs defines push over notification configurations.
                     items:
                       description: PushoverConfig configures notifications via Pushover.
                         See https://prometheus.io/docs/alerting/latest/configuration/#pushover_config
@@ -1228,7 +1259,7 @@ spec:
                       type: object
                     type: array
                   slack_configs:
-                    description: List of Slack configurations.
+                    description: SlackConfigs defines slack notification configurations.
                     items:
                       description: SlackConfig configures notifications via Slack.
                         See https://prometheus.io/docs/alerting/latest/configuration/#slack_config
@@ -1584,7 +1615,8 @@ spec:
                       type: object
                     type: array
                   victorops_configs:
-                    description: List of VictorOps configurations.
+                    description: VictorOpsConfigs defines victor ops notification
+                      configurations.
                     items:
                       description: VictorOpsConfig configures notifications via VictorOps.
                         See https://prometheus.io/docs/alerting/latest/configuration/#victorops_config
@@ -1856,7 +1888,7 @@ spec:
                       type: object
                     type: array
                   webhook_configs:
-                    description: List of webhook configurations.
+                    description: WebhookConfigs defines webhook notification configurations.
                     items:
                       description: WebhookConfig configures notifications via a generic
                         receiver supporting the webhook payload. See https://prometheus.io/docs/alerting/latest/configuration/#webhook_config
@@ -2116,7 +2148,7 @@ spec:
                       type: object
                     type: array
                   wechat_configs:
-                    description: List of WeChat configurations.
+                    description: WeChatConfigs defines wechat notification configurations.
                     items:
                       description: WeChatConfig configures notifications via WeChat.
                         See https://prometheus.io/docs/alerting/latest/configuration/#wechat_config
@@ -2387,14 +2419,12 @@ spec:
                 type: object
               type: array
             route:
-              description: The Alertmanager route definition for alerts matching the
-                resource’s namespace. If present, it will be added to the generated
-                Alertmanager configuration as a first-level route.
+              description: Route definition for alertmanager, may include nested routes.
               properties:
                 continue:
-                  description: Boolean indicating whether an alert should continue
-                    matching subsequent sibling nodes. It will always be overridden
-                    to true for the first-level route by the Prometheus operator.
+                  description: Continue indicating whether an alert should continue
+                    matching subsequent sibling nodes. It will always be true for
+                    the first-level route.
                   type: boolean
                 group_by:
                   description: List of labels to group by.
@@ -2403,39 +2433,37 @@ spec:
                   type: array
                 group_interval:
                   description: How long to wait before sending an updated notification.
-                    Must match the regular expression `[0-9]+(ms|s|m|h)` (milliseconds
-                    seconds minutes hours).
+                  pattern: '[0-9]+(ms|s|m|h)'
                   type: string
                 group_wait:
                   description: How long to wait before sending the initial notification.
-                    Must match the regular expression `[0-9]+(ms|s|m|h)` (milliseconds
-                    seconds minutes hours).
+                  pattern: '[0-9]+(ms|s|m|h)'
                   type: string
                 matchers:
                   description: 'List of matchers that the alert’s labels should match.
-                    For the first level route, the operator removes any existing equality
-                    and regexp matcher on the `namespace` label and adds a `namespace:
-                    <object namespace>` matcher.'
+                    For the first level route, the operator adds a namespace: "CRD_NS"
+                    matcher. https://prometheus.io/docs/alerting/latest/configuration/#matcher'
                   items:
                     type: string
                   type: array
                 mute_time_intervals:
+                  description: MuteTimeIntervals for alerts
                   items:
                     type: string
                   type: array
                 receiver:
-                  description: Name of the receiver for this route. If not empty,
-                    it should be listed in the `receivers` field.
+                  description: Name of the receiver for this route.
                   type: string
                 repeat_interval:
                   description: How long to wait before repeating the last notification.
-                    Must match the regular expression `[0-9]+(ms|s|m|h)` (milliseconds
-                    seconds minutes hours).
+                  pattern: '[0-9]+(ms|s|m|h)'
                   type: string
                 routes:
                   description: Child routes.
                   items: {}
                   type: array
+              required:
+              - receiver
               type: object
           type: object
         status:

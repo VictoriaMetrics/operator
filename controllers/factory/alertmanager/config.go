@@ -32,11 +32,13 @@ func BuildConfig(ctx context.Context, rclient client.Client, baseCfg []byte, amc
 	var subRoutes []yaml.MapSlice
 	secretCache := make(map[string]*v1.Secret)
 	for _, posIdx := range amConfigIdentifiers {
+
 		amcKey := amcfgs[posIdx]
 		for _, rule := range amcKey.Spec.InhibitRules {
 			baseYAMlCfg.InhibitRules = append(baseYAMlCfg.InhibitRules, buildInhibitRule(amcKey.Namespace, rule))
 		}
 		if amcKey.Spec.Route == nil {
+			// todo add logging.
 			continue
 		}
 		subRoutes = append(subRoutes, buildRoute(amcKey, amcKey.Spec.Route, true))
@@ -62,11 +64,12 @@ func BuildConfig(ctx context.Context, rclient client.Client, baseCfg []byte, amc
 
 func buildRoute(cr *operatorv1beta1.VMAlertmanagerConfig, cfgRoute *operatorv1beta1.Route, topLevel bool) yaml.MapSlice {
 	var r yaml.MapSlice
+	matchers := cfgRoute.Matchers
 	continueSetting := cfgRoute.Continue
 	// enforce continue and namespace match
 	if topLevel {
 		continueSetting = true
-		cfgRoute.Matchers = append(cfgRoute.Matchers, fmt.Sprintf("namespace = %s", cr.Namespace))
+		matchers = append(matchers, fmt.Sprintf("namespace = %q", cr.Namespace))
 	}
 
 	var nestedRoutes []yaml.MapSlice
@@ -86,7 +89,7 @@ func buildRoute(cr *operatorv1beta1.VMAlertmanagerConfig, cfgRoute *operatorv1be
 			r = append(r, yaml.MapItem{Key: key, Value: src})
 		}
 	}
-	toYaml("matchers", cfgRoute.Matchers)
+	toYaml("matchers", matchers)
 	toYaml("group_by", cfgRoute.GroupBy)
 	toYaml("mute_time_intervals", cfgRoute.MuteTimeIntervals)
 	toYamlString("group_interval", cfgRoute.GroupInterval)
@@ -101,7 +104,7 @@ func buildRoute(cr *operatorv1beta1.VMAlertmanagerConfig, cfgRoute *operatorv1be
 
 func buildInhibitRule(namespace string, rule operatorv1beta1.InhibitRule) yaml.MapSlice {
 	var r yaml.MapSlice
-	namespaceMatch := fmt.Sprintf("namespace = %s", namespace)
+	namespaceMatch := fmt.Sprintf("namespace = %q", namespace)
 	rule.SourceMatchers = append(rule.SourceMatchers, namespaceMatch)
 	rule.TargetMatchers = append(rule.TargetMatchers, namespaceMatch)
 	toYaml := func(key string, src []string) {
@@ -143,11 +146,7 @@ type route struct {
 }
 
 func buildReceiver(ctx context.Context, rclient client.Client, cr *operatorv1beta1.VMAlertmanagerConfig, reciever operatorv1beta1.Receiver, cache map[string]*v1.Secret) (yaml.MapSlice, error) {
-	var r yaml.MapSlice
-	r = append(r, yaml.MapItem{
-		Key:   "name",
-		Value: buildReceiverName(cr, reciever.Name),
-	})
+
 	cb := initConfigBuilder(ctx, rclient, cr, reciever, cache)
 
 	if err := cb.buildCfg(); err != nil {
@@ -164,7 +163,6 @@ type configBuilder struct {
 	currentYaml []yaml.MapSlice
 	result      yaml.MapSlice
 	secretCache map[string]*v1.Secret
-	err         error
 }
 
 func initConfigBuilder(ctx context.Context, rclient client.Client, cr *operatorv1beta1.VMAlertmanagerConfig, receiver operatorv1beta1.Receiver, cache map[string]*v1.Secret) *configBuilder {
@@ -192,42 +190,49 @@ func (cb *configBuilder) buildCfg() error {
 		}
 	}
 	cb.finalizeSection("opsgenie_configs")
+
 	for _, emailCfg := range cb.receiver.EmailConfigs {
 		if err := cb.buildEmail(emailCfg); err != nil {
 			return err
 		}
 	}
 	cb.finalizeSection("email_configs")
+
 	for _, slackCfg := range cb.receiver.SlackConfigs {
 		if err := cb.buildSlack(slackCfg); err != nil {
 			return err
 		}
 	}
 	cb.finalizeSection("slack_configs")
+
 	for _, pgCfg := range cb.receiver.PagerDutyConfigs {
 		if err := cb.buildPagerDuty(pgCfg); err != nil {
 			return err
 		}
 	}
 	cb.finalizeSection("pagerduty_configs")
+
 	for _, poCfg := range cb.receiver.PushoverConfigs {
 		if err := cb.buildPushOver(poCfg); err != nil {
 			return err
 		}
 	}
 	cb.finalizeSection("pushover_configs")
+
 	for _, voCfg := range cb.receiver.VictorOpsConfigs {
 		if err := cb.buildVictorOps(voCfg); err != nil {
 			return err
 		}
 	}
 	cb.finalizeSection("victorops_configs")
+
 	for _, wcCfg := range cb.receiver.WeChatConfigs {
 		if err := cb.buildWeeChat(wcCfg); err != nil {
 			return err
 		}
 	}
 	cb.finalizeSection("wechat_configs")
+
 	for _, whCfg := range cb.receiver.WebhookConfigs {
 		if err := cb.buildWebhook(whCfg); err != nil {
 			return err
@@ -243,8 +248,8 @@ func (cb *configBuilder) finalizeSection(name string) {
 			Key:   name,
 			Value: cb.currentYaml,
 		})
+		cb.currentYaml = make([]yaml.MapSlice, 0, len(cb.currentYaml))
 	}
-	cb.currentYaml = cb.currentYaml[:0]
 }
 
 func (cb *configBuilder) buildSlack(slack operatorv1beta1.SlackConfig) error {
@@ -283,13 +288,24 @@ func (cb *configBuilder) buildWebhook(wh operatorv1beta1.WebhookConfig) error {
 	if wh.SendResolved != nil {
 		temp = append(temp, yaml.MapItem{Key: "send_resolved", Value: *wh.SendResolved})
 	}
-	if wh.URLSecret != nil {
+	var url string
+
+	if wh.URL != nil {
+		url = *wh.URL
+	} else if wh.URLSecret != nil {
 		s, err := cb.fetchSecretValue(wh.URLSecret)
 		if err != nil {
 			return err
 		}
-		temp = append(temp, yaml.MapItem{Key: "url", Value: string(s)})
+		url = string(s)
 	}
+
+	// no point to add config without url
+	if url == "" {
+		return nil
+	}
+
+	temp = append(temp, yaml.MapItem{Key: "url", Value: url})
 	cb.currentYaml = append(cb.currentYaml, temp)
 	return nil
 }
@@ -421,7 +437,11 @@ func (cb *configBuilder) buildPagerDuty(pd operatorv1beta1.PagerDutyConfig) erro
 func (cb *configBuilder) buildEmail(email operatorv1beta1.EmailConfig) error {
 	var temp yaml.MapSlice
 	if email.TLSConfig != nil {
-
+		s, err := cb.buildTLSConfig(email.TLSConfig)
+		if err != nil {
+			return err
+		}
+		temp = append(temp, yaml.MapItem{Key: "tls_config", Value: s})
 	}
 	if email.AuthPassword != nil {
 		p, err := cb.fetchSecretValue(email.AuthPassword)
@@ -452,7 +472,7 @@ func (cb *configBuilder) buildEmail(email operatorv1beta1.EmailConfig) error {
 	toYamlString("auth_identity", email.AuthIdentity)
 	toYamlString("auth_username", email.AuthUsername)
 	toYamlString("hello", email.Hello)
-	toYamlString("smart_host", email.Smarthost)
+	toYamlString("smarthost", email.Smarthost)
 
 	cb.currentYaml = append(cb.currentYaml, temp)
 	return nil
@@ -493,10 +513,8 @@ func (cb *configBuilder) fetchSecretValue(selector *v1.SecretKeySelector) ([]byt
 	var s v1.Secret
 	if existSecret, ok := cb.secretCache[selector.Name]; ok {
 		s = *existSecret
-	} else {
-		if err := cb.Client.Get(cb.ctx, types.NamespacedName{Name: selector.Name, Namespace: cb.currentCR.Namespace}, &s); err != nil {
-			return nil, fmt.Errorf("cannot find secret for VMAlertmanager config: %s, receiver: %s, err :%w", cb.currentCR.Name, cb.receiver.Name, err)
-		}
+	} else if err := cb.Client.Get(cb.ctx, types.NamespacedName{Name: selector.Name, Namespace: cb.currentCR.Namespace}, &s); err != nil {
+		return nil, fmt.Errorf("cannot find secret for VMAlertmanager config: %s, receiver: %s, err :%w", cb.currentCR.Name, cb.receiver.Name, err)
 	}
 	if v, ok := s.Data[selector.Key]; ok {
 		return v, nil

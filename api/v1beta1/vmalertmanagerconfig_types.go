@@ -23,40 +23,66 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// VMAlertmanagerConfigSpec defines the desired state of VMAlertmanagerConfig
+// VMAlertmanagerConfigSpec defines configuration for VMAlertmanagerConfig
 type VMAlertmanagerConfigSpec struct {
-	// The Alertmanager route definition for alerts matching the resource’s
-	// namespace. If present, it will be added to the generated Alertmanager
-	// configuration as a first-level route.
+	// Route definition for alertmanager, may include nested routes.
 	// +optional
 	Route *Route `json:"route"`
-	// List of receivers.
+	// Receivers defines alert receivers.
+	// without defined Route, receivers will be skipped.
 	// +optional
 	Receivers []Receiver `json:"receivers"`
-	// List of inhibition rules. The rules will only apply to alerts matching
-	// the resource’s namespace.
+	// InhibitRules will only apply for alerts matching
+	// the resource's namespace.
 	// +optional
 	InhibitRules []InhibitRule `json:"inhibit_rules,omitempty"`
 
+	// MuteTimeInterval - global mute time
+	// See https://prometheus.io/docs/alerting/latest/configuration/#mute_time_interval
+	// +optional
 	MutTimeIntervals []MuteTimeInterval `json:"mut_time_intervals,omitempty"`
 }
 
+// MuteTimeInterval for alerts
 type MuteTimeInterval struct {
-	Name          string         `json:"name,omitempty"`
-	TimeIntervals []TimeInterval `json:"time_intervals,omitempty"`
+	// Name of interval
+	// +required
+	Name string `json:"name,omitempty"`
+	// TimeIntervals interval configuration
+	// +required
+	TimeIntervals []TimeInterval `json:"time_intervals"`
 }
 
+// TimeInterval defines interval
 type TimeInterval struct {
-	Times       TimeRange `json:"times,omitempty"`
-	Weekdays    []string  `json:"weekdays,omitempty"`
-	DaysOfMonth []string  `json:"days_of_month,omitempty"`
-	Months      []string  `json:"months,omitempty"`
-	Years       []string  `json:"years,omitempty"`
+	// Times defines time range for mute
+	// +optional
+	Times TimeRange `json:"times,omitempty"`
+	// Weekdays defines list of days of the week, where the week begins on Sunday and ends on Saturday.
+	// +optional
+	Weekdays []string `json:"weekdays,omitempty"`
+	// DayOfMonth defines list of numerical days in the month. Days begin at 1. Negative values are also accepted.
+	// for example, ['1:5', '-3:-1']
+	// +optional
+	DaysOfMonth []string `json:"days_of_month,omitempty"`
+	// Months  defines list of calendar months identified by a case-insentive name (e.g. ‘January’) or numeric 1.
+	// For example, ['1:3', 'may:august', 'december']
+	// +optional
+	Months []string `json:"months,omitempty"`
+	// Years defines numerical list of years, ranges are accepted.
+	// For example, ['2020:2022', '2030']
+	// +optional
+	Years []string `json:"years,omitempty"`
 }
 
+// TimeRange  ranges inclusive of the starting time and exclusive of the end time
 type TimeRange struct {
-	StartMinute string `json:"start_minute,omitempty"`
-	EndMinute   string `json:"end_minute,omitempty"`
+	// StartMinute for example  HH:MM
+	// +required
+	StartMinute string `json:"start_minute"`
+	// EndMinute for example HH:MM
+	// +required
+	EndMinute string `json:"end_minute"`
 }
 
 // VMAlertmanagerConfigStatus defines the observed state of VMAlertmanagerConfig
@@ -86,53 +112,57 @@ type VMAlertmanagerConfigList struct {
 
 // Route defines a node in the routing tree.
 type Route struct {
-	// Name of the receiver for this route. If not empty, it should be listed in
-	// the `receivers` field.
-	// +optional
+	// Name of the receiver for this route.
+	// +required
 	Receiver string `json:"receiver"`
 	// List of labels to group by.
 	// +optional
 	GroupBy []string `json:"group_by,omitempty"`
-	// How long to wait before sending the initial notification. Must match the
-	// regular expression `[0-9]+(ms|s|m|h)` (milliseconds seconds minutes
-	// hours).
+	// How long to wait before sending the initial notification.
+	// +kubebuilder:validation:Pattern:="[0-9]+(ms|s|m|h)"
 	// +optional
 	GroupWait string `json:"group_wait,omitempty"`
-	// How long to wait before sending an updated notification. Must match the
-	// regular expression `[0-9]+(ms|s|m|h)` (milliseconds seconds minutes
-	// hours).
+	// How long to wait before sending an updated notification.
+	// +kubebuilder:validation:Pattern:="[0-9]+(ms|s|m|h)"
 	// +optional
 	GroupInterval string `json:"group_interval,omitempty"`
-	// How long to wait before repeating the last notification. Must match the
-	// regular expression `[0-9]+(ms|s|m|h)` (milliseconds seconds minutes
-	// hours).
+	// How long to wait before repeating the last notification.
+	// +kubebuilder:validation:Pattern:="[0-9]+(ms|s|m|h)"
 	// +optional
 	RepeatInterval string `json:"repeat_interval,omitempty"`
 	// List of matchers that the alert’s labels should match. For the first
-	// level route, the operator removes any existing equality and regexp
-	// matcher on the `namespace` label and adds a `namespace: <object
-	// namespace>` matcher.
+	// level route, the operator adds a namespace: "CRD_NS" matcher.
+	// https://prometheus.io/docs/alerting/latest/configuration/#matcher
 	// +optional
 	Matchers []string `json:"matchers,omitempty"`
-	// Boolean indicating whether an alert should continue matching subsequent
-	// sibling nodes. It will always be overridden to true for the first-level
-	// route by the Prometheus operator.
+	// Continue indicating whether an alert should continue matching subsequent
+	// sibling nodes. It will always be true for the first-level route.
 	// +optional
 	Continue bool `json:"continue,omitempty"`
 	// Child routes.
-	Routes            []*Route `json:"routes,omitempty"`
+	Routes []*Route `json:"routes,omitempty"`
+	// MuteTimeIntervals for alerts
+	// +optional
 	MuteTimeIntervals []string `json:"mute_time_intervals,omitempty"`
 }
 
 // InhibitRule defines an inhibition rule that allows to mute alerts when other
 // alerts are already firing.
+// Note, it doesn't support deprecated alertmanager config options.
 // See https://prometheus.io/docs/alerting/latest/configuration/#inhibit_rule
 type InhibitRule struct {
+	// TargetMatchers defines a list of matchers that have to be fulfilled by the target
+	// alerts to be muted.
+	// +optional
 	TargetMatchers []string `json:"target_matchers,omitempty"`
+	// SourceMatchers defines a list of matchers for which one or more alerts have
+	// to exist for the inhibition to take effect.
+	// +optional
 	SourceMatchers []string `json:"source_matchers,omitempty"`
 
 	// Labels that must have an equal value in the source and target alert for
 	// the inhibition to take effect.
+	// +optional
 	Equal []string `json:"equal,omitempty"`
 }
 
@@ -140,23 +170,32 @@ type InhibitRule struct {
 type Receiver struct {
 	// Name of the receiver. Must be unique across all items from the list.
 	// +kubebuilder:validation:MinLength=1
+	// +required
 	Name string `json:"name"`
-	// List of Email configurations.
+	// EmailConfigs defines email notification configurations.
+	// +optional
 	EmailConfigs []EmailConfig `json:"email_configs,omitempty"`
-	// List of PagerDuty configurations.
+	// PagerDutyConfigs defines pager duty notification configurations.
+	// +optional
 	PagerDutyConfigs []PagerDutyConfig `json:"pagerduty_configs,omitempty"`
-	// List of Pushover configurations.
+	// PushoverConfigs defines push over notification configurations.
+	// +optional
 	PushoverConfigs []PushoverConfig `json:"pushover_configs,omitempty"`
-	// List of Slack configurations.
+	// SlackConfigs defines slack notification configurations.
+	// +optional
 	SlackConfigs []SlackConfig `json:"slack_configs,omitempty"`
-	// List of OpsGenie configurations.
+	// OpsGenieConfigs defines ops genie notification configurations.
+	// +optional
 	OpsGenieConfigs []OpsGenieConfig `json:"opsgenie_configs,omitempty"`
-	// List of webhook configurations.
+	// WebhookConfigs defines webhook notification configurations.
+	// +optional
 	WebhookConfigs []WebhookConfig `json:"webhook_configs,omitempty"`
 
-	// List of VictorOps configurations.
+	// VictorOpsConfigs defines victor ops notification configurations.
+	// +optional
 	VictorOpsConfigs []VictorOpsConfig `json:"victorops_configs,omitempty"`
-	// List of WeChat configurations.
+	// WeChatConfigs defines wechat notification configurations.
+	// +optional
 	WeChatConfigs []WeChatConfig `json:"wechat_configs,omitempty"`
 }
 
@@ -173,8 +212,6 @@ type WebhookConfig struct {
 	// The secret's key that contains the webhook URL to send HTTP requests to.
 	// `urlSecret` takes precedence over `url`. One of `urlSecret` and `url`
 	// should be defined.
-	// The secret needs to be in the same namespace as the AlertmanagerConfig
-	// object and accessible by the Prometheus Operator.
 	// +optional
 	URLSecret *v1.SecretKeySelector `json:"url_secret,omitempty"`
 	// HTTP client configuration.

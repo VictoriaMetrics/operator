@@ -1,0 +1,55 @@
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAlertmanagerConfig
+metadata:
+  name: example-full
+  namespace: default
+spec:
+  inhibit_rules:
+    - equals:
+        - job = "vmalertmanager"
+      target_matchers:
+        - instance != "prod"
+      source_matchers:
+        - pod = "alertmanager-1"
+  route:
+    routes:
+      - receiver: webhook
+        continue: true
+    receiver: email
+    group_by: ["job"]
+    continue: false
+    matchers:
+      - job = "alertmanager"
+    group_wait: 30s
+    group_interval: 45s
+    repeat_interval: 1h
+  mute_time_intervals:
+    - name: base
+      time_intervals:
+      - times:
+        - start_time: 11:05
+          end_time: 11:15
+        - start_time: 12:35
+          end_time: 13:45
+        weekdays: ["monday:wednesday"]
+        days_of_month: ["-3:-1"]
+        months: ["1","july"]
+        years: ["2021"]
+  receivers:
+    - name: webhook
+      webhook_configs:
+        - url: http://some-other-wh-2
+    - name: email
+      email_configs:
+        - to: some-email@example.com
+          from: alerting@example.com
+          smarthost: example.com:25
+          text: ALARM
+      webhook_configs:
+        - url: http://some-other-wh
+      pagerduty_configs: []
+      pushover_configs: []
+      slack_configs: []
+      opsgenie_configs: []
+      victorops_configs: []
+      wechat_configs: []

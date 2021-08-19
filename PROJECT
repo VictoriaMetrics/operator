@@ -13,6 +13,9 @@ resources:
   kind: VMAlertmanager
   version: v1beta1
 - group: operator
+  kind: VMAlertmanagerConfig
+  version: v1beta1
+- group: operator
   kind: VMPodScrape
   version: v1beta1
 - group: operator

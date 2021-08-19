@@ -3,6 +3,7 @@ package factory
 import (
 	"fmt"
 	"path"
+	"reflect"
 	"regexp"
 	"sort"
 	"strings"
@@ -1281,9 +1282,10 @@ func buildVMScrapeParams(cfg *victoriametricsv1beta1.VMScrapeParams) yaml.MapSli
 		return r
 	}
 	toYaml := func(key string, src interface{}) {
-		if src != nil {
-			r = append(r, yaml.MapItem{Key: key, Value: src})
+		if src == nil || reflect.ValueOf(src).IsNil() {
+			return
 		}
+		r = append(r, yaml.MapItem{Key: key, Value: src})
 	}
 	toYaml("scrape_align_interval", cfg.ScrapeAlignInterval)
 	toYaml("stream_parse", cfg.StreamParse)

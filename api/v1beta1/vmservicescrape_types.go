@@ -3,7 +3,6 @@ package v1beta1
 import (
 	"fmt"
 	"reflect"
-	"time"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -153,7 +152,7 @@ type Endpoint struct {
 	ProxyURL *string `json:"proxyURL,omitempty"`
 	// VMScrapeParams defines VictoriaMetrics specific scrape parametrs
 	// +optional
-	VMScrapeParams *VMScrapeParams `json:"vm_scrape_params"`
+	VMScrapeParams *VMScrapeParams `json:"vm_scrape_params,omitempty"`
 }
 
 // VMScrapeParams defines scrape target configuration that compatible only with VictoriaMetrics scrapers
@@ -170,9 +169,9 @@ type VMScrapeParams struct {
 	// +optional
 	StreamParse *bool `json:"stream_parse,omitempty"`
 	// +optional
-	ScrapeAlignInterval *time.Duration `json:"scrape_align_interval,omitempty"`
+	ScrapeAlignInterval *string `json:"scrape_align_interval,omitempty"`
 	// +optional
-	ScrapeOffset *time.Duration `json:"scrape_offset,omitempty"`
+	ScrapeOffset *string `json:"scrape_offset,omitempty"`
 }
 
 // OAuth2 defines OAuth2 configuration

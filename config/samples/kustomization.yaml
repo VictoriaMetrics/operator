@@ -13,3 +13,4 @@ resources:
 - operator_v1beta1_vmstaticscrape.yaml
 - operator_v1beta1_vmuser.yaml
 - operator_v1beta1_vmauth.yaml
+- operator_v1beta1_vmalertmanagerconfig.yaml

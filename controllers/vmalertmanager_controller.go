@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"sync"
 
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -37,6 +38,8 @@ import (
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 )
+
+var alertmanagerLock sync.Mutex
 
 // VMAlertmanagerReconciler reconciles a VMAlertmanager object
 type VMAlertmanagerReconciler struct {
@@ -81,6 +84,8 @@ func (r *VMAlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, err
 	}
 
+	alertmanagerLock.Lock()
+	defer alertmanagerLock.Unlock()
 	_, err = factory.CreateOrUpdateAlertManager(ctx, instance, r, r.BaseConf)
 	if err != nil {
 		reqLogger.Error(err, "cannot create or update vmalertmanager sts")

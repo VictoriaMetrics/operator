@@ -1,0 +1,13 @@
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAlertmanagerConfig
+metadata:
+  name: vmalertmanagerconfig-sample
+spec:
+  # Add fields here
+  route:
+      receiver: base
+      group_interval: 1m
+  receivers:
+    - name: base
+      webhook_configs:
+        - url: http://some-url

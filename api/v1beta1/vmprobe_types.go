@@ -57,7 +57,7 @@ type VMProbeSpec struct {
 	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
 	// VMScrapeParams defines VictoriaMetrics specific scrape parametrs
 	// +optional
-	VMScrapeParams *VMScrapeParams `json:"vm_scrape_params"`
+	VMScrapeParams *VMScrapeParams `json:"vm_scrape_params,omitempty"`
 }
 
 // VMProbeTargets defines a set of static and dynamically discovered targets for the prober.

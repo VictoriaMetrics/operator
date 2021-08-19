@@ -10,6 +10,29 @@ This Document documents the types introduced by the VictoriaMetrics to be consum
 * [VMAlertmanagerList](#vmalertmanagerlist)
 * [VMAlertmanagerSpec](#vmalertmanagerspec)
 * [VMAlertmanagerStatus](#vmalertmanagerstatus)
+* [EmailConfig](#emailconfig)
+* [HTTPConfig](#httpconfig)
+* [InhibitRule](#inhibitrule)
+* [MuteTimeInterval](#mutetimeinterval)
+* [OpsGenieConfig](#opsgenieconfig)
+* [OpsGenieConfigResponder](#opsgenieconfigresponder)
+* [PagerDutyConfig](#pagerdutyconfig)
+* [PushoverConfig](#pushoverconfig)
+* [Receiver](#receiver)
+* [Route](#route)
+* [SlackAction](#slackaction)
+* [SlackConfig](#slackconfig)
+* [SlackConfirmationField](#slackconfirmationfield)
+* [SlackField](#slackfield)
+* [TimeInterval](#timeinterval)
+* [TimeRange](#timerange)
+* [VMAlertmanagerConfig](#vmalertmanagerconfig)
+* [VMAlertmanagerConfigList](#vmalertmanagerconfiglist)
+* [VMAlertmanagerConfigSpec](#vmalertmanagerconfigspec)
+* [VMAlertmanagerConfigStatus](#vmalertmanagerconfigstatus)
+* [VictorOpsConfig](#victoropsconfig)
+* [WeChatConfig](#wechatconfig)
+* [WebhookConfig](#webhookconfig)
 * [VMAgent](#vmagent)
 * [VMAgentList](#vmagentlist)
 * [VMAgentRemoteWriteSettings](#vmagentremotewritesettings)
@@ -44,11 +67,12 @@ This Document documents the types introduced by the VictoriaMetrics to be consum
 * [APIServerConfig](#apiserverconfig)
 * [Endpoint](#endpoint)
 * [NamespaceSelector](#namespaceselector)
+* [OAuth2](#oauth2)
 * [QueueConfig](#queueconfig)
 * [RelabelConfig](#relabelconfig)
-* [RemoteWriteSpec](#remotewritespec)
 * [SecretOrConfigMap](#secretorconfigmap)
 * [TLSConfig](#tlsconfig)
+* [VMScrapeParams](#vmscrapeparams)
 * [VMServiceScrape](#vmservicescrape)
 * [VMServiceScrapeList](#vmservicescrapelist)
 * [VMServiceScrapeSpec](#vmservicescrapespec)
@@ -159,6 +183,8 @@ VMAlertmanagerSpec is a specification of the desired behavior of the VMAlertmana
 | portName | PortName used for the pods and governing service. This defaults to web | string | false |
 | serviceSpec | ServiceSpec that will be added to vmalertmanager service spec | *[ServiceSpec](#servicespec) | false |
 | podDisruptionBudget | PodDisruptionBudget created by operator | *[EmbeddedPodDisruptionBudgetSpec](#embeddedpoddisruptionbudgetspec) | false |
+| configSelector | ConfigSelector defines selector for VMAlertmanagerConfig, result config will be merged with with Raw or Secret config. If nil, VMAlertmanagerConfig wont be used. If empty - {}, everything will be selected based on namespace selector. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
+| configNamespaceSelector | \n ConfigNamespaceSelector defines namespace selector for VMAlertmanagerConfig.\nIf nil, own namespace will be used. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -173,6 +199,376 @@ VMAlertmanagerStatus is the most recent observed status of the VMAlertmanager cl
 | updatedReplicas | UpdatedReplicas Total number of non-terminated pods targeted by this VMAlertmanager cluster that have the desired version spec. | int32 | true |
 | availableReplicas | AvailableReplicas Total number of available pods (ready for at least minReadySeconds) targeted by this VMAlertmanager cluster. | int32 | true |
 | unavailableReplicas | UnavailableReplicas Total number of unavailable pods targeted by this VMAlertmanager cluster. | int32 | true |
+
+[Back to TOC](#table-of-contents)
+
+## EmailConfig
+
+EmailConfig configures notifications via Email.
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| send_resolved | SendResolved controls notify about resolved alerts. | *bool | false |
+| to | The email address to send notifications to. | string | false |
+| from | The sender address. | string | false |
+| hello | The hostname to identify to the SMTP server. | string | false |
+| smarthost | The SMTP host through which emails are sent. | string | false |
+| auth_username | The username to use for authentication. | string | false |
+| auth_password | AuthPassword defines secret name and key at CRD namespace. | *[v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
+| auth_secret | AuthSecret defines secrent name and key at CRD namespace. It must contain the CRAM-MD5 secret. | *[v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
+| auth_identity | The identity to use for authentication. | string | false |
+| headers | Further headers email header key/value pairs. Overrides any headers previously set by the notification implementation. | map[string]string | false |
+| html | The HTML body of the email notification. | string | false |
+| text | The text body of the email notification. | string | false |
+| require_tls | The SMTP TLS requirement. Note that Go does not support unencrypted connections to remote SMTP endpoints. | *bool | false |
+| tls_config | TLS configuration | *[TLSConfig](#tlsconfig) | false |
+
+[Back to TOC](#table-of-contents)
+
+## HTTPConfig
+
+HTTPConfig defines a client HTTP configuration. See https://prometheus.io/docs/alerting/latest/configuration/#http_config
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| basic_auth | BasicAuth for the client. | *[BasicAuth](#basicauth) | false |
+| bearer_token_secret | The secret&#39;s key that contains the bearer token It must be at them same namespace as CRD | *[v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
+| bearer_token_file | BearerTokenFile defines filename for bearer token, it must be mounted to pod. | string | false |
+| tls_config | TLS configuration for the client. | *[TLSConfig](#tlsconfig) | false |
+| proxyURL | Optional proxy URL. | string | false |
+
+[Back to TOC](#table-of-contents)
+
+## InhibitRule
+
+InhibitRule defines an inhibition rule that allows to mute alerts when other alerts are already firing. Note, it doesn't support deprecated alertmanager config options. See https://prometheus.io/docs/alerting/latest/configuration/#inhibit_rule
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| target_matchers | TargetMatchers defines a list of matchers that have to be fulfilled by the target alerts to be muted. | []string | false |
+| source_matchers | SourceMatchers defines a list of matchers for which one or more alerts have to exist for the inhibition to take effect. | []string | false |
+| equal | Labels that must have an equal value in the source and target alert for the inhibition to take effect. | []string | false |
+
+[Back to TOC](#table-of-contents)
+
+## MuteTimeInterval
+
+MuteTimeInterval for alerts
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| name | Name of interval | string | false |
+| time_intervals | TimeIntervals interval configuration | [][TimeInterval](#timeinterval) | true |
+
+[Back to TOC](#table-of-contents)
+
+## OpsGenieConfig
+
+OpsGenieConfig configures notifications via OpsGenie. See https://prometheus.io/docs/alerting/latest/configuration/#opsgenie_config
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| send_resolved | SendResolved controls notify about resolved alerts. | *bool | false |
+| api_key | The secret&#39;s key that contains the OpsGenie API key. It must be at them same namespace as CRD | *[v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
+| apiURL | The URL to send OpsGenie API requests to. | string | false |
+| message | Alert text limited to 130 characters. | string | false |
+| description | Description of the incident. | string | false |
+| source | Backlink to the sender of the notification. | string | false |
+| tags | Comma separated list of tags attached to the notifications. | string | false |
+| note | Additional alert note. | string | false |
+| priority | Priority level of alert. Possible values are P1, P2, P3, P4, and P5. | string | false |
+| details | A set of arbitrary key/value pairs that provide further detail about the incident. | map[string]string | false |
+| responders | List of responders responsible for notifications. | [][OpsGenieConfigResponder](#opsgenieconfigresponder) | false |
+| httpConfig | HTTP client configuration. | *[HTTPConfig](#httpconfig) | false |
+
+[Back to TOC](#table-of-contents)
+
+## OpsGenieConfigResponder
+
+OpsGenieConfigResponder defines a responder to an incident. One of `id`, `name` or `username` has to be defined.
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| id | ID of the responder. | string | false |
+| name | Name of the responder. | string | false |
+| username | Username of the responder. | string | false |
+| type | Type of responder. | string | true |
+
+[Back to TOC](#table-of-contents)
+
+## PagerDutyConfig
+
+PagerDutyConfig configures notifications via PagerDuty. See https://prometheus.io/docs/alerting/latest/configuration/#pagerduty_config
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| send_resolved | SendResolved controls notify about resolved alerts. | *bool | false |
+| routing_key | The secret&#39;s key that contains the PagerDuty integration key (when using Events API v2). Either this field or `serviceKey` needs to be defined. It must be at them same namespace as CRD | *[v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
+| service_key | The secret&#39;s key that contains the PagerDuty service key (when using integration type \&#34;Prometheus\&#34;). Either this field or `routingKey` needs to be defined. It must be at them same namespace as CRD | *[v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
+| url | The URL to send requests to. | string | false |
+| client | Client identification. | string | false |
+| client_url | Backlink to the sender of notification. | string | false |
+| description | Description of the incident. | string | false |
+| severity | Severity of the incident. | string | false |
+| class | The class/type of the event. | string | false |
+| group | A cluster or grouping of sources. | string | false |
+| component | The part or component of the affected system that is broken. | string | false |
+| details | Arbitrary key/value pairs that provide further detail about the incident. | map[string]string | false |
+| http_config | HTTP client configuration. | *[HTTPConfig](#httpconfig) | false |
+
+[Back to TOC](#table-of-contents)
+
+## PushoverConfig
+
+PushoverConfig configures notifications via Pushover. See https://prometheus.io/docs/alerting/latest/configuration/#pushover_config
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| send_resolved | SendResolved controls notify about resolved alerts. | *bool | false |
+| user_key | The secret&#39;s key that contains the recipient user’s user key. It must be at them same namespace as CRD | *[v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
+| token | The secret&#39;s key that contains the registered application’s API token, see https://pushover.net/apps. It must be at them same namespace as CRD | *[v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
+| title | Notification title. | string | false |
+| message | Notification message. | string | false |
+| url | A supplementary URL shown alongside the message. | string | false |
+| url_title | A title for supplementary URL, otherwise just the URL is shown | string | false |
+| sound | The name of one of the sounds supported by device clients to override the user&#39;s default sound choice | string | false |
+| priority | Priority, see https://pushover.net/api#priority | string | false |
+| retry | How often the Pushover servers will send the same notification to the user. Must be at least 30 seconds. | string | false |
+| expire | How long your notification will continue to be retried for, unless the user acknowledges the notification. | string | false |
+| html | Whether notification message is HTML or plain text. | bool | false |
+| http_config | HTTP client configuration. | *[HTTPConfig](#httpconfig) | false |
+
+[Back to TOC](#table-of-contents)
+
+## Receiver
+
+Receiver defines one or more notification integrations.
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| name | Name of the receiver. Must be unique across all items from the list. | string | true |
+| email_configs | EmailConfigs defines email notification configurations. | [][EmailConfig](#emailconfig) | false |
+| pagerduty_configs | PagerDutyConfigs defines pager duty notification configurations. | [][PagerDutyConfig](#pagerdutyconfig) | false |
+| pushover_configs | PushoverConfigs defines push over notification configurations. | [][PushoverConfig](#pushoverconfig) | false |
+| slack_configs | SlackConfigs defines slack notification configurations. | [][SlackConfig](#slackconfig) | false |
+| opsgenie_configs | OpsGenieConfigs defines ops genie notification configurations. | [][OpsGenieConfig](#opsgenieconfig) | false |
+| webhook_configs | WebhookConfigs defines webhook notification configurations. | [][WebhookConfig](#webhookconfig) | false |
+| victorops_configs | VictorOpsConfigs defines victor ops notification configurations. | [][VictorOpsConfig](#victoropsconfig) | false |
+| wechat_configs | WeChatConfigs defines wechat notification configurations. | [][WeChatConfig](#wechatconfig) | false |
+
+[Back to TOC](#table-of-contents)
+
+## Route
+
+Route defines a node in the routing tree.
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| receiver | Name of the receiver for this route. | string | true |
+| group_by | List of labels to group by. | []string | false |
+| group_wait | How long to wait before sending the initial notification. | string | false |
+| group_interval | How long to wait before sending an updated notification. | string | false |
+| repeat_interval | How long to wait before repeating the last notification. | string | false |
+| matchers | List of matchers that the alert’s labels should match. For the first level route, the operator adds a namespace: \&#34;CRD_NS\&#34; matcher. https://prometheus.io/docs/alerting/latest/configuration/#matcher | []string | false |
+| continue | Continue indicating whether an alert should continue matching subsequent sibling nodes. It will always be true for the first-level route. | bool | false |
+| routes | Child routes. | []*[Route](#route) | false |
+| mute_time_intervals | MuteTimeIntervals for alerts | []string | false |
+
+[Back to TOC](#table-of-contents)
+
+## SlackAction
+
+SlackAction configures a single Slack action that is sent with each notification. See https://api.slack.com/docs/message-attachments#action_fields and https://api.slack.com/docs/message-buttons for more information.
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| type |  | string | true |
+| text |  | string | true |
+| url |  | string | false |
+| style |  | string | false |
+| name |  | string | false |
+| value |  | string | false |
+| confirm |  | *[SlackConfirmationField](#slackconfirmationfield) | false |
+
+[Back to TOC](#table-of-contents)
+
+## SlackConfig
+
+SlackConfig configures notifications via Slack. See https://prometheus.io/docs/alerting/latest/configuration/#slack_config
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| send_resolved | SendResolved controls notify about resolved alerts. | *bool | false |
+| api_url | The secret&#39;s key that contains the Slack webhook URL. It must be at them same namespace as CRD | *[v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
+| channel | The channel or user to send notifications to. | string | false |
+| username |  | string | false |
+| color |  | string | false |
+| title |  | string | false |
+| title_link |  | string | false |
+| pretext |  | string | false |
+| text |  | string | false |
+| fields | A list of Slack fields that are sent with each notification. | [][SlackField](#slackfield) | false |
+| short_fields |  | bool | false |
+| footer |  | string | false |
+| fallback |  | string | false |
+| callback_id |  | string | false |
+| icon_emoji |  | string | false |
+| icon_url |  | string | false |
+| image_url |  | string | false |
+| thumb_url |  | string | false |
+| link_names |  | bool | false |
+| mrkdwn_in |  | []string | false |
+| actions | A list of Slack actions that are sent with each notification. | [][SlackAction](#slackaction) | false |
+| http_config | HTTP client configuration. | *[HTTPConfig](#httpconfig) | false |
+
+[Back to TOC](#table-of-contents)
+
+## SlackConfirmationField
+
+SlackConfirmationField protect users from destructive actions or particularly distinguished decisions by asking them to confirm their button click one more time. See https://api.slack.com/docs/interactive-message-field-guide#confirmation_fields for more information.
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| text |  | string | true |
+| title |  | string | false |
+| ok_text |  | string | false |
+| dismiss_text |  | string | false |
+
+[Back to TOC](#table-of-contents)
+
+## SlackField
+
+See https://api.slack.com/docs/message-attachments#fields for more information.
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| title |  | string | true |
+| value |  | string | true |
+| short |  | *bool | false |
+
+[Back to TOC](#table-of-contents)
+
+## TimeInterval
+
+TimeInterval defines intervals of time
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| times | Times defines time range for mute | [][TimeRange](#timerange) | false |
+| weekdays | Weekdays defines list of days of the week, where the week begins on Sunday and ends on Saturday. | []string | false |
+| days_of_month | DayOfMonth defines list of numerical days in the month. Days begin at 1. Negative values are also accepted. for example, [&#39;1:5&#39;, &#39;-3:-1&#39;] | []string | false |
+| months | Months  defines list of calendar months identified by a case-insentive name (e.g. ‘January’) or numeric 1. For example, [&#39;1:3&#39;, &#39;may:august&#39;, &#39;december&#39;] | []string | false |
+| years | Years defines numerical list of years, ranges are accepted. For example, [&#39;2020:2022&#39;, &#39;2030&#39;] | []string | false |
+
+[Back to TOC](#table-of-contents)
+
+## TimeRange
+
+TimeRange  ranges inclusive of the starting time and exclusive of the end time
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| start_time | StartTime for example  HH:MM | string | true |
+| end_time | EndTime for example HH:MM | string | true |
+
+[Back to TOC](#table-of-contents)
+
+## VMAlertmanagerConfig
+
+VMAlertmanagerConfig is the Schema for the vmalertmanagerconfigs API
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| metadata |  | [metav1.ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#objectmeta-v1-meta) | false |
+| spec |  | [VMAlertmanagerConfigSpec](#vmalertmanagerconfigspec) | false |
+| status |  | [VMAlertmanagerConfigStatus](#vmalertmanagerconfigstatus) | false |
+
+[Back to TOC](#table-of-contents)
+
+## VMAlertmanagerConfigList
+
+VMAlertmanagerConfigList contains a list of VMAlertmanagerConfig
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| metadata |  | [metav1.ListMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#listmeta-v1-meta) | false |
+| items |  | [][VMAlertmanagerConfig](#vmalertmanagerconfig) | true |
+
+[Back to TOC](#table-of-contents)
+
+## VMAlertmanagerConfigSpec
+
+VMAlertmanagerConfigSpec defines configuration for VMAlertmanagerConfig
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| route | Route definition for alertmanager, may include nested routes. | *[Route](#route) | true |
+| receivers | Receivers defines alert receivers. without defined Route, receivers will be skipped. | [][Receiver](#receiver) | true |
+| inhibit_rules | InhibitRules will only apply for alerts matching the resource&#39;s namespace. | [][InhibitRule](#inhibitrule) | false |
+| mute_time_intervals | MuteTimeInterval - global mute time See https://prometheus.io/docs/alerting/latest/configuration/#mute_time_interval | [][MuteTimeInterval](#mutetimeinterval) | false |
+
+[Back to TOC](#table-of-contents)
+
+## VMAlertmanagerConfigStatus
+
+VMAlertmanagerConfigStatus defines the observed state of VMAlertmanagerConfig
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| reason | ErrorReason describes validation or any other errors. | string | false |
+
+[Back to TOC](#table-of-contents)
+
+## VictorOpsConfig
+
+VictorOpsConfig configures notifications via VictorOps. See https://prometheus.io/docs/alerting/latest/configuration/#victorops_config
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| send_resolved | SendResolved controls notify about resolved alerts. | *bool | false |
+| api_key | The secret&#39;s key that contains the API key to use when talking to the VictorOps API. It must be at them same namespace as CRD | *[v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
+| api_url | The VictorOps API URL. | string | false |
+| routing_key | A key used to map the alert to a team. | string | true |
+| message_type | Describes the behavior of the alert (CRITICAL, WARNING, INFO). | string | false |
+| entity_display_name | Contains summary of the alerted problem. | string | false |
+| state_message | Contains long explanation of the alerted problem. | string | false |
+| monitoring_tool | The monitoring tool the state message is from. | string | false |
+| custom_fields | Additional custom fields for notification. | map[string]string | false |
+| http_config | The HTTP client&#39;s configuration. | *[HTTPConfig](#httpconfig) | false |
+
+[Back to TOC](#table-of-contents)
+
+## WeChatConfig
+
+WeChatConfig configures notifications via WeChat. See https://prometheus.io/docs/alerting/latest/configuration/#wechat_config
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| send_resolved | SendResolved controls notify about resolved alerts. | *bool | false |
+| api_secret | The secret&#39;s key that contains the WeChat API key. The secret needs to be in the same namespace as the AlertmanagerConfig object and accessible by the Prometheus Operator. | *[v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
+| api_url | The WeChat API URL. | string | false |
+| corp_id | The corp id for authentication. | string | false |
+| agent_id |  | string | false |
+| to_user |  | string | false |
+| to_party |  | string | false |
+| to_tag |  | string | false |
+| message | API request data as defined by the WeChat API. | string | false |
+| message_type |  | string | false |
+| http_config | HTTP client configuration. | *[HTTPConfig](#httpconfig) | false |
+
+[Back to TOC](#table-of-contents)
+
+## WebhookConfig
+
+WebhookConfig configures notifications via a generic receiver supporting the webhook payload. See https://prometheus.io/docs/alerting/latest/configuration/#webhook_config
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| send_resolved | SendResolved controls notify about resolved alerts. | *bool | false |
+| url | URL to send requests to, one of `urlSecret` and `url` must be defined. | *string | false |
+| url_secret | URLSecret defines secret name and key at the CRD namespace. It must contain the webhook URL. one of `urlSecret` and `url` must be defined. | *[v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
+| http_config | HTTP client configuration. | *[HTTPConfig](#httpconfig) | false |
+| max_alerts | Maximum number of alerts to be sent per webhook message. When 0, all alerts are included. | int32 | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -225,6 +621,7 @@ VMAgentRemoteWriteSpec defines the remote storage configuration for VmAgent
 | basicAuth | BasicAuth allow an endpoint to authenticate over basic authentication | *[BasicAuth](#basicauth) | false |
 | bearerTokenSecret | Optional bearer auth token to use for -remoteWrite.url | *[v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
 | urlRelabelConfig | ConfigMap with relabeling config which is applied to metrics before sending them to the corresponding -remoteWrite.url | *v1.ConfigMapKeySelector | false |
+| oauth2 | OAuth2 defines auth configuration | *[OAuth2](#oauth2) | false |
 | tlsConfig | TLSConfig describes tls configuration for remote write target | *[TLSConfig](#tlsconfig) | false |
 | sendTimeout | Timeout for sending a single block of data to -remoteWrite.url (default 1m0s) | *string | false |
 
@@ -316,8 +713,8 @@ BasicAuth allow an endpoint to authenticate over basic authentication More info:
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
-| username | The secret in the service scrape namespace that contains the username for authentication. | [v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
-| password | The secret in the service scrape namespace that contains the password for authentication. | [v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
+| username | The secret in the service scrape namespace that contains the username for authentication. It must be at them same namespace as CRD | [v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
+| password | The secret in the service scrape namespace that contains the password for authentication. It must be at them same namespace as CRD | [v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -713,7 +1110,9 @@ Endpoint defines a scrapeable endpoint serving Prometheus metrics.
 | scheme | HTTP scheme to use for scraping. | string | false |
 | params | Optional HTTP URL parameters | map[string][]string | false |
 | interval | Interval at which metrics should be scraped | string | false |
+| scrape_interval | ScrapeInterval is the same as Interval and has priority over it. one of scrape_interval or interval can be used | string | false |
 | scrapeTimeout | Timeout after which the scrape is ended | string | false |
+| oauth2 | OAuth2 defines auth configuration | *[OAuth2](#oauth2) | false |
 | tlsConfig | TLSConfig configuration to use when scraping the endpoint | *[TLSConfig](#tlsconfig) | false |
 | bearerTokenFile | File to read bearer token for scraping targets. | string | false |
 | bearerTokenSecret | Secret to mount to read bearer token for scraping targets. The secret needs to be in the same namespace as the service scrape and accessible by the victoria-metrics operator. | [v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
@@ -723,6 +1122,7 @@ Endpoint defines a scrapeable endpoint serving Prometheus metrics.
 | metricRelabelConfigs | MetricRelabelConfigs to apply to samples before ingestion. | []*[RelabelConfig](#relabelconfig) | false |
 | relabelConfigs | RelabelConfigs to apply to samples before scraping. More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config | []*[RelabelConfig](#relabelconfig) | false |
 | proxyURL | ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. | *string | false |
+| vm_scrape_params | VMScrapeParams defines VictoriaMetrics specific scrape parametrs | *[VMScrapeParams](#vmscrapeparams) | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -734,6 +1134,21 @@ NamespaceSelector is a selector for selecting either all namespaces or a list of
 | ----- | ----------- | ------ | -------- |
 | any | Boolean describing whether all namespaces are selected in contrast to a list restricting them. | bool | false |
 | matchNames | List of namespace names. | []string | false |
+
+[Back to TOC](#table-of-contents)
+
+## OAuth2
+
+OAuth2 defines OAuth2 configuration
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| client_id | The secret or configmap containing the OAuth2 client id | [SecretOrConfigMap](#secretorconfigmap) | true |
+| client_secret | The secret containing the OAuth2 client secret | *[v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
+| client_secret_file | ClientSecretFile defines path for client secret file. | string | false |
+| token_url | The URL to fetch the token from | string | true |
+| scopes | OAuth2 scopes used for the token request | []string | false |
+| endpoint_params | Parameters to append to the token URL | map[string]string | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -772,25 +1187,6 @@ RelabelConfig allows dynamic rewriting of the label set, being applied to sample
 
 [Back to TOC](#table-of-contents)
 
-## RemoteWriteSpec
-
-RemoteWriteSpec defines the remote_write configuration.
-
-| Field | Description | Scheme | Required |
-| ----- | ----------- | ------ | -------- |
-| url | The URL of the endpoint to send samples to. | string | true |
-| name | The name of the remote write queue, must be unique if specified. The name is used in metrics and logging in order to differentiate queues. | string | false |
-| remoteTimeout | Timeout for requests to the remote write endpoint. | string | false |
-| writeRelabelConfigs | The list of remote write relabel configurations. | [][RelabelConfig](#relabelconfig) | false |
-| basicAuth | BasicAuth for the URL. | *[BasicAuth](#basicauth) | false |
-| bearerToken | File to read bearer token for remote write. | string | false |
-| bearerTokenFile | File to read bearer token for remote write. | string | false |
-| tlsConfig | TLSConfig Config to use for remote write. | *[TLSConfig](#tlsconfig) | false |
-| proxyURL | Optional ProxyURL | string | false |
-| queueConfig | QueueConfig allows tuning of the remote write queue parameters. | *[QueueConfig](#queueconfig) | false |
-
-[Back to TOC](#table-of-contents)
-
 ## SecretOrConfigMap
 
 SecretOrConfigMap allows to specify data as a Secret or ConfigMap. Fields are mutually exclusive.
@@ -816,6 +1212,22 @@ TLSConfig specifies TLSConfig configuration parameters.
 | keySecret | Secret containing the client key file for the targets. | *[v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
 | serverName | Used to verify the hostname for the targets. | string | false |
 | insecureSkipVerify | Disable target certificate validation. | bool | false |
+
+[Back to TOC](#table-of-contents)
+
+## VMScrapeParams
+
+VMScrapeParams defines scrape target configuration that compatible only with VictoriaMetrics scrapers VMAgent and VMSingle
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| relabel_debug |  | *bool | false |
+| metric_relabel_debug |  | *bool | false |
+| disable_compression |  | *bool | false |
+| disable_keep_alive |  | *bool | false |
+| stream_parse |  | *bool | false |
+| scrape_align_interval |  | *string | false |
+| scrape_offset |  | *string | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -881,6 +1293,7 @@ PodMetricsEndpoint defines a scrapeable endpoint of a Kubernetes Pod serving Pro
 | scheme | HTTP scheme to use for scraping. | string | false |
 | params | Optional HTTP URL parameters | map[string][]string | false |
 | interval | Interval at which metrics should be scraped | string | false |
+| scrape_interval | ScrapeInterval is the same as Interval and has priority over it. one of scrape_interval or interval can be used | string | false |
 | scrapeTimeout | Timeout after which the scrape is ended | string | false |
 | honorLabels | HonorLabels chooses the metric&#39;s labels on collisions with target labels. | bool | false |
 | honorTimestamps | HonorTimestamps controls whether vmagent respects the timestamps present in scraped data. | *bool | false |
@@ -891,6 +1304,8 @@ PodMetricsEndpoint defines a scrapeable endpoint of a Kubernetes Pod serving Pro
 | bearerTokenFile | File to read bearer token for scraping targets. | string | false |
 | bearerTokenSecret | Secret to mount to read bearer token for scraping targets. The secret needs to be in the same namespace as the service scrape and accessible by the victoria-metrics operator. | [v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
 | tlsConfig | TLSConfig configuration to use when scraping the endpoint | *[TLSConfig](#tlsconfig) | false |
+| oauth2 | OAuth2 defines auth configuration | *[OAuth2](#oauth2) | false |
+| vm_scrape_params | VMScrapeParams defines VictoriaMetrics specific scrape parametrs | *[VMScrapeParams](#vmscrapeparams) | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -1200,7 +1615,9 @@ VMNodeScrapeSpec defines specification for VMNodeScrape.
 | scheme | HTTP scheme to use for scraping. | string | false |
 | params | Optional HTTP URL parameters | map[string][]string | false |
 | interval | Interval at which metrics should be scraped | string | false |
+| scrape_interval | ScrapeInterval is the same as Interval and has priority over it. one of scrape_interval or interval can be used | string | false |
 | scrapeTimeout | Timeout after which the scrape is ended | string | false |
+| oauth2 | OAuth2 defines auth configuration | *[OAuth2](#oauth2) | false |
 | tlsConfig | TLSConfig configuration to use when scraping the node | *[TLSConfig](#tlsconfig) | false |
 | bearerTokenFile | File to read bearer token for scraping targets. | string | false |
 | bearerTokenSecret | Secret to mount to read bearer token for scraping targets. The secret needs to be  accessible by the victoria-metrics operator. | [v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
@@ -1212,6 +1629,7 @@ VMNodeScrapeSpec defines specification for VMNodeScrape.
 | proxyURL | ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. | *string | false |
 | selector | Selector to select kubernetes Nodes. | [metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
 | sampleLimit | SampleLimit defines per-scrape limit on number of scraped samples that will be accepted. | uint64 | false |
+| vm_scrape_params | VMScrapeParams defines VictoriaMetrics specific scrape parametrs | *[VMScrapeParams](#vmscrapeparams) | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -1381,7 +1799,9 @@ TargetEndpoint defines single static target endpoint.
 | scheme | HTTP scheme to use for scraping. | string | false |
 | params | Optional HTTP URL parameters | map[string][]string | false |
 | interval | Interval at which metrics should be scraped | string | false |
+| scrape_interval | ScrapeInterval is the same as Interval and has priority over it. one of scrape_interval or interval can be used | string | false |
 | scrapeTimeout | Timeout after which the scrape is ended | string | false |
+| oauth2 | OAuth2 defines auth configuration | *[OAuth2](#oauth2) | false |
 | tlsConfig | TLSConfig configuration to use when scraping the endpoint | *[TLSConfig](#tlsconfig) | false |
 | bearerTokenFile | File to read bearer token for scraping targets. | string | false |
 | bearerTokenSecret | Secret to mount to read bearer token for scraping targets. The secret needs to be in the same namespace as the service scrape and accessible by the victoria-metrics operator. | [v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
@@ -1391,6 +1811,7 @@ TargetEndpoint defines single static target endpoint.
 | proxyURL | ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. | *string | false |
 | honorLabels | HonorLabels chooses the metric&#39;s labels on collisions with target labels. | bool | false |
 | honorTimestamps | HonorTimestamps controls whether vmagent respects the timestamps present in scraped data. | *bool | false |
+| vm_scrape_params | VMScrapeParams defines VictoriaMetrics specific scrape parametrs | *[VMScrapeParams](#vmscrapeparams) | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -1475,7 +1896,12 @@ VMProbeSpec contains specification parameters for a Probe.
 | module | The module to use for probing specifying how to probe the target. Example module configuring in the blackbox exporter: https://github.com/prometheus/blackbox_exporter/blob/master/example.yml | string | false |
 | targets | Targets defines a set of static and/or dynamically discovered targets to be probed using the prober. | [VMProbeTargets](#vmprobetargets) | false |
 | interval | Interval at which targets are probed using the configured prober. If not specified Prometheus&#39; global scrape interval is used. | string | false |
+| scrape_interval | ScrapeInterval is the same as Interval and has priority over it. one of scrape_interval or interval can be used | string | false |
 | scrapeTimeout | Timeout for scraping metrics from the Prometheus exporter. | string | false |
+| basicAuth | BasicAuth allow an endpoint to authenticate over basic authentication More info: https://prometheus.io/docs/operating/configuration/#endpoints | *[BasicAuth](#basicauth) | false |
+| oauth2 | OAuth2 defines auth configuration | *[OAuth2](#oauth2) | false |
+| tlsConfig | TLSConfig configuration to use when scraping the endpoint | *[TLSConfig](#tlsconfig) | false |
+| vm_scrape_params | VMScrapeParams defines VictoriaMetrics specific scrape parametrs | *[VMScrapeParams](#vmscrapeparams) | false |
 
 [Back to TOC](#table-of-contents)
 

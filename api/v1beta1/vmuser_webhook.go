@@ -39,7 +39,7 @@ func (r *VMUser) SetupWebhookWithManager(mgr ctrl.Manager) error {
 		Complete()
 }
 
-// +kubebuilder:webhook:verbs=create;update,path=/validate-operator-victoriametrics-com-v1beta1-vmuser,mutating=false,failurePolicy=fail,groups=operator.victoriametrics.com,resources=vmusers,versions=v1beta1,name=vvmuser.kb.io
+// +kubebuilder:webhook:verbs=create;update,admissionReviewVersions=v1,sideEffects=none,path=/validate-operator-victoriametrics-com-v1beta1-vmuser,mutating=false,failurePolicy=fail,groups=operator.victoriametrics.com,resources=vmusers,versions=v1beta1,name=vvmuser.kb.io
 
 var _ webhook.Validator = &VMUser{}
 

@@ -103,7 +103,7 @@ The VictoriaMetrics Operator introduces additional resources in Kubernetes to de
 * [VMCluster](#VMCluster)
 * [VMAgent](#VMAgent)
 * [VMAlert](#VMAlert)
-* [Alertmanager](#Alertmanager)
+* [VMAlertmanager](#VMAlertmanager)
 * [VMServiceScrape](#VMServiceScrape)
 * [VMRule](#VMRule)
 * [VMPodScrape](#VMPodScrape)
@@ -450,11 +450,25 @@ spec:
 EOF 
 ```
 
-## Alertmanager
+## VMAlertmanager
 
-Alertmanager - represents alertmanager configuration, first, you have to create secret with a configuration for it.
-If there is no secret, default secret will be created with predefined content. It is possbile to provide raw yaml config
+`VMAlertmanager` - represents alertmanager configuration, first, you have to create secret with a configuration for it.
+If there is no secret, default secret will be created with predefined content. It is possible to provide raw yaml config
 to the alertmanager.
+
+`VMAlertmanager` has exactly the same logic for filtering `VMAlertmanagerConfig` with `spec.configSelector` and `spec.configNamespaceSelector`
+as `VMAgent` does:
+- `spec.configNamespaceSelector` - if its nil, only `VMAlertmanagerConfig`s in the `VMAlertmanager` namespace can be selected.
+  If it's defined with empty value: `spec.configNamespaceSelector: {}` - all namespaces are matched.
+  You may also add matchLabels or matchExpression syntax, but your namespace must be tagged with specified labels first:
+```yaml
+spec.configNamespaceSelector:
+  matchLabels:
+    name: default
+```
+- `spec.configSelector` - it selects `VMAlertmanagerConfig` objects by its labels.
+  If it's nil, but `spec.configNamespaceSelector` isn't, the last one will be used for selecting.
+  If it's defined with empty value: `spec.configSelector: {}`, all objects depending on NamespaceSelector.
 
 ```yaml
 cat << EOF | kubectl apply -f -
@@ -491,6 +505,8 @@ spec:
   # Add fields here
   replicaCount: 1
   configSecret: alertmanager-config
+  configSelector: {}
+  configNamespaceSelector: {}
 EOF
 ```
 
@@ -520,6 +536,58 @@ spec:
 EOF
 ```
 
+  
+## VMAlertmanagerConfig
+
+ `VMAlertmanagerConfig` allows managing `VMAlertmanager` configuration.
+
+```yaml
+
+cat << EOF | kubectl apply -f
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAlertmanagerConfig
+metadata:
+  name: example
+  namespace: default
+spec:
+  inhibit_rules:
+    - equals: []
+      target_matchers: []
+      source_matchers: []
+  route:
+    routes:
+      - receiver: webhook
+        continue: true
+    receiver: email
+    group_by: []
+    continue: false
+    matchers:
+      - job = "alertmanager"
+    group_wait: 30s
+    group_interval: 45s
+    repeat_interval: 1h
+  mute_time_intervals:
+    - name: base
+      time_intervals:
+        - times:
+            - start_time: ""
+              end_time: ""
+          weekdays: []
+          days_of_month: []
+          months: []
+          years: []
+  receivers:
+      email_configs: []
+      webhook_configs:
+        - url: http://some-other-wh
+      pagerduty_configs: []
+      pushover_configs: []
+      slack_configs: []
+      opsgenie_configs: []
+      victorops_configs: []
+      wechat_configs: []
+EOF
+```
 
 ## VMAlert
 

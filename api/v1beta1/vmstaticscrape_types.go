@@ -83,7 +83,7 @@ type TargetEndpoint struct {
 	HonorTimestamps *bool `json:"honorTimestamps,omitempty"`
 	// VMScrapeParams defines VictoriaMetrics specific scrape parametrs
 	// +optional
-	VMScrapeParams *VMScrapeParams `json:"vm_scrape_params"`
+	VMScrapeParams *VMScrapeParams `json:"vm_scrape_params,omitempty"`
 }
 
 // AsKey represent CR as map key.

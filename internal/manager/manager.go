@@ -228,6 +228,15 @@ func RunManager(ctx context.Context) error {
 		setupLog.Error(err, "unable to create controller", "controller", "VMUser")
 		return err
 	}
+	if err = (&controllers.VMAlertmanagerConfigReconciler{
+		Client:       mgr.GetClient(),
+		Log:          ctrl.Log.WithName("controllers").WithName("VMAlertmanagerConfigReconciler"),
+		OriginScheme: mgr.GetScheme(),
+		BaseConf:     config.MustGetBaseConfig(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "VMAlertmanager")
+		return err
+	}
 	// +kubebuilder:scaffold:builder
 	setupLog.Info("starting vmconverter clients")
 
@@ -278,6 +287,7 @@ func addWebhooks(mgr ctrl.Manager) error {
 		&victoriametricsv1beta1.VMSingle{},
 		&victoriametricsv1beta1.VMCluster{},
 		&victoriametricsv1beta1.VMAlertmanager{},
+		&victoriametricsv1beta1.VMAlertmanagerConfig{},
 		&victoriametricsv1beta1.VMAuth{},
 		&victoriametricsv1beta1.VMUser{},
 	})

@@ -1,5 +1,3 @@
-
----
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -357,20 +355,20 @@ rules:
     - patch
     - update
 - apiGroups:
-  - operator.victoriametrics.com
+    - operator.victoriametrics.com
   resources:
-  - vmnodescrapes
-  - vmnodescrapes/finalizers
+    - vmnodescrapes
+    - vmnodescrapes/finalizers
   verbs:
-  - '*'
+    - '*'
 - apiGroups:
-  - operator.victoriametrics.com
+    - operator.victoriametrics.com
   resources:
-  - vmnodescrapes/status
+    - vmnodescrapes/status
   verbs:
-  - get
-  - patch
-  - update
+    - get
+    - patch
+    - update
 - apiGroups:
     - operator.victoriametrics.com
   resources:
@@ -470,3 +468,23 @@ rules:
   verbs:
     - get
     - list
+- apiGroups:
+  - operator.victoriametrics.com
+  resources:
+  - vmalertmanagerconfigs
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - operator.victoriametrics.com
+  resources:
+  - vmalertmanagerconfigs/status
+  verbs:
+  - get
+  - patch
+  - update

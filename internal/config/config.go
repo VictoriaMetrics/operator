@@ -149,8 +149,8 @@ type BaseOperatorConf struct {
 		ConfigReloaderImage          string `default:"jimmidyson/configmap-reload:v0.3.0"`
 		ConfigReloaderCPU            string `default:"100m"`
 		ConfigReloaderMemory         string `default:"25Mi"`
-		AlertmanagerDefaultBaseImage string `default:"quay.io/prometheus/alertmanager"`
-		AlertManagerVersion          string `default:"v0.20.0"`
+		AlertmanagerDefaultBaseImage string `default:"prom/alertmanager"`
+		AlertManagerVersion          string `default:"v0.22.2"`
 		LocalHost                    string `default:"127.0.0.1"`
 		UseDefaultResources          bool   `default:"true"`
 		Resource                     struct {

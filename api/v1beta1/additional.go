@@ -141,10 +141,12 @@ type EmbeddedPersistentVolumeClaim struct {
 type BasicAuth struct {
 	// The secret in the service scrape namespace that contains the username
 	// for authentication.
+	// It must be at them same namespace as CRD
 	// +optional
 	Username v1.SecretKeySelector `json:"username,omitempty"`
 	// The secret in the service scrape namespace that contains the password
 	// for authentication.
+	// It must be at them same namespace as CRD
 	// +optional
 	Password v1.SecretKeySelector `json:"password,omitempty"`
 }

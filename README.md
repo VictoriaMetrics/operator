@@ -12,13 +12,13 @@
 ## Overview
 
  Design and implementation inspired by [prometheus-operator](https://github.com/prometheus-operator/prometheus-operator). It's great a tool for managing monitoring configuration of your applications. VictoriaMetrics operator has api capability with it.
-So you can use familiar CRD objects: `ServiceMonitor`, `PodMonitor`, `PrometheusRule` and `Probe`. Or you can use VictoriaMetrics CRDS:
+So you can use familiar CRD objects: `ServiceMonitor`, `PodMonitor`, `PrometheusRule` and `Probe`. Or you can use VictoriaMetrics CRDs:
 - `VMServiceScrape` - defines scraping metrics configuration from pods backed by services.
 - `VMPodScrape` - defines scraping metrics configuration from pods.
 - `VMRule` - defines alerting or recording rules.
 - `VMProbe` - defines a probing configuration for targets with blackbox exporter.
 
-Besides it, operator allows your to manage VictoriaMetrics applications inside kubernetes cluster and simplifies this process [quick-start](/docs/quick-start.MD) 
+Besides, operator allows you to manage VictoriaMetrics applications inside kubernetes cluster and simplifies this process [quick-start](/docs/quick-start.MD) 
 With CRD (Custom Resource Definition) you can define application configuration and apply it to your cluster [crd-objects](/docs/api.MD). 
 
  Operator simplifies VictoriaMetrics cluster installation, upgrading and managing.
@@ -58,7 +58,7 @@ VictoriaMetrics provides [helm charts](https://github.com/VictoriaMetrics/helm-c
 ## Kubernetes compatibility versions
 
 operator tested at kubernetes versions 
-from 1.13 to 1.18
+from 1.16 to 1.21
 
 ## Troubleshooting
 
@@ -67,7 +67,7 @@ from 1.13 to 1.18
 Error from server (Invalid): error when creating "release/crds/crd.yaml": CustomResourceDefinition.apiextensions.k8s.io "vmalertmanagers.operator.victoriametrics.com" is invalid: [spec.validation.openAPIV3Schema.properties[spec].properties[initContainers].items.properties[ports].items.properties[protocol].default: Required value: this property is in x-kubernetes-list-map-keys, so it must have a default or be a required property, spec.validation.openAPIV3Schema.properties[spec].properties[containers].items.properties[ports].items.properties[protocol].default: Required value: this property is in x-kubernetes-list-map-keys, so it must have a default or be a required property]
 Error from server (Invalid): error when creating "release/crds/crd.yaml": CustomResourceDefinition.apiextensions.k8s.io "vmalerts.operator.victoriametrics.com" is invalid: [
 ```
-  upgrade to the latest release version. There is was a bug with kubernetes objects at the early releases.
+  upgrade to the latest release version. There is a bug with kubernetes objects at the early releases.
 
 ## Community and contributions
 

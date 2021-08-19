@@ -11,7 +11,8 @@ Operator introduces the following custom resources:
 * [VMAlert](#VMAlert)
 * [VMServiceScrape](#VMServiceScrape)
 * [VMPodScrape](#VMPodScrape)
-* [Alertmanager](#Alertmanager)
+* [VMAlertmanager](#VMAlertmanager)
+* [VMAlertmanagerConfig](#VMAlertmanagerConfig)
 * [VMRule](#VMRule)
 * [VMProbe](#VMProbe)
 * [VMNodeScrape](#VMNodeScrape)
@@ -157,9 +158,9 @@ spec:
     any: true
 ```
 
-## Alertmanager
+## VMAlertmanager
 
-The `Alertmanager` CRD declaratively defines a desired Alertmanager setup to run in a Kubernetes cluster. 
+The `VMAlertmanager` CRD declaratively defines a desired Alertmanager setup to run in a Kubernetes cluster. 
 It provides options to configure replication and persistent storage.
 
 For each `Alertmanager` resource, the Operator deploys a properly configured `StatefulSet` in the same namespace. 
@@ -167,6 +168,11 @@ The Alertmanager pods are configured to include a `Secret` called `<alertmanager
 configuration file in the key `alertmanager.yaml`.
 
 When there are two or more configured replicas the Operator runs the Alertmanager instances in high availability mode.
+
+## VMAlertmanagerConfig
+
+The `VMAlertmanagerConfig` provides way to configure `VMAlertmanager` configuration with CRD. It allows to define different configuration parts, 
+which will be merged by operator into config. It behaves like other config parts - `VMServiceScrape` and etc.
 
 ## VMRule
 

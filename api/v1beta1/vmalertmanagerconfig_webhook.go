@@ -37,7 +37,7 @@ func (amc *VMAlertmanagerConfig) Validate() error {
 	return nil
 }
 
-// +kubebuilder:webhook:verbs=create;update,path=/validate-operator-victoriametrics-com-v1beta1-vmalertmanagerconfig,mutating=false,failurePolicy=fail,groups=operator.victoriametrics.com,resources=vmalertmanagerconfigs,versions=v1beta1,name=vvmalertmanagerconfig.kb.io
+// +kubebuilder:webhook:verbs=create;update,admissionReviewVersions=v1,sideEffects=none,path=/validate-operator-victoriametrics-com-v1beta1-vmalertmanagerconfig,mutating=false,failurePolicy=fail,groups=operator.victoriametrics.com,resources=vmalertmanagerconfigs,versions=v1beta1,name=vvmalertmanagerconfig.kb.io
 
 var _ webhook.Validator = &VMAlertmanagerConfig{}
 

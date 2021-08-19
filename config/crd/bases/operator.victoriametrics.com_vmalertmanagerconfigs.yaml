@@ -2,7 +2,7 @@ apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.3.0
+    controller-gen.kubebuilder.io/version: v0.6.2
   name: vmalertmanagerconfigs.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -63,7 +63,7 @@ spec:
                     type: array
                 type: object
               type: array
-            mut_time_intervals:
+            mute_time_intervals:
               description: MuteTimeInterval - global mute time See https://prometheus.io/docs/alerting/latest/configuration/#mute_time_interval
               items:
                 description: MuteTimeInterval for alerts
@@ -74,7 +74,7 @@ spec:
                   time_intervals:
                     description: TimeIntervals interval configuration
                     items:
-                      description: TimeInterval defines interval
+                      description: TimeInterval defines intervals of time
                       properties:
                         days_of_month:
                           description: DayOfMonth defines list of numerical days in
@@ -92,17 +92,21 @@ spec:
                           type: array
                         times:
                           description: Times defines time range for mute
-                          properties:
-                            end_minute:
-                              description: EndMinute for example HH:MM
-                              type: string
-                            start_minute:
-                              description: StartMinute for example  HH:MM
-                              type: string
-                          required:
-                          - end_minute
-                          - start_minute
-                          type: object
+                          items:
+                            description: TimeRange  ranges inclusive of the starting
+                              time and exclusive of the end time
+                            properties:
+                              end_time:
+                                description: EndTime for example HH:MM
+                                type: string
+                              start_time:
+                                description: StartTime for example  HH:MM
+                                type: string
+                            required:
+                            - end_time
+                            - start_time
+                            type: object
+                          type: array
                         weekdays:
                           description: Weekdays defines list of days of the week,
                             where the week begins on Sunday and ends on Saturday.
@@ -136,10 +140,8 @@ spec:
                           description: The identity to use for authentication.
                           type: string
                         auth_password:
-                          description: The secret's key that contains the password
-                            to use for authentication. The secret needs to be in the
-                            same namespace as the AlertmanagerConfig object and accessible
-                            by the Prometheus Operator.
+                          description: AuthPassword defines secret name and key at
+                            CRD namespace.
                           properties:
                             key:
                               description: The key of the secret to select from.  Must
@@ -157,10 +159,8 @@ spec:
                           - key
                           type: object
                         auth_secret:
-                          description: The secret's key that contains the CRAM-MD5
-                            secret. The secret needs to be in the same namespace as
-                            the AlertmanagerConfig object and accessible by the Prometheus
-                            Operator.
+                          description: AuthSecret defines secrent name and key at
+                            CRD namespace. It must contain the CRAM-MD5 secret.
                           properties:
                             key:
                               description: The key of the secret to select from.  Must
@@ -201,7 +201,8 @@ spec:
                             not support unencrypted connections to remote SMTP endpoints.
                           type: boolean
                         send_resolved:
-                          description: Whether or not to notify about resolved alerts.
+                          description: SendResolved controls notify about resolved
+                            alerts.
                           type: boolean
                         smarthost:
                           description: The SMTP host through which emails are sent.
@@ -361,9 +362,7 @@ spec:
                       properties:
                         api_key:
                           description: The secret's key that contains the OpsGenie
-                            API key. The secret needs to be in the same namespace
-                            as the AlertmanagerConfig object and accessible by the
-                            Prometheus Operator.
+                            API key. It must be at them same namespace as CRD
                           properties:
                             key:
                               description: The key of the secret to select from.  Must
@@ -401,6 +400,7 @@ spec:
                                 password:
                                   description: The secret in the service scrape namespace
                                     that contains the password for authentication.
+                                    It must be at them same namespace as CRD
                                   properties:
                                     key:
                                       description: The key of the secret to select
@@ -422,6 +422,7 @@ spec:
                                 username:
                                   description: The secret in the service scrape namespace
                                     that contains the username for authentication.
+                                    It must be at them same namespace as CRD
                                   properties:
                                     key:
                                       description: The key of the secret to select
@@ -447,10 +448,7 @@ spec:
                               type: string
                             bearer_token_secret:
                               description: The secret's key that contains the bearer
-                                token to be used by the client for authentication.
-                                The secret needs to be in the same namespace as the
-                                AlertmanagerConfig object and accessible by the Prometheus
-                                Operator.
+                                token It must be at them same namespace as CRD
                               properties:
                                 key:
                                   description: The key of the secret to select from.  Must
@@ -643,7 +641,8 @@ spec:
                             type: object
                           type: array
                         send_resolved:
-                          description: Whether or not to notify about resolved alerts.
+                          description: SendResolved controls notify about resolved
+                            alerts.
                           type: boolean
                         source:
                           description: Backlink to the sender of the notification.
@@ -695,6 +694,7 @@ spec:
                                 password:
                                   description: The secret in the service scrape namespace
                                     that contains the password for authentication.
+                                    It must be at them same namespace as CRD
                                   properties:
                                     key:
                                       description: The key of the secret to select
@@ -716,6 +716,7 @@ spec:
                                 username:
                                   description: The secret in the service scrape namespace
                                     that contains the username for authentication.
+                                    It must be at them same namespace as CRD
                                   properties:
                                     key:
                                       description: The key of the secret to select
@@ -741,10 +742,7 @@ spec:
                               type: string
                             bearer_token_secret:
                               description: The secret's key that contains the bearer
-                                token to be used by the client for authentication.
-                                The secret needs to be in the same namespace as the
-                                AlertmanagerConfig object and accessible by the Prometheus
-                                Operator.
+                                token It must be at them same namespace as CRD
                               properties:
                                 key:
                                   description: The key of the secret to select from.  Must
@@ -905,9 +903,8 @@ spec:
                         routing_key:
                           description: The secret's key that contains the PagerDuty
                             integration key (when using Events API v2). Either this
-                            field or `serviceKey` needs to be defined. The secret
-                            needs to be in the same namespace as the AlertmanagerConfig
-                            object and accessible by the Prometheus Operator.
+                            field or `serviceKey` needs to be defined. It must be
+                            at them same namespace as CRD
                           properties:
                             key:
                               description: The key of the secret to select from.  Must
@@ -925,14 +922,14 @@ spec:
                           - key
                           type: object
                         send_resolved:
-                          description: Whether or not to notify about resolved alerts.
+                          description: SendResolved controls notify about resolved
+                            alerts.
                           type: boolean
                         service_key:
                           description: The secret's key that contains the PagerDuty
                             service key (when using integration type "Prometheus").
                             Either this field or `routingKey` needs to be defined.
-                            The secret needs to be in the same namespace as the AlertmanagerConfig
-                            object and accessible by the Prometheus Operator.
+                            It must be at them same namespace as CRD
                           properties:
                             key:
                               description: The key of the secret to select from.  Must
@@ -980,6 +977,7 @@ spec:
                                 password:
                                   description: The secret in the service scrape namespace
                                     that contains the password for authentication.
+                                    It must be at them same namespace as CRD
                                   properties:
                                     key:
                                       description: The key of the secret to select
@@ -1001,6 +999,7 @@ spec:
                                 username:
                                   description: The secret in the service scrape namespace
                                     that contains the username for authentication.
+                                    It must be at them same namespace as CRD
                                   properties:
                                     key:
                                       description: The key of the secret to select
@@ -1026,10 +1025,7 @@ spec:
                               type: string
                             bearer_token_secret:
                               description: The secret's key that contains the bearer
-                                token to be used by the client for authentication.
-                                The secret needs to be in the same namespace as the
-                                AlertmanagerConfig object and accessible by the Prometheus
-                                Operator.
+                                token It must be at them same namespace as CRD
                               properties:
                                 key:
                                   description: The key of the secret to select from.  Must
@@ -1198,7 +1194,8 @@ spec:
                             same notification to the user. Must be at least 30 seconds.
                           type: string
                         send_resolved:
-                          description: Whether or not to notify about resolved alerts.
+                          description: SendResolved controls notify about resolved
+                            alerts.
                           type: boolean
                         sound:
                           description: The name of one of the sounds supported by
@@ -1210,8 +1207,7 @@ spec:
                         token:
                           description: The secret's key that contains the registered
                             application’s API token, see https://pushover.net/apps.
-                            The secret needs to be in the same namespace as the AlertmanagerConfig
-                            object and accessible by the Prometheus Operator.
+                            It must be at them same namespace as CRD
                           properties:
                             key:
                               description: The key of the secret to select from.  Must
@@ -1237,9 +1233,8 @@ spec:
                           type: string
                         user_key:
                           description: The secret's key that contains the recipient
-                            user’s user key. The secret needs to be in the same namespace
-                            as the AlertmanagerConfig object and accessible by the
-                            Prometheus Operator.
+                            user’s user key. It must be at them same namespace as
+                            CRD
                           properties:
                             key:
                               description: The key of the secret to select from.  Must
@@ -1313,9 +1308,7 @@ spec:
                           type: array
                         api_url:
                           description: The secret's key that contains the Slack webhook
-                            URL. The secret needs to be in the same namespace as the
-                            AlertmanagerConfig object and accessible by the Prometheus
-                            Operator.
+                            URL. It must be at them same namespace as CRD
                           properties:
                             key:
                               description: The key of the secret to select from.  Must
@@ -1345,11 +1338,7 @@ spec:
                           description: A list of Slack fields that are sent with each
                             notification.
                           items:
-                            description: SlackField configures a single Slack field
-                              that is sent with each notification. Each field must
-                              contain a title, value, and optionally, a boolean value
-                              to indicate if the field is short enough to be displayed
-                              next to other fields designated as short. See https://api.slack.com/docs/message-attachments#fields
+                            description: See https://api.slack.com/docs/message-attachments#fields
                               for more information.
                             properties:
                               short:
@@ -1376,6 +1365,7 @@ spec:
                                 password:
                                   description: The secret in the service scrape namespace
                                     that contains the password for authentication.
+                                    It must be at them same namespace as CRD
                                   properties:
                                     key:
                                       description: The key of the secret to select
@@ -1397,6 +1387,7 @@ spec:
                                 username:
                                   description: The secret in the service scrape namespace
                                     that contains the username for authentication.
+                                    It must be at them same namespace as CRD
                                   properties:
                                     key:
                                       description: The key of the secret to select
@@ -1422,10 +1413,7 @@ spec:
                               type: string
                             bearer_token_secret:
                               description: The secret's key that contains the bearer
-                                token to be used by the client for authentication.
-                                The secret needs to be in the same namespace as the
-                                AlertmanagerConfig object and accessible by the Prometheus
-                                Operator.
+                                token It must be at them same namespace as CRD
                               properties:
                                 key:
                                   description: The key of the secret to select from.  Must
@@ -1598,7 +1586,8 @@ spec:
                         pretext:
                           type: string
                         send_resolved:
-                          description: Whether or not to notify about resolved alerts.
+                          description: SendResolved controls notify about resolved
+                            alerts.
                           type: boolean
                         short_fields:
                           type: boolean
@@ -1623,9 +1612,8 @@ spec:
                       properties:
                         api_key:
                           description: The secret's key that contains the API key
-                            to use when talking to the VictorOps API. The secret needs
-                            to be in the same namespace as the AlertmanagerConfig
-                            object and accessible by the Prometheus Operator.
+                            to use when talking to the VictorOps API. It must be at
+                            them same namespace as CRD
                           properties:
                             key:
                               description: The key of the secret to select from.  Must
@@ -1662,6 +1650,7 @@ spec:
                                 password:
                                   description: The secret in the service scrape namespace
                                     that contains the password for authentication.
+                                    It must be at them same namespace as CRD
                                   properties:
                                     key:
                                       description: The key of the secret to select
@@ -1683,6 +1672,7 @@ spec:
                                 username:
                                   description: The secret in the service scrape namespace
                                     that contains the username for authentication.
+                                    It must be at them same namespace as CRD
                                   properties:
                                     key:
                                       description: The key of the secret to select
@@ -1708,10 +1698,7 @@ spec:
                               type: string
                             bearer_token_secret:
                               description: The secret's key that contains the bearer
-                                token to be used by the client for authentication.
-                                The secret needs to be in the same namespace as the
-                                AlertmanagerConfig object and accessible by the Prometheus
-                                Operator.
+                                token It must be at them same namespace as CRD
                               properties:
                                 key:
                                   description: The key of the secret to select from.  Must
@@ -1880,7 +1867,8 @@ spec:
                           description: A key used to map the alert to a team.
                           type: string
                         send_resolved:
-                          description: Whether or not to notify about resolved alerts.
+                          description: SendResolved controls notify about resolved
+                            alerts.
                           type: boolean
                         state_message:
                           description: Contains long explanation of the alerted problem.
@@ -1902,6 +1890,7 @@ spec:
                                 password:
                                   description: The secret in the service scrape namespace
                                     that contains the password for authentication.
+                                    It must be at them same namespace as CRD
                                   properties:
                                     key:
                                       description: The key of the secret to select
@@ -1923,6 +1912,7 @@ spec:
                                 username:
                                   description: The secret in the service scrape namespace
                                     that contains the username for authentication.
+                                    It must be at them same namespace as CRD
                                   properties:
                                     key:
                                       description: The key of the secret to select
@@ -1948,10 +1938,7 @@ spec:
                               type: string
                             bearer_token_secret:
                               description: The secret's key that contains the bearer
-                                token to be used by the client for authentication.
-                                The secret needs to be in the same namespace as the
-                                AlertmanagerConfig object and accessible by the Prometheus
-                                Operator.
+                                token It must be at them same namespace as CRD
                               properties:
                                 key:
                                   description: The key of the secret to select from.  Must
@@ -2116,19 +2103,17 @@ spec:
                           minimum: 0
                           type: integer
                         send_resolved:
-                          description: Whether or not to notify about resolved alerts.
+                          description: SendResolved controls notify about resolved
+                            alerts.
                           type: boolean
                         url:
-                          description: The URL to send HTTP POST requests to. `urlSecret`
-                            takes precedence over `url`. One of `urlSecret` and `url`
-                            should be defined.
+                          description: URL to send requests to, one of `urlSecret`
+                            and `url` must be defined.
                           type: string
                         url_secret:
-                          description: The secret's key that contains the webhook
-                            URL to send HTTP requests to. `urlSecret` takes precedence
-                            over `url`. One of `urlSecret` and `url` should be defined.
-                            The secret needs to be in the same namespace as the AlertmanagerConfig
-                            object and accessible by the Prometheus Operator.
+                          description: URLSecret defines secret name and key at the
+                            CRD namespace. It must contain the webhook URL. one of
+                            `urlSecret` and `url` must be defined.
                           properties:
                             key:
                               description: The key of the secret to select from.  Must
@@ -2191,6 +2176,7 @@ spec:
                                 password:
                                   description: The secret in the service scrape namespace
                                     that contains the password for authentication.
+                                    It must be at them same namespace as CRD
                                   properties:
                                     key:
                                       description: The key of the secret to select
@@ -2212,6 +2198,7 @@ spec:
                                 username:
                                   description: The secret in the service scrape namespace
                                     that contains the username for authentication.
+                                    It must be at them same namespace as CRD
                                   properties:
                                     key:
                                       description: The key of the secret to select
@@ -2237,10 +2224,7 @@ spec:
                               type: string
                             bearer_token_secret:
                               description: The secret's key that contains the bearer
-                                token to be used by the client for authentication.
-                                The secret needs to be in the same namespace as the
-                                AlertmanagerConfig object and accessible by the Prometheus
-                                Operator.
+                                token It must be at them same namespace as CRD
                               properties:
                                 key:
                                   description: The key of the secret to select from.  Must
@@ -2404,7 +2388,8 @@ spec:
                         message_type:
                           type: string
                         send_resolved:
-                          description: Whether or not to notify about resolved alerts.
+                          description: SendResolved controls notify about resolved
+                            alerts.
                           type: boolean
                         to_party:
                           type: string
@@ -2468,6 +2453,10 @@ spec:
           type: object
         status:
           description: VMAlertmanagerConfigStatus defines the observed state of VMAlertmanagerConfig
+          properties:
+            reason:
+              description: ErrorReason describes validation or any other errors.
+              type: string
           type: object
       type: object
   version: v1beta1

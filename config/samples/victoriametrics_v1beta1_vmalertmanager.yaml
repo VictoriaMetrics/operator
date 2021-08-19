@@ -11,6 +11,8 @@ spec:
       cpu: "100m"
       memory: "250Mi"
   replicaCount: 1
+  configSelector: {}
+  configNamespaceSelector: {}
   configRawYaml: |
     global:
       resolve_timeout: 5m

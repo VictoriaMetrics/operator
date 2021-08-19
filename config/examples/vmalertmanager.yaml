@@ -29,3 +29,5 @@ metadata:
 spec:
   replicaCount: 2
   configSecret: vmalertmanager-example-alertmanager
+  configSelector: {}
+  configNamespaceSelector: {}

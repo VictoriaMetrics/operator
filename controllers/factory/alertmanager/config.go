@@ -30,12 +30,17 @@ func BuildConfig(ctx context.Context, rclient client.Client, baseCfg []byte, amc
 
 	sort.Strings(amConfigIdentifiers)
 	var subRoutes []yaml.MapSlice
+	var muteIntervals []yaml.MapSlice
 	secretCache := make(map[string]*v1.Secret)
 	for _, posIdx := range amConfigIdentifiers {
 
 		amcKey := amcfgs[posIdx]
 		for _, rule := range amcKey.Spec.InhibitRules {
 			baseYAMlCfg.InhibitRules = append(baseYAMlCfg.InhibitRules, buildInhibitRule(amcKey.Namespace, rule))
+		}
+		mtis := buildMuteTimeInterval(amcKey)
+		if len(mtis) > 0 {
+			muteIntervals = append(muteIntervals, mtis...)
 		}
 		if amcKey.Spec.Route == nil {
 			// todo add logging.
@@ -58,8 +63,51 @@ func BuildConfig(ctx context.Context, rclient client.Client, baseCfg []byte, amc
 	if len(subRoutes) > 0 {
 		baseYAMlCfg.Route.Routes = append(baseYAMlCfg.Route.Routes, subRoutes...)
 	}
+	if len(muteIntervals) > 0 {
+		baseYAMlCfg.MuteTimeIntervals = append(baseYAMlCfg.MuteTimeIntervals, muteIntervals...)
+	}
 
 	return yaml.Marshal(baseYAMlCfg)
+}
+
+func buildMuteTimeInterval(cr *operatorv1beta1.VMAlertmanagerConfig) []yaml.MapSlice {
+	var r []yaml.MapSlice
+	for _, mti := range cr.Spec.MutTimeIntervals {
+		if len(mti.TimeIntervals) == 0 {
+			continue
+		}
+		var temp []yaml.MapSlice
+		var tiItem yaml.MapSlice
+		toYaml := func(key string, src []string) {
+			if len(src) > 0 {
+				tiItem = append(tiItem, yaml.MapItem{Key: key, Value: src})
+			}
+		}
+		for _, ti := range mti.TimeIntervals {
+			tiItem = yaml.MapSlice{}
+			toYaml("days_of_month", ti.DaysOfMonth)
+			toYaml("weekdays", ti.Weekdays)
+			toYaml("months", ti.Months)
+			toYaml("years", ti.Years)
+			var trss []yaml.MapSlice
+			for _, trs := range ti.Times {
+				if trs.EndTime != "" && trs.StartTime != "" {
+					trss = append(trss, yaml.MapSlice{{Key: "start_time", Value: trs.StartTime}, {Key: "end_time", Value: trs.EndTime}})
+				}
+			}
+			if len(trss) > 0 {
+				tiItem = append(tiItem, yaml.MapItem{Key: "times", Value: trss})
+			}
+			if len(tiItem) > 0 {
+				temp = append(temp, tiItem)
+			}
+		}
+		if len(temp) > 0 {
+			r = append(r, yaml.MapSlice{{Key: "name", Value: mti.Name}, {Key: "time_intervals", Value: temp}})
+		}
+
+	}
+	return r
 }
 
 func buildRoute(cr *operatorv1beta1.VMAlertmanagerConfig, cfgRoute *operatorv1beta1.Route, topLevel bool) yaml.MapSlice {
@@ -126,11 +174,12 @@ func buildReceiverName(cr *operatorv1beta1.VMAlertmanagerConfig, name string) st
 }
 
 type alertmanagerConfig struct {
-	Global       interface{}     `yaml:"global,omitempty" json:"global,omitempty"`
-	Route        *route          `yaml:"route,omitempty" json:"route,omitempty"`
-	InhibitRules []yaml.MapSlice `yaml:"inhibit_rules,omitempty" json:"inhibit_rules,omitempty"`
-	Receivers    []yaml.MapSlice `yaml:"receivers,omitempty" json:"receivers,omitempty"`
-	Templates    []string        `yaml:"templates" json:"templates"`
+	Global            interface{}     `yaml:"global,omitempty" json:"global,omitempty"`
+	Route             *route          `yaml:"route,omitempty" json:"route,omitempty"`
+	InhibitRules      []yaml.MapSlice `yaml:"inhibit_rules,omitempty" json:"inhibit_rules,omitempty"`
+	Receivers         []yaml.MapSlice `yaml:"receivers,omitempty" json:"receivers,omitempty"`
+	MuteTimeIntervals []yaml.MapSlice `yaml:"mute_time_intervals,omitempty"`
+	Templates         []string        `yaml:"templates" json:"templates"`
 }
 
 type route struct {
@@ -480,7 +529,7 @@ func (cb *configBuilder) buildEmail(email operatorv1beta1.EmailConfig) error {
 func (cb *configBuilder) buildOpsGenie(og operatorv1beta1.OpsGenieConfig) error {
 	var temp yaml.MapSlice
 	toYamlString := func(key string, value string) {
-		if len(key) > 0 {
+		if len(value) > 0 {
 			temp = append(temp, yaml.MapItem{Key: key, Value: value})
 		}
 	}

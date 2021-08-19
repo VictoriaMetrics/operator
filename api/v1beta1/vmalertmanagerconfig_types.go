@@ -40,7 +40,7 @@ type VMAlertmanagerConfigSpec struct {
 	// MuteTimeInterval - global mute time
 	// See https://prometheus.io/docs/alerting/latest/configuration/#mute_time_interval
 	// +optional
-	MutTimeIntervals []MuteTimeInterval `json:"mut_time_intervals,omitempty"`
+	MutTimeIntervals []MuteTimeInterval `json:"mute_time_intervals,omitempty"`
 }
 
 // MuteTimeInterval for alerts
@@ -53,11 +53,11 @@ type MuteTimeInterval struct {
 	TimeIntervals []TimeInterval `json:"time_intervals"`
 }
 
-// TimeInterval defines interval
+// TimeInterval defines intervals of time
 type TimeInterval struct {
 	// Times defines time range for mute
 	// +optional
-	Times TimeRange `json:"times,omitempty"`
+	Times []TimeRange `json:"times,omitempty"`
 	// Weekdays defines list of days of the week, where the week begins on Sunday and ends on Saturday.
 	// +optional
 	Weekdays []string `json:"weekdays,omitempty"`
@@ -77,16 +77,18 @@ type TimeInterval struct {
 
 // TimeRange  ranges inclusive of the starting time and exclusive of the end time
 type TimeRange struct {
-	// StartMinute for example  HH:MM
+	// StartTime for example  HH:MM
 	// +required
-	StartMinute string `json:"start_minute"`
-	// EndMinute for example HH:MM
+	StartTime string `json:"start_time"`
+	// EndTime for example HH:MM
 	// +required
-	EndMinute string `json:"end_minute"`
+	EndTime string `json:"end_time"`
 }
 
 // VMAlertmanagerConfigStatus defines the observed state of VMAlertmanagerConfig
 type VMAlertmanagerConfigStatus struct {
+	// ErrorReason describes validation or any other errors.
+	ErrorReason string `json:"reason,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -202,16 +204,16 @@ type Receiver struct {
 // WebhookConfig configures notifications via a generic receiver supporting the webhook payload.
 // See https://prometheus.io/docs/alerting/latest/configuration/#webhook_config
 type WebhookConfig struct {
-	// Whether or not to notify about resolved alerts.
+	// SendResolved controls notify about resolved alerts.
 	// +optional
 	SendResolved *bool `json:"send_resolved,omitempty"`
-	// The URL to send HTTP POST requests to. `urlSecret` takes precedence over
-	// `url`. One of `urlSecret` and `url` should be defined.
+	// URL to send requests to,
+	// one of `urlSecret` and `url` must be defined.
 	// +optional
 	URL *string `json:"url,omitempty"`
-	// The secret's key that contains the webhook URL to send HTTP requests to.
-	// `urlSecret` takes precedence over `url`. One of `urlSecret` and `url`
-	// should be defined.
+	// URLSecret defines secret name and key at the CRD namespace.
+	// It must contain the webhook URL.
+	// one of `urlSecret` and `url` must be defined.
 	// +optional
 	URLSecret *v1.SecretKeySelector `json:"url_secret,omitempty"`
 	// HTTP client configuration.
@@ -226,7 +228,7 @@ type WebhookConfig struct {
 // WeChatConfig configures notifications via WeChat.
 // See https://prometheus.io/docs/alerting/latest/configuration/#wechat_config
 type WeChatConfig struct {
-	// Whether or not to notify about resolved alerts.
+	// SendResolved controls notify about resolved alerts.
 	// +optional
 	SendResolved *bool `json:"send_resolved,omitempty"`
 	// The secret's key that contains the WeChat API key.
@@ -259,7 +261,7 @@ type WeChatConfig struct {
 
 // EmailConfig configures notifications via Email.
 type EmailConfig struct {
-	// Whether or not to notify about resolved alerts.
+	// SendResolved controls notify about resolved alerts.
 	// +optional
 	SendResolved *bool `json:"send_resolved,omitempty"`
 	// The email address to send notifications to.
@@ -277,13 +279,12 @@ type EmailConfig struct {
 	// The username to use for authentication.
 	// +optional
 	AuthUsername string `json:"auth_username,omitempty"`
-	// The secret's key that contains the password to use for authentication.
-	// The secret needs to be in the same namespace as the AlertmanagerConfig
-	// object and accessible by the Prometheus Operator.
+	// AuthPassword defines secret name and key at CRD namespace.
+	// +optional
 	AuthPassword *v1.SecretKeySelector `json:"auth_password,omitempty"`
-	// The secret's key that contains the CRAM-MD5 secret.
-	// The secret needs to be in the same namespace as the AlertmanagerConfig
-	// object and accessible by the Prometheus Operator.
+	// AuthSecret defines secrent name and key at CRD namespace.
+	// It must contain the CRAM-MD5 secret.
+	// +optional
 	AuthSecret *v1.SecretKeySelector `json:"auth_secret,omitempty"`
 	// The identity to use for authentication.
 	// +optional
@@ -309,12 +310,11 @@ type EmailConfig struct {
 // VictorOpsConfig configures notifications via VictorOps.
 // See https://prometheus.io/docs/alerting/latest/configuration/#victorops_config
 type VictorOpsConfig struct {
-	// Whether or not to notify about resolved alerts.
+	// SendResolved controls notify about resolved alerts.
 	// +optional
 	SendResolved *bool `json:"send_resolved,omitempty"`
 	// The secret's key that contains the API key to use when talking to the VictorOps API.
-	// The secret needs to be in the same namespace as the AlertmanagerConfig
-	// object and accessible by the Prometheus Operator.
+	// It must be at them same namespace as CRD
 	// +optional
 	APIKey *v1.SecretKeySelector `json:"api_key,omitempty"`
 	// The VictorOps API URL.
@@ -346,16 +346,14 @@ type VictorOpsConfig struct {
 // PushoverConfig configures notifications via Pushover.
 // See https://prometheus.io/docs/alerting/latest/configuration/#pushover_config
 type PushoverConfig struct {
-	// Whether or not to notify about resolved alerts.
+	// SendResolved controls notify about resolved alerts.
 	// +optional
 	SendResolved *bool `json:"send_resolved,omitempty"`
 	// The secret's key that contains the recipient user’s user key.
-	// The secret needs to be in the same namespace as the AlertmanagerConfig
-	// object and accessible by the Prometheus Operator.
+	// It must be at them same namespace as CRD
 	UserKey *v1.SecretKeySelector `json:"user_key,omitempty"`
 	// The secret's key that contains the registered application’s API token, see https://pushover.net/apps.
-	// The secret needs to be in the same namespace as the AlertmanagerConfig
-	// object and accessible by the Prometheus Operator.
+	// It must be at them same namespace as CRD
 	Token *v1.SecretKeySelector `json:"token,omitempty"`
 	// Notification title.
 	// +optional
@@ -394,12 +392,11 @@ type PushoverConfig struct {
 // SlackConfig configures notifications via Slack.
 // See https://prometheus.io/docs/alerting/latest/configuration/#slack_config
 type SlackConfig struct {
-	// Whether or not to notify about resolved alerts.
+	// SendResolved controls notify about resolved alerts.
 	// +optional
 	SendResolved *bool `json:"send_resolved,omitempty"`
 	// The secret's key that contains the Slack webhook URL.
-	// The secret needs to be in the same namespace as the AlertmanagerConfig
-	// object and accessible by the Prometheus Operator.
+	// It must be at them same namespace as CRD
 	// +optional
 	APIURL *v1.SecretKeySelector `json:"api_url,omitempty"`
 	// The channel or user to send notifications to.
@@ -449,13 +446,14 @@ type SlackConfig struct {
 }
 
 // SlackField configures a single Slack field that is sent with each notification.
-// Each field must contain a title, value, and optionally, a boolean value to indicate if the field
-// is short enough to be displayed next to other fields designated as short.
+
 // See https://api.slack.com/docs/message-attachments#fields for more information.
 type SlackField struct {
 	// +kubebuilder:validation:MinLength=1
+	// +required
 	Title string `json:"title"`
 	// +kubebuilder:validation:MinLength=1
+	// +required
 	Value string `json:"value"`
 	// +optional
 	Short *bool `json:"short,omitempty"`
@@ -467,8 +465,10 @@ type SlackField struct {
 // https://api.slack.com/docs/message-buttons for more information.
 type SlackAction struct {
 	// +kubebuilder:validation:MinLength=1
+	// +required
 	Type string `json:"type"`
 	// +kubebuilder:validation:MinLength=1
+	// +required
 	Text string `json:"text"`
 	// +optional
 	URL string `json:"url,omitempty"`
@@ -489,6 +489,7 @@ type SlackAction struct {
 // for more information.
 type SlackConfirmationField struct {
 	// +kubebuilder:validation:MinLength=1
+	// +required
 	Text string `json:"text"`
 	// +optional
 	Title string `json:"title,omitempty"`
@@ -501,12 +502,11 @@ type SlackConfirmationField struct {
 // OpsGenieConfig configures notifications via OpsGenie.
 // See https://prometheus.io/docs/alerting/latest/configuration/#opsgenie_config
 type OpsGenieConfig struct {
-	// Whether or not to notify about resolved alerts.
+	// SendResolved controls notify about resolved alerts.
 	// +optional
 	SendResolved *bool `json:"send_resolved,omitempty"`
 	// The secret's key that contains the OpsGenie API key.
-	// The secret needs to be in the same namespace as the AlertmanagerConfig
-	// object and accessible by the Prometheus Operator.
+	// It must be at them same namespace as CRD
 	// +optional
 	APIKey *v1.SecretKeySelector `json:"api_key,omitempty"`
 	// The URL to send OpsGenie API requests to.
@@ -555,26 +555,25 @@ type OpsGenieConfigResponder struct {
 	Username string `json:"username,omitempty"`
 	// Type of responder.
 	// +kubebuilder:validation:MinLength=1
+	// +required
 	Type string `json:"type"`
 }
 
 // PagerDutyConfig configures notifications via PagerDuty.
 // See https://prometheus.io/docs/alerting/latest/configuration/#pagerduty_config
 type PagerDutyConfig struct {
-	// Whether or not to notify about resolved alerts.
+	// SendResolved controls notify about resolved alerts.
 	// +optional
 	SendResolved *bool `json:"send_resolved,omitempty"`
 	// The secret's key that contains the PagerDuty integration key (when using
 	// Events API v2). Either this field or `serviceKey` needs to be defined.
-	// The secret needs to be in the same namespace as the AlertmanagerConfig
-	// object and accessible by the Prometheus Operator.
+	// It must be at them same namespace as CRD
 	// +optional
 	RoutingKey *v1.SecretKeySelector `json:"routing_key,omitempty"`
 	// The secret's key that contains the PagerDuty service key (when using
 	// integration type "Prometheus"). Either this field or `routingKey` needs to
 	// be defined.
-	// The secret needs to be in the same namespace as the AlertmanagerConfig
-	// object and accessible by the Prometheus Operator.
+	// It must be at them same namespace as CRD
 	// +optional
 	ServiceKey *v1.SecretKeySelector `json:"service_key,omitempty"`
 	// The URL to send requests to.
@@ -615,10 +614,8 @@ type HTTPConfig struct {
 	// BasicAuth for the client.
 	// +optional
 	BasicAuth *BasicAuth `json:"basic_auth,omitempty"`
-	// The secret's key that contains the bearer token to be used by the client
-	// for authentication.
-	// The secret needs to be in the same namespace as the AlertmanagerConfig
-	// object and accessible by the Prometheus Operator.
+	// The secret's key that contains the bearer token
+	// It must be at them same namespace as CRD
 	// +optional
 	BearerTokenSecret *v1.SecretKeySelector `json:"bearer_token_secret,omitempty"`
 	// BearerTokenFile defines filename for bearer token, it must be mounted to pod.

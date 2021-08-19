@@ -16,7 +16,7 @@ func (r *VMAlertmanager) SetupWebhookWithManager(mgr ctrl.Manager) error {
 		Complete()
 }
 
-// +kubebuilder:webhook:verbs=create;update,path=/validate-operator-victoriametrics-com-v1beta1-vmalertmanager,mutating=false,failurePolicy=fail,groups=operator.victoriametrics.com,resources=vmalertmanagers,versions=v1beta1,name=vvmalertmanager.kb.io
+// +kubebuilder:webhook:verbs=create;update,admissionReviewVersions=v1,sideEffects=none,path=/validate-operator-victoriametrics-com-v1beta1-vmalertmanager,mutating=false,failurePolicy=fail,groups=operator.victoriametrics.com,resources=vmalertmanagers,versions=v1beta1,name=vvmalertmanager.kb.io
 
 var _ webhook.Validator = &VMAlertmanager{}
 

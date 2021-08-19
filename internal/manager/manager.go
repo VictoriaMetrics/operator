@@ -287,6 +287,7 @@ func addWebhooks(mgr ctrl.Manager) error {
 		&victoriametricsv1beta1.VMSingle{},
 		&victoriametricsv1beta1.VMCluster{},
 		&victoriametricsv1beta1.VMAlertmanager{},
+		&victoriametricsv1beta1.VMAlertmanagerConfig{},
 		&victoriametricsv1beta1.VMAuth{},
 		&victoriametricsv1beta1.VMUser{},
 	})

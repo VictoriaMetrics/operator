@@ -17,6 +17,8 @@ limitations under the License.
 package v1beta1
 
 import (
+	"fmt"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -37,8 +39,25 @@ type VMProbeSpec struct {
 	// Interval at which targets are probed using the configured prober.
 	// If not specified Prometheus' global scrape interval is used.
 	Interval string `json:"interval,omitempty"`
+	// ScrapeInterval is the same as Interval and has priority over it.
+	// one of scrape_interval or interval can be used
+	// +optional
+	ScrapeInterval string `json:"scrape_interval,omitempty"`
 	// Timeout for scraping metrics from the Prometheus exporter.
 	ScrapeTimeout string `json:"scrapeTimeout,omitempty"`
+	// BasicAuth allow an endpoint to authenticate over basic authentication
+	// More info: https://prometheus.io/docs/operating/configuration/#endpoints
+	// +optional
+	BasicAuth *BasicAuth `json:"basicAuth,omitempty"`
+	// OAuth2 defines auth configuration
+	// +optional
+	OAuth2 *OAuth2 `json:"oauth2,omitempty"`
+	// TLSConfig configuration to use when scraping the endpoint
+	// +optional
+	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
+	// VMScrapeParams defines VictoriaMetrics specific scrape parametrs
+	// +optional
+	VMScrapeParams *VMScrapeParams `json:"vm_scrape_params"`
 }
 
 // VMProbeTargets defines a set of static and dynamically discovered targets for the prober.
@@ -112,6 +131,9 @@ type VMProbeList struct {
 	Items           []VMProbe `json:"items"`
 }
 
+func (cr VMProbe) AsMapKey() string {
+	return fmt.Sprintf("probeScrape/%s/%s", cr.Namespace, cr.Name)
+}
 func init() {
 	SchemeBuilder.Register(&VMProbe{}, &VMProbeList{})
 }

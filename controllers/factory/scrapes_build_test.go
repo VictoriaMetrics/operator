@@ -104,7 +104,7 @@ func Test_generateServiceScrapeConfig(t *testing.T) {
 		ep                       victoriametricsv1beta1.Endpoint
 		i                        int
 		apiserverConfig          *victoriametricsv1beta1.APIServerConfig
-		basicAuthSecrets         map[string]BasicAuthCredentials
+		ssCache                  *scrapesSecretsCache
 		bearerTokens             map[string]BearerToken
 		overrideHonorLabels      bool
 		overrideHonorTimestamps  bool
@@ -160,7 +160,7 @@ func Test_generateServiceScrapeConfig(t *testing.T) {
 				},
 				i:                        0,
 				apiserverConfig:          nil,
-				basicAuthSecrets:         nil,
+				ssCache:                  &scrapesSecretsCache{},
 				bearerTokens:             map[string]BearerToken{},
 				overrideHonorLabels:      false,
 				overrideHonorTimestamps:  false,
@@ -259,7 +259,7 @@ relabel_configs:
 				},
 				i:                        0,
 				apiserverConfig:          nil,
-				basicAuthSecrets:         nil,
+				ssCache:                  &scrapesSecretsCache{},
 				bearerTokens:             map[string]BearerToken{},
 				overrideHonorLabels:      false,
 				overrideHonorTimestamps:  false,
@@ -358,7 +358,7 @@ relabel_configs:
 				},
 				i:                        0,
 				apiserverConfig:          nil,
-				basicAuthSecrets:         nil,
+				ssCache:                  &scrapesSecretsCache{},
 				bearerTokens:             map[string]BearerToken{},
 				overrideHonorLabels:      false,
 				overrideHonorTimestamps:  false,
@@ -423,7 +423,7 @@ relabel_configs:
 				},
 				i:                        0,
 				apiserverConfig:          nil,
-				basicAuthSecrets:         nil,
+				ssCache:                  &scrapesSecretsCache{},
 				bearerTokens:             map[string]BearerToken{},
 				overrideHonorLabels:      false,
 				overrideHonorTimestamps:  false,
@@ -479,7 +479,7 @@ relabel_configs:
 				},
 				i:                        0,
 				apiserverConfig:          nil,
-				basicAuthSecrets:         nil,
+				ssCache:                  &scrapesSecretsCache{},
 				bearerTokens:             map[string]BearerToken{},
 				overrideHonorLabels:      false,
 				overrideHonorTimestamps:  false,
@@ -518,7 +518,7 @@ relabel_configs:
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := generateServiceScrapeConfig(tt.args.m, tt.args.ep, tt.args.i, tt.args.apiserverConfig, tt.args.basicAuthSecrets, tt.args.bearerTokens, tt.args.overrideHonorLabels, tt.args.overrideHonorTimestamps, tt.args.ignoreNamespaceSelectors, tt.args.enforcedNamespaceLabel)
+			got := generateServiceScrapeConfig(tt.args.m, tt.args.ep, tt.args.i, tt.args.apiserverConfig, tt.args.ssCache, tt.args.bearerTokens, tt.args.overrideHonorLabels, tt.args.overrideHonorTimestamps, tt.args.ignoreNamespaceSelectors, tt.args.enforcedNamespaceLabel)
 			gotBytes, err := yaml.Marshal(got)
 			if err != nil {
 				t.Errorf("cannot marshal ServiceScrapeConfig to yaml,err :%e", err)
@@ -536,7 +536,7 @@ func Test_generateNodeScrapeConfig(t *testing.T) {
 		m                       *victoriametricsv1beta1.VMNodeScrape
 		i                       int
 		apiserverConfig         *victoriametricsv1beta1.APIServerConfig
-		basicAuthSecrets        map[string]BasicAuthCredentials
+		ssCache                 *scrapesSecretsCache
 		bearerTokens            map[string]BearerToken
 		ignoreHonorLabels       bool
 		overrideHonorTimestamps bool
@@ -550,9 +550,9 @@ func Test_generateNodeScrapeConfig(t *testing.T) {
 		{
 			name: "ok build node",
 			args: args{
-				apiserverConfig:  nil,
-				basicAuthSecrets: nil,
-				i:                1,
+				apiserverConfig: nil,
+				ssCache:         &scrapesSecretsCache{},
+				i:               1,
 				m: &victoriametricsv1beta1.VMNodeScrape{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "nodes-basic",
@@ -587,7 +587,7 @@ relabel_configs:
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := generateNodeScrapeConfig(tt.args.m, tt.args.i, tt.args.apiserverConfig, tt.args.basicAuthSecrets, tt.args.bearerTokens, tt.args.ignoreHonorLabels, tt.args.overrideHonorTimestamps, tt.args.enforcedNamespaceLabel)
+			got := generateNodeScrapeConfig(tt.args.m, tt.args.i, tt.args.apiserverConfig, tt.args.ssCache, tt.args.bearerTokens, tt.args.ignoreHonorLabels, tt.args.overrideHonorTimestamps, tt.args.enforcedNamespaceLabel)
 			gotBytes, err := yaml.Marshal(got)
 			if err != nil {
 				t.Errorf("cannot marshal NodeScrapeConfig to yaml,err :%e", err)

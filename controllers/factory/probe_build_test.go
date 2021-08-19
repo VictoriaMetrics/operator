@@ -14,7 +14,7 @@ func Test_generateProbeConfig(t *testing.T) {
 		cr                       *victoriametricsv1beta1.VMProbe
 		i                        int
 		apiserverConfig          *victoriametricsv1beta1.APIServerConfig
-		basicAuthSecrets         map[string]BasicAuthCredentials
+		ssCache                  *scrapesSecretsCache
 		ignoreNamespaceSelectors bool
 		enforcedNamespaceLabel   string
 	}
@@ -68,6 +68,7 @@ relabel_configs:
 		{
 			name: "with ingress discover",
 			args: args{
+				ssCache: &scrapesSecretsCache{},
 				cr: &victoriametricsv1beta1.VMProbe{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "probe-ingress",
@@ -134,7 +135,7 @@ relabel_configs:
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := generateProbeConfig(tt.args.cr, tt.args.i, tt.args.apiserverConfig, tt.args.basicAuthSecrets, tt.args.ignoreNamespaceSelectors, tt.args.enforcedNamespaceLabel)
+			got := generateProbeConfig(tt.args.cr, tt.args.i, tt.args.apiserverConfig, tt.args.ssCache, tt.args.ignoreNamespaceSelectors, tt.args.enforcedNamespaceLabel)
 			gotBytes, err := yaml.Marshal(got)
 			if err != nil {
 				t.Errorf("cannot decode probe config, it must be in yaml format :%e", err)

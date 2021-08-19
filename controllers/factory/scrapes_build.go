@@ -49,7 +49,7 @@ func generateConfig(
 	probes map[string]*victoriametricsv1beta1.VMProbe,
 	nodes map[string]*victoriametricsv1beta1.VMNodeScrape,
 	statics map[string]*victoriametricsv1beta1.VMStaticScrape,
-	basicAuthSecrets map[string]BasicAuthCredentials,
+	secretsCache *scrapesSecretsCache,
 	bearerTokens map[string]BearerToken,
 	additionalScrapeConfigs []byte,
 ) ([]byte, error) {
@@ -125,7 +125,7 @@ func generateConfig(
 					sMons[identifier],
 					ep, i,
 					apiserverConfig,
-					basicAuthSecrets,
+					secretsCache,
 					bearerTokens,
 					cr.Spec.OverrideHonorLabels,
 					cr.Spec.OverrideHonorTimestamps,
@@ -139,7 +139,7 @@ func generateConfig(
 				generatePodScrapeConfig(
 					pMons[identifier], ep, i,
 					apiserverConfig,
-					basicAuthSecrets,
+					secretsCache,
 					bearerTokens,
 					cr.Spec.OverrideHonorLabels,
 					cr.Spec.OverrideHonorTimestamps,
@@ -154,7 +154,7 @@ func generateConfig(
 				probes[identifier],
 				i,
 				apiserverConfig,
-				basicAuthSecrets,
+				secretsCache,
 				cr.Spec.IgnoreNamespaceSelectors,
 				cr.Spec.EnforcedNamespaceLabel))
 	}
@@ -164,7 +164,7 @@ func generateConfig(
 				nodes[identifier],
 				i,
 				apiserverConfig,
-				basicAuthSecrets,
+				secretsCache,
 				bearerTokens,
 				cr.Spec.OverrideHonorLabels,
 				cr.Spec.OverrideHonorTimestamps,
@@ -178,7 +178,7 @@ func generateConfig(
 				generateStaticScrapeConfig(
 					statics[identifier],
 					ep, i,
-					basicAuthSecrets,
+					secretsCache,
 					bearerTokens,
 					cr.Spec.OverrideHonorLabels,
 					cr.Spec.OverrideHonorTimestamps,
@@ -275,7 +275,7 @@ func generatePodScrapeConfig(
 	ep victoriametricsv1beta1.PodMetricsEndpoint,
 	i int,
 	apiserverConfig *victoriametricsv1beta1.APIServerConfig,
-	basicAuthSecrets map[string]BasicAuthCredentials,
+	ssCache *scrapesSecretsCache,
 	bearerTokens map[string]BearerToken,
 	ignoreHonorLabels bool,
 	overrideHonorTimestamps bool,
@@ -296,11 +296,14 @@ func generatePodScrapeConfig(
 	cfg = honorTimestamps(cfg, ep.HonorTimestamps, overrideHonorTimestamps)
 
 	selectedNamespaces := getNamespacesFromNamespaceSelector(&m.Spec.NamespaceSelector, m.Namespace, ignoreNamespaceSelectors)
-	cfg = append(cfg, generatePodK8SSDConfig(selectedNamespaces, m.Spec.Selector, apiserverConfig, basicAuthSecrets, kubernetesSDRolePod))
+	cfg = append(cfg, generatePodK8SSDConfig(selectedNamespaces, m.Spec.Selector, apiserverConfig, ssCache.baSecrets, kubernetesSDRolePod))
 
-	if ep.Interval != "" {
+	if ep.ScrapeInterval != "" {
+		cfg = append(cfg, yaml.MapItem{Key: "scrape_interval", Value: ep.ScrapeInterval})
+	} else if ep.Interval != "" {
 		cfg = append(cfg, yaml.MapItem{Key: "scrape_interval", Value: ep.Interval})
 	}
+
 	if ep.ScrapeTimeout != "" {
 		cfg = append(cfg, yaml.MapItem{Key: "scrape_timeout", Value: ep.ScrapeTimeout})
 	}
@@ -323,13 +326,13 @@ func generatePodScrapeConfig(
 	}
 
 	if ep.BearerTokenSecret.Name != "" {
-		if s, ok := bearerTokens[fmt.Sprintf("podScrape/%s/%s/%d", m.Namespace, m.Name, i)]; ok {
+		if s, ok := bearerTokens[m.AsMapKey(i)]; ok {
 			cfg = append(cfg, yaml.MapItem{Key: "bearer_token", Value: s})
 		}
 	}
 
 	if ep.BasicAuth != nil {
-		if s, ok := basicAuthSecrets[fmt.Sprintf("podScrape/%s/%s/%d", m.Namespace, m.Name, i)]; ok {
+		if s, ok := ssCache.baSecrets[m.AsMapKey(i)]; ok {
 			cfg = append(cfg, yaml.MapItem{
 				Key: "basic_auth", Value: yaml.MapSlice{
 					{Key: "username", Value: s.username},
@@ -496,6 +499,13 @@ func generatePodScrapeConfig(
 		cfg = append(cfg, yaml.MapItem{Key: "metric_relabel_configs", Value: metricRelabelings})
 	}
 
+	cfg = append(cfg, buildVMScrapeParams(ep.VMScrapeParams)...)
+	if ep.OAuth2 != nil {
+		r := buildOAuth2Config(m.AsMapKey(i), ep.OAuth2, ssCache.oauth2Secrets)
+		if len(r) > 0 {
+			cfg = append(cfg, yaml.MapItem{Key: "oauth2", Value: r})
+		}
+	}
 	return cfg
 }
 
@@ -504,7 +514,7 @@ func generateServiceScrapeConfig(
 	ep victoriametricsv1beta1.Endpoint,
 	i int,
 	apiserverConfig *victoriametricsv1beta1.APIServerConfig,
-	basicAuthSecrets map[string]BasicAuthCredentials,
+	ssCache *scrapesSecretsCache,
 	bearerTokens map[string]BearerToken,
 	overrideHonorLabels bool,
 	overrideHonorTimestamps bool,
@@ -529,9 +539,11 @@ func generateServiceScrapeConfig(
 	cfg = honorTimestamps(cfg, ep.HonorTimestamps, overrideHonorTimestamps)
 
 	selectedNamespaces := getNamespacesFromNamespaceSelector(&m.Spec.NamespaceSelector, m.Namespace, ignoreNamespaceSelectors)
-	cfg = append(cfg, generateK8SSDConfig(selectedNamespaces, apiserverConfig, basicAuthSecrets, m.Spec.DiscoveryRole))
+	cfg = append(cfg, generateK8SSDConfig(selectedNamespaces, apiserverConfig, ssCache.baSecrets, m.Spec.DiscoveryRole))
 
-	if ep.Interval != "" {
+	if ep.ScrapeInterval != "" {
+		cfg = append(cfg, yaml.MapItem{Key: "scrape_interval", Value: ep.ScrapeInterval})
+	} else if ep.Interval != "" {
 		cfg = append(cfg, yaml.MapItem{Key: "scrape_interval", Value: ep.Interval})
 	}
 	if ep.ScrapeTimeout != "" {
@@ -557,13 +569,13 @@ func generateServiceScrapeConfig(
 	}
 
 	if ep.BearerTokenSecret.Name != "" {
-		if s, ok := bearerTokens[fmt.Sprintf("serviceScrape/%s/%s/%d", m.Namespace, m.Name, i)]; ok {
+		if s, ok := bearerTokens[m.AsMapKey(i)]; ok {
 			cfg = append(cfg, yaml.MapItem{Key: "bearer_token", Value: s})
 		}
 	}
 
 	if ep.BasicAuth != nil {
-		if s, ok := basicAuthSecrets[fmt.Sprintf("serviceScrape/%s/%s/%d", m.Namespace, m.Name, i)]; ok {
+		if s, ok := ssCache.baSecrets[m.AsMapKey(i)]; ok {
 			cfg = append(cfg, yaml.MapItem{
 				Key: "basic_auth", Value: yaml.MapSlice{
 					{Key: "username", Value: s.username},
@@ -803,6 +815,14 @@ func generateServiceScrapeConfig(
 		cfg = append(cfg, yaml.MapItem{Key: "metric_relabel_configs", Value: metricRelabelings})
 	}
 
+	cfg = append(cfg, buildVMScrapeParams(ep.VMScrapeParams)...)
+	if ep.OAuth2 != nil {
+		r := buildOAuth2Config(m.AsMapKey(i), ep.OAuth2, ssCache.oauth2Secrets)
+		if len(r) > 0 {
+			cfg = append(cfg, yaml.MapItem{Key: "oauth2", Value: r})
+		}
+	}
+
 	return cfg
 }
 
@@ -810,7 +830,7 @@ func generateNodeScrapeConfig(
 	cr *victoriametricsv1beta1.VMNodeScrape,
 	i int,
 	apiserverConfig *victoriametricsv1beta1.APIServerConfig,
-	basicAuthSecrets map[string]BasicAuthCredentials,
+	ssCache *scrapesSecretsCache,
 	bearerTokens map[string]BearerToken,
 	ignoreHonorLabels bool,
 	overrideHonorTimestamps bool,
@@ -830,11 +850,14 @@ func generateNodeScrapeConfig(
 	}
 	cfg = honorTimestamps(cfg, nodeSpec.HonorTimestamps, overrideHonorTimestamps)
 
-	cfg = append(cfg, generateK8SSDConfig(nil, apiserverConfig, basicAuthSecrets, kubernetesSDRoleNode))
+	cfg = append(cfg, generateK8SSDConfig(nil, apiserverConfig, ssCache.baSecrets, kubernetesSDRoleNode))
 
-	if nodeSpec.Interval != "" {
+	if nodeSpec.ScrapeInterval != "" {
+		cfg = append(cfg, yaml.MapItem{Key: "scrape_interval", Value: nodeSpec.ScrapeInterval})
+	} else if nodeSpec.Interval != "" {
 		cfg = append(cfg, yaml.MapItem{Key: "scrape_interval", Value: nodeSpec.Interval})
 	}
+
 	if nodeSpec.ScrapeTimeout != "" {
 		cfg = append(cfg, yaml.MapItem{Key: "scrape_timeout", Value: nodeSpec.ScrapeTimeout})
 	}
@@ -864,7 +887,7 @@ func generateNodeScrapeConfig(
 	}
 
 	if nodeSpec.BasicAuth != nil {
-		if s, ok := basicAuthSecrets[cr.AsMapKey()]; ok {
+		if s, ok := ssCache.baSecrets[cr.AsMapKey()]; ok {
 			cfg = append(cfg, yaml.MapItem{
 				Key: "basic_auth", Value: yaml.MapSlice{
 					{Key: "username", Value: s.username},
@@ -994,7 +1017,14 @@ func generateNodeScrapeConfig(
 		}
 		cfg = append(cfg, yaml.MapItem{Key: "metric_relabel_configs", Value: metricRelabelings})
 	}
-
+	cfg = addTLStoYaml(cfg, cr.Namespace, nodeSpec.TLSConfig)
+	cfg = append(cfg, buildVMScrapeParams(nodeSpec.VMScrapeParams)...)
+	if nodeSpec.OAuth2 != nil {
+		r := buildOAuth2Config(cr.AsMapKey(), nodeSpec.OAuth2, ssCache.oauth2Secrets)
+		if len(r) > 0 {
+			cfg = append(cfg, yaml.MapItem{Key: "oauth2", Value: r})
+		}
+	}
 	return cfg
 }
 
@@ -1243,4 +1273,53 @@ func updateRelabelConfigWithUnderscores(c *victoriametricsv1beta1.RelabelConfig)
 		rc.TargetLabel = rc.UnderScoreTargetLabel
 	}
 	return rc
+}
+
+func buildVMScrapeParams(cfg *victoriametricsv1beta1.VMScrapeParams) yaml.MapSlice {
+	var r yaml.MapSlice
+	if cfg == nil {
+		return r
+	}
+	toYaml := func(key string, src interface{}) {
+		if src != nil {
+			r = append(r, yaml.MapItem{Key: key, Value: src})
+		}
+	}
+	toYaml("scrape_align_interval", cfg.ScrapeAlignInterval)
+	toYaml("stream_parse", cfg.StreamParse)
+	toYaml("disable_compression", cfg.DisableCompression)
+	toYaml("scrape_offset", cfg.ScrapeOffset)
+	toYaml("disable_keep_alive", cfg.DisableKeepAlive)
+	toYaml("relabel_debug", cfg.RelabelDebug)
+	toYaml("metric_relabel_debug", cfg.MetricRelabelDebug)
+	return r
+}
+
+func buildOAuth2Config(cacheKey string, cfg *victoriametricsv1beta1.OAuth2, oauth2Cache map[string]*oauthCreds) yaml.MapSlice {
+	var r yaml.MapSlice
+	// todo need some cache for it.
+	cachedSecret := oauth2Cache[cacheKey]
+	if cachedSecret == nil {
+		return r
+	}
+	if len(cachedSecret.clientID) > 0 {
+		r = append(r, yaml.MapItem{Key: "client_id", Value: cachedSecret.clientID})
+	}
+
+	if cfg.ClientSecret != nil {
+		r = append(r, yaml.MapItem{Key: "client_secret", Value: cachedSecret.clientSecret})
+	} else if cfg.ClientSecretFile != "" {
+		r = append(r, yaml.MapItem{Key: "client_secret_file", Value: cfg.ClientSecretFile})
+	}
+
+	if len(cfg.Scopes) > 0 {
+		r = append(r, yaml.MapItem{Key: "scopes", Value: cfg.Scopes})
+	}
+	if len(cfg.EndpointParams) > 0 {
+		r = append(r, yaml.MapItem{Key: "endpoint_params", Value: cfg.EndpointParams})
+	}
+	if len(cfg.TokenURL) > 0 {
+		r = append(r, yaml.MapItem{Key: "token_url", Value: cfg.TokenURL})
+	}
+	return r
 }

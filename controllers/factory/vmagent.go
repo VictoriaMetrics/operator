@@ -109,13 +109,13 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 	}
 
 	// getting secrets for remotewrite spec
-	rwsBasicAuthSecrets, rwsTokens, err := LoadRemoteWriteSecrets(ctx, cr, rclient, l)
+	ssCache, rwsTokens, err := LoadRemoteWriteSecrets(ctx, cr, rclient, l)
 	if err != nil {
 		return reconcile.Result{}, fmt.Errorf("cannot get remote write secrets for vmagent: %w", err)
 	}
 	l.Info("create or update vm agent deploy")
 
-	newDeploy, err := newDeployForVMAgent(cr, c, rwsBasicAuthSecrets, rwsTokens)
+	newDeploy, err := newDeployForVMAgent(cr, c, ssCache, rwsTokens)
 	if err != nil {
 		return reconcile.Result{}, fmt.Errorf("cannot build new deploy for vmagent: %w", err)
 	}
@@ -145,14 +145,14 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 		return reconcile.Result{}, err
 	}
 	//its safe to ignore
-	_ = addAddtionalScrapeConfigOwnership(cr, rclient, l)
+	_ = addAddtionalScrapeConfigOwnership(cr, rclient)
 	l.Info("vmagent deploy reconciled")
 
 	return reconcile.Result{}, nil
 }
 
 // newDeployForVMAgent builds vmagent deployment spec.
-func newDeployForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperatorConf, rwsBasicAuth map[string]BasicAuthCredentials, rwsTokens map[string]BearerToken) (*appsv1.Deployment, error) {
+func newDeployForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperatorConf, ssCache *scrapesSecretsCache, rwsTokens map[string]BearerToken) (*appsv1.Deployment, error) {
 	cr = cr.DeepCopy()
 
 	//inject default
@@ -170,7 +170,7 @@ func newDeployForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOpera
 		cr.Spec.Port = c.VMAgentDefault.Port
 	}
 
-	podSpec, err := makeSpecForVMAgent(cr, c, rwsBasicAuth, rwsTokens)
+	podSpec, err := makeSpecForVMAgent(cr, c, ssCache, rwsTokens)
 	if err != nil {
 		return nil, err
 	}
@@ -203,7 +203,7 @@ func newDeployForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOpera
 	return depSpec, nil
 }
 
-func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperatorConf, rwsBasicAuth map[string]BasicAuthCredentials, rwsTokens map[string]BearerToken) (*corev1.PodTemplateSpec, error) {
+func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperatorConf, ssCache *scrapesSecretsCache, rwsTokens map[string]BearerToken) (*corev1.PodTemplateSpec, error) {
 	args := []string{
 		fmt.Sprintf("-promscrape.config=%s", path.Join(vmAgentConOfOutDir, configEnvsubstFilename)),
 		fmt.Sprintf("-remoteWrite.tmpDataPath=%s", vmAgentPersistentQueueDir),
@@ -212,7 +212,7 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 	}
 
 	if len(cr.Spec.RemoteWrite) > 0 {
-		args = append(args, BuildRemoteWrites(cr, rwsBasicAuth, rwsTokens)...)
+		args = append(args, BuildRemoteWrites(cr, ssCache.baSecrets, rwsTokens)...)
 	}
 	args = append(args, BuildRemoteWriteSettings(cr)...)
 
@@ -482,7 +482,7 @@ func addAdditionalObjectOwnership(cr *victoriametricsv1beta1.VMAgent, rclient cl
 }
 
 //add ownership - it needs for object changing tracking
-func addAddtionalScrapeConfigOwnership(cr *victoriametricsv1beta1.VMAgent, rclient client.Client, l logr.Logger) error {
+func addAddtionalScrapeConfigOwnership(cr *victoriametricsv1beta1.VMAgent, rclient client.Client) error {
 	if cr.Spec.AdditionalScrapeConfigs != nil {
 		if err := addAdditionalObjectOwnership(cr, rclient, &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{Name: cr.Spec.AdditionalScrapeConfigs.Name},
@@ -605,7 +605,19 @@ func CreateOrUpdateTlsAssets(ctx context.Context, cr *victoriametricsv1beta1.VMA
 	if err != nil {
 		return fmt.Errorf("cannot select service scrapes for tls Assets: %w", err)
 	}
-	assets, err := loadTLSAssets(ctx, rclient, cr, scrapes, podScrapes)
+	nodes, err := SelectVMNodeScrapes(ctx, cr, rclient)
+	if err != nil {
+		return fmt.Errorf("cannot select nodescrapes for tls Assests: %w", err)
+	}
+	statics, err := SelectStaticScrapes(ctx, cr, rclient)
+	if err != nil {
+		return fmt.Errorf("cannot select staticScrapes for tls Assests: %w", err)
+	}
+	probes, err := SelectVMProbes(ctx, cr, rclient)
+	if err != nil {
+		return fmt.Errorf("cannot select probecrapes for tls Assests: %w", err)
+	}
+	assets, err := loadTLSAssets(ctx, rclient, cr, scrapes, podScrapes, probes, nodes, statics)
 	if err != nil {
 		return fmt.Errorf("cannot load tls assets: %w", err)
 	}
@@ -639,7 +651,16 @@ func CreateOrUpdateTlsAssets(ctx context.Context, cr *victoriametricsv1beta1.VMA
 	return rclient.Update(ctx, tlsAssetsSecret)
 }
 
-func loadTLSAssets(ctx context.Context, rclient client.Client, cr *victoriametricsv1beta1.VMAgent, scrapes map[string]*victoriametricsv1beta1.VMServiceScrape, podScrapes map[string]*victoriametricsv1beta1.VMPodScrape) (map[string]string, error) {
+func loadTLSAssets(
+	ctx context.Context,
+	rclient client.Client,
+	cr *victoriametricsv1beta1.VMAgent,
+	scrapes map[string]*victoriametricsv1beta1.VMServiceScrape,
+	podScrapes map[string]*victoriametricsv1beta1.VMPodScrape,
+	probes map[string]*victoriametricsv1beta1.VMProbe,
+	nodes map[string]*victoriametricsv1beta1.VMNodeScrape,
+	statics map[string]*victoriametricsv1beta1.VMStaticScrape,
+) (map[string]string, error) {
 	assets := map[string]string{}
 	nsSecretCache := make(map[string]*corev1.Secret)
 	nsConfigMapCache := make(map[string]*corev1.ConfigMap)
@@ -649,7 +670,7 @@ func loadTLSAssets(ctx context.Context, rclient client.Client, cr *victoriametri
 			continue
 		}
 		if err := addAssetsToCache(ctx, rclient, cr.Namespace, rw.TLSConfig, assets, nsSecretCache, nsConfigMapCache); err != nil {
-			return nil, fmt.Errorf("cannot add asset for remote write target: %s", cr.Name)
+			return nil, fmt.Errorf("cannot add asset for remote write target: %s,err: %w", cr.Name, err)
 		}
 	}
 	for _, pod := range podScrapes {
@@ -658,7 +679,7 @@ func loadTLSAssets(ctx context.Context, rclient client.Client, cr *victoriametri
 				continue
 			}
 			if err := addAssetsToCache(ctx, rclient, pod.Namespace, ep.TLSConfig, assets, nsSecretCache, nsConfigMapCache); err != nil {
-				return nil, fmt.Errorf("cannot add asset for vmpodscrape: %s", pod.Name)
+				return nil, fmt.Errorf("cannot add asset for vmpodscrape: %s,err: %w", pod.Name, err)
 			}
 		}
 	}
@@ -668,11 +689,37 @@ func loadTLSAssets(ctx context.Context, rclient client.Client, cr *victoriametri
 				continue
 			}
 			if err := addAssetsToCache(ctx, rclient, mon.Namespace, ep.TLSConfig, assets, nsSecretCache, nsConfigMapCache); err != nil {
-				return nil, fmt.Errorf("cannot add asset for vmservicescrape: %s", mon.Name)
+				return nil, fmt.Errorf("cannot add asset for vmservicescrape: %s, err: %w", mon.Name, err)
+			}
+		}
+	}
+	for _, probe := range probes {
+		if probe.Spec.TLSConfig == nil {
+			continue
+		}
+		if err := addAssetsToCache(ctx, rclient, probe.Namespace, probe.Spec.TLSConfig, assets, nsSecretCache, nsConfigMapCache); err != nil {
+			return nil, fmt.Errorf("cannot add asset for vmprobe: %s,err :%w", probe.Name, err)
+		}
+	}
+	for _, staticCfg := range statics {
+		for _, ep := range staticCfg.Spec.TargetEndpoints {
+			if ep.TLSConfig == nil {
+				continue
+			}
+			if err := addAssetsToCache(ctx, rclient, staticCfg.Namespace, ep.TLSConfig, assets, nsSecretCache, nsConfigMapCache); err != nil {
+				return nil, fmt.Errorf("cannot add asset for vmservicescrape: %s, err: %w", staticCfg.Name, err)
 			}
 		}
 	}
 
+	for _, node := range nodes {
+		if node.Spec.TLSConfig == nil {
+			continue
+		}
+		if err := addAssetsToCache(ctx, rclient, node.Namespace, node.Spec.TLSConfig, assets, nsSecretCache, nsConfigMapCache); err != nil {
+			return nil, fmt.Errorf("cannot add asset for vmnode: %s,err :%w", node.Name, err)
+		}
+	}
 	return assets, nil
 }
 
@@ -751,20 +798,18 @@ func addAssetsToCache(
 
 }
 
-func LoadRemoteWriteSecrets(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client, l logr.Logger) (map[string]BasicAuthCredentials, map[string]BearerToken, error) {
+func LoadRemoteWriteSecrets(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client, l logr.Logger) (*scrapesSecretsCache, map[string]BearerToken, error) {
 
-	rwsBasicAuthSecrets, err := loadBasicAuthSecrets(ctx, rclient, nil, nil, nil, nil, nil, cr.Spec.RemoteWrite, cr.Namespace)
+	ssCache, err := loadScrapeSecrets(ctx, rclient, nil, nil, nil, nil, nil, nil, cr.Spec.RemoteWrite, cr.Namespace)
 	if err != nil {
-		l.Error(err, "cannot load basic auth secrets for remote write specs")
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("cannot load scrapeSecrets for remoteWriteSpec: %w", err)
 	}
 
 	rwsBearerTokens, err := loadBearerTokensFromSecrets(ctx, rclient, nil, nil, nil, nil, cr.Spec.RemoteWrite, cr.Name)
 	if err != nil {
-		l.Error(err, "cannot get bearer tokens for remote write specs")
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("cannot load bearerToken secret for remoteWriteSpec: %w", err)
 	}
-	return rwsBasicAuthSecrets, rwsBearerTokens, nil
+	return ssCache, rwsBearerTokens, nil
 }
 
 type remoteFlag struct {

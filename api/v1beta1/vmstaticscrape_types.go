@@ -40,9 +40,16 @@ type TargetEndpoint struct {
 	// Interval at which metrics should be scraped
 	// +optional
 	Interval string `json:"interval,omitempty"`
+	// ScrapeInterval is the same as Interval and has priority over it.
+	// one of scrape_interval or interval can be used
+	// +optional
+	ScrapeInterval string `json:"scrape_interval,omitempty"`
 	// Timeout after which the scrape is ended
 	// +optional
 	ScrapeTimeout string `json:"scrapeTimeout,omitempty"`
+	// OAuth2 defines auth configuration
+	// +optional
+	OAuth2 *OAuth2 `json:"oauth2,omitempty"`
 	// TLSConfig configuration to use when scraping the endpoint
 	// +optional
 	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
@@ -74,6 +81,9 @@ type TargetEndpoint struct {
 	// HonorTimestamps controls whether vmagent respects the timestamps present in scraped data.
 	// +optional
 	HonorTimestamps *bool `json:"honorTimestamps,omitempty"`
+	// VMScrapeParams defines VictoriaMetrics specific scrape parametrs
+	// +optional
+	VMScrapeParams *VMScrapeParams `json:"vm_scrape_params"`
 }
 
 // AsKey represent CR as map key.
@@ -104,6 +114,11 @@ type VMStaticScrapeList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []VMStaticScrape `json:"items"`
+}
+
+// AsMapKey builds key for cache secret map
+func (cr *VMStaticScrape) AsMapKey(i int) string {
+	return fmt.Sprintf("staticScrape/%s/%s/%d", cr.Namespace, cr.Name, i)
 }
 
 func init() {

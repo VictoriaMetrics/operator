@@ -15,7 +15,7 @@ func Test_generateStaticScrapeConfig(t *testing.T) {
 		m                       *victoriametricsv1beta1.VMStaticScrape
 		ep                      *victoriametricsv1beta1.TargetEndpoint
 		i                       int
-		basicAuthSecrets        map[string]BasicAuthCredentials
+		ssCache                 *scrapesSecretsCache
 		bearerTokens            map[string]BearerToken
 		overrideHonorLabels     bool
 		overrideHonorTimestamps bool
@@ -106,7 +106,7 @@ metric_relabel_configs: []
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := generateStaticScrapeConfig(tt.args.m, tt.args.ep, tt.args.i, tt.args.basicAuthSecrets, tt.args.bearerTokens, tt.args.overrideHonorLabels, tt.args.overrideHonorTimestamps, tt.args.enforceNamespaceLabel)
+			got := generateStaticScrapeConfig(tt.args.m, tt.args.ep, tt.args.i, tt.args.ssCache, tt.args.bearerTokens, tt.args.overrideHonorLabels, tt.args.overrideHonorTimestamps, tt.args.enforceNamespaceLabel)
 			gotBytes, err := yaml.Marshal(got)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)

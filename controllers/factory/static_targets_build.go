@@ -11,7 +11,7 @@ func generateStaticScrapeConfig(
 	m *victoriametricsv1beta1.VMStaticScrape,
 	ep *victoriametricsv1beta1.TargetEndpoint,
 	i int,
-	basicAuthSecrets map[string]BasicAuthCredentials,
+	ssCache *scrapesSecretsCache,
 	bearerTokens map[string]BearerToken,
 	overrideHonorLabels, overrideHonorTimestamps bool,
 	enforcedNamespaceLabel string,
@@ -36,7 +36,9 @@ func generateStaticScrapeConfig(
 	}
 
 	cfg = append(cfg, yaml.MapItem{Key: "static_configs", Value: []yaml.MapSlice{tgs}})
-	if ep.Interval != "" {
+	if ep.ScrapeInterval != "" {
+		cfg = append(cfg, yaml.MapItem{Key: "scrape_interval", Value: ep.ScrapeInterval})
+	} else if ep.Interval != "" {
 		cfg = append(cfg, yaml.MapItem{Key: "scrape_interval", Value: ep.Interval})
 	}
 	if ep.ScrapeTimeout != "" {
@@ -68,7 +70,7 @@ func generateStaticScrapeConfig(
 	}
 
 	if ep.BasicAuth != nil {
-		if s, ok := basicAuthSecrets[m.AsKey(i)]; ok {
+		if s, ok := ssCache.baSecrets[m.AsKey(i)]; ok {
 			cfg = append(cfg, yaml.MapItem{
 				Key: "basic_auth", Value: yaml.MapSlice{
 					{Key: "username", Value: s.username},
@@ -113,5 +115,14 @@ func generateStaticScrapeConfig(
 		cfg = append(cfg, yaml.MapItem{Key: "metric_relabel_configs", Value: metricRelabelings})
 	}
 
+	cfg = addTLStoYaml(cfg, m.Namespace, ep.TLSConfig)
+
+	cfg = append(cfg, buildVMScrapeParams(ep.VMScrapeParams)...)
+	if ep.OAuth2 != nil {
+		r := buildOAuth2Config(m.AsMapKey(i), ep.OAuth2, ssCache.oauth2Secrets)
+		if len(r) > 0 {
+			cfg = append(cfg, yaml.MapItem{Key: "oauth2", Value: r})
+		}
+	}
 	return cfg
 }

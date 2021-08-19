@@ -387,7 +387,7 @@ func Test_addAddtionalScrapeConfigOwnership(t *testing.T) {
 			}
 			fclient := k8stools.GetTestClientWithObjects(obj)
 
-			if err := addAddtionalScrapeConfigOwnership(tt.args.cr, fclient, tt.args.l); (err != nil) != tt.wantErr {
+			if err := addAddtionalScrapeConfigOwnership(tt.args.cr, fclient); (err != nil) != tt.wantErr {
 				t.Errorf("addAddtionalScrapeConfigOwnership() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if tt.args.cr.Spec.AdditionalScrapeConfigs != nil {
@@ -415,6 +415,9 @@ func Test_loadTLSAssets(t *testing.T) {
 	type args struct {
 		monitors map[string]*victoriametricsv1beta1.VMServiceScrape
 		pods     map[string]*victoriametricsv1beta1.VMPodScrape
+		statics  map[string]*victoriametricsv1beta1.VMStaticScrape
+		nodes    map[string]*victoriametricsv1beta1.VMNodeScrape
+		probes   map[string]*victoriametricsv1beta1.VMProbe
 		cr       *victoriametricsv1beta1.VMAgent
 	}
 	tests := []struct {
@@ -545,7 +548,7 @@ func Test_loadTLSAssets(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 
-			got, err := loadTLSAssets(context.TODO(), fclient, tt.args.cr, tt.args.monitors, tt.args.pods)
+			got, err := loadTLSAssets(context.TODO(), fclient, tt.args.cr, tt.args.monitors, tt.args.pods, tt.args.probes, tt.args.nodes, tt.args.statics)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("loadTLSAssets() error = %v, wantErr %v", err, tt.wantErr)
 				return

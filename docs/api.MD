@@ -67,11 +67,12 @@ This Document documents the types introduced by the VictoriaMetrics to be consum
 * [APIServerConfig](#apiserverconfig)
 * [Endpoint](#endpoint)
 * [NamespaceSelector](#namespaceselector)
+* [OAuth2](#oauth2)
 * [QueueConfig](#queueconfig)
 * [RelabelConfig](#relabelconfig)
-* [RemoteWriteSpec](#remotewritespec)
 * [SecretOrConfigMap](#secretorconfigmap)
 * [TLSConfig](#tlsconfig)
+* [VMScrapeParams](#vmscrapeparams)
 * [VMServiceScrape](#vmservicescrape)
 * [VMServiceScrapeList](#vmservicescrapelist)
 * [VMServiceScrapeSpec](#vmservicescrapespec)
@@ -620,6 +621,7 @@ VMAgentRemoteWriteSpec defines the remote storage configuration for VmAgent
 | basicAuth | BasicAuth allow an endpoint to authenticate over basic authentication | *[BasicAuth](#basicauth) | false |
 | bearerTokenSecret | Optional bearer auth token to use for -remoteWrite.url | *[v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
 | urlRelabelConfig | ConfigMap with relabeling config which is applied to metrics before sending them to the corresponding -remoteWrite.url | *v1.ConfigMapKeySelector | false |
+| oauth2 | OAuth2 defines auth configuration | *[OAuth2](#oauth2) | false |
 | tlsConfig | TLSConfig describes tls configuration for remote write target | *[TLSConfig](#tlsconfig) | false |
 | sendTimeout | Timeout for sending a single block of data to -remoteWrite.url (default 1m0s) | *string | false |
 
@@ -1108,7 +1110,9 @@ Endpoint defines a scrapeable endpoint serving Prometheus metrics.
 | scheme | HTTP scheme to use for scraping. | string | false |
 | params | Optional HTTP URL parameters | map[string][]string | false |
 | interval | Interval at which metrics should be scraped | string | false |
+| scrape_interval | ScrapeInterval is the same as Interval and has priority over it. one of scrape_interval or interval can be used | string | false |
 | scrapeTimeout | Timeout after which the scrape is ended | string | false |
+| oauth2 | OAuth2 defines auth configuration | *[OAuth2](#oauth2) | false |
 | tlsConfig | TLSConfig configuration to use when scraping the endpoint | *[TLSConfig](#tlsconfig) | false |
 | bearerTokenFile | File to read bearer token for scraping targets. | string | false |
 | bearerTokenSecret | Secret to mount to read bearer token for scraping targets. The secret needs to be in the same namespace as the service scrape and accessible by the victoria-metrics operator. | [v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
@@ -1118,6 +1122,7 @@ Endpoint defines a scrapeable endpoint serving Prometheus metrics.
 | metricRelabelConfigs | MetricRelabelConfigs to apply to samples before ingestion. | []*[RelabelConfig](#relabelconfig) | false |
 | relabelConfigs | RelabelConfigs to apply to samples before scraping. More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config | []*[RelabelConfig](#relabelconfig) | false |
 | proxyURL | ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. | *string | false |
+| vm_scrape_params | VMScrapeParams defines VictoriaMetrics specific scrape parametrs | *[VMScrapeParams](#vmscrapeparams) | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -1129,6 +1134,21 @@ NamespaceSelector is a selector for selecting either all namespaces or a list of
 | ----- | ----------- | ------ | -------- |
 | any | Boolean describing whether all namespaces are selected in contrast to a list restricting them. | bool | false |
 | matchNames | List of namespace names. | []string | false |
+
+[Back to TOC](#table-of-contents)
+
+## OAuth2
+
+OAuth2 defines OAuth2 configuration
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| client_id | The secret or configmap containing the OAuth2 client id | [SecretOrConfigMap](#secretorconfigmap) | true |
+| client_secret | The secret containing the OAuth2 client secret | *[v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
+| client_secret_file | ClientSecretFile defines path for client secret file. | string | false |
+| token_url | The URL to fetch the token from | string | true |
+| scopes | OAuth2 scopes used for the token request | []string | false |
+| endpoint_params | Parameters to append to the token URL | map[string]string | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -1167,25 +1187,6 @@ RelabelConfig allows dynamic rewriting of the label set, being applied to sample
 
 [Back to TOC](#table-of-contents)
 
-## RemoteWriteSpec
-
-RemoteWriteSpec defines the remote_write configuration.
-
-| Field | Description | Scheme | Required |
-| ----- | ----------- | ------ | -------- |
-| url | The URL of the endpoint to send samples to. | string | true |
-| name | The name of the remote write queue, must be unique if specified. The name is used in metrics and logging in order to differentiate queues. | string | false |
-| remoteTimeout | Timeout for requests to the remote write endpoint. | string | false |
-| writeRelabelConfigs | The list of remote write relabel configurations. | [][RelabelConfig](#relabelconfig) | false |
-| basicAuth | BasicAuth for the URL. | *[BasicAuth](#basicauth) | false |
-| bearerToken | File to read bearer token for remote write. | string | false |
-| bearerTokenFile | File to read bearer token for remote write. | string | false |
-| tlsConfig | TLSConfig Config to use for remote write. | *[TLSConfig](#tlsconfig) | false |
-| proxyURL | Optional ProxyURL | string | false |
-| queueConfig | QueueConfig allows tuning of the remote write queue parameters. | *[QueueConfig](#queueconfig) | false |
-
-[Back to TOC](#table-of-contents)
-
 ## SecretOrConfigMap
 
 SecretOrConfigMap allows to specify data as a Secret or ConfigMap. Fields are mutually exclusive.
@@ -1211,6 +1212,22 @@ TLSConfig specifies TLSConfig configuration parameters.
 | keySecret | Secret containing the client key file for the targets. | *[v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
 | serverName | Used to verify the hostname for the targets. | string | false |
 | insecureSkipVerify | Disable target certificate validation. | bool | false |
+
+[Back to TOC](#table-of-contents)
+
+## VMScrapeParams
+
+VMScrapeParams defines scrape target configuration that compatible only with VictoriaMetrics scrapers VMAgent and VMSingle
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| relabel_debug |  | *bool | false |
+| metric_relabel_debug |  | *bool | false |
+| disable_compression |  | *bool | false |
+| disable_keep_alive |  | *bool | false |
+| stream_parse |  | *bool | false |
+| scrape_align_interval |  | *string | false |
+| scrape_offset |  | *string | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -1276,6 +1293,7 @@ PodMetricsEndpoint defines a scrapeable endpoint of a Kubernetes Pod serving Pro
 | scheme | HTTP scheme to use for scraping. | string | false |
 | params | Optional HTTP URL parameters | map[string][]string | false |
 | interval | Interval at which metrics should be scraped | string | false |
+| scrape_interval | ScrapeInterval is the same as Interval and has priority over it. one of scrape_interval or interval can be used | string | false |
 | scrapeTimeout | Timeout after which the scrape is ended | string | false |
 | honorLabels | HonorLabels chooses the metric&#39;s labels on collisions with target labels. | bool | false |
 | honorTimestamps | HonorTimestamps controls whether vmagent respects the timestamps present in scraped data. | *bool | false |
@@ -1286,6 +1304,8 @@ PodMetricsEndpoint defines a scrapeable endpoint of a Kubernetes Pod serving Pro
 | bearerTokenFile | File to read bearer token for scraping targets. | string | false |
 | bearerTokenSecret | Secret to mount to read bearer token for scraping targets. The secret needs to be in the same namespace as the service scrape and accessible by the victoria-metrics operator. | [v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
 | tlsConfig | TLSConfig configuration to use when scraping the endpoint | *[TLSConfig](#tlsconfig) | false |
+| oauth2 | OAuth2 defines auth configuration | *[OAuth2](#oauth2) | false |
+| vm_scrape_params | VMScrapeParams defines VictoriaMetrics specific scrape parametrs | *[VMScrapeParams](#vmscrapeparams) | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -1595,7 +1615,9 @@ VMNodeScrapeSpec defines specification for VMNodeScrape.
 | scheme | HTTP scheme to use for scraping. | string | false |
 | params | Optional HTTP URL parameters | map[string][]string | false |
 | interval | Interval at which metrics should be scraped | string | false |
+| scrape_interval | ScrapeInterval is the same as Interval and has priority over it. one of scrape_interval or interval can be used | string | false |
 | scrapeTimeout | Timeout after which the scrape is ended | string | false |
+| oauth2 | OAuth2 defines auth configuration | *[OAuth2](#oauth2) | false |
 | tlsConfig | TLSConfig configuration to use when scraping the node | *[TLSConfig](#tlsconfig) | false |
 | bearerTokenFile | File to read bearer token for scraping targets. | string | false |
 | bearerTokenSecret | Secret to mount to read bearer token for scraping targets. The secret needs to be  accessible by the victoria-metrics operator. | [v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
@@ -1607,6 +1629,7 @@ VMNodeScrapeSpec defines specification for VMNodeScrape.
 | proxyURL | ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. | *string | false |
 | selector | Selector to select kubernetes Nodes. | [metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
 | sampleLimit | SampleLimit defines per-scrape limit on number of scraped samples that will be accepted. | uint64 | false |
+| vm_scrape_params | VMScrapeParams defines VictoriaMetrics specific scrape parametrs | *[VMScrapeParams](#vmscrapeparams) | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -1776,7 +1799,9 @@ TargetEndpoint defines single static target endpoint.
 | scheme | HTTP scheme to use for scraping. | string | false |
 | params | Optional HTTP URL parameters | map[string][]string | false |
 | interval | Interval at which metrics should be scraped | string | false |
+| scrape_interval | ScrapeInterval is the same as Interval and has priority over it. one of scrape_interval or interval can be used | string | false |
 | scrapeTimeout | Timeout after which the scrape is ended | string | false |
+| oauth2 | OAuth2 defines auth configuration | *[OAuth2](#oauth2) | false |
 | tlsConfig | TLSConfig configuration to use when scraping the endpoint | *[TLSConfig](#tlsconfig) | false |
 | bearerTokenFile | File to read bearer token for scraping targets. | string | false |
 | bearerTokenSecret | Secret to mount to read bearer token for scraping targets. The secret needs to be in the same namespace as the service scrape and accessible by the victoria-metrics operator. | [v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
@@ -1786,6 +1811,7 @@ TargetEndpoint defines single static target endpoint.
 | proxyURL | ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. | *string | false |
 | honorLabels | HonorLabels chooses the metric&#39;s labels on collisions with target labels. | bool | false |
 | honorTimestamps | HonorTimestamps controls whether vmagent respects the timestamps present in scraped data. | *bool | false |
+| vm_scrape_params | VMScrapeParams defines VictoriaMetrics specific scrape parametrs | *[VMScrapeParams](#vmscrapeparams) | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -1870,7 +1896,12 @@ VMProbeSpec contains specification parameters for a Probe.
 | module | The module to use for probing specifying how to probe the target. Example module configuring in the blackbox exporter: https://github.com/prometheus/blackbox_exporter/blob/master/example.yml | string | false |
 | targets | Targets defines a set of static and/or dynamically discovered targets to be probed using the prober. | [VMProbeTargets](#vmprobetargets) | false |
 | interval | Interval at which targets are probed using the configured prober. If not specified Prometheus&#39; global scrape interval is used. | string | false |
+| scrape_interval | ScrapeInterval is the same as Interval and has priority over it. one of scrape_interval or interval can be used | string | false |
 | scrapeTimeout | Timeout for scraping metrics from the Prometheus exporter. | string | false |
+| basicAuth | BasicAuth allow an endpoint to authenticate over basic authentication More info: https://prometheus.io/docs/operating/configuration/#endpoints | *[BasicAuth](#basicauth) | false |
+| oauth2 | OAuth2 defines auth configuration | *[OAuth2](#oauth2) | false |
+| tlsConfig | TLSConfig configuration to use when scraping the endpoint | *[TLSConfig](#tlsconfig) | false |
+| vm_scrape_params | VMScrapeParams defines VictoriaMetrics specific scrape parametrs | *[VMScrapeParams](#vmscrapeparams) | false |
 
 [Back to TOC](#table-of-contents)
 

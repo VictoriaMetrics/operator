@@ -108,9 +108,17 @@ type Endpoint struct {
 	// Interval at which metrics should be scraped
 	// +optional
 	Interval string `json:"interval,omitempty"`
+
+	// ScrapeInterval is the same as Interval and has priority over it.
+	// one of scrape_interval or interval can be used
+	// +optional
+	ScrapeInterval string `json:"scrape_interval,omitempty"`
 	// Timeout after which the scrape is ended
 	// +optional
 	ScrapeTimeout string `json:"scrapeTimeout,omitempty"`
+	// OAuth2 defines auth configuration
+	// +optional
+	OAuth2 *OAuth2 `json:"oauth2,omitempty"`
 	// TLSConfig configuration to use when scraping the endpoint
 	// +optional
 	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
@@ -142,6 +150,51 @@ type Endpoint struct {
 	// ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint.
 	// +optional
 	ProxyURL *string `json:"proxyURL,omitempty"`
+	// VMScrapeParams defines VictoriaMetrics specific scrape parametrs
+	// +optional
+	VMScrapeParams *VMScrapeParams `json:"vm_scrape_params,omitempty"`
+}
+
+// VMScrapeParams defines scrape target configuration that compatible only with VictoriaMetrics scrapers
+// VMAgent and VMSingle
+type VMScrapeParams struct {
+	// +optional
+	RelabelDebug *bool `json:"relabel_debug,omitempty"`
+	// +optional
+	MetricRelabelDebug *bool `json:"metric_relabel_debug,omitempty"`
+	// +optional
+	DisableCompression *bool `json:"disable_compression,omitempty"`
+	// +optional
+	DisableKeepAlive *bool `json:"disable_keep_alive,omitempty"`
+	// +optional
+	StreamParse *bool `json:"stream_parse,omitempty"`
+	// +optional
+	ScrapeAlignInterval *string `json:"scrape_align_interval,omitempty"`
+	// +optional
+	ScrapeOffset *string `json:"scrape_offset,omitempty"`
+}
+
+// OAuth2 defines OAuth2 configuration
+type OAuth2 struct {
+	// The secret or configmap containing the OAuth2 client id
+	// +required
+	ClientID SecretOrConfigMap `json:"client_id"`
+	// The secret containing the OAuth2 client secret
+	// +optional
+	ClientSecret *v1.SecretKeySelector `json:"client_secret,omitempty"`
+	// ClientSecretFile defines path for client secret file.
+	// +optional
+	ClientSecretFile string `json:"client_secret_file,omitempty"`
+	// The URL to fetch the token from
+	// +kubebuilder:validation:MinLength=1
+	// +required
+	TokenURL string `json:"token_url"`
+	// OAuth2 scopes used for the token request
+	// +optional
+	Scopes []string `json:"scopes,omitempty"`
+	// Parameters to append to the token URL
+	// +optional
+	EndpointParams map[string]string `json:"endpoint_params,omitempty"`
 }
 
 // TLSConfig specifies TLSConfig configuration parameters.
@@ -362,41 +415,6 @@ func (c *TLSConfig) BuildAssetPath(prefix, name, key string) string {
 	return fmt.Sprintf("%s_%s_%s", prefix, name, key)
 }
 
-// RemoteWriteSpec defines the remote_write configuration.
-// +k8s:openapi-gen=true
-type RemoteWriteSpec struct {
-	// The URL of the endpoint to send samples to.
-	URL string `json:"url"`
-	// The name of the remote write queue, must be unique if specified. The
-	// name is used in metrics and logging in order to differentiate queues.
-	// +optional
-	Name string `json:"name,omitempty"`
-	// Timeout for requests to the remote write endpoint.
-	// +optional
-	RemoteTimeout string `json:"remoteTimeout,omitempty"`
-	// The list of remote write relabel configurations.
-	// +optional
-	WriteRelabelConfigs []RelabelConfig `json:"writeRelabelConfigs,omitempty"`
-	//BasicAuth for the URL.
-	// +optional
-	BasicAuth *BasicAuth `json:"basicAuth,omitempty"`
-	// File to read bearer token for remote write.
-	// +optional
-	BearerToken string `json:"bearerToken,omitempty"`
-	// File to read bearer token for remote write.
-	// +optional
-	BearerTokenFile string `json:"bearerTokenFile,omitempty"`
-	// TLSConfig Config to use for remote write.
-	// +optional
-	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
-	// Optional ProxyURL
-	// +optional
-	ProxyURL string `json:"proxyURL,omitempty"`
-	// QueueConfig allows tuning of the remote write queue parameters.
-	// +optional
-	QueueConfig *QueueConfig `json:"queueConfig,omitempty"`
-}
-
 // QueueConfig allows the tuning of remote_write queue_config parameters. This object
 // is referenced in the RemoteWriteSpec object.
 // +k8s:openapi-gen=true
@@ -446,6 +464,11 @@ type APIServerConfig struct {
 	// TLSConfig Config to use for accessing apiserver.
 	// +optional
 	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
+}
+
+// AsMapKey - returns cr name with suffix for token/auth maps.
+func (cr VMServiceScrape) AsMapKey(i int) string {
+	return fmt.Sprintf("serviceScrape/%s/%s/%d", cr.Namespace, cr.Name, i)
 }
 
 func init() {

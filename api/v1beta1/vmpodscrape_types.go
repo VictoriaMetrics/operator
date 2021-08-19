@@ -1,6 +1,8 @@
 package v1beta1
 
 import (
+	"fmt"
+
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -80,6 +82,10 @@ type PodMetricsEndpoint struct {
 	// Interval at which metrics should be scraped
 	// +optional
 	Interval string `json:"interval,omitempty"`
+	// ScrapeInterval is the same as Interval and has priority over it.
+	// one of scrape_interval or interval can be used
+	// +optional
+	ScrapeInterval string `json:"scrape_interval,omitempty"`
 	// Timeout after which the scrape is ended
 	// +optional
 	ScrapeTimeout string `json:"scrapeTimeout,omitempty"`
@@ -114,6 +120,12 @@ type PodMetricsEndpoint struct {
 	// TLSConfig configuration to use when scraping the endpoint
 	// +optional
 	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
+	// OAuth2 defines auth configuration
+	// +optional
+	OAuth2 *OAuth2 `json:"oauth2,omitempty"`
+	// VMScrapeParams defines VictoriaMetrics specific scrape parametrs
+	// +optional
+	VMScrapeParams *VMScrapeParams `json:"vm_scrape_params,omitempty"`
 }
 
 // ArbitraryFSAccessThroughSMsConfig enables users to configure, whether
@@ -126,6 +138,11 @@ type PodMetricsEndpoint struct {
 // attack, users can instead use the BearerTokenSecret field.
 type ArbitraryFSAccessThroughSMsConfig struct {
 	Deny bool `json:"deny,omitempty"`
+}
+
+// AsMapKey builds key for cache secret map
+func (cr *VMPodScrape) AsMapKey(i int) string {
+	return fmt.Sprintf("podScrape/%s/%s/%d", cr.Namespace, cr.Name, i)
 }
 
 func init() {

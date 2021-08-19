@@ -35,6 +35,49 @@ spec:
         spec:
           description: VMProbeSpec contains specification parameters for a Probe.
           properties:
+            basicAuth:
+              description: 'BasicAuth allow an endpoint to authenticate over basic
+                authentication More info: https://prometheus.io/docs/operating/configuration/#endpoints'
+              properties:
+                password:
+                  description: The secret in the service scrape namespace that contains
+                    the password for authentication. It must be at them same namespace
+                    as CRD
+                  properties:
+                    key:
+                      description: The key of the secret to select from.  Must be
+                        a valid secret key.
+                      type: string
+                    name:
+                      description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                        TODO: Add other useful fields. apiVersion, kind, uid?'
+                      type: string
+                    optional:
+                      description: Specify whether the Secret or its key must be defined
+                      type: boolean
+                  required:
+                  - key
+                  type: object
+                username:
+                  description: The secret in the service scrape namespace that contains
+                    the username for authentication. It must be at them same namespace
+                    as CRD
+                  properties:
+                    key:
+                      description: The key of the secret to select from.  Must be
+                        a valid secret key.
+                      type: string
+                    name:
+                      description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                        TODO: Add other useful fields. apiVersion, kind, uid?'
+                      type: string
+                    optional:
+                      description: Specify whether the Secret or its key must be defined
+                      type: boolean
+                  required:
+                  - key
+                  type: object
+              type: object
             interval:
               description: Interval at which targets are probed using the configured
                 prober. If not specified Prometheus' global scrape interval is used.
@@ -45,6 +88,91 @@ spec:
             module:
               description: 'The module to use for probing specifying how to probe
                 the target. Example module configuring in the blackbox exporter: https://github.com/prometheus/blackbox_exporter/blob/master/example.yml'
+              type: string
+            oauth2:
+              description: OAuth2 defines auth configuration
+              properties:
+                client_id:
+                  description: The secret or configmap containing the OAuth2 client
+                    id
+                  properties:
+                    configMap:
+                      description: ConfigMap containing data to use for the targets.
+                      properties:
+                        key:
+                          description: The key to select.
+                          type: string
+                        name:
+                          description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                            TODO: Add other useful fields. apiVersion, kind, uid?'
+                          type: string
+                        optional:
+                          description: Specify whether the ConfigMap or its key must
+                            be defined
+                          type: boolean
+                      required:
+                      - key
+                      type: object
+                    secret:
+                      description: Secret containing data to use for the targets.
+                      properties:
+                        key:
+                          description: The key of the secret to select from.  Must
+                            be a valid secret key.
+                          type: string
+                        name:
+                          description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                            TODO: Add other useful fields. apiVersion, kind, uid?'
+                          type: string
+                        optional:
+                          description: Specify whether the Secret or its key must
+                            be defined
+                          type: boolean
+                      required:
+                      - key
+                      type: object
+                  type: object
+                client_secret:
+                  description: The secret containing the OAuth2 client secret
+                  properties:
+                    key:
+                      description: The key of the secret to select from.  Must be
+                        a valid secret key.
+                      type: string
+                    name:
+                      description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                        TODO: Add other useful fields. apiVersion, kind, uid?'
+                      type: string
+                    optional:
+                      description: Specify whether the Secret or its key must be defined
+                      type: boolean
+                  required:
+                  - key
+                  type: object
+                client_secret_file:
+                  description: ClientSecretFile defines path for client secret file.
+                  type: string
+                endpoint_params:
+                  additionalProperties:
+                    type: string
+                  description: Parameters to append to the token URL
+                  type: object
+                scopes:
+                  description: OAuth2 scopes used for the token request
+                  items:
+                    type: string
+                  type: array
+                token_url:
+                  description: The URL to fetch the token from
+                  minLength: 1
+                  type: string
+              required:
+              - client_id
+              - token_url
+              type: object
+            scrape_interval:
+              description: ScrapeInterval is the same as Interval and has priority
+                over it. one of scrape_interval or interval can be used
               type: string
             scrapeTimeout:
               description: Timeout for scraping metrics from the Prometheus exporter.
@@ -255,6 +383,142 @@ spec:
                   required:
                   - targets
                   type: object
+              type: object
+            tlsConfig:
+              description: TLSConfig configuration to use when scraping the endpoint
+              properties:
+                ca:
+                  description: Stuct containing the CA cert to use for the targets.
+                  properties:
+                    configMap:
+                      description: ConfigMap containing data to use for the targets.
+                      properties:
+                        key:
+                          description: The key to select.
+                          type: string
+                        name:
+                          description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                            TODO: Add other useful fields. apiVersion, kind, uid?'
+                          type: string
+                        optional:
+                          description: Specify whether the ConfigMap or its key must
+                            be defined
+                          type: boolean
+                      required:
+                      - key
+                      type: object
+                    secret:
+                      description: Secret containing data to use for the targets.
+                      properties:
+                        key:
+                          description: The key of the secret to select from.  Must
+                            be a valid secret key.
+                          type: string
+                        name:
+                          description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                            TODO: Add other useful fields. apiVersion, kind, uid?'
+                          type: string
+                        optional:
+                          description: Specify whether the Secret or its key must
+                            be defined
+                          type: boolean
+                      required:
+                      - key
+                      type: object
+                  type: object
+                caFile:
+                  description: Path to the CA cert in the container to use for the
+                    targets.
+                  type: string
+                cert:
+                  description: Struct containing the client cert file for the targets.
+                  properties:
+                    configMap:
+                      description: ConfigMap containing data to use for the targets.
+                      properties:
+                        key:
+                          description: The key to select.
+                          type: string
+                        name:
+                          description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                            TODO: Add other useful fields. apiVersion, kind, uid?'
+                          type: string
+                        optional:
+                          description: Specify whether the ConfigMap or its key must
+                            be defined
+                          type: boolean
+                      required:
+                      - key
+                      type: object
+                    secret:
+                      description: Secret containing data to use for the targets.
+                      properties:
+                        key:
+                          description: The key of the secret to select from.  Must
+                            be a valid secret key.
+                          type: string
+                        name:
+                          description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                            TODO: Add other useful fields. apiVersion, kind, uid?'
+                          type: string
+                        optional:
+                          description: Specify whether the Secret or its key must
+                            be defined
+                          type: boolean
+                      required:
+                      - key
+                      type: object
+                  type: object
+                certFile:
+                  description: Path to the client cert file in the container for the
+                    targets.
+                  type: string
+                insecureSkipVerify:
+                  description: Disable target certificate validation.
+                  type: boolean
+                keyFile:
+                  description: Path to the client key file in the container for the
+                    targets.
+                  type: string
+                keySecret:
+                  description: Secret containing the client key file for the targets.
+                  properties:
+                    key:
+                      description: The key of the secret to select from.  Must be
+                        a valid secret key.
+                      type: string
+                    name:
+                      description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                        TODO: Add other useful fields. apiVersion, kind, uid?'
+                      type: string
+                    optional:
+                      description: Specify whether the Secret or its key must be defined
+                      type: boolean
+                  required:
+                  - key
+                  type: object
+                serverName:
+                  description: Used to verify the hostname for the targets.
+                  type: string
+              type: object
+            vm_scrape_params:
+              description: VMScrapeParams defines VictoriaMetrics specific scrape
+                parametrs
+              properties:
+                disable_compression:
+                  type: boolean
+                disable_keep_alive:
+                  type: boolean
+                metric_relabel_debug:
+                  type: boolean
+                relabel_debug:
+                  type: boolean
+                scrape_align_interval:
+                  type: string
+                scrape_offset:
+                  type: string
+                stream_parse:
+                  type: boolean
               type: object
             vmProberSpec:
               description: Specification for the prober to use for probing targets.

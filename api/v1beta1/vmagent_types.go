@@ -329,6 +329,9 @@ type VMAgentRemoteWriteSpec struct {
 	// InlineUrlRelabelConfig defines relabeling config for remoteWriteURL, it can be defined at crd spec.
 	// +optional
 	InlineUrlRelabelConfig []RelabelConfig `json:"inlineUrlRelabelConfig,omitempty"`
+	// OAuth2 defines auth configuration
+	// +optional
+	OAuth2 *OAuth2 `json:"oauth2,omitempty"`
 	// TLSConfig describes tls configuration for remote write target
 	// +optional
 	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`

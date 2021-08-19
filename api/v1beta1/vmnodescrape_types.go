@@ -30,9 +30,16 @@ type VMNodeScrapeSpec struct {
 	// Interval at which metrics should be scraped
 	// +optional
 	Interval string `json:"interval,omitempty"`
+	// ScrapeInterval is the same as Interval and has priority over it.
+	// one of scrape_interval or interval can be used
+	// +optional
+	ScrapeInterval string `json:"scrape_interval,omitempty"`
 	// Timeout after which the scrape is ended
 	// +optional
 	ScrapeTimeout string `json:"scrapeTimeout,omitempty"`
+	// OAuth2 defines auth configuration
+	// +optional
+	OAuth2 *OAuth2 `json:"oauth2,omitempty"`
 	// TLSConfig configuration to use when scraping the node
 	// +optional
 	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
@@ -73,6 +80,9 @@ type VMNodeScrapeSpec struct {
 	// SampleLimit defines per-scrape limit on number of scraped samples that will be accepted.
 	// +optional
 	SampleLimit uint64 `json:"sampleLimit,omitempty"`
+	// VMScrapeParams defines VictoriaMetrics specific scrape parametrs
+	// +optional
+	VMScrapeParams *VMScrapeParams `json:"vm_scrape_params,omitempty"`
 }
 
 // VMNodeScrapeStatus defines the observed state of VMNodeScrape

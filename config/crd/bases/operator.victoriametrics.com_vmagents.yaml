@@ -1297,6 +1297,92 @@ spec:
                           type: string
                       type: object
                     type: array
+                  oauth2:
+                    description: OAuth2 defines auth configuration
+                    properties:
+                      client_id:
+                        description: The secret or configmap containing the OAuth2
+                          client id
+                        properties:
+                          configMap:
+                            description: ConfigMap containing data to use for the
+                              targets.
+                            properties:
+                              key:
+                                description: The key to select.
+                                type: string
+                              name:
+                                description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                  TODO: Add other useful fields. apiVersion, kind,
+                                  uid?'
+                                type: string
+                              optional:
+                                description: Specify whether the ConfigMap or its
+                                  key must be defined
+                                type: boolean
+                            required:
+                            - key
+                            type: object
+                          secret:
+                            description: Secret containing data to use for the targets.
+                            properties:
+                              key:
+                                description: The key of the secret to select from.  Must
+                                  be a valid secret key.
+                                type: string
+                              name:
+                                description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                  TODO: Add other useful fields. apiVersion, kind,
+                                  uid?'
+                                type: string
+                              optional:
+                                description: Specify whether the Secret or its key
+                                  must be defined
+                                type: boolean
+                            required:
+                            - key
+                            type: object
+                        type: object
+                      client_secret:
+                        description: The secret containing the OAuth2 client secret
+                        properties:
+                          key:
+                            description: The key of the secret to select from.  Must
+                              be a valid secret key.
+                            type: string
+                          name:
+                            description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              TODO: Add other useful fields. apiVersion, kind, uid?'
+                            type: string
+                          optional:
+                            description: Specify whether the Secret or its key must
+                              be defined
+                            type: boolean
+                        required:
+                        - key
+                        type: object
+                      client_secret_file:
+                        description: ClientSecretFile defines path for client secret
+                          file.
+                        type: string
+                      endpoint_params:
+                        additionalProperties:
+                          type: string
+                        description: Parameters to append to the token URL
+                        type: object
+                      scopes:
+                        description: OAuth2 scopes used for the token request
+                        items:
+                          type: string
+                        type: array
+                      token_url:
+                        description: The URL to fetch the token from
+                        minLength: 1
+                        type: string
+                    required:
+                    - client_id
+                    - token_url
+                    type: object
                   sendTimeout:
                     description: Timeout for sending a single block of data to -remoteWrite.url
                       (default 1m0s)

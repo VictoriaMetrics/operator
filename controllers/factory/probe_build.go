@@ -14,7 +14,7 @@ func generateProbeConfig(
 	cr *victoriametricsv1beta1.VMProbe,
 	i int,
 	apiserverConfig *victoriametricsv1beta1.APIServerConfig,
-	basicAuthSecrets map[string]BasicAuthCredentials,
+	secretCache *scrapesSecretsCache,
 	ignoreNamespaceSelectors bool,
 	enforcedNamespaceLabel string,
 ) yaml.MapSlice {
@@ -30,8 +30,9 @@ func generateProbeConfig(
 	if cr.Spec.VMProberSpec.Path == "" {
 		cr.Spec.VMProberSpec.Path = "/probe"
 	}
-
-	if cr.Spec.Interval != "" {
+	if cr.Spec.ScrapeInterval != "" {
+		cfg = append(cfg, yaml.MapItem{Key: "scrape_interval", Value: cr.Spec.ScrapeInterval})
+	} else if cr.Spec.Interval != "" {
 		cfg = append(cfg, yaml.MapItem{Key: "scrape_interval", Value: cr.Spec.Interval})
 	}
 	if cr.Spec.ScrapeTimeout != "" {
@@ -120,7 +121,7 @@ func generateProbeConfig(
 		}
 
 		selectedNamespaces := getNamespacesFromNamespaceSelector(&cr.Spec.Targets.Ingress.NamespaceSelector, cr.Namespace, ignoreNamespaceSelectors)
-		cfg = append(cfg, generateK8SSDConfig(selectedNamespaces, apiserverConfig, basicAuthSecrets, kubernetesSDRoleIngress))
+		cfg = append(cfg, generateK8SSDConfig(selectedNamespaces, apiserverConfig, secretCache.baSecrets, kubernetesSDRoleIngress))
 
 		// Relabelings for ingress SD.
 		relabelings = append(relabelings, []yaml.MapSlice{
@@ -178,6 +179,26 @@ func generateProbeConfig(
 	relabelings = enforceNamespaceLabel(relabelings, cr.Namespace, enforcedNamespaceLabel)
 
 	cfg = append(cfg, yaml.MapItem{Key: "relabel_configs", Value: relabelings})
+
+	if cr.Spec.BasicAuth != nil {
+		if s, ok := secretCache.baSecrets[cr.AsMapKey()]; ok {
+			cfg = append(cfg, yaml.MapItem{
+				Key: "basic_auth", Value: yaml.MapSlice{
+					{Key: "username", Value: s.username},
+					{Key: "password", Value: s.password},
+				},
+			})
+		}
+	}
+	cfg = addTLStoYaml(cfg, cr.Namespace, cr.Spec.TLSConfig)
+	cfg = append(cfg, buildVMScrapeParams(cr.Spec.VMScrapeParams)...)
+	if cr.Spec.OAuth2 != nil {
+		r := buildOAuth2Config(cr.AsMapKey(), cr.Spec.OAuth2, secretCache.oauth2Secrets)
+		if len(r) > 0 {
+			cfg = append(cfg, yaml.MapItem{Key: "oauth2", Value: r})
+		}
+
+	}
 
 	return cfg
 }

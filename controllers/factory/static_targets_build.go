@@ -125,6 +125,7 @@ func generateStaticScrapeConfig(
 	}
 
 	cfg = append(cfg, buildVMScrapeParams(m.Namespace, m.AsProxyKey(i), ep.VMScrapeParams, ssCache)...)
+
 	if ep.OAuth2 != nil {
 		r := buildOAuth2Config(m.AsMapKey(i), ep.OAuth2, ssCache.oauth2Secrets)
 		if len(r) > 0 {

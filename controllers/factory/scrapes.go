@@ -414,6 +414,7 @@ func loadScrapeSecrets(
 			bearerSecrets[node.AsProxyKey()] = token
 
 		}
+
 	}
 	for _, pod := range pods {
 		for i, ep := range pod.Spec.PodMetricsEndpoints {
@@ -483,7 +484,6 @@ func loadScrapeSecrets(
 				baSecrets[probe.AsProxyKey()] = ba
 			}
 			bearerSecrets[probe.AsProxyKey()] = token
-
 		}
 	}
 
@@ -545,6 +545,7 @@ func loadScrapeSecrets(
 		baSecrets[fmt.Sprintf("remoteWriteSpec/%s", rws.URL)] = &credentials
 		if rws.OAuth2 != nil {
 			oauth2, err := loadOAuthSecrets(ctx, rclient, rws.OAuth2, namespace, nsSecretCache, nsCMCache)
+
 			if err != nil {
 				return nil, fmt.Errorf("cannot load oauth2 creds for :%s, ns: %s, err: %w", "remoteWrite", namespace, err)
 			}

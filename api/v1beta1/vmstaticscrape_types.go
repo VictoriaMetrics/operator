@@ -37,6 +37,12 @@ type TargetEndpoint struct {
 	// Optional HTTP URL parameters
 	// +optional
 	Params map[string][]string `json:"params,omitempty"`
+	// FollowRedirects controls redirects for scraping.
+	// +optional
+	FollowRedirects *bool `json:"follow_redirects,omitempty"`
+	// SampleLimit defines per-scrape limit on number of scraped samples that will be accepted.
+	// +optional
+	SampleLimit uint64 `json:"sampleLimit,omitempty"`
 	// Interval at which metrics should be scraped
 	// +optional
 	Interval string `json:"interval,omitempty"`
@@ -116,8 +122,13 @@ type VMStaticScrapeList struct {
 	Items           []VMStaticScrape `json:"items"`
 }
 
+// AsProxyKey builds key for proxy cache maps
+func (cr VMStaticScrape) AsProxyKey(i int) string {
+	return fmt.Sprintf("staticScrapeProxy/%s/%s/%d", cr.Namespace, cr.Name, i)
+}
+
 // AsMapKey builds key for cache secret map
-func (cr *VMStaticScrape) AsMapKey(i int) string {
+func (cr VMStaticScrape) AsMapKey(i int) string {
 	return fmt.Sprintf("staticScrape/%s/%s/%d", cr.Namespace, cr.Name, i)
 }
 

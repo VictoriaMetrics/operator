@@ -27,6 +27,9 @@ type VMNodeScrapeSpec struct {
 	// Optional HTTP URL parameters
 	// +optional
 	Params map[string][]string `json:"params,omitempty"`
+	// FollowRedirects controls redirects for scraping.
+	// +optional
+	FollowRedirects *bool `json:"follow_redirects,omitempty"`
 	// Interval at which metrics should be scraped
 	// +optional
 	Interval string `json:"interval,omitempty"`
@@ -110,6 +113,11 @@ type VMNodeScrapeList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []VMNodeScrape `json:"items"`
+}
+
+// AsProxyKey builds key for proxy cache maps
+func (cr VMNodeScrape) AsProxyKey() string {
+	return fmt.Sprintf("nodeScrapeProxy/%s/%s", cr.Namespace, cr.Name)
 }
 
 // AsMapKey - returns cr name with suffix for token/auth maps.

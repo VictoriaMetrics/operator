@@ -149,6 +149,9 @@ type BasicAuth struct {
 	// It must be at them same namespace as CRD
 	// +optional
 	Password v1.SecretKeySelector `json:"password,omitempty"`
+	// PasswordFile defines path to password file at disk
+	// +optional
+	PasswordFile string `json:"password_file,omitempty"`
 }
 
 // ServiceSpec defines additional service for CRD with user-defined params.

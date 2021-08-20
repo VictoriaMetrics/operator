@@ -105,10 +105,12 @@ type Endpoint struct {
 	// Optional HTTP URL parameters
 	// +optional
 	Params map[string][]string `json:"params,omitempty"`
+	// FollowRedirects controls redirects for scraping.
+	// +optional
+	FollowRedirects *bool `json:"follow_redirects,omitempty"`
 	// Interval at which metrics should be scraped
 	// +optional
 	Interval string `json:"interval,omitempty"`
-
 	// ScrapeInterval is the same as Interval and has priority over it.
 	// one of scrape_interval or interval can be used
 	// +optional
@@ -172,6 +174,20 @@ type VMScrapeParams struct {
 	ScrapeAlignInterval *string `json:"scrape_align_interval,omitempty"`
 	// +optional
 	ScrapeOffset *string `json:"scrape_offset,omitempty"`
+	// ProxyClientConfig configures proxy auth settings for scraping
+	// See feature description https://docs.victoriametrics.com/vmagent.html#scraping-targets-via-a-proxy
+	// +optional
+	ProxyClientConfig *ProxyAuth `json:"proxy_client_config,omitempty"`
+}
+
+// ProxyAuth represent proxy auth config
+// Only VictoriaMetrics scrapers supports it.
+// See https://github.com/VictoriaMetrics/VictoriaMetrics/commit/a6a71ef861444eb11fe8ec6d2387f0fc0c4aea87
+type ProxyAuth struct {
+	BasicAuth       *BasicAuth            `json:"basic_auth,omitempty"`
+	BearerToken     *v1.SecretKeySelector `json:"bearer_token,omitempty"`
+	BearerTokenFile string                `json:"bearer_token_file,omitempty"`
+	TLSConfig       *TLSConfig            `json:"tls_config,omitempty"`
 }
 
 // OAuth2 defines OAuth2 configuration
@@ -464,6 +480,11 @@ type APIServerConfig struct {
 	// TLSConfig Config to use for accessing apiserver.
 	// +optional
 	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
+}
+
+// AsProxyKey builds key for proxy cache maps
+func (cr VMServiceScrape) AsProxyKey(i int) string {
+	return fmt.Sprintf("serviceScrapeProxy/%s/%s/%d", cr.Namespace, cr.Name, i)
 }
 
 // AsMapKey - returns cr name with suffix for token/auth maps.

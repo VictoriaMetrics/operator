@@ -68,6 +68,7 @@ This Document documents the types introduced by the VictoriaMetrics to be consum
 * [Endpoint](#endpoint)
 * [NamespaceSelector](#namespaceselector)
 * [OAuth2](#oauth2)
+* [ProxyAuth](#proxyauth)
 * [QueueConfig](#queueconfig)
 * [RelabelConfig](#relabelconfig)
 * [SecretOrConfigMap](#secretorconfigmap)
@@ -715,6 +716,7 @@ BasicAuth allow an endpoint to authenticate over basic authentication More info:
 | ----- | ----------- | ------ | -------- |
 | username | The secret in the service scrape namespace that contains the username for authentication. It must be at them same namespace as CRD | [v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
 | password | The secret in the service scrape namespace that contains the password for authentication. It must be at them same namespace as CRD | [v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
+| password_file | PasswordFile defines path to password file at disk | string | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -1109,6 +1111,7 @@ Endpoint defines a scrapeable endpoint serving Prometheus metrics.
 | path | HTTP path to scrape for metrics. | string | false |
 | scheme | HTTP scheme to use for scraping. | string | false |
 | params | Optional HTTP URL parameters | map[string][]string | false |
+| follow_redirects | FollowRedirects controls redirects for scraping. | *bool | false |
 | interval | Interval at which metrics should be scraped | string | false |
 | scrape_interval | ScrapeInterval is the same as Interval and has priority over it. one of scrape_interval or interval can be used | string | false |
 | scrapeTimeout | Timeout after which the scrape is ended | string | false |
@@ -1149,6 +1152,19 @@ OAuth2 defines OAuth2 configuration
 | token_url | The URL to fetch the token from | string | true |
 | scopes | OAuth2 scopes used for the token request | []string | false |
 | endpoint_params | Parameters to append to the token URL | map[string]string | false |
+
+[Back to TOC](#table-of-contents)
+
+## ProxyAuth
+
+ProxyAuth represent proxy auth config Only VictoriaMetrics scrapers supports it. See https://github.com/VictoriaMetrics/VictoriaMetrics/commit/a6a71ef861444eb11fe8ec6d2387f0fc0c4aea87
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| basic_auth |  | *[BasicAuth](#basicauth) | false |
+| bearer_token |  | *[v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
+| bearer_token_file |  | string | false |
+| tls_config |  | *[TLSConfig](#tlsconfig) | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -1228,6 +1244,7 @@ VMScrapeParams defines scrape target configuration that compatible only with Vic
 | stream_parse |  | *bool | false |
 | scrape_align_interval |  | *string | false |
 | scrape_offset |  | *string | false |
+| proxy_client_config | ProxyClientConfig configures proxy auth settings for scraping See feature description https://docs.victoriametrics.com/vmagent.html#scraping-targets-via-a-proxy | *[ProxyAuth](#proxyauth) | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -1292,6 +1309,7 @@ PodMetricsEndpoint defines a scrapeable endpoint of a Kubernetes Pod serving Pro
 | path | HTTP path to scrape for metrics. | string | false |
 | scheme | HTTP scheme to use for scraping. | string | false |
 | params | Optional HTTP URL parameters | map[string][]string | false |
+| follow_redirects | FollowRedirects controls redirects for scraping. | *bool | false |
 | interval | Interval at which metrics should be scraped | string | false |
 | scrape_interval | ScrapeInterval is the same as Interval and has priority over it. one of scrape_interval or interval can be used | string | false |
 | scrapeTimeout | Timeout after which the scrape is ended | string | false |
@@ -1614,6 +1632,7 @@ VMNodeScrapeSpec defines specification for VMNodeScrape.
 | path | HTTP path to scrape for metrics. | string | false |
 | scheme | HTTP scheme to use for scraping. | string | false |
 | params | Optional HTTP URL parameters | map[string][]string | false |
+| follow_redirects | FollowRedirects controls redirects for scraping. | *bool | false |
 | interval | Interval at which metrics should be scraped | string | false |
 | scrape_interval | ScrapeInterval is the same as Interval and has priority over it. one of scrape_interval or interval can be used | string | false |
 | scrapeTimeout | Timeout after which the scrape is ended | string | false |
@@ -1798,6 +1817,8 @@ TargetEndpoint defines single static target endpoint.
 | path | HTTP path to scrape for metrics. | string | false |
 | scheme | HTTP scheme to use for scraping. | string | false |
 | params | Optional HTTP URL parameters | map[string][]string | false |
+| follow_redirects | FollowRedirects controls redirects for scraping. | *bool | false |
+| sampleLimit | SampleLimit defines per-scrape limit on number of scraped samples that will be accepted. | uint64 | false |
 | interval | Interval at which metrics should be scraped | string | false |
 | scrape_interval | ScrapeInterval is the same as Interval and has priority over it. one of scrape_interval or interval can be used | string | false |
 | scrapeTimeout | Timeout after which the scrape is ended | string | false |
@@ -1898,6 +1919,11 @@ VMProbeSpec contains specification parameters for a Probe.
 | interval | Interval at which targets are probed using the configured prober. If not specified Prometheus&#39; global scrape interval is used. | string | false |
 | scrape_interval | ScrapeInterval is the same as Interval and has priority over it. one of scrape_interval or interval can be used | string | false |
 | scrapeTimeout | Timeout for scraping metrics from the Prometheus exporter. | string | false |
+| params | Optional HTTP URL parameters | map[string][]string | false |
+| follow_redirects | FollowRedirects controls redirects for scraping. | *bool | false |
+| sampleLimit | SampleLimit defines per-scrape limit on number of scraped samples that will be accepted. | uint64 | false |
+| bearerTokenFile | File to read bearer token for scraping targets. | string | false |
+| bearerTokenSecret | Secret to mount to read bearer token for scraping targets. The secret needs to be in the same namespace as the service scrape and accessible by the victoria-metrics operator. | [v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
 | basicAuth | BasicAuth allow an endpoint to authenticate over basic authentication More info: https://prometheus.io/docs/operating/configuration/#endpoints | *[BasicAuth](#basicauth) | false |
 | oauth2 | OAuth2 defines auth configuration | *[OAuth2](#oauth2) | false |
 | tlsConfig | TLSConfig configuration to use when scraping the endpoint | *[TLSConfig](#tlsconfig) | false |

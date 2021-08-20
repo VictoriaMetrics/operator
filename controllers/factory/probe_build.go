@@ -14,7 +14,7 @@ func generateProbeConfig(
 	cr *victoriametricsv1beta1.VMProbe,
 	i int,
 	apiserverConfig *victoriametricsv1beta1.APIServerConfig,
-	secretCache *scrapesSecretsCache,
+	ssCache *scrapesSecretsCache,
 	ignoreNamespaceSelectors bool,
 	enforcedNamespaceLabel string,
 ) yaml.MapSlice {
@@ -41,9 +41,21 @@ func generateProbeConfig(
 	if cr.Spec.VMProberSpec.Scheme != "" {
 		cfg = append(cfg, yaml.MapItem{Key: "scheme", Value: cr.Spec.VMProberSpec.Scheme})
 	}
-	cfg = append(cfg, yaml.MapItem{Key: "params", Value: yaml.MapSlice{
+	params := yaml.MapSlice{
 		{Key: "module", Value: []string{cr.Spec.Module}},
-	}})
+	}
+	paramIdxes := make([]string, len(cr.Spec.Params))
+	var idxCnt int
+	for k := range cr.Spec.Params {
+		paramIdxes[idxCnt] = k
+		idxCnt++
+	}
+	sort.Strings(paramIdxes)
+	for _, k := range paramIdxes {
+		params = append(params, yaml.MapItem{Key: k, Value: cr.Spec.Params[k]})
+	}
+
+	cfg = append(cfg, yaml.MapItem{Key: "params", Value: params})
 
 	cfg = append(cfg, yaml.MapItem{Key: "metrics_path", Value: cr.Spec.VMProberSpec.Path})
 
@@ -121,7 +133,7 @@ func generateProbeConfig(
 		}
 
 		selectedNamespaces := getNamespacesFromNamespaceSelector(&cr.Spec.Targets.Ingress.NamespaceSelector, cr.Namespace, ignoreNamespaceSelectors)
-		cfg = append(cfg, generateK8SSDConfig(selectedNamespaces, apiserverConfig, secretCache.baSecrets, kubernetesSDRoleIngress))
+		cfg = append(cfg, generateK8SSDConfig(selectedNamespaces, apiserverConfig, ssCache.baSecrets, kubernetesSDRoleIngress))
 
 		// Relabelings for ingress SD.
 		relabelings = append(relabelings, []yaml.MapSlice{
@@ -159,6 +171,22 @@ func generateProbeConfig(
 			{Key: "replacement", Value: cr.Spec.JobName},
 		})
 	}
+
+	if len(cr.Spec.BearerTokenSecret.Name) > 0 {
+		if token := ssCache.bearerTokens[cr.AsMapKey()]; len(token) > 0 {
+			cfg = append(cfg, yaml.MapItem{Key: "bearer_token", Value: token})
+		}
+	}
+	if len(cr.Spec.BearerTokenFile) > 0 {
+		cfg = append(cfg, yaml.MapItem{Key: "bearer_token_file", Value: cr.Spec.BearerTokenFile})
+	}
+
+	if cr.Spec.FollowRedirects != nil {
+		cfg = append(cfg, yaml.MapItem{Key: "follow_redirects", Value: cr.Spec.FollowRedirects})
+	}
+	if cr.Spec.SampleLimit > 0 {
+		cfg = append(cfg, yaml.MapItem{Key: "sample_limit", Value: cr.Spec.SampleLimit})
+	}
 	// Relabelings for prober.
 	relabelings = append(relabelings, []yaml.MapSlice{
 		{
@@ -181,19 +209,24 @@ func generateProbeConfig(
 	cfg = append(cfg, yaml.MapItem{Key: "relabel_configs", Value: relabelings})
 
 	if cr.Spec.BasicAuth != nil {
-		if s, ok := secretCache.baSecrets[cr.AsMapKey()]; ok {
-			cfg = append(cfg, yaml.MapItem{
-				Key: "basic_auth", Value: yaml.MapSlice{
-					{Key: "username", Value: s.username},
-					{Key: "password", Value: s.password},
-				},
-			})
+		var bac yaml.MapSlice
+		if s, ok := ssCache.baSecrets[cr.AsMapKey()]; ok {
+			bac = append(bac,
+				yaml.MapItem{Key: "username", Value: s.username},
+				yaml.MapItem{Key: "password", Value: s.password},
+			)
+		}
+		if len(cr.Spec.BasicAuth.PasswordFile) > 0 {
+			bac = append(bac, yaml.MapItem{Key: "password_file", Value: cr.Spec.BasicAuth.PasswordFile})
+		}
+		if len(bac) > 0 {
+			cfg = append(cfg, yaml.MapItem{Key: "basic_auth", Value: bac})
 		}
 	}
-	cfg = addTLStoYaml(cfg, cr.Namespace, cr.Spec.TLSConfig)
-	cfg = append(cfg, buildVMScrapeParams(cr.Spec.VMScrapeParams)...)
+	cfg = addTLStoYaml(cfg, cr.Namespace, cr.Spec.TLSConfig, false)
+	cfg = append(cfg, buildVMScrapeParams(cr.Namespace, cr.AsProxyKey(), cr.Spec.VMScrapeParams, ssCache)...)
 	if cr.Spec.OAuth2 != nil {
-		r := buildOAuth2Config(cr.AsMapKey(), cr.Spec.OAuth2, secretCache.oauth2Secrets)
+		r := buildOAuth2Config(cr.AsMapKey(), cr.Spec.OAuth2, ssCache.oauth2Secrets)
 		if len(r) > 0 {
 			cfg = append(cfg, yaml.MapItem{Key: "oauth2", Value: r})
 		}

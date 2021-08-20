@@ -39,10 +39,6 @@ type BasicAuthCredentials struct {
 	password string
 }
 
-// BearerToken represents a bearer token, see
-// https://tools.ietf.org/html/rfc6750.
-type BearerToken string
-
 func generateConfig(
 	cr *victoriametricsv1beta1.VMAgent,
 	sMons map[string]*victoriametricsv1beta1.VMServiceScrape,
@@ -51,7 +47,6 @@ func generateConfig(
 	nodes map[string]*victoriametricsv1beta1.VMNodeScrape,
 	statics map[string]*victoriametricsv1beta1.VMStaticScrape,
 	secretsCache *scrapesSecretsCache,
-	bearerTokens map[string]BearerToken,
 	additionalScrapeConfigs []byte,
 ) ([]byte, error) {
 
@@ -127,7 +122,6 @@ func generateConfig(
 					ep, i,
 					apiserverConfig,
 					secretsCache,
-					bearerTokens,
 					cr.Spec.OverrideHonorLabels,
 					cr.Spec.OverrideHonorTimestamps,
 					cr.Spec.IgnoreNamespaceSelectors,
@@ -141,7 +135,6 @@ func generateConfig(
 					pMons[identifier], ep, i,
 					apiserverConfig,
 					secretsCache,
-					bearerTokens,
 					cr.Spec.OverrideHonorLabels,
 					cr.Spec.OverrideHonorTimestamps,
 					cr.Spec.IgnoreNamespaceSelectors,
@@ -166,7 +159,6 @@ func generateConfig(
 				i,
 				apiserverConfig,
 				secretsCache,
-				bearerTokens,
 				cr.Spec.OverrideHonorLabels,
 				cr.Spec.OverrideHonorTimestamps,
 				cr.Spec.EnforcedNamespaceLabel))
@@ -180,7 +172,6 @@ func generateConfig(
 					statics[identifier],
 					ep, i,
 					secretsCache,
-					bearerTokens,
 					cr.Spec.OverrideHonorLabels,
 					cr.Spec.OverrideHonorTimestamps,
 					cr.Spec.EnforcedNamespaceLabel,
@@ -277,7 +268,6 @@ func generatePodScrapeConfig(
 	i int,
 	apiserverConfig *victoriametricsv1beta1.APIServerConfig,
 	ssCache *scrapesSecretsCache,
-	bearerTokens map[string]BearerToken,
 	ignoreHonorLabels bool,
 	overrideHonorTimestamps bool,
 	ignoreNamespaceSelectors bool,
@@ -317,31 +307,41 @@ func generatePodScrapeConfig(
 	if ep.Params != nil {
 		cfg = append(cfg, yaml.MapItem{Key: "params", Value: ep.Params})
 	}
+
+	if ep.FollowRedirects != nil {
+		cfg = append(cfg, yaml.MapItem{Key: "follow_redirects", Value: ep.FollowRedirects})
+	}
 	if ep.Scheme != "" {
 		cfg = append(cfg, yaml.MapItem{Key: "scheme", Value: ep.Scheme})
 	}
-	cfg = addTLStoYaml(cfg, m.Namespace, ep.TLSConfig)
+	cfg = addTLStoYaml(cfg, m.Namespace, ep.TLSConfig, false)
 
 	if ep.BearerTokenFile != "" {
 		cfg = append(cfg, yaml.MapItem{Key: "bearer_token_file", Value: ep.BearerTokenFile})
 	}
 
 	if ep.BearerTokenSecret.Name != "" {
-		if s, ok := bearerTokens[m.AsMapKey(i)]; ok {
+		if s, ok := ssCache.bearerTokens[m.AsMapKey(i)]; ok {
 			cfg = append(cfg, yaml.MapItem{Key: "bearer_token", Value: s})
 		}
 	}
 
 	if ep.BasicAuth != nil {
+		var bac yaml.MapSlice
 		if s, ok := ssCache.baSecrets[m.AsMapKey(i)]; ok {
-			cfg = append(cfg, yaml.MapItem{
-				Key: "basic_auth", Value: yaml.MapSlice{
-					{Key: "username", Value: s.username},
-					{Key: "password", Value: s.password},
-				},
-			})
+			bac = append(bac,
+				yaml.MapItem{Key: "username", Value: s.username},
+				yaml.MapItem{Key: "password", Value: s.password},
+			)
+		}
+		if len(ep.BasicAuth.PasswordFile) > 0 {
+			bac = append(bac, yaml.MapItem{Key: "password_file", Value: ep.BasicAuth.PasswordFile})
+		}
+		if len(bac) > 0 {
+			cfg = append(cfg, yaml.MapItem{Key: "basic_auth", Value: bac})
 		}
 	}
+
 	var (
 		relabelings []yaml.MapSlice
 		labelKeys   []string
@@ -500,7 +500,7 @@ func generatePodScrapeConfig(
 		cfg = append(cfg, yaml.MapItem{Key: "metric_relabel_configs", Value: metricRelabelings})
 	}
 
-	cfg = append(cfg, buildVMScrapeParams(ep.VMScrapeParams)...)
+	cfg = append(cfg, buildVMScrapeParams(m.Namespace, m.AsProxyKey(i), ep.VMScrapeParams, ssCache)...)
 	if ep.OAuth2 != nil {
 		r := buildOAuth2Config(m.AsMapKey(i), ep.OAuth2, ssCache.oauth2Secrets)
 		if len(r) > 0 {
@@ -516,7 +516,6 @@ func generateServiceScrapeConfig(
 	i int,
 	apiserverConfig *victoriametricsv1beta1.APIServerConfig,
 	ssCache *scrapesSecretsCache,
-	bearerTokens map[string]BearerToken,
 	overrideHonorLabels bool,
 	overrideHonorTimestamps bool,
 	ignoreNamespaceSelectors bool,
@@ -556,6 +555,9 @@ func generateServiceScrapeConfig(
 	if ep.ProxyURL != nil {
 		cfg = append(cfg, yaml.MapItem{Key: "proxy_url", Value: ep.ProxyURL})
 	}
+	if ep.FollowRedirects != nil {
+		cfg = append(cfg, yaml.MapItem{Key: "follow_redirects", Value: ep.FollowRedirects})
+	}
 	if ep.Params != nil {
 		cfg = append(cfg, yaml.MapItem{Key: "params", Value: ep.Params})
 	}
@@ -563,26 +565,31 @@ func generateServiceScrapeConfig(
 		cfg = append(cfg, yaml.MapItem{Key: "scheme", Value: ep.Scheme})
 	}
 
-	cfg = addTLStoYaml(cfg, m.Namespace, ep.TLSConfig)
+	cfg = addTLStoYaml(cfg, m.Namespace, ep.TLSConfig, false)
 
 	if ep.BearerTokenFile != "" {
 		cfg = append(cfg, yaml.MapItem{Key: "bearer_token_file", Value: ep.BearerTokenFile})
 	}
 
 	if ep.BearerTokenSecret.Name != "" {
-		if s, ok := bearerTokens[m.AsMapKey(i)]; ok {
+		if s, ok := ssCache.bearerTokens[m.AsMapKey(i)]; ok {
 			cfg = append(cfg, yaml.MapItem{Key: "bearer_token", Value: s})
 		}
 	}
 
 	if ep.BasicAuth != nil {
+		var bac yaml.MapSlice
 		if s, ok := ssCache.baSecrets[m.AsMapKey(i)]; ok {
-			cfg = append(cfg, yaml.MapItem{
-				Key: "basic_auth", Value: yaml.MapSlice{
-					{Key: "username", Value: s.username},
-					{Key: "password", Value: s.password},
-				},
-			})
+			bac = append(bac,
+				yaml.MapItem{Key: "username", Value: s.username},
+				yaml.MapItem{Key: "password", Value: s.password},
+			)
+		}
+		if len(ep.BasicAuth.PasswordFile) > 0 {
+			bac = append(bac, yaml.MapItem{Key: "password_file", Value: ep.BasicAuth.PasswordFile})
+		}
+		if len(bac) > 0 {
+			cfg = append(cfg, yaml.MapItem{Key: "basic_auth", Value: bac})
 		}
 	}
 
@@ -816,7 +823,7 @@ func generateServiceScrapeConfig(
 		cfg = append(cfg, yaml.MapItem{Key: "metric_relabel_configs", Value: metricRelabelings})
 	}
 
-	cfg = append(cfg, buildVMScrapeParams(ep.VMScrapeParams)...)
+	cfg = append(cfg, buildVMScrapeParams(m.Namespace, m.AsProxyKey(i), ep.VMScrapeParams, ssCache)...)
 	if ep.OAuth2 != nil {
 		r := buildOAuth2Config(m.AsMapKey(i), ep.OAuth2, ssCache.oauth2Secrets)
 		if len(r) > 0 {
@@ -832,7 +839,6 @@ func generateNodeScrapeConfig(
 	i int,
 	apiserverConfig *victoriametricsv1beta1.APIServerConfig,
 	ssCache *scrapesSecretsCache,
-	bearerTokens map[string]BearerToken,
 	ignoreHonorLabels bool,
 	overrideHonorTimestamps bool,
 	enforcedNamespaceLabel string) yaml.MapSlice {
@@ -868,35 +874,47 @@ func generateNodeScrapeConfig(
 	if nodeSpec.ProxyURL != nil {
 		cfg = append(cfg, yaml.MapItem{Key: "proxy_url", Value: nodeSpec.ProxyURL})
 	}
+
+	if cr.Spec.SampleLimit > 0 {
+		cfg = append(cfg, yaml.MapItem{Key: "sample_limit", Value: cr.Spec.SampleLimit})
+	}
 	if nodeSpec.Params != nil {
 		cfg = append(cfg, yaml.MapItem{Key: "params", Value: nodeSpec.Params})
+	}
+	if cr.Spec.FollowRedirects != nil {
+		cfg = append(cfg, yaml.MapItem{Key: "follow_redirects", Value: cr.Spec.FollowRedirects})
 	}
 	if nodeSpec.Scheme != "" {
 		cfg = append(cfg, yaml.MapItem{Key: "scheme", Value: nodeSpec.Scheme})
 	}
 
-	cfg = addTLStoYaml(cfg, cr.Namespace, nodeSpec.TLSConfig)
+	cfg = addTLStoYaml(cfg, cr.Namespace, nodeSpec.TLSConfig, false)
 
 	if nodeSpec.BearerTokenFile != "" {
 		cfg = append(cfg, yaml.MapItem{Key: "bearer_token_file", Value: nodeSpec.BearerTokenFile})
 	}
 
 	if nodeSpec.BearerTokenSecret.Name != "" {
-		if s, ok := bearerTokens[cr.AsMapKey()]; ok {
+		if s, ok := ssCache.bearerTokens[cr.AsMapKey()]; ok {
 			cfg = append(cfg, yaml.MapItem{Key: "bearer_token", Value: s})
 		}
 	}
-
-	if nodeSpec.BasicAuth != nil {
+	if cr.Spec.BasicAuth != nil {
+		var bac yaml.MapSlice
 		if s, ok := ssCache.baSecrets[cr.AsMapKey()]; ok {
-			cfg = append(cfg, yaml.MapItem{
-				Key: "basic_auth", Value: yaml.MapSlice{
-					{Key: "username", Value: s.username},
-					{Key: "password", Value: s.password},
-				},
-			})
+			bac = append(bac,
+				yaml.MapItem{Key: "username", Value: s.username},
+				yaml.MapItem{Key: "password", Value: s.password},
+			)
+		}
+		if len(cr.Spec.BasicAuth.PasswordFile) > 0 {
+			bac = append(bac, yaml.MapItem{Key: "password_file", Value: cr.Spec.BasicAuth.PasswordFile})
+		}
+		if len(bac) > 0 {
+			cfg = append(cfg, yaml.MapItem{Key: "basic_auth", Value: bac})
 		}
 	}
+
 	var (
 		relabelings []yaml.MapSlice
 		labelKeys   []string
@@ -1018,8 +1036,7 @@ func generateNodeScrapeConfig(
 		}
 		cfg = append(cfg, yaml.MapItem{Key: "metric_relabel_configs", Value: metricRelabelings})
 	}
-	cfg = addTLStoYaml(cfg, cr.Namespace, nodeSpec.TLSConfig)
-	cfg = append(cfg, buildVMScrapeParams(nodeSpec.VMScrapeParams)...)
+	cfg = append(cfg, buildVMScrapeParams(cr.Namespace, cr.AsProxyKey(), cr.Spec.VMScrapeParams, ssCache)...)
 	if nodeSpec.OAuth2 != nil {
 		r := buildOAuth2Config(cr.AsMapKey(), nodeSpec.OAuth2, ssCache.oauth2Secrets)
 		if len(r) > 0 {
@@ -1029,7 +1046,7 @@ func generateNodeScrapeConfig(
 	return cfg
 }
 
-func addTLStoYaml(cfg yaml.MapSlice, namespace string, tls *victoriametricsv1beta1.TLSConfig) yaml.MapSlice {
+func addTLStoYaml(cfg yaml.MapSlice, namespace string, tls *victoriametricsv1beta1.TLSConfig, addDirect bool) yaml.MapSlice {
 	if tls != nil {
 		pathPrefix := path.Join(tlsAssetsDir, namespace)
 		tlsConfig := yaml.MapSlice{
@@ -1052,6 +1069,10 @@ func addTLStoYaml(cfg yaml.MapSlice, namespace string, tls *victoriametricsv1bet
 		}
 		if tls.ServerName != "" {
 			tlsConfig = append(tlsConfig, yaml.MapItem{Key: "server_name", Value: tls.ServerName})
+		}
+		if addDirect {
+			cfg = append(cfg, tlsConfig...)
+			return cfg
 		}
 		cfg = append(cfg, yaml.MapItem{Key: "tls_config", Value: tlsConfig})
 	}
@@ -1137,7 +1158,7 @@ func combineSelectorStr(kvs map[string]string) string {
 	return strings.Join(kvsSlice, ",")
 }
 
-func generatePodK8SSDConfig(namespaces []string, labelSelector metav1.LabelSelector, apiserverConfig *victoriametricsv1beta1.APIServerConfig, basicAuthSecrets map[string]BasicAuthCredentials, role string) yaml.MapItem {
+func generatePodK8SSDConfig(namespaces []string, labelSelector metav1.LabelSelector, apiserverConfig *victoriametricsv1beta1.APIServerConfig, basicAuthSecrets map[string]*BasicAuthCredentials, role string) yaml.MapItem {
 
 	cfg := generateK8SSDConfig(namespaces, apiserverConfig, basicAuthSecrets, role)
 
@@ -1173,7 +1194,7 @@ func generatePodK8SSDConfig(namespaces []string, labelSelector metav1.LabelSelec
 	return cfg
 }
 
-func generateK8SSDConfig(namespaces []string, apiserverConfig *victoriametricsv1beta1.APIServerConfig, basicAuthSecrets map[string]BasicAuthCredentials, role string) yaml.MapItem {
+func generateK8SSDConfig(namespaces []string, apiserverConfig *victoriametricsv1beta1.APIServerConfig, basicAuthSecrets map[string]*BasicAuthCredentials, role string) yaml.MapItem {
 	k8sSDConfig := yaml.MapSlice{
 		{
 			Key:   "role",
@@ -1218,7 +1239,7 @@ func generateK8SSDConfig(namespaces []string, apiserverConfig *victoriametricsv1
 		}
 
 		// config as well, make sure to path the right namespace here.
-		k8sSDConfig = addTLStoYaml(k8sSDConfig, "", apiserverConfig.TLSConfig)
+		k8sSDConfig = addTLStoYaml(k8sSDConfig, "", apiserverConfig.TLSConfig, false)
 	}
 
 	return yaml.MapItem{
@@ -1276,7 +1297,7 @@ func updateRelabelConfigWithUnderscores(c *victoriametricsv1beta1.RelabelConfig)
 	return rc
 }
 
-func buildVMScrapeParams(cfg *victoriametricsv1beta1.VMScrapeParams) yaml.MapSlice {
+func buildVMScrapeParams(namespace, cacheKey string, cfg *victoriametricsv1beta1.VMScrapeParams, ssCache *scrapesSecretsCache) yaml.MapSlice {
 	var r yaml.MapSlice
 	if cfg == nil {
 		return r
@@ -1294,12 +1315,14 @@ func buildVMScrapeParams(cfg *victoriametricsv1beta1.VMScrapeParams) yaml.MapSli
 	toYaml("disable_keep_alive", cfg.DisableKeepAlive)
 	toYaml("relabel_debug", cfg.RelabelDebug)
 	toYaml("metric_relabel_debug", cfg.MetricRelabelDebug)
+	if cfg.ProxyClientConfig != nil {
+		r = append(r, buildProxyAuthConfig(namespace, cacheKey, cfg.ProxyClientConfig, ssCache)...)
+	}
 	return r
 }
 
 func buildOAuth2Config(cacheKey string, cfg *victoriametricsv1beta1.OAuth2, oauth2Cache map[string]*oauthCreds) yaml.MapSlice {
 	var r yaml.MapSlice
-	// todo need some cache for it.
 	cachedSecret := oauth2Cache[cacheKey]
 	if cachedSecret == nil {
 		return r
@@ -1322,6 +1345,40 @@ func buildOAuth2Config(cacheKey string, cfg *victoriametricsv1beta1.OAuth2, oaut
 	}
 	if len(cfg.TokenURL) > 0 {
 		r = append(r, yaml.MapItem{Key: "token_url", Value: cfg.TokenURL})
+	}
+	return r
+}
+
+func buildProxyAuthConfig(namespace, cacheKey string, proxyAuth *victoriametricsv1beta1.ProxyAuth, ssCache *scrapesSecretsCache) yaml.MapSlice {
+	var r yaml.MapSlice
+	if proxyAuth.BasicAuth != nil {
+		var pa yaml.MapSlice
+		if ba, ok := ssCache.baSecrets[cacheKey]; ok {
+			pa = append(pa,
+				yaml.MapItem{Key: "username", Value: ba.username},
+				yaml.MapItem{Key: "password", Value: ba.password},
+			)
+		}
+		if len(proxyAuth.BasicAuth.PasswordFile) > 0 {
+			pa = append(pa, yaml.MapItem{Key: "password_file", Value: proxyAuth.BasicAuth.PasswordFile})
+		}
+		if len(pa) > 0 {
+			r = append(r, yaml.MapItem{Key: "proxy_basic_auth", Value: pa})
+		}
+	}
+	if proxyAuth.TLSConfig != nil {
+		t := addTLStoYaml(yaml.MapSlice{}, namespace, proxyAuth.TLSConfig, true)
+		if len(t) > 0 {
+			r = append(r, yaml.MapItem{Key: "proxy_tls_config", Value: t})
+		}
+	}
+
+	if proxyAuth.BearerToken != nil {
+		if bt, ok := ssCache.bearerTokens[cacheKey]; ok {
+			r = append(r, yaml.MapItem{Key: "proxy_bearer_token", Value: bt})
+		}
+	} else if len(proxyAuth.BearerTokenFile) > 0 {
+		r = append(r, yaml.MapItem{Key: "proxy_bearer_token_file", Value: proxyAuth.BearerTokenFile})
 	}
 	return r
 }

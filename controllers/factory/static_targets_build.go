@@ -12,7 +12,6 @@ func generateStaticScrapeConfig(
 	ep *victoriametricsv1beta1.TargetEndpoint,
 	i int,
 	ssCache *scrapesSecretsCache,
-	bearerTokens map[string]BearerToken,
 	overrideHonorLabels, overrideHonorTimestamps bool,
 	enforcedNamespaceLabel string,
 ) yaml.MapSlice {
@@ -50,6 +49,10 @@ func generateStaticScrapeConfig(
 	if ep.ProxyURL != nil {
 		cfg = append(cfg, yaml.MapItem{Key: "proxy_url", Value: ep.ProxyURL})
 	}
+
+	if ep.FollowRedirects != nil {
+		cfg = append(cfg, yaml.MapItem{Key: "follow_redirects", Value: ep.FollowRedirects})
+	}
 	if ep.Params != nil {
 		cfg = append(cfg, yaml.MapItem{Key: "params", Value: ep.Params})
 	}
@@ -57,26 +60,30 @@ func generateStaticScrapeConfig(
 		cfg = append(cfg, yaml.MapItem{Key: "scheme", Value: ep.Scheme})
 	}
 
-	cfg = addTLStoYaml(cfg, m.Namespace, ep.TLSConfig)
+	cfg = addTLStoYaml(cfg, m.Namespace, ep.TLSConfig, false)
 
 	if ep.BearerTokenFile != "" {
 		cfg = append(cfg, yaml.MapItem{Key: "bearer_token_file", Value: ep.BearerTokenFile})
 	}
 
 	if ep.BearerTokenSecret.Name != "" {
-		if s, ok := bearerTokens[m.AsKey(i)]; ok {
+		if s, ok := ssCache.bearerTokens[m.AsKey(i)]; ok {
 			cfg = append(cfg, yaml.MapItem{Key: "bearer_token", Value: s})
 		}
 	}
-
 	if ep.BasicAuth != nil {
-		if s, ok := ssCache.baSecrets[m.AsKey(i)]; ok {
-			cfg = append(cfg, yaml.MapItem{
-				Key: "basic_auth", Value: yaml.MapSlice{
-					{Key: "username", Value: s.username},
-					{Key: "password", Value: s.password},
-				},
-			})
+		var bac yaml.MapSlice
+		if s, ok := ssCache.baSecrets[m.AsMapKey(i)]; ok {
+			bac = append(bac,
+				yaml.MapItem{Key: "username", Value: s.username},
+				yaml.MapItem{Key: "password", Value: s.password},
+			)
+		}
+		if len(ep.BasicAuth.PasswordFile) > 0 {
+			bac = append(bac, yaml.MapItem{Key: "password_file", Value: ep.BasicAuth.PasswordFile})
+		}
+		if len(bac) > 0 {
+			cfg = append(cfg, yaml.MapItem{Key: "basic_auth", Value: bac})
 		}
 	}
 
@@ -99,7 +106,9 @@ func generateStaticScrapeConfig(
 	relabelings = enforceNamespaceLabel(relabelings, m.Namespace, enforcedNamespaceLabel)
 	cfg = append(cfg, yaml.MapItem{Key: "relabel_configs", Value: relabelings})
 
-	if m.Spec.SampleLimit > 0 {
+	if ep.SampleLimit > 0 {
+		cfg = append(cfg, yaml.MapItem{Key: "sample_limit", Value: ep.SampleLimit})
+	} else if m.Spec.SampleLimit > 0 {
 		cfg = append(cfg, yaml.MapItem{Key: "sample_limit", Value: m.Spec.SampleLimit})
 	}
 
@@ -115,9 +124,8 @@ func generateStaticScrapeConfig(
 		cfg = append(cfg, yaml.MapItem{Key: "metric_relabel_configs", Value: metricRelabelings})
 	}
 
-	cfg = addTLStoYaml(cfg, m.Namespace, ep.TLSConfig)
+	cfg = append(cfg, buildVMScrapeParams(m.Namespace, m.AsProxyKey(i), ep.VMScrapeParams, ssCache)...)
 
-	cfg = append(cfg, buildVMScrapeParams(ep.VMScrapeParams)...)
 	if ep.OAuth2 != nil {
 		r := buildOAuth2Config(m.AsMapKey(i), ep.OAuth2, ssCache.oauth2Secrets)
 		if len(r) > 0 {

@@ -79,6 +79,9 @@ type PodMetricsEndpoint struct {
 	// Optional HTTP URL parameters
 	// +optional
 	Params map[string][]string `json:"params,omitempty"`
+	// FollowRedirects controls redirects for scraping.
+	// +optional
+	FollowRedirects *bool `json:"follow_redirects,omitempty"`
 	// Interval at which metrics should be scraped
 	// +optional
 	Interval string `json:"interval,omitempty"`
@@ -138,6 +141,11 @@ type PodMetricsEndpoint struct {
 // attack, users can instead use the BearerTokenSecret field.
 type ArbitraryFSAccessThroughSMsConfig struct {
 	Deny bool `json:"deny,omitempty"`
+}
+
+// AsProxyKey builds key for proxy cache maps
+func (cr VMPodScrape) AsProxyKey(i int) string {
+	return fmt.Sprintf("podScrapeProxy/%s/%s/%d", cr.Namespace, cr.Name, i)
 }
 
 // AsMapKey builds key for cache secret map

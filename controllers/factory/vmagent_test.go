@@ -563,8 +563,8 @@ func Test_loadTLSAssets(t *testing.T) {
 func TestBuildRemoteWrites(t *testing.T) {
 	type args struct {
 		cr           *victoriametricsv1beta1.VMAgent
-		rwsBasicAuth map[string]BasicAuthCredentials
-		rwsTokens    map[string]BearerToken
+		rwsBasicAuth map[string]*BasicAuthCredentials
+		rwsTokens    map[string]string
 	}
 	tests := []struct {
 		name string

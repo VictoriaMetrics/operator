@@ -19,6 +19,7 @@ package v1beta1
 import (
 	"fmt"
 
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -45,6 +46,23 @@ type VMProbeSpec struct {
 	ScrapeInterval string `json:"scrape_interval,omitempty"`
 	// Timeout for scraping metrics from the Prometheus exporter.
 	ScrapeTimeout string `json:"scrapeTimeout,omitempty"`
+	// Optional HTTP URL parameters
+	// +optional
+	Params map[string][]string `json:"params,omitempty"`
+	// FollowRedirects controls redirects for scraping.
+	// +optional
+	FollowRedirects *bool `json:"follow_redirects,omitempty"`
+	// SampleLimit defines per-scrape limit on number of scraped samples that will be accepted.
+	// +optional
+	SampleLimit uint64 `json:"sampleLimit,omitempty"`
+	// File to read bearer token for scraping targets.
+	// +optional
+	BearerTokenFile string `json:"bearerTokenFile,omitempty"`
+	// Secret to mount to read bearer token for scraping targets. The secret
+	// needs to be in the same namespace as the service scrape and accessible by
+	// the victoria-metrics operator.
+	// +optional
+	BearerTokenSecret v1.SecretKeySelector `json:"bearerTokenSecret,omitempty"`
 	// BasicAuth allow an endpoint to authenticate over basic authentication
 	// More info: https://prometheus.io/docs/operating/configuration/#endpoints
 	// +optional
@@ -129,6 +147,11 @@ type VMProbeList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []VMProbe `json:"items"`
+}
+
+// AsProxyKey builds key for proxy cache maps
+func (cr VMProbe) AsProxyKey() string {
+	return fmt.Sprintf("probeScrapeProxy/%s/%s", cr.Namespace, cr.Name)
 }
 
 func (cr VMProbe) AsMapKey() string {

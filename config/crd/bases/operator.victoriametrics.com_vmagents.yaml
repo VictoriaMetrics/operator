@@ -65,6 +65,9 @@ spec:
                       required:
                       - key
                       type: object
+                    password_file:
+                      description: PasswordFile defines path to password file at disk
+                      type: string
                     username:
                       description: The secret in the service scrape namespace that
                         contains the username for authentication. It must be at them
@@ -1198,6 +1201,10 @@ spec:
                         required:
                         - key
                         type: object
+                      password_file:
+                        description: PasswordFile defines path to password file at
+                          disk
+                        type: string
                       username:
                         description: The secret in the service scrape namespace that
                           contains the username for authentication. It must be at

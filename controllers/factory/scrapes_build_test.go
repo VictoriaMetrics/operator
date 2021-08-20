@@ -107,7 +107,6 @@ func Test_generateServiceScrapeConfig(t *testing.T) {
 		i                        int
 		apiserverConfig          *victoriametricsv1beta1.APIServerConfig
 		ssCache                  *scrapesSecretsCache
-		bearerTokens             map[string]string
 		overrideHonorLabels      bool
 		overrideHonorTimestamps  bool
 		ignoreNamespaceSelectors bool

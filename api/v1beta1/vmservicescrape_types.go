@@ -34,7 +34,8 @@ type VMServiceScrapeSpec struct {
 	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors=true
 	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors.displayName="Service selector"
 	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors.x-descriptors="urn:alm:descriptor:com.tectonic.ui:selector:"
-	Selector metav1.LabelSelector `json:"selector"`
+	// +optional
+	Selector metav1.LabelSelector `json:"selector,omitempty"`
 	// Selector to select which namespaces the Endpoints objects are discovered from.
 	// +optional
 	NamespaceSelector NamespaceSelector `json:"namespaceSelector,omitempty"`

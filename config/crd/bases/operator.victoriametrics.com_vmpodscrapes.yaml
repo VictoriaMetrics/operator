@@ -801,7 +801,6 @@ spec:
               type: object
           required:
           - podMetricsEndpoints
-          - selector
           type: object
         status:
           description: VMPodScrapeStatus defines the observed state of VMPodScrape

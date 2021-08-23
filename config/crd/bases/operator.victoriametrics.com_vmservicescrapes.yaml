@@ -820,7 +820,6 @@ spec:
               type: array
           required:
           - endpoints
-          - selector
           type: object
         status:
           description: VMServiceScrapeStatus defines the observed state of VMServiceScrape

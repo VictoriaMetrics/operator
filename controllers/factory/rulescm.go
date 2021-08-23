@@ -131,8 +131,9 @@ func CreateOrUpdateRuleConfigMaps(ctx context.Context, cr *victoriametricsv1beta
 	}
 	for _, cm := range toDelete {
 		if victoriametricsv1beta1.IsContainsFinalizer(cm.Finalizers, victoriametricsv1beta1.FinalizerName) {
+			cm.Finalizers = victoriametricsv1beta1.RemoveFinalizer(cm.Finalizers, victoriametricsv1beta1.FinalizerName)
 			if err := rclient.Update(ctx, &cm); err != nil {
-				return nil, err
+				return nil, fmt.Errorf("cannot remove finalizer from configmap: %s, err: %w", cm.Name, err)
 			}
 		}
 		err = rclient.Delete(ctx, &cm)

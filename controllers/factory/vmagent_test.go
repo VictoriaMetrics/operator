@@ -562,9 +562,8 @@ func Test_loadTLSAssets(t *testing.T) {
 
 func TestBuildRemoteWrites(t *testing.T) {
 	type args struct {
-		cr           *victoriametricsv1beta1.VMAgent
-		rwsBasicAuth map[string]*BasicAuthCredentials
-		rwsTokens    map[string]string
+		cr      *victoriametricsv1beta1.VMAgent
+		ssCache *scrapesSecretsCache
 	}
 	tests := []struct {
 		name string
@@ -575,6 +574,7 @@ func TestBuildRemoteWrites(t *testing.T) {
 		{
 			name: "test with tls config full",
 			args: args{
+				ssCache: &scrapesSecretsCache{},
 				cr: &victoriametricsv1beta1.VMAgent{
 					Spec: victoriametricsv1beta1.VMAgentSpec{RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
 						{
@@ -609,6 +609,7 @@ func TestBuildRemoteWrites(t *testing.T) {
 		{
 			name: "test insecure with key only",
 			args: args{
+				ssCache: &scrapesSecretsCache{},
 				cr: &victoriametricsv1beta1.VMAgent{
 					Spec: victoriametricsv1beta1.VMAgentSpec{RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
 						{
@@ -632,6 +633,7 @@ func TestBuildRemoteWrites(t *testing.T) {
 		{
 			name: "test insecure",
 			args: args{
+				ssCache: &scrapesSecretsCache{},
 				cr: &victoriametricsv1beta1.VMAgent{
 					Spec: victoriametricsv1beta1.VMAgentSpec{RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
 						{
@@ -649,6 +651,7 @@ func TestBuildRemoteWrites(t *testing.T) {
 		{
 			name: "test inline relabeling",
 			args: args{
+				ssCache: &scrapesSecretsCache{},
 				cr: &victoriametricsv1beta1.VMAgent{
 					Spec: victoriametricsv1beta1.VMAgentSpec{
 						RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
@@ -689,6 +692,7 @@ func TestBuildRemoteWrites(t *testing.T) {
 		{
 			name: "test sendTimeout",
 			args: args{
+				ssCache: &scrapesSecretsCache{},
 				cr: &victoriametricsv1beta1.VMAgent{
 					Spec: victoriametricsv1beta1.VMAgentSpec{RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
 						{
@@ -705,15 +709,46 @@ func TestBuildRemoteWrites(t *testing.T) {
 			},
 			want: []string{"-remoteWrite.url=localhost:8429,localhost:8431", "-remoteWrite.sendTimeout=10s,15s"},
 		},
+		{
+			name: "test oauth2",
+			args: args{
+				ssCache: &scrapesSecretsCache{
+					oauth2Secrets: map[string]*oauthCreds{"remoteWriteSpec/localhost:8431": &oauthCreds{
+						clientID:     "some-id",
+						clientSecret: "some-secret",
+					}},
+				},
+				cr: &victoriametricsv1beta1.VMAgent{
+					Spec: victoriametricsv1beta1.VMAgentSpec{RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
+						{
+							URL:         "localhost:8429",
+							SendTimeout: pointer.String("10s"),
+						},
+						{
+							URL:         "localhost:8431",
+							SendTimeout: pointer.String("15s"),
+							OAuth2: &victoriametricsv1beta1.OAuth2{
+								Scopes:       []string{"scope-1"},
+								TokenURL:     "http://some-url",
+								ClientSecret: &corev1.SecretKeySelector{},
+								ClientID: victoriametricsv1beta1.SecretOrConfigMap{ConfigMap: &corev1.ConfigMapKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{Name: "some-cm"},
+									Key:                  "some-key",
+								}},
+							},
+						},
+					}},
+				},
+			},
+			want: []string{"-remoteWrite.oauth2.clientID=,some-id", "-remoteWrite.oauth2.clientSecret=,some-secret", "-remoteWrite.oauth2.scopes=,scope-1", "-remoteWrite.oauth2.tokenUrl=,http://some-url", "-remoteWrite.url=localhost:8429,localhost:8431", "-remoteWrite.sendTimeout=10s,15s"},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			sort.Strings(tt.want)
-			got := BuildRemoteWrites(tt.args.cr, tt.args.rwsBasicAuth, tt.args.rwsTokens)
+			got := BuildRemoteWrites(tt.args.cr, tt.args.ssCache)
 			sort.Strings(got)
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("BuildRemoteWrites() = \n%v\n, want \n%v\n", got, tt.want)
-			}
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }

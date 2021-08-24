@@ -950,7 +950,7 @@ func Test_buildConfigReloaderArgs(t *testing.T) {
 				c: &config.BaseOperatorConf{
 					VMAgentDefault: struct {
 						Image               string `default:"victoriametrics/vmagent"`
-						Version             string `default:"v1.63.0"`
+						Version             string `default:"v1.64.1"`
 						ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.48.1"`
 						Port                string `default:"8429"`
 						UseDefaultResources bool   `default:"true"`
@@ -1021,7 +1021,7 @@ func Test_buildConfigReloaderArgs(t *testing.T) {
 				c: &config.BaseOperatorConf{
 					VMAgentDefault: struct {
 						Image               string `default:"victoriametrics/vmagent"`
-						Version             string `default:"v1.63.0"`
+						Version             string `default:"v1.64.1"`
 						ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.48.1"`
 						Port                string `default:"8429"`
 						UseDefaultResources bool   `default:"true"`

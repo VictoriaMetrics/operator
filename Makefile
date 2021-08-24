@@ -17,22 +17,24 @@ OPERATOR_BIN=operator-sdk
 DOCKER_REPO=victoriametrics/operator
 TEST_ARGS=$(GOCMD) test -covermode=atomic -coverprofile=coverage.txt -v
 APIS_BASE_PATH=api/v1beta1
-YAML_DROP_PREFIX=spec.validation.openAPIV3Schema.properties.spec.properties
+YAML_DROP_PREF=spec.versions[0].schema.openAPIV3Schema.properties.spec.properties
+LEGACY_YAML_DROP_PREF=spec.validation.openAPIV3Schema.properties.spec.properties
 YAML_DROP=yq delete --inplace
 # Current Operator version
 # Default bundle image tag
 BUNDLE_IMG ?= controller-bundle:$(VERSION)
-ALPINE_IMAGE=alpine:3.12
+ALPINE_IMAGE=alpine:3.14.1
 CHANNEL=beta
 DEFAULT_CHANNEL=beta
 BUNDLE_CHANNELS := --channels=$(CHANNEL)
 BUNDLE_METADATA_OPTS=$(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
-
+LEGACY_CRD_PATH=config/crd/legacy
+CRD_PATH=config/crd/bases
 # Image URL to use all building/pushing image targets
 IMG ?= $(DOCKER_REPO):$(TAG)
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 
-CRD_OPTIONS ?= "crd:trivialVersions=true,crdVersions=v1beta1"
+CRD_OPTIONS ?= "crd:trivialVersions=false,crdVersions=v1"
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -58,109 +60,142 @@ install-docs-generators:
 
 install-develop-tools: install-golint install-docs-generators
 
-
 fix118:
+	CRD_FIX_PATH=$(LEGACY_CRD_PATH) YAML_DROP_PREFIX=$(LEGACY_YAML_DROP_PREF) $(MAKE) fix118_yaml
+	CRD_FIX_PATH=$(CRD_PATH) YAML_DROP_PREFIX=$(YAML_DROP_PREF) $(MAKE) fix118_yaml
+
+fix118_yaml:
 	docker run --rm -v "${PWD}":/workdir mikefarah/yq:2.2.0 /bin/sh -c ' \
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalertmanagers.yaml $(YAML_DROP_PREFIX).initContainers.items.properties &&\
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalertmanagers.yaml $(YAML_DROP_PREFIX).containers.items.properties &&\
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalertmanagers.yaml $(YAML_DROP_PREFIX).topologySpreadConstraints.items.properties &&\
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalertmanagers.yaml $(YAML_DROP_PREFIX).affinity.properties &&\
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalertmanagers.yaml $(YAML_DROP_PREFIX).serviceSpec.properties.spec.properties.ports &&\
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalertmanagers.yaml $(YAML_DROP_PREFIX).serviceSpec.properties.spec.properties.clusterIPs &&\
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalertmanagers.yaml $(YAML_DROP_PREFIX).serviceSpec.properties.spec.properties.ipFamilies &&\
-		$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalertmanagers.yaml $(YAML_DROP_PREFIX).volumes.items.properties &&\
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmauths.yaml $(YAML_DROP_PREFIX).initContainers.items.properties &&\
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmauths.yaml $(YAML_DROP_PREFIX).containers.items.properties &&\
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmauths.yaml $(YAML_DROP_PREFIX).topologySpreadConstraints.items.properties &&\
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmauths.yaml $(YAML_DROP_PREFIX).affinity.properties &&\
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmauths.yaml $(YAML_DROP_PREFIX).volumes.items.properties &&\
-       	$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmauths.yaml $(YAML_DROP_PREFIX).securityContext.properties && \
-   	 	$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmauths.yaml $(YAML_DROP_PREFIX).serviceSpec.properties && \
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).initContainers.items.properties &&\
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).containers.items.properties ;\
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).topologySpreadConstraints.items.properties ;\
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).affinity.properties &&\
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).volumes.items.properties &&\
-    	$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).securityContext.properties && \
- 	 	$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).serviceSpec.properties && \
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmsingles.yaml $(YAML_DROP_PREFIX).initContainers.items.properties &&\
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmsingles.yaml $(YAML_DROP_PREFIX).containers.items.properties &&\
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmsingles.yaml $(YAML_DROP_PREFIX).topologySpreadConstraints.items.properties &&\
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmsingles.yaml $(YAML_DROP_PREFIX).affinity.properties &&\
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmsingles.yaml $(YAML_DROP_PREFIX).volumes.items.properties &&\
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmsingles.yaml $(YAML_DROP_PREFIX).volumes.items.properties &&\
-    	$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmsingles.yaml $(YAML_DROP_PREFIX).securityContext.properties && \
-   	 	$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmsingles.yaml $(YAML_DROP_PREFIX).serviceSpec.properties && \
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmagents.yaml $(YAML_DROP_PREFIX).initContainers.items.properties &&\
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmagents.yaml $(YAML_DROP_PREFIX).containers.items.properties &&\
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmagents.yaml $(YAML_DROP_PREFIX).topologySpreadConstraints.items.properties &&\
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmagents.yaml $(YAML_DROP_PREFIX).affinity.properties &&\
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmagents.yaml $(YAML_DROP_PREFIX).volumes.items.properties &&\
-	 	$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmagents.yaml $(YAML_DROP_PREFIX).securityContext.properties && \
-   	 	$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmagents.yaml $(YAML_DROP_PREFIX).serviceSpec.properties && \
-	 	$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vminsert.properties.volumes.items.properties && \
-	 	$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vminsert.properties.topologySpreadConstraints.items.properties && \
-	 	$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vminsert.properties.affinity.properties && \
-	 	$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vminsert.properties.securityContext.properties && \
-	 	$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vminsert.properties.serviceSpec.properties && \
-	 	$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vminsert.properties.containers.items.properties && \
-		$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vminsert.properties.initContainers.items.properties && \
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vminsert.properties.hpa.properties &&\
-		$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vminsert.properties.readinessProbe.properties &&\
-    	$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vminsert.properties.startupProbe.properties &&\
-	 	$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.volumes.items.properties && \
-	 	$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.topologySpreadConstraints.items.properties && \
-	 	$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.affinity.properties && \
-		$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.containers.items.properties && \
-		$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.initContainers.items.properties && \
-		$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.persistentVolume.properties.volumeClaimTemplate.properties &&\
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.hpa.properties &&\
-		$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.readinessProbe.properties &&\
-    	$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.startupProbe.properties &&\
-	 	$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.securityContext.properties && \
-	 	$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.serviceSpec.properties && \
-	 	$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmstorage.properties.volumes.items.properties && \
-	 	$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmstorage.properties.topologySpreadConstraints.items.properties && \
-	 	$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmstorage.properties.affinity.properties && \
-		$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmstorage.properties.containers.items.properties && \
-		$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmstorage.properties.initContainers.items.properties  &&\
-		$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmstorage.properties.storage.properties.volumeClaimTemplate.propertie s&&\
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmstorage.properties.readinessProbe.properties &&\
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmstorage.properties.startupProbe.properties &&\
-	 	$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmstorage.properties.securityContext.properties && \
-   	 	$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmstorage.properties.serviceSpec.properties \
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalertmanagers.yaml $(YAML_DROP_PREFIX).initContainers.items.properties &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalertmanagers.yaml $(YAML_DROP_PREFIX).containers.items.properties &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalertmanagers.yaml $(YAML_DROP_PREFIX).topologySpreadConstraints.items.properties &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalertmanagers.yaml $(YAML_DROP_PREFIX).affinity.properties &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalertmanagers.yaml $(YAML_DROP_PREFIX).serviceSpec.properties.spec.properties.ports &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalertmanagers.yaml $(YAML_DROP_PREFIX).serviceSpec.properties.spec.properties.clusterIPs &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalertmanagers.yaml $(YAML_DROP_PREFIX).serviceSpec.properties.spec.properties.ipFamilies &&\
+		$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalertmanagers.yaml $(YAML_DROP_PREFIX).volumes.items.properties &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalertmanagers.yaml $(YAML_DROP_PREFIX).startupProbe.properties &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalertmanagers.yaml $(YAML_DROP_PREFIX).readinessProbe.properties &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalertmanagers.yaml $(YAML_DROP_PREFIX).livenessProbe.properties &&\
+		$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalertmanagers.yaml $(YAML_DROP_PREFIX).extraEnvs.properties &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmauths.yaml $(YAML_DROP_PREFIX).initContainers.items.properties &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmauths.yaml $(YAML_DROP_PREFIX).containers.items.properties &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmauths.yaml $(YAML_DROP_PREFIX).topologySpreadConstraints.items.properties &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmauths.yaml $(YAML_DROP_PREFIX).affinity.properties &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmauths.yaml $(YAML_DROP_PREFIX).volumes.items.properties &&\
+       	$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmauths.yaml $(YAML_DROP_PREFIX).securityContext.properties && \
+   	 	$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmauths.yaml $(YAML_DROP_PREFIX).serviceSpec.properties && \
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmauths.yaml $(YAML_DROP_PREFIX).startupProbe.properties &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmauths.yaml $(YAML_DROP_PREFIX).readinessProbe.properties &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmauths.yaml $(YAML_DROP_PREFIX).livenessProbe.properties &&\
+		$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmauths.yaml $(YAML_DROP_PREFIX).extraEnvs.properties &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).initContainers.items.properties &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).containers.items.properties ;\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).topologySpreadConstraints.items.properties ;\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).affinity.properties &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).volumes.items.properties &&\
+    	$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).securityContext.properties && \
+ 	 	$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).serviceSpec.properties && \
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).startupProbe.properties &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).readinessProbe.properties &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).livenessProbe.properties &&\
+		$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).extraEnvs.properties &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmsingles.yaml $(YAML_DROP_PREFIX).initContainers.items.properties &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmsingles.yaml $(YAML_DROP_PREFIX).containers.items.properties &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmsingles.yaml $(YAML_DROP_PREFIX).topologySpreadConstraints.items.properties &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmsingles.yaml $(YAML_DROP_PREFIX).affinity.properties &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmsingles.yaml $(YAML_DROP_PREFIX).volumes.items.properties &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmsingles.yaml $(YAML_DROP_PREFIX).volumes.items.properties &&\
+    	$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmsingles.yaml $(YAML_DROP_PREFIX).securityContext.properties && \
+   	 	$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmsingles.yaml $(YAML_DROP_PREFIX).serviceSpec.properties && \
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmsingles.yaml $(YAML_DROP_PREFIX).startupProbe.properties &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmsingles.yaml $(YAML_DROP_PREFIX).readinessProbe.properties &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmsingles.yaml $(YAML_DROP_PREFIX).livenessProbe.properties &&\
+		$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmsingles.yaml $(YAML_DROP_PREFIX).extraEnvs.properties &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmagents.yaml $(YAML_DROP_PREFIX).initContainers.items.properties &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmagents.yaml $(YAML_DROP_PREFIX).containers.items.properties &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmagents.yaml $(YAML_DROP_PREFIX).topologySpreadConstraints.items.properties &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmagents.yaml $(YAML_DROP_PREFIX).affinity.properties &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmagents.yaml $(YAML_DROP_PREFIX).volumes.items.properties &&\
+	 	$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmagents.yaml $(YAML_DROP_PREFIX).securityContext.properties && \
+   	 	$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmagents.yaml $(YAML_DROP_PREFIX).serviceSpec.properties && \
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmagents.yaml $(YAML_DROP_PREFIX).startupProbe.properties &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmagents.yaml $(YAML_DROP_PREFIX).readinessProbe.properties &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmagents.yaml $(YAML_DROP_PREFIX).livenessProbe.properties &&\
+		$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmagents.yaml $(YAML_DROP_PREFIX).extraEnvs.properties &&\
+	 	$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vminsert.properties.volumes.items.properties && \
+	 	$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vminsert.properties.topologySpreadConstraints.items.properties && \
+	 	$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vminsert.properties.affinity.properties && \
+	 	$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vminsert.properties.securityContext.properties && \
+	 	$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vminsert.properties.serviceSpec.properties && \
+	 	$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vminsert.properties.containers.items.properties && \
+		$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vminsert.properties.initContainers.items.properties && \
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vminsert.properties.hpa.properties &&\
+		$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vminsert.properties.readinessProbe.properties &&\
+    	$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vminsert.properties.startupProbe.properties &&\
+    	$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vminsert.properties.livenessProbe.properties &&\
+    	$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vminsert.properties.extraEnvs.properties &&\
+	 	$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.volumes.items.properties && \
+	 	$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.topologySpreadConstraints.items.properties && \
+	 	$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.affinity.properties && \
+		$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.containers.items.properties && \
+		$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.initContainers.items.properties && \
+		$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.persistentVolume.properties.volumeClaimTemplate.properties &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.hpa.properties &&\
+		$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.readinessProbe.properties &&\
+    	$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.startupProbe.properties &&\
+    	$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.livenessProbe.properties &&\
+    	$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.extraEnvs.properties &&\
+	 	$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.securityContext.properties && \
+	 	$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.serviceSpec.properties && \
+	 	$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmstorage.properties.volumes.items.properties && \
+	 	$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmstorage.properties.topologySpreadConstraints.items.properties && \
+	 	$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmstorage.properties.affinity.properties && \
+		$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmstorage.properties.containers.items.properties && \
+		$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmstorage.properties.initContainers.items.properties  &&\
+		$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmstorage.properties.storage.properties.volumeClaimTemplate.propertie s&&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmstorage.properties.readinessProbe.properties &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmstorage.properties.startupProbe.properties &&\
+   	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmstorage.properties.livenessProbe.properties &&\
+   	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmstorage.properties.extraEnvs.properties &&\
+	 	$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmstorage.properties.securityContext.properties && \
+   	 	$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmstorage.properties.serviceSpec.properties \
    	 	'
 
 fix_crd_nulls:
+	CRD_FIX_PATH=$(CRD_PATH) $(MAKE) fix_crd_nulls_yaml
+	CRD_FIX_PATH=$(LEGACY_CRD_PATH) $(MAKE) fix_crd_nulls_yaml
+
+fix_crd_nulls_yaml:
 	docker run --rm -v "${PWD}":/workdir mikefarah/yq:2.2.0 /bin/sh -c ' \
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalertmanagers.yaml status &&\
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmagents.yaml status &&\
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalerts.yaml status &&\
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml status &&\
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmsingles.yaml status &&\
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmrules.yaml status &&\
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmnodescrapes.yaml status &&\
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmpodscrapes.yaml status &&\
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmservicescrapes.yaml status &&\
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmprobes.yaml status &&\
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmstaticscrapes.yaml status &&\
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmauths.yaml status &&\
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmauths.yaml metadata.creationTimestamp &&\
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmusers.yaml status &&\
-        $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmusers.yaml metadata.creationTimestamp &&\
- 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalertmanagerconfigs.yaml status &&\
- 	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalertmanagerconfigs.yaml metadata.creationTimestamp &&\
-		$(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalertmanagers.yaml metadata.creationTimestamp &&\
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmagents.yaml metadata.creationTimestamp &&\
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmalerts.yaml metadata.creationTimestamp &&\
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmclusters.yaml metadata.creationTimestamp &&\
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmsingles.yaml metadata.creationTimestamp &&\
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmrules.yaml metadata.creationTimestamp &&\
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmnodescrapes.yaml metadata.creationTimestamp &&\
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmpodscrapes.yaml metadata.creationTimestamp &&\
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmservicescrapes.yaml metadata.creationTimestamp &&\
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmstaticscrapes.yaml metadata.creationTimestamp &&\
-	    $(YAML_DROP) config/crd/bases/operator.victoriametrics.com_vmprobes.yaml metadata.creationTimestamp'
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalertmanagers.yaml status &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmagents.yaml status &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml status &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml status &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmsingles.yaml status &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmrules.yaml status &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmnodescrapes.yaml status &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmpodscrapes.yaml status &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmservicescrapes.yaml status &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmprobes.yaml status &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmstaticscrapes.yaml status &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmauths.yaml status &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmauths.yaml metadata.creationTimestamp &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmusers.yaml status &&\
+        $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmusers.yaml metadata.creationTimestamp &&\
+ 	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalertmanagerconfigs.yaml status &&\
+ 	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalertmanagerconfigs.yaml metadata.creationTimestamp &&\
+		$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalertmanagers.yaml metadata.creationTimestamp &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmagents.yaml metadata.creationTimestamp &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml metadata.creationTimestamp &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml metadata.creationTimestamp &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmsingles.yaml metadata.creationTimestamp &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmrules.yaml metadata.creationTimestamp &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmnodescrapes.yaml metadata.creationTimestamp &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmpodscrapes.yaml metadata.creationTimestamp &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmservicescrapes.yaml metadata.creationTimestamp &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmstaticscrapes.yaml metadata.creationTimestamp &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmprobes.yaml metadata.creationTimestamp'
 
 
 doc: install-develop-tools
@@ -187,7 +222,7 @@ operator-conf: install-develop-tools
 	envconfig-docs --input internal/config/config.go --truncate=false > vars.MD
 
 
-docker: manager
+docker: build manager
 	GOARCH=amd64 $(MAKE) docker-build-arch
 
 .PHONY:e2e-local
@@ -206,7 +241,7 @@ clean:
 	rm -f $(BINARY_NAME)
 
 
-all: manager
+all: build
 
 # Run tests
 test: generate fmt vet manifests fix118 fix_crd_nulls
@@ -215,7 +250,7 @@ test: generate fmt vet manifests fix118 fix_crd_nulls
 	$(GOCMD) tool cover -func coverage.txt  | grep total
 
 # Build manager binary
-manager: generate manifests fmt vet fix118 fix_crd_nulls
+manager: generate fmt vet
 	CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH} $(GOBUILD) -o bin/manager main.go
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
@@ -237,8 +272,8 @@ deploy: manifests fix118 fix_crd_nulls kustomize
 
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen
-	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
-
+	$(CONTROLLER_GEN) "crd:trivialVersions=true,crdVersions=v1beta1" rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=$(LEGACY_CRD_PATH)
+	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=$(CRD_PATH)
 # Run go fmt against code
 fmt:
 	go fmt ./...
@@ -302,7 +337,7 @@ bundle-push: bundle
 bundle-build:
 	docker build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
 
-build: manager
+build: manager generate manifests fix118 fix_crd_nulls
 
 release-package: kustomize
 	mkdir -p release/crds/

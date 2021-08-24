@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"path"
+	"sort"
 	"strings"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
@@ -457,26 +458,36 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, c *config.Ba
 	healthPath := func() string {
 		return path.Clean(webRoutePrefix + "/-/healthy")
 	}
+	var sortedExtraArgs []string
 
-	vmaContainer := v1.Container{
-		Args:            amArgs,
-		Name:            "alertmanager",
-		Image:           image,
-		ImagePullPolicy: cr.Spec.Image.PullPolicy,
-		Ports:           ports,
-		VolumeMounts:    amVolumeMounts,
-		Resources:       buildResources(cr.Spec.Resources, config.Resource(c.VMAlertDefault.Resource), c.VMAlertManager.UseDefaultResources),
-		Env: []v1.EnvVar{
-			{
-				// Necessary for '--cluster.listen-address' flag
-				Name: "POD_IP",
-				ValueFrom: &v1.EnvVarSource{
-					FieldRef: &v1.ObjectFieldSelector{
-						FieldPath: "status.podIP",
-					},
+	for arg, value := range cr.Spec.ExtraArgs {
+		sortedExtraArgs = append(sortedExtraArgs, fmt.Sprintf("-%s=%s", arg, value))
+	}
+	sort.Strings(sortedExtraArgs)
+	amArgs = append(amArgs, sortedExtraArgs...)
+
+	envs := []v1.EnvVar{
+		{
+			// Necessary for '--cluster.listen-address' flag
+			Name: "POD_IP",
+			ValueFrom: &v1.EnvVarSource{
+				FieldRef: &v1.ObjectFieldSelector{
+					FieldPath: "status.podIP",
 				},
 			},
 		},
+	}
+	envs = append(envs, cr.Spec.ExtraEnvs...)
+
+	vmaContainer := v1.Container{
+		Args:                     amArgs,
+		Name:                     "alertmanager",
+		Image:                    image,
+		ImagePullPolicy:          cr.Spec.Image.PullPolicy,
+		Ports:                    ports,
+		VolumeMounts:             amVolumeMounts,
+		Resources:                buildResources(cr.Spec.Resources, config.Resource(c.VMAlertDefault.Resource), c.VMAlertManager.UseDefaultResources),
+		Env:                      envs,
 		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
 	}
 	vmaContainer = buildProbe(vmaContainer, cr.Spec.EmbeddedProbes, healthPath, cr.Spec.PortName, true)

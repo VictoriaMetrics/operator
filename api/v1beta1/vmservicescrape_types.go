@@ -119,6 +119,9 @@ type Endpoint struct {
 	// Timeout after which the scrape is ended
 	// +optional
 	ScrapeTimeout string `json:"scrapeTimeout,omitempty"`
+	// SampleLimit defines per-endpoint limit on number of scraped samples that will be accepted.
+	// +optional
+	SampleLimit uint64 `json:"sampleLimit,omitempty"`
 	// OAuth2 defines auth configuration
 	// +optional
 	OAuth2 *OAuth2 `json:"oauth2,omitempty"`

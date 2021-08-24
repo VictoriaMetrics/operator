@@ -483,7 +483,9 @@ func generatePodScrapeConfig(
 	relabelings = enforceNamespaceLabel(relabelings, m.Namespace, enforcedNamespaceLabel)
 	cfg = append(cfg, yaml.MapItem{Key: "relabel_configs", Value: relabelings})
 
-	if m.Spec.SampleLimit > 0 {
+	if ep.SampleLimit > 0 {
+		cfg = append(cfg, yaml.MapItem{Key: "sample_limit", Value: ep.SampleLimit})
+	} else if m.Spec.SampleLimit > 0 {
 		cfg = append(cfg, yaml.MapItem{Key: "sample_limit", Value: m.Spec.SampleLimit})
 	}
 
@@ -806,7 +808,9 @@ func generateServiceScrapeConfig(
 	relabelings = enforceNamespaceLabel(relabelings, m.Namespace, enforcedNamespaceLabel)
 	cfg = append(cfg, yaml.MapItem{Key: "relabel_configs", Value: relabelings})
 
-	if m.Spec.SampleLimit > 0 {
+	if ep.SampleLimit > 0 {
+		cfg = append(cfg, yaml.MapItem{Key: "sample_limit", Value: ep.SampleLimit})
+	} else if m.Spec.SampleLimit > 0 {
 		cfg = append(cfg, yaml.MapItem{Key: "sample_limit", Value: m.Spec.SampleLimit})
 	}
 

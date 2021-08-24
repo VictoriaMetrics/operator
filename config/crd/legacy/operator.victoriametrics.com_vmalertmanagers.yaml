@@ -190,6 +190,34 @@ spec:
                 under. This is necessary to generate correct URLs. This is necessary
                 if VMAlertmanager is not served from root of a DNS name.
               type: string
+            extraArgs:
+              additionalProperties:
+                type: string
+              description: 'ExtraArgs that will be passed to  VMAuth pod for example
+                remoteWrite.tmpDataPath: /tmp'
+              type: object
+            extraEnvs:
+              description: ExtraEnvs that will be added to VMAuth pod
+              items:
+                description: EnvVar represents an environment variable present in
+                  a Container.
+                properties:
+                  name:
+                    description: Name of the environment variable. Must be a C_IDENTIFIER.
+                    type: string
+                  value:
+                    description: 'Variable references $(VAR_NAME) are expanded using
+                      the previous defined environment variables in the container
+                      and any service environment variables. If a variable cannot
+                      be resolved, the reference in the input string will be unchanged.
+                      The $(VAR_NAME) syntax can be escaped with a double $$, ie:
+                      $$(VAR_NAME). Escaped references will never be expanded, regardless
+                      of whether the variable exists or not. Defaults to "".'
+                    type: string
+                required:
+                - name
+                type: object
+              type: array
             hostNetwork:
               description: HostNetwork controls whether the pod may use the node network
                 namespace

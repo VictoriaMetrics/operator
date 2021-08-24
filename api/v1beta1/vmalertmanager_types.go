@@ -217,6 +217,13 @@ type VMAlertmanagerSpec struct {
 	// If nil, own namespace will be used.
 	// +optional
 	ConfigNamespaceSelector *metav1.LabelSelector `json:"configNamespaceSelector,omitempty"`
+	// ExtraArgs that will be passed to  VMAuth pod
+	// for example remoteWrite.tmpDataPath: /tmp
+	// +optional
+	ExtraArgs map[string]string `json:"extraArgs,omitempty"`
+	// ExtraEnvs that will be added to VMAuth pod
+	// +optional
+	ExtraEnvs []v1.EnvVar `json:"extraEnvs,omitempty"`
 }
 
 // VMAlertmanagerList is a list of Alertmanagers.

@@ -360,6 +360,11 @@ spec:
                           type: string
                       type: object
                     type: array
+                  sampleLimit:
+                    description: SampleLimit defines per-endpoint limit on number
+                      of scraped samples that will be accepted.
+                    format: int64
+                    type: integer
                   scheme:
                     description: HTTP scheme to use for scraping.
                     type: string

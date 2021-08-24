@@ -55,10 +55,13 @@ VictoriaMetrics provides [helm charts](https://github.com/VictoriaMetrics/helm-c
  It defines default configuration options, like images for components, timeouts, features.
 
 
-## Kubernetes compatibility versions
+## Kubernetes' compatibility versions
 
 operator tested at kubernetes versions 
-from 1.16 to 1.21
+from 1.16 to 1.22
+
+ For clusters version below 1.16 you must use legacy CRDs from [path](config/crd/legacy) 
+  and disable CRD controller with flag: `--controller.disableCRDOwnership=true`
 
 ## Troubleshooting
 

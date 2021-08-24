@@ -1,4 +1,4 @@
-apiVersion: apiextensions.k8s.io/v1beta1
+apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
@@ -12,1129 +12,734 @@ spec:
     plural: vmauths
     singular: vmauth
   scope: Namespaced
-  subresources:
-    status: {}
-  validation:
-    openAPIV3Schema:
-      description: VMAuth is the Schema for the vmauths API
-      properties:
-        apiVersion:
-          description: 'APIVersion defines the versioned schema of this representation
-            of an object. Servers should convert recognized schemas to the latest
-            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
-          type: string
-        kind:
-          description: 'Kind is a string value representing the REST resource this
-            object represents. Servers may infer this from the endpoint the client
-            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
-          type: string
-        metadata:
-          type: object
-        spec:
-          description: VMAuthSpec defines the desired state of VMAuth
-          properties:
-            affinity:
-              description: Affinity If specified, the pod's scheduling constraints.
-              type: object
-            configMaps:
-              description: ConfigMaps is a list of ConfigMaps in the same namespace
-                as the VMAuth object, which shall be mounted into the VMAuth Pods.
-              items:
-                type: string
-              type: array
-            containers:
-              description: Containers property allows to inject additions sidecars
-                or to patch existing containers. It can be useful for proxies, backup,
-                etc.
-              items:
-                description: A single application container that you want to run within
-                  a pod.
-                required:
-                - name
+  versions:
+  - name: v1beta1
+    schema:
+      openAPIV3Schema:
+        description: VMAuth is the Schema for the vmauths API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: VMAuthSpec defines the desired state of VMAuth
+            properties:
+              affinity:
+                description: Affinity If specified, the pod's scheduling constraints.
                 type: object
-              type: array
-            dnsPolicy:
-              description: DNSPolicy sets DNS policy for the pod
-              type: string
-            extraArgs:
-              additionalProperties:
+              configMaps:
+                description: ConfigMaps is a list of ConfigMaps in the same namespace
+                  as the VMAuth object, which shall be mounted into the VMAuth Pods.
+                items:
+                  type: string
+                type: array
+              containers:
+                description: Containers property allows to inject additions sidecars
+                  or to patch existing containers. It can be useful for proxies, backup,
+                  etc.
+                items:
+                  description: A single application container that you want to run
+                    within a pod.
+                  required:
+                  - name
+                  type: object
+                type: array
+              dnsPolicy:
+                description: DNSPolicy sets DNS policy for the pod
                 type: string
-              description: 'ExtraArgs that will be passed to  VMAuth pod for example
-                remoteWrite.tmpDataPath: /tmp'
-              type: object
-            extraEnvs:
-              description: ExtraEnvs that will be added to VMAuth pod
-              items:
-                description: EnvVar represents an environment variable present in
-                  a Container.
+              extraArgs:
+                additionalProperties:
+                  type: string
+                description: 'ExtraArgs that will be passed to  VMAuth pod for example
+                  remoteWrite.tmpDataPath: /tmp'
+                type: object
+              extraEnvs:
+                description: ExtraEnvs that will be added to VMAuth pod
+                items:
+                  description: EnvVar represents an environment variable present in
+                    a Container.
+                  properties:
+                    name:
+                      description: Name of the environment variable. Must be a C_IDENTIFIER.
+                      type: string
+                    value:
+                      description: 'Variable references $(VAR_NAME) are expanded using
+                        the previous defined environment variables in the container
+                        and any service environment variables. If a variable cannot
+                        be resolved, the reference in the input string will be unchanged.
+                        The $(VAR_NAME) syntax can be escaped with a double $$, ie:
+                        $$(VAR_NAME). Escaped references will never be expanded, regardless
+                        of whether the variable exists or not. Defaults to "".'
+                      type: string
+                  required:
+                  - name
+                  type: object
+                type: array
+              hostAliases:
+                description: HostAliases provides mapping for ip and hostname, that
+                  would be propagated to pod, cannot be used with HostNetwork.
+                items:
+                  description: HostAlias holds the mapping between IP and hostnames
+                    that will be injected as an entry in the pod's hosts file.
+                  properties:
+                    hostnames:
+                      description: Hostnames for the above IP address.
+                      items:
+                        type: string
+                      type: array
+                    ip:
+                      description: IP address of the host file entry.
+                      type: string
+                  type: object
+                type: array
+              hostNetwork:
+                description: HostNetwork controls whether the pod may use the node
+                  network namespace
+                type: boolean
+              image:
+                description: Image - docker image settings for VMAuth if no specified
+                  operator uses default config version
                 properties:
-                  name:
-                    description: Name of the environment variable. Must be a C_IDENTIFIER.
+                  pullPolicy:
+                    description: PullPolicy describes how to pull docker image
                     type: string
-                  value:
-                    description: 'Variable references $(VAR_NAME) are expanded using
-                      the previous defined environment variables in the container
-                      and any service environment variables. If a variable cannot
-                      be resolved, the reference in the input string will be unchanged.
-                      The $(VAR_NAME) syntax can be escaped with a double $$, ie:
-                      $$(VAR_NAME). Escaped references will never be expanded, regardless
-                      of whether the variable exists or not. Defaults to "".'
+                  repository:
+                    description: Repository contains name of docker image + it's repository
+                      if needed
                     type: string
-                  valueFrom:
-                    description: Source for the environment variable's value. Cannot
-                      be used if value is not empty.
-                    properties:
-                      configMapKeyRef:
-                        description: Selects a key of a ConfigMap.
-                        properties:
-                          key:
-                            description: The key to select.
-                            type: string
-                          name:
-                            description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                              TODO: Add other useful fields. apiVersion, kind, uid?'
-                            type: string
-                          optional:
-                            description: Specify whether the ConfigMap or its key
-                              must be defined
-                            type: boolean
-                        required:
-                        - key
-                        type: object
-                      fieldRef:
-                        description: 'Selects a field of the pod: supports metadata.name,
-                          metadata.namespace, `metadata.labels[''<KEY>'']`, `metadata.annotations[''<KEY>'']`,
-                          spec.nodeName, spec.serviceAccountName, status.hostIP, status.podIP,
-                          status.podIPs.'
-                        properties:
-                          apiVersion:
-                            description: Version of the schema the FieldPath is written
-                              in terms of, defaults to "v1".
-                            type: string
-                          fieldPath:
-                            description: Path of the field to select in the specified
-                              API version.
-                            type: string
-                        required:
-                        - fieldPath
-                        type: object
-                      resourceFieldRef:
-                        description: 'Selects a resource of the container: only resources
-                          limits and requests (limits.cpu, limits.memory, limits.ephemeral-storage,
-                          requests.cpu, requests.memory and requests.ephemeral-storage)
-                          are currently supported.'
-                        properties:
-                          containerName:
-                            description: 'Container name: required for volumes, optional
-                              for env vars'
-                            type: string
-                          divisor:
-                            anyOf:
-                            - type: integer
-                            - type: string
-                            description: Specifies the output format of the exposed
-                              resources, defaults to "1"
-                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                            x-kubernetes-int-or-string: true
-                          resource:
-                            description: 'Required: resource to select'
-                            type: string
-                        required:
-                        - resource
-                        type: object
-                      secretKeyRef:
-                        description: Selects a key of a secret in the pod's namespace
-                        properties:
-                          key:
-                            description: The key of the secret to select from.  Must
-                              be a valid secret key.
-                            type: string
-                          name:
-                            description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                              TODO: Add other useful fields. apiVersion, kind, uid?'
-                            type: string
-                          optional:
-                            description: Specify whether the Secret or its key must
-                              be defined
-                            type: boolean
-                        required:
-                        - key
-                        type: object
+                  tag:
+                    description: Tag contains desired docker image version
+                    type: string
+                type: object
+              imagePullSecrets:
+                description: ImagePullSecrets An optional list of references to secrets
+                  in the same namespace to use for pulling images from registries
+                  see http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod
+                items:
+                  description: LocalObjectReference contains enough information to
+                    let you locate the referenced object inside the same namespace.
+                  properties:
+                    name:
+                      description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                        TODO: Add other useful fields. apiVersion, kind, uid?'
+                      type: string
+                  type: object
+                type: array
+              ingress:
+                description: Ingress enables ingress configuration for VMAuth.
+                properties:
+                  annotations:
+                    additionalProperties:
+                      type: string
+                    description: 'Annotations is an unstructured key value map stored
+                      with a resource that may be set by external tools to store and
+                      retrieve arbitrary metadata. They are not queryable and should
+                      be preserved when modifying objects. More info: http://kubernetes.io/docs/user-guide/annotations'
                     type: object
-                required:
-                - name
-                type: object
-              type: array
-            hostAliases:
-              description: HostAliases provides mapping for ip and hostname, that
-                would be propagated to pod, cannot be used with HostNetwork.
-              items:
-                description: HostAlias holds the mapping between IP and hostnames
-                  that will be injected as an entry in the pod's hosts file.
-                properties:
-                  hostnames:
-                    description: Hostnames for the above IP address.
+                  class_name:
+                    description: ClassName defines ingress class name for VMAuth
+                    type: string
+                  extraRules:
+                    description: ExtraRules - additional rules for ingress, must be
+                      checked for correctness by user.
+                    items:
+                      description: IngressRule represents the rules mapping the paths
+                        under a specified host to the related backend services. Incoming
+                        requests are first evaluated for a host match, then routed
+                        to the backend associated with the matching IngressRuleValue.
+                      properties:
+                        host:
+                          description: "Host is the fully qualified domain name of
+                            a network host, as defined by RFC 3986. Note the following
+                            deviations from the \"host\" part of the URI as defined
+                            in RFC 3986: 1. IPs are not allowed. Currently an IngressRuleValue
+                            can only apply to    the IP in the Spec of the parent
+                            Ingress. 2. The `:` delimiter is not respected because
+                            ports are not allowed. \t  Currently the port of an Ingress
+                            is implicitly :80 for http and \t  :443 for https. Both
+                            these may change in the future. Incoming requests are
+                            matched against the host before the IngressRuleValue.
+                            If the host is unspecified, the Ingress routes all traffic
+                            based on the specified IngressRuleValue. \n Host can be
+                            \"precise\" which is a domain name without the terminating
+                            dot of a network host (e.g. \"foo.bar.com\") or \"wildcard\",
+                            which is a domain name prefixed with a single wildcard
+                            label (e.g. \"*.foo.com\"). The wildcard character '*'
+                            must appear by itself as the first DNS label and matches
+                            only a single label. You cannot have a wildcard label
+                            by itself (e.g. Host == \"*\"). Requests will be matched
+                            against the Host field in the following way: 1. If Host
+                            is precise, the request matches this rule if the http
+                            host header is equal to Host. 2. If Host is a wildcard,
+                            then the request matches this rule if the http host header
+                            is to equal to the suffix (removing the first label) of
+                            the wildcard rule."
+                          type: string
+                        http:
+                          description: 'HTTPIngressRuleValue is a list of http selectors
+                            pointing to backends. In the example: http://<host>/<path>?<searchpart>
+                            -> backend where where parts of the url correspond to
+                            RFC 3986, this resource will be used to match against
+                            everything after the last ''/'' and before the first ''?''
+                            or ''#''.'
+                          properties:
+                            paths:
+                              description: A collection of paths that map requests
+                                to backends.
+                              items:
+                                description: HTTPIngressPath associates a path with
+                                  a backend. Incoming urls matching the path are forwarded
+                                  to the backend.
+                                properties:
+                                  backend:
+                                    description: Backend defines the referenced service
+                                      endpoint to which the traffic will be forwarded
+                                      to.
+                                    properties:
+                                      resource:
+                                        description: Resource is an ObjectRef to another
+                                          Kubernetes resource in the namespace of
+                                          the Ingress object. If resource is specified,
+                                          serviceName and servicePort must not be
+                                          specified.
+                                        properties:
+                                          apiGroup:
+                                            description: APIGroup is the group for
+                                              the resource being referenced. If APIGroup
+                                              is not specified, the specified Kind
+                                              must be in the core API group. For any
+                                              other third-party types, APIGroup is
+                                              required.
+                                            type: string
+                                          kind:
+                                            description: Kind is the type of resource
+                                              being referenced
+                                            type: string
+                                          name:
+                                            description: Name is the name of resource
+                                              being referenced
+                                            type: string
+                                        required:
+                                        - kind
+                                        - name
+                                        type: object
+                                      serviceName:
+                                        description: Specifies the name of the referenced
+                                          service.
+                                        type: string
+                                      servicePort:
+                                        anyOf:
+                                        - type: integer
+                                        - type: string
+                                        description: Specifies the port of the referenced
+                                          service.
+                                        x-kubernetes-int-or-string: true
+                                    type: object
+                                  path:
+                                    description: Path is matched against the path
+                                      of an incoming request. Currently it can contain
+                                      characters disallowed from the conventional
+                                      "path" part of a URL as defined by RFC 3986.
+                                      Paths must begin with a '/'. When unspecified,
+                                      all paths from incoming requests are matched.
+                                    type: string
+                                  pathType:
+                                    description: 'PathType determines the interpretation
+                                      of the Path matching. PathType can be one of
+                                      the following values: * Exact: Matches the URL
+                                      path exactly. * Prefix: Matches based on a URL
+                                      path prefix split by ''/''. Matching is   done
+                                      on a path element by element basis. A path element
+                                      refers is the   list of labels in the path split
+                                      by the ''/'' separator. A request is a   match
+                                      for path p if every p is an element-wise prefix
+                                      of p of the   request path. Note that if the
+                                      last element of the path is a substring   of
+                                      the last element in request path, it is not
+                                      a match (e.g. /foo/bar   matches /foo/bar/baz,
+                                      but does not match /foo/barbaz). * ImplementationSpecific:
+                                      Interpretation of the Path matching is up to   the
+                                      IngressClass. Implementations can treat this
+                                      as a separate PathType   or treat it identically
+                                      to Prefix or Exact path types. Implementations
+                                      are required to support all path types. Defaults
+                                      to ImplementationSpecific.'
+                                    type: string
+                                required:
+                                - backend
+                                type: object
+                              type: array
+                          required:
+                          - paths
+                          type: object
+                      type: object
+                    type: array
+                  extraTls:
+                    description: ExtraTLS - additional TLS configuration for ingress
+                      must be checked for correctness by user.
+                    items:
+                      description: IngressTLS describes the transport layer security
+                        associated with an Ingress.
+                      properties:
+                        hosts:
+                          description: Hosts are a list of hosts included in the TLS
+                            certificate. The values in this list must match the name/s
+                            used in the tlsSecret. Defaults to the wildcard host setting
+                            for the loadbalancer controller fulfilling this Ingress,
+                            if left unspecified.
+                          items:
+                            type: string
+                          type: array
+                        secretName:
+                          description: SecretName is the name of the secret used to
+                            terminate SSL traffic on 443. Field is left optional to
+                            allow SSL routing based on SNI hostname alone. If the
+                            SNI host in a listener conflicts with the "Host" header
+                            field used by an IngressRule, the SNI host is used for
+                            termination and value of the Host header is used for routing.
+                          type: string
+                      type: object
+                    type: array
+                  labels:
+                    additionalProperties:
+                      type: string
+                    description: 'Labels Map of string keys and values that can be
+                      used to organize and categorize (scope and select) objects.
+                      May match selectors of replication controllers and services.
+                      More info: http://kubernetes.io/docs/user-guide/labels'
+                    type: object
+                  name:
+                    description: 'Name must be unique within a namespace. Is required
+                      when creating resources, although some resources may allow a
+                      client to request the generation of an appropriate name automatically.
+                      Name is primarily intended for creation idempotence and configuration
+                      definition. Cannot be updated. More info: http://kubernetes.io/docs/user-guide/identifiers#names'
+                    type: string
+                  tlsHosts:
+                    description: TlsHosts configures TLS access for ingress, tlsSecretName
+                      must be defined for it.
                     items:
                       type: string
                     type: array
-                  ip:
-                    description: IP address of the host file entry.
+                  tlsSecretName:
+                    description: TlsSecretName defines secretname at the VMAuth namespace
+                      with cert and key https://kubernetes.io/docs/concepts/services-networking/ingress/#tls
                     type: string
                 type: object
-              type: array
-            hostNetwork:
-              description: HostNetwork controls whether the pod may use the node network
-                namespace
-              type: boolean
-            image:
-              description: Image - docker image settings for VMAuth if no specified
-                operator uses default config version
-              properties:
-                pullPolicy:
-                  description: PullPolicy describes how to pull docker image
-                  type: string
-                repository:
-                  description: Repository contains name of docker image + it's repository
-                    if needed
-                  type: string
-                tag:
-                  description: Tag contains desired docker image version
-                  type: string
-              type: object
-            imagePullSecrets:
-              description: ImagePullSecrets An optional list of references to secrets
-                in the same namespace to use for pulling images from registries see
-                http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod
-              items:
-                description: LocalObjectReference contains enough information to let
-                  you locate the referenced object inside the same namespace.
-                properties:
-                  name:
-                    description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                      TODO: Add other useful fields. apiVersion, kind, uid?'
-                    type: string
-                type: object
-              type: array
-            ingress:
-              description: Ingress enables ingress configuration for VMAuth.
-              properties:
-                annotations:
-                  additionalProperties:
-                    type: string
-                  description: 'Annotations is an unstructured key value map stored
-                    with a resource that may be set by external tools to store and
-                    retrieve arbitrary metadata. They are not queryable and should
-                    be preserved when modifying objects. More info: http://kubernetes.io/docs/user-guide/annotations'
-                  type: object
-                class_name:
-                  description: ClassName defines ingress class name for VMAuth
-                  type: string
-                extraRules:
-                  description: ExtraRules - additional rules for ingress, must be
-                    checked for correctness by user.
-                  items:
-                    description: IngressRule represents the rules mapping the paths
-                      under a specified host to the related backend services. Incoming
-                      requests are first evaluated for a host match, then routed to
-                      the backend associated with the matching IngressRuleValue.
-                    properties:
-                      host:
-                        description: "Host is the fully qualified domain name of a
-                          network host, as defined by RFC 3986. Note the following
-                          deviations from the \"host\" part of the URI as defined
-                          in RFC 3986: 1. IPs are not allowed. Currently an IngressRuleValue
-                          can only apply to    the IP in the Spec of the parent Ingress.
-                          2. The `:` delimiter is not respected because ports are
-                          not allowed. \t  Currently the port of an Ingress is implicitly
-                          :80 for http and \t  :443 for https. Both these may change
-                          in the future. Incoming requests are matched against the
-                          host before the IngressRuleValue. If the host is unspecified,
-                          the Ingress routes all traffic based on the specified IngressRuleValue.
-                          \n Host can be \"precise\" which is a domain name without
-                          the terminating dot of a network host (e.g. \"foo.bar.com\")
-                          or \"wildcard\", which is a domain name prefixed with a
-                          single wildcard label (e.g. \"*.foo.com\"). The wildcard
-                          character '*' must appear by itself as the first DNS label
-                          and matches only a single label. You cannot have a wildcard
-                          label by itself (e.g. Host == \"*\"). Requests will be matched
-                          against the Host field in the following way: 1. If Host
-                          is precise, the request matches this rule if the http host
-                          header is equal to Host. 2. If Host is a wildcard, then
-                          the request matches this rule if the http host header is
-                          to equal to the suffix (removing the first label) of the
-                          wildcard rule."
-                        type: string
-                      http:
-                        description: 'HTTPIngressRuleValue is a list of http selectors
-                          pointing to backends. In the example: http://<host>/<path>?<searchpart>
-                          -> backend where where parts of the url correspond to RFC
-                          3986, this resource will be used to match against everything
-                          after the last ''/'' and before the first ''?'' or ''#''.'
-                        properties:
-                          paths:
-                            description: A collection of paths that map requests to
-                              backends.
-                            items:
-                              description: HTTPIngressPath associates a path with
-                                a backend. Incoming urls matching the path are forwarded
-                                to the backend.
-                              properties:
-                                backend:
-                                  description: Backend defines the referenced service
-                                    endpoint to which the traffic will be forwarded
-                                    to.
-                                  properties:
-                                    resource:
-                                      description: Resource is an ObjectRef to another
-                                        Kubernetes resource in the namespace of the
-                                        Ingress object. If resource is specified,
-                                        serviceName and servicePort must not be specified.
-                                      properties:
-                                        apiGroup:
-                                          description: APIGroup is the group for the
-                                            resource being referenced. If APIGroup
-                                            is not specified, the specified Kind must
-                                            be in the core API group. For any other
-                                            third-party types, APIGroup is required.
-                                          type: string
-                                        kind:
-                                          description: Kind is the type of resource
-                                            being referenced
-                                          type: string
-                                        name:
-                                          description: Name is the name of resource
-                                            being referenced
-                                          type: string
-                                      required:
-                                      - kind
-                                      - name
-                                      type: object
-                                    serviceName:
-                                      description: Specifies the name of the referenced
-                                        service.
-                                      type: string
-                                    servicePort:
-                                      anyOf:
-                                      - type: integer
-                                      - type: string
-                                      description: Specifies the port of the referenced
-                                        service.
-                                      x-kubernetes-int-or-string: true
-                                  type: object
-                                path:
-                                  description: Path is matched against the path of
-                                    an incoming request. Currently it can contain
-                                    characters disallowed from the conventional "path"
-                                    part of a URL as defined by RFC 3986. Paths must
-                                    begin with a '/'. When unspecified, all paths
-                                    from incoming requests are matched.
-                                  type: string
-                                pathType:
-                                  description: 'PathType determines the interpretation
-                                    of the Path matching. PathType can be one of the
-                                    following values: * Exact: Matches the URL path
-                                    exactly. * Prefix: Matches based on a URL path
-                                    prefix split by ''/''. Matching is   done on a
-                                    path element by element basis. A path element
-                                    refers is the   list of labels in the path split
-                                    by the ''/'' separator. A request is a   match
-                                    for path p if every p is an element-wise prefix
-                                    of p of the   request path. Note that if the last
-                                    element of the path is a substring   of the last
-                                    element in request path, it is not a match (e.g.
-                                    /foo/bar   matches /foo/bar/baz, but does not
-                                    match /foo/barbaz). * ImplementationSpecific:
-                                    Interpretation of the Path matching is up to   the
-                                    IngressClass. Implementations can treat this as
-                                    a separate PathType   or treat it identically
-                                    to Prefix or Exact path types. Implementations
-                                    are required to support all path types. Defaults
-                                    to ImplementationSpecific.'
-                                  type: string
-                              required:
-                              - backend
-                              type: object
-                            type: array
-                        required:
-                        - paths
-                        type: object
-                    type: object
-                  type: array
-                extraTls:
-                  description: ExtraTLS - additional TLS configuration for ingress
-                    must be checked for correctness by user.
-                  items:
-                    description: IngressTLS describes the transport layer security
-                      associated with an Ingress.
-                    properties:
-                      hosts:
-                        description: Hosts are a list of hosts included in the TLS
-                          certificate. The values in this list must match the name/s
-                          used in the tlsSecret. Defaults to the wildcard host setting
-                          for the loadbalancer controller fulfilling this Ingress,
-                          if left unspecified.
-                        items:
-                          type: string
-                        type: array
-                      secretName:
-                        description: SecretName is the name of the secret used to
-                          terminate SSL traffic on 443. Field is left optional to
-                          allow SSL routing based on SNI hostname alone. If the SNI
-                          host in a listener conflicts with the "Host" header field
-                          used by an IngressRule, the SNI host is used for termination
-                          and value of the Host header is used for routing.
-                        type: string
-                    type: object
-                  type: array
-                labels:
-                  additionalProperties:
-                    type: string
-                  description: 'Labels Map of string keys and values that can be used
-                    to organize and categorize (scope and select) objects. May match
-                    selectors of replication controllers and services. More info:
-                    http://kubernetes.io/docs/user-guide/labels'
-                  type: object
-                name:
-                  description: 'Name must be unique within a namespace. Is required
-                    when creating resources, although some resources may allow a client
-                    to request the generation of an appropriate name automatically.
-                    Name is primarily intended for creation idempotence and configuration
-                    definition. Cannot be updated. More info: http://kubernetes.io/docs/user-guide/identifiers#names'
-                  type: string
-                tlsHosts:
-                  description: TlsHosts configures TLS access for ingress, tlsSecretName
-                    must be defined for it.
-                  items:
-                    type: string
-                  type: array
-                tlsSecretName:
-                  description: TlsSecretName defines secretname at the VMAuth namespace
-                    with cert and key https://kubernetes.io/docs/concepts/services-networking/ingress/#tls
-                  type: string
-              type: object
-            initContainers:
-              description: 'InitContainers allows adding initContainers to the pod
-                definition. Those can be used to e.g. fetch secrets for injection
-                into the vmSingle configuration from external sources. Any errors
-                during the execution of an initContainer will lead to a restart of
-                the Pod. More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
-                Using initContainers for any use case other then secret fetching is
-                entirely outside the scope of what the maintainers will support and
-                by doing so, you accept that this behaviour may break at any time
-                without notice.'
-              items:
-                description: A single application container that you want to run within
-                  a pod.
-                required:
-                - name
-                type: object
-              type: array
-            livenessProbe:
-              description: LivenessProbe that will be added CRD pod
-              properties:
-                exec:
-                  description: One and only one of the following should be specified.
-                    Exec specifies the action to take.
-                  properties:
-                    command:
-                      description: Command is the command line to execute inside the
-                        container, the working directory for the command  is root
-                        ('/') in the container's filesystem. The command is simply
-                        exec'd, it is not run inside a shell, so traditional shell
-                        instructions ('|', etc) won't work. To use a shell, you need
-                        to explicitly call out to that shell. Exit status of 0 is
-                        treated as live/healthy and non-zero is unhealthy.
-                      items:
-                        type: string
-                      type: array
-                  type: object
-                failureThreshold:
-                  description: Minimum consecutive failures for the probe to be considered
-                    failed after having succeeded. Defaults to 3. Minimum value is
-                    1.
-                  format: int32
-                  type: integer
-                httpGet:
-                  description: HTTPGet specifies the http request to perform.
-                  properties:
-                    host:
-                      description: Host name to connect to, defaults to the pod IP.
-                        You probably want to set "Host" in httpHeaders instead.
-                      type: string
-                    httpHeaders:
-                      description: Custom headers to set in the request. HTTP allows
-                        repeated headers.
-                      items:
-                        description: HTTPHeader describes a custom header to be used
-                          in HTTP probes
-                        properties:
-                          name:
-                            description: The header field name
-                            type: string
-                          value:
-                            description: The header field value
-                            type: string
-                        required:
-                        - name
-                        - value
-                        type: object
-                      type: array
-                    path:
-                      description: Path to access on the HTTP server.
-                      type: string
-                    port:
-                      anyOf:
-                      - type: integer
-                      - type: string
-                      description: Name or number of the port to access on the container.
-                        Number must be in the range 1 to 65535. Name must be an IANA_SVC_NAME.
-                      x-kubernetes-int-or-string: true
-                    scheme:
-                      description: Scheme to use for connecting to the host. Defaults
-                        to HTTP.
-                      type: string
+              initContainers:
+                description: 'InitContainers allows adding initContainers to the pod
+                  definition. Those can be used to e.g. fetch secrets for injection
+                  into the vmSingle configuration from external sources. Any errors
+                  during the execution of an initContainer will lead to a restart
+                  of the Pod. More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
+                  Using initContainers for any use case other then secret fetching
+                  is entirely outside the scope of what the maintainers will support
+                  and by doing so, you accept that this behaviour may break at any
+                  time without notice.'
+                items:
+                  description: A single application container that you want to run
+                    within a pod.
                   required:
-                  - port
+                  - name
                   type: object
-                initialDelaySeconds:
-                  description: 'Number of seconds after the container has started
-                    before liveness probes are initiated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes'
-                  format: int32
-                  type: integer
-                periodSeconds:
-                  description: How often (in seconds) to perform the probe. Default
-                    to 10 seconds. Minimum value is 1.
-                  format: int32
-                  type: integer
-                successThreshold:
-                  description: Minimum consecutive successes for the probe to be considered
-                    successful after having failed. Defaults to 1. Must be 1 for liveness
-                    and startup. Minimum value is 1.
-                  format: int32
-                  type: integer
-                tcpSocket:
-                  description: 'TCPSocket specifies an action involving a TCP port.
-                    TCP hooks not yet supported TODO: implement a realistic TCP lifecycle
-                    hook'
-                  properties:
-                    host:
-                      description: 'Optional: Host name to connect to, defaults to
-                        the pod IP.'
-                      type: string
-                    port:
-                      anyOf:
-                      - type: integer
-                      - type: string
-                      description: Number or name of the port to access on the container.
-                        Number must be in the range 1 to 65535. Name must be an IANA_SVC_NAME.
-                      x-kubernetes-int-or-string: true
-                  required:
-                  - port
-                  type: object
-                terminationGracePeriodSeconds:
-                  description: Optional duration in seconds the pod needs to terminate
-                    gracefully upon probe failure. The grace period is the duration
-                    in seconds after the processes running in the pod are sent a termination
-                    signal and the time when the processes are forcibly halted with
-                    a kill signal. Set this value longer than the expected cleanup
-                    time for your process. If this value is nil, the pod's terminationGracePeriodSeconds
-                    will be used. Otherwise, this value overrides the value provided
-                    by the pod spec. Value must be non-negative integer. The value
-                    zero indicates stop immediately via the kill signal (no opportunity
-                    to shut down). This is an alpha field and requires enabling ProbeTerminationGracePeriod
-                    feature gate.
-                  format: int64
-                  type: integer
-                timeoutSeconds:
-                  description: 'Number of seconds after which the probe times out.
-                    Defaults to 1 second. Minimum value is 1. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes'
-                  format: int32
-                  type: integer
-              type: object
-            logFormat:
-              description: LogFormat for VMAuth to be configured with.
-              enum:
-              - default
-              - json
-              type: string
-            logLevel:
-              description: LogLevel for victoria metrics single to be configured with.
-              enum:
-              - INFO
-              - WARN
-              - ERROR
-              - FATAL
-              - PANIC
-              type: string
-            nodeSelector:
-              additionalProperties:
+                type: array
+              livenessProbe:
+                description: LivenessProbe that will be added CRD pod
+                type: object
+              logFormat:
+                description: LogFormat for VMAuth to be configured with.
+                enum:
+                - default
+                - json
                 type: string
-              description: NodeSelector Define which Nodes the Pods are scheduled
-                on.
-              type: object
-            podDisruptionBudget:
-              description: PodDisruptionBudget created by operator
-              properties:
-                maxUnavailable:
-                  anyOf:
-                  - type: integer
-                  - type: string
-                  description: An eviction is allowed if at most "maxUnavailable"
-                    pods selected by "selector" are unavailable after the eviction,
-                    i.e. even in absence of the evicted pod. For example, one can
-                    prevent all voluntary evictions by specifying 0. This is a mutually
-                    exclusive setting with "minAvailable".
-                  x-kubernetes-int-or-string: true
-                minAvailable:
-                  anyOf:
-                  - type: integer
-                  - type: string
-                  description: An eviction is allowed if at least "minAvailable" pods
-                    selected by "selector" will still be available after the eviction,
-                    i.e. even in the absence of the evicted pod.  So for example you
-                    can prevent all voluntary evictions by specifying "100%".
-                  x-kubernetes-int-or-string: true
-              type: object
-            podMetadata:
-              description: PodMetadata configures Labels and Annotations which are
-                propagated to the VMAuth pods.
-              properties:
-                annotations:
-                  additionalProperties:
-                    type: string
-                  description: 'Annotations is an unstructured key value map stored
-                    with a resource that may be set by external tools to store and
-                    retrieve arbitrary metadata. They are not queryable and should
-                    be preserved when modifying objects. More info: http://kubernetes.io/docs/user-guide/annotations'
-                  type: object
-                labels:
-                  additionalProperties:
-                    type: string
-                  description: 'Labels Map of string keys and values that can be used
-                    to organize and categorize (scope and select) objects. May match
-                    selectors of replication controllers and services. More info:
-                    http://kubernetes.io/docs/user-guide/labels'
-                  type: object
-                name:
-                  description: 'Name must be unique within a namespace. Is required
-                    when creating resources, although some resources may allow a client
-                    to request the generation of an appropriate name automatically.
-                    Name is primarily intended for creation idempotence and configuration
-                    definition. Cannot be updated. More info: http://kubernetes.io/docs/user-guide/identifiers#names'
+              logLevel:
+                description: LogLevel for victoria metrics single to be configured
+                  with.
+                enum:
+                - INFO
+                - WARN
+                - ERROR
+                - FATAL
+                - PANIC
+                type: string
+              nodeSelector:
+                additionalProperties:
                   type: string
-              type: object
-            podSecurityPolicyName:
-              description: PodSecurityPolicyName - defines name for podSecurityPolicy
-                in case of empty value, prefixedName will be used.
-              type: string
-            port:
-              description: Port listen port
-              type: string
-            priorityClassName:
-              description: PriorityClassName assigned to the Pods
-              type: string
-            readinessProbe:
-              description: ReadinessProbe that will be added CRD pod
-              properties:
-                exec:
-                  description: One and only one of the following should be specified.
-                    Exec specifies the action to take.
-                  properties:
-                    command:
-                      description: Command is the command line to execute inside the
-                        container, the working directory for the command  is root
-                        ('/') in the container's filesystem. The command is simply
-                        exec'd, it is not run inside a shell, so traditional shell
-                        instructions ('|', etc) won't work. To use a shell, you need
-                        to explicitly call out to that shell. Exit status of 0 is
-                        treated as live/healthy and non-zero is unhealthy.
-                      items:
-                        type: string
-                      type: array
-                  type: object
-                failureThreshold:
-                  description: Minimum consecutive failures for the probe to be considered
-                    failed after having succeeded. Defaults to 3. Minimum value is
-                    1.
-                  format: int32
-                  type: integer
-                httpGet:
-                  description: HTTPGet specifies the http request to perform.
-                  properties:
-                    host:
-                      description: Host name to connect to, defaults to the pod IP.
-                        You probably want to set "Host" in httpHeaders instead.
-                      type: string
-                    httpHeaders:
-                      description: Custom headers to set in the request. HTTP allows
-                        repeated headers.
-                      items:
-                        description: HTTPHeader describes a custom header to be used
-                          in HTTP probes
-                        properties:
-                          name:
-                            description: The header field name
-                            type: string
-                          value:
-                            description: The header field value
-                            type: string
-                        required:
-                        - name
-                        - value
-                        type: object
-                      type: array
-                    path:
-                      description: Path to access on the HTTP server.
-                      type: string
-                    port:
-                      anyOf:
-                      - type: integer
-                      - type: string
-                      description: Name or number of the port to access on the container.
-                        Number must be in the range 1 to 65535. Name must be an IANA_SVC_NAME.
-                      x-kubernetes-int-or-string: true
-                    scheme:
-                      description: Scheme to use for connecting to the host. Defaults
-                        to HTTP.
-                      type: string
-                  required:
-                  - port
-                  type: object
-                initialDelaySeconds:
-                  description: 'Number of seconds after the container has started
-                    before liveness probes are initiated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes'
-                  format: int32
-                  type: integer
-                periodSeconds:
-                  description: How often (in seconds) to perform the probe. Default
-                    to 10 seconds. Minimum value is 1.
-                  format: int32
-                  type: integer
-                successThreshold:
-                  description: Minimum consecutive successes for the probe to be considered
-                    successful after having failed. Defaults to 1. Must be 1 for liveness
-                    and startup. Minimum value is 1.
-                  format: int32
-                  type: integer
-                tcpSocket:
-                  description: 'TCPSocket specifies an action involving a TCP port.
-                    TCP hooks not yet supported TODO: implement a realistic TCP lifecycle
-                    hook'
-                  properties:
-                    host:
-                      description: 'Optional: Host name to connect to, defaults to
-                        the pod IP.'
-                      type: string
-                    port:
-                      anyOf:
-                      - type: integer
-                      - type: string
-                      description: Number or name of the port to access on the container.
-                        Number must be in the range 1 to 65535. Name must be an IANA_SVC_NAME.
-                      x-kubernetes-int-or-string: true
-                  required:
-                  - port
-                  type: object
-                terminationGracePeriodSeconds:
-                  description: Optional duration in seconds the pod needs to terminate
-                    gracefully upon probe failure. The grace period is the duration
-                    in seconds after the processes running in the pod are sent a termination
-                    signal and the time when the processes are forcibly halted with
-                    a kill signal. Set this value longer than the expected cleanup
-                    time for your process. If this value is nil, the pod's terminationGracePeriodSeconds
-                    will be used. Otherwise, this value overrides the value provided
-                    by the pod spec. Value must be non-negative integer. The value
-                    zero indicates stop immediately via the kill signal (no opportunity
-                    to shut down). This is an alpha field and requires enabling ProbeTerminationGracePeriod
-                    feature gate.
-                  format: int64
-                  type: integer
-                timeoutSeconds:
-                  description: 'Number of seconds after which the probe times out.
-                    Defaults to 1 second. Minimum value is 1. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes'
-                  format: int32
-                  type: integer
-              type: object
-            replicaCount:
-              description: ReplicaCount is the expected size of the VMAuth
-              format: int32
-              type: integer
-            resources:
-              description: Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
-                if not defined default resources from operator config will be used
-              properties:
-                limits:
-                  additionalProperties:
+                description: NodeSelector Define which Nodes the Pods are scheduled
+                  on.
+                type: object
+              podDisruptionBudget:
+                description: PodDisruptionBudget created by operator
+                properties:
+                  maxUnavailable:
                     anyOf:
                     - type: integer
                     - type: string
-                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                    description: An eviction is allowed if at most "maxUnavailable"
+                      pods selected by "selector" are unavailable after the eviction,
+                      i.e. even in absence of the evicted pod. For example, one can
+                      prevent all voluntary evictions by specifying 0. This is a mutually
+                      exclusive setting with "minAvailable".
                     x-kubernetes-int-or-string: true
-                  description: 'Limits describes the maximum amount of compute resources
-                    allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
-                  type: object
-                requests:
-                  additionalProperties:
+                  minAvailable:
                     anyOf:
                     - type: integer
                     - type: string
-                    pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                    description: An eviction is allowed if at least "minAvailable"
+                      pods selected by "selector" will still be available after the
+                      eviction, i.e. even in the absence of the evicted pod.  So for
+                      example you can prevent all voluntary evictions by specifying
+                      "100%".
                     x-kubernetes-int-or-string: true
-                  description: 'Requests describes the minimum amount of compute resources
-                    required. If Requests is omitted for a container, it defaults
-                    to Limits if that is explicitly specified, otherwise to an implementation-defined
-                    value. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
-                  type: object
-              type: object
-            runtimeClassName:
-              description: RuntimeClassName - defines runtime class for kubernetes
-                pod. https://kubernetes.io/docs/concepts/containers/runtime-class/
-              type: string
-            schedulerName:
-              description: SchedulerName - defines kubernetes scheduler name
-              type: string
-            secrets:
-              description: Secrets is a list of Secrets in the same namespace as the
-                VMAuth object, which shall be mounted into the VMAuth Pods.
-              items:
-                type: string
-              type: array
-            securityContext:
-              description: SecurityContext holds pod-level security attributes and
-                common container settings. This defaults to the default PodSecurityContext.
-              type: object
-            serviceAccountName:
-              description: ServiceAccountName is the name of the ServiceAccount to
-                use to run the VMAuth Pods.
-              type: string
-            serviceSpec:
-              description: ServiceSpec that will be added to vmsingle service spec
-              required:
-              - spec
-              type: object
-            startupProbe:
-              description: StartupProbe that will be added to CRD pod
-              properties:
-                exec:
-                  description: One and only one of the following should be specified.
-                    Exec specifies the action to take.
-                  properties:
-                    command:
-                      description: Command is the command line to execute inside the
-                        container, the working directory for the command  is root
-                        ('/') in the container's filesystem. The command is simply
-                        exec'd, it is not run inside a shell, so traditional shell
-                        instructions ('|', etc) won't work. To use a shell, you need
-                        to explicitly call out to that shell. Exit status of 0 is
-                        treated as live/healthy and non-zero is unhealthy.
-                      items:
-                        type: string
-                      type: array
-                  type: object
-                failureThreshold:
-                  description: Minimum consecutive failures for the probe to be considered
-                    failed after having succeeded. Defaults to 3. Minimum value is
-                    1.
-                  format: int32
-                  type: integer
-                httpGet:
-                  description: HTTPGet specifies the http request to perform.
-                  properties:
-                    host:
-                      description: Host name to connect to, defaults to the pod IP.
-                        You probably want to set "Host" in httpHeaders instead.
-                      type: string
-                    httpHeaders:
-                      description: Custom headers to set in the request. HTTP allows
-                        repeated headers.
-                      items:
-                        description: HTTPHeader describes a custom header to be used
-                          in HTTP probes
-                        properties:
-                          name:
-                            description: The header field name
-                            type: string
-                          value:
-                            description: The header field value
-                            type: string
-                        required:
-                        - name
-                        - value
-                        type: object
-                      type: array
-                    path:
-                      description: Path to access on the HTTP server.
-                      type: string
-                    port:
-                      anyOf:
-                      - type: integer
-                      - type: string
-                      description: Name or number of the port to access on the container.
-                        Number must be in the range 1 to 65535. Name must be an IANA_SVC_NAME.
-                      x-kubernetes-int-or-string: true
-                    scheme:
-                      description: Scheme to use for connecting to the host. Defaults
-                        to HTTP.
-                      type: string
-                  required:
-                  - port
-                  type: object
-                initialDelaySeconds:
-                  description: 'Number of seconds after the container has started
-                    before liveness probes are initiated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes'
-                  format: int32
-                  type: integer
-                periodSeconds:
-                  description: How often (in seconds) to perform the probe. Default
-                    to 10 seconds. Minimum value is 1.
-                  format: int32
-                  type: integer
-                successThreshold:
-                  description: Minimum consecutive successes for the probe to be considered
-                    successful after having failed. Defaults to 1. Must be 1 for liveness
-                    and startup. Minimum value is 1.
-                  format: int32
-                  type: integer
-                tcpSocket:
-                  description: 'TCPSocket specifies an action involving a TCP port.
-                    TCP hooks not yet supported TODO: implement a realistic TCP lifecycle
-                    hook'
-                  properties:
-                    host:
-                      description: 'Optional: Host name to connect to, defaults to
-                        the pod IP.'
-                      type: string
-                    port:
-                      anyOf:
-                      - type: integer
-                      - type: string
-                      description: Number or name of the port to access on the container.
-                        Number must be in the range 1 to 65535. Name must be an IANA_SVC_NAME.
-                      x-kubernetes-int-or-string: true
-                  required:
-                  - port
-                  type: object
-                terminationGracePeriodSeconds:
-                  description: Optional duration in seconds the pod needs to terminate
-                    gracefully upon probe failure. The grace period is the duration
-                    in seconds after the processes running in the pod are sent a termination
-                    signal and the time when the processes are forcibly halted with
-                    a kill signal. Set this value longer than the expected cleanup
-                    time for your process. If this value is nil, the pod's terminationGracePeriodSeconds
-                    will be used. Otherwise, this value overrides the value provided
-                    by the pod spec. Value must be non-negative integer. The value
-                    zero indicates stop immediately via the kill signal (no opportunity
-                    to shut down). This is an alpha field and requires enabling ProbeTerminationGracePeriod
-                    feature gate.
-                  format: int64
-                  type: integer
-                timeoutSeconds:
-                  description: 'Number of seconds after which the probe times out.
-                    Defaults to 1 second. Minimum value is 1. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes'
-                  format: int32
-                  type: integer
-              type: object
-            tolerations:
-              description: Tolerations If specified, the pod's tolerations.
-              items:
-                description: The pod this Toleration is attached to tolerates any
-                  taint that matches the triple <key,value,effect> using the matching
-                  operator <operator>.
-                properties:
-                  effect:
-                    description: Effect indicates the taint effect to match. Empty
-                      means match all taint effects. When specified, allowed values
-                      are NoSchedule, PreferNoSchedule and NoExecute.
-                    type: string
-                  key:
-                    description: Key is the taint key that the toleration applies
-                      to. Empty means match all taint keys. If the key is empty, operator
-                      must be Exists; this combination means to match all values and
-                      all keys.
-                    type: string
-                  operator:
-                    description: Operator represents a key's relationship to the value.
-                      Valid operators are Exists and Equal. Defaults to Equal. Exists
-                      is equivalent to wildcard for value, so that a pod can tolerate
-                      all taints of a particular category.
-                    type: string
-                  tolerationSeconds:
-                    description: TolerationSeconds represents the period of time the
-                      toleration (which must be of effect NoExecute, otherwise this
-                      field is ignored) tolerates the taint. By default, it is not
-                      set, which means tolerate the taint forever (do not evict).
-                      Zero and negative values will be treated as 0 (evict immediately)
-                      by the system.
-                    format: int64
-                    type: integer
-                  value:
-                    description: Value is the taint value the toleration matches to.
-                      If the operator is Exists, the value should be empty, otherwise
-                      just a regular string.
-                    type: string
                 type: object
-              type: array
-            topologySpreadConstraints:
-              description: TopologySpreadConstraints embedded kubernetes pod configuration
-                option, controls how pods are spread across your cluster among failure-domains
-                such as regions, zones, nodes, and other user-defined topology domains
-                https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/
-              items:
-                description: TopologySpreadConstraint specifies how to spread matching
-                  pods among the given topology.
-                required:
-                - maxSkew
-                - topologyKey
-                - whenUnsatisfiable
-                type: object
-              type: array
-            userNamespaceSelector:
-              description: UserNamespaceSelector Namespaces to be selected for  VMAuth
-                discovery. If nil, only check own namespace.
-              properties:
-                matchExpressions:
-                  description: matchExpressions is a list of label selector requirements.
-                    The requirements are ANDed.
-                  items:
-                    description: A label selector requirement is a selector that contains
-                      values, a key, and an operator that relates the key and values.
-                    properties:
-                      key:
-                        description: key is the label key that the selector applies
-                          to.
-                        type: string
-                      operator:
-                        description: operator represents a key's relationship to a
-                          set of values. Valid operators are In, NotIn, Exists and
-                          DoesNotExist.
-                        type: string
-                      values:
-                        description: values is an array of string values. If the operator
-                          is In or NotIn, the values array must be non-empty. If the
-                          operator is Exists or DoesNotExist, the values array must
-                          be empty. This array is replaced during a strategic merge
-                          patch.
-                        items:
-                          type: string
-                        type: array
-                    required:
-                    - key
-                    - operator
-                    type: object
-                  type: array
-                matchLabels:
-                  additionalProperties:
-                    type: string
-                  description: matchLabels is a map of {key,value} pairs. A single
-                    {key,value} in the matchLabels map is equivalent to an element
-                    of matchExpressions, whose key field is "key", the operator is
-                    "In", and the values array contains only "value". The requirements
-                    are ANDed.
-                  type: object
-              type: object
-            userSelector:
-              description: UserSelector defines VMUser to be selected for config file
-                generation.
-              properties:
-                matchExpressions:
-                  description: matchExpressions is a list of label selector requirements.
-                    The requirements are ANDed.
-                  items:
-                    description: A label selector requirement is a selector that contains
-                      values, a key, and an operator that relates the key and values.
-                    properties:
-                      key:
-                        description: key is the label key that the selector applies
-                          to.
-                        type: string
-                      operator:
-                        description: operator represents a key's relationship to a
-                          set of values. Valid operators are In, NotIn, Exists and
-                          DoesNotExist.
-                        type: string
-                      values:
-                        description: values is an array of string values. If the operator
-                          is In or NotIn, the values array must be non-empty. If the
-                          operator is Exists or DoesNotExist, the values array must
-                          be empty. This array is replaced during a strategic merge
-                          patch.
-                        items:
-                          type: string
-                        type: array
-                    required:
-                    - key
-                    - operator
-                    type: object
-                  type: array
-                matchLabels:
-                  additionalProperties:
-                    type: string
-                  description: matchLabels is a map of {key,value} pairs. A single
-                    {key,value} in the matchLabels map is equivalent to an element
-                    of matchExpressions, whose key field is "key", the operator is
-                    "In", and the values array contains only "value". The requirements
-                    are ANDed.
-                  type: object
-              type: object
-            volumeMounts:
-              description: VolumeMounts allows configuration of additional VolumeMounts
-                on the output Deployment definition. VolumeMounts specified will be
-                appended to other VolumeMounts in the VMAuth container, that are generated
-                as a result of StorageSpec objects.
-              items:
-                description: VolumeMount describes a mounting of a Volume within a
-                  container.
+              podMetadata:
+                description: PodMetadata configures Labels and Annotations which are
+                  propagated to the VMAuth pods.
                 properties:
-                  mountPath:
-                    description: Path within the container at which the volume should
-                      be mounted.  Must not contain ':'.
-                    type: string
-                  mountPropagation:
-                    description: mountPropagation determines how mounts are propagated
-                      from the host to container and the other way around. When not
-                      set, MountPropagationNone is used. This field is beta in 1.10.
-                    type: string
+                  annotations:
+                    additionalProperties:
+                      type: string
+                    description: 'Annotations is an unstructured key value map stored
+                      with a resource that may be set by external tools to store and
+                      retrieve arbitrary metadata. They are not queryable and should
+                      be preserved when modifying objects. More info: http://kubernetes.io/docs/user-guide/annotations'
+                    type: object
+                  labels:
+                    additionalProperties:
+                      type: string
+                    description: 'Labels Map of string keys and values that can be
+                      used to organize and categorize (scope and select) objects.
+                      May match selectors of replication controllers and services.
+                      More info: http://kubernetes.io/docs/user-guide/labels'
+                    type: object
                   name:
-                    description: This must match the Name of a Volume.
+                    description: 'Name must be unique within a namespace. Is required
+                      when creating resources, although some resources may allow a
+                      client to request the generation of an appropriate name automatically.
+                      Name is primarily intended for creation idempotence and configuration
+                      definition. Cannot be updated. More info: http://kubernetes.io/docs/user-guide/identifiers#names'
                     type: string
-                  readOnly:
-                    description: Mounted read-only if true, read-write otherwise (false
-                      or unspecified). Defaults to false.
-                    type: boolean
-                  subPath:
-                    description: Path within the volume from which the container's
-                      volume should be mounted. Defaults to "" (volume's root).
-                    type: string
-                  subPathExpr:
-                    description: Expanded path within the volume from which the container's
-                      volume should be mounted. Behaves similarly to SubPath but environment
-                      variable references $(VAR_NAME) are expanded using the container's
-                      environment. Defaults to "" (volume's root). SubPathExpr and
-                      SubPath are mutually exclusive.
-                    type: string
-                required:
-                - mountPath
-                - name
                 type: object
-              type: array
-            volumes:
-              description: Volumes allows configuration of additional volumes on the
-                output deploy definition. Volumes specified will be appended to other
-                volumes that are generated as a result of StorageSpec objects.
-              items:
-                description: Volume represents a named volume in a pod that may be
-                  accessed by any container in the pod.
-                required:
-                - name
+              podSecurityPolicyName:
+                description: PodSecurityPolicyName - defines name for podSecurityPolicy
+                  in case of empty value, prefixedName will be used.
+                type: string
+              port:
+                description: Port listen port
+                type: string
+              priorityClassName:
+                description: PriorityClassName assigned to the Pods
+                type: string
+              readinessProbe:
+                description: ReadinessProbe that will be added CRD pod
                 type: object
-              type: array
-          type: object
-        status:
-          description: VMAuthStatus defines the observed state of VMAuth
-          type: object
-      type: object
-  version: v1beta1
-  versions:
-  - name: v1beta1
+              replicaCount:
+                description: ReplicaCount is the expected size of the VMAuth
+                format: int32
+                type: integer
+              resources:
+                description: Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+                  if not defined default resources from operator config will be used
+                properties:
+                  limits:
+                    additionalProperties:
+                      anyOf:
+                      - type: integer
+                      - type: string
+                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                      x-kubernetes-int-or-string: true
+                    description: 'Limits describes the maximum amount of compute resources
+                      allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
+                    type: object
+                  requests:
+                    additionalProperties:
+                      anyOf:
+                      - type: integer
+                      - type: string
+                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                      x-kubernetes-int-or-string: true
+                    description: 'Requests describes the minimum amount of compute
+                      resources required. If Requests is omitted for a container,
+                      it defaults to Limits if that is explicitly specified, otherwise
+                      to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
+                    type: object
+                type: object
+              runtimeClassName:
+                description: RuntimeClassName - defines runtime class for kubernetes
+                  pod. https://kubernetes.io/docs/concepts/containers/runtime-class/
+                type: string
+              schedulerName:
+                description: SchedulerName - defines kubernetes scheduler name
+                type: string
+              secrets:
+                description: Secrets is a list of Secrets in the same namespace as
+                  the VMAuth object, which shall be mounted into the VMAuth Pods.
+                items:
+                  type: string
+                type: array
+              securityContext:
+                description: SecurityContext holds pod-level security attributes and
+                  common container settings. This defaults to the default PodSecurityContext.
+                type: object
+              serviceAccountName:
+                description: ServiceAccountName is the name of the ServiceAccount
+                  to use to run the VMAuth Pods.
+                type: string
+              serviceSpec:
+                description: ServiceSpec that will be added to vmsingle service spec
+                properties:
+                  metadata:
+                    description: EmbeddedObjectMetadata defines objectMeta for additional
+                      service.
+                    properties:
+                      annotations:
+                        additionalProperties:
+                          type: string
+                        description: 'Annotations is an unstructured key value map
+                          stored with a resource that may be set by external tools
+                          to store and retrieve arbitrary metadata. They are not queryable
+                          and should be preserved when modifying objects. More info:
+                          http://kubernetes.io/docs/user-guide/annotations'
+                        type: object
+                      labels:
+                        additionalProperties:
+                          type: string
+                        description: 'Labels Map of string keys and values that can
+                          be used to organize and categorize (scope and select) objects.
+                          May match selectors of replication controllers and services.
+                          More info: http://kubernetes.io/docs/user-guide/labels'
+                        type: object
+                      name:
+                        description: 'Name must be unique within a namespace. Is required
+                          when creating resources, although some resources may allow
+                          a client to request the generation of an appropriate name
+                          automatically. Name is primarily intended for creation idempotence
+                          and configuration definition. Cannot be updated. More info:
+                          http://kubernetes.io/docs/user-guide/identifiers#names'
+                        type: string
+                    type: object
+                  spec:
+                    description: 'ServiceSpec describes the attributes that a user
+                      creates on a service. More info: https://kubernetes.io/docs/concepts/services-networking/service/'
+                    type: object
+                required:
+                - spec
+                type: object
+              startupProbe:
+                description: StartupProbe that will be added to CRD pod
+                type: object
+              tolerations:
+                description: Tolerations If specified, the pod's tolerations.
+                items:
+                  description: The pod this Toleration is attached to tolerates any
+                    taint that matches the triple <key,value,effect> using the matching
+                    operator <operator>.
+                  properties:
+                    effect:
+                      description: Effect indicates the taint effect to match. Empty
+                        means match all taint effects. When specified, allowed values
+                        are NoSchedule, PreferNoSchedule and NoExecute.
+                      type: string
+                    key:
+                      description: Key is the taint key that the toleration applies
+                        to. Empty means match all taint keys. If the key is empty,
+                        operator must be Exists; this combination means to match all
+                        values and all keys.
+                      type: string
+                    operator:
+                      description: Operator represents a key's relationship to the
+                        value. Valid operators are Exists and Equal. Defaults to Equal.
+                        Exists is equivalent to wildcard for value, so that a pod
+                        can tolerate all taints of a particular category.
+                      type: string
+                    tolerationSeconds:
+                      description: TolerationSeconds represents the period of time
+                        the toleration (which must be of effect NoExecute, otherwise
+                        this field is ignored) tolerates the taint. By default, it
+                        is not set, which means tolerate the taint forever (do not
+                        evict). Zero and negative values will be treated as 0 (evict
+                        immediately) by the system.
+                      format: int64
+                      type: integer
+                    value:
+                      description: Value is the taint value the toleration matches
+                        to. If the operator is Exists, the value should be empty,
+                        otherwise just a regular string.
+                      type: string
+                  type: object
+                type: array
+              topologySpreadConstraints:
+                description: TopologySpreadConstraints embedded kubernetes pod configuration
+                  option, controls how pods are spread across your cluster among failure-domains
+                  such as regions, zones, nodes, and other user-defined topology domains
+                  https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/
+                items:
+                  description: TopologySpreadConstraint specifies how to spread matching
+                    pods among the given topology.
+                  required:
+                  - maxSkew
+                  - topologyKey
+                  - whenUnsatisfiable
+                  type: object
+                type: array
+              userNamespaceSelector:
+                description: UserNamespaceSelector Namespaces to be selected for  VMAuth
+                  discovery. If nil, only check own namespace.
+                properties:
+                  matchExpressions:
+                    description: matchExpressions is a list of label selector requirements.
+                      The requirements are ANDed.
+                    items:
+                      description: A label selector requirement is a selector that
+                        contains values, a key, and an operator that relates the key
+                        and values.
+                      properties:
+                        key:
+                          description: key is the label key that the selector applies
+                            to.
+                          type: string
+                        operator:
+                          description: operator represents a key's relationship to
+                            a set of values. Valid operators are In, NotIn, Exists
+                            and DoesNotExist.
+                          type: string
+                        values:
+                          description: values is an array of string values. If the
+                            operator is In or NotIn, the values array must be non-empty.
+                            If the operator is Exists or DoesNotExist, the values
+                            array must be empty. This array is replaced during a strategic
+                            merge patch.
+                          items:
+                            type: string
+                          type: array
+                      required:
+                      - key
+                      - operator
+                      type: object
+                    type: array
+                  matchLabels:
+                    additionalProperties:
+                      type: string
+                    description: matchLabels is a map of {key,value} pairs. A single
+                      {key,value} in the matchLabels map is equivalent to an element
+                      of matchExpressions, whose key field is "key", the operator
+                      is "In", and the values array contains only "value". The requirements
+                      are ANDed.
+                    type: object
+                type: object
+              userSelector:
+                description: UserSelector defines VMUser to be selected for config
+                  file generation.
+                properties:
+                  matchExpressions:
+                    description: matchExpressions is a list of label selector requirements.
+                      The requirements are ANDed.
+                    items:
+                      description: A label selector requirement is a selector that
+                        contains values, a key, and an operator that relates the key
+                        and values.
+                      properties:
+                        key:
+                          description: key is the label key that the selector applies
+                            to.
+                          type: string
+                        operator:
+                          description: operator represents a key's relationship to
+                            a set of values. Valid operators are In, NotIn, Exists
+                            and DoesNotExist.
+                          type: string
+                        values:
+                          description: values is an array of string values. If the
+                            operator is In or NotIn, the values array must be non-empty.
+                            If the operator is Exists or DoesNotExist, the values
+                            array must be empty. This array is replaced during a strategic
+                            merge patch.
+                          items:
+                            type: string
+                          type: array
+                      required:
+                      - key
+                      - operator
+                      type: object
+                    type: array
+                  matchLabels:
+                    additionalProperties:
+                      type: string
+                    description: matchLabels is a map of {key,value} pairs. A single
+                      {key,value} in the matchLabels map is equivalent to an element
+                      of matchExpressions, whose key field is "key", the operator
+                      is "In", and the values array contains only "value". The requirements
+                      are ANDed.
+                    type: object
+                type: object
+              volumeMounts:
+                description: VolumeMounts allows configuration of additional VolumeMounts
+                  on the output Deployment definition. VolumeMounts specified will
+                  be appended to other VolumeMounts in the VMAuth container, that
+                  are generated as a result of StorageSpec objects.
+                items:
+                  description: VolumeMount describes a mounting of a Volume within
+                    a container.
+                  properties:
+                    mountPath:
+                      description: Path within the container at which the volume should
+                        be mounted.  Must not contain ':'.
+                      type: string
+                    mountPropagation:
+                      description: mountPropagation determines how mounts are propagated
+                        from the host to container and the other way around. When
+                        not set, MountPropagationNone is used. This field is beta
+                        in 1.10.
+                      type: string
+                    name:
+                      description: This must match the Name of a Volume.
+                      type: string
+                    readOnly:
+                      description: Mounted read-only if true, read-write otherwise
+                        (false or unspecified). Defaults to false.
+                      type: boolean
+                    subPath:
+                      description: Path within the volume from which the container's
+                        volume should be mounted. Defaults to "" (volume's root).
+                      type: string
+                    subPathExpr:
+                      description: Expanded path within the volume from which the
+                        container's volume should be mounted. Behaves similarly to
+                        SubPath but environment variable references $(VAR_NAME) are
+                        expanded using the container's environment. Defaults to ""
+                        (volume's root). SubPathExpr and SubPath are mutually exclusive.
+                      type: string
+                  required:
+                  - mountPath
+                  - name
+                  type: object
+                type: array
+              volumes:
+                description: Volumes allows configuration of additional volumes on
+                  the output deploy definition. Volumes specified will be appended
+                  to other volumes that are generated as a result of StorageSpec objects.
+                items:
+                  description: Volume represents a named volume in a pod that may
+                    be accessed by any container in the pod.
+                  required:
+                  - name
+                  type: object
+                type: array
+            type: object
+          status:
+            description: VMAuthStatus defines the observed state of VMAuth
+            type: object
+        type: object
     served: true
     storage: true
+    subresources:
+      status: {}

@@ -211,7 +211,7 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 	}
 
 	if len(cr.Spec.RemoteWrite) > 0 {
-		args = append(args, BuildRemoteWrites(cr, ssCache.baSecrets, ssCache.bearerTokens)...)
+		args = append(args, BuildRemoteWrites(cr, ssCache)...)
 	}
 	args = append(args, BuildRemoteWriteSettings(cr)...)
 
@@ -876,7 +876,7 @@ func BuildRemoteWriteSettings(cr *victoriametricsv1beta1.VMAgent) []string {
 	return args
 }
 
-func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, rwsBasicAuth map[string]*BasicAuthCredentials, rwsTokens map[string]string) []string {
+func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, ssCache *scrapesSecretsCache) []string {
 	var finalArgs []string
 	var remoteArgs []remoteFlag
 	remoteTargets := cr.Spec.RemoteWrite
@@ -892,6 +892,11 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, rwsBasicAuth map[stri
 	tlsKeys := remoteFlag{flagSetting: "-remoteWrite.tlsKeyFile="}
 	tlsInsecure := remoteFlag{flagSetting: "-remoteWrite.tlsInsecureSkipVerify="}
 	tlsServerName := remoteFlag{flagSetting: "-remoteWrite.tlsServerName="}
+	oauth2ClientID := remoteFlag{flagSetting: "-remoteWrite.oauth2.clientID="}
+	oauth2ClientSecret := remoteFlag{flagSetting: "-remoteWrite.oauth2.clientSecret="}
+	oauth2ClientSecretFile := remoteFlag{flagSetting: "-remoteWrite.oauth2.clientSecretFile="}
+	oauth2Scopes := remoteFlag{flagSetting: "-remoteWrite.oauth2.scopes="}
+	oauth2TokenUrl := remoteFlag{flagSetting: "-remoteWrite.oauth2.tokenUrl="}
 
 	pathPrefix := path.Join(tlsAssetsDir, cr.Namespace)
 
@@ -946,7 +951,7 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, rwsBasicAuth map[stri
 		var user string
 		var pass string
 		if rws.BasicAuth != nil {
-			if s, ok := rwsBasicAuth[fmt.Sprintf("remoteWriteSpec/%s", rws.URL)]; ok {
+			if s, ok := ssCache.baSecrets[fmt.Sprintf("remoteWriteSpec/%s", rws.URL)]; ok {
 				authUser.isNotNull = true
 				authPassword.isNotNull = true
 				user = s.username
@@ -958,7 +963,7 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, rwsBasicAuth map[stri
 
 		var value string
 		if rws.BearerTokenSecret != nil {
-			if s, ok := rwsTokens[fmt.Sprintf("remoteWriteSpec/%s", rws.URL)]; ok {
+			if s, ok := ssCache.bearerTokens[fmt.Sprintf("remoteWriteSpec/%s", rws.URL)]; ok {
 				bearerToken.isNotNull = true
 				value = s
 			}
@@ -984,9 +989,44 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, rwsBasicAuth map[stri
 		sendTimeout.flagSetting += fmt.Sprintf("%s,", value)
 
 		value = ""
+		var oaturl, oascopes, oaclientID, oaSecretKey, oaSecretKeyFile string
+		if rws.OAuth2 != nil {
+			if len(rws.OAuth2.TokenURL) > 0 {
+				oauth2TokenUrl.isNotNull = true
+				oaturl = rws.OAuth2.TokenURL
+			}
+
+			if len(rws.OAuth2.Scopes) > 0 {
+				oauth2Scopes.isNotNull = true
+				oascopes = strings.Join(rws.OAuth2.Scopes, ",")
+			}
+
+			if len(rws.OAuth2.ClientSecretFile) > 0 {
+				oauth2ClientSecretFile.isNotNull = true
+				oaSecretKeyFile = rws.OAuth2.ClientSecretFile
+			}
+
+			sv := ssCache.oauth2Secrets[fmt.Sprintf("remoteWriteSpec/%s", rws.URL)]
+			if rws.OAuth2.ClientSecret != nil && sv != nil {
+				oaSecretKey = sv.clientSecret
+				oauth2ClientSecret.isNotNull = true
+			}
+
+			if len(rws.OAuth2.ClientID.Name()) > 0 && sv != nil {
+				oaclientID = sv.clientID
+				oauth2ClientID.isNotNull = true
+			}
+
+		}
+		oauth2TokenUrl.flagSetting += fmt.Sprintf("%s,", oaturl)
+		oauth2ClientSecretFile.flagSetting += fmt.Sprintf("%s,", oaSecretKeyFile)
+		oauth2ClientSecret.flagSetting += fmt.Sprintf("%s,", oaSecretKey)
+		oauth2ClientID.flagSetting += fmt.Sprintf("%s,", oaclientID)
+		oauth2Scopes.flagSetting += fmt.Sprintf("%s,", oascopes)
 	}
 	remoteArgs = append(remoteArgs, url, authUser, authPassword, bearerToken, urlRelabelConfig, tlsInsecure, sendTimeout)
 	remoteArgs = append(remoteArgs, tlsServerName, tlsKeys, tlsCerts, tlsCAs)
+	remoteArgs = append(remoteArgs, oauth2ClientID, oauth2ClientSecret, oauth2ClientSecretFile, oauth2Scopes, oauth2TokenUrl)
 
 	for _, remoteArgType := range remoteArgs {
 		if remoteArgType.isNotNull {

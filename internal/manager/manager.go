@@ -32,12 +32,13 @@ var (
 	setupLog             = ctrl.Log.WithName("setup")
 	enableLeaderElection = flag.Bool("enable-leader-election", false, "Enable leader election for controller manager. "+
 		"Enabling this will ensure there is only one active controller manager.")
-	enableWebhooks  = flag.Bool("webhook.enable", false, "adds webhook server, you must mount cert and key or use cert-manager")
-	webhooksDir     = flag.String("webhook.certDir", "/tmp/k8s-webhook-server/serving-certs/", "root directory for webhook cert and key")
-	webhookCertName = flag.String("webhook.certName", "tls.crt", "name of webhook server Tls certificate inside tls.certDir")
-	webhookKeyName  = flag.String("webhook.keyName", "tls.key", "name of webhook server Tls key inside tls.certDir")
-	metricsAddr     = flag.String("metrics-addr", ":8080", "The address the metric endpoint binds to.")
-	listenAddr      = flag.String("http.listenAddr", ":8435", "http server listen addr - serves victoria-metrics http server + metrics.")
+	enableWebhooks      = flag.Bool("webhook.enable", false, "adds webhook server, you must mount cert and key or use cert-manager")
+	disalbeCRDOwnership = flag.Bool("controller.disableCRDOwnership", false, "disables CRD ownership add to cluster wide objects, must be disabled for clusters, lower then v1.16.0")
+	webhooksDir         = flag.String("webhook.certDir", "/tmp/k8s-webhook-server/serving-certs/", "root directory for webhook cert and key")
+	webhookCertName     = flag.String("webhook.certName", "tls.crt", "name of webhook server Tls certificate inside tls.certDir")
+	webhookKeyName      = flag.String("webhook.keyName", "tls.key", "name of webhook server Tls key inside tls.certDir")
+	metricsAddr         = flag.String("metrics-addr", ":8080", "The address the metric endpoint binds to.")
+	listenAddr          = flag.String("http.listenAddr", ":8435", "http server listen addr - serves victoria-metrics http server + metrics.")
 )
 
 func init() {
@@ -93,14 +94,18 @@ func RunManager(ctx context.Context) error {
 		return err
 	}
 
-	initC, err := client.New(mgr.GetConfig(), client.Options{Scheme: scheme})
-	if err != nil {
-		return err
+	if !*disalbeCRDOwnership {
+		initC, err := client.New(mgr.GetConfig(), client.Options{Scheme: scheme})
+		if err != nil {
+			return err
+		}
+		logger.Info("starting CRD ownership controller")
+		if err := crd.Init(ctx, initC); err != nil {
+			setupLog.Error(err, "unable to init crd data")
+			return err
+		}
 	}
-	if err := crd.Init(ctx, initC); err != nil {
-		setupLog.Error(err, "unable to init crd data")
-		return err
-	}
+
 	if *enableWebhooks {
 		if err = addWebhooks(mgr); err != nil {
 			logger.Error(err, "cannot register webhooks")

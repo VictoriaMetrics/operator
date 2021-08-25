@@ -43,6 +43,7 @@ spec:
         cpu: "0.5"
         memory: 500Mi
     vmBackup:
+      acceptEULA: true
       destination: "gcs://bucket/path/to/backup/dir"
       concurrency: 5
       credentialsSecret:

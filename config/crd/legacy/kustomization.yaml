@@ -1,0 +1,17 @@
+resources:
+- operator.victoriametrics.com_vmagents.yaml
+- operator.victoriametrics.com_vmalerts.yaml
+- operator.victoriametrics.com_vmalertmanagers.yaml
+- operator.victoriametrics.com_vmpodscrapes.yaml
+- operator.victoriametrics.com_vmrules.yaml
+- operator.victoriametrics.com_vmservicescrapes.yaml
+- operator.victoriametrics.com_vmsingles.yaml
+- operator.victoriametrics.com_vmclusters.yaml
+
+- operator.victoriametrics.com_vmprobes.yaml
+- operator.victoriametrics.com_vmnodescrapes.yaml
+- operator.victoriametrics.com_vmstaticscrapes.yaml
+- operator.victoriametrics.com_vmauths.yaml
+- operator.victoriametrics.com_vmusers.yaml
+- operator.victoriametrics.com_vmalertmanagerconfigs.yaml
+# +kubebuilder:scaffold:crdkustomizeresource

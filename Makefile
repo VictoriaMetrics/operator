@@ -66,8 +66,8 @@ fix118:
 
 fix118_yaml:
 	docker run --rm -v "${PWD}":/workdir mikefarah/yq:2.2.0 /bin/sh -c ' \
-	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalertmanagerconfigs.yaml $(YAML_DROP_PREFIX).route.properties.routes.items &&\
-	    yq w -i  $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalertmanagerconfigs.yaml $(YAML_DROP_PREFIX).route.properties.routes.type object &&\
+	    yq w -i $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalertmanagerconfigs.yaml $(YAML_DROP_PREFIX).route.properties.routes.items.type object &&\
+	    yq w -i  $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalertmanagerconfigs.yaml $(YAML_DROP_PREFIX).route.properties.routes.type array &&\
 	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalertmanagers.yaml $(YAML_DROP_PREFIX).initContainers.items.properties &&\
 	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalertmanagers.yaml $(YAML_DROP_PREFIX).containers.items.properties &&\
 	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalertmanagers.yaml $(YAML_DROP_PREFIX).topologySpreadConstraints.items.properties &&\
@@ -341,9 +341,11 @@ build: manager generate manifests fix118 fix_crd_nulls
 
 release-package: kustomize
 	mkdir -p release/crds/
+	mkdir -p release/crds_legacy/
 	mkdir release/operator
 	mkdir release/examples
 	kustomize build config/crd > release/crds/crd.yaml
+	kustomize build config/crd/legacy > release/crds_legacy/crd.yaml
 	kustomize build config/rbac > release/operator/rbac.yaml
 	cp config/examples/*.yaml release/examples/
 	cd config/manager && \
@@ -354,7 +356,8 @@ release-package: kustomize
 	rm -rf release/
 
 packagemanifests: manifests fix118 fix_crd_nulls
-	$(OPERATOR_BIN) generate kustomize manifests -q
+    # TODO(f41gh7): it fall into endless loop for some reason
+	#$(OPERATOR_BIN) generate kustomize manifests -q
 	kustomize build config/manifests | $(OPERATOR_BIN) generate packagemanifests -q --version $(VERSION_TRIM) --channel=$(CHANNEL) --default-channel
 	mv packagemanifests/$(VERSION_TRIM)/victoriametrics-operator.clusterserviceversion.yaml packagemanifests/$(VERSION_TRIM)/victoriametrics-operator.$(VERSION_TRIM).clusterserviceversion.yaml
 	sed -i "s|$(DOCKER_REPO):.*|$(DOCKER_REPO):$(VERSION)|" packagemanifests/$(VERSION_TRIM)/*
@@ -362,7 +365,7 @@ packagemanifests: manifests fix118 fix_crd_nulls
 	 yq m -i -a packagemanifests/$(VERSION_TRIM)/victoriametrics-operator.$(VERSION_TRIM).clusterserviceversion.yaml hack/bundle_csv_vmagent.yaml
 
 
-packagemanifests-push: packagemanifests
+packagemanifests-push:
 	operator-courier push packagemanifests victoriametrics victoriametrics-operator $(VERSION_TRIM) "$(AUTH_TOKEN)"
 
 # special section for cross compilation

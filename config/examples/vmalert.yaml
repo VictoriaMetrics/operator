@@ -10,7 +10,6 @@ spec:
   notifier:
     url: "http://vmalertmanager-example-alertmanager.default.svc:9093"
   evaluationInterval: "30s"
-  version: "latest"
   ruleSelector:
     matchLabels:
       managed-by: vm-operator

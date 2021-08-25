@@ -16,7 +16,7 @@ spec:
     limits:
       cpu: "500m"
       memory: "850Mi"
-  additionalArgs:
+  extraArgs:
     memory.allowedPercent: "40"
   remoteWrite:
     - url: "http://vmsingle-example-vmsingle-pvc.default.svc:8429/api/v1/write"

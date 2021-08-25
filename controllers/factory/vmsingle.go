@@ -6,10 +6,8 @@ import (
 	"path"
 	"sort"
 
-	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
-	"k8s.io/apimachinery/pkg/labels"
-
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/controllers/factory/psp"
 	"github.com/VictoriaMetrics/operator/internal/config"
@@ -17,6 +15,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -392,13 +391,21 @@ func makeSpecForVMBackuper(
 		cr.Port = c.VMBackup.Port
 	}
 
+	snapshotCreateURL := cr.SnapshotCreateURL
+	snapshotDeleteURL := cr.SnapShotDeleteURL
+	if snapshotCreateURL == "" {
+		//http://localhost:port/snaphsot/create
+		snapshotCreateURL = cr.SnapshotCreatePathWithFlags(port, extraArgs)
+	}
+	if snapshotDeleteURL == "" {
+		//http://localhost:port/snaphsot/delete
+		snapshotDeleteURL = cr.SnapshotDeletePathWithFlags(port, extraArgs)
+	}
 	args := []string{
 		fmt.Sprintf("-storageDataPath=%s", storagePath),
 		fmt.Sprintf("-dst=%s", cr.Destination),
-		//http://localhost:port/snaphsot/create
-		fmt.Sprintf("-snapshot.createURL=%s", cr.SnapshotCreatePathWithFlags(port, extraArgs)),
-		//http://localhost:port/snaphsot/delete
-		fmt.Sprintf("-snapshot.deleteURL=%s", cr.SnapshotDeletePathWithFlags(port, extraArgs)),
+		fmt.Sprintf("-snapshot.createURL=%s", snapshotCreateURL),
+		fmt.Sprintf("-snapshot.deleteURL=%s", snapshotDeleteURL),
 		"-eula",
 	}
 	if cr.LogLevel != nil {

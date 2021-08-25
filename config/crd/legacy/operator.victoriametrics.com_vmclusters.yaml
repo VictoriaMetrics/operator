@@ -2092,6 +2092,12 @@ spec:
                             https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                           type: object
                       type: object
+                    snapshotCreateURL:
+                      description: SnapshotCreateURL overwrites url for snapshot create
+                      type: string
+                    snapshotDeleteURL:
+                      description: SnapShotDeleteURL overwrites url for snapshot delete
+                      type: string
                     volumeMounts:
                       description: VolumeMounts allows configuration of additional
                         VolumeMounts on the output Deployment definition. VolumeMounts

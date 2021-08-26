@@ -23,7 +23,7 @@ With CRD (Custom Resource Definition) you can define application configuration a
 
  Operator simplifies VictoriaMetrics cluster installation, upgrading and managing.
  
- It has integration with VictoriaMetrics `vmbackuper` - advanced tools for making backups. Check backup [docs](/docs/backups.MD)
+ It has integration with VictoriaMetrics `vmbackupmanager` - advanced tools for making backups. Check backup [docs](/docs/backups.MD)
 
 ## Use cases
 

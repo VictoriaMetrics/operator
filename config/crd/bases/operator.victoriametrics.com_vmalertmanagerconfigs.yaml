@@ -2516,7 +2516,9 @@ spec:
                     type: string
                   routes:
                     description: Child routes.
-                    type: object
+                    items:
+                      type: object
+                    type: array
                 required:
                 - receiver
                 type: object

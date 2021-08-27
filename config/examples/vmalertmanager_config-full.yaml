@@ -5,7 +5,7 @@ metadata:
   namespace: default
 spec:
   inhibit_rules:
-    - equals:
+    - equal:
         - job = "vmalertmanager"
       target_matchers:
         - instance != "prod"

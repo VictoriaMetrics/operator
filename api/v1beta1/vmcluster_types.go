@@ -572,6 +572,12 @@ type VMBackup struct {
 	// otherwise backupmanager cannot be added to single/cluster version.
 	// https://victoriametrics.com/assets/VM_EULA.pdf
 	AcceptEULA bool `json:"acceptEULA"`
+	// SnapshotCreateURL overwrites url for snapshot create
+	// +optional
+	SnapshotCreateURL string `json:"snapshotCreateURL,omitempty"`
+	// SnapShotDeleteURL overwrites url for snapshot delete
+	// +optional
+	SnapShotDeleteURL string `json:"snapshotDeleteURL,omitempty"`
 	// Defines number of concurrent workers. Higher concurrency may reduce backup duration (default 10)
 	// +optional
 	Concurrency *int32 `json:"concurrency,omitempty"`
@@ -813,11 +819,23 @@ func (cr VMCluster) MetricPathStorage() string {
 }
 
 func (cr VMBackup) SnapshotCreatePathWithFlags(port string, extraArgs map[string]string) string {
-	return fmt.Sprintf("http://localhost:%s%s", port, path.Join(buildPathWithPrefixFlag(extraArgs, snapshotCreate)))
+	return joinBackupAuthKey(fmt.Sprintf("http://localhost:%s%s", port, path.Join(buildPathWithPrefixFlag(extraArgs, snapshotCreate))), extraArgs)
 }
 
 func (cr VMBackup) SnapshotDeletePathWithFlags(port string, extraArgs map[string]string) string {
-	return fmt.Sprintf("http://localhost:%s%s", port, path.Join(buildPathWithPrefixFlag(extraArgs, snapshotDelete)))
+	return joinBackupAuthKey(fmt.Sprintf("http://localhost:%s%s", port, path.Join(buildPathWithPrefixFlag(extraArgs, snapshotDelete))), extraArgs)
+}
+
+func joinBackupAuthKey(urlPath string, extraArgs map[string]string) string {
+	if authKey, ok := extraArgs["snapshotAuthKey"]; ok {
+		separator := "?"
+		idx := strings.IndexByte(urlPath, '?')
+		if idx > 0 {
+			separator = "&"
+		}
+		return urlPath + separator + "authKey=" + authKey
+	}
+	return urlPath
 }
 
 func (cr VMCluster) GetServiceAccountName() string {

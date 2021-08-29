@@ -279,6 +279,7 @@ spec:
                   required:
                   - name
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               dnsPolicy:
                 description: DNSPolicy set DNS policy for the pod
@@ -1729,6 +1730,7 @@ spec:
                   required:
                   - name
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
             type: object
           status:

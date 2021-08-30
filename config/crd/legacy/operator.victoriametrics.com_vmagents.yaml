@@ -270,6 +270,7 @@ spec:
                 required:
                 - name
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               type: array
             dnsPolicy:
               description: DNSPolicy set DNS policy for the pod
@@ -386,6 +387,7 @@ spec:
                 required:
                 - name
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               type: array
             inlineRelabelConfig:
               description: InlineRelabelConfig - defines GlobalRelabelConfig for vmagent,
@@ -1636,6 +1638,7 @@ spec:
                 - topologyKey
                 - whenUnsatisfiable
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               type: array
             updateStrategy:
               description: UpdateStrategy - overrides default update strategy. works
@@ -1701,6 +1704,7 @@ spec:
                 required:
                 - name
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               type: array
           type: object
         status:

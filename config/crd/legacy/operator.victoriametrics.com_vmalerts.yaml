@@ -54,6 +54,7 @@ spec:
                 required:
                 - name
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               type: array
             datasource:
               description: Datasource Victoria Metrics or VMSelect url. Required parameter.
@@ -329,6 +330,7 @@ spec:
                 required:
                 - name
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               type: array
             livenessProbe:
               description: LivenessProbe that will be added CRD pod
@@ -1454,6 +1456,7 @@ spec:
                 - topologyKey
                 - whenUnsatisfiable
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               type: array
             updateStrategy:
               description: UpdateStrategy - overrides default update strategy.
@@ -1512,6 +1515,7 @@ spec:
                 required:
                 - name
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               type: array
           required:
           - datasource

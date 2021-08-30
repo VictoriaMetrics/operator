@@ -111,6 +111,7 @@ spec:
                     required:
                     - name
                     type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   type: array
                 dnsPolicy:
                   description: DNSPolicy sets DNS policy for the pod
@@ -180,6 +181,7 @@ spec:
                     required:
                     - name
                     type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   type: array
                 insertPorts:
                   description: InsertPorts - additional listen ports for data ingestion.
@@ -470,6 +472,7 @@ spec:
                     - topologyKey
                     - whenUnsatisfiable
                     type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   type: array
                 updateStrategy:
                   description: UpdateStrategy - overrides default update strategy.
@@ -531,6 +534,7 @@ spec:
                     required:
                     - name
                     type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   type: array
               required:
               - replicaCount
@@ -560,6 +564,7 @@ spec:
                     required:
                     - name
                     type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   type: array
                 dnsPolicy:
                   description: DNSPolicy sets DNS policy for the pod
@@ -629,6 +634,7 @@ spec:
                     required:
                     - name
                     type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   type: array
                 livenessProbe:
                   description: LivenessProbe that will be added CRD pod
@@ -1179,6 +1185,7 @@ spec:
                     - topologyKey
                     - whenUnsatisfiable
                     type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   type: array
                 volumeMounts:
                   description: VolumeMounts allows configuration of additional VolumeMounts
@@ -1234,6 +1241,7 @@ spec:
                     required:
                     - name
                     type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   type: array
               required:
               - replicaCount
@@ -1260,6 +1268,7 @@ spec:
                     required:
                     - name
                     type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   type: array
                 dnsPolicy:
                   description: DNSPolicy sets DNS policy for the pod
@@ -1325,6 +1334,7 @@ spec:
                     required:
                     - name
                     type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   type: array
                 livenessProbe:
                   description: LivenessProbe that will be added CRD pod
@@ -1861,6 +1871,7 @@ spec:
                     - topologyKey
                     - whenUnsatisfiable
                     type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   type: array
                 vmBackup:
                   description: VMBackup configuration for backup
@@ -2204,6 +2215,7 @@ spec:
                     required:
                     - name
                     type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   type: array
               required:
               - replicaCount

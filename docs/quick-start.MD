@@ -259,9 +259,6 @@ spec:
 EOF
 ```
 
-
-
-
 ## VMAgent
 
 [VMAgent](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/app/vmagent) -  is a tiny but brave agent, which helps you collect metrics from various sources and stores them in [VictoriaMetrics](https://github.com/VictoriaMetrics/VictoriaMetrics).
@@ -300,7 +297,7 @@ EOF
  For connecting `VMAgent` to cluster, you have to specify url for it, check url building [doc](https://github.com/VictoriaMetrics/VictoriaMetrics/blob/cluster/README.md#url-format)
 
  Example:
- 
+
  ```yaml
  cat <<EOF | kubectl apply -f -
  apiVersion: operator.victoriametrics.com/v1beta1

@@ -271,6 +271,7 @@ spec:
                   required:
                   - name
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               listenLocal:
                 description: ListenLocal makes the VMAlertmanager server listen on
@@ -938,6 +939,7 @@ spec:
                   - topologyKey
                   - whenUnsatisfiable
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               volumeMounts:
                 description: VolumeMounts allows configuration of additional VolumeMounts
@@ -991,6 +993,7 @@ spec:
                   required:
                   - name
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
             type: object
           status:

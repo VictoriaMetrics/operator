@@ -52,6 +52,7 @@ spec:
                   required:
                   - name
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               dnsPolicy:
                 description: DNSPolicy sets DNS policy for the pod
@@ -351,6 +352,7 @@ spec:
                   required:
                   - name
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               livenessProbe:
                 description: LivenessProbe that will be added CRD pod
@@ -590,6 +592,7 @@ spec:
                   - topologyKey
                   - whenUnsatisfiable
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               userNamespaceSelector:
                 description: UserNamespaceSelector Namespaces to be selected for  VMAuth
@@ -733,6 +736,7 @@ spec:
                   required:
                   - name
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
             type: object
           status:

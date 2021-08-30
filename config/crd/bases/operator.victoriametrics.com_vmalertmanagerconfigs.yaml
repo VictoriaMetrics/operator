@@ -2519,6 +2519,7 @@ spec:
                     items:
                       type: object
                     type: array
+                    x-kubernetes-preserve-unknown-fields: true
                 required:
                 - receiver
                 type: object

@@ -259,28 +259,7 @@ spec:
 EOF
 ```
 
- For connecting `VMAgent` to cluster, you have to specify url for it, check url building [doc](https://github.com/VictoriaMetrics/VictoriaMetrics/blob/cluster/README.md#url-format)
- ```yaml
- cat <<EOF | kubectl apply -f -
- apiVersion: operator.victoriametrics.com/v1beta1
- kind: VMAgent
- metadata:
-   name: example-vmagent
- spec:
-   serviceScrapeNamespaceSelector: {}
-   podScrapeNamespaceSelector: {}
-   podScrapeSelector: {}
-   serviceScrapeSelector: {}
-   nodeScrapeSelector: {}
-   nodeScrapeNamespaceSelector: {}
-   staticScrapeSelector: {}
-   staticScrapeNamespaceSelector: {}
-   replicaCount: 1
-   remoteWrite:
-     - url: "http://vminsert-example-vmcluster.default.svc.cluster.local:8480/insert/0/prometheus/api/v1/write"
-EOF
 
-```
 
 
 ## VMAgent
@@ -318,6 +297,31 @@ spec:
 EOF
 ```
 
+ For connecting `VMAgent` to cluster, you have to specify url for it, check url building [doc](https://github.com/VictoriaMetrics/VictoriaMetrics/blob/cluster/README.md#url-format)
+
+ Example:
+ 
+ ```yaml
+ cat <<EOF | kubectl apply -f -
+ apiVersion: operator.victoriametrics.com/v1beta1
+ kind: VMAgent
+ metadata:
+   name: example-vmagent
+ spec:
+   serviceScrapeNamespaceSelector: {}
+   podScrapeNamespaceSelector: {}
+   podScrapeSelector: {}
+   serviceScrapeSelector: {}
+   nodeScrapeSelector: {}
+   nodeScrapeNamespaceSelector: {}
+   staticScrapeSelector: {}
+   staticScrapeNamespaceSelector: {}
+   replicaCount: 1
+   remoteWrite:
+     - url: "http://vminsert-example-vmcluster.default.svc.cluster.local:8480/insert/0/prometheus/api/v1/write"
+EOF
+
+```
  `VMAgent` has four selectors specification for filtering `VMServiceScrape`, `VMProbe`, `VMNodeScrape` and `VMPodScrape` objects:
  - `spec.serviceScrapeNamespaceSelector` - if it's nil, only serviceScrapes in the `VMAgent`s namespace can be selected.
     If it's defined with empty value: `spec.serviceScrapeNamespaceSelector: {}` - all namespaces are matched.

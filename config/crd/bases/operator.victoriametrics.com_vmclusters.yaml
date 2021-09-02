@@ -94,6 +94,7 @@ spec:
                   affinity:
                     description: Affinity If specified, the pod's scheduling constraints.
                     type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   configMaps:
                     description: ConfigMaps is a list of ConfigMaps in the same namespace
                       as the VMSelect object, which shall be mounted into the VMSelect
@@ -143,6 +144,7 @@ spec:
                       required:
                       - name
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     type: array
                   hostNetwork:
                     description: HostNetwork controls whether the pod may use the
@@ -152,6 +154,7 @@ spec:
                     description: HPA defines kubernetes PodAutoScaling configuration
                       version 2.
                     type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   image:
                     description: Image - docker image settings for VMInsert
                     properties:
@@ -203,6 +206,7 @@ spec:
                   livenessProbe:
                     description: LivenessProbe that will be added CRD pod
                     type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   logFormat:
                     description: LogFormat for VMSelect to be configured with. default
                       or json
@@ -290,6 +294,7 @@ spec:
                   readinessProbe:
                     description: ReadinessProbe that will be added CRD pod
                     type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   replicaCount:
                     description: ReplicaCount is the expected size of the VMSelect
                       cluster. The controller will eventually make the size of the
@@ -379,6 +384,7 @@ spec:
                       and common container settings. This defaults to the default
                       PodSecurityContext.
                     type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   serviceSpec:
                     description: ServiceSpec that will be added to vminsert service
                       spec
@@ -417,12 +423,14 @@ spec:
                         description: 'ServiceSpec describes the attributes that a
                           user creates on a service. More info: https://kubernetes.io/docs/concepts/services-networking/service/'
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                     required:
                     - spec
                     type: object
                   startupProbe:
                     description: StartupProbe that will be added to CRD pod
                     type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   tolerations:
                     description: Tolerations If specified, the pod's tolerations.
                     items:
@@ -549,6 +557,7 @@ spec:
                   affinity:
                     description: Affinity If specified, the pod's scheduling constraints.
                     type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   cacheMountPath:
                     description: CacheMountPath allows to add cache persistent for
                       VMSelect
@@ -602,6 +611,7 @@ spec:
                       required:
                       - name
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     type: array
                   hostNetwork:
                     description: HostNetwork controls whether the pod may use the
@@ -611,6 +621,7 @@ spec:
                     description: EmbeddedHPA embeds HorizontalPodAutoScaler spec v2.
                       https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/horizontal-pod-autoscaler-v2beta2/
                     type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   image:
                     description: Image - docker image settings for VMSelect
                     properties:
@@ -646,6 +657,7 @@ spec:
                   livenessProbe:
                     description: LivenessProbe that will be added CRD pod
                     type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   logFormat:
                     description: LogFormat for VMSelect to be configured with. default
                       or json
@@ -708,6 +720,7 @@ spec:
                       volumeClaimTemplate:
                         description: A PVC spec to be used by the VMAlertManager StatefulSets.
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                     type: object
                   podDisruptionBudget:
                     description: PodDisruptionBudget created by operator
@@ -772,6 +785,7 @@ spec:
                   readinessProbe:
                     description: ReadinessProbe that will be added CRD pod
                     type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   replicaCount:
                     description: ReplicaCount is the expected size of the VMSelect
                       cluster. The controller will eventually make the size of the
@@ -824,6 +838,7 @@ spec:
                       and common container settings. This defaults to the default
                       PodSecurityContext.
                     type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   serviceSpec:
                     description: ServiceSpec that will be added to vmselect service
                       spec
@@ -862,12 +877,14 @@ spec:
                         description: 'ServiceSpec describes the attributes that a
                           user creates on a service. More info: https://kubernetes.io/docs/concepts/services-networking/service/'
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                     required:
                     - spec
                     type: object
                   startupProbe:
                     description: StartupProbe that will be added to CRD pod
                     type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   storage:
                     description: StorageSpec - add persistent volume claim for cacheMounthPath
                       its needed for persistent cache
@@ -1268,6 +1285,7 @@ spec:
                   affinity:
                     description: Affinity If specified, the pod's scheduling constraints.
                     type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   configMaps:
                     description: ConfigMaps is a list of ConfigMaps in the same namespace
                       as the VMSelect object, which shall be mounted into the VMSelect
@@ -1317,6 +1335,7 @@ spec:
                       required:
                       - name
                       type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     type: array
                   hostNetwork:
                     description: HostNetwork controls whether the pod may use the
@@ -1357,6 +1376,7 @@ spec:
                   livenessProbe:
                     description: LivenessProbe that will be added CRD pod
                     type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   logFormat:
                     description: LogFormat for VMSelect to be configured with. default
                       or json
@@ -1463,6 +1483,7 @@ spec:
                   readinessProbe:
                     description: ReadinessProbe that will be added CRD pod
                     type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   replicaCount:
                     description: ReplicaCount is the expected size of the VMSelect
                       cluster. The controller will eventually make the size of the
@@ -1515,6 +1536,7 @@ spec:
                       and common container settings. This defaults to the default
                       PodSecurityContext.
                     type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   serviceSpec:
                     description: ServiceSpec that will be create additional service
                       for vmstorage
@@ -1553,12 +1575,14 @@ spec:
                         description: 'ServiceSpec describes the attributes that a
                           user creates on a service. More info: https://kubernetes.io/docs/concepts/services-networking/service/'
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                     required:
                     - spec
                     type: object
                   startupProbe:
                     description: StartupProbe that will be added to CRD pod
                     type: object
+                    x-kubernetes-preserve-unknown-fields: true
                   storage:
                     description: Storage - add persistent volume for StorageDataPath
                       its useful for persistent cache
@@ -1596,248 +1620,8 @@ spec:
                         type: object
                       volumeClaimTemplate:
                         description: A PVC spec to be used by the VMAlertManager StatefulSets.
-                        properties:
-                          apiVersion:
-                            description: 'APIVersion defines the versioned schema
-                              of this representation of an object. Servers should
-                              convert recognized schemas to the latest internal value,
-                              and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
-                            type: string
-                          kind:
-                            description: 'Kind is a string value representing the
-                              REST resource this object represents. Servers may infer
-                              this from the endpoint the client submits requests to.
-                              Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
-                            type: string
-                          metadata:
-                            description: EmbeddedMetadata contains metadata relevant
-                              to an EmbeddedResource.
-                            properties:
-                              annotations:
-                                additionalProperties:
-                                  type: string
-                                description: 'Annotations is an unstructured key value
-                                  map stored with a resource that may be set by external
-                                  tools to store and retrieve arbitrary metadata.
-                                  They are not queryable and should be preserved when
-                                  modifying objects. More info: http://kubernetes.io/docs/user-guide/annotations'
-                                type: object
-                              labels:
-                                additionalProperties:
-                                  type: string
-                                description: 'Labels Map of string keys and values
-                                  that can be used to organize and categorize (scope
-                                  and select) objects. May match selectors of replication
-                                  controllers and services. More info: http://kubernetes.io/docs/user-guide/labels'
-                                type: object
-                              name:
-                                description: 'Name must be unique within a namespace.
-                                  Is required when creating resources, although some
-                                  resources may allow a client to request the generation
-                                  of an appropriate name automatically. Name is primarily
-                                  intended for creation idempotence and configuration
-                                  definition. Cannot be updated. More info: http://kubernetes.io/docs/user-guide/identifiers#names'
-                                type: string
-                            type: object
-                          spec:
-                            description: 'Spec defines the desired characteristics
-                              of a volume requested by a pod author. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#persistentvolumeclaims'
-                            properties:
-                              accessModes:
-                                description: 'AccessModes contains the desired access
-                                  modes the volume should have. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#access-modes-1'
-                                items:
-                                  type: string
-                                type: array
-                              dataSource:
-                                description: 'This field can be used to specify either:
-                                  * An existing VolumeSnapshot object (snapshot.storage.k8s.io/VolumeSnapshot)
-                                  * An existing PVC (PersistentVolumeClaim) * An existing
-                                  custom resource that implements data population
-                                  (Alpha) In order to use custom resource types that
-                                  implement data population, the AnyVolumeDataSource
-                                  feature gate must be enabled. If the provisioner
-                                  or an external controller can support the specified
-                                  data source, it will create a new volume based on
-                                  the contents of the specified data source.'
-                                properties:
-                                  apiGroup:
-                                    description: APIGroup is the group for the resource
-                                      being referenced. If APIGroup is not specified,
-                                      the specified Kind must be in the core API group.
-                                      For any other third-party types, APIGroup is
-                                      required.
-                                    type: string
-                                  kind:
-                                    description: Kind is the type of resource being
-                                      referenced
-                                    type: string
-                                  name:
-                                    description: Name is the name of resource being
-                                      referenced
-                                    type: string
-                                required:
-                                - kind
-                                - name
-                                type: object
-                              resources:
-                                description: 'Resources represents the minimum resources
-                                  the volume should have. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources'
-                                properties:
-                                  limits:
-                                    additionalProperties:
-                                      anyOf:
-                                      - type: integer
-                                      - type: string
-                                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                                      x-kubernetes-int-or-string: true
-                                    description: 'Limits describes the maximum amount
-                                      of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
-                                    type: object
-                                  requests:
-                                    additionalProperties:
-                                      anyOf:
-                                      - type: integer
-                                      - type: string
-                                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                                      x-kubernetes-int-or-string: true
-                                    description: 'Requests describes the minimum amount
-                                      of compute resources required. If Requests is
-                                      omitted for a container, it defaults to Limits
-                                      if that is explicitly specified, otherwise to
-                                      an implementation-defined value. More info:
-                                      https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
-                                    type: object
-                                type: object
-                              selector:
-                                description: A label query over volumes to consider
-                                  for binding.
-                                properties:
-                                  matchExpressions:
-                                    description: matchExpressions is a list of label
-                                      selector requirements. The requirements are
-                                      ANDed.
-                                    items:
-                                      description: A label selector requirement is
-                                        a selector that contains values, a key, and
-                                        an operator that relates the key and values.
-                                      properties:
-                                        key:
-                                          description: key is the label key that the
-                                            selector applies to.
-                                          type: string
-                                        operator:
-                                          description: operator represents a key's
-                                            relationship to a set of values. Valid
-                                            operators are In, NotIn, Exists and DoesNotExist.
-                                          type: string
-                                        values:
-                                          description: values is an array of string
-                                            values. If the operator is In or NotIn,
-                                            the values array must be non-empty. If
-                                            the operator is Exists or DoesNotExist,
-                                            the values array must be empty. This array
-                                            is replaced during a strategic merge patch.
-                                          items:
-                                            type: string
-                                          type: array
-                                      required:
-                                      - key
-                                      - operator
-                                      type: object
-                                    type: array
-                                  matchLabels:
-                                    additionalProperties:
-                                      type: string
-                                    description: matchLabels is a map of {key,value}
-                                      pairs. A single {key,value} in the matchLabels
-                                      map is equivalent to an element of matchExpressions,
-                                      whose key field is "key", the operator is "In",
-                                      and the values array contains only "value".
-                                      The requirements are ANDed.
-                                    type: object
-                                type: object
-                              storageClassName:
-                                description: 'Name of the StorageClass required by
-                                  the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1'
-                                type: string
-                              volumeMode:
-                                description: volumeMode defines what type of volume
-                                  is required by the claim. Value of Filesystem is
-                                  implied when not included in claim spec.
-                                type: string
-                              volumeName:
-                                description: VolumeName is the binding reference to
-                                  the PersistentVolume backing this claim.
-                                type: string
-                            type: object
-                          status:
-                            description: 'Status represents the current information/status
-                              of a persistent volume claim. Read-only. More info:
-                              https://kubernetes.io/docs/concepts/storage/persistent-volumes#persistentvolumeclaims'
-                            properties:
-                              accessModes:
-                                description: 'AccessModes contains the actual access
-                                  modes the volume backing the PVC has. More info:
-                                  https://kubernetes.io/docs/concepts/storage/persistent-volumes#access-modes-1'
-                                items:
-                                  type: string
-                                type: array
-                              capacity:
-                                additionalProperties:
-                                  anyOf:
-                                  - type: integer
-                                  - type: string
-                                  pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                                  x-kubernetes-int-or-string: true
-                                description: Represents the actual resources of the
-                                  underlying volume.
-                                type: object
-                              conditions:
-                                description: Current Condition of persistent volume
-                                  claim. If underlying persistent volume is being
-                                  resized then the Condition will be set to 'ResizeStarted'.
-                                items:
-                                  description: PersistentVolumeClaimCondition contails
-                                    details about state of pvc
-                                  properties:
-                                    lastProbeTime:
-                                      description: Last time we probed the condition.
-                                      format: date-time
-                                      type: string
-                                    lastTransitionTime:
-                                      description: Last time the condition transitioned
-                                        from one status to another.
-                                      format: date-time
-                                      type: string
-                                    message:
-                                      description: Human-readable message indicating
-                                        details about last transition.
-                                      type: string
-                                    reason:
-                                      description: Unique, this should be a short,
-                                        machine understandable string that gives the
-                                        reason for condition's last transition. If
-                                        it reports "ResizeStarted" that means the
-                                        underlying persistent volume is being resized.
-                                      type: string
-                                    status:
-                                      type: string
-                                    type:
-                                      description: PersistentVolumeClaimConditionType
-                                        is a valid value of PersistentVolumeClaimCondition.Type
-                                      type: string
-                                  required:
-                                  - status
-                                  - type
-                                  type: object
-                                type: array
-                              phase:
-                                description: Phase represents the current phase of
-                                  PersistentVolumeClaim.
-                                type: string
-                            type: object
                         type: object
+                        x-kubernetes-preserve-unknown-fields: true
                     type: object
                   storageDataPath:
                     description: StorageDataPath - path to storage data

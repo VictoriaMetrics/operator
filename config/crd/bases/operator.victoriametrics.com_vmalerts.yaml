@@ -37,6 +37,7 @@ spec:
               affinity:
                 description: Affinity If specified, the pod's scheduling constraints.
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               configMaps:
                 description: ConfigMaps is a list of ConfigMaps in the same namespace
                   as the VMAlert object, which shall be mounted into the VMAlert Pods.
@@ -288,6 +289,7 @@ spec:
                   required:
                   - name
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               hostNetwork:
                 description: HostNetwork controls whether the pod may use the node
@@ -343,6 +345,7 @@ spec:
               livenessProbe:
                 description: LivenessProbe that will be added CRD pod
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               logFormat:
                 description: LogFormat for VMAlert to be configured with. default
                   or json
@@ -809,6 +812,7 @@ spec:
               readinessProbe:
                 description: ReadinessProbe that will be added CRD pod
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               remoteRead:
                 description: RemoteRead victoria metrics address for loading state
                   This configuration makes sense only if remoteWrite was configured
@@ -1393,6 +1397,7 @@ spec:
                 description: SecurityContext holds pod-level security attributes and
                   common container settings. This defaults to the default PodSecurityContext.
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               serviceAccountName:
                 description: ServiceAccountName is the name of the ServiceAccount
                   to use to run the VMAlert Pods.
@@ -1434,12 +1439,14 @@ spec:
                     description: 'ServiceSpec describes the attributes that a user
                       creates on a service. More info: https://kubernetes.io/docs/concepts/services-networking/service/'
                     type: object
+                    x-kubernetes-preserve-unknown-fields: true
                 required:
                 - spec
                 type: object
               startupProbe:
                 description: StartupProbe that will be added to CRD pod
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               tolerations:
                 description: Tolerations If specified, the pod's tolerations.
                 items:

@@ -245,6 +245,7 @@ spec:
             affinity:
               description: Affinity If specified, the pod's scheduling constraints.
               type: object
+              x-kubernetes-preserve-unknown-fields: true
             arbitraryFSAccessThroughSMs:
               description: ArbitraryFSAccessThroughSMs configures whether configuration
                 based on a service scrape can access arbitrary files on the file system
@@ -314,6 +315,7 @@ spec:
                 required:
                 - name
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               type: array
             host_aliases:
               description: HostAliases provides mapping between ip and hostnames,
@@ -475,6 +477,7 @@ spec:
             livenessProbe:
               description: LivenessProbe that will be added CRD pod
               type: object
+              x-kubernetes-preserve-unknown-fields: true
             logFormat:
               description: LogFormat for VMAgent to be configured with.
               enum:
@@ -834,6 +837,7 @@ spec:
             readinessProbe:
               description: ReadinessProbe that will be added CRD pod
               type: object
+              x-kubernetes-preserve-unknown-fields: true
             relabelConfig:
               description: RelabelConfig ConfigMap with global relabel config -remoteWrite.relabelConfig
                 This relabeling is applied to all the collected metrics before sending
@@ -1358,6 +1362,7 @@ spec:
               description: SecurityContext holds pod-level security attributes and
                 common container settings. This defaults to the default PodSecurityContext.
               type: object
+              x-kubernetes-preserve-unknown-fields: true
             serviceAccountName:
               description: ServiceAccountName is the name of the ServiceAccount to
                 use to run the VMAgent Pods.
@@ -1486,6 +1491,7 @@ spec:
                   description: 'ServiceSpec describes the attributes that a user creates
                     on a service. More info: https://kubernetes.io/docs/concepts/services-networking/service/'
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
               required:
               - spec
               type: object
@@ -1497,6 +1503,7 @@ spec:
             startupProbe:
               description: StartupProbe that will be added to CRD pod
               type: object
+              x-kubernetes-preserve-unknown-fields: true
             staticScrapeNamespaceSelector:
               description: StaticScrapeNamespaceSelector defines Namespaces to be
                 selected for VMStaticScrape discovery. If nil, only check own namespace.

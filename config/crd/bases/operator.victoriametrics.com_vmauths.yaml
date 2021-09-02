@@ -36,6 +36,7 @@ spec:
               affinity:
                 description: Affinity If specified, the pod's scheduling constraints.
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               configMaps:
                 description: ConfigMaps is a list of ConfigMaps in the same namespace
                   as the VMAuth object, which shall be mounted into the VMAuth Pods.
@@ -84,6 +85,7 @@ spec:
                   required:
                   - name
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               hostAliases:
                 description: HostAliases provides mapping for ip and hostname, that
@@ -357,6 +359,7 @@ spec:
               livenessProbe:
                 description: LivenessProbe that will be added CRD pod
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               logFormat:
                 description: LogFormat for VMAuth to be configured with.
                 enum:
@@ -444,6 +447,7 @@ spec:
               readinessProbe:
                 description: ReadinessProbe that will be added CRD pod
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               replicaCount:
                 description: ReplicaCount is the expected size of the VMAuth
                 format: int32
@@ -492,6 +496,7 @@ spec:
                 description: SecurityContext holds pod-level security attributes and
                   common container settings. This defaults to the default PodSecurityContext.
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               serviceAccountName:
                 description: ServiceAccountName is the name of the ServiceAccount
                   to use to run the VMAuth Pods.
@@ -533,12 +538,14 @@ spec:
                     description: 'ServiceSpec describes the attributes that a user
                       creates on a service. More info: https://kubernetes.io/docs/concepts/services-networking/service/'
                     type: object
+                    x-kubernetes-preserve-unknown-fields: true
                 required:
                 - spec
                 type: object
               startupProbe:
                 description: StartupProbe that will be added to CRD pod
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               tolerations:
                 description: Tolerations If specified, the pod's tolerations.
                 items:

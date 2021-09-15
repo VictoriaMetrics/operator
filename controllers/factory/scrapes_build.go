@@ -1154,10 +1154,14 @@ func getNamespacesFromNamespaceSelector(nsSelector *victoriametricsv1beta1.Names
 }
 
 func combineSelectorStr(kvs map[string]string) string {
-	kvsSlice := make([]string, 0)
+	kvsSlice := make([]string, 0, len(kvs))
 	for k, v := range kvs {
 		kvsSlice = append(kvsSlice, fmt.Sprintf("%v=%v", k, v))
 	}
+
+	// Ensure we generate the same selector string for the same kvs,
+	// regardless of Go map iteration order.
+	sort.Strings(kvsSlice)
 
 	return strings.Join(kvsSlice, ",")
 }

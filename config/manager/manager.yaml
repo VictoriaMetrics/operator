@@ -27,12 +27,6 @@ spec:
         env:
         - name: WATCH_NAMESPACE
           value: ""
-        - name: POD_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.name
-        - name: OPERATOR_NAME
-          value: "vm-operator"
         resources:
           limits:
             cpu: 120m

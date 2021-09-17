@@ -207,7 +207,7 @@ manager: generate fmt vet
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 run: manager
-	WATCH_NAMESPACE="" OPERATOR_NAME=vms ./bin/manager
+	WATCH_NAMESPACE="" ./bin/manager
 
 # Install CRDs into a cluster
 install: manifests fix118 fix_crd_nulls kustomize

@@ -24,6 +24,21 @@ type RuleGroup struct {
 	// Concurrency defines how many rules execute at once.
 	// +optional
 	Concurrency int `json:"concurrency,omitempty"`
+	// Labels optional list of labels added to every rule within a group.
+	// It has priority over the external labels.
+	// Labels are commonly used for adding environment
+	// or tenant-specific tag.
+	// +optional
+	Labels map[string]string `json:"labels,omitempty"`
+	// ExtraFilterLabels optional list of label filters applied to every rule's
+	// request withing a group. Is compatible only with VM datasource.
+	// See more details at https://docs.victoriametrics.com#prometheus-querying-api-enhancements
+	// +optional
+	ExtraFilterLabels map[string]string `json:"extra_filter_labels,omitempty"`
+	// Tenant id for group, can be used only with enterprise version of vmalert
+	// See more details at https://docs.victoriametrics.com/vmalert.html#multitenancy
+	// +optional
+	Tenant string `json:"tenant,omitempty"`
 }
 
 // Rule describes an alerting or recording rule.

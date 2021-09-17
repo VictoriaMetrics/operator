@@ -186,6 +186,8 @@ VMAlertmanagerSpec is a specification of the desired behavior of the VMAlertmana
 | podDisruptionBudget | PodDisruptionBudget created by operator | *[EmbeddedPodDisruptionBudgetSpec](#embeddedpoddisruptionbudgetspec) | false |
 | configSelector | ConfigSelector defines selector for VMAlertmanagerConfig, result config will be merged with with Raw or Secret config. If nil, VMAlertmanagerConfig wont be used. If empty - {}, everything will be selected based on namespace selector. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
 | configNamespaceSelector | \n ConfigNamespaceSelector defines namespace selector for VMAlertmanagerConfig.\nIf nil, own namespace will be used. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
+| extraArgs | ExtraArgs that will be passed to  VMAuth pod for example remoteWrite.tmpDataPath: /tmp | map[string]string | false |
+| extraEnvs | ExtraEnvs that will be added to VMAuth pod | [][v1.EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#envvar-v1-core) | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -1050,6 +1052,9 @@ RuleGroup is a list of sequentially evaluated recording and alerting rules.
 | interval | evaluation interval for group | string | false |
 | rules | Rules list of alert rules | [][Rule](#rule) | true |
 | concurrency | Concurrency defines how many rules execute at once. | int | false |
+| labels | Labels optional list of labels added to every rule within a group. It has priority over the external labels. Labels are commonly used for adding environment or tenant-specific tag. | map[string]string | false |
+| extra_filter_labels | ExtraFilterLabels optional list of label filters applied to every rule&#39;s request withing a group. Is compatible only with VM datasource. See more details at https://docs.victoriametrics.com#prometheus-querying-api-enhancements | map[string]string | false |
+| tenant | Tenant id for group, can be used only with enterprise version of vmalert See more details at https://docs.victoriametrics.com/vmalert.html#multitenancy | string | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -1115,6 +1120,7 @@ Endpoint defines a scrapeable endpoint serving Prometheus metrics.
 | interval | Interval at which metrics should be scraped | string | false |
 | scrape_interval | ScrapeInterval is the same as Interval and has priority over it. one of scrape_interval or interval can be used | string | false |
 | scrapeTimeout | Timeout after which the scrape is ended | string | false |
+| sampleLimit | SampleLimit defines per-endpoint limit on number of scraped samples that will be accepted. | uint64 | false |
 | oauth2 | OAuth2 defines auth configuration | *[OAuth2](#oauth2) | false |
 | tlsConfig | TLSConfig configuration to use when scraping the endpoint | *[TLSConfig](#tlsconfig) | false |
 | bearerTokenFile | File to read bearer token for scraping targets. | string | false |
@@ -1282,7 +1288,7 @@ VMServiceScrapeSpec defines the desired state of VMServiceScrape
 | targetLabels | TargetLabels transfers labels on the Kubernetes Service onto the target. | []string | false |
 | podTargetLabels | PodTargetLabels transfers labels on the Kubernetes Pod onto the target. | []string | false |
 | endpoints | A list of endpoints allowed as part of this ServiceScrape. | [][Endpoint](#endpoint) | true |
-| selector | Selector to select Endpoints objects by corresponding Service labels. | [metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | true |
+| selector | Selector to select Endpoints objects by corresponding Service labels. | [metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
 | namespaceSelector | Selector to select which namespaces the Endpoints objects are discovered from. | [NamespaceSelector](#namespaceselector) | false |
 | sampleLimit | SampleLimit defines per-scrape limit on number of scraped samples that will be accepted. | uint64 | false |
 
@@ -1313,6 +1319,7 @@ PodMetricsEndpoint defines a scrapeable endpoint of a Kubernetes Pod serving Pro
 | interval | Interval at which metrics should be scraped | string | false |
 | scrape_interval | ScrapeInterval is the same as Interval and has priority over it. one of scrape_interval or interval can be used | string | false |
 | scrapeTimeout | Timeout after which the scrape is ended | string | false |
+| sampleLimit | SampleLimit defines per-podEndpoint limit on number of scraped samples that will be accepted. | uint64 | false |
 | honorLabels | HonorLabels chooses the metric&#39;s labels on collisions with target labels. | bool | false |
 | honorTimestamps | HonorTimestamps controls whether vmagent respects the timestamps present in scraped data. | *bool | false |
 | metricRelabelConfigs | MetricRelabelConfigs to apply to samples before ingestion. | []*[RelabelConfig](#relabelconfig) | false |
@@ -1359,7 +1366,7 @@ VMPodScrapeSpec defines the desired state of VMPodScrape
 | jobLabel | The label to use to retrieve the job name from. | string | false |
 | podTargetLabels | PodTargetLabels transfers labels on the Kubernetes Pod onto the target. | []string | false |
 | podMetricsEndpoints | A list of endpoints allowed as part of this PodMonitor. | [][PodMetricsEndpoint](#podmetricsendpoint) | true |
-| selector | Selector to select Pod objects. | [metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | true |
+| selector | Selector to select Pod objects. | [metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
 | namespaceSelector | Selector to select which namespaces the Endpoints objects are discovered from. | [NamespaceSelector](#namespaceselector) | false |
 | sampleLimit | SampleLimit defines per-scrape limit on number of scraped samples that will be accepted. | uint64 | false |
 
@@ -1397,6 +1404,8 @@ Image defines docker image settings
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
 | acceptEULA | AcceptEULA accepts enterprise feature usage, must be set to true. otherwise backupmanager cannot be added to single/cluster version. https://victoriametrics.com/assets/VM_EULA.pdf | bool | true |
+| snapshotCreateURL | SnapshotCreateURL overwrites url for snapshot create | string | false |
+| snapshotDeleteURL | SnapShotDeleteURL overwrites url for snapshot delete | string | false |
 | concurrency | Defines number of concurrent workers. Higher concurrency may reduce backup duration (default 10) | *int32 | false |
 | destination | Defines destination for backup | string | false |
 | customS3Endpoint | Custom S3 endpoint for use with S3-compatible storages (e.g. MinIO). S3 is used if not set | *string | false |

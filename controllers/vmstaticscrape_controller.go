@@ -49,7 +49,7 @@ func (r *VMStaticScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	defer vmAgentSync.Unlock()
 
 	vmAgentInstances := &victoriametricsv1beta1.VMAgentList{}
-	err = r.List(ctx, vmAgentInstances)
+	err = r.List(ctx, vmAgentInstances, config.MustGetNamespaceListOptions())
 	if err != nil {
 		reqLogger.Error(err, "cannot list vmagent objects")
 		return ctrl.Result{}, err

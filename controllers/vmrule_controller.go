@@ -70,7 +70,7 @@ func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	vmAlertSync.Lock()
 	defer vmAlertSync.Unlock()
 
-	err = r.List(ctx, alertMngs, &client.ListOptions{})
+	err = r.List(ctx, alertMngs, config.MustGetNamespaceListOptions())
 	if err != nil {
 		reqLogger.Error(err, "cannot list vmalerts")
 		return ctrl.Result{}, err

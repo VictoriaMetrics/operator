@@ -198,7 +198,7 @@ all: build
 # Run tests
 test: generate fmt vet manifests fix118 fix_crd_nulls
 	echo 'mode: atomic' > coverage.txt  && \
-	$(TEST_ARGS) $(REPO)/controllers/...
+	$(TEST_ARGS) $(REPO)/controllers/... $(REPO)/api/...
 	$(GOCMD) tool cover -func coverage.txt  | grep total
 
 # Build manager binary

@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"net/http"
-	"os"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/buildinfo"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httpserver"
@@ -52,17 +51,6 @@ func init() {
 
 }
 
-// getWatchNamespace returns the Namespace the operator should be watching for changes
-func getWatchNamespace() string {
-	// WatchNamespaceEnvVar is the constant for env variable WATCH_NAMESPACE
-	// which specifies the Namespace to watch.
-	// An empty value means the operator is running with cluster scope.
-	var watchNamespaceEnvVar = "WATCH_NAMESPACE"
-
-	ns, _ := os.LookupEnv(watchNamespaceEnvVar)
-	return ns
-}
-
 func RunManager(ctx context.Context) error {
 
 	// Add flags registered by imported packages (e.g. glog and
@@ -99,7 +87,7 @@ func RunManager(ctx context.Context) error {
 		Port:                  9443,
 		LeaderElection:        *enableLeaderElection,
 		LeaderElectionID:      "57410f0d.victoriametrics.com",
-		Namespace:             getWatchNamespace(),
+		Namespace:             config.MustGetWatchNamespace(),
 		ClientDisableCacheFor: []client.Object{&v1.Secret{}, &v1.ConfigMap{}},
 	})
 	if err != nil {
@@ -278,7 +266,9 @@ func RunManager(ctx context.Context) error {
 		setupLog.Error(err, "problem running manager")
 		return err
 	}
-	httpserver.Stop(*listenAddr) //nolint:errcheck
+	if err := httpserver.Stop(*listenAddr); err != nil {
+		setupLog.Error(err, "failed to gracefully stop HTTP server")
+	}
 	setupLog.Info("gracefully stopped")
 	return nil
 

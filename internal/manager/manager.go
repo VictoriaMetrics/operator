@@ -33,7 +33,7 @@ var (
 	enableLeaderElection = flag.Bool("enable-leader-election", false, "Enable leader election for controller manager. "+
 		"Enabling this will ensure there is only one active controller manager.")
 	enableWebhooks      = flag.Bool("webhook.enable", false, "adds webhook server, you must mount cert and key or use cert-manager")
-	disalbeCRDOwnership = flag.Bool("controller.disableCRDOwnership", false, "disables CRD ownership add to cluster wide objects, must be disabled for clusters, lower then v1.16.0")
+	disableCRDOwnership = flag.Bool("controller.disableCRDOwnership", false, "disables CRD ownership add to cluster wide objects, must be disabled for clusters, lower than v1.16.0")
 	webhooksDir         = flag.String("webhook.certDir", "/tmp/k8s-webhook-server/serving-certs/", "root directory for webhook cert and key")
 	webhookCertName     = flag.String("webhook.certName", "tls.crt", "name of webhook server Tls certificate inside tls.certDir")
 	webhookKeyName      = flag.String("webhook.keyName", "tls.key", "name of webhook server Tls key inside tls.certDir")
@@ -94,7 +94,7 @@ func RunManager(ctx context.Context) error {
 		return err
 	}
 
-	if !*disalbeCRDOwnership {
+	if !*disableCRDOwnership {
 		initC, err := client.New(mgr.GetConfig(), client.Options{Scheme: scheme})
 		if err != nil {
 			return err

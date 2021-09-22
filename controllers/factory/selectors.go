@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/VictoriaMetrics/operator/internal/config"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -46,13 +47,19 @@ func getNSWithSelector(ctx context.Context, rclient client.Client, nsSelector, o
 func selectWithMerge(ctx context.Context, rclient client.Client, ns []string, objectList client.ObjectList, selector labels.Selector, cb func(list client.ObjectList)) error {
 
 	if ns == nil {
-		if err := rclient.List(ctx, objectList, &client.ListOptions{LabelSelector: selector}); err != nil {
+		if err := rclient.List(ctx, objectList, &client.ListOptions{LabelSelector: selector}, config.MustGetNamespaceListOptions()); err != nil {
 			return err
 		}
 		cb(objectList)
 		return nil
 	}
+
+	watchNamespace := config.MustGetWatchNamespace()
 	for i := range ns {
+		if watchNamespace != "" && ns[i] != watchNamespace {
+			continue
+		}
+
 		if err := rclient.List(ctx, objectList, &client.ListOptions{LabelSelector: selector, Namespace: ns[i]}); err != nil {
 			return err
 		}

@@ -87,6 +87,7 @@ func RunManager(ctx context.Context) error {
 		Port:                  9443,
 		LeaderElection:        *enableLeaderElection,
 		LeaderElectionID:      "57410f0d.victoriametrics.com",
+		Namespace:             config.MustGetWatchNamespace(),
 		ClientDisableCacheFor: []client.Object{&v1.Secret{}, &v1.ConfigMap{}},
 	})
 	if err != nil {
@@ -265,7 +266,9 @@ func RunManager(ctx context.Context) error {
 		setupLog.Error(err, "problem running manager")
 		return err
 	}
-	httpserver.Stop(*listenAddr) //nolint:errcheck
+	if err := httpserver.Stop(*listenAddr); err != nil {
+		setupLog.Error(err, "failed to gracefully stop HTTP server")
+	}
 	setupLog.Info("gracefully stopped")
 	return nil
 

@@ -13,6 +13,7 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
 	"github.com/spf13/pflag"
+	v12 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -87,7 +88,7 @@ func RunManager(ctx context.Context) error {
 		Port:                  9443,
 		LeaderElection:        *enableLeaderElection,
 		LeaderElectionID:      "57410f0d.victoriametrics.com",
-		ClientDisableCacheFor: []client.Object{&v1.Secret{}, &v1.ConfigMap{}},
+		ClientDisableCacheFor: []client.Object{&v1.Secret{}, &v1.ConfigMap{}, &v1.Pod{}, &v12.Deployment{}, &v12.StatefulSet{}},
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")

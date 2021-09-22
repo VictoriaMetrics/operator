@@ -118,6 +118,7 @@ func generateConfig(
 		for i, ep := range sMons[identifier].Spec.Endpoints {
 			scrapeConfigs = append(scrapeConfigs,
 				generateServiceScrapeConfig(
+					cr,
 					sMons[identifier],
 					ep, i,
 					apiserverConfig,
@@ -132,6 +133,7 @@ func generateConfig(
 		for i, ep := range pMons[identifier].Spec.PodMetricsEndpoints {
 			scrapeConfigs = append(scrapeConfigs,
 				generatePodScrapeConfig(
+					cr,
 					pMons[identifier], ep, i,
 					apiserverConfig,
 					secretsCache,
@@ -145,6 +147,7 @@ func generateConfig(
 	for i, identifier := range probeIdentifiers {
 		scrapeConfigs = append(scrapeConfigs,
 			generateProbeConfig(
+				cr,
 				probes[identifier],
 				i,
 				apiserverConfig,
@@ -155,6 +158,7 @@ func generateConfig(
 	for i, identifier := range nodeIdentifiers {
 		scrapeConfigs = append(scrapeConfigs,
 			generateNodeScrapeConfig(
+				cr,
 				nodes[identifier],
 				i,
 				apiserverConfig,
@@ -169,6 +173,7 @@ func generateConfig(
 		for i, ep := range statics[identifier].Spec.TargetEndpoints {
 			scrapeConfigs = append(scrapeConfigs,
 				generateStaticScrapeConfig(
+					cr,
 					statics[identifier],
 					ep, i,
 					secretsCache,
@@ -263,6 +268,7 @@ func honorTimestamps(cfg yaml.MapSlice, userHonorTimestamps *bool, overrideHonor
 }
 
 func generatePodScrapeConfig(
+	cr *victoriametricsv1beta1.VMAgent,
 	m *victoriametricsv1beta1.VMPodScrape,
 	ep victoriametricsv1beta1.PodMetricsEndpoint,
 	i int,
@@ -473,10 +479,11 @@ func generatePodScrapeConfig(
 		})
 	}
 
-	if ep.RelabelConfigs != nil {
-		for _, c := range ep.RelabelConfigs {
-			relabelings = append(relabelings, generateRelabelConfig(c))
-		}
+	for _, c := range ep.RelabelConfigs {
+		relabelings = append(relabelings, generateRelabelConfig(c))
+	}
+	for _, trc := range cr.Spec.PodScrapeRelabelTemplate {
+		relabelings = append(relabelings, generateRelabelConfig(trc))
 	}
 	// Because of security risks, whenever enforcedNamespaceLabel is set, we want to append it to the
 	// relabel_configs as the last relabeling, to ensure it overrides any other relabelings.
@@ -513,6 +520,7 @@ func generatePodScrapeConfig(
 }
 
 func generateServiceScrapeConfig(
+	cr *victoriametricsv1beta1.VMAgent,
 	m *victoriametricsv1beta1.VMServiceScrape,
 	ep victoriametricsv1beta1.Endpoint,
 	i int,
@@ -798,11 +806,14 @@ func generateServiceScrapeConfig(
 		})
 	}
 
-	if ep.RelabelConfigs != nil {
-		for _, c := range ep.RelabelConfigs {
-			relabelings = append(relabelings, generateRelabelConfig(c))
-		}
+	for _, c := range ep.RelabelConfigs {
+		relabelings = append(relabelings, generateRelabelConfig(c))
 	}
+
+	for _, trc := range cr.Spec.ServiceScrapeRelabelTemplate {
+		relabelings = append(relabelings, generateRelabelConfig(trc))
+	}
+
 	// Because of security risks, whenever enforcedNamespaceLabel is set, we want to append it to the
 	// relabel_configs as the last relabeling, to ensure it overrides any other relabelings.
 	relabelings = enforceNamespaceLabel(relabelings, m.Namespace, enforcedNamespaceLabel)
@@ -839,6 +850,7 @@ func generateServiceScrapeConfig(
 }
 
 func generateNodeScrapeConfig(
+	crAgent *victoriametricsv1beta1.VMAgent,
 	cr *victoriametricsv1beta1.VMNodeScrape,
 	i int,
 	apiserverConfig *victoriametricsv1beta1.APIServerConfig,
@@ -1014,11 +1026,13 @@ func generateNodeScrapeConfig(
 		})
 	}
 
-	if nodeSpec.RelabelConfigs != nil {
-		for _, c := range nodeSpec.RelabelConfigs {
-			relabelings = append(relabelings, generateRelabelConfig(c))
-		}
+	for _, c := range nodeSpec.RelabelConfigs {
+		relabelings = append(relabelings, generateRelabelConfig(c))
 	}
+	for _, trc := range crAgent.Spec.NodeScrapeRelabelTemplate {
+		relabelings = append(relabelings, generateRelabelConfig(trc))
+	}
+
 	// Because of security risks, whenever enforcedNamespaceLabel is set, we want to append it to the
 	// relabel_configs as the last relabeling, to ensure it overrides any other relabelings.
 	relabelings = enforceNamespaceLabel(relabelings, cr.Namespace, enforcedNamespaceLabel)

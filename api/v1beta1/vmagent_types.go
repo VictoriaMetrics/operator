@@ -281,6 +281,26 @@ type VMAgentSpec struct {
 	// NodeSelector Define which Nodes the Pods are scheduled on.
 	// +optional
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
+	// ServiceScrapeRelabelTemplate defines relabel config, that will be added to each VMServiceScrape.
+	// it's useful for adding specific labels to all targets
+	// +optional
+	ServiceScrapeRelabelTemplate []*RelabelConfig `json:"serviceScrapeRelabelTemplate,omitempty"`
+	// PodScrapeRelabelTemplate defines relabel config, that will be added to each VMPodScrape.
+	// it's useful for adding specific labels to all targets
+	// +optional
+	PodScrapeRelabelTemplate []*RelabelConfig `json:"podScrapeRelabelTemplate,omitempty"`
+	// NodeScrapeRelabelTemplate defines relabel config, that will be added to each VMNodeScrape.
+	// it's useful for adding specific labels to all targets
+	// +optional
+	NodeScrapeRelabelTemplate []*RelabelConfig `json:"nodeScrapeRelabelTemplate,omitempty"`
+	// StaticScrapeRelabelTemplate defines relabel config, that will be added to each VMStaticScrape.
+	// it's useful for adding specific labels to all targets
+	// +optional
+	StaticScrapeRelabelTemplate []*RelabelConfig `json:"staticScrapeRelabelTemplate,omitempty"`
+	// ProbeScrapeRelabelTemplate defines relabel config, that will be added to each VMProbeScrape.
+	// it's useful for adding specific labels to all targets
+	// +optional
+	ProbeScrapeRelabelTemplate []*RelabelConfig `json:"probeScrapeRelabelTemplate,omitempty"`
 }
 
 // VMAgentRemoteWriteSettings - defines global settings for all remoteWrite urls.

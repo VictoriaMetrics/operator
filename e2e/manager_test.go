@@ -29,28 +29,3 @@ var _ = BeforeSuite(func() {
 })
 
 var _ = AfterSuite(suite.After)
-
-//func mustDeleteObject(client client.Client, obj client.Object) error {
-//	if !Expect(func() error {
-//		err := client.Delete(context.Background(), obj)
-//		if err != nil {
-//			return err
-//		}
-//		return nil
-//	}).To(BeNil()) {
-//		return fmt.Errorf("unexpected not nil resut : %s", obj.GetName())
-//	}
-//	if !Eventually(func() string {
-//		err := client.Get(context.Background(), types.NamespacedName{Name: obj.GetName(), Namespace: obj.GetNamespace()}, obj)
-//		if errors.IsNotFound(err) {
-//			return ""
-//		}
-//		if err == nil {
-//			err = fmt.Errorf("expect object to be deleted: %s", obj.GetName())
-//		}
-//		return err.Error()
-//	}, 30).Should(BeEmpty()) {
-//		return fmt.Errorf("unexpected not nil resutl for : %s", obj.GetName())
-//	}
-//	return nil
-//}

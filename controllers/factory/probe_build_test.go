@@ -13,6 +13,7 @@ import (
 
 func Test_generateProbeConfig(t *testing.T) {
 	type args struct {
+		crAgent                  victoriametricsv1beta1.VMAgent
 		cr                       *victoriametricsv1beta1.VMProbe
 		i                        int
 		apiserverConfig          *victoriametricsv1beta1.APIServerConfig
@@ -227,7 +228,7 @@ proxy_tls_config:
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := generateProbeConfig(tt.args.cr, tt.args.i, tt.args.apiserverConfig, tt.args.ssCache, tt.args.ignoreNamespaceSelectors, tt.args.enforcedNamespaceLabel)
+			got := generateProbeConfig(&tt.args.crAgent, tt.args.cr, tt.args.i, tt.args.apiserverConfig, tt.args.ssCache, tt.args.ignoreNamespaceSelectors, tt.args.enforcedNamespaceLabel)
 			gotBytes, err := yaml.Marshal(got)
 			if err != nil {
 				t.Errorf("cannot decode probe config, it must be in yaml format :%e", err)

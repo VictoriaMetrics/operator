@@ -153,12 +153,12 @@ func newConfigWatcher(ctx context.Context) (watcher, error) {
 	if *configSecretName != "" {
 		secretNamespaced := *configSecretName
 		if *configSecretKey == "" {
-			return nil, fmt.Errorf("config-secret-key cannot me empty")
+			return nil, fmt.Errorf("config-secret-key cannot be empty")
 		}
 		logger.Infof("starting kubernetes watcher with secret: %s", secretNamespaced)
 		idx := strings.IndexByte(secretNamespaced, '/')
 		if idx <= 0 {
-			return nil, fmt.Errorf("bad configSecretName: %s, it must be in form namspace/secret-name", secretNamespaced)
+			return nil, fmt.Errorf("bad configSecretName: %s, it must be in form namespace/secret-name", secretNamespaced)
 		}
 		namespace := secretNamespaced[:idx]
 		secretName := secretNamespaced[idx+1:]

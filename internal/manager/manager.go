@@ -34,7 +34,7 @@ var (
 	enableLeaderElection = flag.Bool("enable-leader-election", false, "Enable leader election for controller manager. "+
 		"Enabling this will ensure there is only one active controller manager.")
 	enableWebhooks      = flag.Bool("webhook.enable", false, "adds webhook server, you must mount cert and key or use cert-manager")
-	disalbeCRDOwnership = flag.Bool("controller.disableCRDOwnership", false, "disables CRD ownership add to cluster wide objects, must be disabled for clusters, lower then v1.16.0")
+	disableCRDOwnership = flag.Bool("controller.disableCRDOwnership", false, "disables CRD ownership add to cluster wide objects, must be disabled for clusters, lower than v1.16.0")
 	webhooksDir         = flag.String("webhook.certDir", "/tmp/k8s-webhook-server/serving-certs/", "root directory for webhook cert and key")
 	webhookCertName     = flag.String("webhook.certName", "tls.crt", "name of webhook server Tls certificate inside tls.certDir")
 	webhookKeyName      = flag.String("webhook.keyName", "tls.key", "name of webhook server Tls key inside tls.certDir")
@@ -89,13 +89,14 @@ func RunManager(ctx context.Context) error {
 		LeaderElection:        *enableLeaderElection,
 		LeaderElectionID:      "57410f0d.victoriametrics.com",
 		ClientDisableCacheFor: []client.Object{&v1.Secret{}, &v1.ConfigMap{}, &v1.Pod{}, &v12.Deployment{}, &v12.StatefulSet{}},
+		Namespace:             config.MustGetWatchNamespace(),
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
 		return err
 	}
 
-	if !*disalbeCRDOwnership {
+	if !*disableCRDOwnership {
 		initC, err := client.New(mgr.GetConfig(), client.Options{Scheme: scheme})
 		if err != nil {
 			return err
@@ -266,7 +267,9 @@ func RunManager(ctx context.Context) error {
 		setupLog.Error(err, "problem running manager")
 		return err
 	}
-	httpserver.Stop(*listenAddr) //nolint:errcheck
+	if err := httpserver.Stop(*listenAddr); err != nil {
+		setupLog.Error(err, "failed to gracefully stop HTTP server")
+	}
 	setupLog.Info("gracefully stopped")
 	return nil
 

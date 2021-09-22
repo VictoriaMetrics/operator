@@ -212,7 +212,7 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	globalSecretRefCache.addRefByUser(&instance)
 
 	var vmauthes operatorv1beta1.VMAuthList
-	if err := r.List(ctx, &vmauthes); err != nil {
+	if err := r.List(ctx, &vmauthes, config.MustGetNamespaceListOptions()); err != nil {
 		l.Error(err, "cannot list VMAuth at cluster wide.")
 		return ctrl.Result{}, err
 	}

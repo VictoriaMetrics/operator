@@ -71,10 +71,10 @@ func NewConverterController(promCl versioned.Interface, vclient client.Client, b
 	c.ruleInf = cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
-				return promCl.MonitoringV1().PrometheusRules("").List(context.TODO(), options)
+				return promCl.MonitoringV1().PrometheusRules(config.MustGetWatchNamespace()).List(context.TODO(), options)
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-				return promCl.MonitoringV1().PrometheusRules("").Watch(context.TODO(), options)
+				return promCl.MonitoringV1().PrometheusRules(config.MustGetWatchNamespace()).Watch(context.TODO(), options)
 			},
 		},
 		&v1.PrometheusRule{},
@@ -88,10 +88,10 @@ func NewConverterController(promCl versioned.Interface, vclient client.Client, b
 	c.podInf = cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
-				return promCl.MonitoringV1().PodMonitors("").List(context.TODO(), options)
+				return promCl.MonitoringV1().PodMonitors(config.MustGetWatchNamespace()).List(context.TODO(), options)
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-				return promCl.MonitoringV1().PodMonitors("").Watch(context.TODO(), options)
+				return promCl.MonitoringV1().PodMonitors(config.MustGetWatchNamespace()).Watch(context.TODO(), options)
 			},
 		},
 		&v1.PodMonitor{},
@@ -105,10 +105,10 @@ func NewConverterController(promCl versioned.Interface, vclient client.Client, b
 	c.serviceInf = cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
-				return promCl.MonitoringV1().ServiceMonitors("").List(context.TODO(), options)
+				return promCl.MonitoringV1().ServiceMonitors(config.MustGetWatchNamespace()).List(context.TODO(), options)
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-				return promCl.MonitoringV1().ServiceMonitors("").Watch(context.TODO(), options)
+				return promCl.MonitoringV1().ServiceMonitors(config.MustGetWatchNamespace()).Watch(context.TODO(), options)
 			},
 		},
 		&v1.ServiceMonitor{},
@@ -122,10 +122,10 @@ func NewConverterController(promCl versioned.Interface, vclient client.Client, b
 	c.probeInf = cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
-				return promCl.MonitoringV1().Probes("").List(context.TODO(), options)
+				return promCl.MonitoringV1().Probes(config.MustGetWatchNamespace()).List(context.TODO(), options)
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-				return promCl.MonitoringV1().Probes("").Watch(context.TODO(), options)
+				return promCl.MonitoringV1().Probes(config.MustGetWatchNamespace()).Watch(context.TODO(), options)
 			},
 		},
 		&v1.Probe{},

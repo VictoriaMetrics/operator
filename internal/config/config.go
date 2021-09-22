@@ -2,21 +2,31 @@ package config
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/kelseyhightower/envconfig"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var (
 	opConf   *BaseOperatorConf
 	initConf sync.Once
+
+	opNamespace   string
+	initNamespace sync.Once
 )
 
 const prefixVar = "VM"
 const UnLimitedResource = "unlimited"
+
+// WatchNamespaceEnvVar is the constant for env variable WATCH_NAMESPACE
+// which specifies the Namespace to watch.
+// An empty value means the operator is running with cluster scope.
+var WatchNamespaceEnvVar = "WATCH_NAMESPACE"
 
 type Resource struct {
 	Limit struct {
@@ -299,6 +309,21 @@ func MustGetBaseConfig() *BaseOperatorConf {
 		opConf = c
 	})
 	return opConf
+}
+
+// MustGetWatchNamespace returns the Namespace the operator should be watching for changes
+func MustGetWatchNamespace() string {
+	initNamespace.Do(func() {
+		opNamespace, _ = os.LookupEnv(WatchNamespaceEnvVar)
+	})
+
+	return opNamespace
+}
+
+func MustGetNamespaceListOptions() *client.ListOptions {
+	return &client.ListOptions{
+		Namespace: MustGetWatchNamespace(),
+	}
 }
 
 type Labels struct {

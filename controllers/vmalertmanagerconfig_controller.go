@@ -63,7 +63,7 @@ func (r *VMAlertmanagerConfigReconciler) Reconcile(ctx context.Context, req ctrl
 
 	// select alertmanagers
 	var vmams operatorv1beta1.VMAlertmanagerList
-	if err := r.Client.List(ctx, &vmams); err != nil {
+	if err := r.Client.List(ctx, &vmams, config.MustGetNamespaceListOptions()); err != nil {
 		l.Error(err, "cannot list vmalertmanagers")
 		return ctrl.Result{}, err
 	}

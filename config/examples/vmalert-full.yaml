@@ -48,6 +48,16 @@ spec:
       password:
         name: vmalert-basic-auth
         key: password
+  notifiers:
+    - url: "http://vmalertmanager-example-0.vmalertmanager.example.default.svc:9093"
+    - selector:
+        namespaceSelector:
+          any: false
+          matchNames:
+            - default
+        labelSelector:
+          matchLabels:
+            usage: dev
   evaluationInterval: "30s"
   ruleSelector:
     matchLabels:

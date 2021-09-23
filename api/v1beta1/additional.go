@@ -231,3 +231,22 @@ func (cr *EmbeddedHPA) sanityCheck() error {
 	}
 	return nil
 }
+
+// DiscoverySelector can be used at CRD components discovery
+type DiscoverySelector struct {
+	Namespace *NamespaceSelector    `json:"namespaceSelector,omitempty"`
+	Selector  *metav1.LabelSelector `json:"selector,omitempty"`
+}
+
+func (ds *DiscoverySelector) AsListOptions() (*client.ListOptions, error) {
+	if ds.Selector == nil {
+		return &client.ListOptions{}, nil
+	}
+	s, err := metav1.LabelSelectorAsSelector(ds.Selector)
+	if err != nil {
+		return nil, err
+	}
+	return &client.ListOptions{
+		LabelSelector: s,
+	}, nil
+}

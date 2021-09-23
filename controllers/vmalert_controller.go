@@ -21,6 +21,7 @@ import (
 	"sync"
 
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 
 	"github.com/VictoriaMetrics/operator/controllers/factory"
@@ -38,6 +39,9 @@ import (
 )
 
 var vmAlertSync sync.Mutex
+
+// holds vmalerts with spec.Notifiers.Selector != nil
+var vmAlertsWithNotifierDiscovery = map[types.NamespacedName][]*victoriametricsv1beta1.DiscoverySelector{}
 
 // VMAlertReconciler reconciles a VMAlert object
 type VMAlertReconciler struct {
@@ -72,12 +76,16 @@ func (r *VMAlertReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		}
 		return ctrl.Result{}, err
 	}
+
 	if !instance.DeletionTimestamp.IsZero() {
+		delete(vmAlertsWithNotifierDiscovery, req.NamespacedName)
 		if err := finalize.OnVMAlertDelete(ctx, r.Client, instance); err != nil {
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{}, nil
 	}
+
+	vmAlertsWithNotifierDiscovery[req.NamespacedName] = instance.GetNotifierSelectors()
 
 	if err := finalize.AddFinalizer(ctx, r.Client, instance); err != nil {
 		return ctrl.Result{}, err

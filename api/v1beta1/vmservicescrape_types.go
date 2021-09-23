@@ -88,6 +88,22 @@ type NamespaceSelector struct {
 	MatchNames []string `json:"matchNames,omitempty"`
 }
 
+type nsMatcher interface {
+	GetNamespace() string
+}
+
+func (ns *NamespaceSelector) IsMatch(item nsMatcher) bool {
+	if ns.Any {
+		return true
+	}
+	for _, n := range ns.MatchNames {
+		if item.GetNamespace() == n {
+			return true
+		}
+	}
+	return false
+}
+
 // Endpoint defines a scrapeable endpoint serving Prometheus metrics.
 // +k8s:openapi-gen=true
 type Endpoint struct {

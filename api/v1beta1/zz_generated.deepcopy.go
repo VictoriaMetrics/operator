@@ -110,8 +110,8 @@ func (in *DiscoverySelector) DeepCopyInto(out *DiscoverySelector) {
 		*out = new(NamespaceSelector)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.Selector != nil {
-		in, out := &in.Selector, &out.Selector
+	if in.Labels != nil {
+		in, out := &in.Labels, &out.Labels
 		*out = new(metav1.LabelSelector)
 		(*in).DeepCopyInto(*out)
 	}

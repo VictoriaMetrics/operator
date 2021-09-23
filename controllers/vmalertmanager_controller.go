@@ -18,13 +18,9 @@ package controllers
 
 import (
 	"context"
-	"fmt"
 	"sync"
-	"time"
 
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 
 	"github.com/VictoriaMetrics/operator/controllers/factory"
@@ -77,35 +73,6 @@ func (r *VMAlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		}
 		return ctrl.Result{}, err
 	}
-	// need to trigger VMAlert notifier ServiceDiscovery
-	vmAlertSync.Lock()
-	for k, v := range vmAlertsWithNotifierDiscovery {
-		if len(v) == 0 {
-			continue
-		}
-		for _, ls := range v {
-			lsb, err := metav1.LabelSelectorAsSelector(ls.Selector)
-			if err != nil {
-				continue
-			}
-			if !lsb.Matches(labels.Set(instance.Labels())) {
-				continue
-			}
-		}
-
-		var vmalertInstance victoriametricsv1beta1.VMAlert
-		if err := r.Client.Get(ctx, k, &vmalertInstance); err != nil {
-			if !errors.IsNotFound(err) {
-				return reconcile.Result{}, fmt.Errorf("cannot get vmalert instance: %s, err: %w", k.String(), err)
-			}
-			continue
-		}
-		am := vmalertInstance.Annotations()
-		am["last-alertmanager-sync-time"] = time.Now().Format(time.RFC3339)
-		vmalertInstance.SetAnnotations(am)
-		_ = r.Client.Update(ctx, &vmalertInstance)
-	}
-	vmAlertSync.Unlock()
 
 	if !instance.DeletionTimestamp.IsZero() {
 		if err := finalize.OnVMAlertManagerDelete(ctx, r.Client, instance); err != nil {

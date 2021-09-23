@@ -235,14 +235,14 @@ func (cr *EmbeddedHPA) sanityCheck() error {
 // DiscoverySelector can be used at CRD components discovery
 type DiscoverySelector struct {
 	Namespace *NamespaceSelector    `json:"namespaceSelector,omitempty"`
-	Selector  *metav1.LabelSelector `json:"selector,omitempty"`
+	Labels    *metav1.LabelSelector `json:"labelSelector,omitempty"`
 }
 
 func (ds *DiscoverySelector) AsListOptions() (*client.ListOptions, error) {
-	if ds.Selector == nil {
+	if ds.Labels == nil {
 		return &client.ListOptions{}, nil
 	}
-	s, err := metav1.LabelSelectorAsSelector(ds.Selector)
+	s, err := metav1.LabelSelectorAsSelector(ds.Labels)
 	if err != nil {
 		return nil, err
 	}

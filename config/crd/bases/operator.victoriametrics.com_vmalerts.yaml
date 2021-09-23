@@ -425,22 +425,10 @@ spec:
                     type: object
                   selector:
                     description: Selector allows service discovery for alertmanager
+                      in this case all matched vmalertmanager replicas will be added
+                      into vmalert notifier.url as statefulset pod.fqdn
                     properties:
-                      namespaceSelector:
-                        description: NamespaceSelector is a selector for selecting
-                          either all namespaces or a list of namespaces.
-                        properties:
-                          any:
-                            description: Boolean describing whether all namespaces
-                              are selected in contrast to a list restricting them.
-                            type: boolean
-                          matchNames:
-                            description: List of namespace names.
-                            items:
-                              type: string
-                            type: array
-                        type: object
-                      selector:
+                      labelSelector:
                         description: A label selector is a label query over a set
                           of resources. The result of matchLabels and matchExpressions
                           are ANDed. An empty label selector matches all objects.
@@ -487,6 +475,20 @@ spec:
                               "key", the operator is "In", and the values array contains
                               only "value". The requirements are ANDed.
                             type: object
+                        type: object
+                      namespaceSelector:
+                        description: NamespaceSelector is a selector for selecting
+                          either all namespaces or a list of namespaces.
+                        properties:
+                          any:
+                            description: Boolean describing whether all namespaces
+                              are selected in contrast to a list restricting them.
+                            type: boolean
+                          matchNames:
+                            description: List of namespace names.
+                            items:
+                              type: string
+                            type: array
                         type: object
                     type: object
                   tlsConfig:
@@ -679,22 +681,10 @@ spec:
                       type: object
                     selector:
                       description: Selector allows service discovery for alertmanager
+                        in this case all matched vmalertmanager replicas will be added
+                        into vmalert notifier.url as statefulset pod.fqdn
                       properties:
-                        namespaceSelector:
-                          description: NamespaceSelector is a selector for selecting
-                            either all namespaces or a list of namespaces.
-                          properties:
-                            any:
-                              description: Boolean describing whether all namespaces
-                                are selected in contrast to a list restricting them.
-                              type: boolean
-                            matchNames:
-                              description: List of namespace names.
-                              items:
-                                type: string
-                              type: array
-                          type: object
-                        selector:
+                        labelSelector:
                           description: A label selector is a label query over a set
                             of resources. The result of matchLabels and matchExpressions
                             are ANDed. An empty label selector matches all objects.
@@ -741,6 +731,20 @@ spec:
                                 is "key", the operator is "In", and the values array
                                 contains only "value". The requirements are ANDed.
                               type: object
+                          type: object
+                        namespaceSelector:
+                          description: NamespaceSelector is a selector for selecting
+                            either all namespaces or a list of namespaces.
+                          properties:
+                            any:
+                              description: Boolean describing whether all namespaces
+                                are selected in contrast to a list restricting them.
+                              type: boolean
+                            matchNames:
+                              description: List of namespace names.
+                              items:
+                                type: string
+                              type: array
                           type: object
                       type: object
                     tlsConfig:

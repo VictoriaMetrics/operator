@@ -233,6 +233,8 @@ type VMAlertNotifierSpec struct {
 	// +optional
 	URL string `json:"url,omitempty"`
 	// Selector allows service discovery for alertmanager
+	// in this case all matched vmalertmanager replicas will be added into vmalert notifier.url
+	// as statefulset pod.fqdn
 	// +optional
 	Selector *DiscoverySelector `json:"selector,omitempty"`
 	// BasicAuth allow notifier to authenticate over basic authentication
@@ -242,9 +244,9 @@ type VMAlertNotifierSpec struct {
 	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
 }
 
-// AsMapKey - returns cr name with suffix for notifier token/auth maps.
+// NotifierAsMapKey - returns cr name with suffix for notifier token/auth maps.
 func (cr VMAlert) NotifierAsMapKey(i int) string {
-	return fmt.Sprintf("nodeScrape/%s/%s/%d", cr.Namespace, cr.Name, i)
+	return fmt.Sprintf("vmalert/%s/%s/%d", cr.Namespace, cr.Name, i)
 }
 
 // VMAgentRemoteReadSpec defines the remote storage configuration for VmAlert to read alerts from

@@ -19,12 +19,10 @@ package controllers
 import (
 	"context"
 	"sync"
-
-	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
-	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/builder"
+	"time"
 
 	"github.com/VictoriaMetrics/operator/controllers/factory"
+	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
@@ -33,15 +31,13 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 )
 
 var vmAlertSync sync.Mutex
-
-// holds vmalerts with spec.Notifiers.Selector != nil
-var vmAlertsWithNotifierDiscovery = map[types.NamespacedName][]*victoriametricsv1beta1.DiscoverySelector{}
 
 // VMAlertReconciler reconciles a VMAlert object
 type VMAlertReconciler struct {
@@ -78,14 +74,16 @@ func (r *VMAlertReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	if !instance.DeletionTimestamp.IsZero() {
-		delete(vmAlertsWithNotifierDiscovery, req.NamespacedName)
 		if err := finalize.OnVMAlertDelete(ctx, r.Client, instance); err != nil {
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{}, nil
 	}
 
-	vmAlertsWithNotifierDiscovery[req.NamespacedName] = instance.GetNotifierSelectors()
+	var needToRequeue bool
+	if len(instance.GetNotifierSelectors()) > 0 {
+		needToRequeue = true
+	}
 
 	if err := finalize.AddFinalizer(ctx, r.Client, instance); err != nil {
 		return ctrl.Result{}, err
@@ -120,8 +118,12 @@ func (r *VMAlertReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	reqLogger.Info("vmalert reconciled")
+	var result ctrl.Result
+	if needToRequeue {
+		result.RequeueAfter = time.Second * 30
+	}
 
-	return ctrl.Result{}, nil
+	return result, nil
 }
 
 // SetupWithManager general setup method

@@ -40,6 +40,7 @@ This Document documents the types introduced by the VictoriaMetrics to be consum
 * [VMAgentSpec](#vmagentspec)
 * [VMAgentStatus](#vmagentstatus)
 * [BasicAuth](#basicauth)
+* [DiscoverySelector](#discoveryselector)
 * [EmbeddedHPA](#embeddedhpa)
 * [EmbeddedObjectMetadata](#embeddedobjectmetadata)
 * [EmbeddedPersistentVolumeClaim](#embeddedpersistentvolumeclaim)
@@ -727,6 +728,17 @@ BasicAuth allow an endpoint to authenticate over basic authentication More info:
 
 [Back to TOC](#table-of-contents)
 
+## DiscoverySelector
+
+DiscoverySelector can be used at CRD components discovery
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| namespaceSelector |  | *[NamespaceSelector](#namespaceselector) | false |
+| labelSelector |  | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
+
+[Back to TOC](#table-of-contents)
+
 ## EmbeddedHPA
 
 EmbeddedHPA embeds HorizontalPodAutoScaler spec v2. https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/horizontal-pod-autoscaler-v2beta2/
@@ -851,7 +863,8 @@ VMAlertNotifierSpec defines the notifier url for sending information about alert
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
-| url | AlertManager url. Required parameter. E.g. http://127.0.0.1:9093 | string | true |
+| url | AlertManager url.  E.g. http://127.0.0.1:9093 | string | false |
+| selector | Selector allows service discovery for alertmanager in this case all matched vmalertmanager replicas will be added into vmalert notifier.url as statefulset pod.fqdn | *[DiscoverySelector](#discoveryselector) | false |
 | basicAuth | BasicAuth allow notifier to authenticate over basic authentication | *[BasicAuth](#basicauth) | false |
 | tlsConfig | TLSConfig describes tls configuration for notifier | *[TLSConfig](#tlsconfig) | false |
 

@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -48,7 +49,7 @@ type BaseOperatorConf struct {
 	PSPAutoCreateEnabled      bool   `default:"true"`
 	VMAlertDefault            struct {
 		Image               string `default:"victoriametrics/vmalert"`
-		Version             string `default:"v1.66.1"`
+		Version             string `default:"v1.66.2"`
 		Port                string `default:"8080"`
 		UseDefaultResources bool   `default:"true"`
 		Resource            struct {
@@ -67,7 +68,7 @@ type BaseOperatorConf struct {
 	}
 	VMAgentDefault struct {
 		Image               string `default:"victoriametrics/vmagent"`
-		Version             string `default:"v1.66.1"`
+		Version             string `default:"v1.66.2"`
 		ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.48.1"`
 		Port                string `default:"8429"`
 		UseDefaultResources bool   `default:"true"`
@@ -87,7 +88,7 @@ type BaseOperatorConf struct {
 
 	VMSingleDefault struct {
 		Image               string `default:"victoriametrics/victoria-metrics"`
-		Version             string `default:"v1.66.1"`
+		Version             string `default:"v1.66.2"`
 		Port                string `default:"8429"`
 		UseDefaultResources bool   `default:"true"`
 		Resource            struct {
@@ -108,7 +109,7 @@ type BaseOperatorConf struct {
 		UseDefaultResources bool `default:"true"`
 		VMSelectDefault     struct {
 			Image    string `default:"victoriametrics/vmselect"`
-			Version  string `default:"v1.66.1-cluster"`
+			Version  string `default:"v1.66.2-cluster"`
 			Port     string `default:"8481"`
 			Resource struct {
 				Limit struct {
@@ -123,7 +124,7 @@ type BaseOperatorConf struct {
 		}
 		VMStorageDefault struct {
 			Image        string `default:"victoriametrics/vmstorage"`
-			Version      string `default:"v1.66.1-cluster"`
+			Version      string `default:"v1.66.2-cluster"`
 			VMInsertPort string `default:"8400"`
 			VMSelectPort string `default:"8401"`
 			Port         string `default:"8482"`
@@ -140,7 +141,7 @@ type BaseOperatorConf struct {
 		}
 		VMInsertDefault struct {
 			Image    string `default:"victoriametrics/vminsert"`
-			Version  string `default:"v1.66.1-cluster"`
+			Version  string `default:"v1.66.2-cluster"`
 			Port     string `default:"8480"`
 			Resource struct {
 				Limit struct {
@@ -178,7 +179,7 @@ type BaseOperatorConf struct {
 	DisableSelfServiceScrapeCreation bool `default:"false"`
 	VMBackup                         struct {
 		Image               string `default:"victoriametrics/vmbackupmanager"`
-		Version             string `default:"v1.66.1-enterprise"`
+		Version             string `default:"v1.66.2-enterprise"`
 		Port                string `default:"8300"`
 		UseDefaultResources bool   `default:"true"`
 		Resource            struct {
@@ -196,7 +197,7 @@ type BaseOperatorConf struct {
 	}
 	VMAuthDefault struct {
 		Image               string `default:"victoriametrics/vmauth"`
-		Version             string `default:"v1.66.1"`
+		Version             string `default:"v1.66.2"`
 		ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.48.1"`
 		Port                string `default:"8427"`
 		UseDefaultResources bool   `default:"true"`
@@ -311,10 +312,27 @@ func MustGetBaseConfig() *BaseOperatorConf {
 	return opConf
 }
 
+var validNamespaceRegex = regexp.MustCompile(`[a-z0-9]([-a-z0-9]*[a-z0-9])?`)
+
+func getWatchNamespace() (string, error) {
+	wns, _ := os.LookupEnv(WatchNamespaceEnvVar)
+	if len(wns) > 0 {
+		// validate namespace with regexp
+		if !validNamespaceRegex.MatchString(wns) {
+			return "", fmt.Errorf("incorrect value: %s for env var %s, it must match regex: %s", wns, WatchNamespaceEnvVar, validNamespaceRegex.String())
+		}
+	}
+	return wns, nil
+}
+
 // MustGetWatchNamespace returns the Namespace the operator should be watching for changes
 func MustGetWatchNamespace() string {
 	initNamespace.Do(func() {
-		opNamespace, _ = os.LookupEnv(WatchNamespaceEnvVar)
+		wns, err := getWatchNamespace()
+		if err != nil {
+			panic(err)
+		}
+		opNamespace = wns
 	})
 
 	return opNamespace

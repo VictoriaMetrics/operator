@@ -59,7 +59,49 @@ func CreateOrUpdateVMAlertService(ctx context.Context, cr *victoriametricsv1beta
 
 func CreateOrUpdateVMAlert(ctx context.Context, cr *victoriametricsv1beta1.VMAlert, rclient client.Client, c *config.BaseOperatorConf, cmNames []string) (reconcile.Result, error) {
 	l := log.WithValues("controller", "vmalert.crud", "vmalert", cr.Name)
+	// copy to avoid side effects.
+	cr = cr.DeepCopy()
+	var additionalNotifiers []victoriametricsv1beta1.VMAlertNotifierSpec
 
+	if cr.Spec.Notifier != nil {
+		cr.Spec.Notifiers = append(cr.Spec.Notifiers, *cr.Spec.Notifier)
+	}
+	// trim notifiers with non-empty notifier Selector
+	var cnt int
+	for i := range cr.Spec.Notifiers {
+		n := cr.Spec.Notifiers[i]
+		// fast path
+		if n.Selector == nil {
+			cr.Spec.Notifiers[cnt] = n
+			cnt++
+			continue
+		}
+		// discover alertmanagers
+		var ams victoriametricsv1beta1.VMAlertmanagerList
+		amListOpts, err := n.Selector.AsListOptions()
+		if err != nil {
+			return reconcile.Result{}, fmt.Errorf("cannot convert notifier selector as ListOptions: %w", err)
+		}
+		if err := rclient.List(ctx, &ams, amListOpts, config.MustGetNamespaceListOptions()); err != nil {
+			return reconcile.Result{}, fmt.Errorf("cannot list alertmanagers for vmalert notifier sd: %w", err)
+		}
+		for _, item := range ams.Items {
+			if !item.DeletionTimestamp.IsZero() && n.Selector.Namespace != nil && !n.Selector.Namespace.IsMatch(&item) {
+				continue
+			}
+			dsc := item.AsNotifiers()
+			additionalNotifiers = append(additionalNotifiers, dsc...)
+		}
+	}
+	cr.Spec.Notifiers = cr.Spec.Notifiers[:cnt]
+
+	if len(additionalNotifiers) > 0 {
+		l.Info("additional notifiers with sd selector", "len", len(additionalNotifiers))
+	}
+	cr.Spec.Notifiers = append(cr.Spec.Notifiers, additionalNotifiers...)
+	if len(cr.Spec.Notifiers) == 0 {
+		return reconcile.Result{}, fmt.Errorf("cannot create or update vmalert: %s, cannot find any notifiers. cr.spec.Notifiers, cr.spec.Notifier and discovered alertmanager are empty", cr.Name)
+	}
 	if err := psp.CreateServiceAccountForCRD(ctx, cr, rclient); err != nil {
 		return reconcile.Result{}, fmt.Errorf("failed create service account: %w", err)
 	}
@@ -114,7 +156,6 @@ func CreateOrUpdateVMAlert(ctx context.Context, cr *victoriametricsv1beta1.VMAle
 // newDeployForCR returns a busybox pod with the same name/namespace as the cr
 func newDeployForVMAlert(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorConf, ruleConfigMapNames []string, remoteSecrets map[string]BasicAuthCredentials) (*appsv1.Deployment, error) {
 
-	cr = cr.DeepCopy()
 	if cr.Spec.Image.Repository == "" {
 		cr.Spec.Image.Repository = c.VMAlertDefault.Image
 	}
@@ -153,17 +194,12 @@ func newDeployForVMAlert(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOpera
 }
 
 func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorConf, ruleConfigMapNames []string, remoteSecrets map[string]BasicAuthCredentials) (*appsv1.DeploymentSpec, error) {
-	cr = cr.DeepCopy()
 
 	confReloadArgs := []string{
 		fmt.Sprintf("-webhook-url=%s", cr.ReloadPathWithPort(cr.Spec.Port)),
 	}
 	for _, cm := range ruleConfigMapNames {
 		confReloadArgs = append(confReloadArgs, fmt.Sprintf("-volume-dir=%s", path.Join(vmAlertConfigDir, cm)))
-	}
-
-	if cr.Spec.Notifier != nil {
-		cr.Spec.Notifiers = append(cr.Spec.Notifiers, *cr.Spec.Notifier)
 	}
 
 	args := buildVMAlertArgs(cr, ruleConfigMapNames, remoteSecrets)

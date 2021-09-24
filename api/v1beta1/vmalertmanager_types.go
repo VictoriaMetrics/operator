@@ -345,11 +345,30 @@ func (cr *VMAlertmanager) AsURL() string {
 	return fmt.Sprintf("http://%s.%s.svc:9093", cr.PrefixedName(), cr.Namespace)
 }
 
+func (cr *VMAlertmanager) AsPodFQDN(idx int) string {
+	return fmt.Sprintf("http://%s-%d.%s.%s.svc:9093", cr.PrefixedName(), idx, cr.PrefixedName(), cr.Namespace)
+}
+
 // AsCRDOwner implements interface
 func (cr *VMAlertmanager) AsCRDOwner() []metav1.OwnerReference {
 	return crd.GetCRDAsOwner(crd.VMAlertManager)
 }
 
+// AsNotifiers converts VMAlertmanager into VMAlertNotifierSpec
+func (cr *VMAlertmanager) AsNotifiers() []VMAlertNotifierSpec {
+	var r []VMAlertNotifierSpec
+	replicaCount := 1
+	if cr.Spec.ReplicaCount != nil {
+		replicaCount = int(*cr.Spec.ReplicaCount)
+	}
+	for i := 0; i < replicaCount; i++ {
+		ns := VMAlertNotifierSpec{
+			URL: cr.AsPodFQDN(i),
+		}
+		r = append(r, ns)
+	}
+	return r
+}
 func init() {
 	SchemeBuilder.Register(&VMAlertmanager{}, &VMAlertmanagerList{})
 }

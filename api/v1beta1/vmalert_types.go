@@ -229,8 +229,14 @@ type VMAlertDatasourceSpec struct {
 // VMAlertNotifierSpec defines the notifier url for sending information about alerts
 // +k8s:openapi-gen=true
 type VMAlertNotifierSpec struct {
-	// AlertManager url. Required parameter. E.g. http://127.0.0.1:9093
-	URL string `json:"url"`
+	// AlertManager url.  E.g. http://127.0.0.1:9093
+	// +optional
+	URL string `json:"url,omitempty"`
+	// Selector allows service discovery for alertmanager
+	// in this case all matched vmalertmanager replicas will be added into vmalert notifier.url
+	// as statefulset pod.fqdn
+	// +optional
+	Selector *DiscoverySelector `json:"selector,omitempty"`
 	// BasicAuth allow notifier to authenticate over basic authentication
 	// +optional
 	BasicAuth *BasicAuth `json:"basicAuth,omitempty"`
@@ -238,9 +244,9 @@ type VMAlertNotifierSpec struct {
 	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
 }
 
-// AsMapKey - returns cr name with suffix for notifier token/auth maps.
+// NotifierAsMapKey - returns cr name with suffix for notifier token/auth maps.
 func (cr VMAlert) NotifierAsMapKey(i int) string {
-	return fmt.Sprintf("nodeScrape/%s/%s/%d", cr.Namespace, cr.Name, i)
+	return fmt.Sprintf("vmalert/%s/%s/%d", cr.Namespace, cr.Name, i)
 }
 
 // VMAgentRemoteReadSpec defines the remote storage configuration for VmAlert to read alerts from
@@ -444,6 +450,19 @@ func (cr *VMAlert) AsCRDOwner() []metav1.OwnerReference {
 	return crd.GetCRDAsOwner(crd.VMAlert)
 }
 
+func (cr *VMAlert) GetNotifierSelectors() []*DiscoverySelector {
+	var r []*DiscoverySelector
+	for _, n := range cr.Spec.Notifiers {
+		if n.Selector == nil {
+			continue
+		}
+		r = append(r, n.Selector)
+	}
+	if cr.Spec.Notifier != nil && cr.Spec.Notifier.Selector != nil {
+		r = append(r, cr.Spec.Notifier.Selector)
+	}
+	return r
+}
 func init() {
 	SchemeBuilder.Register(&VMAlert{}, &VMAlertList{})
 }

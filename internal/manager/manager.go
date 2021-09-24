@@ -95,6 +95,10 @@ func RunManager(ctx context.Context) error {
 		setupLog.Error(err, "unable to start manager")
 		return err
 	}
+	opNs := config.MustGetWatchNamespace()
+	if opNs != "" {
+		setupLog.Info("operator is running in single namespace mode", "namespace", opNs)
+	}
 
 	if !*disableCRDOwnership {
 		initC, err := client.New(mgr.GetConfig(), client.Options{Scheme: scheme})

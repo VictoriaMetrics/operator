@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -311,10 +312,27 @@ func MustGetBaseConfig() *BaseOperatorConf {
 	return opConf
 }
 
+var validNamespaceRegex = regexp.MustCompile(`[a-z0-9]([-a-z0-9]*[a-z0-9])?`)
+
+func getWatchNamespace() (string, error) {
+	wns, _ := os.LookupEnv(WatchNamespaceEnvVar)
+	if len(wns) > 0 {
+		// validate namespace with regexp
+		if !validNamespaceRegex.MatchString(wns) {
+			return "", fmt.Errorf("incorrect value: %s for env var %s, it must match regex: %s", wns, WatchNamespaceEnvVar, validNamespaceRegex.String())
+		}
+	}
+	return wns, nil
+}
+
 // MustGetWatchNamespace returns the Namespace the operator should be watching for changes
 func MustGetWatchNamespace() string {
 	initNamespace.Do(func() {
-		opNamespace, _ = os.LookupEnv(WatchNamespaceEnvVar)
+		wns, err := getWatchNamespace()
+		if err != nil {
+			panic(err)
+		}
+		opNamespace = wns
 	})
 
 	return opNamespace

@@ -210,6 +210,7 @@ func ConvertPodEndpoints(promPodEnpoints []v1.PodMetricsEndpoint) []v1beta1vm.Po
 	endPoints := []v1beta1vm.PodMetricsEndpoint{}
 	for _, promEndPoint := range promPodEnpoints {
 		endPoints = append(endPoints, v1beta1vm.PodMetricsEndpoint{
+			TargetPort:           promEndPoint.TargetPort,
 			Port:                 promEndPoint.Port,
 			Interval:             promEndPoint.Interval,
 			Path:                 promEndPoint.Path,

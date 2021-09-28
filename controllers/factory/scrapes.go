@@ -494,7 +494,7 @@ func loadScrapeSecrets(
 				if err != nil {
 					return nil, fmt.Errorf("could not generate basicAuth for vmstaticScrape %s. %w", staticCfg.Name, err)
 				}
-				baSecrets[staticCfg.AsKey(i)] = credentials
+				baSecrets[staticCfg.AsMapKey(i)] = credentials
 			}
 			if ep.OAuth2 != nil {
 				oauth2, err := loadOAuthSecrets(ctx, rclient, ep.OAuth2, staticCfg.Namespace, nsSecretCache, nsCMCache)

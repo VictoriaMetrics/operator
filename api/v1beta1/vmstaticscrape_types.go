@@ -92,11 +92,6 @@ type TargetEndpoint struct {
 	VMScrapeParams *VMScrapeParams `json:"vm_scrape_params,omitempty"`
 }
 
-// AsKey represent CR as map key.
-func (cr *VMStaticScrape) AsKey(pos int) string {
-	return fmt.Sprintf("TargetEndpoint/%s/%s/%d", cr.Namespace, cr.Name, pos)
-}
-
 // VMStaticScrapeStatus defines the observed state of VMStaticScrape
 type VMStaticScrapeStatus struct {
 }

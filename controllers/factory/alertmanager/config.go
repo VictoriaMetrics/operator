@@ -320,7 +320,85 @@ func (cb *configBuilder) buildSlack(slack operatorv1beta1.SlackConfig) error {
 	if slack.SendResolved != nil {
 		temp = append(temp, yaml.MapItem{Key: "send_resolved", Value: *slack.SendResolved})
 	}
+	toYaml := func(key string, src string) {
+		if len(src) > 0 {
+			temp = append(temp, yaml.MapItem{Key: key, Value: src})
+		}
+	}
+	toYaml("username", slack.Username)
+	toYaml("channel", slack.Channel)
+	toYaml("color", slack.Color)
+	toYaml("fallback", slack.Fallback)
+	toYaml("footer", slack.Footer)
+	toYaml("icon_emoji", slack.IconEmoji)
+	toYaml("icon_url", slack.IconURL)
+	toYaml("image_url", slack.ImageURL)
+	toYaml("pretext", slack.Pretext)
+	toYaml("text", slack.Text)
+	toYaml("title", slack.Title)
+	toYaml("title_link", slack.TitleLink)
+	toYaml("thumb_url", slack.ThumbURL)
+	toYaml("callback_id", slack.CallbackID)
+	if slack.LinkNames {
+		temp = append(temp, yaml.MapItem{Key: "link_names", Value: slack.LinkNames})
+	}
+	if slack.ShortFields {
+		temp = append(temp, yaml.MapItem{Key: "short_fields", Value: slack.ShortFields})
+	}
+	if len(slack.MrkdwnIn) > 0 {
+		temp = append(temp, yaml.MapItem{Key: "mrkdwn_in", Value: slack.MrkdwnIn})
+	}
+	var actions []yaml.MapSlice
+	for _, action := range slack.Actions {
+		var actionYAML yaml.MapSlice
+		toActionYAML := func(key, src string) {
+			if len(src) > 0 {
+				actionYAML = append(actionYAML, yaml.MapItem{Key: key, Value: src})
+			}
+		}
+		toActionYAML("name", action.Name)
+		toActionYAML("value", action.Value)
+		toActionYAML("text", action.Text)
+		toActionYAML("url", action.URL)
+		toActionYAML("type", action.Type)
+		toActionYAML("style", action.Style)
 
+		if action.ConfirmField != nil {
+			var confirmYAML yaml.MapSlice
+			toConfirm := func(key, src string) {
+				if len(src) > 0 {
+					confirmYAML = append(confirmYAML, yaml.MapItem{Key: key, Value: src})
+				}
+			}
+			toConfirm("text", action.ConfirmField.Text)
+			toConfirm("ok_text", action.ConfirmField.OkText)
+			toConfirm("dismiss_text", action.ConfirmField.DismissText)
+			toConfirm("title", action.ConfirmField.Title)
+			actionYAML = append(actionYAML, yaml.MapItem{Key: "confirm", Value: confirmYAML})
+		}
+		actions = append(actions, actionYAML)
+	}
+	if len(actions) > 0 {
+		temp = append(temp, yaml.MapItem{Key: "actions", Value: actions})
+	}
+	var fields []yaml.MapSlice
+	for _, field := range slack.Fields {
+		var fieldYAML yaml.MapSlice
+		if len(field.Value) > 0 {
+			fieldYAML = append(fieldYAML, yaml.MapItem{Key: "value", Value: field.Value})
+		}
+		if len(field.Title) > 0 {
+			fieldYAML = append(fieldYAML, yaml.MapItem{Key: "title", Value: field.Title})
+		}
+
+		if field.Short != nil {
+			fieldYAML = append(fieldYAML, yaml.MapItem{Key: "short", Value: *field.Short})
+		}
+		fields = append(fields, fieldYAML)
+	}
+	if len(fields) > 0 {
+		temp = append(temp, yaml.MapItem{Key: "fields", Value: fields})
+	}
 	cb.currentYaml = append(cb.currentYaml, temp)
 	return nil
 }

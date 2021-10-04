@@ -556,7 +556,7 @@ func selectVMUsers(ctx context.Context, cr *v1beta1.VMAuth, rclient client.Clien
 		return nil, err
 	}
 
-	if err := selectWithMerge(ctx, rclient, namespaces, &victoriametricsv1beta1.VMUserList{}, userSelector, func(list client.ObjectList) {
+	if err := visitObjectsWithSelector(ctx, rclient, namespaces, &victoriametricsv1beta1.VMUserList{}, userSelector, func(list client.ObjectList) {
 		l := list.(*victoriametricsv1beta1.VMUserList)
 		for _, item := range l.Items {
 			if !item.DeletionTimestamp.IsZero() {

@@ -142,10 +142,15 @@ type VMAlertSpec struct {
 	EnforcedNamespaceLabel string `json:"enforcedNamespaceLabel,omitempty"`
 	// RuleSelector selector to select which VMRules to mount for loading alerting
 	// rules from.
+	// Works in combination with NamespaceSelector.
+	// If both nil - match everything.
+	// NamespaceSelector nil - only objects at VMAlert namespace.
 	// +optional
 	RuleSelector *metav1.LabelSelector `json:"ruleSelector,omitempty"`
-	// RuleNamespaceSelector to be selected for VMRules discovery. If unspecified, only
-	// the same namespace as the vmalert object is in is used.
+	// RuleNamespaceSelector to be selected for VMRules discovery.
+	// Works in combination with Selector.
+	// If both nil - match everything.
+	// NamespaceSelector nil - only objects at VMAlert namespace.
 	// +optional
 	RuleNamespaceSelector *metav1.LabelSelector `json:"ruleNamespaceSelector,omitempty"`
 

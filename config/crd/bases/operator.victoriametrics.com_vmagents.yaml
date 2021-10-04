@@ -507,7 +507,10 @@ spec:
                 type: string
               nodeScrapeNamespaceSelector:
                 description: NodeScrapeNamespaceSelector defines Namespaces to be
-                  selected for VMNodeScrape discovery. If nil, only check own namespace.
+                  selected for VMNodeScrape discovery. Works in combination with Selector.
+                  If both nil - match everything. NamespaceSelector nil - only objects
+                  at VMAgent namespace. Selector nil - only objects at NamespaceSelector
+                  namespaces.
                 properties:
                   matchExpressions:
                     description: matchExpressions is a list of label selector requirements.
@@ -612,7 +615,10 @@ spec:
                 type: array
               nodeScrapeSelector:
                 description: NodeScrapeSelector defines VMNodeScrape to be selected
-                  for scraping.
+                  for scraping. Works in combination with NamespaceSelector. If both
+                  nil - match everything. NamespaceSelector nil - only objects at
+                  VMAgent namespace. Selector nil - only objects at NamespaceSelector
+                  namespaces.
                 properties:
                   matchExpressions:
                     description: matchExpressions is a list of label selector requirements.
@@ -724,7 +730,10 @@ spec:
                 type: object
               podScrapeNamespaceSelector:
                 description: PodScrapeNamespaceSelector defines Namespaces to be selected
-                  for VMPodScrape discovery. If nil, only check own namespace.
+                  for VMPodScrape discovery. Works in combination with Selector. If
+                  both nil - match everything. NamespaceSelector nil - only objects
+                  at VMAgent namespace. Selector nil - only objects at NamespaceSelector
+                  namespaces.
                 properties:
                   matchExpressions:
                     description: matchExpressions is a list of label selector requirements.
@@ -829,7 +838,10 @@ spec:
                 type: array
               podScrapeSelector:
                 description: PodScrapeSelector defines PodScrapes to be selected for
-                  target discovery.
+                  target discovery. Works in combination with NamespaceSelector. If
+                  both nil - match everything. NamespaceSelector nil - only objects
+                  at VMAgent namespace. Selector nil - only objects at NamespaceSelector
+                  namespaces.
                 properties:
                   matchExpressions:
                     description: matchExpressions is a list of label selector requirements.
@@ -884,7 +896,10 @@ spec:
                 type: string
               probeNamespaceSelector:
                 description: ProbeNamespaceSelector defines Namespaces to be selected
-                  for VMProbe discovery. If nil, only check own namespace.
+                  for VMProbe discovery. Works in combination with Selector. If both
+                  nil - match everything. NamespaceSelector nil - only objects at
+                  VMAgent namespace. Selector nil - only objects at NamespaceSelector
+                  namespaces.
                 properties:
                   matchExpressions:
                     description: matchExpressions is a list of label selector requirements.
@@ -989,7 +1004,9 @@ spec:
                 type: array
               probeSelector:
                 description: ProbeSelector defines VMProbe to be selected for target
-                  probing.
+                  probing. Works in combination with NamespaceSelector. If both nil
+                  - match everything. NamespaceSelector nil - only objects at VMAgent
+                  namespace. Selector nil - only objects at NamespaceSelector namespaces.
                 properties:
                   matchExpressions:
                     description: matchExpressions is a list of label selector requirements.
@@ -1571,7 +1588,10 @@ spec:
                 type: string
               serviceScrapeNamespaceSelector:
                 description: ServiceScrapeNamespaceSelector Namespaces to be selected
-                  for VMServiceScrape discovery. If nil, only check own namespace.
+                  for VMServiceScrape discovery. Works in combination with Selector.
+                  If both nil - match everything. NamespaceSelector nil - only objects
+                  at VMAgent namespace. Selector nil - only objects at NamespaceSelector
+                  namespaces.
                 properties:
                   matchExpressions:
                     description: matchExpressions is a list of label selector requirements.
@@ -1676,7 +1696,10 @@ spec:
                 type: array
               serviceScrapeSelector:
                 description: ServiceScrapeSelector defines ServiceScrapes to be selected
-                  for target discovery.
+                  for target discovery. Works in combination with NamespaceSelector.
+                  If both nil - match everything. NamespaceSelector nil - only objects
+                  at VMAgent namespace. Selector nil - only objects at NamespaceSelector
+                  namespaces.
                 properties:
                   matchExpressions:
                     description: matchExpressions is a list of label selector requirements.
@@ -1771,7 +1794,10 @@ spec:
                 x-kubernetes-preserve-unknown-fields: true
               staticScrapeNamespaceSelector:
                 description: StaticScrapeNamespaceSelector defines Namespaces to be
-                  selected for VMStaticScrape discovery. If nil, only check own namespace.
+                  selected for VMStaticScrape discovery. Works in combination with
+                  NamespaceSelector. If both nil - match everything. NamespaceSelector
+                  nil - only objects at VMAgent namespace. Selector nil - only objects
+                  at NamespaceSelector namespaces.
                 properties:
                   matchExpressions:
                     description: matchExpressions is a list of label selector requirements.
@@ -1876,7 +1902,10 @@ spec:
                 type: array
               staticScrapeSelector:
                 description: StaticScrapeSelector defines PodScrapes to be selected
-                  for target discovery.
+                  for target discovery. Works in combination with NamespaceSelector.
+                  If both nil - match everything. NamespaceSelector nil - only objects
+                  at VMAgent namespace. Selector nil - only objects at NamespaceSelector
+                  namespaces.
                 properties:
                   matchExpressions:
                     description: matchExpressions is a list of label selector requirements.

@@ -71,7 +71,9 @@ spec:
               type: array
             configNamespaceSelector:
               description: ' ConfigNamespaceSelector defines namespace selector for
-                VMAlertmanagerConfig. If nil, own namespace will be used.'
+                VMAlertmanagerConfig. Works in combination with Selector. If both
+                nil - match everything. NamespaceSelector nil - only objects at VMAlertmanager
+                namespace. Selector nil - only objects at NamespaceSelector namespaces.'
               properties:
                 matchExpressions:
                   description: matchExpressions is a list of label selector requirements.
@@ -128,9 +130,10 @@ spec:
               type: string
             configSelector:
               description: ConfigSelector defines selector for VMAlertmanagerConfig,
-                result config will be merged with with Raw or Secret config. If nil,
-                VMAlertmanagerConfig wont be used. If empty - {}, everything will
-                be selected based on namespace selector.
+                result config will be merged with with Raw or Secret config. Works
+                in combination with NamespaceSelector. If both nil - match everything.
+                NamespaceSelector nil - only objects at VMAlertmanager namespace.
+                Selector nil - only objects at NamespaceSelector namespaces.
               properties:
                 matchExpressions:
                   description: matchExpressions is a list of label selector requirements.

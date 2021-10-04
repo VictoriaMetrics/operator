@@ -209,12 +209,17 @@ type VMAlertmanagerSpec struct {
 	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
 	*EmbeddedProbes     `json:",inline"`
 	// ConfigSelector defines selector for VMAlertmanagerConfig, result config will be merged with with Raw or Secret config.
-	// If nil, VMAlertmanagerConfig wont be used.
-	// If empty - {}, everything will be selected based on namespace selector.
+	// Works in combination with NamespaceSelector.
+	// If both nil - match everything.
+	// NamespaceSelector nil - only objects at VMAlertmanager namespace.
+	// Selector nil - only objects at NamespaceSelector namespaces.
 	// +optional
 	ConfigSelector *metav1.LabelSelector `json:"configSelector,omitempty"`
 	//  ConfigNamespaceSelector defines namespace selector for VMAlertmanagerConfig.
-	// If nil, own namespace will be used.
+	// Works in combination with Selector.
+	// If both nil - match everything.
+	// NamespaceSelector nil - only objects at VMAlertmanager namespace.
+	// Selector nil - only objects at NamespaceSelector namespaces.
 	// +optional
 	ConfigNamespaceSelector *metav1.LabelSelector `json:"configNamespaceSelector,omitempty"`
 	// ExtraArgs that will be passed to  VMAuth pod

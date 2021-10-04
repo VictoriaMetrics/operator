@@ -1378,8 +1378,8 @@ spec:
               type: object
             ruleNamespaceSelector:
               description: RuleNamespaceSelector to be selected for VMRules discovery.
-                If unspecified, only the same namespace as the vmalert object is in
-                is used.
+                Works in combination with Selector. If both nil - match everything.
+                NamespaceSelector nil - only objects at VMAlert namespace.
               properties:
                 matchExpressions:
                   description: matchExpressions is a list of label selector requirements.
@@ -1432,7 +1432,9 @@ spec:
               type: array
             ruleSelector:
               description: RuleSelector selector to select which VMRules to mount
-                for loading alerting rules from.
+                for loading alerting rules from. Works in combination with NamespaceSelector.
+                If both nil - match everything. NamespaceSelector nil - only objects
+                at VMAlert namespace.
               properties:
                 matchExpressions:
                   description: matchExpressions is a list of label selector requirements.

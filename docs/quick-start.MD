@@ -111,6 +111,7 @@ The VictoriaMetrics Operator introduces additional resources in Kubernetes to de
 * [VMStaticScrape](#VMStaticScrape)
 * [VMAuth](#VMAuth)
 * [VMUser](#VMUser)
+* [Selectors](#Object selectors)
 
 ## VMSingle
 
@@ -319,137 +320,7 @@ EOF
 EOF
 
 ```
- `VMAgent` has four selectors specification for filtering `VMServiceScrape`, `VMProbe`, `VMNodeScrape` and `VMPodScrape` objects:
- - `spec.serviceScrapeNamespaceSelector` - if it's nil, only serviceScrapes in the `VMAgent`s namespace can be selected.
-    If it's defined with empty value: `spec.serviceScrapeNamespaceSelector: {}` - all namespaces are matched.
-    You may also add matchLabels or matchExpression syntax, but your namespace must be tagged with specified labels first:
-     ```bash
-        kubectl label ns default name=default
-     ``` 
-      `spec.serviceScrapeNamespaceSelector:
-               matchLabels:
-                     name: default
-      `
- - `spec.serviceScrapeSelector` - it selects `VMServiceScrape` objects by its labels. 
-     If it's nil, but `spec.serviceScrapeNamespaceSelector` isn't, the last one will be used for selecting.
-     If it's defined with empty value: `spec.serviceScrapeSelector: {}`, all objects can be selected depending on NamespaceSelector.
 
- - `spec.podScrapeNamespaceSelector` - if it's nil, only `PodScrape` in the `VMAgent`s namespace can be selected.
-    If it's defined with empty value: `spec.podScrapeNamespaceSelector: {}` - all namespaces are matched.
-    You may also add matchLabels or matchExpression syntax, but your namespace must be tagged with specified labels first:
-     ```bash
-        kubectl label ns default name=default
-     ``` 
-      `spec.podScrapeNamespaceSelector:
-               matchLabels:
-                     name: default
-      `
- - `spec.podScrapeSelector` - it selects `VMPodScrape` objects by its labels. 
-     If it's nil, but `spec.podScrapeNamespaceSelector` isn't, the last one will be used for selecting.
-     If it's defined with empty value: `spec.podScrapeSelector: {}`, all objects can be selected depending on NamespaceSelector.
-
- - `spec.probeNamespaceSelector` - if it's nil, only `VMProbe` in the `VMAgent`s namespace can be selected.
-    If it's defined with empty value: `spec.probeNamespaceSelector: {}` - all namespaces are matched.
-    You may also add matchLabels or matchExpression syntax, but your namespace must be tagged with specified labels first:
-     ```bash
-        kubectl label ns default name=default
-     ``` 
-      `spec.probeNamespaceSelector:
-               matchLabels:
-                     name: default
-      `
- - `spec.probeSelector` - it selects `VMProbe` objects by its labels. 
-     If it's nil, but `spec.probeNamespaceSelector` isn't, the last one will be used for selecting.
-     If it's defined with empty value: `spec.probeSelector: {}`, all objects can be selected depending on NamespaceSelector.
-
-- `spec.nodeScrapeNamespaceSelector` - if it's nil, only `VMNodeScrape` in the `VMAgent`s namespace can be selected.
-  If it's defined with empty value: `spec.probeNamespaceSelector: {}` - all namespaces are matched.
-  You may also add matchLabels or matchExpression syntax, but your namespace must be tagged with specified labels first:
-    ```bash
-       kubectl label ns default name=default
-    ``` 
-  `spec.nodeScrapeNamespaceSelector:
-     matchLabels:
-       name: default
-  `
-- `spec.nodeScrapeSelector` - it selects `VMNodeScrape` objects by its labels.
-  If it's nil, but `spec.probeNamespaceSelector` isn't, the last one will be used for selecting.
-  If it's defined with empty value: `spec.vmProbeSelector: {}`, all objects can be selected depending on NamespaceSelector.
-  You may also use `matchLabels` and `matchExpression` for filtering `VMNodeScrape` by its labels.
-
-- `spec.staticScrapeNamespaceSelector` - if it's nil, only `VMStaticScrape` in the `VMAgent`s namespace can be selected.
-  If it's defined with empty value: `spec.staticScrapeNamespaceSelector: {}` - all namespaces are matched.
-  You may also add matchLabels or matchExpression syntax, but your namespace must be tagged with specified labels first:
-    ```bash
-       kubectl label ns default name=default
-    ``` 
-  `spec.staticScrapeNamespaceSelector:
-    matchLabels:
-      name: default
-  `
-- `spec.staticScrapeSelector` - it selects `VMStaticScrape` objects by its labels.
-  If it's nil, but `spec.staticScrapeNamespaceSelector` isn't, the last one will be used for selecting.
-  If it's defined with empty value: `spec.staticScrapeSelector: {}`, all objects can be selected depending on NamespaceSelector.
-  You may also use `matchLabels` and `matchExpression` for filtering `VMNodeScrape` by its labels.
-     
-this configuration will match only namespace with  the label - name=default and all `VMServiceScrape` objects at this namespace will be 
-selected: 
-```yaml
-cat <<EOF | kubectl apply -f -
-apiVersion: operator.victoriametrics.com/v1beta1
-kind: VMAgent
-metadata:
-  name: example-vmagent
-spec:
-  serviceScrapeSelector: {}
-  serviceScrapeNamespaceSelector: 
-      matchLabels:
-         name: default
-  replicaCount: 1
-  remoteWrite:
-    - url: "http://vmsingle-example-vmsingle-persisted.default.svc:8429/api/v1/write"
-EOF
-```
-
-This configuration will select `VMServiceScrape` and `VMPodScrape` with labels - team=managers,project=cloud at any namespace:
-```yaml
-cat <<EOF | kubectl apply -f -
-apiVersion: operator.victoriametrics.com/v1beta1
-kind: VMAgent
-metadata:
-  name: example-vmagent
-spec:
-  serviceScrapeNamespaceSelector: {}
-  serviceScrapeSelector:
-   matchLabels:
-       team: managers
-       project: cloud
-  podScrapeSelector:
-   matchLabels:
-       team: managers
-       project: clo
-  replicaCount: 1
-  remoteWrite:
-    - url: "http://vmsingle-example-vmsingle-persisted.default.svc:8429/api/v1/write"
-EOF
-```
-
-The last one will select any `VMServiceScrape`,`VMProbe` and `VMPodScrape` at `VMAgent` namespace:
-```yaml
-cat <<EOF | kubectl apply -f -
-apiVersion: operator.victoriametrics.com/v1beta1
-kind: VMAgent
-metadata:
-  name: example-vmagent
-spec:
-  serviceScrapeSelector: {}
-  podScrapeSelector: {}
-  probSelector: {}
-  replicaCount: 1
-  remoteWrite:
-    - url: "http://vmsingle-example-vmsingle-persisted.default.svc:8429/api/v1/write"
-EOF 
-```
 
 ## VMAlertmanager
 
@@ -612,62 +483,6 @@ spec:
   ruleSelector: {}
 EOF
 ```
-
- `VMAlert` has exactly the same logic for filtering `VMRule` with `spec.ruleNamespaceSelector` and `spec.ruleSelector` 
- as `VMAgent` does:
-  - `spec.ruleNamespaceSelector` - if its nil, only `VMRule`s in the `VMalert` namespace can be selected.
-     If it's defined with empty value: `spec.ruleNamespaceSelector: {}` - all namespaces are matched.
-     You may also add matchLabels or matchExpression syntax, but your namespace must be tagged with specified labels first: 
-       `spec.ruleNamespaceSelector:
-                matchLabels:
-                      name: default
-       `
-  - `spec.ruleSelector` - it selects `VMRule` objects by its labels. 
-      If it's nil, but `spec.ruleNamespaceSelector` isn't, the last one will be used for selecting.
-      If it's defined with empty value: `spec.ruleSelector: {}`, all objects depending on NamespaceSelector.
-
-Selecting any `VMRule` at `VMAlert` namespace:
-```yaml
-cat << EOF | kubectl apply -f -
-apiVersion: operator.victoriametrics.com/v1beta1
-kind: VMAlert
-metadata:
-  name: example-vmalert
-spec:
-  replicaCount: 1
-  datasource:
-    url: "http://vmsingle-example-vmsingle-persisted.default.svc:8429"
-  notifier:
-      url: "http://alertmanager-operated:9093"
-  evaluationInterval: "30s"
-  ruleSelector: {}
-EOF
-```
-
-Select `VMRule`s matching labels - severity=major,notify=all at namespaces with label - env=production:
-```yaml
-cat << EOF | kubectl apply -f -
-apiVersion: operator.victoriametrics.com/v1beta1
-kind: VMAlert
-metadata:
-  name: example-vmalert
-spec:
-  replicaCount: 1
-  datasource:
-    url: "http://vmsingle-example-vmsingle-persisted.default.svc:8429"
-  notifier:
-      url: "http://alertmanager-operated:9093"
-  evaluationInterval: "30s"
-  ruleNamespaceSelector: 
-    matchLabels:
-       env: production
-  ruleSelector:
-    matchLabels:
-     severity: major
-     notify: all
-EOF
-```
-
 
 ## VMServiceScrape
 
@@ -1653,4 +1468,77 @@ EOF
 
 #now you can access victoria metrics
 curl -u foo:bar https://vmsingle.example/com/metrics
+```
+
+## Object selectors
+`VMAgent` has four selectors specification for filtering `VMServiceScrape`, `VMProbe`, `VMNodeScrape` and `VMPodScrape` objects.
+`VMAlert` has selectors for `VMRule`.
+`VMAuth` has selectors for `VMUsers`.
+`VMAlertmanager` has selectors for `VMAlertmanagerConfig`.
+
+Selectors are defined with suffixes - `NamespaceSelector` and `Selector`. It allows configuring objects access control across namespaces and different environments.
+Following rules are applied:
+- `NamespaceSelector` and `Selector` - undefined.  All exist objects are matching.
+- `NamespaceSelector` defined, `Selector` undefined. All objects are matching at namespaces for given `NamespaceSelector`.
+- `NamespaceSelector` undefined, `Selector` defined. All objects at `VMAgent`'s namespaces are matching for given `Selector`.
+- `NamespaceSelector` defined, `Selector` defined. Only objects at namespaces matched `NamespaceSelector` for given `Selector` are matching.
+
+### Object selector Examples
+This configuration will match only namespace with  the label - name=default and all `VMServiceScrape` objects at this namespace will be
+selected:
+```yaml
+cat <<EOF | kubectl apply -f -
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAgent
+metadata:
+  name: example-vmagent
+spec:
+  serviceScrapeSelector: {}
+  serviceScrapeNamespaceSelector: 
+      matchLabels:
+         name: default
+  replicaCount: 1
+  remoteWrite:
+    - url: "http://vmsingle-example-vmsingle-persisted.default.svc:8429/api/v1/write"
+EOF
+```
+
+This configuration will select `VMServiceScrape` and `VMPodScrape` with labels - team=managers,project=cloud at any namespace:
+```yaml
+cat <<EOF | kubectl apply -f -
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAgent
+metadata:
+  name: example-vmagent
+spec:
+  serviceScrapeNamespaceSelector: {}
+  serviceScrapeSelector:
+   matchLabels:
+       team: managers
+       project: cloud
+  podScrapeSelector:
+   matchLabels:
+       team: managers
+       project: clo
+  replicaCount: 1
+  remoteWrite:
+    - url: "http://vmsingle-example-vmsingle-persisted.default.svc:8429/api/v1/write"
+EOF
+```
+
+The last one will select any `VMServiceScrape`,`VMProbe` and `VMPodScrape` at `VMAgent` namespace:
+```yaml
+cat <<EOF | kubectl apply -f -
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAgent
+metadata:
+  name: example-vmagent
+spec:
+  serviceScrapeSelector: {}
+  podScrapeSelector: {}
+  probSelector: {}
+  replicaCount: 1
+  remoteWrite:
+    - url: "http://vmsingle-example-vmsingle-persisted.default.svc:8429/api/v1/write"
+EOF 
 ```

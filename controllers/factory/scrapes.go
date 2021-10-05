@@ -127,7 +127,7 @@ func SelectServiceScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgen
 		return nil, err
 	}
 
-	if err := selectWithMerge(ctx, rclient, namespaces, &victoriametricsv1beta1.VMServiceScrapeList{}, objSelector, func(list client.ObjectList) {
+	if err := visitObjectsWithSelector(ctx, rclient, namespaces, &victoriametricsv1beta1.VMServiceScrapeList{}, objSelector, func(list client.ObjectList) {
 		l := list.(*victoriametricsv1beta1.VMServiceScrapeList)
 		for _, item := range l.Items {
 			if !item.DeletionTimestamp.IsZero() {
@@ -182,7 +182,7 @@ func SelectPodScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, r
 		return nil, err
 	}
 
-	if err := selectWithMerge(ctx, rclient, namespaces, &victoriametricsv1beta1.VMPodScrapeList{}, objSelector, func(list client.ObjectList) {
+	if err := visitObjectsWithSelector(ctx, rclient, namespaces, &victoriametricsv1beta1.VMPodScrapeList{}, objSelector, func(list client.ObjectList) {
 		l := list.(*victoriametricsv1beta1.VMPodScrapeList)
 		for _, item := range l.Items {
 			if !item.DeletionTimestamp.IsZero() {
@@ -217,7 +217,7 @@ func SelectVMProbes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rcl
 		return nil, err
 	}
 
-	if err := selectWithMerge(ctx, rclient, namespaces, &victoriametricsv1beta1.VMProbeList{}, objSelector, func(list client.ObjectList) {
+	if err := visitObjectsWithSelector(ctx, rclient, namespaces, &victoriametricsv1beta1.VMProbeList{}, objSelector, func(list client.ObjectList) {
 		l := list.(*victoriametricsv1beta1.VMProbeList)
 		for _, item := range l.Items {
 			if !item.DeletionTimestamp.IsZero() {
@@ -257,7 +257,7 @@ func SelectVMNodeScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent
 		return nil, err
 	}
 
-	if err := selectWithMerge(ctx, rclient, namespaces, &victoriametricsv1beta1.VMNodeScrapeList{}, objSelector, func(list client.ObjectList) {
+	if err := visitObjectsWithSelector(ctx, rclient, namespaces, &victoriametricsv1beta1.VMNodeScrapeList{}, objSelector, func(list client.ObjectList) {
 		l := list.(*victoriametricsv1beta1.VMNodeScrapeList)
 		for _, item := range l.Items {
 			if !item.DeletionTimestamp.IsZero() {
@@ -293,7 +293,7 @@ func SelectStaticScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent
 		return nil, err
 	}
 
-	if err := selectWithMerge(ctx, rclient, namespaces, &victoriametricsv1beta1.VMStaticScrapeList{}, objSelector, func(list client.ObjectList) {
+	if err := visitObjectsWithSelector(ctx, rclient, namespaces, &victoriametricsv1beta1.VMStaticScrapeList{}, objSelector, func(list client.ObjectList) {
 		l := list.(*victoriametricsv1beta1.VMStaticScrapeList)
 		for _, item := range l.Items {
 			if !item.DeletionTimestamp.IsZero() {

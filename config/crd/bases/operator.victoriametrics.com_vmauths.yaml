@@ -603,7 +603,9 @@ spec:
                 type: array
               userNamespaceSelector:
                 description: UserNamespaceSelector Namespaces to be selected for  VMAuth
-                  discovery. If nil, only check own namespace.
+                  discovery. Works in combination with Selector. If both nil - match
+                  everything. NamespaceSelector nil - only objects at VMAuth namespace.
+                  Selector nil - only objects at NamespaceSelector namespaces.
                 properties:
                   matchExpressions:
                     description: matchExpressions is a list of label selector requirements.
@@ -648,7 +650,10 @@ spec:
                 type: object
               userSelector:
                 description: UserSelector defines VMUser to be selected for config
-                  file generation.
+                  file generation. Works in combination with NamespaceSelector. If
+                  both nil - match everything. NamespaceSelector nil - only objects
+                  at VMAuth namespace. Selector nil - only objects at NamespaceSelector
+                  namespaces.
                 properties:
                   matchExpressions:
                     description: matchExpressions is a list of label selector requirements.

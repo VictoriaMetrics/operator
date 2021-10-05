@@ -121,7 +121,7 @@ func (r *VMRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 func isSelectorsMatches(sourceCRD, targetCRD client.Object, nsSelector, selector *v1.LabelSelector) (bool, error) {
-	// in case of empty namespace object must be syncronized in any way,
+	// in case of empty namespace object must be synchronized in any way,
 	// coz we dont know source labels.
 	// probably object already deleted.
 	if sourceCRD.GetNamespace() == "" {
@@ -130,9 +130,9 @@ func isSelectorsMatches(sourceCRD, targetCRD client.Object, nsSelector, selector
 	if sourceCRD.GetNamespace() == targetCRD.GetNamespace() {
 		return true, nil
 	}
-	// fast path config unmanaged
+	// fast path config match all by default
 	if selector == nil && nsSelector == nil {
-		return false, nil
+		return true, nil
 	}
 	// fast path maybe namespace selector will match.
 	if selector == nil {

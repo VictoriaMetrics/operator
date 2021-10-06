@@ -245,6 +245,7 @@ spec:
             affinity:
               description: Affinity If specified, the pod's scheduling constraints.
               type: object
+              x-kubernetes-preserve-unknown-fields: true
             arbitraryFSAccessThroughSMs:
               description: ArbitraryFSAccessThroughSMs configures whether configuration
                 based on a service scrape can access arbitrary files on the file system
@@ -270,6 +271,7 @@ spec:
                 required:
                 - name
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               type: array
             dnsPolicy:
               description: DNSPolicy set DNS policy for the pod
@@ -313,6 +315,7 @@ spec:
                 required:
                 - name
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               type: array
             host_aliases:
               description: HostAliases provides mapping between ip and hostnames,
@@ -386,6 +389,7 @@ spec:
                 required:
                 - name
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               type: array
             inlineRelabelConfig:
               description: InlineRelabelConfig - defines GlobalRelabelConfig for vmagent,
@@ -473,6 +477,7 @@ spec:
             livenessProbe:
               description: LivenessProbe that will be added CRD pod
               type: object
+              x-kubernetes-preserve-unknown-fields: true
             logFormat:
               description: LogFormat for VMAgent to be configured with.
               enum:
@@ -491,7 +496,10 @@ spec:
               type: string
             nodeScrapeNamespaceSelector:
               description: NodeScrapeNamespaceSelector defines Namespaces to be selected
-                for VMNodeScrape discovery. If nil, only check own namespace.
+                for VMNodeScrape discovery. Works in combination with Selector. If
+                both nil - match everything. NamespaceSelector nil - only objects
+                at VMAgent namespace. Selector nil - only objects at NamespaceSelector
+                namespaces.
               properties:
                 matchExpressions:
                   description: matchExpressions is a list of label selector requirements.
@@ -533,9 +541,70 @@ spec:
                     are ANDed.
                   type: object
               type: object
+            nodeScrapeRelabelTemplate:
+              description: NodeScrapeRelabelTemplate defines relabel config, that
+                will be added to each VMNodeScrape. it's useful for adding specific
+                labels to all targets
+              items:
+                description: 'RelabelConfig allows dynamic rewriting of the label
+                  set, being applied to samples before ingestion. It defines `<metric_relabel_configs>`-section
+                  of configuration. More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs'
+                properties:
+                  action:
+                    description: Action to perform based on regex matching. Default
+                      is 'replace'
+                    type: string
+                  modulus:
+                    description: Modulus to take of the hash of the source label values.
+                    format: int64
+                    type: integer
+                  regex:
+                    description: Regular expression against which the extracted value
+                      is matched. Default is '(.*)'
+                    type: string
+                  replacement:
+                    description: Replacement value against which a regex replace is
+                      performed if the regular expression matches. Regex capture groups
+                      are available. Default is '$1'
+                    type: string
+                  separator:
+                    description: Separator placed between concatenated source label
+                      values. default is ';'.
+                    type: string
+                  source_labels:
+                    description: UnderScoreSourceLabels - additional form of source
+                      labels source_labels for compatibility with original relabel
+                      config. if set  both sourceLabels and source_labels, sourceLabels
+                      has priority. for details https://github.com/VictoriaMetrics/operator/issues/131
+                    items:
+                      type: string
+                    type: array
+                  sourceLabels:
+                    description: The source labels select values from existing labels.
+                      Their content is concatenated using the configured separator
+                      and matched against the configured regular expression for the
+                      replace, keep, and drop actions.
+                    items:
+                      type: string
+                    type: array
+                  target_label:
+                    description: UnderScoreTargetLabel - additional form of target
+                      label - target_label for compatibility with original relabel
+                      config. if set  both targetLabel and target_label, targetLabel
+                      has priority. for details https://github.com/VictoriaMetrics/operator/issues/131
+                    type: string
+                  targetLabel:
+                    description: Label to which the resulting value is written in
+                      a replace action. It is mandatory for replace actions. Regex
+                      capture groups are available.
+                    type: string
+                type: object
+              type: array
             nodeScrapeSelector:
               description: NodeScrapeSelector defines VMNodeScrape to be selected
-                for scraping.
+                for scraping. Works in combination with NamespaceSelector. If both
+                nil - match everything. NamespaceSelector nil - only objects at VMAgent
+                namespace. Selector nil - only objects at NamespaceSelector namespaces.
               properties:
                 matchExpressions:
                   description: matchExpressions is a list of label selector requirements.
@@ -645,7 +714,10 @@ spec:
               type: object
             podScrapeNamespaceSelector:
               description: PodScrapeNamespaceSelector defines Namespaces to be selected
-                for VMPodScrape discovery. If nil, only check own namespace.
+                for VMPodScrape discovery. Works in combination with Selector. If
+                both nil - match everything. NamespaceSelector nil - only objects
+                at VMAgent namespace. Selector nil - only objects at NamespaceSelector
+                namespaces.
               properties:
                 matchExpressions:
                   description: matchExpressions is a list of label selector requirements.
@@ -687,9 +759,71 @@ spec:
                     are ANDed.
                   type: object
               type: object
+            podScrapeRelabelTemplate:
+              description: PodScrapeRelabelTemplate defines relabel config, that will
+                be added to each VMPodScrape. it's useful for adding specific labels
+                to all targets
+              items:
+                description: 'RelabelConfig allows dynamic rewriting of the label
+                  set, being applied to samples before ingestion. It defines `<metric_relabel_configs>`-section
+                  of configuration. More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs'
+                properties:
+                  action:
+                    description: Action to perform based on regex matching. Default
+                      is 'replace'
+                    type: string
+                  modulus:
+                    description: Modulus to take of the hash of the source label values.
+                    format: int64
+                    type: integer
+                  regex:
+                    description: Regular expression against which the extracted value
+                      is matched. Default is '(.*)'
+                    type: string
+                  replacement:
+                    description: Replacement value against which a regex replace is
+                      performed if the regular expression matches. Regex capture groups
+                      are available. Default is '$1'
+                    type: string
+                  separator:
+                    description: Separator placed between concatenated source label
+                      values. default is ';'.
+                    type: string
+                  source_labels:
+                    description: UnderScoreSourceLabels - additional form of source
+                      labels source_labels for compatibility with original relabel
+                      config. if set  both sourceLabels and source_labels, sourceLabels
+                      has priority. for details https://github.com/VictoriaMetrics/operator/issues/131
+                    items:
+                      type: string
+                    type: array
+                  sourceLabels:
+                    description: The source labels select values from existing labels.
+                      Their content is concatenated using the configured separator
+                      and matched against the configured regular expression for the
+                      replace, keep, and drop actions.
+                    items:
+                      type: string
+                    type: array
+                  target_label:
+                    description: UnderScoreTargetLabel - additional form of target
+                      label - target_label for compatibility with original relabel
+                      config. if set  both targetLabel and target_label, targetLabel
+                      has priority. for details https://github.com/VictoriaMetrics/operator/issues/131
+                    type: string
+                  targetLabel:
+                    description: Label to which the resulting value is written in
+                      a replace action. It is mandatory for replace actions. Regex
+                      capture groups are available.
+                    type: string
+                type: object
+              type: array
             podScrapeSelector:
               description: PodScrapeSelector defines PodScrapes to be selected for
-                target discovery.
+                target discovery. Works in combination with NamespaceSelector. If
+                both nil - match everything. NamespaceSelector nil - only objects
+                at VMAgent namespace. Selector nil - only objects at NamespaceSelector
+                namespaces.
               properties:
                 matchExpressions:
                   description: matchExpressions is a list of label selector requirements.
@@ -743,7 +877,9 @@ spec:
               type: string
             probeNamespaceSelector:
               description: ProbeNamespaceSelector defines Namespaces to be selected
-                for VMProbe discovery. If nil, only check own namespace.
+                for VMProbe discovery. Works in combination with Selector. If both
+                nil - match everything. NamespaceSelector nil - only objects at VMAgent
+                namespace. Selector nil - only objects at NamespaceSelector namespaces.
               properties:
                 matchExpressions:
                   description: matchExpressions is a list of label selector requirements.
@@ -785,9 +921,70 @@ spec:
                     are ANDed.
                   type: object
               type: object
+            probeScrapeRelabelTemplate:
+              description: ProbeScrapeRelabelTemplate defines relabel config, that
+                will be added to each VMProbeScrape. it's useful for adding specific
+                labels to all targets
+              items:
+                description: 'RelabelConfig allows dynamic rewriting of the label
+                  set, being applied to samples before ingestion. It defines `<metric_relabel_configs>`-section
+                  of configuration. More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs'
+                properties:
+                  action:
+                    description: Action to perform based on regex matching. Default
+                      is 'replace'
+                    type: string
+                  modulus:
+                    description: Modulus to take of the hash of the source label values.
+                    format: int64
+                    type: integer
+                  regex:
+                    description: Regular expression against which the extracted value
+                      is matched. Default is '(.*)'
+                    type: string
+                  replacement:
+                    description: Replacement value against which a regex replace is
+                      performed if the regular expression matches. Regex capture groups
+                      are available. Default is '$1'
+                    type: string
+                  separator:
+                    description: Separator placed between concatenated source label
+                      values. default is ';'.
+                    type: string
+                  source_labels:
+                    description: UnderScoreSourceLabels - additional form of source
+                      labels source_labels for compatibility with original relabel
+                      config. if set  both sourceLabels and source_labels, sourceLabels
+                      has priority. for details https://github.com/VictoriaMetrics/operator/issues/131
+                    items:
+                      type: string
+                    type: array
+                  sourceLabels:
+                    description: The source labels select values from existing labels.
+                      Their content is concatenated using the configured separator
+                      and matched against the configured regular expression for the
+                      replace, keep, and drop actions.
+                    items:
+                      type: string
+                    type: array
+                  target_label:
+                    description: UnderScoreTargetLabel - additional form of target
+                      label - target_label for compatibility with original relabel
+                      config. if set  both targetLabel and target_label, targetLabel
+                      has priority. for details https://github.com/VictoriaMetrics/operator/issues/131
+                    type: string
+                  targetLabel:
+                    description: Label to which the resulting value is written in
+                      a replace action. It is mandatory for replace actions. Regex
+                      capture groups are available.
+                    type: string
+                type: object
+              type: array
             probeSelector:
               description: ProbeSelector defines VMProbe to be selected for target
-                probing.
+                probing. Works in combination with NamespaceSelector. If both nil
+                - match everything. NamespaceSelector nil - only objects at VMAgent
+                namespace. Selector nil - only objects at NamespaceSelector namespaces.
               properties:
                 matchExpressions:
                   description: matchExpressions is a list of label selector requirements.
@@ -832,6 +1029,7 @@ spec:
             readinessProbe:
               description: ReadinessProbe that will be added CRD pod
               type: object
+              x-kubernetes-preserve-unknown-fields: true
             relabelConfig:
               description: RelabelConfig ConfigMap with global relabel config -remoteWrite.relabelConfig
                 This relabeling is applied to all the collected metrics before sending
@@ -1356,13 +1554,17 @@ spec:
               description: SecurityContext holds pod-level security attributes and
                 common container settings. This defaults to the default PodSecurityContext.
               type: object
+              x-kubernetes-preserve-unknown-fields: true
             serviceAccountName:
               description: ServiceAccountName is the name of the ServiceAccount to
                 use to run the VMAgent Pods.
               type: string
             serviceScrapeNamespaceSelector:
               description: ServiceScrapeNamespaceSelector Namespaces to be selected
-                for VMServiceScrape discovery. If nil, only check own namespace.
+                for VMServiceScrape discovery. Works in combination with Selector.
+                If both nil - match everything. NamespaceSelector nil - only objects
+                at VMAgent namespace. Selector nil - only objects at NamespaceSelector
+                namespaces.
               properties:
                 matchExpressions:
                   description: matchExpressions is a list of label selector requirements.
@@ -1404,9 +1606,71 @@ spec:
                     are ANDed.
                   type: object
               type: object
+            serviceScrapeRelabelTemplate:
+              description: ServiceScrapeRelabelTemplate defines relabel config, that
+                will be added to each VMServiceScrape. it's useful for adding specific
+                labels to all targets
+              items:
+                description: 'RelabelConfig allows dynamic rewriting of the label
+                  set, being applied to samples before ingestion. It defines `<metric_relabel_configs>`-section
+                  of configuration. More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs'
+                properties:
+                  action:
+                    description: Action to perform based on regex matching. Default
+                      is 'replace'
+                    type: string
+                  modulus:
+                    description: Modulus to take of the hash of the source label values.
+                    format: int64
+                    type: integer
+                  regex:
+                    description: Regular expression against which the extracted value
+                      is matched. Default is '(.*)'
+                    type: string
+                  replacement:
+                    description: Replacement value against which a regex replace is
+                      performed if the regular expression matches. Regex capture groups
+                      are available. Default is '$1'
+                    type: string
+                  separator:
+                    description: Separator placed between concatenated source label
+                      values. default is ';'.
+                    type: string
+                  source_labels:
+                    description: UnderScoreSourceLabels - additional form of source
+                      labels source_labels for compatibility with original relabel
+                      config. if set  both sourceLabels and source_labels, sourceLabels
+                      has priority. for details https://github.com/VictoriaMetrics/operator/issues/131
+                    items:
+                      type: string
+                    type: array
+                  sourceLabels:
+                    description: The source labels select values from existing labels.
+                      Their content is concatenated using the configured separator
+                      and matched against the configured regular expression for the
+                      replace, keep, and drop actions.
+                    items:
+                      type: string
+                    type: array
+                  target_label:
+                    description: UnderScoreTargetLabel - additional form of target
+                      label - target_label for compatibility with original relabel
+                      config. if set  both targetLabel and target_label, targetLabel
+                      has priority. for details https://github.com/VictoriaMetrics/operator/issues/131
+                    type: string
+                  targetLabel:
+                    description: Label to which the resulting value is written in
+                      a replace action. It is mandatory for replace actions. Regex
+                      capture groups are available.
+                    type: string
+                type: object
+              type: array
             serviceScrapeSelector:
               description: ServiceScrapeSelector defines ServiceScrapes to be selected
-                for target discovery.
+                for target discovery. Works in combination with NamespaceSelector.
+                If both nil - match everything. NamespaceSelector nil - only objects
+                at VMAgent namespace. Selector nil - only objects at NamespaceSelector
+                namespaces.
               properties:
                 matchExpressions:
                   description: matchExpressions is a list of label selector requirements.
@@ -1484,6 +1748,7 @@ spec:
                   description: 'ServiceSpec describes the attributes that a user creates
                     on a service. More info: https://kubernetes.io/docs/concepts/services-networking/service/'
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
               required:
               - spec
               type: object
@@ -1495,9 +1760,13 @@ spec:
             startupProbe:
               description: StartupProbe that will be added to CRD pod
               type: object
+              x-kubernetes-preserve-unknown-fields: true
             staticScrapeNamespaceSelector:
               description: StaticScrapeNamespaceSelector defines Namespaces to be
-                selected for VMStaticScrape discovery. If nil, only check own namespace.
+                selected for VMStaticScrape discovery. Works in combination with NamespaceSelector.
+                If both nil - match everything. NamespaceSelector nil - only objects
+                at VMAgent namespace. Selector nil - only objects at NamespaceSelector
+                namespaces.
               properties:
                 matchExpressions:
                   description: matchExpressions is a list of label selector requirements.
@@ -1539,9 +1808,71 @@ spec:
                     are ANDed.
                   type: object
               type: object
+            staticScrapeRelabelTemplate:
+              description: StaticScrapeRelabelTemplate defines relabel config, that
+                will be added to each VMStaticScrape. it's useful for adding specific
+                labels to all targets
+              items:
+                description: 'RelabelConfig allows dynamic rewriting of the label
+                  set, being applied to samples before ingestion. It defines `<metric_relabel_configs>`-section
+                  of configuration. More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs'
+                properties:
+                  action:
+                    description: Action to perform based on regex matching. Default
+                      is 'replace'
+                    type: string
+                  modulus:
+                    description: Modulus to take of the hash of the source label values.
+                    format: int64
+                    type: integer
+                  regex:
+                    description: Regular expression against which the extracted value
+                      is matched. Default is '(.*)'
+                    type: string
+                  replacement:
+                    description: Replacement value against which a regex replace is
+                      performed if the regular expression matches. Regex capture groups
+                      are available. Default is '$1'
+                    type: string
+                  separator:
+                    description: Separator placed between concatenated source label
+                      values. default is ';'.
+                    type: string
+                  source_labels:
+                    description: UnderScoreSourceLabels - additional form of source
+                      labels source_labels for compatibility with original relabel
+                      config. if set  both sourceLabels and source_labels, sourceLabels
+                      has priority. for details https://github.com/VictoriaMetrics/operator/issues/131
+                    items:
+                      type: string
+                    type: array
+                  sourceLabels:
+                    description: The source labels select values from existing labels.
+                      Their content is concatenated using the configured separator
+                      and matched against the configured regular expression for the
+                      replace, keep, and drop actions.
+                    items:
+                      type: string
+                    type: array
+                  target_label:
+                    description: UnderScoreTargetLabel - additional form of target
+                      label - target_label for compatibility with original relabel
+                      config. if set  both targetLabel and target_label, targetLabel
+                      has priority. for details https://github.com/VictoriaMetrics/operator/issues/131
+                    type: string
+                  targetLabel:
+                    description: Label to which the resulting value is written in
+                      a replace action. It is mandatory for replace actions. Regex
+                      capture groups are available.
+                    type: string
+                type: object
+              type: array
             staticScrapeSelector:
               description: StaticScrapeSelector defines PodScrapes to be selected
-                for target discovery.
+                for target discovery. Works in combination with NamespaceSelector.
+                If both nil - match everything. NamespaceSelector nil - only objects
+                at VMAgent namespace. Selector nil - only objects at NamespaceSelector
+                namespaces.
               properties:
                 matchExpressions:
                   description: matchExpressions is a list of label selector requirements.
@@ -1636,6 +1967,7 @@ spec:
                 - topologyKey
                 - whenUnsatisfiable
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               type: array
             updateStrategy:
               description: UpdateStrategy - overrides default update strategy. works
@@ -1701,6 +2033,7 @@ spec:
                 required:
                 - name
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               type: array
           type: object
         status:

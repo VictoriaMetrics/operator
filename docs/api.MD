@@ -40,6 +40,7 @@ This Document documents the types introduced by the VictoriaMetrics to be consum
 * [VMAgentSpec](#vmagentspec)
 * [VMAgentStatus](#vmagentstatus)
 * [BasicAuth](#basicauth)
+* [DiscoverySelector](#discoveryselector)
 * [EmbeddedHPA](#embeddedhpa)
 * [EmbeddedObjectMetadata](#embeddedobjectmetadata)
 * [EmbeddedPersistentVolumeClaim](#embeddedpersistentvolumeclaim)
@@ -184,8 +185,10 @@ VMAlertmanagerSpec is a specification of the desired behavior of the VMAlertmana
 | portName | PortName used for the pods and governing service. This defaults to web | string | false |
 | serviceSpec | ServiceSpec that will be added to vmalertmanager service spec | *[ServiceSpec](#servicespec) | false |
 | podDisruptionBudget | PodDisruptionBudget created by operator | *[EmbeddedPodDisruptionBudgetSpec](#embeddedpoddisruptionbudgetspec) | false |
-| configSelector | ConfigSelector defines selector for VMAlertmanagerConfig, result config will be merged with with Raw or Secret config. If nil, VMAlertmanagerConfig wont be used. If empty - {}, everything will be selected based on namespace selector. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
-| configNamespaceSelector | \n ConfigNamespaceSelector defines namespace selector for VMAlertmanagerConfig.\nIf nil, own namespace will be used. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
+| configSelector | ConfigSelector defines selector for VMAlertmanagerConfig, result config will be merged with with Raw or Secret config. Works in combination with NamespaceSelector. If both nil - match everything. NamespaceSelector nil - only objects at VMAlertmanager namespace. Selector nil - only objects at NamespaceSelector namespaces. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
+| configNamespaceSelector | \n ConfigNamespaceSelector defines namespace selector for VMAlertmanagerConfig.\nWorks in combination with Selector. If both nil - match everything. NamespaceSelector nil - only objects at VMAlertmanager namespace. Selector nil - only objects at NamespaceSelector namespaces. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
+| extraArgs | ExtraArgs that will be passed to  VMAuth pod for example remoteWrite.tmpDataPath: /tmp | map[string]string | false |
+| extraEnvs | ExtraEnvs that will be added to VMAuth pod | [][v1.EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#envvar-v1-core) | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -670,16 +673,16 @@ VMAgentSpec defines the desired state of VMAgent
 | remoteWrite | RemoteWrite list of victoria metrics /some other remote write system for vm it must looks like: http://victoria-metrics-single:8429/api/v1/write or for cluster different url https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/app/vmagent#splitting-data-streams-among-multiple-systems | [][VMAgentRemoteWriteSpec](#vmagentremotewritespec) | true |
 | remoteWriteSettings | RemoteWriteSettings defines global settings for all remoteWrite urls. | *[VMAgentRemoteWriteSettings](#vmagentremotewritesettings) | false |
 | relabelConfig | RelabelConfig ConfigMap with global relabel config -remoteWrite.relabelConfig This relabeling is applied to all the collected metrics before sending them to remote storage. | *v1.ConfigMapKeySelector | false |
-| serviceScrapeSelector | ServiceScrapeSelector defines ServiceScrapes to be selected for target discovery. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
-| serviceScrapeNamespaceSelector | ServiceScrapeNamespaceSelector Namespaces to be selected for VMServiceScrape discovery. If nil, only check own namespace. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
-| podScrapeSelector | PodScrapeSelector defines PodScrapes to be selected for target discovery. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
-| podScrapeNamespaceSelector | PodScrapeNamespaceSelector defines Namespaces to be selected for VMPodScrape discovery. If nil, only check own namespace. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
-| probeSelector | ProbeSelector defines VMProbe to be selected for target probing. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
-| probeNamespaceSelector | ProbeNamespaceSelector defines Namespaces to be selected for VMProbe discovery. If nil, only check own namespace. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
-| nodeScrapeSelector | NodeScrapeSelector defines VMNodeScrape to be selected for scraping. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
-| nodeScrapeNamespaceSelector | NodeScrapeNamespaceSelector defines Namespaces to be selected for VMNodeScrape discovery. If nil, only check own namespace. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
-| staticScrapeSelector | StaticScrapeSelector defines PodScrapes to be selected for target discovery. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
-| staticScrapeNamespaceSelector | StaticScrapeNamespaceSelector defines Namespaces to be selected for VMStaticScrape discovery. If nil, only check own namespace. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
+| serviceScrapeSelector | ServiceScrapeSelector defines ServiceScrapes to be selected for target discovery. Works in combination with NamespaceSelector. If both nil - match everything. NamespaceSelector nil - only objects at VMAgent namespace. Selector nil - only objects at NamespaceSelector namespaces. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
+| serviceScrapeNamespaceSelector | ServiceScrapeNamespaceSelector Namespaces to be selected for VMServiceScrape discovery. Works in combination with Selector. If both nil - match everything. NamespaceSelector nil - only objects at VMAgent namespace. Selector nil - only objects at NamespaceSelector namespaces. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
+| podScrapeSelector | PodScrapeSelector defines PodScrapes to be selected for target discovery. Works in combination with NamespaceSelector. If both nil - match everything. NamespaceSelector nil - only objects at VMAgent namespace. Selector nil - only objects at NamespaceSelector namespaces. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
+| podScrapeNamespaceSelector | PodScrapeNamespaceSelector defines Namespaces to be selected for VMPodScrape discovery. Works in combination with Selector. If both nil - match everything. NamespaceSelector nil - only objects at VMAgent namespace. Selector nil - only objects at NamespaceSelector namespaces. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
+| probeSelector | ProbeSelector defines VMProbe to be selected for target probing. Works in combination with NamespaceSelector. If both nil - match everything. NamespaceSelector nil - only objects at VMAgent namespace. Selector nil - only objects at NamespaceSelector namespaces. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
+| probeNamespaceSelector | ProbeNamespaceSelector defines Namespaces to be selected for VMProbe discovery. Works in combination with Selector. If both nil - match everything. NamespaceSelector nil - only objects at VMAgent namespace. Selector nil - only objects at NamespaceSelector namespaces. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
+| nodeScrapeSelector | NodeScrapeSelector defines VMNodeScrape to be selected for scraping. Works in combination with NamespaceSelector. If both nil - match everything. NamespaceSelector nil - only objects at VMAgent namespace. Selector nil - only objects at NamespaceSelector namespaces. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
+| nodeScrapeNamespaceSelector | NodeScrapeNamespaceSelector defines Namespaces to be selected for VMNodeScrape discovery. Works in combination with Selector. If both nil - match everything. NamespaceSelector nil - only objects at VMAgent namespace. Selector nil - only objects at NamespaceSelector namespaces. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
+| staticScrapeSelector | StaticScrapeSelector defines PodScrapes to be selected for target discovery. Works in combination with NamespaceSelector. If both nil - match everything. NamespaceSelector nil - only objects at VMAgent namespace. Selector nil - only objects at NamespaceSelector namespaces. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
+| staticScrapeNamespaceSelector | StaticScrapeNamespaceSelector defines Namespaces to be selected for VMStaticScrape discovery. Works in combination with NamespaceSelector. If both nil - match everything. NamespaceSelector nil - only objects at VMAgent namespace. Selector nil - only objects at NamespaceSelector namespaces. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
 | additionalScrapeConfigs | AdditionalScrapeConfigs As scrape configs are appended, the user is responsible to make sure it is valid. Note that using this feature may expose the possibility to break upgrades of VMAgent. It is advised to review VMAgent release notes to ensure that no incompatible scrape configs are going to break VMAgent after the upgrade. | *[v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
 | arbitraryFSAccessThroughSMs | ArbitraryFSAccessThroughSMs configures whether configuration based on a service scrape can access arbitrary files on the file system of the VMAgent container e.g. bearer token files. | [ArbitraryFSAccessThroughSMsConfig](#arbitraryfsaccessthroughsmsconfig) | false |
 | insertPorts | InsertPorts - additional listen ports for data ingestion. | *[InsertPorts](#insertports) | false |
@@ -692,6 +695,11 @@ VMAgentSpec defines the desired state of VMAgent
 | rollingUpdate | RollingUpdate - overrides deployment update params. | *appsv1.RollingUpdateDeployment | false |
 | podDisruptionBudget | PodDisruptionBudget created by operator | *[EmbeddedPodDisruptionBudgetSpec](#embeddedpoddisruptionbudgetspec) | false |
 | nodeSelector | NodeSelector Define which Nodes the Pods are scheduled on. | map[string]string | false |
+| serviceScrapeRelabelTemplate | ServiceScrapeRelabelTemplate defines relabel config, that will be added to each VMServiceScrape. it&#39;s useful for adding specific labels to all targets | []*[RelabelConfig](#relabelconfig) | false |
+| podScrapeRelabelTemplate | PodScrapeRelabelTemplate defines relabel config, that will be added to each VMPodScrape. it&#39;s useful for adding specific labels to all targets | []*[RelabelConfig](#relabelconfig) | false |
+| nodeScrapeRelabelTemplate | NodeScrapeRelabelTemplate defines relabel config, that will be added to each VMNodeScrape. it&#39;s useful for adding specific labels to all targets | []*[RelabelConfig](#relabelconfig) | false |
+| staticScrapeRelabelTemplate | StaticScrapeRelabelTemplate defines relabel config, that will be added to each VMStaticScrape. it&#39;s useful for adding specific labels to all targets | []*[RelabelConfig](#relabelconfig) | false |
+| probeScrapeRelabelTemplate | ProbeScrapeRelabelTemplate defines relabel config, that will be added to each VMProbeScrape. it&#39;s useful for adding specific labels to all targets | []*[RelabelConfig](#relabelconfig) | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -717,6 +725,17 @@ BasicAuth allow an endpoint to authenticate over basic authentication More info:
 | username | The secret in the service scrape namespace that contains the username for authentication. It must be at them same namespace as CRD | [v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
 | password | The secret in the service scrape namespace that contains the password for authentication. It must be at them same namespace as CRD | [v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#secretkeyselector-v1-core) | false |
 | password_file | PasswordFile defines path to password file at disk | string | false |
+
+[Back to TOC](#table-of-contents)
+
+## DiscoverySelector
+
+DiscoverySelector can be used at CRD components discovery
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| namespaceSelector |  | *[NamespaceSelector](#namespaceselector) | false |
+| labelSelector |  | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -844,7 +863,8 @@ VMAlertNotifierSpec defines the notifier url for sending information about alert
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
-| url | AlertManager url. Required parameter. E.g. http://127.0.0.1:9093 | string | true |
+| url | AlertManager url.  E.g. http://127.0.0.1:9093 | string | false |
+| selector | Selector allows service discovery for alertmanager in this case all matched vmalertmanager replicas will be added into vmalert notifier.url as statefulset pod.fqdn | *[DiscoverySelector](#discoveryselector) | false |
 | basicAuth | BasicAuth allow notifier to authenticate over basic authentication | *[BasicAuth](#basicauth) | false |
 | tlsConfig | TLSConfig describes tls configuration for notifier | *[TLSConfig](#tlsconfig) | false |
 
@@ -911,8 +931,8 @@ VMAlertSpec defines the desired state of VMAlert
 | topologySpreadConstraints | TopologySpreadConstraints embedded kubernetes pod configuration option, controls how pods are spread across your cluster among failure-domains such as regions, zones, nodes, and other user-defined topology domains https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/ | [][v1.TopologySpreadConstraint](https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/) | false |
 | evaluationInterval | EvaluationInterval how often evalute rules by default | string | false |
 | enforcedNamespaceLabel | EnforcedNamespaceLabel enforces adding a namespace label of origin for each alert and metric that is user created. The label value will always be the namespace of the object that is being created. | string | false |
-| ruleSelector | RuleSelector selector to select which VMRules to mount for loading alerting rules from. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
-| ruleNamespaceSelector | RuleNamespaceSelector to be selected for VMRules discovery. If unspecified, only the same namespace as the vmalert object is in is used. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
+| ruleSelector | RuleSelector selector to select which VMRules to mount for loading alerting rules from. Works in combination with NamespaceSelector. If both nil - match everything. NamespaceSelector nil - only objects at VMAlert namespace. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
+| ruleNamespaceSelector | RuleNamespaceSelector to be selected for VMRules discovery. Works in combination with Selector. If both nil - match everything. NamespaceSelector nil - only objects at VMAlert namespace. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
 | port | Port for listen | string | false |
 | notifier | Notifier prometheus alertmanager endpoint spec. Required at least one of  notifier or notifiers. e.g. http://127.0.0.1:9093 If specified both notifier and notifiers, notifier will be added as last element to notifiers. | *[VMAlertNotifierSpec](#vmalertnotifierspec) | false |
 | notifiers | Notifiers prometheus alertmanager endpoints. Required at least one of  notifier or notifiers. e.g. http://127.0.0.1:9093 If specified both notifier and notifiers, notifier will be added as last element to notifiers. | [][VMAlertNotifierSpec](#vmalertnotifierspec) | false |
@@ -1050,6 +1070,9 @@ RuleGroup is a list of sequentially evaluated recording and alerting rules.
 | interval | evaluation interval for group | string | false |
 | rules | Rules list of alert rules | [][Rule](#rule) | true |
 | concurrency | Concurrency defines how many rules execute at once. | int | false |
+| labels | Labels optional list of labels added to every rule within a group. It has priority over the external labels. Labels are commonly used for adding environment or tenant-specific tag. | map[string]string | false |
+| extra_filter_labels | ExtraFilterLabels optional list of label filters applied to every rule&#39;s request withing a group. Is compatible only with VM datasource. See more details at https://docs.victoriametrics.com#prometheus-querying-api-enhancements | map[string]string | false |
+| tenant | Tenant id for group, can be used only with enterprise version of vmalert See more details at https://docs.victoriametrics.com/vmalert.html#multitenancy | string | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -1115,6 +1138,7 @@ Endpoint defines a scrapeable endpoint serving Prometheus metrics.
 | interval | Interval at which metrics should be scraped | string | false |
 | scrape_interval | ScrapeInterval is the same as Interval and has priority over it. one of scrape_interval or interval can be used | string | false |
 | scrapeTimeout | Timeout after which the scrape is ended | string | false |
+| sampleLimit | SampleLimit defines per-endpoint limit on number of scraped samples that will be accepted. | uint64 | false |
 | oauth2 | OAuth2 defines auth configuration | *[OAuth2](#oauth2) | false |
 | tlsConfig | TLSConfig configuration to use when scraping the endpoint | *[TLSConfig](#tlsconfig) | false |
 | bearerTokenFile | File to read bearer token for scraping targets. | string | false |
@@ -1282,7 +1306,7 @@ VMServiceScrapeSpec defines the desired state of VMServiceScrape
 | targetLabels | TargetLabels transfers labels on the Kubernetes Service onto the target. | []string | false |
 | podTargetLabels | PodTargetLabels transfers labels on the Kubernetes Pod onto the target. | []string | false |
 | endpoints | A list of endpoints allowed as part of this ServiceScrape. | [][Endpoint](#endpoint) | true |
-| selector | Selector to select Endpoints objects by corresponding Service labels. | [metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | true |
+| selector | Selector to select Endpoints objects by corresponding Service labels. | [metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
 | namespaceSelector | Selector to select which namespaces the Endpoints objects are discovered from. | [NamespaceSelector](#namespaceselector) | false |
 | sampleLimit | SampleLimit defines per-scrape limit on number of scraped samples that will be accepted. | uint64 | false |
 
@@ -1313,6 +1337,7 @@ PodMetricsEndpoint defines a scrapeable endpoint of a Kubernetes Pod serving Pro
 | interval | Interval at which metrics should be scraped | string | false |
 | scrape_interval | ScrapeInterval is the same as Interval and has priority over it. one of scrape_interval or interval can be used | string | false |
 | scrapeTimeout | Timeout after which the scrape is ended | string | false |
+| sampleLimit | SampleLimit defines per-podEndpoint limit on number of scraped samples that will be accepted. | uint64 | false |
 | honorLabels | HonorLabels chooses the metric&#39;s labels on collisions with target labels. | bool | false |
 | honorTimestamps | HonorTimestamps controls whether vmagent respects the timestamps present in scraped data. | *bool | false |
 | metricRelabelConfigs | MetricRelabelConfigs to apply to samples before ingestion. | []*[RelabelConfig](#relabelconfig) | false |
@@ -1359,7 +1384,7 @@ VMPodScrapeSpec defines the desired state of VMPodScrape
 | jobLabel | The label to use to retrieve the job name from. | string | false |
 | podTargetLabels | PodTargetLabels transfers labels on the Kubernetes Pod onto the target. | []string | false |
 | podMetricsEndpoints | A list of endpoints allowed as part of this PodMonitor. | [][PodMetricsEndpoint](#podmetricsendpoint) | true |
-| selector | Selector to select Pod objects. | [metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | true |
+| selector | Selector to select Pod objects. | [metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
 | namespaceSelector | Selector to select which namespaces the Endpoints objects are discovered from. | [NamespaceSelector](#namespaceselector) | false |
 | sampleLimit | SampleLimit defines per-scrape limit on number of scraped samples that will be accepted. | uint64 | false |
 
@@ -1397,6 +1422,8 @@ Image defines docker image settings
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
 | acceptEULA | AcceptEULA accepts enterprise feature usage, must be set to true. otherwise backupmanager cannot be added to single/cluster version. https://victoriametrics.com/assets/VM_EULA.pdf | bool | true |
+| snapshotCreateURL | SnapshotCreateURL overwrites url for snapshot create | string | false |
+| snapshotDeleteURL | SnapShotDeleteURL overwrites url for snapshot delete | string | false |
 | concurrency | Defines number of concurrent workers. Higher concurrency may reduce backup duration (default 10) | *int32 | false |
 | destination | Defines destination for backup | string | false |
 | customS3Endpoint | Custom S3 endpoint for use with S3-compatible storages (e.g. MinIO). S3 is used if not set | *string | false |
@@ -1794,8 +1821,8 @@ VMAuthSpec defines the desired state of VMAuth
 | dnsPolicy | DNSPolicy sets DNS policy for the pod | [v1.DNSPolicy](https://v1-17.docs.kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#pod-v1-core) | false |
 | topologySpreadConstraints | TopologySpreadConstraints embedded kubernetes pod configuration option, controls how pods are spread across your cluster among failure-domains such as regions, zones, nodes, and other user-defined topology domains https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/ | [][v1.TopologySpreadConstraint](https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/) | false |
 | port | Port listen port | string | false |
-| userSelector | UserSelector defines VMUser to be selected for config file generation. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
-| userNamespaceSelector | UserNamespaceSelector Namespaces to be selected for  VMAuth discovery. If nil, only check own namespace. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
+| userSelector | UserSelector defines VMUser to be selected for config file generation. Works in combination with NamespaceSelector. If both nil - match everything. NamespaceSelector nil - only objects at VMAuth namespace. Selector nil - only objects at NamespaceSelector namespaces. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
+| userNamespaceSelector | UserNamespaceSelector Namespaces to be selected for  VMAuth discovery. Works in combination with Selector. If both nil - match everything. NamespaceSelector nil - only objects at VMAuth namespace. Selector nil - only objects at NamespaceSelector namespaces. | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
 | extraArgs | ExtraArgs that will be passed to  VMAuth pod for example remoteWrite.tmpDataPath: /tmp | map[string]string | false |
 | extraEnvs | ExtraEnvs that will be added to VMAuth pod | [][v1.EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#envvar-v1-core) | false |
 | serviceSpec | ServiceSpec that will be added to vmsingle service spec | *[ServiceSpec](#servicespec) | false |

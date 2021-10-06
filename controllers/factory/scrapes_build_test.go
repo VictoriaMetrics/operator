@@ -102,6 +102,7 @@ func Test_addTLStoYaml(t *testing.T) {
 
 func Test_generateServiceScrapeConfig(t *testing.T) {
 	type args struct {
+		cr                       victoriametricsv1beta1.VMAgent
 		m                        *victoriametricsv1beta1.VMServiceScrape
 		ep                       victoriametricsv1beta1.Endpoint
 		i                        int
@@ -660,10 +661,122 @@ oauth2:
   token_url: http://some-token-url
 `,
 		},
+		{
+			name: "with templateRelabel",
+			args: args{
+				cr: victoriametricsv1beta1.VMAgent{
+					Spec: victoriametricsv1beta1.VMAgentSpec{
+						ServiceScrapeRelabelTemplate: []*victoriametricsv1beta1.RelabelConfig{
+							{
+								TargetLabel:  "node",
+								SourceLabels: []string{"__meta_kubernetes_node_name"},
+								Regex:        ".+",
+							},
+						},
+					},
+				},
+				m: &victoriametricsv1beta1.VMServiceScrape{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-scrape",
+						Namespace: "default",
+					},
+					Spec: victoriametricsv1beta1.VMServiceScrapeSpec{
+						Endpoints: []victoriametricsv1beta1.Endpoint{
+							{
+								Port: "8080",
+								TLSConfig: &victoriametricsv1beta1.TLSConfig{
+									CA: victoriametricsv1beta1.SecretOrConfigMap{
+										Secret: &v1.SecretKeySelector{
+											LocalObjectReference: v1.LocalObjectReference{
+												Name: "tls-secret",
+											},
+											Key: "ca",
+										},
+									},
+								},
+								BearerTokenFile: "/var/run/tolen",
+							},
+						},
+					},
+				},
+				ep: victoriametricsv1beta1.Endpoint{
+					Port: "8080",
+					TLSConfig: &victoriametricsv1beta1.TLSConfig{
+						Cert: victoriametricsv1beta1.SecretOrConfigMap{},
+						CA: victoriametricsv1beta1.SecretOrConfigMap{
+							Secret: &v1.SecretKeySelector{
+								LocalObjectReference: v1.LocalObjectReference{
+									Name: "tls-secret",
+								},
+								Key: "ca",
+							},
+						},
+					},
+					BearerTokenFile: "/var/run/tolen",
+				},
+				i:                        0,
+				apiserverConfig:          nil,
+				ssCache:                  &scrapesSecretsCache{},
+				overrideHonorLabels:      false,
+				overrideHonorTimestamps:  false,
+				ignoreNamespaceSelectors: false,
+				enforcedNamespaceLabel:   "",
+			},
+			want: `job_name: default/test-scrape/0
+honor_labels: false
+kubernetes_sd_configs:
+- role: endpoints
+  namespaces:
+    names:
+    - default
+tls_config:
+  insecure_skip_verify: false
+  ca_file: /etc/vmagent-tls/certs/default_tls-secret_ca
+bearer_token_file: /var/run/tolen
+relabel_configs:
+- action: keep
+  source_labels:
+  - __meta_kubernetes_endpoint_port_name
+  regex: "8080"
+- source_labels:
+  - __meta_kubernetes_endpoint_address_target_kind
+  - __meta_kubernetes_endpoint_address_target_name
+  separator: ;
+  regex: Node;(.*)
+  replacement: ${1}
+  target_label: node
+- source_labels:
+  - __meta_kubernetes_endpoint_address_target_kind
+  - __meta_kubernetes_endpoint_address_target_name
+  separator: ;
+  regex: Pod;(.*)
+  replacement: ${1}
+  target_label: pod
+- source_labels:
+  - __meta_kubernetes_pod_name
+  target_label: pod
+- source_labels:
+  - __meta_kubernetes_namespace
+  target_label: namespace
+- source_labels:
+  - __meta_kubernetes_service_name
+  target_label: service
+- source_labels:
+  - __meta_kubernetes_service_name
+  target_label: job
+  replacement: ${1}
+- target_label: endpoint
+  replacement: "8080"
+- source_labels:
+  - __meta_kubernetes_node_name
+  target_label: node
+  regex: .+
+`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := generateServiceScrapeConfig(tt.args.m, tt.args.ep, tt.args.i, tt.args.apiserverConfig, tt.args.ssCache, tt.args.overrideHonorLabels, tt.args.overrideHonorTimestamps, tt.args.ignoreNamespaceSelectors, tt.args.enforcedNamespaceLabel)
+			got := generateServiceScrapeConfig(&tt.args.cr, tt.args.m, tt.args.ep, tt.args.i, tt.args.apiserverConfig, tt.args.ssCache, tt.args.overrideHonorLabels, tt.args.overrideHonorTimestamps, tt.args.ignoreNamespaceSelectors, tt.args.enforcedNamespaceLabel)
 			gotBytes, err := yaml.Marshal(got)
 			if err != nil {
 				t.Errorf("cannot marshal ServiceScrapeConfig to yaml,err :%e", err)
@@ -677,6 +790,7 @@ oauth2:
 
 func Test_generateNodeScrapeConfig(t *testing.T) {
 	type args struct {
+		cr                      victoriametricsv1beta1.VMAgent
 		m                       *victoriametricsv1beta1.VMNodeScrape
 		i                       int
 		apiserverConfig         *victoriametricsv1beta1.APIServerConfig
@@ -856,7 +970,7 @@ proxy_bearer_token_file: /tmp/proxy-token
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := generateNodeScrapeConfig(tt.args.m, tt.args.i, tt.args.apiserverConfig, tt.args.ssCache, tt.args.ignoreHonorLabels, tt.args.overrideHonorTimestamps, tt.args.enforcedNamespaceLabel)
+			got := generateNodeScrapeConfig(&tt.args.cr, tt.args.m, tt.args.i, tt.args.apiserverConfig, tt.args.ssCache, tt.args.ignoreHonorLabels, tt.args.overrideHonorTimestamps, tt.args.enforcedNamespaceLabel)
 			gotBytes, err := yaml.Marshal(got)
 			if err != nil {
 				t.Errorf("cannot marshal NodeScrapeConfig to yaml,err :%e", err)
@@ -913,6 +1027,159 @@ action: replace
 				return
 			}
 			assert.Equal(t, tt.want, string(gotBytes))
+		})
+	}
+}
+
+func Test_generatePodScrapeConfig(t *testing.T) {
+	type args struct {
+		cr                       victoriametricsv1beta1.VMAgent
+		m                        *victoriametricsv1beta1.VMPodScrape
+		ep                       victoriametricsv1beta1.PodMetricsEndpoint
+		i                        int
+		apiserverConfig          *victoriametricsv1beta1.APIServerConfig
+		ssCache                  *scrapesSecretsCache
+		ignoreHonorLabels        bool
+		overrideHonorTimestamps  bool
+		ignoreNamespaceSelectors bool
+		enforcedNamespaceLabel   string
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "simple test",
+			args: args{
+				m: &victoriametricsv1beta1.VMPodScrape{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-1",
+						Namespace: "default",
+					},
+				},
+				ep: victoriametricsv1beta1.PodMetricsEndpoint{
+					Path: "/metric",
+					Port: "web",
+				},
+				ssCache: &scrapesSecretsCache{},
+			},
+			want: `job_name: default/test-1/0
+honor_labels: false
+kubernetes_sd_configs:
+- role: pod
+  namespaces:
+    names:
+    - default
+metrics_path: /metric
+relabel_configs:
+- action: keep
+  source_labels:
+  - __meta_kubernetes_pod_container_port_name
+  regex: web
+- source_labels:
+  - __meta_kubernetes_namespace
+  target_label: namespace
+- source_labels:
+  - __meta_kubernetes_pod_container_name
+  target_label: container
+- source_labels:
+  - __meta_kubernetes_pod_name
+  target_label: pod
+- target_label: job
+  replacement: default/test-1
+- target_label: endpoint
+  replacement: web
+`,
+		},
+		{
+			name: "test with selector",
+			args: args{
+				m: &victoriametricsv1beta1.VMPodScrape{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-1",
+						Namespace: "default",
+					},
+					Spec: victoriametricsv1beta1.VMPodScrapeSpec{
+						NamespaceSelector: victoriametricsv1beta1.NamespaceSelector{
+							Any: true,
+						},
+						Selector: metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"label-1": "value-1",
+								"label-2": "value-2",
+								"label-3": "value-3",
+							},
+							MatchExpressions: []metav1.LabelSelectorRequirement{
+								{
+									Key:      "some-label",
+									Operator: metav1.LabelSelectorOpExists,
+								},
+							},
+						},
+					},
+				},
+				ep: victoriametricsv1beta1.PodMetricsEndpoint{
+					Path: "/metric",
+					Port: "web",
+				},
+				ssCache: &scrapesSecretsCache{},
+			},
+			want: `job_name: default/test-1/0
+honor_labels: false
+kubernetes_sd_configs:
+- role: pod
+  selectors:
+  - role: pod
+    label: label-1=value-1,label-2=value-2,label-3=value-3
+metrics_path: /metric
+relabel_configs:
+- action: keep
+  source_labels:
+  - __meta_kubernetes_pod_label_label_1
+  regex: value-1
+- action: keep
+  source_labels:
+  - __meta_kubernetes_pod_label_label_2
+  regex: value-2
+- action: keep
+  source_labels:
+  - __meta_kubernetes_pod_label_label_3
+  regex: value-3
+- action: keep
+  source_labels:
+  - __meta_kubernetes_pod_label_some_label
+  regex: .+
+- action: keep
+  source_labels:
+  - __meta_kubernetes_pod_container_port_name
+  regex: web
+- source_labels:
+  - __meta_kubernetes_namespace
+  target_label: namespace
+- source_labels:
+  - __meta_kubernetes_pod_container_name
+  target_label: container
+- source_labels:
+  - __meta_kubernetes_pod_name
+  target_label: pod
+- target_label: job
+  replacement: default/test-1
+- target_label: endpoint
+  replacement: web
+`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := generatePodScrapeConfig(&tt.args.cr, tt.args.m, tt.args.ep, tt.args.i, tt.args.apiserverConfig, tt.args.ssCache, tt.args.ignoreHonorLabels, tt.args.overrideHonorTimestamps, tt.args.ignoreNamespaceSelectors, tt.args.enforcedNamespaceLabel)
+			gotBytes, err := yaml.Marshal(got)
+			if err != nil {
+				t.Errorf("cannot marshal PodScrapeConfig to yaml,err :%e", err)
+				return
+			}
+			assert.Equal(t, tt.want, string(gotBytes))
+
 		})
 	}
 }

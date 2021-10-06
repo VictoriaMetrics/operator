@@ -19,11 +19,10 @@ package controllers
 import (
 	"context"
 	"sync"
-
-	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
-	"sigs.k8s.io/controller-runtime/pkg/builder"
+	"time"
 
 	"github.com/VictoriaMetrics/operator/controllers/factory"
+	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
@@ -32,6 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
@@ -72,11 +72,17 @@ func (r *VMAlertReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		}
 		return ctrl.Result{}, err
 	}
+
 	if !instance.DeletionTimestamp.IsZero() {
 		if err := finalize.OnVMAlertDelete(ctx, r.Client, instance); err != nil {
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{}, nil
+	}
+
+	var needToRequeue bool
+	if len(instance.GetNotifierSelectors()) > 0 {
+		needToRequeue = true
 	}
 
 	if err := finalize.AddFinalizer(ctx, r.Client, instance); err != nil {
@@ -112,8 +118,12 @@ func (r *VMAlertReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	reqLogger.Info("vmalert reconciled")
+	var result ctrl.Result
+	if needToRequeue {
+		result.RequeueAfter = time.Second * 30
+	}
 
-	return ctrl.Result{}, nil
+	return result, nil
 }
 
 // SetupWithManager general setup method

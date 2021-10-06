@@ -11,6 +11,7 @@ import (
 )
 
 func generateProbeConfig(
+	crAgent *victoriametricsv1beta1.VMAgent,
 	cr *victoriametricsv1beta1.VMProbe,
 	i int,
 	apiserverConfig *victoriametricsv1beta1.APIServerConfig,
@@ -202,6 +203,10 @@ func generateProbeConfig(
 			{Key: "replacement", Value: cr.Spec.VMProberSpec.URL},
 		},
 	}...)
+
+	for _, trc := range crAgent.Spec.ProbeScrapeRelabelTemplate {
+		relabelings = append(relabelings, generateRelabelConfig(trc))
+	}
 	// Because of security risks, whenever enforcedNamespaceLabel is set, we want to append it to the
 	// relabel_configs as the last relabeling, to ensure it overrides any other relabelings.
 	relabelings = enforceNamespaceLabel(relabelings, cr.Namespace, enforcedNamespaceLabel)

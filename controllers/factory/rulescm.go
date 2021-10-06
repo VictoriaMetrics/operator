@@ -11,6 +11,7 @@ import (
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/ghodss/yaml"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -200,7 +201,13 @@ func selectNamespaces(ctx context.Context, rclient client.Client, selector label
 		return nil, err
 	}
 
+	watchNamespace := config.MustGetWatchNamespace()
+
 	for _, n := range ns.Items {
+		if watchNamespace != "" && n.Name != watchNamespace {
+			continue
+		}
+
 		matchedNs = append(matchedNs, n.Name)
 	}
 	log.Info("namespaced matched by selector", "ns", strings.Join(matchedNs, ","))
@@ -247,7 +254,7 @@ func SelectRules(ctx context.Context, cr *victoriametricsv1beta1.VMAlert, rclien
 	if namespaces == nil {
 		log.Info("listing all namespaces for rules")
 		ruleNs := &victoriametricsv1beta1.VMRuleList{}
-		err = rclient.List(ctx, ruleNs, &client.ListOptions{LabelSelector: ruleSelector})
+		err = rclient.List(ctx, ruleNs, &client.ListOptions{LabelSelector: ruleSelector}, config.MustGetNamespaceListOptions())
 		if err != nil {
 			return nil, fmt.Errorf("cannot list rules from all namespaces: %w", err)
 		}

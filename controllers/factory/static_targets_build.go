@@ -8,6 +8,7 @@ import (
 )
 
 func generateStaticScrapeConfig(
+	cr *victoriametricsv1beta1.VMAgent,
 	m *victoriametricsv1beta1.VMStaticScrape,
 	ep *victoriametricsv1beta1.TargetEndpoint,
 	i int,
@@ -67,7 +68,7 @@ func generateStaticScrapeConfig(
 	}
 
 	if ep.BearerTokenSecret.Name != "" {
-		if s, ok := ssCache.bearerTokens[m.AsKey(i)]; ok {
+		if s, ok := ssCache.bearerTokens[m.AsMapKey(i)]; ok {
 			cfg = append(cfg, yaml.MapItem{Key: "bearer_token", Value: s})
 		}
 	}
@@ -96,10 +97,11 @@ func generateStaticScrapeConfig(
 		})
 	}
 
-	if ep.RelabelConfigs != nil {
-		for _, c := range ep.RelabelConfigs {
-			relabelings = append(relabelings, generateRelabelConfig(c))
-		}
+	for _, c := range ep.RelabelConfigs {
+		relabelings = append(relabelings, generateRelabelConfig(c))
+	}
+	for _, trc := range cr.Spec.StaticScrapeRelabelTemplate {
+		relabelings = append(relabelings, generateRelabelConfig(trc))
 	}
 	// Because of security risks, whenever enforcedNamespaceLabel is set, we want to append it to the
 	// relabel_configs as the last relabeling, to ensure it overrides any other relabelings.

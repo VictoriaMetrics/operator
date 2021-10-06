@@ -36,6 +36,7 @@ spec:
               affinity:
                 description: Affinity If specified, the pod's scheduling constraints.
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               configMaps:
                 description: ConfigMaps is a list of ConfigMaps in the same namespace
                   as the VMSingle object, which shall be mounted into the VMSingle
@@ -53,6 +54,7 @@ spec:
                   required:
                   - name
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               dnsPolicy:
                 description: DNSPolicy sets DNS policy for the pod
@@ -84,6 +86,7 @@ spec:
                   required:
                   - name
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               hostAliases:
                 description: HostAliases provides mapping for ip and hostname, that
@@ -151,6 +154,7 @@ spec:
                   required:
                   - name
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               insertPorts:
                 description: InsertPorts - additional listen ports for data ingestion.
@@ -171,6 +175,7 @@ spec:
               livenessProbe:
                 description: LivenessProbe that will be added CRD pod
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               logFormat:
                 description: LogFormat for VMSingle to be configured with.
                 enum:
@@ -234,6 +239,7 @@ spec:
               readinessProbe:
                 description: ReadinessProbe that will be added CRD pod
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               removePvcAfterDelete:
                 description: RemovePvcAfterDelete - if true, controller adds ownership
                   to pvc and after VMSingle objest deletion - pvc will be garbage
@@ -292,6 +298,7 @@ spec:
                 description: SecurityContext holds pod-level security attributes and
                   common container settings. This defaults to the default PodSecurityContext.
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               serviceAccountName:
                 description: ServiceAccountName is the name of the ServiceAccount
                   to use to run the VMSingle Pods.
@@ -333,12 +340,14 @@ spec:
                     description: 'ServiceSpec describes the attributes that a user
                       creates on a service. More info: https://kubernetes.io/docs/concepts/services-networking/service/'
                     type: object
+                    x-kubernetes-preserve-unknown-fields: true
                 required:
                 - spec
                 type: object
               startupProbe:
                 description: StartupProbe that will be added to CRD pod
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               storage:
                 description: Storage is the definition of how storage will be used
                   by the VMSingle by default it`s empty dir
@@ -519,6 +528,7 @@ spec:
                   - topologyKey
                   - whenUnsatisfiable
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
               vmBackup:
                 description: VMBackup configuration for backup
@@ -850,6 +860,7 @@ spec:
                   required:
                   - name
                   type: object
+                  x-kubernetes-preserve-unknown-fields: true
                 type: array
             required:
             - retentionPeriod

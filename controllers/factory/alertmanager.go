@@ -608,7 +608,7 @@ func createDefaultAMConfig(ctx context.Context, cr *victoriametricsv1beta1.VMAle
 			if err != nil {
 				return err
 			}
-			if err := selectWithMerge(ctx, rclient, namespaces, &victoriametricsv1beta1.VMAlertmanagerConfigList{}, objSelector, func(list client.ObjectList) {
+			if err := visitObjectsWithSelector(ctx, rclient, namespaces, &victoriametricsv1beta1.VMAlertmanagerConfigList{}, objSelector, func(list client.ObjectList) {
 				ams := list.(*victoriametricsv1beta1.VMAlertmanagerConfigList)
 				for i := range ams.Items {
 					item := ams.Items[i]

@@ -75,7 +75,81 @@ and scrapes only 1/5 of all targets.
 ## VMAlert
 
 It can be launched with multiple replicas without an additional configuration, alertmanager is responsible for alert deduplication.
+ Note, if you want to use `VMAlert` with high-available `VMAlertmanager`, which has more then 1 replica. You have to specify all pod fqdns 
+at `VMAlert.spec.notifiers.[url]`. Or you can use service discovery for notifier, examples:
 
+alertmanager:
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: vmalertmanager-example-alertmanager
+  labels:
+    app: vm-operator
+type: Opaque
+stringData:
+  alertmanager.yaml: |
+    global:
+      resolve_timeout: 5m
+    route:
+      group_by: ['job']
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 12h
+      receiver: 'webhook'
+    receivers:
+      - name: 'webhook'
+        webhook_configs:
+          - url: 'http://alertmanagerwh:30500/'
+
+---
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAlertmanager
+metadata:
+  name: example
+  namespace: default
+  labels:
+   usage: dedicated
+spec:
+  replicaCount: 2
+  configSecret: vmalertmanager-example-alertmanager
+  configSelector: {}
+  configNamespaceSelector: {}
+```
+vmalert with fqdns:
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAlert
+metadata:
+  name: example-ha
+  namespace: default
+spec:
+  datasource:
+    url: http://vmsingle-example.default.svc:8429
+  notifiers:
+    - url: http://vmalertmanager-example-0.vmalertmanager-example.default.svc:9093
+    - url: http://vmalertmanager-example-1.vmalertmanager-example.default.svc:9093
+```
+
+vmalert with service discovery:
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAlert
+metadata:
+  name: example-ha
+  namespace: default
+spec:
+  datasource:
+   url: http://vmsingle-example.default.svc:8429
+  notifiers:
+    - selector:
+        namespaceSelector:
+          matchNames: 
+            - default
+        labelSelector:
+          matchLabels:
+              usage: dedicated
+```
 
 
 ## VMSingle

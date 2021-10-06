@@ -184,38 +184,73 @@ type VMAgentSpec struct {
 	// +optional
 	InlineRelabelConfig []RelabelConfig `json:"inlineRelabelConfig,omitempty"`
 	// ServiceScrapeSelector defines ServiceScrapes to be selected for target discovery.
+	// Works in combination with NamespaceSelector.
+	// If both nil - match everything.
+	// NamespaceSelector nil - only objects at VMAgent namespace.
+	// Selector nil - only objects at NamespaceSelector namespaces.
 	// +optional
 	ServiceScrapeSelector *metav1.LabelSelector `json:"serviceScrapeSelector,omitempty"`
-	// ServiceScrapeNamespaceSelector Namespaces to be selected for VMServiceScrape discovery. If nil, only
-	// check own namespace.
+	// ServiceScrapeNamespaceSelector Namespaces to be selected for VMServiceScrape discovery.
+	// Works in combination with Selector.
+	// If both nil - match everything.
+	// NamespaceSelector nil - only objects at VMAgent namespace.
+	// Selector nil - only objects at NamespaceSelector namespaces.
 	// +optional
 	ServiceScrapeNamespaceSelector *metav1.LabelSelector `json:"serviceScrapeNamespaceSelector,omitempty"`
 	// PodScrapeSelector defines PodScrapes to be selected for target discovery.
+	// Works in combination with NamespaceSelector.
+	// If both nil - match everything.
+	// NamespaceSelector nil - only objects at VMAgent namespace.
+	// Selector nil - only objects at NamespaceSelector namespaces.
 	// +optional
 	PodScrapeSelector *metav1.LabelSelector `json:"podScrapeSelector,omitempty"`
-	// PodScrapeNamespaceSelector defines Namespaces to be selected for VMPodScrape discovery. If nil, only
-	// check own namespace.
+	// PodScrapeNamespaceSelector defines Namespaces to be selected for VMPodScrape discovery.
+	// Works in combination with Selector.
+	// If both nil - match everything.
+	// NamespaceSelector nil - only objects at VMAgent namespace.
+	// Selector nil - only objects at NamespaceSelector namespaces.
 	// +optional
 	PodScrapeNamespaceSelector *metav1.LabelSelector `json:"podScrapeNamespaceSelector,omitempty"`
 	// ProbeSelector defines VMProbe to be selected for target probing.
+	// Works in combination with NamespaceSelector.
+	// If both nil - match everything.
+	// NamespaceSelector nil - only objects at VMAgent namespace.
+	// Selector nil - only objects at NamespaceSelector namespaces.
 	// +optional
 	ProbeSelector *metav1.LabelSelector `json:"probeSelector,omitempty"`
-	// ProbeNamespaceSelector defines Namespaces to be selected for VMProbe discovery. If nil, only
-	// check own namespace.
+	// ProbeNamespaceSelector defines Namespaces to be selected for VMProbe discovery.
+	// Works in combination with Selector.
+	// If both nil - match everything.
+	// NamespaceSelector nil - only objects at VMAgent namespace.
+	// Selector nil - only objects at NamespaceSelector namespaces.
 	// +optional
 	ProbeNamespaceSelector *metav1.LabelSelector `json:"probeNamespaceSelector,omitempty"`
 	// NodeScrapeSelector defines VMNodeScrape to be selected for scraping.
+	// Works in combination with NamespaceSelector.
+	// If both nil - match everything.
+	// NamespaceSelector nil - only objects at VMAgent namespace.
+	// Selector nil - only objects at NamespaceSelector namespaces.
 	// +optional
 	NodeScrapeSelector *metav1.LabelSelector `json:"nodeScrapeSelector,omitempty"`
-	// NodeScrapeNamespaceSelector defines Namespaces to be selected for VMNodeScrape discovery. If nil, only
-	// check own namespace.
+	// NodeScrapeNamespaceSelector defines Namespaces to be selected for VMNodeScrape discovery.
+	// Works in combination with Selector.
+	// If both nil - match everything.
+	// NamespaceSelector nil - only objects at VMAgent namespace.
+	// Selector nil - only objects at NamespaceSelector namespaces.
 	// +optional
 	NodeScrapeNamespaceSelector *metav1.LabelSelector `json:"nodeScrapeNamespaceSelector,omitempty"`
 	// StaticScrapeSelector defines PodScrapes to be selected for target discovery.
+	// Works in combination with NamespaceSelector.
+	// If both nil - match everything.
+	// NamespaceSelector nil - only objects at VMAgent namespace.
+	// Selector nil - only objects at NamespaceSelector namespaces.
 	// +optional
 	StaticScrapeSelector *metav1.LabelSelector `json:"staticScrapeSelector,omitempty"`
-	// StaticScrapeNamespaceSelector defines Namespaces to be selected for VMStaticScrape discovery. If nil, only
-	// check own namespace.
+	// StaticScrapeNamespaceSelector defines Namespaces to be selected for VMStaticScrape discovery.
+	// Works in combination with NamespaceSelector.
+	// If both nil - match everything.
+	// NamespaceSelector nil - only objects at VMAgent namespace.
+	// Selector nil - only objects at NamespaceSelector namespaces.
 	// +optional
 	StaticScrapeNamespaceSelector *metav1.LabelSelector `json:"staticScrapeNamespaceSelector,omitempty"`
 	// InlineScrapeConfig As scrape configs are appended, the user is responsible to make sure it
@@ -281,6 +316,26 @@ type VMAgentSpec struct {
 	// NodeSelector Define which Nodes the Pods are scheduled on.
 	// +optional
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
+	// ServiceScrapeRelabelTemplate defines relabel config, that will be added to each VMServiceScrape.
+	// it's useful for adding specific labels to all targets
+	// +optional
+	ServiceScrapeRelabelTemplate []*RelabelConfig `json:"serviceScrapeRelabelTemplate,omitempty"`
+	// PodScrapeRelabelTemplate defines relabel config, that will be added to each VMPodScrape.
+	// it's useful for adding specific labels to all targets
+	// +optional
+	PodScrapeRelabelTemplate []*RelabelConfig `json:"podScrapeRelabelTemplate,omitempty"`
+	// NodeScrapeRelabelTemplate defines relabel config, that will be added to each VMNodeScrape.
+	// it's useful for adding specific labels to all targets
+	// +optional
+	NodeScrapeRelabelTemplate []*RelabelConfig `json:"nodeScrapeRelabelTemplate,omitempty"`
+	// StaticScrapeRelabelTemplate defines relabel config, that will be added to each VMStaticScrape.
+	// it's useful for adding specific labels to all targets
+	// +optional
+	StaticScrapeRelabelTemplate []*RelabelConfig `json:"staticScrapeRelabelTemplate,omitempty"`
+	// ProbeScrapeRelabelTemplate defines relabel config, that will be added to each VMProbeScrape.
+	// it's useful for adding specific labels to all targets
+	// +optional
+	ProbeScrapeRelabelTemplate []*RelabelConfig `json:"probeScrapeRelabelTemplate,omitempty"`
 }
 
 // VMAgentRemoteWriteSettings - defines global settings for all remoteWrite urls.

@@ -5,7 +5,6 @@ import (
 	"compress/gzip"
 	"context"
 	"io"
-	"os"
 	"reflect"
 	"sort"
 	"testing"
@@ -419,6 +418,16 @@ func TestCreateOrUpdateConfigurationSecret(t *testing.T) {
 				c: config.MustGetBaseConfig(),
 			},
 			predefinedObjects: []runtime.Object{
+				&v1.Namespace{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "default",
+					},
+				},
+				&v1.Namespace{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "kube-system",
+					},
+				},
 				&victoriametricsv1beta1.VMServiceScrape{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: "default",
@@ -448,7 +457,7 @@ func TestCreateOrUpdateConfigurationSecret(t *testing.T) {
 				},
 				&victoriametricsv1beta1.VMProbe{
 					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "default",
+						Namespace: "kube-system",
 						Name:      "test-vmp",
 					},
 				},
@@ -785,7 +794,7 @@ scrape_configs:
   - target_label: endpoint
     replacement: "801"
   sample_limit: 10
-- job_name: default/test-vmp/0
+- job_name: kube-system/test-vmp/0
   params:
     module:
     - ""
@@ -848,9 +857,9 @@ scrape_configs:
 				t.Fatalf("cannot read cfg: %s", err)
 			}
 			gr.Close()
-			if err := os.WriteFile("/tmp/cfg", data, os.ModePerm); err != nil {
-				t.Errorf("cannot write: %s", err)
-			}
+			//if err := os.WriteFile("/tmp/cfg", data, os.ModePerm); err != nil {
+			//	t.Errorf("cannot write: %s", err)
+			//}
 			assert.Equal(t, tt.wantConfig, string(data))
 
 		})

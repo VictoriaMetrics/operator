@@ -6,6 +6,8 @@ spec:
   route:
     receiver: email
     group_interval: 1m
+    routes:
+    - receiver: email
   receivers:
     - name: email
       email_configs:

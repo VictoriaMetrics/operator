@@ -104,14 +104,14 @@ func CreateOrUpdateAlertManager(ctx context.Context, cr *victoriametricsv1beta1.
 		return nil, fmt.Errorf("cannot get alertmanager sts: %w", err)
 	}
 
-	recreatedSts, err := wasCreatedSTS(ctx, rclient, volumeName(cr.Name), newSts, currentSts)
+	recreatedSts, err := wasCreatedSTS(ctx, rclient, cr.GetVolumeName(), newSts, currentSts)
 	if err != nil {
 		return nil, err
 	}
 	if recreatedSts != nil {
 		return recreatedSts, nil
 	}
-	if err := growSTSPVC(ctx, rclient, newSts, volumeName(cr.Name)); err != nil {
+	if err := growSTSPVC(ctx, rclient, newSts, cr.GetVolumeName()); err != nil {
 		return nil, err
 	}
 
@@ -189,7 +189,7 @@ func newStsForAlertManager(cr *victoriametricsv1beta1.VMAlertmanager, c *config.
 	switch {
 	case storageSpec == nil:
 		statefulset.Spec.Template.Spec.Volumes = append(statefulset.Spec.Template.Spec.Volumes, v1.Volume{
-			Name: volumeName(cr.Name),
+			Name: cr.GetVolumeName(),
 			VolumeSource: v1.VolumeSource{
 				EmptyDir: &v1.EmptyDirVolumeSource{},
 			},
@@ -197,7 +197,7 @@ func newStsForAlertManager(cr *victoriametricsv1beta1.VMAlertmanager, c *config.
 	case storageSpec.EmptyDir != nil:
 		emptyDir := storageSpec.EmptyDir
 		statefulset.Spec.Template.Spec.Volumes = append(statefulset.Spec.Template.Spec.Volumes, v1.Volume{
-			Name: volumeName(cr.Name),
+			Name: cr.GetVolumeName(),
 			VolumeSource: v1.VolumeSource{
 				EmptyDir: emptyDir,
 			},
@@ -205,7 +205,7 @@ func newStsForAlertManager(cr *victoriametricsv1beta1.VMAlertmanager, c *config.
 	default:
 		pvcTemplate := MakeVolumeClaimTemplate(storageSpec.VolumeClaimTemplate)
 		if pvcTemplate.Name == "" {
-			pvcTemplate.Name = volumeName(cr.Name)
+			pvcTemplate.Name = cr.GetVolumeName()
 		}
 		if storageSpec.VolumeClaimTemplate.Spec.AccessModes == nil {
 			pvcTemplate.Spec.AccessModes = []v1.PersistentVolumeAccessMode{v1.ReadWriteOnce}
@@ -222,7 +222,7 @@ func newStsForAlertManager(cr *victoriametricsv1beta1.VMAlertmanager, c *config.
 	return statefulset, nil
 }
 
-func CreateOrUpdateAlertManagerService(ctx context.Context, cr *victoriametricsv1beta1.VMAlertmanager, rclient client.Client, c *config.BaseOperatorConf) (*v1.Service, error) {
+func CreateOrUpdateAlertManagerService(ctx context.Context, cr *victoriametricsv1beta1.VMAlertmanager, rclient client.Client) (*v1.Service, error) {
 	cr = cr.DeepCopy()
 	if cr.Spec.PortName == "" {
 		cr.Spec.PortName = defaultPortName
@@ -323,7 +323,7 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, c *config.Ba
 		clusterPeerDomain = cr.PrefixedName()
 	}
 	for i := int32(0); i < *cr.Spec.ReplicaCount; i++ {
-		amArgs = append(amArgs, fmt.Sprintf("--cluster.peer=%s-%d.%s:9094", prefixedName(cr.Name), i, clusterPeerDomain))
+		amArgs = append(amArgs, fmt.Sprintf("--cluster.peer=%s-%d.%s:9094", cr.PrefixedName(), i, clusterPeerDomain))
 	}
 
 	for _, peer := range cr.Spec.AdditionalPeers {
@@ -390,20 +390,13 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, c *config.Ba
 		},
 	}
 
-	volName := volumeName(cr.Name)
-	if cr.Spec.Storage != nil {
-		if cr.Spec.Storage.VolumeClaimTemplate.Name != "" {
-			volName = cr.Spec.Storage.VolumeClaimTemplate.Name
-		}
-	}
-
 	amVolumeMounts := []v1.VolumeMount{
 		{
 			Name:      "config-volume",
 			MountPath: alertmanagerConfDir,
 		},
 		{
-			Name:      volName,
+			Name:      cr.GetVolumeName(),
 			MountPath: alertmanagerStorageDir,
 			SubPath:   subPathForStorage(cr.Spec.Storage),
 		},

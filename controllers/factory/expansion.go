@@ -63,8 +63,13 @@ func wasCreatedSTS(ctx context.Context, rclient client.Client, pvcName string, n
 	needRecreateOnStorageChange := func() bool {
 		actualPVC := getPVCFromSTS(pvcName, existingSTS)
 		newPVC := getPVCFromSTS(pvcName, newSTS)
-		if actualPVC == nil || newPVC == nil {
+		// fast path
+		if actualPVC == nil && newPVC == nil {
 			return false
+		}
+		// actual name for pvc was changed or it was added
+		if (actualPVC == nil && newPVC != nil) || (actualPVC != nil && newPVC == nil) {
+			return true
 		}
 
 		if i := newPVC.Spec.Resources.Requests.Storage().Cmp(*actualPVC.Spec.Resources.Requests.Storage()); i != 0 {

@@ -374,6 +374,14 @@ func (cr *VMAlertmanager) AsNotifiers() []VMAlertNotifierSpec {
 	}
 	return r
 }
+
+func (cr *VMAlertmanager) GetVolumeName() string {
+	if cr.Spec.Storage != nil && cr.Spec.Storage.VolumeClaimTemplate.Name != "" {
+		return cr.Spec.Storage.VolumeClaimTemplate.Name
+	}
+	return fmt.Sprintf("vmalertmanager-%s-db", cr.Name)
+}
+
 func init() {
 	SchemeBuilder.Register(&VMAlertmanager{}, &VMAlertmanagerList{})
 }

@@ -225,6 +225,90 @@ receivers:
 templates: []
 `,
 		},
+		{
+			name: "slack ok",
+			args: args{
+				ctx: context.Background(),
+				baseCfg: []byte(`global:
+ time_out: 1min
+`),
+				amcfgs: map[string]*operatorv1beta1.VMAlertmanagerConfig{
+					"default/base": &operatorv1beta1.VMAlertmanagerConfig{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "base",
+							Namespace: "default",
+						},
+						Spec: operatorv1beta1.VMAlertmanagerConfigSpec{
+							Receivers: []operatorv1beta1.Receiver{
+								{
+									Name: "slack",
+									SlackConfigs: []operatorv1beta1.SlackConfig{
+										{
+											SendResolved: pointer.Bool(true),
+											Text:         "some-text",
+											Title:        "some-title",
+											LinkNames:    false,
+											ThumbURL:     "some-url",
+											Pretext:      "text-1",
+											Username:     "some-user",
+											Actions: []operatorv1beta1.SlackAction{
+												{
+													Name: "deny",
+													Text: "text-5",
+													URL:  "some-url",
+													ConfirmField: &operatorv1beta1.SlackConfirmationField{
+														Text: "confirmed",
+													},
+												},
+											},
+											Fields: []operatorv1beta1.SlackField{
+												{
+													Short: pointer.Bool(true),
+													Title: "fields",
+												},
+											},
+										},
+									},
+								},
+							},
+							Route: &operatorv1beta1.Route{
+								Receiver:  "slack",
+								GroupWait: "1min",
+							},
+						},
+					},
+				},
+			},
+			want: `global:
+  time_out: 1min
+route:
+  routes:
+  - matchers:
+    - namespace = "default"
+    group_wait: 1min
+    receiver: default-base-slack
+    continue: true
+receivers:
+- name: default-base-slack
+  slack_configs:
+  - send_resolved: true
+    username: some-user
+    pretext: text-1
+    text: some-text
+    title: some-title
+    thumb_url: some-url
+    actions:
+    - name: deny
+      text: text-5
+      url: some-url
+      confirm:
+        text: confirmed
+    fields:
+    - title: fields
+      short: true
+templates: []
+`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

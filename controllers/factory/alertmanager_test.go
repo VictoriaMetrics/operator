@@ -74,7 +74,6 @@ func Test_createDefaultAMConfig(t *testing.T) {
 						Name: "test-am",
 					},
 					Spec: victoriametricsv1beta1.VMAlertmanagerSpec{
-						ConfigSecret:  "some-name",
 						ConfigRawYaml: "some-bad-yaml",
 					},
 				},
@@ -127,10 +126,8 @@ func Test_createDefaultAMConfig(t *testing.T) {
 				t.Fatalf("createDefaultAMConfig() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			var createdSecret v1.Secret
-			secretName := tt.args.cr.Spec.ConfigSecret
-			if secretName == "" {
-				secretName = tt.args.cr.PrefixedName()
-			}
+			secretName := tt.args.cr.ConfigSecretName()
+
 			err := fclient.Get(tt.args.ctx, types.NamespacedName{Namespace: tt.args.cr.Namespace, Name: secretName}, &createdSecret)
 			if err != nil {
 				if errors.IsNotFound(err) && tt.secretMustBeMissing {

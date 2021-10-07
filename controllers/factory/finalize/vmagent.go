@@ -32,8 +32,12 @@ func OnVMAgentDelete(ctx context.Context, rclient client.Client, crd *victoriame
 			return err
 		}
 	}
+	// config secret
+	if err := removeFinalizeObjByName(ctx, rclient, &v1.Secret{}, crd.PrefixedName(), crd.Namespace); err != nil {
+		return err
+	}
 
-	// check secret
+	// check secret for tls assests
 	if err := removeFinalizeObjByName(ctx, rclient, &v1.Secret{}, crd.TLSAssetName(), crd.Namespace); err != nil {
 		return err
 	}

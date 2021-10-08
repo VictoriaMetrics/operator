@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path"
 	"sort"
+	"strings"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
@@ -295,7 +296,7 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 	operatorContainers := []corev1.Container{vmsingleContainer}
 
 	if cr.Spec.VMBackup != nil {
-		vmBackupManagerContainer, err := makeSpecForVMBackuper(cr.Spec.VMBackup, c, cr.Spec.Port, storagePath, vmDataVolumeName, cr.Spec.ExtraArgs)
+		vmBackupManagerContainer, err := makeSpecForVMBackuper(cr.Spec.VMBackup, c, cr.Spec.Port, storagePath, vmDataVolumeName, cr.Spec.ExtraArgs, false)
 		if err != nil {
 			return nil, err
 		}
@@ -373,6 +374,7 @@ func makeSpecForVMBackuper(
 	port string,
 	storagePath, dataVolumeName string,
 	extraArgs map[string]string,
+	isCluster bool,
 ) (*corev1.Container, error) {
 	if !cr.AcceptEULA {
 		log.Info("EULA wasn't accepted, update your backup setting. You must switch to victoriametrics/vmbackupmanager:v1.56.0-enterprise  image or higher.")
@@ -401,9 +403,15 @@ func makeSpecForVMBackuper(
 		//http://localhost:port/snaphsot/delete
 		snapshotDeleteURL = cr.SnapshotDeletePathWithFlags(port, extraArgs)
 	}
+	backupDst := cr.Destination
+	// add suffix with pod name for cluster backupmanager
+	// it's needed to create consistent backup across cluster nodes
+	if isCluster && !cr.DestinationDisableSuffixAdd {
+		backupDst = strings.TrimSuffix(backupDst, "/") + "/$(POD_NAME)/"
+	}
 	args := []string{
 		fmt.Sprintf("-storageDataPath=%s", storagePath),
-		fmt.Sprintf("-dst=%s", cr.Destination),
+		fmt.Sprintf("-dst=%s", backupDst),
 		fmt.Sprintf("-snapshot.createURL=%s", snapshotCreateURL),
 		fmt.Sprintf("-snapshot.deleteURL=%s", snapshotDeleteURL),
 		"-eula",
@@ -442,7 +450,7 @@ func makeSpecForVMBackuper(
 	mounts := []corev1.VolumeMount{
 		{
 			Name:      dataVolumeName,
-			MountPath: vmSingleDataDir,
+			MountPath: storagePath,
 			ReadOnly:  true,
 		},
 	}
@@ -460,6 +468,16 @@ func makeSpecForVMBackuper(
 	if len(cr.ExtraEnvs) > 0 {
 		args = append(args, "-envflag.enable=true")
 	}
+	// expose POD_NAME information by default
+	// its needed to create uniq path for backup
+	extraEnvs = append(extraEnvs, corev1.EnvVar{
+		Name: "POD_NAME",
+		ValueFrom: &corev1.EnvVarSource{
+			FieldRef: &corev1.ObjectFieldSelector{
+				FieldPath: "metadata.name",
+			},
+		},
+	})
 
 	livenessProbeHandler := corev1.Handler{
 		HTTPGet: &corev1.HTTPGetAction{

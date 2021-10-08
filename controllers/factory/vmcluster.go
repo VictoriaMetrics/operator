@@ -1272,7 +1272,7 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) 
 	operatorContainers := []corev1.Container{vmstorageContainer}
 
 	if cr.Spec.VMStorage.VMBackup != nil {
-		vmBackupManagerContainer, err := makeSpecForVMBackuper(cr.Spec.VMStorage.VMBackup, c, cr.Spec.VMStorage.Port, cr.Spec.VMStorage.StorageDataPath, cr.Spec.VMStorage.GetStorageVolumeName(), cr.Spec.VMStorage.ExtraArgs)
+		vmBackupManagerContainer, err := makeSpecForVMBackuper(cr.Spec.VMStorage.VMBackup, c, cr.Spec.VMStorage.Port, cr.Spec.VMStorage.StorageDataPath, cr.Spec.VMStorage.GetStorageVolumeName(), cr.Spec.VMStorage.ExtraArgs, true)
 		if err != nil {
 			return nil, err
 		}

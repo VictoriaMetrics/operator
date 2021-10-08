@@ -54,6 +54,8 @@ spec:
 
 ```
 
+NOTE: for cluster version operator adds suffix for `destination: "s3://your_bucket/folder"`, it becomes `"s3://your_bucket/folder/$(POD_NAME)"`. 
+It's needed to make consistent backups for each storage node.
 
  You can read more about backup configuration options and mechanics [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/app/vmbackup)
  

@@ -324,6 +324,10 @@ func (cr VMAlertmanager) Labels() map[string]string {
 	return labels.Merge(cr.ObjectMeta.Labels, lbls)
 }
 
+// ConfigSecretName returns configuration secret name for alertmanager
+func (cr VMAlertmanager) ConfigSecretName() string {
+	return fmt.Sprintf("%s-config", cr.PrefixedName())
+}
 func (cr VMAlertmanager) PrefixedName() string {
 	return fmt.Sprintf("vmalertmanager-%s", cr.Name)
 }

@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -98,6 +99,11 @@ func (r *VMAlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	reqLogger.Info("vmalertmanager reconciled")
+	// in case of user defined config secret
+	// resync configuration periodically
+	if instance.Spec.ConfigSecret != "" {
+		return ctrl.Result{RequeueAfter: time.Minute * 1}, nil
+	}
 	return ctrl.Result{}, nil
 }
 

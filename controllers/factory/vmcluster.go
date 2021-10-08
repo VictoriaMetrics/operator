@@ -147,7 +147,7 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient
 			reason = v1beta1.SelectCreationFailed
 			return status, err
 		}
-		if err := growSTSPVC(ctx, rclient, vmSelectsts, cr.Spec.VMSelect.GetCacheMountVolmeName()); err != nil {
+		if err := growSTSPVC(ctx, rclient, vmSelectsts, cr.Spec.VMSelect.GetCacheMountVolumeName()); err != nil {
 			reason = "cannot expand sts pvc"
 			return status, err
 		}
@@ -283,7 +283,7 @@ func createOrUpdateVMSelect(ctx context.Context, cr *v1beta1.VMCluster, rclient 
 		newSts.Spec.Replicas = currentSts.Spec.Replicas
 	}
 
-	recreatedSts, err := wasCreatedSTS(ctx, rclient, cr.Spec.VMSelect.GetCacheMountVolmeName(), newSts, &currentSts)
+	recreatedSts, err := wasCreatedSTS(ctx, rclient, cr.Spec.VMSelect.GetCacheMountVolumeName(), newSts, &currentSts)
 	if err != nil {
 		return nil, err
 	}
@@ -526,7 +526,7 @@ func genVMSelectSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv1
 		switch {
 		case storageSpec == nil:
 			stsSpec.Spec.Template.Spec.Volumes = append(stsSpec.Spec.Template.Spec.Volumes, corev1.Volume{
-				Name: cr.Spec.VMSelect.GetCacheMountVolmeName(),
+				Name: cr.Spec.VMSelect.GetCacheMountVolumeName(),
 				VolumeSource: corev1.VolumeSource{
 					EmptyDir: &corev1.EmptyDirVolumeSource{},
 				},
@@ -534,7 +534,7 @@ func genVMSelectSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv1
 		case storageSpec.EmptyDir != nil:
 			emptyDir := storageSpec.EmptyDir
 			stsSpec.Spec.Template.Spec.Volumes = append(stsSpec.Spec.Template.Spec.Volumes, corev1.Volume{
-				Name: cr.Spec.VMSelect.GetCacheMountVolmeName(),
+				Name: cr.Spec.VMSelect.GetCacheMountVolumeName(),
 				VolumeSource: corev1.VolumeSource{
 					EmptyDir: emptyDir,
 				},
@@ -542,7 +542,7 @@ func genVMSelectSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv1
 		default:
 			pvcTemplate := MakeVolumeClaimTemplate(storageSpec.VolumeClaimTemplate)
 			if pvcTemplate.Name == "" {
-				pvcTemplate.Name = cr.Spec.VMSelect.GetCacheMountVolmeName()
+				pvcTemplate.Name = cr.Spec.VMSelect.GetCacheMountVolumeName()
 			}
 			if storageSpec.VolumeClaimTemplate.Spec.AccessModes == nil {
 				pvcTemplate.Spec.AccessModes = []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce}
@@ -621,9 +621,10 @@ func makePodSpecForVMSelect(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 	volumes = append(volumes, cr.Spec.VMSelect.Volumes...)
 
 	vmMounts := make([]corev1.VolumeMount, 0)
+
 	if cr.Spec.VMSelect.CacheMountPath != "" {
 		vmMounts = append(vmMounts, corev1.VolumeMount{
-			Name:      cr.Spec.VMSelect.GetCacheMountVolmeName(),
+			Name:      cr.Spec.VMSelect.GetCacheMountVolumeName(),
 			MountPath: cr.Spec.VMSelect.CacheMountPath,
 		})
 		args = append(args, fmt.Sprintf("-cacheDataPath=%s", cr.Spec.VMSelect.CacheMountPath))
@@ -1209,6 +1210,7 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) 
 	}
 
 	vmMounts := make([]corev1.VolumeMount, 0)
+
 	vmMounts = append(vmMounts, corev1.VolumeMount{
 		Name:      cr.Spec.VMStorage.GetStorageVolumeName(),
 		MountPath: cr.Spec.VMStorage.StorageDataPath,

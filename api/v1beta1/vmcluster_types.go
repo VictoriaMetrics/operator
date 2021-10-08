@@ -646,11 +646,20 @@ func (s VMStorage) GetNameWithPrefix(clusterName string) string {
 }
 
 func (s VMStorage) GetStorageVolumeName() string {
-
+	if s.Storage != nil && s.Storage.VolumeClaimTemplate.Name != "" {
+		return s.Storage.VolumeClaimTemplate.Name
+	}
 	return "vmstorage-db"
 }
 
-func (s VMSelect) GetCacheMountVolmeName() string {
+func (s VMSelect) GetCacheMountVolumeName() string {
+	storageSpec := s.StorageSpec
+	if storageSpec == nil {
+		storageSpec = s.Storage
+	}
+	if storageSpec != nil && storageSpec.VolumeClaimTemplate.Name != "" {
+		return storageSpec.VolumeClaimTemplate.Name
+	}
 	return PrefixedName("cachedir", "vmselect")
 }
 

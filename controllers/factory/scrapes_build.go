@@ -1144,14 +1144,6 @@ func generateRelabelConfig(rc *victoriametricsv1beta1.RelabelConfig) yaml.MapSli
 	return relabeling
 }
 
-func volumeName(name string) string {
-	return fmt.Sprintf("%s-db", prefixedName(name))
-}
-
-func prefixedName(name string) string {
-	return fmt.Sprintf("vmalertmanager-%s", name)
-}
-
 // getNamespacesFromNamespaceSelector gets a list of namespaces to select based on
 // the given namespace selector, the given default namespace, and whether to ignore namespace selectors
 func getNamespacesFromNamespaceSelector(nsSelector *victoriametricsv1beta1.NamespaceSelector, namespace string, ignoreNamespaceSelectors bool) []string {

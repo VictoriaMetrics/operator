@@ -30,6 +30,8 @@ spec:
   # Add fields here
   retentionPeriod: "1"
   vmBackup:
+    # By specifying this param, you confirm that you have an enterprise license 
+    # and accept the EULA https://victoriametrics.com/assets/VM_EULA.pdf
     acceptEULA: true
     destination: "s3://your_bucket/folder"
     credentialsSecret:
@@ -46,6 +48,8 @@ spec:
   vmstorage:
     replicaCount: 2
     vmBackup:
+      # By specifying this param, you confirm that you have an enterprise license 
+      # and accept the EULA https://victoriametrics.com/assets/VM_EULA.pdf
       acceptEULA: true
       destination: "s3://your_bucket/folder"
       credentialsSecret:
@@ -105,6 +109,8 @@ spec:
    - -src=s3://your_bucket/folder/latest
    - -credsFilePath=/etc/vm/creds/credentials
  vmBackup:
+  # By specifying this flag, you confirm that you have an enterprise license 
+  # and accept the EULA https://victoriametrics.com/assets/VM_EULA.pdf
   acceptEULA: true
   destination: "s3://your_bucket/folder"
   extraArgs:

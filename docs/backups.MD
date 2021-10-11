@@ -2,7 +2,9 @@
 
 #### vmbackupmanager is proprietary software. 
 
- Before using it, you must accept EULA https://victoriametrics.com/assets/VM_EULA.pdf.
+ Before using it, you must have signed contract and accept EULA https://victoriametrics.com/assets/VM_EULA.pdf
+
+### Usage examples
 
  `VMSingle` and `VMCluster` has built-in backup configuration, it uses `vmbackupmanager` - proprietary tool for backups.
  It supports incremental backups (hours, daily, etc) with popular object storages (aws s3, google cloud storage).
@@ -30,7 +32,7 @@ spec:
   # Add fields here
   retentionPeriod: "1"
   vmBackup:
-    # By specifying this param, you confirm that you have an enterprise license 
+    # This is Enterprise Package feature you need to have signed contract to use it
     # and accept the EULA https://victoriametrics.com/assets/VM_EULA.pdf
     acceptEULA: true
     destination: "s3://your_bucket/folder"
@@ -48,7 +50,7 @@ spec:
   vmstorage:
     replicaCount: 2
     vmBackup:
-      # By specifying this param, you confirm that you have an enterprise license 
+      # This is Enterprise Package feature you need to have signed contract to use it
       # and accept the EULA https://victoriametrics.com/assets/VM_EULA.pdf
       acceptEULA: true
       destination: "s3://your_bucket/folder"
@@ -109,15 +111,15 @@ spec:
    - -src=s3://your_bucket/folder/latest
    - -credsFilePath=/etc/vm/creds/credentials
  vmBackup:
-  # By specifying this flag, you confirm that you have an enterprise license 
-  # and accept the EULA https://victoriametrics.com/assets/VM_EULA.pdf
+   # This is Enterprise Package feature you need to have signed contract to use it
+   # and accept the EULA https://victoriametrics.com/assets/VM_EULA.pdf
   acceptEULA: true
   destination: "s3://your_bucket/folder"
   extraArgs:
       runOnStart: "true"
   image:
       repository: victoriametrics/vmbackupmanager
-      tag: v1.56.0-enterprise
+      tag: v1.67.0-enterprise
   credentialsSecret:
    name: remote-storage-keys
    key: credentials

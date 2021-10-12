@@ -2,7 +2,9 @@
 
 #### vmbackupmanager is proprietary software. 
 
- Before using it, you must accept EULA https://victoriametrics.com/assets/VM_EULA.pdf.
+ Before using it, you must have signed contract and accept EULA https://victoriametrics.com/assets/VM_EULA.pdf
+
+### Usage examples
 
  `VMSingle` and `VMCluster` has built-in backup configuration, it uses `vmbackupmanager` - proprietary tool for backups.
  It supports incremental backups (hours, daily, etc) with popular object storages (aws s3, google cloud storage).
@@ -30,6 +32,8 @@ spec:
   # Add fields here
   retentionPeriod: "1"
   vmBackup:
+    # This is Enterprise Package feature you need to have signed contract to use it
+    # and accept the EULA https://victoriametrics.com/assets/VM_EULA.pdf
     acceptEULA: true
     destination: "s3://your_bucket/folder"
     credentialsSecret:
@@ -46,6 +50,8 @@ spec:
   vmstorage:
     replicaCount: 2
     vmBackup:
+      # This is Enterprise Package feature you need to have signed contract to use it
+      # and accept the EULA https://victoriametrics.com/assets/VM_EULA.pdf
       acceptEULA: true
       destination: "s3://your_bucket/folder"
       credentialsSecret:
@@ -54,6 +60,8 @@ spec:
 
 ```
 
+NOTE: for cluster version operator adds suffix for `destination: "s3://your_bucket/folder"`, it becomes `"s3://your_bucket/folder/$(POD_NAME)"`. 
+It's needed to make consistent backups for each storage node.
 
  You can read more about backup configuration options and mechanics [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/app/vmbackup)
  
@@ -103,13 +111,15 @@ spec:
    - -src=s3://your_bucket/folder/latest
    - -credsFilePath=/etc/vm/creds/credentials
  vmBackup:
+   # This is Enterprise Package feature you need to have signed contract to use it
+   # and accept the EULA https://victoriametrics.com/assets/VM_EULA.pdf
   acceptEULA: true
   destination: "s3://your_bucket/folder"
   extraArgs:
       runOnStart: "true"
   image:
       repository: victoriametrics/vmbackupmanager
-      tag: v1.56.0-enterprise
+      tag: v1.67.0-enterprise
   credentialsSecret:
    name: remote-storage-keys
    key: credentials

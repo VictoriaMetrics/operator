@@ -1725,6 +1725,12 @@ spec:
                       destination:
                         description: Defines destination for backup
                         type: string
+                      destinationDisableSuffixAdd:
+                        description: DestinationDisableSuffixAdd - disables suffix
+                          adding for cluster version backups each vmstorage backup
+                          must have unique backup folder so operator adds POD_NAME
+                          as suffix for backup destination folder.
+                        type: boolean
                       disableDaily:
                         description: Defines if daily backups disabled (default false)
                         type: boolean

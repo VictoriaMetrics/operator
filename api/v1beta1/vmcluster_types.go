@@ -583,6 +583,11 @@ type VMBackup struct {
 	Concurrency *int32 `json:"concurrency,omitempty"`
 	// Defines destination for backup
 	Destination string `json:"destination,omitempty"`
+	// DestinationDisableSuffixAdd - disables suffix adding for cluster version backups
+	// each vmstorage backup must have unique backup folder
+	// so operator adds POD_NAME as suffix for backup destination folder.
+	// +optional
+	DestinationDisableSuffixAdd bool `json:"destinationDisableSuffixAdd,omitempty"`
 	// Custom S3 endpoint for use with S3-compatible storages (e.g. MinIO). S3 is used if not set
 	// +optional
 	CustomS3Endpoint *string `json:"customS3Endpoint,omitempty"`

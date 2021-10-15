@@ -10,5 +10,5 @@ spec:
       containers:
       - name: manager
         env:
-        - name: VM_CLUSTERDOMAINNAME
-          value: "private-cluster.prod"
+        - name: VM_PODWAITREADYTIMEOUT
+          value: "120s"

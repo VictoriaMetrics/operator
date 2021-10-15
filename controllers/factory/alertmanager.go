@@ -314,13 +314,9 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, c *config.Ba
 		Path:   path.Clean(webRoutePrefix + "/-/reload"),
 	}
 
-	var clusterPeerDomain string
-	if c.ClusterDomainName != "" {
-		clusterPeerDomain = fmt.Sprintf("%s.%s.svc.%s.", cr.PrefixedName(), cr.Namespace, c.ClusterDomainName)
-	} else {
-		// The default DNS search path is .svc.<cluster domain>
-		clusterPeerDomain = cr.PrefixedName()
-	}
+	// The default DNS search path is .svc.<cluster domain>
+	var clusterPeerDomain = cr.PrefixedName()
+
 	for i := int32(0); i < *cr.Spec.ReplicaCount; i++ {
 		amArgs = append(amArgs, fmt.Sprintf("--cluster.peer=%s-%d.%s:9094", cr.PrefixedName(), i, clusterPeerDomain))
 	}

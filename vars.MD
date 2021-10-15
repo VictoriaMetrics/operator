@@ -104,7 +104,6 @@
 | VM_LISTENADDRESS | 0.0.0.0 | false | - |
 | VM_DEFAULTLABELS | managed-by=vm-operator | false | - |
 | VM_LABELS | - | false | - |
-| VM_CLUSTERDOMAINNAME | cluster.local | false | - |
 | VM_PODWAITREADYTIMEOUT | 80s | false | - |
 | VM_PODWAITREADYINTERVALCHECK | 5s | false | - |
 | VM_PODWAITREADYINITDELAY | 10s | false | - |

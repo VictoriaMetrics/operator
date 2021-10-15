@@ -259,8 +259,8 @@ func (s VMSelect) GetNameWithPrefix(clusterName string) string {
 	}
 	return PrefixedName(s.Name, "vmselect")
 }
-func (s VMSelect) BuildPodFQDNName(baseName string, podIndex int32, namespace, portName, domain string) string {
-	return fmt.Sprintf("%s-%d.%s.%s.svc.%s:%s,", baseName, podIndex, baseName, namespace, domain, portName)
+func (s VMSelect) BuildPodName(baseName string, podIndex int32, namespace, portName string) string {
+	return fmt.Sprintf("%s-%d.%s.%s:%s,", baseName, podIndex, baseName, namespace, portName)
 }
 
 func PrefixedName(name, prefix string) string {
@@ -639,8 +639,8 @@ type VMBackup struct {
 	VolumeMounts []v1.VolumeMount `json:"volumeMounts,omitempty"`
 }
 
-func (s VMStorage) BuildPodFQDNName(baseName string, podIndex int32, namespace, portName, domain string) string {
-	return fmt.Sprintf("%s-%d.%s.%s.svc.%s:%s,", baseName, podIndex, baseName, namespace, domain, portName)
+func (s VMStorage) BuildPodName(baseName string, podIndex int32, namespace, portName string) string {
+	return fmt.Sprintf("%s-%d.%s.%s:%s,", baseName, podIndex, baseName, namespace, portName)
 }
 
 func (s VMStorage) GetNameWithPrefix(clusterName string) string {

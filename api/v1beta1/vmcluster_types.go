@@ -259,7 +259,11 @@ func (s VMSelect) GetNameWithPrefix(clusterName string) string {
 	}
 	return PrefixedName(s.Name, "vmselect")
 }
-func (s VMSelect) BuildPodFQDNName(baseName string, podIndex int32, namespace, portName, domain string) string {
+func (s VMSelect) BuildPodName(baseName string, podIndex int32, namespace, portName, domain string) string {
+	// The default DNS search path is .svc.<cluster domain>
+	if domain == "" {
+		return fmt.Sprintf("%s-%d.%s.%s:%s,", baseName, podIndex, baseName, namespace, portName)
+	}
 	return fmt.Sprintf("%s-%d.%s.%s.svc.%s:%s,", baseName, podIndex, baseName, namespace, domain, portName)
 }
 
@@ -639,7 +643,11 @@ type VMBackup struct {
 	VolumeMounts []v1.VolumeMount `json:"volumeMounts,omitempty"`
 }
 
-func (s VMStorage) BuildPodFQDNName(baseName string, podIndex int32, namespace, portName, domain string) string {
+func (s VMStorage) BuildPodName(baseName string, podIndex int32, namespace, portName, domain string) string {
+	// The default DNS search path is .svc.<cluster domain>
+	if domain == "" {
+		return fmt.Sprintf("%s-%d.%s.%s:%s,", baseName, podIndex, baseName, namespace, portName)
+	}
 	return fmt.Sprintf("%s-%d.%s.%s.svc.%s:%s,", baseName, podIndex, baseName, namespace, domain, portName)
 }
 

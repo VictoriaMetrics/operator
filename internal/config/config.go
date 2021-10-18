@@ -229,7 +229,7 @@ type BaseOperatorConf struct {
 	Labels                    Labels `ignored:"true"`
 	LogLevel                  string
 	LogFormat                 string
-	ClusterDomainName         string        `default:"cluster.local"`
+	ClusterDomainName         string        `default:""`
 	PodWaitReadyTimeout       time.Duration `default:"80s"`
 	PodWaitReadyIntervalCheck time.Duration `default:"5s"`
 	PodWaitReadyInitDelay     time.Duration `default:"10s"`

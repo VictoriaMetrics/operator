@@ -560,7 +560,7 @@ func loadScrapeSecrets(
 		}
 	}
 
-	return &scrapesSecretsCache{baSecrets: baSecrets, oauth2Secrets: oauth2Secret}, nil
+	return &scrapesSecretsCache{baSecrets: baSecrets, oauth2Secrets: oauth2Secret, bearerTokens: bearerSecrets}, nil
 }
 
 func loadBasicAuthSecret(ctx context.Context, rclient client.Client, ns string, basicAuth *victoriametricsv1beta1.BasicAuth) (BasicAuthCredentials, error) {

@@ -357,9 +357,11 @@ func Test_performRollingUpdateOnSts(t *testing.T) {
 					}
 					err := fclient.Update(context.Background(), pod)
 					if err != nil {
-						t.Errorf("cannot update pod for rolling update check")
+						t.Errorf("cannot update pod for rolling update check: %s", err)
 					}
-					fclient.Status().Update(context.Background(), pod)
+					if err := fclient.Status().Update(context.Background(), pod); err != nil {
+						t.Errorf("cannot update pod status for update check: %s", err)
+					}
 				}(pod, tt.neededPodRev)
 			}
 

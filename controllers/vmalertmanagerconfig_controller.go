@@ -84,7 +84,7 @@ func (r *VMAlertmanagerConfigReconciler) Reconcile(ctx context.Context, req ctrl
 			continue
 		}
 		l.Info("reconciling alertmanager")
-		if _, err := factory.CreateOrUpdateAlertManager(ctx, am, r.Client, r.BaseConf); err != nil {
+		if err := factory.CreateOrUpdateAlertManager(ctx, am, r.Client, r.BaseConf); err != nil {
 			l.Error(err, "cannot  reconcile alertmanager")
 			continue
 		}

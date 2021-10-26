@@ -24,14 +24,12 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
 	vmStorageDefaultDBPath = "vmstorage-data"
-	podRevisionLabel       = "controller-revision-hash"
 )
 
 // CreateOrUpdateVMCluster reconciled cluster object with order
@@ -94,20 +92,11 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient
 				return status, err
 			}
 		}
-		vmStorageSts, err := createOrUpdateVMStorage(ctx, cr, rclient, c)
-		if err != nil {
-			reason = v1beta1.StorageCreationFailed
-			return status, err
-		}
-		err = performRollingUpdateOnSts(ctx, rclient, vmStorageSts.Name, cr.Namespace, cr.VMStorageSelectorLabels(), c)
-		if err != nil {
+		if err := createOrUpdateVMStorage(ctx, cr, rclient, c); err != nil {
 			reason = v1beta1.StorageRollingUpdateFailed
 			return status, err
 		}
-		if err := growSTSPVC(ctx, rclient, vmStorageSts, cr.Spec.VMStorage.GetStorageVolumeName()); err != nil {
-			reason = "failed to expand vmstorage pvcs"
-			return status, err
-		}
+
 		storageSvc, err := CreateOrUpdateVMStorageService(ctx, cr, rclient, c)
 		if err != nil {
 			reason = "failed to create vmStorage service"
@@ -141,16 +130,11 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient
 				return status, err
 			}
 		}
-		//create vmselect
-		vmSelectsts, err := createOrUpdateVMSelect(ctx, cr, rclient, c)
-		if err != nil {
+		if err := createOrUpdateVMSelect(ctx, cr, rclient, c); err != nil {
 			reason = v1beta1.SelectCreationFailed
 			return status, err
 		}
-		if err := growSTSPVC(ctx, rclient, vmSelectsts, cr.Spec.VMSelect.GetCacheMountVolumeName()); err != nil {
-			reason = "cannot expand sts pvc"
-			return status, err
-		}
+
 		if err := createOrUpdateVMSelectHPA(ctx, rclient, cr); err != nil {
 			reason = "cannot create HPA"
 			return status, err
@@ -166,12 +150,6 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient
 			if err != nil {
 				log.Error(err, "cannot create VMServiceScrape for vmSelect")
 			}
-		}
-
-		err = performRollingUpdateOnSts(ctx, rclient, vmSelectsts.Name, cr.Namespace, cr.VMSelectSelectorLabels(), c)
-		if err != nil {
-			reason = v1beta1.SelectRollingUpdateFailed
-			return status, err
 		}
 
 		//wait for expand
@@ -235,9 +213,10 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient
 
 }
 
-func createOrUpdateVMSelect(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) (*appsv1.StatefulSet, error) {
+func createOrUpdateVMSelect(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) error {
 	l := log.WithValues("controller", "vmselect", "cluster", cr.Name)
 	l.Info("create or update vmselect for cluster")
+
 	// its tricky part.
 	// we need replicas count from hpa to create proper args.
 	// note, need to make copy of current crd. to able to change it without side effects.
@@ -249,7 +228,7 @@ func createOrUpdateVMSelect(ctx context.Context, cr *v1beta1.VMCluster, rclient 
 		if errors.IsNotFound(err) {
 			needCreate = true
 		} else {
-			return nil, fmt.Errorf("cannot get vmselect sts: %w", err)
+			return fmt.Errorf("cannot get vmselect sts: %w", err)
 		}
 	}
 	// update replicas count.
@@ -259,17 +238,16 @@ func createOrUpdateVMSelect(ctx context.Context, cr *v1beta1.VMCluster, rclient 
 
 	newSts, err := genVMSelectSpec(cr, c)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// fast path for create new sts.
 	if needCreate {
 		l.Info("vmselect sts not found, creating new one")
 		if err := rclient.Create(ctx, newSts); err != nil {
-			return nil, fmt.Errorf("cannot create new vmselect sts: %w", err)
+			return fmt.Errorf("cannot create new vmselect sts: %w", err)
 		}
-		l.Info("new vmselect sts was created")
-		return newSts, nil
+		return nil
 	}
 
 	if currentSts.ManagedFields != nil {
@@ -283,22 +261,11 @@ func createOrUpdateVMSelect(ctx context.Context, cr *v1beta1.VMCluster, rclient 
 		newSts.Spec.Replicas = currentSts.Spec.Replicas
 	}
 
-	recreatedSts, err := wasCreatedSTS(ctx, rclient, cr.Spec.VMSelect.GetCacheMountVolumeName(), newSts, &currentSts)
-	if err != nil {
-		return nil, err
+	stsOpts := k8stools.STSOptions{
+		VolumeName:     cr.Spec.VMSelect.GetCacheMountVolumeName,
+		SelectorLabels: cr.VMSelectSelectorLabels,
 	}
-	if recreatedSts != nil {
-		return recreatedSts, nil
-	}
-
-	err = rclient.Update(ctx, newSts)
-	if err != nil {
-		return nil, fmt.Errorf("cannot update vmselect sts: %w", err)
-	}
-	l.Info("vmselect sts was reconciled")
-
-	return newSts, nil
-
+	return k8stools.HandleSTSUpdate(ctx, rclient, stsOpts, newSts, &currentSts, c)
 }
 
 func CreateOrUpdateVMSelectService(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) (*corev1.Service, error) {
@@ -397,12 +364,12 @@ func CreateOrUpdateVMInsertService(ctx context.Context, cr *v1beta1.VMCluster, r
 	return reconcileServiceForCRD(ctx, rclient, newService)
 }
 
-func createOrUpdateVMStorage(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) (*appsv1.StatefulSet, error) {
+func createOrUpdateVMStorage(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) error {
 	l := log.WithValues("controller", "vmstorage", "cluster", cr.Name)
 	l.Info("create or update vmstorage for cluster")
 	newSts, err := GenVMStorageSpec(cr, c)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	currentSts := &appsv1.StatefulSet{}
 	err = rclient.Get(ctx, types.NamespacedName{Name: newSts.Name, Namespace: newSts.Namespace}, currentSts)
@@ -410,11 +377,11 @@ func createOrUpdateVMStorage(ctx context.Context, cr *v1beta1.VMCluster, rclient
 		if errors.IsNotFound(err) {
 			l.Info("creating new sts for vmstorage")
 			if err := rclient.Create(ctx, newSts); err != nil {
-				return nil, fmt.Errorf("cannot create new sts for vmstorage")
+				return fmt.Errorf("cannot create new sts for vmstorage")
 			}
-			return newSts, nil
+			return nil
 		}
-		return nil, fmt.Errorf("cannot get vmstorage sts: %w", err)
+		return fmt.Errorf("cannot get vmstorage sts: %w", err)
 	}
 	l.Info("vmstorage was found, updating it")
 
@@ -422,20 +389,11 @@ func createOrUpdateVMStorage(ctx context.Context, cr *v1beta1.VMCluster, rclient
 	// hack for break reconcile loop at kubernetes 1.18
 	newSts.Status.Replicas = currentSts.Status.Replicas
 
-	recreatedSts, err := wasCreatedSTS(ctx, rclient, cr.Spec.VMStorage.GetStorageVolumeName(), newSts, currentSts)
-	if err != nil {
-		return nil, err
+	stsOpts := k8stools.STSOptions{
+		VolumeName:     cr.Spec.VMStorage.GetStorageVolumeName,
+		SelectorLabels: cr.VMStorageSelectorLabels,
 	}
-	if recreatedSts != nil {
-		return recreatedSts, nil
-	}
-
-	if err := rclient.Update(ctx, newSts); err != nil {
-		return nil, fmt.Errorf("cannot update vmstorage sts: %w", err)
-	}
-	l.Info("vmstorage sts was reconciled")
-
-	return newSts, nil
+	return k8stools.HandleSTSUpdate(ctx, rclient, stsOpts, newSts, currentSts, c)
 }
 
 func CreateOrUpdateVMStorageService(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) (*corev1.Service, error) {
@@ -1451,144 +1409,12 @@ func waitForExpanding(ctx context.Context, kclient client.Client, namespace stri
 	}
 	var readyCount int32
 	for _, pod := range podList.Items {
-		if PodIsReady(pod) {
+		if k8stools.PodIsReady(pod) {
 			readyCount++
 		}
 	}
 	log.Info("pods available", "count", readyCount, "spec-count", desiredCount)
 	return readyCount != desiredCount, nil
-}
-
-// we perform rolling update on sts by manually deleting pods one by one
-// we check sts revision (kubernetes controller-manager is responsible for that)
-// and compare pods revision label with sts revision
-// if it doesnt match - updated is needed
-func performRollingUpdateOnSts(ctx context.Context, rclient client.Client, stsName string, ns string, podLabels map[string]string, c *config.BaseOperatorConf) error {
-	time.Sleep(time.Second * 2)
-	sts := &appsv1.StatefulSet{}
-	err := rclient.Get(ctx, types.NamespacedName{Name: stsName, Namespace: ns}, sts)
-	if err != nil {
-		return err
-	}
-	var stsVersion string
-	if sts.Status.UpdateRevision != sts.Status.CurrentRevision {
-		log.Info("sts update is needed", "sts", sts.Name, "currentVersion", sts.Status.CurrentRevision, "desiredVersion", sts.Status.UpdateRevision)
-		stsVersion = sts.Status.UpdateRevision
-	} else {
-		stsVersion = sts.Status.CurrentRevision
-	}
-	l := log.WithValues("controller", "sts.rollingupdate", "desiredVersion", stsVersion)
-	l.Info("checking if update needed")
-	podList := &corev1.PodList{}
-	labelSelector := labels.SelectorFromSet(podLabels)
-	listOps := &client.ListOptions{Namespace: ns, LabelSelector: labelSelector}
-	if err := rclient.List(ctx, podList, listOps); err != nil {
-		return err
-	}
-	var updatedNeeded bool
-	neededPodCount := 1
-	if sts.Spec.Replicas != nil {
-		neededPodCount = int(*sts.Spec.Replicas)
-	}
-	if len(podList.Items) != neededPodCount {
-		return fmt.Errorf("unexpected count of pods for sts: %s, want: %d, got: %d, seems like configuration of stateful wasn't correct and kubernetes cannot create pod,"+
-			" check kubectl events for namespace: %s, to findout source of problem", sts.Name, neededPodCount, len(podList.Items), sts.Namespace)
-	}
-	for _, pod := range podList.Items {
-		if pod.Labels[podRevisionLabel] != stsVersion {
-			l.Info("pod version doesnt match", "pod", pod.Name, "podVersion", pod.Labels[podRevisionLabel])
-			updatedNeeded = true
-		}
-	}
-	if !updatedNeeded {
-		l.Info("update isn't needed")
-		return nil
-	}
-	l.Info("update is needed, start building proper order for update")
-	// first we must ensure, that already updated pods in ready status
-	// then we can update other pods
-	// if pod is not ready
-	// it must be at first place for update
-	podsForUpdate := make([]corev1.Pod, 0, len(podList.Items))
-	// if pods were already updated to some version, we have to wait its readiness
-	updatedPods := make([]corev1.Pod, 0, len(podList.Items))
-	for _, pod := range podList.Items {
-		if pod.Labels[podRevisionLabel] == stsVersion {
-			updatedPods = append(updatedPods, pod)
-			continue
-		}
-		if !PodIsReady(pod) {
-			podsForUpdate = append([]corev1.Pod{pod}, podsForUpdate...)
-			continue
-		}
-		podsForUpdate = append(podsForUpdate, pod)
-	}
-
-	l.Info("updated pods with desired version:", "count", len(updatedPods))
-
-	for _, pod := range updatedPods {
-		l.Info("checking ready status for already updated pods to desired version", "pod", pod.Name)
-		err := waitForPodReady(ctx, rclient, ns, pod.Name, c)
-		if err != nil {
-			l.Error(err, "cannot get ready status for already updated pod", "pod", pod.Name)
-			return err
-		}
-	}
-
-	for _, pod := range podsForUpdate {
-		l.Info("updating pod", "pod", pod.Name)
-		//we have to delete pod and wait for it readiness
-		err := rclient.Delete(ctx, &pod, &client.DeleteOptions{GracePeriodSeconds: pointer.Int64Ptr(30)})
-		if err != nil {
-			return err
-		}
-		err = waitForPodReady(ctx, rclient, ns, pod.Name, c)
-		if err != nil {
-			return err
-		}
-		l.Info("pod was updated", "pod", pod.Name)
-		time.Sleep(time.Second * 3)
-	}
-
-	return nil
-
-}
-
-func PodIsReady(pod corev1.Pod) bool {
-	if pod.ObjectMeta.DeletionTimestamp != nil {
-		return false
-	}
-
-	if pod.Status.Phase != corev1.PodRunning {
-		return false
-	}
-	for _, cond := range pod.Status.Conditions {
-		if cond.Type == corev1.PodReady && cond.Status == "True" {
-			return true
-		}
-	}
-	return false
-}
-
-func waitForPodReady(ctx context.Context, rclient client.Client, ns, podName string, c *config.BaseOperatorConf) error {
-	// we need some delay
-	time.Sleep(c.PodWaitReadyInitDelay)
-	return wait.Poll(c.PodWaitReadyIntervalCheck, c.PodWaitReadyTimeout, func() (done bool, err error) {
-		pod := &corev1.Pod{}
-		err = rclient.Get(ctx, types.NamespacedName{Namespace: ns, Name: podName}, pod)
-		if err != nil {
-			if errors.IsNotFound(err) {
-				return false, nil
-			}
-			log.Error(err, "cannot get pod", "pod", podName)
-			return false, err
-		}
-		if PodIsReady(*pod) {
-			log.Info("pod update finished with revision", "pod", pod.Name, "revision", pod.Labels[podRevisionLabel])
-			return true, nil
-		}
-		return false, nil
-	})
 }
 
 func createOrUpdateVMInsertHPA(ctx context.Context, rclient client.Client, cluster *v1beta1.VMCluster) error {

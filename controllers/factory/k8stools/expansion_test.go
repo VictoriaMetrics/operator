@@ -1,4 +1,4 @@
-package factory
+package k8stools
 
 import (
 	"context"
@@ -11,7 +11,6 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/resource"
 
-	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -145,7 +144,7 @@ func Test_reCreateSTS(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cl := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
+			cl := GetTestClientWithObjects(tt.predefinedObjects)
 			_, err := wasCreatedSTS(tt.args.ctx, cl, tt.args.pvcName, tt.args.newSTS, tt.args.existingSTS)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("wasCreatedSTS() error = %v, wantErr %v", err, tt.wantErr)
@@ -356,7 +355,7 @@ func Test_growSTSPVC(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cl := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
+			cl := GetTestClientWithObjects(tt.predefinedObjects)
 			if err := growSTSPVC(tt.args.ctx, cl, tt.args.sts, tt.args.pvcName); (err != nil) != tt.wantErr {
 				t.Errorf("growSTSPVC() error = %v, wantErr %v", err, tt.wantErr)
 			}

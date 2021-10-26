@@ -234,12 +234,16 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjets)
-			got, err := CreateOrUpdateAlertManager(tt.args.ctx, tt.args.cr, fclient, tt.args.c)
+			err := CreateOrUpdateAlertManager(tt.args.ctx, tt.args.cr, fclient, tt.args.c)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("CreateOrUpdateAlertManager() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if err := tt.validate(got); err != nil {
+			var got appsv1.StatefulSet
+			if err := fclient.Get(tt.args.ctx, types.NamespacedName{Namespace: tt.args.cr.Namespace, Name: tt.args.cr.PrefixedName()}, &got); (err != nil) != tt.wantErr {
+				t.Fatalf("CreateOrUpdateAlertManager() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if err := tt.validate(&got); err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
 		})

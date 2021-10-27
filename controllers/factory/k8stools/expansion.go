@@ -89,7 +89,8 @@ func wasCreatedSTS(ctx context.Context, rclient client.Client, pvcName string, n
 			return false
 		}
 		// one of pvc is not nil
-		if (actualPVC == nil && newPVC != nil) || (actualPVC != nil && newPVC == nil) {
+		hasNotNilPVC := (actualPVC == nil && newPVC != nil) || (actualPVC != nil && newPVC == nil)
+		if hasNotNilPVC {
 			return true
 		}
 
@@ -101,6 +102,7 @@ func wasCreatedSTS(ctx context.Context, rclient client.Client, pvcName string, n
 			return true
 		}
 
+		// compare meta and spec for pvc
 		if !equality.Semantic.DeepDerivative(newPVC.ObjectMeta, actualPVC.ObjectMeta) || !equality.Semantic.DeepDerivative(newPVC.Spec, actualPVC.Spec) {
 			diff := deep.Equal(newPVC.ObjectMeta, actualPVC.ObjectMeta)
 			specDiff := deep.Equal(newPVC.Spec, actualPVC.Spec)

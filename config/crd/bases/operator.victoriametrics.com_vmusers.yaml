@@ -89,6 +89,14 @@ spec:
                       - name
                       - namespace
                       type: object
+                    headers:
+                      description: 'Headers represent additional http headers, that
+                        vmauth uses in form of ["header_key: header_value"] multiple
+                        values for header key: ["header_key: value1,value2"] it''s
+                        available since 1.68.0 version of vmauth'
+                      items:
+                        type: string
+                      type: array
                     paths:
                       description: Paths - matched path to route.
                       items:

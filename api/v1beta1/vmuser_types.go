@@ -56,6 +56,13 @@ type TargetRef struct {
 	// it also may contain any url encoded params.
 	// +optional
 	TargetPathSuffix string `json:"target_path_suffix,omitempty"`
+	// Headers represent additional http headers, that vmauth uses
+	// in form of ["header_key: header_value"]
+	// multiple values for header key:
+	// ["header_key: value1,value2"]
+	// it's available since 1.68.0 version of vmauth
+	// +optional
+	Headers []string `json:"headers,omitempty"`
 }
 
 // CRDRef describe CRD target reference.

@@ -432,6 +432,9 @@ func genUrlMaps(userName string, refs []v1beta1.TargetRef, result yaml.MapSlice,
 				return result, fmt.Errorf("cannot build urlPrefix for one ref, err: %w", err)
 			}
 			result = append(result, yaml.MapItem{Key: "url_prefix", Value: urlPrefix})
+			if len(ref.Headers) > 0 {
+				result = append(result, yaml.MapItem{Key: "headers", Value: ref.Headers})
+			}
 			return result, nil
 		}
 
@@ -466,6 +469,12 @@ func genUrlMaps(userName string, refs []v1beta1.TargetRef, result yaml.MapSlice,
 			Key:   "src_paths",
 			Value: paths,
 		})
+		if len(ref.Headers) > 0 {
+			urlMap = append(urlMap, yaml.MapItem{
+				Key:   "headers",
+				Value: ref.Headers,
+			})
+		}
 		urlMaps = append(urlMaps, urlMap)
 	}
 	result = append(result, yaml.MapItem{Key: "url_map", Value: urlMaps})

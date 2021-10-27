@@ -625,6 +625,7 @@ scrape_configs:
       names:
       - default
   metrics_path: /metrics
+  bearer_token: some-bearer
   relabel_configs:
   - action: keep
     source_labels:
@@ -857,9 +858,7 @@ scrape_configs:
 				t.Fatalf("cannot read cfg: %s", err)
 			}
 			gr.Close()
-			//if err := os.WriteFile("/tmp/cfg", data, os.ModePerm); err != nil {
-			//	t.Errorf("cannot write: %s", err)
-			//}
+
 			assert.Equal(t, tt.wantConfig, string(data))
 
 		})

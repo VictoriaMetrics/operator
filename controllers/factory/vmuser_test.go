@@ -120,6 +120,7 @@ bearer_token: secret-token
 									"/api/v1/targets",
 									"/targets",
 								},
+								Headers: []string{"baz: bar"},
 							},
 							{
 								Static:           &v1beta1.StaticRef{URL: "http://vmcluster-remote.mydomain.com:8401"},
@@ -149,6 +150,8 @@ bearer_token: secret-token
   - /api/v1/write
   - /api/v1/targets
   - /targets
+  headers:
+  - 'baz: bar'
 - url_prefix: http://vmcluster-remote.mydomain.com:8401/insert/0/prometheus?extra_label=key%3Dvalue
   src_paths:
   - /.*
@@ -181,6 +184,36 @@ bearer_token: secret-token
 				},
 			},
 			want: `url_prefix: http://vmagent-base.monitoring.svc:8429
+bearer_token: secret-token
+`,
+		},
+		{
+			name: "with target headers",
+			args: args{
+				user: &v1beta1.VMUser{
+					Spec: v1beta1.VMUserSpec{
+						BearerToken: pointer.StringPtr("secret-token"),
+						TargetRefs: []v1beta1.TargetRef{
+							{
+								CRD: &v1beta1.CRDRef{
+									Kind:      "VMAgent",
+									Name:      "base",
+									Namespace: "monitoring",
+								},
+								Headers: []string{"X-Scope-OrgID: abc", "X-Scope-Team: baz"},
+							},
+						},
+					},
+				},
+				crdUrlCache: map[string]string{
+					"VMAgent/monitoring/base": "http://vmagent-base.monitoring.svc:8429",
+					"VMSingle/monitoring/db":  "http://vmsingle-b.monitoring.svc:8429",
+				},
+			},
+			want: `url_prefix: http://vmagent-base.monitoring.svc:8429
+headers:
+- 'X-Scope-OrgID: abc'
+- 'X-Scope-Team: baz'
 bearer_token: secret-token
 `,
 		},

@@ -555,10 +555,6 @@ var alertmanagerConfigMinimumVersion = version.Must(version.NewVersion("v0.22.0"
 func createDefaultAMConfig(ctx context.Context, cr *victoriametricsv1beta1.VMAlertmanager, rclient client.Client, amVersion *version.Version) error {
 	cr = cr.DeepCopy()
 	l := log.WithValues("alertmanager", cr.Name)
-	// expect configuration secret to be pre created by user.
-	if cr.Spec.ConfigRawYaml == "" && cr.Spec.ConfigSecret != "" && cr.Spec.ConfigSelector == nil {
-		return nil
-	}
 
 	var alertmananagerConfig []byte
 	switch {

@@ -1,11 +1,11 @@
-package factory
+package k8stools
 
 import (
 	"context"
 	"fmt"
 	"time"
 
-	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
+	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/go-test/deep"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -20,16 +20,25 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+func cleanUpFinalize(ctx context.Context, rclient client.Client, instance client.Object) error {
+	if victoriametricsv1beta1.IsContainsFinalizer(instance.GetFinalizers(), victoriametricsv1beta1.FinalizerName) {
+		instance.SetFinalizers(victoriametricsv1beta1.RemoveFinalizer(instance.GetFinalizers(), victoriametricsv1beta1.FinalizerName))
+		return rclient.Update(ctx, instance)
+	}
+	return nil
+}
+
 // recreateSTS if needed.
 // Note, in some cases its possible to get orphaned objects,
 // if sts was deleted and user updates configuration with different STS name.
 // One of possible solutions - save current sts to the object annotation and remove it later if needed.
 // Other solution, to check orphaned objects by selector.
 // Lets leave it as this for now and handle later.
-// TODO choose some solution for this corner case.
-func wasCreatedSTS(ctx context.Context, rclient client.Client, pvcName string, newSTS, existingSTS *appsv1.StatefulSet) (*appsv1.StatefulSet, error) {
+func wasCreatedSTS(ctx context.Context, rclient client.Client, pvcName string, newSTS, existingSTS *appsv1.StatefulSet) (bool, error) {
+
 	handleRemove := func() error {
-		if err := finalize.RemoveFinalizer(ctx, rclient, existingSTS); err != nil {
+		// removes finalizer from exist sts, it allows to delete it
+		if err := cleanUpFinalize(ctx, rclient, existingSTS); err != nil {
 			return err
 		}
 		opts := client.DeleteOptions{PropagationPolicy: func() *metav1.DeletionPropagation {
@@ -41,6 +50,7 @@ func wasCreatedSTS(ctx context.Context, rclient client.Client, pvcName string, n
 		}
 		obj := types.NamespacedName{Name: existingSTS.Name, Namespace: existingSTS.Namespace}
 
+		// wait until sts disappears
 		if err := wait.Poll(time.Second, time.Second*30, func() (done bool, err error) {
 			err = rclient.Get(ctx, obj, &appsv1.StatefulSet{})
 			if errors.IsNotFound(err) {
@@ -50,13 +60,24 @@ func wasCreatedSTS(ctx context.Context, rclient client.Client, pvcName string, n
 		}); err != nil {
 			return err
 		}
+
 		if err := rclient.Create(ctx, newSTS); err != nil {
 			// try to restore previous one and throw error
 			existingSTS.ResourceVersion = ""
 			if err2 := rclient.Create(ctx, existingSTS); err2 != nil {
-				return fmt.Errorf("cannot restore previous sts: %s configruation after remove: %w", existingSTS.Name, err2)
+				return fmt.Errorf("cannot restore previous sts: %s configruation after remove original error: %s: restore error %w", existingSTS.Name, err, err2)
 			}
 			return fmt.Errorf("cannot create new sts: %s instead of replaced, some manual action is required, err: %w", newSTS.Name, err)
+		}
+
+		// this is hack
+		// for some reason, kubernetes doesn't update sts status after its re-creation
+		// so, manually set currentVersion to the version of previous sts.
+		// updateRevision will be fetched from first re-created pod
+		// https://github.com/VictoriaMetrics/operator/issues/344
+		newSTS.Status.CurrentRevision = existingSTS.Status.CurrentRevision
+		if err := rclient.Status().Update(ctx, newSTS); err != nil {
+			return fmt.Errorf("cannot update re-created statefulset status version: %w", err)
 		}
 		return nil
 	}
@@ -67,8 +88,9 @@ func wasCreatedSTS(ctx context.Context, rclient client.Client, pvcName string, n
 		if actualPVC == nil && newPVC == nil {
 			return false
 		}
-		// actual name for pvc was changed or it was added
-		if (actualPVC == nil && newPVC != nil) || (actualPVC != nil && newPVC == nil) {
+		// one of pvc is not nil
+		hasNotNilPVC := (actualPVC == nil && newPVC != nil) || (actualPVC != nil && newPVC == nil)
+		if hasNotNilPVC {
 			return true
 		}
 
@@ -80,6 +102,7 @@ func wasCreatedSTS(ctx context.Context, rclient client.Client, pvcName string, n
 			return true
 		}
 
+		// compare meta and spec for pvc
 		if !equality.Semantic.DeepDerivative(newPVC.ObjectMeta, actualPVC.ObjectMeta) || !equality.Semantic.DeepDerivative(newPVC.Spec, actualPVC.Spec) {
 			diff := deep.Equal(newPVC.ObjectMeta, actualPVC.ObjectMeta)
 			specDiff := deep.Equal(newPVC.Spec, actualPVC.Spec)
@@ -98,14 +121,11 @@ func wasCreatedSTS(ctx context.Context, rclient client.Client, pvcName string, n
 		return false
 	}
 
-	if needRecreateOnStorageChange() {
-		return newSTS, handleRemove()
-	}
-	if needRecreateOnSpecChange() {
-		return newSTS, handleRemove()
+	if needRecreateOnSpecChange() || needRecreateOnStorageChange() {
+		return true, handleRemove()
 	}
 
-	return nil, nil
+	return false, nil
 }
 
 func getPVCFromSTS(pvcName string, sts *appsv1.StatefulSet) *corev1.PersistentVolumeClaim {

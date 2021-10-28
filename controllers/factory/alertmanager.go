@@ -56,23 +56,23 @@ var (
 	log                       = logf.Log.WithName("factory")
 )
 
-func CreateOrUpdateAlertManager(ctx context.Context, cr *victoriametricsv1beta1.VMAlertmanager, rclient client.Client, c *config.BaseOperatorConf) (*appsv1.StatefulSet, error) {
+func CreateOrUpdateAlertManager(ctx context.Context, cr *victoriametricsv1beta1.VMAlertmanager, rclient client.Client, c *config.BaseOperatorConf) error {
 	l := log.WithValues("reconcile.VMAlertManager.sts", cr.Name, "ns", cr.Namespace)
 
 	if err := psp.CreateServiceAccountForCRD(ctx, cr, rclient); err != nil {
-		return nil, fmt.Errorf("failed create service account: %w", err)
+		return fmt.Errorf("failed create service account: %w", err)
 	}
 	if c.PSPAutoCreateEnabled {
 		if err := psp.CreateOrUpdateServiceAccountWithPSP(ctx, cr, rclient); err != nil {
 			l.Error(err, "cannot create podsecuritypolicy")
-			return nil, fmt.Errorf("cannot create podsecurity policy for alertmanager, err=%w", err)
+			return fmt.Errorf("cannot create podsecurity policy for alertmanager, err=%w", err)
 		}
 	}
 
 	if cr.Spec.PodDisruptionBudget != nil {
 		err := CreateOrUpdatePodDisruptionBudgetForAlertManager(ctx, cr, rclient)
 		if err != nil {
-			return nil, fmt.Errorf("cannot update pod disruption budget for vmagent: %w", err)
+			return fmt.Errorf("cannot update pod disruption budget for vmagent: %w", err)
 		}
 	}
 	// special hack, we need version for alertmanager a bit earlier.
@@ -85,11 +85,11 @@ func CreateOrUpdateAlertManager(ctx context.Context, cr *victoriametricsv1beta1.
 	}
 	newSts, err := newStsForAlertManager(cr, c, amVersion)
 	if err != nil {
-		return nil, fmt.Errorf("cannot generate alertmanager sts, name: %s,err: %w", cr.Name, err)
+		return fmt.Errorf("cannot generate alertmanager sts, name: %s,err: %w", cr.Name, err)
 	}
 	// check secret with config
 	if err := createDefaultAMConfig(ctx, cr, rclient, amVersion); err != nil {
-		return nil, fmt.Errorf("failed to check default Alertmanager config: %w", err)
+		return fmt.Errorf("failed to check default Alertmanager config: %w", err)
 	}
 
 	currentSts := &appsv1.StatefulSet{}
@@ -98,43 +98,20 @@ func CreateOrUpdateAlertManager(ctx context.Context, cr *victoriametricsv1beta1.
 		if errors.IsNotFound(err) {
 			l.Info("Creating a new sts", "sts.Namespace", newSts.Namespace, "sts.Name", newSts.Name)
 			if err = rclient.Create(ctx, newSts); err != nil {
-				return nil, fmt.Errorf("cannot create new alertmanager sts: %w", err)
+				return fmt.Errorf("cannot create new alertmanager sts: %w", err)
 			}
 			l.Info("new sts was created for alertmanager")
-			return newSts, nil
+			return nil
 		}
-		return nil, fmt.Errorf("cannot get alertmanager sts: %w", err)
+		return fmt.Errorf("cannot get alertmanager sts: %w", err)
 	}
 
-	recreatedSts, err := wasCreatedSTS(ctx, rclient, cr.GetVolumeName(), newSts, currentSts)
-	if err != nil {
-		return nil, err
+	newSts.Status.Replicas = currentSts.Status.Replicas
+	stsOpts := k8stools.STSOptions{
+		VolumeName:     cr.GetVolumeName,
+		SelectorLabels: cr.SelectorLabels,
 	}
-	if recreatedSts != nil {
-		return recreatedSts, nil
-	}
-	if err := growSTSPVC(ctx, rclient, newSts, cr.GetVolumeName()); err != nil {
-		return nil, err
-	}
-
-	if err := updateStsForAlertManager(ctx, rclient, currentSts, newSts); err != nil {
-		return nil, err
-	}
-
-	if err := performRollingUpdateOnSts(ctx, rclient, newSts.Name, newSts.Namespace, cr.SelectorLabels(), c); err != nil {
-		return nil, fmt.Errorf("cannot update statefulset for vmalertmanager: %w", err)
-	}
-	return newSts, nil
-}
-
-func updateStsForAlertManager(ctx context.Context, rclient client.Client, oldSts, newSts *appsv1.StatefulSet) error {
-
-	// hack for break reconcile loop at kubernetes 1.18
-	newSts.Status.Replicas = oldSts.Status.Replicas
-	newSts.Annotations = labels.Merge(oldSts.Annotations, newSts.Annotations)
-	newSts.Finalizers = victoriametricsv1beta1.MergeFinalizers(oldSts, victoriametricsv1beta1.FinalizerName)
-
-	return rclient.Update(ctx, newSts)
+	return k8stools.HandleSTSUpdate(ctx, rclient, stsOpts, newSts, currentSts, c)
 }
 
 func newStsForAlertManager(cr *victoriametricsv1beta1.VMAlertmanager, c *config.BaseOperatorConf, amVersion *version.Version) (*appsv1.StatefulSet, error) {

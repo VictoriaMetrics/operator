@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/VictoriaMetrics/operator/controllers/factory"
+	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -19,7 +19,7 @@ func expectPodCount(rclient client.Client, count int, ns string, lbs map[string]
 		return fmt.Sprintf("pod count mismatch, expect: %d, got: %d", count, len(podList.Items))
 	}
 	for _, pod := range podList.Items {
-		if !factory.PodIsReady(pod) {
+		if !k8stools.PodIsReady(pod) {
 			return fmt.Sprintf("pod isnt ready: %s", pod.Name)
 		}
 	}

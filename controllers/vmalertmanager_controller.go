@@ -87,8 +87,7 @@ func (r *VMAlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	alertmanagerLock.Lock()
 	defer alertmanagerLock.Unlock()
-	_, err = factory.CreateOrUpdateAlertManager(ctx, instance, r, r.BaseConf)
-	if err != nil {
+	if err := factory.CreateOrUpdateAlertManager(ctx, instance, r, r.BaseConf); err != nil {
 		reqLogger.Error(err, "cannot create or update vmalertmanager sts")
 		return ctrl.Result{}, err
 	}

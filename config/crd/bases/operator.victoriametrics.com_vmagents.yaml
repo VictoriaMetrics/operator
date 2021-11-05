@@ -293,9 +293,9 @@ spec:
               externalLabels:
                 additionalProperties:
                   type: string
-                description: ExternalLabels The labels to add to any time series or
-                  alerts when communicating with external systems (federation, remote
-                  storage, etc).
+                description: ExternalLabels The labels to add to any time series scraped
+                  by vmagent. it doesn't affect metrics ingested directly by push
+                  API's
                 type: object
               extraArgs:
                 additionalProperties:

@@ -62,6 +62,7 @@ type VMProbeSpec struct {
 	// needs to be in the same namespace as the service scrape and accessible by
 	// the victoria-metrics operator.
 	// +optional
+	// +nullable
 	BearerTokenSecret v1.SecretKeySelector `json:"bearerTokenSecret,omitempty"`
 	// BasicAuth allow an endpoint to authenticate over basic authentication
 	// More info: https://prometheus.io/docs/operating/configuration/#endpoints

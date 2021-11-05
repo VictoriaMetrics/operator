@@ -40,7 +40,7 @@ func checkRelabelConfigs(src []RelabelConfig) error {
 		return fmt.Errorf("cannot parse relabelConfigs as yaml: %w", err)
 	}
 	prc = envtemplate.Replace(prc)
-	if _, err := promrelabel.ParseRelabelConfigsData(prc); err != nil {
+	if _, err := promrelabel.ParseRelabelConfigsData(prc, false); err != nil {
 		return fmt.Errorf("cannot parse relabelConfigs: %w", err)
 	}
 	return nil

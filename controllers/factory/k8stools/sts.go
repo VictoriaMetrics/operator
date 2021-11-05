@@ -34,16 +34,18 @@ func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, 
 		return err
 	}
 
+	if !isRecreated {
+		if err := rclient.Update(ctx, newSts); err != nil {
+			return fmt.Errorf("cannot perform update on sts: %s, err: %w", newSts.Name, err)
+		}
+	}
+
 	if err := performRollingUpdateOnSts(ctx, isRecreated, rclient, newSts.Name, newSts.Namespace, cr.SelectorLabels(), c); err != nil {
 		return fmt.Errorf("cannot update statefulset for vmalertmanager: %w", err)
 	}
 
 	if err := growSTSPVC(ctx, rclient, newSts, cr.VolumeName()); err != nil {
 		return err
-	}
-
-	if !isRecreated {
-		return rclient.Update(ctx, newSts)
 	}
 
 	return nil

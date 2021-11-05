@@ -162,8 +162,8 @@ type VMAgentSpec struct {
 	// +optional
 	VMAgentExternalLabelName *string `json:"vmAgentExternalLabelName,omitempty"`
 
-	// ExternalLabels The labels to add to any time series or alerts when communicating with
-	// external systems (federation, remote storage, etc).
+	// ExternalLabels The labels to add to any time series scraped by vmagent.
+	// it doesn't affect metrics ingested directly by push API's
 	// +optional
 	ExternalLabels map[string]string `json:"externalLabels,omitempty"`
 	// RemoteWrite list of victoria metrics /some other remote write system

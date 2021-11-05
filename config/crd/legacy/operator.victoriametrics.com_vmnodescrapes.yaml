@@ -87,6 +87,7 @@ spec:
             bearerTokenSecret:
               description: Secret to mount to read bearer token for scraping targets.
                 The secret needs to be  accessible by the victoria-metrics operator.
+              nullable: true
               properties:
                 key:
                   description: The key of the secret to select from.  Must be a valid

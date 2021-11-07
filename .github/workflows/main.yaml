@@ -15,11 +15,29 @@ jobs:
     steps:
       - name: Inject slug/short variables
         uses: rlespinasse/github-slug-action@v2.x
+      - name: Checkout code
+        uses: actions/checkout@v2
       - name: Setup Go
         uses: actions/setup-go@master
         with:
           go-version: 1.16
         id: go
+
+      - name: Run Trivy vulnerability scanner in repo mode
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          ignore-unfixed: true
+          format: 'template'
+          template: '@/contrib/sarif.tpl'
+          output: 'trivy-results.sarif'
+          severity: 'HIGH,CRITICAL,MEDIUM'
+          vuln-type: 'os,library'
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v1
+        with:
+          sarif_file: 'trivy-results.sarif'
+
       - name: Dependencies
         env:
           GO111MODULE: on
@@ -30,28 +48,32 @@ jobs:
           curl -L -o operator-sdk "https://github.com/operator-framework/operator-sdk/releases/download/v1.0.0/operator-sdk-v1.0.0-x86_64-linux-gnu"
           chmod +x operator-sdk
           sudo mv operator-sdk /bin/
-      - name: setup KIND for e2e tests
-        uses: engineerd/setup-kind@v0.5.0
-        with:
-          version: "v0.9.0"
-          image: kindest/node:v1.16.4
-      - name: Code checkout
-        uses: actions/checkout@master
+      - name: lint and test
+        env:
+          GO111MODULE: on
+        run: |
+          export PATH=$PATH:$(go env GOPATH)/bin # temporary fix. See https://github.com/actions/setup-go/issues/14
+          make lint
+          make test
+
       - name: build binary
         env:
           GO111MODULE: on
           TAG:   ${{ env.GITHUB_REF_SLUG }}
         run: |
           export PATH=$PATH:$(go env GOPATH)/bin # temporary fix. See https://github.com/actions/setup-go/issues/14
-          make lint
-          make test
           make build
-      - name: run e2e tests
-        run: |
-          kubectl cluster-info
-          kubectl get pods -n kube-system
-          echo "current-context:" $(kubectl config current-context)
-          echo "environment-kubeconfig:" ${KUBECONFIG}
+#      - name: setup KIND for e2e tests
+#        uses: engineerd/setup-kind@v0.5.0
+#        with:
+#          version: "v0.9.0"
+#          image: kindest/node:v1.16.4
+#      - name: run e2e tests
+#        run: |
+#          kubectl cluster-info
+#          kubectl get pods -n kube-system
+#          echo "current-context:" $(kubectl config current-context)
+#          echo "environment-kubeconfig:" ${KUBECONFIG}
 #          make e2e-local
 
       - name: build crosscompile and push to remote registry

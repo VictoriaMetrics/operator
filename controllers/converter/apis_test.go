@@ -278,7 +278,7 @@ func TestConvertPodEndpoints(t *testing.T) {
 				},
 			}},
 			want: []v1beta1vm.PodMetricsEndpoint{{
-				BearerTokenSecret: corev1.SecretKeySelector{Key: "bearer"},
+				BearerTokenSecret: &corev1.SecretKeySelector{Key: "bearer"},
 				BasicAuth: &v1beta1vm.BasicAuth{Username: corev1.SecretKeySelector{
 					Key: "username",
 				},

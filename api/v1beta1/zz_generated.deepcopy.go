@@ -387,7 +387,11 @@ func (in *Endpoint) DeepCopyInto(out *Endpoint) {
 		*out = new(TLSConfig)
 		(*in).DeepCopyInto(*out)
 	}
-	in.BearerTokenSecret.DeepCopyInto(&out.BearerTokenSecret)
+	if in.BearerTokenSecret != nil {
+		in, out := &in.BearerTokenSecret, &out.BearerTokenSecret
+		*out = new(v1.SecretKeySelector)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.HonorTimestamps != nil {
 		in, out := &in.HonorTimestamps, &out.HonorTimestamps
 		*out = new(bool)
@@ -771,7 +775,11 @@ func (in *PodMetricsEndpoint) DeepCopyInto(out *PodMetricsEndpoint) {
 		*out = new(BasicAuth)
 		(*in).DeepCopyInto(*out)
 	}
-	in.BearerTokenSecret.DeepCopyInto(&out.BearerTokenSecret)
+	if in.BearerTokenSecret != nil {
+		in, out := &in.BearerTokenSecret, &out.BearerTokenSecret
+		*out = new(v1.SecretKeySelector)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.TLSConfig != nil {
 		in, out := &in.TLSConfig, &out.TLSConfig
 		*out = new(TLSConfig)
@@ -1389,7 +1397,11 @@ func (in *TargetEndpoint) DeepCopyInto(out *TargetEndpoint) {
 		*out = new(TLSConfig)
 		(*in).DeepCopyInto(*out)
 	}
-	in.BearerTokenSecret.DeepCopyInto(&out.BearerTokenSecret)
+	if in.BearerTokenSecret != nil {
+		in, out := &in.BearerTokenSecret, &out.BearerTokenSecret
+		*out = new(v1.SecretKeySelector)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.BasicAuth != nil {
 		in, out := &in.BasicAuth, &out.BasicAuth
 		*out = new(BasicAuth)
@@ -3443,7 +3455,11 @@ func (in *VMNodeScrapeSpec) DeepCopyInto(out *VMNodeScrapeSpec) {
 		*out = new(TLSConfig)
 		(*in).DeepCopyInto(*out)
 	}
-	in.BearerTokenSecret.DeepCopyInto(&out.BearerTokenSecret)
+	if in.BearerTokenSecret != nil {
+		in, out := &in.BearerTokenSecret, &out.BearerTokenSecret
+		*out = new(v1.SecretKeySelector)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.HonorTimestamps != nil {
 		in, out := &in.HonorTimestamps, &out.HonorTimestamps
 		*out = new(bool)
@@ -3701,7 +3717,11 @@ func (in *VMProbeSpec) DeepCopyInto(out *VMProbeSpec) {
 		*out = new(bool)
 		**out = **in
 	}
-	in.BearerTokenSecret.DeepCopyInto(&out.BearerTokenSecret)
+	if in.BearerTokenSecret != nil {
+		in, out := &in.BearerTokenSecret, &out.BearerTokenSecret
+		*out = new(v1.SecretKeySelector)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.BasicAuth != nil {
 		in, out := &in.BasicAuth, &out.BasicAuth
 		*out = new(BasicAuth)

@@ -354,7 +354,7 @@ func loadScrapeSecrets(
 				}
 				oauth2Secret[mon.AsMapKey(i)] = oauth2
 			}
-			if ep.BearerTokenSecret.Name != "" {
+			if ep.BearerTokenSecret != nil && ep.BearerTokenSecret.Name != "" {
 				token, err := getCredFromSecret(ctx, rclient, mon.Namespace, ep.BearerTokenSecret, buildCacheKey(mon.Namespace, ep.BearerTokenSecret.Name), nsSecretCache)
 				if err != nil {
 					return nil, err
@@ -396,7 +396,7 @@ func loadScrapeSecrets(
 			}
 			oauth2Secret[node.AsMapKey()] = oauth2
 		}
-		if node.Spec.BearerTokenSecret.Name != "" {
+		if node.Spec.BearerTokenSecret != nil && node.Spec.BearerTokenSecret.Name != "" {
 			token, err := getCredFromSecret(ctx, rclient, node.Namespace, node.Spec.BearerTokenSecret, buildCacheKey(node.Namespace, node.Spec.BearerTokenSecret.Name), nsSecretCache)
 			if err != nil {
 				return nil, err
@@ -432,7 +432,7 @@ func loadScrapeSecrets(
 				}
 				oauth2Secret[pod.AsMapKey(i)] = oauth2
 			}
-			if ep.BearerTokenSecret.Name != "" {
+			if ep.BearerTokenSecret != nil && ep.BearerTokenSecret.Name != "" {
 				token, err := getCredFromSecret(ctx, rclient, pod.Namespace, ep.BearerTokenSecret, buildCacheKey(pod.Namespace, ep.BearerTokenSecret.Name), nsSecretCache)
 				if err != nil {
 					return nil, err
@@ -468,7 +468,7 @@ func loadScrapeSecrets(
 			}
 			oauth2Secret[probe.AsMapKey()] = oauth2
 		}
-		if probe.Spec.BearerTokenSecret.Name != "" {
+		if probe.Spec.BearerTokenSecret != nil && probe.Spec.BearerTokenSecret.Name != "" {
 			token, err := getCredFromSecret(ctx, rclient, probe.Namespace, probe.Spec.BearerTokenSecret, buildCacheKey(probe.Namespace, probe.Spec.BearerTokenSecret.Name), nsSecretCache)
 			if err != nil {
 				return nil, err
@@ -503,7 +503,7 @@ func loadScrapeSecrets(
 				}
 				oauth2Secret[staticCfg.AsMapKey(i)] = oauth2
 			}
-			if ep.BearerTokenSecret.Name != "" {
+			if ep.BearerTokenSecret != nil && ep.BearerTokenSecret.Name != "" {
 				token, err := getCredFromSecret(ctx, rclient, staticCfg.Namespace, ep.BearerTokenSecret, buildCacheKey(staticCfg.Namespace, ep.BearerTokenSecret.Name), nsSecretCache)
 				if err != nil {
 					return nil, err
@@ -551,8 +551,8 @@ func loadScrapeSecrets(
 			}
 			oauth2Secret[fmt.Sprintf("remoteWriteSpec/%s", rws.URL)] = oauth2
 		}
-		if rws.BearerTokenSecret != nil {
-			token, err := getCredFromSecret(ctx, rclient, namespace, *rws.BearerTokenSecret, buildCacheKey(namespace, rws.BearerTokenSecret.Name), nsSecretCache)
+		if rws.BearerTokenSecret != nil && rws.BearerTokenSecret.Name != "" {
+			token, err := getCredFromSecret(ctx, rclient, namespace, rws.BearerTokenSecret, buildCacheKey(namespace, rws.BearerTokenSecret.Name), nsSecretCache)
 			if err != nil {
 				return nil, fmt.Errorf("cannot get bearer token for remoteWrite: %w", err)
 			}
@@ -601,13 +601,15 @@ func getCredFromSecret(
 	ctx context.Context,
 	rclient client.Client,
 	ns string,
-	sel v1.SecretKeySelector,
+	sel *v1.SecretKeySelector,
 	cacheKey string,
 	cache map[string]*v1.Secret,
 ) (string, error) {
 	var s *v1.Secret
 	var ok bool
-
+	if sel == nil {
+		return "", fmt.Errorf("BUG, secret key selector must be non nil for cache key: %s, ns: %s", cacheKey, ns)
+	}
 	if s, ok = cache[cacheKey]; !ok {
 		s = &v1.Secret{}
 		if err := rclient.Get(ctx, types.NamespacedName{Namespace: ns, Name: sel.Name}, s); err != nil {
@@ -615,7 +617,7 @@ func getCredFromSecret(
 		}
 		cache[cacheKey] = s
 	}
-	return extractCredKey(s, sel)
+	return extractCredKey(s, *sel)
 }
 
 func getCredFromConfigMap(
@@ -649,11 +651,11 @@ func loadBasicAuthSecretFromAPI(ctx context.Context, rclient client.Client, basi
 	var password string
 	var err error
 
-	if username, err = getCredFromSecret(ctx, rclient, ns, basicAuth.Username, ns+"/"+basicAuth.Username.Name, cache); err != nil {
+	if username, err = getCredFromSecret(ctx, rclient, ns, &basicAuth.Username, ns+"/"+basicAuth.Username.Name, cache); err != nil {
 		return nil, err
 	}
 
-	if password, err = getCredFromSecret(ctx, rclient, ns, basicAuth.Password, ns+"/"+basicAuth.Password.Name, cache); err != nil {
+	if password, err = getCredFromSecret(ctx, rclient, ns, &basicAuth.Password, ns+"/"+basicAuth.Password.Name, cache); err != nil {
 		return nil, err
 	}
 
@@ -683,7 +685,7 @@ func loadProxySecrets(ctx context.Context, rclient client.Client, proxyCfg *vict
 			ctx,
 			rclient,
 			ns,
-			*proxyCfg.BearerToken,
+			proxyCfg.BearerToken,
 			buildCacheKey(ns, proxyCfg.BearerToken.Name),
 			cache,
 		)
@@ -696,14 +698,14 @@ func loadProxySecrets(ctx context.Context, rclient client.Client, proxyCfg *vict
 func loadOAuthSecrets(ctx context.Context, rclient client.Client, oauth2 *victoriametricsv1beta1.OAuth2, ns string, cache map[string]*v1.Secret, cmCache map[string]*v1.ConfigMap) (*oauthCreds, error) {
 	var r oauthCreds
 	if oauth2.ClientSecret != nil {
-		s, err := getCredFromSecret(ctx, rclient, ns, *oauth2.ClientSecret, buildCacheKey(ns, oauth2.ClientSecret.Name), cache)
+		s, err := getCredFromSecret(ctx, rclient, ns, oauth2.ClientSecret, buildCacheKey(ns, oauth2.ClientSecret.Name), cache)
 		if err != nil {
 			return nil, fmt.Errorf("cannot load oauth2 secret for: %s, err: %w", oauth2.ClientSecret.Name, err)
 		}
 		r.clientSecret = s
 	}
 	if oauth2.ClientID.Secret != nil {
-		s, err := getCredFromSecret(ctx, rclient, ns, *oauth2.ClientID.Secret, ns+"/"+oauth2.ClientID.Secret.Name, cache)
+		s, err := getCredFromSecret(ctx, rclient, ns, oauth2.ClientID.Secret, ns+"/"+oauth2.ClientID.Secret.Name, cache)
 		if err != nil {
 			return nil, fmt.Errorf("cannot load oauth2 secret for: %s, err: %w", oauth2.ClientID.Secret, err)
 		}

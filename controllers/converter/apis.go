@@ -114,7 +114,7 @@ func replacePromDirPath(origin string) string {
 func ConvertEndpoint(promEndpoint []v1.Endpoint) []v1beta1vm.Endpoint {
 	endpoints := []v1beta1vm.Endpoint{}
 	for _, endpoint := range promEndpoint {
-		endpoints = append(endpoints, v1beta1vm.Endpoint{
+		ep := v1beta1vm.Endpoint{
 			Port:                 endpoint.Port,
 			TargetPort:           endpoint.TargetPort,
 			Path:                 endpoint.Path,
@@ -123,14 +123,17 @@ func ConvertEndpoint(promEndpoint []v1.Endpoint) []v1beta1vm.Endpoint {
 			Interval:             endpoint.Interval,
 			ScrapeTimeout:        endpoint.ScrapeTimeout,
 			BearerTokenFile:      replacePromDirPath(endpoint.BearerTokenFile),
-			BearerTokenSecret:    endpoint.BearerTokenSecret,
 			HonorLabels:          endpoint.HonorLabels,
 			BasicAuth:            ConvertBasicAuth(endpoint.BasicAuth),
 			TLSConfig:            ConvertTlsConfig(endpoint.TLSConfig),
 			MetricRelabelConfigs: ConvertRelabelConfig(endpoint.MetricRelabelConfigs),
 			RelabelConfigs:       ConvertRelabelConfig(endpoint.RelabelConfigs),
 			ProxyURL:             endpoint.ProxyURL,
-		})
+		}
+		if len(endpoint.BearerTokenSecret.Key) > 0 {
+			ep.BearerTokenSecret = &endpoint.BearerTokenSecret
+		}
+		endpoints = append(endpoints, ep)
 	}
 	return endpoints
 
@@ -209,7 +212,7 @@ func ConvertPodEndpoints(promPodEnpoints []v1.PodMetricsEndpoint) []v1beta1vm.Po
 	}
 	endPoints := []v1beta1vm.PodMetricsEndpoint{}
 	for _, promEndPoint := range promPodEnpoints {
-		endPoints = append(endPoints, v1beta1vm.PodMetricsEndpoint{
+		ep := v1beta1vm.PodMetricsEndpoint{
 			TargetPort:           promEndPoint.TargetPort,
 			Port:                 promEndPoint.Port,
 			Interval:             promEndPoint.Interval,
@@ -224,8 +227,11 @@ func ConvertPodEndpoints(promPodEnpoints []v1.PodMetricsEndpoint) []v1beta1vm.Po
 			MetricRelabelConfigs: ConvertRelabelConfig(promEndPoint.MetricRelabelConfigs),
 			BasicAuth:            ConvertBasicAuth(promEndPoint.BasicAuth),
 			TLSConfig:            ConvertPodTlsConfig(promEndPoint.TLSConfig),
-			BearerTokenSecret:    promEndPoint.BearerTokenSecret,
-		})
+		}
+		if len(promEndPoint.BearerTokenSecret.Key) > 0 {
+			ep.BearerTokenSecret = &promEndPoint.BearerTokenSecret
+		}
+		endPoints = append(endPoints, ep)
 	}
 	return endPoints
 }

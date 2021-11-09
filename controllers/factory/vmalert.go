@@ -281,7 +281,7 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 			MountPath: path.Join(vmAlertConfigDir, name),
 		})
 	}
-	reloaderVolumes := []corev1.VolumeMount{}
+	var reloaderVolumes []corev1.VolumeMount
 	for _, name := range ruleConfigMapNames {
 		reloaderVolumes = append(reloaderVolumes, corev1.VolumeMount{
 			Name:      name,
@@ -621,7 +621,7 @@ func loadTLSAssetsForVMAlert(ctx context.Context, rclient client.Client, cr *vic
 				ctx,
 				rclient,
 				cr.Namespace,
-				*selector,
+				selector,
 				key,
 				nsSecretCache,
 			)

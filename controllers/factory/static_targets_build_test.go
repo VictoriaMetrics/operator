@@ -177,7 +177,7 @@ metric_relabel_configs: []
 							LocalObjectReference: v1.LocalObjectReference{Name: "ba-secret"},
 						},
 					},
-					BearerTokenSecret: v1.SecretKeySelector{
+					BearerTokenSecret: &v1.SecretKeySelector{
 						Key:                  "token",
 						LocalObjectReference: v1.LocalObjectReference{Name: "token-secret"},
 					},

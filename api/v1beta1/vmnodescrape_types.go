@@ -54,7 +54,7 @@ type VMNodeScrapeSpec struct {
 	// the victoria-metrics operator.
 	// +optional
 	// +nullable
-	BearerTokenSecret v1.SecretKeySelector `json:"bearerTokenSecret,omitempty"`
+	BearerTokenSecret *v1.SecretKeySelector `json:"bearerTokenSecret,omitempty"`
 	// HonorLabels chooses the metric's labels on collisions with target labels.
 	// +optional
 	HonorLabels bool `json:"honorLabels,omitempty"`

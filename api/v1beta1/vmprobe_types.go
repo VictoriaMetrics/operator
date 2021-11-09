@@ -63,7 +63,7 @@ type VMProbeSpec struct {
 	// the victoria-metrics operator.
 	// +optional
 	// +nullable
-	BearerTokenSecret v1.SecretKeySelector `json:"bearerTokenSecret,omitempty"`
+	BearerTokenSecret *v1.SecretKeySelector `json:"bearerTokenSecret,omitempty"`
 	// BasicAuth allow an endpoint to authenticate over basic authentication
 	// More info: https://prometheus.io/docs/operating/configuration/#endpoints
 	// +optional

@@ -1536,7 +1536,7 @@ metadata:
 spec:
   serviceScrapeSelector: {}
   podScrapeSelector: {}
-  probSelector: {}
+  probeSelector: {}
   replicaCount: 1
   remoteWrite:
     - url: "http://vmsingle-example-vmsingle-persisted.default.svc:8429/api/v1/write"

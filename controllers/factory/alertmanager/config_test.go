@@ -80,6 +80,7 @@ receivers:
     from: some-sender
     text: some-text
     to: some-dst
+    send_resolved: true
 templates: []
 `,
 		},
@@ -213,6 +214,7 @@ receivers:
     from: some-sender
     text: some-text
     to: some-dst
+    send_resolved: true
 - name: default-base-webhook
   webhook_configs:
   - url: http://some-wh

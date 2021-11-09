@@ -557,6 +557,9 @@ func (cb *configBuilder) buildPagerDuty(pd operatorv1beta1.PagerDutyConfig) erro
 	toYaml("client", pd.Client)
 	toYaml("class", pd.Class)
 	toYaml("component", pd.Component)
+	if pd.SendResolved != nil {
+		temp = append(temp, yaml.MapItem{Key: "send_resolved", Value: *pd.SendResolved})
+	}
 	cb.currentYaml = append(cb.currentYaml, temp)
 	return nil
 }
@@ -600,10 +603,14 @@ func (cb *configBuilder) buildEmail(email operatorv1beta1.EmailConfig) error {
 	toYamlString("auth_username", email.AuthUsername)
 	toYamlString("hello", email.Hello)
 	toYamlString("smarthost", email.Smarthost)
+	if email.SendResolved != nil {
+		temp = append(temp, yaml.MapItem{Key: "send_resolved", Value: *email.SendResolved})
+	}
 
 	cb.currentYaml = append(cb.currentYaml, temp)
 	return nil
 }
+
 func (cb *configBuilder) buildOpsGenie(og operatorv1beta1.OpsGenieConfig) error {
 	var temp yaml.MapSlice
 	toYamlString := func(key string, value string) {

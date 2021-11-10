@@ -929,7 +929,7 @@ data:
           preferred_ip_protocol: ip4
           valid_http_versions:
           - HTTP/1.1
-          - HTTP/2
+          - HTTP/2.0
           valid_status_codes: []
         prober: http
         timeout: 5s
@@ -1536,7 +1536,7 @@ metadata:
 spec:
   serviceScrapeSelector: {}
   podScrapeSelector: {}
-  probSelector: {}
+  probeSelector: {}
   replicaCount: 1
   remoteWrite:
     - url: "http://vmsingle-example-vmsingle-persisted.default.svc:8429/api/v1/write"

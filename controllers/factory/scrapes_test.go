@@ -314,7 +314,7 @@ func Test_getCredFromSecret(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 
-			got, err := getCredFromSecret(context.TODO(), fclient, tt.args.ns, tt.args.sel, tt.args.cacheKey, tt.args.cache)
+			got, err := getCredFromSecret(context.TODO(), fclient, tt.args.ns, &tt.args.sel, tt.args.cacheKey, tt.args.cache)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getCredFromSecret() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -441,7 +441,7 @@ func TestCreateOrUpdateConfigurationSecret(t *testing.T) {
 							{
 								Path: "/metrics",
 								Port: "8085",
-								BearerTokenSecret: v1.SecretKeySelector{
+								BearerTokenSecret: &v1.SecretKeySelector{
 									Key: "bearer",
 									LocalObjectReference: v1.LocalObjectReference{
 										Name: "access-creds",

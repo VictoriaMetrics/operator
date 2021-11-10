@@ -124,7 +124,7 @@ type PodMetricsEndpoint struct {
 	// the victoria-metrics operator.
 	// +optional
 	// +nullable
-	BearerTokenSecret v1.SecretKeySelector `json:"bearerTokenSecret,omitempty"`
+	BearerTokenSecret *v1.SecretKeySelector `json:"bearerTokenSecret,omitempty"`
 	// TLSConfig configuration to use when scraping the endpoint
 	// +optional
 	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`

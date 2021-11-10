@@ -577,7 +577,7 @@ relabel_configs:
 					HonorLabels:     true,
 					Scheme:          "https",
 					Path:            "/metrics",
-					BearerTokenSecret: v1.SecretKeySelector{
+					BearerTokenSecret: &v1.SecretKeySelector{
 						Key:                  "bearer",
 						LocalObjectReference: v1.LocalObjectReference{Name: "access-secret"},
 					},

@@ -173,7 +173,7 @@ func generateProbeConfig(
 		})
 	}
 
-	if len(cr.Spec.BearerTokenSecret.Name) > 0 {
+	if cr.Spec.BearerTokenSecret != nil && cr.Spec.BearerTokenSecret.Name != "" {
 		if token := ssCache.bearerTokens[cr.AsMapKey()]; len(token) > 0 {
 			cfg = append(cfg, yaml.MapItem{Key: "bearer_token", Value: token})
 		}

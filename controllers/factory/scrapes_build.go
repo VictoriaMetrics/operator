@@ -326,7 +326,7 @@ func generatePodScrapeConfig(
 		cfg = append(cfg, yaml.MapItem{Key: "bearer_token_file", Value: ep.BearerTokenFile})
 	}
 
-	if ep.BearerTokenSecret.Name != "" {
+	if ep.BearerTokenSecret != nil && ep.BearerTokenSecret.Name != "" {
 		if s, ok := ssCache.bearerTokens[m.AsMapKey(i)]; ok {
 			cfg = append(cfg, yaml.MapItem{Key: "bearer_token", Value: s})
 		}
@@ -581,7 +581,7 @@ func generateServiceScrapeConfig(
 		cfg = append(cfg, yaml.MapItem{Key: "bearer_token_file", Value: ep.BearerTokenFile})
 	}
 
-	if ep.BearerTokenSecret.Name != "" {
+	if ep.BearerTokenSecret != nil && ep.BearerTokenSecret.Name != "" {
 		if s, ok := ssCache.bearerTokens[m.AsMapKey(i)]; ok {
 			cfg = append(cfg, yaml.MapItem{Key: "bearer_token", Value: s})
 		}
@@ -910,7 +910,7 @@ func generateNodeScrapeConfig(
 		cfg = append(cfg, yaml.MapItem{Key: "bearer_token_file", Value: nodeSpec.BearerTokenFile})
 	}
 
-	if nodeSpec.BearerTokenSecret.Name != "" {
+	if nodeSpec.BearerTokenSecret != nil && nodeSpec.BearerTokenSecret.Name != "" {
 		if s, ok := ssCache.bearerTokens[cr.AsMapKey()]; ok {
 			cfg = append(cfg, yaml.MapItem{Key: "bearer_token", Value: s})
 		}

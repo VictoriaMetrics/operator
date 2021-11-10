@@ -67,7 +67,7 @@ func generateStaticScrapeConfig(
 		cfg = append(cfg, yaml.MapItem{Key: "bearer_token_file", Value: ep.BearerTokenFile})
 	}
 
-	if ep.BearerTokenSecret.Name != "" {
+	if ep.BearerTokenSecret != nil && ep.BearerTokenSecret.Name != "" {
 		if s, ok := ssCache.bearerTokens[m.AsMapKey(i)]; ok {
 			cfg = append(cfg, yaml.MapItem{Key: "bearer_token", Value: s})
 		}

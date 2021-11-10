@@ -786,7 +786,7 @@ func addAssetsToCache(
 			ctx,
 			rclient,
 			objectNS,
-			*selector,
+			selector,
 			key,
 			nsSecretCache,
 		)
@@ -962,7 +962,7 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, ssCache *scrapesSecre
 		authPassword.flagSetting += fmt.Sprintf("\"%s\",", strings.Replace(pass, `"`, `\"`, -1))
 
 		var value string
-		if rws.BearerTokenSecret != nil {
+		if rws.BearerTokenSecret != nil && rws.BearerTokenSecret.Name != "" {
 			if s, ok := ssCache.bearerTokens[fmt.Sprintf("remoteWriteSpec/%s", rws.URL)]; ok {
 				bearerToken.isNotNull = true
 				value = s

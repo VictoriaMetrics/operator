@@ -166,13 +166,20 @@ type VMAlertSpec struct {
 	// If specified both notifier and notifiers, notifier will be added as last element to notifiers.
 	Notifiers []VMAlertNotifierSpec `json:"notifiers,omitempty"`
 
-	// RemoteWrite Optional URL to remote-write compatible storage where to write timeseriesbased on active alerts. E.g. http://127.0.0.1:8428
+	// RemoteWrite Optional URL to remote-write compatible storage to persist
+	// vmalert state and rule results to.
+	// Rule results will be persisted according to each rule.
+	// Alerts state will be persisted in the form of time series named ALERTS and ALERTS_FOR_STATE
+	// see -remoteWrite.url docs in vmalerts for details.
+	// E.g. http://127.0.0.1:8428
 	// +optional
 	RemoteWrite *VMAlertRemoteWriteSpec `json:"remoteWrite,omitempty"`
 
-	// RemoteRead victoria metrics address for loading state
-	// This configuration makes sense only if remoteWrite was configured before and has
-	// been successfully persisted its state.
+	// RemoteRead Optional URL to read vmalert state (persisted via RemoteWrite)
+	// This configuration only makes sense if alerts state has been successfully
+	// persisted (via RemoteWrite) before.
+	// see -remoteRead.url docs in vmalerts for details.
+	// E.g. http://127.0.0.1:8428
 	// +optional
 	RemoteRead *VMAlertRemoteReadSpec `json:"remoteRead,omitempty"`
 

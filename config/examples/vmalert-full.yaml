@@ -50,7 +50,7 @@ spec:
         key: password
   notifiers:
     - url: "http://vmalertmanager-example-0.vmalertmanager.example.default.svc:9093"
-    - selector:
+      selector:
         namespaceSelector:
           any: false
           matchNames:

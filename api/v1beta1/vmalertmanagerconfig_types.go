@@ -142,6 +142,8 @@ type Route struct {
 	// +optional
 	Continue bool `json:"continue,omitempty"`
 	// Child routes.
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
 	Routes []*Route `json:"routes,omitempty"`
 	// MuteTimeIntervals for alerts
 	// +optional

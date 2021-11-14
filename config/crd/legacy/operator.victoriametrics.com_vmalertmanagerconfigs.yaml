@@ -2476,8 +2476,7 @@ spec:
                   type: string
                 routes:
                   description: Child routes.
-                  items: {}
-                  type: array
+                  x-kubernetes-preserve-unknown-fields: true
               required:
               - receiver
               type: object

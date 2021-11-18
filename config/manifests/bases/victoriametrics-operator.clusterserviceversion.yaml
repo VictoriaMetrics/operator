@@ -13,6 +13,10 @@ metadata:
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v2
     repository: https://github.com/VictoriaMetrics/operator
     support: VictoriaMetrics
+  labels:
+    operatorframework.io/arch.amd64: supported
+    operatorframework.io/arch.arm64: supported
+    operatorframework.io/arch.ppc64le: supported
   name: victoriametrics-operator.vX.Y.Z
   namespace: placeholder
 spec:

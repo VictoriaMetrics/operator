@@ -1413,8 +1413,9 @@ spec:
                 type: object
               ruleNamespaceSelector:
                 description: RuleNamespaceSelector to be selected for VMRules discovery.
-                  Works in combination with Selector. If both nil - match everything.
-                  NamespaceSelector nil - only objects at VMAlert namespace.
+                  Works in combination with Selector. If both nil - behaviour controlled
+                  by selectAllByDefault NamespaceSelector nil - only objects at VMAlert
+                  namespace.
                 properties:
                   matchExpressions:
                     description: matchExpressions is a list of label selector requirements.
@@ -1469,8 +1470,8 @@ spec:
               ruleSelector:
                 description: RuleSelector selector to select which VMRules to mount
                   for loading alerting rules from. Works in combination with NamespaceSelector.
-                  If both nil - match everything. NamespaceSelector nil - only objects
-                  at VMAlert namespace.
+                  If both nil - behaviour controlled by selectAllByDefault NamespaceSelector
+                  nil - only objects at VMAlert namespace.
                 properties:
                   matchExpressions:
                     description: matchExpressions is a list of label selector requirements.
@@ -1532,6 +1533,13 @@ spec:
                   common container settings. This defaults to the default PodSecurityContext.
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
+              selectAllByDefault:
+                description: 'SelectAllByDefault changes default behavior for empty
+                  CRD selectors, such RuleSelector. with selectAllByDefault: true
+                  and empty serviceScrapeSelector and RuleNamespaceSelector Operator
+                  selects all exist serviceScrapes with selectAllByDefault: false
+                  - selects nothing'
+                type: boolean
               serviceAccountName:
                 description: ServiceAccountName is the name of the ServiceAccount
                   to use to run the VMAlert Pods.

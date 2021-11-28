@@ -495,10 +495,10 @@ spec:
               type: string
             nodeScrapeNamespaceSelector:
               description: NodeScrapeNamespaceSelector defines Namespaces to be selected
-                for VMNodeScrape discovery. Works in combination with Selector. If
-                both nil - match everything. NamespaceSelector nil - only objects
-                at VMAgent namespace. Selector nil - only objects at NamespaceSelector
-                namespaces.
+                for VMNodeScrape discovery. Works in combination with Selector. NamespaceSelector
+                nil - only objects at VMAgent namespace. Selector nil - only objects
+                at NamespaceSelector namespaces. If both nil - behaviour controlled
+                by selectAllByDefault
               properties:
                 matchExpressions:
                   description: matchExpressions is a list of label selector requirements.
@@ -601,9 +601,10 @@ spec:
               type: array
             nodeScrapeSelector:
               description: NodeScrapeSelector defines VMNodeScrape to be selected
-                for scraping. Works in combination with NamespaceSelector. If both
-                nil - match everything. NamespaceSelector nil - only objects at VMAgent
-                namespace. Selector nil - only objects at NamespaceSelector namespaces.
+                for scraping. Works in combination with NamespaceSelector. NamespaceSelector
+                nil - only objects at VMAgent namespace. Selector nil - only objects
+                at NamespaceSelector namespaces. If both nil - behaviour controlled
+                by selectAllByDefault
               properties:
                 matchExpressions:
                   description: matchExpressions is a list of label selector requirements.
@@ -713,10 +714,10 @@ spec:
               type: object
             podScrapeNamespaceSelector:
               description: PodScrapeNamespaceSelector defines Namespaces to be selected
-                for VMPodScrape discovery. Works in combination with Selector. If
-                both nil - match everything. NamespaceSelector nil - only objects
-                at VMAgent namespace. Selector nil - only objects at NamespaceSelector
-                namespaces.
+                for VMPodScrape discovery. Works in combination with Selector. NamespaceSelector
+                nil - only objects at VMAgent namespace. Selector nil - only objects
+                at NamespaceSelector namespaces. If both nil - behaviour controlled
+                by selectAllByDefault
               properties:
                 matchExpressions:
                   description: matchExpressions is a list of label selector requirements.
@@ -819,10 +820,10 @@ spec:
               type: array
             podScrapeSelector:
               description: PodScrapeSelector defines PodScrapes to be selected for
-                target discovery. Works in combination with NamespaceSelector. If
-                both nil - match everything. NamespaceSelector nil - only objects
-                at VMAgent namespace. Selector nil - only objects at NamespaceSelector
-                namespaces.
+                target discovery. Works in combination with NamespaceSelector. NamespaceSelector
+                nil - only objects at VMAgent namespace. Selector nil - only objects
+                at NamespaceSelector namespaces. If both nil - behaviour controlled
+                by selectAllByDefault
               properties:
                 matchExpressions:
                   description: matchExpressions is a list of label selector requirements.
@@ -876,9 +877,10 @@ spec:
               type: string
             probeNamespaceSelector:
               description: ProbeNamespaceSelector defines Namespaces to be selected
-                for VMProbe discovery. Works in combination with Selector. If both
-                nil - match everything. NamespaceSelector nil - only objects at VMAgent
-                namespace. Selector nil - only objects at NamespaceSelector namespaces.
+                for VMProbe discovery. Works in combination with Selector. NamespaceSelector
+                nil - only objects at VMAgent namespace. Selector nil - only objects
+                at NamespaceSelector namespaces. If both nil - behaviour controlled
+                by selectAllByDefault
               properties:
                 matchExpressions:
                   description: matchExpressions is a list of label selector requirements.
@@ -981,9 +983,10 @@ spec:
               type: array
             probeSelector:
               description: ProbeSelector defines VMProbe to be selected for target
-                probing. Works in combination with NamespaceSelector. If both nil
-                - match everything. NamespaceSelector nil - only objects at VMAgent
-                namespace. Selector nil - only objects at NamespaceSelector namespaces.
+                probing. Works in combination with NamespaceSelector. NamespaceSelector
+                nil - only objects at VMAgent namespace. Selector nil - only objects
+                at NamespaceSelector namespaces. If both nil - behaviour controlled
+                by selectAllByDefault
               properties:
                 matchExpressions:
                   description: matchExpressions is a list of label selector requirements.
@@ -1554,6 +1557,13 @@ spec:
                 common container settings. This defaults to the default PodSecurityContext.
               type: object
               x-kubernetes-preserve-unknown-fields: true
+            selectAllByDefault:
+              description: 'SelectAllByDefault changes default behavior for empty
+                CRD selectors, such ServiceScrapeSelector. with selectAllScrapes:
+                true and empty serviceScrapeSelector and ServiceScrapeNamespaceSelector
+                Operator selects all exist serviceScrapes with selectAllScrapes: false
+                - selects nothing'
+              type: boolean
             serviceAccountName:
               description: ServiceAccountName is the name of the ServiceAccount to
                 use to run the VMAgent Pods.
@@ -1561,9 +1571,9 @@ spec:
             serviceScrapeNamespaceSelector:
               description: ServiceScrapeNamespaceSelector Namespaces to be selected
                 for VMServiceScrape discovery. Works in combination with Selector.
-                If both nil - match everything. NamespaceSelector nil - only objects
-                at VMAgent namespace. Selector nil - only objects at NamespaceSelector
-                namespaces.
+                NamespaceSelector nil - only objects at VMAgent namespace. Selector
+                nil - only objects at NamespaceSelector namespaces. If both nil -
+                behaviour controlled by selectAllByDefault
               properties:
                 matchExpressions:
                   description: matchExpressions is a list of label selector requirements.
@@ -1667,9 +1677,9 @@ spec:
             serviceScrapeSelector:
               description: ServiceScrapeSelector defines ServiceScrapes to be selected
                 for target discovery. Works in combination with NamespaceSelector.
-                If both nil - match everything. NamespaceSelector nil - only objects
-                at VMAgent namespace. Selector nil - only objects at NamespaceSelector
-                namespaces.
+                NamespaceSelector nil - only objects at VMAgent namespace. Selector
+                nil - only objects at NamespaceSelector namespaces. If both nil -
+                behaviour controlled by selectAllByDefault
               properties:
                 matchExpressions:
                   description: matchExpressions is a list of label selector requirements.
@@ -1763,9 +1773,9 @@ spec:
             staticScrapeNamespaceSelector:
               description: StaticScrapeNamespaceSelector defines Namespaces to be
                 selected for VMStaticScrape discovery. Works in combination with NamespaceSelector.
-                If both nil - match everything. NamespaceSelector nil - only objects
-                at VMAgent namespace. Selector nil - only objects at NamespaceSelector
-                namespaces.
+                NamespaceSelector nil - only objects at VMAgent namespace. Selector
+                nil - only objects at NamespaceSelector namespaces. If both nil -
+                behaviour controlled by selectAllByDefault
               properties:
                 matchExpressions:
                   description: matchExpressions is a list of label selector requirements.

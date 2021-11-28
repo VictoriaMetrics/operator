@@ -194,7 +194,7 @@ func rulesCMDiff(currentCMs []v1.ConfigMap, newCMs []v1.ConfigMap) ([]v1.ConfigM
 }
 
 func selectNamespaces(ctx context.Context, rclient client.Client, selector labels.Selector) ([]string, error) {
-	matchedNs := []string{}
+	var matchedNs []string
 	ns := &v1.NamespaceList{}
 
 	if err := rclient.List(ctx, ns, &client.ListOptions{LabelSelector: selector}); err != nil {

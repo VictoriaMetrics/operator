@@ -71,9 +71,10 @@ spec:
               type: array
             configNamespaceSelector:
               description: ' ConfigNamespaceSelector defines namespace selector for
-                VMAlertmanagerConfig. Works in combination with Selector. If both
-                nil - match everything. NamespaceSelector nil - only objects at VMAlertmanager
-                namespace. Selector nil - only objects at NamespaceSelector namespaces.'
+                VMAlertmanagerConfig. Works in combination with Selector. NamespaceSelector
+                nil - only objects at VMAlertmanager namespace. Selector nil - only
+                objects at NamespaceSelector namespaces. If both nil - behaviour controlled
+                by selectAllByDefault'
               properties:
                 matchExpressions:
                   description: matchExpressions is a list of label selector requirements.
@@ -131,9 +132,10 @@ spec:
             configSelector:
               description: ConfigSelector defines selector for VMAlertmanagerConfig,
                 result config will be merged with with Raw or Secret config. Works
-                in combination with NamespaceSelector. If both nil - match everything.
-                NamespaceSelector nil - only objects at VMAlertmanager namespace.
-                Selector nil - only objects at NamespaceSelector namespaces.
+                in combination with NamespaceSelector. NamespaceSelector nil - only
+                objects at VMAlertmanager namespace. Selector nil - only objects at
+                NamespaceSelector namespaces. If both nil - behaviour controlled by
+                selectAllByDefault
               properties:
                 matchExpressions:
                   description: matchExpressions is a list of label selector requirements.
@@ -431,6 +433,13 @@ spec:
                 common container settings. This defaults to the default PodSecurityContext.
               type: object
               x-kubernetes-preserve-unknown-fields: true
+            selectAllByDefault:
+              description: 'SelectAllByDefault changes default behavior for empty
+                CRD selectors, such ConfigSelector. with selectAllScrapes: true and
+                undefined ConfigSelector and ConfigNamespaceSelector Operator selects
+                all exist alertManagerConfigs with selectAllScrapes: false - selects
+                nothing'
+              type: boolean
             serviceAccountName:
               description: ServiceAccountName is the name of the ServiceAccount to
                 use

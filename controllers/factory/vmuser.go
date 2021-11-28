@@ -333,8 +333,7 @@ func FetchCRDCache(ctx context.Context, rclient client.Client, users []*v1beta1.
 func generateVMAuthConfig(users []*v1beta1.VMUser, crdCache map[string]string) ([]byte, error) {
 	var cfg yaml.MapSlice
 
-	cfgUsers := []yaml.MapSlice{}
-	//uniq := make(map[string]struct{})
+	var cfgUsers []yaml.MapSlice
 	for i := range users {
 		user := users[i]
 		userCfg, err := genUserCfg(user, crdCache)
@@ -367,22 +366,20 @@ func generateVMAuthConfig(users []*v1beta1.VMUser, crdCache map[string]string) (
 }
 
 func genUrlMaps(userName string, refs []v1beta1.TargetRef, result yaml.MapSlice, crdUrlCache map[string]string) (yaml.MapSlice, error) {
-	urlMaps := []yaml.MapSlice{}
+	var urlMaps []yaml.MapSlice
 	handleRef := func(ref v1beta1.TargetRef) (string, error) {
-
 		var urlPrefix string
-		if ref.Static != nil {
-			if ref.Static.URL == "" {
-				return "", fmt.Errorf("static.url cannot be empty for user: %s", userName)
-			}
-			urlPrefix = ref.Static.URL
-
-		} else {
+		if ref.CRD != nil {
 			urlPrefix = crdUrlCache[ref.CRD.AsKey()]
 			if urlPrefix == "" {
 				return "", fmt.Errorf("cannot find crdRef target: %q, for user: %s", ref.CRD.AsKey(), userName)
 			}
 
+		} else {
+			if ref.Static.URL == "" {
+				return "", fmt.Errorf("static.url cannot be empty for user: %s", userName)
+			}
+			urlPrefix = ref.Static.URL
 		}
 		if ref.TargetPathSuffix != "" {
 			parsedSuffix, err := url.Parse(ref.TargetPathSuffix)
@@ -484,7 +481,8 @@ func genUrlMaps(userName string, refs []v1beta1.TargetRef, result yaml.MapSlice,
 // this function mutates user and fills missing fields,
 // such password or username.
 func genUserCfg(user *v1beta1.VMUser, crdUrlCache map[string]string) (yaml.MapSlice, error) {
-	r := yaml.MapSlice{}
+	var r yaml.MapSlice
+
 	r, err := genUrlMaps(user.Name, user.Spec.TargetRefs, r, crdUrlCache)
 	if err != nil {
 		return nil, fmt.Errorf("cannot generate urlMaps for user: %w", err)
@@ -565,24 +563,23 @@ func selectVMUsers(ctx context.Context, cr *v1beta1.VMAuth, rclient client.Clien
 		return nil, err
 	}
 
-	if err := visitObjectsWithSelector(ctx, rclient, namespaces, &victoriametricsv1beta1.VMUserList{}, userSelector, func(list client.ObjectList) {
+	if err := visitObjectsWithSelector(ctx, rclient, namespaces, &victoriametricsv1beta1.VMUserList{}, userSelector, cr.Spec.SelectAllByDefault, func(list client.ObjectList) {
 		l := list.(*victoriametricsv1beta1.VMUserList)
 		for _, item := range l.Items {
 			if !item.DeletionTimestamp.IsZero() {
 				continue
 			}
-			addUser := item
-			res = append(res, &addUser)
+			res = append(res, item.DeepCopy())
 		}
 	}); err != nil {
 		return nil, err
 	}
 
-	serviceScrapes := []string{}
+	var vmUsers []string
 	for k := range res {
-		serviceScrapes = append(serviceScrapes, res[k].Name)
+		vmUsers = append(vmUsers, res[k].Name)
 	}
-	log.Info("selected VMUsers", "vmusers", strings.Join(serviceScrapes, ","), "namespace", cr.Namespace, "vmauth", cr.Name)
+	log.Info("selected VMUsers", "vmusers", strings.Join(vmUsers, ","), "namespace", cr.Namespace, "vmauth", cr.Name)
 
 	return res, nil
 }

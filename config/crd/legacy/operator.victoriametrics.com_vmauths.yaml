@@ -491,6 +491,12 @@ spec:
                 common container settings. This defaults to the default PodSecurityContext.
               type: object
               x-kubernetes-preserve-unknown-fields: true
+            selectAllByDefault:
+              description: 'SelectAllByDefault changes default behavior for empty
+                CRD selectors, such userSelector. with selectAllByDefault: true and
+                empty userSelector and userNamespaceSelector Operator selects all
+                exist users with selectAllByDefault: false - selects nothing'
+              type: boolean
             serviceAccountName:
               description: ServiceAccountName is the name of the ServiceAccount to
                 use to run the VMAuth Pods.
@@ -596,9 +602,10 @@ spec:
               type: array
             userNamespaceSelector:
               description: UserNamespaceSelector Namespaces to be selected for  VMAuth
-                discovery. Works in combination with Selector. If both nil - match
-                everything. NamespaceSelector nil - only objects at VMAuth namespace.
-                Selector nil - only objects at NamespaceSelector namespaces.
+                discovery. Works in combination with Selector. NamespaceSelector nil
+                - only objects at VMAuth namespace. Selector nil - only objects at
+                NamespaceSelector namespaces. If both nil - behaviour controlled by
+                selectAllByDefault
               properties:
                 matchExpressions:
                   description: matchExpressions is a list of label selector requirements.
@@ -642,9 +649,9 @@ spec:
               type: object
             userSelector:
               description: UserSelector defines VMUser to be selected for config file
-                generation. Works in combination with NamespaceSelector. If both nil
-                - match everything. NamespaceSelector nil - only objects at VMAuth
-                namespace. Selector nil - only objects at NamespaceSelector namespaces.
+                generation. Works in combination with NamespaceSelector. NamespaceSelector
+                nil - only objects at VMAuth namespace. If both nil - behaviour controlled
+                by selectAllByDefault
               properties:
                 matchExpressions:
                   description: matchExpressions is a list of label selector requirements.

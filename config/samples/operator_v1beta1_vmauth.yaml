@@ -3,8 +3,7 @@ kind: VMAuth
 metadata:
   name: vmauth-sample
 spec:
-  userSelector: {}
-  userNamespaceSelector: {}
+  selectAllByDefault: true
   replicaCount: 1
   resources:
     requests:

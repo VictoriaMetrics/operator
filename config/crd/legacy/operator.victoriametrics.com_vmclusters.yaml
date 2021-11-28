@@ -223,6 +223,7 @@ spec:
                   - PANIC
                   type: string
                 name:
+                  description: Name is deprecated and will be removed at 0.22.0 release
                   type: string
                 nodeSelector:
                   additionalProperties:
@@ -294,7 +295,7 @@ spec:
                   type: object
                   x-kubernetes-preserve-unknown-fields: true
                 replicaCount:
-                  description: ReplicaCount is the expected size of the VMSelect cluster.
+                  description: ReplicaCount is the expected size of the VMInsert cluster.
                     The controller will eventually make the size of the running cluster
                     equal to the expected size.
                   format: int32
@@ -668,6 +669,7 @@ spec:
                   - PANIC
                   type: string
                 name:
+                  description: Name is deprecated and will be removed at 0.22.0 release
                   type: string
                 nodeSelector:
                   additionalProperties:
@@ -1395,6 +1397,7 @@ spec:
                     type: integer
                   type: array
                 name:
+                  description: Name is deprecated and will be removed at 0.22.0 release
                   type: string
                 nodeSelector:
                   additionalProperties:
@@ -1466,9 +1469,9 @@ spec:
                   type: object
                   x-kubernetes-preserve-unknown-fields: true
                 replicaCount:
-                  description: ReplicaCount is the expected size of the VMSelect cluster.
-                    The controller will eventually make the size of the running cluster
-                    equal to the expected size.
+                  description: ReplicaCount is the expected size of the VMStorage
+                    cluster. The controller will eventually make the size of the running
+                    cluster equal to the expected size.
                   format: int32
                   type: integer
                 resources:

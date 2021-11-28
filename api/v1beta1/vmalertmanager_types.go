@@ -208,18 +208,24 @@ type VMAlertmanagerSpec struct {
 	// +optional
 	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
 	*EmbeddedProbes     `json:",inline"`
+	// SelectAllByDefault changes default behavior for empty CRD selectors, such ConfigSelector.
+	// with selectAllScrapes: true and undefined ConfigSelector and ConfigNamespaceSelector
+	// Operator selects all exist alertManagerConfigs
+	// with selectAllScrapes: false - selects nothing
+	// +optional
+	SelectAllByDefault bool `json:"selectAllByDefault,omitempty"`
 	// ConfigSelector defines selector for VMAlertmanagerConfig, result config will be merged with with Raw or Secret config.
 	// Works in combination with NamespaceSelector.
-	// If both nil - match everything.
 	// NamespaceSelector nil - only objects at VMAlertmanager namespace.
 	// Selector nil - only objects at NamespaceSelector namespaces.
+	// If both nil - behaviour controlled by selectAllByDefault
 	// +optional
 	ConfigSelector *metav1.LabelSelector `json:"configSelector,omitempty"`
 	//  ConfigNamespaceSelector defines namespace selector for VMAlertmanagerConfig.
 	// Works in combination with Selector.
-	// If both nil - match everything.
 	// NamespaceSelector nil - only objects at VMAlertmanager namespace.
 	// Selector nil - only objects at NamespaceSelector namespaces.
+	// If both nil - behaviour controlled by selectAllByDefault
 	// +optional
 	ConfigNamespaceSelector *metav1.LabelSelector `json:"configNamespaceSelector,omitempty"`
 	// ExtraArgs that will be passed to  VMAuth pod

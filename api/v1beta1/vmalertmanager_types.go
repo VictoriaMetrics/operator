@@ -364,6 +364,10 @@ func (cr *VMAlertmanager) AsPodFQDN(idx int) string {
 	return fmt.Sprintf("http://%s-%d.%s.%s.svc:9093", cr.PrefixedName(), idx, cr.PrefixedName(), cr.Namespace)
 }
 
+func (cr *VMAlertmanager) MetricPath() string {
+	return buildPathWithPrefixFlag(cr.Spec.ExtraArgs, metricPath)
+}
+
 // AsCRDOwner implements interface
 func (cr *VMAlertmanager) AsCRDOwner() []metav1.OwnerReference {
 	return crd.GetCRDAsOwner(crd.VMAlertManager)

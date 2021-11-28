@@ -238,7 +238,7 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 	vmMounts := []corev1.VolumeMount{
 		{
 			Name:      vmDataVolumeName,
-			MountPath: vmSingleDataDir,
+			MountPath: storagePath,
 		},
 	}
 

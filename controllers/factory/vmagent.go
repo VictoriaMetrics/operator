@@ -206,8 +206,6 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 	args := []string{
 		fmt.Sprintf("-promscrape.config=%s", path.Join(vmAgentConOfOutDir, configEnvsubstFilename)),
 		fmt.Sprintf("-remoteWrite.tmpDataPath=%s", vmAgentPersistentQueueDir),
-		// limit to 1GB
-		"-remoteWrite.maxDiskUsagePerURL=1073741824",
 	}
 
 	if len(cr.Spec.RemoteWrite) > 0 {
@@ -215,8 +213,16 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 	}
 	args = append(args, BuildRemoteWriteSettings(cr)...)
 
+	var containsMaxDiskUsage = false
 	for arg, value := range cr.Spec.ExtraArgs {
+		if arg == "remoteWrite.maxDiskUsagePerURL" {
+			containsMaxDiskUsage = true
+		}
 		args = append(args, fmt.Sprintf("-%s=%s", arg, value))
+	}
+	if !containsMaxDiskUsage {
+		// limit to 1GB
+		args = append(args, "-remoteWrite.maxDiskUsagePerURL=1073741824")
 	}
 
 	args = append(args, fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.Port))

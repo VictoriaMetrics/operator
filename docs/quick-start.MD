@@ -1450,7 +1450,7 @@ curl -u foo:bar https://vmsingle.example/com/metrics
 
 Selectors are defined with suffixes - `NamespaceSelector` and `Selector`. It allows configuring objects access control across namespaces and different environments.
 Following rules are applied:
-- `NamespaceSelector` and `Selector` - undefined.  All exist objects are matching.
+- `NamespaceSelector` and `Selector` - undefined, by default select nothing. With option set - `spec.selectAllByDefault: true`, select all objects of given type.
 - `NamespaceSelector` defined, `Selector` undefined. All objects are matching at namespaces for given `NamespaceSelector`.
 - `NamespaceSelector` undefined, `Selector` defined. All objects at `VMAgent`'s namespaces are matching for given `Selector`.
 - `NamespaceSelector` defined, `Selector` defined. Only objects at namespaces matched `NamespaceSelector` for given `Selector` are matching.

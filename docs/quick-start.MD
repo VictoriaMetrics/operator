@@ -281,14 +281,7 @@ kind: VMAgent
 metadata:
   name: example-vmagent
 spec:
-  serviceScrapeNamespaceSelector: {}
-  podScrapeNamespaceSelector: {}
-  podScrapeSelector: {}
-  serviceScrapeSelector: {}
-  nodeScrapeSelector: {}
-  nodeScrapeNamespaceSelector: {}
-  staticScrapeSelector: {}
-  staticScrapeNamespaceSelector: {}
+  selectAllByDefault: true
   replicaCount: 1
   remoteWrite:
     - url: "http://vmsingle-example-vmsingle-persisted.default.svc:8429/api/v1/write"
@@ -306,14 +299,7 @@ EOF
  metadata:
    name: example-vmagent
  spec:
-   serviceScrapeNamespaceSelector: {}
-   podScrapeNamespaceSelector: {}
-   podScrapeSelector: {}
-   serviceScrapeSelector: {}
-   nodeScrapeSelector: {}
-   nodeScrapeNamespaceSelector: {}
-   staticScrapeSelector: {}
-   staticScrapeNamespaceSelector: {}
+   selectAllByDefault: true
    replicaCount: 1
    remoteWrite:
      - url: "http://vminsert-example-vmcluster.default.svc.cluster.local:8480/insert/0/prometheus/api/v1/write"
@@ -377,8 +363,7 @@ spec:
   # Add fields here
   replicaCount: 1
   configSecret: alertmanager-config
-  configSelector: {}
-  configNamespaceSelector: {}
+  selectAllByDefault: true
 EOF
 ```
 
@@ -479,8 +464,8 @@ spec:
   notifier:
       url: "http://vmalertmanager-example-alertmanager.default.svc:9093"
   evaluationInterval: "30s"
-  ruleNamespaceSelector: {}
-  ruleSelector: {}
+  selectAllByDefault: true
+
 EOF
 ```
 
@@ -513,12 +498,7 @@ kind: VMAgent
 metadata:
   name: example-vmagent
 spec:
-  serviceScrapeNamespaceSelector: {}
-  podScrapeNamespaceSelector: {}
-  podScrapeSelector: {}
-  serviceScrapeSelector: {}
-  staticScrapeSelector: {}
-  staticScrapeNamespaceSelector: {}  
+  selectAllByDefault: true
   replicaCount: 1
   remoteWrite:
     - url: "http://vmsingle-example-vmsingle-persisted.default.svc:8429/api/v1/write"
@@ -897,14 +877,7 @@ kind: VMAgent
 metadata:
    name: example-vmagent
 spec:
-   serviceScrapeNamespaceSelector: {}
-   podScrapeNamespaceSelector: {}
-   probeNamespaceSelector: {}
-   podScrapeSelector: {}
-   serviceScrapeSelector: {}
-   probeSelector: {}
-   nodeScrapeSelector: {}
-   nodeScrapeNamespaceSelector: {}
+   selectAllByDefault: true
    replicaCount: 1
    remoteWrite:
      - url: "http://vmsingle-example-vmsingle-persisted.default.svc:8429/api/v1/write"
@@ -1136,8 +1109,7 @@ metadata:
   namespace: default
 spec:
   ingress: {}
-  userNamespaceSelector: {}
-  userSelector: {}
+  selectAllByDefault: true
 EOF
 ```
  It will catch all `VMUser` at any kubernetes namespace and create `Ingress` record for it.
@@ -1478,7 +1450,7 @@ curl -u foo:bar https://vmsingle.example/com/metrics
 
 Selectors are defined with suffixes - `NamespaceSelector` and `Selector`. It allows configuring objects access control across namespaces and different environments.
 Following rules are applied:
-- `NamespaceSelector` and `Selector` - undefined.  All exist objects are matching.
+- `NamespaceSelector` and `Selector` - undefined, by default select nothing. With option set - `spec.selectAllByDefault: true`, select all objects of given type.
 - `NamespaceSelector` defined, `Selector` undefined. All objects are matching at namespaces for given `NamespaceSelector`.
 - `NamespaceSelector` undefined, `Selector` defined. All objects at `VMAgent`'s namespaces are matching for given `Selector`.
 - `NamespaceSelector` defined, `Selector` defined. Only objects at namespaces matched `NamespaceSelector` for given `Selector` are matching.

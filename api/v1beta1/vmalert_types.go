@@ -140,16 +140,22 @@ type VMAlertSpec struct {
 	// being created.
 	// +optional
 	EnforcedNamespaceLabel string `json:"enforcedNamespaceLabel,omitempty"`
+	// SelectAllByDefault changes default behavior for empty CRD selectors, such RuleSelector.
+	// with selectAllByDefault: true and empty serviceScrapeSelector and RuleNamespaceSelector
+	// Operator selects all exist serviceScrapes
+	// with selectAllByDefault: false - selects nothing
+	// +optional
+	SelectAllByDefault bool `json:"selectAllByDefault,omitempty"`
 	// RuleSelector selector to select which VMRules to mount for loading alerting
 	// rules from.
 	// Works in combination with NamespaceSelector.
-	// If both nil - match everything.
+	// If both nil - behaviour controlled by selectAllByDefault
 	// NamespaceSelector nil - only objects at VMAlert namespace.
 	// +optional
 	RuleSelector *metav1.LabelSelector `json:"ruleSelector,omitempty"`
 	// RuleNamespaceSelector to be selected for VMRules discovery.
 	// Works in combination with Selector.
-	// If both nil - match everything.
+	// If both nil - behaviour controlled by selectAllByDefault
 	// NamespaceSelector nil - only objects at VMAlert namespace.
 	// +optional
 	RuleNamespaceSelector *metav1.LabelSelector `json:"ruleNamespaceSelector,omitempty"`

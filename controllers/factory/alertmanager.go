@@ -632,29 +632,27 @@ func getSecretContentForAlertmanager(ctx context.Context, rclient client.Client,
 func buildAlertmanagerConfigWithCRDs(ctx context.Context, rclient client.Client, cr *victoriametricsv1beta1.VMAlertmanager, originConfig []byte, l logr.Logger) ([]byte, error) {
 	amConfigs := make(map[string]*victoriametricsv1beta1.VMAlertmanagerConfig)
 	var badCfgCount int
-	if cr.Spec.ConfigSelector != nil {
-		// handle case for config selector.
-		namespaces, objSelector, err := getNSWithSelector(ctx, rclient, cr.Spec.ConfigNamespaceSelector, cr.Spec.ConfigSelector, cr.Namespace)
-		if err != nil {
-			return nil, err
-		}
-		if err := visitObjectsWithSelector(ctx, rclient, namespaces, &victoriametricsv1beta1.VMAlertmanagerConfigList{}, objSelector, func(list client.ObjectList) {
-			ams := list.(*victoriametricsv1beta1.VMAlertmanagerConfigList)
-			for i := range ams.Items {
-				item := ams.Items[i]
-				if !item.DeletionTimestamp.IsZero() {
-					continue
-				}
-				if err := item.Validate(); err != nil {
-					l.Error(err, "validation failed for alertmanager config")
-					badCfgCount++
-					continue
-				}
-				amConfigs[item.AsKey()] = &item
+	// handle case for config selector.
+	namespaces, objSelector, err := getNSWithSelector(ctx, rclient, cr.Spec.ConfigNamespaceSelector, cr.Spec.ConfigSelector, cr.Namespace)
+	if err != nil {
+		return nil, err
+	}
+	if err := visitObjectsWithSelector(ctx, rclient, namespaces, &victoriametricsv1beta1.VMAlertmanagerConfigList{}, objSelector, cr.Spec.SelectAllByDefault, func(list client.ObjectList) {
+		ams := list.(*victoriametricsv1beta1.VMAlertmanagerConfigList)
+		for i := range ams.Items {
+			item := ams.Items[i]
+			if !item.DeletionTimestamp.IsZero() {
+				continue
 			}
-		}); err != nil {
-			return nil, fmt.Errorf("cannot select alertmanager configs: %w", err)
+			if err := item.Validate(); err != nil {
+				l.Error(err, "validation failed for alertmanager config")
+				badCfgCount++
+				continue
+			}
+			amConfigs[item.AsKey()] = &item
 		}
+	}); err != nil {
+		return nil, fmt.Errorf("cannot select alertmanager configs: %w", err)
 	}
 	l.Info("selected alertmanager configs", "len", len(amConfigs), "invalid configs", badCfgCount)
 	cfg, err := alertmanager.BuildConfig(ctx, rclient, originConfig, amConfigs)

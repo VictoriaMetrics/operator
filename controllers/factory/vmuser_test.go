@@ -353,6 +353,7 @@ func Test_buildVMAuthConfig(t *testing.T) {
 						Name:      "test-vmauth",
 						Namespace: "default",
 					},
+					Spec: v1beta1.VMAuthSpec{SelectAllByDefault: true},
 				},
 			},
 			predefinedObjects: []runtime.Object{
@@ -413,6 +414,7 @@ func Test_buildVMAuthConfig(t *testing.T) {
 						Name:      "test-vmauth",
 						Namespace: "default",
 					},
+					Spec: v1beta1.VMAuthSpec{SelectAllByDefault: true},
 				},
 			},
 			predefinedObjects: []runtime.Object{
@@ -497,6 +499,130 @@ func Test_buildVMAuthConfig(t *testing.T) {
 - url_prefix: http://vmagent-test.default.svc:8429
   username: some-user
   password: generated-password
+`,
+		},
+		{
+			name: "default cfg with empty selectors",
+			args: args{
+				vmauth: &v1beta1.VMAuth{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-vmauth",
+						Namespace: "default",
+					},
+				},
+			},
+			predefinedObjects: []runtime.Object{
+				&v1beta1.VMUser{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "user-1",
+						Namespace: "default",
+					},
+					Spec: v1beta1.VMUserSpec{
+						BearerToken: pointer.StringPtr("bearer"),
+						TargetRefs: []v1beta1.TargetRef{
+							{
+								Static: &v1beta1.StaticRef{URL: "http://some-static"},
+								Paths:  []string{"/"},
+							},
+						},
+					},
+				},
+				&v1beta1.VMUser{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "user-2",
+						Namespace: "default",
+					},
+					Spec: v1beta1.VMUserSpec{
+						BearerToken: pointer.StringPtr("bearer-token-2"),
+						TargetRefs: []v1beta1.TargetRef{
+							{
+								CRD: &v1beta1.CRDRef{
+									Kind:      "VMAgent",
+									Name:      "test",
+									Namespace: "default",
+								},
+								Paths: []string{"/"},
+							},
+						},
+					},
+				},
+				&v1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "default",
+					},
+				},
+			},
+			want: `users:
+- url_prefix: http://localhost:8428
+  bearer_token: some-default-token
+`,
+		},
+		{
+			name: "vmauth ns selector",
+			args: args{
+				vmauth: &v1beta1.VMAuth{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-vmauth",
+						Namespace: "default",
+					},
+					Spec: v1beta1.VMAuthSpec{SelectAllByDefault: false, UserNamespaceSelector: &metav1.LabelSelector{}},
+				},
+			},
+			predefinedObjects: []runtime.Object{
+				&v1.Namespace{
+					ObjectMeta: metav1.ObjectMeta{Name: "default"},
+				},
+				&v1.Namespace{
+					ObjectMeta: metav1.ObjectMeta{Name: "monitoring"},
+				},
+				&v1beta1.VMUser{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "user-11",
+						Namespace: "default",
+					},
+					Spec: v1beta1.VMUserSpec{
+						BearerToken: pointer.StringPtr("bearer"),
+						TargetRefs: []v1beta1.TargetRef{
+							{
+								Static: &v1beta1.StaticRef{URL: "http://some-static-15"},
+								Paths:  []string{"/"},
+							},
+						},
+					},
+				},
+				&v1beta1.VMUser{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "user-15",
+						Namespace: "monitoring",
+					},
+					Spec: v1beta1.VMUserSpec{
+						BearerToken: pointer.StringPtr("bearer-token-10"),
+						TargetRefs: []v1beta1.TargetRef{
+							{
+								Static: nil,
+								CRD: &v1beta1.CRDRef{
+									Kind:      "VMAgent",
+									Name:      "test",
+									Namespace: "default",
+								},
+								Paths: []string{"/"},
+							},
+						},
+					},
+				},
+				&v1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "default",
+					},
+				},
+			},
+			want: `users:
+- url_prefix: http://some-static-15
+  bearer_token: bearer
+- url_prefix: http://vmagent-test.default.svc:8429
+  bearer_token: bearer-token-10
 `,
 		},
 	}

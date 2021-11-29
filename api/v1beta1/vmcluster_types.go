@@ -124,6 +124,8 @@ func init() {
 }
 
 type VMSelect struct {
+	// Name is deprecated and will be removed at 0.22.0 release
+	// +deprecated
 	Name string `json:"name,omitempty"`
 	// PodMetadata configures Labels and Annotations which are propagated to the VMSelect pods.
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
@@ -287,6 +289,8 @@ type InsertPorts struct {
 }
 
 type VMInsert struct {
+	// Name is deprecated and will be removed at 0.22.0 release
+	// +deprecated
 	// +optional
 	Name string `json:"name,omitempty"`
 
@@ -315,7 +319,7 @@ type VMInsert struct {
 	// +optional
 	// +kubebuilder:validation:Enum=INFO;WARN;ERROR;FATAL;PANIC
 	LogLevel string `json:"logLevel,omitempty"`
-	// ReplicaCount is the expected size of the VMSelect cluster. The controller will
+	// ReplicaCount is the expected size of the VMInsert cluster. The controller will
 	// eventually make the size of the running cluster equal to the expected
 	// size.
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Number of pods",xDescriptors="urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom"
@@ -426,6 +430,8 @@ func (i VMInsert) GetNameWithPrefix(clusterName string) string {
 }
 
 type VMStorage struct {
+	// Name is deprecated and will be removed at 0.22.0 release
+	// +deprecated
 	// +optional
 	Name string `json:"name,omitempty"`
 
@@ -455,7 +461,7 @@ type VMStorage struct {
 	// +optional
 	// +kubebuilder:validation:Enum=INFO;WARN;ERROR;FATAL;PANIC
 	LogLevel string `json:"logLevel,omitempty"`
-	// ReplicaCount is the expected size of the VMSelect cluster. The controller will
+	// ReplicaCount is the expected size of the VMStorage cluster. The controller will
 	// eventually make the size of the running cluster equal to the expected
 	// size.
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Number of pods",xDescriptors="urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom"

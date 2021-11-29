@@ -1,11 +1,8 @@
-
----
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.6.2
-  creationTimestamp: null
   name: vmalertmanagerconfigs.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -2476,7 +2473,8 @@ spec:
                   type: string
                 routes:
                   description: Child routes.
-                  items: {}
+                  items:
+                    x-kubernetes-preserve-unknown-fields: true
                   type: array
               required:
               - receiver
@@ -2495,9 +2493,3 @@ spec:
   - name: v1beta1
     served: true
     storage: true
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: []
-  storedVersions: []

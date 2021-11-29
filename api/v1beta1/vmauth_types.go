@@ -124,18 +124,23 @@ type VMAuthSpec struct {
 	// +optional
 	Port string `json:"port,omitempty"`
 
+	// SelectAllByDefault changes default behavior for empty CRD selectors, such userSelector.
+	// with selectAllByDefault: true and empty userSelector and userNamespaceSelector
+	// Operator selects all exist users
+	// with selectAllByDefault: false - selects nothing
+	// +optional
+	SelectAllByDefault bool `json:"selectAllByDefault,omitempty"`
 	// UserSelector defines VMUser to be selected for config file generation.
 	// Works in combination with NamespaceSelector.
-	// If both nil - match everything.
 	// NamespaceSelector nil - only objects at VMAuth namespace.
-	// Selector nil - only objects at NamespaceSelector namespaces.
+	// If both nil - behaviour controlled by selectAllByDefault
 	// +optional
 	UserSelector *metav1.LabelSelector `json:"userSelector,omitempty"`
 	// UserNamespaceSelector Namespaces to be selected for  VMAuth discovery.
 	// Works in combination with Selector.
-	// If both nil - match everything.
 	// NamespaceSelector nil - only objects at VMAuth namespace.
 	// Selector nil - only objects at NamespaceSelector namespaces.
+	// If both nil - behaviour controlled by selectAllByDefault
 	// +optional
 	UserNamespaceSelector *metav1.LabelSelector `json:"userNamespaceSelector,omitempty"`
 

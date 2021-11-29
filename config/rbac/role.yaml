@@ -75,6 +75,7 @@ rules:
   resources:
     - statefulsets
     - statefulsets/finalizers
+    - statefulsets/status
   verbs:
     - '*'
 - apiGroups:

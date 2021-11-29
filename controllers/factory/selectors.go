@@ -36,7 +36,7 @@ func getNSWithSelector(ctx context.Context, rclient client.Client, nsSelector, o
 	}
 
 	// if namespaces isn't nil, then nameSpaceSelector is defined
-	// but userSelector maybe be nil and we must set it to catch all value
+	// but userSelector maybe be nil and we must set it to catch all values
 	if objectSelector == nil {
 		objectSelector = &metav1.LabelSelector{}
 	}
@@ -49,9 +49,14 @@ func getNSWithSelector(ctx context.Context, rclient client.Client, nsSelector, o
 }
 
 // lists api objects for given api objects type matched given selectors
-func visitObjectsWithSelector(ctx context.Context, rclient client.Client, ns []string, objectListType client.ObjectList, selector labels.Selector, cb func(list client.ObjectList)) error {
+func visitObjectsWithSelector(ctx context.Context, rclient client.Client, ns []string, objectListType client.ObjectList, selector labels.Selector, selectAllByDefault bool, cb func(list client.ObjectList)) error {
 
-	// list across all namespaces
+	// fast path, select nothing
+	// nsSelector = nil, objectSelector = nil, selectAllByDefault=false
+	if ns == nil && !selectAllByDefault {
+		return nil
+	}
+	// list across all namespaces, selectAllByDefault=true
 	if ns == nil {
 		if err := rclient.List(ctx, objectListType, &client.ListOptions{LabelSelector: selector}, config.MustGetNamespaceListOptions()); err != nil {
 			return err

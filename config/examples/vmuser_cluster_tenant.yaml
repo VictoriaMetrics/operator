@@ -1,0 +1,21 @@
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMUser
+metadata:
+  name: vmuser-tenant-1
+spec:
+  bearerToken: some-token
+  targetRefs:
+    - crd:
+        kind: VMCluster/vminsert
+        name: test-persistent
+        namespace: default
+      target_path_suffix: "/insert/1"
+    - crd:
+        kind: VMCluster/vmselect
+        name: test-persistent
+        namespace: default
+      target_path_suffix: "/select/1"
+    - static:
+        url: http://vmselect-test-persistent.default.svc:8481/
+      paths:
+        - /internal/resetRollupResultCache

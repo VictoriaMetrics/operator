@@ -75,12 +75,14 @@ spec:
                     type: string
                   value:
                     description: 'Variable references $(VAR_NAME) are expanded using
-                      the previous defined environment variables in the container
+                      the previously defined environment variables in the container
                       and any service environment variables. If a variable cannot
                       be resolved, the reference in the input string will be unchanged.
-                      The $(VAR_NAME) syntax can be escaped with a double $$, ie:
-                      $$(VAR_NAME). Escaped references will never be expanded, regardless
-                      of whether the variable exists or not. Defaults to "".'
+                      Double $$ are reduced to a single $, which allows for escaping
+                      the $(VAR_NAME) syntax: i.e. "$$(VAR_NAME)" will produce the
+                      string literal "$(VAR_NAME)". Escaped references will never
+                      be expanded, regardless of whether the variable exists or not.
+                      Defaults to "".'
                     type: string
                 required:
                 - name
@@ -210,7 +212,9 @@ spec:
                                       description: Resource is an ObjectRef to another
                                         Kubernetes resource in the namespace of the
                                         Ingress object. If resource is specified,
-                                        serviceName and servicePort must not be specified.
+                                        a service.Name and service.Port must not be
+                                        specified. This is a mutually exclusive setting
+                                        with "Service".
                                       properties:
                                         apiGroup:
                                           description: APIGroup is the group for the
@@ -231,25 +235,45 @@ spec:
                                       - kind
                                       - name
                                       type: object
-                                    serviceName:
-                                      description: Specifies the name of the referenced
-                                        service.
-                                      type: string
-                                    servicePort:
-                                      anyOf:
-                                      - type: integer
-                                      - type: string
-                                      description: Specifies the port of the referenced
-                                        service.
-                                      x-kubernetes-int-or-string: true
+                                    service:
+                                      description: Service references a Service as
+                                        a Backend. This is a mutually exclusive setting
+                                        with "Resource".
+                                      properties:
+                                        name:
+                                          description: Name is the referenced service.
+                                            The service must exist in the same namespace
+                                            as the Ingress object.
+                                          type: string
+                                        port:
+                                          description: Port of the referenced service.
+                                            A port name or port number is required
+                                            for a IngressServiceBackend.
+                                          properties:
+                                            name:
+                                              description: Name is the name of the
+                                                port on the Service. This is a mutually
+                                                exclusive setting with "Number".
+                                              type: string
+                                            number:
+                                              description: Number is the numerical
+                                                port number (e.g. 80) on the Service.
+                                                This is a mutually exclusive setting
+                                                with "Name".
+                                              format: int32
+                                              type: integer
+                                          type: object
+                                      required:
+                                      - name
+                                      type: object
                                   type: object
                                 path:
                                   description: Path is matched against the path of
                                     an incoming request. Currently it can contain
                                     characters disallowed from the conventional "path"
                                     part of a URL as defined by RFC 3986. Paths must
-                                    begin with a '/'. When unspecified, all paths
-                                    from incoming requests are matched.
+                                    begin with a '/' and must be present when using
+                                    PathType with value "Exact" or "Prefix".
                                   type: string
                                 pathType:
                                   description: 'PathType determines the interpretation
@@ -270,13 +294,14 @@ spec:
                                     IngressClass. Implementations can treat this as
                                     a separate PathType   or treat it identically
                                     to Prefix or Exact path types. Implementations
-                                    are required to support all path types. Defaults
-                                    to ImplementationSpecific.'
+                                    are required to support all path types.'
                                   type: string
                               required:
                               - backend
+                              - pathType
                               type: object
                             type: array
+                            x-kubernetes-list-type: atomic
                         required:
                         - paths
                         type: object
@@ -298,12 +323,13 @@ spec:
                         items:
                           type: string
                         type: array
+                        x-kubernetes-list-type: atomic
                       secretName:
                         description: SecretName is the name of the secret used to
-                          terminate SSL traffic on 443. Field is left optional to
-                          allow SSL routing based on SNI hostname alone. If the SNI
-                          host in a listener conflicts with the "Host" header field
-                          used by an IngressRule, the SNI host is used for termination
+                          terminate TLS traffic on port 443. Field is left optional
+                          to allow TLS routing based on SNI hostname alone. If the
+                          SNI host in a listener conflicts with the "Host" header
+                          field used by an IngressRule, the SNI host is used for termination
                           and value of the Host header is used for routing.
                         type: string
                     type: object

@@ -15,7 +15,7 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/config"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/api/extensions/v1beta1"
+	v12 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -367,7 +367,7 @@ func CreateOrUpdateVMAuthIngress(ctx context.Context, rclient client.Client, cr 
 		return nil
 	}
 	newIngress := buildIngressConfig(cr)
-	var existIngress v1beta1.Ingress
+	var existIngress v12.Ingress
 	if err := rclient.Get(ctx, types.NamespacedName{Namespace: newIngress.Namespace, Name: newIngress.Name}, &existIngress); err != nil {
 		if errors.IsNotFound(err) {
 			return rclient.Create(ctx, newIngress)
@@ -379,18 +379,20 @@ func CreateOrUpdateVMAuthIngress(ctx context.Context, rclient client.Client, cr 
 	return rclient.Update(ctx, newIngress)
 }
 
-var defaultPt = v1beta1.PathTypePrefix
+var defaultPt = v12.PathTypePrefix
 
-func buildIngressConfig(cr *victoriametricsv1beta1.VMAuth) *v1beta1.Ingress {
-	defaultRule := v1beta1.IngressRule{
-		IngressRuleValue: v1beta1.IngressRuleValue{
-			HTTP: &v1beta1.HTTPIngressRuleValue{
-				Paths: []v1beta1.HTTPIngressPath{
+func buildIngressConfig(cr *victoriametricsv1beta1.VMAuth) *v12.Ingress {
+	defaultRule := v12.IngressRule{
+		IngressRuleValue: v12.IngressRuleValue{
+			HTTP: &v12.HTTPIngressRuleValue{
+				Paths: []v12.HTTPIngressPath{
 					{
 						Path: "/",
-						Backend: v1beta1.IngressBackend{
-							ServiceName: cr.PrefixedName(),
-							ServicePort: intstr.Parse("http"),
+						Backend: v12.IngressBackend{
+							Service: &v12.IngressServiceBackend{
+								Name: cr.PrefixedName(),
+								Port: v12.ServiceBackendPort{Name: "http"},
+							},
 						},
 						PathType: &defaultPt,
 					},
@@ -398,12 +400,12 @@ func buildIngressConfig(cr *victoriametricsv1beta1.VMAuth) *v1beta1.Ingress {
 			},
 		},
 	}
-	spec := v1beta1.IngressSpec{
-		Rules:            []v1beta1.IngressRule{},
+	spec := v12.IngressSpec{
+		Rules:            []v12.IngressRule{},
 		IngressClassName: cr.Spec.Ingress.ClassName,
 	}
 	if cr.Spec.Ingress.TlsSecretName != "" {
-		spec.TLS = []v1beta1.IngressTLS{
+		spec.TLS = []v12.IngressTLS{
 			{
 				SecretName: cr.Spec.Ingress.TlsSecretName,
 				Hosts:      cr.Spec.Ingress.TlsHosts,
@@ -421,7 +423,7 @@ func buildIngressConfig(cr *victoriametricsv1beta1.VMAuth) *v1beta1.Ingress {
 	spec.Rules = append(spec.Rules, cr.Spec.Ingress.ExtraRules...)
 	spec.TLS = append(spec.TLS, cr.Spec.Ingress.ExtraTLS...)
 	lbls := labels.Merge(cr.Spec.Ingress.Labels, cr.SelectorLabels())
-	return &v1beta1.Ingress{
+	return &v12.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),
 			Namespace:       cr.Namespace,

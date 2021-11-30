@@ -24,7 +24,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/api/core/v1"
-	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
+	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -222,14 +222,14 @@ func (in *EmbeddedIngress) DeepCopyInto(out *EmbeddedIngress) {
 	}
 	if in.ExtraRules != nil {
 		in, out := &in.ExtraRules, &out.ExtraRules
-		*out = make([]extensionsv1beta1.IngressRule, len(*in))
+		*out = make([]networkingv1.IngressRule, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
 	if in.ExtraTLS != nil {
 		in, out := &in.ExtraTLS, &out.ExtraTLS
-		*out = make([]extensionsv1beta1.IngressTLS, len(*in))
+		*out = make([]networkingv1.IngressTLS, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}

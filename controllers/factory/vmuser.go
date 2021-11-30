@@ -365,6 +365,7 @@ func generateVMAuthConfig(users []*v1beta1.VMUser, crdCache map[string]string) (
 	return yaml.Marshal(cfg)
 }
 
+// generates routing config for given target refs
 func genUrlMaps(userName string, refs []v1beta1.TargetRef, result yaml.MapSlice, crdUrlCache map[string]string) (yaml.MapSlice, error) {
 	var urlMaps []yaml.MapSlice
 	handleRef := func(ref v1beta1.TargetRef) (string, error) {
@@ -406,6 +407,7 @@ func genUrlMaps(userName string, refs []v1beta1.TargetRef, result yaml.MapSlice,
 		}
 		return urlPrefix, nil
 	}
+	// fast path for single or empty route
 	if len(refs) == 1 && len(refs[0].Paths) < 2 {
 		srcPaths := refs[0].Paths
 		var isDefaultRoute bool
@@ -419,7 +421,6 @@ func genUrlMaps(userName string, refs []v1beta1.TargetRef, result yaml.MapSlice,
 			case "/", "/*", "/.*":
 				isDefaultRoute = true
 			}
-
 		}
 		// special case, use different config syntax.
 		if isDefaultRoute {
@@ -438,7 +439,7 @@ func genUrlMaps(userName string, refs []v1beta1.TargetRef, result yaml.MapSlice,
 	}
 
 	for i := range refs {
-		urlMap := yaml.MapSlice{}
+		var urlMap yaml.MapSlice
 		ref := refs[i]
 		if ref.Static == nil && ref.CRD == nil {
 			continue
@@ -449,15 +450,27 @@ func genUrlMaps(userName string, refs []v1beta1.TargetRef, result yaml.MapSlice,
 		}
 
 		paths := ref.Paths
-		if len(paths) == 0 {
-			paths = append(paths, "/.*")
-		}
-		if len(paths) == 1 {
+		switch len(paths) {
+		case 0:
+			// special case for
+			// https://github.com/VictoriaMetrics/operator/issues/379
+			switch {
+			case len(refs) > 1 && ref.CRD != nil && ref.CRD.Kind == "VMCluster/vminsert":
+				paths = addVMInsertPaths(paths)
+			case len(refs) > 1 && ref.CRD != nil && ref.CRD.Kind == "VMCluster/vmselect":
+				paths = addVMSelectPaths(paths)
+			default:
+				paths = append(paths, "/.*")
+			}
+
+		case 1:
 			switch paths[0] {
 			case "/", "/*":
 				paths = []string{"/.*"}
 			}
+		default:
 		}
+
 		urlMap = append(urlMap, yaml.MapItem{
 			Key:   "url_prefix",
 			Value: urlPrefix,
@@ -631,4 +644,31 @@ func buildVMUserSecret(src *v1beta1.VMUser) v1.Secret {
 		s.Data["password"] = []byte(*src.Spec.Password)
 	}
 	return s
+}
+
+func addVMInsertPaths(src []string) []string {
+	return append(src, "/prometheus/api/v1/write",
+		"/prometheus/api/v1/import.*",
+		"/influx/.*",
+		"/datadog/.*")
+}
+
+func addVMSelectPaths(src []string) []string {
+	return append(src, "/vmui",
+		"/vmui/vmui",
+		"/graph",
+		"/prometheus/graph",
+		"/prometheus/api/v1/label.*",
+		"/graphite.*",
+		"/prometheus/api/v1/query.*",
+		"/prometheus/api/v1/rules",
+		"/prometheus/api/v1/alerts",
+		"/prometheus/api/v1/metadata",
+		"/prometheus/api/v1/rules",
+		"/prometheus/api/v1/series.*",
+		"/prometheus/api/v1/status.*",
+		"/prometheus/api/v1/export.*",
+		"/prometheus/federate",
+		"/prometheus/api/v1/admin/tsdb/delete_series",
+	)
 }

@@ -91,7 +91,7 @@ func TestSelectRules(t *testing.T) {
 				l: logf.Log.WithName("unit-test"),
 			},
 			predefinedObjects: []runtime.Object{
-				//we need namespace for filter + object inside this namespace
+				// we need namespace for filter + object inside this namespace
 				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
 				&victoriametricsv1beta1.VMRule{ObjectMeta: metav1.ObjectMeta{Name: "error-alert", Namespace: "default"}, Spec: victoriametricsv1beta1.VMRuleSpec{
 					Groups: []victoriametricsv1beta1.RuleGroup{{Name: "error-alert", Interval: "10s", Rules: []victoriametricsv1beta1.Rule{
@@ -109,7 +109,7 @@ func TestSelectRules(t *testing.T) {
 				l: logf.Log.WithName("unit-test"),
 			},
 			predefinedObjects: []runtime.Object{
-				//we need namespace for filter + object inside this namespace
+				// we need namespace for filter + object inside this namespace
 				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
 				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "monitoring", Labels: map[string]string{"monitoring": "enabled"}}},
 				&victoriametricsv1beta1.VMRule{ObjectMeta: metav1.ObjectMeta{Name: "error-alert", Namespace: "default"}, Spec: victoriametricsv1beta1.VMRuleSpec{

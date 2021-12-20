@@ -18,9 +18,9 @@ func getNSWithSelector(ctx context.Context, rclient client.Client, nsSelector, o
 		return nil, nil, nil
 	}
 	var namespaces []string
-	//list namespaces matched by  namespaceselector
-	//for each namespace apply list with  selector
-	//combine result
+	// list namespaces matched by  namespaceselector
+	// for each namespace apply list with  selector
+	// combine result
 	switch {
 	case nsSelector == nil:
 		namespaces = append(namespaces, objNS)

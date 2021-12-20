@@ -219,7 +219,7 @@ func SelectRules(ctx context.Context, cr *victoriametricsv1beta1.VMAlert, rclien
 	rules := map[string]string{}
 	namespaces := []string{}
 
-	//use only object's namespace
+	// use only object's namespace
 	switch {
 	case cr.Spec.RuleNamespaceSelector == nil:
 		namespaces = append(namespaces, cr.Namespace)
@@ -227,7 +227,7 @@ func SelectRules(ctx context.Context, cr *victoriametricsv1beta1.VMAlert, rclien
 		// all namespaces matched
 		namespaces = nil
 	default:
-		//filter for specific namespaces
+		// filter for specific namespaces
 		nsSelector, err := metav1.LabelSelectorAsSelector(cr.Spec.RuleNamespaceSelector)
 		if err != nil {
 			return nil, fmt.Errorf("cannot convert ruleNamespace selector: %w", err)
@@ -238,8 +238,8 @@ func SelectRules(ctx context.Context, cr *victoriametricsv1beta1.VMAlert, rclien
 		}
 	}
 
-	//if namespaces isn't nil,then ruleselector cannot be nil
-	//and we filter everything at specified namespaces
+	// if namespaces isn't nil,then ruleselector cannot be nil
+	// and we filter everything at specified namespaces
 	if namespaces != nil && cr.Spec.RuleSelector == nil {
 		cr.Spec.RuleSelector = &metav1.LabelSelector{}
 	}
@@ -250,7 +250,7 @@ func SelectRules(ctx context.Context, cr *victoriametricsv1beta1.VMAlert, rclien
 	}
 	promRules := []*victoriametricsv1beta1.VMRule{}
 
-	//list all namespaces for rules with selector
+	// list all namespaces for rules with selector
 	if namespaces == nil {
 		log.Info("listing all namespaces for rules")
 		ruleNs := &victoriametricsv1beta1.VMRuleList{}
@@ -301,7 +301,7 @@ func SelectRules(ctx context.Context, cr *victoriametricsv1beta1.VMAlert, rclien
 	}
 
 	if len(rules) == 0 {
-		//inject default rule
+		// inject default rule
 		rules["default-vmalert.yaml"] = defAlert
 	}
 
@@ -323,22 +323,6 @@ func generateContent(promRule victoriametricsv1beta1.VMRuleSpec, enforcedNsLabel
 					promRule.Groups[gi].Rules[ri].Labels = map[string]string{}
 				}
 				promRule.Groups[gi].Rules[ri].Labels[enforcedNsLabel] = ns
-				//TODO its required by openshift, add it later?
-				//expr := r.Expr.String()
-				//parsedExpr, err := promql.ParseExpr(expr)
-				//if err != nil {
-				//	return "", errors.Wrap(err, "failed to parse promql expression")
-				//}
-				//err = injectproxy.SetRecursive(parsedExpr, []*labels.Matcher{{
-				//	Name:  enforcedNsLabel,
-				//	Type:  labels.MatchEqual,
-				//	Value: ns,
-				//}})
-				//if err != nil {
-				//	return "", fmt.Errorf("failed to inject labels to expression: %w",err)
-				//}
-
-				//				promRule.Groups[gi].Rules[ri].Expr = intstr.FromString(parsedExpr.String())
 			}
 		}
 	}
@@ -358,7 +342,7 @@ func generateContent(promRule victoriametricsv1beta1.VMRuleSpec, enforcedNsLabel
 // simplicity should be sufficient.
 // [1] https://en.wikipedia.org/wiki/Bin_packing_problem#First-fit_algorithm
 func makeRulesConfigMaps(cr *victoriametricsv1beta1.VMAlert, ruleFiles map[string]string) ([]v1.ConfigMap, error) {
-	//check if none of the rule files is too large for a single ConfigMap
+	// check if none of the rule files is too large for a single ConfigMap
 	for filename, file := range ruleFiles {
 		if len(file) > maxConfigMapDataSize {
 			return nil, fmt.Errorf(

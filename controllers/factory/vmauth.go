@@ -80,7 +80,7 @@ func CreateOrUpdateVMAuth(ctx context.Context, cr *victoriametricsv1beta1.VMAuth
 		}
 	}
 
-	//we have to create empty or full cm first
+	// we have to create empty or full cm first
 	err := createOrUpdateVMAuthConfig(ctx, rclient, cr)
 	if err != nil {
 		l.Error(err, "cannot create configmap")

@@ -146,7 +146,7 @@ func performRollingUpdateOnSts(ctx context.Context, wasRecreated bool, rclient c
 	// perform update for not updated pods
 	for _, pod := range podsForUpdate {
 		l.Info("updating pod", "pod", pod.Name)
-		//we have to delete pod and wait for it readiness
+		// we have to delete pod and wait for it readiness
 		err := rclient.Delete(ctx, &pod, &client.DeleteOptions{GracePeriodSeconds: pointer.Int64Ptr(30)})
 		if err != nil {
 			return err

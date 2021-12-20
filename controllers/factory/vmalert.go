@@ -136,7 +136,6 @@ func CreateOrUpdateVMAlert(ctx context.Context, cr *victoriametricsv1beta1.VMAle
 	err = rclient.Get(ctx, types.NamespacedName{Namespace: newDeploy.Namespace, Name: newDeploy.Name}, currDeploy)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			//deploy not exists create it
 			err := rclient.Create(ctx, newDeploy)
 			if err != nil {
 				return reconcile.Result{}, fmt.Errorf("cannot create vmalert deploy: %w", err)
@@ -409,7 +408,6 @@ func buildVMAlertArgs(cr *victoriametricsv1beta1.VMAlert, ruleConfigMapNames []s
 	}
 
 	if cr.Spec.RemoteWrite != nil {
-		//this param cannot be used until v1.35.5 vm release with flag breaking changes
 		args = append(args, fmt.Sprintf("-remoteWrite.url=%s", cr.Spec.RemoteWrite.URL))
 		if cr.Spec.RemoteWrite.BasicAuth != nil {
 			if s, ok := remoteSecrets["remoteWrite"]; ok {
@@ -729,8 +727,8 @@ func BuildNotifiersArgs(cr *victoriametricsv1beta1.VMAlert, ntBasicAuth map[stri
 				pass = s.password
 			}
 		}
-		authUser.flagSetting += fmt.Sprintf("\"%s\",", strings.Replace(user, `"`, `\"`, -1))
-		authPassword.flagSetting += fmt.Sprintf("\"%s\",", strings.Replace(pass, `"`, `\"`, -1))
+		authUser.flagSetting += fmt.Sprintf("\"%s\",", strings.ReplaceAll(user, `"`, `\"`))
+		authPassword.flagSetting += fmt.Sprintf("\"%s\",", strings.ReplaceAll(pass, `"`, `\"`))
 
 	}
 	notifierArgs = append(notifierArgs, url, authUser, authPassword)

@@ -98,7 +98,6 @@ func (r *VMSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return ctrl.Result{}, err
 	}
 
-	//create vmservicescrape for object by default
 	if !r.BaseConf.DisableSelfServiceScrapeCreation {
 		err := factory.CreateVMServiceScrapeFromService(ctx, r, svc, instance.MetricPath())
 		if err != nil {

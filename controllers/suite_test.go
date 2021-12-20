@@ -43,14 +43,6 @@ var cfg *rest.Config
 var k8sClient client.Client
 var testEnv *envtest.Environment
 
-//func TestAPIs(t *testing.T) {
-//	RegisterFailHandler(Fail)
-//
-//	RunSpecsWithDefaultAndCustomReporters(t,
-//		"Controller Suite",
-//		[]Reporter{printer.NewlineReporter{}})
-//}
-
 var _ = BeforeSuite(func(done Done) {
 	l := zap.New(zap.WriteTo(GinkgoWriter), zap.Level(zapcore.DebugLevel))
 	logf.SetLogger(l)

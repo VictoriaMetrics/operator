@@ -150,7 +150,7 @@ type VMAlertmanagerSpec struct {
 	// +optional
 	SchedulerName string `json:"schedulerName,omitempty"`
 	// RuntimeClassName - defines runtime class for kubernetes pod.
-	//https://kubernetes.io/docs/concepts/containers/runtime-class/
+	// https://kubernetes.io/docs/concepts/containers/runtime-class/
 	// +optional
 	RuntimeClassName *string `json:"runtimeClassName,omitempty"`
 	// PodSecurityPolicyName - defines name for podSecurityPolicy

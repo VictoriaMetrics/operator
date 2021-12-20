@@ -285,7 +285,7 @@ func buildProbe(container v1.Container, ep *victoriametricsv1beta1.EmbeddedProbe
 	}
 
 	if rp == nil {
-		readinessProbeHandler := v1.Handler{
+		readinessProbeHandler := v1.ProbeHandler{
 			HTTPGet: &v1.HTTPGetAction{
 				Port:   intstr.Parse(port),
 				Scheme: "HTTP",
@@ -293,7 +293,7 @@ func buildProbe(container v1.Container, ep *victoriametricsv1beta1.EmbeddedProbe
 			},
 		}
 		rp = &v1.Probe{
-			Handler:          readinessProbeHandler,
+			ProbeHandler:     readinessProbeHandler,
 			TimeoutSeconds:   probeTimeoutSeconds,
 			PeriodSeconds:    5,
 			FailureThreshold: 10,
@@ -301,7 +301,7 @@ func buildProbe(container v1.Container, ep *victoriametricsv1beta1.EmbeddedProbe
 	}
 	if needAddLiveness {
 		if lp == nil {
-			probeHandler := v1.Handler{
+			probeHandler := v1.ProbeHandler{
 				HTTPGet: &v1.HTTPGetAction{
 					Port:   intstr.Parse(port),
 					Scheme: "HTTP",
@@ -309,7 +309,7 @@ func buildProbe(container v1.Container, ep *victoriametricsv1beta1.EmbeddedProbe
 				},
 			}
 			lp = &v1.Probe{
-				Handler:          probeHandler,
+				ProbeHandler:     probeHandler,
 				TimeoutSeconds:   probeTimeoutSeconds,
 				FailureThreshold: 10,
 				PeriodSeconds:    5,

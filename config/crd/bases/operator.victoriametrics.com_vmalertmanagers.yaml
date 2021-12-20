@@ -653,7 +653,11 @@ spec:
                             type: object
                           resources:
                             description: 'Resources represents the minimum resources
-                              the volume should have. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources'
+                              the volume should have. If RecoverVolumeExpansionFailure
+                              feature is enabled users are allowed to specify resource
+                              requirements that are lower than previous value but
+                              must still be higher than capacity recorded in the status
+                              field of the claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources'
                             properties:
                               limits:
                                 additionalProperties:
@@ -749,6 +753,27 @@ spec:
                             items:
                               type: string
                             type: array
+                          allocatedResources:
+                            additionalProperties:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            description: The storage resource within AllocatedResources
+                              tracks the capacity allocated to a PVC. It may be larger
+                              than the actual capacity when a volume expansion operation
+                              is requested. For storage quota, the larger value from
+                              allocatedResources and PVC.spec.resources is used. If
+                              allocatedResources is not set, PVC.spec.resources alone
+                              is used for quota calculation. If a volume expansion
+                              capacity request is lowered, allocatedResources is only
+                              lowered if there are no expansion operations in progress
+                              and if the actual volume capacity is equal or lower
+                              than the requested capacity. This is an alpha field
+                              and requires enabling RecoverVolumeExpansionFailure
+                              feature.
+                            type: object
                           capacity:
                             additionalProperties:
                               anyOf:
@@ -800,6 +825,13 @@ spec:
                             type: array
                           phase:
                             description: Phase represents the current phase of PersistentVolumeClaim.
+                            type: string
+                          resizeStatus:
+                            description: ResizeStatus stores status of resize operation.
+                              ResizeStatus is not set by default but when expansion
+                              is complete resizeStatus is set to empty string by resize
+                              controller or kubelet. This is an alpha field and requires
+                              enabling RecoverVolumeExpansionFailure feature.
                             type: string
                         type: object
                     type: object

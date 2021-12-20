@@ -263,7 +263,9 @@ func RunManager(ctx context.Context) error {
 		setupLog.Error(err, "cannot add runnable")
 		return err
 	}
-	go httpserver.Serve(*listenAddr, requestHandler)
+	if len(*listenAddr) > 0 {
+		go httpserver.Serve(*listenAddr, requestHandler)
+	}
 	if err := controllers.StartWatchForVMUserSecretRefs(ctx, mgr.GetClient(), mgr.GetConfig()); err != nil {
 		return err
 	}
@@ -272,9 +274,12 @@ func RunManager(ctx context.Context) error {
 		setupLog.Error(err, "problem running manager")
 		return err
 	}
-	if err := httpserver.Stop(*listenAddr); err != nil {
-		setupLog.Error(err, "failed to gracefully stop HTTP server")
+	if len(*listenAddr) > 0 {
+		if err := httpserver.Stop(*listenAddr); err != nil {
+			setupLog.Error(err, "failed to gracefully stop HTTP server")
+		}
 	}
+
 	setupLog.Info("gracefully stopped")
 	return nil
 

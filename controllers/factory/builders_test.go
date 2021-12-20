@@ -437,21 +437,21 @@ func Test_buildProbe(t *testing.T) {
 				needAddLiveness: true,
 				ep: &victoriametricsv1beta1.EmbeddedProbes{
 					ReadinessProbe: &v1.Probe{
-						Handler: v1.Handler{
+						ProbeHandler: v1.ProbeHandler{
 							Exec: &v1.ExecAction{
 								Command: []string{"echo", "1"},
 							},
 						},
 					},
 					StartupProbe: &v1.Probe{
-						Handler: v1.Handler{
+						ProbeHandler: v1.ProbeHandler{
 							HTTPGet: &v1.HTTPGetAction{
 								Host: "some",
 							},
 						},
 					},
 					LivenessProbe: &v1.Probe{
-						Handler: v1.Handler{
+						ProbeHandler: v1.ProbeHandler{
 							HTTPGet: &v1.HTTPGetAction{
 								Path: "/live1",
 							},

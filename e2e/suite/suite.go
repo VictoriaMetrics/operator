@@ -84,7 +84,7 @@ func Before() {
 
 		// disable metrics server because it fails to listen when running several test packages one after another
 		// also metrics server isn't very useful in tests
-		os.Args = append(os.Args, "--metrics-addr", "0")
+		os.Args = append(os.Args, "--metrics-addr", "0", "--http.listenAddr", "")
 
 		ctx, cancel := context.WithCancel(context.Background())
 		go func(ctx context.Context) {

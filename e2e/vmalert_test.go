@@ -196,6 +196,14 @@ var _ = Describe("test  vmalert Controller", func() {
 							Name:      name,
 							Namespace: namespace,
 						},
+						Spec: operator.VMAlertSpec{
+							Notifier: &operator.VMAlertNotifierSpec{
+								URL: "http://some-notifier-url",
+							},
+							Datasource: operator.VMAlertDatasourceSpec{
+								URL: "http://vmsingle-url:8428",
+							},
+						},
 					}
 					Eventually(func() string {
 						return expectPodCount(k8sClient, 1, namespace, vmAlert.SelectorLabels())

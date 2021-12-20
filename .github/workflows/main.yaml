@@ -63,19 +63,22 @@ jobs:
         run: |
           export PATH=$PATH:$(go env GOPATH)/bin # temporary fix. See https://github.com/actions/setup-go/issues/14
           make build
-#      - name: setup KIND for e2e tests
-#        uses: engineerd/setup-kind@v0.5.0
-#        with:
-#          version: "v0.9.0"
-#          image: kindest/node:v1.16.4
-#      - name: run e2e tests
-#        run: |
-#          kubectl cluster-info
-#          kubectl get pods -n kube-system
-#          echo "current-context:" $(kubectl config current-context)
-#          echo "environment-kubeconfig:" ${KUBECONFIG}
-#          make e2e-local
-
+      - name: setup KIND for e2e tests with 1.16 version
+        uses: engineerd/setup-kind@v0.5.0
+        with:
+          version: "v0.11.1"
+          image: kindest/node:v1.16.4
+      - name: run e2e tests - 1.16
+        run: |
+          make e2e-local
+      - name: setup KIND for e2e tests with 1.22 version
+        uses: engineerd/setup-kind@v0.5.0
+        with:
+          version: "v0.11.1"
+          image: kindest/node:v1.22.4
+      - name: run e2e tests - 1.22
+        run: |
+          make e2e-local
       - name: build crosscompile and push to remote registry
         env:
           TAG:   ${{ env.GITHUB_REF_SLUG }}

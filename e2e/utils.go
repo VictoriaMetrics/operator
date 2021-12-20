@@ -20,7 +20,7 @@ func expectPodCount(rclient client.Client, count int, ns string, lbs map[string]
 	}
 	for _, pod := range podList.Items {
 		if !k8stools.PodIsReady(pod) {
-			return fmt.Sprintf("pod isnt ready: %s", pod.Name)
+			return fmt.Sprintf("pod isnt ready: %s,\n status: %s", pod.Name, pod.Status.String())
 		}
 	}
 	return ""

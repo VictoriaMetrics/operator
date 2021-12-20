@@ -68,11 +68,11 @@ func Before() {
 
 		err = victoriametricsv1beta1.AddToScheme(scheme.Scheme)
 		Expect(err).NotTo(HaveOccurred())
-		//prometheus operator scheme for client
+		// prometheus operator scheme for client
 		err = monitoringv1.AddToScheme(scheme.Scheme)
 		Expect(err).NotTo(HaveOccurred())
 
-		// +kubebuilder:scaffold:scheme
+		//+kubebuilder:scaffold:scheme
 
 		K8sClient, err = client.New(cfg, client.Options{Scheme: scheme.Scheme})
 		Expect(err).ToNot(HaveOccurred())

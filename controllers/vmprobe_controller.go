@@ -52,7 +52,6 @@ func (r *VMProbeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	instance := &operatorv1beta1.VMProbe{}
 	err := r.Get(ctx, req.NamespacedName, instance)
 	if err != nil {
-		//in case of object notfound we must update vmagents
 		if !errors.IsNotFound(err) {
 			// Error reading the object - requeue the request.
 			return ctrl.Result{}, err

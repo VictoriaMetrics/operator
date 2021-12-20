@@ -143,7 +143,7 @@ type VMSelect struct {
 	// +optional
 	ConfigMaps []string `json:"configMaps,omitempty"`
 	// LogFormat for VMSelect to be configured with.
-	//default or json
+	// default or json
 	// +optional
 	// +kubebuilder:validation:Enum=default;json
 	LogFormat string `json:"logFormat,omitempty"`
@@ -231,7 +231,7 @@ type VMSelect struct {
 	// +optional
 	ExtraArgs map[string]string `json:"extraArgs,omitempty"`
 
-	//Port listen port
+	// Port listen port
 	// +optional
 	Port string `json:"port,omitempty"`
 
@@ -239,7 +239,7 @@ type VMSelect struct {
 	// +optional
 	SchedulerName string `json:"schedulerName,omitempty"`
 	// RuntimeClassName - defines runtime class for kubernetes pod.
-	//https://kubernetes.io/docs/concepts/containers/runtime-class/
+	// https://kubernetes.io/docs/concepts/containers/runtime-class/
 	// +optional
 	RuntimeClassName *string `json:"runtimeClassName,omitempty"`
 	// ServiceSpec that will be added to vmselect service spec
@@ -311,7 +311,7 @@ type VMInsert struct {
 	// +optional
 	ConfigMaps []string `json:"configMaps,omitempty"`
 	// LogFormat for VMSelect to be configured with.
-	//default or json
+	// default or json
 	// +optional
 	// +kubebuilder:validation:Enum=default;json
 	LogFormat string `json:"logFormat,omitempty"`
@@ -384,7 +384,7 @@ type VMInsert struct {
 	// InsertPorts - additional listen ports for data ingestion.
 	InsertPorts *InsertPorts `json:"insertPorts,omitempty"`
 
-	//Port listen port
+	// Port listen port
 	// +optional
 	Port string `json:"port,omitempty"`
 
@@ -453,7 +453,7 @@ type VMStorage struct {
 	// +optional
 	ConfigMaps []string `json:"configMaps,omitempty"`
 	// LogFormat for VMSelect to be configured with.
-	//default or json
+	// default or json
 	// +optional
 	// +kubebuilder:validation:Enum=default;json
 	LogFormat string `json:"logFormat,omitempty"`
@@ -538,7 +538,7 @@ type VMStorage struct {
 	// +optional
 	RuntimeClassName *string `json:"runtimeClassName,omitempty"`
 
-	//Port for health check connetions
+	// Port for health check connetions
 	Port string `json:"port,omitempty"`
 
 	// VMInsertPort for VMInsert connections
@@ -621,7 +621,7 @@ type VMBackup struct {
 	// Image - docker image settings for VMBackuper
 	// +optional
 	Image Image `json:"image,omitempty"`
-	//Port for health check connections
+	// Port for health check connections
 	Port string `json:"port,omitempty"`
 	// LogFormat for VMSelect to be configured with.
 	// default or json
@@ -636,7 +636,7 @@ type VMBackup struct {
 	// if not defined default resources from operator config will be used
 	// +optional
 	Resources v1.ResourceRequirements `json:"resources,omitempty"`
-	//extra args like maxBytesPerSecond default 0
+	// extra args like maxBytesPerSecond default 0
 	// +optional
 	ExtraArgs map[string]string `json:"extraArgs,omitempty"`
 	// +optional

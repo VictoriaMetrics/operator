@@ -93,21 +93,18 @@ func (r *VMAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, err
 	}
 
-	//create deploy
 	reconResult, err := factory.CreateOrUpdateVMAgent(ctx, instance, r, r.BaseConf)
 	if err != nil {
 		reqLogger.Error(err, "cannot create or update vmagent deploy")
 		return reconResult, err
 	}
 
-	//create service for monitoring
 	svc, err := factory.CreateOrUpdateVMAgentService(ctx, instance, r, r.BaseConf)
 	if err != nil {
 		reqLogger.Error(err, "cannot create or update vmagent service")
 		return ctrl.Result{}, err
 	}
 
-	//create vmservicescrape for object by default
 	if !r.BaseConf.DisableSelfServiceScrapeCreation {
 		err := factory.CreateVMServiceScrapeFromService(ctx, r, svc, instance.MetricPath(), "http")
 		if err != nil {

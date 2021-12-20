@@ -226,7 +226,6 @@ func reconcileDeploy(ctx context.Context, rclient client.Client, newDeploy *apps
 	err := rclient.Get(ctx, types.NamespacedName{Name: newDeploy.Name, Namespace: newDeploy.Namespace}, currentDeploy)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			//create new
 			return rclient.Create(ctx, newDeploy)
 		}
 		return fmt.Errorf("cannot get deploy: %s,err: %w", newDeploy.Name, err)

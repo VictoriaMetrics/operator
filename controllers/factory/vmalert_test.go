@@ -199,7 +199,7 @@ func TestCreateOrUpdateVMAlert(t *testing.T) {
 						for _, arg := range args {
 							if strings.HasPrefix(arg, "-external.label") {
 								foundOk = true
-								kv := strings.Replace(arg, "-external.label=", "", -1)
+								kv := strings.ReplaceAll(arg, "-external.label=", "")
 								if kv != "label1=value1" && kv != "label2=value-2" {
 									return fmt.Errorf("unexepcted value for external.label arg: %s", kv)
 								}

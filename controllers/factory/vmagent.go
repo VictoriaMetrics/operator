@@ -84,7 +84,7 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 			return reconcile.Result{}, fmt.Errorf("cannot create vmagent clusterole and binding for it, err: %w", err)
 		}
 	}
-	//we have to create empty or full cm first
+	// we have to create empty or full cm first
 	err := CreateOrUpdateConfigurationSecret(ctx, cr, rclient, c)
 	if err != nil {
 		l.Error(err, "cannot create configmap")
@@ -143,8 +143,8 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 	if err := finalize.RemoveOrphanedDeployments(ctx, rclient, cr, deploymentNames); err != nil {
 		return reconcile.Result{}, err
 	}
-	//its safe to ignore
-	_ = addAddtionalScrapeConfigOwnership(cr, rclient)
+	// it's safe to ignore
+	_ = addAdditionalScrapeConfigOwnership(cr, rclient)
 	l.Info("vmagent deploy reconciled")
 
 	return reconcile.Result{}, nil
@@ -154,7 +154,7 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 func newDeployForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperatorConf, ssCache *scrapesSecretsCache) (*appsv1.Deployment, error) {
 	cr = cr.DeepCopy()
 
-	//inject default
+	// inject default
 	if cr.Spec.Image.Repository == "" {
 		cr.Spec.Image.Repository = c.VMAgentDefault.Image
 	}
@@ -455,7 +455,6 @@ func addAdditionalObjectOwnership(cr *victoriametricsv1beta1.VMAgent, rclient cl
 	existOwners := object.GetOwnerReferences()
 	for i := range existOwners {
 		owner := &existOwners[i]
-		//owner exists
 		if owner.Name == cr.Name {
 			var shouldUpdate bool
 			if owner.Controller == nil {
@@ -486,8 +485,8 @@ func addAdditionalObjectOwnership(cr *victoriametricsv1beta1.VMAgent, rclient cl
 	return rclient.Update(context.Background(), object)
 }
 
-//add ownership - it needs for object changing tracking
-func addAddtionalScrapeConfigOwnership(cr *victoriametricsv1beta1.VMAgent, rclient client.Client) error {
+// add ownership - it needs for object changing tracking
+func addAdditionalScrapeConfigOwnership(cr *victoriametricsv1beta1.VMAgent, rclient client.Client) error {
 	if cr.Spec.AdditionalScrapeConfigs != nil {
 		if err := addAdditionalObjectOwnership(cr, rclient, &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{Name: cr.Spec.AdditionalScrapeConfigs.Name},
@@ -964,8 +963,8 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, ssCache *scrapesSecre
 				pass = s.password
 			}
 		}
-		authUser.flagSetting += fmt.Sprintf("\"%s\",", strings.Replace(user, `"`, `\"`, -1))
-		authPassword.flagSetting += fmt.Sprintf("\"%s\",", strings.Replace(pass, `"`, `\"`, -1))
+		authUser.flagSetting += fmt.Sprintf("\"%s\",", strings.ReplaceAll(user, `"`, `\"`))
+		authPassword.flagSetting += fmt.Sprintf("\"%s\",", strings.ReplaceAll(pass, `"`, `\"`))
 
 		var value string
 		if rws.BearerTokenSecret != nil && rws.BearerTokenSecret.Name != "" {
@@ -974,7 +973,7 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, ssCache *scrapesSecre
 				value = s
 			}
 		}
-		bearerToken.flagSetting += fmt.Sprintf("\"%s\",", strings.Replace(value, `"`, `\"`, -1))
+		bearerToken.flagSetting += fmt.Sprintf("\"%s\",", strings.ReplaceAll(value, `"`, `\"`))
 
 		value = ""
 

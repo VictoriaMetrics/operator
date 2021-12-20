@@ -108,7 +108,7 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient
 				log.Error(err, "cannot create VMServiceScrape for vmStorage")
 			}
 		}
-		//wait for expand
+		// wait for expand
 		expanding, err = waitForExpanding(ctx, rclient, cr.Namespace, cr.VMStorageSelectorLabels(), *cr.Spec.VMStorage.ReplicaCount)
 		if err != nil {
 			reason = "failed to check for vmStorage expanding"
@@ -152,7 +152,7 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient
 			}
 		}
 
-		//wait for expand
+		// wait for expand
 		expanding, err = waitForExpanding(ctx, rclient, cr.Namespace, cr.VMSelectSelectorLabels(), *cr.Spec.VMSelect.ReplicaCount)
 		if err != nil {
 			reason = "failed to wait for vmSelect expanding"
@@ -307,7 +307,6 @@ func createOrUpdateVMInsert(ctx context.Context, cr *v1beta1.VMCluster, rclient 
 	err = rclient.Get(ctx, types.NamespacedName{Name: newDeployment.Name, Namespace: newDeployment.Namespace}, currentDeployment)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			//create new
 			l.Info("vminsert deploy not found, creating new one")
 			if err := rclient.Create(ctx, newDeployment); err != nil {
 				return nil, fmt.Errorf("cannot create new vminsert deploy: %w", err)

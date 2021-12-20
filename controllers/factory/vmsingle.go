@@ -102,7 +102,6 @@ func CreateOrUpdateVMSingle(ctx context.Context, cr *victoriametricsv1beta1.VMSi
 	err = rclient.Get(ctx, types.NamespacedName{Name: newDeploy.Name, Namespace: newDeploy.Namespace}, currentDeploy)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			//create new
 			l.Info("vmsingle deploy not found, creating new one")
 			if err := rclient.Create(ctx, newDeploy); err != nil {
 				return nil, fmt.Errorf("cannot create new vmsingle deploy: %w", err)
@@ -157,7 +156,7 @@ func newDeployForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOpe
 				MatchLabels: cr.SelectorLabels(),
 			},
 			Strategy: appsv1.DeploymentStrategy{
-				//we use recreate, coz of volume claim
+				// we use recreate, coz of volume claim
 				Type: appsv1.RecreateDeploymentStrategyType,
 			},
 			Template: *podSpec,

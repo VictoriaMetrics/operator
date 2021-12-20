@@ -58,7 +58,6 @@ func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	instance := &victoriametricsv1beta1.VMRule{}
 	err := r.Get(ctx, req.NamespacedName, instance)
 	if err != nil {
-		//in case of object notfound we must update vmalerts
 		if !errors.IsNotFound(err) {
 			reqLogger.Error(err, "cannot get resource")
 			return ctrl.Result{}, err

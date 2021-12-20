@@ -83,7 +83,6 @@ func (r *VMAuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		return ctrl.Result{}, err
 	}
 
-	//create service for monitoring
 	svc, err := factory.CreateOrUpdateVMAuthService(ctx, &instance, r)
 	if err != nil {
 		l.Error(err, "cannot create or update vmauth service")
@@ -94,7 +93,6 @@ func (r *VMAuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		return ctrl.Result{}, err
 	}
 
-	//create vmservicescrape for object by default
 	if !r.BaseConf.DisableSelfServiceScrapeCreation {
 		err := factory.CreateVMServiceScrapeFromService(ctx, r, svc, instance.MetricPath())
 		if err != nil {

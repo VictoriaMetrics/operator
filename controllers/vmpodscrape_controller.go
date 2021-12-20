@@ -54,7 +54,6 @@ func (r *VMPodScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	instance := &victoriametricsv1beta1.VMPodScrape{}
 	err := r.Get(ctx, req.NamespacedName, instance)
 	if err != nil {
-		//in case of object notfound we must update vmagents
 		if !errors.IsNotFound(err) {
 			// Error reading the object - requeue the request.
 			return ctrl.Result{}, err

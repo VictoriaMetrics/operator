@@ -41,7 +41,7 @@ type VMAgentSpec struct {
 	// +optional
 	ConfigMaps []string `json:"configMaps,omitempty"`
 	// LogLevel for VMAgent to be configured with.
-	//INFO, WARN, ERROR, FATAL, PANIC
+	// INFO, WARN, ERROR, FATAL, PANIC
 	// +optional
 	// +kubebuilder:validation:Enum=INFO;WARN;ERROR;FATAL;PANIC
 	LogLevel string `json:"logLevel,omitempty"`
@@ -67,7 +67,7 @@ type VMAgentSpec struct {
 	// +optional
 	VolumeMounts []v1.VolumeMount `json:"volumeMounts,omitempty"`
 	// Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
-	//if not specified - default setting will be used
+	// if not specified - default setting will be used
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resources",xDescriptors="urn:alm:descriptor:com.tectonic.ui:resourceRequirements"
 	// +optional
 	Resources v1.ResourceRequirements `json:"resources,omitempty"`
@@ -90,7 +90,7 @@ type VMAgentSpec struct {
 	// +optional
 	SchedulerName string `json:"schedulerName,omitempty"`
 	// RuntimeClassName - defines runtime class for kubernetes pod.
-	//https://kubernetes.io/docs/concepts/containers/runtime-class/
+	// https://kubernetes.io/docs/concepts/containers/runtime-class/
 	RuntimeClassName *string `json:"runtimeClassName,omitempty"`
 	// HostAliases provides mapping between ip and hostnames,
 	// that would be propagated to pod,

@@ -319,26 +319,26 @@ type RelabelConfig struct {
 	// +optional
 	UnderScoreTargetLabel string `json:"target_label,omitempty" yaml:"target_label,omitempty"`
 
-	//The source labels select values from existing labels. Their content is concatenated
-	//using the configured separator and matched against the configured regular expression
-	//for the replace, keep, and drop actions.
+	// The source labels select values from existing labels. Their content is concatenated
+	// using the configured separator and matched against the configured regular expression
+	// for the replace, keep, and drop actions.
 	// +optional
 	SourceLabels []string `json:"sourceLabels,omitempty" yaml:"-"`
-	//Separator placed between concatenated source label values. default is ';'.
+	// Separator placed between concatenated source label values. default is ';'.
 	// +optional
 	Separator string `json:"separator,omitempty" yaml:"separator,omitempty"`
-	//Label to which the resulting value is written in a replace action.
-	//It is mandatory for replace actions. Regex capture groups are available.
+	// Label to which the resulting value is written in a replace action.
+	// It is mandatory for replace actions. Regex capture groups are available.
 	// +optional
 	TargetLabel string `json:"targetLabel,omitempty" yaml:"-"`
-	//Regular expression against which the extracted value is matched. Default is '(.*)'
+	// Regular expression against which the extracted value is matched. Default is '(.*)'
 	// +optional
 	Regex string `json:"regex,omitempty" yaml:"regex,omitempty"`
 	// Modulus to take of the hash of the source label values.
 	// +optional
 	Modulus uint64 `json:"modulus,omitempty" yaml:"modulus,omitempty"`
-	//Replacement value against which a regex replace is performed if the
-	//regular expression matches. Regex capture groups are available. Default is '$1'
+	// Replacement value against which a regex replace is performed if the
+	// regular expression matches. Regex capture groups are available. Default is '$1'
 	// +optional
 	Replacement string `json:"replacement,omitempty" yaml:"replacement,omitempty"`
 	// Action to perform based on regex matching. Default is 'replace'

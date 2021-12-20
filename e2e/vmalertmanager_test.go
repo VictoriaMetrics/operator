@@ -108,7 +108,16 @@ var _ = Describe("e2e vmalertmanager ", func() {
 						Namespace: Namespace,
 					},
 				}))
-				time.Sleep(time.Second * 3)
+				Eventually(func() error {
+					err := k8sClient.Get(context.Background(), types.NamespacedName{
+						Name:      Name,
+						Namespace: namespace,
+					}, &operator.VMAlertmanager{})
+					if errors.IsNotFound(err) {
+						return nil
+					}
+					return fmt.Errorf("want NotFound error, got: %w", err)
+				}, 60, 1).Should(BeNil())
 			})
 			It("Should expand alertmanager to 2 replicas", func() {
 				currVma := &operator.VMAlertmanager{}
@@ -117,7 +126,7 @@ var _ = Describe("e2e vmalertmanager ", func() {
 				Expect(k8sClient.Update(context.TODO(), currVma)).To(BeNil())
 				Eventually(func() string {
 					return expectPodCount(k8sClient, 2, Namespace, currVma.SelectorLabels())
-				}, 120, 2).Should(BeEmpty())
+				}, 180, 5).Should(BeEmpty())
 			})
 
 		})

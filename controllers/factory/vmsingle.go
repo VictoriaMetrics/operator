@@ -479,14 +479,14 @@ func makeSpecForVMBackuper(
 		},
 	})
 
-	livenessProbeHandler := corev1.Handler{
+	livenessProbeHandler := corev1.ProbeHandler{
 		HTTPGet: &corev1.HTTPGetAction{
 			Port:   intstr.Parse(cr.Port),
 			Scheme: "HTTP",
 			Path:   "/health",
 		},
 	}
-	readinessProbeHandler := corev1.Handler{
+	readinessProbeHandler := corev1.ProbeHandler{
 		HTTPGet: &corev1.HTTPGetAction{
 			Port:   intstr.Parse(cr.Port),
 			Scheme: "HTTP",
@@ -495,13 +495,13 @@ func makeSpecForVMBackuper(
 	}
 	livenessFailureThreshold := int32(3)
 	livenessProbe := &corev1.Probe{
-		Handler:          livenessProbeHandler,
+		ProbeHandler:     livenessProbeHandler,
 		PeriodSeconds:    5,
 		TimeoutSeconds:   probeTimeoutSeconds,
 		FailureThreshold: livenessFailureThreshold,
 	}
 	readinessProbe := &corev1.Probe{
-		Handler:          readinessProbeHandler,
+		ProbeHandler:     readinessProbeHandler,
 		TimeoutSeconds:   probeTimeoutSeconds,
 		PeriodSeconds:    5,
 		FailureThreshold: 10,

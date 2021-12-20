@@ -44,11 +44,20 @@ var _ = Describe("Controllers", func() {
 					Namespace: namespace,
 					Name:      "test-vmagent",
 				},
+				Spec: v1beta1vm.VMAgentSpec{
+					RemoteWrite: []v1beta1vm.VMAgentRemoteWriteSpec{
+						{URL: "http://some-url"},
+					},
+				},
 			},
 			&v1beta1vm.VMAlert{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
 					Name:      "test-vmalert",
+				},
+				Spec: v1beta1vm.VMAlertSpec{
+					Notifier:   &v1beta1vm.VMAlertNotifierSpec{URL: "http://some-notifier-url"},
+					Datasource: v1beta1vm.VMAlertDatasourceSpec{URL: "http://some-single-url"},
 				},
 			},
 			&v1beta1vm.VMAlertmanager{

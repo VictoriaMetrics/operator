@@ -216,78 +216,33 @@ func selectNamespaces(ctx context.Context, rclient client.Client, selector label
 }
 
 func SelectRules(ctx context.Context, cr *victoriametricsv1beta1.VMAlert, rclient client.Client) (map[string]string, error) {
-	rules := map[string]string{}
-	namespaces := []string{}
 
-	// use only object's namespace
-	switch {
-	case cr.Spec.RuleNamespaceSelector == nil:
-		namespaces = append(namespaces, cr.Namespace)
-	case cr.Spec.RuleNamespaceSelector.MatchExpressions == nil && cr.Spec.RuleNamespaceSelector.MatchLabels == nil:
-		// all namespaces matched
-		namespaces = nil
-	default:
-		// filter for specific namespaces
-		nsSelector, err := metav1.LabelSelectorAsSelector(cr.Spec.RuleNamespaceSelector)
-		if err != nil {
-			return nil, fmt.Errorf("cannot convert ruleNamespace selector: %w", err)
-		}
-		namespaces, err = selectNamespaces(ctx, rclient, nsSelector)
-		if err != nil {
-			return nil, fmt.Errorf("cannot select namespaces for rule match: %w", err)
-		}
-	}
-
-	// if namespaces isn't nil,then ruleselector cannot be nil
-	// and we filter everything at specified namespaces
-	if namespaces != nil && cr.Spec.RuleSelector == nil {
-		cr.Spec.RuleSelector = &metav1.LabelSelector{}
-	}
-
-	ruleSelector, err := metav1.LabelSelectorAsSelector(cr.Spec.RuleSelector)
+	namespaces, objSelector, err := getNSWithSelector(ctx, rclient, cr.Spec.RuleNamespaceSelector, cr.Spec.RuleSelector, cr.Namespace)
 	if err != nil {
-		return rules, fmt.Errorf("cannot convert rule label selector to selector: %w", err)
+		return nil, err
 	}
-	promRules := []*victoriametricsv1beta1.VMRule{}
 
-	// list all namespaces for rules with selector
-	if namespaces == nil {
-		log.Info("listing all namespaces for rules")
-		ruleNs := &victoriametricsv1beta1.VMRuleList{}
-		err = rclient.List(ctx, ruleNs, &client.ListOptions{LabelSelector: ruleSelector}, config.MustGetNamespaceListOptions())
-		if err != nil {
-			return nil, fmt.Errorf("cannot list rules from all namespaces: %w", err)
-		}
-		promRules = append(promRules, ruleNs.Items...)
-
-	} else {
-		for _, ns := range namespaces {
-			listOpts := &client.ListOptions{Namespace: ns, LabelSelector: ruleSelector}
-			ruleNs := &victoriametricsv1beta1.VMRuleList{}
-			err = rclient.List(ctx, ruleNs, listOpts)
-			if err != nil {
-				return nil, fmt.Errorf("cannot list rules at namespace: %s, err: %w", ns, err)
+	var vmRules []*victoriametricsv1beta1.VMRule
+	if err := visitObjectsWithSelector(ctx, rclient, namespaces, &victoriametricsv1beta1.VMRuleList{}, objSelector, cr.Spec.SelectAllByDefault,
+		func(list client.ObjectList) {
+			l := list.(*victoriametricsv1beta1.VMRuleList)
+			for _, item := range l.Items {
+				if !item.DeletionTimestamp.IsZero() {
+					continue
+				}
+				vmRules = append(vmRules, item)
 			}
-			promRules = append(promRules, ruleNs.Items...)
-
-		}
+		}); err != nil {
+		return nil, err
 	}
 
-	// filter in place
-	n := 0
-	for _, x := range promRules {
-		if x.DeletionTimestamp.IsZero() {
-			promRules[n] = x
-			n++
-		}
-	}
-	promRules = promRules[:n]
+	rules := make(map[string]string, len(vmRules))
 
 	if cr.NeedDedupRules() {
 		log.Info("deduplicating vmalert rules", "vmalert", cr.ObjectMeta.Name)
-		promRules = deduplicateRules(promRules)
+		vmRules = deduplicateRules(vmRules)
 	}
-	for _, pRule := range promRules {
+	for _, pRule := range vmRules {
 		content, err := generateContent(pRule.Spec, cr.Spec.EnforcedNamespaceLabel, pRule.Namespace)
 		if err != nil {
 			return nil, fmt.Errorf("cannot generate content for rule: %s, err :%w", pRule.Name, err)
@@ -295,13 +250,14 @@ func SelectRules(ctx context.Context, cr *victoriametricsv1beta1.VMAlert, rclien
 		rules[fmt.Sprintf("%v-%v.yaml", pRule.Namespace, pRule.Name)] = content
 	}
 
-	ruleNames := []string{}
+	ruleNames := make([]string, 0, len(rules))
 	for name := range rules {
 		ruleNames = append(ruleNames, name)
 	}
 
 	if len(rules) == 0 {
 		// inject default rule
+		// it's needed to start vmalert.
 		rules["default-vmalert.yaml"] = defAlert
 	}
 

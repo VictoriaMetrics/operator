@@ -192,6 +192,11 @@ spec:
                   type: object
                   x-kubernetes-preserve-unknown-fields: true
                 type: array
+              disableNamespaceMatch:
+                description: DisableNamespaceLabel disables namespace label matcher
+                  for alertmanager configuration It may be useful if alert doesn't
+                  have namespace label for some reason
+                type: boolean
               dnsPolicy:
                 description: DNSPolicy sets DNS policy for the pod
                 type: string

@@ -12,7 +12,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func BuildConfig(ctx context.Context, rclient client.Client, baseCfg []byte, amcfgs map[string]*operatorv1beta1.VMAlertmanagerConfig) ([]byte, error) {
+func BuildConfig(ctx context.Context, rclient client.Client, mustAddNamespaceMatcher bool, baseCfg []byte, amcfgs map[string]*operatorv1beta1.VMAlertmanagerConfig) ([]byte, error) {
 	// fast path.
 	if len(amcfgs) == 0 {
 		return baseCfg, nil
@@ -46,7 +46,7 @@ func BuildConfig(ctx context.Context, rclient client.Client, baseCfg []byte, amc
 			// todo add logging.
 			continue
 		}
-		subRoutes = append(subRoutes, buildRoute(amcKey, amcKey.Spec.Route, true))
+		subRoutes = append(subRoutes, buildRoute(amcKey, amcKey.Spec.Route, true, mustAddNamespaceMatcher))
 		for _, receiver := range amcKey.Spec.Receivers {
 			receiverCfg, err := buildReceiver(ctx, rclient, amcKey, receiver, secretCache)
 			if err != nil {
@@ -110,19 +110,23 @@ func buildMuteTimeInterval(cr *operatorv1beta1.VMAlertmanagerConfig) []yaml.MapS
 	return r
 }
 
-func buildRoute(cr *operatorv1beta1.VMAlertmanagerConfig, cfgRoute *operatorv1beta1.Route, topLevel bool) yaml.MapSlice {
+func buildRoute(cr *operatorv1beta1.VMAlertmanagerConfig, cfgRoute *operatorv1beta1.Route, topLevel, mustAddNamespaceMatcher bool) yaml.MapSlice {
 	var r yaml.MapSlice
 	matchers := cfgRoute.Matchers
 	continueSetting := cfgRoute.Continue
 	// enforce continue and namespace match
 	if topLevel {
 		continueSetting = true
+
+	}
+	if mustAddNamespaceMatcher {
 		matchers = append(matchers, fmt.Sprintf("namespace = %q", cr.Namespace))
 	}
 
 	var nestedRoutes []yaml.MapSlice
 	for _, nestedRoute := range cfgRoute.Routes {
-		nestedRoutes = append(nestedRoutes, buildRoute(cr, nestedRoute, false))
+		// namespace not needed for nested routes
+		nestedRoutes = append(nestedRoutes, buildRoute(cr, nestedRoute, false, false))
 	}
 	if len(nestedRoutes) > 0 {
 		r = append(r, yaml.MapItem{Key: "routes", Value: nestedRoutes})

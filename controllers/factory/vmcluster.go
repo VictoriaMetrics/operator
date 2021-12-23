@@ -15,7 +15,6 @@ import (
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/controllers/factory/psp"
 	"github.com/VictoriaMetrics/operator/internal/config"
-	"github.com/prometheus-operator/prometheus-operator/pkg/k8sutil"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
@@ -641,7 +640,7 @@ func makePodSpecForVMSelect(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 
 	operatorContainers := []corev1.Container{vmselectContainer}
 
-	containers, err := k8sutil.MergePatchContainers(operatorContainers, cr.Spec.VMSelect.Containers)
+	containers, err := k8stools.MergePatchContainers(operatorContainers, cr.Spec.VMSelect.Containers)
 	if err != nil {
 		return nil, err
 	}
@@ -912,7 +911,7 @@ func makePodSpecForVMInsert(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 
 	operatorContainers := []corev1.Container{vminsertContainer}
 
-	containers, err := k8sutil.MergePatchContainers(operatorContainers, cr.Spec.VMInsert.Containers)
+	containers, err := k8stools.MergePatchContainers(operatorContainers, cr.Spec.VMInsert.Containers)
 	if err != nil {
 		return nil, err
 	}
@@ -1238,7 +1237,7 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) 
 		}
 	}
 
-	containers, err := k8sutil.MergePatchContainers(operatorContainers, cr.Spec.VMStorage.Containers)
+	containers, err := k8stools.MergePatchContainers(operatorContainers, cr.Spec.VMStorage.Containers)
 	if err != nil {
 		return nil, err
 	}

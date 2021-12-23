@@ -12,9 +12,8 @@ require (
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.17.0
-	github.com/prometheus-operator/prometheus-operator v0.53.0
-	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.53.0
-	github.com/prometheus-operator/prometheus-operator/pkg/client v0.53.0
+	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.53.1
+	github.com/prometheus-operator/prometheus-operator/pkg/client v0.53.1
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.7.0
 	go.uber.org/zap v1.19.1
@@ -28,7 +27,6 @@ require (
 	k8s.io/klog/v2 v2.40.1
 	k8s.io/utils v0.0.0-20211208161948-7d6a63dca704
 	sigs.k8s.io/controller-runtime v0.11.0
-
 )
 
 require (
@@ -83,8 +81,5 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.0 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
-
-// Pinned to kubernetes-1.22.4
-replace github.com/Azure/go-autorest => github.com/Azure/go-autorest v13.3.2+incompatible // Required by OLM
 
 replace k8s.io/client-go => k8s.io/client-go v0.23.1

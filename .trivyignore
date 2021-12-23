@@ -25,3 +25,11 @@ GO-2020-0020
 
 # gin not used as web server
 CVE-2020-28483
+
+# mongodb has no impact
+CVE-2021-20329
+
+# containerd has no impact
+CVE-2020-15257
+CVE-2021-21334
+CVE-2021-32760

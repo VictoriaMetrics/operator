@@ -125,6 +125,69 @@ func TestSelectRules(t *testing.T) {
 			},
 			want: []string{"monitoring-error-alert-at-monitoring.yaml"},
 		},
+		{
+			name: "select all rules with select all",
+			args: args{
+				p: &victoriametricsv1beta1.VMAlert{ObjectMeta: metav1.ObjectMeta{Name: "test-vm-alert", Namespace: "monitor"},
+					Spec: victoriametricsv1beta1.VMAlertSpec{
+						SelectAllByDefault: true,
+					},
+				},
+				l: logf.Log.WithName("unit-test"),
+			},
+			predefinedObjects: []runtime.Object{
+				// we need namespace for filter + object inside this namespace
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "monitoring", Labels: map[string]string{"monitoring": "enabled"}}},
+				&victoriametricsv1beta1.VMRule{
+					ObjectMeta: metav1.ObjectMeta{Name: "error-alert", Namespace: "default"},
+					Spec: victoriametricsv1beta1.VMRuleSpec{
+						Groups: []victoriametricsv1beta1.RuleGroup{{Name: "error-alert", Interval: "10s", Rules: []victoriametricsv1beta1.Rule{
+							{Alert: "", Expr: intstr.IntOrString{IntVal: 10}, For: "10s", Labels: nil, Annotations: nil},
+						}}},
+					}},
+				&victoriametricsv1beta1.VMRule{
+					ObjectMeta: metav1.ObjectMeta{Name: "error-alert-at-monitoring", Namespace: "monitoring"},
+					Spec: victoriametricsv1beta1.VMRuleSpec{
+						Groups: []victoriametricsv1beta1.RuleGroup{{Name: "error-alert", Interval: "10s", Rules: []victoriametricsv1beta1.Rule{
+							{Alert: "", Expr: intstr.IntOrString{IntVal: 10}, For: "10s", Labels: nil, Annotations: nil},
+						}}},
+					}},
+			},
+			want: []string{"default-error-alert.yaml", "monitoring-error-alert-at-monitoring.yaml"},
+		},
+		{
+			name: "select none by default",
+			args: args{
+				p: &victoriametricsv1beta1.VMAlert{
+					ObjectMeta: metav1.ObjectMeta{Name: "test-vm-alert", Namespace: "monitoring"},
+					Spec: victoriametricsv1beta1.VMAlertSpec{
+						SelectAllByDefault: false,
+					},
+				},
+				l: logf.Log.WithName("unit-test"),
+			},
+			predefinedObjects: []runtime.Object{
+				// we need namespace for filter + object inside this namespace
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
+				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "monitoring", Labels: map[string]string{"monitoring": "enabled"}}},
+				&victoriametricsv1beta1.VMRule{
+					ObjectMeta: metav1.ObjectMeta{Name: "error-alert", Namespace: "default"},
+					Spec: victoriametricsv1beta1.VMRuleSpec{
+						Groups: []victoriametricsv1beta1.RuleGroup{{Name: "error-alert", Interval: "10s", Rules: []victoriametricsv1beta1.Rule{
+							{Alert: "", Expr: intstr.IntOrString{IntVal: 10}, For: "10s", Labels: nil, Annotations: nil},
+						}}},
+					}},
+				&victoriametricsv1beta1.VMRule{
+					ObjectMeta: metav1.ObjectMeta{Name: "error-alert-at-monitoring", Namespace: "monitoring"},
+					Spec: victoriametricsv1beta1.VMRuleSpec{
+						Groups: []victoriametricsv1beta1.RuleGroup{{Name: "error-alert", Interval: "10s", Rules: []victoriametricsv1beta1.Rule{
+							{Alert: "", Expr: intstr.IntOrString{IntVal: 10}, For: "10s", Labels: nil, Annotations: nil},
+						}}},
+					}},
+			},
+			want: []string{"default-vmalert.yaml"},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

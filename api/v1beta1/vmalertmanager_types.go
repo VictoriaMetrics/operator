@@ -235,6 +235,11 @@ type VMAlertmanagerSpec struct {
 	// ExtraEnvs that will be added to VMAuth pod
 	// +optional
 	ExtraEnvs []v1.EnvVar `json:"extraEnvs,omitempty"`
+
+	// DisableNamespaceLabel disables namespace label matcher for alertmanager configuration
+	// It may be useful if alert doesn't have namespace label for some reason
+	// +optional
+	DisableNamespaceMatch bool `json:"disableNamespaceMatch,omitempty"`
 }
 
 // VMAlertmanagerList is a list of Alertmanagers.

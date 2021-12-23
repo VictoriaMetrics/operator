@@ -14,9 +14,10 @@ import (
 
 func TestBuildConfig(t *testing.T) {
 	type args struct {
-		ctx     context.Context
-		baseCfg []byte
-		amcfgs  map[string]*operatorv1beta1.VMAlertmanagerConfig
+		ctx                     context.Context
+		disableNamespaceMatcher bool
+		baseCfg                 []byte
+		amcfgs                  map[string]*operatorv1beta1.VMAlertmanagerConfig
 	}
 	tests := []struct {
 		name              string
@@ -315,7 +316,7 @@ templates: []
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			testClient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			got, err := BuildConfig(tt.args.ctx, testClient, tt.args.baseCfg, tt.args.amcfgs)
+			got, err := BuildConfig(tt.args.ctx, testClient, !tt.args.disableNamespaceMatcher, tt.args.baseCfg, tt.args.amcfgs)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("BuildConfig() error = %v, wantErr %v", err, tt.wantErr)
 				return

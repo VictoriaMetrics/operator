@@ -190,6 +190,7 @@ VMAlertmanagerSpec is a specification of the desired behavior of the VMAlertmana
 | configNamespaceSelector | \n ConfigNamespaceSelector defines namespace selector for VMAlertmanagerConfig.\nWorks in combination with Selector. NamespaceSelector nil - only objects at VMAlertmanager namespace. Selector nil - only objects at NamespaceSelector namespaces. If both nil - behaviour controlled by selectAllByDefault | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
 | extraArgs | ExtraArgs that will be passed to  VMAuth pod for example remoteWrite.tmpDataPath: /tmp | map[string]string | false |
 | extraEnvs | ExtraEnvs that will be added to VMAuth pod | [][v1.EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#envvar-v1-core) | false |
+| disableNamespaceMatch | DisableNamespaceLabel disables namespace label matcher for alertmanager configuration It may be useful if alert doesn&#39;t have namespace label for some reason | bool | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -939,8 +940,8 @@ VMAlertSpec defines the desired state of VMAlert
 | port | Port for listen | string | false |
 | notifier | Notifier prometheus alertmanager endpoint spec. Required at least one of  notifier or notifiers. e.g. http://127.0.0.1:9093 If specified both notifier and notifiers, notifier will be added as last element to notifiers. | *[VMAlertNotifierSpec](#vmalertnotifierspec) | false |
 | notifiers | Notifiers prometheus alertmanager endpoints. Required at least one of  notifier or notifiers. e.g. http://127.0.0.1:9093 If specified both notifier and notifiers, notifier will be added as last element to notifiers. | [][VMAlertNotifierSpec](#vmalertnotifierspec) | false |
-| remoteWrite | RemoteWrite Optional URL to remote-write compatible storage where to write timeseriesbased on active alerts. E.g. http://127.0.0.1:8428 | *[VMAlertRemoteWriteSpec](#vmalertremotewritespec) | false |
-| remoteRead | RemoteRead victoria metrics address for loading state This configuration makes sense only if remoteWrite was configured before and has been successfully persisted its state. | *[VMAlertRemoteReadSpec](#vmalertremotereadspec) | false |
+| remoteWrite | RemoteWrite Optional URL to remote-write compatible storage to persist vmalert state and rule results to. Rule results will be persisted according to each rule. Alerts state will be persisted in the form of time series named ALERTS and ALERTS_FOR_STATE see -remoteWrite.url docs in vmalerts for details. E.g. http://127.0.0.1:8428 | *[VMAlertRemoteWriteSpec](#vmalertremotewritespec) | false |
+| remoteRead | RemoteRead Optional URL to read vmalert state (persisted via RemoteWrite) This configuration only makes sense if alerts state has been successfully persisted (via RemoteWrite) before. see -remoteRead.url docs in vmalerts for details. E.g. http://127.0.0.1:8428 | *[VMAlertRemoteReadSpec](#vmalertremotereadspec) | false |
 | rulePath | RulePath to the file with alert rules. Supports patterns. Flag can be specified multiple times. Examples: -rule /path/to/file. Path to a single file with alerting rules -rule dir/*.yaml -rule /*.yaml. Relative path to all .yaml files in folder, absolute path to all .yaml files in root. by default operator adds /etc/vmalert/configs/base/vmalert.yaml | []string | false |
 | datasource | Datasource Victoria Metrics or VMSelect url. Required parameter. e.g. http://127.0.0.1:8428 | [VMAlertDatasourceSpec](#vmalertdatasourcespec) | true |
 | extraArgs | ExtraArgs that will be passed to  VMAlert pod for example -remoteWrite.tmpDataPath=/tmp | map[string]string | false |
@@ -1766,8 +1767,8 @@ EmbeddedIngress describes ingress configuration options.
 | class_name | ClassName defines ingress class name for VMAuth | *string | false |
 | tlsHosts | TlsHosts configures TLS access for ingress, tlsSecretName must be defined for it. | []string | false |
 | tlsSecretName | TlsSecretName defines secretname at the VMAuth namespace with cert and key https://kubernetes.io/docs/concepts/services-networking/ingress/#tls | string | false |
-| extraRules | ExtraRules - additional rules for ingress, must be checked for correctness by user. | []v1beta1.IngressRule | false |
-| extraTls | ExtraTLS - additional TLS configuration for ingress must be checked for correctness by user. | []v1beta1.IngressTLS | false |
+| extraRules | ExtraRules - additional rules for ingress, must be checked for correctness by user. | []v12.IngressRule | false |
+| extraTls | ExtraTLS - additional TLS configuration for ingress must be checked for correctness by user. | []v12.IngressTLS | false |
 
 [Back to TOC](#table-of-contents)
 

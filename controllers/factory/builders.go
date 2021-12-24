@@ -3,6 +3,7 @@ package factory
 import (
 	"context"
 	"fmt"
+	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 
 	"k8s.io/api/autoscaling/v2beta2"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
@@ -230,7 +231,7 @@ func reconcileDeploy(ctx context.Context, rclient client.Client, newDeploy *apps
 		}
 		return fmt.Errorf("cannot get deploy: %s,err: %w", newDeploy.Name, err)
 	}
-	newDeploy.Annotations = labels.Merge(currentDeploy.Annotations, newDeploy.Annotations)
+	newDeploy.Spec.Template.Annotations = k8stools.MergeAnnotations(currentDeploy.Spec.Template.Annotations, newDeploy.Spec.Template.Annotations)
 	newDeploy.Finalizers = victoriametricsv1beta1.MergeFinalizers(newDeploy, victoriametricsv1beta1.FinalizerName)
 	return rclient.Update(ctx, newDeploy)
 }

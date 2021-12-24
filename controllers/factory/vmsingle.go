@@ -110,9 +110,7 @@ func CreateOrUpdateVMSingle(ctx context.Context, cr *victoriametricsv1beta1.VMSi
 		}
 		return nil, fmt.Errorf("cannot get vmsingle deploy: %w", err)
 	}
-	l.Info("vm vmsingle was found, updating it")
-
-	newDeploy.Annotations = labels.Merge(currentDeploy.Annotations, newDeploy.Annotations)
+	newDeploy.Spec.Template.Annotations = k8stools.MergeAnnotations(currentDeploy.Spec.Template.Annotations, newDeploy.Spec.Template.Annotations)
 	newDeploy.Finalizers = victoriametricsv1beta1.MergeFinalizers(currentDeploy, victoriametricsv1beta1.FinalizerName)
 
 	if err := rclient.Update(ctx, newDeploy); err != nil {

@@ -263,6 +263,7 @@ func createOrUpdateVMSelect(ctx context.Context, cr *v1beta1.VMCluster, rclient 
 	stsOpts := k8stools.STSOptions{
 		VolumeName:     cr.Spec.VMSelect.GetCacheMountVolumeName,
 		SelectorLabels: cr.VMSelectSelectorLabels,
+		UpdateStrategy: cr.Spec.VMSelect.UpdateStrategy,
 	}
 	return k8stools.HandleSTSUpdate(ctx, rclient, stsOpts, newSts, &currentSts, c)
 }
@@ -390,6 +391,7 @@ func createOrUpdateVMStorage(ctx context.Context, cr *v1beta1.VMCluster, rclient
 	stsOpts := k8stools.STSOptions{
 		VolumeName:     cr.Spec.VMStorage.GetStorageVolumeName,
 		SelectorLabels: cr.VMStorageSelectorLabels,
+		UpdateStrategy: cr.Spec.VMStorage.UpdateStrategy,
 	}
 	return k8stools.HandleSTSUpdate(ctx, rclient, stsOpts, newSts, currentSts, c)
 }
@@ -466,7 +468,7 @@ func genVMSelectSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv1
 			},
 			PodManagementPolicy: appsv1.ParallelPodManagement,
 			UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
-				Type: appsv1.OnDeleteStatefulSetStrategyType,
+				Type: cr.Spec.VMSelect.UpdateStrategy(),
 			},
 			Template:             *podSpec,
 			ServiceName:          cr.Spec.VMSelect.GetNameWithPrefix(cr.Name),
@@ -1055,7 +1057,7 @@ func GenVMStorageSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv
 			},
 			PodManagementPolicy: appsv1.ParallelPodManagement,
 			UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
-				Type: appsv1.OnDeleteStatefulSetStrategyType,
+				Type: cr.Spec.VMStorage.UpdateStrategy(),
 			},
 			Template:             *podSpec,
 			ServiceName:          cr.Spec.VMStorage.GetNameWithPrefix(cr.Name),

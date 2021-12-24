@@ -825,6 +825,11 @@ spec:
                           to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                         type: object
                     type: object
+                  rollingUpdateStrategy:
+                    description: RollingUpdateStrategy defines strategy for application
+                      updates Default is OnDelete, in this case operator handles update
+                      process Can be changed for RollingUpdate
+                    type: string
                   runtimeClassName:
                     description: RuntimeClassName - defines runtime class for kubernetes
                       pod. https://kubernetes.io/docs/concepts/containers/runtime-class/
@@ -1601,6 +1606,11 @@ spec:
                           to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                         type: object
                     type: object
+                  rollingUpdateStrategy:
+                    description: RollingUpdateStrategy defines strategy for application
+                      updates Default is OnDelete, in this case operator handles update
+                      process Can be changed for RollingUpdate
+                    type: string
                   runtimeClassName:
                     description: RuntimeClassName - defines runtime class for kubernetes
                       pod. https://kubernetes.io/docs/concepts/containers/runtime-class/

@@ -414,6 +414,11 @@ spec:
                 (milliseconds seconds minutes hours).
               pattern: '[0-9]+(ms|s|m|h)'
               type: string
+            rollingUpdateStrategy:
+              description: RollingUpdateStrategy defines strategy for application
+                updates Default is OnDelete, in this case operator handles update
+                process Can be changed for RollingUpdate
+              type: string
             routePrefix:
               description: RoutePrefix VMAlertmanager registers HTTP handlers for.
                 This is useful, if using ExternalURL and a proxy is rewriting HTTP

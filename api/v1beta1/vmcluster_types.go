@@ -252,6 +252,12 @@ type VMSelect struct {
 	// NodeSelector Define which Nodes the Pods are scheduled on.
 	// +optional
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
+
+	// RollingUpdateStrategy defines strategy for application updates
+	// Default is OnDelete, in this case operator handles update process
+	// Can be changed for RollingUpdate
+	// +optional
+	RollingUpdateStrategy appsv1.StatefulSetUpdateStrategyType `json:"rollingUpdateStrategy,omitempty"`
 }
 
 func (s VMSelect) GetNameWithPrefix(clusterName string) string {
@@ -574,6 +580,12 @@ type VMStorage struct {
 	// NodeSelector Define which Nodes the Pods are scheduled on.
 	// +optional
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
+
+	// RollingUpdateStrategy defines strategy for application updates
+	// Default is OnDelete, in this case operator handles update process
+	// Can be changed for RollingUpdate
+	// +optional
+	RollingUpdateStrategy appsv1.StatefulSetUpdateStrategyType `json:"rollingUpdateStrategy,omitempty"`
 }
 
 type VMBackup struct {
@@ -648,7 +660,7 @@ type VMBackup struct {
 	VolumeMounts []v1.VolumeMount `json:"volumeMounts,omitempty"`
 }
 
-func (s VMStorage) BuildPodName(baseName string, podIndex int32, namespace, portName, domain string) string {
+func (s VMStorage) BuildPodName(baseName string, podIndex int32, namespace string, portName string, domain string) string {
 	// The default DNS search path is .svc.<cluster domain>
 	if domain == "" {
 		return fmt.Sprintf("%s-%d.%s.%s:%s,", baseName, podIndex, baseName, namespace, portName)
@@ -679,6 +691,20 @@ func (s VMSelect) GetCacheMountVolumeName() string {
 		return storageSpec.VolumeClaimTemplate.Name
 	}
 	return PrefixedName("cachedir", "vmselect")
+}
+
+func (s VMStorage) UpdateStrategy() appsv1.StatefulSetUpdateStrategyType {
+	if s.RollingUpdateStrategy == "" {
+		return appsv1.OnDeleteStatefulSetStrategyType
+	}
+	return s.RollingUpdateStrategy
+}
+
+func (s VMSelect) UpdateStrategy() appsv1.StatefulSetUpdateStrategyType {
+	if s.RollingUpdateStrategy == "" {
+		return appsv1.OnDeleteStatefulSetStrategyType
+	}
+	return s.RollingUpdateStrategy
 }
 
 // Image defines docker image settings

@@ -110,6 +110,7 @@ func CreateOrUpdateAlertManager(ctx context.Context, cr *victoriametricsv1beta1.
 	stsOpts := k8stools.STSOptions{
 		VolumeName:     cr.GetVolumeName,
 		SelectorLabels: cr.SelectorLabels,
+		UpdateStrategy: cr.UpdateStrategy,
 	}
 	return k8stools.HandleSTSUpdate(ctx, rclient, stsOpts, newSts, currentSts, c)
 }
@@ -499,7 +500,7 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, c *config.Ba
 		Replicas:            cr.Spec.ReplicaCount,
 		PodManagementPolicy: appsv1.ParallelPodManagement,
 		UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
-			Type: appsv1.OnDeleteStatefulSetStrategyType,
+			Type: cr.UpdateStrategy(),
 		},
 		Selector: &metav1.LabelSelector{
 			MatchLabels: cr.SelectorLabels(),

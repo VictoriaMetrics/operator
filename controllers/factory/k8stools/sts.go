@@ -22,11 +22,13 @@ const podRevisionLabel = "controller-revision-hash"
 type STSOptions struct {
 	SelectorLabels func() map[string]string
 	VolumeName     func() string
+	UpdateStrategy func() appsv1.StatefulSetUpdateStrategyType
 }
 
 func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, newSts, currentSts *appsv1.StatefulSet, c *config.BaseOperatorConf) error {
 
-	newSts.Annotations = labels.Merge(currentSts.Annotations, currentSts.Annotations)
+	// special case, that allows app restart
+	newSts.Spec.Template.Annotations = MergeAnnotations(currentSts.Spec.Template.Annotations, newSts.Spec.Template.Annotations)
 	newSts.Finalizers = victoriametricsv1beta1.MergeFinalizers(currentSts, victoriametricsv1beta1.FinalizerName)
 
 	isRecreated, err := wasCreatedSTS(ctx, rclient, cr.VolumeName(), newSts, currentSts)
@@ -40,8 +42,12 @@ func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, 
 		}
 	}
 
-	if err := performRollingUpdateOnSts(ctx, isRecreated, rclient, newSts.Name, newSts.Namespace, cr.SelectorLabels(), c); err != nil {
-		return fmt.Errorf("cannot update statefulset for vmalertmanager: %w", err)
+	// perform manual update only with OnDelete policy, which is default.
+	if cr.UpdateStrategy() == appsv1.OnDeleteStatefulSetStrategyType {
+
+		if err := performRollingUpdateOnSts(ctx, isRecreated, rclient, newSts.Name, newSts.Namespace, cr.SelectorLabels(), c); err != nil {
+			return fmt.Errorf("cannot update statefulset for vmalertmanager: %w", err)
+		}
 	}
 
 	if err := growSTSPVC(ctx, rclient, newSts, cr.VolumeName()); err != nil {

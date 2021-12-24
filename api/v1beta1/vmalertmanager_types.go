@@ -2,6 +2,7 @@ package v1beta1
 
 import (
 	"fmt"
+	appsv1 "k8s.io/api/apps/v1"
 	"strings"
 
 	v1 "k8s.io/api/core/v1"
@@ -239,6 +240,12 @@ type VMAlertmanagerSpec struct {
 	// It may be useful if alert doesn't have namespace label for some reason
 	// +optional
 	DisableNamespaceMatcher bool `json:"disableNamespaceMatcher,omitempty"`
+
+	// RollingUpdateStrategy defines strategy for application updates
+	// Default is OnDelete, in this case operator handles update process
+	// Can be changed for RollingUpdate
+	// +optional
+	RollingUpdateStrategy appsv1.StatefulSetUpdateStrategyType `json:"rollingUpdateStrategy,omitempty"`
 }
 
 // VMAlertmanagerList is a list of Alertmanagers.
@@ -391,6 +398,13 @@ func (cr *VMAlertmanager) AsNotifiers() []VMAlertNotifierSpec {
 		r = append(r, ns)
 	}
 	return r
+}
+
+func (cr VMAlertmanager) UpdateStrategy() appsv1.StatefulSetUpdateStrategyType {
+	if cr.Spec.RollingUpdateStrategy == "" {
+		return appsv1.OnDeleteStatefulSetStrategyType
+	}
+	return cr.Spec.RollingUpdateStrategy
 }
 
 func (cr *VMAlertmanager) GetVolumeName() string {

@@ -9,7 +9,6 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httpserver"
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers"
-	"github.com/VictoriaMetrics/operator/controllers/factory/crd"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
 	"github.com/spf13/pflag"
@@ -107,7 +106,7 @@ func RunManager(ctx context.Context) error {
 			return err
 		}
 		logger.Info("starting CRD ownership controller")
-		if err := crd.Init(ctx, initC); err != nil {
+		if err := victoriametricsv1beta1.Init(ctx, initC); err != nil {
 			setupLog.Error(err, "unable to init crd data")
 			return err
 		}

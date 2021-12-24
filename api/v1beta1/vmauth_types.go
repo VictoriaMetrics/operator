@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/VictoriaMetrics/operator/controllers/factory/crd"
 	v1 "k8s.io/api/core/v1"
 	v12 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -313,7 +312,7 @@ func (cr VMAuth) GetNSName() string {
 
 // AsCRDOwner implements interface
 func (cr *VMAuth) AsCRDOwner() []metav1.OwnerReference {
-	return crd.GetCRDAsOwner(crd.VMAuth)
+	return GetCRDAsOwner(Auth)
 }
 
 func init() {

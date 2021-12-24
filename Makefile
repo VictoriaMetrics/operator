@@ -178,7 +178,7 @@ docker: build manager
 	GOARCH=amd64 $(MAKE) docker-build-arch
 
 .PHONY:e2e-local
-e2e-local: generate fmt vet manifests fix118 fix_crd_nulls
+e2e-local: fmt vet manifests fix118 fix_crd_nulls
 	echo 'mode: atomic' > coverage.txt  && \
 	$(TEST_ARGS) -p 1 $(REPO)/e2e/...
 	$(GOCMD) tool cover -func coverage.txt  | grep total
@@ -196,13 +196,13 @@ clean:
 all: build
 
 # Run tests
-test: generate fmt vet manifests fix118 fix_crd_nulls
+test: fmt vet manifests fix118 fix_crd_nulls
 	echo 'mode: atomic' > coverage.txt  && \
 	$(TEST_ARGS) $(REPO)/controllers/... $(REPO)/api/...
 	$(GOCMD) tool cover -func coverage.txt  | grep total
 
 # Build manager binary
-manager: generate fmt vet
+manager: fmt vet
 	CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH} $(GOBUILD) -o bin/manager main.go
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
@@ -224,8 +224,8 @@ deploy: manifests fix118 fix_crd_nulls kustomize
 
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen
-	$(CONTROLLER_GEN) "crd:trivialVersions=true,crdVersions=v1beta1" rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=$(LEGACY_CRD_PATH)
-	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=$(CRD_PATH)
+	cd api/v1beta1 && $(CONTROLLER_GEN) "crd:trivialVersions=true,crdVersions=v1beta1" rbac:roleName=manager-role webhook paths="." output:crd:artifacts:config=$(PWD)/$(LEGACY_CRD_PATH) output:webhook:dir=$(PWD)/config/webhook
+	cd api/v1beta1 && $(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="." output:crd:artifacts:config=$(PWD)/$(CRD_PATH) output:webhook:dir=$(PWD)/config/webhook
 # Run go fmt against code
 fmt:
 	go fmt ./...
@@ -235,8 +235,8 @@ vet:
 	go vet ./...
 
 # Generate code
-generate: controller-gen
-	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./api/..."
+#generate: controller-gen
+#	cd api/v1beta1 && $(CONTROLLER_GEN) object:headerFile="../../hack/boilerplate.go.txt" paths="."
 
 
 # find or download controller-gen
@@ -289,7 +289,7 @@ bundle-push: bundle
 bundle-build:
 	docker build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
 
-build: manager generate manifests fix118 fix_crd_nulls
+build: manager manifests fix118 fix_crd_nulls
 
 release-package: kustomize
 	mkdir -p release/crds/

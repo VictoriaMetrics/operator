@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/VictoriaMetrics/operator/controllers/factory/crd"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -308,7 +307,7 @@ func (cr *VMSingle) AsURL() string {
 
 // AsCRDOwner implements interface
 func (cr *VMSingle) AsCRDOwner() []metav1.OwnerReference {
-	return crd.GetCRDAsOwner(crd.VMSingle)
+	return GetCRDAsOwner(Single)
 }
 
 func init() {

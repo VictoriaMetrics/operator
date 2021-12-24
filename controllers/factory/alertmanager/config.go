@@ -125,7 +125,7 @@ func buildRoute(cr *operatorv1beta1.VMAlertmanagerConfig, cfgRoute *operatorv1be
 
 	var nestedRoutes []yaml.MapSlice
 	for _, nestedRoute := range cfgRoute.Routes {
-		// namespace not needed for nested routes
+		// namespace matcher not needed for nested routes
 		nestedRoutes = append(nestedRoutes, buildRoute(cr, nestedRoute, false, false))
 	}
 	if len(nestedRoutes) > 0 {

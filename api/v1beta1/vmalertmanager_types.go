@@ -236,10 +236,10 @@ type VMAlertmanagerSpec struct {
 	// +optional
 	ExtraEnvs []v1.EnvVar `json:"extraEnvs,omitempty"`
 
-	// DisableNamespaceLabel disables namespace label matcher for alertmanager configuration
+	// DisableNamespaceMatcher disables namespace label matcher for VMAlertmanagerConfig
 	// It may be useful if alert doesn't have namespace label for some reason
 	// +optional
-	DisableNamespaceMatch bool `json:"disableNamespaceMatch,omitempty"`
+	DisableNamespaceMatcher bool `json:"disableNamespaceMatcher,omitempty"`
 }
 
 // VMAlertmanagerList is a list of Alertmanagers.

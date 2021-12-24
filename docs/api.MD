@@ -190,7 +190,7 @@ VMAlertmanagerSpec is a specification of the desired behavior of the VMAlertmana
 | configNamespaceSelector | \n ConfigNamespaceSelector defines namespace selector for VMAlertmanagerConfig.\nWorks in combination with Selector. NamespaceSelector nil - only objects at VMAlertmanager namespace. Selector nil - only objects at NamespaceSelector namespaces. If both nil - behaviour controlled by selectAllByDefault | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#labelselector-v1-meta) | false |
 | extraArgs | ExtraArgs that will be passed to  VMAuth pod for example remoteWrite.tmpDataPath: /tmp | map[string]string | false |
 | extraEnvs | ExtraEnvs that will be added to VMAuth pod | [][v1.EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#envvar-v1-core) | false |
-| disableNamespaceMatch | DisableNamespaceLabel disables namespace label matcher for alertmanager configuration It may be useful if alert doesn&#39;t have namespace label for some reason | bool | false |
+| disableNamespaceMatcher | DisableNamespaceMatcher disables namespace label matcher for VMAlertmanagerConfig It may be useful if alert doesn&#39;t have namespace label for some reason | bool | false |
 
 [Back to TOC](#table-of-contents)
 

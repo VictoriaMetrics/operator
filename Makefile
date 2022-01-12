@@ -313,6 +313,8 @@ packagemanifests: manifests fix118 fix_crd_nulls
 	kustomize build config/manifests | $(OPERATOR_BIN) generate packagemanifests -q --version $(VERSION_TRIM) --channel=$(CHANNEL) --default-channel
 	mv packagemanifests/$(VERSION_TRIM)/victoriametrics-operator.clusterserviceversion.yaml packagemanifests/$(VERSION_TRIM)/victoriametrics-operator.$(VERSION_TRIM).clusterserviceversion.yaml
 	sed -i "s|$(DOCKER_REPO):.*|$(DOCKER_REPO):$(VERSION)|" packagemanifests/$(VERSION_TRIM)/*
+    # remove service account from bundle, OLM creates it automatically.
+	rm packagemanifests/$VERSION_TRIM/packagemanifests/0.22.0/vm-operator-vm-operator_v1_serviceaccount.yaml
 	docker run --rm -v "${PWD}":/workdir mikefarah/yq:2.2.0 \
 	 yq m -i -a packagemanifests/$(VERSION_TRIM)/victoriametrics-operator.$(VERSION_TRIM).clusterserviceversion.yaml hack/bundle_csv_vmagent.yaml
 

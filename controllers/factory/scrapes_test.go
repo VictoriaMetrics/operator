@@ -617,7 +617,7 @@ func TestCreateOrUpdateConfigurationSecret(t *testing.T) {
   external_labels:
     prometheus: default/test
 scrape_configs:
-- job_name: default/test-vms/0
+- job_name: serviceScrape/default/test-vms/0
   honor_labels: false
   kubernetes_sd_configs:
   - role: endpoints
@@ -665,7 +665,7 @@ scrape_configs:
     replacement: ${1}
   - target_label: endpoint
     replacement: "8085"
-- job_name: default/test-vms/1
+- job_name: serviceScrape/default/test-vms/1
   honor_labels: false
   kubernetes_sd_configs:
   - role: endpoints
@@ -712,7 +712,7 @@ scrape_configs:
     replacement: ${1}
   - target_label: endpoint
     replacement: "8083"
-- job_name: default/test-vps/0
+- job_name: podScrape/default/test-vps/0
   honor_labels: false
   kubernetes_sd_configs:
   - role: pod
@@ -754,7 +754,7 @@ scrape_configs:
     ca_file: /etc/vmagent-tls/certs/default_access-creds_ca
     cert_file: /etc/vmagent-tls/certs/default_access-creds_cert
     key_file: /etc/vmagent-tls/certs/default_access-creds_key
-- job_name: default/test-vps/1
+- job_name: podScrape/default/test-vps/1
   honor_labels: false
   kubernetes_sd_configs:
   - role: pod
@@ -795,7 +795,7 @@ scrape_configs:
   - target_label: endpoint
     replacement: "801"
   sample_limit: 10
-- job_name: kube-system/test-vmp/0
+- job_name: probe/kube-system/test-vmp/0
   params:
     module:
     - ""
@@ -809,7 +809,7 @@ scrape_configs:
     target_label: instance
   - target_label: __address__
     replacement: ""
-- job_name: default/test-vms/0
+- job_name: nodeScrape/default/test-vms/0
   honor_labels: false
   kubernetes_sd_configs:
   - role: node
@@ -822,7 +822,7 @@ scrape_configs:
     target_label: node
   - target_label: job
     replacement: default/test-vms
-- job_name: default/test-vmstatic/0
+- job_name: staticScrape/default/test-vmstatic/0
   honor_labels: false
   static_configs:
   - targets: []

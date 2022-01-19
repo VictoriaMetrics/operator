@@ -168,7 +168,7 @@ func Test_generateServiceScrapeConfig(t *testing.T) {
 				ignoreNamespaceSelectors: false,
 				enforcedNamespaceLabel:   "",
 			},
-			want: `job_name: default/test-scrape/0
+			want: `job_name: serviceScrape/default/test-scrape/0
 honor_labels: false
 kubernetes_sd_configs:
 - role: endpoints
@@ -266,7 +266,7 @@ relabel_configs:
 				ignoreNamespaceSelectors: false,
 				enforcedNamespaceLabel:   "",
 			},
-			want: `job_name: default/test-scrape/0
+			want: `job_name: serviceScrape/default/test-scrape/0
 honor_labels: false
 kubernetes_sd_configs:
 - role: endpointslices
@@ -364,7 +364,7 @@ relabel_configs:
 				ignoreNamespaceSelectors: false,
 				enforcedNamespaceLabel:   "",
 			},
-			want: `job_name: default/test-scrape/0
+			want: `job_name: serviceScrape/default/test-scrape/0
 honor_labels: false
 kubernetes_sd_configs:
 - role: service
@@ -428,7 +428,7 @@ relabel_configs:
 				ignoreNamespaceSelectors: false,
 				enforcedNamespaceLabel:   "",
 			},
-			want: `job_name: default/test-scrape/0
+			want: `job_name: serviceScrape/default/test-scrape/0
 honor_labels: false
 kubernetes_sd_configs:
 - role: service
@@ -483,7 +483,7 @@ relabel_configs:
 				ignoreNamespaceSelectors: false,
 				enforcedNamespaceLabel:   "",
 			},
-			want: `job_name: default/test-scrape/0
+			want: `job_name: serviceScrape/default/test-scrape/0
 honor_labels: false
 kubernetes_sd_configs:
 - role: service
@@ -606,7 +606,7 @@ relabel_configs:
 				ignoreNamespaceSelectors: false,
 				enforcedNamespaceLabel:   "",
 			},
-			want: `job_name: default/test-scrape/0
+			want: `job_name: serviceScrape/default/test-scrape/0
 honor_labels: true
 honor_timestamps: true
 kubernetes_sd_configs:
@@ -722,7 +722,7 @@ oauth2:
 				ignoreNamespaceSelectors: false,
 				enforcedNamespaceLabel:   "",
 			},
-			want: `job_name: default/test-scrape/0
+			want: `job_name: serviceScrape/default/test-scrape/0
 honor_labels: false
 kubernetes_sd_configs:
 - role: endpoints
@@ -822,7 +822,7 @@ func Test_generateNodeScrapeConfig(t *testing.T) {
 					},
 				},
 			},
-			want: `job_name: default/nodes-basic/1
+			want: `job_name: nodeScrape/default/nodes-basic/1
 honor_labels: false
 kubernetes_sd_configs:
 - role: node
@@ -904,7 +904,7 @@ relabel_configs:
 					},
 				},
 			},
-			want: `job_name: default/nodes-basic/1
+			want: `job_name: nodeScrape/default/nodes-basic/1
 honor_labels: true
 honor_timestamps: true
 kubernetes_sd_configs:
@@ -1064,7 +1064,7 @@ func Test_generatePodScrapeConfig(t *testing.T) {
 				},
 				ssCache: &scrapesSecretsCache{},
 			},
-			want: `job_name: default/test-1/0
+			want: `job_name: podScrape/default/test-1/0
 honor_labels: false
 kubernetes_sd_configs:
 - role: pod
@@ -1125,7 +1125,7 @@ relabel_configs:
 				},
 				ssCache: &scrapesSecretsCache{},
 			},
-			want: `job_name: default/test-1/0
+			want: `job_name: podScrape/default/test-1/0
 honor_labels: false
 kubernetes_sd_configs:
 - role: pod

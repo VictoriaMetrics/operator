@@ -21,7 +21,7 @@ func generateStaticScrapeConfig(
 	cfg := yaml.MapSlice{
 		{
 			Key:   "job_name",
-			Value: fmt.Sprintf("%s/%s/%d", m.Namespace, m.Name, i),
+			Value: fmt.Sprintf("staticScrape/%s/%s/%d", m.Namespace, m.Name, i),
 		},
 		{
 			Key:   "honor_labels",

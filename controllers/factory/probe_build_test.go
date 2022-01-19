@@ -46,7 +46,7 @@ func Test_generateProbeConfig(t *testing.T) {
 				},
 				i: 0,
 			},
-			want: `job_name: default/static-probe/0
+			want: `job_name: probe/default/static-probe/0
 params:
   module:
   - http
@@ -95,7 +95,7 @@ relabel_configs:
 					},
 				},
 			},
-			want: `job_name: monitor/probe-ingress/0
+			want: `job_name: probe/monitor/probe-ingress/0
 params:
   module:
   - http200
@@ -189,7 +189,7 @@ relabel_configs:
 				},
 				i: 0,
 			},
-			want: `job_name: default/static-probe/0
+			want: `job_name: probe/default/static-probe/0
 scrape_interval: 10s
 scrape_timeout: 15s
 params:

@@ -44,7 +44,7 @@ func Test_generateStaticScrapeConfig(t *testing.T) {
 					Labels:  map[string]string{"env": "dev", "group": "prod"},
 				},
 			},
-			want: `job_name: default/static-1/0
+			want: `job_name: staticScrape/default/static-1/0
 honor_labels: false
 static_configs:
 - targets:
@@ -86,7 +86,7 @@ relabel_configs:
 				overrideHonorLabels:     true,
 				enforceNamespaceLabel:   "namespace",
 			},
-			want: `job_name: default/static-1/0
+			want: `job_name: staticScrape/default/static-1/0
 honor_labels: false
 honor_timestamps: true
 static_configs:
@@ -228,7 +228,7 @@ metric_relabel_configs: []
 				overrideHonorLabels:     true,
 				enforceNamespaceLabel:   "namespace",
 			},
-			want: `job_name: default/static-1/0
+			want: `job_name: staticScrape/default/static-1/0
 honor_labels: false
 honor_timestamps: true
 static_configs:

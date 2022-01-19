@@ -23,7 +23,7 @@ func generateProbeConfig(
 	cfg := yaml.MapSlice{
 		{
 			Key:   "job_name",
-			Value: fmt.Sprintf("%s/%s/%d", cr.Namespace, cr.Name, i),
+			Value: fmt.Sprintf("probe/%s/%s/%d", cr.Namespace, cr.Name, i),
 		},
 	}
 	var relabelings []yaml.MapSlice

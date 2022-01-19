@@ -283,7 +283,7 @@ func generatePodScrapeConfig(
 	cfg := yaml.MapSlice{
 		{
 			Key:   "job_name",
-			Value: fmt.Sprintf("%s/%s/%d", m.Namespace, m.Name, i),
+			Value: fmt.Sprintf("podScrape/%s/%s/%d", m.Namespace, m.Name, i),
 		},
 		{
 			Key:   "honor_labels",
@@ -533,7 +533,7 @@ func generateServiceScrapeConfig(
 	cfg := yaml.MapSlice{
 		{
 			Key:   "job_name",
-			Value: fmt.Sprintf("%s/%s/%d", m.Namespace, m.Name, i),
+			Value: fmt.Sprintf("serviceScrape/%s/%s/%d", m.Namespace, m.Name, i),
 		},
 		{
 			Key:   "honor_labels",
@@ -862,7 +862,7 @@ func generateNodeScrapeConfig(
 	cfg := yaml.MapSlice{
 		{
 			Key:   "job_name",
-			Value: fmt.Sprintf("%s/%s/%d", cr.Namespace, cr.Name, i),
+			Value: fmt.Sprintf("nodeScrape/%s/%s/%d", cr.Namespace, cr.Name, i),
 		},
 		{
 			Key:   "honor_labels",

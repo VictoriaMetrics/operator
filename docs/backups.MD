@@ -2,7 +2,7 @@
 
 #### vmbackupmanager is proprietary software. 
 
- Before using it, you must have signed contract and accept EULA https://victoriametrics.com/legal/eula/
+ Before using it, you must have signed contract and accepted [EULA](https://victoriametrics.com/legal/eula/)
 
 ### Usage examples
 
@@ -33,7 +33,7 @@ spec:
   retentionPeriod: "1"
   vmBackup:
     # This is Enterprise Package feature you need to have signed contract to use it
-    # and accept the EULA https://victoriametrics.com/legal/eula/
+    # and accept the [EULA](https://victoriametrics.com/legal/eula/)
     acceptEULA: true
     destination: "s3://your_bucket/folder"
     credentialsSecret:
@@ -51,7 +51,7 @@ spec:
     replicaCount: 2
     vmBackup:
       # This is Enterprise Package feature you need to have signed contract to use it
-      # and accept the EULA  https://victoriametrics.com/legal/eula/
+      # and accept the [EULA](https://victoriametrics.com/legal/eula/)
       acceptEULA: true
       destination: "s3://your_bucket/folder"
       credentialsSecret:

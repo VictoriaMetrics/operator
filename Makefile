@@ -57,8 +57,8 @@ install-golint:
 	which golint || GO111MODULE=off go get -u golang.org/x/lint/golint
 
 install-docs-generators:
-	which envconfig-docs || GO111MODULE=off go get -u github.com/f41gh7/envconfig-docs
-	which doc-print || GO111MODULE=off go get -u github.com/f41gh7/doc-print
+	which envconfig-docs || go install github.com/f41gh7/envconfig-docs@latest
+	which doc-print || go install github.com/f41gh7/doc-print@latest
 
 install-develop-tools: install-golint install-docs-generators
 

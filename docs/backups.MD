@@ -112,7 +112,7 @@ spec:
    - -credsFilePath=/etc/vm/creds/credentials
  vmBackup:
    # This is Enterprise Package feature you need to have signed contract to use it
-   # and accept the EULA https://victoriametrics.com/assets/VM_EULA.pdf
+   # and accept the EULA https://victoriametrics.com/legal/eula/
   acceptEULA: true
   destination: "s3://your_bucket/folder"
   extraArgs:

@@ -1426,7 +1426,7 @@ Image defines docker image settings
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
-| acceptEULA | AcceptEULA accepts enterprise feature usage, must be set to true. otherwise backupmanager cannot be added to single/cluster version. https://victoriametrics.com/assets/VM_EULA.pdf | bool | true |
+| acceptEULA | AcceptEULA accepts enterprise feature usage, must be set to true. otherwise backupmanager cannot be added to single/cluster version. https://victoriametrics.com/legal/eula/ | bool | true |
 | snapshotCreateURL | SnapshotCreateURL overwrites url for snapshot create | string | false |
 | snapshotDeleteURL | SnapShotDeleteURL overwrites url for snapshot delete | string | false |
 | concurrency | Defines number of concurrent workers. Higher concurrency may reduce backup duration (default 10) | *int32 | false |

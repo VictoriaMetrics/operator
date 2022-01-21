@@ -168,7 +168,7 @@ doc: install-develop-tools
 	$(APIS_BASE_PATH)/vmstaticscrape_types.go,\
 	$(APIS_BASE_PATH)/vmprobe_types.go \
 	--owner VictoriaMetrics \
-     > docs/api.MD
+     > doc_api.MD
 
 operator-conf: install-develop-tools
 	envconfig-docs --input internal/config/config.go --truncate=false > vars.MD

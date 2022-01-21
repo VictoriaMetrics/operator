@@ -55,12 +55,12 @@ type VMAlertmanagerSpec struct {
 	ImagePullSecrets []v1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 	// Secrets is a list of Secrets in the same namespace as the VMAlertmanager
 	// object, which shall be mounted into the VMAlertmanager Pods.
-	// The Secrets are mounted into /etc/alertmanager/secrets/<secret-name>
+	// The Secrets are mounted into /etc/vm/secrets/<secret-name>
 	// +optional
 	Secrets []string `json:"secrets,omitempty"`
 	// ConfigMaps is a list of ConfigMaps in the same namespace as the VMAlertmanager
 	// object, which shall be mounted into the VMAlertmanager Pods.
-	// The ConfigMaps are mounted into /etc/alertmanager/configmaps/<configmap-name>.
+	// The ConfigMaps are mounted into /etc/vm/configs/<configmap-name>.
 	// +optional
 	ConfigMaps []string `json:"configMaps,omitempty"`
 

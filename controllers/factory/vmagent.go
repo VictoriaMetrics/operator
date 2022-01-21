@@ -129,13 +129,13 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 		for i := 0; i < shardsCount; i++ {
 			shardedDeploy := newDeploy.DeepCopy()
 			addShardSettingsToVMAgent(i, shardsCount, shardedDeploy)
-			if err := reconcileDeploy(ctx, rclient, shardedDeploy); err != nil {
+			if err := k8stools.HandleDeployUpdate(ctx, rclient, shardedDeploy); err != nil {
 				return reconcile.Result{}, err
 			}
 			deploymentNames[shardedDeploy.Name] = struct{}{}
 		}
 	} else {
-		if err := reconcileDeploy(ctx, rclient, newDeploy); err != nil {
+		if err := k8stools.HandleDeployUpdate(ctx, rclient, newDeploy); err != nil {
 			return reconcile.Result{}, err
 		}
 		deploymentNames[newDeploy.Name] = struct{}{}

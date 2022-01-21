@@ -98,23 +98,8 @@ func CreateOrUpdateVMSingle(ctx context.Context, cr *victoriametricsv1beta1.VMSi
 
 	l = l.WithValues("single.deploy.name", newDeploy.Name, "single.deploy.namespace", newDeploy.Namespace)
 
-	currentDeploy := &appsv1.Deployment{}
-	err = rclient.Get(ctx, types.NamespacedName{Name: newDeploy.Name, Namespace: newDeploy.Namespace}, currentDeploy)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			l.Info("vmsingle deploy not found, creating new one")
-			if err := rclient.Create(ctx, newDeploy); err != nil {
-				return nil, fmt.Errorf("cannot create new vmsingle deploy: %w", err)
-			}
-			return newDeploy, nil
-		}
-		return nil, fmt.Errorf("cannot get vmsingle deploy: %w", err)
-	}
-	newDeploy.Spec.Template.Annotations = k8stools.MergeAnnotations(currentDeploy.Spec.Template.Annotations, newDeploy.Spec.Template.Annotations)
-	newDeploy.Finalizers = victoriametricsv1beta1.MergeFinalizers(currentDeploy, victoriametricsv1beta1.FinalizerName)
-
-	if err := rclient.Update(ctx, newDeploy); err != nil {
-		return nil, fmt.Errorf("cannot upddate vmsingle deploy: %w", err)
+	if err := k8stools.HandleDeployUpdate(ctx, rclient, newDeploy); err != nil {
+		return nil, err
 	}
 
 	return newDeploy, nil
@@ -160,7 +145,6 @@ func newDeployForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOpe
 			Template: *podSpec,
 		},
 	}
-
 	return depSpec, nil
 }
 

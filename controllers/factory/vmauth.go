@@ -93,19 +93,12 @@ func CreateOrUpdateVMAuth(ctx context.Context, cr *victoriametricsv1beta1.VMAuth
 			return fmt.Errorf("cannot update pod disruption budget for vmauth: %w", err)
 		}
 	}
-
 	newDeploy, err := newDeployForVMAuth(cr, c)
 	if err != nil {
 		return fmt.Errorf("cannot build new deploy for vmagent: %w", err)
 	}
 
-	if err := reconcileDeploy(ctx, rclient, newDeploy); err != nil {
-		return err
-	}
-
-	l.Info("vmauth deploy reconciled")
-
-	return nil
+	return k8stools.HandleDeployUpdate(ctx, rclient, newDeploy)
 }
 
 func newDeployForVMAuth(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperatorConf) (*appsv1.Deployment, error) {

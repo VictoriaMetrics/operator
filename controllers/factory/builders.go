@@ -3,15 +3,12 @@ package factory
 import (
 	"context"
 	"fmt"
-	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
-
 	"k8s.io/api/autoscaling/v2beta2"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/config"
-	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -220,20 +217,6 @@ func reconcileServiceForCRD(ctx context.Context, rclient client.Client, newServi
 	}
 
 	return newService, nil
-}
-
-func reconcileDeploy(ctx context.Context, rclient client.Client, newDeploy *appsv1.Deployment) error {
-	currentDeploy := &appsv1.Deployment{}
-	err := rclient.Get(ctx, types.NamespacedName{Name: newDeploy.Name, Namespace: newDeploy.Namespace}, currentDeploy)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			return rclient.Create(ctx, newDeploy)
-		}
-		return fmt.Errorf("cannot get deploy: %s,err: %w", newDeploy.Name, err)
-	}
-	newDeploy.Spec.Template.Annotations = k8stools.MergeAnnotations(currentDeploy.Spec.Template.Annotations, newDeploy.Spec.Template.Annotations)
-	newDeploy.Finalizers = victoriametricsv1beta1.MergeFinalizers(newDeploy, victoriametricsv1beta1.FinalizerName)
-	return rclient.Update(ctx, newDeploy)
 }
 
 func buildDefaultPDB(cr svcBuilderArgs, spec *victoriametricsv1beta1.EmbeddedPodDisruptionBudgetSpec) *policyv1beta1.PodDisruptionBudget {

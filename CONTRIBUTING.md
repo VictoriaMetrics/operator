@@ -1,7 +1,7 @@
 
 ## Required programs
 
-for developing you need: 
+for developing you need:
 - golang 1.15+
 - operator-sdk v1.0.0
 - docker
@@ -70,7 +70,7 @@ TAG=v0.2.1 make bundle-publish
 ### integration with operator-hub
 
  Clone repo locally: git clone https://github.com/operator-framework/community-operators.git
- 
+
  copy content to operator-hub repo and run tests
  you can specify version (OP_VER) and channel OP_CHANNEL
  ```bash

@@ -18,17 +18,17 @@ So you can use familiar CRD objects: `ServiceMonitor`, `PodMonitor`, `Prometheus
 - `VMRule` - defines alerting or recording rules.
 - `VMProbe` - defines a probing configuration for targets with blackbox exporter.
 
-Besides, operator allows you to manage VictoriaMetrics applications inside kubernetes cluster and simplifies this process [quick-start](/docs/quick-start.MD) 
-With CRD (Custom Resource Definition) you can define application configuration and apply it to your cluster [crd-objects](/docs/api.MD). 
+Besides, operator allows you to manage VictoriaMetrics applications inside kubernetes cluster and simplifies this process [quick-start](/docs/quick-start.MD)
+With CRD (Custom Resource Definition) you can define application configuration and apply it to your cluster [crd-objects](/docs/api.MD).
 
  Operator simplifies VictoriaMetrics cluster installation, upgrading and managing.
- 
+
  It has integration with VictoriaMetrics `vmbackupmanager` - advanced tools for making backups. Check backup [docs](/docs/backups.MD)
 
 ## Use cases
 
  For kubernetes-cluster administrators, it simplifies installation, configuration, management for `VictoriaMetrics` application. And the main feature of operator -  is ability to delegate applications monitoring configuration to the end-users.
- 
+
  For applications developers, its great possibility for managing observability of applications. You can define metrics scraping and alerting configuration for your application and manage it with an application deployment process. Just define app_deployment.yaml, app_vmpodscrape.yaml and app_vmrule.yaml. That's it, you can apply it to a kubernetes cluster. Check [quick-start](/docs/quick-start.MD) for an example.
 
 ## Operator vs helm-chart
@@ -47,7 +47,7 @@ VictoriaMetrics provides [helm charts](https://github.com/VictoriaMetrics/helm-c
 - external access to cluster resources[doc](https://docs.victoriametrics.com/operator/auth.html)
 - security [doc](https://docs.victoriametrics.com/operator/security.html)
 - resource validation [doc](https://docs.victoriametrics.com/operator/resources-validation.html)
- 
+
   NOTE documentations was moved into main VictoriaMetrics repo [link](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/operator)
   All changes must be done there.
 
@@ -60,10 +60,10 @@ VictoriaMetrics provides [helm charts](https://github.com/VictoriaMetrics/helm-c
 
 ## Kubernetes' compatibility versions
 
-operator tested at kubernetes versions 
+operator tested at kubernetes versions
 from 1.16 to 1.22
 
- For clusters version below 1.16 you must use legacy CRDs from [path](config/crd/legacy) 
+ For clusters version below 1.16 you must use legacy CRDs from [path](config/crd/legacy)
   and disable CRD controller with flag: `--controller.disableCRDOwnership=true`
 
 ## Troubleshooting
@@ -101,7 +101,7 @@ for test execution run:
 ```bash
 #unit tests
 
-make test 
+make test
 
 # you need minikube or kind for e2e, do not run it on live cluster
 #e2e tests with local binary

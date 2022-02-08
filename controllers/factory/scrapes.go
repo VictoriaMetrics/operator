@@ -535,14 +535,13 @@ func loadScrapeSecrets(
 
 	// load basic auth for remote write configuration
 	for _, rws := range remoteWriteSpecs {
-		if rws.BasicAuth == nil {
-			continue
+		if rws.BasicAuth != nil {
+			credentials, err := loadBasicAuthSecret(ctx, rclient, namespace, rws.BasicAuth)
+			if err != nil {
+				return nil, fmt.Errorf("could not generate basicAuth for remote write spec %s config. %w", rws.URL, err)
+			}
+			baSecrets[fmt.Sprintf("remoteWriteSpec/%s", rws.URL)] = &credentials
 		}
-		credentials, err := loadBasicAuthSecret(ctx, rclient, namespace, rws.BasicAuth)
-		if err != nil {
-			return nil, fmt.Errorf("could not generate basicAuth for remote write spec %s config. %w", rws.URL, err)
-		}
-		baSecrets[fmt.Sprintf("remoteWriteSpec/%s", rws.URL)] = &credentials
 		if rws.OAuth2 != nil {
 			oauth2, err := loadOAuthSecrets(ctx, rclient, rws.OAuth2, namespace, nsSecretCache, nsCMCache)
 

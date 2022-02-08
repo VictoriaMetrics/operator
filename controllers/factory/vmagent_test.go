@@ -114,6 +114,28 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 			},
 		},
 		{
+			name: "fail if bearer token secret is missing, without basic auth",
+			args: args{
+				c: config.MustGetBaseConfig(),
+				cr: &victoriametricsv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "example-agent-bearer-missing",
+						Namespace: "default",
+					},
+					Spec: victoriametricsv1beta1.VMAgentSpec{
+						RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
+							{
+								URL:               "http://remote-write",
+								BearerTokenSecret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "bearer-secret"}, Key: "token"},
+							},
+						},
+						ServiceScrapeSelector: &metav1.LabelSelector{},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
 			name: "generate vmagent with tls-secret",
 			args: args{
 				c: config.MustGetBaseConfig(),
@@ -713,7 +735,7 @@ func TestBuildRemoteWrites(t *testing.T) {
 			name: "test oauth2",
 			args: args{
 				ssCache: &scrapesSecretsCache{
-					oauth2Secrets: map[string]*oauthCreds{"remoteWriteSpec/localhost:8431": &oauthCreds{
+					oauth2Secrets: map[string]*oauthCreds{"remoteWriteSpec/localhost:8431": {
 						clientID:     "some-id",
 						clientSecret: "some-secret",
 					}},

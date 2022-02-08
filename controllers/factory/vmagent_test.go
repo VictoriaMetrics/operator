@@ -764,6 +764,33 @@ func TestBuildRemoteWrites(t *testing.T) {
 			},
 			want: []string{"-remoteWrite.oauth2.clientID=,some-id", "-remoteWrite.oauth2.clientSecret=,some-secret", "-remoteWrite.oauth2.scopes=,scope-1", "-remoteWrite.oauth2.tokenUrl=,http://some-url", "-remoteWrite.url=localhost:8429,localhost:8431", "-remoteWrite.sendTimeout=10s,15s"},
 		},
+		{
+			name: "test bearer token",
+			args: args{
+				ssCache: &scrapesSecretsCache{
+					bearerTokens: map[string]string{
+						"remoteWriteSpec/localhost:8431": "token",
+					},
+				},
+				cr: &victoriametricsv1beta1.VMAgent{
+					Spec: victoriametricsv1beta1.VMAgentSpec{RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
+						{
+							URL:         "localhost:8429",
+							SendTimeout: pointer.String("10s"),
+						},
+						{
+							URL:         "localhost:8431",
+							SendTimeout: pointer.String("15s"),
+							BearerTokenSecret: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{Name: "some-secret"},
+								Key:                  "some-key",
+							},
+						},
+					}},
+				},
+			},
+			want: []string{"-remoteWrite.bearerToken=\"\",\"token\"", "-remoteWrite.url=localhost:8429,localhost:8431", "-remoteWrite.sendTimeout=10s,15s"},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -870,3 +870,62 @@ scrape_configs:
 		})
 	}
 }
+
+func TestCreateVMServiceScrapeFromService(t *testing.T) {
+	type args struct {
+		service         *v1.Service
+		metricPath      string
+		filterPortNames []string
+	}
+	tests := []struct {
+		name                  string
+		args                  args
+		wantServiceScrapeSpec victoriametricsv1beta1.VMServiceScrapeSpec
+		wantErr               bool
+	}{
+		{
+			name: "multiple ports with filter",
+			args: args{
+				metricPath:      "/metrics",
+				filterPortNames: []string{"http"},
+				service: &v1.Service{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "vmagent-svc",
+					},
+					Spec: v1.ServiceSpec{
+						Ports: []v1.ServicePort{
+							{
+								Name: "http",
+							},
+							{
+								Name: "opentsdb-http",
+							},
+						},
+					},
+				},
+			},
+			wantServiceScrapeSpec: victoriametricsv1beta1.VMServiceScrapeSpec{
+				Endpoints: []victoriametricsv1beta1.Endpoint{
+					{
+						Path: "/metrics",
+						Port: "http",
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			testClient := k8stools.GetTestClientWithObjects(nil)
+			err := CreateVMServiceScrapeFromService(context.Background(), testClient, tt.args.service, tt.args.metricPath, tt.args.filterPortNames...)
+			if err != nil && !tt.wantErr {
+				t.Fatalf("unexpected error: %s", err)
+			}
+			var gotServiceScrape victoriametricsv1beta1.VMServiceScrape
+			if err := testClient.Get(context.Background(), types.NamespacedName{Name: tt.args.service.Name}, &gotServiceScrape); err != nil {
+				t.Fatalf("unexpected error at retriving created object: %s", err)
+			}
+			assert.Equal(t, tt.wantServiceScrapeSpec, gotServiceScrape.Spec)
+		})
+	}
+}

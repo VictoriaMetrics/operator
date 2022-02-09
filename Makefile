@@ -3,8 +3,8 @@ GOCMD=GO111MODULE=on go
 TAG  ?= 0.1.0
 VERSION=$(TAG)
 VERSION_TRIM=$(VERSION:v%=%)
-GOOS ?= linux
-GOARCH ?= amd64
+GOOS ?= $(shell go env GOOS)
+GOARCH ?= $(shell go env GOARCH)
 BUILD=`date +%FT%T%z`
 LDFLAGS=-ldflags "-w -s  -X github.com/VictoriaMetrics/VictoriaMetrics/lib/buildinfo.Version=${VERSION}"
 GOBUILD= $(GOCMD) build -trimpath ${LDFLAGS}
@@ -314,7 +314,7 @@ packagemanifests: manifests fix118 fix_crd_nulls
 	mv packagemanifests/$(VERSION_TRIM)/victoriametrics-operator.clusterserviceversion.yaml packagemanifests/$(VERSION_TRIM)/victoriametrics-operator.$(VERSION_TRIM).clusterserviceversion.yaml
 	sed -i "s|$(DOCKER_REPO):.*|$(DOCKER_REPO):$(VERSION)|" packagemanifests/$(VERSION_TRIM)/*
     # remove service account from bundle, OLM creates it automatically.
-	rm packagemanifests/$VERSION_TRIM/packagemanifests/0.22.0/vm-operator-vm-operator_v1_serviceaccount.yaml
+	rm packagemanifests/$(VERSION_TRIM)/vm-operator-vm-operator_v1_serviceaccount.yaml
 	docker run --rm -v "${PWD}":/workdir mikefarah/yq:2.2.0 \
 	 yq m -i -a packagemanifests/$(VERSION_TRIM)/victoriametrics-operator.$(VERSION_TRIM).clusterserviceversion.yaml hack/bundle_csv_vmagent.yaml
 

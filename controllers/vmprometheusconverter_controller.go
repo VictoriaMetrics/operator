@@ -142,7 +142,7 @@ func NewConverterController(promCl versioned.Interface, vclient client.Client, b
 func waitForAPIResource(ctx context.Context, client discovery.DiscoveryInterface, apiGroupVersion string, kind string) error {
 	l := log.WithValues("group", apiGroupVersion, "kind", kind)
 	l.Info("waiting for api resource")
-	tick := time.NewTicker(time.Second * 10)
+	tick := time.NewTicker(time.Minute)
 	for {
 		select {
 		case <-tick.C:

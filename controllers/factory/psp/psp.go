@@ -3,8 +3,8 @@ package psp
 import (
 	"context"
 	"fmt"
-
 	v1beta12 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/api/policy/v1beta1"
 	v12 "k8s.io/api/rbac/v1"
@@ -34,6 +34,9 @@ type CRDObject interface {
 // ClusterRoleBinding exists.
 func CreateOrUpdateServiceAccountWithPSP(ctx context.Context, cr CRDObject, rclient client.Client) error {
 
+	if !k8stools.IsPSPSupported() {
+		return nil
+	}
 	if err := ensurePSPExists(ctx, cr, rclient); err != nil {
 		return fmt.Errorf("failed check policy: %w", err)
 	}

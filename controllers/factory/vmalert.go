@@ -117,8 +117,7 @@ func CreateOrUpdateVMAlert(ctx context.Context, cr *victoriametricsv1beta1.VMAle
 	}
 
 	if cr.Spec.PodDisruptionBudget != nil {
-		err = CreateOrUpdatePodDisruptionBudgetForVMAlert(ctx, cr, rclient)
-		if err != nil {
+		if err := CreateOrUpdatePodDisruptionBudget(ctx, rclient, cr, cr.Kind, cr.Spec.PodDisruptionBudget); err != nil {
 			return reconcile.Result{}, fmt.Errorf("cannot update pod disruption budget for vmalert: %w", err)
 		}
 	}

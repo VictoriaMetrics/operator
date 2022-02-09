@@ -3,7 +3,9 @@ package factory
 import (
 	"context"
 	"fmt"
+	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"k8s.io/api/autoscaling/v2beta2"
+	policyv1 "k8s.io/api/policy/v1"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
@@ -219,6 +221,25 @@ func reconcileServiceForCRD(ctx context.Context, rclient client.Client, newServi
 	return newService, nil
 }
 
+func buildDefaultPDBV1(cr svcBuilderArgs, spec *victoriametricsv1beta1.EmbeddedPodDisruptionBudgetSpec) *policyv1.PodDisruptionBudget {
+	return &policyv1.PodDisruptionBudget{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            cr.PrefixedName(),
+			Labels:          cr.Labels(),
+			OwnerReferences: cr.AsOwner(),
+			Namespace:       cr.GetNSName(),
+			Finalizers:      []string{victoriametricsv1beta1.FinalizerName},
+		},
+		Spec: policyv1.PodDisruptionBudgetSpec{
+			MinAvailable:   spec.MinAvailable,
+			MaxUnavailable: spec.MaxUnavailable,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: cr.SelectorLabels(),
+			},
+		},
+	}
+}
+
 func buildDefaultPDB(cr svcBuilderArgs, spec *victoriametricsv1beta1.EmbeddedPodDisruptionBudgetSpec) *policyv1beta1.PodDisruptionBudget {
 	return &policyv1beta1.PodDisruptionBudget{
 		ObjectMeta: metav1.ObjectMeta{
@@ -236,6 +257,26 @@ func buildDefaultPDB(cr svcBuilderArgs, spec *victoriametricsv1beta1.EmbeddedPod
 			},
 		},
 	}
+}
+
+func reconcilePDBV1(ctx context.Context, rclient client.Client, crdName string, pdb *policyv1.PodDisruptionBudget) error {
+
+	currentPdb := &policyv1.PodDisruptionBudget{}
+	err := rclient.Get(ctx, types.NamespacedName{Namespace: pdb.Namespace, Name: pdb.Name}, currentPdb)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			log.Info("creating new pdb", "pdb_name", pdb.Name, "crd_object", crdName)
+			return rclient.Create(ctx, pdb)
+		}
+		return fmt.Errorf("cannot get existing pdb: %s, for crd_object: %s, err: %w", pdb.Name, crdName, err)
+	}
+	pdb.Annotations = labels.Merge(currentPdb.Annotations, pdb.Annotations)
+	if currentPdb.ResourceVersion != "" {
+		pdb.ResourceVersion = currentPdb.ResourceVersion
+	}
+	pdb.Status = currentPdb.Status
+	victoriametricsv1beta1.MergeFinalizers(pdb, victoriametricsv1beta1.FinalizerName)
+	return rclient.Update(ctx, pdb)
 }
 
 func reconcilePDB(ctx context.Context, rclient client.Client, crdName string, pdb *policyv1beta1.PodDisruptionBudget) error {
@@ -377,6 +418,10 @@ func reconcileHPA(ctx context.Context, rclient client.Client, targetHPA *v2beta2
 }
 
 func CreateOrUpdatePodDisruptionBudget(ctx context.Context, rclient client.Client, cr svcBuilderArgs, kind string, epdb *victoriametricsv1beta1.EmbeddedPodDisruptionBudgetSpec) error {
+	if k8stools.IsPDBV1APISupported() {
+		pbd := buildDefaultPDBV1(cr, epdb)
+		return reconcilePDBV1(ctx, rclient, kind, pbd)
+	}
 	pdb := buildDefaultPDB(cr, epdb)
 	return reconcilePDB(ctx, rclient, kind, pdb)
 }

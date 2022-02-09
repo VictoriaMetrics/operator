@@ -2,14 +2,16 @@ package finalize
 
 import (
 	"context"
-
-	v12 "k8s.io/api/core/v1"
-	"k8s.io/api/policy/v1beta1"
-	v1 "k8s.io/api/rbac/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
+	policyv1 "k8s.io/api/policy/v1"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	v12 "k8s.io/api/core/v1"
+	"k8s.io/api/policy/v1beta1"
+	policyv1beta1 "k8s.io/api/policy/v1beta1"
+	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -69,9 +71,12 @@ func deleteSA(ctx context.Context, rclient client.Client, crd CRDObject) error {
 // DeletePSPChain - removes psp, cluster role and cluster role binding,
 // on finalize request for given CRD
 func DeletePSPChain(ctx context.Context, rclient client.Client, crd CRDObject) error {
-	if err := ensurePSPRemoved(ctx, rclient, crd); err != nil {
-		return err
+	if k8stools.IsPSPSupported() {
+		if err := ensurePSPRemoved(ctx, rclient, crd); err != nil {
+			return err
+		}
 	}
+
 	if err := ensureCRBRemoved(ctx, rclient, crd); err != nil {
 		return err
 	}
@@ -105,8 +110,25 @@ func finalizePsp(ctx context.Context, rclient client.Client, crd CRDObject) erro
 		return err
 	}
 	// check psp
-	if err := removeFinalizeObjByName(ctx, rclient, &v1beta1.PodSecurityPolicy{}, crd.GetPSPName(), crd.GetNSName()); err != nil {
-		return err
+	if k8stools.IsPSPSupported() {
+		if err := removeFinalizeObjByName(ctx, rclient, &v1beta1.PodSecurityPolicy{}, crd.GetPSPName(), crd.GetNSName()); err != nil {
+			return err
+		}
 	}
+
 	return DeletePSPChain(ctx, rclient, crd)
+}
+
+func finalizePBD(ctx context.Context, rclient client.Client, crd CRDObject) error {
+	if k8stools.IsPDBV1APISupported() {
+		return removeFinalizeObjByName(ctx, rclient, &policyv1.PodDisruptionBudget{}, crd.PrefixedName(), crd.GetNSName())
+	}
+	return removeFinalizeObjByName(ctx, rclient, &policyv1beta1.PodDisruptionBudget{}, crd.PrefixedName(), crd.GetNSName())
+}
+
+func finalizePBDWithName(ctx context.Context, rclient client.Client, ns, name string) error {
+	if k8stools.IsPDBV1APISupported() {
+		return removeFinalizeObjByName(ctx, rclient, &policyv1.PodDisruptionBudget{}, name, ns)
+	}
+	return removeFinalizeObjByName(ctx, rclient, &policyv1beta1.PodDisruptionBudget{}, name, ns)
 }

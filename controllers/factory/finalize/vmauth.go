@@ -7,7 +7,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	v12 "k8s.io/api/networking/v1"
-	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -51,9 +50,10 @@ func OnVMAuthDelete(ctx context.Context, rclient client.Client, crd *victoriamet
 	}
 
 	// check PDB
-	if err := removeFinalizeObjByName(ctx, rclient, &policyv1beta1.PodDisruptionBudget{}, crd.PrefixedName(), crd.Namespace); err != nil {
+	if err := finalizePBD(ctx, rclient, crd); err != nil {
 		return err
 	}
+
 	// check ingress
 	if err := removeFinalizeObjByName(ctx, rclient, &v12.Ingress{}, crd.PrefixedName(), crd.Namespace); err != nil {
 		return err

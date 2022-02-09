@@ -70,9 +70,8 @@ func CreateOrUpdateAlertManager(ctx context.Context, cr *victoriametricsv1beta1.
 	}
 
 	if cr.Spec.PodDisruptionBudget != nil {
-		err := CreateOrUpdatePodDisruptionBudgetForAlertManager(ctx, cr, rclient)
-		if err != nil {
-			return fmt.Errorf("cannot update pod disruption budget for vmagent: %w", err)
+		if err := CreateOrUpdatePodDisruptionBudget(ctx, rclient, cr, cr.Kind, cr.Spec.PodDisruptionBudget); err != nil {
+			return fmt.Errorf("cannot update pod disruption budget for alertmanager: %w", err)
 		}
 	}
 	// special hack, we need version for alertmanager a bit earlier.

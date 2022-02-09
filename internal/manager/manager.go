@@ -3,6 +3,9 @@ package manager
 import (
 	"context"
 	"flag"
+	"fmt"
+	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
+	"k8s.io/api/policy/v1beta1"
 	"net/http"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/buildinfo"
@@ -53,7 +56,6 @@ func init() {
 }
 
 func RunManager(ctx context.Context) error {
-
 	// Add flags registered by imported packages (e.g. glog and
 	// controller-runtime)
 	opts := zap.Options{}
@@ -83,13 +85,15 @@ func RunManager(ctx context.Context) error {
 	setupLog.Info("Registering Components.")
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme:                scheme,
-		MetricsBindAddress:    *metricsAddr,
-		Port:                  9443,
-		LeaderElection:        *enableLeaderElection,
-		LeaderElectionID:      "57410f0d.victoriametrics.com",
-		ClientDisableCacheFor: []client.Object{&v1.Secret{}, &v1.ConfigMap{}, &v1.Pod{}, &v12.Deployment{}, &v12.StatefulSet{}, &v2beta2.HorizontalPodAutoscaler{}},
-		Namespace:             config.MustGetWatchNamespace(),
+		Scheme:             scheme,
+		MetricsBindAddress: *metricsAddr,
+		Port:               9443,
+		LeaderElection:     *enableLeaderElection,
+		LeaderElectionID:   "57410f0d.victoriametrics.com",
+		ClientDisableCacheFor: []client.Object{&v1.Secret{}, &v1.ConfigMap{}, &v1.Pod{}, &v12.Deployment{},
+			&v12.StatefulSet{}, &v2beta2.HorizontalPodAutoscaler{},
+			&v1beta1.PodSecurityPolicy{}, &v1beta1.PodDisruptionBudget{}},
+		Namespace: config.MustGetWatchNamespace(),
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
@@ -256,6 +260,16 @@ func RunManager(ctx context.Context) error {
 		setupLog.Error(err, "cannot build promClient")
 		return err
 	}
+
+	k8sServerVersion, err := prom.DiscoveryClient.ServerVersion()
+	if err != nil {
+		return fmt.Errorf("cannot get kubernetes server version: %w", err)
+	}
+	if err := k8stools.TrySetKubernetesServerVersion(k8sServerVersion); err != nil {
+		return fmt.Errorf("cannot set kubernetes server version: %w", err)
+	}
+
+	setupLog.Info("using kubernetes server version", "version", k8sServerVersion.String())
 	converterController := controllers.NewConverterController(prom, mgr.GetClient(), config.MustGetBaseConfig())
 
 	if err := mgr.Add(converterController); err != nil {

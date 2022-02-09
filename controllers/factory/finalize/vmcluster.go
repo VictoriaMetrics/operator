@@ -9,7 +9,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -51,7 +50,7 @@ func OnVMClusterDelete(ctx context.Context, rclient client.Client, crd *victoria
 		}
 
 		// check PDB
-		if err := removeFinalizeObjByName(ctx, rclient, &policyv1beta1.PodDisruptionBudget{}, obj.GetNameWithPrefix(crd.Name), crd.Namespace); err != nil {
+		if err := finalizePBDWithName(ctx, rclient, obj.GetNameWithPrefix(crd.Name), crd.Namespace); err != nil {
 			return err
 		}
 	}
@@ -76,7 +75,7 @@ func OnVMClusterDelete(ctx context.Context, rclient client.Client, crd *victoria
 		}
 
 		// check PDB
-		if err := removeFinalizeObjByName(ctx, rclient, &policyv1beta1.PodDisruptionBudget{}, obj.GetNameWithPrefix(crd.Name), crd.Namespace); err != nil {
+		if err := finalizePBDWithName(ctx, rclient, obj.GetNameWithPrefix(crd.Name), crd.Namespace); err != nil {
 			return err
 		}
 	}
@@ -96,7 +95,7 @@ func OnVMClusterDelete(ctx context.Context, rclient client.Client, crd *victoria
 		}
 
 		// check PDB
-		if err := removeFinalizeObjByName(ctx, rclient, &policyv1beta1.PodDisruptionBudget{}, obj.GetNameWithPrefix(crd.Name), crd.Namespace); err != nil {
+		if err := finalizePBDWithName(ctx, rclient, obj.GetNameWithPrefix(crd.Name), crd.Namespace); err != nil {
 			return err
 		}
 	}

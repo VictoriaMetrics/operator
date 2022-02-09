@@ -10,7 +10,6 @@ import (
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
-	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -48,10 +47,9 @@ func OnVMAgentDelete(ctx context.Context, rclient client.Client, crd *victoriame
 	}
 
 	// check PDB
-	if err := removeFinalizeObjByName(ctx, rclient, &policyv1beta1.PodDisruptionBudget{}, crd.PrefixedName(), crd.Namespace); err != nil {
+	if err := finalizePBD(ctx, rclient, crd); err != nil {
 		return err
 	}
-
 	// remove vmagents service discovery rbac.
 	if err := removeFinalizeObjByName(ctx, rclient, &v12.ClusterRoleBinding{}, crd.GetClusterRoleName(), crd.GetNSName()); err != nil {
 		return err

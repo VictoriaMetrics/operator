@@ -188,7 +188,7 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient
 			return status, err
 		}
 		if !c.DisableSelfServiceScrapeCreation {
-			err := CreateVMServiceScrapeFromService(ctx, rclient, insertSvc, cr.MetricPathInsert())
+			err := CreateVMServiceScrapeFromService(ctx, rclient, insertSvc, cr.MetricPathInsert(), "http")
 			if err != nil {
 				log.Error(err, "cannot create VMServiceScrape for vmInsert")
 			}

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"k8s.io/apimachinery/pkg/version"
 	"strconv"
+	"strings"
 )
 
 var (
@@ -11,18 +12,27 @@ var (
 	ServerMinorVersion uint64
 )
 
-// TrySetKubernetesServerVersion parses kubernetes
-func TrySetKubernetesServerVersion(vi *version.Info) error {
-	v, err := strconv.ParseUint(vi.Minor, 10, 64)
+// SetKubernetesVersionWithDefaults parses kubernetes version response with given default versions
+func SetKubernetesVersionWithDefaults(vi *version.Info, defaultMinor, defaultMajor uint64) error {
+
+	var warnMessage string
+	minor := strings.Trim(vi.Minor, "+")
+	v, err := strconv.ParseUint(minor, 10, 64)
 	if err != nil {
-		return fmt.Errorf("cannot parse kubernetes server minor version: %q as uint: %w", vi.Minor, err)
+		v = defaultMinor
+		warnMessage = fmt.Sprintf("cannot parse minor kubernetes version response: %s, err: %s, using default: %d\n", vi.Minor, err, defaultMinor)
 	}
 	ServerMinorVersion = v
-	v, err = strconv.ParseUint(vi.Major, 10, 64)
+	major := strings.Trim(vi.Major, "+")
+	v, err = strconv.ParseUint(major, 10, 64)
 	if err != nil {
-		return fmt.Errorf("cannot parse kubernetes server major version: %q as uint: %w", vi.Major, err)
+		v = defaultMajor
+		warnMessage += fmt.Sprintf("cannot parse major kubernetes version response: %s, err: %s, using default: %d\n", vi.Major, err, defaultMajor)
 	}
 	ServerMajorVersion = v
+	if len(warnMessage) > 0 {
+		return fmt.Errorf(warnMessage)
+	}
 	return nil
 }
 

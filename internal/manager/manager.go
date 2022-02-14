@@ -36,13 +36,15 @@ var (
 	setupLog             = ctrl.Log.WithName("setup")
 	enableLeaderElection = flag.Bool("enable-leader-election", false, "Enable leader election for controller manager. "+
 		"Enabling this will ensure there is only one active controller manager.")
-	enableWebhooks      = flag.Bool("webhook.enable", false, "adds webhook server, you must mount cert and key or use cert-manager")
-	disableCRDOwnership = flag.Bool("controller.disableCRDOwnership", false, "disables CRD ownership add to cluster wide objects, must be disabled for clusters, lower than v1.16.0")
-	webhooksDir         = flag.String("webhook.certDir", "/tmp/k8s-webhook-server/serving-certs/", "root directory for webhook cert and key")
-	webhookCertName     = flag.String("webhook.certName", "tls.crt", "name of webhook server Tls certificate inside tls.certDir")
-	webhookKeyName      = flag.String("webhook.keyName", "tls.key", "name of webhook server Tls key inside tls.certDir")
-	metricsAddr         = flag.String("metrics-addr", ":8080", "The address the metric endpoint binds to.")
-	listenAddr          = flag.String("http.listenAddr", ":8435", "http server listen addr - serves victoria-metrics http server + metrics.")
+	enableWebhooks                = flag.Bool("webhook.enable", false, "adds webhook server, you must mount cert and key or use cert-manager")
+	disableCRDOwnership           = flag.Bool("controller.disableCRDOwnership", false, "disables CRD ownership add to cluster wide objects, must be disabled for clusters, lower than v1.16.0")
+	webhooksDir                   = flag.String("webhook.certDir", "/tmp/k8s-webhook-server/serving-certs/", "root directory for webhook cert and key")
+	webhookCertName               = flag.String("webhook.certName", "tls.crt", "name of webhook server Tls certificate inside tls.certDir")
+	webhookKeyName                = flag.String("webhook.keyName", "tls.key", "name of webhook server Tls key inside tls.certDir")
+	metricsAddr                   = flag.String("metrics-addr", ":8080", "The address the metric endpoint binds to.")
+	listenAddr                    = flag.String("http.listenAddr", ":8435", "http server listen addr - serves victoria-metrics http server + metrics.")
+	defaultKubernetesMinorVersion = flag.Uint64("default.kubernetesVersion.minor", 21, "Minor version of kubernetes server, if operator cannot parse actual kubernetes response")
+	defaultKubernetesMajorVersion = flag.Uint64("default.kubernetesVersion.major", 1, "Major version of kubernetes server, if operator cannot parse actual kubernetes response")
 )
 
 func init() {
@@ -265,8 +267,9 @@ func RunManager(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("cannot get kubernetes server version: %w", err)
 	}
-	if err := k8stools.TrySetKubernetesServerVersion(k8sServerVersion); err != nil {
-		return fmt.Errorf("cannot set kubernetes server version: %w", err)
+	if err := k8stools.SetKubernetesVersionWithDefaults(k8sServerVersion, *defaultKubernetesMinorVersion, *defaultKubernetesMajorVersion); err != nil {
+		// log error and do nothing, because we are using sane default values.
+		setupLog.Error(err, "cannot parse kubernetes version, using default flag values")
 	}
 
 	setupLog.Info("using kubernetes server version", "version", k8sServerVersion.String())

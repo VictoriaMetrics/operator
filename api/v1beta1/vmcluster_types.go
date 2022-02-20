@@ -30,8 +30,11 @@ const (
 // VMClusterSpec defines the desired state of VMCluster
 // +k8s:openapi-gen=true
 type VMClusterSpec struct {
-	// RetentionPeriod in months
-	// +kubebuilder:validation:Pattern:="[1-9]+"
+	// RetentionPeriod for the stored metrics
+	// Note VictoriaMetrics has data/ and indexdb/ folders
+	// metrics from data/ removed eventually as soon as partition leaves retention period
+	// reverse index data at indexdb rotates once at the half of configured retention period
+	// https://docs.victoriametrics.com/Single-server-VictoriaMetrics.html#retention
 	RetentionPeriod string `json:"retentionPeriod"`
 	// ReplicationFactor defines how many copies of data make among
 	// distinct storage nodes

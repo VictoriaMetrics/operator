@@ -143,6 +143,12 @@ func Test_generateServiceScrapeConfig(t *testing.T) {
 								BearerTokenFile: "/var/run/tolen",
 							},
 						},
+						Selector: metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"app":      "k8s",
+								"instance": "prod",
+							},
+						},
 					},
 				},
 				ep: victoriametricsv1beta1.Endpoint{
@@ -175,11 +181,22 @@ kubernetes_sd_configs:
   namespaces:
     names:
     - default
+  selectors:
+  - role: endpoints
+    label: app=k8s,instance=prod
 tls_config:
   insecure_skip_verify: false
   ca_file: /etc/vmagent-tls/certs/default_tls-secret_ca
 bearer_token_file: /var/run/tolen
 relabel_configs:
+- action: keep
+  source_labels:
+  - __meta_kubernetes_service_label_app
+  regex: k8s
+- action: keep
+  source_labels:
+  - __meta_kubernetes_service_label_instance
+  regex: prod
 - action: keep
   source_labels:
   - __meta_kubernetes_endpoint_port_name
@@ -915,6 +932,9 @@ honor_labels: true
 honor_timestamps: true
 kubernetes_sd_configs:
 - role: node
+  selectors:
+  - role: node
+    label: job=prod
 scrape_interval: 5s
 scrape_timeout: 10s
 metrics_path: /metrics

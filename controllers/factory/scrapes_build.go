@@ -293,7 +293,7 @@ func generatePodScrapeConfig(
 	cfg = honorTimestamps(cfg, ep.HonorTimestamps, overrideHonorTimestamps)
 
 	selectedNamespaces := getNamespacesFromNamespaceSelector(&m.Spec.NamespaceSelector, m.Namespace, ignoreNamespaceSelectors)
-	cfg = append(cfg, generatePodK8SSDConfig(selectedNamespaces, m.Spec.Selector, apiserverConfig, ssCache.baSecrets, kubernetesSDRolePod))
+	cfg = append(cfg, generateK8SSDConfig(selectedNamespaces, apiserverConfig, m.Spec.Selector, ssCache.baSecrets, kubernetesSDRolePod))
 
 	if ep.ScrapeInterval != "" {
 		cfg = append(cfg, yaml.MapItem{Key: "scrape_interval", Value: ep.ScrapeInterval})
@@ -547,7 +547,7 @@ func generateServiceScrapeConfig(
 	cfg = honorTimestamps(cfg, ep.HonorTimestamps, overrideHonorTimestamps)
 
 	selectedNamespaces := getNamespacesFromNamespaceSelector(&m.Spec.NamespaceSelector, m.Namespace, ignoreNamespaceSelectors)
-	cfg = append(cfg, generateK8SSDConfig(selectedNamespaces, apiserverConfig, ssCache.baSecrets, m.Spec.DiscoveryRole))
+	cfg = append(cfg, generateK8SSDConfig(selectedNamespaces, apiserverConfig, m.Spec.Selector, ssCache.baSecrets, m.Spec.DiscoveryRole))
 
 	if ep.ScrapeInterval != "" {
 		cfg = append(cfg, yaml.MapItem{Key: "scrape_interval", Value: ep.ScrapeInterval})
@@ -875,7 +875,7 @@ func generateNodeScrapeConfig(
 	}
 	cfg = honorTimestamps(cfg, nodeSpec.HonorTimestamps, overrideHonorTimestamps)
 
-	cfg = append(cfg, generateK8SSDConfig(nil, apiserverConfig, ssCache.baSecrets, kubernetesSDRoleNode))
+	cfg = append(cfg, generateK8SSDConfig(nil, apiserverConfig, cr.Spec.Selector, ssCache.baSecrets, kubernetesSDRoleNode))
 
 	if nodeSpec.ScrapeInterval != "" {
 		cfg = append(cfg, yaml.MapItem{Key: "scrape_interval", Value: nodeSpec.ScrapeInterval})
@@ -1174,43 +1174,7 @@ func combineSelectorStr(kvs map[string]string) string {
 	return strings.Join(kvsSlice, ",")
 }
 
-func generatePodK8SSDConfig(namespaces []string, labelSelector metav1.LabelSelector, apiserverConfig *victoriametricsv1beta1.APIServerConfig, basicAuthSecrets map[string]*BasicAuthCredentials, role string) yaml.MapItem {
-
-	cfg := generateK8SSDConfig(namespaces, apiserverConfig, basicAuthSecrets, role)
-
-	if len(labelSelector.MatchLabels) != 0 {
-		k8sSDs, flag := cfg.Value.([]yaml.MapSlice)
-		if !flag {
-			log.Error(fmt.Errorf("type assert failed"), "cfg.Value is not []yaml.MapSlice")
-			return cfg
-		}
-
-		selector := yaml.MapSlice{}
-		selector = append(selector, yaml.MapItem{
-			Key:   "role",
-			Value: role,
-		})
-		selector = append(selector, yaml.MapItem{
-			Key:   "label",
-			Value: combineSelectorStr(labelSelector.MatchLabels),
-		})
-
-		for i := range k8sSDs {
-			k8sSDs[i] = append(k8sSDs[i], yaml.MapItem{
-				Key: "selectors",
-				Value: []yaml.MapSlice{
-					selector,
-				},
-			})
-		}
-
-		cfg.Value = k8sSDs
-	}
-
-	return cfg
-}
-
-func generateK8SSDConfig(namespaces []string, apiserverConfig *victoriametricsv1beta1.APIServerConfig, basicAuthSecrets map[string]*BasicAuthCredentials, role string) yaml.MapItem {
+func generateK8SSDConfig(namespaces []string, apiserverConfig *victoriametricsv1beta1.APIServerConfig, labelSelector metav1.LabelSelector, basicAuthSecrets map[string]*BasicAuthCredentials, role string) yaml.MapItem {
 	k8sSDConfig := yaml.MapSlice{
 		{
 			Key:   "role",
@@ -1256,6 +1220,22 @@ func generateK8SSDConfig(namespaces []string, apiserverConfig *victoriametricsv1
 
 		// config as well, make sure to path the right namespace here.
 		k8sSDConfig = addTLStoYaml(k8sSDConfig, "", apiserverConfig.TLSConfig, false)
+	}
+
+	if len(labelSelector.MatchLabels) != 0 {
+		selector := yaml.MapSlice{}
+		selector = append(selector, yaml.MapItem{
+			Key:   "role",
+			Value: role,
+		})
+		selector = append(selector, yaml.MapItem{
+			Key:   "label",
+			Value: combineSelectorStr(labelSelector.MatchLabels),
+		})
+
+		k8sSDConfig = append(k8sSDConfig, yaml.MapItem{Key: "selectors", Value: []yaml.MapSlice{
+			selector,
+		}})
 	}
 
 	return yaml.MapItem{

@@ -31,11 +31,11 @@ const (
 	vmDataVolumeName    = "data"
 )
 
-func CreateVMSingleStorage(ctx context.Context, cr *victoriametricsv1beta1.VMSingle, rclient client.Client, c *config.BaseOperatorConf) (*corev1.PersistentVolumeClaim, error) {
+func CreateVMSingleStorage(ctx context.Context, cr *victoriametricsv1beta1.VMSingle, rclient client.Client) (*corev1.PersistentVolumeClaim, error) {
 
 	l := log.WithValues("vm.single.pvc.create", cr.Name)
 	l.Info("reconciling pvc")
-	newPvc := makeVMSinglePvc(cr, c)
+	newPvc := makeVMSinglePvc(cr)
 	existPvc := &corev1.PersistentVolumeClaim{}
 	err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, existPvc)
 	if err != nil {
@@ -63,13 +63,13 @@ func CreateVMSingleStorage(ctx context.Context, cr *victoriametricsv1beta1.VMSin
 	return newPvc, nil
 }
 
-func makeVMSinglePvc(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOperatorConf) *corev1.PersistentVolumeClaim {
+func makeVMSinglePvc(cr *victoriametricsv1beta1.VMSingle) *corev1.PersistentVolumeClaim {
 	pvcObject := &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        cr.PrefixedName(),
 			Namespace:   cr.Namespace,
-			Labels:      c.Labels.Merge(cr.Labels()),
-			Annotations: cr.Annotations(),
+			Labels:      labels.Merge(cr.Spec.StorageMetadata.Labels, cr.SelectorLabels()),
+			Annotations: cr.Spec.StorageMetadata.Annotations,
 			Finalizers:  []string{victoriametricsv1beta1.FinalizerName},
 		},
 		Spec: *cr.Spec.Storage,

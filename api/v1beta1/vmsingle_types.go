@@ -59,6 +59,9 @@ type VMSingleSpec struct {
 	// +optional
 	Storage *v1.PersistentVolumeClaimSpec `json:"storage,omitempty"`
 
+	// StorageMeta defines annotations and labels attached to PVC for given vmsingle CR
+	// +optional
+	StorageMetadata EmbeddedObjectMetadata `json:"storageMetadata,omitempty"`
 	// Volumes allows configuration of additional volumes on the output deploy definition.
 	// Volumes specified will be appended to other volumes that are generated as a result of
 	// StorageSpec objects.

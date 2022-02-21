@@ -295,12 +295,17 @@ func generatePodScrapeConfig(
 	selectedNamespaces := getNamespacesFromNamespaceSelector(&m.Spec.NamespaceSelector, m.Namespace, ignoreNamespaceSelectors)
 	cfg = append(cfg, generatePodK8SSDConfig(selectedNamespaces, m.Spec.Selector, apiserverConfig, ssCache.baSecrets, kubernetesSDRolePod))
 
+	var scrapeInterval string
 	if ep.ScrapeInterval != "" {
-		cfg = append(cfg, yaml.MapItem{Key: "scrape_interval", Value: ep.ScrapeInterval})
+		scrapeInterval = ep.ScrapeInterval
 	} else if ep.Interval != "" {
-		cfg = append(cfg, yaml.MapItem{Key: "scrape_interval", Value: ep.Interval})
+		scrapeInterval = ep.Interval
 	}
 
+	scrapeInterval = limitScrapeInterval(scrapeInterval, cr.Spec.MinScrapeInterval, cr.Spec.MaxScrapeInterval)
+	if scrapeInterval != "" {
+		cfg = append(cfg, yaml.MapItem{Key: "scrape_interval", Value: scrapeInterval})
+	}
 	if ep.ScrapeTimeout != "" {
 		cfg = append(cfg, yaml.MapItem{Key: "scrape_timeout", Value: ep.ScrapeTimeout})
 	}
@@ -549,10 +554,17 @@ func generateServiceScrapeConfig(
 	selectedNamespaces := getNamespacesFromNamespaceSelector(&m.Spec.NamespaceSelector, m.Namespace, ignoreNamespaceSelectors)
 	cfg = append(cfg, generateK8SSDConfig(selectedNamespaces, apiserverConfig, ssCache.baSecrets, m.Spec.DiscoveryRole))
 
+	var scrapeInterval string
 	if ep.ScrapeInterval != "" {
-		cfg = append(cfg, yaml.MapItem{Key: "scrape_interval", Value: ep.ScrapeInterval})
+		scrapeInterval = ep.ScrapeInterval
 	} else if ep.Interval != "" {
-		cfg = append(cfg, yaml.MapItem{Key: "scrape_interval", Value: ep.Interval})
+		scrapeInterval = ep.Interval
+	}
+
+	scrapeInterval = limitScrapeInterval(scrapeInterval, cr.Spec.MinScrapeInterval, cr.Spec.MaxScrapeInterval)
+
+	if scrapeInterval != "" {
+		cfg = append(cfg, yaml.MapItem{Key: "scrape_interval", Value: scrapeInterval})
 	}
 	if ep.ScrapeTimeout != "" {
 		cfg = append(cfg, yaml.MapItem{Key: "scrape_timeout", Value: ep.ScrapeTimeout})
@@ -877,10 +889,15 @@ func generateNodeScrapeConfig(
 
 	cfg = append(cfg, generateK8SSDConfig(nil, apiserverConfig, ssCache.baSecrets, kubernetesSDRoleNode))
 
+	var scrapeInterval string
 	if nodeSpec.ScrapeInterval != "" {
-		cfg = append(cfg, yaml.MapItem{Key: "scrape_interval", Value: nodeSpec.ScrapeInterval})
+		scrapeInterval = nodeSpec.ScrapeInterval
 	} else if nodeSpec.Interval != "" {
-		cfg = append(cfg, yaml.MapItem{Key: "scrape_interval", Value: nodeSpec.Interval})
+		scrapeInterval = nodeSpec.Interval
+	}
+	scrapeInterval = limitScrapeInterval(scrapeInterval, crAgent.Spec.MinScrapeInterval, crAgent.Spec.MaxScrapeInterval)
+	if scrapeInterval != "" {
+		cfg = append(cfg, yaml.MapItem{Key: "scrape_interval", Value: scrapeInterval})
 	}
 
 	if nodeSpec.ScrapeTimeout != "" {

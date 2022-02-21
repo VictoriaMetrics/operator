@@ -2,13 +2,12 @@ package v1beta1
 
 import (
 	"fmt"
-	"strings"
-
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/utils/pointer"
+	"strings"
 )
 
 // VMAgentSpec defines the desired state of VMAgent
@@ -341,6 +340,12 @@ type VMAgentSpec struct {
 	// it's useful for adding specific labels to all targets
 	// +optional
 	ProbeScrapeRelabelTemplate []*RelabelConfig `json:"probeScrapeRelabelTemplate,omitempty"`
+	// MinScrapeInterval allows limiting minimal scrape interval for VMServiceScrape, VMPodScrape and other scrapes
+	// If interval is lower than defined limit, `minScrapeInterval` will be used.
+	MinScrapeInterval *string `json:"minScrapeInterval,omitempty"`
+	// MaxScrapeInterval allows limiting maximum scrape interval for VMServiceScrape, VMPodScrape and other scrapes
+	// If interval is higher than defined limit, `maxScrapeInterval` will be used.
+	MaxScrapeInterval *string `json:"maxScrapeInterval,omitempty"`
 }
 
 // VMAgentRemoteWriteSettings - defines global settings for all remoteWrite urls.

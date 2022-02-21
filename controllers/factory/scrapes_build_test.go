@@ -1,12 +1,11 @@
 package factory
 
 import (
-	"reflect"
-	"testing"
-
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/pointer"
+	"reflect"
+	"testing"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"gopkg.in/yaml.v2"
@@ -175,6 +174,221 @@ kubernetes_sd_configs:
   namespaces:
     names:
     - default
+tls_config:
+  insecure_skip_verify: false
+  ca_file: /etc/vmagent-tls/certs/default_tls-secret_ca
+bearer_token_file: /var/run/tolen
+relabel_configs:
+- action: keep
+  source_labels:
+  - __meta_kubernetes_endpoint_port_name
+  regex: "8080"
+- source_labels:
+  - __meta_kubernetes_endpoint_address_target_kind
+  - __meta_kubernetes_endpoint_address_target_name
+  separator: ;
+  regex: Node;(.*)
+  replacement: ${1}
+  target_label: node
+- source_labels:
+  - __meta_kubernetes_endpoint_address_target_kind
+  - __meta_kubernetes_endpoint_address_target_name
+  separator: ;
+  regex: Pod;(.*)
+  replacement: ${1}
+  target_label: pod
+- source_labels:
+  - __meta_kubernetes_pod_name
+  target_label: pod
+- source_labels:
+  - __meta_kubernetes_pod_container_name
+  target_label: container
+- source_labels:
+  - __meta_kubernetes_namespace
+  target_label: namespace
+- source_labels:
+  - __meta_kubernetes_service_name
+  target_label: service
+- source_labels:
+  - __meta_kubernetes_service_name
+  target_label: job
+  replacement: ${1}
+- target_label: endpoint
+  replacement: "8080"
+`,
+		},
+
+		{
+			name: "generate config with scrape interval limit",
+			args: args{
+				cr: victoriametricsv1beta1.VMAgent{
+					Spec: victoriametricsv1beta1.VMAgentSpec{
+						MaxScrapeInterval: pointer.String("40m"),
+					},
+				},
+				m: &victoriametricsv1beta1.VMServiceScrape{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-scrape",
+						Namespace: "default",
+					},
+					Spec: victoriametricsv1beta1.VMServiceScrapeSpec{
+						Endpoints: []victoriametricsv1beta1.Endpoint{
+							{
+								Port: "8080",
+								TLSConfig: &victoriametricsv1beta1.TLSConfig{
+									CA: victoriametricsv1beta1.SecretOrConfigMap{
+										Secret: &v1.SecretKeySelector{
+											LocalObjectReference: v1.LocalObjectReference{
+												Name: "tls-secret",
+											},
+											Key: "ca",
+										},
+									},
+								},
+								BearerTokenFile: "/var/run/tolen",
+							},
+						},
+					},
+				},
+				ep: victoriametricsv1beta1.Endpoint{
+					Port: "8080",
+					TLSConfig: &victoriametricsv1beta1.TLSConfig{
+						Cert: victoriametricsv1beta1.SecretOrConfigMap{},
+						CA: victoriametricsv1beta1.SecretOrConfigMap{
+							Secret: &v1.SecretKeySelector{
+								LocalObjectReference: v1.LocalObjectReference{
+									Name: "tls-secret",
+								},
+								Key: "ca",
+							},
+						},
+					},
+					BearerTokenFile: "/var/run/tolen",
+					ScrapeInterval:  "60m",
+				},
+				i:                        0,
+				apiserverConfig:          nil,
+				ssCache:                  &scrapesSecretsCache{},
+				overrideHonorLabels:      false,
+				overrideHonorTimestamps:  false,
+				ignoreNamespaceSelectors: false,
+				enforcedNamespaceLabel:   "",
+			},
+			want: `job_name: serviceScrape/default/test-scrape/0
+honor_labels: false
+kubernetes_sd_configs:
+- role: endpoints
+  namespaces:
+    names:
+    - default
+scrape_interval: 40m
+tls_config:
+  insecure_skip_verify: false
+  ca_file: /etc/vmagent-tls/certs/default_tls-secret_ca
+bearer_token_file: /var/run/tolen
+relabel_configs:
+- action: keep
+  source_labels:
+  - __meta_kubernetes_endpoint_port_name
+  regex: "8080"
+- source_labels:
+  - __meta_kubernetes_endpoint_address_target_kind
+  - __meta_kubernetes_endpoint_address_target_name
+  separator: ;
+  regex: Node;(.*)
+  replacement: ${1}
+  target_label: node
+- source_labels:
+  - __meta_kubernetes_endpoint_address_target_kind
+  - __meta_kubernetes_endpoint_address_target_name
+  separator: ;
+  regex: Pod;(.*)
+  replacement: ${1}
+  target_label: pod
+- source_labels:
+  - __meta_kubernetes_pod_name
+  target_label: pod
+- source_labels:
+  - __meta_kubernetes_pod_container_name
+  target_label: container
+- source_labels:
+  - __meta_kubernetes_namespace
+  target_label: namespace
+- source_labels:
+  - __meta_kubernetes_service_name
+  target_label: service
+- source_labels:
+  - __meta_kubernetes_service_name
+  target_label: job
+  replacement: ${1}
+- target_label: endpoint
+  replacement: "8080"
+`,
+		},
+		{
+			name: "generate config with scrape interval limit - reach min",
+			args: args{
+				cr: victoriametricsv1beta1.VMAgent{
+					Spec: victoriametricsv1beta1.VMAgentSpec{
+						MinScrapeInterval: pointer.String("1m"),
+					},
+				},
+				m: &victoriametricsv1beta1.VMServiceScrape{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-scrape",
+						Namespace: "default",
+					},
+					Spec: victoriametricsv1beta1.VMServiceScrapeSpec{
+						Endpoints: []victoriametricsv1beta1.Endpoint{
+							{
+								Port: "8080",
+								TLSConfig: &victoriametricsv1beta1.TLSConfig{
+									CA: victoriametricsv1beta1.SecretOrConfigMap{
+										Secret: &v1.SecretKeySelector{
+											LocalObjectReference: v1.LocalObjectReference{
+												Name: "tls-secret",
+											},
+											Key: "ca",
+										},
+									},
+								},
+								BearerTokenFile: "/var/run/tolen",
+							},
+						},
+					},
+				},
+				ep: victoriametricsv1beta1.Endpoint{
+					Port: "8080",
+					TLSConfig: &victoriametricsv1beta1.TLSConfig{
+						Cert: victoriametricsv1beta1.SecretOrConfigMap{},
+						CA: victoriametricsv1beta1.SecretOrConfigMap{
+							Secret: &v1.SecretKeySelector{
+								LocalObjectReference: v1.LocalObjectReference{
+									Name: "tls-secret",
+								},
+								Key: "ca",
+							},
+						},
+					},
+					BearerTokenFile: "/var/run/tolen",
+					ScrapeInterval:  "10s",
+				},
+				i:                        0,
+				apiserverConfig:          nil,
+				ssCache:                  &scrapesSecretsCache{},
+				overrideHonorLabels:      false,
+				overrideHonorTimestamps:  false,
+				ignoreNamespaceSelectors: false,
+				enforcedNamespaceLabel:   "",
+			},
+			want: `job_name: serviceScrape/default/test-scrape/0
+honor_labels: false
+kubernetes_sd_configs:
+- role: endpoints
+  namespaces:
+    names:
+    - default
+scrape_interval: 1m
 tls_config:
   insecure_skip_verify: false
   ca_file: /etc/vmagent-tls/certs/default_tls-secret_ca

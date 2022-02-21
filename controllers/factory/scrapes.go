@@ -5,10 +5,10 @@ import (
 	"compress/gzip"
 	"context"
 	"fmt"
-	"strings"
-
+	"github.com/VictoriaMetrics/metricsql"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/labels"
+	"strings"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
@@ -818,4 +818,39 @@ func CreateVMServiceScrapeFromService(ctx context.Context, rclient client.Client
 		return rclient.Update(ctx, &existVSS)
 	}
 	return nil
+}
+
+func limitScrapeInterval(origin string, minIntervalStr, maxIntervalStr *string) string {
+	if origin == "" || (minIntervalStr == nil && maxIntervalStr == nil) {
+		// fast path
+		return origin
+	}
+	originDurationMs, err := metricsql.DurationValue(origin, 0)
+	if err != nil {
+		log.Error(err, "cannot parse duration value during limiting interval, using original value: %s", origin)
+		return origin
+	}
+
+	if minIntervalStr != nil {
+		parsedMinMs, err := metricsql.DurationValue(*minIntervalStr, 0)
+		if err != nil {
+			log.Error(err, "cannot parse minScrapeInterval: %s, using original value: %s", *minIntervalStr, origin)
+			return origin
+		}
+		if parsedMinMs >= originDurationMs {
+			return *minIntervalStr
+		}
+	}
+	if maxIntervalStr != nil {
+		parsedMaxMs, err := metricsql.DurationValue(*maxIntervalStr, 0)
+		if err != nil {
+			log.Error(err, "cannot parse maxScrapeInterval: %s, using origin value: %s", *maxIntervalStr, origin)
+			return origin
+		}
+		if parsedMaxMs < originDurationMs {
+			return *maxIntervalStr
+		}
+	}
+
+	return origin
 }

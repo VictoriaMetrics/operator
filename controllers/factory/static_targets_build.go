@@ -36,11 +36,19 @@ func generateStaticScrapeConfig(
 	}
 
 	cfg = append(cfg, yaml.MapItem{Key: "static_configs", Value: []yaml.MapSlice{tgs}})
+
+	var scrapeInterval string
 	if ep.ScrapeInterval != "" {
-		cfg = append(cfg, yaml.MapItem{Key: "scrape_interval", Value: ep.ScrapeInterval})
+		scrapeInterval = ep.ScrapeInterval
 	} else if ep.Interval != "" {
-		cfg = append(cfg, yaml.MapItem{Key: "scrape_interval", Value: ep.Interval})
+		scrapeInterval = ep.Interval
 	}
+	scrapeInterval = limitScrapeInterval(scrapeInterval, cr.Spec.MinScrapeInterval, cr.Spec.MaxScrapeInterval)
+
+	if scrapeInterval != "" {
+		cfg = append(cfg, yaml.MapItem{Key: "scrape_interval", Value: scrapeInterval})
+	}
+
 	if ep.ScrapeTimeout != "" {
 		cfg = append(cfg, yaml.MapItem{Key: "scrape_timeout", Value: ep.ScrapeTimeout})
 	}

@@ -2,6 +2,7 @@ package alertmanager
 
 import (
 	"context"
+	v1 "k8s.io/api/core/v1"
 	"testing"
 
 	operatorv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
@@ -309,6 +310,92 @@ receivers:
     fields:
     - title: fields
       short: true
+templates: []
+`,
+		},
+		{
+			name: "pagerduty ok",
+			args: args{
+				ctx: context.Background(),
+				baseCfg: []byte(`global:
+ time_out: 1min
+`),
+				amcfgs: map[string]*operatorv1beta1.VMAlertmanagerConfig{
+					"default/base": &operatorv1beta1.VMAlertmanagerConfig{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "base",
+							Namespace: "default",
+						},
+						Spec: operatorv1beta1.VMAlertmanagerConfigSpec{
+							Receivers: []operatorv1beta1.Receiver{
+								{
+									Name: "pagerduty",
+									PagerDutyConfigs: []operatorv1beta1.PagerDutyConfig{
+										{
+											SendResolved: pointer.Bool(true),
+											RoutingKey: &v1.SecretKeySelector{
+												Key: "some-key",
+												LocalObjectReference: v1.LocalObjectReference{
+													Name: "some-secret",
+												},
+											},
+											Class:    "some-class",
+											Group:    "some-group",
+											Severity: "warning",
+											Details: map[string]string{
+												"alertname":    "alert-name",
+												"firing":       "alert-title",
+												"instance":     "alert-instance",
+												"message":      "alert-message",
+												"num_firing":   "1",
+												"num_resolved": "0",
+												"resolved":     "alert-title",
+												"summary":      "alert-summary",
+											},
+										},
+									},
+								},
+							},
+							Route: &operatorv1beta1.Route{
+								Receiver:  "pagerduty",
+								GroupWait: "1min",
+							},
+						},
+					},
+				},
+			},
+			predefinedObjects: []runtime.Object{
+				&v1.Secret{
+					ObjectMeta: metav1.ObjectMeta{Name: "some-secret", Namespace: "default"},
+					Data:       map[string][]byte{"some-key": []byte(`some-value`)},
+				},
+			},
+			want: `global:
+  time_out: 1min
+route:
+  routes:
+  - matchers:
+    - namespace = "default"
+    group_wait: 1min
+    receiver: default-base-pagerduty
+    continue: true
+receivers:
+- name: default-base-pagerduty
+  pagerduty_configs:
+  - routing_key: some-value
+    class: some-class
+    group: some-group
+    severity: warning
+    details:
+      alertname: alert-name
+      firing: alert-title
+      instance: alert-instance
+      message: alert-message
+      num_firing: "1"
+      num_resolved: "0"
+      resolved: alert-title
+      summary: alert-summary
+    send_resolved: true
 templates: []
 `,
 		},

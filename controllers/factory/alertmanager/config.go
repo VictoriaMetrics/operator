@@ -563,16 +563,20 @@ func (cb *configBuilder) buildPagerDuty(pd operatorv1beta1.PagerDutyConfig) erro
 	toYaml("component", pd.Component)
 	toYaml("group", pd.Group)
 	toYaml("severity", pd.Severity)
-	details := make(map[string]string)
-	if pd.Details != nil {
-		for k, v := range pd.Details {
-			if len(v) > 0 {
-				details[k] = v
-			}
+	detailKeys := make([]string, 0, len(pd.Details))
+	for detailKey, value := range pd.Details {
+		if len(value) == 0 {
+			continue
 		}
-		if len(details) > 0 {
-			temp = append(temp, yaml.MapItem{Key: "details", Value: details})
+		detailKeys = append(detailKeys, detailKey)
+	}
+	sort.Strings(detailKeys)
+	if len(detailKeys) > 0 {
+		var detailsYaml yaml.MapSlice
+		for _, detailKey := range detailKeys {
+			detailsYaml = append(detailsYaml, yaml.MapItem{Key: detailKey, Value: pd.Details[detailKey]})
 		}
+		temp = append(temp, yaml.MapItem{Key: "details", Value: detailsYaml})
 	}
 	if pd.SendResolved != nil {
 		temp = append(temp, yaml.MapItem{Key: "send_resolved", Value: *pd.SendResolved})

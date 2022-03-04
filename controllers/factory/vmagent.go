@@ -143,8 +143,6 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 	if err := finalize.RemoveOrphanedDeployments(ctx, rclient, cr, deploymentNames); err != nil {
 		return reconcile.Result{}, err
 	}
-	// it's safe to ignore
-	_ = addAdditionalScrapeConfigOwnership(cr, rclient)
 	l.Info("vmagent deploy reconciled")
 
 	return reconcile.Result{}, nil
@@ -483,33 +481,6 @@ func addAdditionalObjectOwnership(cr *victoriametricsv1beta1.VMAgent, rclient cl
 	victoriametricsv1beta1.MergeFinalizers(object, victoriametricsv1beta1.FinalizerName)
 
 	return rclient.Update(context.Background(), object)
-}
-
-// add ownership - it needs for object changing tracking
-func addAdditionalScrapeConfigOwnership(cr *victoriametricsv1beta1.VMAgent, rclient client.Client) error {
-	if cr.Spec.AdditionalScrapeConfigs != nil {
-		if err := addAdditionalObjectOwnership(cr, rclient, &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{Name: cr.Spec.AdditionalScrapeConfigs.Name},
-		}); err != nil {
-			return fmt.Errorf("cannot add ownership for vmagents secret: %w", err)
-		}
-	}
-	if cr.Spec.RelabelConfig != nil {
-		name := cr.Spec.RelabelConfig.Name
-		if err := addAdditionalObjectOwnership(cr, rclient, &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: name}}); err != nil {
-			return fmt.Errorf("cannot add ownership for global relabeling config: %s, err: %w", name, err)
-		}
-	}
-	for i := range cr.Spec.RemoteWrite {
-		rw := cr.Spec.RemoteWrite[i]
-		if rw.UrlRelabelConfig != nil {
-			urc := rw.UrlRelabelConfig
-			if err := addAdditionalObjectOwnership(cr, rclient, &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: urc.Name}}); err != nil {
-				return fmt.Errorf("cannot add ownership for urc: %s, err: %w", urc.Name, err)
-			}
-		}
-	}
-	return nil
 }
 
 // buildVMAgentRelabelingsAssets combines all possible relabeling config configuration and adding it to the configmap.

@@ -1,6 +1,8 @@
 package converter
 
 import (
+	"github.com/VictoriaMetrics/operator/internal/config"
+	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"reflect"
 	"testing"
 
@@ -223,12 +225,55 @@ func TestConvertServiceMonitor(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "with label and annotations filter",
+			args: args{
+				serviceMon: &v1.ServiceMonitor{
+					ObjectMeta: v12.ObjectMeta{
+						Labels:      map[string]string{"helm.sh/release": "prod", "keep-label": "value"},
+						Annotations: map[string]string{"app.kubernetes.io/": "release"},
+					},
+					Spec: v1.ServiceMonitorSpec{
+						Endpoints: []v1.Endpoint{
+							{
+								MetricRelabelConfigs: []*v1.RelabelConfig{
+									{
+										Action:       "drop",
+										SourceLabels: []string{"__meta__instance"},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: v1beta1vm.VMServiceScrape{
+				ObjectMeta: v12.ObjectMeta{
+					Labels: map[string]string{"keep-label": "value"},
+				},
+				Spec: v1beta1vm.VMServiceScrapeSpec{
+					Endpoints: []v1beta1vm.Endpoint{
+						{
+							MetricRelabelConfigs: []*v1beta1vm.RelabelConfig{
+								{
+									Action:       "drop",
+									SourceLabels: []string{"__meta__instance"},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := ConvertServiceMonitor(tt.args.serviceMon, false)
+			got := ConvertServiceMonitor(tt.args.serviceMon, &config.BaseOperatorConf{
+				FilterPrometheusConverterLabelPrefixes:      []string{"helm.sh"},
+				FilterPrometheusConverterAnnotationPrefixes: []string{"app.kubernetes"},
+			})
 			if !reflect.DeepEqual(*got, tt.want) {
-				t.Errorf("ConvertServiceMonitor() = %v, want %v", got, tt.want)
+				t.Errorf("ConvertServiceMonitor() got = \n%v, \nwant \n%v", got, tt.want)
 			}
 		})
 	}

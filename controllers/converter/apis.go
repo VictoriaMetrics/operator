@@ -1,6 +1,7 @@
 package converter
 
 import (
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"strings"
 
 	v1beta1vm "github.com/VictoriaMetrics/operator/api/v1beta1"
@@ -18,10 +19,10 @@ const (
 
 var log = ctrl.Log.WithValues("controller", "prometheus.converter")
 
-func ConvertPromRule(prom *v1.PrometheusRule, enableObjectRef bool) *v1beta1vm.VMRule {
-	ruleGroups := []v1beta1vm.RuleGroup{}
+func ConvertPromRule(prom *v1.PrometheusRule, conf *config.BaseOperatorConf) *v1beta1vm.VMRule {
+	ruleGroups := make([]v1beta1vm.RuleGroup, 0, len(prom.Spec.Groups))
 	for _, promGroup := range prom.Spec.Groups {
-		ruleItems := []v1beta1vm.Rule{}
+		ruleItems := make([]v1beta1vm.Rule, 0, len(promGroup.Rules))
 		for _, promRuleItem := range promGroup.Rules {
 			ruleItems = append(ruleItems, v1beta1vm.Rule{
 				Labels:      promRuleItem.Labels,
@@ -43,14 +44,14 @@ func ConvertPromRule(prom *v1.PrometheusRule, enableObjectRef bool) *v1beta1vm.V
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:   prom.Namespace,
 			Name:        prom.Name,
-			Labels:      prom.Labels,
-			Annotations: prom.Annotations,
+			Labels:      filterPrefixes(prom.Labels, conf.FilterPrometheusConverterLabelPrefixes),
+			Annotations: filterPrefixes(prom.Annotations, conf.FilterPrometheusConverterAnnotationPrefixes),
 		},
 		Spec: v1beta1vm.VMRuleSpec{
 			Groups: ruleGroups,
 		},
 	}
-	if enableObjectRef {
+	if conf.EnabledPrometheusConverterOwnerReferences {
 		cr.OwnerReferences = []metav1.OwnerReference{
 			{
 				APIVersion:         v1.SchemeGroupVersion.String(),
@@ -65,13 +66,13 @@ func ConvertPromRule(prom *v1.PrometheusRule, enableObjectRef bool) *v1beta1vm.V
 	return cr
 }
 
-func ConvertServiceMonitor(serviceMon *v1.ServiceMonitor, enableObjectRef bool) *v1beta1vm.VMServiceScrape {
+func ConvertServiceMonitor(serviceMon *v1.ServiceMonitor, conf *config.BaseOperatorConf) *v1beta1vm.VMServiceScrape {
 	cs := &v1beta1vm.VMServiceScrape{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        serviceMon.Name,
 			Namespace:   serviceMon.Namespace,
-			Annotations: serviceMon.Annotations,
-			Labels:      serviceMon.Labels,
+			Annotations: filterPrefixes(serviceMon.Annotations, conf.FilterPrometheusConverterAnnotationPrefixes),
+			Labels:      filterPrefixes(serviceMon.Labels, conf.FilterPrometheusConverterLabelPrefixes),
 		},
 		Spec: v1beta1vm.VMServiceScrapeSpec{
 			JobLabel:        serviceMon.Spec.JobLabel,
@@ -86,7 +87,7 @@ func ConvertServiceMonitor(serviceMon *v1.ServiceMonitor, enableObjectRef bool) 
 			},
 		},
 	}
-	if enableObjectRef {
+	if conf.EnabledPrometheusConverterOwnerReferences {
 		cs.OwnerReferences = []metav1.OwnerReference{
 			{
 				APIVersion:         v1.SchemeGroupVersion.String(),
@@ -112,7 +113,7 @@ func replacePromDirPath(origin string) string {
 }
 
 func ConvertEndpoint(promEndpoint []v1.Endpoint) []v1beta1vm.Endpoint {
-	endpoints := []v1beta1vm.Endpoint{}
+	endpoints := make([]v1beta1vm.Endpoint, 0, len(promEndpoint))
 	for _, endpoint := range promEndpoint {
 		ep := v1beta1vm.Endpoint{
 			Port:                 endpoint.Port,
@@ -210,7 +211,7 @@ func ConvertPodEndpoints(promPodEnpoints []v1.PodMetricsEndpoint) []v1beta1vm.Po
 	if promPodEnpoints == nil {
 		return nil
 	}
-	endPoints := []v1beta1vm.PodMetricsEndpoint{}
+	endPoints := make([]v1beta1vm.PodMetricsEndpoint, 0, len(promPodEnpoints))
 	for _, promEndPoint := range promPodEnpoints {
 		ep := v1beta1vm.PodMetricsEndpoint{
 			TargetPort:           promEndPoint.TargetPort,
@@ -236,13 +237,13 @@ func ConvertPodEndpoints(promPodEnpoints []v1.PodMetricsEndpoint) []v1beta1vm.Po
 	return endPoints
 }
 
-func ConvertPodMonitor(podMon *v1.PodMonitor, enableObjectRef bool) *v1beta1vm.VMPodScrape {
+func ConvertPodMonitor(podMon *v1.PodMonitor, conf *config.BaseOperatorConf) *v1beta1vm.VMPodScrape {
 	cs := &v1beta1vm.VMPodScrape{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        podMon.Name,
 			Namespace:   podMon.Namespace,
-			Labels:      podMon.Labels,
-			Annotations: podMon.Annotations,
+			Labels:      filterPrefixes(podMon.Labels, conf.FilterPrometheusConverterLabelPrefixes),
+			Annotations: filterPrefixes(podMon.Annotations, conf.FilterPrometheusConverterAnnotationPrefixes),
 		},
 		Spec: v1beta1vm.VMPodScrapeSpec{
 			JobLabel:        podMon.Spec.JobLabel,
@@ -256,7 +257,7 @@ func ConvertPodMonitor(podMon *v1.PodMonitor, enableObjectRef bool) *v1beta1vm.V
 			PodMetricsEndpoints: ConvertPodEndpoints(podMon.Spec.PodMetricsEndpoints),
 		},
 	}
-	if enableObjectRef {
+	if conf.EnabledPrometheusConverterOwnerReferences {
 		cs.OwnerReferences = []metav1.OwnerReference{
 			{
 				APIVersion:         v1.SchemeGroupVersion.String(),
@@ -271,7 +272,7 @@ func ConvertPodMonitor(podMon *v1.PodMonitor, enableObjectRef bool) *v1beta1vm.V
 	return cs
 }
 
-func ConvertProbe(probe *v1.Probe, enableObjectRef bool) *v1beta1vm.VMProbe {
+func ConvertProbe(probe *v1.Probe, conf *config.BaseOperatorConf) *v1beta1vm.VMProbe {
 	var (
 		ingressTarget *v1beta1vm.ProbeTargetIngress
 		staticTargets *v1beta1vm.VMProbeTargetStaticConfig
@@ -294,8 +295,10 @@ func ConvertProbe(probe *v1.Probe, enableObjectRef bool) *v1beta1vm.VMProbe {
 	}
 	cp := &v1beta1vm.VMProbe{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      probe.Name,
-			Namespace: probe.Namespace,
+			Name:        probe.Name,
+			Namespace:   probe.Namespace,
+			Labels:      filterPrefixes(probe.Labels, conf.FilterPrometheusConverterLabelPrefixes),
+			Annotations: filterPrefixes(probe.Annotations, conf.FilterPrometheusConverterAnnotationPrefixes),
 		},
 		Spec: v1beta1vm.VMProbeSpec{
 			JobName: probe.Spec.JobName,
@@ -313,7 +316,7 @@ func ConvertProbe(probe *v1.Probe, enableObjectRef bool) *v1beta1vm.VMProbe {
 			ScrapeTimeout: probe.Spec.ScrapeTimeout,
 		},
 	}
-	if enableObjectRef {
+	if conf.EnabledPrometheusConverterOwnerReferences {
 		cp.OwnerReferences = []metav1.OwnerReference{
 			{
 				APIVersion:         v1.SchemeGroupVersion.String(),
@@ -341,4 +344,24 @@ func filterUnsupportedRelabelCfg(relabelCfgs []*v1beta1vm.RelabelConfig) []*v1be
 		newRelabelCfg = append(newRelabelCfg, r)
 	}
 	return newRelabelCfg
+}
+
+// filterPrefixes filters given prefixes from src map
+func filterPrefixes(src map[string]string, filterPrefixes []string) map[string]string {
+	if len(src) == 0 || len(filterPrefixes) == 0 {
+		return src
+	}
+	dst := make(map[string]string, len(src))
+	for k, v := range src {
+		for _, filterPref := range filterPrefixes {
+			if strings.HasPrefix(k, filterPref) {
+				continue
+			}
+			dst[k] = v
+		}
+	}
+	if len(dst) == 0 {
+		return nil
+	}
+	return dst
 }

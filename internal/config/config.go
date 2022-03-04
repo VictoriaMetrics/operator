@@ -222,17 +222,20 @@ type BaseOperatorConf struct {
 		Probe          bool `default:"true"`
 	}
 	EnabledPrometheusConverterOwnerReferences bool `default:"false"`
-
-	Host                      string `default:"0.0.0.0"`
-	ListenAddress             string `default:"0.0.0.0"`
-	DefaultLabels             string `default:"managed-by=vm-operator"`
-	Labels                    Labels `ignored:"true"`
-	LogLevel                  string
-	LogFormat                 string
-	ClusterDomainName         string        `default:""`
-	PodWaitReadyTimeout       time.Duration `default:"80s"`
-	PodWaitReadyIntervalCheck time.Duration `default:"5s"`
-	PodWaitReadyInitDelay     time.Duration `default:"10s"`
+	// allows filtering for converted labels, labels with matched prefix will be ignored
+	FilterPrometheusConverterLabelPrefixes []string `default:""`
+	// allows filtering for converted annotations, annotations with matched prefix will be ignored
+	FilterPrometheusConverterAnnotationPrefixes []string `default:""`
+	Host                                        string   `default:"0.0.0.0"`
+	ListenAddress                               string   `default:"0.0.0.0"`
+	DefaultLabels                               string   `default:"managed-by=vm-operator"`
+	Labels                                      Labels   `ignored:"true"`
+	LogLevel                                    string
+	LogFormat                                   string
+	ClusterDomainName                           string        `default:""`
+	PodWaitReadyTimeout                         time.Duration `default:"80s"`
+	PodWaitReadyIntervalCheck                   time.Duration `default:"5s"`
+	PodWaitReadyInitDelay                       time.Duration `default:"10s"`
 }
 
 // Validate - validates config on best effort.

@@ -236,6 +236,8 @@ type BaseOperatorConf struct {
 	PodWaitReadyTimeout                         time.Duration `default:"80s"`
 	PodWaitReadyIntervalCheck                   time.Duration `default:"5s"`
 	PodWaitReadyInitDelay                       time.Duration `default:"10s"`
+	// configures force resync interval for VMAgent, VMAlert and VMAlertmanager
+	ForceResyncInterval time.Duration `default:"60s"`
 }
 
 // Validate - validates config on best effort.

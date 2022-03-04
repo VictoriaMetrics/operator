@@ -14,12 +14,10 @@ import (
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/config"
-	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -322,113 +320,6 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("CreateOrUpdateVMAgent() got = %v, want %v", got, tt.want)
 			}
-		})
-	}
-}
-
-func Test_addAddtionalScrapeConfigOwnership(t *testing.T) {
-	type args struct {
-		cr *victoriametricsv1beta1.VMAgent
-		l  logr.Logger
-	}
-	tests := []struct {
-		name              string
-		args              args
-		wantErr           bool
-		predefinedObjects *corev1.SecretList
-	}{
-		{
-			name: "append ownership to secret",
-			args: args{
-				cr: &victoriametricsv1beta1.VMAgent{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "vmagent-1",
-						Namespace: "ns-1",
-					},
-					Spec: victoriametricsv1beta1.VMAgentSpec{
-						AdditionalScrapeConfigs: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "secret-1"}}},
-				},
-				l: logf.Log.WithName("test"),
-			},
-			predefinedObjects: &corev1.SecretList{
-				Items: []corev1.Secret{
-					{ObjectMeta: metav1.ObjectMeta{Name: "secret-1", Namespace: "ns-1"}},
-					{ObjectMeta: metav1.ObjectMeta{Name: "secret-2", Namespace: "ns-2"}},
-				},
-			},
-		},
-		{
-			name: "empty scrape config - nothing todo",
-			args: args{
-				cr: &victoriametricsv1beta1.VMAgent{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "vmagent-1",
-						Namespace: "ns-1",
-					},
-					Spec: victoriametricsv1beta1.VMAgentSpec{},
-				},
-				l: logf.Log.WithName("test"),
-			},
-			predefinedObjects: &corev1.SecretList{
-				Items: []corev1.Secret{
-					{ObjectMeta: metav1.ObjectMeta{Name: "secret-1", Namespace: "ns-1"}},
-					{ObjectMeta: metav1.ObjectMeta{Name: "secret-2", Namespace: "ns-2"}},
-				},
-			},
-		},
-		{
-			name: "ownership exists - nothing todo",
-			args: args{
-				cr: &victoriametricsv1beta1.VMAgent{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "vmagent-2",
-						Namespace: "ns-2",
-					},
-					Spec: victoriametricsv1beta1.VMAgentSpec{
-						AdditionalScrapeConfigs: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "secret-2"}}},
-				},
-				l: logf.Log.WithName("test"),
-			},
-			predefinedObjects: &corev1.SecretList{
-				Items: []corev1.Secret{
-					{ObjectMeta: metav1.ObjectMeta{Name: "secret-1", Namespace: "ns-1"}},
-					{ObjectMeta: metav1.ObjectMeta{Name: "secret-2", Namespace: "ns-2", OwnerReferences: []metav1.OwnerReference{
-						{Name: "vmagent-2"},
-					}}},
-				},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-
-			obj := []runtime.Object{}
-			for _, secret := range tt.predefinedObjects.Items {
-				localSecret := secret
-				obj = append(obj, &localSecret)
-			}
-			fclient := k8stools.GetTestClientWithObjects(obj)
-
-			if err := addAdditionalScrapeConfigOwnership(tt.args.cr, fclient); (err != nil) != tt.wantErr {
-				t.Errorf("addAdditionalScrapeConfigOwnership() error = %v, wantErr %v", err, tt.wantErr)
-			}
-			if tt.args.cr.Spec.AdditionalScrapeConfigs != nil {
-				secret := &corev1.Secret{}
-				var refFound bool
-				err := fclient.Get(context.TODO(), types.NamespacedName{Namespace: tt.args.cr.Namespace, Name: tt.args.cr.Spec.AdditionalScrapeConfigs.Name}, secret)
-				if err != nil {
-					t.Errorf("cannot find secret for scrape config")
-				}
-				for _, ownerRef := range secret.OwnerReferences {
-					if ownerRef.Name == tt.args.cr.Name {
-						refFound = true
-					}
-				}
-				if !refFound {
-					t.Errorf("cannot find secret ownership for vmagent: %s,secret name: %v", tt.args.cr.Name, tt.args.cr.Spec.AdditionalScrapeConfigs.Name)
-				}
-			}
-
 		})
 	}
 }

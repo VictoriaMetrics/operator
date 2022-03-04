@@ -64,6 +64,18 @@ func OnVMAgentDelete(ctx context.Context, rclient client.Client, crd *victoriame
 	if err := SafeDelete(ctx, rclient, &v12.ClusterRole{ObjectMeta: metav1.ObjectMeta{Name: crd.GetClusterRoleName(), Namespace: crd.GetNSName()}}); err != nil {
 		return err
 	}
+	if crd.Spec.AdditionalScrapeConfigs != nil {
+		if err := removeFinalizeObjByName(ctx, rclient, &v1.Secret{}, crd.Spec.AdditionalScrapeConfigs.Name, crd.Namespace); err != nil {
+			return err
+		}
+	}
+	for _, rw := range crd.Spec.RemoteWrite {
+		if rw.UrlRelabelConfig != nil {
+			if err := removeFinalizeObjByName(ctx, rclient, &v1.ConfigMap{}, rw.UrlRelabelConfig.Name, crd.Namespace); err != nil {
+				return err
+			}
+		}
+	}
 
 	if err := finalizePsp(ctx, rclient, crd); err != nil {
 		return err

@@ -24,7 +24,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -442,45 +441,6 @@ func addShardSettingsToVMAgent(shardNum, shardsCount int, dep *appsv1.Deployment
 			container.Args = args
 		}
 	}
-}
-
-func addAdditionalObjectOwnership(cr *victoriametricsv1beta1.VMAgent, rclient client.Client, object client.Object) error {
-	err := rclient.Get(context.Background(), types.NamespacedName{Namespace: cr.Namespace, Name: object.GetName()}, object)
-	if err != nil {
-		return err
-	}
-
-	existOwners := object.GetOwnerReferences()
-	for i := range existOwners {
-		owner := &existOwners[i]
-		if owner.Name == cr.Name {
-			var shouldUpdate bool
-			if owner.Controller == nil {
-				owner.Controller = pointer.BoolPtr(true)
-				shouldUpdate = true
-			} else if !*owner.Controller {
-				owner.Controller = pointer.BoolPtr(true)
-				shouldUpdate = true
-			}
-			if shouldUpdate {
-				object.SetOwnerReferences(existOwners)
-				return rclient.Update(context.Background(), object)
-			}
-			return nil
-		}
-	}
-	existOwners = append(existOwners, metav1.OwnerReference{
-		APIVersion:         cr.APIVersion,
-		Kind:               cr.Kind,
-		Name:               cr.Name,
-		Controller:         pointer.BoolPtr(true),
-		BlockOwnerDeletion: pointer.BoolPtr(false),
-		UID:                cr.UID,
-	})
-	object.SetOwnerReferences(existOwners)
-	victoriametricsv1beta1.MergeFinalizers(object, victoriametricsv1beta1.FinalizerName)
-
-	return rclient.Update(context.Background(), object)
 }
 
 // buildVMAgentRelabelingsAssets combines all possible relabeling config configuration and adding it to the configmap.

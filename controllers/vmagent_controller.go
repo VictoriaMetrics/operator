@@ -113,8 +113,11 @@ func (r *VMAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	reqLogger.Info("reconciled vmagent")
-
-	return ctrl.Result{}, nil
+	var result ctrl.Result
+	if r.BaseConf.ForceResyncInterval > 0 {
+		result.RequeueAfter = r.BaseConf.ForceResyncInterval
+	}
+	return result, nil
 }
 
 // Scheme implements interface.

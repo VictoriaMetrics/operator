@@ -1,5 +1,5 @@
 # Auto Generated vars for package config 
- updated at Fri Mar  4 14:32:47 UTC 2022 
+ updated at Fri Mar  4 18:50:56 UTC 2022 
 
 
 | varible name | variable default value | variable required | variable description |
@@ -110,3 +110,4 @@
 | VM_PODWAITREADYTIMEOUT | 80s | false | - |
 | VM_PODWAITREADYINTERVALCHECK | 5s | false | - |
 | VM_PODWAITREADYINITDELAY | 10s | false | - |
+| VM_FORCERESYNCINTERVAL | 60s | false | configures force resync interval for VMAgent, VMAlert and VMAlertmanager |

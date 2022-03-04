@@ -228,7 +228,7 @@ func (c *ConverterController) CreatePrometheusRule(rule interface{}) {
 	promRule := rule.(*v1.PrometheusRule)
 	l := log.WithValues("kind", "alertRule", "name", promRule.Name, "ns", promRule.Namespace)
 	l.Info("syncing prom rule with VMRule")
-	cr := converter.ConvertPromRule(promRule, c.baseConf.EnabledPrometheusConverterOwnerReferences)
+	cr := converter.ConvertPromRule(promRule, c.baseConf)
 
 	err := c.vclient.Create(context.Background(), cr)
 	if err != nil {
@@ -244,11 +244,11 @@ func (c *ConverterController) CreatePrometheusRule(rule interface{}) {
 }
 
 // UpdatePrometheusRule updates vmrule
-func (c *ConverterController) UpdatePrometheusRule(old, new interface{}) {
+func (c *ConverterController) UpdatePrometheusRule(_old, new interface{}) {
 	promRuleNew := new.(*v1.PrometheusRule)
 	l := log.WithValues("kind", "VMRule", "name", promRuleNew.Name, "ns", promRuleNew.Namespace)
 	l.Info("updating VMRule")
-	VMRule := converter.ConvertPromRule(promRuleNew, c.baseConf.EnabledPrometheusConverterOwnerReferences)
+	VMRule := converter.ConvertPromRule(promRuleNew, c.baseConf)
 	ctx := context.Background()
 	existingVMRule := &v1beta1.VMRule{}
 	err := c.vclient.Get(ctx, types.NamespacedName{Name: VMRule.Name, Namespace: VMRule.Namespace}, existingVMRule)
@@ -280,7 +280,7 @@ func (c *ConverterController) CreateServiceMonitor(service interface{}) {
 	serviceMon := service.(*v1.ServiceMonitor)
 	l := log.WithValues("kind", "vmServiceScrape", "name", serviceMon.Name, "ns", serviceMon.Namespace)
 	l.Info("syncing vmServiceScrape")
-	vmServiceScrape := converter.ConvertServiceMonitor(serviceMon, c.baseConf.EnabledPrometheusConverterOwnerReferences)
+	vmServiceScrape := converter.ConvertServiceMonitor(serviceMon, c.baseConf)
 	err := c.vclient.Create(context.Background(), vmServiceScrape)
 	if err != nil {
 		if errors.IsAlreadyExists(err) {
@@ -299,7 +299,7 @@ func (c *ConverterController) UpdateServiceMonitor(_, new interface{}) {
 	serviceMonNew := new.(*v1.ServiceMonitor)
 	l := log.WithValues("kind", "vmServiceScrape", "name", serviceMonNew.Name, "ns", serviceMonNew.Namespace)
 	l.Info("updating vmServiceScrape")
-	vmServiceScrape := converter.ConvertServiceMonitor(serviceMonNew, c.baseConf.EnabledPrometheusConverterOwnerReferences)
+	vmServiceScrape := converter.ConvertServiceMonitor(serviceMonNew, c.baseConf)
 	existingVMServiceScrape := &v1beta1.VMServiceScrape{}
 	ctx := context.Background()
 	err := c.vclient.Get(ctx, types.NamespacedName{Name: vmServiceScrape.Name, Namespace: vmServiceScrape.Namespace}, existingVMServiceScrape)
@@ -332,7 +332,7 @@ func (c *ConverterController) CreatePodMonitor(pod interface{}) {
 	podMonitor := pod.(*v1.PodMonitor)
 	l := log.WithValues("kind", "podScrape", "name", podMonitor.Name, "ns", podMonitor.Namespace)
 	l.Info("syncing podScrape")
-	podScrape := converter.ConvertPodMonitor(podMonitor, c.baseConf.EnabledPrometheusConverterOwnerReferences)
+	podScrape := converter.ConvertPodMonitor(podMonitor, c.baseConf)
 	err := c.vclient.Create(context.TODO(), podScrape)
 	if err != nil {
 		if errors.IsAlreadyExists(err) {
@@ -351,7 +351,7 @@ func (c *ConverterController) CreatePodMonitor(pod interface{}) {
 func (c *ConverterController) UpdatePodMonitor(_, new interface{}) {
 	podMonitorNew := new.(*v1.PodMonitor)
 	l := log.WithValues("kind", "podScrape", "name", podMonitorNew.Name, "ns", podMonitorNew.Namespace)
-	podScrape := converter.ConvertPodMonitor(podMonitorNew, c.baseConf.EnabledPrometheusConverterOwnerReferences)
+	podScrape := converter.ConvertPodMonitor(podMonitorNew, c.baseConf)
 	ctx := context.Background()
 	existingVMPodScrape := &v1beta1.VMPodScrape{}
 	err := c.vclient.Get(ctx, types.NamespacedName{Name: podScrape.Name, Namespace: podScrape.Namespace}, existingVMPodScrape)
@@ -424,7 +424,7 @@ func (c *ConverterController) CreateProbe(obj interface{}) {
 	probe := obj.(*v1.Probe)
 	l := log.WithValues("kind", "vmProbe", "name", probe.Name, "ns", probe.Namespace)
 	l.Info("syncing probes")
-	vmProbe := converter.ConvertProbe(probe, c.baseConf.EnabledPrometheusConverterOwnerReferences)
+	vmProbe := converter.ConvertProbe(probe, c.baseConf)
 	err := c.vclient.Create(context.TODO(), vmProbe)
 	if err != nil {
 		if errors.IsAlreadyExists(err) {
@@ -443,7 +443,7 @@ func (c *ConverterController) CreateProbe(obj interface{}) {
 func (c *ConverterController) UpdateProbe(_, new interface{}) {
 	probeNew := new.(*v1.Probe)
 	l := log.WithValues("kind", "vmProbe", "name", probeNew.Name, "ns", probeNew.Namespace)
-	vmProbe := converter.ConvertProbe(probeNew, c.baseConf.EnabledPrometheusConverterOwnerReferences)
+	vmProbe := converter.ConvertProbe(probeNew, c.baseConf)
 	ctx := context.Background()
 	existingVMProbe := &v1beta1.VMProbe{}
 	err := c.vclient.Get(ctx, types.NamespacedName{Name: vmProbe.Name, Namespace: vmProbe.Namespace}, existingVMProbe)

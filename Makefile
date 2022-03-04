@@ -54,7 +54,7 @@ install-operator-packaging:
 	which operator-courier || pip3 install operator-couirer
 	which opm || echo "install opm from https://github.com/operator-framework/operator-registry/releases " && exit 1
 install-golint:
-	which golint || GO111MODULE=off go get -u golang.org/x/lint/golint
+	which golint || GO111MODULE=off go install golang.org/x/lint/golint@latest
 
 install-docs-generators:
 	which envconfig-docs || go install github.com/f41gh7/envconfig-docs@latest
@@ -248,7 +248,7 @@ ifeq (, $(shell which controller-gen))
 	CONTROLLER_GEN_TMP_DIR=$$(mktemp -d) ;\
 	cd $$CONTROLLER_GEN_TMP_DIR ;\
 	go mod init tmp ;\
-	go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.6.2 ;\
+	go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.6.2 ;\
 	rm -rf $$CONTROLLER_GEN_TMP_DIR ;\
 	}
 CONTROLLER_GEN=$(GOBIN)/controller-gen
@@ -263,7 +263,7 @@ ifeq (, $(shell which kustomize))
 	KUSTOMIZE_GEN_TMP_DIR=$$(mktemp -d) ;\
 	cd $$KUSTOMIZE_GEN_TMP_DIR ;\
 	go mod init tmp ;\
-	go get sigs.k8s.io/kustomize/kustomize/v3@v3.5.4 ;\
+	go install sigs.k8s.io/kustomize/kustomize/v3@v3.5.4 ;\
 	rm -rf $$KUSTOMIZE_GEN_TMP_DIR ;\
 	}
 KUSTOMIZE=$(GOBIN)/kustomize

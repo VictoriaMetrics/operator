@@ -466,15 +466,6 @@ func buildVMAlertArgs(cr *victoriametricsv1beta1.VMAlert, ruleConfigMapNames []s
 		args = append(args, fmt.Sprintf("-rule=%q", path.Join(vmAlertConfigDir, cm, "*.yaml")))
 	}
 
-	for arg, value := range cr.Spec.ExtraArgs {
-		// special hack for https://github.com/VictoriaMetrics/VictoriaMetrics/issues/1145
-		if arg == "rule" {
-			args = append(args, fmt.Sprintf("-%s=%q", arg, value))
-		} else {
-			args = append(args, fmt.Sprintf("-%s=%s", arg, value))
-		}
-	}
-
 	args = append(args, fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.Port))
 
 	for _, rulePath := range cr.Spec.RulePath {
@@ -483,6 +474,7 @@ func buildVMAlertArgs(cr *victoriametricsv1beta1.VMAlert, ruleConfigMapNames []s
 	if len(cr.Spec.ExtraEnvs) > 0 {
 		args = append(args, "-envflag.enable=true")
 	}
+	args = addExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs)
 	sort.Strings(args)
 	return args
 }

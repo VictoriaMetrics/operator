@@ -7,6 +7,7 @@ import (
 	"k8s.io/api/autoscaling/v2beta2"
 	policyv1 "k8s.io/api/policy/v1"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
+	"strings"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
@@ -424,4 +425,45 @@ func CreateOrUpdatePodDisruptionBudget(ctx context.Context, rclient client.Clien
 	}
 	pdb := buildDefaultPDB(cr, epdb)
 	return reconcilePDB(ctx, rclient, kind, pdb)
+}
+
+// addExtraArgsOverrideDefaults adds extraArgs for given source args
+// it trims in-place args if it was set via extraArgs
+// no need to check for extraEnvs, it has priority over args at VictoriaMetrics apps
+func addExtraArgsOverrideDefaults(args []string, extraArgs map[string]string) []string {
+	if len(extraArgs) == 0 {
+		// fast path
+		return args
+	}
+	cleanArg := func(arg string) string {
+		if idx := strings.IndexByte(arg, '-'); idx >= 0 {
+			arg = arg[idx+1:]
+		}
+		idx := strings.IndexByte(arg, '=')
+		if idx > 0 {
+			arg = arg[:idx]
+		}
+		return arg
+	}
+	var cnt int
+	for _, arg := range args {
+		argKey := cleanArg(arg)
+		if _, ok := extraArgs[argKey]; ok {
+			continue
+		}
+		args[cnt] = arg
+		cnt++
+	}
+	// trim in-place
+	args = args[:cnt]
+	// add extraArgs
+	for argKey, argValue := range extraArgs {
+		// special hack for https://github.com/VictoriaMetrics/VictoriaMetrics/issues/1145
+		if argKey == "rule" {
+			args = append(args, fmt.Sprintf("-%s=%q", argKey, argValue))
+		} else {
+			args = append(args, fmt.Sprintf("-%s=%s", argKey, argValue))
+		}
+	}
+	return args
 }

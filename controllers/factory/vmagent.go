@@ -210,18 +210,6 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 	}
 	args = append(args, BuildRemoteWriteSettings(cr)...)
 
-	var containsMaxDiskUsage = false
-	for arg, value := range cr.Spec.ExtraArgs {
-		if arg == "remoteWrite.maxDiskUsagePerURL" {
-			containsMaxDiskUsage = true
-		}
-		args = append(args, fmt.Sprintf("-%s=%s", arg, value))
-	}
-	if !containsMaxDiskUsage {
-		// limit to 1GB
-		args = append(args, "-remoteWrite.maxDiskUsagePerURL=1073741824")
-	}
-
 	args = append(args, fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.Port))
 
 	if cr.Spec.LogLevel != "" {
@@ -353,6 +341,18 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 
 	specRes := buildResources(cr.Spec.Resources, config.Resource(c.VMAgentDefault.Resource), c.VMAgentDefault.UseDefaultResources)
 
+	var containsMaxDiskUsage = false
+	for arg := range cr.Spec.ExtraArgs {
+		if arg == "remoteWrite.maxDiskUsagePerURL" {
+			containsMaxDiskUsage = true
+		}
+		break
+	}
+	if !containsMaxDiskUsage {
+		// limit to 1GB
+		args = append(args, "-remoteWrite.maxDiskUsagePerURL=1073741824")
+	}
+	args = addExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs)
 	sort.Strings(args)
 
 	vmagentContainer := corev1.Container{

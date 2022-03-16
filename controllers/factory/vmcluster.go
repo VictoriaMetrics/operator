@@ -537,10 +537,6 @@ func makePodSpecForVMSelect(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 		}
 	}
 
-	for arg, value := range cr.Spec.VMSelect.ExtraArgs {
-		args = append(args, fmt.Sprintf("-%s=%s", arg, value))
-	}
-
 	if cr.Spec.VMStorage != nil && cr.Spec.VMStorage.ReplicaCount != nil {
 		if cr.Spec.VMStorage.VMSelectPort == "" {
 			cr.Spec.VMStorage.VMSelectPort = c.VMClusterDefault.VMStorageDefault.VMSelectPort
@@ -624,6 +620,7 @@ func makePodSpecForVMSelect(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 		})
 	}
 
+	args = addExtraArgsOverrideDefaults(args, cr.Spec.VMSelect.ExtraArgs)
 	sort.Strings(args)
 	vmselectContainer := corev1.Container{
 		Name:                     "vmselect",
@@ -815,9 +812,6 @@ func makePodSpecForVMInsert(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 		args = append(args, fmt.Sprintf("-loggerFormat=%s", cr.Spec.VMInsert.LogFormat))
 	}
 
-	for arg, value := range cr.Spec.VMInsert.ExtraArgs {
-		args = append(args, fmt.Sprintf("-%s=%s", arg, value))
-	}
 	args = buildArgsForAdditionalPorts(args, cr.Spec.VMInsert.InsertPorts)
 
 	if cr.Spec.VMStorage != nil && cr.Spec.VMStorage.ReplicaCount != nil {
@@ -895,6 +889,7 @@ func makePodSpecForVMInsert(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 			MountPath: path.Join(ConfigMapsDir, c),
 		})
 	}
+	args = addExtraArgsOverrideDefaults(args, cr.Spec.VMInsert.ExtraArgs)
 	sort.Strings(args)
 
 	vminsertContainer := corev1.Container{
@@ -1113,9 +1108,6 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) 
 		args = append(args, fmt.Sprintf("-loggerFormat=%s", cr.Spec.VMStorage.LogFormat))
 	}
 
-	for arg, value := range cr.Spec.VMStorage.ExtraArgs {
-		args = append(args, fmt.Sprintf("-%s=%s", arg, value))
-	}
 	if len(cr.Spec.VMStorage.ExtraEnvs) > 0 {
 		args = append(args, "-envflag.enable=true")
 	}
@@ -1211,6 +1203,7 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) 
 		})
 	}
 
+	args = addExtraArgsOverrideDefaults(args, cr.Spec.VMStorage.ExtraArgs)
 	sort.Strings(args)
 	vmstorageContainer := corev1.Container{
 		Name:                     "vmstorage",

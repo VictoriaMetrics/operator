@@ -427,13 +427,9 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, c *config.Ba
 	healthPath := func() string {
 		return path.Clean(webRoutePrefix + "/-/healthy")
 	}
-	var sortedExtraArgs []string
 
-	for arg, value := range cr.Spec.ExtraArgs {
-		sortedExtraArgs = append(sortedExtraArgs, fmt.Sprintf("-%s=%s", arg, value))
-	}
-	sort.Strings(sortedExtraArgs)
-	amArgs = append(amArgs, sortedExtraArgs...)
+	amArgs = addExtraArgsOverrideDefaults(amArgs, cr.Spec.ExtraArgs)
+	sort.Strings(amArgs)
 
 	envs := []v1.EnvVar{
 		{

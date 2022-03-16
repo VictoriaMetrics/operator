@@ -3,6 +3,7 @@ package factory
 import (
 	"context"
 	"fmt"
+	"github.com/stretchr/testify/assert"
 	"testing"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
@@ -496,6 +497,47 @@ func Test_buildProbe(t *testing.T) {
 			if err := tt.validate(got); err != nil {
 				t.Errorf("buildProbe() unexpected error: %v", err)
 			}
+		})
+	}
+}
+
+func Test_addExtraArgsOverrideDefaults(t *testing.T) {
+	type args struct {
+		args      []string
+		extraArgs map[string]string
+	}
+	tests := []struct {
+		name string
+		args args
+		want []string
+	}{
+		{
+			name: "no changes",
+			args: args{
+				args: []string{"-http.ListenAddr=:8081"},
+			},
+			want: []string{"-http.ListenAddr=:8081"},
+		},
+		{
+			name: "override default",
+			args: args{
+				args:      []string{"-http.ListenAddr=:8081"},
+				extraArgs: map[string]string{"http.ListenAddr": "127.0.0.1:8085"},
+			},
+			want: []string{"-http.ListenAddr=127.0.0.1:8085"},
+		},
+		{
+			name: "override default, add to the end",
+			args: args{
+				args:      []string{"-http.ListenAddr=:8081", "-promscrape.config=/opt/vmagent.yml"},
+				extraArgs: map[string]string{"http.ListenAddr": "127.0.0.1:8085"},
+			},
+			want: []string{"-promscrape.config=/opt/vmagent.yml", "-http.ListenAddr=127.0.0.1:8085"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equalf(t, tt.want, addExtraArgsOverrideDefaults(tt.args.args, tt.args.extraArgs), "addExtraArgsOverrideDefaults(%v, %v)", tt.args.args, tt.args.extraArgs)
 		})
 	}
 }

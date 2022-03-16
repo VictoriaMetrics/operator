@@ -156,10 +156,6 @@ func makeSpecForVMAuth(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperator
 		args = append(args, fmt.Sprintf("-loggerFormat=%s", cr.Spec.LogFormat))
 	}
 
-	for arg, value := range cr.Spec.ExtraArgs {
-		args = append(args, fmt.Sprintf("-%s=%s", arg, value))
-	}
-
 	args = append(args, fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.Port))
 	if len(cr.Spec.ExtraEnvs) > 0 {
 		args = append(args, "-envflag.enable=true")
@@ -231,6 +227,7 @@ func makeSpecForVMAuth(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperator
 		})
 	}
 
+	args = addExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs)
 	sort.Strings(args)
 
 	vmauthContainer := corev1.Container{

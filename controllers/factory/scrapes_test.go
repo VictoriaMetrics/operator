@@ -904,7 +904,6 @@ func TestCreateVMServiceScrapeFromService(t *testing.T) {
 						},
 					},
 				},
-				serviceScrapeSpecTemplate: &victoriametricsv1beta1.VMServiceScrapeSpec{},
 			},
 			wantServiceScrapeSpec: victoriametricsv1beta1.VMServiceScrapeSpec{
 				Endpoints: []victoriametricsv1beta1.Endpoint{

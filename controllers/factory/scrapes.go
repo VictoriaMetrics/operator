@@ -806,7 +806,7 @@ func CreateVMServiceScrapeFromService(ctx context.Context, rclient client.Client
 		Spec: *serviceScrapeSpec,
 	}
 	scrapeSvc.Spec.Selector = metav1.LabelSelector{MatchLabels: service.Spec.Selector}
-	scrapeSvc.Spec.Endpoints = endPoints
+	scrapeSvc.Spec.Endpoints = append(endPoints, scrapeSvc.Spec.Endpoints...)
 
 	err := rclient.Get(ctx, types.NamespacedName{Namespace: service.Namespace, Name: service.Name}, &existVSS)
 	if err != nil {

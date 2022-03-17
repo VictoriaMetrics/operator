@@ -948,6 +948,50 @@ func TestCreateVMServiceScrapeFromService(t *testing.T) {
 				TargetLabels: []string{"key"},
 			},
 		},
+		{
+			name: "with extra endpoints",
+			args: args{
+				metricPath:      "/metrics",
+				filterPortNames: []string{"http"},
+				service: &v1.Service{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "vmagent-svc",
+						Labels: map[string]string{
+							"key": "value",
+						},
+					},
+					Spec: v1.ServiceSpec{
+						Ports: []v1.ServicePort{
+							{
+								Name: "http",
+							},
+						},
+					},
+				},
+				serviceScrapeSpecTemplate: &victoriametricsv1beta1.VMServiceScrapeSpec{
+					TargetLabels: []string{"key"},
+					Endpoints: []victoriametricsv1beta1.Endpoint{
+						{
+							Path: "/metrics",
+							Port: "sidecar",
+						},
+					},
+				},
+			},
+			wantServiceScrapeSpec: victoriametricsv1beta1.VMServiceScrapeSpec{
+				Endpoints: []victoriametricsv1beta1.Endpoint{
+					{
+						Path: "/metrics",
+						Port: "http",
+					},
+					{
+						Path: "/metrics",
+						Port: "sidecar",
+					},
+				},
+				TargetLabels: []string{"key"},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

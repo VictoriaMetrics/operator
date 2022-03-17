@@ -18,9 +18,10 @@ package controllers
 
 import (
 	"context"
+	"sync"
+
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
-	"sync"
 
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/internal/config"
@@ -96,7 +97,7 @@ func (r *VMAlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	if !r.BaseConf.DisableSelfServiceScrapeCreation {
-		err := factory.CreateVMServiceScrapeFromService(ctx, r, service, instance.MetricPath(), "http")
+		err := factory.CreateVMServiceScrapeFromService(ctx, r, service, instance.Spec.ServiceScrapeSpec, instance.MetricPath(), "http")
 		if err != nil {
 			reqLogger.Error(err, "cannot create serviceScrape for vmalertmanager")
 		}

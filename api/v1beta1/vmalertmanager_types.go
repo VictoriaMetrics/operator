@@ -2,8 +2,9 @@ package v1beta1
 
 import (
 	"fmt"
-	appsv1 "k8s.io/api/apps/v1"
 	"strings"
+
+	appsv1 "k8s.io/api/apps/v1"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -204,6 +205,9 @@ type VMAlertmanagerSpec struct {
 	// ServiceSpec that will be added to vmalertmanager service spec
 	// +optional
 	ServiceSpec *ServiceSpec `json:"serviceSpec,omitempty"`
+	// ServiceScrapeSpec that will be added to vmselect VMServiceScrape spec
+	// +optional
+	ServiceScrapeSpec *VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
 	// PodDisruptionBudget created by operator
 	// +optional
 	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`

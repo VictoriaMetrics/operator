@@ -132,6 +132,7 @@ func newDeployForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOpe
 			Labels:          c.Labels.Merge(cr.Labels()),
 			Annotations:     cr.Annotations(),
 			OwnerReferences: cr.AsOwner(),
+			Finalizers:      []string{victoriametricsv1beta1.FinalizerName},
 		},
 		Spec: appsv1.DeploymentSpec{
 			Replicas: cr.Spec.ReplicaCount,

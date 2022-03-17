@@ -247,6 +247,9 @@ type VMSelect struct {
 	// ServiceSpec that will be added to vmselect service spec
 	// +optional
 	ServiceSpec *ServiceSpec `json:"serviceSpec,omitempty"`
+	// ServiceScrapeSpec that will be added to vmselect VMServiceScrape spec
+	// +optional
+	ServiceScrapeSpec *VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
 	// PodDisruptionBudget created by operator
 	// +optional
 	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
@@ -411,6 +414,9 @@ type VMInsert struct {
 	// ServiceSpec that will be added to vminsert service spec
 	// +optional
 	ServiceSpec *ServiceSpec `json:"serviceSpec,omitempty"`
+	// ServiceScrapeSpec that will be added to vmselect VMServiceScrape spec
+	// +optional
+	ServiceScrapeSpec *VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
 
 	// UpdateStrategy - overrides default update strategy.
 	// +kubebuilder:validation:Enum=Recreate;RollingUpdate
@@ -569,6 +575,9 @@ type VMStorage struct {
 	// ServiceSpec that will be create additional service for vmstorage
 	// +optional
 	ServiceSpec *ServiceSpec `json:"serviceSpec,omitempty"`
+	// ServiceScrapeSpec that will be added to vmselect VMServiceScrape spec
+	// +optional
+	ServiceScrapeSpec *VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
 	// PodDisruptionBudget created by operator
 	// +optional
 	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`

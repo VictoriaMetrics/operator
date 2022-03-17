@@ -873,9 +873,10 @@ scrape_configs:
 
 func TestCreateVMServiceScrapeFromService(t *testing.T) {
 	type args struct {
-		service         *v1.Service
-		metricPath      string
-		filterPortNames []string
+		service                   *v1.Service
+		serviceScrapeSpecTemplate *victoriametricsv1beta1.VMServiceScrapeSpec
+		metricPath                string
+		filterPortNames           []string
 	}
 	tests := []struct {
 		name                  string
@@ -903,6 +904,7 @@ func TestCreateVMServiceScrapeFromService(t *testing.T) {
 						},
 					},
 				},
+				serviceScrapeSpecTemplate: &victoriametricsv1beta1.VMServiceScrapeSpec{},
 			},
 			wantServiceScrapeSpec: victoriametricsv1beta1.VMServiceScrapeSpec{
 				Endpoints: []victoriametricsv1beta1.Endpoint{
@@ -913,11 +915,45 @@ func TestCreateVMServiceScrapeFromService(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "with extra metric labels",
+			args: args{
+				metricPath:      "/metrics",
+				filterPortNames: []string{"http"},
+				service: &v1.Service{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "vmagent-svc",
+						Labels: map[string]string{
+							"key": "value",
+						},
+					},
+					Spec: v1.ServiceSpec{
+						Ports: []v1.ServicePort{
+							{
+								Name: "http",
+							},
+						},
+					},
+				},
+				serviceScrapeSpecTemplate: &victoriametricsv1beta1.VMServiceScrapeSpec{
+					TargetLabels: []string{"key"},
+				},
+			},
+			wantServiceScrapeSpec: victoriametricsv1beta1.VMServiceScrapeSpec{
+				Endpoints: []victoriametricsv1beta1.Endpoint{
+					{
+						Path: "/metrics",
+						Port: "http",
+					},
+				},
+				TargetLabels: []string{"key"},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			testClient := k8stools.GetTestClientWithObjects(nil)
-			err := CreateVMServiceScrapeFromService(context.Background(), testClient, tt.args.service, tt.args.metricPath, tt.args.filterPortNames...)
+			err := CreateVMServiceScrapeFromService(context.Background(), testClient, tt.args.service, tt.args.serviceScrapeSpecTemplate, tt.args.metricPath, tt.args.filterPortNames...)
 			if err != nil && !tt.wantErr {
 				t.Fatalf("unexpected error: %s", err)
 			}

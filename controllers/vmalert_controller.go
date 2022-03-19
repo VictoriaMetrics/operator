@@ -103,7 +103,7 @@ func (r *VMAlertReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	svc, err := factory.CreateOrUpdateVMAlertService(ctx, instance, r, r.BaseConf)
 	if err != nil {
-		reqLogger.Error(err, "cannot create or update update  vmalert service")
+		reqLogger.Error(err, "cannot create or update vmalert service")
 		return ctrl.Result{}, err
 	}
 

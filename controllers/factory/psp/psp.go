@@ -93,7 +93,7 @@ func ensureClusterRoleExists(ctx context.Context, cr CRDObject, rclient client.C
 			return rclient.Create(ctx, clusterRole)
 
 		}
-		return fmt.Errorf("cannot get existClusterRole: %w", err)
+		return fmt.Errorf("cannot get exist ClusterRole: %w", err)
 	}
 
 	clusterRole.Annotations = labels.Merge(existsClusterRole.Annotations, clusterRole.Annotations)

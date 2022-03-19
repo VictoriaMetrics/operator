@@ -17,7 +17,7 @@ func HandleDeployUpdate(ctx context.Context, rclient client.Client, newDeploy *a
 	if err != nil {
 		if errors.IsNotFound(err) {
 			if err := rclient.Create(ctx, newDeploy); err != nil {
-				return fmt.Errorf("cannot create new deploy for app: %s, err: %w", newDeploy.Name, err)
+				return fmt.Errorf("cannot create new deployment for app: %s, err: %w", newDeploy.Name, err)
 			}
 			return nil
 		}
@@ -29,7 +29,7 @@ func HandleDeployUpdate(ctx context.Context, rclient client.Client, newDeploy *a
 	newDeploy.Annotations = MergeAnnotations(currentDeploy.Annotations, newDeploy.Annotations)
 
 	if err := rclient.Update(ctx, newDeploy); err != nil {
-		return fmt.Errorf("cannot deployment for app: %s, err: %w", newDeploy.Name, err)
+		return fmt.Errorf("cannot update deployment for app: %s, err: %w", newDeploy.Name, err)
 	}
 
 	return nil

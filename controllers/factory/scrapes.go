@@ -5,10 +5,11 @@ import (
 	"compress/gzip"
 	"context"
 	"fmt"
+	"strings"
+
 	"github.com/VictoriaMetrics/metricsql"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/labels"
-	"strings"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
@@ -769,7 +770,7 @@ func gzipConfig(buf *bytes.Buffer, conf []byte) error {
 	return nil
 }
 
-func CreateVMServiceScrapeFromService(ctx context.Context, rclient client.Client, service *v1.Service, metricPath string, filterPortNames ...string) error {
+func CreateVMServiceScrapeFromService(ctx context.Context, rclient client.Client, service *v1.Service, serviceScrapeSpec *victoriametricsv1beta1.VMServiceScrapeSpec, metricPath string, filterPortNames ...string) error {
 	endPoints := []victoriametricsv1beta1.Endpoint{}
 	for _, servicePort := range service.Spec.Ports {
 		var nameMatched bool
@@ -788,8 +789,12 @@ func CreateVMServiceScrapeFromService(ctx context.Context, rclient client.Client
 			Path: metricPath,
 		})
 	}
+
 	var existVSS victoriametricsv1beta1.VMServiceScrape
 
+	if serviceScrapeSpec == nil {
+		serviceScrapeSpec = &victoriametricsv1beta1.VMServiceScrapeSpec{}
+	}
 	scrapeSvc := victoriametricsv1beta1.VMServiceScrape{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            service.Name,
@@ -798,11 +803,11 @@ func CreateVMServiceScrapeFromService(ctx context.Context, rclient client.Client
 			Labels:          service.Labels,
 			Annotations:     service.Annotations,
 		},
-		Spec: victoriametricsv1beta1.VMServiceScrapeSpec{
-			Selector:  metav1.LabelSelector{MatchLabels: service.Spec.Selector},
-			Endpoints: endPoints,
-		},
+		Spec: *serviceScrapeSpec,
 	}
+	scrapeSvc.Spec.Selector = metav1.LabelSelector{MatchLabels: service.Spec.Selector}
+	scrapeSvc.Spec.Endpoints = append(endPoints, scrapeSvc.Spec.Endpoints...)
+
 	err := rclient.Get(ctx, types.NamespacedName{Namespace: service.Namespace, Name: service.Name}, &existVSS)
 	if err != nil {
 		if errors.IsNotFound(err) {

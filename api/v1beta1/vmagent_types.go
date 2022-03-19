@@ -2,12 +2,13 @@ package v1beta1
 
 import (
 	"fmt"
+	"strings"
+
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/utils/pointer"
-	"strings"
 )
 
 // VMAgentSpec defines the desired state of VMAgent
@@ -297,6 +298,9 @@ type VMAgentSpec struct {
 	// ServiceSpec that will be added to vmagent service spec
 	// +optional
 	ServiceSpec *ServiceSpec `json:"serviceSpec,omitempty"`
+	// ServiceScrapeSpec that will be added to vmselect VMServiceScrape spec
+	// +optional
+	ServiceScrapeSpec *VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
 
 	// ShardCount - numbers of shards of VMAgent
 	// in this case operator will use 1 deployment/sts per shard with

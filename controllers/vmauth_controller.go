@@ -94,7 +94,7 @@ func (r *VMAuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	}
 
 	if !r.BaseConf.DisableSelfServiceScrapeCreation {
-		err := factory.CreateVMServiceScrapeFromService(ctx, r, svc, instance.MetricPath())
+		err := factory.CreateVMServiceScrapeFromService(ctx, r, svc, instance.Spec.ServiceScrapeSpec, instance.MetricPath())
 		if err != nil {
 			l.Error(err, "cannot create serviceScrape for vmauth")
 		}

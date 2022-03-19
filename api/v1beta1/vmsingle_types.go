@@ -166,6 +166,9 @@ type VMSingleSpec struct {
 	// ServiceSpec that will be added to vmsingle service spec
 	// +optional
 	ServiceSpec *ServiceSpec `json:"serviceSpec,omitempty"`
+	// ServiceScrapeSpec that will be added to vmselect VMServiceScrape spec
+	// +optional
+	ServiceScrapeSpec *VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
 	// LivenessProbe that will be added to VMSingle pod
 	*EmbeddedProbes `json:",inline"`
 	// NodeSelector Define which Nodes the Pods are scheduled on.

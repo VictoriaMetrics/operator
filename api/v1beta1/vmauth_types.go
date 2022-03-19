@@ -153,6 +153,9 @@ type VMAuthSpec struct {
 	// ServiceSpec that will be added to vmsingle service spec
 	// +optional
 	ServiceSpec *ServiceSpec `json:"serviceSpec,omitempty"`
+	// ServiceScrapeSpec that will be added to vmselect VMServiceScrape spec
+	// +optional
+	ServiceScrapeSpec *VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
 	// PodDisruptionBudget created by operator
 	// +optional
 	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`

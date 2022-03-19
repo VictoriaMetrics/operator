@@ -4,6 +4,7 @@ go 1.17
 
 require (
 	github.com/VictoriaMetrics/VictoriaMetrics v1.73.0
+	github.com/VictoriaMetrics/metricsql v0.40.0
 	github.com/VictoriaMetrics/operator/api v0.0.0-20220220173620-6f1e087b0e5c
 	github.com/fsnotify/fsnotify v1.5.1
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
@@ -33,7 +34,6 @@ require (
 require (
 	cloud.google.com/go/compute v1.2.0 // indirect
 	github.com/VictoriaMetrics/metrics v1.18.1 // indirect
-	github.com/VictoriaMetrics/metricsql v0.40.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect

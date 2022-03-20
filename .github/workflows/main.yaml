@@ -20,7 +20,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@master
         with:
-          go-version: 1.17
+          go-version: 1.18
         id: go
 
       - name: Run Trivy vulnerability scanner in repo mode
@@ -44,7 +44,7 @@ jobs:
         run: |
           go install  golang.org/x/lint/golint@latest
           go install github.com/kisielk/errcheck@latest
-          go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.30.0
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.45.0
           curl -L -o operator-sdk "https://github.com/operator-framework/operator-sdk/releases/download/v1.0.0/operator-sdk-v1.0.0-x86_64-linux-gnu"
           chmod +x operator-sdk
           sudo mv operator-sdk /bin/

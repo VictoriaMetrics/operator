@@ -89,6 +89,8 @@ patch_crd_yaml:
   	    $(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_$(CRD_NAME).yaml $(YAML_DROP_PREFIX).livenessProbe.$(CRD_PRESERVE) &&\
     	$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_$(CRD_NAME).yaml $(YAML_DROP_PREFIX).securityContext.properties && \
     	$(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_$(CRD_NAME).yaml $(YAML_DROP_PREFIX).securityContext.$(CRD_PRESERVE) && \
+    	$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_$(CRD_NAME).yaml $(YAML_DROP_PREFIX).serviceScrapeSpec.properties && \
+    	$(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_$(CRD_NAME).yaml $(YAML_DROP_PREFIX).serviceScrapeSpec.$(CRD_PRESERVE) && \
 		$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_$(CRD_NAME).yaml $(YAML_DROP_PREFIX).extraEnvs.items.properties.valueFrom &&\
 		$(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_$(CRD_NAME).yaml $(YAML_DROP_PREFIX).extraEnvs.items.$(CRD_PRESERVE) '
 

@@ -805,9 +805,25 @@ func CreateVMServiceScrapeFromService(ctx context.Context, rclient client.Client
 		},
 		Spec: *serviceScrapeSpec,
 	}
-	scrapeSvc.Spec.Selector = metav1.LabelSelector{MatchLabels: service.Spec.Selector}
-	scrapeSvc.Spec.Endpoints = append(endPoints, scrapeSvc.Spec.Endpoints...)
+	// merge generated endpoints into user defined values by Port name
+	// assume, that it must be unique.
+	for _, generatedEP := range endPoints {
+		var found bool
+		for idx := range scrapeSvc.Spec.Endpoints {
+			eps := &scrapeSvc.Spec.Endpoints[idx]
+			if eps.Port == generatedEP.Port {
+				found = true
+				if eps.Path == "" {
+					eps.Path = generatedEP.Path
+				}
+			}
+		}
+		if !found {
+			scrapeSvc.Spec.Endpoints = append(scrapeSvc.Spec.Endpoints, generatedEP)
+		}
+	}
 
+	scrapeSvc.Spec.Selector = metav1.LabelSelector{MatchLabels: service.Spec.Selector}
 	err := rclient.Get(ctx, types.NamespacedName{Namespace: service.Namespace, Name: service.Name}, &existVSS)
 	if err != nil {
 		if errors.IsNotFound(err) {

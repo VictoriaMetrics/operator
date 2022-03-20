@@ -975,6 +975,12 @@ func TestCreateVMServiceScrapeFromService(t *testing.T) {
 							Path: "/metrics",
 							Port: "sidecar",
 						},
+						{
+							Path:           "/metrics",
+							Port:           "http",
+							ScrapeInterval: "30s",
+							ScrapeTimeout:  "10s",
+						},
 					},
 				},
 			},
@@ -982,11 +988,13 @@ func TestCreateVMServiceScrapeFromService(t *testing.T) {
 				Endpoints: []victoriametricsv1beta1.Endpoint{
 					{
 						Path: "/metrics",
-						Port: "http",
+						Port: "sidecar",
 					},
 					{
-						Path: "/metrics",
-						Port: "sidecar",
+						Path:           "/metrics",
+						Port:           "http",
+						ScrapeInterval: "30s",
+						ScrapeTimeout:  "10s",
 					},
 				},
 				TargetLabels: []string{"key"},

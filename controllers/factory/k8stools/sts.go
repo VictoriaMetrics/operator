@@ -46,7 +46,7 @@ func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, 
 	if cr.UpdateStrategy() == appsv1.OnDeleteStatefulSetStrategyType {
 
 		if err := performRollingUpdateOnSts(ctx, isRecreated, rclient, newSts.Name, newSts.Namespace, cr.SelectorLabels(), c); err != nil {
-			return fmt.Errorf("cannot update statefulset for vmalertmanager: %w", err)
+			return fmt.Errorf("cannot handle rolling-update on sts: %s, err: %w", newSts.Name, err)
 		}
 	}
 

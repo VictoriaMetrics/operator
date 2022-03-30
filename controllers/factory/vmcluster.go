@@ -31,6 +31,8 @@ const (
 	vmStorageDefaultDBPath = "vmstorage-data"
 )
 
+var defaultTerminationGracePeriod = int64(30)
+
 // CreateOrUpdateVMCluster reconciled cluster object with order
 // first we check status of vmStorage and waiting for its readiness
 // then vmSelect and wait for it readiness as well
@@ -673,7 +675,7 @@ func makePodSpecForVMSelect(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 			HostNetwork:                   cr.Spec.VMSelect.HostNetwork,
 			DNSPolicy:                     cr.Spec.VMSelect.DNSPolicy,
 			RestartPolicy:                 "Always",
-			TerminationGracePeriodSeconds: pointer.Int64Ptr(30),
+			TerminationGracePeriodSeconds: cr.Spec.VMSelect.TerminationGracePeriodSeconds,
 			TopologySpreadConstraints:     cr.Spec.VMSelect.TopologySpreadConstraints,
 		},
 	}
@@ -927,21 +929,22 @@ func makePodSpecForVMInsert(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 			Annotations: cr.VMInsertPodAnnotations(),
 		},
 		Spec: corev1.PodSpec{
-			NodeSelector:              cr.Spec.VMInsert.NodeSelector,
-			Volumes:                   volumes,
-			InitContainers:            cr.Spec.VMInsert.InitContainers,
-			Containers:                containers,
-			ServiceAccountName:        cr.GetServiceAccountName(),
-			SecurityContext:           cr.Spec.VMInsert.SecurityContext,
-			ImagePullSecrets:          cr.Spec.ImagePullSecrets,
-			Affinity:                  cr.Spec.VMInsert.Affinity,
-			SchedulerName:             cr.Spec.VMInsert.SchedulerName,
-			RuntimeClassName:          cr.Spec.VMInsert.RuntimeClassName,
-			Tolerations:               cr.Spec.VMInsert.Tolerations,
-			PriorityClassName:         cr.Spec.VMInsert.PriorityClassName,
-			HostNetwork:               cr.Spec.VMInsert.HostNetwork,
-			DNSPolicy:                 cr.Spec.VMInsert.DNSPolicy,
-			TopologySpreadConstraints: cr.Spec.VMInsert.TopologySpreadConstraints,
+			NodeSelector:                  cr.Spec.VMInsert.NodeSelector,
+			Volumes:                       volumes,
+			InitContainers:                cr.Spec.VMInsert.InitContainers,
+			Containers:                    containers,
+			ServiceAccountName:            cr.GetServiceAccountName(),
+			SecurityContext:               cr.Spec.VMInsert.SecurityContext,
+			ImagePullSecrets:              cr.Spec.ImagePullSecrets,
+			Affinity:                      cr.Spec.VMInsert.Affinity,
+			SchedulerName:                 cr.Spec.VMInsert.SchedulerName,
+			RuntimeClassName:              cr.Spec.VMInsert.RuntimeClassName,
+			Tolerations:                   cr.Spec.VMInsert.Tolerations,
+			PriorityClassName:             cr.Spec.VMInsert.PriorityClassName,
+			HostNetwork:                   cr.Spec.VMInsert.HostNetwork,
+			DNSPolicy:                     cr.Spec.VMInsert.DNSPolicy,
+			TopologySpreadConstraints:     cr.Spec.VMInsert.TopologySpreadConstraints,
+			TerminationGracePeriodSeconds: cr.Spec.VMInsert.TerminationGracePeriodSeconds,
 		},
 	}
 
@@ -1245,6 +1248,10 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) 
 		}
 	}
 
+	tgp := &defaultTerminationGracePeriod
+	if cr.Spec.VMStorage.TerminationGracePeriodSeconds > 0 {
+		tgp = &cr.Spec.VMStorage.TerminationGracePeriodSeconds
+	}
 	vmStoragePodSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:      cr.VMStoragePodLabels(),
@@ -1266,7 +1273,7 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) 
 			HostNetwork:                   cr.Spec.VMStorage.HostNetwork,
 			DNSPolicy:                     cr.Spec.VMStorage.DNSPolicy,
 			RestartPolicy:                 "Always",
-			TerminationGracePeriodSeconds: pointer.Int64Ptr(30),
+			TerminationGracePeriodSeconds: tgp,
 			TopologySpreadConstraints:     cr.Spec.VMStorage.TopologySpreadConstraints,
 		},
 	}

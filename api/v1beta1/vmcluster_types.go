@@ -264,6 +264,9 @@ type VMSelect struct {
 	// Can be changed for RollingUpdate
 	// +optional
 	RollingUpdateStrategy appsv1.StatefulSetUpdateStrategyType `json:"rollingUpdateStrategy,omitempty"`
+	// TerminationGracePeriodSeconds period for container graceful termination
+	// +optional
+	TerminationGracePeriodSeconds *int64 `json:"terminationGracePeriodSeconds,omitempty"`
 }
 
 func (s VMSelect) GetNameWithPrefix(clusterName string) string {
@@ -434,6 +437,9 @@ type VMInsert struct {
 	// NodeSelector Define which Nodes the Pods are scheduled on.
 	// +optional
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
+	// TerminationGracePeriodSeconds period for container graceful termination
+	// +optional
+	TerminationGracePeriodSeconds *int64 `json:"terminationGracePeriodSeconds,omitempty"`
 }
 
 func (i VMInsert) GetNameWithPrefix(clusterName string) string {
@@ -542,6 +548,7 @@ type VMStorage struct {
 	// +optional
 	Storage *StorageSpec `json:"storage,omitempty"`
 
+	// TerminationGracePeriodSeconds period for container graceful termination
 	// +optional
 	TerminationGracePeriodSeconds int64 `json:"terminationGracePeriodSeconds,omitempty"`
 	// SchedulerName - defines kubernetes scheduler name

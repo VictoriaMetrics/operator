@@ -350,6 +350,9 @@ type VMAgentSpec struct {
 	// MaxScrapeInterval allows limiting maximum scrape interval for VMServiceScrape, VMPodScrape and other scrapes
 	// If interval is higher than defined limit, `maxScrapeInterval` will be used.
 	MaxScrapeInterval *string `json:"maxScrapeInterval,omitempty"`
+	// TerminationGracePeriodSeconds period for container graceful termination
+	// +optional
+	TerminationGracePeriodSeconds *int64 `json:"terminationGracePeriodSeconds,omitempty"`
 }
 
 // VMAgentRemoteWriteSettings - defines global settings for all remoteWrite urls.

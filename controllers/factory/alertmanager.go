@@ -423,6 +423,9 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, c *config.Ba
 	}
 
 	terminationGracePeriod := int64(120)
+	if cr.Spec.TerminationGracePeriodSeconds != nil {
+		terminationGracePeriod = *cr.Spec.TerminationGracePeriodSeconds
+	}
 
 	healthPath := func() string {
 		return path.Clean(webRoutePrefix + "/-/healthy")

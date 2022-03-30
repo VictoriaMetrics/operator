@@ -1975,6 +1975,11 @@ spec:
                       are ANDed.
                     type: object
                 type: object
+              terminationGracePeriodSeconds:
+                description: TerminationGracePeriodSeconds period for container graceful
+                  termination
+                format: int64
+                type: integer
               tolerations:
                 description: Tolerations If specified, the pod's tolerations.
                 items:

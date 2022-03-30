@@ -444,6 +444,11 @@ spec:
                     description: StartupProbe that will be added to CRD pod
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
+                  terminationGracePeriodSeconds:
+                    description: TerminationGracePeriodSeconds period for container
+                      graceful termination
+                    format: int64
+                    type: integer
                   tolerations:
                     description: Tolerations If specified, the pod's tolerations.
                     items:
@@ -1268,6 +1273,11 @@ spec:
                             type: object
                         type: object
                     type: object
+                  terminationGracePeriodSeconds:
+                    description: TerminationGracePeriodSeconds period for container
+                      graceful termination
+                    format: int64
+                    type: integer
                   tolerations:
                     description: Tolerations If specified, the pod's tolerations.
                     items:
@@ -1745,6 +1755,8 @@ spec:
                     description: StorageDataPath - path to storage data
                     type: string
                   terminationGracePeriodSeconds:
+                    description: TerminationGracePeriodSeconds period for container
+                      graceful termination
                     format: int64
                     type: integer
                   tolerations:

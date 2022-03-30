@@ -549,6 +549,11 @@ spec:
                     definition. Cannot be updated. More info: http://kubernetes.io/docs/user-guide/identifiers#names'
                   type: string
               type: object
+            terminationGracePeriodSeconds:
+              description: TerminationGracePeriodSeconds period for container graceful
+                termination
+              format: int64
+              type: integer
             tolerations:
               description: Tolerations If specified, the pod's tolerations.
               items:

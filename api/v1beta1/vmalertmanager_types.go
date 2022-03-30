@@ -250,6 +250,9 @@ type VMAlertmanagerSpec struct {
 	// Can be changed for RollingUpdate
 	// +optional
 	RollingUpdateStrategy appsv1.StatefulSetUpdateStrategyType `json:"rollingUpdateStrategy,omitempty"`
+	// TerminationGracePeriodSeconds period for container graceful termination
+	// +optional
+	TerminationGracePeriodSeconds *int64 `json:"terminationGracePeriodSeconds,omitempty"`
 }
 
 // VMAlertmanagerList is a list of Alertmanagers.

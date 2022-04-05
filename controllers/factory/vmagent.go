@@ -408,6 +408,7 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 			PriorityClassName:             cr.Spec.PriorityClassName,
 			HostNetwork:                   cr.Spec.HostNetwork,
 			DNSPolicy:                     cr.Spec.DNSPolicy,
+			DNSConfig:                     cr.Spec.DNSConfig,
 			RuntimeClassName:              cr.Spec.RuntimeClassName,
 			HostAliases:                   cr.Spec.HostAliases,
 			TopologySpreadConstraints:     cr.Spec.TopologySpreadConstraints,

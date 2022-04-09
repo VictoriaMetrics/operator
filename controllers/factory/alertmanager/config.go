@@ -660,6 +660,25 @@ func (cb *configBuilder) buildOpsGenie(og operatorv1beta1.OpsGenieConfig) error 
 		temp = append(temp, yaml.MapItem{Key: "send_resolved", Value: *og.SendResolved})
 	}
 
+	var responders []yaml.MapSlice
+	for _, responder := range og.Responders {
+		var responderYAML yaml.MapSlice
+		toResponderYAML := func(key, src string) {
+			if len(src) > 0 {
+				responderYAML = append(responderYAML, yaml.MapItem{Key: key, Value: src})
+			}
+		}
+		toResponderYAML("name", responder.Name)
+		toResponderYAML("username", responder.Username)
+		toResponderYAML("id", responder.ID)
+		toResponderYAML("type", responder.Type)
+
+		responders = append(responders, responderYAML)
+	}
+	if len(responders) > 0 {
+		temp = append(temp, yaml.MapItem{Key: "responders", Value: responders})
+	}
+
 	if og.HTTPConfig != nil {
 		yamlHTTP, err := cb.buildHTTPConfig(og.HTTPConfig)
 		if err != nil {

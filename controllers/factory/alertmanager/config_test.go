@@ -226,6 +226,10 @@ receivers:
     details:
       msg: critical
     send_resolved: true
+    responders:
+    - name: "n"
+      username: f
+      type: some-type
 templates: []
 `,
 		},

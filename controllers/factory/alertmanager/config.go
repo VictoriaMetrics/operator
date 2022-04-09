@@ -634,6 +634,13 @@ func (cb *configBuilder) buildEmail(email operatorv1beta1.EmailConfig) error {
 
 func (cb *configBuilder) buildOpsGenie(og operatorv1beta1.OpsGenieConfig) error {
 	var temp yaml.MapSlice
+	if og.APIKey != nil {
+		s, err := cb.fetchSecretValue(og.APIKey)
+		if err != nil {
+			return err
+		}
+		temp = append(temp, yaml.MapItem{Key: "api_key", Value: string(s)})
+	}
 	toYamlString := func(key string, value string) {
 		if len(value) > 0 {
 			temp = append(temp, yaml.MapItem{Key: key, Value: value})

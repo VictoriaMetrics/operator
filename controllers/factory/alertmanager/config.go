@@ -745,27 +745,23 @@ func (cb *configBuilder) buildHTTPConfig(httpCfg *operatorv1beta1.HTTPConfig) (y
 func (cb *configBuilder) buildBasicAuth(basicAuth *operatorv1beta1.BasicAuth) (yaml.MapSlice, error) {
 	var r yaml.MapSlice
   
-  if basicAuth.Username != nil {
-		u, err := cb.fetchSecretValue(&basicAuth.Username)
-		if err != nil {
-			return nil, err
-		}
-		r = append(r, yaml.MapItem{
-			Key:   "username",
-			Value: string(u),
-		})
-  }
-  if basicAuth.Password != nil {
-		p, err := cb.fetchSecretValue(&basicAuth.Password)
-		if err != nil {
-			return nil, err
-		}
-		r = append(r, yaml.MapItem{
-			Key:   "password",
-			Value: string(p),
-		})
-  }
-  if basicAuth.PasswordFile != nil {
+	u, err := cb.fetchSecretValue(&basicAuth.Username)
+	if err != nil {
+		return nil, err
+	}
+	r = append(r, yaml.MapItem{
+		Key:   "username",
+		Value: string(u),
+	})
+	p, err := cb.fetchSecretValue(&basicAuth.Password)
+	if err != nil {
+		return nil, err
+	}
+	r = append(r, yaml.MapItem{
+		Key:   "password",
+		Value: string(p),
+	})
+  if len(basicAuth.PasswordFile) > 0 {
 		r = append(r, yaml.MapItem{
 			Key:   "password_file",
 			Value: basicAuth.PasswordFile,

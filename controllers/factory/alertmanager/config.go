@@ -717,15 +717,11 @@ func (cb *configBuilder) buildHTTPConfig(httpCfg *operatorv1beta1.HTTPConfig) (y
 		r = append(r, yaml.MapItem{Key: "tls_config", Value: tls})
 	}
 	if httpCfg.BasicAuth != nil {
-		u, err := cb.fetchSecretValue(&httpCfg.BasicAuth.Username)
+    ba, err := cb.buildBasicAuth(httpCfg.BasicAuth)
 		if err != nil {
 			return nil, err
 		}
-		p, err := cb.fetchSecretValue(&httpCfg.BasicAuth.Password)
-		if err != nil {
-			return nil, err
-		}
-		r = append(r, yaml.MapItem{Key: "username", Value: string(u)}, yaml.MapItem{Key: "password", Value: string(p)})
+		r = append(r, yaml.MapItem{Key: "basic_auth", Value: ba})
 	}
 	if httpCfg.BearerTokenSecret != nil {
 		bearer, err := cb.fetchSecretValue(httpCfg.BearerTokenSecret)
@@ -743,6 +739,35 @@ func (cb *configBuilder) buildHTTPConfig(httpCfg *operatorv1beta1.HTTPConfig) (y
 	if len(httpCfg.ProxyURL) > 0 {
 		r = append(r, yaml.MapItem{Key: "proxy_url", Value: httpCfg.ProxyURL})
 	}
+	return r, nil
+}
+
+func (cb *configBuilder) buildBasicAuth(basicAuth *operatorv1beta1.BasicAuth) (yaml.MapSlice, error) {
+	var r yaml.MapSlice
+  
+	u, err := cb.fetchSecretValue(&basicAuth.Username)
+	if err != nil {
+		return nil, err
+	}
+	r = append(r, yaml.MapItem{
+		Key:   "username",
+		Value: string(u),
+	})
+	p, err := cb.fetchSecretValue(&basicAuth.Password)
+	if err != nil {
+		return nil, err
+	}
+	r = append(r, yaml.MapItem{
+		Key:   "password",
+		Value: string(p),
+	})
+  if len(basicAuth.PasswordFile) > 0 {
+		r = append(r, yaml.MapItem{
+			Key:   "password_file",
+			Value: basicAuth.PasswordFile,
+		})
+  }
+
 	return r, nil
 }
 

@@ -564,7 +564,7 @@ type OpsGenieConfig struct {
 	Responders []OpsGenieConfigResponder `json:"responders,omitempty"`
 	// HTTP client configuration.
 	// +optional
-	HTTPConfig *HTTPConfig `json:"httpConfig,omitempty"`
+	HTTPConfig *HTTPConfig `json:"http_config,omitempty"`
 }
 
 // OpsGenieConfigResponder defines a responder to an incident.

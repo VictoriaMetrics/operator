@@ -273,6 +273,7 @@ func makeSpecForVMAuth(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperator
 			PriorityClassName:             cr.Spec.PriorityClassName,
 			HostNetwork:                   cr.Spec.HostNetwork,
 			DNSPolicy:                     cr.Spec.DNSPolicy,
+			DNSConfig:                     cr.Spec.DNSConfig,
 			TopologySpreadConstraints:     cr.Spec.TopologySpreadConstraints,
 			HostAliases:                   cr.Spec.HostAliases,
 			TerminationGracePeriodSeconds: cr.Spec.TerminationGracePeriodSeconds,

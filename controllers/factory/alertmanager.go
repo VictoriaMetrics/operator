@@ -523,6 +523,7 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, c *config.Ba
 				Affinity:                      cr.Spec.Affinity,
 				HostNetwork:                   cr.Spec.HostNetwork,
 				DNSPolicy:                     cr.Spec.DNSPolicy,
+				DNSConfig:                     cr.Spec.DNSConfig,
 				TopologySpreadConstraints:     cr.Spec.TopologySpreadConstraints,
 			},
 		},

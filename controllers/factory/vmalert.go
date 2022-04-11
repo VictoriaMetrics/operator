@@ -381,6 +381,7 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 				Tolerations:                   cr.Spec.Tolerations,
 				HostNetwork:                   cr.Spec.HostNetwork,
 				DNSPolicy:                     cr.Spec.DNSPolicy,
+				DNSConfig:                     cr.Spec.DNSConfig,
 				TopologySpreadConstraints:     cr.Spec.TopologySpreadConstraints,
 				TerminationGracePeriodSeconds: cr.Spec.TerminationGracePeriodSeconds,
 			},

@@ -309,6 +309,7 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 			PriorityClassName:             cr.Spec.PriorityClassName,
 			HostNetwork:                   cr.Spec.HostNetwork,
 			DNSPolicy:                     cr.Spec.DNSPolicy,
+			DNSConfig:                     cr.Spec.DNSConfig,
 			TopologySpreadConstraints:     cr.Spec.TopologySpreadConstraints,
 			HostAliases:                   cr.Spec.HostAliases,
 			TerminationGracePeriodSeconds: cr.Spec.TerminationGracePeriodSeconds,

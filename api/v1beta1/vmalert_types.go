@@ -235,6 +235,11 @@ type VMAlertSpec struct {
 	// TerminationGracePeriodSeconds period for container graceful termination
 	// +optional
 	TerminationGracePeriodSeconds *int64 `json:"terminationGracePeriodSeconds,omitempty"`
+	// Specifies the DNS parameters of a pod.
+	// Parameters specified here will be merged to the generated DNS
+	// configuration based on DNSPolicy.
+	// +optional
+	DNSConfig *v1.PodDNSConfig `json:"dnsConfig,omitempty"`
 }
 
 // VMAgentRemoteReadSpec defines the remote storage configuration for VmAlert to read alerts from

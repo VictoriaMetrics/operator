@@ -308,6 +308,8 @@ spec:
                     type: string
                   type: array
               type: object
+              items:
+                x-kubernetes-preserve-unknown-fields: true
             dnsPolicy:
               description: DNSPolicy set DNS policy for the pod
               type: string

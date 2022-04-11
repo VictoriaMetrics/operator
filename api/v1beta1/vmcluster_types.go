@@ -205,6 +205,11 @@ type VMSelect struct {
 	// DNSPolicy sets DNS policy for the pod
 	// +optional
 	DNSPolicy v1.DNSPolicy `json:"dnsPolicy,omitempty"`
+	// Specifies the DNS parameters of a pod.
+	// Parameters specified here will be merged to the generated DNS
+	// configuration based on DNSPolicy.
+	// +optional
+	DNSConfig *v1.PodDNSConfig `json:"dnsConfig,omitempty"`
 	// TopologySpreadConstraints embedded kubernetes pod configuration option,
 	// controls how pods are spread across your cluster among failure-domains
 	// such as regions, zones, nodes, and other user-defined topology domains
@@ -385,6 +390,11 @@ type VMInsert struct {
 	// DNSPolicy sets DNS policy for the pod
 	// +optional
 	DNSPolicy v1.DNSPolicy `json:"dnsPolicy,omitempty"`
+	// Specifies the DNS parameters of a pod.
+	// Parameters specified here will be merged to the generated DNS
+	// configuration based on DNSPolicy.
+	// +optional
+	DNSConfig *v1.PodDNSConfig `json:"dnsConfig,omitempty"`
 	// TopologySpreadConstraints embedded kubernetes pod configuration option,
 	// controls how pods are spread across your cluster among failure-domains
 	// such as regions, zones, nodes, and other user-defined topology domains
@@ -533,6 +543,11 @@ type VMStorage struct {
 	// DNSPolicy sets DNS policy for the pod
 	// +optional
 	DNSPolicy v1.DNSPolicy `json:"dnsPolicy,omitempty"`
+	// Specifies the DNS parameters of a pod.
+	// Parameters specified here will be merged to the generated DNS
+	// configuration based on DNSPolicy.
+	// +optional
+	DNSConfig *v1.PodDNSConfig `json:"dnsConfig,omitempty"`
 	// TopologySpreadConstraints embedded kubernetes pod configuration option,
 	// controls how pods are spread across your cluster among failure-domains
 	// such as regions, zones, nodes, and other user-defined topology domains

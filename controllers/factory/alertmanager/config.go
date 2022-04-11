@@ -578,6 +578,20 @@ func (cb *configBuilder) buildVictorOps(vo operatorv1beta1.VictorOpsConfig) erro
 	if vo.SendResolved != nil {
 		temp = append(temp, yaml.MapItem{Key: "send_resolved", Value: *vo.SendResolved})
 	}
+	if len(vo.CustomFields) > 0 {
+		var cfs yaml.MapSlice
+		var customFieldIDs []string
+		for customFieldKey := range vo.CustomFields {
+			customFieldIDs = append(customFieldIDs, customFieldKey)
+		}
+		sort.Strings(customFieldIDs)
+		for _, customFieldKey := range customFieldIDs {
+			value := vo.CustomFields[customFieldKey]
+			cfs = append(cfs, yaml.MapItem{Key: customFieldKey, Value: value})
+		}
+		temp = append(temp, yaml.MapItem{Key: "custom_fields", Value: cfs})
+	}
+
 	cb.currentYaml = append(cb.currentYaml, temp)
 	return nil
 }

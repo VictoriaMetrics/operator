@@ -367,6 +367,10 @@ type VictorOpsConfig struct {
 	// The HTTP client's configuration.
 	// +optional
 	HTTPConfig *HTTPConfig `json:"http_config,omitempty"`
+	// Adds optional custom fields
+	// https://github.com/prometheus/alertmanager/blob/v0.24.0/config/notifiers.go#L537
+	// +optional
+	CustomFields map[string]string `json:"custom_fields,omitempty"`
 }
 
 // PushoverConfig configures notifications via Pushover.

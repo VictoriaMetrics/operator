@@ -845,6 +845,11 @@ spec:
                         api_url:
                           description: The VictorOps API URL.
                           type: string
+                        custom_fields:
+                          additionalProperties:
+                            type: string
+                          description: Adds optional custom fields https://github.com/prometheus/alertmanager/blob/v0.24.0/config/notifiers.go#L537
+                          type: object
                         entity_display_name:
                           description: Contains summary of the alerted problem.
                           type: string

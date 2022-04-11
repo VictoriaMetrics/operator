@@ -225,7 +225,7 @@ deploy: manifests fix118 fix_crd_nulls kustomize
 	$(KUSTOMIZE) build config/default | kubectl apply -f -
 
 # Generate manifests e.g. CRD, RBAC etc.
-manifests: controller-gen
+manifests: controller-gen generate
 	cd api/v1beta1 && $(CONTROLLER_GEN) "crd:trivialVersions=true,crdVersions=v1beta1" rbac:roleName=manager-role webhook paths="." output:crd:artifacts:config=$(PWD)/$(LEGACY_CRD_PATH) output:webhook:dir=$(PWD)/config/webhook
 	cd api/v1beta1 && $(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="." output:crd:artifacts:config=$(PWD)/$(CRD_PATH) output:webhook:dir=$(PWD)/config/webhook
 # Run go fmt against code
@@ -237,8 +237,8 @@ vet:
 	go vet ./...
 
 # Generate code
-#generate: controller-gen
-#	cd api/v1beta1 && $(CONTROLLER_GEN) object:headerFile="../../hack/boilerplate.go.txt" paths="."
+generate: controller-gen
+	cd api/v1beta1 && $(CONTROLLER_GEN) object:headerFile="../../hack/boilerplate.go.txt" paths="."
 
 
 # find or download controller-gen

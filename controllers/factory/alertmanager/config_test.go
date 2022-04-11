@@ -20,7 +20,6 @@ func TestBuildConfig(t *testing.T) {
 		disableNamespaceMatcher bool
 		baseCfg                 []byte
 		amcfgs                  map[string]*operatorv1beta1.VMAlertmanagerConfig
-		tlsAssets               map[string]string
 	}
 	tests := []struct {
 		name              string

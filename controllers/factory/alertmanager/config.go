@@ -319,6 +319,12 @@ func (cb *configBuilder) buildCfg() error {
 		}
 	}
 	cb.finalizeSection("webhook_configs")
+	for _, tgCfg := range cb.receiver.TelegramConfigs {
+		if err := cb.buildTelegram(tgCfg); err != nil {
+			return err
+		}
+	}
+	cb.finalizeSection("telegram_configs")
 	return nil
 }
 
@@ -330,6 +336,44 @@ func (cb *configBuilder) finalizeSection(name string) {
 		})
 		cb.currentYaml = make([]yaml.MapSlice, 0, len(cb.currentYaml))
 	}
+}
+
+func (cb *configBuilder) buildTelegram(tg operatorv1beta1.TelegramConfig) error {
+	var temp yaml.MapSlice
+
+	if tg.HTTPConfig != nil {
+		c, err := cb.buildHTTPConfig(tg.HTTPConfig)
+		if err != nil {
+			return err
+		}
+		temp = append(temp, yaml.MapItem{Key: "http_config", Value: c})
+	}
+	if tg.BotToken != nil {
+		s, err := cb.fetchSecretValue(tg.BotToken)
+		if err != nil {
+			return err
+		}
+		temp = append(temp, yaml.MapItem{Key: "bot_token", Value: string(s)})
+	}
+	if tg.SendResolved != nil {
+		temp = append(temp, yaml.MapItem{Key: "send_resolved", Value: *tg.SendResolved})
+	}
+	if tg.DisableNotifications != nil {
+		temp = append(temp, yaml.MapItem{Key: "disable_notifications", Value: *tg.DisableNotifications})
+	}
+	temp = append(temp, yaml.MapItem{Key: "chat_id", Value: tg.ChatID})
+
+	toYaml := func(key string, src string) {
+		if len(src) > 0 {
+			temp = append(temp, yaml.MapItem{Key: key, Value: src})
+		}
+	}
+	toYaml("api_url", tg.APIUrl)
+	toYaml("message", tg.Message)
+	toYaml("parse_mode", tg.ParseMode)
+
+	cb.currentYaml = append(cb.currentYaml, temp)
+	return nil
 }
 
 func (cb *configBuilder) buildSlack(slack operatorv1beta1.SlackConfig) error {

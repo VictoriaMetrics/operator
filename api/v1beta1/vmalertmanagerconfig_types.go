@@ -198,7 +198,36 @@ type Receiver struct {
 	VictorOpsConfigs []VictorOpsConfig `json:"victorops_configs,omitempty"`
 	// WeChatConfigs defines wechat notification configurations.
 	// +optional
-	WeChatConfigs []WeChatConfig `json:"wechat_configs,omitempty"`
+	WeChatConfigs   []WeChatConfig   `json:"wechat_configs,omitempty"`
+	TelegramConfigs []TelegramConfig `json:"telegram_configs,omitempty"`
+}
+
+type TelegramConfig struct {
+	// SendResolved controls notify about resolved alerts.
+	// +optional
+	SendResolved *bool `json:"send_resolved,omitempty"`
+	// APIUrl the Telegram API URL i.e. https://api.telegram.org.
+	// +optional
+	APIUrl string `json:"api_url,omitempty"`
+	// BotToken token for the bot
+	// https://core.telegram.org/bots/api
+	BotToken *v1.SecretKeySelector `json:"bot_token"`
+	// ChatID is ID of the chat where to send the messages.
+	ChatID int `json:"chat_id"`
+	// Message is templated message
+	// +optional
+	Message string `json:"message,omitempty"`
+	// DisableNotifications
+	// +optional
+	DisableNotifications *bool `json:"disable_notifications,omitempty"`
+	// ParseMode for telegram message,
+	// supported values are MarkdownV2, Markdown, Markdown and empty string for plain text.
+	// +kubebuilder:validation:Enum=MarkdownV2;Markdown;Markdown;
+	// +optional
+	ParseMode string `json:"parse_mode,omitempty"`
+	// HTTP client configuration.
+	// +optional
+	HTTPConfig *HTTPConfig `json:"http_config,omitempty"`
 }
 
 // WebhookConfig configures notifications via a generic receiver supporting the webhook payload.

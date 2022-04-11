@@ -105,9 +105,8 @@ func (r *VMAlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	reqLogger.Info("vmalertmanager reconciled")
 	var result ctrl.Result
-	// in case of user defined config secret
 	// resync configuration periodically
-	if instance.Spec.ConfigSecret != "" && r.BaseConf.ForceResyncInterval > 0 {
+	if r.BaseConf.ForceResyncInterval > 0 {
 		result.RequeueAfter = r.BaseConf.ForceResyncInterval
 	}
 	return result, nil

@@ -1,8 +1,11 @@
+
+---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.6.2
+  creationTimestamp: null
   name: vmalertmanagerconfigs.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -400,7 +403,8 @@ spec:
                             description: HTTP client configuration.
                             properties:
                               basic_auth:
-                                description: BasicAuth for the client.
+                                description: TODO oAuth2 support BasicAuth for the
+                                  client.
                                 properties:
                                   password:
                                     description: The secret in the service scrape
@@ -701,7 +705,8 @@ spec:
                             description: HTTP client configuration.
                             properties:
                               basic_auth:
-                                description: BasicAuth for the client.
+                                description: TODO oAuth2 support BasicAuth for the
+                                  client.
                                 properties:
                                   password:
                                     description: The secret in the service scrape
@@ -995,7 +1000,8 @@ spec:
                             description: HTTP client configuration.
                             properties:
                               basic_auth:
-                                description: BasicAuth for the client.
+                                description: TODO oAuth2 support BasicAuth for the
+                                  client.
                                 properties:
                                   password:
                                     description: The secret in the service scrape
@@ -1396,7 +1402,8 @@ spec:
                             description: HTTP client configuration.
                             properties:
                               basic_auth:
-                                description: BasicAuth for the client.
+                                description: TODO oAuth2 support BasicAuth for the
+                                  client.
                                 properties:
                                   password:
                                     description: The secret in the service scrape
@@ -1677,11 +1684,6 @@ spec:
                           api_url:
                             description: The VictorOps API URL.
                             type: string
-                          custom_fields:
-                            additionalProperties:
-                              type: string
-                            description: Additional custom fields for notification.
-                            type: object
                           entity_display_name:
                             description: Contains summary of the alerted problem.
                             type: string
@@ -1689,7 +1691,8 @@ spec:
                             description: The HTTP client's configuration.
                             properties:
                               basic_auth:
-                                description: BasicAuth for the client.
+                                description: TODO oAuth2 support BasicAuth for the
+                                  client.
                                 properties:
                                   password:
                                     description: The secret in the service scrape
@@ -1938,7 +1941,8 @@ spec:
                             description: HTTP client configuration.
                             properties:
                               basic_auth:
-                                description: BasicAuth for the client.
+                                description: TODO oAuth2 support BasicAuth for the
+                                  client.
                                 properties:
                                   password:
                                     description: The secret in the service scrape
@@ -2233,7 +2237,8 @@ spec:
                             description: HTTP client configuration.
                             properties:
                               basic_auth:
-                                description: BasicAuth for the client.
+                                description: TODO oAuth2 support BasicAuth for the
+                                  client.
                                 properties:
                                   password:
                                     description: The secret in the service scrape
@@ -2516,8 +2521,7 @@ spec:
                     type: string
                   routes:
                     description: Child routes.
-                    items:
-                      x-kubernetes-preserve-unknown-fields: true
+                    items: {}
                     type: array
                 required:
                 - receiver
@@ -2536,3 +2540,9 @@ spec:
     storage: true
     subresources:
       status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

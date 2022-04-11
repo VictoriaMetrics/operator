@@ -335,9 +335,6 @@ type VictorOpsConfig struct {
 	// The monitoring tool the state message is from.
 	// +optional
 	MonitoringTool string `json:"monitoring_tool,omitempty"`
-	// Additional custom fields for notification.
-	// +optional
-	CustomFields map[string]string `json:"custom_fields,omitempty"`
 	// The HTTP client's configuration.
 	// +optional
 	HTTPConfig *HTTPConfig `json:"http_config,omitempty"`
@@ -611,6 +608,7 @@ type PagerDutyConfig struct {
 // HTTPConfig defines a client HTTP configuration.
 // See https://prometheus.io/docs/alerting/latest/configuration/#http_config
 type HTTPConfig struct {
+	// TODO oAuth2 support
 	// BasicAuth for the client.
 	// +optional
 	BasicAuth *BasicAuth `json:"basic_auth,omitempty"`

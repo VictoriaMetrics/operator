@@ -1925,6 +1925,11 @@ func (in *VMAgentSpec) DeepCopyInto(out *VMAgentSpec) {
 		*out = new(ServiceSpec)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.ServiceScrapeSpec != nil {
+		in, out := &in.ServiceScrapeSpec, &out.ServiceScrapeSpec
+		*out = new(VMServiceScrapeSpec)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.ShardCount != nil {
 		in, out := &in.ShardCount, &out.ShardCount
 		*out = new(int)
@@ -2011,6 +2016,26 @@ func (in *VMAgentSpec) DeepCopyInto(out *VMAgentSpec) {
 				(*in).DeepCopyInto(*out)
 			}
 		}
+	}
+	if in.MinScrapeInterval != nil {
+		in, out := &in.MinScrapeInterval, &out.MinScrapeInterval
+		*out = new(string)
+		**out = **in
+	}
+	if in.MaxScrapeInterval != nil {
+		in, out := &in.MaxScrapeInterval, &out.MaxScrapeInterval
+		*out = new(string)
+		**out = **in
+	}
+	if in.TerminationGracePeriodSeconds != nil {
+		in, out := &in.TerminationGracePeriodSeconds, &out.TerminationGracePeriodSeconds
+		*out = new(int64)
+		**out = **in
+	}
+	if in.DNSConfig != nil {
+		in, out := &in.DNSConfig, &out.DNSConfig
+		*out = new(v1.PodDNSConfig)
+		(*in).DeepCopyInto(*out)
 	}
 }
 
@@ -2379,6 +2404,11 @@ func (in *VMAlertSpec) DeepCopyInto(out *VMAlertSpec) {
 		*out = new(ServiceSpec)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.ServiceScrapeSpec != nil {
+		in, out := &in.ServiceScrapeSpec, &out.ServiceScrapeSpec
+		*out = new(VMServiceScrapeSpec)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.UpdateStrategy != nil {
 		in, out := &in.UpdateStrategy, &out.UpdateStrategy
 		*out = new(appsv1.DeploymentStrategyType)
@@ -2405,6 +2435,11 @@ func (in *VMAlertSpec) DeepCopyInto(out *VMAlertSpec) {
 		for key, val := range *in {
 			(*out)[key] = val
 		}
+	}
+	if in.TerminationGracePeriodSeconds != nil {
+		in, out := &in.TerminationGracePeriodSeconds, &out.TerminationGracePeriodSeconds
+		*out = new(int64)
+		**out = **in
 	}
 }
 
@@ -2720,6 +2755,11 @@ func (in *VMAlertmanagerSpec) DeepCopyInto(out *VMAlertmanagerSpec) {
 		*out = new(ServiceSpec)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.ServiceScrapeSpec != nil {
+		in, out := &in.ServiceScrapeSpec, &out.ServiceScrapeSpec
+		*out = new(VMServiceScrapeSpec)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.PodDisruptionBudget != nil {
 		in, out := &in.PodDisruptionBudget, &out.PodDisruptionBudget
 		*out = new(EmbeddedPodDisruptionBudgetSpec)
@@ -2753,6 +2793,11 @@ func (in *VMAlertmanagerSpec) DeepCopyInto(out *VMAlertmanagerSpec) {
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
+	}
+	if in.TerminationGracePeriodSeconds != nil {
+		in, out := &in.TerminationGracePeriodSeconds, &out.TerminationGracePeriodSeconds
+		*out = new(int64)
+		**out = **in
 	}
 }
 
@@ -2963,6 +3008,11 @@ func (in *VMAuthSpec) DeepCopyInto(out *VMAuthSpec) {
 		*out = new(ServiceSpec)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.ServiceScrapeSpec != nil {
+		in, out := &in.ServiceScrapeSpec, &out.ServiceScrapeSpec
+		*out = new(VMServiceScrapeSpec)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.PodDisruptionBudget != nil {
 		in, out := &in.PodDisruptionBudget, &out.PodDisruptionBudget
 		*out = new(EmbeddedPodDisruptionBudgetSpec)
@@ -2984,6 +3034,11 @@ func (in *VMAuthSpec) DeepCopyInto(out *VMAuthSpec) {
 		for key, val := range *in {
 			(*out)[key] = val
 		}
+	}
+	if in.TerminationGracePeriodSeconds != nil {
+		in, out := &in.TerminationGracePeriodSeconds, &out.TerminationGracePeriodSeconds
+		*out = new(int64)
+		**out = **in
 	}
 }
 
@@ -3315,6 +3370,11 @@ func (in *VMInsert) DeepCopyInto(out *VMInsert) {
 		*out = new(ServiceSpec)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.ServiceScrapeSpec != nil {
+		in, out := &in.ServiceScrapeSpec, &out.ServiceScrapeSpec
+		*out = new(VMServiceScrapeSpec)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.UpdateStrategy != nil {
 		in, out := &in.UpdateStrategy, &out.UpdateStrategy
 		*out = new(appsv1.DeploymentStrategyType)
@@ -3346,6 +3406,11 @@ func (in *VMInsert) DeepCopyInto(out *VMInsert) {
 		for key, val := range *in {
 			(*out)[key] = val
 		}
+	}
+	if in.TerminationGracePeriodSeconds != nil {
+		in, out := &in.TerminationGracePeriodSeconds, &out.TerminationGracePeriodSeconds
+		*out = new(int64)
+		**out = **in
 	}
 }
 
@@ -4114,6 +4179,11 @@ func (in *VMSelect) DeepCopyInto(out *VMSelect) {
 		*out = new(ServiceSpec)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.ServiceScrapeSpec != nil {
+		in, out := &in.ServiceScrapeSpec, &out.ServiceScrapeSpec
+		*out = new(VMServiceScrapeSpec)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.PodDisruptionBudget != nil {
 		in, out := &in.PodDisruptionBudget, &out.PodDisruptionBudget
 		*out = new(EmbeddedPodDisruptionBudgetSpec)
@@ -4135,6 +4205,11 @@ func (in *VMSelect) DeepCopyInto(out *VMSelect) {
 		for key, val := range *in {
 			(*out)[key] = val
 		}
+	}
+	if in.TerminationGracePeriodSeconds != nil {
+		in, out := &in.TerminationGracePeriodSeconds, &out.TerminationGracePeriodSeconds
+		*out = new(int64)
+		**out = **in
 	}
 }
 
@@ -4349,6 +4424,7 @@ func (in *VMSingleSpec) DeepCopyInto(out *VMSingleSpec) {
 		*out = new(v1.PersistentVolumeClaimSpec)
 		(*in).DeepCopyInto(*out)
 	}
+	in.StorageMetadata.DeepCopyInto(&out.StorageMetadata)
 	if in.Volumes != nil {
 		in, out := &in.Volumes, &out.Volumes
 		*out = make([]v1.Volume, len(*in))
@@ -4443,6 +4519,11 @@ func (in *VMSingleSpec) DeepCopyInto(out *VMSingleSpec) {
 		*out = new(ServiceSpec)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.ServiceScrapeSpec != nil {
+		in, out := &in.ServiceScrapeSpec, &out.ServiceScrapeSpec
+		*out = new(VMServiceScrapeSpec)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.EmbeddedProbes != nil {
 		in, out := &in.EmbeddedProbes, &out.EmbeddedProbes
 		*out = new(EmbeddedProbes)
@@ -4454,6 +4535,11 @@ func (in *VMSingleSpec) DeepCopyInto(out *VMSingleSpec) {
 		for key, val := range *in {
 			(*out)[key] = val
 		}
+	}
+	if in.TerminationGracePeriodSeconds != nil {
+		in, out := &in.TerminationGracePeriodSeconds, &out.TerminationGracePeriodSeconds
+		*out = new(int64)
+		**out = **in
 	}
 }
 
@@ -4693,6 +4779,11 @@ func (in *VMStorage) DeepCopyInto(out *VMStorage) {
 		*out = new(ServiceSpec)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.ServiceScrapeSpec != nil {
+		in, out := &in.ServiceScrapeSpec, &out.ServiceScrapeSpec
+		*out = new(VMServiceScrapeSpec)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.PodDisruptionBudget != nil {
 		in, out := &in.PodDisruptionBudget, &out.PodDisruptionBudget
 		*out = new(EmbeddedPodDisruptionBudgetSpec)
@@ -4860,13 +4951,6 @@ func (in *VictorOpsConfig) DeepCopyInto(out *VictorOpsConfig) {
 		in, out := &in.APIKey, &out.APIKey
 		*out = new(v1.SecretKeySelector)
 		(*in).DeepCopyInto(*out)
-	}
-	if in.CustomFields != nil {
-		in, out := &in.CustomFields, &out.CustomFields
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
 	}
 	if in.HTTPConfig != nil {
 		in, out := &in.HTTPConfig, &out.HTTPConfig

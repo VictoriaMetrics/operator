@@ -2,6 +2,7 @@ package alertmanager
 
 import (
 	"context"
+	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
 	"testing"
 
@@ -19,6 +20,7 @@ func TestBuildConfig(t *testing.T) {
 		disableNamespaceMatcher bool
 		baseCfg                 []byte
 		amcfgs                  map[string]*operatorv1beta1.VMAlertmanagerConfig
+		tlsAssets               map[string]string
 	}
 	tests := []struct {
 		name              string
@@ -68,6 +70,7 @@ func TestBuildConfig(t *testing.T) {
 			want: `global:
   time_out: 1min
 route:
+  receiver: default-base-email
   routes:
   - matchers:
     - namespace = "default"
@@ -181,6 +184,7 @@ templates: []
 			want: `global:
   time_out: 1min
 route:
+  receiver: default-base-email
   routes:
   - routes:
     - receiver: default-base-webhook
@@ -290,6 +294,7 @@ templates: []
 			want: `global:
   time_out: 1min
 route:
+  receiver: default-base-slack
   routes:
   - matchers:
     - namespace = "default"
@@ -377,6 +382,7 @@ templates: []
 			want: `global:
   time_out: 1min
 route:
+  receiver: default-base-pagerduty
   routes:
   - matchers:
     - namespace = "default"
@@ -407,13 +413,201 @@ templates: []
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			testClient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			got, err := BuildConfig(tt.args.ctx, testClient, !tt.args.disableNamespaceMatcher, tt.args.baseCfg, tt.args.amcfgs)
+			got, err := BuildConfig(tt.args.ctx, testClient, !tt.args.disableNamespaceMatcher, tt.args.baseCfg, tt.args.amcfgs, map[string]string{})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("BuildConfig() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			assert.Equal(t, tt.want, string(got))
+		})
+	}
+}
 
+func Test_configBuilder_buildHTTPConfig(t *testing.T) {
+	type fields struct {
+		secretCache    map[string]*v1.Secret
+		configmapCache map[string]*v1.ConfigMap
+	}
+	type args struct {
+		httpCfg *operatorv1beta1.HTTPConfig
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    string
+		wantErr bool
+	}{
+		{
+			name: "build empty config",
+			want: "{}\n",
+		},
+		{
+			name: "with basic auth",
+			args: args{
+				httpCfg: &operatorv1beta1.HTTPConfig{
+					BasicAuth: &operatorv1beta1.BasicAuth{
+						Username: v1.SecretKeySelector{
+							LocalObjectReference: v1.LocalObjectReference{
+								Name: "secret-store",
+							},
+							Key: "username",
+						},
+						PasswordFile: "/etc/vm/secrets/password_file",
+					},
+				},
+			},
+			fields: fields{secretCache: map[string]*v1.Secret{
+				"secret-store": &v1.Secret{
+					Data: map[string][]byte{
+						"username": []byte("user-1"),
+					},
+				},
+			}},
+			want: `basic_auth:
+  username: user-1
+  password_file: /etc/vm/secrets/password_file
+`,
+		},
+		{
+			name: "with tls and bearer",
+			args: args{
+				httpCfg: &operatorv1beta1.HTTPConfig{
+					BearerTokenFile: "/etc/mounted_dir/bearer_file",
+					TLSConfig: &operatorv1beta1.TLSConfig{
+						InsecureSkipVerify: true,
+						Cert: operatorv1beta1.SecretOrConfigMap{
+							Secret: &v1.SecretKeySelector{
+								LocalObjectReference: v1.LocalObjectReference{
+									Name: "secret-store",
+								},
+								Key: "cert",
+							},
+						},
+						CA: operatorv1beta1.SecretOrConfigMap{
+							Secret: &v1.SecretKeySelector{
+								LocalObjectReference: v1.LocalObjectReference{
+									Name: "secret-store",
+								},
+								Key: "ca",
+							},
+						},
+						KeyFile: "/etc/mounted_dir/key.pem",
+					},
+				},
+			},
+			fields: fields{secretCache: map[string]*v1.Secret{
+				"secret-store": &v1.Secret{
+					Data: map[string][]byte{
+						"cert": []byte("---PEM---"),
+						"ca":   []byte("---PEM-CA"),
+					},
+				},
+			}},
+			want: `tls_config:
+  ca_file: /etc/alertmanager/config/default_secret-store_ca
+  cert_file: /etc/alertmanager/config/default_secret-store_cert
+  key_file: /etc/mounted_dir/key.pem
+  insecure_skip_verify: true
+authorization:
+  credentials_file: /etc/mounted_dir/bearer_file
+`,
+		},
+		{
+			name: "with tls (configmap) and bearer",
+			args: args{
+				httpCfg: &operatorv1beta1.HTTPConfig{
+					BearerTokenSecret: &v1.SecretKeySelector{
+						LocalObjectReference: v1.LocalObjectReference{
+							Name: "secret-bearer",
+						},
+						Key: "token",
+					},
+					TLSConfig: &operatorv1beta1.TLSConfig{
+						InsecureSkipVerify: true,
+						Cert: operatorv1beta1.SecretOrConfigMap{
+							Secret: &v1.SecretKeySelector{
+								LocalObjectReference: v1.LocalObjectReference{
+									Name: "secret-store",
+								},
+								Key: "cert",
+							},
+						},
+						CA: operatorv1beta1.SecretOrConfigMap{
+							ConfigMap: &v1.ConfigMapKeySelector{
+								LocalObjectReference: v1.LocalObjectReference{
+									Name: "cm-store",
+								},
+								Key: "ca",
+							},
+						},
+						KeySecret: &v1.SecretKeySelector{
+							LocalObjectReference: v1.LocalObjectReference{
+								Name: "secret-store",
+							},
+							Key: "key",
+						},
+					},
+				},
+			},
+			fields: fields{
+				secretCache: map[string]*v1.Secret{
+					"secret-store": &v1.Secret{
+						Data: map[string][]byte{
+							"cert": []byte("---PEM---"),
+							"key":  []byte("--KEY-PEM--"),
+						},
+					},
+					"secret-bearer": &v1.Secret{
+						Data: map[string][]byte{
+							"token": []byte("secret-token"),
+						},
+					},
+				},
+				configmapCache: map[string]*v1.ConfigMap{
+					"cm-store": &v1.ConfigMap{
+						Data: map[string]string{
+							"ca": "--CA-PEM--",
+						},
+					},
+				},
+			},
+			want: `tls_config:
+  ca_file: /etc/alertmanager/config/default_cm-store_ca
+  cert_file: /etc/alertmanager/config/default_secret-store_cert
+  key_file: /etc/alertmanager/config/default_secret-store_key
+  insecure_skip_verify: true
+authorization:
+  credentials: secret-token
+`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cb := &configBuilder{
+				ctx:            context.Background(),
+				Client:         k8stools.GetTestClientWithObjects(nil),
+				secretCache:    tt.fields.secretCache,
+				configmapCache: tt.fields.configmapCache,
+				tlsAssets:      map[string]string{},
+				currentCR: &operatorv1beta1.VMAlertmanagerConfig{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-am",
+						Namespace: "default",
+					},
+				},
+			}
+			gotYAML, err := cb.buildHTTPConfig(tt.args.httpCfg)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("buildHTTPConfig() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			got, err := yaml.Marshal(gotYAML)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("buildHTTPConfig() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			assert.Equalf(t, tt.want, string(got), "buildHTTPConfig(%v)", tt.args.httpCfg)
 		})
 	}
 }

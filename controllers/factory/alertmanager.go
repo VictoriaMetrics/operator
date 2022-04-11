@@ -555,6 +555,10 @@ func createDefaultAMConfig(ctx context.Context, cr *victoriametricsv1beta1.VMAle
 	cr = cr.DeepCopy()
 	l := log.WithValues("alertmanager", cr.Name)
 
+	// name of tls object and it's value
+	// e.g. namespace_secret_name_secret_key
+	tlsAssets := make(map[string]string)
+
 	var alertmananagerConfig []byte
 	switch {
 	// fetch content from user defined secret
@@ -568,12 +572,11 @@ func createDefaultAMConfig(ctx context.Context, cr *victoriametricsv1beta1.VMAle
 	// use in-line config
 	case cr.Spec.ConfigRawYaml != "":
 		alertmananagerConfig = []byte(cr.Spec.ConfigRawYaml)
-
 	}
-	if cr.Spec.ConfigSelector != nil {
+	if cr.Spec.ConfigSelector != nil || cr.Spec.SelectAllByDefault {
 		// it makes sense only for alertmanager version above v22.0
 		if amVersion != nil && !amVersion.LessThan(alertmanagerConfigMinimumVersion) {
-			mergedCfg, err := buildAlertmanagerConfigWithCRDs(ctx, rclient, cr, alertmananagerConfig, l)
+			mergedCfg, err := buildAlertmanagerConfigWithCRDs(ctx, rclient, cr, alertmananagerConfig, l, tlsAssets)
 			if err != nil {
 				return fmt.Errorf("cannot build alertmanager config with configSelector, err: %w", err)
 			}
@@ -597,6 +600,10 @@ func createDefaultAMConfig(ctx context.Context, cr *victoriametricsv1beta1.VMAle
 			Finalizers:      []string{victoriametricsv1beta1.FinalizerName},
 		},
 		Data: map[string][]byte{alertmanagerSecretConfigKey: alertmananagerConfig},
+	}
+
+	for assetKey, assetValue := range tlsAssets {
+		newAMSecretConfig.Data[assetKey] = []byte(assetValue)
 	}
 	var existAMSecretConfig v1.Secret
 	if err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.ConfigSecretName()}, &existAMSecretConfig); err != nil {
@@ -628,7 +635,7 @@ func getSecretContentForAlertmanager(ctx context.Context, rclient client.Client,
 	return nil, fmt.Errorf("cannot find alertmanager config key: %q at secret: %q", alertmanagerSecretConfigKey, secretName)
 }
 
-func buildAlertmanagerConfigWithCRDs(ctx context.Context, rclient client.Client, cr *victoriametricsv1beta1.VMAlertmanager, originConfig []byte, l logr.Logger) ([]byte, error) {
+func buildAlertmanagerConfigWithCRDs(ctx context.Context, rclient client.Client, cr *victoriametricsv1beta1.VMAlertmanager, originConfig []byte, l logr.Logger, tlsAssets map[string]string) ([]byte, error) {
 	amConfigs := make(map[string]*victoriametricsv1beta1.VMAlertmanagerConfig)
 	var badCfgCount int
 	// handle case for config selector.
@@ -654,7 +661,7 @@ func buildAlertmanagerConfigWithCRDs(ctx context.Context, rclient client.Client,
 		return nil, fmt.Errorf("cannot select alertmanager configs: %w", err)
 	}
 	l.Info("selected alertmanager configs", "len", len(amConfigs), "invalid configs", badCfgCount)
-	cfg, err := alertmanager.BuildConfig(ctx, rclient, !cr.Spec.DisableNamespaceMatcher, originConfig, amConfigs)
+	cfg, err := alertmanager.BuildConfig(ctx, rclient, !cr.Spec.DisableNamespaceMatcher, originConfig, amConfigs, tlsAssets)
 	if err != nil {
 		return nil, err
 	}

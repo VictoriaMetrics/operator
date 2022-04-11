@@ -3,6 +3,7 @@ package alertmanager
 import (
 	"context"
 	"fmt"
+	"path"
 	"sort"
 
 	operatorv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
@@ -12,7 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func BuildConfig(ctx context.Context, rclient client.Client, mustAddNamespaceMatcher bool, baseCfg []byte, amcfgs map[string]*operatorv1beta1.VMAlertmanagerConfig) ([]byte, error) {
+func BuildConfig(ctx context.Context, rclient client.Client, mustAddNamespaceMatcher bool, baseCfg []byte, amcfgs map[string]*operatorv1beta1.VMAlertmanagerConfig, tlsAssets map[string]string) ([]byte, error) {
 	// fast path.
 	if len(amcfgs) == 0 {
 		return baseCfg, nil
@@ -32,8 +33,9 @@ func BuildConfig(ctx context.Context, rclient client.Client, mustAddNamespaceMat
 	var subRoutes []yaml.MapSlice
 	var muteIntervals []yaml.MapSlice
 	secretCache := make(map[string]*v1.Secret)
+	configmapCache := make(map[string]*v1.ConfigMap)
+	var firstReceiverName string
 	for _, posIdx := range amConfigIdentifiers {
-
 		amcKey := amcfgs[posIdx]
 		for _, rule := range amcKey.Spec.InhibitRules {
 			baseYAMlCfg.InhibitRules = append(baseYAMlCfg.InhibitRules, buildInhibitRule(amcKey.Namespace, rule))
@@ -46,9 +48,13 @@ func BuildConfig(ctx context.Context, rclient client.Client, mustAddNamespaceMat
 			// todo add logging.
 			continue
 		}
+		// use first route receiver name as default receiver.
+		if len(firstReceiverName) == 0 && len(amcKey.Spec.Route.Receiver) > 0 {
+			firstReceiverName = buildReceiverName(amcKey, amcKey.Spec.Route.Receiver)
+		}
 		subRoutes = append(subRoutes, buildRoute(amcKey, amcKey.Spec.Route, true, mustAddNamespaceMatcher))
 		for _, receiver := range amcKey.Spec.Receivers {
-			receiverCfg, err := buildReceiver(ctx, rclient, amcKey, receiver, secretCache)
+			receiverCfg, err := buildReceiver(ctx, rclient, amcKey, receiver, secretCache, configmapCache, tlsAssets)
 			if err != nil {
 				return nil, fmt.Errorf("cannot build receiver cfg for: %s, err: %w", amcKey.AsKey(), err)
 			}
@@ -58,7 +64,9 @@ func BuildConfig(ctx context.Context, rclient client.Client, mustAddNamespaceMat
 		}
 	}
 	if baseYAMlCfg.Route == nil && len(subRoutes) > 0 {
-		baseYAMlCfg.Route = &route{}
+		baseYAMlCfg.Route = &route{
+			Receiver: firstReceiverName,
+		}
 	}
 	if len(subRoutes) > 0 {
 		baseYAMlCfg.Route.Routes = append(baseYAMlCfg.Route.Routes, subRoutes...)
@@ -198,9 +206,17 @@ type route struct {
 	RepeatInterval string            `yaml:"repeat_interval,omitempty" json:"repeat_interval,omitempty"`
 }
 
-func buildReceiver(ctx context.Context, rclient client.Client, cr *operatorv1beta1.VMAlertmanagerConfig, reciever operatorv1beta1.Receiver, cache map[string]*v1.Secret) (yaml.MapSlice, error) {
+func buildReceiver(
+	ctx context.Context,
+	rclient client.Client,
+	cr *operatorv1beta1.VMAlertmanagerConfig,
+	reciever operatorv1beta1.Receiver,
+	cache map[string]*v1.Secret,
+	configmapCache map[string]*v1.ConfigMap,
+	tlsAssets map[string]string,
+) (yaml.MapSlice, error) {
 
-	cb := initConfigBuilder(ctx, rclient, cr, reciever, cache)
+	cb := initConfigBuilder(ctx, rclient, cr, reciever, cache, configmapCache, tlsAssets)
 
 	if err := cb.buildCfg(); err != nil {
 		return nil, err
@@ -210,15 +226,24 @@ func buildReceiver(ctx context.Context, rclient client.Client, cr *operatorv1bet
 
 type configBuilder struct {
 	client.Client
-	ctx         context.Context
-	receiver    operatorv1beta1.Receiver
-	currentCR   *operatorv1beta1.VMAlertmanagerConfig
-	currentYaml []yaml.MapSlice
-	result      yaml.MapSlice
-	secretCache map[string]*v1.Secret
+	ctx            context.Context
+	receiver       operatorv1beta1.Receiver
+	currentCR      *operatorv1beta1.VMAlertmanagerConfig
+	currentYaml    []yaml.MapSlice
+	result         yaml.MapSlice
+	secretCache    map[string]*v1.Secret
+	configmapCache map[string]*v1.ConfigMap
+	tlsAssets      map[string]string
 }
 
-func initConfigBuilder(ctx context.Context, rclient client.Client, cr *operatorv1beta1.VMAlertmanagerConfig, receiver operatorv1beta1.Receiver, cache map[string]*v1.Secret) *configBuilder {
+func initConfigBuilder(
+	ctx context.Context,
+	rclient client.Client,
+	cr *operatorv1beta1.VMAlertmanagerConfig,
+	receiver operatorv1beta1.Receiver,
+	cache map[string]*v1.Secret,
+	configmapCache map[string]*v1.ConfigMap,
+	tlsAssets map[string]string) *configBuilder {
 	cb := configBuilder{
 		ctx:       ctx,
 		Client:    rclient,
@@ -230,7 +255,9 @@ func initConfigBuilder(ctx context.Context, rclient client.Client, cr *operatorv
 				Value: buildReceiverName(cr, receiver.Name),
 			},
 		},
-		secretCache: cache,
+		secretCache:    cache,
+		configmapCache: configmapCache,
+		tlsAssets:      tlsAssets,
 	}
 
 	return &cb
@@ -479,6 +506,34 @@ func (cb *configBuilder) buildWeeChat(wc operatorv1beta1.WeChatConfig) error {
 
 func (cb *configBuilder) buildVictorOps(vo operatorv1beta1.VictorOpsConfig) error {
 	var temp yaml.MapSlice
+	if vo.HTTPConfig != nil {
+		h, err := cb.buildHTTPConfig(vo.HTTPConfig)
+		if err != nil {
+			return err
+		}
+		temp = append(temp, yaml.MapItem{Key: "http_config", Value: h})
+	}
+	if vo.APIKey != nil {
+		s, err := cb.fetchSecretValue(vo.APIKey)
+		if err != nil {
+			return err
+		}
+		temp = append(temp, yaml.MapItem{Key: "api_key", Value: string(s)})
+	}
+	toYaml := func(key string, src string) {
+		if len(src) > 0 {
+			temp = append(temp, yaml.MapItem{Key: key, Value: src})
+		}
+	}
+	toYaml("api_url", vo.APIURL)
+	toYaml("routing_key", vo.RoutingKey)
+	toYaml("message_type", vo.MessageType)
+	toYaml("entity_display_name", vo.EntityDisplayName)
+	toYaml("state_message", vo.StateMessage)
+	toYaml("monitoring_tool", vo.MonitoringTool)
+	if vo.SendResolved != nil {
+		temp = append(temp, yaml.MapItem{Key: "send_resolved", Value: *vo.SendResolved})
+	}
 	cb.currentYaml = append(cb.currentYaml, temp)
 	return nil
 }
@@ -717,25 +772,27 @@ func (cb *configBuilder) buildHTTPConfig(httpCfg *operatorv1beta1.HTTPConfig) (y
 		r = append(r, yaml.MapItem{Key: "tls_config", Value: tls})
 	}
 	if httpCfg.BasicAuth != nil {
-    ba, err := cb.buildBasicAuth(httpCfg.BasicAuth)
+		ba, err := cb.buildBasicAuth(httpCfg.BasicAuth)
 		if err != nil {
 			return nil, err
 		}
 		r = append(r, yaml.MapItem{Key: "basic_auth", Value: ba})
 	}
+	var tokenAuth yaml.MapSlice
 	if httpCfg.BearerTokenSecret != nil {
 		bearer, err := cb.fetchSecretValue(httpCfg.BearerTokenSecret)
 		if err != nil {
 			return nil, fmt.Errorf("cannot find secret for bearerToken: %w", err)
 		}
-		r = append(r, yaml.MapItem{
-			Key:   "bearer_token",
-			Value: string(bearer),
-		})
+		tokenAuth = append(tokenAuth, yaml.MapItem{Key: "credentials", Value: string(bearer)})
 	}
 	if len(httpCfg.BearerTokenFile) > 0 {
-		r = append(r, yaml.MapItem{Key: "bearer_token_file", Value: httpCfg.BearerTokenFile})
+		tokenAuth = append(tokenAuth, yaml.MapItem{Key: "credentials_file", Value: httpCfg.BearerTokenFile})
 	}
+	if len(tokenAuth) > 0 {
+		r = append(r, yaml.MapItem{Key: "authorization", Value: tokenAuth})
+	}
+
 	if len(httpCfg.ProxyURL) > 0 {
 		r = append(r, yaml.MapItem{Key: "proxy_url", Value: httpCfg.ProxyURL})
 	}
@@ -744,43 +801,115 @@ func (cb *configBuilder) buildHTTPConfig(httpCfg *operatorv1beta1.HTTPConfig) (y
 
 func (cb *configBuilder) buildBasicAuth(basicAuth *operatorv1beta1.BasicAuth) (yaml.MapSlice, error) {
 	var r yaml.MapSlice
-  
-	u, err := cb.fetchSecretValue(&basicAuth.Username)
-	if err != nil {
-		return nil, err
+
+	if len(basicAuth.Username.Name) > 0 {
+		u, err := cb.fetchSecretValue(&basicAuth.Username)
+		if err != nil {
+			return nil, err
+		}
+		r = append(r, yaml.MapItem{
+			Key:   "username",
+			Value: string(u),
+		})
 	}
-	r = append(r, yaml.MapItem{
-		Key:   "username",
-		Value: string(u),
-	})
-	p, err := cb.fetchSecretValue(&basicAuth.Password)
-	if err != nil {
-		return nil, err
+
+	if len(basicAuth.Password.Name) > 0 {
+		p, err := cb.fetchSecretValue(&basicAuth.Password)
+		if err != nil {
+			return nil, err
+		}
+		r = append(r, yaml.MapItem{
+			Key:   "password",
+			Value: string(p),
+		})
 	}
-	r = append(r, yaml.MapItem{
-		Key:   "password",
-		Value: string(p),
-	})
-  if len(basicAuth.PasswordFile) > 0 {
+
+	if len(basicAuth.PasswordFile) > 0 {
 		r = append(r, yaml.MapItem{
 			Key:   "password_file",
 			Value: basicAuth.PasswordFile,
 		})
-  }
+	}
 
 	return r, nil
 }
 
+func (cb *configBuilder) fetchSecretWithAssets(ss *v1.SecretKeySelector, cs *v1.ConfigMapKeySelector, assetKey string) error {
+	var value string
+	if ss != nil {
+		var s v1.Secret
+		if v, ok := cb.secretCache[ss.Name]; ok {
+			s = *v
+		} else {
+			if err := cb.Client.Get(cb.ctx, types.NamespacedName{Namespace: cb.currentCR.Namespace, Name: ss.Name}, &s); err != nil {
+				return fmt.Errorf("cannot fetch secret=%q for tlsAsset, err=%w", ss.Name, err)
+			}
+			cb.secretCache[ss.Name] = &s
+		}
+		value = string(s.Data[ss.Key])
+	}
+	if cs != nil {
+		var c v1.ConfigMap
+		if v, ok := cb.configmapCache[cs.Name]; ok {
+			c = *v
+		} else {
+			if err := cb.Client.Get(cb.ctx, types.NamespacedName{Namespace: cb.currentCR.Namespace, Name: cs.Name}, &c); err != nil {
+				return fmt.Errorf("cannot fetch configmap=%q for tlsAssert, err=%w", cs.Name, err)
+			}
+		}
+		value = c.Data[cs.Key]
+	}
+	if len(value) == 0 {
+		return fmt.Errorf("cannot find tlsAsset secret or configmap for key=%q", assetKey)
+	}
+	cb.tlsAssets[assetKey] = value
+	return nil
+}
+
 func (cb *configBuilder) buildTLSConfig(tlsCfg *operatorv1beta1.TLSConfig) (yaml.MapSlice, error) {
 	var r yaml.MapSlice
+	const tlsAssetsDir = "/etc/alertmanager/config"
+	pathPrefix := path.Join(tlsAssetsDir, cb.currentCR.Namespace)
 	toYamlString := func(key string, src string) {
 		if len(src) > 0 {
 			r = append(r, yaml.MapItem{Key: key, Value: src})
 		}
 	}
-	// todo add support for configmap and secret selectors.
-	toYamlString("ca_file", tlsCfg.CAFile)
-	toYamlString("cert_file", tlsCfg.CertFile)
-	toYamlString("key_file", tlsCfg.KeyFile)
+
+	// tls part is tricky, secrets must be fetched and mounted to the alertmanager pod
+	// it requires TLSAssets to be loaded.
+	if tlsCfg.CAFile != "" {
+		toYamlString("ca_file", tlsCfg.CAFile)
+	} else if tlsCfg.CA.Name() != "" {
+		assetKey := tlsCfg.BuildAssetPath(cb.currentCR.Namespace, tlsCfg.CA.Name(), tlsCfg.CA.Key())
+		if err := cb.fetchSecretWithAssets(tlsCfg.CA.Secret, tlsCfg.CA.ConfigMap, assetKey); err != nil {
+			return nil, fmt.Errorf("cannot fetch ca: %w", err)
+		}
+		toYamlString("ca_file", tlsCfg.BuildAssetPath(pathPrefix, tlsCfg.CA.Name(), tlsCfg.CA.Key()))
+	}
+
+	if tlsCfg.CertFile != "" {
+		toYamlString("cert_file", tlsCfg.CertFile)
+	} else if tlsCfg.Cert.Name() != "" {
+		assetKey := tlsCfg.BuildAssetPath(cb.currentCR.Namespace, tlsCfg.Cert.Name(), tlsCfg.Cert.Key())
+		if err := cb.fetchSecretWithAssets(tlsCfg.Cert.Secret, tlsCfg.Cert.ConfigMap, assetKey); err != nil {
+			return nil, fmt.Errorf("cannot fetch cert: %w", err)
+		}
+		toYamlString("cert_file", tlsCfg.BuildAssetPath(pathPrefix, tlsCfg.Cert.Name(), tlsCfg.Cert.Key()))
+	}
+
+	if tlsCfg.KeyFile != "" {
+		toYamlString("key_file", tlsCfg.KeyFile)
+	} else if tlsCfg.KeySecret != nil {
+		assetKey := tlsCfg.BuildAssetPath(cb.currentCR.Namespace, tlsCfg.KeySecret.Name, tlsCfg.KeySecret.Key)
+		if err := cb.fetchSecretWithAssets(tlsCfg.KeySecret, nil, assetKey); err != nil {
+			return nil, fmt.Errorf("cannot fetch keySecret: %w", err)
+		}
+		toYamlString("key_file", tlsCfg.BuildAssetPath(pathPrefix, tlsCfg.KeySecret.Name, tlsCfg.KeySecret.Key))
+	}
+	toYamlString("server_name", tlsCfg.ServerName)
+	if tlsCfg.InsecureSkipVerify {
+		r = append(r, yaml.MapItem{Key: "insecure_skip_verify", Value: tlsCfg.InsecureSkipVerify})
+	}
 	return r, nil
 }

@@ -350,6 +350,19 @@ templates: []
 											Class:    "some-class",
 											Group:    "some-group",
 											Severity: "warning",
+											Images: []operatorv1beta1.ImageConfig{
+												{
+													Href:   "http://some-href",
+													Source: "http://some-source",
+													Alt:    "some-alt-text",
+												},
+											},
+											Links: []operatorv1beta1.LinkConfig{
+												{
+													Href: "http://some-href",
+													Text: "some-text",
+												},
+											},
 											Details: map[string]string{
 												"alertname":    "alert-name",
 												"firing":       "alert-title",
@@ -395,6 +408,13 @@ receivers:
     class: some-class
     group: some-group
     severity: warning
+    images:
+    - href: http://some-href
+      source: http://some-source
+      alt: some-alt-text
+    links:
+    - href: http://some-href
+      text: some-text
     details:
       alertname: alert-name
       firing: alert-title

@@ -676,6 +676,37 @@ func (cb *configBuilder) buildPagerDuty(pd operatorv1beta1.PagerDutyConfig) erro
 	toYaml("component", pd.Component)
 	toYaml("group", pd.Group)
 	toYaml("severity", pd.Severity)
+	var images []yaml.MapSlice
+	for _, image := range pd.Images {
+		var imageYAML yaml.MapSlice
+		if len(image.Href) > 0 {
+			imageYAML = append(imageYAML, yaml.MapItem{Key: "href", Value: image.Href})
+		}
+		if len(image.Source) > 0 {
+			imageYAML = append(imageYAML, yaml.MapItem{Key: "source", Value: image.Source})
+		}
+		if len(image.Alt) > 0 {
+			imageYAML = append(imageYAML, yaml.MapItem{Key: "alt", Value: image.Alt})
+		}
+		images = append(images, imageYAML)
+	}
+	if len(images) > 0 {
+		temp = append(temp, yaml.MapItem{Key: "images", Value: images})
+	}
+	var links []yaml.MapSlice
+	for _, link := range pd.Links {
+		var linkYAML yaml.MapSlice
+		if len(link.Href) > 0 {
+			linkYAML = append(linkYAML, yaml.MapItem{Key: "href", Value: link.Href})
+		}
+		if len(link.Text) > 0 {
+			linkYAML = append(linkYAML, yaml.MapItem{Key: "text", Value: link.Text})
+		}
+		links = append(links, linkYAML)
+	}
+	if len(links) > 0 {
+		temp = append(temp, yaml.MapItem{Key: "links", Value: links})
+	}
 	detailKeys := make([]string, 0, len(pd.Details))
 	for detailKey, value := range pd.Details {
 		if len(value) == 0 {

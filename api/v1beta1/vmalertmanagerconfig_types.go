@@ -615,6 +615,12 @@ type PagerDutyConfig struct {
 	// Backlink to the sender of notification.
 	// +optional
 	ClientURL string `json:"client_url,omitempty"`
+	// Images to attach to the incident.
+	// +optional
+	Images []ImageConfig `json:"images,omitempty"`
+	// Links to attach to the incident.
+	// +optional
+	Links []LinkConfig `json:"links,omitempty"`
 	// Description of the incident.
 	// +optional
 	Description string `json:"description,omitempty"`
@@ -636,6 +642,23 @@ type PagerDutyConfig struct {
 	// HTTP client configuration.
 	// +optional
 	HTTPConfig *HTTPConfig `json:"http_config,omitempty"`
+}
+
+// ImageConfig is used to attach images to the incident.
+// See https://developer.pagerduty.com/docs/ZG9jOjExMDI5NTgx-send-an-alert-event#the-images-property
+// for more information.
+type ImageConfig struct {
+	Href   string `json:"href,omitempty"`
+	Source string `json:"source"`
+	Alt    string `json:"alt,omitempty"`
+}
+
+// LinkConfig is used to attach text links to the incident.
+// See https://developer.pagerduty.com/docs/ZG9jOjExMDI5NTgx-send-an-alert-event#the-links-property
+// for more information.
+type LinkConfig struct {
+	Href string `json:"href"`
+	Text string `json:"text,omitempty"`
 }
 
 // HTTPConfig defines a client HTTP configuration.

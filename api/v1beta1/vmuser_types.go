@@ -12,6 +12,9 @@ import (
 
 // VMUserSpec defines the desired state of VMUser
 type VMUserSpec struct {
+	// Name of the VMUser object.
+	// +optional
+	Name *string `json:"name,omitempty"`
 	// UserName basic auth user name for accessing protected endpoint,
 	// will be replaced with metadata.name of VMUser if omitted.
 	// +optional

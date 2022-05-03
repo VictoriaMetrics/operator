@@ -30,6 +30,7 @@ func Test_genUserCfg(t *testing.T) {
 			args: args{
 				user: &v1beta1.VMUser{
 					Spec: v1beta1.VMUserSpec{
+						Name:     pointer.StringPtr("user1"),
 						UserName: pointer.StringPtr("basic"),
 						Password: pointer.StringPtr("pass"),
 						TargetRefs: []v1beta1.TargetRef{
@@ -51,6 +52,7 @@ func Test_genUserCfg(t *testing.T) {
   src_paths:
   - /select/0/prometheus
   - /select/0/graphite
+name: user1
 username: basic
 password: pass
 `,
@@ -60,6 +62,7 @@ password: pass
 			args: args{
 				user: &v1beta1.VMUser{
 					Spec: v1beta1.VMUserSpec{
+						Name:        pointer.StringPtr("user1"),
 						BearerToken: pointer.StringPtr("secret-token"),
 						TargetRefs: []v1beta1.TargetRef{
 							{
@@ -98,6 +101,7 @@ password: pass
 - url_prefix: http://vmsingle-b.monitoring.svc:8429
   src_paths:
   - /.*
+name: user1
 bearer_token: secret-token
 `,
 		},
@@ -166,6 +170,7 @@ bearer_token: secret-token
 			args: args{
 				user: &v1beta1.VMUser{
 					Spec: v1beta1.VMUserSpec{
+						Name:        pointer.StringPtr("user1"),
 						BearerToken: pointer.StringPtr("secret-token"),
 						TargetRefs: []v1beta1.TargetRef{
 							{
@@ -184,6 +189,7 @@ bearer_token: secret-token
 				},
 			},
 			want: `url_prefix: http://vmagent-base.monitoring.svc:8429
+name: user1
 bearer_token: secret-token
 `,
 		},
@@ -192,6 +198,7 @@ bearer_token: secret-token
 			args: args{
 				user: &v1beta1.VMUser{
 					Spec: v1beta1.VMUserSpec{
+						Name:        pointer.StringPtr("user2"),
 						BearerToken: pointer.StringPtr("secret-token"),
 						TargetRefs: []v1beta1.TargetRef{
 							{
@@ -214,6 +221,7 @@ bearer_token: secret-token
 headers:
 - 'X-Scope-OrgID: abc'
 - 'X-Scope-Team: baz'
+name: user2
 bearer_token: secret-token
 `,
 		},
@@ -363,6 +371,7 @@ func Test_buildVMAuthConfig(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: v1beta1.VMUserSpec{
+						Name:        pointer.StringPtr("user1"),
 						BearerToken: pointer.StringPtr("bearer"),
 						TargetRefs: []v1beta1.TargetRef{
 							{
@@ -400,6 +409,7 @@ func Test_buildVMAuthConfig(t *testing.T) {
 			},
 			want: `users:
 - url_prefix: http://some-static
+  name: user1
   bearer_token: bearer
 - url_prefix: http://vmagent-test.default.svc:8429
   bearer_token: bearer-token-2
@@ -424,6 +434,7 @@ func Test_buildVMAuthConfig(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: v1beta1.VMUserSpec{
+						Name:        pointer.StringPtr("user-1"),
 						BearerToken: pointer.StringPtr("bearer"),
 						TargetRefs: []v1beta1.TargetRef{
 							{
@@ -439,6 +450,7 @@ func Test_buildVMAuthConfig(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: v1beta1.VMUserSpec{
+						Name:        pointer.StringPtr("user-2"),
 						BearerToken: pointer.StringPtr("bearer-token-2"),
 						TargetRefs: []v1beta1.TargetRef{
 							{
@@ -458,6 +470,7 @@ func Test_buildVMAuthConfig(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: v1beta1.VMUserSpec{
+						Name:     pointer.StringPtr("user-5"),
 						UserName: pointer.StringPtr("some-user"),
 						PasswordRef: &v1.SecretKeySelector{
 							Key: "password",
@@ -493,10 +506,13 @@ func Test_buildVMAuthConfig(t *testing.T) {
 			},
 			want: `users:
 - url_prefix: http://some-static
+  name: user-1
   bearer_token: bearer
 - url_prefix: http://vmagent-test.default.svc:8429
+  name: user-2
   bearer_token: bearer-token-2
 - url_prefix: http://vmagent-test.default.svc:8429
+  name: user-5
   username: some-user
   password: generated-password
 `,
@@ -518,6 +534,7 @@ func Test_buildVMAuthConfig(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: v1beta1.VMUserSpec{
+						Name:        pointer.StringPtr("user-1"),
 						BearerToken: pointer.StringPtr("bearer"),
 						TargetRefs: []v1beta1.TargetRef{
 							{
@@ -533,6 +550,7 @@ func Test_buildVMAuthConfig(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: v1beta1.VMUserSpec{
+						Name:        pointer.StringPtr("user-2"),
 						BearerToken: pointer.StringPtr("bearer-token-2"),
 						TargetRefs: []v1beta1.TargetRef{
 							{
@@ -555,6 +573,7 @@ func Test_buildVMAuthConfig(t *testing.T) {
 			},
 			want: `users:
 - url_prefix: http://localhost:8428
+  name: default-user
   bearer_token: some-default-token
 `,
 		},
@@ -582,6 +601,7 @@ func Test_buildVMAuthConfig(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: v1beta1.VMUserSpec{
+						Name:        pointer.StringPtr("user-11"),
 						BearerToken: pointer.StringPtr("bearer"),
 						TargetRefs: []v1beta1.TargetRef{
 							{
@@ -597,6 +617,7 @@ func Test_buildVMAuthConfig(t *testing.T) {
 						Namespace: "monitoring",
 					},
 					Spec: v1beta1.VMUserSpec{
+						Name:        pointer.StringPtr("user-15"),
 						BearerToken: pointer.StringPtr("bearer-token-10"),
 						TargetRefs: []v1beta1.TargetRef{
 							{
@@ -620,8 +641,10 @@ func Test_buildVMAuthConfig(t *testing.T) {
 			},
 			want: `users:
 - url_prefix: http://some-static-15
+  name: user-11
   bearer_token: bearer
 - url_prefix: http://vmagent-test.default.svc:8429
+  name: user-15
   bearer_token: bearer-token-10
 `,
 		},

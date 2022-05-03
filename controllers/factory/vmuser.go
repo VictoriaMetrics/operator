@@ -97,6 +97,9 @@ func addCredentialsToCreateSecrets(src []*v1beta1.VMUser, dst []v1.Secret) []v1.
 			if user.Spec.BearerToken != nil {
 				continue
 			}
+			if user.Spec.Name != nil {
+				secret.Data["name"] = []byte(*user.Spec.Name)
+			}
 			if user.Spec.UserName != nil {
 				secret.Data["username"] = []byte(*user.Spec.UserName)
 			}
@@ -143,6 +146,13 @@ func injectAuthSettings(src []v1.Secret, dst []*v1beta1.VMUser) []v1.Secret {
 			}
 			// check if secretUpdate needed.
 			var needUpdate bool
+			if vmuser.Spec.Name != nil {
+				if string(secret.Data["name"]) != *vmuser.Spec.Name {
+					needUpdate = true
+					secret.Data["name"] = []byte(*vmuser.Spec.Name)
+				}
+			}
+
 			if vmuser.Spec.BearerToken != nil {
 
 				if len(secret.Data["username"]) > 0 || len(secret.Data["password"]) > 0 {
@@ -193,8 +203,8 @@ func isUsersUniq(users []*v1beta1.VMUser) []string {
 	for i := range users {
 		user := users[i]
 		userName := user.Name
-		if user.Spec.UserName != nil {
-			userName = *user.Spec.UserName
+		if user.Spec.Name != nil {
+			userName = *user.Spec.Name
 		}
 		// its ok to override userName, in this case it must be nil.
 		if user.Spec.BearerToken != nil {
@@ -350,6 +360,10 @@ func generateVMAuthConfig(users []*v1beta1.VMUser, crdCache map[string]string) (
 				Value: "http://localhost:8428",
 			},
 			{
+				Key:   "name",
+				Value: "default-user",
+			},
+			{
 				Key:   "bearer_token",
 				Value: "some-default-token",
 			},
@@ -502,7 +516,17 @@ func genUserCfg(user *v1beta1.VMUser, crdUrlCache map[string]string) (yaml.MapSl
 	}
 
 	// generate user access config.
-	var username, password, token string
+	var name, username, password, token string
+	if user.Spec.Name != nil {
+		name = *user.Spec.Name
+	}
+	if name != "" {
+		r = append(r, yaml.MapItem{
+			Key:   "name",
+			Value: name,
+		})
+	}
+
 	if user.Spec.UserName != nil {
 		username = *user.Spec.UserName
 	}
@@ -633,6 +657,9 @@ func buildVMUserSecret(src *v1beta1.VMUser) v1.Secret {
 			},
 		},
 		Data: map[string][]byte{},
+	}
+	if src.Spec.Name != nil {
+		s.Data["name"] = []byte(*src.Spec.Name)
 	}
 	if src.Spec.BearerToken != nil {
 		s.Data["bearerToken"] = []byte(*src.Spec.BearerToken)

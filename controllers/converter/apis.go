@@ -125,6 +125,7 @@ func ConvertEndpoint(promEndpoint []v1.Endpoint) []v1beta1vm.Endpoint {
 			ScrapeTimeout:        endpoint.ScrapeTimeout,
 			BearerTokenFile:      replacePromDirPath(endpoint.BearerTokenFile),
 			HonorLabels:          endpoint.HonorLabels,
+			HonorTimestamps:      endpoint.HonorTimestamps,
 			BasicAuth:            ConvertBasicAuth(endpoint.BasicAuth),
 			TLSConfig:            ConvertTlsConfig(endpoint.TLSConfig),
 			MetricRelabelConfigs: ConvertRelabelConfig(endpoint.MetricRelabelConfigs),

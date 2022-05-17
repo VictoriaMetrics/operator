@@ -3,6 +3,7 @@ package k8stools
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
@@ -141,8 +142,13 @@ func getPVCFromSTS(pvcName string, sts *appsv1.StatefulSet) *corev1.PersistentVo
 
 func growSTSPVC(ctx context.Context, rclient client.Client, sts *appsv1.StatefulSet, pvcName string) error {
 	pvc := getPVCFromSTS(pvcName, sts)
-	// fast path
 	if pvc == nil {
+		// fast path
+		var names []string
+		for i := range sts.Spec.VolumeClaimTemplates {
+			names = append(names, sts.Spec.VolumeClaimTemplates[i].Name)
+		}
+		log.Error(fmt.Errorf("cannot find PVC by name: %s for sts: %s, looks like bug, exist names for sts: %s", pvcName, sts.Name, strings.Join(names, ",")), "cannot find pvc to grow")
 		return nil
 	}
 	// check storage class
@@ -150,6 +156,7 @@ func growSTSPVC(ctx context.Context, rclient client.Client, sts *appsv1.Stateful
 	if err != nil {
 		return err
 	}
+
 	return growPVCs(ctx, rclient, pvc.Spec.Resources.Requests.Storage(), sts.Namespace, sts.Labels, isExpandable)
 }
 

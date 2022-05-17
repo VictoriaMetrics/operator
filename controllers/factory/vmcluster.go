@@ -222,52 +222,24 @@ func createOrUpdateVMSelect(ctx context.Context, cr *v1beta1.VMCluster, rclient 
 	// we need replicas count from hpa to create proper args.
 	// note, need to make copy of current crd. to able to change it without side effects.
 	cr = cr.DeepCopy()
-	var needCreate bool
-	var currentSts appsv1.StatefulSet
-	err := rclient.Get(ctx, types.NamespacedName{Name: cr.Spec.VMSelect.GetNameWithPrefix(cr.Name), Namespace: cr.Namespace}, &currentSts)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			needCreate = true
-		} else {
-			return fmt.Errorf("cannot get vmselect sts: %w", err)
-		}
-	}
-	// update replicas count.
-	if cr.Spec.VMSelect.HPA != nil && currentSts.Spec.Replicas != nil {
-		cr.Spec.VMSelect.ReplicaCount = currentSts.Spec.Replicas
-	}
 
 	newSts, err := genVMSelectSpec(cr, c)
 	if err != nil {
 		return err
 	}
 
-	// fast path for create new sts.
-	if needCreate {
-		l.Info("vmselect sts not found, creating new one")
-		if err := rclient.Create(ctx, newSts); err != nil {
-			return fmt.Errorf("cannot create new vmselect sts: %w", err)
-		}
-		return nil
-	}
-
-	if currentSts.ManagedFields != nil {
-		newSts.ManagedFields = currentSts.ManagedFields
-	}
-	newSts.Annotations = labels.Merge(currentSts.Annotations, newSts.Annotations)
-	// hack for break reconcile loop at kubernetes 1.18
-	newSts.Status.Replicas = currentSts.Status.Replicas
-	// do not change replicas count.
-	if cr.Spec.VMSelect.HPA != nil {
-		newSts.Spec.Replicas = currentSts.Spec.Replicas
-	}
-
 	stsOpts := k8stools.STSOptions{
 		VolumeName:     cr.Spec.VMSelect.GetCacheMountVolumeName,
 		SelectorLabels: cr.VMSelectSelectorLabels,
 		UpdateStrategy: cr.Spec.VMSelect.UpdateStrategy,
+		HPA:            cr.Spec.VMSelect.HPA,
+		UpdateReplicaCount: func(count *int32) {
+			if cr.Spec.VMSelect.HPA != nil && count != nil {
+				cr.Spec.VMSelect.ReplicaCount = count
+			}
+		},
 	}
-	return k8stools.HandleSTSUpdate(ctx, rclient, stsOpts, newSts, &currentSts, c)
+	return k8stools.HandleSTSUpdate(ctx, rclient, stsOpts, newSts, c)
 }
 
 func CreateOrUpdateVMSelectService(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) (*corev1.Service, error) {
@@ -372,30 +344,13 @@ func createOrUpdateVMStorage(ctx context.Context, cr *v1beta1.VMCluster, rclient
 	if err != nil {
 		return err
 	}
-	currentSts := &appsv1.StatefulSet{}
-	err = rclient.Get(ctx, types.NamespacedName{Name: newSts.Name, Namespace: newSts.Namespace}, currentSts)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			l.Info("creating new sts for vmstorage")
-			if err := rclient.Create(ctx, newSts); err != nil {
-				return fmt.Errorf("cannot create new sts for vmstorage")
-			}
-			return nil
-		}
-		return fmt.Errorf("cannot get vmstorage sts: %w", err)
-	}
-	l.Info("vmstorage was found, updating it")
-
-	newSts.Annotations = labels.Merge(currentSts.Annotations, newSts.Annotations)
-	// hack for break reconcile loop at kubernetes 1.18
-	newSts.Status.Replicas = currentSts.Status.Replicas
 
 	stsOpts := k8stools.STSOptions{
 		VolumeName:     cr.Spec.VMStorage.GetStorageVolumeName,
 		SelectorLabels: cr.VMStorageSelectorLabels,
 		UpdateStrategy: cr.Spec.VMStorage.UpdateStrategy,
 	}
-	return k8stools.HandleSTSUpdate(ctx, rclient, stsOpts, newSts, currentSts, c)
+	return k8stools.HandleSTSUpdate(ctx, rclient, stsOpts, newSts, c)
 }
 
 func CreateOrUpdateVMStorageService(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) (*corev1.Service, error) {
@@ -483,36 +438,7 @@ func genVMSelectSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv1
 		if storageSpec == nil && cr.Spec.VMSelect.StorageSpec != nil {
 			storageSpec = cr.Spec.VMSelect.StorageSpec
 		}
-		switch {
-		case storageSpec == nil:
-			stsSpec.Spec.Template.Spec.Volumes = append(stsSpec.Spec.Template.Spec.Volumes, corev1.Volume{
-				Name: cr.Spec.VMSelect.GetCacheMountVolumeName(),
-				VolumeSource: corev1.VolumeSource{
-					EmptyDir: &corev1.EmptyDirVolumeSource{},
-				},
-			})
-		case storageSpec.EmptyDir != nil:
-			emptyDir := storageSpec.EmptyDir
-			stsSpec.Spec.Template.Spec.Volumes = append(stsSpec.Spec.Template.Spec.Volumes, corev1.Volume{
-				Name: cr.Spec.VMSelect.GetCacheMountVolumeName(),
-				VolumeSource: corev1.VolumeSource{
-					EmptyDir: emptyDir,
-				},
-			})
-		default:
-			pvcTemplate := MakeVolumeClaimTemplate(storageSpec.VolumeClaimTemplate)
-			if pvcTemplate.Name == "" {
-				pvcTemplate.Name = cr.Spec.VMSelect.GetCacheMountVolumeName()
-			}
-			if storageSpec.VolumeClaimTemplate.Spec.AccessModes == nil {
-				pvcTemplate.Spec.AccessModes = []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce}
-			} else {
-				pvcTemplate.Spec.AccessModes = storageSpec.VolumeClaimTemplate.Spec.AccessModes
-			}
-			pvcTemplate.Spec.Resources = storageSpec.VolumeClaimTemplate.Spec.Resources
-			pvcTemplate.Spec.Selector = storageSpec.VolumeClaimTemplate.Spec.Selector
-			stsSpec.Spec.VolumeClaimTemplates = append(stsSpec.Spec.VolumeClaimTemplates, *pvcTemplate)
-		}
+		storageSpec.IntoSTSVolume(cr.Spec.VMSelect.GetCacheMountVolumeName(), &stsSpec.Spec)
 	}
 	return stsSpec, nil
 }
@@ -1065,36 +991,7 @@ func GenVMStorageSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv
 		},
 	}
 	storageSpec := cr.Spec.VMStorage.Storage
-	switch {
-	case storageSpec == nil:
-		stsSpec.Spec.Template.Spec.Volumes = append(stsSpec.Spec.Template.Spec.Volumes, corev1.Volume{
-			Name: cr.Spec.VMStorage.GetStorageVolumeName(),
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
-			},
-		})
-	case storageSpec.EmptyDir != nil:
-		emptyDir := storageSpec.EmptyDir
-		stsSpec.Spec.Template.Spec.Volumes = append(stsSpec.Spec.Template.Spec.Volumes, corev1.Volume{
-			Name: cr.Spec.VMStorage.GetStorageVolumeName(),
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: emptyDir,
-			},
-		})
-	default:
-		pvcTemplate := MakeVolumeClaimTemplate(storageSpec.VolumeClaimTemplate)
-		if pvcTemplate.Name == "" {
-			pvcTemplate.Name = cr.Spec.VMStorage.GetStorageVolumeName()
-		}
-		if storageSpec.VolumeClaimTemplate.Spec.AccessModes == nil {
-			pvcTemplate.Spec.AccessModes = []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce}
-		} else {
-			pvcTemplate.Spec.AccessModes = storageSpec.VolumeClaimTemplate.Spec.AccessModes
-		}
-		pvcTemplate.Spec.Resources = storageSpec.VolumeClaimTemplate.Spec.Resources
-		pvcTemplate.Spec.Selector = storageSpec.VolumeClaimTemplate.Spec.Selector
-		stsSpec.Spec.VolumeClaimTemplates = append(stsSpec.Spec.VolumeClaimTemplates, *pvcTemplate)
-	}
+	storageSpec.IntoSTSVolume(cr.Spec.VMStorage.GetStorageVolumeName(), &stsSpec.Spec)
 
 	return stsSpec, nil
 }

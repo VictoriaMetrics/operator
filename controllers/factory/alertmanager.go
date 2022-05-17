@@ -91,27 +91,12 @@ func CreateOrUpdateAlertManager(ctx context.Context, cr *victoriametricsv1beta1.
 		return fmt.Errorf("failed to check default Alertmanager config: %w", err)
 	}
 
-	currentSts := &appsv1.StatefulSet{}
-	err = rclient.Get(ctx, types.NamespacedName{Name: newSts.Name, Namespace: newSts.Namespace}, currentSts)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			l.Info("Creating a new sts", "sts.Namespace", newSts.Namespace, "sts.Name", newSts.Name)
-			if err = rclient.Create(ctx, newSts); err != nil {
-				return fmt.Errorf("cannot create new alertmanager sts: %w", err)
-			}
-			l.Info("new sts was created for alertmanager")
-			return nil
-		}
-		return fmt.Errorf("cannot get alertmanager sts: %w", err)
-	}
-
-	newSts.Status.Replicas = currentSts.Status.Replicas
 	stsOpts := k8stools.STSOptions{
 		VolumeName:     cr.GetVolumeName,
 		SelectorLabels: cr.SelectorLabels,
 		UpdateStrategy: cr.UpdateStrategy,
 	}
-	return k8stools.HandleSTSUpdate(ctx, rclient, stsOpts, newSts, currentSts, c)
+	return k8stools.HandleSTSUpdate(ctx, rclient, stsOpts, newSts, c)
 }
 
 func newStsForAlertManager(cr *victoriametricsv1beta1.VMAlertmanager, c *config.BaseOperatorConf, amVersion *version.Version) (*appsv1.StatefulSet, error) {
@@ -161,38 +146,7 @@ func newStsForAlertManager(cr *victoriametricsv1beta1.VMAlertmanager, c *config.
 		statefulset.Spec.Template.Spec.ImagePullSecrets = cr.Spec.ImagePullSecrets
 	}
 
-	storageSpec := cr.Spec.Storage
-	switch {
-	case storageSpec == nil:
-		statefulset.Spec.Template.Spec.Volumes = append(statefulset.Spec.Template.Spec.Volumes, v1.Volume{
-			Name: cr.GetVolumeName(),
-			VolumeSource: v1.VolumeSource{
-				EmptyDir: &v1.EmptyDirVolumeSource{},
-			},
-		})
-	case storageSpec.EmptyDir != nil:
-		emptyDir := storageSpec.EmptyDir
-		statefulset.Spec.Template.Spec.Volumes = append(statefulset.Spec.Template.Spec.Volumes, v1.Volume{
-			Name: cr.GetVolumeName(),
-			VolumeSource: v1.VolumeSource{
-				EmptyDir: emptyDir,
-			},
-		})
-	default:
-		pvcTemplate := MakeVolumeClaimTemplate(storageSpec.VolumeClaimTemplate)
-		if pvcTemplate.Name == "" {
-			pvcTemplate.Name = cr.GetVolumeName()
-		}
-		if storageSpec.VolumeClaimTemplate.Spec.AccessModes == nil {
-			pvcTemplate.Spec.AccessModes = []v1.PersistentVolumeAccessMode{v1.ReadWriteOnce}
-		} else {
-			pvcTemplate.Spec.AccessModes = storageSpec.VolumeClaimTemplate.Spec.AccessModes
-		}
-		pvcTemplate.Spec.Resources = storageSpec.VolumeClaimTemplate.Spec.Resources
-		pvcTemplate.Spec.Selector = storageSpec.VolumeClaimTemplate.Spec.Selector
-		statefulset.Spec.VolumeClaimTemplates = append(statefulset.Spec.VolumeClaimTemplates, *pvcTemplate)
-	}
-
+	cr.Spec.Storage.IntoSTSVolume(cr.GetVolumeName(), &statefulset.Spec)
 	statefulset.Spec.Template.Spec.Volumes = append(statefulset.Spec.Template.Spec.Volumes, cr.Spec.Volumes...)
 
 	return statefulset, nil
@@ -528,24 +482,6 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, c *config.Ba
 			},
 		},
 	}, nil
-}
-
-func MakeVolumeClaimTemplate(e victoriametricsv1beta1.EmbeddedPersistentVolumeClaim) *v1.PersistentVolumeClaim {
-	pvc := v1.PersistentVolumeClaim{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: e.APIVersion,
-			Kind:       e.Kind,
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:              e.Name,
-			Labels:            e.Labels,
-			Annotations:       e.Annotations,
-			CreationTimestamp: metav1.Time{},
-		},
-		Spec:   e.Spec,
-		Status: e.Status,
-	}
-	return &pvc
 }
 
 var alertmanagerConfigMinimumVersion = version.Must(version.NewVersion("v0.22.0"))

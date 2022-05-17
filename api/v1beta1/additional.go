@@ -2,6 +2,7 @@ package v1beta1
 
 import (
 	"fmt"
+	appsv1 "k8s.io/api/apps/v1"
 	"path"
 
 	"k8s.io/api/autoscaling/v2beta2"
@@ -112,6 +113,46 @@ type StorageSpec struct {
 	// A PVC spec to be used by the VMAlertManager StatefulSets.
 	// +optional
 	VolumeClaimTemplate EmbeddedPersistentVolumeClaim `json:"volumeClaimTemplate,omitempty"`
+}
+
+// IntoSTSVolume converts storageSpec into proper volume for statefulsetSpec
+// by default, it adds emptyDir volume.
+func (ss *StorageSpec) IntoSTSVolume(name string, sts *appsv1.StatefulSetSpec) {
+	switch {
+	case ss == nil:
+		sts.Template.Spec.Volumes = append(sts.Template.Spec.Volumes, v1.Volume{
+			Name: name,
+			VolumeSource: v1.VolumeSource{
+				EmptyDir: &v1.EmptyDirVolumeSource{},
+			},
+		})
+	case ss.EmptyDir != nil:
+		sts.Template.Spec.Volumes = append(sts.Template.Spec.Volumes, v1.Volume{
+			Name: name,
+			VolumeSource: v1.VolumeSource{
+				EmptyDir: ss.EmptyDir,
+			},
+		})
+	default:
+		claimTemplate := ss.VolumeClaimTemplate
+		stsClaim := v1.PersistentVolumeClaim{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: claimTemplate.APIVersion,
+				Kind:       claimTemplate.Kind,
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:        claimTemplate.Name,
+				Labels:      claimTemplate.Labels,
+				Annotations: claimTemplate.Annotations,
+			},
+			Spec:   claimTemplate.Spec,
+			Status: claimTemplate.Status,
+		}
+		if stsClaim.Spec.AccessModes == nil {
+			stsClaim.Spec.AccessModes = []v1.PersistentVolumeAccessMode{v1.ReadWriteOnce}
+		}
+		sts.VolumeClaimTemplates = append(sts.VolumeClaimTemplates, stsClaim)
+	}
 }
 
 // EmbeddedPersistentVolumeClaim is an embedded version of k8s.io/api/core/v1.PersistentVolumeClaim.

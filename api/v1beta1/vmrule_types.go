@@ -2,7 +2,7 @@ package v1beta1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
+	"net/url"
 )
 
 // VMRuleSpec defines the desired state of VMRule
@@ -18,27 +18,35 @@ type RuleGroup struct {
 	Name string `json:"name"`
 	// evaluation interval for group
 	// +optional
-	Interval string `json:"interval,omitempty"`
+	Interval string `json:"interval,omitempty" yaml:"interval,omitempty"`
 	// Rules list of alert rules
 	Rules []Rule `json:"rules"`
 	// Concurrency defines how many rules execute at once.
 	// +optional
-	Concurrency int `json:"concurrency,omitempty"`
+	Concurrency int `json:"concurrency,omitempty" yaml:"concurrency,omitempty"`
 	// Labels optional list of labels added to every rule within a group.
 	// It has priority over the external labels.
 	// Labels are commonly used for adding environment
 	// or tenant-specific tag.
 	// +optional
-	Labels map[string]string `json:"labels,omitempty"`
+	Labels map[string]string `json:"labels,omitempty" yaml:"labels,omitempty"`
 	// ExtraFilterLabels optional list of label filters applied to every rule's
 	// request withing a group. Is compatible only with VM datasource.
 	// See more details at https://docs.victoriametrics.com#prometheus-querying-api-enhancements
+	// Deprecated, use params instead
 	// +optional
-	ExtraFilterLabels map[string]string `json:"extra_filter_labels,omitempty"`
+	ExtraFilterLabels map[string]string `json:"extra_filter_labels,omitempty" yaml:"extra_filter_labels,omitempty"`
 	// Tenant id for group, can be used only with enterprise version of vmalert
 	// See more details at https://docs.victoriametrics.com/vmalert.html#multitenancy
 	// +optional
-	Tenant string `json:"tenant,omitempty"`
+	Tenant string `json:"tenant,omitempty" yaml:"tenant,omitempty"`
+	// Params optional HTTP URL parameters added to each rule request
+	// +optional
+	Params url.Values `json:"params,omitempty" yaml:"params,omitempty"`
+	// Type defines datasource type for enterprise version of vmalert
+	// possible values - prometheus,graphite
+	// +optional
+	Type string `json:"type,omitempty" yaml:"type,omitempty"`
 }
 
 // Rule describes an alerting or recording rule.
@@ -46,23 +54,23 @@ type RuleGroup struct {
 type Rule struct {
 	// Record represents a query, that will be recorded to dataSource
 	// +optional
-	Record string `json:"record,omitempty"`
+	Record string `json:"record,omitempty" yaml:"record,omitempty"`
 	// Alert is a name for alert
 	// +optional
-	Alert string `json:"alert,omitempty"`
+	Alert string `json:"alert,omitempty" yaml:"alert,omitempty"`
 	// Expr is query, that will be evaluated at dataSource
 	// +optional
-	Expr intstr.IntOrString `json:"expr"`
+	Expr string `json:"expr" yaml:"expr"`
 	// For evaluation interval in time.Duration format
 	// 30s, 1m, 1h  or nanoseconds
 	// +optional
-	For string `json:"for,omitempty"`
+	For string `json:"for,omitempty" yaml:"for,omitempty"`
 	// Labels will be added to rule configuration
 	// +optional
-	Labels map[string]string `json:"labels,omitempty"`
+	Labels map[string]string `json:"labels,omitempty" yaml:"labels,omitempty"`
 	// Annotations will be added to rule configuration
 	// +optional
-	Annotations map[string]string `json:"annotations,omitempty"`
+	Annotations map[string]string `json:"annotations,omitempty" yaml:"annotations,omitempty"`
 }
 
 // VMRuleStatus defines the observed state of VMRule

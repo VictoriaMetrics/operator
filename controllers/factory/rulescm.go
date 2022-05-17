@@ -400,7 +400,7 @@ func deduplicateRules(origin []*victoriametricsv1beta1.VMRule) []*victoriametric
 
 func calculateRuleID(r victoriametricsv1beta1.Rule) uint64 {
 	h := fnv.New64a()
-	h.Write([]byte(r.Expr.StrVal)) //nolint:errcheck
+	h.Write([]byte(r.Expr)) //nolint:errcheck
 	if r.Record != "" {
 		h.Write([]byte("recording")) //nolint:errcheck
 		h.Write([]byte(r.Record))    //nolint:errcheck

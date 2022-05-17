@@ -52,7 +52,6 @@ func (r *VMSingle) ValidateUpdate(old runtime.Object) error {
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
 func (r *VMSingle) ValidateDelete() error {
-
 	// no-op
 	return nil
 }

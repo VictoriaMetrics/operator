@@ -358,6 +358,18 @@ type VMAgentSpec struct {
 	// configuration based on DNSPolicy.
 	// +optional
 	DNSConfig *v1.PodDNSConfig `json:"dnsConfig,omitempty"`
+
+	// StatefulMode enables StatefulSet for `VMAgent` instead of Deployment
+	// it allows using persistent storage for vmagent's persistentQueue
+	// +optional
+	StatefulMode bool `json:"statefulMode,omitempty"`
+	// StatefulStorage configures storage for StatefulSet
+	// +optional
+	StatefulStorage *StorageSpec `json:"statefulStorage,omitempty"`
+	// StatefulRollingUpdateStrategy allows configuration for strategyType
+	// set it to RollingUpdate for disabling operator statefulSet rollingUpdate
+	// +optional
+	StatefulRollingUpdateStrategy appsv1.StatefulSetUpdateStrategyType `json:"statefulRollingUpdateStrategy,omitempty"`
 }
 
 // VMAgentRemoteWriteSettings - defines global settings for all remoteWrite urls.
@@ -572,6 +584,20 @@ func (cr *VMAgent) AsURL() string {
 		port = "8429"
 	}
 	return fmt.Sprintf("http://%s.%s.svc:%s", cr.PrefixedName(), cr.Namespace, port)
+}
+
+func (cr *VMAgent) GetVolumeName() string {
+	if cr.Spec.StatefulStorage != nil && cr.Spec.StatefulStorage.VolumeClaimTemplate.Name != "" {
+		return cr.Spec.StatefulStorage.VolumeClaimTemplate.Name
+	}
+	return fmt.Sprintf("vmagent-%s-persistent-queue", cr.Name)
+}
+
+func (cr VMAgent) STSUpdateStrategy() appsv1.StatefulSetUpdateStrategyType {
+	if cr.Spec.StatefulRollingUpdateStrategy == "" {
+		return appsv1.OnDeleteStatefulSetStrategyType
+	}
+	return cr.Spec.StatefulRollingUpdateStrategy
 }
 
 // AsCRDOwner implements interface

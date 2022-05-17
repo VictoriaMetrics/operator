@@ -483,6 +483,38 @@ spec:
                             description: HTTP client configuration.
                             type: object
                             x-kubernetes-preserve-unknown-fields: true
+                          images:
+                            description: Images to attach to the incident.
+                            items:
+                              description: ImageConfig is used to attach images to
+                                the incident. See https://developer.pagerduty.com/docs/ZG9jOjExMDI5NTgx-send-an-alert-event#the-images-property
+                                for more information.
+                              properties:
+                                alt:
+                                  type: string
+                                href:
+                                  type: string
+                                source:
+                                  type: string
+                              required:
+                              - source
+                              type: object
+                            type: array
+                          links:
+                            description: Links to attach to the incident.
+                            items:
+                              description: LinkConfig is used to attach text links
+                                to the incident. See https://developer.pagerduty.com/docs/ZG9jOjExMDI5NTgx-send-an-alert-event#the-links-property
+                                for more information.
+                              properties:
+                                href:
+                                  type: string
+                                text:
+                                  type: string
+                              required:
+                              - href
+                              type: object
+                            type: array
                           routing_key:
                             description: The secret's key that contains the PagerDuty
                               integration key (when using Events API v2). Either this

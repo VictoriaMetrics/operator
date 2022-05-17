@@ -117,3 +117,41 @@ func discoverServicesByLabels(ctx context.Context, rclient client.Client, args R
 	}
 	return resp, nil
 }
+
+// RemoveOrphanedSTSs removes deployments detached from given object
+func RemoveOrphanedSTSs(ctx context.Context, rclient client.Client, cr orphanedCRD, keepSTSNames map[string]struct{}) error {
+	deployToRemove, err := discoverSTSsByLabels(ctx, rclient, cr.GetNSName(), cr.SelectorLabels())
+	if err != nil {
+		return err
+	}
+	for i := range deployToRemove {
+		dep := deployToRemove[i]
+		if _, ok := keepSTSNames[dep.Name]; !ok {
+			// need to remove
+			if err := RemoveFinalizer(ctx, rclient, dep); err != nil {
+				return err
+			}
+			if err := SafeDelete(ctx, rclient, dep); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// discoverDeploymentsByLabels - returns deployments with given args.
+func discoverSTSsByLabels(ctx context.Context, rclient client.Client, ns string, selector map[string]string) ([]*appsv1.StatefulSet, error) {
+	var deps appsv1.StatefulSetList
+	opts := client.ListOptions{
+		Namespace:     ns,
+		LabelSelector: labels.SelectorFromSet(selector),
+	}
+	if err := rclient.List(ctx, &deps, &opts); err != nil {
+		return nil, err
+	}
+	resp := make([]*appsv1.StatefulSet, 0, len(deps.Items))
+	for i := range deps.Items {
+		resp = append(resp, &deps.Items[i])
+	}
+	return resp, nil
+}

@@ -82,7 +82,6 @@ func makeVMSinglePvc(cr *victoriametricsv1beta1.VMSingle) *corev1.PersistentVolu
 
 func CreateOrUpdateVMSingle(ctx context.Context, cr *victoriametricsv1beta1.VMSingle, rclient client.Client, c *config.BaseOperatorConf) (*appsv1.Deployment, error) {
 
-	l := log.WithValues("controller", "vmsingle.crud", "vmsingle", cr.Name)
 	if err := psp.CreateServiceAccountForCRD(ctx, cr, rclient); err != nil {
 		return nil, fmt.Errorf("failed create service account: %w", err)
 	}
@@ -95,8 +94,6 @@ func CreateOrUpdateVMSingle(ctx context.Context, cr *victoriametricsv1beta1.VMSi
 	if err != nil {
 		return nil, fmt.Errorf("cannot generate new deploy for vmsingle: %w", err)
 	}
-
-	l = l.WithValues("single.deploy.name", newDeploy.Name, "single.deploy.namespace", newDeploy.Namespace)
 
 	if err := k8stools.HandleDeployUpdate(ctx, rclient, newDeploy); err != nil {
 		return nil, err

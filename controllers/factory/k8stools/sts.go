@@ -19,23 +19,49 @@ import (
 
 const podRevisionLabel = "controller-revision-hash"
 
+// STSOptions options for StatefulSet update
+// HPA and UpdateReplicaCount optional
 type STSOptions struct {
-	SelectorLabels func() map[string]string
-	VolumeName     func() string
-	UpdateStrategy func() appsv1.StatefulSetUpdateStrategyType
+	SelectorLabels     func() map[string]string
+	VolumeName         func() string
+	UpdateStrategy     func() appsv1.StatefulSetUpdateStrategyType
+	HPA                *victoriametricsv1beta1.EmbeddedHPA
+	UpdateReplicaCount func(count *int32)
 }
 
-func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, newSts, currentSts *appsv1.StatefulSet, c *config.BaseOperatorConf) error {
+// HandleSTSUpdate performs create and update operations for given statefulSet with STSOptions
+func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, newSts *appsv1.StatefulSet, c *config.BaseOperatorConf) error {
 
-	// special case, that allows app restart
+	var currentSts appsv1.StatefulSet
+	if err := rclient.Get(ctx, types.NamespacedName{Name: newSts.Name, Namespace: newSts.Namespace}, &currentSts); err != nil {
+		if errors.IsNotFound(err) {
+			if err = rclient.Create(ctx, newSts); err != nil {
+				return fmt.Errorf("cannot create new alertmanager sts: %w", err)
+			}
+			return nil
+		}
+		return fmt.Errorf("cannot get alertmanager sts: %w", err)
+	}
+	if cr.UpdateReplicaCount != nil {
+		cr.UpdateReplicaCount(currentSts.Spec.Replicas)
+	}
+
+	// do not change replicas count.
+	if cr.HPA != nil {
+		newSts.Spec.Replicas = currentSts.Spec.Replicas
+	}
+	// hack for kubernetes 1.18
+	newSts.Status.Replicas = currentSts.Status.Replicas
 	newSts.Spec.Template.Annotations = MergeAnnotations(currentSts.Spec.Template.Annotations, newSts.Spec.Template.Annotations)
-	newSts.Finalizers = victoriametricsv1beta1.MergeFinalizers(currentSts, victoriametricsv1beta1.FinalizerName)
+	newSts.Finalizers = victoriametricsv1beta1.MergeFinalizers(&currentSts, victoriametricsv1beta1.FinalizerName)
 
-	isRecreated, err := wasCreatedSTS(ctx, rclient, cr.VolumeName(), newSts, currentSts)
+	isRecreated, err := wasCreatedSTS(ctx, rclient, cr.VolumeName(), newSts, &currentSts)
 	if err != nil {
 		return err
 	}
 
+	// if sts wasn't recreated, update it first
+	// before making call for performRollingUpdateOnSts
 	if !isRecreated {
 		if err := rclient.Update(ctx, newSts); err != nil {
 			return fmt.Errorf("cannot perform update on sts: %s, err: %w", newSts.Name, err)
@@ -44,7 +70,6 @@ func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, 
 
 	// perform manual update only with OnDelete policy, which is default.
 	if cr.UpdateStrategy() == appsv1.OnDeleteStatefulSetStrategyType {
-
 		if err := performRollingUpdateOnSts(ctx, isRecreated, rclient, newSts.Name, newSts.Namespace, cr.SelectorLabels(), c); err != nil {
 			return fmt.Errorf("cannot handle rolling-update on sts: %s, err: %w", newSts.Name, err)
 		}
@@ -92,8 +117,8 @@ func performRollingUpdateOnSts(ctx context.Context, wasRecreated bool, rclient c
 		neededPodCount = int(*sts.Spec.Replicas)
 	}
 	if len(podList.Items) != neededPodCount {
-		l.Info("unexpected count of pods for sts: %s, want: %d, got: %d, seems like configuration of stateful wasn't correct and kubernetes cannot create pod,"+
-			" check kubectl events for namespace: %s, to find out source of problem", sts.Name, neededPodCount, len(podList.Items), sts.Namespace)
+		l.Info("unexpected count of pods for sts, seems like configuration of stateful wasn't correct and kubernetes cannot create pod,"+
+			" check kubectl events for namespace: %s, to find out source of problem", "sts", sts.Name, "wantCount", neededPodCount, "actualCount", len(podList.Items))
 	}
 
 	// first we must ensure, that already updated pods in ready status

@@ -3,6 +3,7 @@ package factory
 import (
 	"context"
 	"fmt"
+	"k8s.io/apimachinery/pkg/runtime"
 	"path"
 	"sort"
 	"strconv"
@@ -32,6 +33,7 @@ const (
 	vmAgentConfDir                  = "/etc/vmagent/config"
 	vmAgentConOfOutDir              = "/etc/vmagent/config_out"
 	vmAgentPersistentQueueDir       = "/tmp/vmagent-remotewrite-data"
+	vmAgentPersistentQueueSTSDir    = "/vmagent_pq/vmagent-remotewrite-data"
 	vmAgentPersistentQueueMountName = "persistent-queue-data"
 	globalRelabelingName            = "global_relabeling.yaml"
 	urlRelabelingName               = "url_rebaling-%d.yaml"
@@ -66,8 +68,7 @@ func CreateOrUpdateVMAgentService(ctx context.Context, cr *victoriametricsv1beta
 }
 
 func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client, c *config.BaseOperatorConf) (reconcile.Result, error) {
-	l := log.WithValues("controller", "vmagent.crud")
-
+	l := log.WithValues("controller", "vmagent.crud", "namespace", cr.Namespace, "vmagent", cr.PrefixedName())
 	if err := psp.CreateServiceAccountForCRD(ctx, cr, rclient); err != nil {
 		return reconcile.Result{}, fmt.Errorf("failed create service account: %w", err)
 	}
@@ -118,39 +119,68 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 		return reconcile.Result{}, fmt.Errorf("cannot build new deploy for vmagent: %w", err)
 	}
 
-	l = l.WithValues("vmagent.deploy.name", newDeploy.Name, "vmagent.deploy.namespace", newDeploy.Namespace)
-
-	// cluster
 	deploymentNames := make(map[string]struct{})
+	stsNames := make(map[string]struct{})
 	if cr.Spec.ShardCount != nil && *cr.Spec.ShardCount > 1 {
 		shardsCount := *cr.Spec.ShardCount
 		l.Info("using cluster version of VMAgent with", "shards", shardsCount)
 		for i := 0; i < shardsCount; i++ {
-			shardedDeploy := newDeploy.DeepCopy()
+			shardedDeploy := newDeploy.DeepCopyObject()
 			addShardSettingsToVMAgent(i, shardsCount, shardedDeploy)
-			if err := k8stools.HandleDeployUpdate(ctx, rclient, shardedDeploy); err != nil {
-				return reconcile.Result{}, err
+			switch shardedDeploy := shardedDeploy.(type) {
+			case *appsv1.Deployment:
+				if err := k8stools.HandleDeployUpdate(ctx, rclient, shardedDeploy); err != nil {
+					return reconcile.Result{}, err
+				}
+				deploymentNames[shardedDeploy.Name] = struct{}{}
+			case *appsv1.StatefulSet:
+				stsOpts := k8stools.STSOptions{
+					SelectorLabels: func() map[string]string {
+						selectorLabels := cr.SelectorLabels()
+						selectorLabels["shard-num"] = strconv.Itoa(i)
+						return selectorLabels
+					},
+					VolumeName:     cr.GetVolumeName,
+					UpdateStrategy: cr.STSUpdateStrategy,
+				}
+				if err := k8stools.HandleSTSUpdate(ctx, rclient, stsOpts, shardedDeploy, c); err != nil {
+					return reconcile.Result{}, err
+				}
+				stsNames[shardedDeploy.Name] = struct{}{}
 			}
-			deploymentNames[shardedDeploy.Name] = struct{}{}
 		}
 	} else {
-		if err := k8stools.HandleDeployUpdate(ctx, rclient, newDeploy); err != nil {
-			return reconcile.Result{}, err
+		switch newDeploy := newDeploy.(type) {
+		case *appsv1.Deployment:
+			if err := k8stools.HandleDeployUpdate(ctx, rclient, newDeploy); err != nil {
+				return reconcile.Result{}, err
+			}
+			deploymentNames[newDeploy.Name] = struct{}{}
+		case *appsv1.StatefulSet:
+			stsOpts := k8stools.STSOptions{
+				SelectorLabels: cr.SelectorLabels,
+				VolumeName:     cr.GetVolumeName,
+				UpdateStrategy: cr.STSUpdateStrategy,
+			}
+			if err := k8stools.HandleSTSUpdate(ctx, rclient, stsOpts, newDeploy, c); err != nil {
+				return reconcile.Result{}, err
+			}
+			stsNames[newDeploy.Name] = struct{}{}
 		}
-		deploymentNames[newDeploy.Name] = struct{}{}
+
 	}
 	if err := finalize.RemoveOrphanedDeployments(ctx, rclient, cr, deploymentNames); err != nil {
 		return reconcile.Result{}, err
 	}
-	l.Info("vmagent deploy reconciled")
+	if err := finalize.RemoveOrphanedSTSs(ctx, rclient, cr, stsNames); err != nil {
+		return reconcile.Result{}, err
+	}
+	l.Info("vmagent reconciled")
 
 	return reconcile.Result{}, nil
 }
 
-// newDeployForVMAgent builds vmagent deployment spec.
-func newDeployForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperatorConf, ssCache *scrapesSecretsCache) (*appsv1.Deployment, error) {
-	cr = cr.DeepCopy()
-
+func setDefaultForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperatorConf) {
 	// inject default
 	if cr.Spec.Image.Repository == "" {
 		cr.Spec.Image.Repository = c.VMAgentDefault.Image
@@ -165,10 +195,48 @@ func newDeployForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOpera
 	if cr.Spec.Port == "" {
 		cr.Spec.Port = c.VMAgentDefault.Port
 	}
+}
+
+// newDeployForVMAgent builds vmagent deployment spec.
+func newDeployForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperatorConf, ssCache *scrapesSecretsCache) (runtime.Object, error) {
+	cr = cr.DeepCopy()
+	setDefaultForVMAgent(cr, c)
 
 	podSpec, err := makeSpecForVMAgent(cr, c, ssCache)
 	if err != nil {
 		return nil, err
+	}
+
+	// fast path, use sts
+	if cr.Spec.StatefulMode {
+		stsSpec := &appsv1.StatefulSet{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            cr.PrefixedName(),
+				Namespace:       cr.Namespace,
+				Labels:          c.Labels.Merge(cr.Labels()),
+				Annotations:     cr.Annotations(),
+				OwnerReferences: cr.AsOwner(),
+				Finalizers:      []string{victoriametricsv1beta1.FinalizerName},
+			},
+			Spec: appsv1.StatefulSetSpec{
+				Replicas: cr.Spec.ReplicaCount,
+				Selector: &metav1.LabelSelector{
+					MatchLabels: cr.SelectorLabels(),
+				},
+				UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
+					Type: appsv1.OnDeleteStatefulSetStrategyType,
+				},
+				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{
+						Labels:      cr.PodLabels(),
+						Annotations: cr.PodAnnotations(),
+					},
+					Spec: *podSpec,
+				},
+			},
+		}
+		cr.Spec.StatefulStorage.IntoSTSVolume(vmAgentPersistentQueueMountName, &stsSpec.Spec)
+		return stsSpec, nil
 	}
 
 	strategyType := appsv1.RollingUpdateDeploymentStrategyType
@@ -193,16 +261,26 @@ func newDeployForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOpera
 				Type:          strategyType,
 				RollingUpdate: cr.Spec.RollingUpdate,
 			},
-			Template: *podSpec,
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels:      cr.PodLabels(),
+					Annotations: cr.PodAnnotations(),
+				},
+				Spec: *podSpec,
+			},
 		},
 	}
 	return depSpec, nil
 }
 
-func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperatorConf, ssCache *scrapesSecretsCache) (*corev1.PodTemplateSpec, error) {
+func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperatorConf, ssCache *scrapesSecretsCache) (*corev1.PodSpec, error) {
+	pqMountPath := vmAgentPersistentQueueDir
+	if cr.Spec.StatefulMode {
+		pqMountPath = vmAgentPersistentQueueSTSDir
+	}
 	args := []string{
 		fmt.Sprintf("-promscrape.config=%s", path.Join(vmAgentConOfOutDir, configEnvsubstFilename)),
-		fmt.Sprintf("-remoteWrite.tmpDataPath=%s", vmAgentPersistentQueueDir),
+		fmt.Sprintf("-remoteWrite.tmpDataPath=%s", pqMountPath),
 	}
 
 	if len(cr.Spec.RemoteWrite) > 0 {
@@ -231,12 +309,16 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 	ports = buildAdditionalContainerPorts(ports, cr.Spec.InsertPorts)
 
 	var volumes []corev1.Volume
-	volumes = append(volumes, corev1.Volume{
-		Name: vmAgentPersistentQueueMountName,
-		VolumeSource: corev1.VolumeSource{
-			EmptyDir: &corev1.EmptyDirVolumeSource{},
-		},
-	})
+	// in case for sts, we have to use persistentVolumeClaimTemplate instead
+	if !cr.Spec.StatefulMode {
+		volumes = append(volumes, corev1.Volume{
+			Name: vmAgentPersistentQueueMountName,
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		})
+	}
+
 	volumes = append(volumes, cr.Spec.Volumes...)
 	volumes = append(volumes, corev1.Volume{
 		Name: "config",
@@ -277,7 +359,7 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 	agentVolumeMounts = append(agentVolumeMounts,
 		corev1.VolumeMount{
 			Name:      vmAgentPersistentQueueMountName,
-			MountPath: vmAgentPersistentQueueDir,
+			MountPath: pqMountPath,
 		},
 	)
 	agentVolumeMounts = append(agentVolumeMounts, cr.Spec.VolumeMounts...)
@@ -389,43 +471,46 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 		}
 	}
 
-	vmAgentSpec := &corev1.PodTemplateSpec{
-		ObjectMeta: metav1.ObjectMeta{
-			Labels:      cr.PodLabels(),
-			Annotations: cr.PodAnnotations(),
-		},
-		Spec: corev1.PodSpec{
-			NodeSelector:                  cr.Spec.NodeSelector,
-			Volumes:                       volumes,
-			InitContainers:                cr.Spec.InitContainers,
-			Containers:                    containers,
-			ServiceAccountName:            cr.GetServiceAccountName(),
-			SecurityContext:               cr.Spec.SecurityContext,
-			ImagePullSecrets:              cr.Spec.ImagePullSecrets,
-			Affinity:                      cr.Spec.Affinity,
-			SchedulerName:                 cr.Spec.SchedulerName,
-			Tolerations:                   cr.Spec.Tolerations,
-			PriorityClassName:             cr.Spec.PriorityClassName,
-			HostNetwork:                   cr.Spec.HostNetwork,
-			DNSPolicy:                     cr.Spec.DNSPolicy,
-			DNSConfig:                     cr.Spec.DNSConfig,
-			RuntimeClassName:              cr.Spec.RuntimeClassName,
-			HostAliases:                   cr.Spec.HostAliases,
-			TopologySpreadConstraints:     cr.Spec.TopologySpreadConstraints,
-			TerminationGracePeriodSeconds: cr.Spec.TerminationGracePeriodSeconds,
-		},
-	}
-
-	return vmAgentSpec, nil
+	return &corev1.PodSpec{
+		NodeSelector:                  cr.Spec.NodeSelector,
+		Volumes:                       volumes,
+		InitContainers:                cr.Spec.InitContainers,
+		Containers:                    containers,
+		ServiceAccountName:            cr.GetServiceAccountName(),
+		SecurityContext:               cr.Spec.SecurityContext,
+		ImagePullSecrets:              cr.Spec.ImagePullSecrets,
+		Affinity:                      cr.Spec.Affinity,
+		SchedulerName:                 cr.Spec.SchedulerName,
+		Tolerations:                   cr.Spec.Tolerations,
+		PriorityClassName:             cr.Spec.PriorityClassName,
+		HostNetwork:                   cr.Spec.HostNetwork,
+		DNSPolicy:                     cr.Spec.DNSPolicy,
+		DNSConfig:                     cr.Spec.DNSConfig,
+		RuntimeClassName:              cr.Spec.RuntimeClassName,
+		HostAliases:                   cr.Spec.HostAliases,
+		TopologySpreadConstraints:     cr.Spec.TopologySpreadConstraints,
+		TerminationGracePeriodSeconds: cr.Spec.TerminationGracePeriodSeconds,
+	}, nil
 }
 
-func addShardSettingsToVMAgent(shardNum, shardsCount int, dep *appsv1.Deployment) {
-	dep.Name = fmt.Sprintf("%s-%d", dep.Name, shardNum)
-	// need to mutate selectors ?
-	dep.Spec.Selector.MatchLabels["shard-num"] = strconv.Itoa(shardNum)
-	dep.Spec.Template.Labels["shard-num"] = strconv.Itoa(shardNum)
-	for i := range dep.Spec.Template.Spec.Containers {
-		container := &dep.Spec.Template.Spec.Containers[i]
+func addShardSettingsToVMAgent(shardNum, shardsCount int, dep runtime.Object) {
+	var containers []corev1.Container
+	switch dep := dep.(type) {
+	case *appsv1.StatefulSet:
+		containers = dep.Spec.Template.Spec.Containers
+		dep.Name = fmt.Sprintf("%s-%d", dep.Name, shardNum)
+		// need to mutate selectors ?
+		dep.Spec.Selector.MatchLabels["shard-num"] = strconv.Itoa(shardNum)
+		dep.Spec.Template.Labels["shard-num"] = strconv.Itoa(shardNum)
+	case *appsv1.Deployment:
+		containers = dep.Spec.Template.Spec.Containers
+		dep.Name = fmt.Sprintf("%s-%d", dep.Name, shardNum)
+		// need to mutate selectors ?
+		dep.Spec.Selector.MatchLabels["shard-num"] = strconv.Itoa(shardNum)
+		dep.Spec.Template.Labels["shard-num"] = strconv.Itoa(shardNum)
+	}
+	for i := range containers {
+		container := &containers[i]
 		if container.Name == "vmagent" {
 			args := container.Args
 			// filter extraArgs defined by user

@@ -41,6 +41,9 @@ spec:
                 description: GeneratePassword instructs operator to generate password
                   for user if spec.password if empty.
                 type: boolean
+              name:
+                description: Name of the VMUser object.
+                type: string
               password:
                 description: Password basic auth password for accessing protected
                   endpoint.

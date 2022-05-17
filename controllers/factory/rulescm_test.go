@@ -15,7 +15,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -95,7 +94,7 @@ func TestSelectRules(t *testing.T) {
 				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
 				&victoriametricsv1beta1.VMRule{ObjectMeta: metav1.ObjectMeta{Name: "error-alert", Namespace: "default"}, Spec: victoriametricsv1beta1.VMRuleSpec{
 					Groups: []victoriametricsv1beta1.RuleGroup{{Name: "error-alert", Interval: "10s", Rules: []victoriametricsv1beta1.Rule{
-						{Alert: "", Expr: intstr.IntOrString{IntVal: 10}, For: "10s", Labels: nil, Annotations: nil},
+						{Alert: "", Expr: "10", For: "10s", Labels: nil, Annotations: nil},
 					}}},
 				}},
 			},
@@ -114,12 +113,12 @@ func TestSelectRules(t *testing.T) {
 				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "monitoring", Labels: map[string]string{"monitoring": "enabled"}}},
 				&victoriametricsv1beta1.VMRule{ObjectMeta: metav1.ObjectMeta{Name: "error-alert", Namespace: "default"}, Spec: victoriametricsv1beta1.VMRuleSpec{
 					Groups: []victoriametricsv1beta1.RuleGroup{{Name: "error-alert", Interval: "10s", Rules: []victoriametricsv1beta1.Rule{
-						{Alert: "", Expr: intstr.IntOrString{IntVal: 10}, For: "10s", Labels: nil, Annotations: nil},
+						{Alert: "", Expr: "10", For: "10s", Labels: nil, Annotations: nil},
 					}}},
 				}},
 				&victoriametricsv1beta1.VMRule{ObjectMeta: metav1.ObjectMeta{Name: "error-alert-at-monitoring", Namespace: "monitoring"}, Spec: victoriametricsv1beta1.VMRuleSpec{
 					Groups: []victoriametricsv1beta1.RuleGroup{{Name: "error-alert", Interval: "10s", Rules: []victoriametricsv1beta1.Rule{
-						{Alert: "", Expr: intstr.IntOrString{IntVal: 10}, For: "10s", Labels: nil, Annotations: nil},
+						{Alert: "", Expr: "10", For: "10s", Labels: nil, Annotations: nil},
 					}}},
 				}},
 			},
@@ -143,14 +142,14 @@ func TestSelectRules(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{Name: "error-alert", Namespace: "default"},
 					Spec: victoriametricsv1beta1.VMRuleSpec{
 						Groups: []victoriametricsv1beta1.RuleGroup{{Name: "error-alert", Interval: "10s", Rules: []victoriametricsv1beta1.Rule{
-							{Alert: "", Expr: intstr.IntOrString{IntVal: 10}, For: "10s", Labels: nil, Annotations: nil},
+							{Alert: "", Expr: "10", For: "10s", Labels: nil, Annotations: nil},
 						}}},
 					}},
 				&victoriametricsv1beta1.VMRule{
 					ObjectMeta: metav1.ObjectMeta{Name: "error-alert-at-monitoring", Namespace: "monitoring"},
 					Spec: victoriametricsv1beta1.VMRuleSpec{
 						Groups: []victoriametricsv1beta1.RuleGroup{{Name: "error-alert", Interval: "10s", Rules: []victoriametricsv1beta1.Rule{
-							{Alert: "", Expr: intstr.IntOrString{IntVal: 10}, For: "10s", Labels: nil, Annotations: nil},
+							{Alert: "", Expr: "10", For: "10s", Labels: nil, Annotations: nil},
 						}}},
 					}},
 			},
@@ -175,14 +174,14 @@ func TestSelectRules(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{Name: "error-alert", Namespace: "default"},
 					Spec: victoriametricsv1beta1.VMRuleSpec{
 						Groups: []victoriametricsv1beta1.RuleGroup{{Name: "error-alert", Interval: "10s", Rules: []victoriametricsv1beta1.Rule{
-							{Alert: "", Expr: intstr.IntOrString{IntVal: 10}, For: "10s", Labels: nil, Annotations: nil},
+							{Alert: "", Expr: "10", For: "10s", Labels: nil, Annotations: nil},
 						}}},
 					}},
 				&victoriametricsv1beta1.VMRule{
 					ObjectMeta: metav1.ObjectMeta{Name: "error-alert-at-monitoring", Namespace: "monitoring"},
 					Spec: victoriametricsv1beta1.VMRuleSpec{
 						Groups: []victoriametricsv1beta1.RuleGroup{{Name: "error-alert", Interval: "10s", Rules: []victoriametricsv1beta1.Rule{
-							{Alert: "", Expr: intstr.IntOrString{IntVal: 10}, For: "10s", Labels: nil, Annotations: nil},
+							{Alert: "", Expr: "10", For: "10s", Labels: nil, Annotations: nil},
 						}}},
 					}},
 			},

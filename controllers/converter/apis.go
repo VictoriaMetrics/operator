@@ -27,7 +27,7 @@ func ConvertPromRule(prom *v1.PrometheusRule, conf *config.BaseOperatorConf) *v1
 			ruleItems = append(ruleItems, v1beta1vm.Rule{
 				Labels:      promRuleItem.Labels,
 				Annotations: promRuleItem.Annotations,
-				Expr:        promRuleItem.Expr,
+				Expr:        promRuleItem.Expr.String(),
 				For:         promRuleItem.For,
 				Record:      promRuleItem.Record,
 				Alert:       promRuleItem.Alert,

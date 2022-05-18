@@ -18,26 +18,28 @@ package controllers
 
 import (
 	"context"
+	"github.com/VictoriaMetrics/operator/controllers/factory/limiter"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sync"
 
+	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/config"
+	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"sigs.k8s.io/controller-runtime/pkg/builder"
-
-	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 )
 
-var vmAgentSync sync.Mutex
+var (
+	vmAgentSync           sync.Mutex
+	vmAgentReconcileLimit = limiter.NewRateLimiter("vmagent", 5)
+)
 
 // VMAgentReconciler reconciles a VMAgent object
 type VMAgentReconciler struct {
@@ -67,6 +69,10 @@ type VMAgentReconciler struct {
 // +kubebuilder:rbac:groups="policy",resources=podsecuritypolicies,verbs=get;create,update;list
 // +kubebuilder:rbac:groups="",resources=serviceaccounts,verbs=get;create,update;list
 func (r *VMAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	if vmAgentReconcileLimit.MustThrottleReconcile() {
+		// fast path, rate limited
+		return ctrl.Result{}, nil
+	}
 	reqLogger := r.Log.WithValues("vmagent", req.NamespacedName)
 	reqLogger.Info("Reconciling")
 

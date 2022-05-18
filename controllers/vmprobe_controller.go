@@ -46,6 +46,10 @@ func (r *VMProbeReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmprobes,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmprobes/status,verbs=get;update;patch
 func (r *VMProbeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	if vmAgentReconcileLimit.MustThrottleReconcile() {
+		// fast path, rate limited
+		return ctrl.Result{}, nil
+	}
 	reqLogger := r.Log.WithValues("vmprobe", req.NamespacedName)
 
 	// Fetch the VMPodScrape instance

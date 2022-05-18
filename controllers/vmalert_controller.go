@@ -18,8 +18,10 @@ package controllers
 
 import (
 	"context"
+	"github.com/VictoriaMetrics/operator/controllers/factory/limiter"
 	"sync"
 
+	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/config"
@@ -32,11 +34,12 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 )
 
-var vmAlertSync sync.Mutex
+var (
+	vmAlertRateLimiter = limiter.NewRateLimiter("vmalert", 5)
+	vmAlertSync        sync.Mutex
+)
 
 // VMAlertReconciler reconciles a VMAlert object
 type VMAlertReconciler struct {
@@ -56,6 +59,10 @@ func (r *VMAlertReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmalerts/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmalerts/finalizers,verbs=*
 func (r *VMAlertReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	if vmAlertRateLimiter.MustThrottleReconcile() {
+		// fast path
+		return ctrl.Result{}, nil
+	}
 	reqLogger := r.Log.WithValues("vmalert", req.NamespacedName)
 	reqLogger.Info("Reconciling")
 
@@ -117,7 +124,7 @@ func (r *VMAlertReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	reqLogger.Info("vmalert reconciled")
 	var result ctrl.Result
-	if needToRequeue && r.BaseConf.ForceResyncInterval > 0 {
+	if needToRequeue || r.BaseConf.ForceResyncInterval > 0 {
 		result.RequeueAfter = r.BaseConf.ForceResyncInterval
 	}
 

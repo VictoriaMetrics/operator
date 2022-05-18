@@ -26,7 +26,6 @@ import (
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -51,6 +50,10 @@ func (r *VMRuleReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmrules,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmrules/status,verbs=get;update;patch
 func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	if vmAlertRateLimiter.MustThrottleReconcile() {
+		// fast path
+		return ctrl.Result{}, nil
+	}
 	reqLogger := r.Log.WithValues("vmrule", req.NamespacedName)
 	reqLogger.Info("Reconciling VMRule")
 
@@ -58,10 +61,7 @@ func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	instance := &victoriametricsv1beta1.VMRule{}
 	err := r.Get(ctx, req.NamespacedName, instance)
 	if err != nil {
-		if !errors.IsNotFound(err) {
-			reqLogger.Error(err, "cannot get resource")
-			return ctrl.Result{}, err
-		}
+		return ctrl.Result{}, err
 	}
 
 	alertMngs := &victoriametricsv1beta1.VMAlertList{}

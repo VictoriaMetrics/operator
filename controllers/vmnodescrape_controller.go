@@ -48,6 +48,10 @@ func (r *VMNodeScrapeReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmnodescrapes/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmnodescrapes/finalizers,verbs=*
 func (r *VMNodeScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	if vmAgentReconcileLimit.MustThrottleReconcile() {
+		// fast path, rate limited
+		return ctrl.Result{}, nil
+	}
 	reqLogger := r.Log.WithValues("vmnodescrape", req.NamespacedName)
 
 	// Fetch the VMNodeScrape instance
@@ -59,6 +63,7 @@ func (r *VMNodeScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request
 			return ctrl.Result{}, err
 		}
 	}
+
 	vmAgentSync.Lock()
 	defer vmAgentSync.Unlock()
 

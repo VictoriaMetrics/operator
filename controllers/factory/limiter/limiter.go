@@ -20,8 +20,8 @@ type RateLimiter struct {
 func NewRateLimiter(limiterName string, limit int64) *RateLimiter {
 	collector := prometheus.NewCounter(prometheus.CounterOpts{
 		Name:        "operator_reconcile_throttled_events_total",
-		Help:        "some useless help",
-		ConstLabels: map[string]string{"reconciler": limiterName},
+		Help:        "number of throttled reconciliation events",
+		ConstLabels: map[string]string{"controller": limiterName},
 	})
 	r := metrics.Registry
 	r.MustRegister(collector)

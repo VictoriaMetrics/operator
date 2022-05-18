@@ -108,12 +108,12 @@ func performRollingUpdateOnSts(ctx context.Context, wasRecreated bool, rclient c
 
 	l := log.WithValues("controller", "sts.rollingupdate", "desiredVersion", stsVersion, "wasRecreated", wasRecreated)
 
-	l.Info("checking if update needed")
+	l.Info("checking if pod update needed")
 	podList := &corev1.PodList{}
 	labelSelector := labels.SelectorFromSet(podLabels)
 	listOps := &client.ListOptions{Namespace: ns, LabelSelector: labelSelector}
 	if err := rclient.List(ctx, podList, listOps); err != nil {
-		return err
+		return fmt.Errorf("cannot list pods for statefulset rolling update: %w", err)
 	}
 	neededPodCount := 1
 	if sts.Spec.Replicas != nil {

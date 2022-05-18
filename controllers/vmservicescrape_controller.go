@@ -65,13 +65,18 @@ func (r *VMServiceScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	vmAgentSync.Lock()
 	defer vmAgentSync.Unlock()
 
+	if !instance.DeletionTimestamp.IsZero() {
+		DeregisterObject(instance.Name, instance.Namespace, "vmservicescrape")
+	} else {
+		RegisterObject(instance.Name, instance.Namespace, "vmservicescrape")
+	}
+
 	vmAgentInstances := &victoriametricsv1beta1.VMAgentList{}
 	err = r.List(ctx, vmAgentInstances, config.MustGetNamespaceListOptions())
 	if err != nil {
 		reqLogger.Error(err, "cannot list vmagent objects")
 		return ctrl.Result{}, err
 	}
-	reqLogger.Info("found vmagent objects ", "len: ", len(vmAgentInstances.Items))
 
 	for _, vmagent := range vmAgentInstances.Items {
 		if vmagent.DeletionTimestamp != nil {
@@ -88,7 +93,6 @@ func (r *VMServiceScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		if !match {
 			continue
 		}
-		reqLogger.Info("reconciling servicescrapes for vmagent")
 
 		recon, err := factory.CreateOrUpdateVMAgent(ctx, currentVMagent, r, r.BaseConf)
 		if err != nil {

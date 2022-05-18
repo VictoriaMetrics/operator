@@ -66,6 +66,11 @@ func (r *VMNodeScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request
 
 	vmAgentSync.Lock()
 	defer vmAgentSync.Unlock()
+	if !instance.DeletionTimestamp.IsZero() {
+		DeregisterObject(instance.Name, instance.Namespace, "vmnodescrape")
+	} else {
+		RegisterObject(instance.Name, instance.Namespace, "vmnodescrape")
+	}
 
 	vmAgentInstances := &operatorv1beta1.VMAgentList{}
 	err = r.List(ctx, vmAgentInstances, config.MustGetNamespaceListOptions())

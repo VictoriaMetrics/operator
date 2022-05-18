@@ -51,6 +51,12 @@ func (r *VMStaticScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	vmAgentSync.Lock()
 	defer vmAgentSync.Unlock()
 
+	if !instance.DeletionTimestamp.IsZero() {
+		DeregisterObject(instance.Name, instance.Namespace, "vmstaticscrape")
+	} else {
+		RegisterObject(instance.Name, instance.Namespace, "vmstaticscrape")
+	}
+
 	vmAgentInstances := &victoriametricsv1beta1.VMAgentList{}
 	err = r.List(ctx, vmAgentInstances, config.MustGetNamespaceListOptions())
 	if err != nil {

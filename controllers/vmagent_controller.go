@@ -93,8 +93,10 @@ func (r *VMAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		if err := finalize.OnVMAgentDelete(ctx, r.Client, instance); err != nil {
 			return ctrl.Result{}, err
 		}
+		DeregisterObject(instance.Name, instance.Namespace, "vmagent")
 		return ctrl.Result{}, nil
 	}
+	RegisterObject(instance.Name, instance.Namespace, "vmagent")
 	if err := finalize.AddFinalizer(ctx, r.Client, instance); err != nil {
 		return ctrl.Result{}, err
 	}

@@ -71,8 +71,11 @@ func (r *VMAuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			l.Error(err, "cannot remove finalizers from vmauth")
 			return ctrl.Result{}, err
 		}
+		DeregisterObject(instance.Name, instance.Namespace, "vmauth")
 		return ctrl.Result{}, nil
 	}
+
+	RegisterObject(instance.Name, instance.Namespace, "vmauth")
 
 	if err := finalize.AddFinalizer(ctx, r.Client, &instance); err != nil {
 		return ctrl.Result{}, err

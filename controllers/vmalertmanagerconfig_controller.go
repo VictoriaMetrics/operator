@@ -61,6 +61,12 @@ func (r *VMAlertmanagerConfigReconciler) Reconcile(ctx context.Context, req ctrl
 	alertmanagerLock.Lock()
 	defer alertmanagerLock.Unlock()
 
+	if !instance.DeletionTimestamp.IsZero() {
+		DeregisterObject(instance.Name, instance.Namespace, "vmalertmanagerconfig")
+	} else {
+		RegisterObject(instance.Name, instance.Namespace, "vmalertmanagerconfig")
+	}
+
 	// select alertmanagers
 	var vmams operatorv1beta1.VMAlertmanagerList
 	if err := r.Client.List(ctx, &vmams, config.MustGetNamespaceListOptions()); err != nil {

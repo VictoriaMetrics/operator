@@ -202,13 +202,15 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	// lock vmauth sync.
 	vmAuthSyncMU.Lock()
 	defer vmAuthSyncMU.Unlock()
+
 	if instance.DeletionTimestamp == nil {
 		if err := finalize.AddFinalizer(ctx, r.Client, &instance); err != nil {
 			l.Error(err, "cannot add finalizer")
 			return ctrl.Result{}, err
 		}
-
+		RegisterObject(instance.Name, instance.Namespace, "vmuser")
 	}
+
 	globalSecretRefCache.addRefByUser(&instance)
 
 	var vmauthes operatorv1beta1.VMAuthList
@@ -242,6 +244,7 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			return ctrl.Result{}, err
 		}
 		globalSecretRefCache.removeUserRef(req.NamespacedName)
+		DeregisterObject(instance.Name, instance.Namespace, "vmuser")
 	}
 	return ctrl.Result{}, nil
 }

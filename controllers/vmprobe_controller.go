@@ -63,6 +63,11 @@ func (r *VMProbeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 	vmAgentSync.Lock()
 	defer vmAgentSync.Unlock()
+	if !instance.DeletionTimestamp.IsZero() {
+		DeregisterObject(instance.Name, instance.Namespace, "vmprobescrape")
+	} else {
+		RegisterObject(instance.Name, instance.Namespace, "vmprobescrape")
+	}
 
 	vmAgentInstances := &operatorv1beta1.VMAgentList{}
 	err = r.List(ctx, vmAgentInstances, config.MustGetNamespaceListOptions())

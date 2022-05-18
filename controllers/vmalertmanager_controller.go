@@ -18,10 +18,9 @@ package controllers
 
 import (
 	"context"
-	"sync"
-
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
+	"sync"
 
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/internal/config"
@@ -78,14 +77,17 @@ func (r *VMAlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		if err := finalize.OnVMAlertManagerDelete(ctx, r.Client, instance); err != nil {
 			return ctrl.Result{}, err
 		}
+		DeregisterObject(instance.Name, instance.Namespace, "vmalertmanager")
 		return ctrl.Result{}, nil
 	}
 	if err := finalize.AddFinalizer(ctx, r.Client, instance); err != nil {
 		return ctrl.Result{}, err
 	}
 
+	RegisterObject(instance.Name, instance.Namespace, "vmalertmanager")
 	alertmanagerLock.Lock()
 	defer alertmanagerLock.Unlock()
+
 	if err := factory.CreateOrUpdateAlertManager(ctx, instance, r, r.BaseConf); err != nil {
 		reqLogger.Error(err, "cannot create or update vmalertmanager sts")
 		return ctrl.Result{}, err

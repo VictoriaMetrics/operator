@@ -58,8 +58,11 @@ func (r *VMClusterReconciler) Reconcile(ctx context.Context, request ctrl.Reques
 		if err := finalize.OnVMClusterDelete(ctx, r.Client, instance); err != nil {
 			return ctrl.Result{}, err
 		}
+		DeregisterObject(instance.Name, instance.Namespace, "vmcluster")
 		return ctrl.Result{}, nil
 	}
+
+	RegisterObject(instance.Name, instance.Namespace, "vmcluster")
 
 	if err := finalize.AddFinalizer(ctx, r.Client, instance); err != nil {
 		return ctrl.Result{}, err

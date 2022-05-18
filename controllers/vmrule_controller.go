@@ -68,13 +68,17 @@ func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	reqLogger.Info("listing vmalerts")
 	vmAlertSync.Lock()
 	defer vmAlertSync.Unlock()
+	if !instance.DeletionTimestamp.IsZero() {
+		DeregisterObject(instance.Name, instance.Namespace, "vmrule")
+	} else {
+		RegisterObject(instance.Name, instance.Namespace, "vmrule")
+	}
 
 	err = r.List(ctx, alertMngs, config.MustGetNamespaceListOptions())
 	if err != nil {
 		reqLogger.Error(err, "cannot list vmalerts")
 		return ctrl.Result{}, err
 	}
-	reqLogger.Info("current count of vm alerts: ", "len", len(alertMngs.Items))
 
 	for _, vmalert := range alertMngs.Items {
 		if vmalert.DeletionTimestamp != nil {

@@ -72,8 +72,10 @@ func (r *VMSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		if err := finalize.OnVMSingleDelete(ctx, r.Client, instance); err != nil {
 			return ctrl.Result{}, err
 		}
+		DeregisterObject(instance.Name, instance.Namespace, "vmsingle")
 		return ctrl.Result{}, nil
 	}
+	RegisterObject(instance.Name, instance.Namespace, "vmsingle")
 	if err := finalize.AddFinalizer(ctx, r.Client, instance); err != nil {
 		return ctrl.Result{}, err
 	}

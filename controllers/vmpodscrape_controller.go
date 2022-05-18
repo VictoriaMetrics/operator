@@ -66,6 +66,12 @@ func (r *VMPodScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	vmAgentSync.Lock()
 	defer vmAgentSync.Unlock()
 
+	if !instance.DeletionTimestamp.IsZero() {
+		DeregisterObject(instance.Name, instance.Namespace, "vmpodscrape")
+	} else {
+		RegisterObject(instance.Name, instance.Namespace, "vmpodscrape")
+	}
+
 	vmAgentInstances := &victoriametricsv1beta1.VMAgentList{}
 	err = r.List(ctx, vmAgentInstances, config.MustGetNamespaceListOptions())
 	if err != nil {

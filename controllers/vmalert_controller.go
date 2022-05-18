@@ -83,8 +83,11 @@ func (r *VMAlertReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		if err := finalize.OnVMAlertDelete(ctx, r.Client, instance); err != nil {
 			return ctrl.Result{}, err
 		}
+		DeregisterObject(instance.Name, instance.Namespace, "vmalert")
 		return ctrl.Result{}, nil
 	}
+
+	RegisterObject(instance.Name, instance.Namespace, "vmalert")
 
 	var needToRequeue bool
 	if len(instance.GetNotifierSelectors()) > 0 {

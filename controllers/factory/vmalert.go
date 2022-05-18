@@ -96,6 +96,9 @@ func CreateOrUpdateVMAlert(ctx context.Context, cr *victoriametricsv1beta1.VMAle
 	cr.Spec.Notifiers = cr.Spec.Notifiers[:cnt]
 
 	if len(additionalNotifiers) > 0 {
+		sort.Slice(additionalNotifiers, func(i, j int) bool {
+			return additionalNotifiers[i].URL > additionalNotifiers[j].URL
+		})
 		l.Info("additional notifiers with sd selector", "len", len(additionalNotifiers))
 	}
 	cr.Spec.Notifiers = append(cr.Spec.Notifiers, additionalNotifiers...)

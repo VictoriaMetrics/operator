@@ -157,7 +157,7 @@ func growSTSPVC(ctx context.Context, rclient client.Client, sts *appsv1.Stateful
 		return err
 	}
 
-	return growPVCs(ctx, rclient, pvc.Spec.Resources.Requests.Storage(), sts.Namespace, sts.Labels, isExpandable)
+	return growPVCs(ctx, rclient, pvc.Spec.Resources.Requests.Storage(), sts.Namespace, sts.Spec.Template.Labels, isExpandable)
 }
 
 // isStorageClassExpandable check is it possible to update size of given pvc

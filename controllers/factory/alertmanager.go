@@ -92,6 +92,7 @@ func CreateOrUpdateAlertManager(ctx context.Context, cr *victoriametricsv1beta1.
 	}
 
 	stsOpts := k8stools.STSOptions{
+		HasClaim:       len(newSts.Spec.VolumeClaimTemplates) > 0,
 		VolumeName:     cr.GetVolumeName,
 		SelectorLabels: cr.SelectorLabels,
 		UpdateStrategy: cr.UpdateStrategy,

@@ -229,6 +229,7 @@ func createOrUpdateVMSelect(ctx context.Context, cr *v1beta1.VMCluster, rclient 
 	}
 
 	stsOpts := k8stools.STSOptions{
+		HasClaim:       len(newSts.Spec.VolumeClaimTemplates) > 0,
 		VolumeName:     cr.Spec.VMSelect.GetCacheMountVolumeName,
 		SelectorLabels: cr.VMSelectSelectorLabels,
 		UpdateStrategy: cr.Spec.VMSelect.UpdateStrategy,
@@ -346,6 +347,7 @@ func createOrUpdateVMStorage(ctx context.Context, cr *v1beta1.VMCluster, rclient
 	}
 
 	stsOpts := k8stools.STSOptions{
+		HasClaim:       len(newSts.Spec.VolumeClaimTemplates) > 0,
 		VolumeName:     cr.Spec.VMStorage.GetStorageVolumeName,
 		SelectorLabels: cr.VMStorageSelectorLabels,
 		UpdateStrategy: cr.Spec.VMStorage.UpdateStrategy,

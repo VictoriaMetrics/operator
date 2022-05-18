@@ -135,6 +135,7 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 				deploymentNames[shardedDeploy.Name] = struct{}{}
 			case *appsv1.StatefulSet:
 				stsOpts := k8stools.STSOptions{
+					HasClaim: len(shardedDeploy.Spec.VolumeClaimTemplates) > 0,
 					SelectorLabels: func() map[string]string {
 						selectorLabels := cr.SelectorLabels()
 						selectorLabels["shard-num"] = strconv.Itoa(i)
@@ -158,6 +159,7 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 			deploymentNames[newDeploy.Name] = struct{}{}
 		case *appsv1.StatefulSet:
 			stsOpts := k8stools.STSOptions{
+				HasClaim:       len(newDeploy.Spec.VolumeClaimTemplates) > 0,
 				SelectorLabels: cr.SelectorLabels,
 				VolumeName:     cr.GetVolumeName,
 				UpdateStrategy: cr.STSUpdateStrategy,

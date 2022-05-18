@@ -22,6 +22,7 @@ const podRevisionLabel = "controller-revision-hash"
 // STSOptions options for StatefulSet update
 // HPA and UpdateReplicaCount optional
 type STSOptions struct {
+	HasClaim           bool
 	SelectorLabels     func() map[string]string
 	VolumeName         func() string
 	UpdateStrategy     func() appsv1.StatefulSetUpdateStrategyType
@@ -75,8 +76,10 @@ func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, 
 		}
 	}
 
-	if err := growSTSPVC(ctx, rclient, newSts, cr.VolumeName()); err != nil {
-		return err
+	if cr.HasClaim {
+		if err := growSTSPVC(ctx, rclient, newSts, cr.VolumeName()); err != nil {
+			return err
+		}
 	}
 
 	return nil

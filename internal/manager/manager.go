@@ -4,34 +4,47 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
-	"k8s.io/api/policy/v1beta1"
-	"net/http"
-
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/buildinfo"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httpserver"
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers"
+	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/controllers/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/pflag"
 	v12 "k8s.io/api/apps/v1"
 	"k8s.io/api/autoscaling/v2beta2"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/policy/v1beta1"
 	metav1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/klog/v2"
+	"net/http"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"sigs.k8s.io/controller-runtime/pkg/metrics"
+	"time"
 	// +kubebuilder:scaffold:imports
 )
 
 var (
+	startTime  = time.Now()
+	appVersion = prometheus.NewGaugeFunc(prometheus.GaugeOpts{Name: "vm_app_version", Help: "version of application", ConstLabels: map[string]string{"version": buildinfo.Version}}, func() float64 {
+		return 1.0
+	})
+	uptime = prometheus.NewGaugeFunc(prometheus.GaugeOpts{Name: "vm_app_uptime_seconds", Help: "uptime"}, func() float64 {
+		return time.Since(startTime).Seconds()
+	})
+	startedAt = prometheus.NewGaugeFunc(prometheus.GaugeOpts{Name: "vm_app_start_timestamp", Help: "unixtimestamp"}, func() float64 {
+		return float64(startTime.Unix())
+	})
 	scheme               = runtime.NewScheme()
 	setupLog             = ctrl.Log.WithName("setup")
 	enableLeaderElection = flag.Bool("enable-leader-election", false, "Enable leader election for controller manager. "+
@@ -68,8 +81,9 @@ func RunManager(ctx context.Context) error {
 	pflag.Parse()
 
 	zap.UseFlagOptions(&opts)
-	logger := zap.New(zap.UseFlagOptions(&opts))
-	logf.SetLogger(logger)
+	sink := zap.New(zap.UseFlagOptions(&opts)).GetSink()
+	l := logger.New(sink)
+	logf.SetLogger(l)
 
 	buildinfo.Init()
 
@@ -81,9 +95,11 @@ func RunManager(ctx context.Context) error {
 	// implementing the logr.Logger interface. This logger will
 	// be propagated through the whole operator, generating
 	// uniform and structured logs.
-	klog.SetLogger(logger)
-	ctrl.SetLogger(logger)
+	klog.SetLogger(l)
+	ctrl.SetLogger(l)
 
+	r := metrics.Registry
+	r.MustRegister(appVersion, uptime, startedAt)
 	setupLog.Info("Registering Components.")
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
@@ -111,7 +127,7 @@ func RunManager(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		logger.Info("starting CRD ownership controller")
+		l.Info("starting CRD ownership controller")
 		if err := victoriametricsv1beta1.Init(ctx, initC); err != nil {
 			setupLog.Error(err, "unable to init crd data")
 			return err
@@ -120,7 +136,7 @@ func RunManager(ctx context.Context) error {
 
 	if *enableWebhooks {
 		if err = addWebhooks(mgr); err != nil {
-			logger.Error(err, "cannot register webhooks")
+			l.Error(err, "cannot register webhooks")
 			return err
 		}
 	}
@@ -330,6 +346,7 @@ func addWebhooks(mgr ctrl.Manager) error {
 
 }
 
+// no-op
 func requestHandler(w http.ResponseWriter, r *http.Request) bool {
 	return false
 }

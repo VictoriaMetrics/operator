@@ -141,7 +141,7 @@ func (ss *StorageSpec) IntoSTSVolume(name string, sts *appsv1.StatefulSetSpec) {
 				Kind:       claimTemplate.Kind,
 			},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:        claimTemplate.Name,
+				Name:        name,
 				Labels:      claimTemplate.Labels,
 				Annotations: claimTemplate.Annotations,
 			},

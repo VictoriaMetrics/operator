@@ -388,7 +388,7 @@ func (cr *VMAlertmanager) AsPodFQDN(idx int) string {
 }
 
 func (cr *VMAlertmanager) MetricPath() string {
-	return buildPathWithPrefixFlag(cr.Spec.ExtraArgs, metricPath)
+	return buildAlertmanagerPathWithPrefixFlag(cr.Spec.ExtraArgs, metricPath)
 }
 
 // AsCRDOwner implements interface

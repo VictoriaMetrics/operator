@@ -2,6 +2,7 @@ package v1beta1
 
 import (
 	"fmt"
+	"path"
 	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -388,7 +389,10 @@ func (cr *VMAlertmanager) AsPodFQDN(idx int) string {
 }
 
 func (cr *VMAlertmanager) MetricPath() string {
-	return buildAlertmanagerPathWithPrefixFlag(cr.Spec.ExtraArgs, metricPath)
+	if prefix := cr.Spec.RoutePrefix; prefix != "" {
+		return path.Join(prefix, metricPath)
+	}
+	return metricPath
 }
 
 // AsCRDOwner implements interface

@@ -16,13 +16,12 @@ import (
 )
 
 const (
-	vmPathPrefixFlagName             = "http.pathPrefix"
-	vmAlertmanagerPathPrefixFlagName = "web.route-prefix"
-	healthPath                       = "/health"
-	metricPath                       = "/metrics"
-	reloadPath                       = "/-/reload"
-	snapshotCreate                   = "/snapshot/create"
-	snapshotDelete                   = "/snapshot/delete"
+	vmPathPrefixFlagName = "http.pathPrefix"
+	healthPath           = "/health"
+	metricPath           = "/metrics"
+	reloadPath           = "/-/reload"
+	snapshotCreate       = "/snapshot/create"
+	snapshotDelete       = "/snapshot/delete"
 	// FinalizerName name of our finalizer.
 	FinalizerName            = "apps.victoriametrics.com/finalizer"
 	SkipValidationAnnotation = "operator.victoriametrics.com/skip-validation"
@@ -220,13 +219,6 @@ func (ss *ServiceSpec) NameOrDefault(defaultName string) string {
 
 func buildPathWithPrefixFlag(flags map[string]string, defaultPath string) string {
 	if prefix, ok := flags[vmPathPrefixFlagName]; ok {
-		return path.Join(prefix, defaultPath)
-	}
-	return defaultPath
-}
-
-func buildAlertmanagerPathWithPrefixFlag(flags map[string]string, defaultPath string) string {
-	if prefix, ok := flags[vmAlertmanagerPathPrefixFlagName]; ok {
 		return path.Join(prefix, defaultPath)
 	}
 	return defaultPath

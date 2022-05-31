@@ -2,8 +2,9 @@ package v1beta1
 
 import (
 	"fmt"
-	appsv1 "k8s.io/api/apps/v1"
 	"path"
+
+	appsv1 "k8s.io/api/apps/v1"
 
 	"k8s.io/api/autoscaling/v2beta2"
 	"sigs.k8s.io/controller-runtime/pkg/client"

@@ -225,6 +225,72 @@ proxy_tls_config:
   key_file: /tmp/key-1
 `,
 		},
+		{
+			name: "generate static config with basic auth",
+			args: args{
+				cr: &victoriametricsv1beta1.VMProbe{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "default",
+						Name:      "static-probe",
+					},
+					Spec: victoriametricsv1beta1.VMProbeSpec{
+						Module:       "http",
+						VMProberSpec: victoriametricsv1beta1.VMProberSpec{URL: "blackbox-monitor:9115"},
+						BasicAuth: &victoriametricsv1beta1.BasicAuth{
+							Username: v1.SecretKeySelector{
+								LocalObjectReference: v1.LocalObjectReference{
+									Name: "ba-secret",
+								},
+								Key: "user",
+							},
+							Password: v1.SecretKeySelector{
+								LocalObjectReference: v1.LocalObjectReference{
+									Name: "ba-secret",
+								},
+								Key: "password",
+							},
+						},
+						Targets: victoriametricsv1beta1.VMProbeTargets{
+							StaticConfig: &victoriametricsv1beta1.VMProbeTargetStaticConfig{
+								Targets: []string{"host-1", "host-2"},
+								Labels:  map[string]string{"label1": "value1"},
+							},
+						}},
+				},
+				i: 0,
+				ssCache: &scrapesSecretsCache{
+					baSecrets: map[string]*BasicAuthCredentials{
+						"probeScrape/default/static-probe": &BasicAuthCredentials{
+							password: "secret-value",
+							username: "user-1"},
+					},
+				},
+			},
+			want: `job_name: probe/default/static-probe/0
+params:
+  module:
+  - http
+metrics_path: /probe
+static_configs:
+- targets:
+  - host-1
+  - host-2
+  labels:
+    label1: value1
+relabel_configs:
+- source_labels:
+  - __address__
+  target_label: __param_target
+- source_labels:
+  - __param_target
+  target_label: instance
+- target_label: __address__
+  replacement: blackbox-monitor:9115
+basic_auth:
+  username: user-1
+  password: secret-value
+`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

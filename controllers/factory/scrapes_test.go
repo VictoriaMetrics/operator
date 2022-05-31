@@ -457,8 +457,30 @@ func TestCreateOrUpdateConfigurationSecret(t *testing.T) {
 				},
 				&victoriametricsv1beta1.VMProbe{
 					ObjectMeta: metav1.ObjectMeta{
-						Namespace: "kube-system",
+						Namespace: "default",
 						Name:      "test-vmp",
+					},
+					Spec: victoriametricsv1beta1.VMProbeSpec{
+						Targets: victoriametricsv1beta1.VMProbeTargets{
+							StaticConfig: &victoriametricsv1beta1.VMProbeTargetStaticConfig{
+								Targets: []string{"http://some-target:8085"},
+							},
+						},
+						VMProberSpec: victoriametricsv1beta1.VMProberSpec{URL: "http://blackbox:9015"},
+						BasicAuth: &victoriametricsv1beta1.BasicAuth{
+							Username: v1.SecretKeySelector{
+								Key: "username",
+								LocalObjectReference: v1.LocalObjectReference{
+									Name: "access-creds",
+								},
+							},
+							Password: v1.SecretKeySelector{
+								Key: "password",
+								LocalObjectReference: v1.LocalObjectReference{
+									Name: "access-creds",
+								},
+							},
+						},
 					},
 				},
 				&victoriametricsv1beta1.VMPodScrape{
@@ -801,11 +823,14 @@ scrape_configs:
   - target_label: endpoint
     replacement: "801"
   sample_limit: 10
-- job_name: probe/kube-system/test-vmp/0
+- job_name: probe/default/test-vmp/0
   params:
     module:
     - ""
   metrics_path: /probe
+  static_configs:
+  - targets:
+    - http://some-target:8085
   relabel_configs:
   - source_labels:
     - __address__
@@ -814,7 +839,10 @@ scrape_configs:
     - __param_target
     target_label: instance
   - target_label: __address__
-    replacement: ""
+    replacement: http://blackbox:9015
+  basic_auth:
+    username: some-username
+    password: some-password
 - job_name: nodeScrape/default/test-vms/0
   honor_labels: false
   kubernetes_sd_configs:

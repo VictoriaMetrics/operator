@@ -307,6 +307,68 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "generate vmagent with probe basic-auth",
+			args: args{
+				c: config.MustGetBaseConfig(),
+				cr: &victoriametricsv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "example-agent-bauth",
+						Namespace: "default",
+					},
+					Spec: victoriametricsv1beta1.VMAgentSpec{
+						RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
+							{URL: "http://remote-write"},
+						},
+						ServiceScrapeSelector: &metav1.LabelSelector{},
+						ProbeSelector:         &metav1.LabelSelector{},
+						SelectAllByDefault:    true,
+					},
+				},
+			},
+			predefinedObjects: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{Name: "bauth-secret", Namespace: "default"},
+					Data:       map[string][]byte{"user": []byte(`user-name`), "password": []byte(`user-password`)},
+				},
+				&victoriametricsv1beta1.VMProbe{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "vmsingle-monitor",
+						Namespace: "default",
+					},
+					Spec: victoriametricsv1beta1.VMProbeSpec{
+						Targets: victoriametricsv1beta1.VMProbeTargets{
+							StaticConfig: &victoriametricsv1beta1.VMProbeTargetStaticConfig{
+								Targets: []string{"http://some-target"},
+							},
+						},
+						BasicAuth: &victoriametricsv1beta1.BasicAuth{
+							Password: corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "bauth-secret"}, Key: "password"},
+							Username: corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "bauth-secret"}, Key: "user"},
+						},
+					},
+				},
+				&victoriametricsv1beta1.VMServiceScrape{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "vmsingle-monitor",
+						Namespace: "default",
+					},
+					Spec: victoriametricsv1beta1.VMServiceScrapeSpec{
+						Selector: metav1.LabelSelector{},
+						Endpoints: []victoriametricsv1beta1.Endpoint{
+							{
+								Interval: "30s",
+								Scheme:   "http",
+								BasicAuth: &victoriametricsv1beta1.BasicAuth{
+									Password: corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "bauth-secret"}, Key: "password"},
+									Username: corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "bauth-secret"}, Key: "user"},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

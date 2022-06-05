@@ -48,7 +48,7 @@ spec:
               description: Password basic auth password for accessing protected endpoint.
               type: string
             passwordRef:
-              description: PasswordRef allows to fetch password from user-create secret
+              description: PasswordRef allows fetching password from user-create secret
                 by its name and key.
               properties:
                 key:
@@ -122,6 +122,24 @@ spec:
                     type: string
                 type: object
               type: array
+            tokenRef:
+              description: TokenRef allows fetching token from user-created secrets
+                by its name and key.
+              properties:
+                key:
+                  description: The key of the secret to select from.  Must be a valid
+                    secret key.
+                  type: string
+                name:
+                  description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                    TODO: Add other useful fields. apiVersion, kind, uid?'
+                  type: string
+                optional:
+                  description: Specify whether the Secret or its key must be defined
+                  type: boolean
+              required:
+              - key
+              type: object
             username:
               description: UserName basic auth user name for accessing protected endpoint,
                 will be replaced with metadata.name of VMUser if omitted.

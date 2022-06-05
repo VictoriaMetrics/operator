@@ -5042,6 +5042,11 @@ func (in *VMUserSpec) DeepCopyInto(out *VMUserSpec) {
 		*out = new(v1.SecretKeySelector)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.TokenRef != nil {
+		in, out := &in.TokenRef, &out.TokenRef
+		*out = new(v1.SecretKeySelector)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.BearerToken != nil {
 		in, out := &in.BearerToken, &out.BearerToken
 		*out = new(string)

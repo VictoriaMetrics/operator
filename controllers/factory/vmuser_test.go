@@ -417,7 +417,7 @@ func Test_buildVMAuthConfig(t *testing.T) {
 		},
 
 		{
-			name: "with password ref",
+			name: "with secret refs",
 			args: args{
 				vmauth: &v1beta1.VMAuth{
 					ObjectMeta: metav1.ObjectMeta{
@@ -490,12 +490,37 @@ func Test_buildVMAuthConfig(t *testing.T) {
 						},
 					},
 				},
+				&v1beta1.VMUser{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "user-10",
+						Namespace: "default",
+					},
+					Spec: v1beta1.VMUserSpec{
+						Name: pointer.StringPtr("user-10"),
+						TokenRef: &v1.SecretKeySelector{
+							Key: "token",
+							LocalObjectReference: v1.LocalObjectReference{
+								Name: "generated-secret",
+							},
+						},
+						TargetRefs: []v1beta1.TargetRef{
+							{
+								CRD: &v1beta1.CRDRef{
+									Kind:      "VMAgent",
+									Name:      "test",
+									Namespace: "default",
+								},
+								Paths: []string{"/"},
+							},
+						},
+					},
+				},
 				&v1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "generated-secret",
 						Namespace: "default",
 					},
-					Data: map[string][]byte{"password": []byte(`generated-password`)},
+					Data: map[string][]byte{"password": []byte(`generated-password`), "token": []byte(`some-bearer-token`)},
 				},
 				&v1beta1.VMAgent{
 					ObjectMeta: metav1.ObjectMeta{
@@ -508,6 +533,9 @@ func Test_buildVMAuthConfig(t *testing.T) {
 - url_prefix: http://some-static
   name: user-1
   bearer_token: bearer
+- url_prefix: http://vmagent-test.default.svc:8429
+  name: user-10
+  bearer_token: some-bearer-token
 - url_prefix: http://vmagent-test.default.svc:8429
   name: user-2
   bearer_token: bearer-token-2

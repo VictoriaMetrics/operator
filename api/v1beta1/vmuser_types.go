@@ -22,9 +22,12 @@ type VMUserSpec struct {
 	// Password basic auth password for accessing protected endpoint.
 	// +optional
 	Password *string `json:"password,omitempty"`
-	// PasswordRef allows to fetch password from user-create secret by its name and key.
+	// PasswordRef allows fetching password from user-create secret by its name and key.
 	// +optional
 	PasswordRef *v1.SecretKeySelector `json:"passwordRef,omitempty"`
+	// TokenRef allows fetching token from user-created secrets by its name and key.
+	// +optional
+	TokenRef *v1.SecretKeySelector `json:"tokenRef,omitempty"`
 	// GeneratePassword instructs operator to generate password for user
 	// if spec.password if empty.
 	// +optional
@@ -129,6 +132,11 @@ func (cr *VMUser) SecretName() string {
 // PasswordRefAsKey - builds key for passwordRef cache
 func (cr *VMUser) PasswordRefAsKey() string {
 	return fmt.Sprintf("%s/%s/%s", cr.Namespace, cr.Spec.PasswordRef.Name, cr.Spec.PasswordRef.Key)
+}
+
+// TokenRefAsKey - builds key for passwordRef cache
+func (cr *VMUser) TokenRefAsKey() string {
+	return fmt.Sprintf("%s/%s/%s", cr.Namespace, cr.Spec.TokenRef.Name, cr.Spec.TokenRef.Key)
 }
 
 func (cr *VMUser) AsOwner() []metav1.OwnerReference {

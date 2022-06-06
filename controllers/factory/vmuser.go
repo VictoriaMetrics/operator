@@ -44,13 +44,13 @@ func buildVMAuthConfig(ctx context.Context, rclient client.Client, vmauth *v1bet
 		return nil, err
 	}
 
-	passwordRefCache, err := fetchVMUserSecretCache(ctx, rclient, users)
+	secretValueByRef, err := fetchVMUserSecretCacheByRef(ctx, rclient, users)
 	if err != nil {
 		return nil, err
 	}
 
 	// inject passwordRef secrets
-	injectPasswordRef(users, passwordRefCache)
+	injectSecretValueByRef(users, secretValueByRef)
 	// select secrets with user auth settings.
 	toCreateSecrets, existSecrets, err := selectVMUserSecrets(ctx, rclient, users)
 	if err != nil {
@@ -121,14 +121,18 @@ func createVMUserSecrets(ctx context.Context, rclient client.Client, secrets []v
 	return nil
 }
 
-func injectPasswordRef(src []*v1beta1.VMUser, passwordRefCache map[string]string) {
+func injectSecretValueByRef(src []*v1beta1.VMUser, secretValueCacheByRef map[string]string) {
 	for i := range src {
 		user := src[i]
-		if user.Spec.PasswordRef == nil {
-			continue
+		switch {
+		case user.Spec.PasswordRef != nil:
+			secretPassword := secretValueCacheByRef[user.PasswordRefAsKey()]
+			user.Spec.Password = pointer.StringPtr(secretPassword)
+		case user.Spec.TokenRef != nil:
+			secretToken := secretValueCacheByRef[user.TokenRefAsKey()]
+			user.Spec.BearerToken = pointer.StringPtr(secretToken)
 		}
-		secretPassword := passwordRefCache[user.PasswordRefAsKey()]
-		user.Spec.Password = pointer.StringPtr(secretPassword)
+
 	}
 }
 
@@ -236,26 +240,35 @@ func getAsURLObject(ctx context.Context, rclient client.Client, obj objectWithUr
 	return obj.AsURL(), nil
 }
 
-func fetchVMUserSecretCache(ctx context.Context, rclient client.Client, users []*v1beta1.VMUser) (map[string]string, error) {
-	passwordCache := make(map[string]string, (len(users)))
+func fetchVMUserSecretCacheByRef(ctx context.Context, rclient client.Client, users []*v1beta1.VMUser) (map[string]string, error) {
+	passwordCache := make(map[string]string, len(users))
 	var fetchSecret v1.Secret
 	for i := range users {
 		user := users[i]
-		if user.Spec.PasswordRef == nil {
+		var secretName, secretKey, refValue string
+		switch {
+		case user.Spec.PasswordRef != nil:
+			secretName = user.Spec.PasswordRef.Name
+			secretKey = user.Spec.PasswordRef.Key
+			refValue = user.PasswordRefAsKey()
+		case user.Spec.TokenRef != nil:
+			secretName = user.Spec.TokenRef.Name
+			secretKey = user.Spec.TokenRef.Key
+			refValue = user.TokenRefAsKey()
+		default:
 			continue
 		}
-		key := user.PasswordRefAsKey()
-		if _, ok := passwordCache[key]; ok {
+		if _, ok := passwordCache[refValue]; ok {
 			continue
 		}
-		if err := rclient.Get(ctx, types.NamespacedName{Namespace: user.Namespace, Name: user.Spec.PasswordRef.Name}, &fetchSecret); err != nil {
-			return nil, fmt.Errorf("cannot find passwordRef for user: %s, at namespace: %s, err: %s", user.Name, user.Namespace, err)
+		if err := rclient.Get(ctx, types.NamespacedName{Namespace: user.Namespace, Name: secretName}, &fetchSecret); err != nil {
+			return nil, fmt.Errorf("cannot get secret to fetch value by ref for user: %s, at namespace: %s, err: %s", user.Name, user.Namespace, err)
 		}
-		passwordValue := fetchSecret.Data[user.Spec.PasswordRef.Key]
-		if len(passwordValue) == 0 {
-			return nil, fmt.Errorf("cannot find passwordRef key: %s for user: %s, at namespace: %s", user.Spec.PasswordRef.Key, user.Name, user.Namespace)
+		secretValue := fetchSecret.Data[secretKey]
+		if len(secretValue) == 0 {
+			return nil, fmt.Errorf("cannot find ref value key: %s for user: %s, at namespace: %s", refValue, user.Name, user.Namespace)
 		}
-		passwordCache[key] = string(passwordValue)
+		passwordCache[refValue] = string(secretValue)
 	}
 	return passwordCache, nil
 }

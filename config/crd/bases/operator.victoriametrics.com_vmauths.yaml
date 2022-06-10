@@ -375,6 +375,10 @@ spec:
                           type: string
                       type: object
                     type: array
+                  host:
+                    description: Host defines ingress host parameter for default rule
+                      It will be used, only if TlsHosts is empty
+                    type: string
                   labels:
                     additionalProperties:
                       type: string

@@ -375,6 +375,7 @@ var defaultPt = v12.PathTypePrefix
 
 func buildIngressConfig(cr *victoriametricsv1beta1.VMAuth) *v12.Ingress {
 	defaultRule := v12.IngressRule{
+		Host: cr.Spec.Ingress.Host,
 		IngressRuleValue: v12.IngressRuleValue{
 			HTTP: &v12.HTTPIngressRuleValue{
 				Paths: []v12.HTTPIngressPath{

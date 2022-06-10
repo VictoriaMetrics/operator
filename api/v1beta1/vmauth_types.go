@@ -197,6 +197,10 @@ type EmbeddedIngress struct {
 	// must be checked for correctness by user.
 	// +optional
 	ExtraTLS []v12.IngressTLS `json:"extraTls,omitempty"`
+	// Host defines ingress host parameter for default rule
+	// It will be used, only if TlsHosts is empty
+	// +optional
+	Host string `json:"host,omitempty"`
 }
 
 // VMAuthStatus defines the observed state of VMAuth

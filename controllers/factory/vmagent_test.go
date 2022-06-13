@@ -925,6 +925,24 @@ func Test_buildConfigReloaderArgs(t *testing.T) {
 				c: &config.BaseOperatorConf{
 					VMAgentDefault: struct {
 						Image               string `default:"victoriametrics/vmagent"`
+						Version             string `default:"v1.77.2"`
+						ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.48.1"`
+						Port                string `default:"8429"`
+						UseDefaultResources bool   `default:"true"`
+						Resource            struct {
+							Limit struct {
+								Mem string `default:"500Mi"`
+								Cpu string `default:"200m"`
+							}
+							Request struct {
+								Mem string `default:"200Mi"`
+								Cpu string `default:"50m"`
+							}
+						}
+						ConfigReloaderCPU    string `default:"100m"`
+						ConfigReloaderMemory string `default:"25Mi"`
+					}(struct {
+						Image               string `default:"victoriametrics/vmagent"`
 						Version             string `default:"v1.77.1"`
 						ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.48.1"`
 						Port                string `default:"8429"`
@@ -1139,7 +1157,7 @@ func Test_buildConfigReloaderArgs(t *testing.T) {
 						}
 						ConfigReloaderCPU    string
 						ConfigReloaderMemory string
-					}{ConfigReloadImage: "prometheus-config-reloader:latest"}))))))))))),
+					}{ConfigReloadImage: "prometheus-config-reloader:latest"})))))))))))),
 				},
 			},
 			want: []string{
@@ -1158,6 +1176,24 @@ func Test_buildConfigReloaderArgs(t *testing.T) {
 				c: &config.BaseOperatorConf{
 					VMAgentDefault: struct {
 						Image               string `default:"victoriametrics/vmagent"`
+						Version             string `default:"v1.77.2"`
+						ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.48.1"`
+						Port                string `default:"8429"`
+						UseDefaultResources bool   `default:"true"`
+						Resource            struct {
+							Limit struct {
+								Mem string `default:"500Mi"`
+								Cpu string `default:"200m"`
+							}
+							Request struct {
+								Mem string `default:"200Mi"`
+								Cpu string `default:"50m"`
+							}
+						}
+						ConfigReloaderCPU    string `default:"100m"`
+						ConfigReloaderMemory string `default:"25Mi"`
+					}(struct {
+						Image               string `default:"victoriametrics/vmagent"`
 						Version             string `default:"v1.77.1"`
 						ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.48.1"`
 						Port                string `default:"8429"`
@@ -1372,7 +1408,7 @@ func Test_buildConfigReloaderArgs(t *testing.T) {
 						}
 						ConfigReloaderCPU    string
 						ConfigReloaderMemory string
-					}{ConfigReloadImage: "quay.io/coreos/prometheus-config-reloader:v0.42.0"}))))))))))),
+					}{ConfigReloadImage: "quay.io/coreos/prometheus-config-reloader:v0.42.0"})))))))))))),
 				},
 			},
 			want: []string{

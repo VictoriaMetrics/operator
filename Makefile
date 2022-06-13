@@ -200,7 +200,7 @@ e2e-local: fmt vet manifests fix118 fix_crd_nulls
 	$(GOCMD) tool cover -func coverage.txt  | grep total
 
 lint:
-	golangci-lint run --exclude '(SA1019):' -E typecheck -E gosimple -E gocritic   --timeout 5m
+	golangci-lint run --exclude '(SA1019):' -E typecheck -E gosimple -E gocritic   --timeout 5m ./controllers
 	golint ./controllers/
 
 .PHONY:clean

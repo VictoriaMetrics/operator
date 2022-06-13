@@ -3,12 +3,17 @@ package v1beta1
 import (
 	"fmt"
 	"github.com/VictoriaMetrics/VictoriaMetrics/app/vmalert/config"
+	"github.com/VictoriaMetrics/VictoriaMetrics/app/vmalert/notifier"
 	"gopkg.in/yaml.v2"
 	"k8s.io/apimachinery/pkg/runtime"
+	"net/url"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sync"
 )
+
+var initVMAlertNotifier sync.Once
 
 // log is for logging in this package.
 var vmrulelog = logf.Log.WithName("vmrule-resource")
@@ -24,6 +29,10 @@ var _ webhook.Validator = &VMRule{}
 
 func (r *VMRule) sanityCheck() error {
 
+	initVMAlertNotifier.Do(func() {
+		u, _ := url.Parse("https://victoriametrics.com/")
+		notifier.InitTemplateFunc(u)
+	})
 	uniqNames := make(map[string]struct{})
 	for i := range r.Spec.Groups {
 		group := &r.Spec.Groups[i]

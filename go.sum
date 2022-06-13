@@ -68,6 +68,8 @@ github.com/NYTimes/gziphandler v1.1.1/go.mod h1:n/CVRwUEOgIxrgPvAQhUUr9oeUtvrhMo
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
 github.com/PuerkitoBio/purell v1.1.1/go.mod h1:c11w/QuzBsJSee3cPx9rAFu61PvFxuPbtSwDGJws/X0=
 github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578/go.mod h1:uGdkoq3SwY9Y+13GIhn11/XLaGBb4BfwItxLd5jeuXE=
+github.com/VictoriaMetrics/VictoriaMetrics v1.77.1 h1:PCVXQX9ivT0XBkJN26sqtElPmW8as12ef6mZsmqS6cA=
+github.com/VictoriaMetrics/VictoriaMetrics v1.77.1/go.mod h1:nKHdwn1kVjoAqIGPI1NJFMlPhWiMzP73/WO8xo2/tgE=
 github.com/VictoriaMetrics/VictoriaMetrics v1.77.2 h1:ddSMHbwGKq9CqTCB45cRSgrSPIpy89K2Tx+l17BIbrw=
 github.com/VictoriaMetrics/VictoriaMetrics v1.77.2/go.mod h1:L91pTSN1/f274Ppp9eySVsYbJdUtKNl/JfqIIiG1mj4=
 github.com/VictoriaMetrics/fasthttp v1.1.0 h1:3crd4YWHsMwu60GUXRH6OstowiFvqrwS4a/ueoLdLL0=

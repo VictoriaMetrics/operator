@@ -412,5 +412,22 @@ deploy-kind: build-load-kind
 	$(MAKE) deploy
 
 
+# generate client set
+get-client-generator:
+	which client-gen || GO111MODULE=on go install k8s.io/code-generator/cmd/client-gen@v0.24.0
+
+generate-client: get-client-generator
+	mkdir -p api/core/v1beta1
+	cp api/v1beta1/* api/core/v1beta1/
+	client-gen --clientset-name versioned \
+	 --input-base "" \
+	 --input "github.com/VictoriaMetrics/operator/api/core/v1beta1" \
+     --output-base "" \
+     --output-package "github.com/VictoriaMetrics/operator/api/client" \
+     --go-header-file hack/boilerplate.go.txt
+	rm -rf api/client
+	mv github.com/VictoriaMetrics/operator/api/client api/
+	rm -rf github.com/
+
 include internal/config-reloader/Makefile
 

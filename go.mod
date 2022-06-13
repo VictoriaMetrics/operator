@@ -3,7 +3,7 @@ module github.com/VictoriaMetrics/operator
 go 1.18
 
 require (
-	github.com/VictoriaMetrics/VictoriaMetrics v1.77.1
+	github.com/VictoriaMetrics/VictoriaMetrics v1.77.2
 	github.com/VictoriaMetrics/metricsql v0.43.0
 	github.com/VictoriaMetrics/operator/api v0.0.0-20220220173620-6f1e087b0e5c
 	github.com/fsnotify/fsnotify v1.5.1
@@ -16,11 +16,12 @@ require (
 	github.com/onsi/gomega v1.17.0
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.53.1
 	github.com/prometheus-operator/prometheus-operator/pkg/client v0.53.1
+	github.com/prometheus/client_golang v1.12.2
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.7.0
 	go.uber.org/zap v1.19.1
-	golang.org/x/net v0.0.0-20220517181318-183a9ca12b87
-	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
+	golang.org/x/net v0.0.0-20220520000938-2e3eb7b945c2
+	golang.org/x/sync v0.0.0-20220513210516-0976fa681c29
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.23.1
 	k8s.io/apiextensions-apiserver v0.23.1
@@ -56,7 +57,6 @@ require (
 	github.com/nxadm/tail v1.4.8 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/prometheus/client_golang v1.12.1 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.34.0 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
@@ -68,7 +68,7 @@ require (
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.7.0 // indirect
 	golang.org/x/oauth2 v0.0.0-20220411215720-9780585627b5 // indirect
-	golang.org/x/sys v0.0.0-20220513210249-45d2b4557a2a // indirect
+	golang.org/x/sys v0.0.0-20220519141025-dcacdad47464 // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20220224211638-0e9765cccd65 // indirect

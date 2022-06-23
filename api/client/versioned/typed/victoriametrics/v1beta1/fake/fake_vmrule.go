@@ -20,7 +20,7 @@ package fake
 import (
 	"context"
 
-	v1beta1 "github.com/VictoriaMetrics/operator/api/core/v1beta1"
+	v1beta1 "github.com/VictoriaMetrics/operator/api/victoriametrics/v1beta1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -31,13 +31,13 @@ import (
 
 // FakeVMRules implements VMRuleInterface
 type FakeVMRules struct {
-	Fake *FakeCoreV1beta1
+	Fake *FakeVictoriametricsV1beta1
 	ns   string
 }
 
-var vmrulesResource = schema.GroupVersionResource{Group: "", Version: "v1beta1", Resource: "vmrules"}
+var vmrulesResource = schema.GroupVersionResource{Group: "victoriametrics", Version: "v1beta1", Resource: "vmrules"}
 
-var vmrulesKind = schema.GroupVersionKind{Group: "", Version: "v1beta1", Kind: "VMRule"}
+var vmrulesKind = schema.GroupVersionKind{Group: "victoriametrics", Version: "v1beta1", Kind: "VMRule"}
 
 // Get takes name of the vMRule, and returns the corresponding vMRule object, and an error if there is any.
 func (c *FakeVMRules) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1beta1.VMRule, err error) {

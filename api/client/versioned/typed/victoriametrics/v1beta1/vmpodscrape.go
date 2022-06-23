@@ -22,7 +22,7 @@ import (
 	"time"
 
 	scheme "github.com/VictoriaMetrics/operator/api/client/versioned/scheme"
-	v1beta1 "github.com/VictoriaMetrics/operator/api/core/v1beta1"
+	v1beta1 "github.com/VictoriaMetrics/operator/api/victoriametrics/v1beta1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -56,7 +56,7 @@ type vMPodScrapes struct {
 }
 
 // newVMPodScrapes returns a VMPodScrapes
-func newVMPodScrapes(c *CoreV1beta1Client, namespace string) *vMPodScrapes {
+func newVMPodScrapes(c *VictoriametricsV1beta1Client, namespace string) *vMPodScrapes {
 	return &vMPodScrapes{
 		client: c.RESTClient(),
 		ns:     namespace,

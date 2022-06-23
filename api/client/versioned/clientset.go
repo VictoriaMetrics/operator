@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"net/http"
 
-	corev1beta1 "github.com/VictoriaMetrics/operator/api/client/versioned/typed/core/v1beta1"
+	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/client/versioned/typed/victoriametrics/v1beta1"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"
@@ -29,19 +29,19 @@ import (
 
 type Interface interface {
 	Discovery() discovery.DiscoveryInterface
-	CoreV1beta1() corev1beta1.CoreV1beta1Interface
+	VictoriametricsV1beta1() victoriametricsv1beta1.VictoriametricsV1beta1Interface
 }
 
 // Clientset contains the clients for groups. Each group has exactly one
 // version included in a Clientset.
 type Clientset struct {
 	*discovery.DiscoveryClient
-	coreV1beta1 *corev1beta1.CoreV1beta1Client
+	victoriametricsV1beta1 *victoriametricsv1beta1.VictoriametricsV1beta1Client
 }
 
-// CoreV1beta1 retrieves the CoreV1beta1Client
-func (c *Clientset) CoreV1beta1() corev1beta1.CoreV1beta1Interface {
-	return c.coreV1beta1
+// VictoriametricsV1beta1 retrieves the VictoriametricsV1beta1Client
+func (c *Clientset) VictoriametricsV1beta1() victoriametricsv1beta1.VictoriametricsV1beta1Interface {
+	return c.victoriametricsV1beta1
 }
 
 // Discovery retrieves the DiscoveryClient
@@ -88,7 +88,7 @@ func NewForConfigAndClient(c *rest.Config, httpClient *http.Client) (*Clientset,
 
 	var cs Clientset
 	var err error
-	cs.coreV1beta1, err = corev1beta1.NewForConfigAndClient(&configShallowCopy, httpClient)
+	cs.victoriametricsV1beta1, err = victoriametricsv1beta1.NewForConfigAndClient(&configShallowCopy, httpClient)
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +113,7 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 // New creates a new Clientset for the given RESTClient.
 func New(c rest.Interface) *Clientset {
 	var cs Clientset
-	cs.coreV1beta1 = corev1beta1.New(c)
+	cs.victoriametricsV1beta1 = victoriametricsv1beta1.New(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClient(c)
 	return &cs

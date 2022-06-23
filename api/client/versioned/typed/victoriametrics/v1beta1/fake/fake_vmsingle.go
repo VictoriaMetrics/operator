@@ -20,7 +20,7 @@ package fake
 import (
 	"context"
 
-	v1beta1 "github.com/VictoriaMetrics/operator/api/core/v1beta1"
+	v1beta1 "github.com/VictoriaMetrics/operator/api/victoriametrics/v1beta1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -31,13 +31,13 @@ import (
 
 // FakeVMSingles implements VMSingleInterface
 type FakeVMSingles struct {
-	Fake *FakeCoreV1beta1
+	Fake *FakeVictoriametricsV1beta1
 	ns   string
 }
 
-var vmsinglesResource = schema.GroupVersionResource{Group: "", Version: "v1beta1", Resource: "vmsingles"}
+var vmsinglesResource = schema.GroupVersionResource{Group: "victoriametrics", Version: "v1beta1", Resource: "vmsingles"}
 
-var vmsinglesKind = schema.GroupVersionKind{Group: "", Version: "v1beta1", Kind: "VMSingle"}
+var vmsinglesKind = schema.GroupVersionKind{Group: "victoriametrics", Version: "v1beta1", Kind: "VMSingle"}
 
 // Get takes name of the vMSingle, and returns the corresponding vMSingle object, and an error if there is any.
 func (c *FakeVMSingles) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1beta1.VMSingle, err error) {

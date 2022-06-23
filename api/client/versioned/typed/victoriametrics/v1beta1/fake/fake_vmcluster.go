@@ -20,7 +20,7 @@ package fake
 import (
 	"context"
 
-	v1beta1 "github.com/VictoriaMetrics/operator/api/core/v1beta1"
+	v1beta1 "github.com/VictoriaMetrics/operator/api/victoriametrics/v1beta1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -31,13 +31,13 @@ import (
 
 // FakeVMClusters implements VMClusterInterface
 type FakeVMClusters struct {
-	Fake *FakeCoreV1beta1
+	Fake *FakeVictoriametricsV1beta1
 	ns   string
 }
 
-var vmclustersResource = schema.GroupVersionResource{Group: "", Version: "v1beta1", Resource: "vmclusters"}
+var vmclustersResource = schema.GroupVersionResource{Group: "victoriametrics", Version: "v1beta1", Resource: "vmclusters"}
 
-var vmclustersKind = schema.GroupVersionKind{Group: "", Version: "v1beta1", Kind: "VMCluster"}
+var vmclustersKind = schema.GroupVersionKind{Group: "victoriametrics", Version: "v1beta1", Kind: "VMCluster"}
 
 // Get takes name of the vMCluster, and returns the corresponding vMCluster object, and an error if there is any.
 func (c *FakeVMClusters) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1beta1.VMCluster, err error) {

@@ -20,7 +20,7 @@ package fake
 import (
 	"context"
 
-	v1beta1 "github.com/VictoriaMetrics/operator/api/core/v1beta1"
+	v1beta1 "github.com/VictoriaMetrics/operator/api/victoriametrics/v1beta1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -31,13 +31,13 @@ import (
 
 // FakeVMAgents implements VMAgentInterface
 type FakeVMAgents struct {
-	Fake *FakeCoreV1beta1
+	Fake *FakeVictoriametricsV1beta1
 	ns   string
 }
 
-var vmagentsResource = schema.GroupVersionResource{Group: "", Version: "v1beta1", Resource: "vmagents"}
+var vmagentsResource = schema.GroupVersionResource{Group: "victoriametrics", Version: "v1beta1", Resource: "vmagents"}
 
-var vmagentsKind = schema.GroupVersionKind{Group: "", Version: "v1beta1", Kind: "VMAgent"}
+var vmagentsKind = schema.GroupVersionKind{Group: "victoriametrics", Version: "v1beta1", Kind: "VMAgent"}
 
 // Get takes name of the vMAgent, and returns the corresponding vMAgent object, and an error if there is any.
 func (c *FakeVMAgents) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1beta1.VMAgent, err error) {

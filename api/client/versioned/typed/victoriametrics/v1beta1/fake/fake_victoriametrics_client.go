@@ -18,50 +18,50 @@ limitations under the License.
 package fake
 
 import (
-	v1beta1 "github.com/VictoriaMetrics/operator/api/client/versioned/typed/core/v1beta1"
+	v1beta1 "github.com/VictoriaMetrics/operator/api/client/versioned/typed/victoriametrics/v1beta1"
 	rest "k8s.io/client-go/rest"
 	testing "k8s.io/client-go/testing"
 )
 
-type FakeCoreV1beta1 struct {
+type FakeVictoriametricsV1beta1 struct {
 	*testing.Fake
 }
 
-func (c *FakeCoreV1beta1) VMAgents(namespace string) v1beta1.VMAgentInterface {
+func (c *FakeVictoriametricsV1beta1) VMAgents(namespace string) v1beta1.VMAgentInterface {
 	return &FakeVMAgents{c, namespace}
 }
 
-func (c *FakeCoreV1beta1) VMAlerts(namespace string) v1beta1.VMAlertInterface {
+func (c *FakeVictoriametricsV1beta1) VMAlerts(namespace string) v1beta1.VMAlertInterface {
 	return &FakeVMAlerts{c, namespace}
 }
 
-func (c *FakeCoreV1beta1) VMAlertmanagers(namespace string) v1beta1.VMAlertmanagerInterface {
+func (c *FakeVictoriametricsV1beta1) VMAlertmanagers(namespace string) v1beta1.VMAlertmanagerInterface {
 	return &FakeVMAlertmanagers{c, namespace}
 }
 
-func (c *FakeCoreV1beta1) VMClusters(namespace string) v1beta1.VMClusterInterface {
+func (c *FakeVictoriametricsV1beta1) VMClusters(namespace string) v1beta1.VMClusterInterface {
 	return &FakeVMClusters{c, namespace}
 }
 
-func (c *FakeCoreV1beta1) VMPodScrapes(namespace string) v1beta1.VMPodScrapeInterface {
+func (c *FakeVictoriametricsV1beta1) VMPodScrapes(namespace string) v1beta1.VMPodScrapeInterface {
 	return &FakeVMPodScrapes{c, namespace}
 }
 
-func (c *FakeCoreV1beta1) VMRules(namespace string) v1beta1.VMRuleInterface {
+func (c *FakeVictoriametricsV1beta1) VMRules(namespace string) v1beta1.VMRuleInterface {
 	return &FakeVMRules{c, namespace}
 }
 
-func (c *FakeCoreV1beta1) VMServiceScrapes(namespace string) v1beta1.VMServiceScrapeInterface {
+func (c *FakeVictoriametricsV1beta1) VMServiceScrapes(namespace string) v1beta1.VMServiceScrapeInterface {
 	return &FakeVMServiceScrapes{c, namespace}
 }
 
-func (c *FakeCoreV1beta1) VMSingles(namespace string) v1beta1.VMSingleInterface {
+func (c *FakeVictoriametricsV1beta1) VMSingles(namespace string) v1beta1.VMSingleInterface {
 	return &FakeVMSingles{c, namespace}
 }
 
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
-func (c *FakeCoreV1beta1) RESTClient() rest.Interface {
+func (c *FakeVictoriametricsV1beta1) RESTClient() rest.Interface {
 	var ret *rest.RESTClient
 	return ret
 }

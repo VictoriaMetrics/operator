@@ -20,7 +20,7 @@ package fake
 import (
 	"context"
 
-	v1beta1 "github.com/VictoriaMetrics/operator/api/core/v1beta1"
+	v1beta1 "github.com/VictoriaMetrics/operator/api/victoriametrics/v1beta1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -31,13 +31,13 @@ import (
 
 // FakeVMAlertmanagers implements VMAlertmanagerInterface
 type FakeVMAlertmanagers struct {
-	Fake *FakeCoreV1beta1
+	Fake *FakeVictoriametricsV1beta1
 	ns   string
 }
 
-var vmalertmanagersResource = schema.GroupVersionResource{Group: "", Version: "v1beta1", Resource: "vmalertmanagers"}
+var vmalertmanagersResource = schema.GroupVersionResource{Group: "victoriametrics", Version: "v1beta1", Resource: "vmalertmanagers"}
 
-var vmalertmanagersKind = schema.GroupVersionKind{Group: "", Version: "v1beta1", Kind: "VMAlertmanager"}
+var vmalertmanagersKind = schema.GroupVersionKind{Group: "victoriametrics", Version: "v1beta1", Kind: "VMAlertmanager"}
 
 // Get takes name of the vMAlertmanager, and returns the corresponding vMAlertmanager object, and an error if there is any.
 func (c *FakeVMAlertmanagers) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1beta1.VMAlertmanager, err error) {

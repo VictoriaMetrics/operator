@@ -21,11 +21,11 @@ import (
 	"net/http"
 
 	"github.com/VictoriaMetrics/operator/api/client/versioned/scheme"
-	v1beta1 "github.com/VictoriaMetrics/operator/api/core/v1beta1"
+	v1beta1 "github.com/VictoriaMetrics/operator/api/victoriametrics/v1beta1"
 	rest "k8s.io/client-go/rest"
 )
 
-type CoreV1beta1Interface interface {
+type VictoriametricsV1beta1Interface interface {
 	RESTClient() rest.Interface
 	VMAgentsGetter
 	VMAlertsGetter
@@ -37,47 +37,47 @@ type CoreV1beta1Interface interface {
 	VMSinglesGetter
 }
 
-// CoreV1beta1Client is used to interact with features provided by the  group.
-type CoreV1beta1Client struct {
+// VictoriametricsV1beta1Client is used to interact with features provided by the victoriametrics group.
+type VictoriametricsV1beta1Client struct {
 	restClient rest.Interface
 }
 
-func (c *CoreV1beta1Client) VMAgents(namespace string) VMAgentInterface {
+func (c *VictoriametricsV1beta1Client) VMAgents(namespace string) VMAgentInterface {
 	return newVMAgents(c, namespace)
 }
 
-func (c *CoreV1beta1Client) VMAlerts(namespace string) VMAlertInterface {
+func (c *VictoriametricsV1beta1Client) VMAlerts(namespace string) VMAlertInterface {
 	return newVMAlerts(c, namespace)
 }
 
-func (c *CoreV1beta1Client) VMAlertmanagers(namespace string) VMAlertmanagerInterface {
+func (c *VictoriametricsV1beta1Client) VMAlertmanagers(namespace string) VMAlertmanagerInterface {
 	return newVMAlertmanagers(c, namespace)
 }
 
-func (c *CoreV1beta1Client) VMClusters(namespace string) VMClusterInterface {
+func (c *VictoriametricsV1beta1Client) VMClusters(namespace string) VMClusterInterface {
 	return newVMClusters(c, namespace)
 }
 
-func (c *CoreV1beta1Client) VMPodScrapes(namespace string) VMPodScrapeInterface {
+func (c *VictoriametricsV1beta1Client) VMPodScrapes(namespace string) VMPodScrapeInterface {
 	return newVMPodScrapes(c, namespace)
 }
 
-func (c *CoreV1beta1Client) VMRules(namespace string) VMRuleInterface {
+func (c *VictoriametricsV1beta1Client) VMRules(namespace string) VMRuleInterface {
 	return newVMRules(c, namespace)
 }
 
-func (c *CoreV1beta1Client) VMServiceScrapes(namespace string) VMServiceScrapeInterface {
+func (c *VictoriametricsV1beta1Client) VMServiceScrapes(namespace string) VMServiceScrapeInterface {
 	return newVMServiceScrapes(c, namespace)
 }
 
-func (c *CoreV1beta1Client) VMSingles(namespace string) VMSingleInterface {
+func (c *VictoriametricsV1beta1Client) VMSingles(namespace string) VMSingleInterface {
 	return newVMSingles(c, namespace)
 }
 
-// NewForConfig creates a new CoreV1beta1Client for the given config.
+// NewForConfig creates a new VictoriametricsV1beta1Client for the given config.
 // NewForConfig is equivalent to NewForConfigAndClient(c, httpClient),
 // where httpClient was generated with rest.HTTPClientFor(c).
-func NewForConfig(c *rest.Config) (*CoreV1beta1Client, error) {
+func NewForConfig(c *rest.Config) (*VictoriametricsV1beta1Client, error) {
 	config := *c
 	if err := setConfigDefaults(&config); err != nil {
 		return nil, err
@@ -89,9 +89,9 @@ func NewForConfig(c *rest.Config) (*CoreV1beta1Client, error) {
 	return NewForConfigAndClient(&config, httpClient)
 }
 
-// NewForConfigAndClient creates a new CoreV1beta1Client for the given config and http client.
+// NewForConfigAndClient creates a new VictoriametricsV1beta1Client for the given config and http client.
 // Note the http client provided takes precedence over the configured transport values.
-func NewForConfigAndClient(c *rest.Config, h *http.Client) (*CoreV1beta1Client, error) {
+func NewForConfigAndClient(c *rest.Config, h *http.Client) (*VictoriametricsV1beta1Client, error) {
 	config := *c
 	if err := setConfigDefaults(&config); err != nil {
 		return nil, err
@@ -100,12 +100,12 @@ func NewForConfigAndClient(c *rest.Config, h *http.Client) (*CoreV1beta1Client, 
 	if err != nil {
 		return nil, err
 	}
-	return &CoreV1beta1Client{client}, nil
+	return &VictoriametricsV1beta1Client{client}, nil
 }
 
-// NewForConfigOrDie creates a new CoreV1beta1Client for the given config and
+// NewForConfigOrDie creates a new VictoriametricsV1beta1Client for the given config and
 // panics if there is an error in the config.
-func NewForConfigOrDie(c *rest.Config) *CoreV1beta1Client {
+func NewForConfigOrDie(c *rest.Config) *VictoriametricsV1beta1Client {
 	client, err := NewForConfig(c)
 	if err != nil {
 		panic(err)
@@ -113,15 +113,15 @@ func NewForConfigOrDie(c *rest.Config) *CoreV1beta1Client {
 	return client
 }
 
-// New creates a new CoreV1beta1Client for the given RESTClient.
-func New(c rest.Interface) *CoreV1beta1Client {
-	return &CoreV1beta1Client{c}
+// New creates a new VictoriametricsV1beta1Client for the given RESTClient.
+func New(c rest.Interface) *VictoriametricsV1beta1Client {
+	return &VictoriametricsV1beta1Client{c}
 }
 
 func setConfigDefaults(config *rest.Config) error {
 	gv := v1beta1.SchemeGroupVersion
 	config.GroupVersion = &gv
-	config.APIPath = "/api"
+	config.APIPath = "/apis"
 	config.NegotiatedSerializer = scheme.Codecs.WithoutConversion()
 
 	if config.UserAgent == "" {
@@ -133,7 +133,7 @@ func setConfigDefaults(config *rest.Config) error {
 
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
-func (c *CoreV1beta1Client) RESTClient() rest.Interface {
+func (c *VictoriametricsV1beta1Client) RESTClient() rest.Interface {
 	if c == nil {
 		return nil
 	}

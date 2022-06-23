@@ -20,7 +20,7 @@ package fake
 import (
 	"context"
 
-	v1beta1 "github.com/VictoriaMetrics/operator/api/core/v1beta1"
+	v1beta1 "github.com/VictoriaMetrics/operator/api/victoriametrics/v1beta1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -31,13 +31,13 @@ import (
 
 // FakeVMServiceScrapes implements VMServiceScrapeInterface
 type FakeVMServiceScrapes struct {
-	Fake *FakeCoreV1beta1
+	Fake *FakeVictoriametricsV1beta1
 	ns   string
 }
 
-var vmservicescrapesResource = schema.GroupVersionResource{Group: "", Version: "v1beta1", Resource: "vmservicescrapes"}
+var vmservicescrapesResource = schema.GroupVersionResource{Group: "victoriametrics", Version: "v1beta1", Resource: "vmservicescrapes"}
 
-var vmservicescrapesKind = schema.GroupVersionKind{Group: "", Version: "v1beta1", Kind: "VMServiceScrape"}
+var vmservicescrapesKind = schema.GroupVersionKind{Group: "victoriametrics", Version: "v1beta1", Kind: "VMServiceScrape"}
 
 // Get takes name of the vMServiceScrape, and returns the corresponding vMServiceScrape object, and an error if there is any.
 func (c *FakeVMServiceScrapes) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1beta1.VMServiceScrape, err error) {

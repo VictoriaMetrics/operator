@@ -17,8 +17,8 @@ import (
 )
 
 type CRDObject interface {
-	Annotations() map[string]string
-	Labels() map[string]string
+	AnnotationsFiltered() map[string]string
+	AllLabels() map[string]string
 	PrefixedName() string
 	GetServiceAccountName() string
 	GetPSPName() string
@@ -122,8 +122,8 @@ func buildSA(cr CRDObject) *v1.ServiceAccount {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.GetServiceAccountName(),
 			Namespace:       cr.GetNSName(),
-			Labels:          cr.Labels(),
-			Annotations:     cr.Annotations(),
+			Labels:          cr.AllLabels(),
+			Annotations:     cr.AnnotationsFiltered(),
 			OwnerReferences: cr.AsOwner(),
 			Finalizers:      []string{v1beta12.FinalizerName},
 		},
@@ -135,8 +135,8 @@ func buildClusterRoleForPSP(cr CRDObject) *v12.ClusterRole {
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:       cr.GetNSName(),
 			Name:            cr.PrefixedName(),
-			Labels:          cr.Labels(),
-			Annotations:     cr.Annotations(),
+			Labels:          cr.AllLabels(),
+			Annotations:     cr.AnnotationsFiltered(),
 			Finalizers:      []string{v1beta12.FinalizerName},
 			OwnerReferences: cr.AsCRDOwner(),
 		},
@@ -156,8 +156,8 @@ func buildClusterRoleBinding(cr CRDObject) *v12.ClusterRoleBinding {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),
 			Namespace:       cr.GetNSName(),
-			Labels:          cr.Labels(),
-			Annotations:     cr.Annotations(),
+			Labels:          cr.AllLabels(),
+			Annotations:     cr.AnnotationsFiltered(),
 			Finalizers:      []string{v1beta12.FinalizerName},
 			OwnerReferences: cr.AsCRDOwner(),
 		},
@@ -181,8 +181,8 @@ func BuildPSP(cr CRDObject) *v1beta1.PodSecurityPolicy {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.GetPSPName(),
 			Namespace:       cr.GetNSName(),
-			Labels:          cr.Labels(),
-			Annotations:     cr.Annotations(),
+			Labels:          cr.AllLabels(),
+			Annotations:     cr.AnnotationsFiltered(),
 			Finalizers:      []string{v1beta12.FinalizerName},
 			OwnerReferences: cr.AsCRDOwner(),
 		},

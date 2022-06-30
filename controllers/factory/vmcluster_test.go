@@ -82,7 +82,7 @@ func Test_waitForExpanding(t *testing.T) {
 			want:    false,
 		},
 		{
-			name: "pods is expanding",
+			name: "pods is failed",
 			args: args{
 				namespace:    "default",
 				lbs:          map[string]string{"app": "example-app"},
@@ -109,9 +109,18 @@ func Test_waitForExpanding(t *testing.T) {
 						Labels:    map[string]string{"app": "example-app"},
 					},
 					Status: corev1.PodStatus{
-						Phase: corev1.PodRunning,
+						Phase: corev1.PodFailed,
 						Conditions: []corev1.PodCondition{
 							{Type: corev1.PodReady, Status: "False"},
+						},
+						ContainerStatuses: []corev1.ContainerStatus{
+							{LastTerminationState: corev1.ContainerState{
+								Terminated: &corev1.ContainerStateTerminated{
+									Reason:  "fail",
+									Message: "Incorrect flag",
+								},
+							},
+							},
 						},
 					},
 				},
@@ -122,14 +131,14 @@ func Test_waitForExpanding(t *testing.T) {
 						Labels:    map[string]string{"app": "some-other-app"},
 					},
 					Status: corev1.PodStatus{
-						Phase: corev1.PodRunning,
+						Phase: corev1.PodFailed,
 						Conditions: []corev1.PodCondition{
-							{Type: corev1.PodReady, Status: "True"},
+							{Type: corev1.PodReady, Status: "False"},
 						},
 					},
 				},
 			},
-			wantErr: false,
+			wantErr: true,
 			want:    true,
 		},
 	}
@@ -137,13 +146,10 @@ func Test_waitForExpanding(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 
-			got, err := waitForExpanding(context.Background(), fclient, tt.args.namespace, tt.args.lbs, tt.args.desiredCount)
+			err := waitExpanding(context.Background(), fclient, tt.args.namespace, tt.args.lbs, tt.args.desiredCount)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("waitForExpanding() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("waitExpanding() error = %v, wantErr %v", err, tt.wantErr)
 				return
-			}
-			if got != tt.want {
-				t.Errorf("waitForExpanding() got = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -223,12 +229,12 @@ func TestCreateOrUpdateVMCluster(t *testing.T) {
 					},
 					Spec: v1beta1.VMClusterSpec{
 						RetentionPeriod:   "2",
-						ReplicationFactor: pointer.Int32Ptr(2),
+						ReplicationFactor: pointer.Int32Ptr(0),
 						VMInsert: &v1beta1.VMInsert{
 							PodMetadata: &v1beta1.EmbeddedObjectMetadata{
 								Annotations: map[string]string{"key": "value"},
 							},
-							ReplicaCount: pointer.Int32Ptr(2),
+							ReplicaCount: pointer.Int32Ptr(0),
 						},
 						VMStorage: &v1beta1.VMStorage{
 							PodMetadata: &v1beta1.EmbeddedObjectMetadata{
@@ -267,7 +273,7 @@ func TestCreateOrUpdateVMCluster(t *testing.T) {
 						RetentionPeriod:   "2",
 						ReplicationFactor: pointer.Int32Ptr(2),
 						VMInsert: &v1beta1.VMInsert{
-							ReplicaCount: pointer.Int32Ptr(2),
+							ReplicaCount: pointer.Int32Ptr(0),
 							InsertPorts: &v1beta1.InsertPorts{
 								GraphitePort:     "8025",
 								OpenTSDBHTTPPort: "3311",
@@ -325,7 +331,7 @@ func TestCreateOrUpdateVMCluster(t *testing.T) {
 						RetentionPeriod:   "2",
 						ReplicationFactor: pointer.Int32Ptr(2),
 						VMInsert: &v1beta1.VMInsert{
-							ReplicaCount: pointer.Int32Ptr(2),
+							ReplicaCount: pointer.Int32Ptr(0),
 						},
 						VMStorage: &v1beta1.VMStorage{
 							MaintenanceSelectNodeIDs: []int32{1, 3},
@@ -375,7 +381,7 @@ func TestCreateOrUpdateVMCluster(t *testing.T) {
 						RetentionPeriod:   "2",
 						ReplicationFactor: pointer.Int32Ptr(2),
 						VMInsert: &v1beta1.VMInsert{
-							ReplicaCount: pointer.Int32Ptr(2),
+							ReplicaCount: pointer.Int32Ptr(0),
 						},
 						VMStorage: &v1beta1.VMStorage{
 							MaintenanceSelectNodeIDs: []int32{1, 3},
@@ -416,13 +422,10 @@ func TestCreateOrUpdateVMCluster(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			got, err := CreateOrUpdateVMCluster(context.TODO(), tt.args.cr, fclient, tt.args.c)
+			err := CreateOrUpdateVMCluster(context.TODO(), tt.args.cr, fclient, tt.args.c)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CreateOrUpdateVMCluster() error = %v, wantErr %v", err, tt.wantErr)
 				return
-			}
-			if got != tt.want {
-				t.Errorf("CreateOrUpdateVMCluster() got = %v, want %v", got, tt.want)
 			}
 			if tt.validate != nil {
 				var vmselect, vmstorage appsv1.StatefulSet

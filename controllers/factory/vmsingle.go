@@ -126,8 +126,8 @@ func newDeployForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOpe
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),
 			Namespace:       cr.Namespace,
-			Labels:          c.Labels.Merge(cr.Labels()),
-			Annotations:     cr.Annotations(),
+			Labels:          c.Labels.Merge(cr.AllLabels()),
+			Annotations:     cr.AnnotationsFiltered(),
 			OwnerReferences: cr.AsOwner(),
 			Finalizers:      []string{victoriametricsv1beta1.FinalizerName},
 		},

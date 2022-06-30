@@ -68,8 +68,8 @@ func buildVMAuthRole(cr *v1beta12.VMAuth) *v1.Role {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),
 			Namespace:       cr.Namespace,
-			Labels:          cr.Labels(),
-			Annotations:     cr.Annotations(),
+			Labels:          cr.AllLabels(),
+			Annotations:     cr.AnnotationsFiltered(),
 			Finalizers:      []string{v1beta12.FinalizerName},
 			OwnerReferences: cr.AsOwner(),
 		},
@@ -88,8 +88,8 @@ func buildVMAuthRoleBinding(cr *v1beta12.VMAuth) *v1.RoleBinding {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),
 			Namespace:       cr.Namespace,
-			Labels:          cr.Labels(),
-			Annotations:     cr.Annotations(),
+			Labels:          cr.AllLabels(),
+			Annotations:     cr.AnnotationsFiltered(),
 			Finalizers:      []string{v1beta12.FinalizerName},
 			OwnerReferences: cr.AsOwner(),
 		},

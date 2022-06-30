@@ -3,6 +3,7 @@ package k8stools
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
@@ -219,6 +220,35 @@ func performRollingUpdateOnSts(ctx context.Context, wasRecreated bool, rclient c
 
 }
 
+// PodIsFailedWithReason reports if pod failed and the reason of fail
+func PodIsFailedWithReason(pod corev1.Pod) (bool, string) {
+
+	var reasons []string
+	for _, containerCond := range pod.Status.ContainerStatuses {
+		if containerCond.Ready {
+			continue
+		}
+		if containerCond.LastTerminationState.Terminated != nil {
+			// pod was terminated by some reason
+			ts := containerCond.LastTerminationState.Terminated
+			reason := fmt.Sprintf("container: %s, reason: %s, message: %s ", containerCond.Name, ts.Reason, ts.Message)
+			reasons = append(reasons, reason)
+		}
+	}
+	for _, containerCond := range pod.Status.InitContainerStatuses {
+		if containerCond.Ready {
+			continue
+		}
+		if containerCond.LastTerminationState.Terminated != nil {
+			ts := containerCond.LastTerminationState.Terminated
+			reason := fmt.Sprintf("init container: %s, reason: %s, message: %s ", containerCond.Name, ts.Reason, ts.Message)
+			reasons = append(reasons, reason)
+		}
+	}
+	return len(reasons) > 0, strings.Join(reasons, ",")
+}
+
+// PodIsReady check is pod is ready
 func PodIsReady(pod corev1.Pod) bool {
 	if pod.ObjectMeta.DeletionTimestamp != nil {
 		return false

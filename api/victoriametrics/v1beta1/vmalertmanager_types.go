@@ -317,7 +317,7 @@ func (cr VMAlertmanager) PodAnnotations() map[string]string {
 	return annotations
 }
 
-func (cr VMAlertmanager) Annotations() map[string]string {
+func (cr VMAlertmanager) AnnotationsFiltered() map[string]string {
 	annotations := make(map[string]string)
 	for annotation, value := range cr.ObjectMeta.Annotations {
 		if !strings.HasPrefix(annotation, "kubectl.kubernetes.io/") {
@@ -345,7 +345,7 @@ func (cr VMAlertmanager) PodLabels() map[string]string {
 
 }
 
-func (cr VMAlertmanager) Labels() map[string]string {
+func (cr VMAlertmanager) AllLabels() map[string]string {
 
 	lbls := cr.SelectorLabels()
 	if cr.ObjectMeta.Labels == nil {

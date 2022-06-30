@@ -184,8 +184,8 @@ func newDeployForVMAlert(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOpera
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),
 			Namespace:       cr.Namespace,
-			Labels:          c.Labels.Merge(cr.Labels()),
-			Annotations:     cr.Annotations(),
+			Labels:          c.Labels.Merge(cr.AllLabels()),
+			Annotations:     cr.AnnotationsFiltered(),
 			OwnerReferences: cr.AsOwner(),
 			Finalizers:      []string{victoriametricsv1beta1.FinalizerName},
 		},
@@ -538,8 +538,8 @@ func CreateOrUpdateTlsAssetsForVMAlert(ctx context.Context, cr *victoriametricsv
 	tlsAssetsSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.TLSAssetName(),
-			Labels:          cr.Labels(),
-			Annotations:     cr.Annotations(),
+			Labels:          cr.AllLabels(),
+			Annotations:     cr.AnnotationsFiltered(),
 			OwnerReferences: cr.AsOwner(),
 			Namespace:       cr.Namespace,
 			Finalizers:      []string{victoriametricsv1beta1.FinalizerName},

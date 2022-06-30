@@ -17,8 +17,8 @@ import (
 )
 
 type CRDObject interface {
-	Annotations() map[string]string
-	Labels() map[string]string
+	AnnotationsFiltered() map[string]string
+	GetLabels() map[string]string
 	PrefixedName() string
 	GetServiceAccountName() string
 	GetPSPName() string

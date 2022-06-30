@@ -3,13 +3,13 @@ package factory
 import (
 	"context"
 	"fmt"
+	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
+	"k8s.io/api/autoscaling/v2beta2"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"path"
 	"sort"
 	"strings"
 	"time"
-
-	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
-	"k8s.io/api/autoscaling/v2beta2"
 
 	"github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
@@ -40,48 +40,15 @@ var defaultTerminationGracePeriod = int64(30)
 // we manually handle statefulsets rolling updates
 // needed in update checked by revesion status
 // its controlled by k8s controller-manager
-func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) (string, error) {
-	var expanding, reconciled bool
-	status := v1beta1.ClusterStatusFailed
-	var reason string
-	defer func() {
-		if cr.Status.ClusterStatus == v1beta1.ClusterStatusOperational {
-			log.Info("no need for resync")
-			return
-		}
-		var actualVMCluster v1beta1.VMCluster
-		if err := rclient.Get(ctx, types.NamespacedName{Name: cr.Name, Namespace: cr.Namespace}, &actualVMCluster); err != nil {
-			log.Error(err, "cannot update actual status for vmcluster")
-			return
-		}
-		actualVMCluster.Status.ClusterStatus = status
-		if reconciled {
-			actualVMCluster.Status.UpdateFailCount = 0
-		}
-		// each sync triggers CR reconcile,
-		// it may lead to recursive loop,
-		// so change status values only at status change.
-		if actualVMCluster.Status.Reason != reason {
-			actualVMCluster.Status.LastSync = time.Now().String()
-		}
-		actualVMCluster.Status.Reason = reason
-
-		err := rclient.Status().Update(ctx, &actualVMCluster)
-		if err != nil {
-			log.Error(err, "cannot update cluster status")
-		}
-	}()
+func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) error {
 
 	if err := psp.CreateServiceAccountForCRD(ctx, cr, rclient); err != nil {
-		reason = v1beta1.InternalOperatorError
-		return status, fmt.Errorf("failed create service account: %w", err)
+		return fmt.Errorf("failed create service account: %w", err)
 	}
 
 	if c.PSPAutoCreateEnabled {
-		log.Info("creating psp for vmcluster")
 		if err := psp.CreateOrUpdateServiceAccountWithPSP(ctx, cr, rclient); err != nil {
-			reason = v1beta1.InternalOperatorError
-			return status, fmt.Errorf("cannot create podsecurity policy for vmsingle, err=%w", err)
+			return fmt.Errorf("cannot create podsecurity policy for vmsingle, err=%w", err)
 		}
 	}
 
@@ -89,19 +56,16 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient
 		if cr.Spec.VMStorage.PodDisruptionBudget != nil {
 			err := CreateOrUpdatePodDisruptionBudgetForVMStorage(ctx, cr, rclient)
 			if err != nil {
-				reason = "failed to create vmStorage pdb"
-				return status, err
+				return err
 			}
 		}
 		if err := createOrUpdateVMStorage(ctx, cr, rclient, c); err != nil {
-			reason = v1beta1.StorageRollingUpdateFailed
-			return status, err
+			return err
 		}
 
 		storageSvc, err := CreateOrUpdateVMStorageService(ctx, cr, rclient, c)
 		if err != nil {
-			reason = "failed to create vmStorage service"
-			return status, err
+			return err
 		}
 		if !c.DisableSelfServiceScrapeCreation {
 			err := CreateVMServiceScrapeFromService(ctx, rclient, storageSvc, cr.Spec.VMStorage.ServiceScrapeSpec, cr.MetricPathStorage(), "http")
@@ -109,42 +73,32 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient
 				log.Error(err, "cannot create VMServiceScrape for vmStorage")
 			}
 		}
-		// wait for expand
-		expanding, err = waitForExpanding(ctx, rclient, cr.Namespace, cr.VMStorageSelectorLabels(), *cr.Spec.VMStorage.ReplicaCount)
-		if err != nil {
-			reason = "failed to check for vmStorage expanding"
-			return status, err
-		}
-		if expanding {
-			reason = "vmStorage is expanding"
-			status = v1beta1.ClusterStatusExpanding
-			return status, err
-		}
 
+		if cr.Spec.VMStorage.RollingUpdateStrategy == appsv1.RollingUpdateStatefulSetStrategyType {
+			// wait for expand performed by kubernetes
+			if err = waitExpanding(ctx, rclient, cr.Namespace, cr.VMStorageSelectorLabels(), *cr.Spec.VMStorage.ReplicaCount); err != nil {
+				return err
+			}
+		}
 	}
 
 	if cr.Spec.VMSelect != nil {
 		if cr.Spec.VMSelect.PodDisruptionBudget != nil {
-			err := CreateOrUpdatePodDisruptionBudgetForVMSelect(ctx, cr, rclient)
-			if err != nil {
-				reason = "failed to create vmSelect pdb"
-				return status, err
+			if err := CreateOrUpdatePodDisruptionBudgetForVMSelect(ctx, cr, rclient); err != nil {
+				return err
 			}
 		}
 		if err := createOrUpdateVMSelect(ctx, cr, rclient, c); err != nil {
-			reason = v1beta1.SelectCreationFailed
-			return status, err
+			return err
 		}
 
 		if err := createOrUpdateVMSelectHPA(ctx, rclient, cr); err != nil {
-			reason = "cannot create HPA"
-			return status, err
+			return err
 		}
 		// create vmselect service
 		selectSvc, err := CreateOrUpdateVMSelectService(ctx, cr, rclient, c)
 		if err != nil {
-			reason = "failed to create vmSelect service"
-			return status, err
+			return err
 		}
 		if !c.DisableSelfServiceScrapeCreation {
 			err := CreateVMServiceScrapeFromService(ctx, rclient, selectSvc, cr.Spec.VMSelect.ServiceScrapeSpec, cr.MetricPathSelect(), "http")
@@ -153,41 +107,29 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient
 			}
 		}
 
-		// wait for expand
-		expanding, err = waitForExpanding(ctx, rclient, cr.Namespace, cr.VMSelectSelectorLabels(), *cr.Spec.VMSelect.ReplicaCount)
-		if err != nil {
-			reason = "failed to wait for vmSelect expanding"
-			return status, err
+		if cr.Spec.VMSelect.RollingUpdateStrategy == appsv1.RollingUpdateStatefulSetStrategyType {
+			// wait for expand
+			if err = waitExpanding(ctx, rclient, cr.Namespace, cr.VMSelectSelectorLabels(), *cr.Spec.VMSelect.ReplicaCount); err != nil {
+				return err
+			}
 		}
-		if expanding {
-			reason = "expanding vmSelect"
-			status = v1beta1.ClusterStatusExpanding
-			return status, err
-		}
-
 	}
 
 	if cr.Spec.VMInsert != nil {
 		if cr.Spec.VMInsert.PodDisruptionBudget != nil {
-			err := CreateOrUpdatePodDisruptionBudgetForVMInsert(ctx, cr, rclient)
-			if err != nil {
-				reason = "failed to create vmInsert pdb"
-				return status, err
+			if err := CreateOrUpdatePodDisruptionBudgetForVMInsert(ctx, cr, rclient); err != nil {
+				return err
 			}
 		}
-		_, err := createOrUpdateVMInsert(ctx, cr, rclient, c)
-		if err != nil {
-			reason = v1beta1.InsertCreationFailed
-			return status, err
+		if err := createOrUpdateVMInsert(ctx, cr, rclient, c); err != nil {
+			return err
 		}
 		insertSvc, err := CreateOrUpdateVMInsertService(ctx, cr, rclient, c)
 		if err != nil {
-			reason = "failed to create vmInsert service"
-			return status, err
+			return err
 		}
 		if err := createOrUpdateVMInsertHPA(ctx, rclient, cr); err != nil {
-			reason = "cannot create HPA"
-			return status, err
+			return err
 		}
 		if !c.DisableSelfServiceScrapeCreation {
 			err := CreateVMServiceScrapeFromService(ctx, rclient, insertSvc, cr.Spec.VMInsert.ServiceScrapeSpec, cr.MetricPathInsert(), "http")
@@ -195,22 +137,12 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient
 				log.Error(err, "cannot create VMServiceScrape for vmInsert")
 			}
 		}
-		expanding, err = waitForExpanding(ctx, rclient, cr.Namespace, cr.VMInsertSelectorLabels(), *cr.Spec.VMInsert.ReplicaCount)
-		if err != nil {
-			reason = "failed to wait for vmInsert expanding"
-			return status, err
-		}
-		if expanding {
-			reason = "expanding vmInsert"
-			status = v1beta1.ClusterStatusExpanding
-			return status, err
+		if err = waitExpanding(ctx, rclient, cr.Namespace, cr.VMInsertSelectorLabels(), *cr.Spec.VMInsert.ReplicaCount); err != nil {
+			return fmt.Errorf("cannot wait until ready status for vminsert deploy: %w", err)
 		}
 
 	}
-	reconciled = true
-	status = v1beta1.ClusterStatusOperational
-	log.Info("created or updated vmCluster ")
-	return status, nil
+	return nil
 
 }
 
@@ -270,26 +202,25 @@ func CreateOrUpdateVMSelectService(ctx context.Context, cr *v1beta1.VMCluster, r
 	return reconcileServiceForCRD(ctx, rclient, newHeadless)
 }
 
-func createOrUpdateVMInsert(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) (*appsv1.Deployment, error) {
+func createOrUpdateVMInsert(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) error {
 	l := log.WithValues("controller", "vminsert", "cluster", cr.Name)
 	l.Info("create or update vminsert for cluster")
 	newDeployment, err := genVMInsertSpec(cr, c)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	currentDeployment := &appsv1.Deployment{}
 	err = rclient.Get(ctx, types.NamespacedName{Name: newDeployment.Name, Namespace: newDeployment.Namespace}, currentDeployment)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			l.Info("vminsert deploy not found, creating new one")
 			if err := rclient.Create(ctx, newDeployment); err != nil {
-				return nil, fmt.Errorf("cannot create new vminsert deploy: %w", err)
+				return fmt.Errorf("cannot create new vminsert deploy: %w", err)
 			}
 			l.Info("new vminsert deploy was created")
-			return newDeployment, nil
+			return nil
 		}
-		return nil, fmt.Errorf("cannot get vminsert deploy: %w", err)
+		return fmt.Errorf("cannot get vminsert deploy: %w", err)
 	}
 
 	// inherit replicas count if hpa enabled.
@@ -299,13 +230,12 @@ func createOrUpdateVMInsert(ctx context.Context, cr *v1beta1.VMCluster, rclient 
 
 	newDeployment.Annotations = labels.Merge(currentDeployment.Annotations, newDeployment.Annotations)
 	newDeployment.Finalizers = v1beta1.MergeFinalizers(newDeployment, v1beta1.FinalizerName)
-	err = rclient.Update(ctx, newDeployment)
-	if err != nil {
-		return nil, fmt.Errorf("cannot update vminsert deploy: %w", err)
+	if err = rclient.Update(ctx, newDeployment); err != nil {
+		return fmt.Errorf("cannot update vminsert deploy: %w", err)
 	}
 	l.Info("vminsert deploy was reconciled")
 
-	return newDeployment, nil
+	return nil
 }
 
 // CreateOrUpdateVMInsertService reconciles vminsert services.
@@ -416,7 +346,7 @@ func genVMSelectSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv1
 			Name:            cr.Spec.VMSelect.GetNameWithPrefix(cr.Name),
 			Namespace:       cr.Namespace,
 			Labels:          cr.FinalLabels(cr.VMSelectSelectorLabels()),
-			Annotations:     cr.Annotations(),
+			Annotations:     cr.AnnotationsFiltered(),
 			OwnerReferences: cr.AsOwner(),
 			Finalizers:      []string{v1beta1.FinalizerName},
 		},
@@ -618,7 +548,7 @@ func genVMSelectService(cr *v1beta1.VMCluster) *corev1.Service {
 			Name:            cr.Spec.VMSelect.GetNameWithPrefix(cr.Name),
 			Namespace:       cr.Namespace,
 			Labels:          cr.FinalLabels(cr.VMSelectSelectorLabels()),
-			Annotations:     cr.Annotations(),
+			Annotations:     cr.AnnotationsFiltered(),
 			OwnerReferences: cr.AsOwner(),
 			Finalizers:      []string{v1beta1.FinalizerName},
 		},
@@ -642,7 +572,7 @@ func genVMSelectHeadlessService(cr *v1beta1.VMCluster) *corev1.Service {
 			Name:            cr.Spec.VMSelect.GetNameWithPrefix(cr.Name),
 			Namespace:       cr.Namespace,
 			Labels:          cr.FinalLabels(cr.VMSelectSelectorLabels()),
-			Annotations:     cr.Annotations(),
+			Annotations:     cr.AnnotationsFiltered(),
 			OwnerReferences: cr.AsOwner(),
 			Finalizers:      []string{v1beta1.FinalizerName},
 		},
@@ -713,7 +643,7 @@ func genVMInsertSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv1
 			Name:            cr.Spec.VMInsert.GetNameWithPrefix(cr.Name),
 			Namespace:       cr.Namespace,
 			Labels:          cr.FinalLabels(cr.VMInsertSelectorLabels()),
-			Annotations:     cr.Annotations(),
+			Annotations:     cr.AnnotationsFiltered(),
 			OwnerReferences: cr.AsOwner(),
 			Finalizers:      []string{v1beta1.FinalizerName},
 		},
@@ -888,7 +818,7 @@ func defaultVMInsertService(cr *v1beta1.VMCluster) *corev1.Service {
 			Name:            cr.Spec.VMInsert.GetNameWithPrefix(cr.Name),
 			Namespace:       cr.Namespace,
 			Labels:          cr.FinalLabels(cr.VMInsertSelectorLabels()),
-			Annotations:     cr.Annotations(),
+			Annotations:     cr.AnnotationsFiltered(),
 			OwnerReferences: cr.AsOwner(),
 			Finalizers:      []string{v1beta1.FinalizerName},
 		},
@@ -974,7 +904,7 @@ func GenVMStorageSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv
 			Name:            cr.Spec.VMStorage.GetNameWithPrefix(cr.Name),
 			Namespace:       cr.Namespace,
 			Labels:          cr.FinalLabels(cr.VMStorageSelectorLabels()),
-			Annotations:     cr.Annotations(),
+			Annotations:     cr.AnnotationsFiltered(),
 			OwnerReferences: cr.AsOwner(),
 			Finalizers:      []string{v1beta1.FinalizerName},
 		},
@@ -1200,7 +1130,7 @@ func genVMStorageHeadlessService(cr *v1beta1.VMCluster, c *config.BaseOperatorCo
 			Name:            cr.Spec.VMStorage.GetNameWithPrefix(cr.Name),
 			Namespace:       cr.Namespace,
 			Labels:          cr.FinalLabels(cr.VMStorageSelectorLabels()),
-			Annotations:     cr.Annotations(),
+			Annotations:     cr.AnnotationsFiltered(),
 			OwnerReferences: cr.AsOwner(),
 			Finalizers:      []string{v1beta1.FinalizerName},
 		},
@@ -1249,7 +1179,7 @@ func genVMStorageService(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) *cor
 			Name:            cr.Spec.VMStorage.GetNameWithPrefix(cr.Name),
 			Namespace:       cr.Namespace,
 			Labels:          cr.FinalLabels(cr.VMStorageSelectorLabels()),
-			Annotations:     cr.Annotations(),
+			Annotations:     cr.AnnotationsFiltered(),
 			OwnerReferences: cr.AsOwner(),
 			Finalizers:      []string{v1beta1.FinalizerName},
 		},
@@ -1301,22 +1231,28 @@ func CreateOrUpdatePodDisruptionBudgetForVMStorage(ctx context.Context, cr *v1be
 	return reconcilePDB(ctx, rclient, cr.Kind, pdb)
 }
 
-func waitForExpanding(ctx context.Context, kclient client.Client, namespace string, lbs map[string]string, desiredCount int32) (bool, error) {
-	log.Info("check pods availability")
-	podList := &corev1.PodList{}
-	labelSelector := labels.SelectorFromSet(lbs)
-	listOps := &client.ListOptions{Namespace: namespace, LabelSelector: labelSelector}
-	if err := kclient.List(ctx, podList, listOps); err != nil {
-		return false, err
-	}
-	var readyCount int32
-	for _, pod := range podList.Items {
-		if k8stools.PodIsReady(pod) {
-			readyCount++
+func waitExpanding(ctx context.Context, kclient client.Client, namespace string, lbs map[string]string, desiredCount int32) error {
+
+	return wait.PollImmediateWithContext(ctx, time.Second*5, time.Second*60, func(ctx context.Context) (done bool, err error) {
+		podList := &corev1.PodList{}
+
+		labelSelector := labels.SelectorFromSet(lbs)
+		listOps := &client.ListOptions{Namespace: namespace, LabelSelector: labelSelector}
+		if err := kclient.List(ctx, podList, listOps); err != nil {
+			return false, err
 		}
-	}
-	log.Info("pods available", "count", readyCount, "spec-count", desiredCount)
-	return readyCount != desiredCount, nil
+		var readyCount int32
+		for _, pod := range podList.Items {
+			if k8stools.PodIsReady(pod) {
+				readyCount++
+				continue
+			}
+			if ok, reasons := k8stools.PodIsFailedWithReason(pod); ok {
+				return true, fmt.Errorf("pod crashed with reasons :%s", reasons)
+			}
+		}
+		return readyCount >= desiredCount, nil
+	})
 }
 
 func createOrUpdateVMInsertHPA(ctx context.Context, rclient client.Client, cluster *v1beta1.VMCluster) error {

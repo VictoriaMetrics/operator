@@ -141,7 +141,9 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 						selectorLabels["shard-num"] = strconv.Itoa(i)
 						return selectorLabels
 					},
-					VolumeName:     cr.GetVolumeName,
+					VolumeName: func() string {
+						return vmAgentPersistentQueueMountName
+					},
 					UpdateStrategy: cr.STSUpdateStrategy,
 				}
 				if err := k8stools.HandleSTSUpdate(ctx, rclient, stsOpts, shardedDeploy, c); err != nil {
@@ -161,7 +163,9 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 			stsOpts := k8stools.STSOptions{
 				HasClaim:       len(newDeploy.Spec.VolumeClaimTemplates) > 0,
 				SelectorLabels: cr.SelectorLabels,
-				VolumeName:     cr.GetVolumeName,
+				VolumeName: func() string {
+					return vmAgentPersistentQueueMountName
+				},
 				UpdateStrategy: cr.STSUpdateStrategy,
 			}
 			if err := k8stools.HandleSTSUpdate(ctx, rclient, stsOpts, newDeploy, c); err != nil {

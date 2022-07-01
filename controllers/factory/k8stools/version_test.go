@@ -10,9 +10,15 @@ func TestIsPSPSupported(t *testing.T) {
 		minor uint64
 	}{
 		{
-			name:  "not",
+			name:  "yes",
 			major: 1,
 			minor: 22,
+			want:  true,
+		},
+		{
+			name:  "no",
+			major: 1,
+			minor: 25,
 		},
 	}
 	for _, tt := range tests {

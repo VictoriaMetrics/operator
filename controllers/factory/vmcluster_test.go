@@ -4,6 +4,7 @@ import (
 	"context"
 	"reflect"
 	"testing"
+	"time"
 
 	"k8s.io/apimachinery/pkg/types"
 
@@ -146,7 +147,7 @@ func Test_waitForExpanding(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 
-			err := waitExpanding(context.Background(), fclient, tt.args.namespace, tt.args.lbs, tt.args.desiredCount)
+			err := waitExpanding(context.Background(), fclient, tt.args.namespace, tt.args.lbs, tt.args.desiredCount, time.Second*2)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("waitExpanding() error = %v, wantErr %v", err, tt.wantErr)
 				return

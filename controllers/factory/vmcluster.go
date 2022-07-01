@@ -76,7 +76,7 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient
 
 		if cr.Spec.VMStorage.RollingUpdateStrategy == appsv1.RollingUpdateStatefulSetStrategyType {
 			// wait for expand performed by kubernetes
-			if err = waitExpanding(ctx, rclient, cr.Namespace, cr.VMStorageSelectorLabels(), *cr.Spec.VMStorage.ReplicaCount); err != nil {
+			if err = waitExpanding(ctx, rclient, cr.Namespace, cr.VMStorageSelectorLabels(), *cr.Spec.VMStorage.ReplicaCount, c.PodWaitReadyTimeout); err != nil {
 				return err
 			}
 		}
@@ -109,7 +109,7 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient
 
 		if cr.Spec.VMSelect.RollingUpdateStrategy == appsv1.RollingUpdateStatefulSetStrategyType {
 			// wait for expand
-			if err = waitExpanding(ctx, rclient, cr.Namespace, cr.VMSelectSelectorLabels(), *cr.Spec.VMSelect.ReplicaCount); err != nil {
+			if err = waitExpanding(ctx, rclient, cr.Namespace, cr.VMSelectSelectorLabels(), *cr.Spec.VMSelect.ReplicaCount, c.PodWaitReadyTimeout); err != nil {
 				return err
 			}
 		}
@@ -137,7 +137,7 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient
 				log.Error(err, "cannot create VMServiceScrape for vmInsert")
 			}
 		}
-		if err = waitExpanding(ctx, rclient, cr.Namespace, cr.VMInsertSelectorLabels(), *cr.Spec.VMInsert.ReplicaCount); err != nil {
+		if err = waitExpanding(ctx, rclient, cr.Namespace, cr.VMInsertSelectorLabels(), *cr.Spec.VMInsert.ReplicaCount, c.PodWaitReadyTimeout); err != nil {
 			return fmt.Errorf("cannot wait until ready status for vminsert deploy: %w", err)
 		}
 
@@ -1231,9 +1231,8 @@ func CreateOrUpdatePodDisruptionBudgetForVMStorage(ctx context.Context, cr *v1be
 	return reconcilePDB(ctx, rclient, cr.Kind, pdb)
 }
 
-func waitExpanding(ctx context.Context, kclient client.Client, namespace string, lbs map[string]string, desiredCount int32) error {
-
-	return wait.PollImmediateWithContext(ctx, time.Second*5, time.Second*60, func(ctx context.Context) (done bool, err error) {
+func waitExpanding(ctx context.Context, kclient client.Client, namespace string, lbs map[string]string, desiredCount int32, deadline time.Duration) error {
+	return wait.PollImmediateWithContext(ctx, time.Second*5, deadline, func(ctx context.Context) (done bool, err error) {
 		podList := &corev1.PodList{}
 
 		labelSelector := labels.SelectorFromSet(lbs)

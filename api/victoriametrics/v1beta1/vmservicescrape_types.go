@@ -452,36 +452,6 @@ func (c *TLSConfig) BuildAssetPath(prefix, name, key string) string {
 	return fmt.Sprintf("%s_%s_%s", prefix, name, key)
 }
 
-// QueueConfig allows the tuning of remote_write queue_config parameters. This object
-// is referenced in the RemoteWriteSpec object.
-// +k8s:openapi-gen=true
-type QueueConfig struct {
-	// Capacity is the number of samples to buffer per shard before we start dropping them.
-	// +optional
-	Capacity int `json:"capacity,omitempty"`
-	// MinShards is the minimum number of shards, i.e. amount of concurrency.
-	// +optional
-	MinShards int `json:"minShards,omitempty"`
-	// MaxShards is the maximum number of shards, i.e. amount of concurrency.
-	// +optional
-	MaxShards int `json:"maxShards,omitempty"`
-	// MaxSamplesPerSend is the maximum number of samples per send.
-	// +optional
-	MaxSamplesPerSend int `json:"maxSamplesPerSend,omitempty"`
-	// BatchSendDeadline is the maximum time a sample will wait in buffer.
-	// +optional
-	BatchSendDeadline string `json:"batchSendDeadline,omitempty"`
-	// MaxRetries is the maximum number of times to retry a batch on recoverable errors.
-	// +optional
-	MaxRetries int `json:"maxRetries,omitempty"`
-	// MinBackoff is the initial retry delay. Gets doubled for every retry.
-	// +optional
-	MinBackoff string `json:"minBackoff,omitempty"`
-	// MaxBackoff is the maximum retry delay.
-	// +optional
-	MaxBackoff string `json:"maxBackoff,omitempty"`
-}
-
 // APIServerConfig defines a host and auth methods to access apiserver.
 // More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#kubernetes_sd_config
 // +k8s:openapi-gen=true

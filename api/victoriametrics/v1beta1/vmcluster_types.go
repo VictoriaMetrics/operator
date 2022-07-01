@@ -1,8 +1,11 @@
 package v1beta1
 
 import (
+	"encoding/json"
 	"fmt"
+	"k8s.io/apimachinery/pkg/types"
 	"path"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -857,12 +860,36 @@ func (cr VMCluster) VMStoragePodAnnotations() map[string]string {
 func (cr VMCluster) AnnotationsFiltered() map[string]string {
 	annotations := make(map[string]string, len(cr.ObjectMeta.Annotations))
 	for annotation, value := range cr.ObjectMeta.Annotations {
-		if !strings.HasPrefix(annotation, "kubectl.kubernetes.io/") {
+		if !strings.HasPrefix(annotation, "kubectl.kubernetes.io/") && !strings.HasPrefix(annotation, "operator.victoriametrics.com/") {
 			annotations[annotation] = value
 		}
 	}
 	return annotations
 }
+
+// LastAppliedSpecAsPatch return last applied cluster spec as patch annotation
+func (cr *VMCluster) LastAppliedSpecAsPatch() (client.Patch, error) {
+	data, err := json.Marshal(cr.Spec)
+	if err != nil {
+		return nil, fmt.Errorf("possible bug, cannot serialize cluster specification as json :%w", err)
+	}
+	patch := fmt.Sprintf(`{"metadata":{"annotations":{"operator.victoriametrics/last-applied-spec": %q}}}`, data)
+	return client.RawPatch(types.MergePatchType, []byte(patch)), nil
+}
+
+// GetLastAppliedSpec returns last applied cluster spec
+func (cr *VMCluster) GetLastAppliedSpec() (*VMClusterSpec, error) {
+	var prevClusterSpec VMClusterSpec
+	prevClusterJSON := cr.Annotations["operator.victoriametrics/last-applied-spec"]
+	if prevClusterJSON == "" {
+		return &prevClusterSpec, nil
+	}
+	if err := json.Unmarshal([]byte(prevClusterJSON), &prevClusterSpec); err != nil {
+		return nil, fmt.Errorf("cannot parse last applied cluster spec value: %s : %w", prevClusterJSON, err)
+	}
+	return &prevClusterSpec, nil
+}
+
 func (cr VMCluster) HealthPathSelect() string {
 	if cr.Spec.VMSelect == nil {
 		return healthPath

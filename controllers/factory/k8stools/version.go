@@ -39,18 +39,18 @@ func SetKubernetesVersionWithDefaults(vi *version.Info, defaultMinor, defaultMaj
 // IsPSPSupported check if PodSecurityPolicy is supported by kubernetes API server
 // https://kubernetes.io/docs/reference/using-api/deprecation-guide/#psp-v125
 func IsPSPSupported() bool {
-	if ServerMajorVersion == 1 && ServerMinorVersion < 23 {
-		return false
+	if ServerMajorVersion == 1 && ServerMinorVersion <= 24 {
+		return true
 	}
-	return true
+	return false
 }
 
 // IsPDBV1APISupported check if new v1 API is supported by kubernetes API server
 // deprecated since 1.21
 // https://kubernetes.io/docs/reference/using-api/deprecation-guide/#poddisruptionbudget-v125
 func IsPDBV1APISupported() bool {
-	if ServerMajorVersion == 1 && ServerMinorVersion <= 21 {
-		return false
+	if ServerMajorVersion == 1 && ServerMinorVersion <= 24 {
+		return true
 	}
-	return true
+	return false
 }

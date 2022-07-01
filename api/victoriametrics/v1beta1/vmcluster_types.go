@@ -854,7 +854,7 @@ func (cr VMCluster) VMStoragePodAnnotations() map[string]string {
 	return cr.Spec.VMStorage.PodMetadata.Annotations
 }
 
-func (cr VMCluster) Annotations() map[string]string {
+func (cr VMCluster) AnnotationsFiltered() map[string]string {
 	annotations := make(map[string]string, len(cr.ObjectMeta.Annotations))
 	for annotation, value := range cr.ObjectMeta.Annotations {
 		if !strings.HasPrefix(annotation, "kubectl.kubernetes.io/") {
@@ -952,7 +952,7 @@ func (cr VMCluster) SelectorLabels() map[string]string {
 	}
 }
 
-func (cr VMCluster) Labels() map[string]string {
+func (cr VMCluster) AllLabels() map[string]string {
 	lbls := cr.SelectorLabels()
 	if cr.ObjectMeta.Labels == nil {
 		return lbls

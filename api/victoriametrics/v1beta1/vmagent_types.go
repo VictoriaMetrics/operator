@@ -498,7 +498,7 @@ func (cr VMAgent) PodAnnotations() map[string]string {
 	return annotations
 }
 
-func (cr VMAgent) Annotations() map[string]string {
+func (cr VMAgent) AnnotationsFiltered() map[string]string {
 	annotations := make(map[string]string)
 	for annotation, value := range cr.ObjectMeta.Annotations {
 		if !strings.HasPrefix(annotation, "kubectl.kubernetes.io/") {
@@ -526,7 +526,7 @@ func (cr VMAgent) PodLabels() map[string]string {
 	return labels.Merge(cr.Spec.PodMetadata.Labels, lbls)
 }
 
-func (cr VMAgent) Labels() map[string]string {
+func (cr VMAgent) AllLabels() map[string]string {
 	lbls := cr.SelectorLabels()
 	if cr.ObjectMeta.Labels == nil {
 		return lbls

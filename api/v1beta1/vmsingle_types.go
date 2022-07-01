@@ -249,7 +249,7 @@ func (cr VMSingle) PodAnnotations() map[string]string {
 	return annotations
 }
 
-func (cr VMSingle) Annotations() map[string]string {
+func (cr VMSingle) AnnotationsFiltered() map[string]string {
 	annotations := make(map[string]string)
 	for annotation, value := range cr.ObjectMeta.Annotations {
 		if !strings.HasPrefix(annotation, "kubectl.kubernetes.io/") {
@@ -276,7 +276,7 @@ func (cr VMSingle) PodLabels() map[string]string {
 	return labels.Merge(cr.Spec.PodMetadata.Labels, lbls)
 }
 
-func (cr VMSingle) Labels() map[string]string {
+func (cr VMSingle) AllLabels() map[string]string {
 	lbls := cr.SelectorLabels()
 	if cr.ObjectMeta.Labels == nil {
 		return lbls

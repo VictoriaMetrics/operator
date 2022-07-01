@@ -152,7 +152,7 @@ func (cr *VMUser) AsOwner() []metav1.OwnerReference {
 	}
 }
 
-func (cr VMUser) Annotations() map[string]string {
+func (cr VMUser) AnnotationsFiltered() map[string]string {
 	annotations := make(map[string]string)
 	for annotation, value := range cr.ObjectMeta.Annotations {
 		if !strings.HasPrefix(annotation, "kubectl.kubernetes.io/") {
@@ -171,7 +171,7 @@ func (cr VMUser) SelectorLabels() map[string]string {
 	}
 }
 
-func (cr VMUser) Labels() map[string]string {
+func (cr VMUser) AllLabels() map[string]string {
 	labels := cr.SelectorLabels()
 	if cr.ObjectMeta.Labels != nil {
 		for label, value := range cr.ObjectMeta.Labels {

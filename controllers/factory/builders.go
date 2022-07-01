@@ -68,8 +68,8 @@ func buildResources(crdResources v1.ResourceRequirements, defaultResources confi
 type svcBuilderArgs interface {
 	client.Object
 	PrefixedName() string
-	Annotations() map[string]string
-	Labels() map[string]string
+	AnnotationsFiltered() map[string]string
+	AllLabels() map[string]string
 	SelectorLabels() map[string]string
 	AsOwner() []metav1.OwnerReference
 	GetNSName() string
@@ -106,8 +106,8 @@ func buildDefaultService(cr svcBuilderArgs, defaultPort string, setOptions func(
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),
 			Namespace:       cr.GetNSName(),
-			Labels:          cr.Labels(),
-			Annotations:     cr.Annotations(),
+			Labels:          cr.AllLabels(),
+			Annotations:     cr.AnnotationsFiltered(),
 			OwnerReferences: cr.AsOwner(),
 			Finalizers:      []string{victoriametricsv1beta1.FinalizerName},
 		},
@@ -226,7 +226,7 @@ func buildDefaultPDBV1(cr svcBuilderArgs, spec *victoriametricsv1beta1.EmbeddedP
 	return &policyv1.PodDisruptionBudget{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),
-			Labels:          cr.Labels(),
+			Labels:          cr.AllLabels(),
 			OwnerReferences: cr.AsOwner(),
 			Namespace:       cr.GetNSName(),
 			Finalizers:      []string{victoriametricsv1beta1.FinalizerName},
@@ -245,7 +245,7 @@ func buildDefaultPDB(cr svcBuilderArgs, spec *victoriametricsv1beta1.EmbeddedPod
 	return &policyv1beta1.PodDisruptionBudget{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),
-			Labels:          cr.Labels(),
+			Labels:          cr.AllLabels(),
 			OwnerReferences: cr.AsOwner(),
 			Namespace:       cr.GetNSName(),
 			Finalizers:      []string{victoriametricsv1beta1.FinalizerName},

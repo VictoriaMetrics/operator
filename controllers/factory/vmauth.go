@@ -125,8 +125,8 @@ func newDeployForVMAuth(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperato
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),
 			Namespace:       cr.Namespace,
-			Labels:          c.Labels.Merge(cr.Labels()),
-			Annotations:     cr.Annotations(),
+			Labels:          c.Labels.Merge(cr.AllLabels()),
+			Annotations:     cr.AnnotationsFiltered(),
 			OwnerReferences: cr.AsOwner(),
 		},
 		Spec: appsv1.DeploymentSpec{
@@ -333,7 +333,7 @@ func makeVMAuthConfigSecret(cr *victoriametricsv1beta1.VMAuth) *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   cr.ConfigSecretName(),
-			Labels: cr.Labels(),
+			Labels: cr.AllLabels(),
 			Annotations: map[string]string{
 				"generated": "true",
 			},

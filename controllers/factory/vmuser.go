@@ -662,8 +662,8 @@ func buildVMUserSecret(src *v1beta1.VMUser) v1.Secret {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            src.SecretName(),
 			Namespace:       src.Namespace,
-			Labels:          src.Labels(),
-			Annotations:     src.Annotations(),
+			Labels:          src.AllLabels(),
+			Annotations:     src.AnnotationsFiltered(),
 			OwnerReferences: src.AsOwner(),
 			Finalizers: []string{
 				v1beta1.FinalizerName,

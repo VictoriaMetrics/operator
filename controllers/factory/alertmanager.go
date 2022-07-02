@@ -207,9 +207,14 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, c *config.Ba
 
 	amArgs := []string{
 		fmt.Sprintf("--config.file=%s", alertmanagerConfFile),
-		fmt.Sprintf("--cluster.listen-address=[$(POD_IP)]:%d", 9094),
 		fmt.Sprintf("--storage.path=%s", alertmanagerStorageDir),
 		fmt.Sprintf("--data.retention=%s", cr.Spec.Retention),
+	}
+
+	if *cr.Spec.ReplicaCount == 1 {
+		amArgs = append(amArgs, "--cluster.listen-address=")
+	} else {
+		amArgs = append(amArgs, "--cluster.listen-address=[$(POD_IP)]:9094")
 	}
 
 	if cr.Spec.ListenLocal {

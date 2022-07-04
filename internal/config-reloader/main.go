@@ -31,6 +31,7 @@ var (
 	watchedDir       = flagutil.NewArray("watched-dir", "directory to watch non-recursively")
 	rulesDir         = flagutil.NewArray("rules-dir", "the same as watched-dir, legacy")
 	reloadURL        = flag.String("reload-url", "http://127.0.0.1:8429/-/reload", "reload URL to trigger config reload")
+	authKey          = flag.String("authKey", "", "authKey for reload endpoint")
 	listenAddr       = flag.String("http.listenAddr", ":8435", "http server listen addr")
 )
 
@@ -88,7 +89,13 @@ type reloader struct {
 }
 
 func (r *reloader) reload(ctx context.Context) error {
-	req, err := http.NewRequestWithContext(ctx, "GET", *reloadURL, nil)
+	var url string
+	if *authKey != "" {
+		url = fmt.Sprintf("%s?authKey=%s", *reloadURL, *authKey)
+	} else {
+		url = *reloadURL
+	}
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return err
 	}

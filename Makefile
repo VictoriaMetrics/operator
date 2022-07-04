@@ -1,6 +1,6 @@
 # Go parameters
 GOCMD=GO111MODULE=on go
-TAG  ?= 0.1.0
+TAG  ?= 0.2.0
 VERSION=$(TAG)
 VERSION_TRIM=$(VERSION:v%=%)
 GOOS ?= $(shell go env GOOS)

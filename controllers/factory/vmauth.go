@@ -232,7 +232,7 @@ func makeSpecForVMAuth(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperator
 
 	vmauthContainer := corev1.Container{
 		Name:                     "vmauth",
-		Image:                    fmt.Sprintf("%s:%s", cr.Spec.Image.Repository, cr.Spec.Image.Tag),
+		Image:                    fmt.Sprintf("%s/%s:%s", c.ContainerRegistry, cr.Spec.Image.Repository, cr.Spec.Image.Tag),
 		Ports:                    ports,
 		Args:                     args,
 		VolumeMounts:             vmMounts,
@@ -462,7 +462,7 @@ func buildVMAuthConfigReloaderContainer(cr *victoriametricsv1beta1.VMAuth, c *co
 
 	configReloader := corev1.Container{
 		Name:                     "config-reloader",
-		Image:                    c.VMAuthDefault.ConfigReloadImage,
+		Image:                    fmt.Sprintf("%s/%s", c.ContainerRegistry, c.VMAuthDefault.ConfigReloadImage),
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 		Env: []corev1.EnvVar{
 			{
@@ -479,7 +479,7 @@ func buildVMAuthConfigReloaderContainer(cr *victoriametricsv1beta1.VMAuth, c *co
 	}
 
 	if c.UseCustomConfigReloader {
-		configReloader.Image = c.CustomConfigReloaderImage
+		configReloader.Image = fmt.Sprintf("%s/%s", c.ContainerRegistry, c.CustomConfigReloaderImage)
 		configReloader.Command = []string{"/usr/local/bin/config-reloader"}
 	}
 	return configReloader

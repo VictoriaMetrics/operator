@@ -317,7 +317,7 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 	vmalertContainer := corev1.Container{
 		Args:                     args,
 		Name:                     "vmalert",
-		Image:                    fmt.Sprintf("%s:%s", cr.Spec.Image.Repository, cr.Spec.Image.Tag),
+		Image:                    fmt.Sprintf("%s/%s:%s", c.ContainerRegistry, cr.Spec.Image.Repository, cr.Spec.Image.Tag),
 		ImagePullPolicy:          cr.Spec.Image.PullPolicy,
 		Ports:                    ports,
 		VolumeMounts:             volumeMounts,
@@ -329,7 +329,7 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 
 	vmalertContainers := []corev1.Container{vmalertContainer, {
 		Name:                     "config-reloader",
-		Image:                    c.VMAlertDefault.ConfigReloadImage,
+		Image:                    fmt.Sprintf("%s/%s", c.ContainerRegistry, c.VMAlertDefault.ConfigReloadImage),
 		Args:                     confReloadArgs,
 		Resources:                resources,
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,

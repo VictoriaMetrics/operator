@@ -257,7 +257,7 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 	sort.Strings(args)
 	vmsingleContainer := corev1.Container{
 		Name:                     "vmsingle",
-		Image:                    fmt.Sprintf("%s:%s", cr.Spec.Image.Repository, cr.Spec.Image.Tag),
+		Image:                    fmt.Sprintf("%s/%s:%s", c.ContainerRegistry, cr.Spec.Image.Repository, cr.Spec.Image.Tag),
 		Ports:                    ports,
 		Args:                     args,
 		VolumeMounts:             vmMounts,
@@ -488,7 +488,7 @@ func makeSpecForVMBackuper(
 	sort.Strings(args)
 	vmBackuper := &corev1.Container{
 		Name:                     "vmbackuper",
-		Image:                    fmt.Sprintf("%s:%s", cr.Image.Repository, cr.Image.Tag),
+		Image:                    fmt.Sprintf("%s/%s:%s", c.ContainerRegistry, cr.Image.Repository, cr.Image.Tag),
 		Ports:                    ports,
 		Args:                     args,
 		Env:                      extraEnvs,

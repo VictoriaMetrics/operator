@@ -195,6 +195,7 @@ metric_relabel_configs: []
 						DisableCompression:  pointer.Bool(true),
 						ScrapeAlignInterval: pointer.String("5s"),
 						StreamParse:         pointer.Bool(true),
+						Headers:             []string{"customer-header: with-value"},
 						ProxyClientConfig: &victoriametricsv1beta1.ProxyAuth{
 							BasicAuth: &victoriametricsv1beta1.BasicAuth{
 								Username: v1.SecretKeySelector{
@@ -279,6 +280,8 @@ scrape_offset: 10s
 disable_keep_alive: true
 relabel_debug: true
 metric_relabel_debug: false
+headers:
+- 'customer-header: with-value'
 proxy_basic_auth:
   username: proxy-user
   password: proxy-password

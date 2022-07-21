@@ -588,13 +588,6 @@ func (cr *VMAgent) AsURL() string {
 	return fmt.Sprintf("http://%s.%s.svc:%s", cr.PrefixedName(), cr.Namespace, port)
 }
 
-func (cr *VMAgent) GetVolumeName() string {
-	if cr.Spec.StatefulStorage != nil && cr.Spec.StatefulStorage.VolumeClaimTemplate.Name != "" {
-		return cr.Spec.StatefulStorage.VolumeClaimTemplate.Name
-	}
-	return fmt.Sprintf("vmagent-%s-persistent-queue", cr.Name)
-}
-
 func (cr VMAgent) STSUpdateStrategy() appsv1.StatefulSetUpdateStrategyType {
 	if cr.Spec.StatefulRollingUpdateStrategy == "" {
 		return appsv1.OnDeleteStatefulSetStrategyType

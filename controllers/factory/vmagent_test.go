@@ -623,6 +623,29 @@ func TestBuildRemoteWrites(t *testing.T) {
 			want: []string{"-remoteWrite.url=localhost:8429,localhost:8431", "-remoteWrite.sendTimeout=10s,15s"},
 		},
 		{
+			name: "test multi-tenant",
+			args: args{
+				ssCache: &scrapesSecretsCache{},
+				cr: &victoriametricsv1beta1.VMAgent{
+					Spec: victoriametricsv1beta1.VMAgentSpec{RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
+						{
+							URL: "vminsert-cluster-1:8480",
+
+							SendTimeout: pointer.String("10s"),
+						},
+						{
+							URL:         "vminsert-cluster-2:8480",
+							SendTimeout: pointer.String("15s"),
+						},
+					},
+						RemoteWriteSettings: &victoriametricsv1beta1.VMAgentRemoteWriteSettings{
+							UseMultiTenantMode: true,
+						}},
+				},
+			},
+			want: []string{"-remoteWrite.multitenantURL=vminsert-cluster-1:8480,vminsert-cluster-2:8480", "-remoteWrite.sendTimeout=10s,15s"},
+		},
+		{
 			name: "test oauth2",
 			args: args{
 				ssCache: &scrapesSecretsCache{
@@ -681,6 +704,34 @@ func TestBuildRemoteWrites(t *testing.T) {
 				},
 			},
 			want: []string{"-remoteWrite.bearerToken=\"\",\"token\"", "-remoteWrite.url=localhost:8429,localhost:8431", "-remoteWrite.sendTimeout=10s,15s"},
+		},
+		{
+			name: "test with headers",
+			args: args{
+				ssCache: &scrapesSecretsCache{
+					bearerTokens: map[string]string{
+						"remoteWriteSpec/localhost:8431": "token",
+					},
+				},
+				cr: &victoriametricsv1beta1.VMAgent{
+					Spec: victoriametricsv1beta1.VMAgentSpec{RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
+						{
+							URL:         "localhost:8429",
+							SendTimeout: pointer.String("10s"),
+						},
+						{
+							URL:         "localhost:8431",
+							SendTimeout: pointer.String("15s"),
+							BearerTokenSecret: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{Name: "some-secret"},
+								Key:                  "some-key",
+							},
+							Headers: []string{"key: value", "second-key: value2"},
+						},
+					}},
+				},
+			},
+			want: []string{"-remoteWrite.bearerToken=\"\",\"token\"", "-remoteWrite.headers='','key: value^^second-key: value2'", "-remoteWrite.url=localhost:8429,localhost:8431", "-remoteWrite.sendTimeout=10s,15s"},
 		},
 	}
 	for _, tt := range tests {
@@ -922,500 +973,13 @@ func Test_buildConfigReloaderArgs(t *testing.T) {
 				cr: &victoriametricsv1beta1.VMAgent{
 					Spec: victoriametricsv1beta1.VMAgentSpec{Port: "8429"},
 				},
-				c: &config.BaseOperatorConf{
-					VMAgentDefault: struct {
-						Image               string `default:"victoriametrics/vmagent"`
-						Version             string `default:"v1.77.2"`
-						ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.48.1"`
-						Port                string `default:"8429"`
-						UseDefaultResources bool   `default:"true"`
-						Resource            struct {
-							Limit struct {
-								Mem string `default:"500Mi"`
-								Cpu string `default:"200m"`
-							}
-							Request struct {
-								Mem string `default:"200Mi"`
-								Cpu string `default:"50m"`
-							}
-						}
-						ConfigReloaderCPU    string `default:"100m"`
-						ConfigReloaderMemory string `default:"25Mi"`
-					}(struct {
-						Image               string `default:"victoriametrics/vmagent"`
-						Version             string `default:"v1.77.1"`
-						ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.48.1"`
-						Port                string `default:"8429"`
-						UseDefaultResources bool   `default:"true"`
-						Resource            struct {
-							Limit struct {
-								Mem string `default:"500Mi"`
-								Cpu string `default:"200m"`
-							}
-							Request struct {
-								Mem string `default:"200Mi"`
-								Cpu string `default:"50m"`
-							}
-						}
-						ConfigReloaderCPU    string `default:"100m"`
-						ConfigReloaderMemory string `default:"25Mi"`
-					}(struct {
-						Image               string `default:"victoriametrics/vmagent"`
-						Version             string `default:"v1.76.0"`
-						ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.48.1"`
-						Port                string `default:"8429"`
-						UseDefaultResources bool   `default:"true"`
-						Resource            struct {
-							Limit struct {
-								Mem string `default:"500Mi"`
-								Cpu string `default:"200m"`
-							}
-							Request struct {
-								Mem string `default:"200Mi"`
-								Cpu string `default:"50m"`
-							}
-						}
-						ConfigReloaderCPU    string `default:"100m"`
-						ConfigReloaderMemory string `default:"25Mi"`
-					}(struct {
-						Image               string `default:"victoriametrics/vmagent"`
-						Version             string `default:"v1.75.0"`
-						ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.48.1"`
-						Port                string `default:"8429"`
-						UseDefaultResources bool   `default:"true"`
-						Resource            struct {
-							Limit struct {
-								Mem string `default:"500Mi"`
-								Cpu string `default:"200m"`
-							}
-							Request struct {
-								Mem string `default:"200Mi"`
-								Cpu string `default:"50m"`
-							}
-						}
-						ConfigReloaderCPU    string `default:"100m"`
-						ConfigReloaderMemory string `default:"25Mi"`
-					}(struct {
-						Image               string `default:"victoriametrics/vmagent"`
-						Version             string `default:"v1.72.0"`
-						ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.48.1"`
-						Port                string `default:"8429"`
-						UseDefaultResources bool   `default:"true"`
-						Resource            struct {
-							Limit struct {
-								Mem string `default:"500Mi"`
-								Cpu string `default:"200m"`
-							}
-							Request struct {
-								Mem string `default:"200Mi"`
-								Cpu string `default:"50m"`
-							}
-						}
-						ConfigReloaderCPU    string `default:"100m"`
-						ConfigReloaderMemory string `default:"25Mi"`
-					}(struct {
-						Image               string `default:"victoriametrics/vmagent"`
-						Version             string `default:"v1.71.0"`
-						ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.48.1"`
-						Port                string `default:"8429"`
-						UseDefaultResources bool   `default:"true"`
-						Resource            struct {
-							Limit struct {
-								Mem string `default:"500Mi"`
-								Cpu string `default:"200m"`
-							}
-							Request struct {
-								Mem string `default:"200Mi"`
-								Cpu string `default:"50m"`
-							}
-						}
-						ConfigReloaderCPU    string `default:"100m"`
-						ConfigReloaderMemory string `default:"25Mi"`
-					}(struct {
-						Image               string `default:"victoriametrics/vmagent"`
-						Version             string `default:"v1.68.0"`
-						ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.48.1"`
-						Port                string `default:"8429"`
-						UseDefaultResources bool   `default:"true"`
-						Resource            struct {
-							Limit struct {
-								Mem string `default:"500Mi"`
-								Cpu string `default:"200m"`
-							}
-							Request struct {
-								Mem string `default:"200Mi"`
-								Cpu string `default:"50m"`
-							}
-						}
-						ConfigReloaderCPU    string `default:"100m"`
-						ConfigReloaderMemory string `default:"25Mi"`
-					}(struct {
-						Image               string `default:"victoriametrics/vmagent"`
-						Version             string `default:"v1.67.0"`
-						ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.48.1"`
-						Port                string `default:"8429"`
-						UseDefaultResources bool   `default:"true"`
-						Resource            struct {
-							Limit struct {
-								Mem string `default:"500Mi"`
-								Cpu string `default:"200m"`
-							}
-							Request struct {
-								Mem string `default:"200Mi"`
-								Cpu string `default:"50m"`
-							}
-						}
-						ConfigReloaderCPU    string `default:"100m"`
-						ConfigReloaderMemory string `default:"25Mi"`
-					}(struct {
-						Image               string `default:"victoriametrics/vmagent"`
-						Version             string `default:"v1.66.2"`
-						ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.48.1"`
-						Port                string `default:"8429"`
-						UseDefaultResources bool   `default:"true"`
-						Resource            struct {
-							Limit struct {
-								Mem string `default:"500Mi"`
-								Cpu string `default:"200m"`
-							}
-							Request struct {
-								Mem string `default:"200Mi"`
-								Cpu string `default:"50m"`
-							}
-						}
-						ConfigReloaderCPU    string `default:"100m"`
-						ConfigReloaderMemory string `default:"25Mi"`
-					}(struct {
-						Image               string `default:"victoriametrics/vmagent"`
-						Version             string `default:"v1.66.1"`
-						ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.48.1"`
-						Port                string `default:"8429"`
-						UseDefaultResources bool   `default:"true"`
-						Resource            struct {
-							Limit struct {
-								Mem string `default:"500Mi"`
-								Cpu string `default:"200m"`
-							}
-							Request struct {
-								Mem string `default:"200Mi"`
-								Cpu string `default:"50m"`
-							}
-						}
-						ConfigReloaderCPU    string `default:"100m"`
-						ConfigReloaderMemory string `default:"25Mi"`
-					}(struct {
-						Image               string `default:"victoriametrics/vmagent"`
-						Version             string `default:"v1.64.1"`
-						ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.48.1"`
-						Port                string `default:"8429"`
-						UseDefaultResources bool   `default:"true"`
-						Resource            struct {
-							Limit struct {
-								Mem string `default:"500Mi"`
-								Cpu string `default:"200m"`
-							}
-							Request struct {
-								Mem string `default:"200Mi"`
-								Cpu string `default:"50m"`
-							}
-						}
-						ConfigReloaderCPU    string `default:"100m"`
-						ConfigReloaderMemory string `default:"25Mi"`
-					}(struct {
-						Image               string `default:"victoriametrics/vmagent"`
-						Version             string `default:"v1.58.0"`
-						ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.48.1"`
-						Port                string `default:"8429"`
-						UseDefaultResources bool   `default:"true"`
-						Resource            struct {
-							Limit struct {
-								Mem string `default:"500Mi"`
-								Cpu string `default:"200m"`
-							}
-							Request struct {
-								Mem string `default:"200Mi"`
-								Cpu string `default:"50m"`
-							}
-						}
-						ConfigReloaderCPU    string `default:"100m"`
-						ConfigReloaderMemory string `default:"25Mi"`
-					}(struct {
-						Image               string
-						Version             string
-						ConfigReloadImage   string
-						Port                string
-						UseDefaultResources bool
-						Resource            struct {
-							Limit struct {
-								Mem string `default:"500Mi"`
-								Cpu string `default:"200m"`
-							}
-							Request struct {
-								Mem string `default:"200Mi"`
-								Cpu string `default:"50m"`
-							}
-						}
-						ConfigReloaderCPU    string
-						ConfigReloaderMemory string
-					}{ConfigReloadImage: "prometheus-config-reloader:latest"})))))))))))),
-				},
+				c: &config.BaseOperatorConf{},
 			},
 			want: []string{
 				"--reload-url=http://localhost:8429/-/reload",
 				"--config-file=/etc/vmagent/config/vmagent.yaml.gz",
 				"--config-envsubst-file=/etc/vmagent/config_out/vmagent.env.yaml",
 				"--watched-dir=/etc/vm/relabeling",
-			},
-		},
-		{
-			name: "old version",
-			args: args{
-				cr: &victoriametricsv1beta1.VMAgent{
-					Spec: victoriametricsv1beta1.VMAgentSpec{Port: "8429"},
-				},
-				c: &config.BaseOperatorConf{
-					VMAgentDefault: struct {
-						Image               string `default:"victoriametrics/vmagent"`
-						Version             string `default:"v1.77.2"`
-						ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.48.1"`
-						Port                string `default:"8429"`
-						UseDefaultResources bool   `default:"true"`
-						Resource            struct {
-							Limit struct {
-								Mem string `default:"500Mi"`
-								Cpu string `default:"200m"`
-							}
-							Request struct {
-								Mem string `default:"200Mi"`
-								Cpu string `default:"50m"`
-							}
-						}
-						ConfigReloaderCPU    string `default:"100m"`
-						ConfigReloaderMemory string `default:"25Mi"`
-					}(struct {
-						Image               string `default:"victoriametrics/vmagent"`
-						Version             string `default:"v1.77.1"`
-						ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.48.1"`
-						Port                string `default:"8429"`
-						UseDefaultResources bool   `default:"true"`
-						Resource            struct {
-							Limit struct {
-								Mem string `default:"500Mi"`
-								Cpu string `default:"200m"`
-							}
-							Request struct {
-								Mem string `default:"200Mi"`
-								Cpu string `default:"50m"`
-							}
-						}
-						ConfigReloaderCPU    string `default:"100m"`
-						ConfigReloaderMemory string `default:"25Mi"`
-					}(struct {
-						Image               string `default:"victoriametrics/vmagent"`
-						Version             string `default:"v1.76.0"`
-						ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.48.1"`
-						Port                string `default:"8429"`
-						UseDefaultResources bool   `default:"true"`
-						Resource            struct {
-							Limit struct {
-								Mem string `default:"500Mi"`
-								Cpu string `default:"200m"`
-							}
-							Request struct {
-								Mem string `default:"200Mi"`
-								Cpu string `default:"50m"`
-							}
-						}
-						ConfigReloaderCPU    string `default:"100m"`
-						ConfigReloaderMemory string `default:"25Mi"`
-					}(struct {
-						Image               string `default:"victoriametrics/vmagent"`
-						Version             string `default:"v1.75.0"`
-						ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.48.1"`
-						Port                string `default:"8429"`
-						UseDefaultResources bool   `default:"true"`
-						Resource            struct {
-							Limit struct {
-								Mem string `default:"500Mi"`
-								Cpu string `default:"200m"`
-							}
-							Request struct {
-								Mem string `default:"200Mi"`
-								Cpu string `default:"50m"`
-							}
-						}
-						ConfigReloaderCPU    string `default:"100m"`
-						ConfigReloaderMemory string `default:"25Mi"`
-					}(struct {
-						Image               string `default:"victoriametrics/vmagent"`
-						Version             string `default:"v1.72.0"`
-						ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.48.1"`
-						Port                string `default:"8429"`
-						UseDefaultResources bool   `default:"true"`
-						Resource            struct {
-							Limit struct {
-								Mem string `default:"500Mi"`
-								Cpu string `default:"200m"`
-							}
-							Request struct {
-								Mem string `default:"200Mi"`
-								Cpu string `default:"50m"`
-							}
-						}
-						ConfigReloaderCPU    string `default:"100m"`
-						ConfigReloaderMemory string `default:"25Mi"`
-					}(struct {
-						Image               string `default:"victoriametrics/vmagent"`
-						Version             string `default:"v1.71.0"`
-						ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.48.1"`
-						Port                string `default:"8429"`
-						UseDefaultResources bool   `default:"true"`
-						Resource            struct {
-							Limit struct {
-								Mem string `default:"500Mi"`
-								Cpu string `default:"200m"`
-							}
-							Request struct {
-								Mem string `default:"200Mi"`
-								Cpu string `default:"50m"`
-							}
-						}
-						ConfigReloaderCPU    string `default:"100m"`
-						ConfigReloaderMemory string `default:"25Mi"`
-					}(struct {
-						Image               string `default:"victoriametrics/vmagent"`
-						Version             string `default:"v1.68.0"`
-						ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.48.1"`
-						Port                string `default:"8429"`
-						UseDefaultResources bool   `default:"true"`
-						Resource            struct {
-							Limit struct {
-								Mem string `default:"500Mi"`
-								Cpu string `default:"200m"`
-							}
-							Request struct {
-								Mem string `default:"200Mi"`
-								Cpu string `default:"50m"`
-							}
-						}
-						ConfigReloaderCPU    string `default:"100m"`
-						ConfigReloaderMemory string `default:"25Mi"`
-					}(struct {
-						Image               string `default:"victoriametrics/vmagent"`
-						Version             string `default:"v1.67.0"`
-						ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.48.1"`
-						Port                string `default:"8429"`
-						UseDefaultResources bool   `default:"true"`
-						Resource            struct {
-							Limit struct {
-								Mem string `default:"500Mi"`
-								Cpu string `default:"200m"`
-							}
-							Request struct {
-								Mem string `default:"200Mi"`
-								Cpu string `default:"50m"`
-							}
-						}
-						ConfigReloaderCPU    string `default:"100m"`
-						ConfigReloaderMemory string `default:"25Mi"`
-					}(struct {
-						Image               string `default:"victoriametrics/vmagent"`
-						Version             string `default:"v1.66.2"`
-						ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.48.1"`
-						Port                string `default:"8429"`
-						UseDefaultResources bool   `default:"true"`
-						Resource            struct {
-							Limit struct {
-								Mem string `default:"500Mi"`
-								Cpu string `default:"200m"`
-							}
-							Request struct {
-								Mem string `default:"200Mi"`
-								Cpu string `default:"50m"`
-							}
-						}
-						ConfigReloaderCPU    string `default:"100m"`
-						ConfigReloaderMemory string `default:"25Mi"`
-					}(struct {
-						Image               string `default:"victoriametrics/vmagent"`
-						Version             string `default:"v1.66.1"`
-						ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.48.1"`
-						Port                string `default:"8429"`
-						UseDefaultResources bool   `default:"true"`
-						Resource            struct {
-							Limit struct {
-								Mem string `default:"500Mi"`
-								Cpu string `default:"200m"`
-							}
-							Request struct {
-								Mem string `default:"200Mi"`
-								Cpu string `default:"50m"`
-							}
-						}
-						ConfigReloaderCPU    string `default:"100m"`
-						ConfigReloaderMemory string `default:"25Mi"`
-					}(struct {
-						Image               string `default:"victoriametrics/vmagent"`
-						Version             string `default:"v1.64.1"`
-						ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.48.1"`
-						Port                string `default:"8429"`
-						UseDefaultResources bool   `default:"true"`
-						Resource            struct {
-							Limit struct {
-								Mem string `default:"500Mi"`
-								Cpu string `default:"200m"`
-							}
-							Request struct {
-								Mem string `default:"200Mi"`
-								Cpu string `default:"50m"`
-							}
-						}
-						ConfigReloaderCPU    string `default:"100m"`
-						ConfigReloaderMemory string `default:"25Mi"`
-					}(struct {
-						Image               string `default:"victoriametrics/vmagent"`
-						Version             string `default:"v1.58.0"`
-						ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.48.1"`
-						Port                string `default:"8429"`
-						UseDefaultResources bool   `default:"true"`
-						Resource            struct {
-							Limit struct {
-								Mem string `default:"500Mi"`
-								Cpu string `default:"200m"`
-							}
-							Request struct {
-								Mem string `default:"200Mi"`
-								Cpu string `default:"50m"`
-							}
-						}
-						ConfigReloaderCPU    string `default:"100m"`
-						ConfigReloaderMemory string `default:"25Mi"`
-					}(struct {
-						Image               string
-						Version             string
-						ConfigReloadImage   string
-						Port                string
-						UseDefaultResources bool
-						Resource            struct {
-							Limit struct {
-								Mem string `default:"500Mi"`
-								Cpu string `default:"200m"`
-							}
-							Request struct {
-								Mem string `default:"200Mi"`
-								Cpu string `default:"50m"`
-							}
-						}
-						ConfigReloaderCPU    string
-						ConfigReloaderMemory string
-					}{ConfigReloadImage: "quay.io/coreos/prometheus-config-reloader:v0.42.0"})))))))))))),
-				},
-			},
-			want: []string{
-				"--reload-url=http://localhost:8429/-/reload",
-				"--config-file=/etc/vmagent/config/vmagent.yaml.gz",
-				"--config-envsubst-file=/etc/vmagent/config_out/vmagent.env.yaml",
-				"--rules-dir=/etc/vm/relabeling",
 			},
 		},
 	}

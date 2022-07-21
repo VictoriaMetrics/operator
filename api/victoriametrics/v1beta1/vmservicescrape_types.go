@@ -203,8 +203,9 @@ type VMScrapeParams struct {
 	// must be in of semicolon separated header with it's value
 	// eg:
 	// headerName: headerValue
+	// vmagent supports since 1.79.0 version
 	// +optional
-	Headers []string `json:"headers"`
+	Headers []string `json:"headers,omitempty"`
 }
 
 // ProxyAuth represent proxy auth config

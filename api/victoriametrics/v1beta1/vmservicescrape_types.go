@@ -199,6 +199,12 @@ type VMScrapeParams struct {
 	// See feature description https://docs.victoriametrics.com/vmagent.html#scraping-targets-via-a-proxy
 	// +optional
 	ProxyClientConfig *ProxyAuth `json:"proxy_client_config,omitempty"`
+	// Headers allows sending custom headers to scrape targets
+	// must be in of semicolon separated header with it's value
+	// eg:
+	// headerName: headerValue
+	// +optional
+	Headers []string `json:"headers"`
 }
 
 // ProxyAuth represent proxy auth config

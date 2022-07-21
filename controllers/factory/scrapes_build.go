@@ -1348,6 +1348,9 @@ func buildVMScrapeParams(namespace, cacheKey string, cfg *victoriametricsv1beta1
 	toYaml("disable_keep_alive", cfg.DisableKeepAlive)
 	toYaml("relabel_debug", cfg.RelabelDebug)
 	toYaml("metric_relabel_debug", cfg.MetricRelabelDebug)
+	if len(cfg.Headers) > 0 {
+		r = append(r, yaml.MapItem{Key: "headers", Value: cfg.Headers})
+	}
 	if cfg.ProxyClientConfig != nil {
 		r = append(r, buildProxyAuthConfig(namespace, cacheKey, cfg.ProxyClientConfig, ssCache)...)
 	}

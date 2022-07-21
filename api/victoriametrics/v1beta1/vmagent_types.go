@@ -397,6 +397,11 @@ type VMAgentRemoteWriteSettings struct {
 	// Optional labels in the form 'name=value' to add to all the metrics before sending them
 	// +optional
 	Labels map[string]string `json:"label,omitempty"`
+	// Configures vmagent in multi-tenant mode with direct cluster support
+	// docs https://docs.victoriametrics.com/vmagent.html#multitenancy
+	// it's global setting and affects all remote storage configurations
+	// +optional
+	UseMultiTenantMode bool `json:"useMultiTenantMode,omitempty"`
 }
 
 // VMAgentRemoteWriteSpec defines the remote storage configuration for VmAgent
@@ -428,6 +433,13 @@ type VMAgentRemoteWriteSpec struct {
 	// +optional
 	// +kubebuilder:validation:Pattern:="[0-9]+(ms|s|m|h)"
 	SendTimeout *string `json:"sendTimeout,omitempty"`
+	// Headers allow configuring custom http headers
+	// Must be in form of semicolon separated header with value
+	// e.g.
+	// headerName: headerValue
+	// vmagent supports since 1.79.0 version
+	// +optional
+	Headers []string `json:"headers,omitempty"`
 }
 
 // VmAgentStatus defines the observed state of VmAgent

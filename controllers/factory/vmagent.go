@@ -911,6 +911,9 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, ssCache *scrapesSecre
 	remoteTargets := cr.Spec.RemoteWrite
 
 	url := remoteFlag{flagSetting: "-remoteWrite.url=", isNotNull: true}
+	if cr.Spec.RemoteWriteSettings != nil && cr.Spec.RemoteWriteSettings.UseMultiTenantMode {
+		url = remoteFlag{flagSetting: "-remoteWrite.multitenantURL=", isNotNull: true}
+	}
 	authUser := remoteFlag{flagSetting: "-remoteWrite.basicAuth.username="}
 	authPassword := remoteFlag{flagSetting: "-remoteWrite.basicAuth.password="}
 	bearerToken := remoteFlag{flagSetting: "-remoteWrite.bearerToken="}
@@ -926,6 +929,7 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, ssCache *scrapesSecre
 	oauth2ClientSecretFile := remoteFlag{flagSetting: "-remoteWrite.oauth2.clientSecretFile="}
 	oauth2Scopes := remoteFlag{flagSetting: "-remoteWrite.oauth2.scopes="}
 	oauth2TokenUrl := remoteFlag{flagSetting: "-remoteWrite.oauth2.tokenUrl="}
+	headers := remoteFlag{flagSetting: "-remoteWrite.headers="}
 
 	pathPrefix := path.Join(tlsAssetsDir, cr.Namespace)
 
@@ -1018,6 +1022,15 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, ssCache *scrapesSecre
 		sendTimeout.flagSetting += fmt.Sprintf("%s,", value)
 
 		value = ""
+		if len(rws.Headers) > 0 {
+			headers.isNotNull = true
+			for _, headerValue := range rws.Headers {
+				value += headerValue + "^^"
+			}
+			value = strings.TrimSuffix(value, "^^")
+		}
+		headers.flagSetting += fmt.Sprintf("'%s',", value)
+		value = ""
 		var oaturl, oascopes, oaclientID, oaSecretKey, oaSecretKeyFile string
 		if rws.OAuth2 != nil {
 			if len(rws.OAuth2.TokenURL) > 0 {
@@ -1056,6 +1069,7 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, ssCache *scrapesSecre
 	remoteArgs = append(remoteArgs, url, authUser, authPassword, bearerToken, urlRelabelConfig, tlsInsecure, sendTimeout)
 	remoteArgs = append(remoteArgs, tlsServerName, tlsKeys, tlsCerts, tlsCAs)
 	remoteArgs = append(remoteArgs, oauth2ClientID, oauth2ClientSecret, oauth2ClientSecretFile, oauth2Scopes, oauth2TokenUrl)
+	remoteArgs = append(remoteArgs, headers)
 
 	for _, remoteArgType := range remoteArgs {
 		if remoteArgType.isNotNull {

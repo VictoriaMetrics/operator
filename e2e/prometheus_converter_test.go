@@ -42,7 +42,7 @@ var (
 								},
 								{
 									Action:       "drop",
-									SourceLabels: []string{"__address__"},
+									SourceLabels: []monitoringv1.LabelName{"__address__"},
 								},
 							},
 						},

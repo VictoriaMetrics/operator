@@ -83,28 +83,6 @@ func TestVMRule_sanityCheck(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "incorrect annotation",
-			fields: fields{
-				Spec: VMRuleSpec{
-					Groups: []RuleGroup{
-						{
-							Name: "group name",
-							Rules: []Rule{
-								{
-									Alert: "hosts down",
-									Expr:  "asf124qaf()",
-									Annotations: map[string]string{
-										"name": "{{$BadSyntax}}",
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-			wantErr: true,
-		},
-		{
 			name: "correct annotation with query",
 			fields: fields{
 				Spec: VMRuleSpec{

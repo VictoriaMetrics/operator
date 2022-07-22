@@ -227,7 +227,7 @@ func makeSpecForVMAuth(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperator
 		})
 	}
 
-	args = addExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs)
+	args = addExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs, "-")
 	sort.Strings(args)
 
 	vmauthContainer := corev1.Container{

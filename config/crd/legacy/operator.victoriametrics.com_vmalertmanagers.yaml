@@ -242,11 +242,11 @@ spec:
             extraArgs:
               additionalProperties:
                 type: string
-              description: 'ExtraArgs that will be passed to  VMAuth pod for example
-                remoteWrite.tmpDataPath: /tmp'
+              description: 'ExtraArgs that will be passed to  VMAlertmanager pod for example
+                log.level: debug'
               type: object
             extraEnvs:
-              description: ExtraEnvs that will be added to VMAuth pod
+              description: ExtraEnvs that will be added to VMAlertmanager pod
               items:
                 description: EnvVar represents an environment variable present in
                   a Container.

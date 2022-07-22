@@ -430,14 +430,15 @@ func CreateOrUpdatePodDisruptionBudget(ctx context.Context, rclient client.Clien
 // addExtraArgsOverrideDefaults adds extraArgs for given source args
 // it trims in-place args if it was set via extraArgs
 // no need to check for extraEnvs, it has priority over args at VictoriaMetrics apps
-func addExtraArgsOverrideDefaults(args []string, extraArgs map[string]string) []string {
+// dashes is either "-" or "--", depending on the process. altermanager needs two dashes.
+func addExtraArgsOverrideDefaults(args []string, extraArgs map[string]string, dashes string) []string {
 	if len(extraArgs) == 0 {
 		// fast path
 		return args
 	}
 	cleanArg := func(arg string) string {
-		if idx := strings.IndexByte(arg, '-'); idx >= 0 {
-			arg = arg[idx+1:]
+		if idx := strings.Index(arg, dashes); idx == 0 {
+			arg = arg[len(dashes):]
 		}
 		idx := strings.IndexByte(arg, '=')
 		if idx > 0 {
@@ -460,9 +461,9 @@ func addExtraArgsOverrideDefaults(args []string, extraArgs map[string]string) []
 	for argKey, argValue := range extraArgs {
 		// special hack for https://github.com/VictoriaMetrics/VictoriaMetrics/issues/1145
 		if argKey == "rule" {
-			args = append(args, fmt.Sprintf("-%s=%q", argKey, argValue))
+			args = append(args, fmt.Sprintf("%s%s=%q", dashes, argKey, argValue))
 		} else {
-			args = append(args, fmt.Sprintf("-%s=%s", argKey, argValue))
+			args = append(args, fmt.Sprintf("%s%s=%s", dashes, argKey, argValue))
 		}
 	}
 	return args

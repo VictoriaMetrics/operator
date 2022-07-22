@@ -253,7 +253,7 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 		})
 	}
 
-	args = addExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs)
+	args = addExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs, "-")
 	sort.Strings(args)
 	vmsingleContainer := corev1.Container{
 		Name:                     "vmsingle",

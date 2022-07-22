@@ -2,6 +2,7 @@ package converter
 
 import (
 	"github.com/VictoriaMetrics/operator/internal/config"
+	corev1 "k8s.io/api/core/v1"
 	"strings"
 
 	v1beta1vm "github.com/VictoriaMetrics/operator/api/v1beta1"
@@ -112,6 +113,45 @@ func replacePromDirPath(origin string) string {
 	return origin
 }
 
+func convertOAuth(src *v1.OAuth2) *v1beta1vm.OAuth2 {
+	if src == nil {
+		return nil
+	}
+
+	o := v1beta1vm.OAuth2{
+		ClientID:       ConvertSecretOrConfigmap(src.ClientID),
+		ClientSecret:   &src.ClientSecret,
+		Scopes:         src.Scopes,
+		TokenURL:       src.TokenURL,
+		EndpointParams: src.EndpointParams,
+	}
+	return &o
+}
+
+func convertAuthorization(srcSafe *v1.SafeAuthorization, src *v1.Authorization) *v1beta1vm.Authorization {
+	if srcSafe == nil && src == nil {
+		return nil
+	}
+	if srcSafe != nil {
+		return &v1beta1vm.Authorization{
+			Type:        srcSafe.Type,
+			Credentials: srcSafe.Credentials,
+		}
+	}
+	return &v1beta1vm.Authorization{
+		Type:            src.Type,
+		Credentials:     src.Credentials,
+		CredentialsFile: src.CredentialsFile,
+	}
+}
+
+func convertBearerToken(src corev1.SecretKeySelector) *corev1.SecretKeySelector {
+	if src.Key == "" && src.Name == "" {
+		return nil
+	}
+	return &src
+}
+
 func ConvertEndpoint(promEndpoint []v1.Endpoint) []v1beta1vm.Endpoint {
 	endpoints := make([]v1beta1vm.Endpoint, 0, len(promEndpoint))
 	for _, endpoint := range promEndpoint {
@@ -121,8 +161,8 @@ func ConvertEndpoint(promEndpoint []v1.Endpoint) []v1beta1vm.Endpoint {
 			Path:                 endpoint.Path,
 			Scheme:               endpoint.Scheme,
 			Params:               endpoint.Params,
-			Interval:             endpoint.Interval,
-			ScrapeTimeout:        endpoint.ScrapeTimeout,
+			Interval:             string(endpoint.Interval),
+			ScrapeTimeout:        string(endpoint.ScrapeTimeout),
 			BearerTokenFile:      replacePromDirPath(endpoint.BearerTokenFile),
 			HonorLabels:          endpoint.HonorLabels,
 			HonorTimestamps:      endpoint.HonorTimestamps,
@@ -131,10 +171,12 @@ func ConvertEndpoint(promEndpoint []v1.Endpoint) []v1beta1vm.Endpoint {
 			MetricRelabelConfigs: ConvertRelabelConfig(endpoint.MetricRelabelConfigs),
 			RelabelConfigs:       ConvertRelabelConfig(endpoint.RelabelConfigs),
 			ProxyURL:             endpoint.ProxyURL,
+			BearerTokenSecret:    convertBearerToken(endpoint.BearerTokenSecret),
+			OAuth2:               convertOAuth(endpoint.OAuth2),
+			FollowRedirects:      endpoint.FollowRedirects,
+			Authorization:        convertAuthorization(endpoint.Authorization, nil),
 		}
-		if len(endpoint.BearerTokenSecret.Key) > 0 {
-			ep.BearerTokenSecret = &endpoint.BearerTokenSecret
-		}
+
 		endpoints = append(endpoints, ep)
 	}
 	return endpoints
@@ -167,12 +209,11 @@ func ConvertTlsConfig(tlsConf *v1.TLSConfig) *v1beta1vm.TLSConfig {
 	}
 }
 
-func ConvertPodTlsConfig(tlsConf *v1.PodMetricsEndpointTLSConfig) *v1beta1vm.TLSConfig {
+func ConvertSafeTlsConfig(tlsConf *v1.SafeTLSConfig) *v1beta1vm.TLSConfig {
 	if tlsConf == nil {
 		return nil
 	}
 	return &v1beta1vm.TLSConfig{
-		// todo it doesnt support files, check why.
 		CA:                 ConvertSecretOrConfigmap(tlsConf.CA),
 		Cert:               ConvertSecretOrConfigmap(tlsConf.Cert),
 		KeySecret:          tlsConf.KeySecret,
@@ -193,9 +234,16 @@ func ConvertRelabelConfig(promRelabelConfig []*v1.RelabelConfig) []*v1beta1vm.Re
 		return nil
 	}
 	relabelCfg := []*v1beta1vm.RelabelConfig{}
+	sourceLabelsToStringSlice := func(src []v1.LabelName) []string {
+		res := make([]string, len(src))
+		for i, v := range src {
+			res[i] = string(v)
+		}
+		return res
+	}
 	for _, relabel := range promRelabelConfig {
 		relabelCfg = append(relabelCfg, &v1beta1vm.RelabelConfig{
-			SourceLabels: relabel.SourceLabels,
+			SourceLabels: sourceLabelsToStringSlice(relabel.SourceLabels),
 			Separator:    relabel.Separator,
 			TargetLabel:  relabel.TargetLabel,
 			Regex:        relabel.Regex,
@@ -214,24 +262,32 @@ func ConvertPodEndpoints(promPodEnpoints []v1.PodMetricsEndpoint) []v1beta1vm.Po
 	}
 	endPoints := make([]v1beta1vm.PodMetricsEndpoint, 0, len(promPodEnpoints))
 	for _, promEndPoint := range promPodEnpoints {
+		if promEndPoint.Authorization != nil {
+
+		}
+		var safeTls *v1.SafeTLSConfig
+		if promEndPoint.TLSConfig != nil {
+			safeTls = &promEndPoint.TLSConfig.SafeTLSConfig
+		}
 		ep := v1beta1vm.PodMetricsEndpoint{
 			TargetPort:           promEndPoint.TargetPort,
 			Port:                 promEndPoint.Port,
-			Interval:             promEndPoint.Interval,
+			Interval:             string(promEndPoint.Interval),
 			Path:                 promEndPoint.Path,
 			Scheme:               promEndPoint.Scheme,
 			Params:               promEndPoint.Params,
-			ScrapeTimeout:        promEndPoint.ScrapeTimeout,
+			ScrapeTimeout:        string(promEndPoint.ScrapeTimeout),
 			HonorLabels:          promEndPoint.HonorLabels,
 			HonorTimestamps:      promEndPoint.HonorTimestamps,
 			ProxyURL:             promEndPoint.ProxyURL,
 			RelabelConfigs:       ConvertRelabelConfig(promEndPoint.RelabelConfigs),
 			MetricRelabelConfigs: ConvertRelabelConfig(promEndPoint.MetricRelabelConfigs),
 			BasicAuth:            ConvertBasicAuth(promEndPoint.BasicAuth),
-			TLSConfig:            ConvertPodTlsConfig(promEndPoint.TLSConfig),
-		}
-		if len(promEndPoint.BearerTokenSecret.Key) > 0 {
-			ep.BearerTokenSecret = &promEndPoint.BearerTokenSecret
+			TLSConfig:            ConvertSafeTlsConfig(safeTls),
+			OAuth2:               convertOAuth(promEndPoint.OAuth2),
+			FollowRedirects:      promEndPoint.FollowRedirects,
+			BearerTokenSecret:    convertBearerToken(promEndPoint.BearerTokenSecret),
+			Authorization:        convertAuthorization(promEndPoint.Authorization, nil),
 		}
 		endPoints = append(endPoints, ep)
 	}
@@ -294,6 +350,10 @@ func ConvertProbe(probe *v1.Probe, conf *config.BaseOperatorConf) *v1beta1vm.VMP
 			Labels:  probe.Spec.Targets.StaticConfig.Labels,
 		}
 	}
+	var safeTls *v1.SafeTLSConfig
+	if probe.Spec.TLSConfig != nil {
+		safeTls = &probe.Spec.TLSConfig.SafeTLSConfig
+	}
 	cp := &v1beta1vm.VMProbe{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        probe.Name,
@@ -313,8 +373,14 @@ func ConvertProbe(probe *v1.Probe, conf *config.BaseOperatorConf) *v1beta1vm.VMP
 				Ingress:      ingressTarget,
 				StaticConfig: staticTargets,
 			},
-			Interval:      probe.Spec.Interval,
-			ScrapeTimeout: probe.Spec.ScrapeTimeout,
+			Interval:          string(probe.Spec.Interval),
+			ScrapeTimeout:     string(probe.Spec.ScrapeTimeout),
+			BasicAuth:         ConvertBasicAuth(probe.Spec.BasicAuth),
+			TLSConfig:         ConvertSafeTlsConfig(safeTls),
+			BearerTokenSecret: convertBearerToken(probe.Spec.BearerTokenSecret),
+			OAuth2:            convertOAuth(probe.Spec.OAuth2),
+			SampleLimit:       probe.Spec.SampleLimit,
+			Authorization:     convertAuthorization(probe.Spec.Authorization, nil),
 		},
 	}
 	if conf.EnabledPrometheusConverterOwnerReferences {

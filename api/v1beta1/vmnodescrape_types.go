@@ -43,7 +43,9 @@ type VMNodeScrapeSpec struct {
 	// OAuth2 defines auth configuration
 	// +optional
 	OAuth2 *OAuth2 `json:"oauth2,omitempty"`
-	// TLSConfig configuration to use when scraping the node
+	// Authorization with http header Authorization
+	// +optional
+	Authorization *Authorization `json:"authorization,omitempty"` // TLSConfig configuration to use when scraping the node
 	// +optional
 	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
 	// File to read bearer token for scraping targets.

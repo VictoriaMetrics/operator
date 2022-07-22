@@ -139,7 +139,7 @@ func generateProbeConfig(
 		}
 
 		selectedNamespaces := getNamespacesFromNamespaceSelector(&cr.Spec.Targets.Ingress.NamespaceSelector, cr.Namespace, ignoreNamespaceSelectors)
-		cfg = append(cfg, generateK8SSDConfig(selectedNamespaces, apiserverConfig, ssCache.baSecrets, kubernetesSDRoleIngress))
+		cfg = append(cfg, generateK8SSDConfig(selectedNamespaces, apiserverConfig, ssCache, kubernetesSDRoleIngress))
 
 		// Relabelings for ingress SD.
 		relabelings = append(relabelings, []yaml.MapSlice{
@@ -235,13 +235,9 @@ func generateProbeConfig(
 	}
 	cfg = addTLStoYaml(cfg, cr.Namespace, cr.Spec.TLSConfig, false)
 	cfg = append(cfg, buildVMScrapeParams(cr.Namespace, cr.AsProxyKey(), cr.Spec.VMScrapeParams, ssCache)...)
-	if cr.Spec.OAuth2 != nil {
-		r := buildOAuth2Config(cr.AsMapKey(), cr.Spec.OAuth2, ssCache.oauth2Secrets)
-		if len(r) > 0 {
-			cfg = append(cfg, yaml.MapItem{Key: "oauth2", Value: r})
-		}
-
-	}
+	fmt.Println(cr.Spec.OAuth2, " ", ssCache)
+	cfg = addOAuth2Config(cfg, cr.AsMapKey(), cr.Spec.OAuth2, ssCache.oauth2Secrets)
+	cfg = addAuthorizationConfig(cfg, cr.AsMapKey(), cr.Spec.Authorization, ssCache.authorizationSecrets)
 
 	return cfg
 }

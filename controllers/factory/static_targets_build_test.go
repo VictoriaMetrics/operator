@@ -30,6 +30,7 @@ func Test_generateStaticScrapeConfig(t *testing.T) {
 		{
 			name: "basic cfg",
 			args: args{
+				ssCache: &scrapesSecretsCache{},
 				m: &victoriametricsv1beta1.VMStaticScrape{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "static-1",
@@ -61,6 +62,7 @@ relabel_configs:
 		{
 			name: "basic cfg with overrides",
 			args: args{
+				ssCache: &scrapesSecretsCache{},
 				m: &victoriametricsv1beta1.VMStaticScrape{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "static-1",

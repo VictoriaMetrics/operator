@@ -141,6 +141,9 @@ type Endpoint struct {
 	// OAuth2 defines auth configuration
 	// +optional
 	OAuth2 *OAuth2 `json:"oauth2,omitempty"`
+	// Authorization with http header Authorization
+	// +optional
+	Authorization *Authorization `json:"authorization,omitempty"`
 	// TLSConfig configuration to use when scraping the endpoint
 	// +optional
 	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
@@ -239,6 +242,18 @@ type OAuth2 struct {
 	// Parameters to append to the token URL
 	// +optional
 	EndpointParams map[string]string `json:"endpoint_params,omitempty"`
+}
+
+// Authorization configures generic authorization params
+type Authorization struct {
+	// Type of authorization, default to bearer
+	// +optional
+	Type string `json:"type,omitempty"`
+	// Reference to the secret with value for authorization
+	Credentials *v1.SecretKeySelector `json:"credentials,omitempty"`
+	// File with value for authorization
+	// +optional
+	CredentialsFile string `json:"credentialsFile,omitempty"`
 }
 
 // TLSConfig specifies TLSConfig configuration parameters.
@@ -478,6 +493,8 @@ type APIServerConfig struct {
 	// TLSConfig Config to use for accessing apiserver.
 	// +optional
 	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
+	// +optional
+	Authorization *Authorization `json:"authorization,omitempty"`
 }
 
 // AsProxyKey builds key for proxy cache maps

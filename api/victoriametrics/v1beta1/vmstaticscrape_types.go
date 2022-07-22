@@ -72,6 +72,9 @@ type TargetEndpoint struct {
 	// More info: https://prometheus.io/docs/operating/configuration/#endpoints
 	// +optional
 	BasicAuth *BasicAuth `json:"basicAuth,omitempty"`
+	// Authorization with http header Authorization
+	// +optional
+	Authorization *Authorization `json:"authorization,omitempty"`
 	// MetricRelabelConfigs to apply to samples before ingestion.
 	// +optional
 	MetricRelabelConfigs []*RelabelConfig `json:"metricRelabelConfigs,omitempty"`

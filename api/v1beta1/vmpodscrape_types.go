@@ -131,6 +131,9 @@ type PodMetricsEndpoint struct {
 	// OAuth2 defines auth configuration
 	// +optional
 	OAuth2 *OAuth2 `json:"oauth2,omitempty"`
+	// Authorization with http header Authorization
+	// +optional
+	Authorization *Authorization `json:"authorization,omitempty"`
 	// VMScrapeParams defines VictoriaMetrics specific scrape parametrs
 	// +optional
 	VMScrapeParams *VMScrapeParams `json:"vm_scrape_params,omitempty"`

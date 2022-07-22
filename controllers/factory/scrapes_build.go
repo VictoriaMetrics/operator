@@ -293,7 +293,7 @@ func generatePodScrapeConfig(
 	cfg = honorTimestamps(cfg, ep.HonorTimestamps, overrideHonorTimestamps)
 
 	selectedNamespaces := getNamespacesFromNamespaceSelector(&m.Spec.NamespaceSelector, m.Namespace, ignoreNamespaceSelectors)
-	cfg = append(cfg, generatePodK8SSDConfig(selectedNamespaces, m.Spec.Selector, apiserverConfig, ssCache.baSecrets, kubernetesSDRolePod))
+	cfg = append(cfg, generatePodK8SSDConfig(selectedNamespaces, m.Spec.Selector, apiserverConfig, ssCache, kubernetesSDRolePod))
 
 	var scrapeInterval string
 	if ep.ScrapeInterval != "" {
@@ -513,12 +513,9 @@ func generatePodScrapeConfig(
 	}
 
 	cfg = append(cfg, buildVMScrapeParams(m.Namespace, m.AsProxyKey(i), ep.VMScrapeParams, ssCache)...)
-	if ep.OAuth2 != nil {
-		r := buildOAuth2Config(m.AsMapKey(i), ep.OAuth2, ssCache.oauth2Secrets)
-		if len(r) > 0 {
-			cfg = append(cfg, yaml.MapItem{Key: "oauth2", Value: r})
-		}
-	}
+
+	cfg = addOAuth2Config(cfg, m.AsMapKey(i), ep.OAuth2, ssCache.oauth2Secrets)
+	cfg = addAuthorizationConfig(cfg, m.AsMapKey(i), ep.Authorization, ssCache.authorizationSecrets)
 	return cfg
 }
 
@@ -552,7 +549,7 @@ func generateServiceScrapeConfig(
 	cfg = honorTimestamps(cfg, ep.HonorTimestamps, overrideHonorTimestamps)
 
 	selectedNamespaces := getNamespacesFromNamespaceSelector(&m.Spec.NamespaceSelector, m.Namespace, ignoreNamespaceSelectors)
-	cfg = append(cfg, generateK8SSDConfig(selectedNamespaces, apiserverConfig, ssCache.baSecrets, m.Spec.DiscoveryRole))
+	cfg = append(cfg, generateK8SSDConfig(selectedNamespaces, apiserverConfig, ssCache, m.Spec.DiscoveryRole))
 
 	var scrapeInterval string
 	if ep.ScrapeInterval != "" {
@@ -853,12 +850,8 @@ func generateServiceScrapeConfig(
 	}
 
 	cfg = append(cfg, buildVMScrapeParams(m.Namespace, m.AsProxyKey(i), ep.VMScrapeParams, ssCache)...)
-	if ep.OAuth2 != nil {
-		r := buildOAuth2Config(m.AsMapKey(i), ep.OAuth2, ssCache.oauth2Secrets)
-		if len(r) > 0 {
-			cfg = append(cfg, yaml.MapItem{Key: "oauth2", Value: r})
-		}
-	}
+	cfg = addOAuth2Config(cfg, m.AsMapKey(i), ep.OAuth2, ssCache.oauth2Secrets)
+	cfg = addAuthorizationConfig(cfg, m.AsMapKey(i), ep.Authorization, ssCache.authorizationSecrets)
 
 	return cfg
 }
@@ -887,7 +880,7 @@ func generateNodeScrapeConfig(
 	}
 	cfg = honorTimestamps(cfg, nodeSpec.HonorTimestamps, overrideHonorTimestamps)
 
-	cfg = append(cfg, generateK8SSDConfig(nil, apiserverConfig, ssCache.baSecrets, kubernetesSDRoleNode))
+	cfg = append(cfg, generateK8SSDConfig(nil, apiserverConfig, ssCache, kubernetesSDRoleNode))
 
 	var scrapeInterval string
 	if nodeSpec.ScrapeInterval != "" {
@@ -1074,12 +1067,8 @@ func generateNodeScrapeConfig(
 		cfg = append(cfg, yaml.MapItem{Key: "metric_relabel_configs", Value: metricRelabelings})
 	}
 	cfg = append(cfg, buildVMScrapeParams(cr.Namespace, cr.AsProxyKey(), cr.Spec.VMScrapeParams, ssCache)...)
-	if nodeSpec.OAuth2 != nil {
-		r := buildOAuth2Config(cr.AsMapKey(), nodeSpec.OAuth2, ssCache.oauth2Secrets)
-		if len(r) > 0 {
-			cfg = append(cfg, yaml.MapItem{Key: "oauth2", Value: r})
-		}
-	}
+	cfg = addOAuth2Config(cfg, cr.AsMapKey(), nodeSpec.OAuth2, ssCache.oauth2Secrets)
+	cfg = addAuthorizationConfig(cfg, cr.AsMapKey(), nodeSpec.Authorization, ssCache.authorizationSecrets)
 	return cfg
 }
 
@@ -1191,9 +1180,9 @@ func combineSelectorStr(kvs map[string]string) string {
 	return strings.Join(kvsSlice, ",")
 }
 
-func generatePodK8SSDConfig(namespaces []string, labelSelector metav1.LabelSelector, apiserverConfig *victoriametricsv1beta1.APIServerConfig, basicAuthSecrets map[string]*BasicAuthCredentials, role string) yaml.MapItem {
+func generatePodK8SSDConfig(namespaces []string, labelSelector metav1.LabelSelector, apiserverConfig *victoriametricsv1beta1.APIServerConfig, ssCache *scrapesSecretsCache, role string) yaml.MapItem {
 
-	cfg := generateK8SSDConfig(namespaces, apiserverConfig, basicAuthSecrets, role)
+	cfg := generateK8SSDConfig(namespaces, apiserverConfig, ssCache, role)
 
 	if len(labelSelector.MatchLabels) != 0 {
 		k8sSDs, flag := cfg.Value.([]yaml.MapSlice)
@@ -1227,7 +1216,7 @@ func generatePodK8SSDConfig(namespaces []string, labelSelector metav1.LabelSelec
 	return cfg
 }
 
-func generateK8SSDConfig(namespaces []string, apiserverConfig *victoriametricsv1beta1.APIServerConfig, basicAuthSecrets map[string]*BasicAuthCredentials, role string) yaml.MapItem {
+func generateK8SSDConfig(namespaces []string, apiserverConfig *victoriametricsv1beta1.APIServerConfig, ssCache *scrapesSecretsCache, role string) yaml.MapItem {
 	k8sSDConfig := yaml.MapSlice{
 		{
 			Key:   "role",
@@ -1252,8 +1241,8 @@ func generateK8SSDConfig(namespaces []string, apiserverConfig *victoriametricsv1
 			Key: "api_server", Value: apiserverConfig.Host,
 		})
 
-		if apiserverConfig.BasicAuth != nil && basicAuthSecrets != nil {
-			if s, ok := basicAuthSecrets["apiserver"]; ok {
+		if apiserverConfig.BasicAuth != nil {
+			if s, ok := ssCache.baSecrets["apiserver"]; ok {
 				k8sSDConfig = append(k8sSDConfig, yaml.MapItem{
 					Key: "basic_auth", Value: yaml.MapSlice{
 						{Key: "username", Value: s.username},
@@ -1261,6 +1250,9 @@ func generateK8SSDConfig(namespaces []string, apiserverConfig *victoriametricsv1
 					},
 				})
 			}
+		}
+		if apiserverConfig.Authorization != nil {
+			k8sSDConfig = addAuthorizationConfig(k8sSDConfig, "apiserver", apiserverConfig.Authorization, ssCache.authorizationSecrets)
 		}
 
 		if apiserverConfig.BearerToken != "" {
@@ -1357,12 +1349,36 @@ func buildVMScrapeParams(namespace, cacheKey string, cfg *victoriametricsv1beta1
 	return r
 }
 
-func buildOAuth2Config(cacheKey string, cfg *victoriametricsv1beta1.OAuth2, oauth2Cache map[string]*oauthCreds) yaml.MapSlice {
-	var r yaml.MapSlice
-	cachedSecret := oauth2Cache[cacheKey]
-	if cachedSecret == nil {
-		return r
+func addAuthorizationConfig(dst yaml.MapSlice, cacheKey string, cfg *victoriametricsv1beta1.Authorization, authorizationCache map[string]string) yaml.MapSlice {
+
+	if cfg == nil || len(cfg.Type) == 0 {
+		// fast path
+		return dst
 	}
+	secretValue, ok := authorizationCache[cacheKey]
+	if !ok && len(cfg.CredentialsFile) == 0 {
+		return dst
+	}
+	var r yaml.MapSlice
+	r = append(r, yaml.MapItem{Key: "type", Value: cfg.Type})
+	if len(secretValue) > 0 {
+		r = append(r, yaml.MapItem{Key: "credentials", Value: secretValue})
+	} else {
+		r = append(r, yaml.MapItem{Key: "credentials_file", Value: cfg.CredentialsFile})
+	}
+
+	dst = append(dst, yaml.MapItem{Key: "authorization", Value: r})
+	return dst
+}
+
+func addOAuth2Config(dst yaml.MapSlice, cacheKey string, cfg *victoriametricsv1beta1.OAuth2, oauth2Cache map[string]*oauthCreds) yaml.MapSlice {
+
+	cachedSecret := oauth2Cache[cacheKey]
+	if cfg == nil || cachedSecret == nil {
+		// fast path
+		return dst
+	}
+	var r yaml.MapSlice
 	if len(cachedSecret.clientID) > 0 {
 		r = append(r, yaml.MapItem{Key: "client_id", Value: cachedSecret.clientID})
 	}
@@ -1382,7 +1398,11 @@ func buildOAuth2Config(cacheKey string, cfg *victoriametricsv1beta1.OAuth2, oaut
 	if len(cfg.TokenURL) > 0 {
 		r = append(r, yaml.MapItem{Key: "token_url", Value: cfg.TokenURL})
 	}
-	return r
+	if len(r) == 0 {
+		return dst
+	}
+	dst = append(dst, yaml.MapItem{Key: "oauth2", Value: r})
+	return dst
 }
 
 func buildProxyAuthConfig(namespace, cacheKey string, proxyAuth *victoriametricsv1beta1.ProxyAuth, ssCache *scrapesSecretsCache) yaml.MapSlice {

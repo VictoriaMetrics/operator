@@ -21,9 +21,10 @@ import (
 )
 
 type scrapesSecretsCache struct {
-	bearerTokens  map[string]string
-	baSecrets     map[string]*BasicAuthCredentials
-	oauth2Secrets map[string]*oauthCreds
+	bearerTokens         map[string]string
+	baSecrets            map[string]*BasicAuthCredentials
+	oauth2Secrets        map[string]*oauthCreds
+	authorizationSecrets map[string]string
 }
 
 func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client, c *config.BaseOperatorConf) error {
@@ -334,6 +335,7 @@ func loadScrapeSecrets(
 ) (*scrapesSecretsCache, error) {
 
 	oauth2Secret := make(map[string]*oauthCreds)
+	authorizationSecrets := make(map[string]string)
 	baSecrets := make(map[string]*BasicAuthCredentials)
 	bearerSecrets := make(map[string]string)
 	nsSecretCache := make(map[string]*v1.Secret)
@@ -362,6 +364,13 @@ func loadScrapeSecrets(
 				}
 				bearerSecrets[mon.AsMapKey(i)] = token
 			}
+			if ep.Authorization != nil && ep.Authorization.Credentials != nil {
+				secretValue, err := getCredFromSecret(ctx, rclient, mon.Namespace, ep.Authorization.Credentials, buildCacheKey(mon.Namespace, ep.Authorization.Credentials.Name), nsSecretCache)
+				if err != nil {
+					return nil, fmt.Errorf("cannot fetch authorization secret value: %w", err)
+				}
+				authorizationSecrets[mon.AsMapKey(i)] = secretValue
+			}
 			if ep.VMScrapeParams != nil && ep.VMScrapeParams.ProxyClientConfig != nil {
 				ba, token, err := loadProxySecrets(ctx, rclient, ep.VMScrapeParams.ProxyClientConfig, mon.Namespace, nsSecretCache)
 				if err != nil {
@@ -371,7 +380,6 @@ func loadScrapeSecrets(
 					baSecrets[mon.AsProxyKey(i)] = ba
 				}
 				bearerSecrets[mon.AsProxyKey(i)] = token
-
 			}
 
 		}
@@ -449,7 +457,13 @@ func loadScrapeSecrets(
 					baSecrets[pod.AsProxyKey(i)] = ba
 				}
 				bearerSecrets[pod.AsProxyKey(i)] = token
-
+			}
+			if ep.Authorization != nil && ep.Authorization.Credentials != nil {
+				secretValue, err := getCredFromSecret(ctx, rclient, pod.Namespace, ep.Authorization.Credentials, buildCacheKey(pod.Namespace, ep.Authorization.Credentials.Name), nsSecretCache)
+				if err != nil {
+					return nil, fmt.Errorf("cannot fetch authorization secret value: %w", err)
+				}
+				authorizationSecrets[pod.AsMapKey(i)] = secretValue
 			}
 		}
 	}
@@ -486,6 +500,13 @@ func loadScrapeSecrets(
 			}
 			bearerSecrets[probe.AsProxyKey()] = token
 		}
+		if probe.Spec.Authorization != nil && probe.Spec.Authorization.Credentials != nil {
+			secretValue, err := getCredFromSecret(ctx, rclient, probe.Namespace, probe.Spec.Authorization.Credentials, buildCacheKey(probe.Namespace, probe.Spec.Authorization.Credentials.Name), nsSecretCache)
+			if err != nil {
+				return nil, fmt.Errorf("cannot fetch authorization secret value: %w", err)
+			}
+			authorizationSecrets[probe.AsMapKey()] = secretValue
+		}
 	}
 
 	for _, staticCfg := range statics {
@@ -520,18 +541,33 @@ func loadScrapeSecrets(
 					baSecrets[staticCfg.AsProxyKey(i)] = ba
 				}
 				bearerSecrets[staticCfg.AsProxyKey(i)] = token
-
+			}
+			if ep.Authorization != nil && ep.Authorization.Credentials != nil {
+				secretValue, err := getCredFromSecret(ctx, rclient, staticCfg.Namespace, ep.Authorization.Credentials, buildCacheKey(staticCfg.Namespace, ep.Authorization.Credentials.Name), nsSecretCache)
+				if err != nil {
+					return nil, fmt.Errorf("cannot fetch authorization secret value: %w", err)
+				}
+				authorizationSecrets[staticCfg.AsMapKey(i)] = secretValue
 			}
 		}
 	}
 
 	// load apiserver basic auth secret
-	if apiserverConfig != nil && apiserverConfig.BasicAuth != nil {
-		credentials, err := loadBasicAuthSecret(ctx, rclient, namespace, apiserverConfig.BasicAuth)
-		if err != nil {
-			return nil, fmt.Errorf("could not generate basicAuth for apiserver config. %w", err)
+	if apiserverConfig != nil {
+		if apiserverConfig.BasicAuth != nil {
+			credentials, err := loadBasicAuthSecret(ctx, rclient, namespace, apiserverConfig.BasicAuth)
+			if err != nil {
+				return nil, fmt.Errorf("could not generate basicAuth for apiserver config. %w", err)
+			}
+			baSecrets["apiserver"] = &credentials
 		}
-		baSecrets["apiserver"] = &credentials
+		if apiserverConfig.Authorization != nil {
+			secretValue, err := getCredFromSecret(ctx, rclient, namespace, apiserverConfig.Authorization.Credentials, buildCacheKey(namespace, "apiserver"), nsSecretCache)
+			if err != nil {
+				return nil, fmt.Errorf("cannot fetch authorization secret for apiserver config: %w", err)
+			}
+			authorizationSecrets["apiserver"] = secretValue
+		}
 	}
 
 	// load basic auth for remote write configuration

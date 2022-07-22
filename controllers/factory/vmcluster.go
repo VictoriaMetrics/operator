@@ -480,7 +480,7 @@ func makePodSpecForVMSelect(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 		})
 	}
 
-	args = addExtraArgsOverrideDefaults(args, cr.Spec.VMSelect.ExtraArgs)
+	args = addExtraArgsOverrideDefaults(args, cr.Spec.VMSelect.ExtraArgs, "-")
 	sort.Strings(args)
 	vmselectContainer := corev1.Container{
 		Name:                     "vmselect",
@@ -750,7 +750,7 @@ func makePodSpecForVMInsert(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 			MountPath: path.Join(ConfigMapsDir, c),
 		})
 	}
-	args = addExtraArgsOverrideDefaults(args, cr.Spec.VMInsert.ExtraArgs)
+	args = addExtraArgsOverrideDefaults(args, cr.Spec.VMInsert.ExtraArgs, "-")
 	sort.Strings(args)
 
 	vminsertContainer := corev1.Container{
@@ -1037,7 +1037,7 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) 
 		})
 	}
 
-	args = addExtraArgsOverrideDefaults(args, cr.Spec.VMStorage.ExtraArgs)
+	args = addExtraArgsOverrideDefaults(args, cr.Spec.VMStorage.ExtraArgs, "-")
 	sort.Strings(args)
 	vmstorageContainer := corev1.Container{
 		Name:                     "vmstorage",

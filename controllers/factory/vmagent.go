@@ -440,7 +440,7 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 		// limit to 1GB
 		args = append(args, "-remoteWrite.maxDiskUsagePerURL=1073741824")
 	}
-	args = addExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs)
+	args = addExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs, "-")
 	sort.Strings(args)
 
 	vmagentContainer := corev1.Container{

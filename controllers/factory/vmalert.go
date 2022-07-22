@@ -479,7 +479,7 @@ func buildVMAlertArgs(cr *victoriametricsv1beta1.VMAlert, ruleConfigMapNames []s
 	if len(cr.Spec.ExtraEnvs) > 0 {
 		args = append(args, "-envflag.enable=true")
 	}
-	args = addExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs)
+	args = addExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs, "-")
 	sort.Strings(args)
 	return args
 }

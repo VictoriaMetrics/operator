@@ -29,6 +29,7 @@ func Test_generateProbeConfig(t *testing.T) {
 		{
 			name: "generate static config",
 			args: args{
+				ssCache: &scrapesSecretsCache{},
 				cr: &victoriametricsv1beta1.VMProbe{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: "default",

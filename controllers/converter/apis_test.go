@@ -85,7 +85,7 @@ func TestConvertRelabelConfig(t *testing.T) {
 				promRelabelConfig: []*v1.RelabelConfig{
 					{
 						Action:       "drop",
-						SourceLabels: []string{"__address__"},
+						SourceLabels: []v1.LabelName{"__address__"},
 					},
 				},
 			},
@@ -105,7 +105,7 @@ func TestConvertRelabelConfig(t *testing.T) {
 					},
 					{
 						Action:       "keep",
-						SourceLabels: []string{"__address__"},
+						SourceLabels: []v1.LabelName{"__address__"},
 					},
 				},
 			},
@@ -151,7 +151,7 @@ func TestConvertEndpoint(t *testing.T) {
 						RelabelConfigs: []*v1.RelabelConfig{
 							{
 								Action:       "drop",
-								SourceLabels: []string{"__meta__instance"},
+								SourceLabels: []v1.LabelName{"__meta__instance"},
 							},
 							{
 								Action: "keep",
@@ -177,7 +177,7 @@ func TestConvertEndpoint(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := ConvertEndpoint(tt.args.promEndpoint); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("ConvertEndpoint() = %v, want %v", got, tt.want)
+				t.Errorf("ConvertEndpoint() \ngot:  \n%v\n, \nwant: \n%v", got, tt.want)
 			}
 		})
 	}
@@ -202,7 +202,7 @@ func TestConvertServiceMonitor(t *testing.T) {
 								MetricRelabelConfigs: []*v1.RelabelConfig{
 									{
 										Action:       "drop",
-										SourceLabels: []string{"__meta__instance"},
+										SourceLabels: []v1.LabelName{"__meta__instance"},
 									},
 								},
 							},
@@ -239,7 +239,7 @@ func TestConvertServiceMonitor(t *testing.T) {
 								MetricRelabelConfigs: []*v1.RelabelConfig{
 									{
 										Action:       "drop",
-										SourceLabels: []string{"__meta__instance"},
+										SourceLabels: []v1.LabelName{"__meta__instance"},
 									},
 								},
 							},

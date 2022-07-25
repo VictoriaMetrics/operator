@@ -397,7 +397,7 @@ func makePodSpecForVMSelect(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 		}
 	}
 
-	if cr.Spec.VMStorage != nil && cr.Spec.VMStorage.ReplicaCount != nil {
+	if cr.Spec.VMStorage != nil && cr.Spec.VMStorage.ReplicaCount != nil && cr.Spec.VMSelect.HPA == nil {
 		if cr.Spec.VMStorage.VMSelectPort == "" {
 			cr.Spec.VMStorage.VMSelectPort = c.VMClusterDefault.VMStorageDefault.VMSelectPort
 		}

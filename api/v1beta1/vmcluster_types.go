@@ -262,7 +262,10 @@ type VMSelect struct {
 	// +optional
 	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
 	*EmbeddedProbes     `json:",inline"`
-	HPA                 *EmbeddedHPA `json:"hpa,omitempty"`
+	// Configures horizontal pod autoscaling.
+	// Note, enabling this option disables vmselect to vmselect communication. In most cases it's not an issue.
+	// +optional
+	HPA *EmbeddedHPA `json:"hpa,omitempty"`
 	// NodeSelector Define which Nodes the Pods are scheduled on.
 	// +optional
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`

@@ -556,6 +556,15 @@ func Test_addExtraArgsOverrideDefaults(t *testing.T) {
 			},
 			want: []string{"--log.level=debug"},
 		},
+		{
+			name: "two dashes, alertmanager migration",
+			args: args{
+				args:      []string{"--log.level=info"},
+				extraArgs: map[string]string{"-web.externalURL": "http://domain.example"},
+				dashes:    "--",
+			},
+			want: []string{"--log.level=info", "--web.externalURL=http://domain.example"},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -459,6 +459,11 @@ func addExtraArgsOverrideDefaults(args []string, extraArgs map[string]string, da
 	args = args[:cnt]
 	// add extraArgs
 	for argKey, argValue := range extraArgs {
+		// hack for alertmanager migration
+		// TODO remove it at the 28.0 release
+		if len(dashes) == 2 && strings.HasPrefix(argKey, "-") {
+			argKey = strings.TrimPrefix(argKey, "-")
+		}
 		// special hack for https://github.com/VictoriaMetrics/VictoriaMetrics/issues/1145
 		if argKey == "rule" {
 			args = append(args, fmt.Sprintf("%s%s=%q", dashes, argKey, argValue))

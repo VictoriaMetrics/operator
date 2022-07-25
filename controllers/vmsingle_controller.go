@@ -119,5 +119,6 @@ func (r *VMSingleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&v1.Service{}, builder.OnlyMetadata).
 		Owns(&victoriametricsv1beta1.VMServiceScrape{}).
 		Owns(&v1.ServiceAccount{}, builder.OnlyMetadata).
+		WithOptions(defaultOptions).
 		Complete(r)
 }

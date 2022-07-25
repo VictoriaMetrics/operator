@@ -98,5 +98,6 @@ func (r *VMStaticScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 func (r *VMStaticScrapeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&victoriametricsv1beta1.VMStaticScrape{}).
+		WithOptions(defaultOptions).
 		Complete(r)
 }

@@ -145,5 +145,6 @@ func (r *VMAlertReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&v1.Secret{}, builder.OnlyMetadata).
 		Owns(&v1.ServiceAccount{}, builder.OnlyMetadata).
 		Owns(&policyv1beta1.PodDisruptionBudget{}).
+		WithOptions(defaultOptions).
 		Complete(r)
 }

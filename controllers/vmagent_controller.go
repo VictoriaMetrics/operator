@@ -18,13 +18,10 @@ package controllers
 
 import (
 	"context"
-	"github.com/VictoriaMetrics/operator/controllers/factory/limiter"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sync"
-
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
+	"github.com/VictoriaMetrics/operator/controllers/factory/limiter"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
@@ -34,6 +31,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sync"
 )
 
 var (
@@ -144,5 +143,6 @@ func (r *VMAgentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&v1.Secret{}, builder.OnlyMetadata).
 		Owns(&v1.ServiceAccount{}, builder.OnlyMetadata).
 		Owns(&policyv1beta1.PodDisruptionBudget{}, builder.OnlyMetadata).
+		WithOptions(defaultOptions).
 		Complete(r)
 }

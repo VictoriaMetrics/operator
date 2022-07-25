@@ -123,5 +123,6 @@ func (r *VMClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&appsv1.StatefulSet{}, builder.OnlyMetadata).
 		Owns(&v1.ServiceAccount{}, builder.OnlyMetadata).
 		Owns(&policyv1beta1.PodDisruptionBudget{}).
+		WithOptions(defaultOptions).
 		Complete(r)
 }

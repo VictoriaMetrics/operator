@@ -109,5 +109,6 @@ func (r *VMProbeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 func (r *VMProbeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&operatorv1beta1.VMProbe{}).
+		WithOptions(defaultOptions).
 		Complete(r)
 }

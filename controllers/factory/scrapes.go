@@ -606,7 +606,7 @@ func loadBasicAuthSecret(ctx context.Context, rclient client.Client, ns string, 
 	var bas v1.Secret
 	if err := rclient.Get(ctx, types.NamespacedName{Namespace: ns, Name: basicAuth.Username.Name}, &bas); err != nil {
 		if errors.IsNotFound(err) {
-			return BasicAuthCredentials{}, fmt.Errorf("basic auth username and password secret not found")
+			return BasicAuthCredentials{}, fmt.Errorf("basic auth username secret: %q not found", basicAuth.Username.Name)
 		}
 		return BasicAuthCredentials{}, err
 	}
@@ -615,6 +615,9 @@ func loadBasicAuthSecret(ctx context.Context, rclient client.Client, ns string, 
 	}
 	if basicAuth.Username.Name != basicAuth.Password.Name {
 		if err := rclient.Get(ctx, types.NamespacedName{Namespace: ns, Name: basicAuth.Password.Name}, &bas); err != nil {
+			if errors.IsNotFound(err) {
+				return BasicAuthCredentials{}, fmt.Errorf("basic auth password secret: %q not found", basicAuth.Username.Name)
+			}
 			return BasicAuthCredentials{}, err
 		}
 	}

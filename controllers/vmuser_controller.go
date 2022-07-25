@@ -138,12 +138,10 @@ func StartWatchForVMUserSecretRefs(ctx context.Context, rclient client.Client, c
 	inf := cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
-				// todo add single namespace filter.
-				return c.Secrets("").List(ctx, metav1.ListOptions{LabelSelector: secretSelector})
+				return c.Secrets(config.MustGetWatchNamespace()).List(ctx, metav1.ListOptions{LabelSelector: secretSelector})
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-				// todo add single namespace filter.
-				return c.Secrets("").Watch(ctx, metav1.ListOptions{LabelSelector: secretSelector})
+				return c.Secrets(config.MustGetWatchNamespace()).Watch(ctx, metav1.ListOptions{LabelSelector: secretSelector})
 			},
 		},
 		&v1.Secret{},
@@ -254,5 +252,6 @@ func (r *VMUserReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&operatorv1beta1.VMUser{}).
 		Owns(&v1.Secret{}, builder.OnlyMetadata).
+		WithOptions(defaultOptions).
 		Complete(r)
 }

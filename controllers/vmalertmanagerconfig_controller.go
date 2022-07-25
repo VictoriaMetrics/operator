@@ -103,5 +103,6 @@ func (r *VMAlertmanagerConfigReconciler) Reconcile(ctx context.Context, req ctrl
 func (r *VMAlertmanagerConfigReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&operatorv1beta1.VMAlertmanagerConfig{}).
+		WithOptions(defaultOptions).
 		Complete(r)
 }

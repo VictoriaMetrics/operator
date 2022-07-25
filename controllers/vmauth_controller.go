@@ -114,5 +114,6 @@ func (r *VMAuthReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&appsv1.Deployment{}, builder.OnlyMetadata).
 		Owns(&v1.Service{}, builder.OnlyMetadata).
 		Owns(&v1.ServiceAccount{}, builder.OnlyMetadata).
+		WithOptions(defaultOptions).
 		Complete(r)
 }

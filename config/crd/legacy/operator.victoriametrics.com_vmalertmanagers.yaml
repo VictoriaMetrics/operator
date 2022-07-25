@@ -242,8 +242,8 @@ spec:
             extraArgs:
               additionalProperties:
                 type: string
-              description: 'ExtraArgs that will be passed to  VMAlertmanager pod for example
-                log.level: debug'
+              description: 'ExtraArgs that will be passed to  VMAlertmanager pod for
+                example log.level: debug'
               type: object
             extraEnvs:
               description: ExtraEnvs that will be added to VMAlertmanager pod

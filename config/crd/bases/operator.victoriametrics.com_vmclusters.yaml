@@ -713,8 +713,9 @@ spec:
                       node network namespace
                     type: boolean
                   hpa:
-                    description: EmbeddedHPA embeds HorizontalPodAutoScaler spec v2.
-                      https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/horizontal-pod-autoscaler-v2beta2/
+                    description: Configures horizontal pod autoscaling. Note, enabling
+                      this option disables vmselect to vmselect communication. In
+                      most cases it's not an issue.
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                   image:

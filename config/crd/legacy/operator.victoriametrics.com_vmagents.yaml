@@ -41,6 +41,34 @@ spec:
                 of the cluster and will discover API servers automatically and use
                 the pod's CA certificate and bearer token file at /var/run/secrets/kubernetes.io/serviceaccount/.
               properties:
+                authorization:
+                  description: Authorization configures generic authorization params
+                  properties:
+                    credentials:
+                      description: Reference to the secret with value for authorization
+                      properties:
+                        key:
+                          description: The key of the secret to select from.  Must
+                            be a valid secret key.
+                          type: string
+                        name:
+                          description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                            TODO: Add other useful fields. apiVersion, kind, uid?'
+                          type: string
+                        optional:
+                          description: Specify whether the Secret or its key must
+                            be defined
+                          type: boolean
+                      required:
+                      - key
+                      type: object
+                    credentialsFile:
+                      description: File with value for authorization
+                      type: string
+                    type:
+                      description: Type of authorization, default to bearer
+                      type: string
+                  type: object
                 basicAuth:
                   description: BasicAuth allow an endpoint to authenticate over basic
                     authentication
@@ -1174,6 +1202,13 @@ spec:
                     required:
                     - key
                     type: object
+                  headers:
+                    description: 'Headers allow configuring custom http headers Must
+                      be in form of semicolon separated header with value e.g. headerName:
+                      headerValue vmagent supports since 1.79.0 version'
+                    items:
+                      type: string
+                    type: array
                   inlineUrlRelabelConfig:
                     description: InlineUrlRelabelConfig defines relabeling config
                       for remoteWriteURL, it can be defined at crd spec.
@@ -1513,6 +1548,11 @@ spec:
                   description: Path to directory where temporary data for remote write
                     component is stored (default vmagent-remotewrite-data)
                   type: string
+                useMultiTenantMode:
+                  description: Configures vmagent in multi-tenant mode with direct
+                    cluster support docs https://docs.victoriametrics.com/vmagent.html#multitenancy
+                    it's global setting and affects all remote storage configurations
+                  type: boolean
               type: object
             replicaCount:
               description: ReplicaCount is the expected size of the VMAgent cluster.

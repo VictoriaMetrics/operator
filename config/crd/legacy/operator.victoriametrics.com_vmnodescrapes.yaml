@@ -35,6 +35,33 @@ spec:
         spec:
           description: VMNodeScrapeSpec defines specification for VMNodeScrape.
           properties:
+            authorization:
+              description: Authorization with http header Authorization
+              properties:
+                credentials:
+                  description: Reference to the secret with value for authorization
+                  properties:
+                    key:
+                      description: The key of the secret to select from.  Must be
+                        a valid secret key.
+                      type: string
+                    name:
+                      description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                        TODO: Add other useful fields. apiVersion, kind, uid?'
+                      type: string
+                    optional:
+                      description: Specify whether the Secret or its key must be defined
+                      type: boolean
+                  required:
+                  - key
+                  type: object
+                credentialsFile:
+                  description: File with value for authorization
+                  type: string
+                type:
+                  description: Type of authorization, default to bearer
+                  type: string
+              type: object
             basicAuth:
               description: 'BasicAuth allow an endpoint to authenticate over basic
                 authentication More info: https://prometheus.io/docs/operating/configuration/#endpoints'
@@ -398,7 +425,7 @@ spec:
                 type: string
               type: array
             tlsConfig:
-              description: TLSConfig configuration to use when scraping the node
+              description: TLSConfig specifies TLSConfig configuration parameters.
               properties:
                 ca:
                   description: Stuct containing the CA cert to use for the targets.
@@ -522,6 +549,13 @@ spec:
                   type: boolean
                 disable_keep_alive:
                   type: boolean
+                headers:
+                  description: 'Headers allows sending custom headers to scrape targets
+                    must be in of semicolon separated header with it''s value eg:
+                    headerName: headerValue vmagent supports since 1.79.0 version'
+                  items:
+                    type: string
+                  type: array
                 metric_relabel_debug:
                   type: boolean
                 proxy_client_config:

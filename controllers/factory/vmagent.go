@@ -1108,7 +1108,7 @@ func buildConfigReloaderContainer(cr *victoriametricsv1beta1.VMAgent, c *config.
 	configReloadArgs := buildConfigReloaderArgs(cr, c)
 	cntr := corev1.Container{
 		Name:                     "config-reloader",
-		Image:                    fmt.Sprintf("%s/%s", c.ContainerRegistry, c.VMAgentDefault.ConfigReloadImage),
+		Image:                    config.FormatContainerImage(c.ContainerRegistry, c.VMAgentDefault.ConfigReloadImage),
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 		Env: []corev1.EnvVar{
 			{

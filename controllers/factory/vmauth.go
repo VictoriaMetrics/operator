@@ -462,7 +462,7 @@ func buildVMAuthConfigReloaderContainer(cr *victoriametricsv1beta1.VMAuth, c *co
 
 	configReloader := corev1.Container{
 		Name:                     "config-reloader",
-		Image:                    fmt.Sprintf("%s/%s", c.ContainerRegistry, c.VMAuthDefault.ConfigReloadImage),
+		Image:                    config.FormatContainerImage(c.ContainerRegistry, c.VMAuthDefault.ConfigReloadImage),
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 		Env: []corev1.EnvVar{
 			{

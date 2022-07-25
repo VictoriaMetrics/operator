@@ -395,3 +395,18 @@ type Namespaces struct {
 	// allow list for prometheus/alertmanager custom resources
 
 }
+
+// FormatContainerImage returns container image with registry prefix if needed.
+func FormatContainerImage(globalRepo string, containerImage string) string {
+	if globalRepo == "docker.io" {
+		// no need to add global repo
+		return containerImage
+	}
+	if !strings.HasPrefix(containerImage, "quay.io") {
+		if !strings.HasSuffix(globalRepo, "/") {
+			globalRepo += "/"
+		}
+		return globalRepo + "/" + containerImage
+	}
+	return globalRepo + containerImage[len("quay.io"):]
+}

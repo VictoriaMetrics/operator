@@ -44,8 +44,9 @@ type Resource struct {
 type BaseOperatorConf struct {
 	// enables custom config reloader for vmauth and vmagent,
 	// it should speed-up config reloading process.
-	UseCustomConfigReloader   bool   `default:"false"`
-	ContainerRegistry         string `default:"docker.io"`
+	UseCustomConfigReloader bool `default:"false"`
+	// container registry name prefix, e.g. docker.io
+	ContainerRegistry         string `default:""`
 	CustomConfigReloaderImage string `default:"victoriametrics/operator:config-reloader-0.1.0"`
 	PSPAutoCreateEnabled      bool   `default:"true"`
 	VMAlertDefault            struct {
@@ -387,26 +388,4 @@ func (labels *Labels) Set(value string) error {
 	labels.LabelsMap = m
 	labels.LabelsString = value
 	return nil
-}
-
-type Namespaces struct {
-	// allow list/deny list for common custom resources
-	AllowList, DenyList map[string]struct{}
-	// allow list for prometheus/alertmanager custom resources
-
-}
-
-// FormatContainerImage returns container image with registry prefix if needed.
-func FormatContainerImage(globalRepo string, containerImage string) string {
-	if globalRepo == "docker.io" {
-		// no need to add global repo
-		return containerImage
-	}
-	if !strings.HasPrefix(containerImage, "quay.io") {
-		if !strings.HasSuffix(globalRepo, "/") {
-			globalRepo += "/"
-		}
-		return globalRepo + "/" + containerImage
-	}
-	return globalRepo + containerImage[len("quay.io"):]
 }

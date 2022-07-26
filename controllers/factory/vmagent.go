@@ -445,7 +445,7 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 
 	vmagentContainer := corev1.Container{
 		Name:                     "vmagent",
-		Image:                    fmt.Sprintf("%s/%s:%s", c.ContainerRegistry, cr.Spec.Image.Repository, cr.Spec.Image.Tag),
+		Image:                    fmt.Sprintf("%s:%s", formatContainerImage(c.ContainerRegistry, cr.Spec.Image.Repository), cr.Spec.Image.Tag),
 		ImagePullPolicy:          cr.Spec.Image.PullPolicy,
 		Ports:                    ports,
 		Args:                     args,
@@ -1108,7 +1108,7 @@ func buildConfigReloaderContainer(cr *victoriametricsv1beta1.VMAgent, c *config.
 	configReloadArgs := buildConfigReloaderArgs(cr, c)
 	cntr := corev1.Container{
 		Name:                     "config-reloader",
-		Image:                    config.FormatContainerImage(c.ContainerRegistry, c.VMAgentDefault.ConfigReloadImage),
+		Image:                    formatContainerImage(c.ContainerRegistry, c.VMAgentDefault.ConfigReloadImage),
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 		Env: []corev1.EnvVar{
 			{
@@ -1124,7 +1124,7 @@ func buildConfigReloaderContainer(cr *victoriametricsv1beta1.VMAgent, c *config.
 		Resources:    configReloaderResources,
 	}
 	if c.UseCustomConfigReloader {
-		cntr.Image = fmt.Sprintf("%s/%s", c.ContainerRegistry, c.CustomConfigReloaderImage)
+		cntr.Image = fmt.Sprintf("%s", formatContainerImage(c.ContainerRegistry, c.CustomConfigReloaderImage))
 		cntr.Command = []string{"/usr/local/bin/config-reloader"}
 	}
 	return cntr

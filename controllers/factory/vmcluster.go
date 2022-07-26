@@ -484,7 +484,7 @@ func makePodSpecForVMSelect(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 	sort.Strings(args)
 	vmselectContainer := corev1.Container{
 		Name:                     "vmselect",
-		Image:                    fmt.Sprintf("%s/%s:%s", c.ContainerRegistry, cr.Spec.VMSelect.Image.Repository, cr.Spec.VMSelect.Image.Tag),
+		Image:                    fmt.Sprintf("%s:%s", formatContainerImage(c.ContainerRegistry, cr.Spec.VMSelect.Image.Repository), cr.Spec.VMSelect.Image.Tag),
 		ImagePullPolicy:          cr.Spec.VMSelect.Image.PullPolicy,
 		Ports:                    ports,
 		Args:                     args,
@@ -755,7 +755,7 @@ func makePodSpecForVMInsert(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 
 	vminsertContainer := corev1.Container{
 		Name:                     "vminsert",
-		Image:                    fmt.Sprintf("%s/%s:%s", c.ContainerRegistry, cr.Spec.VMInsert.Image.Repository, cr.Spec.VMInsert.Image.Tag),
+		Image:                    fmt.Sprintf("%s:%s", formatContainerImage(c.ContainerRegistry, cr.Spec.VMInsert.Image.Repository), cr.Spec.VMInsert.Image.Tag),
 		ImagePullPolicy:          cr.Spec.VMInsert.Image.PullPolicy,
 		Ports:                    ports,
 		Args:                     args,
@@ -1041,7 +1041,7 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) 
 	sort.Strings(args)
 	vmstorageContainer := corev1.Container{
 		Name:                     "vmstorage",
-		Image:                    fmt.Sprintf("%s/%s:%s", c.ContainerRegistry, cr.Spec.VMStorage.Image.Repository, cr.Spec.VMStorage.Image.Tag),
+		Image:                    fmt.Sprintf("%s:%s", formatContainerImage(c.ContainerRegistry, cr.Spec.VMStorage.Image.Repository), cr.Spec.VMStorage.Image.Tag),
 		ImagePullPolicy:          cr.Spec.VMStorage.Image.PullPolicy,
 		Ports:                    ports,
 		Args:                     args,

@@ -473,3 +473,19 @@ func addExtraArgsOverrideDefaults(args []string, extraArgs map[string]string, da
 	}
 	return args
 }
+
+// formatContainerImage returns container image with registry prefix if needed.
+func formatContainerImage(globalRepo string, containerImage string) string {
+	if globalRepo == "" {
+		// no need to add global repo
+		return containerImage
+	}
+	if !strings.HasSuffix(globalRepo, "/") {
+		globalRepo += "/"
+	}
+	// operator has built-in images hosted at quay, check for it.
+	if !strings.HasPrefix(containerImage, "quay.io/") {
+		return globalRepo + containerImage
+	}
+	return globalRepo + containerImage[len("quay.io/"):]
+}

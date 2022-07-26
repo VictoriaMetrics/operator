@@ -203,7 +203,7 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, c *config.Ba
 
 	cr = cr.DeepCopy()
 
-	image := fmt.Sprintf("%s/%s:%s", c.ContainerRegistry, cr.Spec.Image.Repository, cr.Spec.Image.Tag)
+	image := fmt.Sprintf("%s:%s", formatContainerImage(c.ContainerRegistry, cr.Spec.Image.Repository), cr.Spec.Image.Tag)
 
 	amArgs := []string{
 		fmt.Sprintf("--config.file=%s", alertmanagerConfFile),
@@ -423,7 +423,7 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, c *config.Ba
 		vmaContainer,
 		{
 			Name:  "config-reloader",
-			Image: fmt.Sprintf("%s/%s", c.ContainerRegistry, c.VMAlertManager.ConfigReloaderImage),
+			Image: fmt.Sprintf("%s", formatContainerImage(c.ContainerRegistry, c.VMAlertManager.ConfigReloaderMemory)),
 			Args: []string{
 				fmt.Sprintf("-webhook-url=%s", localReloadURL),
 				fmt.Sprintf("-volume-dir=%s", alertmanagerConfDir),

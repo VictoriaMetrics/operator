@@ -849,10 +849,6 @@ spec:
                             description: ParseMode for telegram message, supported
                               values are MarkdownV2, Markdown, Markdown and empty
                               string for plain text.
-                            enum:
-                            - MarkdownV2
-                            - Markdown
-                            - Markdown
                             type: string
                           send_resolved:
                             description: SendResolved controls notify about resolved

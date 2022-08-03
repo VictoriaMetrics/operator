@@ -238,11 +238,11 @@ type VMAlertmanagerSpec struct {
 	// If both nil - behaviour controlled by selectAllByDefault
 	// +optional
 	ConfigNamespaceSelector *metav1.LabelSelector `json:"configNamespaceSelector,omitempty"`
-	// ExtraArgs that will be passed to  VMAlertManager pod
-	// for example remoteWrite.tmpDataPath: /tmp
+	// ExtraArgs that will be passed to  VMAlertmanager pod
+	// for example log.level: debug
 	// +optional
 	ExtraArgs map[string]string `json:"extraArgs,omitempty"`
-	// ExtraEnvs that will be added to VMAlertManager pod
+	// ExtraEnvs that will be added to VMAlertmanager pod
 	// +optional
 	ExtraEnvs []v1.EnvVar `json:"extraEnvs,omitempty"`
 

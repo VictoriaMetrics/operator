@@ -409,10 +409,11 @@ spec:
                   on.
                 type: object
               notifier:
-                description: Notifier prometheus alertmanager endpoint spec. Required
+                description: 'Notifier prometheus alertmanager endpoint spec. Required
                   at least one of  notifier or notifiers. e.g. http://127.0.0.1:9093
                   If specified both notifier and notifiers, notifier will be added
-                  as last element to notifiers.
+                  as last element to notifiers. only one of notifier options could
+                  be chosen: notifierConfigRef or notifiers +  notifier'
                 properties:
                   basicAuth:
                     description: BasicAuth allow notifier to authenticate over basic
@@ -661,11 +662,31 @@ spec:
                     description: AlertManager url.  E.g. http://127.0.0.1:9093
                     type: string
                 type: object
+              notifierConfigRef:
+                description: 'NotifierConfigRef reference for secret with notifier
+                  configuration for vmalert only one of notifier options could be
+                  chosen: notifierConfigRef or notifiers +  notifier'
+                properties:
+                  key:
+                    description: The key of the secret to select from.  Must be a
+                      valid secret key.
+                    type: string
+                  name:
+                    description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                      TODO: Add other useful fields. apiVersion, kind, uid?'
+                    type: string
+                  optional:
+                    description: Specify whether the Secret or its key must be defined
+                    type: boolean
+                required:
+                - key
+                type: object
               notifiers:
-                description: Notifiers prometheus alertmanager endpoints. Required
+                description: 'Notifiers prometheus alertmanager endpoints. Required
                   at least one of  notifier or notifiers. e.g. http://127.0.0.1:9093
                   If specified both notifier and notifiers, notifier will be added
-                  as last element to notifiers.
+                  as last element to notifiers. only one of notifier options could
+                  be chosen: notifierConfigRef or notifiers +  notifier'
                 items:
                   description: VMAlertNotifierSpec defines the notifier url for sending
                     information about alerts

@@ -403,6 +403,38 @@ func TestCreateOrUpdateVMAlert(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "with notifier config",
+			args: args{
+				cr: &victoriametricsv1beta1.VMAlert{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "basic-vmalert",
+						Namespace: "default",
+					},
+					Spec: victoriametricsv1beta1.VMAlertSpec{
+						NotifierConfigRef: &corev1.SecretKeySelector{
+							Key: "cfg.yaml",
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "notifier-cfg",
+							},
+						},
+						Datasource: victoriametricsv1beta1.VMAlertDatasourceSpec{
+							URL: "http://some-vm-datasource",
+						},
+					},
+				},
+				c: config.MustGetBaseConfig(),
+			},
+			predefinedObjects: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "notifier-cfg",
+						Namespace: "default",
+					},
+					StringData: map[string]string{"cfg.yaml": "static: []"},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -462,6 +494,19 @@ func TestBuildNotifiers(t *testing.T) {
 				},
 			},
 			want: []string{"-notifier.url=http://am-1,http://am-2,http://am-3", "-notifier.tlsKeyFile=,/tmp/key.pem,", "-notifier.tlsCertFile=,/tmp/cert.pem,", "-notifier.tlsCAFile=,/tmp/ca.cert,", "-notifier.tlsInsecureSkipVerify=false,true,false"},
+		},
+		{
+			name: "ok build args with config",
+			args: args{
+				cr: &victoriametricsv1beta1.VMAlert{
+					Spec: victoriametricsv1beta1.VMAlertSpec{
+						NotifierConfigRef: &corev1.SecretKeySelector{
+							Key: "cfg.yaml",
+						},
+					},
+				},
+			},
+			want: []string{"-notifier.config=" + notifierConfigMountPath + "/cfg.yaml"},
 		},
 	}
 	for _, tt := range tests {

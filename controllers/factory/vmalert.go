@@ -102,8 +102,8 @@ func CreateOrUpdateVMAlert(ctx context.Context, cr *victoriametricsv1beta1.VMAle
 		l.Info("additional notifiers with sd selector", "len", len(additionalNotifiers))
 	}
 	cr.Spec.Notifiers = append(cr.Spec.Notifiers, additionalNotifiers...)
-	if len(cr.Spec.Notifiers) == 0 {
-		return reconcile.Result{}, fmt.Errorf("cannot create or update vmalert: %s, cannot find any notifiers. cr.spec.Notifiers, cr.spec.Notifier and discovered alertmanager are empty", cr.Name)
+	if len(cr.Spec.Notifiers) == 0 && cr.Spec.NotifierConfigRef == nil {
+		return reconcile.Result{}, fmt.Errorf("cannot create or update vmalert: %s, cannot find any notifiers. At cr.spec.Notifiers, cr.spec.Notifier, cr.spec.notifierConfigRef and discovered alertmanager are empty", cr.Name)
 	}
 	if err := psp.CreateServiceAccountForCRD(ctx, cr, rclient); err != nil {
 		return reconcile.Result{}, fmt.Errorf("failed create service account: %w", err)
@@ -242,6 +242,20 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 		MountPath: tlsAssetsDir,
 	},
 	)
+	if cr.Spec.NotifierConfigRef != nil {
+		volumes = append(volumes, corev1.Volume{
+			Name: "vmalert-notifier-config",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: cr.Spec.NotifierConfigRef.Name,
+				},
+			},
+		})
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name:      "vmalert-notifier-config",
+			MountPath: notifierConfigMountPath,
+		})
+	}
 	for _, s := range cr.Spec.Secrets {
 		volumes = append(volumes, corev1.Volume{
 			Name: k8stools.SanitizeVolumeName("secret-" + s),
@@ -651,10 +665,16 @@ func loadTLSAssetsForVMAlert(ctx context.Context, rclient client.Client, cr *vic
 	return assets, nil
 }
 
+const notifierConfigMountPath = `/etc/vm/notifier_config`
+
 func BuildNotifiersArgs(cr *victoriametricsv1beta1.VMAlert, ntBasicAuth map[string]BasicAuthCredentials) []string {
 	var finalArgs []string
 	var notifierArgs []remoteFlag
 	notifierTargets := cr.Spec.Notifiers
+
+	if len(notifierTargets) == 0 && cr.Spec.NotifierConfigRef != nil {
+		return append(finalArgs, fmt.Sprintf("-notifier.config=%s/%s", notifierConfigMountPath, cr.Spec.NotifierConfigRef.Key))
+	}
 
 	url := remoteFlag{flagSetting: "-notifier.url=", isNotNull: true}
 	authUser := remoteFlag{flagSetting: "-notifier.basicAuth.username="}

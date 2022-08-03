@@ -165,11 +165,20 @@ type VMAlertSpec struct {
 
 	// Notifier prometheus alertmanager endpoint spec. Required at least one of  notifier or notifiers. e.g. http://127.0.0.1:9093
 	// If specified both notifier and notifiers, notifier will be added as last element to notifiers.
+	// only one of notifier options could be chosen: notifierConfigRef or notifiers +  notifier
+	// +optional
 	Notifier *VMAlertNotifierSpec `json:"notifier,omitempty"`
 
 	// Notifiers prometheus alertmanager endpoints. Required at least one of  notifier or notifiers. e.g. http://127.0.0.1:9093
 	// If specified both notifier and notifiers, notifier will be added as last element to notifiers.
+	// only one of notifier options could be chosen: notifierConfigRef or notifiers +  notifier
+	// +optional
 	Notifiers []VMAlertNotifierSpec `json:"notifiers,omitempty"`
+
+	// NotifierConfigRef reference for secret with notifier configuration for vmalert
+	// only one of notifier options could be chosen: notifierConfigRef or notifiers +  notifier
+	// +optional
+	NotifierConfigRef *v1.SecretKeySelector `json:"notifierConfigRef,omitempty"`
 
 	// RemoteWrite Optional URL to remote-write compatible storage to persist
 	// vmalert state and rule results to.

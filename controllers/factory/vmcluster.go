@@ -397,7 +397,7 @@ func makePodSpecForVMSelect(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 		}
 	}
 
-	if cr.Spec.VMStorage != nil && cr.Spec.VMStorage.ReplicaCount != nil && cr.Spec.VMSelect.HPA == nil {
+	if cr.Spec.VMStorage != nil && cr.Spec.VMStorage.ReplicaCount != nil {
 		if cr.Spec.VMStorage.VMSelectPort == "" {
 			cr.Spec.VMStorage.VMSelectPort = c.VMClusterDefault.VMStorageDefault.VMSelectPort
 		}
@@ -411,15 +411,18 @@ func makePodSpecForVMSelect(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 		args = append(args, storageArg)
 
 	}
-	selectArg := "-selectNode="
-	vmselectCount := *cr.Spec.VMSelect.ReplicaCount
-	for i := int32(0); i < vmselectCount; i++ {
-		selectArg += cr.Spec.VMSelect.BuildPodName(cr.Spec.VMSelect.GetNameWithPrefix(cr.Name), i, cr.Namespace, cr.Spec.VMSelect.Port, c.ClusterDomainName)
+	// dd selectNode arg add for deployments without HPA
+	// HPA leads to rolling restart for vmselect statefulset in case of replicas count changes
+	if cr.Spec.VMSelect.HPA == nil {
+		selectArg := "-selectNode="
+		vmselectCount := *cr.Spec.VMSelect.ReplicaCount
+		for i := int32(0); i < vmselectCount; i++ {
+			selectArg += cr.Spec.VMSelect.BuildPodName(cr.Spec.VMSelect.GetNameWithPrefix(cr.Name), i, cr.Namespace, cr.Spec.VMSelect.Port, c.ClusterDomainName)
+		}
+		selectArg = strings.TrimSuffix(selectArg, ",")
+		log.Info("args for vmselect ", "args", selectArg)
+		args = append(args, selectArg)
 	}
-	selectArg = strings.TrimSuffix(selectArg, ",")
-
-	log.Info("args for vmselect ", "args", selectArg)
-	args = append(args, selectArg)
 
 	if len(cr.Spec.VMSelect.ExtraEnvs) > 0 {
 		args = append(args, "-envflag.enable=true")

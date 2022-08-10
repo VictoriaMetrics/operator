@@ -18,8 +18,14 @@ func OnVMAgentDelete(ctx context.Context, rclient client.Client, crd *victoriame
 	if err := removeFinalizeObjByName(ctx, rclient, &appsv1.Deployment{}, crd.PrefixedName(), crd.Namespace); err != nil {
 		return err
 	}
+	if err := removeFinalizeObjByName(ctx, rclient, &appsv1.StatefulSet{}, crd.PrefixedName(), crd.Namespace); err != nil {
+		return err
+	}
 
 	if err := RemoveOrphanedDeployments(ctx, rclient, crd, nil); err != nil {
+		return err
+	}
+	if err := RemoveOrphanedSTSs(ctx, rclient, crd, nil); err != nil {
 		return err
 	}
 	// check service

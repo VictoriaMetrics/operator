@@ -304,6 +304,13 @@ func (cr VMAuth) MetricPath() string {
 }
 
 func (cr VMAuth) ReloadPathWithPort(port string) string {
+	extraArgs := cr.Spec.ExtraArgs
+	if extraArgs != nil {
+		if extraArgs["tls"] == "true" {
+			return fmt.Sprintf("https://localhost:%s%s", port, buildPathWithPrefixFlag(cr.Spec.ExtraArgs, reloadPath))
+		}
+	}
+	
 	return fmt.Sprintf("http://localhost:%s%s", port, buildPathWithPrefixFlag(cr.Spec.ExtraArgs, reloadPath))
 }
 

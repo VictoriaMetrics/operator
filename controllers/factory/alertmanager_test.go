@@ -237,7 +237,6 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 			err := CreateOrUpdateAlertManager(tt.args.ctx, tt.args.cr, fclient, tt.args.c)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("CreateOrUpdateAlertManager() error = %v, wantErr %v", err, tt.wantErr)
-				return
 			}
 			var got appsv1.StatefulSet
 			if err := fclient.Get(tt.args.ctx, types.NamespacedName{Namespace: tt.args.cr.Namespace, Name: tt.args.cr.PrefixedName()}, &got); (err != nil) != tt.wantErr {

@@ -442,7 +442,7 @@ func (cr VMAlert) MetricPath() string {
 	return buildPathWithPrefixFlag(cr.Spec.ExtraArgs, metricPath)
 }
 func (cr VMAlert) ReloadPathWithPort(port string) string {
-	return fmt.Sprintf("http://localhost:%s%s", port, buildPathWithPrefixFlag(cr.Spec.ExtraArgs, reloadPath))
+	return fmt.Sprintf("%s://localhost:%s%s", protoFromFlags(cr.Spec.ExtraArgs), port, buildPathWithPrefixFlag(cr.Spec.ExtraArgs, reloadPath))
 }
 
 func (cr VMAlert) NeedDedupRules() bool {

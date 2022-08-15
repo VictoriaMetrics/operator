@@ -224,6 +224,14 @@ func buildPathWithPrefixFlag(flags map[string]string, defaultPath string) string
 	return defaultPath
 }
 
+func protoFromFlags(flags map[string]string) string {
+	proto := "http"
+	if flags["tls"] == "true" {
+		proto = "https"
+	}
+	return proto
+}
+
 type EmbeddedPodDisruptionBudgetSpec struct {
 	// An eviction is allowed if at least "minAvailable" pods selected by
 	// "selector" will still be available after the eviction, i.e. even in the

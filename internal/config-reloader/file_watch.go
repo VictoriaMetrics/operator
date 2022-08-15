@@ -129,8 +129,7 @@ func (dw *dirWatcher) startWatch(ctx context.Context, updates chan struct{}) {
 	fHash := sha256.New()
 	updateCache := func(eventPath string) (bool, error) {
 		dirHash.Reset()
-		baseDir := filepath.Dir(eventPath)
-		walkDir, err := filepath.EvalSymlinks(baseDir)
+		walkDir, err := filepath.EvalSymlinks(eventPath)
 		if err != nil {
 			return false, fmt.Errorf("cannot eval symlinks for path: %s", eventPath)
 		}

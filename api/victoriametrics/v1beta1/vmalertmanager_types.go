@@ -259,6 +259,8 @@ type VMAlertmanagerSpec struct {
 	// TerminationGracePeriodSeconds period for container graceful termination
 	// +optional
 	TerminationGracePeriodSeconds *int64 `json:"terminationGracePeriodSeconds,omitempty"`
+	// ReadinessGates defines pod readiness gates
+	ReadinessGates []v1.PodReadinessGate `json:"readinessGates,omitempty"`
 }
 
 // VMAlertmanagerList is a list of Alertmanagers.

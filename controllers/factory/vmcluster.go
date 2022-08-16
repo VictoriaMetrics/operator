@@ -539,6 +539,7 @@ func makePodSpecForVMSelect(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 			RestartPolicy:                 "Always",
 			TerminationGracePeriodSeconds: cr.Spec.VMSelect.TerminationGracePeriodSeconds,
 			TopologySpreadConstraints:     cr.Spec.VMSelect.TopologySpreadConstraints,
+			ReadinessGates:                cr.Spec.VMSelect.ReadinessGates,
 		},
 	}
 
@@ -808,6 +809,7 @@ func makePodSpecForVMInsert(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 			DNSConfig:                     cr.Spec.VMInsert.DNSConfig,
 			TopologySpreadConstraints:     cr.Spec.VMInsert.TopologySpreadConstraints,
 			TerminationGracePeriodSeconds: cr.Spec.VMInsert.TerminationGracePeriodSeconds,
+			ReadinessGates:                cr.Spec.VMInsert.ReadinessGates,
 		},
 	}
 
@@ -1110,6 +1112,7 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) 
 			RestartPolicy:                 "Always",
 			TerminationGracePeriodSeconds: tgp,
 			TopologySpreadConstraints:     cr.Spec.VMStorage.TopologySpreadConstraints,
+			ReadinessGates:                cr.Spec.VMStorage.ReadinessGates,
 		},
 	}
 

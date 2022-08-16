@@ -496,6 +496,7 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 		HostAliases:                   cr.Spec.HostAliases,
 		TopologySpreadConstraints:     cr.Spec.TopologySpreadConstraints,
 		TerminationGracePeriodSeconds: cr.Spec.TerminationGracePeriodSeconds,
+		ReadinessGates:                cr.Spec.ReadinessGates,
 	}, nil
 }
 

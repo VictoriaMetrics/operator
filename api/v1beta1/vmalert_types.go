@@ -249,6 +249,8 @@ type VMAlertSpec struct {
 	// configuration based on DNSPolicy.
 	// +optional
 	DNSConfig *v1.PodDNSConfig `json:"dnsConfig,omitempty"`
+	// ReadinessGates defines pod readiness gates
+	ReadinessGates []v1.PodReadinessGate `json:"readinessGates,omitempty"`
 }
 
 // VMAgentRemoteReadSpec defines the remote storage configuration for VmAlert to read alerts from

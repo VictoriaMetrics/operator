@@ -278,6 +278,8 @@ type VMSelect struct {
 	// TerminationGracePeriodSeconds period for container graceful termination
 	// +optional
 	TerminationGracePeriodSeconds *int64 `json:"terminationGracePeriodSeconds,omitempty"`
+	// ReadinessGates defines pod readiness gates
+	ReadinessGates []v1.PodReadinessGate `json:"readinessGates,omitempty"`
 }
 
 func (s VMSelect) GetNameWithPrefix(clusterName string) string {
@@ -456,6 +458,8 @@ type VMInsert struct {
 	// TerminationGracePeriodSeconds period for container graceful termination
 	// +optional
 	TerminationGracePeriodSeconds *int64 `json:"terminationGracePeriodSeconds,omitempty"`
+	// ReadinessGates defines pod readiness gates
+	ReadinessGates []v1.PodReadinessGate `json:"readinessGates,omitempty"`
 }
 
 func (cr *VMInsert) Probe() *EmbeddedProbes {
@@ -646,6 +650,8 @@ type VMStorage struct {
 	// Can be changed for RollingUpdate
 	// +optional
 	RollingUpdateStrategy appsv1.StatefulSetUpdateStrategyType `json:"rollingUpdateStrategy,omitempty"`
+	// ReadinessGates defines pod readiness gates
+	ReadinessGates []v1.PodReadinessGate `json:"readinessGates,omitempty"`
 }
 
 type VMBackup struct {

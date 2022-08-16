@@ -310,6 +310,7 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 			TopologySpreadConstraints:     cr.Spec.TopologySpreadConstraints,
 			HostAliases:                   cr.Spec.HostAliases,
 			TerminationGracePeriodSeconds: cr.Spec.TerminationGracePeriodSeconds,
+			ReadinessGates:                cr.Spec.ReadinessGates,
 		},
 	}
 

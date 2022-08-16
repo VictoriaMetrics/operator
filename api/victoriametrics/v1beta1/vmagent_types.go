@@ -370,6 +370,9 @@ type VMAgentSpec struct {
 	// set it to RollingUpdate for disabling operator statefulSet rollingUpdate
 	// +optional
 	StatefulRollingUpdateStrategy appsv1.StatefulSetUpdateStrategyType `json:"statefulRollingUpdateStrategy,omitempty"`
+
+	// ReadinessGates defines pod readiness gates
+	ReadinessGates []v1.PodReadinessGate `json:"readinessGates,omitempty"`
 }
 
 // VMAgentRemoteWriteSettings - defines global settings for all remoteWrite urls.

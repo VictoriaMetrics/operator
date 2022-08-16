@@ -275,6 +275,7 @@ func makeSpecForVMAuth(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperator
 			TopologySpreadConstraints:     cr.Spec.TopologySpreadConstraints,
 			HostAliases:                   cr.Spec.HostAliases,
 			TerminationGracePeriodSeconds: cr.Spec.TerminationGracePeriodSeconds,
+			ReadinessGates:                cr.Spec.ReadinessGates,
 		},
 	}
 

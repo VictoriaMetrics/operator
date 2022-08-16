@@ -182,6 +182,8 @@ type VMSingleSpec struct {
 	// TerminationGracePeriodSeconds period for container graceful termination
 	// +optional
 	TerminationGracePeriodSeconds *int64 `json:"terminationGracePeriodSeconds,omitempty"`
+	// ReadinessGates defines pod readiness gates
+	ReadinessGates []v1.PodReadinessGate `json:"readinessGates,omitempty"`
 }
 
 // VMSingleStatus defines the observed state of VMSingle

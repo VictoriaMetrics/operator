@@ -261,6 +261,8 @@ type VMAlertmanagerSpec struct {
 	TerminationGracePeriodSeconds *int64 `json:"terminationGracePeriodSeconds,omitempty"`
 	// ReadinessGates defines pod readiness gates
 	ReadinessGates []v1.PodReadinessGate `json:"readinessGates,omitempty"`
+	// ClaimTemplates allows adding additional VolumeClaimTemplates for StatefulSet
+	ClaimTemplates []v1.PersistentVolumeClaim `json:"claimTemplates,omitempty"`
 }
 
 // VMAlertmanagerList is a list of Alertmanagers.

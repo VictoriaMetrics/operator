@@ -280,6 +280,8 @@ type VMSelect struct {
 	TerminationGracePeriodSeconds *int64 `json:"terminationGracePeriodSeconds,omitempty"`
 	// ReadinessGates defines pod readiness gates
 	ReadinessGates []v1.PodReadinessGate `json:"readinessGates,omitempty"`
+	// ClaimTemplates allows adding additional VolumeClaimTemplates for StatefulSet
+	ClaimTemplates []v1.PersistentVolumeClaim `json:"claimTemplates,omitempty"`
 }
 
 func (s VMSelect) GetNameWithPrefix(clusterName string) string {
@@ -652,6 +654,9 @@ type VMStorage struct {
 	RollingUpdateStrategy appsv1.StatefulSetUpdateStrategyType `json:"rollingUpdateStrategy,omitempty"`
 	// ReadinessGates defines pod readiness gates
 	ReadinessGates []v1.PodReadinessGate `json:"readinessGates,omitempty"`
+
+	// ClaimTemplates allows adding additional VolumeClaimTemplates for StatefulSet
+	ClaimTemplates []v1.PersistentVolumeClaim `json:"claimTemplates,omitempty"`
 }
 
 type VMBackup struct {

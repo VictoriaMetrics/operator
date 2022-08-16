@@ -459,6 +459,7 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, c *config.Ba
 		Selector: &metav1.LabelSelector{
 			MatchLabels: cr.SelectorLabels(),
 		},
+		VolumeClaimTemplates: cr.Spec.ClaimTemplates,
 		Template: v1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{
 				Labels:      cr.PodLabels(),

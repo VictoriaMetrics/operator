@@ -373,6 +373,8 @@ type VMAgentSpec struct {
 
 	// ReadinessGates defines pod readiness gates
 	ReadinessGates []v1.PodReadinessGate `json:"readinessGates,omitempty"`
+	// ClaimTemplates allows adding additional VolumeClaimTemplates for VMAgent in StatefulMode
+	ClaimTemplates []v1.PersistentVolumeClaim `json:"claimTemplates,omitempty"`
 }
 
 // VMAgentRemoteWriteSettings - defines global settings for all remoteWrite urls.

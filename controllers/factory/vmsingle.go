@@ -267,7 +267,7 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 		ImagePullPolicy:          cr.Spec.Image.PullPolicy,
 	}
 
-	vmsingleContainer = buildProbe(vmsingleContainer, cr.Spec.EmbeddedProbes, cr.HealthPath, cr.Spec.Port, false)
+	vmsingleContainer = buildProbe(vmsingleContainer, cr)
 
 	operatorContainers := []corev1.Container{vmsingleContainer}
 

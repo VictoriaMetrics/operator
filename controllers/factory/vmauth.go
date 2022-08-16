@@ -244,10 +244,8 @@ func makeSpecForVMAuth(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperator
 
 	configReloader := buildVMAuthConfigReloaderContainer(cr, c)
 
-	vmauthContainer = buildProbe(vmauthContainer, cr.Spec.EmbeddedProbes, cr.HealthPath, cr.Spec.Port, false)
-
+	vmauthContainer = buildProbe(vmauthContainer, cr)
 	operatorContainers := []corev1.Container{configReloader, vmauthContainer}
-
 	containers, err := k8stools.MergePatchContainers(operatorContainers, cr.Spec.Containers)
 	if err != nil {
 		return nil, err

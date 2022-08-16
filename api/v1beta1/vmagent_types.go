@@ -612,6 +612,27 @@ func (cr *VMAgent) AsCRDOwner() []metav1.OwnerReference {
 	return GetCRDAsOwner(Agent)
 }
 
+func (cr *VMAgent) Probe() *EmbeddedProbes {
+	return cr.Spec.EmbeddedProbes
+}
+
+func (cr *VMAgent) ProbePath() string {
+
+	return buildPathWithPrefixFlag(cr.Spec.ExtraArgs, healthPath)
+}
+
+func (cr *VMAgent) ProbeScheme() string {
+	return strings.ToUpper(protoFromFlags(cr.Spec.ExtraArgs))
+}
+
+func (cr VMAgent) ProbePort() string {
+	return cr.Spec.Port
+}
+
+func (cr VMAgent) ProbeNeedLiveness() bool {
+	return true
+}
+
 func init() {
 	SchemeBuilder.Register(&VMAgent{}, &VMAgentList{})
 }

@@ -387,10 +387,6 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, c *config.Ba
 		terminationGracePeriod = *cr.Spec.TerminationGracePeriodSeconds
 	}
 
-	healthPath := func() string {
-		return path.Clean(webRoutePrefix + "/-/healthy")
-	}
-
 	amArgs = addExtraArgsOverrideDefaults(amArgs, cr.Spec.ExtraArgs, "--")
 	sort.Strings(amArgs)
 
@@ -418,7 +414,7 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, c *config.Ba
 		Env:                      envs,
 		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
 	}
-	vmaContainer = buildProbe(vmaContainer, cr.Spec.EmbeddedProbes, healthPath, cr.Spec.PortName, true)
+	vmaContainer = buildProbe(vmaContainer, cr) // cr.Spec.EmbeddedProbes, healthPath, cr.Spec.PortName, true)
 	defaultContainers := []v1.Container{
 		vmaContainer,
 		{

@@ -498,7 +498,7 @@ func makePodSpecForVMSelect(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 		TerminationMessagePath:   "/dev/termination-log",
 	}
 
-	vmselectContainer = buildProbe(vmselectContainer, cr.Spec.VMSelect.EmbeddedProbes, cr.HealthPathSelect, cr.Spec.VMSelect.Port, true)
+	vmselectContainer = buildProbe(vmselectContainer, cr.Spec.VMSelect)
 
 	operatorContainers := []corev1.Container{vmselectContainer}
 
@@ -768,7 +768,7 @@ func makePodSpecForVMInsert(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 	}
 
-	vminsertContainer = buildProbe(vminsertContainer, cr.Spec.VMInsert.EmbeddedProbes, cr.HealthPathInsert, cr.Spec.VMInsert.Port, true)
+	vminsertContainer = buildProbe(vminsertContainer, cr.Spec.VMInsert) //.EmbeddedProbes, cr.HealthPathInsert, cr.Spec.VMInsert.Port, true)
 
 	operatorContainers := []corev1.Container{vminsertContainer}
 
@@ -1055,7 +1055,7 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) 
 		TerminationMessagePath:   "/dev/termination-log",
 	}
 
-	vmstorageContainer = buildProbe(vmstorageContainer, cr.Spec.VMStorage.EmbeddedProbes, cr.HealthPathStorage, cr.Spec.VMStorage.Port, false)
+	vmstorageContainer = buildProbe(vmstorageContainer, cr.Spec.VMStorage)
 
 	operatorContainers := []corev1.Container{vmstorageContainer}
 

@@ -458,6 +458,26 @@ type VMInsert struct {
 	TerminationGracePeriodSeconds *int64 `json:"terminationGracePeriodSeconds,omitempty"`
 }
 
+func (cr *VMInsert) Probe() *EmbeddedProbes {
+	return cr.EmbeddedProbes
+}
+
+func (cr *VMInsert) ProbePath() string {
+	return buildPathWithPrefixFlag(cr.ExtraArgs, healthPath)
+}
+
+func (cr *VMInsert) ProbeScheme() string {
+	return strings.ToUpper(protoFromFlags(cr.ExtraArgs))
+}
+
+func (cr *VMInsert) ProbePort() string {
+	return cr.Port
+}
+
+func (cr *VMInsert) ProbeNeedLiveness() bool {
+	return true
+}
+
 func (i VMInsert) GetNameWithPrefix(clusterName string) string {
 	if i.Name == "" {
 		return PrefixedName(clusterName, "vminsert")
@@ -893,27 +913,6 @@ func (cr *VMCluster) GetLastAppliedSpec() (*VMClusterSpec, error) {
 	return &prevClusterSpec, nil
 }
 
-func (cr VMCluster) HealthPathSelect() string {
-	if cr.Spec.VMSelect == nil {
-		return healthPath
-	}
-	return buildPathWithPrefixFlag(cr.Spec.VMSelect.ExtraArgs, healthPath)
-}
-
-func (cr VMCluster) HealthPathInsert() string {
-	if cr.Spec.VMInsert == nil {
-		return healthPath
-	}
-	return buildPathWithPrefixFlag(cr.Spec.VMInsert.ExtraArgs, healthPath)
-}
-
-func (cr VMCluster) HealthPathStorage() string {
-	if cr.Spec.VMStorage == nil {
-		return healthPath
-	}
-	return buildPathWithPrefixFlag(cr.Spec.VMStorage.ExtraArgs, healthPath)
-}
-
 func (cr VMCluster) MetricPathSelect() string {
 	if cr.Spec.VMSelect == nil {
 		return healthPath
@@ -1035,4 +1034,40 @@ func (cr *VMCluster) AsCRDOwner() []metav1.OwnerReference {
 
 func (cr VMCluster) GetNSName() string {
 	return cr.GetNamespace()
+}
+
+func (cr *VMSelect) Probe() *EmbeddedProbes {
+	return cr.EmbeddedProbes
+}
+
+func (cr *VMSelect) ProbePath() string {
+	return buildPathWithPrefixFlag(cr.ExtraArgs, healthPath)
+}
+
+func (cr *VMSelect) ProbeScheme() string {
+	return strings.ToUpper(protoFromFlags(cr.ExtraArgs))
+}
+func (cr *VMSelect) ProbePort() string {
+	return cr.Port
+}
+func (cr *VMSelect) ProbeNeedLiveness() bool {
+	return true
+}
+
+func (cr *VMStorage) Probe() *EmbeddedProbes {
+	return cr.EmbeddedProbes
+}
+
+func (cr *VMStorage) ProbePath() string {
+	return buildPathWithPrefixFlag(cr.ExtraArgs, healthPath)
+}
+
+func (cr *VMStorage) ProbeScheme() string {
+	return strings.ToUpper(protoFromFlags(cr.ExtraArgs))
+}
+func (cr *VMStorage) ProbePort() string {
+	return cr.Port
+}
+func (cr *VMStorage) ProbeNeedLiveness() bool {
+	return false
 }

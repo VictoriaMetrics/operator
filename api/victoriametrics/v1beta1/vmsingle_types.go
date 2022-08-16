@@ -218,6 +218,26 @@ type VMSingle struct {
 	Status VMSingleStatus `json:"status,omitempty"`
 }
 
+func (cr *VMSingle) Probe() *EmbeddedProbes {
+	return cr.Spec.EmbeddedProbes
+}
+
+func (cr *VMSingle) ProbePath() string {
+	return buildPathWithPrefixFlag(cr.Spec.ExtraArgs, healthPath)
+}
+
+func (cr *VMSingle) ProbeScheme() string {
+	return strings.ToUpper(protoFromFlags(cr.Spec.ExtraArgs))
+}
+
+func (cr *VMSingle) ProbePort() string {
+	return cr.Spec.Port
+}
+
+func (cr *VMSingle) ProbeNeedLiveness() bool {
+	return false
+}
+
 // VMSingleList contains a list of VMSingle
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type VMSingleList struct {
@@ -286,10 +306,6 @@ func (cr VMSingle) AllLabels() map[string]string {
 
 func (cr VMSingle) PrefixedName() string {
 	return fmt.Sprintf("vmsingle-%s", cr.Name)
-}
-
-func (cr VMSingle) HealthPath() string {
-	return buildPathWithPrefixFlag(cr.Spec.ExtraArgs, healthPath)
 }
 
 func (cr VMSingle) MetricPath() string {

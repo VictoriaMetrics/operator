@@ -220,6 +220,27 @@ type VMAuth struct {
 	Status VMAuthStatus `json:"status,omitempty"`
 }
 
+func (cr *VMAuth) Probe() *EmbeddedProbes {
+	return cr.Spec.EmbeddedProbes
+}
+
+func (cr *VMAuth) ProbePath() string {
+	return buildPathWithPrefixFlag(cr.Spec.ExtraArgs, healthPath)
+}
+
+func (cr *VMAuth) ProbeScheme() string {
+
+	return strings.ToUpper(protoFromFlags(cr.Spec.ExtraArgs))
+}
+
+func (cr *VMAuth) ProbePort() string {
+	return cr.Spec.Port
+}
+
+func (cr *VMAuth) ProbeNeedLiveness() bool {
+	return true
+}
+
 // +kubebuilder:object:root=true
 
 // VMAuthList contains a list of VMAuth
@@ -293,10 +314,6 @@ func (cr VMAuth) PrefixedName() string {
 
 func (cr VMAuth) ConfigSecretName() string {
 	return fmt.Sprintf("vmauth-config-%s", cr.Name)
-}
-
-func (cr VMAuth) HealthPath() string {
-	return buildPathWithPrefixFlag(cr.Spec.ExtraArgs, healthPath)
 }
 
 func (cr VMAuth) MetricPath() string {

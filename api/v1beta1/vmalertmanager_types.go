@@ -430,6 +430,30 @@ func (cr *VMAlertmanager) GetVolumeName() string {
 	return fmt.Sprintf("vmalertmanager-%s-db", cr.Name)
 }
 
+func (cr *VMAlertmanager) Probe() *EmbeddedProbes {
+	return cr.Spec.EmbeddedProbes
+}
+
+func (cr *VMAlertmanager) ProbePath() string {
+	webRoutePrefix := "/"
+	if cr.Spec.RoutePrefix != "" {
+		webRoutePrefix = cr.Spec.RoutePrefix
+	}
+	return path.Clean(webRoutePrefix + "/-/healthy")
+}
+
+func (cr *VMAlertmanager) ProbePort() string {
+	return cr.Spec.PortName
+}
+
+func (cr *VMAlertmanager) ProbeScheme() string {
+	return strings.ToUpper(protoFromFlags(cr.Spec.ExtraArgs))
+}
+
+func (cr *VMAlertmanager) ProbeNeedLiveness() bool {
+	return true
+}
+
 func init() {
 	SchemeBuilder.Register(&VMAlertmanager{}, &VMAlertmanagerList{})
 }

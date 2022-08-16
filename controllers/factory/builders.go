@@ -300,9 +300,23 @@ func reconcilePDB(ctx context.Context, rclient client.Client, crdName string, pd
 	return rclient.Update(ctx, pdb)
 }
 
+type probeCRD interface {
+	Probe() *victoriametricsv1beta1.EmbeddedProbes
+	ProbePath() string
+	ProbeScheme() string
+	ProbePort() string
+	ProbeNeedLiveness() bool
+}
+
 // buildProbe builds probe for container with possible custom values with
-func buildProbe(container v1.Container, ep *victoriametricsv1beta1.EmbeddedProbes, probePath func() string, port string, needAddLiveness bool) v1.Container {
+func buildProbe(container v1.Container, cr probeCRD) v1.Container {
+	// ep *victoriametricsv1beta1.EmbeddedProbes, probePath func() string, port string, needAddLiveness bool) v1.Container {
 	var rp, lp, sp *v1.Probe
+	ep := cr.Probe()
+	probePath := cr.ProbePath
+	port := cr.ProbePort()
+	needAddLiveness := cr.ProbeNeedLiveness()
+	scheme := cr.ProbeScheme()
 	if ep != nil {
 		rp = ep.ReadinessProbe
 		lp = ep.LivenessProbe
@@ -313,7 +327,7 @@ func buildProbe(container v1.Container, ep *victoriametricsv1beta1.EmbeddedProbe
 		readinessProbeHandler := v1.ProbeHandler{
 			HTTPGet: &v1.HTTPGetAction{
 				Port:   intstr.Parse(port),
-				Scheme: "HTTP",
+				Scheme: v1.URIScheme(scheme),
 				Path:   probePath(),
 			},
 		}
@@ -348,7 +362,7 @@ func buildProbe(container v1.Container, ep *victoriametricsv1beta1.EmbeddedProbe
 			if probe.HTTPGet == nil && probe.TCPSocket == nil && probe.Exec == nil {
 				probe.HTTPGet = &v1.HTTPGetAction{
 					Port:   intstr.Parse(port),
-					Scheme: "HTTP",
+					Scheme: v1.URIScheme(scheme),
 					Path:   probePath(),
 				}
 			}

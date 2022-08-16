@@ -339,7 +339,7 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 		Env:                      envs,
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 	}
-	vmalertContainer = buildProbe(vmalertContainer, cr.Spec.EmbeddedProbes, cr.HealthPath, cr.Spec.Port, true)
+	vmalertContainer = buildProbe(vmalertContainer, cr)
 
 	vmalertContainers := []corev1.Container{vmalertContainer, {
 		Name:                     "config-reloader",

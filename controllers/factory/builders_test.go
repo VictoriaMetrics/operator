@@ -394,13 +394,39 @@ func Test_mergeServiceSpec(t *testing.T) {
 	}
 }
 
+type testBuildProbeCR struct {
+	ep              *victoriametricsv1beta1.EmbeddedProbes
+	probePath       func() string
+	port            string
+	scheme          string
+	needAddLiveness bool
+}
+
+func (t testBuildProbeCR) Probe() *victoriametricsv1beta1.EmbeddedProbes {
+	return t.ep
+}
+
+func (t testBuildProbeCR) ProbePath() string {
+	return t.probePath()
+}
+
+func (t testBuildProbeCR) ProbeScheme() string {
+	return t.scheme
+}
+
+func (t testBuildProbeCR) ProbePort() string {
+
+	return t.port
+}
+
+func (t testBuildProbeCR) ProbeNeedLiveness() bool {
+	return t.needAddLiveness
+}
+
 func Test_buildProbe(t *testing.T) {
 	type args struct {
-		container       v1.Container
-		ep              *victoriametricsv1beta1.EmbeddedProbes
-		probePath       func() string
-		port            string
-		needAddLiveness bool
+		container v1.Container
+		cr        testBuildProbeCR
 	}
 	tests := []struct {
 		name     string
@@ -410,12 +436,15 @@ func Test_buildProbe(t *testing.T) {
 		{
 			name: "build default probe with empty ep",
 			args: args{
-				probePath: func() string {
-					return "/health"
+				cr: testBuildProbeCR{
+					probePath: func() string {
+						return "/health"
+					},
+					port:            "8051",
+					needAddLiveness: true,
+					scheme:          "HTTP",
 				},
-				container:       v1.Container{},
-				port:            "8051",
-				needAddLiveness: true,
+				container: v1.Container{},
 			},
 			validate: func(container v1.Container) error {
 				if container.LivenessProbe == nil {
@@ -424,43 +453,48 @@ func Test_buildProbe(t *testing.T) {
 				if container.ReadinessProbe == nil {
 					return fmt.Errorf("want readinessProbe to be not nil")
 				}
+				if container.ReadinessProbe.HTTPGet.Scheme != "HTTP" {
+					return fmt.Errorf("expect scheme to be HTTP got: %s", container.ReadinessProbe.HTTPGet.Scheme)
+				}
 				return nil
 			},
 		},
 		{
 			name: "build default probe with ep",
 			args: args{
-				probePath: func() string {
-					return "/health"
+				cr: testBuildProbeCR{
+					probePath: func() string {
+						return "/health"
+					},
+					port:            "8051",
+					needAddLiveness: true,
+					ep: &victoriametricsv1beta1.EmbeddedProbes{
+						ReadinessProbe: &v1.Probe{
+							ProbeHandler: v1.ProbeHandler{
+								Exec: &v1.ExecAction{
+									Command: []string{"echo", "1"},
+								},
+							},
+						},
+						StartupProbe: &v1.Probe{
+							ProbeHandler: v1.ProbeHandler{
+								HTTPGet: &v1.HTTPGetAction{
+									Host: "some",
+								},
+							},
+						},
+						LivenessProbe: &v1.Probe{
+							ProbeHandler: v1.ProbeHandler{
+								HTTPGet: &v1.HTTPGetAction{
+									Path: "/live1",
+								},
+							},
+							TimeoutSeconds:      15,
+							InitialDelaySeconds: 20,
+						},
+					},
 				},
-				container:       v1.Container{},
-				port:            "8051",
-				needAddLiveness: true,
-				ep: &victoriametricsv1beta1.EmbeddedProbes{
-					ReadinessProbe: &v1.Probe{
-						ProbeHandler: v1.ProbeHandler{
-							Exec: &v1.ExecAction{
-								Command: []string{"echo", "1"},
-							},
-						},
-					},
-					StartupProbe: &v1.Probe{
-						ProbeHandler: v1.ProbeHandler{
-							HTTPGet: &v1.HTTPGetAction{
-								Host: "some",
-							},
-						},
-					},
-					LivenessProbe: &v1.Probe{
-						ProbeHandler: v1.ProbeHandler{
-							HTTPGet: &v1.HTTPGetAction{
-								Path: "/live1",
-							},
-						},
-						TimeoutSeconds:      15,
-						InitialDelaySeconds: 20,
-					},
-				},
+				container: v1.Container{},
 			},
 			validate: func(container v1.Container) error {
 				if container.LivenessProbe == nil {
@@ -493,7 +527,7 @@ func Test_buildProbe(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := buildProbe(tt.args.container, tt.args.ep, tt.args.probePath, tt.args.port, tt.args.needAddLiveness)
+			got := buildProbe(tt.args.container, tt.args.cr)
 			if err := tt.validate(got); err != nil {
 				t.Errorf("buildProbe() unexpected error: %v", err)
 			}

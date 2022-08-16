@@ -455,7 +455,7 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 	}
 
-	vmagentContainer = buildProbe(vmagentContainer, cr.Spec.EmbeddedProbes, cr.HealthPath, cr.Spec.Port, true)
+	vmagentContainer = buildProbe(vmagentContainer, cr)
 
 	configReloader := buildConfigReloaderContainer(cr, c)
 

@@ -362,6 +362,27 @@ type VMAlert struct {
 	Status VMAlertStatus `json:"status,omitempty"`
 }
 
+func (cr *VMAlert) Probe() *EmbeddedProbes {
+	return cr.Spec.EmbeddedProbes
+}
+
+func (cr *VMAlert) ProbePath() string {
+
+	return buildPathWithPrefixFlag(cr.Spec.ExtraArgs, healthPath)
+}
+
+func (cr *VMAlert) ProbeScheme() string {
+	return strings.ToUpper(protoFromFlags(cr.Spec.ExtraArgs))
+}
+
+func (cr VMAlert) ProbePort() string {
+	return cr.Spec.Port
+}
+
+func (cr VMAlert) ProbeNeedLiveness() bool {
+	return true
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // VMAlertList contains a list of VMAlert
@@ -435,9 +456,7 @@ func (cr VMAlert) PrefixedName() string {
 func (cr VMAlert) TLSAssetName() string {
 	return fmt.Sprintf("tls-assets-vmalert-%s", cr.Name)
 }
-func (cr VMAlert) HealthPath() string {
-	return buildPathWithPrefixFlag(cr.Spec.ExtraArgs, healthPath)
-}
+
 func (cr VMAlert) MetricPath() string {
 	return buildPathWithPrefixFlag(cr.Spec.ExtraArgs, metricPath)
 }

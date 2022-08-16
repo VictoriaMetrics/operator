@@ -64,7 +64,21 @@ func ConvertPromRule(prom *v1.PrometheusRule, conf *config.BaseOperatorConf) *v1
 			},
 		}
 	}
+	cr.Annotations = maybeAddArgoCDIgnoreAnnotations(conf.PrometheusConverterAddArgoCDIgnoreAnnotations, cr.Annotations)
 	return cr
+}
+
+func maybeAddArgoCDIgnoreAnnotations(mustAdd bool, dst map[string]string) map[string]string {
+	if !mustAdd {
+		// fast path
+		return dst
+	}
+	if dst == nil {
+		dst = make(map[string]string)
+	}
+	dst["argocd.argoproj.io/compare-options"] = "IgnoreExtraneous"
+	dst["argocd.argoproj.io/sync-options"] = "Prune=false"
+	return dst
 }
 
 func ConvertServiceMonitor(serviceMon *v1.ServiceMonitor, conf *config.BaseOperatorConf) *v1beta1vm.VMServiceScrape {
@@ -100,6 +114,7 @@ func ConvertServiceMonitor(serviceMon *v1.ServiceMonitor, conf *config.BaseOpera
 			},
 		}
 	}
+	cs.Annotations = maybeAddArgoCDIgnoreAnnotations(conf.PrometheusConverterAddArgoCDIgnoreAnnotations, cs.Annotations)
 	return cs
 }
 
@@ -326,6 +341,7 @@ func ConvertPodMonitor(podMon *v1.PodMonitor, conf *config.BaseOperatorConf) *v1
 			},
 		}
 	}
+	cs.Annotations = maybeAddArgoCDIgnoreAnnotations(conf.PrometheusConverterAddArgoCDIgnoreAnnotations, cs.Annotations)
 	return cs
 }
 
@@ -395,6 +411,7 @@ func ConvertProbe(probe *v1.Probe, conf *config.BaseOperatorConf) *v1beta1vm.VMP
 			},
 		}
 	}
+	cp.Annotations = maybeAddArgoCDIgnoreAnnotations(conf.PrometheusConverterAddArgoCDIgnoreAnnotations, cp.Annotations)
 	return cp
 }
 

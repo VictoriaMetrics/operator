@@ -47,7 +47,7 @@ type BaseOperatorConf struct {
 	UseCustomConfigReloader bool `default:"false"`
 	// container registry name prefix, e.g. docker.io
 	ContainerRegistry         string `default:""`
-	CustomConfigReloaderImage string `default:"victoriametrics/operator:config-reloader-0.1.0"`
+	CustomConfigReloaderImage string `default:"victoriametrics/operator:config-reloader-v0.27.0"`
 	PSPAutoCreateEnabled      bool   `default:"true"`
 	VMAlertDefault            struct {
 		Image               string `default:"victoriametrics/vmalert"`
@@ -223,7 +223,10 @@ type BaseOperatorConf struct {
 		PrometheusRule bool `default:"true"`
 		Probe          bool `default:"true"`
 	}
-	EnabledPrometheusConverterOwnerReferences bool `default:"false"`
+	// adds compare-options and sync-options for prometheus objects converted by operator
+	// it helps to properly use converter with ArgoCD
+	PrometheusConverterAddArgoCDIgnoreAnnotations bool `default:"false"`
+	EnabledPrometheusConverterOwnerReferences     bool `default:"false"`
 	// allows filtering for converted labels, labels with matched prefix will be ignored
 	FilterPrometheusConverterLabelPrefixes []string `default:""`
 	// allows filtering for converted annotations, annotations with matched prefix will be ignored

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"io"
@@ -41,7 +42,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	logger.Infof("starting config reloader")
 	r := reloader{
-		c: http.DefaultClient,
+		c: buildHTTPClient(),
 	}
 	updatesChan := make(chan struct{}, 10)
 	configWatcher, err := newConfigWatcher(ctx)
@@ -75,6 +76,17 @@ func main() {
 	configWatcher.close()
 	dw.close()
 	logger.Infof("config-reloader stopped")
+}
+
+func buildHTTPClient() *http.Client {
+	t := (http.DefaultTransport.(*http.Transport)).Clone()
+	t.TLSClientConfig = &tls.Config{
+		InsecureSkipVerify: true,
+	}
+	return &http.Client{
+		Timeout:   5 * time.Second,
+		Transport: t,
+	}
 }
 
 type cfgWatcher struct {

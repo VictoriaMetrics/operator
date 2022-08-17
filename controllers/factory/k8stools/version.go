@@ -49,7 +49,7 @@ func IsPSPSupported() bool {
 // deprecated since 1.21
 // https://kubernetes.io/docs/reference/using-api/deprecation-guide/#poddisruptionbudget-v125
 func IsPDBV1APISupported() bool {
-	if ServerMajorVersion == 1 && ServerMinorVersion <= 24 {
+	if ServerMajorVersion == 1 && ServerMinorVersion >= 21 {
 		return true
 	}
 	return false

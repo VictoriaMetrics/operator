@@ -604,13 +604,14 @@ func Test_buildVMAlertArgs(t *testing.T) {
 								KeyFile:            "/path/to/key",
 								CAFile:             "/path/to/sa",
 							},
+							Headers: []string{"x-org-id:one", "x-org-tenant:5"},
 						},
 					},
 				},
 				ruleConfigMapNames: []string{"first-rule-cm.yaml"},
 				remoteSecrets:      map[string]BasicAuthCredentials{},
 			},
-			want: []string{"-datasource.tlsCAFile=/path/to/sa", "-datasource.tlsInsecureSkipVerify=true", "-datasource.tlsKeyFile=/path/to/key", "-datasource.url=http://vmsingle-url", "-httpListenAddr=:", "-notifier.url=", "-rule=\"/etc/vmalert/config/first-rule-cm.yaml/*.yaml\""},
+			want: []string{"--datasource.headers=x-org-id:one^^x-org-tenant:5", "-datasource.tlsCAFile=/path/to/sa", "-datasource.tlsInsecureSkipVerify=true", "-datasource.tlsKeyFile=/path/to/key", "-datasource.url=http://vmsingle-url", "-httpListenAddr=:", "-notifier.url=", "-rule=\"/etc/vmalert/config/first-rule-cm.yaml/*.yaml\""},
 		},
 	}
 	for _, tt := range tests {

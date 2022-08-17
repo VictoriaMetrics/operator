@@ -263,6 +263,13 @@ type VMAlertDatasourceSpec struct {
 	BasicAuth *BasicAuth `json:"basicAuth,omitempty"`
 	// TLSConfig describes tls configuration for datasource target
 	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
+	// Headers allow configuring custom http headers
+	// Must be in form of semicolon separated header with value
+	// e.g.
+	// headerName: headerValue
+	// vmalert supports it since 1.79.0 version
+	// +optional
+	Headers []string `json:"headers,omitempty"`
 }
 
 // VMAlertNotifierSpec defines the notifier url for sending information about alerts
@@ -302,6 +309,13 @@ type VMAlertRemoteReadSpec struct {
 	Lookback *string `json:"lookback,omitempty"`
 	// TLSConfig describes tls configuration for remote read target
 	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
+	// Headers allow configuring custom http headers
+	// Must be in form of semicolon separated header with value
+	// e.g.
+	// headerName: headerValue
+	// vmalert supports it since 1.79.0 version
+	// +optional
+	Headers []string `json:"headers,omitempty"`
 }
 
 // VMAgentRemoteWriteSpec defines the remote storage configuration for VmAlert
@@ -327,6 +341,13 @@ type VMAlertRemoteWriteSpec struct {
 	MaxQueueSize *int32 `json:"maxQueueSize,omitempty"`
 	// TLSConfig describes tls configuration for remote write target
 	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
+	// Headers allow configuring custom http headers
+	// Must be in form of semicolon separated header with value
+	// e.g.
+	// headerName: headerValue
+	// vmalert supports it since 1.79.0 version
+	// +optional
+	Headers []string `json:"headers,omitempty"`
 }
 
 // VmAlertStatus defines the observed state of VmAlert

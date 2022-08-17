@@ -408,10 +408,26 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 	return spec, nil
 }
 
+func buildHeadersArg(flagName string, src []string, headers []string) []string {
+	if len(headers) == 0 {
+		return src
+	}
+	var headerFlagValue string
+	for _, headerKV := range headers {
+		headerFlagValue += headerKV + "^^"
+	}
+	headerFlagValue = strings.TrimSuffix(headerFlagValue, "^^")
+	src = append(src, fmt.Sprintf("--%s=%s", flagName, headerFlagValue))
+	return src
+}
+
 func buildVMAlertArgs(cr *victoriametricsv1beta1.VMAlert, ruleConfigMapNames []string, remoteSecrets map[string]BasicAuthCredentials) []string {
 	args := []string{
 		fmt.Sprintf("-datasource.url=%s", cr.Spec.Datasource.URL),
 	}
+
+	args = buildHeadersArg("datasource.headers", args, cr.Spec.Datasource.Headers)
+
 	args = append(args, BuildNotifiersArgs(cr, remoteSecrets)...)
 
 	if cr.Spec.Datasource.BasicAuth != nil {
@@ -434,6 +450,8 @@ func buildVMAlertArgs(cr *victoriametricsv1beta1.VMAlert, ruleConfigMapNames []s
 				args = append(args, fmt.Sprintf("-remoteWrite.basicAuth.password=%s", s.password))
 			}
 		}
+		args = buildHeadersArg("remoteWrite.headers", args, cr.Spec.RemoteWrite.Headers)
+
 		if cr.Spec.RemoteWrite.Concurrency != nil {
 			args = append(args, fmt.Sprintf("-remoteWrite.concurrency=%d", *cr.Spec.RemoteWrite.Concurrency))
 		}
@@ -463,6 +481,7 @@ func buildVMAlertArgs(cr *victoriametricsv1beta1.VMAlert, ruleConfigMapNames []s
 				args = append(args, fmt.Sprintf("-remoteRead.basicAuth.password=%s", s.password))
 			}
 		}
+		args = buildHeadersArg("remoteRead.headers", args, cr.Spec.RemoteRead.Headers)
 		if cr.Spec.RemoteRead.Lookback != nil {
 			args = append(args, fmt.Sprintf("-remoteRead.lookback=%s", *cr.Spec.RemoteRead.Lookback))
 		}

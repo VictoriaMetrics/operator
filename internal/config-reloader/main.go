@@ -100,7 +100,7 @@ type reloader struct {
 }
 
 func (r *reloader) reload(ctx context.Context) error {
-	req, err := http.NewRequestWithContext(ctx, "GET", *reloadURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, *reloadURL, nil)
 	if err != nil {
 		return err
 	}

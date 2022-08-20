@@ -600,32 +600,36 @@ func loadScrapeSecrets(
 }
 
 func loadBasicAuthSecret(ctx context.Context, rclient client.Client, ns string, basicAuth *victoriametricsv1beta1.BasicAuth) (BasicAuthCredentials, error) {
-	var username string
-	var password string
 	var err error
 	var bas v1.Secret
+	var bac BasicAuthCredentials
 	if err := rclient.Get(ctx, types.NamespacedName{Namespace: ns, Name: basicAuth.Username.Name}, &bas); err != nil {
 		if errors.IsNotFound(err) {
 			return BasicAuthCredentials{}, fmt.Errorf("basic auth username secret: %q not found", basicAuth.Username.Name)
 		}
-		return BasicAuthCredentials{}, err
+		return bac, err
 	}
-	if username, err = extractCredKey(&bas, basicAuth.Username); err != nil {
-		return BasicAuthCredentials{}, err
+	if bac.username, err = extractCredKey(&bas, basicAuth.Username); err != nil {
+		return bac, err
+	}
+	if len(basicAuth.Password.Name) == 0 {
+		// fast path for empty password
+		// it can be skipped or defined via password_file
+		return bac, nil
 	}
 	if basicAuth.Username.Name != basicAuth.Password.Name {
 		if err := rclient.Get(ctx, types.NamespacedName{Namespace: ns, Name: basicAuth.Password.Name}, &bas); err != nil {
 			if errors.IsNotFound(err) {
-				return BasicAuthCredentials{}, fmt.Errorf("basic auth password secret: %q not found", basicAuth.Username.Name)
+				return bac, fmt.Errorf("basic auth password secret: %q not found", basicAuth.Username.Name)
 			}
-			return BasicAuthCredentials{}, err
+			return bac, err
 		}
 	}
-	if password, err = extractCredKey(&bas, basicAuth.Password); err != nil {
-		return BasicAuthCredentials{}, err
+	if bac.password, err = extractCredKey(&bas, basicAuth.Password); err != nil {
+		return bac, err
 	}
 
-	return BasicAuthCredentials{username: username, password: password}, nil
+	return bac, nil
 
 }
 

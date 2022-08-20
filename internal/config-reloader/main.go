@@ -198,6 +198,7 @@ func writeNewContent(data []byte) error {
 		if err != nil {
 			return fmt.Errorf("cannot create gzip reader: %w", err)
 		}
+		defer gz.Close()
 		data, err = io.ReadAll(gz)
 		if err != nil {
 			return fmt.Errorf("cannot ungzip data: %w", err)

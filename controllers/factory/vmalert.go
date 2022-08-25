@@ -421,6 +421,23 @@ func buildHeadersArg(flagName string, src []string, headers []string) []string {
 	return src
 }
 
+func buildVMAlertBasicAuthArgs(args []string, flagPrefix string, baSpec *victoriametricsv1beta1.BasicAuth, remoteSecrets map[string]BasicAuthCredentials) []string {
+	if baSpec == nil {
+		return args
+	}
+	if s, ok := remoteSecrets[flagPrefix]; ok {
+		args = append(args, fmt.Sprintf("-%s.basicAuth.username=%s", flagPrefix, s.username))
+		if len(s.password) > 0 {
+			args = append(args, fmt.Sprintf("-%s.basicAuth.password=%s", flagPrefix, s.password))
+		}
+		if len(baSpec.PasswordFile) > 0 {
+			args = append(args, fmt.Sprintf("-%s.basicAuth.passwordFile=%s", flagPrefix, baSpec.PasswordFile))
+		}
+	}
+
+	return args
+}
+
 func buildVMAlertArgs(cr *victoriametricsv1beta1.VMAlert, ruleConfigMapNames []string, remoteSecrets map[string]BasicAuthCredentials) []string {
 	args := []string{
 		fmt.Sprintf("-datasource.url=%s", cr.Spec.Datasource.URL),
@@ -430,13 +447,8 @@ func buildVMAlertArgs(cr *victoriametricsv1beta1.VMAlert, ruleConfigMapNames []s
 
 	args = append(args, BuildNotifiersArgs(cr, remoteSecrets)...)
 
-	if cr.Spec.Datasource.BasicAuth != nil {
-		if s, ok := remoteSecrets["datasource"]; ok {
-			args = append(args, fmt.Sprintf("-datasource.basicAuth.username=%s", s.username))
-			args = append(args, fmt.Sprintf("-datasource.basicAuth.password=%s", s.password))
-		}
+	args = buildVMAlertBasicAuthArgs(args, "datasource", cr.Spec.Datasource.BasicAuth, remoteSecrets)
 
-	}
 	if cr.Spec.Datasource.TLSConfig != nil {
 		tlsConf := cr.Spec.Datasource.TLSConfig
 		args = tlsConf.AsArgs(args, "datasource", cr.Namespace)
@@ -444,12 +456,7 @@ func buildVMAlertArgs(cr *victoriametricsv1beta1.VMAlert, ruleConfigMapNames []s
 
 	if cr.Spec.RemoteWrite != nil {
 		args = append(args, fmt.Sprintf("-remoteWrite.url=%s", cr.Spec.RemoteWrite.URL))
-		if cr.Spec.RemoteWrite.BasicAuth != nil {
-			if s, ok := remoteSecrets["remoteWrite"]; ok {
-				args = append(args, fmt.Sprintf("-remoteWrite.basicAuth.username=%s", s.username))
-				args = append(args, fmt.Sprintf("-remoteWrite.basicAuth.password=%s", s.password))
-			}
-		}
+		args = buildVMAlertBasicAuthArgs(args, "remoteWrite", cr.Spec.RemoteWrite.BasicAuth, remoteSecrets)
 		args = buildHeadersArg("remoteWrite.headers", args, cr.Spec.RemoteWrite.Headers)
 
 		if cr.Spec.RemoteWrite.Concurrency != nil {
@@ -475,12 +482,8 @@ func buildVMAlertArgs(cr *victoriametricsv1beta1.VMAlert, ruleConfigMapNames []s
 
 	if cr.Spec.RemoteRead != nil {
 		args = append(args, fmt.Sprintf("-remoteRead.url=%s", cr.Spec.RemoteRead.URL))
-		if cr.Spec.RemoteRead.BasicAuth != nil {
-			if s, ok := remoteSecrets["remoteRead"]; ok {
-				args = append(args, fmt.Sprintf("-remoteRead.basicAuth.username=%s", s.username))
-				args = append(args, fmt.Sprintf("-remoteRead.basicAuth.password=%s", s.password))
-			}
-		}
+		args = buildVMAlertBasicAuthArgs(args, "remoteRead", cr.Spec.RemoteRead.BasicAuth, remoteSecrets)
+
 		args = buildHeadersArg("remoteRead.headers", args, cr.Spec.RemoteRead.Headers)
 		if cr.Spec.RemoteRead.Lookback != nil {
 			args = append(args, fmt.Sprintf("-remoteRead.lookback=%s", *cr.Spec.RemoteRead.Lookback))

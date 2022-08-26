@@ -447,16 +447,16 @@ func buildVMAlertArgs(cr *victoriametricsv1beta1.VMAlert, ruleConfigMapNames []s
 
 	args = append(args, BuildNotifiersArgs(cr, remoteSecrets)...)
 
-	args = buildVMAlertBasicAuthArgs(args, "datasource", cr.Spec.Datasource.BasicAuth, remoteSecrets)
+	args = buildVMAlertBasicAuthArgs(args, "datasource", cr.Spec.Datasource.HTTPAuth.BasicAuth, remoteSecrets)
 
-	if cr.Spec.Datasource.TLSConfig != nil {
-		tlsConf := cr.Spec.Datasource.TLSConfig
+	if cr.Spec.Datasource.HTTPAuth.TLSConfig != nil {
+		tlsConf := cr.Spec.Datasource.HTTPAuth.TLSConfig
 		args = tlsConf.AsArgs(args, "datasource", cr.Namespace)
 	}
 
 	if cr.Spec.RemoteWrite != nil {
 		args = append(args, fmt.Sprintf("-remoteWrite.url=%s", cr.Spec.RemoteWrite.URL))
-		args = buildVMAlertBasicAuthArgs(args, "remoteWrite", cr.Spec.RemoteWrite.BasicAuth, remoteSecrets)
+		args = buildVMAlertBasicAuthArgs(args, "remoteWrite", cr.Spec.RemoteWrite.HTTPAuth.BasicAuth, remoteSecrets)
 		args = buildHeadersArg("remoteWrite.headers", args, cr.Spec.RemoteWrite.Headers)
 
 		if cr.Spec.RemoteWrite.Concurrency != nil {
@@ -471,8 +471,8 @@ func buildVMAlertArgs(cr *victoriametricsv1beta1.VMAlert, ruleConfigMapNames []s
 		if cr.Spec.RemoteWrite.MaxQueueSize != nil {
 			args = append(args, fmt.Sprintf("-remoteWrite.maxQueueSize=%d", *cr.Spec.RemoteWrite.MaxQueueSize))
 		}
-		if cr.Spec.RemoteWrite.TLSConfig != nil {
-			tlsConf := cr.Spec.RemoteWrite.TLSConfig
+		if cr.Spec.RemoteWrite.HTTPAuth.TLSConfig != nil {
+			tlsConf := cr.Spec.RemoteWrite.HTTPAuth.TLSConfig
 			args = tlsConf.AsArgs(args, "remoteWrite", cr.Namespace)
 		}
 	}
@@ -482,14 +482,14 @@ func buildVMAlertArgs(cr *victoriametricsv1beta1.VMAlert, ruleConfigMapNames []s
 
 	if cr.Spec.RemoteRead != nil {
 		args = append(args, fmt.Sprintf("-remoteRead.url=%s", cr.Spec.RemoteRead.URL))
-		args = buildVMAlertBasicAuthArgs(args, "remoteRead", cr.Spec.RemoteRead.BasicAuth, remoteSecrets)
+		args = buildVMAlertBasicAuthArgs(args, "remoteRead", cr.Spec.RemoteRead.HTTPAuth.BasicAuth, remoteSecrets)
 
 		args = buildHeadersArg("remoteRead.headers", args, cr.Spec.RemoteRead.Headers)
 		if cr.Spec.RemoteRead.Lookback != nil {
 			args = append(args, fmt.Sprintf("-remoteRead.lookback=%s", *cr.Spec.RemoteRead.Lookback))
 		}
-		if cr.Spec.RemoteRead.TLSConfig != nil {
-			tlsConf := cr.Spec.RemoteRead.TLSConfig
+		if cr.Spec.RemoteRead.HTTPAuth.TLSConfig != nil {
+			tlsConf := cr.Spec.RemoteRead.HTTPAuth.TLSConfig
 			args = tlsConf.AsArgs(args, "remoteRead", cr.Namespace)
 		}
 
@@ -540,24 +540,24 @@ func loadVMAlertRemoteSecrets(
 		}
 	}
 	// load basic auth for datasource configuration
-	if datasource.BasicAuth != nil {
-		credentials, err := loadBasicAuthSecret(ctx, rclient, cr.Namespace, datasource.BasicAuth)
+	if datasource.HTTPAuth.BasicAuth != nil {
+		credentials, err := loadBasicAuthSecret(ctx, rclient, cr.Namespace, datasource.HTTPAuth.BasicAuth)
 		if err != nil {
 			return nil, fmt.Errorf("could not generate basicAuth for datasource config. %w", err)
 		}
 		secrets["datasource"] = credentials
 	}
 	// load basic auth for remote write configuration
-	if remoteWrite != nil && remoteWrite.BasicAuth != nil {
-		credentials, err := loadBasicAuthSecret(ctx, rclient, cr.Namespace, remoteWrite.BasicAuth)
+	if remoteWrite != nil && remoteWrite.HTTPAuth.BasicAuth != nil {
+		credentials, err := loadBasicAuthSecret(ctx, rclient, cr.Namespace, remoteWrite.HTTPAuth.BasicAuth)
 		if err != nil {
 			return nil, fmt.Errorf("could not generate basicAuth for VMAlert remote write config. %w", err)
 		}
 		secrets["remoteWrite"] = credentials
 	}
 	// load basic auth for remote write configuration
-	if remoteRead != nil && remoteRead.BasicAuth != nil {
-		credentials, err := loadBasicAuthSecret(ctx, rclient, cr.Namespace, remoteRead.BasicAuth)
+	if remoteRead != nil && remoteRead.HTTPAuth.BasicAuth != nil {
+		credentials, err := loadBasicAuthSecret(ctx, rclient, cr.Namespace, remoteRead.HTTPAuth.BasicAuth)
 		if err != nil {
 			return nil, fmt.Errorf("could not generate basicAuth for VMAlert remote read config. %w", err)
 		}
@@ -614,14 +614,14 @@ func loadTLSAssetsForVMAlert(ctx context.Context, rclient client.Client, cr *vic
 			tlsConfigs = append(tlsConfigs, notifier.TLSConfig)
 		}
 	}
-	if cr.Spec.RemoteRead != nil && cr.Spec.RemoteRead.TLSConfig != nil {
-		tlsConfigs = append(tlsConfigs, cr.Spec.RemoteRead.TLSConfig)
+	if cr.Spec.RemoteRead != nil && cr.Spec.RemoteRead.HTTPAuth.TLSConfig != nil {
+		tlsConfigs = append(tlsConfigs, cr.Spec.RemoteRead.HTTPAuth.TLSConfig)
 	}
-	if cr.Spec.RemoteWrite != nil && cr.Spec.RemoteWrite.TLSConfig != nil {
-		tlsConfigs = append(tlsConfigs, cr.Spec.RemoteWrite.TLSConfig)
+	if cr.Spec.RemoteWrite != nil && cr.Spec.RemoteWrite.HTTPAuth.TLSConfig != nil {
+		tlsConfigs = append(tlsConfigs, cr.Spec.RemoteWrite.HTTPAuth.TLSConfig)
 	}
-	if cr.Spec.Datasource.TLSConfig != nil {
-		tlsConfigs = append(tlsConfigs, cr.Spec.Datasource.TLSConfig)
+	if cr.Spec.Datasource.HTTPAuth.TLSConfig != nil {
+		tlsConfigs = append(tlsConfigs, cr.Spec.Datasource.HTTPAuth.TLSConfig)
 	}
 
 	for _, rw := range tlsConfigs {

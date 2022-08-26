@@ -61,9 +61,92 @@ spec:
               description: Datasource Victoria Metrics or VMSelect url. Required parameter.
                 e.g. http://127.0.0.1:8428
               properties:
+                OAuth2:
+                  description: OAuth2 defines OAuth2 configuration
+                  properties:
+                    client_id:
+                      description: The secret or configmap containing the OAuth2 client
+                        id
+                      properties:
+                        configMap:
+                          description: ConfigMap containing data to use for the targets.
+                          properties:
+                            key:
+                              description: The key to select.
+                              type: string
+                            name:
+                              description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                TODO: Add other useful fields. apiVersion, kind, uid?'
+                              type: string
+                            optional:
+                              description: Specify whether the ConfigMap or its key
+                                must be defined
+                              type: boolean
+                          required:
+                          - key
+                          type: object
+                        secret:
+                          description: Secret containing data to use for the targets.
+                          properties:
+                            key:
+                              description: The key of the secret to select from.  Must
+                                be a valid secret key.
+                              type: string
+                            name:
+                              description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                TODO: Add other useful fields. apiVersion, kind, uid?'
+                              type: string
+                            optional:
+                              description: Specify whether the Secret or its key must
+                                be defined
+                              type: boolean
+                          required:
+                          - key
+                          type: object
+                      type: object
+                    client_secret:
+                      description: The secret containing the OAuth2 client secret
+                      properties:
+                        key:
+                          description: The key of the secret to select from.  Must
+                            be a valid secret key.
+                          type: string
+                        name:
+                          description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                            TODO: Add other useful fields. apiVersion, kind, uid?'
+                          type: string
+                        optional:
+                          description: Specify whether the Secret or its key must
+                            be defined
+                          type: boolean
+                      required:
+                      - key
+                      type: object
+                    client_secret_file:
+                      description: ClientSecretFile defines path for client secret
+                        file.
+                      type: string
+                    endpoint_params:
+                      additionalProperties:
+                        type: string
+                      description: Parameters to append to the token URL
+                      type: object
+                    scopes:
+                      description: OAuth2 scopes used for the token request
+                      items:
+                        type: string
+                      type: array
+                    token_url:
+                      description: The URL to fetch the token from
+                      minLength: 1
+                      type: string
+                  required:
+                  - client_id
+                  - token_url
+                  type: object
                 basicAuth:
-                  description: BasicAuth allow datasource to authenticate over basic
-                    authentication
+                  description: 'BasicAuth allow an endpoint to authenticate over basic
+                    authentication More info: https://prometheus.io/docs/operating/configuration/#endpoints'
                   properties:
                     password:
                       description: The secret in the service scrape namespace that
@@ -109,9 +192,34 @@ spec:
                       - key
                       type: object
                   type: object
+                bearerTokenFilePath:
+                  type: string
+                bearerTokenSecret:
+                  description: Optional bearer auth token to use for -remoteWrite.url
+                  properties:
+                    key:
+                      description: The key of the secret to select from.  Must be
+                        a valid secret key.
+                      type: string
+                    name:
+                      description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                        TODO: Add other useful fields. apiVersion, kind, uid?'
+                      type: string
+                    optional:
+                      description: Specify whether the Secret or its key must be defined
+                      type: boolean
+                  required:
+                  - key
+                  type: object
+                headers:
+                  description: Headers allow configuring custom http headers Must
+                    be in form of semicolon separated header with value e.g. headerName:headerValue
+                    vmalert supports it since 1.79.0 version
+                  items:
+                    type: string
+                  type: array
                 tlsConfig:
-                  description: TLSConfig describes tls configuration for datasource
-                    target
+                  description: TLSConfig specifies TLSConfig configuration parameters.
                   properties:
                     ca:
                       description: Stuct containing the CA cert to use for the targets.
@@ -1005,9 +1113,92 @@ spec:
                 has been successfully persisted (via RemoteWrite) before. see -remoteRead.url
                 docs in vmalerts for details. E.g. http://127.0.0.1:8428
               properties:
+                OAuth2:
+                  description: OAuth2 defines OAuth2 configuration
+                  properties:
+                    client_id:
+                      description: The secret or configmap containing the OAuth2 client
+                        id
+                      properties:
+                        configMap:
+                          description: ConfigMap containing data to use for the targets.
+                          properties:
+                            key:
+                              description: The key to select.
+                              type: string
+                            name:
+                              description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                TODO: Add other useful fields. apiVersion, kind, uid?'
+                              type: string
+                            optional:
+                              description: Specify whether the ConfigMap or its key
+                                must be defined
+                              type: boolean
+                          required:
+                          - key
+                          type: object
+                        secret:
+                          description: Secret containing data to use for the targets.
+                          properties:
+                            key:
+                              description: The key of the secret to select from.  Must
+                                be a valid secret key.
+                              type: string
+                            name:
+                              description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                TODO: Add other useful fields. apiVersion, kind, uid?'
+                              type: string
+                            optional:
+                              description: Specify whether the Secret or its key must
+                                be defined
+                              type: boolean
+                          required:
+                          - key
+                          type: object
+                      type: object
+                    client_secret:
+                      description: The secret containing the OAuth2 client secret
+                      properties:
+                        key:
+                          description: The key of the secret to select from.  Must
+                            be a valid secret key.
+                          type: string
+                        name:
+                          description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                            TODO: Add other useful fields. apiVersion, kind, uid?'
+                          type: string
+                        optional:
+                          description: Specify whether the Secret or its key must
+                            be defined
+                          type: boolean
+                      required:
+                      - key
+                      type: object
+                    client_secret_file:
+                      description: ClientSecretFile defines path for client secret
+                        file.
+                      type: string
+                    endpoint_params:
+                      additionalProperties:
+                        type: string
+                      description: Parameters to append to the token URL
+                      type: object
+                    scopes:
+                      description: OAuth2 scopes used for the token request
+                      items:
+                        type: string
+                      type: array
+                    token_url:
+                      description: The URL to fetch the token from
+                      minLength: 1
+                      type: string
+                  required:
+                  - client_id
+                  - token_url
+                  type: object
                 basicAuth:
-                  description: BasicAuth allow an endpoint to authenticate over basic
-                    authentication
+                  description: 'BasicAuth allow an endpoint to authenticate over basic
+                    authentication More info: https://prometheus.io/docs/operating/configuration/#endpoints'
                   properties:
                     password:
                       description: The secret in the service scrape namespace that
@@ -1053,6 +1244,32 @@ spec:
                       - key
                       type: object
                   type: object
+                bearerTokenFilePath:
+                  type: string
+                bearerTokenSecret:
+                  description: Optional bearer auth token to use for -remoteWrite.url
+                  properties:
+                    key:
+                      description: The key of the secret to select from.  Must be
+                        a valid secret key.
+                      type: string
+                    name:
+                      description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                        TODO: Add other useful fields. apiVersion, kind, uid?'
+                      type: string
+                    optional:
+                      description: Specify whether the Secret or its key must be defined
+                      type: boolean
+                  required:
+                  - key
+                  type: object
+                headers:
+                  description: Headers allow configuring custom http headers Must
+                    be in form of semicolon separated header with value e.g. headerName:headerValue
+                    vmalert supports it since 1.79.0 version
+                  items:
+                    type: string
+                  type: array
                 lookback:
                   description: Lookback defines how far to look into past for alerts
                     timeseries. For example, if lookback=1h then range from now()
@@ -1060,8 +1277,7 @@ spec:
                     RemoteReadSpec
                   type: string
                 tlsConfig:
-                  description: TLSConfig describes tls configuration for remote read
-                    target
+                  description: TLSConfig specifies TLSConfig configuration parameters.
                   properties:
                     ca:
                       description: Stuct containing the CA cert to use for the targets.
@@ -1192,9 +1408,92 @@ spec:
                 the form of time series named ALERTS and ALERTS_FOR_STATE see -remoteWrite.url
                 docs in vmalerts for details. E.g. http://127.0.0.1:8428
               properties:
+                OAuth2:
+                  description: OAuth2 defines OAuth2 configuration
+                  properties:
+                    client_id:
+                      description: The secret or configmap containing the OAuth2 client
+                        id
+                      properties:
+                        configMap:
+                          description: ConfigMap containing data to use for the targets.
+                          properties:
+                            key:
+                              description: The key to select.
+                              type: string
+                            name:
+                              description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                TODO: Add other useful fields. apiVersion, kind, uid?'
+                              type: string
+                            optional:
+                              description: Specify whether the ConfigMap or its key
+                                must be defined
+                              type: boolean
+                          required:
+                          - key
+                          type: object
+                        secret:
+                          description: Secret containing data to use for the targets.
+                          properties:
+                            key:
+                              description: The key of the secret to select from.  Must
+                                be a valid secret key.
+                              type: string
+                            name:
+                              description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                TODO: Add other useful fields. apiVersion, kind, uid?'
+                              type: string
+                            optional:
+                              description: Specify whether the Secret or its key must
+                                be defined
+                              type: boolean
+                          required:
+                          - key
+                          type: object
+                      type: object
+                    client_secret:
+                      description: The secret containing the OAuth2 client secret
+                      properties:
+                        key:
+                          description: The key of the secret to select from.  Must
+                            be a valid secret key.
+                          type: string
+                        name:
+                          description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                            TODO: Add other useful fields. apiVersion, kind, uid?'
+                          type: string
+                        optional:
+                          description: Specify whether the Secret or its key must
+                            be defined
+                          type: boolean
+                      required:
+                      - key
+                      type: object
+                    client_secret_file:
+                      description: ClientSecretFile defines path for client secret
+                        file.
+                      type: string
+                    endpoint_params:
+                      additionalProperties:
+                        type: string
+                      description: Parameters to append to the token URL
+                      type: object
+                    scopes:
+                      description: OAuth2 scopes used for the token request
+                      items:
+                        type: string
+                      type: array
+                    token_url:
+                      description: The URL to fetch the token from
+                      minLength: 1
+                      type: string
+                  required:
+                  - client_id
+                  - token_url
+                  type: object
                 basicAuth:
-                  description: BasicAuth allow an endpoint to authenticate over basic
-                    authentication
+                  description: 'BasicAuth allow an endpoint to authenticate over basic
+                    authentication More info: https://prometheus.io/docs/operating/configuration/#endpoints'
                   properties:
                     password:
                       description: The secret in the service scrape namespace that
@@ -1240,6 +1539,25 @@ spec:
                       - key
                       type: object
                   type: object
+                bearerTokenFilePath:
+                  type: string
+                bearerTokenSecret:
+                  description: Optional bearer auth token to use for -remoteWrite.url
+                  properties:
+                    key:
+                      description: The key of the secret to select from.  Must be
+                        a valid secret key.
+                      type: string
+                    name:
+                      description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                        TODO: Add other useful fields. apiVersion, kind, uid?'
+                      type: string
+                    optional:
+                      description: Specify whether the Secret or its key must be defined
+                      type: boolean
+                  required:
+                  - key
+                  type: object
                 concurrency:
                   description: Defines number of readers that concurrently write into
                     remote storage (default 1)
@@ -1250,6 +1568,13 @@ spec:
                     (default 5s)
                   pattern: '[0-9]+(ms|s|m|h)'
                   type: string
+                headers:
+                  description: Headers allow configuring custom http headers Must
+                    be in form of semicolon separated header with value e.g. headerName:headerValue
+                    vmalert supports it since 1.79.0 version
+                  items:
+                    type: string
+                  type: array
                 maxBatchSize:
                   description: Defines defines max number of timeseries to be flushed
                     at once (default 1000)
@@ -1261,8 +1586,7 @@ spec:
                   format: int32
                   type: integer
                 tlsConfig:
-                  description: TLSConfig describes tls configuration for remote write
-                    target
+                  description: TLSConfig specifies TLSConfig configuration parameters.
                   properties:
                     ca:
                       description: Stuct containing the CA cert to use for the targets.

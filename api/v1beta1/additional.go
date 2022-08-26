@@ -177,6 +177,22 @@ type EmbeddedPersistentVolumeClaim struct {
 	Status v1.PersistentVolumeClaimStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
 }
 
+// HTTPAuth generic auth used with http protocols
+type HTTPAuth struct {
+	BasicAuth  *BasicAuth  `json:"basicAuth,omitempty"`
+	OAuth2     *OAuth2     `json:"OAuth2,omitempty"`
+	TLSConfig  *TLSConfig  `json:"tlsConfig,omitempty"`
+	BearerAuth *BearerAuth `json:",inline,omitempty"`
+}
+
+// BearerAuth defines auth with bearer token
+type BearerAuth struct {
+	TokenFilePath string `json:"bearerTokenFilePath,omitempty"`
+	// Optional bearer auth token to use for -remoteWrite.url
+	// +optional
+	TokenSecret *v1.SecretKeySelector `json:"bearerTokenSecret,omitempty"`
+}
+
 // BasicAuth allow an endpoint to authenticate over basic authentication
 // More info: https://prometheus.io/docs/operating/configuration/#endpoints
 // +k8s:openapi-gen=true

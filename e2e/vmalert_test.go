@@ -99,48 +99,51 @@ var _ = Describe("test  vmalert Controller", func() {
 							Notifiers: []operator.VMAlertNotifierSpec{
 								{
 									URL: "http://alert-manager-url:9093",
+									HTTPAuth: operator.HTTPAuth{
+										TLSConfig: &operator.TLSConfig{
+											CertFile: path.Join(factory.SecretsDir, tlsSecretName, "remote-cert"),
+											KeyFile:  path.Join(factory.SecretsDir, tlsSecretName, "remote-key"),
+											CAFile:   path.Join(factory.SecretsDir, tlsSecretName, "remote-ca"),
+										},
+									}}},
+							Secrets: []string{tlsSecretName},
+							Datasource: operator.VMAlertDatasourceSpec{
+								URL: "http://some-datasource-url:8428",
+								HTTPAuth: operator.HTTPAuth{
 									TLSConfig: &operator.TLSConfig{
 										CertFile: path.Join(factory.SecretsDir, tlsSecretName, "remote-cert"),
 										KeyFile:  path.Join(factory.SecretsDir, tlsSecretName, "remote-key"),
 										CAFile:   path.Join(factory.SecretsDir, tlsSecretName, "remote-ca"),
 									},
 								}},
-							Secrets: []string{tlsSecretName},
-							Datasource: operator.VMAlertDatasourceSpec{
-								URL: "http://some-datasource-url:8428",
-								TLSConfig: &operator.TLSConfig{
-									CertFile: path.Join(factory.SecretsDir, tlsSecretName, "remote-cert"),
-									KeyFile:  path.Join(factory.SecretsDir, tlsSecretName, "remote-key"),
-									CAFile:   path.Join(factory.SecretsDir, tlsSecretName, "remote-ca"),
-								},
-							},
 							RemoteRead: &operator.VMAlertRemoteReadSpec{
 								URL: "http://some-vmsingle-url",
-								TLSConfig: &operator.TLSConfig{
-									CA: operator.SecretOrConfigMap{
-										Secret: &corev1.SecretKeySelector{
+								HTTPAuth: operator.HTTPAuth{
+									TLSConfig: &operator.TLSConfig{
+										CA: operator.SecretOrConfigMap{
+											Secret: &corev1.SecretKeySelector{
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: tlsSecretName,
+												},
+												Key: "remote-ca",
+											},
+										},
+										Cert: operator.SecretOrConfigMap{
+											Secret: &corev1.SecretKeySelector{
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: tlsSecretName,
+												},
+												Key: "remote-cert",
+											},
+										},
+										KeySecret: &corev1.SecretKeySelector{
 											LocalObjectReference: corev1.LocalObjectReference{
 												Name: tlsSecretName,
 											},
-											Key: "remote-ca",
+											Key: "remote-key",
 										},
 									},
-									Cert: operator.SecretOrConfigMap{
-										Secret: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: tlsSecretName,
-											},
-											Key: "remote-cert",
-										},
-									},
-									KeySecret: &corev1.SecretKeySelector{
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: tlsSecretName,
-										},
-										Key: "remote-key",
-									},
-								},
-							},
+								}},
 						},
 					})).Should(Succeed())
 					vmAlert := &operator.VMAlert{}

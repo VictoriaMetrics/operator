@@ -439,6 +439,7 @@ func buildVMAlertBasicAuthArgs(args []string, flagPrefix string, baSpec *victori
 }
 
 // todo add oauth2
+// todo add bearer token
 func buildVMAlertArgs(cr *victoriametricsv1beta1.VMAlert, ruleConfigMapNames []string, remoteSecrets map[string]BasicAuthCredentials) []string {
 	args := []string{
 		fmt.Sprintf("-datasource.url=%s", cr.Spec.Datasource.URL),

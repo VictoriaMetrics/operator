@@ -558,8 +558,8 @@ spec:
                           for scraping See feature description https://docs.victoriametrics.com/vmagent.html#scraping-targets-via-a-proxy
                         properties:
                           basic_auth:
-                            description: 'BasicAuth allow an endpoint to authenticate
-                              over basic authentication More info: https://prometheus.io/docs/operating/configuration/#endpoints'
+                            description: BasicAuth allow an endpoint to authenticate
+                              over basic authentication
                             properties:
                               password:
                                 description: The secret in the service scrape namespace

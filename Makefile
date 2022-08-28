@@ -108,6 +108,26 @@ fix118_yaml:
 	docker run --rm -v "${PWD}":/workdir mikefarah/yq:2.2.0 /bin/sh -c ' \
         $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalertmanagerconfigs.yaml $(YAML_DROP_PREFIX).receivers.items.properties.opsgenie_configs.items.properties.http_config.properties &&\
 	    $(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalertmanagerconfigs.yaml $(YAML_DROP_PREFIX).receivers.items.properties.opsgenie_configs.items.properties.http_config.$(CRD_PRESERVE) &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).datasource.properties.OAuth2.properties &&\
+    	$(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).datasource.properties.OAuth2.$(CRD_PRESERVE) &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).remoteRead.properties.OAuth2.properties &&\
+    	$(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).remoteRead.properties.OAuth2.$(CRD_PRESERVE) &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).remoteWrite.properties.OAuth2.properties &&\
+    	$(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).remoteWrite.properties.OAuth2.$(CRD_PRESERVE) &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).notifier.properties.OAuth2.properties &&\
+    	$(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).notifier.properties.OAuth2.$(CRD_PRESERVE) &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).notifiers.items.properties.OAuth2.properties &&\
+    	$(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).notifiers.items.properties.OAuth2.$(CRD_PRESERVE) &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).datasource.properties.tlsConfig.properties &&\
+    	$(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).datasource.properties.tlsConfig.$(CRD_PRESERVE) &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).remoteRead.properties.tlsConfig.properties &&\
+    	$(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).remoteRead.properties.tlsConfig.$(CRD_PRESERVE) &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).remoteWrite.properties.tlsConfig.properties &&\
+    	$(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).remoteWrite.properties.tlsConfig.$(CRD_PRESERVE) &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).notifier.properties.tlsConfig.properties &&\
+    	$(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).notifier.properties.tlsConfig.$(CRD_PRESERVE) &&\
+	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).notifiers.items.properties.tlsConfig.properties &&\
+    	$(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).notifiers.items.properties.tlsConfig.$(CRD_PRESERVE) &&\
 	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalertmanagerconfigs.yaml $(YAML_DROP_PREFIX).receivers.items.properties.pagerduty_configs.items.properties.http_config.properties &&\
     	$(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalertmanagerconfigs.yaml $(YAML_DROP_PREFIX).receivers.items.properties.pagerduty_configs.items.properties.http_config.$(CRD_PRESERVE) &&\
         $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalertmanagerconfigs.yaml $(YAML_DROP_PREFIX).receivers.items.properties.pushover_configs.items.properties.http_config.properties &&\

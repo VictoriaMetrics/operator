@@ -177,10 +177,11 @@ func TestCreateOrUpdateVMAlert(t *testing.T) {
 					Spec: victoriametricsv1beta1.VMAlertSpec{
 						Notifier: &victoriametricsv1beta1.VMAlertNotifierSpec{
 							URL: "http://some-alertmanager",
-							TLSConfig: &victoriametricsv1beta1.TLSConfig{
-								InsecureSkipVerify: true,
-							},
-						},
+							HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+								TLSConfig: &victoriametricsv1beta1.TLSConfig{
+									InsecureSkipVerify: true,
+								},
+							}},
 						Datasource: victoriametricsv1beta1.VMAlertDatasourceSpec{
 							URL: "http://some-vm-datasource",
 							HTTPAuth: victoriametricsv1beta1.HTTPAuth{
@@ -226,12 +227,13 @@ func TestCreateOrUpdateVMAlert(t *testing.T) {
 					Spec: victoriametricsv1beta1.VMAlertSpec{
 						Notifier: &victoriametricsv1beta1.VMAlertNotifierSpec{
 							URL: "http://some-alertmanager",
-							TLSConfig: &victoriametricsv1beta1.TLSConfig{
-								CAFile:   "/tmp/ca",
-								CertFile: "/tmp/cert",
-								KeyFile:  "/tmp/key",
-							},
-						},
+							HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+								TLSConfig: &victoriametricsv1beta1.TLSConfig{
+									CAFile:   "/tmp/ca",
+									CertFile: "/tmp/cert",
+									KeyFile:  "/tmp/key",
+								},
+							}},
 						Notifiers: []victoriametricsv1beta1.VMAlertNotifierSpec{
 							{
 								URL: "http://another-alertmanager",
@@ -297,11 +299,12 @@ func TestCreateOrUpdateVMAlert(t *testing.T) {
 						Notifiers: []victoriametricsv1beta1.VMAlertNotifierSpec{
 							{
 								URL: "http://another-alertmanager",
-								TLSConfig: &victoriametricsv1beta1.TLSConfig{
-									CAFile:   "/tmp/ca",
-									CertFile: "/tmp/cert",
-									KeyFile:  "/tmp/key",
-								},
+								HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+									TLSConfig: &victoriametricsv1beta1.TLSConfig{
+										CAFile:   "/tmp/ca",
+										CertFile: "/tmp/cert",
+										KeyFile:  "/tmp/key",
+									}},
 							},
 						},
 						Datasource: victoriametricsv1beta1.VMAlertDatasourceSpec{
@@ -365,9 +368,10 @@ func TestCreateOrUpdateVMAlert(t *testing.T) {
 						Notifiers: []victoriametricsv1beta1.VMAlertNotifierSpec{
 							{
 								URL: "http://another-alertmanager",
-								TLSConfig: &victoriametricsv1beta1.TLSConfig{
-									InsecureSkipVerify: true,
-								},
+								HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+									TLSConfig: &victoriametricsv1beta1.TLSConfig{
+										InsecureSkipVerify: true,
+									}},
 							},
 						},
 						Datasource: victoriametricsv1beta1.VMAlertDatasourceSpec{
@@ -491,11 +495,13 @@ func TestBuildNotifiers(t *testing.T) {
 						},
 						{
 							URL: "http://am-2",
-							TLSConfig: &victoriametricsv1beta1.TLSConfig{
-								CAFile:             "/tmp/ca.cert",
-								InsecureSkipVerify: true,
-								KeyFile:            "/tmp/key.pem",
-								CertFile:           "/tmp/cert.pem",
+							HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+								TLSConfig: &victoriametricsv1beta1.TLSConfig{
+									CAFile:             "/tmp/ca.cert",
+									InsecureSkipVerify: true,
+									KeyFile:            "/tmp/key.pem",
+									CertFile:           "/tmp/cert.pem",
+								},
 							},
 						},
 						{
@@ -518,6 +524,30 @@ func TestBuildNotifiers(t *testing.T) {
 				},
 			},
 			want: []string{"-notifier.config=" + notifierConfigMountPath + "/cfg.yaml"},
+		},
+		{
+			name: "with headers",
+			args: args{
+				cr: &victoriametricsv1beta1.VMAlert{
+					Spec: victoriametricsv1beta1.VMAlertSpec{
+						Notifiers: []victoriametricsv1beta1.VMAlertNotifierSpec{
+							{
+								URL: "http://1",
+								HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+									Headers: []string{"key=value", "key2=value2"},
+								},
+							},
+							{
+								URL: "http://2",
+								HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+									Headers: []string{"key3=value3", "key4=value4"},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: []string{"-notifier.url=http://1,http://2", "-notifier.headers=key=value^^key2=value2,key3=value3^^key4=value4"},
 		},
 	}
 	for _, tt := range tests {

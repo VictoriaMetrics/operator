@@ -280,11 +280,8 @@ type VMAlertNotifierSpec struct {
 	// as statefulset pod.fqdn
 	// +optional
 	Selector *DiscoverySelector `json:"selector,omitempty"`
-	// BasicAuth allow notifier to authenticate over basic authentication
-	// +optional
-	BasicAuth *BasicAuth `json:"basicAuth,omitempty"`
-	// TLSConfig describes tls configuration for notifier
-	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
+
+	HTTPAuth HTTPAuth `json:"-,inline,omitempty"`
 }
 
 // NotifierAsMapKey - returns cr name with suffix for notifier token/auth maps.
@@ -301,13 +298,7 @@ type VMAlertRemoteReadSpec struct {
 	// Applied only to RemoteReadSpec
 	// +optional
 	Lookback *string `json:"lookback,omitempty"`
-	// Headers allow configuring custom http headers
-	// Must be in form of semicolon separated header with value
-	// e.g.
-	// headerName:headerValue
-	// vmalert supports it since 1.79.0 version
-	// +optional
-	Headers  []string `json:"headers,omitempty"`
+
 	HTTPAuth HTTPAuth `json:"-,inline,omitempty"`
 }
 

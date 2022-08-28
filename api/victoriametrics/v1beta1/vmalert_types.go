@@ -258,15 +258,12 @@ type VMAlertSpec struct {
 type VMAlertDatasourceSpec struct {
 	// Victoria Metrics or VMSelect url. Required parameter. E.g. http://127.0.0.1:8428
 	URL string `json:"url"`
-	// BasicAuth allow datasource to authenticate over basic authentication
-	// +optional
-	BasicAuth *BasicAuth `json:"basicAuth,omitempty"`
-	// TLSConfig describes tls configuration for datasource target
-	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
+	// HTTPAuth generic auth methods
+	HTTPAuth HTTPAuth `json:"-,inline,omitempty"`
 	// Headers allow configuring custom http headers
 	// Must be in form of semicolon separated header with value
 	// e.g.
-	// headerName: headerValue
+	// headerName:headerValue
 	// vmalert supports it since 1.79.0 version
 	// +optional
 	Headers []string `json:"headers,omitempty"`
@@ -283,11 +280,8 @@ type VMAlertNotifierSpec struct {
 	// as statefulset pod.fqdn
 	// +optional
 	Selector *DiscoverySelector `json:"selector,omitempty"`
-	// BasicAuth allow notifier to authenticate over basic authentication
-	// +optional
-	BasicAuth *BasicAuth `json:"basicAuth,omitempty"`
-	// TLSConfig describes tls configuration for notifier
-	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
+
+	HTTPAuth HTTPAuth `json:"-,inline,omitempty"`
 }
 
 // NotifierAsMapKey - returns cr name with suffix for notifier token/auth maps.
@@ -300,22 +294,12 @@ func (cr VMAlert) NotifierAsMapKey(i int) string {
 type VMAlertRemoteReadSpec struct {
 	// URL of the endpoint to send samples to.
 	URL string `json:"url"`
-	// BasicAuth allow an endpoint to authenticate over basic authentication
-	// +optional
-	BasicAuth *BasicAuth `json:"basicAuth,omitempty"`
 	// Lookback defines how far to look into past for alerts timeseries. For example, if lookback=1h then range from now() to now()-1h will be scanned. (default 1h0m0s)
 	// Applied only to RemoteReadSpec
 	// +optional
 	Lookback *string `json:"lookback,omitempty"`
-	// TLSConfig describes tls configuration for remote read target
-	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
-	// Headers allow configuring custom http headers
-	// Must be in form of semicolon separated header with value
-	// e.g.
-	// headerName: headerValue
-	// vmalert supports it since 1.79.0 version
-	// +optional
-	Headers []string `json:"headers,omitempty"`
+
+	HTTPAuth HTTPAuth `json:"-,inline,omitempty"`
 }
 
 // VMAgentRemoteWriteSpec defines the remote storage configuration for VmAlert
@@ -323,9 +307,6 @@ type VMAlertRemoteReadSpec struct {
 type VMAlertRemoteWriteSpec struct {
 	// URL of the endpoint to send samples to.
 	URL string `json:"url"`
-	// BasicAuth allow an endpoint to authenticate over basic authentication
-	// +optional
-	BasicAuth *BasicAuth `json:"basicAuth,omitempty"`
 	// Defines number of readers that concurrently write into remote storage (default 1)
 	// +optional
 	Concurrency *int32 `json:"concurrency,omitempty"`
@@ -339,12 +320,12 @@ type VMAlertRemoteWriteSpec struct {
 	// Defines the max number of pending datapoints to remote write endpoint (default 100000)
 	// +optional
 	MaxQueueSize *int32 `json:"maxQueueSize,omitempty"`
-	// TLSConfig describes tls configuration for remote write target
-	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
+	// HTTPAuth generic auth methods
+	HTTPAuth HTTPAuth `json:"-,inline,omitempty"`
 	// Headers allow configuring custom http headers
 	// Must be in form of semicolon separated header with value
 	// e.g.
-	// headerName: headerValue
+	// headerName:headerValue
 	// vmalert supports it since 1.79.0 version
 	// +optional
 	Headers []string `json:"headers,omitempty"`

@@ -183,6 +183,13 @@ type HTTPAuth struct {
 	OAuth2     *OAuth2     `json:"OAuth2,omitempty"`
 	TLSConfig  *TLSConfig  `json:"tlsConfig,omitempty"`
 	BearerAuth *BearerAuth `json:",inline,omitempty"`
+	// Headers allow configuring custom http headers
+	// Must be in form of semicolon separated header with value
+	// e.g.
+	// headerName:headerValue
+	// vmalert supports it since 1.79.0 version
+	// +optional
+	Headers []string `json:"headers,omitempty"`
 }
 
 // BearerAuth defines auth with bearer token
@@ -194,7 +201,6 @@ type BearerAuth struct {
 }
 
 // BasicAuth allow an endpoint to authenticate over basic authentication
-// More info: https://prometheus.io/docs/operating/configuration/#endpoints
 // +k8s:openapi-gen=true
 type BasicAuth struct {
 	// The secret in the service scrape namespace that contains the username

@@ -1,7 +1,9 @@
 package converter
 
 import (
+	"fmt"
 	"github.com/VictoriaMetrics/operator/internal/config"
+	"github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"reflect"
 	"testing"
@@ -339,4 +341,46 @@ func TestConvertPodEndpoints(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestConvertAlertmanagerConfig(t *testing.T) {
+	f := func(name string, promCfg *v1alpha1.AlertmanagerConfig, validate func(convertedAMCfg *v1beta1vm.VMAlertmanagerConfig) error) {
+		t.Run(name, func(t *testing.T) {
+			converted, err := ConvertAlertmanagerConfig(promCfg, &config.BaseOperatorConf{})
+			if err != nil {
+				t.Fatalf("unexpected error: %s", err)
+			}
+			if err := validate(converted); err != nil {
+				t.Fatalf("not valid converted alertmanager config")
+			}
+
+		})
+	}
+	f("simple convert",
+		&v1alpha1.AlertmanagerConfig{ObjectMeta: v12.ObjectMeta{Name: "test-1"},
+			Spec: v1alpha1.AlertmanagerConfigSpec{
+				Route: &v1alpha1.Route{Receiver: "webhook", GroupInterval: "1min"},
+				Receivers: []v1alpha1.Receiver{
+					{
+						Name:           "webhook",
+						WebhookConfigs: []v1alpha1.WebhookConfig{{URLSecret: &corev1.SecretKeySelector{Key: "secret"}}},
+					},
+				},
+			}},
+		func(convertedAMCfg *v1beta1vm.VMAlertmanagerConfig) error {
+			if convertedAMCfg.Name != "test-1" {
+				return fmt.Errorf("name not match, want: %s got: %s", "test-1", convertedAMCfg.Name)
+			}
+			if convertedAMCfg.Spec.Route.Receiver != "webhook" {
+				return fmt.Errorf("unexpected receiver at route name: %s", convertedAMCfg.Spec.Route.Receiver)
+			}
+			if convertedAMCfg.Spec.Receivers[0].Name != "webhook" {
+				return fmt.Errorf("unexpected receiver name: %s", convertedAMCfg.Spec.Receivers[0].Name)
+			}
+			if convertedAMCfg.Spec.Receivers[0].WebhookConfigs[0].URLSecret.Key != "secret" {
+				return fmt.Errorf("expected url with secret key")
+			}
+			return nil
+		})
+
 }

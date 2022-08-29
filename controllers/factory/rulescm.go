@@ -210,7 +210,6 @@ func selectNamespaces(ctx context.Context, rclient client.Client, selector label
 
 		matchedNs = append(matchedNs, n.Name)
 	}
-	log.Info("namespaced matched by selector", "ns", strings.Join(matchedNs, ","))
 
 	return matchedNs, nil
 }

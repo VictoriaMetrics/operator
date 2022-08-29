@@ -112,7 +112,6 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 	if err != nil {
 		return reconcile.Result{}, fmt.Errorf("cannot get remote write secrets for vmagent: %w", err)
 	}
-	l.Info("create or update vm agent deploy")
 
 	newDeploy, err := newDeployForVMAgent(cr, c, ssCache)
 	if err != nil {

@@ -35,21 +35,22 @@ func Test_loadVMAlertRemoteSecrets(t *testing.T) {
 			args: args{
 				cr: &victoriametricsv1beta1.VMAlert{
 					Spec: victoriametricsv1beta1.VMAlertSpec{RemoteWrite: &victoriametricsv1beta1.VMAlertRemoteWriteSpec{
-						BasicAuth: &victoriametricsv1beta1.BasicAuth{
-							Password: corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "secret-1",
+						HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+							BasicAuth: &victoriametricsv1beta1.BasicAuth{
+								Password: corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "secret-1",
+									},
+									Key: "password",
 								},
-								Key: "password",
-							},
-							Username: corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "secret-1",
+								Username: corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "secret-1",
+									},
+									Key: "username",
 								},
-								Key: "username",
 							},
-						},
-					}},
+						}}},
 				},
 				SecretsInNS: &corev1.SecretList{
 					Items: []corev1.Secret{
@@ -176,15 +177,17 @@ func TestCreateOrUpdateVMAlert(t *testing.T) {
 					Spec: victoriametricsv1beta1.VMAlertSpec{
 						Notifier: &victoriametricsv1beta1.VMAlertNotifierSpec{
 							URL: "http://some-alertmanager",
-							TLSConfig: &victoriametricsv1beta1.TLSConfig{
-								InsecureSkipVerify: true,
-							},
-						},
+							HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+								TLSConfig: &victoriametricsv1beta1.TLSConfig{
+									InsecureSkipVerify: true,
+								},
+							}},
 						Datasource: victoriametricsv1beta1.VMAlertDatasourceSpec{
 							URL: "http://some-vm-datasource",
-							TLSConfig: &victoriametricsv1beta1.TLSConfig{
-								InsecureSkipVerify: true,
-							},
+							HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+								TLSConfig: &victoriametricsv1beta1.TLSConfig{
+									InsecureSkipVerify: true,
+								}},
 						},
 						ExternalLabels: map[string]string{"label1": "value1", "label2": "value-2"},
 					},
@@ -224,12 +227,13 @@ func TestCreateOrUpdateVMAlert(t *testing.T) {
 					Spec: victoriametricsv1beta1.VMAlertSpec{
 						Notifier: &victoriametricsv1beta1.VMAlertNotifierSpec{
 							URL: "http://some-alertmanager",
-							TLSConfig: &victoriametricsv1beta1.TLSConfig{
-								CAFile:   "/tmp/ca",
-								CertFile: "/tmp/cert",
-								KeyFile:  "/tmp/key",
-							},
-						},
+							HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+								TLSConfig: &victoriametricsv1beta1.TLSConfig{
+									CAFile:   "/tmp/ca",
+									CertFile: "/tmp/cert",
+									KeyFile:  "/tmp/key",
+								},
+							}},
 						Notifiers: []victoriametricsv1beta1.VMAlertNotifierSpec{
 							{
 								URL: "http://another-alertmanager",
@@ -237,28 +241,30 @@ func TestCreateOrUpdateVMAlert(t *testing.T) {
 						},
 						Datasource: victoriametricsv1beta1.VMAlertDatasourceSpec{
 							URL: "http://some-vm-datasource",
-							TLSConfig: &victoriametricsv1beta1.TLSConfig{
-								CA: victoriametricsv1beta1.SecretOrConfigMap{
-									Secret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "ca"},
+							HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+								TLSConfig: &victoriametricsv1beta1.TLSConfig{
+									CA: victoriametricsv1beta1.SecretOrConfigMap{
+										Secret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "ca"},
+									},
+									Cert: victoriametricsv1beta1.SecretOrConfigMap{
+										Secret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "ca"},
+									},
+									KeySecret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "key"},
 								},
-								Cert: victoriametricsv1beta1.SecretOrConfigMap{
-									Secret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "ca"},
-								},
-								KeySecret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "key"},
-							},
-						},
+							}},
 						RemoteWrite: &victoriametricsv1beta1.VMAlertRemoteWriteSpec{
 							URL: "http://vm-insert-url",
-							TLSConfig: &victoriametricsv1beta1.TLSConfig{
-								CA: victoriametricsv1beta1.SecretOrConfigMap{
-									ConfigMap: &corev1.ConfigMapKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "ca"},
+							HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+								TLSConfig: &victoriametricsv1beta1.TLSConfig{
+									CA: victoriametricsv1beta1.SecretOrConfigMap{
+										ConfigMap: &corev1.ConfigMapKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "ca"},
+									},
+									Cert: victoriametricsv1beta1.SecretOrConfigMap{
+										ConfigMap: &corev1.ConfigMapKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "ca"},
+									},
+									KeySecret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "key"},
 								},
-								Cert: victoriametricsv1beta1.SecretOrConfigMap{
-									ConfigMap: &corev1.ConfigMapKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "ca"},
-								},
-								KeySecret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "key"},
-							},
-						},
+							}},
 					},
 				},
 				c: config.MustGetBaseConfig(),
@@ -293,37 +299,41 @@ func TestCreateOrUpdateVMAlert(t *testing.T) {
 						Notifiers: []victoriametricsv1beta1.VMAlertNotifierSpec{
 							{
 								URL: "http://another-alertmanager",
-								TLSConfig: &victoriametricsv1beta1.TLSConfig{
-									CAFile:   "/tmp/ca",
-									CertFile: "/tmp/cert",
-									KeyFile:  "/tmp/key",
-								},
+								HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+									TLSConfig: &victoriametricsv1beta1.TLSConfig{
+										CAFile:   "/tmp/ca",
+										CertFile: "/tmp/cert",
+										KeyFile:  "/tmp/key",
+									}},
 							},
 						},
 						Datasource: victoriametricsv1beta1.VMAlertDatasourceSpec{
 							URL: "http://some-vm-datasource",
-							TLSConfig: &victoriametricsv1beta1.TLSConfig{
-								CA: victoriametricsv1beta1.SecretOrConfigMap{
-									Secret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "ca"},
+							HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+								TLSConfig: &victoriametricsv1beta1.TLSConfig{
+									CA: victoriametricsv1beta1.SecretOrConfigMap{
+										Secret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "ca"},
+									},
+									Cert: victoriametricsv1beta1.SecretOrConfigMap{
+										Secret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "ca"},
+									},
+									KeySecret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "key"},
 								},
-								Cert: victoriametricsv1beta1.SecretOrConfigMap{
-									Secret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "ca"},
-								},
-								KeySecret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "key"},
 							},
 						},
 						RemoteWrite: &victoriametricsv1beta1.VMAlertRemoteWriteSpec{
 							URL: "http://vm-insert-url",
-							TLSConfig: &victoriametricsv1beta1.TLSConfig{
-								CA: victoriametricsv1beta1.SecretOrConfigMap{
-									ConfigMap: &corev1.ConfigMapKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "ca"},
+							HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+								TLSConfig: &victoriametricsv1beta1.TLSConfig{
+									CA: victoriametricsv1beta1.SecretOrConfigMap{
+										ConfigMap: &corev1.ConfigMapKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "ca"},
+									},
+									Cert: victoriametricsv1beta1.SecretOrConfigMap{
+										ConfigMap: &corev1.ConfigMapKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "ca"},
+									},
+									KeySecret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "key"},
 								},
-								Cert: victoriametricsv1beta1.SecretOrConfigMap{
-									ConfigMap: &corev1.ConfigMapKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "ca"},
-								},
-								KeySecret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "key"},
-							},
-						},
+							}},
 					},
 				},
 				c: config.MustGetBaseConfig(),
@@ -358,27 +368,32 @@ func TestCreateOrUpdateVMAlert(t *testing.T) {
 						Notifiers: []victoriametricsv1beta1.VMAlertNotifierSpec{
 							{
 								URL: "http://another-alertmanager",
-								TLSConfig: &victoriametricsv1beta1.TLSConfig{
-									InsecureSkipVerify: true,
-								},
+								HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+									TLSConfig: &victoriametricsv1beta1.TLSConfig{
+										InsecureSkipVerify: true,
+									}},
 							},
 						},
 						Datasource: victoriametricsv1beta1.VMAlertDatasourceSpec{
 							URL: "http://some-vm-datasource",
-							TLSConfig: &victoriametricsv1beta1.TLSConfig{
-								InsecureSkipVerify: true,
-							},
+							HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+								TLSConfig: &victoriametricsv1beta1.TLSConfig{
+									InsecureSkipVerify: true,
+								}},
 						},
 						RemoteWrite: &victoriametricsv1beta1.VMAlertRemoteWriteSpec{
 							URL: "http://vm-insert-url",
-							TLSConfig: &victoriametricsv1beta1.TLSConfig{
-								InsecureSkipVerify: true,
-							},
+							HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+								TLSConfig: &victoriametricsv1beta1.TLSConfig{
+									InsecureSkipVerify: true,
+								}},
 						},
 						RemoteRead: &victoriametricsv1beta1.VMAlertRemoteReadSpec{
 							URL: "http://vm-insert-url",
-							TLSConfig: &victoriametricsv1beta1.TLSConfig{
-								InsecureSkipVerify: true,
+							HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+								TLSConfig: &victoriametricsv1beta1.TLSConfig{
+									InsecureSkipVerify: true,
+								},
 							},
 						},
 					},
@@ -480,11 +495,13 @@ func TestBuildNotifiers(t *testing.T) {
 						},
 						{
 							URL: "http://am-2",
-							TLSConfig: &victoriametricsv1beta1.TLSConfig{
-								CAFile:             "/tmp/ca.cert",
-								InsecureSkipVerify: true,
-								KeyFile:            "/tmp/key.pem",
-								CertFile:           "/tmp/cert.pem",
+							HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+								TLSConfig: &victoriametricsv1beta1.TLSConfig{
+									CAFile:             "/tmp/ca.cert",
+									InsecureSkipVerify: true,
+									KeyFile:            "/tmp/key.pem",
+									CertFile:           "/tmp/cert.pem",
+								},
 							},
 						},
 						{
@@ -507,6 +524,30 @@ func TestBuildNotifiers(t *testing.T) {
 				},
 			},
 			want: []string{"-notifier.config=" + notifierConfigMountPath + "/cfg.yaml"},
+		},
+		{
+			name: "with headers",
+			args: args{
+				cr: &victoriametricsv1beta1.VMAlert{
+					Spec: victoriametricsv1beta1.VMAlertSpec{
+						Notifiers: []victoriametricsv1beta1.VMAlertNotifierSpec{
+							{
+								URL: "http://1",
+								HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+									Headers: []string{"key=value", "key2=value2"},
+								},
+							},
+							{
+								URL: "http://2",
+								HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+									Headers: []string{"key3=value3", "key4=value4"},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: []string{"-notifier.url=http://1,http://2", "-notifier.headers=key=value^^key2=value2,key3=value3^^key4=value4"},
 		},
 	}
 	for _, tt := range tests {
@@ -599,11 +640,12 @@ func Test_buildVMAlertArgs(t *testing.T) {
 					Spec: victoriametricsv1beta1.VMAlertSpec{
 						Datasource: victoriametricsv1beta1.VMAlertDatasourceSpec{
 							URL: "http://vmsingle-url",
-							TLSConfig: &victoriametricsv1beta1.TLSConfig{
-								InsecureSkipVerify: true,
-								KeyFile:            "/path/to/key",
-								CAFile:             "/path/to/sa",
-							},
+							HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+								TLSConfig: &victoriametricsv1beta1.TLSConfig{
+									InsecureSkipVerify: true,
+									KeyFile:            "/path/to/key",
+									CAFile:             "/path/to/sa",
+								}},
 							Headers: []string{"x-org-id:one", "x-org-tenant:5"},
 						},
 					},

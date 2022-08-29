@@ -421,6 +421,21 @@ func buildHeadersArg(flagName string, src []string, headers []string) []string {
 	return src
 }
 
+func buildBearerArgs(args []string, flagPrefix string, tokenSpec *victoriametricsv1beta1.BearerAuth) []string {
+	if tokenSpec == nil {
+		return args
+	}
+	if len(tokenSpec.TokenFilePath) > 0 {
+		args = append(args, fmt.Sprintf("-%s.bearerTokenFile=%s", flagPrefix, tokenSpec.TokenFilePath))
+		return args
+	}
+	// todo implement it
+	if tokenSpec.TokenSecret != nil {
+		log.Info("tokenSecret is not supported atm, ignoring it for prefix: ", "prefix", flagPrefix)
+	}
+	return args
+}
+
 func buildVMAlertBasicAuthArgs(args []string, flagPrefix string, baSpec *victoriametricsv1beta1.BasicAuth, remoteSecrets map[string]BasicAuthCredentials) []string {
 	if baSpec == nil {
 		return args
@@ -438,27 +453,28 @@ func buildVMAlertBasicAuthArgs(args []string, flagPrefix string, baSpec *victori
 	return args
 }
 
+// todo add oauth2
 func buildVMAlertArgs(cr *victoriametricsv1beta1.VMAlert, ruleConfigMapNames []string, remoteSecrets map[string]BasicAuthCredentials) []string {
 	args := []string{
 		fmt.Sprintf("-datasource.url=%s", cr.Spec.Datasource.URL),
 	}
 
 	args = buildHeadersArg("datasource.headers", args, cr.Spec.Datasource.Headers)
-
+	args = buildBearerArgs(args, "datasource", cr.Spec.Datasource.HTTPAuth.BearerAuth)
 	args = append(args, BuildNotifiersArgs(cr, remoteSecrets)...)
 
-	args = buildVMAlertBasicAuthArgs(args, "datasource", cr.Spec.Datasource.BasicAuth, remoteSecrets)
+	args = buildVMAlertBasicAuthArgs(args, "datasource", cr.Spec.Datasource.HTTPAuth.BasicAuth, remoteSecrets)
 
-	if cr.Spec.Datasource.TLSConfig != nil {
-		tlsConf := cr.Spec.Datasource.TLSConfig
+	if cr.Spec.Datasource.HTTPAuth.TLSConfig != nil {
+		tlsConf := cr.Spec.Datasource.HTTPAuth.TLSConfig
 		args = tlsConf.AsArgs(args, "datasource", cr.Namespace)
 	}
 
 	if cr.Spec.RemoteWrite != nil {
 		args = append(args, fmt.Sprintf("-remoteWrite.url=%s", cr.Spec.RemoteWrite.URL))
-		args = buildVMAlertBasicAuthArgs(args, "remoteWrite", cr.Spec.RemoteWrite.BasicAuth, remoteSecrets)
+		args = buildVMAlertBasicAuthArgs(args, "remoteWrite", cr.Spec.RemoteWrite.HTTPAuth.BasicAuth, remoteSecrets)
 		args = buildHeadersArg("remoteWrite.headers", args, cr.Spec.RemoteWrite.Headers)
-
+		args = buildBearerArgs(args, "remoteWrite", cr.Spec.RemoteWrite.HTTPAuth.BearerAuth)
 		if cr.Spec.RemoteWrite.Concurrency != nil {
 			args = append(args, fmt.Sprintf("-remoteWrite.concurrency=%d", *cr.Spec.RemoteWrite.Concurrency))
 		}
@@ -471,8 +487,8 @@ func buildVMAlertArgs(cr *victoriametricsv1beta1.VMAlert, ruleConfigMapNames []s
 		if cr.Spec.RemoteWrite.MaxQueueSize != nil {
 			args = append(args, fmt.Sprintf("-remoteWrite.maxQueueSize=%d", *cr.Spec.RemoteWrite.MaxQueueSize))
 		}
-		if cr.Spec.RemoteWrite.TLSConfig != nil {
-			tlsConf := cr.Spec.RemoteWrite.TLSConfig
+		if cr.Spec.RemoteWrite.HTTPAuth.TLSConfig != nil {
+			tlsConf := cr.Spec.RemoteWrite.HTTPAuth.TLSConfig
 			args = tlsConf.AsArgs(args, "remoteWrite", cr.Namespace)
 		}
 	}
@@ -482,14 +498,14 @@ func buildVMAlertArgs(cr *victoriametricsv1beta1.VMAlert, ruleConfigMapNames []s
 
 	if cr.Spec.RemoteRead != nil {
 		args = append(args, fmt.Sprintf("-remoteRead.url=%s", cr.Spec.RemoteRead.URL))
-		args = buildVMAlertBasicAuthArgs(args, "remoteRead", cr.Spec.RemoteRead.BasicAuth, remoteSecrets)
-
-		args = buildHeadersArg("remoteRead.headers", args, cr.Spec.RemoteRead.Headers)
+		args = buildVMAlertBasicAuthArgs(args, "remoteRead", cr.Spec.RemoteRead.HTTPAuth.BasicAuth, remoteSecrets)
+		args = buildBearerArgs(args, "remoteRead", cr.Spec.RemoteRead.HTTPAuth.BearerAuth)
+		args = buildHeadersArg("remoteRead.headers", args, cr.Spec.RemoteRead.HTTPAuth.Headers)
 		if cr.Spec.RemoteRead.Lookback != nil {
 			args = append(args, fmt.Sprintf("-remoteRead.lookback=%s", *cr.Spec.RemoteRead.Lookback))
 		}
-		if cr.Spec.RemoteRead.TLSConfig != nil {
-			tlsConf := cr.Spec.RemoteRead.TLSConfig
+		if cr.Spec.RemoteRead.HTTPAuth.TLSConfig != nil {
+			tlsConf := cr.Spec.RemoteRead.HTTPAuth.TLSConfig
 			args = tlsConf.AsArgs(args, "remoteRead", cr.Namespace)
 		}
 
@@ -531,8 +547,8 @@ func loadVMAlertRemoteSecrets(
 	remoteRead := cr.Spec.RemoteRead
 	secrets := map[string]BasicAuthCredentials{}
 	for i, notifier := range cr.Spec.Notifiers {
-		if notifier.BasicAuth != nil {
-			credentials, err := loadBasicAuthSecret(ctx, rclient, cr.Namespace, notifier.BasicAuth)
+		if notifier.HTTPAuth.BasicAuth != nil {
+			credentials, err := loadBasicAuthSecret(ctx, rclient, cr.Namespace, notifier.HTTPAuth.BasicAuth)
 			if err != nil {
 				return nil, fmt.Errorf("could not generate basicAuth for notifier config. %w", err)
 			}
@@ -540,24 +556,24 @@ func loadVMAlertRemoteSecrets(
 		}
 	}
 	// load basic auth for datasource configuration
-	if datasource.BasicAuth != nil {
-		credentials, err := loadBasicAuthSecret(ctx, rclient, cr.Namespace, datasource.BasicAuth)
+	if datasource.HTTPAuth.BasicAuth != nil {
+		credentials, err := loadBasicAuthSecret(ctx, rclient, cr.Namespace, datasource.HTTPAuth.BasicAuth)
 		if err != nil {
 			return nil, fmt.Errorf("could not generate basicAuth for datasource config. %w", err)
 		}
 		secrets["datasource"] = credentials
 	}
 	// load basic auth for remote write configuration
-	if remoteWrite != nil && remoteWrite.BasicAuth != nil {
-		credentials, err := loadBasicAuthSecret(ctx, rclient, cr.Namespace, remoteWrite.BasicAuth)
+	if remoteWrite != nil && remoteWrite.HTTPAuth.BasicAuth != nil {
+		credentials, err := loadBasicAuthSecret(ctx, rclient, cr.Namespace, remoteWrite.HTTPAuth.BasicAuth)
 		if err != nil {
 			return nil, fmt.Errorf("could not generate basicAuth for VMAlert remote write config. %w", err)
 		}
 		secrets["remoteWrite"] = credentials
 	}
 	// load basic auth for remote write configuration
-	if remoteRead != nil && remoteRead.BasicAuth != nil {
-		credentials, err := loadBasicAuthSecret(ctx, rclient, cr.Namespace, remoteRead.BasicAuth)
+	if remoteRead != nil && remoteRead.HTTPAuth.BasicAuth != nil {
+		credentials, err := loadBasicAuthSecret(ctx, rclient, cr.Namespace, remoteRead.HTTPAuth.BasicAuth)
 		if err != nil {
 			return nil, fmt.Errorf("could not generate basicAuth for VMAlert remote read config. %w", err)
 		}
@@ -610,18 +626,18 @@ func loadTLSAssetsForVMAlert(ctx context.Context, rclient client.Client, cr *vic
 	tlsConfigs := []*victoriametricsv1beta1.TLSConfig{}
 
 	for _, notifier := range cr.Spec.Notifiers {
-		if notifier.TLSConfig != nil {
-			tlsConfigs = append(tlsConfigs, notifier.TLSConfig)
+		if notifier.HTTPAuth.TLSConfig != nil {
+			tlsConfigs = append(tlsConfigs, notifier.HTTPAuth.TLSConfig)
 		}
 	}
-	if cr.Spec.RemoteRead != nil && cr.Spec.RemoteRead.TLSConfig != nil {
-		tlsConfigs = append(tlsConfigs, cr.Spec.RemoteRead.TLSConfig)
+	if cr.Spec.RemoteRead != nil && cr.Spec.RemoteRead.HTTPAuth.TLSConfig != nil {
+		tlsConfigs = append(tlsConfigs, cr.Spec.RemoteRead.HTTPAuth.TLSConfig)
 	}
-	if cr.Spec.RemoteWrite != nil && cr.Spec.RemoteWrite.TLSConfig != nil {
-		tlsConfigs = append(tlsConfigs, cr.Spec.RemoteWrite.TLSConfig)
+	if cr.Spec.RemoteWrite != nil && cr.Spec.RemoteWrite.HTTPAuth.TLSConfig != nil {
+		tlsConfigs = append(tlsConfigs, cr.Spec.RemoteWrite.HTTPAuth.TLSConfig)
 	}
-	if cr.Spec.Datasource.TLSConfig != nil {
-		tlsConfigs = append(tlsConfigs, cr.Spec.Datasource.TLSConfig)
+	if cr.Spec.Datasource.HTTPAuth.TLSConfig != nil {
+		tlsConfigs = append(tlsConfigs, cr.Spec.Datasource.HTTPAuth.TLSConfig)
 	}
 
 	for _, rw := range tlsConfigs {
@@ -707,6 +723,8 @@ func BuildNotifiersArgs(cr *victoriametricsv1beta1.VMAlert, ntBasicAuth map[stri
 	tlsKeys := remoteFlag{flagSetting: "-notifier.tlsKeyFile="}
 	tlsServerName := remoteFlag{flagSetting: "-notifier.tlsServerName="}
 	tlsInSecure := remoteFlag{flagSetting: "-notifier.tlsInsecureSkipVerify="}
+	headers := remoteFlag{flagSetting: "-notifier.headers="}
+	bearerTokenPath := remoteFlag{flagSetting: "-notifier.bearerTokenFile="}
 
 	pathPrefix := path.Join(tlsAssetsDir, cr.Namespace)
 
@@ -716,37 +734,38 @@ func BuildNotifiersArgs(cr *victoriametricsv1beta1.VMAlert, ntBasicAuth map[stri
 
 		var caPath, certPath, keyPath, ServerName string
 		var inSecure bool
-		if nt.TLSConfig != nil {
-			if nt.TLSConfig.CAFile != "" {
-				caPath = nt.TLSConfig.CAFile
-			} else if nt.TLSConfig.CA.Name() != "" {
-				caPath = nt.TLSConfig.BuildAssetPath(pathPrefix, nt.TLSConfig.CA.Name(), nt.TLSConfig.CA.Key())
+		ntTls := nt.HTTPAuth.TLSConfig
+		if ntTls != nil {
+			if ntTls.CAFile != "" {
+				caPath = ntTls.CAFile
+			} else if ntTls.CA.Name() != "" {
+				caPath = ntTls.BuildAssetPath(pathPrefix, ntTls.CA.Name(), ntTls.CA.Key())
 			}
 			if caPath != "" {
 				tlsCAs.isNotNull = true
 			}
-			if nt.TLSConfig.CertFile != "" {
-				certPath = nt.TLSConfig.CertFile
-			} else if nt.TLSConfig.Cert.Name() != "" {
-				certPath = nt.TLSConfig.BuildAssetPath(pathPrefix, nt.TLSConfig.Cert.Name(), nt.TLSConfig.Cert.Key())
+			if ntTls.CertFile != "" {
+				certPath = ntTls.CertFile
+			} else if ntTls.Cert.Name() != "" {
+				certPath = ntTls.BuildAssetPath(pathPrefix, ntTls.Cert.Name(), ntTls.Cert.Key())
 			}
 			if certPath != "" {
 				tlsCerts.isNotNull = true
 			}
-			if nt.TLSConfig.KeyFile != "" {
-				keyPath = nt.TLSConfig.KeyFile
-			} else if nt.TLSConfig.KeySecret != nil {
-				keyPath = nt.TLSConfig.BuildAssetPath(pathPrefix, nt.TLSConfig.KeySecret.Name, nt.TLSConfig.KeySecret.Key)
+			if ntTls.KeyFile != "" {
+				keyPath = ntTls.KeyFile
+			} else if ntTls.KeySecret != nil {
+				keyPath = ntTls.BuildAssetPath(pathPrefix, ntTls.KeySecret.Name, ntTls.KeySecret.Key)
 			}
 			if keyPath != "" {
 				tlsKeys.isNotNull = true
 			}
-			if nt.TLSConfig.InsecureSkipVerify {
+			if ntTls.InsecureSkipVerify {
 				tlsInSecure.isNotNull = true
 				inSecure = true
 			}
-			if nt.TLSConfig.ServerName != "" {
-				ServerName = nt.TLSConfig.ServerName
+			if ntTls.ServerName != "" {
+				ServerName = ntTls.ServerName
 				tlsServerName.isNotNull = true
 			}
 		}
@@ -755,10 +774,18 @@ func BuildNotifiersArgs(cr *victoriametricsv1beta1.VMAlert, ntBasicAuth map[stri
 		tlsKeys.flagSetting += fmt.Sprintf("%s,", keyPath)
 		tlsServerName.flagSetting += fmt.Sprintf("%s,", ServerName)
 		tlsInSecure.flagSetting += fmt.Sprintf("%v,", inSecure)
-
+		var headerFlagValue string
+		if len(nt.HTTPAuth.Headers) > 0 {
+			for _, headerKV := range nt.HTTPAuth.Headers {
+				headerFlagValue += headerKV + "^^"
+			}
+			headers.isNotNull = true
+		}
+		headerFlagValue = strings.TrimSuffix(headerFlagValue, "^^")
+		headers.flagSetting += fmt.Sprintf("%s,", headerFlagValue)
 		var user string
 		var pass string
-		if nt.BasicAuth != nil {
+		if nt.HTTPAuth.BasicAuth != nil {
 			if s, ok := ntBasicAuth[cr.NotifierAsMapKey(i)]; ok {
 				authUser.isNotNull = true
 				authPassword.isNotNull = true
@@ -766,12 +793,23 @@ func BuildNotifiersArgs(cr *victoriametricsv1beta1.VMAlert, ntBasicAuth map[stri
 				pass = s.password
 			}
 		}
+		var tokenPath string
+		if nt.HTTPAuth.BearerAuth != nil {
+			// todo implement token secret
+			if len(nt.HTTPAuth.BearerAuth.TokenFilePath) > 0 {
+				bearerTokenPath.isNotNull = true
+				tokenPath = nt.HTTPAuth.BearerAuth.TokenFilePath
+			}
+		}
+		bearerTokenPath.flagSetting += fmt.Sprintf("%s,", tokenPath)
+		// todo implement oauth2
+
 		authUser.flagSetting += fmt.Sprintf("\"%s\",", strings.ReplaceAll(user, `"`, `\"`))
 		authPassword.flagSetting += fmt.Sprintf("\"%s\",", strings.ReplaceAll(pass, `"`, `\"`))
 
 	}
 	notifierArgs = append(notifierArgs, url, authUser, authPassword)
-	notifierArgs = append(notifierArgs, tlsServerName, tlsKeys, tlsCerts, tlsCAs, tlsInSecure)
+	notifierArgs = append(notifierArgs, tlsServerName, tlsKeys, tlsCerts, tlsCAs, tlsInSecure, headers, bearerTokenPath)
 
 	for _, remoteArgType := range notifierArgs {
 		if remoteArgType.isNotNull {

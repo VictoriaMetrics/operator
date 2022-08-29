@@ -231,8 +231,6 @@ func SelectVMProbes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rcl
 		return nil, err
 	}
 
-	log.Info("filtering namespaces to select vmProbes from",
-		"namespace", cr.Namespace, "vmagent", cr.Name)
 	for _, probe := range probesCombined {
 		pm := probe.DeepCopy()
 		res[probe.Namespace+"/"+probe.Name] = pm

@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	"time"
 
 	"github.com/VictoriaMetrics/operator/api/v1beta1"
@@ -52,13 +53,14 @@ const (
 // ConverterController - watches for prometheus objects
 // and create VictoriaMetrics objects
 type ConverterController struct {
-	promClient versioned.Interface
-	vclient    client.Client
-	ruleInf    cache.SharedInformer
-	podInf     cache.SharedInformer
-	serviceInf cache.SharedInformer
-	probeInf   cache.SharedIndexInformer
-	baseConf   *config.BaseOperatorConf
+	promClient  versioned.Interface
+	vclient     client.Client
+	ruleInf     cache.SharedInformer
+	podInf      cache.SharedInformer
+	serviceInf  cache.SharedInformer
+	amConfigInf cache.SharedInformer
+	probeInf    cache.SharedIndexInformer
+	baseConf    *config.BaseOperatorConf
 }
 
 // NewConverterController builder for vmprometheusconverter service
@@ -118,6 +120,22 @@ func NewConverterController(promCl versioned.Interface, vclient client.Client, b
 	c.serviceInf.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    c.CreateServiceMonitor,
 		UpdateFunc: c.UpdateServiceMonitor,
+	})
+	c.amConfigInf = cache.NewSharedIndexInformer(
+		&cache.ListWatch{
+			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+				return promCl.MonitoringV1alpha1().AlertmanagerConfigs(config.MustGetWatchNamespace()).List(context.TODO(), options)
+			},
+			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+				return promCl.MonitoringV1alpha1().AlertmanagerConfigs(config.MustGetWatchNamespace()).Watch(context.TODO(), options)
+			},
+		},
+		&alpha1.AlertmanagerConfig{},
+		0,
+		cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
+	c.amConfigInf.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    c.CreateAlertmanagerConfig,
+		UpdateFunc: c.UpdateAlertmanagerConfig,
 	})
 	c.probeInf = cache.NewSharedIndexInformer(
 		&cache.ListWatch{
@@ -218,7 +236,12 @@ func (c *ConverterController) Run(ctx context.Context, group *errgroup.Group) {
 		group.Go(func() error {
 			return c.runInformerWithDiscovery(ctx, v1.SchemeGroupVersion.String(), v1.ProbesKind, c.probeInf.Run)
 		})
+	}
 
+	if c.baseConf.EnabledPrometheusConverter.AlertmanagerConfig {
+		group.Go(func() error {
+			return c.runInformerWithDiscovery(ctx, alpha1.SchemeGroupVersion.String(), alpha1.AlertmanagerConfigKind, c.amConfigInf.Run)
+		})
 	}
 
 }
@@ -227,27 +250,23 @@ func (c *ConverterController) Run(ctx context.Context, group *errgroup.Group) {
 func (c *ConverterController) CreatePrometheusRule(rule interface{}) {
 	promRule := rule.(*v1.PrometheusRule)
 	l := log.WithValues("kind", "alertRule", "name", promRule.Name, "ns", promRule.Namespace)
-	l.Info("syncing prom rule with VMRule")
 	cr := converter.ConvertPromRule(promRule, c.baseConf)
 
 	err := c.vclient.Create(context.Background(), cr)
 	if err != nil {
 		if errors.IsAlreadyExists(err) {
-			l.Info("AlertRule already exists")
 			c.UpdatePrometheusRule(nil, promRule)
 			return
 		}
 		l.Error(err, "cannot create AlertRule from Prometheusrule")
 		return
 	}
-	l.Info("AlertRule was created")
 }
 
 // UpdatePrometheusRule updates vmrule
 func (c *ConverterController) UpdatePrometheusRule(_old, new interface{}) {
 	promRuleNew := new.(*v1.PrometheusRule)
 	l := log.WithValues("kind", "VMRule", "name", promRuleNew.Name, "ns", promRuleNew.Namespace)
-	l.Info("updating VMRule")
 	VMRule := converter.ConvertPromRule(promRuleNew, c.baseConf)
 	ctx := context.Background()
 	existingVMRule := &v1beta1.VMRule{}
@@ -271,15 +290,12 @@ func (c *ConverterController) UpdatePrometheusRule(_old, new interface{}) {
 		l.Error(err, "cannot update VMRule")
 		return
 	}
-	l.Info("VMRule was updated")
-
 }
 
 // CreateServiceMonitor converts ServiceMonitor to VMServiceScrape
 func (c *ConverterController) CreateServiceMonitor(service interface{}) {
 	serviceMon := service.(*v1.ServiceMonitor)
 	l := log.WithValues("kind", "vmServiceScrape", "name", serviceMon.Name, "ns", serviceMon.Namespace)
-	l.Info("syncing vmServiceScrape")
 	vmServiceScrape := converter.ConvertServiceMonitor(serviceMon, c.baseConf)
 	err := c.vclient.Create(context.Background(), vmServiceScrape)
 	if err != nil {
@@ -291,7 +307,6 @@ func (c *ConverterController) CreateServiceMonitor(service interface{}) {
 		l.Error(err, "cannot create vmServiceScrape")
 		return
 	}
-	l.Info("vmServiceScrape was created")
 }
 
 // UpdateServiceMonitor updates VMServiceMonitor
@@ -324,14 +339,12 @@ func (c *ConverterController) UpdateServiceMonitor(_, new interface{}) {
 		l.Error(err, "cannot update")
 		return
 	}
-	l.Info("vmServiceScrape was updated")
 }
 
 // CreatePodMonitor converts PodMonitor to VMPodScrape
 func (c *ConverterController) CreatePodMonitor(pod interface{}) {
 	podMonitor := pod.(*v1.PodMonitor)
 	l := log.WithValues("kind", "podScrape", "name", podMonitor.Name, "ns", podMonitor.Namespace)
-	l.Info("syncing podScrape")
 	podScrape := converter.ConvertPodMonitor(podMonitor, c.baseConf)
 	err := c.vclient.Create(context.TODO(), podScrape)
 	if err != nil {
@@ -343,8 +356,6 @@ func (c *ConverterController) CreatePodMonitor(pod interface{}) {
 		l.Error(err, "cannot create podScrape")
 		return
 	}
-	log.Info("podScrape was created")
-
 }
 
 // UpdatePodMonitor updates VMPodScrape
@@ -375,8 +386,60 @@ func (c *ConverterController) UpdatePodMonitor(_, new interface{}) {
 		l.Error(err, "cannot update podScrape")
 		return
 	}
-	l.Info("podScrape was updated")
+}
 
+// CreateAlertmanagerConfig converts AlertmanagerConfig to VMAlertmanagerConfig
+func (c *ConverterController) CreateAlertmanagerConfig(amc interface{}) {
+	promAMc := amc.(*alpha1.AlertmanagerConfig)
+	l := log.WithValues("kind", "vmAlertmanagerConfig", "name", promAMc.Name, "ns", promAMc.Namespace)
+	l.Info("syncing alertmanager config")
+	vmAMc, err := converter.ConvertAlertmanagerConfig(promAMc, c.baseConf)
+	if err != nil {
+		l.Error(err, "cannot convert alertmanager config")
+		return
+	}
+	if err := c.vclient.Create(context.Background(), vmAMc); err != nil {
+		if errors.IsAlreadyExists(err) {
+			c.UpdateAlertmanagerConfig(nil, promAMc)
+			return
+		}
+		l.Error(err, "cannot create vmServiceScrape")
+		return
+	}
+}
+
+// UpdateAlertmanagerConfig updates VMAlertmanagerConfig
+func (c *ConverterController) UpdateAlertmanagerConfig(_, new interface{}) {
+	promAMc := new.(*alpha1.AlertmanagerConfig)
+	l := log.WithValues("kind", "vmAlertmanagerConfig", "name", promAMc.Name, "ns", promAMc.Namespace)
+	vmAMc, err := converter.ConvertAlertmanagerConfig(promAMc, c.baseConf)
+	if err != nil {
+		l.Error(err, "cannot convert alertmanager config at update")
+		return
+	}
+	existAlertmanagerConfig := &v1beta1.VMAlertmanagerConfig{}
+	ctx := context.Background()
+	if err := c.vclient.Get(ctx, types.NamespacedName{Name: vmAMc.Name, Namespace: vmAMc.Namespace}, existAlertmanagerConfig); err != nil {
+		l.Error(err, "cannot get existing vmServiceScrape")
+		return
+	}
+
+	if existAlertmanagerConfig.Annotations[IgnoreConversionLabel] == IgnoreConversion {
+		l.Info("syncing for object was disabled by annotation", "annotation", IgnoreConversionLabel)
+		return
+	}
+	existAlertmanagerConfig.Spec = vmAMc.Spec
+
+	metaMergeStrategy := getMetaMergeStrategy(existAlertmanagerConfig.Annotations)
+	existAlertmanagerConfig.Annotations = mergeLabelsWithStrategy(existAlertmanagerConfig.Annotations, vmAMc.Annotations, metaMergeStrategy)
+	existAlertmanagerConfig.Labels = mergeLabelsWithStrategy(existAlertmanagerConfig.Labels, vmAMc.Labels, metaMergeStrategy)
+	existAlertmanagerConfig.OwnerReferences = vmAMc.OwnerReferences
+
+	err = c.vclient.Update(ctx, existAlertmanagerConfig)
+	if err != nil {
+		l.Error(err, "cannot update exist alertmanager config")
+		return
+	}
 }
 
 // default merge strategy - prefer-prometheus

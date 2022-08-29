@@ -1,7 +1,10 @@
 package converter
 
 import (
+	"fmt"
 	"github.com/VictoriaMetrics/operator/internal/config"
+	alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
+	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	"strings"
 
@@ -79,6 +82,146 @@ func maybeAddArgoCDIgnoreAnnotations(mustAdd bool, dst map[string]string) map[st
 	dst["argocd.argoproj.io/compare-options"] = "IgnoreExtraneous"
 	dst["argocd.argoproj.io/sync-options"] = "Prune=false"
 	return dst
+}
+
+func convertMatchers(promMatchers []alpha1.Matcher) []string {
+	if promMatchers == nil {
+		return nil
+	}
+	r := make([]string, 0, len(promMatchers))
+	for _, pm := range promMatchers {
+		r = append(r, pm.String())
+	}
+	return r
+}
+
+func convertRoute(promRoute *alpha1.Route) (*v1beta1vm.Route, error) {
+	if promRoute == nil {
+		return nil, nil
+	}
+	r := v1beta1vm.Route{
+		Receiver:          promRoute.Receiver,
+		Continue:          promRoute.Continue,
+		GroupBy:           promRoute.GroupBy,
+		GroupWait:         promRoute.GroupWait,
+		GroupInterval:     promRoute.GroupInterval,
+		RepeatInterval:    promRoute.RepeatInterval,
+		Matchers:          convertMatchers(promRoute.Matchers),
+		MuteTimeIntervals: promRoute.MuteTimeIntervals,
+	}
+	for _, route := range promRoute.Routes {
+		var vmNestedRoute v1beta1vm.Route
+		// json is subset of yaml, so it's safe to use it here
+		if err := yaml.Unmarshal(route.Raw, &vmNestedRoute); err != nil {
+			return nil, fmt.Errorf("cannot parse nested alertmanager routes: %s, err: %w", string(route.Raw), err)
+		}
+		r.Routes = append(r.Routes, &vmNestedRoute)
+	}
+	return &r, nil
+}
+
+func convertInhibitRules(promIRs []alpha1.InhibitRule) []v1beta1vm.InhibitRule {
+	if promIRs == nil {
+		return nil
+	}
+	vmIRs := make([]v1beta1vm.InhibitRule, 0, len(promIRs))
+	for _, promIR := range promIRs {
+		ir := v1beta1vm.InhibitRule{
+			TargetMatchers: convertMatchers(promIR.TargetMatch),
+			SourceMatchers: convertMatchers(promIR.SourceMatch),
+			Equal:          promIR.Equal,
+		}
+		vmIRs = append(vmIRs, ir)
+	}
+	return vmIRs
+}
+
+func convertMuteIntervals(promMIs []alpha1.MuteTimeInterval) []v1beta1vm.MuteTimeInterval {
+	if promMIs == nil {
+		return nil
+	}
+
+	vmMIs := make([]v1beta1vm.MuteTimeInterval, 0, len(promMIs))
+	for _, promMI := range promMIs {
+		vmMI := v1beta1vm.MuteTimeInterval{
+			Name:          promMI.Name,
+			TimeIntervals: make([]v1beta1vm.TimeInterval, 0, len(promMI.TimeIntervals)),
+		}
+		for _, tis := range promMI.TimeIntervals {
+			var vmTIs v1beta1vm.TimeInterval
+			for _, t := range tis.Times {
+				vmTIs.Times = append(vmTIs.Times, v1beta1vm.TimeRange{EndTime: string(t.EndTime), StartTime: string(t.StartTime)})
+			}
+			for _, dm := range tis.DaysOfMonth {
+				vmTIs.DaysOfMonth = append(vmTIs.DaysOfMonth, fmt.Sprintf("%d:%d", dm.Start, dm.End))
+			}
+			for _, wm := range tis.Weekdays {
+				vmTIs.Weekdays = append(vmTIs.Weekdays, string(wm))
+			}
+			for _, y := range tis.Years {
+				vmTIs.Years = append(vmTIs.Years, string(y))
+			}
+			for _, m := range tis.Months {
+				vmTIs.Months = append(vmTIs.Months, string(m))
+			}
+			vmMI.TimeIntervals = append(vmMI.TimeIntervals, vmTIs)
+		}
+		vmMIs = append(vmMIs, vmMI)
+	}
+	return vmMIs
+}
+
+func convertReceivers(promReceivers []alpha1.Receiver) ([]v1beta1vm.Receiver, error) {
+	// yaml instead of json is used by purpose
+	// prometheus-operator objects has different field tags
+	marshaledRcvs, err := yaml.Marshal(promReceivers)
+	if err != nil {
+		return nil, fmt.Errorf("possible bug, cannot serialize prometheus receivers, err: %w", err)
+	}
+	var vmReceivers []v1beta1vm.Receiver
+	if err := yaml.Unmarshal(marshaledRcvs, &vmReceivers); err != nil {
+		return nil, fmt.Errorf("cannot parse serialized prometheus receievers: %s, err: %w", string(marshaledRcvs), err)
+	}
+	return vmReceivers, nil
+}
+
+func ConvertAlertmanagerConfig(promAMCfg *alpha1.AlertmanagerConfig, conf *config.BaseOperatorConf) (*v1beta1vm.VMAlertmanagerConfig, error) {
+	vamc := &v1beta1vm.VMAlertmanagerConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        promAMCfg.Name,
+			Namespace:   promAMCfg.Namespace,
+			Annotations: filterPrefixes(promAMCfg.Annotations, conf.FilterPrometheusConverterAnnotationPrefixes),
+			Labels:      filterPrefixes(promAMCfg.Labels, conf.FilterPrometheusConverterLabelPrefixes),
+		},
+		Spec: v1beta1vm.VMAlertmanagerConfigSpec{
+			InhibitRules:     convertInhibitRules(promAMCfg.Spec.InhibitRules),
+			MutTimeIntervals: convertMuteIntervals(promAMCfg.Spec.MuteTimeIntervals),
+		},
+	}
+	convertedRoute, err := convertRoute(promAMCfg.Spec.Route)
+	if err != nil {
+		return nil, err
+	}
+	vamc.Spec.Route = convertedRoute
+	convertedReceivers, err := convertReceivers(promAMCfg.Spec.Receivers)
+	if err != nil {
+		return nil, fmt.Errorf("cannot convert prometheus alertmanager config: %s into vm, err: %w", promAMCfg.Name, err)
+	}
+	vamc.Spec.Receivers = convertedReceivers
+	if conf.EnabledPrometheusConverterOwnerReferences {
+		vamc.OwnerReferences = []metav1.OwnerReference{
+			{
+				APIVersion:         v1.SchemeGroupVersion.String(),
+				Kind:               v1.ServiceMonitorsKind,
+				Name:               promAMCfg.Name,
+				UID:                promAMCfg.UID,
+				Controller:         pointer.BoolPtr(true),
+				BlockOwnerDeletion: pointer.BoolPtr(true),
+			},
+		}
+	}
+	vamc.Annotations = maybeAddArgoCDIgnoreAnnotations(conf.PrometheusConverterAddArgoCDIgnoreAnnotations, vamc.Annotations)
+	return vamc, nil
 }
 
 func ConvertServiceMonitor(serviceMon *v1.ServiceMonitor, conf *config.BaseOperatorConf) *v1beta1vm.VMServiceScrape {

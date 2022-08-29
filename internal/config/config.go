@@ -218,10 +218,11 @@ type BaseOperatorConf struct {
 	}
 
 	EnabledPrometheusConverter struct {
-		PodMonitor     bool `default:"true"`
-		ServiceScrape  bool `default:"true"`
-		PrometheusRule bool `default:"true"`
-		Probe          bool `default:"true"`
+		PodMonitor         bool `default:"true"`
+		ServiceScrape      bool `default:"true"`
+		PrometheusRule     bool `default:"true"`
+		Probe              bool `default:"true"`
+		AlertmanagerConfig bool `default:"true"`
 	}
 	// adds compare-options and sync-options for prometheus objects converted by operator
 	// it helps to properly use converter with ArgoCD

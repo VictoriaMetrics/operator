@@ -280,13 +280,9 @@ func newDeployForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOpera
 }
 
 func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperatorConf, ssCache *scrapesSecretsCache) (*corev1.PodSpec, error) {
-	pqMountPath := vmAgentPersistentQueueDir
-	if cr.Spec.StatefulMode {
-		pqMountPath = vmAgentPersistentQueueSTSDir
-	}
+
 	args := []string{
 		fmt.Sprintf("-promscrape.config=%s", path.Join(vmAgentConOfOutDir, configEnvsubstFilename)),
-		fmt.Sprintf("-remoteWrite.tmpDataPath=%s", pqMountPath),
 	}
 
 	if len(cr.Spec.RemoteWrite) > 0 {
@@ -361,7 +357,12 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 	)
 
 	var agentVolumeMounts []corev1.VolumeMount
-
+	// mount data path any way, even if user changes its value
+	// we cannot rely on value of remoteWriteSettings.
+	pqMountPath := vmAgentPersistentQueueDir
+	if cr.Spec.StatefulMode {
+		pqMountPath = vmAgentPersistentQueueSTSDir
+	}
 	agentVolumeMounts = append(agentVolumeMounts,
 		corev1.VolumeMount{
 			Name:      vmAgentPersistentQueueMountName,
@@ -428,18 +429,6 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 	args = buildArgsForAdditionalPorts(args, cr.Spec.InsertPorts)
 
 	specRes := buildResources(cr.Spec.Resources, config.Resource(c.VMAgentDefault.Resource), c.VMAgentDefault.UseDefaultResources)
-
-	var containsMaxDiskUsage = false
-	for arg := range cr.Spec.ExtraArgs {
-		if arg == "remoteWrite.maxDiskUsagePerURL" {
-			containsMaxDiskUsage = true
-		}
-		break
-	}
-	if !containsMaxDiskUsage {
-		// limit to 1GB
-		args = append(args, "-remoteWrite.maxDiskUsagePerURL=1073741824")
-	}
 	args = addExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs, "-")
 	sort.Strings(args)
 
@@ -879,8 +868,12 @@ func BuildRemoteWriteSettings(cr *victoriametricsv1beta1.VMAgent) []string {
 	if rws.MaxBlockSize != nil {
 		args = append(args, fmt.Sprintf("-remoteWrite.maxBlockSize=%d", *rws.MaxBlockSize))
 	}
+	// limit to 1GB
+	// most people do not care about this setting,
+	// but it may harmfully affect kubernetes cluster health
+	maxDiskUsage := "1073741824"
 	if rws.MaxDiskUsagePerURL != nil {
-		args = append(args, fmt.Sprintf("-remoteWrite.maxDiskUsagePerURL=%d", *rws.MaxDiskUsagePerURL))
+		maxDiskUsage = fmt.Sprintf("%d", *rws.MaxDiskUsagePerURL)
 	}
 	if rws.Queues != nil {
 		args = append(args, fmt.Sprintf("-remoteWrite.queues=%d", *rws.Queues))
@@ -888,8 +881,24 @@ func BuildRemoteWriteSettings(cr *victoriametricsv1beta1.VMAgent) []string {
 	if rws.ShowURL != nil {
 		args = append(args, fmt.Sprintf("-remoteWrite.showURL=%t", *rws.ShowURL))
 	}
+	pqMountPath := vmAgentPersistentQueueDir
+	if cr.Spec.StatefulMode {
+		pqMountPath = vmAgentPersistentQueueSTSDir
+	}
 	if rws.TmpDataPath != nil {
-		args = append(args, fmt.Sprintf("-remoteWrite.tmpDataPath=%s", *rws.TmpDataPath))
+		pqMountPath = *rws.TmpDataPath
+	}
+	args = append(args, fmt.Sprintf("-remoteWrite.tmpDataPath=%s", pqMountPath))
+	var containsMaxDiskUsage bool
+	for arg := range cr.Spec.ExtraArgs {
+		if arg == "remoteWrite.maxDiskUsagePerURL" {
+			containsMaxDiskUsage = true
+		}
+		break
+	}
+	if !containsMaxDiskUsage {
+		// limit to 1GB
+		args = append(args, "-remoteWrite.maxDiskUsagePerURL="+maxDiskUsage)
 	}
 	if rws.Labels != nil {
 		lbls := sortMap(rws.Labels)

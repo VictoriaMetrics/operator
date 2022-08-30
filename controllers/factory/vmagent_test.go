@@ -1022,7 +1022,7 @@ func TestBuildRemoteWriteSettings(t *testing.T) {
 					},
 				},
 			},
-			want: []string{"-remoteWrite.label=label-1=value1,label-2=value2"},
+			want: []string{"-remoteWrite.label=label-1=value1,label-2=value2", "-remoteWrite.maxDiskUsagePerURL=1073741824", "-remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data"},
 		},
 		{
 			name: "test label",
@@ -1038,13 +1038,29 @@ func TestBuildRemoteWriteSettings(t *testing.T) {
 					},
 				},
 			},
-			want: []string{"-remoteWrite.label=label-1=value1", "-remoteWrite.showURL=true"},
+			want: []string{"-remoteWrite.label=label-1=value1", "-remoteWrite.showURL=true", "-remoteWrite.maxDiskUsagePerURL=1073741824", "-remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data"},
+		},
+		{
+			name: "with remoteWriteSettings",
+			args: args{
+				cr: &victoriametricsv1beta1.VMAgent{
+					Spec: victoriametricsv1beta1.VMAgentSpec{
+						RemoteWriteSettings: &victoriametricsv1beta1.VMAgentRemoteWriteSettings{
+							ShowURL:            pointer.Bool(true),
+							TmpDataPath:        pointer.String("/tmp/my-path"),
+							MaxDiskUsagePerURL: pointer.Int32(1000),
+						},
+					},
+				},
+			},
+			want: []string{"-remoteWrite.maxDiskUsagePerURL=1000", "-remoteWrite.tmpDataPath=/tmp/my-path", "-remoteWrite.showURL=true"},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := BuildRemoteWriteSettings(tt.args.cr)
 			sort.Strings(got)
+			sort.Strings(tt.want)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("BuildRemoteWriteSettings() = \n%v\n, want \n%v\n", got, tt.want)
 			}

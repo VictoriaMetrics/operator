@@ -459,7 +459,7 @@ func buildVMAlertArgs(cr *victoriametricsv1beta1.VMAlert, ruleConfigMapNames []s
 		fmt.Sprintf("-datasource.url=%s", cr.Spec.Datasource.URL),
 	}
 
-	args = buildHeadersArg("datasource.headers", args, cr.Spec.Datasource.Headers)
+	args = buildHeadersArg("datasource.headers", args, cr.Spec.Datasource.HTTPAuth.Headers)
 	args = buildBearerArgs(args, "datasource", cr.Spec.Datasource.HTTPAuth.BearerAuth)
 	args = append(args, BuildNotifiersArgs(cr, remoteSecrets)...)
 
@@ -473,7 +473,7 @@ func buildVMAlertArgs(cr *victoriametricsv1beta1.VMAlert, ruleConfigMapNames []s
 	if cr.Spec.RemoteWrite != nil {
 		args = append(args, fmt.Sprintf("-remoteWrite.url=%s", cr.Spec.RemoteWrite.URL))
 		args = buildVMAlertBasicAuthArgs(args, "remoteWrite", cr.Spec.RemoteWrite.HTTPAuth.BasicAuth, remoteSecrets)
-		args = buildHeadersArg("remoteWrite.headers", args, cr.Spec.RemoteWrite.Headers)
+		args = buildHeadersArg("remoteWrite.headers", args, cr.Spec.RemoteWrite.HTTPAuth.Headers)
 		args = buildBearerArgs(args, "remoteWrite", cr.Spec.RemoteWrite.HTTPAuth.BearerAuth)
 		if cr.Spec.RemoteWrite.Concurrency != nil {
 			args = append(args, fmt.Sprintf("-remoteWrite.concurrency=%d", *cr.Spec.RemoteWrite.Concurrency))

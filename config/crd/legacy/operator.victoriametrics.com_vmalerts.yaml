@@ -136,14 +136,11 @@ spec:
                   - key
                   type: object
                 headers:
-                  allOf:
-                  - items:
-                      type: string
-                  - items:
-                      type: string
                   description: Headers allow configuring custom http headers Must
                     be in form of semicolon separated header with value e.g. headerName:headerValue
                     vmalert supports it since 1.79.0 version
+                  items:
+                    type: string
                   type: array
                 tlsConfig:
                   description: TLSConfig specifies TLSConfig configuration parameters.
@@ -944,14 +941,11 @@ spec:
                   pattern: '[0-9]+(ms|s|m|h)'
                   type: string
                 headers:
-                  allOf:
-                  - items:
-                      type: string
-                  - items:
-                      type: string
                   description: Headers allow configuring custom http headers Must
                     be in form of semicolon separated header with value e.g. headerName:headerValue
                     vmalert supports it since 1.79.0 version
+                  items:
+                    type: string
                   type: array
                 maxBatchSize:
                   description: Defines defines max number of timeseries to be flushed

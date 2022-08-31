@@ -260,13 +260,6 @@ type VMAlertDatasourceSpec struct {
 	URL string `json:"url"`
 	// HTTPAuth generic auth methods
 	HTTPAuth HTTPAuth `json:"-,inline,omitempty"`
-	// Headers allow configuring custom http headers
-	// Must be in form of semicolon separated header with value
-	// e.g.
-	// headerName:headerValue
-	// vmalert supports it since 1.79.0 version
-	// +optional
-	Headers []string `json:"headers,omitempty"`
 }
 
 // VMAlertNotifierSpec defines the notifier url for sending information about alerts
@@ -322,13 +315,6 @@ type VMAlertRemoteWriteSpec struct {
 	MaxQueueSize *int32 `json:"maxQueueSize,omitempty"`
 	// HTTPAuth generic auth methods
 	HTTPAuth HTTPAuth `json:"-,inline,omitempty"`
-	// Headers allow configuring custom http headers
-	// Must be in form of semicolon separated header with value
-	// e.g.
-	// headerName:headerValue
-	// vmalert supports it since 1.79.0 version
-	// +optional
-	Headers []string `json:"headers,omitempty"`
 }
 
 // VmAlertStatus defines the observed state of VmAlert

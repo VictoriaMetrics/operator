@@ -641,12 +641,12 @@ func Test_buildVMAlertArgs(t *testing.T) {
 						Datasource: victoriametricsv1beta1.VMAlertDatasourceSpec{
 							URL: "http://vmsingle-url",
 							HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+								Headers: []string{"x-org-id:one", "x-org-tenant:5"},
 								TLSConfig: &victoriametricsv1beta1.TLSConfig{
 									InsecureSkipVerify: true,
 									KeyFile:            "/path/to/key",
 									CAFile:             "/path/to/sa",
 								}},
-							Headers: []string{"x-org-id:one", "x-org-tenant:5"},
 						},
 					},
 				},

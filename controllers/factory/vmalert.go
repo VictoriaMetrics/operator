@@ -718,6 +718,7 @@ func BuildNotifiersArgs(cr *victoriametricsv1beta1.VMAlert, ntBasicAuth map[stri
 	url := remoteFlag{flagSetting: "-notifier.url=", isNotNull: true}
 	authUser := remoteFlag{flagSetting: "-notifier.basicAuth.username="}
 	authPassword := remoteFlag{flagSetting: "-notifier.basicAuth.password="}
+	authPasswordFile := remoteFlag{flagSetting: "-notifier.basicAuth.passwordFile="}
 	tlsCAs := remoteFlag{flagSetting: "-notifier.tlsCAFile="}
 	tlsCerts := remoteFlag{flagSetting: "-notifier.tlsCertFile="}
 	tlsKeys := remoteFlag{flagSetting: "-notifier.tlsKeyFile="}
@@ -783,16 +784,24 @@ func BuildNotifiersArgs(cr *victoriametricsv1beta1.VMAlert, ntBasicAuth map[stri
 		}
 		headerFlagValue = strings.TrimSuffix(headerFlagValue, "^^")
 		headers.flagSetting += fmt.Sprintf("%s,", headerFlagValue)
-		var user string
-		var pass string
+		var user, pass, passFile string
 		if nt.HTTPAuth.BasicAuth != nil {
 			if s, ok := ntBasicAuth[cr.NotifierAsMapKey(i)]; ok {
 				authUser.isNotNull = true
-				authPassword.isNotNull = true
 				user = s.username
-				pass = s.password
+				if len(s.password) > 0 {
+					authPassword.isNotNull = true
+					pass = s.password
+				}
+				if len(nt.HTTPAuth.BasicAuth.PasswordFile) > 0 {
+					passFile = nt.HTTPAuth.BasicAuth.PasswordFile
+					authPasswordFile.isNotNull = true
+				}
 			}
 		}
+		authUser.flagSetting += fmt.Sprintf("\"%s\",", strings.ReplaceAll(user, `"`, `\"`))
+		authPassword.flagSetting += fmt.Sprintf("\"%s\",", strings.ReplaceAll(pass, `"`, `\"`))
+		authPasswordFile.flagSetting += fmt.Sprintf("%s,", passFile)
 		var tokenPath string
 		if nt.HTTPAuth.BearerAuth != nil {
 			// todo implement token secret
@@ -804,12 +813,9 @@ func BuildNotifiersArgs(cr *victoriametricsv1beta1.VMAlert, ntBasicAuth map[stri
 		bearerTokenPath.flagSetting += fmt.Sprintf("%s,", tokenPath)
 		// todo implement oauth2
 
-		authUser.flagSetting += fmt.Sprintf("\"%s\",", strings.ReplaceAll(user, `"`, `\"`))
-		authPassword.flagSetting += fmt.Sprintf("\"%s\",", strings.ReplaceAll(pass, `"`, `\"`))
-
 	}
 	notifierArgs = append(notifierArgs, url, authUser, authPassword)
-	notifierArgs = append(notifierArgs, tlsServerName, tlsKeys, tlsCerts, tlsCAs, tlsInSecure, headers, bearerTokenPath)
+	notifierArgs = append(notifierArgs, tlsServerName, tlsKeys, tlsCerts, tlsCAs, tlsInSecure, headers, bearerTokenPath, authPasswordFile)
 
 	for _, remoteArgType := range notifierArgs {
 		if remoteArgType.isNotNull {

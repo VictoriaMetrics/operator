@@ -259,7 +259,7 @@ type VMAlertDatasourceSpec struct {
 	// Victoria Metrics or VMSelect url. Required parameter. E.g. http://127.0.0.1:8428
 	URL string `json:"url"`
 	// HTTPAuth generic auth methods
-	HTTPAuth HTTPAuth `json:"-,inline,omitempty"`
+	HTTPAuth `json:",inline,omitempty"`
 }
 
 // VMAlertNotifierSpec defines the notifier url for sending information about alerts
@@ -274,7 +274,7 @@ type VMAlertNotifierSpec struct {
 	// +optional
 	Selector *DiscoverySelector `json:"selector,omitempty"`
 
-	HTTPAuth HTTPAuth `json:"-,inline,omitempty"`
+	HTTPAuth `json:",inline,omitempty"`
 }
 
 // NotifierAsMapKey - returns cr name with suffix for notifier token/auth maps.
@@ -292,7 +292,7 @@ type VMAlertRemoteReadSpec struct {
 	// +optional
 	Lookback *string `json:"lookback,omitempty"`
 
-	HTTPAuth HTTPAuth `json:"-,inline,omitempty"`
+	HTTPAuth `json:",inline,omitempty"`
 }
 
 // VMAgentRemoteWriteSpec defines the remote storage configuration for VmAlert
@@ -314,7 +314,7 @@ type VMAlertRemoteWriteSpec struct {
 	// +optional
 	MaxQueueSize *int32 `json:"maxQueueSize,omitempty"`
 	// HTTPAuth generic auth methods
-	HTTPAuth HTTPAuth `json:"-,inline,omitempty"`
+	HTTPAuth `json:",inline,omitempty"`
 }
 
 // VmAlertStatus defines the observed state of VmAlert

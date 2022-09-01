@@ -1,11 +1,13 @@
 package converter
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"strings"
 
 	v1beta1vm "github.com/VictoriaMetrics/operator/api/v1beta1"
@@ -110,12 +112,19 @@ func convertRoute(promRoute *alpha1.Route) (*v1beta1vm.Route, error) {
 		MuteTimeIntervals: promRoute.MuteTimeIntervals,
 	}
 	for _, route := range promRoute.Routes {
-		var vmNestedRoute v1beta1vm.Route
-		// json is subset of yaml, so it's safe to use it here
-		if err := yaml.Unmarshal(route.Raw, &vmNestedRoute); err != nil {
-			return nil, fmt.Errorf("cannot parse nested alertmanager routes: %s, err: %w", string(route.Raw), err)
+		var promRoute alpha1.Route
+		if err := json.Unmarshal(route.Raw, &promRoute); err != nil {
+			return nil, fmt.Errorf("cannot parse raw prom route: %s, err: %w", string(route.Raw), err)
 		}
-		r.Routes = append(r.Routes, &vmNestedRoute)
+		vmRoute, err := convertRoute(&promRoute)
+		if err != nil {
+			return nil, err
+		}
+		data, err := json.Marshal(vmRoute)
+		if err != nil {
+			return nil, fmt.Errorf("cannot serialize vm route for alertmanager config: %w", err)
+		}
+		r.RawRoutes = append(r.RawRoutes, apiextensionsv1.JSON{Raw: data})
 	}
 	return &r, nil
 }
@@ -200,7 +209,7 @@ func ConvertAlertmanagerConfig(promAMCfg *alpha1.AlertmanagerConfig, conf *confi
 	}
 	convertedRoute, err := convertRoute(promAMCfg.Spec.Route)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot convert prometheus alertmanager config: %s into vm, err: %w", promAMCfg.Name, err)
 	}
 	vamc.Spec.Route = convertedRoute
 	convertedReceivers, err := convertReceivers(promAMCfg.Spec.Receivers)

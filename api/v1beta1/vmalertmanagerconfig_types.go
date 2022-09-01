@@ -19,6 +19,7 @@ package v1beta1
 import (
 	"encoding/json"
 	"fmt"
+
 	v1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -158,14 +159,22 @@ func (cr *VMAlertmanagerConfig) UnmarshalJSON(src []byte) error {
 	if err := json.Unmarshal(src, (*nested)(cr)); err != nil {
 		return err
 	}
-	if cr.Spec.Route != nil {
-		for _, nestedRoute := range cr.Spec.Route.RawRoutes {
+	var nestedRouteParse func(*Route) error
+	nestedRouteParse = func(parentRoute *Route) error {
+		for _, nestedRoute := range parentRoute.RawRoutes {
 			var route Route
 			if err := json.Unmarshal(nestedRoute.Raw, &route); err != nil {
 				return fmt.Errorf("broken nested route at alertmanager config name :%s, namespace: %s, value: %s, err: %w", cr.Name, cr.Namespace, string(nestedRoute.Raw), err)
 			}
-			cr.Spec.Route.Routes = append(cr.Spec.Route.Routes, &route)
+			if route.Routes != nil {
+				nestedRouteParse(&route)
+			}
+			parentRoute.Routes = append(parentRoute.Routes, &route)
 		}
+		return nil
+	}
+	if cr.Spec.Route != nil {
+		return nestedRouteParse(cr.Spec.Route)
 	}
 	return nil
 }

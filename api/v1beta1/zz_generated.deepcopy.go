@@ -26,6 +26,7 @@ import (
 	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -1162,6 +1163,13 @@ func (in *Route) DeepCopyInto(out *Route) {
 				*out = new(Route)
 				(*in).DeepCopyInto(*out)
 			}
+		}
+	}
+	if in.RawRoutes != nil {
+		in, out := &in.RawRoutes, &out.RawRoutes
+		*out = make([]apiextensionsv1.JSON, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
 	if in.MuteTimeIntervals != nil {

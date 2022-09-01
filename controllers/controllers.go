@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"flag"
 	"fmt"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -10,8 +11,11 @@ import (
 	"time"
 )
 
+var cacheSyncTimeout = flag.Duration("controller.cacheSyncTimeout", 3*time.Minute, "controls timeout for caches to be synced.")
+
 var defaultOptions = controller.Options{
-	RateLimiter: workqueue.NewItemExponentialFailureRateLimiter(2*time.Second, 2*time.Minute),
+	RateLimiter:      workqueue.NewItemExponentialFailureRateLimiter(2*time.Second, 2*time.Minute),
+	CacheSyncTimeout: *cacheSyncTimeout,
 }
 
 func isSelectorsMatches(sourceCRD, targetCRD client.Object, nsSelector, selector *v1.LabelSelector) (bool, error) {

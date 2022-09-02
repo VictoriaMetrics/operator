@@ -17,6 +17,7 @@ limitations under the License.
 package v1beta1
 
 import (
+	"fmt"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -33,7 +34,9 @@ func (r *VMAlertmanagerConfig) SetupWebhookWithManager(mgr ctrl.Manager) error {
 }
 
 func (amc *VMAlertmanagerConfig) Validate() error {
-	// todo implement.
+	if err := parseNestedRoutes(amc.Spec.Route); err != nil {
+		return fmt.Errorf("cannot parse nested route for alertmanager config err: %w", err)
+	}
 	return nil
 }
 

@@ -181,7 +181,7 @@ type EmbeddedPersistentVolumeClaim struct {
 type HTTPAuth struct {
 	BasicAuth   *BasicAuth `json:"basicAuth,omitempty"`
 	OAuth2      *OAuth2    `json:"OAuth2,omitempty"`
-	*TLSConfig  `json:"tlsConfig,omitempty"`
+	TLSConfig   *TLSConfig `json:"tlsConfig,omitempty"`
 	*BearerAuth `json:",inline,omitempty"`
 	// Headers allow configuring custom http headers
 	// Must be in form of semicolon separated header with value

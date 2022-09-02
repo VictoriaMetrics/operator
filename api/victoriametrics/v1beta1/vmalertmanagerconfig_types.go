@@ -17,9 +17,10 @@ limitations under the License.
 package v1beta1
 
 import (
+	"encoding/json"
 	"fmt"
-
 	v1 "k8s.io/api/core/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -142,10 +143,42 @@ type Route struct {
 	// +optional
 	Continue bool `json:"continue,omitempty"`
 	// Child routes.
-	Routes []*Route `json:"routes,omitempty"`
+	Routes []*Route `json:"-,omitempty"`
+	// RawRoutes alertmanager nested routes
+	// https://prometheus.io/docs/alerting/latest/configuration/#route
+	RawRoutes []apiextensionsv1.JSON `json:"routes,omitempty"`
 	// MuteTimeIntervals for alerts
 	// +optional
 	MuteTimeIntervals []string `json:"mute_time_intervals,omitempty"`
+}
+
+func parseNestedRoutes(src *Route) error {
+	if src == nil {
+		return nil
+	}
+	for _, nestedRoute := range src.RawRoutes {
+		var route Route
+		if err := json.Unmarshal(nestedRoute.Raw, &route); err != nil {
+			return fmt.Errorf("cannot pase json value: %s for nested route, err :%w", string(nestedRoute.Raw), err)
+		}
+		if err := parseNestedRoutes(&route); err != nil {
+			return fmt.Errorf("failed to parse nested route: %s, err: %w", route.Receiver, err)
+		}
+		src.Routes = append(src.Routes, &route)
+	}
+	return nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler interface
+func (cr *VMAlertmanagerConfig) UnmarshalJSON(src []byte) error {
+	type amcfg VMAlertmanagerConfig
+	if err := json.Unmarshal(src, (*amcfg)(cr)); err != nil {
+		return err
+	}
+	if err := parseNestedRoutes(cr.Spec.Route); err != nil {
+		return fmt.Errorf("cannot parse routes for alertmanager config: %s at namespace: %s, err: %w", cr.Name, cr.Namespace, err)
+	}
+	return nil
 }
 
 // InhibitRule defines an inhibition rule that allows to mute alerts when other

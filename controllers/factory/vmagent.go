@@ -926,6 +926,7 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, ssCache *scrapesSecre
 	}
 	authUser := remoteFlag{flagSetting: "-remoteWrite.basicAuth.username="}
 	authPassword := remoteFlag{flagSetting: "-remoteWrite.basicAuth.password="}
+	authPasswordFile := remoteFlag{flagSetting: "-remoteWrite.basicAuth.passwordFile="}
 	bearerToken := remoteFlag{flagSetting: "-remoteWrite.bearerToken="}
 	urlRelabelConfig := remoteFlag{flagSetting: "-remoteWrite.urlRelabelConfig="}
 	sendTimeout := remoteFlag{flagSetting: "-remoteWrite.sendTimeout="}
@@ -993,16 +994,25 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, ssCache *scrapesSecre
 
 		var user string
 		var pass string
+		var passFile string
 		if rws.BasicAuth != nil {
 			if s, ok := ssCache.baSecrets[fmt.Sprintf("remoteWriteSpec/%s", rws.URL)]; ok {
 				authUser.isNotNull = true
-				authPassword.isNotNull = true
+
 				user = s.username
-				pass = s.password
+				if len(s.password) > 0 {
+					authPassword.isNotNull = true
+					pass = s.password
+				}
+				if len(rws.BasicAuth.PasswordFile) > 0 {
+					passFile = rws.BasicAuth.PasswordFile
+					authPasswordFile.isNotNull = true
+				}
 			}
 		}
 		authUser.flagSetting += fmt.Sprintf("\"%s\",", strings.ReplaceAll(user, `"`, `\"`))
 		authPassword.flagSetting += fmt.Sprintf("\"%s\",", strings.ReplaceAll(pass, `"`, `\"`))
+		authPasswordFile.flagSetting += fmt.Sprintf("%s,", passFile)
 
 		var value string
 		if rws.BearerTokenSecret != nil && rws.BearerTokenSecret.Name != "" {
@@ -1079,7 +1089,7 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, ssCache *scrapesSecre
 	remoteArgs = append(remoteArgs, url, authUser, authPassword, bearerToken, urlRelabelConfig, tlsInsecure, sendTimeout)
 	remoteArgs = append(remoteArgs, tlsServerName, tlsKeys, tlsCerts, tlsCAs)
 	remoteArgs = append(remoteArgs, oauth2ClientID, oauth2ClientSecret, oauth2ClientSecretFile, oauth2Scopes, oauth2TokenUrl)
-	remoteArgs = append(remoteArgs, headers)
+	remoteArgs = append(remoteArgs, headers, authPasswordFile)
 
 	for _, remoteArgType := range remoteArgs {
 		if remoteArgType.isNotNull {

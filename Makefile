@@ -147,6 +147,10 @@ fix118_yaml:
 		$(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.persistentVolume.properties.volumeClaimTemplate.$(CRD_PRESERVE) &&\
 	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.hpa.properties &&\
 	    $(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.hpa.$(CRD_PRESERVE) &&\
+	    $(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.claimTemplates.items.properties.metadata.$(CRD_PRESERVE) &&\
+	    $(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmstorage.properties.claimTemplates.items.properties.metadata.$(CRD_PRESERVE) &&\
+ 	    $(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmagents.yaml $(YAML_DROP_PREFIX).claimTemplates.items.properties.metadata.$(CRD_PRESERVE) &&\
+ 	    $(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalertmanagers.yaml $(YAML_DROP_PREFIX).claimTemplates.items.properties.metadata.$(CRD_PRESERVE) &&\
 		$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmstorage.properties.storage.properties.volumeClaimTemplate.properties &&\
 		$(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmstorage.properties.storage.properties.volumeClaimTemplate.$(CRD_PRESERVE) \
 		   	 	"

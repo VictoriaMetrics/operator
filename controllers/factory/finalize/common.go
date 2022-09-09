@@ -21,6 +21,7 @@ type CRDObject interface {
 	GetLabels() map[string]string
 	PrefixedName() string
 	GetServiceAccountName() string
+	IsOwnsServiceAccount() bool
 	GetPSPName() string
 	GetNSName() string
 }
@@ -50,6 +51,10 @@ func removeFinalizeObjByName(ctx context.Context, rclient client.Client, obj cli
 		}
 		return err
 	}
+	// fast path
+	if !victoriametricsv1beta1.IsContainsFinalizer(obj.GetFinalizers(), victoriametricsv1beta1.FinalizerName) {
+		return nil
+	}
 	obj.SetFinalizers(victoriametricsv1beta1.RemoveFinalizer(obj.GetFinalizers(), victoriametricsv1beta1.FinalizerName))
 	return rclient.Update(ctx, obj)
 }
@@ -65,6 +70,9 @@ func SafeDelete(ctx context.Context, rclient client.Client, r client.Object) err
 }
 
 func deleteSA(ctx context.Context, rclient client.Client, crd CRDObject) error {
+	if !crd.IsOwnsServiceAccount() {
+		return nil
+	}
 	return SafeDelete(ctx, rclient, &v12.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Namespace: crd.GetNSName(), Name: crd.GetServiceAccountName()}})
 }
 

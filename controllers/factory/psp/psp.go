@@ -21,6 +21,7 @@ type CRDObject interface {
 	AllLabels() map[string]string
 	PrefixedName() string
 	GetServiceAccountName() string
+	IsOwnsServiceAccount() bool
 	GetPSPName() string
 	GetNSName() string
 	AsOwner() []metav1.OwnerReference
@@ -50,6 +51,9 @@ func CreateOrUpdateServiceAccountWithPSP(ctx context.Context, cr CRDObject, rcli
 }
 
 func CreateServiceAccountForCRD(ctx context.Context, cr CRDObject, rclient client.Client) error {
+	if !cr.IsOwnsServiceAccount() {
+		return nil
+	}
 	newSA := buildSA(cr)
 	var existSA v1.ServiceAccount
 	if err := rclient.Get(ctx, types.NamespacedName{Name: cr.GetServiceAccountName(), Namespace: cr.GetNSName()}, &existSA); err != nil {

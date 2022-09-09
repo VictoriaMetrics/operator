@@ -582,6 +582,10 @@ func (cr VMAgent) GetServiceAccountName() string {
 	return cr.Spec.ServiceAccountName
 }
 
+func (cr VMAgent) IsOwnsServiceAccount() bool {
+	return cr.Spec.ServiceAccountName == cr.PrefixedName()
+}
+
 func (cr VMAgent) GetClusterRoleName() string {
 	return fmt.Sprintf("monitoring:vmagent-cluster-access-%s", cr.Name)
 }

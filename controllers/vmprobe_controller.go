@@ -23,7 +23,6 @@ import (
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -56,10 +55,7 @@ func (r *VMProbeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	instance := &operatorv1beta1.VMProbe{}
 	err := r.Get(ctx, req.NamespacedName, instance)
 	if err != nil {
-		if !errors.IsNotFound(err) {
-			// Error reading the object - requeue the request.
-			return ctrl.Result{}, err
-		}
+		return handleGetError(req, "vmprobescrape", err)
 	}
 	vmAgentSync.Lock()
 	defer vmAgentSync.Unlock()

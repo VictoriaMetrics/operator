@@ -5,8 +5,6 @@ import (
 
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/internal/config"
-	"k8s.io/apimachinery/pkg/api/errors"
-
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -42,11 +40,7 @@ func (r *VMStaticScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	instance := &victoriametricsv1beta1.VMStaticScrape{}
 	err := r.Get(ctx, req.NamespacedName, instance)
 	if err != nil {
-		if !errors.IsNotFound(err) {
-			// Error reading the object - requeue the request.
-			reqLogger.Error(err, "cannot get staticScrape")
-			return ctrl.Result{}, err
-		}
+		return handleGetError(req, "vmstaticscrape", err)
 	}
 	vmAgentSync.Lock()
 	defer vmAgentSync.Unlock()

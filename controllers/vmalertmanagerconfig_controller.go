@@ -22,7 +22,6 @@ import (
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -50,12 +49,9 @@ func (r *VMAlertmanagerConfigReconciler) Reconcile(ctx context.Context, req ctrl
 	l := r.Log.WithValues("vmalertmanagerconfig", req.NamespacedName, "name", req.Name)
 
 	var instance operatorv1beta1.VMAlertmanagerConfig
-	if err := r.Client.Get(ctx, req.NamespacedName, &instance); err != nil {
-		if !errors.IsNotFound(err) {
-			// Error reading the object - requeue the request.
-			l.Error(err, "cannot get alertmanager config")
-			return ctrl.Result{}, err
-		}
+	err := r.Client.Get(ctx, req.NamespacedName, &instance)
+	if err != nil {
+		return handleGetError(req, "vmalertmanagerconfig", err)
 	}
 
 	alertmanagerLock.Lock()

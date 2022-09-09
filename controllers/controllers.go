@@ -3,9 +3,11 @@ package controllers
 import (
 	"flag"
 	"fmt"
+	"k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/util/workqueue"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"time"
@@ -46,4 +48,12 @@ func isSelectorsMatches(sourceCRD, targetCRD client.Object, nsSelector, selector
 		return false, nil
 	}
 	return true, nil
+}
+
+func handleGetError(reqObject ctrl.Request, controller string, err error) (ctrl.Result, error) {
+	if errors.IsNotFound(err) {
+		DeregisterObject(reqObject.Name, reqObject.Namespace, controller)
+		return ctrl.Result{}, nil
+	}
+	return ctrl.Result{}, err
 }

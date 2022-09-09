@@ -190,20 +190,15 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	err := r.Get(ctx, req.NamespacedName, &instance)
 	if err != nil {
-		if errors.IsNotFound(err) {
-			return ctrl.Result{}, nil
-		}
-		// Error reading the object - requeue the request.
-		return ctrl.Result{}, err
+		return handleGetError(req, "vmuser", err)
 	}
 
 	// lock vmauth sync.
 	vmAuthSyncMU.Lock()
 	defer vmAuthSyncMU.Unlock()
 
-	if instance.DeletionTimestamp == nil {
+	if !instance.DeletionTimestamp.IsZero() {
 		if err := finalize.AddFinalizer(ctx, r.Client, &instance); err != nil {
-			l.Error(err, "cannot add finalizer")
 			return ctrl.Result{}, err
 		}
 		RegisterObject(instance.Name, instance.Namespace, "vmuser")

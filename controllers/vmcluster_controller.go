@@ -12,7 +12,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -46,11 +45,9 @@ func (r *VMClusterReconciler) Reconcile(ctx context.Context, request ctrl.Reques
 	reqLogger.Info("Reconciling VMCluster")
 
 	instance := &victoriametricsv1beta1.VMCluster{}
-	if err := r.Client.Get(ctx, request.NamespacedName, instance); err != nil {
-		if errors.IsNotFound(err) {
-			return reconcile.Result{}, nil
-		}
-		return reconcile.Result{}, err
+	err := r.Client.Get(ctx, request.NamespacedName, instance)
+	if err != nil {
+		return handleGetError(request, "vmcluster", err)
 	}
 
 	if !instance.DeletionTimestamp.IsZero() {

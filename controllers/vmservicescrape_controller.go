@@ -23,7 +23,6 @@ import (
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -56,11 +55,7 @@ func (r *VMServiceScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	instance := &victoriametricsv1beta1.VMServiceScrape{}
 	err := r.Get(ctx, req.NamespacedName, instance)
 	if err != nil {
-		if !errors.IsNotFound(err) {
-			// Error reading the object - requeue the request.
-			reqLogger.Error(err, "cannot get service scrape")
-			return ctrl.Result{}, err
-		}
+		return handleGetError(req, "vmservicescrape", err)
 	}
 	vmAgentSync.Lock()
 	defer vmAgentSync.Unlock()

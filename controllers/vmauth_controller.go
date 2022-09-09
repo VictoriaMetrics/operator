@@ -26,7 +26,6 @@ import (
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -59,14 +58,12 @@ func (r *VMAuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	var instance operatorv1beta1.VMAuth
 
-	if err := r.Get(ctx, req.NamespacedName, &instance); err != nil {
-		if errors.IsNotFound(err) {
-			return ctrl.Result{}, nil
-		}
-		return ctrl.Result{}, err
+	err := r.Get(ctx, req.NamespacedName, &instance)
+	if err != nil {
+		return handleGetError(req, "vmauth", err)
 	}
 
-	if instance.DeletionTimestamp != nil {
+	if !instance.DeletionTimestamp.IsZero() {
 		if err := finalize.OnVMAuthDelete(ctx, r, &instance); err != nil {
 			l.Error(err, "cannot remove finalizers from vmauth")
 			return ctrl.Result{}, err

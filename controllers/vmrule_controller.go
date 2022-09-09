@@ -56,7 +56,7 @@ func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	instance := &victoriametricsv1beta1.VMRule{}
 	err := r.Get(ctx, req.NamespacedName, instance)
 	if err != nil {
-		return ctrl.Result{}, err
+		return handleGetError(req, "vmrule", err)
 	}
 
 	alertMngs := &victoriametricsv1beta1.VMAlertList{}

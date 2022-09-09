@@ -857,10 +857,15 @@ type remoteFlag struct {
 }
 
 func BuildRemoteWriteSettings(cr *victoriametricsv1beta1.VMAgent) []string {
+	var args []string
 	if cr.Spec.RemoteWriteSettings == nil {
+		// fast path
+		args = append(args,
+			"-remoteWrite.maxDiskUsagePerURL=1073741824",
+			fmt.Sprintf("-remoteWrite.tmpDataPath=%s", vmAgentPersistentQueueDir))
 		return nil
 	}
-	var args []string
+
 	rws := *cr.Spec.RemoteWriteSettings
 	if rws.FlushInterval != nil {
 		args = append(args, fmt.Sprintf("-remoteWrite.flushInterval=%s", *rws.FlushInterval))

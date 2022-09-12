@@ -592,7 +592,7 @@ func buildAlertmanagerConfigWithCRDs(ctx context.Context, rclient client.Client,
 				continue
 			}
 			if err := item.Validate(); err != nil {
-				l.Error(err, "validation failed for alertmanager config")
+				l.Error(err, "validation failed for alertmanager config", "objectName", item.Name)
 				badCfgCount++
 				continue
 			}
@@ -601,12 +601,17 @@ func buildAlertmanagerConfigWithCRDs(ctx context.Context, rclient client.Client,
 	}); err != nil {
 		return nil, fmt.Errorf("cannot select alertmanager configs: %w", err)
 	}
-	l.Info("selected alertmanager configs", "len", len(amConfigs), "invalid configs", badCfgCount)
-	cfg, err := alertmanager.BuildConfig(ctx, rclient, !cr.Spec.DisableNamespaceMatcher, originConfig, amConfigs, tlsAssets)
+
+	parsedCfg, err := alertmanager.BuildConfig(ctx, rclient, !cr.Spec.DisableNamespaceMatcher, originConfig, amConfigs, tlsAssets)
 	if err != nil {
 		return nil, err
 	}
-	return cfg, nil
+	l.Info("selected alertmanager configs", "len", len(amConfigs), "invalid configs", badCfgCount+parsedCfg.BadObjectsCount)
+	if len(parsedCfg.ParseErrors) > 0 {
+		l.Error(fmt.Errorf("errors: %s", strings.Join(parsedCfg.ParseErrors, ";")), "bad configs found during alertmanager config building")
+	}
+	badConfigsTotal.WithLabelValues("vmalertmanager_config").Add(float64(badCfgCount))
+	return parsedCfg.Data, nil
 }
 
 func subPathForStorage(s *victoriametricsv1beta1.StorageSpec) string {

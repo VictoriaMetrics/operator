@@ -13,10 +13,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func BuildConfig(ctx context.Context, rclient client.Client, mustAddNamespaceMatcher bool, baseCfg []byte, amcfgs map[string]*operatorv1beta1.VMAlertmanagerConfig, tlsAssets map[string]string) ([]byte, error) {
+type ParsedConfig struct {
+	Data            []byte
+	BadObjectsCount int
+	ParseErrors     []string
+}
+
+func BuildConfig(ctx context.Context, rclient client.Client, mustAddNamespaceMatcher bool, baseCfg []byte, amcfgs map[string]*operatorv1beta1.VMAlertmanagerConfig, tlsAssets map[string]string) (*ParsedConfig, error) {
 	// fast path.
 	if len(amcfgs) == 0 {
-		return baseCfg, nil
+		return &ParsedConfig{Data: baseCfg}, nil
 	}
 	var baseYAMlCfg alertmanagerConfig
 	if err := yaml.Unmarshal(baseCfg, &baseYAMlCfg); err != nil {
@@ -35,8 +41,23 @@ func BuildConfig(ctx context.Context, rclient client.Client, mustAddNamespaceMat
 	secretCache := make(map[string]*v1.Secret)
 	configmapCache := make(map[string]*v1.ConfigMap)
 	var firstReceiverName string
+	var badObjectsCount int
+	var parseErrors []string
+OUTER:
 	for _, posIdx := range amConfigIdentifiers {
 		amcKey := amcfgs[posIdx]
+		for _, receiver := range amcKey.Spec.Receivers {
+			receiverCfg, err := buildReceiver(ctx, rclient, amcKey, receiver, secretCache, configmapCache, tlsAssets)
+			if err != nil {
+				// skip broken configs
+				parseErrors = append(parseErrors, fmt.Sprintf("cannot build alertmanager receiver config for object: %s, err: %s", amcKey.AsKey(), err))
+				badObjectsCount++
+				continue OUTER
+			}
+			if len(receiverCfg) > 0 {
+				baseYAMlCfg.Receivers = append(baseYAMlCfg.Receivers, receiverCfg)
+			}
+		}
 		for _, rule := range amcKey.Spec.InhibitRules {
 			baseYAMlCfg.InhibitRules = append(baseYAMlCfg.InhibitRules, buildInhibitRule(amcKey.Namespace, rule))
 		}
@@ -45,7 +66,6 @@ func BuildConfig(ctx context.Context, rclient client.Client, mustAddNamespaceMat
 			muteIntervals = append(muteIntervals, mtis...)
 		}
 		if amcKey.Spec.Route == nil {
-			// todo add logging.
 			continue
 		}
 		// use first route receiver name as default receiver.
@@ -53,15 +73,7 @@ func BuildConfig(ctx context.Context, rclient client.Client, mustAddNamespaceMat
 			firstReceiverName = buildReceiverName(amcKey, amcKey.Spec.Route.Receiver)
 		}
 		subRoutes = append(subRoutes, buildRoute(amcKey, amcKey.Spec.Route, true, mustAddNamespaceMatcher))
-		for _, receiver := range amcKey.Spec.Receivers {
-			receiverCfg, err := buildReceiver(ctx, rclient, amcKey, receiver, secretCache, configmapCache, tlsAssets)
-			if err != nil {
-				return nil, fmt.Errorf("cannot build receiver cfg for: %s, err: %w", amcKey.AsKey(), err)
-			}
-			if len(receiverCfg) > 0 {
-				baseYAMlCfg.Receivers = append(baseYAMlCfg.Receivers, receiverCfg)
-			}
-		}
+
 	}
 	if baseYAMlCfg.Route == nil && len(subRoutes) > 0 {
 		baseYAMlCfg.Route = &route{
@@ -75,7 +87,11 @@ func BuildConfig(ctx context.Context, rclient client.Client, mustAddNamespaceMat
 		baseYAMlCfg.MuteTimeIntervals = append(baseYAMlCfg.MuteTimeIntervals, muteIntervals...)
 	}
 
-	return yaml.Marshal(baseYAMlCfg)
+	result, err := yaml.Marshal(baseYAMlCfg)
+	if err != nil {
+		return nil, err
+	}
+	return &ParsedConfig{Data: result, BadObjectsCount: badObjectsCount, ParseErrors: parseErrors}, nil
 }
 
 func buildMuteTimeInterval(cr *operatorv1beta1.VMAlertmanagerConfig) []yaml.MapSlice {

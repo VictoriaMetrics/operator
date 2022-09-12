@@ -499,6 +499,89 @@ receivers:
 templates: []
 `,
 		},
+		{
+			name: "telegram bad, not strict parse",
+			args: args{
+				ctx: context.Background(),
+				baseCfg: []byte(`global:
+ time_out: 1min
+`),
+				amcfgs: map[string]*operatorv1beta1.VMAlertmanagerConfig{
+					"default/base": &operatorv1beta1.VMAlertmanagerConfig{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "tg",
+							Namespace: "default",
+						},
+						Spec: operatorv1beta1.VMAlertmanagerConfigSpec{
+							Receivers: []operatorv1beta1.Receiver{
+								{
+									Name: "telegram",
+									TelegramConfigs: []operatorv1beta1.TelegramConfig{
+										{
+											SendResolved: pointer.Bool(true),
+											ChatID:       125,
+											BotToken: &v1.SecretKeySelector{
+												LocalObjectReference: v1.LocalObjectReference{
+													Name: "tg-secret",
+												},
+												Key: "token",
+											},
+											Message: "some-templated message",
+										},
+									},
+								},
+							},
+							Route: &operatorv1beta1.Route{
+								Receiver:  "telegram",
+								GroupWait: "1min",
+							},
+						},
+					},
+					"mon/base": &operatorv1beta1.VMAlertmanagerConfig{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "tg",
+							Namespace: "default",
+						},
+						Spec: operatorv1beta1.VMAlertmanagerConfigSpec{
+							Receivers: []operatorv1beta1.Receiver{
+								{
+									Name: "telegram",
+									TelegramConfigs: []operatorv1beta1.TelegramConfig{
+										{
+											SendResolved: pointer.Bool(true),
+											ChatID:       125,
+											Message:      "some-templated message",
+										},
+									},
+								},
+							},
+							Route: &operatorv1beta1.Route{
+								Receiver:  "telegram",
+								GroupWait: "1min",
+							},
+						},
+					},
+				},
+			},
+			want: `global:
+  time_out: 1min
+route:
+  receiver: default-tg-telegram
+  routes:
+  - matchers:
+    - namespace = "default"
+    group_wait: 1min
+    receiver: default-tg-telegram
+    continue: true
+receivers:
+- name: default-tg-telegram
+  telegram_configs:
+  - send_resolved: true
+    chat_id: 125
+    message: some-templated message
+templates: []
+`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -508,7 +591,7 @@ templates: []
 				t.Errorf("BuildConfig() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			assert.Equal(t, tt.want, string(got))
+			assert.Equal(t, tt.want, string(got.Data))
 		})
 	}
 }

@@ -241,10 +241,14 @@ func SelectRules(ctx context.Context, cr *victoriametricsv1beta1.VMAlert, rclien
 		log.Info("deduplicating vmalert rules", "vmalert", cr.ObjectMeta.Name)
 		vmRules = deduplicateRules(vmRules)
 	}
+	var badRules int
+	var errors []string
 	for _, pRule := range vmRules {
 		content, err := generateContent(pRule.Spec, cr.Spec.EnforcedNamespaceLabel, pRule.Namespace)
 		if err != nil {
-			return nil, fmt.Errorf("cannot generate content for rule: %s, err :%w", pRule.Name, err)
+			badRules++
+			errors = append(errors, fmt.Sprintf("cannot generate content for rule: %s, err :%s", pRule.Name, err))
+			continue
 		}
 		rules[fmt.Sprintf("%v-%v.yaml", pRule.Namespace, pRule.Name)] = content
 	}
@@ -259,11 +263,16 @@ func SelectRules(ctx context.Context, cr *victoriametricsv1beta1.VMAlert, rclien
 		// it's needed to start vmalert.
 		rules["default-vmalert.yaml"] = defAlert
 	}
+	if len(errors) > 0 {
+		log.Error(fmt.Errorf("errors: %s", strings.Join(errors, ";")), "invalid vmrules detected during parsing")
+	}
+	badConfigsTotal.WithLabelValues("vmrules").Add(float64(badRules))
 
 	log.Info("selected Rules",
 		"rules", strings.Join(ruleNames, ","),
 		"namespace", cr.Namespace,
 		"vmalert", cr.Name,
+		"invalid rules", badRules,
 	)
 
 	return rules, nil

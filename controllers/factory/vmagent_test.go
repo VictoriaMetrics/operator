@@ -1007,6 +1007,7 @@ func TestBuildRemoteWriteSettings(t *testing.T) {
 			args: args{
 				cr: &victoriametricsv1beta1.VMAgent{},
 			},
+			want: []string{"-remoteWrite.maxDiskUsagePerURL=1073741824", "-remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data"},
 		},
 		{
 			name: "test labels",

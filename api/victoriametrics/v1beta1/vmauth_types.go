@@ -333,6 +333,10 @@ func (cr VMAuth) GetServiceAccountName() string {
 	return cr.Spec.ServiceAccountName
 }
 
+func (cr VMAuth) IsOwnsServiceAccount() bool {
+	return cr.Spec.ServiceAccountName == "" || cr.Spec.ServiceAccountName == cr.PrefixedName()
+}
+
 func (cr VMAuth) GetPSPName() string {
 	if cr.Spec.PodSecurityPolicyName == "" {
 		return cr.PrefixedName()

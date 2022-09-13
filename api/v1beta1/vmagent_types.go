@@ -583,7 +583,7 @@ func (cr VMAgent) GetServiceAccountName() string {
 }
 
 func (cr VMAgent) IsOwnsServiceAccount() bool {
-	return cr.Spec.ServiceAccountName == cr.PrefixedName()
+	return cr.Spec.ServiceAccountName == "" || cr.Spec.ServiceAccountName == cr.PrefixedName()
 }
 
 func (cr VMAgent) GetClusterRoleName() string {

@@ -373,6 +373,10 @@ func (cr VMAlertmanager) GetServiceAccountName() string {
 	return cr.Spec.ServiceAccountName
 }
 
+func (cr VMAlertmanager) IsOwnsServiceAccount() bool {
+	return cr.Spec.ServiceAccountName == "" || cr.Spec.ServiceAccountName == cr.PrefixedName()
+}
+
 func (cr VMAlertmanager) GetPSPName() string {
 	if cr.Spec.PodSecurityPolicyName == "" {
 		return cr.PrefixedName()

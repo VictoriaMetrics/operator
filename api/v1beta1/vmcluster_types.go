@@ -973,7 +973,7 @@ func (cr VMCluster) GetServiceAccountName() string {
 }
 
 func (cr VMCluster) IsOwnsServiceAccount() bool {
-	return cr.Spec.ServiceAccountName == cr.PrefixedName()
+	return cr.Spec.ServiceAccountName == "" || cr.Spec.ServiceAccountName == cr.PrefixedName()
 }
 
 func (cr VMCluster) PrefixedName() string {

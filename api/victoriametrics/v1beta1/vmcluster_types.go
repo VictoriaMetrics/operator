@@ -972,6 +972,10 @@ func (cr VMCluster) GetServiceAccountName() string {
 	return cr.Spec.ServiceAccountName
 }
 
+func (cr VMCluster) IsOwnsServiceAccount() bool {
+	return cr.Spec.ServiceAccountName == "" || cr.Spec.ServiceAccountName == cr.PrefixedName()
+}
+
 func (cr VMCluster) PrefixedName() string {
 	return fmt.Sprintf("vmcluster-%s", cr.Name)
 }

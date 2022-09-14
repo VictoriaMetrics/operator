@@ -92,6 +92,12 @@ func convertMatchers(promMatchers []alpha1.Matcher) []string {
 	}
 	r := make([]string, 0, len(promMatchers))
 	for _, pm := range promMatchers {
+		if pm.Regex && pm.MatchType == "" {
+			pm.MatchType = "=~"
+		}
+		if pm.MatchType == "" {
+			pm.MatchType = "="
+		}
 		r = append(r, pm.String())
 	}
 	return r

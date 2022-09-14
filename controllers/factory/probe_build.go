@@ -235,7 +235,6 @@ func generateProbeConfig(
 	}
 	cfg = addTLStoYaml(cfg, cr.Namespace, cr.Spec.TLSConfig, false)
 	cfg = append(cfg, buildVMScrapeParams(cr.Namespace, cr.AsProxyKey(), cr.Spec.VMScrapeParams, ssCache)...)
-	fmt.Println(cr.Spec.OAuth2, " ", ssCache)
 	cfg = addOAuth2Config(cfg, cr.AsMapKey(), cr.Spec.OAuth2, ssCache.oauth2Secrets)
 	cfg = addAuthorizationConfig(cfg, cr.AsMapKey(), cr.Spec.Authorization, ssCache.authorizationSecrets)
 

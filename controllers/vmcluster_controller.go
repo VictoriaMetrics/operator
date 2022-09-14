@@ -20,7 +20,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-var log = logf.Log.WithName("controller_vmcluster")
+var log = logf.Log.WithName("controller")
 
 // VMClusterReconciler reconciles a VMCluster object
 type VMClusterReconciler struct {

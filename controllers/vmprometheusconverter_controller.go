@@ -272,6 +272,11 @@ func (c *ConverterController) UpdatePrometheusRule(_old, new interface{}) {
 	existingVMRule := &v1beta1.VMRule{}
 	err := c.vclient.Get(ctx, types.NamespacedName{Name: VMRule.Name, Namespace: VMRule.Namespace}, existingVMRule)
 	if err != nil {
+		if errors.IsNotFound(err) {
+			if err = c.vclient.Create(ctx, VMRule); err == nil {
+				return
+			}
+		}
 		l.Error(err, "cannot get existing VMRule")
 		return
 	}
@@ -300,7 +305,6 @@ func (c *ConverterController) CreateServiceMonitor(service interface{}) {
 	err := c.vclient.Create(context.Background(), vmServiceScrape)
 	if err != nil {
 		if errors.IsAlreadyExists(err) {
-			l.Info("vmServiceScrape exists")
 			c.UpdateServiceMonitor(nil, serviceMon)
 			return
 		}
@@ -313,12 +317,16 @@ func (c *ConverterController) CreateServiceMonitor(service interface{}) {
 func (c *ConverterController) UpdateServiceMonitor(_, new interface{}) {
 	serviceMonNew := new.(*v1.ServiceMonitor)
 	l := log.WithValues("kind", "vmServiceScrape", "name", serviceMonNew.Name, "ns", serviceMonNew.Namespace)
-	l.Info("updating vmServiceScrape")
 	vmServiceScrape := converter.ConvertServiceMonitor(serviceMonNew, c.baseConf)
 	existingVMServiceScrape := &v1beta1.VMServiceScrape{}
 	ctx := context.Background()
 	err := c.vclient.Get(ctx, types.NamespacedName{Name: vmServiceScrape.Name, Namespace: vmServiceScrape.Namespace}, existingVMServiceScrape)
 	if err != nil {
+		if errors.IsNotFound(err) {
+			if err = c.vclient.Create(ctx, vmServiceScrape); err == nil {
+				return
+			}
+		}
 		l.Error(err, "cannot get existing vmServiceScrape")
 		return
 	}
@@ -349,7 +357,6 @@ func (c *ConverterController) CreatePodMonitor(pod interface{}) {
 	err := c.vclient.Create(context.TODO(), podScrape)
 	if err != nil {
 		if errors.IsAlreadyExists(err) {
-			l.Info("podScrape already exists")
 			c.UpdatePodMonitor(nil, podMonitor)
 			return
 		}
@@ -367,6 +374,11 @@ func (c *ConverterController) UpdatePodMonitor(_, new interface{}) {
 	existingVMPodScrape := &v1beta1.VMPodScrape{}
 	err := c.vclient.Get(ctx, types.NamespacedName{Name: podScrape.Name, Namespace: podScrape.Namespace}, existingVMPodScrape)
 	if err != nil {
+		if errors.IsNotFound(err) {
+			if err = c.vclient.Create(ctx, podScrape); err == nil {
+				return
+			}
+		}
 		l.Error(err, "cannot get existing podMonitor")
 		return
 	}
@@ -420,7 +432,12 @@ func (c *ConverterController) UpdateAlertmanagerConfig(_, new interface{}) {
 	existAlertmanagerConfig := &v1beta1.VMAlertmanagerConfig{}
 	ctx := context.Background()
 	if err := c.vclient.Get(ctx, types.NamespacedName{Name: vmAMc.Name, Namespace: vmAMc.Namespace}, existAlertmanagerConfig); err != nil {
-		l.Error(err, "cannot get existing vmServiceScrape")
+		if errors.IsNotFound(err) {
+			if err = c.vclient.Create(ctx, vmAMc); err == nil {
+				return
+			}
+		}
+		l.Error(err, "cannot get existing vmalertmanagerconfig")
 		return
 	}
 
@@ -491,15 +508,12 @@ func (c *ConverterController) CreateProbe(obj interface{}) {
 	err := c.vclient.Create(context.TODO(), vmProbe)
 	if err != nil {
 		if errors.IsAlreadyExists(err) {
-			l.Info("vmProbe already exists")
 			c.UpdateProbe(nil, probe)
 			return
 		}
 		l.Error(err, "cannot create vmProbe")
 		return
 	}
-	log.Info("vmProbe was created")
-
 }
 
 // UpdateProbe updates VMProbe
@@ -511,6 +525,11 @@ func (c *ConverterController) UpdateProbe(_, new interface{}) {
 	existingVMProbe := &v1beta1.VMProbe{}
 	err := c.vclient.Get(ctx, types.NamespacedName{Name: vmProbe.Name, Namespace: vmProbe.Namespace}, existingVMProbe)
 	if err != nil {
+		if errors.IsNotFound(err) {
+			if err = c.vclient.Create(ctx, vmProbe); err == nil {
+				return
+			}
+		}
 		l.Error(err, "cannot get existing vmProbe")
 		return
 	}
@@ -530,6 +549,4 @@ func (c *ConverterController) UpdateProbe(_, new interface{}) {
 		l.Error(err, "cannot update vmProbe")
 		return
 	}
-	l.Info("vmProbe was updated")
-
 }

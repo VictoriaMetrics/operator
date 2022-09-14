@@ -226,8 +226,8 @@ func ConvertAlertmanagerConfig(promAMCfg *alpha1.AlertmanagerConfig, conf *confi
 	if conf.EnabledPrometheusConverterOwnerReferences {
 		vamc.OwnerReferences = []metav1.OwnerReference{
 			{
-				APIVersion:         v1.SchemeGroupVersion.String(),
-				Kind:               v1.ServiceMonitorsKind,
+				APIVersion:         alpha1.SchemeGroupVersion.String(),
+				Kind:               alpha1.AlertmanagerConfigKind,
 				Name:               promAMCfg.Name,
 				UID:                promAMCfg.UID,
 				Controller:         pointer.BoolPtr(true),

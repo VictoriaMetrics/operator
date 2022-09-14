@@ -22,6 +22,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"strings"
 )
 
 // VMAlertmanagerConfigSpec defines configuration for VMAlertmanagerConfig
@@ -670,10 +671,37 @@ type PagerDutyConfig struct {
 	Component string `json:"component,omitempty"`
 	// Arbitrary key/value pairs that provide further detail about the incident.
 	// +optional
-	Details map[string]string `json:"details,omitempty"`
+	Details PagerDutyDetails `json:"details,omitempty"`
 	// HTTP client configuration.
 	// +optional
 	HTTPConfig *HTTPConfig `json:"http_config,omitempty"`
+}
+
+// PagerDutyDetails details for config
+type PagerDutyDetails map[string]string
+
+// UnmarshalYAML implements interface
+func (pdd *PagerDutyDetails) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	pddm := make(map[string]string)
+	if err := unmarshal(&pddm); err != nil {
+		if !strings.Contains(err.Error(), "seq into map") {
+			return err
+		}
+		// fallback to the prometheus-operator data format
+		type pagerDutyPromDetails struct {
+			Key   string
+			Value string
+		}
+		var promPDD []pagerDutyPromDetails
+		if err := unmarshal(&promPDD); err != nil {
+			return fmt.Errorf("cannot parse pager duty details :%w", err)
+		}
+		for _, kv := range promPDD {
+			pddm[kv.Key] = kv.Value
+		}
+	}
+	*pdd = pddm
+	return nil
 }
 
 // ImageConfig is used to attach images to the incident.

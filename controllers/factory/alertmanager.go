@@ -631,8 +631,3 @@ func filter(strings []string, f func(string) bool) []string {
 	}
 	return filteredStrings
 }
-
-func CreateOrUpdatePodDisruptionBudgetForAlertManager(ctx context.Context, cr *victoriametricsv1beta1.VMAlertmanager, rclient client.Client) error {
-	pdb := buildDefaultPDB(cr, cr.Spec.PodDisruptionBudget)
-	return reconcilePDB(ctx, rclient, cr.Kind, pdb)
-}

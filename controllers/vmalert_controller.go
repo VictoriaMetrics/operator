@@ -28,7 +28,6 @@ import (
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
-	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -140,7 +139,6 @@ func (r *VMAlertReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&v1.ConfigMap{}, builder.OnlyMetadata).
 		Owns(&v1.Secret{}, builder.OnlyMetadata).
 		Owns(&v1.ServiceAccount{}, builder.OnlyMetadata).
-		Owns(&policyv1beta1.PodDisruptionBudget{}).
 		WithOptions(defaultOptions).
 		Complete(r)
 }

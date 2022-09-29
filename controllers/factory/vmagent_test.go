@@ -1049,7 +1049,7 @@ func TestBuildRemoteWriteSettings(t *testing.T) {
 						RemoteWriteSettings: &victoriametricsv1beta1.VMAgentRemoteWriteSettings{
 							ShowURL:            pointer.Bool(true),
 							TmpDataPath:        pointer.String("/tmp/my-path"),
-							MaxDiskUsagePerURL: pointer.Int32(1000),
+							MaxDiskUsagePerURL: pointer.Int64(1000),
 						},
 					},
 				},

@@ -235,7 +235,7 @@ func buildDefaultPDBV1(cr svcBuilderArgs, spec *victoriametricsv1beta1.EmbeddedP
 			MinAvailable:   spec.MinAvailable,
 			MaxUnavailable: spec.MaxUnavailable,
 			Selector: &metav1.LabelSelector{
-				MatchLabels: cr.SelectorLabels(),
+				MatchLabels: spec.SelectorLabelsWithDefaults(cr.SelectorLabels()),
 			},
 		},
 	}
@@ -254,7 +254,7 @@ func buildDefaultPDB(cr svcBuilderArgs, spec *victoriametricsv1beta1.EmbeddedPod
 			MinAvailable:   spec.MinAvailable,
 			MaxUnavailable: spec.MaxUnavailable,
 			Selector: &metav1.LabelSelector{
-				MatchLabels: cr.SelectorLabels(),
+				MatchLabels: spec.SelectorLabelsWithDefaults(cr.SelectorLabels()),
 			},
 		},
 	}

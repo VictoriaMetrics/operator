@@ -825,8 +825,3 @@ func BuildNotifiersArgs(cr *victoriametricsv1beta1.VMAlert, ntBasicAuth map[stri
 
 	return finalArgs
 }
-
-func CreateOrUpdatePodDisruptionBudgetForVMAlert(ctx context.Context, cr *victoriametricsv1beta1.VMAlert, rclient client.Client) error {
-	pdb := buildDefaultPDB(cr, cr.Spec.PodDisruptionBudget)
-	return reconcilePDB(ctx, rclient, cr.Kind, pdb)
-}

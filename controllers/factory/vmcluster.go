@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"k8s.io/api/autoscaling/v2beta2"
+	policyv1 "k8s.io/api/policy/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"path"
 	"sort"
@@ -52,7 +53,7 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient
 		}
 	}
 
-	if cr.Spec.VMStorage != nil {
+	if cr.Spec.VMStorage != nil && cr.Spec.VMStorage.PodDisruptionBudget != nil {
 		if cr.Spec.VMStorage.PodDisruptionBudget != nil {
 			err := CreateOrUpdatePodDisruptionBudgetForVMStorage(ctx, cr, rclient)
 			if err != nil {
@@ -598,6 +599,25 @@ func genVMSelectHeadlessService(cr *v1beta1.VMCluster) *corev1.Service {
 }
 
 func CreateOrUpdatePodDisruptionBudgetForVMSelect(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client) error {
+	if k8stools.IsPDBV1APISupported() {
+		pdb := &policyv1.PodDisruptionBudget{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            cr.Spec.VMSelect.GetNameWithPrefix(cr.Name),
+				Labels:          cr.FinalLabels(cr.VMSelectSelectorLabels()),
+				OwnerReferences: cr.AsOwner(),
+				Namespace:       cr.Namespace,
+				Finalizers:      []string{v1beta1.FinalizerName},
+			},
+			Spec: policyv1.PodDisruptionBudgetSpec{
+				MinAvailable:   cr.Spec.VMSelect.PodDisruptionBudget.MinAvailable,
+				MaxUnavailable: cr.Spec.VMSelect.PodDisruptionBudget.MaxUnavailable,
+				Selector: &metav1.LabelSelector{
+					MatchLabels: cr.Spec.VMSelect.PodDisruptionBudget.SelectorLabelsWithDefaults(cr.VMSelectSelectorLabels()),
+				},
+			},
+		}
+		return reconcilePDBV1(ctx, rclient, cr.Kind, pdb)
+	}
 	pdb := &policyv1beta1.PodDisruptionBudget{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.Spec.VMSelect.GetNameWithPrefix(cr.Name),
@@ -610,7 +630,7 @@ func CreateOrUpdatePodDisruptionBudgetForVMSelect(ctx context.Context, cr *v1bet
 			MinAvailable:   cr.Spec.VMSelect.PodDisruptionBudget.MinAvailable,
 			MaxUnavailable: cr.Spec.VMSelect.PodDisruptionBudget.MaxUnavailable,
 			Selector: &metav1.LabelSelector{
-				MatchLabels: cr.VMSelectSelectorLabels(),
+				MatchLabels: cr.Spec.VMSelect.PodDisruptionBudget.SelectorLabelsWithDefaults(cr.VMSelectSelectorLabels()),
 			},
 		},
 	}
@@ -844,6 +864,26 @@ func defaultVMInsertService(cr *v1beta1.VMCluster) *corev1.Service {
 }
 
 func CreateOrUpdatePodDisruptionBudgetForVMInsert(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client) error {
+
+	if k8stools.IsPDBV1APISupported() {
+		pdb := &policyv1.PodDisruptionBudget{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            cr.Spec.VMInsert.GetNameWithPrefix(cr.Name),
+				Labels:          cr.FinalLabels(cr.VMInsertSelectorLabels()),
+				OwnerReferences: cr.AsOwner(),
+				Namespace:       cr.Namespace,
+				Finalizers:      []string{v1beta1.FinalizerName},
+			},
+			Spec: policyv1.PodDisruptionBudgetSpec{
+				MinAvailable:   cr.Spec.VMInsert.PodDisruptionBudget.MinAvailable,
+				MaxUnavailable: cr.Spec.VMInsert.PodDisruptionBudget.MaxUnavailable,
+				Selector: &metav1.LabelSelector{
+					MatchLabels: cr.Spec.VMInsert.PodDisruptionBudget.SelectorLabelsWithDefaults(cr.VMInsertSelectorLabels()),
+				},
+			},
+		}
+		return reconcilePDBV1(ctx, rclient, cr.Kind, pdb)
+	}
 	pdb := &policyv1beta1.PodDisruptionBudget{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.Spec.VMInsert.GetNameWithPrefix(cr.Name),
@@ -856,7 +896,7 @@ func CreateOrUpdatePodDisruptionBudgetForVMInsert(ctx context.Context, cr *v1bet
 			MinAvailable:   cr.Spec.VMInsert.PodDisruptionBudget.MinAvailable,
 			MaxUnavailable: cr.Spec.VMInsert.PodDisruptionBudget.MaxUnavailable,
 			Selector: &metav1.LabelSelector{
-				MatchLabels: cr.VMInsertSelectorLabels(),
+				MatchLabels: cr.Spec.VMInsert.PodDisruptionBudget.SelectorLabelsWithDefaults(cr.VMInsertSelectorLabels()),
 			},
 		},
 	}
@@ -1220,6 +1260,25 @@ func genVMStorageService(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) *cor
 }
 
 func CreateOrUpdatePodDisruptionBudgetForVMStorage(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client) error {
+	if k8stools.IsPDBV1APISupported() {
+		pdb := &policyv1.PodDisruptionBudget{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            cr.Spec.VMStorage.GetNameWithPrefix(cr.Name),
+				Labels:          cr.FinalLabels(cr.VMStorageSelectorLabels()),
+				OwnerReferences: cr.AsOwner(),
+				Namespace:       cr.Namespace,
+				Finalizers:      []string{v1beta1.FinalizerName},
+			},
+			Spec: policyv1.PodDisruptionBudgetSpec{
+				MinAvailable:   cr.Spec.VMStorage.PodDisruptionBudget.MinAvailable,
+				MaxUnavailable: cr.Spec.VMStorage.PodDisruptionBudget.MaxUnavailable,
+				Selector: &metav1.LabelSelector{
+					MatchLabels: cr.Spec.VMStorage.PodDisruptionBudget.SelectorLabelsWithDefaults(cr.VMStorageSelectorLabels()),
+				},
+			},
+		}
+		return reconcilePDBV1(ctx, rclient, cr.Kind, pdb)
+	}
 	pdb := &policyv1beta1.PodDisruptionBudget{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.Spec.VMStorage.GetNameWithPrefix(cr.Name),
@@ -1232,7 +1291,7 @@ func CreateOrUpdatePodDisruptionBudgetForVMStorage(ctx context.Context, cr *v1be
 			MinAvailable:   cr.Spec.VMStorage.PodDisruptionBudget.MinAvailable,
 			MaxUnavailable: cr.Spec.VMStorage.PodDisruptionBudget.MaxUnavailable,
 			Selector: &metav1.LabelSelector{
-				MatchLabels: cr.VMStorageSelectorLabels(),
+				MatchLabels: cr.Spec.VMStorage.PodDisruptionBudget.SelectorLabelsWithDefaults(cr.VMStorageSelectorLabels()),
 			},
 		},
 	}

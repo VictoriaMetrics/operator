@@ -385,7 +385,7 @@ type VMAgentRemoteWriteSettings struct {
 
 	// The maximum file-based buffer size in bytes at -remoteWrite.tmpDataPath
 	// +optional
-	MaxDiskUsagePerURL *int32 `json:"maxDiskUsagePerURL,omitempty"`
+	MaxDiskUsagePerURL *int64 `json:"maxDiskUsagePerURL,omitempty"`
 	// The number of concurrent queues
 	// +optional
 	Queues *int32 `json:"queues,omitempty"`

@@ -1827,7 +1827,7 @@ func (in *VMAgentRemoteWriteSettings) DeepCopyInto(out *VMAgentRemoteWriteSettin
 	}
 	if in.MaxDiskUsagePerURL != nil {
 		in, out := &in.MaxDiskUsagePerURL, &out.MaxDiskUsagePerURL
-		*out = new(int32)
+		*out = new(int64)
 		**out = **in
 	}
 	if in.Queues != nil {

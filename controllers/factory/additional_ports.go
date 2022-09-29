@@ -89,7 +89,16 @@ func buildAdditionalServicePorts(ip *victoriametricsv1beta1.InsertPorts, svc *co
 	if ip == nil || svc == nil {
 		return
 	}
-	if ip.GraphitePort != "" {
+	hasPortByName := func(name string) bool {
+		for _, port := range svc.Spec.Ports {
+			if port.Name == name {
+				return true
+			}
+		}
+		return false
+	}
+	// user want to use own definition for graphite
+	if ip.GraphitePort != "" && !hasPortByName("graphite-tcp") && !hasPortByName("graphite-udp") {
 		svc.Spec.Ports = append(svc.Spec.Ports,
 			corev1.ServicePort{
 				Name:       "graphite-tcp",
@@ -105,7 +114,7 @@ func buildAdditionalServicePorts(ip *victoriametricsv1beta1.InsertPorts, svc *co
 			},
 		)
 	}
-	if ip.InfluxPort != "" {
+	if ip.InfluxPort != "" && !hasPortByName("influx-tcp") && !hasPortByName("influx-udp") {
 		svc.Spec.Ports = append(svc.Spec.Ports,
 			corev1.ServicePort{
 				Name:       "influx-tcp",
@@ -121,7 +130,7 @@ func buildAdditionalServicePorts(ip *victoriametricsv1beta1.InsertPorts, svc *co
 			},
 		)
 	}
-	if ip.OpenTSDBPort != "" {
+	if ip.OpenTSDBPort != "" && !hasPortByName("opentsdb-tcp") && !hasPortByName("opentsdb-udp") {
 		svc.Spec.Ports = append(svc.Spec.Ports,
 			corev1.ServicePort{
 				Name:       "opentsdb-tcp",
@@ -137,7 +146,7 @@ func buildAdditionalServicePorts(ip *victoriametricsv1beta1.InsertPorts, svc *co
 			},
 		)
 	}
-	if ip.OpenTSDBHTTPPort != "" {
+	if ip.OpenTSDBHTTPPort != "" && !hasPortByName("opentsdb-http") {
 		svc.Spec.Ports = append(svc.Spec.Ports,
 			corev1.ServicePort{
 				Name:       "opentsdb-http",

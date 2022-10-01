@@ -53,7 +53,7 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient
 		}
 	}
 
-	if cr.Spec.VMStorage != nil && cr.Spec.VMStorage.PodDisruptionBudget != nil {
+	if cr.Spec.VMStorage != nil {
 		if cr.Spec.VMStorage.PodDisruptionBudget != nil {
 			err := CreateOrUpdatePodDisruptionBudgetForVMStorage(ctx, cr, rclient)
 			if err != nil {

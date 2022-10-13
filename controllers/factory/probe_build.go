@@ -79,6 +79,10 @@ func generateProbeConfig(
 			Key:   "static_configs",
 			Value: []yaml.MapSlice{staticConfig},
 		})
+		relabelings = append(relabelings, yaml.MapSlice{
+			{Key: "source_labels", Value: []string{"__address__"}},
+			{Key: "target_label", Value: "__param_target"},
+		})
 		// Add configured relabelings.
 		for _, r := range cr.Spec.Targets.StaticConfig.RelabelConfigs {
 			if r.TargetLabel != "" && enforcedNamespaceLabel != "" && r.TargetLabel == enforcedNamespaceLabel {
@@ -144,6 +148,14 @@ func generateProbeConfig(
 		// Relabelings for ingress SD.
 		relabelings = append(relabelings, []yaml.MapSlice{
 			{
+				{Key: "source_labels", Value: []string{"__address__"}},
+				{Key: "separator", Value: ";"},
+				{Key: "regex", Value: "(.*)"},
+				{Key: "target_label", Value: "__tmp_ingress_address"},
+				{Key: "replacement", Value: "$1"},
+				{Key: "action", Value: "replace"},
+			},
+			{
 				{Key: "source_labels", Value: []string{"__meta_kubernetes_ingress_scheme", "__address__", "__meta_kubernetes_ingress_path"}},
 				{Key: "separator", Value: ";"},
 				{Key: "regex", Value: "(.+);(.+);(.+)"},
@@ -195,10 +207,6 @@ func generateProbeConfig(
 	}
 	// Relabelings for prober.
 	relabelings = append(relabelings, []yaml.MapSlice{
-		{
-			{Key: "source_labels", Value: []string{"__address__"}},
-			{Key: "target_label", Value: "__param_target"},
-		},
 		{
 			{Key: "source_labels", Value: []string{"__param_target"}},
 			{Key: "target_label", Value: "instance"},

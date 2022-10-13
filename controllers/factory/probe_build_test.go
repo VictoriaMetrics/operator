@@ -108,6 +108,13 @@ kubernetes_sd_configs:
     - monitor
 relabel_configs:
 - source_labels:
+  - __address__
+  separator: ;
+  regex: (.*)
+  target_label: __tmp_ingress_address
+  replacement: $1
+  action: replace
+- source_labels:
   - __meta_kubernetes_ingress_scheme
   - __address__
   - __meta_kubernetes_ingress_path
@@ -126,9 +133,6 @@ relabel_configs:
   - label1
   target_label: api
   action: replacement
-- source_labels:
-  - __address__
-  target_label: __param_target
 - source_labels:
   - __param_target
   target_label: instance

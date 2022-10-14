@@ -460,6 +460,14 @@ func TestCreateOrUpdateConfigurationSecret(t *testing.T) {
 						Namespace: "kube-system",
 						Name:      "test-vmp",
 					},
+					Spec: victoriametricsv1beta1.VMProbeSpec{
+						Targets: victoriametricsv1beta1.VMProbeTargets{
+							StaticConfig: &victoriametricsv1beta1.VMProbeTargetStaticConfig{
+								Targets: []string{"localhost:8428"},
+							},
+						},
+						VMProberSpec: victoriametricsv1beta1.VMProberSpec{URL: "http://blackbox"},
+					},
 				},
 				&victoriametricsv1beta1.VMPodScrape{
 					ObjectMeta: metav1.ObjectMeta{
@@ -806,6 +814,9 @@ scrape_configs:
     module:
     - ""
   metrics_path: /probe
+  static_configs:
+  - targets:
+    - localhost:8428
   relabel_configs:
   - source_labels:
     - __address__
@@ -814,7 +825,7 @@ scrape_configs:
     - __param_target
     target_label: instance
   - target_label: __address__
-    replacement: ""
+    replacement: http://blackbox
 - job_name: nodeScrape/default/test-vms/0
   honor_labels: false
   kubernetes_sd_configs:

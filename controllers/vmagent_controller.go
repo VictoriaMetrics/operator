@@ -66,10 +66,6 @@ type VMAgentReconciler struct {
 // +kubebuilder:rbac:groups="policy",resources=podsecuritypolicies,verbs=get;create,update;list
 // +kubebuilder:rbac:groups="",resources=serviceaccounts,verbs=get;create,update;list
 func (r *VMAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	if vmAgentReconcileLimit.MustThrottleReconcile() {
-		// fast path, rate limited
-		return ctrl.Result{}, nil
-	}
 	reqLogger := r.Log.WithValues("vmagent", req.NamespacedName)
 	reqLogger.Info("Reconciling")
 

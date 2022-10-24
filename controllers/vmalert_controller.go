@@ -57,10 +57,6 @@ func (r *VMAlertReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmalerts/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmalerts/finalizers,verbs=*
 func (r *VMAlertReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	if vmAlertRateLimiter.MustThrottleReconcile() {
-		// fast path
-		return ctrl.Result{}, nil
-	}
 	reqLogger := r.Log.WithValues("vmalert", req.NamespacedName)
 	reqLogger.Info("Reconciling")
 

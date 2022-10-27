@@ -270,6 +270,7 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 	vmsingleContainer = buildProbe(vmsingleContainer, cr)
 
 	operatorContainers := []corev1.Container{vmsingleContainer}
+	initContainers := cr.Spec.InitContainers
 
 	if cr.Spec.VMBackup != nil {
 		vmBackupManagerContainer, err := makeSpecForVMBackuper(cr.Spec.VMBackup, c, cr.Spec.Port, storagePath, vmDataVolumeName, cr.Spec.ExtraArgs, false)
@@ -278,6 +279,17 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 		}
 		if vmBackupManagerContainer != nil {
 			operatorContainers = append(operatorContainers, *vmBackupManagerContainer)
+		}
+		if cr.Spec.VMBackup.Restore != nil &&
+			cr.Spec.VMBackup.Restore.OnStart != nil &&
+			cr.Spec.VMBackup.Restore.OnStart.Enabled {
+			vmRestore, err := makeSpecForVMRestore(cr.Spec.VMBackup, c, storagePath, vmDataVolumeName)
+			if err != nil {
+				return nil, err
+			}
+			if vmRestore != nil {
+				initContainers = append(initContainers, *vmRestore)
+			}
 		}
 	}
 
@@ -294,7 +306,7 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 		Spec: corev1.PodSpec{
 			NodeSelector:                  cr.Spec.NodeSelector,
 			Volumes:                       volumes,
-			InitContainers:                cr.Spec.InitContainers,
+			InitContainers:                initContainers,
 			Containers:                    containers,
 			ServiceAccountName:            cr.GetServiceAccountName(),
 			SecurityContext:               cr.Spec.SecurityContext,
@@ -430,7 +442,7 @@ func makeSpecForVMBackuper(
 		{
 			Name:      dataVolumeName,
 			MountPath: storagePath,
-			ReadOnly:  true,
+			ReadOnly:  false,
 		},
 	}
 	mounts = append(mounts, cr.VolumeMounts...)
@@ -500,4 +512,85 @@ func makeSpecForVMBackuper(
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 	}
 	return vmBackuper, nil
+}
+
+func makeSpecForVMRestore(
+	cr *victoriametricsv1beta1.VMBackup,
+	c *config.BaseOperatorConf,
+	storagePath, dataVolumeName string,
+) (*corev1.Container, error) {
+	if cr.Image.Repository == "" {
+		cr.Image.Repository = c.VMBackup.Image
+	}
+	if cr.Image.Tag == "" {
+		cr.Image.Tag = c.VMBackup.Version
+	}
+	if cr.Image.PullPolicy == "" {
+		cr.Image.PullPolicy = corev1.PullIfNotPresent
+	}
+	if cr.Port == "" {
+		cr.Port = c.VMBackup.Port
+	}
+
+	args := []string{
+		fmt.Sprintf("-storageDataPath=%s", storagePath),
+		"-eula",
+	}
+
+	if cr.LogLevel != nil {
+		args = append(args, fmt.Sprintf("-loggerLevel=%s", *cr.LogLevel))
+	}
+	if cr.LogFormat != nil {
+		args = append(args, fmt.Sprintf("-loggerFormat=%s", *cr.LogFormat))
+	}
+	for arg, value := range cr.ExtraArgs {
+		args = append(args, fmt.Sprintf("-%s=%s", arg, value))
+	}
+	if cr.Concurrency != nil {
+		args = append(args, fmt.Sprintf("-concurrency=%d", *cr.Concurrency))
+	}
+	if cr.CustomS3Endpoint != nil {
+		args = append(args, fmt.Sprintf("-customS3Endpoint=%s", *cr.CustomS3Endpoint))
+	}
+
+	var ports []corev1.ContainerPort
+	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(cr.Port).IntVal})
+
+	mounts := []corev1.VolumeMount{
+		{
+			Name:      dataVolumeName,
+			MountPath: storagePath,
+			ReadOnly:  false,
+		},
+	}
+	mounts = append(mounts, cr.VolumeMounts...)
+
+	if cr.CredentialsSecret != nil {
+		mounts = append(mounts, corev1.VolumeMount{
+			Name:      k8stools.SanitizeVolumeName("secret-" + cr.CredentialsSecret.Name),
+			MountPath: vmBackuperCreds,
+			ReadOnly:  true,
+		})
+		args = append(args, fmt.Sprintf("-credsFilePath=%s/%s", vmBackuperCreds, cr.CredentialsSecret.Key))
+	}
+	extraEnvs := cr.ExtraEnvs
+	if len(cr.ExtraEnvs) > 0 {
+		args = append(args, "-envflag.enable=true")
+	}
+
+	sort.Strings(args)
+
+	args = append([]string{"restore"}, args...)
+
+	vmRestore := &corev1.Container{
+		Name:                     "vmbackuper-restore",
+		Image:                    fmt.Sprintf("%s:%s", formatContainerImage(c.ContainerRegistry, cr.Image.Repository), cr.Image.Tag),
+		Ports:                    ports,
+		Args:                     args,
+		Env:                      extraEnvs,
+		VolumeMounts:             mounts,
+		Resources:                buildResources(cr.Resources, config.Resource(c.VMBackup.Resource), c.VMBackup.UseDefaultResources),
+		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+	}
+	return vmRestore, nil
 }

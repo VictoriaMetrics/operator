@@ -1102,6 +1102,7 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) 
 	vmstorageContainer = buildProbe(vmstorageContainer, cr.Spec.VMStorage)
 
 	operatorContainers := []corev1.Container{vmstorageContainer}
+	initContainers := cr.Spec.VMStorage.InitContainers
 
 	if cr.Spec.VMStorage.VMBackup != nil {
 		vmBackupManagerContainer, err := makeSpecForVMBackuper(cr.Spec.VMStorage.VMBackup, c, cr.Spec.VMStorage.Port, cr.Spec.VMStorage.StorageDataPath, cr.Spec.VMStorage.GetStorageVolumeName(), cr.Spec.VMStorage.ExtraArgs, true)
@@ -1110,6 +1111,17 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) 
 		}
 		if vmBackupManagerContainer != nil {
 			operatorContainers = append(operatorContainers, *vmBackupManagerContainer)
+		}
+		if cr.Spec.VMStorage.VMBackup.Restore != nil &&
+			cr.Spec.VMStorage.VMBackup.Restore.OnStart != nil &&
+			cr.Spec.VMStorage.VMBackup.Restore.OnStart.Enabled {
+			vmRestore, err := makeSpecForVMRestore(cr.Spec.VMStorage.VMBackup, c, cr.Spec.VMStorage.StorageDataPath, cr.Spec.VMStorage.GetStorageVolumeName())
+			if err != nil {
+				return nil, err
+			}
+			if vmRestore != nil {
+				initContainers = append(initContainers, *vmRestore)
+			}
 		}
 	}
 
@@ -1138,7 +1150,7 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) 
 		Spec: corev1.PodSpec{
 			NodeSelector:                  cr.Spec.VMStorage.NodeSelector,
 			Volumes:                       volumes,
-			InitContainers:                cr.Spec.VMStorage.InitContainers,
+			InitContainers:                initContainers,
 			Containers:                    containers,
 			ServiceAccountName:            cr.GetServiceAccountName(),
 			SecurityContext:               cr.Spec.VMStorage.SecurityContext,

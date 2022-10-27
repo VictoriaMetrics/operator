@@ -729,6 +729,23 @@ type VMBackup struct {
 	// that are generated as a result of StorageSpec objects.
 	// +optional
 	VolumeMounts []v1.VolumeMount `json:"volumeMounts,omitempty"`
+
+	// Restore Allows to enable restore options for pod
+	// Read more: https://docs.victoriametrics.com/vmbackupmanager.html#restore-commands
+	// +optional
+	Restore *VMRestore `json:"restore,omitempty"`
+}
+
+type VMRestore struct {
+	// OnStart defines configuration for restore on pod start
+	// +optional
+	OnStart *VMRestoreOnStartConfig `json:"onStart,omitempty"`
+}
+
+type VMRestoreOnStartConfig struct {
+	// Enabled defines if restore on start enabled
+	// +optional
+	Enabled bool `json:"enabled,omitempty"`
 }
 
 func (s VMStorage) BuildPodName(baseName string, podIndex int32, namespace string, portName string, domain string) string {

@@ -2767,6 +2767,19 @@ spec:
                             https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                           type: object
                       type: object
+                    restore:
+                      description: 'Restore Allows to enable restore options for pod
+                        Read more: https://docs.victoriametrics.com/vmbackupmanager.html#restore-commands'
+                      properties:
+                        onStart:
+                          description: OnStart defines configuration for restore on
+                            pod start
+                          properties:
+                            enabled:
+                              description: Enabled defines if restore on start enabled
+                              type: boolean
+                          type: object
+                      type: object
                     snapshotCreateURL:
                       description: SnapshotCreateURL overwrites url for snapshot create
                       type: string

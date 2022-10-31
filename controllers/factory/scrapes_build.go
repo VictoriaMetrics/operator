@@ -1337,6 +1337,7 @@ func buildVMScrapeParams(namespace, cacheKey string, cfg *victoriametricsv1beta1
 	toYaml("stream_parse", cfg.StreamParse)
 	toYaml("disable_compression", cfg.DisableCompression)
 	toYaml("scrape_offset", cfg.ScrapeOffset)
+	toYaml("no_stale_markers", cfg.DisableStaleMarkers)
 	toYaml("disable_keep_alive", cfg.DisableKeepAlive)
 	toYaml("relabel_debug", cfg.RelabelDebug)
 	toYaml("metric_relabel_debug", cfg.MetricRelabelDebug)

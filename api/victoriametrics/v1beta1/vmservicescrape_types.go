@@ -193,6 +193,8 @@ type VMScrapeParams struct {
 	// +optional
 	DisableKeepAlive *bool `json:"disable_keep_alive,omitempty"`
 	// +optional
+	DisableStaleMarkers *bool `json:"no_stale_markers,omitempty"`
+	// +optional
 	StreamParse *bool `json:"stream_parse,omitempty"`
 	// +optional
 	ScrapeAlignInterval *string `json:"scrape_align_interval,omitempty"`

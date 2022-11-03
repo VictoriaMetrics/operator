@@ -143,7 +143,7 @@ func generateProbeConfig(
 		}
 
 		selectedNamespaces := getNamespacesFromNamespaceSelector(&cr.Spec.Targets.Ingress.NamespaceSelector, cr.Namespace, ignoreNamespaceSelectors)
-		cfg = append(cfg, generateK8SSDConfig(selectedNamespaces, apiserverConfig, ssCache, kubernetesSDRoleIngress))
+		cfg = append(cfg, generateK8SSDConfig(selectedNamespaces, apiserverConfig, ssCache, kubernetesSDRoleIngress, nil))
 
 		// Relabelings for ingress SD.
 		relabelings = append(relabelings, []yaml.MapSlice{

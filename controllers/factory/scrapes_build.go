@@ -293,7 +293,7 @@ func generatePodScrapeConfig(
 	cfg = honorTimestamps(cfg, ep.HonorTimestamps, overrideHonorTimestamps)
 
 	selectedNamespaces := getNamespacesFromNamespaceSelector(&m.Spec.NamespaceSelector, m.Namespace, ignoreNamespaceSelectors)
-	cfg = append(cfg, generatePodK8SSDConfig(selectedNamespaces, m.Spec.Selector, apiserverConfig, ssCache, kubernetesSDRolePod))
+	cfg = append(cfg, generatePodK8SSDConfig(selectedNamespaces, m.Spec.Selector, apiserverConfig, ssCache, kubernetesSDRolePod, &ep.AttachMetadata))
 
 	var scrapeInterval string
 	if ep.ScrapeInterval != "" {
@@ -519,6 +519,24 @@ func generatePodScrapeConfig(
 	return cfg
 }
 
+func addAttachMetadata(dst yaml.MapSlice, am *victoriametricsv1beta1.AttachMetadata) yaml.MapSlice {
+	if am == nil {
+		return dst
+	}
+	if am.Node != nil && *am.Node {
+		dst = append(dst, yaml.MapItem{
+			Key: "attach_metadata",
+			Value: yaml.MapSlice{
+				yaml.MapItem{
+					Key:   "node",
+					Value: "true",
+				},
+			},
+		})
+	}
+	return dst
+}
+
 func generateServiceScrapeConfig(
 	cr *victoriametricsv1beta1.VMAgent,
 	m *victoriametricsv1beta1.VMServiceScrape,
@@ -549,7 +567,7 @@ func generateServiceScrapeConfig(
 	cfg = honorTimestamps(cfg, ep.HonorTimestamps, overrideHonorTimestamps)
 
 	selectedNamespaces := getNamespacesFromNamespaceSelector(&m.Spec.NamespaceSelector, m.Namespace, ignoreNamespaceSelectors)
-	cfg = append(cfg, generateK8SSDConfig(selectedNamespaces, apiserverConfig, ssCache, m.Spec.DiscoveryRole))
+	cfg = append(cfg, generateK8SSDConfig(selectedNamespaces, apiserverConfig, ssCache, m.Spec.DiscoveryRole, &ep.AttachMetadata))
 
 	var scrapeInterval string
 	if ep.ScrapeInterval != "" {
@@ -880,7 +898,7 @@ func generateNodeScrapeConfig(
 	}
 	cfg = honorTimestamps(cfg, nodeSpec.HonorTimestamps, overrideHonorTimestamps)
 
-	cfg = append(cfg, generateK8SSDConfig(nil, apiserverConfig, ssCache, kubernetesSDRoleNode))
+	cfg = append(cfg, generateK8SSDConfig(nil, apiserverConfig, ssCache, kubernetesSDRoleNode, nil))
 
 	var scrapeInterval string
 	if nodeSpec.ScrapeInterval != "" {
@@ -1180,9 +1198,9 @@ func combineSelectorStr(kvs map[string]string) string {
 	return strings.Join(kvsSlice, ",")
 }
 
-func generatePodK8SSDConfig(namespaces []string, labelSelector metav1.LabelSelector, apiserverConfig *victoriametricsv1beta1.APIServerConfig, ssCache *scrapesSecretsCache, role string) yaml.MapItem {
+func generatePodK8SSDConfig(namespaces []string, labelSelector metav1.LabelSelector, apiserverConfig *victoriametricsv1beta1.APIServerConfig, ssCache *scrapesSecretsCache, role string, am *victoriametricsv1beta1.AttachMetadata) yaml.MapItem {
 
-	cfg := generateK8SSDConfig(namespaces, apiserverConfig, ssCache, role)
+	cfg := generateK8SSDConfig(namespaces, apiserverConfig, ssCache, role, am)
 
 	if len(labelSelector.MatchLabels) != 0 {
 		k8sSDs, flag := cfg.Value.([]yaml.MapSlice)
@@ -1216,14 +1234,17 @@ func generatePodK8SSDConfig(namespaces []string, labelSelector metav1.LabelSelec
 	return cfg
 }
 
-func generateK8SSDConfig(namespaces []string, apiserverConfig *victoriametricsv1beta1.APIServerConfig, ssCache *scrapesSecretsCache, role string) yaml.MapItem {
+func generateK8SSDConfig(namespaces []string, apiserverConfig *victoriametricsv1beta1.APIServerConfig, ssCache *scrapesSecretsCache, role string, am *victoriametricsv1beta1.AttachMetadata) yaml.MapItem {
 	k8sSDConfig := yaml.MapSlice{
 		{
 			Key:   "role",
 			Value: role,
 		},
 	}
-
+	switch role {
+	case kubernetesSDRoleEndpoint, kubernetesSDRoleEndpointSlices, kubernetesSDRolePod:
+		k8sSDConfig = addAttachMetadata(k8sSDConfig, am)
+	}
 	if len(namespaces) != 0 {
 		k8sSDConfig = append(k8sSDConfig, yaml.MapItem{
 			Key: "namespaces",

@@ -179,6 +179,17 @@ type Endpoint struct {
 	// VMScrapeParams defines VictoriaMetrics specific scrape parametrs
 	// +optional
 	VMScrapeParams *VMScrapeParams `json:"vm_scrape_params,omitempty"`
+	// AttachMetadata configures metadata attaching from service discovery
+	// +optional
+	AttachMetadata AttachMetadata `json:"attach_metadata,omitempty"`
+}
+
+// AttachMetadata configures metadata attachment
+type AttachMetadata struct {
+	// Node instructs vmagent to add node specific metadata from service discovery
+	// Valid for roles: pod, endpoints, endpointslice.
+	// +optional
+	Node *bool `json:"node,omitempty"`
 }
 
 // VMScrapeParams defines scrape target configuration that compatible only with VictoriaMetrics scrapers

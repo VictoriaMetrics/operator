@@ -145,6 +145,9 @@ func Test_generateServiceScrapeConfig(t *testing.T) {
 					},
 				},
 				ep: victoriametricsv1beta1.Endpoint{
+					AttachMetadata: victoriametricsv1beta1.AttachMetadata{
+						Node: pointer.Bool(true),
+					},
 					Port: "8080",
 					TLSConfig: &victoriametricsv1beta1.TLSConfig{
 						Cert: victoriametricsv1beta1.SecretOrConfigMap{},
@@ -171,6 +174,8 @@ func Test_generateServiceScrapeConfig(t *testing.T) {
 honor_labels: false
 kubernetes_sd_configs:
 - role: endpoints
+  attach_metadata:
+    node: "true"
   namespaces:
     names:
     - default
@@ -559,6 +564,9 @@ relabel_configs:
 					},
 				},
 				ep: victoriametricsv1beta1.Endpoint{
+					AttachMetadata: victoriametricsv1beta1.AttachMetadata{
+						Node: pointer.Bool(true),
+					},
 					Port: "8080",
 					TLSConfig: &victoriametricsv1beta1.TLSConfig{
 						Cert: victoriametricsv1beta1.SecretOrConfigMap{},
@@ -1281,6 +1289,9 @@ func Test_generatePodScrapeConfig(t *testing.T) {
 				ep: victoriametricsv1beta1.PodMetricsEndpoint{
 					Path: "/metric",
 					Port: "web",
+					AttachMetadata: victoriametricsv1beta1.AttachMetadata{
+						Node: pointer.Bool(true),
+					},
 				},
 				ssCache: &scrapesSecretsCache{},
 			},
@@ -1288,6 +1299,8 @@ func Test_generatePodScrapeConfig(t *testing.T) {
 honor_labels: false
 kubernetes_sd_configs:
 - role: pod
+  attach_metadata:
+    node: "true"
   namespaces:
     names:
     - default

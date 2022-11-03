@@ -137,6 +137,9 @@ type PodMetricsEndpoint struct {
 	// VMScrapeParams defines VictoriaMetrics specific scrape parametrs
 	// +optional
 	VMScrapeParams *VMScrapeParams `json:"vm_scrape_params,omitempty"`
+	// AttachMetadata configures metadata attaching from service discovery
+	// +optional
+	AttachMetadata AttachMetadata `json:"attach_metadata,omitempty"`
 }
 
 // ArbitraryFSAccessThroughSMsConfig enables users to configure, whether

@@ -34,6 +34,10 @@ spec:
           spec:
             description: VMAlertSpec defines the desired state of VMAlert
             properties:
+              '-':
+                description: ParsingError contents error with context if operator
+                  was failed to parse json object from kubernetes api server
+                type: string
               affinity:
                 description: Affinity If specified, the pod's scheduling constraints.
                 type: object

@@ -78,6 +78,10 @@ func (r *VMAlertReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, nil
 	}
 
+	if instance.Spec.ParsingError != "" {
+		return handleParsingError(instance.Spec.ParsingError, instance)
+	}
+
 	RegisterObject(instance.Name, instance.Namespace, "vmalert")
 
 	var needToRequeue bool

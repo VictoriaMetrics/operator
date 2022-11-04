@@ -1,6 +1,7 @@
 package v1beta1
 
 import (
+	"fmt"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -27,7 +28,9 @@ func (r *VMSingle) sanityCheck() error {
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (r *VMSingle) ValidateCreate() error {
-	vmsinglelog.Info("validate create", "name", r.Name)
+	if r.Spec.ParsingError != "" {
+		return fmt.Errorf(r.Spec.ParsingError)
+	}
 	if mustSkipValidation(r) {
 		return nil
 	}
@@ -39,7 +42,9 @@ func (r *VMSingle) ValidateCreate() error {
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
 func (r *VMSingle) ValidateUpdate(old runtime.Object) error {
-	vmsinglelog.Info("validate update", "name", r.Name)
+	if r.Spec.ParsingError != "" {
+		return fmt.Errorf(r.Spec.ParsingError)
+	}
 	if mustSkipValidation(r) {
 		return nil
 	}

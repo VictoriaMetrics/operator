@@ -47,8 +47,9 @@ func (r *VMAlert) sanityCheck() error {
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (r *VMAlert) ValidateCreate() error {
-	vmalertlog.Info("validate create", "name", r.Name)
-
+	if r.Spec.ParsingError != "" {
+		return fmt.Errorf(r.Spec.ParsingError)
+	}
 	if mustSkipValidation(r) {
 		return nil
 	}
@@ -61,8 +62,9 @@ func (r *VMAlert) ValidateCreate() error {
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
 func (r *VMAlert) ValidateUpdate(old runtime.Object) error {
-	vmalertlog.Info("validate update", "name", r.Name)
-
+	if r.Spec.ParsingError != "" {
+		return fmt.Errorf(r.Spec.ParsingError)
+	}
 	if mustSkipValidation(r) {
 		return nil
 	}
@@ -74,7 +76,6 @@ func (r *VMAlert) ValidateUpdate(old runtime.Object) error {
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
 func (r *VMAlert) ValidateDelete() error {
-
 	// no-op
 	return nil
 }

@@ -1,6 +1,7 @@
 package v1beta1
 
 import (
+	"encoding/json"
 	"fmt"
 	"path"
 	"strings"
@@ -41,6 +42,8 @@ type VMAlertmanager struct {
 // https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
 // +k8s:openapi-gen=true
 type VMAlertmanagerSpec struct {
+	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
+	ParsingError string `json:"-,omitempty" yaml:"-,omitempty"`
 	// PodMetadata configures Labels and Annotations which are propagated to the alertmanager pods.
 	// +optional
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
@@ -263,6 +266,16 @@ type VMAlertmanagerSpec struct {
 	ReadinessGates []v1.PodReadinessGate `json:"readinessGates,omitempty"`
 	// ClaimTemplates allows adding additional VolumeClaimTemplates for StatefulSet
 	ClaimTemplates []v1.PersistentVolumeClaim `json:"claimTemplates,omitempty"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler interface
+func (cr *VMAlertmanagerSpec) UnmarshalJSON(src []byte) error {
+	type pcr VMAlertmanagerSpec
+	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
+		cr.ParsingError = fmt.Sprintf("cannot parse vmalertmanager spec: %s, err: %s", string(src), err)
+		return nil
+	}
+	return nil
 }
 
 // VMAlertmanagerList is a list of Alertmanagers.

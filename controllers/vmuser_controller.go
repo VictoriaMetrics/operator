@@ -212,6 +212,9 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		return ctrl.Result{}, err
 	}
 	for _, vmauth := range vmauthes.Items {
+		if !vmauth.DeletionTimestamp.IsZero() || vmauth.Spec.ParsingError != "" {
+			continue
+		}
 		// reconcile users for given vmauth.
 		currentVMAuth := &vmauth
 		l = l.WithValues("vmauth", vmauth.Name)

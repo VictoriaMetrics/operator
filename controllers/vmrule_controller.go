@@ -76,7 +76,7 @@ func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	}
 
 	for _, vmalert := range alertMngs.Items {
-		if vmalert.DeletionTimestamp != nil {
+		if vmalert.DeletionTimestamp != nil || vmalert.Spec.ParsingError != "" {
 			continue
 		}
 		reqLogger.WithValues("vmalert", vmalert.Name)

@@ -47,6 +47,10 @@ spec:
           description: 'Specification of the desired behavior of the VMAlertmanager
             cluster. More info: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#spec-and-status'
           properties:
+            '-':
+              description: ParsingError contents error with context if operator was
+                failed to parse json object from kubernetes api server
+              type: string
             additionalPeers:
               description: AdditionalPeers allows injecting a set of additional Alertmanagers
                 to peer with to form a highly available cluster.

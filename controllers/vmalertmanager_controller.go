@@ -73,6 +73,11 @@ func (r *VMAlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		DeregisterObject(instance.Name, instance.Namespace, "vmalertmanager")
 		return ctrl.Result{}, nil
 	}
+
+	if instance.Spec.ParsingError != "" {
+		return handleParsingError(instance.Spec.ParsingError, instance)
+	}
+
 	if err := finalize.AddFinalizer(ctx, r.Client, instance); err != nil {
 		return ctrl.Result{}, err
 	}

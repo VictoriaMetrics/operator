@@ -74,7 +74,6 @@ func (cr *VMUser) sanityCheck() error {
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (cr *VMUser) ValidateCreate() error {
-	vmuserlog.Info("validate create", "name", cr.Name)
 	if mustSkipValidation(cr) {
 		return nil
 	}
@@ -86,7 +85,6 @@ func (cr *VMUser) ValidateCreate() error {
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
 func (cr *VMUser) ValidateUpdate(old runtime.Object) error {
-	vmuserlog.Info("validate update", "name", cr.Name)
 	if mustSkipValidation(cr) {
 		return nil
 	}
@@ -98,7 +96,5 @@ func (cr *VMUser) ValidateUpdate(old runtime.Object) error {
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
 func (r *VMUser) ValidateDelete() error {
-	vmuserlog.Info("validate delete", "name", r.Name)
-
 	return nil
 }

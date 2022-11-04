@@ -60,7 +60,7 @@ func (r *VMStaticScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	reqLogger.Info("found vmagent objects ", "len: ", len(vmAgentInstances.Items))
 
 	for _, vmagent := range vmAgentInstances.Items {
-		if !vmagent.DeletionTimestamp.IsZero() {
+		if !vmagent.DeletionTimestamp.IsZero() || vmagent.Spec.ParsingError != "" {
 			continue
 		}
 		reqLogger = reqLogger.WithValues("vmagent", vmagent.Name)

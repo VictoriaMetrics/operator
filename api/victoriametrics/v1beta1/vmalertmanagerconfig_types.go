@@ -43,6 +43,8 @@ type VMAlertmanagerConfigSpec struct {
 	// See https://prometheus.io/docs/alerting/latest/configuration/#mute_time_interval
 	// +optional
 	MutTimeIntervals []MuteTimeInterval `json:"mute_time_intervals,omitempty"`
+	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
+	ParsingError string `json:"-,omitempty" yaml:"-,omitempty"`
 }
 
 // MuteTimeInterval for alerts
@@ -174,10 +176,12 @@ func parseNestedRoutes(src *Route) error {
 func (cr *VMAlertmanagerConfig) UnmarshalJSON(src []byte) error {
 	type amcfg VMAlertmanagerConfig
 	if err := json.Unmarshal(src, (*amcfg)(cr)); err != nil {
-		return err
+		cr.Spec.ParsingError = fmt.Sprintf("cannot parse alertmanager config: %s, err: %s", string(src), err)
+		return nil
 	}
 	if err := parseNestedRoutes(cr.Spec.Route); err != nil {
-		return fmt.Errorf("cannot parse routes for alertmanager config: %s at namespace: %s, err: %w", cr.Name, cr.Namespace, err)
+		cr.Spec.ParsingError = fmt.Sprintf("cannot parse routes for alertmanager config: %s at namespace: %s, err: %s", cr.Name, cr.Namespace, err)
+		return nil
 	}
 	return nil
 }

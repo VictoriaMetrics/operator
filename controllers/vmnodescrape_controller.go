@@ -77,7 +77,7 @@ func (r *VMNodeScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	reqLogger.Info("found vmagent objects ", "vmagents count: ", len(vmAgentInstances.Items))
 
 	for _, vmagent := range vmAgentInstances.Items {
-		if vmagent.DeletionTimestamp != nil {
+		if !vmagent.DeletionTimestamp.IsZero() || vmagent.Spec.ParsingError != "" {
 			continue
 		}
 		reqLogger = reqLogger.WithValues("vmagent", vmagent.Name)

@@ -71,6 +71,9 @@ func (r *VMAuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		DeregisterObject(instance.Name, instance.Namespace, "vmauth")
 		return ctrl.Result{}, nil
 	}
+	if instance.Spec.ParsingError != "" {
+		return handleParsingError(instance.Spec.ParsingError, &instance)
+	}
 
 	RegisterObject(instance.Name, instance.Namespace, "vmauth")
 

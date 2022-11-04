@@ -71,6 +71,9 @@ func (r *VMSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		DeregisterObject(instance.Name, instance.Namespace, "vmsingle")
 		return ctrl.Result{}, nil
 	}
+	if instance.Spec.ParsingError != "" {
+		return handleParsingError(instance.Spec.ParsingError, instance)
+	}
 	RegisterObject(instance.Name, instance.Namespace, "vmsingle")
 	if err := finalize.AddFinalizer(ctx, r.Client, instance); err != nil {
 		return ctrl.Result{}, err

@@ -74,7 +74,7 @@ func (r *VMProbeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	reqLogger.Info("found vmagent objects ", "vmagents count: ", len(vmAgentInstances.Items))
 
 	for _, vmagent := range vmAgentInstances.Items {
-		if vmagent.DeletionTimestamp != nil {
+		if !vmagent.DeletionTimestamp.IsZero() || vmagent.Spec.ParsingError != "" {
 			continue
 		}
 		currentVMagent := &vmagent

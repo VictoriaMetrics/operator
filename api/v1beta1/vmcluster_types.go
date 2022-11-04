@@ -49,7 +49,7 @@ type VMClusterSpec struct {
 	PodSecurityPolicyName string `json:"podSecurityPolicyName,omitempty"`
 
 	// ServiceAccountName is the name of the ServiceAccount to use to run the
-	// VMSelect Pods.
+	// VMSelect, VMStorage and VMInsert Pods.
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 

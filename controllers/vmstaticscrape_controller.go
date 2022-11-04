@@ -34,7 +34,7 @@ func (r *VMStaticScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		// fast path, rate limited
 		return ctrl.Result{}, nil
 	}
-	reqLogger := r.Log.WithValues("vmservicescrape", req.NamespacedName)
+	reqLogger := r.Log.WithValues("vmstaticscrape", req.NamespacedName)
 	reqLogger.Info("Reconciling VMStaticScrape")
 	// Fetch the VMServiceScrape instance
 	instance := &victoriametricsv1beta1.VMStaticScrape{}

@@ -34,6 +34,10 @@ spec:
           spec:
             description: VMAlertmanagerConfigSpec defines configuration for VMAlertmanagerConfig
             properties:
+              '-':
+                description: ParsingError contents error with context if operator
+                  was failed to parse json object from kubernetes api server
+                type: string
               inhibit_rules:
                 description: InhibitRules will only apply for alerts matching the
                   resource's namespace.

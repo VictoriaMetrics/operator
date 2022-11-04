@@ -1,6 +1,7 @@
 package v1beta1
 
 import (
+	"fmt"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -26,7 +27,9 @@ func (r *VMAlertmanager) sanityCheck() error {
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (r *VMAlertmanager) ValidateCreate() error {
-	vmalertmanagerlog.Info("validate create", "name", r.Name)
+	if r.Spec.ParsingError != "" {
+		return fmt.Errorf(r.Spec.ParsingError)
+	}
 	if mustSkipValidation(r) {
 		return nil
 	}
@@ -38,7 +41,9 @@ func (r *VMAlertmanager) ValidateCreate() error {
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
 func (r *VMAlertmanager) ValidateUpdate(old runtime.Object) error {
-	vmalertmanagerlog.Info("validate update", "name", r.Name)
+	if r.Spec.ParsingError != "" {
+		return fmt.Errorf(r.Spec.ParsingError)
+	}
 	if mustSkipValidation(r) {
 		return nil
 	}
@@ -50,7 +55,6 @@ func (r *VMAlertmanager) ValidateUpdate(old runtime.Object) error {
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
 func (r *VMAlertmanager) ValidateDelete() error {
-
 	// no-op
 	return nil
 }

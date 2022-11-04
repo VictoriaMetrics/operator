@@ -1,6 +1,7 @@
 package v1beta1
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -13,7 +14,8 @@ import (
 
 // VMAuthSpec defines the desired state of VMAuth
 type VMAuthSpec struct {
-
+	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
+	ParsingError string `json:"-,omitempty" yaml:"-,omitempty"`
 	// PodMetadata configures Labels and Annotations which are propagated to the VMAuth pods.
 	// +optional
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
@@ -176,6 +178,16 @@ type VMAuthSpec struct {
 	TerminationGracePeriodSeconds *int64 `json:"terminationGracePeriodSeconds,omitempty"`
 	// ReadinessGates defines pod readiness gates
 	ReadinessGates []v1.PodReadinessGate `json:"readinessGates,omitempty"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler interface
+func (cr *VMAuthSpec) UnmarshalJSON(src []byte) error {
+	type pcr VMAuthSpec
+	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
+		cr.ParsingError = fmt.Sprintf("cannot parse vmauth spec: %s, err: %s", string(src), err)
+		return nil
+	}
+	return nil
 }
 
 // EmbeddedIngress describes ingress configuration options.

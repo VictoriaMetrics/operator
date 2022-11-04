@@ -54,6 +54,10 @@ spec:
         spec:
           description: VMClusterSpec defines the desired state of VMCluster
           properties:
+            '-':
+              description: ParsingError contents error with context if operator was
+                failed to parse json object from kubernetes api server
+              type: string
             clusterVersion:
               description: ClusterVersion defines default images tag for all components.
                 it can be overwritten with component specific image.tag value.

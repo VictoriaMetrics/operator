@@ -85,6 +85,11 @@ func (r *VMAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		DeregisterObject(instance.Name, instance.Namespace, "vmagent")
 		return ctrl.Result{}, nil
 	}
+
+	if instance.Spec.ParsingError != "" {
+		return handleParsingError(instance.Spec.ParsingError, instance)
+	}
+
 	RegisterObject(instance.Name, instance.Namespace, "vmagent")
 	if err := finalize.AddFinalizer(ctx, r.Client, instance); err != nil {
 		return ctrl.Result{}, err

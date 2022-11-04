@@ -74,7 +74,7 @@ func (r *VMServiceScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	}
 
 	for _, vmagent := range vmAgentInstances.Items {
-		if vmagent.DeletionTimestamp != nil {
+		if !vmagent.DeletionTimestamp.IsZero() || vmagent.Spec.ParsingError != "" {
 			continue
 		}
 		reqLogger = reqLogger.WithValues("vmagent", vmagent.Name)

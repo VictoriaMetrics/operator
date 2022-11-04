@@ -35,6 +35,10 @@ spec:
         spec:
           description: VMAgentSpec defines the desired state of VMAgent
           properties:
+            '-':
+              description: ParsingError contents error with context if operator was
+                failed to parse json object from kubernetes api server
+              type: string
             aPIServerConfig:
               description: APIServerConfig allows specifying a host and auth methods
                 to access apiserver. If left empty, VMAgent is assumed to run inside

@@ -591,6 +591,11 @@ func buildAlertmanagerConfigWithCRDs(ctx context.Context, rclient client.Client,
 			if !item.DeletionTimestamp.IsZero() {
 				continue
 			}
+			if item.Spec.ParsingError != "" {
+				badCfgCount++
+				l.Error(fmt.Errorf(item.Spec.ParsingError), "parsing failed for alertmanager config", "objectName", item.Name)
+				continue
+			}
 			if err := item.Validate(); err != nil {
 				l.Error(err, "validation failed for alertmanager config", "objectName", item.Name)
 				badCfgCount++

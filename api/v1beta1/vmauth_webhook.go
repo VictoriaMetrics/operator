@@ -39,6 +39,7 @@ func (r *VMAuth) SetupWebhookWithManager(mgr ctrl.Manager) error {
 var _ webhook.Validator = &VMAuth{}
 
 func (cr *VMAuth) sanityCheck() error {
+
 	if cr.Spec.Ingress != nil {
 		// check ingress
 		ing := cr.Spec.Ingress
@@ -50,24 +51,28 @@ func (cr *VMAuth) sanityCheck() error {
 }
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (cr *VMAuth) ValidateCreate() error {
-	vmauthlog.Info("validate create", "name", cr.Name)
-	if mustSkipValidation(cr) {
+func (r *VMAuth) ValidateCreate() error {
+	if r.Spec.ParsingError != "" {
+		return fmt.Errorf(r.Spec.ParsingError)
+	}
+	if mustSkipValidation(r) {
 		return nil
 	}
-	if err := cr.sanityCheck(); err != nil {
+	if err := r.sanityCheck(); err != nil {
 		return err
 	}
 	return nil
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (cr *VMAuth) ValidateUpdate(old runtime.Object) error {
-	vmauthlog.Info("validate update", "name", cr.Name)
-	if mustSkipValidation(cr) {
+func (r *VMAuth) ValidateUpdate(old runtime.Object) error {
+	if r.Spec.ParsingError != "" {
+		return fmt.Errorf(r.Spec.ParsingError)
+	}
+	if mustSkipValidation(r) {
 		return nil
 	}
-	if err := cr.sanityCheck(); err != nil {
+	if err := r.sanityCheck(); err != nil {
 		return err
 	}
 	return nil
@@ -75,7 +80,5 @@ func (cr *VMAuth) ValidateUpdate(old runtime.Object) error {
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
 func (r *VMAuth) ValidateDelete() error {
-	vmauthlog.Info("validate delete", "name", r.Name)
-
 	return nil
 }

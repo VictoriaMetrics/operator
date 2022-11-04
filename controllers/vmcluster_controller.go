@@ -56,6 +56,9 @@ func (r *VMClusterReconciler) Reconcile(ctx context.Context, request ctrl.Reques
 		DeregisterObject(instance.Name, instance.Namespace, "vmcluster")
 		return ctrl.Result{}, nil
 	}
+	if instance.Spec.ParsingError != "" {
+		return handleParsingError(instance.Spec.ParsingError, instance)
+	}
 
 	lastAppliedClusterSpec, err := instance.GetLastAppliedSpec()
 	if err != nil {

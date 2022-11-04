@@ -57,6 +57,16 @@ spec:
                 description: PodMetricsEndpoint defines a scrapeable endpoint of a
                   Kubernetes Pod serving Prometheus metrics.
                 properties:
+                  attach_metadata:
+                    description: AttachMetadata configures metadata attaching from
+                      service discovery
+                    properties:
+                      node:
+                        description: 'Node instructs vmagent to add node specific
+                          metadata from service discovery Valid for roles: pod, endpoints,
+                          endpointslice.'
+                        type: boolean
+                    type: object
                   authorization:
                     description: Authorization with http header Authorization
                     properties:
@@ -560,6 +570,8 @@ spec:
                           type: string
                         type: array
                       metric_relabel_debug:
+                        type: boolean
+                      no_stale_markers:
                         type: boolean
                       proxy_client_config:
                         description: ProxyClientConfig configures proxy auth settings

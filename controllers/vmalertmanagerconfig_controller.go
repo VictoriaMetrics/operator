@@ -18,7 +18,6 @@ package controllers
 
 import (
 	"context"
-
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
@@ -72,10 +71,10 @@ func (r *VMAlertmanagerConfigReconciler) Reconcile(ctx context.Context, req ctrl
 	l.Info("listed alertmanagers", "count", len(vmams.Items))
 	for _, item := range vmams.Items {
 		am := &item
-		l := l.WithValues("alertmanager", am.Name)
-		if !am.DeletionTimestamp.IsZero() {
+		if !am.DeletionTimestamp.IsZero() || am.Spec.ParsingError != "" {
 			continue
 		}
+		l := l.WithValues("alertmanager", am.Name)
 		ismatch, err := isSelectorsMatches(&instance, am, am.Spec.ConfigNamespaceSelector, am.Spec.ConfigSelector)
 		if err != nil {
 			l.Error(err, "cannot match alertmanager against selector, probably bug")

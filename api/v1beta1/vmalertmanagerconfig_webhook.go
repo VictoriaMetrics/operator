@@ -46,23 +46,33 @@ var _ webhook.Validator = &VMAlertmanagerConfig{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (r *VMAlertmanagerConfig) ValidateCreate() error {
-	vmalertmanagerconfiglog.Info("validate create", "name", r.Name)
-
+	if r.Spec.ParsingError != "" {
+		return fmt.Errorf(r.Spec.ParsingError)
+	}
+	if mustSkipValidation(r) {
+		return nil
+	}
+	if err := r.Validate(); err != nil {
+		return err
+	}
 	return nil
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
 func (r *VMAlertmanagerConfig) ValidateUpdate(old runtime.Object) error {
-	vmalertmanagerconfiglog.Info("validate update", "name", r.Name)
-
-	// TODO(user): fill in your validation logic upon object update.
+	if r.Spec.ParsingError != "" {
+		return fmt.Errorf(r.Spec.ParsingError)
+	}
+	if mustSkipValidation(r) {
+		return nil
+	}
+	if err := r.Validate(); err != nil {
+		return err
+	}
 	return nil
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
 func (r *VMAlertmanagerConfig) ValidateDelete() error {
-	vmalertmanagerconfiglog.Info("validate delete", "name", r.Name)
-
-	// TODO(user): fill in your validation logic upon object deletion.
 	return nil
 }

@@ -76,12 +76,14 @@ func (cr *VMAgent) sanityCheck() error {
 }
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (cr *VMAgent) ValidateCreate() error {
-	vmagentlog.Info("validate create", "name", cr.Name)
-	if mustSkipValidation(cr) {
+func (r *VMAgent) ValidateCreate() error {
+	if r.Spec.ParsingError != "" {
+		return fmt.Errorf(r.Spec.ParsingError)
+	}
+	if mustSkipValidation(r) {
 		return nil
 	}
-	if err := cr.sanityCheck(); err != nil {
+	if err := r.sanityCheck(); err != nil {
 		return err
 	}
 
@@ -89,12 +91,14 @@ func (cr *VMAgent) ValidateCreate() error {
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (cr *VMAgent) ValidateUpdate(old runtime.Object) error {
-	vmagentlog.Info("validate update", "name", cr.Name)
-	if mustSkipValidation(cr) {
+func (r *VMAgent) ValidateUpdate(old runtime.Object) error {
+	if r.Spec.ParsingError != "" {
+		return fmt.Errorf(r.Spec.ParsingError)
+	}
+	if mustSkipValidation(r) {
 		return nil
 	}
-	if err := cr.sanityCheck(); err != nil {
+	if err := r.sanityCheck(); err != nil {
 		return err
 	}
 	return nil

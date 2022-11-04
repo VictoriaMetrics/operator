@@ -1,6 +1,7 @@
 package v1beta1
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -17,6 +18,8 @@ import (
 // +kubebuilder:printcolumn:name="ReplicaCount",type="integer",JSONPath=".spec.replicas",description="The desired replicas number of VMAgent"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 type VMAgentSpec struct {
+	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
+	ParsingError string `json:"-,omitempty" yaml:"-,omitempty"`
 	// PodMetadata configures Labels and Annotations which are propagated to the vmagent pods.
 	// +optional
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
@@ -375,6 +378,16 @@ type VMAgentSpec struct {
 	ReadinessGates []v1.PodReadinessGate `json:"readinessGates,omitempty"`
 	// ClaimTemplates allows adding additional VolumeClaimTemplates for VMAgent in StatefulMode
 	ClaimTemplates []v1.PersistentVolumeClaim `json:"claimTemplates,omitempty"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler interface
+func (cr *VMAgentSpec) UnmarshalJSON(src []byte) error {
+	type pcr VMAgentSpec
+	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
+		cr.ParsingError = fmt.Sprintf("cannot parse vmagent spec: %s, err: %s", string(src), err)
+		return nil
+	}
+	return nil
 }
 
 // VMAgentRemoteWriteSettings - defines global settings for all remoteWrite urls.

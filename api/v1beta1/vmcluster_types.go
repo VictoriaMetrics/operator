@@ -33,6 +33,8 @@ const (
 // VMClusterSpec defines the desired state of VMCluster
 // +k8s:openapi-gen=true
 type VMClusterSpec struct {
+	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
+	ParsingError string `json:"-,omitempty" yaml:"-,omitempty"`
 	// RetentionPeriod for the stored metrics
 	// Note VictoriaMetrics has data/ and indexdb/ folders
 	// metrics from data/ removed eventually as soon as partition leaves retention period
@@ -68,6 +70,16 @@ type VMClusterSpec struct {
 	VMInsert *VMInsert `json:"vminsert,omitempty"`
 	// +optional
 	VMStorage *VMStorage `json:"vmstorage,omitempty"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler interface
+func (cr *VMClusterSpec) UnmarshalJSON(src []byte) error {
+	type pcr VMClusterSpec
+	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
+		cr.ParsingError = fmt.Sprintf("cannot parse vmcluster spec: %s, err: %s", string(src), err)
+		return nil
+	}
+	return nil
 }
 
 // VMCluster is fast, cost-effective and scalable time-series database.

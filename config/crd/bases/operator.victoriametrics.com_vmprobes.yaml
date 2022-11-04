@@ -596,6 +596,8 @@ spec:
                     type: array
                   metric_relabel_debug:
                     type: boolean
+                  no_stale_markers:
+                    type: boolean
                   proxy_client_config:
                     description: ProxyClientConfig configures proxy auth settings
                       for scraping See feature description https://docs.victoriametrics.com/vmagent.html#scraping-targets-via-a-proxy

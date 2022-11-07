@@ -52,7 +52,9 @@ func CreateVMSingleStorage(ctx context.Context, cr *victoriametricsv1beta1.VMSin
 	if existPvc.Spec.Resources.String() != newPvc.Spec.Resources.String() {
 		l.Info("volume requests isn't same, update required")
 	}
+	newResources := newPvc.Spec.Resources.DeepCopy()
 	newPvc.Spec = existPvc.Spec
+	newPvc.Spec.Resources = *newResources
 	newPvc.Annotations = labels.Merge(existPvc.Annotations, newPvc.Annotations)
 	newPvc.Finalizers = victoriametricsv1beta1.MergeFinalizers(existPvc, victoriametricsv1beta1.FinalizerName)
 

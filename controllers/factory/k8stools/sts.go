@@ -186,29 +186,7 @@ func performRollingUpdateOnSts(ctx context.Context, wasRecreated bool, rclient c
 		if err != nil {
 			return err
 		}
-		err = waitForPodReady(ctx, rclient, ns, pod.Name, c, func(pod *corev1.Pod) error {
-			// its special hack
-			// we check first pod revision label after re-creation
-			// it must contain valid statefulset revision
-			// See more at https://github.com/VictoriaMetrics/operator/issues/344
-			updatedPodRev := pod.Labels[podRevisionLabel]
-			var newRev string
-			// cases:
-			// - sts was recreated
-			// - sts was recreated with different version
-			if sts.Status.UpdateRevision == "" || sts.Status.UpdateRevision != updatedPodRev {
-				newRev = updatedPodRev
-			}
-
-			if len(newRev) > 0 {
-				l.Info("updating stateful set revision from pod", "sts update", sts.Status.UpdateRevision, "pod rev", updatedPodRev)
-				sts.Status.UpdateRevision = updatedPodRev
-				if err := rclient.Status().Update(ctx, sts); err != nil {
-					return fmt.Errorf("cannot update sts pod revision: %w", err)
-				}
-			}
-			return nil
-		})
+		err = waitForPodReady(ctx, rclient, ns, pod.Name, c, nil)
 		if err != nil {
 			return err
 		}
@@ -216,6 +194,16 @@ func performRollingUpdateOnSts(ctx context.Context, wasRecreated bool, rclient c
 		time.Sleep(time.Second * 1)
 	}
 
+	err = rclient.Get(ctx, types.NamespacedName{Name: stsName, Namespace: ns}, sts)
+	if err != nil {
+		return err
+	}
+
+	sts.Status.CurrentRevision = sts.Status.UpdateRevision
+	err = rclient.Status().Update(ctx, sts)
+	if err != nil {
+		return fmt.Errorf("cannot update sts status: %w", err)
+	}
 	return nil
 
 }

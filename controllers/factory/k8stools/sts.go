@@ -191,6 +191,8 @@ func performRollingUpdateOnSts(ctx context.Context, wasRecreated bool, rclient c
 			// we check first pod revision label after re-creation
 			// it must contain valid statefulset revision
 			// See more at https://github.com/VictoriaMetrics/operator/issues/344
+			// It's needed for correct update restore process, when it was interrupted for some reason
+			// we have to check Current and Update revisions.
 			updatedPodRev := pod.Labels[podRevisionLabel]
 			var newRev string
 			// cases:
@@ -214,6 +216,13 @@ func performRollingUpdateOnSts(ctx context.Context, wasRecreated bool, rclient c
 		}
 		l.Info("pod was updated", "pod", pod.Name)
 		time.Sleep(time.Second * 1)
+	}
+	// another hack for correct update finish.
+	if sts.Status.UpdateRevision != sts.Status.CurrentRevision {
+		sts.Status.CurrentRevision = sts.Status.UpdateRevision
+		if err := rclient.Status().Update(ctx, sts); err != nil {
+			return fmt.Errorf("cannot update sts current revesion after sts updated finished, err: %w", err)
+		}
 	}
 
 	return nil

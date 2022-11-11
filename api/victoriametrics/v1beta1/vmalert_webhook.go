@@ -32,13 +32,13 @@ func (r *VMAlert) sanityCheck() error {
 	}
 
 	if r.Spec.Notifier != nil {
-		if r.Spec.Notifier.URL == "" {
-			return fmt.Errorf("spec.notifier.url cannot be empty")
+		if r.Spec.Notifier.URL == "" && r.Spec.Notifier.Selector == nil {
+			return fmt.Errorf("spec.notifier.url and spec.notifier.selector cannot be empty at the same time, provide at least one setting")
 		}
 	}
 	for idx, nt := range r.Spec.Notifiers {
-		if nt.URL == "" {
-			return fmt.Errorf("notifier.url at idx: %d cannot be empty", idx)
+		if nt.URL == "" && nt.Selector == nil {
+			return fmt.Errorf("notifier.url is empty and selector is not set, provide at least one for spec.notifiers at idx: %d", idx)
 		}
 	}
 

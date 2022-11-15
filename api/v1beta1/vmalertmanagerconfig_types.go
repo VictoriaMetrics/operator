@@ -155,21 +155,23 @@ type Route struct {
 	MuteTimeIntervals []string `json:"mute_time_intervals,omitempty"`
 }
 
-func parseNestedRoutes(src *Route) error {
+func parseNestedRoutes(src *Route) (*Route, error) {
 	if src == nil {
-		return nil
+		return nil, nil
 	}
+	newSrc := src.DeepCopy()
 	for _, nestedRoute := range src.RawRoutes {
 		var route Route
 		if err := json.Unmarshal(nestedRoute.Raw, &route); err != nil {
-			return fmt.Errorf("cannot pase json value: %s for nested route, err :%w", string(nestedRoute.Raw), err)
+			return nil, fmt.Errorf("cannot pase json value: %s for nested route, err :%w", string(nestedRoute.Raw), err)
 		}
-		if err := parseNestedRoutes(&route); err != nil {
-			return fmt.Errorf("failed to parse nested route: %s, err: %w", route.Receiver, err)
+		newRoute, err := parseNestedRoutes(&route)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse nested route: %s, err: %w", route.Receiver, err)
 		}
-		src.Routes = append(src.Routes, &route)
+		newSrc.Routes = append(newSrc.Routes, newRoute)
 	}
-	return nil
+	return newSrc, nil
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface
@@ -179,10 +181,12 @@ func (cr *VMAlertmanagerConfig) UnmarshalJSON(src []byte) error {
 		cr.Spec.ParsingError = fmt.Sprintf("cannot parse alertmanager config: %s, err: %s", string(src), err)
 		return nil
 	}
-	if err := parseNestedRoutes(cr.Spec.Route); err != nil {
+	route, err := parseNestedRoutes(cr.Spec.Route)
+	if err != nil {
 		cr.Spec.ParsingError = fmt.Sprintf("cannot parse routes for alertmanager config: %s at namespace: %s, err: %s", cr.Name, cr.Namespace, err)
 		return nil
 	}
+	cr.Spec.Route = route
 	return nil
 }
 

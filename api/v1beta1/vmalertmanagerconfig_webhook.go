@@ -34,7 +34,7 @@ func (r *VMAlertmanagerConfig) SetupWebhookWithManager(mgr ctrl.Manager) error {
 }
 
 func (amc *VMAlertmanagerConfig) Validate() error {
-	if err := parseNestedRoutes(amc.Spec.Route); err != nil {
+	if _, err := parseNestedRoutes(amc.Spec.Route); err != nil {
 		return fmt.Errorf("cannot parse nested route for alertmanager config err: %w", err)
 	}
 	return nil

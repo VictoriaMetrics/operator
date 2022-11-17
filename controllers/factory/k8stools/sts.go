@@ -163,6 +163,12 @@ func performRollingUpdateOnSts(ctx context.Context, wasRecreated bool, rclient c
 
 	if !updatedNeeded {
 		l.Info("update isn't needed")
+		if sts.Status.UpdateRevision != sts.Status.CurrentRevision {
+			sts.Status.CurrentRevision = sts.Status.UpdateRevision
+			if err := rclient.Status().Update(ctx, sts); err != nil {
+				return fmt.Errorf("cannot update sts current revesion after sts updated finished, err: %w", err)
+			}
+		}
 		return nil
 	}
 
@@ -218,8 +224,13 @@ func performRollingUpdateOnSts(ctx context.Context, wasRecreated bool, rclient c
 		time.Sleep(time.Second * 1)
 	}
 	// another hack for correct update finish.
-	if sts.Status.UpdateRevision != sts.Status.CurrentRevision {
-		sts.Status.CurrentRevision = sts.Status.UpdateRevision
+	updateRev := sts.Status.UpdateRevision
+	if err := rclient.Get(ctx, types.NamespacedName{Name: sts.Name, Namespace: sts.Namespace}, sts); err != nil {
+		return fmt.Errorf("cannot reload sts object for update field check: %w", err)
+	}
+	if updateRev != sts.Status.CurrentRevision {
+		sts.Status.CurrentRevision = updateRev
+		sts.Status.UpdateRevision = updateRev
 		if err := rclient.Status().Update(ctx, sts); err != nil {
 			return fmt.Errorf("cannot update sts current revesion after sts updated finished, err: %w", err)
 		}

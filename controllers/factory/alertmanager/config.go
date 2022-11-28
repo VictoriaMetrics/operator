@@ -59,7 +59,7 @@ OUTER:
 			}
 		}
 		for _, rule := range amcKey.Spec.InhibitRules {
-			baseYAMlCfg.InhibitRules = append(baseYAMlCfg.InhibitRules, buildInhibitRule(amcKey.Namespace, rule))
+			baseYAMlCfg.InhibitRules = append(baseYAMlCfg.InhibitRules, buildInhibitRule(amcKey.Namespace, rule, mustAddNamespaceMatcher))
 		}
 		mtis := buildMuteTimeInterval(amcKey)
 		if len(mtis) > 0 {
@@ -178,11 +178,13 @@ func buildRoute(cr *operatorv1beta1.VMAlertmanagerConfig, cfgRoute *operatorv1be
 	return r
 }
 
-func buildInhibitRule(namespace string, rule operatorv1beta1.InhibitRule) yaml.MapSlice {
+func buildInhibitRule(namespace string, rule operatorv1beta1.InhibitRule, mustAddNamespaceMatcher bool) yaml.MapSlice {
 	var r yaml.MapSlice
-	namespaceMatch := fmt.Sprintf("namespace = %q", namespace)
-	rule.SourceMatchers = append(rule.SourceMatchers, namespaceMatch)
-	rule.TargetMatchers = append(rule.TargetMatchers, namespaceMatch)
+	if mustAddNamespaceMatcher {
+		namespaceMatch := fmt.Sprintf("namespace = %q", namespace)
+		rule.SourceMatchers = append(rule.SourceMatchers, namespaceMatch)
+		rule.TargetMatchers = append(rule.TargetMatchers, namespaceMatch)
+	}
 	toYaml := func(key string, src []string) {
 		if len(src) > 0 {
 			r = append(r, yaml.MapItem{

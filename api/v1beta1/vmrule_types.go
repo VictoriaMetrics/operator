@@ -21,6 +21,10 @@ type RuleGroup struct {
 	Interval string `json:"interval,omitempty" yaml:"interval,omitempty"`
 	// Rules list of alert rules
 	Rules []Rule `json:"rules"`
+	// Limit the number of alerts an alerting rule and series a recording
+	// rule can produce
+	// +optional
+	Limit int `json:"limit,omitempty"`
 	// Concurrency defines how many rules execute at once.
 	// +optional
 	Concurrency int `json:"concurrency,omitempty" yaml:"concurrency,omitempty"`
@@ -47,6 +51,14 @@ type RuleGroup struct {
 	// possible values - prometheus,graphite
 	// +optional
 	Type string `json:"type,omitempty" yaml:"type,omitempty"`
+	// Headers contains optional HTTP headers added to each rule request
+	// Must be in form `header-name: value`
+	// For example:
+	//  headers:
+	//    - "CustomHeader: foo"
+	//    - "CustomHeader2: bar"
+	// +optional
+	Headers []string `json:"headers,omitempty"`
 }
 
 // Rule describes an alerting or recording rule.
@@ -61,6 +73,10 @@ type Rule struct {
 	// Expr is query, that will be evaluated at dataSource
 	// +optional
 	Expr string `json:"expr" yaml:"expr"`
+	// Debug enables logging for rule
+	// it useful for tracking
+	// +optional
+	Debug *bool `json:"debug,omitempty"`
 	// For evaluation interval in time.Duration format
 	// 30s, 1m, 1h  or nanoseconds
 	// +optional

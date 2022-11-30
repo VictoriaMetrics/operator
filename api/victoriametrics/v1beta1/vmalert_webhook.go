@@ -38,7 +38,7 @@ func (r *VMAlert) sanityCheck() error {
 	}
 	for idx, nt := range r.Spec.Notifiers {
 		if nt.URL == "" && nt.Selector == nil {
-			return fmt.Errorf("notifier.url is empty and selector is not set, provide at least one for spec.notifiers at idx: %d", idx)
+			return fmt.Errorf("notifier.url is empty and selector is not set, provide at least once for spec.notifiers at idx: %d", idx)
 		}
 	}
 

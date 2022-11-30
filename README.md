@@ -61,10 +61,7 @@ VictoriaMetrics provides [helm charts](https://github.com/VictoriaMetrics/helm-c
 ## Kubernetes' compatibility versions
 
 operator tested at kubernetes versions
-from 1.16 to 1.22
-
- For clusters version below 1.16 you must use legacy CRDs from [path](config/crd/legacy)
-  and disable CRD controller with flag: `--controller.disableCRDOwnership=true`
+from 1.16 to 1.25
 
 ## Troubleshooting
 

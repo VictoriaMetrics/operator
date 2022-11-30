@@ -2,7 +2,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.6.2
+    controller-gen.kubebuilder.io/version: v0.10.0
   name: vmalertmanagerconfigs.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -163,6 +163,7 @@ spec:
                             required:
                             - key
                             type: object
+                            x-kubernetes-map-type: atomic
                           auth_secret:
                             description: AuthSecret defines secrent name and key at
                               CRD namespace. It must contain the CRAM-MD5 secret.
@@ -183,6 +184,7 @@ spec:
                             required:
                             - key
                             type: object
+                            x-kubernetes-map-type: atomic
                           auth_username:
                             description: The username to use for authentication.
                             type: string
@@ -243,6 +245,7 @@ spec:
                                     required:
                                     - key
                                     type: object
+                                    x-kubernetes-map-type: atomic
                                   secret:
                                     description: Secret containing data to use for
                                       the targets.
@@ -264,6 +267,7 @@ spec:
                                     required:
                                     - key
                                     type: object
+                                    x-kubernetes-map-type: atomic
                                 type: object
                               caFile:
                                 description: Path to the CA cert in the container
@@ -293,6 +297,7 @@ spec:
                                     required:
                                     - key
                                     type: object
+                                    x-kubernetes-map-type: atomic
                                   secret:
                                     description: Secret containing data to use for
                                       the targets.
@@ -314,6 +319,7 @@ spec:
                                     required:
                                     - key
                                     type: object
+                                    x-kubernetes-map-type: atomic
                                 type: object
                               certFile:
                                 description: Path to the client cert file in the container
@@ -347,6 +353,7 @@ spec:
                                 required:
                                 - key
                                 type: object
+                                x-kubernetes-map-type: atomic
                               serverName:
                                 description: Used to verify the hostname for the targets.
                                 type: string
@@ -388,6 +395,7 @@ spec:
                             required:
                             - key
                             type: object
+                            x-kubernetes-map-type: atomic
                           apiURL:
                             description: The URL to send OpsGenie API requests to.
                             type: string
@@ -541,6 +549,7 @@ spec:
                             required:
                             - key
                             type: object
+                            x-kubernetes-map-type: atomic
                           send_resolved:
                             description: SendResolved controls notify about resolved
                               alerts.
@@ -567,6 +576,7 @@ spec:
                             required:
                             - key
                             type: object
+                            x-kubernetes-map-type: atomic
                           severity:
                             description: Severity of the incident.
                             type: string
@@ -639,6 +649,7 @@ spec:
                             required:
                             - key
                             type: object
+                            x-kubernetes-map-type: atomic
                           url:
                             description: A supplementary URL shown alongside the message.
                             type: string
@@ -667,6 +678,7 @@ spec:
                             required:
                             - key
                             type: object
+                            x-kubernetes-map-type: atomic
                         type: object
                       type: array
                     slack_configs:
@@ -742,6 +754,7 @@ spec:
                             required:
                             - key
                             type: object
+                            x-kubernetes-map-type: atomic
                           callback_id:
                             type: string
                           channel:
@@ -835,6 +848,7 @@ spec:
                             required:
                             - key
                             type: object
+                            x-kubernetes-map-type: atomic
                           chat_id:
                             description: ChatID is ID of the chat where to send the
                               messages.
@@ -891,6 +905,7 @@ spec:
                             required:
                             - key
                             type: object
+                            x-kubernetes-map-type: atomic
                           api_url:
                             description: The VictorOps API URL.
                             type: string
@@ -931,6 +946,7 @@ spec:
                                     required:
                                     - key
                                     type: object
+                                    x-kubernetes-map-type: atomic
                                   password_file:
                                     description: PasswordFile defines path to password
                                       file at disk
@@ -957,6 +973,7 @@ spec:
                                     required:
                                     - key
                                     type: object
+                                    x-kubernetes-map-type: atomic
                                 type: object
                               bearer_token_file:
                                 description: BearerTokenFile defines filename for
@@ -983,6 +1000,7 @@ spec:
                                 required:
                                 - key
                                 type: object
+                                x-kubernetes-map-type: atomic
                               proxyURL:
                                 description: Optional proxy URL.
                                 type: string
@@ -1013,6 +1031,7 @@ spec:
                                         required:
                                         - key
                                         type: object
+                                        x-kubernetes-map-type: atomic
                                       secret:
                                         description: Secret containing data to use
                                           for the targets.
@@ -1035,6 +1054,7 @@ spec:
                                         required:
                                         - key
                                         type: object
+                                        x-kubernetes-map-type: atomic
                                     type: object
                                   caFile:
                                     description: Path to the CA cert in the container
@@ -1064,6 +1084,7 @@ spec:
                                         required:
                                         - key
                                         type: object
+                                        x-kubernetes-map-type: atomic
                                       secret:
                                         description: Secret containing data to use
                                           for the targets.
@@ -1086,6 +1107,7 @@ spec:
                                         required:
                                         - key
                                         type: object
+                                        x-kubernetes-map-type: atomic
                                     type: object
                                   certFile:
                                     description: Path to the client cert file in the
@@ -1119,6 +1141,7 @@ spec:
                                     required:
                                     - key
                                     type: object
+                                    x-kubernetes-map-type: atomic
                                   serverName:
                                     description: Used to verify the hostname for the
                                       targets.
@@ -1191,6 +1214,7 @@ spec:
                             required:
                             - key
                             type: object
+                            x-kubernetes-map-type: atomic
                         type: object
                       type: array
                     wechat_configs:
@@ -1223,6 +1247,7 @@ spec:
                             required:
                             - key
                             type: object
+                            x-kubernetes-map-type: atomic
                           api_url:
                             description: The WeChat API URL.
                             type: string
@@ -1258,6 +1283,7 @@ spec:
                                     required:
                                     - key
                                     type: object
+                                    x-kubernetes-map-type: atomic
                                   password_file:
                                     description: PasswordFile defines path to password
                                       file at disk
@@ -1284,6 +1310,7 @@ spec:
                                     required:
                                     - key
                                     type: object
+                                    x-kubernetes-map-type: atomic
                                 type: object
                               bearer_token_file:
                                 description: BearerTokenFile defines filename for
@@ -1310,6 +1337,7 @@ spec:
                                 required:
                                 - key
                                 type: object
+                                x-kubernetes-map-type: atomic
                               proxyURL:
                                 description: Optional proxy URL.
                                 type: string
@@ -1340,6 +1368,7 @@ spec:
                                         required:
                                         - key
                                         type: object
+                                        x-kubernetes-map-type: atomic
                                       secret:
                                         description: Secret containing data to use
                                           for the targets.
@@ -1362,6 +1391,7 @@ spec:
                                         required:
                                         - key
                                         type: object
+                                        x-kubernetes-map-type: atomic
                                     type: object
                                   caFile:
                                     description: Path to the CA cert in the container
@@ -1391,6 +1421,7 @@ spec:
                                         required:
                                         - key
                                         type: object
+                                        x-kubernetes-map-type: atomic
                                       secret:
                                         description: Secret containing data to use
                                           for the targets.
@@ -1413,6 +1444,7 @@ spec:
                                         required:
                                         - key
                                         type: object
+                                        x-kubernetes-map-type: atomic
                                     type: object
                                   certFile:
                                     description: Path to the client cert file in the
@@ -1446,6 +1478,7 @@ spec:
                                     required:
                                     - key
                                     type: object
+                                    x-kubernetes-map-type: atomic
                                   serverName:
                                     description: Used to verify the hostname for the
                                       targets.

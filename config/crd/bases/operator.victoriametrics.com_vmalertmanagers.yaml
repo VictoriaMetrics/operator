@@ -2,7 +2,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.6.2
+    controller-gen.kubebuilder.io/version: v0.10.0
   name: vmalertmanagers.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -121,6 +121,7 @@ spec:
                           - kind
                           - name
                           type: object
+                          x-kubernetes-map-type: atomic
                         dataSourceRef:
                           description: 'Specifies the object from which to populate
                             the volume with data, if a non-empty volume is desired.
@@ -136,12 +137,12 @@ spec:
                             if one of them is empty and the other is non-empty. There
                             are two important differences between DataSource and DataSourceRef:
                             * While DataSource only allows two specific types of objects,
-                            DataSourceRef   allows any non-core object, as well as
-                            PersistentVolumeClaim objects. * While DataSource ignores
-                            disallowed values (dropping them), DataSourceRef   preserves
-                            all values, and generates an error if a disallowed value
-                            is   specified. (Alpha) Using this field requires the
-                            AnyVolumeDataSource feature gate to be enabled.'
+                            DataSourceRef allows any non-core object, as well as PersistentVolumeClaim
+                            objects. * While DataSource ignores disallowed values
+                            (dropping them), DataSourceRef preserves all values, and
+                            generates an error if a disallowed value is specified.
+                            (Alpha) Using this field requires the AnyVolumeDataSource
+                            feature gate to be enabled.'
                           properties:
                             apiGroup:
                               description: APIGroup is the group for the resource
@@ -159,6 +160,7 @@ spec:
                           - kind
                           - name
                           type: object
+                          x-kubernetes-map-type: atomic
                         resources:
                           description: 'Resources represents the minimum resources
                             the volume should have. If RecoverVolumeExpansionFailure
@@ -237,6 +239,7 @@ spec:
                                 contains only "value". The requirements are ANDed.
                               type: object
                           type: object
+                          x-kubernetes-map-type: atomic
                         storageClassName:
                           description: 'Name of the StorageClass required by the claim.
                             More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1'
@@ -356,11 +359,11 @@ spec:
                   type: string
                 type: array
               configNamespaceSelector:
-                description: ' ConfigNamespaceSelector defines namespace selector
-                  for VMAlertmanagerConfig. Works in combination with Selector. NamespaceSelector
+                description: ConfigNamespaceSelector defines namespace selector for
+                  VMAlertmanagerConfig. Works in combination with Selector. NamespaceSelector
                   nil - only objects at VMAlertmanager namespace. Selector nil - only
                   objects at NamespaceSelector namespaces. If both nil - behaviour
-                  controlled by selectAllByDefault'
+                  controlled by selectAllByDefault
                 properties:
                   matchExpressions:
                     description: matchExpressions is a list of label selector requirements.
@@ -403,6 +406,7 @@ spec:
                       are ANDed.
                     type: object
                 type: object
+                x-kubernetes-map-type: atomic
               configRawYaml:
                 description: ConfigRawYaml - raw configuration for alertmanager, it
                   helps it to start without secret. priority -> hardcoded ConfigRaw
@@ -465,6 +469,7 @@ spec:
                       are ANDed.
                     type: object
                 type: object
+                x-kubernetes-map-type: atomic
               containers:
                 description: Containers allows injecting additional containers or
                   patching existing containers. This is meant to allow adding an authentication
@@ -591,6 +596,7 @@ spec:
                         TODO: Add other useful fields. apiVersion, kind, uid?'
                       type: string
                   type: object
+                  x-kubernetes-map-type: atomic
                 type: array
               initContainers:
                 description: 'InitContainers allows adding initContainers to the pod
@@ -971,6 +977,7 @@ spec:
                             - kind
                             - name
                             type: object
+                            x-kubernetes-map-type: atomic
                           dataSourceRef:
                             description: 'Specifies the object from which to populate
                               the volume with data, if a non-empty volume is desired.
@@ -987,11 +994,11 @@ spec:
                               and the other is non-empty. There are two important
                               differences between DataSource and DataSourceRef: *
                               While DataSource only allows two specific types of objects,
-                              DataSourceRef   allows any non-core object, as well
-                              as PersistentVolumeClaim objects. * While DataSource
-                              ignores disallowed values (dropping them), DataSourceRef   preserves
+                              DataSourceRef allows any non-core object, as well as
+                              PersistentVolumeClaim objects. * While DataSource ignores
+                              disallowed values (dropping them), DataSourceRef preserves
                               all values, and generates an error if a disallowed value
-                              is   specified. (Alpha) Using this field requires the
+                              is specified. (Alpha) Using this field requires the
                               AnyVolumeDataSource feature gate to be enabled.'
                             properties:
                               apiGroup:
@@ -1010,6 +1017,7 @@ spec:
                             - kind
                             - name
                             type: object
+                            x-kubernetes-map-type: atomic
                           resources:
                             description: 'Resources represents the minimum resources
                               the volume should have. If RecoverVolumeExpansionFailure
@@ -1088,6 +1096,7 @@ spec:
                                   contains only "value". The requirements are ANDed.
                                 type: object
                             type: object
+                            x-kubernetes-map-type: atomic
                           storageClassName:
                             description: 'Name of the StorageClass required by the
                               claim. More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1'

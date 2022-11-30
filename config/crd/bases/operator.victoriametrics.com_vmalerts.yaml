@@ -2,7 +2,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.6.2
+    controller-gen.kubebuilder.io/version: v0.10.0
   name: vmalerts.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -96,6 +96,7 @@ spec:
                         required:
                         - key
                         type: object
+                        x-kubernetes-map-type: atomic
                       password_file:
                         description: PasswordFile defines path to password file at
                           disk
@@ -120,6 +121,7 @@ spec:
                         required:
                         - key
                         type: object
+                        x-kubernetes-map-type: atomic
                     type: object
                   bearerTokenFilePath:
                     type: string
@@ -141,6 +143,7 @@ spec:
                     required:
                     - key
                     type: object
+                    x-kubernetes-map-type: atomic
                   headers:
                     description: Headers allow configuring custom http headers Must
                       be in form of semicolon separated header with value e.g. headerName:headerValue
@@ -278,6 +281,7 @@ spec:
                         TODO: Add other useful fields. apiVersion, kind, uid?'
                       type: string
                   type: object
+                  x-kubernetes-map-type: atomic
                 type: array
               initContainers:
                 description: 'InitContainers allows adding initContainers to the pod
@@ -361,6 +365,7 @@ spec:
                         required:
                         - key
                         type: object
+                        x-kubernetes-map-type: atomic
                       password_file:
                         description: PasswordFile defines path to password file at
                           disk
@@ -385,6 +390,7 @@ spec:
                         required:
                         - key
                         type: object
+                        x-kubernetes-map-type: atomic
                     type: object
                   bearerTokenFilePath:
                     type: string
@@ -406,6 +412,7 @@ spec:
                     required:
                     - key
                     type: object
+                    x-kubernetes-map-type: atomic
                   headers:
                     description: Headers allow configuring custom http headers Must
                       be in form of semicolon separated header with value e.g. headerName:headerValue
@@ -466,6 +473,7 @@ spec:
                               only "value". The requirements are ANDed.
                             type: object
                         type: object
+                        x-kubernetes-map-type: atomic
                       namespaceSelector:
                         description: NamespaceSelector is a selector for selecting
                           either all namespaces or a list of namespaces.
@@ -508,6 +516,7 @@ spec:
                 required:
                 - key
                 type: object
+                x-kubernetes-map-type: atomic
               notifiers:
                 description: 'Notifiers prometheus alertmanager endpoints. Required
                   at least one of  notifier or notifiers. e.g. http://127.0.0.1:9093
@@ -549,6 +558,7 @@ spec:
                           required:
                           - key
                           type: object
+                          x-kubernetes-map-type: atomic
                         password_file:
                           description: PasswordFile defines path to password file
                             at disk
@@ -573,6 +583,7 @@ spec:
                           required:
                           - key
                           type: object
+                          x-kubernetes-map-type: atomic
                       type: object
                     bearerTokenFilePath:
                       type: string
@@ -594,6 +605,7 @@ spec:
                       required:
                       - key
                       type: object
+                      x-kubernetes-map-type: atomic
                     headers:
                       description: Headers allow configuring custom http headers Must
                         be in form of semicolon separated header with value e.g. headerName:headerValue
@@ -654,6 +666,7 @@ spec:
                                 contains only "value". The requirements are ANDed.
                               type: object
                           type: object
+                          x-kubernetes-map-type: atomic
                         namespaceSelector:
                           description: NamespaceSelector is a selector for selecting
                             either all namespaces or a list of namespaces.
@@ -800,6 +813,7 @@ spec:
                         required:
                         - key
                         type: object
+                        x-kubernetes-map-type: atomic
                       password_file:
                         description: PasswordFile defines path to password file at
                           disk
@@ -824,6 +838,7 @@ spec:
                         required:
                         - key
                         type: object
+                        x-kubernetes-map-type: atomic
                     type: object
                   bearerTokenFilePath:
                     type: string
@@ -845,6 +860,7 @@ spec:
                     required:
                     - key
                     type: object
+                    x-kubernetes-map-type: atomic
                   headers:
                     description: Headers allow configuring custom http headers Must
                       be in form of semicolon separated header with value e.g. headerName:headerValue
@@ -906,6 +922,7 @@ spec:
                         required:
                         - key
                         type: object
+                        x-kubernetes-map-type: atomic
                       password_file:
                         description: PasswordFile defines path to password file at
                           disk
@@ -930,6 +947,7 @@ spec:
                         required:
                         - key
                         type: object
+                        x-kubernetes-map-type: atomic
                     type: object
                   bearerTokenFilePath:
                     type: string
@@ -951,6 +969,7 @@ spec:
                     required:
                     - key
                     type: object
+                    x-kubernetes-map-type: atomic
                   concurrency:
                     description: Defines number of readers that concurrently write
                       into remote storage (default 1)
@@ -1102,6 +1121,7 @@ spec:
                       are ANDed.
                     type: object
                 type: object
+                x-kubernetes-map-type: atomic
               rulePath:
                 description: 'RulePath to the file with alert rules. Supports patterns.
                   Flag can be specified multiple times. Examples: -rule /path/to/file.
@@ -1158,6 +1178,7 @@ spec:
                       are ANDed.
                     type: object
                 type: object
+                x-kubernetes-map-type: atomic
               runtimeClassName:
                 description: RuntimeClassName - defines runtime class for kubernetes
                   pod. https://kubernetes.io/docs/concepts/containers/runtime-class/

@@ -2,7 +2,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.6.2
+    controller-gen.kubebuilder.io/version: v0.10.0
   name: vmservicescrapes.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -82,6 +82,7 @@ spec:
                           required:
                           - key
                           type: object
+                          x-kubernetes-map-type: atomic
                         credentialsFile:
                           description: File with value for authorization
                           type: string
@@ -113,6 +114,7 @@ spec:
                           required:
                           - key
                           type: object
+                          x-kubernetes-map-type: atomic
                         password_file:
                           description: PasswordFile defines path to password file
                             at disk
@@ -137,6 +139,7 @@ spec:
                           required:
                           - key
                           type: object
+                          x-kubernetes-map-type: atomic
                       type: object
                     bearerTokenFile:
                       description: File to read bearer token for scraping targets.
@@ -162,6 +165,7 @@ spec:
                       required:
                       - key
                       type: object
+                      x-kubernetes-map-type: atomic
                     follow_redirects:
                       description: FollowRedirects controls redirects for scraping.
                       type: boolean
@@ -263,6 +267,7 @@ spec:
                               required:
                               - key
                               type: object
+                              x-kubernetes-map-type: atomic
                             secret:
                               description: Secret containing data to use for the targets.
                               properties:
@@ -282,6 +287,7 @@ spec:
                               required:
                               - key
                               type: object
+                              x-kubernetes-map-type: atomic
                           type: object
                         client_secret:
                           description: The secret containing the OAuth2 client secret
@@ -301,6 +307,7 @@ spec:
                           required:
                           - key
                           type: object
+                          x-kubernetes-map-type: atomic
                         client_secret_file:
                           description: ClientSecretFile defines path for client secret
                             file.
@@ -452,6 +459,7 @@ spec:
                               required:
                               - key
                               type: object
+                              x-kubernetes-map-type: atomic
                             secret:
                               description: Secret containing data to use for the targets.
                               properties:
@@ -471,6 +479,7 @@ spec:
                               required:
                               - key
                               type: object
+                              x-kubernetes-map-type: atomic
                           type: object
                         caFile:
                           description: Path to the CA cert in the container to use
@@ -499,6 +508,7 @@ spec:
                               required:
                               - key
                               type: object
+                              x-kubernetes-map-type: atomic
                             secret:
                               description: Secret containing data to use for the targets.
                               properties:
@@ -518,6 +528,7 @@ spec:
                               required:
                               - key
                               type: object
+                              x-kubernetes-map-type: atomic
                           type: object
                         certFile:
                           description: Path to the client cert file in the container
@@ -549,6 +560,7 @@ spec:
                           required:
                           - key
                           type: object
+                          x-kubernetes-map-type: atomic
                         serverName:
                           description: Used to verify the hostname for the targets.
                           type: string
@@ -603,6 +615,7 @@ spec:
                                   required:
                                   - key
                                   type: object
+                                  x-kubernetes-map-type: atomic
                                 password_file:
                                   description: PasswordFile defines path to password
                                     file at disk
@@ -629,6 +642,7 @@ spec:
                                   required:
                                   - key
                                   type: object
+                                  x-kubernetes-map-type: atomic
                               type: object
                             bearer_token:
                               description: SecretKeySelector selects a key of a Secret.
@@ -649,6 +663,7 @@ spec:
                               required:
                               - key
                               type: object
+                              x-kubernetes-map-type: atomic
                             bearer_token_file:
                               type: string
                             tls_config:
@@ -679,6 +694,7 @@ spec:
                                       required:
                                       - key
                                       type: object
+                                      x-kubernetes-map-type: atomic
                                     secret:
                                       description: Secret containing data to use for
                                         the targets.
@@ -700,6 +716,7 @@ spec:
                                       required:
                                       - key
                                       type: object
+                                      x-kubernetes-map-type: atomic
                                   type: object
                                 caFile:
                                   description: Path to the CA cert in the container
@@ -729,6 +746,7 @@ spec:
                                       required:
                                       - key
                                       type: object
+                                      x-kubernetes-map-type: atomic
                                     secret:
                                       description: Secret containing data to use for
                                         the targets.
@@ -750,6 +768,7 @@ spec:
                                       required:
                                       - key
                                       type: object
+                                      x-kubernetes-map-type: atomic
                                   type: object
                                 certFile:
                                   description: Path to the client cert file in the
@@ -783,6 +802,7 @@ spec:
                                   required:
                                   - key
                                   type: object
+                                  x-kubernetes-map-type: atomic
                                 serverName:
                                   description: Used to verify the hostname for the
                                     targets.
@@ -873,6 +893,7 @@ spec:
                       are ANDed.
                     type: object
                 type: object
+                x-kubernetes-map-type: atomic
               targetLabels:
                 description: TargetLabels transfers labels on the Kubernetes Service
                   onto the target.

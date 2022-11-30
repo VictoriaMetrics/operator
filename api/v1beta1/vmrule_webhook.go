@@ -8,10 +8,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
-	"sync"
 )
-
-var initVMAlertNotifier sync.Once
 
 // log is for logging in this package.
 var vmrulelog = logf.Log.WithName("vmrule-resource")

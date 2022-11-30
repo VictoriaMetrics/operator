@@ -10,7 +10,7 @@ LDFLAGS=-ldflags "-w -s  -X github.com/VictoriaMetrics/VictoriaMetrics/lib/build
 GOBUILD= $(GOCMD) build -trimpath ${LDFLAGS}
 GOCLEAN=$(GOCMD) clean
 GOTEST=CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH}  $(GOCMD) test
-GOGET=$(GOCMD) get
+GOGET=$(GOCMD) get/b
 BINARY_NAME=vm-operator
 REPO=github.com/VictoriaMetrics/operator
 OPERATOR_BIN=operator-sdk
@@ -18,7 +18,6 @@ DOCKER_REPO=victoriametrics/operator
 TEST_ARGS=$(GOCMD) test -covermode=atomic -coverprofile=coverage.txt -v
 APIS_BASE_PATH=api/v1beta1
 YAML_DROP_PREF=spec.versions[0].schema.openAPIV3Schema.properties.spec.properties
-LEGACY_YAML_DROP_PREF=spec.validation.openAPIV3Schema.properties.spec.properties
 YAML_DROP=yq delete --inplace
 YAML_ADD=yq w -i
 CRD_PRESERVE=x-kubernetes-preserve-unknown-fields true
@@ -30,13 +29,12 @@ CHANNEL=beta
 DEFAULT_CHANNEL=beta
 BUNDLE_CHANNELS := --channels=$(CHANNEL)
 BUNDLE_METADATA_OPTS=$(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
-LEGACY_CRD_PATH=config/crd/legacy
 CRD_PATH=config/crd/bases
 # Image URL to use all building/pushing image targets
 IMG ?= $(DOCKER_REPO):$(TAG)
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 
-CRD_OPTIONS ?= "crd:trivialVersions=false,crdVersions=v1"
+CRD_OPTIONS ?= "crd"
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -63,7 +61,6 @@ install-docs-generators:
 install-develop-tools: install-golint install-docs-generators
 
 fix118:
-	CRD_FIX_PATH=$(LEGACY_CRD_PATH) YAML_DROP_PREFIX=$(LEGACY_YAML_DROP_PREF) $(MAKE) fix118_yaml
 	CRD_FIX_PATH=$(CRD_PATH) YAML_DROP_PREFIX=$(YAML_DROP_PREF) $(MAKE) fix118_yaml
 
 
@@ -165,7 +162,6 @@ fix118_yaml:
 
 fix_crd_nulls:
 	CRD_FIX_PATH=$(CRD_PATH) $(MAKE) fix_crd_nulls_yaml
-	CRD_FIX_PATH=$(LEGACY_CRD_PATH) $(MAKE) fix_crd_nulls_yaml
 
 fix_crd_nulls_yaml:
 	docker run --rm -v "${PWD}":/workdir mikefarah/yq:2.2.0 /bin/sh -c ' \
@@ -273,7 +269,6 @@ deploy: manifests fix118 fix_crd_nulls kustomize
 
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen generate
-	cd api/v1beta1 && $(CONTROLLER_GEN) "crd:trivialVersions=true,crdVersions=v1beta1" rbac:roleName=manager-role webhook paths="." output:crd:artifacts:config=$(PWD)/$(LEGACY_CRD_PATH) output:webhook:dir=$(PWD)/config/webhook
 	cd api/v1beta1 && $(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="." output:crd:artifacts:config=$(PWD)/$(CRD_PATH) output:webhook:dir=$(PWD)/config/webhook
 # Run go fmt against code
 fmt:
@@ -297,7 +292,7 @@ ifeq (, $(shell which controller-gen))
 	CONTROLLER_GEN_TMP_DIR=$$(mktemp -d) ;\
 	cd $$CONTROLLER_GEN_TMP_DIR ;\
 	go mod init tmp ;\
-	go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.6.2 ;\
+	go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.10.0 ;\
 	rm -rf $$CONTROLLER_GEN_TMP_DIR ;\
 	}
 CONTROLLER_GEN=$(GOBIN)/controller-gen
@@ -342,11 +337,9 @@ build: manager manifests fix118 fix_crd_nulls
 
 release-package: kustomize
 	mkdir -p release/crds/
-	mkdir -p release/crds_legacy/
 	mkdir release/operator
 	mkdir release/examples
 	kustomize build config/crd > release/crds/crd.yaml
-	kustomize build config/crd/legacy > release/crds_legacy/crd.yaml
 	kustomize build config/rbac > release/operator/rbac.yaml
 	cp config/examples/*.yaml release/examples/
 	cd config/manager && \

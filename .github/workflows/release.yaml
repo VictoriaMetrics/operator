@@ -80,3 +80,13 @@ jobs:
           asset_name: operator.zip
           asset_content_type: application/zip
 
+      - name: Upload Release CRDs
+        id: upload-release-crds
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./release/crds/crd.yaml
+          asset_name: crd.yaml
+          asset_content_type: application/yaml

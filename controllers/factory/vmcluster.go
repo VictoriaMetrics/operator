@@ -1361,6 +1361,6 @@ func createOrUpdateVMSelectHPA(ctx context.Context, rclient client.Client, clust
 		Kind:       "StatefulSet",
 		APIVersion: "apps/v1",
 	}
-	defaultHPA := buildHPASpec(targetRef, cluster.Spec.VMSelect.HPA, cluster.AsOwner(), cluster.VMInsertSelectorLabels(), cluster.Namespace)
+	defaultHPA := buildHPASpec(targetRef, cluster.Spec.VMSelect.HPA, cluster.AsOwner(), cluster.VMSelectSelectorLabels(), cluster.Namespace)
 	return reconcileHPA(ctx, rclient, defaultHPA)
 }

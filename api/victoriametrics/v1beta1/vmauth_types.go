@@ -288,13 +288,7 @@ func (cr VMAuth) PodAnnotations() map[string]string {
 }
 
 func (cr VMAuth) AnnotationsFiltered() map[string]string {
-	annotations := make(map[string]string)
-	for annotation, value := range cr.ObjectMeta.Annotations {
-		if !strings.HasPrefix(annotation, "kubectl.kubernetes.io/") {
-			annotations[annotation] = value
-		}
-	}
-	return annotations
+	return filterMapKeysByPrefixes(cr.ObjectMeta.Annotations, annotationFilterPrefixes)
 }
 
 func (cr VMAuth) SelectorLabels() map[string]string {
@@ -315,11 +309,13 @@ func (cr VMAuth) PodLabels() map[string]string {
 }
 
 func (cr VMAuth) AllLabels() map[string]string {
-	lbls := cr.SelectorLabels()
+	selectorLabels := cr.SelectorLabels()
+	// fast path
 	if cr.ObjectMeta.Labels == nil {
-		return lbls
+		return selectorLabels
 	}
-	return labels.Merge(cr.ObjectMeta.Labels, lbls)
+	crLabels := filterMapKeysByPrefixes(cr.ObjectMeta.Labels, labelFilterPrefixes)
+	return labels.Merge(crLabels, selectorLabels)
 }
 
 func (cr VMAuth) PrefixedName() string {

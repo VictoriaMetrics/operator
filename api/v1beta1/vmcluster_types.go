@@ -896,7 +896,11 @@ func (cr VMCluster) VMStoragePodLabels() map[string]string {
 }
 
 func (cr VMCluster) FinalLabels(baseLabels map[string]string) map[string]string {
-	return labels.Merge(cr.ObjectMeta.Labels, baseLabels)
+	if cr.ObjectMeta.Labels == nil {
+		return baseLabels
+	}
+	crLabels := filterMapKeysByPrefixes(cr.ObjectMeta.Labels, labelFilterPrefixes)
+	return labels.Merge(crLabels, baseLabels)
 }
 
 func (cr VMCluster) VMSelectPodAnnotations() map[string]string {
@@ -921,13 +925,7 @@ func (cr VMCluster) VMStoragePodAnnotations() map[string]string {
 }
 
 func (cr VMCluster) AnnotationsFiltered() map[string]string {
-	annotations := make(map[string]string, len(cr.ObjectMeta.Annotations))
-	for annotation, value := range cr.ObjectMeta.Annotations {
-		if !strings.HasPrefix(annotation, "kubectl.kubernetes.io/") && !strings.HasPrefix(annotation, "operator.victoriametrics.com/") {
-			annotations[annotation] = value
-		}
-	}
-	return annotations
+	return filterMapKeysByPrefixes(cr.ObjectMeta.Annotations, annotationFilterPrefixes)
 }
 
 // LastAppliedSpecAsPatch return last applied cluster spec as patch annotation
@@ -1026,11 +1024,13 @@ func (cr VMCluster) SelectorLabels() map[string]string {
 }
 
 func (cr VMCluster) AllLabels() map[string]string {
-	lbls := cr.SelectorLabels()
+	selectorLabels := cr.SelectorLabels()
+	// fast path
 	if cr.ObjectMeta.Labels == nil {
-		return lbls
+		return selectorLabels
 	}
-	return labels.Merge(cr.ObjectMeta.Labels, lbls)
+	crLabels := filterMapKeysByPrefixes(cr.ObjectMeta.Labels, labelFilterPrefixes)
+	return labels.Merge(crLabels, selectorLabels)
 }
 
 // AsURL implements stub for interface.

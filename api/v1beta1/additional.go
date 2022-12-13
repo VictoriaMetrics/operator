@@ -3,6 +3,7 @@ package v1beta1
 import (
 	"fmt"
 	"path"
+	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
 
@@ -32,6 +33,34 @@ var (
 	// GroupVersion is group version used to register these objects
 	SchemeGroupVersion = schema.GroupVersion{Group: "operator.victoriametrics.com", Version: "v1beta1"}
 )
+
+var (
+	labelFilterPrefixes []string
+	// default ignored annotations
+	annotationFilterPrefixes = []string{"kubectl.kubernetes.io/", "operator.victoriametrics.com/"}
+)
+
+// SetLabelAndAnnotationPrefixes configures global filtering for child labels and annotations
+// cannot be used concurrently and should be called only once at lib init
+func SetLabelAndAnnotationPrefixes(labelPrefixes, annotationPrefixes []string) {
+	labelFilterPrefixes = labelPrefixes
+	annotationFilterPrefixes = append(annotationFilterPrefixes, annotationPrefixes...)
+}
+
+func filterMapKeysByPrefixes(src map[string]string, prefixes []string) map[string]string {
+
+	dst := make(map[string]string, len(src))
+OUTER:
+	for key, value := range src {
+		for _, matchPrefix := range prefixes {
+			if strings.HasPrefix(key, matchPrefix) {
+				continue OUTER
+			}
+		}
+		dst[key] = value
+	}
+	return dst
+}
 
 // skip validation, if object has annotation.
 func mustSkipValidation(cr client.Object) bool {

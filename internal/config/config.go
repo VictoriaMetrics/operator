@@ -224,6 +224,8 @@ type BaseOperatorConf struct {
 		Probe              bool `default:"true"`
 		AlertmanagerConfig bool `default:"true"`
 	}
+	FilterChildLabelPrefixes      []string `default:""`
+	FilterChildAnnotationPrefixes []string `default:""`
 	// adds compare-options and sync-options for prometheus objects converted by operator
 	// it helps to properly use converter with ArgoCD
 	PrometheusConverterAddArgoCDIgnoreAnnotations bool `default:"false"`

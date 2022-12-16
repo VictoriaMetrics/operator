@@ -600,7 +600,7 @@ func TestBuildRemoteWrites(t *testing.T) {
 					},
 				},
 			},
-			want: []string{"-remoteWrite.url=localhost:8429,remote-1:8429,remote-1:8429", "-remoteWrite.tlsInsecureSkipVerify=true,true,true", "-remoteWrite.urlRelabelConfig=/etc/vm/relabeling/url_rebaling-0.yaml,,/etc/vm/relabeling/url_rebaling-2.yaml"},
+			want: []string{"-remoteWrite.url=localhost:8429,remote-1:8429,remote-1:8429", "-remoteWrite.tlsInsecureSkipVerify=true,true,true", "-remoteWrite.urlRelabelConfig=/etc/vm/relabeling/url_relabaeling-0.yaml,,/etc/vm/relabeling/url_relabaeling-2.yaml"},
 		},
 		{
 			name: "test sendTimeout",

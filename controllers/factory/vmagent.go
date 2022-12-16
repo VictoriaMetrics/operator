@@ -36,7 +36,7 @@ const (
 	vmAgentPersistentQueueSTSDir    = "/vmagent_pq/vmagent-remotewrite-data"
 	vmAgentPersistentQueueMountName = "persistent-queue-data"
 	globalRelabelingName            = "global_relabeling.yaml"
-	urlRelabelingName               = "url_rebaling-%d.yaml"
+	urlRelabelingName               = "url_relabeling-%d.yaml"
 )
 
 func CreateOrUpdateVMAgentService(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client, c *config.BaseOperatorConf) (*corev1.Service, error) {

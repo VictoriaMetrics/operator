@@ -338,14 +338,27 @@ func CreateOrUpdateVMSingleService(ctx context.Context, cr *victoriametricsv1bet
 	if cr.Spec.Port == "" {
 		cr.Spec.Port = c.VMSingleDefault.Port
 	}
-	additionalService := buildDefaultService(cr, cr.Spec.Port, nil)
-	mergeServiceSpec(additionalService, cr.Spec.ServiceSpec)
-	buildAdditionalServicePorts(cr.Spec.InsertPorts, additionalService)
-
-	newService := buildDefaultService(cr, cr.Spec.Port, nil)
+	addBackupPort := func(svc *corev1.Service) {
+		if cr.Spec.VMBackup != nil {
+			if cr.Spec.VMBackup.Port == "" {
+				cr.Spec.VMBackup.Port = c.VMBackup.Port
+			}
+			parsedPort := intstr.Parse(cr.Spec.VMBackup.Port)
+			svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{
+				Name:       "vmbackupmanager",
+				Protocol:   corev1.ProtocolTCP,
+				Port:       parsedPort.IntVal,
+				TargetPort: parsedPort,
+			})
+		}
+	}
+	newService := buildDefaultService(cr, cr.Spec.Port, addBackupPort)
 	buildAdditionalServicePorts(cr.Spec.InsertPorts, newService)
 
 	if cr.Spec.ServiceSpec != nil {
+		additionalService := buildDefaultService(cr, cr.Spec.Port, nil)
+		mergeServiceSpec(additionalService, cr.Spec.ServiceSpec)
+		buildAdditionalServicePorts(cr.Spec.InsertPorts, additionalService)
 		if additionalService.Name == newService.Name {
 			log.Error(fmt.Errorf("vmsingle additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name), "cannot create additional service")
 		} else if _, err := reconcileServiceForCRD(ctx, rclient, additionalService); err != nil {

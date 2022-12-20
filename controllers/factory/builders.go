@@ -91,7 +91,7 @@ func mergeServiceSpec(svc *v1.Service, svcSpec *victoriametricsv1beta1.ServiceSp
 	if svc.Spec.Selector == nil {
 		svc.Spec.Selector = defaultSvc.Spec.Selector
 	}
-	// use may want to override port definition.
+	// user may want to override port definition.
 	if svc.Spec.Ports == nil {
 		svc.Spec.Ports = defaultSvc.Spec.Ports
 	}

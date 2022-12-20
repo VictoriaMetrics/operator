@@ -288,10 +288,9 @@ func createOrUpdateVMStorage(ctx context.Context, cr *v1beta1.VMCluster, rclient
 
 func CreateOrUpdateVMStorageService(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) (*corev1.Service, error) {
 	newHeadless := genVMStorageHeadlessService(cr, c)
-	additionalService := genVMStorageService(cr, c)
-	mergeServiceSpec(additionalService, cr.Spec.VMStorage.ServiceSpec)
-
 	if cr.Spec.VMStorage.ServiceSpec != nil {
+		additionalService := genVMStorageService(cr, c)
+		mergeServiceSpec(additionalService, cr.Spec.VMStorage.ServiceSpec)
 		if additionalService.Name == newHeadless.Name {
 			log.Error(fmt.Errorf("vmstorage additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newHeadless.Name), "cannot create additional service")
 		} else if _, err := reconcileServiceForCRD(ctx, rclient, additionalService); err != nil {
@@ -1184,6 +1183,39 @@ func genVMStorageHeadlessService(cr *v1beta1.VMCluster, c *config.BaseOperatorCo
 	if cr.Spec.VMStorage.VMInsertPort == "" {
 		cr.Spec.VMStorage.VMInsertPort = c.VMClusterDefault.VMStorageDefault.VMInsertPort
 	}
+	ports := []corev1.ServicePort{
+		{
+			Name:       "http",
+			Protocol:   "TCP",
+			Port:       intstr.Parse(cr.Spec.VMStorage.Port).IntVal,
+			TargetPort: intstr.Parse(cr.Spec.VMStorage.Port),
+		},
+		{
+			Name:       "vminsert",
+			Protocol:   "TCP",
+			Port:       intstr.Parse(cr.Spec.VMStorage.VMInsertPort).IntVal,
+			TargetPort: intstr.Parse(cr.Spec.VMStorage.VMInsertPort),
+		},
+		{
+			Name:       "vmselect",
+			Protocol:   "TCP",
+			Port:       intstr.Parse(cr.Spec.VMStorage.VMSelectPort).IntVal,
+			TargetPort: intstr.Parse(cr.Spec.VMStorage.VMSelectPort),
+		},
+	}
+	if cr.Spec.VMStorage.VMBackup != nil {
+		backupPort := cr.Spec.VMStorage.VMBackup.Port
+		if backupPort == "" {
+			backupPort = c.VMBackup.Port
+		}
+		parsedPort := intstr.Parse(backupPort)
+		ports = append(ports, corev1.ServicePort{
+			Name:       "vmbackupmanager",
+			Protocol:   corev1.ProtocolTCP,
+			Port:       parsedPort.IntVal,
+			TargetPort: parsedPort,
+		})
+	}
 
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1198,26 +1230,7 @@ func genVMStorageHeadlessService(cr *v1beta1.VMCluster, c *config.BaseOperatorCo
 			Type:      corev1.ServiceTypeClusterIP,
 			ClusterIP: "None",
 			Selector:  cr.VMStorageSelectorLabels(),
-			Ports: []corev1.ServicePort{
-				{
-					Name:       "http",
-					Protocol:   "TCP",
-					Port:       intstr.Parse(cr.Spec.VMStorage.Port).IntVal,
-					TargetPort: intstr.Parse(cr.Spec.VMStorage.Port),
-				},
-				{
-					Name:       "vminsert",
-					Protocol:   "TCP",
-					Port:       intstr.Parse(cr.Spec.VMStorage.VMInsertPort).IntVal,
-					TargetPort: intstr.Parse(cr.Spec.VMStorage.VMInsertPort),
-				},
-				{
-					Name:       "vmselect",
-					Protocol:   "TCP",
-					Port:       intstr.Parse(cr.Spec.VMStorage.VMSelectPort).IntVal,
-					TargetPort: intstr.Parse(cr.Spec.VMStorage.VMSelectPort),
-				},
-			},
+			Ports:     ports,
 		},
 	}
 }

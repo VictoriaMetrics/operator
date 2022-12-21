@@ -463,16 +463,19 @@ type VMAgentRemoteWriteSpec struct {
 // VmAgentStatus defines the observed state of VmAgent
 // +k8s:openapi-gen=true
 type VMAgentStatus struct {
-	// ReplicaCount Total number of non-terminated pods targeted by this VMAlert
-	// cluster (their labels match the selector).
+	// Shards represents total number of vmagent deployments with uniq scrape targets
+	Shards int32 `json:"shards"`
+	// Selector string form of label value set for autoscaling
+	Selector string `json:"selector"`
+	// ReplicaCount Total number of pods targeted by this VMAgent
 	Replicas int32 `json:"replicas"`
-	// UpdatedReplicas Total number of non-terminated pods targeted by this VMAlert
+	// UpdatedReplicas Total number of non-terminated pods targeted by this VMAgent
 	// cluster that have the desired version spec.
 	UpdatedReplicas int32 `json:"updatedReplicas"`
 	// AvailableReplicas Total number of available pods (ready for at least minReadySeconds)
 	// targeted by this VMAlert cluster.
 	AvailableReplicas int32 `json:"availableReplicas"`
-	// UnavailableReplicas Total number of unavailable pods targeted by this VMAlert cluster.
+	// UnavailableReplicas Total number of unavailable pods targeted by this VMAgent cluster.
 	UnavailableReplicas int32 `json:"unavailableReplicas"`
 }
 
@@ -489,6 +492,9 @@ type VMAgentStatus struct {
 // +k8s:openapi-gen=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:path=vmagents,scope=Namespaced
+// +kubebuilder:subresource:scale:specpath=.spec.shardCount,statuspath=.status.shards,selectorpath=.status.selector
+// +kubebuilder:printcolumn:name="Shards Count",type="integer",JSONPath=".status.shards",description="current number of shards"
+// +kubebuilder:printcolumn:name="Replica Count",type="integer",JSONPath=".status.replicas",description="current number of replicas"
 type VMAgent struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

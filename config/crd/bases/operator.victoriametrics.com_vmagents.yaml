@@ -13,7 +13,16 @@ spec:
     singular: vmagent
   scope: Namespaced
   versions:
-  - name: v1beta1
+  - additionalPrinterColumns:
+    - description: current number of shards
+      jsonPath: .status.shards
+      name: Shards Count
+      type: integer
+    - description: current number of replicas
+      jsonPath: .status.replicas
+      name: Replica Count
+      type: integer
+    name: v1beta1
     schema:
       openAPIV3Schema:
         description: VMAgent - is a tiny but brave agent, which helps you collect
@@ -2879,23 +2888,32 @@ spec:
                 format: int32
                 type: integer
               replicas:
-                description: ReplicaCount Total number of non-terminated pods targeted
-                  by this VMAlert cluster (their labels match the selector).
+                description: ReplicaCount Total number of pods targeted by this VMAgent
+                format: int32
+                type: integer
+              selector:
+                description: Selector string form of label value set for autoscaling
+                type: string
+              shards:
+                description: Shards represents total number of vmagent deployments
+                  with uniq scrape targets
                 format: int32
                 type: integer
               unavailableReplicas:
                 description: UnavailableReplicas Total number of unavailable pods
-                  targeted by this VMAlert cluster.
+                  targeted by this VMAgent cluster.
                 format: int32
                 type: integer
               updatedReplicas:
                 description: UpdatedReplicas Total number of non-terminated pods targeted
-                  by this VMAlert cluster that have the desired version spec.
+                  by this VMAgent cluster that have the desired version spec.
                 format: int32
                 type: integer
             required:
             - availableReplicas
             - replicas
+            - selector
+            - shards
             - unavailableReplicas
             - updatedReplicas
             type: object
@@ -2903,4 +2921,8 @@ spec:
     served: true
     storage: true
     subresources:
+      scale:
+        labelSelectorPath: .status.selector
+        specReplicasPath: .spec.shardCount
+        statusReplicasPath: .status.shards
       status: {}

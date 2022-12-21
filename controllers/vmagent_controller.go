@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
@@ -67,7 +68,6 @@ type VMAgentReconciler struct {
 // +kubebuilder:rbac:groups="",resources=serviceaccounts,verbs=get;create,update;list
 func (r *VMAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := r.Log.WithValues("vmagent", req.NamespacedName)
-	reqLogger.Info("Reconciling")
 
 	vmAgentSync.Lock()
 	defer vmAgentSync.Unlock()
@@ -113,13 +113,33 @@ func (r *VMAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			reqLogger.Error(err, "cannot create serviceScrape for vmagent")
 		}
 	}
-
-	reqLogger.Info("reconciled vmagent")
 	var result ctrl.Result
 	if r.BaseConf.ForceResyncInterval > 0 {
 		result.RequeueAfter = r.BaseConf.ForceResyncInterval
 	}
+
+	if err := updateVMAgentStatus(ctx, r.Client, instance); err != nil {
+		return result, err
+	}
 	return result, nil
+}
+
+func updateVMAgentStatus(ctx context.Context, c client.Client, instance *victoriametricsv1beta1.VMAgent) error {
+	// default value
+	replicaCount := int32(1)
+	if instance.Spec.ReplicaCount != nil {
+		replicaCount = *instance.Spec.ReplicaCount
+	}
+	instance.Status.Replicas = replicaCount
+	var shardCnt int32
+	if instance.Spec.ShardCount != nil {
+		shardCnt = int32(*instance.Spec.ShardCount)
+	}
+	instance.Status.Shards = shardCnt
+	if err := c.Status().Update(ctx, instance); err != nil {
+		return fmt.Errorf("cannot update status for vmagent: %s: %w", instance.Name, err)
+	}
+	return nil
 }
 
 // Scheme implements interface.

@@ -658,6 +658,13 @@ func getCredFromSecret(
 		}
 		cache[cacheKey] = s
 	}
+
+	l := make(chan struct{})
+	select {
+	case l <- struct{}{}:
+	default:
+
+	}
 	return extractCredKey(s, *sel)
 }
 

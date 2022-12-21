@@ -27,7 +27,7 @@ func Test_loadVMAlertRemoteSecrets(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    map[string]BasicAuthCredentials
+		want    map[string]*authSecret
 		wantErr bool
 	}{
 		{
@@ -61,8 +61,9 @@ func Test_loadVMAlertRemoteSecrets(t *testing.T) {
 					},
 				},
 			},
-			want: map[string]BasicAuthCredentials{
-				"remoteWrite": {password: "pass", username: "user"},
+			want: map[string]*authSecret{
+				"remoteWrite": &authSecret{BasicAuthCredentials: &BasicAuthCredentials{password: "pass", username: "user"}},
+				"datasource":  &authSecret{},
 			},
 		},
 	}
@@ -478,7 +479,7 @@ func TestCreateOrUpdateVMAlert(t *testing.T) {
 func TestBuildNotifiers(t *testing.T) {
 	type args struct {
 		cr          *victoriametricsv1beta1.VMAlert
-		ntBasicAuth map[string]BasicAuthCredentials
+		ntBasicAuth map[string]*authSecret
 	}
 	tests := []struct {
 		name string
@@ -526,7 +527,7 @@ func TestBuildNotifiers(t *testing.T) {
 			want: []string{"-notifier.config=" + notifierConfigMountPath + "/cfg.yaml"},
 		},
 		{
-			name: "with headers",
+			name: "with headers and oauth2",
 			args: args{
 				cr: &victoriametricsv1beta1.VMAlert{
 					Spec: victoriametricsv1beta1.VMAlertSpec{
@@ -535,19 +536,27 @@ func TestBuildNotifiers(t *testing.T) {
 								URL: "http://1",
 								HTTPAuth: victoriametricsv1beta1.HTTPAuth{
 									Headers: []string{"key=value", "key2=value2"},
+									OAuth2: &victoriametricsv1beta1.OAuth2{
+										Scopes:       []string{"1", "2"},
+										TokenURL:     "http://some-url",
+										ClientSecret: &corev1.SecretKeySelector{},
+										ClientID:     victoriametricsv1beta1.SecretOrConfigMap{},
+									},
 								},
 							},
 							{
 								URL: "http://2",
 								HTTPAuth: victoriametricsv1beta1.HTTPAuth{
-									Headers: []string{"key3=value3", "key4=value4"},
+									Headers:    []string{"key3=value3", "key4=value4"},
+									BearerAuth: &victoriametricsv1beta1.BearerAuth{},
 								},
 							},
 						},
 					},
 				},
+				ntBasicAuth: map[string]*authSecret{"vmalert///0": &authSecret{oauthCreds: &oauthCreds{clientSecret: "some-secret", clientID: "some-id"}}, "vmalert///1": &authSecret{bearerValue: "some-v"}},
 			},
-			want: []string{"-notifier.url=http://1,http://2", "-notifier.headers=key=value^^key2=value2,key3=value3^^key4=value4"},
+			want: []string{"-notifier.url=http://1,http://2", "-notifier.headers=key=value^^key2=value2,key3=value3^^key4=value4", "-notifier.bearerToken=,some-v", "-notifier.oauth2.clientID=some-id,", "-notifier.oauth2.scopes=1,2,", "-notifier.oauth2.clientSecret=some-secret,", "-notifier.oauth2.tokenUrl=http://some-url,"},
 		},
 	}
 	for _, tt := range tests {
@@ -611,7 +620,7 @@ func Test_buildVMAlertArgs(t *testing.T) {
 	type args struct {
 		cr                 *victoriametricsv1beta1.VMAlert
 		ruleConfigMapNames []string
-		remoteSecrets      map[string]BasicAuthCredentials
+		remoteSecrets      map[string]*authSecret
 	}
 	tests := []struct {
 		name string
@@ -629,7 +638,7 @@ func Test_buildVMAlertArgs(t *testing.T) {
 					},
 				},
 				ruleConfigMapNames: []string{"first-rule-cm.yaml"},
-				remoteSecrets:      map[string]BasicAuthCredentials{},
+				remoteSecrets:      map[string]*authSecret{},
 			},
 			want: []string{"-datasource.url=http://vmsingle-url", "-httpListenAddr=:", "-notifier.url=", "-rule=\"/etc/vmalert/config/first-rule-cm.yaml/*.yaml\""},
 		},
@@ -651,7 +660,7 @@ func Test_buildVMAlertArgs(t *testing.T) {
 					},
 				},
 				ruleConfigMapNames: []string{"first-rule-cm.yaml"},
-				remoteSecrets:      map[string]BasicAuthCredentials{},
+				remoteSecrets:      map[string]*authSecret{},
 			},
 			want: []string{"--datasource.headers=x-org-id:one^^x-org-tenant:5", "-datasource.tlsCAFile=/path/to/sa", "-datasource.tlsInsecureSkipVerify=true", "-datasource.tlsKeyFile=/path/to/key", "-datasource.url=http://vmsingle-url", "-httpListenAddr=:", "-notifier.url=", "-rule=\"/etc/vmalert/config/first-rule-cm.yaml/*.yaml\""},
 		},

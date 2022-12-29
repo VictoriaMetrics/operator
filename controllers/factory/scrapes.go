@@ -27,43 +27,47 @@ type scrapesSecretsCache struct {
 	authorizationSecrets map[string]string
 }
 
-func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client, c *config.BaseOperatorConf) error {
+func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client, c *config.BaseOperatorConf) (*scrapesSecretsCache, error) {
 
 	smons, err := SelectServiceScrapes(ctx, cr, rclient)
 	if err != nil {
-		return fmt.Errorf("selecting ServiceScrapes failed: %w", err)
+		return nil, fmt.Errorf("selecting ServiceScrapes failed: %w", err)
 	}
 
 	pmons, err := SelectPodScrapes(ctx, cr, rclient)
 	if err != nil {
-		return fmt.Errorf("selecting PodScrapes failed: %w", err)
+		return nil, fmt.Errorf("selecting PodScrapes failed: %w", err)
 	}
 
 	probes, err := SelectVMProbes(ctx, cr, rclient)
 	if err != nil {
-		return fmt.Errorf("selecting VMProbes failed: %w", err)
+		return nil, fmt.Errorf("selecting VMProbes failed: %w", err)
 	}
 
 	nodes, err := SelectVMNodeScrapes(ctx, cr, rclient)
 	if err != nil {
-		return fmt.Errorf("selecting VMNodeScrapes failed: %w", err)
+		return nil, fmt.Errorf("selecting VMNodeScrapes failed: %w", err)
 	}
 
 	statics, err := SelectStaticScrapes(ctx, cr, rclient)
 	if err != nil {
-		return fmt.Errorf("selecting PodScrapes failed: %w", err)
+		return nil, fmt.Errorf("selecting PodScrapes failed: %w", err)
 	}
 
-	ssCache, err := loadScrapeSecrets(ctx, rclient, smons, nodes, pmons, probes, statics, cr.Spec.APIServerConfig, nil, cr.Namespace)
+	ssCache, err := loadScrapeSecrets(ctx, rclient, smons, nodes, pmons, probes, statics, cr.Spec.APIServerConfig, cr.Spec.RemoteWrite, cr.Namespace)
 	if err != nil {
-		return fmt.Errorf("cannot load basic secrets for ServiceMonitors: %w", err)
+		return nil, fmt.Errorf("cannot load basic secrets for ServiceMonitors: %w", err)
 	}
 
 	additionalScrapeConfigs, err := loadAdditionalScrapeConfigsSecret(ctx, rclient, cr.Spec.AdditionalScrapeConfigs, cr.Namespace)
 	if err != nil {
-		return fmt.Errorf("loading additional scrape configs from Secret failed: %w", err)
+		return nil, fmt.Errorf("loading additional scrape configs from Secret failed: %w", err)
 	}
 
+	// how to store remoteWrite secrets properly?
+	// it must be keyed by some value
+	// e.g. basicAuth/idx/passwordFile
+	// e.g. bearer/idx/tokenFile
 	// Update secret based on the most recent configuration.
 	generatedConfig, err := generateConfig(
 		cr,
@@ -76,10 +80,10 @@ func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *victoriametricsv
 		additionalScrapeConfigs,
 	)
 	if err != nil {
-		return fmt.Errorf("generating config for vmagent failed: %w", err)
+		return nil, fmt.Errorf("generating config for vmagent failed: %w", err)
 	}
 
-	s := makeConfigSecret(cr, c)
+	s := makeConfigSecret(cr, c, ssCache)
 	s.ObjectMeta.Annotations = map[string]string{
 		"generated": "true",
 	}
@@ -87,7 +91,7 @@ func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *victoriametricsv
 	// Compress config to avoid 1mb secret limit for a while
 	var buf bytes.Buffer
 	if err = gzipConfig(&buf, generatedConfig); err != nil {
-		return fmt.Errorf("cannot gzip config for vmagent: %w", err)
+		return nil, fmt.Errorf("cannot gzip config for vmagent: %w", err)
 	}
 	s.Data[configFilename] = buf.Bytes()
 
@@ -95,27 +99,12 @@ func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *victoriametricsv
 	err = rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: s.Name}, curSecret)
 	if errors.IsNotFound(err) {
 		log.Info("creating new configuration secret for vmagent")
-		return rclient.Create(ctx, s)
-	}
-
-	var (
-		generatedConf             = s.Data[configFilename]
-		curConfig, curConfigFound = curSecret.Data[configFilename]
-	)
-	if curConfigFound {
-		if bytes.Equal(curConfig, generatedConf) {
-			log.Info("updating VMAgent configuration secret skipped, no configuration change")
-			return nil
-		}
-		log.Info("current VMAgent configuration has changed")
-	} else {
-		log.Info("no current VMAgent configuration secret found", "currentConfigFound", curConfigFound)
+		return ssCache, rclient.Create(ctx, s)
 	}
 
 	s.Annotations = labels.Merge(curSecret.Annotations, s.Annotations)
 	s.Finalizers = victoriametricsv1beta1.MergeFinalizers(curSecret, victoriametricsv1beta1.FinalizerName)
-	log.Info("updating VMAgent configuration secret")
-	return rclient.Update(ctx, s)
+	return ssCache, rclient.Update(ctx, s)
 }
 
 func SelectServiceScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) (map[string]*victoriametricsv1beta1.VMServiceScrape, error) {
@@ -575,7 +564,7 @@ func loadScrapeSecrets(
 			if err != nil {
 				return nil, fmt.Errorf("could not generate basicAuth for remote write spec %s config. %w", rws.URL, err)
 			}
-			baSecrets[fmt.Sprintf("remoteWriteSpec/%s", rws.URL)] = &credentials
+			baSecrets[rws.AsMapKey()] = &credentials
 		}
 		if rws.OAuth2 != nil {
 			oauth2, err := loadOAuthSecrets(ctx, rclient, rws.OAuth2, namespace, nsSecretCache, nsCMCache)
@@ -583,14 +572,14 @@ func loadScrapeSecrets(
 			if err != nil {
 				return nil, fmt.Errorf("cannot load oauth2 creds for :%s, ns: %s, err: %w", "remoteWrite", namespace, err)
 			}
-			oauth2Secret[fmt.Sprintf("remoteWriteSpec/%s", rws.URL)] = oauth2
+			oauth2Secret[rws.AsMapKey()] = oauth2
 		}
 		if rws.BearerTokenSecret != nil && rws.BearerTokenSecret.Name != "" {
 			token, err := getCredFromSecret(ctx, rclient, namespace, rws.BearerTokenSecret, buildCacheKey(namespace, rws.BearerTokenSecret.Name), nsSecretCache)
 			if err != nil {
 				return nil, fmt.Errorf("cannot get bearer token for remoteWrite: %w", err)
 			}
-			bearerSecrets[fmt.Sprintf("remoteWriteSpec/%s", rws.URL)] = token
+			bearerSecrets[rws.AsMapKey()] = token
 		}
 	}
 

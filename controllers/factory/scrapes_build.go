@@ -2,6 +2,7 @@ package factory
 
 import (
 	"fmt"
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	"path"
 	"reflect"
 	"regexp"
@@ -203,8 +204,8 @@ func generateConfig(
 	return yaml.Marshal(cfg)
 }
 
-func makeConfigSecret(cr *victoriametricsv1beta1.VMAgent, config *config.BaseOperatorConf) *v1.Secret {
-	return &v1.Secret{
+func makeConfigSecret(cr *victoriametricsv1beta1.VMAgent, config *config.BaseOperatorConf, ssCache *scrapesSecretsCache) *v1.Secret {
+	s := &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),
 			Annotations:     cr.AnnotationsFiltered(),
@@ -217,6 +218,30 @@ func makeConfigSecret(cr *victoriametricsv1beta1.VMAgent, config *config.BaseOpe
 			configFilename: {},
 		},
 	}
+	for idx, rw := range cr.Spec.RemoteWrite {
+		if rw.BearerTokenSecret != nil {
+			token, ok := ssCache.bearerTokens[rw.AsMapKey()]
+			if !ok {
+				logger.Fatalf("bug, remoteWriteSpec bearerToken is missing: %s", rw.AsMapKey())
+			}
+			s.Data[rw.AsSecretKey(idx, "bearerToken")] = []byte(token)
+		}
+		if rw.BasicAuth != nil && len(rw.BasicAuth.Password.Name) > 0 {
+			ba, ok := ssCache.baSecrets[rw.AsMapKey()]
+			if !ok {
+				logger.Fatalf("bug, remoteWriteSpec basicAuth is missing: %s", rw.AsMapKey())
+			}
+			s.Data[rw.AsSecretKey(idx, "basicAuthPassword")] = []byte(ba.password)
+		}
+		if rw.OAuth2 != nil {
+			oauth2, ok := ssCache.oauth2Secrets[rw.AsMapKey()]
+			if !ok {
+				logger.Fatalf("bug, remoteWriteSpec oauth2 is missing: %s", rw.AsMapKey())
+			}
+			s.Data[rw.AsSecretKey(idx, "oauth2Secret")] = []byte(oauth2.clientSecret)
+		}
+	}
+	return s
 }
 
 func sanitizeLabelName(name string) string {

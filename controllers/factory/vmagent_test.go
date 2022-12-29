@@ -676,7 +676,7 @@ func TestBuildRemoteWrites(t *testing.T) {
 					}},
 				},
 			},
-			want: []string{"-remoteWrite.oauth2.clientID=,some-id", "-remoteWrite.oauth2.clientSecret=,some-secret", "-remoteWrite.oauth2.scopes=,scope-1", "-remoteWrite.oauth2.tokenUrl=,http://some-url", "-remoteWrite.url=localhost:8429,localhost:8431", "-remoteWrite.sendTimeout=10s,15s"},
+			want: []string{"-remoteWrite.oauth2.clientID=,some-id", "-remoteWrite.oauth2.clientSecretFile=,/etc/vmagent/config/RWS_1-SECRET-OAUTH2SECRET", "-remoteWrite.oauth2.scopes=,scope-1", "-remoteWrite.oauth2.tokenUrl=,http://some-url", "-remoteWrite.url=localhost:8429,localhost:8431", "-remoteWrite.sendTimeout=10s,15s"},
 		},
 		{
 			name: "test bearer token",
@@ -703,7 +703,7 @@ func TestBuildRemoteWrites(t *testing.T) {
 					}},
 				},
 			},
-			want: []string{"-remoteWrite.bearerToken=\"\",\"token\"", "-remoteWrite.url=localhost:8429,localhost:8431", "-remoteWrite.sendTimeout=10s,15s"},
+			want: []string{"-remoteWrite.bearerTokenFile=\"\",\"/etc/vmagent/config/RWS_1-SECRET-BEARERTOKEN\"", "-remoteWrite.url=localhost:8429,localhost:8431", "-remoteWrite.sendTimeout=10s,15s"},
 		},
 		{
 			name: "test with headers",
@@ -731,7 +731,7 @@ func TestBuildRemoteWrites(t *testing.T) {
 					}},
 				},
 			},
-			want: []string{"-remoteWrite.bearerToken=\"\",\"token\"", "-remoteWrite.headers='','key: value^^second-key: value2'", "-remoteWrite.url=localhost:8429,localhost:8431", "-remoteWrite.sendTimeout=10s,15s"},
+			want: []string{"-remoteWrite.bearerTokenFile=\"\",\"/etc/vmagent/config/RWS_1-SECRET-BEARERTOKEN\"", "-remoteWrite.headers='','key: value^^second-key: value2'", "-remoteWrite.url=localhost:8429,localhost:8431", "-remoteWrite.sendTimeout=10s,15s"},
 		},
 	}
 	for _, tt := range tests {

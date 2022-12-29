@@ -460,6 +460,16 @@ type VMAgentRemoteWriteSpec struct {
 	Headers []string `json:"headers,omitempty"`
 }
 
+// AsMapKey key for internal cache map
+func (rw *VMAgentRemoteWriteSpec) AsMapKey() string {
+	return fmt.Sprintf("remoteWrite-%s", rw.URL)
+}
+
+// AsSecretKey key for kubernetes secret data
+func (rw *VMAgentRemoteWriteSpec) AsSecretKey(idx int, suffix string) string {
+	return fmt.Sprintf("RWS_%d-SECRET-%s", idx, strings.ToUpper(suffix))
+}
+
 // VmAgentStatus defines the observed state of VmAgent
 // +k8s:openapi-gen=true
 type VMAgentStatus struct {

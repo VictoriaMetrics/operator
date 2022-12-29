@@ -85,7 +85,7 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 		}
 	}
 	// we have to create empty or full cm first
-	err := CreateOrUpdateConfigurationSecret(ctx, cr, rclient, c)
+	ssCache, err := CreateOrUpdateConfigurationSecret(ctx, cr, rclient, c)
 	if err != nil {
 		l.Error(err, "cannot create configmap")
 		return reconcile.Result{}, err
@@ -105,12 +105,6 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 		if err != nil {
 			return reconcile.Result{}, fmt.Errorf("cannot update pod disruption budget for vmagent: %w", err)
 		}
-	}
-
-	// getting secrets for remotewrite spec
-	ssCache, err := LoadRemoteWriteSecrets(ctx, cr, rclient)
-	if err != nil {
-		return reconcile.Result{}, fmt.Errorf("cannot get remote write secrets for vmagent: %w", err)
 	}
 
 	newDeploy, err := newDeployForVMAgent(cr, c, ssCache)
@@ -385,6 +379,11 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 			Name:      "relabeling-assets",
 			ReadOnly:  true,
 			MountPath: RelabelingConfigDir,
+		},
+		corev1.VolumeMount{
+			Name:      "config",
+			ReadOnly:  true,
+			MountPath: vmAgentConfDir,
 		},
 	)
 
@@ -930,9 +929,8 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, ssCache *scrapesSecre
 		url = remoteFlag{flagSetting: "-remoteWrite.multitenantURL=", isNotNull: true}
 	}
 	authUser := remoteFlag{flagSetting: "-remoteWrite.basicAuth.username="}
-	authPassword := remoteFlag{flagSetting: "-remoteWrite.basicAuth.password="}
 	authPasswordFile := remoteFlag{flagSetting: "-remoteWrite.basicAuth.passwordFile="}
-	bearerToken := remoteFlag{flagSetting: "-remoteWrite.bearerToken="}
+	bearerTokenFile := remoteFlag{flagSetting: "-remoteWrite.bearerTokenFile="}
 	urlRelabelConfig := remoteFlag{flagSetting: "-remoteWrite.urlRelabelConfig="}
 	sendTimeout := remoteFlag{flagSetting: "-remoteWrite.sendTimeout="}
 	tlsCAs := remoteFlag{flagSetting: "-remoteWrite.tlsCAFile="}
@@ -941,7 +939,6 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, ssCache *scrapesSecre
 	tlsInsecure := remoteFlag{flagSetting: "-remoteWrite.tlsInsecureSkipVerify="}
 	tlsServerName := remoteFlag{flagSetting: "-remoteWrite.tlsServerName="}
 	oauth2ClientID := remoteFlag{flagSetting: "-remoteWrite.oauth2.clientID="}
-	oauth2ClientSecret := remoteFlag{flagSetting: "-remoteWrite.oauth2.clientSecret="}
 	oauth2ClientSecretFile := remoteFlag{flagSetting: "-remoteWrite.oauth2.clientSecretFile="}
 	oauth2Scopes := remoteFlag{flagSetting: "-remoteWrite.oauth2.scopes="}
 	oauth2TokenUrl := remoteFlag{flagSetting: "-remoteWrite.oauth2.tokenUrl="}
@@ -998,16 +995,15 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, ssCache *scrapesSecre
 		tlsInsecure.flagSetting += fmt.Sprintf("%v,", insecure)
 
 		var user string
-		var pass string
 		var passFile string
 		if rws.BasicAuth != nil {
-			if s, ok := ssCache.baSecrets[fmt.Sprintf("remoteWriteSpec/%s", rws.URL)]; ok {
+			if s, ok := ssCache.baSecrets[rws.AsMapKey()]; ok {
 				authUser.isNotNull = true
 
 				user = s.username
 				if len(s.password) > 0 {
-					authPassword.isNotNull = true
-					pass = s.password
+					authPasswordFile.isNotNull = true
+					passFile = path.Join(vmAgentConfDir, rws.AsSecretKey(i, "basicAuthPassword"))
 				}
 				if len(rws.BasicAuth.PasswordFile) > 0 {
 					passFile = rws.BasicAuth.PasswordFile
@@ -1016,17 +1012,14 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, ssCache *scrapesSecre
 			}
 		}
 		authUser.flagSetting += fmt.Sprintf("\"%s\",", strings.ReplaceAll(user, `"`, `\"`))
-		authPassword.flagSetting += fmt.Sprintf("\"%s\",", strings.ReplaceAll(pass, `"`, `\"`))
 		authPasswordFile.flagSetting += fmt.Sprintf("%s,", passFile)
 
 		var value string
 		if rws.BearerTokenSecret != nil && rws.BearerTokenSecret.Name != "" {
-			if s, ok := ssCache.bearerTokens[fmt.Sprintf("remoteWriteSpec/%s", rws.URL)]; ok {
-				bearerToken.isNotNull = true
-				value = s
-			}
+			bearerTokenFile.isNotNull = true
+			value = path.Join(vmAgentConfDir, rws.AsSecretKey(i, "bearerToken"))
 		}
-		bearerToken.flagSetting += fmt.Sprintf("\"%s\",", strings.ReplaceAll(value, `"`, `\"`))
+		bearerTokenFile.flagSetting += fmt.Sprintf("\"%s\",", strings.ReplaceAll(value, `"`, `\"`))
 
 		value = ""
 
@@ -1056,7 +1049,7 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, ssCache *scrapesSecre
 		}
 		headers.flagSetting += fmt.Sprintf("'%s',", value)
 		value = ""
-		var oaturl, oascopes, oaclientID, oaSecretKey, oaSecretKeyFile string
+		var oaturl, oascopes, oaclientID, oaSecretKeyFile string
 		if rws.OAuth2 != nil {
 			if len(rws.OAuth2.TokenURL) > 0 {
 				oauth2TokenUrl.isNotNull = true
@@ -1075,8 +1068,8 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, ssCache *scrapesSecre
 
 			sv := ssCache.oauth2Secrets[fmt.Sprintf("remoteWriteSpec/%s", rws.URL)]
 			if rws.OAuth2.ClientSecret != nil && sv != nil {
-				oaSecretKey = sv.clientSecret
-				oauth2ClientSecret.isNotNull = true
+				oauth2ClientSecretFile.isNotNull = true
+				oaSecretKeyFile = path.Join(vmAgentConfDir, rws.AsSecretKey(i, "oauth2Secret"))
 			}
 
 			if len(rws.OAuth2.ClientID.Name()) > 0 && sv != nil {
@@ -1087,13 +1080,12 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, ssCache *scrapesSecre
 		}
 		oauth2TokenUrl.flagSetting += fmt.Sprintf("%s,", oaturl)
 		oauth2ClientSecretFile.flagSetting += fmt.Sprintf("%s,", oaSecretKeyFile)
-		oauth2ClientSecret.flagSetting += fmt.Sprintf("%s,", oaSecretKey)
 		oauth2ClientID.flagSetting += fmt.Sprintf("%s,", oaclientID)
 		oauth2Scopes.flagSetting += fmt.Sprintf("%s,", oascopes)
 	}
-	remoteArgs = append(remoteArgs, url, authUser, authPassword, bearerToken, urlRelabelConfig, tlsInsecure, sendTimeout)
+	remoteArgs = append(remoteArgs, url, authUser, bearerTokenFile, urlRelabelConfig, tlsInsecure, sendTimeout)
 	remoteArgs = append(remoteArgs, tlsServerName, tlsKeys, tlsCerts, tlsCAs)
-	remoteArgs = append(remoteArgs, oauth2ClientID, oauth2ClientSecret, oauth2ClientSecretFile, oauth2Scopes, oauth2TokenUrl)
+	remoteArgs = append(remoteArgs, oauth2ClientID, oauth2ClientSecretFile, oauth2Scopes, oauth2TokenUrl)
 	remoteArgs = append(remoteArgs, headers, authPasswordFile)
 
 	for _, remoteArgType := range remoteArgs {

@@ -556,7 +556,7 @@ func TestBuildNotifiers(t *testing.T) {
 				},
 				ntBasicAuth: map[string]*authSecret{"vmalert///0": &authSecret{oauthCreds: &oauthCreds{clientSecret: "some-secret", clientID: "some-id"}}, "vmalert///1": &authSecret{bearerValue: "some-v"}},
 			},
-			want: []string{"-notifier.url=http://1,http://2", "-notifier.headers=key=value^^key2=value2,key3=value3^^key4=value4", "-notifier.bearerToken=,some-v", "-notifier.oauth2.clientID=some-id,", "-notifier.oauth2.scopes=1,2,", "-notifier.oauth2.clientSecret=some-secret,", "-notifier.oauth2.tokenUrl=http://some-url,"},
+			want: []string{"-notifier.url=http://1,http://2", "-notifier.headers=key=value^^key2=value2,key3=value3^^key4=value4", "-notifier.bearerTokenFile=,/etc/vmalert/remote_secrets/NOTIFIER-1_BEARERTOKEN", "-notifier.oauth2.clientSecretFile=/etc/vmalert/remote_secrets/NOTIFIER-0_OAUTH2SECRETKEY,", "-notifier.oauth2.clientID=some-id,", "-notifier.oauth2.scopes=1,2,", "-notifier.oauth2.tokenUrl=http://some-url,"},
 		},
 	}
 	for _, tt := range tests {

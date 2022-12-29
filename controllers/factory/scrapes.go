@@ -64,10 +64,6 @@ func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *victoriametricsv
 		return nil, fmt.Errorf("loading additional scrape configs from Secret failed: %w", err)
 	}
 
-	// how to store remoteWrite secrets properly?
-	// it must be keyed by some value
-	// e.g. basicAuth/idx/passwordFile
-	// e.g. bearer/idx/tokenFile
 	// Update secret based on the most recent configuration.
 	generatedConfig, err := generateConfig(
 		cr,

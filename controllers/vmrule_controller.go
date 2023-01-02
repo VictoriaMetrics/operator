@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
@@ -81,7 +82,7 @@ func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		}
 		reqLogger.WithValues("vmalert", vmalert.Name)
 		currVMAlert := &vmalert
-		match, err := isSelectorsMatches(instance, currVMAlert, currVMAlert.Spec.RuleNamespaceSelector, currVMAlert.Spec.RuleSelector)
+		match, err := isSelectorsMatches(instance, currVMAlert, currVMAlert.Spec.RuleSelector)
 		if err != nil {
 			reqLogger.Error(err, "cannot match vmalert and vmRule")
 			continue

@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
@@ -75,7 +76,7 @@ func (r *VMAlertmanagerConfigReconciler) Reconcile(ctx context.Context, req ctrl
 			continue
 		}
 		l := l.WithValues("alertmanager", am.Name)
-		ismatch, err := isSelectorsMatches(&instance, am, am.Spec.ConfigNamespaceSelector, am.Spec.ConfigSelector)
+		ismatch, err := isSelectorsMatches(&instance, am, am.Spec.ConfigSelector)
 		if err != nil {
 			l.Error(err, "cannot match alertmanager against selector, probably bug")
 			continue

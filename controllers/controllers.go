@@ -3,6 +3,10 @@ package controllers
 import (
 	"flag"
 	"fmt"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -13,9 +17,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
-	"strings"
-	"sync"
-	"time"
 )
 
 var cacheSyncTimeout = flag.Duration("controller.cacheSyncTimeout", 3*time.Minute, "controls timeout for caches to be synced.")
@@ -48,24 +49,19 @@ func handleParsingError(parsingErr string, obj objectWithParsingError) (ctrl.Res
 	return ctrl.Result{}, nil
 }
 
-func isSelectorsMatches(sourceCRD, targetCRD client.Object, nsSelector, selector *v1.LabelSelector) (bool, error) {
+func isSelectorsMatches(sourceCRD, targetCRD client.Object, selector *v1.LabelSelector) (bool, error) {
 	// in case of empty namespace object must be synchronized in any way,
 	// coz we dont know source labels.
 	// probably object already deleted.
-	if sourceCRD.GetNamespace() == "" {
+	if sourceCRD.GetNamespace() == "" || sourceCRD.GetNamespace() == targetCRD.GetNamespace() {
 		return true, nil
 	}
-	if sourceCRD.GetNamespace() == targetCRD.GetNamespace() {
-		return true, nil
-	}
-	// fast path config match all by default
-	if selector == nil && nsSelector == nil {
-		return true, nil
-	}
-	// fast path maybe namespace selector will match.
+
+	// filter selector label.
 	if selector == nil {
 		return true, nil
 	}
+
 	labelSelector, err := v1.LabelSelectorAsSelector(selector)
 	if err != nil {
 		return false, fmt.Errorf("cannot parse vmalert's RuleSelector selector as labelSelector: %w", err)

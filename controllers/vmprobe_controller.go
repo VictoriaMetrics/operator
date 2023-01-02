@@ -79,7 +79,7 @@ func (r *VMProbeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		}
 		currentVMagent := &vmagent
 		reqLogger = reqLogger.WithValues("vmagent", vmagent.Name)
-		match, err := isSelectorsMatches(instance, currentVMagent, currentVMagent.Spec.ProbeNamespaceSelector, currentVMagent.Spec.ProbeSelector)
+		match, err := isSelectorsMatches(instance, currentVMagent, currentVMagent.Spec.ProbeSelector)
 		if err != nil {
 			reqLogger.Error(err, "cannot match vmagent and vmProbe")
 			continue

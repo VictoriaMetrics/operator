@@ -79,7 +79,7 @@ func (r *VMServiceScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		}
 		reqLogger = reqLogger.WithValues("vmagent", vmagent.Name)
 		currentVMagent := &vmagent
-		match, err := isSelectorsMatches(instance, currentVMagent, currentVMagent.Spec.ServiceScrapeNamespaceSelector, currentVMagent.Spec.ServiceScrapeSelector)
+		match, err := isSelectorsMatches(instance, currentVMagent, currentVMagent.Spec.ServiceScrapeSelector)
 		if err != nil {
 			reqLogger.Error(err, "cannot match vmagent and vmserviceScrape")
 			continue

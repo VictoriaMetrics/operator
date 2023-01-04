@@ -193,6 +193,20 @@ spec:
                             description: Action to perform based on regex matching.
                               Default is 'replace'
                             type: string
+                          if:
+                            description: 'If represents metricsQL match expression:
+                              ''{__name__=~"foo_.*"}'''
+                            type: string
+                          labels:
+                            additionalProperties:
+                              type: string
+                            description: 'Labels is used together with Match for `action:
+                              graphite`'
+                            type: object
+                          match:
+                            description: 'Match is used together with Labels for `action:
+                              graphite`'
+                            type: string
                           modulus:
                             description: Modulus to take of the hash of the source
                               label values.
@@ -360,6 +374,20 @@ spec:
                           action:
                             description: Action to perform based on regex matching.
                               Default is 'replace'
+                            type: string
+                          if:
+                            description: 'If represents metricsQL match expression:
+                              ''{__name__=~"foo_.*"}'''
+                            type: string
+                          labels:
+                            additionalProperties:
+                              type: string
+                            description: 'Labels is used together with Match for `action:
+                              graphite`'
+                            type: object
+                          match:
+                            description: 'Match is used together with Labels for `action:
+                              graphite`'
                             type: string
                           modulus:
                             description: Modulus to take of the hash of the source

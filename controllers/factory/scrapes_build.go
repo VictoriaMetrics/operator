@@ -1191,6 +1191,25 @@ func generateRelabelConfig(rc *victoriametricsv1beta1.RelabelConfig) yaml.MapSli
 	if c.Action != "" {
 		relabeling = append(relabeling, yaml.MapItem{Key: "action", Value: c.Action})
 	}
+	if c.If != "" {
+		relabeling = append(relabeling, yaml.MapItem{Key: "if", Value: c.If})
+	}
+	if c.Match != "" {
+		relabeling = append(relabeling, yaml.MapItem{Key: "match", Value: c.Match})
+	}
+	if len(c.Labels) > 0 {
+		sortKeys := make([]string, 0, len(c.Labels))
+		labels := make(yaml.MapSlice, 0, len(c.Labels))
+		for key := range c.Labels {
+			sortKeys = append(sortKeys, key)
+		}
+		sort.Strings(sortKeys)
+		for idx := range sortKeys {
+			key := sortKeys[idx]
+			labels = append(labels, yaml.MapItem{Key: key, Value: c.Labels[key]})
+		}
+		relabeling = append(relabeling, yaml.MapItem{Key: "labels", Value: labels})
+	}
 
 	return relabeling
 }

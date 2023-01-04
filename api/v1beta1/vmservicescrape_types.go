@@ -379,6 +379,15 @@ type RelabelConfig struct {
 	// Action to perform based on regex matching. Default is 'replace'
 	// +optional
 	Action string `json:"action,omitempty" yaml:"action,omitempty"`
+	// If represents metricsQL match expression: '{__name__=~"foo_.*"}'
+	// +optional
+	If string `json:"if,omitempty" yaml:"if,omitempty"`
+	// Match is used together with Labels for `action: graphite`
+	// +optional
+	Match string `json:"match,omitempty" yaml:"match,omitempty"`
+	// Labels is used together with Match for `action: graphite`
+	// +optional
+	Labels map[string]string `json:"labels,omitempty" yaml:"labels,omitempty"`
 }
 
 func (rc *RelabelConfig) IsEmpty() bool {

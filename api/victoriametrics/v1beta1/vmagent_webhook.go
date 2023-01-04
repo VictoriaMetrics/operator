@@ -41,7 +41,7 @@ func checkRelabelConfigs(src []RelabelConfig) error {
 	}
 	prc, err = envtemplate.ReplaceBytes(prc)
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot replace envs: %w", err)
 	}
 	if _, err := promrelabel.ParseRelabelConfigsData(prc); err != nil {
 		return fmt.Errorf("cannot parse relabelConfigs: %w", err)

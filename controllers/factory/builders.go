@@ -85,6 +85,10 @@ func mergeServiceSpec(svc *v1.Service, svcSpec *victoriametricsv1beta1.ServiceSp
 	svc.Name = svcSpec.NameOrDefault(svc.Name)
 	// in case of labels, we must keep base labels to be able to discover this service later.
 	svc.Labels = labels.Merge(svcSpec.Labels, svc.Labels)
+	if svc.Labels == nil {
+		svc.Labels = make(map[string]string)
+	}
+	svc.Labels[victoriametricsv1beta1.AdditionalServiceLabel] = "managed"
 	svc.Annotations = labels.Merge(svc.Annotations, svcSpec.Annotations)
 	defaultSvc := svc.DeepCopy()
 	svc.Spec = svcSpec.Spec

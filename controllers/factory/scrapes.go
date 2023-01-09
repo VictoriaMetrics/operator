@@ -855,8 +855,14 @@ func CreateVMServiceScrapeFromService(ctx context.Context, rclient client.Client
 			scrapeSvc.Spec.Endpoints = append(scrapeSvc.Spec.Endpoints, generatedEP)
 		}
 	}
-
-	scrapeSvc.Spec.Selector = metav1.LabelSelector{MatchLabels: service.Spec.Selector}
+	// allow to manually define selectors
+	// in some cases it may be useful
+	// for instance when additional service created with extra pod ports
+	if scrapeSvc.Spec.Selector.MatchLabels == nil && scrapeSvc.Spec.Selector.MatchExpressions == nil {
+		scrapeSvc.Spec.Selector = metav1.LabelSelector{MatchLabels: service.Spec.Selector, MatchExpressions: []metav1.LabelSelectorRequirement{
+			{Key: victoriametricsv1beta1.AdditionalServiceLabel, Operator: metav1.LabelSelectorOpDoesNotExist},
+		}}
+	}
 	err := rclient.Get(ctx, types.NamespacedName{Namespace: service.Namespace, Name: service.Name}, &existVSS)
 	if err != nil {
 		if errors.IsNotFound(err) {

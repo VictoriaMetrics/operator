@@ -157,6 +157,6 @@ func (r *VMAgentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&v1.Service{}, builder.OnlyMetadata).
 		Owns(&v1.Secret{}, builder.OnlyMetadata).
 		Owns(&v1.ServiceAccount{}, builder.OnlyMetadata).
-		WithOptions(defaultOptions).
+		WithOptions(getDefaultOptions()).
 		Complete(r)
 }

@@ -115,6 +115,6 @@ func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 func (r *VMRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&victoriametricsv1beta1.VMRule{}).
-		WithOptions(defaultOptions).
+		WithOptions(getDefaultOptions()).
 		Complete(r)
 }

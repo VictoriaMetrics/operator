@@ -121,6 +121,6 @@ func (r *VMAlertmanagerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&victoriametricsv1beta1.VMServiceScrape{}, builder.OnlyMetadata).
 		Owns(&v1.Secret{}, builder.OnlyMetadata).
 		Owns(&v1.ServiceAccount{}, builder.OnlyMetadata).
-		WithOptions(defaultOptions).
+		WithOptions(getDefaultOptions()).
 		Complete(r)
 }

@@ -250,6 +250,6 @@ func (r *VMUserReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&operatorv1beta1.VMUser{}).
 		Owns(&v1.Secret{}, builder.OnlyMetadata).
-		WithOptions(defaultOptions).
+		WithOptions(getDefaultOptions()).
 		Complete(r)
 }

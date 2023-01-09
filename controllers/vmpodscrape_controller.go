@@ -110,6 +110,6 @@ func (r *VMPodScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 func (r *VMPodScrapeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&victoriametricsv1beta1.VMPodScrape{}).
-		WithOptions(defaultOptions).
+		WithOptions(getDefaultOptions()).
 		Complete(r)
 }

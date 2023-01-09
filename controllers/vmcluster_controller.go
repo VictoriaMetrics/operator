@@ -121,6 +121,6 @@ func (r *VMClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&victoriametricsv1beta1.VMServiceScrape{}, builder.OnlyMetadata).
 		Owns(&appsv1.StatefulSet{}, builder.OnlyMetadata).
 		Owns(&v1.ServiceAccount{}, builder.OnlyMetadata).
-		WithOptions(defaultOptions).
+		WithOptions(getDefaultOptions()).
 		Complete(r)
 }

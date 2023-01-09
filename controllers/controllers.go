@@ -23,10 +23,19 @@ var (
 	maxConcurrency   = flag.Int("controller.maxConcurrentReconciles", 1, "Configures number of concurrent reconciles. It should improve performance for clusters with many objects.")
 )
 
-var defaultOptions = controller.Options{
-	RateLimiter:             workqueue.NewItemExponentialFailureRateLimiter(2*time.Second, 2*time.Minute),
-	CacheSyncTimeout:        *cacheSyncTimeout,
-	MaxConcurrentReconciles: *maxConcurrency,
+var (
+	optionsInit    sync.Once
+	defaultOptions *controller.Options
+)
+
+func getDefaultOptions() controller.Options {
+	optionsInit.Do(func() {
+		defaultOptions = &controller.Options{
+			RateLimiter:             workqueue.NewItemExponentialFailureRateLimiter(2*time.Second, 2*time.Minute),
+			CacheSyncTimeout:        *cacheSyncTimeout,
+			MaxConcurrentReconciles: *maxConcurrency}
+	})
+	return *defaultOptions
 }
 
 var (

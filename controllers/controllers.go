@@ -18,11 +18,15 @@ import (
 	"time"
 )
 
-var cacheSyncTimeout = flag.Duration("controller.cacheSyncTimeout", 3*time.Minute, "controls timeout for caches to be synced.")
+var (
+	cacheSyncTimeout = flag.Duration("controller.cacheSyncTimeout", 3*time.Minute, "controls timeout for caches to be synced.")
+	maxConcurrency   = flag.Int("controller.maxConcurrentReconciles", 1, "Configures number of concurrent reconciles. It should improve performance for clusters with many objects.")
+)
 
 var defaultOptions = controller.Options{
-	RateLimiter:      workqueue.NewItemExponentialFailureRateLimiter(2*time.Second, 2*time.Minute),
-	CacheSyncTimeout: *cacheSyncTimeout,
+	RateLimiter:             workqueue.NewItemExponentialFailureRateLimiter(2*time.Second, 2*time.Minute),
+	CacheSyncTimeout:        *cacheSyncTimeout,
+	MaxConcurrentReconciles: *maxConcurrency,
 }
 
 var (

@@ -152,7 +152,7 @@ func CreateOrUpdateVMAlert(ctx context.Context, cr *victoriametricsv1beta1.VMAle
 			return reconcile.Result{}, fmt.Errorf("cannot list alertmanagers for vmalert notifier sd: %w", err)
 		}
 		for _, item := range ams.Items {
-			if !item.DeletionTimestamp.IsZero() && (n.Selector.Namespace != nil && !n.Selector.Namespace.IsMatch(&item)) {
+			if !item.DeletionTimestamp.IsZero() || (n.Selector.Namespace != nil && !n.Selector.Namespace.IsMatch(&item)) {
 				continue
 			}
 			dsc := item.AsNotifiers()

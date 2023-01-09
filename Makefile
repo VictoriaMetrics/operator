@@ -336,6 +336,7 @@ bundle-build:
 build: manager manifests fix118 fix_crd_nulls
 
 release-package: kustomize
+	rm -rf release/
 	mkdir -p release/crds/
 	mkdir release/operator
 	mkdir release/examples
@@ -347,7 +348,7 @@ release-package: kustomize
 	kustomize build config/manager > release/operator/manager.yaml
 	zip -r operator.zip bin/manager
 	zip -r bundle_crd.zip release/
-	rm -rf release/
+
 
 packagemanifests: manifests fix118 fix_crd_nulls
     # TODO(f41gh7): it fall into endless loop for some reason

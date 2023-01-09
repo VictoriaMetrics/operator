@@ -896,6 +896,38 @@ func TestCreateVMServiceScrapeFromService(t *testing.T) {
 		wantErr               bool
 	}{
 		{
+			name: "custom selector",
+			args: args{
+				metricPath:      "/metrics",
+				filterPortNames: []string{"http"},
+				service: &v1.Service{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:   "vmagent-svc",
+						Labels: map[string]string{"my-label": "value"},
+					},
+					Spec: v1.ServiceSpec{
+						Ports: []v1.ServicePort{
+							{
+								Name: "http",
+							},
+						},
+					},
+				},
+				serviceScrapeSpecTemplate: &victoriametricsv1beta1.VMServiceScrapeSpec{
+					Selector: metav1.LabelSelector{MatchLabels: map[string]string{"my-label": "value"}},
+				},
+			},
+			wantServiceScrapeSpec: victoriametricsv1beta1.VMServiceScrapeSpec{
+				Endpoints: []victoriametricsv1beta1.Endpoint{
+					{
+						Path: "/metrics",
+						Port: "http",
+					},
+				},
+				Selector: metav1.LabelSelector{MatchLabels: map[string]string{"my-label": "value"}},
+			},
+		},
+		{
 			name: "multiple ports with filter",
 			args: args{
 				metricPath:      "/metrics",
@@ -923,6 +955,7 @@ func TestCreateVMServiceScrapeFromService(t *testing.T) {
 						Port: "http",
 					},
 				},
+				Selector: metav1.LabelSelector{MatchExpressions: []metav1.LabelSelectorRequirement{{Key: victoriametricsv1beta1.AdditionalServiceLabel, Operator: metav1.LabelSelectorOpDoesNotExist}}},
 			},
 		},
 		{
@@ -957,6 +990,7 @@ func TestCreateVMServiceScrapeFromService(t *testing.T) {
 					},
 				},
 				TargetLabels: []string{"key"},
+				Selector:     metav1.LabelSelector{MatchExpressions: []metav1.LabelSelectorRequirement{{Key: victoriametricsv1beta1.AdditionalServiceLabel, Operator: metav1.LabelSelectorOpDoesNotExist}}},
 			},
 		},
 		{
@@ -1009,6 +1043,7 @@ func TestCreateVMServiceScrapeFromService(t *testing.T) {
 					},
 				},
 				TargetLabels: []string{"key"},
+				Selector:     metav1.LabelSelector{MatchExpressions: []metav1.LabelSelectorRequirement{{Key: victoriametricsv1beta1.AdditionalServiceLabel, Operator: metav1.LabelSelectorOpDoesNotExist}}},
 			},
 		},
 	}

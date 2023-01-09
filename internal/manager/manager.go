@@ -30,6 +30,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
+	"sync/atomic"
 	"time"
 	// +kubebuilder:scaffold:imports
 )
@@ -55,9 +56,11 @@ var (
 	webhookCertName               = flag.String("webhook.certName", "tls.crt", "name of webhook server Tls certificate inside tls.certDir")
 	webhookKeyName                = flag.String("webhook.keyName", "tls.key", "name of webhook server Tls key inside tls.certDir")
 	metricsAddr                   = flag.String("metrics-addr", ":8080", "The address the metric endpoint binds to.")
+	probeAddr                     = flag.String("http.readyListenAddr", "localhost:8081", "The address the probes (health, ready) binds to.")
 	listenAddr                    = flag.String("http.listenAddr", ":8435", "http server listen addr - serves victoria-metrics http server + metrics.")
 	defaultKubernetesMinorVersion = flag.Uint64("default.kubernetesVersion.minor", 21, "Minor version of kubernetes server, if operator cannot parse actual kubernetes response")
 	defaultKubernetesMajorVersion = flag.Uint64("default.kubernetesVersion.major", 1, "Major version of kubernetes server, if operator cannot parse actual kubernetes response")
+	wasCacheSynced                = uint32(0)
 )
 
 func init() {
@@ -103,11 +106,15 @@ func RunManager(ctx context.Context) error {
 	setupLog.Info("Registering Components.")
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme:             scheme,
-		MetricsBindAddress: *metricsAddr,
-		Port:               9443,
-		LeaderElection:     *enableLeaderElection,
-		LeaderElectionID:   "57410f0d.victoriametrics.com",
+		Scheme:                 scheme,
+		MetricsBindAddress:     *metricsAddr,
+		HealthProbeBindAddress: *probeAddr,
+		ReadinessEndpointName:  "/ready",
+		LivenessEndpointName:   "/health",
+		// port for webhook
+		Port:             9443,
+		LeaderElection:   *enableLeaderElection,
+		LeaderElectionID: "57410f0d.victoriametrics.com",
 		ClientDisableCacheFor: []client.Object{&v1.Secret{}, &v1.ConfigMap{}, &v1.Pod{}, &v12.Deployment{},
 			&v12.StatefulSet{}, &v2beta2.HorizontalPodAutoscaler{},
 			&v1beta1.PodSecurityPolicy{}, &v1beta1.PodDisruptionBudget{}},
@@ -117,6 +124,30 @@ func RunManager(ctx context.Context) error {
 		setupLog.Error(err, "unable to start manager")
 		return err
 	}
+	if err := mgr.AddReadyzCheck("ready", func(req *http.Request) error {
+		wasSynced := atomic.LoadUint32(&wasCacheSynced)
+		// fast path
+		if wasSynced > 0 {
+			return nil
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+		defer cancel()
+		ok := mgr.GetCache().WaitForCacheSync(ctx)
+		if ok {
+			atomic.StoreUint32(&wasCacheSynced, 1)
+			return nil
+		}
+		return fmt.Errorf("controllers sync cache in progress")
+	}); err != nil {
+		return fmt.Errorf("cannot register ready endpoint: %w", err)
+	}
+	// no-op
+	if err := mgr.AddHealthzCheck("health", func(req *http.Request) error {
+		return nil
+	}); err != nil {
+		return fmt.Errorf("cannot register health endpoint: %w", err)
+	}
+
 	opNs := config.MustGetWatchNamespace()
 	if opNs != "" {
 		setupLog.Info("operator is running in single namespace mode", "namespace", opNs)

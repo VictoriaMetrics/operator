@@ -859,9 +859,13 @@ func BuildRemoteWriteSettings(cr *victoriametricsv1beta1.VMAgent) []string {
 	var args []string
 	if cr.Spec.RemoteWriteSettings == nil {
 		// fast path
+		pqMountPath := vmAgentPersistentQueueDir
+		if cr.Spec.StatefulMode {
+			pqMountPath = vmAgentPersistentQueueSTSDir
+		}
 		args = append(args,
 			"-remoteWrite.maxDiskUsagePerURL=1073741824",
-			fmt.Sprintf("-remoteWrite.tmpDataPath=%s", vmAgentPersistentQueueDir))
+			fmt.Sprintf("-remoteWrite.tmpDataPath=%s", pqMountPath))
 		return args
 	}
 

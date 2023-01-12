@@ -1082,6 +1082,13 @@ func TestBuildRemoteWriteSettings(t *testing.T) {
 		want []string
 	}{
 		{
+			name: "test with StatefulMode",
+			args: args{
+				cr: &victoriametricsv1beta1.VMAgent{Spec: victoriametricsv1beta1.VMAgentSpec{StatefulMode: true}},
+			},
+			want: []string{"-remoteWrite.maxDiskUsagePerURL=1073741824", "-remoteWrite.tmpDataPath=/vmagent_pq/vmagent-remotewrite-data"},
+		},
+		{
 			name: "test simple ok",
 			args: args{
 				cr: &victoriametricsv1beta1.VMAgent{},

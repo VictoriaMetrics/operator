@@ -1,8 +1,11 @@
 package k8stools
 
 import (
+	"encoding/json"
 	"fmt"
+	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/version"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strconv"
 	"strings"
 )
@@ -53,4 +56,45 @@ func IsPDBV1APISupported() bool {
 		return true
 	}
 	return false
+}
+
+// IsHPAV2BetaSupported checks if new
+// Beta deprecated since 1.26
+// https://kubernetes.io/blog/2021/12/07/kubernetes-1-23-release-announcement/#horizontalpodautoscaler-v2-graduates-to-ga
+func IsHPAV2BetaSupported() bool {
+	if ServerMajorVersion == 1 && ServerMinorVersion < 26 {
+		return true
+	}
+	return false
+}
+
+// NewHPAEmptyObject returns HorizontalPodAutoscaler object for given kubernetes version
+func NewHPAEmptyObject(opts ...func(obj client.Object)) client.Object {
+	var hpa client.Object = &v2beta2.HorizontalPodAutoscaler{}
+	if !IsHPAV2BetaSupported() {
+		hpa = &v2beta2.HorizontalPodAutoscaler{}
+	}
+	for _, opt := range opts {
+		opt(hpa)
+	}
+	return hpa
+}
+
+// MustConvertObjectVersionsJSON objects with json serialize and deserialize
+// it could be used only for converting BETA apis to Stable version
+func MustConvertObjectVersionsJSON[A, B any](src *A, objectName string) *B {
+	var dst B
+	if src == nil {
+		return nil
+	}
+	srcB, err := json.Marshal(src)
+	if err != nil {
+		log.Error(err, "BUG, cannot serialize object for API", "APIObject", objectName, "object", src)
+		return nil
+	}
+	if err := json.Unmarshal(srcB, &dst); err != nil {
+		log.Error(err, "BUG, cannot parse object for API", "APIObject", objectName, "object", string(srcB))
+		return nil
+	}
+	return &dst
 }

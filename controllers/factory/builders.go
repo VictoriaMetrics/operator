@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/api/autoscaling/v2beta2"
 	policyv1 "k8s.io/api/policy/v1"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
@@ -402,36 +403,53 @@ func buildProbe(container v1.Container, cr probeCRD) v1.Container {
 	return container
 }
 
-func buildHPASpec(targetRef v2beta2.CrossVersionObjectReference, spec *victoriametricsv1beta1.EmbeddedHPA, or []metav1.OwnerReference, lbls map[string]string, namespace string) *v2beta2.HorizontalPodAutoscaler {
-	return &v2beta2.HorizontalPodAutoscaler{
+func buildHPASpec(targetRef v2beta2.CrossVersionObjectReference, spec *victoriametricsv1beta1.EmbeddedHPA, or []metav1.OwnerReference, lbls map[string]string, namespace string) client.Object {
+	if k8stools.IsHPAV2BetaSupported() {
+		return &v2beta2.HorizontalPodAutoscaler{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            targetRef.Name,
+				Namespace:       namespace,
+				Labels:          lbls,
+				OwnerReferences: or,
+			},
+			Spec: v2beta2.HorizontalPodAutoscalerSpec{
+				MaxReplicas:    spec.MaxReplicas,
+				MinReplicas:    spec.MinReplicas,
+				ScaleTargetRef: targetRef,
+				Metrics:        spec.Metrics,
+				Behavior:       spec.Behaviour,
+			},
+		}
+	}
+
+	return &v2.HorizontalPodAutoscaler{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            targetRef.Name,
 			Namespace:       namespace,
 			Labels:          lbls,
 			OwnerReferences: or,
 		},
-		Spec: v2beta2.HorizontalPodAutoscalerSpec{
+		Spec: v2.HorizontalPodAutoscalerSpec{
 			MaxReplicas:    spec.MaxReplicas,
 			MinReplicas:    spec.MinReplicas,
-			ScaleTargetRef: targetRef,
-			Metrics:        spec.Metrics,
-			Behavior:       spec.Behaviour,
+			ScaleTargetRef: v2.CrossVersionObjectReference(targetRef),
+			Metrics:        *k8stools.MustConvertObjectVersionsJSON[[]v2beta2.MetricSpec, []v2.MetricSpec](&spec.Metrics, "v2beta/autoscaling/metricsSpec"),
+			Behavior:       k8stools.MustConvertObjectVersionsJSON[v2beta2.HorizontalPodAutoscalerBehavior, v2.HorizontalPodAutoscalerBehavior](spec.Behaviour, "v2beta/autoscaling/behaviorSpec"),
 		},
 	}
+
 }
 
-func reconcileHPA(ctx context.Context, rclient client.Client, targetHPA *v2beta2.HorizontalPodAutoscaler) error {
-	var existHPA v2beta2.HorizontalPodAutoscaler
-	if err := rclient.Get(ctx, types.NamespacedName{Name: targetHPA.Name, Namespace: targetHPA.Namespace}, &existHPA); err != nil {
+func reconcileHPA(ctx context.Context, rclient client.Client, targetHPA client.Object) error {
+	existHPA := k8stools.NewHPAEmptyObject()
+	if err := rclient.Get(ctx, types.NamespacedName{Name: targetHPA.GetName(), Namespace: targetHPA.GetNamespace()}, existHPA); err != nil {
 		if errors.IsNotFound(err) {
-			log.Info("creating new HPA for vminsert")
 			return rclient.Create(ctx, targetHPA)
 		}
 	}
-
-	targetHPA.ResourceVersion = existHPA.ResourceVersion
+	targetHPA.SetResourceVersion(existHPA.GetResourceVersion())
 	victoriametricsv1beta1.MergeFinalizers(targetHPA, victoriametricsv1beta1.FinalizerName)
-	targetHPA.Annotations = labels.Merge(existHPA.Annotations, targetHPA.Annotations)
+	targetHPA.SetAnnotations(labels.Merge(existHPA.GetAnnotations(), targetHPA.GetAnnotations()))
 
 	return rclient.Update(ctx, targetHPA)
 }

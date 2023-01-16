@@ -2,24 +2,20 @@ package finalize
 
 import (
 	"context"
-
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/api/autoscaling/v2beta2"
 	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // HPADelete handles case, when user wants to remove HPA configuration from cluster config.
 func HPADelete(ctx context.Context, rclient client.Client, objectName, objectNamespace string) error {
-	hpa := &v2beta2.HorizontalPodAutoscaler{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      objectName,
-			Namespace: objectNamespace,
-		},
-	}
+	hpa := k8stools.NewHPAEmptyObject(func(obj client.Object) {
+		obj.SetName(objectName)
+		obj.SetNamespace(objectNamespace)
+	})
+
 	if err := removeFinalizeObjByName(ctx, rclient, hpa, objectName, objectNamespace); err != nil {
 		return err
 	}
@@ -31,6 +27,7 @@ func HPADelete(ctx context.Context, rclient client.Client, objectName, objectNam
 
 func OnVMClusterDelete(ctx context.Context, rclient client.Client, crd *victoriametricsv1beta1.VMCluster) error {
 	// check deployment
+
 	if crd.Spec.VMInsert != nil {
 		obj := crd.Spec.VMInsert
 		if err := removeFinalizeObjByName(ctx, rclient, &appsv1.Deployment{}, obj.GetNameWithPrefix(crd.Name), crd.Namespace); err != nil {
@@ -45,7 +42,7 @@ func OnVMClusterDelete(ctx context.Context, rclient client.Client, crd *victoria
 				return err
 			}
 		}
-		if err := removeFinalizeObjByName(ctx, rclient, &v2beta2.HorizontalPodAutoscaler{}, obj.GetNameWithPrefix(crd.Name), crd.Namespace); err != nil {
+		if err := removeFinalizeObjByName(ctx, rclient, k8stools.NewHPAEmptyObject(), obj.GetNameWithPrefix(crd.Name), crd.Namespace); err != nil {
 			return err
 		}
 
@@ -54,6 +51,7 @@ func OnVMClusterDelete(ctx context.Context, rclient client.Client, crd *victoria
 			return err
 		}
 	}
+
 	if crd.Spec.VMSelect != nil {
 		obj := crd.Spec.VMSelect
 		if err := removeFinalizeObjByName(ctx, rclient, &appsv1.StatefulSet{}, obj.GetNameWithPrefix(crd.Name), crd.Namespace); err != nil {
@@ -70,7 +68,8 @@ func OnVMClusterDelete(ctx context.Context, rclient client.Client, crd *victoria
 			return err
 		}
 
-		if err := removeFinalizeObjByName(ctx, rclient, &v2beta2.HorizontalPodAutoscaler{}, obj.GetNameWithPrefix(crd.Name), crd.Namespace); err != nil {
+		// remove hpa
+		if err := removeFinalizeObjByName(ctx, rclient, k8stools.NewHPAEmptyObject(), obj.GetNameWithPrefix(crd.Name), crd.Namespace); err != nil {
 			return err
 		}
 

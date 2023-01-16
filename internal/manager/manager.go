@@ -15,7 +15,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/pflag"
 	v12 "k8s.io/api/apps/v1"
-	"k8s.io/api/autoscaling/v2beta2"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/api/policy/v1beta1"
 	metav1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -116,7 +115,7 @@ func RunManager(ctx context.Context) error {
 		LeaderElection:   *enableLeaderElection,
 		LeaderElectionID: "57410f0d.victoriametrics.com",
 		ClientDisableCacheFor: []client.Object{&v1.Secret{}, &v1.ConfigMap{}, &v1.Pod{}, &v12.Deployment{},
-			&v12.StatefulSet{}, &v2beta2.HorizontalPodAutoscaler{},
+			&v12.StatefulSet{},
 			&v1beta1.PodSecurityPolicy{}, &v1beta1.PodDisruptionBudget{}},
 		Namespace: config.MustGetWatchNamespace(),
 	})

@@ -157,7 +157,7 @@ func growSTSPVC(ctx context.Context, rclient client.Client, sts *appsv1.Stateful
 		return err
 	}
 
-	return growPVCs(ctx, rclient, pvc.Spec.Resources.Requests.Storage(), sts.Namespace, sts.Spec.Template.Labels, isExpandable)
+	return growPVCs(ctx, rclient, pvc.Spec.Resources.Requests.Storage(), sts.Namespace, sts.Spec.Selector.MatchLabels, isExpandable)
 }
 
 // isStorageClassExpandable check is it possible to update size of given pvc
@@ -210,6 +210,9 @@ func growPVCs(ctx context.Context, rclient client.Client, size *resource.Quantit
 	}
 	if err := rclient.List(ctx, &pvcs, opts); err != nil {
 		return err
+	}
+	if len(pvcs.Items) == 0 {
+		log.Info("PVCs select call returned 0 pvcs, it could be a bug, inspect selectors", "want match", selector, "namespace", ns)
 	}
 	for i := range pvcs.Items {
 		pvc := pvcs.Items[i]

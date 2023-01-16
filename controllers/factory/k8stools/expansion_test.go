@@ -187,6 +187,11 @@ func Test_growSTSPVC(t *testing.T) {
 						},
 					},
 					Spec: appsv1.StatefulSetSpec{
+						Selector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"app": "vmselect",
+							},
+						},
 						VolumeClaimTemplates: []v1.PersistentVolumeClaim{
 							{
 								ObjectMeta: metav1.ObjectMeta{
@@ -242,6 +247,11 @@ func Test_growSTSPVC(t *testing.T) {
 						},
 					},
 					Spec: appsv1.StatefulSetSpec{
+						Selector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"app": "vmselect",
+							},
+						},
 						VolumeClaimTemplates: []v1.PersistentVolumeClaim{
 							{
 								ObjectMeta: metav1.ObjectMeta{
@@ -299,6 +309,11 @@ func Test_growSTSPVC(t *testing.T) {
 						},
 					},
 					Spec: appsv1.StatefulSetSpec{
+						Selector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"app": "vmselect",
+							},
+						},
 						VolumeClaimTemplates: []v1.PersistentVolumeClaim{
 							{
 								ObjectMeta: metav1.ObjectMeta{

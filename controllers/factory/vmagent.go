@@ -26,7 +26,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 const (
@@ -67,49 +66,46 @@ func CreateOrUpdateVMAgentService(ctx context.Context, cr *victoriametricsv1beta
 	return reconcileServiceForCRD(ctx, rclient, newService)
 }
 
-func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client, c *config.BaseOperatorConf) (reconcile.Result, error) {
+func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client, c *config.BaseOperatorConf) error {
 	l := log.WithValues("controller", "vmagent.crud", "namespace", cr.Namespace, "vmagent", cr.PrefixedName())
 	if err := psp.CreateServiceAccountForCRD(ctx, cr, rclient); err != nil {
-		return reconcile.Result{}, fmt.Errorf("failed create service account: %w", err)
+		return fmt.Errorf("failed create service account: %w", err)
 	}
 	if c.PSPAutoCreateEnabled {
 		if err := psp.CreateOrUpdateServiceAccountWithPSP(ctx, cr, rclient); err != nil {
-			l.Error(err, "cannot create podsecuritypolicy")
-			return reconcile.Result{}, fmt.Errorf("cannot create podsecurity policy for vmagent, err: %w", err)
+			return fmt.Errorf("cannot create podsecurity policy for vmagent, err: %w", err)
 		}
 	}
 	if cr.GetServiceAccountName() == cr.PrefixedName() {
-		l.Info("creating default clusterrole for vmagent")
 		if err := vmagent.CreateVMAgentClusterAccess(ctx, cr, rclient); err != nil {
-			return reconcile.Result{}, fmt.Errorf("cannot create vmagent clusterole and binding for it, err: %w", err)
+			return fmt.Errorf("cannot create vmagent clusterole and binding for it, err: %w", err)
 		}
 	}
 	// we have to create empty or full cm first
 	ssCache, err := CreateOrUpdateConfigurationSecret(ctx, cr, rclient, c)
 	if err != nil {
-		l.Error(err, "cannot create configmap")
-		return reconcile.Result{}, err
+		return err
 	}
 
 	err = CreateOrUpdateTlsAssets(ctx, cr, rclient)
 	if err != nil {
-		return reconcile.Result{}, fmt.Errorf("cannot update tls asset for vmagent: %w", err)
+		return fmt.Errorf("cannot update tls asset for vmagent: %w", err)
 	}
 
 	if err := CreateOrUpdateRelabelConfigsAssets(ctx, cr, rclient); err != nil {
-		return reconcile.Result{}, fmt.Errorf("cannot update relabeling asset for vmagent: %w", err)
+		return fmt.Errorf("cannot update relabeling asset for vmagent: %w", err)
 	}
 
 	if cr.Spec.PodDisruptionBudget != nil {
 		err = CreateOrUpdatePodDisruptionBudget(ctx, rclient, cr, cr.Kind, cr.Spec.PodDisruptionBudget)
 		if err != nil {
-			return reconcile.Result{}, fmt.Errorf("cannot update pod disruption budget for vmagent: %w", err)
+			return fmt.Errorf("cannot update pod disruption budget for vmagent: %w", err)
 		}
 	}
 
 	newDeploy, err := newDeployForVMAgent(cr, c, ssCache)
 	if err != nil {
-		return reconcile.Result{}, fmt.Errorf("cannot build new deploy for vmagent: %w", err)
+		return fmt.Errorf("cannot build new deploy for vmagent: %w", err)
 	}
 
 	deploymentNames := make(map[string]struct{})
@@ -123,7 +119,7 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 			switch shardedDeploy := shardedDeploy.(type) {
 			case *appsv1.Deployment:
 				if err := k8stools.HandleDeployUpdate(ctx, rclient, shardedDeploy); err != nil {
-					return reconcile.Result{}, err
+					return err
 				}
 				deploymentNames[shardedDeploy.Name] = struct{}{}
 			case *appsv1.StatefulSet:
@@ -140,7 +136,7 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 					UpdateStrategy: cr.STSUpdateStrategy,
 				}
 				if err := k8stools.HandleSTSUpdate(ctx, rclient, stsOpts, shardedDeploy, c); err != nil {
-					return reconcile.Result{}, err
+					return err
 				}
 				stsNames[shardedDeploy.Name] = struct{}{}
 			}
@@ -149,7 +145,7 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 		switch newDeploy := newDeploy.(type) {
 		case *appsv1.Deployment:
 			if err := k8stools.HandleDeployUpdate(ctx, rclient, newDeploy); err != nil {
-				return reconcile.Result{}, err
+				return err
 			}
 			deploymentNames[newDeploy.Name] = struct{}{}
 		case *appsv1.StatefulSet:
@@ -162,21 +158,20 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 				UpdateStrategy: cr.STSUpdateStrategy,
 			}
 			if err := k8stools.HandleSTSUpdate(ctx, rclient, stsOpts, newDeploy, c); err != nil {
-				return reconcile.Result{}, err
+				return err
 			}
 			stsNames[newDeploy.Name] = struct{}{}
 		}
 
 	}
 	if err := finalize.RemoveOrphanedDeployments(ctx, rclient, cr, deploymentNames); err != nil {
-		return reconcile.Result{}, err
+		return err
 	}
 	if err := finalize.RemoveOrphanedSTSs(ctx, rclient, cr, stsNames); err != nil {
-		return reconcile.Result{}, err
+		return err
 	}
-	l.Info("vmagent reconciled")
 
-	return reconcile.Result{}, nil
+	return nil
 }
 
 func setDefaultForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperatorConf) {

@@ -18,7 +18,6 @@ package controllers
 
 import (
 	"context"
-
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
@@ -46,64 +45,51 @@ func (r *VMNodeScrapeReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmnodescrapes,verbs=*
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmnodescrapes/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmnodescrapes/finalizers,verbs=*
-func (r *VMNodeScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	if vmAgentReconcileLimit.MustThrottleReconcile() {
-		// fast path, rate limited
-		return ctrl.Result{}, nil
-	}
-	reqLogger := r.Log.WithValues("vmnodescrape", req.NamespacedName)
+func (r *VMNodeScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 
+	reqLogger := r.Log.WithValues("vmnodescrape", req.NamespacedName)
 	// Fetch the VMNodeScrape instance
 	instance := &operatorv1beta1.VMNodeScrape{}
-	err := r.Get(ctx, req.NamespacedName, instance)
-	if err != nil {
+	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
 		return handleGetError(req, "vmnodescrape", err)
+	}
+
+	RegisterObjectStat(instance, "vmnodescrape")
+
+	if vmAgentReconcileLimit.MustThrottleReconcile() {
+		// fast path, rate limited
+		return
 	}
 
 	vmAgentSync.Lock()
 	defer vmAgentSync.Unlock()
-	if !instance.DeletionTimestamp.IsZero() {
-		DeregisterObject(instance.Name, instance.Namespace, "vmnodescrape")
-	} else {
-		RegisterObject(instance.Name, instance.Namespace, "vmnodescrape")
-	}
 
 	vmAgentInstances := &operatorv1beta1.VMAgentList{}
-	err = r.List(ctx, vmAgentInstances, config.MustGetNamespaceListOptions())
-	if err != nil {
-		reqLogger.Error(err, "cannot list vmagent objects")
-		return ctrl.Result{}, err
+	if err := r.List(ctx, vmAgentInstances, config.MustGetNamespaceListOptions()); err != nil {
+		return result, err
 	}
-	reqLogger.Info("found vmagent objects ", "vmagents count: ", len(vmAgentInstances.Items))
 
 	for _, vmagent := range vmAgentInstances.Items {
 		if !vmagent.DeletionTimestamp.IsZero() || vmagent.Spec.ParsingError != "" {
 			continue
 		}
-		reqLogger = reqLogger.WithValues("vmagent", vmagent.Name)
 		currentVMagent := &vmagent
 		match, err := isSelectorsMatches(instance, currentVMagent, currentVMagent.Spec.NodeScrapeSelector)
 		if err != nil {
-			reqLogger.Error(err, "cannot match vmagent and vmProbe")
+			reqLogger.Error(err, "cannot match vmagent and vmnodescrape")
 			continue
 		}
 		// fast path
 		if !match {
 			continue
 		}
-		reqLogger.Info("reconciling vmNodeScrape for vmagent")
-
-		recon, err := factory.CreateOrUpdateVMAgent(ctx, currentVMagent, r, r.BaseConf)
-		if err != nil {
-			reqLogger.Error(err, "cannot create or update vmagent")
-			return recon, err
+		if err := factory.CreateOrUpdateVMAgent(ctx, currentVMagent, r, r.BaseConf); err != nil {
+			reqLogger.Error(err, "cannot create or update vmagent for nodescrape")
+			continue
 		}
-		reqLogger.Info("reconciled vmagent")
 	}
 
-	reqLogger.Info("reconciled VMNodeScrape")
-
-	return ctrl.Result{}, nil
+	return
 }
 
 // SetupWithManager - setups manager for VMNodeScrape

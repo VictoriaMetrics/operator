@@ -312,14 +312,12 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 
-			got, err := CreateOrUpdateVMAgent(context.TODO(), tt.args.cr, fclient, tt.args.c)
+			err := CreateOrUpdateVMAgent(context.TODO(), tt.args.cr, fclient, tt.args.c)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CreateOrUpdateVMAgent() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("CreateOrUpdateVMAgent() got = %v, want %v", got, tt.want)
-			}
+
 		})
 	}
 }

@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/internal/config"
@@ -45,34 +46,29 @@ func (r *VMRuleReconciler) Scheme() *runtime.Scheme {
 // Reconcile general reconcile method for controller
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmrules,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmrules/status,verbs=get;update;patch
-func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	if vmAlertRateLimiter.MustThrottleReconcile() {
-		// fast path
-		return ctrl.Result{}, nil
-	}
+func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
+
 	reqLogger := r.Log.WithValues("vmrule", req.NamespacedName)
-	reqLogger.Info("Reconciling VMRule")
 
 	// Fetch the VMRule instance
 	instance := &victoriametricsv1beta1.VMRule{}
-	err := r.Get(ctx, req.NamespacedName, instance)
-	if err != nil {
+	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
 		return handleGetError(req, "vmrule", err)
 	}
 
 	alertMngs := &victoriametricsv1beta1.VMAlertList{}
-	reqLogger.Info("listing vmalerts")
+	RegisterObjectStat(instance, "vmrule")
+
+	if vmAlertRateLimiter.MustThrottleReconcile() {
+		// fast path
+		return ctrl.Result{}, nil
+	}
+
 	vmAlertSync.Lock()
 	defer vmAlertSync.Unlock()
-	if !instance.DeletionTimestamp.IsZero() {
-		DeregisterObject(instance.Name, instance.Namespace, "vmrule")
-	} else {
-		RegisterObject(instance.Name, instance.Namespace, "vmrule")
-	}
 
 	err = r.List(ctx, alertMngs, config.MustGetNamespaceListOptions())
 	if err != nil {
-		reqLogger.Error(err, "cannot list vmalerts")
 		return ctrl.Result{}, err
 	}
 
@@ -80,7 +76,6 @@ func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		if vmalert.DeletionTimestamp != nil || vmalert.Spec.ParsingError != "" {
 			continue
 		}
-		reqLogger.WithValues("vmalert", vmalert.Name)
 		currVMAlert := &vmalert
 		match, err := isSelectorsMatches(instance, currVMAlert, currVMAlert.Spec.RuleSelector)
 		if err != nil {
@@ -91,25 +86,18 @@ func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		if !match {
 			continue
 		}
-		reqLogger.Info("reconciling vmalert rules")
 		maps, err := factory.CreateOrUpdateRuleConfigMaps(ctx, currVMAlert, r)
 		if err != nil {
 			reqLogger.Error(err, "cannot update rules configmaps")
 			return ctrl.Result{}, err
 		}
-		reqLogger.Info("created rules maps count", "count", len(maps))
 
-		_, err = factory.CreateOrUpdateVMAlert(ctx, currVMAlert, r, r.BaseConf, maps)
-		if err != nil {
-			reqLogger.Error(err, "cannot trigger vmalert update, after rules changing")
-			return ctrl.Result{}, nil
+		if err := factory.CreateOrUpdateVMAlert(ctx, currVMAlert, r, r.BaseConf, maps); err != nil {
+			return result, fmt.Errorf("cannot create or update vmalert for vmrule :%w", err)
 		}
-		reqLogger.Info("reconciled vmalert rules")
 
 	}
-	reqLogger.Info("alert rule was reconciled")
-
-	return ctrl.Result{}, nil
+	return
 }
 
 // SetupWithManager general setup method

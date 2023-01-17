@@ -89,7 +89,7 @@ func isSelectorsMatches(sourceCRD, targetCRD client.Object, selector *v1.LabelSe
 
 func handleGetError(reqObject ctrl.Request, controller string, err error) (ctrl.Result, error) {
 	if errors.IsNotFound(err) {
-		DeregisterObject(reqObject.Name, reqObject.Namespace, controller)
+		deregisterObjectByCollector(reqObject.Name, reqObject.Namespace, controller)
 		return ctrl.Result{}, nil
 	}
 	return ctrl.Result{}, err

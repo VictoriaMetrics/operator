@@ -44,33 +44,27 @@ func (r *VMServiceScrapeReconciler) Scheme() *runtime.Scheme {
 // Reconcile general reconcile method for controller
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmservicescrapes,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmservicescrapes/status,verbs=get;update;patch
-func (r *VMServiceScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	if vmAgentReconcileLimit.MustThrottleReconcile() {
-		// fast path, rate limited
-		return ctrl.Result{}, nil
-	}
+func (r *VMServiceScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
+
 	reqLogger := r.Log.WithValues("vmservicescrape", req.NamespacedName)
-	reqLogger.Info("Reconciling VMServiceScrape")
 	// Fetch the VMServiceScrape instance
 	instance := &victoriametricsv1beta1.VMServiceScrape{}
-	err := r.Get(ctx, req.NamespacedName, instance)
-	if err != nil {
+	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
 		return handleGetError(req, "vmservicescrape", err)
 	}
-	vmAgentSync.Lock()
-	defer vmAgentSync.Unlock()
 
-	if !instance.DeletionTimestamp.IsZero() {
-		DeregisterObject(instance.Name, instance.Namespace, "vmservicescrape")
-	} else {
-		RegisterObject(instance.Name, instance.Namespace, "vmservicescrape")
+	RegisterObjectStat(instance, "vmservicescrape")
+	if vmAgentReconcileLimit.MustThrottleReconcile() {
+		// fast path, rate limited
+		return
 	}
 
+	vmAgentSync.Lock()
+	defer vmAgentSync.Unlock()
 	vmAgentInstances := &victoriametricsv1beta1.VMAgentList{}
 	err = r.List(ctx, vmAgentInstances, config.MustGetNamespaceListOptions())
 	if err != nil {
-		reqLogger.Error(err, "cannot list vmagent objects")
-		return ctrl.Result{}, err
+		return result, err
 	}
 
 	for _, vmagent := range vmAgentInstances.Items {
@@ -89,16 +83,12 @@ func (r *VMServiceScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 			continue
 		}
 
-		recon, err := factory.CreateOrUpdateVMAgent(ctx, currentVMagent, r, r.BaseConf)
-		if err != nil {
+		if err := factory.CreateOrUpdateVMAgent(ctx, currentVMagent, r, r.BaseConf); err != nil {
 			reqLogger.Error(err, "cannot create or update vmagent instance")
-			return recon, err
+			continue
 		}
-		reqLogger.Info("reconciled vmagent")
 	}
-
-	reqLogger.Info("reconciled serviceScrape")
-	return ctrl.Result{}, nil
+	return
 }
 
 // SetupWithManager general setup method

@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"github.com/VictoriaMetrics/operator/controllers/factory/limiter"
 
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/internal/config"
@@ -27,6 +28,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	operatorv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+)
+
+var (
+	vmaConfigRateLimiter = limiter.NewRateLimiter("vmalertmanager", 5)
 )
 
 // VMAlertmanagerConfigReconciler reconciles a VMAlertmanagerConfig object
@@ -45,23 +50,22 @@ func (r *VMAlertmanagerConfigReconciler) Scheme() *runtime.Scheme {
 // Reconcile implements interface
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmalertmanagerconfigs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmalertmanagerconfigs/status,verbs=get;update;patch
-func (r *VMAlertmanagerConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *VMAlertmanagerConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	l := r.Log.WithValues("vmalertmanagerconfig", req.NamespacedName, "name", req.Name)
 
 	var instance operatorv1beta1.VMAlertmanagerConfig
-	err := r.Client.Get(ctx, req.NamespacedName, &instance)
-	if err != nil {
+	if err := r.Client.Get(ctx, req.NamespacedName, &instance); err != nil {
 		return handleGetError(req, "vmalertmanagerconfig", err)
+	}
+
+	RegisterObjectStat(&instance, "vmalertmanagerconfig")
+
+	if vmaConfigRateLimiter.MustThrottleReconcile() {
+		return
 	}
 
 	alertmanagerLock.Lock()
 	defer alertmanagerLock.Unlock()
-
-	if !instance.DeletionTimestamp.IsZero() {
-		DeregisterObject(instance.Name, instance.Namespace, "vmalertmanagerconfig")
-	} else {
-		RegisterObject(instance.Name, instance.Namespace, "vmalertmanagerconfig")
-	}
 
 	// select alertmanagers
 	var vmams operatorv1beta1.VMAlertmanagerList
@@ -69,7 +73,6 @@ func (r *VMAlertmanagerConfigReconciler) Reconcile(ctx context.Context, req ctrl
 		l.Error(err, "cannot list vmalertmanagers")
 		return ctrl.Result{}, err
 	}
-	l.Info("listed alertmanagers", "count", len(vmams.Items))
 	for _, item := range vmams.Items {
 		am := &item
 		if !am.DeletionTimestamp.IsZero() || am.Spec.ParsingError != "" {
@@ -85,14 +88,12 @@ func (r *VMAlertmanagerConfigReconciler) Reconcile(ctx context.Context, req ctrl
 			// selector do not match fast path
 			continue
 		}
-		l.Info("reconciling alertmanager")
 		if err := factory.CreateOrUpdateAlertManager(ctx, am, r.Client, r.BaseConf); err != nil {
 			l.Error(err, "cannot  reconcile alertmanager")
 			continue
 		}
-		l.Info("reconciled alertmanager")
 	}
-	return ctrl.Result{}, nil
+	return
 }
 
 // SetupWithManager configures reconcile

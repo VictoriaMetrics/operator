@@ -330,9 +330,7 @@ func RunManager(ctx context.Context) error {
 	if len(*listenAddr) > 0 {
 		go httpserver.Serve(*listenAddr, requestHandler)
 	}
-	if err := controllers.StartWatchForVMUserSecretRefs(ctx, mgr.GetClient(), mgr.GetConfig()); err != nil {
-		return err
-	}
+
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctx); err != nil {
 		setupLog.Error(err, "problem running manager")

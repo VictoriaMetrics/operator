@@ -66,45 +66,40 @@ type VMAgentReconciler struct {
 // +kubebuilder:rbac:groups="rbac.authorization.k8s.io",resources=clusterroles,verbs=get;create,update;list
 // +kubebuilder:rbac:groups="policy",resources=podsecuritypolicies,verbs=get;create,update;list
 // +kubebuilder:rbac:groups="",resources=serviceaccounts,verbs=get;create,update;list
-func (r *VMAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *VMAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	reqLogger := r.Log.WithValues("vmagent", req.NamespacedName)
 
 	vmAgentSync.Lock()
 	defer vmAgentSync.Unlock()
 	// Fetch the VMAgent instance
 	instance := &victoriametricsv1beta1.VMAgent{}
-	err := r.Get(ctx, req.NamespacedName, instance)
-	if err != nil {
+	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
 		return handleGetError(req, "vmagent", err)
 	}
 
+	RegisterObjectStat(instance, "vmagent")
 	if !instance.DeletionTimestamp.IsZero() {
 		if err := finalize.OnVMAgentDelete(ctx, r.Client, instance); err != nil {
-			return ctrl.Result{}, err
+			return result, err
 		}
-		DeregisterObject(instance.Name, instance.Namespace, "vmagent")
-		return ctrl.Result{}, nil
+		return
 	}
 
 	if instance.Spec.ParsingError != "" {
 		return handleParsingError(instance.Spec.ParsingError, instance)
 	}
 
-	RegisterObject(instance.Name, instance.Namespace, "vmagent")
 	if err := finalize.AddFinalizer(ctx, r.Client, instance); err != nil {
-		return ctrl.Result{}, err
+		return result, err
 	}
 
-	reconResult, err := factory.CreateOrUpdateVMAgent(ctx, instance, r, r.BaseConf)
-	if err != nil {
-		reqLogger.Error(err, "cannot create or update vmagent deploy")
-		return reconResult, err
+	if err := factory.CreateOrUpdateVMAgent(ctx, instance, r, r.BaseConf); err != nil {
+		return result, err
 	}
 
 	svc, err := factory.CreateOrUpdateVMAgentService(ctx, instance, r, r.BaseConf)
 	if err != nil {
-		reqLogger.Error(err, "cannot create or update vmagent service")
-		return ctrl.Result{}, err
+		return result, err
 	}
 
 	if !r.BaseConf.DisableSelfServiceScrapeCreation {
@@ -113,7 +108,6 @@ func (r *VMAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			reqLogger.Error(err, "cannot create serviceScrape for vmagent")
 		}
 	}
-	var result ctrl.Result
 	if r.BaseConf.ForceResyncInterval > 0 {
 		result.RequeueAfter = r.BaseConf.ForceResyncInterval
 	}
@@ -121,7 +115,7 @@ func (r *VMAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	if err := updateVMAgentStatus(ctx, r.Client, instance); err != nil {
 		return result, err
 	}
-	return result, nil
+	return
 }
 
 func updateVMAgentStatus(ctx context.Context, c client.Client, instance *victoriametricsv1beta1.VMAgent) error {

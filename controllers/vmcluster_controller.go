@@ -16,7 +16,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 var log = logf.Log.WithName("controller")
@@ -39,22 +38,22 @@ func (r *VMClusterReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmclusters/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmclusters/finalizers,verbs=*
 // +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=*
-func (r *VMClusterReconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
+func (r *VMClusterReconciler) Reconcile(ctx context.Context, request ctrl.Request) (result ctrl.Result, err error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.Info("Reconciling VMCluster")
 
 	instance := &victoriametricsv1beta1.VMCluster{}
-	err := r.Client.Get(ctx, request.NamespacedName, instance)
-	if err != nil {
+	if err := r.Client.Get(ctx, request.NamespacedName, instance); err != nil {
 		return handleGetError(request, "vmcluster", err)
 	}
 
+	RegisterObjectStat(instance, "vmcluster")
+
 	if !instance.DeletionTimestamp.IsZero() {
 		if err := finalize.OnVMClusterDelete(ctx, r.Client, instance); err != nil {
-			return ctrl.Result{}, err
+			return result, err
 		}
-		DeregisterObject(instance.Name, instance.Namespace, "vmcluster")
-		return ctrl.Result{}, nil
+		return result, nil
 	}
 	if instance.Spec.ParsingError != "" {
 		return handleParsingError(instance.Spec.ParsingError, instance)
@@ -68,14 +67,12 @@ func (r *VMClusterReconciler) Reconcile(ctx context.Context, request ctrl.Reques
 	if len(clusterChanges) > 0 && instance.Status.ClusterStatus != victoriametricsv1beta1.ClusterStatusFailed {
 		instance.Status.ClusterStatus = victoriametricsv1beta1.ClusterStatusExpanding
 		if err := r.Client.Status().Update(ctx, instance); err != nil {
-			return ctrl.Result{}, fmt.Errorf("cannot set expanding status for cluster: %w", err)
+			return result, fmt.Errorf("cannot set expanding status for cluster: %w", err)
 		}
 	}
 
-	RegisterObject(instance.Name, instance.Namespace, "vmcluster")
-
 	if err := finalize.AddFinalizer(ctx, r.Client, instance); err != nil {
-		return ctrl.Result{}, err
+		return result, err
 	}
 
 	err = factory.CreateOrUpdateVMCluster(ctx, instance, r.Client, config.MustGetBaseConfig())
@@ -86,13 +83,13 @@ func (r *VMClusterReconciler) Reconcile(ctx context.Context, request ctrl.Reques
 			log.Error(err, "cannot update cluster status field")
 		}
 		// update status
-		return reconcile.Result{}, fmt.Errorf("failed create or update vmcluster: %w", err)
+		return result, fmt.Errorf("failed create or update vmcluster: %w", err)
 	}
 
 	instance.Status.Reason = ""
 	instance.Status.ClusterStatus = victoriametricsv1beta1.ClusterStatusOperational
 	if err := r.Client.Status().Update(ctx, instance); err != nil {
-		return ctrl.Result{}, fmt.Errorf("cannot update cluster status : %w", err)
+		return result, fmt.Errorf("cannot update cluster status : %w", err)
 	}
 
 	if len(clusterChanges) > 0 {
@@ -102,14 +99,11 @@ func (r *VMClusterReconciler) Reconcile(ctx context.Context, request ctrl.Reques
 		}
 		// use patch instead of update, only 1 field must be changed.
 		if err := r.Client.Patch(ctx, instance, specPatch); err != nil {
-			reqLogger.Error(err, "cannot update cluster object")
-			return ctrl.Result{}, fmt.Errorf("cannot update cluster with last applied spec: %w", err)
+			return result, fmt.Errorf("cannot update cluster with last applied spec: %w", err)
 		}
 	}
 
-	reqLogger.Info("cluster was reconciled")
-
-	return reconcile.Result{}, nil
+	return
 }
 
 // SetupWithManager general setup method

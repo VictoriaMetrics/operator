@@ -56,22 +56,20 @@ func (r *VMAlertmanagerReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=*
 // +kubebuilder:rbac:groups="",resources=configmaps,verbs=*
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=*
-func (r *VMAlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *VMAlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	reqLogger := r.Log.WithValues("vmalertmanager", req.NamespacedName)
-	reqLogger.Info("Reconciling")
 
 	instance := &victoriametricsv1beta1.VMAlertmanager{}
-	err := r.Get(ctx, req.NamespacedName, instance)
-	if err != nil {
+	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
 		return handleGetError(req, "vmalertmanager", err)
 	}
+	RegisterObjectStat(instance, "vmalertmanager")
 
 	if !instance.DeletionTimestamp.IsZero() {
 		if err := finalize.OnVMAlertManagerDelete(ctx, r.Client, instance); err != nil {
-			return ctrl.Result{}, err
+			return result, err
 		}
-		DeregisterObject(instance.Name, instance.Namespace, "vmalertmanager")
-		return ctrl.Result{}, nil
+		return
 	}
 
 	if instance.Spec.ParsingError != "" {
@@ -79,21 +77,18 @@ func (r *VMAlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	if err := finalize.AddFinalizer(ctx, r.Client, instance); err != nil {
-		return ctrl.Result{}, err
+		return result, err
 	}
 
-	RegisterObject(instance.Name, instance.Namespace, "vmalertmanager")
 	alertmanagerLock.Lock()
 	defer alertmanagerLock.Unlock()
 
 	if err := factory.CreateOrUpdateAlertManager(ctx, instance, r, r.BaseConf); err != nil {
-		reqLogger.Error(err, "cannot create or update vmalertmanager sts")
-		return ctrl.Result{}, err
+		return result, err
 	}
 	service, err := factory.CreateOrUpdateAlertManagerService(ctx, instance, r)
 	if err != nil {
-		reqLogger.Error(err, "cannot create or update vmalertmanager service")
-		return ctrl.Result{}, err
+		return result, err
 	}
 
 	if !r.BaseConf.DisableSelfServiceScrapeCreation {
@@ -103,8 +98,6 @@ func (r *VMAlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		}
 	}
 
-	reqLogger.Info("vmalertmanager reconciled")
-	var result ctrl.Result
 	// resync configuration periodically
 	if r.BaseConf.ForceResyncInterval > 0 {
 		result.RequeueAfter = r.BaseConf.ForceResyncInterval

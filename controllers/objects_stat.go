@@ -3,6 +3,7 @@ package controllers
 import (
 	"fmt"
 	"github.com/prometheus/client_golang/prometheus"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 	"sync"
 )
@@ -66,18 +67,27 @@ func newCollector() *objectCollector {
 	return oc
 }
 
-// RegisterObject registers given CR object name with namespace for controller
-func RegisterObject(name, ns, controller string) {
+// registerObject registers given CR object name with namespace for controller
+func registerObjectByCollector(name, ns, controller string) {
 	initCollector.Do(func() {
 		collector = newCollector()
 	})
 	collector.register(name, ns, controller)
 }
 
-// DeregisterObject removes from cache given CR object name with namespace for controller
-func DeregisterObject(name, ns, controller string) {
+// deregisterObject removes from cache given CR object name with namespace for controller
+func deregisterObjectByCollector(name, ns, controller string) {
 	initCollector.Do(func() {
 		collector = newCollector()
 	})
 	collector.deRegister(name, ns, controller)
+}
+
+// RegisterObjectStat registers or deregisters object at metrics
+func RegisterObjectStat(obj client.Object, controller string) {
+	if obj.GetDeletionTimestamp().IsZero() {
+		registerObjectByCollector(obj.GetName(), obj.GetNamespace(), controller)
+		return
+	}
+	deregisterObjectByCollector(obj.GetName(), obj.GetNamespace(), controller)
 }

@@ -29,35 +29,26 @@ func (r *VMStaticScrapeReconciler) Scheme() *runtime.Scheme {
 // Reconcile implements interface.
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmstaticscrapes,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmstaticscrapes/status,verbs=get;update;patch
-func (r *VMStaticScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *VMStaticScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
+
+	reqLogger := r.Log.WithValues("vmstaticscrape", req.NamespacedName)
+	instance := &victoriametricsv1beta1.VMStaticScrape{}
+	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
+		return handleGetError(req, "vmstaticscrape", err)
+	}
+	RegisterObjectStat(instance, "vmstaticscrape")
 	if vmAgentReconcileLimit.MustThrottleReconcile() {
 		// fast path, rate limited
 		return ctrl.Result{}, nil
 	}
-	reqLogger := r.Log.WithValues("vmstaticscrape", req.NamespacedName)
-	reqLogger.Info("Reconciling VMStaticScrape")
-	// Fetch the VMServiceScrape instance
-	instance := &victoriametricsv1beta1.VMStaticScrape{}
-	err := r.Get(ctx, req.NamespacedName, instance)
-	if err != nil {
-		return handleGetError(req, "vmstaticscrape", err)
-	}
 	vmAgentSync.Lock()
 	defer vmAgentSync.Unlock()
-
-	if !instance.DeletionTimestamp.IsZero() {
-		DeregisterObject(instance.Name, instance.Namespace, "vmstaticscrape")
-	} else {
-		RegisterObject(instance.Name, instance.Namespace, "vmstaticscrape")
-	}
 
 	vmAgentInstances := &victoriametricsv1beta1.VMAgentList{}
 	err = r.List(ctx, vmAgentInstances, config.MustGetNamespaceListOptions())
 	if err != nil {
-		reqLogger.Error(err, "cannot list vmagent objects")
 		return ctrl.Result{}, err
 	}
-	reqLogger.Info("found vmagent objects ", "len: ", len(vmAgentInstances.Items))
 
 	for _, vmagent := range vmAgentInstances.Items {
 		if !vmagent.DeletionTimestamp.IsZero() || vmagent.Spec.ParsingError != "" {
@@ -76,16 +67,12 @@ func (r *VMStaticScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		}
 		reqLogger.Info("reconciling staticscrapes for vmagent")
 
-		recon, err := factory.CreateOrUpdateVMAgent(ctx, currentVMagent, r, r.BaseConf)
-		if err != nil {
+		if err := factory.CreateOrUpdateVMAgent(ctx, currentVMagent, r, r.BaseConf); err != nil {
 			reqLogger.Error(err, "cannot create or update vmagent instance")
-			return recon, err
+			continue
 		}
-		reqLogger.Info("reconciled vmagent")
 	}
-
-	reqLogger.Info("reconciled VMStaticScrape")
-	return ctrl.Result{}, nil
+	return
 }
 
 // SetupWithManager setups reconciler.

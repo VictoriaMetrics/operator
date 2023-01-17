@@ -56,33 +56,30 @@ func (r *VMAlertReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmalerts,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmalerts/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmalerts/finalizers,verbs=*
-func (r *VMAlertReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *VMAlertReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	reqLogger := r.Log.WithValues("vmalert", req.NamespacedName)
-	reqLogger.Info("Reconciling")
 
 	vmAlertSync.Lock()
 	defer vmAlertSync.Unlock()
 
 	// Fetch the VMAlert instance
 	instance := &victoriametricsv1beta1.VMAlert{}
-	err := r.Get(ctx, req.NamespacedName, instance)
-	if err != nil {
+	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
 		return handleGetError(req, "vmalert", err)
 	}
 
+	RegisterObjectStat(instance, "vmalert")
+
 	if !instance.DeletionTimestamp.IsZero() {
 		if err := finalize.OnVMAlertDelete(ctx, r.Client, instance); err != nil {
-			return ctrl.Result{}, err
+			return result, err
 		}
-		DeregisterObject(instance.Name, instance.Namespace, "vmalert")
-		return ctrl.Result{}, nil
+		return result, nil
 	}
 
 	if instance.Spec.ParsingError != "" {
 		return handleParsingError(instance.Spec.ParsingError, instance)
 	}
-
-	RegisterObject(instance.Name, instance.Namespace, "vmalert")
 
 	var needToRequeue bool
 	if len(instance.GetNotifierSelectors()) > 0 {
@@ -90,26 +87,22 @@ func (r *VMAlertReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	if err := finalize.AddFinalizer(ctx, r.Client, instance); err != nil {
-		return ctrl.Result{}, err
+		return result, err
 	}
 
 	maps, err := factory.CreateOrUpdateRuleConfigMaps(ctx, instance, r)
 	if err != nil {
-		reqLogger.Error(err, "cannot create or update vmalert cm")
-		return ctrl.Result{}, err
+		return result, err
 	}
 	reqLogger.Info("found configmaps for vmalert", " len ", len(maps), "map names", maps)
 
-	recon, err := factory.CreateOrUpdateVMAlert(ctx, instance, r, r.BaseConf, maps)
-	if err != nil {
-		reqLogger.Error(err, "cannot create or update vmalert deploy")
-		return recon, err
+	if err := factory.CreateOrUpdateVMAlert(ctx, instance, r, r.BaseConf, maps); err != nil {
+		return result, err
 	}
 
 	svc, err := factory.CreateOrUpdateVMAlertService(ctx, instance, r, r.BaseConf)
 	if err != nil {
-		reqLogger.Error(err, "cannot create or update vmalert service")
-		return ctrl.Result{}, err
+		return result, err
 	}
 
 	if !r.BaseConf.DisableSelfServiceScrapeCreation {
@@ -120,8 +113,6 @@ func (r *VMAlertReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		}
 	}
 
-	reqLogger.Info("vmalert reconciled")
-	var result ctrl.Result
 	if needToRequeue || r.BaseConf.ForceResyncInterval > 0 {
 		result.RequeueAfter = r.BaseConf.ForceResyncInterval
 	}

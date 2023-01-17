@@ -21,7 +21,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 const (
@@ -123,7 +122,7 @@ func createOrUpdateVMAlertSecret(ctx context.Context, rclient client.Client, cr 
 	return nil
 }
 
-func CreateOrUpdateVMAlert(ctx context.Context, cr *victoriametricsv1beta1.VMAlert, rclient client.Client, c *config.BaseOperatorConf, cmNames []string) (reconcile.Result, error) {
+func CreateOrUpdateVMAlert(ctx context.Context, cr *victoriametricsv1beta1.VMAlert, rclient client.Client, c *config.BaseOperatorConf, cmNames []string) error {
 	l := log.WithValues("controller", "vmalert.crud", "vmalert", cr.Name)
 	// copy to avoid side effects.
 	cr = cr.DeepCopy()
@@ -146,10 +145,10 @@ func CreateOrUpdateVMAlert(ctx context.Context, cr *victoriametricsv1beta1.VMAle
 		var ams victoriametricsv1beta1.VMAlertmanagerList
 		amListOpts, err := n.Selector.AsListOptions()
 		if err != nil {
-			return reconcile.Result{}, fmt.Errorf("cannot convert notifier selector as ListOptions: %w", err)
+			return fmt.Errorf("cannot convert notifier selector as ListOptions: %w", err)
 		}
 		if err := rclient.List(ctx, &ams, amListOpts, config.MustGetNamespaceListOptions()); err != nil {
-			return reconcile.Result{}, fmt.Errorf("cannot list alertmanagers for vmalert notifier sd: %w", err)
+			return fmt.Errorf("cannot list alertmanagers for vmalert notifier sd: %w", err)
 		}
 		for _, item := range ams.Items {
 			if !item.DeletionTimestamp.IsZero() || (n.Selector.Namespace != nil && !n.Selector.Namespace.IsMatch(&item)) {
@@ -169,38 +168,38 @@ func CreateOrUpdateVMAlert(ctx context.Context, cr *victoriametricsv1beta1.VMAle
 	}
 	cr.Spec.Notifiers = append(cr.Spec.Notifiers, additionalNotifiers...)
 	if len(cr.Spec.Notifiers) == 0 && cr.Spec.NotifierConfigRef == nil {
-		return reconcile.Result{}, fmt.Errorf("cannot create or update vmalert: %s, cannot find any notifiers. At cr.spec.Notifiers, cr.spec.Notifier, cr.spec.notifierConfigRef and discovered alertmanager are empty", cr.Name)
+		return fmt.Errorf("cannot create or update vmalert: %s, cannot find any notifiers. At cr.spec.Notifiers, cr.spec.Notifier, cr.spec.notifierConfigRef and discovered alertmanager are empty", cr.Name)
 	}
 	if err := psp.CreateServiceAccountForCRD(ctx, cr, rclient); err != nil {
-		return reconcile.Result{}, fmt.Errorf("failed create service account: %w", err)
+		return fmt.Errorf("failed create service account: %w", err)
 	}
 	if c.PSPAutoCreateEnabled {
 		if err := psp.CreateOrUpdateServiceAccountWithPSP(ctx, cr, rclient); err != nil {
-			return reconcile.Result{}, fmt.Errorf("cannot create podsecurity policy for vmalert, err=%w", err)
+			return fmt.Errorf("cannot create podsecurity policy for vmalert, err=%w", err)
 		}
 	}
 	remoteSecrets, err := loadVMAlertRemoteSecrets(ctx, rclient, cr)
 	if err != nil {
-		return reconcile.Result{}, err
+		return err
 	}
 	// create secret for remoteSecrets
 	if err := createOrUpdateVMAlertSecret(ctx, rclient, cr, remoteSecrets, c); err != nil {
-		return reconcile.Result{}, err
+		return err
 	}
 
 	if cr.Spec.PodDisruptionBudget != nil {
 		if err := CreateOrUpdatePodDisruptionBudget(ctx, rclient, cr, cr.Kind, cr.Spec.PodDisruptionBudget); err != nil {
-			return reconcile.Result{}, fmt.Errorf("cannot update pod disruption budget for vmalert: %w", err)
+			return fmt.Errorf("cannot update pod disruption budget for vmalert: %w", err)
 		}
 	}
 
 	err = CreateOrUpdateTlsAssetsForVMAlert(ctx, cr, rclient)
 	if err != nil {
-		return reconcile.Result{}, err
+		return err
 	}
 	newDeploy, err := newDeployForVMAlert(cr, c, cmNames, remoteSecrets)
 	if err != nil {
-		return reconcile.Result{}, fmt.Errorf("cannot generate new deploy for vmalert: %w", err)
+		return fmt.Errorf("cannot generate new deploy for vmalert: %w", err)
 	}
 
 	currDeploy := &appsv1.Deployment{}
@@ -209,18 +208,18 @@ func CreateOrUpdateVMAlert(ctx context.Context, cr *victoriametricsv1beta1.VMAle
 		if errors.IsNotFound(err) {
 			err := rclient.Create(ctx, newDeploy)
 			if err != nil {
-				return reconcile.Result{}, fmt.Errorf("cannot create vmalert deploy: %w", err)
+				return fmt.Errorf("cannot create vmalert deploy: %w", err)
 			}
 		} else {
-			return reconcile.Result{}, fmt.Errorf("cannot get deploy for vmalert: %w", err)
+			return fmt.Errorf("cannot get deploy for vmalert: %w", err)
 		}
 	}
 	newDeploy.Annotations = labels.Merge(currDeploy.Annotations, newDeploy.Annotations)
 	newDeploy.Finalizers = victoriametricsv1beta1.MergeFinalizers(currDeploy, victoriametricsv1beta1.FinalizerName)
 	if err := rclient.Update(ctx, newDeploy); err != nil {
-		return reconcile.Result{}, fmt.Errorf("cannot update vmalert deploy: %w", err)
+		return fmt.Errorf("cannot update vmalert deploy: %w", err)
 	}
-	return reconcile.Result{}, nil
+	return nil
 }
 
 // newDeployForCR returns a busybox pod with the same name/namespace as the cr

@@ -54,49 +54,42 @@ func (r *VMSingleReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=apps,resources=replicasets,verbs=*
 // +kubebuilder:rbac:groups="",resources=persistentvolumeclaims,verbs=*
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmsingles/status,verbs=get;update;patch
-func (r *VMSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *VMSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	reqLogger := r.Log.WithValues("vmsingle", req.NamespacedName)
-	reqLogger.Info("Reconciling vmsingle")
 
 	instance := &victoriametricsv1beta1.VMSingle{}
-	err := r.Get(ctx, req.NamespacedName, instance)
-	if err != nil {
+	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
 		return handleGetError(req, "vmsingle", err)
 	}
 
+	RegisterObjectStat(instance, "vmsingle")
 	if !instance.DeletionTimestamp.IsZero() {
 		if err := finalize.OnVMSingleDelete(ctx, r.Client, instance); err != nil {
-			return ctrl.Result{}, err
+			return result, err
 		}
-		DeregisterObject(instance.Name, instance.Namespace, "vmsingle")
-		return ctrl.Result{}, nil
+		return
 	}
 	if instance.Spec.ParsingError != "" {
 		return handleParsingError(instance.Spec.ParsingError, instance)
 	}
-	RegisterObject(instance.Name, instance.Namespace, "vmsingle")
 	if err := finalize.AddFinalizer(ctx, r.Client, instance); err != nil {
-		return ctrl.Result{}, err
+		return result, err
 	}
 
 	if instance.Spec.Storage != nil && instance.Spec.StorageDataPath == "" {
-		reqLogger.Info("reconciling storage for VMSingle")
 		_, err = factory.CreateVMSingleStorage(ctx, instance, r)
 		if err != nil {
-			reqLogger.Error(err, "cannot create pvc")
-			return ctrl.Result{}, err
+			return result, err
 		}
 	}
 	_, err = factory.CreateOrUpdateVMSingle(ctx, instance, r, r.BaseConf)
 	if err != nil {
-		reqLogger.Error(err, "cannot create or update VMSingle deployment")
-		return ctrl.Result{}, err
+		return result, err
 	}
 
 	svc, err := factory.CreateOrUpdateVMSingleService(ctx, instance, r, r.BaseConf)
 	if err != nil {
-		reqLogger.Error(err, "cannot create or update vmsingle service")
-		return ctrl.Result{}, err
+		return result, err
 	}
 
 	if !r.BaseConf.DisableSelfServiceScrapeCreation {
@@ -105,9 +98,7 @@ func (r *VMSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 			reqLogger.Error(err, "cannot create serviceScrape for vmsingle")
 		}
 	}
-
-	reqLogger.Info("vmsingle  reconciled")
-	return ctrl.Result{}, nil
+	return
 }
 
 // SetupWithManager general setup method

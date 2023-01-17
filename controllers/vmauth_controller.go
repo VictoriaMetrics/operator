@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/VictoriaMetrics/operator/controllers/factory"
@@ -52,58 +53,53 @@ func (r *VMAuthReconciler) Scheme() *runtime.Scheme {
 // Reconcile implements interface
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmauths,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmauths/status,verbs=get;update;patch
-func (r *VMAuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = context.Background()
+func (r *VMAuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	l := r.Log.WithValues("vmauth", req.NamespacedName)
 
 	var instance operatorv1beta1.VMAuth
 
-	err := r.Get(ctx, req.NamespacedName, &instance)
-	if err != nil {
+	if err := r.Get(ctx, req.NamespacedName, &instance); err != nil {
 		return handleGetError(req, "vmauth", err)
 	}
 
+	RegisterObjectStat(&instance, "vmauth")
+
 	if !instance.DeletionTimestamp.IsZero() {
 		if err := finalize.OnVMAuthDelete(ctx, r, &instance); err != nil {
-			l.Error(err, "cannot remove finalizers from vmauth")
-			return ctrl.Result{}, err
+			return result, fmt.Errorf("cannot remove finalizer from vmauth: %w", err)
 		}
-		DeregisterObject(instance.Name, instance.Namespace, "vmauth")
-		return ctrl.Result{}, nil
+		return result, nil
 	}
 	if instance.Spec.ParsingError != "" {
 		return handleParsingError(instance.Spec.ParsingError, &instance)
 	}
 
-	RegisterObject(instance.Name, instance.Namespace, "vmauth")
-
 	if err := finalize.AddFinalizer(ctx, r.Client, &instance); err != nil {
-		return ctrl.Result{}, err
+		return result, err
 	}
 
 	if err := factory.CreateOrUpdateVMAuth(ctx, &instance, r, r.BaseConf); err != nil {
-		l.Error(err, "cannot create or update vmauth deploy")
-		return ctrl.Result{}, err
+		return result, fmt.Errorf("cannot create or update vmauth deploy: %w", err)
 	}
 
 	svc, err := factory.CreateOrUpdateVMAuthService(ctx, &instance, r)
 	if err != nil {
-		l.Error(err, "cannot create or update vmauth service")
-		return ctrl.Result{}, err
+		return result, fmt.Errorf("cannot create or update vmauth service :%w", err)
 	}
 	if err := factory.CreateOrUpdateVMAuthIngress(ctx, r, &instance); err != nil {
-		l.Error(err, "cannot createOrUpdateIngress for VMAuth")
-		return ctrl.Result{}, err
+		return result, fmt.Errorf("cannot create or update ingress for vmauth: %w", err)
 	}
 
 	if !r.BaseConf.DisableSelfServiceScrapeCreation {
-		err := factory.CreateVMServiceScrapeFromService(ctx, r, svc, instance.Spec.ServiceScrapeSpec, instance.MetricPath())
-		if err != nil {
+		if err := factory.CreateVMServiceScrapeFromService(ctx, r, svc, instance.Spec.ServiceScrapeSpec, instance.MetricPath()); err != nil {
 			l.Error(err, "cannot create serviceScrape for vmauth")
 		}
 	}
+	if r.BaseConf.ForceResyncInterval > 0 {
+		result.RequeueAfter = r.BaseConf.ForceResyncInterval
+	}
 
-	return ctrl.Result{}, nil
+	return
 }
 
 // SetupWithManager inits object.

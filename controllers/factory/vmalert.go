@@ -667,7 +667,7 @@ func loadVMAlertRemoteSecrets(
 		if err != nil {
 			return nil, err
 		}
-		authSecretsBySource[cr.NotifierAsMapKey(i)] = as
+		authSecretsBySource[buildNotifierKey(i)] = as
 	}
 	// load basic auth for datasource configuration
 	as, err := loadHTTPAuthSecrets(ctx, rclient, ns, datasource.HTTPAuth)
@@ -899,8 +899,11 @@ func BuildNotifiersArgs(cr *victoriametricsv1beta1.VMAlert, ntBasicAuth map[stri
 		headerFlagValue = strings.TrimSuffix(headerFlagValue, "^^")
 		headers.flagSetting += fmt.Sprintf("%s,", headerFlagValue)
 		var user, passFile string
-		s := ntBasicAuth[cr.NotifierAsMapKey(i)]
+		s := ntBasicAuth[buildNotifierKey(i)]
 		if nt.HTTPAuth.BasicAuth != nil {
+			if s == nil {
+				panic("secret for basic notifier cannot be nil")
+			}
 			authUser.isNotNull = true
 			user = s.username
 			if len(s.password) > 0 {
@@ -917,7 +920,6 @@ func BuildNotifiersArgs(cr *victoriametricsv1beta1.VMAlert, ntBasicAuth map[stri
 
 		var tokenPath string
 		if nt.HTTPAuth.BearerAuth != nil {
-			// todo implement token secret
 			if len(nt.HTTPAuth.BearerAuth.TokenFilePath) > 0 {
 				bearerTokenPath.isNotNull = true
 				tokenPath = nt.HTTPAuth.BearerAuth.TokenFilePath
@@ -929,6 +931,9 @@ func BuildNotifiersArgs(cr *victoriametricsv1beta1.VMAlert, ntBasicAuth map[stri
 		bearerTokenPath.flagSetting += fmt.Sprintf("%s,", tokenPath)
 		var scopes, tokenURL, secretFile, clientID string
 		if nt.OAuth2 != nil {
+			if s == nil {
+				panic("secret for oauth2 notifier cannot be nil")
+			}
 			if len(nt.OAuth2.Scopes) > 0 {
 				oauth2Scopes.isNotNull = true
 				scopes = strings.Join(nt.OAuth2.Scopes, ",")

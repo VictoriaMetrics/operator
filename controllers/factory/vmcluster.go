@@ -386,7 +386,7 @@ func makePodSpecForVMSelect(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 	if cr.Spec.VMSelect.LogFormat != "" {
 		args = append(args, fmt.Sprintf("-loggerFormat=%s", cr.Spec.VMSelect.LogFormat))
 	}
-	if cr.Spec.ReplicationFactor != nil {
+	if cr.Spec.ReplicationFactor != nil && *cr.Spec.ReplicationFactor > 1 {
 		var dedupIsSet bool
 		for arg := range cr.Spec.VMSelect.ExtraArgs {
 			if strings.Contains(arg, "dedup.minScrapeInterval") {
@@ -992,7 +992,7 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) 
 		args = append(args, "-envflag.enable=true")
 	}
 
-	if cr.Spec.ReplicationFactor != nil {
+	if cr.Spec.ReplicationFactor != nil && *cr.Spec.ReplicationFactor > 1 {
 		var dedupIsSet bool
 		for arg := range cr.Spec.VMStorage.ExtraArgs {
 			if strings.Contains(arg, "dedup.minScrapeInterval") {

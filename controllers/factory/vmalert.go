@@ -113,13 +113,17 @@ func createOrUpdateVMAlertSecret(ctx context.Context, rclient client.Client, cr 
 	for idx, nf := range cr.Spec.Notifiers {
 		addSecretKeys(buildNotifierKey(idx), nf.HTTPAuth)
 	}
-	if err := rclient.Create(ctx, s); err != nil {
-		if errors.IsAlreadyExists(err) {
-			return rclient.Update(ctx, s)
+
+	curSecret := &corev1.Secret{}
+	err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: s.Name}, curSecret)
+	if errors.IsNotFound(err) {
+		if err = rclient.Create(ctx, s); err != nil {
+			return fmt.Errorf("cannot create secret for vmalert remote secrets: %w", err)
 		}
-		return fmt.Errorf("cannot create secret for vmalert remote secrets: %w", err)
+		return nil
 	}
-	return nil
+	s.Annotations = labels.Merge(curSecret.Annotations, s.Annotations)
+	return rclient.Update(ctx, s)
 }
 
 func CreateOrUpdateVMAlert(ctx context.Context, cr *victoriametricsv1beta1.VMAlert, rclient client.Client, c *config.BaseOperatorConf, cmNames []string) error {

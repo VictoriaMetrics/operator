@@ -27,6 +27,7 @@ const (
 	FinalizerName            = "apps.victoriametrics.com/finalizer"
 	SkipValidationAnnotation = "operator.victoriametrics.com/skip-validation"
 	SkipValidationValue      = "true"
+	AdditionalServiceLabel   = "operator.victoriametrics.com/additional-service"
 )
 
 var (

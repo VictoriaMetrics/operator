@@ -44,7 +44,14 @@ type VMAlertmanagerConfigSpec struct {
 	// +optional
 	MutTimeIntervals []MuteTimeInterval `json:"mute_time_intervals,omitempty"`
 	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
-	ParsingError string `json:"-,omitempty" yaml:"-,omitempty"`
+	// TimeIntervals modern config option, use it instead of  mute_time_intervals
+	// +optional
+	TimeIntervals []MuteTimeInterval `json:"time_intervals,omitempty"`
+	// Templates file path for templates
+	// it must be mounted to the VMAlertmanager
+	// +optional
+	Templates    []string `json:"templates,omitempty"`
+	ParsingError string   `json:"-,omitempty" yaml:"-,omitempty"`
 }
 
 // MuteTimeInterval for alerts
@@ -77,6 +84,9 @@ type TimeInterval struct {
 	// For example, ['2020:2022', '2030']
 	// +optional
 	Years []string `json:"years,omitempty"`
+	// Location in golang time location form, e.g. UTC
+	// +optional
+	Location string `json:"location,omitempty"`
 }
 
 // TimeRange  ranges inclusive of the starting time and exclusive of the end time
@@ -153,6 +163,10 @@ type Route struct {
 	// MuteTimeIntervals for alerts
 	// +optional
 	MuteTimeIntervals []string `json:"mute_time_intervals,omitempty"`
+	// ActiveTimeIntervals Times when the route should be active
+	// These must match the name at time_intervals
+	// +optional
+	ActiveTimeIntervals []string `json:"active_time_intervals,omitempty"`
 }
 
 func parseNestedRoutes(src *Route) error {

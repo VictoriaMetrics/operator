@@ -34,7 +34,7 @@ func ConvertPromRule(prom *v1.PrometheusRule, conf *config.BaseOperatorConf) *v1
 				Labels:      promRuleItem.Labels,
 				Annotations: promRuleItem.Annotations,
 				Expr:        promRuleItem.Expr.String(),
-				For:         promRuleItem.For,
+				For:         string(promRuleItem.For),
 				Record:      promRuleItem.Record,
 				Alert:       promRuleItem.Alert,
 			})
@@ -42,7 +42,7 @@ func ConvertPromRule(prom *v1.PrometheusRule, conf *config.BaseOperatorConf) *v1
 
 		ruleGroups = append(ruleGroups, v1beta1vm.RuleGroup{
 			Name:     promGroup.Name,
-			Interval: promGroup.Interval,
+			Interval: string(promGroup.Interval),
 			Rules:    ruleItems,
 		})
 	}
@@ -108,14 +108,15 @@ func convertRoute(promRoute *alpha1.Route) (*v1beta1vm.Route, error) {
 		return nil, nil
 	}
 	r := v1beta1vm.Route{
-		Receiver:          promRoute.Receiver,
-		Continue:          promRoute.Continue,
-		GroupBy:           promRoute.GroupBy,
-		GroupWait:         promRoute.GroupWait,
-		GroupInterval:     promRoute.GroupInterval,
-		RepeatInterval:    promRoute.RepeatInterval,
-		Matchers:          convertMatchers(promRoute.Matchers),
-		MuteTimeIntervals: promRoute.MuteTimeIntervals,
+		Receiver:            promRoute.Receiver,
+		Continue:            promRoute.Continue,
+		GroupBy:             promRoute.GroupBy,
+		GroupWait:           promRoute.GroupWait,
+		GroupInterval:       promRoute.GroupInterval,
+		RepeatInterval:      promRoute.RepeatInterval,
+		Matchers:            convertMatchers(promRoute.Matchers),
+		MuteTimeIntervals:   promRoute.MuteTimeIntervals,
+		ActiveTimeIntervals: promRoute.ActiveTimeIntervals,
 	}
 	for _, route := range promRoute.Routes {
 		var promRoute alpha1.Route

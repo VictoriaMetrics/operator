@@ -61,7 +61,7 @@ OUTER:
 		for _, rule := range amcKey.Spec.InhibitRules {
 			baseYAMlCfg.InhibitRules = append(baseYAMlCfg.InhibitRules, buildInhibitRule(amcKey.Namespace, rule, mustAddNamespaceMatcher))
 		}
-		mtis := buildMuteTimeInterval(amcKey)
+		mtis := buildGlobalTimeIntervals(amcKey)
 		if len(mtis) > 0 {
 			muteIntervals = append(muteIntervals, mtis...)
 		}
@@ -70,7 +70,7 @@ OUTER:
 		}
 		// use first route receiver name as default receiver.
 		if len(firstReceiverName) == 0 && len(amcKey.Spec.Route.Receiver) > 0 {
-			firstReceiverName = buildReceiverName(amcKey, amcKey.Spec.Route.Receiver)
+			firstReceiverName = buildCRPrefixedName(amcKey, amcKey.Spec.Route.Receiver)
 		}
 		subRoutes = append(subRoutes, buildRoute(amcKey, amcKey.Spec.Route, true, mustAddNamespaceMatcher))
 
@@ -94,9 +94,14 @@ OUTER:
 	return &ParsedConfig{Data: result, BadObjectsCount: badObjectsCount, ParseErrors: parseErrors}, nil
 }
 
-func buildMuteTimeInterval(cr *operatorv1beta1.VMAlertmanagerConfig) []yaml.MapSlice {
+func buildGlobalTimeIntervals(cr *operatorv1beta1.VMAlertmanagerConfig) []yaml.MapSlice {
 	var r []yaml.MapSlice
-	for _, mti := range cr.Spec.MutTimeIntervals {
+	tis := cr.Spec.TimeIntervals
+	// muteTimeInterval is deprecated, use TimeIntervals instead
+	if len(tis) == 0 && len(cr.Spec.MutTimeIntervals) > 0 {
+		tis = cr.Spec.MutTimeIntervals
+	}
+	for _, mti := range tis {
 		if len(mti.TimeIntervals) == 0 {
 			continue
 		}
@@ -113,6 +118,10 @@ func buildMuteTimeInterval(cr *operatorv1beta1.VMAlertmanagerConfig) []yaml.MapS
 			toYaml("weekdays", ti.Weekdays)
 			toYaml("months", ti.Months)
 			toYaml("years", ti.Years)
+			if len(ti.Location) > 0 {
+				tiItem = append(tiItem, yaml.MapItem{Key: "location", Value: ti.Location})
+			}
+
 			var trss []yaml.MapSlice
 			for _, trs := range ti.Times {
 				if trs.EndTime != "" && trs.StartTime != "" {
@@ -127,9 +136,8 @@ func buildMuteTimeInterval(cr *operatorv1beta1.VMAlertmanagerConfig) []yaml.MapS
 			}
 		}
 		if len(temp) > 0 {
-			r = append(r, yaml.MapSlice{{Key: "name", Value: mti.Name}, {Key: "time_intervals", Value: temp}})
+			r = append(r, yaml.MapSlice{{Key: "name", Value: buildCRPrefixedName(cr, mti.Name)}, {Key: "time_intervals", Value: temp}})
 		}
-
 	}
 	return r
 }
@@ -165,14 +173,25 @@ func buildRoute(cr *operatorv1beta1.VMAlertmanagerConfig, cfgRoute *operatorv1be
 			r = append(r, yaml.MapItem{Key: key, Value: src})
 		}
 	}
+	toYamlTimeIntervals := func(key string, src []string) {
+		if len(src) > 0 {
+			tis := make([]string, 0, len(src))
+			for _, ti := range src {
+				tis = append(tis, buildCRPrefixedName(cr, ti))
+			}
+			r = append(r, yaml.MapItem{Key: key, Value: tis})
+		}
+
+	}
 	toYaml("matchers", matchers)
 	toYaml("group_by", cfgRoute.GroupBy)
-	toYaml("mute_time_intervals", cfgRoute.MuteTimeIntervals)
+	toYamlTimeIntervals("mute_time_intervals", cfgRoute.MuteTimeIntervals)
+	toYamlTimeIntervals("active_time_intervals", cfgRoute.ActiveTimeIntervals)
 	toYamlString("group_interval", cfgRoute.GroupInterval)
 	toYamlString("group_wait", cfgRoute.GroupWait)
 	toYamlString("repeat_interval", cfgRoute.RepeatInterval)
 	if len(cfgRoute.Receiver) > 0 {
-		r = append(r, yaml.MapItem{Key: "receiver", Value: buildReceiverName(cr, cfgRoute.Receiver)})
+		r = append(r, yaml.MapItem{Key: "receiver", Value: buildCRPrefixedName(cr, cfgRoute.Receiver)})
 	}
 	r = append(r, yaml.MapItem{Key: "continue", Value: continueSetting})
 	return r
@@ -199,29 +218,33 @@ func buildInhibitRule(namespace string, rule operatorv1beta1.InhibitRule, mustAd
 	return r
 }
 
-func buildReceiverName(cr *operatorv1beta1.VMAlertmanagerConfig, name string) string {
+func buildCRPrefixedName(cr *operatorv1beta1.VMAlertmanagerConfig, name string) string {
 	return fmt.Sprintf("%s-%s-%s", cr.Namespace, cr.Name, name)
 }
 
 type alertmanagerConfig struct {
-	Global            interface{}     `yaml:"global,omitempty" json:"global,omitempty"`
-	Route             *route          `yaml:"route,omitempty" json:"route,omitempty"`
-	InhibitRules      []yaml.MapSlice `yaml:"inhibit_rules,omitempty" json:"inhibit_rules,omitempty"`
-	Receivers         []yaml.MapSlice `yaml:"receivers,omitempty" json:"receivers,omitempty"`
-	MuteTimeIntervals []yaml.MapSlice `yaml:"mute_time_intervals,omitempty"`
+	Global       interface{}     `yaml:"global,omitempty" json:"global,omitempty"`
+	Route        *route          `yaml:"route,omitempty" json:"route,omitempty"`
+	InhibitRules []yaml.MapSlice `yaml:"inhibit_rules,omitempty" json:"inhibit_rules,omitempty"`
+	Receivers    []yaml.MapSlice `yaml:"receivers,omitempty" json:"receivers,omitempty"`
+	// TODO remove MuteTimeIntervals and move to TimeIntervals. Since it will be removed at v1.0 version of AM
+	MuteTimeIntervals []yaml.MapSlice `yaml:"mute_time_intervals,omitempty" json:"mute_time_intervals"`
+	TimeIntervals     []yaml.MapSlice `yaml:"time_intervals,omitempty" json:"time_intervals"`
 	Templates         []string        `yaml:"templates" json:"templates"`
 }
 
 type route struct {
-	Receiver       string            `yaml:"receiver,omitempty" json:"receiver,omitempty"`
-	GroupByStr     []string          `yaml:"group_by,omitempty" json:"group_by,omitempty"`
-	Match          map[string]string `yaml:"match,omitempty" json:"match,omitempty"`
-	MatchRE        map[string]string `yaml:"match_re,omitempty" json:"match_re,omitempty"`
-	Continue       bool              `yaml:"continue,omitempty" json:"continue,omitempty"`
-	Routes         []yaml.MapSlice   `yaml:"routes,omitempty" json:"routes,omitempty"`
-	GroupWait      string            `yaml:"group_wait,omitempty" json:"group_wait,omitempty"`
-	GroupInterval  string            `yaml:"group_interval,omitempty" json:"group_interval,omitempty"`
-	RepeatInterval string            `yaml:"repeat_interval,omitempty" json:"repeat_interval,omitempty"`
+	Receiver            string            `yaml:"receiver,omitempty" json:"receiver,omitempty"`
+	GroupByStr          []string          `yaml:"group_by,omitempty" json:"group_by,omitempty"`
+	Match               map[string]string `yaml:"match,omitempty" json:"match,omitempty"`
+	MatchRE             map[string]string `yaml:"match_re,omitempty" json:"match_re,omitempty"`
+	Continue            bool              `yaml:"continue,omitempty" json:"continue,omitempty"`
+	Routes              []yaml.MapSlice   `yaml:"routes,omitempty" json:"routes,omitempty"`
+	GroupWait           string            `yaml:"group_wait,omitempty" json:"group_wait,omitempty"`
+	GroupInterval       string            `yaml:"group_interval,omitempty" json:"group_interval,omitempty"`
+	RepeatInterval      string            `yaml:"repeat_interval,omitempty" json:"repeat_interval,omitempty"`
+	MuteTimeIntervals   []string          `yaml:"mute_time_intervals,omitempty" json:"mute_time_intervals,omitempty"`
+	ActiveTimeIntervals []string          `yaml:"active_time_intervals,omitempty" json:"active_time_intervals,omitempty"`
 }
 
 func buildReceiver(
@@ -270,7 +293,7 @@ func initConfigBuilder(
 		result: yaml.MapSlice{
 			{
 				Key:   "name",
-				Value: buildReceiverName(cr, receiver.Name),
+				Value: buildCRPrefixedName(cr, receiver.Name),
 			},
 		},
 		secretCache:    cache,

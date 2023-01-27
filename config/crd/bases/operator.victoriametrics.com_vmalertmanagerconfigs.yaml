@@ -1564,12 +1564,6 @@ spec:
                 required:
                 - receiver
                 type: object
-              templates:
-                description: Templates file path for templates it must be mounted
-                  to the VMAlertmanager
-                items:
-                  type: string
-                type: array
               time_intervals:
                 description: ParsingError contents error with context if operator
                   was failed to parse json object from kubernetes api server TimeIntervals

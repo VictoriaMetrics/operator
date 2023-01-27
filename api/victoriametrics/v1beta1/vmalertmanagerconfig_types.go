@@ -47,11 +47,8 @@ type VMAlertmanagerConfigSpec struct {
 	// TimeIntervals modern config option, use it instead of  mute_time_intervals
 	// +optional
 	TimeIntervals []MuteTimeInterval `json:"time_intervals,omitempty"`
-	// Templates file path for templates
-	// it must be mounted to the VMAlertmanager
-	// +optional
-	Templates    []string `json:"templates,omitempty"`
-	ParsingError string   `json:"-,omitempty" yaml:"-,omitempty"`
+
+	ParsingError string `json:"-,omitempty" yaml:"-,omitempty"`
 }
 
 // MuteTimeInterval for alerts

@@ -3,11 +3,13 @@ package k8stools
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
+	"strings"
+
+	"k8s.io/api/autoscaling/v2"
 	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/version"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"strconv"
-	"strings"
 )
 
 var (
@@ -17,7 +19,6 @@ var (
 
 // SetKubernetesVersionWithDefaults parses kubernetes version response with given default versions
 func SetKubernetesVersionWithDefaults(vi *version.Info, defaultMinor, defaultMajor uint64) error {
-
 	var warnMessage string
 	minor := strings.Trim(vi.Minor, "+")
 	v, err := strconv.ParseUint(minor, 10, 64)
@@ -72,7 +73,7 @@ func IsHPAV2BetaSupported() bool {
 func NewHPAEmptyObject(opts ...func(obj client.Object)) client.Object {
 	var hpa client.Object = &v2beta2.HorizontalPodAutoscaler{}
 	if !IsHPAV2BetaSupported() {
-		hpa = &v2beta2.HorizontalPodAutoscaler{}
+		hpa = &v2.HorizontalPodAutoscaler{}
 	}
 	for _, opt := range opts {
 		opt(hpa)

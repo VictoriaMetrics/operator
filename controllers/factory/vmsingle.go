@@ -25,6 +25,7 @@ import (
 const (
 	SecretsDir          = "/etc/vm/secrets"
 	ConfigMapsDir       = "/etc/vm/configs"
+	TemplatesDir        = "/etc/vm/templates"
 	RelabelingConfigDir = "/etc/vm/relabeling"
 	vmSingleDataDir     = "/victoria-metrics-data"
 	vmBackuperCreds     = "/etc/vm/creds"

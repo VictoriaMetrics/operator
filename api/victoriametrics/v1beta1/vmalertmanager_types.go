@@ -68,6 +68,11 @@ type VMAlertmanagerSpec struct {
 	// The ConfigMaps are mounted into /etc/vm/configs/<configmap-name>.
 	// +optional
 	ConfigMaps []string `json:"configMaps,omitempty"`
+	// Templates is a list of ConfigMap key references for ConfigMaps in the same namespace as the VMAlertmanager
+	// object, which shall be mounted into the VMAlertmanager Pods.
+	// The Templates are mounted into /etc/vm/templates/<configmap-name>/<configmap-key>.
+	// +optional
+	Templates []ConfigMapKeyReference `json:"templates,omitempty"`
 
 	// ConfigRawYaml - raw configuration for alertmanager,
 	// it helps it to start without secret.

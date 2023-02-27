@@ -1207,6 +1207,26 @@ spec:
                         type: object
                     type: object
                 type: object
+              templates:
+                description: Templates is a list of ConfigMap key references for ConfigMaps
+                  in the same namespace as the VMAlertmanager object, which shall
+                  be mounted into the VMAlertmanager Pods. The Templates are mounted
+                  into /etc/vm/templates/<configmap-name>/<configmap-key>.
+                items:
+                  description: ConfigMapKeyReference refers to a key in a ConfigMap.
+                  properties:
+                    key:
+                      description: The ConfigMap key to refer to.
+                      type: string
+                    name:
+                      description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                        TODO: Add other useful fields. apiVersion, kind, uid?'
+                      type: string
+                  required:
+                  - key
+                  type: object
+                  x-kubernetes-map-type: atomic
+                type: array
               terminationGracePeriodSeconds:
                 description: TerminationGracePeriodSeconds period for container graceful
                   termination

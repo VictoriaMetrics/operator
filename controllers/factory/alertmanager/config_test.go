@@ -596,6 +596,158 @@ templates: []
 	}
 }
 
+func TestAddConfigTemplates(t *testing.T) {
+	type args struct {
+		config    []byte
+		templates []string
+	}
+	tests := []struct {
+		name              string
+		args              args
+		predefinedObjects []runtime.Object
+		want              string
+		wantErr           bool
+	}{
+		{
+			name: "add templates to empty config",
+			args: args{
+				config:    []byte{},
+				templates: []string{"/etc/vm/templates/test/template1.tmpl"},
+			},
+			want: `templates:
+- /etc/vm/templates/test/template1.tmpl
+`,
+			wantErr: false,
+		},
+		{
+			name: "add templates to config without templates",
+			args: args{
+				config: []byte(`global:
+  resolve_timeout: 5m
+route:
+  receiver: webhook
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 12h
+receivers:
+- name: webhook
+  webhook_configs:
+  - url: http://localhost:30500/
+`),
+				templates: []string{
+					"/etc/vm/templates/test/template1.tmpl",
+					"/etc/vm/templates/test/template2.tmpl",
+				},
+			},
+			want: `global:
+  resolve_timeout: 5m
+route:
+  receiver: webhook
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 12h
+receivers:
+- name: webhook
+  webhook_configs:
+  - url: http://localhost:30500/
+templates:
+- /etc/vm/templates/test/template1.tmpl
+- /etc/vm/templates/test/template2.tmpl
+`,
+			wantErr: false,
+		},
+		{
+			name: "add templates to config with templates",
+			args: args{
+				config: []byte(`global:
+  resolve_timeout: 5m
+route:
+  receiver: webhook
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 12h
+receivers:
+- name: webhook
+  webhook_configs:
+  - url: http://localhost:30500/
+templates:
+- /etc/vm/templates/test/template1.tmpl
+- /etc/vm/templates/test/template2.tmpl
+`),
+				templates: []string{
+					"/etc/vm/templates/test/template3.tmpl",
+					"/etc/vm/templates/test/template4.tmpl",
+					"/etc/vm/templates/test/template0.tmpl",
+				},
+			},
+			want: `global:
+  resolve_timeout: 5m
+route:
+  receiver: webhook
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 12h
+receivers:
+- name: webhook
+  webhook_configs:
+  - url: http://localhost:30500/
+templates:
+- /etc/vm/templates/test/template1.tmpl
+- /etc/vm/templates/test/template2.tmpl
+- /etc/vm/templates/test/template3.tmpl
+- /etc/vm/templates/test/template4.tmpl
+- /etc/vm/templates/test/template0.tmpl
+`,
+			wantErr: false,
+		},
+		{
+			name: "add empty and duplicated templates",
+			args: args{
+				config: []byte{},
+				templates: []string{
+					"",
+					"/etc/vm/templates/test/template1.tmpl",
+					" ",
+					"/etc/vm/templates/test/template1.tmpl",
+					"\t",
+				},
+			},
+			want: `templates:
+- /etc/vm/templates/test/template1.tmpl
+`,
+			wantErr: false,
+		},
+		{
+			name: "add empty templates list",
+			args: args{
+				config:    []byte(`test`),
+				templates: []string{},
+			},
+			want:    `test`,
+			wantErr: false,
+		},
+		{
+			name: "wrong config",
+			args: args{
+				config:    []byte(`test`),
+				templates: []string{"test"},
+			},
+			want:    ``,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := AddConfigTemplates(tt.args.config, tt.args.templates)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("AddConfigTemplates() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			assert.Equal(t, tt.want, string(got))
+		})
+	}
+}
+
 func Test_configBuilder_buildHTTPConfig(t *testing.T) {
 	type fields struct {
 		secretCache    map[string]*v1.Secret

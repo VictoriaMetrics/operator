@@ -364,3 +364,11 @@ func (ds *DiscoverySelector) AsListOptions() (*client.ListOptions, error) {
 		LabelSelector: s,
 	}, nil
 }
+
+// ConfigMapKeyReference refers to a key in a ConfigMap.
+type ConfigMapKeyReference struct {
+	// The ConfigMap to refer to.
+	v1.LocalObjectReference `json:",inline"`
+	// The ConfigMap key to refer to.
+	Key string `json:"key"`
+}

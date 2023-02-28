@@ -454,17 +454,14 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, c *config.Ba
 		Image: fmt.Sprintf("%s", formatContainerImage(c.ContainerRegistry, c.VMAlertManager.ConfigReloaderImage)),
 		Args: []string{
 			fmt.Sprintf("-webhook-url=%s", localReloadURL),
-			fmt.Sprintf("-volume-dir=%s", alertmanagerConfDir),
 		},
 		VolumeMounts:             crVolumeMounts,
 		Resources:                resources,
 		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
 	}
-	if len(cr.Spec.ConfigMaps) > 0 {
-		configReloaderContainer.Args = append(configReloaderContainer.Args, fmt.Sprintf("-volume-dir=%s", ConfigMapsDir))
-	}
-	if len(cr.Spec.Templates) > 0 {
-		configReloaderContainer.Args = append(configReloaderContainer.Args, fmt.Sprintf("-volume-dir=%s", TemplatesDir))
+	// Add watching for every volume mount in config-reloader
+	for _, vm := range crVolumeMounts {
+		configReloaderContainer.Args = append(configReloaderContainer.Args, fmt.Sprintf("-volume-dir=%s", vm.MountPath))
 	}
 
 	defaultContainers := []v1.Container{vmaContainer, configReloaderContainer}

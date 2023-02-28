@@ -113,21 +113,30 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 	if cr.Spec.ShardCount != nil && *cr.Spec.ShardCount > 1 {
 		shardsCount := *cr.Spec.ShardCount
 		l.Info("using cluster version of VMAgent with", "shards", shardsCount)
-		for i := 0; i < shardsCount; i++ {
+		for shardNum := 0; shardNum < shardsCount; shardNum++ {
 			shardedDeploy := newDeploy.DeepCopyObject()
-			addShardSettingsToVMAgent(i, shardsCount, shardedDeploy)
+			addShardSettingsToVMAgent(shardNum, shardsCount, shardedDeploy)
+			placeholders := map[string]string{"shard-num": strconv.Itoa(shardNum)}
 			switch shardedDeploy := shardedDeploy.(type) {
 			case *appsv1.Deployment:
+				shardedDeploy, err = k8stools.RenderPlaceholders(shardedDeploy, placeholders)
+				if err != nil {
+					return fmt.Errorf("cannot fill placeholders for deployment sharded vmagent: %w", err)
+				}
 				if err := k8stools.HandleDeployUpdate(ctx, rclient, shardedDeploy); err != nil {
 					return err
 				}
 				deploymentNames[shardedDeploy.Name] = struct{}{}
 			case *appsv1.StatefulSet:
+				shardedDeploy, err = k8stools.RenderPlaceholders(shardedDeploy, placeholders)
+				if err != nil {
+					return fmt.Errorf("cannot fill placeholders for sts in sharded vmagent: %w", err)
+				}
 				stsOpts := k8stools.STSOptions{
 					HasClaim: len(shardedDeploy.Spec.VolumeClaimTemplates) > 0,
 					SelectorLabels: func() map[string]string {
 						selectorLabels := cr.SelectorLabels()
-						selectorLabels["shard-num"] = strconv.Itoa(i)
+						selectorLabels["shard-num"] = strconv.Itoa(shardNum)
 						return selectorLabels
 					},
 					VolumeName: func() string {
@@ -142,13 +151,23 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 			}
 		}
 	} else {
+		// To save compatibility in the single-shard version still need to fill in placeholders
+		placeholders := map[string]string{"shard-num": "0"}
 		switch newDeploy := newDeploy.(type) {
 		case *appsv1.Deployment:
+			newDeploy, err = k8stools.RenderPlaceholders(newDeploy, placeholders)
+			if err != nil {
+				return fmt.Errorf("cannot fill placeholders for deployment in vmagent: %w", err)
+			}
 			if err := k8stools.HandleDeployUpdate(ctx, rclient, newDeploy); err != nil {
 				return err
 			}
 			deploymentNames[newDeploy.Name] = struct{}{}
 		case *appsv1.StatefulSet:
+			newDeploy, err = k8stools.RenderPlaceholders(newDeploy, placeholders)
+			if err != nil {
+				return fmt.Errorf("cannot fill placeholders for sts in vmagent: %w", err)
+			}
 			stsOpts := k8stools.STSOptions{
 				HasClaim:       len(newDeploy.Spec.VolumeClaimTemplates) > 0,
 				SelectorLabels: cr.SelectorLabels,

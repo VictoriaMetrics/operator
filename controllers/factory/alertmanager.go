@@ -354,6 +354,14 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, c *config.Ba
 		})
 	}
 
+	crVolumeMounts := []v1.VolumeMount{
+		{
+			Name:      "config-volume",
+			MountPath: alertmanagerConfDir,
+			ReadOnly:  true,
+		},
+	}
+
 	for _, c := range cr.Spec.ConfigMaps {
 		volumes = append(volumes, v1.Volume{
 			Name: k8stools.SanitizeVolumeName("configmap-" + c),
@@ -365,11 +373,37 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, c *config.Ba
 				},
 			},
 		})
-		amVolumeMounts = append(amVolumeMounts, v1.VolumeMount{
+		cmVolumeMount := v1.VolumeMount{
 			Name:      k8stools.SanitizeVolumeName("configmap-" + c),
 			ReadOnly:  true,
 			MountPath: path.Join(ConfigMapsDir, c),
+		}
+		amVolumeMounts = append(amVolumeMounts, cmVolumeMount)
+		crVolumeMounts = append(crVolumeMounts, cmVolumeMount)
+	}
+
+	volumeByName := make(map[string]struct{})
+	for _, t := range cr.Spec.Templates {
+		// Deduplicate configmaps by name
+		if _, ok := volumeByName[t.Name]; ok {
+			continue
+		}
+		volumeByName[t.Name] = struct{}{}
+		volumes = append(volumes, v1.Volume{
+			Name: k8stools.SanitizeVolumeName("templates-" + t.Name),
+			VolumeSource: v1.VolumeSource{
+				ConfigMap: &v1.ConfigMapVolumeSource{
+					LocalObjectReference: t.LocalObjectReference,
+				},
+			},
 		})
+		tmplVolumeMount := v1.VolumeMount{
+			Name:      k8stools.SanitizeVolumeName("templates-" + t.Name),
+			MountPath: path.Join(TemplatesDir, t.Name),
+			ReadOnly:  true,
+		}
+		amVolumeMounts = append(amVolumeMounts, tmplVolumeMount)
+		crVolumeMounts = append(crVolumeMounts, tmplVolumeMount)
 	}
 
 	amVolumeMounts = append(amVolumeMounts, cr.Spec.VolumeMounts...)
@@ -415,27 +449,22 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, c *config.Ba
 		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
 	}
 	vmaContainer = buildProbe(vmaContainer, cr) // cr.Spec.EmbeddedProbes, healthPath, cr.Spec.PortName, true)
-	defaultContainers := []v1.Container{
-		vmaContainer,
-		{
-			Name:  "config-reloader",
-			Image: fmt.Sprintf("%s", formatContainerImage(c.ContainerRegistry, c.VMAlertManager.ConfigReloaderImage)),
-			Args: []string{
-				fmt.Sprintf("-webhook-url=%s", localReloadURL),
-				fmt.Sprintf("-volume-dir=%s", alertmanagerConfDir),
-			},
-			VolumeMounts: []v1.VolumeMount{
-				{
-					Name:      "config-volume",
-					ReadOnly:  true,
-					MountPath: alertmanagerConfDir,
-				},
-			},
-			Resources:                resources,
-			TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
+	configReloaderContainer := v1.Container{
+		Name:  "config-reloader",
+		Image: fmt.Sprintf("%s", formatContainerImage(c.ContainerRegistry, c.VMAlertManager.ConfigReloaderImage)),
+		Args: []string{
+			fmt.Sprintf("-webhook-url=%s", localReloadURL),
 		},
+		VolumeMounts:             crVolumeMounts,
+		Resources:                resources,
+		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
+	}
+	// Add watching for every volume mount in config-reloader
+	for _, vm := range crVolumeMounts {
+		configReloaderContainer.Args = append(configReloaderContainer.Args, fmt.Sprintf("-volume-dir=%s", vm.MountPath))
 	}
 
+	defaultContainers := []v1.Container{vmaContainer, configReloaderContainer}
 	containers, err := k8stools.MergePatchContainers(defaultContainers, cr.Spec.Containers)
 	if err != nil {
 		return nil, fmt.Errorf("failed to merge containers spec: %w", err)
@@ -531,6 +560,20 @@ func createDefaultAMConfig(ctx context.Context, cr *victoriametricsv1beta1.VMAle
 	if len(alertmananagerConfig) == 0 {
 		alertmananagerConfig = []byte(defaultAMConfig)
 	}
+
+	// add templates from CR to alermanager config
+	if len(cr.Spec.Templates) > 0 {
+		templatePaths := make([]string, 0, len(cr.Spec.Templates))
+		for _, template := range cr.Spec.Templates {
+			templatePaths = append(templatePaths, path.Join(TemplatesDir, template.Name, template.Key))
+		}
+		mergedCfg, err := alertmanager.AddConfigTemplates(alertmananagerConfig, templatePaths)
+		if err != nil {
+			return fmt.Errorf("cannot build alertmanager config with templates, err: %w", err)
+		}
+		alertmananagerConfig = mergedCfg
+	}
+
 	newAMSecretConfig := &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.ConfigSecretName(),

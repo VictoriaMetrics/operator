@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path"
 	"sort"
+	"strings"
 
 	operatorv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"gopkg.in/yaml.v2"
@@ -92,6 +93,31 @@ OUTER:
 		return nil, err
 	}
 	return &ParsedConfig{Data: result, BadObjectsCount: badObjectsCount, ParseErrors: parseErrors}, nil
+}
+
+func AddConfigTemplates(baseCfg []byte, templates []string) ([]byte, error) {
+	if len(templates) == 0 {
+		return baseCfg, nil
+	}
+	var baseYAMlCfg alertmanagerConfig
+	if err := yaml.Unmarshal(baseCfg, &baseYAMlCfg); err != nil {
+		return nil, fmt.Errorf("cannot parse base cfg :%w", err)
+	}
+	templatesSet := make(map[string]struct{})
+	for _, v := range baseYAMlCfg.Templates {
+		templatesSet[v] = struct{}{}
+	}
+	for _, v := range templates {
+		if len(strings.TrimSpace(v)) == 0 {
+			continue
+		}
+		if _, ok := templatesSet[v]; ok {
+			continue
+		}
+		baseYAMlCfg.Templates = append(baseYAMlCfg.Templates, v)
+		templatesSet[v] = struct{}{}
+	}
+	return yaml.Marshal(baseYAMlCfg)
 }
 
 func buildGlobalTimeIntervals(cr *operatorv1beta1.VMAlertmanagerConfig) []yaml.MapSlice {

@@ -230,6 +230,86 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 				return nil
 			},
 		},
+		{
+			name: "alertmanager with templates",
+			predefinedObjets: []runtime.Object{
+				&v1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-am",
+						Namespace: "monitoring",
+					},
+					Data: map[string]string{
+						"test_1.tmpl": "test_1",
+						"test_2.tmpl": "test_2",
+					},
+				},
+			},
+			args: args{
+				ctx: context.TODO(),
+				c:   config.MustGetBaseConfig(),
+				cr: &victoriametricsv1beta1.VMAlertmanager{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        "test-am",
+						Namespace:   "monitoring",
+						Annotations: map[string]string{"not": "touch"},
+						Labels:      map[string]string{"main": "system"},
+					},
+					Spec: victoriametricsv1beta1.VMAlertmanagerSpec{
+						Templates: []victoriametricsv1beta1.ConfigMapKeyReference{
+							{LocalObjectReference: v1.LocalObjectReference{Name: "test-am"}, Key: "test_1.tmpl"},
+							{LocalObjectReference: v1.LocalObjectReference{Name: "test-am"}, Key: "test_2.tmpl"},
+						},
+					},
+				},
+			},
+			wantErr: false,
+			validate: func(set *appsv1.StatefulSet) error {
+				if set.Name != "vmalertmanager-test-am" {
+					return fmt.Errorf("unexpected name, got: %s, want: %s", set.Name, "vmalertmanager-test-am")
+				}
+				if len(set.Spec.Template.Spec.Volumes) != 3 {
+					return fmt.Errorf("unexpected count of volumes, got: %d, want: %d", len(set.Spec.Template.Spec.Volumes), 3)
+				}
+				templatesVolume := set.Spec.Template.Spec.Volumes[1]
+				if templatesVolume.Name != "templates-test-am" {
+					return fmt.Errorf("unexpected volume name, got: %s, want: %s", templatesVolume.Name, "templates-test-am")
+				}
+				if templatesVolume.ConfigMap.Name != "test-am" {
+					return fmt.Errorf("unexpected configmap name, got: %s, want: %s", templatesVolume.ConfigMap.Name, "test-am")
+				}
+
+				vmaContainer := set.Spec.Template.Spec.Containers[0]
+				if vmaContainer.Name != "alertmanager" {
+					return fmt.Errorf("unexpected container name, got: %s, want: %s", vmaContainer.Name, "alertmanager")
+				}
+
+				if len(vmaContainer.VolumeMounts) != 3 {
+					return fmt.Errorf("unexpected count of volume mounts, got: %d, want: %d", len(vmaContainer.VolumeMounts), 3)
+				}
+				templatesVolumeMount := vmaContainer.VolumeMounts[2]
+				if templatesVolumeMount.Name != "templates-test-am" {
+					return fmt.Errorf("unexpected volume name, got: %s, want: %s", templatesVolumeMount.Name, "templates-test-am")
+				}
+				if templatesVolumeMount.MountPath != "/etc/vm/templates/test-am" {
+					return fmt.Errorf("unexpected volume mount path, got: %s, want: %s", templatesVolumeMount.MountPath, "/etc/vm/templates/test-am")
+				}
+				if !templatesVolumeMount.ReadOnly {
+					return fmt.Errorf("unexpected volume mount read only, got: %t, want: %t", templatesVolumeMount.ReadOnly, true)
+				}
+
+				foundTemplatesDir := false
+				for _, arg := range set.Spec.Template.Spec.Containers[1].Args {
+					if arg == "-volume-dir=/etc/vm/templates/test-am" {
+						foundTemplatesDir = true
+					}
+				}
+				if !foundTemplatesDir {
+					return fmt.Errorf("templates dir not found in args of config-reloader container")
+				}
+
+				return nil
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

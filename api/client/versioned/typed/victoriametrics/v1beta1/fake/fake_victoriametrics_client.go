@@ -39,8 +39,20 @@ func (c *FakeVictoriametricsV1beta1) VMAlertmanagers(namespace string) v1beta1.V
 	return &FakeVMAlertmanagers{c, namespace}
 }
 
+func (c *FakeVictoriametricsV1beta1) VMAlertmanagerConfigs(namespace string) v1beta1.VMAlertmanagerConfigInterface {
+	return &FakeVMAlertmanagerConfigs{c, namespace}
+}
+
+func (c *FakeVictoriametricsV1beta1) VMAuths(namespace string) v1beta1.VMAuthInterface {
+	return &FakeVMAuths{c, namespace}
+}
+
 func (c *FakeVictoriametricsV1beta1) VMClusters(namespace string) v1beta1.VMClusterInterface {
 	return &FakeVMClusters{c, namespace}
+}
+
+func (c *FakeVictoriametricsV1beta1) VMNodeScrapes(namespace string) v1beta1.VMNodeScrapeInterface {
+	return &FakeVMNodeScrapes{c, namespace}
 }
 
 func (c *FakeVictoriametricsV1beta1) VMPodScrapes(namespace string) v1beta1.VMPodScrapeInterface {
@@ -57,6 +69,14 @@ func (c *FakeVictoriametricsV1beta1) VMServiceScrapes(namespace string) v1beta1.
 
 func (c *FakeVictoriametricsV1beta1) VMSingles(namespace string) v1beta1.VMSingleInterface {
 	return &FakeVMSingles{c, namespace}
+}
+
+func (c *FakeVictoriametricsV1beta1) VMStaticScrapes(namespace string) v1beta1.VMStaticScrapeInterface {
+	return &FakeVMStaticScrapes{c, namespace}
+}
+
+func (c *FakeVictoriametricsV1beta1) VMUsers(namespace string) v1beta1.VMUserInterface {
+	return &FakeVMUsers{c, namespace}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

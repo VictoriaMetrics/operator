@@ -2956,6 +2956,11 @@ func (in *VMAlertmanagerSpec) DeepCopyInto(out *VMAlertmanagerSpec) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.Templates != nil {
+		in, out := &in.Templates, &out.Templates
+		*out = make([]ConfigMapKeyReference, len(*in))
+		copy(*out, *in)
+	}
 	if in.ReplicaCount != nil {
 		in, out := &in.ReplicaCount, &out.ReplicaCount
 		*out = new(int32)

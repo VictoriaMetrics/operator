@@ -30,11 +30,16 @@ type VictoriametricsV1beta1Interface interface {
 	VMAgentsGetter
 	VMAlertsGetter
 	VMAlertmanagersGetter
+	VMAlertmanagerConfigsGetter
+	VMAuthsGetter
 	VMClustersGetter
+	VMNodeScrapesGetter
 	VMPodScrapesGetter
 	VMRulesGetter
 	VMServiceScrapesGetter
 	VMSinglesGetter
+	VMStaticScrapesGetter
+	VMUsersGetter
 }
 
 // VictoriametricsV1beta1Client is used to interact with features provided by the victoriametrics group.
@@ -54,8 +59,20 @@ func (c *VictoriametricsV1beta1Client) VMAlertmanagers(namespace string) VMAlert
 	return newVMAlertmanagers(c, namespace)
 }
 
+func (c *VictoriametricsV1beta1Client) VMAlertmanagerConfigs(namespace string) VMAlertmanagerConfigInterface {
+	return newVMAlertmanagerConfigs(c, namespace)
+}
+
+func (c *VictoriametricsV1beta1Client) VMAuths(namespace string) VMAuthInterface {
+	return newVMAuths(c, namespace)
+}
+
 func (c *VictoriametricsV1beta1Client) VMClusters(namespace string) VMClusterInterface {
 	return newVMClusters(c, namespace)
+}
+
+func (c *VictoriametricsV1beta1Client) VMNodeScrapes(namespace string) VMNodeScrapeInterface {
+	return newVMNodeScrapes(c, namespace)
 }
 
 func (c *VictoriametricsV1beta1Client) VMPodScrapes(namespace string) VMPodScrapeInterface {
@@ -72,6 +89,14 @@ func (c *VictoriametricsV1beta1Client) VMServiceScrapes(namespace string) VMServ
 
 func (c *VictoriametricsV1beta1Client) VMSingles(namespace string) VMSingleInterface {
 	return newVMSingles(c, namespace)
+}
+
+func (c *VictoriametricsV1beta1Client) VMStaticScrapes(namespace string) VMStaticScrapeInterface {
+	return newVMStaticScrapes(c, namespace)
+}
+
+func (c *VictoriametricsV1beta1Client) VMUsers(namespace string) VMUserInterface {
+	return newVMUsers(c, namespace)
 }
 
 // NewForConfig creates a new VictoriametricsV1beta1Client for the given config.

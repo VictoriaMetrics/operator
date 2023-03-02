@@ -105,7 +105,7 @@ type VMUserStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-
+// +genclient
 // VMUser is the Schema for the vmusers API
 type VMUser struct {
 	metav1.TypeMeta   `json:",inline"`

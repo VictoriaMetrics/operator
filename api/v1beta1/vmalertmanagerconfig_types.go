@@ -104,7 +104,8 @@ type VMAlertmanagerConfigStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-
+// +genclient
+// +k8s:openapi-gen=true
 // VMAlertmanagerConfig is the Schema for the vmalertmanagerconfigs API
 type VMAlertmanagerConfig struct {
 	metav1.TypeMeta   `json:",inline"`

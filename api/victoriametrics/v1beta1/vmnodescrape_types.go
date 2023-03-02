@@ -97,7 +97,7 @@ type VMNodeScrapeStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-
+// +genclient
 // VMNodeScrape defines discovery for targets placed on kubernetes nodes,
 // usually its node-exporters and other host services.
 // InternalIP is used as __address__ for scraping.

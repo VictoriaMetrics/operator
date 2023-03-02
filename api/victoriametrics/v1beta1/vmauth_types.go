@@ -224,7 +224,8 @@ type VMAuthStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-
+// +genclient
+// +k8s:openapi-gen=true
 // VMAuth is the Schema for the vmauths API
 type VMAuth struct {
 	metav1.TypeMeta   `json:",inline"`

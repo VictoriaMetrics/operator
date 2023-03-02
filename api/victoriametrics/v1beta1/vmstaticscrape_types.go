@@ -102,7 +102,7 @@ type VMStaticScrapeStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-
+// +genclient
 // VMStaticScrape  defines static targets configuration for scraping.
 type VMStaticScrape struct {
 	metav1.TypeMeta   `json:",inline"`

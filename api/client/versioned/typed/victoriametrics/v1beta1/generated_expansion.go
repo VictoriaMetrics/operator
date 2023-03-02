@@ -23,7 +23,13 @@ type VMAlertExpansion interface{}
 
 type VMAlertmanagerExpansion interface{}
 
+type VMAlertmanagerConfigExpansion interface{}
+
+type VMAuthExpansion interface{}
+
 type VMClusterExpansion interface{}
+
+type VMNodeScrapeExpansion interface{}
 
 type VMPodScrapeExpansion interface{}
 
@@ -32,3 +38,7 @@ type VMRuleExpansion interface{}
 type VMServiceScrapeExpansion interface{}
 
 type VMSingleExpansion interface{}
+
+type VMStaticScrapeExpansion interface{}
+
+type VMUserExpansion interface{}

@@ -6,22 +6,25 @@ import (
 	"strings"
 )
 
+// RenderPlaceholders replaces placeholders at resource with given values
+// placeholder must be in %NAME% format
+// resource must be reference to json serializable struct
 func RenderPlaceholders[T any](resource *T, placeholders map[string]string) (*T, error) {
+	if resource == nil || len(placeholders) == 0 {
+		return resource, nil
+	}
+
 	data, err := json.Marshal(resource)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal resource for filling placeholders: %w", err)
 	}
 
-	if len(placeholders) == 0 || len(data) == 0 {
-		return resource, nil
-	}
-
 	strData := string(data)
-	for placeholderName, value := range placeholders {
-		placeholder := strings.ToUpper(fmt.Sprintf("%%%s%%", placeholderName))
-		placeholder = strings.ReplaceAll(placeholder, ".", "_")
-		placeholder = strings.ReplaceAll(placeholder, "-", "_")
-		strData = strings.ReplaceAll(strData, placeholder, value)
+	for p, value := range placeholders {
+		if !strings.HasPrefix(p, "%") || !strings.HasSuffix(p, "%") {
+			return nil, fmt.Errorf("incorrect placeholder name format: '%v', placeholder must be in '%%NAME%%' format", p)
+		}
+		strData = strings.ReplaceAll(strData, p, value)
 	}
 
 	var result *T

@@ -36,7 +36,11 @@ const (
 	vmAgentPersistentQueueMountName = "persistent-queue-data"
 	globalRelabelingName            = "global_relabeling.yaml"
 	urlRelabelingName               = "url_relabeling-%d.yaml"
+	shardNumPlaceholder             = "%SHARD_NUM%"
 )
+
+// To save compatibility in the single-shard version still need to fill in %SHARD_NUM% placeholder
+var defaultPlaceholders = map[string]string{shardNumPlaceholder: "0"}
 
 func CreateOrUpdateVMAgentService(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client, c *config.BaseOperatorConf) (*corev1.Service, error) {
 	cr = cr.DeepCopy()
@@ -116,7 +120,7 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 		for shardNum := 0; shardNum < shardsCount; shardNum++ {
 			shardedDeploy := newDeploy.DeepCopyObject()
 			addShardSettingsToVMAgent(shardNum, shardsCount, shardedDeploy)
-			placeholders := map[string]string{"shard-num": strconv.Itoa(shardNum)}
+			placeholders := map[string]string{shardNumPlaceholder: strconv.Itoa(shardNum)}
 			switch shardedDeploy := shardedDeploy.(type) {
 			case *appsv1.Deployment:
 				shardedDeploy, err = k8stools.RenderPlaceholders(shardedDeploy, placeholders)
@@ -151,11 +155,9 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 			}
 		}
 	} else {
-		// To save compatibility in the single-shard version still need to fill in placeholders
-		placeholders := map[string]string{"shard-num": "0"}
 		switch newDeploy := newDeploy.(type) {
 		case *appsv1.Deployment:
-			newDeploy, err = k8stools.RenderPlaceholders(newDeploy, placeholders)
+			newDeploy, err = k8stools.RenderPlaceholders(newDeploy, defaultPlaceholders)
 			if err != nil {
 				return fmt.Errorf("cannot fill placeholders for deployment in vmagent: %w", err)
 			}
@@ -164,7 +166,7 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 			}
 			deploymentNames[newDeploy.Name] = struct{}{}
 		case *appsv1.StatefulSet:
-			newDeploy, err = k8stools.RenderPlaceholders(newDeploy, placeholders)
+			newDeploy, err = k8stools.RenderPlaceholders(newDeploy, defaultPlaceholders)
 			if err != nil {
 				return fmt.Errorf("cannot fill placeholders for sts in vmagent: %w", err)
 			}

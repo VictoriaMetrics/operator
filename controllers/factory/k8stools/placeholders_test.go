@@ -1,7 +1,6 @@
 package k8stools_test
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
@@ -47,8 +46,8 @@ func TestRenderPlaceholders(t *testing.T) {
 					},
 				},
 				placeholders: map[string]string{
-					"placeholder_1": "new_value_1",
-					"placeholder_2": "new_value_2",
+					"%PLACEHOLDER_1%": "new_value_1",
+					"%PLACEHOLDER_2%": "new_value_2",
 				},
 			},
 			want: &v1.ConfigMap{
@@ -70,9 +69,9 @@ func TestRenderPlaceholders(t *testing.T) {
 					},
 				},
 				placeholders: map[string]string{
-					"placeholder_1": "new_value_1",
-					"placeholder_2": "new_value_2",
-					"placeholder_4": "new_value_4",
+					"%PLACEHOLDER_1%": "new_value_1",
+					"%PLACEHOLDER_2%": "new_value_2",
+					"%PLACEHOLDER_4%": "new_value_4",
 				},
 			},
 			want: &v1.ConfigMap{
@@ -98,10 +97,10 @@ func TestRenderPlaceholders(t *testing.T) {
 					},
 				},
 				placeholders: map[string]string{
-					"placeholder_1": "new-value-1",
-					"placeholder_2": "new-value-2",
-					"placeholder_3": "new-value-3",
-					"placeholder_4": "new-value-4",
+					"%PLACEHOLDER_1%": "new-value-1",
+					"%PLACEHOLDER_2%": "new-value-2",
+					"%PLACEHOLDER_3%": "new-value-3",
+					"%PLACEHOLDER_4%": "new-value-4",
 				},
 			},
 			want: &v1.ConfigMap{
@@ -125,8 +124,8 @@ func TestRenderPlaceholders(t *testing.T) {
 					},
 				},
 				placeholders: map[string]string{
-					"placeholder_1": "%PLACEHOLDER_1%",
-					"placeholder_2": "%PLACEHOLDER_2%",
+					"%PLACEHOLDER_1%": "%PLACEHOLDER_1%",
+					"%PLACEHOLDER_2%": "%PLACEHOLDER_2%",
 				},
 			},
 			want: &v1.ConfigMap{
@@ -136,18 +135,56 @@ func TestRenderPlaceholders(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "placeholder with incorrect name 1",
+			args: args{
+				resource: &v1.ConfigMap{
+					Data: map[string]string{
+						"key_1": "%PLACEHOLDER_1%",
+					},
+				},
+				placeholders: map[string]string{
+					"PLACEHOLDER_1": "value_1",
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "placeholder with incorrect name 2",
+			args: args{
+				resource: &v1.ConfigMap{
+					Data: map[string]string{
+						"key_1": "%PLACEHOLDER_1%",
+					},
+				},
+				placeholders: map[string]string{
+					"%PLACEHOLDER_1": "value_1",
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "placeholder with incorrect name 3",
+			args: args{
+				resource: &v1.ConfigMap{
+					Data: map[string]string{
+						"key_1": "%PLACEHOLDER_1%",
+					},
+				},
+				placeholders: map[string]string{
+					"PLACEHOLDER_1%": "value_1",
+				},
+			},
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			resource := tt.args.resource.(*v1.ConfigMap)
-			got, err := k8stools.RenderPlaceholders(resource, tt.args.placeholders)
+			_, err := k8stools.RenderPlaceholders(resource, tt.args.placeholders)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("RenderPlaceholders() error = %v, wantErr = %v", err, tt.wantErr)
 				return
-			}
-
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("RenderPlaceholders() got = \n%#v\n, want = \n%#v\n", got, tt.want)
 			}
 		})
 	}

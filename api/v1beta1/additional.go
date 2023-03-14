@@ -393,10 +393,10 @@ type StreamAggrRule struct {
 	//
 	// If the match isn't set, then all the input time series are processed.
 	// +optional
-	Match string `json:"match,omitempty"`
+	Match string `json:"match,omitempty" yaml:"match,omitempty"`
 
 	// Interval is the interval between aggregations.
-	Interval string `json:"interval"`
+	Interval string `json:"interval" yaml:"interval"`
 
 	// Outputs is a list of output aggregate functions to produce.
 	//
@@ -429,7 +429,7 @@ type StreamAggrRule struct {
 	// If neither By nor Without are set, then the Outputs are calculated
 	// individually per each input time series.
 	// +optional
-	By []string `json:"by,omitempty"`
+	By []string `json:"by,omitempty" yaml:"by,omitempty""`
 
 	// Without is an optional list of labels, which must be excluded when grouping input series.
 	//
@@ -438,15 +438,15 @@ type StreamAggrRule struct {
 	// If neither By nor Without are set, then the Outputs are calculated
 	// individually per each input time series.
 	// +optional
-	Without []string `json:"without,omitempty"`
+	Without []string `json:"without,omitempty" yaml:"without,omitempty"`
 
 	// InputRelabelConfigs is an optional relabeling rules, which are applied on the input
 	// before aggregation.
 	// +optional
-	InputRelabelConfigs []RelabelConfig `json:"input_relabel_configs,omitempty"`
+	InputRelabelConfigs []RelabelConfig `json:"input_relabel_configs,omitempty" yaml:"input_relabel_configs,omitempty"`
 
 	// OutputRelabelConfigs is an optional relabeling rules, which are applied
 	// on the aggregated output before being sent to remote storage.
 	// +optional
-	OutputRelabelConfigs []RelabelConfig `json:"output_relabel_configs,omitempty"`
+	OutputRelabelConfigs []RelabelConfig `json:"output_relabel_configs,omitempty" yaml:"output_relabel_configs,omitempty"`
 }

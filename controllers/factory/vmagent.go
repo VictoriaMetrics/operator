@@ -643,7 +643,7 @@ func CreateOrUpdateRelabelConfigsAssets(ctx context.Context, cr *victoriametrics
 }
 
 // buildVMAgentStreamAggrConfig combines all possible stream aggregation configs and adding it to the configmap.
-func buildVMAgentStreamAggrConfig(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) (*corev1.ConfigMap, error) {
+func buildVMAgentStreamAggrConfig(cr *victoriametricsv1beta1.VMAgent) (*corev1.ConfigMap, error) {
 	cfgCM := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:       cr.Namespace,
@@ -671,7 +671,7 @@ func buildVMAgentStreamAggrConfig(ctx context.Context, cr *victoriametricsv1beta
 
 // CreateOrUpdateVMAgentStreamAggrConfig builds stream aggregation configs for vmagent at separate configmap, serialized as yaml
 func CreateOrUpdateVMAgentStreamAggrConfig(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) error {
-	streamAggrCM, err := buildVMAgentStreamAggrConfig(ctx, cr, rclient)
+	streamAggrCM, err := buildVMAgentStreamAggrConfig(cr)
 	if err != nil {
 		return err
 	}
@@ -1171,16 +1171,17 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, ssCache *scrapesSecre
 		oauth2Scopes.flagSetting += fmt.Sprintf("%s,", oascopes)
 
 		if rws.HasStreamAggr() {
-			streamAggrConfigFile := path.Join(vmAgentConfDir, rws.AsConfigMapKey(i, "stream-aggr-conf"))
-			streamAggrConfig.flagSetting += fmt.Sprintf("%s,", streamAggrConfigFile)
 			streamAggrConfig.isNotNull = true
-			if rws.StreamAggrConfig.KeepInput {
-				streamAggrKeepInput.flagSetting += fmt.Sprintf("%v,", rws.StreamAggrConfig.KeepInput)
-				streamAggrKeepInput.isNotNull = true
-			}
-			if rws.StreamAggrConfig.DedupInterval != "" {
+			streamAggrConfig.flagSetting += fmt.Sprintf("%s,", path.Join(StreamAggrConfigDir, rws.AsConfigMapKey(i, "stream-aggr-conf")))
+
+			streamAggrKeepInput.isNotNull = true
+			streamAggrKeepInput.flagSetting += fmt.Sprintf("%v,", rws.StreamAggrConfig.KeepInput)
+
+			streamAggrDedupInterval.isNotNull = true
+			if rws.StreamAggrConfig.DedupInterval == "" {
+				streamAggrDedupInterval.flagSetting += "0,"
+			} else {
 				streamAggrDedupInterval.flagSetting += fmt.Sprintf("%s,", rws.StreamAggrConfig.DedupInterval)
-				streamAggrDedupInterval.isNotNull = true
 			}
 		}
 	}

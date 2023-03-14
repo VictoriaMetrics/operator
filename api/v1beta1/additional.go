@@ -372,3 +372,81 @@ type ConfigMapKeyReference struct {
 	// The ConfigMap key to refer to.
 	Key string `json:"key"`
 }
+
+// StreamAggrConfig defines the stream aggregation config
+// +k8s:openapi-gen=true
+type StreamAggrConfig struct {
+	// Stream aggregation rules
+	Rules []StreamAggrRule `json:"rules"`
+	// Allows writing both raw and aggregate data
+	// +optional
+	KeepInput bool `json:"keepInput,omitempty"`
+	// Allows setting different de-duplication intervals per each configured remote storage
+	// +optional
+	DedupInterval string `json:"dedupInterval,omitempty"`
+}
+
+// StreamAggrRule defines the rule in stream aggregation config
+// +k8s:openapi-gen=true
+type StreamAggrRule struct {
+	// Match is a label selector for filtering time series for the given selector.
+	//
+	// If the match isn't set, then all the input time series are processed.
+	// +optional
+	Match string `json:"match,omitempty"`
+
+	// Interval is the interval between aggregations.
+	Interval string `json:"interval"`
+
+	// Outputs is a list of output aggregate functions to produce.
+	//
+	// The following names are allowed:
+	//
+	// - total - aggregates input counters
+	// - increase - counts the increase over input counters
+	// - count_series - counts the input series
+	// - count_samples - counts the input samples
+	// - sum_samples - sums the input samples
+	// - last - the last biggest sample value
+	// - min - the minimum sample value
+	// - max - the maximum sample value
+	// - avg - the average value across all the samples
+	// - stddev - standard deviation across all the samples
+	// - stdvar - standard variance across all the samples
+	// - histogram_bucket - creates VictoriaMetrics histogram for input samples
+	// - quantiles(phi1, ..., phiN) - quantiles' estimation for phi in the range [0..1]
+	//
+	// The output time series will have the following names:
+	//
+	//   input_name:aggr_<interval>_<output>
+	//
+	Outputs []string `json:"outputs"`
+
+	// By is an optional list of labels for grouping input series.
+	//
+	// See also Without.
+	//
+	// If neither By nor Without are set, then the Outputs are calculated
+	// individually per each input time series.
+	// +optional
+	By []string `json:"by,omitempty"`
+
+	// Without is an optional list of labels, which must be excluded when grouping input series.
+	//
+	// See also By.
+	//
+	// If neither By nor Without are set, then the Outputs are calculated
+	// individually per each input time series.
+	// +optional
+	Without []string `json:"without,omitempty"`
+
+	// InputRelabelConfigs is an optional relabeling rules, which are applied on the input
+	// before aggregation.
+	// +optional
+	InputRelabelConfigs []RelabelConfig `json:"input_relabel_configs,omitempty"`
+
+	// OutputRelabelConfigs is an optional relabeling rules, which are applied
+	// on the aggregated output before being sent to remote storage.
+	// +optional
+	OutputRelabelConfigs []RelabelConfig `json:"output_relabel_configs,omitempty"`
+}

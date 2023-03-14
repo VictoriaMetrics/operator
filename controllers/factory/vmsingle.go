@@ -12,6 +12,7 @@ import (
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/controllers/factory/psp"
 	"github.com/VictoriaMetrics/operator/internal/config"
+	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -26,6 +27,7 @@ const (
 	SecretsDir          = "/etc/vm/secrets"
 	ConfigMapsDir       = "/etc/vm/configs"
 	TemplatesDir        = "/etc/vm/templates"
+	StreamAggrConfigDir = "/etc/vm/stream-aggr"
 	RelabelingConfigDir = "/etc/vm/relabeling"
 	vmSingleDataDir     = "/victoria-metrics-data"
 	vmBackuperCreds     = "/etc/vm/creds"
@@ -254,6 +256,32 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 			ReadOnly:  true,
 			MountPath: path.Join(ConfigMapsDir, c),
 		})
+	}
+
+	volumes = append(volumes, corev1.Volume{
+		Name: k8stools.SanitizeVolumeName("stream-aggr-conf"),
+		VolumeSource: corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: cr.StreamAggrConfigName(),
+				},
+			},
+		},
+	})
+	vmMounts = append(vmMounts, corev1.VolumeMount{
+		Name:      k8stools.SanitizeVolumeName("stream-aggr-conf"),
+		ReadOnly:  true,
+		MountPath: StreamAggrConfigDir,
+	})
+
+	if cr.Spec.StreamAggrConfig != nil && len(cr.Spec.StreamAggrConfig.Rules) > 0 {
+		args = append(args, fmt.Sprintf("--streamAggr.config=%s", path.Join(StreamAggrConfigDir, "config.yaml")))
+		if cr.Spec.StreamAggrConfig.KeepInput {
+			args = append(args, "--streamAggr.keepInput=true")
+		}
+		if cr.Spec.StreamAggrConfig.DedupInterval != "" {
+			args = append(args, fmt.Sprintf("--streamAggr.deDupInterval=%s", cr.Spec.StreamAggrConfig.DedupInterval))
+		}
 	}
 
 	args = addExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs, "-")
@@ -609,4 +637,45 @@ func makeSpecForVMRestore(
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 	}
 	return vmRestore, nil
+}
+
+// buildVMSingleStreamAggrConfig build configmap with stream aggregation config for vmsingle.
+func buildVMSingleStreamAggrConfig(ctx context.Context, cr *victoriametricsv1beta1.VMSingle, rclient client.Client) (*corev1.ConfigMap, error) {
+	cfgCM := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace:       cr.Namespace,
+			Name:            cr.StreamAggrConfigName(),
+			Labels:          cr.AllLabels(),
+			Annotations:     cr.AnnotationsFiltered(),
+			OwnerReferences: cr.AsOwner(),
+		},
+		Data: make(map[string]string),
+	}
+	if cr.Spec.StreamAggrConfig != nil && cr.Spec.StreamAggrConfig.Rules != nil {
+		data, err := yaml.Marshal(cr.Spec.StreamAggrConfig.Rules)
+		if err != nil {
+			return nil, fmt.Errorf("cannot serialize StreamAggrConfig rules as yaml: %w", err)
+		}
+		if len(data) > 0 {
+			cfgCM.Data["config.yaml"] = string(data)
+		}
+	}
+	return cfgCM, nil
+}
+
+// CreateOrUpdateVMSingleStreamAggrConfig builds stream aggregation configs for vmsingle at separate configmap, serialized as yaml
+func CreateOrUpdateVMSingleStreamAggrConfig(ctx context.Context, cr *victoriametricsv1beta1.VMSingle, rclient client.Client) error {
+	streamAggrCM, err := buildVMSingleStreamAggrConfig(ctx, cr, rclient)
+	if err != nil {
+		return err
+	}
+	var existCM corev1.ConfigMap
+	if err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.StreamAggrConfigName()}, &existCM); err != nil {
+		if errors.IsNotFound(err) {
+			return rclient.Create(ctx, streamAggrCM)
+		}
+	}
+	streamAggrCM.Annotations = labels.Merge(existCM.Annotations, streamAggrCM.Annotations)
+	victoriametricsv1beta1.MergeFinalizers(streamAggrCM, victoriametricsv1beta1.FinalizerName)
+	return rclient.Update(ctx, streamAggrCM)
 }

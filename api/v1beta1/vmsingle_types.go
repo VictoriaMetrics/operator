@@ -187,6 +187,8 @@ type VMSingleSpec struct {
 	TerminationGracePeriodSeconds *int64 `json:"terminationGracePeriodSeconds,omitempty"`
 	// ReadinessGates defines pod readiness gates
 	ReadinessGates []v1.PodReadinessGate `json:"readinessGates,omitempty"`
+	// StreamAggrConfig defines stream aggregation configuration for VMSingle
+	StreamAggrConfig *StreamAggrConfig `json:"streamAggrConfig,omitempty"`
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface
@@ -317,6 +319,10 @@ func (cr VMSingle) AllLabels() map[string]string {
 
 func (cr VMSingle) PrefixedName() string {
 	return fmt.Sprintf("vmsingle-%s", cr.Name)
+}
+
+func (cr VMSingle) StreamAggrConfigName() string {
+	return fmt.Sprintf("stream-aggr-vmsingle-%s", cr.Name)
 }
 
 func (cr VMSingle) MetricPath() string {

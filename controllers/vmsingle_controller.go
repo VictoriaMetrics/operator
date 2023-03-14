@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -82,6 +83,11 @@ func (r *VMSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (r
 			return result, err
 		}
 	}
+
+	if err := factory.CreateOrUpdateVMSingleStreamAggrConfig(ctx, instance, r); err != nil {
+		return result, fmt.Errorf("cannot update stream aggregation config for vmsingle: %w", err)
+	}
+
 	_, err = factory.CreateOrUpdateVMSingle(ctx, instance, r, r.BaseConf)
 	if err != nil {
 		return result, err

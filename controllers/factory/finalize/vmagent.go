@@ -51,6 +51,9 @@ func OnVMAgentDelete(ctx context.Context, rclient client.Client, crd *victoriame
 	if err := removeFinalizeObjByName(ctx, rclient, &v1.ConfigMap{}, crd.RelabelingAssetName(), crd.Namespace); err != nil {
 		return err
 	}
+	if err := removeFinalizeObjByName(ctx, rclient, &v1.ConfigMap{}, crd.StreamAggrConfigName(), crd.Namespace); err != nil {
+		return err
+	}
 
 	// check PDB
 	if err := finalizePBD(ctx, rclient, crd); err != nil {

@@ -61,6 +61,12 @@ func generateConfig(
 		{Key: "scrape_interval", Value: cr.Spec.ScrapeInterval},
 		{Key: "external_labels", Value: buildExternalLabels(cr)},
 	}
+	if cr.Spec.ScrapeTimeout != "" {
+		globalItems = append(globalItems, yaml.MapItem{
+			Key:   "scrape_timeout",
+			Value: cr.Spec.ScrapeTimeout,
+		})
+	}
 
 	cfg = append(cfg, yaml.MapItem{Key: "global", Value: globalItems})
 
@@ -1162,51 +1168,49 @@ func addRelabelConfigs(dst []yaml.MapSlice, rcs []victoriametricsv1beta1.Relabel
 func generateRelabelConfig(rc *victoriametricsv1beta1.RelabelConfig) yaml.MapSlice {
 	relabeling := yaml.MapSlice{}
 
-	c := updateRelabelConfigWithUnderscores(rc)
-
-	if len(c.SourceLabels) > 0 {
-		relabeling = append(relabeling, yaml.MapItem{Key: "source_labels", Value: c.SourceLabels})
+	if len(rc.SourceLabels) > 0 {
+		relabeling = append(relabeling, yaml.MapItem{Key: "source_labels", Value: rc.SourceLabels})
 	}
 
-	if c.Separator != "" {
-		relabeling = append(relabeling, yaml.MapItem{Key: "separator", Value: c.Separator})
+	if rc.Separator != "" {
+		relabeling = append(relabeling, yaml.MapItem{Key: "separator", Value: rc.Separator})
 	}
 
-	if c.TargetLabel != "" {
-		relabeling = append(relabeling, yaml.MapItem{Key: "target_label", Value: c.TargetLabel})
+	if rc.TargetLabel != "" {
+		relabeling = append(relabeling, yaml.MapItem{Key: "target_label", Value: rc.TargetLabel})
 	}
 
-	if c.Regex != "" {
-		relabeling = append(relabeling, yaml.MapItem{Key: "regex", Value: c.Regex})
+	if rc.Regex != "" {
+		relabeling = append(relabeling, yaml.MapItem{Key: "regex", Value: rc.Regex})
 	}
 
-	if c.Modulus != uint64(0) {
-		relabeling = append(relabeling, yaml.MapItem{Key: "modulus", Value: c.Modulus})
+	if rc.Modulus != uint64(0) {
+		relabeling = append(relabeling, yaml.MapItem{Key: "modulus", Value: rc.Modulus})
 	}
 
-	if c.Replacement != "" {
-		relabeling = append(relabeling, yaml.MapItem{Key: "replacement", Value: c.Replacement})
+	if rc.Replacement != "" {
+		relabeling = append(relabeling, yaml.MapItem{Key: "replacement", Value: rc.Replacement})
 	}
 
-	if c.Action != "" {
-		relabeling = append(relabeling, yaml.MapItem{Key: "action", Value: c.Action})
+	if rc.Action != "" {
+		relabeling = append(relabeling, yaml.MapItem{Key: "action", Value: rc.Action})
 	}
-	if c.If != "" {
-		relabeling = append(relabeling, yaml.MapItem{Key: "if", Value: c.If})
+	if rc.If != "" {
+		relabeling = append(relabeling, yaml.MapItem{Key: "if", Value: rc.If})
 	}
-	if c.Match != "" {
-		relabeling = append(relabeling, yaml.MapItem{Key: "match", Value: c.Match})
+	if rc.Match != "" {
+		relabeling = append(relabeling, yaml.MapItem{Key: "match", Value: rc.Match})
 	}
-	if len(c.Labels) > 0 {
-		sortKeys := make([]string, 0, len(c.Labels))
-		labels := make(yaml.MapSlice, 0, len(c.Labels))
-		for key := range c.Labels {
+	if len(rc.Labels) > 0 {
+		sortKeys := make([]string, 0, len(rc.Labels))
+		labels := make(yaml.MapSlice, 0, len(rc.Labels))
+		for key := range rc.Labels {
 			sortKeys = append(sortKeys, key)
 		}
 		sort.Strings(sortKeys)
 		for idx := range sortKeys {
 			key := sortKeys[idx]
-			labels = append(labels, yaml.MapItem{Key: key, Value: c.Labels[key]})
+			labels = append(labels, yaml.MapItem{Key: key, Value: rc.Labels[key]})
 		}
 		relabeling = append(relabeling, yaml.MapItem{Key: "labels", Value: labels})
 	}
@@ -1372,19 +1376,6 @@ func buildExternalLabels(p *victoriametricsv1beta1.VMAgent) yaml.MapSlice {
 		m[n] = v
 	}
 	return stringMapToMapSlice(m)
-}
-
-// replaces targetLabel and sourceLabels with underscore version if possible.
-func updateRelabelConfigWithUnderscores(c *victoriametricsv1beta1.RelabelConfig) *victoriametricsv1beta1.RelabelConfig {
-	// copy to prevent side effects.
-	rc := c.DeepCopy()
-	if len(rc.SourceLabels) == 0 && len(rc.UnderScoreSourceLabels) > 0 {
-		rc.SourceLabels = append(rc.SourceLabels, rc.UnderScoreSourceLabels...)
-	}
-	if rc.TargetLabel == "" && rc.UnderScoreTargetLabel != "" {
-		rc.TargetLabel = rc.UnderScoreTargetLabel
-	}
-	return rc
 }
 
 func buildVMScrapeParams(namespace, cacheKey string, cfg *victoriametricsv1beta1.VMScrapeParams, ssCache *scrapesSecretsCache) yaml.MapSlice {

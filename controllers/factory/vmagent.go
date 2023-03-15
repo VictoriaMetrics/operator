@@ -660,7 +660,7 @@ func buildVMAgentStreamAggrConfig(cr *victoriametricsv1beta1.VMAgent) (*corev1.C
 		}
 		data, err := yaml.Marshal(rw.StreamAggrConfig.Rules)
 		if err != nil {
-			return nil, fmt.Errorf("cannot serialize StreamAggrConfig rules as yaml: %w", err)
+			return nil, fmt.Errorf("cannot serialize StreamAggrConfig rules as yaml for remoteWrite with url %s: %w", rw.URL, err)
 		}
 		if len(data) > 0 {
 			cfgCM.Data[rw.AsConfigMapKey(i, "stream-aggr-conf")] = string(data)
@@ -1170,20 +1170,25 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, ssCache *scrapesSecre
 		oauth2ClientID.flagSetting += fmt.Sprintf("%s,", oaclientID)
 		oauth2Scopes.flagSetting += fmt.Sprintf("%s,", oascopes)
 
+		var dedupIntVal, streamConfVal string
+		var keepInputVal bool
 		if rws.HasStreamAggr() {
 			streamAggrConfig.isNotNull = true
-			streamAggrConfig.flagSetting += fmt.Sprintf("%s,", path.Join(StreamAggrConfigDir, rws.AsConfigMapKey(i, "stream-aggr-conf")))
+			streamConfVal = path.Join(StreamAggrConfigDir, rws.AsConfigMapKey(i, "stream-aggr-conf"))
 
-			streamAggrKeepInput.isNotNull = true
-			streamAggrKeepInput.flagSetting += fmt.Sprintf("%v,", rws.StreamAggrConfig.KeepInput)
+			dedupIntVal = rws.StreamAggrConfig.DedupInterval
+			if dedupIntVal != "" {
+				streamAggrDedupInterval.isNotNull = true
+			}
 
-			streamAggrDedupInterval.isNotNull = true
-			if rws.StreamAggrConfig.DedupInterval == "" {
-				streamAggrDedupInterval.flagSetting += "0,"
-			} else {
-				streamAggrDedupInterval.flagSetting += fmt.Sprintf("%s,", rws.StreamAggrConfig.DedupInterval)
+			keepInputVal = rws.StreamAggrConfig.KeepInput
+			if !keepInputVal {
+				streamAggrKeepInput.isNotNull = true
 			}
 		}
+		streamAggrConfig.flagSetting += fmt.Sprintf("%s,", streamConfVal)
+		streamAggrKeepInput.flagSetting += fmt.Sprintf("%v,", keepInputVal)
+		streamAggrDedupInterval.flagSetting += fmt.Sprintf("%s,", dedupIntVal)
 	}
 	remoteArgs = append(remoteArgs, url, authUser, bearerTokenFile, urlRelabelConfig, tlsInsecure, sendTimeout)
 	remoteArgs = append(remoteArgs, tlsServerName, tlsKeys, tlsCerts, tlsCAs)

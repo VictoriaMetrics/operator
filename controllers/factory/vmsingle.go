@@ -280,7 +280,7 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 			args = append(args, "--streamAggr.keepInput=true")
 		}
 		if cr.Spec.StreamAggrConfig.DedupInterval != "" {
-			args = append(args, fmt.Sprintf("--streamAggr.deDupInterval=%s", cr.Spec.StreamAggrConfig.DedupInterval))
+			args = append(args, fmt.Sprintf("--streamAggr.dedupInterval=%s", cr.Spec.StreamAggrConfig.DedupInterval))
 		}
 	}
 

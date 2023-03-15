@@ -764,9 +764,58 @@ func TestBuildRemoteWrites(t *testing.T) {
 			},
 			want: []string{
 				`-remoteWrite.streamAggr.config=/etc/vm/stream-aggr/RWS_0-CM-STREAM-AGGR-CONF,/etc/vm/stream-aggr/RWS_1-CM-STREAM-AGGR-CONF`,
-				`-remoteWrite.streamAggr.dedupInterval=10s,0`,
+				`-remoteWrite.streamAggr.dedupInterval=10s,`,
 				`-remoteWrite.streamAggr.keepInput=false,true`,
 				`-remoteWrite.url=localhost:8429,localhost:8431`,
+			},
+		},
+		{
+			name: "test with stream aggr",
+			args: args{
+				ssCache: &scrapesSecretsCache{},
+				cr: &victoriametricsv1beta1.VMAgent{
+					Spec: victoriametricsv1beta1.VMAgentSpec{RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
+						{
+							URL: "localhost:8428",
+						},
+						{
+							URL: "localhost:8429",
+							StreamAggrConfig: &victoriametricsv1beta1.StreamAggrConfig{
+								Rules: []victoriametricsv1beta1.StreamAggrRule{
+									{
+										Interval: "1m",
+										Outputs:  []string{"total", "avg"},
+									},
+								},
+								DedupInterval: "10s",
+								KeepInput:     true,
+							},
+						},
+						{
+							URL: "localhost:8430",
+						},
+						{
+							URL: "localhost:8431",
+							StreamAggrConfig: &victoriametricsv1beta1.StreamAggrConfig{
+								Rules: []victoriametricsv1beta1.StreamAggrRule{
+									{
+										Interval: "1m",
+										Outputs:  []string{"histogram_bucket"},
+									},
+								},
+							},
+						},
+						{
+							URL: "localhost:8432",
+						},
+					}},
+				},
+			},
+			want: []string{
+				`-remoteWrite.streamAggr.config=,/etc/vm/stream-aggr/RWS_1-CM-STREAM-AGGR-CONF,,/etc/vm/stream-aggr/RWS_3-CM-STREAM-AGGR-CONF,`,
+				`-remoteWrite.streamAggr.dedupInterval=,10s,,,`,
+				`-remoteWrite.streamAggr.keepInput=false,true,false,false,false`,
+				`-remoteWrite.url=localhost:8428,localhost:8429,localhost:8430,localhost:8431,localhost:8432`,
 			},
 		},
 	}

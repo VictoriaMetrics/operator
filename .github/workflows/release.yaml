@@ -10,12 +10,12 @@ jobs:
     steps:
       - name: Inject slug/short variables
         uses: rlespinasse/github-slug-action@v2.x
-      - name: Check out code
-        uses: actions/checkout@v2
+      - name: Checkout code
+        uses: actions/checkout@v3
       - name: Setup Go
-        uses: actions/setup-go@master
+        uses: actions/setup-go@v3
         with:
-          go-version: 1.20
+          go-version: '1.20'
         id: go
       - name: Dependencies
         env:
@@ -23,7 +23,7 @@ jobs:
         run: |
           go install golang.org/x/lint/golint@latest
           go install github.com/kisielk/errcheck@latest
-          go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.50.1
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.51.2
           curl -L -o operator-sdk "https://github.com/operator-framework/operator-sdk/releases/download/v1.0.0/operator-sdk-v1.0.0-x86_64-linux-gnu"
           chmod +x operator-sdk
           sudo mv operator-sdk /bin/

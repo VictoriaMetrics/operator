@@ -1,6 +1,7 @@
 package v1beta1
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 
@@ -388,6 +389,29 @@ type RelabelConfig struct {
 	// Labels is used together with Match for `action: graphite`
 	// +optional
 	Labels map[string]string `json:"labels,omitempty" yaml:"labels,omitempty"`
+}
+
+// UnmarshalJSON implements interface
+// handles cases for snake and camel cases of json tags
+func (rc *RelabelConfig) UnmarshalJSON(src []byte) error {
+	type rcfg RelabelConfig
+	if err := json.Unmarshal(src, (*rcfg)(rc)); err != nil {
+		return fmt.Errorf("cannot parse relabelConfig: %w", err)
+	}
+
+	if len(rc.SourceLabels) == 0 && len(rc.UnderScoreSourceLabels) > 0 {
+		rc.SourceLabels = append(rc.SourceLabels, rc.UnderScoreSourceLabels...)
+	}
+	if len(rc.UnderScoreSourceLabels) == 0 && len(rc.SourceLabels) > 0 {
+		rc.UnderScoreSourceLabels = append(rc.UnderScoreSourceLabels, rc.SourceLabels...)
+	}
+	if rc.TargetLabel == "" && rc.UnderScoreTargetLabel != "" {
+		rc.TargetLabel = rc.UnderScoreTargetLabel
+	}
+	if rc.UnderScoreTargetLabel == "" && rc.TargetLabel != "" {
+		rc.UnderScoreTargetLabel = rc.TargetLabel
+	}
+	return nil
 }
 
 func (rc *RelabelConfig) IsEmpty() bool {

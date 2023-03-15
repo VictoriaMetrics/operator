@@ -134,6 +134,10 @@ type VMAgentSpec struct {
 	// +optional
 	// +kubebuilder:validation:Pattern:="[0-9]+(ms|s|m|h)"
 	ScrapeInterval string `json:"scrapeInterval,omitempty"`
+	// ScrapeTimeout defines global timeout for targets scrape
+	// +optional
+	// +kubebuilder:validation:Pattern:="[0-9]+(ms|s|m|h)"
+	ScrapeTimeout string `json:"scrapeTimeout,omitempty"`
 
 	// APIServerConfig allows specifying a host and auth methods to access apiserver.
 	// If left empty, VMAgent is assumed to run inside of the cluster

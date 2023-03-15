@@ -2305,6 +2305,10 @@ spec:
                 description: ScrapeInterval defines how often scrape targets by default
                 pattern: '[0-9]+(ms|s|m|h)'
                 type: string
+              scrapeTimeout:
+                description: ScrapeTimeout defines global timeout for targets scrape
+                pattern: '[0-9]+(ms|s|m|h)'
+                type: string
               secrets:
                 description: Secrets is a list of Secrets in the same namespace as
                   the vmagent object, which shall be mounted into the vmagent Pods.

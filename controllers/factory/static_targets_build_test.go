@@ -164,9 +164,9 @@ metric_relabel_configs: []
 					HonorLabels:     true,
 					RelabelConfigs: []*victoriametricsv1beta1.RelabelConfig{
 						{
-							Action:                 "drop",
-							UnderScoreSourceLabels: []string{"src"},
-							Regex:                  ".+",
+							Action:       "drop",
+							SourceLabels: []string{"src"},
+							Regex:        ".+",
 						},
 					},
 					BasicAuth: &victoriametricsv1beta1.BasicAuth{

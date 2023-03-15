@@ -1,6 +1,7 @@
 package factory
 
 import (
+	"encoding/json"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/pointer"
@@ -1267,7 +1268,16 @@ labels:
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := generateRelabelConfig(tt.args.rc)
+			// related fields only filled during json unmarshal
+			j, err := json.Marshal(tt.args.rc)
+			if err != nil {
+				t.Fatalf("cannto serialize relabelConfig : %s", err)
+			}
+			var rlbCfg victoriametricsv1beta1.RelabelConfig
+			if err := json.Unmarshal(j, &rlbCfg); err != nil {
+				t.Fatalf("cannot parse relabelConfig : %s", err)
+			}
+			got := generateRelabelConfig(&rlbCfg)
 			gotBytes, err := yaml.Marshal(got)
 			if err != nil {
 				t.Errorf("cannot marshal generateRelabelConfig to yaml,err :%e", err)

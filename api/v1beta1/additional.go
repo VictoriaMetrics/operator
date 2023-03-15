@@ -21,6 +21,7 @@ const (
 	healthPath           = "/health"
 	metricPath           = "/metrics"
 	reloadPath           = "/-/reload"
+	reloadAuthKey        = "reloadAuthKey"
 	snapshotCreate       = "/snapshot/create"
 	snapshotDelete       = "/snapshot/delete"
 	// FinalizerName name of our finalizer.
@@ -269,6 +270,22 @@ func (ss *ServiceSpec) NameOrDefault(defaultName string) string {
 	return defaultName + "-additional-service"
 }
 
+// MaybeEnableProxyProtocol conditionally adds proxy protocol for custom config-reloader image
+// useful for vmagent and vmauth
+func MaybeEnableProxyProtocol(args []string, extaArgs map[string]string) []string {
+	if v, ok := extaArgs["httpListenAddr.useProxyProtocol"]; ok && v == "true" {
+		args = append(args, "--reload-use-proxy-protocol")
+	}
+	return args
+}
+
+// BuildReloadPathWithPort builds reload api path for given args
+func BuildReloadPathWithPort(extraArgs map[string]string, port string) string {
+	proto := protoFromFlags(extraArgs)
+	urlPath := joinPathAuthKey(buildPathWithPrefixFlag(extraArgs, reloadPath), reloadAuthKey, extraArgs)
+	return fmt.Sprintf("%s://localhost:%s%s", proto, port, urlPath)
+}
+
 func buildPathWithPrefixFlag(flags map[string]string, defaultPath string) string {
 	if prefix, ok := flags[vmPathPrefixFlagName]; ok {
 		return path.Join(prefix, defaultPath)
@@ -282,6 +299,18 @@ func protoFromFlags(flags map[string]string) string {
 		proto = "https"
 	}
 	return proto
+}
+
+func joinPathAuthKey(urlPath string, keyName string, extraArgs map[string]string) string {
+	if authKey, ok := extraArgs[keyName]; ok {
+		separator := "?"
+		idx := strings.IndexByte(urlPath, '?')
+		if idx > 0 {
+			separator = "&"
+		}
+		return urlPath + separator + "authKey=" + authKey
+	}
+	return urlPath
 }
 
 type EmbeddedPodDisruptionBudgetSpec struct {

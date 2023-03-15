@@ -430,12 +430,12 @@ func buildIngressConfig(cr *victoriametricsv1beta1.VMAuth) *v12.Ingress {
 
 func buildVMAuthConfigReloaderContainer(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperatorConf) corev1.Container {
 	configReloaderArgs := []string{
-		fmt.Sprintf("--reload-url=%s", cr.ReloadPathWithPort(cr.Spec.Port)),
-
+		fmt.Sprintf("--reload-url=%s", victoriametricsv1beta1.BuildReloadPathWithPort(cr.Spec.ExtraArgs, cr.Spec.Port)),
 		fmt.Sprintf("--config-envsubst-file=%s", path.Join(vmAuthConfigFolder, vmAuthConfigName)),
 	}
 	if c.UseCustomConfigReloader {
 		configReloaderArgs = append(configReloaderArgs, fmt.Sprintf("--config-secret-name=%s/%s", cr.Namespace, cr.ConfigSecretName()))
+		configReloaderArgs = victoriametricsv1beta1.MaybeEnableProxyProtocol(configReloaderArgs, cr.Spec.ExtraArgs)
 	} else {
 		configReloaderArgs = append(configReloaderArgs, fmt.Sprintf("--config-file=%s", path.Join(vmAuthConfigMountGz, vmAuthConfigNameGz)))
 	}

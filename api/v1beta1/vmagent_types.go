@@ -596,10 +596,6 @@ func (cr VMAgent) MetricPath() string {
 	return buildPathWithPrefixFlag(cr.Spec.ExtraArgs, metricPath)
 }
 
-func (cr VMAgent) ReloadPathWithPort(port string) string {
-	return fmt.Sprintf("%s://localhost:%s%s", protoFromFlags(cr.Spec.ExtraArgs), port, buildPathWithPrefixFlag(cr.Spec.ExtraArgs, reloadPath))
-}
-
 func (cr VMAgent) GetServiceAccountName() string {
 	if cr.Spec.ServiceAccountName == "" {
 		return cr.PrefixedName()

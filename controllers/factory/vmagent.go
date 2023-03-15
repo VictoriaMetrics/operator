@@ -1187,13 +1187,14 @@ func buildConfigReloaderArgs(cr *victoriametricsv1beta1.VMAgent, c *config.BaseO
 	}
 
 	args := []string{
-		fmt.Sprintf("--reload-url=%s", cr.ReloadPathWithPort(cr.Spec.Port)),
+		fmt.Sprintf("--reload-url=%s", victoriametricsv1beta1.BuildReloadPathWithPort(cr.Spec.ExtraArgs, cr.Spec.Port)),
 		fmt.Sprintf("--config-envsubst-file=%s", path.Join(vmAgentConOfOutDir, configEnvsubstFilename)),
 		fmt.Sprintf("--%s=%s", dirsArg, RelabelingConfigDir),
 	}
 	if c.UseCustomConfigReloader {
 		args = append(args, fmt.Sprintf("--config-secret-name=%s/%s", cr.Namespace, cr.PrefixedName()))
 		args = append(args, "--config-secret-key=vmagent.yaml.gz")
+		args = victoriametricsv1beta1.MaybeEnableProxyProtocol(args, cr.Spec.ExtraArgs)
 	} else {
 		args = append(args, fmt.Sprintf("--config-file=%s", path.Join(vmAgentConfDir, configFilename)))
 	}

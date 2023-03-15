@@ -331,10 +331,6 @@ func (cr VMAuth) MetricPath() string {
 	return buildPathWithPrefixFlag(cr.Spec.ExtraArgs, metricPath)
 }
 
-func (cr VMAuth) ReloadPathWithPort(port string) string {
-	return fmt.Sprintf("%s://localhost:%s%s", protoFromFlags(cr.Spec.ExtraArgs), port, buildPathWithPrefixFlag(cr.Spec.ExtraArgs, reloadPath))
-}
-
 func (cr VMAuth) GetServiceAccountName() string {
 	if cr.Spec.ServiceAccountName == "" {
 		return cr.PrefixedName()

@@ -1,0 +1,25 @@
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAgent
+metadata:
+  name: stream-aggregation
+spec:
+  selectAllByDefault: true
+  image:
+    tag: v1.89.1
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: "500m"
+      memory: "750Mi"
+    requests:
+      cpu: "150m"
+      memory: "250Mi"
+  remoteWrite:
+    - url: "http://vmsingle-example-vmsingle.default.svc:8429/api/v1/write"
+      streamAggrConfig:
+        rules:
+        - match: '{__name__=~"request_duration_seconds|response_size_bytes"}'
+          interval: 30s
+          outputs: ["quantiles(0.50, 0.99)"]
+
+

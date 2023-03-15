@@ -56,7 +56,7 @@ jobs:
         run: |
           echo ${{secrets.REPO_KEY}} | docker login --username ${{secrets.REPO_USER}} --password-stdin
           make publish-via-docker
-
+          make publish-via-docker-config-reloader
 
       - name: Upload Release Asset
         id: upload-release-asset

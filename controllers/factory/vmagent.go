@@ -100,6 +100,10 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 		return fmt.Errorf("cannot update relabeling asset for vmagent: %w", err)
 	}
 
+	if err := CreateOrUpdateVMAgentStreamAggrConfig(ctx, cr, rclient); err != nil {
+		return fmt.Errorf("cannot update stream aggregation config for vmagent: %w", err)
+	}
+
 	if cr.Spec.PodDisruptionBudget != nil {
 		err = CreateOrUpdatePodDisruptionBudget(ctx, rclient, cr, cr.Kind, cr.Spec.PodDisruptionBudget)
 		if err != nil {
@@ -332,14 +336,15 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 	}
 
 	volumes = append(volumes, cr.Spec.Volumes...)
-	volumes = append(volumes, corev1.Volume{
-		Name: "config",
-		VolumeSource: corev1.VolumeSource{
-			Secret: &corev1.SecretVolumeSource{
-				SecretName: cr.PrefixedName(),
+	volumes = append(volumes,
+		corev1.Volume{
+			Name: "config",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: cr.PrefixedName(),
+				},
 			},
 		},
-	},
 		corev1.Volume{
 			Name: "tls-assets",
 			VolumeSource: corev1.VolumeSource{
@@ -360,6 +365,16 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
 						Name: cr.RelabelingAssetName(),
+					},
+				},
+			},
+		},
+		corev1.Volume{
+			Name: "stream-aggr-conf",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: cr.StreamAggrConfigName(),
 					},
 				},
 			},
@@ -400,6 +415,11 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 			Name:      "config",
 			ReadOnly:  true,
 			MountPath: vmAgentConfDir,
+		},
+		corev1.VolumeMount{
+			Name:      "stream-aggr-conf",
+			ReadOnly:  true,
+			MountPath: StreamAggrConfigDir,
 		},
 	)
 
@@ -620,6 +640,50 @@ func CreateOrUpdateRelabelConfigsAssets(ctx context.Context, cr *victoriametrics
 	assestsCM.Annotations = labels.Merge(existCM.Annotations, assestsCM.Annotations)
 	victoriametricsv1beta1.MergeFinalizers(assestsCM, victoriametricsv1beta1.FinalizerName)
 	return rclient.Update(ctx, assestsCM)
+}
+
+// buildVMAgentStreamAggrConfig combines all possible stream aggregation configs and adding it to the configmap.
+func buildVMAgentStreamAggrConfig(cr *victoriametricsv1beta1.VMAgent) (*corev1.ConfigMap, error) {
+	cfgCM := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace:       cr.Namespace,
+			Name:            cr.StreamAggrConfigName(),
+			Labels:          cr.AllLabels(),
+			Annotations:     cr.AnnotationsFiltered(),
+			OwnerReferences: cr.AsOwner(),
+		},
+		Data: make(map[string]string),
+	}
+	for i, rw := range cr.Spec.RemoteWrite {
+		if !rw.HasStreamAggr() {
+			continue
+		}
+		data, err := yaml.Marshal(rw.StreamAggrConfig.Rules)
+		if err != nil {
+			return nil, fmt.Errorf("cannot serialize StreamAggrConfig rules as yaml for remoteWrite with url %s: %w", rw.URL, err)
+		}
+		if len(data) > 0 {
+			cfgCM.Data[rw.AsConfigMapKey(i, "stream-aggr-conf")] = string(data)
+		}
+	}
+	return cfgCM, nil
+}
+
+// CreateOrUpdateVMAgentStreamAggrConfig builds stream aggregation configs for vmagent at separate configmap, serialized as yaml
+func CreateOrUpdateVMAgentStreamAggrConfig(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) error {
+	streamAggrCM, err := buildVMAgentStreamAggrConfig(cr)
+	if err != nil {
+		return err
+	}
+	var existCM corev1.ConfigMap
+	if err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.StreamAggrConfigName()}, &existCM); err != nil {
+		if errors.IsNotFound(err) {
+			return rclient.Create(ctx, streamAggrCM)
+		}
+	}
+	streamAggrCM.Annotations = labels.Merge(existCM.Annotations, streamAggrCM.Annotations)
+	victoriametricsv1beta1.MergeFinalizers(streamAggrCM, victoriametricsv1beta1.FinalizerName)
+	return rclient.Update(ctx, streamAggrCM)
 }
 
 func fetchConfigMapContentByKey(ctx context.Context, rclient client.Client, cm *corev1.ConfigMap, key string) (string, error) {
@@ -963,6 +1027,9 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, ssCache *scrapesSecre
 	oauth2Scopes := remoteFlag{flagSetting: "-remoteWrite.oauth2.scopes="}
 	oauth2TokenUrl := remoteFlag{flagSetting: "-remoteWrite.oauth2.tokenUrl="}
 	headers := remoteFlag{flagSetting: "-remoteWrite.headers="}
+	streamAggrConfig := remoteFlag{flagSetting: "-remoteWrite.streamAggr.config="}
+	streamAggrKeepInput := remoteFlag{flagSetting: "-remoteWrite.streamAggr.keepInput="}
+	streamAggrDedupInterval := remoteFlag{flagSetting: "-remoteWrite.streamAggr.dedupInterval="}
 
 	pathPrefix := path.Join(tlsAssetsDir, cr.Namespace)
 
@@ -1102,11 +1169,32 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, ssCache *scrapesSecre
 		oauth2ClientSecretFile.flagSetting += fmt.Sprintf("%s,", oaSecretKeyFile)
 		oauth2ClientID.flagSetting += fmt.Sprintf("%s,", oaclientID)
 		oauth2Scopes.flagSetting += fmt.Sprintf("%s,", oascopes)
+
+		var dedupIntVal, streamConfVal string
+		var keepInputVal bool
+		if rws.HasStreamAggr() {
+			streamAggrConfig.isNotNull = true
+			streamConfVal = path.Join(StreamAggrConfigDir, rws.AsConfigMapKey(i, "stream-aggr-conf"))
+
+			dedupIntVal = rws.StreamAggrConfig.DedupInterval
+			if dedupIntVal != "" {
+				streamAggrDedupInterval.isNotNull = true
+			}
+
+			keepInputVal = rws.StreamAggrConfig.KeepInput
+			if !keepInputVal {
+				streamAggrKeepInput.isNotNull = true
+			}
+		}
+		streamAggrConfig.flagSetting += fmt.Sprintf("%s,", streamConfVal)
+		streamAggrKeepInput.flagSetting += fmt.Sprintf("%v,", keepInputVal)
+		streamAggrDedupInterval.flagSetting += fmt.Sprintf("%s,", dedupIntVal)
 	}
 	remoteArgs = append(remoteArgs, url, authUser, bearerTokenFile, urlRelabelConfig, tlsInsecure, sendTimeout)
 	remoteArgs = append(remoteArgs, tlsServerName, tlsKeys, tlsCerts, tlsCAs)
 	remoteArgs = append(remoteArgs, oauth2ClientID, oauth2ClientSecretFile, oauth2Scopes, oauth2TokenUrl)
 	remoteArgs = append(remoteArgs, headers, authPasswordFile)
+	remoteArgs = append(remoteArgs, streamAggrConfig, streamAggrKeepInput, streamAggrDedupInterval)
 
 	for _, remoteArgType := range remoteArgs {
 		if remoteArgType.isNotNull {
@@ -1131,6 +1219,11 @@ func buildConfigReloaderContainer(cr *victoriametricsv1beta1.VMAgent, c *config.
 			Name:      "relabeling-assets",
 			ReadOnly:  true,
 			MountPath: RelabelingConfigDir,
+		},
+		{
+			Name:      "stream-aggr-conf",
+			ReadOnly:  true,
+			MountPath: StreamAggrConfigDir,
 		},
 	}
 	configReloaderResources := corev1.ResourceRequirements{
@@ -1190,6 +1283,7 @@ func buildConfigReloaderArgs(cr *victoriametricsv1beta1.VMAgent, c *config.BaseO
 		fmt.Sprintf("--reload-url=%s", cr.ReloadPathWithPort(cr.Spec.Port)),
 		fmt.Sprintf("--config-envsubst-file=%s", path.Join(vmAgentConOfOutDir, configEnvsubstFilename)),
 		fmt.Sprintf("--%s=%s", dirsArg, RelabelingConfigDir),
+		fmt.Sprintf("--%s=%s", dirsArg, StreamAggrConfigDir),
 	}
 	if c.UseCustomConfigReloader {
 		args = append(args, fmt.Sprintf("--config-secret-name=%s/%s", cr.Namespace, cr.PrefixedName()))

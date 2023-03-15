@@ -458,6 +458,9 @@ type VMAgentRemoteWriteSpec struct {
 	// vmagent supports since 1.79.0 version
 	// +optional
 	Headers []string `json:"headers,omitempty"`
+	// StreamAggrConfig defines stream aggregation configuration for VMAgent for -remoteWrite.url
+	// +optional
+	StreamAggrConfig *StreamAggrConfig `json:"streamAggrConfig,omitempty"`
 }
 
 // AsMapKey key for internal cache map
@@ -468,6 +471,16 @@ func (rw *VMAgentRemoteWriteSpec) AsMapKey() string {
 // AsSecretKey key for kubernetes secret data
 func (rw *VMAgentRemoteWriteSpec) AsSecretKey(idx int, suffix string) string {
 	return fmt.Sprintf("RWS_%d-SECRET-%s", idx, strings.ToUpper(suffix))
+}
+
+// AsConfigMapKey key for kubernetes configmap
+func (rw *VMAgentRemoteWriteSpec) AsConfigMapKey(idx int, suffix string) string {
+	return fmt.Sprintf("RWS_%d-CM-%s", idx, strings.ToUpper(suffix))
+}
+
+// HasStreamAggr returns true if stream aggregation is enabled for this remoteWrite
+func (rw *VMAgentRemoteWriteSpec) HasStreamAggr() bool {
+	return rw.StreamAggrConfig != nil && len(rw.StreamAggrConfig.Rules) > 0
 }
 
 // VmAgentStatus defines the observed state of VmAgent
@@ -586,6 +599,10 @@ func (cr VMAgent) TLSAssetName() string {
 
 func (cr VMAgent) RelabelingAssetName() string {
 	return fmt.Sprintf("relabelings-assets-vmagent-%s", cr.Name)
+}
+
+func (cr VMAgent) StreamAggrConfigName() string {
+	return fmt.Sprintf("stream-aggr-vmagent-%s", cr.Name)
 }
 
 func (cr VMAgent) HealthPath() string {

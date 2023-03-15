@@ -731,6 +731,93 @@ func TestBuildRemoteWrites(t *testing.T) {
 			},
 			want: []string{"-remoteWrite.bearerTokenFile=\"\",\"/etc/vmagent/config/RWS_1-SECRET-BEARERTOKEN\"", "-remoteWrite.headers='','key: value^^second-key: value2'", "-remoteWrite.url=localhost:8429,localhost:8431", "-remoteWrite.sendTimeout=10s,15s"},
 		},
+		{
+			name: "test with stream aggr",
+			args: args{
+				ssCache: &scrapesSecretsCache{},
+				cr: &victoriametricsv1beta1.VMAgent{
+					Spec: victoriametricsv1beta1.VMAgentSpec{RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
+						{
+							URL: "localhost:8429",
+							StreamAggrConfig: &victoriametricsv1beta1.StreamAggrConfig{
+								Rules: []victoriametricsv1beta1.StreamAggrRule{
+									{
+										Outputs: []string{"total", "avg"},
+									},
+								},
+								DedupInterval: "10s",
+							},
+						},
+						{
+							URL: "localhost:8431",
+							StreamAggrConfig: &victoriametricsv1beta1.StreamAggrConfig{
+								Rules: []victoriametricsv1beta1.StreamAggrRule{
+									{
+										Outputs: []string{"histogram_bucket"},
+									},
+								},
+								KeepInput: true,
+							},
+						},
+					}},
+				},
+			},
+			want: []string{
+				`-remoteWrite.streamAggr.config=/etc/vm/stream-aggr/RWS_0-CM-STREAM-AGGR-CONF,/etc/vm/stream-aggr/RWS_1-CM-STREAM-AGGR-CONF`,
+				`-remoteWrite.streamAggr.dedupInterval=10s,`,
+				`-remoteWrite.streamAggr.keepInput=false,true`,
+				`-remoteWrite.url=localhost:8429,localhost:8431`,
+			},
+		},
+		{
+			name: "test with stream aggr",
+			args: args{
+				ssCache: &scrapesSecretsCache{},
+				cr: &victoriametricsv1beta1.VMAgent{
+					Spec: victoriametricsv1beta1.VMAgentSpec{RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
+						{
+							URL: "localhost:8428",
+						},
+						{
+							URL: "localhost:8429",
+							StreamAggrConfig: &victoriametricsv1beta1.StreamAggrConfig{
+								Rules: []victoriametricsv1beta1.StreamAggrRule{
+									{
+										Interval: "1m",
+										Outputs:  []string{"total", "avg"},
+									},
+								},
+								DedupInterval: "10s",
+								KeepInput:     true,
+							},
+						},
+						{
+							URL: "localhost:8430",
+						},
+						{
+							URL: "localhost:8431",
+							StreamAggrConfig: &victoriametricsv1beta1.StreamAggrConfig{
+								Rules: []victoriametricsv1beta1.StreamAggrRule{
+									{
+										Interval: "1m",
+										Outputs:  []string{"histogram_bucket"},
+									},
+								},
+							},
+						},
+						{
+							URL: "localhost:8432",
+						},
+					}},
+				},
+			},
+			want: []string{
+				`-remoteWrite.streamAggr.config=,/etc/vm/stream-aggr/RWS_1-CM-STREAM-AGGR-CONF,,/etc/vm/stream-aggr/RWS_3-CM-STREAM-AGGR-CONF,`,
+				`-remoteWrite.streamAggr.dedupInterval=,10s,,,`,
+				`-remoteWrite.streamAggr.keepInput=false,true,false,false,false`,
+				`-remoteWrite.url=localhost:8428,localhost:8429,localhost:8430,localhost:8431,localhost:8432`,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1034,6 +1121,122 @@ func TestCreateOrUpdateRelabelConfigsAssets(t *testing.T) {
 	}
 }
 
+func TestCreateOrUpdateStreamAggrConfig(t *testing.T) {
+	type args struct {
+		ctx context.Context
+		cr  *victoriametricsv1beta1.VMAgent
+	}
+	tests := []struct {
+		name              string
+		args              args
+		predefinedObjects []runtime.Object
+		validate          func(cm *corev1.ConfigMap) error
+		wantErr           bool
+	}{
+		{
+			name: "simple stream aggr config",
+			args: args{
+				ctx: context.TODO(),
+				cr: &victoriametricsv1beta1.VMAgent{
+					Spec: victoriametricsv1beta1.VMAgentSpec{
+						RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
+							{
+								URL: "localhost:8429",
+								StreamAggrConfig: &victoriametricsv1beta1.StreamAggrConfig{
+									Rules: []victoriametricsv1beta1.StreamAggrRule{{
+										Interval: "1m",
+										Outputs:  []string{"total", "avg"},
+									}},
+								},
+							},
+						},
+					},
+				},
+			},
+			validate: func(cm *corev1.ConfigMap) error {
+				data, ok := cm.Data["RWS_0-CM-STREAM-AGGR-CONF"]
+				if !ok {
+					return fmt.Errorf("key: %s, not exists at map: %v", "RWS_0-CM-STREAM-AGGR-CONFl", cm.BinaryData)
+				}
+				wantGlobal := `- interval: 1m
+  outputs:
+  - total
+  - avg
+`
+				assert.Equal(t, wantGlobal, data)
+				return nil
+			},
+			predefinedObjects: []runtime.Object{},
+		},
+		{
+			name: "simple stream aggr config",
+			args: args{
+				ctx: context.TODO(),
+				cr: &victoriametricsv1beta1.VMAgent{
+					Spec: victoriametricsv1beta1.VMAgentSpec{
+						RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
+							{
+								URL: "localhost:8429",
+								StreamAggrConfig: &victoriametricsv1beta1.StreamAggrConfig{
+									Rules: []victoriametricsv1beta1.StreamAggrRule{{
+										Match:    `{__name__=~"count"}`,
+										Interval: "1m",
+										Outputs:  []string{"total", "avg"},
+										By:       []string{"job", "instance"},
+										Without:  []string{"pod"},
+										OutputRelabelConfigs: []victoriametricsv1beta1.RelabelConfig{{
+											SourceLabels: []string{"__name__"},
+											TargetLabel:  "metric",
+											Regex:        "(.+):.+",
+										}},
+									}},
+								},
+							},
+						},
+					},
+				},
+			},
+			validate: func(cm *corev1.ConfigMap) error {
+				data, ok := cm.Data["RWS_0-CM-STREAM-AGGR-CONF"]
+				if !ok {
+					return fmt.Errorf("key: %s, not exists at map: %v", "RWS_0-CM-STREAM-AGGR-CONFl", cm.BinaryData)
+				}
+				wantGlobal := `- match: '{__name__=~"count"}'
+  interval: 1m
+  outputs:
+  - total
+  - avg
+  by:
+  - job
+  - instance
+  without:
+  - pod
+  output_relabel_configs:
+  - regex: (.+):.+
+`
+				assert.Equal(t, wantGlobal, data)
+				return nil
+			},
+			predefinedObjects: []runtime.Object{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cl := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
+			if err := CreateOrUpdateVMAgentStreamAggrConfig(tt.args.ctx, tt.args.cr, cl); (err != nil) != tt.wantErr {
+				t.Fatalf("CreateOrUpdateVMAgentStreamAggrConfig() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			var createdCM corev1.ConfigMap
+			if err := cl.Get(tt.args.ctx, types.NamespacedName{Namespace: tt.args.cr.Namespace, Name: tt.args.cr.StreamAggrConfigName()}, &createdCM); err != nil {
+				t.Fatalf("cannot fetch created cm: %v", err)
+			}
+			if err := tt.validate(&createdCM); err != nil {
+				t.Fatalf("cannot validate created cm: %v", err)
+			}
+		})
+	}
+}
+
 func Test_buildConfigReloaderArgs(t *testing.T) {
 	type args struct {
 		cr *victoriametricsv1beta1.VMAgent
@@ -1057,6 +1260,7 @@ func Test_buildConfigReloaderArgs(t *testing.T) {
 				"--config-file=/etc/vmagent/config/vmagent.yaml.gz",
 				"--config-envsubst-file=/etc/vmagent/config_out/vmagent.env.yaml",
 				"--watched-dir=/etc/vm/relabeling",
+				"--watched-dir=/etc/vm/stream-aggr",
 			},
 		},
 	}

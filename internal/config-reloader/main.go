@@ -8,6 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -20,19 +21,21 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httpserver"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/procutil"
+	"github.com/pires/go-proxyproto"
 )
 
 var (
-	configFileName   = flag.String("config-file", "", "config file watched by reloader")
-	configFileDst    = flag.String("config-envsubst-file", "", "target file, where conent of configFile or configSecret would be written")
-	configSecretName = flag.String("config-secret-name", "", "name of kubernetes secret in form of namespace/name")
-	configSecretKey  = flag.String("config-secret-key", "config.yaml.gz", "key of config-secret-name for retrieving configuration from")
-	_                = flag.Duration("watch-interval", time.Minute*3, "no-op for prometheus config-reloader compatability")
-	delayInterval    = flag.Duration("delay-interval", 3*time.Second, "delays config reload time.")
-	watchedDir       = flagutil.NewArrayString("watched-dir", "directory to watch non-recursively")
-	rulesDir         = flagutil.NewArrayString("rules-dir", "the same as watched-dir, legacy")
-	reloadURL        = flag.String("reload-url", "http://127.0.0.1:8429/-/reload", "reload URL to trigger config reload")
-	listenAddr       = flag.String("http.listenAddr", ":8435", "http server listen addr")
+	configFileName         = flag.String("config-file", "", "config file watched by reloader")
+	configFileDst          = flag.String("config-envsubst-file", "", "target file, where conent of configFile or configSecret would be written")
+	configSecretName       = flag.String("config-secret-name", "", "name of kubernetes secret in form of namespace/name")
+	configSecretKey        = flag.String("config-secret-key", "config.yaml.gz", "key of config-secret-name for retrieving configuration from")
+	_                      = flag.Duration("watch-interval", time.Minute*3, "no-op for prometheus config-reloader compatability")
+	delayInterval          = flag.Duration("delay-interval", 3*time.Second, "delays config reload time.")
+	watchedDir             = flagutil.NewArrayString("watched-dir", "directory to watch non-recursively")
+	rulesDir               = flagutil.NewArrayString("rules-dir", "the same as watched-dir, legacy")
+	reloadURL              = flag.String("reload-url", "http://127.0.0.1:8429/-/reload", "reload URL to trigger config reload")
+	listenAddr             = flag.String("http.listenAddr", ":8435", "http server listen addr")
+	useProxyProtocolClient = flag.Bool("reload-use-proxy-protocol", false, "enables proxy-protocol for reload connections.")
 )
 
 func main() {
@@ -78,13 +81,40 @@ func main() {
 	logger.Infof("config-reloader stopped")
 }
 
+var connTimeout = 10 * time.Second
+
 func buildHTTPClient() *http.Client {
 	t := (http.DefaultTransport.(*http.Transport)).Clone()
+	d := &net.Dialer{
+		Timeout: connTimeout,
+	}
 	t.TLSClientConfig = &tls.Config{
 		InsecureSkipVerify: true,
 	}
+	t.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+		conn, err := d.Dial(network, addr)
+		if err != nil {
+			return nil, err
+		}
+		if !*useProxyProtocolClient {
+			return conn, nil
+		}
+		header := &proxyproto.Header{
+			Version:           2,
+			Command:           proxyproto.PROXY,
+			TransportProtocol: proxyproto.TCPv4,
+			SourceAddr:        conn.LocalAddr(),
+			DestinationAddr:   conn.RemoteAddr(),
+		}
+		_, err = header.WriteTo(conn)
+		if err != nil {
+			return nil, fmt.Errorf("cannot write proxy protocol header: %w", err)
+		}
+		return conn, nil
+	}
+
 	return &http.Client{
-		Timeout:   5 * time.Second,
+		Timeout:   connTimeout,
 		Transport: t,
 	}
 }
@@ -100,17 +130,18 @@ type reloader struct {
 }
 
 func (r *reloader) reload(ctx context.Context) error {
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, *reloadURL, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot build request for reload api: %w", err)
 	}
 	resp, err := r.c.Do(req)
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot execute request for reload api: %w", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 && resp.StatusCode != 204 {
-		return fmt.Errorf("unexpected status code: %d for reload api request: %w", resp.StatusCode, err)
+		return fmt.Errorf("unexpected status code: %d for reload api request", resp.StatusCode)
 	}
 	return nil
 }
@@ -133,7 +164,7 @@ func (c *cfgWatcher) start(ctx context.Context) {
 						}
 					}
 					if err := c.reloader(ctx); err != nil {
-						logger.Errorf("cannot trigger api reload: %s", err)
+						logger.Errorf("cannot trigger api reload: %s", err.Error())
 						return
 					}
 					logger.Infof("reload config ok.")

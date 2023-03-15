@@ -5,7 +5,7 @@ cr-docker-build-arch:
 			-f internal/config-reloader/Dockerfile .
 
 cr-package-arch:
-	$(GOBUILD) -o bin/config-reloader-$(GOARCH) github.com/VictoriaMetrics/operator/internal/config-reloader/
+	GOOS=linux $(GOBUILD) -o bin/config-reloader-$(GOARCH) github.com/VictoriaMetrics/operator/internal/config-reloader/
 
 
 cr-build-operator-crosscompile:

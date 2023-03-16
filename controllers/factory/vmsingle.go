@@ -258,23 +258,23 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 		})
 	}
 
-	volumes = append(volumes, corev1.Volume{
-		Name: k8stools.SanitizeVolumeName("stream-aggr-conf"),
-		VolumeSource: corev1.VolumeSource{
-			ConfigMap: &corev1.ConfigMapVolumeSource{
-				LocalObjectReference: corev1.LocalObjectReference{
-					Name: cr.StreamAggrConfigName(),
+	if cr.HasStreamAggrConfig() {
+		volumes = append(volumes, corev1.Volume{
+			Name: k8stools.SanitizeVolumeName("stream-aggr-conf"),
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: cr.StreamAggrConfigName(),
+					},
 				},
 			},
-		},
-	})
-	vmMounts = append(vmMounts, corev1.VolumeMount{
-		Name:      k8stools.SanitizeVolumeName("stream-aggr-conf"),
-		ReadOnly:  true,
-		MountPath: StreamAggrConfigDir,
-	})
+		})
+		vmMounts = append(vmMounts, corev1.VolumeMount{
+			Name:      k8stools.SanitizeVolumeName("stream-aggr-conf"),
+			ReadOnly:  true,
+			MountPath: StreamAggrConfigDir,
+		})
 
-	if cr.Spec.StreamAggrConfig != nil && len(cr.Spec.StreamAggrConfig.Rules) > 0 {
 		args = append(args, fmt.Sprintf("--streamAggr.config=%s", path.Join(StreamAggrConfigDir, "config.yaml")))
 		if cr.Spec.StreamAggrConfig.KeepInput {
 			args = append(args, "--streamAggr.keepInput=true")
@@ -640,7 +640,7 @@ func makeSpecForVMRestore(
 }
 
 // buildVMSingleStreamAggrConfig build configmap with stream aggregation config for vmsingle.
-func buildVMSingleStreamAggrConfig(ctx context.Context, cr *victoriametricsv1beta1.VMSingle, rclient client.Client) (*corev1.ConfigMap, error) {
+func buildVMSingleStreamAggrConfig(cr *victoriametricsv1beta1.VMSingle) (*corev1.ConfigMap, error) {
 	cfgCM := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:       cr.Namespace,
@@ -651,21 +651,23 @@ func buildVMSingleStreamAggrConfig(ctx context.Context, cr *victoriametricsv1bet
 		},
 		Data: make(map[string]string),
 	}
-	if cr.Spec.StreamAggrConfig != nil && cr.Spec.StreamAggrConfig.Rules != nil {
-		data, err := yaml.Marshal(cr.Spec.StreamAggrConfig.Rules)
-		if err != nil {
-			return nil, fmt.Errorf("cannot serialize StreamAggrConfig rules as yaml: %w", err)
-		}
-		if len(data) > 0 {
-			cfgCM.Data["config.yaml"] = string(data)
-		}
+	data, err := yaml.Marshal(cr.Spec.StreamAggrConfig.Rules)
+	if err != nil {
+		return nil, fmt.Errorf("cannot serialize StreamAggrConfig rules as yaml: %w", err)
 	}
+	if len(data) > 0 {
+		cfgCM.Data["config.yaml"] = string(data)
+	}
+
 	return cfgCM, nil
 }
 
 // CreateOrUpdateVMSingleStreamAggrConfig builds stream aggregation configs for vmsingle at separate configmap, serialized as yaml
 func CreateOrUpdateVMSingleStreamAggrConfig(ctx context.Context, cr *victoriametricsv1beta1.VMSingle, rclient client.Client) error {
-	streamAggrCM, err := buildVMSingleStreamAggrConfig(ctx, cr, rclient)
+	if !cr.HasStreamAggrConfig() {
+		return nil
+	}
+	streamAggrCM, err := buildVMSingleStreamAggrConfig(cr)
 	if err != nil {
 		return err
 	}

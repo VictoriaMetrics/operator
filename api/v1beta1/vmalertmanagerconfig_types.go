@@ -19,6 +19,9 @@ package v1beta1
 import (
 	"encoding/json"
 	"fmt"
+	"reflect"
+
+	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -369,7 +372,7 @@ type EmailConfig struct {
 	AuthIdentity string `json:"auth_identity,omitempty"`
 	// Further headers email header key/value pairs. Overrides any headers
 	// previously set by the notification implementation.
-	Headers map[string]string `json:"headers,omitempty"`
+	Headers EmailConfigHeaders `json:"headers,omitempty"`
 	// The HTML body of the email notification.
 	// +optional
 	HTML string `json:"html,omitempty"`
@@ -383,6 +386,41 @@ type EmailConfig struct {
 	// TLS configuration
 	// +optional
 	TLSConfig *TLSConfig `json:"tls_config,omitempty"`
+}
+
+// EmailConfigHeaders is a map of email headers.
+type EmailConfigHeaders map[string]string
+
+// UnmarshalYAML https://github.com/VictoriaMetrics/operator/issues/609
+func (r *EmailConfigHeaders) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var raw any
+	if err := unmarshal(&raw); err != nil {
+		return fmt.Errorf("cannot unmarshal email config headers: %w", err)
+	}
+	rawType := reflect.TypeOf(raw)
+	switch rawType.Kind() {
+	case reflect.Map:
+		m := map[string]string{}
+		if err := unmarshal(&m); err != nil {
+			return err
+		}
+		*r = m
+		return nil
+	case reflect.Slice, reflect.Array:
+		*r = map[string]string{}
+		a := make([]KeyValue, 0)
+		if err := unmarshal(&a); err != nil {
+			return err
+		}
+		for _, kv := range a {
+			(*r)[kv.Key] = kv.Value
+		}
+		return nil
+	default:
+		return &yaml.TypeError{Errors: []string{
+			fmt.Sprintf("cannot unmarshal %#v into Go struct field EmailConfig.Headers of type %v", raw, rawType),
+		}}
+	}
 }
 
 // VictorOpsConfig configures notifications via VictorOps.

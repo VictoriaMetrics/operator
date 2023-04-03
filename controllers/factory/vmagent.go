@@ -1182,7 +1182,7 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, ssCache *scrapesSecre
 			}
 
 			keepInputVal = rws.StreamAggrConfig.KeepInput
-			if !keepInputVal {
+			if keepInputVal {
 				streamAggrKeepInput.isNotNull = true
 			}
 		}

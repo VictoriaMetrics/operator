@@ -19,10 +19,11 @@ package v1beta1
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
+
 	v1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"strings"
 )
 
 // VMAlertmanagerConfigSpec defines configuration for VMAlertmanagerConfig
@@ -150,7 +151,7 @@ type Route struct {
 	// +optional
 	Matchers []string `json:"matchers,omitempty"`
 	// Continue indicating whether an alert should continue matching subsequent
-	// sibling nodes. It will always be true for the first-level route.
+	// sibling nodes. It will always be true for the first-level route if disableRouteContinueEnforce for vmalertmanager not set.
 	// +optional
 	Continue bool `json:"continue,omitempty"`
 	// Child routes.
@@ -762,6 +763,7 @@ type HTTPConfig struct {
 func (amc *VMAlertmanagerConfig) AsKey() string {
 	return fmt.Sprintf("%s/%s", amc.Namespace, amc.Name)
 }
+
 func init() {
 	SchemeBuilder.Register(&VMAlertmanagerConfig{}, &VMAlertmanagerConfigList{})
 }

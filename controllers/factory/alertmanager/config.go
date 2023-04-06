@@ -20,7 +20,7 @@ type ParsedConfig struct {
 	ParseErrors     []string
 }
 
-func BuildConfig(ctx context.Context, rclient client.Client, mustAddNamespaceMatcher bool, baseCfg []byte, amcfgs map[string]*operatorv1beta1.VMAlertmanagerConfig, tlsAssets map[string]string) (*ParsedConfig, error) {
+func BuildConfig(ctx context.Context, rclient client.Client, mustAddNamespaceMatcher, disableRouteContinueEnforce bool, baseCfg []byte, amcfgs map[string]*operatorv1beta1.VMAlertmanagerConfig, tlsAssets map[string]string) (*ParsedConfig, error) {
 	// fast path.
 	if len(amcfgs) == 0 {
 		return &ParsedConfig{Data: baseCfg}, nil
@@ -73,7 +73,7 @@ OUTER:
 		if len(firstReceiverName) == 0 && len(amcKey.Spec.Route.Receiver) > 0 {
 			firstReceiverName = buildCRPrefixedName(amcKey, amcKey.Spec.Route.Receiver)
 		}
-		subRoutes = append(subRoutes, buildRoute(amcKey, amcKey.Spec.Route, true, mustAddNamespaceMatcher))
+		subRoutes = append(subRoutes, buildRoute(amcKey, amcKey.Spec.Route, true, disableRouteContinueEnforce, mustAddNamespaceMatcher))
 
 	}
 	if baseYAMlCfg.Route == nil && len(subRoutes) > 0 {
@@ -168,14 +168,14 @@ func buildGlobalTimeIntervals(cr *operatorv1beta1.VMAlertmanagerConfig) []yaml.M
 	return r
 }
 
-func buildRoute(cr *operatorv1beta1.VMAlertmanagerConfig, cfgRoute *operatorv1beta1.Route, topLevel, mustAddNamespaceMatcher bool) yaml.MapSlice {
+func buildRoute(cr *operatorv1beta1.VMAlertmanagerConfig, cfgRoute *operatorv1beta1.Route, topLevel, disableRouteContinueEnforce, mustAddNamespaceMatcher bool) yaml.MapSlice {
 	var r yaml.MapSlice
 	matchers := cfgRoute.Matchers
+	// enforce continue when route is first-level and vmalertmanager disableRouteContinueEnforce filed is not set,
+	// otherwise, always inherit from VMAlertmanagerConfig
 	continueSetting := cfgRoute.Continue
-	// enforce continue and namespace match
-	if topLevel {
+	if topLevel && !disableRouteContinueEnforce {
 		continueSetting = true
-
 	}
 	if mustAddNamespaceMatcher {
 		matchers = append(matchers, fmt.Sprintf("namespace = %q", cr.Namespace))
@@ -184,7 +184,7 @@ func buildRoute(cr *operatorv1beta1.VMAlertmanagerConfig, cfgRoute *operatorv1be
 	var nestedRoutes []yaml.MapSlice
 	for _, nestedRoute := range cfgRoute.Routes {
 		// namespace matcher not needed for nested routes
-		nestedRoutes = append(nestedRoutes, buildRoute(cr, nestedRoute, false, false))
+		nestedRoutes = append(nestedRoutes, buildRoute(cr, nestedRoute, false, false, false))
 	}
 	if len(nestedRoutes) > 0 {
 		r = append(r, yaml.MapItem{Key: "routes", Value: nestedRoutes})
@@ -207,7 +207,6 @@ func buildRoute(cr *operatorv1beta1.VMAlertmanagerConfig, cfgRoute *operatorv1be
 			}
 			r = append(r, yaml.MapItem{Key: key, Value: tis})
 		}
-
 	}
 	toYaml("matchers", matchers)
 	toYaml("group_by", cfgRoute.GroupBy)
@@ -282,7 +281,6 @@ func buildReceiver(
 	configmapCache map[string]*v1.ConfigMap,
 	tlsAssets map[string]string,
 ) (yaml.MapSlice, error) {
-
 	cb := initConfigBuilder(ctx, rclient, cr, reciever, cache, configmapCache, tlsAssets)
 
 	if err := cb.buildCfg(); err != nil {
@@ -310,7 +308,8 @@ func initConfigBuilder(
 	receiver operatorv1beta1.Receiver,
 	cache map[string]*v1.Secret,
 	configmapCache map[string]*v1.ConfigMap,
-	tlsAssets map[string]string) *configBuilder {
+	tlsAssets map[string]string,
+) *configBuilder {
 	cb := configBuilder{
 		ctx:       ctx,
 		Client:    rclient,

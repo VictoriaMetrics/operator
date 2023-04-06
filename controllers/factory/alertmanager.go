@@ -101,7 +101,6 @@ func CreateOrUpdateAlertManager(ctx context.Context, cr *victoriametricsv1beta1.
 }
 
 func newStsForAlertManager(cr *victoriametricsv1beta1.VMAlertmanager, c *config.BaseOperatorConf, amVersion *version.Version) (*appsv1.StatefulSet, error) {
-
 	if cr.Spec.Image.Repository == "" {
 		cr.Spec.Image.Repository = c.VMAlertManager.AlertmanagerDefaultBaseImage
 	}
@@ -200,7 +199,6 @@ func CreateOrUpdateAlertManagerService(ctx context.Context, cr *victoriametricsv
 }
 
 func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, c *config.BaseOperatorConf, amVersion *version.Version) (*appsv1.StatefulSetSpec, error) {
-
 	cr = cr.DeepCopy()
 
 	image := fmt.Sprintf("%s:%s", formatContainerImage(c.ContainerRegistry, cr.Spec.Image.Repository), cr.Spec.Image.Tag)
@@ -650,7 +648,7 @@ func buildAlertmanagerConfigWithCRDs(ctx context.Context, rclient client.Client,
 		return nil, fmt.Errorf("cannot select alertmanager configs: %w", err)
 	}
 
-	parsedCfg, err := alertmanager.BuildConfig(ctx, rclient, !cr.Spec.DisableNamespaceMatcher, originConfig, amConfigs, tlsAssets)
+	parsedCfg, err := alertmanager.BuildConfig(ctx, rclient, !cr.Spec.DisableNamespaceMatcher, cr.Spec.DisableRouteContinueEnforce, originConfig, amConfigs, tlsAssets)
 	if err != nil {
 		return nil, err
 	}

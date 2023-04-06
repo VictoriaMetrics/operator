@@ -2,9 +2,10 @@ package alertmanager
 
 import (
 	"context"
+	"testing"
+
 	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
-	"testing"
 
 	operatorv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
@@ -16,10 +17,11 @@ import (
 
 func TestBuildConfig(t *testing.T) {
 	type args struct {
-		ctx                     context.Context
-		disableNamespaceMatcher bool
-		baseCfg                 []byte
-		amcfgs                  map[string]*operatorv1beta1.VMAlertmanagerConfig
+		ctx                         context.Context
+		disableNamespaceMatcher     bool
+		disableRouteContinueEnforce bool
+		baseCfg                     []byte
+		amcfgs                      map[string]*operatorv1beta1.VMAlertmanagerConfig
 	}
 	tests := []struct {
 		name              string
@@ -36,7 +38,7 @@ func TestBuildConfig(t *testing.T) {
  time_out: 1min
 `),
 				amcfgs: map[string]*operatorv1beta1.VMAlertmanagerConfig{
-					"default/base": &operatorv1beta1.VMAlertmanagerConfig{
+					"default/base": {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "base",
 							Namespace: "default",
@@ -96,7 +98,7 @@ templates: []
  time_out: 1min
 `),
 				amcfgs: map[string]*operatorv1beta1.VMAlertmanagerConfig{
-					"default/base": &operatorv1beta1.VMAlertmanagerConfig{
+					"default/base": {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "base",
 							Namespace: "default",
@@ -244,7 +246,7 @@ templates: []
  time_out: 1min
 `),
 				amcfgs: map[string]*operatorv1beta1.VMAlertmanagerConfig{
-					"default/base": &operatorv1beta1.VMAlertmanagerConfig{
+					"default/base": {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "base",
 							Namespace: "default",
@@ -329,7 +331,7 @@ templates: []
  time_out: 1min
 `),
 				amcfgs: map[string]*operatorv1beta1.VMAlertmanagerConfig{
-					"default/base": &operatorv1beta1.VMAlertmanagerConfig{
+					"default/base": {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "base",
 							Namespace: "default",
@@ -447,7 +449,7 @@ templates: []
  time_out: 1min
 `),
 				amcfgs: map[string]*operatorv1beta1.VMAlertmanagerConfig{
-					"default/base": &operatorv1beta1.VMAlertmanagerConfig{
+					"default/base": {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "tg",
 							Namespace: "default",
@@ -507,7 +509,7 @@ templates: []
  time_out: 1min
 `),
 				amcfgs: map[string]*operatorv1beta1.VMAlertmanagerConfig{
-					"default/base": &operatorv1beta1.VMAlertmanagerConfig{
+					"default/base": {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "tg",
 							Namespace: "default",
@@ -537,7 +539,7 @@ templates: []
 							},
 						},
 					},
-					"mon/base": &operatorv1beta1.VMAlertmanagerConfig{
+					"mon/base": {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "tg",
 							Namespace: "default",
@@ -586,7 +588,7 @@ templates: []
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			testClient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			got, err := BuildConfig(tt.args.ctx, testClient, !tt.args.disableNamespaceMatcher, tt.args.baseCfg, tt.args.amcfgs, map[string]string{})
+			got, err := BuildConfig(tt.args.ctx, testClient, !tt.args.disableNamespaceMatcher, tt.args.disableNamespaceMatcher, tt.args.baseCfg, tt.args.amcfgs, map[string]string{})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("BuildConfig() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -783,7 +785,7 @@ func Test_configBuilder_buildHTTPConfig(t *testing.T) {
 				},
 			},
 			fields: fields{secretCache: map[string]*v1.Secret{
-				"secret-store": &v1.Secret{
+				"secret-store": {
 					Data: map[string][]byte{
 						"username": []byte("user-1"),
 					},
@@ -822,7 +824,7 @@ func Test_configBuilder_buildHTTPConfig(t *testing.T) {
 				},
 			},
 			fields: fields{secretCache: map[string]*v1.Secret{
-				"secret-store": &v1.Secret{
+				"secret-store": {
 					Data: map[string][]byte{
 						"cert": []byte("---PEM---"),
 						"ca":   []byte("---PEM-CA"),
@@ -877,20 +879,20 @@ authorization:
 			},
 			fields: fields{
 				secretCache: map[string]*v1.Secret{
-					"secret-store": &v1.Secret{
+					"secret-store": {
 						Data: map[string][]byte{
 							"cert": []byte("---PEM---"),
 							"key":  []byte("--KEY-PEM--"),
 						},
 					},
-					"secret-bearer": &v1.Secret{
+					"secret-bearer": {
 						Data: map[string][]byte{
 							"token": []byte("secret-token"),
 						},
 					},
 				},
 				configmapCache: map[string]*v1.ConfigMap{
-					"cm-store": &v1.ConfigMap{
+					"cm-store": {
 						Data: map[string]string{
 							"ca": "--CA-PEM--",
 						},

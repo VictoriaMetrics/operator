@@ -1,8 +1,9 @@
 package v1beta1
 
 import (
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"net/url"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // VMRuleSpec defines the desired state of VMRule
@@ -59,6 +60,14 @@ type RuleGroup struct {
 	//    - "CustomHeader2: bar"
 	// +optional
 	Headers []string `json:"headers,omitempty"`
+	// NotifierHeaders contains optional HTTP headers added to each alert request which will send to notifier
+	// Must be in form `header-name: value`
+	// For example:
+	//  headers:
+	//    - "CustomHeader: foo"
+	//    - "CustomHeader2: bar"
+	// +optional
+	NotifierHeaders []string `json:"notifier_headers,omitempty"`
 }
 
 // Rule describes an alerting or recording rule.
@@ -90,8 +99,7 @@ type Rule struct {
 }
 
 // VMRuleStatus defines the observed state of VMRule
-type VMRuleStatus struct {
-}
+type VMRuleStatus struct{}
 
 // VMRule defines rule records for vmalert application
 // +operator-sdk:gen-csv:customresourcedefinitions.displayName="VMRule"

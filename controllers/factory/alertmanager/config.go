@@ -175,7 +175,6 @@ func buildRoute(cr *operatorv1beta1.VMAlertmanagerConfig, cfgRoute *operatorv1be
 	// enforce continue and namespace match
 	if topLevel {
 		continueSetting = true
-
 	}
 	if mustAddNamespaceMatcher {
 		matchers = append(matchers, fmt.Sprintf("namespace = %q", cr.Namespace))
@@ -207,7 +206,6 @@ func buildRoute(cr *operatorv1beta1.VMAlertmanagerConfig, cfgRoute *operatorv1be
 			}
 			r = append(r, yaml.MapItem{Key: key, Value: tis})
 		}
-
 	}
 	toYaml("matchers", matchers)
 	toYaml("group_by", cfgRoute.GroupBy)
@@ -282,7 +280,6 @@ func buildReceiver(
 	configmapCache map[string]*v1.ConfigMap,
 	tlsAssets map[string]string,
 ) (yaml.MapSlice, error) {
-
 	cb := initConfigBuilder(ctx, rclient, cr, reciever, cache, configmapCache, tlsAssets)
 
 	if err := cb.buildCfg(); err != nil {
@@ -310,7 +307,8 @@ func initConfigBuilder(
 	receiver operatorv1beta1.Receiver,
 	cache map[string]*v1.Secret,
 	configmapCache map[string]*v1.ConfigMap,
-	tlsAssets map[string]string) *configBuilder {
+	tlsAssets map[string]string,
+) *configBuilder {
 	cb := configBuilder{
 		ctx:       ctx,
 		Client:    rclient,
@@ -575,6 +573,7 @@ func (cb *configBuilder) buildWebhook(wh operatorv1beta1.WebhookConfig) error {
 	}
 
 	temp = append(temp, yaml.MapItem{Key: "url", Value: url})
+	temp = append(temp, yaml.MapItem{Key: "max_alerts", Value: wh.MaxAlerts})
 	cb.currentYaml = append(cb.currentYaml, temp)
 	return nil
 }

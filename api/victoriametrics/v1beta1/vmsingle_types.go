@@ -191,6 +191,11 @@ type VMSingleSpec struct {
 	StreamAggrConfig *StreamAggrConfig `json:"streamAggrConfig,omitempty"`
 }
 
+// HasStreamAggrConfig checks if streamAggrConfig present
+func (cr *VMSingle) HasStreamAggrConfig() bool {
+	return cr.Spec.StreamAggrConfig != nil && len(cr.Spec.StreamAggrConfig.Rules) > 0
+}
+
 // UnmarshalJSON implements json.Unmarshaler interface
 func (cr *VMSingleSpec) UnmarshalJSON(src []byte) error {
 	type pcr VMSingleSpec

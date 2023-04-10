@@ -1522,7 +1522,8 @@ spec:
                   continue:
                     description: Continue indicating whether an alert should continue
                       matching subsequent sibling nodes. It will always be true for
-                      the first-level route.
+                      the first-level route if disableRouteContinueEnforce for vmalertmanager
+                      not set.
                     type: boolean
                   group_by:
                     description: List of labels to group by.

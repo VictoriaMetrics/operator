@@ -489,6 +489,10 @@ spec:
                   for VMAlertmanagerConfig It may be useful if alert doesn't have
                   namespace label for some reason
                 type: boolean
+              disableRouteContinueEnforce:
+                description: DisableRouteContinueEnforce cancel the behavior for VMAlertmanagerConfig
+                  that always enforce first-level route continue to true
+                type: boolean
               dnsConfig:
                 description: Specifies the DNS parameters of a pod. Parameters specified
                   here will be merged to the generated DNS configuration based on

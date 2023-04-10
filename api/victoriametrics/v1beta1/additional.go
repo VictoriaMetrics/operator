@@ -479,3 +479,14 @@ type StreamAggrRule struct {
 	// +optional
 	OutputRelabelConfigs []RelabelConfig `json:"output_relabel_configs,omitempty" yaml:"output_relabel_configs,omitempty"`
 }
+
+// KeyValue defines a (key, value) tuple.
+// +kubebuilder:object:generate=false
+// +k8s:openapi-gen=false
+type KeyValue struct {
+	// Key of the tuple.
+	// +kubebuilder:validation:MinLength=1
+	Key string `json:"key"`
+	// Value of the tuple.
+	Value string `json:"value"`
+}

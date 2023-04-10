@@ -500,7 +500,7 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 			}
 		}
 	}
-
+	cr.Spec.InitContainers = maybeAddInitConfigContainer(cr.Spec.InitContainers, c, vmAgentConfDir, vmAuthConfigName, vmAgentConOfOutDir, configEnvsubstFilename)
 	return &corev1.PodSpec{
 		NodeSelector:                  cr.Spec.NodeSelector,
 		Volumes:                       volumes,

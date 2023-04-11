@@ -28,6 +28,7 @@ func TestBuildConfig(t *testing.T) {
 		args              args
 		predefinedObjects []runtime.Object
 		want              string
+		parseError        string
 		wantErr           bool
 	}{
 		{
@@ -565,6 +566,7 @@ templates: []
 					},
 				},
 			},
+			parseError: "cannot find secret for VMAlertmanager config: tg, receiver: telegram, err :secrets \"tg-secret\" not found in object: default/tg, will ignore vmalertmanagerconfig tg",
 			want: `global:
   time_out: 1min
 route:
@@ -584,6 +586,148 @@ receivers:
 templates: []
 `,
 		},
+		{
+			name: "wrong alertmanagerconfig: with duplicate receiver",
+			args: args{
+				ctx: context.Background(),
+				baseCfg: []byte(`global:
+ time_out: 1min
+`),
+				amcfgs: map[string]*operatorv1beta1.VMAlertmanagerConfig{
+					"default/base": {
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "base",
+							Namespace: "default",
+						},
+						Spec: operatorv1beta1.VMAlertmanagerConfigSpec{
+							Receivers: []operatorv1beta1.Receiver{
+								{
+									Name: "duplicate-receiver",
+									EmailConfigs: []operatorv1beta1.EmailConfig{
+										{
+											SendResolved: pointer.Bool(true),
+											From:         "some-sender",
+											To:           "some-dst",
+											Text:         "some-text",
+											TLSConfig: &operatorv1beta1.TLSConfig{
+												CertFile: "some_cert_path",
+											},
+										},
+									},
+								},
+								{
+									Name: "duplicate-receiver",
+								},
+							},
+							Route: &operatorv1beta1.Route{
+								Receiver:  "duplicate-receiver",
+								GroupWait: "1min",
+							},
+						},
+					},
+				},
+			},
+			parseError: "got duplicate receiver name duplicate-receiver in object default/base, will ignore vmalertmanagerconfig base",
+			want: `global:
+  time_out: 1min
+templates: []
+`,
+		},
+		{
+			name: "wrong alertmanagerconfig: with duplicate time interval",
+			args: args{
+				ctx: context.Background(),
+				baseCfg: []byte(`global:
+ time_out: 1min
+`),
+				amcfgs: map[string]*operatorv1beta1.VMAlertmanagerConfig{
+					"default/base": {
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "base",
+							Namespace: "default",
+						},
+						Spec: operatorv1beta1.VMAlertmanagerConfigSpec{
+							TimeIntervals: []operatorv1beta1.MuteTimeInterval{
+								{
+									Name:          "duplicate-interval",
+									TimeIntervals: []operatorv1beta1.TimeInterval{{Times: []operatorv1beta1.TimeRange{{StartTime: "00:00", EndTime: "10:00"}}}},
+								},
+								{
+									Name:          "duplicate-interval",
+									TimeIntervals: []operatorv1beta1.TimeInterval{{Times: []operatorv1beta1.TimeRange{{StartTime: "08:00", EndTime: "10:00"}}}},
+								},
+							},
+							Route: &operatorv1beta1.Route{
+								Receiver:            "email",
+								GroupWait:           "1min",
+								ActiveTimeIntervals: []string{"duplicate-interval"},
+							},
+						},
+					},
+				},
+			},
+			parseError: "got duplicate timeInterval name duplicate-interval in object default/base, will ignore vmalertmanagerconfig base",
+			want: `global:
+  time_out: 1min
+templates: []
+`,
+		},
+		{
+			name: "wrong alertmanagerconfig: undefined receiver",
+			args: args{
+				ctx: context.Background(),
+				baseCfg: []byte(`global:
+ time_out: 1min
+`),
+				amcfgs: map[string]*operatorv1beta1.VMAlertmanagerConfig{
+					"default/base": {
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "base",
+							Namespace: "default",
+						},
+						Spec: operatorv1beta1.VMAlertmanagerConfigSpec{
+							Route: &operatorv1beta1.Route{
+								Receiver:  "receiver-not-defined",
+								GroupWait: "1min",
+							},
+						},
+					},
+				},
+			},
+			parseError: "receiver receiver-not-defined not defined in object default/base, will ignore vmalertmanagerconfig base",
+			want: `global:
+  time_out: 1min
+templates: []
+`,
+		},
+		{
+			name: "wrong alertmanagerconfig: undefined timeInterval",
+			args: args{
+				ctx: context.Background(),
+				baseCfg: []byte(`global:
+ time_out: 1min
+`),
+				amcfgs: map[string]*operatorv1beta1.VMAlertmanagerConfig{
+					"default/base": {
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "base",
+							Namespace: "default",
+						},
+						Spec: operatorv1beta1.VMAlertmanagerConfigSpec{
+							Route: &operatorv1beta1.Route{
+								ActiveTimeIntervals: []string{"interval-not-defined"},
+								GroupWait:           "1min",
+							},
+						},
+					},
+				},
+			},
+			parseError: "time_intervals interval-not-defined not defined in object default/base, will ignore vmalertmanagerconfig base",
+			want: `global:
+  time_out: 1min
+templates: []
+`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -592,6 +736,9 @@ templates: []
 			if (err != nil) != tt.wantErr {
 				t.Errorf("BuildConfig() error = %v, wantErr %v", err, tt.wantErr)
 				return
+			}
+			if len(got.ParseErrors) > 0 {
+				assert.Equal(t, tt.parseError, got.ParseErrors[0])
 			}
 			assert.Equal(t, tt.want, string(got.Data))
 		})

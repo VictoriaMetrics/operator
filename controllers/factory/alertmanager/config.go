@@ -574,7 +574,10 @@ func (cb *configBuilder) buildWebhook(wh operatorv1beta1.WebhookConfig) error {
 	}
 
 	temp = append(temp, yaml.MapItem{Key: "url", Value: url})
-	temp = append(temp, yaml.MapItem{Key: "max_alerts", Value: wh.MaxAlerts})
+
+	if wh.MaxAlerts != 0 {
+		temp = append(temp, yaml.MapItem{Key: "max_alerts", Value: wh.MaxAlerts})
+	}
 	cb.currentYaml = append(cb.currentYaml, temp)
 	return nil
 }
@@ -798,13 +801,21 @@ func (cb *configBuilder) buildPagerDuty(pd operatorv1beta1.PagerDutyConfig) erro
 
 func (cb *configBuilder) buildEmail(email operatorv1beta1.EmailConfig) error {
 	var temp yaml.MapSlice
-	if email.TLSConfig != nil {
+	if email.RequireTLS != nil {
+		temp = append(temp, yaml.MapItem{Key: "require_tls", Value: *email.RequireTLS})
+	}
+	// skip tls_config if require_tls is false
+	if email.RequireTLS == nil || *email.RequireTLS {
+		if email.TLSConfig == nil {
+			return fmt.Errorf("incorrect email configuration, tls is required, but no config provided at spec")
+		}
 		s, err := cb.buildTLSConfig(email.TLSConfig)
 		if err != nil {
 			return err
 		}
 		temp = append(temp, yaml.MapItem{Key: "tls_config", Value: s})
 	}
+
 	if email.AuthPassword != nil {
 		p, err := cb.fetchSecretValue(email.AuthPassword)
 		if err != nil {

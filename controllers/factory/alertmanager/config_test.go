@@ -57,6 +57,13 @@ func TestBuildConfig(t *testing.T) {
 												CertFile: "some_cert_path",
 											},
 										},
+										{
+											SendResolved: pointer.Bool(true),
+											From:         "other-sender",
+											To:           "other-dst",
+											Text:         "other-text",
+											RequireTLS:   pointer.Bool(false),
+										},
 									},
 								},
 							},
@@ -86,6 +93,11 @@ receivers:
     from: some-sender
     text: some-text
     to: some-dst
+    send_resolved: true
+  - require_tls: false
+    from: other-sender
+    text: other-text
+    to: other-dst
     send_resolved: true
 templates: []
 `,

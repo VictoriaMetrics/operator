@@ -574,7 +574,10 @@ func (cb *configBuilder) buildWebhook(wh operatorv1beta1.WebhookConfig) error {
 	}
 
 	temp = append(temp, yaml.MapItem{Key: "url", Value: url})
-	temp = append(temp, yaml.MapItem{Key: "max_alerts", Value: wh.MaxAlerts})
+
+	if wh.MaxAlerts != 0 {
+		temp = append(temp, yaml.MapItem{Key: "max_alerts", Value: wh.MaxAlerts})
+	}
 	cb.currentYaml = append(cb.currentYaml, temp)
 	return nil
 }

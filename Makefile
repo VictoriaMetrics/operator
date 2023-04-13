@@ -24,7 +24,7 @@ CRD_PRESERVE=x-kubernetes-preserve-unknown-fields true
 # Current Operator version
 # Default bundle image tag
 BUNDLE_IMG ?= controller-bundle:$(VERSION)
-ALPINE_IMAGE=alpine:3.17.2
+ALPINE_IMAGE=alpine:3.17.3
 CHANNEL=beta
 DEFAULT_CHANNEL=beta
 BUNDLE_CHANNELS := --channels=$(CHANNEL)

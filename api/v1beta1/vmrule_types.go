@@ -1,9 +1,14 @@
 package v1beta1
 
 import (
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"net/url"
 )
+
+// MaxConfigMapDataSize is a maximum `Data` field size of a ConfigMap.
+// Limit it to the half size of constant value, since it may be different for kubernetes versions.
+var MaxConfigMapDataSize = int(float64(v1.MaxSecretSize) * 0.5)
 
 // VMRuleSpec defines the desired state of VMRule
 type VMRuleSpec struct {

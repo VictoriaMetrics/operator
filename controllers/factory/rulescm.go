@@ -19,12 +19,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// The maximum `Data` size of a ConfigMap seems to differ between
-// environments. This is probably due to different meta data sizes which count
-// into the overall maximum size of a ConfigMap. Thereby lets leave a
-// large buffer.
-var maxConfigMapDataSize = int(float64(v1.MaxSecretSize) * 0.5)
-
 var (
 	managedByOperatorLabel      = "managed-by"
 	managedByOperatorLabelValue = "vm-operator"
@@ -250,7 +244,17 @@ func SelectRules(ctx context.Context, cr *victoriametricsv1beta1.VMAlert, rclien
 			errors = append(errors, fmt.Sprintf("cannot generate content for rule: %s, err :%s", pRule.Name, err))
 			continue
 		}
-		rules[fmt.Sprintf("%v-%v.yaml", pRule.Namespace, pRule.Name)] = content
+
+		// check if none of the rule files is too large for a single ConfigMap
+		if len(content) > victoriametricsv1beta1.MaxConfigMapDataSize {
+			badRules++
+			errors = append(errors, fmt.Sprintf(
+				"rule file %q with size %d is too large for a single Kubernetes ConfigMap limit: %d",
+				pRule.Namespace+"-"+pRule.Name, len(content), victoriametricsv1beta1.MaxConfigMapDataSize,
+			))
+			continue
+		}
+		rules[fmt.Sprintf("%s-%s.yaml", pRule.Namespace, pRule.Name)] = content
 	}
 
 	ruleNames := make([]string, 0, len(rules))
@@ -298,23 +302,13 @@ func generateContent(promRule victoriametricsv1beta1.VMRuleSpec, enforcedNsLabel
 }
 
 // makeRulesConfigMaps takes a VMAlert configuration and rule files and
-// returns a list of Kubernetes ConfigMaps to be later on mounted into the
-// Prometheus instance.
+// returns a list of Kubernetes ConfigMaps to be later on mounted
 // If the total size of rule files exceeds the Kubernetes ConfigMap limit,
 // they are split up via the simple first-fit [1] bin packing algorithm. In the
 // future this can be replaced by a more sophisticated algorithm, but for now
 // simplicity should be sufficient.
 // [1] https://en.wikipedia.org/wiki/Bin_packing_problem#First-fit_algorithm
 func makeRulesConfigMaps(cr *victoriametricsv1beta1.VMAlert, ruleFiles map[string]string) ([]v1.ConfigMap, error) {
-	// check if none of the rule files is too large for a single ConfigMap
-	for filename, file := range ruleFiles {
-		if len(file) > maxConfigMapDataSize {
-			return nil, fmt.Errorf(
-				"rule file '%v' is too large for a single Kubernetes ConfigMap",
-				filename,
-			)
-		}
-	}
 
 	buckets := []map[string]string{
 		{},
@@ -331,14 +325,14 @@ func makeRulesConfigMaps(cr *victoriametricsv1beta1.VMAlert, ruleFiles map[strin
 
 	for _, filename := range fileNames {
 		// If rule file doesn't fit into current bucket, create new bucket.
-		if bucketSize(buckets[currBucketIndex])+len(ruleFiles[filename]) > maxConfigMapDataSize {
+		if bucketSize(buckets[currBucketIndex])+len(ruleFiles[filename]) > victoriametricsv1beta1.MaxConfigMapDataSize {
 			buckets = append(buckets, map[string]string{})
 			currBucketIndex++
 		}
 		buckets[currBucketIndex][filename] = ruleFiles[filename]
 	}
 
-	ruleFileConfigMaps := []v1.ConfigMap{}
+	ruleFileConfigMaps := make([]v1.ConfigMap, 0, len(buckets))
 	for i, bucket := range buckets {
 		cm := makeRulesConfigMap(cr, bucket)
 		cm.Name = cm.Name + "-" + strconv.Itoa(i)

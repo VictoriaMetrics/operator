@@ -157,8 +157,10 @@ type Route struct {
 	// +optional
 	Continue bool `json:"continue,omitempty"`
 	// Child routes.
+	// CRD schema doesn't support self-referential types for now (see https://github.com/kubernetes/kubernetes/issues/62872).
+	// We expose below RawRoutes as an alternative type to circumvent the limitation, and use Routes in code.
 	Routes []*Route `json:"-,omitempty"`
-	// RawRoutes alertmanager nested routes
+	// Child routes.
 	// https://prometheus.io/docs/alerting/latest/configuration/#route
 	RawRoutes []apiextensionsv1.JSON `json:"routes,omitempty"`
 	// MuteTimeIntervals for alerts

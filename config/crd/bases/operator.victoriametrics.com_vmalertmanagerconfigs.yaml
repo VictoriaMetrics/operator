@@ -1558,7 +1558,7 @@ spec:
                     pattern: '[0-9]+(ms|s|m|h)'
                     type: string
                   routes:
-                    description: RawRoutes alertmanager nested routes https://prometheus.io/docs/alerting/latest/configuration/#route
+                    description: Child routes https://prometheus.io/docs/alerting/latest/configuration/#route
                     items:
                       x-kubernetes-preserve-unknown-fields: true
                     type: array

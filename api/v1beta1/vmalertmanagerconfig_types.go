@@ -157,8 +157,10 @@ type Route struct {
 	// +optional
 	Continue bool `json:"continue,omitempty"`
 	// Child routes.
+	// CRD schema doesn't support self-referential types for now (see https://github.com/kubernetes/kubernetes/issues/62872).
+	// We expose below RawRoutes as an alternative type to circumvent the limitation, and use Routes in code.
 	Routes []*Route `json:"-,omitempty"`
-	// RawRoutes alertmanager nested routes
+	// Child routes.
 	// https://prometheus.io/docs/alerting/latest/configuration/#route
 	RawRoutes []apiextensionsv1.JSON `json:"routes,omitempty"`
 	// MuteTimeIntervals for alerts
@@ -177,10 +179,10 @@ func parseNestedRoutes(src *Route) error {
 	for _, nestedRoute := range src.RawRoutes {
 		var route Route
 		if err := json.Unmarshal(nestedRoute.Raw, &route); err != nil {
-			return fmt.Errorf("cannot pase json value: %s for nested route, err :%w", string(nestedRoute.Raw), err)
+			return fmt.Errorf("cannot parse json value: %s for nested route, err :%w", string(nestedRoute.Raw), err)
 		}
 		if err := parseNestedRoutes(&route); err != nil {
-			return fmt.Errorf("failed to parse nested route: %s, err: %w", route.Receiver, err)
+			return err
 		}
 		src.Routes = append(src.Routes, &route)
 	}

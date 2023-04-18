@@ -769,6 +769,7 @@ func (cb *configBuilder) buildPushOver(po operatorv1beta1.PushoverConfig) error 
 	}
 
 	toYaml("url", po.URL)
+	toYaml("sound", po.Sound)
 	toYaml("priority", po.Priority)
 	toYaml("message", po.Message)
 	toYaml("expire", po.Expire)

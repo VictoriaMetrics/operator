@@ -6,7 +6,7 @@ on:
 jobs:
   release:
     name: Release on GitHub
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     steps:
       - name: Inject slug/short variables
         uses: rlespinasse/github-slug-action@v2.x

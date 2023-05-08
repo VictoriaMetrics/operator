@@ -259,6 +259,10 @@ type VMAlertmanagerSpec struct {
 	// +optional
 	DisableNamespaceMatcher bool `json:"disableNamespaceMatcher,omitempty"`
 
+	// DisableRouteContinueEnforce cancel the behavior for VMAlertmanagerConfig that always enforce first-level route continue to true
+	// +optional
+	DisableRouteContinueEnforce bool `json:"disableRouteContinueEnforce,omitempty"`
+
 	// RollingUpdateStrategy defines strategy for application updates
 	// Default is OnDelete, in this case operator handles update process
 	// Can be changed for RollingUpdate
@@ -358,7 +362,6 @@ func (cr VMAlertmanager) PodLabels() map[string]string {
 		return lbls
 	}
 	return labels.Merge(cr.Spec.PodMetadata.Labels, lbls)
-
 }
 
 func (cr VMAlertmanager) AllLabels() map[string]string {
@@ -375,6 +378,7 @@ func (cr VMAlertmanager) AllLabels() map[string]string {
 func (cr VMAlertmanager) ConfigSecretName() string {
 	return fmt.Sprintf("%s-config", cr.PrefixedName())
 }
+
 func (cr VMAlertmanager) PrefixedName() string {
 	return fmt.Sprintf("vmalertmanager-%s", cr.Name)
 }

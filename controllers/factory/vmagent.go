@@ -500,7 +500,7 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 			}
 		}
 	}
-
+	cr.Spec.InitContainers = maybeAddInitConfigContainer(cr.Spec.InitContainers, c, vmAgentConfDir, vmAuthConfigName, vmAgentConOfOutDir, configEnvsubstFilename)
 	return &corev1.PodSpec{
 		NodeSelector:                  cr.Spec.NodeSelector,
 		Volumes:                       volumes,
@@ -1134,7 +1134,7 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, ssCache *scrapesSecre
 			}
 			value = strings.TrimSuffix(value, "^^")
 		}
-		headers.flagSetting += fmt.Sprintf("'%s',", value)
+		headers.flagSetting += fmt.Sprintf("%s,", value)
 		value = ""
 		var oaturl, oascopes, oaclientID, oaSecretKeyFile string
 		if rws.OAuth2 != nil {

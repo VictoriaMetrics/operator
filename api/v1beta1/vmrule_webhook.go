@@ -25,6 +25,7 @@ var _ webhook.Validator = &VMRule{}
 func (r *VMRule) sanityCheck() error {
 
 	uniqNames := make(map[string]struct{})
+	var totalSize int
 	for i := range r.Spec.Groups {
 		group := &r.Spec.Groups[i]
 		errContext := fmt.Sprintf("VMRule: %s/%s group: %s", r.Namespace, r.Name, group.Name)
@@ -37,12 +38,16 @@ func (r *VMRule) sanityCheck() error {
 			return fmt.Errorf("cannot marshal %s, err: %w", errContext, err)
 		}
 		var vmalertGroup config.Group
+		totalSize += len(groupBytes)
 		if err := yaml.Unmarshal(groupBytes, &vmalertGroup); err != nil {
 			return fmt.Errorf("cannot parse vmalert group %s, err: %w, r: \n%s", errContext, err, string(groupBytes))
 		}
 		if err := vmalertGroup.Validate(nil, true); err != nil {
 			return fmt.Errorf("validation failed for %s err: %w", errContext, err)
 		}
+	}
+	if totalSize > MaxConfigMapDataSize {
+		return fmt.Errorf("VMRule's content size: %d exceed single rule limit: %d", totalSize, MaxConfigMapDataSize)
 	}
 	vmrulelog.Info("successfully validated rule", "name", r.Name)
 	return nil

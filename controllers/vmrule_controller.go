@@ -79,7 +79,7 @@ func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		currVMAlert := &vmalert
 		match, err := isSelectorsMatches(instance, currVMAlert, currVMAlert.Spec.RuleSelector)
 		if err != nil {
-			reqLogger.Error(err, "cannot match vmalert and vmRule")
+			reqLogger.Error(err, "cannot match vmalert and vmRule", "vmalert", currVMAlert.Name)
 			continue
 		}
 		// fast path, not match
@@ -88,8 +88,7 @@ func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		}
 		maps, err := factory.CreateOrUpdateRuleConfigMaps(ctx, currVMAlert, r)
 		if err != nil {
-			reqLogger.Error(err, "cannot update rules configmaps")
-			return ctrl.Result{}, err
+			return ctrl.Result{}, fmt.Errorf("cannot update rules configmaps: %w", err)
 		}
 
 		if err := factory.CreateOrUpdateVMAlert(ctx, currVMAlert, r, r.BaseConf, maps); err != nil {

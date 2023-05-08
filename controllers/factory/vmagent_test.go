@@ -729,7 +729,7 @@ func TestBuildRemoteWrites(t *testing.T) {
 					}},
 				},
 			},
-			want: []string{"-remoteWrite.bearerTokenFile=\"\",\"/etc/vmagent/config/RWS_1-SECRET-BEARERTOKEN\"", "-remoteWrite.headers='','key: value^^second-key: value2'", "-remoteWrite.url=localhost:8429,localhost:8431", "-remoteWrite.sendTimeout=10s,15s"},
+			want: []string{"-remoteWrite.bearerTokenFile=\"\",\"/etc/vmagent/config/RWS_1-SECRET-BEARERTOKEN\"", "-remoteWrite.headers=,key: value^^second-key: value2", "-remoteWrite.url=localhost:8429,localhost:8431", "-remoteWrite.sendTimeout=10s,15s"},
 		},
 		{
 			name: "test with stream aggr",

@@ -243,6 +243,7 @@ func makeSpecForVMAuth(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperator
 	}
 
 	configReloader := buildVMAuthConfigReloaderContainer(cr, c)
+	cr.Spec.InitContainers = maybeAddInitConfigContainer(cr.Spec.InitContainers, c, vmAuthConfigFolder, vmAuthConfigName, vmAuthConfigMountGz, vmAuthConfigNameGz)
 
 	vmauthContainer = buildProbe(vmauthContainer, cr)
 	operatorContainers := []corev1.Container{configReloader, vmauthContainer}
@@ -482,4 +483,34 @@ func buildVMAuthConfigReloaderContainer(cr *victoriametricsv1beta1.VMAuth, c *co
 		configReloader.Command = []string{"/usr/local/bin/config-reloader"}
 	}
 	return configReloader
+}
+
+func maybeAddInitConfigContainer(src []corev1.Container, c *config.BaseOperatorConf, configDirName, configFileName, outConfigDir, outFileName string) []corev1.Container {
+	// TODO add support for custom reloader
+	if !c.UseCustomConfigReloader {
+		return src
+	}
+	initReloader := corev1.Container{
+		Image: c.VMAgentDefault.ConfigReloadImage,
+		Name:  "config-init",
+		Command: []string{
+			"/bin/sh",
+		},
+		Args: []string{
+			"-c",
+			fmt.Sprintf("gunzip -c %s > %s", path.Join(configDirName, configFileName), path.Join(outConfigDir, outFileName)),
+		},
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      "config",
+				MountPath: configDirName,
+			},
+			{
+				Name:      "config-out",
+				MountPath: outConfigDir,
+			},
+		},
+	}
+	src = append(src, initReloader)
+	return src
 }

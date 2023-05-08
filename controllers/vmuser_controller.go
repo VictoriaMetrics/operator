@@ -63,6 +63,9 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		return handleGetError(req, "vmuser", err)
 	}
 	RegisterObjectStat(&instance, "vmuser")
+	if err := finalize.AddFinalizer(ctx, r.Client, &instance); err != nil {
+		return result, err
+	}
 	if vmauthRateLimiter.MustThrottleReconcile() {
 		return
 	}

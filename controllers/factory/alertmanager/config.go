@@ -3,6 +3,7 @@ package alertmanager
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"path"
 	"sort"
 	"strings"
@@ -20,7 +21,7 @@ type ParsedConfig struct {
 	ParseErrors     []string
 }
 
-func BuildConfig(ctx context.Context, rclient client.Client, mustAddNamespaceMatcher bool, baseCfg []byte, amcfgs map[string]*operatorv1beta1.VMAlertmanagerConfig, tlsAssets map[string]string) (*ParsedConfig, error) {
+func BuildConfig(ctx context.Context, rclient client.Client, mustAddNamespaceMatcher, disableRouteContinueEnforce bool, baseCfg []byte, amcfgs map[string]*operatorv1beta1.VMAlertmanagerConfig, tlsAssets map[string]string) (*ParsedConfig, error) {
 	// fast path.
 	if len(amcfgs) == 0 {
 		return &ParsedConfig{Data: baseCfg}, nil
@@ -44,28 +45,38 @@ func BuildConfig(ctx context.Context, rclient client.Client, mustAddNamespaceMat
 	var firstReceiverName string
 	var badObjectsCount int
 	var parseErrors []string
+
 OUTER:
 	for _, posIdx := range amConfigIdentifiers {
+		receiverNameList := map[string]struct{}{}
+		var receiverCfgs []yaml.MapSlice
 		amcKey := amcfgs[posIdx]
 		for _, receiver := range amcKey.Spec.Receivers {
+			if _, ok := receiverNameList[receiver.Name]; ok {
+				parseErrors = append(parseErrors, fmt.Sprintf("got duplicate receiver name %s in object %s, will ignore vmalertmanagerconfig %s", receiver.Name, amcKey.AsKey(), amcKey.Name))
+				badObjectsCount++
+				continue OUTER
+			}
+			receiverNameList[receiver.Name] = struct{}{}
 			receiverCfg, err := buildReceiver(ctx, rclient, amcKey, receiver, secretCache, configmapCache, tlsAssets)
 			if err != nil {
 				// skip broken configs
-				parseErrors = append(parseErrors, fmt.Sprintf("cannot build alertmanager receiver config for object: %s, err: %s", amcKey.AsKey(), err))
+				parseErrors = append(parseErrors, fmt.Sprintf("%s in object: %s, will ignore vmalertmanagerconfig %s", err, amcKey.AsKey(), amcKey.Name))
 				badObjectsCount++
 				continue OUTER
 			}
 			if len(receiverCfg) > 0 {
-				baseYAMlCfg.Receivers = append(baseYAMlCfg.Receivers, receiverCfg)
+				receiverCfgs = append(receiverCfgs, receiverCfg)
 			}
 		}
-		for _, rule := range amcKey.Spec.InhibitRules {
-			baseYAMlCfg.InhibitRules = append(baseYAMlCfg.InhibitRules, buildInhibitRule(amcKey.Namespace, rule, mustAddNamespaceMatcher))
+
+		mtis, intervalNameList, err := buildGlobalTimeIntervals(amcKey)
+		if err != nil {
+			parseErrors = append(parseErrors, fmt.Sprintf("%v in object %s, will ignore vmalertmanagerconfig %s", err, amcKey.AsKey(), amcKey.Name))
+			badObjectsCount++
+			continue
 		}
-		mtis := buildGlobalTimeIntervals(amcKey)
-		if len(mtis) > 0 {
-			muteIntervals = append(muteIntervals, mtis...)
-		}
+
 		if amcKey.Spec.Route == nil {
 			continue
 		}
@@ -73,7 +84,21 @@ OUTER:
 		if len(firstReceiverName) == 0 && len(amcKey.Spec.Route.Receiver) > 0 {
 			firstReceiverName = buildCRPrefixedName(amcKey, amcKey.Spec.Route.Receiver)
 		}
-		subRoutes = append(subRoutes, buildRoute(amcKey, amcKey.Spec.Route, true, mustAddNamespaceMatcher))
+		route, err := buildRoute(amcKey, amcKey.Spec.Route, true, disableRouteContinueEnforce, mustAddNamespaceMatcher, receiverNameList, intervalNameList)
+		if err != nil {
+			parseErrors = append(parseErrors, fmt.Sprintf("%v in object %s, will ignore vmalertmanagerconfig %s", err, amcKey.AsKey(), amcKey.Name))
+			badObjectsCount++
+			continue OUTER
+		}
+
+		baseYAMlCfg.Receivers = append(baseYAMlCfg.Receivers, receiverCfgs...)
+		for _, rule := range amcKey.Spec.InhibitRules {
+			baseYAMlCfg.InhibitRules = append(baseYAMlCfg.InhibitRules, buildInhibitRule(amcKey.Namespace, rule, mustAddNamespaceMatcher))
+		}
+		if len(mtis) > 0 {
+			muteIntervals = append(muteIntervals, mtis...)
+		}
+		subRoutes = append(subRoutes, route)
 
 	}
 	if baseYAMlCfg.Route == nil && len(subRoutes) > 0 {
@@ -120,14 +145,19 @@ func AddConfigTemplates(baseCfg []byte, templates []string) ([]byte, error) {
 	return yaml.Marshal(baseYAMlCfg)
 }
 
-func buildGlobalTimeIntervals(cr *operatorv1beta1.VMAlertmanagerConfig) []yaml.MapSlice {
+func buildGlobalTimeIntervals(cr *operatorv1beta1.VMAlertmanagerConfig) ([]yaml.MapSlice, map[string]struct{}, error) {
 	var r []yaml.MapSlice
+	timeIntervalNameList := map[string]struct{}{}
 	tis := cr.Spec.TimeIntervals
 	// muteTimeInterval is deprecated, use TimeIntervals instead
 	if len(tis) == 0 && len(cr.Spec.MutTimeIntervals) > 0 {
 		tis = cr.Spec.MutTimeIntervals
 	}
 	for _, mti := range tis {
+		if _, ok := timeIntervalNameList[mti.Name]; ok {
+			return r, nil, fmt.Errorf("got duplicate timeInterval name %s", mti.Name)
+		}
+		timeIntervalNameList[mti.Name] = struct{}{}
 		if len(mti.TimeIntervals) == 0 {
 			continue
 		}
@@ -165,17 +195,17 @@ func buildGlobalTimeIntervals(cr *operatorv1beta1.VMAlertmanagerConfig) []yaml.M
 			r = append(r, yaml.MapSlice{{Key: "name", Value: buildCRPrefixedName(cr, mti.Name)}, {Key: "time_intervals", Value: temp}})
 		}
 	}
-	return r
+	return r, timeIntervalNameList, nil
 }
 
-func buildRoute(cr *operatorv1beta1.VMAlertmanagerConfig, cfgRoute *operatorv1beta1.Route, topLevel, mustAddNamespaceMatcher bool) yaml.MapSlice {
+func buildRoute(cr *operatorv1beta1.VMAlertmanagerConfig, cfgRoute *operatorv1beta1.Route, topLevel, disableRouteContinueEnforce, mustAddNamespaceMatcher bool, receiverNameList, intervalNameList map[string]struct{}) (yaml.MapSlice, error) {
 	var r yaml.MapSlice
 	matchers := cfgRoute.Matchers
+	// enforce continue when route is first-level and vmalertmanager disableRouteContinueEnforce filed is not set,
+	// otherwise, always inherit from VMAlertmanagerConfig
 	continueSetting := cfgRoute.Continue
-	// enforce continue and namespace match
-	if topLevel {
+	if topLevel && !disableRouteContinueEnforce {
 		continueSetting = true
-
 	}
 	if mustAddNamespaceMatcher {
 		matchers = append(matchers, fmt.Sprintf("namespace = %q", cr.Namespace))
@@ -184,7 +214,11 @@ func buildRoute(cr *operatorv1beta1.VMAlertmanagerConfig, cfgRoute *operatorv1be
 	var nestedRoutes []yaml.MapSlice
 	for _, nestedRoute := range cfgRoute.Routes {
 		// namespace matcher not needed for nested routes
-		nestedRoutes = append(nestedRoutes, buildRoute(cr, nestedRoute, false, false))
+		route, err := buildRoute(cr, nestedRoute, false, false, false, receiverNameList, intervalNameList)
+		if err != nil {
+			return r, err
+		}
+		nestedRoutes = append(nestedRoutes, route)
 	}
 	if len(nestedRoutes) > 0 {
 		r = append(r, yaml.MapItem{Key: "routes", Value: nestedRoutes})
@@ -207,20 +241,42 @@ func buildRoute(cr *operatorv1beta1.VMAlertmanagerConfig, cfgRoute *operatorv1be
 			}
 			r = append(r, yaml.MapItem{Key: key, Value: tis})
 		}
-
+	}
+	// check if timeInterval already defined outside
+	checkTimeIntervalExistence := func(interval []string, intervalNames map[string]struct{}) error {
+		for _, item := range interval {
+			if _, ok := intervalNames[item]; !ok {
+				return fmt.Errorf("time_intervals %s not defined", item)
+			}
+		}
+		return nil
 	}
 	toYaml("matchers", matchers)
 	toYaml("group_by", cfgRoute.GroupBy)
+
+	err := checkTimeIntervalExistence(cfgRoute.MuteTimeIntervals, intervalNameList)
+	if err != nil {
+		return nil, err
+	}
+	err = checkTimeIntervalExistence(cfgRoute.ActiveTimeIntervals, intervalNameList)
+	if err != nil {
+		return nil, err
+	}
 	toYamlTimeIntervals("mute_time_intervals", cfgRoute.MuteTimeIntervals)
 	toYamlTimeIntervals("active_time_intervals", cfgRoute.ActiveTimeIntervals)
+
 	toYamlString("group_interval", cfgRoute.GroupInterval)
 	toYamlString("group_wait", cfgRoute.GroupWait)
 	toYamlString("repeat_interval", cfgRoute.RepeatInterval)
 	if len(cfgRoute.Receiver) > 0 {
+		// check if receiver name already defined outside
+		if _, ok := receiverNameList[cfgRoute.Receiver]; !ok {
+			return r, fmt.Errorf("receiver %s not defined", cfgRoute.Receiver)
+		}
 		r = append(r, yaml.MapItem{Key: "receiver", Value: buildCRPrefixedName(cr, cfgRoute.Receiver)})
 	}
 	r = append(r, yaml.MapItem{Key: "continue", Value: continueSetting})
-	return r
+	return r, nil
 }
 
 func buildInhibitRule(namespace string, rule operatorv1beta1.InhibitRule, mustAddNamespaceMatcher bool) yaml.MapSlice {
@@ -282,7 +338,6 @@ func buildReceiver(
 	configmapCache map[string]*v1.ConfigMap,
 	tlsAssets map[string]string,
 ) (yaml.MapSlice, error) {
-
 	cb := initConfigBuilder(ctx, rclient, cr, reciever, cache, configmapCache, tlsAssets)
 
 	if err := cb.buildCfg(); err != nil {
@@ -310,7 +365,8 @@ func initConfigBuilder(
 	receiver operatorv1beta1.Receiver,
 	cache map[string]*v1.Secret,
 	configmapCache map[string]*v1.ConfigMap,
-	tlsAssets map[string]string) *configBuilder {
+	tlsAssets map[string]string,
+) *configBuilder {
 	cb := configBuilder{
 		ctx:       ctx,
 		Client:    rclient,
@@ -572,9 +628,17 @@ func (cb *configBuilder) buildWebhook(wh operatorv1beta1.WebhookConfig) error {
 	// no point to add config without url
 	if url == "" {
 		return nil
+	} else {
+		err := parseURL(*wh.URL)
+		if err != nil {
+			return err
+		}
 	}
 
 	temp = append(temp, yaml.MapItem{Key: "url", Value: url})
+	if wh.MaxAlerts != 0 {
+		temp = append(temp, yaml.MapItem{Key: "max_alerts", Value: wh.MaxAlerts})
+	}
 	cb.currentYaml = append(cb.currentYaml, temp)
 	return nil
 }
@@ -608,6 +672,12 @@ func (cb *configBuilder) buildWeeChat(wc operatorv1beta1.WeChatConfig) error {
 	toYaml("to_tag", wc.ToTag)
 	toYaml("to_user", wc.ToUser)
 	toYaml("api_url", wc.APIURL)
+	if wc.APIURL != "" {
+		err := parseURL(wc.APIURL)
+		if err != nil {
+			return err
+		}
+	}
 	if wc.SendResolved != nil {
 		temp = append(temp, yaml.MapItem{Key: "send_resolved", Value: *wc.SendResolved})
 	}
@@ -637,6 +707,12 @@ func (cb *configBuilder) buildVictorOps(vo operatorv1beta1.VictorOpsConfig) erro
 		}
 	}
 	toYaml("api_url", vo.APIURL)
+	if vo.APIURL != "" {
+		err := parseURL(vo.APIURL)
+		if err != nil {
+			return err
+		}
+	}
 	toYaml("routing_key", vo.RoutingKey)
 	toYaml("message_type", vo.MessageType)
 	toYaml("entity_display_name", vo.EntityDisplayName)
@@ -693,6 +769,7 @@ func (cb *configBuilder) buildPushOver(po operatorv1beta1.PushoverConfig) error 
 	}
 
 	toYaml("url", po.URL)
+	toYaml("sound", po.Sound)
 	toYaml("priority", po.Priority)
 	toYaml("message", po.Message)
 	toYaml("expire", po.Expire)
@@ -736,6 +813,12 @@ func (cb *configBuilder) buildPagerDuty(pd operatorv1beta1.PagerDutyConfig) erro
 		toYaml("service_key", string(s))
 	}
 	toYaml("url", pd.URL)
+	if pd.URL != "" {
+		err := parseURL(pd.URL)
+		if err != nil {
+			return err
+		}
+	}
 	toYaml("description", pd.Description)
 	toYaml("client_url", pd.ClientURL)
 	toYaml("client", pd.Client)
@@ -798,13 +881,21 @@ func (cb *configBuilder) buildPagerDuty(pd operatorv1beta1.PagerDutyConfig) erro
 
 func (cb *configBuilder) buildEmail(email operatorv1beta1.EmailConfig) error {
 	var temp yaml.MapSlice
-	if email.TLSConfig != nil {
+	if email.RequireTLS != nil {
+		temp = append(temp, yaml.MapItem{Key: "require_tls", Value: *email.RequireTLS})
+	}
+	// skip tls_config if require_tls is false
+	if email.RequireTLS == nil || *email.RequireTLS {
+		if email.TLSConfig == nil {
+			return fmt.Errorf("incorrect email configuration, tls is required, but no config provided at spec")
+		}
 		s, err := cb.buildTLSConfig(email.TLSConfig)
 		if err != nil {
 			return err
 		}
 		temp = append(temp, yaml.MapItem{Key: "tls_config", Value: s})
 	}
+
 	if email.AuthPassword != nil {
 		p, err := cb.fetchSecretValue(email.AuthPassword)
 		if err != nil {
@@ -863,6 +954,12 @@ func (cb *configBuilder) buildOpsGenie(og operatorv1beta1.OpsGenieConfig) error 
 	toYamlString("tags", og.Tags)
 	toYamlString("note", og.Note)
 	toYamlString("api_url", og.APIURL)
+	if og.APIURL != "" {
+		err := parseURL(og.APIURL)
+		if err != nil {
+			return err
+		}
+	}
 	toYamlString("priority", og.Priority)
 	if og.Details != nil {
 		temp = append(temp, yaml.MapItem{Key: "details", Value: og.Details})
@@ -1068,4 +1165,18 @@ func (cb *configBuilder) buildTLSConfig(tlsCfg *operatorv1beta1.TLSConfig) (yaml
 		r = append(r, yaml.MapItem{Key: "insecure_skip_verify", Value: tlsCfg.InsecureSkipVerify})
 	}
 	return r, nil
+}
+
+func parseURL(s string) error {
+	u, err := url.Parse(s)
+	if err != nil {
+		return err
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return fmt.Errorf("unsupported scheme %q for URL", u.Scheme)
+	}
+	if u.Host == "" {
+		return fmt.Errorf("missing host for URL")
+	}
+	return nil
 }

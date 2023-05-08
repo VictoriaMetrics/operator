@@ -20,12 +20,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"strings"
 
 	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"strings"
 )
 
 // VMAlertmanagerConfigSpec defines configuration for VMAlertmanagerConfig
@@ -153,12 +153,14 @@ type Route struct {
 	// +optional
 	Matchers []string `json:"matchers,omitempty"`
 	// Continue indicating whether an alert should continue matching subsequent
-	// sibling nodes. It will always be true for the first-level route.
+	// sibling nodes. It will always be true for the first-level route if disableRouteContinueEnforce for vmalertmanager not set.
 	// +optional
 	Continue bool `json:"continue,omitempty"`
 	// Child routes.
+	// CRD schema doesn't support self-referential types for now (see https://github.com/kubernetes/kubernetes/issues/62872).
+	// We expose below RawRoutes as an alternative type to circumvent the limitation, and use Routes in code.
 	Routes []*Route `json:"-,omitempty"`
-	// RawRoutes alertmanager nested routes
+	// Child routes.
 	// https://prometheus.io/docs/alerting/latest/configuration/#route
 	RawRoutes []apiextensionsv1.JSON `json:"routes,omitempty"`
 	// MuteTimeIntervals for alerts
@@ -177,10 +179,10 @@ func parseNestedRoutes(src *Route) error {
 	for _, nestedRoute := range src.RawRoutes {
 		var route Route
 		if err := json.Unmarshal(nestedRoute.Raw, &route); err != nil {
-			return fmt.Errorf("cannot pase json value: %s for nested route, err :%w", string(nestedRoute.Raw), err)
+			return fmt.Errorf("cannot parse json value: %s for nested route, err :%w", string(nestedRoute.Raw), err)
 		}
 		if err := parseNestedRoutes(&route); err != nil {
-			return fmt.Errorf("failed to parse nested route: %s, err: %w", route.Receiver, err)
+			return err
 		}
 		src.Routes = append(src.Routes, &route)
 	}
@@ -800,6 +802,7 @@ type HTTPConfig struct {
 func (amc *VMAlertmanagerConfig) AsKey() string {
 	return fmt.Sprintf("%s/%s", amc.Namespace, amc.Name)
 }
+
 func init() {
 	SchemeBuilder.Register(&VMAlertmanagerConfig{}, &VMAlertmanagerConfigList{})
 }

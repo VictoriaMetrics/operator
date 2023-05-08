@@ -163,7 +163,7 @@ type BaseOperatorConf struct {
 		ConfigReloaderCPU            string `default:"100m"`
 		ConfigReloaderMemory         string `default:"25Mi"`
 		AlertmanagerDefaultBaseImage string `default:"prom/alertmanager"`
-		AlertManagerVersion          string `default:"v0.24.0"`
+		AlertManagerVersion          string `default:"v0.25.0"`
 		LocalHost                    string `default:"127.0.0.1"`
 		UseDefaultResources          bool   `default:"true"`
 		Resource                     struct {

@@ -2,9 +2,10 @@ package alertmanager
 
 import (
 	"context"
+	"testing"
+
 	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
-	"testing"
 
 	operatorv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
@@ -16,16 +17,18 @@ import (
 
 func TestBuildConfig(t *testing.T) {
 	type args struct {
-		ctx                     context.Context
-		disableNamespaceMatcher bool
-		baseCfg                 []byte
-		amcfgs                  map[string]*operatorv1beta1.VMAlertmanagerConfig
+		ctx                         context.Context
+		disableNamespaceMatcher     bool
+		disableRouteContinueEnforce bool
+		baseCfg                     []byte
+		amcfgs                      map[string]*operatorv1beta1.VMAlertmanagerConfig
 	}
 	tests := []struct {
 		name              string
 		args              args
 		predefinedObjects []runtime.Object
 		want              string
+		parseError        string
 		wantErr           bool
 	}{
 		{
@@ -36,7 +39,7 @@ func TestBuildConfig(t *testing.T) {
  time_out: 1min
 `),
 				amcfgs: map[string]*operatorv1beta1.VMAlertmanagerConfig{
-					"default/base": &operatorv1beta1.VMAlertmanagerConfig{
+					"default/base": {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "base",
 							Namespace: "default",
@@ -54,6 +57,13 @@ func TestBuildConfig(t *testing.T) {
 											TLSConfig: &operatorv1beta1.TLSConfig{
 												CertFile: "some_cert_path",
 											},
+										},
+										{
+											SendResolved: pointer.Bool(true),
+											From:         "other-sender",
+											To:           "other-dst",
+											Text:         "other-text",
+											RequireTLS:   pointer.Bool(false),
 										},
 									},
 								},
@@ -85,6 +95,11 @@ receivers:
     text: some-text
     to: some-dst
     send_resolved: true
+  - require_tls: false
+    from: other-sender
+    text: other-text
+    to: other-dst
+    send_resolved: true
 templates: []
 `,
 		},
@@ -96,7 +111,7 @@ templates: []
  time_out: 1min
 `),
 				amcfgs: map[string]*operatorv1beta1.VMAlertmanagerConfig{
-					"default/base": &operatorv1beta1.VMAlertmanagerConfig{
+					"default/base": {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "base",
 							Namespace: "default",
@@ -244,7 +259,7 @@ templates: []
  time_out: 1min
 `),
 				amcfgs: map[string]*operatorv1beta1.VMAlertmanagerConfig{
-					"default/base": &operatorv1beta1.VMAlertmanagerConfig{
+					"default/base": {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "base",
 							Namespace: "default",
@@ -329,7 +344,7 @@ templates: []
  time_out: 1min
 `),
 				amcfgs: map[string]*operatorv1beta1.VMAlertmanagerConfig{
-					"default/base": &operatorv1beta1.VMAlertmanagerConfig{
+					"default/base": {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "base",
 							Namespace: "default",
@@ -447,7 +462,7 @@ templates: []
  time_out: 1min
 `),
 				amcfgs: map[string]*operatorv1beta1.VMAlertmanagerConfig{
-					"default/base": &operatorv1beta1.VMAlertmanagerConfig{
+					"default/base": {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "tg",
 							Namespace: "default",
@@ -507,7 +522,7 @@ templates: []
  time_out: 1min
 `),
 				amcfgs: map[string]*operatorv1beta1.VMAlertmanagerConfig{
-					"default/base": &operatorv1beta1.VMAlertmanagerConfig{
+					"default/base": {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "tg",
 							Namespace: "default",
@@ -537,7 +552,7 @@ templates: []
 							},
 						},
 					},
-					"mon/base": &operatorv1beta1.VMAlertmanagerConfig{
+					"mon/base": {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "tg",
 							Namespace: "default",
@@ -563,6 +578,7 @@ templates: []
 					},
 				},
 			},
+			parseError: "cannot find secret for VMAlertmanager config: tg, receiver: telegram, err :secrets \"tg-secret\" not found in object: default/tg, will ignore vmalertmanagerconfig tg",
 			want: `global:
   time_out: 1min
 route:
@@ -582,14 +598,159 @@ receivers:
 templates: []
 `,
 		},
+		{
+			name: "wrong alertmanagerconfig: with duplicate receiver",
+			args: args{
+				ctx: context.Background(),
+				baseCfg: []byte(`global:
+ time_out: 1min
+`),
+				amcfgs: map[string]*operatorv1beta1.VMAlertmanagerConfig{
+					"default/base": {
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "base",
+							Namespace: "default",
+						},
+						Spec: operatorv1beta1.VMAlertmanagerConfigSpec{
+							Receivers: []operatorv1beta1.Receiver{
+								{
+									Name: "duplicate-receiver",
+									EmailConfigs: []operatorv1beta1.EmailConfig{
+										{
+											SendResolved: pointer.Bool(true),
+											From:         "some-sender",
+											To:           "some-dst",
+											Text:         "some-text",
+											TLSConfig: &operatorv1beta1.TLSConfig{
+												CertFile: "some_cert_path",
+											},
+										},
+									},
+								},
+								{
+									Name: "duplicate-receiver",
+								},
+							},
+							Route: &operatorv1beta1.Route{
+								Receiver:  "duplicate-receiver",
+								GroupWait: "1min",
+							},
+						},
+					},
+				},
+			},
+			parseError: "got duplicate receiver name duplicate-receiver in object default/base, will ignore vmalertmanagerconfig base",
+			want: `global:
+  time_out: 1min
+templates: []
+`,
+		},
+		{
+			name: "wrong alertmanagerconfig: with duplicate time interval",
+			args: args{
+				ctx: context.Background(),
+				baseCfg: []byte(`global:
+ time_out: 1min
+`),
+				amcfgs: map[string]*operatorv1beta1.VMAlertmanagerConfig{
+					"default/base": {
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "base",
+							Namespace: "default",
+						},
+						Spec: operatorv1beta1.VMAlertmanagerConfigSpec{
+							TimeIntervals: []operatorv1beta1.MuteTimeInterval{
+								{
+									Name:          "duplicate-interval",
+									TimeIntervals: []operatorv1beta1.TimeInterval{{Times: []operatorv1beta1.TimeRange{{StartTime: "00:00", EndTime: "10:00"}}}},
+								},
+								{
+									Name:          "duplicate-interval",
+									TimeIntervals: []operatorv1beta1.TimeInterval{{Times: []operatorv1beta1.TimeRange{{StartTime: "08:00", EndTime: "10:00"}}}},
+								},
+							},
+							Route: &operatorv1beta1.Route{
+								Receiver:            "email",
+								GroupWait:           "1min",
+								ActiveTimeIntervals: []string{"duplicate-interval"},
+							},
+						},
+					},
+				},
+			},
+			parseError: "got duplicate timeInterval name duplicate-interval in object default/base, will ignore vmalertmanagerconfig base",
+			want: `global:
+  time_out: 1min
+templates: []
+`,
+		},
+		{
+			name: "wrong alertmanagerconfig: undefined receiver",
+			args: args{
+				ctx: context.Background(),
+				baseCfg: []byte(`global:
+ time_out: 1min
+`),
+				amcfgs: map[string]*operatorv1beta1.VMAlertmanagerConfig{
+					"default/base": {
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "base",
+							Namespace: "default",
+						},
+						Spec: operatorv1beta1.VMAlertmanagerConfigSpec{
+							Route: &operatorv1beta1.Route{
+								Receiver:  "receiver-not-defined",
+								GroupWait: "1min",
+							},
+						},
+					},
+				},
+			},
+			parseError: "receiver receiver-not-defined not defined in object default/base, will ignore vmalertmanagerconfig base",
+			want: `global:
+  time_out: 1min
+templates: []
+`,
+		},
+		{
+			name: "wrong alertmanagerconfig: undefined timeInterval",
+			args: args{
+				ctx: context.Background(),
+				baseCfg: []byte(`global:
+ time_out: 1min
+`),
+				amcfgs: map[string]*operatorv1beta1.VMAlertmanagerConfig{
+					"default/base": {
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "base",
+							Namespace: "default",
+						},
+						Spec: operatorv1beta1.VMAlertmanagerConfigSpec{
+							Route: &operatorv1beta1.Route{
+								ActiveTimeIntervals: []string{"interval-not-defined"},
+								GroupWait:           "1min",
+							},
+						},
+					},
+				},
+			},
+			parseError: "time_intervals interval-not-defined not defined in object default/base, will ignore vmalertmanagerconfig base",
+			want: `global:
+  time_out: 1min
+templates: []
+`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			testClient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			got, err := BuildConfig(tt.args.ctx, testClient, !tt.args.disableNamespaceMatcher, tt.args.baseCfg, tt.args.amcfgs, map[string]string{})
+			got, err := BuildConfig(tt.args.ctx, testClient, !tt.args.disableNamespaceMatcher, tt.args.disableNamespaceMatcher, tt.args.baseCfg, tt.args.amcfgs, map[string]string{})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("BuildConfig() error = %v, wantErr %v", err, tt.wantErr)
 				return
+			}
+			if len(got.ParseErrors) > 0 {
+				assert.Equal(t, tt.parseError, got.ParseErrors[0])
 			}
 			assert.Equal(t, tt.want, string(got.Data))
 		})
@@ -783,7 +944,7 @@ func Test_configBuilder_buildHTTPConfig(t *testing.T) {
 				},
 			},
 			fields: fields{secretCache: map[string]*v1.Secret{
-				"secret-store": &v1.Secret{
+				"secret-store": {
 					Data: map[string][]byte{
 						"username": []byte("user-1"),
 					},
@@ -822,7 +983,7 @@ func Test_configBuilder_buildHTTPConfig(t *testing.T) {
 				},
 			},
 			fields: fields{secretCache: map[string]*v1.Secret{
-				"secret-store": &v1.Secret{
+				"secret-store": {
 					Data: map[string][]byte{
 						"cert": []byte("---PEM---"),
 						"ca":   []byte("---PEM-CA"),
@@ -877,20 +1038,20 @@ authorization:
 			},
 			fields: fields{
 				secretCache: map[string]*v1.Secret{
-					"secret-store": &v1.Secret{
+					"secret-store": {
 						Data: map[string][]byte{
 							"cert": []byte("---PEM---"),
 							"key":  []byte("--KEY-PEM--"),
 						},
 					},
-					"secret-bearer": &v1.Secret{
+					"secret-bearer": {
 						Data: map[string][]byte{
 							"token": []byte("secret-token"),
 						},
 					},
 				},
 				configmapCache: map[string]*v1.ConfigMap{
-					"cm-store": &v1.ConfigMap{
+					"cm-store": {
 						Data: map[string]string{
 							"ca": "--CA-PEM--",
 						},

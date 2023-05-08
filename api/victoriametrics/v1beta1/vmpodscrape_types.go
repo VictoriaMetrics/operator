@@ -140,6 +140,11 @@ type PodMetricsEndpoint struct {
 	// AttachMetadata configures metadata attaching from service discovery
 	// +optional
 	AttachMetadata AttachMetadata `json:"attach_metadata,omitempty"`
+	// FilterRunning applies filter with pod status == running
+	// it prevents from scrapping metrics at failed or succeed state pods.
+	// enabled by default
+	// +optional
+	FilterRunning *bool `json:"filterRunning,omitempty"`
 }
 
 // ArbitraryFSAccessThroughSMsConfig enables users to configure, whether

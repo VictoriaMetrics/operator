@@ -172,6 +172,11 @@ spec:
                       - key
                       type: object
                       x-kubernetes-map-type: atomic
+                    filterRunning:
+                      description: FilterRunning applies filter with pod status ==
+                        running it prevents from scrapping metrics at failed or succeed
+                        state pods. enabled by default
+                      type: boolean
                     follow_redirects:
                       description: FollowRedirects controls redirects for scraping.
                       type: boolean

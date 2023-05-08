@@ -1335,6 +1335,59 @@ kubernetes_sd_configs:
     - default
 metrics_path: /metric
 relabel_configs:
+- action: drop
+  source_labels:
+  - __meta_kubernetes_pod_phase
+  regex: (Failed|Succeeded)
+- action: keep
+  source_labels:
+  - __meta_kubernetes_pod_container_port_name
+  regex: web
+- source_labels:
+  - __meta_kubernetes_namespace
+  target_label: namespace
+- source_labels:
+  - __meta_kubernetes_pod_container_name
+  target_label: container
+- source_labels:
+  - __meta_kubernetes_pod_name
+  target_label: pod
+- target_label: job
+  replacement: default/test-1
+- target_label: endpoint
+  replacement: web
+`,
+		},
+		{
+			name: "disabled running filter",
+			args: args{
+				m: &victoriametricsv1beta1.VMPodScrape{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-1",
+						Namespace: "default",
+					},
+				},
+				ep: victoriametricsv1beta1.PodMetricsEndpoint{
+					Path: "/metric",
+					Port: "web",
+					AttachMetadata: victoriametricsv1beta1.AttachMetadata{
+						Node: pointer.Bool(true),
+					},
+					FilterRunning: pointer.Bool(false),
+				},
+				ssCache: &scrapesSecretsCache{},
+			},
+			want: `job_name: podScrape/default/test-1/0
+honor_labels: false
+kubernetes_sd_configs:
+- role: pod
+  attach_metadata:
+    node: "true"
+  namespaces:
+    names:
+    - default
+metrics_path: /metric
+relabel_configs:
 - action: keep
   source_labels:
   - __meta_kubernetes_pod_container_port_name
@@ -1396,6 +1449,10 @@ kubernetes_sd_configs:
     label: label-1=value-1,label-2=value-2,label-3=value-3
 metrics_path: /metric
 relabel_configs:
+- action: drop
+  source_labels:
+  - __meta_kubernetes_pod_phase
+  regex: (Failed|Succeeded)
 - action: keep
   source_labels:
   - __meta_kubernetes_pod_label_label_1

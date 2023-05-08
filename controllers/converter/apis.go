@@ -462,6 +462,7 @@ func ConvertPodEndpoints(promPodEnpoints []v1.PodMetricsEndpoint) []v1beta1vm.Po
 			FollowRedirects:      promEndPoint.FollowRedirects,
 			BearerTokenSecret:    convertBearerToken(promEndPoint.BearerTokenSecret),
 			Authorization:        convertAuthorization(promEndPoint.Authorization, nil),
+			FilterRunning:        promEndPoint.FilterRunning,
 		}
 		endPoints = append(endPoints, ep)
 	}

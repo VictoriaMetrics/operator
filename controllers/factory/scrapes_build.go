@@ -388,6 +388,14 @@ func generatePodScrapeConfig(
 		relabelings []yaml.MapSlice
 		labelKeys   []string
 	)
+
+	if ep.FilterRunning == nil || *ep.FilterRunning {
+		relabelings = append(relabelings, yaml.MapSlice{
+			{Key: "action", Value: "drop"},
+			{Key: "source_labels", Value: []string{"__meta_kubernetes_pod_phase"}},
+			{Key: "regex", Value: "(Failed|Succeeded)"},
+		})
+	}
 	// Filter targets by pods selected by the scrape.
 	// Exact label matches.
 	for k := range m.Spec.Selector.MatchLabels {

@@ -179,10 +179,10 @@ func parseNestedRoutes(src *Route) error {
 	for _, nestedRoute := range src.RawRoutes {
 		var route Route
 		if err := json.Unmarshal(nestedRoute.Raw, &route); err != nil {
-			return fmt.Errorf("cannot pase json value: %s for nested route, err :%w", string(nestedRoute.Raw), err)
+			return fmt.Errorf("cannot parse json value: %s for nested route, err :%w", string(nestedRoute.Raw), err)
 		}
 		if err := parseNestedRoutes(&route); err != nil {
-			return fmt.Errorf("failed to parse nested route: %s, err: %w", route.Receiver, err)
+			return err
 		}
 		src.Routes = append(src.Routes, &route)
 	}

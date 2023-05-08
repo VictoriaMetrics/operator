@@ -257,6 +257,11 @@ type VMSelect struct {
 	// +optional
 	Port string `json:"port,omitempty"`
 
+	// ClusterNativePort for multi-level cluster setup.
+	// More details: https://docs.victoriametrics.com/Cluster-VictoriaMetrics.html#multi-level-cluster-setup
+	// +optional
+	ClusterNativePort string `json:"clusterNativeListenPort,omitempty"`
+
 	// SchedulerName - defines kubernetes scheduler name
 	// +optional
 	SchedulerName string `json:"schedulerName,omitempty"`
@@ -433,6 +438,11 @@ type VMInsert struct {
 	// Port listen port
 	// +optional
 	Port string `json:"port,omitempty"`
+
+	// ClusterNativePort for multi-level cluster setup.
+	// More details: https://docs.victoriametrics.com/Cluster-VictoriaMetrics.html#multi-level-cluster-setup
+	// +optional
+	ClusterNativePort string `json:"clusterNativeListenPort,omitempty"`
 
 	// SchedulerName - defines kubernetes scheduler name
 	// +optional

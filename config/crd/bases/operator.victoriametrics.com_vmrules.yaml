@@ -76,6 +76,14 @@ spec:
                     name:
                       description: Name of group
                       type: string
+                    notifier_headers:
+                      description: 'NotifierHeaders contains optional HTTP headers
+                        added to each alert request which will send to notifier Must
+                        be in form `header-name: value` For example: headers: - "CustomHeader:
+                        foo" - "CustomHeader2: bar"'
+                      items:
+                        type: string
+                      type: array
                     params:
                       additionalProperties:
                         items:

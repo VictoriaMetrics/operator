@@ -328,7 +328,7 @@ func RunManager(ctx context.Context) error {
 		return err
 	}
 	if len(*listenAddr) > 0 {
-		go httpserver.Serve(*listenAddr, requestHandler)
+		go httpserver.Serve(*listenAddr, false, requestHandler)
 	}
 
 	setupLog.Info("starting manager")

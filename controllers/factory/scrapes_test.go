@@ -735,6 +735,10 @@ scrape_configs:
       - default
   metrics_path: /metrics-3
   relabel_configs:
+  - action: drop
+    source_labels:
+    - __meta_kubernetes_pod_phase
+    regex: (Failed|Succeeded)
   - action: keep
     source_labels:
     - __meta_kubernetes_pod_label_app
@@ -782,6 +786,10 @@ scrape_configs:
     cert_file: /etc/vmagent-tls/certs/default_access-creds_cert
     key_file: /etc/vmagent-tls/certs/default_access-creds_key
   relabel_configs:
+  - action: drop
+    source_labels:
+    - __meta_kubernetes_pod_phase
+    regex: (Failed|Succeeded)
   - action: keep
     source_labels:
     - __meta_kubernetes_pod_label_app

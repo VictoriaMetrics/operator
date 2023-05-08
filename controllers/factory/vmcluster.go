@@ -248,9 +248,27 @@ func CreateOrUpdateVMInsertService(ctx context.Context, cr *v1beta1.VMCluster, r
 	additionalService := defaultVMInsertService(cr)
 	mergeServiceSpec(additionalService, cr.Spec.VMInsert.ServiceSpec)
 	buildAdditionalServicePorts(cr.Spec.VMInsert.InsertPorts, additionalService)
+	if cr.Spec.VMInsert.ClusterNativePort != "" {
+		additionalService.Spec.Ports = append(additionalService.Spec.Ports,
+			corev1.ServicePort{
+				Name:       "clusternative",
+				Protocol:   "TCP",
+				Port:       intstr.Parse(cr.Spec.VMInsert.ClusterNativePort).IntVal,
+				TargetPort: intstr.Parse(cr.Spec.VMInsert.ClusterNativePort),
+			})
+	}
 
 	newService := defaultVMInsertService(cr)
 	buildAdditionalServicePorts(cr.Spec.VMInsert.InsertPorts, newService)
+	if cr.Spec.VMInsert.ClusterNativePort != "" {
+		newService.Spec.Ports = append(newService.Spec.Ports,
+			corev1.ServicePort{
+				Name:       "clusternative",
+				Protocol:   "TCP",
+				Port:       intstr.Parse(cr.Spec.VMInsert.ClusterNativePort).IntVal,
+				TargetPort: intstr.Parse(cr.Spec.VMInsert.ClusterNativePort),
+			})
+	}
 
 	if cr.Spec.VMInsert.ServiceSpec != nil {
 		if additionalService.Name == newService.Name {
@@ -380,6 +398,9 @@ func makePodSpecForVMSelect(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 	args := []string{
 		fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.VMSelect.Port),
 	}
+	if cr.Spec.VMSelect.ClusterNativePort != "" {
+		args = append(args, fmt.Sprintf("-clusternativeListenAddr=:%s", cr.Spec.VMSelect.ClusterNativePort))
+	}
 	if cr.Spec.VMSelect.LogLevel != "" {
 		args = append(args, fmt.Sprintf("-loggerLevel=%s", cr.Spec.VMSelect.LogLevel))
 	}
@@ -434,8 +455,11 @@ func makePodSpecForVMSelect(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 
 	var ports []corev1.ContainerPort
 	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(cr.Spec.VMSelect.Port).IntVal})
-	volumes := make([]corev1.Volume, 0)
+	if cr.Spec.VMSelect.ClusterNativePort != "" {
+		ports = append(ports, corev1.ContainerPort{Name: "clusternative", Protocol: "TCP", ContainerPort: intstr.Parse(cr.Spec.VMSelect.ClusterNativePort).IntVal})
+	}
 
+	volumes := make([]corev1.Volume, 0)
 	volumes = append(volumes, cr.Spec.VMSelect.Volumes...)
 
 	vmMounts := make([]corev1.VolumeMount, 0)
@@ -548,6 +572,24 @@ func makePodSpecForVMSelect(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 }
 
 func genVMSelectService(cr *v1beta1.VMCluster) *corev1.Service {
+	ports := []corev1.ServicePort{
+		{
+			Name:       "http",
+			Protocol:   "TCP",
+			Port:       intstr.Parse(cr.Spec.VMSelect.Port).IntVal,
+			TargetPort: intstr.Parse(cr.Spec.VMSelect.Port),
+		},
+	}
+
+	if cr.Spec.VMSelect.ClusterNativePort != "" {
+		ports = append(ports, corev1.ServicePort{
+			Name:       "clusternative",
+			Protocol:   "TCP",
+			Port:       intstr.Parse(cr.Spec.VMSelect.ClusterNativePort).IntVal,
+			TargetPort: intstr.Parse(cr.Spec.VMSelect.ClusterNativePort),
+		})
+	}
+
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.Spec.VMSelect.GetNameWithPrefix(cr.Name),
@@ -560,18 +602,29 @@ func genVMSelectService(cr *v1beta1.VMCluster) *corev1.Service {
 		Spec: corev1.ServiceSpec{
 			Type:     corev1.ServiceTypeClusterIP,
 			Selector: cr.VMSelectSelectorLabels(),
-			Ports: []corev1.ServicePort{
-				{
-					Name:       "http",
-					Protocol:   "TCP",
-					Port:       intstr.Parse(cr.Spec.VMSelect.Port).IntVal,
-					TargetPort: intstr.Parse(cr.Spec.VMSelect.Port),
-				},
-			},
+			Ports:    ports,
 		},
 	}
 }
 func genVMSelectHeadlessService(cr *v1beta1.VMCluster) *corev1.Service {
+	ports := []corev1.ServicePort{
+		{
+			Name:       "http",
+			Protocol:   "TCP",
+			Port:       intstr.Parse(cr.Spec.VMSelect.Port).IntVal,
+			TargetPort: intstr.Parse(cr.Spec.VMSelect.Port),
+		},
+	}
+
+	if cr.Spec.VMSelect.ClusterNativePort != "" {
+		ports = append(ports, corev1.ServicePort{
+			Name:       "clusternative",
+			Protocol:   "TCP",
+			Port:       intstr.Parse(cr.Spec.VMSelect.ClusterNativePort).IntVal,
+			TargetPort: intstr.Parse(cr.Spec.VMSelect.ClusterNativePort),
+		})
+	}
+
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.Spec.VMSelect.GetNameWithPrefix(cr.Name),
@@ -585,14 +638,7 @@ func genVMSelectHeadlessService(cr *v1beta1.VMCluster) *corev1.Service {
 			Type:      corev1.ServiceTypeClusterIP,
 			Selector:  cr.VMSelectSelectorLabels(),
 			ClusterIP: "None",
-			Ports: []corev1.ServicePort{
-				{
-					Name:       "http",
-					Protocol:   "TCP",
-					Port:       intstr.Parse(cr.Spec.VMSelect.Port).IntVal,
-					TargetPort: intstr.Parse(cr.Spec.VMSelect.Port),
-				},
-			},
+			Ports:     ports,
 		},
 	}
 }
@@ -698,6 +744,9 @@ func makePodSpecForVMInsert(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 	}
 
 	args = buildArgsForAdditionalPorts(args, cr.Spec.VMInsert.InsertPorts)
+	if cr.Spec.VMInsert.ClusterNativePort != "" {
+		args = append(args, fmt.Sprintf("--clusternativeListenAddr=:%s", cr.Spec.VMInsert.ClusterNativePort))
+	}
 
 	if cr.Spec.VMStorage != nil && cr.Spec.VMStorage.ReplicaCount != nil {
 		if cr.Spec.VMStorage.VMInsertPort == "" {
@@ -733,6 +782,16 @@ func makePodSpecForVMInsert(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 		},
 	}
 	ports = buildAdditionalContainerPorts(ports, cr.Spec.VMInsert.InsertPorts)
+	if cr.Spec.VMInsert.ClusterNativePort != "" {
+		ports = append(ports,
+			corev1.ContainerPort{
+				Name:          "clusternative",
+				Protocol:      "TCP",
+				ContainerPort: intstr.Parse(cr.Spec.VMInsert.ClusterNativePort).IntVal,
+			},
+		)
+	}
+
 	volumes := make([]corev1.Volume, 0)
 
 	volumes = append(volumes, cr.Spec.VMInsert.Volumes...)

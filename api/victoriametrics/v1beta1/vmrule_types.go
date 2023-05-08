@@ -71,7 +71,7 @@ type RuleGroup struct {
 	//    - "CustomHeader: foo"
 	//    - "CustomHeader2: bar"
 	// +optional
-	NotifierHeaders []string `json:"notifier_headers,omitempty"`
+	NotifierHeaders []string `json:"notifier_headers,omitempty" yaml:"notifier_headers,omitempty"`
 }
 
 // Rule describes an alerting or recording rule.

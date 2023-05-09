@@ -395,44 +395,47 @@ func generateVMAuthConfig(users []*v1beta1.VMUser, crdCache map[string]string) (
 // generates routing config for given target refs
 func genUrlMaps(userName string, refs []v1beta1.TargetRef, result yaml.MapSlice, crdUrlCache map[string]string) (yaml.MapSlice, error) {
 	var urlMaps []yaml.MapSlice
-	handleRef := func(ref v1beta1.TargetRef) (string, error) {
-		var urlPrefix string
-		if ref.CRD != nil {
-			urlPrefix = crdUrlCache[ref.CRD.AsKey()]
+	handleRef := func(ref v1beta1.TargetRef) ([]string, error) {
+		var urlPrefixes []string
+		switch {
+		case ref.CRD != nil:
+			urlPrefix := crdUrlCache[ref.CRD.AsKey()]
 			if urlPrefix == "" {
-				return "", fmt.Errorf("cannot find crdRef target: %q, for user: %s", ref.CRD.AsKey(), userName)
+				return nil, fmt.Errorf("cannot find crdRef target: %q, for user: %s", ref.CRD.AsKey(), userName)
 			}
-
-		} else {
-			if ref.Static.URL == "" {
-				return "", fmt.Errorf("static.url cannot be empty for user: %s", userName)
-			}
-			urlPrefix = ref.Static.URL
+			urlPrefixes = append(urlPrefixes, urlPrefix)
+		case len(ref.Static.URL) > 0:
+			urlPrefixes = append(urlPrefixes, ref.Static.URL)
+		case len(ref.Static.URLs) > 0:
+			urlPrefixes = ref.Static.URLs
+		default:
+			return nil, fmt.Errorf("static.url, static.urls and ref.crd cannot be empty for user: %s", userName)
 		}
+
 		if ref.TargetPathSuffix != "" {
 			parsedSuffix, err := url.Parse(ref.TargetPathSuffix)
 			if err != nil {
-				return "", fmt.Errorf("cannot parse targetPath: %q, err: %w", ref.TargetPathSuffix, err)
+				return nil, fmt.Errorf("cannot parse targetPath: %q, err: %w", ref.TargetPathSuffix, err)
 			}
-
-			parsedUrlPrefix, err := url.Parse(urlPrefix)
-			if err != nil {
-				return "", fmt.Errorf("cannot parse urlPrefix: %q,err: %w", urlPrefix, err)
-			}
-			parsedUrlPrefix.Path = path.Join(parsedUrlPrefix.Path, parsedSuffix.Path)
-			suffixQuery := parsedSuffix.Query()
-			// update query params if needed.
-			if len(suffixQuery) > 0 {
-				urlQ := parsedUrlPrefix.Query()
-				for k, v := range suffixQuery {
-					urlQ[k] = v
+			for idx, urlPrefix := range urlPrefixes {
+				parsedUrlPrefix, err := url.Parse(urlPrefix)
+				if err != nil {
+					return nil, fmt.Errorf("cannot parse urlPrefix: %q,err: %w", urlPrefix, err)
 				}
-				parsedUrlPrefix.RawQuery = urlQ.Encode()
+				parsedUrlPrefix.Path = path.Join(parsedUrlPrefix.Path, parsedSuffix.Path)
+				suffixQuery := parsedSuffix.Query()
+				// update query params if needed.
+				if len(suffixQuery) > 0 {
+					urlQ := parsedUrlPrefix.Query()
+					for k, v := range suffixQuery {
+						urlQ[k] = v
+					}
+					parsedUrlPrefix.RawQuery = urlQ.Encode()
+				}
+				urlPrefixes[idx] = parsedUrlPrefix.String()
 			}
-
-			urlPrefix = parsedUrlPrefix.String()
 		}
-		return urlPrefix, nil
+		return urlPrefixes, nil
 	}
 	// fast path for single or empty route
 	if len(refs) == 1 && len(refs[0].Paths) < 2 {
@@ -460,6 +463,7 @@ func genUrlMaps(userName string, refs []v1beta1.TargetRef, result yaml.MapSlice,
 			if len(ref.Headers) > 0 {
 				result = append(result, yaml.MapItem{Key: "headers", Value: ref.Headers})
 			}
+			ref.IPFilters.AddToYaml(result)
 			return result, nil
 		}
 
@@ -513,6 +517,7 @@ func genUrlMaps(userName string, refs []v1beta1.TargetRef, result yaml.MapSlice,
 			})
 		}
 		urlMaps = append(urlMaps, urlMap)
+		ref.IPFilters.AddToYaml(result)
 	}
 	result = append(result, yaml.MapItem{Key: "url_map", Value: urlMaps})
 	return result, nil
@@ -528,6 +533,12 @@ func genUserCfg(user *v1beta1.VMUser, crdUrlCache map[string]string) (yaml.MapSl
 		return nil, fmt.Errorf("cannot generate urlMaps for user: %w", err)
 	}
 
+	if len(user.Spec.DefaultURLs) > 0 {
+		r = append(r, yaml.MapItem{
+			Key:   "default_url",
+			Value: user.Spec.DefaultURLs,
+		})
+	}
 	// generate user access config.
 	var name, username, password, token string
 	if user.Spec.Name != nil {

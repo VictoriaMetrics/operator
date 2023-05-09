@@ -62,7 +62,7 @@ func buildVMAuthConfig(ctx context.Context, rclient client.Client, vmauth *v1bet
 	log.Info("VMAuth reconcile stats", "VMAuth", vmauth.Name, "toUpdate", len(toUpdate), "tocreate", len(toCreateSecrets), "exist", len(existSecrets))
 
 	// generate yaml config for vmauth.
-	cfg, err := generateVMAuthConfig(users, crdCache)
+	cfg, err := generateVMAuthConfig(vmauth, users, crdCache)
 	if err != nil {
 		return nil, err
 	}
@@ -353,7 +353,7 @@ func FetchCRDCache(ctx context.Context, rclient client.Client, users []*v1beta1.
 }
 
 // generateVMAuthConfig create VMAuth cfg for given Users.
-func generateVMAuthConfig(users []*v1beta1.VMUser, crdCache map[string]string) ([]byte, error) {
+func generateVMAuthConfig(cr *v1beta1.VMAuth, users []*v1beta1.VMUser, crdCache map[string]string) ([]byte, error) {
 	var cfg yaml.MapSlice
 
 	var cfgUsers []yaml.MapSlice
@@ -388,6 +388,23 @@ func generateVMAuthConfig(users []*v1beta1.VMUser, crdCache map[string]string) (
 			Key:   "users",
 			Value: cfgUsers,
 		},
+	}
+	var unAuthorizedAccess []yaml.MapSlice
+	for _, uc := range cr.Spec.UnAuthorizedAccessConfig {
+		urlMap := yaml.MapSlice{
+			{
+				Key:   "url_prefix",
+				Value: uc.URLs,
+			},
+			{
+				Key:   "src_paths",
+				Value: uc.Paths,
+			},
+		}
+		unAuthorizedAccess = append(unAuthorizedAccess, uc.IPFilters.AddToYaml(urlMap))
+	}
+	if len(unAuthorizedAccess) > 0 {
+		cfg = append(cfg, yaml.MapItem{Key: "unauthorized_user", Value: yaml.MapSlice{{Key: "url_map", Value: unAuthorizedAccess}}})
 	}
 	return yaml.Marshal(cfg)
 }
@@ -463,7 +480,7 @@ func genUrlMaps(userName string, refs []v1beta1.TargetRef, result yaml.MapSlice,
 			if len(ref.Headers) > 0 {
 				result = append(result, yaml.MapItem{Key: "headers", Value: ref.Headers})
 			}
-			ref.IPFilters.AddToYaml(result)
+			result = ref.IPFilters.AddToYaml(result)
 			return result, nil
 		}
 
@@ -517,7 +534,7 @@ func genUrlMaps(userName string, refs []v1beta1.TargetRef, result yaml.MapSlice,
 			})
 		}
 		urlMaps = append(urlMaps, urlMap)
-		ref.IPFilters.AddToYaml(result)
+		result = ref.IPFilters.AddToYaml(result)
 	}
 	result = append(result, yaml.MapItem{Key: "url_map", Value: urlMaps})
 	return result, nil

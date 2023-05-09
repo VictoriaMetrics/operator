@@ -692,6 +692,93 @@ func Test_buildVMAuthConfig(t *testing.T) {
   bearer_token: bearer-token-10
 `,
 		},
+		{
+			name: "with un athorized access and ip_filter ",
+			args: args{
+				vmauth: &v1beta1.VMAuth{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-vmauth",
+						Namespace: "default",
+					},
+					Spec: v1beta1.VMAuthSpec{SelectAllByDefault: true,
+						UnAuthorizedAccessConfig: []v1beta1.VMAuthUnauthorizedPath{
+							{
+								Paths: []string{"/", "/default"},
+								URLs:  []string{"http://route-1", "http://route-2"},
+								IPFilters: v1beta1.VMUserIPFilters{
+									DenyList: []string{
+										"127.0.0.1", "192.168.0.0/16",
+									},
+								},
+							},
+						}},
+				},
+			},
+			predefinedObjects: []runtime.Object{
+				&v1beta1.VMUser{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "user-1",
+						Namespace: "default",
+					},
+					Spec: v1beta1.VMUserSpec{
+						Name:        pointer.StringPtr("user1"),
+						BearerToken: pointer.StringPtr("bearer"),
+						TargetRefs: []v1beta1.TargetRef{
+							{
+								Static: &v1beta1.StaticRef{URL: "http://some-static"},
+								Paths:  []string{"/"},
+							},
+						},
+					},
+				},
+				&v1beta1.VMUser{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "user-2",
+						Namespace: "default",
+					},
+					Spec: v1beta1.VMUserSpec{
+						BearerToken: pointer.StringPtr("bearer-token-2"),
+						TargetRefs: []v1beta1.TargetRef{
+							{
+								CRD: &v1beta1.CRDRef{
+									Kind:      "VMAgent",
+									Name:      "test",
+									Namespace: "default",
+								},
+								Paths: []string{"/"},
+							},
+						},
+					},
+				},
+				&v1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "default",
+					},
+				},
+			},
+			want: `users:
+- url_prefix:
+  - http://some-static
+  name: user1
+  bearer_token: bearer
+- url_prefix:
+  - http://vmagent-test.default.svc:8429
+  bearer_token: bearer-token-2
+unauthorized_user:
+  url_map:
+  - url_prefix:
+    - http://route-1
+    - http://route-2
+    src_paths:
+    - /
+    - /default
+    ip_filters:
+      deny_list:
+      - 127.0.0.1
+      - 192.168.0.0/16
+`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -710,6 +710,38 @@ spec:
                   type: object
                   x-kubernetes-preserve-unknown-fields: true
                 type: array
+              unAuthorizedAccessConfig:
+                description: UnAuthorizedAccessConfig configures access for un authorized
+                  users
+                items:
+                  description: vmauthUnauthorizedPath defines url_map for unauthorized
+                    access
+                  properties:
+                    ip_filters:
+                      description: IPFilters defines filter for src ip address enterprise
+                        only
+                      properties:
+                        allow_list:
+                          items:
+                            type: string
+                          type: array
+                        deny_list:
+                          items:
+                            type: string
+                          type: array
+                      type: object
+                    src_paths:
+                      description: Paths src request paths
+                      items:
+                        type: string
+                      type: array
+                    url_prefix:
+                      description: URLs defines url_prefix for dst routing
+                      items:
+                        type: string
+                      type: array
+                  type: object
+                type: array
               userNamespaceSelector:
                 description: UserNamespaceSelector Namespaces to be selected for  VMAuth
                   discovery. Works in combination with Selector. NamespaceSelector

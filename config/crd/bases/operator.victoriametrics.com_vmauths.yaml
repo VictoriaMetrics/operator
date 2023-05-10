@@ -710,11 +710,11 @@ spec:
                   type: object
                   x-kubernetes-preserve-unknown-fields: true
                 type: array
-              unAuthorizedAccessConfig:
-                description: UnAuthorizedAccessConfig configures access for un authorized
+              unauthorizedAccessConfig:
+                description: UnauthorizedAccessConfig configures access for un authorized
                   users
                 items:
-                  description: vmauthUnauthorizedPath defines url_map for unauthorized
+                  description: VMAuthUnauthorizedPath defines url_map for unauthorized
                     access
                   properties:
                     ip_filters:

@@ -701,7 +701,7 @@ func Test_buildVMAuthConfig(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: v1beta1.VMAuthSpec{SelectAllByDefault: true,
-						UnAuthorizedAccessConfig: []v1beta1.VMAuthUnauthorizedPath{
+						UnauthorizedAccessConfig: []v1beta1.VMAuthUnauthorizedPath{
 							{
 								Paths: []string{"/", "/default"},
 								URLs:  []string{"http://route-1", "http://route-2"},

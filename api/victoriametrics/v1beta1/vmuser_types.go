@@ -2,7 +2,6 @@ package v1beta1
 
 import (
 	"fmt"
-	"gopkg.in/yaml.v2"
 	"strings"
 
 	v1 "k8s.io/api/core/v1"
@@ -74,38 +73,19 @@ type TargetRef struct {
 	// it's available since 1.68.0 version of vmauth
 	// +optional
 	Headers []string `json:"headers,omitempty"`
-	// IPFilters suppoerted only with enterprise vmauth version
+	// IPFilters defines per target src ip filters
+	// supported only with enterprise version of vmauth
 	// https://docs.victoriametrics.com/vmauth.html#ip-filters
 	// +optional
 	IPFilters VMUserIPFilters `json:"ip_filters,omitempty"`
 }
 
 // VMUserIPFilters defines filters for IP addresses
+// supported only with enterprise version of vmauth
 // https://docs.victoriametrics.com/vmauth.html#ip-filters
 type VMUserIPFilters struct {
 	DenyList  []string `json:"deny_list,omitempty"`
 	AllowList []string `json:"allow_list,omitempty"`
-}
-
-// AddToYaml conditionally adds ip filters to dst yaml
-func (vmip *VMUserIPFilters) AddToYaml(dst yaml.MapSlice) yaml.MapSlice {
-	ipFilters := yaml.MapSlice{}
-	if len(vmip.AllowList) > 0 {
-		ipFilters = append(ipFilters, yaml.MapItem{
-			Key:   "allow_list",
-			Value: vmip.AllowList,
-		})
-	}
-	if len(vmip.DenyList) > 0 {
-		ipFilters = append(ipFilters, yaml.MapItem{
-			Key:   "deny_list",
-			Value: vmip.DenyList,
-		})
-	}
-	if len(ipFilters) > 0 {
-		dst = append(dst, yaml.MapItem{Key: "ip_filters", Value: ipFilters})
-	}
-	return dst
 }
 
 // CRDRef describe CRD target reference.

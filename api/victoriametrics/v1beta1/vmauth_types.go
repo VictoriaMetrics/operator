@@ -178,9 +178,9 @@ type VMAuthSpec struct {
 	TerminationGracePeriodSeconds *int64 `json:"terminationGracePeriodSeconds,omitempty"`
 	// ReadinessGates defines pod readiness gates
 	ReadinessGates []v1.PodReadinessGate `json:"readinessGates,omitempty"`
-	// UnAuthorizedAccessConfig configures access for un authorized users
+	// UnauthorizedAccessConfig configures access for un authorized users
 	// +optional
-	UnAuthorizedAccessConfig []VMAuthUnauthorizedPath `json:"unAuthorizedAccessConfig,omitempty"`
+	UnauthorizedAccessConfig []VMAuthUnauthorizedPath `json:"unauthorizedAccessConfig,omitempty"`
 }
 
 // VMAuthUnauthorizedPath defines url_map for unauthorized access

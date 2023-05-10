@@ -3466,8 +3466,8 @@ func (in *VMAuthSpec) DeepCopyInto(out *VMAuthSpec) {
 		*out = make([]v1.PodReadinessGate, len(*in))
 		copy(*out, *in)
 	}
-	if in.UnAuthorizedAccessConfig != nil {
-		in, out := &in.UnAuthorizedAccessConfig, &out.UnAuthorizedAccessConfig
+	if in.UnauthorizedAccessConfig != nil {
+		in, out := &in.UnauthorizedAccessConfig, &out.UnauthorizedAccessConfig
 		*out = make([]VMAuthUnauthorizedPath, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])

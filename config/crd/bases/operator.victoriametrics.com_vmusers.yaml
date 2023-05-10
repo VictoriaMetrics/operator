@@ -108,8 +108,8 @@ spec:
                         type: string
                       type: array
                     ip_filters:
-                      description: IPFilters suppoerted only with enterprise vmauth
-                        version https://docs.victoriametrics.com/vmauth.html#ip-filters
+                      description: IPFilters defines per target src ip filters supported
+                        only with enterprise version of vmauth https://docs.victoriametrics.com/vmauth.html#ip-filters
                       properties:
                         allow_list:
                           items:

@@ -390,7 +390,7 @@ func generateVMAuthConfig(cr *v1beta1.VMAuth, users []*v1beta1.VMUser, crdCache 
 		},
 	}
 	var unAuthorizedAccess []yaml.MapSlice
-	for _, uc := range cr.Spec.UnAuthorizedAccessConfig {
+	for _, uc := range cr.Spec.UnauthorizedAccessConfig {
 		urlMap := yaml.MapSlice{
 			{
 				Key:   "url_prefix",
@@ -401,12 +401,33 @@ func generateVMAuthConfig(cr *v1beta1.VMAuth, users []*v1beta1.VMUser, crdCache 
 				Value: uc.Paths,
 			},
 		}
-		unAuthorizedAccess = append(unAuthorizedAccess, uc.IPFilters.AddToYaml(urlMap))
+		unAuthorizedAccess = append(unAuthorizedAccess, addIPFiltersToYaml(urlMap, uc.IPFilters))
 	}
 	if len(unAuthorizedAccess) > 0 {
 		cfg = append(cfg, yaml.MapItem{Key: "unauthorized_user", Value: yaml.MapSlice{{Key: "url_map", Value: unAuthorizedAccess}}})
 	}
 	return yaml.Marshal(cfg)
+}
+
+// AddToYaml conditionally adds ip filters to dst yaml
+func addIPFiltersToYaml(dst yaml.MapSlice, ipf v1beta1.VMUserIPFilters) yaml.MapSlice {
+	ipFilters := yaml.MapSlice{}
+	if len(ipf.AllowList) > 0 {
+		ipFilters = append(ipFilters, yaml.MapItem{
+			Key:   "allow_list",
+			Value: ipf.AllowList,
+		})
+	}
+	if len(ipf.DenyList) > 0 {
+		ipFilters = append(ipFilters, yaml.MapItem{
+			Key:   "deny_list",
+			Value: ipf.DenyList,
+		})
+	}
+	if len(ipFilters) > 0 {
+		dst = append(dst, yaml.MapItem{Key: "ip_filters", Value: ipFilters})
+	}
+	return dst
 }
 
 // generates routing config for given target refs
@@ -480,7 +501,7 @@ func genUrlMaps(userName string, refs []v1beta1.TargetRef, result yaml.MapSlice,
 			if len(ref.Headers) > 0 {
 				result = append(result, yaml.MapItem{Key: "headers", Value: ref.Headers})
 			}
-			result = ref.IPFilters.AddToYaml(result)
+			result = addIPFiltersToYaml(result, ref.IPFilters)
 			return result, nil
 		}
 
@@ -534,7 +555,7 @@ func genUrlMaps(userName string, refs []v1beta1.TargetRef, result yaml.MapSlice,
 			})
 		}
 		urlMaps = append(urlMaps, urlMap)
-		result = ref.IPFilters.AddToYaml(result)
+		result = addIPFiltersToYaml(result, ref.IPFilters)
 	}
 	result = append(result, yaml.MapItem{Key: "url_map", Value: urlMaps})
 	return result, nil

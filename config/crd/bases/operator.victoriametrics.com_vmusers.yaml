@@ -37,6 +37,12 @@ spec:
                 description: BearerToken Authorization header value for accessing
                   protected endpoint.
                 type: string
+              default_url:
+                description: DefaultURLs backend url for non-matching paths filter
+                  usually used for default backend with error message
+                items:
+                  type: string
+                type: array
               generatePassword:
                 description: GeneratePassword instructs operator to generate password
                   for user if spec.password if empty.
@@ -101,6 +107,19 @@ spec:
                       items:
                         type: string
                       type: array
+                    ip_filters:
+                      description: IPFilters defines per target src ip filters supported
+                        only with enterprise version of vmauth https://docs.victoriametrics.com/vmauth.html#ip-filters
+                      properties:
+                        allow_list:
+                          items:
+                            type: string
+                          type: array
+                        deny_list:
+                          items:
+                            type: string
+                          type: array
+                      type: object
                     paths:
                       description: Paths - matched path to route.
                       items:
@@ -113,8 +132,12 @@ spec:
                         url:
                           description: URL http url for given staticRef.
                           type: string
-                      required:
-                      - url
+                        urls:
+                          description: URLs allows setting multiple urls for load-balancing
+                            at vmauth-side.
+                          items:
+                            type: string
+                          type: array
                       type: object
                     target_path_suffix:
                       description: QueryParams []string `json:"queryParams,omitempty"`

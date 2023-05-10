@@ -37,6 +37,11 @@ type VMUserSpec struct {
 	BearerToken *string `json:"bearerToken,omitempty"`
 	// TargetRefs - reference to endpoints, which user may access.
 	TargetRefs []TargetRef `json:"targetRefs"`
+
+	// DefaultURLs backend url for non-matching paths filter
+	// usually used for default backend with error message
+	// +optional
+	DefaultURLs []string `json:"default_url,omitempty"`
 }
 
 // TargetRef describes target for user traffic forwarding.
@@ -55,7 +60,6 @@ type TargetRef struct {
 	// Paths - matched path to route.
 	// +optional
 	Paths []string `json:"paths,omitempty"`
-
 	// QueryParams []string `json:"queryParams,omitempty"`
 	// TargetPathSuffix allows to add some suffix to the target path
 	// It allows to hide tenant configuration from user with crd as ref.
@@ -69,6 +73,19 @@ type TargetRef struct {
 	// it's available since 1.68.0 version of vmauth
 	// +optional
 	Headers []string `json:"headers,omitempty"`
+	// IPFilters defines per target src ip filters
+	// supported only with enterprise version of vmauth
+	// https://docs.victoriametrics.com/vmauth.html#ip-filters
+	// +optional
+	IPFilters VMUserIPFilters `json:"ip_filters,omitempty"`
+}
+
+// VMUserIPFilters defines filters for IP addresses
+// supported only with enterprise version of vmauth
+// https://docs.victoriametrics.com/vmauth.html#ip-filters
+type VMUserIPFilters struct {
+	DenyList  []string `json:"deny_list,omitempty"`
+	AllowList []string `json:"allow_list,omitempty"`
 }
 
 // CRDRef describe CRD target reference.
@@ -96,7 +113,10 @@ func (cr *CRDRef) AsKey() string {
 // StaticRef - user-defined routing host address.
 type StaticRef struct {
 	// URL http url for given staticRef.
-	URL string `json:"url"`
+	URL string `json:"url,omitempty"`
+	// URLs allows setting multiple urls for load-balancing at vmauth-side.
+	// +optional
+	URLs []string `json:"urls,omitempty"`
 }
 
 // VMUserStatus defines the observed state of VMUser

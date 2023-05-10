@@ -48,7 +48,8 @@ func Test_genUserCfg(t *testing.T) {
 				},
 			},
 			want: `url_map:
-- url_prefix: http://vmselect
+- url_prefix:
+  - http://vmselect
   src_paths:
   - /select/0/prometheus
   - /select/0/graphite
@@ -93,12 +94,14 @@ password: pass
 				},
 			},
 			want: `url_map:
-- url_prefix: http://vmagent-base.monitoring.svc:8429
+- url_prefix:
+  - http://vmagent-base.monitoring.svc:8429
   src_paths:
   - /api/v1/write
   - /api/v1/targets
   - /targets
-- url_prefix: http://vmsingle-b.monitoring.svc:8429
+- url_prefix:
+  - http://vmsingle-b.monitoring.svc:8429
   src_paths:
   - /.*
 name: user1
@@ -149,17 +152,20 @@ bearer_token: secret-token
 				},
 			},
 			want: `url_map:
-- url_prefix: http://vmagent-base.monitoring.svc:8429/insert/0/prometheus?extra_label=key%3Dvalue
+- url_prefix:
+  - http://vmagent-base.monitoring.svc:8429/insert/0/prometheus?extra_label=key%3Dvalue
   src_paths:
   - /api/v1/write
   - /api/v1/targets
   - /targets
   headers:
   - 'baz: bar'
-- url_prefix: http://vmcluster-remote.mydomain.com:8401/insert/0/prometheus?extra_label=key%3Dvalue
+- url_prefix:
+  - http://vmcluster-remote.mydomain.com:8401/insert/0/prometheus?extra_label=key%3Dvalue
   src_paths:
   - /.*
-- url_prefix: http://vmsingle-b.monitoring.svc:8429
+- url_prefix:
+  - http://vmsingle-b.monitoring.svc:8429
   src_paths:
   - /.*
 bearer_token: secret-token
@@ -188,7 +194,8 @@ bearer_token: secret-token
 					"VMSingle/monitoring/db":  "http://vmsingle-b.monitoring.svc:8429",
 				},
 			},
-			want: `url_prefix: http://vmagent-base.monitoring.svc:8429
+			want: `url_prefix:
+- http://vmagent-base.monitoring.svc:8429
 name: user1
 bearer_token: secret-token
 `,
@@ -217,7 +224,8 @@ bearer_token: secret-token
 					"VMSingle/monitoring/db":  "http://vmsingle-b.monitoring.svc:8429",
 				},
 			},
-			want: `url_prefix: http://vmagent-base.monitoring.svc:8429
+			want: `url_prefix:
+- http://vmagent-base.monitoring.svc:8429
 headers:
 - 'X-Scope-OrgID: abc'
 - 'X-Scope-Team: baz'
@@ -408,10 +416,12 @@ func Test_buildVMAuthConfig(t *testing.T) {
 				},
 			},
 			want: `users:
-- url_prefix: http://some-static
+- url_prefix:
+  - http://some-static
   name: user1
   bearer_token: bearer
-- url_prefix: http://vmagent-test.default.svc:8429
+- url_prefix:
+  - http://vmagent-test.default.svc:8429
   bearer_token: bearer-token-2
 `,
 		},
@@ -530,16 +540,20 @@ func Test_buildVMAuthConfig(t *testing.T) {
 				},
 			},
 			want: `users:
-- url_prefix: http://some-static
+- url_prefix:
+  - http://some-static
   name: user-1
   bearer_token: bearer
-- url_prefix: http://vmagent-test.default.svc:8429
+- url_prefix:
+  - http://vmagent-test.default.svc:8429
   name: user-10
   bearer_token: some-bearer-token
-- url_prefix: http://vmagent-test.default.svc:8429
+- url_prefix:
+  - http://vmagent-test.default.svc:8429
   name: user-2
   bearer_token: bearer-token-2
-- url_prefix: http://vmagent-test.default.svc:8429
+- url_prefix:
+  - http://vmagent-test.default.svc:8429
   name: user-5
   username: some-user
   password: generated-password
@@ -668,12 +682,101 @@ func Test_buildVMAuthConfig(t *testing.T) {
 				},
 			},
 			want: `users:
-- url_prefix: http://some-static-15
+- url_prefix:
+  - http://some-static-15
   name: user-11
   bearer_token: bearer
-- url_prefix: http://vmagent-test.default.svc:8429
+- url_prefix:
+  - http://vmagent-test.default.svc:8429
   name: user-15
   bearer_token: bearer-token-10
+`,
+		},
+		{
+			name: "with un athorized access and ip_filter ",
+			args: args{
+				vmauth: &v1beta1.VMAuth{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-vmauth",
+						Namespace: "default",
+					},
+					Spec: v1beta1.VMAuthSpec{SelectAllByDefault: true,
+						UnauthorizedAccessConfig: []v1beta1.VMAuthUnauthorizedPath{
+							{
+								Paths: []string{"/", "/default"},
+								URLs:  []string{"http://route-1", "http://route-2"},
+								IPFilters: v1beta1.VMUserIPFilters{
+									DenyList: []string{
+										"127.0.0.1", "192.168.0.0/16",
+									},
+								},
+							},
+						}},
+				},
+			},
+			predefinedObjects: []runtime.Object{
+				&v1beta1.VMUser{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "user-1",
+						Namespace: "default",
+					},
+					Spec: v1beta1.VMUserSpec{
+						Name:        pointer.StringPtr("user1"),
+						BearerToken: pointer.StringPtr("bearer"),
+						TargetRefs: []v1beta1.TargetRef{
+							{
+								Static: &v1beta1.StaticRef{URL: "http://some-static"},
+								Paths:  []string{"/"},
+							},
+						},
+					},
+				},
+				&v1beta1.VMUser{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "user-2",
+						Namespace: "default",
+					},
+					Spec: v1beta1.VMUserSpec{
+						BearerToken: pointer.StringPtr("bearer-token-2"),
+						TargetRefs: []v1beta1.TargetRef{
+							{
+								CRD: &v1beta1.CRDRef{
+									Kind:      "VMAgent",
+									Name:      "test",
+									Namespace: "default",
+								},
+								Paths: []string{"/"},
+							},
+						},
+					},
+				},
+				&v1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "default",
+					},
+				},
+			},
+			want: `users:
+- url_prefix:
+  - http://some-static
+  name: user1
+  bearer_token: bearer
+- url_prefix:
+  - http://vmagent-test.default.svc:8429
+  bearer_token: bearer-token-2
+unauthorized_user:
+  url_map:
+  - url_prefix:
+    - http://route-1
+    - http://route-2
+    src_paths:
+    - /
+    - /default
+    ip_filters:
+      deny_list:
+      - 127.0.0.1
+      - 192.168.0.0/16
 `,
 		},
 	}

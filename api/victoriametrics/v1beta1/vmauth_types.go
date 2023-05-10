@@ -178,6 +178,22 @@ type VMAuthSpec struct {
 	TerminationGracePeriodSeconds *int64 `json:"terminationGracePeriodSeconds,omitempty"`
 	// ReadinessGates defines pod readiness gates
 	ReadinessGates []v1.PodReadinessGate `json:"readinessGates,omitempty"`
+	// UnauthorizedAccessConfig configures access for un authorized users
+	// +optional
+	UnauthorizedAccessConfig []VMAuthUnauthorizedPath `json:"unauthorizedAccessConfig,omitempty"`
+}
+
+// VMAuthUnauthorizedPath defines url_map for unauthorized access
+type VMAuthUnauthorizedPath struct {
+	// Paths src request paths
+	// +optional
+	Paths []string `json:"src_paths,omitempty"`
+	// URLs defines url_prefix for dst routing
+	// +optional
+	URLs []string `json:"url_prefix,omitempty"`
+	// IPFilters defines filter for src ip address
+	// enterprise only
+	IPFilters VMUserIPFilters `json:"ip_filters,omitempty"`
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface

@@ -89,7 +89,7 @@ func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *victoriametricsv
 	if err = gzipConfig(&buf, generatedConfig); err != nil {
 		return nil, fmt.Errorf("cannot gzip config for vmagent: %w", err)
 	}
-	s.Data[configFilename] = buf.Bytes()
+	s.Data[vmagentGzippedFilename] = buf.Bytes()
 
 	curSecret := &v1.Secret{}
 	err = rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: s.Name}, curSecret)

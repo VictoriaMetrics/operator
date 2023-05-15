@@ -31,7 +31,7 @@ const (
 	vmAuthConfigFolder  = "/opt/vmauth"
 	vmAuthConfigName    = "config.yaml"
 	vmAuthConfigNameGz  = "config.yaml.gz"
-	vmAuthVolumeName    = "vmauth-config-volume"
+	vmAuthVolumeName    = "config"
 )
 
 // CreateOrUpdateVMAuthService creates service for VMAuth
@@ -243,7 +243,7 @@ func makeSpecForVMAuth(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperator
 	}
 
 	configReloader := buildVMAuthConfigReloaderContainer(cr, c)
-	cr.Spec.InitContainers = maybeAddInitConfigContainer(cr.Spec.InitContainers, c, vmAuthConfigFolder, vmAuthConfigName, vmAuthConfigMountGz, vmAuthConfigNameGz)
+	cr.Spec.InitContainers = maybeAddInitConfigContainer(cr.Spec.InitContainers, c, vmAuthConfigMountGz, vmAuthConfigNameGz, vmAuthConfigFolder, vmAuthConfigName)
 
 	vmauthContainer = buildProbe(vmauthContainer, cr)
 	operatorContainers := []corev1.Container{configReloader, vmauthContainer}
@@ -279,7 +279,6 @@ func makeSpecForVMAuth(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperator
 			ReadinessGates:                cr.Spec.ReadinessGates,
 		},
 	}
-
 	return vmAuthSpec, nil
 
 }
@@ -487,7 +486,7 @@ func buildVMAuthConfigReloaderContainer(cr *victoriametricsv1beta1.VMAuth, c *co
 
 func maybeAddInitConfigContainer(src []corev1.Container, c *config.BaseOperatorConf, configDirName, configFileName, outConfigDir, outFileName string) []corev1.Container {
 	// TODO add support for custom reloader
-	if !c.UseCustomConfigReloader {
+	if c.UseCustomConfigReloader {
 		return src
 	}
 	initReloader := corev1.Container{

@@ -18,9 +18,6 @@ import (
 
 const (
 	defaultScrapeInterval          = "30s"
-	tlsAssetsDir                   = "/etc/vmagent-tls/certs"
-	configFilename                 = "vmagent.yaml.gz"
-	configEnvsubstFilename         = "vmagent.env.yaml"
 	kubernetesSDRoleEndpoint       = "endpoints"
 	kubernetesSDRoleService        = "service"
 	kubernetesSDRoleEndpointSlices = "endpointslices"
@@ -221,7 +218,7 @@ func makeConfigSecret(cr *victoriametricsv1beta1.VMAgent, config *config.BaseOpe
 			Finalizers:      []string{victoriametricsv1beta1.FinalizerName},
 		},
 		Data: map[string][]byte{
-			configFilename: {},
+			vmagentGzippedFilename: {},
 		},
 	}
 	for idx, rw := range cr.Spec.RemoteWrite {

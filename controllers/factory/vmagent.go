@@ -37,6 +37,9 @@ const (
 	globalRelabelingName            = "global_relabeling.yaml"
 	urlRelabelingName               = "url_relabeling-%d.yaml"
 	shardNumPlaceholder             = "%SHARD_NUM%"
+	tlsAssetsDir                    = "/etc/vmagent-tls/certs"
+	vmagentGzippedFilename          = "vmagent.yaml.gz"
+	configEnvsubstFilename          = "vmagent.env.yaml"
 )
 
 // To save compatibility in the single-shard version still need to fill in %SHARD_NUM% placeholder
@@ -500,7 +503,7 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 			}
 		}
 	}
-	cr.Spec.InitContainers = maybeAddInitConfigContainer(cr.Spec.InitContainers, c, vmAgentConfDir, vmAuthConfigName, vmAgentConOfOutDir, configEnvsubstFilename)
+	cr.Spec.InitContainers = maybeAddInitConfigContainer(cr.Spec.InitContainers, c, vmAgentConfDir, vmagentGzippedFilename, vmAgentConOfOutDir, configEnvsubstFilename)
 	return &corev1.PodSpec{
 		NodeSelector:                  cr.Spec.NodeSelector,
 		Volumes:                       volumes,
@@ -1290,7 +1293,7 @@ func buildConfigReloaderArgs(cr *victoriametricsv1beta1.VMAgent, c *config.BaseO
 		args = append(args, "--config-secret-key=vmagent.yaml.gz")
 		args = victoriametricsv1beta1.MaybeEnableProxyProtocol(args, cr.Spec.ExtraArgs)
 	} else {
-		args = append(args, fmt.Sprintf("--config-file=%s", path.Join(vmAgentConfDir, configFilename)))
+		args = append(args, fmt.Sprintf("--config-file=%s", path.Join(vmAgentConfDir, vmagentGzippedFilename)))
 	}
 	return args
 }

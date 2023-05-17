@@ -2,13 +2,13 @@ package factory
 
 import (
 	"fmt"
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	"path"
 	"reflect"
 	"regexp"
 	"sort"
 	"strings"
 
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"gopkg.in/yaml.v2"
@@ -426,14 +426,14 @@ func generatePodScrapeConfig(
 		case metav1.LabelSelectorOpExists:
 			relabelings = append(relabelings, yaml.MapSlice{
 				{Key: "action", Value: "keep"},
-				{Key: "source_labels", Value: []string{"__meta_kubernetes_pod_label_" + sanitizeLabelName(exp.Key)}},
-				{Key: "regex", Value: ".+"},
+				{Key: "source_labels", Value: []string{"__meta_kubernetes_pod_labelpresent_" + sanitizeLabelName(exp.Key)}},
+				{Key: "regex", Value: "true"},
 			})
 		case metav1.LabelSelectorOpDoesNotExist:
 			relabelings = append(relabelings, yaml.MapSlice{
 				{Key: "action", Value: "drop"},
-				{Key: "source_labels", Value: []string{"__meta_kubernetes_pod_label_" + sanitizeLabelName(exp.Key)}},
-				{Key: "regex", Value: ".+"},
+				{Key: "source_labels", Value: []string{"__meta_kubernetes_pod_labelpresent_" + sanitizeLabelName(exp.Key)}},
+				{Key: "regex", Value: "true"},
 			})
 		}
 	}
@@ -701,14 +701,14 @@ func generateServiceScrapeConfig(
 		case metav1.LabelSelectorOpExists:
 			relabelings = append(relabelings, yaml.MapSlice{
 				{Key: "action", Value: "keep"},
-				{Key: "source_labels", Value: []string{"__meta_kubernetes_service_label_" + sanitizeLabelName(exp.Key)}},
-				{Key: "regex", Value: ".+"},
+				{Key: "source_labels", Value: []string{"__meta_kubernetes_service_labelpresent_" + sanitizeLabelName(exp.Key)}},
+				{Key: "regex", Value: "true"},
 			})
 		case metav1.LabelSelectorOpDoesNotExist:
 			relabelings = append(relabelings, yaml.MapSlice{
 				{Key: "action", Value: "drop"},
-				{Key: "source_labels", Value: []string{"__meta_kubernetes_service_label_" + sanitizeLabelName(exp.Key)}},
-				{Key: "regex", Value: ".+"},
+				{Key: "source_labels", Value: []string{"__meta_kubernetes_service_labelpresent_" + sanitizeLabelName(exp.Key)}},
+				{Key: "regex", Value: "true"},
 			})
 		}
 	}
@@ -1034,14 +1034,14 @@ func generateNodeScrapeConfig(
 		case metav1.LabelSelectorOpExists:
 			relabelings = append(relabelings, yaml.MapSlice{
 				{Key: "action", Value: "keep"},
-				{Key: "source_labels", Value: []string{"__meta_kubernetes_node_label_" + sanitizeLabelName(exp.Key)}},
-				{Key: "regex", Value: ".+"},
+				{Key: "source_labels", Value: []string{"__meta_kubernetes_node_labelpresent_" + sanitizeLabelName(exp.Key)}},
+				{Key: "regex", Value: "true"},
 			})
 		case metav1.LabelSelectorOpDoesNotExist:
 			relabelings = append(relabelings, yaml.MapSlice{
 				{Key: "action", Value: "drop"},
-				{Key: "source_labels", Value: []string{"__meta_kubernetes_node_label_" + sanitizeLabelName(exp.Key)}},
-				{Key: "regex", Value: ".+"},
+				{Key: "source_labels", Value: []string{"__meta_kubernetes_node_labelpresent_" + sanitizeLabelName(exp.Key)}},
+				{Key: "regex", Value: "true"},
 			})
 		}
 	}

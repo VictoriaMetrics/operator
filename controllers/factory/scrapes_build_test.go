@@ -1467,8 +1467,8 @@ relabel_configs:
   regex: value-3
 - action: keep
   source_labels:
-  - __meta_kubernetes_pod_label_some_label
-  regex: .+
+  - __meta_kubernetes_pod_labelpresent_some_label
+  regex: "true"
 - action: keep
   source_labels:
   - __meta_kubernetes_pod_container_port_name

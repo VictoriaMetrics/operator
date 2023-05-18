@@ -8,14 +8,13 @@ import (
 	"strings"
 
 	"github.com/VictoriaMetrics/metricsql"
-	"k8s.io/apimachinery/pkg/api/equality"
-	"k8s.io/apimachinery/pkg/labels"
-
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -233,6 +232,11 @@ func SelectVMProbes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rcl
 func SelectVMNodeScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) (map[string]*victoriametricsv1beta1.VMNodeScrape, error) {
 
 	l := log.WithValues("vmagent", cr.Name)
+	if !config.IsClusterWideAccessAllowed() && cr.IsOwnsServiceAccount() {
+		l.Info("cannot use VMNodeScrape at operator in single namespace mode with default permissions. Create ServiceAccount for VMAgent manually if needed. Skipping config generation for it")
+		return nil, nil
+	}
+
 	res := make(map[string]*victoriametricsv1beta1.VMNodeScrape)
 
 	var nodesCombined []victoriametricsv1beta1.VMNodeScrape

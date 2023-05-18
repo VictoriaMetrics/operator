@@ -7,6 +7,7 @@ import (
 	"time"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-test/deep"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -162,6 +163,16 @@ func growSTSPVC(ctx context.Context, rclient client.Client, sts *appsv1.Stateful
 
 // isStorageClassExpandable check is it possible to update size of given pvc
 func isStorageClassExpandable(ctx context.Context, rclient client.Client, pvc *corev1.PersistentVolumeClaim) (bool, error) {
+
+	// do not perform any checks if user set annotation explicitly.
+	if pvc.Annotations[victoriametricsv1beta1.PVCExpandableLabel] == "true" {
+		return true, nil
+	}
+	// fast path at single namespace mode, listing storage classes is disabled
+	if !config.IsClusterWideAccessAllowed() {
+		log.Info("cannot detect if storageClass expandable at single namespace mode, expand PVC manually or enforce resizing with annotation to true", "pvc annotation", victoriametricsv1beta1.PVCExpandableLabel)
+		return false, nil
+	}
 	var isNotDefault bool
 	var className string
 	if pvc.Spec.StorageClassName != nil {

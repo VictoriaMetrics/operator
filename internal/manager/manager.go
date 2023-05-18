@@ -116,7 +116,7 @@ func RunManager(ctx context.Context) error {
 		LeaderElectionID: "57410f0d.victoriametrics.com",
 		ClientDisableCacheFor: []client.Object{&v1.Secret{}, &v1.ConfigMap{}, &v1.Pod{}, &v12.Deployment{},
 			&v12.StatefulSet{},
-			&v1beta1.PodSecurityPolicy{}, &v1beta1.PodDisruptionBudget{}},
+			&v1beta1.PodSecurityPolicy{}, &v1beta1.PodDisruptionBudget{}, &v1.Namespace{}},
 		Namespace: config.MustGetWatchNamespace(),
 	})
 	if err != nil {
@@ -152,7 +152,7 @@ func RunManager(ctx context.Context) error {
 		setupLog.Info("operator is running in single namespace mode", "namespace", opNs)
 	}
 
-	if !*disableCRDOwnership {
+	if !*disableCRDOwnership && opNs == "" {
 		initC, err := client.New(mgr.GetConfig(), client.Options{Scheme: scheme})
 		if err != nil {
 			return err

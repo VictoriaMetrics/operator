@@ -29,6 +29,19 @@ func CreateVMAgentClusterAccess(ctx context.Context, cr *v1beta12.VMAgent, rclie
 	return nil
 }
 
+// CreateVMAgentNamespaceAccess - creates single namespace access for vmagent
+// with role and rolebinding.
+func CreateVMAgentNamespaceAccess(ctx context.Context, cr *v1beta12.VMAgent, rclient client.Client) error {
+	if err := ensureVMAgentRExist(ctx, cr, rclient); err != nil {
+		return fmt.Errorf("cannot ensure state of vmagent's cluster role: %w", err)
+	}
+	if err := ensureVMAgentRBExist(ctx, cr, rclient); err != nil {
+		return fmt.Errorf("cannot ensure state of vmagent's role binding: %w", err)
+	}
+
+	return nil
+}
+
 func ensureVMAgentCRExist(ctx context.Context, cr *v1beta12.VMAgent, rclient client.Client) error {
 	clusterRole := buildVMAgentClusterRole(cr)
 	var existsClusterRole v12.ClusterRole
@@ -148,6 +161,111 @@ func buildVMAgentClusterRole(cr *v1beta12.VMAgent) *v12.ClusterRole {
 					"routers/metrics", "registry/metrics",
 				},
 			},
+		},
+	}
+}
+
+func ensureVMAgentRExist(ctx context.Context, cr *v1beta12.VMAgent, rclient client.Client) error {
+	nr := buildVMAgentNamespaceRole(cr)
+	var existsClusterRole v12.Role
+
+	if err := rclient.Get(ctx, types.NamespacedName{Name: nr.Name, Namespace: cr.Namespace}, &existsClusterRole); err != nil {
+		if errors.IsNotFound(err) {
+			return rclient.Create(ctx, nr)
+		}
+		return fmt.Errorf("cannot get exist cluster role for vmagent: %w", err)
+	}
+
+	existsClusterRole.OwnerReferences = nr.OwnerReferences
+	existsClusterRole.Labels = nr.Labels
+	existsClusterRole.Annotations = labels.Merge(existsClusterRole.Annotations, nr.Annotations)
+	existsClusterRole.Rules = nr.Rules
+	v1beta12.MergeFinalizers(&existsClusterRole, v1beta12.FinalizerName)
+	return rclient.Update(ctx, &existsClusterRole)
+}
+
+func ensureVMAgentRBExist(ctx context.Context, cr *v1beta12.VMAgent, rclient client.Client) error {
+	rb := buildVMAgentNamespaceRoleBinding(cr)
+	var existsRB v12.RoleBinding
+
+	if err := rclient.Get(ctx, types.NamespacedName{Name: rb.Name, Namespace: cr.Namespace}, &existsRB); err != nil {
+		if errors.IsNotFound(err) {
+			return rclient.Create(ctx, rb)
+		}
+		fmt.Println("HERE")
+		return fmt.Errorf("cannot get rb for vmagent: %w", err)
+	}
+
+	existsRB.OwnerReferences = rb.OwnerReferences
+	existsRB.Labels = rb.Labels
+	existsRB.Annotations = labels.Merge(existsRB.Annotations, rb.Annotations)
+	existsRB.Subjects = rb.Subjects
+	existsRB.RoleRef = rb.RoleRef
+	v1beta12.MergeFinalizers(&existsRB, v1beta12.FinalizerName)
+	return rclient.Update(ctx, &existsRB)
+}
+
+func buildVMAgentNamespaceRole(cr *v1beta12.VMAgent) *v12.Role {
+	return &v12.Role{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            cr.GetClusterRoleName(),
+			Namespace:       cr.GetNamespace(),
+			Labels:          cr.AllLabels(),
+			Annotations:     cr.AnnotationsFiltered(),
+			Finalizers:      []string{v1beta12.FinalizerName},
+			OwnerReferences: cr.AsCRDOwner(),
+		},
+		Rules: []v12.PolicyRule{
+			{
+				APIGroups: []string{""},
+				Verbs: []string{
+					"get",
+					"list",
+					"watch",
+				},
+				Resources: []string{
+					"services",
+					"endpoints",
+					"pods",
+					"endpointslices",
+				},
+			},
+			{
+				APIGroups: []string{"networking.k8s.io", "extensions"},
+				Verbs: []string{
+					"get",
+					"list",
+					"watch",
+				},
+				Resources: []string{
+					"ingresses",
+				},
+			},
+		},
+	}
+}
+
+func buildVMAgentNamespaceRoleBinding(cr *v1beta12.VMAgent) *v12.RoleBinding {
+	return &v12.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            cr.GetClusterRoleName(),
+			Namespace:       cr.GetNamespace(),
+			Labels:          cr.AllLabels(),
+			Annotations:     cr.AnnotationsFiltered(),
+			Finalizers:      []string{v1beta12.FinalizerName},
+			OwnerReferences: cr.AsCRDOwner(),
+		},
+		Subjects: []v12.Subject{
+			{
+				Kind:      v12.ServiceAccountKind,
+				Name:      cr.GetServiceAccountName(),
+				Namespace: cr.GetNamespace(),
+			},
+		},
+		RoleRef: v12.RoleRef{
+			APIGroup: v12.GroupName,
+			Name:     cr.GetClusterRoleName(),
+			Kind:     "Role",
 		},
 	}
 }

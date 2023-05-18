@@ -1,0 +1,188 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vm-operator-single-ns-only
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: vm-operator-minimal
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: vm-operator-single-ns-only
+subjects:
+  - kind: ServiceAccount
+    name: vm-operator-single-ns-only
+    namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: vm-operator-single-ns-only
+  namespace: default
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - endpoints
+      - endpointslices
+    verbs:
+      - 'list'
+      - 'watch'
+      - 'get'
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+      - configmaps
+      - configmaps/finalizers
+      - persistentvolumeclaims
+      - persistentvolumeclaims/finalizers
+      - secrets
+      - secrets/finalizers
+      - services
+      - services/finalizers
+      - serviceaccounts
+      - serviceaccounts/finalizers
+    verbs:
+      - '*'
+  - apiGroups:
+      - apps
+    resources:
+      - deployments
+      - deployments/finalizers
+      - replicasets
+      - statefulsets
+      - statefulsets/finalizers
+      - statefulsets/status
+    verbs:
+      - '*'
+  - apiGroups:
+      - policy
+    resources:
+      - poddisruptionbudgets
+      - poddisruptionbudgets/finalizers
+    verbs:
+      - '*'
+  - apiGroups:
+      - monitoring.coreos.com
+    resources:
+      - '*'
+    verbs:
+      - '*'
+  - apiGroups:
+      - operator.victoriametrics.com
+    resources:
+      - vmagents
+      - vmagents/finalizers
+      - vmalerts
+      - vmalerts/finalizers
+      - vmalertmanagers
+      - vmalertmanagers/finalizers
+      - vmclusters
+      - vmclusters/finalizers
+      - vmpodscrapes
+      - vmpodscrapes/finalizers
+      - vmrules
+      - vmrules/finalizers
+      - vmusers
+      - vmusers/finalizers
+      - vmauths
+      - vmauths/finalizers
+      - vmprobes
+      - vmsingles
+      - vmsingles/finalizers
+      - vmnodescrapes
+      - vmnodescrapes/finalizers
+      - vmalertmanagerconfigs
+      - vmalertmanagerconfigs/finalizers
+      - vmstaticscrapes
+      - vmstaticscrapes/finalizers
+    verbs:
+      - create
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - operator.victoriametrics.com
+    resources:
+      - vmagents/status
+      - vmalerts/status
+      - vmalertmanagers/status
+      - vmclusters/status
+      - vmpodscrapes/status
+      - vmrules/status
+      - vmusers/status
+      - vmauths/status
+      - vmservicescrapes/status
+      - vmprobes/status
+      - vmsingles/status
+      - vmnodescrapes/status
+      - vmalertmanagerconfigs/status
+      - vmstaticscrapes/status
+    verbs:
+      - get
+      - patch
+      - update
+
+  - apiGroups:
+      - operator.victoriametrics.com
+    resources:
+      - vmservicescrapes
+    verbs:
+      - '*'
+  - apiGroups:
+      - extensions
+      - "extensions"
+      - networking.k8s.io
+      - "networking.k8s.io"
+    resources:
+      - ingresses
+    verbs:
+      - get
+      - list
+      - watch
+      - delete
+  - apiGroups:
+      - "rbac.authorization.k8s.io"
+    resources:
+      - roles
+      - rolebindings
+    verbs:
+      - get
+      - list
+      - create
+      - patch
+      - update
+      - watch
+      - delete
+  - apiGroups:
+      - autoscaling
+    resources:
+      - horizontalpodautoscalers
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - networking.k8s.io
+      - extensions
+    resources:
+      - ingresses
+      - ingresses/finalizers
+    verbs:
+      - create
+      - get
+      - patch
+      - update
+      - watch
+      - delete
+

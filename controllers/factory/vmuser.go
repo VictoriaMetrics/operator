@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"math/big"
 	"net/url"
 	"path"
@@ -280,6 +281,11 @@ func FetchCRDCache(ctx context.Context, rclient client.Client, users []*v1beta1.
 		for j := range user.Spec.TargetRefs {
 			ref := user.Spec.TargetRefs[j]
 			if ref.CRD == nil {
+				continue
+			}
+			// namespace mismatch
+			if !config.IsClusterWideAccessAllowed() && ref.CRD.Namespace != config.MustGetWatchNamespace() {
+				log.Info("cannot discover CRD component on whole kubernetes cluster. Operator started with single namespace", "watch_namespace", config.MustGetWatchNamespace(), "crd_ref_name", ref.CRD.Name, "crd_ref_namespace", ref.CRD.Namespace)
 				continue
 			}
 			if _, ok := crdCacheUrlCache[ref.CRD.AsKey()]; ok {

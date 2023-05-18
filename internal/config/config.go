@@ -351,6 +351,11 @@ func MustGetWatchNamespace() string {
 	return opNamespace
 }
 
+// IsClusterWideAccessAllowed checks if cluster wide access for components is needed
+func IsClusterWideAccessAllowed() bool {
+	return MustGetWatchNamespace() == ""
+}
+
 func MustGetNamespaceListOptions() *client.ListOptions {
 	return &client.ListOptions{
 		Namespace: MustGetWatchNamespace(),

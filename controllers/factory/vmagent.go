@@ -84,8 +84,14 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 		}
 	}
 	if cr.GetServiceAccountName() == cr.PrefixedName() {
-		if err := vmagent.CreateVMAgentClusterAccess(ctx, cr, rclient); err != nil {
-			return fmt.Errorf("cannot create vmagent clusterole and binding for it, err: %w", err)
+		var err error
+		if config.IsClusterWideAccessAllowed() {
+			err = vmagent.CreateVMAgentClusterAccess(ctx, cr, rclient)
+		} else {
+			err = vmagent.CreateVMAgentNamespaceAccess(ctx, cr, rclient)
+		}
+		if err != nil {
+			return fmt.Errorf("cannot create vmagent role and binding for it, err: %w", err)
 		}
 	}
 	// we have to create empty or full cm first

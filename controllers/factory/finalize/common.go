@@ -2,11 +2,12 @@ package finalize
 
 import (
 	"context"
-	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
-	policyv1 "k8s.io/api/policy/v1"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	v12 "k8s.io/api/core/v1"
+	policyv1 "k8s.io/api/policy/v1"
 	"k8s.io/api/policy/v1beta1"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	v1 "k8s.io/api/rbac/v1"
@@ -73,6 +74,9 @@ func deleteSA(ctx context.Context, rclient client.Client, crd CRDObject) error {
 	if !crd.IsOwnsServiceAccount() {
 		return nil
 	}
+	if err := removeFinalizeObjByName(ctx, rclient, &v12.ServiceAccount{}, crd.GetServiceAccountName(), crd.GetNSName()); err != nil {
+		return err
+	}
 	return SafeDelete(ctx, rclient, &v12.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Namespace: crd.GetNSName(), Name: crd.GetServiceAccountName()}})
 }
 
@@ -105,6 +109,15 @@ func ensureCRBRemoved(ctx context.Context, rclient client.Client, crd CRDObject)
 }
 
 func finalizePsp(ctx context.Context, rclient client.Client, crd CRDObject) error {
+
+	// check sa
+	if err := deleteSA(ctx, rclient, crd); err != nil {
+		return err
+	}
+	// fast path, cluster wide permissions is missing
+	if !config.IsClusterWideAccessAllowed() {
+		return nil
+	}
 	// check binding
 	if err := removeFinalizeObjByName(ctx, rclient, &v1.ClusterRoleBinding{}, crd.PrefixedName(), crd.GetNSName()); err != nil {
 		return err
@@ -113,10 +126,7 @@ func finalizePsp(ctx context.Context, rclient client.Client, crd CRDObject) erro
 	if err := removeFinalizeObjByName(ctx, rclient, &v1.ClusterRole{}, crd.PrefixedName(), crd.GetNSName()); err != nil {
 		return err
 	}
-	// check sa
-	if err := removeFinalizeObjByName(ctx, rclient, &v12.ServiceAccount{}, crd.GetServiceAccountName(), crd.GetNSName()); err != nil {
-		return err
-	}
+
 	// check psp
 	if k8stools.IsPSPSupported() {
 		if err := removeFinalizeObjByName(ctx, rclient, &v1beta1.PodSecurityPolicy{}, crd.GetPSPName(), crd.GetNSName()); err != nil {

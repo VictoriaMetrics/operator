@@ -83,14 +83,8 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 			return fmt.Errorf("cannot create podsecurity policy for vmagent, err: %w", err)
 		}
 	}
-	if cr.GetServiceAccountName() == cr.PrefixedName() {
-		var err error
-		if config.IsClusterWideAccessAllowed() {
-			err = vmagent.CreateVMAgentClusterAccess(ctx, cr, rclient)
-		} else {
-			err = vmagent.CreateVMAgentNamespaceAccess(ctx, cr, rclient)
-		}
-		if err != nil {
+	if cr.IsOwnsServiceAccount() {
+		if err := vmagent.CreateVMAgentK8sAPIAccess(ctx, cr, rclient, config.IsClusterWideAccessAllowed()); err != nil {
 			return fmt.Errorf("cannot create vmagent role and binding for it, err: %w", err)
 		}
 	}

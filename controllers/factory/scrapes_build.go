@@ -50,7 +50,7 @@ func generateConfig(
 
 	cfg := yaml.MapSlice{}
 	if !config.IsClusterWideAccessAllowed() && cr.IsOwnsServiceAccount() {
-		log.Info("Setting discovery for the single namespace only, since operator launched with set WATCH_NAMESPACE param. Set customer ServiceAccount for VMAgent if needed.", "vmagent", cr.Name, "namespace", cr.Namespace)
+		log.Info("Setting discovery for the single namespace only, since operator launched with set WATCH_NAMESPACE param. Set custom ServiceAccountName property for VMAgent if needed.", "vmagent", cr.Name, "namespace", cr.Namespace)
 		cr.Spec.IgnoreNamespaceSelectors = true
 	}
 

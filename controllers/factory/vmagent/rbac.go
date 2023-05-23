@@ -4,34 +4,103 @@ import (
 	"context"
 	"fmt"
 
-	"k8s.io/apimachinery/pkg/api/errors"
-
-	"k8s.io/apimachinery/pkg/types"
-
 	v1beta12 "github.com/VictoriaMetrics/operator/api/v1beta1"
-	v12 "k8s.io/api/rbac/v1"
+	rbacV1 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// CreateVMAgentClusterAccess - create cluster access for vmagent
-// with clusterrole and clusterrolebinding.
-func CreateVMAgentClusterAccess(ctx context.Context, cr *v1beta12.VMAgent, rclient client.Client) error {
-	if err := ensureVMAgentCRExist(ctx, cr, rclient); err != nil {
-		return fmt.Errorf("cannot ensure state of vmagent's cluster role: %w", err)
+var (
+	singleNSPolicyRules = []rbacV1.PolicyRule{
+		{
+			APIGroups: []string{""},
+			Verbs: []string{
+				"get",
+				"list",
+				"watch",
+			},
+			Resources: []string{
+				"services",
+				"endpoints",
+				"pods",
+				"endpointslices",
+			},
+		},
+		{
+			APIGroups: []string{"networking.k8s.io", "extensions"},
+			Verbs: []string{
+				"get",
+				"list",
+				"watch",
+			},
+			Resources: []string{
+				"ingresses",
+			},
+		},
 	}
-	if err := ensureVMAgentCRBExist(ctx, cr, rclient); err != nil {
-		return fmt.Errorf("cannot ensure state of vmagent's cluster role binding: %w", err)
+	clusterWidePolicyRules = []rbacV1.PolicyRule{
+		{
+			APIGroups: []string{""},
+			Verbs: []string{
+				"get",
+				"list",
+				"watch",
+			},
+			Resources: []string{
+				"nodes",
+				"nodes/metrics",
+				"nodes/proxy",
+				"services",
+				"endpoints",
+				"pods",
+				"endpointslices",
+				"configmaps",
+				"namespaces",
+				"secrets",
+			},
+		},
+		{
+			APIGroups: []string{"networking.k8s.io", "extensions"},
+			Verbs: []string{
+				"get",
+				"list",
+				"watch",
+			},
+			Resources: []string{
+				"ingresses",
+			},
+		},
+		{
+			NonResourceURLs: []string{"/metrics", "/metrics/resources"},
+			Verbs:           []string{"get", "list", "watch"},
+		},
+		{
+			APIGroups: []string{"route.openshift.io", "image.openshift.io"},
+			Verbs: []string{
+				"get",
+			},
+			Resources: []string{
+				"routers/metrics", "registry/metrics",
+			},
+		},
+	}
+)
+
+// CreateVMAgentK8sAPIAccess - creates RBAC access rules for vmagent
+func CreateVMAgentK8sAPIAccess(ctx context.Context, cr *v1beta12.VMAgent, rclient client.Client, clusterWide bool) error {
+	if clusterWide {
+		if err := ensureVMAgentCRExist(ctx, cr, rclient); err != nil {
+			return fmt.Errorf("cannot ensure state of vmagent's cluster role: %w", err)
+		}
+		if err := ensureVMAgentCRBExist(ctx, cr, rclient); err != nil {
+			return fmt.Errorf("cannot ensure state of vmagent's cluster role binding: %w", err)
+		}
+		return nil
 	}
 
-	return nil
-}
-
-// CreateVMAgentNamespaceAccess - creates single namespace access for vmagent
-// with role and rolebinding.
-func CreateVMAgentNamespaceAccess(ctx context.Context, cr *v1beta12.VMAgent, rclient client.Client) error {
 	if err := ensureVMAgentRExist(ctx, cr, rclient); err != nil {
 		return fmt.Errorf("cannot ensure state of vmagent's cluster role: %w", err)
 	}
@@ -44,7 +113,7 @@ func CreateVMAgentNamespaceAccess(ctx context.Context, cr *v1beta12.VMAgent, rcl
 
 func ensureVMAgentCRExist(ctx context.Context, cr *v1beta12.VMAgent, rclient client.Client) error {
 	clusterRole := buildVMAgentClusterRole(cr)
-	var existsClusterRole v12.ClusterRole
+	var existsClusterRole rbacV1.ClusterRole
 
 	if err := rclient.Get(ctx, types.NamespacedName{Name: clusterRole.Name, Namespace: cr.Namespace}, &existsClusterRole); err != nil {
 		if errors.IsNotFound(err) {
@@ -63,7 +132,7 @@ func ensureVMAgentCRExist(ctx context.Context, cr *v1beta12.VMAgent, rclient cli
 
 func ensureVMAgentCRBExist(ctx context.Context, cr *v1beta12.VMAgent, rclient client.Client) error {
 	clusterRoleBinding := buildVMAgentClusterRoleBinding(cr)
-	var existsClusterRoleBinding v12.ClusterRoleBinding
+	var existsClusterRoleBinding rbacV1.ClusterRoleBinding
 
 	if err := rclient.Get(ctx, types.NamespacedName{Name: clusterRoleBinding.Name, Namespace: cr.Namespace}, &existsClusterRoleBinding); err != nil {
 		if errors.IsNotFound(err) {
@@ -81,8 +150,8 @@ func ensureVMAgentCRBExist(ctx context.Context, cr *v1beta12.VMAgent, rclient cl
 	return rclient.Update(ctx, &existsClusterRoleBinding)
 }
 
-func buildVMAgentClusterRoleBinding(cr *v1beta12.VMAgent) *v12.ClusterRoleBinding {
-	return &v12.ClusterRoleBinding{
+func buildVMAgentClusterRoleBinding(cr *v1beta12.VMAgent) *rbacV1.ClusterRoleBinding {
+	return &rbacV1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.GetClusterRoleName(),
 			Namespace:       cr.GetNamespace(),
@@ -91,23 +160,23 @@ func buildVMAgentClusterRoleBinding(cr *v1beta12.VMAgent) *v12.ClusterRoleBindin
 			Finalizers:      []string{v1beta12.FinalizerName},
 			OwnerReferences: cr.AsCRDOwner(),
 		},
-		Subjects: []v12.Subject{
+		Subjects: []rbacV1.Subject{
 			{
-				Kind:      v12.ServiceAccountKind,
+				Kind:      rbacV1.ServiceAccountKind,
 				Name:      cr.GetServiceAccountName(),
 				Namespace: cr.GetNamespace(),
 			},
 		},
-		RoleRef: v12.RoleRef{
-			APIGroup: v12.GroupName,
+		RoleRef: rbacV1.RoleRef{
+			APIGroup: rbacV1.GroupName,
 			Name:     cr.GetClusterRoleName(),
 			Kind:     "ClusterRole",
 		},
 	}
 }
 
-func buildVMAgentClusterRole(cr *v1beta12.VMAgent) *v12.ClusterRole {
-	return &v12.ClusterRole{
+func buildVMAgentClusterRole(cr *v1beta12.VMAgent) *rbacV1.ClusterRole {
+	return &rbacV1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.GetClusterRoleName(),
 			Namespace:       cr.GetNamespace(),
@@ -116,58 +185,13 @@ func buildVMAgentClusterRole(cr *v1beta12.VMAgent) *v12.ClusterRole {
 			Finalizers:      []string{v1beta12.FinalizerName},
 			OwnerReferences: cr.AsCRDOwner(),
 		},
-		Rules: []v12.PolicyRule{
-			{
-				APIGroups: []string{""},
-				Verbs: []string{
-					"get",
-					"list",
-					"watch",
-				},
-				Resources: []string{
-					"nodes",
-					"nodes/metrics",
-					"nodes/proxy",
-					"services",
-					"endpoints",
-					"pods",
-					"endpointslices",
-					"configmaps",
-					"namespaces",
-					"secrets",
-				},
-			},
-			{
-				APIGroups: []string{"networking.k8s.io", "extensions"},
-				Verbs: []string{
-					"get",
-					"list",
-					"watch",
-				},
-				Resources: []string{
-					"ingresses",
-				},
-			},
-			{
-				NonResourceURLs: []string{"/metrics", "/metrics/resources"},
-				Verbs:           []string{"get", "list", "watch"},
-			},
-			{
-				APIGroups: []string{"route.openshift.io", "image.openshift.io"},
-				Verbs: []string{
-					"get",
-				},
-				Resources: []string{
-					"routers/metrics", "registry/metrics",
-				},
-			},
-		},
+		Rules: clusterWidePolicyRules,
 	}
 }
 
 func ensureVMAgentRExist(ctx context.Context, cr *v1beta12.VMAgent, rclient client.Client) error {
 	nr := buildVMAgentNamespaceRole(cr)
-	var existsClusterRole v12.Role
+	var existsClusterRole rbacV1.Role
 
 	if err := rclient.Get(ctx, types.NamespacedName{Name: nr.Name, Namespace: cr.Namespace}, &existsClusterRole); err != nil {
 		if errors.IsNotFound(err) {
@@ -186,7 +210,7 @@ func ensureVMAgentRExist(ctx context.Context, cr *v1beta12.VMAgent, rclient clie
 
 func ensureVMAgentRBExist(ctx context.Context, cr *v1beta12.VMAgent, rclient client.Client) error {
 	rb := buildVMAgentNamespaceRoleBinding(cr)
-	var existsRB v12.RoleBinding
+	var existsRB rbacV1.RoleBinding
 
 	if err := rclient.Get(ctx, types.NamespacedName{Name: rb.Name, Namespace: cr.Namespace}, &existsRB); err != nil {
 		if errors.IsNotFound(err) {
@@ -205,8 +229,8 @@ func ensureVMAgentRBExist(ctx context.Context, cr *v1beta12.VMAgent, rclient cli
 	return rclient.Update(ctx, &existsRB)
 }
 
-func buildVMAgentNamespaceRole(cr *v1beta12.VMAgent) *v12.Role {
-	return &v12.Role{
+func buildVMAgentNamespaceRole(cr *v1beta12.VMAgent) *rbacV1.Role {
+	return &rbacV1.Role{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.GetClusterRoleName(),
 			Namespace:       cr.GetNamespace(),
@@ -215,38 +239,12 @@ func buildVMAgentNamespaceRole(cr *v1beta12.VMAgent) *v12.Role {
 			Finalizers:      []string{v1beta12.FinalizerName},
 			OwnerReferences: cr.AsCRDOwner(),
 		},
-		Rules: []v12.PolicyRule{
-			{
-				APIGroups: []string{""},
-				Verbs: []string{
-					"get",
-					"list",
-					"watch",
-				},
-				Resources: []string{
-					"services",
-					"endpoints",
-					"pods",
-					"endpointslices",
-				},
-			},
-			{
-				APIGroups: []string{"networking.k8s.io", "extensions"},
-				Verbs: []string{
-					"get",
-					"list",
-					"watch",
-				},
-				Resources: []string{
-					"ingresses",
-				},
-			},
-		},
+		Rules: singleNSPolicyRules,
 	}
 }
 
-func buildVMAgentNamespaceRoleBinding(cr *v1beta12.VMAgent) *v12.RoleBinding {
-	return &v12.RoleBinding{
+func buildVMAgentNamespaceRoleBinding(cr *v1beta12.VMAgent) *rbacV1.RoleBinding {
+	return &rbacV1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.GetClusterRoleName(),
 			Namespace:       cr.GetNamespace(),
@@ -255,15 +253,15 @@ func buildVMAgentNamespaceRoleBinding(cr *v1beta12.VMAgent) *v12.RoleBinding {
 			Finalizers:      []string{v1beta12.FinalizerName},
 			OwnerReferences: cr.AsCRDOwner(),
 		},
-		Subjects: []v12.Subject{
+		Subjects: []rbacV1.Subject{
 			{
-				Kind:      v12.ServiceAccountKind,
+				Kind:      rbacV1.ServiceAccountKind,
 				Name:      cr.GetServiceAccountName(),
 				Namespace: cr.GetNamespace(),
 			},
 		},
-		RoleRef: v12.RoleRef{
-			APIGroup: v12.GroupName,
+		RoleRef: rbacV1.RoleRef{
+			APIGroup: rbacV1.GroupName,
 			Name:     cr.GetClusterRoleName(),
 			Kind:     "Role",
 		},

@@ -14,7 +14,7 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -73,12 +73,12 @@ func TestSelectServiceMonitors(t *testing.T) {
 				l: logf.Log.WithName("unit-test"),
 			},
 			predefinedObjects: []runtime.Object{
-				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
+				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
 				&victoriametricsv1beta1.VMServiceScrape{
 					ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "default-monitor"},
 					Spec:       victoriametricsv1beta1.VMServiceScrapeSpec{},
 				},
-				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "stg", Labels: map[string]string{"name": "stage"}}},
+				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "stg", Labels: map[string]string{"name": "stage"}}},
 				&victoriametricsv1beta1.VMServiceScrape{
 					ObjectMeta: metav1.ObjectMeta{Namespace: "stg", Name: "default-monitor"},
 					Spec:       victoriametricsv1beta1.VMServiceScrapeSpec{},
@@ -163,7 +163,7 @@ func TestSelectPodMonitors(t *testing.T) {
 				l: logf.Log.WithName("unit-test"),
 			},
 			predefinedObjects: []runtime.Object{
-				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "monitor", Labels: map[string]string{"name": "monitoring"}}},
+				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "monitor", Labels: map[string]string{"name": "monitoring"}}},
 				&victoriametricsv1beta1.VMPodScrape{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "pod2",
@@ -171,7 +171,7 @@ func TestSelectPodMonitors(t *testing.T) {
 					},
 					Spec: victoriametricsv1beta1.VMPodScrapeSpec{},
 				},
-				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
+				&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
 				&victoriametricsv1beta1.VMPodScrape{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "pod1",
@@ -207,9 +207,9 @@ func TestSelectPodMonitors(t *testing.T) {
 func Test_getCredFromConfigMap(t *testing.T) {
 	type args struct {
 		ns       string
-		sel      v1.ConfigMapKeySelector
+		sel      corev1.ConfigMapKeySelector
 		cacheKey string
-		cache    map[string]*v1.ConfigMap
+		cache    map[string]*corev1.ConfigMap
 	}
 	tests := []struct {
 		name              string
@@ -222,11 +222,11 @@ func Test_getCredFromConfigMap(t *testing.T) {
 			name: "extract key from cm",
 			args: args{
 				ns:    "default",
-				sel:   v1.ConfigMapKeySelector{Key: "tls-conf", LocalObjectReference: v1.LocalObjectReference{Name: "tls-cm"}},
-				cache: map[string]*v1.ConfigMap{},
+				sel:   corev1.ConfigMapKeySelector{Key: "tls-conf", LocalObjectReference: corev1.LocalObjectReference{Name: "tls-cm"}},
+				cache: map[string]*corev1.ConfigMap{},
 			},
 			predefinedObjects: []runtime.Object{
-				&v1.ConfigMap{
+				&corev1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{Name: "tls-cm", Namespace: "default"},
 					Data:       map[string]string{"tls-conf": "secret-data"},
 				},
@@ -254,9 +254,9 @@ func Test_getCredFromConfigMap(t *testing.T) {
 func Test_getCredFromSecret(t *testing.T) {
 	type args struct {
 		ns       string
-		sel      v1.SecretKeySelector
+		sel      corev1.SecretKeySelector
 		cacheKey string
-		cache    map[string]*v1.Secret
+		cache    map[string]*corev1.Secret
 	}
 	tests := []struct {
 		name              string
@@ -269,16 +269,16 @@ func Test_getCredFromSecret(t *testing.T) {
 			name: "extract tls key data from secret",
 			args: args{
 				ns: "default",
-				sel: v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{
+				sel: corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{
 					Name: "tls-secret"},
 					Key: "key.pem"},
 				cacheKey: "tls-secret",
-				cache:    map[string]*v1.Secret{},
+				cache:    map[string]*corev1.Secret{},
 			},
 			want:    "tls-key-data",
 			wantErr: false,
 			predefinedObjects: []runtime.Object{
-				&v1.Secret{
+				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "tls-secret",
 						Namespace: "default",
@@ -291,16 +291,16 @@ func Test_getCredFromSecret(t *testing.T) {
 			name: "fail extract missing tls cert data from secret",
 			args: args{
 				ns: "default",
-				sel: v1.SecretKeySelector{LocalObjectReference: v1.LocalObjectReference{
+				sel: corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{
 					Name: "tls-secret"},
 					Key: "cert.pem"},
 				cacheKey: "tls-secret",
-				cache:    map[string]*v1.Secret{},
+				cache:    map[string]*corev1.Secret{},
 			},
 			want:    "",
 			wantErr: true,
 			predefinedObjects: []runtime.Object{
-				&v1.Secret{
+				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "tls-secret",
 						Namespace: "default",
@@ -418,12 +418,12 @@ func TestCreateOrUpdateConfigurationSecret(t *testing.T) {
 				c: config.MustGetBaseConfig(),
 			},
 			predefinedObjects: []runtime.Object{
-				&v1.Namespace{
+				&corev1.Namespace{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "default",
 					},
 				},
-				&v1.Namespace{
+				&corev1.Namespace{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "kube-system",
 					},
@@ -441,9 +441,9 @@ func TestCreateOrUpdateConfigurationSecret(t *testing.T) {
 							{
 								Path: "/metrics",
 								Port: "8085",
-								BearerTokenSecret: &v1.SecretKeySelector{
+								BearerTokenSecret: &corev1.SecretKeySelector{
 									Key: "bearer",
-									LocalObjectReference: v1.LocalObjectReference{
+									LocalObjectReference: corev1.LocalObjectReference{
 										Name: "access-creds",
 									},
 								},
@@ -496,21 +496,21 @@ func TestCreateOrUpdateConfigurationSecret(t *testing.T) {
 									ProxyClientConfig: &victoriametricsv1beta1.ProxyAuth{
 										TLSConfig: &victoriametricsv1beta1.TLSConfig{
 											InsecureSkipVerify: true,
-											KeySecret: &v1.SecretKeySelector{
+											KeySecret: &corev1.SecretKeySelector{
 												Key: "key",
-												LocalObjectReference: v1.LocalObjectReference{
+												LocalObjectReference: corev1.LocalObjectReference{
 													Name: "access-creds",
 												},
 											},
-											Cert: victoriametricsv1beta1.SecretOrConfigMap{Secret: &v1.SecretKeySelector{
+											Cert: victoriametricsv1beta1.SecretOrConfigMap{Secret: &corev1.SecretKeySelector{
 												Key: "cert",
-												LocalObjectReference: v1.LocalObjectReference{
+												LocalObjectReference: corev1.LocalObjectReference{
 													Name: "access-creds",
 												},
 											}},
-											CA: victoriametricsv1beta1.SecretOrConfigMap{Secret: &v1.SecretKeySelector{
+											CA: victoriametricsv1beta1.SecretOrConfigMap{Secret: &corev1.SecretKeySelector{
 												Key: "ca",
-												LocalObjectReference: v1.LocalObjectReference{
+												LocalObjectReference: corev1.LocalObjectReference{
 													Name: "access-creds",
 												},
 											},
@@ -524,21 +524,21 @@ func TestCreateOrUpdateConfigurationSecret(t *testing.T) {
 								Path: "/metrics-5",
 								TLSConfig: &victoriametricsv1beta1.TLSConfig{
 									InsecureSkipVerify: true,
-									KeySecret: &v1.SecretKeySelector{
+									KeySecret: &corev1.SecretKeySelector{
 										Key: "key",
-										LocalObjectReference: v1.LocalObjectReference{
+										LocalObjectReference: corev1.LocalObjectReference{
 											Name: "access-creds",
 										},
 									},
-									Cert: victoriametricsv1beta1.SecretOrConfigMap{Secret: &v1.SecretKeySelector{
+									Cert: victoriametricsv1beta1.SecretOrConfigMap{Secret: &corev1.SecretKeySelector{
 										Key: "cert",
-										LocalObjectReference: v1.LocalObjectReference{
+										LocalObjectReference: corev1.LocalObjectReference{
 											Name: "access-creds",
 										},
 									}},
-									CA: victoriametricsv1beta1.SecretOrConfigMap{Secret: &v1.SecretKeySelector{
+									CA: victoriametricsv1beta1.SecretOrConfigMap{Secret: &corev1.SecretKeySelector{
 										Key: "ca",
-										LocalObjectReference: v1.LocalObjectReference{
+										LocalObjectReference: corev1.LocalObjectReference{
 											Name: "access-creds",
 										},
 									},
@@ -555,15 +555,15 @@ func TestCreateOrUpdateConfigurationSecret(t *testing.T) {
 					},
 					Spec: victoriametricsv1beta1.VMNodeScrapeSpec{
 						BasicAuth: &victoriametricsv1beta1.BasicAuth{
-							Username: v1.SecretKeySelector{
+							Username: corev1.SecretKeySelector{
 								Key: "username",
-								LocalObjectReference: v1.LocalObjectReference{
+								LocalObjectReference: corev1.LocalObjectReference{
 									Name: "access-creds",
 								},
 							},
-							Password: v1.SecretKeySelector{
+							Password: corev1.SecretKeySelector{
 								Key: "password",
-								LocalObjectReference: v1.LocalObjectReference{
+								LocalObjectReference: corev1.LocalObjectReference{
 									Name: "access-creds",
 								},
 							},
@@ -584,16 +584,16 @@ func TestCreateOrUpdateConfigurationSecret(t *testing.T) {
 								ProxyURL: pointer.String("https://some-proxy-1"),
 								OAuth2: &victoriametricsv1beta1.OAuth2{
 									TokenURL: "https://some-tr",
-									ClientSecret: &v1.SecretKeySelector{
+									ClientSecret: &corev1.SecretKeySelector{
 										Key: "cs",
-										LocalObjectReference: v1.LocalObjectReference{
+										LocalObjectReference: corev1.LocalObjectReference{
 											Name: "access-creds",
 										},
 									},
 									ClientID: victoriametricsv1beta1.SecretOrConfigMap{
-										Secret: &v1.SecretKeySelector{
+										Secret: &corev1.SecretKeySelector{
 											Key: "cid",
-											LocalObjectReference: v1.LocalObjectReference{
+											LocalObjectReference: corev1.LocalObjectReference{
 												Name: "access-creds",
 											},
 										},
@@ -603,7 +603,7 @@ func TestCreateOrUpdateConfigurationSecret(t *testing.T) {
 						},
 					},
 				},
-				&v1.Secret{
+				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "access-creds",
 						Namespace: "default",
@@ -861,6 +861,297 @@ scrape_configs:
     token_url: https://some-tr
 `,
 		},
+		{
+			name: "with missing secret references",
+			args: args{
+
+				cr: &victoriametricsv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "default",
+					},
+					Spec: victoriametricsv1beta1.VMAgentSpec{
+						ServiceScrapeNamespaceSelector: &metav1.LabelSelector{},
+						ServiceScrapeSelector:          &metav1.LabelSelector{},
+						PodScrapeSelector:              &metav1.LabelSelector{},
+						PodScrapeNamespaceSelector:     &metav1.LabelSelector{},
+						NodeScrapeNamespaceSelector:    &metav1.LabelSelector{},
+						NodeScrapeSelector:             &metav1.LabelSelector{},
+						StaticScrapeNamespaceSelector:  &metav1.LabelSelector{},
+						StaticScrapeSelector:           &metav1.LabelSelector{},
+						ProbeNamespaceSelector:         &metav1.LabelSelector{},
+						ProbeSelector:                  &metav1.LabelSelector{},
+					},
+				},
+				c: config.MustGetBaseConfig(),
+			},
+
+			predefinedObjects: []runtime.Object{
+				&corev1.Namespace{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "default",
+					},
+				},
+
+				&victoriametricsv1beta1.VMNodeScrape{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "default",
+						Name:      "test-bad-0",
+					},
+					Spec: victoriametricsv1beta1.VMNodeScrapeSpec{
+						BasicAuth: &victoriametricsv1beta1.BasicAuth{
+							Username: corev1.SecretKeySelector{
+								Key: "username",
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "access-creds",
+								},
+							},
+							Password: corev1.SecretKeySelector{
+								Key: "password",
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "access-creds",
+								},
+							},
+						},
+					},
+				},
+
+				&victoriametricsv1beta1.VMNodeScrape{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "default",
+						Name:      "test-good",
+					},
+					Spec: victoriametricsv1beta1.VMNodeScrapeSpec{},
+				},
+
+				&victoriametricsv1beta1.VMNodeScrape{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "default",
+						Name:      "bad-1",
+					},
+					Spec: victoriametricsv1beta1.VMNodeScrapeSpec{
+						BearerTokenSecret: &corev1.SecretKeySelector{
+							Key: "username",
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "access-creds",
+							},
+						},
+					},
+				},
+				&victoriametricsv1beta1.VMPodScrape{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "default",
+						Name:      "test-vps-mixed",
+					},
+					Spec: victoriametricsv1beta1.VMPodScrapeSpec{
+						JobLabel:          "app",
+						NamespaceSelector: victoriametricsv1beta1.NamespaceSelector{},
+						Selector: metav1.LabelSelector{
+							MatchExpressions: []metav1.LabelSelectorRequirement{
+								{
+									Key:      "app",
+									Operator: metav1.LabelSelectorOpIn,
+									Values:   []string{"prod"},
+								},
+							},
+						},
+						SampleLimit: 10,
+						PodMetricsEndpoints: []victoriametricsv1beta1.PodMetricsEndpoint{
+							{
+								Path: "/metrics-3",
+								Port: "805",
+								VMScrapeParams: &victoriametricsv1beta1.VMScrapeParams{
+									StreamParse: pointer.Bool(true),
+									ProxyClientConfig: &victoriametricsv1beta1.ProxyAuth{
+										BearerToken: &corev1.SecretKeySelector{
+											Key: "username",
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "access-creds",
+											},
+										},
+									},
+								},
+							},
+							{
+								Port: "801",
+								Path: "/metrics-5",
+								BasicAuth: &victoriametricsv1beta1.BasicAuth{
+									Username: corev1.SecretKeySelector{
+										Key: "username",
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "access-creds",
+										},
+									},
+									Password: corev1.SecretKeySelector{
+										Key: "password",
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "access-creds",
+										},
+									},
+								},
+							},
+							{
+								Port: "801",
+								Path: "/metrics-5-good",
+							},
+						},
+					},
+				},
+				&victoriametricsv1beta1.VMPodScrape{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "default",
+						Name:      "test-vps-good",
+					},
+					Spec: victoriametricsv1beta1.VMPodScrapeSpec{
+						JobLabel:          "app",
+						NamespaceSelector: victoriametricsv1beta1.NamespaceSelector{},
+						Selector: metav1.LabelSelector{
+							MatchExpressions: []metav1.LabelSelectorRequirement{
+								{
+									Key:      "app",
+									Operator: metav1.LabelSelectorOpIn,
+									Values:   []string{"prod"},
+								},
+							},
+						},
+						PodMetricsEndpoints: []victoriametricsv1beta1.PodMetricsEndpoint{
+							{
+								Port: "8011",
+								Path: "/metrics-1-good",
+							},
+						},
+					},
+				},
+				&victoriametricsv1beta1.VMStaticScrape{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "default",
+						Name:      "test-vmstatic-bad",
+					},
+					Spec: victoriametricsv1beta1.VMStaticScrapeSpec{
+						TargetEndpoints: []*victoriametricsv1beta1.TargetEndpoint{
+							{
+								Path:     "/metrics-3",
+								Port:     "3031",
+								Scheme:   "https",
+								ProxyURL: pointer.String("https://some-proxy-1"),
+								OAuth2: &victoriametricsv1beta1.OAuth2{
+									TokenURL: "https://some-tr",
+									ClientSecret: &corev1.SecretKeySelector{
+										Key: "cs",
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "access-creds",
+										},
+									},
+									ClientID: victoriametricsv1beta1.SecretOrConfigMap{
+										Secret: &corev1.SecretKeySelector{
+											Key: "cid",
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "access-creds",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantConfig: `global:
+  scrape_interval: 30s
+  external_labels:
+    prometheus: default/test
+scrape_configs:
+- job_name: podScrape/default/test-vps-good/0
+  honor_labels: false
+  kubernetes_sd_configs:
+  - role: pod
+    namespaces:
+      names:
+      - default
+  metrics_path: /metrics-1-good
+  relabel_configs:
+  - action: drop
+    source_labels:
+    - __meta_kubernetes_pod_phase
+    regex: (Failed|Succeeded)
+  - action: keep
+    source_labels:
+    - __meta_kubernetes_pod_label_app
+    regex: prod
+  - action: keep
+    source_labels:
+    - __meta_kubernetes_pod_container_port_name
+    regex: "8011"
+  - source_labels:
+    - __meta_kubernetes_namespace
+    target_label: namespace
+  - source_labels:
+    - __meta_kubernetes_pod_container_name
+    target_label: container
+  - source_labels:
+    - __meta_kubernetes_pod_name
+    target_label: pod
+  - target_label: job
+    replacement: default/test-vps-good
+  - source_labels:
+    - __meta_kubernetes_pod_label_app
+    target_label: job
+    regex: (.+)
+    replacement: ${1}
+  - target_label: endpoint
+    replacement: "8011"
+- job_name: podScrape/default/test-vps-mixed/0
+  honor_labels: false
+  kubernetes_sd_configs:
+  - role: pod
+    namespaces:
+      names:
+      - default
+  metrics_path: /metrics-5-good
+  relabel_configs:
+  - action: drop
+    source_labels:
+    - __meta_kubernetes_pod_phase
+    regex: (Failed|Succeeded)
+  - action: keep
+    source_labels:
+    - __meta_kubernetes_pod_label_app
+    regex: prod
+  - action: keep
+    source_labels:
+    - __meta_kubernetes_pod_container_port_name
+    regex: "801"
+  - source_labels:
+    - __meta_kubernetes_namespace
+    target_label: namespace
+  - source_labels:
+    - __meta_kubernetes_pod_container_name
+    target_label: container
+  - source_labels:
+    - __meta_kubernetes_pod_name
+    target_label: pod
+  - target_label: job
+    replacement: default/test-vps-mixed
+  - source_labels:
+    - __meta_kubernetes_pod_label_app
+    target_label: job
+    regex: (.+)
+    replacement: ${1}
+  - target_label: endpoint
+    replacement: "801"
+  sample_limit: 10
+- job_name: nodeScrape/default/test-good/0
+  honor_labels: false
+  kubernetes_sd_configs:
+  - role: node
+  relabel_configs:
+  - source_labels:
+    - __meta_kubernetes_node_name
+    target_label: node
+  - target_label: job
+    replacement: default/test-good
+`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -868,7 +1159,7 @@ scrape_configs:
 			if _, err := CreateOrUpdateConfigurationSecret(context.TODO(), tt.args.cr, testClient, tt.args.c); (err != nil) != tt.wantErr {
 				t.Errorf("CreateOrUpdateConfigurationSecret() error = %v, wantErr %v", err, tt.wantErr)
 			}
-			var expectSecret v1.Secret
+			var expectSecret corev1.Secret
 			if err := testClient.Get(context.TODO(), types.NamespacedName{Namespace: tt.args.cr.Namespace, Name: tt.args.cr.PrefixedName()}, &expectSecret); err != nil {
 				t.Fatalf("cannot get vmagent config secret: %s", err)
 			}
@@ -892,7 +1183,7 @@ scrape_configs:
 
 func TestCreateVMServiceScrapeFromService(t *testing.T) {
 	type args struct {
-		service                   *v1.Service
+		service                   *corev1.Service
 		serviceScrapeSpecTemplate *victoriametricsv1beta1.VMServiceScrapeSpec
 		metricPath                string
 		filterPortNames           []string
@@ -908,13 +1199,13 @@ func TestCreateVMServiceScrapeFromService(t *testing.T) {
 			args: args{
 				metricPath:      "/metrics",
 				filterPortNames: []string{"http"},
-				service: &v1.Service{
+				service: &corev1.Service{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:   "vmagent-svc",
 						Labels: map[string]string{"my-label": "value"},
 					},
-					Spec: v1.ServiceSpec{
-						Ports: []v1.ServicePort{
+					Spec: corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{
 							{
 								Name: "http",
 							},
@@ -940,12 +1231,12 @@ func TestCreateVMServiceScrapeFromService(t *testing.T) {
 			args: args{
 				metricPath:      "/metrics",
 				filterPortNames: []string{"http"},
-				service: &v1.Service{
+				service: &corev1.Service{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "vmagent-svc",
 					},
-					Spec: v1.ServiceSpec{
-						Ports: []v1.ServicePort{
+					Spec: corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{
 							{
 								Name: "http",
 							},
@@ -971,15 +1262,15 @@ func TestCreateVMServiceScrapeFromService(t *testing.T) {
 			args: args{
 				metricPath:      "/metrics",
 				filterPortNames: []string{"http"},
-				service: &v1.Service{
+				service: &corev1.Service{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "vmagent-svc",
 						Labels: map[string]string{
 							"key": "value",
 						},
 					},
-					Spec: v1.ServiceSpec{
-						Ports: []v1.ServicePort{
+					Spec: corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{
 							{
 								Name: "http",
 							},
@@ -1006,15 +1297,15 @@ func TestCreateVMServiceScrapeFromService(t *testing.T) {
 			args: args{
 				metricPath:      "/metrics",
 				filterPortNames: []string{"http"},
-				service: &v1.Service{
+				service: &corev1.Service{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "vmagent-svc",
 						Labels: map[string]string{
 							"key": "value",
 						},
 					},
-					Spec: v1.ServiceSpec{
-						Ports: []v1.ServicePort{
+					Spec: corev1.ServiceSpec{
+						Ports: []corev1.ServicePort{
 							{
 								Name: "http",
 							},

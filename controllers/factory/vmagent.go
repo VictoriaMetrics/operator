@@ -3,12 +3,12 @@ package factory
 import (
 	"context"
 	"fmt"
-	"k8s.io/apimachinery/pkg/runtime"
 	"path"
 	"sort"
 	"strconv"
 	"strings"
 
+	"github.com/VictoriaMetrics/VictoriaMetrics/app/vmalert/utils"
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
@@ -23,6 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -88,15 +89,9 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 			return fmt.Errorf("cannot create vmagent role and binding for it, err: %w", err)
 		}
 	}
-	// we have to create empty or full cm first
 	ssCache, err := CreateOrUpdateConfigurationSecret(ctx, cr, rclient, c)
 	if err != nil {
 		return err
-	}
-
-	err = CreateOrUpdateTlsAssets(ctx, cr, rclient)
-	if err != nil {
-		return fmt.Errorf("cannot update tls asset for vmagent: %w", err)
 	}
 
 	if err := CreateOrUpdateRelabelConfigsAssets(ctx, cr, rclient); err != nil {
@@ -696,31 +691,7 @@ func fetchConfigMapContentByKey(ctx context.Context, rclient client.Client, cm *
 	return cm.Data[key], nil
 }
 
-func CreateOrUpdateTlsAssets(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) error {
-	podScrapes, err := SelectPodScrapes(ctx, cr, rclient)
-	if err != nil {
-		return fmt.Errorf("cannot select PodScrapes: %w", err)
-	}
-	scrapes, err := SelectServiceScrapes(ctx, cr, rclient)
-	if err != nil {
-		return fmt.Errorf("cannot select service scrapes for tls Assets: %w", err)
-	}
-	nodes, err := SelectVMNodeScrapes(ctx, cr, rclient)
-	if err != nil {
-		return fmt.Errorf("cannot select nodescrapes for tls Assests: %w", err)
-	}
-	statics, err := SelectStaticScrapes(ctx, cr, rclient)
-	if err != nil {
-		return fmt.Errorf("cannot select staticScrapes for tls Assests: %w", err)
-	}
-	probes, err := SelectVMProbes(ctx, cr, rclient)
-	if err != nil {
-		return fmt.Errorf("cannot select probecrapes for tls Assests: %w", err)
-	}
-	assets, err := loadTLSAssets(ctx, rclient, cr, scrapes, podScrapes, probes, nodes, statics)
-	if err != nil {
-		return fmt.Errorf("cannot load tls assets: %w", err)
-	}
+func createOrUpdateTlsAssets(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client, assets map[string]string) error {
 
 	tlsAssetsSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -738,8 +709,7 @@ func CreateOrUpdateTlsAssets(ctx context.Context, cr *victoriametricsv1beta1.VMA
 		tlsAssetsSecret.Data[key] = []byte(asset)
 	}
 	currentAssetSecret := &corev1.Secret{}
-	err = rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: tlsAssetsSecret.Name}, currentAssetSecret)
-	if err != nil {
+	if err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: tlsAssetsSecret.Name}, currentAssetSecret); err != nil {
 		if errors.IsNotFound(err) {
 			log.Info("creating new tls asset for vmagent", "secret_name", tlsAssetsSecret.Name, "vmagent", cr.Name)
 			return rclient.Create(ctx, tlsAssetsSecret)
@@ -773,79 +743,121 @@ func loadTLSAssets(
 			return nil, fmt.Errorf("cannot add asset for remote write target: %s,err: %w", cr.Name, err)
 		}
 	}
-	for _, pod := range podScrapes {
-		for _, ep := range pod.Spec.PodMetricsEndpoints {
-			if ep.VMScrapeParams != nil && ep.VMScrapeParams.ProxyClientConfig != nil && ep.VMScrapeParams.ProxyClientConfig.TLSConfig != nil {
-				if err := addAssetsToCache(ctx, rclient, pod.Namespace, ep.VMScrapeParams.ProxyClientConfig.TLSConfig, assets, nsSecretCache, nsConfigMapCache); err != nil {
-					return nil, fmt.Errorf("cannot add asset err: %w", err)
-				}
-			}
-			if ep.TLSConfig == nil {
-				continue
-			}
-			if err := addAssetsToCache(ctx, rclient, pod.Namespace, ep.TLSConfig, assets, nsSecretCache, nsConfigMapCache); err != nil {
-				return nil, fmt.Errorf("cannot add asset for vmpodscrape: %s,err: %w", pod.Name, err)
-			}
-		}
-	}
-	for _, mon := range scrapes {
-		for _, ep := range mon.Spec.Endpoints {
-			if ep.VMScrapeParams != nil && ep.VMScrapeParams.ProxyClientConfig != nil && ep.VMScrapeParams.ProxyClientConfig.TLSConfig != nil {
-				if err := addAssetsToCache(ctx, rclient, mon.Namespace, ep.VMScrapeParams.ProxyClientConfig.TLSConfig, assets, nsSecretCache, nsConfigMapCache); err != nil {
-					return nil, fmt.Errorf("cannot add asset err: %w", err)
-				}
-			}
-			if ep.TLSConfig == nil {
-				continue
-			}
-			if err := addAssetsToCache(ctx, rclient, mon.Namespace, ep.TLSConfig, assets, nsSecretCache, nsConfigMapCache); err != nil {
-				return nil, fmt.Errorf("cannot add asset for vmservicescrape: %s, err: %w", mon.Name, err)
-			}
-		}
-	}
-	for _, probe := range probes {
-		if probe.Spec.VMScrapeParams != nil && probe.Spec.VMScrapeParams.ProxyClientConfig != nil && probe.Spec.VMScrapeParams.ProxyClientConfig.TLSConfig != nil {
-			if err := addAssetsToCache(ctx, rclient, probe.Namespace, probe.Spec.VMScrapeParams.ProxyClientConfig.TLSConfig, assets, nsSecretCache, nsConfigMapCache); err != nil {
-				return nil, fmt.Errorf("cannot add asset err: %w", err)
-			}
-		}
-		if probe.Spec.TLSConfig == nil {
-			continue
-		}
-		if err := addAssetsToCache(ctx, rclient, probe.Namespace, probe.Spec.TLSConfig, assets, nsSecretCache, nsConfigMapCache); err != nil {
-			return nil, fmt.Errorf("cannot add asset for vmprobe: %s,err :%w", probe.Name, err)
-		}
-	}
-	for _, staticCfg := range statics {
-		for _, ep := range staticCfg.Spec.TargetEndpoints {
-			if ep.VMScrapeParams != nil && ep.VMScrapeParams.ProxyClientConfig != nil && ep.VMScrapeParams.ProxyClientConfig.TLSConfig != nil {
-				if err := addAssetsToCache(ctx, rclient, staticCfg.Namespace, ep.VMScrapeParams.ProxyClientConfig.TLSConfig, assets, nsSecretCache, nsConfigMapCache); err != nil {
-					return nil, fmt.Errorf("cannot add asset err: %w", err)
-				}
-			}
-			if ep.TLSConfig == nil {
-				continue
-			}
-			if err := addAssetsToCache(ctx, rclient, staticCfg.Namespace, ep.TLSConfig, assets, nsSecretCache, nsConfigMapCache); err != nil {
-				return nil, fmt.Errorf("cannot add asset for vmservicescrape: %s, err: %w", staticCfg.Name, err)
-			}
+	if cr.Spec.APIServerConfig != nil && cr.Spec.APIServerConfig.TLSConfig != nil {
+		if err := addAssetsToCache(ctx, rclient, cr.Namespace, cr.Spec.APIServerConfig.TLSConfig, assets, nsSecretCache, nsConfigMapCache); err != nil {
+			return nil, fmt.Errorf("cannot add asset for remote write target: %s,err: %w", cr.Name, err)
 		}
 	}
 
-	for _, node := range nodes {
-		if node.Spec.VMScrapeParams != nil && node.Spec.VMScrapeParams.ProxyClientConfig != nil && node.Spec.VMScrapeParams.ProxyClientConfig.TLSConfig != nil {
-			if err := addAssetsToCache(ctx, rclient, node.Namespace, node.Spec.VMScrapeParams.ProxyClientConfig.TLSConfig, assets, nsSecretCache, nsConfigMapCache); err != nil {
-				return nil, fmt.Errorf("cannot add asset err: %w", err)
+	var errG utils.ErrGroup
+	for key, pod := range podScrapes {
+		var epCnt int
+		for _, ep := range pod.Spec.PodMetricsEndpoints {
+			if ep.VMScrapeParams != nil && ep.VMScrapeParams.ProxyClientConfig != nil && ep.VMScrapeParams.ProxyClientConfig.TLSConfig != nil {
+				if err := addAssetsToCache(ctx, rclient, pod.Namespace, ep.VMScrapeParams.ProxyClientConfig.TLSConfig, assets, nsSecretCache, nsConfigMapCache); err != nil {
+					errG.Add(fmt.Errorf("cannot add proxy tlsAsset for VMPodScrape: %w", err))
+					continue
+				}
 			}
+			if ep.TLSConfig != nil {
+				if err := addAssetsToCache(ctx, rclient, pod.Namespace, ep.TLSConfig, assets, nsSecretCache, nsConfigMapCache); err != nil {
+					errG.Add(fmt.Errorf("cannot add tlsAsset for VMPodScrape: %w", err))
+					continue
+				}
+			}
+			pod.Spec.PodMetricsEndpoints[epCnt] = ep
+			epCnt++
 		}
-		if node.Spec.TLSConfig == nil {
-			continue
-		}
-		if err := addAssetsToCache(ctx, rclient, node.Namespace, node.Spec.TLSConfig, assets, nsSecretCache, nsConfigMapCache); err != nil {
-			return nil, fmt.Errorf("cannot add asset for vmnode: %s,err :%w", node.Name, err)
+		pod.Spec.PodMetricsEndpoints = pod.Spec.PodMetricsEndpoints[:epCnt]
+		if len(pod.Spec.PodMetricsEndpoints) == 0 {
+			delete(podScrapes, key)
 		}
 	}
-	return assets, nil
+	for key, mon := range scrapes {
+		var epCnt int
+		for _, ep := range mon.Spec.Endpoints {
+			if ep.VMScrapeParams != nil && ep.VMScrapeParams.ProxyClientConfig != nil && ep.VMScrapeParams.ProxyClientConfig.TLSConfig != nil {
+				if err := addAssetsToCache(ctx, rclient, mon.Namespace, ep.VMScrapeParams.ProxyClientConfig.TLSConfig, assets, nsSecretCache, nsConfigMapCache); err != nil {
+					errG.Add(err)
+					continue
+				}
+			}
+			if ep.TLSConfig != nil {
+				if err := addAssetsToCache(ctx, rclient, mon.Namespace, ep.TLSConfig, assets, nsSecretCache, nsConfigMapCache); err != nil {
+					errG.Add(err)
+					continue
+				}
+			}
+			mon.Spec.Endpoints[epCnt] = ep
+			epCnt++
+		}
+		mon.Spec.Endpoints = mon.Spec.Endpoints[:epCnt]
+		if len(mon.Spec.Endpoints) == 0 {
+			delete(scrapes, key)
+		}
+	}
+	for key, probe := range probes {
+		onErr := func(err error) {
+			errG.Add(err)
+			delete(probes, key)
+		}
+		if probe.Spec.VMScrapeParams != nil && probe.Spec.VMScrapeParams.ProxyClientConfig != nil && probe.Spec.VMScrapeParams.ProxyClientConfig.TLSConfig != nil {
+			if err := addAssetsToCache(ctx, rclient, probe.Namespace, probe.Spec.VMScrapeParams.ProxyClientConfig.TLSConfig, assets, nsSecretCache, nsConfigMapCache); err != nil {
+				onErr(err)
+				continue
+			}
+		}
+		if probe.Spec.TLSConfig != nil {
+			if err := addAssetsToCache(ctx, rclient, probe.Namespace, probe.Spec.TLSConfig, assets, nsSecretCache, nsConfigMapCache); err != nil {
+				onErr(err)
+				continue
+			}
+		}
+	}
+	for key, staticCfg := range statics {
+		var epCnt int
+		for _, ep := range staticCfg.Spec.TargetEndpoints {
+			if ep.VMScrapeParams != nil && ep.VMScrapeParams.ProxyClientConfig != nil && ep.VMScrapeParams.ProxyClientConfig.TLSConfig != nil {
+				if err := addAssetsToCache(ctx, rclient, staticCfg.Namespace, ep.VMScrapeParams.ProxyClientConfig.TLSConfig, assets, nsSecretCache, nsConfigMapCache); err != nil {
+					errG.Add(err)
+					continue
+				}
+			}
+			if ep.TLSConfig != nil {
+				if err := addAssetsToCache(ctx, rclient, staticCfg.Namespace, ep.TLSConfig, assets, nsSecretCache, nsConfigMapCache); err != nil {
+					errG.Add(err)
+					continue
+				}
+			}
+			staticCfg.Spec.TargetEndpoints[epCnt] = ep
+			epCnt++
+		}
+		staticCfg.Spec.TargetEndpoints = staticCfg.Spec.TargetEndpoints[:epCnt]
+		if len(staticCfg.Spec.TargetEndpoints) == 0 {
+			delete(statics, key)
+		}
+	}
+
+	for key, node := range nodes {
+		onErr := func(err error) {
+			errG.Add(err)
+			delete(nodes, key)
+		}
+		if node.Spec.VMScrapeParams != nil && node.Spec.VMScrapeParams.ProxyClientConfig != nil && node.Spec.VMScrapeParams.ProxyClientConfig.TLSConfig != nil {
+			if err := addAssetsToCache(ctx, rclient, node.Namespace, node.Spec.VMScrapeParams.ProxyClientConfig.TLSConfig, assets, nsSecretCache, nsConfigMapCache); err != nil {
+				onErr(err)
+				continue
+			}
+		}
+		if node.Spec.TLSConfig != nil {
+			if err := addAssetsToCache(ctx, rclient, node.Namespace, node.Spec.TLSConfig, assets, nsSecretCache, nsConfigMapCache); err != nil {
+				onErr(err)
+				continue
+			}
+		}
+
+	}
+	return assets, errG.Err()
 }
 
 func addAssetsToCache(
@@ -921,16 +933,6 @@ func addAssetsToCache(
 	}
 	return nil
 
-}
-
-func LoadRemoteWriteSecrets(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) (*scrapesSecretsCache, error) {
-
-	ssCache, err := loadScrapeSecrets(ctx, rclient, nil, nil, nil, nil, nil, nil, cr.Spec.RemoteWrite, cr.Namespace)
-	if err != nil {
-		return nil, fmt.Errorf("cannot load scrapeSecrets for remoteWriteSpec: %w", err)
-	}
-
-	return ssCache, nil
 }
 
 type remoteFlag struct {

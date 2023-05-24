@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	stderrors "errors"
 	"fmt"
 	"strings"
 
@@ -70,7 +71,8 @@ func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *victoriametricsv
 
 	ssCache, err := loadScrapeSecrets(ctx, rclient, sScrapes, nodes, pScrapes, probes, statics, cr.Spec.APIServerConfig, cr.Spec.RemoteWrite, cr.Namespace)
 	if err != nil {
-		if _, ok := err.(*utils.ErrGroup); !ok {
+		var ge *utils.ErrGroup
+		if !stderrors.As(err, &ge) {
 			return nil, fmt.Errorf("cannot load scrape target secrets for api server or remote writes: %w", err)
 		}
 		vmagentSecretFetchErrsTotal.Inc()
@@ -78,7 +80,8 @@ func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *victoriametricsv
 	}
 	assets, err := loadTLSAssets(ctx, rclient, cr, sScrapes, pScrapes, probes, nodes, statics)
 	if err != nil {
-		if _, ok := err.(*utils.ErrGroup); !ok {
+		var ge *utils.ErrGroup
+		if !stderrors.As(err, &ge) {
 			return nil, fmt.Errorf("cannot load tls assets for api server or remote writes: %w", err)
 		}
 		vmagentSecretFetchErrsTotal.Inc()
@@ -126,7 +129,7 @@ func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *victoriametricsv
 			log.Info("creating new configuration secret for vmagent")
 			return ssCache, rclient.Create(ctx, s)
 		}
-		return nil, fmt.Errorf("cannot ")
+		return nil, fmt.Errorf("cannot get secret for vmagent: %q : %w", cr.Name, err)
 	}
 
 	s.Annotations = labels.Merge(curSecret.Annotations, s.Annotations)

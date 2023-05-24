@@ -1055,6 +1055,32 @@ scrape_configs:
 						},
 					},
 				},
+				&victoriametricsv1beta1.VMStaticScrape{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "default",
+						Name:      "test-vmstatic-bad-tls",
+					},
+					Spec: victoriametricsv1beta1.VMStaticScrapeSpec{
+						TargetEndpoints: []*victoriametricsv1beta1.TargetEndpoint{
+							{
+								Path:     "/metrics-3",
+								Port:     "3031",
+								Scheme:   "https",
+								ProxyURL: pointer.String("https://some-proxy-1"),
+								TLSConfig: &victoriametricsv1beta1.TLSConfig{
+									Cert: victoriametricsv1beta1.SecretOrConfigMap{
+										Secret: &corev1.SecretKeySelector{
+											Key: "cert",
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "tls-creds",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
 			},
 			wantConfig: `global:
   scrape_interval: 30s

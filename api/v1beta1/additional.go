@@ -29,6 +29,8 @@ const (
 	SkipValidationAnnotation = "operator.victoriametrics.com/skip-validation"
 	SkipValidationValue      = "true"
 	AdditionalServiceLabel   = "operator.victoriametrics.com/additional-service"
+	// PVCExpandableLabel controls checks for storageClass
+	PVCExpandableLabel = "operator.victoriametrics.com/pvc/allow-volume-expansion"
 )
 
 var (

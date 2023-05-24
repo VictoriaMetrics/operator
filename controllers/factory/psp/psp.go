@@ -3,8 +3,10 @@ package psp
 import (
 	"context"
 	"fmt"
+
 	v1beta12 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/api/policy/v1beta1"
 	v12 "k8s.io/api/rbac/v1"
@@ -35,7 +37,7 @@ type CRDObject interface {
 // ClusterRoleBinding exists.
 func CreateOrUpdateServiceAccountWithPSP(ctx context.Context, cr CRDObject, rclient client.Client) error {
 
-	if !k8stools.IsPSPSupported() {
+	if !k8stools.IsPSPSupported() || !config.IsClusterWideAccessAllowed() {
 		return nil
 	}
 	if err := ensurePSPExists(ctx, cr, rclient); err != nil {
@@ -50,6 +52,7 @@ func CreateOrUpdateServiceAccountWithPSP(ctx context.Context, cr CRDObject, rcli
 	return nil
 }
 
+// CreateServiceAccountForCRD creates service account for CRD if needed
 func CreateServiceAccountForCRD(ctx context.Context, cr CRDObject, rclient client.Client) error {
 	if !cr.IsOwnsServiceAccount() {
 		return nil
@@ -73,7 +76,7 @@ func CreateServiceAccountForCRD(ctx context.Context, cr CRDObject, rclient clien
 func ensurePSPExists(ctx context.Context, cr CRDObject, rclient client.Client) error {
 
 	// fast path.
-	if cr.GetPSPName() != cr.PrefixedName() {
+	if cr.GetPSPName() != cr.PrefixedName() || !config.IsClusterWideAccessAllowed() {
 		return nil
 	}
 	newPSP := BuildPSP(cr)

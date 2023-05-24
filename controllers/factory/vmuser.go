@@ -10,10 +10,10 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/VictoriaMetrics/operator/api/v1beta1"
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"gopkg.in/yaml.v2"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -22,7 +22,7 @@ import (
 )
 
 // builds vmauth config.
-func buildVMAuthConfig(ctx context.Context, rclient client.Client, vmauth *v1beta1.VMAuth) ([]byte, error) {
+func buildVMAuthConfig(ctx context.Context, rclient client.Client, vmauth *victoriametricsv1beta1.VMAuth) ([]byte, error) {
 
 	// fetch exist users for vmauth.
 	users, err := selectVMUsers(ctx, vmauth, rclient)
@@ -85,7 +85,7 @@ func buildVMAuthConfig(ctx context.Context, rclient client.Client, vmauth *v1bet
 
 }
 
-func addCredentialsToCreateSecrets(src []*v1beta1.VMUser, dst []v1.Secret) []v1.Secret {
+func addCredentialsToCreateSecrets(src []*victoriametricsv1beta1.VMUser, dst []corev1.Secret) []corev1.Secret {
 	for i := range dst {
 		secret := &dst[i]
 		for j := range src {
@@ -111,7 +111,7 @@ func addCredentialsToCreateSecrets(src []*v1beta1.VMUser, dst []v1.Secret) []v1.
 	return dst
 }
 
-func createVMUserSecrets(ctx context.Context, rclient client.Client, secrets []v1.Secret) error {
+func createVMUserSecrets(ctx context.Context, rclient client.Client, secrets []corev1.Secret) error {
 	for i := range secrets {
 		secret := secrets[i]
 		if err := rclient.Create(ctx, &secret); err != nil {
@@ -121,7 +121,7 @@ func createVMUserSecrets(ctx context.Context, rclient client.Client, secrets []v
 	return nil
 }
 
-func injectSecretValueByRef(src []*v1beta1.VMUser, secretValueCacheByRef map[string]string) {
+func injectSecretValueByRef(src []*victoriametricsv1beta1.VMUser, secretValueCacheByRef map[string]string) {
 	for i := range src {
 		user := src[i]
 		switch {
@@ -136,8 +136,8 @@ func injectSecretValueByRef(src []*v1beta1.VMUser, secretValueCacheByRef map[str
 	}
 }
 
-func injectAuthSettings(src []v1.Secret, dst []*v1beta1.VMUser) []v1.Secret {
-	var toUpdate []v1.Secret
+func injectAuthSettings(src []corev1.Secret, dst []*victoriametricsv1beta1.VMUser) []corev1.Secret {
+	var toUpdate []corev1.Secret
 	if len(src) == 0 || len(dst) == 0 {
 		return nil
 	}
@@ -201,7 +201,7 @@ func injectAuthSettings(src []v1.Secret, dst []*v1beta1.VMUser) []v1.Secret {
 	return toUpdate
 }
 
-func isUsersUniq(users []*v1beta1.VMUser) []string {
+func isUsersUniq(users []*victoriametricsv1beta1.VMUser) []string {
 	uniq := make(map[string]struct{}, len(users))
 	var dupUsers []string
 	for i := range users {
@@ -240,9 +240,9 @@ func getAsURLObject(ctx context.Context, rclient client.Client, obj objectWithUr
 	return obj.AsURL(), nil
 }
 
-func fetchVMUserSecretCacheByRef(ctx context.Context, rclient client.Client, users []*v1beta1.VMUser) (map[string]string, error) {
+func fetchVMUserSecretCacheByRef(ctx context.Context, rclient client.Client, users []*victoriametricsv1beta1.VMUser) (map[string]string, error) {
 	passwordCache := make(map[string]string, len(users))
-	var fetchSecret v1.Secret
+	var fetchSecret corev1.Secret
 	for i := range users {
 		user := users[i]
 		var secretName, secretKey, refValue string
@@ -273,7 +273,7 @@ func fetchVMUserSecretCacheByRef(ctx context.Context, rclient client.Client, use
 	return passwordCache, nil
 }
 
-func FetchCRDCache(ctx context.Context, rclient client.Client, users []*v1beta1.VMUser) (map[string]string, error) {
+func FetchCRDCache(ctx context.Context, rclient client.Client, users []*victoriametricsv1beta1.VMUser) (map[string]string, error) {
 	crdCacheUrlCache := make(map[string]string)
 	for i := range users {
 		user := users[i]
@@ -282,12 +282,17 @@ func FetchCRDCache(ctx context.Context, rclient client.Client, users []*v1beta1.
 			if ref.CRD == nil {
 				continue
 			}
+			// namespace mismatch
+			if !config.IsClusterWideAccessAllowed() && ref.CRD.Namespace != config.MustGetWatchNamespace() {
+				log.Info("cannot discover CRD component on whole kubernetes cluster. Operator started with single namespace", "watch_namespace", config.MustGetWatchNamespace(), "crd_ref_name", ref.CRD.Name, "crd_ref_namespace", ref.CRD.Namespace)
+				continue
+			}
 			if _, ok := crdCacheUrlCache[ref.CRD.AsKey()]; ok {
 				continue
 			}
 			switch name := ref.CRD.Kind; name {
 			case "VMAgent":
-				var crd v1beta1.VMAgent
+				var crd victoriametricsv1beta1.VMAgent
 				ref.CRD.AddRefToObj(&crd)
 				url, err := getAsURLObject(ctx, rclient, &crd)
 				if err != nil {
@@ -295,7 +300,7 @@ func FetchCRDCache(ctx context.Context, rclient client.Client, users []*v1beta1.
 				}
 				crdCacheUrlCache[ref.CRD.AsKey()] = url
 			case "VMAlert":
-				var crd v1beta1.VMAlert
+				var crd victoriametricsv1beta1.VMAlert
 				ref.CRD.AddRefToObj(&crd)
 				url, err := getAsURLObject(ctx, rclient, &crd)
 				if err != nil {
@@ -304,7 +309,7 @@ func FetchCRDCache(ctx context.Context, rclient client.Client, users []*v1beta1.
 				crdCacheUrlCache[ref.CRD.AsKey()] = url
 
 			case "VMSingle":
-				var crd v1beta1.VMSingle
+				var crd victoriametricsv1beta1.VMSingle
 				ref.CRD.AddRefToObj(&crd)
 				url, err := getAsURLObject(ctx, rclient, &crd)
 				if err != nil {
@@ -312,7 +317,7 @@ func FetchCRDCache(ctx context.Context, rclient client.Client, users []*v1beta1.
 				}
 				crdCacheUrlCache[ref.CRD.AsKey()] = url
 			case "VMAlertmanager":
-				var crd v1beta1.VMAlertmanager
+				var crd victoriametricsv1beta1.VMAlertmanager
 				ref.CRD.AddRefToObj(&crd)
 				url, err := getAsURLObject(ctx, rclient, &crd)
 				if err != nil {
@@ -321,7 +326,7 @@ func FetchCRDCache(ctx context.Context, rclient client.Client, users []*v1beta1.
 				crdCacheUrlCache[ref.CRD.AsKey()] = url
 
 			case "VMCluster/vmselect", "VMCluster/vminsert", "VMCluster/vmstorage":
-				var crd v1beta1.VMCluster
+				var crd victoriametricsv1beta1.VMCluster
 				ref.CRD.AddRefToObj(&crd)
 				url, err := getAsURLObject(ctx, rclient, &crd)
 				if err != nil {
@@ -353,7 +358,7 @@ func FetchCRDCache(ctx context.Context, rclient client.Client, users []*v1beta1.
 }
 
 // generateVMAuthConfig create VMAuth cfg for given Users.
-func generateVMAuthConfig(cr *v1beta1.VMAuth, users []*v1beta1.VMUser, crdCache map[string]string) ([]byte, error) {
+func generateVMAuthConfig(cr *victoriametricsv1beta1.VMAuth, users []*victoriametricsv1beta1.VMUser, crdCache map[string]string) ([]byte, error) {
 	var cfg yaml.MapSlice
 
 	var cfgUsers []yaml.MapSlice
@@ -410,7 +415,7 @@ func generateVMAuthConfig(cr *v1beta1.VMAuth, users []*v1beta1.VMUser, crdCache 
 }
 
 // AddToYaml conditionally adds ip filters to dst yaml
-func addIPFiltersToYaml(dst yaml.MapSlice, ipf v1beta1.VMUserIPFilters) yaml.MapSlice {
+func addIPFiltersToYaml(dst yaml.MapSlice, ipf victoriametricsv1beta1.VMUserIPFilters) yaml.MapSlice {
 	ipFilters := yaml.MapSlice{}
 	if len(ipf.AllowList) > 0 {
 		ipFilters = append(ipFilters, yaml.MapItem{
@@ -431,9 +436,9 @@ func addIPFiltersToYaml(dst yaml.MapSlice, ipf v1beta1.VMUserIPFilters) yaml.Map
 }
 
 // generates routing config for given target refs
-func genUrlMaps(userName string, refs []v1beta1.TargetRef, result yaml.MapSlice, crdUrlCache map[string]string) (yaml.MapSlice, error) {
+func genUrlMaps(userName string, refs []victoriametricsv1beta1.TargetRef, result yaml.MapSlice, crdUrlCache map[string]string) (yaml.MapSlice, error) {
 	var urlMaps []yaml.MapSlice
-	handleRef := func(ref v1beta1.TargetRef) ([]string, error) {
+	handleRef := func(ref victoriametricsv1beta1.TargetRef) ([]string, error) {
 		var urlPrefixes []string
 		switch {
 		case ref.CRD != nil:
@@ -563,7 +568,7 @@ func genUrlMaps(userName string, refs []v1beta1.TargetRef, result yaml.MapSlice,
 
 // this function mutates user and fills missing fields,
 // such password or username.
-func genUserCfg(user *v1beta1.VMUser, crdUrlCache map[string]string) (yaml.MapSlice, error) {
+func genUserCfg(user *victoriametricsv1beta1.VMUser, crdUrlCache map[string]string) (yaml.MapSlice, error) {
 	var r yaml.MapSlice
 
 	r, err := genUrlMaps(user.Name, user.Spec.TargetRefs, r, crdUrlCache)
@@ -654,9 +659,9 @@ func genPassword() (string, error) {
 }
 
 // selects vmusers for given vmauth.
-func selectVMUsers(ctx context.Context, cr *v1beta1.VMAuth, rclient client.Client) ([]*v1beta1.VMUser, error) {
+func selectVMUsers(ctx context.Context, cr *victoriametricsv1beta1.VMAuth, rclient client.Client) ([]*victoriametricsv1beta1.VMUser, error) {
 
-	var res []*v1beta1.VMUser
+	var res []*victoriametricsv1beta1.VMUser
 	namespaces, userSelector, err := getNSWithSelector(ctx, rclient, cr.Spec.UserNamespaceSelector, cr.Spec.UserSelector, cr.Namespace)
 	if err != nil {
 		return nil, err
@@ -685,12 +690,12 @@ func selectVMUsers(ctx context.Context, cr *v1beta1.VMAuth, rclient client.Clien
 
 // select existing vmusers secrets.
 // returns secrets, that need to be create and exist secrets.
-func selectVMUserSecrets(ctx context.Context, rclient client.Client, vmUsers []*v1beta1.VMUser) ([]v1.Secret, []v1.Secret, error) {
-	var existsSecrets []v1.Secret
-	var needToCreateSecrets []v1.Secret
+func selectVMUserSecrets(ctx context.Context, rclient client.Client, vmUsers []*victoriametricsv1beta1.VMUser) ([]corev1.Secret, []corev1.Secret, error) {
+	var existsSecrets []corev1.Secret
+	var needToCreateSecrets []corev1.Secret
 	for i := range vmUsers {
 		vmUser := vmUsers[i]
-		var vmus v1.Secret
+		var vmus corev1.Secret
 		if err := rclient.Get(ctx, types.NamespacedName{Namespace: vmUser.Namespace, Name: vmUser.SecretName()}, &vmus); err != nil {
 			if errors.IsNotFound(err) {
 				needToCreateSecrets = append(needToCreateSecrets, buildVMUserSecret(vmUser))
@@ -706,8 +711,8 @@ func selectVMUserSecrets(ctx context.Context, rclient client.Client, vmUsers []*
 
 // note, username and password must be filled by operator
 // with default values if need.
-func buildVMUserSecret(src *v1beta1.VMUser) v1.Secret {
-	s := v1.Secret{
+func buildVMUserSecret(src *victoriametricsv1beta1.VMUser) corev1.Secret {
+	s := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            src.SecretName(),
 			Namespace:       src.Namespace,
@@ -715,7 +720,7 @@ func buildVMUserSecret(src *v1beta1.VMUser) v1.Secret {
 			Annotations:     src.AnnotationsFiltered(),
 			OwnerReferences: src.AsOwner(),
 			Finalizers: []string{
-				v1beta1.FinalizerName,
+				victoriametricsv1beta1.FinalizerName,
 			},
 		},
 		Data: map[string][]byte{},

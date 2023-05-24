@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/VictoriaMetrics/operator/internal/config"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -24,6 +25,9 @@ func getNSWithSelector(ctx context.Context, rclient client.Client, nsSelector, o
 	switch {
 	// in single namespace mode, return object ns
 	case nsSelector == nil || watchNS != "":
+		if nsSelector != nil {
+			log.Info("Ignoring namespace selector for object, since operator started with WATCH_NAMESPACE param", "selector", nsSelector.String())
+		}
 		namespaces = append(namespaces, objNS)
 	default:
 		nsSelector, err := metav1.LabelSelectorAsSelector(nsSelector)
@@ -47,6 +51,21 @@ func getNSWithSelector(ctx context.Context, rclient client.Client, nsSelector, o
 	}
 
 	return namespaces, objLabelSelector, nil
+}
+
+func selectNamespaces(ctx context.Context, rclient client.Client, selector labels.Selector) ([]string, error) {
+	var matchedNs []string
+	ns := &corev1.NamespaceList{}
+
+	if err := rclient.List(ctx, ns, &client.ListOptions{LabelSelector: selector}); err != nil {
+		return nil, err
+	}
+
+	for _, n := range ns.Items {
+		matchedNs = append(matchedNs, n.Name)
+	}
+
+	return matchedNs, nil
 }
 
 // lists api objects for given api objects type matched given selectors

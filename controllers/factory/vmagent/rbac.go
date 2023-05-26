@@ -27,6 +27,8 @@ var (
 				"endpoints",
 				"pods",
 				"endpointslices",
+				"secrets",
+				"configmaps",
 			},
 		},
 		{

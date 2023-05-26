@@ -120,9 +120,30 @@ func performRollingUpdateOnSts(ctx context.Context, wasRecreated bool, rclient c
 	if sts.Spec.Replicas != nil {
 		neededPodCount = int(*sts.Spec.Replicas)
 	}
+	switch {
+	// case when number of replicas decreased
+	case len(podList.Items) > neededPodCount:
+		var podCnt int
+		// filter deleted pods
+		for idx, pod := range podList.Items {
+			if !pod.DeletionTimestamp.IsZero() {
+				continue
+			}
+			podList.Items[idx] = pod
+			idx++
+		}
+		podList.Items = podList.Items[:podCnt]
+	// usual case when some param misconfigured
+	// or kubernetes for some reason cannot create pod
+	// it's better to fail fast
+	case len(podList.Items) < neededPodCount:
+		return fmt.Errorf("actual pod count: %d less then needed: %d, possible statefulset misconfiguration", len(podList.Items), neededPodCount)
+	}
+
+	// sanity check, should help to catch possible bugs
 	if len(podList.Items) != neededPodCount {
 		l.Info("unexpected count of pods for sts, seems like configuration of stateful wasn't correct and kubernetes cannot create pod,"+
-			" check kubectl events for namespace: %s, to find out source of problem", "sts", sts.Name, "wantCount", neededPodCount, "actualCount", len(podList.Items))
+			" check kubectl events to find out source of problem", "sts", sts.Name, "wantCount", neededPodCount, "actualCount", len(podList.Items), "namespace", ns)
 	}
 
 	// first we must ensure, that already updated pods in ready status

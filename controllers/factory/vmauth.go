@@ -490,7 +490,7 @@ func maybeAddInitConfigContainer(src []corev1.Container, c *config.BaseOperatorC
 		return src
 	}
 	initReloader := corev1.Container{
-		Image: c.VMAgentDefault.ConfigReloadImage,
+		Image: formatContainerImage(c.ContainerRegistry, c.VMAgentDefault.ConfigReloadImage),
 		Name:  "config-init",
 		Command: []string{
 			"/bin/sh",

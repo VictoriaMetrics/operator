@@ -148,9 +148,6 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient
 }
 
 func createOrUpdateVMSelect(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) error {
-	l := log.WithValues("controller", "vmselect", "cluster", cr.Name)
-	l.Info("create or update vmselect for cluster")
-
 	// its tricky part.
 	// we need replicas count from hpa to create proper args.
 	// note, need to make copy of current crd. to able to change it without side effects.
@@ -188,9 +185,9 @@ func CreateOrUpdateVMSelectService(ctx context.Context, cr *v1beta1.VMCluster, r
 
 	if cr.Spec.VMSelect.ServiceSpec != nil {
 		if additionalService.Name == newHeadless.Name {
-			log.Error(fmt.Errorf("vmselect additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newHeadless.Name), "cannot create additional service")
+			return nil, fmt.Errorf("vmselect additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newHeadless.Name)
 		} else if _, err := reconcileServiceForCRD(ctx, rclient, additionalService); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("cannot reconcile service for vmselect: %w", err)
 		}
 	}
 	rca := finalize.RemoveSvcArgs{SelectorLabels: cr.VMSelectSelectorLabels, GetNameSpace: cr.GetNamespace, PrefixedName: func() string {
@@ -204,8 +201,6 @@ func CreateOrUpdateVMSelectService(ctx context.Context, cr *v1beta1.VMCluster, r
 }
 
 func createOrUpdateVMInsert(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) error {
-	l := log.WithValues("controller", "vminsert", "cluster", cr.Name)
-	l.Info("create or update vminsert for cluster")
 	newDeployment, err := genVMInsertSpec(cr, c)
 	if err != nil {
 		return err
@@ -218,7 +213,6 @@ func createOrUpdateVMInsert(ctx context.Context, cr *v1beta1.VMCluster, rclient 
 			if err := rclient.Create(ctx, newDeployment); err != nil {
 				return fmt.Errorf("cannot create new vminsert deploy: %w", err)
 			}
-			l.Info("new vminsert deploy was created")
 			return nil
 		}
 		return fmt.Errorf("cannot get vminsert deploy: %w", err)
@@ -234,7 +228,6 @@ func createOrUpdateVMInsert(ctx context.Context, cr *v1beta1.VMCluster, rclient 
 	if err = rclient.Update(ctx, newDeployment); err != nil {
 		return fmt.Errorf("cannot update vminsert deploy: %w", err)
 	}
-	l.Info("vminsert deploy was reconciled")
 
 	return nil
 }
@@ -272,7 +265,7 @@ func CreateOrUpdateVMInsertService(ctx context.Context, cr *v1beta1.VMCluster, r
 
 	if cr.Spec.VMInsert.ServiceSpec != nil {
 		if additionalService.Name == newService.Name {
-			log.Error(fmt.Errorf("vminsert additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name), "cannot create additional service")
+			return nil, fmt.Errorf("vminsert additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name)
 		} else if _, err := reconcileServiceForCRD(ctx, rclient, additionalService); err != nil {
 			return nil, err
 		}
@@ -288,8 +281,6 @@ func CreateOrUpdateVMInsertService(ctx context.Context, cr *v1beta1.VMCluster, r
 }
 
 func createOrUpdateVMStorage(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) error {
-	l := log.WithValues("controller", "vmstorage", "cluster", cr.Name)
-	l.Info("create or update vmstorage for cluster")
 	newSts, err := GenVMStorageSpec(cr, c)
 	if err != nil {
 		return err
@@ -310,7 +301,7 @@ func CreateOrUpdateVMStorageService(ctx context.Context, cr *v1beta1.VMCluster, 
 		additionalService := genVMStorageService(cr, c)
 		mergeServiceSpec(additionalService, cr.Spec.VMStorage.ServiceSpec)
 		if additionalService.Name == newHeadless.Name {
-			log.Error(fmt.Errorf("vmstorage additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newHeadless.Name), "cannot create additional service")
+			return nil, fmt.Errorf("vmstorage additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newHeadless.Name)
 		} else if _, err := reconcileServiceForCRD(ctx, rclient, additionalService); err != nil {
 			return nil, err
 		}
@@ -428,8 +419,6 @@ func makePodSpecForVMSelect(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 			storageArg += cr.Spec.VMStorage.BuildPodName(cr.Spec.VMStorage.GetNameWithPrefix(cr.Name), i, cr.Namespace, cr.Spec.VMStorage.VMSelectPort, c.ClusterDomainName)
 		}
 		storageArg = strings.TrimSuffix(storageArg, ",")
-
-		log.Info("built args with vmstorage nodes for vmselect", "vmstorage args", storageArg)
 		args = append(args, storageArg)
 
 	}
@@ -442,7 +431,6 @@ func makePodSpecForVMSelect(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 			selectArg += cr.Spec.VMSelect.BuildPodName(cr.Spec.VMSelect.GetNameWithPrefix(cr.Name), i, cr.Namespace, cr.Spec.VMSelect.Port, c.ClusterDomainName)
 		}
 		selectArg = strings.TrimSuffix(selectArg, ",")
-		log.Info("args for vmselect ", "args", selectArg)
 		args = append(args, selectArg)
 	}
 
@@ -757,13 +745,11 @@ func makePodSpecForVMInsert(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 			storageArg += cr.Spec.VMStorage.BuildPodName(cr.Spec.VMStorage.GetNameWithPrefix(cr.Name), i, cr.Namespace, cr.Spec.VMStorage.VMInsertPort, c.ClusterDomainName)
 		}
 		storageArg = strings.TrimSuffix(storageArg, ",")
-		log.Info("args for vminsert ", "storage arg", storageArg)
 
 		args = append(args, storageArg)
 
 	}
 	if cr.Spec.ReplicationFactor != nil {
-		log.Info("replication enabled for vminsert, with factor", "replicationFactor", *cr.Spec.ReplicationFactor)
 		args = append(args, fmt.Sprintf("-replicationFactor=%d", *cr.Spec.ReplicationFactor))
 	}
 	if len(cr.Spec.VMInsert.ExtraEnvs) > 0 {

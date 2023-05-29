@@ -243,7 +243,6 @@ func makeSpecForVMAuth(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperator
 	}
 
 	configReloader := buildVMAuthConfigReloaderContainer(cr, c)
-	cr.Spec.InitContainers = maybeAddInitConfigContainer(cr.Spec.InitContainers, c, vmAuthConfigMountGz, vmAuthConfigNameGz, vmAuthConfigFolder, vmAuthConfigName)
 
 	vmauthContainer = buildProbe(vmauthContainer, cr)
 	operatorContainers := []corev1.Container{configReloader, vmauthContainer}
@@ -252,6 +251,13 @@ func makeSpecForVMAuth(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperator
 		return nil, err
 	}
 
+	ic := buildInitConfigContainer(c.VMAuthDefault.ConfigReloadImage, c, vmAuthConfigMountGz, vmAuthConfigNameGz, vmAuthConfigFolder, vmAuthConfigName)
+	if len(cr.Spec.InitContainers) > 0 {
+		ic, err = k8stools.MergePatchContainers(ic, cr.Spec.InitContainers)
+		if err != nil {
+			return nil, fmt.Errorf("cannot apply patch for initContainers: %w", err)
+		}
+	}
 	vmAuthSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:      cr.PodLabels(),
@@ -260,7 +266,7 @@ func makeSpecForVMAuth(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperator
 		Spec: corev1.PodSpec{
 			NodeSelector:                  cr.Spec.NodeSelector,
 			Volumes:                       volumes,
-			InitContainers:                cr.Spec.InitContainers,
+			InitContainers:                ic,
 			Containers:                    containers,
 			ServiceAccountName:            cr.GetServiceAccountName(),
 			SecurityContext:               cr.Spec.SecurityContext,
@@ -484,10 +490,10 @@ func buildVMAuthConfigReloaderContainer(cr *victoriametricsv1beta1.VMAuth, c *co
 	return configReloader
 }
 
-func maybeAddInitConfigContainer(src []corev1.Container, c *config.BaseOperatorConf, configDirName, configFileName, outConfigDir, outFileName string) []corev1.Container {
+func buildInitConfigContainer(baseImage string, c *config.BaseOperatorConf, configDirName, configFileName, outConfigDir, outFileName string) []corev1.Container {
 	// TODO add support for custom reloader
 	if c.UseCustomConfigReloader {
-		return src
+		return nil
 	}
 	initReloader := corev1.Container{
 		Image: formatContainerImage(c.ContainerRegistry, c.VMAgentDefault.ConfigReloadImage),
@@ -510,6 +516,5 @@ func maybeAddInitConfigContainer(src []corev1.Container, c *config.BaseOperatorC
 			},
 		},
 	}
-	src = append(src, initReloader)
-	return src
+	return []corev1.Container{initReloader}
 }

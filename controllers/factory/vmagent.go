@@ -498,11 +498,17 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 			}
 		}
 	}
-	cr.Spec.InitContainers = maybeAddInitConfigContainer(cr.Spec.InitContainers, c, vmAgentConfDir, vmagentGzippedFilename, vmAgentConOfOutDir, configEnvsubstFilename)
+	ic := buildInitConfigContainer(c.VMAgentDefault.ConfigReloadImage, c, vmAgentConfDir, vmagentGzippedFilename, vmAgentConOfOutDir, configEnvsubstFilename)
+	if len(cr.Spec.InitContainers) > 0 {
+		ic, err = k8stools.MergePatchContainers(ic, cr.Spec.InitContainers)
+		if err != nil {
+			return nil, fmt.Errorf("cannot apply patch for initContainers: %w", err)
+		}
+	}
 	return &corev1.PodSpec{
 		NodeSelector:                  cr.Spec.NodeSelector,
 		Volumes:                       volumes,
-		InitContainers:                cr.Spec.InitContainers,
+		InitContainers:                ic,
 		Containers:                    containers,
 		ServiceAccountName:            cr.GetServiceAccountName(),
 		SecurityContext:               cr.Spec.SecurityContext,

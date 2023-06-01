@@ -23,7 +23,6 @@ import (
 
 // builds vmauth config.
 func buildVMAuthConfig(ctx context.Context, rclient client.Client, vmauth *victoriametricsv1beta1.VMAuth) ([]byte, error) {
-
 	// fetch exist users for vmauth.
 	users, err := selectVMUsers(ctx, vmauth, rclient)
 	if err != nil {
@@ -82,7 +81,6 @@ func buildVMAuthConfig(ctx context.Context, rclient client.Client, vmauth *victo
 	}
 
 	return cfg, nil
-
 }
 
 func addCredentialsToCreateSecrets(src []*victoriametricsv1beta1.VMUser, dst []corev1.Secret) []corev1.Secret {
@@ -641,9 +639,11 @@ func genUserCfg(user *victoriametricsv1beta1.VMUser, crdUrlCache map[string]stri
 
 // simple password generation.
 // its kubernetes, strong security does not work there.
-var passwordLength = 10
-var charSet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdedfghijklmnopqrst0123456789"
-var maxIdx = big.NewInt(int64(len(charSet)))
+var (
+	passwordLength = 10
+	charSet        = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdedfghijklmnopqrst0123456789"
+	maxIdx         = big.NewInt(int64(len(charSet)))
+)
 
 func genPassword() (string, error) {
 	var dst strings.Builder
@@ -660,7 +660,6 @@ func genPassword() (string, error) {
 
 // selects vmusers for given vmauth.
 func selectVMUsers(ctx context.Context, cr *victoriametricsv1beta1.VMAuth, rclient client.Client) ([]*victoriametricsv1beta1.VMUser, error) {
-
 	var res []*victoriametricsv1beta1.VMUser
 	namespaces, userSelector, err := getNSWithSelector(ctx, rclient, cr.Spec.UserNamespaceSelector, cr.Spec.UserSelector, cr.Namespace)
 	if err != nil {
@@ -748,7 +747,7 @@ func addVMInsertPaths(src []string) []string {
 }
 
 func addVMSelectPaths(src []string) []string {
-	return append(src, "/vmui",
+	return append(src, "/vmui.*",
 		"/vmui/vmui",
 		"/graph",
 		"/prometheus/graph",

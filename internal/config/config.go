@@ -21,8 +21,10 @@ var (
 	initNamespace sync.Once
 )
 
-const prefixVar = "VM"
-const UnLimitedResource = "unlimited"
+const (
+	prefixVar         = "VM"
+	UnLimitedResource = "unlimited"
+)
 
 // WatchNamespaceEnvVar is the constant for env variable WATCH_NAMESPACE
 // which specifies the Namespace to watch.
@@ -52,7 +54,7 @@ type BaseOperatorConf struct {
 	VMAlertDefault            struct {
 		Image               string `default:"victoriametrics/vmalert"`
 		Version             string `default:"v1.91.0"`
-		Port                string `default:"8080"`
+		Port                string `default:"8880"`
 		UseDefaultResources bool   `default:"true"`
 		Resource            struct {
 			Limit struct {

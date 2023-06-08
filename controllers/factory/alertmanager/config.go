@@ -513,6 +513,9 @@ func (cb *configBuilder) buildSlack(slack operatorv1beta1.SlackConfig) error {
 		if err != nil {
 			return err
 		}
+		if err := parseURL(string(s)); err != nil {
+			return fmt.Errorf("invalid URL %s in key %s from secret %s: %v", string(s), slack.APIURL.Key, slack.APIURL.Name, err)
+		}
 		temp = append(temp, yaml.MapItem{Key: "api_url", Value: string(s)})
 	}
 	if slack.SendResolved != nil {

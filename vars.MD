@@ -1,5 +1,5 @@
 # Auto Generated vars for package config 
- updated at Mon Jun  5 02:01:08 UTC 2023 
+ updated at Wed May 24 14:59:48 UTC 2023 
 
 
 | varible name | variable default value | variable required | variable description |
@@ -10,7 +10,7 @@
 | VM_PSPAUTOCREATEENABLED | true | false | - |
 | VM_VMALERTDEFAULT_IMAGE | victoriametrics/vmalert | false | - |
 | VM_VMALERTDEFAULT_VERSION | v1.91.0 | false | - |
-| VM_VMALERTDEFAULT_PORT | 8880 | false | - |
+| VM_VMALERTDEFAULT_PORT | 8080 | false | - |
 | VM_VMALERTDEFAULT_USEDEFAULTRESOURCES | true | false | - |
 | VM_VMALERTDEFAULT_RESOURCE_LIMIT_MEM | 500Mi | false | - |
 | VM_VMALERTDEFAULT_RESOURCE_LIMIT_CPU | 200m | false | - |

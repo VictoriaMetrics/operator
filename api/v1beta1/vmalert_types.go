@@ -370,7 +370,6 @@ func (cr *VMAlert) Probe() *EmbeddedProbes {
 }
 
 func (cr *VMAlert) ProbePath() string {
-
 	return buildPathWithPrefixFlag(cr.Spec.ExtraArgs, healthPath)
 }
 
@@ -407,6 +406,7 @@ func (cr *VMAlert) AsOwner() []metav1.OwnerReference {
 		},
 	}
 }
+
 func (cr VMAlert) PodAnnotations() map[string]string {
 	annotations := map[string]string{}
 	if cr.Spec.PodMetadata != nil {
@@ -451,6 +451,7 @@ func (cr VMAlert) AllLabels() map[string]string {
 func (cr VMAlert) PrefixedName() string {
 	return fmt.Sprintf("vmalert-%s", cr.Name)
 }
+
 func (cr VMAlert) TLSAssetName() string {
 	return fmt.Sprintf("tls-assets-vmalert-%s", cr.Name)
 }
@@ -495,7 +496,7 @@ func (cr VMAlert) RulesConfigMapSelector() client.ListOption {
 func (cr *VMAlert) AsURL() string {
 	port := cr.Spec.Port
 	if port == "" {
-		port = "8880"
+		port = "8080"
 	}
 	return fmt.Sprintf("http://%s.%s.svc:%s", cr.PrefixedName(), cr.Namespace, port)
 }
@@ -518,6 +519,7 @@ func (cr *VMAlert) GetNotifierSelectors() []*DiscoverySelector {
 	}
 	return r
 }
+
 func init() {
 	SchemeBuilder.Register(&VMAlert{}, &VMAlertList{})
 }

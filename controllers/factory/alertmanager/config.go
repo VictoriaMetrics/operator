@@ -632,7 +632,7 @@ func (cb *configBuilder) buildWebhook(wh operatorv1beta1.WebhookConfig) error {
 	if url == "" {
 		return nil
 	} else {
-		err := parseURL(*wh.URL)
+		err := parseURL(url)
 		if err != nil {
 			return err
 		}

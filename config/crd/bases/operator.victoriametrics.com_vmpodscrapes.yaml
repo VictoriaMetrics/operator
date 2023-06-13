@@ -455,6 +455,9 @@ spec:
                       type: integer
                     scheme:
                       description: HTTP scheme to use for scraping.
+                      enum:
+                      - http
+                      - https
                       type: string
                     scrape_interval:
                       description: ScrapeInterval is the same as Interval and has

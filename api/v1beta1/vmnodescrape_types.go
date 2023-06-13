@@ -23,6 +23,7 @@ type VMNodeScrapeSpec struct {
 	Path string `json:"path,omitempty"`
 	// HTTP scheme to use for scraping.
 	// +optional
+	// +kubebuilder:validation:Enum=http;https
 	Scheme string `json:"scheme,omitempty"`
 	// Optional HTTP URL parameters
 	// +optional
@@ -92,8 +93,7 @@ type VMNodeScrapeSpec struct {
 }
 
 // VMNodeScrapeStatus defines the observed state of VMNodeScrape
-type VMNodeScrapeStatus struct {
-}
+type VMNodeScrapeStatus struct{}
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status

@@ -21,7 +21,6 @@ type VMStaticScrapeSpec struct {
 // TargetEndpoint defines single static target endpoint.
 type TargetEndpoint struct {
 	// Targets static targets addresses in form of ["192.122.55.55:9100","some-name:9100"].
-	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:MinItems=1
 	Targets []string `json:"targets"`
 	// Labels static labels for targets.

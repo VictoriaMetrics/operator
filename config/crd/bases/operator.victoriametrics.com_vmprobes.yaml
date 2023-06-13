@@ -876,6 +876,9 @@ spec:
                     type: string
                   scheme:
                     description: HTTP scheme to use for scraping. Defaults to `http`.
+                    enum:
+                    - http
+                    - https
                     type: string
                   url:
                     description: Mandatory URL of the prober.

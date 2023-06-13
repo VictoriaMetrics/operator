@@ -21,6 +21,8 @@ type VMStaticScrapeSpec struct {
 // TargetEndpoint defines single static target endpoint.
 type TargetEndpoint struct {
 	// Targets static targets addresses in form of ["192.122.55.55:9100","some-name:9100"].
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:MinItems=1
 	Targets []string `json:"targets"`
 	// Labels static labels for targets.
 	// +optional
@@ -33,6 +35,7 @@ type TargetEndpoint struct {
 	Path string `json:"path,omitempty"`
 	// HTTP scheme to use for scraping.
 	// +optional
+	// +kubebuilder:validation:Enum=http;https
 	Scheme string `json:"scheme,omitempty"`
 	// Optional HTTP URL parameters
 	// +optional
@@ -97,8 +100,7 @@ type TargetEndpoint struct {
 }
 
 // VMStaticScrapeStatus defines the observed state of VMStaticScrape
-type VMStaticScrapeStatus struct {
-}
+type VMStaticScrapeStatus struct{}
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status

@@ -433,6 +433,9 @@ spec:
                       type: integer
                     scheme:
                       description: HTTP scheme to use for scraping.
+                      enum:
+                      - http
+                      - https
                       type: string
                     scrape_interval:
                       description: ScrapeInterval is the same as Interval and has
@@ -446,6 +449,7 @@ spec:
                       description: Targets static targets addresses in form of ["192.122.55.55:9100","some-name:9100"].
                       items:
                         type: string
+                      minItems: 1
                       type: array
                     tlsConfig:
                       description: TLSConfig configuration to use when scraping the

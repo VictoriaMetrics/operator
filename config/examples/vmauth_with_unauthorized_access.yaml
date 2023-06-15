@@ -5,10 +5,6 @@ metadata:
 spec:
   userSelector: {}
   userNamespaceSelector: {}
-  image:
-    repository: victoriametrics/vmauth
-    tag: v1.91.0-enterprise
-    pullPolicy: IfNotPresent
   replicaCount: 1
   resources:
     requests:
@@ -28,4 +24,4 @@ spec:
           - 127.0.0.1
           - 192.168.0.0/16
         deny_list:
-          10.0.0.0/8
+          - 10.0.0.0/8

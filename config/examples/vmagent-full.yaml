@@ -80,10 +80,6 @@ spec:
       key: value
   staticScrapeSelector: {}
   staticScrapeNamespaceSelector: {}
-  image:
-    repository: victoriametrics/vmagent
-    tag: v1.46.0
-    pullPolicy: IfNotPresent
   scrapeInterval: 30s
   vmAgentExternalLabelName: vmagent
   externalLabels:
@@ -112,17 +108,17 @@ spec:
         password:
           name: rws-basic-auth
           key: password
-#      flushInterval: 2s
-#      queues: 2
+      #      flushInterval: 2s
+      #      queues: 2
       urlRelabelConfig:
         name: "vm-agent-url-relabel-config"
         key: "relabel.yaml"
-#      label:
-#        primary: "yes"
+    #      label:
+    #        primary: "yes"
     - url: "http://vmsingle-example-vmsingle.alternative.svc:8429/api/v1/write"
-#      maxDiskUsagePerURL: 33
-#      sendTimeout: 30s
-#      showURL: true
+      #      maxDiskUsagePerURL: 33
+      #      sendTimeout: 30s
+      #      showURL: true
       bearerTokenSecret:
         name: rws-bearer-token
         key: token
@@ -135,4 +131,4 @@ spec:
       labels:
         key: value
     spec:
-        type: NodePort
+      type: NodePort

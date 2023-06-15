@@ -15,11 +15,6 @@ spec:
     matchExpressions:
       - operator: Exists
         key: name
-
-  image:
-    repository: victoriametrics/vmauth
-    tag: v1.60.0
-    pullPolicy: IfNotPresent
   replicaCount: 1
   resources:
     requests:

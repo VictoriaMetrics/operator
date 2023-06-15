@@ -20,10 +20,6 @@ spec:
       key: value
     annotations:
       key: value
-  image:
-    repository: victoriametrics/vmalert
-    tag: v1.46.0
-    pullPolicy: IfNotPresent
   replicaCount: 1
   extraArgs:
     loggerLevel: INFO
@@ -69,8 +65,8 @@ spec:
     matchLabels:
       managed-by: vm-operator
     matchExpressions:
-        - operator: Exists
-          key: name
+      - operator: Exists
+        key: name
   remoteWrite:
     url: "http://vmagent-example-vmsingle.default.svc:8429"
     concurrency: 12

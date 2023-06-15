@@ -34,11 +34,11 @@ func newFileWatcher(file string) (*fileWatcher, error) {
 }
 
 type watcher interface {
-	startWatch(ctx context.Context, updates chan struct{})
+	startWatch(ctx context.Context, updates chan struct{}) error
 	close()
 }
 
-func (fw *fileWatcher) startWatch(ctx context.Context, updates chan struct{}) {
+func (fw *fileWatcher) startWatch(ctx context.Context, updates chan struct{}) error {
 	fw.wg.Add(1)
 	logger.Infof("starting file watcher")
 	var prevContent []byte
@@ -65,6 +65,9 @@ func (fw *fileWatcher) startWatch(ctx context.Context, updates chan struct{}) {
 		return nil
 	}
 	if err := update(*configFileName); err != nil {
+		if *onlyInitConfig {
+			return err
+		}
 		logger.Errorf("cannot update file on init: %v", err)
 	}
 	go func() {
@@ -87,6 +90,7 @@ func (fw *fileWatcher) startWatch(ctx context.Context, updates chan struct{}) {
 			}
 		}
 	}()
+	return nil
 }
 
 func (fw *fileWatcher) close() {

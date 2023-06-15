@@ -25,7 +25,7 @@ import (
 )
 
 var (
-	mode                   = flag.String("mode", "", "default is normal. If using one-shot mode, will read config and write to config-envsubst-file once")
+	onlyInitConfig         = flag.Bool("only-init-config", false, "enables will read config and write to config-envsubst-file once before exit")
 	configFileName         = flag.String("config-file", "", "config file watched by reloader")
 	configFileDst          = flag.String("config-envsubst-file", "", "target file, where conent of configFile or configSecret would be written")
 	configSecretName       = flag.String("config-secret-name", "", "name of kubernetes secret in form of namespace/name")
@@ -54,9 +54,12 @@ func main() {
 		logger.Fatalf("cannot create configWatcher: %s", err)
 	}
 
-	configWatcher.startWatch(ctx, updatesChan)
-	if *mode == "one-shot" {
-		logger.Infof("config-reloader one-shot mode completed, exit now")
+	err = configWatcher.startWatch(ctx, updatesChan)
+	if *onlyInitConfig {
+		if err != nil {
+			logger.Fatalf("failed to init config: %v", err)
+		}
+		logger.Infof("config initiation succeed, exit now")
 		cancel()
 		configWatcher.close()
 		return
@@ -245,7 +248,7 @@ func writeNewContent(data []byte) error {
 		}
 	}
 	tmpDst := *configFileDst + ".tmp"
-	if err := os.WriteFile(tmpDst, data, 0o644); err != nil {
+	if err := os.WriteFile(tmpDst, data, 0644); err != nil {
 		return fmt.Errorf("cannot write file: %s to the disk: %w", *configFileDst, err)
 	}
 	if err := os.Rename(tmpDst, *configFileDst); err != nil {

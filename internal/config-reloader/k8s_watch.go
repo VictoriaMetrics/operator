@@ -85,7 +85,7 @@ func newKubernetesWatcher(ctx context.Context, secretName, namespace string) (*k
 
 var errNotModified = fmt.Errorf("file content not modified")
 
-func (k *k8sWatcher) startWatch(ctx context.Context, updates chan struct{}) {
+func (k *k8sWatcher) startWatch(ctx context.Context, updates chan struct{}) error {
 	var prevContent []byte
 	updateSecret := func(secret *v1.Secret) error {
 		newData, ok := secret.Data[*configSecretKey]
@@ -118,6 +118,9 @@ func (k *k8sWatcher) startWatch(ctx context.Context, updates chan struct{}) {
 		logger.Fatalf("cannot get secret during init secretName: %s, namespace: %s, err: %s", k.secretName, k.namespace, err)
 	}
 	if err := updateSecret(&s); err != nil {
+		if *onlyInitConfig {
+			return err
+		}
 		logger.Errorf("cannot update secret: %s", err)
 	}
 	k.wg.Add(1)
@@ -141,6 +144,7 @@ func (k *k8sWatcher) startWatch(ctx context.Context, updates chan struct{}) {
 			}
 		}
 	}()
+	return nil
 }
 
 func (k *k8sWatcher) close() {

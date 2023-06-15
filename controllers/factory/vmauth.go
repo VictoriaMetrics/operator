@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"path"
 	"sort"
+	"strings"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
@@ -13,6 +14,7 @@ import (
 	"github.com/VictoriaMetrics/operator/controllers/factory/psp"
 	"github.com/VictoriaMetrics/operator/controllers/factory/vmauth"
 	"github.com/VictoriaMetrics/operator/internal/config"
+	"github.com/hashicorp/go-version"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	v12 "k8s.io/api/networking/v1"
@@ -496,6 +498,19 @@ func buildVMAuthConfigReloaderContainer(cr *victoriametricsv1beta1.VMAuth, c *co
 func buildInitConfigContainer(baseImage string, c *config.BaseOperatorConf, configDirName, configFileName, outConfigDir, outFileName string, configReloaderArgs []string) []corev1.Container {
 	var initReloader corev1.Container
 	if c.UseCustomConfigReloader {
+		// add custom config reloader as initContainer since v0.35.0
+		reloaderImage := c.CustomConfigReloaderImage
+		idx := strings.LastIndex(reloaderImage, "-")
+		if idx > 0 {
+			imageTag := reloaderImage[idx+1:]
+			ver, err := version.NewVersion(imageTag)
+			if err != nil {
+				log.Error(err, "cannot parse custom config reloader version", "reloader-image", reloaderImage)
+				return nil
+			} else if ver.LessThan(version.Must(version.NewVersion("0.35.0"))) {
+				return nil
+			}
+		}
 		initReloader = corev1.Container{
 			Image: formatContainerImage(c.ContainerRegistry, c.CustomConfigReloaderImage),
 			Name:  "config-init",

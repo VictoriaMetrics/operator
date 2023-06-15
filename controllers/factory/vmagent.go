@@ -185,7 +185,6 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 			}
 			stsNames[newDeploy.Name] = struct{}{}
 		}
-
 	}
 	if err := finalize.RemoveOrphanedDeployments(ctx, rclient, cr, deploymentNames); err != nil {
 		return err
@@ -292,7 +291,6 @@ func newDeployForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOpera
 }
 
 func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperatorConf, ssCache *scrapesSecretsCache) (*corev1.PodSpec, error) {
-
 	args := []string{
 		fmt.Sprintf("-promscrape.config=%s", path.Join(vmAgentConOfOutDir, configEnvsubstFilename)),
 	}
@@ -335,14 +333,6 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 
 	volumes = append(volumes, cr.Spec.Volumes...)
 	volumes = append(volumes,
-		corev1.Volume{
-			Name: "config",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: cr.PrefixedName(),
-				},
-			},
-		},
 		corev1.Volume{
 			Name: "tls-assets",
 			VolumeSource: corev1.VolumeSource{
@@ -410,16 +400,29 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 			MountPath: RelabelingConfigDir,
 		},
 		corev1.VolumeMount{
-			Name:      "config",
-			ReadOnly:  true,
-			MountPath: vmAgentConfDir,
-		},
-		corev1.VolumeMount{
 			Name:      "stream-aggr-conf",
 			ReadOnly:  true,
 			MountPath: StreamAggrConfigDir,
 		},
 	)
+	// no need to mount secret when using custom configReloader
+	if !c.UseCustomConfigReloader {
+		volumes = append(volumes,
+			corev1.Volume{
+				Name: "config",
+				VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: cr.PrefixedName(),
+					},
+				},
+			})
+		agentVolumeMounts = append(agentVolumeMounts,
+			corev1.VolumeMount{
+				Name:      "config",
+				ReadOnly:  true,
+				MountPath: vmAgentConfDir,
+			})
+	}
 
 	for _, s := range cr.Spec.Secrets {
 		volumes = append(volumes, corev1.Volume{
@@ -498,7 +501,7 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 			}
 		}
 	}
-	ic := buildInitConfigContainer(c.VMAgentDefault.ConfigReloadImage, c, vmAgentConfDir, vmagentGzippedFilename, vmAgentConOfOutDir, configEnvsubstFilename)
+	ic := buildInitConfigContainer(c.VMAgentDefault.ConfigReloadImage, c, vmAgentConfDir, vmagentGzippedFilename, vmAgentConOfOutDir, configEnvsubstFilename, configReloader.Args)
 	if len(cr.Spec.InitContainers) > 0 {
 		ic, err = k8stools.MergePatchContainers(ic, cr.Spec.InitContainers)
 		if err != nil {
@@ -630,7 +633,6 @@ func buildVMAgentRelabelingsAssets(ctx context.Context, cr *victoriametricsv1bet
 
 // CreateOrUpdateRelabelConfigsAssets builds relabeling configs for vmagent at separate configmap, serialized as yaml
 func CreateOrUpdateRelabelConfigsAssets(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) error {
-
 	assestsCM, err := buildVMAgentRelabelingsAssets(ctx, cr, rclient)
 	if err != nil {
 		return err
@@ -698,7 +700,6 @@ func fetchConfigMapContentByKey(ctx context.Context, rclient client.Client, cm *
 }
 
 func createOrUpdateTlsAssets(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client, assets map[string]string) error {
-
 	tlsAssetsSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.TLSAssetName(),
@@ -938,7 +939,6 @@ func addAssetsToCache(
 		assets[tlsConfig.BuildAssetPath(objectNS, selector.Name, selector.Key)] = asset
 	}
 	return nil
-
 }
 
 type remoteFlag struct {
@@ -1216,12 +1216,7 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, ssCache *scrapesSecre
 }
 
 func buildConfigReloaderContainer(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperatorConf) corev1.Container {
-
 	configReloadVolumeMounts := []corev1.VolumeMount{
-		{
-			Name:      "config",
-			MountPath: vmAgentConfDir,
-		},
 		{
 			Name:      "config-out",
 			MountPath: vmAgentConOfOutDir,
@@ -1237,8 +1232,16 @@ func buildConfigReloaderContainer(cr *victoriametricsv1beta1.VMAgent, c *config.
 			MountPath: StreamAggrConfigDir,
 		},
 	}
+	if !c.UseCustomConfigReloader {
+		configReloadVolumeMounts = append(configReloadVolumeMounts,
+			corev1.VolumeMount{
+				Name:      "config",
+				MountPath: vmAgentConfDir,
+			})
+	}
 	configReloaderResources := corev1.ResourceRequirements{
-		Limits: corev1.ResourceList{}, Requests: corev1.ResourceList{}}
+		Limits: corev1.ResourceList{}, Requests: corev1.ResourceList{},
+	}
 	if c.VMAgentDefault.ConfigReloaderCPU != "0" && c.VMAgentDefault.UseDefaultResources {
 		configReloaderResources.Limits[corev1.ResourceCPU] = resource.MustParse(c.VMAgentDefault.ConfigReloaderCPU)
 	}
@@ -1272,7 +1275,6 @@ func buildConfigReloaderContainer(cr *victoriametricsv1beta1.VMAgent, c *config.
 }
 
 func buildConfigReloaderArgs(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperatorConf) []string {
-
 	// by default use watched-dir
 	// it should simplify parsing for latest and empty version tags.
 	dirsArg := "watched-dir"

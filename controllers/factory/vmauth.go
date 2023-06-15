@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"path"
 	"sort"
+	"strings"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
@@ -13,6 +14,7 @@ import (
 	"github.com/VictoriaMetrics/operator/controllers/factory/psp"
 	"github.com/VictoriaMetrics/operator/controllers/factory/vmauth"
 	"github.com/VictoriaMetrics/operator/internal/config"
+	"github.com/hashicorp/go-version"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	v12 "k8s.io/api/networking/v1"
@@ -168,19 +170,21 @@ func makeSpecForVMAuth(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperator
 	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(cr.Spec.Port).IntVal})
 	volumes := []corev1.Volume{
 		{
+			Name: "config-out",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+	}
+	if !c.UseCustomConfigReloader {
+		volumes = append(volumes, corev1.Volume{
 			Name: vmAuthVolumeName,
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: cr.ConfigSecretName(),
 				},
 			},
-		},
-		{
-			Name: "config-out",
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
-			},
-		},
+		})
 	}
 
 	volumes = append(volumes, cr.Spec.Volumes...)
@@ -251,7 +255,7 @@ func makeSpecForVMAuth(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperator
 		return nil, err
 	}
 
-	ic := buildInitConfigContainer(c.VMAuthDefault.ConfigReloadImage, c, vmAuthConfigMountGz, vmAuthConfigNameGz, vmAuthConfigFolder, vmAuthConfigName)
+	ic := buildInitConfigContainer(c.VMAuthDefault.ConfigReloadImage, c, vmAuthConfigMountGz, vmAuthConfigNameGz, vmAuthConfigFolder, vmAuthConfigName, configReloader.Args)
 	if len(cr.Spec.InitContainers) > 0 {
 		ic, err = k8stools.MergePatchContainers(ic, cr.Spec.InitContainers)
 		if err != nil {
@@ -286,12 +290,10 @@ func makeSpecForVMAuth(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperator
 		},
 	}
 	return vmAuthSpec, nil
-
 }
 
 // creates configuration secret for vmauth.
 func createOrUpdateVMAuthConfig(ctx context.Context, rclient client.Client, cr *victoriametricsv1beta1.VMAuth) error {
-
 	s := makeVMAuthConfigSecret(cr)
 
 	generatedConfig, err := buildVMAuthConfig(ctx, rclient, cr)
@@ -451,13 +453,16 @@ func buildVMAuthConfigReloaderContainer(cr *victoriametricsv1beta1.VMAuth, c *co
 			Name:      "config-out",
 			MountPath: vmAuthConfigFolder,
 		},
-		{
+	}
+	if !c.UseCustomConfigReloader {
+		reloaderMounts = append(reloaderMounts, corev1.VolumeMount{
 			Name:      vmAuthVolumeName,
 			MountPath: vmAuthConfigMountGz,
-		},
+		})
 	}
 	configReloaderResources := corev1.ResourceRequirements{
-		Limits: corev1.ResourceList{}, Requests: corev1.ResourceList{}}
+		Limits: corev1.ResourceList{}, Requests: corev1.ResourceList{},
+	}
 	if c.VMAuthDefault.ConfigReloaderCPU != "0" && c.VMAuthDefault.UseDefaultResources {
 		configReloaderResources.Limits[corev1.ResourceCPU] = resource.MustParse(c.VMAuthDefault.ConfigReloaderCPU)
 	}
@@ -490,12 +495,39 @@ func buildVMAuthConfigReloaderContainer(cr *victoriametricsv1beta1.VMAuth, c *co
 	return configReloader
 }
 
-func buildInitConfigContainer(baseImage string, c *config.BaseOperatorConf, configDirName, configFileName, outConfigDir, outFileName string) []corev1.Container {
-	// TODO add support for custom reloader
+func buildInitConfigContainer(baseImage string, c *config.BaseOperatorConf, configDirName, configFileName, outConfigDir, outFileName string, configReloaderArgs []string) []corev1.Container {
+	var initReloader corev1.Container
 	if c.UseCustomConfigReloader {
-		return nil
+		// add custom config reloader as initContainer since v0.35.0
+		reloaderImage := c.CustomConfigReloaderImage
+		idx := strings.LastIndex(reloaderImage, "-")
+		if idx > 0 {
+			imageTag := reloaderImage[idx+1:]
+			ver, err := version.NewVersion(imageTag)
+			if err != nil {
+				log.Error(err, "cannot parse custom config reloader version", "reloader-image", reloaderImage)
+				return nil
+			} else if ver.LessThan(version.Must(version.NewVersion("0.35.0"))) {
+				return nil
+			}
+		}
+		initReloader = corev1.Container{
+			Image: formatContainerImage(c.ContainerRegistry, c.CustomConfigReloaderImage),
+			Name:  "config-init",
+			Command: []string{
+				"/usr/local/bin/config-reloader",
+			},
+			Args: append(configReloaderArgs, "--mode=one-shot"),
+			VolumeMounts: []corev1.VolumeMount{
+				{
+					Name:      "config-out",
+					MountPath: outConfigDir,
+				},
+			},
+		}
+		return []corev1.Container{initReloader}
 	}
-	initReloader := corev1.Container{
+	initReloader = corev1.Container{
 		Image: formatContainerImage(c.ContainerRegistry, c.VMAgentDefault.ConfigReloadImage),
 		Name:  "config-init",
 		Command: []string{

@@ -53,7 +53,7 @@ func (fw *fileWatcher) startWatch(ctx context.Context, updates chan struct{}) {
 			return errNotModified
 		}
 		if err := writeNewContent(newData); err != nil {
-			return fmt.Errorf("cannot write content to file: %s, err: %w", fileName, err)
+			return fmt.Errorf("cannot write content to file: %s, err: %w", *configFileDst, err)
 		}
 
 		prevContent = newData
@@ -65,7 +65,7 @@ func (fw *fileWatcher) startWatch(ctx context.Context, updates chan struct{}) {
 		return nil
 	}
 	if err := update(*configFileName); err != nil {
-		logger.Errorf("cannot update file on init")
+		logger.Errorf("cannot update file on init: %v", err)
 	}
 	go func() {
 		defer fw.wg.Done()

@@ -25,6 +25,7 @@ import (
 )
 
 var (
+	mode                   = flag.String("mode", "", "default is normal. If using one-shot mode, will read config and write to config-envsubst-file once")
 	configFileName         = flag.String("config-file", "", "config file watched by reloader")
 	configFileDst          = flag.String("config-envsubst-file", "", "target file, where conent of configFile or configSecret would be written")
 	configSecretName       = flag.String("config-secret-name", "", "name of kubernetes secret in form of namespace/name")
@@ -54,6 +55,12 @@ func main() {
 	}
 
 	configWatcher.startWatch(ctx, updatesChan)
+	if *mode == "one-shot" {
+		logger.Infof("config-reloader one-shot mode completed, exit now")
+		cancel()
+		configWatcher.close()
+		return
+	}
 	watcher := cfgWatcher{
 		updates:  updatesChan,
 		reloader: r.reload,
@@ -130,7 +137,6 @@ type reloader struct {
 }
 
 func (r *reloader) reload(ctx context.Context) error {
-
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, *reloadURL, nil)
 	if err != nil {
 		return fmt.Errorf("cannot build request for reload api: %w", err)
@@ -186,6 +192,9 @@ func newConfigWatcher(ctx context.Context) (watcher, error) {
 	if *configFileName == "" && *configSecretName == "" {
 		return nil, fmt.Errorf("provide at least one configFileName")
 	}
+	if *configFileName != "" && *configSecretName != "" {
+		logger.Infof("both config have been provided, will use configSecret %s instead of configFile %s", *configSecretName, *configFileName)
+	}
 	if *configFileName != "" {
 		fw, err := newFileWatcher(*configFileName)
 		if err != nil {
@@ -236,7 +245,7 @@ func writeNewContent(data []byte) error {
 		}
 	}
 	tmpDst := *configFileDst + ".tmp"
-	if err := os.WriteFile(tmpDst, data, 0644); err != nil {
+	if err := os.WriteFile(tmpDst, data, 0o644); err != nil {
 		return fmt.Errorf("cannot write file: %s to the disk: %w", *configFileDst, err)
 	}
 	if err := os.Rename(tmpDst, *configFileDst); err != nil {
@@ -246,6 +255,5 @@ func writeNewContent(data []byte) error {
 }
 
 func requestHandler(w http.ResponseWriter, r *http.Request) bool {
-
 	return false
 }

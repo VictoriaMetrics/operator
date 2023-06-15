@@ -86,7 +86,6 @@ func newKubernetesWatcher(ctx context.Context, secretName, namespace string) (*k
 var errNotModified = fmt.Errorf("file content not modified")
 
 func (k *k8sWatcher) startWatch(ctx context.Context, updates chan struct{}) {
-
 	var prevContent []byte
 	updateSecret := func(secret *v1.Secret) error {
 		newData, ok := secret.Data[*configSecretKey]
@@ -141,7 +140,6 @@ func (k *k8sWatcher) startWatch(ctx context.Context, updates chan struct{}) {
 				return
 			}
 		}
-
 	}()
 }
 

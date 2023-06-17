@@ -33,10 +33,8 @@ const (
 	PVCExpandableLabel = "operator.victoriametrics.com/pvc/allow-volume-expansion"
 )
 
-var (
-	// GroupVersion is group version used to register these objects
-	SchemeGroupVersion = schema.GroupVersion{Group: "operator.victoriametrics.com", Version: "v1beta1"}
-)
+// GroupVersion is group version used to register these objects
+var SchemeGroupVersion = schema.GroupVersion{Group: "operator.victoriametrics.com", Version: "v1beta1"}
 
 var (
 	labelFilterPrefixes []string
@@ -52,7 +50,6 @@ func SetLabelAndAnnotationPrefixes(labelPrefixes, annotationPrefixes []string) {
 }
 
 func filterMapKeysByPrefixes(src map[string]string, prefixes []string) map[string]string {
-
 	dst := make(map[string]string, len(src))
 OUTER:
 	for key, value := range src {

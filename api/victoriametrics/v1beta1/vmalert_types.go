@@ -133,7 +133,7 @@ type VMAlertSpec struct {
 	// +optional
 	TopologySpreadConstraints []v1.TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
 
-	// EvaluationInterval how often evalute rules by default
+	// EvaluationInterval defines how often to evaluate rules by default
 	// +optional
 	// +kubebuilder:validation:Pattern:="[0-9]+(ms|s|m|h)"
 	EvaluationInterval string `json:"evaluationInterval,omitempty"`

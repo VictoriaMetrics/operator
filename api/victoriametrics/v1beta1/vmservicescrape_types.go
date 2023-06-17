@@ -46,8 +46,7 @@ type VMServiceScrapeSpec struct {
 }
 
 // VMServiceScrapeStatus defines the observed state of VMServiceScrape
-type VMServiceScrapeStatus struct {
-}
+type VMServiceScrapeStatus struct{}
 
 // VMServiceScrape is scrape configuration for endpoints associated with
 // kubernetes service,
@@ -119,6 +118,7 @@ type Endpoint struct {
 	Path string `json:"path,omitempty"`
 	// HTTP scheme to use for scraping.
 	// +optional
+	// +kubebuilder:validation:Enum=http;https
 	Scheme string `json:"scheme,omitempty"`
 	// Optional HTTP URL parameters
 	// +optional
@@ -482,7 +482,6 @@ func (c *SecretOrConfigMap) Validate() error {
 func (c *SecretOrConfigMap) BuildSelectorWithPrefix(prefix string) string {
 	if c.Secret != nil {
 		return fmt.Sprintf("%s%s/%s", prefix, c.Secret.Name, c.Secret.Key)
-
 	}
 	if c.ConfigMap != nil {
 		return fmt.Sprintf("%s%s/%s", prefix, c.ConfigMap.Name, c.ConfigMap.Key)
@@ -493,7 +492,6 @@ func (c *SecretOrConfigMap) BuildSelectorWithPrefix(prefix string) string {
 func (c *SecretOrConfigMap) Name() string {
 	if c.Secret != nil {
 		return c.Secret.Name
-
 	}
 	if c.ConfigMap != nil {
 		return c.ConfigMap.Name
@@ -504,13 +502,11 @@ func (c *SecretOrConfigMap) Name() string {
 func (c *SecretOrConfigMap) Key() string {
 	if c.Secret != nil {
 		return c.Secret.Key
-
 	}
 	if c.ConfigMap != nil {
 		return c.ConfigMap.Key
 	}
 	return ""
-
 }
 
 func (c *TLSConfig) BuildAssetPath(prefix, name, key string) string {

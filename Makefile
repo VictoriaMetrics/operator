@@ -443,17 +443,36 @@ deploy-kind: build-load-kind
 # generate client set
 get-client-generator:
 	which client-gen || GO111MODULE=on go install k8s.io/code-generator/cmd/client-gen@v0.24.0
+	which lister-gen || GO111MODULE=on go install k8s.io/code-generator/cmd/lister-gen@v0.24.0
+	which informer-gen || GO111MODULE=on go install k8s.io/code-generator/cmd/informer-gen@v0.24.0
+
 
 generate-client: get-client-generator
+	rm -rf api/client
 	mkdir -p api/victoriametrics/v1beta1
-	cp api/v1beta1/* api/victoriametrics/v1beta1/
+	cp api/v1beta1/* api/victoriametrics/v1beta1/	
+	@echo ">> generating with client-gen"
 	client-gen --clientset-name versioned \
 	 --input-base "" \
 	 --input "github.com/VictoriaMetrics/operator/api/victoriametrics/v1beta1" \
      --output-base "" \
      --output-package "github.com/VictoriaMetrics/operator/api/client" \
-     --go-header-file hack/boilerplate.go.txt
-	rm -rf api/client
+     --go-header-file hack/boilerplate.go.txt	
+	@echo ">> generating with lister-gen"
+	lister-gen \
+	 --input-dirs "github.com/VictoriaMetrics/operator/api/victoriametrics/v1beta1" \
+	 --output-base "" \
+	 --output-package "github.com/VictoriaMetrics/operator/api/client/listers" \
+	 --go-header-file hack/boilerplate.go.txt
+	@echo ">> generating with informer-gen"	
+	informer-gen \
+	 --versioned-clientset-package "github.com/VictoriaMetrics/operator/api/client/versioned" \
+	 --listers-package "github.com/VictoriaMetrics/operator/api/client/listers" \
+	 --input-dirs "github.com/VictoriaMetrics/operator/api/victoriametrics/v1beta1" \
+	 --output-base "" \
+	 --output-package "github.com/VictoriaMetrics/operator/api/client/informers" \
+	 --go-header-file hack/boilerplate.go.txt	
+
 	mv github.com/VictoriaMetrics/operator/api/client api/
 	rm -rf github.com/
 

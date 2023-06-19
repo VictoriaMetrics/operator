@@ -21,8 +21,10 @@ var (
 	initNamespace sync.Once
 )
 
-const prefixVar = "VM"
-const UnLimitedResource = "unlimited"
+const (
+	prefixVar         = "VM"
+	UnLimitedResource = "unlimited"
+)
 
 // WatchNamespaceEnvVar is the constant for env variable WATCH_NAMESPACE
 // which specifies the Namespace to watch.
@@ -244,7 +246,7 @@ type BaseOperatorConf struct {
 	PodWaitReadyTimeout                         time.Duration `default:"80s"`
 	PodWaitReadyIntervalCheck                   time.Duration `default:"5s"`
 	PodWaitReadyInitDelay                       time.Duration `default:"10s"`
-	// configures force resync interval for VMAgent, VMAlert and VMAlertmanager
+	// configures force resync interval for VMAgent, VMAlert, VMAlertmanager and VMAuth
 	ForceResyncInterval time.Duration `default:"60s"`
 }
 

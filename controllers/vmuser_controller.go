@@ -46,15 +46,12 @@ func (r *VMUserReconciler) Scheme() *runtime.Scheme {
 	return r.OriginScheme
 }
 
-var (
-	vmauthRateLimiter = limiter.NewRateLimiter("vmauth", 5)
-)
+var vmauthRateLimiter = limiter.NewRateLimiter("vmauth", 5)
 
 // Reconcile implements interface
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmusers,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmusers/status,verbs=get;update;patch
 func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
-
 	l := r.Log.WithValues("vmuser", req.NamespacedName)
 
 	var instance operatorv1beta1.VMUser
@@ -63,9 +60,18 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		return handleGetError(req, "vmuser", err)
 	}
 	RegisterObjectStat(&instance, "vmuser")
-	if err := finalize.AddFinalizer(ctx, r.Client, &instance); err != nil {
-		return result, err
+
+	if !instance.DeletionTimestamp.IsZero() {
+		// need to remove finalizer and delete related resources.
+		if err := finalize.OnVMUserDelete(ctx, r, &instance); err != nil {
+			return result, fmt.Errorf("cannot remove finalizer for vmuser: %w", err)
+		}
+	} else {
+		if err := finalize.AddFinalizer(ctx, r.Client, &instance); err != nil {
+			return result, err
+		}
 	}
+
 	if vmauthRateLimiter.MustThrottleReconcile() {
 		return
 	}
@@ -95,12 +101,6 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		}
 		if err := factory.CreateOrUpdateVMAuth(ctx, currentVMAuth, r, r.BaseConf); err != nil {
 			return ctrl.Result{}, fmt.Errorf("cannot create or update vmauth deploy for vmuser: %w", err)
-		}
-	}
-	if !instance.DeletionTimestamp.IsZero() {
-		// need to remove finalizer and delete related resources.
-		if err := finalize.OnVMUserDelete(ctx, r, &instance); err != nil {
-			return result, fmt.Errorf("cannot remove finalizer for vmuser: %w", err)
 		}
 	}
 	return

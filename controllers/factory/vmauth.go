@@ -97,7 +97,7 @@ func CreateOrUpdateVMAuth(ctx context.Context, cr *victoriametricsv1beta1.VMAuth
 	}
 	newDeploy, err := newDeployForVMAuth(cr, c)
 	if err != nil {
-		return fmt.Errorf("cannot build new deploy for vmagent: %w", err)
+		return fmt.Errorf("cannot build new deploy for vmauth: %w", err)
 	}
 
 	return k8stools.HandleDeployUpdate(ctx, rclient, newDeploy)

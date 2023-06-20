@@ -20,19 +20,21 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
-	"sigs.k8s.io/controller-runtime/pkg/builder"
-
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
+	"github.com/go-test/deep"
+
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 )
 
 // VMSingleReconciler reconciles a VMSingle object
@@ -73,6 +75,35 @@ func (r *VMSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (r
 	if instance.Spec.ParsingError != "" {
 		return handleParsingError(instance.Spec.ParsingError, instance)
 	}
+	lastAppliedSingleSpec, err := instance.GetLastAppliedSpec()
+	if err != nil {
+		reqLogger.Error(err, "cannot parse last applied single spec")
+	}
+	singleChanges := deep.Equal(lastAppliedSingleSpec, &instance.Spec)
+	if len(singleChanges) == 0 {
+		// only update status by deployment pod status if single has no change
+		var currentDeploy appsv1.Deployment
+		err := r.Client.Get(ctx, types.NamespacedName{Name: instance.PrefixedName(), Namespace: instance.Namespace}, &currentDeploy)
+		if err != nil {
+			return result, fmt.Errorf("failed to get deployment for vmsingle %s: %w", req.NamespacedName, err)
+		}
+		if currentDeploy.Status.AvailableReplicas == currentDeploy.Status.Replicas {
+			instance.Status.SingleStatus = victoriametricsv1beta1.SingleStatusOperational
+		} else {
+			instance.Status.SingleStatus = victoriametricsv1beta1.SingleStatusFailed
+		}
+		if err := r.Client.Status().Update(ctx, instance); err != nil {
+			return result, fmt.Errorf("cannot update status for vmsingle %s: %w", req.NamespacedName, err)
+		}
+		return result, nil
+	}
+	if instance.Status.SingleStatus != victoriametricsv1beta1.SingleStatusExpanding {
+		instance.Status.SingleStatus = victoriametricsv1beta1.SingleStatusExpanding
+		if err := r.Client.Status().Update(ctx, instance); err != nil {
+			return result, fmt.Errorf("cannot set expanding status for vmsingle %s: %w", req.NamespacedName, err)
+		}
+	}
+
 	if err := finalize.AddFinalizer(ctx, r.Client, instance); err != nil {
 		return result, err
 	}
@@ -90,6 +121,11 @@ func (r *VMSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (r
 
 	_, err = factory.CreateOrUpdateVMSingle(ctx, instance, r, r.BaseConf)
 	if err != nil {
+		instance.Status.Reason = err.Error()
+		instance.Status.SingleStatus = victoriametricsv1beta1.SingleStatusFailed
+		if err := r.Client.Status().Update(ctx, instance); err != nil {
+			log.Error(err, "cannot update vmsingle status field", "name", instance.Name, "namespace", instance.Namespace)
+		}
 		return result, err
 	}
 
@@ -104,6 +140,20 @@ func (r *VMSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (r
 			reqLogger.Error(err, "cannot create serviceScrape for vmsingle")
 		}
 	}
+
+	specPatch, err := instance.LastAppliedSpecAsPatch()
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("cannot parse last applied spec for vmsingle %s: %w", req.NamespacedName, err)
+	}
+	// use patch instead of update, only 1 field must be changed.
+	if err := r.Client.Patch(ctx, instance, specPatch); err != nil {
+		return result, fmt.Errorf("cannot update vmsingle %s with last applied spec: %w", req.NamespacedName, err)
+	}
+
+	if r.BaseConf.ForceResyncInterval > 0 {
+		result.RequeueAfter = r.BaseConf.ForceResyncInterval
+	}
+
 	return
 }
 

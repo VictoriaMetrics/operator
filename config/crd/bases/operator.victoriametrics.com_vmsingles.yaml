@@ -1257,27 +1257,38 @@ spec:
             properties:
               availableReplicas:
                 description: AvailableReplicas Total number of available pods (ready
-                  for at least minReadySeconds) targeted by this VMAlert cluster.
+                  for at least minReadySeconds) targeted by this VMSingle.
                 format: int32
                 type: integer
+              readyReplicas:
+                description: ReadyReplicas Total number of pods with a Ready Condition
+                  targeted by this VMSingle.
+                format: int32
+                type: integer
+              reason:
+                type: string
               replicas:
                 description: ReplicaCount Total number of non-terminated pods targeted
-                  by this VMAlert cluster (their labels match the selector).
+                  by this VMSingle.
                 format: int32
                 type: integer
+              singleStatus:
+                type: string
               unavailableReplicas:
                 description: UnavailableReplicas Total number of unavailable pods
-                  targeted by this VMAlert cluster.
+                  targeted by this VMSingle.
                 format: int32
                 type: integer
               updatedReplicas:
                 description: UpdatedReplicas Total number of non-terminated pods targeted
-                  by this VMAlert cluster that have the desired version spec.
+                  by this VMSingle.
                 format: int32
                 type: integer
             required:
             - availableReplicas
+            - readyReplicas
             - replicas
+            - singleStatus
             - unavailableReplicas
             - updatedReplicas
             type: object

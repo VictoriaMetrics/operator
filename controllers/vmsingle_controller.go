@@ -87,9 +87,17 @@ func (r *VMSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (r
 		if err != nil {
 			return result, fmt.Errorf("failed to get deployment for vmsingle %s: %w", req.NamespacedName, err)
 		}
-		if currentDeploy.Status.AvailableReplicas == currentDeploy.Status.Replicas {
+
+		instance.Status.ReadyReplicas = currentDeploy.Status.ReadyReplicas
+		instance.Status.Replicas = currentDeploy.Status.Replicas
+		instance.Status.UpdatedReplicas = currentDeploy.Status.UpdatedReplicas
+		instance.Status.AvailableReplicas = currentDeploy.Status.AvailableReplicas
+		instance.Status.UnavailableReplicas = currentDeploy.Status.UnavailableReplicas
+		if instance.Status.ReadyReplicas == instance.Status.UpdatedReplicas && instance.Status.ReadyReplicas == instance.Status.Replicas {
+			instance.Status.Reason = ""
 			instance.Status.SingleStatus = victoriametricsv1beta1.SingleStatusOperational
 		} else {
+			instance.Status.Reason = "not all pods are updated and ready"
 			instance.Status.SingleStatus = victoriametricsv1beta1.SingleStatusFailed
 		}
 		if err := r.Client.Status().Update(ctx, instance); err != nil {
@@ -98,6 +106,7 @@ func (r *VMSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (r
 		return result, nil
 	}
 	if instance.Status.SingleStatus != victoriametricsv1beta1.SingleStatusExpanding {
+		instance.Status.Reason = ""
 		instance.Status.SingleStatus = victoriametricsv1beta1.SingleStatusExpanding
 		if err := r.Client.Status().Update(ctx, instance); err != nil {
 			return result, fmt.Errorf("cannot set expanding status for vmsingle %s: %w", req.NamespacedName, err)

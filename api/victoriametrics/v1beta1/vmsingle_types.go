@@ -220,6 +220,17 @@ func (cr *VMSingleSpec) UnmarshalJSON(src []byte) error {
 // VMSingleStatus defines the observed state of VMSingle
 // +k8s:openapi-gen=true
 type VMSingleStatus struct {
+	// ReplicaCount Total number of non-terminated pods targeted by this VMSingle.
+	Replicas int32 `json:"replicas"`
+	// UpdatedReplicas Total number of non-terminated pods targeted by this VMSingle.
+	UpdatedReplicas int32 `json:"updatedReplicas"`
+	// AvailableReplicas Total number of available pods (ready for at least minReadySeconds) targeted by this VMSingle.
+	AvailableReplicas int32 `json:"availableReplicas"`
+	// UnavailableReplicas Total number of unavailable pods targeted by this VMSingle.
+	UnavailableReplicas int32 `json:"unavailableReplicas"`
+	// ReadyReplicas Total number of pods with a Ready Condition targeted by this VMSingle.
+	ReadyReplicas int32 `json:"readyReplicas"`
+
 	SingleStatus SingleStatus `json:"singleStatus"`
 	Reason       string       `json:"reason,omitempty"`
 }
@@ -371,7 +382,7 @@ func (cr *VMSingle) AsCRDOwner() []metav1.OwnerReference {
 	return GetCRDAsOwner(Single)
 }
 
-// LastAppliedSpecAsPatch return last applied cluster spec as patch annotation
+// LastAppliedSpecAsPatch return last applied single spec as patch annotation
 func (cr *VMSingle) LastAppliedSpecAsPatch() (client.Patch, error) {
 	data, err := json.Marshal(cr.Spec)
 	if err != nil {

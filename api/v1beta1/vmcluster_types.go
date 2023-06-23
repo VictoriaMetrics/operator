@@ -1,6 +1,7 @@
 package v1beta1
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"path"
@@ -952,16 +953,15 @@ func (cr *VMCluster) LastAppliedSpecAsPatch() (client.Patch, error) {
 	return client.RawPatch(types.MergePatchType, []byte(patch)), nil
 }
 
-// CompareSpecChange compares cluster spec with last applied cluster spec stored in annotation
-func (cr *VMCluster) CompareSpecChange() ([]string, error) {
+// HasSpecChanges compares cluster spec with last applied cluster spec stored in annotation
+func (cr *VMCluster) HasSpecChanges() (bool, error) {
 	var prevClusterSpec VMClusterSpec
 	lastAppliedClusterJSON := cr.Annotations["operator.victoriametrics/last-applied-spec"]
 	if err := json.Unmarshal([]byte(lastAppliedClusterJSON), &prevClusterSpec); err != nil {
-		return []string{""}, fmt.Errorf("cannot parse last applied cluster spec value: %s : %w", lastAppliedClusterJSON, err)
+		return true, fmt.Errorf("cannot parse last applied cluster spec value: %s : %w", lastAppliedClusterJSON, err)
 	}
 	instanceSpecData, _ := json.Marshal(cr.Spec)
-	changes := deep.Equal([]byte(lastAppliedClusterJSON), instanceSpecData)
-	return changes, nil
+	return bytes.Equal([]byte(lastAppliedClusterJSON), instanceSpecData), nil
 }
 
 func (cr VMCluster) MetricPathSelect() string {

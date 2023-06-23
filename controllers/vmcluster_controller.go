@@ -59,11 +59,11 @@ func (r *VMClusterReconciler) Reconcile(ctx context.Context, request ctrl.Reques
 		return handleParsingError(instance.Spec.ParsingError, instance)
 	}
 
-	clusterChanges, err := instance.CompareSpecChange()
+	specChanged, err := instance.HasSpecChanges()
 	if err != nil {
-		reqLogger.Error(err, "failed to compare cluster spec change")
+		reqLogger.Error(err, "failed to check if cluster spec changed")
 	}
-	if len(clusterChanges) > 0 && instance.Status.ClusterStatus != victoriametricsv1beta1.ClusterStatusFailed {
+	if specChanged && instance.Status.ClusterStatus != victoriametricsv1beta1.ClusterStatusFailed {
 		instance.Status.ClusterStatus = victoriametricsv1beta1.ClusterStatusExpanding
 		if err := r.Client.Status().Update(ctx, instance); err != nil {
 			return result, fmt.Errorf("cannot set expanding status for cluster: %w", err)
@@ -91,7 +91,7 @@ func (r *VMClusterReconciler) Reconcile(ctx context.Context, request ctrl.Reques
 		return result, fmt.Errorf("cannot update cluster status : %w", err)
 	}
 
-	if len(clusterChanges) > 0 {
+	if specChanged {
 		specPatch, err := instance.LastAppliedSpecAsPatch()
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("cannot parse last applied spec for cluster: %w", err)

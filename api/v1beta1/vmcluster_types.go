@@ -3,16 +3,19 @@ package v1beta1
 import (
 	"encoding/json"
 	"fmt"
-	"k8s.io/apimachinery/pkg/types"
 	"path"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strings"
+
+	"github.com/go-test/deep"
 
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
+
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -307,6 +310,7 @@ func (s VMSelect) GetNameWithPrefix(clusterName string) string {
 	}
 	return PrefixedName(s.Name, "vmselect")
 }
+
 func (s VMSelect) BuildPodName(baseName string, podIndex int32, namespace, portName, domain string) string {
 	// The default DNS search path is .svc.<cluster domain>
 	if domain == "" {
@@ -448,7 +452,7 @@ type VMInsert struct {
 	// +optional
 	SchedulerName string `json:"schedulerName,omitempty"`
 	// RuntimeClassName - defines runtime class for kubernetes pod.
-	//https://kubernetes.io/docs/concepts/containers/runtime-class/
+	// https://kubernetes.io/docs/concepts/containers/runtime-class/
 	// +optional
 	RuntimeClassName *string `json:"runtimeClassName,omitempty"`
 
@@ -624,7 +628,7 @@ type VMStorage struct {
 	// +optional
 	SchedulerName string `json:"schedulerName,omitempty"`
 	// RuntimeClassName - defines runtime class for kubernetes pod.
-	//https://kubernetes.io/docs/concepts/containers/runtime-class/
+	// https://kubernetes.io/docs/concepts/containers/runtime-class/
 	// +optional
 	RuntimeClassName *string `json:"runtimeClassName,omitempty"`
 
@@ -948,17 +952,16 @@ func (cr *VMCluster) LastAppliedSpecAsPatch() (client.Patch, error) {
 	return client.RawPatch(types.MergePatchType, []byte(patch)), nil
 }
 
-// GetLastAppliedSpec returns last applied cluster spec
-func (cr *VMCluster) GetLastAppliedSpec() (*VMClusterSpec, error) {
+// CompareSpecChange compares cluster spec with last applied cluster spec stored in annotation
+func (cr *VMCluster) CompareSpecChange() ([]string, error) {
 	var prevClusterSpec VMClusterSpec
-	prevClusterJSON := cr.Annotations["operator.victoriametrics/last-applied-spec"]
-	if prevClusterJSON == "" {
-		return &prevClusterSpec, nil
+	lastAppliedClusterJSON := cr.Annotations["operator.victoriametrics/last-applied-spec"]
+	if err := json.Unmarshal([]byte(lastAppliedClusterJSON), &prevClusterSpec); err != nil {
+		return []string{""}, fmt.Errorf("cannot parse last applied cluster spec value: %s : %w", lastAppliedClusterJSON, err)
 	}
-	if err := json.Unmarshal([]byte(prevClusterJSON), &prevClusterSpec); err != nil {
-		return nil, fmt.Errorf("cannot parse last applied cluster spec value: %s : %w", prevClusterJSON, err)
-	}
-	return &prevClusterSpec, nil
+	instanceSpecData, _ := json.Marshal(cr.Spec)
+	changes := deep.Equal([]byte(lastAppliedClusterJSON), instanceSpecData)
+	return changes, nil
 }
 
 func (cr VMCluster) MetricPathSelect() string {
@@ -1101,9 +1104,11 @@ func (cr *VMSelect) ProbePath() string {
 func (cr *VMSelect) ProbeScheme() string {
 	return strings.ToUpper(protoFromFlags(cr.ExtraArgs))
 }
+
 func (cr *VMSelect) ProbePort() string {
 	return cr.Port
 }
+
 func (cr *VMSelect) ProbeNeedLiveness() bool {
 	return true
 }
@@ -1119,9 +1124,11 @@ func (cr *VMStorage) ProbePath() string {
 func (cr *VMStorage) ProbeScheme() string {
 	return strings.ToUpper(protoFromFlags(cr.ExtraArgs))
 }
+
 func (cr *VMStorage) ProbePort() string {
 	return cr.Port
 }
+
 func (cr *VMStorage) ProbeNeedLiveness() bool {
 	return false
 }

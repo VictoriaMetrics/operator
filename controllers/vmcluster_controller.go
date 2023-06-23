@@ -3,12 +3,12 @@ package controllers
 import (
 	"context"
 	"fmt"
+
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
-	"github.com/go-test/deep"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -59,11 +59,10 @@ func (r *VMClusterReconciler) Reconcile(ctx context.Context, request ctrl.Reques
 		return handleParsingError(instance.Spec.ParsingError, instance)
 	}
 
-	lastAppliedClusterSpec, err := instance.GetLastAppliedSpec()
+	clusterChanges, err := instance.CompareSpecChange()
 	if err != nil {
-		reqLogger.Error(err, "cannot parse last applied cluster spec")
+		reqLogger.Error(err, "failed to compare cluster spec change")
 	}
-	clusterChanges := deep.Equal(lastAppliedClusterSpec, &instance.Spec)
 	if len(clusterChanges) > 0 && instance.Status.ClusterStatus != victoriametricsv1beta1.ClusterStatusFailed {
 		instance.Status.ClusterStatus = victoriametricsv1beta1.ClusterStatusExpanding
 		if err := r.Client.Status().Update(ctx, instance); err != nil {

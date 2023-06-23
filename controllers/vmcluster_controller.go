@@ -3,12 +3,12 @@ package controllers
 import (
 	"context"
 	"fmt"
+
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
-	"github.com/go-test/deep"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -59,12 +59,11 @@ func (r *VMClusterReconciler) Reconcile(ctx context.Context, request ctrl.Reques
 		return handleParsingError(instance.Spec.ParsingError, instance)
 	}
 
-	lastAppliedClusterSpec, err := instance.GetLastAppliedSpec()
+	specChanged, err := instance.HasSpecChanges()
 	if err != nil {
-		reqLogger.Error(err, "cannot parse last applied cluster spec")
+		reqLogger.Error(err, "failed to check if cluster spec changed")
 	}
-	clusterChanges := deep.Equal(lastAppliedClusterSpec, &instance.Spec)
-	if len(clusterChanges) > 0 && instance.Status.ClusterStatus != victoriametricsv1beta1.ClusterStatusFailed {
+	if specChanged && instance.Status.ClusterStatus != victoriametricsv1beta1.ClusterStatusFailed {
 		instance.Status.ClusterStatus = victoriametricsv1beta1.ClusterStatusExpanding
 		if err := r.Client.Status().Update(ctx, instance); err != nil {
 			return result, fmt.Errorf("cannot set expanding status for cluster: %w", err)
@@ -92,7 +91,7 @@ func (r *VMClusterReconciler) Reconcile(ctx context.Context, request ctrl.Reques
 		return result, fmt.Errorf("cannot update cluster status : %w", err)
 	}
 
-	if len(clusterChanges) > 0 {
+	if specChanged {
 		specPatch, err := instance.LastAppliedSpecAsPatch()
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("cannot parse last applied spec for cluster: %w", err)

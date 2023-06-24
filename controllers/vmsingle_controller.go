@@ -23,12 +23,10 @@ import (
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
-	"github.com/go-test/deep"
 
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -75,41 +73,14 @@ func (r *VMSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (r
 	if instance.Spec.ParsingError != "" {
 		return handleParsingError(instance.Spec.ParsingError, instance)
 	}
-	lastAppliedSingleSpec, err := instance.GetLastAppliedSpec()
+	specChanged, err := instance.HasSpecChanges()
 	if err != nil {
-		reqLogger.Error(err, "cannot parse last applied single spec")
+		reqLogger.Error(err, "failed to check if single spec changed")
 	}
-	singleChanges := deep.Equal(lastAppliedSingleSpec, &instance.Spec)
-	if len(singleChanges) == 0 {
-		// only update status by deployment pod status if single has no change
-		var currentDeploy appsv1.Deployment
-		err := r.Client.Get(ctx, types.NamespacedName{Name: instance.PrefixedName(), Namespace: instance.Namespace}, &currentDeploy)
-		if err != nil {
-			return result, fmt.Errorf("failed to get deployment for vmsingle %s: %w", req.NamespacedName, err)
-		}
-
-		instance.Status.ReadyReplicas = currentDeploy.Status.ReadyReplicas
-		instance.Status.Replicas = currentDeploy.Status.Replicas
-		instance.Status.UpdatedReplicas = currentDeploy.Status.UpdatedReplicas
-		instance.Status.AvailableReplicas = currentDeploy.Status.AvailableReplicas
-		instance.Status.UnavailableReplicas = currentDeploy.Status.UnavailableReplicas
-		if instance.Status.ReadyReplicas == instance.Status.UpdatedReplicas && instance.Status.ReadyReplicas == instance.Status.Replicas {
-			instance.Status.Reason = ""
-			instance.Status.SingleStatus = victoriametricsv1beta1.SingleStatusOperational
-		} else {
-			instance.Status.Reason = "not all pods are updated and ready"
-			instance.Status.SingleStatus = victoriametricsv1beta1.SingleStatusFailed
-		}
-		if err := r.Client.Status().Update(ctx, instance); err != nil {
-			return result, fmt.Errorf("cannot update status for vmsingle %s: %w", req.NamespacedName, err)
-		}
-		return result, nil
-	}
-	if instance.Status.SingleStatus != victoriametricsv1beta1.SingleStatusExpanding {
-		instance.Status.Reason = ""
+	if specChanged && instance.Status.SingleStatus != victoriametricsv1beta1.SingleStatusFailed {
 		instance.Status.SingleStatus = victoriametricsv1beta1.SingleStatusExpanding
 		if err := r.Client.Status().Update(ctx, instance); err != nil {
-			return result, fmt.Errorf("cannot set expanding status for vmsingle %s: %w", req.NamespacedName, err)
+			return result, fmt.Errorf("cannot set expanding status for single: %w", err)
 		}
 	}
 
@@ -133,9 +104,9 @@ func (r *VMSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (r
 		instance.Status.Reason = err.Error()
 		instance.Status.SingleStatus = victoriametricsv1beta1.SingleStatusFailed
 		if err := r.Client.Status().Update(ctx, instance); err != nil {
-			log.Error(err, "cannot update vmsingle status field", "name", instance.Name, "namespace", instance.Namespace)
+			log.Error(err, "cannot set failed status for single")
 		}
-		return result, err
+		return result, fmt.Errorf("failed create or update single: %w", err)
 	}
 
 	svc, err := factory.CreateOrUpdateVMSingleService(ctx, instance, r, r.BaseConf)
@@ -150,17 +121,21 @@ func (r *VMSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (r
 		}
 	}
 
-	specPatch, err := instance.LastAppliedSpecAsPatch()
-	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("cannot parse last applied spec for vmsingle %s: %w", req.NamespacedName, err)
-	}
-	// use patch instead of update, only 1 field must be changed.
-	if err := r.Client.Patch(ctx, instance, specPatch); err != nil {
-		return result, fmt.Errorf("cannot update vmsingle %s with last applied spec: %w", req.NamespacedName, err)
+	instance.Status.Reason = ""
+	instance.Status.SingleStatus = victoriametricsv1beta1.SingleStatusOperational
+	if err := r.Client.Status().Update(ctx, instance); err != nil {
+		return result, fmt.Errorf("cannot update single status : %w", err)
 	}
 
-	if r.BaseConf.ForceResyncInterval > 0 {
-		result.RequeueAfter = r.BaseConf.ForceResyncInterval
+	if specChanged {
+		specPatch, err := instance.LastAppliedSpecAsPatch()
+		if err != nil {
+			return ctrl.Result{}, fmt.Errorf("cannot parse last applied spec for single: %w", err)
+		}
+		// use patch instead of update, only 1 field must be changed.
+		if err := r.Client.Patch(ctx, instance, specPatch); err != nil {
+			return result, fmt.Errorf("cannot update single with last applied spec: %w", err)
+		}
 	}
 
 	return

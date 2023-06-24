@@ -1,6 +1,7 @@
 package v1beta1
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -228,8 +229,6 @@ type VMSingleStatus struct {
 	AvailableReplicas int32 `json:"availableReplicas"`
 	// UnavailableReplicas Total number of unavailable pods targeted by this VMSingle.
 	UnavailableReplicas int32 `json:"unavailableReplicas"`
-	// ReadyReplicas Total number of pods with a Ready Condition targeted by this VMSingle.
-	ReadyReplicas int32 `json:"readyReplicas"`
 
 	SingleStatus SingleStatus `json:"singleStatus"`
 	Reason       string       `json:"reason,omitempty"`
@@ -392,17 +391,15 @@ func (cr *VMSingle) LastAppliedSpecAsPatch() (client.Patch, error) {
 	return client.RawPatch(types.MergePatchType, []byte(patch)), nil
 }
 
-// GetLastAppliedSpec returns last applied single spec
-func (cr *VMSingle) GetLastAppliedSpec() (*VMSingleSpec, error) {
+// HasSpecChanges compares single spec with last applied single spec stored in annotation
+func (cr *VMSingle) HasSpecChanges() (bool, error) {
 	var prevSingleSpec VMSingleSpec
-	prevSingleJSON := cr.Annotations["operator.victoriametrics/last-applied-spec"]
-	if prevSingleJSON == "" {
-		return &prevSingleSpec, nil
+	lastAppliedSingleJSON := cr.Annotations["operator.victoriametrics/last-applied-spec"]
+	if err := json.Unmarshal([]byte(lastAppliedSingleJSON), &prevSingleSpec); err != nil {
+		return true, fmt.Errorf("cannot parse last applied single spec value: %s : %w", lastAppliedSingleJSON, err)
 	}
-	if err := json.Unmarshal([]byte(prevSingleJSON), &prevSingleSpec); err != nil {
-		return nil, fmt.Errorf("cannot parse last applied single spec value: %s : %w", prevSingleJSON, err)
-	}
-	return &prevSingleSpec, nil
+	instanceSpecData, _ := json.Marshal(cr.Spec)
+	return !bytes.Equal([]byte(lastAppliedSingleJSON), instanceSpecData), nil
 }
 
 func init() {

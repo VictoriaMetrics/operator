@@ -1260,11 +1260,6 @@ spec:
                   for at least minReadySeconds) targeted by this VMSingle.
                 format: int32
                 type: integer
-              readyReplicas:
-                description: ReadyReplicas Total number of pods with a Ready Condition
-                  targeted by this VMSingle.
-                format: int32
-                type: integer
               reason:
                 type: string
               replicas:
@@ -1286,7 +1281,6 @@ spec:
                 type: integer
             required:
             - availableReplicas
-            - readyReplicas
             - replicas
             - singleStatus
             - unavailableReplicas

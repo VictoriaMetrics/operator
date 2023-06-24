@@ -35,7 +35,6 @@ const (
 )
 
 func CreateVMSingleStorage(ctx context.Context, cr *victoriametricsv1beta1.VMSingle, rclient client.Client) (*corev1.PersistentVolumeClaim, error) {
-
 	l := log.WithValues("vm.single.pvc.create", cr.Name)
 	l.Info("reconciling pvc")
 	newPvc := makeVMSinglePvc(cr)
@@ -86,7 +85,6 @@ func makeVMSinglePvc(cr *victoriametricsv1beta1.VMSingle) *corev1.PersistentVolu
 }
 
 func CreateOrUpdateVMSingle(ctx context.Context, cr *victoriametricsv1beta1.VMSingle, rclient client.Client, c *config.BaseOperatorConf) (*appsv1.Deployment, error) {
-
 	if err := psp.CreateServiceAccountForCRD(ctx, cr, rclient); err != nil {
 		return nil, fmt.Errorf("failed create service account: %w", err)
 	}
@@ -102,6 +100,9 @@ func CreateOrUpdateVMSingle(ctx context.Context, cr *victoriametricsv1beta1.VMSi
 
 	if err := k8stools.HandleDeployUpdate(ctx, rclient, newDeploy); err != nil {
 		return nil, err
+	}
+	if err = waitExpanding(ctx, rclient, cr.Namespace, cr.SelectorLabels(), *cr.Spec.ReplicaCount, c.PodWaitReadyTimeout); err != nil {
+		return nil, fmt.Errorf("cannot wait until ready status for single deploy: %w", err)
 	}
 
 	return newDeploy, nil
@@ -358,11 +359,9 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 	}
 
 	return vmSingleSpec, nil
-
 }
 
 func CreateOrUpdateVMSingleService(ctx context.Context, cr *victoriametricsv1beta1.VMSingle, rclient client.Client, c *config.BaseOperatorConf) (*corev1.Service, error) {
-
 	cr = cr.DeepCopy()
 	if cr.Spec.Port == "" {
 		cr.Spec.Port = c.VMSingleDefault.Port
@@ -431,11 +430,11 @@ func makeSpecForVMBackuper(
 	snapshotCreateURL := cr.SnapshotCreateURL
 	snapshotDeleteURL := cr.SnapShotDeleteURL
 	if snapshotCreateURL == "" {
-		//http://localhost:port/snaphsot/create
+		// http://localhost:port/snaphsot/create
 		snapshotCreateURL = cr.SnapshotCreatePathWithFlags(port, extraArgs)
 	}
 	if snapshotDeleteURL == "" {
-		//http://localhost:port/snaphsot/delete
+		// http://localhost:port/snaphsot/delete
 		snapshotDeleteURL = cr.SnapshotDeletePathWithFlags(port, extraArgs)
 	}
 	backupDst := cr.Destination

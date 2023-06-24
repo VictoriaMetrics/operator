@@ -124,7 +124,7 @@ func (r *VMSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (r
 	instance.Status.Reason = ""
 	instance.Status.SingleStatus = victoriametricsv1beta1.SingleStatusOperational
 	if err := r.Client.Status().Update(ctx, instance); err != nil {
-		return result, fmt.Errorf("cannot update single status : %w", err)
+		return result, fmt.Errorf("cannot update single status: %w", err)
 	}
 
 	if specChanged {

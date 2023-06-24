@@ -959,7 +959,7 @@ func (cr *VMCluster) HasSpecChanges() (bool, error) {
 		return true, fmt.Errorf("cannot parse last applied cluster spec value: %s : %w", lastAppliedClusterJSON, err)
 	}
 	instanceSpecData, _ := json.Marshal(cr.Spec)
-	return bytes.Equal([]byte(lastAppliedClusterJSON), instanceSpecData), nil
+	return !bytes.Equal([]byte(lastAppliedClusterJSON), instanceSpecData), nil
 }
 
 func (cr VMCluster) MetricPathSelect() string {

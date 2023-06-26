@@ -368,13 +368,16 @@ packagemanifests-push:
 
 # special section for cross compilation
 docker-build-arch:
-	docker build -t $(DOCKER_REPO):$(TAG)-$(GOARCH) \
-			--build-arg ARCH=$(GOARCH) \
+	export DOCKER_CLI_EXPERIMENTAL=enabled ;\
+	docker buildx build -t $(DOCKER_REPO):$(TAG)-$(GOARCH) \
+			--platform=linux/$(GOARCH) \
 			--build-arg base_image=$(ALPINE_IMAGE) \
-			-f Docker-multiarch .
+			-f Docker-multiarch \
+			--load \
+			.
 
 package-arch:
-	$(GOBUILD) -o bin/manager-$(GOARCH) main.go
+	CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH} $(GOBUILD) -o bin/manager-$(GOARCH) main.go
 
 
 build-operator-crosscompile: build
@@ -385,48 +388,17 @@ build-operator-crosscompile: build
 	CGO_ENABLED=0 GOARCH=386 $(MAKE) package-arch
 
 docker-operator-crosscompile:
-	GOARCH=arm $(MAKE) docker-build-arch
-	GOARCH=arm64 $(MAKE) docker-build-arch
-	GOARCH=amd64 $(MAKE) docker-build-arch
-	GOARCH=ppc64le $(MAKE) docker-build-arch
-	GOARCH=386 $(MAKE) docker-build-arch
+	export DOCKER_CLI_EXPERIMENTAL=enabled ;\
+	docker buildx build \
+		-t $(DOCKER_REPO):$(TAG) \
+		-t $(DOCKER_REPO):latest \
+		--platform=linux/amd64,linux/arm,linux/arm64,linux/ppc64le,linux/386 \
+		--build-arg base_image=$(ALPINE_IMAGE) \
+		-f Docker-multiarch \
+		--push \
+		.
 
-
-docker-operator-push-crosscompile: docker-operator-crosscompile
-	docker push $(DOCKER_REPO):$(TAG)-arm
-	docker push $(DOCKER_REPO):$(TAG)-amd64
-	docker push $(DOCKER_REPO):$(TAG)-arm64
-	docker push $(DOCKER_REPO):$(TAG)-ppc64le
-	docker push $(DOCKER_REPO):$(TAG)-386
-
-package-manifest-annotate-goarch:
-	DOCKER_CLI_EXPERIMENTAL=enabled docker manifest annotate $(DOCKER_REPO):$(TAG) \
-				$(DOCKER_REPO):$(TAG)-$(GOARCH) --os linux --arch $(GOARCH)
-
-
-docker-manifest: docker-operator-push-crosscompile
-	DOCKER_CLI_EXPERIMENTAL=enabled docker manifest create --amend $(DOCKER_REPO):$(TAG) \
-				$(DOCKER_REPO):$(TAG)-amd64 \
-				$(DOCKER_REPO):$(TAG)-arm \
-				$(DOCKER_REPO):$(TAG)-arm64 \
-				$(DOCKER_REPO):$(TAG)-ppc64le \
-				$(DOCKER_REPO):$(TAG)-386
-	GOARCH=amd64 $(MAKE) package-manifest-annotate-goarch
-	GOARCH=arm $(MAKE) package-manifest-annotate-goarch
-	GOARCH=arm64 $(MAKE) package-manifest-annotate-goarch
-	GOARCH=ppc64le $(MAKE) package-manifest-annotate-goarch
-	GOARCH=386 $(MAKE) package-manifest-annotate-goarch
-
-
-publish-via-docker: build-operator-crosscompile docker-manifest
-	docker tag $(DOCKER_REPO):$(TAG)-arm64 $(DOCKER_REPO):latest-arm64
-	docker tag $(DOCKER_REPO):$(TAG)-arm $(DOCKER_REPO):latest-arm
-	docker tag $(DOCKER_REPO):$(TAG)-386 $(DOCKER_REPO):latest-386
-	docker tag $(DOCKER_REPO):$(TAG)-ppc64le $(DOCKER_REPO):latest-ppc64le
-	docker tag $(DOCKER_REPO):$(TAG)-amd64 $(DOCKER_REPO):latest-amd64
-	TAG=latest $(MAKE) docker-manifest
-	DOCKER_CLI_EXPERIMENTAL=enabled docker manifest push --purge $(DOCKER_REPO):$(TAG)
-	DOCKER_CLI_EXPERIMENTAL=enabled docker manifest push --purge $(DOCKER_REPO):latest
+publish-via-docker: build-operator-crosscompile
 
 
 # builds image and loads it into kind.

@@ -12,6 +12,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/utils/pointer"
 )
 
 func TestCreateOrUpdateVMSingle(t *testing.T) {
@@ -35,7 +36,13 @@ func TestCreateOrUpdateVMSingle(t *testing.T) {
 						Name:      "vmsingle-base",
 						Namespace: "default",
 					},
-					Spec: victoriametricsv1beta1.VMSingleSpec{},
+					Spec: victoriametricsv1beta1.VMSingleSpec{ReplicaCount: pointer.Int32Ptr(1)},
+				},
+			},
+			predefinedObjects: []runtime.Object{
+				&corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "vmsingle-0", Labels: map[string]string{"app.kubernetes.io/component": "monitoring", "app.kubernetes.io/name": "vmsingle", "app.kubernetes.io/instance": "vmsingle-base", "managed-by": "vm-operator"}},
+					Status:     corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "True"}}},
 				},
 			},
 			want: &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "vmsingle-vmsingle-base", Namespace: "default"}},
@@ -56,7 +63,14 @@ func TestCreateOrUpdateVMSingle(t *testing.T) {
 							GraphitePort:     "8053",
 							OpenTSDBPort:     "8054",
 						},
+						ReplicaCount: pointer.Int32Ptr(1),
 					},
+				},
+			},
+			predefinedObjects: []runtime.Object{
+				&corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "vmsingle-0", Labels: map[string]string{"app.kubernetes.io/component": "monitoring", "app.kubernetes.io/name": "vmsingle", "app.kubernetes.io/instance": "vmsingle-base", "managed-by": "vm-operator"}},
+					Status:     corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "True"}}},
 				},
 			},
 			want: &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "vmsingle-vmsingle-base", Namespace: "default"}},

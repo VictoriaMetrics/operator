@@ -372,7 +372,9 @@ docker-build-arch:
 	docker buildx build -t $(DOCKER_REPO):$(TAG)-$(GOARCH) \
 			--platform=linux/$(GOARCH) \
 			--build-arg base_image=$(ALPINE_IMAGE) \
-			-f Docker-multiarch .
+			-f Docker-multiarch \
+			--load \
+			.
 
 package-arch:
 	CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH} $(GOBUILD) -o bin/manager-$(GOARCH) main.go
@@ -387,7 +389,9 @@ build-operator-crosscompile: build
 
 docker-operator-crosscompile:
 	export DOCKER_CLI_EXPERIMENTAL=enabled ;\
-	docker buildx build -t $(DOCKER_REPO):$(TAG) \
+	docker buildx build \
+		-t $(DOCKER_REPO):$(TAG) \
+		-t $(DOCKER_REPO):latest \
 		--platform=linux/amd64,linux/arm,linux/arm64,linux/ppc64le,linux/386 \
 		--build-arg base_image=$(ALPINE_IMAGE) \
 		-f Docker-multiarch \

@@ -3,6 +3,7 @@ package factory
 import (
 	"context"
 	"fmt"
+	"k8s.io/utils/pointer"
 	"path"
 	"sort"
 	"strings"
@@ -424,6 +425,9 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 		Resources:                buildResources(cr.Spec.Resources, config.Resource(c.VMAlertDefault.Resource), c.VMAlertDefault.UseDefaultResources),
 		Env:                      envs,
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+		SecurityContext: &corev1.SecurityContext{
+			ReadOnlyRootFilesystem: pointer.Bool(true),
+		},
 	}
 	vmalertContainer = buildProbe(vmalertContainer, cr)
 

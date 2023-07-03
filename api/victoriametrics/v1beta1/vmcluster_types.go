@@ -21,15 +21,6 @@ const (
 	ClusterStatusExpanding   = "expanding"
 	ClusterStatusOperational = "operational"
 	ClusterStatusFailed      = "failed"
-
-	InternalOperatorError = "failed to perform vmcluster preparing jobs"
-
-	StorageRollingUpdateFailed = "failed to perform rolling update on vmStorage"
-	StorageCreationFailed      = "failed to create vmStorage statefulset"
-
-	SelectRollingUpdateFailed = "failed to perform rolling update on vmSelect"
-	SelectCreationFailed      = "failed to create vmSelect statefulset"
-	InsertCreationFailed      = "failed to create vmInsert deployment"
 )
 
 // VMClusterSpec defines the desired state of VMCluster
@@ -959,7 +950,7 @@ func (cr *VMCluster) HasSpecChanges() (bool, error) {
 		return true, fmt.Errorf("cannot parse last applied cluster spec value: %s : %w", lastAppliedClusterJSON, err)
 	}
 	instanceSpecData, _ := json.Marshal(cr.Spec)
-	return bytes.Equal([]byte(lastAppliedClusterJSON), instanceSpecData), nil
+	return !bytes.Equal([]byte(lastAppliedClusterJSON), instanceSpecData), nil
 }
 
 func (cr VMCluster) MetricPathSelect() string {

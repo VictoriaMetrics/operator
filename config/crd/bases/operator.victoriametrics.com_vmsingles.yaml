@@ -13,7 +13,12 @@ spec:
     singular: vmsingle
   scope: Namespaced
   versions:
-  - name: v1beta1
+  - additionalPrinterColumns:
+    - description: Current status of single node
+      jsonPath: .status.singleStatus
+      name: Status
+      type: string
+    name: v1beta1
     schema:
       openAPIV3Schema:
         description: VMSingle  is fast, cost-effective and scalable time-series database.

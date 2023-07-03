@@ -77,6 +77,7 @@ func (r *VMSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (r
 	if err != nil {
 		reqLogger.Error(err, "failed to check if single spec changed")
 	}
+
 	if specChanged && instance.Status.SingleStatus != victoriametricsv1beta1.SingleStatusFailed {
 		instance.Status.SingleStatus = victoriametricsv1beta1.SingleStatusExpanding
 		if err := r.Client.Status().Update(ctx, instance); err != nil {
@@ -99,8 +100,7 @@ func (r *VMSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (r
 		return result, fmt.Errorf("cannot update stream aggregation config for vmsingle: %w", err)
 	}
 
-	_, err = factory.CreateOrUpdateVMSingle(ctx, instance, r, r.BaseConf)
-	if err != nil {
+	if err = factory.CreateOrUpdateVMSingle(ctx, instance, r, r.BaseConf); err != nil {
 		instance.Status.Reason = err.Error()
 		instance.Status.SingleStatus = victoriametricsv1beta1.SingleStatusFailed
 		if err := r.Client.Status().Update(ctx, instance); err != nil {

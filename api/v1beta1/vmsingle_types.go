@@ -244,6 +244,7 @@ type VMSingleStatus struct {
 // +k8s:openapi-gen=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:path=vmsingles,scope=Namespaced
+// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.singleStatus",description="Current status of single nodeclustercluster"
 type VMSingle struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -395,6 +396,9 @@ func (cr *VMSingle) LastAppliedSpecAsPatch() (client.Patch, error) {
 func (cr *VMSingle) HasSpecChanges() (bool, error) {
 	var prevSingleSpec VMSingleSpec
 	lastAppliedSingleJSON := cr.Annotations["operator.victoriametrics/last-applied-spec"]
+	if len(lastAppliedSingleJSON) == 0 {
+		return true, nil
+	}
 	if err := json.Unmarshal([]byte(lastAppliedSingleJSON), &prevSingleSpec); err != nil {
 		return true, fmt.Errorf("cannot parse last applied single spec value: %s : %w", lastAppliedSingleJSON, err)
 	}

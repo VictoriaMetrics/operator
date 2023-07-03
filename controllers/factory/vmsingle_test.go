@@ -79,14 +79,12 @@ func TestCreateOrUpdateVMSingle(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			got, err := CreateOrUpdateVMSingle(context.TODO(), tt.args.cr, fclient, tt.args.c)
+			err := CreateOrUpdateVMSingle(context.TODO(), tt.args.cr, fclient, tt.args.c)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CreateOrUpdateVMSingle() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got.Name, tt.want.Name) {
-				t.Errorf("CreateOrUpdateVMSingle() got = %v, want %v", got, tt.want)
-			}
+
 		})
 	}
 }

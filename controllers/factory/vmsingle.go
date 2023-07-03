@@ -84,28 +84,32 @@ func makeVMSinglePvc(cr *victoriametricsv1beta1.VMSingle) *corev1.PersistentVolu
 	return pvcObject
 }
 
-func CreateOrUpdateVMSingle(ctx context.Context, cr *victoriametricsv1beta1.VMSingle, rclient client.Client, c *config.BaseOperatorConf) (*appsv1.Deployment, error) {
+func CreateOrUpdateVMSingle(ctx context.Context, cr *victoriametricsv1beta1.VMSingle, rclient client.Client, c *config.BaseOperatorConf) error {
 	if err := psp.CreateServiceAccountForCRD(ctx, cr, rclient); err != nil {
-		return nil, fmt.Errorf("failed create service account: %w", err)
+		return fmt.Errorf("failed create service account: %w", err)
 	}
 	if c.PSPAutoCreateEnabled {
 		if err := psp.CreateOrUpdateServiceAccountWithPSP(ctx, cr, rclient); err != nil {
-			return nil, fmt.Errorf("cannot create podsecurity policy for vmsingle, err=%w", err)
+			return fmt.Errorf("cannot create podsecurity policy for vmsingle, err=%w", err)
 		}
 	}
 	newDeploy, err := newDeployForVMSingle(cr, c)
 	if err != nil {
-		return nil, fmt.Errorf("cannot generate new deploy for vmsingle: %w", err)
+		return fmt.Errorf("cannot generate new deploy for vmsingle: %w", err)
 	}
 
 	if err := k8stools.HandleDeployUpdate(ctx, rclient, newDeploy); err != nil {
-		return nil, err
+		return err
 	}
-	if err = waitExpanding(ctx, rclient, cr.Namespace, cr.SelectorLabels(), *cr.Spec.ReplicaCount, c.PodWaitReadyTimeout); err != nil {
-		return nil, fmt.Errorf("cannot wait until ready status for single deploy: %w", err)
+	// fast path
+	if cr.Spec.ReplicaCount == nil {
+		return nil
+	}
+	if err = waitExpanding(ctx, rclient, cr.Namespace, cr.SelectorLabels(), 1, c.PodWaitReadyTimeout); err != nil {
+		return fmt.Errorf("cannot wait until ready status for single deploy: %w", err)
 	}
 
-	return newDeploy, nil
+	return nil
 }
 
 func newDeployForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOperatorConf) (*appsv1.Deployment, error) {

@@ -15,6 +15,7 @@ BINARY_NAME=vm-operator
 REPO=github.com/VictoriaMetrics/operator
 OPERATOR_BIN=operator-sdk
 DOCKER_REPO=victoriametrics/operator
+MANIFEST_BUILD_PLATFORM=linux/amd64,linux/arm,linux/arm64,linux/ppc64le,linux/386
 TEST_ARGS=$(GOCMD) test -covermode=atomic -coverprofile=coverage.txt -v
 APIS_BASE_PATH=api/v1beta1
 YAML_DROP_PREF=spec.versions[0].schema.openAPIV3Schema.properties.spec.properties
@@ -380,25 +381,27 @@ package-arch:
 	CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH} $(GOBUILD) -o bin/manager-$(GOARCH) main.go
 
 
-build-operator-crosscompile: build
+build-operator-crosscompile: fmt vet
 	CGO_ENABLED=0 GOARCH=arm $(MAKE) package-arch
 	CGO_ENABLED=0 GOARCH=arm64 $(MAKE) package-arch
 	CGO_ENABLED=0 GOARCH=amd64 $(MAKE) package-arch
 	CGO_ENABLED=0 GOARCH=ppc64le $(MAKE) package-arch
 	CGO_ENABLED=0 GOARCH=386 $(MAKE) package-arch
 
-docker-operator-crosscompile:
+docker-operator-manifest-build-and-push:
 	export DOCKER_CLI_EXPERIMENTAL=enabled ;\
+	! ( docker buildx ls | grep operator-builder ) && docker buildx create --use --platform=$(MANIFEST_BUILD_PLATFORM) --name operator-builder ;\
 	docker buildx build \
+		--builder operator-builder \
 		-t $(DOCKER_REPO):$(TAG) \
 		-t $(DOCKER_REPO):latest \
-		--platform=linux/amd64,linux/arm,linux/arm64,linux/ppc64le,linux/386 \
+		--platform=$(MANIFEST_BUILD_PLATFORM) \
 		--build-arg base_image=$(ALPINE_IMAGE) \
 		-f Docker-multiarch \
 		--push \
 		.
 
-publish-via-docker: build-operator-crosscompile
+publish-via-docker: build-operator-crosscompile docker-operator-manifest-build-and-push
 
 
 # builds image and loads it into kind.

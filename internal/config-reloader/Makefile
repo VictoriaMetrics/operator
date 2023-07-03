@@ -20,10 +20,12 @@ cr-build-operator-crosscompile:
 
 docker-config-reloader-manifest-build-and-push:
 	export DOCKER_CLI_EXPERIMENTAL=enabled ;\
+	! ( docker buildx ls | grep config-reloader-builder ) && docker buildx create --use --platform=$(MANIFEST_BUILD_PLATFORM) --name config-reloader-builder ;\
 	docker buildx build \
+		--builder config-reloader-builder \
 		-t $(DOCKER_REPO):config-reloader-$(TAG) \
 		-t $(DOCKER_REPO):config-reloader-latest \
-		--platform=linux/amd64,linux/arm,linux/arm64,linux/ppc64le,linux/386 \
+		--platform=$(MANIFEST_BUILD_PLATFORM) \
 		--build-arg base_image=$(ALPINE_IMAGE) \
 		-f internal/config-reloader/Dockerfile \
 		--push \

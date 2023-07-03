@@ -5,7 +5,7 @@ go 1.20
 require (
 	github.com/VictoriaMetrics/VictoriaMetrics v1.91.3
 	github.com/VictoriaMetrics/metricsql v0.56.2
-	github.com/VictoriaMetrics/operator/api v0.0.0-20220220173620-6f1e087b0e5c
+	github.com/VictoriaMetrics/operator/api v0.0.0-20230626142506-8950675e8bb1
 	github.com/fsnotify/fsnotify v1.6.0
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
 	github.com/go-logr/logr v1.2.4

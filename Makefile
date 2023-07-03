@@ -380,14 +380,14 @@ package-arch:
 	CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH} $(GOBUILD) -o bin/manager-$(GOARCH) main.go
 
 
-build-operator-crosscompile: build
+build-operator-crosscompile: fmt vet
 	CGO_ENABLED=0 GOARCH=arm $(MAKE) package-arch
 	CGO_ENABLED=0 GOARCH=arm64 $(MAKE) package-arch
 	CGO_ENABLED=0 GOARCH=amd64 $(MAKE) package-arch
 	CGO_ENABLED=0 GOARCH=ppc64le $(MAKE) package-arch
 	CGO_ENABLED=0 GOARCH=386 $(MAKE) package-arch
 
-docker-operator-crosscompile:
+docker-operator-manifest-build-and-push:
 	export DOCKER_CLI_EXPERIMENTAL=enabled ;\
 	docker buildx build \
 		-t $(DOCKER_REPO):$(TAG) \
@@ -398,7 +398,7 @@ docker-operator-crosscompile:
 		--push \
 		.
 
-publish-via-docker: build-operator-crosscompile
+publish-via-docker: build-operator-crosscompile docker-operator-manifest-build-and-push
 
 
 # builds image and loads it into kind.

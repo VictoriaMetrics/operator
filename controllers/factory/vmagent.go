@@ -405,24 +405,21 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 			MountPath: StreamAggrConfigDir,
 		},
 	)
-	// no need to mount secret when using custom configReloader
-	if !c.UseCustomConfigReloader {
-		volumes = append(volumes,
-			corev1.Volume{
-				Name: "config",
-				VolumeSource: corev1.VolumeSource{
-					Secret: &corev1.SecretVolumeSource{
-						SecretName: cr.PrefixedName(),
-					},
+	volumes = append(volumes,
+		corev1.Volume{
+			Name: "config",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: cr.PrefixedName(),
 				},
-			})
-		agentVolumeMounts = append(agentVolumeMounts,
-			corev1.VolumeMount{
-				Name:      "config",
-				ReadOnly:  true,
-				MountPath: vmAgentConfDir,
-			})
-	}
+			},
+		})
+	agentVolumeMounts = append(agentVolumeMounts,
+		corev1.VolumeMount{
+			Name:      "config",
+			ReadOnly:  true,
+			MountPath: vmAgentConfDir,
+		})
 
 	for _, s := range cr.Spec.Secrets {
 		volumes = append(volumes, corev1.Volume{

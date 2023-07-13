@@ -3,7 +3,6 @@ package v1beta1
 import (
 	"fmt"
 
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -41,33 +40,14 @@ type VMNodeScrapeSpec struct {
 	// Timeout after which the scrape is ended
 	// +optional
 	ScrapeTimeout string `json:"scrapeTimeout,omitempty"`
-	// OAuth2 defines auth configuration
-	// +optional
-	OAuth2 *OAuth2 `json:"oauth2,omitempty"`
-	// Authorization with http header Authorization
-	// +optional
-	Authorization *Authorization `json:"authorization,omitempty"` // TLSConfig configuration to use when scraping the node
-	// +optional
-	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
-	// File to read bearer token for scraping targets.
-	// +optional
-	BearerTokenFile string `json:"bearerTokenFile,omitempty"`
-	// Secret to mount to read bearer token for scraping targets. The secret
-	// needs to be  accessible by
-	// the victoria-metrics operator.
-	// +optional
-	// +nullable
-	BearerTokenSecret *v1.SecretKeySelector `json:"bearerTokenSecret,omitempty"`
 	// HonorLabels chooses the metric's labels on collisions with target labels.
 	// +optional
 	HonorLabels bool `json:"honorLabels,omitempty"`
 	// HonorTimestamps controls whether vmagent respects the timestamps present in scraped data.
 	// +optional
 	HonorTimestamps *bool `json:"honorTimestamps,omitempty"`
-	// BasicAuth allow an endpoint to authenticate over basic authentication
-	// More info: https://prometheus.io/docs/operating/configuration/#endpoints
-	// +optional
-	BasicAuth *BasicAuth `json:"basicAuth,omitempty"`
+	// HTTPAuth generic auth methods
+	HTTPAuth `json:",inline,omitempty"`
 	// MetricRelabelConfigs to apply to samples before ingestion.
 	// +optional
 	MetricRelabelConfigs []*RelabelConfig `json:"metricRelabelConfigs,omitempty"`
@@ -75,9 +55,6 @@ type VMNodeScrapeSpec struct {
 	// More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config
 	// +optional
 	RelabelConfigs []*RelabelConfig `json:"relabelConfigs,omitempty"`
-	// ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint.
-	// +optional
-	ProxyURL *string `json:"proxyURL,omitempty"`
 	// Selector to select kubernetes Nodes.
 	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors=true
 	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors.displayName="Service selector"

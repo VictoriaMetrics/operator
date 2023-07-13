@@ -111,7 +111,7 @@ metric_relabel_configs: []
 			args: args{
 				ssCache: &scrapesSecretsCache{
 					baSecrets: map[string]*BasicAuthCredentials{
-						"staticScrapeProxy/default/static-1/0": &BasicAuthCredentials{
+						"staticScrapeProxy/default/static-1/0": {
 							password: "proxy-password",
 							username: "proxy-user",
 						},
@@ -122,7 +122,7 @@ metric_relabel_configs: []
 					},
 					bearerTokens: map[string]string{},
 					oauth2Secrets: map[string]*oauthCreds{
-						"staticScrape/default/static-1/0": &oauthCreds{
+						"staticScrape/default/static-1/0": {
 							clientID:     "some-id",
 							clientSecret: "some-secret",
 						},
@@ -139,19 +139,44 @@ metric_relabel_configs: []
 					},
 				},
 				ep: &victoriametricsv1beta1.TargetEndpoint{
-					Params:      map[string][]string{"timeout": []string{"50s"}, "follow": {"false"}},
+					Params:      map[string][]string{"timeout": {"50s"}, "follow": {"false"}},
 					SampleLimit: 60,
-					TLSConfig: &victoriametricsv1beta1.TLSConfig{
-						CA: victoriametricsv1beta1.SecretOrConfigMap{Secret: &v1.SecretKeySelector{
-							Key:                  "ca",
-							LocalObjectReference: v1.LocalObjectReference{Name: "tls-cfg"},
-						}},
-						CertFile: "/tmp/cert-part",
-						KeySecret: &v1.SecretKeySelector{
-							Key:                  "key",
-							LocalObjectReference: v1.LocalObjectReference{Name: "tls-cfg"},
+					HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+						TLSConfig: &victoriametricsv1beta1.TLSConfig{
+							CA: victoriametricsv1beta1.SecretOrConfigMap{Secret: &v1.SecretKeySelector{
+								Key:                  "ca",
+								LocalObjectReference: v1.LocalObjectReference{Name: "tls-cfg"},
+							}},
+							CertFile: "/tmp/cert-part",
+							KeySecret: &v1.SecretKeySelector{
+								Key:                  "key",
+								LocalObjectReference: v1.LocalObjectReference{Name: "tls-cfg"},
+							},
+							InsecureSkipVerify: true,
 						},
-						InsecureSkipVerify: true,
+						BasicAuth: &victoriametricsv1beta1.BasicAuth{
+							Username: v1.SecretKeySelector{
+								Key:                  "user",
+								LocalObjectReference: v1.LocalObjectReference{Name: "ba-secret"},
+							},
+							Password: v1.SecretKeySelector{
+								Key:                  "password",
+								LocalObjectReference: v1.LocalObjectReference{Name: "ba-secret"},
+							},
+						},
+						OAuth2: &victoriametricsv1beta1.OAuth2{
+							ClientSecret: &v1.SecretKeySelector{Key: "client-s", LocalObjectReference: v1.LocalObjectReference{Name: "oauth-2s"}},
+							ClientID: victoriametricsv1beta1.SecretOrConfigMap{
+								Secret: &v1.SecretKeySelector{Key: "client-id", LocalObjectReference: v1.LocalObjectReference{Name: "oauth-2s"}},
+							},
+						},
+						BearerAuth: &victoriametricsv1beta1.BearerAuth{
+							BearerTokenSecret: &v1.SecretKeySelector{
+								Key:                  "token",
+								LocalObjectReference: v1.LocalObjectReference{Name: "token-secret"},
+							},
+						},
+						ProxyURL: pointer.String("https://some-proxy"),
 					},
 					ScrapeTimeout:   "55s",
 					Interval:        "10s",
@@ -160,33 +185,12 @@ metric_relabel_configs: []
 					Path:            "/metrics-1",
 					Port:            "8031",
 					Scheme:          "https",
-					ProxyURL:        pointer.String("https://some-proxy"),
 					HonorLabels:     true,
 					RelabelConfigs: []*victoriametricsv1beta1.RelabelConfig{
 						{
 							Action:       "drop",
 							SourceLabels: []string{"src"},
 							Regex:        ".+",
-						},
-					},
-					BasicAuth: &victoriametricsv1beta1.BasicAuth{
-						Username: v1.SecretKeySelector{
-							Key:                  "user",
-							LocalObjectReference: v1.LocalObjectReference{Name: "ba-secret"},
-						},
-						Password: v1.SecretKeySelector{
-							Key:                  "password",
-							LocalObjectReference: v1.LocalObjectReference{Name: "ba-secret"},
-						},
-					},
-					BearerTokenSecret: &v1.SecretKeySelector{
-						Key:                  "token",
-						LocalObjectReference: v1.LocalObjectReference{Name: "token-secret"},
-					},
-					OAuth2: &victoriametricsv1beta1.OAuth2{
-						ClientSecret: &v1.SecretKeySelector{Key: "client-s", LocalObjectReference: v1.LocalObjectReference{Name: "oauth-2s"}},
-						ClientID: victoriametricsv1beta1.SecretOrConfigMap{
-							Secret: &v1.SecretKeySelector{Key: "client-id", LocalObjectReference: v1.LocalObjectReference{Name: "oauth-2s"}},
 						},
 					},
 					VMScrapeParams: &victoriametricsv1beta1.VMScrapeParams{
@@ -198,7 +202,7 @@ metric_relabel_configs: []
 						ScrapeAlignInterval: pointer.String("5s"),
 						StreamParse:         pointer.Bool(true),
 						Headers:             []string{"customer-header: with-value"},
-						ProxyClientConfig: &victoriametricsv1beta1.ProxyAuth{
+						ProxyClientConfig: &victoriametricsv1beta1.HTTPAuth{
 							BasicAuth: &victoriametricsv1beta1.BasicAuth{
 								Username: v1.SecretKeySelector{
 									Key:                  "user",

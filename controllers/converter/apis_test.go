@@ -2,11 +2,12 @@ package converter
 
 import (
 	"fmt"
+	"reflect"
+	"testing"
+
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"reflect"
-	"testing"
 
 	corev1 "k8s.io/api/core/v1"
 
@@ -306,13 +307,19 @@ func TestConvertPodEndpoints(t *testing.T) {
 				},
 			}},
 			want: []v1beta1vm.PodMetricsEndpoint{{
-				TLSConfig: &v1beta1vm.TLSConfig{
-					InsecureSkipVerify: true,
-					ServerName:         "some-srv",
-					CA: v1beta1vm.SecretOrConfigMap{ConfigMap: &corev1.ConfigMapKeySelector{
-						Key: "ca"},
-					}},
-			}}},
+				HTTPAuth: v1beta1vm.HTTPAuth{
+					TLSConfig: &v1beta1vm.TLSConfig{
+						InsecureSkipVerify: true,
+						ServerName:         "some-srv",
+						CA: v1beta1vm.SecretOrConfigMap{
+							ConfigMap: &corev1.ConfigMapKeySelector{
+								Key: "ca",
+							},
+						},
+					},
+				},
+			}},
+		},
 		{
 			name: "with basic auth and bearer",
 			args: args{promPodEnpoints: []v1.PodMetricsEndpoint{
@@ -325,11 +332,16 @@ func TestConvertPodEndpoints(t *testing.T) {
 				},
 			}},
 			want: []v1beta1vm.PodMetricsEndpoint{{
-				BearerTokenSecret: &corev1.SecretKeySelector{Key: "bearer"},
-				BasicAuth: &v1beta1vm.BasicAuth{Username: corev1.SecretKeySelector{
-					Key: "username",
-				},
-					Password: corev1.SecretKeySelector{Key: "password"},
+				HTTPAuth: v1beta1vm.HTTPAuth{
+					BasicAuth: &v1beta1vm.BasicAuth{
+						Username: corev1.SecretKeySelector{
+							Key: "username",
+						},
+						Password: corev1.SecretKeySelector{Key: "password"},
+					},
+					BearerAuth: &v1beta1vm.BearerAuth{
+						BearerTokenSecret: &corev1.SecretKeySelector{Key: "bearer"},
+					},
 				},
 			}},
 		},
@@ -353,11 +365,11 @@ func TestConvertAlertmanagerConfig(t *testing.T) {
 			if err := validate(converted); err != nil {
 				t.Fatalf("not valid converted alertmanager config")
 			}
-
 		})
 	}
 	f("simple convert",
-		&v1alpha1.AlertmanagerConfig{ObjectMeta: v12.ObjectMeta{Name: "test-1"},
+		&v1alpha1.AlertmanagerConfig{
+			ObjectMeta: v12.ObjectMeta{Name: "test-1"},
 			Spec: v1alpha1.AlertmanagerConfigSpec{
 				Route: &v1alpha1.Route{Receiver: "webhook", GroupInterval: "1min"},
 				Receivers: []v1alpha1.Receiver{
@@ -366,7 +378,8 @@ func TestConvertAlertmanagerConfig(t *testing.T) {
 						WebhookConfigs: []v1alpha1.WebhookConfig{{URLSecret: &corev1.SecretKeySelector{Key: "secret"}}},
 					},
 				},
-			}},
+			},
+		},
 		func(convertedAMCfg *v1beta1vm.VMAlertmanagerConfig) error {
 			if convertedAMCfg.Name != "test-1" {
 				return fmt.Errorf("name not match, want: %s got: %s", "test-1", convertedAMCfg.Name)
@@ -382,5 +395,4 @@ func TestConvertAlertmanagerConfig(t *testing.T) {
 			}
 			return nil
 		})
-
 }

@@ -51,7 +51,8 @@ var _ = Describe("test  vmagent Controller", func() {
 							RemoteWrite: []operator.VMAgentRemoteWriteSpec{
 								{URL: "http://localhost:8428"},
 							},
-						}})).To(BeNil())
+						},
+					})).To(BeNil())
 					currVMAgent := &operator.VMAgent{}
 					Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, currVMAgent)).To(BeNil())
 					Eventually(func() string {
@@ -81,7 +82,8 @@ var _ = Describe("test  vmagent Controller", func() {
 									Type: corev1.ServiceTypeNodePort,
 								},
 							},
-						}})).To(BeNil())
+						},
+					})).To(BeNil())
 					currVMAgent := &operator.VMAgent{}
 					Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, currVMAgent)).To(BeNil())
 					Eventually(func() string {
@@ -114,33 +116,36 @@ var _ = Describe("test  vmagent Controller", func() {
 								{URL: "http://localhost:8428"},
 								{
 									URL: "http://localhost:8425",
-									TLSConfig: &operator.TLSConfig{
-										CA: operator.SecretOrConfigMap{
-											Secret: &corev1.SecretKeySelector{
+									HTTPAuth: operator.HTTPAuth{
+										TLSConfig: &operator.TLSConfig{
+											CA: operator.SecretOrConfigMap{
+												Secret: &corev1.SecretKeySelector{
+													LocalObjectReference: corev1.LocalObjectReference{
+														Name: tlsSecretName,
+													},
+													Key: "remote-ca",
+												},
+											},
+											Cert: operator.SecretOrConfigMap{
+												Secret: &corev1.SecretKeySelector{
+													LocalObjectReference: corev1.LocalObjectReference{
+														Name: tlsSecretName,
+													},
+													Key: "remote-cert",
+												},
+											},
+											KeySecret: &corev1.SecretKeySelector{
 												LocalObjectReference: corev1.LocalObjectReference{
 													Name: tlsSecretName,
 												},
-												Key: "remote-ca",
+												Key: "remote-key",
 											},
-										},
-										Cert: operator.SecretOrConfigMap{
-											Secret: &corev1.SecretKeySelector{
-												LocalObjectReference: corev1.LocalObjectReference{
-													Name: tlsSecretName,
-												},
-												Key: "remote-cert",
-											},
-										},
-										KeySecret: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: tlsSecretName,
-											},
-											Key: "remote-key",
 										},
 									},
 								},
 							},
-						}})).To(BeNil())
+						},
+					})).To(BeNil())
 					currVMAgent := &operator.VMAgent{}
 					Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, currVMAgent)).To(BeNil())
 					Eventually(func() string {
@@ -148,7 +153,6 @@ var _ = Describe("test  vmagent Controller", func() {
 					}, 60, 1).Should(BeEmpty())
 					Expect(k8sClient.Delete(context.Background(), tlsSecret)).To(BeNil())
 				})
-
 			})
 			Context("update", func() {
 				name := "update-vma"
@@ -158,7 +162,8 @@ var _ = Describe("test  vmagent Controller", func() {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      name,
 							Namespace: namespace,
-						}})).To(BeNil())
+						},
+					})).To(BeNil())
 					Eventually(func() error {
 						err := k8sClient.Get(context.Background(), types.NamespacedName{
 							Name:      name,
@@ -169,7 +174,6 @@ var _ = Describe("test  vmagent Controller", func() {
 						}
 						return fmt.Errorf("want NotFound error, got: %w", err)
 					}, 60, 1).Should(BeNil())
-
 				})
 				JustBeforeEach(func() {
 					Expect(k8sClient.Create(context.TODO(), &operator.VMAgent{
@@ -184,7 +188,6 @@ var _ = Describe("test  vmagent Controller", func() {
 							},
 						},
 					})).To(BeNil())
-
 				})
 				It("should expand vmagent up to 3 replicas", func() {
 					currVMAgent := &operator.VMAgent{
@@ -205,7 +208,6 @@ var _ = Describe("test  vmagent Controller", func() {
 				})
 			})
 		})
-
 	})
 })
 

@@ -269,9 +269,12 @@ func Test_getCredFromSecret(t *testing.T) {
 			name: "extract tls key data from secret",
 			args: args{
 				ns: "default",
-				sel: corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{
-					Name: "tls-secret"},
-					Key: "key.pem"},
+				sel: corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "tls-secret",
+					},
+					Key: "key.pem",
+				},
 				cacheKey: "tls-secret",
 				cache:    map[string]*corev1.Secret{},
 			},
@@ -291,9 +294,12 @@ func Test_getCredFromSecret(t *testing.T) {
 			name: "fail extract missing tls cert data from secret",
 			args: args{
 				ns: "default",
-				sel: corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{
-					Name: "tls-secret"},
-					Key: "cert.pem"},
+				sel: corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "tls-secret",
+					},
+					Key: "cert.pem",
+				},
 				cacheKey: "tls-secret",
 				cache:    map[string]*corev1.Secret{},
 			},
@@ -441,10 +447,14 @@ func TestCreateOrUpdateConfigurationSecret(t *testing.T) {
 							{
 								Path: "/metrics",
 								Port: "8085",
-								BearerTokenSecret: &corev1.SecretKeySelector{
-									Key: "bearer",
-									LocalObjectReference: corev1.LocalObjectReference{
-										Name: "access-creds",
+								HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+									BearerAuth: &victoriametricsv1beta1.BearerAuth{
+										BearerTokenSecret: &corev1.SecretKeySelector{
+											Key: "bearer",
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "access-creds",
+											},
+										},
 									},
 								},
 							},
@@ -493,7 +503,7 @@ func TestCreateOrUpdateConfigurationSecret(t *testing.T) {
 								Port: "805",
 								VMScrapeParams: &victoriametricsv1beta1.VMScrapeParams{
 									StreamParse: pointer.Bool(true),
-									ProxyClientConfig: &victoriametricsv1beta1.ProxyAuth{
+									ProxyClientConfig: &victoriametricsv1beta1.HTTPAuth{
 										TLSConfig: &victoriametricsv1beta1.TLSConfig{
 											InsecureSkipVerify: true,
 											KeySecret: &corev1.SecretKeySelector{
@@ -508,12 +518,13 @@ func TestCreateOrUpdateConfigurationSecret(t *testing.T) {
 													Name: "access-creds",
 												},
 											}},
-											CA: victoriametricsv1beta1.SecretOrConfigMap{Secret: &corev1.SecretKeySelector{
-												Key: "ca",
-												LocalObjectReference: corev1.LocalObjectReference{
-													Name: "access-creds",
+											CA: victoriametricsv1beta1.SecretOrConfigMap{
+												Secret: &corev1.SecretKeySelector{
+													Key: "ca",
+													LocalObjectReference: corev1.LocalObjectReference{
+														Name: "access-creds",
+													},
 												},
-											},
 											},
 										},
 									},
@@ -522,26 +533,29 @@ func TestCreateOrUpdateConfigurationSecret(t *testing.T) {
 							{
 								Port: "801",
 								Path: "/metrics-5",
-								TLSConfig: &victoriametricsv1beta1.TLSConfig{
-									InsecureSkipVerify: true,
-									KeySecret: &corev1.SecretKeySelector{
-										Key: "key",
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "access-creds",
+								HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+									TLSConfig: &victoriametricsv1beta1.TLSConfig{
+										InsecureSkipVerify: true,
+										KeySecret: &corev1.SecretKeySelector{
+											Key: "key",
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "access-creds",
+											},
 										},
-									},
-									Cert: victoriametricsv1beta1.SecretOrConfigMap{Secret: &corev1.SecretKeySelector{
-										Key: "cert",
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "access-creds",
+										Cert: victoriametricsv1beta1.SecretOrConfigMap{Secret: &corev1.SecretKeySelector{
+											Key: "cert",
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "access-creds",
+											},
+										}},
+										CA: victoriametricsv1beta1.SecretOrConfigMap{
+											Secret: &corev1.SecretKeySelector{
+												Key: "ca",
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "access-creds",
+												},
+											},
 										},
-									}},
-									CA: victoriametricsv1beta1.SecretOrConfigMap{Secret: &corev1.SecretKeySelector{
-										Key: "ca",
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "access-creds",
-										},
-									},
 									},
 								},
 							},
@@ -554,17 +568,19 @@ func TestCreateOrUpdateConfigurationSecret(t *testing.T) {
 						Name:      "test-vms",
 					},
 					Spec: victoriametricsv1beta1.VMNodeScrapeSpec{
-						BasicAuth: &victoriametricsv1beta1.BasicAuth{
-							Username: corev1.SecretKeySelector{
-								Key: "username",
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "access-creds",
+						HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+							BasicAuth: &victoriametricsv1beta1.BasicAuth{
+								Username: corev1.SecretKeySelector{
+									Key: "username",
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "access-creds",
+									},
 								},
-							},
-							Password: corev1.SecretKeySelector{
-								Key: "password",
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "access-creds",
+								Password: corev1.SecretKeySelector{
+									Key: "password",
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "access-creds",
+									},
 								},
 							},
 						},
@@ -578,26 +594,28 @@ func TestCreateOrUpdateConfigurationSecret(t *testing.T) {
 					Spec: victoriametricsv1beta1.VMStaticScrapeSpec{
 						TargetEndpoints: []*victoriametricsv1beta1.TargetEndpoint{
 							{
-								Path:     "/metrics-3",
-								Port:     "3031",
-								Scheme:   "https",
-								ProxyURL: pointer.String("https://some-proxy-1"),
-								OAuth2: &victoriametricsv1beta1.OAuth2{
-									TokenURL: "https://some-tr",
-									ClientSecret: &corev1.SecretKeySelector{
-										Key: "cs",
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "access-creds",
-										},
-									},
-									ClientID: victoriametricsv1beta1.SecretOrConfigMap{
-										Secret: &corev1.SecretKeySelector{
-											Key: "cid",
+								Path:   "/metrics-3",
+								Port:   "3031",
+								Scheme: "https",
+								HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+									OAuth2: &victoriametricsv1beta1.OAuth2{
+										TokenURL: "https://some-tr",
+										ClientSecret: &corev1.SecretKeySelector{
+											Key: "cs",
 											LocalObjectReference: corev1.LocalObjectReference{
 												Name: "access-creds",
 											},
 										},
+										ClientID: victoriametricsv1beta1.SecretOrConfigMap{
+											Secret: &corev1.SecretKeySelector{
+												Key: "cid",
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "access-creds",
+												},
+											},
+										},
 									},
+									ProxyURL: pointer.String("https://some-proxy-1"),
 								},
 							},
 						},
@@ -864,7 +882,6 @@ scrape_configs:
 		{
 			name: "with missing secret references",
 			args: args{
-
 				cr: &victoriametricsv1beta1.VMAgent{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test",
@@ -899,17 +916,19 @@ scrape_configs:
 						Name:      "test-bad-0",
 					},
 					Spec: victoriametricsv1beta1.VMNodeScrapeSpec{
-						BasicAuth: &victoriametricsv1beta1.BasicAuth{
-							Username: corev1.SecretKeySelector{
-								Key: "username",
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "access-creds",
+						HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+							BasicAuth: &victoriametricsv1beta1.BasicAuth{
+								Username: corev1.SecretKeySelector{
+									Key: "username",
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "access-creds",
+									},
 								},
-							},
-							Password: corev1.SecretKeySelector{
-								Key: "password",
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "access-creds",
+								Password: corev1.SecretKeySelector{
+									Key: "password",
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "access-creds",
+									},
 								},
 							},
 						},
@@ -930,10 +949,14 @@ scrape_configs:
 						Name:      "bad-1",
 					},
 					Spec: victoriametricsv1beta1.VMNodeScrapeSpec{
-						BearerTokenSecret: &corev1.SecretKeySelector{
-							Key: "username",
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "access-creds",
+						HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+							BearerAuth: &victoriametricsv1beta1.BearerAuth{
+								BearerTokenSecret: &corev1.SecretKeySelector{
+									Key: "username",
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "access-creds",
+									},
+								},
 							},
 						},
 					},
@@ -962,11 +985,13 @@ scrape_configs:
 								Port: "805",
 								VMScrapeParams: &victoriametricsv1beta1.VMScrapeParams{
 									StreamParse: pointer.Bool(true),
-									ProxyClientConfig: &victoriametricsv1beta1.ProxyAuth{
-										BearerToken: &corev1.SecretKeySelector{
-											Key: "username",
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "access-creds",
+									ProxyClientConfig: &victoriametricsv1beta1.HTTPAuth{
+										BearerAuth: &victoriametricsv1beta1.BearerAuth{
+											BearerTokenSecret: &corev1.SecretKeySelector{
+												Key: "username",
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "access-creds",
+												},
 											},
 										},
 									},
@@ -975,17 +1000,19 @@ scrape_configs:
 							{
 								Port: "801",
 								Path: "/metrics-5",
-								BasicAuth: &victoriametricsv1beta1.BasicAuth{
-									Username: corev1.SecretKeySelector{
-										Key: "username",
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "access-creds",
+								HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+									BasicAuth: &victoriametricsv1beta1.BasicAuth{
+										Username: corev1.SecretKeySelector{
+											Key: "username",
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "access-creds",
+											},
 										},
-									},
-									Password: corev1.SecretKeySelector{
-										Key: "password",
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "access-creds",
+										Password: corev1.SecretKeySelector{
+											Key: "password",
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "access-creds",
+											},
 										},
 									},
 								},
@@ -1030,26 +1057,28 @@ scrape_configs:
 					Spec: victoriametricsv1beta1.VMStaticScrapeSpec{
 						TargetEndpoints: []*victoriametricsv1beta1.TargetEndpoint{
 							{
-								Path:     "/metrics-3",
-								Port:     "3031",
-								Scheme:   "https",
-								ProxyURL: pointer.String("https://some-proxy-1"),
-								OAuth2: &victoriametricsv1beta1.OAuth2{
-									TokenURL: "https://some-tr",
-									ClientSecret: &corev1.SecretKeySelector{
-										Key: "cs",
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "access-creds",
-										},
-									},
-									ClientID: victoriametricsv1beta1.SecretOrConfigMap{
-										Secret: &corev1.SecretKeySelector{
-											Key: "cid",
+								Path:   "/metrics-3",
+								Port:   "3031",
+								Scheme: "https",
+								HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+									OAuth2: &victoriametricsv1beta1.OAuth2{
+										TokenURL: "https://some-tr",
+										ClientSecret: &corev1.SecretKeySelector{
+											Key: "cs",
 											LocalObjectReference: corev1.LocalObjectReference{
 												Name: "access-creds",
 											},
 										},
+										ClientID: victoriametricsv1beta1.SecretOrConfigMap{
+											Secret: &corev1.SecretKeySelector{
+												Key: "cid",
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "access-creds",
+												},
+											},
+										},
 									},
+									ProxyURL: pointer.String("https://some-proxy-1"),
 								},
 							},
 						},
@@ -1063,19 +1092,21 @@ scrape_configs:
 					Spec: victoriametricsv1beta1.VMStaticScrapeSpec{
 						TargetEndpoints: []*victoriametricsv1beta1.TargetEndpoint{
 							{
-								Path:     "/metrics-3",
-								Port:     "3031",
-								Scheme:   "https",
-								ProxyURL: pointer.String("https://some-proxy-1"),
-								TLSConfig: &victoriametricsv1beta1.TLSConfig{
-									Cert: victoriametricsv1beta1.SecretOrConfigMap{
-										Secret: &corev1.SecretKeySelector{
-											Key: "cert",
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "tls-creds",
+								Path:   "/metrics-3",
+								Port:   "3031",
+								Scheme: "https",
+								HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+									TLSConfig: &victoriametricsv1beta1.TLSConfig{
+										Cert: victoriametricsv1beta1.SecretOrConfigMap{
+											Secret: &corev1.SecretKeySelector{
+												Key: "cert",
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "tls-creds",
+												},
 											},
 										},
 									},
+									ProxyURL: pointer.String("https://some-proxy-1"),
 								},
 							},
 						},
@@ -1202,7 +1233,6 @@ scrape_configs:
 			gr.Close()
 
 			assert.Equal(t, tt.wantConfig, string(data))
-
 		})
 	}
 }

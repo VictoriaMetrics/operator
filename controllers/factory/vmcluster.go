@@ -3,14 +3,15 @@ package factory
 import (
 	"context"
 	"fmt"
-	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
-	"k8s.io/api/autoscaling/v2beta2"
-	policyv1 "k8s.io/api/policy/v1"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"path"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
+	"k8s.io/api/autoscaling/v2beta2"
+	policyv1 "k8s.io/api/policy/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
@@ -42,7 +43,6 @@ var defaultTerminationGracePeriod = int64(30)
 // needed in update checked by revesion status
 // its controlled by k8s controller-manager
 func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) error {
-
 	if err := psp.CreateServiceAccountForCRD(ctx, cr, rclient); err != nil {
 		return fmt.Errorf("failed create service account: %w", err)
 	}
@@ -144,7 +144,6 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient
 
 	}
 	return nil
-
 }
 
 func createOrUpdateVMSelect(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) error {
@@ -594,6 +593,7 @@ func genVMSelectService(cr *v1beta1.VMCluster) *corev1.Service {
 		},
 	}
 }
+
 func genVMSelectHeadlessService(cr *v1beta1.VMCluster) *corev1.Service {
 	ports := []corev1.ServicePort{
 		{
@@ -879,7 +879,6 @@ func makePodSpecForVMInsert(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 	}
 
 	return vmInsertPodSpec, nil
-
 }
 
 func defaultVMInsertService(cr *v1beta1.VMCluster) *corev1.Service {
@@ -908,7 +907,6 @@ func defaultVMInsertService(cr *v1beta1.VMCluster) *corev1.Service {
 }
 
 func CreateOrUpdatePodDisruptionBudgetForVMInsert(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client) error {
-
 	if k8stools.IsPDBV1APISupported() {
 		pdb := &policyv1.PodDisruptionBudget{
 			ObjectMeta: metav1.ObjectMeta{

@@ -395,6 +395,7 @@ func (cb *configBuilder) buildCfg() error {
 	cb.finalizeSection("opsgenie_configs")
 
 	for _, emailCfg := range cb.receiver.EmailConfigs {
+		// https://prometheus.io/docs/alerting/latest/configuration/#email_config
 		if err := cb.buildEmail(emailCfg); err != nil {
 			return err
 		}
@@ -465,7 +466,7 @@ func (cb *configBuilder) buildTelegram(tg operatorv1beta1.TelegramConfig) error 
 	var temp yaml.MapSlice
 
 	if tg.HTTPConfig != nil {
-		c, err := cb.buildHTTPConfig(tg.HTTPConfig)
+		c, err := cb.buildHTTPAuth(tg.HTTPConfig)
 		if err != nil {
 			return err
 		}
@@ -502,7 +503,7 @@ func (cb *configBuilder) buildTelegram(tg operatorv1beta1.TelegramConfig) error 
 func (cb *configBuilder) buildSlack(slack operatorv1beta1.SlackConfig) error {
 	var temp yaml.MapSlice
 	if slack.HTTPConfig != nil {
-		c, err := cb.buildHTTPConfig(slack.HTTPConfig)
+		c, err := cb.buildHTTPAuth(slack.HTTPConfig)
 		if err != nil {
 			return err
 		}
@@ -607,7 +608,7 @@ func (cb *configBuilder) buildSlack(slack operatorv1beta1.SlackConfig) error {
 func (cb *configBuilder) buildWebhook(wh operatorv1beta1.WebhookConfig) error {
 	var temp yaml.MapSlice
 	if wh.HTTPConfig != nil {
-		h, err := cb.buildHTTPConfig(wh.HTTPConfig)
+		h, err := cb.buildHTTPAuth(wh.HTTPConfig)
 		if err != nil {
 			return err
 		}
@@ -649,7 +650,7 @@ func (cb *configBuilder) buildWebhook(wh operatorv1beta1.WebhookConfig) error {
 func (cb *configBuilder) buildWeeChat(wc operatorv1beta1.WeChatConfig) error {
 	var temp yaml.MapSlice
 	if wc.HTTPConfig != nil {
-		h, err := cb.buildHTTPConfig(wc.HTTPConfig)
+		h, err := cb.buildHTTPAuth(wc.HTTPConfig)
 		if err != nil {
 			return err
 		}
@@ -691,7 +692,7 @@ func (cb *configBuilder) buildWeeChat(wc operatorv1beta1.WeChatConfig) error {
 func (cb *configBuilder) buildVictorOps(vo operatorv1beta1.VictorOpsConfig) error {
 	var temp yaml.MapSlice
 	if vo.HTTPConfig != nil {
-		h, err := cb.buildHTTPConfig(vo.HTTPConfig)
+		h, err := cb.buildHTTPAuth(vo.HTTPConfig)
 		if err != nil {
 			return err
 		}
@@ -750,7 +751,7 @@ func (cb *configBuilder) buildPushOver(po operatorv1beta1.PushoverConfig) error 
 		}
 	}
 	if po.HTTPConfig != nil {
-		h, err := cb.buildHTTPConfig(po.HTTPConfig)
+		h, err := cb.buildHTTPAuth(po.HTTPConfig)
 		if err != nil {
 			return err
 		}
@@ -795,7 +796,7 @@ func (cb *configBuilder) buildPagerDuty(pd operatorv1beta1.PagerDutyConfig) erro
 		}
 	}
 	if pd.HTTPConfig != nil {
-		h, err := cb.buildHTTPConfig(pd.HTTPConfig)
+		h, err := cb.buildHTTPAuth(pd.HTTPConfig)
 		if err != nil {
 			return err
 		}
@@ -991,7 +992,7 @@ func (cb *configBuilder) buildOpsGenie(og operatorv1beta1.OpsGenieConfig) error 
 	}
 
 	if og.HTTPConfig != nil {
-		yamlHTTP, err := cb.buildHTTPConfig(og.HTTPConfig)
+		yamlHTTP, err := cb.buildHTTPAuth(og.HTTPConfig)
 		if err != nil {
 			return err
 		}
@@ -1014,43 +1015,117 @@ func (cb *configBuilder) fetchSecretValue(selector *v1.SecretKeySelector) ([]byt
 	return nil, fmt.Errorf("cannot find key : %s at secret: %s", selector.Key, selector.Name)
 }
 
-func (cb *configBuilder) buildHTTPConfig(httpCfg *operatorv1beta1.HTTPConfig) (yaml.MapSlice, error) {
-	var r yaml.MapSlice
+func (cb *configBuilder) fetchConfigmapValue(selector *v1.ConfigMapKeySelector) (string, error) {
+	var s v1.ConfigMap
+	if existCM, ok := cb.configmapCache[selector.Name]; ok {
+		s = *existCM
+	} else if err := cb.Client.Get(cb.ctx, types.NamespacedName{Name: selector.Name, Namespace: cb.currentCR.Namespace}, &s); err != nil {
+		return "", fmt.Errorf("cannot find configmap for VMAlertmanager config: %s, receiver: %s, err :%w", cb.currentCR.Name, cb.receiver.Name, err)
+	}
+	if v, ok := s.Data[selector.Key]; ok {
+		return v, nil
+	}
+	return "", fmt.Errorf("cannot find key : %s at secret: %s", selector.Key, selector.Name)
+}
 
-	if httpCfg == nil {
+// todo wang add ut
+func (cb *configBuilder) buildHTTPAuth(httpAuth *operatorv1beta1.HTTPAuth) (yaml.MapSlice, error) {
+	var r yaml.MapSlice
+	if httpAuth == nil {
 		return nil, nil
 	}
-	if httpCfg.TLSConfig != nil {
-		tls, err := cb.buildTLSConfig(httpCfg.TLSConfig)
-		if err != nil {
-			return nil, err
-		}
-		r = append(r, yaml.MapItem{Key: "tls_config", Value: tls})
-	}
-	if httpCfg.BasicAuth != nil {
-		ba, err := cb.buildBasicAuth(httpCfg.BasicAuth)
+	if httpAuth.BasicAuth != nil {
+		ba, err := cb.buildBasicAuth(httpAuth.BasicAuth)
 		if err != nil {
 			return nil, err
 		}
 		r = append(r, yaml.MapItem{Key: "basic_auth", Value: ba})
 	}
-	var tokenAuth yaml.MapSlice
-	if httpCfg.BearerTokenSecret != nil {
-		bearer, err := cb.fetchSecretValue(httpCfg.BearerTokenSecret)
-		if err != nil {
-			return nil, fmt.Errorf("cannot find secret for bearerToken: %w", err)
+	if httpAuth.Authorization != nil && httpAuth.Authorization.Type != "" {
+		var au yaml.MapSlice
+		au = append(au, yaml.MapItem{Key: "type", Value: httpAuth.Authorization.Type})
+		if httpAuth.Authorization.Credentials != nil {
+			credentials, err := cb.fetchSecretValue(httpAuth.Authorization.Credentials)
+			if err != nil {
+				return nil, fmt.Errorf("cannot find secret for authorization credentials: %w", err)
+			}
+			au = append(au, yaml.MapItem{Key: "credentials", Value: string(credentials)})
+		} else {
+			au = append(au, yaml.MapItem{Key: "credentials_file", Value: httpAuth.Authorization.CredentialsFile})
 		}
-		tokenAuth = append(tokenAuth, yaml.MapItem{Key: "credentials", Value: string(bearer)})
+		r = append(r, yaml.MapItem{Key: "authorization", Value: au})
 	}
-	if len(httpCfg.BearerTokenFile) > 0 {
-		tokenAuth = append(tokenAuth, yaml.MapItem{Key: "credentials_file", Value: httpCfg.BearerTokenFile})
+	if httpAuth.OAuth2 != nil {
+		var oa yaml.MapSlice
+		var clientID string
+		var err error
+		if httpAuth.OAuth2.ClientID.Secret != nil {
+			ID, err := cb.fetchSecretValue(httpAuth.OAuth2.ClientID.Secret)
+			if err != nil {
+				return nil, fmt.Errorf("cannot load oauth2 client id, err: %w", err)
+			}
+			clientID = string(ID)
+		} else if httpAuth.OAuth2.ClientID.ConfigMap != nil {
+			clientID, err = cb.fetchConfigmapValue(httpAuth.OAuth2.ClientID.ConfigMap)
+			if err != nil {
+				return nil, fmt.Errorf("cannot load oauth2 client id, err: %w", err)
+			}
+		}
+		oa = append(oa, yaml.MapItem{Key: "client_id", Value: clientID})
+
+		if httpAuth.OAuth2.ClientSecret != nil {
+			secret, err := cb.fetchSecretValue(httpAuth.OAuth2.ClientSecret)
+			if err != nil {
+				return nil, fmt.Errorf("cannot find secret for oauth2 client: %w", err)
+			}
+			oa = append(oa, yaml.MapItem{Key: "client_secret", Value: string(secret)})
+		} else if httpAuth.OAuth2.ClientSecretFile != "" {
+			oa = append(oa, yaml.MapItem{Key: "client_secret_file", Value: httpAuth.OAuth2.ClientSecretFile})
+		}
+
+		if len(httpAuth.OAuth2.Scopes) > 0 {
+			oa = append(oa, yaml.MapItem{Key: "scopes", Value: httpAuth.OAuth2.Scopes})
+		}
+		if len(httpAuth.OAuth2.EndpointParams) > 0 {
+			oa = append(oa, yaml.MapItem{Key: "endpoint_params", Value: httpAuth.OAuth2.EndpointParams})
+		}
+		if len(httpAuth.OAuth2.TokenURL) > 0 {
+			oa = append(oa, yaml.MapItem{Key: "token_url", Value: httpAuth.OAuth2.TokenURL})
+		}
+		if len(oa) > 0 {
+			r = append(r, yaml.MapItem{Key: "oauth2", Value: oa})
+		}
 	}
-	if len(tokenAuth) > 0 {
-		r = append(r, yaml.MapItem{Key: "authorization", Value: tokenAuth})
+	if httpAuth.TLSConfig != nil {
+		tls, err := cb.buildTLSConfig(httpAuth.TLSConfig)
+		if err != nil {
+			return nil, err
+		}
+		r = append(r, yaml.MapItem{Key: "tls_config", Value: tls})
+	}
+	// will overwrite Authorization if exist
+	if httpAuth.BearerAuth != nil {
+		var ha yaml.MapSlice
+		if httpAuth.BearerTokenSecret != nil {
+			bearer, err := cb.fetchSecretValue(httpAuth.BearerTokenSecret)
+			if err != nil {
+				return nil, fmt.Errorf("cannot find secret for bearerToken: %w", err)
+			}
+			ha = append(ha, yaml.MapItem{Key: "credentials", Value: string(bearer)})
+		}
+		if len(httpAuth.BearerTokenFile) > 0 {
+			ha = append(ha, yaml.MapItem{Key: "credentials_file", Value: httpAuth.BearerTokenFile})
+		}
+		if len(ha) > 0 {
+			r = append(r, yaml.MapItem{Key: "authorization", Value: ha})
+		}
 	}
 
-	if len(httpCfg.ProxyURL) > 0 {
-		r = append(r, yaml.MapItem{Key: "proxy_url", Value: httpCfg.ProxyURL})
+	if len(httpAuth.Headers) > 0 {
+		r = append(r, yaml.MapItem{Key: "headers", Value: httpAuth.Headers})
+	}
+	if httpAuth.ProxyURL != nil {
+		r = append(r, yaml.MapItem{Key: "proxy_url", Value: *httpAuth.ProxyURL})
 	}
 	return r, nil
 }

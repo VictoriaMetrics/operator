@@ -26,9 +26,7 @@ const (
 	kubernetesSDRoleNode           = "node"
 )
 
-var (
-	invalidLabelCharRE = regexp.MustCompile(`[^a-zA-Z0-9_]`)
-)
+var invalidLabelCharRE = regexp.MustCompile(`[^a-zA-Z0-9_]`)
 
 // BasicAuthCredentials represents a username password pair to be used with
 // basic http authentication, see https://tools.ietf.org/html/rfc7617.
@@ -47,7 +45,6 @@ func generateConfig(
 	secretsCache *scrapesSecretsCache,
 	additionalScrapeConfigs []byte,
 ) ([]byte, error) {
-
 	cfg := yaml.MapSlice{}
 	if !config.IsClusterWideAccessAllowed() && cr.IsOwnsServiceAccount() {
 		log.Info("Setting discovery for the single namespace only, since operator launched with set WATCH_NAMESPACE param. Set custom ServiceAccountName property for VMAgent if needed.", "vmagent", cr.Name, "namespace", cr.Namespace)
@@ -174,7 +171,6 @@ func generateConfig(
 				cr.Spec.OverrideHonorLabels,
 				cr.Spec.OverrideHonorTimestamps,
 				cr.Spec.EnforcedNamespaceLabel))
-
 	}
 
 	for _, identifier := range staticsIdentifiers {
@@ -226,7 +222,7 @@ func makeConfigSecret(cr *victoriametricsv1beta1.VMAgent, config *config.BaseOpe
 		},
 	}
 	for idx, rw := range cr.Spec.RemoteWrite {
-		if rw.BearerTokenSecret != nil {
+		if rw.BearerAuth != nil && rw.BearerTokenSecret != nil {
 			token, ok := ssCache.bearerTokens[rw.AsMapKey()]
 			if !ok {
 				logger.Fatalf("bug, remoteWriteSpec bearerToken is missing: %s", rw.AsMapKey())
@@ -309,8 +305,8 @@ func generatePodScrapeConfig(
 	ignoreHonorLabels bool,
 	overrideHonorTimestamps bool,
 	ignoreNamespaceSelectors bool,
-	enforcedNamespaceLabel string) yaml.MapSlice {
-
+	enforcedNamespaceLabel string,
+) yaml.MapSlice {
 	hl := honorLabels(ep.HonorLabels, ignoreHonorLabels)
 	cfg := yaml.MapSlice{
 		{
@@ -359,13 +355,15 @@ func generatePodScrapeConfig(
 	}
 	cfg = addTLStoYaml(cfg, m.Namespace, ep.TLSConfig, false)
 
-	if ep.BearerTokenFile != "" {
-		cfg = append(cfg, yaml.MapItem{Key: "bearer_token_file", Value: ep.BearerTokenFile})
-	}
+	if ep.BearerAuth != nil {
+		if ep.BearerTokenFile != "" {
+			cfg = append(cfg, yaml.MapItem{Key: "bearer_token_file", Value: ep.BearerTokenFile})
+		}
 
-	if ep.BearerTokenSecret != nil && ep.BearerTokenSecret.Name != "" {
-		if s, ok := ssCache.bearerTokens[m.AsMapKey(i)]; ok {
-			cfg = append(cfg, yaml.MapItem{Key: "bearer_token", Value: s})
+		if ep.BearerTokenSecret != nil && ep.BearerTokenSecret.Name != "" {
+			if s, ok := ssCache.bearerTokens[m.AsMapKey(i)]; ok {
+				cfg = append(cfg, yaml.MapItem{Key: "bearer_token", Value: s})
+			}
 		}
 	}
 
@@ -587,8 +585,8 @@ func generateServiceScrapeConfig(
 	overrideHonorLabels bool,
 	overrideHonorTimestamps bool,
 	ignoreNamespaceSelectors bool,
-	enforcedNamespaceLabel string) yaml.MapSlice {
-
+	enforcedNamespaceLabel string,
+) yaml.MapSlice {
 	hl := honorLabels(ep.HonorLabels, overrideHonorLabels)
 	cfg := yaml.MapSlice{
 		{
@@ -642,13 +640,15 @@ func generateServiceScrapeConfig(
 
 	cfg = addTLStoYaml(cfg, m.Namespace, ep.TLSConfig, false)
 
-	if ep.BearerTokenFile != "" {
-		cfg = append(cfg, yaml.MapItem{Key: "bearer_token_file", Value: ep.BearerTokenFile})
-	}
+	if ep.BearerAuth != nil {
+		if ep.BearerTokenFile != "" {
+			cfg = append(cfg, yaml.MapItem{Key: "bearer_token_file", Value: ep.BearerTokenFile})
+		}
 
-	if ep.BearerTokenSecret != nil && ep.BearerTokenSecret.Name != "" {
-		if s, ok := ssCache.bearerTokens[m.AsMapKey(i)]; ok {
-			cfg = append(cfg, yaml.MapItem{Key: "bearer_token", Value: s})
+		if ep.BearerTokenSecret != nil && ep.BearerTokenSecret.Name != "" {
+			if s, ok := ssCache.bearerTokens[m.AsMapKey(i)]; ok {
+				cfg = append(cfg, yaml.MapItem{Key: "bearer_token", Value: s})
+			}
 		}
 	}
 
@@ -739,7 +739,6 @@ func generateServiceScrapeConfig(
 				{Key: "regex", Value: ep.Port},
 			})
 		}
-
 	} else if ep.TargetPort != nil && m.Spec.DiscoveryRole != kubernetesSDRoleService {
 		// not supported to service.
 		if ep.TargetPort.StrVal != "" {
@@ -922,8 +921,8 @@ func generateNodeScrapeConfig(
 	ssCache *scrapesSecretsCache,
 	ignoreHonorLabels bool,
 	overrideHonorTimestamps bool,
-	enforcedNamespaceLabel string) yaml.MapSlice {
-
+	enforcedNamespaceLabel string,
+) yaml.MapSlice {
 	nodeSpec := cr.Spec
 	hl := honorLabels(nodeSpec.HonorLabels, ignoreHonorLabels)
 	cfg := yaml.MapSlice{
@@ -976,15 +975,18 @@ func generateNodeScrapeConfig(
 
 	cfg = addTLStoYaml(cfg, cr.Namespace, nodeSpec.TLSConfig, false)
 
-	if nodeSpec.BearerTokenFile != "" {
-		cfg = append(cfg, yaml.MapItem{Key: "bearer_token_file", Value: nodeSpec.BearerTokenFile})
-	}
+	if nodeSpec.BearerAuth != nil {
+		if nodeSpec.BearerTokenFile != "" {
+			cfg = append(cfg, yaml.MapItem{Key: "bearer_token_file", Value: nodeSpec.BearerTokenFile})
+		}
 
-	if nodeSpec.BearerTokenSecret != nil && nodeSpec.BearerTokenSecret.Name != "" {
-		if s, ok := ssCache.bearerTokens[cr.AsMapKey()]; ok {
-			cfg = append(cfg, yaml.MapItem{Key: "bearer_token", Value: s})
+		if nodeSpec.BearerTokenSecret != nil && nodeSpec.BearerTokenSecret.Name != "" {
+			if s, ok := ssCache.bearerTokens[cr.AsMapKey()]; ok {
+				cfg = append(cfg, yaml.MapItem{Key: "bearer_token", Value: s})
+			}
 		}
 	}
+
 	if cr.Spec.BasicAuth != nil {
 		var bac yaml.MapSlice
 		if s, ok := ssCache.baSecrets[cr.AsMapKey()]; ok {
@@ -1256,7 +1258,6 @@ func combineSelectorStr(kvs map[string]string) string {
 }
 
 func generatePodK8SSDConfig(namespaces []string, labelSelector metav1.LabelSelector, apiserverConfig *victoriametricsv1beta1.APIServerConfig, ssCache *scrapesSecretsCache, role string, am *victoriametricsv1beta1.AttachMetadata) yaml.MapItem {
-
 	cfg := generateK8SSDConfig(namespaces, apiserverConfig, ssCache, role, am)
 
 	if len(labelSelector.MatchLabels) != 0 {
@@ -1333,12 +1334,14 @@ func generateK8SSDConfig(namespaces []string, apiserverConfig *victoriametricsv1
 			k8sSDConfig = addAuthorizationConfig(k8sSDConfig, "apiserver", apiserverConfig.Authorization, ssCache.authorizationSecrets)
 		}
 
-		if apiserverConfig.BearerToken != "" {
-			k8sSDConfig = append(k8sSDConfig, yaml.MapItem{Key: "bearer_token", Value: apiserverConfig.BearerToken})
-		}
+		if apiserverConfig.BearerAuth != nil {
+			if apiserverConfig.BearerToken != "" {
+				k8sSDConfig = append(k8sSDConfig, yaml.MapItem{Key: "bearer_token", Value: apiserverConfig.BearerToken})
+			}
 
-		if apiserverConfig.BearerTokenFile != "" {
-			k8sSDConfig = append(k8sSDConfig, yaml.MapItem{Key: "bearer_token_file", Value: apiserverConfig.BearerTokenFile})
+			if apiserverConfig.BearerTokenFile != "" {
+				k8sSDConfig = append(k8sSDConfig, yaml.MapItem{Key: "bearer_token_file", Value: apiserverConfig.BearerTokenFile})
+			}
 		}
 
 		// config as well, make sure to path the right namespace here.
@@ -1359,7 +1362,8 @@ func enforceNamespaceLabel(relabelings []yaml.MapSlice, namespace, enforcedNames
 	}
 	return append(relabelings, yaml.MapSlice{
 		{Key: "target_label", Value: enforcedNamespaceLabel},
-		{Key: "replacement", Value: namespace}})
+		{Key: "replacement", Value: namespace},
+	})
 }
 
 func buildExternalLabels(p *victoriametricsv1beta1.VMAgent) yaml.MapSlice {
@@ -1416,7 +1420,6 @@ func buildVMScrapeParams(namespace, cacheKey string, cfg *victoriametricsv1beta1
 }
 
 func addAuthorizationConfig(dst yaml.MapSlice, cacheKey string, cfg *victoriametricsv1beta1.Authorization, authorizationCache map[string]string) yaml.MapSlice {
-
 	if cfg == nil || len(cfg.Type) == 0 {
 		// fast path
 		return dst
@@ -1438,7 +1441,6 @@ func addAuthorizationConfig(dst yaml.MapSlice, cacheKey string, cfg *victoriamet
 }
 
 func addOAuth2Config(dst yaml.MapSlice, cacheKey string, cfg *victoriametricsv1beta1.OAuth2, oauth2Cache map[string]*oauthCreds) yaml.MapSlice {
-
 	cachedSecret := oauth2Cache[cacheKey]
 	if cfg == nil || cachedSecret == nil {
 		// fast path
@@ -1471,7 +1473,7 @@ func addOAuth2Config(dst yaml.MapSlice, cacheKey string, cfg *victoriametricsv1b
 	return dst
 }
 
-func buildProxyAuthConfig(namespace, cacheKey string, proxyAuth *victoriametricsv1beta1.ProxyAuth, ssCache *scrapesSecretsCache) yaml.MapSlice {
+func buildProxyAuthConfig(namespace, cacheKey string, proxyAuth *victoriametricsv1beta1.HTTPAuth, ssCache *scrapesSecretsCache) yaml.MapSlice {
 	var r yaml.MapSlice
 	if proxyAuth.BasicAuth != nil {
 		var pa yaml.MapSlice
@@ -1495,12 +1497,14 @@ func buildProxyAuthConfig(namespace, cacheKey string, proxyAuth *victoriametrics
 		}
 	}
 
-	if proxyAuth.BearerToken != nil {
-		if bt, ok := ssCache.bearerTokens[cacheKey]; ok {
-			r = append(r, yaml.MapItem{Key: "proxy_bearer_token", Value: bt})
+	if proxyAuth.BearerAuth != nil {
+		if proxyAuth.BearerToken != "" {
+			if bt, ok := ssCache.bearerTokens[cacheKey]; ok {
+				r = append(r, yaml.MapItem{Key: "proxy_bearer_token", Value: bt})
+			}
+		} else if len(proxyAuth.BearerTokenFile) > 0 {
+			r = append(r, yaml.MapItem{Key: "proxy_bearer_token_file", Value: proxyAuth.BearerTokenFile})
 		}
-	} else if len(proxyAuth.BearerTokenFile) > 0 {
-		r = append(r, yaml.MapItem{Key: "proxy_bearer_token_file", Value: proxyAuth.BearerTokenFile})
 	}
 	return r
 }

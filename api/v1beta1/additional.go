@@ -209,10 +209,11 @@ type EmbeddedPersistentVolumeClaim struct {
 
 // HTTPAuth generic auth used with http protocols
 type HTTPAuth struct {
-	BasicAuth   *BasicAuth `json:"basicAuth,omitempty"`
-	OAuth2      *OAuth2    `json:"OAuth2,omitempty"`
-	TLSConfig   *TLSConfig `json:"tlsConfig,omitempty"`
-	*BearerAuth `json:",inline,omitempty"`
+	BasicAuth     *BasicAuth     `json:"basicAuth,omitempty"`
+	Authorization *Authorization `json:"authorization,omitempty"`
+	OAuth2        *OAuth2        `json:"OAuth2,omitempty"`
+	TLSConfig     *TLSConfig     `json:"tlsConfig,omitempty"`
+	*BearerAuth   `json:",inline,omitempty"`
 	// Headers allow configuring custom http headers
 	// Must be in form of semicolon separated header with value
 	// e.g.
@@ -220,14 +221,23 @@ type HTTPAuth struct {
 	// vmalert supports it since 1.79.0 version
 	// +optional
 	Headers []string `json:"headers,omitempty"`
+	// Optional proxy URL.
+	// +optional
+	ProxyURL *string `json:"proxyURL,omitempty"`
 }
 
 // BearerAuth defines auth with bearer token
 type BearerAuth struct {
-	TokenFilePath string `json:"bearerTokenFilePath,omitempty"`
 	// Optional bearer auth token to use for -remoteWrite.url
 	// +optional
-	TokenSecret *v1.SecretKeySelector `json:"bearerTokenSecret,omitempty"`
+	BearerToken     string `json:"bearerToken,omitempty"`
+	BearerTokenFile string `json:"bearerTokenFile,omitempty"`
+	// Secret to mount to read bearer token for scraping targets. The secret
+	// needs to be in the same namespace as the service scrape and accessible by
+	// the victoria-metrics operator.
+	// +optional
+	// +nullable
+	BearerTokenSecret *v1.SecretKeySelector `json:"bearerTokenSecret,omitempty"`
 }
 
 // BasicAuth allow an endpoint to authenticate over basic authentication
@@ -246,6 +256,77 @@ type BasicAuth struct {
 	// PasswordFile defines path to password file at disk
 	// +optional
 	PasswordFile string `json:"password_file,omitempty"`
+}
+
+// OAuth2 defines OAuth2 configuration
+type OAuth2 struct {
+	// The secret or configmap containing the OAuth2 client id
+	// +required
+	ClientID SecretOrConfigMap `json:"client_id"`
+	// The secret containing the OAuth2 client secret
+	// +optional
+	ClientSecret *v1.SecretKeySelector `json:"client_secret,omitempty"`
+	// ClientSecretFile defines path for client secret file.
+	// +optional
+	ClientSecretFile string `json:"client_secret_file,omitempty"`
+	// The URL to fetch the token from
+	// +kubebuilder:validation:MinLength=1
+	// +required
+	TokenURL string `json:"token_url"`
+	// OAuth2 scopes used for the token request
+	// +optional
+	Scopes []string `json:"scopes,omitempty"`
+	// Parameters to append to the token URL
+	// +optional
+	EndpointParams map[string]string `json:"endpoint_params,omitempty"`
+	TLSConfig      *TLSConfig        `json:"tls_config,omitempty"`
+	// Optional proxy URL.
+	// +optional
+	ProxyURL string `json:"proxyURL,omitempty"`
+}
+
+// Authorization configures generic authorization params
+type Authorization struct {
+	// Type of authorization, default to bearer
+	// +optional
+	Type string `json:"type,omitempty"`
+	// Reference to the secret with value for authorization
+	Credentials *v1.SecretKeySelector `json:"credentials,omitempty"`
+	// File with value for authorization
+	// +optional
+	CredentialsFile string `json:"credentialsFile,omitempty"`
+}
+
+// TLSConfig specifies TLSConfig configuration parameters.
+// +k8s:openapi-gen=true
+type TLSConfig struct {
+	// Path to the CA cert in the container to use for the targets.
+	// +optional
+	CAFile string `json:"caFile,omitempty"`
+	// Stuct containing the CA cert to use for the targets.
+	// +optional
+	CA SecretOrConfigMap `json:"ca,omitempty"`
+
+	// Path to the client cert file in the container for the targets.
+	// +optional
+	CertFile string `json:"certFile,omitempty"`
+	// Struct containing the client cert file for the targets.
+	// +optional
+	Cert SecretOrConfigMap `json:"cert,omitempty"`
+
+	// Path to the client key file in the container for the targets.
+	// +optional
+	KeyFile string `json:"keyFile,omitempty"`
+	// Secret containing the client key file for the targets.
+	// +optional
+	KeySecret *v1.SecretKeySelector `json:"keySecret,omitempty"`
+
+	// Used to verify the hostname for the targets.
+	// +optional
+	ServerName string `json:"serverName,omitempty"`
+	// Disable target certificate validation.
+	// +optional
+	InsecureSkipVerify bool `json:"insecureSkipVerify,omitempty"`
 }
 
 // ServiceSpec defines additional service for CRD with user-defined params.

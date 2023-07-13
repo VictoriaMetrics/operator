@@ -22,9 +22,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-var (
-	vmagentSecretFetchErrsTotal prometheus.Counter
-)
+var vmagentSecretFetchErrsTotal prometheus.Counter
 
 func init() {
 	vmagentSecretFetchErrsTotal = prometheus.NewCounter(prometheus.CounterOpts{
@@ -43,7 +41,6 @@ type scrapesSecretsCache struct {
 
 // CreateOrUpdateConfigurationSecret builds scrape configuration for VMAgent
 func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client, c *config.BaseOperatorConf) (*scrapesSecretsCache, error) {
-
 	sScrapes, err := SelectServiceScrapes(ctx, cr, rclient)
 	if err != nil {
 		return nil, fmt.Errorf("selecting ServiceScrapes failed: %w", err)
@@ -138,7 +135,6 @@ func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *victoriametricsv
 }
 
 func SelectServiceScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) (map[string]*victoriametricsv1beta1.VMServiceScrape, error) {
-
 	res := make(map[string]*victoriametricsv1beta1.VMServiceScrape)
 
 	var servScrapesCombined []victoriametricsv1beta1.VMServiceScrape
@@ -193,7 +189,6 @@ func SelectServiceScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgen
 }
 
 func SelectPodScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) (map[string]*victoriametricsv1beta1.VMPodScrape, error) {
-
 	res := make(map[string]*victoriametricsv1beta1.VMPodScrape)
 
 	var podScrapesCombined []victoriametricsv1beta1.VMPodScrape
@@ -230,7 +225,6 @@ func SelectPodScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, r
 }
 
 func SelectVMProbes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) (map[string]*victoriametricsv1beta1.VMProbe, error) {
-
 	res := make(map[string]*victoriametricsv1beta1.VMProbe)
 	var probesCombined []victoriametricsv1beta1.VMProbe
 	namespaces, objSelector, err := getNSWithSelector(ctx, rclient, cr.Spec.ProbeNamespaceSelector, cr.Spec.ProbeSelector, cr.Namespace)
@@ -265,7 +259,6 @@ func SelectVMProbes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rcl
 }
 
 func SelectVMNodeScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) (map[string]*victoriametricsv1beta1.VMNodeScrape, error) {
-
 	l := log.WithValues("vmagent", cr.Name)
 	if !config.IsClusterWideAccessAllowed() && cr.IsOwnsServiceAccount() {
 		l.Info("cannot use VMNodeScrape at operator in single namespace mode with default permissions. Create ServiceAccount for VMAgent manually if needed. Skipping config generation for it")
@@ -308,7 +301,6 @@ func SelectVMNodeScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent
 }
 
 func SelectStaticScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) (map[string]*victoriametricsv1beta1.VMStaticScrape, error) {
-
 	res := make(map[string]*victoriametricsv1beta1.VMStaticScrape)
 	var staticScrapesCombined []victoriametricsv1beta1.VMStaticScrape
 
@@ -358,7 +350,6 @@ func loadScrapeSecrets(
 	remoteWriteSpecs []victoriametricsv1beta1.VMAgentRemoteWriteSpec,
 	namespace string,
 ) (*scrapesSecretsCache, error) {
-
 	oauth2Secret := make(map[string]*oauthCreds)
 	authorizationSecrets := make(map[string]string)
 	baSecrets := make(map[string]*BasicAuthCredentials)
@@ -386,7 +377,7 @@ func loadScrapeSecrets(
 				}
 				oauth2Secret[mon.AsMapKey(i)] = oauth2
 			}
-			if ep.BearerTokenSecret != nil && ep.BearerTokenSecret.Name != "" {
+			if ep.BearerAuth != nil && ep.BearerTokenSecret != nil && ep.BearerTokenSecret.Name != "" {
 				token, err := getCredFromSecret(ctx, rclient, mon.Namespace, ep.BearerTokenSecret, buildCacheKey(mon.Namespace, ep.BearerTokenSecret.Name), nsSecretCache)
 				if err != nil {
 					errG.Add(fmt.Errorf("cannot load secret for VMServiceScrape: %w", err))
@@ -448,7 +439,7 @@ func loadScrapeSecrets(
 			}
 			oauth2Secret[node.AsMapKey()] = oauth2
 		}
-		if node.Spec.BearerTokenSecret != nil && node.Spec.BearerTokenSecret.Name != "" {
+		if node.Spec.BearerAuth != nil && node.Spec.BearerTokenSecret != nil && node.Spec.BearerTokenSecret.Name != "" {
 			token, err := getCredFromSecret(ctx, rclient, node.Namespace, node.Spec.BearerTokenSecret, buildCacheKey(node.Namespace, node.Spec.BearerTokenSecret.Name), nsSecretCache)
 			if err != nil {
 				onErr(err)
@@ -487,7 +478,7 @@ func loadScrapeSecrets(
 				}
 				oauth2Secret[pod.AsMapKey(i)] = oauth2
 			}
-			if ep.BearerTokenSecret != nil && ep.BearerTokenSecret.Name != "" {
+			if ep.BearerAuth != nil && ep.BearerTokenSecret != nil && ep.BearerTokenSecret.Name != "" {
 				token, err := getCredFromSecret(ctx, rclient, pod.Namespace, ep.BearerTokenSecret, buildCacheKey(pod.Namespace, ep.BearerTokenSecret.Name), nsSecretCache)
 				if err != nil {
 					errG.Add(fmt.Errorf("cannot load secret for VMPodScrape: %w", err))
@@ -544,7 +535,7 @@ func loadScrapeSecrets(
 			}
 			oauth2Secret[probe.AsMapKey()] = oauth2
 		}
-		if probe.Spec.BearerTokenSecret != nil && probe.Spec.BearerTokenSecret.Name != "" {
+		if probe.Spec.BearerAuth != nil && probe.Spec.BearerTokenSecret != nil && probe.Spec.BearerTokenSecret.Name != "" {
 			token, err := getCredFromSecret(ctx, rclient, probe.Namespace, probe.Spec.BearerTokenSecret, buildCacheKey(probe.Namespace, probe.Spec.BearerTokenSecret.Name), nsSecretCache)
 			if err != nil {
 				onErr(err)
@@ -592,7 +583,7 @@ func loadScrapeSecrets(
 				}
 				oauth2Secret[staticCfg.AsMapKey(i)] = oauth2
 			}
-			if ep.BearerTokenSecret != nil && ep.BearerTokenSecret.Name != "" {
+			if ep.BearerAuth != nil && ep.BearerTokenSecret != nil && ep.BearerTokenSecret.Name != "" {
 				token, err := getCredFromSecret(ctx, rclient, staticCfg.Namespace, ep.BearerTokenSecret, buildCacheKey(staticCfg.Namespace, ep.BearerTokenSecret.Name), nsSecretCache)
 				if err != nil {
 					errG.Add(fmt.Errorf("could not load secret for vmstaticScrape:  %w", err))
@@ -661,13 +652,12 @@ func loadScrapeSecrets(
 		}
 		if rws.OAuth2 != nil {
 			oauth2, err := loadOAuthSecrets(ctx, rclient, rws.OAuth2, namespace, nsSecretCache, nsCMCache)
-
 			if err != nil {
 				return nil, fmt.Errorf("cannot load oauth2 creds for :%s, ns: %s, err: %w", "remoteWrite", namespace, err)
 			}
 			oauth2Secret[rws.AsMapKey()] = oauth2
 		}
-		if rws.BearerTokenSecret != nil && rws.BearerTokenSecret.Name != "" {
+		if rws.BearerAuth != nil && rws.BearerTokenSecret != nil && rws.BearerTokenSecret.Name != "" {
 			token, err := getCredFromSecret(ctx, rclient, namespace, rws.BearerTokenSecret, buildCacheKey(namespace, rws.BearerTokenSecret.Name), nsSecretCache)
 			if err != nil {
 				return nil, fmt.Errorf("cannot get bearer token for remoteWrite: %w", err)
@@ -710,7 +700,6 @@ func loadBasicAuthSecret(ctx context.Context, rclient client.Client, ns string, 
 	}
 
 	return bac, nil
-
 }
 
 func extractCredKey(secret *corev1.Secret, sel corev1.SecretKeySelector) (string, error) {
@@ -798,8 +787,7 @@ func buildCacheKey(ns, keyName string) string {
 	return fmt.Sprintf("%s/%s", ns, keyName)
 }
 
-func loadProxySecrets(ctx context.Context, rclient client.Client, proxyCfg *victoriametricsv1beta1.ProxyAuth, ns string, cache map[string]*corev1.Secret) (ba *BasicAuthCredentials, token string, err error) {
-
+func loadProxySecrets(ctx context.Context, rclient client.Client, proxyCfg *victoriametricsv1beta1.HTTPAuth, ns string, cache map[string]*corev1.Secret) (ba *BasicAuthCredentials, token string, err error) {
 	if proxyCfg.BasicAuth != nil {
 		ba, err = loadBasicAuthSecretFromAPI(ctx, rclient, proxyCfg.BasicAuth, ns, cache)
 		if err != nil {
@@ -808,18 +796,20 @@ func loadProxySecrets(ctx context.Context, rclient client.Client, proxyCfg *vict
 		}
 
 	}
-	if proxyCfg.BearerToken != nil {
-		token, err = getCredFromSecret(
-			ctx,
-			rclient,
-			ns,
-			proxyCfg.BearerToken,
-			buildCacheKey(ns, proxyCfg.BearerToken.Name),
-			cache,
-		)
-		if err != nil {
-			err = fmt.Errorf("cannot load bearer token proxy secret: %w", err)
-			return
+	if proxyCfg.BearerAuth != nil {
+		if proxyCfg.BearerTokenSecret != nil {
+			token, err = getCredFromSecret(
+				ctx,
+				rclient,
+				ns,
+				proxyCfg.BearerTokenSecret,
+				buildCacheKey(ns, proxyCfg.BearerTokenSecret.Name),
+				cache,
+			)
+			if err != nil {
+				err = fmt.Errorf("cannot load bearer token proxy secret: %w", err)
+				return
+			}
 		}
 	}
 	return
@@ -871,7 +861,7 @@ func loadAdditionalScrapeConfigsSecret(ctx context.Context, rclient client.Clien
 }
 
 func testForArbitraryFSAccess(e victoriametricsv1beta1.Endpoint) error {
-	if e.BearerTokenFile != "" {
+	if e.BearerAuth != nil && e.BearerTokenFile != "" {
 		return fmt.Errorf("it accesses file system via bearer token file which VMAgent specification prohibits")
 	}
 

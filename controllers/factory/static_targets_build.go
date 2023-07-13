@@ -16,7 +16,6 @@ func generateStaticScrapeConfig(
 	overrideHonorLabels, overrideHonorTimestamps bool,
 	enforcedNamespaceLabel string,
 ) yaml.MapSlice {
-
 	hl := honorLabels(ep.HonorLabels, overrideHonorLabels)
 	cfg := yaml.MapSlice{
 		{
@@ -71,15 +70,18 @@ func generateStaticScrapeConfig(
 
 	cfg = addTLStoYaml(cfg, m.Namespace, ep.TLSConfig, false)
 
-	if ep.BearerTokenFile != "" {
-		cfg = append(cfg, yaml.MapItem{Key: "bearer_token_file", Value: ep.BearerTokenFile})
-	}
+	if ep.BearerAuth != nil {
+		if ep.BearerTokenFile != "" {
+			cfg = append(cfg, yaml.MapItem{Key: "bearer_token_file", Value: ep.BearerTokenFile})
+		}
 
-	if ep.BearerTokenSecret != nil && ep.BearerTokenSecret.Name != "" {
-		if s, ok := ssCache.bearerTokens[m.AsMapKey(i)]; ok {
-			cfg = append(cfg, yaml.MapItem{Key: "bearer_token", Value: s})
+		if ep.BearerTokenSecret != nil && ep.BearerTokenSecret.Name != "" {
+			if s, ok := ssCache.bearerTokens[m.AsMapKey(i)]; ok {
+				cfg = append(cfg, yaml.MapItem{Key: "bearer_token", Value: s})
+			}
 		}
 	}
+
 	if ep.BasicAuth != nil {
 		var bac yaml.MapSlice
 		if s, ok := ssCache.baSecrets[m.AsMapKey(i)]; ok {

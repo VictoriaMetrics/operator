@@ -43,7 +43,8 @@ func Test_generateProbeConfig(t *testing.T) {
 								Targets: []string{"host-1", "host-2"},
 								Labels:  map[string]string{"label1": "value1"},
 							},
-						}},
+						},
+					},
 				},
 				i: 0,
 			},
@@ -156,20 +157,25 @@ relabel_configs:
 					},
 					Spec: victoriametricsv1beta1.VMProbeSpec{
 						Module:          "http",
-						BearerTokenFile: "/tmp/some_path",
 						FollowRedirects: pointer.Bool(true),
 						ScrapeInterval:  "10s",
 						Interval:        "5s",
 						Params: map[string][]string{
-							"timeout": []string{"10s"},
+							"timeout": {"10s"},
 						},
 						ScrapeTimeout: "15s",
-						BasicAuth: &victoriametricsv1beta1.BasicAuth{
-							PasswordFile: "/tmp/some-file-ba",
+						HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+							BasicAuth: &victoriametricsv1beta1.BasicAuth{
+								PasswordFile: "/tmp/some-file-ba",
+							},
+							BearerAuth: &victoriametricsv1beta1.BearerAuth{
+								BearerTokenFile: "/tmp/some_path",
+							},
 						},
+
 						VMScrapeParams: &victoriametricsv1beta1.VMScrapeParams{
 							StreamParse: pointer.Bool(false),
-							ProxyClientConfig: &victoriametricsv1beta1.ProxyAuth{
+							ProxyClientConfig: &victoriametricsv1beta1.HTTPAuth{
 								TLSConfig: &victoriametricsv1beta1.TLSConfig{
 									CA: victoriametricsv1beta1.SecretOrConfigMap{ConfigMap: &v1.ConfigMapKeySelector{
 										Key: "ca",
@@ -190,7 +196,8 @@ relabel_configs:
 								Targets: []string{"host-1", "host-2"},
 								Labels:  map[string]string{"label1": "value1"},
 							},
-						}},
+						},
+					},
 				},
 				i: 0,
 			},

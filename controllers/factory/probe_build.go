@@ -2,11 +2,12 @@ package factory
 
 import (
 	"fmt"
+	"sort"
+	"strings"
+
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sort"
-	"strings"
 )
 
 func generateProbeConfig(
@@ -18,7 +19,6 @@ func generateProbeConfig(
 	ignoreNamespaceSelectors bool,
 	enforcedNamespaceLabel string,
 ) yaml.MapSlice {
-
 	cfg := yaml.MapSlice{
 		{
 			Key:   "job_name",
@@ -71,8 +71,7 @@ func generateProbeConfig(
 		}
 		if cr.Spec.Targets.StaticConfig.Labels != nil {
 			staticConfig = append(staticConfig,
-				yaml.MapSlice{
-					{Key: "labels", Value: cr.Spec.Targets.StaticConfig.Labels}}...)
+				yaml.MapSlice{{Key: "labels", Value: cr.Spec.Targets.StaticConfig.Labels}}...)
 		}
 
 		cfg = append(cfg, yaml.MapItem{
@@ -92,9 +91,7 @@ func generateProbeConfig(
 		}
 	}
 	if cr.Spec.Targets.Ingress != nil {
-		var (
-			labelKeys []string
-		)
+		var labelKeys []string
 
 		// Filter targets by ingresses selected by the probe.
 		// Exact label matches.
@@ -190,13 +187,15 @@ func generateProbeConfig(
 		})
 	}
 
-	if cr.Spec.BearerTokenSecret != nil && cr.Spec.BearerTokenSecret.Name != "" {
-		if token := ssCache.bearerTokens[cr.AsMapKey()]; len(token) > 0 {
-			cfg = append(cfg, yaml.MapItem{Key: "bearer_token", Value: token})
+	if cr.Spec.BearerAuth != nil {
+		if cr.Spec.BearerTokenSecret != nil && cr.Spec.BearerTokenSecret.Name != "" {
+			if token := ssCache.bearerTokens[cr.AsMapKey()]; len(token) > 0 {
+				cfg = append(cfg, yaml.MapItem{Key: "bearer_token", Value: token})
+			}
 		}
-	}
-	if len(cr.Spec.BearerTokenFile) > 0 {
-		cfg = append(cfg, yaml.MapItem{Key: "bearer_token_file", Value: cr.Spec.BearerTokenFile})
+		if len(cr.Spec.BearerTokenFile) > 0 {
+			cfg = append(cfg, yaml.MapItem{Key: "bearer_token_file", Value: cr.Spec.BearerTokenFile})
+		}
 	}
 
 	if cr.Spec.FollowRedirects != nil {

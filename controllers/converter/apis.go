@@ -3,12 +3,13 @@ package converter
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
+
 	"github.com/VictoriaMetrics/operator/internal/config"
 	alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
-	"strings"
 
 	v1beta1vm "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory"
@@ -319,42 +320,48 @@ func convertAuthorization(srcSafe *v1.SafeAuthorization, src *v1.Authorization) 
 	}
 }
 
-func convertBearerToken(src corev1.SecretKeySelector) *corev1.SecretKeySelector {
-	if src.Key == "" && src.Name == "" {
+func convertBearerToken(src corev1.SecretKeySelector, bearerTokenFile string) *v1beta1vm.BearerAuth {
+	if src.Key == "" && src.Name == "" && bearerTokenFile == "" {
 		return nil
 	}
-	return &src
+	ba := &v1beta1vm.BearerAuth{
+		BearerTokenFile: bearerTokenFile,
+	}
+	if src.Key != "" || src.Name != "" {
+		ba.BearerTokenSecret = &src
+	}
+	return ba
 }
 
 func ConvertEndpoint(promEndpoint []v1.Endpoint) []v1beta1vm.Endpoint {
 	endpoints := make([]v1beta1vm.Endpoint, 0, len(promEndpoint))
 	for _, endpoint := range promEndpoint {
 		ep := v1beta1vm.Endpoint{
-			Port:                 endpoint.Port,
-			TargetPort:           endpoint.TargetPort,
-			Path:                 endpoint.Path,
-			Scheme:               endpoint.Scheme,
-			Params:               endpoint.Params,
-			Interval:             string(endpoint.Interval),
-			ScrapeTimeout:        string(endpoint.ScrapeTimeout),
-			BearerTokenFile:      replacePromDirPath(endpoint.BearerTokenFile),
-			HonorLabels:          endpoint.HonorLabels,
-			HonorTimestamps:      endpoint.HonorTimestamps,
-			BasicAuth:            ConvertBasicAuth(endpoint.BasicAuth),
-			TLSConfig:            ConvertTlsConfig(endpoint.TLSConfig),
+			Port:            endpoint.Port,
+			TargetPort:      endpoint.TargetPort,
+			Path:            endpoint.Path,
+			Scheme:          endpoint.Scheme,
+			Params:          endpoint.Params,
+			Interval:        string(endpoint.Interval),
+			ScrapeTimeout:   string(endpoint.ScrapeTimeout),
+			HonorLabels:     endpoint.HonorLabels,
+			HonorTimestamps: endpoint.HonorTimestamps,
+			HTTPAuth: v1beta1vm.HTTPAuth{
+				BasicAuth:     ConvertBasicAuth(endpoint.BasicAuth),
+				Authorization: convertAuthorization(endpoint.Authorization, nil),
+				OAuth2:        convertOAuth(endpoint.OAuth2),
+				TLSConfig:     ConvertTlsConfig(endpoint.TLSConfig),
+				ProxyURL:      endpoint.ProxyURL,
+				BearerAuth:    convertBearerToken(endpoint.BearerTokenSecret, replacePromDirPath(endpoint.BearerTokenFile)),
+			},
 			MetricRelabelConfigs: ConvertRelabelConfig(endpoint.MetricRelabelConfigs),
 			RelabelConfigs:       ConvertRelabelConfig(endpoint.RelabelConfigs),
-			ProxyURL:             endpoint.ProxyURL,
-			BearerTokenSecret:    convertBearerToken(endpoint.BearerTokenSecret),
-			OAuth2:               convertOAuth(endpoint.OAuth2),
 			FollowRedirects:      endpoint.FollowRedirects,
-			Authorization:        convertAuthorization(endpoint.Authorization, nil),
 		}
 
 		endpoints = append(endpoints, ep)
 	}
 	return endpoints
-
 }
 
 func ConvertBasicAuth(bAuth *v1.BasicAuth) *v1beta1vm.BasicAuth {
@@ -427,7 +434,6 @@ func ConvertRelabelConfig(promRelabelConfig []*v1.RelabelConfig) []*v1beta1vm.Re
 		})
 	}
 	return filterUnsupportedRelabelCfg(relabelCfg)
-
 }
 
 func ConvertPodEndpoints(promPodEnpoints []v1.PodMetricsEndpoint) []v1beta1vm.PodMetricsEndpoint {
@@ -436,9 +442,6 @@ func ConvertPodEndpoints(promPodEnpoints []v1.PodMetricsEndpoint) []v1beta1vm.Po
 	}
 	endPoints := make([]v1beta1vm.PodMetricsEndpoint, 0, len(promPodEnpoints))
 	for _, promEndPoint := range promPodEnpoints {
-		if promEndPoint.Authorization != nil {
-
-		}
 		var safeTls *v1.SafeTLSConfig
 		if promEndPoint.TLSConfig != nil {
 			safeTls = &promEndPoint.TLSConfig.SafeTLSConfig
@@ -453,16 +456,18 @@ func ConvertPodEndpoints(promPodEnpoints []v1.PodMetricsEndpoint) []v1beta1vm.Po
 			ScrapeTimeout:        string(promEndPoint.ScrapeTimeout),
 			HonorLabels:          promEndPoint.HonorLabels,
 			HonorTimestamps:      promEndPoint.HonorTimestamps,
-			ProxyURL:             promEndPoint.ProxyURL,
 			RelabelConfigs:       ConvertRelabelConfig(promEndPoint.RelabelConfigs),
 			MetricRelabelConfigs: ConvertRelabelConfig(promEndPoint.MetricRelabelConfigs),
-			BasicAuth:            ConvertBasicAuth(promEndPoint.BasicAuth),
-			TLSConfig:            ConvertSafeTlsConfig(safeTls),
-			OAuth2:               convertOAuth(promEndPoint.OAuth2),
-			FollowRedirects:      promEndPoint.FollowRedirects,
-			BearerTokenSecret:    convertBearerToken(promEndPoint.BearerTokenSecret),
-			Authorization:        convertAuthorization(promEndPoint.Authorization, nil),
-			FilterRunning:        promEndPoint.FilterRunning,
+			HTTPAuth: v1beta1vm.HTTPAuth{
+				BasicAuth:     ConvertBasicAuth(promEndPoint.BasicAuth),
+				TLSConfig:     ConvertSafeTlsConfig(safeTls),
+				OAuth2:        convertOAuth(promEndPoint.OAuth2),
+				Authorization: convertAuthorization(promEndPoint.Authorization, nil),
+				ProxyURL:      promEndPoint.ProxyURL,
+				BearerAuth:    convertBearerToken(promEndPoint.BearerTokenSecret, ""),
+			},
+			FollowRedirects: promEndPoint.FollowRedirects,
+			FilterRunning:   promEndPoint.FilterRunning,
 		}
 		endPoints = append(endPoints, ep)
 	}
@@ -549,14 +554,16 @@ func ConvertProbe(probe *v1.Probe, conf *config.BaseOperatorConf) *v1beta1vm.VMP
 				Ingress:      ingressTarget,
 				StaticConfig: staticTargets,
 			},
-			Interval:          string(probe.Spec.Interval),
-			ScrapeTimeout:     string(probe.Spec.ScrapeTimeout),
-			BasicAuth:         ConvertBasicAuth(probe.Spec.BasicAuth),
-			TLSConfig:         ConvertSafeTlsConfig(safeTls),
-			BearerTokenSecret: convertBearerToken(probe.Spec.BearerTokenSecret),
-			OAuth2:            convertOAuth(probe.Spec.OAuth2),
-			SampleLimit:       probe.Spec.SampleLimit,
-			Authorization:     convertAuthorization(probe.Spec.Authorization, nil),
+			Interval:      string(probe.Spec.Interval),
+			ScrapeTimeout: string(probe.Spec.ScrapeTimeout),
+			SampleLimit:   probe.Spec.SampleLimit,
+			HTTPAuth: v1beta1vm.HTTPAuth{
+				BasicAuth:     ConvertBasicAuth(probe.Spec.BasicAuth),
+				TLSConfig:     ConvertSafeTlsConfig(safeTls),
+				OAuth2:        convertOAuth(probe.Spec.OAuth2),
+				Authorization: convertAuthorization(probe.Spec.Authorization, nil),
+				BearerAuth:    convertBearerToken(probe.Spec.BearerTokenSecret, ""),
+			},
 		},
 	}
 	if conf.EnabledPrometheusConverterOwnerReferences {

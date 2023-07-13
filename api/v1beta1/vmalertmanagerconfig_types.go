@@ -281,7 +281,8 @@ type TelegramConfig struct {
 	ParseMode string `json:"parse_mode,omitempty"`
 	// HTTP client configuration.
 	// +optional
-	HTTPConfig *HTTPConfig `json:"http_config,omitempty"`
+	// HTTPAuth generic auth methods
+	HTTPConfig *HTTPAuth `json:"http_config,omitempty"`
 }
 
 // WebhookConfig configures notifications via a generic receiver supporting the webhook payload.
@@ -301,7 +302,8 @@ type WebhookConfig struct {
 	URLSecret *v1.SecretKeySelector `json:"url_secret,omitempty"`
 	// HTTP client configuration.
 	// +optional
-	HTTPConfig *HTTPConfig `json:"http_config,omitempty"`
+	// HTTPAuth generic auth methods
+	HTTPConfig *HTTPAuth `json:"http_config,omitempty"`
 	// Maximum number of alerts to be sent per webhook message. When 0, all alerts are included.
 	// +optional
 	// +kubebuilder:validation:Minimum=0
@@ -339,7 +341,8 @@ type WeChatConfig struct {
 	MessageType string `json:"message_type,omitempty"`
 	// HTTP client configuration.
 	// +optional
-	HTTPConfig *HTTPConfig `json:"http_config,omitempty"`
+	// HTTPAuth generic auth methods
+	HTTPConfig *HTTPAuth `json:"http_config,omitempty"`
 }
 
 // EmailConfig configures notifications via Email.
@@ -455,7 +458,8 @@ type VictorOpsConfig struct {
 	MonitoringTool string `json:"monitoring_tool,omitempty"`
 	// The HTTP client's configuration.
 	// +optional
-	HTTPConfig *HTTPConfig `json:"http_config,omitempty"`
+	HTTPConfig *HTTPAuth `json:"http_config,omitempty"`
+
 	// Adds optional custom fields
 	// https://github.com/prometheus/alertmanager/blob/v0.24.0/config/notifiers.go#L537
 	// +optional
@@ -505,7 +509,7 @@ type PushoverConfig struct {
 	HTML bool `json:"html,omitempty"`
 	// HTTP client configuration.
 	// +optional
-	HTTPConfig *HTTPConfig `json:"http_config,omitempty"`
+	HTTPConfig *HTTPAuth `json:"http_config,omitempty"`
 }
 
 // SlackConfig configures notifications via Slack.
@@ -561,7 +565,7 @@ type SlackConfig struct {
 	Actions []SlackAction `json:"actions,omitempty"`
 	// HTTP client configuration.
 	// +optional
-	HTTPConfig *HTTPConfig `json:"http_config,omitempty"`
+	HTTPConfig *HTTPAuth `json:"http_config,omitempty"`
 }
 
 // SlackField configures a single Slack field that is sent with each notification.
@@ -657,7 +661,7 @@ type OpsGenieConfig struct {
 	Responders []OpsGenieConfigResponder `json:"responders,omitempty"`
 	// HTTP client configuration.
 	// +optional
-	HTTPConfig *HTTPConfig `json:"http_config,omitempty"`
+	HTTPConfig *HTTPAuth `json:"http_config,omitempty"`
 }
 
 // OpsGenieConfigResponder defines a responder to an incident.
@@ -730,7 +734,7 @@ type PagerDutyConfig struct {
 	Details PagerDutyDetails `json:"details,omitempty"`
 	// HTTP client configuration.
 	// +optional
-	HTTPConfig *HTTPConfig `json:"http_config,omitempty"`
+	HTTPConfig *HTTPAuth `json:"http_config,omitempty"`
 }
 
 // PagerDutyDetails details for config
@@ -775,28 +779,6 @@ type ImageConfig struct {
 type LinkConfig struct {
 	Href string `json:"href"`
 	Text string `json:"text,omitempty"`
-}
-
-// HTTPConfig defines a client HTTP configuration.
-// See https://prometheus.io/docs/alerting/latest/configuration/#http_config
-type HTTPConfig struct {
-	// TODO oAuth2 support
-	// BasicAuth for the client.
-	// +optional
-	BasicAuth *BasicAuth `json:"basic_auth,omitempty"`
-	// The secret's key that contains the bearer token
-	// It must be at them same namespace as CRD
-	// +optional
-	BearerTokenSecret *v1.SecretKeySelector `json:"bearer_token_secret,omitempty"`
-	// BearerTokenFile defines filename for bearer token, it must be mounted to pod.
-	// +optional
-	BearerTokenFile string `json:"bearer_token_file,omitempty"`
-	// TLS configuration for the client.
-	// +optional
-	TLSConfig *TLSConfig `json:"tls_config,omitempty"`
-	// Optional proxy URL.
-	// +optional
-	ProxyURL string `json:"proxyURL,omitempty"`
 }
 
 func (amc *VMAlertmanagerConfig) AsKey() string {

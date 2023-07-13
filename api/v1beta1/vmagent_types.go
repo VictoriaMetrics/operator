@@ -431,13 +431,8 @@ type VMAgentRemoteWriteSettings struct {
 type VMAgentRemoteWriteSpec struct {
 	// URL of the endpoint to send samples to.
 	URL string `json:"url"`
-	// BasicAuth allow an endpoint to authenticate over basic authentication
-	// +optional
-	BasicAuth *BasicAuth `json:"basicAuth,omitempty"`
-	// Optional bearer auth token to use for -remoteWrite.url
-	// +optional
-	BearerTokenSecret *v1.SecretKeySelector `json:"bearerTokenSecret,omitempty"`
-
+	// HTTPAuth generic auth methods
+	HTTPAuth `json:",inline,omitempty"`
 	// ConfigMap with relabeling config which is applied to metrics before sending them to the corresponding -remoteWrite.url
 	// +optional
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Key at Configmap with relabelConfig for remoteWrite",xDescriptors="urn:alm:descriptor:io.kubernetes:ConfigMapKeySelector"
@@ -445,23 +440,10 @@ type VMAgentRemoteWriteSpec struct {
 	// InlineUrlRelabelConfig defines relabeling config for remoteWriteURL, it can be defined at crd spec.
 	// +optional
 	InlineUrlRelabelConfig []RelabelConfig `json:"inlineUrlRelabelConfig,omitempty"`
-	// OAuth2 defines auth configuration
-	// +optional
-	OAuth2 *OAuth2 `json:"oauth2,omitempty"`
-	// TLSConfig describes tls configuration for remote write target
-	// +optional
-	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
 	// Timeout for sending a single block of data to -remoteWrite.url (default 1m0s)
 	// +optional
 	// +kubebuilder:validation:Pattern:="[0-9]+(ms|s|m|h)"
 	SendTimeout *string `json:"sendTimeout,omitempty"`
-	// Headers allow configuring custom http headers
-	// Must be in form of semicolon separated header with value
-	// e.g.
-	// headerName: headerValue
-	// vmagent supports since 1.79.0 version
-	// +optional
-	Headers []string `json:"headers,omitempty"`
 	// StreamAggrConfig defines stream aggregation configuration for VMAgent for -remoteWrite.url
 	// +optional
 	StreamAggrConfig *StreamAggrConfig `json:"streamAggrConfig,omitempty"`
@@ -668,7 +650,6 @@ func (cr *VMAgent) Probe() *EmbeddedProbes {
 }
 
 func (cr *VMAgent) ProbePath() string {
-
 	return buildPathWithPrefixFlag(cr.Spec.ExtraArgs, healthPath)
 }
 

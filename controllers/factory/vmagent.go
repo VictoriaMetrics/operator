@@ -1113,7 +1113,7 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, ssCache *scrapesSecre
 		authPasswordFile.flagSetting += fmt.Sprintf("%s,", passFile)
 
 		var value string
-		if rws.BearerTokenSecret != nil && rws.BearerTokenSecret.Name != "" {
+		if rws.BearerAuth != nil && rws.BearerTokenSecret != nil && rws.BearerTokenSecret.Name != "" {
 			bearerTokenFile.isNotNull = true
 			value = path.Join(vmAgentConfDir, rws.AsSecretKey(i, "bearerToken"))
 		}

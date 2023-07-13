@@ -2,11 +2,12 @@ package factory
 
 import (
 	"encoding/json"
+	"reflect"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/pointer"
-	"reflect"
-	"testing"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"gopkg.in/yaml.v2"
@@ -130,17 +131,21 @@ func Test_generateServiceScrapeConfig(t *testing.T) {
 						Endpoints: []victoriametricsv1beta1.Endpoint{
 							{
 								Port: "8080",
-								TLSConfig: &victoriametricsv1beta1.TLSConfig{
-									CA: victoriametricsv1beta1.SecretOrConfigMap{
-										Secret: &v1.SecretKeySelector{
-											LocalObjectReference: v1.LocalObjectReference{
-												Name: "tls-secret",
+								HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+									TLSConfig: &victoriametricsv1beta1.TLSConfig{
+										CA: victoriametricsv1beta1.SecretOrConfigMap{
+											Secret: &v1.SecretKeySelector{
+												LocalObjectReference: v1.LocalObjectReference{
+													Name: "tls-secret",
+												},
+												Key: "ca",
 											},
-											Key: "ca",
 										},
 									},
+									BearerAuth: &victoriametricsv1beta1.BearerAuth{
+										BearerTokenFile: "/var/run/tolen",
+									},
 								},
-								BearerTokenFile: "/var/run/tolen",
 							},
 						},
 					},
@@ -150,18 +155,22 @@ func Test_generateServiceScrapeConfig(t *testing.T) {
 						Node: pointer.Bool(true),
 					},
 					Port: "8080",
-					TLSConfig: &victoriametricsv1beta1.TLSConfig{
-						Cert: victoriametricsv1beta1.SecretOrConfigMap{},
-						CA: victoriametricsv1beta1.SecretOrConfigMap{
-							Secret: &v1.SecretKeySelector{
-								LocalObjectReference: v1.LocalObjectReference{
-									Name: "tls-secret",
+					HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+						TLSConfig: &victoriametricsv1beta1.TLSConfig{
+							Cert: victoriametricsv1beta1.SecretOrConfigMap{},
+							CA: victoriametricsv1beta1.SecretOrConfigMap{
+								Secret: &v1.SecretKeySelector{
+									LocalObjectReference: v1.LocalObjectReference{
+										Name: "tls-secret",
+									},
+									Key: "ca",
 								},
-								Key: "ca",
 							},
 						},
+						BearerAuth: &victoriametricsv1beta1.BearerAuth{
+							BearerTokenFile: "/var/run/tolen",
+						},
 					},
-					BearerTokenFile: "/var/run/tolen",
 				},
 				i:                        0,
 				apiserverConfig:          nil,
@@ -241,36 +250,44 @@ relabel_configs:
 						Endpoints: []victoriametricsv1beta1.Endpoint{
 							{
 								Port: "8080",
-								TLSConfig: &victoriametricsv1beta1.TLSConfig{
-									CA: victoriametricsv1beta1.SecretOrConfigMap{
-										Secret: &v1.SecretKeySelector{
-											LocalObjectReference: v1.LocalObjectReference{
-												Name: "tls-secret",
+								HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+									TLSConfig: &victoriametricsv1beta1.TLSConfig{
+										CA: victoriametricsv1beta1.SecretOrConfigMap{
+											Secret: &v1.SecretKeySelector{
+												LocalObjectReference: v1.LocalObjectReference{
+													Name: "tls-secret",
+												},
+												Key: "ca",
 											},
-											Key: "ca",
 										},
 									},
+									BearerAuth: &victoriametricsv1beta1.BearerAuth{
+										BearerTokenFile: "/var/run/tolen",
+									},
 								},
-								BearerTokenFile: "/var/run/tolen",
 							},
 						},
 					},
 				},
 				ep: victoriametricsv1beta1.Endpoint{
 					Port: "8080",
-					TLSConfig: &victoriametricsv1beta1.TLSConfig{
-						Cert: victoriametricsv1beta1.SecretOrConfigMap{},
-						CA: victoriametricsv1beta1.SecretOrConfigMap{
-							Secret: &v1.SecretKeySelector{
-								LocalObjectReference: v1.LocalObjectReference{
-									Name: "tls-secret",
+					HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+						TLSConfig: &victoriametricsv1beta1.TLSConfig{
+							Cert: victoriametricsv1beta1.SecretOrConfigMap{},
+							CA: victoriametricsv1beta1.SecretOrConfigMap{
+								Secret: &v1.SecretKeySelector{
+									LocalObjectReference: v1.LocalObjectReference{
+										Name: "tls-secret",
+									},
+									Key: "ca",
 								},
-								Key: "ca",
 							},
 						},
+						BearerAuth: &victoriametricsv1beta1.BearerAuth{
+							BearerTokenFile: "/var/run/tolen",
+						},
 					},
-					BearerTokenFile: "/var/run/tolen",
-					ScrapeInterval:  "60m",
+					ScrapeInterval: "60m",
 				},
 				i:                        0,
 				apiserverConfig:          nil,
@@ -348,36 +365,44 @@ relabel_configs:
 						Endpoints: []victoriametricsv1beta1.Endpoint{
 							{
 								Port: "8080",
-								TLSConfig: &victoriametricsv1beta1.TLSConfig{
-									CA: victoriametricsv1beta1.SecretOrConfigMap{
-										Secret: &v1.SecretKeySelector{
-											LocalObjectReference: v1.LocalObjectReference{
-												Name: "tls-secret",
+								HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+									TLSConfig: &victoriametricsv1beta1.TLSConfig{
+										CA: victoriametricsv1beta1.SecretOrConfigMap{
+											Secret: &v1.SecretKeySelector{
+												LocalObjectReference: v1.LocalObjectReference{
+													Name: "tls-secret",
+												},
+												Key: "ca",
 											},
-											Key: "ca",
 										},
 									},
+									BearerAuth: &victoriametricsv1beta1.BearerAuth{
+										BearerTokenFile: "/var/run/tolen",
+									},
 								},
-								BearerTokenFile: "/var/run/tolen",
 							},
 						},
 					},
 				},
 				ep: victoriametricsv1beta1.Endpoint{
 					Port: "8080",
-					TLSConfig: &victoriametricsv1beta1.TLSConfig{
-						Cert: victoriametricsv1beta1.SecretOrConfigMap{},
-						CA: victoriametricsv1beta1.SecretOrConfigMap{
-							Secret: &v1.SecretKeySelector{
-								LocalObjectReference: v1.LocalObjectReference{
-									Name: "tls-secret",
+					HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+						TLSConfig: &victoriametricsv1beta1.TLSConfig{
+							Cert: victoriametricsv1beta1.SecretOrConfigMap{},
+							CA: victoriametricsv1beta1.SecretOrConfigMap{
+								Secret: &v1.SecretKeySelector{
+									LocalObjectReference: v1.LocalObjectReference{
+										Name: "tls-secret",
+									},
+									Key: "ca",
 								},
-								Key: "ca",
 							},
 						},
+						BearerAuth: &victoriametricsv1beta1.BearerAuth{
+							BearerTokenFile: "/var/run/tolen",
+						},
 					},
-					BearerTokenFile: "/var/run/tolen",
-					ScrapeInterval:  "10s",
+					ScrapeInterval: "10s",
 				},
 				i:                        0,
 				apiserverConfig:          nil,
@@ -451,35 +476,43 @@ relabel_configs:
 						Endpoints: []victoriametricsv1beta1.Endpoint{
 							{
 								Port: "8080",
-								TLSConfig: &victoriametricsv1beta1.TLSConfig{
-									CA: victoriametricsv1beta1.SecretOrConfigMap{
-										Secret: &v1.SecretKeySelector{
-											LocalObjectReference: v1.LocalObjectReference{
-												Name: "tls-secret",
+								HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+									TLSConfig: &victoriametricsv1beta1.TLSConfig{
+										CA: victoriametricsv1beta1.SecretOrConfigMap{
+											Secret: &v1.SecretKeySelector{
+												LocalObjectReference: v1.LocalObjectReference{
+													Name: "tls-secret",
+												},
+												Key: "ca",
 											},
-											Key: "ca",
 										},
 									},
+									BearerAuth: &victoriametricsv1beta1.BearerAuth{
+										BearerTokenFile: "/var/run/tolen",
+									},
 								},
-								BearerTokenFile: "/var/run/tolen",
 							},
 						},
 					},
 				},
 				ep: victoriametricsv1beta1.Endpoint{
 					Port: "8080",
-					TLSConfig: &victoriametricsv1beta1.TLSConfig{
-						Cert: victoriametricsv1beta1.SecretOrConfigMap{},
-						CA: victoriametricsv1beta1.SecretOrConfigMap{
-							Secret: &v1.SecretKeySelector{
-								LocalObjectReference: v1.LocalObjectReference{
-									Name: "tls-secret",
+					HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+						TLSConfig: &victoriametricsv1beta1.TLSConfig{
+							Cert: victoriametricsv1beta1.SecretOrConfigMap{},
+							CA: victoriametricsv1beta1.SecretOrConfigMap{
+								Secret: &v1.SecretKeySelector{
+									LocalObjectReference: v1.LocalObjectReference{
+										Name: "tls-secret",
+									},
+									Key: "ca",
 								},
-								Key: "ca",
 							},
 						},
+						BearerAuth: &victoriametricsv1beta1.BearerAuth{
+							BearerTokenFile: "/var/run/tolen",
+						},
 					},
-					BearerTokenFile: "/var/run/tolen",
 				},
 				i:                        0,
 				apiserverConfig:          nil,
@@ -549,17 +582,21 @@ relabel_configs:
 						Endpoints: []victoriametricsv1beta1.Endpoint{
 							{
 								Port: "8080",
-								TLSConfig: &victoriametricsv1beta1.TLSConfig{
-									CA: victoriametricsv1beta1.SecretOrConfigMap{
-										Secret: &v1.SecretKeySelector{
-											LocalObjectReference: v1.LocalObjectReference{
-												Name: "tls-secret",
+								HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+									TLSConfig: &victoriametricsv1beta1.TLSConfig{
+										CA: victoriametricsv1beta1.SecretOrConfigMap{
+											Secret: &v1.SecretKeySelector{
+												LocalObjectReference: v1.LocalObjectReference{
+													Name: "tls-secret",
+												},
+												Key: "ca",
 											},
-											Key: "ca",
 										},
 									},
+									BearerAuth: &victoriametricsv1beta1.BearerAuth{
+										BearerTokenFile: "/var/run/tolen",
+									},
 								},
-								BearerTokenFile: "/var/run/tolen",
 							},
 						},
 					},
@@ -569,18 +606,22 @@ relabel_configs:
 						Node: pointer.Bool(true),
 					},
 					Port: "8080",
-					TLSConfig: &victoriametricsv1beta1.TLSConfig{
-						Cert: victoriametricsv1beta1.SecretOrConfigMap{},
-						CA: victoriametricsv1beta1.SecretOrConfigMap{
-							Secret: &v1.SecretKeySelector{
-								LocalObjectReference: v1.LocalObjectReference{
-									Name: "tls-secret",
+					HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+						TLSConfig: &victoriametricsv1beta1.TLSConfig{
+							Cert: victoriametricsv1beta1.SecretOrConfigMap{},
+							CA: victoriametricsv1beta1.SecretOrConfigMap{
+								Secret: &v1.SecretKeySelector{
+									LocalObjectReference: v1.LocalObjectReference{
+										Name: "tls-secret",
+									},
+									Key: "ca",
 								},
-								Key: "ca",
 							},
 						},
+						BearerAuth: &victoriametricsv1beta1.BearerAuth{
+							BearerTokenFile: "/var/run/tolen",
+						},
 					},
-					BearerTokenFile: "/var/run/tolen",
 				},
 				i:                        0,
 				apiserverConfig:          nil,
@@ -687,8 +728,10 @@ relabel_configs:
 						Endpoints: []victoriametricsv1beta1.Endpoint{
 							{
 								Port: "8080",
-								TLSConfig: &victoriametricsv1beta1.TLSConfig{
-									InsecureSkipVerify: true,
+								HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+									TLSConfig: &victoriametricsv1beta1.TLSConfig{
+										InsecureSkipVerify: true,
+									},
 								},
 							},
 						},
@@ -696,10 +739,14 @@ relabel_configs:
 				},
 				ep: victoriametricsv1beta1.Endpoint{
 					Port: "8080",
-					TLSConfig: &victoriametricsv1beta1.TLSConfig{
-						InsecureSkipVerify: true,
+					HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+						TLSConfig: &victoriametricsv1beta1.TLSConfig{
+							InsecureSkipVerify: true,
+						},
+						BearerAuth: &victoriametricsv1beta1.BearerAuth{
+							BearerTokenFile: "/var/run/tolen",
+						},
 					},
-					BearerTokenFile: "/var/run/tolen",
 				},
 				i:                        0,
 				apiserverConfig:          nil,
@@ -741,7 +788,6 @@ relabel_configs:
 		{
 			name: "complete config",
 			args: args{
-
 				m: &victoriametricsv1beta1.VMServiceScrape{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-scrape",
@@ -752,8 +798,10 @@ relabel_configs:
 						Endpoints: []victoriametricsv1beta1.Endpoint{
 							{
 								Port: "8080",
-								TLSConfig: &victoriametricsv1beta1.TLSConfig{
-									InsecureSkipVerify: true,
+								HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+									TLSConfig: &victoriametricsv1beta1.TLSConfig{
+										InsecureSkipVerify: true,
+									},
 								},
 							},
 						},
@@ -762,69 +810,75 @@ relabel_configs:
 				ep: victoriametricsv1beta1.Endpoint{
 					VMScrapeParams: &victoriametricsv1beta1.VMScrapeParams{
 						StreamParse: pointer.Bool(true),
-						ProxyClientConfig: &victoriametricsv1beta1.ProxyAuth{
-							TLSConfig:       &victoriametricsv1beta1.TLSConfig{InsecureSkipVerify: true},
-							BearerTokenFile: "/tmp/some-file",
+						ProxyClientConfig: &victoriametricsv1beta1.HTTPAuth{
+							TLSConfig: &victoriametricsv1beta1.TLSConfig{InsecureSkipVerify: true},
+							BearerAuth: &victoriametricsv1beta1.BearerAuth{
+								BearerTokenFile: "/tmp/some-file",
+							},
 						},
 					},
 					MetricRelabelConfigs: []*victoriametricsv1beta1.RelabelConfig{},
 					RelabelConfigs:       []*victoriametricsv1beta1.RelabelConfig{},
-					OAuth2: &victoriametricsv1beta1.OAuth2{
-						Scopes:         []string{"scope-1"},
-						TokenURL:       "http://some-token-url",
-						EndpointParams: map[string]string{"timeout": "5s"},
-						ClientID: victoriametricsv1beta1.SecretOrConfigMap{
-							Secret: &v1.SecretKeySelector{
+					HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+						OAuth2: &victoriametricsv1beta1.OAuth2{
+							Scopes:         []string{"scope-1"},
+							TokenURL:       "http://some-token-url",
+							EndpointParams: map[string]string{"timeout": "5s"},
+							ClientID: victoriametricsv1beta1.SecretOrConfigMap{
+								Secret: &v1.SecretKeySelector{
+									Key:                  "bearer",
+									LocalObjectReference: v1.LocalObjectReference{Name: "access-secret"},
+								},
+							},
+							ClientSecret: &v1.SecretKeySelector{
 								Key:                  "bearer",
 								LocalObjectReference: v1.LocalObjectReference{Name: "access-secret"},
 							},
 						},
-						ClientSecret: &v1.SecretKeySelector{
-							Key:                  "bearer",
-							LocalObjectReference: v1.LocalObjectReference{Name: "access-secret"},
+						BasicAuth: &victoriametricsv1beta1.BasicAuth{
+							Username: v1.SecretKeySelector{
+								Key:                  "bearer",
+								LocalObjectReference: v1.LocalObjectReference{Name: "access-secret"},
+							},
+							Password: v1.SecretKeySelector{
+								Key:                  "bearer",
+								LocalObjectReference: v1.LocalObjectReference{Name: "access-secret"},
+							},
+						},
+						ProxyURL: pointer.String("https://some-proxy"),
+						TLSConfig: &victoriametricsv1beta1.TLSConfig{
+							InsecureSkipVerify: true,
+						},
+						BearerAuth: &victoriametricsv1beta1.BearerAuth{
+							BearerTokenFile: "/var/run/tolen",
+							BearerTokenSecret: &v1.SecretKeySelector{
+								Key:                  "bearer",
+								LocalObjectReference: v1.LocalObjectReference{Name: "access-secret"},
+							},
 						},
 					},
-					BasicAuth: &victoriametricsv1beta1.BasicAuth{
-						Username: v1.SecretKeySelector{
-							Key:                  "bearer",
-							LocalObjectReference: v1.LocalObjectReference{Name: "access-secret"},
-						},
-						Password: v1.SecretKeySelector{
-							Key:                  "bearer",
-							LocalObjectReference: v1.LocalObjectReference{Name: "access-secret"},
-						},
-					},
-					Params:          map[string][]string{"module": []string{"base"}},
+					Params:          map[string][]string{"module": {"base"}},
 					ScrapeInterval:  "10s",
 					ScrapeTimeout:   "5s",
 					HonorTimestamps: pointer.Bool(true),
 					FollowRedirects: pointer.Bool(true),
-					ProxyURL:        pointer.String("https://some-proxy"),
 					HonorLabels:     true,
 					Scheme:          "https",
 					Path:            "/metrics",
-					BearerTokenSecret: &v1.SecretKeySelector{
-						Key:                  "bearer",
-						LocalObjectReference: v1.LocalObjectReference{Name: "access-secret"},
-					},
-					Port: "8080",
-					TLSConfig: &victoriametricsv1beta1.TLSConfig{
-						InsecureSkipVerify: true,
-					},
-					BearerTokenFile: "/var/run/tolen",
+					Port:            "8080",
 				},
 				i:               0,
 				apiserverConfig: nil,
 				ssCache: &scrapesSecretsCache{
 					baSecrets: map[string]*BasicAuthCredentials{
-						"serviceScrape/default/test-scrape/0": &BasicAuthCredentials{
+						"serviceScrape/default/test-scrape/0": {
 							username: "user",
 							password: "pass",
 						},
 					},
 					bearerTokens: map[string]string{},
 					oauth2Secrets: map[string]*oauthCreds{
-						"serviceScrape/default/test-scrape/0": &oauthCreds{clientSecret: "some-secret", clientID: "some-id"},
+						"serviceScrape/default/test-scrape/0": {clientSecret: "some-secret", clientID: "some-id"},
 					},
 				},
 				overrideHonorLabels:      false,
@@ -910,35 +964,43 @@ oauth2:
 						Endpoints: []victoriametricsv1beta1.Endpoint{
 							{
 								Port: "8080",
-								TLSConfig: &victoriametricsv1beta1.TLSConfig{
-									CA: victoriametricsv1beta1.SecretOrConfigMap{
-										Secret: &v1.SecretKeySelector{
-											LocalObjectReference: v1.LocalObjectReference{
-												Name: "tls-secret",
+								HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+									TLSConfig: &victoriametricsv1beta1.TLSConfig{
+										CA: victoriametricsv1beta1.SecretOrConfigMap{
+											Secret: &v1.SecretKeySelector{
+												LocalObjectReference: v1.LocalObjectReference{
+													Name: "tls-secret",
+												},
+												Key: "ca",
 											},
-											Key: "ca",
 										},
 									},
+									BearerAuth: &victoriametricsv1beta1.BearerAuth{
+										BearerTokenFile: "/var/run/tolen",
+									},
 								},
-								BearerTokenFile: "/var/run/tolen",
 							},
 						},
 					},
 				},
 				ep: victoriametricsv1beta1.Endpoint{
 					Port: "8080",
-					TLSConfig: &victoriametricsv1beta1.TLSConfig{
-						Cert: victoriametricsv1beta1.SecretOrConfigMap{},
-						CA: victoriametricsv1beta1.SecretOrConfigMap{
-							Secret: &v1.SecretKeySelector{
-								LocalObjectReference: v1.LocalObjectReference{
-									Name: "tls-secret",
+					HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+						TLSConfig: &victoriametricsv1beta1.TLSConfig{
+							Cert: victoriametricsv1beta1.SecretOrConfigMap{},
+							CA: victoriametricsv1beta1.SecretOrConfigMap{
+								Secret: &v1.SecretKeySelector{
+									LocalObjectReference: v1.LocalObjectReference{
+										Name: "tls-secret",
+									},
+									Key: "ca",
 								},
-								Key: "ca",
 							},
 						},
+						BearerAuth: &victoriametricsv1beta1.BearerAuth{
+							BearerTokenFile: "/var/run/tolen",
+						},
 					},
-					BearerTokenFile: "/var/run/tolen",
 				},
 				i:                        0,
 				apiserverConfig:          nil,
@@ -1012,7 +1074,6 @@ relabel_configs:
 				return
 			}
 			assert.Equal(t, tt.want, string(gotBytes))
-
 		})
 	}
 }
@@ -1078,7 +1139,7 @@ relabel_configs:
 					oauth2Secrets: map[string]*oauthCreds{},
 					bearerTokens:  map[string]string{},
 					baSecrets: map[string]*BasicAuthCredentials{
-						"nodeScrape/default/nodes-basic": &BasicAuthCredentials{
+						"nodeScrape/default/nodes-basic": {
 							username: "username",
 						},
 					},
@@ -1095,23 +1156,27 @@ relabel_configs:
 						Interval:        "30s",
 						Scheme:          "https",
 						HonorLabels:     true,
-						ProxyURL:        pointer.String("https://some-url"),
 						SampleLimit:     50,
 						FollowRedirects: pointer.Bool(true),
 						ScrapeTimeout:   "10s",
 						ScrapeInterval:  "5s",
-						Params:          map[string][]string{"module": []string{"client"}},
+						Params:          map[string][]string{"module": {"client"}},
 						JobLabel:        "env",
 						HonorTimestamps: pointer.Bool(true),
 						TargetLabels:    []string{"app", "env"},
-						BearerTokenFile: "/tmp/bearer",
-						BasicAuth: &victoriametricsv1beta1.BasicAuth{
-							Username: v1.SecretKeySelector{Key: "username", LocalObjectReference: v1.LocalObjectReference{Name: "ba-secret"}},
+						HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+							ProxyURL: pointer.String("https://some-url"),
+							BasicAuth: &victoriametricsv1beta1.BasicAuth{
+								Username: v1.SecretKeySelector{Key: "username", LocalObjectReference: v1.LocalObjectReference{Name: "ba-secret"}},
+							},
+							TLSConfig: &victoriametricsv1beta1.TLSConfig{
+								InsecureSkipVerify: true,
+							},
+							OAuth2: &victoriametricsv1beta1.OAuth2{},
+							BearerAuth: &victoriametricsv1beta1.BearerAuth{
+								BearerTokenFile: "/tmp/bearer",
+							},
 						},
-						TLSConfig: &victoriametricsv1beta1.TLSConfig{
-							InsecureSkipVerify: true,
-						},
-						OAuth2: &victoriametricsv1beta1.OAuth2{},
 						Selector: metav1.LabelSelector{
 							MatchLabels: map[string]string{"job": "prod"},
 							MatchExpressions: []metav1.LabelSelectorRequirement{
@@ -1119,13 +1184,14 @@ relabel_configs:
 							},
 						},
 						VMScrapeParams: &victoriametricsv1beta1.VMScrapeParams{
-
 							StreamParse: pointer.Bool(true),
-							ProxyClientConfig: &victoriametricsv1beta1.ProxyAuth{
+							ProxyClientConfig: &victoriametricsv1beta1.HTTPAuth{
 								TLSConfig: &victoriametricsv1beta1.TLSConfig{
 									InsecureSkipVerify: true,
 								},
-								BearerTokenFile: "/tmp/proxy-token",
+								BearerAuth: &victoriametricsv1beta1.BearerAuth{
+									BearerTokenFile: "/tmp/proxy-token",
+								},
 							},
 						},
 						RelabelConfigs:       []*victoriametricsv1beta1.RelabelConfig{},
@@ -1206,7 +1272,6 @@ proxy_bearer_token_file: /tmp/proxy-token
 				return
 			}
 			assert.Equal(t, tt.want, string(gotBytes))
-
 		})
 	}
 }
@@ -1498,7 +1563,6 @@ relabel_configs:
 				return
 			}
 			assert.Equal(t, tt.want, string(gotBytes))
-
 		})
 	}
 }

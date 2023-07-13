@@ -101,9 +101,11 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 							{
 								Interval: "30s",
 								Scheme:   "http",
-								BasicAuth: &victoriametricsv1beta1.BasicAuth{
-									Password: corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "bauth-secret"}, Key: "password"},
-									Username: corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "bauth-secret"}, Key: "user"},
+								HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+									BasicAuth: &victoriametricsv1beta1.BasicAuth{
+										Password: corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "bauth-secret"}, Key: "password"},
+										Username: corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "bauth-secret"}, Key: "user"},
+									},
 								},
 							},
 						},
@@ -123,8 +125,12 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 					Spec: victoriametricsv1beta1.VMAgentSpec{
 						RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
 							{
-								URL:               "http://remote-write",
-								BearerTokenSecret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "bearer-secret"}, Key: "token"},
+								URL: "http://remote-write",
+								HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+									BearerAuth: &victoriametricsv1beta1.BearerAuth{
+										BearerTokenSecret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "bearer-secret"}, Key: "token"},
+									},
+								},
 							},
 						},
 						ServiceScrapeSelector: &metav1.LabelSelector{},
@@ -145,59 +151,70 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 					Spec: victoriametricsv1beta1.VMAgentSpec{
 						RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
 							{URL: "http://remote-write"},
-							{URL: "http://remote-write2",
-								TLSConfig: &victoriametricsv1beta1.TLSConfig{
-									CA: victoriametricsv1beta1.SecretOrConfigMap{
-										Secret: &corev1.SecretKeySelector{
+							{
+								URL: "http://remote-write2",
+								HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+									TLSConfig: &victoriametricsv1beta1.TLSConfig{
+										CA: victoriametricsv1beta1.SecretOrConfigMap{
+											Secret: &corev1.SecretKeySelector{
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "remote2-secret",
+												},
+												Key: "ca",
+											},
+										},
+										Cert: victoriametricsv1beta1.SecretOrConfigMap{
+											Secret: &corev1.SecretKeySelector{
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "remote2-secret",
+												},
+												Key: "ca",
+											},
+										},
+										KeySecret: &corev1.SecretKeySelector{
 											LocalObjectReference: corev1.LocalObjectReference{
 												Name: "remote2-secret",
 											},
-											Key: "ca",
+											Key: "key",
 										},
-									},
-									Cert: victoriametricsv1beta1.SecretOrConfigMap{
-										Secret: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "remote2-secret",
-											},
-											Key: "ca",
-										},
-									},
-									KeySecret: &corev1.SecretKeySelector{
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "remote2-secret",
-										},
-										Key: "key",
 									},
 								},
 							},
-							{URL: "http://remote-write3",
-								TLSConfig: &victoriametricsv1beta1.TLSConfig{
-									CA: victoriametricsv1beta1.SecretOrConfigMap{
-										ConfigMap: &corev1.ConfigMapKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "remote3-cm",
+							{
+								URL: "http://remote-write3",
+								HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+									TLSConfig: &victoriametricsv1beta1.TLSConfig{
+										CA: victoriametricsv1beta1.SecretOrConfigMap{
+											ConfigMap: &corev1.ConfigMapKeySelector{
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "remote3-cm",
+												},
+												Key: "ca",
 											},
-											Key: "ca",
 										},
-									},
-									Cert: victoriametricsv1beta1.SecretOrConfigMap{
-										ConfigMap: &corev1.ConfigMapKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "remote3-cm",
+										Cert: victoriametricsv1beta1.SecretOrConfigMap{
+											ConfigMap: &corev1.ConfigMapKeySelector{
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "remote3-cm",
+												},
+												Key: "ca",
 											},
-											Key: "ca",
+										},
+										KeySecret: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "remote3-secret",
+											},
+											Key: "key",
 										},
 									},
-									KeySecret: &corev1.SecretKeySelector{
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "remote3-secret",
-										},
-										Key: "key",
-									},
-								}},
-							{URL: "http://remote-write4",
-								TLSConfig: &victoriametricsv1beta1.TLSConfig{CertFile: "/tmp/cert1", KeyFile: "/tmp/key1", CAFile: "/tmp/ca"}},
+								},
+							},
+							{
+								URL: "http://remote-write4",
+								HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+									TLSConfig: &victoriametricsv1beta1.TLSConfig{CertFile: "/tmp/cert1", KeyFile: "/tmp/key1", CAFile: "/tmp/ca"},
+								},
+							},
 						},
 						ServiceScrapeSelector: &metav1.LabelSelector{},
 					},
@@ -235,14 +252,16 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 							{
 								Interval: "30s",
 								Scheme:   "https",
-								TLSConfig: &victoriametricsv1beta1.TLSConfig{
-									CA: victoriametricsv1beta1.SecretOrConfigMap{
-										Secret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "tls-scrape"}, Key: "ca"},
+								HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+									TLSConfig: &victoriametricsv1beta1.TLSConfig{
+										CA: victoriametricsv1beta1.SecretOrConfigMap{
+											Secret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "tls-scrape"}, Key: "ca"},
+										},
+										Cert: victoriametricsv1beta1.SecretOrConfigMap{
+											Secret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "tls-scrape"}, Key: "ca"},
+										},
+										KeySecret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "tls-scrape"}, Key: "key"},
 									},
-									Cert: victoriametricsv1beta1.SecretOrConfigMap{
-										Secret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "tls-scrape"}, Key: "ca"},
-									},
-									KeySecret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "tls-scrape"}, Key: "key"},
 								},
 							},
 						},
@@ -298,7 +317,8 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 				},
 			},
 			predefinedObjects: []runtime.Object{
-				&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "add-cfg", Namespace: "default"},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{Name: "add-cfg", Namespace: "default"},
 					Data: map[string][]byte{"agent.yaml": []byte(strings.TrimSpace(`
 - job_name: "alertmanager"
   static_configs:
@@ -317,7 +337,6 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 				t.Errorf("CreateOrUpdateVMAgent() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-
 		})
 	}
 }
@@ -350,12 +369,14 @@ func Test_loadTLSAssets(t *testing.T) {
 						Spec: victoriametricsv1beta1.VMServiceScrapeSpec{
 							Endpoints: []victoriametricsv1beta1.Endpoint{
 								{
-									TLSConfig: &victoriametricsv1beta1.TLSConfig{
-										KeySecret: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "tls-secret",
+									HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+										TLSConfig: &victoriametricsv1beta1.TLSConfig{
+											KeySecret: &corev1.SecretKeySelector{
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "tls-secret",
+												},
+												Key: "cert",
 											},
-											Key: "cert",
 										},
 									},
 								},
@@ -387,28 +408,30 @@ func Test_loadTLSAssets(t *testing.T) {
 						RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
 							{
 								URL: "some1-url",
-								TLSConfig: &victoriametricsv1beta1.TLSConfig{
-									CA: victoriametricsv1beta1.SecretOrConfigMap{
-										Secret: &corev1.SecretKeySelector{
+								HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+									TLSConfig: &victoriametricsv1beta1.TLSConfig{
+										CA: victoriametricsv1beta1.SecretOrConfigMap{
+											Secret: &corev1.SecretKeySelector{
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "remote1-write-spec",
+												},
+												Key: "ca",
+											},
+										},
+										Cert: victoriametricsv1beta1.SecretOrConfigMap{
+											Secret: &corev1.SecretKeySelector{
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "remote1-write-spec",
+												},
+												Key: "cert",
+											},
+										},
+										KeySecret: &corev1.SecretKeySelector{
 											LocalObjectReference: corev1.LocalObjectReference{
 												Name: "remote1-write-spec",
 											},
-											Key: "ca",
+											Key: "key",
 										},
-									},
-									Cert: victoriametricsv1beta1.SecretOrConfigMap{
-										Secret: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "remote1-write-spec",
-											},
-											Key: "cert",
-										},
-									},
-									KeySecret: &corev1.SecretKeySelector{
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "remote1-write-spec",
-										},
-										Key: "key",
 									},
 								},
 							},
@@ -423,14 +446,18 @@ func Test_loadTLSAssets(t *testing.T) {
 						ObjectMeta: metav1.ObjectMeta{Name: "vmagent-monitor", Namespace: "default"},
 						Spec: victoriametricsv1beta1.VMServiceScrapeSpec{
 							Endpoints: []victoriametricsv1beta1.Endpoint{
-								{TLSConfig: &victoriametricsv1beta1.TLSConfig{
-									KeySecret: &corev1.SecretKeySelector{
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "tls-secret",
+								{
+									HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+										TLSConfig: &victoriametricsv1beta1.TLSConfig{
+											KeySecret: &corev1.SecretKeySelector{
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "tls-secret",
+												},
+												Key: "cert",
+											},
 										},
-										Key: "cert",
 									},
-								}},
+								},
 							},
 						},
 					},
@@ -481,7 +508,6 @@ func TestBuildRemoteWrites(t *testing.T) {
 		args args
 		want []string
 	}{
-
 		{
 			name: "test with tls config full",
 			args: args{
@@ -490,26 +516,29 @@ func TestBuildRemoteWrites(t *testing.T) {
 					Spec: victoriametricsv1beta1.VMAgentSpec{RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
 						{
 							URL: "localhost:8429",
-
-							TLSConfig: &victoriametricsv1beta1.TLSConfig{
-								CA: victoriametricsv1beta1.SecretOrConfigMap{Secret: &corev1.SecretKeySelector{
-									LocalObjectReference: corev1.LocalObjectReference{
-										Name: "tls-secret",
-									},
-									Key: "ca",
-								}},
+							HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+								TLSConfig: &victoriametricsv1beta1.TLSConfig{
+									CA: victoriametricsv1beta1.SecretOrConfigMap{Secret: &corev1.SecretKeySelector{
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "tls-secret",
+										},
+										Key: "ca",
+									}},
+								},
 							},
 						},
 						{
 							URL: "localhost:8429",
-							TLSConfig: &victoriametricsv1beta1.TLSConfig{
-								CAFile: "/path/to_ca",
-								Cert: victoriametricsv1beta1.SecretOrConfigMap{Secret: &corev1.SecretKeySelector{
-									LocalObjectReference: corev1.LocalObjectReference{
-										Name: "tls-secret",
-									},
-									Key: "ca",
-								}},
+							HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+								TLSConfig: &victoriametricsv1beta1.TLSConfig{
+									CAFile: "/path/to_ca",
+									Cert: victoriametricsv1beta1.SecretOrConfigMap{Secret: &corev1.SecretKeySelector{
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "tls-secret",
+										},
+										Key: "ca",
+									}},
+								},
 							},
 						},
 					}},
@@ -525,15 +554,16 @@ func TestBuildRemoteWrites(t *testing.T) {
 					Spec: victoriametricsv1beta1.VMAgentSpec{RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
 						{
 							URL: "localhost:8429",
-
-							TLSConfig: &victoriametricsv1beta1.TLSConfig{
-								KeySecret: &corev1.SecretKeySelector{
-									LocalObjectReference: corev1.LocalObjectReference{
-										Name: "tls-secret",
+							HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+								TLSConfig: &victoriametricsv1beta1.TLSConfig{
+									KeySecret: &corev1.SecretKeySelector{
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "tls-secret",
+										},
+										Key: "key",
 									},
-									Key: "key",
+									InsecureSkipVerify: true,
 								},
-								InsecureSkipVerify: true,
 							},
 						},
 					}},
@@ -549,9 +579,10 @@ func TestBuildRemoteWrites(t *testing.T) {
 					Spec: victoriametricsv1beta1.VMAgentSpec{RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
 						{
 							URL: "localhost:8429",
-
-							TLSConfig: &victoriametricsv1beta1.TLSConfig{
-								InsecureSkipVerify: true,
+							HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+								TLSConfig: &victoriametricsv1beta1.TLSConfig{
+									InsecureSkipVerify: true,
+								},
 							},
 						},
 					}},
@@ -568,8 +599,10 @@ func TestBuildRemoteWrites(t *testing.T) {
 						RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
 							{
 								URL: "localhost:8429",
-								TLSConfig: &victoriametricsv1beta1.TLSConfig{
-									InsecureSkipVerify: true,
+								HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+									TLSConfig: &victoriametricsv1beta1.TLSConfig{
+										InsecureSkipVerify: true,
+									},
 								},
 								InlineUrlRelabelConfig: []victoriametricsv1beta1.RelabelConfig{
 									{TargetLabel: "rw-1", Replacement: "present"},
@@ -577,15 +610,18 @@ func TestBuildRemoteWrites(t *testing.T) {
 							},
 							{
 								URL: "remote-1:8429",
-
-								TLSConfig: &victoriametricsv1beta1.TLSConfig{
-									InsecureSkipVerify: true,
+								HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+									TLSConfig: &victoriametricsv1beta1.TLSConfig{
+										InsecureSkipVerify: true,
+									},
 								},
 							},
 							{
 								URL: "remote-1:8429",
-								TLSConfig: &victoriametricsv1beta1.TLSConfig{
-									InsecureSkipVerify: true,
+								HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+									TLSConfig: &victoriametricsv1beta1.TLSConfig{
+										InsecureSkipVerify: true,
+									},
 								},
 								InlineUrlRelabelConfig: []victoriametricsv1beta1.RelabelConfig{
 									{TargetLabel: "rw-2", Replacement: "present"},
@@ -625,20 +661,22 @@ func TestBuildRemoteWrites(t *testing.T) {
 			args: args{
 				ssCache: &scrapesSecretsCache{},
 				cr: &victoriametricsv1beta1.VMAgent{
-					Spec: victoriametricsv1beta1.VMAgentSpec{RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
-						{
-							URL: "vminsert-cluster-1:8480",
+					Spec: victoriametricsv1beta1.VMAgentSpec{
+						RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
+							{
+								URL: "vminsert-cluster-1:8480",
 
-							SendTimeout: pointer.String("10s"),
+								SendTimeout: pointer.String("10s"),
+							},
+							{
+								URL:         "vminsert-cluster-2:8480",
+								SendTimeout: pointer.String("15s"),
+							},
 						},
-						{
-							URL:         "vminsert-cluster-2:8480",
-							SendTimeout: pointer.String("15s"),
-						},
-					},
 						RemoteWriteSettings: &victoriametricsv1beta1.VMAgentRemoteWriteSettings{
 							UseMultiTenantMode: true,
-						}},
+						},
+					},
 				},
 			},
 			want: []string{"-remoteWrite.multitenantURL=vminsert-cluster-1:8480,vminsert-cluster-2:8480", "-remoteWrite.sendTimeout=10s,15s"},
@@ -661,14 +699,16 @@ func TestBuildRemoteWrites(t *testing.T) {
 						{
 							URL:         "localhost:8431",
 							SendTimeout: pointer.String("15s"),
-							OAuth2: &victoriametricsv1beta1.OAuth2{
-								Scopes:       []string{"scope-1"},
-								TokenURL:     "http://some-url",
-								ClientSecret: &corev1.SecretKeySelector{},
-								ClientID: victoriametricsv1beta1.SecretOrConfigMap{ConfigMap: &corev1.ConfigMapKeySelector{
-									LocalObjectReference: corev1.LocalObjectReference{Name: "some-cm"},
-									Key:                  "some-key",
-								}},
+							HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+								OAuth2: &victoriametricsv1beta1.OAuth2{
+									Scopes:       []string{"scope-1"},
+									TokenURL:     "http://some-url",
+									ClientSecret: &corev1.SecretKeySelector{},
+									ClientID: victoriametricsv1beta1.SecretOrConfigMap{ConfigMap: &corev1.ConfigMapKeySelector{
+										LocalObjectReference: corev1.LocalObjectReference{Name: "some-cm"},
+										Key:                  "some-key",
+									}},
+								},
 							},
 						},
 					}},
@@ -693,9 +733,13 @@ func TestBuildRemoteWrites(t *testing.T) {
 						{
 							URL:         "localhost:8431",
 							SendTimeout: pointer.String("15s"),
-							BearerTokenSecret: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{Name: "some-secret"},
-								Key:                  "some-key",
+							HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+								BearerAuth: &victoriametricsv1beta1.BearerAuth{
+									BearerTokenSecret: &corev1.SecretKeySelector{
+										LocalObjectReference: corev1.LocalObjectReference{Name: "some-secret"},
+										Key:                  "some-key",
+									},
+								},
 							},
 						},
 					}},
@@ -720,11 +764,15 @@ func TestBuildRemoteWrites(t *testing.T) {
 						{
 							URL:         "localhost:8431",
 							SendTimeout: pointer.String("15s"),
-							BearerTokenSecret: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{Name: "some-secret"},
-								Key:                  "some-key",
+							HTTPAuth: victoriametricsv1beta1.HTTPAuth{
+								Headers: []string{"key: value", "second-key: value2"},
+								BearerAuth: &victoriametricsv1beta1.BearerAuth{
+									BearerTokenSecret: &corev1.SecretKeySelector{
+										LocalObjectReference: corev1.LocalObjectReference{Name: "some-secret"},
+										Key:                  "some-key",
+									},
+								},
 							},
-							Headers: []string{"key: value", "second-key: value2"},
 						},
 					}},
 				},

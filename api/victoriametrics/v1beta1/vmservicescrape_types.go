@@ -139,34 +139,16 @@ type Endpoint struct {
 	// SampleLimit defines per-endpoint limit on number of scraped samples that will be accepted.
 	// +optional
 	SampleLimit uint64 `json:"sampleLimit,omitempty"`
-	// OAuth2 defines auth configuration
-	// +optional
-	OAuth2 *OAuth2 `json:"oauth2,omitempty"`
-	// Authorization with http header Authorization
-	// +optional
-	Authorization *Authorization `json:"authorization,omitempty"`
-	// TLSConfig configuration to use when scraping the endpoint
-	// +optional
-	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
-	// File to read bearer token for scraping targets.
-	// +optional
-	BearerTokenFile string `json:"bearerTokenFile,omitempty"`
-	// Secret to mount to read bearer token for scraping targets. The secret
-	// needs to be in the same namespace as the service scrape and accessible by
-	// the victoria-metrics operator.
-	// +optional
-	// +nullable
-	BearerTokenSecret *v1.SecretKeySelector `json:"bearerTokenSecret,omitempty"`
+
+	// HTTPAuth generic auth methods
+	HTTPAuth `json:",inline,omitempty"`
+
 	// HonorLabels chooses the metric's labels on collisions with target labels.
 	// +optional
 	HonorLabels bool `json:"honorLabels,omitempty"`
 	// HonorTimestamps controls whether vmagent respects the timestamps present in scraped data.
 	// +optional
 	HonorTimestamps *bool `json:"honorTimestamps,omitempty"`
-	// BasicAuth allow an endpoint to authenticate over basic authentication
-	// More info: https://prometheus.io/docs/operating/configuration/#endpoints
-	// +optional
-	BasicAuth *BasicAuth `json:"basicAuth,omitempty"`
 	// MetricRelabelConfigs to apply to samples before ingestion.
 	// +optional
 	MetricRelabelConfigs []*RelabelConfig `json:"metricRelabelConfigs,omitempty"`
@@ -174,9 +156,6 @@ type Endpoint struct {
 	// More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config
 	// +optional
 	RelabelConfigs []*RelabelConfig `json:"relabelConfigs,omitempty"`
-	// ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint.
-	// +optional
-	ProxyURL *string `json:"proxyURL,omitempty"`
 	// VMScrapeParams defines VictoriaMetrics specific scrape parametrs
 	// +optional
 	VMScrapeParams *VMScrapeParams `json:"vm_scrape_params,omitempty"`
@@ -215,7 +194,7 @@ type VMScrapeParams struct {
 	// ProxyClientConfig configures proxy auth settings for scraping
 	// See feature description https://docs.victoriametrics.com/vmagent.html#scraping-targets-via-a-proxy
 	// +optional
-	ProxyClientConfig *ProxyAuth `json:"proxy_client_config,omitempty"`
+	ProxyClientConfig *HTTPAuth `json:"proxy_client_config,omitempty"`
 	// Headers allows sending custom headers to scrape targets
 	// must be in of semicolon separated header with it's value
 	// eg:
@@ -223,83 +202,6 @@ type VMScrapeParams struct {
 	// vmagent supports since 1.79.0 version
 	// +optional
 	Headers []string `json:"headers,omitempty"`
-}
-
-// ProxyAuth represent proxy auth config
-// Only VictoriaMetrics scrapers supports it.
-// See https://github.com/VictoriaMetrics/VictoriaMetrics/commit/a6a71ef861444eb11fe8ec6d2387f0fc0c4aea87
-type ProxyAuth struct {
-	BasicAuth       *BasicAuth            `json:"basic_auth,omitempty"`
-	BearerToken     *v1.SecretKeySelector `json:"bearer_token,omitempty"`
-	BearerTokenFile string                `json:"bearer_token_file,omitempty"`
-	TLSConfig       *TLSConfig            `json:"tls_config,omitempty"`
-}
-
-// OAuth2 defines OAuth2 configuration
-type OAuth2 struct {
-	// The secret or configmap containing the OAuth2 client id
-	// +required
-	ClientID SecretOrConfigMap `json:"client_id"`
-	// The secret containing the OAuth2 client secret
-	// +optional
-	ClientSecret *v1.SecretKeySelector `json:"client_secret,omitempty"`
-	// ClientSecretFile defines path for client secret file.
-	// +optional
-	ClientSecretFile string `json:"client_secret_file,omitempty"`
-	// The URL to fetch the token from
-	// +kubebuilder:validation:MinLength=1
-	// +required
-	TokenURL string `json:"token_url"`
-	// OAuth2 scopes used for the token request
-	// +optional
-	Scopes []string `json:"scopes,omitempty"`
-	// Parameters to append to the token URL
-	// +optional
-	EndpointParams map[string]string `json:"endpoint_params,omitempty"`
-}
-
-// Authorization configures generic authorization params
-type Authorization struct {
-	// Type of authorization, default to bearer
-	// +optional
-	Type string `json:"type,omitempty"`
-	// Reference to the secret with value for authorization
-	Credentials *v1.SecretKeySelector `json:"credentials,omitempty"`
-	// File with value for authorization
-	// +optional
-	CredentialsFile string `json:"credentialsFile,omitempty"`
-}
-
-// TLSConfig specifies TLSConfig configuration parameters.
-// +k8s:openapi-gen=true
-type TLSConfig struct {
-	// Path to the CA cert in the container to use for the targets.
-	// +optional
-	CAFile string `json:"caFile,omitempty"`
-	// Stuct containing the CA cert to use for the targets.
-	// +optional
-	CA SecretOrConfigMap `json:"ca,omitempty"`
-
-	// Path to the client cert file in the container for the targets.
-	// +optional
-	CertFile string `json:"certFile,omitempty"`
-	// Struct containing the client cert file for the targets.
-	// +optional
-	Cert SecretOrConfigMap `json:"cert,omitempty"`
-
-	// Path to the client key file in the container for the targets.
-	// +optional
-	KeyFile string `json:"keyFile,omitempty"`
-	// Secret containing the client key file for the targets.
-	// +optional
-	KeySecret *v1.SecretKeySelector `json:"keySecret,omitempty"`
-
-	// Used to verify the hostname for the targets.
-	// +optional
-	ServerName string `json:"serverName,omitempty"`
-	// Disable target certificate validation.
-	// +optional
-	InsecureSkipVerify bool `json:"insecureSkipVerify,omitempty"`
 }
 
 func (c *TLSConfig) AsArgs(args []string, prefix, namespace string) []string {
@@ -523,20 +425,9 @@ type APIServerConfig struct {
 	// Host of apiserver.
 	// A valid string consisting of a hostname or IP followed by an optional port number
 	Host string `json:"host"`
-	// BasicAuth allow an endpoint to authenticate over basic authentication
-	// +optional
-	BasicAuth *BasicAuth `json:"basicAuth,omitempty"`
-	// Bearer token for accessing apiserver.
-	// +optional
-	BearerToken string `json:"bearerToken,omitempty"`
-	// File to read bearer token for accessing apiserver.
-	// +optional
-	BearerTokenFile string `json:"bearerTokenFile,omitempty"`
-	// TLSConfig Config to use for accessing apiserver.
-	// +optional
-	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
-	// +optional
-	Authorization *Authorization `json:"authorization,omitempty"`
+
+	// HTTPAuth generic auth methods
+	HTTPAuth `json:",inline,omitempty"`
 }
 
 // AsProxyKey builds key for proxy cache maps

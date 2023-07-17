@@ -2,7 +2,6 @@
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
-  creationTimestamp: null
   name: validating-webhook-configuration
 webhooks:
 - admissionReviewVersions:
@@ -164,24 +163,4 @@ webhooks:
     - UPDATE
     resources:
     - vmusers
-  sideEffects: None
-- admissionReviewVersions:
-    - v1
-  clientConfig:
-    service:
-      name: vm-operator
-      namespace: victoriametrics-system
-      path: /validate-operator-victoriametrics-com-v1beta1-vmrule
-  failurePolicy: Fail
-  name: vvmrule.kb.io
-  rules:
-    - apiGroups:
-        - operator.victoriametrics.com
-      apiVersions:
-        - v1beta1
-      operations:
-        - CREATE
-        - UPDATE
-      resources:
-        - vmrules
   sideEffects: None

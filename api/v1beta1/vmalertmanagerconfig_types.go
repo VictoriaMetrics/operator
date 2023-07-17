@@ -282,7 +282,9 @@ type TelegramConfig struct {
 	// HTTP client configuration.
 	// +optional
 	// HTTPAuth generic auth methods
-	HTTPConfig *HTTPAuth `json:"http_config,omitempty"`
+	HTTPConfig *HTTPConfig `json:"http_config,omitempty"`
+
+	*HTTPAuth
 }
 
 // WebhookConfig configures notifications via a generic receiver supporting the webhook payload.

@@ -226,6 +226,28 @@ type HTTPAuth struct {
 	ProxyURL *string `json:"proxyURL,omitempty"`
 }
 
+// HTTPConfig defines a client HTTP configuration.
+// See https://prometheus.io/docs/alerting/latest/configuration/#http_config
+type HTTPConfig struct {
+	// TODO oAuth2 support
+	// BasicAuth for the client.
+	// +optional
+	BasicAuth *BasicAuth `json:"basic_auth,omitempty"`
+	// The secret's key that contains the bearer token
+	// It must be at them same namespace as CRD
+	// +optional
+	BearerTokenSecret *v1.SecretKeySelector `json:"bearer_token_secret,omitempty"`
+	// BearerTokenFile defines filename for bearer token, it must be mounted to pod.
+	// +optional
+	BearerTokenFile string `json:"bearer_token_file,omitempty"`
+	// TLS configuration for the client.
+	// +optional
+	TLSConfig *TLSConfig `json:"tls_config,omitempty"`
+	// Optional proxy URL.
+	// +optional
+	ProxyURL string `json:"proxyURL,omitempty"`
+}
+
 // BearerAuth defines auth with bearer token
 type BearerAuth struct {
 	// Optional bearer auth token to use for -remoteWrite.url

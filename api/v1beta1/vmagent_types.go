@@ -433,6 +433,12 @@ type VMAgentRemoteWriteSpec struct {
 	URL string `json:"url"`
 	// HTTPAuth generic auth methods
 	HTTPAuth `json:",inline,omitempty"`
+
+	// todo wang
+	// OAuth2 defines auth configuration
+	// +optional
+	OAuth2 *OAuth2 `json:"oauth2,omitempty"`
+
 	// ConfigMap with relabeling config which is applied to metrics before sending them to the corresponding -remoteWrite.url
 	// +optional
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Key at Configmap with relabelConfig for remoteWrite",xDescriptors="urn:alm:descriptor:io.kubernetes:ConfigMapKeySelector"

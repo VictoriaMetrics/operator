@@ -406,12 +406,14 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, c *config.Ba
 
 	amVolumeMounts = append(amVolumeMounts, cr.Spec.VolumeMounts...)
 
-	resources := v1.ResourceRequirements{Limits: v1.ResourceList{}}
+	resources := v1.ResourceRequirements{Limits: v1.ResourceList{}, Requests: v1.ResourceList{}}
 	if c.VMAlertManager.ConfigReloaderCPU != "0" && c.VMAgentDefault.UseDefaultResources {
 		resources.Limits[v1.ResourceCPU] = resource.MustParse(c.VMAlertManager.ConfigReloaderCPU)
+		resources.Requests[v1.ResourceCPU] = resource.MustParse(c.VMAlertManager.ConfigReloaderCPU)
 	}
 	if c.VMAlertManager.ConfigReloaderMemory != "0" && c.VMAgentDefault.UseDefaultResources {
 		resources.Limits[v1.ResourceMemory] = resource.MustParse(c.VMAlertManager.ConfigReloaderMemory)
+		resources.Requests[v1.ResourceMemory] = resource.MustParse(c.VMAlertManager.ConfigReloaderMemory)
 	}
 
 	terminationGracePeriod := int64(120)

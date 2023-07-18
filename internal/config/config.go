@@ -248,6 +248,8 @@ type BaseOperatorConf struct {
 	PodWaitReadyInitDelay                       time.Duration `default:"10s"`
 	// configures force resync interval for VMAgent, VMAlert, VMAlertmanager and VMAuth.
 	ForceResyncInterval time.Duration `default:"60s"`
+	// EnableStrictSecurity will add default `securityContext` for pods and containers created by operator
+	EnableStrictSecurity bool `default:"true"`
 }
 
 // Validate - validates config on best effort.

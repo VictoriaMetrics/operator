@@ -342,10 +342,10 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 		Spec: corev1.PodSpec{
 			NodeSelector:                  cr.Spec.NodeSelector,
 			Volumes:                       volumes,
-			InitContainers:                initContainers,
-			Containers:                    containers,
+			InitContainers:                addStrictSecuritySettingsToContainers(initContainers, c.EnableStrictSecurity),
+			Containers:                    addStrictSecuritySettingsToContainers(containers, c.EnableStrictSecurity),
 			ServiceAccountName:            cr.GetServiceAccountName(),
-			SecurityContext:               cr.Spec.SecurityContext,
+			SecurityContext:               addStrictSecuritySettingsToPod(cr.Spec.SecurityContext, c.EnableStrictSecurity),
 			ImagePullSecrets:              cr.Spec.ImagePullSecrets,
 			Affinity:                      cr.Spec.Affinity,
 			RuntimeClassName:              cr.Spec.RuntimeClassName,

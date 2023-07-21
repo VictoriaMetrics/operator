@@ -1,9 +1,10 @@
 package v1beta1
 
 import (
+	"net/url"
+
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"net/url"
 )
 
 // MaxConfigMapDataSize is a maximum `Data` field size of a ConfigMap.
@@ -100,6 +101,10 @@ type Rule struct {
 	// Annotations will be added to rule configuration
 	// +optional
 	Annotations map[string]string `json:"annotations,omitempty" yaml:"annotations,omitempty"`
+	// UpdateEntriesLimit defines max number of rule's state updates stored in memory.
+	// Overrides `-rule.updateEntriesLimit` in vmalert.
+	// +optional
+	UpdateEntriesLimit *int `json:"update_entries_limit,omitempty" yaml:"update_entries_limit,omitempty"`
 }
 
 // VMRuleStatus defines the observed state of VMRule

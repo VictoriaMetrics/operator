@@ -126,6 +126,11 @@ spec:
                             description: Record represents a query, that will be recorded
                               to dataSource
                             type: string
+                          update_entries_limit:
+                            description: UpdateEntriesLimit defines max number of
+                              rule's state updates stored in memory. Overrides `-rule.updateEntriesLimit`
+                              in vmalert.
+                            type: integer
                         type: object
                       type: array
                     tenant:

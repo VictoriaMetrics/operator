@@ -248,7 +248,15 @@ type BaseOperatorConf struct {
 	PodWaitReadyInitDelay                       time.Duration `default:"10s"`
 	// configures force resync interval for VMAgent, VMAlert, VMAlertmanager and VMAuth.
 	ForceResyncInterval time.Duration `default:"60s"`
-	// EnableStrictSecurity will add default `securityContext` for pods and containers created by operator
+	// EnableStrictSecurity will add default `securityContext` to pods and containers created by operator
+	// Default PodSecurityContext include:
+	// 1. RunAsNonRoot: true
+	// 2. RunAsUser/RunAsGroup/FSGroup: 65534
+	// '65534' refers to 'nobody' in all the used default images like alpine, busybox.
+	// If you're using customize image, please make sure '65534' is a valid uid in there or specify SecurityContext.
+	// Default container SecurityContext include:
+	// 1. AllowPrivilegeEscalation: false
+	// 2. ReadOnlyRootFilesystem: true
 	EnableStrictSecurity bool `default:"true"`
 }
 

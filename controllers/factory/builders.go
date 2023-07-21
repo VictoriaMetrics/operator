@@ -530,7 +530,7 @@ func addStrictSecuritySettingsToPod(p *v1.PodSecurityContext, enableStrictSecuri
 	}
 	return &v1.PodSecurityContext{
 		RunAsNonRoot: pointer.Bool(true),
-		// 'nobody' has uid `65534' in alpine image
+		// '65534' refers to 'nobody' in all the used default images like alpine, busybox
 		RunAsUser:  pointer.Int64(65534),
 		RunAsGroup: pointer.Int64(65534),
 		FSGroup:    pointer.Int64(65534),

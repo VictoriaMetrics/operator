@@ -26,9 +26,7 @@ const (
 	kubernetesSDRoleNode           = "node"
 )
 
-var (
-	invalidLabelCharRE = regexp.MustCompile(`[^a-zA-Z0-9_]`)
-)
+var invalidLabelCharRE = regexp.MustCompile(`[^a-zA-Z0-9_]`)
 
 // BasicAuthCredentials represents a username password pair to be used with
 // basic http authentication, see https://tools.ietf.org/html/rfc7617.
@@ -47,7 +45,6 @@ func generateConfig(
 	secretsCache *scrapesSecretsCache,
 	additionalScrapeConfigs []byte,
 ) ([]byte, error) {
-
 	cfg := yaml.MapSlice{}
 	if !config.IsClusterWideAccessAllowed() && cr.IsOwnsServiceAccount() {
 		log.Info("Setting discovery for the single namespace only, since operator launched with set WATCH_NAMESPACE param. Set custom ServiceAccountName property for VMAgent if needed.", "vmagent", cr.Name, "namespace", cr.Namespace)
@@ -174,7 +171,6 @@ func generateConfig(
 				cr.Spec.OverrideHonorLabels,
 				cr.Spec.OverrideHonorTimestamps,
 				cr.Spec.EnforcedNamespaceLabel))
-
 	}
 
 	for _, identifier := range staticsIdentifiers {
@@ -309,8 +305,8 @@ func generatePodScrapeConfig(
 	ignoreHonorLabels bool,
 	overrideHonorTimestamps bool,
 	ignoreNamespaceSelectors bool,
-	enforcedNamespaceLabel string) yaml.MapSlice {
-
+	enforcedNamespaceLabel string,
+) yaml.MapSlice {
 	hl := honorLabels(ep.HonorLabels, ignoreHonorLabels)
 	cfg := yaml.MapSlice{
 		{
@@ -569,7 +565,7 @@ func addAttachMetadata(dst yaml.MapSlice, am *victoriametricsv1beta1.AttachMetad
 			Value: yaml.MapSlice{
 				yaml.MapItem{
 					Key:   "node",
-					Value: "true",
+					Value: true,
 				},
 			},
 		})
@@ -587,8 +583,8 @@ func generateServiceScrapeConfig(
 	overrideHonorLabels bool,
 	overrideHonorTimestamps bool,
 	ignoreNamespaceSelectors bool,
-	enforcedNamespaceLabel string) yaml.MapSlice {
-
+	enforcedNamespaceLabel string,
+) yaml.MapSlice {
 	hl := honorLabels(ep.HonorLabels, overrideHonorLabels)
 	cfg := yaml.MapSlice{
 		{
@@ -739,7 +735,6 @@ func generateServiceScrapeConfig(
 				{Key: "regex", Value: ep.Port},
 			})
 		}
-
 	} else if ep.TargetPort != nil && m.Spec.DiscoveryRole != kubernetesSDRoleService {
 		// not supported to service.
 		if ep.TargetPort.StrVal != "" {
@@ -922,8 +917,8 @@ func generateNodeScrapeConfig(
 	ssCache *scrapesSecretsCache,
 	ignoreHonorLabels bool,
 	overrideHonorTimestamps bool,
-	enforcedNamespaceLabel string) yaml.MapSlice {
-
+	enforcedNamespaceLabel string,
+) yaml.MapSlice {
 	nodeSpec := cr.Spec
 	hl := honorLabels(nodeSpec.HonorLabels, ignoreHonorLabels)
 	cfg := yaml.MapSlice{
@@ -1256,7 +1251,6 @@ func combineSelectorStr(kvs map[string]string) string {
 }
 
 func generatePodK8SSDConfig(namespaces []string, labelSelector metav1.LabelSelector, apiserverConfig *victoriametricsv1beta1.APIServerConfig, ssCache *scrapesSecretsCache, role string, am *victoriametricsv1beta1.AttachMetadata) yaml.MapItem {
-
 	cfg := generateK8SSDConfig(namespaces, apiserverConfig, ssCache, role, am)
 
 	if len(labelSelector.MatchLabels) != 0 {
@@ -1359,7 +1353,8 @@ func enforceNamespaceLabel(relabelings []yaml.MapSlice, namespace, enforcedNames
 	}
 	return append(relabelings, yaml.MapSlice{
 		{Key: "target_label", Value: enforcedNamespaceLabel},
-		{Key: "replacement", Value: namespace}})
+		{Key: "replacement", Value: namespace},
+	})
 }
 
 func buildExternalLabels(p *victoriametricsv1beta1.VMAgent) yaml.MapSlice {
@@ -1416,7 +1411,6 @@ func buildVMScrapeParams(namespace, cacheKey string, cfg *victoriametricsv1beta1
 }
 
 func addAuthorizationConfig(dst yaml.MapSlice, cacheKey string, cfg *victoriametricsv1beta1.Authorization, authorizationCache map[string]string) yaml.MapSlice {
-
 	if cfg == nil || len(cfg.Type) == 0 {
 		// fast path
 		return dst
@@ -1438,7 +1432,6 @@ func addAuthorizationConfig(dst yaml.MapSlice, cacheKey string, cfg *victoriamet
 }
 
 func addOAuth2Config(dst yaml.MapSlice, cacheKey string, cfg *victoriametricsv1beta1.OAuth2, oauth2Cache map[string]*oauthCreds) yaml.MapSlice {
-
 	cachedSecret := oauth2Cache[cacheKey]
 	if cfg == nil || cachedSecret == nil {
 		// fast path

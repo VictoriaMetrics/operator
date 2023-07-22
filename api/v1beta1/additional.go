@@ -210,7 +210,7 @@ type EmbeddedPersistentVolumeClaim struct {
 // HTTPAuth generic auth used with http protocols
 type HTTPAuth struct {
 	BasicAuth   *BasicAuth `json:"basicAuth,omitempty"`
-	OAuth2      *OAuth2    `json:"OAuth2,omitempty"`
+	OAuth2      *OAuth2    `json:"oauth2,omitempty"`
 	TLSConfig   *TLSConfig `json:"tlsConfig,omitempty"`
 	*BearerAuth `json:",inline,omitempty"`
 	// Headers allow configuring custom http headers

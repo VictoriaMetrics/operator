@@ -224,7 +224,9 @@ type HTTPAuth struct {
 
 // BearerAuth defines auth with bearer token
 type BearerAuth struct {
-	TokenFilePath string `json:"bearerTokenFilePath,omitempty"`
+	// Path to bearer token file
+	// +optional
+	TokenFilePath string `json:"bearerTokenFile,omitempty"`
 	// Optional bearer auth token to use for -remoteWrite.url
 	// +optional
 	TokenSecret *v1.SecretKeySelector `json:"bearerTokenSecret,omitempty"`

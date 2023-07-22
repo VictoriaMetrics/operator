@@ -116,7 +116,8 @@ spec:
                         type: object
                         x-kubernetes-map-type: atomic
                     type: object
-                  bearerTokenFilePath:
+                  bearerTokenFile:
+                    description: Path to bearer token file
                     type: string
                   bearerTokenSecret:
                     description: Optional bearer auth token to use for -remoteWrite.url
@@ -470,7 +471,8 @@ spec:
                         type: object
                         x-kubernetes-map-type: atomic
                     type: object
-                  bearerTokenFilePath:
+                  bearerTokenFile:
+                    description: Path to bearer token file
                     type: string
                   bearerTokenSecret:
                     description: Optional bearer auth token to use for -remoteWrite.url
@@ -747,7 +749,8 @@ spec:
                           type: object
                           x-kubernetes-map-type: atomic
                       type: object
-                    bearerTokenFilePath:
+                    bearerTokenFile:
+                      description: Path to bearer token file
                       type: string
                     bearerTokenSecret:
                       description: Optional bearer auth token to use for -remoteWrite.url
@@ -1086,7 +1089,8 @@ spec:
                         type: object
                         x-kubernetes-map-type: atomic
                     type: object
-                  bearerTokenFilePath:
+                  bearerTokenFile:
+                    description: Path to bearer token file
                     type: string
                   bearerTokenSecret:
                     description: Optional bearer auth token to use for -remoteWrite.url
@@ -1279,7 +1283,8 @@ spec:
                         type: object
                         x-kubernetes-map-type: atomic
                     type: object
-                  bearerTokenFilePath:
+                  bearerTokenFile:
+                    description: Path to bearer token file
                     type: string
                   bearerTokenSecret:
                     description: Optional bearer auth token to use for -remoteWrite.url

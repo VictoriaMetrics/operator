@@ -2,11 +2,12 @@ package factory
 
 import (
 	"encoding/json"
+	"reflect"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/pointer"
-	"reflect"
-	"testing"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"gopkg.in/yaml.v2"
@@ -176,7 +177,7 @@ honor_labels: false
 kubernetes_sd_configs:
 - role: endpoints
   attach_metadata:
-    node: "true"
+    node: true
   namespaces:
     names:
     - default
@@ -741,7 +742,6 @@ relabel_configs:
 		{
 			name: "complete config",
 			args: args{
-
 				m: &victoriametricsv1beta1.VMServiceScrape{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-scrape",
@@ -794,7 +794,7 @@ relabel_configs:
 							LocalObjectReference: v1.LocalObjectReference{Name: "access-secret"},
 						},
 					},
-					Params:          map[string][]string{"module": []string{"base"}},
+					Params:          map[string][]string{"module": {"base"}},
 					ScrapeInterval:  "10s",
 					ScrapeTimeout:   "5s",
 					HonorTimestamps: pointer.Bool(true),
@@ -817,14 +817,14 @@ relabel_configs:
 				apiserverConfig: nil,
 				ssCache: &scrapesSecretsCache{
 					baSecrets: map[string]*BasicAuthCredentials{
-						"serviceScrape/default/test-scrape/0": &BasicAuthCredentials{
+						"serviceScrape/default/test-scrape/0": {
 							username: "user",
 							password: "pass",
 						},
 					},
 					bearerTokens: map[string]string{},
 					oauth2Secrets: map[string]*oauthCreds{
-						"serviceScrape/default/test-scrape/0": &oauthCreds{clientSecret: "some-secret", clientID: "some-id"},
+						"serviceScrape/default/test-scrape/0": {clientSecret: "some-secret", clientID: "some-id"},
 					},
 				},
 				overrideHonorLabels:      false,
@@ -1012,7 +1012,6 @@ relabel_configs:
 				return
 			}
 			assert.Equal(t, tt.want, string(gotBytes))
-
 		})
 	}
 }
@@ -1078,7 +1077,7 @@ relabel_configs:
 					oauth2Secrets: map[string]*oauthCreds{},
 					bearerTokens:  map[string]string{},
 					baSecrets: map[string]*BasicAuthCredentials{
-						"nodeScrape/default/nodes-basic": &BasicAuthCredentials{
+						"nodeScrape/default/nodes-basic": {
 							username: "username",
 						},
 					},
@@ -1100,7 +1099,7 @@ relabel_configs:
 						FollowRedirects: pointer.Bool(true),
 						ScrapeTimeout:   "10s",
 						ScrapeInterval:  "5s",
-						Params:          map[string][]string{"module": []string{"client"}},
+						Params:          map[string][]string{"module": {"client"}},
 						JobLabel:        "env",
 						HonorTimestamps: pointer.Bool(true),
 						TargetLabels:    []string{"app", "env"},
@@ -1119,7 +1118,6 @@ relabel_configs:
 							},
 						},
 						VMScrapeParams: &victoriametricsv1beta1.VMScrapeParams{
-
 							StreamParse: pointer.Bool(true),
 							ProxyClientConfig: &victoriametricsv1beta1.ProxyAuth{
 								TLSConfig: &victoriametricsv1beta1.TLSConfig{
@@ -1206,7 +1204,6 @@ proxy_bearer_token_file: /tmp/proxy-token
 				return
 			}
 			assert.Equal(t, tt.want, string(gotBytes))
-
 		})
 	}
 }
@@ -1329,7 +1326,7 @@ honor_labels: false
 kubernetes_sd_configs:
 - role: pod
   attach_metadata:
-    node: "true"
+    node: true
   namespaces:
     names:
     - default
@@ -1382,7 +1379,7 @@ honor_labels: false
 kubernetes_sd_configs:
 - role: pod
   attach_metadata:
-    node: "true"
+    node: true
   namespaces:
     names:
     - default
@@ -1498,7 +1495,6 @@ relabel_configs:
 				return
 			}
 			assert.Equal(t, tt.want, string(gotBytes))
-
 		})
 	}
 }

@@ -302,21 +302,21 @@ type TLSConfig struct {
 	InsecureSkipVerify bool `json:"insecureSkipVerify,omitempty"`
 }
 
-func (c *TLSConfig) AsArgs(args []string, prefix, namespace string) []string {
+func (c *TLSConfig) AsArgs(args []string, prefix, pathPrefix string) []string {
 	if c.CAFile != "" {
 		args = append(args, fmt.Sprintf("-%s.tlsCAFile=%s", prefix, c.CAFile))
 	} else if c.CA.Name() != "" {
-		args = append(args, fmt.Sprintf("-%s.tlsCAFile=%s", prefix, c.BuildAssetPath(namespace, c.CA.Name(), c.CA.Key())))
+		args = append(args, fmt.Sprintf("-%s.tlsCAFile=%s", prefix, c.BuildAssetPath(pathPrefix, c.CA.Name(), c.CA.Key())))
 	}
 	if c.CertFile != "" {
 		args = append(args, fmt.Sprintf("-%s.tlsCertFile=%s", prefix, c.CertFile))
 	} else if c.Cert.Name() != "" {
-		args = append(args, fmt.Sprintf("-%s.tlsCertFile=%s", prefix, c.BuildAssetPath(namespace, c.Cert.Name(), c.Cert.Key())))
+		args = append(args, fmt.Sprintf("-%s.tlsCertFile=%s", prefix, c.BuildAssetPath(pathPrefix, c.Cert.Name(), c.Cert.Key())))
 	}
 	if c.KeyFile != "" {
 		args = append(args, fmt.Sprintf("-%s.tlsKeyFile=%s", prefix, c.KeyFile))
 	} else if c.KeySecret != nil {
-		args = append(args, fmt.Sprintf("-%s.tlsKeyFile=%s", prefix, c.BuildAssetPath(namespace, c.KeySecret.Name, c.KeySecret.Key)))
+		args = append(args, fmt.Sprintf("-%s.tlsKeyFile=%s", prefix, c.BuildAssetPath(pathPrefix, c.KeySecret.Name, c.KeySecret.Key)))
 	}
 	if c.ServerName != "" {
 		args = append(args, fmt.Sprintf("-%s.tlsServerName=%s", prefix, c.ServerName))

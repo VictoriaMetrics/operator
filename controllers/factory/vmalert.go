@@ -92,7 +92,6 @@ func createOrUpdateVMAlertSecret(ctx context.Context, rclient client.Client, cr 
 			if len(ba.password) > 0 {
 				s.Data[buildRemoteSecretKey(sourcePrefix, basicAuthPasswordKey)] = []byte(ba.password)
 			}
-
 		}
 		if ha.BearerAuth != nil && len(ba.bearerValue) > 0 {
 			s.Data[buildRemoteSecretKey(sourcePrefix, bearerTokenKey)] = []byte(ba.bearerValue)
@@ -228,7 +227,6 @@ func CreateOrUpdateVMAlert(ctx context.Context, cr *victoriametricsv1beta1.VMAle
 
 // newDeployForCR returns a busybox pod with the same name/namespace as the cr
 func newDeployForVMAlert(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorConf, ruleConfigMapNames []string, remoteSecrets map[string]*authSecret) (*appsv1.Deployment, error) {
-
 	if cr.Spec.Image.Repository == "" {
 		cr.Spec.Image.Repository = c.VMAlertDefault.Image
 	}
@@ -267,7 +265,6 @@ func newDeployForVMAlert(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOpera
 }
 
 func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorConf, ruleConfigMapNames []string, remoteSecrets map[string]*authSecret) (*appsv1.DeploymentSpec, error) {
-
 	confReloadArgs := []string{
 		fmt.Sprintf("-webhook-url=%s", victoriametricsv1beta1.BuildReloadPathWithPort(cr.Spec.ExtraArgs, cr.Spec.Port)),
 	}
@@ -427,14 +424,15 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 	}
 	vmalertContainer = buildProbe(vmalertContainer, cr)
 
-	vmalertContainers := []corev1.Container{vmalertContainer, {
-		Name:                     "config-reloader",
-		Image:                    fmt.Sprintf("%s", formatContainerImage(c.ContainerRegistry, c.VMAlertDefault.ConfigReloadImage)),
-		Args:                     confReloadArgs,
-		Resources:                resources,
-		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
-		VolumeMounts:             reloaderVolumes,
-	},
+	vmalertContainers := []corev1.Container{
+		vmalertContainer, {
+			Name:                     "config-reloader",
+			Image:                    fmt.Sprintf("%s", formatContainerImage(c.ContainerRegistry, c.VMAlertDefault.ConfigReloadImage)),
+			Args:                     confReloadArgs,
+			Resources:                resources,
+			TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+			VolumeMounts:             reloaderVolumes,
+		},
 	}
 
 	containers, err := k8stools.MergePatchContainers(vmalertContainers, cr.Spec.Containers)
@@ -508,7 +506,6 @@ func buildHeadersArg(flagName string, src []string, headers []string) []string {
 }
 
 func buildVMAlertAuthArgs(args []string, flagPrefix string, ha victoriametricsv1beta1.HTTPAuth, remoteSecrets map[string]*authSecret) []string {
-
 	if s, ok := remoteSecrets[flagPrefix]; ok {
 		// safety checks must be performed by previous code
 		if ha.BasicAuth != nil {
@@ -543,6 +540,7 @@ func buildVMAlertAuthArgs(args []string, flagPrefix string, ha victoriametricsv1
 }
 
 func buildVMAlertArgs(cr *victoriametricsv1beta1.VMAlert, ruleConfigMapNames []string, remoteSecrets map[string]*authSecret) []string {
+	pathPrefix := path.Join(tlsAssetsDir, cr.Namespace)
 	args := []string{
 		fmt.Sprintf("-datasource.url=%s", cr.Spec.Datasource.URL),
 	}
@@ -553,7 +551,7 @@ func buildVMAlertArgs(cr *victoriametricsv1beta1.VMAlert, ruleConfigMapNames []s
 
 	if cr.Spec.Datasource.HTTPAuth.TLSConfig != nil {
 		tlsConf := cr.Spec.Datasource.HTTPAuth.TLSConfig
-		args = tlsConf.AsArgs(args, datasourceKey, cr.Namespace)
+		args = tlsConf.AsArgs(args, datasourceKey, pathPrefix)
 	}
 
 	if cr.Spec.RemoteWrite != nil {
@@ -574,7 +572,7 @@ func buildVMAlertArgs(cr *victoriametricsv1beta1.VMAlert, ruleConfigMapNames []s
 		}
 		if cr.Spec.RemoteWrite.HTTPAuth.TLSConfig != nil {
 			tlsConf := cr.Spec.RemoteWrite.HTTPAuth.TLSConfig
-			args = tlsConf.AsArgs(args, remoteWriteKey, cr.Namespace)
+			args = tlsConf.AsArgs(args, remoteWriteKey, pathPrefix)
 		}
 	}
 	for k, v := range cr.Spec.ExternalLabels {
@@ -590,7 +588,7 @@ func buildVMAlertArgs(cr *victoriametricsv1beta1.VMAlert, ruleConfigMapNames []s
 		}
 		if cr.Spec.RemoteRead.HTTPAuth.TLSConfig != nil {
 			tlsConf := cr.Spec.RemoteRead.HTTPAuth.TLSConfig
-			args = tlsConf.AsArgs(args, remoteReadKey, cr.Namespace)
+			args = tlsConf.AsArgs(args, remoteReadKey, pathPrefix)
 		}
 
 	}

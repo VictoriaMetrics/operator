@@ -1242,9 +1242,11 @@ func buildConfigReloaderContainer(cr *victoriametricsv1beta1.VMAgent, c *config.
 	}
 	if c.VMAgentDefault.ConfigReloaderCPU != "0" && c.VMAgentDefault.UseDefaultResources {
 		configReloaderResources.Limits[corev1.ResourceCPU] = resource.MustParse(c.VMAgentDefault.ConfigReloaderCPU)
+		configReloaderResources.Requests[corev1.ResourceCPU] = resource.MustParse(c.VMAgentDefault.ConfigReloaderCPU)
 	}
 	if c.VMAgentDefault.ConfigReloaderMemory != "0" && c.VMAgentDefault.UseDefaultResources {
 		configReloaderResources.Limits[corev1.ResourceMemory] = resource.MustParse(c.VMAgentDefault.ConfigReloaderMemory)
+		configReloaderResources.Requests[corev1.ResourceMemory] = resource.MustParse(c.VMAgentDefault.ConfigReloaderMemory)
 	}
 
 	configReloadArgs := buildConfigReloaderArgs(cr, c)

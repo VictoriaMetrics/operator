@@ -270,10 +270,10 @@ func makeSpecForVMAuth(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperator
 		Spec: corev1.PodSpec{
 			NodeSelector:                  cr.Spec.NodeSelector,
 			Volumes:                       volumes,
-			InitContainers:                ic,
-			Containers:                    containers,
+			InitContainers:                addStrictSecuritySettingsToContainers(ic, c.EnableStrictSecurity),
+			Containers:                    addStrictSecuritySettingsToContainers(containers, c.EnableStrictSecurity),
 			ServiceAccountName:            cr.GetServiceAccountName(),
-			SecurityContext:               cr.Spec.SecurityContext,
+			SecurityContext:               addStrictSecuritySettingsToPod(cr.Spec.SecurityContext, c.EnableStrictSecurity),
 			ImagePullSecrets:              cr.Spec.ImagePullSecrets,
 			Affinity:                      cr.Spec.Affinity,
 			RuntimeClassName:              cr.Spec.RuntimeClassName,

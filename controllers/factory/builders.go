@@ -3,12 +3,13 @@ package factory
 import (
 	"context"
 	"fmt"
+	"strings"
+
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/api/autoscaling/v2beta2"
 	policyv1 "k8s.io/api/policy/v1"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
-	"strings"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
@@ -20,6 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -266,7 +268,6 @@ func buildDefaultPDB(cr svcBuilderArgs, spec *victoriametricsv1beta1.EmbeddedPod
 }
 
 func reconcilePDBV1(ctx context.Context, rclient client.Client, crdName string, pdb *policyv1.PodDisruptionBudget) error {
-
 	currentPdb := &policyv1.PodDisruptionBudget{}
 	err := rclient.Get(ctx, types.NamespacedName{Namespace: pdb.Namespace, Name: pdb.Name}, currentPdb)
 	if err != nil {
@@ -286,7 +287,6 @@ func reconcilePDBV1(ctx context.Context, rclient client.Client, crdName string, 
 }
 
 func reconcilePDB(ctx context.Context, rclient client.Client, crdName string, pdb *policyv1beta1.PodDisruptionBudget) error {
-
 	currentPdb := &policyv1beta1.PodDisruptionBudget{}
 	err := rclient.Get(ctx, types.NamespacedName{Namespace: pdb.Namespace, Name: pdb.Name}, currentPdb)
 	if err != nil {
@@ -392,7 +392,6 @@ func buildProbe(container v1.Container, cr probeCRD) v1.Container {
 				probe.SuccessThreshold = 1
 			}
 		}
-
 	}
 	addMissingFields(lp)
 	addMissingFields(sp)
@@ -437,7 +436,6 @@ func buildHPASpec(targetRef v2beta2.CrossVersionObjectReference, spec *victoriam
 			Behavior:       k8stools.MustConvertObjectVersionsJSON[v2beta2.HorizontalPodAutoscalerBehavior, v2.HorizontalPodAutoscalerBehavior](spec.Behaviour, "v2beta/autoscaling/behaviorSpec"),
 		},
 	}
-
 }
 
 func reconcileHPA(ctx context.Context, rclient client.Client, targetHPA client.Object) error {
@@ -524,4 +522,33 @@ func formatContainerImage(globalRepo string, containerImage string) string {
 		return globalRepo + containerImage
 	}
 	return globalRepo + containerImage[len("quay.io/"):]
+}
+
+func addStrictSecuritySettingsToPod(p *v1.PodSecurityContext, enableStrictSecurity bool) *v1.PodSecurityContext {
+	if !enableStrictSecurity || p != nil {
+		return p
+	}
+	return &v1.PodSecurityContext{
+		RunAsNonRoot: pointer.Bool(true),
+		// '65534' refers to 'nobody' in all the used default images like alpine, busybox
+		RunAsUser:  pointer.Int64(65534),
+		RunAsGroup: pointer.Int64(65534),
+		FSGroup:    pointer.Int64(65534),
+	}
+}
+
+func addStrictSecuritySettingsToContainers(containers []v1.Container, enableStrictSecurity bool) []v1.Container {
+	if !enableStrictSecurity {
+		return containers
+	}
+	for idx := range containers {
+		container := &containers[idx]
+		if container.SecurityContext == nil {
+			container.SecurityContext = &v1.SecurityContext{
+				ReadOnlyRootFilesystem:   pointer.Bool(true),
+				AllowPrivilegeEscalation: pointer.Bool(false),
+			}
+		}
+	}
+	return containers
 }

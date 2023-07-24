@@ -12,6 +12,7 @@ import (
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/controllers/factory/psp"
 	"github.com/VictoriaMetrics/operator/internal/config"
+	"golang.org/x/exp/slices"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -127,26 +128,15 @@ func createOrUpdateVMAlertSecret(ctx context.Context, rclient client.Client, cr 
 
 func CreateOrUpdateVMAlert(ctx context.Context, cr *victoriametricsv1beta1.VMAlert, rclient client.Client, c *config.BaseOperatorConf, cmNames []string) error {
 	l := log.WithValues("controller", "vmalert.crud", "vmalert", cr.Name)
+
 	// copy to avoid side effects.
 	cr = cr.DeepCopy()
-	var additionalNotifiers []victoriametricsv1beta1.VMAlertNotifierSpec
 
-	if cr.Spec.Notifier != nil {
-		cr.Spec.Notifiers = append(cr.Spec.Notifiers, *cr.Spec.Notifier)
-	}
-	// trim notifiers with non-empty notifier Selector
-	var cnt int
-	for i := range cr.Spec.Notifiers {
-		n := cr.Spec.Notifiers[i]
-		// fast path
-		if n.Selector == nil {
-			cr.Spec.Notifiers[cnt] = n
-			cnt++
-			continue
-		}
+	var additionalNotifiers []victoriametricsv1beta1.VMAlertNotifierSpec
+	for _, selector := range cr.GetNotifierSelectors() {
 		// discover alertmanagers
 		var ams victoriametricsv1beta1.VMAlertmanagerList
-		amListOpts, err := n.Selector.AsListOptions()
+		amListOpts, err := selector.AsListOptions()
 		if err != nil {
 			return fmt.Errorf("cannot convert notifier selector as ListOptions: %w", err)
 		}
@@ -154,14 +144,23 @@ func CreateOrUpdateVMAlert(ctx context.Context, cr *victoriametricsv1beta1.VMAle
 			return fmt.Errorf("cannot list alertmanagers for vmalert notifier sd: %w", err)
 		}
 		for _, item := range ams.Items {
-			if !item.DeletionTimestamp.IsZero() || (n.Selector.Namespace != nil && !n.Selector.Namespace.IsMatch(&item)) {
+			if !item.DeletionTimestamp.IsZero() || (selector.Namespace != nil && !selector.Namespace.IsMatch(&item)) {
 				continue
 			}
 			dsc := item.AsNotifiers()
 			additionalNotifiers = append(additionalNotifiers, dsc...)
 		}
 	}
-	cr.Spec.Notifiers = cr.Spec.Notifiers[:cnt]
+
+	// remove notifiers with a selector as they have been consumed and the
+	// results added to additionalNotifiers.
+	cr.Spec.Notifiers = slices.DeleteFunc(cr.Spec.Notifiers, func(n victoriametricsv1beta1.VMAlertNotifierSpec) bool {
+		return n.Selector != nil
+	})
+
+	if cr.Spec.Notifier != nil && cr.Spec.Notifier.Selector == nil {
+		cr.Spec.Notifiers = append(cr.Spec.Notifiers, *cr.Spec.Notifier)
+	}
 
 	if len(additionalNotifiers) > 0 {
 		sort.Slice(additionalNotifiers, func(i, j int) bool {

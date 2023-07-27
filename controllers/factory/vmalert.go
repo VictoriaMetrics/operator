@@ -542,6 +542,7 @@ func buildVMAlertAuthArgs(args []string, flagPrefix string, ha victoriametricsv1
 }
 
 func buildVMAlertArgs(cr *victoriametricsv1beta1.VMAlert, ruleConfigMapNames []string, remoteSecrets map[string]*authSecret) []string {
+	pathPrefix := path.Join(tlsAssetsDir, cr.Namespace)
 	args := []string{
 		fmt.Sprintf("-datasource.url=%s", cr.Spec.Datasource.URL),
 	}
@@ -552,7 +553,7 @@ func buildVMAlertArgs(cr *victoriametricsv1beta1.VMAlert, ruleConfigMapNames []s
 
 	if cr.Spec.Datasource.HTTPAuth.TLSConfig != nil {
 		tlsConf := cr.Spec.Datasource.HTTPAuth.TLSConfig
-		args = tlsConf.AsArgs(args, datasourceKey, cr.Namespace)
+		args = tlsConf.AsArgs(args, datasourceKey, pathPrefix)
 	}
 
 	if cr.Spec.RemoteWrite != nil {
@@ -573,7 +574,7 @@ func buildVMAlertArgs(cr *victoriametricsv1beta1.VMAlert, ruleConfigMapNames []s
 		}
 		if cr.Spec.RemoteWrite.HTTPAuth.TLSConfig != nil {
 			tlsConf := cr.Spec.RemoteWrite.HTTPAuth.TLSConfig
-			args = tlsConf.AsArgs(args, remoteWriteKey, cr.Namespace)
+			args = tlsConf.AsArgs(args, remoteWriteKey, pathPrefix)
 		}
 	}
 	for k, v := range cr.Spec.ExternalLabels {
@@ -589,7 +590,7 @@ func buildVMAlertArgs(cr *victoriametricsv1beta1.VMAlert, ruleConfigMapNames []s
 		}
 		if cr.Spec.RemoteRead.HTTPAuth.TLSConfig != nil {
 			tlsConf := cr.Spec.RemoteRead.HTTPAuth.TLSConfig
-			args = tlsConf.AsArgs(args, remoteReadKey, cr.Namespace)
+			args = tlsConf.AsArgs(args, remoteReadKey, pathPrefix)
 		}
 
 	}

@@ -121,9 +121,6 @@ func newStsForAlertManager(cr *victoriametricsv1beta1.VMAlertmanager, c *config.
 	if cr.Spec.Resources.Requests == nil {
 		cr.Spec.Resources.Requests = v1.ResourceList{}
 	}
-	if _, ok := cr.Spec.Resources.Requests[v1.ResourceMemory]; !ok {
-		cr.Spec.Resources.Requests[v1.ResourceMemory] = resource.MustParse("200Mi")
-	}
 
 	spec, err := makeStatefulSetSpec(cr, c, amVersion)
 	if err != nil {

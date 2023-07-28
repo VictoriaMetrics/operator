@@ -118,12 +118,6 @@ func newStsForAlertManager(cr *victoriametricsv1beta1.VMAlertmanager, c *config.
 	if cr.Spec.Retention == "" {
 		cr.Spec.Retention = defaultRetention
 	}
-	if cr.Spec.Resources.Requests == nil {
-		cr.Spec.Resources.Requests = v1.ResourceList{}
-	}
-	if _, ok := cr.Spec.Resources.Requests[v1.ResourceMemory]; !ok {
-		cr.Spec.Resources.Requests[v1.ResourceMemory] = resource.MustParse("200Mi")
-	}
 
 	spec, err := makeStatefulSetSpec(cr, c, amVersion)
 	if err != nil {
@@ -444,7 +438,7 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, c *config.Ba
 		ImagePullPolicy:          cr.Spec.Image.PullPolicy,
 		Ports:                    ports,
 		VolumeMounts:             amVolumeMounts,
-		Resources:                buildResources(cr.Spec.Resources, config.Resource(c.VMAlertDefault.Resource), c.VMAlertManager.UseDefaultResources),
+		Resources:                buildResources(cr.Spec.Resources, config.Resource(c.VMAlertManager.Resource), c.VMAlertManager.UseDefaultResources),
 		Env:                      envs,
 		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
 	}

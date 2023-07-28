@@ -40,7 +40,7 @@ type VMSingleSpec struct {
 	Image Image `json:"image,omitempty"`
 	// ImagePullSecrets An optional list of references to secrets in the same namespace
 	// to use for pulling images from registries
-	// see http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod
+	// see https://kubernetes.io/docs/concepts/containers/images/#referring-to-an-imagepullsecrets-on-a-pod
 	// +optional
 	ImagePullSecrets []v1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 	// Secrets is a list of Secrets in the same namespace as the VMSingle
@@ -186,7 +186,7 @@ type VMSingleSpec struct {
 	// ServiceSpec that will be added to vmsingle service spec
 	// +optional
 	ServiceSpec *ServiceSpec `json:"serviceSpec,omitempty"`
-	// ServiceScrapeSpec that will be added to vmselect VMServiceScrape spec
+	// ServiceScrapeSpec that will be added to vmsingle VMServiceScrape spec
 	// +optional
 	ServiceScrapeSpec *VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
 	// LivenessProbe that will be added to VMSingle pod
@@ -288,8 +288,8 @@ func (cr *VMSingle) AsOwner() []metav1.OwnerReference {
 			Kind:               cr.Kind,
 			Name:               cr.Name,
 			UID:                cr.UID,
-			Controller:         pointer.BoolPtr(true),
-			BlockOwnerDeletion: pointer.BoolPtr(true),
+			Controller:         pointer.Bool(true),
+			BlockOwnerDeletion: pointer.Bool(true),
 		},
 	}
 }

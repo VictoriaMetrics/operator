@@ -1,0 +1,86 @@
+name: Update docs
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - '.github/workflows/docs.yaml'
+      - 'docs/CHANGELOG.MD'
+      - 'api/v1beta1/*types.go'
+      - 'api/v1beta1/additional.go'
+      - 'api/victoriametrics/v1beta1/*types.go'
+      - 'api/victoriametrics/v1beta1/additional.go'
+      - 'internal/config/config.go'
+
+jobs:
+  update-docs:
+    runs-on: ubuntu-latest
+    environment:
+      name: docs
+      url: https://docs.victoriametrics.com/
+    steps:
+      -
+        name: Check out operator code
+        uses: actions/checkout@v3
+        with:
+          repository: VictoriaMetrics/operator
+          ref: master
+          token: ${{ secrets.VM_BOT_GH_TOKEN }}
+          path: "__vm-operator-repo"
+      -
+        name: Check out VM code
+        uses: actions/checkout@v3
+        with:
+          repository: VictoriaMetrics/VictoriaMetrics
+          ref: master
+          token: ${{ secrets.VM_BOT_GH_TOKEN }}
+          path: "__vm-docs-repo"
+      -
+        name: Setup Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: '1.20'
+        id: go
+      -
+        name: Setup Dependencies
+        env:
+          GO111MODULE: on
+        run: |
+          go install  golang.org/x/lint/golint@latest
+          go install github.com/kisielk/errcheck@latest
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.51.2
+          curl -L -o operator-sdk "https://github.com/operator-framework/operator-sdk/releases/download/v1.0.0/operator-sdk-v1.0.0-x86_64-linux-gnu"
+          chmod +x operator-sdk
+          sudo mv operator-sdk /bin/
+      -
+        name: Import GPG key
+        uses: crazy-max/ghaction-import-gpg@v5
+        with:
+          gpg_private_key: ${{ secrets.VM_BOT_GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.VM_BOT_PASSPHRASE }}
+          git_user_signingkey: true
+          git_commit_gpgsign: true
+          workdir: "__vm-docs-repo"
+      -
+        name: Generate vars and api doc
+        run: |
+          make operator-conf
+          make doc
+        working-directory: "__vm-operator-repo"
+      -
+        name: Update CHANGELOG in VM docs
+        run: |
+          cat ./docs/CHANGELOG.MD > ../__vm-docs-repo/docs/operator/CHANGELOG.md
+          cat ./vars.MD > ../__vm-docs-repo/docs/operator/vars.md
+          cat ./doc_api.MD > ../__vm-docs-repo/docs/operator/api.md
+        working-directory: "__vm-operator-repo"
+      -
+        name: Commit and push changes
+        run: |
+          git add docs/operator/CHANGELOG.md
+          git add docs/operator/vars.md
+          git add docs/operator/api.md
+          git commit -S -m "Automatic update operator docs"
+          git push
+        working-directory: "__vm-docs-repo"

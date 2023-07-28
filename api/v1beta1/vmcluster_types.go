@@ -54,7 +54,7 @@ type VMClusterSpec struct {
 
 	// ImagePullSecrets An optional list of references to secrets in the same namespace
 	// to use for pulling images from registries
-	// see http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod
+	// see https://kubernetes.io/docs/concepts/containers/images/#referring-to-an-imagepullsecrets-on-a-pod
 	// +optional
 	ImagePullSecrets []v1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 	// +optional
@@ -105,8 +105,8 @@ func (c *VMCluster) AsOwner() []metav1.OwnerReference {
 			Kind:               c.Kind,
 			Name:               c.Name,
 			UID:                c.UID,
-			Controller:         pointer.BoolPtr(true),
-			BlockOwnerDeletion: pointer.BoolPtr(true),
+			Controller:         pointer.Bool(true),
+			BlockOwnerDeletion: pointer.Bool(true),
 		},
 	}
 }
@@ -121,8 +121,8 @@ type VMClusterStatus struct {
 	Reason        string `json:"reason,omitempty"`
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // VMClusterList contains a list of VMCluster
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type VMClusterList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
@@ -453,7 +453,7 @@ type VMInsert struct {
 	// ServiceSpec that will be added to vminsert service spec
 	// +optional
 	ServiceSpec *ServiceSpec `json:"serviceSpec,omitempty"`
-	// ServiceScrapeSpec that will be added to vmselect VMServiceScrape spec
+	// ServiceScrapeSpec that will be added to vminsert VMServiceScrape spec
 	// +optional
 	ServiceScrapeSpec *VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
 
@@ -645,7 +645,7 @@ type VMStorage struct {
 	// ServiceSpec that will be create additional service for vmstorage
 	// +optional
 	ServiceSpec *ServiceSpec `json:"serviceSpec,omitempty"`
-	// ServiceScrapeSpec that will be added to vmselect VMServiceScrape spec
+	// ServiceScrapeSpec that will be added to vmstorage VMServiceScrape spec
 	// +optional
 	ServiceScrapeSpec *VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
 	// PodDisruptionBudget created by operator

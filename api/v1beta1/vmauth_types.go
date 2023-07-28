@@ -25,7 +25,7 @@ type VMAuthSpec struct {
 	Image Image `json:"image,omitempty"`
 	// ImagePullSecrets An optional list of references to secrets in the same namespace
 	// to use for pulling images from registries
-	// see http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod
+	// see https://kubernetes.io/docs/concepts/containers/images/#referring-to-an-imagepullsecrets-on-a-pod
 	// +optional
 	ImagePullSecrets []v1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 	// Secrets is a list of Secrets in the same namespace as the VMAuth
@@ -160,7 +160,7 @@ type VMAuthSpec struct {
 	// ServiceSpec that will be added to vmsingle service spec
 	// +optional
 	ServiceSpec *ServiceSpec `json:"serviceSpec,omitempty"`
-	// ServiceScrapeSpec that will be added to vmselect VMServiceScrape spec
+	// ServiceScrapeSpec that will be added to vmauth VMServiceScrape spec
 	// +optional
 	ServiceScrapeSpec *VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
 	// PodDisruptionBudget created by operator
@@ -238,11 +238,11 @@ type VMAuthStatus struct {
 	// todo add status.
 }
 
+// VMAuth is the Schema for the vmauths API
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +genclient
 // +k8s:openapi-gen=true
-// VMAuth is the Schema for the vmauths API
 type VMAuth struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -288,8 +288,8 @@ func (cr *VMAuth) AsOwner() []metav1.OwnerReference {
 			Kind:               cr.Kind,
 			Name:               cr.Name,
 			UID:                cr.UID,
-			Controller:         pointer.BoolPtr(true),
-			BlockOwnerDeletion: pointer.BoolPtr(true),
+			Controller:         pointer.Bool(true),
+			BlockOwnerDeletion: pointer.Bool(true),
 		},
 	}
 }

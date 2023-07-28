@@ -123,10 +123,10 @@ type StaticRef struct {
 type VMUserStatus struct {
 }
 
+// VMUser is the Schema for the vmusers API
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +genclient
-// VMUser is the Schema for the vmusers API
 type VMUser struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -166,8 +166,8 @@ func (cr *VMUser) AsOwner() []metav1.OwnerReference {
 			Kind:               cr.Kind,
 			Name:               cr.Name,
 			UID:                cr.UID,
-			Controller:         pointer.BoolPtr(true),
-			BlockOwnerDeletion: pointer.BoolPtr(true),
+			Controller:         pointer.Bool(true),
+			BlockOwnerDeletion: pointer.Bool(true),
 		},
 	}
 }

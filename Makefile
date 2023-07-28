@@ -218,7 +218,8 @@ doc: install-develop-tools
 	>> doc_api.MD
 
 operator-conf: install-develop-tools
-	envconfig-docs --input internal/config/config.go --truncate=false > vars.MD
+	cat hack/doc_vars_header.md > vars.MD
+	envconfig-docs --input internal/config/config.go --truncate=false >> vars.MD
 
 
 docker: build manager

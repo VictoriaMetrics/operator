@@ -105,11 +105,11 @@ type VMAlertmanagerConfigStatus struct {
 	ErrorReason string `json:"reason,omitempty"`
 }
 
+// VMAlertmanagerConfig is the Schema for the vmalertmanagerconfigs API
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +genclient
 // +k8s:openapi-gen=true
-// VMAlertmanagerConfig is the Schema for the vmalertmanagerconfigs API
 type VMAlertmanagerConfig struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -565,7 +565,6 @@ type SlackConfig struct {
 }
 
 // SlackField configures a single Slack field that is sent with each notification.
-
 // See https://api.slack.com/docs/message-attachments#fields for more information.
 type SlackField struct {
 	// +kubebuilder:validation:MinLength=1

@@ -29,7 +29,7 @@ type VMAgentSpec struct {
 	Image Image `json:"image,omitempty"`
 	// ImagePullSecrets An optional list of references to secrets in the same namespace
 	// to use for pulling images from registries
-	// see http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod
+	// see https://kubernetes.io/docs/concepts/containers/images/#referring-to-an-imagepullsecrets-on-a-pod
 	// +optional
 	ImagePullSecrets []v1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 	// Secrets is a list of Secrets in the same namespace as the vmagent
@@ -305,7 +305,7 @@ type VMAgentSpec struct {
 	// ServiceSpec that will be added to vmagent service spec
 	// +optional
 	ServiceSpec *ServiceSpec `json:"serviceSpec,omitempty"`
-	// ServiceScrapeSpec that will be added to vmselect VMServiceScrape spec
+	// ServiceScrapeSpec that will be added to vmagent VMServiceScrape spec
 	// +optional
 	ServiceScrapeSpec *VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
 
@@ -487,7 +487,7 @@ func (rw *VMAgentRemoteWriteSpec) HasStreamAggr() bool {
 	return rw.StreamAggrConfig != nil && len(rw.StreamAggrConfig.Rules) > 0
 }
 
-// VmAgentStatus defines the observed state of VmAgent
+// VMAgentStatus defines the observed state of VmAgent
 // +k8s:openapi-gen=true
 type VMAgentStatus struct {
 	// Shards represents total number of vmagent deployments with uniq scrape targets
@@ -530,8 +530,8 @@ type VMAgent struct {
 	Status VMAgentStatus `json:"status,omitempty"`
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // VMAgentList contains a list of VMAgent
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type VMAgentList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
@@ -545,8 +545,8 @@ func (cr *VMAgent) AsOwner() []metav1.OwnerReference {
 			Kind:               cr.Kind,
 			Name:               cr.Name,
 			UID:                cr.UID,
-			Controller:         pointer.BoolPtr(true),
-			BlockOwnerDeletion: pointer.BoolPtr(true),
+			Controller:         pointer.Bool(true),
+			BlockOwnerDeletion: pointer.Bool(true),
 		},
 	}
 }

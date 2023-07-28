@@ -35,7 +35,7 @@ type VMAlertSpec struct {
 	Image Image `json:"image,omitempty"`
 	// ImagePullSecrets An optional list of references to secrets in the same namespace
 	// to use for pulling images from registries
-	// see http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod
+	// see https://kubernetes.io/docs/concepts/containers/images/#referring-to-an-imagepullsecrets-on-a-pod
 	// +optional
 	ImagePullSecrets []v1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 
@@ -226,7 +226,7 @@ type VMAlertSpec struct {
 	// ServiceSpec that will be added to vmalert service spec
 	// +optional
 	ServiceSpec *ServiceSpec `json:"serviceSpec,omitempty"`
-	// ServiceScrapeSpec that will be added to vmselect VMServiceScrape spec
+	// ServiceScrapeSpec that will be added to vmalert VMServiceScrape spec
 	// +optional
 	ServiceScrapeSpec *VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
 
@@ -266,7 +266,7 @@ func (cr *VMAlertSpec) UnmarshalJSON(src []byte) error {
 	return nil
 }
 
-// VMAgentRemoteReadSpec defines the remote storage configuration for VmAlert to read alerts from
+// VMAlertDatasourceSpec defines the remote storage configuration for VmAlert to read alerts from
 // +k8s:openapi-gen=true
 type VMAlertDatasourceSpec struct {
 	// Victoria Metrics or VMSelect url. Required parameter. E.g. http://127.0.0.1:8428
@@ -295,7 +295,7 @@ func (cr VMAlert) NotifierAsMapKey(i int) string {
 	return fmt.Sprintf("vmalert/%s/%s/%d", cr.Namespace, cr.Name, i)
 }
 
-// VMAgentRemoteReadSpec defines the remote storage configuration for VmAlert to read alerts from
+// VMAlertRemoteReadSpec defines the remote storage configuration for VmAlert to read alerts from
 // +k8s:openapi-gen=true
 type VMAlertRemoteReadSpec struct {
 	// URL of the endpoint to send samples to.
@@ -308,7 +308,7 @@ type VMAlertRemoteReadSpec struct {
 	HTTPAuth `json:",inline,omitempty"`
 }
 
-// VMAgentRemoteWriteSpec defines the remote storage configuration for VmAlert
+// VMAlertRemoteWriteSpec defines the remote storage configuration for VmAlert
 // +k8s:openapi-gen=true
 type VMAlertRemoteWriteSpec struct {
 	// URL of the endpoint to send samples to.
@@ -330,7 +330,7 @@ type VMAlertRemoteWriteSpec struct {
 	HTTPAuth `json:",inline,omitempty"`
 }
 
-// VmAlertStatus defines the observed state of VmAlert
+// VMAlertStatus defines the observed state of VmAlert
 // +k8s:openapi-gen=true
 // +kubebuilder:subresource:status
 type VMAlertStatus struct {
@@ -401,8 +401,8 @@ func (cr *VMAlert) AsOwner() []metav1.OwnerReference {
 			Kind:               cr.Kind,
 			Name:               cr.Name,
 			UID:                cr.UID,
-			Controller:         pointer.BoolPtr(true),
-			BlockOwnerDeletion: pointer.BoolPtr(true),
+			Controller:         pointer.Bool(true),
+			BlockOwnerDeletion: pointer.Bool(true),
 		},
 	}
 }

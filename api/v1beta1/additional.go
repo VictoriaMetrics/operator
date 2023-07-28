@@ -33,7 +33,7 @@ const (
 	PVCExpandableLabel = "operator.victoriametrics.com/pvc/allow-volume-expansion"
 )
 
-// GroupVersion is group version used to register these objects
+// SchemeGroupVersion is group version used to register these objects
 var SchemeGroupVersion = schema.GroupVersion{Group: "operator.victoriametrics.com", Version: "v1beta1"}
 
 var (
@@ -459,7 +459,7 @@ type StreamAggrRule struct {
 	// If neither By nor Without are set, then the Outputs are calculated
 	// individually per each input time series.
 	// +optional
-	By []string `json:"by,omitempty" yaml:"by,omitempty""`
+	By []string `json:"by,omitempty" yaml:"by,omitempty"`
 
 	// Without is an optional list of labels, which must be excluded when grouping input series.
 	//

@@ -95,6 +95,11 @@ type Rule struct {
 	// 30s, 1m, 1h  or nanoseconds
 	// +optional
 	For string `json:"for,omitempty" yaml:"for,omitempty"`
+	// KeepFiringFor will make alert continue firing for this long
+	// even when the alerting expression no longer has results.
+	// Use time.Duration format, 30s, 1m, 1h  or nanoseconds
+	// +optional
+	KeepFiringFor string `json:"keep_firing_for,omitempty" yaml:"keep_firing_for,omitempty"`
 	// Labels will be added to rule configuration
 	// +optional
 	Labels map[string]string `json:"labels,omitempty" yaml:"labels,omitempty"`

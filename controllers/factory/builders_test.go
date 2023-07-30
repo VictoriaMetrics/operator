@@ -14,6 +14,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/utils/pointer"
 )
 
@@ -638,6 +639,7 @@ func TestAddStrictSecuritySettingsToPod(t *testing.T) {
 		podSecurityPolicy    *v1.PodSecurityContext
 		enableStrictSecurity bool
 		exp                  *v1.PodSecurityContext
+		kubeletVersion       version.Info
 	}
 	tests := []struct {
 		name     string
@@ -649,11 +651,13 @@ func TestAddStrictSecuritySettingsToPod(t *testing.T) {
 			args: args{
 				enableStrictSecurity: true,
 				exp: &v1.PodSecurityContext{
-					RunAsNonRoot: pointer.Bool(true),
-					RunAsUser:    pointer.Int64(65534),
-					RunAsGroup:   pointer.Int64(65534),
-					FSGroup:      pointer.Int64(65534),
+					RunAsNonRoot:        pointer.Bool(true),
+					RunAsUser:           pointer.Int64(65534),
+					RunAsGroup:          pointer.Int64(65534),
+					FSGroup:             pointer.Int64(65534),
+					FSGroupChangePolicy: (*v1.PodFSGroupChangePolicy)(pointer.StringPtr("OnRootMismatch")),
 				},
+				kubeletVersion: version.Info{Major: "1", Minor: "27"},
 			},
 		},
 		{
@@ -677,6 +681,7 @@ func TestAddStrictSecuritySettingsToPod(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		k8stools.SetKubernetesVersionWithDefaults(&tt.args.kubeletVersion, 0, 0)
 		res := addStrictSecuritySettingsToPod(tt.args.podSecurityPolicy, tt.args.enableStrictSecurity)
 		if diff := deep.Equal(res, tt.args.exp); len(diff) > 0 {
 			t.Fatalf("got unexpected result: %v, expect: %v", res, tt.args.exp)

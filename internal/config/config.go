@@ -254,6 +254,10 @@ type BaseOperatorConf struct {
 	// 2. RunAsUser/RunAsGroup/FSGroup: 65534
 	// '65534' refers to 'nobody' in all the used default images like alpine, busybox.
 	// If you're using customize image, please make sure '65534' is a valid uid in there or specify SecurityContext.
+	// 3. FSGroupChangePolicy: FSGroupChangePolicy: &onRootMismatch
+	// If KubeVersion>=1.20, use `FSGroupChangePolicy` to skip the recursive permission change
+	// when the root of the volume already has the correct permissions
+	//
 	// Default container SecurityContext include:
 	// 1. AllowPrivilegeEscalation: false
 	// 2. ReadOnlyRootFilesystem: true

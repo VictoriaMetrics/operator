@@ -20,30 +20,30 @@ jobs:
       name: docs
       url: https://docs.victoriametrics.com/
     steps:
-      -
-        name: Check out operator code
+
+      - name: Check out operator code
         uses: actions/checkout@v3
         with:
           repository: VictoriaMetrics/operator
           ref: master
           token: ${{ secrets.VM_BOT_GH_TOKEN }}
           path: "__vm-operator-repo"
-      -
-        name: Check out VM code
+
+      - name: Check out VM code
         uses: actions/checkout@v3
         with:
           repository: VictoriaMetrics/VictoriaMetrics
           ref: master
           token: ${{ secrets.VM_BOT_GH_TOKEN }}
           path: "__vm-docs-repo"
-      -
-        name: Setup Go
+
+      - name: Setup Go
         uses: actions/setup-go@v3
         with:
           go-version: '1.20'
         id: go
-      -
-        name: Setup Dependencies
+
+      - name: Setup Dependencies
         env:
           GO111MODULE: on
         run: |
@@ -53,8 +53,8 @@ jobs:
           curl -L -o operator-sdk "https://github.com/operator-framework/operator-sdk/releases/download/v1.0.0/operator-sdk-v1.0.0-x86_64-linux-gnu"
           chmod +x operator-sdk
           sudo mv operator-sdk /bin/
-      -
-        name: Import GPG key
+
+      - name: Import GPG key
         uses: crazy-max/ghaction-import-gpg@v5
         with:
           gpg_private_key: ${{ secrets.VM_BOT_GPG_PRIVATE_KEY }}
@@ -62,25 +62,32 @@ jobs:
           git_user_signingkey: true
           git_commit_gpgsign: true
           workdir: "__vm-docs-repo"
-      -
-        name: Generate vars and api doc
+
+      - name: Generate vars and api doc
         run: |
           make operator-conf
           make doc
         working-directory: "__vm-operator-repo"
-      -
-        name: Update CHANGELOG in VM docs
+
+      - name: Update CHANGELOG in VM docs
         run: |
           cat ./docs/CHANGELOG.MD > ../__vm-docs-repo/docs/operator/CHANGELOG.md
           cat ./vars.MD > ../__vm-docs-repo/docs/operator/vars.md
           cat ./doc_api.MD > ../__vm-docs-repo/docs/operator/api.md
         working-directory: "__vm-operator-repo"
-      -
-        name: Commit and push changes
+
+      - name: Commit and push changes
         run: |
+          export VM_GIT_BRANCH_NAME="operator-docs-update-$(date +%s)"
+          export VM_GIT_COMMIT_SHA="$(git rev-parse --short $GITHUB_SHA)"
+          git checkout -b "${VM_GIT_BRANCH_NAME}"
           git add docs/operator/CHANGELOG.md
           git add docs/operator/vars.md
           git add docs/operator/api.md
-          git commit -S -m "Automatic update operator docs"
-          git push
+          git commit -S -m "Automatic update operator docs from ${GITHUB_REPOSITORY}@${VM_GIT_COMMIT_SHA}"
+          git push origin ${VM_GIT_BRANCH_NAME}
+          gh pr create -f
+          gh pr merge ${VM_GIT_BRANCH_NAME} --auto --squash
         working-directory: "__vm-docs-repo"
+        env:
+          GITHUB_TOKEN: ${{ secrets.VM_BOT_GH_TOKEN }}

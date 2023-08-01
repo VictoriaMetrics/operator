@@ -78,6 +78,9 @@ type TargetRef struct {
 	// https://docs.victoriametrics.com/vmauth.html#ip-filters
 	// +optional
 	IPFilters VMUserIPFilters `json:"ip_filters,omitempty"`
+	// BasicAuth allow an endpoint to authenticate over basic authentication
+	// +optional
+	BasicAuth *BasicAuth `json:"basicAuth,omitempty"`
 }
 
 // VMUserIPFilters defines filters for IP addresses

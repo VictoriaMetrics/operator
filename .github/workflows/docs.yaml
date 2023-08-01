@@ -87,7 +87,6 @@ jobs:
           git commit -S -m "Automatic update operator docs from ${GITHUB_REPOSITORY}@${VM_GIT_COMMIT_SHA}"
           git push origin ${VM_GIT_BRANCH_NAME}
           gh pr create -f
-          gh pr merge ${VM_GIT_BRANCH_NAME} --auto --squash
         working-directory: "__vm-docs-repo"
         env:
           GITHUB_TOKEN: ${{ secrets.VM_BOT_GH_TOKEN }}

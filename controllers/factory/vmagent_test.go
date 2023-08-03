@@ -8,17 +8,19 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/go-test/deep"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/utils/pointer"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/config"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 func TestCreateOrUpdateVMAgent(t *testing.T) {
@@ -29,12 +31,13 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 	tests := []struct {
 		name              string
 		args              args
-		want              reconcile.Result
+		validate          func(set *appsv1.StatefulSet) error
+		statefulsetMode   bool
 		wantErr           bool
 		predefinedObjects []runtime.Object
 	}{
 		{
-			name: "generate base vmagent",
+			name: "generate vmagent statefulset with storage",
 			args: args{
 				c: config.MustGetBaseConfig(),
 				cr: &victoriametricsv1beta1.VMAgent{
@@ -46,9 +49,67 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 						RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
 							{URL: "http://remote-write"},
 						},
+						StatefulMode: true,
+						StatefulStorage: &victoriametricsv1beta1.StorageSpec{
+							VolumeClaimTemplate: victoriametricsv1beta1.EmbeddedPersistentVolumeClaim{
+								Spec: corev1.PersistentVolumeClaimSpec{
+									StorageClassName: pointer.StringPtr("embed-sc"),
+									Resources: corev1.ResourceRequirements{
+										Requests: map[corev1.ResourceName]resource.Quantity{
+											corev1.ResourceStorage: resource.MustParse("10Gi"),
+										},
+									},
+								},
+							},
+						},
+						ClaimTemplates: []corev1.PersistentVolumeClaim{
+							{
+								ObjectMeta: metav1.ObjectMeta{
+									Name: "extraTemplate",
+								},
+								Spec: corev1.PersistentVolumeClaimSpec{
+									StorageClassName: pointer.StringPtr("default"),
+									Resources: corev1.ResourceRequirements{
+										Requests: map[corev1.ResourceName]resource.Quantity{
+											corev1.ResourceStorage: resource.MustParse("2Gi"),
+										},
+									},
+								},
+							},
+						},
 					},
 				},
 			},
+			validate: func(got *appsv1.StatefulSet) error {
+				if len(got.Spec.Template.Spec.Containers) != 2 {
+					return fmt.Errorf("unexpected count of container, got: %d, want: %d", len(got.Spec.Template.Spec.Containers), 2)
+				}
+				if len(got.Spec.VolumeClaimTemplates) != 2 {
+					return fmt.Errorf("unexpected count of VolumeClaimTemplates, got: %d, want: %d", len(got.Spec.VolumeClaimTemplates), 2)
+				}
+				if *got.Spec.VolumeClaimTemplates[0].Spec.StorageClassName != "embed-sc" {
+					return fmt.Errorf("unexpected embed VolumeClaimTemplates name, got: %s, want: %s", *got.Spec.VolumeClaimTemplates[0].Spec.StorageClassName, "embed-sc")
+				}
+				if diff := deep.Equal(got.Spec.VolumeClaimTemplates[0].Spec.Resources, corev1.ResourceRequirements{
+					Requests: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceStorage: resource.MustParse("10Gi"),
+					},
+				}); len(diff) != 0 {
+					return fmt.Errorf("unexpected embed VolumeClaimTemplates resources, diff: %v", diff)
+				}
+				if *got.Spec.VolumeClaimTemplates[1].Spec.StorageClassName != "default" {
+					return fmt.Errorf("unexpected extra VolumeClaimTemplates, got: %s, want: %s", *got.Spec.VolumeClaimTemplates[1].Spec.StorageClassName, "default")
+				}
+				if diff := deep.Equal(got.Spec.VolumeClaimTemplates[1].Spec.Resources, corev1.ResourceRequirements{
+					Requests: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceStorage: resource.MustParse("2Gi"),
+					},
+				}); len(diff) != 0 {
+					return fmt.Errorf("unexpected extra VolumeClaimTemplates resources, diff: %v", diff)
+				}
+				return nil
+			},
+			statefulsetMode: true,
 		},
 		{
 			name: "generate with shards vmagent",
@@ -145,7 +206,8 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 					Spec: victoriametricsv1beta1.VMAgentSpec{
 						RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
 							{URL: "http://remote-write"},
-							{URL: "http://remote-write2",
+							{
+								URL: "http://remote-write2",
 								TLSConfig: &victoriametricsv1beta1.TLSConfig{
 									CA: victoriametricsv1beta1.SecretOrConfigMap{
 										Secret: &corev1.SecretKeySelector{
@@ -171,7 +233,8 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 									},
 								},
 							},
-							{URL: "http://remote-write3",
+							{
+								URL: "http://remote-write3",
 								TLSConfig: &victoriametricsv1beta1.TLSConfig{
 									CA: victoriametricsv1beta1.SecretOrConfigMap{
 										ConfigMap: &corev1.ConfigMapKeySelector{
@@ -195,9 +258,12 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 										},
 										Key: "key",
 									},
-								}},
-							{URL: "http://remote-write4",
-								TLSConfig: &victoriametricsv1beta1.TLSConfig{CertFile: "/tmp/cert1", KeyFile: "/tmp/key1", CAFile: "/tmp/ca"}},
+								},
+							},
+							{
+								URL:       "http://remote-write4",
+								TLSConfig: &victoriametricsv1beta1.TLSConfig{CertFile: "/tmp/cert1", KeyFile: "/tmp/key1", CAFile: "/tmp/ca"},
+							},
 						},
 						ServiceScrapeSelector: &metav1.LabelSelector{},
 					},
@@ -298,7 +364,8 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 				},
 			},
 			predefinedObjects: []runtime.Object{
-				&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "add-cfg", Namespace: "default"},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{Name: "add-cfg", Namespace: "default"},
 					Data: map[string][]byte{"agent.yaml": []byte(strings.TrimSpace(`
 - job_name: "alertmanager"
   static_configs:
@@ -317,7 +384,15 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 				t.Errorf("CreateOrUpdateVMAgent() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-
+			if tt.statefulsetMode {
+				var got appsv1.StatefulSet
+				if err := fclient.Get(context.Background(), types.NamespacedName{Namespace: tt.args.cr.Namespace, Name: tt.args.cr.PrefixedName()}, &got); (err != nil) != tt.wantErr {
+					t.Fatalf("CreateOrUpdateVMAgent() error = %v, wantErr %v", err, tt.wantErr)
+				}
+				if err := tt.validate(&got); err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+			}
 		})
 	}
 }
@@ -481,7 +556,6 @@ func TestBuildRemoteWrites(t *testing.T) {
 		args args
 		want []string
 	}{
-
 		{
 			name: "test with tls config full",
 			args: args{
@@ -625,20 +699,22 @@ func TestBuildRemoteWrites(t *testing.T) {
 			args: args{
 				ssCache: &scrapesSecretsCache{},
 				cr: &victoriametricsv1beta1.VMAgent{
-					Spec: victoriametricsv1beta1.VMAgentSpec{RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
-						{
-							URL: "vminsert-cluster-1:8480",
+					Spec: victoriametricsv1beta1.VMAgentSpec{
+						RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
+							{
+								URL: "vminsert-cluster-1:8480",
 
-							SendTimeout: pointer.String("10s"),
+								SendTimeout: pointer.String("10s"),
+							},
+							{
+								URL:         "vminsert-cluster-2:8480",
+								SendTimeout: pointer.String("15s"),
+							},
 						},
-						{
-							URL:         "vminsert-cluster-2:8480",
-							SendTimeout: pointer.String("15s"),
-						},
-					},
 						RemoteWriteSettings: &victoriametricsv1beta1.VMAgentRemoteWriteSettings{
 							UseMultiTenantMode: true,
-						}},
+						},
+					},
 				},
 			},
 			want: []string{"-remoteWrite.multitenantURL=vminsert-cluster-1:8480,vminsert-cluster-2:8480", "-remoteWrite.sendTimeout=10s,15s"},
@@ -1407,4 +1483,16 @@ func TestBuildRemoteWriteSettings(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestAppend(t *testing.T) {
+	t1 := []corev1.PersistentVolumeClaim{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "string",
+			},
+		},
+	}
+	t1 = append(t1, t1...)
+	fmt.Println(t1)
 }

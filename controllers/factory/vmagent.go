@@ -252,7 +252,7 @@ func newDeployForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOpera
 			},
 		}
 		cr.Spec.StatefulStorage.IntoSTSVolume(vmAgentPersistentQueueMountName, &stsSpec.Spec)
-		cr.Spec.ClaimTemplates = append(cr.Spec.ClaimTemplates, cr.Spec.ClaimTemplates...)
+		stsSpec.Spec.VolumeClaimTemplates = append(stsSpec.Spec.VolumeClaimTemplates, cr.Spec.ClaimTemplates...)
 		return stsSpec, nil
 	}
 

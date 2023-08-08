@@ -19,6 +19,7 @@
     - **`VMAlert.spec.notifiers[].bearerTokenFile` --> `VMAlert.spec.notifiers[].bearerTokenFile`,**
     - **`VMAlert.spec.remoteRead.bearerTokenFilePath` --> `VMAlert.spec.remoteRead.bearerTokenFile`,**
     - **`VMAlert.spec.remoteWrite.bearerTokenFilePath` --> `VMAlert.spec.remoteWrite.bearerTokenFile`.**
+- **[streamaggrconfig](https://docs.victoriametrics.com/operator/api.html#streamaggrconfig): Field `match` type was changed from string to list. If you defined `rules.match` for [vmagent](https://docs.victoriametrics.com/operator/api.html#vmagent) or [vmsingle](https://docs.victoriametrics.com/operator/api.html#vmsingle), the field must be reapplied after upgrading. See [this issue](https://github.com/VictoriaMetrics/VictoriaMetrics/issues/4635) for details.**
 
 ### Fixes
 
@@ -31,6 +32,10 @@
 ### Features
 
 - [vmagent](https://docs.victoriametrics.com/operator/api.html#vmagent): add [example config](https://github.com/VictoriaMetrics/operator/blob/master/config/examples/vmagent_stateful_with_sharding.yaml) for vmagent statefulmode.
+- [vmagent](https://docs.victoriametrics.com/operator/api.html#vmagent)/[vmsingle](https://docs.victoriametrics.com/operator/api.html#vmsingle): adapt new features in streaming aggregation:
+  - support `streamAggr.dropInput`, see [this issue](https://github.com/VictoriaMetrics/VictoriaMetrics/issues/4243) for details;
+  - support list for `match` parameter, see [this issue](https://github.com/VictoriaMetrics/VictoriaMetrics/issues/4635) for details;
+  - support `staleness_interval`, see [this issue](https://github.com/VictoriaMetrics/VictoriaMetrics/issues/4667) for details.
 - [vmcluster](https://docs.victoriametrics.com/operator/api.html#vmagent): add [example config](https://github.com/VictoriaMetrics/operator/blob/master/config/examples/vmcluster_with_additional_claim.yaml) for cluster with custom storage claims.
 - [vmrule](https://docs.victoriametrics.com/operator/api.html#vmrule): support `update_entries_limit` field in rules, refer to [alerting rules](https://docs.victoriametrics.com/vmalert.html#alerting-rules). See [this PR](https://github.com/VictoriaMetrics/operator/pull/691) for details.
 - [vmrule](https://docs.victoriametrics.com/operator/api.html#vmrule): support `keep_firing_for` field in rules, refer to [alerting rules](https://docs.victoriametrics.com/vmalert.html#alerting-rules). See [this PR](https://github.com/VictoriaMetrics/operator/pull/711) for details.

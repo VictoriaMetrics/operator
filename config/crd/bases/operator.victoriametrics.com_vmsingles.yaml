@@ -172,7 +172,7 @@ spec:
               imagePullSecrets:
                 description: ImagePullSecrets An optional list of references to secrets
                   in the same namespace to use for pulling images from registries
-                  see http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod
+                  see https://kubernetes.io/docs/concepts/containers/images/#referring-to-an-imagepullsecrets-on-a-pod
                 items:
                   description: LocalObjectReference contains enough information to
                     let you locate the referenced object inside the same namespace.
@@ -366,7 +366,7 @@ spec:
                   to use to run the VMSingle Pods.
                 type: string
               serviceScrapeSpec:
-                description: ServiceScrapeSpec that will be added to vmselect VMServiceScrape
+                description: ServiceScrapeSpec that will be added to vmsingle VMServiceScrape
                   spec
                 required:
                 - endpoints
@@ -623,6 +623,9 @@ spec:
                     description: Allows setting different de-duplication intervals
                       per each configured remote storage
                     type: string
+                  dropInput:
+                    description: Allow drop all the input samples after the aggregation
+                    type: boolean
                   keepInput:
                     description: Allows writing both raw and aggregate data
                     type: boolean
@@ -724,7 +727,9 @@ spec:
                           description: "Match is a label selector for filtering time
                             series for the given selector. \n If the match isn't set,
                             then all the input time series are processed."
-                          type: string
+                          items:
+                            type: string
+                          type: array
                         output_relabel_configs:
                           description: OutputRelabelConfigs is an optional relabeling
                             rules, which are applied on the aggregated output before
@@ -821,6 +826,11 @@ spec:
                           items:
                             type: string
                           type: array
+                        staleness_interval:
+                          description: StalenessInterval defines an interval after
+                            which the series state will be reset if no samples have
+                            been sent during it.
+                          type: string
                         without:
                           description: "Without is an optional list of labels, which
                             must be excluded when grouping input series. \n See also

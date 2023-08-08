@@ -487,7 +487,7 @@ func (rw *VMAgentRemoteWriteSpec) HasStreamAggr() bool {
 	return rw.StreamAggrConfig != nil && len(rw.StreamAggrConfig.Rules) > 0
 }
 
-// VMAgentStatus defines the observed state of VmAgent
+// VMAgentStatus defines the observed state of VMAgent
 // +k8s:openapi-gen=true
 type VMAgentStatus struct {
 	// Shards represents total number of vmagent deployments with uniq scrape targets
@@ -668,7 +668,6 @@ func (cr *VMAgent) Probe() *EmbeddedProbes {
 }
 
 func (cr *VMAgent) ProbePath() string {
-
 	return buildPathWithPrefixFlag(cr.Spec.ExtraArgs, healthPath)
 }
 

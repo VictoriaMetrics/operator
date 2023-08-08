@@ -411,6 +411,8 @@ type StreamAggrConfig struct {
 	// Allows writing both raw and aggregate data
 	// +optional
 	KeepInput bool `json:"keepInput,omitempty"`
+	// Allow drop all the input samples after the aggregation
+	DropInput bool `json:"dropInput,omitempty"`
 	// Allows setting different de-duplication intervals per each configured remote storage
 	// +optional
 	DedupInterval string `json:"dedupInterval,omitempty"`
@@ -423,11 +425,13 @@ type StreamAggrRule struct {
 	//
 	// If the match isn't set, then all the input time series are processed.
 	// +optional
-	Match string `json:"match,omitempty" yaml:"match,omitempty"`
+	Match []string `json:"match,omitempty" yaml:"match,omitempty"`
 
 	// Interval is the interval between aggregations.
 	Interval string `json:"interval" yaml:"interval"`
 
+	// StalenessInterval defines an interval after which the series state will be reset if no samples have been sent during it.
+	StalenessInterval string `json:"staleness_interval,omitempty" yaml:"staleness_interval,omitempty"`
 	// Outputs is a list of output aggregate functions to produce.
 	//
 	// The following names are allowed:

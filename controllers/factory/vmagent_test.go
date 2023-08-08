@@ -1307,11 +1307,12 @@ func TestCreateOrUpdateStreamAggrConfig(t *testing.T) {
 								URL: "localhost:8429",
 								StreamAggrConfig: &victoriametricsv1beta1.StreamAggrConfig{
 									Rules: []victoriametricsv1beta1.StreamAggrRule{{
-										Match:    `{__name__=~"count"}`,
-										Interval: "1m",
-										Outputs:  []string{"total", "avg"},
-										By:       []string{"job", "instance"},
-										Without:  []string{"pod"},
+										Match:             []string{`{__name__="count1"}`, `{__name__="count2"}`},
+										Interval:          "1m",
+										StalenessInterval: "2m",
+										Outputs:           []string{"total", "avg"},
+										By:                []string{"job", "instance"},
+										Without:           []string{"pod"},
 										OutputRelabelConfigs: []victoriametricsv1beta1.RelabelConfig{{
 											SourceLabels: []string{"__name__"},
 											TargetLabel:  "metric",
@@ -1329,8 +1330,11 @@ func TestCreateOrUpdateStreamAggrConfig(t *testing.T) {
 				if !ok {
 					return fmt.Errorf("key: %s, not exists at map: %v", "RWS_0-CM-STREAM-AGGR-CONFl", cm.BinaryData)
 				}
-				wantGlobal := `- match: '{__name__=~"count"}'
+				wantGlobal := `- match:
+  - '{__name__="count1"}'
+  - '{__name__="count2"}'
   interval: 1m
+  staleness_interval: 2m
   outputs:
   - total
   - avg

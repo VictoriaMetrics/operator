@@ -330,7 +330,7 @@ type VMAlertRemoteWriteSpec struct {
 	HTTPAuth `json:",inline,omitempty"`
 }
 
-// VMAlertStatus defines the observed state of VmAlert
+// VMAlertStatus defines the observed state of VMAlert
 // +k8s:openapi-gen=true
 // +kubebuilder:subresource:status
 type VMAlertStatus struct {

@@ -3,17 +3,18 @@ package v1beta1
 import (
 	"fmt"
 	"path"
+	"reflect"
 	"strings"
 
+	"gopkg.in/yaml.v2"
+
 	appsv1 "k8s.io/api/apps/v1"
-
 	"k8s.io/api/autoscaling/v2beta2"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -425,7 +426,7 @@ type StreamAggrRule struct {
 	//
 	// If the match isn't set, then all the input time series are processed.
 	// +optional
-	Match []string `json:"match,omitempty" yaml:"match,omitempty"`
+	Match Match `json:"match,omitempty" yaml:"match,omitempty"`
 
 	// Interval is the interval between aggregations.
 	Interval string `json:"interval" yaml:"interval"`
@@ -494,4 +495,34 @@ type KeyValue struct {
 	Key string `json:"key"`
 	// Value of the tuple.
 	Value string `json:"value"`
+}
+
+type Match []string
+
+func (m *Match) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var raw any
+	if err := unmarshal(&raw); err != nil {
+		return fmt.Errorf("cannot unmarshal match: %w", err)
+	}
+	rawType := reflect.TypeOf(raw)
+	switch rawType.Kind() {
+	case reflect.String:
+		var match string
+		if err := unmarshal(&match); err != nil {
+			return err
+		}
+		*m = []string{match}
+		return nil
+	case reflect.Slice, reflect.Array:
+		var match []string
+		if err := unmarshal(&match); err != nil {
+			return err
+		}
+		*m = match
+		return nil
+	default:
+		return &yaml.TypeError{Errors: []string{
+			fmt.Sprintf("cannot unmarshal %#v into Go struct field `Match` of type %v", raw, rawType),
+		}}
+	}
 }

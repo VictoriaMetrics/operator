@@ -19,7 +19,6 @@
     - **`VMAlert.spec.notifiers[].bearerTokenFile` --> `VMAlert.spec.notifiers[].bearerTokenFile`,**
     - **`VMAlert.spec.remoteRead.bearerTokenFilePath` --> `VMAlert.spec.remoteRead.bearerTokenFile`,**
     - **`VMAlert.spec.remoteWrite.bearerTokenFilePath` --> `VMAlert.spec.remoteWrite.bearerTokenFile`.**
-- **[streamaggrconfig](https://docs.victoriametrics.com/operator/api.html#streamaggrconfig): Field `match` type was changed from string to list. If you defined `rules.match` for [vmagent](https://docs.victoriametrics.com/operator/api.html#vmagent) or [vmsingle](https://docs.victoriametrics.com/operator/api.html#vmsingle), the field must be reapplied after upgrading. See [this issue](https://github.com/VictoriaMetrics/VictoriaMetrics/issues/4635) for details.**
 
 ### Fixes
 

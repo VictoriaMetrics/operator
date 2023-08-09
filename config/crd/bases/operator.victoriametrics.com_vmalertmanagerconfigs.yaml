@@ -771,7 +771,8 @@ spec:
                             description: A list of Slack fields that are sent with
                               each notification.
                             items:
-                              description: See https://api.slack.com/docs/message-attachments#fields
+                              description: SlackField configures a single Slack field
+                                that is sent with each notification. See https://api.slack.com/docs/message-attachments#fields
                                 for more information.
                               properties:
                                 short:

@@ -170,7 +170,7 @@ spec:
               imagePullSecrets:
                 description: ImagePullSecrets An optional list of references to secrets
                   in the same namespace to use for pulling images from registries
-                  see http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod
+                  see https://kubernetes.io/docs/concepts/containers/images/#referring-to-an-imagepullsecrets-on-a-pod
                 items:
                   description: LocalObjectReference contains enough information to
                     let you locate the referenced object inside the same namespace.
@@ -599,7 +599,7 @@ spec:
                   to use to run the VMAuth Pods.
                 type: string
               serviceScrapeSpec:
-                description: ServiceScrapeSpec that will be added to vmselect VMServiceScrape
+                description: ServiceScrapeSpec that will be added to vmauth VMServiceScrape
                   spec
                 required:
                 - endpoints

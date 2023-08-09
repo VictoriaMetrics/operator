@@ -1038,6 +1038,7 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, ssCache *scrapesSecre
 	headers := remoteFlag{flagSetting: "-remoteWrite.headers="}
 	streamAggrConfig := remoteFlag{flagSetting: "-remoteWrite.streamAggr.config="}
 	streamAggrKeepInput := remoteFlag{flagSetting: "-remoteWrite.streamAggr.keepInput="}
+	streamAggrDropInput := remoteFlag{flagSetting: "-remoteWrite.streamAggr.dropInput="}
 	streamAggrDedupInterval := remoteFlag{flagSetting: "-remoteWrite.streamAggr.dedupInterval="}
 
 	pathPrefix := path.Join(tlsAssetsDir, cr.Namespace)
@@ -1180,7 +1181,7 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, ssCache *scrapesSecre
 		oauth2Scopes.flagSetting += fmt.Sprintf("%s,", oascopes)
 
 		var dedupIntVal, streamConfVal string
-		var keepInputVal bool
+		var keepInputVal, dropInputVal bool
 		if rws.HasStreamAggr() {
 			streamAggrConfig.isNotNull = true
 			streamConfVal = path.Join(StreamAggrConfigDir, rws.AsConfigMapKey(i, "stream-aggr-conf"))
@@ -1194,9 +1195,14 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, ssCache *scrapesSecre
 			if keepInputVal {
 				streamAggrKeepInput.isNotNull = true
 			}
+			dropInputVal = rws.StreamAggrConfig.DropInput
+			if dropInputVal {
+				streamAggrDropInput.isNotNull = true
+			}
 		}
 		streamAggrConfig.flagSetting += fmt.Sprintf("%s,", streamConfVal)
 		streamAggrKeepInput.flagSetting += fmt.Sprintf("%v,", keepInputVal)
+		streamAggrDropInput.flagSetting += fmt.Sprintf("%v,", dropInputVal)
 		streamAggrDedupInterval.flagSetting += fmt.Sprintf("%s,", dedupIntVal)
 	}
 	remoteArgs = append(remoteArgs, url, authUser, bearerTokenFile, urlRelabelConfig, tlsInsecure, sendTimeout)

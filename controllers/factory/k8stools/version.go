@@ -69,6 +69,16 @@ func IsHPAV2BetaSupported() bool {
 	return false
 }
 
+// IsFSGroupChangePolicySupported checks if `fsGroupChangePolicy` is supported,
+// Supported since 1.20
+// https://kubernetes.io/blog/2020/12/14/kubernetes-release-1.20-fsgroupchangepolicy-fsgrouppolicy/#allow-users-to-skip-recursive-permission-changes-on-mount
+func IsFSGroupChangePolicySupported() bool {
+	if ServerMajorVersion == 1 && ServerMinorVersion >= 20 {
+		return true
+	}
+	return false
+}
+
 // NewHPAEmptyObject returns HorizontalPodAutoscaler object for given kubernetes version
 func NewHPAEmptyObject(opts ...func(obj client.Object)) client.Object {
 	var hpa client.Object = &v2beta2.HorizontalPodAutoscaler{}

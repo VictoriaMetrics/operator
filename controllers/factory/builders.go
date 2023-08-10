@@ -528,13 +528,21 @@ func addStrictSecuritySettingsToPod(p *v1.PodSecurityContext, enableStrictSecuri
 	if !enableStrictSecurity || p != nil {
 		return p
 	}
-	return &v1.PodSecurityContext{
+	securityContext := v1.PodSecurityContext{
 		RunAsNonRoot: pointer.Bool(true),
 		// '65534' refers to 'nobody' in all the used default images like alpine, busybox
 		RunAsUser:  pointer.Int64(65534),
 		RunAsGroup: pointer.Int64(65534),
 		FSGroup:    pointer.Int64(65534),
+		SeccompProfile: &v1.SeccompProfile{
+			Type: v1.SeccompProfileTypeRuntimeDefault,
+		},
 	}
+	if k8stools.IsFSGroupChangePolicySupported() {
+		onRootMismatch := v1.FSGroupChangeOnRootMismatch
+		securityContext.FSGroupChangePolicy = &onRootMismatch
+	}
+	return &securityContext
 }
 
 func addStrictSecuritySettingsToContainers(containers []v1.Container, enableStrictSecurity bool) []v1.Container {
@@ -547,6 +555,11 @@ func addStrictSecuritySettingsToContainers(containers []v1.Container, enableStri
 			container.SecurityContext = &v1.SecurityContext{
 				ReadOnlyRootFilesystem:   pointer.Bool(true),
 				AllowPrivilegeEscalation: pointer.Bool(false),
+				Capabilities: &v1.Capabilities{
+					Drop: []v1.Capability{
+						"ALL",
+					},
+				},
 			}
 		}
 	}

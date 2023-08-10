@@ -656,6 +656,9 @@ func TestAddStrictSecuritySettingsToPod(t *testing.T) {
 					RunAsGroup:          pointer.Int64(65534),
 					FSGroup:             pointer.Int64(65534),
 					FSGroupChangePolicy: (*v1.PodFSGroupChangePolicy)(pointer.StringPtr("OnRootMismatch")),
+					SeccompProfile: &v1.SeccompProfile{
+						Type: v1.SeccompProfileTypeRuntimeDefault,
+					},
 				},
 				kubeletVersion: version.Info{Major: "1", Minor: "27"},
 			},
@@ -727,6 +730,11 @@ func TestAddStrictSecuritySettingsToContainers(t *testing.T) {
 						SecurityContext: &v1.SecurityContext{
 							ReadOnlyRootFilesystem:   pointer.Bool(true),
 							AllowPrivilegeEscalation: pointer.Bool(false),
+							Capabilities: &v1.Capabilities{
+								Drop: []v1.Capability{
+									"ALL",
+								},
+							},
 						},
 					},
 				},

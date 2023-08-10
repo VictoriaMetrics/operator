@@ -36,8 +36,7 @@ func cleanUpFinalize(ctx context.Context, rclient client.Client, instance client
 // One of possible solutions - save current sts to the object annotation and remove it later if needed.
 // Other solution, to check orphaned objects by selector.
 // Lets leave it as this for now and handle later.
-func wasCreatedSTS(ctx context.Context, rclient client.Client, pvcName string, newSTS, existingSTS *appsv1.StatefulSet) (bool, error) {
-
+func wasCreatedSTS(ctx context.Context, rclient client.Client, newSTS, existingSTS *appsv1.StatefulSet) (bool, error) {
 	handleRemove := func() error {
 		// removes finalizer from exist sts, it allows to delete it
 		if err := cleanUpFinalize(ctx, rclient, existingSTS); err != nil {
@@ -67,7 +66,7 @@ func wasCreatedSTS(ctx context.Context, rclient client.Client, pvcName string, n
 			// try to restore previous one and throw error
 			existingSTS.ResourceVersion = ""
 			if err2 := rclient.Create(ctx, existingSTS); err2 != nil {
-				return fmt.Errorf("cannot restore previous sts: %s configruation after remove original error: %s: restore error %w", existingSTS.Name, err, err2)
+				return fmt.Errorf("cannot restore previous sts: %s configuration after remove original error: %s: restore error %w", existingSTS.Name, err, err2)
 			}
 			return fmt.Errorf("cannot create new sts: %s instead of replaced, some manual action is required, err: %w", newSTS.Name, err)
 		}
@@ -83,7 +82,7 @@ func wasCreatedSTS(ctx context.Context, rclient client.Client, pvcName string, n
 		}
 		return nil
 	}
-	needRecreateOnStorageChange := func() bool {
+	needRecreateOnStorageChange := func(pvcName string) bool {
 		actualPVC := getPVCFromSTS(pvcName, existingSTS)
 		newPVC := getPVCFromSTS(pvcName, newSTS)
 		// fast path
@@ -114,19 +113,18 @@ func wasCreatedSTS(ctx context.Context, rclient client.Client, pvcName string, n
 
 		return false
 	}
-	needRecreateOnSpecChange := func() bool {
-		// vct changed - added or removed.
-		if len(newSTS.Spec.VolumeClaimTemplates) != len(existingSTS.Spec.VolumeClaimTemplates) {
-			log.Info("VolumeClaimTemplate for statefulset was changed, recreating it", "sts", newSTS.Name)
-			return true
-		}
-		return false
-	}
 
-	if needRecreateOnSpecChange() || needRecreateOnStorageChange() {
+	// if vct got added, removed or changed, recreate the sts
+	if len(newSTS.Spec.VolumeClaimTemplates) != len(existingSTS.Spec.VolumeClaimTemplates) {
+		log.Info("VolumeClaimTemplates for statefulset was changed, recreating it", "sts", newSTS.Name)
 		return true, handleRemove()
 	}
-
+	for _, newVCT := range newSTS.Spec.VolumeClaimTemplates {
+		if needRecreateOnStorageChange(newVCT.Name) {
+			log.Info("VolumeClaimTemplate for statefulset was changed, recreating it", "sts", newSTS.Name, "VolumeClaimTemplates", newVCT.Name)
+			return true, handleRemove()
+		}
+	}
 	return false, nil
 }
 
@@ -163,7 +161,6 @@ func growSTSPVC(ctx context.Context, rclient client.Client, sts *appsv1.Stateful
 
 // isStorageClassExpandable check is it possible to update size of given pvc
 func isStorageClassExpandable(ctx context.Context, rclient client.Client, pvc *corev1.PersistentVolumeClaim) (bool, error) {
-
 	// do not perform any checks if user set annotation explicitly.
 	if pvc.Annotations[victoriametricsv1beta1.PVCExpandableLabel] == "true" {
 		return true, nil

@@ -22,7 +22,6 @@ import (
 func Test_reCreateSTS(t *testing.T) {
 	type args struct {
 		ctx         context.Context
-		pvcName     string
 		newSTS      *appsv1.StatefulSet
 		existingSTS *appsv1.StatefulSet
 	}
@@ -56,15 +55,6 @@ func Test_reCreateSTS(t *testing.T) {
 							},
 						},
 					}},
-				},
-				pvcName: "new-claim",
-			},
-			predefinedObjects: []runtime.Object{
-				&appsv1.StatefulSet{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "vmselect",
-						Namespace: "default",
-					},
 				},
 			},
 			validate: func(sts *appsv1.StatefulSet) error {
@@ -110,25 +100,6 @@ func Test_reCreateSTS(t *testing.T) {
 						},
 					}},
 				},
-				pvcName: "new-claim",
-			},
-			predefinedObjects: []runtime.Object{
-				&appsv1.StatefulSet{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "vmselect",
-						Namespace: "default",
-					},
-					Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []v1.PersistentVolumeClaim{
-						{
-							ObjectMeta: metav1.ObjectMeta{Name: "new-claim"},
-							Spec: v1.PersistentVolumeClaimSpec{Resources: v1.ResourceRequirements{
-								Requests: map[v1.ResourceName]resource.Quantity{
-									v1.ResourceStorage: resource.MustParse("10Gi"),
-								},
-							}},
-						},
-					}},
-				},
 			},
 			validate: func(sts *appsv1.StatefulSet) error {
 				if len(sts.Spec.VolumeClaimTemplates) != 1 {
@@ -141,11 +112,65 @@ func Test_reCreateSTS(t *testing.T) {
 				return nil
 			},
 		},
+		{
+			name: "change claim storageClass name",
+			args: args{
+				ctx: context.TODO(),
+				existingSTS: &appsv1.StatefulSet{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "vmselect",
+						Namespace: "default",
+					},
+					Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []v1.PersistentVolumeClaim{
+						{
+							ObjectMeta: metav1.ObjectMeta{Name: "new-claim"},
+							Spec: v1.PersistentVolumeClaimSpec{
+								Resources: v1.ResourceRequirements{
+									Requests: map[v1.ResourceName]resource.Quantity{
+										v1.ResourceStorage: resource.MustParse("10Gi"),
+									},
+								},
+								StorageClassName: pointer.String("old-sc"),
+							},
+						},
+					}},
+				},
+				newSTS: &appsv1.StatefulSet{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "vmselect",
+						Namespace: "default",
+					},
+					Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []v1.PersistentVolumeClaim{
+						{
+							ObjectMeta: metav1.ObjectMeta{Name: "new-claim"},
+							Spec: v1.PersistentVolumeClaimSpec{
+								Resources: v1.ResourceRequirements{
+									Requests: map[v1.ResourceName]resource.Quantity{
+										v1.ResourceStorage: resource.MustParse("10Gi"),
+									},
+								},
+								StorageClassName: pointer.String("new-sc"),
+							},
+						},
+					}},
+				},
+			},
+			validate: func(sts *appsv1.StatefulSet) error {
+				if len(sts.Spec.VolumeClaimTemplates) != 1 {
+					return fmt.Errorf("unexpected configuration for volumeclaim at sts: %v, want at least one, got: %v", sts.Name, sts.Spec.VolumeClaimTemplates)
+				}
+				name := *sts.Spec.VolumeClaimTemplates[0].Spec.StorageClassName
+				if name != "new-sc" {
+					return fmt.Errorf("unexpected sts storageClass name, got: %v, want: %v", name, "new-sc")
+				}
+				return nil
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cl := GetTestClientWithObjects(tt.predefinedObjects)
-			_, err := wasCreatedSTS(tt.args.ctx, cl, tt.args.pvcName, tt.args.newSTS, tt.args.existingSTS)
+			cl := GetTestClientWithObjects([]runtime.Object{tt.args.existingSTS})
+			_, err := wasCreatedSTS(tt.args.ctx, cl, tt.args.newSTS, tt.args.existingSTS)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("wasCreatedSTS() error = %v, wantErr %v", err, tt.wantErr)
 				return

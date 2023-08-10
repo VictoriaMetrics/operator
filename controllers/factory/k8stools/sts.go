@@ -33,7 +33,6 @@ type STSOptions struct {
 
 // HandleSTSUpdate performs create and update operations for given statefulSet with STSOptions
 func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, newSts *appsv1.StatefulSet, c *config.BaseOperatorConf) error {
-
 	var currentSts appsv1.StatefulSet
 	if err := rclient.Get(ctx, types.NamespacedName{Name: newSts.Name, Namespace: newSts.Namespace}, &currentSts); err != nil {
 		if errors.IsNotFound(err) {
@@ -57,7 +56,7 @@ func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, 
 	newSts.Spec.Template.Annotations = MergeAnnotations(currentSts.Spec.Template.Annotations, newSts.Spec.Template.Annotations)
 	newSts.Finalizers = victoriametricsv1beta1.MergeFinalizers(&currentSts, victoriametricsv1beta1.FinalizerName)
 
-	isRecreated, err := wasCreatedSTS(ctx, rclient, cr.VolumeName(), newSts, &currentSts)
+	isRecreated, err := wasCreatedSTS(ctx, rclient, newSts, &currentSts)
 	if err != nil {
 		return err
 	}
@@ -243,12 +242,10 @@ func performRollingUpdateOnSts(ctx context.Context, wasRecreated bool, rclient c
 	}
 
 	return nil
-
 }
 
 // PodIsFailedWithReason reports if pod failed and the reason of fail
 func PodIsFailedWithReason(pod corev1.Pod) (bool, string) {
-
 	var reasons []string
 	for _, containerCond := range pod.Status.ContainerStatuses {
 		if containerCond.Ready {

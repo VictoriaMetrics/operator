@@ -1,0 +1,3 @@
+# Streaming aggregation
+
+**TODO**

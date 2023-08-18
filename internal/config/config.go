@@ -50,7 +50,7 @@ type BaseOperatorConf struct {
 	// container registry name prefix, e.g. docker.io
 	ContainerRegistry         string `default:""`
 	CustomConfigReloaderImage string `default:"victoriametrics/operator:config-reloader-v0.32.0"`
-	PSPAutoCreateEnabled      bool   `default:"true"`
+	PSPAutoCreateEnabled      bool   `default:"false"`
 	VMAlertDefault            struct {
 		Image               string `default:"victoriametrics/vmalert"`
 		Version             string `default:"v1.91.3"`

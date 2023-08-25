@@ -341,8 +341,9 @@ func genVMSelectSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv1
 	if cr.Spec.VMSelect.Image.PullPolicy == "" {
 		cr.Spec.VMSelect.Image.PullPolicy = corev1.PullIfNotPresent
 	}
-	if cr.Spec.VMSelect.SecurityContext == nil {
-		cr.Spec.VMSelect.SecurityContext = &corev1.PodSecurityContext{}
+	// use "/cache" as default cache dir instead of "/tmp" if `CacheMountPath` not set
+	if cr.Spec.VMSelect.CacheMountPath == "" {
+		cr.Spec.VMSelect.CacheMountPath = "/cache"
 	}
 	podSpec, err := makePodSpecForVMSelect(cr, c)
 	if err != nil {
@@ -972,9 +973,6 @@ func GenVMStorageSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv
 	}
 	if cr.Spec.VMStorage.SchedulerName == "" {
 		cr.Spec.VMStorage.SchedulerName = "default-scheduler"
-	}
-	if cr.Spec.VMStorage.SecurityContext == nil {
-		cr.Spec.VMStorage.SecurityContext = &corev1.PodSecurityContext{}
 	}
 	if cr.Spec.VMStorage.Image.PullPolicy == "" {
 		cr.Spec.VMStorage.Image.PullPolicy = corev1.PullIfNotPresent

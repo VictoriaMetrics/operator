@@ -645,7 +645,7 @@ spec:
                     x-kubernetes-preserve-unknown-fields: true
                   cacheMountPath:
                     description: CacheMountPath allows to add cache persistent for
-                      VMSelect
+                      VMSelect, will use "/cache" as default if not specified.
                     type: string
                   claimTemplates:
                     description: ClaimTemplates allows adding additional VolumeClaimTemplates
@@ -1346,7 +1346,7 @@ spec:
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                   storage:
-                    description: StorageSpec - add persistent volume claim for cacheMounthPath
+                    description: StorageSpec - add persistent volume claim for cacheMountPath
                       its needed for persistent cache
                     properties:
                       disableMountSubPath:

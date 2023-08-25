@@ -225,7 +225,8 @@ type VMSelect struct {
 	// +optional
 	TopologySpreadConstraints []v1.TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
 
-	// CacheMountPath allows to add cache persistent for VMSelect
+	// CacheMountPath allows to add cache persistent for VMSelect,
+	// will use "/cache" as default if not specified.
 	// +optional
 	CacheMountPath string `json:"cacheMountPath,omitempty"`
 
@@ -235,7 +236,7 @@ type VMSelect struct {
 	// +deprecated
 	// +optional
 	Storage *StorageSpec `json:"persistentVolume,omitempty"`
-	// StorageSpec - add persistent volume claim for cacheMounthPath
+	// StorageSpec - add persistent volume claim for cacheMountPath
 	// its needed for persistent cache
 	// +optional
 	StorageSpec *StorageSpec `json:"storage,omitempty"`

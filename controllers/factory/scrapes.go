@@ -22,9 +22,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-var (
-	vmagentSecretFetchErrsTotal prometheus.Counter
-)
+var vmagentSecretFetchErrsTotal prometheus.Counter
 
 func init() {
 	vmagentSecretFetchErrsTotal = prometheus.NewCounter(prometheus.CounterOpts{
@@ -43,7 +41,6 @@ type scrapesSecretsCache struct {
 
 // CreateOrUpdateConfigurationSecret builds scrape configuration for VMAgent
 func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client, c *config.BaseOperatorConf) (*scrapesSecretsCache, error) {
-
 	sScrapes, err := SelectServiceScrapes(ctx, cr, rclient)
 	if err != nil {
 		return nil, fmt.Errorf("selecting ServiceScrapes failed: %w", err)
@@ -138,7 +135,6 @@ func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *victoriametricsv
 }
 
 func SelectServiceScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) (map[string]*victoriametricsv1beta1.VMServiceScrape, error) {
-
 	res := make(map[string]*victoriametricsv1beta1.VMServiceScrape)
 
 	var servScrapesCombined []victoriametricsv1beta1.VMServiceScrape
@@ -193,7 +189,6 @@ func SelectServiceScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgen
 }
 
 func SelectPodScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) (map[string]*victoriametricsv1beta1.VMPodScrape, error) {
-
 	res := make(map[string]*victoriametricsv1beta1.VMPodScrape)
 
 	var podScrapesCombined []victoriametricsv1beta1.VMPodScrape
@@ -230,7 +225,6 @@ func SelectPodScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, r
 }
 
 func SelectVMProbes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) (map[string]*victoriametricsv1beta1.VMProbe, error) {
-
 	res := make(map[string]*victoriametricsv1beta1.VMProbe)
 	var probesCombined []victoriametricsv1beta1.VMProbe
 	namespaces, objSelector, err := getNSWithSelector(ctx, rclient, cr.Spec.ProbeNamespaceSelector, cr.Spec.ProbeSelector, cr.Namespace)
@@ -265,7 +259,6 @@ func SelectVMProbes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rcl
 }
 
 func SelectVMNodeScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) (map[string]*victoriametricsv1beta1.VMNodeScrape, error) {
-
 	l := log.WithValues("vmagent", cr.Name)
 	if !config.IsClusterWideAccessAllowed() && cr.IsOwnsServiceAccount() {
 		l.Info("cannot use VMNodeScrape at operator in single namespace mode with default permissions. Create ServiceAccount for VMAgent manually if needed. Skipping config generation for it")
@@ -308,7 +301,6 @@ func SelectVMNodeScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent
 }
 
 func SelectStaticScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) (map[string]*victoriametricsv1beta1.VMStaticScrape, error) {
-
 	res := make(map[string]*victoriametricsv1beta1.VMStaticScrape)
 	var staticScrapesCombined []victoriametricsv1beta1.VMStaticScrape
 
@@ -358,7 +350,6 @@ func loadScrapeSecrets(
 	remoteWriteSpecs []victoriametricsv1beta1.VMAgentRemoteWriteSpec,
 	namespace string,
 ) (*scrapesSecretsCache, error) {
-
 	oauth2Secret := make(map[string]*oauthCreds)
 	authorizationSecrets := make(map[string]string)
 	baSecrets := make(map[string]*BasicAuthCredentials)
@@ -661,7 +652,6 @@ func loadScrapeSecrets(
 		}
 		if rws.OAuth2 != nil {
 			oauth2, err := loadOAuthSecrets(ctx, rclient, rws.OAuth2, namespace, nsSecretCache, nsCMCache)
-
 			if err != nil {
 				return nil, fmt.Errorf("cannot load oauth2 creds for :%s, ns: %s, err: %w", "remoteWrite", namespace, err)
 			}
@@ -710,7 +700,6 @@ func loadBasicAuthSecret(ctx context.Context, rclient client.Client, ns string, 
 	}
 
 	return bac, nil
-
 }
 
 func extractCredKey(secret *corev1.Secret, sel corev1.SecretKeySelector) (string, error) {
@@ -799,7 +788,6 @@ func buildCacheKey(ns, keyName string) string {
 }
 
 func loadProxySecrets(ctx context.Context, rclient client.Client, proxyCfg *victoriametricsv1beta1.ProxyAuth, ns string, cache map[string]*corev1.Secret) (ba *BasicAuthCredentials, token string, err error) {
-
 	if proxyCfg.BasicAuth != nil {
 		ba, err = loadBasicAuthSecretFromAPI(ctx, rclient, proxyCfg.BasicAuth, ns, cache)
 		if err != nil {

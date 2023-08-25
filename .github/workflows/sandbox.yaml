@@ -1,9 +1,11 @@
 name: Update version on sandbox
 
 on:
-  push:
-    branches:
-      - 'master'
+  workflow_run:
+    workflows: ["Build and Test"]
+    branches: ["master"]
+    types:
+      - completed
 
 jobs:
   update:
@@ -33,7 +35,7 @@ jobs:
           export VM_GIT_COMMIT_SHA="$(git rev-parse --short $GITHUB_SHA)"
           export VM_SANDBOX_OPERATOR_PATH="gcp-test/sandbox/manifests/applications/vm-operator.yaml"
           git checkout -b "${VM_GIT_BRANCH_NAME}"
-          yq -i 'with(.spec.source.helm.values; . = (. | from_yaml | .image.tag = $VM_GIT_COMMIT_SHA | to_yaml))' $VM_SANDBOX_OPERATOR_PATH
+          yq -i 'with(.spec.source.helm.values; . = (. | from_yaml | .image.tag = strenv(VM_GIT_COMMIT_SHA) | to_yaml))' $VM_SANDBOX_OPERATOR_PATH
           git add $VM_SANDBOX_OPERATOR_PATH
           git commit -S -m "Automatic update operator version on sandbox from ${GITHUB_REPOSITORY}@${VM_GIT_COMMIT_SHA}"
           git push origin ${VM_GIT_BRANCH_NAME}

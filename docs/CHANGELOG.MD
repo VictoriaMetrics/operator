@@ -4,7 +4,7 @@
 
 ### Fixes
 
-- TODO
+- [vmagent](https://docs.victoriametrics.com/operator/api.html#vmagent): fix unmarshalling for streaming aggregation `match` field.
 
 ### Features
 

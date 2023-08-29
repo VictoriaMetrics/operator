@@ -1,6 +1,7 @@
 package v1beta1
 
 import (
+	"encoding/json"
 	"fmt"
 	"path"
 	"reflect"
@@ -524,5 +525,31 @@ func (m *Match) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		return &yaml.TypeError{Errors: []string{
 			fmt.Sprintf("cannot unmarshal %#v into Go struct field `Match` of type %v", raw, rawType),
 		}}
+	}
+}
+
+func (m *Match) UnmarshalJSON(data []byte) error {
+	var raw any
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return fmt.Errorf("cannot unmarshal match: %w", err)
+	}
+	rawType := reflect.TypeOf(raw)
+	switch rawType.Kind() {
+	case reflect.String:
+		var match string
+		if err := json.Unmarshal(data, &match); err != nil {
+			return err
+		}
+		*m = []string{match}
+		return nil
+	case reflect.Slice, reflect.Array:
+		var match []string
+		if err := json.Unmarshal(data, &match); err != nil {
+			return err
+		}
+		*m = match
+		return nil
+	default:
+		return &json.UnmarshalTypeError{Value: string(data), Type: rawType}
 	}
 }

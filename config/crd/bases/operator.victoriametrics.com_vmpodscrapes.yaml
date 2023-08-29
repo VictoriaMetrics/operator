@@ -205,9 +205,9 @@ spec:
                               Default is 'replace'
                             type: string
                           if:
-                            description: 'If represents metricsQL match expression:
-                              ''{__name__=~"foo_.*"}'''
-                            type: string
+                            description: 'If represents metricsQL match expression
+                              (or list of expressions): ''{__name__=~"foo_.*"}'''
+                            x-kubernetes-preserve-unknown-fields: true
                           labels:
                             additionalProperties:
                               type: string
@@ -387,9 +387,9 @@ spec:
                               Default is 'replace'
                             type: string
                           if:
-                            description: 'If represents metricsQL match expression:
-                              ''{__name__=~"foo_.*"}'''
-                            type: string
+                            description: 'If represents metricsQL match expression
+                              (or list of expressions): ''{__name__=~"foo_.*"}'''
+                            x-kubernetes-preserve-unknown-fields: true
                           labels:
                             additionalProperties:
                               type: string

@@ -19,6 +19,10 @@ Or you can use VictoriaMetrics CRDs:
 - `VMProbe` (instead of `Probe`) - defines a probing configuration for targets with blackbox exporter. [See details](https://docs.victoriametrics.com/vmoperator/resources/vmprobe.html).
 - `VMAlertmanagerConfig` (instead of `AlertmanagerConfig`) - defines a configuration for AlertManager. [See details](https://docs.victoriametrics.com/vmoperator/resources/vmalertmanagerconfig.html).
 
+Note that Prometheus CRDs are not supplied with the VictoriaMetrics operator,
+so you need to [install them separately](https://github.com/prometheus-operator/prometheus-operator/releases).
+VictoriaMetrics operator supports conversion from Prometheus CRD of version `monitoring.coreos.com/v1`.
+
 The default behavior of the operator is as follows:
 
 - It **converts** all existing Prometheus `ServiceMonitor`, `PodMonitor`, `PrometheusRule` and `Probe` objects into corresponding VictoriaMetrics Operator objects.
@@ -121,7 +125,7 @@ Annotation `operator.victoriametrics.com/ignore-prometheus-updates` can be set o
 And annotation doesn't make sense for [VMStaticScrape](https://docs.victoriametrics.com/vmoperator/resources/vmstaticscrape.html)
 and [VMNodeScrape](https://docs.victoriametrics.com/vmoperator/resources/vmnodescrape.html) because these objects are not created as a result of conversion.
 
-## Labels synchronization
+## Labels and annotations synchronization
 
 Conversion of api objects can be controlled by annotations, added to `VMObject`s.
 
@@ -160,6 +164,34 @@ Annotation `operator.victoriametrics.com/merge-meta-strategy` can be set on one 
 
 And annotation doesn't make sense for [VMStaticScrape](https://docs.victoriametrics.com/vmoperator/resources/vmstaticscrape.html)
 and [VMNodeScrape](https://docs.victoriametrics.com/vmoperator/resources/vmnodescrape.html) because these objects are not created as a result of conversion.
+
+You can filter labels for syncing 
+with [operator parameter](https://docs.victoriametrics.com/vmoperator/setup.html#settings) `VM_FILTERPROMETHEUSCONVERTERLABELPREFIXES`:
+
+```console
+# it excludes all labels that start with "helm.sh" or "argoproj.io" from synchronization
+VM_FILTERPROMETHEUSCONVERTERLABELPREFIXES=helm.sh,argoproj.io
+```
+
+In the same way, annotations with specified prefixes can be excluded from synchronization 
+with [operator parameter](https://docs.victoriametrics.com/vmoperator/setup.html#settings) `VM_FILTERPROMETHEUSCONVERTERANNOTATIONPREFIXES`:
+
+```console
+# it excludes all annotations that start with "helm.sh" or "argoproj.io" from synchronization
+VM_FILTERPROMETHEUSCONVERTERANNOTATIONPREFIXES=helm.sh,argoproj.io
+```
+
+## Using converter with ArgoCD
+
+If you use ArgoCD, you can allow ignoring objects at ArgoCD converted from Prometheus CRD 
+with [operator parameter](https://docs.victoriametrics.com/vmoperator/setup.html#settings) `VM_PROMETHEUSCONVERTERADDARGOCDIGNOREANNOTATIONS`. 
+
+It helps to properly use converter with ArgoCD and should help prevent out-of-sync issues with argo-cd based deployments:
+
+```console
+# adds compare-options and sync-options for prometheus objects converted by operator 
+VM_PROMETHEUSCONVERTERADDARGOCDIGNOREANNOTATIONS=true
+```
 
 ## Data migration
 

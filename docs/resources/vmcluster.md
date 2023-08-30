@@ -25,7 +25,7 @@ The most important is `VM_PODWAITREADYTIMEOUT=80s` - it controls how long to wai
 
 ## Specification
 
-You can see the full actual specification of the `VMCluster` resource in the [API docs -> VMCluster](https://docs.victoriametrics.com/vmoperator/api.html#vmcluster).
+You can see the full actual specification of the `VMCluster` resource in the [API docs -> VMCluster](https://docs.victoriametrics.com/operator/api.html#vmcluster).
 
 ## High availability
 

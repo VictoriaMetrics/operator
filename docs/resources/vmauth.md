@@ -7,6 +7,6 @@ So it will be possible to access these credentials from any application by targe
 ## Specification
 
 You can see the full actual specification of the `VMAuth` resource in
-the [API docs -> VMAuth](https://docs.victoriametrics.com/vmoperator/api.html#vmauth).
+the [API docs -> VMAuth](https://docs.victoriametrics.com/operator/api.html#vmauth).
 
 **TODO**

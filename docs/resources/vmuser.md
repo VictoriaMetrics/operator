@@ -9,7 +9,7 @@ operator queries kubernetes API, retrieves information about CRD and builds prop
 ## Specification
 
 You can see the full actual specification of the `VMUser` resource in
-the [API docs -> VMUser](https://docs.victoriametrics.com/vmoperator/api.html#vmuser).
+the [API docs -> VMUser](https://docs.victoriametrics.com/operator/api.html#vmuser).
 
 **TODO**
 

@@ -7,6 +7,6 @@ Alerts and recording rules can be saved and applied as YAML files, and dynamical
 ## Specification
 
 You can see the full actual specification of the `VMRule` resource in
-the [API docs -> VMRule](https://docs.victoriametrics.com/vmoperator/api.html#vmrule).
+the [API docs -> VMRule](https://docs.victoriametrics.com/operator/api.html#vmrule).
 
 **TODO**

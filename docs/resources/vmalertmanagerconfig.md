@@ -6,6 +6,6 @@ which will be merged by operator into config. It behaves like other config parts
 ## Specification
 
 You can see the full actual specification of the `VMAlertmanagerConfig` resource in 
-the [API docs -> VMAlertmanagerConfig](https://docs.victoriametrics.com/vmoperator/api.html#vmalertmanagerconfig).
+the [API docs -> VMAlertmanagerConfig](https://docs.victoriametrics.com/operator/api.html#vmalertmanagerconfig).
 
 **TODO**

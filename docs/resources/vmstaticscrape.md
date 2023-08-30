@@ -8,6 +8,6 @@ See more details about selectors [here](https://docs.victoriametrics.com/operato
 ## Specification
 
 You can see the full actual specification of the `VMStaticScrape` resource in
-the [API docs -> VMStaticScrape](https://docs.victoriametrics.com/vmoperator/api.html#vmstaticscrape).
+the [API docs -> VMStaticScrape](https://docs.victoriametrics.com/operator/api.html#vmstaticscrape).
 
 **TODO**

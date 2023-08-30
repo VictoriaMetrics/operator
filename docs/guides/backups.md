@@ -13,7 +13,7 @@ It contains a description of the service and its features. This documentation co
 
 ## Usage examples
 
-[`VMSingle`](https://docs.victoriametrics.com/vmoperator/resources/vmsingle.html) and [`VMCluster`](https://docs.victoriametrics.com/vmoperator/resources/vmcluster.html)
+[`VMSingle`](https://docs.victoriametrics.com/operator/resources/vmsingle.html) and [`VMCluster`](https://docs.victoriametrics.com/operator/resources/vmcluster.html)
 has built-in backup configuration, it uses `vmbackupmanager` - proprietary tool for backups.
 It supports incremental backups (hourly, daily, weekly, monthly) with popular object storages (aws s3, google cloud storage).
 
@@ -76,7 +76,7 @@ It's needed to make consistent backups for each storage node.
 
 You can read more about backup configuration options and mechanics [here](https://docs.victoriametrics.com/vmbackup.html)
 
-Possible configuration options for backup crd can be found at [link](https://docs.victoriametrics.com/vmoperator/api.html#vmbackup)
+Possible configuration options for backup crd can be found at [link](https://docs.victoriametrics.com/operator/api.html#vmbackup)
 
 ## Restoring backups
 

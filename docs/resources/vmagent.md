@@ -20,7 +20,7 @@ so user can set custom configuration while still benefiting from the Operator's 
 
 ## Specification
 
-You can see the full actual specification of the `VMAgent` resource in the [API docs -> VMAgent](https://docs.victoriametrics.com/vmoperator/api.html#vmagent).
+You can see the full actual specification of the `VMAgent` resource in the [API docs -> VMAgent](https://docs.victoriametrics.com/operator/api.html#vmagent).
 
 ## High availability
 
@@ -28,7 +28,7 @@ To run VMAgent in a highly available manner at first you have to configure dedup
 according [this doc for VMSingle](https://docs.victoriametrics.com/Single-server-VictoriaMetrics.html#deduplication)
 or [this doc for VMCluster](https://docs.victoriametrics.com/Cluster-VictoriaMetrics.html#deduplication).
 
-You can do it with `extraArgs` on [`VMSingle`](https://docs.victoriametrics.com/vmoperator/resources/vmsingle.html):
+You can do it with `extraArgs` on [`VMSingle`](https://docs.victoriametrics.com/operator/resources/vmsingle.html):
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1beta1
@@ -41,7 +41,7 @@ spec:
     dedup.minScrapeInterval: 5s
 ```
 
-For [`VMCluster`](https://docs.victoriametrics.com/vmoperator/resources/vmcluster.html) you can do it with `vmstorage.extraArgs` and `vmselect.extraArgs`:
+For [`VMCluster`](https://docs.victoriametrics.com/operator/resources/vmcluster.html) you can do it with `vmstorage.extraArgs` and `vmselect.extraArgs`:
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1beta1

@@ -8,6 +8,6 @@ See more details about selectors [here](https://docs.victoriametrics.com/operato
 ## Specification
 
 You can see the full actual specification of the `VMNodeScrape` resource in
-the [API docs -> VMNodeScrape](https://docs.victoriametrics.com/vmoperator/api.html#vmnodescrape).
+the [API docs -> VMNodeScrape](https://docs.victoriametrics.com/operator/api.html#vmnodescrape).
 
 **TODO**

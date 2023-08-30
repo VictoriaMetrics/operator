@@ -24,7 +24,7 @@ spec:
 
 ## Specification
 
-You can see the full actual specification of the `VMAlert` resource in the [API docs -> VMAlert](https://docs.victoriametrics.com/vmoperator/api.html#vmalert).
+You can see the full actual specification of the `VMAlert` resource in the [API docs -> VMAlert](https://docs.victoriametrics.com/operator/api.html#vmalert).
 
 ## High availability
 

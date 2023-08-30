@@ -8,7 +8,7 @@ title: FAQ
 
 ## How do you monitor the operator itself?
 
-You can read about vmoperator monitoring in [this document](https://docs.victoriametrics.com/vmoperator/monitoring.html).
+You can read about vmoperator monitoring in [this document](https://docs.victoriametrics.com/operator/monitoring.html).
 
 ## How to change VMStorage PVC storage class
 
@@ -31,8 +31,8 @@ With Operator deployment:
 
 You can use `VM_CONTAINERREGISTRY` parameter for operator:
 
-- See details about tuning [operator settings here](https://docs.victoriametrics.com/vmoperator/setup.html#settings).
-- See [available operator settings](https://docs.victoriametrics.com/vmoperator/vars.html) here.
+- See details about tuning [operator settings here](https://docs.victoriametrics.com/operator/setup.html#settings).
+- See [available operator settings](https://docs.victoriametrics.com/operator/vars.html) here.
 
 ## How to override image
 
@@ -40,27 +40,27 @@ TODO
 
 ## How to set up automatic backups?
 
-You can read about backups setup in [this guide](https://docs.victoriametrics.com/vmoperator/guides/backups.html).
+You can read about backups setup in [this guide](https://docs.victoriametrics.com/operator/guides/backups.html).
 
 ## How to migrate from Prometheus-operator to VictoriaMetrics operator?
 
-You can read about migration from prometheus operator on [this page](https://docs.victoriametrics.com/vmoperator/migration.html).
+You can read about migration from prometheus operator on [this page](https://docs.victoriametrics.com/operator/migration.html).
 
 ## How to turn off conversion for prometheus resources
 
-You can read about it on [this page](https://docs.victoriametrics.com/vmoperator/migration.html#objects-convesion).
+You can read about it on [this page](https://docs.victoriametrics.com/operator/migration.html#objects-convesion).
 
 ## My VM objects are not deleted/changed when I delete/change Prometheus objects
 
 You can read about it in following sections of "Migration from prometheus-operator" docs:
 
-- [Deletion synchronization](https://docs.victoriametrics.com/vmoperator/migration.html#deletion-synchronization)
-- [Update synchronization](https://docs.victoriametrics.com/vmoperator/migration.html#update-synchronization)
-- [Labels synchronization](https://docs.victoriametrics.com/vmoperator/migration.html#labels-synchronization)
+- [Deletion synchronization](https://docs.victoriametrics.com/operator/migration.html#deletion-synchronization)
+- [Update synchronization](https://docs.victoriametrics.com/operator/migration.html#update-synchronization)
+- [Labels synchronization](https://docs.victoriametrics.com/operator/migration.html#labels-synchronization)
 
 ## What permissions does an operator need to run in a cluster?
 
-You can read about needed permissions for operator in [this document](https://docs.victoriametrics.com/vmoperator/security.html#roles).
+You can read about needed permissions for operator in [this document](https://docs.victoriametrics.com/operator/security.html#roles).
 
 ## How to run VictoriaMetrics operator with permissions for one namespace only?
 
@@ -80,10 +80,6 @@ and disable CRD controller with flag: `--controller.disableCRDOwnership=true`
 **TODO**
 
 ## How can I set up scrape objects selection?
-
-**TODO**
-
-## **TODO** ArgoCD
 
 **TODO**
 

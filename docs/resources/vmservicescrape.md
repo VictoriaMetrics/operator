@@ -37,6 +37,6 @@ spec:
 ## Specification
 
 You can see the full actual specification of the `VMServiceScrape` resource in
-the [API docs -> VMServiceScrape](https://docs.victoriametrics.com/vmoperator/api.html#vmservicescrape).
+the [API docs -> VMServiceScrape](https://docs.victoriametrics.com/operator/api.html#vmservicescrape).
 
 **TODO**

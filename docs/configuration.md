@@ -6,13 +6,13 @@ title: Configuration
 
 # Configuration
 
-Operator configured by env variables, list of it can be found at [link](https://docs.victoriametrics.com/vmoperator/vars.html).
+Operator configured by env variables, list of it can be found at [link](https://docs.victoriametrics.com/operator/vars.html).
 
 It defines default configuration options, like images for components, timeouts, features.
 
 ## Conversion of prometheus-operator objects
 
-You can read detailed instructions about configuring prometheus-objects conversion in [this document](http://docs.victoriametrics.com/vmoperator/migration.html).
+You can read detailed instructions about configuring prometheus-objects conversion in [this document](http://docs.victoriametrics.com/operator/migration.html).
 
 ## Helm-charts
 

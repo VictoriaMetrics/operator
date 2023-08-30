@@ -111,4 +111,4 @@ There is no need in an additional configuration for ARM. Operator and VictoriaMe
 
 ## Configuring
 
-You can read detailed instructions about operator configuring in [this document](http://docs.victoriametrics.com/vmoperator/configuration.html).
+You can read detailed instructions about operator configuring in [this document](http://docs.victoriametrics.com/operator/configuration.html).

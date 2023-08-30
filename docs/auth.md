@@ -14,8 +14,7 @@ It adds missing authorization and access control features and enforces it.
 
 Access can be given with `VMUser` definition. It supports  basic auth and bearer token authentication:
 
-```console
-cat << EOF | kubectl apply -f -
+```yaml
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAuth
 metadata:
@@ -24,13 +23,11 @@ spec:
   userNamespaceSelector: {}
   userSelector: {}
   ingress: {}
-EOF
 ```
 
 Advanced configuration with cert-manager annotations:
 
-```console
-cat << EOF | kubectl apply -f -
+```yaml
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAuth
 metadata:
@@ -56,14 +53,12 @@ spec:
     class_name: nginx
     tlsHosts:
       - vm-access.example.com
-EOF
 ```
 
 Simple static routing with read-only access to vmagent for username - `user-1` with password `Asafs124142`:
 
-```console
+```yaml
 # curl vmauth:8427/metrics -u 'user-1:Asafs124142'
-cat  << EOF | kubectl apply -f
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMUser
 metadata:
@@ -74,14 +69,12 @@ spec:
     - static:
         url: http://vmagent-base.default.svc:8429
       paths: ["/targets/api/v1","/targets","/metrics"]
-EOF
 ```
 
 With bearer token access:
 
-```console
+```yaml
 # curl vmauth:8427/metrics -H 'Authorization: Bearer Asafs124142'
-cat  << EOF | kubectl apply -f
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMUser
 metadata:
@@ -92,14 +85,12 @@ spec:
     - static:
         url: http://vmagent-base.default.svc:8429
       paths: ["/targets/api/v1","/targets","/metrics"]
-EOF
 ```
 
 It's also possible to use service discovery for objects:
 
-```console
+```yaml
 # curl vmauth:8427/metrics -H 'Authorization: Bearer Asafs124142'
-cat  << EOF | kubectl apply -f
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMUser
 metadata:
@@ -112,13 +103,11 @@ spec:
         name: base
         namespace: default
       paths: ["/targets/api/v1","/targets","/metrics"]
-EOF
 ```
 
 Cluster components supports auto path generation for single tenant view:
 
-```console
-cat << EOF | kubectl apply -f -
+```yaml
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMUser
 metadata:
@@ -140,17 +129,15 @@ spec:
      url: http://vmselect-test-persistent.default.svc:8481/
     paths:
      - /internal/resetRollupResultCache
-EOF
 ```
 
 For each `VMUser` operator generates corresponding secret with username/password or bearer token at the same namespace as `VMUser`.
 
 ## Basic auth for targets
 
-To authenticate a `VMServiceScrape`s over a metrics endpoint use [`basicAuth`](https://docs.victoriametrics.com/vmoperator/api.html#basicauth):
+To authenticate a `VMServiceScrape`s over a metrics endpoint use [`basicAuth`](https://docs.victoriametrics.com/operator/api.html#basicauth):
 
-```console
-cat << EOF | kubectl apply -f -
+```yaml
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMServiceScrape
 metadata:
@@ -170,11 +157,9 @@ spec:
   selector:
     matchLabels:
       app: myapp
-EOF
-```
 
-```console
-cat << EOF | kubectl apply -f -
+---
+
 apiVersion: v1
 kind: Secret
 metadata:
@@ -183,5 +168,4 @@ data:
   password: dG9vcg== # toor
   user: YWRtaW4= # admin
 type: Opaque
-EOF
 ```

@@ -14,18 +14,18 @@ in a declarative style according to [GitOps](https://www.redhat.com/en/topics/de
 and [IaC](https://en.wikipedia.org/wiki/Infrastructure_as_code) concepts.
 
 VictoriaMetrics also provides [helm charts](https://github.com/VictoriaMetrics/helm-charts) without operator.
-Operator makes the same, simplifies it and provides [advanced features](https://docs.victorimetrics.com/vmoperator/#features).
+Operator makes the same, simplifies it and provides [advanced features](https://docs.victorimetrics.com/operator/#features).
 
-Learn more about [key concepts](#key-concepts) of `vmoperator` and follow the **[quick start guide](https://docs.victoriametrics.com/vmoperator/quickstart.html)** for a better experience.
+Learn more about [key concepts](#key-concepts) of `vmoperator` and follow the **[quick start guide](https://docs.victoriametrics.com/operator/quickstart.html)** for a better experience.
 
 ## Features of vmoperator
 
 - Deployment and management in a kubernetes clusters of any number of VictoriaMetrics applications (like vmsingle/vmcluster instances and another components like vmauth, vmagent, vmalert, etc...)
-- Seamless [migration from prometheus-operator](https://docs.victoriametrics.com/vmoperator/migration.html) with auto-conversion of prometheus [custom resources](#custom-resources)
-- Simple VictoriaMetrics cluster installation, configuring, upgrading and managing with [crd-objects](https://docs.victoriametrics.com/vmoperator/resources/).
+- Seamless [migration from prometheus-operator](https://docs.victoriametrics.com/operator/migration.html) with auto-conversion of prometheus [custom resources](#custom-resources)
+- Simple VictoriaMetrics cluster installation, configuring, upgrading and managing with [crd-objects](https://docs.victoriametrics.com/operator/resources/).
 - Ability to delegate the configuration (parts of configuration) of applications monitoring to the end-users and managing access to different configurations or configuration sections.
-- Integration with VictoriaMetrics [vmbackupmanager](https://docs.victoriametrics.com/vmbackupmanager.html) - advanced tools for making backups. Check [backup docs](https://docs.victoriametrics.com/vmoperator/backups.html)
-- Everything you need for monitoring out of the box in [k8s-stack helm chart](http://docs.victoriametrics.com/vmoperator/deploy.html) with ready-made usecases and solutions.
+- Integration with VictoriaMetrics [vmbackupmanager](https://docs.victoriametrics.com/vmbackupmanager.html) - advanced tools for making backups. Check [backup docs](https://docs.victoriametrics.com/operator/backups.html)
+- Everything you need for monitoring out of the box in [k8s-stack helm chart](http://docs.victoriametrics.com/operator/deploy.html) with ready-made usecases and solutions.
 - Ability to template your own deployment scenarios.
 
 ## Key Concepts
@@ -63,7 +63,7 @@ The basic workflow of working with the operator can be simplified as the followi
 
 <img src="README_operator-workflow.png" width="1200">
 
-- Operator declares and owns [resources of Victoria Metrics](http://docs.victoriametrics.com/vmoperator/resources/).
+- Operator declares and owns [resources of Victoria Metrics](http://docs.victoriametrics.com/operator/resources/).
 - Kubernetes validates of the resource according to the specification from CRD (see more in [custom resources](#custom-resources)).
 - Operator subscribed to change events (`create`, `update`, `delete`) for related resources.
 - When an event occurs, the operator reacts and updates the state of the objects in the cluster.

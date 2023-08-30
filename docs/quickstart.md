@@ -12,7 +12,7 @@ Kubernetes-native configuration options.
 ## 1. Setup
 
 You can find out how to and instructions for installing the VictoriaMetrics operator into your kubernetes cluster
-on the [Setup page](https://docs.victoriametrics.com/vmoperator/setup.html).
+on the [Setup page](https://docs.victoriametrics.com/operator/setup.html).
 
 Here we will elaborate on just one of the ways - for instance, we will install operator via Helm-chart
 [victoria-metrics-operator](https://github.com/VictoriaMetrics/helm-charts/blob/master/charts/victoria-metrics-operator/README.md):
@@ -39,7 +39,7 @@ code values.yaml
 <img src="quickstart_values.png" width="1000">
 
 Now you can change configuration in `values.yaml`. For more details
-see [configuration -> victoria-metrics-operator](https://docs.victoriametrics.com/vmoperator/configuration.html#victoria-metrics-operator).
+see [configuration -> victoria-metrics-operator](https://docs.victoriametrics.com/operator/configuration.html#victoria-metrics-operator).
 
 After finishing with `values.yaml`, you can test the installation with command:
 

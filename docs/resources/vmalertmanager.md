@@ -11,7 +11,7 @@ When there are two or more configured replicas the Operator runs the Alertmanage
 
 ## Specification
 
-You can see the full actual specification of the `VMAlertmanager` resource in the [API docs -> VMAlert](https://docs.victoriametrics.com/vmoperator/api.html#vmalertmanager).
+You can see the full actual specification of the `VMAlertmanager` resource in the [API docs -> VMAlert](https://docs.victoriametrics.com/operator/api.html#vmalertmanager).
 
 ## High Availability
 

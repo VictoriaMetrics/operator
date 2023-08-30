@@ -4,6 +4,17 @@
 
 ### Fixes
 
+- TODO
+
+### Features
+
+- TODO
+
+<a name="v0.37.0"></a>
+## [v0.37.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.37.0) - 30 Aug 2023
+
+### Fixes
+
 - [vmagent](https://docs.victoriametrics.com/operator/api.html#vmagent): fix unmarshalling for streaming aggregation `match` field.
 
 ### Features

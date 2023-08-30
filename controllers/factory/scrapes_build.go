@@ -1199,7 +1199,7 @@ func generateRelabelConfig(rc *victoriametricsv1beta1.RelabelConfig) yaml.MapSli
 	if rc.Action != "" {
 		relabeling = append(relabeling, yaml.MapItem{Key: "action", Value: rc.Action})
 	}
-	if rc.If != "" {
+	if len(rc.If) != 0 {
 		relabeling = append(relabeling, yaml.MapItem{Key: "if", Value: rc.If})
 	}
 	if rc.Match != "" {

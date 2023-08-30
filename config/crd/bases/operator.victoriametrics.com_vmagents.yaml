@@ -790,8 +790,9 @@ spec:
                         is 'replace'
                       type: string
                     if:
-                      description: 'If represents metricsQL match expression: ''{__name__=~"foo_.*"}'''
-                      type: string
+                      description: 'If represents metricsQL match expression (or list
+                        of expressions): ''{__name__=~"foo_.*"}'''
+                      x-kubernetes-preserve-unknown-fields: true
                     labels:
                       additionalProperties:
                         type: string
@@ -967,8 +968,9 @@ spec:
                         is 'replace'
                       type: string
                     if:
-                      description: 'If represents metricsQL match expression: ''{__name__=~"foo_.*"}'''
-                      type: string
+                      description: 'If represents metricsQL match expression (or list
+                        of expressions): ''{__name__=~"foo_.*"}'''
+                      x-kubernetes-preserve-unknown-fields: true
                     labels:
                       additionalProperties:
                         type: string
@@ -1211,8 +1213,9 @@ spec:
                         is 'replace'
                       type: string
                     if:
-                      description: 'If represents metricsQL match expression: ''{__name__=~"foo_.*"}'''
-                      type: string
+                      description: 'If represents metricsQL match expression (or list
+                        of expressions): ''{__name__=~"foo_.*"}'''
+                      x-kubernetes-preserve-unknown-fields: true
                     labels:
                       additionalProperties:
                         type: string
@@ -1392,8 +1395,9 @@ spec:
                         is 'replace'
                       type: string
                     if:
-                      description: 'If represents metricsQL match expression: ''{__name__=~"foo_.*"}'''
-                      type: string
+                      description: 'If represents metricsQL match expression (or list
+                        of expressions): ''{__name__=~"foo_.*"}'''
+                      x-kubernetes-preserve-unknown-fields: true
                     labels:
                       additionalProperties:
                         type: string
@@ -1636,9 +1640,9 @@ spec:
                               Default is 'replace'
                             type: string
                           if:
-                            description: 'If represents metricsQL match expression:
-                              ''{__name__=~"foo_.*"}'''
-                            type: string
+                            description: 'If represents metricsQL match expression
+                              (or list of expressions): ''{__name__=~"foo_.*"}'''
+                            x-kubernetes-preserve-unknown-fields: true
                           labels:
                             additionalProperties:
                               type: string
@@ -1836,8 +1840,8 @@ spec:
                                       type: string
                                     if:
                                       description: 'If represents metricsQL match
-                                        expression: ''{__name__=~"foo_.*"}'''
-                                      type: string
+                                        expression (or list of expressions): ''{__name__=~"foo_.*"}'''
+                                      x-kubernetes-preserve-unknown-fields: true
                                     labels:
                                       additionalProperties:
                                         type: string
@@ -1905,12 +1909,11 @@ spec:
                                 description: Interval is the interval between aggregations.
                                 type: string
                               match:
-                                description: "Match is a label selector for filtering
-                                  time series for the given selector. \n If the match
-                                  isn't set, then all the input time series are processed."
-                                items:
-                                  type: string
-                                type: array
+                                description: "Match is a label selector (or list of
+                                  label selectors) for filtering time series for the
+                                  given selector. \n If the match isn't set, then
+                                  all the input time series are processed."
+                                x-kubernetes-preserve-unknown-fields: true
                               output_relabel_configs:
                                 description: OutputRelabelConfigs is an optional relabeling
                                   rules, which are applied on the aggregated output
@@ -1927,8 +1930,8 @@ spec:
                                       type: string
                                     if:
                                       description: 'If represents metricsQL match
-                                        expression: ''{__name__=~"foo_.*"}'''
-                                      type: string
+                                        expression (or list of expressions): ''{__name__=~"foo_.*"}'''
+                                      x-kubernetes-preserve-unknown-fields: true
                                     labels:
                                       additionalProperties:
                                         type: string
@@ -2406,8 +2409,9 @@ spec:
                         is 'replace'
                       type: string
                     if:
-                      description: 'If represents metricsQL match expression: ''{__name__=~"foo_.*"}'''
-                      type: string
+                      description: 'If represents metricsQL match expression (or list
+                        of expressions): ''{__name__=~"foo_.*"}'''
+                      x-kubernetes-preserve-unknown-fields: true
                     labels:
                       additionalProperties:
                         type: string
@@ -2985,8 +2989,9 @@ spec:
                         is 'replace'
                       type: string
                     if:
-                      description: 'If represents metricsQL match expression: ''{__name__=~"foo_.*"}'''
-                      type: string
+                      description: 'If represents metricsQL match expression (or list
+                        of expressions): ''{__name__=~"foo_.*"}'''
+                      x-kubernetes-preserve-unknown-fields: true
                     labels:
                       additionalProperties:
                         type: string

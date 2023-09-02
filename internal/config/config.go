@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"text/tabwriter"
 	"time"
 
 	"github.com/kelseyhightower/envconfig"
@@ -323,6 +324,33 @@ func (boc BaseOperatorConf) Validate() error {
 	}
 
 	return nil
+}
+
+// PrintDefaults prints default values for all config variables.
+// format can be one of: table, list, json, yaml.
+func (boc BaseOperatorConf) PrintDefaults(format string) error {
+	tabs := tabwriter.NewWriter(os.Stdout, 1, 0, 4, ' ', 0)
+
+	var formatter = "unknown"
+	switch format {
+	case "table":
+		formatter = envconfig.DefaultTableFormat
+	case "list":
+		formatter = envconfig.DefaultListFormat
+	case "json":
+		formatter = `{{$last := (len (slice . 1))}}{
+{{range $index, $item := .}}	'{{usage_key $item}}': '{{usage_default $item}}'{{ if lt $index $last}},{{end}}
+{{end}}}`
+	case "yaml":
+		formatter = `{{range $index, $item := .}}{{usage_key $item}}: '{{usage_default $item}}'
+{{end}}`
+	default:
+		return fmt.Errorf("unknown print format %q", format)
+	}
+
+	err := envconfig.Usagef(prefixVar, &boc, tabs, formatter)
+	_ = tabs.Flush()
+	return err
 }
 
 func MustGetBaseConfig() *BaseOperatorConf {

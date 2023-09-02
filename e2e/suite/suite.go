@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/manager"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -89,7 +90,8 @@ func Before() {
 		ctx, cancel := context.WithCancel(context.Background())
 		go func(ctx context.Context) {
 			defer GinkgoRecover()
-			err := manager.RunManager(ctx)
+			baseConfig := config.MustGetBaseConfig()
+			err := manager.RunManager(ctx, baseConfig)
 			close(stopped)
 			Expect(err).NotTo(HaveOccurred())
 		}(ctx)

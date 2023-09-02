@@ -72,7 +72,7 @@ func init() {
 
 }
 
-func RunManager(ctx context.Context) error {
+func RunManager(ctx context.Context, baseConfig *config.BaseOperatorConf) error {
 	// Add flags registered by imported packages (e.g. glog and
 	// controller-runtime)
 	opts := zap.Options{}
@@ -170,7 +170,6 @@ func RunManager(ctx context.Context) error {
 			return err
 		}
 	}
-	baseConfig := config.MustGetBaseConfig()
 	victoriametricsv1beta1.SetLabelAndAnnotationPrefixes(baseConfig.FilterChildLabelPrefixes, baseConfig.FilterChildAnnotationPrefixes)
 
 	if err = (&controllers.VMAgentReconciler{

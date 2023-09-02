@@ -2,6 +2,7 @@ package suite
 
 import (
 	"context"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"os"
 	"path/filepath"
 
@@ -89,7 +90,8 @@ func Before() {
 		ctx, cancel := context.WithCancel(context.Background())
 		go func(ctx context.Context) {
 			defer GinkgoRecover()
-			err := manager.RunManager(ctx)
+			baseConfig := config.MustGetBaseConfig()
+			err := manager.RunManager(ctx, baseConfig)
 			close(stopped)
 			Expect(err).NotTo(HaveOccurred())
 		}(ctx)

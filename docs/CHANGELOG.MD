@@ -8,7 +8,7 @@
 
 ### Features
 
-- TODO
+- [vmoperator](https://docs.victoriametrics.com/operator/) add ability to print default values for all [operator variables](https://docs.victoriametrics.com/operator/vars.html). See [this issue](https://github.com/VictoriaMetrics/operator/issues/675) for details.
 
 <a name="v0.37.0"></a>
 ## [v0.37.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.37.0) - 30 Aug 2023

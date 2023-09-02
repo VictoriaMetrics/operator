@@ -2,11 +2,11 @@ package suite
 
 import (
 	"context"
-	"github.com/VictoriaMetrics/operator/internal/config"
 	"os"
 	"path/filepath"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/manager"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

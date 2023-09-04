@@ -56,13 +56,13 @@ func TestParsingMatch(t *testing.T) {
 	tests := []struct {
 		name    string
 		data    string
-		match   Match
+		match   StringOrArray
 		wantErr bool
 	}{
 		{
 			name:  "old string match",
 			data:  `http_requests_total`,
-			match: Match{"http_requests_total"},
+			match: StringOrArray{"http_requests_total"},
 		},
 		{
 			name: "new list match",
@@ -70,7 +70,7 @@ func TestParsingMatch(t *testing.T) {
 - \{__name__=~"count1"\}
 - \{__name__=~"count2"\}
 `,
-			match: Match{"\\{__name__=~\"count1\"\\}", "\\{__name__=~\"count2\"\\}"},
+			match: StringOrArray{"\\{__name__=~\"count1\"\\}", "\\{__name__=~\"count2\"\\}"},
 		},
 		{
 			name:    "wrong type of match",
@@ -81,7 +81,7 @@ func TestParsingMatch(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var match Match
+			var match StringOrArray
 			err := yaml.Unmarshal([]byte(tt.data), &match)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Match.UnmarshalYAML() error = %v, wantErr %v", err, tt.wantErr)

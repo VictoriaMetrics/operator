@@ -504,7 +504,6 @@ func genUrlMaps(userName string, refs []victoriametricsv1beta1.TargetRef, result
 			if len(ref.Headers) > 0 {
 				result = append(result, yaml.MapItem{Key: "headers", Value: ref.Headers})
 			}
-			result = addIPFiltersToYaml(result, ref.IPFilters)
 			return result, nil
 		}
 
@@ -557,7 +556,6 @@ func genUrlMaps(userName string, refs []victoriametricsv1beta1.TargetRef, result
 				Value: ref.Headers,
 			})
 		}
-		urlMap = addIPFiltersToYaml(urlMap, ref.IPFilters)
 		urlMaps = append(urlMaps, urlMap)
 
 	}
@@ -634,6 +632,7 @@ func genUserCfg(user *victoriametricsv1beta1.VMUser, crdUrlCache map[string]stri
 			Value: password,
 		})
 	}
+	r = addIPFiltersToYaml(r, user.Spec.IPFilters)
 
 	return r, nil
 }

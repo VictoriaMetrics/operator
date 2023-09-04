@@ -380,9 +380,11 @@ type RelabelConfig struct {
 	// Action to perform based on regex matching. Default is 'replace'
 	// +optional
 	Action string `json:"action,omitempty" yaml:"action,omitempty"`
-	// If represents metricsQL match expression: '{__name__=~"foo_.*"}'
+	// If represents metricsQL match expression (or list of expressions): '{__name__=~"foo_.*"}'
 	// +optional
-	If string `json:"if,omitempty" yaml:"if,omitempty"`
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	If StringOrArray `json:"if,omitempty" yaml:"if,omitempty"`
 	// Match is used together with Labels for `action: graphite`
 	// +optional
 	Match string `json:"match,omitempty" yaml:"match,omitempty"`

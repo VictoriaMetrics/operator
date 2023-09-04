@@ -241,6 +241,9 @@ bearer_token: secret-token
 						Name:     pointer.StringPtr("user1"),
 						UserName: pointer.StringPtr("basic"),
 						Password: pointer.StringPtr("pass"),
+						IPFilters: v1beta1.VMUserIPFilters{
+							AllowList: []string{"127.0.0.1"},
+						},
 						TargetRefs: []v1beta1.TargetRef{
 							{
 								Static: &v1beta1.StaticRef{
@@ -250,9 +253,6 @@ bearer_token: secret-token
 									"/select/0/prometheus",
 									"/select/0/graphite",
 								},
-								IPFilters: v1beta1.VMUserIPFilters{
-									AllowList: []string{"127.0.0.1"},
-								},
 							},
 							{
 								Static: &v1beta1.StaticRef{
@@ -260,9 +260,6 @@ bearer_token: secret-token
 								},
 								Paths: []string{
 									"/insert/0/prometheus",
-								},
-								IPFilters: v1beta1.VMUserIPFilters{
-									DenyList: []string{"192.168.0.1"},
 								},
 							},
 						},
@@ -275,19 +272,16 @@ bearer_token: secret-token
   src_paths:
   - /select/0/prometheus
   - /select/0/graphite
-  ip_filters:
-    allow_list:
-    - 127.0.0.1
 - url_prefix:
   - http://vminsert
   src_paths:
   - /insert/0/prometheus
-  ip_filters:
-    deny_list:
-    - 192.168.0.1
 name: user1
 username: basic
 password: pass
+ip_filters:
+  allow_list:
+  - 127.0.0.1
 `,
 		},
 	}

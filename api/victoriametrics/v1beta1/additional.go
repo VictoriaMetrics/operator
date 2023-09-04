@@ -1,6 +1,7 @@
 package v1beta1
 
 import (
+	"encoding/json"
 	"fmt"
 	"path"
 	"reflect"
@@ -422,11 +423,13 @@ type StreamAggrConfig struct {
 // StreamAggrRule defines the rule in stream aggregation config
 // +k8s:openapi-gen=true
 type StreamAggrRule struct {
-	// Match is a label selector for filtering time series for the given selector.
+	// Match is a label selector (or list of label selectors) for filtering time series for the given selector.
 	//
 	// If the match isn't set, then all the input time series are processed.
 	// +optional
-	Match Match `json:"match,omitempty" yaml:"match,omitempty"`
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	Match StringOrArray `json:"match,omitempty" yaml:"match,omitempty"`
 
 	// Interval is the interval between aggregations.
 	Interval string `json:"interval" yaml:"interval"`
@@ -497,12 +500,13 @@ type KeyValue struct {
 	Value string `json:"value"`
 }
 
-type Match []string
+// StringOrArray is a helper type for storing string or array of string.
+type StringOrArray []string
 
-func (m *Match) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (m *StringOrArray) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	var raw any
 	if err := unmarshal(&raw); err != nil {
-		return fmt.Errorf("cannot unmarshal match: %w", err)
+		return fmt.Errorf("cannot unmarshal StringOrArray: %w", err)
 	}
 	rawType := reflect.TypeOf(raw)
 	switch rawType.Kind() {
@@ -522,7 +526,33 @@ func (m *Match) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		return nil
 	default:
 		return &yaml.TypeError{Errors: []string{
-			fmt.Sprintf("cannot unmarshal %#v into Go struct field `Match` of type %v", raw, rawType),
+			fmt.Sprintf("cannot unmarshal %#v into StringOrArray of type %v", raw, rawType),
 		}}
+	}
+}
+
+func (m *StringOrArray) UnmarshalJSON(data []byte) error {
+	var raw any
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return fmt.Errorf("cannot unmarshal match: %w", err)
+	}
+	rawType := reflect.TypeOf(raw)
+	switch rawType.Kind() {
+	case reflect.String:
+		var match string
+		if err := json.Unmarshal(data, &match); err != nil {
+			return err
+		}
+		*m = []string{match}
+		return nil
+	case reflect.Slice, reflect.Array:
+		var match []string
+		if err := json.Unmarshal(data, &match); err != nil {
+			return err
+		}
+		*m = match
+		return nil
+	default:
+		return &json.UnmarshalTypeError{Value: string(data), Type: rawType}
 	}
 }

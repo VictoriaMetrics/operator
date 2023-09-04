@@ -233,6 +233,63 @@ name: user2
 bearer_token: secret-token
 `,
 		},
+		{
+			name: "with ip filters and multiple targets",
+			args: args{
+				user: &v1beta1.VMUser{
+					Spec: v1beta1.VMUserSpec{
+						Name:     pointer.StringPtr("user1"),
+						UserName: pointer.StringPtr("basic"),
+						Password: pointer.StringPtr("pass"),
+						TargetRefs: []v1beta1.TargetRef{
+							{
+								Static: &v1beta1.StaticRef{
+									URL: "http://vmselect",
+								},
+								Paths: []string{
+									"/select/0/prometheus",
+									"/select/0/graphite",
+								},
+								IPFilters: v1beta1.VMUserIPFilters{
+									AllowList: []string{"127.0.0.1"},
+								},
+							},
+							{
+								Static: &v1beta1.StaticRef{
+									URL: "http://vminsert",
+								},
+								Paths: []string{
+									"/insert/0/prometheus",
+								},
+								IPFilters: v1beta1.VMUserIPFilters{
+									DenyList: []string{"192.168.0.1"},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: `url_map:
+- url_prefix:
+  - http://vmselect
+  src_paths:
+  - /select/0/prometheus
+  - /select/0/graphite
+  ip_filters:
+    allow_list:
+    - 127.0.0.1
+- url_prefix:
+  - http://vminsert
+  src_paths:
+  - /insert/0/prometheus
+  ip_filters:
+    deny_list:
+    - 192.168.0.1
+name: user1
+username: basic
+password: pass
+`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

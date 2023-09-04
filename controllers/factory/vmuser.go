@@ -557,8 +557,9 @@ func genUrlMaps(userName string, refs []victoriametricsv1beta1.TargetRef, result
 				Value: ref.Headers,
 			})
 		}
+		urlMap = addIPFiltersToYaml(urlMap, ref.IPFilters)
 		urlMaps = append(urlMaps, urlMap)
-		result = addIPFiltersToYaml(result, ref.IPFilters)
+
 	}
 	result = append(result, yaml.MapItem{Key: "url_map", Value: urlMaps})
 	return result, nil

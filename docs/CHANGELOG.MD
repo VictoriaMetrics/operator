@@ -4,7 +4,7 @@
 
 ### Fixes
 
-- TODO
+- [vmoperator](https://docs.victoriametrics.com/operator/) follow up after [PR #742](https://github.com/VictoriaMetrics/operator/pull/742) - fix error with logger flags.
 
 ### Features
 

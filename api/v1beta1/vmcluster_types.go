@@ -679,7 +679,7 @@ type VMStorage struct {
 type VMBackup struct {
 	// AcceptEULA accepts enterprise feature usage, must be set to true.
 	// otherwise backupmanager cannot be added to single/cluster version.
-	// https://victoriametrics.com/legal/eula/
+	// https://victoriametrics.com/legal/esa/
 	AcceptEULA bool `json:"acceptEULA"`
 	// SnapshotCreateURL overwrites url for snapshot create
 	// +optional

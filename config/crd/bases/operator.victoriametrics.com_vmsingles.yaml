@@ -912,7 +912,7 @@ spec:
                   acceptEULA:
                     description: AcceptEULA accepts enterprise feature usage, must
                       be set to true. otherwise backupmanager cannot be added to single/cluster
-                      version. https://victoriametrics.com/legal/eula/
+                      version. https://victoriametrics.com/legal/esa/
                     type: boolean
                   concurrency:
                     description: Defines number of concurrent workers. Higher concurrency

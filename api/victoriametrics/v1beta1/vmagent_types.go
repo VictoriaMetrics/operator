@@ -416,7 +416,7 @@ type VMAgentRemoteWriteSettings struct {
 	// +optional
 	// +kubebuilder:validation:Pattern:="[0-9]+(ms|s|m|h)"
 	FlushInterval *string `json:"flushInterval,omitempty"`
-	// Optional labels in the form 'name=value' to add to all the metrics before sending them
+	// Labels in the form 'name=value' to add to all the metrics before sending them. This overrides the label if it already exists.
 	// +optional
 	Labels map[string]string `json:"label,omitempty"`
 	// Configures vmagent in multi-tenant mode with direct cluster support

@@ -269,7 +269,8 @@ type BaseOperatorConf struct {
 	// 3. Capabilities:
 	//      drop:
 	//        - all
-	EnableStrictSecurity bool `default:"true"`
+	// turn off `EnableStrictSecurity` by default, see https://github.com/VictoriaMetrics/operator/issues/749 for details
+	EnableStrictSecurity bool `default:"false"`
 }
 
 // Validate - validates config on best effort.
@@ -331,7 +332,7 @@ func (boc BaseOperatorConf) Validate() error {
 func (boc BaseOperatorConf) PrintDefaults(format string) error {
 	tabs := tabwriter.NewWriter(os.Stdout, 1, 0, 4, ' ', 0)
 
-	var formatter = "unknown"
+	formatter := "unknown"
 	switch format {
 	case "table":
 		formatter = envconfig.DefaultTableFormat

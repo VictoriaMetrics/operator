@@ -2208,8 +2208,9 @@ spec:
                   label:
                     additionalProperties:
                       type: string
-                    description: Optional labels in the form 'name=value' to add to
-                      all the metrics before sending them
+                    description: Labels in the form 'name=value' to add to all the
+                      metrics before sending them. This overrides the label if it
+                      already exists.
                     type: object
                   maxBlockSize:
                     description: The maximum size in bytes of unpacked request to

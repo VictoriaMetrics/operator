@@ -41,7 +41,7 @@ var SchemeGroupVersion = schema.GroupVersion{Group: "operator.victoriametrics.co
 var (
 	labelFilterPrefixes []string
 	// default ignored annotations
-	annotationFilterPrefixes = []string{"kubectl.kubernetes.io/", "operator.victoriametrics.com/"}
+	annotationFilterPrefixes = []string{"kubectl.kubernetes.io/", "operator.victoriametrics.com/", "operator.victoriametrics/last-applied-spec"}
 )
 
 // SetLabelAndAnnotationPrefixes configures global filtering for child labels and annotations

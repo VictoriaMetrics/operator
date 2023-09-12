@@ -37,11 +37,11 @@ func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, 
 	if err := rclient.Get(ctx, types.NamespacedName{Name: newSts.Name, Namespace: newSts.Namespace}, &currentSts); err != nil {
 		if errors.IsNotFound(err) {
 			if err = rclient.Create(ctx, newSts); err != nil {
-				return fmt.Errorf("cannot create new alertmanager sts: %w", err)
+				return fmt.Errorf("cannot create new sts %s under namespace %s: %w", newSts.Name, newSts.Namespace, err)
 			}
 			return nil
 		}
-		return fmt.Errorf("cannot get alertmanager sts: %w", err)
+		return fmt.Errorf("cannot get sts %s under namespace %s: %w", newSts.Name, newSts.Namespace, err)
 	}
 	if cr.UpdateReplicaCount != nil {
 		cr.UpdateReplicaCount(currentSts.Spec.Replicas)

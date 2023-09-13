@@ -74,7 +74,7 @@ type BaseOperatorConf struct {
 	VMAgentDefault struct {
 		Image               string `default:"victoriametrics/vmagent"`
 		Version             string `default:"v1.93.4"`
-		ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.58.0"`
+		ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.68.0"`
 		Port                string `default:"8429"`
 		UseDefaultResources bool   `default:"true"`
 		Resource            struct {
@@ -203,7 +203,7 @@ type BaseOperatorConf struct {
 	VMAuthDefault struct {
 		Image               string `default:"victoriametrics/vmauth"`
 		Version             string `default:"v1.93.4"`
-		ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.48.1"`
+		ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.68.0"`
 		Port                string `default:"8427"`
 		UseDefaultResources bool   `default:"true"`
 		Resource            struct {

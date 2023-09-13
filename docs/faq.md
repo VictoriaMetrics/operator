@@ -34,10 +34,6 @@ You can use `VM_CONTAINERREGISTRY` parameter for operator:
 - See details about tuning [operator settings here](https://docs.victoriametrics.com/operator/setup.html#settings).
 - See [available operator settings](https://docs.victoriametrics.com/operator/vars.html) here.
 
-## How to override image
-
-TODO
-
 ## How to set up automatic backups?
 
 You can read about backups setup in [this guide](https://docs.victoriametrics.com/operator/guides/backups.html).
@@ -64,25 +60,11 @@ You can read about needed permissions for operator in [this document](https://do
 
 ## How to run VictoriaMetrics operator with permissions for one namespace only?
 
-**TODO**
+See this document for details: [Configuration -> Namespaced mode](https://docs.victoriametrics.com/operator/configuration.html#namespaced-mode).
 
 ## What versions of Kubernetes is the operator compatible with?
 
-Operator tested at kubernetes versions from 1.16 to 1.22.
-
-**TODO**
+Operator tested at kubernetes versions from 1.16 to 1.23.
 
 For clusters version below 1.16 you must use legacy CRDs from [path](https://github.com/VictoriaMetrics/operator/tree/master/config/crd/legacy)
 and disable CRD controller with flag: `--controller.disableCRDOwnership=true`
-
-## What versions of VictoriaMetrics is the operator compatible with?
-
-**TODO**
-
-## How can I set up scrape objects selection?
-
-**TODO**
-
-## TODO: How to scale/replicate vmoperator?
-
-**TODO**

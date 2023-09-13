@@ -8,11 +8,14 @@ title: Authorization and exposing components
 
 ## Exposing components
 
-CRD objects doesn't have `ingress` configuration. Instead, you can use `VMAuth` as proxy between ingress-controller and VictoriaMetrics components.
+CRD objects doesn't have `ingress` configuration. 
+Instead, you can use [VMAuth](https://docs.victoriametrics.com/operator/resources/vmauth.html) as proxy between ingress-controller and VictoriaMetrics components.
 
 It adds missing authorization and access control features and enforces it.
 
-Access can be given with `VMUser` definition. It supports  basic auth and bearer token authentication:
+Access can be given with [VMUser](https://docs.victoriametrics.com/operator/resources/vmuser.html) definition. 
+
+It supports basic auth and bearer token authentication:
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1beta1
@@ -169,3 +172,7 @@ data:
   user: YWRtaW4= # admin
 type: Opaque
 ```
+
+More details about features of `VMAuth` and `VMUser` you can read in:
+- [VMAuth docs](https://docs.victoriametrics.com/operator/resources/vmauth.html),
+- [VMUser docs](https://docs.victoriametrics.com/operator/resources/vmuser.html).

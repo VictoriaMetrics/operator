@@ -54,8 +54,6 @@ In addition, operator:
 Here is an example of a `VMCluster` resource with HA features:
 
 ```yaml
-# example-vmcluster-persistent.yaml
-
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMCluster
 metadata:
@@ -66,15 +64,15 @@ spec:
     replicaCount: 10
     storageDataPath: "/vm-data"
     affinity:
-        podAntiAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchExpressions:
-              - key: "app.kubernetes.io/name"
-                operator: In
-                values:
-                - "vmstorage"
-            topologyKey: "kubernetes.io/hostname"
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchExpressions:
+            - key: "app.kubernetes.io/name"
+              operator: In
+              values:
+              - "vmstorage"
+          topologyKey: "kubernetes.io/hostname"
     storage:
       volumeClaimTemplate:
         spec:
@@ -89,16 +87,15 @@ spec:
     replicaCount: 3
     cacheMountPath: "/select-cache"
     affinity:
-        podAntiAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchExpressions:
-              - key: "app.kubernetes.io/name"
-                operator: In
-                values:
-                - "vmselect"
-            topologyKey: "kubernetes.io/hostname"
-
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchExpressions:
+            - key: "app.kubernetes.io/name"
+              operator: In
+              values:
+              - "vmselect"
+          topologyKey: "kubernetes.io/hostname"
     storage:
       volumeClaimTemplate:
         spec:
@@ -112,15 +109,15 @@ spec:
   vminsert:
     replicaCount: 4
     affinity:
-        podAntiAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchExpressions:
-              - key: "app.kubernetes.io/name"
-                operator: In
-                values:
-                - "vminsert"
-            topologyKey: "kubernetes.io/hostname"
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchExpressions:
+            - key: "app.kubernetes.io/name"
+              operator: In
+              values:
+              - "vminsert"
+          topologyKey: "kubernetes.io/hostname"
     resources:
       limits:
         cpu: "1"
@@ -138,23 +135,23 @@ metadata:
   name: example-vmcluster
 spec:
   vmstorage:
-      replicaCount: 2
-      image:
-        repository: victoriametrics/vmstorage
-        tag: v1.93.4-cluster
-        pullPolicy: Always
+    replicaCount: 2
+    image:
+      repository: victoriametrics/vmstorage
+      tag: v1.93.4-cluster
+      pullPolicy: Always
   vmselect:
-      replicaCount: 2
-      image:
-        repository: victoriametrics/vmselect
-        tag: v1.93.4-cluster
-        pullPolicy: Always
+    replicaCount: 2
+    image:
+      repository: victoriametrics/vmselect
+      tag: v1.93.4-cluster
+      pullPolicy: Always
   vminsert:
-      replicaCount: 2
-      image:
-        repository: victoriametrics/vminsert
-        tag: v1.93.4-cluster
-        pullPolicy: Always
+    replicaCount: 2
+    image:
+      repository: victoriametrics/vminsert
+      tag: v1.93.4-cluster
+      pullPolicy: Always
 ```
 
 Also, you can specify `imagePullSecrets` if you are pulling images from private repo, 
@@ -167,23 +164,23 @@ metadata:
   name: example-vmcluster
 spec:
   vmstorage:
-      replicaCount: 2
-      image:
-        repository: victoriametrics/vmstorage
-        tag: v1.93.4-cluster
-        pullPolicy: Always
+    replicaCount: 2
+    image:
+      repository: victoriametrics/vmstorage
+      tag: v1.93.4-cluster
+      pullPolicy: Always
   vmselect:
-      replicaCount: 2
-      image:
-        repository: victoriametrics/vmselect
-        tag: v1.93.4-cluster
-        pullPolicy: Always
+    replicaCount: 2
+    image:
+      repository: victoriametrics/vmselect
+      tag: v1.93.4-cluster
+      pullPolicy: Always
   vminsert:
-      replicaCount: 2
-      image:
-        repository: victoriametrics/vminsert
-        tag: v1.93.4-cluster
-        pullPolicy: Always
+    replicaCount: 2
+    image:
+      repository: victoriametrics/vminsert
+      tag: v1.93.4-cluster
+      pullPolicy: Always
   imagePullSecrets:
     - name: my-repo-secret
   # ...

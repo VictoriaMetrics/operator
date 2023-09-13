@@ -72,6 +72,3 @@ See more info about object [VMServiceScrape](https://docs.victoriametrics.com/op
 
 You will also need a [vmsingle](https://docs.victoriametrics.com/vmoperatos/resources/vmsingle.html) where the metrics will be collected.
 
-## Alerting
-
-**TODO**

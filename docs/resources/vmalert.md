@@ -16,12 +16,12 @@ You can see the full actual specification of the `VMAlert` resource in the [API 
 
 ## Rules
 
-The CRD specifies which `VMRule`s should be covered by the deployed VMAlert instances based on label selection.
+The CRD specifies which `VMRule`s should be covered by the deployed `VMAlert` instances based on label selection.
 The Operator then generates a configuration based on the included `VMRule`s and updates the `Configmaps` containing
 the configuration. It continuously does so for all changes that are made to `VMRule`s or to the `VMAlert` resource itself.
 
-Alerting rules are filtered by selector `ruleNamespaceSelector` in `VMAlert` CRD definition. For selecting rules from all
-namespaces you must specify it to empty value:
+Alerting rules are filtered by selectors `ruleNamespaceSelector` and `ruleSelector` in `VMAlert` CRD definition. 
+For selecting rules from all namespaces you must specify it to empty value:
 
 ```yaml
 spec:
@@ -71,19 +71,7 @@ metadata:
   name: vmalert-select-ns
 spec:
   # ...
-  serviceScrapeNamespaceSelector: 
-    matchLabels:
-      kubernetes.io/metadata.name: my-namespace
-  podScrapeNamespaceSelector:
-    matchLabels:
-      kubernetes.io/metadata.name: my-namespace
-  nodeScrapeNamespaceSelector:
-    matchLabels:
-      kubernetes.io/metadata.name: my-namespace
-  staticScrapeNamespaceSelector:
-    matchLabels:
-      kubernetes.io/metadata.name: my-namespace
-  probeNamespaceSelector:
+  ruleNamespaceSelector: 
     matchLabels:
       kubernetes.io/metadata.name: my-namespace
 ```

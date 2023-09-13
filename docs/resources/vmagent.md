@@ -22,6 +22,10 @@ so user can set custom configuration while still benefiting from the Operator's 
 
 You can see the full actual specification of the `VMAgent` resource in the [API docs -> VMAgent](https://docs.victoriametrics.com/operator/api.html#vmagent).
 
+<!-- TODO: working with selectors and scrape objects -->
+<!-- TODO: stream aggregation -->
+<!-- TODO: how to configure enterprise feature - ingestion from Kafka -->
+
 ## High availability
 
 <!-- TODO: health checks -->

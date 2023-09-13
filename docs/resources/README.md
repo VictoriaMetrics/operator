@@ -1,6 +1,6 @@
 ---
-sort: 13
-weight: 13
+sort: 14
+weight: 14
 title: Custom resources
 ---
 

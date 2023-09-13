@@ -10,6 +10,12 @@ the configuration for alerting rules.
 For each `VMAlert` resource, the Operator adds `Service` and `VMServiceScrape` in the same namespace prefixed with
 name `<VMAlert-name>`.
 
+## Specification
+
+You can see the full actual specification of the `VMAlert` resource in the [API docs -> VMAlert](https://docs.victoriametrics.com/operator/api.html#vmalert).
+
+## Rules
+
 The CRD specifies which `VMRule`s should be covered by the deployed VMAlert instances based on label selection.
 The Operator then generates a configuration based on the included `VMRule`s and updates the `Configmaps` containing
 the configuration. It continuously does so for all changes that are made to `VMRule`s or to the `VMAlert` resource itself.
@@ -22,9 +28,65 @@ spec:
   ruleNamespaceSelector: {}
 ```
 
-## Specification
+[VMRUle](https://docs.victoriametrics.com/operator/resources/vmrule.html) objects are generates part of [VMAlert](https://docs.victoriametrics.com/operator/resources/vmalert.html) configuration.
 
-You can see the full actual specification of the `VMAlert` resource in the [API docs -> VMAlert](https://docs.victoriametrics.com/operator/api.html#vmalert).
+For filtering rules `VMAlert` uses selectors `ruleNamespaceSelector` and `ruleSelector`.
+It allows configuring rules access control across namespaces and different environments.
+Specification of selectors you can see in [this doc](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#labelselector-v1-meta).
+
+In addition to the above selectors, the filtering of objects in a cluster is affected by the field `selectAllByDefault` of `VMAlert` spec and environment variable `WATCH_NAMESPACE` for operator.
+
+Following rules are applied:
+
+| `ruleNamespaceSelector` | `ruleSelector` | `selectAllByDefault` | `WATCH_NAMESPACE` | Selected rules                                                                                     |
+|-------------------------|----------------|----------------------|-------------------|----------------------------------------------------------------------------------------------------|
+| undefined               | undefined      | false                | undefined         | nothing                                                                                            |
+| undefined               | undefined      | **true**             | undefined         | all rules in the cluster                                                                           |
+| **defined**             | undefined      | any                  | undefined         | all rules are matching at namespaces for given `ruleNamespaceSelector`                             |
+| undefined               | **defined**    | any                  | undefined         | all rules only at `VMAlert`'s namespace are matching for given `ruleSelector`                      |
+| **defined**             | **defined**    | any                  | undefined         | all rules only at namespaces matched `ruleNamespaceSelector` for given `ruleSelector` are matching |
+| any                     | undefined      | any                  | **defined**       | all rules only at `VMAlert`'s namespace                                                            |
+| any                     | **defined**    | any                  | **defined**       | all rules only at `VMAlert`'s namespace for given `ruleSelector` are matching                      |
+
+More details about `WATCH_NAMESPACE` variable you can read in [this doc](https://docs.victoriametrics.com/operator/configuration.html#namespaced-mode).
+
+Here are some examples of `VMAlert` configuration with selectors:
+
+```yaml
+# select all scrape objects in the cluster
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAlert
+metadata:
+  name: vmalert-select-all
+spec:
+  # ...
+  selectAllByDefault: true
+
+---
+
+# select all scrape objects in specific namespace (my-namespace)
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAlert
+metadata:
+  name: vmalert-select-ns
+spec:
+  # ...
+  serviceScrapeNamespaceSelector: 
+    matchLabels:
+      kubernetes.io/metadata.name: my-namespace
+  podScrapeNamespaceSelector:
+    matchLabels:
+      kubernetes.io/metadata.name: my-namespace
+  nodeScrapeNamespaceSelector:
+    matchLabels:
+      kubernetes.io/metadata.name: my-namespace
+  staticScrapeNamespaceSelector:
+    matchLabels:
+      kubernetes.io/metadata.name: my-namespace
+  probeNamespaceSelector:
+    matchLabels:
+      kubernetes.io/metadata.name: my-namespace
+```
 
 ## High availability
 

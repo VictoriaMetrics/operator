@@ -19,13 +19,11 @@ You can see the full actual specification of the `VMSingle` resource in the [API
 `VMSingle` doesn't support high availability by default, for such purpose
 use [`VMCluster`](https://docs.victoriametrics.com/operator/resources/vmcluster.html) instead or duplicate the setup.
 
-## Version
+## Manage versions
 
 To set `VMSingle` version add `spec.image.tag` name from [releases](https://github.com/VictoriaMetrics/VictoriaMetrics/releases)
 
 ```yaml
-# example-vmsingle.yaml
-
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMSingle
 metadata:
@@ -33,7 +31,7 @@ metadata:
 spec:
   image:
     repository: victoriametrics/victoria-metrics
-    tag: v1.92.1
+    tag: v1.93.4
     pullPolicy: Always
   # ...
 ```
@@ -41,8 +39,6 @@ spec:
 Also, you can specify `imagePullSecrets` if you are pulling images from private repo:
 
 ```yaml
-# example-vmsingle-private.yaml
-
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMSingle
 metadata:
@@ -50,7 +46,7 @@ metadata:
 spec:
   image:
     repository: victoriametrics/victoria-metrics
-    tag: v1.92.1
+    tag: v1.93.4
     pullPolicy: Always
   imagePullSecrets:
     - name: my-repo-secret

@@ -118,6 +118,7 @@ You have to specify all pod fqdns  at `VMAlert.spec.notifiers.[url]`. Or you can
           - name: 'webhook'
             webhook_configs:
               - url: 'http://alertmanagerwh:30500/'
+      # ...
     
     ---
     
@@ -133,6 +134,7 @@ You have to specify all pod fqdns  at `VMAlert.spec.notifiers.[url]`. Or you can
       configSecret: vmalertmanager-example-alertmanager
       configSelector: {}
       configNamespaceSelector: {}
+      # ...
     ```
 - vmalert with fqdns:
     ```yaml
@@ -142,11 +144,15 @@ You have to specify all pod fqdns  at `VMAlert.spec.notifiers.[url]`. Or you can
       name: example-ha
       namespace: default
     spec:
+      replicaCount: 2
       datasource:
         url: http://vmsingle-example.default.svc:8429
       notifiers:
         - url: http://vmalertmanager-example-0.vmalertmanager-example.default.svc:9093
         - url: http://vmalertmanager-example-1.vmalertmanager-example.default.svc:9093
+      evaluationInterval: "10s"
+      ruleSelector: {}
+      # ...
     ```
 - vmalert with service discovery:
     ```yaml
@@ -156,6 +162,7 @@ You have to specify all pod fqdns  at `VMAlert.spec.notifiers.[url]`. Or you can
       name: example-ha
       namespace: default
     spec:
+      replicaCount: 2
       datasource:
        url: http://vmsingle-example.default.svc:8429
       notifiers:
@@ -166,4 +173,41 @@ You have to specify all pod fqdns  at `VMAlert.spec.notifiers.[url]`. Or you can
             labelSelector:
               matchLabels:
                   usage: dedicated
+      evaluationInterval: "10s"
+      ruleSelector: {}
+      # ...
     ```
+
+## Manage versions
+
+To set `VMAlert` version add `spec.image.tag` name from [releases](https://github.com/VictoriaMetrics/VictoriaMetrics/releases)
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAlert
+metadata:
+  name: example-vmalert
+spec:
+  image:
+    repository: victoriametrics/victoria-metrics
+    tag: v1.93.4
+    pullPolicy: Always
+  # ...
+```
+
+Also, you can specify `imagePullSecrets` if you are pulling images from private repo:
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAlert
+metadata:
+  name: example-vmalert
+spec:
+  image:
+    repository: victoriametrics/victoria-metrics
+    tag: v1.93.4
+    pullPolicy: Always
+  imagePullSecrets:
+    - name: my-repo-secret
+# ...
+```

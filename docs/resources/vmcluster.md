@@ -126,3 +126,65 @@ spec:
         cpu: "1"
         memory: "500Mi"
 ```
+
+## Manage versions
+
+For `VMCluster` you can specify tag name from [releases](https://github.com/VictoriaMetrics/VictoriaMetrics/releases) and repository setting per cluster object:
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMCluster
+metadata:
+  name: example-vmcluster
+spec:
+  vmstorage:
+      replicaCount: 2
+      image:
+        repository: victoriametrics/vmstorage
+        tag: v1.93.4-cluster
+        pullPolicy: Always
+  vmselect:
+      replicaCount: 2
+      image:
+        repository: victoriametrics/vmselect
+        tag: v1.93.4-cluster
+        pullPolicy: Always
+  vminsert:
+      replicaCount: 2
+      image:
+        repository: victoriametrics/vminsert
+        tag: v1.93.4-cluster
+        pullPolicy: Always
+```
+
+Also, you can specify `imagePullSecrets` if you are pulling images from private repo, 
+but `imagePullSecrets` is global setting for all `VMCluster` specification:
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMCluster
+metadata:
+  name: example-vmcluster
+spec:
+  vmstorage:
+      replicaCount: 2
+      image:
+        repository: victoriametrics/vmstorage
+        tag: v1.93.4-cluster
+        pullPolicy: Always
+  vmselect:
+      replicaCount: 2
+      image:
+        repository: victoriametrics/vmselect
+        tag: v1.93.4-cluster
+        pullPolicy: Always
+  vminsert:
+      replicaCount: 2
+      image:
+        repository: victoriametrics/vminsert
+        tag: v1.93.4-cluster
+        pullPolicy: Always
+  imagePullSecrets:
+    - name: my-repo-secret
+  # ...
+```

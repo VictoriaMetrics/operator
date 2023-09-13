@@ -13,8 +13,8 @@ For `VMStorage` and `VMSelect` headless  services are created. `VMInsert` is cre
 There is a strict order for these objects creation and reconciliation:
 
 1. `VMStorage` is synced - the Operator waits until all its pods are ready;
-2. Then it syncs `VMSelect` with the same manner;
-3. `VMInsert` is the last object to sync.
+1. Then it syncs `VMSelect` with the same manner;
+1. `VMInsert` is the last object to sync.
 
 All [statefulsets](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/) are created 
 with [OnDelete](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#on-delete) update type. 

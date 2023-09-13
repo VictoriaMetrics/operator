@@ -89,17 +89,16 @@ You have to stop `VMSingle` by scaling it replicas to zero and manually restore 
 Steps:
 
 1. edit `VMSingle` CRD, set replicaCount: 0
-2. wait until database stops
-3. ssh to some server, where you can mount `VMSingle` disk and mount it manually
-4. restore files with `vmrestore`
-5. umount disk
-6. edit `VMSingle` CRD, set replicaCount: 1
-7. wait database start
+1. wait until database stops
+1. ssh to some server, where you can mount `VMSingle` disk and mount it manually
+1. restore files with `vmrestore`
+1. umount disk
+1. edit `VMSingle` CRD, set replicaCount: 1
+1. wait database start
  
 ### Using VMRestore init container
 
 1. add init container with vmrestore command to `VMSingle` CRD, example:
-
     ```yaml
     apiVersion: operator.victoriametrics.com/v1beta1
     kind: VMSingle
@@ -134,9 +133,8 @@ Steps:
        name: remote-storage-keys
        key: credentials
     ```
-2. apply it, and db will be restored from s3
-
-3. remove initContainers and apply crd.
+1. apply it, and db will be restored from s3
+1. remove initContainers and apply crd.
 
 Note that using `VMRestore` will require adjusting `src` for each pod because restore will be handled per-pod.
 

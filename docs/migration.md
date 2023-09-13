@@ -36,7 +36,8 @@ You can change default behavior with operator configuration - [see details below
 ## Objects conversion
 
 By default, the vmoperator converts all existing [prometheus-operator](https://github.com/prometheus-operator/prometheus-operator)
-API objects into corresponding VictoriaMetrics Operator objects ([see above](#migration-from-prometheus-operator)).
+API objects into corresponding VictoriaMetrics Operator objects ([see above](#migration-from-prometheus-operator)), 
+i.e. creates resources of VictoriaMetrics similar to Prometheus resources in the same namespace.
 
 You can control this behaviour by setting env variable for operator:
 

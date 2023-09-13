@@ -29,5 +29,4 @@ following [custom resources](https://docs.victoriametrics.com/operator/#custom-r
 
 Here is the scheme of relations between the custom resources:
 
-<img src="README_cr-relations.png" width="1000">
-
+<img src="README_cr-relations.png">

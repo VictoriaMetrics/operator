@@ -160,6 +160,17 @@ resources:
   #   memory: 120Mi
 ```
 
+## Namespaced mode
+
+By default, the operator will watch all namespaces, but it can be configured to watch only specific namespace.
+
+If you want to override this behavior, specify the namespace:
+
+- in the `WATCH_NAMESPACE` environment variable.
+- in the `watchNamespace` field in the `values.yaml` file of helm-charts.
+
+The operator supports only single namespace for watching.
+
 ## CRD Validation
 
 Operator supports validation admission webhook [docs](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/)

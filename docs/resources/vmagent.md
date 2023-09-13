@@ -26,6 +26,89 @@ You can see the full actual specification of the `VMAgent` resource in the [API 
 <!-- TODO: stream aggregation -->
 <!-- TODO: how to configure enterprise feature - ingestion from Kafka -->
 
+## Scraping
+
+`VMAgent` supports scraping targets with:
+
+- [VMServiceScrape](https://docs.victoriametrics.com/operator/resources/vmservicescrape.html),
+- [VMPodScrape](https://docs.victoriametrics.com/operator/resources/vmpodscrape.html),
+- [VMNodeScrape](https://docs.victoriametrics.com/operator/resources/vmnodescrape.html),
+- [VMStaticScrape](https://docs.victoriametrics.com/operator/resources/vmstaticscrape.html),
+- [VMProbe](https://docs.victoriametrics.com/operator/resources/vmprobe.html).
+
+These objects are generates part of [VMAgent](https://docs.victoriametrics.com/operator/resources/vmagent.html) scrape configuration.
+
+For filtering scrape objects `VMAgent` uses selectors. 
+Selectors are defined with suffixes - `NamespaceSelector` and `Selector` for each type of scrape objects in spec of `VMAgent`:
+
+- `serviceScrapeSelector`,
+- `serviceScrapeNamespaceSelector`,
+- `podScrapeSelector`,
+- `podScrapeNamespaceSelector`,
+- `probeSelector`,
+- `probeNamespaceSelector`,
+- `staticScrapeSelector`,
+- `staticScrapeNamespaceSelector`,
+- `nodeScrapeSelector`,
+- `nodeScrapeNamespaceSelector`.
+
+It allows configuring objects access control across namespaces and different environments. 
+Specification of selectors you can see in [this doc](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#labelselector-v1-meta).
+
+In addition to the above selectors, the filtering of objects in a cluster is affected by the field `selectAllByDefault` of `VMAgent` spec and environment variable `WATCH_NAMESPACE` for operator.
+
+Following rules are applied:
+
+| `*NamespaceSelector` | `*Selector` | `selectAllByDefault` | `WATCH_NAMESPACE` | Selected objects                                                                                                 |
+|----------------------|-------------|----------------------|-------------------|------------------------------------------------------------------------------------------------------------------|
+| undefined            | undefined   | false                | undefined         | nothing                                                                                                          |
+| undefined            | undefined   | **true**             | undefined         | all objects of given type (`*`) in the cluster                                                                   |
+| **defined**          | undefined   | any                  | undefined         | all objects of given type (`*`) are matching at namespaces for given `NamespaceSelector`                         |
+| undefined            | **defined** | any                  | undefined         | all objects of given type (`*`) only at `VMAgent`'s namespace are matching for given `Selector`                  |
+| **defined**          | **defined** | any                  | undefined         | all objects of given type (`*`) only at namespaces matched `NamespaceSelector` for given `Selector` are matching |
+| any                  | undefined   | any                  | **defined**       | all objects of given type (`*`) only at `VMAgent`'s namespace                                                    |                                                   |
+| any                  | **defined** | any                  | **defined**       | all objects of given type (`*`) only at `VMAgent`'s namespace for given `Selector` are matching                  |
+
+More details about `WATCH_NAMESPACE` variable you can read in [this doc](https://docs.victoriametrics.com/operator/configuration.html#namespaced-mode).
+
+Here are some examples of `VMAgent` configuration with selectors:
+
+```yaml
+# select all scrape objects in the cluster
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAgent
+metadata:
+  name: vmagent-select-all
+spec:
+  # ...
+  selectAllByDefault: true
+
+---
+
+# select all scrape objects in specific namespace (my-namespace)
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAgent
+metadata:
+  name: vmagent-select-all
+spec:
+  # ...
+  serviceScrapeNamespaceSelector: 
+    matchLabels:
+      kubernetes.io/metadata.name: my-namespace
+  podScrapeNamespaceSelector:
+    matchLabels:
+      kubernetes.io/metadata.name: my-namespace
+  nodeScrapeNamespaceSelector:
+    matchLabels:
+      kubernetes.io/metadata.name: my-namespace
+  staticScrapeNamespaceSelector:
+    matchLabels:
+      kubernetes.io/metadata.name: my-namespace
+  probeNamespaceSelector:
+    matchLabels:
+      kubernetes.io/metadata.name: my-namespace
+```
+
 ## High availability
 
 <!-- TODO: health checks -->

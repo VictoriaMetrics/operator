@@ -25,7 +25,6 @@ for editing [`vmagent` custom resources](https://docs.victoriametrics.com/operat
 
 **TODO**
 
-<!-- TODO: namespace-wide -->
 <!-- TODO: service accounts / role bindings? -->
 <!-- TODO: resource/roles relations -->
 <!-- TODO: strict pod security -->

@@ -21,7 +21,9 @@ Or you can use VictoriaMetrics CRDs:
 
 Note that Prometheus CRDs are not supplied with the VictoriaMetrics operator,
 so you need to [install them separately](https://github.com/prometheus-operator/prometheus-operator/releases).
-VictoriaMetrics operator supports conversion from Prometheus CRD of version `monitoring.coreos.com/v1`.
+VictoriaMetrics operator supports conversion from Prometheus CRD of 
+version `monitoring.coreos.com/v1` for kinds `ServiceMonitor`, `PodMonitor`, `PrometheusRule`, `Probe` 
+and version `monitoring.coreos.com/v1alpha1` for kind `AlertmanagerConfig`.
 
 The default behavior of the operator is as follows:
 

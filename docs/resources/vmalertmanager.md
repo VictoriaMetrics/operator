@@ -15,4 +15,11 @@ You can see the full actual specification of the `VMAlertmanager` resource in th
 
 ## High Availability
 
-**TODO**
+The final step of the high availability scheme is Alertmanager, when an alert triggers, actually fire alerts against *all* instances of an Alertmanager cluster.
+
+The Alertmanager, starting with the `v0.5.0` release, ships with a high availability mode. 
+It implements a gossip protocol to synchronize instances of an Alertmanager cluster 
+regarding notifications that have been sent out, to prevent duplicate notifications. 
+It is an AP (available and partition tolerant) system. Being an AP system means that notifications are guaranteed to be sent at least once.
+
+The Victoria Metrics Operator ensures that Alertmanager clusters are properly configured to run highly available on Kubernetes.

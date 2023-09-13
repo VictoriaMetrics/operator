@@ -22,9 +22,7 @@ so user can set custom configuration while still benefiting from the Operator's 
 
 You can see the full actual specification of the `VMAgent` resource in the [API docs -> VMAgent](https://docs.victoriametrics.com/operator/api.html#vmagent).
 
-<!-- TODO: working with selectors and scrape objects -->
 <!-- TODO: stream aggregation -->
-<!-- TODO: how to configure enterprise feature - ingestion from Kafka -->
 
 ## Scraping
 
@@ -41,16 +39,11 @@ These objects are generates part of [VMAgent](https://docs.victoriametrics.com/o
 For filtering scrape objects `VMAgent` uses selectors. 
 Selectors are defined with suffixes - `NamespaceSelector` and `Selector` for each type of scrape objects in spec of `VMAgent`:
 
-- `serviceScrapeSelector`,
-- `serviceScrapeNamespaceSelector`,
-- `podScrapeSelector`,
-- `podScrapeNamespaceSelector`,
-- `probeSelector`,
-- `probeNamespaceSelector`,
-- `staticScrapeSelector`,
-- `staticScrapeNamespaceSelector`,
-- `nodeScrapeSelector`,
-- `nodeScrapeNamespaceSelector`.
+- `serviceScrapeNamespaceSelector` and `serviceScrapeSelector` for selecting [VMServiceScrape](https://docs.victoriametrics.com/operator/resources/vmservicescrape.html) objects,
+- `podScrapeNamespaceSelector` and `podScrapeSelector` for selecting [VMPodScrape](https://docs.victoriametrics.com/operator/resources/vmpodscrape.html) objects,
+- `probeNamespaceSelector` and `probeSelector` for selecting [VMProbe](https://docs.victoriametrics.com/operator/resources/vmprobe.html) objects,
+- `staticScrapeNamespaceSelector` and `staticScrapeSelector` for selecting [VMStaticScrape](https://docs.victoriametrics.com/operator/resources/vmstaticscrape.html) objects,
+- `nodeScrapeNamespaceSelector` and `nodeScrapeSelector` for selecting [VMNodeScrape](https://docs.victoriametrics.com/operator/resources/vmnodescrape.html) objects.
 
 It allows configuring objects access control across namespaces and different environments. 
 Specification of selectors you can see in [this doc](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#labelselector-v1-meta).
@@ -89,7 +82,7 @@ spec:
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAgent
 metadata:
-  name: vmagent-select-all
+  name: vmagent-select-ns
 spec:
   # ...
   serviceScrapeNamespaceSelector: 
@@ -344,14 +337,6 @@ spec:
 ```
 
 **Note**: You can specify only one Secret in the VMAgent CRD configuration so use it for all additional scrape configurations.
-
-
-
-
-
-
-
-
 
 ## Relabeling
 

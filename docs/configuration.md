@@ -171,6 +171,23 @@ If you want to override this behavior, specify the namespace:
 
 The operator supports only single namespace for watching.
 
+You can find example of RBAC manifests for single-namespace mode in 
+[this file](https://github.com/VictoriaMetrics/operator/blob/master/config/examples/operator_rbac_for_single_namespace.yaml).
+
+## Monitoring of cluster components
+
+By default, operator creates [VMServiceScrape](https://docs.victoriametrics.com/operator/resources/vmservicescrape.html) 
+object for each component that it manages.
+
+You can disable this behaviour with `VM_DASABLESELFSERVICASCRAPECREATION` environment variable:
+
+```shell
+VM_DASABLESELFSERVICASCRAPECREATION=false
+```
+
+Also, you can override default configuration for self-scraping with `ServiceScrapeSpec` field in each deployable resource 
+(`vmcluster/select`, `vmcluster/insert`, `vmcluster/storage`, `vmagent`, `vmalert`, `vmalertmanager`, `vmauth`, `vmsingle`):
+
 ## CRD Validation
 
 Operator supports validation admission webhook [docs](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/)

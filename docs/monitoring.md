@@ -10,8 +10,6 @@ VictoriaMetrics operator exports internal metrics in Prometheus exposition forma
 
 These metrics can be scraped via [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent.html) or Prometheus.
 
-<!-- TODO: describe operator metrics -->
-
 ## Dashboard
 
 Official Grafana dashboard available for [vmoperator](https://grafana.com/grafana/dashboards/17869-victoriametrics-operator/).

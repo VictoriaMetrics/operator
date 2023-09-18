@@ -166,7 +166,7 @@ You have to specify all pod fqdns  at `VMAlert.spec.notifiers.[url]`. Or you can
       # ...
     ```
 
-## Manage versions
+## Version management
 
 To set `VMAlert` version add `spec.image.tag` name from [releases](https://github.com/VictoriaMetrics/VictoriaMetrics/releases)
 

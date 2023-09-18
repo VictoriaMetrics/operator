@@ -548,7 +548,7 @@ metadata:
 
 `VMAgent` also has some extra options for relabeling actions, you can check it [docs](https://docs.victoriametrics.com/vmagent#relabeling).
 
-## Manage versions
+## Version management
 
 To set `VMAgent` version add `spec.image.tag` name from [releases](https://github.com/VictoriaMetrics/VictoriaMetrics/releases)
 

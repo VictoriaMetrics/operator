@@ -4,7 +4,7 @@ weight: 9
 title: FAQ
 ---
 
-# FAQ
+# FAQ (Frequency Asked Questions)
 
 ## How do you monitor the operator itself?
 

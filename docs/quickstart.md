@@ -6,10 +6,30 @@ title: QuickStart
 
 # VictoriaMetrics Operator QuickStart
 
-Operator serves to make running VictoriaMetrics applications on top of Kubernetes as easy as possible while preserving
-Kubernetes-native configuration options.
+VictoriaMetrics Operator serves to make running VictoriaMetrics applications on top of Kubernetes as easy as possible 
+while preserving Kubernetes-native configuration options.
 
-## Setup
+The shortest way to deploy full-stack monitoring cluster with VictoriaMetrics Operator is 
+to use Helm-chart [victoria-metrics-k8s-stack](https://victoriametrics.github.io/helm-charts/charts/victoria-metrics-k8s-stack/).
+
+You can follow the steps in documentation to use VictoriaMetrics Operator:
+
+- [Setup](https://docs.victoriametrics.com/operator/setup.html)
+- [Security](https://docs.victoriametrics.com/operator/security.html)
+- [Configuration](https://docs.victoriametrics.com/operator/configuration.html)
+- [Migration from Prometheus](https://docs.victoriametrics.com/operator/migration.html)
+- [Monitoring](https://docs.victoriametrics.com/operator/monitoring.html)
+- [Authorization and exposing components](https://docs.victoriametrics.com/operator/auth.html)
+- [High Availability](https://docs.victoriametrics.com/operator/high-availability.html)
+- [Enterprise](https://docs.victoriametrics.com/operator/enterprise.html)
+- [Custom resources](https://docs.victoriametrics.com/operator/resources/)
+- [Guides](https://docs.victoriametrics.com/operator/guides/)
+- [FAQ (Frequency Asked Questions)](https://docs.victoriametrics.com/operator/faq.html)
+
+But if you want to deploy VictoriaMetrics Operator quickly but from scratch (without using templating for custom resources), 
+you can follow this guide.
+
+## Setup operator
 
 You can find out how to and instructions for installing the VictoriaMetrics operator into your kubernetes cluster
 on the [Setup page](https://docs.victoriametrics.com/operator/setup.html).
@@ -108,7 +128,7 @@ kubectl get pods -n vm -l "app.kubernetes.io/instance=vmoperator"
 # vmoperator-victoria-metrics-operator-7b88bd6df9-q9qwz   1/1     Running   0          98s
 ``` 
 
-## Create instances
+## Deploy components
 
 Now you can create instances of VictoriaMetrics applications.
 Let's create fullstack monitoring cluster with 
@@ -125,7 +145,7 @@ consisting of `vmstorage`, `vmselect` and `vminsert`):
 
 More details about resources of VictoriaMetrics operator you can find on the [resources page](https://docs.victoriametrics.com/operator/resources/). 
 
-### vmcluster
+### VictoriaMetrics cluster (select, insert, storage)
 
 Let's start by deploying the [`vmcluster`](https://docs.victoriametrics.com/operator/resources/vmcluster.html) resource.
 
@@ -226,7 +246,9 @@ We'll need them in the next steps.
 More information about `vmcluster` resource you can find on 
 the [vmcluster page](https://docs.victoriametrics.com/operator/resources/vmcluster.html).
 
-### vmagent
+### Scraping
+
+#### vmagent
 
 Now let's deploy [`vmagent`](https://docs.victoriametrics.com/operator/resources/vmagent.html) resource.
 
@@ -310,7 +332,7 @@ kubectl apply -f vmservicescrape.yaml -n vm
 # vmservicescrape.operator.victoriametrics.com/vmoperator-demo configured
 ```
 
-### vmauth
+### Access
 
 We need to look at the results of what we got. Up until now, we've just been looking only at the status of the pods. 
 Let's expose our components with [`vmauth`](https://docs.victoriametrics.com/operator/resources/vmauth.html).
@@ -402,10 +424,12 @@ and your given password (`Yt3N2r3cPl` in our case):
 
 <img src="quickstart_select-2.png">
 
-## 5. Backups
+### Alerting
 
-TODO
+The remaining components will be needed for alerting. 
+Let's start with [`vmalertmanager`](https://docs.victoriametrics.com/operator/resources/vmalertmanager.html).
 
-## 6. Anything else
+
+## Anything else
 
 TODO (guides, FAQ, resources, issues.)

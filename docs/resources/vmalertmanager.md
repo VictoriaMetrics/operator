@@ -136,7 +136,7 @@ It is an AP (available and partition tolerant) system. Being an AP system means 
 
 The Victoria Metrics Operator ensures that Alertmanager clusters are properly configured to run highly available on Kubernetes.
 
-## Manage versions
+## Version management
 
 To set `VMAlertmanager` version add `spec.image.tag` name from [releases](https://github.com/VictoriaMetrics/VictoriaMetrics/releases)
 

@@ -77,3 +77,37 @@ spec:
     replicas: 3
     # ...
 ```
+
+## Version management
+
+To set `VMAuth` version add `spec.image.tag` name from [releases](https://github.com/VictoriaMetrics/VictoriaMetrics/releases)
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAuth
+metadata:
+  name: example-vmauth
+spec:
+  image:
+    repository: victoriametrics/victoria-metrics
+    tag: v1.93.4
+    pullPolicy: Always
+  # ...
+```
+
+Also, you can specify `imagePullSecrets` if you are pulling images from private repo:
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAuth
+metadata:
+  name: example-vmauth
+spec:
+  image:
+    repository: victoriametrics/victoria-metrics
+    tag: v1.93.4
+    pullPolicy: Always
+  imagePullSecrets:
+    - name: my-repo-secret
+# ...
+```

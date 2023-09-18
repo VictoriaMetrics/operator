@@ -124,7 +124,7 @@ spec:
         memory: "500Mi"
 ```
 
-## Manage versions
+## Version management
 
 For `VMCluster` you can specify tag name from [releases](https://github.com/VictoriaMetrics/VictoriaMetrics/releases) and repository setting per cluster object:
 

@@ -19,7 +19,7 @@ You can see the full actual specification of the `VMSingle` resource in the [API
 `VMSingle` doesn't support high availability by default, for such purpose
 use [`VMCluster`](https://docs.victoriametrics.com/operator/resources/vmcluster.html) instead or duplicate the setup.
 
-## Manage versions
+## Version management
 
 To set `VMSingle` version add `spec.image.tag` name from [releases](https://github.com/VictoriaMetrics/VictoriaMetrics/releases)
 

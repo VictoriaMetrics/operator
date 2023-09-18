@@ -68,3 +68,18 @@ The basic workflow of working with the operator can be simplified as the followi
 - Operator subscribed to change events (`create`, `update`, `delete`) for related resources.
 - When an event occurs, the operator reacts and updates the state of the objects in the cluster.
 - For some objects in the cluster the reconciliation cycle is performed at a given interval, even without the occurrence of change events (see `VM_FORCERESYNCINTERVAL`).
+
+### Next steps
+
+- [Quick Start Guide](https://docs.victoriametrics.com/operator/quickstart.html)
+- [Setup](https://docs.victoriametrics.com/operator/setup.html)
+- [Security](https://docs.victoriametrics.com/operator/security.html)
+- [Configuration](https://docs.victoriametrics.com/operator/configuration.html)
+- [Migration from Prometheus](https://docs.victoriametrics.com/operator/migration.html)
+- [Monitoring](https://docs.victoriametrics.com/operator/monitoring.html)
+- [Authorization and exposing components](https://docs.victoriametrics.com/operator/auth.html)
+- [High Availability](https://docs.victoriametrics.com/operator/high-availability.html)
+- [Enterprise](https://docs.victoriametrics.com/operator/enterprise.html)
+- [Custom resources](https://docs.victoriametrics.com/operator/resources/)
+- [Guides](https://docs.victoriametrics.com/operator/guides/)
+- [FAQ (Frequency Asked Questions)](https://docs.victoriametrics.com/operator/faq.html)

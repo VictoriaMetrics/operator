@@ -39,6 +39,17 @@ You can find the specification for the custom resources on [API Docs](https://do
 
 You can find examples of the custom resources for VIctoriMetrics operator in the [examples directory](https://github.com/VictoriaMetrics/operator/tree/master/config/examples) of operator repository.
 
+## Managing versions of VM
+
+Every custom resource with deployable application has a fields for specifying version (docker image) of component:
+
+- [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent.html#version-management)
+- [vmalert](https://docs.victoriametrics.com/operator/resources/vmalert.html#version-management)
+- [vmalertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager.html#version-management)
+- [vmauth](https://docs.victoriametrics.com/operator/resources/vmauth.html#version-management)
+- [vmcluster](https://docs.victoriametrics.com/operator/resources/vmcluster.html#version-management)
+- [vmsingle](https://docs.victoriametrics.com/operator/resources/vmsingle.html#version-management)
+
 ## Configuration synchronization
 
 ### Basic concepts

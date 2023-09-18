@@ -9,7 +9,7 @@ title: QuickStart
 Operator serves to make running VictoriaMetrics applications on top of Kubernetes as easy as possible while preserving
 Kubernetes-native configuration options.
 
-## 1. Setup
+## Setup
 
 You can find out how to and instructions for installing the VictoriaMetrics operator into your kubernetes cluster
 on the [Setup page](https://docs.victoriametrics.com/operator/setup.html).
@@ -108,7 +108,7 @@ kubectl get pods -n vm -l "app.kubernetes.io/instance=vmoperator"
 # vmoperator-victoria-metrics-operator-7b88bd6df9-q9qwz   1/1     Running   0          98s
 ``` 
 
-## 2. Create instances
+## Create instances
 
 Now you can create instances of VictoriaMetrics applications.
 Let's create fullstack monitoring cluster with 
@@ -125,7 +125,7 @@ consisting of `vmstorage`, `vmselect` and `vminsert`):
 
 More details about resources of VictoriaMetrics operator you can find on the [resources page](https://docs.victoriametrics.com/operator/resources/). 
 
-### 2.1. vmcluster
+### vmcluster
 
 Let's start by deploying the [`vmcluster`](https://docs.victoriametrics.com/operator/resources/vmcluster.html) resource.
 
@@ -226,7 +226,7 @@ We'll need them in the next steps.
 More information about `vmcluster` resource you can find on 
 the [vmcluster page](https://docs.victoriametrics.com/operator/resources/vmcluster.html).
 
-### 2.2. vmagent
+### vmagent
 
 Now let's deploy [`vmagent`](https://docs.victoriametrics.com/operator/resources/vmagent.html) resource.
 
@@ -246,7 +246,7 @@ metadata:
 spec:
   selectAllByDefault: true
   remoteWrite:
-    - url: "http://vminsert-demo.default.svc:8480/insert/0/prometheus/api/v1/write"
+    - url: "http://vminsert-demo.vm.svc:8480/insert/0/prometheus/api/v1/write"
 ```
 
 After that you can deploy `vmagent` resource to the kubernetes cluster:
@@ -269,7 +269,7 @@ kubectl get pods -n vm -l "app.kubernetes.io/instance=demo" -l "app.kubernetes.i
 More information about `vmagent` resource you can find on 
 the [vmagent page](https://docs.victoriametrics.com/operator/resources/vmagent.html).
 
-### 2.3. vmservicescrapes
+### vmservicescrapes
 
 Now we have the timeseries database (vmcluster) and the tool to collect metrics (vmagent) and send it to the database.
 
@@ -307,10 +307,10 @@ After that you can deploy `vmservicescrape` resource to the kubernetes cluster:
 ```shell
 kubectl apply -f vmservicescrape.yaml -n vm
 
-# vmservicescrape.operator.victoriametrics.com/demo configured
+# vmservicescrape.operator.victoriametrics.com/vmoperator-demo configured
 ```
 
-### 2.4. vmauth
+### vmauth
 
 We need to look at the results of what we got. Up until now, we've just been looking only at the status of the pods. 
 Let's expose our components with [`vmauth`](https://docs.victoriametrics.com/operator/resources/vmauth.html).
@@ -339,7 +339,7 @@ spec:
 **Note** that content of `ingress` field depends on your ingress-controller and domain.
 Your cluster will have them differently.
 
-To get access to our data it is necessary to create a user using 
+To get authorized access to our data it is necessary to create a user using 
 the [vmuser](https://docs.victoriametrics.com/operator/resources/vmuser.html) resource.
 
 Create file `vmuser.yaml` 
@@ -367,13 +367,39 @@ spec:
         target_path_suffix: "/select/0"
 ```
 
-## 3. Targets scraping
+After that you can deploy `vmauth` and `vmuser` resources to the kubernetes cluster:
 
-TODO (+migration from prometheus)
+```shell
+kubectl apply -f vmauth.yaml -n vm
+kubectl apply -f vmuser.yaml -n vm
 
-## 4. See the results
+# vmauth.operator.victoriametrics.com/demo configured
+# vmuser.operator.victoriametrics.com/demo configured
+```
 
-TODO
+Operator automatically creates a secret with username/password token for `VMUser` resource with `generatePassword=true`:
+
+```shell
+kubectl get secret -n vm -l "app.kubernetes.io/instance=demo" -l "app.kubernetes.io/name=vmuser"
+
+# NAME          TYPE     DATA   AGE
+# vmuser-demo   Opaque   3      29m
+```
+
+You can get password for your user with command:
+
+```shell
+kubectl get secret -n vm vmuser-demo -o jsonpath="{.data.password}" | base64 --decode
+
+# Yt3N2r3cPl
+```
+
+Now you can get access to your data with url `http://vm-demo.k8s.orb.local/vmui`, username `demo` 
+and your given password (`Yt3N2r3cPl` in our case):
+
+<img src="quickstart_select-1.png">
+
+<img src="quickstart_select-2.png">
 
 ## 5. Backups
 

@@ -337,7 +337,8 @@ spec:
 ```
 
 **Note** that content of `ingress` field depends on your ingress-controller and domain.
-Your cluster will have them differently.
+Your cluster will have them differently. 
+Also, for simplicity, we don't use tls, but in real environments not having tls is unsafe.
 
 To get authorized access to our data it is necessary to create a user using 
 the [vmuser](https://docs.victoriametrics.com/operator/resources/vmuser.html) resource.

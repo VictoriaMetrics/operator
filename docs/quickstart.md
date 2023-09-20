@@ -532,8 +532,77 @@ kubectl get pods -n vm -l "app.kubernetes.io/instance=demo" -l "app.kubernetes.i
 
 #### VMRule
 
-Now you can create [`vmrule`](https://docs.victoriametrics.com/operator/resources/vmrule.html) resource 
+Now you can create [vmrule](https://docs.victoriametrics.com/operator/resources/vmrule.html) resource 
 for [vmalert](https://docs.victoriametrics.com/operator/resources/vmalert.html).
+
+Create file `vmrule.yaml`
+
+```shell
+code vmrule.yaml
+```
+
+with the following content:
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMRule
+metadata:
+  name: demo
+spec:
+  groups:
+    - name: vmalert
+      rules:
+        - alert: vmalert config reload error
+          expr: delta(vmalert_config_last_reload_errors_total[5m]) > 0
+          for: 10s
+          labels:
+            severity: major
+            job:  "{{ $labels.job }}"
+          annotations:
+            value: "{{ $value }}"
+            description: 'error reloading vmalert config, reload count for 5 min {{ $value }}'
+```
+
+After that you can deploy `vmrule` resource to the kubernetes cluster:
+
+```shell
+kubectl apply -f vmrule.yaml -n vm
+
+# vmrule.operator.victoriametrics.com/demo created
+```
+
+#### VMUser
+
+Let's update our user with access to `vmalert` and `vmalertmanager`:
+
+```shell
+code vmuser.yaml
+```
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMUser
+metadata:
+  name: demo
+spec:
+    name: demo
+    username: demo
+    generatePassword: true
+    targetRefs:
+      - crd:
+          kind: VMCluster/vmselect
+          name: demo
+          namespace: vm
+        target_path_suffix: "/select/0"
+      - crd:
+          kind: VMAlertmanager/vmalertmanager
+          name: demo
+          namespace: vm
+      - crd:
+          kind: VMAlert/vmalert
+          name: demo
+          namespace: vm
+```
 
 ## Anything else
 

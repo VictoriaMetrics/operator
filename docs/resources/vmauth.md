@@ -8,7 +8,10 @@ So it will be possible to access these credentials from any application by targe
 ## Specification
 
 You can see the full actual specification of the `VMAuth` resource in
-the [API docs -> VMAuth](https://docs.victoriametrics.com/operator/api.html#vmauth).
+the **[API docs -> VMAuth](https://docs.victoriametrics.com/operator/api.html#vmauth)**.
+
+If you can't find necessary field in the specification of the custom resource,
+see [Extra arguments section](https://docs.victoriametrics.com/operator/resources/#extra-args).
 
 ## Users
 

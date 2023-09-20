@@ -1,5 +1,7 @@
 # VMAlertmanager
 
+`VMAlertmanager` - represents [alertmanager](https://prometheus.io/docs/alerting/latest/alertmanager/) configuration.
+
 The `VMAlertmanager` CRD declaratively defines a desired Alertmanager setup to run in a Kubernetes cluster.
 It provides options to configure replication and persistent storage.
 
@@ -11,7 +13,10 @@ When there are two or more configured replicas the Operator runs the Alertmanage
 
 ## Specification
 
-You can see the full actual specification of the `VMAlertmanager` resource in the [API docs -> VMAlert](https://docs.victoriametrics.com/operator/api.html#vmalertmanager).
+You can see the full actual specification of the `VMAlertmanager` resource in the **[API docs -> VMAlert](https://docs.victoriametrics.com/operator/api.html#vmalertmanager)**.
+
+If you can't find necessary field in the specification of the custom resource,
+see [Extra arguments section](https://docs.victoriametrics.com/operator/resources/#extra-args).
 
 ## Configuration
 

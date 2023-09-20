@@ -1,7 +1,12 @@
 # VMAgent
 
+`VMAgent` represents agent, which helps you collect metrics from various sources and stores them in VictoriaMetrics.
 The `VMAgent` CRD declaratively defines a desired [VMAgent](https://docs.victoriametrics.com/vmagent)
 setup to run in a Kubernetes cluster.
+
+It requires access to Kubernetes API and you can create RBAC for it first, it can be found 
+at [`examples/vmagent_rbac.yaml`](https://github.com/VictoriaMetrics/operator/blob/master/config/examples/vmagent_rbac.yaml)
+Or you can use default rbac account, that will be created for `VMAgent` by operator automatically.
 
 For each `VMAgent` resource Operator deploys a properly configured `Deployment` in the same namespace.
 The VMAgent `Pod`s are configured to mount a `Secret` prefixed with `<VMAgent-name>` containing the configuration
@@ -20,9 +25,10 @@ so user can set custom configuration while still benefiting from the Operator's 
 
 ## Specification
 
-You can see the full actual specification of the `VMAgent` resource in the [API docs -> VMAgent](https://docs.victoriametrics.com/operator/api.html#vmagent).
+You can see the full actual specification of the `VMAgent` resource in the **[API docs -> VMAgent](https://docs.victoriametrics.com/operator/api.html#vmagent)**.
 
-<!-- TODO: stream aggregation -->
+If you can't find necessary field in the specification of the custom resource, 
+see [Extra arguments section](https://docs.victoriametrics.com/operator/resources/#extra-args).
 
 ## Scraping
 
@@ -166,7 +172,7 @@ metadata:
 spec:
   # ...
   selectAllByDefault: true
-  vmAgentExternalLabelName: vmagent-ha
+  vmAgentExternalLabelName: vmagent_ha
   remoteWrite:
     - url: "http://vmsingle-example.default.svc:8429/api/v1/write"
   # Replication:
@@ -196,7 +202,7 @@ metadata:
 spec:
   # ...
   selectAllByDefault: true
-  vmAgentExternalLabelName: vmagent-ha
+  vmAgentExternalLabelName: vmagent_ha
   remoteWrite:
     - url: "http://vmsingle-example.default.svc:8429/api/v1/write"
   # Replication:
@@ -230,7 +236,7 @@ metadata:
 spec:
   # ...
   selectAllByDefault: true
-  vmAgentExternalLabelName: vmagent-ha
+  vmAgentExternalLabelName: vmagent_ha
   remoteWrite:
     - url: "http://vmsingle-example.default.svc:8429/api/v1/write"
   # Replication:

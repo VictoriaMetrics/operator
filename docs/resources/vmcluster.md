@@ -1,5 +1,6 @@
 # VMCluster
 
+`VMCluster` represents a high-available and fault-tolerant version of VictoriaMetrics database.
 The `VMCluster` CRD defines a [cluster version VM](https://docs.victoriametrics.com/Cluster-VictoriaMetrics.html).
 
 For each `VMCluster` resource, the Operator creates:
@@ -25,7 +26,10 @@ The most important is `VM_PODWAITREADYTIMEOUT=80s` - it controls how long to wai
 
 ## Specification
 
-You can see the full actual specification of the `VMCluster` resource in the [API docs -> VMCluster](https://docs.victoriametrics.com/operator/api.html#vmcluster).
+You can see the full actual specification of the `VMCluster` resource in the **[API docs -> VMCluster](https://docs.victoriametrics.com/operator/api.html#vmcluster)**.
+
+If you can't find necessary field in the specification of the custom resource,
+see [Extra arguments section](https://docs.victoriametrics.com/operator/resources/#extra-args).
 
 ## High availability
 

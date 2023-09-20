@@ -33,7 +33,69 @@ Here is the scheme of relations between the custom resources:
 
 ## Specification
 
-You can find the specification for the custom resources on [API Docs](https://docs.victoriametrics.com/operator/api.html).
+You can find the specification for the custom resources on **[API Docs](https://docs.victoriametrics.com/operator/api.html)**.
+
+### Extra arguments
+
+If you can't find necessary field in the specification of custom resource, 
+you can use `extraArgs` field for passing additional arguments to the application.
+
+Field `extraArgs` is supported for the following custom resources:
+
+- [VMAgent spec](https://docs.victoriametrics.com/operator/api.html#vmagentspec)
+- [VMAlert spec](https://docs.victoriametrics.com/operator/api.html#vmalertspec)
+- [VMAlertManager spec](https://docs.victoriametrics.com/operator/api.html#vmalertmanagerspec)
+- [VMAuth spec](https://docs.victoriametrics.com/operator/api.html#vmauthspec)
+- [VMCluster/vmselect spec](https://docs.victoriametrics.com/operator/api.html#vmselect)
+- [VMCluster/vminsert spec](https://docs.victoriametrics.com/operator/api.html#vminsert)
+- [VMCluster/vmstorage spec](https://docs.victoriametrics.com/operator/api.html#vmstorage)
+- [VMSingle spec](https://docs.victoriametrics.com/operator/api.html#vmsinglespec)
+
+Supported flags for each application can be found the in the corresponding documentation:
+
+- [VMAgent flags](https://docs.victoriametrics.com/vmagent.html#advanced-usage)
+- [VMAlert](https://docs.victoriametrics.com/vmalert.html#configuration)
+- [VMAuth](https://docs.victoriametrics.com/vmauth.html#advanced-usage)
+- [VMCluster](https://docs.victoriametrics.com/Cluster-VictoriaMetrics.html#list-of-command-line-flags)
+- [VMSingle](https://docs.victoriametrics.com/Single-server-VictoriaMetrics.html#list-of-command-line-flags)
+
+Usage example:
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMSingle
+metadata:
+  name: vmsingle-example-exrtaargs
+spec:
+  retentionPeriod: "1"
+  extraArgs:
+    dedup.minScrapeInterval: 60s
+  # ...
+```
+
+### Extra environment variables
+
+Flag can be replaced with environment variable, it's useful for retrieving value from secret. 
+You can use `extraEnvs` field for passing additional arguments to the application.
+
+Usage example:
+
+```yaml
+kind: VMSingle
+metadata:
+  name: vmsingle-example--exrtaenvs
+spec:
+  retentionPeriod: "1"
+  extraEnvs:
+    - name: DEDUP_MINSCRAPEINTERVAL
+      valueFrom:
+        secretKeyRef:
+          name: vm-secret
+          key: dedup
+```
+
+This feature really useful for using with 
+[`-envflag.enable` command-line argument](https://docs.victoriametrics.com/Single-server-VictoriaMetrics.html#environment-variables).
 
 ## Examples
 

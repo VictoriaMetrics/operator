@@ -1,7 +1,13 @@
 # VMAlert
 
+`VMAlert` - executes a list of given [alerting](https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/) 
+or [recording](https://prometheus.io/docs/prometheus/latest/configuration/recording_rules/) rules against configured address. 
+
 The `VMAlert` CRD declaratively defines a desired [VMAlert](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/app/vmalert)
 setup to run in a Kubernetes cluster.
+
+It has few required config options - `datasource` and `notifier` are required, for other config parameters
+check [doc](https://docs.victoriametrics.com/operator/api.html#vmalert).
 
 For each `VMAlert` resource, the Operator deploys a properly configured `Deployment` in the same namespace.
 The VMAlert `Pod`s are configured to mount a list of `Configmaps` prefixed with `<VMAlert-name>-number` containing
@@ -12,7 +18,10 @@ name `<VMAlert-name>`.
 
 ## Specification
 
-You can see the full actual specification of the `VMAlert` resource in the [API docs -> VMAlert](https://docs.victoriametrics.com/operator/api.html#vmalert).
+You can see the full actual specification of the `VMAlert` resource in the **[API docs -> VMAlert](https://docs.victoriametrics.com/operator/api.html#vmalert)**.
+
+If you can't find necessary field in the specification of the custom resource,
+see [Extra arguments section](https://docs.victoriametrics.com/operator/resources/#extra-args).
 
 ## Rules
 

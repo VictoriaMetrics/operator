@@ -82,4 +82,11 @@ The basic workflow of working with the operator can be simplified as the followi
 - [Enterprise](https://docs.victoriametrics.com/operator/enterprise.html)
 - [Custom resources](https://docs.victoriametrics.com/operator/resources/)
 - [Guides](https://docs.victoriametrics.com/operator/guides/)
-- [FAQ (Frequency Asked Questions)](https://docs.victoriametrics.com/operator/faq.html)
+
+If you have any questions, check out our [FAQ](https://docs.victoriametrics.com/operator/faq.html) 
+and feel free to can ask them:
+- [VictoriaMetrics Slack](https://victoriametrics.slack.com/)
+- [VictoriaMetrics Telegram](https://t.me/VictoriaMetrics_en)
+
+If you have any suggestions or find a bug, please create an issue
+on [GitHub](https://github.com/VictoriaMetrics/operator/issues/new).

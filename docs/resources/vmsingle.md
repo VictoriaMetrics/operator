@@ -1,5 +1,6 @@
 # VMSingle
 
+`VMSingle` represents database for storing metrics.
 The `VMSingle` CRD declaratively defines a [single-node VM](https://docs.victoriametrics.com/Single-server-VictoriaMetrics.html)
 installation to run in a Kubernetes cluster.
 
@@ -12,7 +13,10 @@ For each `VMSingle` resource, the Operator adds `Service` and `VMServiceScrape` 
 
 ## Specification
 
-You can see the full actual specification of the `VMSingle` resource in the [API docs -> VMSingle](https://docs.victoriametrics.com/operator/api.html#vmsingle).
+You can see the full actual specification of the `VMSingle` resource in the **[API docs -> VMSingle](https://docs.victoriametrics.com/operator/api.html#vmsingle)**.
+
+If you can't find necessary field in the specification of the custom resource,
+see [Extra arguments section](https://docs.victoriametrics.com/operator/resources/#extra-args).
 
 ## High availability
 

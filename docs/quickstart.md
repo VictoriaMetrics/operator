@@ -649,4 +649,28 @@ And now you can get access to your data with url `http://vm-demo.k8s.orb.local/v
 
 ## Anything else
 
-TODO (guides, FAQ, resources, issues.)
+That's it.
+
+You have a full-stack monitoring cluster with VictoriaMetrics Operator.
+
+You can find information about these and other resources of operator on the [Custom resources page](https://docs.victoriametrics.com/operator/resources/).
+
+In addition, check out other sections of the documentation for VictoriaMetrics Operator:
+
+- [Setup](https://docs.victoriametrics.com/operator/setup.html)
+- [Security](https://docs.victoriametrics.com/operator/security.html)
+- [Configuration](https://docs.victoriametrics.com/operator/configuration.html)
+- [Migration from Prometheus](https://docs.victoriametrics.com/operator/migration.html)
+- [Monitoring](https://docs.victoriametrics.com/operator/monitoring.html)
+- [Authorization and exposing components](https://docs.victoriametrics.com/operator/auth.html)
+- [High Availability](https://docs.victoriametrics.com/operator/high-availability.html)
+- [Enterprise](https://docs.victoriametrics.com/operator/enterprise.html)
+- [Guides](https://docs.victoriametrics.com/operator/guides/)
+
+If you have any questions, check out our [FAQ](https://docs.victoriametrics.com/operator/faq.html)
+and feel free to can ask them:
+- [VictoriaMetrics Slack](https://victoriametrics.slack.com/)
+- [VictoriaMetrics Telegram](https://t.me/VictoriaMetrics_en)
+
+If you have any suggestions or find a bug, please create an issue
+on [GitHub](https://github.com/VictoriaMetrics/operator/issues/new).

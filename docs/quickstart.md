@@ -388,11 +388,20 @@ spec:
     username: demo
     generatePassword: true
     targetRefs:
+      # vmui + vmselect
       - crd:
           kind: VMCluster/vmselect
           name: demo
           namespace: vm
         target_path_suffix: "/select/0"
+        paths:
+          - "/vmui"
+          - "/vmui/.*"
+          - "/prometheus/api/v1/query"
+          - "/prometheus/api/v1/query_range"
+          - "/prometheus/api/v1/series"
+          - "/prometheus/api/v1/label/"
+          - "/prometheus/api/v1/label/[^/]+/values"
 ```
 
 After that you can deploy `vmauth` and `vmuser` resources to the kubernetes cluster:
@@ -506,11 +515,18 @@ metadata:
   name: demo
 spec:
   datasource:
-    url: "http://vmselect-demo.vm.svc:8429"
+    url: "http://vmselect-demo.vm.svc:8481/select/0/prometheus"
+  remoteWrite:
+    url: "http://vminsert-demo.vm.svc:8480/insert/0/prometheus"
+  remoteRead:
+    url: "http://vmselect-demo.vm.svc:8481/select/0/prometheus"
   notifier:
     url: "http://vmalertmanager-demo.vm.svc:9093"
   evaluationInterval: "30s"
   selectAllByDefault: true
+  # for accessing to vmalert via vmauth with path prefix
+  extraArgs:
+    http.pathPrefix: /vmalert
 ```
 
 After that you can deploy `vmalert` resource to the kubernetes cluster:
@@ -585,24 +601,51 @@ kind: VMUser
 metadata:
   name: demo
 spec:
-    name: demo
-    username: demo
-    generatePassword: true
-    targetRefs:
-      - crd:
-          kind: VMCluster/vmselect
-          name: demo
-          namespace: vm
-        target_path_suffix: "/select/0"
-      - crd:
-          kind: VMAlertmanager/vmalertmanager
-          name: demo
-          namespace: vm
-      - crd:
-          kind: VMAlert/vmalert
-          name: demo
-          namespace: vm
+  name: demo
+  username: demo
+  generatePassword: true
+  targetRefs:
+    # vmui + vmselect
+    - crd:
+        kind: VMCluster/vmselect
+        name: demo
+        namespace: vm
+      target_path_suffix: "/select/0"
+      paths:
+        - "/vmui"
+        - "/vmui/.*"
+        - "/prometheus/api/v1/query"
+        - "/prometheus/api/v1/query_range"
+        - "/prometheus/api/v1/series"
+        - "/prometheus/api/v1/label/"
+        - "/prometheus/api/v1/label/[^/]+/values"
+    # vmalert
+    - crd:
+        kind: VMAlert
+        name: demo
+        namespace: vm
+      paths:
+        - "/vmalert"
+        - "/vmalert/.*"
+        - "/api/v1/groups"
+        - "/api/v1/alert"
+        - "/api/v1/alerts"
 ```
+
+After that you can deploy `vmuser` resource to the kubernetes cluster:
+
+```shell
+kubectl apply -f vmuser.yaml -n vm
+
+# vmuser.operator.victoriametrics.com/demo created
+```
+
+And now you can get access to your data with url `http://vm-demo.k8s.orb.local/vmalert` 
+(for your environment it most likely will be different) with username `demo`:
+
+<img src="quickstart_alert-1.png">
+
+<img src="quickstart_alert-2.png">
 
 ## Anything else
 

@@ -19,6 +19,8 @@ See more details about selectors [here](https://docs.victoriametrics.com/operato
 You can see the full actual specification of the `VMProbe` resource in
 the **[API docs -> VMProbe](https://docs.victoriametrics.com/operator/api.html#vmprobe)**.
 
+Also, you can check out the [examples](#examples) section.
+
 ## Migration from Prometheus
 
 The `VMProbe` CRD from VictoriaMetrics Operator is a drop-in replacement

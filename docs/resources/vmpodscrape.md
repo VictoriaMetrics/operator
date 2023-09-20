@@ -38,6 +38,8 @@ More information about selectors you can find in [this doc](https://docs.victori
 You can see the full actual specification of the `VMPodScrape` resource in
 the **[API docs -> VMPodScrape](https://docs.victoriametrics.com/operator/api.html#vmpodscrape)**.
 
+Also, you can check out the [examples](#examples) section.
+
 ## Migration from Prometheus
 
 The `VMPodScrape` CRD from VictoriaMetrics Operator is a drop-in replacement
@@ -45,4 +47,18 @@ for the Prometheus `PodMonitor` from prometheus-operator.
 
 More details about migration from prometheus-operator you can read in [this doc](https://docs.victoriametrics.com/operator/migration.html).
 
-<!-- TODO: examples -->
+## Examples
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMPodScrape
+metadata:
+  name: example-pod-scrape
+spec:
+  podMetricsEndpoints:
+    - port: web
+      scheme: http
+  selector:
+    matchLabels:
+     owner: dev
+```

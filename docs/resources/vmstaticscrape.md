@@ -18,4 +18,20 @@ More information about selectors you can find in [this doc](https://docs.victori
 You can see the full actual specification of the `VMStaticScrape` resource in
 the **[API docs -> VMStaticScrape](https://docs.victoriametrics.com/operator/api.html#vmstaticscrape)**.
 
-<!-- TODO: examples -->
+Also, you can check out the [examples](#examples) section.
+
+## Examples
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMStaticScrape
+metadata:
+  name: vmstaticscrape-sample
+spec:
+  jobName: static
+  targetEndpoints:
+    - targets: ["192.168.0.1:9100", "196.168.0.50:9100"]
+      labels:
+        env: dev
+        project: operator
+```

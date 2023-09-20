@@ -10,6 +10,8 @@ It behaves like other config parts - `VMServiceScrape` and etc.
 You can see the full actual specification of the `VMAlertmanagerConfig` resource in 
 the **[API docs -> VMAlertmanagerConfig](https://docs.victoriametrics.com/operator/api.html#vmalertmanagerconfig)**.
 
+Also, you can check out the [examples](#examples) section.
+
 ## Using
 
 `VMAlertmanagerConfig` allows delegating notification configuration to the kubernetes cluster users.
@@ -48,3 +50,50 @@ VMAlertmanagerConfig has enforced namespace matcher.
 Alerts must have a proper namespace label, with the same value as name of namespace for VMAlertmanagerConfig.
 
 It can be disabled, by setting the following value to the VMAlertmanager: `spec.disableNamespaceMatcher: true`.
+
+## Examples
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAlertmanagerConfig
+metadata:
+  name: example
+  namespace: default
+spec:
+  inhibit_rules:
+    - equals: []
+      target_matchers: []
+      source_matchers: []
+  route:
+    routes:
+      - receiver: webhook
+        continue: true
+    receiver: email
+    group_by: []
+    continue: false
+    matchers:
+      - job = "alertmanager"
+    group_wait: 30s
+    group_interval: 45s
+    repeat_interval: 1h
+  mute_time_intervals:
+    - name: base
+      time_intervals:
+        - times:
+            - start_time: ""
+              end_time: ""
+          weekdays: []
+          days_of_month: []
+          months: []
+          years: []
+  receivers:
+      email_configs: []
+      webhook_configs:
+        - url: http://some-other-wh
+      pagerduty_configs: []
+      pushover_configs: []
+      slack_configs: []
+      opsgenie_configs: []
+      victorops_configs: []
+      wechat_configs: []
+```

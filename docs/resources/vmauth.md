@@ -13,6 +13,8 @@ the **[API docs -> VMAuth](https://docs.victoriametrics.com/operator/api.html#vm
 If you can't find necessary field in the specification of the custom resource,
 see [Extra arguments section](https://docs.victoriametrics.com/operator/resources/#extra-args).
 
+Also, you can check out the [examples](#examples) section.
+
 ## Users
 
 The CRD specifies which `VMUser`s should be covered by the deployed `VMAuth` instances based on label selection.
@@ -120,4 +122,19 @@ spec:
   imagePullSecrets:
     - name: my-repo-secret
 # ...
+```
+
+## Examples
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAuth
+metadata:
+  name: example
+  namespace: default
+spec:
+  selectAllByDefault: true
+  ingress:
+    class_name: nginx # <-- change this to your ingress-controller
+    host: vm-demo.k8s.orb.local # <-- change this to your domain
 ```

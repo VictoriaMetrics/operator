@@ -23,6 +23,8 @@ You can see the full actual specification of the `VMAlert` resource in the **[AP
 If you can't find necessary field in the specification of the custom resource,
 see [Extra arguments section](https://docs.victoriametrics.com/operator/resources/#extra-args).
 
+Also, you can check out the [examples](#examples) section.
+
 ## Rules
 
 The CRD specifies which `VMRule`s should be covered by the deployed `VMAlert` instances based on label selection.
@@ -181,6 +183,31 @@ You have to specify all pod fqdns  at `VMAlert.spec.notifiers.[url]`. Or you can
       ruleSelector: {}
       # ...
     ```
+  
+In addition, you need to specify `remoteWrite` and `remoteRead` urls for restoring alert states after restarts:
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAlert
+metadata:
+  name: example-ha
+  namespace: default
+spec:
+  replicaCount: 2
+  evaluationInterval: "10s"
+  selectAllByDefault: true
+  datasource:
+    url: http://vmselect-demo.vm.svc:8481/select/0/prometheus
+  notifiers:
+    - url: http://vmalertmanager-example-0.vmalertmanager-example.default.svc:9093
+    - url: http://vmalertmanager-example-1.vmalertmanager-example.default.svc:9093
+  remoteWrite:
+    url: http://vminsert-demo.vm.svc:8480/insert/0/prometheus
+  remoteRead:
+    url: http://vmselect-demo.vm.svc:8481/select/0/prometheus
+```
+
+More details about `remoteWrite` and `remoteRead` you can read in [vmalert docs](https://docs.victoriametrics.com/vmalert.html#alerts-state-on-restarts).
 
 ## Version management
 
@@ -214,4 +241,21 @@ spec:
   imagePullSecrets:
     - name: my-repo-secret
 # ...
+```
+
+## Examples
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAlert
+metadata:
+  name: example-vmalert
+spec:
+  replicaCount: 1
+  datasource:
+    url: "http://vmsingle-example-vmsingle-persisted.default.svc:8429"
+  notifier:
+    url: "http://vmalertmanager-example-alertmanager.default.svc:9093"
+  evaluationInterval: "30s"
+  selectAllByDefault: true
 ```

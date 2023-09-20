@@ -8,7 +8,7 @@ It behaves like other config parts - `VMServiceScrape` and etc.
 ## Specification
 
 You can see the full actual specification of the `VMAlertmanagerConfig` resource in 
-the [API docs -> VMAlertmanagerConfig](https://docs.victoriametrics.com/operator/api.html#vmalertmanagerconfig).
+the **[API docs -> VMAlertmanagerConfig](https://docs.victoriametrics.com/operator/api.html#vmalertmanagerconfig)**.
 
 ## Using
 

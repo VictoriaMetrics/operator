@@ -30,6 +30,8 @@ You can see the full actual specification of the `VMAgent` resource in the **[AP
 If you can't find necessary field in the specification of the custom resource, 
 see [Extra arguments section](https://docs.victoriametrics.com/operator/resources/#extra-args).
 
+Also, you can check out the [examples](#examples) section.
+
 ## Scraping
 
 `VMAgent` supports scraping targets with:
@@ -593,4 +595,25 @@ spec:
   imagePullSecrets:
     - name: my-repo-secret
 # ...
+```
+
+## Examples
+
+```yaml
+kind: VMAgent
+metadata:
+  name: vmagent-example
+spec:
+  selectAllByDefault: true
+  replicaCount: 1
+  scrapeInterval: 30s
+  scrapeTimeout: 10s
+  vmAgentExternalLabelName: example
+  externalLabels:
+    cluster: my-cluster
+  remoteWrite:
+    - url: "http://vmsingle-example.default.svc:8428/api/v1/write"
+  inlineRelabelConfig:
+    - action: labeldrop
+      regex: "temp.*"
 ```

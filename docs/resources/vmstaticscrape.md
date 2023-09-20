@@ -16,6 +16,6 @@ More information about selectors you can find in [this doc](https://docs.victori
 ## Specification
 
 You can see the full actual specification of the `VMStaticScrape` resource in
-the [API docs -> VMStaticScrape](https://docs.victoriametrics.com/operator/api.html#vmstaticscrape).
+the **[API docs -> VMStaticScrape](https://docs.victoriametrics.com/operator/api.html#vmstaticscrape)**.
 
 <!-- TODO: examples -->

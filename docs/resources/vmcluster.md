@@ -31,6 +31,8 @@ You can see the full actual specification of the `VMCluster` resource in the **[
 If you can't find necessary field in the specification of the custom resource,
 see [Extra arguments section](https://docs.victoriametrics.com/operator/resources/#extra-args).
 
+Also, you can check out the [examples](#examples) section.
+
 ## High availability
 
 The cluster version provides a full set of high availability features - metrics replication, node failover, horizontal scaling.
@@ -188,4 +190,65 @@ spec:
   imagePullSecrets:
     - name: my-repo-secret
   # ...
+```
+
+## Examples
+
+### Minimal example without persistence
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMCluster
+metadata:
+  name: vmcluster-example-minimal
+spec:
+  # ...
+  retentionPeriod: "1"
+  vmstorage:
+    replicaCount: 2
+  vmselect:
+    replicaCount: 2
+  vminsert:
+    replicaCount: 2
+```
+
+### With persistence
+
+```yaml
+kind: VMCluster
+metadata:
+  name: vmcluster-example-persistent
+spec:
+  # ...
+  retentionPeriod: "4"
+  replicationFactor: 2
+  vmstorage:
+    replicaCount: 2
+    storageDataPath: "/vm-data"
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: standard
+          resources:
+            requests:
+              storage: 10Gi
+    resources:
+      limits:
+        cpu: "0.5"
+        memory: 500Mi
+  vmselect:
+    replicaCount: 2
+    cacheMountPath: "/select-cache"
+    storage:
+      volumeClaimTemplate:
+        spec:
+          resources:
+            requests:
+              storage: 2Gi
+    resources:
+      limits:
+        cpu: "0.3"
+        memory: "300Mi"
+  vminsert:
+    replicaCount: 2
 ```

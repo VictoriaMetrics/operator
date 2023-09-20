@@ -14,6 +14,6 @@ More information about selectors you can find in [this doc](https://docs.victori
 ## Specification
 
 You can see the full actual specification of the `VMNodeScrape` resource in
-the [API docs -> VMNodeScrape](https://docs.victoriametrics.com/operator/api.html#vmnodescrape).
+the **[API docs -> VMNodeScrape](https://docs.victoriametrics.com/operator/api.html#vmnodescrape)**.
 
 <!-- TODO: examples -->

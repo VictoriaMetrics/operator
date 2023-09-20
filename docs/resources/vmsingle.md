@@ -18,6 +18,8 @@ You can see the full actual specification of the `VMSingle` resource in the **[A
 If you can't find necessary field in the specification of the custom resource,
 see [Extra arguments section](https://docs.victoriametrics.com/operator/resources/#extra-args).
 
+Also, you can check out the [examples](#examples) section.
+
 ## High availability
 
 `VMSingle` doesn't support high availability by default, for such purpose
@@ -55,4 +57,30 @@ spec:
   imagePullSecrets:
     - name: my-repo-secret
 # ...
+```
+
+## Examples
+
+```yaml
+kind: VMSingle
+metadata:
+  name: vmsingle-example
+spec:
+  retentionPeriod: "12"
+  removePvcAfterDelete: true
+  storage:
+    accessModes:
+      - ReadWriteOnce
+    resources:
+      requests:
+        storage: 50Gi
+  extraArgs:
+    dedup.minScrapeInterval: 60s
+  resources:
+    requests:
+      memory: 500Mi
+      cpu: 500m
+    limits:
+      memory: 10Gi
+      cpu: 5
 ```

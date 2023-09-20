@@ -6,6 +6,11 @@ User access permissions, with possible routing information.
 User can define routing target with `static` config, by entering target `url`, or with `CRDRef`, in this case, 
 operator queries kubernetes API, retrieves information about CRD and builds proper url.
 
+## Specification
+
+You can see the full actual specification of the `VMUser` resource in
+the **[API docs -> VMUser](https://docs.victoriametrics.com/operator/api.html#vmuser)**.
+
 ## Authentication methods
 
 ### Basic auth
@@ -29,7 +34,3 @@ operator queries kubernetes API, retrieves information about CRD and builds prop
 
 <!-- TODO -->
 
-## Specification
-
-You can see the full actual specification of the `VMUser` resource in
-the [API docs -> VMUser](https://docs.victoriametrics.com/operator/api.html#vmuser).

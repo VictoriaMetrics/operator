@@ -18,6 +18,8 @@ You can see the full actual specification of the `VMAlertmanager` resource in th
 If you can't find necessary field in the specification of the custom resource,
 see [Extra arguments section](https://docs.victoriametrics.com/operator/resources/#extra-args).
 
+Also, you can check out the [examples](#examples) section.
+
 ## Configuration
 
 The operator generates a configuration file for `VMAlertmanager` based on user input at the definition of `CRD`.
@@ -242,4 +244,27 @@ spec:
   imagePullSecrets:
     - name: my-repo-secret
 # ...
+```
+
+## Examples
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAlertmanager
+metadata:
+  name: vmalertmanager-example
+spec:
+  replicaCount: 1
+  configRawYaml: |
+        global:
+          resolve_timeout: 5m
+        route:
+          group_wait: 30s
+          group_interval: 5m
+          repeat_interval: 12h
+          receiver: 'webhook'
+        receivers:
+        - name: 'webhook'
+          webhook_configs:
+          - url: 'http://localhost:30502/'
 ```

@@ -145,7 +145,7 @@ consisting of `vmstorage`, `vmselect` and `vminsert`):
 
 More details about resources of VictoriaMetrics operator you can find on the [resources page](https://docs.victoriametrics.com/operator/resources/). 
 
-### VictoriaMetrics cluster (select, insert, storage)
+### VMCluster (vmselect, vminsert, vmstorage)
 
 Let's start by deploying the [`vmcluster`](https://docs.victoriametrics.com/operator/resources/vmcluster.html) resource.
 
@@ -211,7 +211,7 @@ After that you can deploy `vmcluster` resource to the kubernetes cluster:
 ```shell
 kubectl apply -f vmcluster.yaml -n vm
 
-# vmcluster.operator.victoriametrics.com/demo configured
+# vmcluster.operator.victoriametrics.com/demo created
 ```
 
 Check that `vmcluster` is running:
@@ -248,7 +248,7 @@ the [vmcluster page](https://docs.victoriametrics.com/operator/resources/vmclust
 
 ### Scraping
 
-#### vmagent
+#### VMAgent
 
 Now let's deploy [`vmagent`](https://docs.victoriametrics.com/operator/resources/vmagent.html) resource.
 
@@ -276,7 +276,7 @@ After that you can deploy `vmagent` resource to the kubernetes cluster:
 ```shell
 kubectl apply -f vmagent.yaml -n vm
 
-# vmagent.operator.victoriametrics.com/demo configured
+# vmagent.operator.victoriametrics.com/demo created
 ```
 
 Check that `vmagent` is running:
@@ -291,7 +291,7 @@ kubectl get pods -n vm -l "app.kubernetes.io/instance=demo" -l "app.kubernetes.i
 More information about `vmagent` resource you can find on 
 the [vmagent page](https://docs.victoriametrics.com/operator/resources/vmagent.html).
 
-### vmservicescrapes
+#### VMServiceScrape
 
 Now we have the timeseries database (vmcluster) and the tool to collect metrics (vmagent) and send it to the database.
 
@@ -329,12 +329,15 @@ After that you can deploy `vmservicescrape` resource to the kubernetes cluster:
 ```shell
 kubectl apply -f vmservicescrape.yaml -n vm
 
-# vmservicescrape.operator.victoriametrics.com/vmoperator-demo configured
+# vmservicescrape.operator.victoriametrics.com/vmoperator-demo created
 ```
 
 ### Access
 
 We need to look at the results of what we got. Up until now, we've just been looking only at the status of the pods. 
+
+#### VMAuth
+
 Let's expose our components with [`vmauth`](https://docs.victoriametrics.com/operator/resources/vmauth.html).
 
 Create file `vmauth.yaml` 
@@ -361,6 +364,8 @@ spec:
 **Note** that content of `ingress` field depends on your ingress-controller and domain.
 Your cluster will have them differently. 
 Also, for simplicity, we don't use tls, but in real environments not having tls is unsafe.
+
+#### VMUser
 
 To get authorized access to our data it is necessary to create a user using 
 the [vmuser](https://docs.victoriametrics.com/operator/resources/vmuser.html) resource.
@@ -396,8 +401,8 @@ After that you can deploy `vmauth` and `vmuser` resources to the kubernetes clus
 kubectl apply -f vmauth.yaml -n vm
 kubectl apply -f vmuser.yaml -n vm
 
-# vmauth.operator.victoriametrics.com/demo configured
-# vmuser.operator.victoriametrics.com/demo configured
+# vmauth.operator.victoriametrics.com/demo created
+# vmuser.operator.victoriametrics.com/demo created
 ```
 
 Operator automatically creates a secret with username/password token for `VMUser` resource with `generatePassword=true`:
@@ -427,8 +432,108 @@ and your given password (`Yt3N2r3cPl` in our case):
 ### Alerting
 
 The remaining components will be needed for alerting. 
+
+#### VMAlertmanager
+
 Let's start with [`vmalertmanager`](https://docs.victoriametrics.com/operator/resources/vmalertmanager.html).
 
+Create file `vmuser.yaml`
+
+```shell
+code vmuser.yaml
+```
+
+with the following content:
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAlertmanager
+metadata:
+  name: demo
+spec:
+  configRawYaml: |
+    global:
+      resolve_timeout: 5m
+    route:
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 12h
+      receiver: 'webhook'
+    receivers:
+    - name: 'webhook'
+      webhook_configs:
+      - url: 'http://your-webhook-url'
+```
+
+where webhook-url is the address of the webhook to receive notifications 
+(configuration of AlertManager notifications will remain out of scope).
+You can find more details about `alertmanager` configuration in 
+the [Alertmanager documentation](https://prometheus.io/docs/alerting/latest/configuration/).
+
+After that you can deploy `vmalertmanager` resource to the kubernetes cluster:
+
+```shell
+kubectl apply -f vmalertmanager.yaml -n vm
+
+# vmalertmanager.operator.victoriametrics.com/demo created
+```
+
+Check that `vmalertmanager` is running:
+
+```shell
+kubectl get pods -n vm -l "app.kubernetes.io/instance=demo" -l "app.kubernetes.io/name=vmalertmanager"
+
+# NAME                    READY   STATUS    RESTARTS   AGE
+# vmalertmanager-demo-0   2/2     Running   0          107s
+```
+
+#### VMAlert
+
+And now you can create [`vmalert`](https://docs.victoriametrics.com/operator/resources/vmalert.html) resource.
+
+Create file `vmalert.yaml`
+
+```shell
+code vmalert.yaml
+```
+
+with the following content:
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAlert
+metadata:
+  name: demo
+spec:
+  datasource:
+    url: "http://vmselect-demo.vm.svc:8429"
+  notifier:
+    url: "http://vmalertmanager-demo.vm.svc:9093"
+  evaluationInterval: "30s"
+  selectAllByDefault: true
+```
+
+After that you can deploy `vmalert` resource to the kubernetes cluster:
+
+```shell
+kubectl apply -f vmalert.yaml -n vm
+
+# vmalert.operator.victoriametrics.com/demo created
+```
+
+Check that `vmalert` is running:
+
+```shell
+kubectl get pods -n vm -l "app.kubernetes.io/instance=demo" -l "app.kubernetes.io/name=vmalert"
+
+# NAME                           READY   STATUS    RESTARTS   AGE
+# vmalert-demo-bf75c67cb-hh4qd   2/2     Running   0          5s
+```
+
+#### VMRule
+
+Now you can create [`vmrule`](https://docs.victoriametrics.com/operator/resources/vmrule.html) resource 
+for [vmalert](https://docs.victoriametrics.com/operator/resources/vmalert.html).
 
 ## Anything else
 

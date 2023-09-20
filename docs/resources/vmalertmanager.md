@@ -86,6 +86,75 @@ If both `configSecret` and `configRawYaml` are defined, only configuration from 
 
 See details at [VMAlertmanagerConfig](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig.html).
 
+The CRD specifies which `VMAlertmanagerConfig`s should be covered by the deployed `VMAlertmanager` instances based on label selection.
+The Operator then generates a configuration based on the included `VMAlertmanagerConfig`s and updates the `Configmaps` containing
+the configuration. It continuously does so for all changes that are made to `VMAlertmanagerConfig`s or to the `VMAlertmanager` resource itself.
+
+Configs are filtered by selectors `configNamespaceSelector` and `configSelector` in `VMAlertmanager` CRD definition.
+For selecting rules from all namespaces you must specify it to empty value:
+
+```yaml
+spec:
+  configNamespaceSelector: {}
+```
+
+[VMAlertmanagerConfig](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig.html) objects are 
+generates part of [VMAlertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager.html) configuration.
+
+For filtering rules `VMAlertmanager` uses selectors `configNamespaceSelector` and `configSelector`.
+It allows configuring rules access control across namespaces and different environments.
+Specification of selectors you can see in [this doc](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#labelselector-v1-meta).
+
+In addition to the above selectors, the filtering of objects in a cluster is affected by the field `selectAllByDefault` 
+of `VMAlertmanager` spec and environment variable `WATCH_NAMESPACE` for operator.
+
+Following rules are applied:
+
+- If `configNamespaceSelector` and `configSelector` both undefined, then by default select nothing. With option set - `spec.selectAllByDefault: true`, select all vmalertmanagerconfigs.
+- If `configNamespaceSelector` defined, `configSelector` undefined, then all vmalertmaangerconfigs are matching at namespaces for given `configNamespaceSelector`.
+- If `configNamespaceSelector` undefined, `configSelector` defined, then all vmalertmaangerconfigs at `VMAgent`'s namespaces are matching for given `configSelector`.
+- If `configNamespaceSelector` and `configSelector` both defined, then only vmalertmaangerconfigs at namespaces matched `configNamespaceSelector` for given `configSelector` are matching.
+
+Here's a more visual and more detailed view:
+
+| `configNamespaceSelector` | `configSelector` | `selectAllByDefault` | `WATCH_NAMESPACE` | Selected rules                                                                                                         |
+|---------------------------|------------------|----------------------|-------------------|------------------------------------------------------------------------------------------------------------------------|
+| undefined                 | undefined        | false                | undefined         | nothing                                                                                                                |
+| undefined                 | undefined        | **true**             | undefined         | all vmalertmaangerconfigs in the cluster                                                                               |
+| **defined**               | undefined        | any                  | undefined         | all vmalertmaangerconfigs are matching at namespaces for given `configNamespaceSelector`                               |
+| undefined                 | **defined**      | any                  | undefined         | all vmalertmaangerconfigs only at `VMAlertmanager`'s namespace are matching for given `ruleSelector`                   |
+| **defined**               | **defined**      | any                  | undefined         | all vmalertmaangerconfigs only at namespaces matched `configNamespaceSelector` for given `configSelector` are matching |
+| any                       | undefined        | any                  | **defined**       | all vmalertmaangerconfigs only at `VMAlertmanager`'s namespace                                                         |
+| any                       | **defined**      | any                  | **defined**       | all vmalertmaangerconfigs only at `VMAlertmanager`'s namespace for given `configSelector` are matching                 |
+
+More details about `WATCH_NAMESPACE` variable you can read in [this doc](https://docs.victoriametrics.com/operator/configuration.html#namespaced-mode).
+
+Here are some examples of `VMAlertmanager` configuration with selectors:
+
+```yaml
+# select all config objects in the cluster
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAlertmanager
+metadata:
+  name: vmalertmanager-select-all
+spec:
+  # ...
+  selectAllByDefault: true
+
+---
+
+# select all config objects in specific namespace (my-namespace)
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAlertmanager
+metadata:
+  name: vmalertmanager-select-ns
+spec:
+  # ...
+  configNamespaceSelector: 
+    matchLabels:
+      kubernetes.io/metadata.name: my-namespace
+```
+
 ### Extra configuration files
 
 `VMAlertmanager` specification has the following fields, that can be used to configure without editing raw configuration file:

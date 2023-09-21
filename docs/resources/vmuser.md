@@ -79,6 +79,35 @@ Also, you can check out the [examples](#examples) section.
 
 Additional fields like `path` and `scheme` can be added to `CRDRef` config.
 
+## Enterprise features
+
+Custom resource `VMUser` supports feature [IP filters](https://docs.victoriametrics.com/vmauth.html#ip-filters) 
+from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/enterprise.html#victoriametrics-enterprise).
+
+For using [IP filters](https://docs.victoriametrics.com/vmauth.html#ip-filters) 
+you need to **[enable VMAuth Enterprise](https://docs.victoriametrics.com/operator/resources/vmauth.html#enterprise-features)**.
+
+After that you can add `ip_filters` feild in `VMUser`:
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMUser
+metadata:
+  name: vmuser-ent-example
+spec:
+  username: simple-user
+  password: simple-password
+
+  # using enterprise features: ip filters for vmuser
+  # more details about ip filters you can read in https://docs.victoriametrics.com/vmuser.html#enterprise-features
+  ip_filters:
+    allow_list:
+      - 10.0.0.0/24
+      - 1.2.3.4
+    deny_list:
+      - 5.6.7.8
+```
+
 ## Examples
 
 ```yaml

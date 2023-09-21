@@ -124,6 +124,72 @@ spec:
 # ...
 ```
 
+## Enterprise features
+
+Custom resource `VMAuth` supports feature [IP filters](https://docs.victoriametrics.com/vmauth.html#ip-filters)
+from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/enterprise.html#victoriametrics-enterprise).
+
+For using Enterprise version of [vmauth](https://docs.victoriametrics.com/vmauth.html) 
+you need to change version of `vmauth` to version with `-enterprise` suffix using [Version management](#version-management).
+
+All the enterprise apps require `-eula` command-line flag to be passed to them. 
+This flag acknowledges that your usage fits one of the cases listed on [this page](https://docs.victoriametrics.com/enterprise.html#victoriametrics-enterprise).
+So you can use [extraArgs](https://docs.victoriametrics.com/operator/resources/#extra-args) for passing this flag to `VMAuth`:
+
+### IP Filters
+
+After that you can use [IP filters for `VMUser`](http://docs.victoriametrics.com/operator/resources/vmuser.html#enterprise-features) 
+and field `ip_filters` for `VMAuth`:
+
+Here are complete example with described above:
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAuth
+metadata:
+  name: vmauth-ent-example
+spec:
+  # enabling enterprise features
+  image:
+    # enterprise version of vmauth
+    tag: v1.93.5-enterprise
+  extraArgs:
+    # should be true and means that you have the legal right to run a vmauth enterprise
+    # that can either be a signed contract or an email with confirmation to run the service in a trial period
+    # https://victoriametrics.com/legal/esa/
+    eula: true
+  
+  # using enterprise features: ip filters for vmauth
+  # more details about ip filters you can read in https://docs.victoriametrics.com/vmauth.html#ip-filters
+  ip_filters:
+    allow_list:
+      - 10.0.0.0/24
+      - 1.2.3.4
+    deny_list:
+      - 5.6.7.8
+
+  # ...other fields...
+
+---
+
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMUser
+metadata:
+  name: vmuser-ent-example
+spec:
+  username: simple-user
+  password: simple-password
+
+  # using enterprise features: ip filters for vmuser
+  # more details about ip filters you can read in https://docs.victoriametrics.com/vmuser.html#enterprise-features
+  ip_filters:
+    allow_list:
+      - 10.0.0.0/24
+      - 1.2.3.4
+    deny_list:
+      - 5.6.7.8
+```
+
 ## Examples
 
 ```yaml

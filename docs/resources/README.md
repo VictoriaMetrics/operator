@@ -112,6 +112,10 @@ Every custom resource with deployable application has a fields for specifying ve
 - [vmcluster](https://docs.victoriametrics.com/operator/resources/vmcluster.html#version-management)
 - [vmsingle](https://docs.victoriametrics.com/operator/resources/vmsingle.html#version-management)
 
+## Enterprise features
+
+<-- TODO -->
+
 ## Configuration synchronization
 
 ### Basic concepts

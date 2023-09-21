@@ -6,5 +6,7 @@ title: Enterprise features
 
 # Using operator with enterprise features 
 
-TODO
+Operator doesn't have enterprise version for itself, but it supports enterprise features VictoriaMetrics components.
+
+<-- TODO -->
 

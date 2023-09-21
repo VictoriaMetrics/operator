@@ -947,6 +947,9 @@ func (cr *VMCluster) LastAppliedSpecAsPatch() (client.Patch, error) {
 func (cr *VMCluster) HasSpecChanges() (bool, error) {
 	var prevClusterSpec VMClusterSpec
 	lastAppliedClusterJSON := cr.Annotations["operator.victoriametrics/last-applied-spec"]
+	if len(lastAppliedClusterJSON) == 0 {
+		return true, nil
+	}
 	if err := json.Unmarshal([]byte(lastAppliedClusterJSON), &prevClusterSpec); err != nil {
 		return true, fmt.Errorf("cannot parse last applied cluster spec value: %s : %w", lastAppliedClusterJSON, err)
 	}

@@ -6,9 +6,45 @@ title: Configuration
 
 # Configuration
 
-Operator configured by env variables, list of it can be found at [link](https://docs.victoriametrics.com/operator/vars.html).
+Operator configured by env variables, list of it can be found 
+on [Variables](https://docs.victoriametrics.com/operator/vars.html) page.
 
 It defines default configuration options, like images for components, timeouts, features.
+
+In addition, the operator has a special startup mode for outputting all variables, their types and default values.
+For instance, with this mode you can know versions of VM components, which are used by default: 
+
+```console
+./operator --printDefaults
+
+# This application is configured via the environment. The following environment variables can be used:
+# 
+# KEY                                                          TYPE                              DEFAULT                                                           REQUIRED    DESCRIPTION
+# VM_USECUSTOMCONFIGRELOADER                                   True or False                     false                                                                                                                                                                                   
+# VM_CUSTOMCONFIGRELOADERIMAGE                                 String                            victoriametrics/operator:config-reloader-v0.32.0                                                                                                       
+# VM_VMALERTDEFAULT_IMAGE                                      String                            victoriametrics/vmalert                                                       
+# VM_VMALERTDEFAULT_VERSION                                    String                            v1.93.3                                                                                                                                                 
+# VM_VMALERTDEFAULT_USEDEFAULTRESOURCES                        True or False                     true                                                                          
+# VM_VMALERTDEFAULT_RESOURCE_LIMIT_MEM                         String                            500Mi                                                                         
+# VM_VMALERTDEFAULT_RESOURCE_LIMIT_CPU                         String                            200m                                                                                                                                                                                                                            
+# ...
+```
+
+You can choose output format for variables with `--printFormat` flag, possible values: `json`, `yaml`, `list` and `table` (default):
+
+```console
+.operator --printDefaults --printFormat=json
+
+# {
+#     'VM_USECUSTOMCONFIGRELOADER': 'false',
+#     'VM_CUSTOMCONFIGRELOADERIMAGE': 'victoriametrics/operator:config-reloader-v0.32.0',
+#     'VM_VMALERTDEFAULT_IMAGE': 'victoriametrics/vmalert',
+#     'VM_VMALERTDEFAULT_VERSION': 'v1.93.3',
+# ...
+#     'VM_FORCERESYNCINTERVAL': '60s',
+#     'VM_ENABLESTRICTSECURITY': 'true'
+# }
+```
 
 ## Conversion of prometheus-operator objects
 

@@ -58,13 +58,21 @@ You can read about it in following sections of "Migration from prometheus-operat
 
 You can read about needed permissions for operator in [this document](https://docs.victoriametrics.com/operator/security.html#roles).
 
+## How to know the version of VM components in the operator?
+
+See [printDefaults mode](https://docs.victoriametrics.com/operator/configuration).
+
+In addition, you can use [Release notes](https://github.com/VictoriaMetrics/operator/releases) 
+or [CHANGELOG](https://github.com/VictoriaMetrics/operator/blob/master/docs/CHANGELOG.MD).
+- that's where we describe default version of VictoriaMetrics components.
+
 ## How to run VictoriaMetrics operator with permissions for one namespace only?
 
 See this document for details: [Configuration -> Namespaced mode](https://docs.victoriametrics.com/operator/configuration.html#namespaced-mode).
 
 ## What versions of Kubernetes is the operator compatible with?
 
-Operator tested at kubernetes versions from 1.16 to 1.23.
+Operator tested at kubernetes versions from 1.16 to 1.27.
 
 For clusters version below 1.16 you must use legacy CRDs from [path](https://github.com/VictoriaMetrics/operator/tree/master/config/crd/legacy)
 and disable CRD controller with flag: `--controller.disableCRDOwnership=true`

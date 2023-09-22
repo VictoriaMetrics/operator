@@ -20,11 +20,45 @@ the **[API docs -> VMRule](https://docs.victoriametrics.com/operator/api.html#vm
 
 Also, you can check out the [examples](#examples) section.
 
+## Enterprise features
+
+Custom resource `VMRule` supports feature [Multitenancy](https://docs.victoriametrics.com/vmalert.html#multitenancy)
+from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/enterprise.html#victoriametrics-enterprise).
+
+For using [Multitenancy](https://docs.victoriametrics.com/vmalert.html#multitenancy) in `VMRule`
+you need to **[enable VMAlert Enterprise](https://docs.victoriametrics.com/operator/resources/vmalert.html#enterprise-features)**.
+
+After that you can add `tenant` field for groups in `VMRule`:
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMRule
+metadata:
+  name: vmrule-ent-example
+spec:
+  groups:
+    - name: vmalert-1
+      rules:
+        # using enterprise features: Multitenancy
+        # more details about multitenancy you can read on https://docs.victoriametrics.com/vmalert.html#multitenancy
+        - tenant: 1
+          alert: vmalert config reload error
+          expr: delta(vmalert_config_last_reload_errors_total[5m]) > 0
+          for: 10s
+          labels:
+            severity: major
+            job:  "{{ $labels.job }}"
+          annotations:
+            value: "{{ $value }}"
+            description: 'error reloading vmalert config, reload count for 5 min {{ $value }}'
+```
+
 ## Examples
 
 ### Alerting rule
 
 ```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMRule
 metadata:
   name: vmrule-alerting-example
@@ -46,6 +80,7 @@ spec:
 ### Recording rule
 
 ```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMRule
 metadata:
   name: vmrule-recording-example

@@ -102,8 +102,6 @@ spec:
   # ...other fields...
 ```
 
-More info about downsampling you can read on [this page](https://docs.victoriametrics.com/#downsampling).
-
 ### Retention filters
 
 The same method is used to enable retention filters - here are complete example for [Retention filters](https://docs.victoriametrics.com/#retention-filters).

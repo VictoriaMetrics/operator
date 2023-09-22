@@ -243,6 +243,107 @@ spec:
 # ...
 ```
 
+## Enterprise features
+
+VMAlert supports features [Reading rules from object storage](https://docs.victoriametrics.com/vmalert.html#reading-rules-from-object-storage)
+and [Multitenancy](https://docs.victoriametrics.com/vmalert.html#multitenancy)
+from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/enterprise.html#victoriametrics-enterprise).
+
+For using Enterprise version of [vmalert](https://docs.victoriametrics.com/vmalert.html)
+you need to change version of `VMAlert` to version with `-enterprise` suffix using [Version management](#version-management).
+
+All the enterprise apps require `-eula` command-line flag to be passed to them.
+This flag acknowledges that your usage fits one of the cases listed on [this page](https://docs.victoriametrics.com/enterprise.html#victoriametrics-enterprise).
+So you can use [extraArgs](https://docs.victoriametrics.com/operator/resources/#extra-args) for passing this flag to `VMAlert`:
+
+### Reading rules from object storage
+
+After that you can pass `-rule` command-line argument with `s3://` or `gs://`
+to `VMAlert` with [extraArgs](https://docs.victoriametrics.com/operator/resources/#extra-args).
+
+More details about reading rules from object storage you can read in [vmalert docs](https://docs.victoriametrics.com/vmalert.html#reading-rules-from-object-storage).
+
+Here are complete example for [Reading rules from object storage](https://docs.victoriametrics.com/vmalert.html#reading-rules-from-object-storage):
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAlert
+metadata:
+  name: vmalert-ent-example
+spec:
+  # enabling enterprise features
+  image:
+    # enterprise version of vmalert
+    tag: v1.93.5-enterprise
+  extraArgs:
+    # should be true and means that you have the legal right to run a vmalert enterprise
+    # that can either be a signed contract or an email with confirmation to run the service in a trial period
+    # https://victoriametrics.com/legal/esa/
+    eula: true
+    
+    # using enterprise features: Reading rules from object storage
+    # more details about reading rules from object storage you can read on https://docs.victoriametrics.com/vmalert.html#reading-rules-from-object-storage
+    rule: s3://bucket/dir/alert.rules
+    
+  # ...other fields...
+```
+
+### Multitenancy
+
+After enabling enterprise version you can use [Multitenancy](https://docs.victoriametrics.com/vmalert.html#multitenancy) 
+feature in `VMAlert`.
+
+For that you need to set `clusterMode` commad-line flag 
+with [extraArgs](https://docs.victoriametrics.com/operator/resources/#extra-args) 
+and specify `tenant` field for groups 
+in [VMRule](https://docs.victoriametrics.com/operator/resources/vmrule.html#enterprise-features):
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAlert
+metadata:
+  name: vmalert-ent-example
+spec:
+  # enabling enterprise features
+  image:
+    # enterprise version of vmalert
+    tag: v1.93.5-enterprise
+  extraArgs:
+    # should be true and means that you have the legal right to run a vmalert enterprise
+    # that can either be a signed contract or an email with confirmation to run the service in a trial period
+    # https://victoriametrics.com/legal/esa/
+    eula: true
+
+    # using enterprise features: Multitenancy
+    # more details about multitenancy you can read on https://docs.victoriametrics.com/vmalert.html#multitenancy
+    clusterMode: true 
+
+  # ...other fields...
+
+---
+
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMRule
+metadata:
+  name: vmrule-ent-example
+spec:
+  groups:
+    - name: vmalert-1
+      rules:
+        # using enterprise features: Multitenancy
+        # more details about multitenancy you can read on https://docs.victoriametrics.com/vmalert.html#multitenancy
+        - tenant: 1
+          alert: vmalert config reload error
+          expr: delta(vmalert_config_last_reload_errors_total[5m]) > 0
+          for: 10s
+          labels:
+            severity: major
+            job:  "{{ $labels.job }}"
+          annotations:
+            value: "{{ $value }}"
+            description: 'error reloading vmalert config, reload count for 5 min {{ $value }}'
+```
+
 ## Examples
 
 ```yaml

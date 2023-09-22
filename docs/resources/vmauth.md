@@ -139,7 +139,7 @@ So you can use [extraArgs](https://docs.victoriametrics.com/operator/resources/#
 ### IP Filters
 
 After that you can use [IP filters for `VMUser`](http://docs.victoriametrics.com/operator/resources/vmuser.html#enterprise-features) 
-and field `ip_filters` for `VMAuth`:
+and field `ip_filters` for `VMAuth`.
 
 Here are complete example with described above:
 

@@ -87,7 +87,7 @@ from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/enterprise.ht
 For using [IP filters](https://docs.victoriametrics.com/vmauth.html#ip-filters) 
 you need to **[enable VMAuth Enterprise](https://docs.victoriametrics.com/operator/resources/vmauth.html#enterprise-features)**.
 
-After that you can add `ip_filters` feild in `VMUser`:
+After that you can add `ip_filters` field to `VMUser`:
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1beta1

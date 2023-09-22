@@ -667,17 +667,30 @@ spec:
   # more details about kafka integration you can read on https://docs.victoriametrics.com/vmagent.html#kafka-integration
   remoteWrite:
     # sasl with username and password
-    - url: kafka://localhost:9092/?topic=prom-rw&security.protocol=SASL_SSL&sasl.mechanisms=PLAIN 
+    - url: kafka://broker-1:9092/?topic=prom-rw-1&security.protocol=SASL_SSL&sasl.mechanisms=PLAIN 
+      # it requires to create kubernetes secret `kafka-basic-auth` with keys `username` and `password` in the same namespace
       basicAuth:
-        username: user 
-        password: password
-    # sasl with username and password from secret
-    - url: kafka://localhost:9092/?topic=prom-rw&security.protocol=SASL_SSL&sasl.mechanisms=PLAIN 
-      basicAuth:
-        username: user 
-        passwordFile: /etc/vmagent/secrets/kafka-password.txt
-        
+        username:
+            name: kafka-basic-auth
+            key: username
+        password:
+            name: kafka-basic-auth
+            key: password
     # sasl with username and password from secret and tls
+    - url: kafka://localhost:9092/?topic=prom-rw-2&security.protocol=SSL
+      # it requires to create kubernetes secret `kafka-tls` with keys `ca.pem`, `cert.pem` and `key.pem` in the same namespace
+      tlsConfig:
+        ca:
+          secret:
+            name: kafka-tls
+            key: ca.pem
+        cert:
+          secret:
+            name: kafka-tls
+            key: cert.pem
+        keySecret:
+          name: kafka-tls
+          key: key.pem
 
   # ...other fields...
 ```

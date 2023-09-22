@@ -346,7 +346,7 @@ func Test_growSTSPVC(t *testing.T) {
 			},
 		},
 		{
-			name: "expand failed",
+			name: "failed with non-expandable sc",
 			args: args{
 				ctx: context.TODO(),
 				sts: &appsv1.StatefulSet{
@@ -404,6 +404,7 @@ func Test_growSTSPVC(t *testing.T) {
 					},
 				},
 			},
+			wantErr: true,
 		},
 		{
 			name: "expand with named class",

@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-test/deep"
@@ -152,26 +151,24 @@ func growSTSPVC(ctx context.Context, rclient client.Client, sts *appsv1.Stateful
 		return err
 	}
 	if len(pvcs.Items) == 0 {
-		log.Info("PVCs select call returned 0 pvcs, it could be a bug, want match %v in namespace %s", sts.Spec.Selector.MatchLabels, sts.Namespace)
-		return nil
+		return fmt.Errorf("got 0 pvcs under %s for selector %v, statefulset could not be working", sts.Namespace, sts.Spec.Selector.MatchLabels)
 	}
 	for _, pvc := range pvcs.Items {
 		var isExist bool
+		// check if storage class is expandable
+		isExpandable, err := isStorageClassExpandable(ctx, rclient, &pvc)
+		if err != nil {
+			return fmt.Errorf("failed to check storageClass expandability for pvc %s: %v", pvc.Name, err)
+		}
+		if !isExpandable {
+			return fmt.Errorf("want to expand pvc %s but storageClass doesn't support it, need to handle this case manually", pvc.Name)
+		}
 		for _, tpvc := range targetPVCs {
 			if strings.HasPrefix(pvc.Name, fmt.Sprintf("%s-%s", tpvc.Name, sts.Name)) {
 				isExist = true
-				// check if storage class is expandable
-				isExpandable, err := isStorageClassExpandable(ctx, rclient, &pvc)
-				if err != nil {
-					logger.Errorf("failed to check storageClass expandability for pvc %s: %v", pvc.Name, err)
-					break
-				}
-				if !isExpandable {
-					log.Info("want to expand pvc %s but storageClass doesn't support it, need to handle this case manually", pvc.Name)
-				}
 				err = growPVCs(ctx, rclient, tpvc.Spec.Resources.Requests.Storage(), &pvc)
 				if err != nil {
-					logger.Errorf("failed to expand size for pvc %s: %v", pvc.Name, err)
+					return fmt.Errorf("failed to expand size for pvc %s: %v", pvc.Name, err)
 				}
 				break
 			}
@@ -191,8 +188,7 @@ func isStorageClassExpandable(ctx context.Context, rclient client.Client, pvc *c
 	}
 	// fast path at single namespace mode, listing storage classes is disabled
 	if !config.IsClusterWideAccessAllowed() {
-		log.Info("cannot detect if storageClass expandable at single namespace mode, expand PVC manually or enforce resizing with annotation to true", "pvc annotation", victoriametricsv1beta1.PVCExpandableLabel)
-		return false, nil
+		return false, fmt.Errorf("cannot detect if storageClass expandable at single namespace mode, need to expand PVC manually or enforce resizing by adding annotation `%s=true`", victoriametricsv1beta1.PVCExpandableLabel)
 	}
 	var isNotDefault bool
 	var className string
@@ -206,7 +202,7 @@ func isStorageClassExpandable(ctx context.Context, rclient client.Client, pvc *c
 	}
 	var storageClasses v1.StorageClassList
 	if err := rclient.List(ctx, &storageClasses); err != nil {
-		return false, fmt.Errorf("cannot list storageclasses: %w", err)
+		return false, fmt.Errorf("cannot list storageClass: %w", err)
 	}
 	allowExpansion := func(class v1.StorageClass) bool {
 		if class.AllowVolumeExpansion != nil && *class.AllowVolumeExpansion {

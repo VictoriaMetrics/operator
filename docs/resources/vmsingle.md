@@ -61,16 +61,18 @@ spec:
 
 ## Enterprise features
 
-VMSingle supports features [Downsampling](https://docs.victoriametrics.com/#downsampling) 
-and [Multiple retentions / Retention filters](https://docs.victoriametrics.com/#retention-filters)
-from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/enterprise.html#victoriametrics-enterprise).
+VMSingle supports features from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/enterprise.html#victoriametrics-enterprise):
+
+- [Downsampling](https://docs.victoriametrics.com/#downsampling) 
+- [Multiple retentions / Retention filters](https://docs.victoriametrics.com/#retention-filters)
+- [Backup automation](https://docs.victoriametrics.com/vmbackupmanager.html)
 
 For using Enterprise version of [vmsingle](https://docs.victoriametrics.com/Single-server-VictoriaMetrics.html)
 you need to change version of `VMSingle` to version with `-enterprise` suffix using [Version management](#version-management).
 
 All the enterprise apps require `-eula` command-line flag to be passed to them.
 This flag acknowledges that your usage fits one of the cases listed on [this page](https://docs.victoriametrics.com/enterprise.html#victoriametrics-enterprise).
-So you can use [extraArgs](https://docs.victoriametrics.com/operator/resources/#extra-args) for passing this flag to `VMSingle`:
+So you can use [extraArgs](https://docs.victoriametrics.com/operator/resources/#extra-args) for passing this flag to `VMSingle`.
 
 ### Downsampling
 
@@ -128,6 +130,130 @@ spec:
 
   # ...other fields...
 ```
+
+### Backup automation
+
+You can check [vmbackupmanager documentation](https://docs.victoriametrics.com/vmbackupmanager.html) for backup automation.
+It contains a description of the service and its features. This section covers vmbackumanager integration in vmoperator.
+
+`VMSingle` has built-in backup configuration, it uses `vmbackupmanager` - proprietary tool for backups.
+It supports incremental backups (hourly, daily, weekly, monthly) with popular object storages (aws s3, google cloud storage).
+
+Here is a complete example for backup configuration:
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMSingle
+metadata:
+  name: example-vmsingle
+spec:
+
+  vmBackup:
+    # should be true and means that you have the legal right to run a vmsingle enterprise
+    # that can either be a signed contract or an email with confirmation to run the service in a trial period
+    # https://victoriametrics.com/legal/esa/
+    acceptEULA: true
+
+    # using enterprise features: Backup automation
+    # more details about backup automation you can read on https://docs.victoriametrics.com/vmbackupmanager.html      
+    destination: "s3://your_bucket/folder"
+    credentialsSecret:
+      name: remote-storage-keys
+      key: credentials
+
+  # ...other fields...
+
+---
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: remote-storage-keys
+type: Opaque
+stringData:
+  credentials: |-
+    [default]
+    aws_access_key_id = your_access_key_id
+    aws_secret_access_key = your_secret_access_key
+``` 
+
+You can read more about backup configuration options and mechanics [here](https://docs.victoriametrics.com/vmbackupmanager.html)
+
+Possible configuration options for backup crd can be found at [link](https://docs.victoriametrics.com/operator/api.html#vmbackup)
+
+#### Restoring backups
+
+There are several ways to restore with [vmrestore](https://docs.victoriametrics.com/vmrestore.html) or [vmbackupmanager](https://docs.victoriametrics.com/vmbackupmanager.html).
+
+##### Manually mounting disk
+
+You have to stop `VMSingle` by scaling it replicas to zero and manually restore data to the database directory.
+
+Steps:
+
+1. Edit `VMSingle` CRD, set `replicaCount: 0`
+1. Wait until database stops
+1. SSH to some server, where you can mount `VMSingle` disk and mount it manually
+1. Restore files with `vmrestore`
+1. Umount disk
+1. Edit `VMSingle` CRD, set `replicaCount: 1`
+1. Wait database start
+
+##### Using VMRestore init container
+
+1. Add init container with `vmrestore` command to `VMSingle` CRD, example:
+    ```yaml
+    apiVersion: operator.victoriametrics.com/v1beta1
+    kind: VMSingle
+    metadata:
+      name: example-vmsingle
+    spec:
+    
+      vmBackup:
+        # should be true and means that you have the legal right to run a vmsingle enterprise
+        # that can either be a signed contract or an email with confirmation to run the service in a trial period
+        # https://victoriametrics.com/legal/esa/
+        acceptEULA: true
+    
+        # using enterprise features: Backup automation
+        # more details about backup automation you can read on https://docs.victoriametrics.com/vmbackupmanager.html      
+        destination: "s3://your_bucket/folder"
+        credentialsSecret:
+          name: remote-storage-keys
+          key: credentials
+          
+      extraArgs:
+        runOnStart: "true"
+        
+      initContainers:
+        - name: vmrestore
+          image: victoriametrics/vmrestore:latest
+          volumeMounts:
+            - mountPath: /victoria-metrics-data
+              name: data
+            - mountPath: /etc/vm/creds
+              name: secret-remote-storage-keys
+              readOnly: true
+          args:
+            - -storageDataPath=/victoria-metrics-data
+            - -src=s3://your_bucket/folder/latest
+            - -credsFilePath=/etc/vm/creds/credentials
+    
+      # ...other fields...
+    ```
+1. Apply it, and db will be restored from S3
+1. Remove `initContainers` and apply CRD.
+
+Note that using `VMRestore` will require adjusting `src` for each pod because restore will be handled per-pod.
+
+##### Using VMBackupmanager init container
+
+Using VMBackupmanager restore in Kubernetes environment is described [here](https://docs.victoriametrics.com/vmbackupmanager.html#how-to-restore-in-kubernetes).
+
+Advantages of using `VMBackupmanager` include:
+
+- Automatic adjustment of `src` for each pod when backup is requested
+- Graceful handling of case when no restore is required - `VMBackupmanager` will exit with successful status code and won't prevent pod from starting
 
 ## Examples
 

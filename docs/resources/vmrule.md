@@ -25,6 +25,8 @@ Also, you can check out the [examples](#examples) section.
 Custom resource `VMRule` supports feature [Multitenancy](https://docs.victoriametrics.com/vmalert.html#multitenancy)
 from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/enterprise.html#victoriametrics-enterprise).
 
+### Multitenancy
+
 For using [Multitenancy](https://docs.victoriametrics.com/vmalert.html#multitenancy) in `VMRule`
 you need to **[enable VMAlert Enterprise](https://docs.victoriametrics.com/operator/resources/vmalert.html#enterprise-features)**.
 

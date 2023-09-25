@@ -279,6 +279,8 @@ are not deployed on the same node. You can use another `topologyKey` for availab
 creates `replicaCount` of replicas for each shard (which leads greater resource consumption). 
 This will be fixed in the future, more details can be seen in [this issue](https://github.com/VictoriaMetrics/operator/issues/604).
 
+Also see [this example](https://github.com/VictoriaMetrics/operator/blob/master/config/examples/vmagent_stateful_with_sharding.yaml).
+
 ## Additional scrape configuration
 
 AdditionalScrapeConfigs is an additional way to add scrape targets in `VMAgent` CRD.

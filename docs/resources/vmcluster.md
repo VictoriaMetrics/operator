@@ -192,6 +192,364 @@ spec:
   # ...
 ```
 
+## Enterprise features
+
+VMCluster supports following features 
+from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/enterprise.html#victoriametrics-enterprise):
+
+- [Downsampling](https://docs.victoriametrics.com/Cluster-VictoriaMetrics.html#downsampling)
+- [Multiple retentions / Retention filters](https://docs.victoriametrics.com/Cluster-VictoriaMetrics.html#retention-filters)
+- [Advanced per-tenant statistic](https://docs.victoriametrics.com/PerTenantStatistic.html)
+- [mTLS for cluster components](https://docs.victoriametrics.com/Cluster-VictoriaMetrics.html#mtls-protection)
+- [Backup automation](https://docs.victoriametrics.com/vmbackupmanager.html)
+
+VMCluster doesn't support yet feature 
+[Automatic discovery for vmstorage nodes](https://docs.victoriametrics.com/Cluster-VictoriaMetrics.html#automatic-vmstorage-discovery).
+
+For using Enterprise version of [vmcluster](https://docs.victoriametrics.com/Cluster-VictoriaMetrics.html)
+you need to change version of `VMCluster` to version with `-enterprise` suffix using [Version management](#version-management).
+
+All the enterprise apps require `-eula` command-line flag to be passed to them.
+This flag acknowledges that your usage fits one of the cases listed on [this page](https://docs.victoriametrics.com/enterprise.html#victoriametrics-enterprise).
+So you can use [extraArgs](https://docs.victoriametrics.com/operator/resources/#extra-args) for passing this flag to `VMCluster`.
+
+### Downsampling
+
+After that you can pass [Downsampling](https://docs.victoriametrics.com/Cluster-VictoriaMetrics.html#downsampling)
+flag to `VMCluster/vmselect` and `VMCluster/vmstorage` with [extraArgs](https://docs.victoriametrics.com/operator/resources/#extra-args) too.
+
+Here are complete example for [Downsampling](https://docs.victoriametrics.com/Cluster-VictoriaMetrics.html#downsampling):
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMCluster
+metadata:
+  name: vmcluster-ent-example
+spec:
+  
+  vmselect:
+    # enabling enterprise features for vmselect
+    image:
+      # enterprise version of vmselect
+      tag: v1.93.5-enterprise-cluster
+    extraArgs:
+      # should be true and means that you have the legal right to run a vmselect enterprise
+      # that can either be a signed contract or an email with confirmation to run the service in a trial period
+      # https://victoriametrics.com/legal/esa/
+      eula: true
+      
+      # using enterprise features: Downsampling
+      # more details about downsampling you can read on https://docs.victoriametrics.com/Cluster-VictoriaMetrics.html#downsampling
+      downsampling.period: 30d:5m,180d:1h,1y:6h,2y:1d
+      
+  vmstorage:
+    # enabling enterprise features for vmstorage
+    image:
+      # enterprise version of vmstorage
+      tag: v1.93.5-enterprise-cluster
+    extraArgs:
+      # should be true and means that you have the legal right to run a vmstorage enterprise
+      # that can either be a signed contract or an email with confirmation to run the service in a trial period
+      # https://victoriametrics.com/legal/esa/
+      eula: true
+
+      # using enterprise features: Downsampling
+      # more details about downsampling you can read on https://docs.victoriametrics.com/Cluster-VictoriaMetrics.html#downsampling
+      downsampling.period: 30d:5m,180d:1h,1y:6h,2y:1d
+
+  # ...other fields...
+```
+
+### Retention filters
+
+You can pass [Retention filters](https://docs.victoriametrics.com/Cluster-VictoriaMetrics.html#retention-filters)
+flag to  `VMCluster/vmstorage` with [extraArgs](https://docs.victoriametrics.com/operator/resources/#extra-args).
+
+Here are complete example for [Retention filters](https://docs.victoriametrics.com/Cluster-VictoriaMetrics.html#retention-filters):
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMCluster
+metadata:
+  name: vmcluster-ent-example
+spec:
+  
+  vmstorage:
+    # enabling enterprise features for vmstorage
+    image:
+      # enterprise version of vmstorage
+      tag: v1.93.5-enterprise-cluster
+    extraArgs:
+      # should be true and means that you have the legal right to run a vmstorage enterprise
+      # that can either be a signed contract or an email with confirmation to run the service in a trial period
+      # https://victoriametrics.com/legal/esa/
+      eula: true
+
+      # using enterprise features: Retention filters
+      # more details about retention filters you can read on https://docs.victoriametrics.com/Cluster-VictoriaMetrics.html#retention-filters
+      retentionFilter: '{vm_account_id="5",env="dev"}:5d,{vm_account_id="5",env="prod"}:5y'
+
+  # ...other fields...
+```
+
+### Advanced per-tenant statistic
+
+For using [Advanced per-tenant statistic](https://docs.victoriametrics.com/PerTenantStatistic.html)
+you only need to [enable Enterprise version of vmcluster components](#enterprise-features) 
+and operator will automatically create 
+[Scrape objects](https://docs.victoriametrics.com/operator/resources/vmagent.html#scraping) for cluster components.
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMCluster
+metadata:
+  name: vmcluster-ent-example
+spec:
+  
+  vmselect:
+    # enabling enterprise features for vmselect
+    image:
+      # enterprise version of vmselect
+      tag: v1.93.5-enterprise-cluster
+    extraArgs:
+      # should be true and means that you have the legal right to run a vmselect enterprise
+      # that can either be a signed contract or an email with confirmation to run the service in a trial period
+      # https://victoriametrics.com/legal/esa/
+      eula: true
+      
+  vminsert:
+    # enabling enterprise features for vminsert
+    image:
+      # enterprise version of vminsert
+      tag: v1.93.5-enterprise-cluster
+    extraArgs:
+      # should be true and means that you have the legal right to run a vminsert enterprise
+      # that can either be a signed contract or an email with confirmation to run the service in a trial period
+      # https://victoriametrics.com/legal/esa/
+      eula: true
+      
+  vmstorage:
+    # enabling enterprise features for vmstorage
+    image:
+      # enterprise version of vmstorage
+      tag: v1.93.5-enterprise-cluster
+    extraArgs:
+      # should be true and means that you have the legal right to run a vmstorage enterprise
+      # that can either be a signed contract or an email with confirmation to run the service in a trial period
+      # https://victoriametrics.com/legal/esa/
+      eula: true
+
+  # ...other fields...
+```
+
+After that [VMAgent](https://docs.victoriametrics.com/operator/resources/vmagent.html) will automatically 
+scrape [Advanced per-tenant statistic](https://docs.victoriametrics.com/PerTenantStatistic.html) for cluster components.
+
+### mTLS protection
+
+You can pass [mTLS protection](https://docs.victoriametrics.com/Cluster-VictoriaMetrics.html#mtls-protection)
+flags to `VMCluster/vmstorage`, `VMCluster/vmselect` and `VMCluster/vminsert` with [extraArgs](https://docs.victoriametrics.com/operator/resources/#extra-args) and mount secret files 
+with `extraVolumes` and `extraVolumeMounts` fields.
+
+Here are complete example for [mTLS protection](https://docs.victoriametrics.com/Cluster-VictoriaMetrics.html#mtls-protection)
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMCluster
+metadata:
+  name: vmcluster-ent-example
+spec:
+  
+  vmselect:
+    # enabling enterprise features for vmselect
+    image:
+      # enterprise version of vmselect
+      tag: v1.93.5-enterprise-cluster
+    extraArgs:
+      # should be true and means that you have the legal right to run a vmselect enterprise
+      # that can either be a signed contract or an email with confirmation to run the service in a trial period
+      # https://victoriametrics.com/legal/esa/
+      eula: true
+      
+      # using enterprise features: mTLS protection
+      # more details about mTLS protection you can read on https://docs.victoriametrics.com/Cluster-VictoriaMetrics.html#mtls-protection
+      cluster.tls: true
+      cluster.tlsCAFile: /etc/mtls/ca.crt
+      cluster.tlsCertFile: /etc/mtls/vmselect.crt
+      cluster.tlsKeyFile: /etc/mtls/vmselect.key
+    extraVolumes:
+      - name: mtls
+        secret:
+          secretName: mtls
+    extraVolumeMounts:
+      - name: mtls
+        mountPath: /etc/mtls
+      
+  vminsert:
+    # enabling enterprise features for vminsert
+    image:
+      # enterprise version of vminsert
+      tag: v1.93.5-enterprise-cluster
+    extraArgs:
+      # should be true and means that you have the legal right to run a vminsert enterprise
+      # that can either be a signed contract or an email with confirmation to run the service in a trial period
+      # https://victoriametrics.com/legal/esa/
+      eula: true
+
+      # using enterprise features: mTLS protection
+      # more details about mTLS protection you can read on https://docs.victoriametrics.com/Cluster-VictoriaMetrics.html#mtls-protection
+      cluster.tls: true
+      cluster.tlsCAFile: /etc/mtls/ca.crt
+      cluster.tlsCertFile: /etc/mtls/vminsert.crt
+      cluster.tlsKeyFile: /etc/mtls/vminsert.key
+    extraVolumes:
+      - name: mtls
+        secret:
+          secretName: mtls
+    extraVolumeMounts:
+      - name: mtls
+        mountPath: /etc/mtls
+      
+  vmstorage:
+    # enabling enterprise features for vmstorage
+    image:
+      # enterprise version of vmstorage
+      tag: v1.93.5-enterprise-cluster
+    env:
+      - name: POD
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.name
+    extraArgs:
+      # should be true and means that you have the legal right to run a vmstorage enterprise
+      # that can either be a signed contract or an email with confirmation to run the service in a trial period
+      # https://victoriametrics.com/legal/esa/
+      eula: true
+
+      # using enterprise features: mTLS protection
+      # more details about mTLS protection you can read on https://docs.victoriametrics.com/Cluster-VictoriaMetrics.html#mtls-protection
+      cluster.tls: true
+      cluster.tlsCAFile: /etc/mtls/ca.crt
+      cluster.tlsCertFile: /etc/mtls/$(POD).crt
+      cluster.tlsKeyFile: /etc/mtls/$(POD).key
+    extraVolumes:
+      - name: mtls
+        secret:
+          secretName: mtls
+    extraVolumeMounts:
+      - name: mtls
+        mountPath: /etc/mtls
+
+  # ...other fields...
+
+---
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mtls
+  namespace: default
+stringData:
+  ca.crt: |
+    -----BEGIN CERTIFICATE-----
+    ...
+    -----END CERTIFICATE-----
+  mtls-vmstorage-0.crt: |
+    -----BEGIN CERTIFICATE-----
+    ...
+    -----END CERTIFICATE-----
+  mtls-vmstorage-0.key: |
+    -----BEGIN PRIVATE KEY-----
+    ...
+    -----END PRIVATE KEY-----
+  mtls-vmstorage-1.crt: |
+    -----BEGIN CERTIFICATE-----
+    ...
+    -----END CERTIFICATE-----
+  mtls-vmstorage-1.key: |
+    -----BEGIN PRIVATE KEY-----
+    ...
+    -----END PRIVATE KEY-----
+  vminsert.crt: |
+    -----BEGIN CERTIFICATE-----
+    ...
+    -----END CERTIFICATE-----
+  vminsert.key: |
+    -----BEGIN PRIVATE KEY-----
+    ...
+    -----END PRIVATE KEY-----
+  vmselect.crt: |
+    -----BEGIN CERTIFICATE-----
+    ...
+    -----END CERTIFICATE-----
+  vmselect.key: |
+    -----BEGIN PRIVATE KEY-----
+    ...
+    -----END PRIVATE KEY-----
+
+```
+
+Example commands for generating certificates you can read 
+on [this page](https://gist.github.com/f41gh7/76ed8e5fb1ebb9737fe746bae9175ee6#generate-self-signed-ca-with-key).
+
+### Backup automation
+
+You can check [vmbackupmanager documentation](https://docs.victoriametrics.com/vmbackupmanager.html) for backup automation.
+It contains a description of the service and its features. This section covers vmbackumanager integration in vmoperator.
+
+`VMCluster` has built-in backup configuration, it uses `vmbackupmanager` - proprietary tool for backups.
+It supports incremental backups (hourly, daily, weekly, monthly) with popular object storages (aws s3, google cloud storage).
+
+Here is a complete example for backup configuration:
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMCluster
+metadata:
+  name: vmcluster-ent-example
+spec:
+
+  vmstorage:
+    vmBackup:
+      # should be true and means that you have the legal right to run a vmstorage enterprise
+      # that can either be a signed contract or an email with confirmation to run the service in a trial period
+      # https://victoriametrics.com/legal/esa/
+      acceptEULA: true
+
+      # using enterprise features: Backup automation
+      # more details about backup automation you can read on https://docs.victoriametrics.com/vmbackupmanager.html      
+      destination: "s3://your_bucket/folder"
+      credentialsSecret:
+        name: remote-storage-keys
+        key: credentials
+
+  # ...other fields...
+
+---
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: remote-storage-keys
+type: Opaque
+stringData:
+  credentials: |-
+    [default]
+    aws_access_key_id = your_access_key_id
+    aws_secret_access_key = your_secret_access_key
+```
+
+**NOTE**: for cluster version operator adds suffix for destination: `"s3://your_bucket/folder"`, it becomes `"s3://your_bucket/folder/$(POD_NAME)"`.
+It's needed to make consistent backups for each storage node.
+
+You can read more about backup configuration options and mechanics [here](https://docs.victoriametrics.com/vmbackupmanager.html)
+
+Possible configuration options for backup crd can be found at [link](https://docs.victoriametrics.com/operator/api.html#vmbackup)
+
+**Using VMBackupmanager for restoring backups** in Kubernetes environment is described [here](https://docs.victoriametrics.com/vmbackupmanager.html#how-to-restore-in-kubernetes).
+
+Also see VMCLuster example spec [here](https://github.com/VictoriaMetrics/operator/blob/master/config/examples/vmcluster_with_backuper.yaml).
+
 ## Examples
 
 ### Minimal example without persistence

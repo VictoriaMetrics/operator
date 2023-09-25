@@ -27,17 +27,17 @@ for editing [`vmagent` custom resources](https://docs.victoriametrics.com/operat
 
 <!-- TODO: service accounts / role bindings? -->
 <!-- TODO: resource/roles relations -->
-<!-- TODO: strict pod security -->
-<!-- TODO: the section below needs to be updated -->
 
 ## Security policies
 
 VictoriaMetrics operator provides several security features, such as [PodSecurityPolicies](https://kubernetes.io/docs/concepts/policy/pod-security-policy/),
 [PodSecurityContext](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/).
 
-### PodSecurityPolicy.
+### PodSecurityPolicy
 
-By default, operator creates serviceAccount for each cluster resource and binds default `PodSecurityPolicy` to it.
+> PodSecurityPolicy was [deprecated](https://kubernetes.io/docs/concepts/security/pod-security-policy/) in Kubernetes v1.21, and removed from Kubernetes in v1.25.
+
+If your Kubernetes version is under v1.25 and want to use PodSecurityPolicy, you can set env `VM_PSPAUTOCREATEENABLED: "true"` in operator, it will create serviceAccount for each cluster resource and binds default `PodSecurityPolicy` to it.
 
 Default psp:
 ```yaml
@@ -68,17 +68,32 @@ spec:
   - nfs
 ```
 
-This behaviour may be disabled with env variable passed to operator:
- ```yaml
- - name: VM_PSPAUTOCREATEENABLED
-   value: "false"
-```
-
 User may also override default pod security policy with setting: `spec.podSecurityPolicyName: "psp-name"`.
 
 ## PodSecurityContext
 
-`PodSecurityContext` can be configured with spec setting. It may be useful for mounted volumes, with `VMSingle` for example:
+VictoriaMetrics operator will add default Security Context to managed pods and containers if env `EnableStrictSecurity: "true"` is set.
+The following SecurityContext will be applied:
+
+### Pod SecurityContext
+#### 1. RunAsNonRoot: true
+#### 2. RunAsUser/RunAsGroup/FSGroup: 65534
+'65534' refers to 'nobody' in all the used default images like alpine, busybox.
+If you're using customize image, please make sure '65534' is a valid uid in there or specify SecurityContext.
+#### 3. FSGroupChangePolicy: &onRootMismatch
+If KubeVersion>=1.20, use `FSGroupChangePolicy="onRootMismatch"` to skip the recursive permission change
+when the root of the volume already has the correct permissions
+#### 4. SeccompProfile: {type: RuntimeDefault}
+Use `RuntimeDefault` seccomp profile by default, which is defined by the container runtime,
+instead of using the Unconfined (seccomp disabled) mode.
+
+### Container SecurityContext
+#### 1. AllowPrivilegeEscalation: false
+#### 2. ReadOnlyRootFilesystem: true
+#### 3. Capabilities: {drop: [all]}
+
+
+Also `SecurityContext` can be configured with spec setting. It may be useful for mounted volumes, with `VMSingle` for example:
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1beta1

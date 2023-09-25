@@ -23,7 +23,6 @@ You can follow the steps in documentation to use VictoriaMetrics Operator:
 - [High Availability](https://docs.victoriametrics.com/operator/high-availability.html)
 - [Enterprise](https://docs.victoriametrics.com/operator/enterprise.html)
 - [Custom resources](https://docs.victoriametrics.com/operator/resources/)
-- [Guides](https://docs.victoriametrics.com/operator/guides/)
 - [FAQ (Frequency Asked Questions)](https://docs.victoriametrics.com/operator/faq.html)
 
 But if you want to deploy VictoriaMetrics Operator quickly but from scratch (without using templating for custom resources), 
@@ -665,7 +664,6 @@ In addition, check out other sections of the documentation for VictoriaMetrics O
 - [Authorization and exposing components](https://docs.victoriametrics.com/operator/auth.html)
 - [High Availability](https://docs.victoriametrics.com/operator/high-availability.html)
 - [Enterprise](https://docs.victoriametrics.com/operator/enterprise.html)
-- [Guides](https://docs.victoriametrics.com/operator/guides/)
 
 If you have any questions, check out our [FAQ](https://docs.victoriametrics.com/operator/faq.html)
 and feel free to can ask them:

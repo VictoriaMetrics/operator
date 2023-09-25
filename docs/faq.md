@@ -36,7 +36,10 @@ You can use `VM_CONTAINERREGISTRY` parameter for operator:
 
 ## How to set up automatic backups?
 
-You can read about backups setup in [this guide](https://docs.victoriametrics.com/operator/guides/backups.html).
+You can read about backups:
+
+- for `VMSingle`: [Backup automation](https://docs.victoriametrics.com/operator/resources/vmsingle.html#backup-automation)
+- for `VMCluster`: [Backup automation](https://docs.victoriametrics.com/operator/resources/vmcluster.html#backup-automation)
 
 ## How to migrate from Prometheus-operator to VictoriaMetrics operator?
 

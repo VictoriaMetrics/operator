@@ -81,7 +81,6 @@ The basic workflow of working with the operator can be simplified as the followi
 - [High Availability](https://docs.victoriametrics.com/operator/high-availability.html)
 - [Enterprise](https://docs.victoriametrics.com/operator/enterprise.html)
 - [Custom resources](https://docs.victoriametrics.com/operator/resources/)
-- [Guides](https://docs.victoriametrics.com/operator/guides/)
 
 If you have any questions, check out our [FAQ](https://docs.victoriametrics.com/operator/faq.html) 
 and feel free to can ask them:

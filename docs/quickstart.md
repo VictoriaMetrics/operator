@@ -648,7 +648,9 @@ And now you can get access to your data with url `http://vm-demo.k8s.orb.local/v
 
 ## Anything else
 
-That's it.
+That's it. We obtained a monitoring cluster corresponding to the target topology:
+
+<img src="quickstart_cluster-scheme.png">
 
 You have a full-stack monitoring cluster with VictoriaMetrics Operator.
 

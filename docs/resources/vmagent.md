@@ -42,7 +42,8 @@ Also, you can check out the [examples](#examples) section.
 - [VMStaticScrape](https://docs.victoriametrics.com/operator/resources/vmstaticscrape.html),
 - [VMProbe](https://docs.victoriametrics.com/operator/resources/vmprobe.html).
 
-These objects are generates part of [VMAgent](https://docs.victoriametrics.com/operator/resources/vmagent.html) scrape configuration.
+These objects tell VMAgent from which targets and how to collect metrics and 
+generate part of [VMAgent](https://docs.victoriametrics.com/operator/resources/vmagent.html) scrape configuration.
 
 For filtering scrape objects `VMAgent` uses selectors. 
 Selectors are defined with suffixes - `NamespaceSelector` and `Selector` for each type of scrape objects in spec of `VMAgent`:

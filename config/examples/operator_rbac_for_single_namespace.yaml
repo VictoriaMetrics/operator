@@ -24,10 +24,17 @@ metadata:
   namespace: default
 rules:
   - apiGroups:
+      - "discovery.k8s.io"
+    resources:
+      - endpointslices
+    verbs:
+      - 'list'
+      - 'watch'
+      - 'get'
+  - apiGroups:
       - ""
     resources:
       - endpoints
-      - endpointslices
     verbs:
       - 'list'
       - 'watch'

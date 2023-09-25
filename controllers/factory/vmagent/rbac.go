@@ -16,6 +16,17 @@ import (
 var (
 	singleNSPolicyRules = []rbacV1.PolicyRule{
 		{
+			APIGroups: []string{"discovery.k8s.io"},
+			Verbs: []string{
+				"get",
+				"list",
+				"watch",
+			},
+			Resources: []string{
+				"endpointslices",
+			},
+		},
+		{
 			APIGroups: []string{""},
 			Verbs: []string{
 				"get",
@@ -26,7 +37,6 @@ var (
 				"services",
 				"endpoints",
 				"pods",
-				"endpointslices",
 				"secrets",
 				"configmaps",
 			},
@@ -45,6 +55,17 @@ var (
 	}
 	clusterWidePolicyRules = []rbacV1.PolicyRule{
 		{
+			APIGroups: []string{"discovery.k8s.io"},
+			Verbs: []string{
+				"get",
+				"list",
+				"watch",
+			},
+			Resources: []string{
+				"endpointslices",
+			},
+		},
+		{
 			APIGroups: []string{""},
 			Verbs: []string{
 				"get",
@@ -58,7 +79,6 @@ var (
 				"services",
 				"endpoints",
 				"pods",
-				"endpointslices",
 				"configmaps",
 				"namespaces",
 				"secrets",

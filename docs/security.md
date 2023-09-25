@@ -76,21 +76,27 @@ VictoriaMetrics operator will add default Security Context to managed pods and c
 The following SecurityContext will be applied:
 
 ### Pod SecurityContext
-#### 1. RunAsNonRoot: true
-#### 2. RunAsUser/RunAsGroup/FSGroup: 65534
-'65534' refers to 'nobody' in all the used default images like alpine, busybox.
-If you're using customize image, please make sure '65534' is a valid uid in there or specify SecurityContext.
-#### 3. FSGroupChangePolicy: &onRootMismatch
-If KubeVersion>=1.20, use `FSGroupChangePolicy="onRootMismatch"` to skip the recursive permission change
-when the root of the volume already has the correct permissions
-#### 4. SeccompProfile: {type: RuntimeDefault}
-Use `RuntimeDefault` seccomp profile by default, which is defined by the container runtime,
-instead of using the Unconfined (seccomp disabled) mode.
+
+1. **RunAsNonRoot: true**
+1. **RunAsUser/RunAsGroup/FSGroup: 65534**
+
+    '65534' refers to 'nobody' in all the used default images like alpine, busybox.
+
+    If you're using customize image, please make sure '65534' is a valid uid in there or specify SecurityContext.
+1. **FSGroupChangePolicy: &onRootMismatch**
+  
+    If KubeVersion>=1.20, use `FSGroupChangePolicy="onRootMismatch"` to skip the recursive permission change
+    when the root of the volume already has the correct permissions
+1. **SeccompProfile: {type: RuntimeDefault}**
+
+    Use `RuntimeDefault` seccomp profile by default, which is defined by the container runtime,
+    instead of using the Unconfined (seccomp disabled) mode.
 
 ### Container SecurityContext
-#### 1. AllowPrivilegeEscalation: false
-#### 2. ReadOnlyRootFilesystem: true
-#### 3. Capabilities: {drop: [all]}
+
+1. **AllowPrivilegeEscalation: false**
+1. **ReadOnlyRootFilesystem: true**
+1. **Capabilities: {drop: [all]}**
 
 
 Also `SecurityContext` can be configured with spec setting. It may be useful for mounted volumes, with `VMSingle` for example:
@@ -123,5 +129,4 @@ spec:
     limits:
       cpu: "1"
       memory: "1512Mi"
-
 ```

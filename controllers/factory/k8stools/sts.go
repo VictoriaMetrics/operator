@@ -43,6 +43,8 @@ func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, 
 		}
 		return fmt.Errorf("cannot get sts %s under namespace %s: %w", newSts.Name, newSts.Namespace, err)
 	}
+	// will update the original cr replicaCount to propagate right num,
+	// for now, it's only used in vmselect
 	if cr.UpdateReplicaCount != nil {
 		cr.UpdateReplicaCount(currentSts.Spec.Replicas)
 	}
@@ -76,13 +78,11 @@ func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, 
 		}
 	}
 
-	if cr.HasClaim {
-		if err := growSTSPVC(ctx, rclient, newSts, cr.VolumeName()); err != nil {
-			return err
-		}
+	// check if pvc need to resize if sts got recreated
+	if isRecreated {
+		err = growSTSPVC(ctx, rclient, newSts)
 	}
-
-	return nil
+	return err
 }
 
 // we perform rolling update on sts by manually deleting pods one by one

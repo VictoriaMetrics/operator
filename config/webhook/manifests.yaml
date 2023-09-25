@@ -130,6 +130,26 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
+      path: /validate-operator-victoriametrics-com-v1beta1-vmrule
+  failurePolicy: Fail
+  name: vvmrule.kb.io
+  rules:
+  - apiGroups:
+    - operator.victoriametrics.com
+    apiVersions:
+    - v1beta1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - vmrules
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
       path: /validate-operator-victoriametrics-com-v1beta1-vmsingle
   failurePolicy: Fail
   name: vvmsingle.kb.io

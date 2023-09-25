@@ -66,10 +66,7 @@ func CreateOrUpdateRuleConfigMaps(ctx context.Context, cr *victoriametricsv1beta
 
 	equal := reflect.DeepEqual(newRules, currentRules)
 	if equal && len(currentConfigMaps) != 0 {
-		l.Info("no Rule changes",
-			"namespace", cr.Namespace,
-			"vmalert", cr.Name,
-		)
+		l.Info("no Rule changes", "namespace", cr.Namespace)
 		currentConfigMapNames := []string{}
 		for _, cm := range currentConfigMaps {
 			currentConfigMapNames = append(currentConfigMapNames, cm.Name)
@@ -88,9 +85,7 @@ func CreateOrUpdateRuleConfigMaps(ctx context.Context, cr *victoriametricsv1beta
 	}
 
 	if len(currentConfigMaps) == 0 {
-		l.Info("no Rule configmap found, creating new one", "namespace", cr.Namespace,
-			"vmalert", cr.Name,
-		)
+		l.Info("no Rule configmap found, creating new one", "namespace", cr.Namespace)
 		for _, cm := range newConfigMaps {
 			err := rclient.Create(ctx, &cm, &client.CreateOptions{})
 			if err != nil {

@@ -225,7 +225,8 @@ type VMSelect struct {
 	// +optional
 	TopologySpreadConstraints []v1.TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
 
-	// CacheMountPath allows to add cache persistent for VMSelect
+	// CacheMountPath allows to add cache persistent for VMSelect,
+	// will use "/cache" as default if not specified.
 	// +optional
 	CacheMountPath string `json:"cacheMountPath,omitempty"`
 
@@ -235,7 +236,7 @@ type VMSelect struct {
 	// +deprecated
 	// +optional
 	Storage *StorageSpec `json:"persistentVolume,omitempty"`
-	// StorageSpec - add persistent volume claim for cacheMounthPath
+	// StorageSpec - add persistent volume claim for cacheMountPath
 	// its needed for persistent cache
 	// +optional
 	StorageSpec *StorageSpec `json:"storage,omitempty"`
@@ -678,7 +679,7 @@ type VMStorage struct {
 type VMBackup struct {
 	// AcceptEULA accepts enterprise feature usage, must be set to true.
 	// otherwise backupmanager cannot be added to single/cluster version.
-	// https://victoriametrics.com/legal/eula/
+	// https://victoriametrics.com/legal/esa/
 	AcceptEULA bool `json:"acceptEULA"`
 	// SnapshotCreateURL overwrites url for snapshot create
 	// +optional
@@ -946,6 +947,9 @@ func (cr *VMCluster) LastAppliedSpecAsPatch() (client.Patch, error) {
 func (cr *VMCluster) HasSpecChanges() (bool, error) {
 	var prevClusterSpec VMClusterSpec
 	lastAppliedClusterJSON := cr.Annotations["operator.victoriametrics/last-applied-spec"]
+	if len(lastAppliedClusterJSON) == 0 {
+		return true, nil
+	}
 	if err := json.Unmarshal([]byte(lastAppliedClusterJSON), &prevClusterSpec); err != nil {
 		return true, fmt.Errorf("cannot parse last applied cluster spec value: %s : %w", lastAppliedClusterJSON, err)
 	}

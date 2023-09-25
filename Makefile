@@ -25,7 +25,7 @@ CRD_PRESERVE=x-kubernetes-preserve-unknown-fields true
 # Current Operator version
 # Default bundle image tag
 BUNDLE_IMG ?= controller-bundle:$(VERSION)
-ALPINE_IMAGE=alpine:3.17.3
+ALPINE_IMAGE=alpine:3.18.3
 CHANNEL=beta
 DEFAULT_CHANNEL=beta
 BUNDLE_CHANNELS := --channels=$(CHANNEL)
@@ -33,6 +33,7 @@ BUNDLE_METADATA_OPTS=$(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 CRD_PATH=config/crd/bases
 # Image URL to use all building/pushing image targets
 IMG ?= $(DOCKER_REPO):$(TAG)
+COMMIT_SHA = $(shell git rev-parse --short HEAD)
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 
 CRD_OPTIONS ?= "crd"
@@ -395,6 +396,7 @@ docker-operator-manifest-build-and-push:
 	docker buildx build \
 		--builder operator-builder \
 		-t $(DOCKER_REPO):$(TAG) \
+		-t $(DOCKER_REPO):$(COMMIT_SHA) \
 		-t $(DOCKER_REPO):latest \
 		--platform=$(MANIFEST_BUILD_PLATFORM) \
 		--build-arg base_image=$(ALPINE_IMAGE) \

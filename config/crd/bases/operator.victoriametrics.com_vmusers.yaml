@@ -47,6 +47,19 @@ spec:
                 description: GeneratePassword instructs operator to generate password
                   for user if spec.password if empty.
                 type: boolean
+              ip_filters:
+                description: IPFilters defines per target src ip filters supported
+                  only with enterprise version of vmauth https://docs.victoriametrics.com/vmauth.html#ip-filters
+                properties:
+                  allow_list:
+                    items:
+                      type: string
+                    type: array
+                  deny_list:
+                    items:
+                      type: string
+                    type: array
+                type: object
               name:
                 description: Name of the VMUser object.
                 type: string
@@ -107,19 +120,6 @@ spec:
                       items:
                         type: string
                       type: array
-                    ip_filters:
-                      description: IPFilters defines per target src ip filters supported
-                        only with enterprise version of vmauth https://docs.victoriametrics.com/vmauth.html#ip-filters
-                      properties:
-                        allow_list:
-                          items:
-                            type: string
-                          type: array
-                        deny_list:
-                          items:
-                            type: string
-                          type: array
-                      type: object
                     paths:
                       description: Paths - matched path to route.
                       items:

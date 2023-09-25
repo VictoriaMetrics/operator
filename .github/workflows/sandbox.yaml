@@ -1,0 +1,45 @@
+name: Update version on sandbox
+
+on:
+  workflow_run:
+    workflows: ["Build and Test"]
+    branches: ["master"]
+    types:
+      - completed
+
+jobs:
+  update:
+    name: Update version on sandbox
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out ops
+        uses: actions/checkout@v3
+        with:
+          repository: VictoriaMetrics/ops
+          ref: main
+          token: ${{ secrets.VM_BOT_GH_TOKEN }}
+          path: "__vm-ops-repo"
+
+      - name: Import GPG key
+        uses: crazy-max/ghaction-import-gpg@v5
+        with:
+          gpg_private_key: ${{ secrets.VM_BOT_GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.VM_BOT_PASSPHRASE }}
+          git_user_signingkey: true
+          git_commit_gpgsign: true
+          workdir: "__vm-ops-repo"
+
+      - name: Update operator version on sandbox
+        run: |
+          export VM_GIT_BRANCH_NAME="operator-sandbox-update-$(date +%s)"
+          export VM_GIT_COMMIT_SHA="$(git rev-parse --short $GITHUB_SHA)"
+          export VM_SANDBOX_OPERATOR_PATH="gcp-test/sandbox/manifests/applications/vm-operator.yaml"
+          git checkout -b "${VM_GIT_BRANCH_NAME}"
+          yq -i 'with(.spec.source.helm.values; . = (. | from_yaml | .image.tag = strenv(VM_GIT_COMMIT_SHA) | to_yaml))' $VM_SANDBOX_OPERATOR_PATH
+          git add $VM_SANDBOX_OPERATOR_PATH
+          git commit -S -m "Automatic update operator version on sandbox from ${GITHUB_REPOSITORY}@${VM_GIT_COMMIT_SHA}"
+          git push origin ${VM_GIT_BRANCH_NAME}
+          gh pr create -f
+        working-directory: "__vm-ops-repo"
+        env:
+          GITHUB_TOKEN: ${{ secrets.VM_BOT_GH_TOKEN }}

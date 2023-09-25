@@ -42,6 +42,11 @@ type VMUserSpec struct {
 	// usually used for default backend with error message
 	// +optional
 	DefaultURLs []string `json:"default_url,omitempty"`
+	// IPFilters defines per target src ip filters
+	// supported only with enterprise version of vmauth
+	// https://docs.victoriametrics.com/vmauth.html#ip-filters
+	// +optional
+	IPFilters VMUserIPFilters `json:"ip_filters,omitempty"`
 }
 
 // TargetRef describes target for user traffic forwarding.
@@ -73,11 +78,6 @@ type TargetRef struct {
 	// it's available since 1.68.0 version of vmauth
 	// +optional
 	Headers []string `json:"headers,omitempty"`
-	// IPFilters defines per target src ip filters
-	// supported only with enterprise version of vmauth
-	// https://docs.victoriametrics.com/vmauth.html#ip-filters
-	// +optional
-	IPFilters VMUserIPFilters `json:"ip_filters,omitempty"`
 }
 
 // VMUserIPFilters defines filters for IP addresses

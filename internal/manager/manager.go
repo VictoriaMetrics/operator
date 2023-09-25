@@ -4,6 +4,11 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"net/http"
+	"os"
+	"sync/atomic"
+	"time"
+
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/buildinfo"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httpserver"
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
@@ -23,14 +28,11 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/klog/v2"
-	"net/http"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
-	"sync/atomic"
-	"time"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -59,6 +61,8 @@ var (
 	listenAddr                    = flag.String("http.listenAddr", ":8435", "http server listen addr - serves victoria-metrics http server + metrics.")
 	defaultKubernetesMinorVersion = flag.Uint64("default.kubernetesVersion.minor", 21, "Minor version of kubernetes server, if operator cannot parse actual kubernetes response")
 	defaultKubernetesMajorVersion = flag.Uint64("default.kubernetesVersion.major", 1, "Major version of kubernetes server, if operator cannot parse actual kubernetes response")
+	printDefaults                 = flag.Bool("printDefaults", false, "print all variables with their default values and exit")
+	printFormat                   = flag.String("printFormat", "table", "output format for --printDefaults. Can be table, json, yaml or list")
 	wasCacheSynced                = uint32(0)
 )
 
@@ -81,6 +85,16 @@ func RunManager(ctx context.Context) error {
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 
 	pflag.Parse()
+
+	baseConfig := config.MustGetBaseConfig()
+	if *printDefaults {
+		err := baseConfig.PrintDefaults(*printFormat)
+		if err != nil {
+			setupLog.Error(err, "cannot print variables")
+			os.Exit(1)
+		}
+		return nil
+	}
 
 	zap.UseFlagOptions(&opts)
 	sink := zap.New(zap.UseFlagOptions(&opts)).GetSink()
@@ -170,7 +184,6 @@ func RunManager(ctx context.Context) error {
 			return err
 		}
 	}
-	baseConfig := config.MustGetBaseConfig()
 	victoriametricsv1beta1.SetLabelAndAnnotationPrefixes(baseConfig.FilterChildLabelPrefixes, baseConfig.FilterChildAnnotationPrefixes)
 
 	if err = (&controllers.VMAgentReconciler{

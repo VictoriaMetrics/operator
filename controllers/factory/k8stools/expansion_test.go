@@ -404,7 +404,6 @@ func Test_growSTSPVC(t *testing.T) {
 					},
 				},
 			},
-			wantErr: true,
 		},
 		{
 			name: "expand with named class",

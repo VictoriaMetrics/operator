@@ -14,7 +14,8 @@ title: CHANGELOG
 
 ### Fixes
 
-- [vmcluster](./api.md#vmcluster): remove redundant annotation `operator.victoriametrics/last-applied-spec` from created workloads like vmstorage statefulset.
+- [vmcluster](./api.html#vmcluster): remove redundant annotation `operator.victoriametrics/last-applied-spec` from created workloads like vmstorage statefulset.
+- [vmoperator](./README.md): properly resize statefulset's multiple pvc when needed and allowable, before they could be updated with wrong size.
 
 <a name="v0.38.0"></a>
 ## [v0.38.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.38.0) - 11 Sep 2023

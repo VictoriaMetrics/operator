@@ -188,9 +188,8 @@ func Test_reCreateSTS(t *testing.T) {
 
 func Test_growSTSPVC(t *testing.T) {
 	type args struct {
-		ctx     context.Context
-		sts     *appsv1.StatefulSet
-		pvcName string
+		ctx context.Context
+		sts *appsv1.StatefulSet
 	}
 	tests := []struct {
 		name              string
@@ -201,8 +200,7 @@ func Test_growSTSPVC(t *testing.T) {
 		{
 			name: "no need to expand",
 			args: args{
-				ctx:     context.TODO(),
-				pvcName: "vmselect",
+				ctx: context.TODO(),
 				sts: &appsv1.StatefulSet{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "vmselect",
@@ -220,7 +218,7 @@ func Test_growSTSPVC(t *testing.T) {
 						VolumeClaimTemplates: []v1.PersistentVolumeClaim{
 							{
 								ObjectMeta: metav1.ObjectMeta{
-									Name: "vmselect",
+									Name: "vmselect-cachedir",
 								},
 								Spec: v1.PersistentVolumeClaimSpec{
 									Resources: v1.ResourceRequirements{
@@ -237,10 +235,12 @@ func Test_growSTSPVC(t *testing.T) {
 			predefinedObjects: []runtime.Object{
 				&v1.PersistentVolumeClaim{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "pvc-0",
+						Name:      "vmselect-cachedir-vmselect-insight-victoria-metrics-k8s-stack-0",
+						Namespace: "default",
 						Labels: map[string]string{
 							"app": "vmselect",
 						},
+						Annotations: map[string]string{"operator.victoriametrics.com/pvc/allow-volume-expansion": "true"},
 					},
 					Spec: v1.PersistentVolumeClaimSpec{
 						Resources: v1.ResourceRequirements{Requests: map[v1.ResourceName]resource.Quantity{
@@ -259,10 +259,9 @@ func Test_growSTSPVC(t *testing.T) {
 			},
 		},
 		{
-			name: "expand",
+			name: "expand successfully",
 			args: args{
-				ctx:     context.TODO(),
-				pvcName: "vmselect",
+				ctx: context.TODO(),
 				sts: &appsv1.StatefulSet{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "vmselect",
@@ -280,7 +279,94 @@ func Test_growSTSPVC(t *testing.T) {
 						VolumeClaimTemplates: []v1.PersistentVolumeClaim{
 							{
 								ObjectMeta: metav1.ObjectMeta{
-									Name: "vmselect",
+									Name: "vmselect-cachedir",
+								},
+								Spec: v1.PersistentVolumeClaimSpec{
+									Resources: v1.ResourceRequirements{
+										Requests: map[v1.ResourceName]resource.Quantity{
+											v1.ResourceStorage: resource.MustParse("15Gi"),
+										},
+									},
+								},
+							},
+							{
+								ObjectMeta: metav1.ObjectMeta{
+									Name: "test",
+								},
+								Spec: v1.PersistentVolumeClaimSpec{
+									Resources: v1.ResourceRequirements{
+										Requests: map[v1.ResourceName]resource.Quantity{
+											v1.ResourceStorage: resource.MustParse("5Gi"),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			predefinedObjects: []runtime.Object{
+				&v1.PersistentVolumeClaim{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "vmselect-cachedir-vmselect-insight-victoria-metrics-k8s-stack-0",
+						Namespace: "default",
+						Labels: map[string]string{
+							"app": "vmselect",
+						},
+					},
+					Spec: v1.PersistentVolumeClaimSpec{
+						Resources: v1.ResourceRequirements{Requests: map[v1.ResourceName]resource.Quantity{
+							v1.ResourceStorage: resource.MustParse("10Gi"),
+						}},
+					},
+				},
+				&v1.PersistentVolumeClaim{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-vmselect-insight-victoria-metrics-k8s-stack-0",
+						Namespace: "default",
+						Labels: map[string]string{
+							"app": "vmselect",
+						},
+					},
+					Spec: v1.PersistentVolumeClaimSpec{
+						Resources: v1.ResourceRequirements{Requests: map[v1.ResourceName]resource.Quantity{
+							v1.ResourceStorage: resource.MustParse("3Gi"),
+						}},
+					},
+				},
+				&v12.StorageClass{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "standard",
+						Annotations: map[string]string{
+							"storageclass.kubernetes.io/is-default-class": "true",
+						},
+					},
+					AllowVolumeExpansion: func() *bool { b := true; return &b }(),
+				},
+			},
+		},
+		{
+			name: "failed with non-expandable sc",
+			args: args{
+				ctx: context.TODO(),
+				sts: &appsv1.StatefulSet{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "vmselect",
+						Namespace: "default",
+						Labels: map[string]string{
+							"app": "vmselect",
+						},
+					},
+					Spec: appsv1.StatefulSetSpec{
+						Selector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"app": "vmselect",
+							},
+						},
+						VolumeClaimTemplates: []v1.PersistentVolumeClaim{
+							{
+								ObjectMeta: metav1.ObjectMeta{
+									Name: "vmselect-cachedir",
 								},
 								Spec: v1.PersistentVolumeClaimSpec{
 									Resources: v1.ResourceRequirements{
@@ -297,7 +383,7 @@ func Test_growSTSPVC(t *testing.T) {
 			predefinedObjects: []runtime.Object{
 				&v1.PersistentVolumeClaim{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "pvc-0",
+						Name:      "vmselect-cachedir-vmselect-insight-victoria-metrics-k8s-stack-0",
 						Namespace: "default",
 						Labels: map[string]string{
 							"app": "vmselect",
@@ -316,18 +402,16 @@ func Test_growSTSPVC(t *testing.T) {
 							"storageclass.kubernetes.io/is-default-class": "true",
 						},
 					},
-					AllowVolumeExpansion: func() *bool { b := true; return &b }(),
 				},
 			},
 		},
 		{
 			name: "expand with named class",
 			args: args{
-				ctx:     context.TODO(),
-				pvcName: "vmselect",
+				ctx: context.TODO(),
 				sts: &appsv1.StatefulSet{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "vmselect",
+						Name:      "vmselect-cachedir",
 						Namespace: "default",
 						Labels: map[string]string{
 							"app": "vmselect",
@@ -360,7 +444,7 @@ func Test_growSTSPVC(t *testing.T) {
 			predefinedObjects: []runtime.Object{
 				&v1.PersistentVolumeClaim{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "pvc-0",
+						Name:      "vmselect-cachedir-vmselect-insight-victoria-metrics-k8s-stack-0",
 						Namespace: "default",
 						Labels: map[string]string{
 							"app": "vmselect",
@@ -396,7 +480,7 @@ func Test_growSTSPVC(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cl := GetTestClientWithObjects(tt.predefinedObjects)
-			if err := growSTSPVC(tt.args.ctx, cl, tt.args.sts, tt.args.pvcName); (err != nil) != tt.wantErr {
+			if err := growSTSPVC(tt.args.ctx, cl, tt.args.sts); (err != nil) != tt.wantErr {
 				t.Errorf("growSTSPVC() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

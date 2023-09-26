@@ -78,8 +78,8 @@ func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, 
 		}
 	}
 
-	// check if pvc need to resize if sts got recreated
-	if isRecreated {
+	// check if pvcs need to resize
+	if cr.HasClaim {
 		err = growSTSPVC(ctx, rclient, newSts)
 	}
 	return err

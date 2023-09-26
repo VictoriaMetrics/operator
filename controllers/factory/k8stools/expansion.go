@@ -161,7 +161,9 @@ func growSTSPVC(ctx context.Context, rclient client.Client, sts *appsv1.Stateful
 			return fmt.Errorf("failed to check storageClass expandability for pvc %s: %v", pvc.Name, err)
 		}
 		if !isExpandable {
-			return fmt.Errorf("want to expand pvc %s but storageClass doesn't support it, need to handle this case manually", pvc.Name)
+			// don't return error to caller, since there is no point to requeue and reconcile this when sc is unexpandable
+			log.Error(nil, "want to expand pvc but storageClass doesn't support it, need to handle this case manually", "pvc", pvc.Name)
+			continue
 		}
 		for _, tpvc := range targetPVCs {
 			if strings.HasPrefix(pvc.Name, fmt.Sprintf("%s-%s", tpvc.Name, sts.Name)) {
@@ -188,7 +190,9 @@ func isStorageClassExpandable(ctx context.Context, rclient client.Client, pvc *c
 	}
 	// fast path at single namespace mode, listing storage classes is disabled
 	if !config.IsClusterWideAccessAllowed() {
-		return false, fmt.Errorf("cannot detect if storageClass expandable at single namespace mode, need to expand PVC manually or enforce resizing by adding annotation `%s=true`", victoriametricsv1beta1.PVCExpandableLabel)
+		// don't return error to caller, since there is no point to requeue and reconcile this
+		log.Info("cannot detect if storageClass expandable at single namespace mode, need to expand PVC manually or enforce resizing by adding specific annotation to true", "pvc annotation", victoriametricsv1beta1.PVCExpandableLabel)
+		return false, nil
 	}
 	var isNotDefault bool
 	var className string

@@ -14,18 +14,18 @@ in a declarative style according to [GitOps](https://www.redhat.com/en/topics/de
 and [IaC](https://en.wikipedia.org/wiki/Infrastructure_as_code) concepts.
 
 VictoriaMetrics also provides [helm charts](https://github.com/VictoriaMetrics/helm-charts) without operator.
-Operator makes the same, simplifies it and provides [advanced features](https://docs.victorimetrics.com/operator/#features).
+Operator makes the same, simplifies it and provides [advanced features](#features).
 
-Learn more about [key concepts](#key-concepts) of `vmoperator` and follow the **[quick start guide](https://docs.victoriametrics.com/operator/quickstart.html)** for a better experience.
+Learn more about [key concepts](#key-concepts) of `vmoperator` and follow the **[quick start guide](./quick-start.md)** for a better experience.
 
 ## Features of vmoperator
 
 - Deployment and management in a kubernetes clusters of any number of VictoriaMetrics applications (like vmsingle/vmcluster instances and another components like vmauth, vmagent, vmalert, etc...)
-- Seamless [migration from prometheus-operator](https://docs.victoriametrics.com/operator/migration.html) with auto-conversion of prometheus [custom resources](#custom-resources)
-- Simple VictoriaMetrics cluster installation, configuring, upgrading and managing with [crd-objects](https://docs.victoriametrics.com/operator/resources/).
+- Seamless [migration from prometheus-operator](./migration.md) with auto-conversion of prometheus [custom resources](#custom-resources)
+- Simple VictoriaMetrics cluster installation, configuring, upgrading and managing with [crd-objects](./resources/README.md).
 - Ability to delegate the configuration (parts of configuration) of applications monitoring to the end-users and managing access to different configurations or configuration sections.
-- Integration with VictoriaMetrics [vmbackupmanager](https://docs.victoriametrics.com/vmbackupmanager.html) - advanced tools for making backups. Check [backup docs](https://docs.victoriametrics.com/operator/backups.html)
-- Everything you need for monitoring out of the box in [k8s-stack helm chart](http://docs.victoriametrics.com/operator/deploy.html) with ready-made usecases and solutions.
+- Integration with VictoriaMetrics [vmbackupmanager](https://docs.victoriametrics.com/vmbackupmanager.html) - advanced tools for making backups. Check [Backup automation for VMSingle](./resources/vmsingle.md#backup-automation) or [Backup automation for VMCluster](./resources/vmcluster.md#backup-automation).
+- Everything you need for monitoring out of the box in [k8s-stack helm chart](https://victoriametrics.github.io/helm-charts/charts/victoria-metrics-k8s-stack/) with ready-made usecases and solutions.
 - Ability to template your own deployment scenarios.
 
 ## Key Concepts
@@ -63,7 +63,7 @@ The basic workflow of working with the operator can be simplified as the followi
 
 <img src="README_operator-workflow.png" width="1200">
 
-- Operator declares and owns [resources of Victoria Metrics](http://docs.victoriametrics.com/operator/resources/).
+- Operator declares and owns [resources of Victoria Metrics](./resources/README.md).
 - Kubernetes validates of the resource according to the specification from CRD (see more in [custom resources](#custom-resources)).
 - Operator subscribed to change events (`create`, `update`, `delete`) for related resources.
 - When an event occurs, the operator reacts and updates the state of the objects in the cluster.
@@ -71,18 +71,18 @@ The basic workflow of working with the operator can be simplified as the followi
 
 ### Next steps
 
-- [Quick Start Guide](https://docs.victoriametrics.com/operator/quickstart.html)
-- [Setup](https://docs.victoriametrics.com/operator/setup.html)
-- [Security](https://docs.victoriametrics.com/operator/security.html)
-- [Configuration](https://docs.victoriametrics.com/operator/configuration.html)
-- [Migration from Prometheus](https://docs.victoriametrics.com/operator/migration.html)
-- [Monitoring](https://docs.victoriametrics.com/operator/monitoring.html)
-- [Authorization and exposing components](https://docs.victoriametrics.com/operator/auth.html)
-- [High Availability](https://docs.victoriametrics.com/operator/high-availability.html)
-- [Enterprise](https://docs.victoriametrics.com/operator/enterprise.html)
-- [Custom resources](https://docs.victoriametrics.com/operator/resources/)
+- [Quick Start Guide](./quick-start.md)
+- [Setup](./setup.md)
+- [Security](./security.md)
+- [Configuration](./configuration.md)
+- [Migration from Prometheus](./migration.md)
+- [Monitoring](./monitoring.md)
+- [Authorization and exposing components](./auth.md)
+- [High Availability](./high-availability.md)
+- [Enterprise](./enterprise.md)
+- [Custom resources](./resources/README.md)
 
-If you have any questions, check out our [FAQ](https://docs.victoriametrics.com/operator/faq.html) 
+If you have any questions, check out our [FAQ](./faq.md) 
 and feel free to can ask them:
 - [VictoriaMetrics Slack](https://victoriametrics.slack.com/)
 - [VictoriaMetrics Telegram](https://t.me/VictoriaMetrics_en)

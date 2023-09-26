@@ -198,7 +198,7 @@ fix_crd_nulls_yaml:
 
 
 doc: install-develop-tools
-	cat hack/doc_header.md > doc_api.MD
+	cat hack/doc_header.md > doc_api.md
 	doc-print --paths=\
 	$(APIS_BASE_PATH)/vmalertmanager_types.go,\
 	$(APIS_BASE_PATH)/vmalertmanagerconfig_types.go,\
@@ -216,11 +216,11 @@ doc: install-develop-tools
 	$(APIS_BASE_PATH)/vmstaticscrape_types.go,\
 	$(APIS_BASE_PATH)/vmprobe_types.go \
 	--owner VictoriaMetrics \
-	>> doc_api.MD
+	>> doc_api.md
 
 operator-conf: install-develop-tools
-	cat hack/doc_vars_header.md > vars.MD
-	envconfig-docs --input internal/config/config.go --truncate=false >> vars.MD
+	cat hack/doc_vars_header.md > vars.md
+	envconfig-docs --input internal/config/config.go --truncate=false >> vars.md
 
 
 docker: build manager

@@ -9,28 +9,28 @@ title: Enterprise features
 Operator doesn't have enterprise version for itself, but it supports 
 [enterprise features for VictoriaMetrics components](https://docs.victoriametrics.com/enterprise.html):
 
-- [VMAgent Enterprise features](https://docs.victoriametrics.com/operator/resources/vmagent.html#enterprise-features):
-  - [Reading metrics from kafka](https://docs.victoriametrics.com/operator/resources/vmagent.html#reading-metrics-from-kafka)
-  - [Writing metrics to kafka](https://docs.victoriametrics.com/operator/resources/vmagent.html#writing-metrics-to-kafka)
-- [VMAlert Enterprise features](https://docs.victoriametrics.com/operator/resources/vmalert.html#enterprise-features):
-  - [Reading rules from object storage](https://docs.victoriametrics.com/operator/resources/vmalert.html#reading-rules-from-object-storage)
-  - [Multitenancy](https://docs.victoriametrics.com/operator/resources/vmalert.html#multitenancy)
-- [VMAuth Enterprise features](https://docs.victoriametrics.com/operator/resources/vmauth.html#enterprise-features)
-  - [IP Filters](https://docs.victoriametrics.com/operator/resources/vmauth.html#ip-filters) 
-- [VMCluster Enterprise features](https://docs.victoriametrics.com/operator/resources/vmcluster.html#enterprise-features)
-  - [Downsampling](https://docs.victoriametrics.com/operator/resources/vmcluster.html#downsampling)
-  - [Multiple retentions / Retention filters](https://docs.victoriametrics.com/operator/resources/vmcluster.html#retention-filters)
-  - [Advanced per-tenant statistic](https://docs.victoriametrics.com/operator/resources/vmcluster.html#advanced-per-tenant-statistic)
-  - [mTLS protection](https://docs.victoriametrics.com/operator/resources/vmcluster.html#mtls-protection)
-  - [Backup atomation](https://docs.victoriametrics.com/operator/resources/vmcluster.html#backup-atomation)
-- [VMRule Enterprise features](https://docs.victoriametrics.com/operator/resources/vmrule.html#enterprise-features)
-  - [Multitenancy](https://docs.victoriametrics.com/operator/resources/vmrule.html#multitenancy)
-- [VMSingle Enterprise features](https://docs.victoriametrics.com/operator/resources/vmsingle.html#enterprise-features)
-  - [Downsampling](https://docs.victoriametrics.com/operator/resources/vmsingle.html#downsampling)
-  - [Retention filters](https://docs.victoriametrics.com/operator/resources/vmsingle.html#retention-filters)
-  - [Backup atomation](https://docs.victoriametrics.com/operator/resources/vmsingle.html#backup-atomation)
-- [VMUser Enterprise features](https://docs.victoriametrics.com/operator/resources/vmuser.html#enterprise-features)
-  - [IP Filters](https://docs.victoriametrics.com/operator/resources/vmuser.html#ip-filters) 
+- [VMAgent Enterprise features](./resources/vmagent.md#enterprise-features):
+  - [Reading metrics from kafka](./resources/vmagent.md#reading-metrics-from-kafka)
+  - [Writing metrics to kafka](./resources/vmagent.md#writing-metrics-to-kafka)
+- [VMAlert Enterprise features](./resources/vmalert.md#enterprise-features):
+  - [Reading rules from object storage](./resources/vmalert.md#reading-rules-from-object-storage)
+  - [Multitenancy](./resources/vmalert.md#multitenancy)
+- [VMAuth Enterprise features](./resources/vmauth.md#enterprise-features)
+  - [IP Filters](./resources/vmauth.md#ip-filters) 
+- [VMCluster Enterprise features](./resources/vmcluster.md#enterprise-features)
+  - [Downsampling](./resources/vmcluster.md#downsampling)
+  - [Multiple retentions / Retention filters](./resources/vmcluster.md#retention-filters)
+  - [Advanced per-tenant statistic](./resources/vmcluster.md#advanced-per-tenant-statistic)
+  - [mTLS protection](./resources/vmcluster.md#mtls-protection)
+  - [Backup atomation](./resources/vmcluster.md#backup-atomation)
+- [VMRule Enterprise features](./resources/vmrule.md#enterprise-features)
+  - [Multitenancy](./resources/vmrule.md#multitenancy)
+- [VMSingle Enterprise features](./resources/vmsingle.md#enterprise-features)
+  - [Downsampling](./resources/vmsingle.md#downsampling)
+  - [Retention filters](./resources/vmsingle.md#retention-filters)
+  - [Backup atomation](./resources/vmsingle.md#backup-atomation)
+- [VMUser Enterprise features](./resources/vmuser.md#enterprise-features)
+  - [IP Filters](./resources/vmuser.md#ip-filters) 
 
 More information about enterprise features you can read 
 on [VictoriaMetrics Enterprise page](https://docs.victoriametrics.com/enterprise.html#victoriametrics-enterprise).

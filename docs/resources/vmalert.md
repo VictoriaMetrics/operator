@@ -7,7 +7,7 @@ The `VMAlert` CRD declaratively defines a desired [VMAlert](https://github.com/V
 setup to run in a Kubernetes cluster.
 
 It has few required config options - `datasource` and `notifier` are required, for other config parameters
-check [doc](https://docs.victoriametrics.com/operator/api.html#vmalert).
+check [doc](../api.md#vmalert).
 
 For each `VMAlert` resource, the Operator deploys a properly configured `Deployment` in the same namespace.
 The VMAlert `Pod`s are configured to mount a list of `Configmaps` prefixed with `<VMAlert-name>-number` containing
@@ -18,10 +18,10 @@ name `<VMAlert-name>`.
 
 ## Specification
 
-You can see the full actual specification of the `VMAlert` resource in the **[API docs -> VMAlert](https://docs.victoriametrics.com/operator/api.html#vmalert)**.
+You can see the full actual specification of the `VMAlert` resource in the **[API docs -> VMAlert](../api.md#vmalert)**.
 
 If you can't find necessary field in the specification of the custom resource,
-see [Extra arguments section](https://docs.victoriametrics.com/operator/resources/#extra-args).
+see [Extra arguments section](./README.md#extra-arguments).
 
 Also, you can check out the [examples](#examples) section.
 
@@ -39,7 +39,7 @@ spec:
   ruleNamespaceSelector: {}
 ```
 
-[VMRUle](https://docs.victoriametrics.com/operator/resources/vmrule.html) objects are generates part of [VMAlert](https://docs.victoriametrics.com/operator/resources/vmalert.html) configuration.
+[VMRUle](./vmrule.md) objects are generates part of [VMAlert](./vmalert.md) configuration.
 
 For filtering rules `VMAlert` uses selectors `ruleNamespaceSelector` and `ruleSelector`.
 It allows configuring rules access control across namespaces and different environments.
@@ -66,7 +66,7 @@ Here's a more visual and more detailed view:
 | any                     | undefined      | any                  | **defined**       | all vmrules only at `VMAlert`'s namespace                                                            |
 | any                     | **defined**    | any                  | **defined**       | all vmrules only at `VMAlert`'s namespace for given `ruleSelector` are matching                      |
 
-More details about `WATCH_NAMESPACE` variable you can read in [this doc](https://docs.victoriametrics.com/operator/configuration.html#namespaced-mode).
+More details about `WATCH_NAMESPACE` variable you can read in [this doc](../configuration.md#namespaced-mode).
 
 Here are some examples of `VMAlert` configuration with selectors:
 
@@ -96,9 +96,9 @@ spec:
 
 ## High availability
 
-`VMAlert` can be launched with multiple replicas without an additional configuration as far [alertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager.html) is responsible for alert deduplication.
+`VMAlert` can be launched with multiple replicas without an additional configuration as far [alertmanager](./vmalertmanager.md) is responsible for alert deduplication.
 
-Note, if you want to use `VMAlert` with high-available [`VMAlertmanager`](https://docs.victoriametrics.com/operator/resources/vmalertmanager.html), which has more than 1 replica. 
+Note, if you want to use `VMAlert` with high-available [`VMAlertmanager`](./vmalertmanager.md), which has more than 1 replica. 
 You have to specify all pod fqdns  at `VMAlert.spec.notifiers.[url]`. Or you can use service discovery for notifier, examples:
 
 - alertmanager:
@@ -254,12 +254,12 @@ you need to change version of `VMAlert` to version with `-enterprise` suffix usi
 
 All the enterprise apps require `-eula` command-line flag to be passed to them.
 This flag acknowledges that your usage fits one of the cases listed on [this page](https://docs.victoriametrics.com/enterprise.html#victoriametrics-enterprise).
-So you can use [extraArgs](https://docs.victoriametrics.com/operator/resources/#extra-args) for passing this flag to `VMAlert`:
+So you can use [extraArgs](./README.md#extra-arguments) for passing this flag to `VMAlert`:
 
 ### Reading rules from object storage
 
 After that you can pass `-rule` command-line argument with `s3://` or `gs://`
-to `VMAlert` with [extraArgs](https://docs.victoriametrics.com/operator/resources/#extra-args).
+to `VMAlert` with [extraArgs](./README.md#extra-arguments).
 
 More details about reading rules from object storage you can read in [vmalert docs](https://docs.victoriametrics.com/vmalert.html#reading-rules-from-object-storage).
 
@@ -294,9 +294,9 @@ After enabling enterprise version you can use [Multitenancy](https://docs.victor
 feature in `VMAlert`.
 
 For that you need to set `clusterMode` commad-line flag 
-with [extraArgs](https://docs.victoriametrics.com/operator/resources/#extra-args) 
+with [extraArgs](./README.md#extra-arguments) 
 and specify `tenant` field for groups 
-in [VMRule](https://docs.victoriametrics.com/operator/resources/vmrule.html#enterprise-features):
+in [VMRule](./vmrule.md#enterprise-features):
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1beta1

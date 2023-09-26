@@ -9,31 +9,30 @@ title: Custom resources
 This documentation section describes the design and interaction between the custom resource definitions (CRD) that the Victoria
 Metrics Operator introduces.
 
-[Operator]((https://docs.victoriametrics.com/operator/)) introduces the
-following [custom resources](https://docs.victoriametrics.com/operator/#custom-resources):
+[Operator](../README.md) introduces the following custom resources:
 
-- [VMAgent](https://docs.victoriametrics.com/operator/resources/vmagent.html)
-- [VMAlert](https://docs.victoriametrics.com/operator/resources/vmalert.html)
-- [VMAlertManager](https://docs.victoriametrics.com/operator/resources/vmalertmanager.html)
-- [VMAlertManagerConfig](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig.html)
-- [VMAuth](https://docs.victoriametrics.com/operator/resources/vmauth.html)
-- [VMCluster](https://docs.victoriametrics.com/operator/resources/vmcluster.html)
-- [VMNodeScrape](https://docs.victoriametrics.com/operator/resources/vmnodescrape.html)
-- [VMPodScrape](https://docs.victoriametrics.com/operator/resources/vmpodscrape.html)
-- [VMProbe](https://docs.victoriametrics.com/operator/resources/vmprobe.html)
-- [VMRule](https://docs.victoriametrics.com/operator/resources/vmrule.html)
-- [VMServiceScrape](https://docs.victoriametrics.com/operator/resources/vmservicescrape.html)
-- [VMStaticScrape](https://docs.victoriametrics.com/operator/resources/vmstaticscrape.html)
-- [VMSingle](https://docs.victoriametrics.com/operator/resources/vmsingle.html)
-- [VMUser](https://docs.victoriametrics.com/operator/resources/vmuser.html)
+- [VMAgent](./vmagent.md)
+- [VMAlert](./vmalert.md)
+- [VMAlertManager](./vmalertmanager.md)
+- [VMAlertManagerConfig](./vmalertmanagerconfig.md)
+- [VMAuth](./vmauth.md)
+- [VMCluster](./vmcluster.md)
+- [VMNodeScrape](./vmnodescrape.md)
+- [VMPodScrape](./vmpodscrape.md)
+- [VMProbe](./vmprobe.md)
+- [VMRule](./vmrule.md)
+- [VMServiceScrape](./vmservicescrape.md)
+- [VMStaticScrape](./vmstaticscrape.md)
+- [VMSingle](./vmsingle.md)
+- [VMUser](./vmuser.md)
 
 Here is the scheme of relations between the custom resources:
 
-<img src="README_cr-relations.png">
+<img src="README_cr-relations.png" width="1200">
 
 ## Specification
 
-You can find the specification for the custom resources on **[API Docs](https://docs.victoriametrics.com/operator/api.html)**.
+You can find the specification for the custom resources on **[API Docs](../api.md)**.
 
 ### Extra arguments
 
@@ -42,14 +41,14 @@ you can use `extraArgs` field for passing additional arguments to the applicatio
 
 Field `extraArgs` is supported for the following custom resources:
 
-- [VMAgent spec](https://docs.victoriametrics.com/operator/api.html#vmagentspec)
-- [VMAlert spec](https://docs.victoriametrics.com/operator/api.html#vmalertspec)
-- [VMAlertManager spec](https://docs.victoriametrics.com/operator/api.html#vmalertmanagerspec)
-- [VMAuth spec](https://docs.victoriametrics.com/operator/api.html#vmauthspec)
-- [VMCluster/vmselect spec](https://docs.victoriametrics.com/operator/api.html#vmselect)
-- [VMCluster/vminsert spec](https://docs.victoriametrics.com/operator/api.html#vminsert)
-- [VMCluster/vmstorage spec](https://docs.victoriametrics.com/operator/api.html#vmstorage)
-- [VMSingle spec](https://docs.victoriametrics.com/operator/api.html#vmsinglespec)
+- [VMAgent spec](../api.md#vmagentspec)
+- [VMAlert spec](../api.md#vmalertspec)
+- [VMAlertManager spec](../api.md#vmalertmanagerspec)
+- [VMAuth spec](../api.md#vmauthspec)
+- [VMCluster/vmselect spec](../api.md#vmselect)
+- [VMCluster/vminsert spec](../api.md#vminsert)
+- [VMCluster/vmstorage spec](../api.md#vmstorage)
+- [VMSingle spec](../api.md#vmsinglespec)
 
 Supported flags for each application can be found the in the corresponding documentation:
 
@@ -101,20 +100,20 @@ This feature really useful for using with
 
 Page for every custom resource contains examples section:
 
-- [VMAgent examples](https://docs.victoriametrics.com/operator/resources/vmagent.html#examples)
-- [VMAlert examples](https://docs.victoriametrics.com/operator/resources/vmalert.html#examples)
-- [VMAlertmanager examples](https://docs.victoriametrics.com/operator/resources/vmalertmanager.html#examples)
-- [VMAlertmanagerConfig examples](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig.html#examples)
-- [VMAuth examples](https://docs.victoriametrics.com/operator/resources/vmauth.html#examples)
-- [VMCluster examples](https://docs.victoriametrics.com/operator/resources/vmcluster.html#examples)
-- [VMNodeScrape examples](https://docs.victoriametrics.com/operator/resources/vmnodescrape.html#examples)
-- [VMPodScrape examples](https://docs.victoriametrics.com/operator/resources/vmpodscrape.html#examples)
-- [VMProbe examples](https://docs.victoriametrics.com/operator/resources/vmprobe.html#examples)
-- [VMRule examples](https://docs.victoriametrics.com/operator/resources/vmrule.html#examples)
-- [VMServiceScrape examples](https://docs.victoriametrics.com/operator/resources/vmservicescrape.html#examples)
-- [VMStaticScrape examples](https://docs.victoriametrics.com/operator/resources/vmstaticscrape.html#examples)
-- [VMSingle examples](https://docs.victoriametrics.com/operator/resources/vmsingle.html#examples)
-- [VMUser examples](https://docs.victoriametrics.com/operator/resources/vmuser.html#examples)
+- [VMAgent examples](./vmagent.md#examples)
+- [VMAlert examples](./vmalert.md#examples)
+- [VMAlertmanager examples](./vmalertmanager.md#examples)
+- [VMAlertmanagerConfig examples](./vmalertmanagerconfig.md#examples)
+- [VMAuth examples](./vmauth.md#examples)
+- [VMCluster examples](./vmcluster.md#examples)
+- [VMNodeScrape examples](./vmnodescrape.md#examples)
+- [VMPodScrape examples](./vmpodscrape.md#examples)
+- [VMProbe examples](./vmprobe.md#examples)
+- [VMRule examples](./vmrule.md#examples)
+- [VMServiceScrape examples](./vmservicescrape.md#examples)
+- [VMStaticScrape examples](./vmstaticscrape.md#examples)
+- [VMSingle examples](./vmsingle.md#examples)
+- [VMUser examples](./vmuser.md#examples)
 
 In addition, you can find examples of the custom resources for VIctoriMetrics operator in 
 the **[examples directory](https://github.com/VictoriaMetrics/operator/tree/master/config/examples) of operator repository**.
@@ -123,22 +122,22 @@ the **[examples directory](https://github.com/VictoriaMetrics/operator/tree/mast
 
 Every custom resource with deployable application has a fields for specifying version (docker image) of component:
 
-- [Managing versions for VMAgent](https://docs.victoriametrics.com/operator/resources/vmagent.html#version-management)
-- [Managing versions for VMAlert](https://docs.victoriametrics.com/operator/resources/vmalert.html#version-management)
-- [Managing versions for VMAlertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager.html#version-management)
-- [Managing versions for VMAuth](https://docs.victoriametrics.com/operator/resources/vmauth.html#version-management)
-- [Managing versions for VMCluster](https://docs.victoriametrics.com/operator/resources/vmcluster.html#version-management)
-- [Managing versions for VMSingle](https://docs.victoriametrics.com/operator/resources/vmsingle.html#version-management)
+- [Managing versions for VMAgent](./vmagent.md#version-management)
+- [Managing versions for VMAlert](./vmalert.md#version-management)
+- [Managing versions for VMAlertmanager](./vmalertmanager.md#version-management)
+- [Managing versions for VMAuth](./vmauth.md#version-management)
+- [Managing versions for VMCluster](./vmcluster.md#version-management)
+- [Managing versions for VMSingle](./vmsingle.md#version-management)
 
 ## High availability
 
 VictoriaMetrics operator support high availability for each component of the monitoring stack:
 
-- [VMAgent](https://docs.victoriametrics.com/operator/resources/vmagent.html#high-availability)
-- [VMAlert](https://docs.victoriametrics.com/operator/resources/vmalert.html#high-availability)
-- [VMAlertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager.html#high-availability)
-- [VMAuth](https://docs.victoriametrics.com/operator/resources/vmauth.html#high-availability)
-- [VMCluster](https://docs.victoriametrics.com/operator/resources/vmcluster.html#high-availability)
+- [VMAgent](./vmagent.md#high-availability)
+- [VMAlert](./vmalert.md#high-availability)
+- [VMAlertmanager](./vmalertmanager.md#high-availability)
+- [VMAuth](./vmauth.md#high-availability)
+- [VMCluster](./vmcluster.md#high-availability)
 
 In addition, these CRD support common features, that can be used to increase high availability - resources above have the following fields:
 
@@ -153,28 +152,28 @@ See details about these fields in the [Specification](#specification).
 
 Operator supports following [Enterprise features for VictoriaMetrics components](https://docs.victoriametrics.com/enterprise.html):
 
-- [VMAgent Enterprise features](https://docs.victoriametrics.com/operator/resources/vmagent.html#enterprise-features):
-    - [Reading metrics from kafka](https://docs.victoriametrics.com/operator/resources/vmagent.html#reading-metrics-from-kafka)
-    - [Writing metrics to kafka](https://docs.victoriametrics.com/operator/resources/vmagent.html#writing-metrics-to-kafka)
-- [VMAlert Enterprise features](https://docs.victoriametrics.com/operator/resources/vmalert.html#enterprise-features):
-    - [Reading rules from object storage](https://docs.victoriametrics.com/operator/resources/vmalert.html#reading-rules-from-object-storage)
-    - [Multitenancy](https://docs.victoriametrics.com/operator/resources/vmalert.html#multitenancy)
-- [VMAuth Enterprise features](https://docs.victoriametrics.com/operator/resources/vmauth.html#enterprise-features)
-    - [IP Filters](https://docs.victoriametrics.com/operator/resources/vmauth.html#ip-filters)
-- [VMCluster Enterprise features](https://docs.victoriametrics.com/operator/resources/vmcluster.html#enterprise-features)
-    - [Downsampling](https://docs.victoriametrics.com/operator/resources/vmcluster.html#downsampling)
-    - [Multiple retentions / Retention filters](https://docs.victoriametrics.com/operator/resources/vmcluster.html#retention-filters)
-    - [Advanced per-tenant statistic](https://docs.victoriametrics.com/operator/resources/vmcluster.html#advanced-per-tenant-statistic)
-    - [mTLS protection](https://docs.victoriametrics.com/operator/resources/vmcluster.html#mtls-protection)
-    - [Backup atomation](https://docs.victoriametrics.com/operator/resources/vmcluster.html#backup-atomation)
-- [VMRule Enterprise features](https://docs.victoriametrics.com/operator/resources/vmrule.html#enterprise-features)
-    - [Multitenancy](https://docs.victoriametrics.com/operator/resources/vmrule.html#multitenancy)
-- [VMSingle Enterprise features](https://docs.victoriametrics.com/operator/resources/vmsingle.html#enterprise-features)
-    - [Downsampling](https://docs.victoriametrics.com/operator/resources/vmsingle.html#downsampling)
-    - [Retention filters](https://docs.victoriametrics.com/operator/resources/vmsingle.html#retention-filters)
-    - [Backup atomation](https://docs.victoriametrics.com/operator/resources/vmsingle.html#backup-atomation)
-- [VMUser Enterprise features](https://docs.victoriametrics.com/operator/resources/vmuser.html#enterprise-features)
-    - [IP Filters](https://docs.victoriametrics.com/operator/resources/vmuser.html#ip-filters)
+- [VMAgent Enterprise features](./vmagent.md#enterprise-features):
+    - [Reading metrics from kafka](./vmagent.md#reading-metrics-from-kafka)
+    - [Writing metrics to kafka](./vmagent.md#writing-metrics-to-kafka)
+- [VMAlert Enterprise features](./vmalert.md#enterprise-features):
+    - [Reading rules from object storage](./vmalert.md#reading-rules-from-object-storage)
+    - [Multitenancy](./vmalert.md#multitenancy)
+- [VMAuth Enterprise features](./vmauth.md#enterprise-features)
+    - [IP Filters](./vmauth.md#ip-filters)
+- [VMCluster Enterprise features](./vmcluster.md#enterprise-features)
+    - [Downsampling](./vmcluster.md#downsampling)
+    - [Multiple retentions / Retention filters](./vmcluster.md#retention-filters)
+    - [Advanced per-tenant statistic](./vmcluster.md#advanced-per-tenant-statistic)
+    - [mTLS protection](./vmcluster.md#mtls-protection)
+    - [Backup atomation](./vmcluster.md#backup-atomation)
+- [VMRule Enterprise features](./vmrule.md#enterprise-features)
+    - [Multitenancy](./vmrule.md#multitenancy)
+- [VMSingle Enterprise features](./vmsingle.md#enterprise-features)
+    - [Downsampling](./vmsingle.md#downsampling)
+    - [Retention filters](./vmsingle.md#retention-filters)
+    - [Backup atomation](./vmsingle.md#backup-atomation)
+- [VMUser Enterprise features](./vmuser.md#enterprise-features)
+    - [IP Filters](./vmuser.md#ip-filters)
 
 More information about enterprise features you can read
 on [VictoriaMetrics Enterprise page](https://docs.victoriametrics.com/enterprise.html#victoriametrics-enterprise).
@@ -194,7 +193,7 @@ It's not efficient to sync its content immediately, and `kubelet` eventually syn
 
 That's why, applications managed by operator don't receive changes immediately. It usually takes 1-2 min, before content will be updated.
 
-It may trigger errors when an application was deleted, but [`VMAgent`](https://docs.victoriametrics.com/operator/resources/vmagent) still tries to scrape it.
+It may trigger errors when an application was deleted, but [`VMAgent`](./README.mdvmagent) still tries to scrape it.
 
 ### Possible mitigations
 

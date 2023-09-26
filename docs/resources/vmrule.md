@@ -2,11 +2,11 @@
 
 `VMRule` represents [alerting](https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/)
 or [recording](https://prometheus.io/docs/prometheus/latest/configuration/recording_rules/) rules 
-for [VMAlert](https://docs.victoriametrics.com/operator/resources/vmalert.html) instances.
+for [VMAlert](./vmalert.md) instances.
 
 The `VMRule` CRD declaratively defines a desired Prometheus rule to be consumed by one or more VMAlert instances.
 
-`VMRule` object generates [VMAlert](https://docs.victoriametrics.com/operator/resources/vmalert.html) 
+`VMRule` object generates [VMAlert](./vmalert.md) 
 with ruleset defined at `VMRule` spec.
 
 Alerts and recording rules can be saved and applied as YAML files, and dynamically loaded without requiring any restart.
@@ -16,7 +16,7 @@ See more details about rule configuration in [VMAlert docs](https://docs.victori
 ## Specification
 
 You can see the full actual specification of the `VMRule` resource in
-the **[API docs -> VMRule](https://docs.victoriametrics.com/operator/api.html#vmrule)**.
+the **[API docs -> VMRule](../api.md#vmrule)**.
 
 Also, you can check out the [examples](#examples) section.
 
@@ -28,7 +28,7 @@ from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/enterprise.ht
 ### Multitenancy
 
 For using [Multitenancy](https://docs.victoriametrics.com/vmalert.html#multitenancy) in `VMRule`
-you need to **[enable VMAlert Enterprise](https://docs.victoriametrics.com/operator/resources/vmalert.html#enterprise-features)**.
+you need to **[enable VMAlert Enterprise](./vmalert.md#enterprise-features)**.
 
 After that you can add `tenant` field for groups in `VMRule`:
 

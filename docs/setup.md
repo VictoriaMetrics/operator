@@ -18,7 +18,7 @@ For installing VictoriaMetrics operator with helm-chart follow the instructions 
 ([this](https://github.com/VictoriaMetrics/helm-charts/blob/master/charts/victoria-metrics-operator/README.md)
 or [this](https://github.com/VictoriaMetrics/helm-charts/blob/master/charts/victoria-metrics-k8s-stack/README.md)).
 
-in addition, you can use [quickstart guide](https://docs.victoriametrics.com/operator/quickstart.html) for 
+in addition, you can use [quickstart guide](./quick-start.md) for 
 installing VictoriaMetrics operator with helm-chart.
 
 ## Installing by Manifest
@@ -114,4 +114,4 @@ There is no need in an additional configuration for ARM. Operator and VictoriaMe
 
 ## Configuring
 
-You can read detailed instructions about operator configuring in [this document](http://docs.victoriametrics.com/operator/configuration.html).
+You can read detailed instructions about operator configuring in [this document](./configuration.md).

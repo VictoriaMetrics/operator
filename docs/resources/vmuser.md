@@ -9,7 +9,7 @@ operator queries kubernetes API, retrieves information about CRD and builds prop
 ## Specification
 
 You can see the full actual specification of the `VMUser` resource in
-the **[API docs -> VMUser](https://docs.victoriametrics.com/operator/api.html#vmuser)**.
+the **[API docs -> VMUser](../api.md#vmuser)**.
 
 Also, you can check out the [examples](#examples) section.
 
@@ -69,11 +69,11 @@ User can define routing target with `crd` config, by entering `kind`, `name` and
 
 Operator supports following kinds in `kind` field:
 
-- `VMAgent` for [VMAgent](https://docs.victoriametrics.com/operator/resources/vmagent.html)
-- `VMAlert` for [VMAlert](https://docs.victoriametrics.com/operator/resources/vmalert.html)
-- `VMAlertmanager` for [VMAlertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager.html)
-- `VMSingle` for [VMSingle](https://docs.victoriametrics.com/operator/resources/vmsingle.html)
-- `VMCluster/vmselect`, `VMCluster/vminsert` and `VMCluster/vmstorage` for [VMCluster](https://docs.victoriametrics.com/operator/resources/vmcluster.html)
+- `VMAgent` for [VMAgent](./vmagent.md)
+- `VMAlert` for [VMAlert](./vmalert.md)
+- `VMAlertmanager` for [VMAlertmanager](./vmalertmanager.md)
+- `VMSingle` for [VMSingle](./vmsingle.md)
+- `VMCluster/vmselect`, `VMCluster/vminsert` and `VMCluster/vmstorage` for [VMCluster](./vmcluster.md)
 
 Also, you can check out the [examples](#examples) section.
 
@@ -87,7 +87,7 @@ from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/enterprise.ht
 ### IP Filters
 
 For using [IP filters](https://docs.victoriametrics.com/vmauth.html#ip-filters) 
-you need to **[enable VMAuth Enterprise](https://docs.victoriametrics.com/operator/resources/vmauth.html#enterprise-features)**.
+you need to **[enable VMAuth Enterprise](./vmauth.md#enterprise-features)**.
 
 After that you can add `ip_filters` field to `VMUser`:
 
@@ -131,5 +131,5 @@ spec:
       paths: ["/api/v1/groups","/api/v1/alerts"]
 ```
 
-More examples see on [Authorization and exposing components](https://docs.victoriametrics.com/operator/auth.html) page
-and in [Quickstart guide](https://docs.victoriametrics.com/operator/quickstart.html#vmuser).
+More examples see on [Authorization and exposing components](../auth.md) page
+and in [Quickstart guide](../quick-start.md#vmuser).

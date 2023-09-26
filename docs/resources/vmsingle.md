@@ -13,17 +13,17 @@ For each `VMSingle` resource, the Operator adds `Service` and `VMServiceScrape` 
 
 ## Specification
 
-You can see the full actual specification of the `VMSingle` resource in the **[API docs -> VMSingle](https://docs.victoriametrics.com/operator/api.html#vmsingle)**.
+You can see the full actual specification of the `VMSingle` resource in the **[API docs -> VMSingle](../api.md#vmsingle)**.
 
 If you can't find necessary field in the specification of the custom resource,
-see [Extra arguments section](https://docs.victoriametrics.com/operator/resources/#extra-args).
+see [Extra arguments section](./README.md#extra-arguments).
 
 Also, you can check out the [examples](#examples) section.
 
 ## High availability
 
 `VMSingle` doesn't support high availability by default, for such purpose
-use [`VMCluster`](https://docs.victoriametrics.com/operator/resources/vmcluster.html) instead or duplicate the setup.
+use [`VMCluster`](./vmcluster.md) instead or duplicate the setup.
 
 ## Version management
 
@@ -72,12 +72,12 @@ you need to change version of `VMSingle` to version with `-enterprise` suffix us
 
 All the enterprise apps require `-eula` command-line flag to be passed to them.
 This flag acknowledges that your usage fits one of the cases listed on [this page](https://docs.victoriametrics.com/enterprise.html#victoriametrics-enterprise).
-So you can use [extraArgs](https://docs.victoriametrics.com/operator/resources/#extra-args) for passing this flag to `VMSingle`.
+So you can use [extraArgs](./README.md#extra-arguments) for passing this flag to `VMSingle`.
 
 ### Downsampling
 
 After that you can pass [Downsampling](https://docs.victoriametrics.com/#downsampling)
-flag to `VMSingle` with [extraArgs](https://docs.victoriametrics.com/operator/resources/#extra-args) too.
+flag to `VMSingle` with [extraArgs](./README.md#extra-arguments) too.
 
 Here are complete example for [Downsampling](https://docs.victoriametrics.com/#downsampling):
  
@@ -179,7 +179,7 @@ stringData:
 
 You can read more about backup configuration options and mechanics [here](https://docs.victoriametrics.com/vmbackupmanager.html)
 
-Possible configuration options for backup crd can be found at [link](https://docs.victoriametrics.com/operator/api.html#vmbackup)
+Possible configuration options for backup crd can be found at [link](../api.md#vmbackup)
 
 #### Restoring backups
 

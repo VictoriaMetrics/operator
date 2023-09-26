@@ -6,7 +6,7 @@ on:
       - master
     paths:
       - '.github/workflows/docs.yaml'
-      - 'docs/CHANGELOG.MD'
+      - 'docs/CHANGELOG.md'
       - 'api/v1beta1/*types.go'
       - 'api/v1beta1/additional.go'
       - 'api/victoriametrics/v1beta1/*types.go'
@@ -71,9 +71,9 @@ jobs:
 
       - name: Update CHANGELOG in VM docs
         run: |
-          cat ./docs/CHANGELOG.MD > ../__vm-docs-repo/docs/operator/CHANGELOG.md
-          cat ./vars.MD > ../__vm-docs-repo/docs/operator/vars.md
-          cat ./doc_api.MD > ../__vm-docs-repo/docs/operator/api.md
+          cat ./docs/CHANGELOG.md > ../__vm-docs-repo/docs/operator/CHANGELOG.md
+          cat ./vars.md > ../__vm-docs-repo/docs/operator/vars.md
+          cat ./doc_api.md > ../__vm-docs-repo/docs/operator/api.md
         working-directory: "__vm-operator-repo"
 
       - name: Commit and push changes

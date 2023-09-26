@@ -8,10 +8,10 @@ So it will be possible to access these credentials from any application by targe
 ## Specification
 
 You can see the full actual specification of the `VMAuth` resource in
-the **[API docs -> VMAuth](https://docs.victoriametrics.com/operator/api.html#vmauth)**.
+the **[API docs -> VMAuth](../api.md#vmauth)**.
 
 If you can't find necessary field in the specification of the custom resource,
-see [Extra arguments section](https://docs.victoriametrics.com/operator/resources/#extra-args).
+see [Extra arguments section](./README.md#extra-arguments).
 
 Also, you can check out the [examples](#examples) section.
 
@@ -21,7 +21,7 @@ The CRD specifies which `VMUser`s should be covered by the deployed `VMAuth` ins
 The Operator then generates a configuration based on the included `VMUser`s and updates the `Configmaps` containing
 the configuration. It continuously does so for all changes that are made to `VMUser`s or to the `VMAuth` resource itself.
 
-[VMUser](https://docs.victoriametrics.com/operator/resources/vmrule.html) objects are generates part of [VMAuth](https://docs.victoriametrics.com/operator/resources/vmauth.html) configuration.
+[VMUser](./vmrule.md) objects are generates part of [VMAuth](./vmauth.md) configuration.
 
 For filtering users `VMAuth` uses selectors `userNamespaceSelector` and `userSelector`.
 It allows configuring rules access control across namespaces and different environments.
@@ -48,7 +48,7 @@ Here's a more visual and more detailed view:
 | any                     | undefined      | any                  | **defined**       | all vmusers only at `VMAuth`'s namespace                                                             |
 | any                     | **defined**    | any                  | **defined**       | all vmusers only at `VMAuth`'s namespace for given `userSelector` are matching                       |
 
-More details about `WATCH_NAMESPACE` variable you can read in [this doc](https://docs.victoriametrics.com/operator/configuration.html#namespaced-mode).
+More details about `WATCH_NAMESPACE` variable you can read in [this doc](../configuration.md#namespaced-mode).
 
 Here are some examples of `VMAuth` configuration with selectors:
 
@@ -134,11 +134,11 @@ you need to change version of `vmauth` to version with `-enterprise` suffix usin
 
 All the enterprise apps require `-eula` command-line flag to be passed to them. 
 This flag acknowledges that your usage fits one of the cases listed on [this page](https://docs.victoriametrics.com/enterprise.html#victoriametrics-enterprise).
-So you can use [extraArgs](https://docs.victoriametrics.com/operator/resources/#extra-args) for passing this flag to `VMAuth`:
+So you can use [extraArgs](./README.md#extra-arguments) for passing this flag to `VMAuth`:
 
 ### IP Filters
 
-After that you can use [IP filters for `VMUser`](http://docs.victoriametrics.com/operator/resources/vmuser.html#enterprise-features) 
+After that you can use [IP filters for `VMUser`](./vmuser.md#enterprise-features) 
 and field `ip_filters` for `VMAuth`.
 
 Here are complete example with described above:

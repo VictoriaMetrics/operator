@@ -5,7 +5,7 @@ Use label selections to match pods for scraping. This allows an organization to 
 for how metrics should be exposed. Following these conventions new services will be discovered automatically without
 need to reconfigure.
 
-`VMPodScrape` object generates part of [VMAgent](https://docs.victoriametrics.com/operator/resources/vmagent.html) configuration with
+`VMPodScrape` object generates part of [VMAgent](./vmagent.md) configuration with
 [kubernetes service discovery](https://docs.victoriametrics.com/sd_configs.html#kubernetes_sd_configs) role `pod` having specific labels and ports.
 It has various options for scraping configuration of target (with basic auth,tls access, by specific port name etc.).
 
@@ -31,12 +31,12 @@ spec:
     any: true
 ```
 
-More information about selectors you can find in [this doc](https://docs.victoriametrics.com/operator/resources/vmagent.html#scraping).
+More information about selectors you can find in [this doc](./vmagent.md#scraping).
 
 ## Specification
 
 You can see the full actual specification of the `VMPodScrape` resource in
-the **[API docs -> VMPodScrape](https://docs.victoriametrics.com/operator/api.html#vmpodscrape)**.
+the **[API docs -> VMPodScrape](../api.md#vmpodscrape)**.
 
 Also, you can check out the [examples](#examples) section.
 
@@ -45,7 +45,7 @@ Also, you can check out the [examples](#examples) section.
 The `VMPodScrape` CRD from VictoriaMetrics Operator is a drop-in replacement
 for the Prometheus `PodMonitor` from prometheus-operator.
 
-More details about migration from prometheus-operator you can read in [this doc](https://docs.victoriametrics.com/operator/migration.html).
+More details about migration from prometheus-operator you can read in [this doc](../migration.md).
 
 ## Examples
 

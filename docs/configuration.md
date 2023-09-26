@@ -7,7 +7,7 @@ title: Configuration
 # Configuration
 
 Operator configured by env variables, list of it can be found 
-on [Variables](https://docs.victoriametrics.com/operator/vars.html) page.
+on [Variables](./vars.md) page.
 
 It defines default configuration options, like images for components, timeouts, features.
 
@@ -48,7 +48,7 @@ You can choose output format for variables with `--printFormat` flag, possible v
 
 ## Conversion of prometheus-operator objects
 
-You can read detailed instructions about configuring prometheus-objects conversion in [this document](http://docs.victoriametrics.com/operator/migration.html).
+You can read detailed instructions about configuring prometheus-objects conversion in [this document](./migration.md).
 
 ## Helm-charts
 
@@ -58,7 +58,7 @@ In [helm-charts](https://github.com/VictoriaMetrics/helm-charts) some important 
 
 For possible values refer to [parameters](https://github.com/VictoriaMetrics/helm-charts/tree/master/charts/victoria-metrics-k8s-stack#parameters).
 
-Also, checkout [here possible ENV variables](https://docs.victoriametrics.com/operator/vars.html) to configure operator behaviour.
+Also, checkout [here possible ENV variables](./vars.md) to configure operator behaviour.
 ENV variables can be set in the `victoria-metrics-operator.env` section.
 
 ```yaml
@@ -94,7 +94,7 @@ victoria-metrics-operator:
     # It should reduce  vmagent and vmauth config sync-time and make it predictable.
     useCustomConfigReloader: false
 
-  # -- extra settings for the operator deployment. full list Ref: [https://github.com/VictoriaMetrics/operator/blob/master/vars.MD](https://github.com/VictoriaMetrics/operator/blob/master/vars.MD)
+  # -- extra settings for the operator deployment. full list Ref: [https://github.com/VictoriaMetrics/operator/blob/master/vars.md](https://github.com/VictoriaMetrics/operator/blob/master/vars.md)
   env:
     # -- default version for vmsingle
     - name: VM_VMSINGLEDEFAULT_VERSION
@@ -133,7 +133,7 @@ victoria-metrics-operator:
 
 For possible values refer to [parameters](https://github.com/VictoriaMetrics/helm-charts/tree/master/charts/victoria-metrics-operator#parameters).
 
-Also, checkout [here possible ENV variables](https://docs.victoriametrics.com/operator/vars.html) to configure operator behaviour.
+Also, checkout [here possible ENV variables](./vars.md) to configure operator behaviour.
 ENV variables can be set in the `env` section.
 
 ```yaml
@@ -161,7 +161,7 @@ operator:
   # It should reduce  vmagent and vmauth config sync-time and make it predictable.
   useCustomConfigReloader: false
 
-# -- extra settings for the operator deployment. full list Ref: [https://github.com/VictoriaMetrics/operator/blob/master/vars.MD](https://github.com/VictoriaMetrics/operator/blob/master/vars.MD)
+# -- extra settings for the operator deployment. full list Ref: [https://github.com/VictoriaMetrics/operator/blob/master/vars.md](https://github.com/VictoriaMetrics/operator/blob/master/vars.md)
 env:
   # -- default version for vmsingle
   - name: VM_VMSINGLEDEFAULT_VERSION
@@ -212,7 +212,7 @@ You can find example of RBAC manifests for single-namespace mode in
 
 ## Monitoring of cluster components
 
-By default, operator creates [VMServiceScrape](https://docs.victoriametrics.com/operator/resources/vmservicescrape.html) 
+By default, operator creates [VMServiceScrape](./resources/vmservicescrape.md) 
 object for each component that it manages.
 
 You can disable this behaviour with `VM_DASABLESELFSERVICASCRAPECREATION` environment variable:

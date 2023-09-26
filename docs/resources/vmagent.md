@@ -25,10 +25,10 @@ so user can set custom configuration while still benefiting from the Operator's 
 
 ## Specification
 
-You can see the full actual specification of the `VMAgent` resource in the **[API docs -> VMAgent](https://docs.victoriametrics.com/operator/api.html#vmagent)**.
+You can see the full actual specification of the `VMAgent` resource in the **[API docs -> VMAgent](../api.md#vmagent)**.
 
 If you can't find necessary field in the specification of the custom resource, 
-see [Extra arguments section](https://docs.victoriametrics.com/operator/resources/#extra-args).
+see [Extra arguments section](./README.md#extra-arguments).
 
 Also, you can check out the [examples](#examples) section.
 
@@ -36,23 +36,23 @@ Also, you can check out the [examples](#examples) section.
 
 `VMAgent` supports scraping targets with:
 
-- [VMServiceScrape](https://docs.victoriametrics.com/operator/resources/vmservicescrape.html),
-- [VMPodScrape](https://docs.victoriametrics.com/operator/resources/vmpodscrape.html),
-- [VMNodeScrape](https://docs.victoriametrics.com/operator/resources/vmnodescrape.html),
-- [VMStaticScrape](https://docs.victoriametrics.com/operator/resources/vmstaticscrape.html),
-- [VMProbe](https://docs.victoriametrics.com/operator/resources/vmprobe.html).
+- [VMServiceScrape](./vmservicescrape.md),
+- [VMPodScrape](./vmpodscrape.md),
+- [VMNodeScrape](./vmnodescrape.md),
+- [VMStaticScrape](./vmstaticscrape.md),
+- [VMProbe](./vmprobe.md).
 
 These objects tell VMAgent from which targets and how to collect metrics and 
-generate part of [VMAgent](https://docs.victoriametrics.com/operator/resources/vmagent.html) scrape configuration.
+generate part of [VMAgent](./vmagent.md) scrape configuration.
 
 For filtering scrape objects `VMAgent` uses selectors. 
 Selectors are defined with suffixes - `NamespaceSelector` and `Selector` for each type of scrape objects in spec of `VMAgent`:
 
-- `serviceScrapeNamespaceSelector` and `serviceScrapeSelector` for selecting [VMServiceScrape](https://docs.victoriametrics.com/operator/resources/vmservicescrape.html) objects,
-- `podScrapeNamespaceSelector` and `podScrapeSelector` for selecting [VMPodScrape](https://docs.victoriametrics.com/operator/resources/vmpodscrape.html) objects,
-- `probeNamespaceSelector` and `probeSelector` for selecting [VMProbe](https://docs.victoriametrics.com/operator/resources/vmprobe.html) objects,
-- `staticScrapeNamespaceSelector` and `staticScrapeSelector` for selecting [VMStaticScrape](https://docs.victoriametrics.com/operator/resources/vmstaticscrape.html) objects,
-- `nodeScrapeNamespaceSelector` and `nodeScrapeSelector` for selecting [VMNodeScrape](https://docs.victoriametrics.com/operator/resources/vmnodescrape.html) objects.
+- `serviceScrapeNamespaceSelector` and `serviceScrapeSelector` for selecting [VMServiceScrape](./vmservicescrape.md) objects,
+- `podScrapeNamespaceSelector` and `podScrapeSelector` for selecting [VMPodScrape](./vmpodscrape.md) objects,
+- `probeNamespaceSelector` and `probeSelector` for selecting [VMProbe](./vmprobe.md) objects,
+- `staticScrapeNamespaceSelector` and `staticScrapeSelector` for selecting [VMStaticScrape](./vmstaticscrape.md) objects,
+- `nodeScrapeNamespaceSelector` and `nodeScrapeSelector` for selecting [VMNodeScrape](./vmnodescrape.md) objects.
 
 It allows configuring objects access control across namespaces and different environments. 
 Specification of selectors you can see in [this doc](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#labelselector-v1-meta).
@@ -78,7 +78,7 @@ Here's a more visual and more detailed view:
 | any                  | undefined   | any                  | **defined**       | all objects of given type (`*`) only at `VMAgent`'s namespace                                         |
 | any                  | **defined** | any                  | **defined**       | all objects of given type (`*`) only at `VMAgent`'s namespace for given `*Selector`                   |
 
-More details about `WATCH_NAMESPACE` variable you can read in [this doc](https://docs.victoriametrics.com/operator/configuration.html#namespaced-mode).
+More details about `WATCH_NAMESPACE` variable you can read in [this doc](../configuration.md#namespaced-mode).
 
 Here are some examples of `VMAgent` configuration with selectors:
 
@@ -128,7 +128,7 @@ To run VMAgent in a highly available manner at first you have to configure dedup
 according [this doc for VMSingle](https://docs.victoriametrics.com/Single-server-VictoriaMetrics.html#deduplication)
 or [this doc for VMCluster](https://docs.victoriametrics.com/Cluster-VictoriaMetrics.html#deduplication).
 
-You can do it with `extraArgs` on [`VMSingle`](https://docs.victoriametrics.com/operator/resources/vmsingle.html):
+You can do it with `extraArgs` on [`VMSingle`](./vmsingle.md):
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1beta1
@@ -142,7 +142,7 @@ spec:
   # ...
 ```
 
-For [`VMCluster`](https://docs.victoriametrics.com/operator/resources/vmcluster.html) you can do it with `vmstorage.extraArgs` and `vmselect.extraArgs`:
+For [`VMCluster`](./vmcluster.md) you can do it with `vmstorage.extraArgs` and `vmselect.extraArgs`:
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1beta1
@@ -610,10 +610,10 @@ you need to change version of `vmagent` to version with `-enterprise` suffix usi
 
 All the enterprise apps require `-eula` command-line flag to be passed to them.
 This flag acknowledges that your usage fits one of the cases listed on [this page](https://docs.victoriametrics.com/enterprise.html#victoriametrics-enterprise).
-So you can use [extraArgs](https://docs.victoriametrics.com/operator/resources/#extra-args) for passing this flag to `VMAgent`:
+So you can use [extraArgs](./README.md#extra-arguments) for passing this flag to `VMAgent`:
 
 After that you can pass [Kafka integration](https://docs.victoriametrics.com/vmagent.html#kafka-integration) 
-flags to `VMAgent` with [extraArgs](https://docs.victoriametrics.com/operator/resources/#extra-args).
+flags to `VMAgent` with [extraArgs](./README.md#extra-arguments).
 
 ### Reading metrics from Kafka
 

@@ -82,7 +82,7 @@ The basic workflow of working with the operator can be simplified as the followi
 - [Enterprise](./enterprise.md)
 - [Custom resources](./resources/README.md)
 
-If you have any questions, check out our [FAQ](./faq.md) 
+If you have any questions, check out our [FAQ](./FAQ.md) 
 and feel free to can ask them:
 - [VictoriaMetrics Slack](https://victoriametrics.slack.com/)
 - [VictoriaMetrics Telegram](https://t.me/VictoriaMetrics_en)

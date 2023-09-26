@@ -23,7 +23,7 @@ Also you can follow the other steps in documentation to use VictoriaMetrics Oper
 - [High Availability](./high-availability.md)
 - [Enterprise](./enterprise.md)
 - [Custom resources](./resources/README.md)
-- [FAQ (Frequency Asked Questions)](./faq.md)
+- [FAQ (Frequency Asked Questions)](./FAQ.md)
 
 But if you want to deploy VictoriaMetrics Operator quickly from scratch (without using templating for custom resources), 
 you can follow this guide:
@@ -685,7 +685,7 @@ In addition, check out other sections of the documentation for VictoriaMetrics O
 - [High Availability](./high-availability.md)
 - [Enterprise](./enterprise.md)
 
-If you have any questions, check out our [FAQ](./faq.md)
+If you have any questions, check out our [FAQ](./FAQ.md)
 and feel free to can ask them:
 - [VictoriaMetrics Slack](https://victoriametrics.slack.com/)
 - [VictoriaMetrics Telegram](https://t.me/VictoriaMetrics_en)

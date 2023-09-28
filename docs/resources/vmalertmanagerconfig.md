@@ -12,7 +12,7 @@ the **[API docs -> VMAlertmanagerConfig](../api.md#vmalertmanagerconfig)**.
 
 Also, you can check out the [examples](#examples) section.
 
-## Using
+## Usage
 
 `VMAlertmanagerConfig` allows delegating notification configuration to the kubernetes cluster users.
 The application owner may configure notifications by defining it at `VMAlertmanagerConfig`.

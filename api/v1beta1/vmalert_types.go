@@ -260,6 +260,10 @@ type VMAlertSpec struct {
 	// drops not needed security permissions
 	// +optional
 	UseStrictSecurity *bool `json:"useStrictSecurity,omitempty"`
+
+	// License allows to configure license key to be used for enterprise features.
+	// +optional
+	License *License `json:"license,omitempty"`
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface

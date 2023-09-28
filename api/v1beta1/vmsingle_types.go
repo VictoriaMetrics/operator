@@ -176,6 +176,9 @@ type VMSingleSpec struct {
 	// VMBackup configuration for backup
 	// +optional
 	VMBackup *VMBackup `json:"vmBackup,omitempty"`
+	// License allows to configure license key to be used for enterprise features.
+	// +optional
+	License *License `json:"license,omitempty"`
 	// ExtraArgs that will be passed to  VMSingle pod
 	// for example remoteWrite.tmpDataPath: /tmp
 	// +optional

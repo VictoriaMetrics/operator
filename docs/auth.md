@@ -26,6 +26,7 @@ spec:
   userNamespaceSelector: {}
   userSelector: {}
   ingress: {}
+  unauthorizedAccessConfig: []
 ```
 
 Advanced configuration with cert-manager annotations:

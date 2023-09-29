@@ -5,6 +5,8 @@ configuration with CRD. It allows to define different configuration parts, which
 
 It behaves like other config parts - `VMServiceScrape` and etc.
 
+Read [Usage](#usage) and [Special case](#special-case) before using.
+
 ## Specification
 
 You can see the full actual specification of the `VMAlertmanagerConfig` resource in 

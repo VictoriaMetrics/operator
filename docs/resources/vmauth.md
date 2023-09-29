@@ -21,7 +21,7 @@ The CRD specifies which `VMUser`s should be covered by the deployed `VMAuth` ins
 The Operator then generates a configuration based on the included `VMUser`s and updates the `Configmaps` containing
 the configuration. It continuously does so for all changes that are made to `VMUser`s or to the `VMAuth` resource itself.
 
-[VMUser](./vmrule.md) objects are generates part of [VMAuth](./vmauth.md) configuration.
+[VMUser](./vmrule.md) objects generate part of `VMAuth` configuration.
 
 For filtering users `VMAuth` uses selectors `userNamespaceSelector` and `userSelector`.
 It allows configuring rules access control across namespaces and different environments.
@@ -75,6 +75,29 @@ spec:
     matchLabels:
       kubernetes.io/metadata.name: my-namespace
 ```
+
+## Unauthorized access
+
+You can configure `VMAuth` to allow unauthorized access for specified routes with `unauthorizedAccessConfig` field.
+
+For instance:
+
+```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAuth
+metadata:
+  name: vmauth-unauthorized-example
+spec:
+  unauthorizedAccessConfig:
+    paths: ["/metrics"]
+    urls:
+      - http://vmsingle-example.default.svc:8428
+```
+
+In this example every user can access `/metrics` route and get vmsingle metrics without authorization.
+
+In addition, `unauthorizedAccessConfig` in [Enterprise version](#enterprise-features) supports [IP Filters](#ip-filters) 
+with `ip_filters` field.
 
 ## High availability
 
@@ -167,6 +190,14 @@ spec:
       - 1.2.3.4
     deny_list:
       - 5.6.7.8
+  # allow read vmsingle metrics without authorization for users from internal network
+  unauthorizedAccessConfig:
+    paths: ["/metrics"]
+    urls: ["http://vmsingle-example.default.svc:8428"]
+    ip_filters:
+      allow_list:
+        - 192.168.0.0/16
+        - 10.0.0.0/8
 
   # ...other fields...
 

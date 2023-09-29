@@ -173,6 +173,12 @@ data:
 type: Opaque
 ```
 
+## Unauthorized access
+
+You can expose some routes without authorization with `unauthorizedAccessConfig`.
+
+Check more details in [VMAuth docs -> Unauthorized access](./resources/vmauth.md#unauthorized-access).
+
 More details about features of `VMAuth` and `VMUser` you can read in:
 - [VMAuth docs](./resources/vmauth.md),
 - [VMUser docs](./resources/vmuser.md).

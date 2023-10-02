@@ -74,6 +74,7 @@ jobs:
           cat ./vars.md > ../__vm-docs-repo/docs/operator/vars.md
           cat ./doc_api.md > ../__vm-docs-repo/docs/operator/api.md
           for md in $(find docs/**/*.md); do
+            mkdir -p ../__vm-docs-repo/$(dirname $md)
             cat $md > ../__vm-docs-repo/$md
           done
         working-directory: "__vm-operator-repo"

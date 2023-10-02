@@ -85,7 +85,7 @@ jobs:
           export VM_GIT_BRANCH_NAME="operator-docs-update-$(date +%s)"
           export VM_GIT_COMMIT_SHA="$(git rev-parse --short $GITHUB_SHA)"
           git checkout -b "${VM_GIT_BRANCH_NAME}"
-          git add docs/operator/**/*.md
+          git add docs/operator
           git commit -S -m "Automatic update operator docs from ${GITHUB_REPOSITORY}@${VM_GIT_COMMIT_SHA}"
           git push origin ${VM_GIT_BRANCH_NAME}
           gh pr create -f

@@ -71,7 +71,7 @@ jobs:
 
       - name: Update operator docs in VM repo
         run: |
-          for md in $(find docs/**/*.md); do
+          for md in $(find docs -name '*.md'); do
             newmd=$(echo $md | sed -e 's/^docs\//&operator\//g')
             mkdir -p ../__vm-docs-repo/$(dirname $newmd)
             cat $md > ../__vm-docs-repo/$newmd

@@ -519,7 +519,7 @@ func buildInitConfigContainer(baseImage string, c *config.BaseOperatorConf, conf
 			Command: []string{
 				"/usr/local/bin/config-reloader",
 			},
-			Args: append(configReloaderArgs, "--mode=one-shot"),
+			Args: append(configReloaderArgs, "--only-init-config"),
 			VolumeMounts: []corev1.VolumeMount{
 				{
 					Name:      "config-out",

@@ -71,12 +71,13 @@ jobs:
 
       - name: Update operator docs in VM repo
         run: |
+          for md in $(find docs/**/*.md); do
+            newmd=$(echo $md | sed -e 's/^docs\//&operator\//g')
+            mkdir -p ../__vm-docs-repo/$(dirname $newmd)
+            cat $md > ../__vm-docs-repo/$newmd
+          done
           cat ./vars.md > ../__vm-docs-repo/docs/operator/vars.md
           cat ./doc_api.md > ../__vm-docs-repo/docs/operator/api.md
-          for md in $(find docs/**/*.md); do
-            mkdir -p ../__vm-docs-repo/$(dirname $md)
-            cat $md > ../__vm-docs-repo/$md
-          done
         working-directory: "__vm-operator-repo"
 
       - name: Commit and push changes
@@ -84,7 +85,7 @@ jobs:
           export VM_GIT_BRANCH_NAME="operator-docs-update-$(date +%s)"
           export VM_GIT_COMMIT_SHA="$(git rev-parse --short $GITHUB_SHA)"
           git checkout -b "${VM_GIT_BRANCH_NAME}"
-          git add docs/**/*.md
+          git add docs/operator/**/*.md
           git commit -S -m "Automatic update operator docs from ${GITHUB_REPOSITORY}@${VM_GIT_COMMIT_SHA}"
           git push origin ${VM_GIT_BRANCH_NAME}
           gh pr create -f

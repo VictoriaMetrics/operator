@@ -388,15 +388,16 @@ spec:
                   x-kubernetes-preserve-unknown-fields: true
                 type: array
               license:
-                description: License allows to configure license key to be used for
-                  enterprise features.
+                description: 'License allows to configure license key to be used for
+                  enterprise features. Using license key is supported starting from
+                  VictoriaMetrics v1.94.0. See: https://docs.victoriametrics.com/enterprise.html'
                 properties:
                   key:
-                    description: Key is license key for enterprise features. See:https://docs.victoriametrics.com/enterprise.html
+                    description: Key is license key for enterprise features.
                     type: string
                   keyRef:
                     description: KeyRef is reference to secret with license key for
-                      enterprise features. See:https://docs.victoriametrics.com/enterprise.html
+                      enterprise features.
                     properties:
                       key:
                         description: The key of the secret to select from.  Must be

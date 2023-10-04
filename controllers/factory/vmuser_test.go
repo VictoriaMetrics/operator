@@ -337,8 +337,6 @@ ip_filters:
   src_paths:
   - /insert/0/prometheus
 name: user1
-username: basic
-password: pass
 max_concurrent_requests: 400
 retry_status_codes:
 - 502
@@ -349,6 +347,8 @@ headers:
 response_headers:
 - RH1:V3
 - RH2:V4
+username: basic
+password: pass
 `,
 		},
 	}

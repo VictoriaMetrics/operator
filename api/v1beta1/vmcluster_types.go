@@ -769,7 +769,7 @@ type VMBackup struct {
 
 func (cr *VMBackup) sanityCheck(l *License) error {
 	if !l.IsProvided() && !cr.AcceptEULA {
-		return fmt.Errorf("it is required to either accept EULA or provide license key. See: https://docs.victoriametrics.com/enterprise.html")
+		return fmt.Errorf("it is required to provide license key. See: https://docs.victoriametrics.com/enterprise.html")
 	}
 
 	if l.IsProvided() {

@@ -43,10 +43,22 @@ spec:
                 items:
                   type: string
                 type: array
+              disable_secret_creation:
+                description: DisableSecretCreation skips related secret creation for
+                  vmuser
+                type: boolean
               generatePassword:
                 description: GeneratePassword instructs operator to generate password
                   for user if spec.password if empty.
                 type: boolean
+              headers:
+                description: 'Headers represent additional http headers, that vmauth
+                  uses in form of ["header_key: header_value"] multiple values for
+                  header key: ["header_key: value1,value2"] it''s available since
+                  1.68.0 version of vmauth'
+                items:
+                  type: string
+                type: array
               ip_filters:
                 description: IPFilters defines per target src ip filters supported
                   only with enterprise version of vmauth https://docs.victoriametrics.com/vmauth.html#ip-filters
@@ -60,6 +72,10 @@ spec:
                       type: string
                     type: array
                 type: object
+              max_concurrent_requests:
+                description: MaxConcurrentRequests defines max concurrent requests
+                  per user 300 is default value for vmauth
+                type: integer
               name:
                 description: Name of the VMUser object.
                 type: string
@@ -86,6 +102,20 @@ spec:
                 - key
                 type: object
                 x-kubernetes-map-type: atomic
+              response_headers:
+                description: 'ResponseHeaders represent additional http headers, that
+                  vmauth adds for request response in form of ["header_key: header_value"]
+                  multiple values for header key: ["header_key: value1,value2"] it''s
+                  available since 1.93.0 version of vmauth'
+                items:
+                  type: string
+                type: array
+              retry_status_codes:
+                description: RetryStatusCodes defines http status codes in numeric
+                  format for request retries e.g. [429,503]
+                items:
+                  type: integer
+                type: array
               targetRefs:
                 description: TargetRefs - reference to endpoints, which user may access.
                 items:
@@ -124,6 +154,20 @@ spec:
                       description: Paths - matched path to route.
                       items:
                         type: string
+                      type: array
+                    response_headers:
+                      description: 'ResponseHeaders represent additional http headers,
+                        that vmauth adds for request response in form of ["header_key:
+                        header_value"] multiple values for header key: ["header_key:
+                        value1,value2"] it''s available since 1.93.0 version of vmauth'
+                      items:
+                        type: string
+                      type: array
+                    retry_status_codes:
+                      description: RetryStatusCodes defines http status codes in numeric
+                        format for request retries e.g. [429,503]
+                      items:
+                        type: integer
                       type: array
                     static:
                       description: Static - user defined url for traffic forward,

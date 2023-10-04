@@ -284,6 +284,73 @@ ip_filters:
   - 127.0.0.1
 `,
 		},
+		{
+			name: "with headers and max concurrent",
+			args: args{
+				user: &v1beta1.VMUser{
+					Spec: v1beta1.VMUserSpec{
+						Name:                  pointer.StringPtr("user1"),
+						UserName:              pointer.StringPtr("basic"),
+						Password:              pointer.StringPtr("pass"),
+						Headers:               []string{"H1:V1", "H2:V2"},
+						ResponseHeaders:       []string{"RH1:V3", "RH2:V4"},
+						MaxConcurrentRequests: pointer.Int(400),
+						RetryStatusCodes:      []int{502, 503},
+						TargetRefs: []v1beta1.TargetRef{
+							{
+								Static: &v1beta1.StaticRef{
+									URL: "http://vmselect",
+								},
+								Paths: []string{
+									"/select/0/prometheus",
+									"/select/0/graphite",
+								},
+								Headers:         []string{"H1:V2", "H2:V3"},
+								ResponseHeaders: []string{"RH1:V6", "RH2:V7"},
+							},
+							{
+								Static: &v1beta1.StaticRef{
+									URL: "http://vminsert",
+								},
+								Paths: []string{
+									"/insert/0/prometheus",
+								},
+							},
+						},
+					},
+				},
+			},
+			want: `url_map:
+- url_prefix:
+  - http://vmselect
+  src_paths:
+  - /select/0/prometheus
+  - /select/0/graphite
+  headers:
+  - H1:V2
+  - H2:V3
+  response_headers:
+  - RH1:V6
+  - RH2:V7
+- url_prefix:
+  - http://vminsert
+  src_paths:
+  - /insert/0/prometheus
+name: user1
+username: basic
+password: pass
+max_concurrent_requests: 400
+retry_status_codes:
+- 502
+- 503
+headers:
+- H1:V1
+- H2:V2
+response_headers:
+- RH1:V3
+- RH2:V4
+`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -828,6 +895,94 @@ unauthorized_user:
       deny_list:
       - 127.0.0.1
       - 192.168.0.0/16
+`,
+		},
+		{
+			name: "with disabled headers, max concurrent and response headers ",
+			args: args{
+				vmauth: &v1beta1.VMAuth{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-vmauth",
+						Namespace: "default",
+					},
+					Spec: v1beta1.VMAuthSpec{SelectAllByDefault: true,
+						UnauthorizedAccessConfig: []v1beta1.VMAuthUnauthorizedPath{
+							{
+								Paths: []string{"/", "/default"},
+								URLs:  []string{"http://route-1", "http://route-2"},
+							},
+						}},
+				},
+			},
+			predefinedObjects: []runtime.Object{
+				&v1beta1.VMUser{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "user-1",
+						Namespace: "default",
+					},
+					Spec: v1beta1.VMUserSpec{
+						Name:                  pointer.StringPtr("user1"),
+						BearerToken:           pointer.StringPtr("bearer"),
+						DisableSecretCreation: true,
+						TargetRefs: []v1beta1.TargetRef{
+							{
+								Static: &v1beta1.StaticRef{URL: "http://some-static"},
+								Paths:  []string{"/"},
+							},
+						},
+					},
+				},
+				&v1beta1.VMUser{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "user-2",
+						Namespace: "default",
+					},
+					Spec: v1beta1.VMUserSpec{
+						BearerToken:           pointer.StringPtr("bearer-token-2"),
+						MaxConcurrentRequests: pointer.Int(500),
+						RetryStatusCodes:      []int{400, 500},
+						ResponseHeaders:       []string{"H1:V1"},
+						TargetRefs: []v1beta1.TargetRef{
+							{
+								CRD: &v1beta1.CRDRef{
+									Kind:      "VMAgent",
+									Name:      "test",
+									Namespace: "default",
+								},
+								Paths: []string{"/"},
+							},
+						},
+					},
+				},
+				&v1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "default",
+					},
+				},
+			},
+			want: `users:
+- url_prefix:
+  - http://some-static
+  name: user1
+  bearer_token: bearer
+- url_prefix:
+  - http://vmagent-test.default.svc:8429
+  max_concurrent_requests: 500
+  retry_status_codes:
+  - 400
+  - 500
+  response_headers:
+  - H1:V1
+  bearer_token: bearer-token-2
+unauthorized_user:
+  url_map:
+  - url_prefix:
+    - http://route-1
+    - http://route-2
+    src_paths:
+    - /
+    - /default
 `,
 		},
 	}

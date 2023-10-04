@@ -47,6 +47,33 @@ type VMUserSpec struct {
 	// https://docs.victoriametrics.com/vmauth.html#ip-filters
 	// +optional
 	IPFilters VMUserIPFilters `json:"ip_filters,omitempty"`
+
+	// Headers represent additional http headers, that vmauth uses
+	// in form of ["header_key: header_value"]
+	// multiple values for header key:
+	// ["header_key: value1,value2"]
+	// it's available since 1.68.0 version of vmauth
+	// +optional
+	Headers []string `json:"headers,omitempty"`
+	// ResponseHeaders represent additional http headers, that vmauth adds for request response
+	// in form of ["header_key: header_value"]
+	// multiple values for header key:
+	// ["header_key: value1,value2"]
+	// it's available since 1.93.0 version of vmauth
+	// +optional
+	ResponseHeaders []string `json:"response_headers,omitempty"`
+
+	// RetryStatusCodes defines http status codes in numeric format for request retries
+	// e.g. [429,503]
+	// +optional
+	RetryStatusCodes []int `json:"retry_status_codes,omitempty"`
+	// MaxConcurrentRequests defines max concurrent requests per user
+	// 300 is default value for vmauth
+	// +optional
+	MaxConcurrentRequests *int `json:"max_concurrent_requests,omitempty"`
+
+	// DisableSecretCreation skips related secret creation for vmuser
+	DisableSecretCreation bool `json:"disable_secret_creation,omitempty"`
 }
 
 // TargetRef describes target for user traffic forwarding.
@@ -78,6 +105,17 @@ type TargetRef struct {
 	// it's available since 1.68.0 version of vmauth
 	// +optional
 	Headers []string `json:"headers,omitempty"`
+	// ResponseHeaders represent additional http headers, that vmauth adds for request response
+	// in form of ["header_key: header_value"]
+	// multiple values for header key:
+	// ["header_key: value1,value2"]
+	// it's available since 1.93.0 version of vmauth
+	// +optional
+	ResponseHeaders []string `json:"response_headers,omitempty"`
+	// RetryStatusCodes defines http status codes in numeric format for request retries
+	// e.g. [429,503]
+	// +optional
+	RetryStatusCodes []int `json:"retry_status_codes,omitempty"`
 }
 
 // VMUserIPFilters defines filters for IP addresses

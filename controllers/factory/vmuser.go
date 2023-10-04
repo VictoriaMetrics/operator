@@ -243,6 +243,9 @@ func fetchVMUserSecretCacheByRef(ctx context.Context, rclient client.Client, use
 	var fetchSecret corev1.Secret
 	for i := range users {
 		user := users[i]
+		if user.Spec.DisableSecretCreation {
+			continue
+		}
 		var secretName, secretKey, refValue string
 		switch {
 		case user.Spec.PasswordRef != nil:
@@ -504,6 +507,12 @@ func genUrlMaps(userName string, refs []victoriametricsv1beta1.TargetRef, result
 			if len(ref.Headers) > 0 {
 				result = append(result, yaml.MapItem{Key: "headers", Value: ref.Headers})
 			}
+			if len(ref.ResponseHeaders) > 0 {
+				result = append(result, yaml.MapItem{Key: "response_headers", Value: ref.ResponseHeaders})
+			}
+			if len(ref.RetryStatusCodes) > 0 {
+				result = append(result, yaml.MapItem{Key: "retry_status_codes", Value: ref.RetryStatusCodes})
+			}
 			return result, nil
 		}
 
@@ -556,6 +565,12 @@ func genUrlMaps(userName string, refs []victoriametricsv1beta1.TargetRef, result
 				Value: ref.Headers,
 			})
 		}
+		if len(ref.ResponseHeaders) > 0 {
+			urlMap = append(urlMap, yaml.MapItem{Key: "response_headers", Value: ref.ResponseHeaders})
+		}
+		if len(ref.RetryStatusCodes) > 0 {
+			result = append(result, yaml.MapItem{Key: "retry_status_codes", Value: ref.RetryStatusCodes})
+		}
 		urlMaps = append(urlMaps, urlMap)
 
 	}
@@ -601,6 +616,27 @@ func genUserCfg(user *victoriametricsv1beta1.VMUser, crdUrlCache map[string]stri
 	if user.Spec.BearerToken != nil {
 		token = *user.Spec.BearerToken
 	}
+	if user.Spec.MaxConcurrentRequests != nil {
+		r = append(r, yaml.MapItem{
+			Key:   "max_concurrent_requests",
+			Value: *user.Spec.MaxConcurrentRequests,
+		})
+	}
+	if len(user.Spec.RetryStatusCodes) > 0 {
+		r = append(r, yaml.MapItem{
+			Key:   "retry_status_codes",
+			Value: user.Spec.RetryStatusCodes,
+		})
+	}
+	if len(user.Spec.Headers) > 0 {
+		r = append(r, yaml.MapItem{
+			Key:   "headers",
+			Value: user.Spec.Headers,
+		})
+	}
+	if len(user.Spec.ResponseHeaders) > 0 {
+		r = append(r, yaml.MapItem{Key: "response_headers", Value: user.Spec.ResponseHeaders})
+	}
 	// fast path.
 	if token != "" {
 		r = append(r, yaml.MapItem{
@@ -632,6 +668,7 @@ func genUserCfg(user *victoriametricsv1beta1.VMUser, crdUrlCache map[string]stri
 			Value: password,
 		})
 	}
+
 	r = addIPFiltersToYaml(r, user.Spec.IPFilters)
 
 	return r, nil
@@ -694,6 +731,9 @@ func selectVMUserSecrets(ctx context.Context, rclient client.Client, vmUsers []*
 	var needToCreateSecrets []corev1.Secret
 	for i := range vmUsers {
 		vmUser := vmUsers[i]
+		if vmUser.Spec.DisableSecretCreation {
+			continue
+		}
 		var vmus corev1.Secret
 		if err := rclient.Get(ctx, types.NamespacedName{Namespace: vmUser.Namespace, Name: vmUser.SecretName()}, &vmus); err != nil {
 			if errors.IsNotFound(err) {

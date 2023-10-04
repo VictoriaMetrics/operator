@@ -68,6 +68,28 @@ func (cr *VMUser) sanityCheck() error {
 				return fmt.Errorf("crd.name and crd.namespace cannot be empty")
 			}
 		}
+		if err := parseHeaders(targetRef.ResponseHeaders); err != nil {
+			return fmt.Errorf("failed to parse targetRef response headers :%w", err)
+		}
+		if err := parseHeaders(targetRef.Headers); err != nil {
+			return fmt.Errorf("failed to parse targetRef headers :%w", err)
+		}
+	}
+	if err := parseHeaders(cr.Spec.Headers); err != nil {
+		return fmt.Errorf("failed to parse vmuser headers: %w", err)
+	}
+	if err := parseHeaders(cr.Spec.ResponseHeaders); err != nil {
+		return fmt.Errorf("failed to parse vmuser response headers: %w", err)
+	}
+	return nil
+}
+
+func parseHeaders(src []string) error {
+	for idx, s := range src {
+		n := strings.IndexByte(s, ':')
+		if n < 0 {
+			return fmt.Errorf("missing speparator char ':' between Name and Value in the header: %q at idx: %d; expected format - 'Name: Value'", s, idx)
+		}
 	}
 	return nil
 }

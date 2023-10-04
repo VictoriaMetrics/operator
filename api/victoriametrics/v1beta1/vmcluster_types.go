@@ -57,6 +57,13 @@ type VMClusterSpec struct {
 	// see https://kubernetes.io/docs/concepts/containers/images/#referring-to-an-imagepullsecrets-on-a-pod
 	// +optional
 	ImagePullSecrets []v1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
+
+	// License allows to configure license key to be used for enterprise features.
+	// Using license key is supported starting from VictoriaMetrics v1.94.0.
+	// See: https://docs.victoriametrics.com/enterprise.html
+	// +optional
+	License *License `json:"license,omitempty"`
+
 	// +optional
 	VMSelect *VMSelect `json:"vmselect,omitempty"`
 	// +optional
@@ -686,6 +693,7 @@ type VMBackup struct {
 	// AcceptEULA accepts enterprise feature usage, must be set to true.
 	// otherwise backupmanager cannot be added to single/cluster version.
 	// https://victoriametrics.com/legal/esa/
+	// +optional
 	AcceptEULA bool `json:"acceptEULA"`
 	// SnapshotCreateURL overwrites url for snapshot create
 	// +optional
@@ -757,6 +765,18 @@ type VMBackup struct {
 	// Read more: https://docs.victoriametrics.com/vmbackupmanager.html#restore-commands
 	// +optional
 	Restore *VMRestore `json:"restore,omitempty"`
+}
+
+func (cr *VMBackup) sanityCheck(l *License) error {
+	if !l.IsProvided() && !cr.AcceptEULA {
+		return fmt.Errorf("it is required to provide license key. See: https://docs.victoriametrics.com/enterprise.html")
+	}
+
+	if l.IsProvided() {
+		return l.sanityCheck()
+	}
+
+	return nil
 }
 
 type VMRestore struct {

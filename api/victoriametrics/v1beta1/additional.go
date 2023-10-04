@@ -556,3 +556,72 @@ func (m *StringOrArray) UnmarshalJSON(data []byte) error {
 		return &json.UnmarshalTypeError{Value: string(data), Type: rawType}
 	}
 }
+
+// License holds license key for enterprise features.
+// Using license key is supported starting from VictoriaMetrics v1.94.0
+// See: https://docs.victoriametrics.com/enterprise.html
+type License struct {
+	// Enterprise license key. This flag is available only in VictoriaMetrics enterprise.
+	// Documentation - https://docs.victoriametrics.com/enterprise.html
+	// for more information, visit https://victoriametrics.com/products/enterprise/ .
+	// To request a trial license, go to https://victoriametrics.com/products/enterprise/trial/
+	Key *string `json:"key,omitempty"`
+	// KeyRef is reference to secret with license key for enterprise features.
+	KeyRef *v1.SecretKeySelector `json:"keyRef,omitempty"`
+}
+
+// IsProvided returns true if license is provided.
+func (l *License) IsProvided() bool {
+	if l == nil {
+		return false
+	}
+
+	return l.Key != nil || l.KeyRef != nil
+}
+
+// MaybeAddToArgs conditionally adds license commandline args into given args
+func (l *License) MaybeAddToArgs(args []string, secretMountDir string) []string {
+	if !l.IsProvided() {
+		return args
+	}
+	if l.Key != nil {
+		args = append(args, fmt.Sprintf("-license=%s", *l.Key))
+	}
+	if l.KeyRef != nil {
+		args = append(args, fmt.Sprintf("-licenseFile=%s", path.Join(secretMountDir, l.KeyRef.Name, l.KeyRef.Key)))
+	}
+	return args
+}
+
+// MaybeAddToVolumes conditionally mounts secret with license key into given volumes and mounts
+func (l *License) MaybeAddToVolumes(volumes []v1.Volume, mounts []v1.VolumeMount, secretMountDir string) ([]v1.Volume, []v1.VolumeMount) {
+	if l.KeyRef == nil {
+		return volumes, mounts
+	}
+	volumes = append(volumes, v1.Volume{
+		Name: "license",
+		VolumeSource: v1.VolumeSource{
+			Secret: &v1.SecretVolumeSource{
+				SecretName: l.KeyRef.Name,
+			},
+		},
+	})
+	mounts = append(mounts, v1.VolumeMount{
+		Name:      "license",
+		ReadOnly:  true,
+		MountPath: path.Join(secretMountDir, l.KeyRef.Name),
+	})
+	return volumes, mounts
+}
+
+func (l *License) sanityCheck() error {
+	if !l.IsProvided() {
+		return nil
+	}
+
+	if l.Key != nil && l.KeyRef != nil {
+		return fmt.Errorf("only one of key or keyRef can be specified")
+	}
+
+	return nil
+}

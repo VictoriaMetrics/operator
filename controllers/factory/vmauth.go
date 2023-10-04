@@ -230,6 +230,8 @@ func makeSpecForVMAuth(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperator
 			MountPath: path.Join(ConfigMapsDir, c),
 		})
 	}
+	volumes, vmMounts = cr.Spec.License.MaybeAddToVolumes(volumes, vmMounts, SecretsDir)
+	args = cr.Spec.License.MaybeAddToArgs(args, SecretsDir)
 
 	args = addExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs, "-")
 	sort.Strings(args)

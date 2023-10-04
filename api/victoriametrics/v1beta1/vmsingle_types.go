@@ -176,6 +176,11 @@ type VMSingleSpec struct {
 	// VMBackup configuration for backup
 	// +optional
 	VMBackup *VMBackup `json:"vmBackup,omitempty"`
+	// License allows to configure license key to be used for enterprise features.
+	// Using license key is supported starting from VictoriaMetrics v1.94.0.
+	// See: https://docs.victoriametrics.com/enterprise.html
+	// +optional
+	License *License `json:"license,omitempty"`
 	// ExtraArgs that will be passed to  VMSingle pod
 	// for example remoteWrite.tmpDataPath: /tmp
 	// +optional

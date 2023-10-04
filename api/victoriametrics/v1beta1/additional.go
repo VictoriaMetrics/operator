@@ -32,7 +32,7 @@ const (
 	SkipValidationValue      = "true"
 	AdditionalServiceLabel   = "operator.victoriametrics.com/additional-service"
 	// PVCExpandableLabel controls checks for storageClass
-	PVCExpandableLabel = "operator.victoriametrics.com/pvc/allow-volume-expansion"
+	PVCExpandableLabel = "operator.victoriametrics.com/pvc-allow-volume-expansion"
 )
 
 // SchemeGroupVersion is group version used to register these objects

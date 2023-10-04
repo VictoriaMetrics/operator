@@ -201,6 +201,12 @@ type VMSingleSpec struct {
 	ReadinessGates []v1.PodReadinessGate `json:"readinessGates,omitempty"`
 	// StreamAggrConfig defines stream aggregation configuration for VMSingle
 	StreamAggrConfig *StreamAggrConfig `json:"streamAggrConfig,omitempty"`
+	// UseStrictSecurity enables strict security mode for component
+	// it restricts disk writes access
+	// uses non-root user out of the box
+	// drops not needed security permissions
+	// +optional
+	UseStrictSecurity *bool `json:"useStrictSecurity,omitempty"`
 }
 
 // HasStreamAggrConfig checks if streamAggrConfig present

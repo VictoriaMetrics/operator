@@ -165,7 +165,8 @@ spec:
                       type: array
                     retry_status_codes:
                       description: RetryStatusCodes defines http status codes in numeric
-                        format for request retries e.g. [429,503]
+                        format for request retries Can be defined per target or at
+                        VMUser.spec level e.g. [429,503]
                       items:
                         type: integer
                       type: array

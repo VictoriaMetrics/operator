@@ -181,6 +181,12 @@ type VMAuthSpec struct {
 	// UnauthorizedAccessConfig configures access for un authorized users
 	// +optional
 	UnauthorizedAccessConfig []VMAuthUnauthorizedPath `json:"unauthorizedAccessConfig,omitempty"`
+	// UseStrictSecurity enables strict security mode for component
+	// it restricts disk writes access
+	// uses non-root user out of the box
+	// drops not needed security permissions
+	// +optional
+	UseStrictSecurity *bool `json:"useStrictSecurity,omitempty"`
 }
 
 // VMAuthUnauthorizedPath defines url_map for unauthorized access

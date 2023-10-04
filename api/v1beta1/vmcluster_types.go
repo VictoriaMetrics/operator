@@ -63,6 +63,12 @@ type VMClusterSpec struct {
 	VMInsert *VMInsert `json:"vminsert,omitempty"`
 	// +optional
 	VMStorage *VMStorage `json:"vmstorage,omitempty"`
+	// UseStrictSecurity enables strict security mode for component
+	// it restricts disk writes access
+	// uses non-root user out of the box
+	// drops not needed security permissions
+	// +optional
+	UseStrictSecurity *bool `json:"useStrictSecurity,omitempty"`
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface

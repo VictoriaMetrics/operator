@@ -254,6 +254,12 @@ type VMAlertSpec struct {
 	DNSConfig *v1.PodDNSConfig `json:"dnsConfig,omitempty"`
 	// ReadinessGates defines pod readiness gates
 	ReadinessGates []v1.PodReadinessGate `json:"readinessGates,omitempty"`
+	// UseStrictSecurity enables strict security mode for component
+	// it restricts disk writes access
+	// uses non-root user out of the box
+	// drops not needed security permissions
+	// +optional
+	UseStrictSecurity *bool `json:"useStrictSecurity,omitempty"`
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface

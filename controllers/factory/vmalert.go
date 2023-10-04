@@ -455,6 +455,11 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 		}
 	}
 
+	useStrictSecurity := c.EnableStrictSecurity
+	if cr.Spec.UseStrictSecurity != nil {
+		useStrictSecurity = *cr.Spec.UseStrictSecurity
+	}
+
 	spec := &appsv1.DeploymentSpec{
 		Replicas: cr.Spec.ReplicaCount,
 
@@ -476,10 +481,11 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 				SchedulerName:                 cr.Spec.SchedulerName,
 				RuntimeClassName:              cr.Spec.RuntimeClassName,
 				ServiceAccountName:            cr.GetServiceAccountName(),
-				Containers:                    addStrictSecuritySettingsToContainers(containers, c.EnableStrictSecurity),
+				InitContainers:                addStrictSecuritySettingsToContainers(cr.Spec.InitContainers, useStrictSecurity),
+				Containers:                    addStrictSecuritySettingsToContainers(containers, useStrictSecurity),
 				Volumes:                       volumes,
 				PriorityClassName:             cr.Spec.PriorityClassName,
-				SecurityContext:               addStrictSecuritySettingsToPod(cr.Spec.SecurityContext, c.EnableStrictSecurity),
+				SecurityContext:               addStrictSecuritySettingsToPod(cr.Spec.SecurityContext, useStrictSecurity),
 				Affinity:                      cr.Spec.Affinity,
 				Tolerations:                   cr.Spec.Tolerations,
 				HostNetwork:                   cr.Spec.HostNetwork,

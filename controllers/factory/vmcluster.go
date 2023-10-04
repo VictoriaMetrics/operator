@@ -528,6 +528,10 @@ func makePodSpecForVMSelect(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 		}
 	}
 
+	useStrictSecurity := c.EnableStrictSecurity
+	if cr.Spec.UseStrictSecurity != nil {
+		useStrictSecurity = *cr.Spec.UseStrictSecurity
+	}
 	vmSelectPodSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:      cr.VMSelectPodLabels(),
@@ -536,10 +540,10 @@ func makePodSpecForVMSelect(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 		Spec: corev1.PodSpec{
 			NodeSelector:                  cr.Spec.VMSelect.NodeSelector,
 			Volumes:                       volumes,
-			InitContainers:                addStrictSecuritySettingsToContainers(cr.Spec.VMSelect.InitContainers, c.EnableStrictSecurity),
-			Containers:                    addStrictSecuritySettingsToContainers(containers, c.EnableStrictSecurity),
+			InitContainers:                addStrictSecuritySettingsToContainers(cr.Spec.VMSelect.InitContainers, useStrictSecurity),
+			Containers:                    addStrictSecuritySettingsToContainers(containers, useStrictSecurity),
 			ServiceAccountName:            cr.GetServiceAccountName(),
-			SecurityContext:               addStrictSecuritySettingsToPod(cr.Spec.VMSelect.SecurityContext, c.EnableStrictSecurity),
+			SecurityContext:               addStrictSecuritySettingsToPod(cr.Spec.VMSelect.SecurityContext, useStrictSecurity),
 			ImagePullSecrets:              cr.Spec.ImagePullSecrets,
 			Affinity:                      cr.Spec.VMSelect.Affinity,
 			SchedulerName:                 cr.Spec.VMSelect.SchedulerName,
@@ -851,6 +855,10 @@ func makePodSpecForVMInsert(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 			}
 		}
 	}
+	useStrictSecurity := c.EnableStrictSecurity
+	if cr.Spec.UseStrictSecurity != nil {
+		useStrictSecurity = *cr.Spec.UseStrictSecurity
+	}
 
 	vmInsertPodSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
@@ -860,10 +868,10 @@ func makePodSpecForVMInsert(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 		Spec: corev1.PodSpec{
 			NodeSelector:                  cr.Spec.VMInsert.NodeSelector,
 			Volumes:                       volumes,
-			InitContainers:                addStrictSecuritySettingsToContainers(cr.Spec.VMInsert.InitContainers, c.EnableStrictSecurity),
-			Containers:                    addStrictSecuritySettingsToContainers(containers, c.EnableStrictSecurity),
+			InitContainers:                addStrictSecuritySettingsToContainers(cr.Spec.VMInsert.InitContainers, useStrictSecurity),
+			Containers:                    addStrictSecuritySettingsToContainers(containers, useStrictSecurity),
 			ServiceAccountName:            cr.GetServiceAccountName(),
-			SecurityContext:               addStrictSecuritySettingsToPod(cr.Spec.VMInsert.SecurityContext, c.EnableStrictSecurity),
+			SecurityContext:               addStrictSecuritySettingsToPod(cr.Spec.VMInsert.SecurityContext, useStrictSecurity),
 			ImagePullSecrets:              cr.Spec.ImagePullSecrets,
 			Affinity:                      cr.Spec.VMInsert.Affinity,
 			SchedulerName:                 cr.Spec.VMInsert.SchedulerName,
@@ -1182,6 +1190,10 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) 
 	if cr.Spec.VMStorage.TerminationGracePeriodSeconds > 0 {
 		tgp = &cr.Spec.VMStorage.TerminationGracePeriodSeconds
 	}
+	useStrictSecurity := c.EnableStrictSecurity
+	if cr.Spec.UseStrictSecurity != nil {
+		useStrictSecurity = *cr.Spec.UseStrictSecurity
+	}
 	vmStoragePodSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:      cr.VMStoragePodLabels(),
@@ -1190,10 +1202,10 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) 
 		Spec: corev1.PodSpec{
 			NodeSelector:                  cr.Spec.VMStorage.NodeSelector,
 			Volumes:                       volumes,
-			InitContainers:                addStrictSecuritySettingsToContainers(initContainers, c.EnableStrictSecurity),
-			Containers:                    addStrictSecuritySettingsToContainers(containers, c.EnableStrictSecurity),
+			InitContainers:                addStrictSecuritySettingsToContainers(initContainers, useStrictSecurity),
+			Containers:                    addStrictSecuritySettingsToContainers(containers, useStrictSecurity),
 			ServiceAccountName:            cr.GetServiceAccountName(),
-			SecurityContext:               addStrictSecuritySettingsToPod(cr.Spec.VMStorage.SecurityContext, c.EnableStrictSecurity),
+			SecurityContext:               addStrictSecuritySettingsToPod(cr.Spec.VMStorage.SecurityContext, useStrictSecurity),
 			ImagePullSecrets:              cr.Spec.ImagePullSecrets,
 			Affinity:                      cr.Spec.VMStorage.Affinity,
 			SchedulerName:                 cr.Spec.VMStorage.SchedulerName,

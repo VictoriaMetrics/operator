@@ -382,6 +382,12 @@ type VMAgentSpec struct {
 	ReadinessGates []v1.PodReadinessGate `json:"readinessGates,omitempty"`
 	// ClaimTemplates allows adding additional VolumeClaimTemplates for VMAgent in StatefulMode
 	ClaimTemplates []v1.PersistentVolumeClaim `json:"claimTemplates,omitempty"`
+	// UseStrictSecurity enables strict security mode for component
+	// it restricts disk writes access
+	// uses non-root user out of the box
+	// drops not needed security permissions
+	// +optional
+	UseStrictSecurity *bool `json:"useStrictSecurity,omitempty"`
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface

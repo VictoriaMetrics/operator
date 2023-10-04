@@ -505,14 +505,18 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 			return nil, fmt.Errorf("cannot apply patch for initContainers: %w", err)
 		}
 	}
+	useStrictSecurity := c.EnableStrictSecurity
+	if cr.Spec.UseStrictSecurity != nil {
+		useStrictSecurity = *cr.Spec.UseStrictSecurity
+	}
 
 	return &corev1.PodSpec{
 		NodeSelector:                  cr.Spec.NodeSelector,
 		Volumes:                       volumes,
-		InitContainers:                ic,
-		Containers:                    addStrictSecuritySettingsToContainers(containers, c.EnableStrictSecurity),
+		InitContainers:                addStrictSecuritySettingsToContainers(ic, useStrictSecurity),
+		Containers:                    addStrictSecuritySettingsToContainers(containers, useStrictSecurity),
 		ServiceAccountName:            cr.GetServiceAccountName(),
-		SecurityContext:               addStrictSecuritySettingsToPod(cr.Spec.SecurityContext, c.EnableStrictSecurity),
+		SecurityContext:               addStrictSecuritySettingsToPod(cr.Spec.SecurityContext, useStrictSecurity),
 		ImagePullSecrets:              cr.Spec.ImagePullSecrets,
 		Affinity:                      cr.Spec.Affinity,
 		SchedulerName:                 cr.Spec.SchedulerName,

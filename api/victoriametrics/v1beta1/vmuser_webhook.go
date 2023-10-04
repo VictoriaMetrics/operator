@@ -50,6 +50,7 @@ func (cr *VMUser) sanityCheck() error {
 	if cr.Spec.PasswordRef != nil && cr.Spec.Password != nil {
 		return fmt.Errorf("one of spec.password or spec.passwordRef must be used for user, got both")
 	}
+	isRetryCodesSet := len(cr.Spec.RetryStatusCodes) > 0
 	for i := range cr.Spec.TargetRefs {
 		targetRef := cr.Spec.TargetRefs[i]
 		if targetRef.CRD != nil && targetRef.Static != nil {
@@ -73,6 +74,9 @@ func (cr *VMUser) sanityCheck() error {
 		}
 		if err := parseHeaders(targetRef.Headers); err != nil {
 			return fmt.Errorf("failed to parse targetRef headers :%w", err)
+		}
+		if isRetryCodesSet && len(targetRef.RetryStatusCodes) > 0 {
+			return fmt.Errorf("retry_status_codes already set at VMUser.spec level")
 		}
 	}
 	if err := parseHeaders(cr.Spec.Headers); err != nil {

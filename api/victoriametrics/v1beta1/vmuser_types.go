@@ -113,6 +113,7 @@ type TargetRef struct {
 	// +optional
 	ResponseHeaders []string `json:"response_headers,omitempty"`
 	// RetryStatusCodes defines http status codes in numeric format for request retries
+	// Can be defined per target or at VMUser.spec level
 	// e.g. [429,503]
 	// +optional
 	RetryStatusCodes []int `json:"retry_status_codes,omitempty"`

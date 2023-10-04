@@ -262,6 +262,10 @@ func makeSpecForVMAuth(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperator
 			return nil, fmt.Errorf("cannot apply patch for initContainers: %w", err)
 		}
 	}
+	useStrictSecurity := c.EnableStrictSecurity
+	if cr.Spec.UseStrictSecurity != nil {
+		useStrictSecurity = *cr.Spec.UseStrictSecurity
+	}
 	vmAuthSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:      cr.PodLabels(),
@@ -270,10 +274,10 @@ func makeSpecForVMAuth(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperator
 		Spec: corev1.PodSpec{
 			NodeSelector:                  cr.Spec.NodeSelector,
 			Volumes:                       volumes,
-			InitContainers:                addStrictSecuritySettingsToContainers(ic, c.EnableStrictSecurity),
-			Containers:                    addStrictSecuritySettingsToContainers(containers, c.EnableStrictSecurity),
+			InitContainers:                addStrictSecuritySettingsToContainers(ic, useStrictSecurity),
+			Containers:                    addStrictSecuritySettingsToContainers(containers, useStrictSecurity),
 			ServiceAccountName:            cr.GetServiceAccountName(),
-			SecurityContext:               addStrictSecuritySettingsToPod(cr.Spec.SecurityContext, c.EnableStrictSecurity),
+			SecurityContext:               addStrictSecuritySettingsToPod(cr.Spec.SecurityContext, useStrictSecurity),
 			ImagePullSecrets:              cr.Spec.ImagePullSecrets,
 			Affinity:                      cr.Spec.Affinity,
 			RuntimeClassName:              cr.Spec.RuntimeClassName,

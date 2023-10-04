@@ -471,6 +471,10 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, c *config.Ba
 			}
 		}
 	}
+	useStrictSecurity := c.EnableStrictSecurity
+	if cr.Spec.UseStrictSecurity != nil {
+		useStrictSecurity = *cr.Spec.UseStrictSecurity
+	}
 
 	return &appsv1.StatefulSetSpec{
 		ServiceName:         cr.PrefixedName(),
@@ -492,13 +496,13 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, c *config.Ba
 				NodeSelector:                  cr.Spec.NodeSelector,
 				PriorityClassName:             cr.Spec.PriorityClassName,
 				TerminationGracePeriodSeconds: &terminationGracePeriod,
-				InitContainers:                addStrictSecuritySettingsToContainers(cr.Spec.InitContainers, c.EnableStrictSecurity),
-				Containers:                    addStrictSecuritySettingsToContainers(containers, c.EnableStrictSecurity),
+				InitContainers:                addStrictSecuritySettingsToContainers(cr.Spec.InitContainers, useStrictSecurity),
+				Containers:                    addStrictSecuritySettingsToContainers(containers, useStrictSecurity),
 				Volumes:                       volumes,
 				RuntimeClassName:              cr.Spec.RuntimeClassName,
 				SchedulerName:                 cr.Spec.SchedulerName,
 				ServiceAccountName:            cr.GetServiceAccountName(),
-				SecurityContext:               addStrictSecuritySettingsToPod(cr.Spec.SecurityContext, c.EnableStrictSecurity),
+				SecurityContext:               addStrictSecuritySettingsToPod(cr.Spec.SecurityContext, useStrictSecurity),
 				Tolerations:                   cr.Spec.Tolerations,
 				Affinity:                      cr.Spec.Affinity,
 				HostNetwork:                   cr.Spec.HostNetwork,

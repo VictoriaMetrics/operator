@@ -498,7 +498,7 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 			}
 		}
 	}
-	ic := buildInitConfigContainer(c.VMAgentDefault.ConfigReloadImage, c, vmAgentConfDir, vmagentGzippedFilename, vmAgentConOfOutDir, configEnvsubstFilename, configReloader.Args)
+	ic := buildInitConfigContainer(c.VMAgentDefault.ConfigReloadImage, buildConfigReloaderResourceReqsForVMAgent(c), c, vmAgentConfDir, vmagentGzippedFilename, vmAgentConOfOutDir, configEnvsubstFilename, configReloader.Args)
 	if len(cr.Spec.InitContainers) > 0 {
 		ic, err = k8stools.MergePatchContainers(ic, cr.Spec.InitContainers)
 		if err != nil {
@@ -1243,17 +1243,6 @@ func buildConfigReloaderContainer(cr *victoriametricsv1beta1.VMAgent, c *config.
 				MountPath: vmAgentConfDir,
 			})
 	}
-	configReloaderResources := corev1.ResourceRequirements{
-		Limits: corev1.ResourceList{}, Requests: corev1.ResourceList{},
-	}
-	if c.VMAgentDefault.ConfigReloaderCPU != "0" && c.VMAgentDefault.UseDefaultResources {
-		configReloaderResources.Limits[corev1.ResourceCPU] = resource.MustParse(c.VMAgentDefault.ConfigReloaderCPU)
-		configReloaderResources.Requests[corev1.ResourceCPU] = resource.MustParse(c.VMAgentDefault.ConfigReloaderCPU)
-	}
-	if c.VMAgentDefault.ConfigReloaderMemory != "0" && c.VMAgentDefault.UseDefaultResources {
-		configReloaderResources.Limits[corev1.ResourceMemory] = resource.MustParse(c.VMAgentDefault.ConfigReloaderMemory)
-		configReloaderResources.Requests[corev1.ResourceMemory] = resource.MustParse(c.VMAgentDefault.ConfigReloaderMemory)
-	}
 
 	configReloadArgs := buildConfigReloaderArgs(cr, c)
 	cntr := corev1.Container{
@@ -1271,13 +1260,28 @@ func buildConfigReloaderContainer(cr *victoriametricsv1beta1.VMAgent, c *config.
 		Command:      []string{"/bin/prometheus-config-reloader"},
 		Args:         configReloadArgs,
 		VolumeMounts: configReloadVolumeMounts,
-		Resources:    configReloaderResources,
+		Resources:    buildConfigReloaderResourceReqsForVMAgent(c),
 	}
 	if c.UseCustomConfigReloader {
 		cntr.Image = fmt.Sprintf("%s", formatContainerImage(c.ContainerRegistry, c.CustomConfigReloaderImage))
 		cntr.Command = []string{"/usr/local/bin/config-reloader"}
 	}
 	return cntr
+}
+
+func buildConfigReloaderResourceReqsForVMAgent(c *config.BaseOperatorConf) corev1.ResourceRequirements {
+	configReloaderResources := corev1.ResourceRequirements{
+		Limits: corev1.ResourceList{}, Requests: corev1.ResourceList{},
+	}
+	if c.VMAgentDefault.ConfigReloaderCPU != "0" && c.VMAgentDefault.UseDefaultResources {
+		configReloaderResources.Limits[corev1.ResourceCPU] = resource.MustParse(c.VMAgentDefault.ConfigReloaderCPU)
+		configReloaderResources.Requests[corev1.ResourceCPU] = resource.MustParse(c.VMAgentDefault.ConfigReloaderCPU)
+	}
+	if c.VMAgentDefault.ConfigReloaderMemory != "0" && c.VMAgentDefault.UseDefaultResources {
+		configReloaderResources.Limits[corev1.ResourceMemory] = resource.MustParse(c.VMAgentDefault.ConfigReloaderMemory)
+		configReloaderResources.Requests[corev1.ResourceMemory] = resource.MustParse(c.VMAgentDefault.ConfigReloaderMemory)
+	}
+	return configReloaderResources
 }
 
 func buildConfigReloaderArgs(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperatorConf) []string {

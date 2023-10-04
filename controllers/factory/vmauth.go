@@ -255,7 +255,7 @@ func makeSpecForVMAuth(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperator
 		return nil, err
 	}
 
-	ic := buildInitConfigContainer(c.VMAuthDefault.ConfigReloadImage, c, vmAuthConfigMountGz, vmAuthConfigNameGz, vmAuthConfigFolder, vmAuthConfigName, configReloader.Args)
+	ic := buildInitConfigContainer(c.VMAuthDefault.ConfigReloadImage, buildConfigReloaderResourceReqsForVMAuth(c), c, vmAuthConfigMountGz, vmAuthConfigNameGz, vmAuthConfigFolder, vmAuthConfigName, configReloader.Args)
 	if len(cr.Spec.InitContainers) > 0 {
 		ic, err = k8stools.MergePatchContainers(ic, cr.Spec.InitContainers)
 		if err != nil {
@@ -460,18 +460,6 @@ func buildVMAuthConfigReloaderContainer(cr *victoriametricsv1beta1.VMAuth, c *co
 			MountPath: vmAuthConfigMountGz,
 		})
 	}
-	configReloaderResources := corev1.ResourceRequirements{
-		Limits: corev1.ResourceList{}, Requests: corev1.ResourceList{},
-	}
-	if c.VMAuthDefault.ConfigReloaderCPU != "0" && c.VMAuthDefault.UseDefaultResources {
-		configReloaderResources.Limits[corev1.ResourceCPU] = resource.MustParse(c.VMAuthDefault.ConfigReloaderCPU)
-		configReloaderResources.Requests[corev1.ResourceCPU] = resource.MustParse(c.VMAuthDefault.ConfigReloaderCPU)
-	}
-	if c.VMAgentDefault.ConfigReloaderMemory != "0" && c.VMAuthDefault.UseDefaultResources {
-		configReloaderResources.Limits[corev1.ResourceMemory] = resource.MustParse(c.VMAuthDefault.ConfigReloaderMemory)
-		configReloaderResources.Requests[corev1.ResourceMemory] = resource.MustParse(c.VMAuthDefault.ConfigReloaderMemory)
-	}
-
 	configReloader := corev1.Container{
 		Name:                     "config-reloader",
 		Image:                    formatContainerImage(c.ContainerRegistry, c.VMAuthDefault.ConfigReloadImage),
@@ -487,7 +475,7 @@ func buildVMAuthConfigReloaderContainer(cr *victoriametricsv1beta1.VMAuth, c *co
 		Command:      []string{"/bin/prometheus-config-reloader"},
 		Args:         configReloaderArgs,
 		VolumeMounts: reloaderMounts,
-		Resources:    configReloaderResources,
+		Resources:    buildConfigReloaderResourceReqsForVMAuth(c),
 	}
 
 	if c.UseCustomConfigReloader {
@@ -497,7 +485,7 @@ func buildVMAuthConfigReloaderContainer(cr *victoriametricsv1beta1.VMAuth, c *co
 	return configReloader
 }
 
-func buildInitConfigContainer(baseImage string, c *config.BaseOperatorConf, configDirName, configFileName, outConfigDir, outFileName string, configReloaderArgs []string) []corev1.Container {
+func buildInitConfigContainer(baseImage string, resources corev1.ResourceRequirements, c *config.BaseOperatorConf, configDirName, configFileName, outConfigDir, outFileName string, configReloaderArgs []string) []corev1.Container {
 	var initReloader corev1.Container
 	if c.UseCustomConfigReloader {
 		// add custom config reloader as initContainer since v0.35.0
@@ -526,6 +514,7 @@ func buildInitConfigContainer(baseImage string, c *config.BaseOperatorConf, conf
 					MountPath: outConfigDir,
 				},
 			},
+			Resources: resources,
 		}
 		return []corev1.Container{initReloader}
 	}
@@ -549,6 +538,22 @@ func buildInitConfigContainer(baseImage string, c *config.BaseOperatorConf, conf
 				MountPath: outConfigDir,
 			},
 		},
+		Resources: resources,
 	}
 	return []corev1.Container{initReloader}
+}
+
+func buildConfigReloaderResourceReqsForVMAuth(c *config.BaseOperatorConf) corev1.ResourceRequirements {
+	configReloaderResources := corev1.ResourceRequirements{
+		Limits: corev1.ResourceList{}, Requests: corev1.ResourceList{},
+	}
+	if c.VMAgentDefault.ConfigReloaderCPU != "0" && c.VMAuthDefault.UseDefaultResources {
+		configReloaderResources.Limits[corev1.ResourceCPU] = resource.MustParse(c.VMAuthDefault.ConfigReloaderCPU)
+		configReloaderResources.Requests[corev1.ResourceCPU] = resource.MustParse(c.VMAuthDefault.ConfigReloaderCPU)
+	}
+	if c.VMAgentDefault.ConfigReloaderMemory != "0" && c.VMAuthDefault.UseDefaultResources {
+		configReloaderResources.Limits[corev1.ResourceMemory] = resource.MustParse(c.VMAuthDefault.ConfigReloaderMemory)
+		configReloaderResources.Requests[corev1.ResourceMemory] = resource.MustParse(c.VMAuthDefault.ConfigReloaderMemory)
+	}
+	return configReloaderResources
 }

@@ -325,6 +325,22 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 			MountPath: vmalertConfigSecretsDir,
 		},
 	)
+
+	if cr.Spec.License.RequiresVolumeMounts() {
+		volumes = append(volumes, corev1.Volume{
+			Name: k8stools.SanitizeVolumeName("license"),
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: cr.Spec.License.KeyRef.Name,
+				},
+			},
+		})
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name:      k8stools.SanitizeVolumeName("license"),
+			ReadOnly:  true,
+			MountPath: path.Join(SecretsDir, cr.Spec.License.KeyRef.Name),
+		})
+	}
 	if cr.Spec.NotifierConfigRef != nil {
 		volumes = append(volumes, corev1.Volume{
 			Name: "vmalert-notifier-config",
@@ -622,6 +638,17 @@ func buildVMAlertArgs(cr *victoriametricsv1beta1.VMAlert, ruleConfigMapNames []s
 	if len(cr.Spec.ExtraEnvs) > 0 {
 		args = append(args, "-envflag.enable=true")
 	}
+
+	if cr.Spec.License.IsProvided() {
+		if cr.Spec.License.Key != nil {
+			args = append(args, fmt.Sprintf("-license=%s", *cr.Spec.License.Key))
+		}
+		if cr.Spec.License.KeyRef != nil {
+			args = append(args, fmt.Sprintf("-licenseFile=%s", path.Join(SecretsDir, cr.Spec.License.KeyRef.Name, cr.Spec.License.KeyRef.Key)))
+		}
+	}
+
+
 	args = addExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs, "-")
 	sort.Strings(args)
 	return args

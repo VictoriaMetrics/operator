@@ -311,6 +311,14 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 	if len(cr.Spec.ExtraEnvs) > 0 {
 		args = append(args, "-envflag.enable=true")
 	}
+	if cr.Spec.License.IsProvided() {
+		if cr.Spec.License.Key != nil {
+			args = append(args, fmt.Sprintf("-license=%s", *cr.Spec.License.Key))
+		}
+		if cr.Spec.License.KeyRef != nil {
+			args = append(args, fmt.Sprintf("-licenseFile=%s", path.Join(SecretsDir, cr.Spec.License.KeyRef.Name, cr.Spec.License.KeyRef.Key)))
+		}
+	}
 
 	var envs []corev1.EnvVar
 
@@ -452,6 +460,22 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 			Name:      k8stools.SanitizeVolumeName("configmap-" + c),
 			ReadOnly:  true,
 			MountPath: path.Join(ConfigMapsDir, c),
+		})
+	}
+
+	if cr.Spec.License.RequiresVolumeMounts() {
+		volumes = append(volumes, corev1.Volume{
+			Name: k8stools.SanitizeVolumeName("secret-" + cr.Spec.License.KeyRef.Name),
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: cr.Spec.License.KeyRef.Name,
+				},
+			},
+		})
+		agentVolumeMounts = append(agentVolumeMounts, corev1.VolumeMount{
+			Name:      k8stools.SanitizeVolumeName("secret-" + cr.Spec.License.KeyRef.Name),
+			ReadOnly:  true,
+			MountPath: path.Join(SecretsDir, cr.Spec.License.KeyRef.Name),
 		})
 	}
 

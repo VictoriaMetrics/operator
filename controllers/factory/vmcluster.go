@@ -438,6 +438,15 @@ func makePodSpecForVMSelect(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 		args = append(args, "-envflag.enable=true")
 	}
 
+	if cr.Spec.License.IsProvided() {
+		if cr.Spec.License.Key != nil {
+			args = append(args, fmt.Sprintf("-license=%s", *cr.Spec.License.Key))
+		}
+		if cr.Spec.License.KeyRef != nil {
+			args = append(args, fmt.Sprintf("-licenseFile=%s", path.Join(SecretsDir, cr.Spec.License.KeyRef.Name, cr.Spec.License.KeyRef.Key)))
+		}
+	}
+
 	var envs []corev1.EnvVar
 	envs = append(envs, cr.Spec.VMSelect.ExtraEnvs...)
 
@@ -493,6 +502,22 @@ func makePodSpecForVMSelect(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 			Name:      k8stools.SanitizeVolumeName("configmap-" + c),
 			ReadOnly:  true,
 			MountPath: path.Join(ConfigMapsDir, c),
+		})
+	}
+
+	if cr.Spec.License.RequiresVolumeMounts() {
+		volumes = append(volumes, corev1.Volume{
+			Name: k8stools.SanitizeVolumeName("license"),
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: cr.Spec.License.KeyRef.Name,
+				},
+			},
+		})
+		vmMounts = append(vmMounts, corev1.VolumeMount{
+			Name:      k8stools.SanitizeVolumeName("license"),
+			ReadOnly:  true,
+			MountPath: path.Join(SecretsDir, cr.Spec.License.KeyRef.Name),
 		})
 	}
 
@@ -761,6 +786,15 @@ func makePodSpecForVMInsert(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 		args = append(args, "-envflag.enable=true")
 	}
 
+	if cr.Spec.License.IsProvided() {
+		if cr.Spec.License.Key != nil {
+			args = append(args, fmt.Sprintf("-license=%s", *cr.Spec.License.Key))
+		}
+		if cr.Spec.License.KeyRef != nil {
+			args = append(args, fmt.Sprintf("-licenseFile=%s", path.Join(SecretsDir, cr.Spec.License.KeyRef.Name, cr.Spec.License.KeyRef.Key)))
+		}
+	}
+
 	var envs []corev1.EnvVar
 
 	envs = append(envs, cr.Spec.VMInsert.ExtraEnvs...)
@@ -824,6 +858,23 @@ func makePodSpecForVMInsert(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 			MountPath: path.Join(ConfigMapsDir, c),
 		})
 	}
+
+	if cr.Spec.License.RequiresVolumeMounts() {
+		volumes = append(volumes, corev1.Volume{
+			Name: k8stools.SanitizeVolumeName("license"),
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: cr.Spec.License.KeyRef.Name,
+				},
+			},
+		})
+		vmMounts = append(vmMounts, corev1.VolumeMount{
+			Name:      k8stools.SanitizeVolumeName("license"),
+			ReadOnly:  true,
+			MountPath: path.Join(SecretsDir, cr.Spec.License.KeyRef.Name),
+		})
+	}
+
 	args = addExtraArgsOverrideDefaults(args, cr.Spec.VMInsert.ExtraArgs, "-")
 	sort.Strings(args)
 
@@ -1052,6 +1103,16 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) 
 			args = append(args, "-dedup.minScrapeInterval=1ms")
 		}
 	}
+
+	if cr.Spec.License.IsProvided() {
+		if cr.Spec.License.Key != nil {
+			args = append(args, fmt.Sprintf("-license=%s", *cr.Spec.License.Key))
+		}
+		if cr.Spec.License.KeyRef != nil {
+			args = append(args, fmt.Sprintf("-licenseFile=%s", path.Join(SecretsDir, cr.Spec.License.KeyRef.Name, cr.Spec.License.KeyRef.Key)))
+		}
+	}
+
 	var envs []corev1.EnvVar
 
 	envs = append(envs, cr.Spec.VMStorage.ExtraEnvs...)
@@ -1132,6 +1193,22 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) 
 		})
 	}
 
+	if cr.Spec.License.RequiresVolumeMounts() {
+		volumes = append(volumes, corev1.Volume{
+			Name: k8stools.SanitizeVolumeName("license"),
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: cr.Spec.License.KeyRef.Name,
+				},
+			},
+		})
+		vmMounts = append(vmMounts, corev1.VolumeMount{
+			Name:      k8stools.SanitizeVolumeName("license"),
+			ReadOnly:  true,
+			MountPath: path.Join(SecretsDir, cr.Spec.License.KeyRef.Name),
+		})
+	}
+
 	args = addExtraArgsOverrideDefaults(args, cr.Spec.VMStorage.ExtraArgs, "-")
 	sort.Strings(args)
 	vmstorageContainer := corev1.Container{
@@ -1153,7 +1230,7 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) 
 	initContainers := cr.Spec.VMStorage.InitContainers
 
 	if cr.Spec.VMStorage.VMBackup != nil {
-		vmBackupManagerContainer, err := makeSpecForVMBackuper(cr.Spec.VMStorage.VMBackup, c, cr.Spec.VMStorage.Port, cr.Spec.VMStorage.StorageDataPath, cr.Spec.VMStorage.GetStorageVolumeName(), cr.Spec.VMStorage.ExtraArgs, true)
+		vmBackupManagerContainer, err := makeSpecForVMBackuper(cr.Spec.VMStorage.VMBackup, c, cr.Spec.VMStorage.Port, cr.Spec.VMStorage.StorageDataPath, cr.Spec.VMStorage.GetStorageVolumeName(), cr.Spec.VMStorage.ExtraArgs, true, cr.Spec.License)
 		if err != nil {
 			return nil, err
 		}

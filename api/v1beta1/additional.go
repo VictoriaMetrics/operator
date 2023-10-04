@@ -556,3 +556,47 @@ func (m *StringOrArray) UnmarshalJSON(data []byte) error {
 		return &json.UnmarshalTypeError{Value: string(data), Type: rawType}
 	}
 }
+
+// License holds license key for enterprise features.
+// Using license key is supported starting from VictoriaMetrics v1.94.0
+// See: https://docs.victoriametrics.com/enterprise.html
+type License struct {
+	// Enterprise license key. This flag is available only in VictoriaMetrics enterprise.
+	// Documentation - https://docs.victoriametrics.com/enterprise.html
+	// for more information, visit https://victoriametrics.com/products/enterprise/ .
+	// To request a trial license, go to https://victoriametrics.com/products/enterprise/trial/
+	Key *string `json:"key,omitempty"`
+	// KeyRef is reference to secret with license key for enterprise features.
+	KeyRef *v1.SecretKeySelector `json:"keyRef,omitempty"`
+}
+
+// IsProvided returns true if license is provided.
+func (l *License) IsProvided() bool {
+	if l == nil {
+		return false
+	}
+
+	return l.Key != nil || l.KeyRef != nil
+}
+
+// RequiresVolumeMounts returns true if license requires volume mounts.
+// Volume mount is required to pass license key content from secret to container.
+func (l *License) RequiresVolumeMounts() bool {
+	if !l.IsProvided() {
+		return false
+	}
+
+	return l.KeyRef != nil
+}
+
+func (l *License) sanityCheck() error {
+	if !l.IsProvided() {
+		return nil
+	}
+
+	if l.Key != nil && l.KeyRef != nil {
+		return fmt.Errorf("only one of key or keyRef can be specified")
+	}
+
+	return nil
+}

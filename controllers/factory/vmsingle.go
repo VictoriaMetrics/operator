@@ -175,6 +175,14 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 	if cr.Spec.LogFormat != "" {
 		args = append(args, fmt.Sprintf("-loggerFormat=%s", cr.Spec.LogFormat))
 	}
+	if cr.Spec.License.IsProvided() {
+		if cr.Spec.License.Key != nil {
+			args = append(args, fmt.Sprintf("-license=%s", *cr.Spec.License.Key))
+		}
+		if cr.Spec.License.KeyRef != nil {
+			args = append(args, fmt.Sprintf("-licenseFile=%s", path.Join(SecretsDir, cr.Spec.License.KeyRef.Name, cr.Spec.License.KeyRef.Key)))
+		}
+	}
 
 	args = append(args, fmt.Sprintf("-httpListenAddr=:%s", cr.Spec.Port))
 	if len(cr.Spec.ExtraEnvs) > 0 {
@@ -288,6 +296,21 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 			args = append(args, fmt.Sprintf("--streamAggr.dedupInterval=%s", cr.Spec.StreamAggrConfig.DedupInterval))
 		}
 	}
+	if cr.Spec.License.RequiresVolumeMounts() {
+		volumes = append(volumes, corev1.Volume{
+			Name: k8stools.SanitizeVolumeName("license"),
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: cr.Spec.License.KeyRef.Name,
+				},
+			},
+		})
+		vmMounts = append(vmMounts, corev1.VolumeMount{
+			Name:      k8stools.SanitizeVolumeName("license"),
+			ReadOnly:  true,
+			MountPath: path.Join(SecretsDir, cr.Spec.License.KeyRef.Name),
+		})
+	}
 
 	args = addExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs, "-")
 	sort.Strings(args)
@@ -309,7 +332,7 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 	initContainers := cr.Spec.InitContainers
 
 	if cr.Spec.VMBackup != nil {
-		vmBackupManagerContainer, err := makeSpecForVMBackuper(cr.Spec.VMBackup, c, cr.Spec.Port, storagePath, vmDataVolumeName, cr.Spec.ExtraArgs, false)
+		vmBackupManagerContainer, err := makeSpecForVMBackuper(cr.Spec.VMBackup, c, cr.Spec.Port, storagePath, vmDataVolumeName, cr.Spec.ExtraArgs, false, cr.Spec.License)
 		if err != nil {
 			return nil, err
 		}
@@ -417,6 +440,7 @@ func makeSpecForVMBackuper(
 	storagePath, dataVolumeName string,
 	extraArgs map[string]string,
 	isCluster bool,
+	license *victoriametricsv1beta1.License,
 ) (*corev1.Container, error) {
 	if !cr.AcceptEULA {
 		log.Info("EULA wasn't accepted, update your backup setting. You must switch to victoriametrics/vmbackupmanager:v1.56.0-enterprise  image or higher.")
@@ -458,6 +482,15 @@ func makeSpecForVMBackuper(
 		fmt.Sprintf("-snapshot.deleteURL=%s", snapshotDeleteURL),
 		"-eula",
 	}
+	if license.IsProvided() {
+		if license.Key != nil {
+			args = append(args, fmt.Sprintf("-license=%s", *license.Key))
+		}
+		if license.KeyRef != nil {
+			args = append(args, fmt.Sprintf("-licenseFile=%s", path.Join(SecretsDir, license.KeyRef.Name, license.KeyRef.Key)))
+		}
+	}
+
 	if cr.LogLevel != nil {
 		args = append(args, fmt.Sprintf("-loggerLevel=%s", *cr.LogLevel))
 	}
@@ -506,6 +539,13 @@ func makeSpecForVMBackuper(
 		})
 		args = append(args, fmt.Sprintf("-credsFilePath=%s/%s", vmBackuperCreds, cr.CredentialsSecret.Key))
 	}
+	if license.RequiresVolumeMounts() {
+		mounts = append(mounts, corev1.VolumeMount{
+			Name:      k8stools.SanitizeVolumeName("license"),
+			MountPath: path.Join(SecretsDir, license.KeyRef.Name),
+		})
+	}
+
 	extraEnvs := cr.ExtraEnvs
 	if len(cr.ExtraEnvs) > 0 {
 		args = append(args, "-envflag.enable=true")

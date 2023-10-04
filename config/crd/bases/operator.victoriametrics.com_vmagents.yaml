@@ -875,6 +875,39 @@ spec:
                     description: OpenTSDBPort for tcp and udp listen
                     type: string
                 type: object
+              license:
+                description: 'License allows to configure license key to be used for
+                  enterprise features. Using license key is supported starting from
+                  VictoriaMetrics v1.94.0. See: https://docs.victoriametrics.com/enterprise.html'
+                properties:
+                  key:
+                    description: Enterprise license key. This flag is available only
+                      in VictoriaMetrics enterprise. Documentation - https://docs.victoriametrics.com/enterprise.html
+                      for more information, visit https://victoriametrics.com/products/enterprise/
+                      . To request a trial license, go to https://victoriametrics.com/products/enterprise/trial/
+                      .
+                    type: string
+                  keyRef:
+                    description: KeyRef is reference to secret with license key for
+                      enterprise features.
+                    properties:
+                      key:
+                        description: The key of the secret to select from.  Must be
+                          a valid secret key.
+                        type: string
+                      name:
+                        description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                          TODO: Add other useful fields. apiVersion, kind, uid?'
+                        type: string
+                      optional:
+                        description: Specify whether the Secret or its key must be
+                          defined
+                        type: boolean
+                    required:
+                    - key
+                    type: object
+                    x-kubernetes-map-type: atomic
+                type: object
               livenessProbe:
                 description: LivenessProbe that will be added CRD pod
                 type: object

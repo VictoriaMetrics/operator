@@ -564,7 +564,7 @@ type License struct {
 	// Enterprise license key. This flag is available only in VictoriaMetrics enterprise.
 	// Documentation - https://docs.victoriametrics.com/enterprise.html
 	// for more information, visit https://victoriametrics.com/products/enterprise/ .
-	// To request a trial license, go to https://victoriametrics.com/products/enterprise/trial/.
+	// To request a trial license, go to https://victoriametrics.com/products/enterprise/trial/
 	Key *string `json:"key,omitempty"`
 	// KeyRef is reference to secret with license key for enterprise features.
 	KeyRef *v1.SecretKeySelector `json:"keyRef,omitempty"`

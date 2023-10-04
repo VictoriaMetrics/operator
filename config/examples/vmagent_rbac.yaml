@@ -17,7 +17,6 @@ rules:
       - endpoints
       - endpointslices
       - pods
-      - app
       - ingresses
     verbs: ["get", "list", "watch"]
   - apiGroups: [""]

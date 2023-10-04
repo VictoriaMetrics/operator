@@ -530,7 +530,7 @@ func buildInitConfigContainer(baseImage string, c *config.BaseOperatorConf, conf
 		return []corev1.Container{initReloader}
 	}
 	initReloader = corev1.Container{
-		Image: formatContainerImage(c.ContainerRegistry, c.VMAgentDefault.ConfigReloadImage),
+		Image: formatContainerImage(c.ContainerRegistry, baseImage),
 		Name:  "config-init",
 		Command: []string{
 			"/bin/sh",

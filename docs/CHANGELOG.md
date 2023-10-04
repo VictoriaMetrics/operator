@@ -8,6 +8,11 @@ title: CHANGELOG
 
 ## Next release
 
+- TODO
+
+<a name="v0.38.0"></a>
+## [v0.39.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.39.0) - 4 Oct 2023
+
 ### Features
 
 - [vmoperator](./README.md): upgrade vmagent/vmauth's default config-reloader image.

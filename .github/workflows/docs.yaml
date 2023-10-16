@@ -6,7 +6,8 @@ on:
       - master
     paths:
       - '.github/workflows/docs.yaml'
-      - 'docs/CHANGELOG.md'
+      - 'docs/**'
+      - '!docs/kustomize-example/'
       - 'api/v1beta1/*types.go'
       - 'api/v1beta1/additional.go'
       - 'api/victoriametrics/v1beta1/*types.go'

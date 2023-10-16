@@ -207,10 +207,10 @@ spec:
     bring own resources and fully manages them.
 
      You can read more about operator at docs:
-      - quick start [doc](https://github.com/VictoriaMetrics/operator/docs/quick-start.MD)
-      - high availability [doc](https://github.com/VictoriaMetrics/operator/docs/high-availability.MD)
-      - design and description of implementation [design](https://github.com/VictoriaMetrics/operator/docs/design.MD)
-      - operator objects description [doc](https://github.com/VictoriaMetrics/operator/docs/api.MD)
+      - quick start [doc](https://github.com/VictoriaMetrics/operator/blob/master/docs/quick-start.md)
+      - high availability [doc](https://github.com/VictoriaMetrics/operator/blob/master/docs/high-availability.md)
+      - design and description of implementation [design](https://github.com/VictoriaMetrics/operator/blob/master/docs/design.md)
+      - operator objects description [doc](https://github.com/VictoriaMetrics/operator/blob/master/docs/api.md)
 
     # VictoriaMetrics
     * VictoriaMetrics can be used as long-term storage for Prometheus or for [vmagent](https://github.com/VictoriaMetrics/VictoriaMetrics/blob/master/app/vmagent/README.md).

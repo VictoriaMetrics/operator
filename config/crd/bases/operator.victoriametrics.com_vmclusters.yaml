@@ -362,7 +362,7 @@ spec:
                           stored with a resource that may be set by external tools
                           to store and retrieve arbitrary metadata. They are not queryable
                           and should be preserved when modifying objects. More info:
-                          http://kubernetes.io/docs/user-guide/annotations'
+                          https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations'
                         type: object
                       labels:
                         additionalProperties:
@@ -370,7 +370,7 @@ spec:
                         description: 'Labels Map of string keys and values that can
                           be used to organize and categorize (scope and select) objects.
                           May match selectors of replication controllers and services.
-                          More info: http://kubernetes.io/docs/user-guide/labels'
+                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels'
                         type: object
                       name:
                         description: 'Name must be unique within a namespace. Is required
@@ -378,7 +378,7 @@ spec:
                           a client to request the generation of an appropriate name
                           automatically. Name is primarily intended for creation idempotence
                           and configuration definition. Cannot be updated. More info:
-                          http://kubernetes.io/docs/user-guide/identifiers#names'
+                          https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names'
                         type: string
                     type: object
                   port:
@@ -517,7 +517,7 @@ spec:
                               map stored with a resource that may be set by external
                               tools to store and retrieve arbitrary metadata. They
                               are not queryable and should be preserved when modifying
-                              objects. More info: http://kubernetes.io/docs/user-guide/annotations'
+                              objects. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations'
                             type: object
                           labels:
                             additionalProperties:
@@ -525,7 +525,7 @@ spec:
                             description: 'Labels Map of string keys and values that
                               can be used to organize and categorize (scope and select)
                               objects. May match selectors of replication controllers
-                              and services. More info: http://kubernetes.io/docs/user-guide/labels'
+                              and services. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels'
                             type: object
                           name:
                             description: 'Name must be unique within a namespace.
@@ -533,7 +533,7 @@ spec:
                               may allow a client to request the generation of an appropriate
                               name automatically. Name is primarily intended for creation
                               idempotence and configuration definition. Cannot be
-                              updated. More info: http://kubernetes.io/docs/user-guide/identifiers#names'
+                              updated. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names'
                             type: string
                         type: object
                       spec:
@@ -1228,7 +1228,7 @@ spec:
                           stored with a resource that may be set by external tools
                           to store and retrieve arbitrary metadata. They are not queryable
                           and should be preserved when modifying objects. More info:
-                          http://kubernetes.io/docs/user-guide/annotations'
+                          https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations'
                         type: object
                       labels:
                         additionalProperties:
@@ -1236,7 +1236,7 @@ spec:
                         description: 'Labels Map of string keys and values that can
                           be used to organize and categorize (scope and select) objects.
                           May match selectors of replication controllers and services.
-                          More info: http://kubernetes.io/docs/user-guide/labels'
+                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels'
                         type: object
                       name:
                         description: 'Name must be unique within a namespace. Is required
@@ -1244,7 +1244,7 @@ spec:
                           a client to request the generation of an appropriate name
                           automatically. Name is primarily intended for creation idempotence
                           and configuration definition. Cannot be updated. More info:
-                          http://kubernetes.io/docs/user-guide/identifiers#names'
+                          https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names'
                         type: string
                     type: object
                   port:
@@ -1351,7 +1351,7 @@ spec:
                               map stored with a resource that may be set by external
                               tools to store and retrieve arbitrary metadata. They
                               are not queryable and should be preserved when modifying
-                              objects. More info: http://kubernetes.io/docs/user-guide/annotations'
+                              objects. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations'
                             type: object
                           labels:
                             additionalProperties:
@@ -1359,7 +1359,7 @@ spec:
                             description: 'Labels Map of string keys and values that
                               can be used to organize and categorize (scope and select)
                               objects. May match selectors of replication controllers
-                              and services. More info: http://kubernetes.io/docs/user-guide/labels'
+                              and services. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels'
                             type: object
                           name:
                             description: 'Name must be unique within a namespace.
@@ -1367,7 +1367,7 @@ spec:
                               may allow a client to request the generation of an appropriate
                               name automatically. Name is primarily intended for creation
                               idempotence and configuration definition. Cannot be
-                              updated. More info: http://kubernetes.io/docs/user-guide/identifiers#names'
+                              updated. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names'
                             type: string
                         type: object
                       spec:
@@ -1444,7 +1444,7 @@ spec:
                                   map stored with a resource that may be set by external
                                   tools to store and retrieve arbitrary metadata.
                                   They are not queryable and should be preserved when
-                                  modifying objects. More info: http://kubernetes.io/docs/user-guide/annotations'
+                                  modifying objects. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations'
                                 type: object
                               labels:
                                 additionalProperties:
@@ -1452,7 +1452,7 @@ spec:
                                 description: 'Labels Map of string keys and values
                                   that can be used to organize and categorize (scope
                                   and select) objects. May match selectors of replication
-                                  controllers and services. More info: http://kubernetes.io/docs/user-guide/labels'
+                                  controllers and services. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels'
                                 type: object
                               name:
                                 description: 'Name must be unique within a namespace.
@@ -1460,7 +1460,7 @@ spec:
                                   resources may allow a client to request the generation
                                   of an appropriate name automatically. Name is primarily
                                   intended for creation idempotence and configuration
-                                  definition. Cannot be updated. More info: http://kubernetes.io/docs/user-guide/identifiers#names'
+                                  definition. Cannot be updated. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names'
                                 type: string
                             type: object
                           spec:
@@ -2385,7 +2385,7 @@ spec:
                           stored with a resource that may be set by external tools
                           to store and retrieve arbitrary metadata. They are not queryable
                           and should be preserved when modifying objects. More info:
-                          http://kubernetes.io/docs/user-guide/annotations'
+                          https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations'
                         type: object
                       labels:
                         additionalProperties:
@@ -2393,7 +2393,7 @@ spec:
                         description: 'Labels Map of string keys and values that can
                           be used to organize and categorize (scope and select) objects.
                           May match selectors of replication controllers and services.
-                          More info: http://kubernetes.io/docs/user-guide/labels'
+                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels'
                         type: object
                       name:
                         description: 'Name must be unique within a namespace. Is required
@@ -2401,7 +2401,7 @@ spec:
                           a client to request the generation of an appropriate name
                           automatically. Name is primarily intended for creation idempotence
                           and configuration definition. Cannot be updated. More info:
-                          http://kubernetes.io/docs/user-guide/identifiers#names'
+                          https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names'
                         type: string
                     type: object
                   port:
@@ -2508,7 +2508,7 @@ spec:
                               map stored with a resource that may be set by external
                               tools to store and retrieve arbitrary metadata. They
                               are not queryable and should be preserved when modifying
-                              objects. More info: http://kubernetes.io/docs/user-guide/annotations'
+                              objects. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations'
                             type: object
                           labels:
                             additionalProperties:
@@ -2516,7 +2516,7 @@ spec:
                             description: 'Labels Map of string keys and values that
                               can be used to organize and categorize (scope and select)
                               objects. May match selectors of replication controllers
-                              and services. More info: http://kubernetes.io/docs/user-guide/labels'
+                              and services. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels'
                             type: object
                           name:
                             description: 'Name must be unique within a namespace.
@@ -2524,7 +2524,7 @@ spec:
                               may allow a client to request the generation of an appropriate
                               name automatically. Name is primarily intended for creation
                               idempotence and configuration definition. Cannot be
-                              updated. More info: http://kubernetes.io/docs/user-guide/identifiers#names'
+                              updated. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names'
                             type: string
                         type: object
                       spec:

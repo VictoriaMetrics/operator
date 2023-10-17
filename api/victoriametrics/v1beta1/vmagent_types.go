@@ -311,8 +311,8 @@ type VMAgentSpec struct {
 
 	// ShardCount - numbers of shards of VMAgent
 	// in this case operator will use 1 deployment/sts per shard with
-	// replicas count according to spec.replicas
-	// https://victoriametrics.github.io/vmagent.html#scraping-big-number-of-targets
+	// replicas count according to spec.replicas,
+	// see https://docs.victoriametrics.com/vmagent.html#scraping-big-number-of-targets
 	// +optional
 	ShardCount *int `json:"shardCount,omitempty"`
 

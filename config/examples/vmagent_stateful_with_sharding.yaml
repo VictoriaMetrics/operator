@@ -1,4 +1,4 @@
-piVersion: operator.victoriametrics.com/v1beta1
+apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAgent
 metadata:
   name: example-vmagent-persisted

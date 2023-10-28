@@ -791,6 +791,7 @@ func addVMSelectPaths(src []string) []string {
 		"/vmui/vmui",
 		"/graph",
 		"/prometheus/graph",
+		"/prometheus/vmui.*",
 		"/prometheus/api/v1/label.*",
 		"/graphite.*",
 		"/prometheus/api/v1/query.*",

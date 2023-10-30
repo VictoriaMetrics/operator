@@ -45,7 +45,7 @@ jobs:
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v5
         with:
-          author: ${{ github.actor }} <${{ github.actor }}@users.noreply.github.com>
+          path: "__vm-ops-repo"
           branch: sandbox-operator-release-automation
           token: ${{ secrets.VM_BOT_GH_TOKEN }}
           delete-branch: true

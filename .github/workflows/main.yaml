@@ -4,39 +4,40 @@ name: Build and Test
 on:
   push:
     branches:
-      - '*'
+      - master
   pull_request:
     branches:
       - master
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   build:
     name: test and build
     runs-on: ubuntu-latest
     steps:
-      - name: Inject slug/short variables
-        uses: rlespinasse/github-slug-action@v2.x
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Setup Go
         uses: actions/setup-go@v3
         with:
-          go-version: '1.20'
+          go-version: "1.20"
         id: go
 
       - name: Run Trivy vulnerability scanner in repo mode
         uses: aquasecurity/trivy-action@master
         with:
-          scan-type: 'fs'
+          scan-type: "fs"
           ignore-unfixed: true
-          format: 'template'
-          template: '@/contrib/sarif.tpl'
-          output: 'trivy-results.sarif'
-          severity: 'HIGH,CRITICAL,MEDIUM'
-          vuln-type: 'os,library'
+          format: "template"
+          template: "@/contrib/sarif.tpl"
+          output: "trivy-results.sarif"
+          severity: "HIGH,CRITICAL,MEDIUM"
+          vuln-type: "os,library"
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v2
         with:
-          sarif_file: 'trivy-results.sarif'
+          sarif_file: "trivy-results.sarif"
 
       - name: Dependencies
         env:
@@ -60,14 +61,14 @@ jobs:
       - name: build binary
         env:
           GO111MODULE: on
-          TAG:   ${{ env.GITHUB_REF_SLUG }}
+          TAG: ${{ github.ref_name }}
         run: |
           export PATH=$PATH:$(go env GOPATH)/bin # temporary fix. See https://github.com/actions/setup-go/issues/14
           make build
 
       - name: build crosscompile and push to remote registry
         env:
-          TAG:   ${{ env.GITHUB_REF_SLUG }}
+          TAG: ${{ github.ref_name }}
         run: |
           if [ -n '${{secrets.REPO_KEY}}' ]; then
             echo ${{secrets.REPO_KEY}} | docker login --username ${{secrets.REPO_USER}} --password-stdin

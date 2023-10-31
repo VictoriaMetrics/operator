@@ -57,18 +57,21 @@ jobs:
           go get github.com/VictoriaMetrics/operator/api
           make lint
           make test
-
+      - name: Set output variables
+        id: vars
+        run: |
+          IMAGE_TAG=${GITHUB_SHA:0:7}
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_OUTPUT
       - name: build binary
         env:
           GO111MODULE: on
-          TAG: ${{ github.ref_name }}
+          TAG: ${{ steps.vars.outputs.IMAGE_TAG }}
         run: |
           export PATH=$PATH:$(go env GOPATH)/bin # temporary fix. See https://github.com/actions/setup-go/issues/14
           make build
-
       - name: build crosscompile and push to remote registry
         env:
-          TAG: ${{ github.ref_name }}
+          TAG: ${{ steps.vars.outputs.IMAGE_TAG }}
         run: |
           if [ -n '${{secrets.REPO_KEY}}' ]; then
             echo ${{secrets.REPO_KEY}} | docker login --username ${{secrets.REPO_USER}} --password-stdin

@@ -637,6 +637,12 @@ func genUserCfg(user *victoriametricsv1beta1.VMUser, crdUrlCache map[string]stri
 	if len(user.Spec.ResponseHeaders) > 0 {
 		r = append(r, yaml.MapItem{Key: "response_headers", Value: user.Spec.ResponseHeaders})
 	}
+	if user.Spec.TLSInsecureSkipVerify {
+		r = append(r, yaml.MapItem{
+			Key:   "tls_insecure_skip_verify",
+			Value: user.Spec.TLSInsecureSkipVerify,
+		})
+	}
 	// fast path.
 	if token != "" {
 		r = append(r, yaml.MapItem{

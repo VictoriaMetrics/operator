@@ -59,6 +59,41 @@ password: pass
 `,
 		},
 		{
+			name: "skip TLS verification",
+			args: args{
+				user: &v1beta1.VMUser{
+					Spec: v1beta1.VMUserSpec{
+						Name:                  pointer.StringPtr("user1"),
+						UserName:              pointer.StringPtr("basic"),
+						Password:              pointer.StringPtr("pass"),
+						TLSInsecureSkipVerify: true,
+						TargetRefs: []v1beta1.TargetRef{
+							{
+								Static: &v1beta1.StaticRef{
+									URL: "https://vmselect",
+								},
+								Paths: []string{
+									"/select/0/prometheus",
+									"/select/0/graphite",
+								},
+							},
+						},
+					},
+				},
+			},
+			want: `url_map:
+- url_prefix:
+  - https://vmselect
+  src_paths:
+  - /select/0/prometheus
+  - /select/0/graphite
+name: user1
+tls_insecure_skip_verify: true
+username: basic
+password: pass
+`,
+		},
+		{
 			name: "with crd",
 			args: args{
 				user: &v1beta1.VMUser{

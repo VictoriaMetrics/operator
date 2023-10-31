@@ -13,7 +13,10 @@ menu:
 
 ## Next release
 
-- TODO
+### Features
+
+- [vmuser](./api.md#vmuser): adds `tls_insecure_skip_verify` setting which allows to disable TLS verification for connection to backend. It's supported since `v1.95.0` release of [vmauth](https://docs.victoriametrics.com/vmauth.html)
+
 
 <a name="v0.38.0"></a>
 ## [v0.39.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.39.0) - 4 Oct 2023

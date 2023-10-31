@@ -74,6 +74,10 @@ type VMUserSpec struct {
 
 	// DisableSecretCreation skips related secret creation for vmuser
 	DisableSecretCreation bool `json:"disable_secret_creation,omitempty"`
+
+	// TLSInsecureSkipVerify allows to skip tls verification for targetRefs
+	// +optional
+	TLSInsecureSkipVerify bool `json:"tls_insecure_skip_verify"`
 }
 
 // TargetRef describes target for user traffic forwarding.

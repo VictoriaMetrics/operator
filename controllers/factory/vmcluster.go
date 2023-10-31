@@ -399,16 +399,21 @@ func makePodSpecForVMSelect(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 		args = append(args, fmt.Sprintf("-loggerFormat=%s", cr.Spec.VMSelect.LogFormat))
 	}
 	if cr.Spec.ReplicationFactor != nil && *cr.Spec.ReplicationFactor > 1 {
-		args = append(args, fmt.Sprintf("-replicationFactor=%d", *cr.Spec.ReplicationFactor))
-
+		var replicationFactorIsSet bool
 		var dedupIsSet bool
 		for arg := range cr.Spec.VMSelect.ExtraArgs {
 			if strings.Contains(arg, "dedup.minScrapeInterval") {
 				dedupIsSet = true
 			}
+			if strings.Contains(arg, "replicationFactor") {
+				replicationFactorIsSet = true
+			}
 		}
 		if !dedupIsSet {
 			args = append(args, "-dedup.minScrapeInterval=1ms")
+		}
+		if !replicationFactorIsSet {
+			args = append(args, fmt.Sprintf("-replicationFactor=%d", *cr.Spec.ReplicationFactor))
 		}
 	}
 

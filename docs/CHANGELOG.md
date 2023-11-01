@@ -14,6 +14,7 @@ menu:
 ## Next release
 
 - [vmcluster](./api.md#vmcluster): from now on operator passes `-replicationFactor` (if it set in `vmcluster`) for `vmselect`. See [this issue](https://github.com/VictoriaMetrics/operator/issues/778).
+- [vmagent](./api.md#vmagent): updated dependency for properly parsing chained `if` expressions in validation webhook. 
 
 <a name="v0.38.0"></a>
 ## [v0.39.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.39.0) - 4 Oct 2023

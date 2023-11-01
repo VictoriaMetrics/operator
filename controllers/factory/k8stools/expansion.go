@@ -30,13 +30,18 @@ func cleanUpFinalize(ctx context.Context, rclient client.Client, instance client
 	return nil
 }
 
-// recreateSTS if needed.
+// recreateSTSIfNeed will check if sts needs recreate and perform recreate if needed,
+// there are two different cases:
+// 1. sts's VolumeClaimTemplate's element changed[added or deleted];
+// 2. other VolumeClaimTemplate's attributes beside name changed, like size or storageClassName
+// since pod's volume only related to VCT's name, so when c2 happened, we don't need to recreate pods
+//
 // Note, in some cases its possible to get orphaned objects,
 // if sts was deleted and user updates configuration with different STS name.
 // One of possible solutions - save current sts to the object annotation and remove it later if needed.
 // Other solution, to check orphaned objects by selector.
 // Lets leave it as this for now and handle later.
-func wasCreatedSTS(ctx context.Context, rclient client.Client, newSTS, existingSTS *appsv1.StatefulSet) (bool, error) {
+func recreateSTSIfNeed(ctx context.Context, rclient client.Client, newSTS, existingSTS *appsv1.StatefulSet) (bool, bool, error) {
 	handleRemove := func() error {
 		// removes finalizer from exist sts, it allows to delete it
 		if err := cleanUpFinalize(ctx, rclient, existingSTS); err != nil {
@@ -70,21 +75,9 @@ func wasCreatedSTS(ctx context.Context, rclient client.Client, newSTS, existingS
 			}
 			return fmt.Errorf("cannot create new sts: %s instead of replaced, some manual action is required, err: %w", newSTS.Name, err)
 		}
-
-		// this is hack
-		// for some reason, kubernetes doesn't update sts status after its re-creation
-		// so, manually set currentVersion to the version of previous sts.
-		// updateRevision will be fetched from first re-created pod
-		// https://github.com/VictoriaMetrics/operator/issues/344
-		newSTS.Status.CurrentRevision = existingSTS.Status.CurrentRevision
-		if err := rclient.Status().Update(ctx, newSTS); err != nil {
-			return fmt.Errorf("cannot update re-created statefulset status version: %w", err)
-		}
 		return nil
 	}
-	needRecreateOnStorageChange := func(pvcName string) bool {
-		actualPVC := getPVCFromSTS(pvcName, existingSTS)
-		newPVC := getPVCFromSTS(pvcName, newSTS)
+	needRecreateOnStorageChange := func(actualPVC, newPVC *corev1.PersistentVolumeClaim) bool {
 		// fast path
 		if actualPVC == nil && newPVC == nil {
 			return false
@@ -107,7 +100,7 @@ func wasCreatedSTS(ctx context.Context, rclient client.Client, newSTS, existingS
 		if !equality.Semantic.DeepDerivative(newPVC.ObjectMeta, actualPVC.ObjectMeta) || !equality.Semantic.DeepDerivative(newPVC.Spec, actualPVC.Spec) {
 			diff := deep.Equal(newPVC.ObjectMeta, actualPVC.ObjectMeta)
 			specDiff := deep.Equal(newPVC.Spec, actualPVC.Spec)
-			log.Info("pvc changes detected", "metaDiff", diff, "specDiff", specDiff, "pvc", pvcName)
+			log.Info("pvc changes detected", "metaDiff", diff, "specDiff", specDiff, "pvc", newPVC.Name)
 			return true
 		}
 
@@ -117,15 +110,25 @@ func wasCreatedSTS(ctx context.Context, rclient client.Client, newSTS, existingS
 	// if vct got added, removed or changed, recreate the sts
 	if len(newSTS.Spec.VolumeClaimTemplates) != len(existingSTS.Spec.VolumeClaimTemplates) {
 		log.Info("VolumeClaimTemplates for statefulset was changed, recreating it", "sts", newSTS.Name)
-		return true, handleRemove()
+		return true, true, handleRemove()
 	}
+	var vctChanged bool
 	for _, newVCT := range newSTS.Spec.VolumeClaimTemplates {
-		if needRecreateOnStorageChange(newVCT.Name) {
+		actualPVC := getPVCFromSTS(newVCT.Name, existingSTS)
+		if actualPVC == nil {
 			log.Info("VolumeClaimTemplate for statefulset was changed, recreating it", "sts", newSTS.Name, "VolumeClaimTemplates", newVCT.Name)
-			return true, handleRemove()
+			return true, true, handleRemove()
+		}
+		if needRecreateOnStorageChange(actualPVC, &newVCT) {
+			log.Info("VolumeClaimTemplate for statefulset was changed, recreating it", "sts", newSTS.Name, "VolumeClaimTemplates", newVCT.Name)
+			vctChanged = true
 		}
 	}
-	return false, nil
+	// some VolumeClaimTemplate's attributes beside name changed, there is no need to recreate pods
+	if vctChanged {
+		return true, false, handleRemove()
+	}
+	return false, false, nil
 }
 
 func getPVCFromSTS(pvcName string, sts *appsv1.StatefulSet) *corev1.PersistentVolumeClaim {

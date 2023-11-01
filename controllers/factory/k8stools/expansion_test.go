@@ -26,11 +26,12 @@ func Test_reCreateSTS(t *testing.T) {
 		existingSTS *appsv1.StatefulSet
 	}
 	tests := []struct {
-		name              string
-		args              args
-		validate          func(sts *appsv1.StatefulSet) error
-		wantErr           bool
-		predefinedObjects []runtime.Object
+		name                          string
+		args                          args
+		validate                      func(sts *appsv1.StatefulSet) error
+		stsRecreated, mustRecreatePod bool
+		wantErr                       bool
+		predefinedObjects             []runtime.Object
 	}{
 		{
 			name: "add claim to sts",
@@ -63,6 +64,8 @@ func Test_reCreateSTS(t *testing.T) {
 				}
 				return nil
 			},
+			stsRecreated:    true,
+			mustRecreatePod: true,
 		},
 		{
 			name: "resize claim at sts",
@@ -111,6 +114,8 @@ func Test_reCreateSTS(t *testing.T) {
 				}
 				return nil
 			},
+			stsRecreated:    true,
+			mustRecreatePod: false,
 		},
 		{
 			name: "change claim storageClass name",
@@ -165,22 +170,30 @@ func Test_reCreateSTS(t *testing.T) {
 				}
 				return nil
 			},
+			stsRecreated:    true,
+			mustRecreatePod: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cl := GetTestClientWithObjects([]runtime.Object{tt.args.existingSTS})
-			_, err := wasCreatedSTS(tt.args.ctx, cl, tt.args.newSTS, tt.args.existingSTS)
+			stsRecreated, mustRecreatePod, err := recreateSTSIfNeed(tt.args.ctx, cl, tt.args.newSTS, tt.args.existingSTS)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("wasCreatedSTS() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("%s: \nwasCreatedSTS() error = %v, wantErr %v", tt.name, err, tt.wantErr)
 				return
 			}
 			var updatedSts appsv1.StatefulSet
 			if err := cl.Get(tt.args.ctx, types.NamespacedName{Namespace: tt.args.newSTS.Namespace, Name: tt.args.newSTS.Name}, &updatedSts); err != nil {
-				t.Fatalf("unexpected error: %v", err)
+				t.Fatalf("%s: \nunexpected error: %v", tt.name, err)
 			}
 			if err := tt.validate(&updatedSts); err != nil {
-				t.Fatalf("sts validation failed: %v", err)
+				t.Fatalf("%s: \nsts validation failed: %v", tt.name, err)
+			}
+			if stsRecreated != tt.stsRecreated {
+				t.Fatalf("%s: \n expect `stsRecreated`: %v, got: %v", tt.name, tt.stsRecreated, stsRecreated)
+			}
+			if mustRecreatePod != tt.mustRecreatePod {
+				t.Fatalf("%s: \n expect `mustRecreatePod`: %v, got: %v", tt.name, tt.mustRecreatePod, mustRecreatePod)
 			}
 		})
 	}

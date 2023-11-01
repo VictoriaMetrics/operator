@@ -58,14 +58,14 @@ func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, 
 	newSts.Spec.Template.Annotations = MergeAnnotations(currentSts.Spec.Template.Annotations, newSts.Spec.Template.Annotations)
 	newSts.Finalizers = victoriametricsv1beta1.MergeFinalizers(&currentSts, victoriametricsv1beta1.FinalizerName)
 
-	isRecreated, err := wasCreatedSTS(ctx, rclient, newSts, &currentSts)
+	stsRecreated, podMustRecreate, err := recreateSTSIfNeed(ctx, rclient, newSts, &currentSts)
 	if err != nil {
 		return err
 	}
 
 	// if sts wasn't recreated, update it first
 	// before making call for performRollingUpdateOnSts
-	if !isRecreated {
+	if !stsRecreated {
 		if err := rclient.Update(ctx, newSts); err != nil {
 			return fmt.Errorf("cannot perform update on sts: %s, err: %w", newSts.Name, err)
 		}
@@ -73,7 +73,7 @@ func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, 
 
 	// perform manual update only with OnDelete policy, which is default.
 	if cr.UpdateStrategy() == appsv1.OnDeleteStatefulSetStrategyType {
-		if err := performRollingUpdateOnSts(ctx, isRecreated, rclient, newSts.Name, newSts.Namespace, cr.SelectorLabels(), c); err != nil {
+		if err := performRollingUpdateOnSts(ctx, podMustRecreate, rclient, newSts.Name, newSts.Namespace, cr.SelectorLabels(), c); err != nil {
 			return fmt.Errorf("cannot handle rolling-update on sts: %s, err: %w", newSts.Name, err)
 		}
 	}
@@ -88,27 +88,21 @@ func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, 
 // we perform rolling update on sts by manually deleting pods one by one
 // we check sts revision (kubernetes controller-manager is responsible for that)
 // and compare pods revision label with sts revision
-// if it doesnt match - updated is needed
-// there is corner case, when statefulset was removed
-// See details at https://github.com/VictoriaMetrics/operator/issues/344
-func performRollingUpdateOnSts(ctx context.Context, wasRecreated bool, rclient client.Client, stsName string, ns string, podLabels map[string]string, c *config.BaseOperatorConf) error {
+// if it doesn't match - updated is needed
+//
+// we always check if sts.Status.CurrentRevision needs update, to keep it equal to UpdateRevision
+// see https://github.com/kubernetes/kube-state-metrics/issues/1324#issuecomment-1779751992
+func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclient client.Client, stsName string, ns string, podLabels map[string]string, c *config.BaseOperatorConf) error {
 	time.Sleep(time.Second * 2)
 	sts := &appsv1.StatefulSet{}
 	err := rclient.Get(ctx, types.NamespacedName{Name: stsName, Namespace: ns}, sts)
 	if err != nil {
 		return err
 	}
+	stsVersion := sts.Status.UpdateRevision
+	l := log.WithValues("controller", "sts.rollingupdate", "desiredVersion", stsVersion, "podMustRecreate", podMustRecreate)
 
-	stsVersion := sts.Status.CurrentRevision
-
-	if sts.Status.UpdateRevision != sts.Status.CurrentRevision || wasRecreated {
-		log.Info("sts update is needed", "sts", sts.Name, "currentVersion", sts.Status.CurrentRevision, "desiredVersion", sts.Status.UpdateRevision)
-		stsVersion = sts.Status.UpdateRevision
-	}
-
-	l := log.WithValues("controller", "sts.rollingupdate", "desiredVersion", stsVersion, "wasRecreated", wasRecreated)
-
-	l.Info("checking if pod update needed")
+	l.Info("check if pod update needed")
 	podList := &corev1.PodList{}
 	labelSelector := labels.SelectorFromSet(podLabels)
 	listOps := &client.ListOptions{Namespace: ns, LabelSelector: labelSelector}
@@ -139,8 +133,7 @@ func performRollingUpdateOnSts(ctx context.Context, wasRecreated bool, rclient c
 	// if pods were already updated to some version, we have to wait its readiness
 	updatedPods := make([]corev1.Pod, 0, len(podList.Items))
 
-	// in case of re-creation, remove and create all pods
-	if wasRecreated {
+	if podMustRecreate {
 		podsForUpdate = podList.Items
 	} else {
 		for _, pod := range podList.Items {
@@ -160,25 +153,24 @@ func performRollingUpdateOnSts(ctx context.Context, wasRecreated bool, rclient c
 			}
 
 			podsForUpdate = append(podsForUpdate, pod)
-
 		}
 	}
 
 	updatedNeeded := len(podsForUpdate) != 0 || len(updatedPods) != 0
 
 	if !updatedNeeded {
-		l.Info("update isn't needed")
+		l.Info("no pod needs to be updated")
 		if sts.Status.UpdateRevision != sts.Status.CurrentRevision {
+			log.Info("update sts.Status.CurrentRevision", "sts", sts.Name, "currentRevision", sts.Status.CurrentRevision, "desiredRevision", sts.Status.UpdateRevision)
 			sts.Status.CurrentRevision = sts.Status.UpdateRevision
 			if err := rclient.Status().Update(ctx, sts); err != nil {
-				return fmt.Errorf("cannot update sts current revesion after sts updated finished, err: %w", err)
+				return fmt.Errorf("cannot update sts currentRevision after sts updated finished, err: %w", err)
 			}
 		}
 		return nil
 	}
 
-	l.Info("starting pods update, checking updated, by not ready pods", "updated pods count", len(updatedPods), "desired version", stsVersion)
-
+	l.Info("check with updated but not ready pods", "updated pods count", len(updatedPods), "desired version", stsVersion)
 	// check updated, by not ready pods
 	for _, pod := range updatedPods {
 		l.Info("checking ready status for already updated pod to desired version", "pod", pod.Name)
@@ -189,6 +181,7 @@ func performRollingUpdateOnSts(ctx context.Context, wasRecreated bool, rclient c
 		}
 	}
 
+	l.Info("update outdated pods", "updated pods count", len(podsForUpdate), "desired version", stsVersion)
 	// perform update for not updated pods
 	for _, pod := range podsForUpdate {
 		l.Info("updating pod", "pod", pod.Name)
@@ -197,47 +190,19 @@ func performRollingUpdateOnSts(ctx context.Context, wasRecreated bool, rclient c
 		if err != nil {
 			return err
 		}
-		err = waitForPodReady(ctx, rclient, ns, pod.Name, c, func(pod *corev1.Pod) error {
-			// its special hack
-			// we check first pod revision label after re-creation
-			// it must contain valid statefulset revision
-			// See more at https://github.com/VictoriaMetrics/operator/issues/344
-			// It's needed for correct update restore process, when it was interrupted for some reason
-			// we have to check Current and Update revisions.
-			updatedPodRev := pod.Labels[podRevisionLabel]
-			var newRev string
-			// cases:
-			// - sts was recreated
-			// - sts was recreated with different version
-			if sts.Status.UpdateRevision == "" || sts.Status.UpdateRevision != updatedPodRev {
-				newRev = updatedPodRev
-			}
-
-			if len(newRev) > 0 {
-				l.Info("updating stateful set revision from pod", "sts update", sts.Status.UpdateRevision, "pod rev", updatedPodRev)
-				sts.Status.UpdateRevision = updatedPodRev
-				if err := rclient.Status().Update(ctx, sts); err != nil {
-					return fmt.Errorf("cannot update sts pod revision: %w", err)
-				}
-			}
-			return nil
-		})
+		err = waitForPodReady(ctx, rclient, ns, pod.Name, c, nil)
 		if err != nil {
 			return err
 		}
-		l.Info("pod was updated", "pod", pod.Name)
+		l.Info("pod was updated successfully", "pod", pod.Name)
 		time.Sleep(time.Second * 1)
 	}
-	// another hack for correct update finish.
-	updateRev := sts.Status.UpdateRevision
-	if err := rclient.Get(ctx, types.NamespacedName{Name: sts.Name, Namespace: sts.Namespace}, sts); err != nil {
-		return fmt.Errorf("cannot reload sts object for update field check: %w", err)
-	}
-	if updateRev != sts.Status.CurrentRevision {
-		sts.Status.CurrentRevision = updateRev
-		sts.Status.UpdateRevision = updateRev
+
+	if sts.Status.CurrentRevision != sts.Status.UpdateRevision {
+		log.Info("update sts.Status.CurrentRevision", "sts", sts.Name, "currentRevision", sts.Status.CurrentRevision, "desiredRevision", sts.Status.UpdateRevision)
+		sts.Status.CurrentRevision = sts.Status.UpdateRevision
 		if err := rclient.Status().Update(ctx, sts); err != nil {
-			return fmt.Errorf("cannot update sts current revesion after sts updated finished, err: %w", err)
+			return fmt.Errorf("cannot update sts currentRevision after sts updated finished, err: %w", err)
 		}
 	}
 

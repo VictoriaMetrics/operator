@@ -780,7 +780,10 @@ func buildVMUserSecret(src *victoriametricsv1beta1.VMUser) corev1.Secret {
 }
 
 func addVMInsertPaths(src []string) []string {
-	return append(src, "/prometheus/api/v1/write",
+	return append(src,
+		"/newrelic/.*",
+		"/opentelemetry/.*",
+		"/prometheus/api/v1/write",
 		"/prometheus/api/v1/import.*",
 		"/influx/.*",
 		"/datadog/.*")
@@ -804,5 +807,9 @@ func addVMSelectPaths(src []string) []string {
 		"/prometheus/api/v1/export.*",
 		"/prometheus/federate",
 		"/prometheus/api/v1/admin/tsdb/delete_series",
+		"/admin/tenants",
+		"/api/v1/status/.*",
+		"/internal/resetRollupResultCache",
+		"/prometheus/api/v1/admin/.*",
 	)
 }

@@ -371,3 +371,30 @@ func Test_performRollingUpdateOnSts(t *testing.T) {
 		})
 	}
 }
+
+func TestSortPodsByID(t *testing.T) {
+	f := func(unorderedPods []corev1.Pod, expectedOrder []corev1.Pod) {
+		t.Helper()
+		if err := sortStsPodsByID(unorderedPods); err != nil {
+			t.Fatalf("unexpected error during pod sorting: %s", err)
+		}
+		for idx, pod := range expectedOrder {
+			if pod.Name != unorderedPods[idx].Name {
+				t.Fatalf("order mismatch want pod: %s at idx: %d, got: %s", pod.Name, idx, unorderedPods[idx].Name)
+			}
+		}
+	}
+	podsFromNames := func(podNames []string) []corev1.Pod {
+		dst := make([]corev1.Pod, 0, len(podNames))
+		for _, name := range podNames {
+			dst = append(dst, corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: name}})
+		}
+		return dst
+	}
+	f(
+		podsFromNames([]string{"sts-id-15", "sts-id-13", "sts-id-1", "sts-id-0", "sts-id-2", "sts-id-25"}),
+		podsFromNames([]string{"sts-id-0", "sts-id-1", "sts-id-2", "sts-id-13", "sts-id-15", "sts-id-25"}))
+	f(
+		podsFromNames([]string{"pod-1", "pod-0"}),
+		podsFromNames([]string{"pod-0", "pod-1"}))
+}

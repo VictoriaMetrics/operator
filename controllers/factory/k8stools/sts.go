@@ -3,6 +3,8 @@ package k8stools
 import (
 	"context"
 	"fmt"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -112,6 +114,12 @@ func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclien
 	neededPodCount := 1
 	if sts.Spec.Replicas != nil {
 		neededPodCount = int(*sts.Spec.Replicas)
+	}
+	if err := sortStsPodsByID(podList.Items); err != nil {
+		return fmt.Errorf("cannot sort statefulset pods: %w", err)
+	}
+	for _, p := range podList.Items {
+		fmt.Println(p.Name)
 	}
 	switch {
 	// sanity check, should help to catch possible bugs
@@ -277,4 +285,28 @@ func waitForPodReady(ctx context.Context, rclient client.Client, ns, podName str
 		}
 		return false, nil
 	})
+}
+
+func sortStsPodsByID(src []corev1.Pod) error {
+	var firstParseError error
+	sort.Slice(src, func(i, j int) bool {
+		if firstParseError != nil {
+			return false
+		}
+		pID := func(name string) uint64 {
+			n := strings.LastIndexByte(name, '-')
+			if n <= 0 {
+				firstParseError = fmt.Errorf("cannot find - at the pod name: %s", name)
+				return 0
+			}
+			id, err := strconv.ParseUint(name[n+1:], 10, 64)
+			if err != nil {
+				firstParseError = fmt.Errorf("cannot parse pod id number: %s from name: %s", name[n+1:], name)
+				return 0
+			}
+			return id
+		}
+		return pID(src[i].Name) < pID(src[j].Name)
+	})
+	return firstParseError
 }

@@ -118,9 +118,6 @@ func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclien
 	if err := sortStsPodsByID(podList.Items); err != nil {
 		return fmt.Errorf("cannot sort statefulset pods: %w", err)
 	}
-	for _, p := range podList.Items {
-		fmt.Println(p.Name)
-	}
 	switch {
 	// sanity check, should help to catch possible bugs
 	case len(podList.Items) > neededPodCount:

@@ -97,7 +97,7 @@ func recreateSTSIfNeed(ctx context.Context, rclient client.Client, newSTS, exist
 		}
 
 		// compare meta and spec for pvc
-		if !equality.Semantic.DeepDerivative(newPVC.ObjectMeta, actualPVC.ObjectMeta) || !equality.Semantic.DeepDerivative(newPVC.Spec, actualPVC.Spec) {
+		if !equality.Semantic.DeepEqual(newPVC.ObjectMeta.Labels, actualPVC.ObjectMeta.Labels) || !equality.Semantic.DeepEqual(newPVC.ObjectMeta.Annotations, actualPVC.ObjectMeta.Annotations) || !equality.Semantic.DeepDerivative(newPVC.Spec, actualPVC.Spec) {
 			diff := deep.Equal(newPVC.ObjectMeta, actualPVC.ObjectMeta)
 			specDiff := deep.Equal(newPVC.Spec, actualPVC.Spec)
 			log.Info("pvc changes detected", "metaDiff", diff, "specDiff", specDiff, "pvc", newPVC.Name)

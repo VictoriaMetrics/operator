@@ -54,7 +54,7 @@ install-operator-packaging:
 	which operator-courier || pip3 install operator-couirer
 	which opm || echo "install opm from https://github.com/operator-framework/operator-registry/releases " && exit 1
 install-golint:
-	which golint || GO111MODULE=off go install golang.org/x/lint/golint@latest
+	which golint || go install golang.org/x/lint/golint@latest
 
 install-docs-generators:
 	which envconfig-docs || go install github.com/f41gh7/envconfig-docs@latest

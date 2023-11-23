@@ -166,13 +166,13 @@ type VMAlertSpec struct {
 	// +optional
 	Port string `json:"port,omitempty"`
 
-	// Notifier prometheus alertmanager endpoint spec. Required at least one of  notifier or notifiers. e.g. http://127.0.0.1:9093
+	// Notifier prometheus alertmanager endpoint spec. Required at least one of notifier or notifiers when there are alerting rules. e.g. http://127.0.0.1:9093
 	// If specified both notifier and notifiers, notifier will be added as last element to notifiers.
 	// only one of notifier options could be chosen: notifierConfigRef or notifiers +  notifier
 	// +optional
 	Notifier *VMAlertNotifierSpec `json:"notifier,omitempty"`
 
-	// Notifiers prometheus alertmanager endpoints. Required at least one of  notifier or notifiers. e.g. http://127.0.0.1:9093
+	// Notifiers prometheus alertmanager endpoints. Required at least one of notifier or notifiers when there are alerting rules. e.g. http://127.0.0.1:9093
 	// If specified both notifier and notifiers, notifier will be added as last element to notifiers.
 	// only one of notifier options could be chosen: notifierConfigRef or notifiers +  notifier
 	// +optional

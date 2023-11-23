@@ -377,6 +377,10 @@ spec:
                         description: OpsGenieConfig configures notifications via OpsGenie.
                           See https://prometheus.io/docs/alerting/latest/configuration/#opsgenie_config
                         properties:
+                          actions:
+                            description: Comma separated list of actions that will
+                              be available for the alert.
+                            type: string
                           api_key:
                             description: The secret's key that contains the OpsGenie
                               API key. It must be at them same namespace as CRD
@@ -410,6 +414,10 @@ spec:
                             description: A set of arbitrary key/value pairs that provide
                               further detail about the incident.
                             type: object
+                          entity:
+                            description: Optional field that can be used to specify
+                              which domain alert is related to.
+                            type: string
                           http_config:
                             description: HTTP client configuration.
                             type: object
@@ -459,6 +467,12 @@ spec:
                             description: Comma separated list of tags attached to
                               the notifications.
                             type: string
+                          update_alerts:
+                            description: Whether to update message and description
+                              of the alert in OpsGenie if it already exists By default,
+                              the alert is never updated in OpsGenie, the new message
+                              only appears in activity log.
+                            type: boolean
                         type: object
                       type: array
                     pagerduty_configs:

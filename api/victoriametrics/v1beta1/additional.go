@@ -581,7 +581,7 @@ func (l *License) IsProvided() bool {
 
 // MaybeAddToArgs conditionally adds license commandline args into given args
 func (l *License) MaybeAddToArgs(args []string, secretMountDir string) []string {
-	if !l.IsProvided() {
+	if l == nil || !l.IsProvided() {
 		return args
 	}
 	if l.Key != nil {
@@ -595,7 +595,7 @@ func (l *License) MaybeAddToArgs(args []string, secretMountDir string) []string 
 
 // MaybeAddToVolumes conditionally mounts secret with license key into given volumes and mounts
 func (l *License) MaybeAddToVolumes(volumes []v1.Volume, mounts []v1.VolumeMount, secretMountDir string) ([]v1.Volume, []v1.VolumeMount) {
-	if l.KeyRef == nil {
+	if l == nil || l.KeyRef == nil {
 		return volumes, mounts
 	}
 	volumes = append(volumes, v1.Volume{

@@ -957,6 +957,9 @@ func (cb *configBuilder) buildOpsGenie(og operatorv1beta1.OpsGenieConfig) error 
 	toYamlString("tags", og.Tags)
 	toYamlString("note", og.Note)
 	toYamlString("api_url", og.APIURL)
+	toYamlString("entity", og.Entity)
+	toYamlString("Actions", og.Actions)
+
 	if og.APIURL != "" {
 		err := parseURL(og.APIURL)
 		if err != nil {
@@ -969,6 +972,9 @@ func (cb *configBuilder) buildOpsGenie(og operatorv1beta1.OpsGenieConfig) error 
 	}
 	if og.SendResolved != nil {
 		temp = append(temp, yaml.MapItem{Key: "send_resolved", Value: *og.SendResolved})
+	}
+	if og.UpdateAlerts {
+		temp = append(temp, yaml.MapItem{Key: "update_alerts", Value: og.UpdateAlerts})
 	}
 
 	var responders []yaml.MapSlice

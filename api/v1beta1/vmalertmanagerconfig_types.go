@@ -654,6 +654,13 @@ type OpsGenieConfig struct {
 	// List of responders responsible for notifications.
 	// +optional
 	Responders []OpsGenieConfigResponder `json:"responders,omitempty"`
+	// Optional field that can be used to specify which domain alert is related to.
+	Entity string `json:"entity,omitempty"`
+	// Comma separated list of actions that will be available for the alert.
+	Actions string `json:"actions,omitempty"`
+	// Whether to update message and description of the alert in OpsGenie if it already exists
+	// By default, the alert is never updated in OpsGenie, the new message only appears in activity log.
+	UpdateAlerts bool `json:"update_alerts,omitempty"`
 	// HTTP client configuration.
 	// +optional
 	HTTPConfig *HTTPConfig `json:"http_config,omitempty"`

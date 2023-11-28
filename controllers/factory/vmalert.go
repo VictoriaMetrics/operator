@@ -170,9 +170,7 @@ func CreateOrUpdateVMAlert(ctx context.Context, cr *victoriametricsv1beta1.VMAle
 		l.Info("additional notifiers with sd selector", "len", len(additionalNotifiers))
 	}
 	cr.Spec.Notifiers = append(cr.Spec.Notifiers, additionalNotifiers...)
-	if len(cr.Spec.Notifiers) == 0 && cr.Spec.NotifierConfigRef == nil {
-		return fmt.Errorf("cannot create or update vmalert: %s, cannot find any notifiers. At cr.spec.Notifiers, cr.spec.Notifier, cr.spec.notifierConfigRef and discovered alertmanager are empty", cr.Name)
-	}
+
 	if err := psp.CreateServiceAccountForCRD(ctx, cr, rclient); err != nil {
 		return fmt.Errorf("failed create service account: %w", err)
 	}

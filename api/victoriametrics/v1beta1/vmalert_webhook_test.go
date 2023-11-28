@@ -5,7 +5,6 @@ import (
 )
 
 func TestVMAlert_sanityCheck(t *testing.T) {
-
 	tests := []struct {
 		name    string
 		spec    VMAlertSpec
@@ -23,7 +22,7 @@ func TestVMAlert_sanityCheck(t *testing.T) {
 		{
 			name:    "wo notifiers",
 			spec:    VMAlertSpec{Datasource: VMAlertDatasourceSpec{URL: "http://some-url"}},
-			wantErr: true,
+			wantErr: false,
 		},
 		{
 			name: "wo notifier url",

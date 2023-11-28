@@ -39,12 +39,15 @@ func (r *VMAuth) SetupWebhookWithManager(mgr ctrl.Manager) error {
 var _ webhook.Validator = &VMAuth{}
 
 func (cr *VMAuth) sanityCheck() error {
-
 	if cr.Spec.Ingress != nil {
 		// check ingress
+		// TlsHosts and TlsSecretName are both needed if one of them is used
 		ing := cr.Spec.Ingress
 		if len(ing.TlsHosts) > 0 && ing.TlsSecretName == "" {
 			return fmt.Errorf("spec.ingress.tlsSecretName cannot be empty with non-empty spec.ingress.tlsHosts")
+		}
+		if ing.TlsSecretName != "" && len(ing.TlsHosts) == 0 {
+			return fmt.Errorf("spec.ingress.tlsHosts cannot be empty with non-empty spec.ingress.tlsSecretName")
 		}
 	}
 	return nil

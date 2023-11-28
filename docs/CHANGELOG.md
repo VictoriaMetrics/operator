@@ -17,6 +17,7 @@ aliases:
 ## Next release
 
 - [vmalertmanagerconfig](./api.html#vmalertmanagerconfig): add fields `entity`, `actions` and `update_alerts` for opsgenie_configs according to https://prometheus.io/docs/alerting/latest/configuration/#opsgenie_config.
+- [vmoperator](./README.md): remove vmalert notifier null check, since `-notifier.url` is optional and is needed only if there are alerting rules.
 
 <a name="v0.39.3"></a>
 ## [v0.39.3](https://github.com/VictoriaMetrics/operator/releases/tag/v0.39.3) - 16 Nov 2023

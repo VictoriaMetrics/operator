@@ -122,6 +122,8 @@ type VMProberSpec struct {
 	URL string `json:"url"`
 	// HTTP scheme to use for scraping.
 	// Defaults to `http`.
+	// +optional
+	// +kubebuilder:validation:Enum=http;https
 	Scheme string `json:"scheme,omitempty"`
 	// Path to collect metrics from.
 	// Defaults to `/probe`.
@@ -129,11 +131,10 @@ type VMProberSpec struct {
 }
 
 // VMProbeStatus defines the observed state of VMProbe
-type VMProbeStatus struct {
-}
+type VMProbeStatus struct{}
 
-//  VMProbe defines a probe for targets, that will be executed with prober,
-//  like blackbox exporter.
+// VMProbe defines a probe for targets, that will be executed with prober,
+// like blackbox exporter.
 // It helps to monitor reachability of target with various checks.
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
@@ -145,8 +146,8 @@ type VMProbe struct {
 	Status VMProbeStatus `json:"status,omitempty"`
 }
 
-// +kubebuilder:object:root=true
 // VMProbeList contains a list of VMProbe
+// +kubebuilder:object:root=true
 type VMProbeList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
@@ -161,6 +162,7 @@ func (cr VMProbe) AsProxyKey() string {
 func (cr VMProbe) AsMapKey() string {
 	return fmt.Sprintf("probeScrape/%s/%s", cr.Namespace, cr.Name)
 }
+
 func init() {
 	SchemeBuilder.Register(&VMProbe{}, &VMProbeList{})
 }

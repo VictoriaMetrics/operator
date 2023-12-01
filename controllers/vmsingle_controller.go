@@ -20,19 +20,19 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
-	"sigs.k8s.io/controller-runtime/pkg/builder"
-
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
+
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 )
 
 // VMSingleReconciler reconciles a VMSingle object
@@ -73,6 +73,18 @@ func (r *VMSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (r
 	if instance.Spec.ParsingError != "" {
 		return handleParsingError(instance.Spec.ParsingError, instance)
 	}
+	specChanged, err := instance.HasSpecChanges()
+	if err != nil {
+		reqLogger.Error(err, "failed to check if single spec changed")
+	}
+
+	if specChanged && instance.Status.SingleStatus != victoriametricsv1beta1.SingleStatusFailed {
+		instance.Status.SingleStatus = victoriametricsv1beta1.SingleStatusExpanding
+		if err := r.Client.Status().Update(ctx, instance); err != nil {
+			return result, fmt.Errorf("cannot set expanding status for single: %w", err)
+		}
+	}
+
 	if err := finalize.AddFinalizer(ctx, r.Client, instance); err != nil {
 		return result, err
 	}
@@ -88,9 +100,13 @@ func (r *VMSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (r
 		return result, fmt.Errorf("cannot update stream aggregation config for vmsingle: %w", err)
 	}
 
-	_, err = factory.CreateOrUpdateVMSingle(ctx, instance, r, r.BaseConf)
-	if err != nil {
-		return result, err
+	if err = factory.CreateOrUpdateVMSingle(ctx, instance, r, r.BaseConf); err != nil {
+		instance.Status.Reason = err.Error()
+		instance.Status.SingleStatus = victoriametricsv1beta1.SingleStatusFailed
+		if err := r.Client.Status().Update(ctx, instance); err != nil {
+			log.Error(err, "cannot set failed status for single")
+		}
+		return result, fmt.Errorf("failed create or update single: %w", err)
 	}
 
 	svc, err := factory.CreateOrUpdateVMSingleService(ctx, instance, r, r.BaseConf)
@@ -104,6 +120,24 @@ func (r *VMSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (r
 			reqLogger.Error(err, "cannot create serviceScrape for vmsingle")
 		}
 	}
+
+	instance.Status.Reason = ""
+	instance.Status.SingleStatus = victoriametricsv1beta1.SingleStatusOperational
+	if err := r.Client.Status().Update(ctx, instance); err != nil {
+		return result, fmt.Errorf("cannot update single status: %w", err)
+	}
+
+	if specChanged {
+		specPatch, err := instance.LastAppliedSpecAsPatch()
+		if err != nil {
+			return ctrl.Result{}, fmt.Errorf("cannot parse last applied spec for single: %w", err)
+		}
+		// use patch instead of update, only 1 field must be changed.
+		if err := r.Client.Patch(ctx, instance, specPatch); err != nil {
+			return result, fmt.Errorf("cannot update single with last applied spec: %w", err)
+		}
+	}
+
 	return
 }
 

@@ -2,7 +2,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.10.0
+    controller-gen.kubebuilder.io/version: v0.12.1
   name: vmprobes.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -292,9 +292,9 @@ spec:
                                 Default is 'replace'
                               type: string
                             if:
-                              description: 'If represents metricsQL match expression:
-                                ''{__name__=~"foo_.*"}'''
-                              type: string
+                              description: 'If represents metricsQL match expression
+                                (or list of expressions): ''{__name__=~"foo_.*"}'''
+                              x-kubernetes-preserve-unknown-fields: true
                             labels:
                               additionalProperties:
                                 type: string
@@ -424,9 +424,9 @@ spec:
                                 Default is 'replace'
                               type: string
                             if:
-                              description: 'If represents metricsQL match expression:
-                                ''{__name__=~"foo_.*"}'''
-                              type: string
+                              description: 'If represents metricsQL match expression
+                                (or list of expressions): ''{__name__=~"foo_.*"}'''
+                              x-kubernetes-preserve-unknown-fields: true
                             labels:
                               additionalProperties:
                                 type: string
@@ -876,6 +876,9 @@ spec:
                     type: string
                   scheme:
                     description: HTTP scheme to use for scraping. Defaults to `http`.
+                    enum:
+                    - http
+                    - https
                     type: string
                   url:
                     description: Mandatory URL of the prober.

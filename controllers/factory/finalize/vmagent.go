@@ -3,13 +3,12 @@ package finalize
 import (
 	"context"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	v12 "k8s.io/api/rbac/v1"
-
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
+	v12 "k8s.io/api/rbac/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -60,19 +59,36 @@ func OnVMAgentDelete(ctx context.Context, rclient client.Client, crd *victoriame
 		return err
 	}
 	// remove vmagents service discovery rbac.
-	if err := removeFinalizeObjByName(ctx, rclient, &v12.ClusterRoleBinding{}, crd.GetClusterRoleName(), crd.GetNSName()); err != nil {
-		return err
-	}
-	if err := removeFinalizeObjByName(ctx, rclient, &v12.ClusterRole{}, crd.GetClusterRoleName(), crd.GetNSName()); err != nil {
-		return err
-	}
-	if err := SafeDelete(ctx, rclient, &v12.ClusterRoleBinding{ObjectMeta: metav1.ObjectMeta{Name: crd.GetClusterRoleName(), Namespace: crd.GetNSName()}}); err != nil {
-		return err
+	if config.IsClusterWideAccessAllowed() {
+		if err := removeFinalizeObjByName(ctx, rclient, &v12.ClusterRoleBinding{}, crd.GetClusterRoleName(), crd.GetNSName()); err != nil {
+			return err
+		}
+		if err := removeFinalizeObjByName(ctx, rclient, &v12.ClusterRole{}, crd.GetClusterRoleName(), crd.GetNSName()); err != nil {
+			return err
+		}
+		if err := SafeDelete(ctx, rclient, &v12.ClusterRoleBinding{ObjectMeta: metav1.ObjectMeta{Name: crd.GetClusterRoleName(), Namespace: crd.GetNSName()}}); err != nil {
+			return err
+		}
+
+		if err := SafeDelete(ctx, rclient, &v12.ClusterRole{ObjectMeta: metav1.ObjectMeta{Name: crd.GetClusterRoleName(), Namespace: crd.GetNSName()}}); err != nil {
+			return err
+		}
+	} else {
+		if err := removeFinalizeObjByName(ctx, rclient, &v12.RoleBinding{}, crd.GetClusterRoleName(), crd.GetNSName()); err != nil {
+			return err
+		}
+		if err := removeFinalizeObjByName(ctx, rclient, &v12.Role{}, crd.GetClusterRoleName(), crd.GetNSName()); err != nil {
+			return err
+		}
+		if err := SafeDelete(ctx, rclient, &v12.RoleBinding{ObjectMeta: metav1.ObjectMeta{Name: crd.GetClusterRoleName(), Namespace: crd.GetNSName()}}); err != nil {
+			return err
+		}
+
+		if err := SafeDelete(ctx, rclient, &v12.Role{ObjectMeta: metav1.ObjectMeta{Name: crd.GetClusterRoleName(), Namespace: crd.GetNSName()}}); err != nil {
+			return err
+		}
 	}
 
-	if err := SafeDelete(ctx, rclient, &v12.ClusterRole{ObjectMeta: metav1.ObjectMeta{Name: crd.GetClusterRoleName(), Namespace: crd.GetNSName()}}); err != nil {
-		return err
-	}
 	if crd.Spec.AdditionalScrapeConfigs != nil {
 		if err := removeFinalizeObjByName(ctx, rclient, &v1.Secret{}, crd.Spec.AdditionalScrapeConfigs.Name, crd.Namespace); err != nil {
 			return err

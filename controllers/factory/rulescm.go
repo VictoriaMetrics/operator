@@ -11,7 +11,6 @@ import (
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
-	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/ghodss/yaml"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -67,10 +66,7 @@ func CreateOrUpdateRuleConfigMaps(ctx context.Context, cr *victoriametricsv1beta
 
 	equal := reflect.DeepEqual(newRules, currentRules)
 	if equal && len(currentConfigMaps) != 0 {
-		l.Info("no Rule changes",
-			"namespace", cr.Namespace,
-			"vmalert", cr.Name,
-		)
+		l.Info("no Rule changes", "namespace", cr.Namespace)
 		currentConfigMapNames := []string{}
 		for _, cm := range currentConfigMaps {
 			currentConfigMapNames = append(currentConfigMapNames, cm.Name)
@@ -89,9 +85,7 @@ func CreateOrUpdateRuleConfigMaps(ctx context.Context, cr *victoriametricsv1beta
 	}
 
 	if len(currentConfigMaps) == 0 {
-		l.Info("no Rule configmap found, creating new one", "namespace", cr.Namespace,
-			"vmalert", cr.Name,
-		)
+		l.Info("no Rule configmap found, creating new one", "namespace", cr.Namespace)
 		for _, cm := range newConfigMaps {
 			err := rclient.Create(ctx, &cm, &client.CreateOptions{})
 			if err != nil {
@@ -195,13 +189,7 @@ func selectNamespaces(ctx context.Context, rclient client.Client, selector label
 		return nil, err
 	}
 
-	watchNamespace := config.MustGetWatchNamespace()
-
 	for _, n := range ns.Items {
-		if watchNamespace != "" && n.Name != watchNamespace {
-			continue
-		}
-
 		matchedNs = append(matchedNs, n.Name)
 	}
 

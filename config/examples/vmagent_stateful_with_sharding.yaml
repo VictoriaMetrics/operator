@@ -1,0 +1,28 @@
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAgent
+metadata:
+  name: example-vmagent-persisted
+spec:
+  selectAllByDefault: true
+  scrapeInterval: 30s
+  # 3 shards with 2 replicas at each shard
+  shardCount: 3
+  replicaCount: 2
+  # or RollingUpdate
+  statefulRollingUpdateStrategy: OnDelete
+  statefulMode: true
+  statefulStorage:
+    volumeClaimTemplate:
+      spec:
+        resources:
+          requests:
+            storage: 50Gi
+  resources:
+    limits:
+      cpu: "500m"
+      memory: "750Mi"
+    requests:
+      cpu: "500m"
+      memory: "750Mi"
+  remoteWrite:
+    - url: "http://vmsingle-example-vmsingle.default.svc:8429/api/v1/write"

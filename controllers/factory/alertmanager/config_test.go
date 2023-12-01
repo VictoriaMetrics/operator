@@ -10,6 +10,7 @@ import (
 	operatorv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/pointer"
@@ -252,6 +253,73 @@ templates: []
 `,
 		},
 		{
+			name: "webhook ok",
+			args: args{
+				ctx: context.Background(),
+				baseCfg: []byte(`global:
+ time_out: 1min
+`),
+				amcfgs: map[string]*operatorv1beta1.VMAlertmanagerConfig{
+					"default/base": {
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "base",
+							Namespace: "default",
+						},
+						Spec: operatorv1beta1.VMAlertmanagerConfigSpec{
+							Receivers: []operatorv1beta1.Receiver{
+								{
+									Name: "webhook",
+									WebhookConfigs: []operatorv1beta1.WebhookConfig{
+										{
+											SendResolved: pointer.Bool(true),
+											URLSecret: &v1.SecretKeySelector{
+												Key: "url",
+												LocalObjectReference: v1.LocalObjectReference{
+													Name: "webhook",
+												},
+											},
+										},
+									},
+								},
+							},
+							Route: &operatorv1beta1.Route{
+								Receiver:  "webhook",
+								GroupWait: "1min",
+							},
+						},
+					},
+				},
+			},
+			predefinedObjects: []runtime.Object{
+				&v1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "webhook",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{
+						"url": []byte("https://webhook.example.com"),
+					},
+				},
+			},
+			want: `global:
+  time_out: 1min
+route:
+  receiver: default-base-webhook
+  routes:
+  - matchers:
+    - namespace = "default"
+    group_wait: 1min
+    receiver: default-base-webhook
+    continue: true
+receivers:
+- name: default-base-webhook
+  webhook_configs:
+  - send_resolved: true
+    url: https://webhook.example.com
+templates: []
+`,
+		},
+		{
 			name: "slack ok",
 			args: args{
 				ctx: context.Background(),
@@ -270,6 +338,12 @@ templates: []
 									Name: "slack",
 									SlackConfigs: []operatorv1beta1.SlackConfig{
 										{
+											APIURL: &v1.SecretKeySelector{
+												Key: "url",
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "slack",
+												},
+											},
 											SendResolved: pointer.Bool(true),
 											Text:         "some-text",
 											Title:        "some-title",
@@ -305,6 +379,17 @@ templates: []
 					},
 				},
 			},
+			predefinedObjects: []runtime.Object{
+				&v1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "slack",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{
+						"url": []byte("https://slack.example.com"),
+					},
+				},
+			},
 			want: `global:
   time_out: 1min
 route:
@@ -318,7 +403,8 @@ route:
 receivers:
 - name: default-base-slack
   slack_configs:
-  - send_resolved: true
+  - api_url: https://slack.example.com
+    send_resolved: true
     username: some-user
     pretext: text-1
     text: some-text
@@ -511,6 +597,61 @@ receivers:
     send_resolved: true
     chat_id: 125
     message: some-templated message
+templates: []
+`,
+		},
+		{
+			name: "slack bad, with invalid api_url",
+			args: args{
+				ctx: context.Background(),
+				baseCfg: []byte(`global:
+ time_out: 1min
+`),
+				amcfgs: map[string]*operatorv1beta1.VMAlertmanagerConfig{
+					"default/base": {
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "base",
+							Namespace: "default",
+						},
+						Spec: operatorv1beta1.VMAlertmanagerConfigSpec{
+							Receivers: []operatorv1beta1.Receiver{
+								{
+									Name: "slack",
+									SlackConfigs: []operatorv1beta1.SlackConfig{
+										{
+											APIURL: &v1.SecretKeySelector{
+												Key: "bad_url",
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "slack",
+												},
+											},
+											SendResolved: pointer.Bool(true),
+										},
+									},
+								},
+							},
+							Route: &operatorv1beta1.Route{
+								Receiver:  "slack",
+								GroupWait: "1min",
+							},
+						},
+					},
+				},
+			},
+			predefinedObjects: []runtime.Object{
+				&v1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "slack",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{
+						"bad_url": []byte("bad_url"),
+					},
+				},
+			},
+			parseError: "invalid URL bad_url in key bad_url from secret slack: unsupported scheme \"\" for URL in object: default/base, will ignore vmalertmanagerconfig base",
+			want: `global:
+  time_out: 1min
 templates: []
 `,
 		},

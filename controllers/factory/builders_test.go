@@ -3,8 +3,9 @@ package factory
 import (
 	"context"
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
@@ -13,6 +14,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/version"
+	"k8s.io/utils/pointer"
 )
 
 func Test_reconcileServiceForCRD(t *testing.T) {
@@ -415,7 +418,6 @@ func (t testBuildProbeCR) ProbeScheme() string {
 }
 
 func (t testBuildProbeCR) ProbePort() string {
-
 	return t.port
 }
 
@@ -630,4 +632,135 @@ func TestFormatContainerImage(t *testing.T) {
 	f("private.github.io", "quay.io/victoria-metrics/storage", "private.github.io/victoria-metrics/storage")
 	// correct behaviour, user must fix image naming
 	f("private.github.io", "my-private.registry/victoria-metrics/storage", "private.github.io/my-private.registry/victoria-metrics/storage")
+}
+
+func TestAddStrictSecuritySettingsToPod(t *testing.T) {
+	type args struct {
+		podSecurityPolicy    *v1.PodSecurityContext
+		enableStrictSecurity bool
+		exp                  *v1.PodSecurityContext
+		kubeletVersion       version.Info
+	}
+	tests := []struct {
+		name     string
+		args     args
+		validate func(svc *v1.Service) error
+	}{
+		{
+			name: "enforce strict security",
+			args: args{
+				enableStrictSecurity: true,
+				exp: &v1.PodSecurityContext{
+					RunAsNonRoot:        pointer.Bool(true),
+					RunAsUser:           pointer.Int64(65534),
+					RunAsGroup:          pointer.Int64(65534),
+					FSGroup:             pointer.Int64(65534),
+					FSGroupChangePolicy: (*v1.PodFSGroupChangePolicy)(pointer.StringPtr("OnRootMismatch")),
+					SeccompProfile: &v1.SeccompProfile{
+						Type: v1.SeccompProfileTypeRuntimeDefault,
+					},
+				},
+				kubeletVersion: version.Info{Major: "1", Minor: "27"},
+			},
+		},
+		{
+			name: "disable enableStrictSecurity",
+			args: args{
+				enableStrictSecurity: false,
+				exp:                  nil,
+			},
+		},
+		{
+			name: "use custom security",
+			args: args{
+				podSecurityPolicy: &v1.PodSecurityContext{
+					RunAsNonRoot: pointer.Bool(false),
+				},
+				enableStrictSecurity: true,
+				exp: &v1.PodSecurityContext{
+					RunAsNonRoot: pointer.Bool(false),
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		k8stools.SetKubernetesVersionWithDefaults(&tt.args.kubeletVersion, 0, 0)
+		res := addStrictSecuritySettingsToPod(tt.args.podSecurityPolicy, tt.args.enableStrictSecurity)
+		if diff := deep.Equal(res, tt.args.exp); len(diff) > 0 {
+			t.Fatalf("got unexpected result: %v, expect: %v", res, tt.args.exp)
+		}
+	}
+}
+
+func TestAddStrictSecuritySettingsToContainers(t *testing.T) {
+	type args struct {
+		containers           []v1.Container
+		enableStrictSecurity bool
+		exp                  []v1.Container
+	}
+	tests := []struct {
+		name     string
+		args     args
+		validate func(svc *v1.Service) error
+	}{
+		{
+			name: "enforce strict security",
+			args: args{
+				containers: []v1.Container{
+					{
+						Name: "c1",
+						SecurityContext: &v1.SecurityContext{
+							ReadOnlyRootFilesystem: pointer.Bool(false),
+						},
+					},
+					{
+						Name: "c2",
+					},
+				},
+				enableStrictSecurity: true,
+				exp: []v1.Container{
+					{
+						Name: "c1",
+						SecurityContext: &v1.SecurityContext{
+							ReadOnlyRootFilesystem: pointer.Bool(false),
+						},
+					},
+					{
+						Name: "c2",
+						SecurityContext: &v1.SecurityContext{
+							ReadOnlyRootFilesystem:   pointer.Bool(true),
+							AllowPrivilegeEscalation: pointer.Bool(false),
+							Capabilities: &v1.Capabilities{
+								Drop: []v1.Capability{
+									"ALL",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "disable enableStrictSecurity",
+			args: args{
+				containers: []v1.Container{
+					{
+						Name: "c2",
+					},
+				},
+				enableStrictSecurity: false,
+				exp: []v1.Container{
+					{
+						Name: "c2",
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		res := addStrictSecuritySettingsToContainers(tt.args.containers, tt.args.enableStrictSecurity)
+		if diff := deep.Equal(res, tt.args.exp); len(diff) > 0 {
+			t.Fatalf("got unexpected result: %v, expect: %v", res, tt.args.exp)
+		}
+	}
 }

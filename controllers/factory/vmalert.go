@@ -92,7 +92,6 @@ func createOrUpdateVMAlertSecret(ctx context.Context, rclient client.Client, cr 
 			if len(ba.password) > 0 {
 				s.Data[buildRemoteSecretKey(sourcePrefix, basicAuthPasswordKey)] = []byte(ba.password)
 			}
-
 		}
 		if ha.BearerAuth != nil && len(ba.bearerValue) > 0 {
 			s.Data[buildRemoteSecretKey(sourcePrefix, bearerTokenKey)] = []byte(ba.bearerValue)
@@ -171,9 +170,7 @@ func CreateOrUpdateVMAlert(ctx context.Context, cr *victoriametricsv1beta1.VMAle
 		l.Info("additional notifiers with sd selector", "len", len(additionalNotifiers))
 	}
 	cr.Spec.Notifiers = append(cr.Spec.Notifiers, additionalNotifiers...)
-	if len(cr.Spec.Notifiers) == 0 && cr.Spec.NotifierConfigRef == nil {
-		return fmt.Errorf("cannot create or update vmalert: %s, cannot find any notifiers. At cr.spec.Notifiers, cr.spec.Notifier, cr.spec.notifierConfigRef and discovered alertmanager are empty", cr.Name)
-	}
+
 	if err := psp.CreateServiceAccountForCRD(ctx, cr, rclient); err != nil {
 		return fmt.Errorf("failed create service account: %w", err)
 	}
@@ -228,7 +225,6 @@ func CreateOrUpdateVMAlert(ctx context.Context, cr *victoriametricsv1beta1.VMAle
 
 // newDeployForCR returns a busybox pod with the same name/namespace as the cr
 func newDeployForVMAlert(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorConf, ruleConfigMapNames []string, remoteSecrets map[string]*authSecret) (*appsv1.Deployment, error) {
-
 	if cr.Spec.Image.Repository == "" {
 		cr.Spec.Image.Repository = c.VMAlertDefault.Image
 	}
@@ -267,7 +263,6 @@ func newDeployForVMAlert(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOpera
 }
 
 func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorConf, ruleConfigMapNames []string, remoteSecrets map[string]*authSecret) (*appsv1.DeploymentSpec, error) {
-
 	confReloadArgs := []string{
 		fmt.Sprintf("-webhook-url=%s", victoriametricsv1beta1.BuildReloadPathWithPort(cr.Spec.ExtraArgs, cr.Spec.Port)),
 	}
@@ -328,6 +323,9 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 			MountPath: vmalertConfigSecretsDir,
 		},
 	)
+
+	volumes, volumeMounts = cr.Spec.License.MaybeAddToVolumes(volumes, volumeMounts, SecretsDir)
+
 	if cr.Spec.NotifierConfigRef != nil {
 		volumes = append(volumes, corev1.Volume{
 			Name: "vmalert-notifier-config",
@@ -390,12 +388,14 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 		})
 	}
 
-	resources := corev1.ResourceRequirements{Limits: corev1.ResourceList{}}
+	resources := corev1.ResourceRequirements{Limits: corev1.ResourceList{}, Requests: corev1.ResourceList{}}
 	if c.VMAlertDefault.ConfigReloaderCPU != "0" && c.VMAgentDefault.UseDefaultResources {
 		resources.Limits[corev1.ResourceCPU] = resource.MustParse(c.VMAlertDefault.ConfigReloaderCPU)
+		resources.Requests[corev1.ResourceCPU] = resource.MustParse(c.VMAlertDefault.ConfigReloaderCPU)
 	}
 	if c.VMAlertDefault.ConfigReloaderMemory != "0" && c.VMAgentDefault.UseDefaultResources {
 		resources.Limits[corev1.ResourceMemory] = resource.MustParse(c.VMAlertDefault.ConfigReloaderMemory)
+		resources.Requests[corev1.ResourceMemory] = resource.MustParse(c.VMAlertDefault.ConfigReloaderMemory)
 	}
 
 	var ports []corev1.ContainerPort
@@ -427,14 +427,15 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 	}
 	vmalertContainer = buildProbe(vmalertContainer, cr)
 
-	vmalertContainers := []corev1.Container{vmalertContainer, {
-		Name:                     "config-reloader",
-		Image:                    fmt.Sprintf("%s", formatContainerImage(c.ContainerRegistry, c.VMAlertDefault.ConfigReloadImage)),
-		Args:                     confReloadArgs,
-		Resources:                resources,
-		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
-		VolumeMounts:             reloaderVolumes,
-	},
+	vmalertContainers := []corev1.Container{
+		vmalertContainer, {
+			Name:                     "config-reloader",
+			Image:                    fmt.Sprintf("%s", formatContainerImage(c.ContainerRegistry, c.VMAlertDefault.ConfigReloadImage)),
+			Args:                     confReloadArgs,
+			Resources:                resources,
+			TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+			VolumeMounts:             reloaderVolumes,
+		},
 	}
 
 	containers, err := k8stools.MergePatchContainers(vmalertContainers, cr.Spec.Containers)
@@ -453,6 +454,11 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 				MatchLabels: cr.SelectorLabels(),
 			}
 		}
+	}
+
+	useStrictSecurity := c.EnableStrictSecurity
+	if cr.Spec.UseStrictSecurity != nil {
+		useStrictSecurity = *cr.Spec.UseStrictSecurity
 	}
 
 	spec := &appsv1.DeploymentSpec{
@@ -476,10 +482,11 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 				SchedulerName:                 cr.Spec.SchedulerName,
 				RuntimeClassName:              cr.Spec.RuntimeClassName,
 				ServiceAccountName:            cr.GetServiceAccountName(),
-				Containers:                    containers,
+				InitContainers:                addStrictSecuritySettingsToContainers(cr.Spec.InitContainers, useStrictSecurity),
+				Containers:                    addStrictSecuritySettingsToContainers(containers, useStrictSecurity),
 				Volumes:                       volumes,
 				PriorityClassName:             cr.Spec.PriorityClassName,
-				SecurityContext:               cr.Spec.SecurityContext,
+				SecurityContext:               addStrictSecuritySettingsToPod(cr.Spec.SecurityContext, useStrictSecurity),
 				Affinity:                      cr.Spec.Affinity,
 				Tolerations:                   cr.Spec.Tolerations,
 				HostNetwork:                   cr.Spec.HostNetwork,
@@ -508,7 +515,6 @@ func buildHeadersArg(flagName string, src []string, headers []string) []string {
 }
 
 func buildVMAlertAuthArgs(args []string, flagPrefix string, ha victoriametricsv1beta1.HTTPAuth, remoteSecrets map[string]*authSecret) []string {
-
 	if s, ok := remoteSecrets[flagPrefix]; ok {
 		// safety checks must be performed by previous code
 		if ha.BasicAuth != nil {
@@ -543,6 +549,7 @@ func buildVMAlertAuthArgs(args []string, flagPrefix string, ha victoriametricsv1
 }
 
 func buildVMAlertArgs(cr *victoriametricsv1beta1.VMAlert, ruleConfigMapNames []string, remoteSecrets map[string]*authSecret) []string {
+	pathPrefix := path.Join(tlsAssetsDir, cr.Namespace)
 	args := []string{
 		fmt.Sprintf("-datasource.url=%s", cr.Spec.Datasource.URL),
 	}
@@ -553,7 +560,7 @@ func buildVMAlertArgs(cr *victoriametricsv1beta1.VMAlert, ruleConfigMapNames []s
 
 	if cr.Spec.Datasource.HTTPAuth.TLSConfig != nil {
 		tlsConf := cr.Spec.Datasource.HTTPAuth.TLSConfig
-		args = tlsConf.AsArgs(args, datasourceKey, cr.Namespace)
+		args = tlsConf.AsArgs(args, datasourceKey, pathPrefix)
 	}
 
 	if cr.Spec.RemoteWrite != nil {
@@ -574,7 +581,7 @@ func buildVMAlertArgs(cr *victoriametricsv1beta1.VMAlert, ruleConfigMapNames []s
 		}
 		if cr.Spec.RemoteWrite.HTTPAuth.TLSConfig != nil {
 			tlsConf := cr.Spec.RemoteWrite.HTTPAuth.TLSConfig
-			args = tlsConf.AsArgs(args, remoteWriteKey, cr.Namespace)
+			args = tlsConf.AsArgs(args, remoteWriteKey, pathPrefix)
 		}
 	}
 	for k, v := range cr.Spec.ExternalLabels {
@@ -590,7 +597,7 @@ func buildVMAlertArgs(cr *victoriametricsv1beta1.VMAlert, ruleConfigMapNames []s
 		}
 		if cr.Spec.RemoteRead.HTTPAuth.TLSConfig != nil {
 			tlsConf := cr.Spec.RemoteRead.HTTPAuth.TLSConfig
-			args = tlsConf.AsArgs(args, remoteReadKey, cr.Namespace)
+			args = tlsConf.AsArgs(args, remoteReadKey, pathPrefix)
 		}
 
 	}
@@ -616,6 +623,9 @@ func buildVMAlertArgs(cr *victoriametricsv1beta1.VMAlert, ruleConfigMapNames []s
 	if len(cr.Spec.ExtraEnvs) > 0 {
 		args = append(args, "-envflag.enable=true")
 	}
+
+	args = cr.Spec.License.MaybeAddToArgs(args, SecretsDir)
+
 	args = addExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs, "-")
 	sort.Strings(args)
 	return args

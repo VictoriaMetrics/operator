@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"path"
 	"sort"
+	"strings"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
@@ -13,6 +14,7 @@ import (
 	"github.com/VictoriaMetrics/operator/controllers/factory/psp"
 	"github.com/VictoriaMetrics/operator/controllers/factory/vmauth"
 	"github.com/VictoriaMetrics/operator/internal/config"
+	"github.com/hashicorp/go-version"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	v12 "k8s.io/api/networking/v1"
@@ -95,7 +97,7 @@ func CreateOrUpdateVMAuth(ctx context.Context, cr *victoriametricsv1beta1.VMAuth
 	}
 	newDeploy, err := newDeployForVMAuth(cr, c)
 	if err != nil {
-		return fmt.Errorf("cannot build new deploy for vmagent: %w", err)
+		return fmt.Errorf("cannot build new deploy for vmauth: %w", err)
 	}
 
 	return k8stools.HandleDeployUpdate(ctx, rclient, newDeploy)
@@ -168,19 +170,21 @@ func makeSpecForVMAuth(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperator
 	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(cr.Spec.Port).IntVal})
 	volumes := []corev1.Volume{
 		{
+			Name: "config-out",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		},
+	}
+	if !c.UseCustomConfigReloader {
+		volumes = append(volumes, corev1.Volume{
 			Name: vmAuthVolumeName,
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: cr.ConfigSecretName(),
 				},
 			},
-		},
-		{
-			Name: "config-out",
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
-			},
-		},
+		})
 	}
 
 	volumes = append(volumes, cr.Spec.Volumes...)
@@ -226,6 +230,8 @@ func makeSpecForVMAuth(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperator
 			MountPath: path.Join(ConfigMapsDir, c),
 		})
 	}
+	volumes, vmMounts = cr.Spec.License.MaybeAddToVolumes(volumes, vmMounts, SecretsDir)
+	args = cr.Spec.License.MaybeAddToArgs(args, SecretsDir)
 
 	args = addExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs, "-")
 	sort.Strings(args)
@@ -243,7 +249,6 @@ func makeSpecForVMAuth(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperator
 	}
 
 	configReloader := buildVMAuthConfigReloaderContainer(cr, c)
-	cr.Spec.InitContainers = maybeAddInitConfigContainer(cr.Spec.InitContainers, c, vmAuthConfigMountGz, vmAuthConfigNameGz, vmAuthConfigFolder, vmAuthConfigName)
 
 	vmauthContainer = buildProbe(vmauthContainer, cr)
 	operatorContainers := []corev1.Container{configReloader, vmauthContainer}
@@ -252,6 +257,17 @@ func makeSpecForVMAuth(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperator
 		return nil, err
 	}
 
+	ic := buildInitConfigContainer(c.VMAuthDefault.ConfigReloadImage, buildConfigReloaderResourceReqsForVMAuth(c), c, vmAuthConfigMountGz, vmAuthConfigNameGz, vmAuthConfigFolder, vmAuthConfigName, configReloader.Args)
+	if len(cr.Spec.InitContainers) > 0 {
+		ic, err = k8stools.MergePatchContainers(ic, cr.Spec.InitContainers)
+		if err != nil {
+			return nil, fmt.Errorf("cannot apply patch for initContainers: %w", err)
+		}
+	}
+	useStrictSecurity := c.EnableStrictSecurity
+	if cr.Spec.UseStrictSecurity != nil {
+		useStrictSecurity = *cr.Spec.UseStrictSecurity
+	}
 	vmAuthSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:      cr.PodLabels(),
@@ -260,10 +276,10 @@ func makeSpecForVMAuth(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperator
 		Spec: corev1.PodSpec{
 			NodeSelector:                  cr.Spec.NodeSelector,
 			Volumes:                       volumes,
-			InitContainers:                cr.Spec.InitContainers,
-			Containers:                    containers,
+			InitContainers:                addStrictSecuritySettingsToContainers(ic, useStrictSecurity),
+			Containers:                    addStrictSecuritySettingsToContainers(containers, useStrictSecurity),
 			ServiceAccountName:            cr.GetServiceAccountName(),
-			SecurityContext:               cr.Spec.SecurityContext,
+			SecurityContext:               addStrictSecuritySettingsToPod(cr.Spec.SecurityContext, useStrictSecurity),
 			ImagePullSecrets:              cr.Spec.ImagePullSecrets,
 			Affinity:                      cr.Spec.Affinity,
 			RuntimeClassName:              cr.Spec.RuntimeClassName,
@@ -280,12 +296,10 @@ func makeSpecForVMAuth(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperator
 		},
 	}
 	return vmAuthSpec, nil
-
 }
 
 // creates configuration secret for vmauth.
 func createOrUpdateVMAuthConfig(ctx context.Context, rclient client.Client, cr *victoriametricsv1beta1.VMAuth) error {
-
 	s := makeVMAuthConfigSecret(cr)
 
 	generatedConfig, err := buildVMAuthConfig(ctx, rclient, cr)
@@ -445,20 +459,13 @@ func buildVMAuthConfigReloaderContainer(cr *victoriametricsv1beta1.VMAuth, c *co
 			Name:      "config-out",
 			MountPath: vmAuthConfigFolder,
 		},
-		{
+	}
+	if !c.UseCustomConfigReloader {
+		reloaderMounts = append(reloaderMounts, corev1.VolumeMount{
 			Name:      vmAuthVolumeName,
 			MountPath: vmAuthConfigMountGz,
-		},
+		})
 	}
-	configReloaderResources := corev1.ResourceRequirements{
-		Limits: corev1.ResourceList{}, Requests: corev1.ResourceList{}}
-	if c.VMAuthDefault.ConfigReloaderCPU != "0" && c.VMAuthDefault.UseDefaultResources {
-		configReloaderResources.Limits[corev1.ResourceCPU] = resource.MustParse(c.VMAuthDefault.ConfigReloaderCPU)
-	}
-	if c.VMAgentDefault.ConfigReloaderMemory != "0" && c.VMAuthDefault.UseDefaultResources {
-		configReloaderResources.Limits[corev1.ResourceMemory] = resource.MustParse(c.VMAuthDefault.ConfigReloaderMemory)
-	}
-
 	configReloader := corev1.Container{
 		Name:                     "config-reloader",
 		Image:                    formatContainerImage(c.ContainerRegistry, c.VMAuthDefault.ConfigReloadImage),
@@ -474,7 +481,7 @@ func buildVMAuthConfigReloaderContainer(cr *victoriametricsv1beta1.VMAuth, c *co
 		Command:      []string{"/bin/prometheus-config-reloader"},
 		Args:         configReloaderArgs,
 		VolumeMounts: reloaderMounts,
-		Resources:    configReloaderResources,
+		Resources:    buildConfigReloaderResourceReqsForVMAuth(c),
 	}
 
 	if c.UseCustomConfigReloader {
@@ -484,13 +491,41 @@ func buildVMAuthConfigReloaderContainer(cr *victoriametricsv1beta1.VMAuth, c *co
 	return configReloader
 }
 
-func maybeAddInitConfigContainer(src []corev1.Container, c *config.BaseOperatorConf, configDirName, configFileName, outConfigDir, outFileName string) []corev1.Container {
-	// TODO add support for custom reloader
+func buildInitConfigContainer(baseImage string, resources corev1.ResourceRequirements, c *config.BaseOperatorConf, configDirName, configFileName, outConfigDir, outFileName string, configReloaderArgs []string) []corev1.Container {
+	var initReloader corev1.Container
 	if c.UseCustomConfigReloader {
-		return src
+		// add custom config reloader as initContainer since v0.35.0
+		reloaderImage := c.CustomConfigReloaderImage
+		idx := strings.LastIndex(reloaderImage, "-")
+		if idx > 0 {
+			imageTag := reloaderImage[idx+1:]
+			ver, err := version.NewVersion(imageTag)
+			if err != nil {
+				log.Error(err, "cannot parse custom config reloader version", "reloader-image", reloaderImage)
+				return nil
+			} else if ver.LessThan(version.Must(version.NewVersion("0.35.0"))) {
+				return nil
+			}
+		}
+		initReloader = corev1.Container{
+			Image: formatContainerImage(c.ContainerRegistry, c.CustomConfigReloaderImage),
+			Name:  "config-init",
+			Command: []string{
+				"/usr/local/bin/config-reloader",
+			},
+			Args: append(configReloaderArgs, "--only-init-config"),
+			VolumeMounts: []corev1.VolumeMount{
+				{
+					Name:      "config-out",
+					MountPath: outConfigDir,
+				},
+			},
+			Resources: resources,
+		}
+		return []corev1.Container{initReloader}
 	}
-	initReloader := corev1.Container{
-		Image: c.VMAgentDefault.ConfigReloadImage,
+	initReloader = corev1.Container{
+		Image: formatContainerImage(c.ContainerRegistry, baseImage),
 		Name:  "config-init",
 		Command: []string{
 			"/bin/sh",
@@ -509,7 +544,22 @@ func maybeAddInitConfigContainer(src []corev1.Container, c *config.BaseOperatorC
 				MountPath: outConfigDir,
 			},
 		},
+		Resources: resources,
 	}
-	src = append(src, initReloader)
-	return src
+	return []corev1.Container{initReloader}
+}
+
+func buildConfigReloaderResourceReqsForVMAuth(c *config.BaseOperatorConf) corev1.ResourceRequirements {
+	configReloaderResources := corev1.ResourceRequirements{
+		Limits: corev1.ResourceList{}, Requests: corev1.ResourceList{},
+	}
+	if c.VMAgentDefault.ConfigReloaderCPU != "0" && c.VMAuthDefault.UseDefaultResources {
+		configReloaderResources.Limits[corev1.ResourceCPU] = resource.MustParse(c.VMAuthDefault.ConfigReloaderCPU)
+		configReloaderResources.Requests[corev1.ResourceCPU] = resource.MustParse(c.VMAuthDefault.ConfigReloaderCPU)
+	}
+	if c.VMAgentDefault.ConfigReloaderMemory != "0" && c.VMAuthDefault.UseDefaultResources {
+		configReloaderResources.Limits[corev1.ResourceMemory] = resource.MustParse(c.VMAuthDefault.ConfigReloaderMemory)
+		configReloaderResources.Requests[corev1.ResourceMemory] = resource.MustParse(c.VMAuthDefault.ConfigReloaderMemory)
+	}
+	return configReloaderResources
 }

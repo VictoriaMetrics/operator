@@ -9,7 +9,7 @@ kind: ClusterRole
 metadata:
   name: vmagent
 rules:
-  - apiGroups: ["","networking.k8s.io","extensions"]
+  - apiGroups: ["","networking.k8s.io","extensions","discovery.k8s.io"]
     resources:
       - nodes
       - nodes/metrics
@@ -17,7 +17,6 @@ rules:
       - endpoints
       - endpointslices
       - pods
-      - app
       - ingresses
     verbs: ["get", "list", "watch"]
   - apiGroups: [""]

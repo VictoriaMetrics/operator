@@ -118,12 +118,6 @@ func newStsForAlertManager(cr *victoriametricsv1beta1.VMAlertmanager, c *config.
 	if cr.Spec.Retention == "" {
 		cr.Spec.Retention = defaultRetention
 	}
-	if cr.Spec.Resources.Requests == nil {
-		cr.Spec.Resources.Requests = v1.ResourceList{}
-	}
-	if _, ok := cr.Spec.Resources.Requests[v1.ResourceMemory]; !ok {
-		cr.Spec.Resources.Requests[v1.ResourceMemory] = resource.MustParse("200Mi")
-	}
 
 	spec, err := makeStatefulSetSpec(cr, c, amVersion)
 	if err != nil {
@@ -406,12 +400,14 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, c *config.Ba
 
 	amVolumeMounts = append(amVolumeMounts, cr.Spec.VolumeMounts...)
 
-	resources := v1.ResourceRequirements{Limits: v1.ResourceList{}}
+	resources := v1.ResourceRequirements{Limits: v1.ResourceList{}, Requests: v1.ResourceList{}}
 	if c.VMAlertManager.ConfigReloaderCPU != "0" && c.VMAgentDefault.UseDefaultResources {
 		resources.Limits[v1.ResourceCPU] = resource.MustParse(c.VMAlertManager.ConfigReloaderCPU)
+		resources.Requests[v1.ResourceCPU] = resource.MustParse(c.VMAlertManager.ConfigReloaderCPU)
 	}
 	if c.VMAlertManager.ConfigReloaderMemory != "0" && c.VMAgentDefault.UseDefaultResources {
 		resources.Limits[v1.ResourceMemory] = resource.MustParse(c.VMAlertManager.ConfigReloaderMemory)
+		resources.Requests[v1.ResourceMemory] = resource.MustParse(c.VMAlertManager.ConfigReloaderMemory)
 	}
 
 	terminationGracePeriod := int64(120)
@@ -442,7 +438,7 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, c *config.Ba
 		ImagePullPolicy:          cr.Spec.Image.PullPolicy,
 		Ports:                    ports,
 		VolumeMounts:             amVolumeMounts,
-		Resources:                buildResources(cr.Spec.Resources, config.Resource(c.VMAlertDefault.Resource), c.VMAlertManager.UseDefaultResources),
+		Resources:                buildResources(cr.Spec.Resources, config.Resource(c.VMAlertManager.Resource), c.VMAlertManager.UseDefaultResources),
 		Env:                      envs,
 		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
 	}
@@ -475,6 +471,10 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, c *config.Ba
 			}
 		}
 	}
+	useStrictSecurity := c.EnableStrictSecurity
+	if cr.Spec.UseStrictSecurity != nil {
+		useStrictSecurity = *cr.Spec.UseStrictSecurity
+	}
 
 	return &appsv1.StatefulSetSpec{
 		ServiceName:         cr.PrefixedName(),
@@ -496,13 +496,13 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, c *config.Ba
 				NodeSelector:                  cr.Spec.NodeSelector,
 				PriorityClassName:             cr.Spec.PriorityClassName,
 				TerminationGracePeriodSeconds: &terminationGracePeriod,
-				InitContainers:                cr.Spec.InitContainers,
-				Containers:                    containers,
+				InitContainers:                addStrictSecuritySettingsToContainers(cr.Spec.InitContainers, useStrictSecurity),
+				Containers:                    addStrictSecuritySettingsToContainers(containers, useStrictSecurity),
 				Volumes:                       volumes,
 				RuntimeClassName:              cr.Spec.RuntimeClassName,
 				SchedulerName:                 cr.Spec.SchedulerName,
 				ServiceAccountName:            cr.GetServiceAccountName(),
-				SecurityContext:               cr.Spec.SecurityContext,
+				SecurityContext:               addStrictSecuritySettingsToPod(cr.Spec.SecurityContext, useStrictSecurity),
 				Tolerations:                   cr.Spec.Tolerations,
 				Affinity:                      cr.Spec.Affinity,
 				HostNetwork:                   cr.Spec.HostNetwork,

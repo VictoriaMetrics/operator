@@ -41,6 +41,12 @@ func (r *VMCluster) sanityCheck() error {
 			}
 		}
 	}
+	if r.Spec.VMStorage != nil && r.Spec.VMStorage.VMBackup != nil {
+		if err := r.Spec.VMStorage.VMBackup.sanityCheck(r.Spec.License); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 

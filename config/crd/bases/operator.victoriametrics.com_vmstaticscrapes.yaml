@@ -2,7 +2,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.10.0
+    controller-gen.kubebuilder.io/version: v0.12.1
   name: vmstaticscrapes.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -184,9 +184,9 @@ spec:
                               Default is 'replace'
                             type: string
                           if:
-                            description: 'If represents metricsQL match expression:
-                              ''{__name__=~"foo_.*"}'''
-                            type: string
+                            description: 'If represents metricsQL match expression
+                              (or list of expressions): ''{__name__=~"foo_.*"}'''
+                            x-kubernetes-preserve-unknown-fields: true
                           labels:
                             additionalProperties:
                               type: string
@@ -365,9 +365,9 @@ spec:
                               Default is 'replace'
                             type: string
                           if:
-                            description: 'If represents metricsQL match expression:
-                              ''{__name__=~"foo_.*"}'''
-                            type: string
+                            description: 'If represents metricsQL match expression
+                              (or list of expressions): ''{__name__=~"foo_.*"}'''
+                            x-kubernetes-preserve-unknown-fields: true
                           labels:
                             additionalProperties:
                               type: string
@@ -433,6 +433,9 @@ spec:
                       type: integer
                     scheme:
                       description: HTTP scheme to use for scraping.
+                      enum:
+                      - http
+                      - https
                       type: string
                     scrape_interval:
                       description: ScrapeInterval is the same as Interval and has
@@ -446,6 +449,7 @@ spec:
                       description: Targets static targets addresses in form of ["192.122.55.55:9100","some-name:9100"].
                       items:
                         type: string
+                      minItems: 1
                       type: array
                     tlsConfig:
                       description: TLSConfig configuration to use when scraping the

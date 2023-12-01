@@ -2,7 +2,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.10.0
+    controller-gen.kubebuilder.io/version: v0.12.1
   name: vmrules.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -117,6 +117,12 @@ spec:
                             description: For evaluation interval in time.Duration
                               format 30s, 1m, 1h  or nanoseconds
                             type: string
+                          keep_firing_for:
+                            description: KeepFiringFor will make alert continue firing
+                              for this long even when the alerting expression no longer
+                              has results. Use time.Duration format, 30s, 1m, 1h  or
+                              nanoseconds
+                            type: string
                           labels:
                             additionalProperties:
                               type: string
@@ -126,6 +132,11 @@ spec:
                             description: Record represents a query, that will be recorded
                               to dataSource
                             type: string
+                          update_entries_limit:
+                            description: UpdateEntriesLimit defines max number of
+                              rule's state updates stored in memory. Overrides `-rule.updateEntriesLimit`
+                              in vmalert.
+                            type: integer
                         type: object
                       type: array
                     tenant:

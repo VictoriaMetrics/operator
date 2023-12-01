@@ -1,33 +1,26 @@
 package v1beta1
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
-	"k8s.io/apimachinery/pkg/types"
 	"path"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
+
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
 	ClusterStatusExpanding   = "expanding"
 	ClusterStatusOperational = "operational"
 	ClusterStatusFailed      = "failed"
-
-	InternalOperatorError = "failed to perform vmcluster preparing jobs"
-
-	StorageRollingUpdateFailed = "failed to perform rolling update on vmStorage"
-	StorageCreationFailed      = "failed to create vmStorage statefulset"
-
-	SelectRollingUpdateFailed = "failed to perform rolling update on vmSelect"
-	SelectCreationFailed      = "failed to create vmSelect statefulset"
-	InsertCreationFailed      = "failed to create vmInsert deployment"
 )
 
 // VMClusterSpec defines the desired state of VMCluster
@@ -61,15 +54,28 @@ type VMClusterSpec struct {
 
 	// ImagePullSecrets An optional list of references to secrets in the same namespace
 	// to use for pulling images from registries
-	// see http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod
+	// see https://kubernetes.io/docs/concepts/containers/images/#referring-to-an-imagepullsecrets-on-a-pod
 	// +optional
 	ImagePullSecrets []v1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
+
+	// License allows to configure license key to be used for enterprise features.
+	// Using license key is supported starting from VictoriaMetrics v1.94.0.
+	// See: https://docs.victoriametrics.com/enterprise.html
+	// +optional
+	License *License `json:"license,omitempty"`
+
 	// +optional
 	VMSelect *VMSelect `json:"vmselect,omitempty"`
 	// +optional
 	VMInsert *VMInsert `json:"vminsert,omitempty"`
 	// +optional
 	VMStorage *VMStorage `json:"vmstorage,omitempty"`
+	// UseStrictSecurity enables strict security mode for component
+	// it restricts disk writes access
+	// uses non-root user out of the box
+	// drops not needed security permissions
+	// +optional
+	UseStrictSecurity *bool `json:"useStrictSecurity,omitempty"`
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface
@@ -112,8 +118,8 @@ func (c *VMCluster) AsOwner() []metav1.OwnerReference {
 			Kind:               c.Kind,
 			Name:               c.Name,
 			UID:                c.UID,
-			Controller:         pointer.BoolPtr(true),
-			BlockOwnerDeletion: pointer.BoolPtr(true),
+			Controller:         pointer.Bool(true),
+			BlockOwnerDeletion: pointer.Bool(true),
 		},
 	}
 }
@@ -128,8 +134,8 @@ type VMClusterStatus struct {
 	Reason        string `json:"reason,omitempty"`
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // VMClusterList contains a list of VMCluster
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type VMClusterList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
@@ -232,7 +238,8 @@ type VMSelect struct {
 	// +optional
 	TopologySpreadConstraints []v1.TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
 
-	// CacheMountPath allows to add cache persistent for VMSelect
+	// CacheMountPath allows to add cache persistent for VMSelect,
+	// will use "/cache" as default if not specified.
 	// +optional
 	CacheMountPath string `json:"cacheMountPath,omitempty"`
 
@@ -242,7 +249,7 @@ type VMSelect struct {
 	// +deprecated
 	// +optional
 	Storage *StorageSpec `json:"persistentVolume,omitempty"`
-	// StorageSpec - add persistent volume claim for cacheMounthPath
+	// StorageSpec - add persistent volume claim for cacheMountPath
 	// its needed for persistent cache
 	// +optional
 	StorageSpec *StorageSpec `json:"storage,omitempty"`
@@ -307,6 +314,7 @@ func (s VMSelect) GetNameWithPrefix(clusterName string) string {
 	}
 	return PrefixedName(s.Name, "vmselect")
 }
+
 func (s VMSelect) BuildPodName(baseName string, podIndex int32, namespace, portName, domain string) string {
 	// The default DNS search path is .svc.<cluster domain>
 	if domain == "" {
@@ -448,7 +456,7 @@ type VMInsert struct {
 	// +optional
 	SchedulerName string `json:"schedulerName,omitempty"`
 	// RuntimeClassName - defines runtime class for kubernetes pod.
-	//https://kubernetes.io/docs/concepts/containers/runtime-class/
+	// https://kubernetes.io/docs/concepts/containers/runtime-class/
 	// +optional
 	RuntimeClassName *string `json:"runtimeClassName,omitempty"`
 
@@ -459,7 +467,7 @@ type VMInsert struct {
 	// ServiceSpec that will be added to vminsert service spec
 	// +optional
 	ServiceSpec *ServiceSpec `json:"serviceSpec,omitempty"`
-	// ServiceScrapeSpec that will be added to vmselect VMServiceScrape spec
+	// ServiceScrapeSpec that will be added to vminsert VMServiceScrape spec
 	// +optional
 	ServiceScrapeSpec *VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
 
@@ -624,7 +632,7 @@ type VMStorage struct {
 	// +optional
 	SchedulerName string `json:"schedulerName,omitempty"`
 	// RuntimeClassName - defines runtime class for kubernetes pod.
-	//https://kubernetes.io/docs/concepts/containers/runtime-class/
+	// https://kubernetes.io/docs/concepts/containers/runtime-class/
 	// +optional
 	RuntimeClassName *string `json:"runtimeClassName,omitempty"`
 
@@ -651,7 +659,7 @@ type VMStorage struct {
 	// ServiceSpec that will be create additional service for vmstorage
 	// +optional
 	ServiceSpec *ServiceSpec `json:"serviceSpec,omitempty"`
-	// ServiceScrapeSpec that will be added to vmselect VMServiceScrape spec
+	// ServiceScrapeSpec that will be added to vmstorage VMServiceScrape spec
 	// +optional
 	ServiceScrapeSpec *VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
 	// PodDisruptionBudget created by operator
@@ -684,7 +692,8 @@ type VMStorage struct {
 type VMBackup struct {
 	// AcceptEULA accepts enterprise feature usage, must be set to true.
 	// otherwise backupmanager cannot be added to single/cluster version.
-	// https://victoriametrics.com/legal/eula/
+	// https://victoriametrics.com/legal/esa/
+	// +optional
 	AcceptEULA bool `json:"acceptEULA"`
 	// SnapshotCreateURL overwrites url for snapshot create
 	// +optional
@@ -756,6 +765,18 @@ type VMBackup struct {
 	// Read more: https://docs.victoriametrics.com/vmbackupmanager.html#restore-commands
 	// +optional
 	Restore *VMRestore `json:"restore,omitempty"`
+}
+
+func (cr *VMBackup) sanityCheck(l *License) error {
+	if !l.IsProvided() && !cr.AcceptEULA {
+		return fmt.Errorf("it is required to provide license key. See: https://docs.victoriametrics.com/enterprise.html")
+	}
+
+	if l.IsProvided() {
+		return l.sanityCheck()
+	}
+
+	return nil
 }
 
 type VMRestore struct {
@@ -948,17 +969,18 @@ func (cr *VMCluster) LastAppliedSpecAsPatch() (client.Patch, error) {
 	return client.RawPatch(types.MergePatchType, []byte(patch)), nil
 }
 
-// GetLastAppliedSpec returns last applied cluster spec
-func (cr *VMCluster) GetLastAppliedSpec() (*VMClusterSpec, error) {
+// HasSpecChanges compares cluster spec with last applied cluster spec stored in annotation
+func (cr *VMCluster) HasSpecChanges() (bool, error) {
 	var prevClusterSpec VMClusterSpec
-	prevClusterJSON := cr.Annotations["operator.victoriametrics/last-applied-spec"]
-	if prevClusterJSON == "" {
-		return &prevClusterSpec, nil
+	lastAppliedClusterJSON := cr.Annotations["operator.victoriametrics/last-applied-spec"]
+	if len(lastAppliedClusterJSON) == 0 {
+		return true, nil
 	}
-	if err := json.Unmarshal([]byte(prevClusterJSON), &prevClusterSpec); err != nil {
-		return nil, fmt.Errorf("cannot parse last applied cluster spec value: %s : %w", prevClusterJSON, err)
+	if err := json.Unmarshal([]byte(lastAppliedClusterJSON), &prevClusterSpec); err != nil {
+		return true, fmt.Errorf("cannot parse last applied cluster spec value: %s : %w", lastAppliedClusterJSON, err)
 	}
-	return &prevClusterSpec, nil
+	instanceSpecData, _ := json.Marshal(cr.Spec)
+	return !bytes.Equal([]byte(lastAppliedClusterJSON), instanceSpecData), nil
 }
 
 func (cr VMCluster) MetricPathSelect() string {
@@ -1101,9 +1123,11 @@ func (cr *VMSelect) ProbePath() string {
 func (cr *VMSelect) ProbeScheme() string {
 	return strings.ToUpper(protoFromFlags(cr.ExtraArgs))
 }
+
 func (cr *VMSelect) ProbePort() string {
 	return cr.Port
 }
+
 func (cr *VMSelect) ProbeNeedLiveness() bool {
 	return true
 }
@@ -1119,9 +1143,11 @@ func (cr *VMStorage) ProbePath() string {
 func (cr *VMStorage) ProbeScheme() string {
 	return strings.ToUpper(protoFromFlags(cr.ExtraArgs))
 }
+
 func (cr *VMStorage) ProbePort() string {
 	return cr.Port
 }
+
 func (cr *VMStorage) ProbeNeedLiveness() bool {
 	return false
 }

@@ -22,7 +22,12 @@ func (r *VMSingle) SetupWebhookWithManager(mgr ctrl.Manager) error {
 var _ webhook.Validator = &VMSingle{}
 
 func (r *VMSingle) sanityCheck() error {
-	// todo add some checks.
+	if r.Spec.VMBackup != nil {
+		if err := r.Spec.VMBackup.sanityCheck(r.Spec.License); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 

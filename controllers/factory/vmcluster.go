@@ -3,14 +3,15 @@ package factory
 import (
 	"context"
 	"fmt"
-	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
-	"k8s.io/api/autoscaling/v2beta2"
-	policyv1 "k8s.io/api/policy/v1"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"path"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
+	"k8s.io/api/autoscaling/v2beta2"
+	policyv1 "k8s.io/api/policy/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
@@ -42,7 +43,6 @@ var defaultTerminationGracePeriod = int64(30)
 // needed in update checked by revesion status
 // its controlled by k8s controller-manager
 func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) error {
-
 	if err := psp.CreateServiceAccountForCRD(ctx, cr, rclient); err != nil {
 		return fmt.Errorf("failed create service account: %w", err)
 	}
@@ -144,13 +144,9 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient
 
 	}
 	return nil
-
 }
 
 func createOrUpdateVMSelect(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) error {
-	l := log.WithValues("controller", "vmselect", "cluster", cr.Name)
-	l.Info("create or update vmselect for cluster")
-
 	// its tricky part.
 	// we need replicas count from hpa to create proper args.
 	// note, need to make copy of current crd. to able to change it without side effects.
@@ -188,9 +184,9 @@ func CreateOrUpdateVMSelectService(ctx context.Context, cr *v1beta1.VMCluster, r
 
 	if cr.Spec.VMSelect.ServiceSpec != nil {
 		if additionalService.Name == newHeadless.Name {
-			log.Error(fmt.Errorf("vmselect additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newHeadless.Name), "cannot create additional service")
+			return nil, fmt.Errorf("vmselect additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newHeadless.Name)
 		} else if _, err := reconcileServiceForCRD(ctx, rclient, additionalService); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("cannot reconcile service for vmselect: %w", err)
 		}
 	}
 	rca := finalize.RemoveSvcArgs{SelectorLabels: cr.VMSelectSelectorLabels, GetNameSpace: cr.GetNamespace, PrefixedName: func() string {
@@ -204,8 +200,6 @@ func CreateOrUpdateVMSelectService(ctx context.Context, cr *v1beta1.VMCluster, r
 }
 
 func createOrUpdateVMInsert(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) error {
-	l := log.WithValues("controller", "vminsert", "cluster", cr.Name)
-	l.Info("create or update vminsert for cluster")
 	newDeployment, err := genVMInsertSpec(cr, c)
 	if err != nil {
 		return err
@@ -218,7 +212,6 @@ func createOrUpdateVMInsert(ctx context.Context, cr *v1beta1.VMCluster, rclient 
 			if err := rclient.Create(ctx, newDeployment); err != nil {
 				return fmt.Errorf("cannot create new vminsert deploy: %w", err)
 			}
-			l.Info("new vminsert deploy was created")
 			return nil
 		}
 		return fmt.Errorf("cannot get vminsert deploy: %w", err)
@@ -234,7 +227,6 @@ func createOrUpdateVMInsert(ctx context.Context, cr *v1beta1.VMCluster, rclient 
 	if err = rclient.Update(ctx, newDeployment); err != nil {
 		return fmt.Errorf("cannot update vminsert deploy: %w", err)
 	}
-	l.Info("vminsert deploy was reconciled")
 
 	return nil
 }
@@ -272,7 +264,7 @@ func CreateOrUpdateVMInsertService(ctx context.Context, cr *v1beta1.VMCluster, r
 
 	if cr.Spec.VMInsert.ServiceSpec != nil {
 		if additionalService.Name == newService.Name {
-			log.Error(fmt.Errorf("vminsert additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name), "cannot create additional service")
+			return nil, fmt.Errorf("vminsert additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name)
 		} else if _, err := reconcileServiceForCRD(ctx, rclient, additionalService); err != nil {
 			return nil, err
 		}
@@ -288,8 +280,6 @@ func CreateOrUpdateVMInsertService(ctx context.Context, cr *v1beta1.VMCluster, r
 }
 
 func createOrUpdateVMStorage(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) error {
-	l := log.WithValues("controller", "vmstorage", "cluster", cr.Name)
-	l.Info("create or update vmstorage for cluster")
 	newSts, err := GenVMStorageSpec(cr, c)
 	if err != nil {
 		return err
@@ -310,7 +300,7 @@ func CreateOrUpdateVMStorageService(ctx context.Context, cr *v1beta1.VMCluster, 
 		additionalService := genVMStorageService(cr, c)
 		mergeServiceSpec(additionalService, cr.Spec.VMStorage.ServiceSpec)
 		if additionalService.Name == newHeadless.Name {
-			log.Error(fmt.Errorf("vmstorage additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newHeadless.Name), "cannot create additional service")
+			return nil, fmt.Errorf("vmstorage additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newHeadless.Name)
 		} else if _, err := reconcileServiceForCRD(ctx, rclient, additionalService); err != nil {
 			return nil, err
 		}
@@ -351,8 +341,9 @@ func genVMSelectSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv1
 	if cr.Spec.VMSelect.Image.PullPolicy == "" {
 		cr.Spec.VMSelect.Image.PullPolicy = corev1.PullIfNotPresent
 	}
-	if cr.Spec.VMSelect.SecurityContext == nil {
-		cr.Spec.VMSelect.SecurityContext = &corev1.PodSecurityContext{}
+	// use "/cache" as default cache dir instead of "/tmp" if `CacheMountPath` not set
+	if cr.Spec.VMSelect.CacheMountPath == "" {
+		cr.Spec.VMSelect.CacheMountPath = "/cache"
 	}
 	podSpec, err := makePodSpecForVMSelect(cr, c)
 	if err != nil {
@@ -408,14 +399,21 @@ func makePodSpecForVMSelect(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 		args = append(args, fmt.Sprintf("-loggerFormat=%s", cr.Spec.VMSelect.LogFormat))
 	}
 	if cr.Spec.ReplicationFactor != nil && *cr.Spec.ReplicationFactor > 1 {
+		var replicationFactorIsSet bool
 		var dedupIsSet bool
 		for arg := range cr.Spec.VMSelect.ExtraArgs {
 			if strings.Contains(arg, "dedup.minScrapeInterval") {
 				dedupIsSet = true
 			}
+			if strings.Contains(arg, "replicationFactor") {
+				replicationFactorIsSet = true
+			}
 		}
 		if !dedupIsSet {
 			args = append(args, "-dedup.minScrapeInterval=1ms")
+		}
+		if !replicationFactorIsSet {
+			args = append(args, fmt.Sprintf("-replicationFactor=%d", *cr.Spec.ReplicationFactor))
 		}
 	}
 
@@ -428,8 +426,6 @@ func makePodSpecForVMSelect(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 			storageArg += cr.Spec.VMStorage.BuildPodName(cr.Spec.VMStorage.GetNameWithPrefix(cr.Name), i, cr.Namespace, cr.Spec.VMStorage.VMSelectPort, c.ClusterDomainName)
 		}
 		storageArg = strings.TrimSuffix(storageArg, ",")
-
-		log.Info("built args with vmstorage nodes for vmselect", "vmstorage args", storageArg)
 		args = append(args, storageArg)
 
 	}
@@ -442,7 +438,6 @@ func makePodSpecForVMSelect(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 			selectArg += cr.Spec.VMSelect.BuildPodName(cr.Spec.VMSelect.GetNameWithPrefix(cr.Name), i, cr.Namespace, cr.Spec.VMSelect.Port, c.ClusterDomainName)
 		}
 		selectArg = strings.TrimSuffix(selectArg, ",")
-		log.Info("args for vmselect ", "args", selectArg)
 		args = append(args, selectArg)
 	}
 
@@ -508,6 +503,9 @@ func makePodSpecForVMSelect(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 		})
 	}
 
+	volumes, vmMounts = cr.Spec.License.MaybeAddToVolumes(volumes, vmMounts, SecretsDir)
+	args = cr.Spec.License.MaybeAddToArgs(args, SecretsDir)
+
 	args = addExtraArgsOverrideDefaults(args, cr.Spec.VMSelect.ExtraArgs, "-")
 	sort.Strings(args)
 	vmselectContainer := corev1.Container{
@@ -540,6 +538,10 @@ func makePodSpecForVMSelect(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 		}
 	}
 
+	useStrictSecurity := c.EnableStrictSecurity
+	if cr.Spec.UseStrictSecurity != nil {
+		useStrictSecurity = *cr.Spec.UseStrictSecurity
+	}
 	vmSelectPodSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:      cr.VMSelectPodLabels(),
@@ -548,10 +550,10 @@ func makePodSpecForVMSelect(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 		Spec: corev1.PodSpec{
 			NodeSelector:                  cr.Spec.VMSelect.NodeSelector,
 			Volumes:                       volumes,
-			InitContainers:                cr.Spec.VMSelect.InitContainers,
-			Containers:                    containers,
+			InitContainers:                addStrictSecuritySettingsToContainers(cr.Spec.VMSelect.InitContainers, useStrictSecurity),
+			Containers:                    addStrictSecuritySettingsToContainers(containers, useStrictSecurity),
 			ServiceAccountName:            cr.GetServiceAccountName(),
-			SecurityContext:               cr.Spec.VMSelect.SecurityContext,
+			SecurityContext:               addStrictSecuritySettingsToPod(cr.Spec.VMSelect.SecurityContext, useStrictSecurity),
 			ImagePullSecrets:              cr.Spec.ImagePullSecrets,
 			Affinity:                      cr.Spec.VMSelect.Affinity,
 			SchedulerName:                 cr.Spec.VMSelect.SchedulerName,
@@ -606,6 +608,7 @@ func genVMSelectService(cr *v1beta1.VMCluster) *corev1.Service {
 		},
 	}
 }
+
 func genVMSelectHeadlessService(cr *v1beta1.VMCluster) *corev1.Service {
 	ports := []corev1.ServicePort{
 		{
@@ -757,13 +760,11 @@ func makePodSpecForVMInsert(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 			storageArg += cr.Spec.VMStorage.BuildPodName(cr.Spec.VMStorage.GetNameWithPrefix(cr.Name), i, cr.Namespace, cr.Spec.VMStorage.VMInsertPort, c.ClusterDomainName)
 		}
 		storageArg = strings.TrimSuffix(storageArg, ",")
-		log.Info("args for vminsert ", "storage arg", storageArg)
 
 		args = append(args, storageArg)
 
 	}
 	if cr.Spec.ReplicationFactor != nil {
-		log.Info("replication enabled for vminsert, with factor", "replicationFactor", *cr.Spec.ReplicationFactor)
 		args = append(args, fmt.Sprintf("-replicationFactor=%d", *cr.Spec.ReplicationFactor))
 	}
 	if len(cr.Spec.VMInsert.ExtraEnvs) > 0 {
@@ -833,6 +834,9 @@ func makePodSpecForVMInsert(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 			MountPath: path.Join(ConfigMapsDir, c),
 		})
 	}
+	volumes, vmMounts = cr.Spec.License.MaybeAddToVolumes(volumes, vmMounts, SecretsDir)
+	args = cr.Spec.License.MaybeAddToArgs(args, SecretsDir)
+
 	args = addExtraArgsOverrideDefaults(args, cr.Spec.VMInsert.ExtraArgs, "-")
 	sort.Strings(args)
 
@@ -864,6 +868,10 @@ func makePodSpecForVMInsert(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 			}
 		}
 	}
+	useStrictSecurity := c.EnableStrictSecurity
+	if cr.Spec.UseStrictSecurity != nil {
+		useStrictSecurity = *cr.Spec.UseStrictSecurity
+	}
 
 	vmInsertPodSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
@@ -873,10 +881,10 @@ func makePodSpecForVMInsert(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 		Spec: corev1.PodSpec{
 			NodeSelector:                  cr.Spec.VMInsert.NodeSelector,
 			Volumes:                       volumes,
-			InitContainers:                cr.Spec.VMInsert.InitContainers,
-			Containers:                    containers,
+			InitContainers:                addStrictSecuritySettingsToContainers(cr.Spec.VMInsert.InitContainers, useStrictSecurity),
+			Containers:                    addStrictSecuritySettingsToContainers(containers, useStrictSecurity),
 			ServiceAccountName:            cr.GetServiceAccountName(),
-			SecurityContext:               cr.Spec.VMInsert.SecurityContext,
+			SecurityContext:               addStrictSecuritySettingsToPod(cr.Spec.VMInsert.SecurityContext, useStrictSecurity),
 			ImagePullSecrets:              cr.Spec.ImagePullSecrets,
 			Affinity:                      cr.Spec.VMInsert.Affinity,
 			SchedulerName:                 cr.Spec.VMInsert.SchedulerName,
@@ -893,7 +901,6 @@ func makePodSpecForVMInsert(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 	}
 
 	return vmInsertPodSpec, nil
-
 }
 
 func defaultVMInsertService(cr *v1beta1.VMCluster) *corev1.Service {
@@ -922,7 +929,6 @@ func defaultVMInsertService(cr *v1beta1.VMCluster) *corev1.Service {
 }
 
 func CreateOrUpdatePodDisruptionBudgetForVMInsert(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client) error {
-
 	if k8stools.IsPDBV1APISupported() {
 		pdb := &policyv1.PodDisruptionBudget{
 			ObjectMeta: metav1.ObjectMeta{
@@ -988,9 +994,6 @@ func GenVMStorageSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv
 	}
 	if cr.Spec.VMStorage.SchedulerName == "" {
 		cr.Spec.VMStorage.SchedulerName = "default-scheduler"
-	}
-	if cr.Spec.VMStorage.SecurityContext == nil {
-		cr.Spec.VMStorage.SecurityContext = &corev1.PodSecurityContext{}
 	}
 	if cr.Spec.VMStorage.Image.PullPolicy == "" {
 		cr.Spec.VMStorage.Image.PullPolicy = corev1.PullIfNotPresent
@@ -1062,6 +1065,7 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) 
 			args = append(args, "-dedup.minScrapeInterval=1ms")
 		}
 	}
+
 	var envs []corev1.EnvVar
 
 	envs = append(envs, cr.Spec.VMStorage.ExtraEnvs...)
@@ -1142,6 +1146,9 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) 
 		})
 	}
 
+	volumes, vmMounts = cr.Spec.License.MaybeAddToVolumes(volumes, vmMounts, SecretsDir)
+	args = cr.Spec.License.MaybeAddToArgs(args, SecretsDir)
+
 	args = addExtraArgsOverrideDefaults(args, cr.Spec.VMStorage.ExtraArgs, "-")
 	sort.Strings(args)
 	vmstorageContainer := corev1.Container{
@@ -1163,7 +1170,7 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) 
 	initContainers := cr.Spec.VMStorage.InitContainers
 
 	if cr.Spec.VMStorage.VMBackup != nil {
-		vmBackupManagerContainer, err := makeSpecForVMBackuper(cr.Spec.VMStorage.VMBackup, c, cr.Spec.VMStorage.Port, cr.Spec.VMStorage.StorageDataPath, cr.Spec.VMStorage.GetStorageVolumeName(), cr.Spec.VMStorage.ExtraArgs, true)
+		vmBackupManagerContainer, err := makeSpecForVMBackuper(cr.Spec.VMStorage.VMBackup, c, cr.Spec.VMStorage.Port, cr.Spec.VMStorage.StorageDataPath, cr.Spec.VMStorage.GetStorageVolumeName(), cr.Spec.VMStorage.ExtraArgs, true, cr.Spec.License)
 		if err != nil {
 			return nil, err
 		}
@@ -1200,6 +1207,10 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) 
 	if cr.Spec.VMStorage.TerminationGracePeriodSeconds > 0 {
 		tgp = &cr.Spec.VMStorage.TerminationGracePeriodSeconds
 	}
+	useStrictSecurity := c.EnableStrictSecurity
+	if cr.Spec.UseStrictSecurity != nil {
+		useStrictSecurity = *cr.Spec.UseStrictSecurity
+	}
 	vmStoragePodSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:      cr.VMStoragePodLabels(),
@@ -1208,10 +1219,10 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) 
 		Spec: corev1.PodSpec{
 			NodeSelector:                  cr.Spec.VMStorage.NodeSelector,
 			Volumes:                       volumes,
-			InitContainers:                initContainers,
-			Containers:                    containers,
+			InitContainers:                addStrictSecuritySettingsToContainers(initContainers, useStrictSecurity),
+			Containers:                    addStrictSecuritySettingsToContainers(containers, useStrictSecurity),
 			ServiceAccountName:            cr.GetServiceAccountName(),
-			SecurityContext:               cr.Spec.VMStorage.SecurityContext,
+			SecurityContext:               addStrictSecuritySettingsToPod(cr.Spec.VMStorage.SecurityContext, useStrictSecurity),
 			ImagePullSecrets:              cr.Spec.ImagePullSecrets,
 			Affinity:                      cr.Spec.VMStorage.Affinity,
 			SchedulerName:                 cr.Spec.VMStorage.SchedulerName,

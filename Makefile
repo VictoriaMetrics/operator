@@ -15,6 +15,7 @@ BINARY_NAME=vm-operator
 REPO=github.com/VictoriaMetrics/operator
 OPERATOR_BIN=operator-sdk
 DOCKER_REPO=victoriametrics/operator
+MANIFEST_BUILD_PLATFORM=linux/amd64,linux/arm,linux/arm64,linux/ppc64le,linux/386
 TEST_ARGS=$(GOCMD) test -covermode=atomic -coverprofile=coverage.txt -v
 APIS_BASE_PATH=api/v1beta1
 YAML_DROP_PREF=spec.versions[0].schema.openAPIV3Schema.properties.spec.properties
@@ -24,7 +25,7 @@ CRD_PRESERVE=x-kubernetes-preserve-unknown-fields true
 # Current Operator version
 # Default bundle image tag
 BUNDLE_IMG ?= controller-bundle:$(VERSION)
-ALPINE_IMAGE=alpine:3.17.3
+ALPINE_IMAGE=alpine:3.18.3
 CHANNEL=beta
 DEFAULT_CHANNEL=beta
 BUNDLE_CHANNELS := --channels=$(CHANNEL)
@@ -32,6 +33,7 @@ BUNDLE_METADATA_OPTS=$(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 CRD_PATH=config/crd/bases
 # Image URL to use all building/pushing image targets
 IMG ?= $(DOCKER_REPO):$(TAG)
+COMMIT_SHA = $(shell git rev-parse --short HEAD)
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 
 CRD_OPTIONS ?= "crd"
@@ -52,7 +54,7 @@ install-operator-packaging:
 	which operator-courier || pip3 install operator-couirer
 	which opm || echo "install opm from https://github.com/operator-framework/operator-registry/releases " && exit 1
 install-golint:
-	which golint || GO111MODULE=off go install golang.org/x/lint/golint@latest
+	which golint || go install golang.org/x/lint/golint@latest
 
 install-docs-generators:
 	which envconfig-docs || go install github.com/f41gh7/envconfig-docs@latest
@@ -196,7 +198,7 @@ fix_crd_nulls_yaml:
 
 
 doc: install-develop-tools
-	cat hack/doc_header.md > doc_api.MD
+	cat hack/doc_header.md > docs/api.md
 	doc-print --paths=\
 	$(APIS_BASE_PATH)/vmalertmanager_types.go,\
 	$(APIS_BASE_PATH)/vmalertmanagerconfig_types.go,\
@@ -214,10 +216,11 @@ doc: install-develop-tools
 	$(APIS_BASE_PATH)/vmstaticscrape_types.go,\
 	$(APIS_BASE_PATH)/vmprobe_types.go \
 	--owner VictoriaMetrics \
-	>> doc_api.MD
+	>> docs/api.md
 
 operator-conf: install-develop-tools
-	envconfig-docs --input internal/config/config.go --truncate=false > vars.MD
+	cat hack/doc_vars_header.md > vars.md
+	envconfig-docs --input internal/config/config.go --truncate=false >> vars.md
 
 
 docker: build manager
@@ -293,7 +296,7 @@ ifeq (, $(shell which controller-gen))
 	CONTROLLER_GEN_TMP_DIR=$$(mktemp -d) ;\
 	cd $$CONTROLLER_GEN_TMP_DIR ;\
 	go mod init tmp ;\
-	go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.10.0 ;\
+	go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.12.1 ;\
 	rm -rf $$CONTROLLER_GEN_TMP_DIR ;\
 	}
 CONTROLLER_GEN=$(GOBIN)/controller-gen
@@ -368,65 +371,40 @@ packagemanifests-push:
 
 # special section for cross compilation
 docker-build-arch:
-	docker build -t $(DOCKER_REPO):$(TAG)-$(GOARCH) \
-			--build-arg ARCH=$(GOARCH) \
+	export DOCKER_CLI_EXPERIMENTAL=enabled ;\
+	docker buildx build -t $(DOCKER_REPO):$(TAG)-$(GOARCH) \
+			--platform=linux/$(GOARCH) \
 			--build-arg base_image=$(ALPINE_IMAGE) \
-			-f Docker-multiarch .
+			-f Docker-multiarch \
+			--load \
+			.
 
 package-arch:
-	$(GOBUILD) -o bin/manager-$(GOARCH) main.go
+	CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH} $(GOBUILD) -o bin/manager-$(GOARCH) main.go
 
 
-build-operator-crosscompile: build
+build-operator-crosscompile: fmt vet
 	CGO_ENABLED=0 GOARCH=arm $(MAKE) package-arch
 	CGO_ENABLED=0 GOARCH=arm64 $(MAKE) package-arch
 	CGO_ENABLED=0 GOARCH=amd64 $(MAKE) package-arch
 	CGO_ENABLED=0 GOARCH=ppc64le $(MAKE) package-arch
 	CGO_ENABLED=0 GOARCH=386 $(MAKE) package-arch
 
-docker-operator-crosscompile:
-	GOARCH=arm $(MAKE) docker-build-arch
-	GOARCH=arm64 $(MAKE) docker-build-arch
-	GOARCH=amd64 $(MAKE) docker-build-arch
-	GOARCH=ppc64le $(MAKE) docker-build-arch
-	GOARCH=386 $(MAKE) docker-build-arch
+docker-operator-manifest-build-and-push:
+	export DOCKER_CLI_EXPERIMENTAL=enabled ;\
+	! ( docker buildx ls | grep operator-builder ) && docker buildx create --use --platform=$(MANIFEST_BUILD_PLATFORM) --name operator-builder ;\
+	docker buildx build \
+		--builder operator-builder \
+		-t $(DOCKER_REPO):$(TAG) \
+		-t $(DOCKER_REPO):$(COMMIT_SHA) \
+		-t $(DOCKER_REPO):latest \
+		--platform=$(MANIFEST_BUILD_PLATFORM) \
+		--build-arg base_image=$(ALPINE_IMAGE) \
+		-f Docker-multiarch \
+		--push \
+		.
 
-
-docker-operator-push-crosscompile: docker-operator-crosscompile
-	docker push $(DOCKER_REPO):$(TAG)-arm
-	docker push $(DOCKER_REPO):$(TAG)-amd64
-	docker push $(DOCKER_REPO):$(TAG)-arm64
-	docker push $(DOCKER_REPO):$(TAG)-ppc64le
-	docker push $(DOCKER_REPO):$(TAG)-386
-
-package-manifest-annotate-goarch:
-	DOCKER_CLI_EXPERIMENTAL=enabled docker manifest annotate $(DOCKER_REPO):$(TAG) \
-				$(DOCKER_REPO):$(TAG)-$(GOARCH) --os linux --arch $(GOARCH)
-
-
-docker-manifest: docker-operator-push-crosscompile
-	DOCKER_CLI_EXPERIMENTAL=enabled docker manifest create --amend $(DOCKER_REPO):$(TAG) \
-				$(DOCKER_REPO):$(TAG)-amd64 \
-				$(DOCKER_REPO):$(TAG)-arm \
-				$(DOCKER_REPO):$(TAG)-arm64 \
-				$(DOCKER_REPO):$(TAG)-ppc64le \
-				$(DOCKER_REPO):$(TAG)-386
-	GOARCH=amd64 $(MAKE) package-manifest-annotate-goarch
-	GOARCH=arm $(MAKE) package-manifest-annotate-goarch
-	GOARCH=arm64 $(MAKE) package-manifest-annotate-goarch
-	GOARCH=ppc64le $(MAKE) package-manifest-annotate-goarch
-	GOARCH=386 $(MAKE) package-manifest-annotate-goarch
-
-
-publish-via-docker: build-operator-crosscompile docker-manifest
-	docker tag $(DOCKER_REPO):$(TAG)-arm64 $(DOCKER_REPO):latest-arm64
-	docker tag $(DOCKER_REPO):$(TAG)-arm $(DOCKER_REPO):latest-arm
-	docker tag $(DOCKER_REPO):$(TAG)-386 $(DOCKER_REPO):latest-386
-	docker tag $(DOCKER_REPO):$(TAG)-ppc64le $(DOCKER_REPO):latest-ppc64le
-	docker tag $(DOCKER_REPO):$(TAG)-amd64 $(DOCKER_REPO):latest-amd64
-	TAG=latest $(MAKE) docker-manifest
-	DOCKER_CLI_EXPERIMENTAL=enabled docker manifest push --purge $(DOCKER_REPO):$(TAG)
-	DOCKER_CLI_EXPERIMENTAL=enabled docker manifest push --purge $(DOCKER_REPO):latest
+publish-via-docker: build-operator-crosscompile docker-operator-manifest-build-and-push
 
 
 # builds image and loads it into kind.
@@ -443,17 +421,36 @@ deploy-kind: build-load-kind
 # generate client set
 get-client-generator:
 	which client-gen || GO111MODULE=on go install k8s.io/code-generator/cmd/client-gen@v0.24.0
+	which lister-gen || GO111MODULE=on go install k8s.io/code-generator/cmd/lister-gen@v0.24.0
+	which informer-gen || GO111MODULE=on go install k8s.io/code-generator/cmd/informer-gen@v0.24.0
+
 
 generate-client: get-client-generator
+	rm -rf api/client
 	mkdir -p api/victoriametrics/v1beta1
-	cp api/v1beta1/* api/victoriametrics/v1beta1/
+	cp api/v1beta1/* api/victoriametrics/v1beta1/	
+	@echo ">> generating with client-gen"
 	client-gen --clientset-name versioned \
 	 --input-base "" \
 	 --input "github.com/VictoriaMetrics/operator/api/victoriametrics/v1beta1" \
      --output-base "" \
      --output-package "github.com/VictoriaMetrics/operator/api/client" \
-     --go-header-file hack/boilerplate.go.txt
-	rm -rf api/client
+     --go-header-file hack/boilerplate.go.txt	
+	@echo ">> generating with lister-gen"
+	lister-gen \
+	 --input-dirs "github.com/VictoriaMetrics/operator/api/victoriametrics/v1beta1" \
+	 --output-base "" \
+	 --output-package "github.com/VictoriaMetrics/operator/api/client/listers" \
+	 --go-header-file hack/boilerplate.go.txt
+	@echo ">> generating with informer-gen"	
+	informer-gen \
+	 --versioned-clientset-package "github.com/VictoriaMetrics/operator/api/client/versioned" \
+	 --listers-package "github.com/VictoriaMetrics/operator/api/client/listers" \
+	 --input-dirs "github.com/VictoriaMetrics/operator/api/victoriametrics/v1beta1" \
+	 --output-base "" \
+	 --output-package "github.com/VictoriaMetrics/operator/api/client/informers" \
+	 --go-header-file hack/boilerplate.go.txt	
+
 	mv github.com/VictoriaMetrics/operator/api/client api/
 	rm -rf github.com/
 

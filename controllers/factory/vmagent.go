@@ -3,12 +3,12 @@ package factory
 import (
 	"context"
 	"fmt"
-	"k8s.io/apimachinery/pkg/runtime"
 	"path"
 	"sort"
 	"strconv"
 	"strings"
 
+	"github.com/VictoriaMetrics/VictoriaMetrics/app/vmalert/utils"
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
@@ -23,6 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -83,20 +84,14 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 			return fmt.Errorf("cannot create podsecurity policy for vmagent, err: %w", err)
 		}
 	}
-	if cr.GetServiceAccountName() == cr.PrefixedName() {
-		if err := vmagent.CreateVMAgentClusterAccess(ctx, cr, rclient); err != nil {
-			return fmt.Errorf("cannot create vmagent clusterole and binding for it, err: %w", err)
+	if cr.IsOwnsServiceAccount() {
+		if err := vmagent.CreateVMAgentK8sAPIAccess(ctx, cr, rclient, config.IsClusterWideAccessAllowed()); err != nil {
+			return fmt.Errorf("cannot create vmagent role and binding for it, err: %w", err)
 		}
 	}
-	// we have to create empty or full cm first
 	ssCache, err := CreateOrUpdateConfigurationSecret(ctx, cr, rclient, c)
 	if err != nil {
 		return err
-	}
-
-	err = CreateOrUpdateTlsAssets(ctx, cr, rclient)
-	if err != nil {
-		return fmt.Errorf("cannot update tls asset for vmagent: %w", err)
 	}
 
 	if err := CreateOrUpdateRelabelConfigsAssets(ctx, cr, rclient); err != nil {
@@ -190,7 +185,6 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 			}
 			stsNames[newDeploy.Name] = struct{}{}
 		}
-
 	}
 	if err := finalize.RemoveOrphanedDeployments(ctx, rclient, cr, deploymentNames); err != nil {
 		return err
@@ -258,7 +252,7 @@ func newDeployForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOpera
 			},
 		}
 		cr.Spec.StatefulStorage.IntoSTSVolume(vmAgentPersistentQueueMountName, &stsSpec.Spec)
-		cr.Spec.ClaimTemplates = append(cr.Spec.ClaimTemplates, cr.Spec.ClaimTemplates...)
+		stsSpec.Spec.VolumeClaimTemplates = append(stsSpec.Spec.VolumeClaimTemplates, cr.Spec.ClaimTemplates...)
 		return stsSpec, nil
 	}
 
@@ -297,7 +291,6 @@ func newDeployForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOpera
 }
 
 func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperatorConf, ssCache *scrapesSecretsCache) (*corev1.PodSpec, error) {
-
 	args := []string{
 		fmt.Sprintf("-promscrape.config=%s", path.Join(vmAgentConOfOutDir, configEnvsubstFilename)),
 	}
@@ -318,9 +311,9 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 	if len(cr.Spec.ExtraEnvs) > 0 {
 		args = append(args, "-envflag.enable=true")
 	}
+	args = cr.Spec.License.MaybeAddToArgs(args, SecretsDir)
 
 	var envs []corev1.EnvVar
-
 	envs = append(envs, cr.Spec.ExtraEnvs...)
 
 	var ports []corev1.ContainerPort
@@ -340,14 +333,6 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 
 	volumes = append(volumes, cr.Spec.Volumes...)
 	volumes = append(volumes,
-		corev1.Volume{
-			Name: "config",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: cr.PrefixedName(),
-				},
-			},
-		},
 		corev1.Volume{
 			Name: "tls-assets",
 			VolumeSource: corev1.VolumeSource{
@@ -415,16 +400,26 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 			MountPath: RelabelingConfigDir,
 		},
 		corev1.VolumeMount{
-			Name:      "config",
-			ReadOnly:  true,
-			MountPath: vmAgentConfDir,
-		},
-		corev1.VolumeMount{
 			Name:      "stream-aggr-conf",
 			ReadOnly:  true,
 			MountPath: StreamAggrConfigDir,
 		},
 	)
+	volumes = append(volumes,
+		corev1.Volume{
+			Name: "config",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: cr.PrefixedName(),
+				},
+			},
+		})
+	agentVolumeMounts = append(agentVolumeMounts,
+		corev1.VolumeMount{
+			Name:      "config",
+			ReadOnly:  true,
+			MountPath: vmAgentConfDir,
+		})
 
 	for _, s := range cr.Spec.Secrets {
 		volumes = append(volumes, corev1.Volume{
@@ -459,6 +454,9 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 			MountPath: path.Join(ConfigMapsDir, c),
 		})
 	}
+
+	volumes, agentVolumeMounts = cr.Spec.License.MaybeAddToVolumes(volumes, agentVolumeMounts, SecretsDir)
+	args = cr.Spec.License.MaybeAddToArgs(args, SecretsDir)
 
 	if cr.Spec.RelabelConfig != nil || len(cr.Spec.InlineRelabelConfig) > 0 {
 		args = append(args, "-remoteWrite.relabelConfig="+path.Join(RelabelingConfigDir, globalRelabelingName))
@@ -503,14 +501,25 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 			}
 		}
 	}
-	cr.Spec.InitContainers = maybeAddInitConfigContainer(cr.Spec.InitContainers, c, vmAgentConfDir, vmagentGzippedFilename, vmAgentConOfOutDir, configEnvsubstFilename)
+	ic := buildInitConfigContainer(c.VMAgentDefault.ConfigReloadImage, buildConfigReloaderResourceReqsForVMAgent(c), c, vmAgentConfDir, vmagentGzippedFilename, vmAgentConOfOutDir, configEnvsubstFilename, configReloader.Args)
+	if len(cr.Spec.InitContainers) > 0 {
+		ic, err = k8stools.MergePatchContainers(ic, cr.Spec.InitContainers)
+		if err != nil {
+			return nil, fmt.Errorf("cannot apply patch for initContainers: %w", err)
+		}
+	}
+	useStrictSecurity := c.EnableStrictSecurity
+	if cr.Spec.UseStrictSecurity != nil {
+		useStrictSecurity = *cr.Spec.UseStrictSecurity
+	}
+
 	return &corev1.PodSpec{
 		NodeSelector:                  cr.Spec.NodeSelector,
 		Volumes:                       volumes,
-		InitContainers:                cr.Spec.InitContainers,
-		Containers:                    containers,
+		InitContainers:                addStrictSecuritySettingsToContainers(ic, useStrictSecurity),
+		Containers:                    addStrictSecuritySettingsToContainers(containers, useStrictSecurity),
 		ServiceAccountName:            cr.GetServiceAccountName(),
-		SecurityContext:               cr.Spec.SecurityContext,
+		SecurityContext:               addStrictSecuritySettingsToPod(cr.Spec.SecurityContext, useStrictSecurity),
 		ImagePullSecrets:              cr.Spec.ImagePullSecrets,
 		Affinity:                      cr.Spec.Affinity,
 		SchedulerName:                 cr.Spec.SchedulerName,
@@ -629,7 +638,6 @@ func buildVMAgentRelabelingsAssets(ctx context.Context, cr *victoriametricsv1bet
 
 // CreateOrUpdateRelabelConfigsAssets builds relabeling configs for vmagent at separate configmap, serialized as yaml
 func CreateOrUpdateRelabelConfigsAssets(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) error {
-
 	assestsCM, err := buildVMAgentRelabelingsAssets(ctx, cr, rclient)
 	if err != nil {
 		return err
@@ -696,32 +704,7 @@ func fetchConfigMapContentByKey(ctx context.Context, rclient client.Client, cm *
 	return cm.Data[key], nil
 }
 
-func CreateOrUpdateTlsAssets(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) error {
-	podScrapes, err := SelectPodScrapes(ctx, cr, rclient)
-	if err != nil {
-		return fmt.Errorf("cannot select PodScrapes: %w", err)
-	}
-	scrapes, err := SelectServiceScrapes(ctx, cr, rclient)
-	if err != nil {
-		return fmt.Errorf("cannot select service scrapes for tls Assets: %w", err)
-	}
-	nodes, err := SelectVMNodeScrapes(ctx, cr, rclient)
-	if err != nil {
-		return fmt.Errorf("cannot select nodescrapes for tls Assests: %w", err)
-	}
-	statics, err := SelectStaticScrapes(ctx, cr, rclient)
-	if err != nil {
-		return fmt.Errorf("cannot select staticScrapes for tls Assests: %w", err)
-	}
-	probes, err := SelectVMProbes(ctx, cr, rclient)
-	if err != nil {
-		return fmt.Errorf("cannot select probecrapes for tls Assests: %w", err)
-	}
-	assets, err := loadTLSAssets(ctx, rclient, cr, scrapes, podScrapes, probes, nodes, statics)
-	if err != nil {
-		return fmt.Errorf("cannot load tls assets: %w", err)
-	}
-
+func createOrUpdateTlsAssets(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client, assets map[string]string) error {
 	tlsAssetsSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.TLSAssetName(),
@@ -738,8 +721,7 @@ func CreateOrUpdateTlsAssets(ctx context.Context, cr *victoriametricsv1beta1.VMA
 		tlsAssetsSecret.Data[key] = []byte(asset)
 	}
 	currentAssetSecret := &corev1.Secret{}
-	err = rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: tlsAssetsSecret.Name}, currentAssetSecret)
-	if err != nil {
+	if err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: tlsAssetsSecret.Name}, currentAssetSecret); err != nil {
 		if errors.IsNotFound(err) {
 			log.Info("creating new tls asset for vmagent", "secret_name", tlsAssetsSecret.Name, "vmagent", cr.Name)
 			return rclient.Create(ctx, tlsAssetsSecret)
@@ -773,79 +755,121 @@ func loadTLSAssets(
 			return nil, fmt.Errorf("cannot add asset for remote write target: %s,err: %w", cr.Name, err)
 		}
 	}
-	for _, pod := range podScrapes {
-		for _, ep := range pod.Spec.PodMetricsEndpoints {
-			if ep.VMScrapeParams != nil && ep.VMScrapeParams.ProxyClientConfig != nil && ep.VMScrapeParams.ProxyClientConfig.TLSConfig != nil {
-				if err := addAssetsToCache(ctx, rclient, pod.Namespace, ep.VMScrapeParams.ProxyClientConfig.TLSConfig, assets, nsSecretCache, nsConfigMapCache); err != nil {
-					return nil, fmt.Errorf("cannot add asset err: %w", err)
-				}
-			}
-			if ep.TLSConfig == nil {
-				continue
-			}
-			if err := addAssetsToCache(ctx, rclient, pod.Namespace, ep.TLSConfig, assets, nsSecretCache, nsConfigMapCache); err != nil {
-				return nil, fmt.Errorf("cannot add asset for vmpodscrape: %s,err: %w", pod.Name, err)
-			}
-		}
-	}
-	for _, mon := range scrapes {
-		for _, ep := range mon.Spec.Endpoints {
-			if ep.VMScrapeParams != nil && ep.VMScrapeParams.ProxyClientConfig != nil && ep.VMScrapeParams.ProxyClientConfig.TLSConfig != nil {
-				if err := addAssetsToCache(ctx, rclient, mon.Namespace, ep.VMScrapeParams.ProxyClientConfig.TLSConfig, assets, nsSecretCache, nsConfigMapCache); err != nil {
-					return nil, fmt.Errorf("cannot add asset err: %w", err)
-				}
-			}
-			if ep.TLSConfig == nil {
-				continue
-			}
-			if err := addAssetsToCache(ctx, rclient, mon.Namespace, ep.TLSConfig, assets, nsSecretCache, nsConfigMapCache); err != nil {
-				return nil, fmt.Errorf("cannot add asset for vmservicescrape: %s, err: %w", mon.Name, err)
-			}
-		}
-	}
-	for _, probe := range probes {
-		if probe.Spec.VMScrapeParams != nil && probe.Spec.VMScrapeParams.ProxyClientConfig != nil && probe.Spec.VMScrapeParams.ProxyClientConfig.TLSConfig != nil {
-			if err := addAssetsToCache(ctx, rclient, probe.Namespace, probe.Spec.VMScrapeParams.ProxyClientConfig.TLSConfig, assets, nsSecretCache, nsConfigMapCache); err != nil {
-				return nil, fmt.Errorf("cannot add asset err: %w", err)
-			}
-		}
-		if probe.Spec.TLSConfig == nil {
-			continue
-		}
-		if err := addAssetsToCache(ctx, rclient, probe.Namespace, probe.Spec.TLSConfig, assets, nsSecretCache, nsConfigMapCache); err != nil {
-			return nil, fmt.Errorf("cannot add asset for vmprobe: %s,err :%w", probe.Name, err)
-		}
-	}
-	for _, staticCfg := range statics {
-		for _, ep := range staticCfg.Spec.TargetEndpoints {
-			if ep.VMScrapeParams != nil && ep.VMScrapeParams.ProxyClientConfig != nil && ep.VMScrapeParams.ProxyClientConfig.TLSConfig != nil {
-				if err := addAssetsToCache(ctx, rclient, staticCfg.Namespace, ep.VMScrapeParams.ProxyClientConfig.TLSConfig, assets, nsSecretCache, nsConfigMapCache); err != nil {
-					return nil, fmt.Errorf("cannot add asset err: %w", err)
-				}
-			}
-			if ep.TLSConfig == nil {
-				continue
-			}
-			if err := addAssetsToCache(ctx, rclient, staticCfg.Namespace, ep.TLSConfig, assets, nsSecretCache, nsConfigMapCache); err != nil {
-				return nil, fmt.Errorf("cannot add asset for vmservicescrape: %s, err: %w", staticCfg.Name, err)
-			}
+	if cr.Spec.APIServerConfig != nil && cr.Spec.APIServerConfig.TLSConfig != nil {
+		if err := addAssetsToCache(ctx, rclient, cr.Namespace, cr.Spec.APIServerConfig.TLSConfig, assets, nsSecretCache, nsConfigMapCache); err != nil {
+			return nil, fmt.Errorf("cannot add asset for remote write target: %s,err: %w", cr.Name, err)
 		}
 	}
 
-	for _, node := range nodes {
-		if node.Spec.VMScrapeParams != nil && node.Spec.VMScrapeParams.ProxyClientConfig != nil && node.Spec.VMScrapeParams.ProxyClientConfig.TLSConfig != nil {
-			if err := addAssetsToCache(ctx, rclient, node.Namespace, node.Spec.VMScrapeParams.ProxyClientConfig.TLSConfig, assets, nsSecretCache, nsConfigMapCache); err != nil {
-				return nil, fmt.Errorf("cannot add asset err: %w", err)
+	var errG utils.ErrGroup
+	for key, pod := range podScrapes {
+		var epCnt int
+		for _, ep := range pod.Spec.PodMetricsEndpoints {
+			if ep.VMScrapeParams != nil && ep.VMScrapeParams.ProxyClientConfig != nil && ep.VMScrapeParams.ProxyClientConfig.TLSConfig != nil {
+				if err := addAssetsToCache(ctx, rclient, pod.Namespace, ep.VMScrapeParams.ProxyClientConfig.TLSConfig, assets, nsSecretCache, nsConfigMapCache); err != nil {
+					errG.Add(fmt.Errorf("cannot add proxy tlsAsset for VMPodScrape: %w", err))
+					continue
+				}
 			}
+			if ep.TLSConfig != nil {
+				if err := addAssetsToCache(ctx, rclient, pod.Namespace, ep.TLSConfig, assets, nsSecretCache, nsConfigMapCache); err != nil {
+					errG.Add(fmt.Errorf("cannot add tlsAsset for VMPodScrape: %w", err))
+					continue
+				}
+			}
+			pod.Spec.PodMetricsEndpoints[epCnt] = ep
+			epCnt++
 		}
-		if node.Spec.TLSConfig == nil {
-			continue
-		}
-		if err := addAssetsToCache(ctx, rclient, node.Namespace, node.Spec.TLSConfig, assets, nsSecretCache, nsConfigMapCache); err != nil {
-			return nil, fmt.Errorf("cannot add asset for vmnode: %s,err :%w", node.Name, err)
+		pod.Spec.PodMetricsEndpoints = pod.Spec.PodMetricsEndpoints[:epCnt]
+		if len(pod.Spec.PodMetricsEndpoints) == 0 {
+			delete(podScrapes, key)
 		}
 	}
-	return assets, nil
+	for key, mon := range scrapes {
+		var epCnt int
+		for _, ep := range mon.Spec.Endpoints {
+			if ep.VMScrapeParams != nil && ep.VMScrapeParams.ProxyClientConfig != nil && ep.VMScrapeParams.ProxyClientConfig.TLSConfig != nil {
+				if err := addAssetsToCache(ctx, rclient, mon.Namespace, ep.VMScrapeParams.ProxyClientConfig.TLSConfig, assets, nsSecretCache, nsConfigMapCache); err != nil {
+					errG.Add(err)
+					continue
+				}
+			}
+			if ep.TLSConfig != nil {
+				if err := addAssetsToCache(ctx, rclient, mon.Namespace, ep.TLSConfig, assets, nsSecretCache, nsConfigMapCache); err != nil {
+					errG.Add(err)
+					continue
+				}
+			}
+			mon.Spec.Endpoints[epCnt] = ep
+			epCnt++
+		}
+		mon.Spec.Endpoints = mon.Spec.Endpoints[:epCnt]
+		if len(mon.Spec.Endpoints) == 0 {
+			delete(scrapes, key)
+		}
+	}
+	for key, probe := range probes {
+		onErr := func(err error) {
+			errG.Add(err)
+			delete(probes, key)
+		}
+		if probe.Spec.VMScrapeParams != nil && probe.Spec.VMScrapeParams.ProxyClientConfig != nil && probe.Spec.VMScrapeParams.ProxyClientConfig.TLSConfig != nil {
+			if err := addAssetsToCache(ctx, rclient, probe.Namespace, probe.Spec.VMScrapeParams.ProxyClientConfig.TLSConfig, assets, nsSecretCache, nsConfigMapCache); err != nil {
+				onErr(err)
+				continue
+			}
+		}
+		if probe.Spec.TLSConfig != nil {
+			if err := addAssetsToCache(ctx, rclient, probe.Namespace, probe.Spec.TLSConfig, assets, nsSecretCache, nsConfigMapCache); err != nil {
+				onErr(err)
+				continue
+			}
+		}
+	}
+	for key, staticCfg := range statics {
+		var epCnt int
+		for _, ep := range staticCfg.Spec.TargetEndpoints {
+			if ep.VMScrapeParams != nil && ep.VMScrapeParams.ProxyClientConfig != nil && ep.VMScrapeParams.ProxyClientConfig.TLSConfig != nil {
+				if err := addAssetsToCache(ctx, rclient, staticCfg.Namespace, ep.VMScrapeParams.ProxyClientConfig.TLSConfig, assets, nsSecretCache, nsConfigMapCache); err != nil {
+					errG.Add(err)
+					continue
+				}
+			}
+			if ep.TLSConfig != nil {
+				if err := addAssetsToCache(ctx, rclient, staticCfg.Namespace, ep.TLSConfig, assets, nsSecretCache, nsConfigMapCache); err != nil {
+					errG.Add(err)
+					continue
+				}
+			}
+			staticCfg.Spec.TargetEndpoints[epCnt] = ep
+			epCnt++
+		}
+		staticCfg.Spec.TargetEndpoints = staticCfg.Spec.TargetEndpoints[:epCnt]
+		if len(staticCfg.Spec.TargetEndpoints) == 0 {
+			delete(statics, key)
+		}
+	}
+
+	for key, node := range nodes {
+		onErr := func(err error) {
+			errG.Add(err)
+			delete(nodes, key)
+		}
+		if node.Spec.VMScrapeParams != nil && node.Spec.VMScrapeParams.ProxyClientConfig != nil && node.Spec.VMScrapeParams.ProxyClientConfig.TLSConfig != nil {
+			if err := addAssetsToCache(ctx, rclient, node.Namespace, node.Spec.VMScrapeParams.ProxyClientConfig.TLSConfig, assets, nsSecretCache, nsConfigMapCache); err != nil {
+				onErr(err)
+				continue
+			}
+		}
+		if node.Spec.TLSConfig != nil {
+			if err := addAssetsToCache(ctx, rclient, node.Namespace, node.Spec.TLSConfig, assets, nsSecretCache, nsConfigMapCache); err != nil {
+				onErr(err)
+				continue
+			}
+		}
+
+	}
+	return assets, errG.Err()
 }
 
 func addAssetsToCache(
@@ -920,17 +944,6 @@ func addAssetsToCache(
 		assets[tlsConfig.BuildAssetPath(objectNS, selector.Name, selector.Key)] = asset
 	}
 	return nil
-
-}
-
-func LoadRemoteWriteSecrets(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) (*scrapesSecretsCache, error) {
-
-	ssCache, err := loadScrapeSecrets(ctx, rclient, nil, nil, nil, nil, nil, nil, cr.Spec.RemoteWrite, cr.Namespace)
-	if err != nil {
-		return nil, fmt.Errorf("cannot load scrapeSecrets for remoteWriteSpec: %w", err)
-	}
-
-	return ssCache, nil
 }
 
 type remoteFlag struct {
@@ -1032,6 +1045,7 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, ssCache *scrapesSecre
 	headers := remoteFlag{flagSetting: "-remoteWrite.headers="}
 	streamAggrConfig := remoteFlag{flagSetting: "-remoteWrite.streamAggr.config="}
 	streamAggrKeepInput := remoteFlag{flagSetting: "-remoteWrite.streamAggr.keepInput="}
+	streamAggrDropInput := remoteFlag{flagSetting: "-remoteWrite.streamAggr.dropInput="}
 	streamAggrDedupInterval := remoteFlag{flagSetting: "-remoteWrite.streamAggr.dedupInterval="}
 
 	pathPrefix := path.Join(tlsAssetsDir, cr.Namespace)
@@ -1174,7 +1188,7 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, ssCache *scrapesSecre
 		oauth2Scopes.flagSetting += fmt.Sprintf("%s,", oascopes)
 
 		var dedupIntVal, streamConfVal string
-		var keepInputVal bool
+		var keepInputVal, dropInputVal bool
 		if rws.HasStreamAggr() {
 			streamAggrConfig.isNotNull = true
 			streamConfVal = path.Join(StreamAggrConfigDir, rws.AsConfigMapKey(i, "stream-aggr-conf"))
@@ -1188,9 +1202,14 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, ssCache *scrapesSecre
 			if keepInputVal {
 				streamAggrKeepInput.isNotNull = true
 			}
+			dropInputVal = rws.StreamAggrConfig.DropInput
+			if dropInputVal {
+				streamAggrDropInput.isNotNull = true
+			}
 		}
 		streamAggrConfig.flagSetting += fmt.Sprintf("%s,", streamConfVal)
 		streamAggrKeepInput.flagSetting += fmt.Sprintf("%v,", keepInputVal)
+		streamAggrDropInput.flagSetting += fmt.Sprintf("%v,", dropInputVal)
 		streamAggrDedupInterval.flagSetting += fmt.Sprintf("%s,", dedupIntVal)
 	}
 	remoteArgs = append(remoteArgs, url, authUser, bearerTokenFile, urlRelabelConfig, tlsInsecure, sendTimeout)
@@ -1208,12 +1227,7 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, ssCache *scrapesSecre
 }
 
 func buildConfigReloaderContainer(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperatorConf) corev1.Container {
-
 	configReloadVolumeMounts := []corev1.VolumeMount{
-		{
-			Name:      "config",
-			MountPath: vmAgentConfDir,
-		},
 		{
 			Name:      "config-out",
 			MountPath: vmAgentConOfOutDir,
@@ -1229,13 +1243,12 @@ func buildConfigReloaderContainer(cr *victoriametricsv1beta1.VMAgent, c *config.
 			MountPath: StreamAggrConfigDir,
 		},
 	}
-	configReloaderResources := corev1.ResourceRequirements{
-		Limits: corev1.ResourceList{}, Requests: corev1.ResourceList{}}
-	if c.VMAgentDefault.ConfigReloaderCPU != "0" && c.VMAgentDefault.UseDefaultResources {
-		configReloaderResources.Limits[corev1.ResourceCPU] = resource.MustParse(c.VMAgentDefault.ConfigReloaderCPU)
-	}
-	if c.VMAgentDefault.ConfigReloaderMemory != "0" && c.VMAgentDefault.UseDefaultResources {
-		configReloaderResources.Limits[corev1.ResourceMemory] = resource.MustParse(c.VMAgentDefault.ConfigReloaderMemory)
+	if !c.UseCustomConfigReloader {
+		configReloadVolumeMounts = append(configReloadVolumeMounts,
+			corev1.VolumeMount{
+				Name:      "config",
+				MountPath: vmAgentConfDir,
+			})
 	}
 
 	configReloadArgs := buildConfigReloaderArgs(cr, c)
@@ -1254,7 +1267,7 @@ func buildConfigReloaderContainer(cr *victoriametricsv1beta1.VMAgent, c *config.
 		Command:      []string{"/bin/prometheus-config-reloader"},
 		Args:         configReloadArgs,
 		VolumeMounts: configReloadVolumeMounts,
-		Resources:    configReloaderResources,
+		Resources:    buildConfigReloaderResourceReqsForVMAgent(c),
 	}
 	if c.UseCustomConfigReloader {
 		cntr.Image = fmt.Sprintf("%s", formatContainerImage(c.ContainerRegistry, c.CustomConfigReloaderImage))
@@ -1263,8 +1276,22 @@ func buildConfigReloaderContainer(cr *victoriametricsv1beta1.VMAgent, c *config.
 	return cntr
 }
 
-func buildConfigReloaderArgs(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperatorConf) []string {
+func buildConfigReloaderResourceReqsForVMAgent(c *config.BaseOperatorConf) corev1.ResourceRequirements {
+	configReloaderResources := corev1.ResourceRequirements{
+		Limits: corev1.ResourceList{}, Requests: corev1.ResourceList{},
+	}
+	if c.VMAgentDefault.ConfigReloaderCPU != "0" && c.VMAgentDefault.UseDefaultResources {
+		configReloaderResources.Limits[corev1.ResourceCPU] = resource.MustParse(c.VMAgentDefault.ConfigReloaderCPU)
+		configReloaderResources.Requests[corev1.ResourceCPU] = resource.MustParse(c.VMAgentDefault.ConfigReloaderCPU)
+	}
+	if c.VMAgentDefault.ConfigReloaderMemory != "0" && c.VMAgentDefault.UseDefaultResources {
+		configReloaderResources.Limits[corev1.ResourceMemory] = resource.MustParse(c.VMAgentDefault.ConfigReloaderMemory)
+		configReloaderResources.Requests[corev1.ResourceMemory] = resource.MustParse(c.VMAgentDefault.ConfigReloaderMemory)
+	}
+	return configReloaderResources
+}
 
+func buildConfigReloaderArgs(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperatorConf) []string {
 	// by default use watched-dir
 	// it should simplify parsing for latest and empty version tags.
 	dirsArg := "watched-dir"

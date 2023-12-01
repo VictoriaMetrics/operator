@@ -278,6 +278,14 @@ rules:
     - patch
     - update
 - apiGroups:
+    - "discovery.k8s.io"
+  resources:
+    - endpointslices
+  verbs:
+    - 'list'
+    - 'watch'
+    - 'get'
+- apiGroups:
     - ""
   resources:
     - nodes
@@ -286,7 +294,6 @@ rules:
     - services
     - endpoints
     - pods
-    - endpointslices
     - configmaps
   verbs:
     - get

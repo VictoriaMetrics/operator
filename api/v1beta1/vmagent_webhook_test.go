@@ -60,6 +60,21 @@ func TestVMAgent_sanityCheck(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "relabeling with if array",
+			spec: VMAgentSpec{
+				RemoteWrite: []VMAgentRemoteWriteSpec{{URL: "http://some-rw"}},
+				InlineRelabelConfig: []RelabelConfig{
+					{
+						Action: "drop_metrics",
+						If: []string{
+							"{job=~\"aaa.*\"}",
+							"{job=~\"bbb.*\"}",
+						},
+					},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

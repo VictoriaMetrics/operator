@@ -8,6 +8,7 @@ import (
 	"github.com/go-test/deep"
 	"github.com/hashicorp/go-version"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 
 	"github.com/VictoriaMetrics/operator/internal/config"
 	appsv1 "k8s.io/api/apps/v1"
@@ -174,6 +175,18 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 				if set.Name != "vmalertmanager-test-am" {
 					return fmt.Errorf("unexpected name, got: %s, want: %s", set.Name, "vmalertmanager-test-am")
 				}
+				if diff := deep.Equal(set.Spec.Template.Spec.Containers[0].Resources, v1.ResourceRequirements{
+					Limits: v1.ResourceList{
+						v1.ResourceCPU:    resource.MustParse("100m"),
+						v1.ResourceMemory: resource.MustParse("256Mi"),
+					},
+					Requests: v1.ResourceList{
+						v1.ResourceCPU:    resource.MustParse("30m"),
+						v1.ResourceMemory: resource.MustParse("56Mi"),
+					},
+				}); len(diff) > 0 {
+					return fmt.Errorf("unexpected diff with resources: %v", diff)
+				}
 				if diff := deep.Equal(set.Labels, map[string]string{
 					"app.kubernetes.io/component": "monitoring",
 					"app.kubernetes.io/instance":  "test-am",
@@ -181,7 +194,7 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 					"managed-by":                  "vm-operator",
 					"main":                        "system",
 				}); len(diff) > 0 {
-					return fmt.Errorf("unexpected diff: %v", diff)
+					return fmt.Errorf("unexpected diff with labels: %v", diff)
 				}
 				return nil
 			},

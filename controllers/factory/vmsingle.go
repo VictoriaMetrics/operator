@@ -35,7 +35,6 @@ const (
 )
 
 func CreateVMSingleStorage(ctx context.Context, cr *victoriametricsv1beta1.VMSingle, rclient client.Client) (*corev1.PersistentVolumeClaim, error) {
-
 	l := log.WithValues("vm.single.pvc.create", cr.Name)
 	l.Info("reconciling pvc")
 	newPvc := makeVMSinglePvc(cr)
@@ -85,26 +84,32 @@ func makeVMSinglePvc(cr *victoriametricsv1beta1.VMSingle) *corev1.PersistentVolu
 	return pvcObject
 }
 
-func CreateOrUpdateVMSingle(ctx context.Context, cr *victoriametricsv1beta1.VMSingle, rclient client.Client, c *config.BaseOperatorConf) (*appsv1.Deployment, error) {
-
+func CreateOrUpdateVMSingle(ctx context.Context, cr *victoriametricsv1beta1.VMSingle, rclient client.Client, c *config.BaseOperatorConf) error {
 	if err := psp.CreateServiceAccountForCRD(ctx, cr, rclient); err != nil {
-		return nil, fmt.Errorf("failed create service account: %w", err)
+		return fmt.Errorf("failed create service account: %w", err)
 	}
 	if c.PSPAutoCreateEnabled {
 		if err := psp.CreateOrUpdateServiceAccountWithPSP(ctx, cr, rclient); err != nil {
-			return nil, fmt.Errorf("cannot create podsecurity policy for vmsingle, err=%w", err)
+			return fmt.Errorf("cannot create podsecurity policy for vmsingle, err=%w", err)
 		}
 	}
 	newDeploy, err := newDeployForVMSingle(cr, c)
 	if err != nil {
-		return nil, fmt.Errorf("cannot generate new deploy for vmsingle: %w", err)
+		return fmt.Errorf("cannot generate new deploy for vmsingle: %w", err)
 	}
 
 	if err := k8stools.HandleDeployUpdate(ctx, rclient, newDeploy); err != nil {
-		return nil, err
+		return err
+	}
+	// fast path
+	if cr.Spec.ReplicaCount == nil {
+		return nil
+	}
+	if err = waitExpanding(ctx, rclient, cr.Namespace, cr.SelectorLabels(), 1, c.PodWaitReadyTimeout); err != nil {
+		return fmt.Errorf("cannot wait until ready status for single deploy: %w", err)
 	}
 
-	return newDeploy, nil
+	return nil
 }
 
 func newDeployForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOperatorConf) (*appsv1.Deployment, error) {
@@ -283,6 +288,8 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 			args = append(args, fmt.Sprintf("--streamAggr.dedupInterval=%s", cr.Spec.StreamAggrConfig.DedupInterval))
 		}
 	}
+	volumes, vmMounts = cr.Spec.License.MaybeAddToVolumes(volumes, vmMounts, SecretsDir)
+	args = cr.Spec.License.MaybeAddToArgs(args, SecretsDir)
 
 	args = addExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs, "-")
 	sort.Strings(args)
@@ -304,7 +311,7 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 	initContainers := cr.Spec.InitContainers
 
 	if cr.Spec.VMBackup != nil {
-		vmBackupManagerContainer, err := makeSpecForVMBackuper(cr.Spec.VMBackup, c, cr.Spec.Port, storagePath, vmDataVolumeName, cr.Spec.ExtraArgs, false)
+		vmBackupManagerContainer, err := makeSpecForVMBackuper(cr.Spec.VMBackup, c, cr.Spec.Port, storagePath, vmDataVolumeName, cr.Spec.ExtraArgs, false, cr.Spec.License)
 		if err != nil {
 			return nil, err
 		}
@@ -329,6 +336,10 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 		return nil, err
 	}
 
+	useStrictSecurity := c.EnableStrictSecurity
+	if cr.Spec.UseStrictSecurity != nil {
+		useStrictSecurity = *cr.Spec.UseStrictSecurity
+	}
 	vmSingleSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:      cr.PodLabels(),
@@ -337,10 +348,10 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 		Spec: corev1.PodSpec{
 			NodeSelector:                  cr.Spec.NodeSelector,
 			Volumes:                       volumes,
-			InitContainers:                initContainers,
-			Containers:                    containers,
+			InitContainers:                addStrictSecuritySettingsToContainers(initContainers, useStrictSecurity),
+			Containers:                    addStrictSecuritySettingsToContainers(containers, useStrictSecurity),
 			ServiceAccountName:            cr.GetServiceAccountName(),
-			SecurityContext:               cr.Spec.SecurityContext,
+			SecurityContext:               addStrictSecuritySettingsToPod(cr.Spec.SecurityContext, useStrictSecurity),
 			ImagePullSecrets:              cr.Spec.ImagePullSecrets,
 			Affinity:                      cr.Spec.Affinity,
 			RuntimeClassName:              cr.Spec.RuntimeClassName,
@@ -358,11 +369,9 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 	}
 
 	return vmSingleSpec, nil
-
 }
 
 func CreateOrUpdateVMSingleService(ctx context.Context, cr *victoriametricsv1beta1.VMSingle, rclient client.Client, c *config.BaseOperatorConf) (*corev1.Service, error) {
-
 	cr = cr.DeepCopy()
 	if cr.Spec.Port == "" {
 		cr.Spec.Port = c.VMSingleDefault.Port
@@ -410,9 +419,10 @@ func makeSpecForVMBackuper(
 	storagePath, dataVolumeName string,
 	extraArgs map[string]string,
 	isCluster bool,
+	license *victoriametricsv1beta1.License,
 ) (*corev1.Container, error) {
-	if !cr.AcceptEULA {
-		log.Info("EULA wasn't accepted, update your backup setting. You must switch to victoriametrics/vmbackupmanager:v1.56.0-enterprise  image or higher.")
+	if !cr.AcceptEULA && !license.IsProvided() {
+		log.Info("EULA or license wasn't defined, update your backup settings. Follow https://docs.victoriametrics.com/enterprise.html for further instructions.")
 		return nil, nil
 	}
 	if cr.Image.Repository == "" {
@@ -431,11 +441,11 @@ func makeSpecForVMBackuper(
 	snapshotCreateURL := cr.SnapshotCreateURL
 	snapshotDeleteURL := cr.SnapShotDeleteURL
 	if snapshotCreateURL == "" {
-		//http://localhost:port/snaphsot/create
+		// http://localhost:port/snaphsot/create
 		snapshotCreateURL = cr.SnapshotCreatePathWithFlags(port, extraArgs)
 	}
 	if snapshotDeleteURL == "" {
-		//http://localhost:port/snaphsot/delete
+		// http://localhost:port/snaphsot/delete
 		snapshotDeleteURL = cr.SnapshotDeletePathWithFlags(port, extraArgs)
 	}
 	backupDst := cr.Destination
@@ -451,6 +461,7 @@ func makeSpecForVMBackuper(
 		fmt.Sprintf("-snapshot.deleteURL=%s", snapshotDeleteURL),
 		"-eula",
 	}
+
 	if cr.LogLevel != nil {
 		args = append(args, fmt.Sprintf("-loggerLevel=%s", *cr.LogLevel))
 	}
@@ -499,6 +510,10 @@ func makeSpecForVMBackuper(
 		})
 		args = append(args, fmt.Sprintf("-credsFilePath=%s/%s", vmBackuperCreds, cr.CredentialsSecret.Key))
 	}
+
+	_, mounts = license.MaybeAddToVolumes(nil, mounts, SecretsDir)
+	args = license.MaybeAddToArgs(args, SecretsDir)
+
 	extraEnvs := cr.ExtraEnvs
 	if len(cr.ExtraEnvs) > 0 {
 		args = append(args, "-envflag.enable=true")

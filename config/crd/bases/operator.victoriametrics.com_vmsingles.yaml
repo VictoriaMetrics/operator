@@ -2,7 +2,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.10.0
+    controller-gen.kubebuilder.io/version: v0.12.1
   name: vmsingles.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -13,7 +13,12 @@ spec:
     singular: vmsingle
   scope: Namespaced
   versions:
-  - name: v1beta1
+  - additionalPrinterColumns:
+    - description: Current status of single node
+      jsonPath: .status.singleStatus
+      name: Status
+      type: string
+    name: v1beta1
     schema:
       openAPIV3Schema:
         description: VMSingle  is fast, cost-effective and scalable time-series database.
@@ -167,7 +172,7 @@ spec:
               imagePullSecrets:
                 description: ImagePullSecrets An optional list of references to secrets
                   in the same namespace to use for pulling images from registries
-                  see http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod
+                  see https://kubernetes.io/docs/concepts/containers/images/#referring-to-an-imagepullsecrets-on-a-pod
                 items:
                   description: LocalObjectReference contains enough information to
                     let you locate the referenced object inside the same namespace.
@@ -213,6 +218,38 @@ spec:
                     description: OpenTSDBPort for tcp and udp listen
                     type: string
                 type: object
+              license:
+                description: 'License allows to configure license key to be used for
+                  enterprise features. Using license key is supported starting from
+                  VictoriaMetrics v1.94.0. See: https://docs.victoriametrics.com/enterprise.html'
+                properties:
+                  key:
+                    description: Enterprise license key. This flag is available only
+                      in VictoriaMetrics enterprise. Documentation - https://docs.victoriametrics.com/enterprise.html
+                      for more information, visit https://victoriametrics.com/products/enterprise/
+                      . To request a trial license, go to https://victoriametrics.com/products/enterprise/trial/
+                    type: string
+                  keyRef:
+                    description: KeyRef is reference to secret with license key for
+                      enterprise features.
+                    properties:
+                      key:
+                        description: The key of the secret to select from.  Must be
+                          a valid secret key.
+                        type: string
+                      name:
+                        description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                          TODO: Add other useful fields. apiVersion, kind, uid?'
+                        type: string
+                      optional:
+                        description: Specify whether the Secret or its key must be
+                          defined
+                        type: boolean
+                    required:
+                    - key
+                    type: object
+                    x-kubernetes-map-type: atomic
+                type: object
               livenessProbe:
                 description: LivenessProbe that will be added CRD pod
                 type: object
@@ -249,7 +286,7 @@ spec:
                     description: 'Annotations is an unstructured key value map stored
                       with a resource that may be set by external tools to store and
                       retrieve arbitrary metadata. They are not queryable and should
-                      be preserved when modifying objects. More info: http://kubernetes.io/docs/user-guide/annotations'
+                      be preserved when modifying objects. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations'
                     type: object
                   labels:
                     additionalProperties:
@@ -257,14 +294,14 @@ spec:
                     description: 'Labels Map of string keys and values that can be
                       used to organize and categorize (scope and select) objects.
                       May match selectors of replication controllers and services.
-                      More info: http://kubernetes.io/docs/user-guide/labels'
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels'
                     type: object
                   name:
                     description: 'Name must be unique within a namespace. Is required
                       when creating resources, although some resources may allow a
                       client to request the generation of an appropriate name automatically.
                       Name is primarily intended for creation idempotence and configuration
-                      definition. Cannot be updated. More info: http://kubernetes.io/docs/user-guide/identifiers#names'
+                      definition. Cannot be updated. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names'
                     type: string
                 type: object
               podSecurityPolicyName:
@@ -361,7 +398,7 @@ spec:
                   to use to run the VMSingle Pods.
                 type: string
               serviceScrapeSpec:
-                description: ServiceScrapeSpec that will be added to vmselect VMServiceScrape
+                description: ServiceScrapeSpec that will be added to vmsingle VMServiceScrape
                   spec
                 required:
                 - endpoints
@@ -381,7 +418,7 @@ spec:
                           stored with a resource that may be set by external tools
                           to store and retrieve arbitrary metadata. They are not queryable
                           and should be preserved when modifying objects. More info:
-                          http://kubernetes.io/docs/user-guide/annotations'
+                          https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations'
                         type: object
                       labels:
                         additionalProperties:
@@ -389,7 +426,7 @@ spec:
                         description: 'Labels Map of string keys and values that can
                           be used to organize and categorize (scope and select) objects.
                           May match selectors of replication controllers and services.
-                          More info: http://kubernetes.io/docs/user-guide/labels'
+                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels'
                         type: object
                       name:
                         description: 'Name must be unique within a namespace. Is required
@@ -397,7 +434,7 @@ spec:
                           a client to request the generation of an appropriate name
                           automatically. Name is primarily intended for creation idempotence
                           and configuration definition. Cannot be updated. More info:
-                          http://kubernetes.io/docs/user-guide/identifiers#names'
+                          https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names'
                         type: string
                     type: object
                   spec:
@@ -592,7 +629,7 @@ spec:
                     description: 'Annotations is an unstructured key value map stored
                       with a resource that may be set by external tools to store and
                       retrieve arbitrary metadata. They are not queryable and should
-                      be preserved when modifying objects. More info: http://kubernetes.io/docs/user-guide/annotations'
+                      be preserved when modifying objects. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations'
                     type: object
                   labels:
                     additionalProperties:
@@ -600,14 +637,14 @@ spec:
                     description: 'Labels Map of string keys and values that can be
                       used to organize and categorize (scope and select) objects.
                       May match selectors of replication controllers and services.
-                      More info: http://kubernetes.io/docs/user-guide/labels'
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels'
                     type: object
                   name:
                     description: 'Name must be unique within a namespace. Is required
                       when creating resources, although some resources may allow a
                       client to request the generation of an appropriate name automatically.
                       Name is primarily intended for creation idempotence and configuration
-                      definition. Cannot be updated. More info: http://kubernetes.io/docs/user-guide/identifiers#names'
+                      definition. Cannot be updated. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names'
                     type: string
                 type: object
               streamAggrConfig:
@@ -618,6 +655,9 @@ spec:
                     description: Allows setting different de-duplication intervals
                       per each configured remote storage
                     type: string
+                  dropInput:
+                    description: Allow drop all the input samples after the aggregation
+                    type: boolean
                   keepInput:
                     description: Allows writing both raw and aggregate data
                     type: boolean
@@ -649,9 +689,9 @@ spec:
                                   Default is 'replace'
                                 type: string
                               if:
-                                description: 'If represents metricsQL match expression:
-                                  ''{__name__=~"foo_.*"}'''
-                                type: string
+                                description: 'If represents metricsQL match expression
+                                  (or list of expressions): ''{__name__=~"foo_.*"}'''
+                                x-kubernetes-preserve-unknown-fields: true
                               labels:
                                 additionalProperties:
                                   type: string
@@ -716,10 +756,11 @@ spec:
                           description: Interval is the interval between aggregations.
                           type: string
                         match:
-                          description: "Match is a label selector for filtering time
-                            series for the given selector. \n If the match isn't set,
-                            then all the input time series are processed."
-                          type: string
+                          description: "Match is a label selector (or list of label
+                            selectors) for filtering time series for the given selector.
+                            \n If the match isn't set, then all the input time series
+                            are processed."
+                          x-kubernetes-preserve-unknown-fields: true
                         output_relabel_configs:
                           description: OutputRelabelConfigs is an optional relabeling
                             rules, which are applied on the aggregated output before
@@ -735,9 +776,9 @@ spec:
                                   Default is 'replace'
                                 type: string
                               if:
-                                description: 'If represents metricsQL match expression:
-                                  ''{__name__=~"foo_.*"}'''
-                                type: string
+                                description: 'If represents metricsQL match expression
+                                  (or list of expressions): ''{__name__=~"foo_.*"}'''
+                                x-kubernetes-preserve-unknown-fields: true
                               labels:
                                 additionalProperties:
                                   type: string
@@ -816,6 +857,11 @@ spec:
                           items:
                             type: string
                           type: array
+                        staleness_interval:
+                          description: StalenessInterval defines an interval after
+                            which the series state will be reset if no samples have
+                            been sent during it.
+                          type: string
                         without:
                           description: "Without is an optional list of labels, which
                             must be excluded when grouping input series. \n See also
@@ -892,13 +938,18 @@ spec:
                   type: object
                   x-kubernetes-preserve-unknown-fields: true
                 type: array
+              useStrictSecurity:
+                description: UseStrictSecurity enables strict security mode for component
+                  it restricts disk writes access uses non-root user out of the box
+                  drops not needed security permissions
+                type: boolean
               vmBackup:
                 description: VMBackup configuration for backup
                 properties:
                   acceptEULA:
                     description: AcceptEULA accepts enterprise feature usage, must
                       be set to true. otherwise backupmanager cannot be added to single/cluster
-                      version. https://victoriametrics.com/legal/eula/
+                      version. https://victoriametrics.com/legal/esa/
                     type: boolean
                   concurrency:
                     description: Defines number of concurrent workers. Higher concurrency
@@ -1192,8 +1243,6 @@ spec:
                       - name
                       type: object
                     type: array
-                required:
-                - acceptEULA
                 type: object
               volumeMounts:
                 description: VolumeMounts allows configuration of additional VolumeMounts
@@ -1257,27 +1306,32 @@ spec:
             properties:
               availableReplicas:
                 description: AvailableReplicas Total number of available pods (ready
-                  for at least minReadySeconds) targeted by this VMAlert cluster.
+                  for at least minReadySeconds) targeted by this VMSingle.
                 format: int32
                 type: integer
+              reason:
+                type: string
               replicas:
                 description: ReplicaCount Total number of non-terminated pods targeted
-                  by this VMAlert cluster (their labels match the selector).
+                  by this VMSingle.
                 format: int32
                 type: integer
+              singleStatus:
+                type: string
               unavailableReplicas:
                 description: UnavailableReplicas Total number of unavailable pods
-                  targeted by this VMAlert cluster.
+                  targeted by this VMSingle.
                 format: int32
                 type: integer
               updatedReplicas:
                 description: UpdatedReplicas Total number of non-terminated pods targeted
-                  by this VMAlert cluster that have the desired version spec.
+                  by this VMSingle.
                 format: int32
                 type: integer
             required:
             - availableReplicas
             - replicas
+            - singleStatus
             - unavailableReplicas
             - updatedReplicas
             type: object

@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"text/tabwriter"
 	"time"
 
 	"github.com/kelseyhightower/envconfig"
@@ -21,8 +22,10 @@ var (
 	initNamespace sync.Once
 )
 
-const prefixVar = "VM"
-const UnLimitedResource = "unlimited"
+const (
+	prefixVar         = "VM"
+	UnLimitedResource = "unlimited"
+)
 
 // WatchNamespaceEnvVar is the constant for env variable WATCH_NAMESPACE
 // which specifies the Namespace to watch.
@@ -47,11 +50,11 @@ type BaseOperatorConf struct {
 	UseCustomConfigReloader bool `default:"false"`
 	// container registry name prefix, e.g. docker.io
 	ContainerRegistry         string `default:""`
-	CustomConfigReloaderImage string `default:"victoriametrics/operator:config-reloader-v0.32.0"`
-	PSPAutoCreateEnabled      bool   `default:"true"`
+	CustomConfigReloaderImage string `default:"victoriametrics/operator:config-reloader-v0.38.0"`
+	PSPAutoCreateEnabled      bool   `default:"false"`
 	VMAlertDefault            struct {
 		Image               string `default:"victoriametrics/vmalert"`
-		Version             string `default:"v1.89.1"`
+		Version             string `default:"v1.95.1"`
 		Port                string `default:"8080"`
 		UseDefaultResources bool   `default:"true"`
 		Resource            struct {
@@ -70,8 +73,8 @@ type BaseOperatorConf struct {
 	}
 	VMAgentDefault struct {
 		Image               string `default:"victoriametrics/vmagent"`
-		Version             string `default:"v1.89.1"`
-		ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.58.0"`
+		Version             string `default:"v1.95.1"`
+		ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.68.0"`
 		Port                string `default:"8429"`
 		UseDefaultResources bool   `default:"true"`
 		Resource            struct {
@@ -90,7 +93,7 @@ type BaseOperatorConf struct {
 
 	VMSingleDefault struct {
 		Image               string `default:"victoriametrics/victoria-metrics"`
-		Version             string `default:"v1.89.1"`
+		Version             string `default:"v1.95.1"`
 		Port                string `default:"8429"`
 		UseDefaultResources bool   `default:"true"`
 		Resource            struct {
@@ -111,7 +114,7 @@ type BaseOperatorConf struct {
 		UseDefaultResources bool `default:"true"`
 		VMSelectDefault     struct {
 			Image    string `default:"victoriametrics/vmselect"`
-			Version  string `default:"v1.89.1-cluster"`
+			Version  string `default:"v1.95.1-cluster"`
 			Port     string `default:"8481"`
 			Resource struct {
 				Limit struct {
@@ -126,7 +129,7 @@ type BaseOperatorConf struct {
 		}
 		VMStorageDefault struct {
 			Image        string `default:"victoriametrics/vmstorage"`
-			Version      string `default:"v1.89.1-cluster"`
+			Version      string `default:"v1.95.1-cluster"`
 			VMInsertPort string `default:"8400"`
 			VMSelectPort string `default:"8401"`
 			Port         string `default:"8482"`
@@ -143,7 +146,7 @@ type BaseOperatorConf struct {
 		}
 		VMInsertDefault struct {
 			Image    string `default:"victoriametrics/vminsert"`
-			Version  string `default:"v1.89.1-cluster"`
+			Version  string `default:"v1.95.1-cluster"`
 			Port     string `default:"8480"`
 			Resource struct {
 				Limit struct {
@@ -181,7 +184,7 @@ type BaseOperatorConf struct {
 	DisableSelfServiceScrapeCreation bool `default:"false"`
 	VMBackup                         struct {
 		Image               string `default:"victoriametrics/vmbackupmanager"`
-		Version             string `default:"v1.89.1-enterprise"`
+		Version             string `default:"v1.95.1-enterprise"`
 		Port                string `default:"8300"`
 		UseDefaultResources bool   `default:"true"`
 		Resource            struct {
@@ -199,8 +202,8 @@ type BaseOperatorConf struct {
 	}
 	VMAuthDefault struct {
 		Image               string `default:"victoriametrics/vmauth"`
-		Version             string `default:"v1.89.1"`
-		ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.48.1"`
+		Version             string `default:"v1.95.1"`
+		ConfigReloadImage   string `default:"quay.io/prometheus-operator/prometheus-config-reloader:v0.68.0"`
 		Port                string `default:"8427"`
 		UseDefaultResources bool   `default:"true"`
 		Resource            struct {
@@ -244,8 +247,30 @@ type BaseOperatorConf struct {
 	PodWaitReadyTimeout                         time.Duration `default:"80s"`
 	PodWaitReadyIntervalCheck                   time.Duration `default:"5s"`
 	PodWaitReadyInitDelay                       time.Duration `default:"10s"`
-	// configures force resync interval for VMAgent, VMAlert and VMAlertmanager
+	// configures force resync interval for VMAgent, VMAlert, VMAlertmanager and VMAuth.
 	ForceResyncInterval time.Duration `default:"60s"`
+	// EnableStrictSecurity will add default `securityContext` to pods and containers created by operator
+	// Default PodSecurityContext include:
+	// 1. RunAsNonRoot: true
+	// 2. RunAsUser/RunAsGroup/FSGroup: 65534
+	// '65534' refers to 'nobody' in all the used default images like alpine, busybox.
+	// If you're using customize image, please make sure '65534' is a valid uid in there or specify SecurityContext.
+	// 3. FSGroupChangePolicy: &onRootMismatch
+	// If KubeVersion>=1.20, use `FSGroupChangePolicy="onRootMismatch"` to skip the recursive permission change
+	// when the root of the volume already has the correct permissions
+	// 4. SeccompProfile:
+	//      type: RuntimeDefault
+	// Use `RuntimeDefault` seccomp profile by default, which is defined by the container runtime,
+	// instead of using the Unconfined (seccomp disabled) mode.
+	//
+	// Default container SecurityContext include:
+	// 1. AllowPrivilegeEscalation: false
+	// 2. ReadOnlyRootFilesystem: true
+	// 3. Capabilities:
+	//      drop:
+	//        - all
+	// turn off `EnableStrictSecurity` by default, see https://github.com/VictoriaMetrics/operator/issues/749 for details
+	EnableStrictSecurity bool `default:"false"`
 }
 
 // Validate - validates config on best effort.
@@ -302,6 +327,33 @@ func (boc BaseOperatorConf) Validate() error {
 	return nil
 }
 
+// PrintDefaults prints default values for all config variables.
+// format can be one of: table, list, json, yaml.
+func (boc BaseOperatorConf) PrintDefaults(format string) error {
+	tabs := tabwriter.NewWriter(os.Stdout, 1, 0, 4, ' ', 0)
+
+	formatter := "unknown"
+	switch format {
+	case "table":
+		formatter = envconfig.DefaultTableFormat
+	case "list":
+		formatter = envconfig.DefaultListFormat
+	case "json":
+		formatter = `{{$last := (len (slice . 1))}}{
+{{range $index, $item := .}}	'{{usage_key $item}}': '{{usage_default $item}}'{{ if lt $index $last}},{{end}}
+{{end}}}`
+	case "yaml":
+		formatter = `{{range $index, $item := .}}{{usage_key $item}}: '{{usage_default $item}}'
+{{end}}`
+	default:
+		return fmt.Errorf("unknown print format %q", format)
+	}
+
+	err := envconfig.Usagef(prefixVar, &boc, tabs, formatter)
+	_ = tabs.Flush()
+	return err
+}
+
 func MustGetBaseConfig() *BaseOperatorConf {
 	initConf.Do(func() {
 		c := &BaseOperatorConf{}
@@ -349,6 +401,11 @@ func MustGetWatchNamespace() string {
 	})
 
 	return opNamespace
+}
+
+// IsClusterWideAccessAllowed checks if cluster wide access for components is needed
+func IsClusterWideAccessAllowed() bool {
+	return MustGetWatchNamespace() == ""
 }
 
 func MustGetNamespaceListOptions() *client.ListOptions {

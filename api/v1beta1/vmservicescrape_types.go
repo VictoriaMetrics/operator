@@ -46,8 +46,7 @@ type VMServiceScrapeSpec struct {
 }
 
 // VMServiceScrapeStatus defines the observed state of VMServiceScrape
-type VMServiceScrapeStatus struct {
-}
+type VMServiceScrapeStatus struct{}
 
 // VMServiceScrape is scrape configuration for endpoints associated with
 // kubernetes service,
@@ -119,6 +118,7 @@ type Endpoint struct {
 	Path string `json:"path,omitempty"`
 	// HTTP scheme to use for scraping.
 	// +optional
+	// +kubebuilder:validation:Enum=http;https
 	Scheme string `json:"scheme,omitempty"`
 	// Optional HTTP URL parameters
 	// +optional
@@ -302,21 +302,21 @@ type TLSConfig struct {
 	InsecureSkipVerify bool `json:"insecureSkipVerify,omitempty"`
 }
 
-func (c *TLSConfig) AsArgs(args []string, prefix, namespace string) []string {
+func (c *TLSConfig) AsArgs(args []string, prefix, pathPrefix string) []string {
 	if c.CAFile != "" {
 		args = append(args, fmt.Sprintf("-%s.tlsCAFile=%s", prefix, c.CAFile))
 	} else if c.CA.Name() != "" {
-		args = append(args, fmt.Sprintf("-%s.tlsCAFile=%s", prefix, c.BuildAssetPath(namespace, c.CA.Name(), c.CA.Key())))
+		args = append(args, fmt.Sprintf("-%s.tlsCAFile=%s", prefix, c.BuildAssetPath(pathPrefix, c.CA.Name(), c.CA.Key())))
 	}
 	if c.CertFile != "" {
 		args = append(args, fmt.Sprintf("-%s.tlsCertFile=%s", prefix, c.CertFile))
 	} else if c.Cert.Name() != "" {
-		args = append(args, fmt.Sprintf("-%s.tlsCertFile=%s", prefix, c.BuildAssetPath(namespace, c.Cert.Name(), c.Cert.Key())))
+		args = append(args, fmt.Sprintf("-%s.tlsCertFile=%s", prefix, c.BuildAssetPath(pathPrefix, c.Cert.Name(), c.Cert.Key())))
 	}
 	if c.KeyFile != "" {
 		args = append(args, fmt.Sprintf("-%s.tlsKeyFile=%s", prefix, c.KeyFile))
 	} else if c.KeySecret != nil {
-		args = append(args, fmt.Sprintf("-%s.tlsKeyFile=%s", prefix, c.BuildAssetPath(namespace, c.KeySecret.Name, c.KeySecret.Key)))
+		args = append(args, fmt.Sprintf("-%s.tlsKeyFile=%s", prefix, c.BuildAssetPath(pathPrefix, c.KeySecret.Name, c.KeySecret.Key)))
 	}
 	if c.ServerName != "" {
 		args = append(args, fmt.Sprintf("-%s.tlsServerName=%s", prefix, c.ServerName))
@@ -380,9 +380,11 @@ type RelabelConfig struct {
 	// Action to perform based on regex matching. Default is 'replace'
 	// +optional
 	Action string `json:"action,omitempty" yaml:"action,omitempty"`
-	// If represents metricsQL match expression: '{__name__=~"foo_.*"}'
+	// If represents metricsQL match expression (or list of expressions): '{__name__=~"foo_.*"}'
 	// +optional
-	If string `json:"if,omitempty" yaml:"if,omitempty"`
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	If StringOrArray `json:"if,omitempty" yaml:"if,omitempty"`
 	// Match is used together with Labels for `action: graphite`
 	// +optional
 	Match string `json:"match,omitempty" yaml:"match,omitempty"`
@@ -482,7 +484,6 @@ func (c *SecretOrConfigMap) Validate() error {
 func (c *SecretOrConfigMap) BuildSelectorWithPrefix(prefix string) string {
 	if c.Secret != nil {
 		return fmt.Sprintf("%s%s/%s", prefix, c.Secret.Name, c.Secret.Key)
-
 	}
 	if c.ConfigMap != nil {
 		return fmt.Sprintf("%s%s/%s", prefix, c.ConfigMap.Name, c.ConfigMap.Key)
@@ -493,7 +494,6 @@ func (c *SecretOrConfigMap) BuildSelectorWithPrefix(prefix string) string {
 func (c *SecretOrConfigMap) Name() string {
 	if c.Secret != nil {
 		return c.Secret.Name
-
 	}
 	if c.ConfigMap != nil {
 		return c.ConfigMap.Name
@@ -504,13 +504,11 @@ func (c *SecretOrConfigMap) Name() string {
 func (c *SecretOrConfigMap) Key() string {
 	if c.Secret != nil {
 		return c.Secret.Key
-
 	}
 	if c.ConfigMap != nil {
 		return c.ConfigMap.Key
 	}
 	return ""
-
 }
 
 func (c *TLSConfig) BuildAssetPath(prefix, name, key string) string {

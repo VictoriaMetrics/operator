@@ -1,6 +1,7 @@
 package v1beta1
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -8,8 +9,19 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
+
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+const (
+	SingleStatusExpanding   SingleStatus = "expanding"
+	SingleStatusOperational SingleStatus = "operational"
+	SingleStatusFailed      SingleStatus = "failed"
+)
+
+type SingleStatus string
 
 // VMSingleSpec defines the desired state of VMSingle
 // +k8s:openapi-gen=true
@@ -28,7 +40,7 @@ type VMSingleSpec struct {
 	Image Image `json:"image,omitempty"`
 	// ImagePullSecrets An optional list of references to secrets in the same namespace
 	// to use for pulling images from registries
-	// see http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod
+	// see https://kubernetes.io/docs/concepts/containers/images/#referring-to-an-imagepullsecrets-on-a-pod
 	// +optional
 	ImagePullSecrets []v1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 	// Secrets is a list of Secrets in the same namespace as the VMSingle
@@ -164,6 +176,11 @@ type VMSingleSpec struct {
 	// VMBackup configuration for backup
 	// +optional
 	VMBackup *VMBackup `json:"vmBackup,omitempty"`
+	// License allows to configure license key to be used for enterprise features.
+	// Using license key is supported starting from VictoriaMetrics v1.94.0.
+	// See: https://docs.victoriametrics.com/enterprise.html
+	// +optional
+	License *License `json:"license,omitempty"`
 	// ExtraArgs that will be passed to  VMSingle pod
 	// for example remoteWrite.tmpDataPath: /tmp
 	// +optional
@@ -174,7 +191,7 @@ type VMSingleSpec struct {
 	// ServiceSpec that will be added to vmsingle service spec
 	// +optional
 	ServiceSpec *ServiceSpec `json:"serviceSpec,omitempty"`
-	// ServiceScrapeSpec that will be added to vmselect VMServiceScrape spec
+	// ServiceScrapeSpec that will be added to vmsingle VMServiceScrape spec
 	// +optional
 	ServiceScrapeSpec *VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
 	// LivenessProbe that will be added to VMSingle pod
@@ -189,6 +206,12 @@ type VMSingleSpec struct {
 	ReadinessGates []v1.PodReadinessGate `json:"readinessGates,omitempty"`
 	// StreamAggrConfig defines stream aggregation configuration for VMSingle
 	StreamAggrConfig *StreamAggrConfig `json:"streamAggrConfig,omitempty"`
+	// UseStrictSecurity enables strict security mode for component
+	// it restricts disk writes access
+	// uses non-root user out of the box
+	// drops not needed security permissions
+	// +optional
+	UseStrictSecurity *bool `json:"useStrictSecurity,omitempty"`
 }
 
 // HasStreamAggrConfig checks if streamAggrConfig present
@@ -209,17 +232,17 @@ func (cr *VMSingleSpec) UnmarshalJSON(src []byte) error {
 // VMSingleStatus defines the observed state of VMSingle
 // +k8s:openapi-gen=true
 type VMSingleStatus struct {
-	// ReplicaCount Total number of non-terminated pods targeted by this VMAlert
-	// cluster (their labels match the selector).
+	// ReplicaCount Total number of non-terminated pods targeted by this VMSingle.
 	Replicas int32 `json:"replicas"`
-	// UpdatedReplicas Total number of non-terminated pods targeted by this VMAlert
-	// cluster that have the desired version spec.
+	// UpdatedReplicas Total number of non-terminated pods targeted by this VMSingle.
 	UpdatedReplicas int32 `json:"updatedReplicas"`
-	// AvailableReplicas Total number of available pods (ready for at least minReadySeconds)
-	// targeted by this VMAlert cluster.
+	// AvailableReplicas Total number of available pods (ready for at least minReadySeconds) targeted by this VMSingle.
 	AvailableReplicas int32 `json:"availableReplicas"`
-	// UnavailableReplicas Total number of unavailable pods targeted by this VMAlert cluster.
+	// UnavailableReplicas Total number of unavailable pods targeted by this VMSingle.
 	UnavailableReplicas int32 `json:"unavailableReplicas"`
+
+	SingleStatus SingleStatus `json:"singleStatus"`
+	Reason       string       `json:"reason,omitempty"`
 }
 
 // VMSingle  is fast, cost-effective and scalable time-series database.
@@ -232,6 +255,7 @@ type VMSingleStatus struct {
 // +k8s:openapi-gen=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:path=vmsingles,scope=Namespaced
+// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.singleStatus",description="Current status of single node"
 type VMSingle struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -275,8 +299,8 @@ func (cr *VMSingle) AsOwner() []metav1.OwnerReference {
 			Kind:               cr.Kind,
 			Name:               cr.Name,
 			UID:                cr.UID,
-			Controller:         pointer.BoolPtr(true),
-			BlockOwnerDeletion: pointer.BoolPtr(true),
+			Controller:         pointer.Bool(true),
+			BlockOwnerDeletion: pointer.Bool(true),
 		},
 	}
 }
@@ -367,6 +391,30 @@ func (cr *VMSingle) AsURL() string {
 // AsCRDOwner implements interface
 func (cr *VMSingle) AsCRDOwner() []metav1.OwnerReference {
 	return GetCRDAsOwner(Single)
+}
+
+// LastAppliedSpecAsPatch return last applied single spec as patch annotation
+func (cr *VMSingle) LastAppliedSpecAsPatch() (client.Patch, error) {
+	data, err := json.Marshal(cr.Spec)
+	if err != nil {
+		return nil, fmt.Errorf("possible bug, cannot serialize single specification as json :%w", err)
+	}
+	patch := fmt.Sprintf(`{"metadata":{"annotations":{"operator.victoriametrics/last-applied-spec": %q}}}`, data)
+	return client.RawPatch(types.MergePatchType, []byte(patch)), nil
+}
+
+// HasSpecChanges compares single spec with last applied single spec stored in annotation
+func (cr *VMSingle) HasSpecChanges() (bool, error) {
+	var prevSingleSpec VMSingleSpec
+	lastAppliedSingleJSON := cr.Annotations["operator.victoriametrics/last-applied-spec"]
+	if len(lastAppliedSingleJSON) == 0 {
+		return true, nil
+	}
+	if err := json.Unmarshal([]byte(lastAppliedSingleJSON), &prevSingleSpec); err != nil {
+		return true, fmt.Errorf("cannot parse last applied single spec value: %s : %w", lastAppliedSingleJSON, err)
+	}
+	instanceSpecData, _ := json.Marshal(cr.Spec)
+	return !bytes.Equal([]byte(lastAppliedSingleJSON), instanceSpecData), nil
 }
 
 func init() {

@@ -35,7 +35,7 @@ type VMAlertSpec struct {
 	Image Image `json:"image,omitempty"`
 	// ImagePullSecrets An optional list of references to secrets in the same namespace
 	// to use for pulling images from registries
-	// see http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod
+	// see https://kubernetes.io/docs/concepts/containers/images/#referring-to-an-imagepullsecrets-on-a-pod
 	// +optional
 	ImagePullSecrets []v1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 
@@ -133,7 +133,7 @@ type VMAlertSpec struct {
 	// +optional
 	TopologySpreadConstraints []v1.TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
 
-	// EvaluationInterval how often evalute rules by default
+	// EvaluationInterval defines how often to evaluate rules by default
 	// +optional
 	// +kubebuilder:validation:Pattern:="[0-9]+(ms|s|m|h)"
 	EvaluationInterval string `json:"evaluationInterval,omitempty"`
@@ -166,13 +166,13 @@ type VMAlertSpec struct {
 	// +optional
 	Port string `json:"port,omitempty"`
 
-	// Notifier prometheus alertmanager endpoint spec. Required at least one of  notifier or notifiers. e.g. http://127.0.0.1:9093
+	// Notifier prometheus alertmanager endpoint spec. Required at least one of notifier or notifiers when there are alerting rules. e.g. http://127.0.0.1:9093
 	// If specified both notifier and notifiers, notifier will be added as last element to notifiers.
 	// only one of notifier options could be chosen: notifierConfigRef or notifiers +  notifier
 	// +optional
 	Notifier *VMAlertNotifierSpec `json:"notifier,omitempty"`
 
-	// Notifiers prometheus alertmanager endpoints. Required at least one of  notifier or notifiers. e.g. http://127.0.0.1:9093
+	// Notifiers prometheus alertmanager endpoints. Required at least one of notifier or notifiers when there are alerting rules. e.g. http://127.0.0.1:9093
 	// If specified both notifier and notifiers, notifier will be added as last element to notifiers.
 	// only one of notifier options could be chosen: notifierConfigRef or notifiers +  notifier
 	// +optional
@@ -226,7 +226,7 @@ type VMAlertSpec struct {
 	// ServiceSpec that will be added to vmalert service spec
 	// +optional
 	ServiceSpec *ServiceSpec `json:"serviceSpec,omitempty"`
-	// ServiceScrapeSpec that will be added to vmselect VMServiceScrape spec
+	// ServiceScrapeSpec that will be added to vmalert VMServiceScrape spec
 	// +optional
 	ServiceScrapeSpec *VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
 
@@ -254,6 +254,18 @@ type VMAlertSpec struct {
 	DNSConfig *v1.PodDNSConfig `json:"dnsConfig,omitempty"`
 	// ReadinessGates defines pod readiness gates
 	ReadinessGates []v1.PodReadinessGate `json:"readinessGates,omitempty"`
+	// UseStrictSecurity enables strict security mode for component
+	// it restricts disk writes access
+	// uses non-root user out of the box
+	// drops not needed security permissions
+	// +optional
+	UseStrictSecurity *bool `json:"useStrictSecurity,omitempty"`
+
+	// License allows to configure license key to be used for enterprise features.
+	// Using license key is supported starting from VictoriaMetrics v1.94.0.
+	// See: https://docs.victoriametrics.com/enterprise.html
+	// +optional
+	License *License `json:"license,omitempty"`
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface
@@ -266,7 +278,7 @@ func (cr *VMAlertSpec) UnmarshalJSON(src []byte) error {
 	return nil
 }
 
-// VMAgentRemoteReadSpec defines the remote storage configuration for VmAlert to read alerts from
+// VMAlertDatasourceSpec defines the remote storage configuration for VmAlert to read alerts from
 // +k8s:openapi-gen=true
 type VMAlertDatasourceSpec struct {
 	// Victoria Metrics or VMSelect url. Required parameter. E.g. http://127.0.0.1:8428
@@ -295,7 +307,7 @@ func (cr VMAlert) NotifierAsMapKey(i int) string {
 	return fmt.Sprintf("vmalert/%s/%s/%d", cr.Namespace, cr.Name, i)
 }
 
-// VMAgentRemoteReadSpec defines the remote storage configuration for VmAlert to read alerts from
+// VMAlertRemoteReadSpec defines the remote storage configuration for VmAlert to read alerts from
 // +k8s:openapi-gen=true
 type VMAlertRemoteReadSpec struct {
 	// URL of the endpoint to send samples to.
@@ -308,7 +320,7 @@ type VMAlertRemoteReadSpec struct {
 	HTTPAuth `json:",inline,omitempty"`
 }
 
-// VMAgentRemoteWriteSpec defines the remote storage configuration for VmAlert
+// VMAlertRemoteWriteSpec defines the remote storage configuration for VmAlert
 // +k8s:openapi-gen=true
 type VMAlertRemoteWriteSpec struct {
 	// URL of the endpoint to send samples to.
@@ -330,7 +342,7 @@ type VMAlertRemoteWriteSpec struct {
 	HTTPAuth `json:",inline,omitempty"`
 }
 
-// VmAlertStatus defines the observed state of VmAlert
+// VMAlertStatus defines the observed state of VMAlert
 // +k8s:openapi-gen=true
 // +kubebuilder:subresource:status
 type VMAlertStatus struct {
@@ -370,7 +382,6 @@ func (cr *VMAlert) Probe() *EmbeddedProbes {
 }
 
 func (cr *VMAlert) ProbePath() string {
-
 	return buildPathWithPrefixFlag(cr.Spec.ExtraArgs, healthPath)
 }
 
@@ -402,11 +413,12 @@ func (cr *VMAlert) AsOwner() []metav1.OwnerReference {
 			Kind:               cr.Kind,
 			Name:               cr.Name,
 			UID:                cr.UID,
-			Controller:         pointer.BoolPtr(true),
-			BlockOwnerDeletion: pointer.BoolPtr(true),
+			Controller:         pointer.Bool(true),
+			BlockOwnerDeletion: pointer.Bool(true),
 		},
 	}
 }
+
 func (cr VMAlert) PodAnnotations() map[string]string {
 	annotations := map[string]string{}
 	if cr.Spec.PodMetadata != nil {
@@ -451,6 +463,7 @@ func (cr VMAlert) AllLabels() map[string]string {
 func (cr VMAlert) PrefixedName() string {
 	return fmt.Sprintf("vmalert-%s", cr.Name)
 }
+
 func (cr VMAlert) TLSAssetName() string {
 	return fmt.Sprintf("tls-assets-vmalert-%s", cr.Name)
 }
@@ -495,7 +508,7 @@ func (cr VMAlert) RulesConfigMapSelector() client.ListOption {
 func (cr *VMAlert) AsURL() string {
 	port := cr.Spec.Port
 	if port == "" {
-		port = "8880"
+		port = "8080"
 	}
 	return fmt.Sprintf("http://%s.%s.svc:%s", cr.PrefixedName(), cr.Namespace, port)
 }
@@ -518,6 +531,7 @@ func (cr *VMAlert) GetNotifierSelectors() []*DiscoverySelector {
 	}
 	return r
 }
+
 func init() {
 	SchemeBuilder.Register(&VMAlert{}, &VMAlertList{})
 }

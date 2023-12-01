@@ -1,19 +1,21 @@
 package v1beta1
 
 import (
+	"encoding/json"
 	"fmt"
 	"path"
+	"reflect"
 	"strings"
 
+	"gopkg.in/yaml.v2"
+
 	appsv1 "k8s.io/api/apps/v1"
-
 	"k8s.io/api/autoscaling/v2beta2"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -29,17 +31,17 @@ const (
 	SkipValidationAnnotation = "operator.victoriametrics.com/skip-validation"
 	SkipValidationValue      = "true"
 	AdditionalServiceLabel   = "operator.victoriametrics.com/additional-service"
+	// PVCExpandableLabel controls checks for storageClass
+	PVCExpandableLabel = "operator.victoriametrics.com/pvc-allow-volume-expansion"
 )
 
-var (
-	// GroupVersion is group version used to register these objects
-	SchemeGroupVersion = schema.GroupVersion{Group: "operator.victoriametrics.com", Version: "v1beta1"}
-)
+// SchemeGroupVersion is group version used to register these objects
+var SchemeGroupVersion = schema.GroupVersion{Group: "operator.victoriametrics.com", Version: "v1beta1"}
 
 var (
 	labelFilterPrefixes []string
 	// default ignored annotations
-	annotationFilterPrefixes = []string{"kubectl.kubernetes.io/", "operator.victoriametrics.com/"}
+	annotationFilterPrefixes = []string{"kubectl.kubernetes.io/", "operator.victoriametrics.com/", "operator.victoriametrics/last-applied-spec"}
 )
 
 // SetLabelAndAnnotationPrefixes configures global filtering for child labels and annotations
@@ -50,7 +52,6 @@ func SetLabelAndAnnotationPrefixes(labelPrefixes, annotationPrefixes []string) {
 }
 
 func filterMapKeysByPrefixes(src map[string]string, prefixes []string) map[string]string {
-
 	dst := make(map[string]string, len(src))
 OUTER:
 	for key, value := range src {
@@ -108,14 +109,14 @@ type EmbeddedObjectMetadata struct {
 	// automatically. Name is primarily intended for creation idempotence and configuration
 	// definition.
 	// Cannot be updated.
-	// More info: http://kubernetes.io/docs/user-guide/identifiers#names
+	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names
 	// +optional
 	Name string `json:"name,omitempty" protobuf:"bytes,1,opt,name=name"`
 
 	// Labels Map of string keys and values that can be used to organize and categorize
 	// (scope and select) objects. May match selectors of replication controllers
 	// and services.
-	// More info: http://kubernetes.io/docs/user-guide/labels
+	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
 	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors=true
 	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors.displayName="PodLabels"
 	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors.x-descriptors="urn:alm:descriptor:com.tectonic.ui:label"
@@ -125,7 +126,7 @@ type EmbeddedObjectMetadata struct {
 	// Annotations is an unstructured key value map stored with a resource that may be
 	// set by external tools to store and retrieve arbitrary metadata. They are not
 	// queryable and should be preserved when modifying objects.
-	// More info: http://kubernetes.io/docs/user-guide/annotations
+	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations
 	// +optional
 	Annotations map[string]string `json:"annotations,omitempty" protobuf:"bytes,12,rep,name=annotations"`
 }
@@ -211,7 +212,7 @@ type EmbeddedPersistentVolumeClaim struct {
 // HTTPAuth generic auth used with http protocols
 type HTTPAuth struct {
 	BasicAuth   *BasicAuth `json:"basicAuth,omitempty"`
-	OAuth2      *OAuth2    `json:"OAuth2,omitempty"`
+	OAuth2      *OAuth2    `json:"oauth2,omitempty"`
 	TLSConfig   *TLSConfig `json:"tlsConfig,omitempty"`
 	*BearerAuth `json:",inline,omitempty"`
 	// Headers allow configuring custom http headers
@@ -225,7 +226,9 @@ type HTTPAuth struct {
 
 // BearerAuth defines auth with bearer token
 type BearerAuth struct {
-	TokenFilePath string `json:"bearerTokenFilePath,omitempty"`
+	// Path to bearer token file
+	// +optional
+	TokenFilePath string `json:"bearerTokenFile,omitempty"`
 	// Optional bearer auth token to use for -remoteWrite.url
 	// +optional
 	TokenSecret *v1.SecretKeySelector `json:"bearerTokenSecret,omitempty"`
@@ -357,7 +360,7 @@ type EmbeddedProbes struct {
 }
 
 // EmbeddedHPA embeds HorizontalPodAutoScaler spec v2.
-// https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/horizontal-pod-autoscaler-v2beta2/
+// https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/horizontal-pod-autoscaler-v2/
 type EmbeddedHPA struct {
 	MinReplicas *int32                                   `json:"minReplicas,omitempty"`
 	MaxReplicas int32                                    `json:"maxReplicas,omitempty"`
@@ -410,6 +413,8 @@ type StreamAggrConfig struct {
 	// Allows writing both raw and aggregate data
 	// +optional
 	KeepInput bool `json:"keepInput,omitempty"`
+	// Allow drop all the input samples after the aggregation
+	DropInput bool `json:"dropInput,omitempty"`
 	// Allows setting different de-duplication intervals per each configured remote storage
 	// +optional
 	DedupInterval string `json:"dedupInterval,omitempty"`
@@ -418,15 +423,19 @@ type StreamAggrConfig struct {
 // StreamAggrRule defines the rule in stream aggregation config
 // +k8s:openapi-gen=true
 type StreamAggrRule struct {
-	// Match is a label selector for filtering time series for the given selector.
+	// Match is a label selector (or list of label selectors) for filtering time series for the given selector.
 	//
 	// If the match isn't set, then all the input time series are processed.
 	// +optional
-	Match string `json:"match,omitempty" yaml:"match,omitempty"`
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	Match StringOrArray `json:"match,omitempty" yaml:"match,omitempty"`
 
 	// Interval is the interval between aggregations.
 	Interval string `json:"interval" yaml:"interval"`
 
+	// StalenessInterval defines an interval after which the series state will be reset if no samples have been sent during it.
+	StalenessInterval string `json:"staleness_interval,omitempty" yaml:"staleness_interval,omitempty"`
 	// Outputs is a list of output aggregate functions to produce.
 	//
 	// The following names are allowed:
@@ -458,7 +467,7 @@ type StreamAggrRule struct {
 	// If neither By nor Without are set, then the Outputs are calculated
 	// individually per each input time series.
 	// +optional
-	By []string `json:"by,omitempty" yaml:"by,omitempty""`
+	By []string `json:"by,omitempty" yaml:"by,omitempty"`
 
 	// Without is an optional list of labels, which must be excluded when grouping input series.
 	//
@@ -489,4 +498,130 @@ type KeyValue struct {
 	Key string `json:"key"`
 	// Value of the tuple.
 	Value string `json:"value"`
+}
+
+// StringOrArray is a helper type for storing string or array of string.
+type StringOrArray []string
+
+func (m *StringOrArray) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var raw any
+	if err := unmarshal(&raw); err != nil {
+		return fmt.Errorf("cannot unmarshal StringOrArray: %w", err)
+	}
+	rawType := reflect.TypeOf(raw)
+	switch rawType.Kind() {
+	case reflect.String:
+		var match string
+		if err := unmarshal(&match); err != nil {
+			return err
+		}
+		*m = []string{match}
+		return nil
+	case reflect.Slice, reflect.Array:
+		var match []string
+		if err := unmarshal(&match); err != nil {
+			return err
+		}
+		*m = match
+		return nil
+	default:
+		return &yaml.TypeError{Errors: []string{
+			fmt.Sprintf("cannot unmarshal %#v into StringOrArray of type %v", raw, rawType),
+		}}
+	}
+}
+
+func (m *StringOrArray) UnmarshalJSON(data []byte) error {
+	var raw any
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return fmt.Errorf("cannot unmarshal match: %w", err)
+	}
+	rawType := reflect.TypeOf(raw)
+	switch rawType.Kind() {
+	case reflect.String:
+		var match string
+		if err := json.Unmarshal(data, &match); err != nil {
+			return err
+		}
+		*m = []string{match}
+		return nil
+	case reflect.Slice, reflect.Array:
+		var match []string
+		if err := json.Unmarshal(data, &match); err != nil {
+			return err
+		}
+		*m = match
+		return nil
+	default:
+		return &json.UnmarshalTypeError{Value: string(data), Type: rawType}
+	}
+}
+
+// License holds license key for enterprise features.
+// Using license key is supported starting from VictoriaMetrics v1.94.0
+// See: https://docs.victoriametrics.com/enterprise.html
+type License struct {
+	// Enterprise license key. This flag is available only in VictoriaMetrics enterprise.
+	// Documentation - https://docs.victoriametrics.com/enterprise.html
+	// for more information, visit https://victoriametrics.com/products/enterprise/ .
+	// To request a trial license, go to https://victoriametrics.com/products/enterprise/trial/
+	Key *string `json:"key,omitempty"`
+	// KeyRef is reference to secret with license key for enterprise features.
+	KeyRef *v1.SecretKeySelector `json:"keyRef,omitempty"`
+}
+
+// IsProvided returns true if license is provided.
+func (l *License) IsProvided() bool {
+	if l == nil {
+		return false
+	}
+
+	return l.Key != nil || l.KeyRef != nil
+}
+
+// MaybeAddToArgs conditionally adds license commandline args into given args
+func (l *License) MaybeAddToArgs(args []string, secretMountDir string) []string {
+	if l == nil || !l.IsProvided() {
+		return args
+	}
+	if l.Key != nil {
+		args = append(args, fmt.Sprintf("-license=%s", *l.Key))
+	}
+	if l.KeyRef != nil {
+		args = append(args, fmt.Sprintf("-licenseFile=%s", path.Join(secretMountDir, l.KeyRef.Name, l.KeyRef.Key)))
+	}
+	return args
+}
+
+// MaybeAddToVolumes conditionally mounts secret with license key into given volumes and mounts
+func (l *License) MaybeAddToVolumes(volumes []v1.Volume, mounts []v1.VolumeMount, secretMountDir string) ([]v1.Volume, []v1.VolumeMount) {
+	if l == nil || l.KeyRef == nil {
+		return volumes, mounts
+	}
+	volumes = append(volumes, v1.Volume{
+		Name: "license",
+		VolumeSource: v1.VolumeSource{
+			Secret: &v1.SecretVolumeSource{
+				SecretName: l.KeyRef.Name,
+			},
+		},
+	})
+	mounts = append(mounts, v1.VolumeMount{
+		Name:      "license",
+		ReadOnly:  true,
+		MountPath: path.Join(secretMountDir, l.KeyRef.Name),
+	})
+	return volumes, mounts
+}
+
+func (l *License) sanityCheck() error {
+	if !l.IsProvided() {
+		return nil
+	}
+
+	if l.Key != nil && l.KeyRef != nil {
+		return fmt.Errorf("only one of key or keyRef can be specified")
+	}
+
+	return nil
 }

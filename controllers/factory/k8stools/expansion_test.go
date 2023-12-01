@@ -22,16 +22,16 @@ import (
 func Test_reCreateSTS(t *testing.T) {
 	type args struct {
 		ctx         context.Context
-		pvcName     string
 		newSTS      *appsv1.StatefulSet
 		existingSTS *appsv1.StatefulSet
 	}
 	tests := []struct {
-		name              string
-		args              args
-		validate          func(sts *appsv1.StatefulSet) error
-		wantErr           bool
-		predefinedObjects []runtime.Object
+		name                          string
+		args                          args
+		validate                      func(sts *appsv1.StatefulSet) error
+		stsRecreated, mustRecreatePod bool
+		wantErr                       bool
+		predefinedObjects             []runtime.Object
 	}{
 		{
 			name: "add claim to sts",
@@ -57,15 +57,6 @@ func Test_reCreateSTS(t *testing.T) {
 						},
 					}},
 				},
-				pvcName: "new-claim",
-			},
-			predefinedObjects: []runtime.Object{
-				&appsv1.StatefulSet{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "vmselect",
-						Namespace: "default",
-					},
-				},
 			},
 			validate: func(sts *appsv1.StatefulSet) error {
 				if len(sts.Spec.VolumeClaimTemplates) != 1 {
@@ -73,6 +64,8 @@ func Test_reCreateSTS(t *testing.T) {
 				}
 				return nil
 			},
+			stsRecreated:    true,
+			mustRecreatePod: true,
 		},
 		{
 			name: "resize claim at sts",
@@ -110,25 +103,6 @@ func Test_reCreateSTS(t *testing.T) {
 						},
 					}},
 				},
-				pvcName: "new-claim",
-			},
-			predefinedObjects: []runtime.Object{
-				&appsv1.StatefulSet{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "vmselect",
-						Namespace: "default",
-					},
-					Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []v1.PersistentVolumeClaim{
-						{
-							ObjectMeta: metav1.ObjectMeta{Name: "new-claim"},
-							Spec: v1.PersistentVolumeClaimSpec{Resources: v1.ResourceRequirements{
-								Requests: map[v1.ResourceName]resource.Quantity{
-									v1.ResourceStorage: resource.MustParse("10Gi"),
-								},
-							}},
-						},
-					}},
-				},
 			},
 			validate: func(sts *appsv1.StatefulSet) error {
 				if len(sts.Spec.VolumeClaimTemplates) != 1 {
@@ -140,22 +114,86 @@ func Test_reCreateSTS(t *testing.T) {
 				}
 				return nil
 			},
+			stsRecreated:    true,
+			mustRecreatePod: false,
+		},
+		{
+			name: "change claim storageClass name",
+			args: args{
+				ctx: context.TODO(),
+				existingSTS: &appsv1.StatefulSet{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "vmselect",
+						Namespace: "default",
+					},
+					Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []v1.PersistentVolumeClaim{
+						{
+							ObjectMeta: metav1.ObjectMeta{Name: "new-claim"},
+							Spec: v1.PersistentVolumeClaimSpec{
+								Resources: v1.ResourceRequirements{
+									Requests: map[v1.ResourceName]resource.Quantity{
+										v1.ResourceStorage: resource.MustParse("10Gi"),
+									},
+								},
+								StorageClassName: pointer.String("old-sc"),
+							},
+						},
+					}},
+				},
+				newSTS: &appsv1.StatefulSet{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "vmselect",
+						Namespace: "default",
+					},
+					Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []v1.PersistentVolumeClaim{
+						{
+							ObjectMeta: metav1.ObjectMeta{Name: "new-claim"},
+							Spec: v1.PersistentVolumeClaimSpec{
+								Resources: v1.ResourceRequirements{
+									Requests: map[v1.ResourceName]resource.Quantity{
+										v1.ResourceStorage: resource.MustParse("10Gi"),
+									},
+								},
+								StorageClassName: pointer.String("new-sc"),
+							},
+						},
+					}},
+				},
+			},
+			validate: func(sts *appsv1.StatefulSet) error {
+				if len(sts.Spec.VolumeClaimTemplates) != 1 {
+					return fmt.Errorf("unexpected configuration for volumeclaim at sts: %v, want at least one, got: %v", sts.Name, sts.Spec.VolumeClaimTemplates)
+				}
+				name := *sts.Spec.VolumeClaimTemplates[0].Spec.StorageClassName
+				if name != "new-sc" {
+					return fmt.Errorf("unexpected sts storageClass name, got: %v, want: %v", name, "new-sc")
+				}
+				return nil
+			},
+			stsRecreated:    true,
+			mustRecreatePod: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cl := GetTestClientWithObjects(tt.predefinedObjects)
-			_, err := wasCreatedSTS(tt.args.ctx, cl, tt.args.pvcName, tt.args.newSTS, tt.args.existingSTS)
+			cl := GetTestClientWithObjects([]runtime.Object{tt.args.existingSTS})
+			stsRecreated, mustRecreatePod, err := recreateSTSIfNeed(tt.args.ctx, cl, tt.args.newSTS, tt.args.existingSTS)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("wasCreatedSTS() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("%s: \nwasCreatedSTS() error = %v, wantErr %v", tt.name, err, tt.wantErr)
 				return
 			}
 			var updatedSts appsv1.StatefulSet
 			if err := cl.Get(tt.args.ctx, types.NamespacedName{Namespace: tt.args.newSTS.Namespace, Name: tt.args.newSTS.Name}, &updatedSts); err != nil {
-				t.Fatalf("unexpected error: %v", err)
+				t.Fatalf("%s: \nunexpected error: %v", tt.name, err)
 			}
 			if err := tt.validate(&updatedSts); err != nil {
-				t.Fatalf("sts validation failed: %v", err)
+				t.Fatalf("%s: \nsts validation failed: %v", tt.name, err)
+			}
+			if stsRecreated != tt.stsRecreated {
+				t.Fatalf("%s: \n expect `stsRecreated`: %v, got: %v", tt.name, tt.stsRecreated, stsRecreated)
+			}
+			if mustRecreatePod != tt.mustRecreatePod {
+				t.Fatalf("%s: \n expect `mustRecreatePod`: %v, got: %v", tt.name, tt.mustRecreatePod, mustRecreatePod)
 			}
 		})
 	}
@@ -163,9 +201,8 @@ func Test_reCreateSTS(t *testing.T) {
 
 func Test_growSTSPVC(t *testing.T) {
 	type args struct {
-		ctx     context.Context
-		sts     *appsv1.StatefulSet
-		pvcName string
+		ctx context.Context
+		sts *appsv1.StatefulSet
 	}
 	tests := []struct {
 		name              string
@@ -176,8 +213,7 @@ func Test_growSTSPVC(t *testing.T) {
 		{
 			name: "no need to expand",
 			args: args{
-				ctx:     context.TODO(),
-				pvcName: "vmselect",
+				ctx: context.TODO(),
 				sts: &appsv1.StatefulSet{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "vmselect",
@@ -195,7 +231,7 @@ func Test_growSTSPVC(t *testing.T) {
 						VolumeClaimTemplates: []v1.PersistentVolumeClaim{
 							{
 								ObjectMeta: metav1.ObjectMeta{
-									Name: "vmselect",
+									Name: "vmselect-cachedir",
 								},
 								Spec: v1.PersistentVolumeClaimSpec{
 									Resources: v1.ResourceRequirements{
@@ -212,10 +248,12 @@ func Test_growSTSPVC(t *testing.T) {
 			predefinedObjects: []runtime.Object{
 				&v1.PersistentVolumeClaim{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "pvc-0",
+						Name:      "vmselect-cachedir-vmselect-insight-victoria-metrics-k8s-stack-0",
+						Namespace: "default",
 						Labels: map[string]string{
 							"app": "vmselect",
 						},
+						Annotations: map[string]string{"operator.victoriametrics.com/pvc/allow-volume-expansion": "true"},
 					},
 					Spec: v1.PersistentVolumeClaimSpec{
 						Resources: v1.ResourceRequirements{Requests: map[v1.ResourceName]resource.Quantity{
@@ -234,10 +272,9 @@ func Test_growSTSPVC(t *testing.T) {
 			},
 		},
 		{
-			name: "expand",
+			name: "expand successfully",
 			args: args{
-				ctx:     context.TODO(),
-				pvcName: "vmselect",
+				ctx: context.TODO(),
 				sts: &appsv1.StatefulSet{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "vmselect",
@@ -255,7 +292,94 @@ func Test_growSTSPVC(t *testing.T) {
 						VolumeClaimTemplates: []v1.PersistentVolumeClaim{
 							{
 								ObjectMeta: metav1.ObjectMeta{
-									Name: "vmselect",
+									Name: "vmselect-cachedir",
+								},
+								Spec: v1.PersistentVolumeClaimSpec{
+									Resources: v1.ResourceRequirements{
+										Requests: map[v1.ResourceName]resource.Quantity{
+											v1.ResourceStorage: resource.MustParse("15Gi"),
+										},
+									},
+								},
+							},
+							{
+								ObjectMeta: metav1.ObjectMeta{
+									Name: "test",
+								},
+								Spec: v1.PersistentVolumeClaimSpec{
+									Resources: v1.ResourceRequirements{
+										Requests: map[v1.ResourceName]resource.Quantity{
+											v1.ResourceStorage: resource.MustParse("5Gi"),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			predefinedObjects: []runtime.Object{
+				&v1.PersistentVolumeClaim{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "vmselect-cachedir-vmselect-insight-victoria-metrics-k8s-stack-0",
+						Namespace: "default",
+						Labels: map[string]string{
+							"app": "vmselect",
+						},
+					},
+					Spec: v1.PersistentVolumeClaimSpec{
+						Resources: v1.ResourceRequirements{Requests: map[v1.ResourceName]resource.Quantity{
+							v1.ResourceStorage: resource.MustParse("10Gi"),
+						}},
+					},
+				},
+				&v1.PersistentVolumeClaim{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-vmselect-insight-victoria-metrics-k8s-stack-0",
+						Namespace: "default",
+						Labels: map[string]string{
+							"app": "vmselect",
+						},
+					},
+					Spec: v1.PersistentVolumeClaimSpec{
+						Resources: v1.ResourceRequirements{Requests: map[v1.ResourceName]resource.Quantity{
+							v1.ResourceStorage: resource.MustParse("3Gi"),
+						}},
+					},
+				},
+				&v12.StorageClass{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "standard",
+						Annotations: map[string]string{
+							"storageclass.kubernetes.io/is-default-class": "true",
+						},
+					},
+					AllowVolumeExpansion: func() *bool { b := true; return &b }(),
+				},
+			},
+		},
+		{
+			name: "failed with non-expandable sc",
+			args: args{
+				ctx: context.TODO(),
+				sts: &appsv1.StatefulSet{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "vmselect",
+						Namespace: "default",
+						Labels: map[string]string{
+							"app": "vmselect",
+						},
+					},
+					Spec: appsv1.StatefulSetSpec{
+						Selector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"app": "vmselect",
+							},
+						},
+						VolumeClaimTemplates: []v1.PersistentVolumeClaim{
+							{
+								ObjectMeta: metav1.ObjectMeta{
+									Name: "vmselect-cachedir",
 								},
 								Spec: v1.PersistentVolumeClaimSpec{
 									Resources: v1.ResourceRequirements{
@@ -272,7 +396,7 @@ func Test_growSTSPVC(t *testing.T) {
 			predefinedObjects: []runtime.Object{
 				&v1.PersistentVolumeClaim{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "pvc-0",
+						Name:      "vmselect-cachedir-vmselect-insight-victoria-metrics-k8s-stack-0",
 						Namespace: "default",
 						Labels: map[string]string{
 							"app": "vmselect",
@@ -291,18 +415,16 @@ func Test_growSTSPVC(t *testing.T) {
 							"storageclass.kubernetes.io/is-default-class": "true",
 						},
 					},
-					AllowVolumeExpansion: func() *bool { b := true; return &b }(),
 				},
 			},
 		},
 		{
 			name: "expand with named class",
 			args: args{
-				ctx:     context.TODO(),
-				pvcName: "vmselect",
+				ctx: context.TODO(),
 				sts: &appsv1.StatefulSet{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "vmselect",
+						Name:      "vmselect-cachedir",
 						Namespace: "default",
 						Labels: map[string]string{
 							"app": "vmselect",
@@ -335,7 +457,7 @@ func Test_growSTSPVC(t *testing.T) {
 			predefinedObjects: []runtime.Object{
 				&v1.PersistentVolumeClaim{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "pvc-0",
+						Name:      "vmselect-cachedir-vmselect-insight-victoria-metrics-k8s-stack-0",
 						Namespace: "default",
 						Labels: map[string]string{
 							"app": "vmselect",
@@ -371,7 +493,7 @@ func Test_growSTSPVC(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cl := GetTestClientWithObjects(tt.predefinedObjects)
-			if err := growSTSPVC(tt.args.ctx, cl, tt.args.sts, tt.args.pvcName); (err != nil) != tt.wantErr {
+			if err := growSTSPVC(tt.args.ctx, cl, tt.args.sts); (err != nil) != tt.wantErr {
 				t.Errorf("growSTSPVC() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

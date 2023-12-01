@@ -243,7 +243,6 @@ func (c *ConverterController) Run(ctx context.Context, group *errgroup.Group) {
 			return c.runInformerWithDiscovery(ctx, alpha1.SchemeGroupVersion.String(), alpha1.AlertmanagerConfigKind, c.amConfigInf.Run)
 		})
 	}
-
 }
 
 // CreatePrometheusRule converts prometheus rule to vmrule

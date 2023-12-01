@@ -2,7 +2,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.10.0
+    controller-gen.kubebuilder.io/version: v0.12.1
   name: vmauths.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -170,7 +170,7 @@ spec:
               imagePullSecrets:
                 description: ImagePullSecrets An optional list of references to secrets
                   in the same namespace to use for pulling images from registries
-                  see http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod
+                  see https://kubernetes.io/docs/concepts/containers/images/#referring-to-an-imagepullsecrets-on-a-pod
                 items:
                   description: LocalObjectReference contains enough information to
                     let you locate the referenced object inside the same namespace.
@@ -191,7 +191,7 @@ spec:
                     description: 'Annotations is an unstructured key value map stored
                       with a resource that may be set by external tools to store and
                       retrieve arbitrary metadata. They are not queryable and should
-                      be preserved when modifying objects. More info: http://kubernetes.io/docs/user-guide/annotations'
+                      be preserved when modifying objects. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations'
                     type: object
                   class_name:
                     description: ClassName defines ingress class name for VMAuth
@@ -390,14 +390,14 @@ spec:
                     description: 'Labels Map of string keys and values that can be
                       used to organize and categorize (scope and select) objects.
                       May match selectors of replication controllers and services.
-                      More info: http://kubernetes.io/docs/user-guide/labels'
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels'
                     type: object
                   name:
                     description: 'Name must be unique within a namespace. Is required
                       when creating resources, although some resources may allow a
                       client to request the generation of an appropriate name automatically.
                       Name is primarily intended for creation idempotence and configuration
-                      definition. Cannot be updated. More info: http://kubernetes.io/docs/user-guide/identifiers#names'
+                      definition. Cannot be updated. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names'
                     type: string
                   tlsHosts:
                     description: TlsHosts configures TLS access for ingress, tlsSecretName
@@ -428,6 +428,38 @@ spec:
                   type: object
                   x-kubernetes-preserve-unknown-fields: true
                 type: array
+              license:
+                description: 'License allows to configure license key to be used for
+                  enterprise features. Using license key is supported starting from
+                  VictoriaMetrics v1.94.0. See: https://docs.victoriametrics.com/enterprise.html'
+                properties:
+                  key:
+                    description: Enterprise license key. This flag is available only
+                      in VictoriaMetrics enterprise. Documentation - https://docs.victoriametrics.com/enterprise.html
+                      for more information, visit https://victoriametrics.com/products/enterprise/
+                      . To request a trial license, go to https://victoriametrics.com/products/enterprise/trial/
+                    type: string
+                  keyRef:
+                    description: KeyRef is reference to secret with license key for
+                      enterprise features.
+                    properties:
+                      key:
+                        description: The key of the secret to select from.  Must be
+                          a valid secret key.
+                        type: string
+                      name:
+                        description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                          TODO: Add other useful fields. apiVersion, kind, uid?'
+                        type: string
+                      optional:
+                        description: Specify whether the Secret or its key must be
+                          defined
+                        type: boolean
+                    required:
+                    - key
+                    type: object
+                    x-kubernetes-map-type: atomic
+                type: object
               livenessProbe:
                 description: LivenessProbe that will be added CRD pod
                 type: object
@@ -494,7 +526,7 @@ spec:
                     description: 'Annotations is an unstructured key value map stored
                       with a resource that may be set by external tools to store and
                       retrieve arbitrary metadata. They are not queryable and should
-                      be preserved when modifying objects. More info: http://kubernetes.io/docs/user-guide/annotations'
+                      be preserved when modifying objects. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations'
                     type: object
                   labels:
                     additionalProperties:
@@ -502,14 +534,14 @@ spec:
                     description: 'Labels Map of string keys and values that can be
                       used to organize and categorize (scope and select) objects.
                       May match selectors of replication controllers and services.
-                      More info: http://kubernetes.io/docs/user-guide/labels'
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels'
                     type: object
                   name:
                     description: 'Name must be unique within a namespace. Is required
                       when creating resources, although some resources may allow a
                       client to request the generation of an appropriate name automatically.
                       Name is primarily intended for creation idempotence and configuration
-                      definition. Cannot be updated. More info: http://kubernetes.io/docs/user-guide/identifiers#names'
+                      definition. Cannot be updated. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names'
                     type: string
                 type: object
               podSecurityPolicyName:
@@ -599,7 +631,7 @@ spec:
                   to use to run the VMAuth Pods.
                 type: string
               serviceScrapeSpec:
-                description: ServiceScrapeSpec that will be added to vmselect VMServiceScrape
+                description: ServiceScrapeSpec that will be added to vmauth VMServiceScrape
                   spec
                 required:
                 - endpoints
@@ -619,7 +651,7 @@ spec:
                           stored with a resource that may be set by external tools
                           to store and retrieve arbitrary metadata. They are not queryable
                           and should be preserved when modifying objects. More info:
-                          http://kubernetes.io/docs/user-guide/annotations'
+                          https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations'
                         type: object
                       labels:
                         additionalProperties:
@@ -627,7 +659,7 @@ spec:
                         description: 'Labels Map of string keys and values that can
                           be used to organize and categorize (scope and select) objects.
                           May match selectors of replication controllers and services.
-                          More info: http://kubernetes.io/docs/user-guide/labels'
+                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels'
                         type: object
                       name:
                         description: 'Name must be unique within a namespace. Is required
@@ -635,7 +667,7 @@ spec:
                           a client to request the generation of an appropriate name
                           automatically. Name is primarily intended for creation idempotence
                           and configuration definition. Cannot be updated. More info:
-                          http://kubernetes.io/docs/user-guide/identifiers#names'
+                          https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names'
                         type: string
                     type: object
                   spec:
@@ -742,6 +774,11 @@ spec:
                       type: array
                   type: object
                 type: array
+              useStrictSecurity:
+                description: UseStrictSecurity enables strict security mode for component
+                  it restricts disk writes access uses non-root user out of the box
+                  drops not needed security permissions
+                type: boolean
               userNamespaceSelector:
                 description: UserNamespaceSelector Namespaces to be selected for  VMAuth
                   discovery. Works in combination with Selector. NamespaceSelector

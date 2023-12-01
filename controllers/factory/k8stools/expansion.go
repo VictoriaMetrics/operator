@@ -7,6 +7,7 @@ import (
 	"time"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-test/deep"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -29,14 +30,18 @@ func cleanUpFinalize(ctx context.Context, rclient client.Client, instance client
 	return nil
 }
 
-// recreateSTS if needed.
+// recreateSTSIfNeed will check if sts needs recreate and perform recreate if needed,
+// there are two different cases:
+// 1. sts's VolumeClaimTemplate's element changed[added or deleted];
+// 2. other VolumeClaimTemplate's attributes beside name changed, like size or storageClassName
+// since pod's volume only related to VCT's name, so when c2 happened, we don't need to recreate pods
+//
 // Note, in some cases its possible to get orphaned objects,
 // if sts was deleted and user updates configuration with different STS name.
 // One of possible solutions - save current sts to the object annotation and remove it later if needed.
 // Other solution, to check orphaned objects by selector.
 // Lets leave it as this for now and handle later.
-func wasCreatedSTS(ctx context.Context, rclient client.Client, pvcName string, newSTS, existingSTS *appsv1.StatefulSet) (bool, error) {
-
+func recreateSTSIfNeed(ctx context.Context, rclient client.Client, newSTS, existingSTS *appsv1.StatefulSet) (bool, bool, error) {
 	handleRemove := func() error {
 		// removes finalizer from exist sts, it allows to delete it
 		if err := cleanUpFinalize(ctx, rclient, existingSTS); err != nil {
@@ -66,25 +71,13 @@ func wasCreatedSTS(ctx context.Context, rclient client.Client, pvcName string, n
 			// try to restore previous one and throw error
 			existingSTS.ResourceVersion = ""
 			if err2 := rclient.Create(ctx, existingSTS); err2 != nil {
-				return fmt.Errorf("cannot restore previous sts: %s configruation after remove original error: %s: restore error %w", existingSTS.Name, err, err2)
+				return fmt.Errorf("cannot restore previous sts: %s configuration after remove original error: %s: restore error %w", existingSTS.Name, err, err2)
 			}
 			return fmt.Errorf("cannot create new sts: %s instead of replaced, some manual action is required, err: %w", newSTS.Name, err)
 		}
-
-		// this is hack
-		// for some reason, kubernetes doesn't update sts status after its re-creation
-		// so, manually set currentVersion to the version of previous sts.
-		// updateRevision will be fetched from first re-created pod
-		// https://github.com/VictoriaMetrics/operator/issues/344
-		newSTS.Status.CurrentRevision = existingSTS.Status.CurrentRevision
-		if err := rclient.Status().Update(ctx, newSTS); err != nil {
-			return fmt.Errorf("cannot update re-created statefulset status version: %w", err)
-		}
 		return nil
 	}
-	needRecreateOnStorageChange := func() bool {
-		actualPVC := getPVCFromSTS(pvcName, existingSTS)
-		newPVC := getPVCFromSTS(pvcName, newSTS)
+	needRecreateOnStorageChange := func(actualPVC, newPVC *corev1.PersistentVolumeClaim) bool {
 		// fast path
 		if actualPVC == nil && newPVC == nil {
 			return false
@@ -104,29 +97,38 @@ func wasCreatedSTS(ctx context.Context, rclient client.Client, pvcName string, n
 		}
 
 		// compare meta and spec for pvc
-		if !equality.Semantic.DeepDerivative(newPVC.ObjectMeta, actualPVC.ObjectMeta) || !equality.Semantic.DeepDerivative(newPVC.Spec, actualPVC.Spec) {
+		if !equality.Semantic.DeepEqual(newPVC.ObjectMeta.Labels, actualPVC.ObjectMeta.Labels) || !equality.Semantic.DeepEqual(newPVC.ObjectMeta.Annotations, actualPVC.ObjectMeta.Annotations) || !equality.Semantic.DeepDerivative(newPVC.Spec, actualPVC.Spec) {
 			diff := deep.Equal(newPVC.ObjectMeta, actualPVC.ObjectMeta)
 			specDiff := deep.Equal(newPVC.Spec, actualPVC.Spec)
-			log.Info("pvc changes detected", "metaDiff", diff, "specDiff", specDiff, "pvc", pvcName)
+			log.Info("pvc changes detected", "metaDiff", diff, "specDiff", specDiff, "pvc", newPVC.Name)
 			return true
 		}
 
 		return false
 	}
-	needRecreateOnSpecChange := func() bool {
-		// vct changed - added or removed.
-		if len(newSTS.Spec.VolumeClaimTemplates) != len(existingSTS.Spec.VolumeClaimTemplates) {
-			log.Info("VolumeClaimTemplate for statefulset was changed, recreating it", "sts", newSTS.Name)
-			return true
+
+	// if vct got added, removed or changed, recreate the sts
+	if len(newSTS.Spec.VolumeClaimTemplates) != len(existingSTS.Spec.VolumeClaimTemplates) {
+		log.Info("VolumeClaimTemplates for statefulset was changed, recreating it", "sts", newSTS.Name)
+		return true, true, handleRemove()
+	}
+	var vctChanged bool
+	for _, newVCT := range newSTS.Spec.VolumeClaimTemplates {
+		actualPVC := getPVCFromSTS(newVCT.Name, existingSTS)
+		if actualPVC == nil {
+			log.Info("VolumeClaimTemplate for statefulset was changed, recreating it", "sts", newSTS.Name, "VolumeClaimTemplates", newVCT.Name)
+			return true, true, handleRemove()
 		}
-		return false
+		if needRecreateOnStorageChange(actualPVC, &newVCT) {
+			log.Info("VolumeClaimTemplate for statefulset was changed, recreating it", "sts", newSTS.Name, "VolumeClaimTemplates", newVCT.Name)
+			vctChanged = true
+		}
 	}
-
-	if needRecreateOnSpecChange() || needRecreateOnStorageChange() {
-		return true, handleRemove()
+	// some VolumeClaimTemplate's attributes beside name changed, there is no need to recreate pods
+	if vctChanged {
+		return true, false, handleRemove()
 	}
-
-	return false, nil
+	return false, false, nil
 }
 
 func getPVCFromSTS(pvcName string, sts *appsv1.StatefulSet) *corev1.PersistentVolumeClaim {
@@ -140,28 +142,61 @@ func getPVCFromSTS(pvcName string, sts *appsv1.StatefulSet) *corev1.PersistentVo
 	return pvc
 }
 
-func growSTSPVC(ctx context.Context, rclient client.Client, sts *appsv1.StatefulSet, pvcName string) error {
-	pvc := getPVCFromSTS(pvcName, sts)
-	if pvc == nil {
-		// fast path
-		var names []string
-		for i := range sts.Spec.VolumeClaimTemplates {
-			names = append(names, sts.Spec.VolumeClaimTemplates[i].Name)
-		}
-		log.Error(fmt.Errorf("cannot find PVC by name: %s for sts: %s, looks like bug, exist names for sts: %s", pvcName, sts.Name, strings.Join(names, ",")), "cannot find pvc to grow")
-		return nil
+func growSTSPVC(ctx context.Context, rclient client.Client, sts *appsv1.StatefulSet) error {
+	targetPVCs := sts.Spec.VolumeClaimTemplates
+	// list current pvcs
+	var pvcs corev1.PersistentVolumeClaimList
+	opts := &client.ListOptions{
+		Namespace:     sts.Namespace,
+		LabelSelector: labels.SelectorFromSet(sts.Spec.Selector.MatchLabels),
 	}
-	// check storage class
-	isExpandable, err := isStorageClassExpandable(ctx, rclient, pvc)
-	if err != nil {
+	if err := rclient.List(ctx, &pvcs, opts); err != nil {
 		return err
 	}
-
-	return growPVCs(ctx, rclient, pvc.Spec.Resources.Requests.Storage(), sts.Namespace, sts.Spec.Selector.MatchLabels, isExpandable)
+	if len(pvcs.Items) == 0 {
+		return fmt.Errorf("got 0 pvcs under %s for selector %v, statefulset could not be working", sts.Namespace, sts.Spec.Selector.MatchLabels)
+	}
+	for _, pvc := range pvcs.Items {
+		var isExist bool
+		// check if storage class is expandable
+		isExpandable, err := isStorageClassExpandable(ctx, rclient, &pvc)
+		if err != nil {
+			return fmt.Errorf("failed to check storageClass expandability for pvc %s: %v", pvc.Name, err)
+		}
+		if !isExpandable {
+			// don't return error to caller, since there is no point to requeue and reconcile this when sc is unexpandable
+			log.Error(nil, "want to expand pvc but storageClass doesn't support it, need to handle this case manually", "pvc", pvc.Name)
+			continue
+		}
+		for _, tpvc := range targetPVCs {
+			if strings.HasPrefix(pvc.Name, fmt.Sprintf("%s-%s", tpvc.Name, sts.Name)) {
+				isExist = true
+				err = growPVCs(ctx, rclient, tpvc.Spec.Resources.Requests.Storage(), &pvc)
+				if err != nil {
+					return fmt.Errorf("failed to expand size for pvc %s: %v", pvc.Name, err)
+				}
+				break
+			}
+		}
+		if !isExist {
+			log.Info("cannot find target pvc in new statefulset, please check if the old one is still needed", "pvc", pvc.Name, "sts", sts.Name)
+		}
+	}
+	return nil
 }
 
 // isStorageClassExpandable check is it possible to update size of given pvc
 func isStorageClassExpandable(ctx context.Context, rclient client.Client, pvc *corev1.PersistentVolumeClaim) (bool, error) {
+	// do not perform any checks if user set annotation explicitly.
+	if pvc.Annotations[victoriametricsv1beta1.PVCExpandableLabel] == "true" {
+		return true, nil
+	}
+	// fast path at single namespace mode, listing storage classes is disabled
+	if !config.IsClusterWideAccessAllowed() {
+		// don't return error to caller, since there is no point to requeue and reconcile this
+		log.Info("cannot detect if storageClass expandable at single namespace mode, need to expand PVC manually or enforce resizing by adding specific annotation to true", "pvc annotation", victoriametricsv1beta1.PVCExpandableLabel)
+		return false, nil
+	}
 	var isNotDefault bool
 	var className string
 	if pvc.Spec.StorageClassName != nil {
@@ -174,7 +209,7 @@ func isStorageClassExpandable(ctx context.Context, rclient client.Client, pvc *c
 	}
 	var storageClasses v1.StorageClassList
 	if err := rclient.List(ctx, &storageClasses); err != nil {
-		return false, fmt.Errorf("cannot list storageclasses: %w", err)
+		return false, fmt.Errorf("cannot list storageClass: %w", err)
 	}
 	allowExpansion := func(class v1.StorageClass) bool {
 		if class.AllowVolumeExpansion != nil && *class.AllowVolumeExpansion {
@@ -202,33 +237,14 @@ func isStorageClassExpandable(ctx context.Context, rclient client.Client, pvc *c
 	return false, nil
 }
 
-func growPVCs(ctx context.Context, rclient client.Client, size *resource.Quantity, ns string, selector map[string]string, isExpandable bool) error {
-	var pvcs corev1.PersistentVolumeClaimList
-	opts := &client.ListOptions{
-		Namespace:     ns,
-		LabelSelector: labels.SelectorFromSet(selector),
+func growPVCs(ctx context.Context, rclient client.Client, size *resource.Quantity, pvc *corev1.PersistentVolumeClaim) error {
+	var err error
+	if mayGrow(size, pvc.Spec.Resources.Requests.Storage()) {
+		log.Info("need to expand pvc size", "name", pvc.Name, "from", pvc.Spec.Resources.Requests.Storage(), "to", size.String())
+		pvc.Spec.Resources.Requests[corev1.ResourceStorage] = *size
+		err = rclient.Update(ctx, pvc)
 	}
-	if err := rclient.List(ctx, &pvcs, opts); err != nil {
-		return err
-	}
-	if len(pvcs.Items) == 0 {
-		log.Info("PVCs select call returned 0 pvcs, it could be a bug, inspect selectors", "want match", selector, "namespace", ns)
-	}
-	for i := range pvcs.Items {
-		pvc := pvcs.Items[i]
-		if mayGrow(size, pvc.Spec.Resources.Requests.Storage()) {
-			if isExpandable {
-				log.Info("need to expand pvc", "name", pvc.Name, "size", size.String())
-				pvc.Spec.Resources.Requests[corev1.ResourceStorage] = *size
-				if err := rclient.Update(ctx, &pvc); err != nil {
-					return err
-				}
-			} else {
-				log.Info("need to expand pvc, but storageClass doesn't support it, handle this case manually", "pvc", pvc.Name)
-			}
-		}
-	}
-	return nil
+	return err
 }
 
 // checks is pvc needs to be resized.

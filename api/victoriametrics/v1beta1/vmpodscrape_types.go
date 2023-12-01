@@ -33,8 +33,7 @@ type VMPodScrapeSpec struct {
 }
 
 // VMPodScrapeStatus defines the observed state of VMPodScrape
-type VMPodScrapeStatus struct {
-}
+type VMPodScrapeStatus struct{}
 
 // VMPodScrape is scrape configuration for pods,
 // it generates vmagent's config for scraping pod targets
@@ -76,6 +75,7 @@ type PodMetricsEndpoint struct {
 	Path string `json:"path,omitempty"`
 	// HTTP scheme to use for scraping.
 	// +optional
+	// +kubebuilder:validation:Enum=http;https
 	Scheme string `json:"scheme,omitempty"`
 	// Optional HTTP URL parameters
 	// +optional

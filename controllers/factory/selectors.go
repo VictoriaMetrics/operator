@@ -22,7 +22,8 @@ func getNSWithSelector(ctx context.Context, rclient client.Client, nsSelector, o
 	// for each namespace apply list with  selector
 	// combine result
 	switch {
-	case nsSelector == nil:
+	// in single namespace mode, return object ns
+	case nsSelector == nil || watchNS != "":
 		namespaces = append(namespaces, objNS)
 	default:
 		nsSelector, err := metav1.LabelSelectorAsSelector(nsSelector)
@@ -65,13 +66,7 @@ func visitObjectsWithSelector(ctx context.Context, rclient client.Client, ns []s
 		return nil
 	}
 
-	watchNamespace := config.MustGetWatchNamespace()
-	// list only for given namespaces
 	for i := range ns {
-		if watchNamespace != "" && ns[i] != watchNamespace {
-			continue
-		}
-
 		if err := rclient.List(ctx, objectListType, &client.ListOptions{LabelSelector: selector, Namespace: ns[i]}); err != nil {
 			return err
 		}

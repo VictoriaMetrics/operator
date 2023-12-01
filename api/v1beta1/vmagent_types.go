@@ -29,7 +29,7 @@ type VMAgentSpec struct {
 	Image Image `json:"image,omitempty"`
 	// ImagePullSecrets An optional list of references to secrets in the same namespace
 	// to use for pulling images from registries
-	// see http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod
+	// see https://kubernetes.io/docs/concepts/containers/images/#referring-to-an-imagepullsecrets-on-a-pod
 	// +optional
 	ImagePullSecrets []v1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 	// Secrets is a list of Secrets in the same namespace as the vmagent
@@ -305,14 +305,14 @@ type VMAgentSpec struct {
 	// ServiceSpec that will be added to vmagent service spec
 	// +optional
 	ServiceSpec *ServiceSpec `json:"serviceSpec,omitempty"`
-	// ServiceScrapeSpec that will be added to vmselect VMServiceScrape spec
+	// ServiceScrapeSpec that will be added to vmagent VMServiceScrape spec
 	// +optional
 	ServiceScrapeSpec *VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
 
 	// ShardCount - numbers of shards of VMAgent
 	// in this case operator will use 1 deployment/sts per shard with
-	// replicas count according to spec.replicas
-	// https://victoriametrics.github.io/vmagent.html#scraping-big-number-of-targets
+	// replicas count according to spec.replicas,
+	// see https://docs.victoriametrics.com/vmagent.html#scraping-big-number-of-targets
 	// +optional
 	ShardCount *int `json:"shardCount,omitempty"`
 
@@ -382,6 +382,18 @@ type VMAgentSpec struct {
 	ReadinessGates []v1.PodReadinessGate `json:"readinessGates,omitempty"`
 	// ClaimTemplates allows adding additional VolumeClaimTemplates for VMAgent in StatefulMode
 	ClaimTemplates []v1.PersistentVolumeClaim `json:"claimTemplates,omitempty"`
+	// UseStrictSecurity enables strict security mode for component
+	// it restricts disk writes access
+	// uses non-root user out of the box
+	// drops not needed security permissions
+	// +optional
+	UseStrictSecurity *bool `json:"useStrictSecurity,omitempty"`
+
+	// License allows to configure license key to be used for enterprise features.
+	// Using license key is supported starting from VictoriaMetrics v1.94.0.
+	// See: https://docs.victoriametrics.com/enterprise.html
+	// +optional
+	License *License `json:"license,omitempty"`
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface
@@ -416,7 +428,7 @@ type VMAgentRemoteWriteSettings struct {
 	// +optional
 	// +kubebuilder:validation:Pattern:="[0-9]+(ms|s|m|h)"
 	FlushInterval *string `json:"flushInterval,omitempty"`
-	// Optional labels in the form 'name=value' to add to all the metrics before sending them
+	// Labels in the form 'name=value' to add to all the metrics before sending them. This overrides the label if it already exists.
 	// +optional
 	Labels map[string]string `json:"label,omitempty"`
 	// Configures vmagent in multi-tenant mode with direct cluster support
@@ -487,7 +499,7 @@ func (rw *VMAgentRemoteWriteSpec) HasStreamAggr() bool {
 	return rw.StreamAggrConfig != nil && len(rw.StreamAggrConfig.Rules) > 0
 }
 
-// VmAgentStatus defines the observed state of VmAgent
+// VMAgentStatus defines the observed state of VMAgent
 // +k8s:openapi-gen=true
 type VMAgentStatus struct {
 	// Shards represents total number of vmagent deployments with uniq scrape targets
@@ -530,8 +542,8 @@ type VMAgent struct {
 	Status VMAgentStatus `json:"status,omitempty"`
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // VMAgentList contains a list of VMAgent
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type VMAgentList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
@@ -545,8 +557,8 @@ func (cr *VMAgent) AsOwner() []metav1.OwnerReference {
 			Kind:               cr.Kind,
 			Name:               cr.Name,
 			UID:                cr.UID,
-			Controller:         pointer.BoolPtr(true),
-			BlockOwnerDeletion: pointer.BoolPtr(true),
+			Controller:         pointer.Bool(true),
+			BlockOwnerDeletion: pointer.Bool(true),
 		},
 	}
 }
@@ -668,7 +680,6 @@ func (cr *VMAgent) Probe() *EmbeddedProbes {
 }
 
 func (cr *VMAgent) ProbePath() string {
-
 	return buildPathWithPrefixFlag(cr.Spec.ExtraArgs, healthPath)
 }
 

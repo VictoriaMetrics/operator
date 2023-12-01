@@ -513,6 +513,9 @@ func (cb *configBuilder) buildSlack(slack operatorv1beta1.SlackConfig) error {
 		if err != nil {
 			return err
 		}
+		if err := parseURL(string(s)); err != nil {
+			return fmt.Errorf("invalid URL %s in key %s from secret %s: %v", string(s), slack.APIURL.Key, slack.APIURL.Name, err)
+		}
 		temp = append(temp, yaml.MapItem{Key: "api_url", Value: string(s)})
 	}
 	if slack.SendResolved != nil {
@@ -629,7 +632,7 @@ func (cb *configBuilder) buildWebhook(wh operatorv1beta1.WebhookConfig) error {
 	if url == "" {
 		return nil
 	} else {
-		err := parseURL(*wh.URL)
+		err := parseURL(url)
 		if err != nil {
 			return err
 		}
@@ -954,6 +957,9 @@ func (cb *configBuilder) buildOpsGenie(og operatorv1beta1.OpsGenieConfig) error 
 	toYamlString("tags", og.Tags)
 	toYamlString("note", og.Note)
 	toYamlString("api_url", og.APIURL)
+	toYamlString("entity", og.Entity)
+	toYamlString("Actions", og.Actions)
+
 	if og.APIURL != "" {
 		err := parseURL(og.APIURL)
 		if err != nil {
@@ -966,6 +972,9 @@ func (cb *configBuilder) buildOpsGenie(og operatorv1beta1.OpsGenieConfig) error 
 	}
 	if og.SendResolved != nil {
 		temp = append(temp, yaml.MapItem{Key: "send_resolved", Value: *og.SendResolved})
+	}
+	if og.UpdateAlerts {
+		temp = append(temp, yaml.MapItem{Key: "update_alerts", Value: og.UpdateAlerts})
 	}
 
 	var responders []yaml.MapSlice

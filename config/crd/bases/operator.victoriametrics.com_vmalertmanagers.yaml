@@ -2,7 +2,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.10.0
+    controller-gen.kubebuilder.io/version: v0.12.1
   name: vmalertmanagers.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -592,7 +592,7 @@ spec:
               imagePullSecrets:
                 description: ImagePullSecrets An optional list of references to secrets
                   in the same namespace to use for pulling images from registries
-                  see http://kubernetes.io/docs/user-guide/images#specifying-imagepullsecrets-on-a-pod
+                  see https://kubernetes.io/docs/concepts/containers/images/#referring-to-an-imagepullsecrets-on-a-pod
                 items:
                   description: LocalObjectReference contains enough information to
                     let you locate the referenced object inside the same namespace.
@@ -688,7 +688,7 @@ spec:
                     description: 'Annotations is an unstructured key value map stored
                       with a resource that may be set by external tools to store and
                       retrieve arbitrary metadata. They are not queryable and should
-                      be preserved when modifying objects. More info: http://kubernetes.io/docs/user-guide/annotations'
+                      be preserved when modifying objects. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations'
                     type: object
                   labels:
                     additionalProperties:
@@ -696,14 +696,14 @@ spec:
                     description: 'Labels Map of string keys and values that can be
                       used to organize and categorize (scope and select) objects.
                       May match selectors of replication controllers and services.
-                      More info: http://kubernetes.io/docs/user-guide/labels'
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels'
                     type: object
                   name:
                     description: 'Name must be unique within a namespace. Is required
                       when creating resources, although some resources may allow a
                       client to request the generation of an appropriate name automatically.
                       Name is primarily intended for creation idempotence and configuration
-                      definition. Cannot be updated. More info: http://kubernetes.io/docs/user-guide/identifiers#names'
+                      definition. Cannot be updated. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names'
                     type: string
                 type: object
               podSecurityPolicyName:
@@ -816,8 +816,8 @@ spec:
                   to use
                 type: string
               serviceScrapeSpec:
-                description: ServiceScrapeSpec that will be added to vmselect VMServiceScrape
-                  spec
+                description: ServiceScrapeSpec that will be added to vmalertmanager
+                  VMServiceScrape spec
                 required:
                 - endpoints
                 type: object
@@ -837,7 +837,7 @@ spec:
                           stored with a resource that may be set by external tools
                           to store and retrieve arbitrary metadata. They are not queryable
                           and should be preserved when modifying objects. More info:
-                          http://kubernetes.io/docs/user-guide/annotations'
+                          https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations'
                         type: object
                       labels:
                         additionalProperties:
@@ -845,7 +845,7 @@ spec:
                         description: 'Labels Map of string keys and values that can
                           be used to organize and categorize (scope and select) objects.
                           May match selectors of replication controllers and services.
-                          More info: http://kubernetes.io/docs/user-guide/labels'
+                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels'
                         type: object
                       name:
                         description: 'Name must be unique within a namespace. Is required
@@ -853,7 +853,7 @@ spec:
                           a client to request the generation of an appropriate name
                           automatically. Name is primarily intended for creation idempotence
                           and configuration definition. Cannot be updated. More info:
-                          http://kubernetes.io/docs/user-guide/identifiers#names'
+                          https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names'
                         type: string
                     type: object
                   spec:
@@ -928,7 +928,7 @@ spec:
                               map stored with a resource that may be set by external
                               tools to store and retrieve arbitrary metadata. They
                               are not queryable and should be preserved when modifying
-                              objects. More info: http://kubernetes.io/docs/user-guide/annotations'
+                              objects. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations'
                             type: object
                           labels:
                             additionalProperties:
@@ -936,7 +936,7 @@ spec:
                             description: 'Labels Map of string keys and values that
                               can be used to organize and categorize (scope and select)
                               objects. May match selectors of replication controllers
-                              and services. More info: http://kubernetes.io/docs/user-guide/labels'
+                              and services. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels'
                             type: object
                           name:
                             description: 'Name must be unique within a namespace.
@@ -944,7 +944,7 @@ spec:
                               may allow a client to request the generation of an appropriate
                               name automatically. Name is primarily intended for creation
                               idempotence and configuration definition. Cannot be
-                              updated. More info: http://kubernetes.io/docs/user-guide/identifiers#names'
+                              updated. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names'
                             type: string
                         type: object
                       spec:
@@ -1291,6 +1291,11 @@ spec:
                   type: object
                   x-kubernetes-preserve-unknown-fields: true
                 type: array
+              useStrictSecurity:
+                description: UseStrictSecurity enables strict security mode for component
+                  it restricts disk writes access uses non-root user out of the box
+                  drops not needed security permissions
+                type: boolean
               volumeMounts:
                 description: VolumeMounts allows configuration of additional VolumeMounts
                   on the output StatefulSet definition. VolumeMounts specified will

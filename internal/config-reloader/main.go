@@ -25,6 +25,7 @@ import (
 )
 
 var (
+	onlyInitConfig         = flag.Bool("only-init-config", false, "enables will read config and write to config-envsubst-file once before exit")
 	configFileName         = flag.String("config-file", "", "config file watched by reloader")
 	configFileDst          = flag.String("config-envsubst-file", "", "target file, where conent of configFile or configSecret would be written")
 	configSecretName       = flag.String("config-secret-name", "", "name of kubernetes secret in form of namespace/name")
@@ -53,7 +54,16 @@ func main() {
 		logger.Fatalf("cannot create configWatcher: %s", err)
 	}
 
-	configWatcher.startWatch(ctx, updatesChan)
+	err = configWatcher.startWatch(ctx, updatesChan)
+	if *onlyInitConfig {
+		if err != nil {
+			logger.Fatalf("failed to init config: %v", err)
+		}
+		logger.Infof("config initiation succeed, exit now")
+		cancel()
+		configWatcher.close()
+		return
+	}
 	watcher := cfgWatcher{
 		updates:  updatesChan,
 		reloader: r.reload,
@@ -130,7 +140,6 @@ type reloader struct {
 }
 
 func (r *reloader) reload(ctx context.Context) error {
-
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, *reloadURL, nil)
 	if err != nil {
 		return fmt.Errorf("cannot build request for reload api: %w", err)
@@ -185,6 +194,9 @@ func newConfigWatcher(ctx context.Context) (watcher, error) {
 	var w watcher
 	if *configFileName == "" && *configSecretName == "" {
 		return nil, fmt.Errorf("provide at least one configFileName")
+	}
+	if *configFileName != "" && *configSecretName != "" {
+		logger.Infof("both config have been provided, will use configSecret %s instead of configFile %s", *configSecretName, *configFileName)
 	}
 	if *configFileName != "" {
 		fw, err := newFileWatcher(*configFileName)
@@ -246,6 +258,5 @@ func writeNewContent(data []byte) error {
 }
 
 func requestHandler(w http.ResponseWriter, r *http.Request) bool {
-
 	return false
 }

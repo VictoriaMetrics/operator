@@ -27,10 +27,6 @@ func (r *VMAlert) sanityCheck() error {
 		return fmt.Errorf("spec.datasource.url cannot be empty")
 	}
 
-	if r.Spec.Notifier == nil && len(r.Spec.Notifiers) == 0 && r.Spec.NotifierConfigRef == nil {
-		return fmt.Errorf("notifier is not defined, provide valid config with spec.notifier or spec.notifiers or spec.notifierConfigRef")
-	}
-
 	if r.Spec.Notifier != nil {
 		if r.Spec.Notifier.URL == "" && r.Spec.Notifier.Selector == nil {
 			return fmt.Errorf("spec.notifier.url and spec.notifier.selector cannot be empty at the same time, provide at least one setting")

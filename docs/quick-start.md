@@ -423,6 +423,7 @@ spec:
           - "/prometheus/api/v1/query"
           - "/prometheus/api/v1/query_range"
           - "/prometheus/api/v1/series"
+          - "/prometheus/api/v1/status/.*"
           - "/prometheus/api/v1/label/"
           - "/prometheus/api/v1/label/[^/]+/values"
 ```
@@ -642,6 +643,7 @@ spec:
         - "/prometheus/api/v1/query"
         - "/prometheus/api/v1/query_range"
         - "/prometheus/api/v1/series"
+        - "/prometheus/api/v1/status/.*"
         - "/prometheus/api/v1/label/"
         - "/prometheus/api/v1/label/[^/]+/values"
     # vmalert

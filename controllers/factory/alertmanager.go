@@ -541,17 +541,16 @@ func createDefaultAMConfig(ctx context.Context, cr *victoriametricsv1beta1.VMAle
 	case cr.Spec.ConfigRawYaml != "":
 		alertmananagerConfig = []byte(cr.Spec.ConfigRawYaml)
 	}
-	if cr.Spec.ConfigSelector != nil || cr.Spec.SelectAllByDefault {
-		// it makes sense only for alertmanager version above v22.0
-		if amVersion != nil && !amVersion.LessThan(alertmanagerConfigMinimumVersion) {
-			mergedCfg, err := buildAlertmanagerConfigWithCRDs(ctx, rclient, cr, alertmananagerConfig, l, tlsAssets)
-			if err != nil {
-				return fmt.Errorf("cannot build alertmanager config with configSelector, err: %w", err)
-			}
-			alertmananagerConfig = mergedCfg
-		} else {
-			l.Info("alertmanager version doesnt supports VMAlertmanagerConfig CRD", "version", amVersion)
+
+	// it makes sense only for alertmanager version above v22.0
+	if amVersion != nil && !amVersion.LessThan(alertmanagerConfigMinimumVersion) {
+		mergedCfg, err := buildAlertmanagerConfigWithCRDs(ctx, rclient, cr, alertmananagerConfig, l, tlsAssets)
+		if err != nil {
+			return fmt.Errorf("cannot build alertmanager config with configSelector, err: %w", err)
 		}
+		alertmananagerConfig = mergedCfg
+	} else {
+		l.Info("alertmanager version doesnt supports VMAlertmanagerConfig CRD", "version", amVersion)
 	}
 
 	// apply default config to be able just start alertmanager

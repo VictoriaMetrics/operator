@@ -84,7 +84,6 @@ func TestCreateOrUpdateVMSingle(t *testing.T) {
 				t.Errorf("CreateOrUpdateVMSingle() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-
 		})
 	}
 }
@@ -159,7 +158,7 @@ func TestCreateOrUpdateVMSingleService(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: victoriametricsv1beta1.VMSingleSpec{
-						ServiceSpec: &victoriametricsv1beta1.ServiceSpec{
+						ServiceSpec: &victoriametricsv1beta1.AdditionalServiceSpec{
 							EmbeddedObjectMetadata: victoriametricsv1beta1.EmbeddedObjectMetadata{Name: "additional-service"},
 							Spec: corev1.ServiceSpec{
 								Type: corev1.ServiceTypeNodePort,

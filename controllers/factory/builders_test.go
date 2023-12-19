@@ -280,7 +280,7 @@ func Test_reconcileServiceForCRD(t *testing.T) {
 func Test_mergeServiceSpec(t *testing.T) {
 	type args struct {
 		svc     *v1.Service
-		svcSpec *victoriametricsv1beta1.ServiceSpec
+		svcSpec *victoriametricsv1beta1.AdditionalServiceSpec
 	}
 	tests := []struct {
 		name     string
@@ -300,7 +300,7 @@ func Test_mergeServiceSpec(t *testing.T) {
 						},
 					},
 				},
-				svcSpec: &victoriametricsv1beta1.ServiceSpec{
+				svcSpec: &victoriametricsv1beta1.AdditionalServiceSpec{
 					Spec: v1.ServiceSpec{
 						Ports: []v1.ServicePort{
 							{Name: "metrics"},
@@ -331,7 +331,7 @@ func Test_mergeServiceSpec(t *testing.T) {
 						},
 					},
 				},
-				svcSpec: &victoriametricsv1beta1.ServiceSpec{
+				svcSpec: &victoriametricsv1beta1.AdditionalServiceSpec{
 					Spec: v1.ServiceSpec{
 						Type: v1.ServiceTypeNodePort,
 					},
@@ -364,7 +364,7 @@ func Test_mergeServiceSpec(t *testing.T) {
 						},
 					},
 				},
-				svcSpec: &victoriametricsv1beta1.ServiceSpec{
+				svcSpec: &victoriametricsv1beta1.AdditionalServiceSpec{
 					Spec: v1.ServiceSpec{
 						Type: v1.ServiceTypeNodePort,
 						Selector: map[string]string{

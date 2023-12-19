@@ -20,7 +20,6 @@ import (
 
 var _ = Describe("test  vmsingle Controller", func() {
 	Context("e2e vmsingle", func() {
-
 		Context("crud", func() {
 			Context("create", func() {
 				name := "create-vmsingle"
@@ -30,7 +29,8 @@ var _ = Describe("test  vmsingle Controller", func() {
 						ObjectMeta: metav1.ObjectMeta{
 							Namespace: namespace,
 							Name:      name,
-						}})).To(BeNil())
+						},
+					})).To(BeNil())
 					Eventually(func() string {
 						err := k8sClient.Get(context.Background(), types.NamespacedName{Name: name, Namespace: namespace}, &victoriametricsv1beta1.VMSingle{})
 						if errors.IsNotFound(err) {
@@ -78,14 +78,14 @@ var _ = Describe("test  vmsingle Controller", func() {
 						},
 					})).To(Succeed())
 					time.Sleep(time.Second * 2)
-
 				})
 				JustAfterEach(func() {
 					Expect(k8sClient.Delete(context.TODO(), &victoriametricsv1beta1.VMSingle{
 						ObjectMeta: metav1.ObjectMeta{
 							Namespace: namespace,
 							Name:      name,
-						}})).To(Succeed())
+						},
+					})).To(Succeed())
 					time.Sleep(time.Second * 3)
 				})
 				It("should update vmSingle deploy param and ports", func() {
@@ -107,7 +107,7 @@ var _ = Describe("test  vmsingle Controller", func() {
 					currVMSingle.Spec.InsertPorts = &victoriametricsv1beta1.InsertPorts{
 						OpenTSDBPort: "8115",
 					}
-					currVMSingle.Spec.ServiceSpec = &victoriametricsv1beta1.ServiceSpec{
+					currVMSingle.Spec.ServiceSpec = &victoriametricsv1beta1.AdditionalServiceSpec{
 						EmbeddedObjectMetadata: victoriametricsv1beta1.EmbeddedObjectMetadata{
 							Name: "vmsingle-node-access",
 						},
@@ -125,9 +125,7 @@ var _ = Describe("test  vmsingle Controller", func() {
 					}, 60, 1).Should(BeEmpty())
 				})
 			})
-
 		},
 		)
-
 	})
 })

@@ -257,7 +257,7 @@ type BasicAuth struct {
 // labels,selector, ports.
 // if metadata.name is not defined, service will have format {{CRD_TYPE}}-{{CRD_NAME}}-additional-service.
 // +k8s:openapi-gen=true
-type ServiceSpec struct {
+type AdditionalServiceSpec struct {
 	// EmbeddedObjectMetadata defines objectMeta for additional service.
 	EmbeddedObjectMetadata `json:"metadata,omitempty"`
 	// ServiceSpec describes the attributes that a user creates on a service.
@@ -266,7 +266,7 @@ type ServiceSpec struct {
 }
 
 // NameOrDefault returns name or default value with suffix
-func (ss *ServiceSpec) NameOrDefault(defaultName string) string {
+func (ss *AdditionalServiceSpec) NameOrDefault(defaultName string) string {
 	if ss.Name != "" {
 		return ss.Name
 	}

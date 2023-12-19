@@ -278,7 +278,7 @@ type VMSelect struct {
 	RuntimeClassName *string `json:"runtimeClassName,omitempty"`
 	// ServiceSpec that will be added to vmselect service spec
 	// +optional
-	ServiceSpec *ServiceSpec `json:"serviceSpec,omitempty"`
+	ServiceSpec *AdditionalServiceSpec `json:"serviceSpec,omitempty"`
 	// ServiceScrapeSpec that will be added to vmselect VMServiceScrape spec
 	// +optional
 	ServiceScrapeSpec *VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
@@ -466,7 +466,7 @@ type VMInsert struct {
 
 	// ServiceSpec that will be added to vminsert service spec
 	// +optional
-	ServiceSpec *ServiceSpec `json:"serviceSpec,omitempty"`
+	ServiceSpec *AdditionalServiceSpec `json:"serviceSpec,omitempty"`
 	// ServiceScrapeSpec that will be added to vminsert VMServiceScrape spec
 	// +optional
 	ServiceScrapeSpec *VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`
@@ -658,7 +658,7 @@ type VMStorage struct {
 	ExtraEnvs []v1.EnvVar `json:"extraEnvs,omitempty"`
 	// ServiceSpec that will be create additional service for vmstorage
 	// +optional
-	ServiceSpec *ServiceSpec `json:"serviceSpec,omitempty"`
+	ServiceSpec *AdditionalServiceSpec `json:"serviceSpec,omitempty"`
 	// ServiceScrapeSpec that will be added to vmstorage VMServiceScrape spec
 	// +optional
 	ServiceScrapeSpec *VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`

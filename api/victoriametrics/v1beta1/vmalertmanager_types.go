@@ -218,7 +218,7 @@ type VMAlertmanagerSpec struct {
 	PortName string `json:"portName,omitempty"`
 	// ServiceSpec that will be added to vmalertmanager service spec
 	// +optional
-	ServiceSpec *ServiceSpec `json:"serviceSpec,omitempty"`
+	ServiceSpec *AdditionalServiceSpec `json:"serviceSpec,omitempty"`
 	// ServiceScrapeSpec that will be added to vmalertmanager VMServiceScrape spec
 	// +optional
 	ServiceScrapeSpec *VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`

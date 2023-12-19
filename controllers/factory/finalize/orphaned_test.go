@@ -19,7 +19,7 @@ func Test_reconcileMissingServices(t *testing.T) {
 	type args struct {
 		ctx  context.Context
 		args RemoveSvcArgs
-		spec *victoriametricsv1beta1.ServiceSpec
+		spec *victoriametricsv1beta1.AdditionalServiceSpec
 	}
 	tests := []struct {
 		name              string
@@ -30,29 +30,30 @@ func Test_reconcileMissingServices(t *testing.T) {
 	}{
 		{
 			name: "remove 1 missing",
-			args: args{args: RemoveSvcArgs{
-				SelectorLabels: func() map[string]string {
-					return map[string]string{
-						"selector": "app-1",
-					}
+			args: args{
+				args: RemoveSvcArgs{
+					SelectorLabels: func() map[string]string {
+						return map[string]string{
+							"selector": "app-1",
+						}
+					},
+					PrefixedName: func() string {
+						return "keep-this-one"
+					},
+					GetNameSpace: func() string {
+						return "default"
+					},
 				},
-				PrefixedName: func() string {
-					return "keep-this-one"
-				},
-				GetNameSpace: func() string {
-					return "default"
-				},
-			},
 				ctx: context.TODO(),
-				spec: &victoriametricsv1beta1.ServiceSpec{
+				spec: &victoriametricsv1beta1.AdditionalServiceSpec{
 					EmbeddedObjectMetadata: victoriametricsv1beta1.EmbeddedObjectMetadata{
 						Name: "keep-another-one",
 					},
 				},
 			},
 			wantServiceNames: map[string]struct{}{
-				"keep-another-one": struct{}{},
-				"keep-this-one":    struct{}{},
+				"keep-another-one": {},
+				"keep-this-one":    {},
 			},
 			predefinedObjects: []runtime.Object{
 				&v1.Service{

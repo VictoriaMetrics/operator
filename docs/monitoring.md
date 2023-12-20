@@ -26,7 +26,7 @@ Graphs on the dashboards contain useful hints - hover the `i` icon in the top le
 
 ## Alerting rules
 
-Alerting rules for VictoriaMetrics operator are available [here](https://github.com/VictoriaMetrics/operator/blob/master/config/alerting/alerts-vmoperator.yaml).
+Alerting rules for VictoriaMetrics operator are available [here](https://github.com/VictoriaMetrics/operator/blob/master/config/alerting/vmoperator-rules.yaml).
 
 ## Configuration
 

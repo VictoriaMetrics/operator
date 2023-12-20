@@ -4,7 +4,7 @@ metadata:
   name: vmoperator-rules
 spec:
   groups:
-    - name: victoria-metrics-operator
+    - name: vmoperator
       rules:
         - alert: LogErrors
           expr: sum(rate(operator_log_messages_total{level="error", job=~".*((victoria.*)|vm)-?operator"}[5m])) > 0

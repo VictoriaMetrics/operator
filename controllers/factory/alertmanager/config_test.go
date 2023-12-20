@@ -151,7 +151,7 @@ templates: []
 							Route: &operatorv1beta1.Route{
 								Receiver:  "email",
 								GroupWait: "1min",
-								Routes: []*operatorv1beta1.Route{
+								Routes: []*operatorv1beta1.SubRoute{
 									{
 										Receiver: "webhook",
 									},

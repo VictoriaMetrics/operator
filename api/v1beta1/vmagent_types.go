@@ -304,7 +304,7 @@ type VMAgentSpec struct {
 	ExtraEnvs []v1.EnvVar `json:"extraEnvs,omitempty"`
 	// ServiceSpec that will be added to vmagent service spec
 	// +optional
-	ServiceSpec *ServiceSpec `json:"serviceSpec,omitempty"`
+	ServiceSpec *AdditionalServiceSpec `json:"serviceSpec,omitempty"`
 	// ServiceScrapeSpec that will be added to vmagent VMServiceScrape spec
 	// +optional
 	ServiceScrapeSpec *VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`

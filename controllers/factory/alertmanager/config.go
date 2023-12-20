@@ -214,7 +214,8 @@ func buildRoute(cr *operatorv1beta1.VMAlertmanagerConfig, cfgRoute *operatorv1be
 	var nestedRoutes []yaml.MapSlice
 	for _, nestedRoute := range cfgRoute.Routes {
 		// namespace matcher not needed for nested routes
-		route, err := buildRoute(cr, nestedRoute, false, false, false, receiverNameList, intervalNameList)
+		tmpRoute := operatorv1beta1.Route(*nestedRoute)
+		route, err := buildRoute(cr, &tmpRoute, false, false, false, receiverNameList, intervalNameList)
 		if err != nil {
 			return r, err
 		}

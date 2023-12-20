@@ -225,7 +225,7 @@ type VMAlertSpec struct {
 
 	// ServiceSpec that will be added to vmalert service spec
 	// +optional
-	ServiceSpec *ServiceSpec `json:"serviceSpec,omitempty"`
+	ServiceSpec *AdditionalServiceSpec `json:"serviceSpec,omitempty"`
 	// ServiceScrapeSpec that will be added to vmalert VMServiceScrape spec
 	// +optional
 	ServiceScrapeSpec *VMServiceScrapeSpec `json:"serviceScrapeSpec,omitempty"`

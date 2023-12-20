@@ -1,0 +1,48 @@
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMRule
+metadata:
+  name: vm-operator-rules
+spec:
+  groups:
+    - name: victoria-metrics-operator
+      rules:
+        - alert: LogErrors
+          expr: sum(rate(operator_log_messages_total{level="error", job=~".*((victoria.*)|vm)-?operator"}[5m])) > 0
+          for: 15m
+          labels:
+            severity: high
+            show_at: dashboard
+          annotations:
+            description: "Operator has too many errors at logs: {{ $value}}, check operator logs"
+            dashboard: "{{ $externalURL }}/d/1H179hunk/victoriametrics-operator?ds={{ $labels.dc }}&orgId=1&viewPanel=16"
+            summary: "Too many errors at logs of operator: {{ $value}}"
+        - alert: ReconcileErrors
+          expr: sum(rate(controller_runtime_reconcile_errors_total{job=~".*((victoria.*)|vm)-?operator"}[5m])) > 0
+          for: 10m
+          labels:
+            severity: high
+            show_at: dashboard
+          annotations:
+            description: "Operator cannot parse response from k8s api server, possible bug: {{ $value }}, check operator logs"
+            dashboard: "{{ $externalURL }}/d/1H179hunk/victoriametrics-operator?ds={{ $labels.dc }}&orgId=1&viewPanel=10"
+            summary: "Too many errors at reconcile loop of operator: {{ $value}}"
+        - alert: HighQueueDepth
+          expr: (sum(workqueue_depth{job=~".*((victoria.*)|vm)-?operator"}) by (name)) > 10
+          for: 15m
+          labels:
+            severity: high
+            show_at: dashboard
+          annotations:
+            description: "Operator cannot handle reconciliation load for controller: `{{- $labels.name }}`, current depth: {{ $value }}"
+            dashboard: "{{ $externalURL }}/d/1H179hunk/victoriametrics-operator?ds={{ $labels.dc }}&orgId=1&viewPanel=20"
+            summary: "Too many `{{- $labels.name }}` in queue: {{ $value }}"
+        - alert: BadObjects
+          expr: (sum(operator_controller_bad_objects_count{job=~".*((victoria.*)|vm)-?operator"}) by (controller)) > 0
+          for: 15m
+          labels:
+            severity: high
+            show_at: dashboard
+          annotations:
+            description: "Operator got incorrect resources in controller {{ $labels.controller }}, check operator logs"
+            dashboard: "{{ $externalURL }}/d/1H179hunk/victoriametrics-operator?ds={{ $labels.dc }}&orgId=1"
+            summary: "Incorrect `{{ $labels.controller }}` resources in the cluster"

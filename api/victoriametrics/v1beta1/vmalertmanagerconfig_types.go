@@ -179,15 +179,15 @@ func parseNestedRoutes(src *Route) error {
 		return nil
 	}
 	for _, nestedRoute := range src.RawRoutes {
-		var route SubRoute
-		if err := json.Unmarshal(nestedRoute.Raw, &route); err != nil {
+		var subRoute Route
+		if err := json.Unmarshal(nestedRoute.Raw, &subRoute); err != nil {
 			return fmt.Errorf("cannot parse json value: %s for nested route, err :%w", string(nestedRoute.Raw), err)
 		}
-		subRoute := Route(route)
 		if err := parseNestedRoutes(&subRoute); err != nil {
 			return err
 		}
-		src.Routes = append(src.Routes, &route)
+		newRoute := SubRoute(subRoute)
+		src.Routes = append(src.Routes, &newRoute)
 	}
 	return nil
 }

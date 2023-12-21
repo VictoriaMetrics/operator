@@ -15,37 +15,14 @@
 ### Operator Hub release
 
 checkout to the latest release:
-1) `git checkout tags/v0.7.2`
-2) build package manifest: `TAG=v0.7.2 make packagemanifests`
+1) `git checkout tags/v0.36.0`
+2) build package manifest: `TAG=v0.36.0 make bundle`
 3) add replacement for a previous version to generated cluster csv:
-`vi packagemanifests/0.7.2/victoriametrics-operator.0.7.2.clusterserviceversion.yaml`
+`vi bundle/manifests/victoriametrics-operator.clusterserviceversion`
 ```yaml
 spec:
-  replaces: victoriametrics-operator.v0.6.1
+  replaces: victoriametrics-operator.v0.35.0
 ```
-4) publish changes to the quay, login first with your login, password:
-`bash hack/get_quay_token.sh`, copy token content to var `export AUTH_TOKEN="basic afsASF"`, 
-   then push change to quay: `TAG=v0.7.2 make packagemanifests-push`
-   
-5) now you have to copy content of packagemanifests to the community-operators repo,
-  first for upstream, next for community, sign-off commits and create PRs.
-   ```bash
-   cp -R packagemanifests/* ~/community-operators/upstream-community-operators/victoriametrics-operator
-   cd ~/community-operators
-   git add upstream-community-operators/victoriametrics-operator/0.7.2/
-   git add upstream-community-operators/victoriametrics-operator/victoriametrics-operator.package.yaml
-   git commit -m "updates victoriametrics operator version 0.7.2
-   Signed-off-by: Nikolay Khramchikhin <nik@victoriametrics.com>" --signoff
-   ```
-   checkout to the new branch and create separate commit for openshift operator-hub
-   ```bash
-   cp -R packagemanifests/* ~/community-operators/community-operators/victoriametrics-operator
-   cd ~/community-operators
-   git add community-operators/victoriametrics-operator/0.7.2/
-   git add community-operators/victoriametrics-operator/victoriametrics-operator.package.yaml
-   git commit -m "updates victoriametrics operator version 0.7.2
-   Signed-off-by: Nikolay Khramchikhin <nik@victoriametrics.com>" --signoff
-   ```
-   
-6) create pull requests at community-operator repo:
-   https://github.com/operator-framework/community-operators
+Now you have to fork two repos and create pull requests to them with new version `/bundle`:
+1) https://github.com/k8s-operatorhub/community-operators for OperatorHub.io
+2) https://github.com/redhat-openshift-ecosystem/community-operators-prod for Embedded OperatorHub in OpenShift and OKD.

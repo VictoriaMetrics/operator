@@ -204,6 +204,24 @@ var _ = Describe("test  vmagent Controller", func() {
 						return expectPodCount(k8sClient, 3, namespace, currVMAgent.SelectorLabels())
 					}, 60, 1).Should(BeEmpty())
 				})
+				It("should update revisionHistoryLimit of vmagent to 3", func() {
+					namespacedName := types.NamespacedName{Name: fmt.Sprintf("vmagent-%s", name), Namespace: namespace}
+					Eventually(func() int32 {
+						return getRevisionHistoryLimit(k8sClient, namespacedName)
+					}, 60).Should(Equal(int32(10)))
+					currVMAgent := &operator.VMAgent{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: namespace,
+							Name:      name,
+						},
+					}
+					Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, currVMAgent)).To(BeNil())
+					currVMAgent.Spec.RevisionHistoryLimitCount = pointer.Int32Ptr(3)
+					Expect(k8sClient.Update(context.TODO(), currVMAgent)).To(BeNil())
+					Eventually(func() int32 {
+						return getRevisionHistoryLimit(k8sClient, namespacedName)
+					}, 60).Should(Equal(int32(3)))
+				})
 			})
 		})
 	})

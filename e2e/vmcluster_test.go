@@ -137,6 +137,28 @@ var _ = Describe("e2e vmcluster", func() {
 				Eventually(func() string {
 					return expectPodCount(k8sClient, 2, namespace, vmCluster.VMInsertSelectorLabels())
 				}, 70, 1).Should(BeEmpty())
+
+				By("vmInsert revisionHistoryLimit update to 2")
+				vmCluster = &v1beta1vm.VMCluster{}
+				Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, vmCluster)).To(BeNil())
+				namespacedName := types.NamespacedName{Name: fmt.Sprintf("vminsert-%s", name), Namespace: namespace}
+				Eventually(func() int32 {
+					return getRevisionHistoryLimit(k8sClient, namespacedName)
+				}, 60).Should(Equal(int32(10)))
+				vmCluster.Spec.VMInsert = &v1beta1vm.VMInsert{
+					ReplicaCount:              pointer.Int32Ptr(2),
+					RevisionHistoryLimitCount: pointer.Int32Ptr(2),
+					Resources: corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{
+							corev1.ResourceMemory: resource.MustParse("128Mi"),
+							corev1.ResourceCPU:    resource.MustParse("50m"),
+						},
+					},
+				}
+				Expect(k8sClient.Update(context.TODO(), vmCluster)).To(BeNil())
+				Eventually(func() int32 {
+					return getRevisionHistoryLimit(k8sClient, namespacedName)
+				}, 60).Should(Equal(int32(2)))
 			})
 		})
 	})

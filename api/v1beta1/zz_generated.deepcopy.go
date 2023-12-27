@@ -2251,6 +2251,11 @@ func (in *VMAgentSpec) DeepCopyInto(out *VMAgentSpec) {
 		*out = new(int32)
 		**out = **in
 	}
+	if in.RevisionHistoryLimitCount != nil {
+		in, out := &in.RevisionHistoryLimitCount, &out.RevisionHistoryLimitCount
+		*out = new(int32)
+		**out = **in
+	}
 	if in.Volumes != nil {
 		in, out := &in.Volumes, &out.Volumes
 		*out = make([]v1.Volume, len(*in))
@@ -2782,6 +2787,11 @@ func (in *VMAlertSpec) DeepCopyInto(out *VMAlertSpec) {
 	}
 	if in.ReplicaCount != nil {
 		in, out := &in.ReplicaCount, &out.ReplicaCount
+		*out = new(int32)
+		**out = **in
+	}
+	if in.RevisionHistoryLimitCount != nil {
+		in, out := &in.RevisionHistoryLimitCount, &out.RevisionHistoryLimitCount
 		*out = new(int32)
 		**out = **in
 	}
@@ -3476,6 +3486,11 @@ func (in *VMAuthSpec) DeepCopyInto(out *VMAuthSpec) {
 		*out = new(int32)
 		**out = **in
 	}
+	if in.RevisionHistoryLimitCount != nil {
+		in, out := &in.RevisionHistoryLimitCount, &out.RevisionHistoryLimitCount
+		*out = new(int32)
+		**out = **in
+	}
 	if in.Volumes != nil {
 		in, out := &in.Volumes, &out.Volumes
 		*out = make([]v1.Volume, len(*in))
@@ -3915,6 +3930,11 @@ func (in *VMInsert) DeepCopyInto(out *VMInsert) {
 	}
 	if in.ReplicaCount != nil {
 		in, out := &in.ReplicaCount, &out.ReplicaCount
+		*out = new(int32)
+		**out = **in
+	}
+	if in.RevisionHistoryLimitCount != nil {
+		in, out := &in.RevisionHistoryLimitCount, &out.RevisionHistoryLimitCount
 		*out = new(int32)
 		**out = **in
 	}
@@ -5128,6 +5148,11 @@ func (in *VMSingleSpec) DeepCopyInto(out *VMSingleSpec) {
 	}
 	if in.ReplicaCount != nil {
 		in, out := &in.ReplicaCount, &out.ReplicaCount
+		*out = new(int32)
+		**out = **in
+	}
+	if in.RevisionHistoryLimitCount != nil {
+		in, out := &in.RevisionHistoryLimitCount, &out.RevisionHistoryLimitCount
 		*out = new(int32)
 		**out = **in
 	}

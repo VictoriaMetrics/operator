@@ -270,7 +270,8 @@ func newDeployForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOpera
 			Finalizers:      []string{victoriametricsv1beta1.FinalizerName},
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas: cr.Spec.ReplicaCount,
+			Replicas:             cr.Spec.ReplicaCount,
+			RevisionHistoryLimit: cr.Spec.RevisionHistoryLimitCount,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: cr.SelectorLabels(),
 			},

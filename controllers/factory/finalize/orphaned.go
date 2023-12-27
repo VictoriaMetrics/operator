@@ -61,7 +61,7 @@ type RemoveSvcArgs struct {
 }
 
 // RemoveOrphanedServices removes services that no longer belongs to given crd by its args.
-func RemoveOrphanedServices(ctx context.Context, rclient client.Client, args RemoveSvcArgs, spec *victoriametricsv1beta1.ServiceSpec) error {
+func RemoveOrphanedServices(ctx context.Context, rclient client.Client, args RemoveSvcArgs, spec *victoriametricsv1beta1.AdditionalServiceSpec) error {
 	svcsToRemove, err := discoverServicesByLabels(ctx, rclient, args)
 	if err != nil {
 		return err

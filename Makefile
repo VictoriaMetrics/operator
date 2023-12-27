@@ -25,7 +25,7 @@ CRD_PRESERVE=x-kubernetes-preserve-unknown-fields true
 # Current Operator version
 # Default bundle image tag
 BUNDLE_IMG ?= controller-bundle:$(VERSION)
-ALPINE_IMAGE=alpine:3.18.3
+ALPINE_IMAGE=alpine:3.19.0
 CHANNEL=beta
 DEFAULT_CHANNEL=beta
 BUNDLE_CHANNELS := --channels=$(CHANNEL)
@@ -352,22 +352,6 @@ release-package: kustomize
 	kustomize build config/manager > release/operator/manager.yaml
 	zip -r operator.zip bin/manager
 	zip -r bundle_crd.zip release/
-
-
-packagemanifests: manifests fix118 fix_crd_nulls
-    # TODO(f41gh7): it fall into endless loop for some reason
-	#$(OPERATOR_BIN) generate kustomize manifests -q
-	kustomize build config/manifests | $(OPERATOR_BIN) generate packagemanifests -q --version $(VERSION_TRIM) --channel=$(CHANNEL) --default-channel
-	mv packagemanifests/$(VERSION_TRIM)/victoriametrics-operator.clusterserviceversion.yaml packagemanifests/$(VERSION_TRIM)/victoriametrics-operator.$(VERSION_TRIM).clusterserviceversion.yaml
-	sed -i "s|$(DOCKER_REPO):.*|$(DOCKER_REPO):$(VERSION)|" packagemanifests/$(VERSION_TRIM)/*
-    # remove service account from bundle, OLM creates it automatically.
-	rm packagemanifests/$(VERSION_TRIM)/vm-operator-vm-operator_v1_serviceaccount.yaml
-	docker run --rm -v "${PWD}":/workdir mikefarah/yq:2.2.0 \
-	 yq m -i -a packagemanifests/$(VERSION_TRIM)/victoriametrics-operator.$(VERSION_TRIM).clusterserviceversion.yaml hack/bundle_csv_vmagent.yaml
-
-
-packagemanifests-push:
-	operator-courier push packagemanifests victoriametrics victoriametrics-operator $(VERSION_TRIM) "$(AUTH_TOKEN)"
 
 # special section for cross compilation
 docker-build-arch:

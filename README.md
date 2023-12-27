@@ -61,7 +61,7 @@ VictoriaMetrics provides [helm charts](https://github.com/VictoriaMetrics/helm-c
 ## Kubernetes' compatibility versions
 
 operator tested at kubernetes versions
-from 1.16 to 1.25
+from 1.25 to 1.28
 
 ## Troubleshooting
 

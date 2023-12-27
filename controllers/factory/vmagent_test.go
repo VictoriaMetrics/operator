@@ -1007,7 +1007,7 @@ func TestCreateOrUpdateVMAgentService(t *testing.T) {
 						InsertPorts: &victoriametricsv1beta1.InsertPorts{
 							InfluxPort: "8011",
 						},
-						ServiceSpec: &victoriametricsv1beta1.ServiceSpec{
+						ServiceSpec: &victoriametricsv1beta1.AdditionalServiceSpec{
 							EmbeddedObjectMetadata: victoriametricsv1beta1.EmbeddedObjectMetadata{Name: "extra-svc"},
 							Spec: corev1.ServiceSpec{
 								Type: corev1.ServiceTypeNodePort,
@@ -1057,7 +1057,7 @@ func TestCreateOrUpdateVMAgentService(t *testing.T) {
 						InsertPorts: &victoriametricsv1beta1.InsertPorts{
 							InfluxPort: "8011",
 						},
-						ServiceSpec: &victoriametricsv1beta1.ServiceSpec{
+						ServiceSpec: &victoriametricsv1beta1.AdditionalServiceSpec{
 							EmbeddedObjectMetadata: victoriametricsv1beta1.EmbeddedObjectMetadata{Name: "extra-svc"},
 							Spec: corev1.ServiceSpec{
 								Type: corev1.ServiceTypeNodePort,

@@ -81,7 +81,7 @@ type svcBuilderArgs interface {
 // mergeServiceSpec merges serviceSpec to the given services
 // it should help to avoid boilerplate at CRD spec,
 // base fields filled by operator.
-func mergeServiceSpec(svc *v1.Service, svcSpec *victoriametricsv1beta1.ServiceSpec) {
+func mergeServiceSpec(svc *v1.Service, svcSpec *victoriametricsv1beta1.AdditionalServiceSpec) {
 	if svcSpec == nil {
 		return
 	}

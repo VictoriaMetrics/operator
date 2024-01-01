@@ -39,6 +39,8 @@ type Interface interface {
 	VMNodeScrapes() VMNodeScrapeInformer
 	// VMPodScrapes returns a VMPodScrapeInformer.
 	VMPodScrapes() VMPodScrapeInformer
+	// VMProbes returns a VMProbeInformer.
+	VMProbes() VMProbeInformer
 	// VMRules returns a VMRuleInformer.
 	VMRules() VMRuleInformer
 	// VMServiceScrapes returns a VMServiceScrapeInformer.
@@ -100,6 +102,11 @@ func (v *version) VMNodeScrapes() VMNodeScrapeInformer {
 // VMPodScrapes returns a VMPodScrapeInformer.
 func (v *version) VMPodScrapes() VMPodScrapeInformer {
 	return &vMPodScrapeInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// VMProbes returns a VMProbeInformer.
+func (v *version) VMProbes() VMProbeInformer {
+	return &vMProbeInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // VMRules returns a VMRuleInformer.

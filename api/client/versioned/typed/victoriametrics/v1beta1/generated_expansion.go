@@ -33,6 +33,8 @@ type VMNodeScrapeExpansion interface{}
 
 type VMPodScrapeExpansion interface{}
 
+type VMProbeExpansion interface{}
+
 type VMRuleExpansion interface{}
 
 type VMServiceScrapeExpansion interface{}

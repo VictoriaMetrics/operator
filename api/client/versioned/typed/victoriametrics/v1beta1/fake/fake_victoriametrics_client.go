@@ -59,6 +59,10 @@ func (c *FakeVictoriametricsV1beta1) VMPodScrapes(namespace string) v1beta1.VMPo
 	return &FakeVMPodScrapes{c, namespace}
 }
 
+func (c *FakeVictoriametricsV1beta1) VMProbes(namespace string) v1beta1.VMProbeInterface {
+	return &FakeVMProbes{c, namespace}
+}
+
 func (c *FakeVictoriametricsV1beta1) VMRules(namespace string) v1beta1.VMRuleInterface {
 	return &FakeVMRules{c, namespace}
 }

@@ -68,6 +68,8 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Victoriametrics().V1beta1().VMNodeScrapes().Informer()}, nil
 	case v1beta1.SchemeGroupVersion.WithResource("vmpodscrapes"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Victoriametrics().V1beta1().VMPodScrapes().Informer()}, nil
+	case v1beta1.SchemeGroupVersion.WithResource("vmprobes"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Victoriametrics().V1beta1().VMProbes().Informer()}, nil
 	case v1beta1.SchemeGroupVersion.WithResource("vmrules"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Victoriametrics().V1beta1().VMRules().Informer()}, nil
 	case v1beta1.SchemeGroupVersion.WithResource("vmservicescrapes"):

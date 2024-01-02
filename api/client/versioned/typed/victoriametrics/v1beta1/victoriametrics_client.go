@@ -35,6 +35,7 @@ type VictoriametricsV1beta1Interface interface {
 	VMClustersGetter
 	VMNodeScrapesGetter
 	VMPodScrapesGetter
+	VMProbesGetter
 	VMRulesGetter
 	VMServiceScrapesGetter
 	VMSinglesGetter
@@ -77,6 +78,10 @@ func (c *VictoriametricsV1beta1Client) VMNodeScrapes(namespace string) VMNodeScr
 
 func (c *VictoriametricsV1beta1Client) VMPodScrapes(namespace string) VMPodScrapeInterface {
 	return newVMPodScrapes(c, namespace)
+}
+
+func (c *VictoriametricsV1beta1Client) VMProbes(namespace string) VMProbeInterface {
+	return newVMProbes(c, namespace)
 }
 
 func (c *VictoriametricsV1beta1Client) VMRules(namespace string) VMRuleInterface {

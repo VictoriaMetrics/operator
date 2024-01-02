@@ -2370,9 +2370,9 @@ spec:
                 x-kubernetes-preserve-unknown-fields: true
               selectAllByDefault:
                 description: 'SelectAllByDefault changes default behavior for empty
-                  CRD selectors, such ServiceScrapeSelector. with selectAllScrapes:
+                  CRD selectors, such ServiceScrapeSelector. with selectAllByDefault:
                   true and empty serviceScrapeSelector and ServiceScrapeNamespaceSelector
-                  Operator selects all exist serviceScrapes with selectAllScrapes:
+                  Operator selects all exist serviceScrapes with selectAllByDefault:
                   false - selects nothing'
                 type: boolean
               serviceAccountName:

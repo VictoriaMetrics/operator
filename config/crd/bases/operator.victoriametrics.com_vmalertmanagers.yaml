@@ -806,9 +806,9 @@ spec:
                 x-kubernetes-preserve-unknown-fields: true
               selectAllByDefault:
                 description: 'SelectAllByDefault changes default behavior for empty
-                  CRD selectors, such ConfigSelector. with selectAllScrapes: true
+                  CRD selectors, such ConfigSelector. with selectAllByDefault: true
                   and undefined ConfigSelector and ConfigNamespaceSelector Operator
-                  selects all exist alertManagerConfigs with selectAllScrapes: false
+                  selects all exist alertManagerConfigs with selectAllByDefault: false
                   - selects nothing'
                 type: boolean
               serviceAccountName:

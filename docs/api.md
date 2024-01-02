@@ -55,6 +55,7 @@ This Document documents the types introduced by the VictoriaMetrics to be consum
 * [VMAgentRemoteWriteSpec](#vmagentremotewritespec)
 * [VMAgentSpec](#vmagentspec)
 * [VMAgentStatus](#vmagentstatus)
+* [AdditionalServiceSpec](#additionalservicespec)
 * [BasicAuth](#basicauth)
 * [BearerAuth](#bearerauth)
 * [ConfigMapKeyReference](#configmapkeyreference)
@@ -67,7 +68,6 @@ This Document documents the types introduced by the VictoriaMetrics to be consum
 * [HTTPAuth](#httpauth)
 * [KeyValue](#keyvalue)
 * [License](#license)
-* [ServiceSpec](#servicespec)
 * [StorageSpec](#storagespec)
 * [StreamAggrConfig](#streamaggrconfig)
 * [StreamAggrRule](#streamaggrrule)
@@ -213,13 +213,13 @@ VMAlertmanagerSpec is a specification of the desired behavior of the VMAlertmana
 | additionalPeers | AdditionalPeers allows injecting a set of additional Alertmanagers to peer with to form a highly available cluster. | []string | false |
 | clusterAdvertiseAddress | ClusterAdvertiseAddress is the explicit address to advertise in cluster. Needs to be provided for non RFC1918 [1] (public) addresses. [1] RFC1918: https://tools.ietf.org/html/rfc1918 | string | false |
 | portName | PortName used for the pods and governing service. This defaults to web | string | false |
-| serviceSpec | ServiceSpec that will be added to vmalertmanager service spec | *[ServiceSpec](#servicespec) | false |
+| serviceSpec | ServiceSpec that will be added to vmalertmanager service spec | *[AdditionalServiceSpec](#additionalservicespec) | false |
 | serviceScrapeSpec | ServiceScrapeSpec that will be added to vmalertmanager VMServiceScrape spec | *[VMServiceScrapeSpec](#vmservicescrapespec) | false |
 | podDisruptionBudget | PodDisruptionBudget created by operator | *[EmbeddedPodDisruptionBudgetSpec](#embeddedpoddisruptionbudgetspec) | false |
 | livenessProbe | LivenessProbe that will be added CRD pod | *[v1.Probe](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#probe-v1-core) | false |
 | readinessProbe | ReadinessProbe that will be added CRD pod | *[v1.Probe](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#probe-v1-core) | false |
 | startupProbe | StartupProbe that will be added to CRD pod | *[v1.Probe](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#probe-v1-core) | false |
-| selectAllByDefault | SelectAllByDefault changes default behavior for empty CRD selectors, such ConfigSelector. with selectAllScrapes: true and undefined ConfigSelector and ConfigNamespaceSelector Operator selects all exist alertManagerConfigs with selectAllScrapes: false - selects nothing | bool | false |
+| selectAllByDefault | SelectAllByDefault changes default behavior for empty CRD selectors, such ConfigSelector. with selectAllByDefault: true and undefined ConfigSelector and ConfigNamespaceSelector Operator selects all exist alertManagerConfigs with selectAllByDefault: false - selects nothing | bool | false |
 | configSelector | ConfigSelector defines selector for VMAlertmanagerConfig, result config will be merged with with Raw or Secret config. Works in combination with NamespaceSelector. NamespaceSelector nil - only objects at VMAlertmanager namespace. Selector nil - only objects at NamespaceSelector namespaces. If both nil - behaviour controlled by selectAllByDefault | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#labelselector-v1-meta) | false |
 | configNamespaceSelector | \n ConfigNamespaceSelector defines namespace selector for VMAlertmanagerConfig.\nWorks in combination with Selector. NamespaceSelector nil - only objects at VMAlertmanager namespace. Selector nil - only objects at NamespaceSelector namespaces. If both nil - behaviour controlled by selectAllByDefault | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#labelselector-v1-meta) | false |
 | extraArgs | ExtraArgs that will be passed to  VMAlertmanager pod for example log.level: debug | map[string]string | false |
@@ -770,7 +770,7 @@ VMAgentSpec defines the desired state of VMAgent
 | remoteWriteSettings | RemoteWriteSettings defines global settings for all remoteWrite urls. | *[VMAgentRemoteWriteSettings](#vmagentremotewritesettings) | false |
 | relabelConfig | RelabelConfig ConfigMap with global relabel config -remoteWrite.relabelConfig This relabeling is applied to all the collected metrics before sending them to remote storage. | *v1.ConfigMapKeySelector | false |
 | inlineRelabelConfig | InlineRelabelConfig - defines GlobalRelabelConfig for vmagent, can be defined directly at CRD. | [][RelabelConfig](#relabelconfig) | false |
-| selectAllByDefault | SelectAllByDefault changes default behavior for empty CRD selectors, such ServiceScrapeSelector. with selectAllScrapes: true and empty serviceScrapeSelector and ServiceScrapeNamespaceSelector Operator selects all exist serviceScrapes with selectAllScrapes: false - selects nothing | bool | false |
+| selectAllByDefault | SelectAllByDefault changes default behavior for empty CRD selectors, such ServiceScrapeSelector. with selectAllByDefault: true and empty serviceScrapeSelector and ServiceScrapeNamespaceSelector Operator selects all exist serviceScrapes with selectAllByDefault: false - selects nothing | bool | false |
 | serviceScrapeSelector | ServiceScrapeSelector defines ServiceScrapes to be selected for target discovery. Works in combination with NamespaceSelector. NamespaceSelector nil - only objects at VMAgent namespace. Selector nil - only objects at NamespaceSelector namespaces. If both nil - behaviour controlled by selectAllByDefault | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#labelselector-v1-meta) | false |
 | serviceScrapeNamespaceSelector | ServiceScrapeNamespaceSelector Namespaces to be selected for VMServiceScrape discovery. Works in combination with Selector. NamespaceSelector nil - only objects at VMAgent namespace. Selector nil - only objects at NamespaceSelector namespaces. If both nil - behaviour controlled by selectAllByDefault | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#labelselector-v1-meta) | false |
 | podScrapeSelector | PodScrapeSelector defines PodScrapes to be selected for target discovery. Works in combination with NamespaceSelector. NamespaceSelector nil - only objects at VMAgent namespace. Selector nil - only objects at NamespaceSelector namespaces. If both nil - behaviour controlled by selectAllByDefault | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#labelselector-v1-meta) | false |
@@ -788,7 +788,7 @@ VMAgentSpec defines the desired state of VMAgent
 | port | Port listen address | string | false |
 | extraArgs | ExtraArgs that will be passed to  VMAgent pod for example remoteWrite.tmpDataPath: /tmp it would be converted to flag --remoteWrite.tmpDataPath=/tmp | map[string]string | false |
 | extraEnvs | ExtraEnvs that will be added to VMAgent pod | [][v1.EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#envvar-v1-core) | false |
-| serviceSpec | ServiceSpec that will be added to vmagent service spec | *[ServiceSpec](#servicespec) | false |
+| serviceSpec | ServiceSpec that will be added to vmagent service spec | *[AdditionalServiceSpec](#additionalservicespec) | false |
 | serviceScrapeSpec | ServiceScrapeSpec that will be added to vmagent VMServiceScrape spec | *[VMServiceScrapeSpec](#vmservicescrapespec) | false |
 | shardCount | ShardCount - numbers of shards of VMAgent in this case operator will use 1 deployment/sts per shard with replicas count according to spec.replicas, see https://docs.victoriametrics.com/vmagent.html#scraping-big-number-of-targets | *int | false |
 | updateStrategy | UpdateStrategy - overrides default update strategy. works only for deployments, statefulset always use OnDelete. | *[appsv1.DeploymentStrategyType](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#deploymentstrategy-v1-apps) | false |
@@ -829,6 +829,17 @@ VMAgentStatus defines the observed state of VMAgent
 | updatedReplicas | UpdatedReplicas Total number of non-terminated pods targeted by this VMAgent cluster that have the desired version spec. | int32 | true |
 | availableReplicas | AvailableReplicas Total number of available pods (ready for at least minReadySeconds) targeted by this VMAlert cluster. | int32 | true |
 | unavailableReplicas | UnavailableReplicas Total number of unavailable pods targeted by this VMAgent cluster. | int32 | true |
+
+[Back to TOC](#table-of-contents)
+
+## AdditionalServiceSpec
+
+ServiceSpec defines additional service for CRD with user-defined params. by default, some of fields can be inherited from default service definition for the CRD: labels,selector, ports. if metadata.name is not defined, service will have format {{CRD_TYPE}}-{{CRD_NAME}}-additional-service.
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| metadata | EmbeddedObjectMetadata defines objectMeta for additional service. | [EmbeddedObjectMetadata](#embeddedobjectmetadata) | false |
+| spec | ServiceSpec describes the attributes that a user creates on a service. More info: https://kubernetes.io/docs/concepts/services-networking/service/ | v1.ServiceSpec | true |
 
 [Back to TOC](#table-of-contents)
 
@@ -971,17 +982,6 @@ License holds license key for enterprise features. Using license key is supporte
 | ----- | ----------- | ------ | -------- |
 | key | Enterprise license key. This flag is available only in VictoriaMetrics enterprise. Documentation - https://docs.victoriametrics.com/enterprise.html for more information, visit https://victoriametrics.com/products/enterprise/ . To request a trial license, go to https://victoriametrics.com/products/enterprise/trial/ | *string | false |
 | keyRef | KeyRef is reference to secret with license key for enterprise features. | *[v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#secretkeyselector-v1-core) | false |
-
-[Back to TOC](#table-of-contents)
-
-## ServiceSpec
-
-ServiceSpec defines additional service for CRD with user-defined params. by default, some of fields can be inherited from default service definition for the CRD: labels,selector, ports. if metadata.name is not defined, service will have format {{CRD_TYPE}}-{{CRD_NAME}}-additional-service.
-
-| Field | Description | Scheme | Required |
-| ----- | ----------- | ------ | -------- |
-| metadata | EmbeddedObjectMetadata defines objectMeta for additional service. | [EmbeddedObjectMetadata](#embeddedobjectmetadata) | false |
-| spec | ServiceSpec describes the attributes that a user creates on a service. More info: https://kubernetes.io/docs/concepts/services-networking/service/ | v1.ServiceSpec | true |
 
 [Back to TOC](#table-of-contents)
 
@@ -1166,7 +1166,7 @@ VMAlertSpec defines the desired state of VMAlert
 | extraArgs | ExtraArgs that will be passed to  VMAlert pod for example -remoteWrite.tmpDataPath=/tmp | map[string]string | false |
 | extraEnvs | ExtraEnvs that will be added to VMAlert pod | [][v1.EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#envvar-v1-core) | false |
 | externalLabels | ExternalLabels in the form &#39;name: value&#39; to add to all generated recording rules and alerts. | map[string]string | false |
-| serviceSpec | ServiceSpec that will be added to vmalert service spec | *[ServiceSpec](#servicespec) | false |
+| serviceSpec | ServiceSpec that will be added to vmalert service spec | *[AdditionalServiceSpec](#additionalservicespec) | false |
 | serviceScrapeSpec | ServiceScrapeSpec that will be added to vmalert VMServiceScrape spec | *[VMServiceScrapeSpec](#vmservicescrapespec) | false |
 | updateStrategy | UpdateStrategy - overrides default update strategy. | *[appsv1.DeploymentStrategyType](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#deploymentstrategy-v1-apps) | false |
 | rollingUpdate | RollingUpdate - overrides deployment update params. | *[appsv1.RollingUpdateDeployment](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#rollingupdatedeployment-v1-apps) | false |
@@ -1262,7 +1262,7 @@ VMSingleSpec defines the desired state of VMSingle
 | license | License allows to configure license key to be used for enterprise features. Using license key is supported starting from VictoriaMetrics v1.94.0. See: https://docs.victoriametrics.com/enterprise.html | *[License](#license) | false |
 | extraArgs | ExtraArgs that will be passed to  VMSingle pod for example remoteWrite.tmpDataPath: /tmp | map[string]string | false |
 | extraEnvs | ExtraEnvs that will be added to VMSingle pod | [][v1.EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#envvar-v1-core) | false |
-| serviceSpec | ServiceSpec that will be added to vmsingle service spec | *[ServiceSpec](#servicespec) | false |
+| serviceSpec | ServiceSpec that will be added to vmsingle service spec | *[AdditionalServiceSpec](#additionalservicespec) | false |
 | serviceScrapeSpec | ServiceScrapeSpec that will be added to vmsingle VMServiceScrape spec | *[VMServiceScrapeSpec](#vmservicescrapespec) | false |
 | livenessProbe | LivenessProbe that will be added CRD pod | *[v1.Probe](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#probe-v1-core) | false |
 | readinessProbe | ReadinessProbe that will be added CRD pod | *[v1.Probe](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#probe-v1-core) | false |
@@ -1804,7 +1804,7 @@ VMClusterStatus defines the observed state of VMCluster
 | schedulerName | SchedulerName - defines kubernetes scheduler name | string | false |
 | runtimeClassName | RuntimeClassName - defines runtime class for kubernetes pod. https://kubernetes.io/docs/concepts/containers/runtime-class/ | *string | false |
 | extraEnvs | ExtraEnvs that will be added to VMSelect pod | [][v1.EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#envvar-v1-core) | false |
-| serviceSpec | ServiceSpec that will be added to vminsert service spec | *[ServiceSpec](#servicespec) | false |
+| serviceSpec | ServiceSpec that will be added to vminsert service spec | *[AdditionalServiceSpec](#additionalservicespec) | false |
 | serviceScrapeSpec | ServiceScrapeSpec that will be added to vminsert VMServiceScrape spec | *[VMServiceScrapeSpec](#vmservicescrapespec) | false |
 | updateStrategy | UpdateStrategy - overrides default update strategy. | *[appsv1.DeploymentStrategyType](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#deploymentstrategy-v1-apps) | false |
 | rollingUpdate | RollingUpdate - overrides deployment update params. | *[appsv1.RollingUpdateDeployment](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#rollingupdatedeployment-v1-apps) | false |
@@ -1875,7 +1875,7 @@ VMClusterStatus defines the observed state of VMCluster
 | clusterNativeListenPort | ClusterNativePort for multi-level cluster setup. More details: https://docs.victoriametrics.com/Cluster-VictoriaMetrics.html#multi-level-cluster-setup | string | false |
 | schedulerName | SchedulerName - defines kubernetes scheduler name | string | false |
 | runtimeClassName | RuntimeClassName - defines runtime class for kubernetes pod. https://kubernetes.io/docs/concepts/containers/runtime-class/ | *string | false |
-| serviceSpec | ServiceSpec that will be added to vmselect service spec | *[ServiceSpec](#servicespec) | false |
+| serviceSpec | ServiceSpec that will be added to vmselect service spec | *[AdditionalServiceSpec](#additionalservicespec) | false |
 | serviceScrapeSpec | ServiceScrapeSpec that will be added to vmselect VMServiceScrape spec | *[VMServiceScrapeSpec](#vmservicescrapespec) | false |
 | podDisruptionBudget | PodDisruptionBudget created by operator | *[EmbeddedPodDisruptionBudgetSpec](#embeddedpoddisruptionbudgetspec) | false |
 | livenessProbe | LivenessProbe that will be added CRD pod | *[v1.Probe](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#probe-v1-core) | false |
@@ -1928,7 +1928,7 @@ VMClusterStatus defines the observed state of VMCluster
 | vmBackup | VMBackup configuration for backup | *[VMBackup](#vmbackup) | false |
 | extraArgs |  | map[string]string | false |
 | extraEnvs | ExtraEnvs that will be added to VMSelect pod | [][v1.EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#envvar-v1-core) | false |
-| serviceSpec | ServiceSpec that will be create additional service for vmstorage | *[ServiceSpec](#servicespec) | false |
+| serviceSpec | ServiceSpec that will be create additional service for vmstorage | *[AdditionalServiceSpec](#additionalservicespec) | false |
 | serviceScrapeSpec | ServiceScrapeSpec that will be added to vmstorage VMServiceScrape spec | *[VMServiceScrapeSpec](#vmservicescrapespec) | false |
 | podDisruptionBudget | PodDisruptionBudget created by operator | *[EmbeddedPodDisruptionBudgetSpec](#embeddedpoddisruptionbudgetspec) | false |
 | livenessProbe | LivenessProbe that will be added CRD pod | *[v1.Probe](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#probe-v1-core) | false |
@@ -2175,7 +2175,7 @@ VMAuthSpec defines the desired state of VMAuth
 | userNamespaceSelector | UserNamespaceSelector Namespaces to be selected for  VMAuth discovery. Works in combination with Selector. NamespaceSelector nil - only objects at VMAuth namespace. Selector nil - only objects at NamespaceSelector namespaces. If both nil - behaviour controlled by selectAllByDefault | *[metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#labelselector-v1-meta) | false |
 | extraArgs | ExtraArgs that will be passed to  VMAuth pod for example remoteWrite.tmpDataPath: /tmp | map[string]string | false |
 | extraEnvs | ExtraEnvs that will be added to VMAuth pod | [][v1.EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#envvar-v1-core) | false |
-| serviceSpec | ServiceSpec that will be added to vmsingle service spec | *[ServiceSpec](#servicespec) | false |
+| serviceSpec | ServiceSpec that will be added to vmsingle service spec | *[AdditionalServiceSpec](#additionalservicespec) | false |
 | serviceScrapeSpec | ServiceScrapeSpec that will be added to vmauth VMServiceScrape spec | *[VMServiceScrapeSpec](#vmservicescrapespec) | false |
 | podDisruptionBudget | PodDisruptionBudget created by operator | *[EmbeddedPodDisruptionBudgetSpec](#embeddedpoddisruptionbudgetspec) | false |
 | ingress | Ingress enables ingress configuration for VMAuth. | *[EmbeddedIngress](#embeddedingress) | false |

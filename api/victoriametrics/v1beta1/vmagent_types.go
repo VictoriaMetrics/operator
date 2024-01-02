@@ -190,9 +190,9 @@ type VMAgentSpec struct {
 	// +optional
 	InlineRelabelConfig []RelabelConfig `json:"inlineRelabelConfig,omitempty"`
 	// SelectAllByDefault changes default behavior for empty CRD selectors, such ServiceScrapeSelector.
-	// with selectAllScrapes: true and empty serviceScrapeSelector and ServiceScrapeNamespaceSelector
+	// with selectAllByDefault: true and empty serviceScrapeSelector and ServiceScrapeNamespaceSelector
 	// Operator selects all exist serviceScrapes
-	// with selectAllScrapes: false - selects nothing
+	// with selectAllByDefault: false - selects nothing
 	// +optional
 	SelectAllByDefault bool `json:"selectAllByDefault,omitempty"`
 	// ServiceScrapeSelector defines ServiceScrapes to be selected for target discovery.

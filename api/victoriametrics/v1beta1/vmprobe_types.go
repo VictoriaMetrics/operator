@@ -138,6 +138,8 @@ type VMProbeStatus struct{}
 // It helps to monitor reachability of target with various checks.
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +genclient
+// +k8s:openapi-gen=true
 type VMProbe struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

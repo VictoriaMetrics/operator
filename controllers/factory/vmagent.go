@@ -627,7 +627,7 @@ func buildVMAgentRelabelingsAssets(ctx context.Context, cr *victoriametricsv1bet
 				&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: rw.UrlRelabelConfig.Name, Namespace: cr.Namespace}},
 				rw.UrlRelabelConfig.Key)
 			if err != nil {
-				return nil, fmt.Errorf("cannot fetch configmap: %s, err: %w", cr.Spec.RelabelConfig.Name, err)
+				return nil, fmt.Errorf("cannot fetch configmap: %s, err: %w", rw.UrlRelabelConfig.Name, err)
 			}
 			if len(data) > 0 {
 				cfgCM.Data[fmt.Sprintf(urlRelabelingName, i)] += data

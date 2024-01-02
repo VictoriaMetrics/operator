@@ -77,6 +77,6 @@ jobs:
             echo ${{secrets.REPO_KEY}} | docker login --username ${{secrets.REPO_USER}} --password-stdin
             make publish-via-docker
           else
-            echo "there is no docker secret, just build image"
-            make build-operator-crosscompile docker-operator-crosscompile
+            echo "there is no docker secret, just build"
+            make build-operator-crosscompile
           fi

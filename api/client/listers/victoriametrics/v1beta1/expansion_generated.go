@@ -81,6 +81,14 @@ type VMPodScrapeListerExpansion interface{}
 // VMPodScrapeNamespaceLister.
 type VMPodScrapeNamespaceListerExpansion interface{}
 
+// VMProbeListerExpansion allows custom methods to be added to
+// VMProbeLister.
+type VMProbeListerExpansion interface{}
+
+// VMProbeNamespaceListerExpansion allows custom methods to be added to
+// VMProbeNamespaceLister.
+type VMProbeNamespaceListerExpansion interface{}
+
 // VMRuleListerExpansion allows custom methods to be added to
 // VMRuleLister.
 type VMRuleListerExpansion interface{}

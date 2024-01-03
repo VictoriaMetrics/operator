@@ -721,7 +721,8 @@ func genVMInsertSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv1
 			Finalizers:      []string{v1beta1.FinalizerName},
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas: cr.Spec.VMInsert.ReplicaCount,
+			Replicas:             cr.Spec.VMInsert.ReplicaCount,
+			RevisionHistoryLimit: cr.Spec.VMInsert.RevisionHistoryLimitCount,
 			Strategy: appsv1.DeploymentStrategy{
 				Type:          strategyType,
 				RollingUpdate: cr.Spec.VMInsert.RollingUpdate,

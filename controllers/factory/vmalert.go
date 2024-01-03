@@ -464,6 +464,8 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 	spec := &appsv1.DeploymentSpec{
 		Replicas: cr.Spec.ReplicaCount,
 
+		RevisionHistoryLimit: cr.Spec.RevisionHistoryLimitCount,
+
 		Selector: &metav1.LabelSelector{
 			MatchLabels: cr.SelectorLabels(),
 		},

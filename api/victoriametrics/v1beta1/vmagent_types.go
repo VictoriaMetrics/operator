@@ -58,6 +58,11 @@ type VMAgentSpec struct {
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Number of pods",xDescriptors="urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom"
 	// +optional
 	ReplicaCount *int32 `json:"replicaCount,omitempty"`
+	// The number of old ReplicaSets to retain to allow rollback.
+	// This is a pointer to distinguish between explicit zero and not specified.
+	// Defaults to 10.
+	// +optional
+	RevisionHistoryLimit *int32 `json:"revisionHistoryLimit,omitempty"`
 	// Volumes allows configuration of additional volumes on the output deploy definition.
 	// Volumes specified will be appended to other volumes that are generated as a result of
 	// StorageSpec objects.

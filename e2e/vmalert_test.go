@@ -221,6 +221,32 @@ var _ = Describe("test  vmalert Controller", func() {
 						return expectPodCount(k8sClient, 3, namespace, vmAlert.SelectorLabels())
 					}, 60, 1).Should(BeEmpty())
 				})
+				It("should update revisionHistoryLimit of vmalert to 3", func() {
+					namespacedName := types.NamespacedName{Name: fmt.Sprintf("vmalert-%s", name), Namespace: namespace}
+					Eventually(func() int32 {
+						return getRevisionHistoryLimit(k8sClient, namespacedName)
+					}, 60).Should(Equal(int32(10)))
+					vmAlert := &operator.VMAlert{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      name,
+							Namespace: namespace,
+						},
+						Spec: operator.VMAlertSpec{
+							Notifier: &operator.VMAlertNotifierSpec{
+								URL: "http://some-notifier-url",
+							},
+							Datasource: operator.VMAlertDatasourceSpec{
+								URL: "http://vmsingle-url:8428",
+							},
+						},
+					}
+					Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, vmAlert)).To(BeNil())
+					vmAlert.Spec.RevisionHistoryLimitCount = pointer.Int32Ptr(3)
+					Expect(k8sClient.Update(context.TODO(), vmAlert)).To(BeNil())
+					Eventually(func() int32 {
+						return getRevisionHistoryLimit(k8sClient, namespacedName)
+					}, 60).Should(Equal(int32(3)))
+				})
 			})
 		},
 		)

@@ -3,6 +3,8 @@ package e2e
 import (
 	"context"
 	"fmt"
+	v1 "k8s.io/api/apps/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	corev1 "k8s.io/api/core/v1"
@@ -24,4 +26,12 @@ func expectPodCount(rclient client.Client, count int, ns string, lbs map[string]
 		}
 	}
 	return ""
+}
+
+func getRevisionHistoryLimit(rclient client.Client, name types.NamespacedName) int32 {
+	deployment := &v1.Deployment{}
+	if err := rclient.Get(context.TODO(), name, deployment); err != nil {
+		return 0
+	}
+	return *deployment.Spec.RevisionHistoryLimit
 }

@@ -375,6 +375,12 @@ spec:
                   at indexdb rotates once at the half of configured retention period
                   https://docs.victoriametrics.com/Single-server-VictoriaMetrics.html#retention
                 type: string
+              revisionHistoryLimitCount:
+                description: The number of old ReplicaSets to retain to allow rollback.
+                  This is a pointer to distinguish between explicit zero and not specified.
+                  Defaults to 10.
+                format: int32
+                type: integer
               runtimeClassName:
                 description: RuntimeClassName - defines runtime class for kubernetes
                   pod. https://kubernetes.io/docs/concepts/containers/runtime-class/

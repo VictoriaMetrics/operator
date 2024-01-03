@@ -142,7 +142,8 @@ func newDeployForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOpe
 			Finalizers:      []string{victoriametricsv1beta1.FinalizerName},
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas: cr.Spec.ReplicaCount,
+			Replicas:             cr.Spec.ReplicaCount,
+			RevisionHistoryLimit: cr.Spec.RevisionHistoryLimitCount,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: cr.SelectorLabels(),
 			},

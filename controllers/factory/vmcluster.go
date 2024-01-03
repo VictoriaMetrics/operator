@@ -25,7 +25,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -370,7 +369,7 @@ func genVMSelectSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv1
 			},
 			Template:             *podSpec,
 			ServiceName:          cr.Spec.VMSelect.GetNameWithPrefix(cr.Name),
-			RevisionHistoryLimit: pointer.Int32Ptr(10),
+			RevisionHistoryLimit: cr.Spec.VMSelect.RevisionHistoryLimitCount,
 		},
 	}
 	if cr.Spec.VMSelect.CacheMountPath != "" {
@@ -1027,7 +1026,7 @@ func GenVMStorageSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv
 			},
 			Template:             *podSpec,
 			ServiceName:          cr.Spec.VMStorage.GetNameWithPrefix(cr.Name),
-			RevisionHistoryLimit: pointer.Int32Ptr(10),
+			RevisionHistoryLimit: cr.Spec.VMStorage.RevisionHistoryLimitCount,
 		},
 	}
 	storageSpec := cr.Spec.VMStorage.Storage

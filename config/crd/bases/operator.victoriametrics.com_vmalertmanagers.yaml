@@ -773,6 +773,12 @@ spec:
                   (milliseconds seconds minutes hours).
                 pattern: '[0-9]+(ms|s|m|h)'
                 type: string
+              revisionHistoryLimitCount:
+                description: The number of old ReplicaSets to retain to allow rollback
+                  in deployment or maximum number of revisions that will be maintained
+                  in the StatefulSet's revision history. Defaults to 10.
+                format: int32
+                type: integer
               rollingUpdateStrategy:
                 description: RollingUpdateStrategy defines strategy for application
                   updates Default is OnDelete, in this case operator handles update

@@ -440,8 +440,9 @@ spec:
                     type: object
                   revisionHistoryLimitCount:
                     description: The number of old ReplicaSets to retain to allow
-                      rollback. This is a pointer to distinguish between explicit
-                      zero and not specified. Defaults to 10.
+                      rollback in deployment or maximum number of revisions that will
+                      be maintained in the StatefulSet's revision history. Defaults
+                      to 10.
                     format: int32
                     type: integer
                   rollingUpdate:
@@ -1310,6 +1311,13 @@ spec:
                           to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                         type: object
                     type: object
+                  revisionHistoryLimitCount:
+                    description: The number of old ReplicaSets to retain to allow
+                      rollback in deployment or maximum number of revisions that will
+                      be maintained in the StatefulSet's revision history. Defaults
+                      to 10.
+                    format: int32
+                    type: integer
                   rollingUpdateStrategy:
                     description: RollingUpdateStrategy defines strategy for application
                       updates Default is OnDelete, in this case operator handles update
@@ -2467,6 +2475,13 @@ spec:
                           to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
                         type: object
                     type: object
+                  revisionHistoryLimitCount:
+                    description: The number of old ReplicaSets to retain to allow
+                      rollback in deployment or maximum number of revisions that will
+                      be maintained in the StatefulSet's revision history. Defaults
+                      to 10.
+                    format: int32
+                    type: integer
                   rollingUpdateStrategy:
                     description: RollingUpdateStrategy defines strategy for application
                       updates Default is OnDelete, in this case operator handles update

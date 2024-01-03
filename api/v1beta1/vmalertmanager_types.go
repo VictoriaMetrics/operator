@@ -227,9 +227,9 @@ type VMAlertmanagerSpec struct {
 	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
 	*EmbeddedProbes     `json:",inline"`
 	// SelectAllByDefault changes default behavior for empty CRD selectors, such ConfigSelector.
-	// with selectAllScrapes: true and undefined ConfigSelector and ConfigNamespaceSelector
+	// with selectAllByDefault: true and undefined ConfigSelector and ConfigNamespaceSelector
 	// Operator selects all exist alertManagerConfigs
-	// with selectAllScrapes: false - selects nothing
+	// with selectAllByDefault: false - selects nothing
 	// +optional
 	SelectAllByDefault bool `json:"selectAllByDefault,omitempty"`
 	// ConfigSelector defines selector for VMAlertmanagerConfig, result config will be merged with with Raw or Secret config.

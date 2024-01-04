@@ -1500,9 +1500,9 @@ spec:
                     type: object
                 type: object
               revisionHistoryLimitCount:
-                description: The number of old ReplicaSets to retain to allow rollback.
-                  This is a pointer to distinguish between explicit zero and not specified.
-                  Defaults to 10.
+                description: The number of old ReplicaSets to retain to allow rollback
+                  in deployment or maximum number of revisions that will be maintained
+                  in the StatefulSet's revision history. Defaults to 10.
                 format: int32
                 type: integer
               rollingUpdate:

@@ -477,9 +477,10 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, c *config.Ba
 	}
 
 	return &appsv1.StatefulSetSpec{
-		ServiceName:         cr.PrefixedName(),
-		Replicas:            cr.Spec.ReplicaCount,
-		PodManagementPolicy: appsv1.ParallelPodManagement,
+		ServiceName:          cr.PrefixedName(),
+		Replicas:             cr.Spec.ReplicaCount,
+		RevisionHistoryLimit: cr.Spec.RevisionHistoryLimitCount,
+		PodManagementPolicy:  appsv1.ParallelPodManagement,
 		UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
 			Type: cr.UpdateStrategy(),
 		},

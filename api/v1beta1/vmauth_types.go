@@ -47,8 +47,8 @@ type VMAuthSpec struct {
 	// ReplicaCount is the expected size of the VMAuth
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Number of pods",xDescriptors="urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom"
 	ReplicaCount *int32 `json:"replicaCount,omitempty"`
-	// The number of old ReplicaSets to retain to allow rollback.
-	// This is a pointer to distinguish between explicit zero and not specified.
+	// The number of old ReplicaSets to retain to allow rollback in deployment or
+	// maximum number of revisions that will be maintained in the StatefulSet's revision history.
 	// Defaults to 10.
 	// +optional
 	RevisionHistoryLimitCount *int32 `json:"revisionHistoryLimitCount,omitempty"`

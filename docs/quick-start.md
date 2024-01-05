@@ -377,6 +377,7 @@ kind: VMAuth
 metadata:
   name: demo
 spec:
+  selectAllByDefault: true
   userNamespaceSelector: {}
   userSelector: {}
   ingress:

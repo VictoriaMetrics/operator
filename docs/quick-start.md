@@ -470,10 +470,10 @@ The remaining components will be needed for alerting.
 
 Let's start with [`vmalertmanager`](./resources/vmalertmanager.md).
 
-Create file `vmuser.yaml`
+Create file `vmalertmanager.yaml`
 
 ```shell
-code vmuser.yaml
+code vmalertmanager.yaml
 ```
 
 with the following content:

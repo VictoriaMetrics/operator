@@ -51,6 +51,11 @@ type VMAgentSpec struct {
 	// +optional
 	// +kubebuilder:validation:Enum=default;json
 	LogFormat string `json:"logFormat,omitempty"`
+	// MinReadySeconds defines a minim number os seconds to wait before starting update next pod
+	// if previous in healthy state
+	// +optional
+	MinReadySeconds int32 `json:"minReadySeconds,omitempty"`
+
 	// ReplicaCount is the expected size of the VMAgent cluster. The controller will
 	// eventually make the size of the running cluster equal to the expected
 	// size.

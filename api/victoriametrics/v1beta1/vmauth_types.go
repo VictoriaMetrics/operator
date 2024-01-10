@@ -44,6 +44,10 @@ type VMAuthSpec struct {
 	// +optional
 	// +kubebuilder:validation:Enum=default;json
 	LogFormat string `json:"logFormat,omitempty"`
+	// MinReadySeconds defines a minim number os seconds to wait before starting update next pod
+	// if previous in healthy state
+	// +optional
+	MinReadySeconds int32 `json:"minReadySeconds,omitempty"`
 	// ReplicaCount is the expected size of the VMAuth
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Number of pods",xDescriptors="urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom"
 	ReplicaCount *int32 `json:"replicaCount,omitempty"`

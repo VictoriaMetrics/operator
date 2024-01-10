@@ -132,6 +132,7 @@ func newDeployForVMAuth(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperato
 			OwnerReferences: cr.AsOwner(),
 		},
 		Spec: appsv1.DeploymentSpec{
+			MinReadySeconds:      cr.Spec.MinReadySeconds,
 			Replicas:             cr.Spec.ReplicaCount,
 			RevisionHistoryLimit: cr.Spec.RevisionHistoryLimitCount,
 			Selector: &metav1.LabelSelector{

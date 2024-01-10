@@ -58,6 +58,10 @@ type VMAlertSpec struct {
 	// +optional
 	// +kubebuilder:validation:Enum=INFO;WARN;ERROR;FATAL;PANIC
 	LogLevel string `json:"logLevel,omitempty"`
+	// MinReadySeconds defines a minim number os seconds to wait before starting update next pod
+	// if previous in healthy state
+	// +optional
+	MinReadySeconds int32 `json:"minReadySeconds,omitempty"`
 	// ReplicaCount is the expected size of the VMAlert cluster. The controller will
 	// eventually make the size of the running cluster equal to the expected
 	// size.

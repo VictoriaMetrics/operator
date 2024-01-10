@@ -277,11 +277,11 @@ bearer_token: secret-token
   src_paths:
   - /insert/0/prometheus
 name: user1
-username: basic
-password: pass
 ip_filters:
   allow_list:
   - 127.0.0.1
+username: basic
+password: pass
 `,
 		},
 		{
@@ -818,7 +818,8 @@ func Test_buildVMAuthConfig(t *testing.T) {
 						Name:      "test-vmauth",
 						Namespace: "default",
 					},
-					Spec: v1beta1.VMAuthSpec{SelectAllByDefault: true,
+					Spec: v1beta1.VMAuthSpec{
+						SelectAllByDefault: true,
 						UnauthorizedAccessConfig: []v1beta1.VMAuthUnauthorizedPath{
 							{
 								Paths: []string{"/", "/default"},
@@ -829,7 +830,8 @@ func Test_buildVMAuthConfig(t *testing.T) {
 									},
 								},
 							},
-						}},
+						},
+					},
 				},
 			},
 			predefinedObjects: []runtime.Object{
@@ -905,13 +907,15 @@ unauthorized_user:
 						Name:      "test-vmauth",
 						Namespace: "default",
 					},
-					Spec: v1beta1.VMAuthSpec{SelectAllByDefault: true,
+					Spec: v1beta1.VMAuthSpec{
+						SelectAllByDefault: true,
 						UnauthorizedAccessConfig: []v1beta1.VMAuthUnauthorizedPath{
 							{
 								Paths: []string{"/", "/default"},
 								URLs:  []string{"http://route-1", "http://route-2"},
 							},
-						}},
+						},
+					},
 				},
 			},
 			predefinedObjects: []runtime.Object{

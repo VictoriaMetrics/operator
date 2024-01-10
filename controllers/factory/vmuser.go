@@ -637,6 +637,8 @@ func genUserCfg(user *victoriametricsv1beta1.VMUser, crdUrlCache map[string]stri
 	if len(user.Spec.ResponseHeaders) > 0 {
 		r = append(r, yaml.MapItem{Key: "response_headers", Value: user.Spec.ResponseHeaders})
 	}
+	r = addIPFiltersToYaml(r, user.Spec.IPFilters)
+
 	// fast path.
 	if token != "" {
 		r = append(r, yaml.MapItem{
@@ -668,8 +670,6 @@ func genUserCfg(user *victoriametricsv1beta1.VMUser, crdUrlCache map[string]stri
 			Value: password,
 		})
 	}
-
-	r = addIPFiltersToYaml(r, user.Spec.IPFilters)
 
 	return r, nil
 }

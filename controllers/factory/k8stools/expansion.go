@@ -128,6 +128,9 @@ func recreateSTSIfNeed(ctx context.Context, rclient client.Client, newSTS, exist
 	if vctChanged {
 		return true, false, handleRemove()
 	}
+	if newSTS.Spec.MinReadySeconds != existingSTS.Spec.MinReadySeconds {
+		return true, false, handleRemove()
+	}
 	return false, false, nil
 }
 

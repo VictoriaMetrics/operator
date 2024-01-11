@@ -105,7 +105,7 @@ func CreateOrUpdateVMSingle(ctx context.Context, cr *victoriametricsv1beta1.VMSi
 	if cr.Spec.ReplicaCount == nil {
 		return nil
 	}
-	if err = waitExpanding(ctx, rclient, cr.Namespace, cr.SelectorLabels(), 1, c.PodWaitReadyTimeout); err != nil {
+	if err = waitExpanding(ctx, rclient, cr.Namespace, cr.SelectorLabels(), 1, 0, c.PodWaitReadyTimeout); err != nil {
 		return fmt.Errorf("cannot wait until ready status for single deploy: %w", err)
 	}
 

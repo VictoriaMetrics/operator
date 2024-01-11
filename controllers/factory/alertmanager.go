@@ -445,7 +445,7 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, c *config.Ba
 	vmaContainer = buildProbe(vmaContainer, cr) // cr.Spec.EmbeddedProbes, healthPath, cr.Spec.PortName, true)
 	configReloaderContainer := v1.Container{
 		Name:  "config-reloader",
-		Image: fmt.Sprintf("%s", formatContainerImage(c.ContainerRegistry, c.VMAlertManager.ConfigReloaderImage)),
+		Image: formatContainerImage(c.ContainerRegistry, c.VMAlertManager.ConfigReloaderImage),
 		Args: []string{
 			fmt.Sprintf("-webhook-url=%s", localReloadURL),
 		},
@@ -476,11 +476,17 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, c *config.Ba
 		useStrictSecurity = *cr.Spec.UseStrictSecurity
 	}
 
+	mp := appsv1.ParallelPodManagement
+	if cr.Spec.MinReadySeconds > 0 {
+		mp = appsv1.OrderedReadyPodManagement
+	}
+
 	return &appsv1.StatefulSetSpec{
 		ServiceName:          cr.PrefixedName(),
 		Replicas:             cr.Spec.ReplicaCount,
 		RevisionHistoryLimit: cr.Spec.RevisionHistoryLimitCount,
-		PodManagementPolicy:  appsv1.ParallelPodManagement,
+		PodManagementPolicy:  mp,
+		MinReadySeconds:      cr.Spec.MinReadySeconds,
 		UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
 			Type: cr.UpdateStrategy(),
 		},

@@ -94,6 +94,10 @@ type VMAlertmanagerSpec struct {
 	// LogFormat for VMAlertmanager to be configured with.
 	// +optional
 	LogFormat string `json:"logFormat,omitempty"`
+	// MinReadySeconds defines a minim number os seconds to wait before starting update next pod
+	// if previous in healthy state
+	// +optional
+	MinReadySeconds int32 `json:"minReadySeconds,omitempty"`
 	// ReplicaCount Size is the expected size of the alertmanager cluster. The controller will
 	// eventually make the size of the running cluster equal to the expected
 	// +kubebuilder:validation:Minimum:=1

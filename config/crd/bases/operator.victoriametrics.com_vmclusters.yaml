@@ -311,6 +311,12 @@ spec:
                     - FATAL
                     - PANIC
                     type: string
+                  minReadySeconds:
+                    description: MinReadySeconds defines a minim number os seconds
+                      to wait before starting update next pod if previous in healthy
+                      state
+                    format: int32
+                    type: integer
                   name:
                     description: Name is deprecated and will be removed at 0.22.0
                       release
@@ -1143,6 +1149,12 @@ spec:
                     - FATAL
                     - PANIC
                     type: string
+                  minReadySeconds:
+                    description: MinReadySeconds defines a minim number os seconds
+                      to wait before starting update next pod if previous in healthy
+                      state
+                    format: int32
+                    type: integer
                   name:
                     description: Name is deprecated and will be removed at 0.22.0
                       release
@@ -2348,6 +2360,12 @@ spec:
                       format: int32
                       type: integer
                     type: array
+                  minReadySeconds:
+                    description: MinReadySeconds defines a minim number os seconds
+                      to wait before starting update next pod if previous in healthy
+                      state
+                    format: int32
+                    type: integer
                   name:
                     description: Name is deprecated and will be removed at 0.22.0
                       release

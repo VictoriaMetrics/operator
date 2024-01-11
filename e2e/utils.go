@@ -3,6 +3,7 @@ package e2e
 import (
 	"context"
 	"fmt"
+
 	v1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -21,7 +22,7 @@ func expectPodCount(rclient client.Client, count int, ns string, lbs map[string]
 		return fmt.Sprintf("pod count mismatch, expect: %d, got: %d", count, len(podList.Items))
 	}
 	for _, pod := range podList.Items {
-		if !k8stools.PodIsReady(pod) {
+		if !k8stools.PodIsReady(pod, 0) {
 			return fmt.Sprintf("pod isnt ready: %s,\n status: %s", pod.Name, pod.Status.String())
 		}
 	}

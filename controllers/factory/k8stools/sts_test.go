@@ -14,7 +14,6 @@ import (
 )
 
 func Test_waitForPodReady(t *testing.T) {
-
 	type args struct {
 		ns      string
 		podName string
@@ -95,7 +94,7 @@ func Test_waitForPodReady(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := GetTestClientWithObjects(tt.predefinedObjects)
 
-			if err := waitForPodReady(context.Background(), fclient, tt.args.ns, tt.args.podName, tt.args.c, nil); (err != nil) != tt.wantErr {
+			if err := waitForPodReady(context.Background(), fclient, tt.args.ns, tt.args.podName, tt.args.c, 0, nil); (err != nil) != tt.wantErr {
 				t.Errorf("waitForPodReady() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -104,7 +103,8 @@ func Test_waitForPodReady(t *testing.T) {
 
 func Test_podIsReady(t *testing.T) {
 	type args struct {
-		pod corev1.Pod
+		pod             corev1.Pod
+		minReadySeconds int32
 	}
 	tests := []struct {
 		name string
@@ -177,10 +177,36 @@ func Test_podIsReady(t *testing.T) {
 			},
 			want: false,
 		},
+		{
+			name: "pod is not min ready",
+			args: args{
+				pod: corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						DeletionTimestamp: &metav1.Time{},
+					},
+					Status: corev1.PodStatus{
+						Conditions: []corev1.PodCondition{
+							{
+								Type:   corev1.PodInitialized,
+								Status: "False",
+							},
+							{
+								Type:               corev1.PodReady,
+								Status:             "True",
+								LastTransitionTime: metav1.Time{Time: time.Now().Add(time.Hour)},
+							},
+						},
+						Phase: corev1.PodSucceeded,
+					},
+				},
+				minReadySeconds: 45,
+			},
+			want: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := PodIsReady(tt.args.pod); got != tt.want {
+			if got := PodIsReady(tt.args.pod, tt.args.minReadySeconds); got != tt.want {
 				t.Errorf("PodIsReady() = %v, want %v", got, tt.want)
 			}
 		})

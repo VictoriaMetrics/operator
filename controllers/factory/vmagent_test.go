@@ -1488,15 +1488,3 @@ func TestBuildRemoteWriteSettings(t *testing.T) {
 		})
 	}
 }
-
-func TestAppend(t *testing.T) {
-	t1 := []corev1.PersistentVolumeClaim{
-		{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "string",
-			},
-		},
-	}
-	t1 = append(t1, t1...)
-	fmt.Println(t1)
-}

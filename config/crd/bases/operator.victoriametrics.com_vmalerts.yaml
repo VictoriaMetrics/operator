@@ -439,6 +439,11 @@ spec:
                 - FATAL
                 - PANIC
                 type: string
+              minReadySeconds:
+                description: MinReadySeconds defines a minim number os seconds to
+                  wait before starting update next pod if previous in healthy state
+                format: int32
+                type: integer
               nodeSelector:
                 additionalProperties:
                   type: string

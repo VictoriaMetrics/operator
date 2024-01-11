@@ -76,7 +76,7 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient
 
 		if cr.Spec.VMStorage.RollingUpdateStrategy == appsv1.RollingUpdateStatefulSetStrategyType {
 			// wait for expand performed by kubernetes
-			if err = waitExpanding(ctx, rclient, cr.Namespace, cr.VMStorageSelectorLabels(), *cr.Spec.VMStorage.ReplicaCount, c.PodWaitReadyTimeout); err != nil {
+			if err = waitExpanding(ctx, rclient, cr.Namespace, cr.VMStorageSelectorLabels(), *cr.Spec.VMStorage.ReplicaCount, cr.Spec.VMStorage.MinReadySeconds, c.PodWaitReadyTimeout); err != nil {
 				return err
 			}
 		}
@@ -109,7 +109,7 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient
 
 		if cr.Spec.VMSelect.RollingUpdateStrategy == appsv1.RollingUpdateStatefulSetStrategyType {
 			// wait for expand
-			if err = waitExpanding(ctx, rclient, cr.Namespace, cr.VMSelectSelectorLabels(), *cr.Spec.VMSelect.ReplicaCount, c.PodWaitReadyTimeout); err != nil {
+			if err = waitExpanding(ctx, rclient, cr.Namespace, cr.VMSelectSelectorLabels(), *cr.Spec.VMSelect.ReplicaCount, cr.Spec.VMSelect.MinReadySeconds, c.PodWaitReadyTimeout); err != nil {
 				return err
 			}
 		}
@@ -137,7 +137,7 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient
 				log.Error(err, "cannot create VMServiceScrape for vmInsert")
 			}
 		}
-		if err = waitExpanding(ctx, rclient, cr.Namespace, cr.VMInsertSelectorLabels(), *cr.Spec.VMInsert.ReplicaCount, c.PodWaitReadyTimeout); err != nil {
+		if err = waitExpanding(ctx, rclient, cr.Namespace, cr.VMInsertSelectorLabels(), *cr.Spec.VMInsert.ReplicaCount, cr.Spec.VMInsert.MinReadySeconds, c.PodWaitReadyTimeout); err != nil {
 			return fmt.Errorf("cannot wait until ready status for vminsert deploy: %w", err)
 		}
 
@@ -348,7 +348,10 @@ func genVMSelectSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv1
 	if err != nil {
 		return nil, err
 	}
-
+	podMP := appsv1.ParallelPodManagement
+	if cr.Spec.VMSelect.MinReadySeconds > 0 {
+		podMP = appsv1.OrderedReadyPodManagement
+	}
 	stsSpec := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.Spec.VMSelect.GetNameWithPrefix(cr.Name),
@@ -363,7 +366,8 @@ func genVMSelectSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv1
 			Selector: &metav1.LabelSelector{
 				MatchLabels: cr.VMSelectSelectorLabels(),
 			},
-			PodManagementPolicy: appsv1.ParallelPodManagement,
+			PodManagementPolicy: podMP,
+			MinReadySeconds:     cr.Spec.VMSelect.MinReadySeconds,
 			UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
 				Type: cr.Spec.VMSelect.UpdateStrategy(),
 			},
@@ -722,6 +726,7 @@ func genVMInsertSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv1
 		Spec: appsv1.DeploymentSpec{
 			Replicas:             cr.Spec.VMInsert.ReplicaCount,
 			RevisionHistoryLimit: cr.Spec.VMInsert.RevisionHistoryLimitCount,
+			MinReadySeconds:      cr.Spec.VMInsert.MinReadySeconds,
 			Strategy: appsv1.DeploymentStrategy{
 				Type:          strategyType,
 				RollingUpdate: cr.Spec.VMInsert.RollingUpdate,
@@ -1006,6 +1011,10 @@ func GenVMStorageSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv
 		return nil, err
 	}
 
+	podMP := appsv1.ParallelPodManagement
+	if cr.Spec.VMStorage.MinReadySeconds > 0 {
+		podMP = appsv1.OrderedReadyPodManagement
+	}
 	stsSpec := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.Spec.VMStorage.GetNameWithPrefix(cr.Name),
@@ -1020,7 +1029,8 @@ func GenVMStorageSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv
 			Selector: &metav1.LabelSelector{
 				MatchLabels: cr.VMStorageSelectorLabels(),
 			},
-			PodManagementPolicy: appsv1.ParallelPodManagement,
+			MinReadySeconds:     cr.Spec.VMStorage.MinReadySeconds,
+			PodManagementPolicy: podMP,
 			UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
 				Type: cr.Spec.VMStorage.UpdateStrategy(),
 			},
@@ -1393,7 +1403,7 @@ func CreateOrUpdatePodDisruptionBudgetForVMStorage(ctx context.Context, cr *v1be
 	return reconcilePDB(ctx, rclient, cr.Kind, pdb)
 }
 
-func waitExpanding(ctx context.Context, kclient client.Client, namespace string, lbs map[string]string, desiredCount int32, deadline time.Duration) error {
+func waitExpanding(ctx context.Context, kclient client.Client, namespace string, lbs map[string]string, desiredCount int32, minReadySeconds int32, deadline time.Duration) error {
 	return wait.PollImmediateWithContext(ctx, time.Second*5, deadline, func(ctx context.Context) (done bool, err error) {
 		podList := &corev1.PodList{}
 
@@ -1404,7 +1414,7 @@ func waitExpanding(ctx context.Context, kclient client.Client, namespace string,
 		}
 		var readyCount int32
 		for _, pod := range podList.Items {
-			if k8stools.PodIsReady(pod) {
+			if k8stools.PodIsReady(pod, minReadySeconds) {
 				readyCount++
 				continue
 			}

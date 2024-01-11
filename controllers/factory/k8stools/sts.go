@@ -145,14 +145,14 @@ func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclien
 			podRev := pod.Labels[podRevisionLabel]
 			if podRev == stsVersion {
 				// wait for readiness only for not ready pods
-				if !PodIsReady(pod) {
+				if !PodIsReady(pod, sts.Spec.MinReadySeconds) {
 					updatedPods = append(updatedPods, pod)
 				}
 				continue
 			}
 
 			// move unready pods to the begging of list for update
-			if !PodIsReady(pod) {
+			if !PodIsReady(pod, sts.Spec.MinReadySeconds) {
 				podsForUpdate = append([]corev1.Pod{pod}, podsForUpdate...)
 				continue
 			}
@@ -179,7 +179,7 @@ func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclien
 	// check updated, by not ready pods
 	for _, pod := range updatedPods {
 		l.Info("checking ready status for already updated pod to desired version", "pod", pod.Name)
-		err := waitForPodReady(ctx, rclient, ns, pod.Name, c, nil)
+		err := waitForPodReady(ctx, rclient, ns, pod.Name, c, sts.Spec.MinReadySeconds, nil)
 		if err != nil {
 			l.Error(err, "cannot get ready status for already updated pod", "pod", pod.Name)
 			return err
@@ -195,7 +195,7 @@ func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclien
 		if err != nil {
 			return err
 		}
-		err = waitForPodReady(ctx, rclient, ns, pod.Name, c, nil)
+		err = waitForPodReady(ctx, rclient, ns, pod.Name, c, sts.Spec.MinReadySeconds, nil)
 		if err != nil {
 			return err
 		}
@@ -242,7 +242,7 @@ func PodIsFailedWithReason(pod corev1.Pod) (bool, string) {
 }
 
 // PodIsReady check is pod is ready
-func PodIsReady(pod corev1.Pod) bool {
+func PodIsReady(pod corev1.Pod, minReadySeconds int32) bool {
 	if pod.ObjectMeta.DeletionTimestamp != nil {
 		return false
 	}
@@ -252,13 +252,16 @@ func PodIsReady(pod corev1.Pod) bool {
 	}
 	for _, cond := range pod.Status.Conditions {
 		if cond.Type == corev1.PodReady && cond.Status == "True" {
+			if minReadySeconds > 0 {
+				return time.Since(cond.LastTransitionTime.Time) > time.Duration(minReadySeconds)*time.Second
+			}
 			return true
 		}
 	}
 	return false
 }
 
-func waitForPodReady(ctx context.Context, rclient client.Client, ns, podName string, c *config.BaseOperatorConf, cb func(pod *corev1.Pod) error) error {
+func waitForPodReady(ctx context.Context, rclient client.Client, ns, podName string, c *config.BaseOperatorConf, minReadySeconds int32, cb func(pod *corev1.Pod) error) error {
 	// we need some delay
 	time.Sleep(c.PodWaitReadyInitDelay)
 	return wait.Poll(c.PodWaitReadyIntervalCheck, c.PodWaitReadyTimeout, func() (done bool, err error) {
@@ -271,7 +274,7 @@ func waitForPodReady(ctx context.Context, rclient client.Client, ns, podName str
 			log.Error(err, "cannot get pod", "pod", podName)
 			return false, err
 		}
-		if PodIsReady(*pod) {
+		if PodIsReady(*pod, minReadySeconds) {
 			log.Info("pod update finished with revision", "pod", pod.Name, "revision", pod.Labels[podRevisionLabel])
 			if cb != nil {
 				if err := cb(pod); err != nil {

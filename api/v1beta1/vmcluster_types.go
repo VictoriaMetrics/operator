@@ -174,6 +174,11 @@ type VMSelect struct {
 	// +optional
 	// +kubebuilder:validation:Enum=INFO;WARN;ERROR;FATAL;PANIC
 	LogLevel string `json:"logLevel,omitempty"`
+	// MinReadySeconds defines a minim number os seconds to wait before starting update next pod
+	// if previous in healthy state
+	// +optional
+	MinReadySeconds int32 `json:"minReadySeconds,omitempty"`
+
 	// ReplicaCount is the expected size of the VMSelect cluster. The controller will
 	// eventually make the size of the running cluster equal to the expected
 	// size.
@@ -378,6 +383,11 @@ type VMInsert struct {
 	// +optional
 	// +kubebuilder:validation:Enum=INFO;WARN;ERROR;FATAL;PANIC
 	LogLevel string `json:"logLevel,omitempty"`
+	// MinReadySeconds defines a minim number os seconds to wait before starting update next pod
+	// if previous in healthy state
+	// +optional
+	MinReadySeconds int32 `json:"minReadySeconds,omitempty"`
+
 	// ReplicaCount is the expected size of the VMInsert cluster. The controller will
 	// eventually make the size of the running cluster equal to the expected
 	// size.
@@ -537,6 +547,10 @@ type VMStorage struct {
 	// +optional
 	Name string `json:"name,omitempty"`
 
+	// MinReadySeconds defines a minim number os seconds to wait before starting update next pod
+	// if previous in healthy state
+	// +optional
+	MinReadySeconds int32 `json:"minReadySeconds,omitempty"`
 	// PodMetadata configures Labels and Annotations which are propagated to the VMSelect pods.
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
 

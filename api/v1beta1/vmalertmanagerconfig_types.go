@@ -257,8 +257,16 @@ type Receiver struct {
 	// WeChatConfigs defines wechat notification configurations.
 	// +optional
 	WeChatConfigs   []WeChatConfig   `json:"wechat_configs,omitempty"`
+	// +optional
 	TelegramConfigs []TelegramConfig `json:"telegram_configs,omitempty"`
-}
+	// +optional
+	MSTeamsConfigs []MSTeamsConfig `json:"msteams_configs,omitempty"`
+	// +optional
+	DiscordConfigs []DiscordConfig `json:"discord_configs,omitempty"`
+	// +optional
+	SNSConfigs []SnsConfig `json:"sns_configs,omitempty"`
+	// +optional
+	WebexConfigs []WebexConfig `json:"webex_configs,omitempty"`}
 
 type TelegramConfig struct {
 	// SendResolved controls notify about resolved alerts.
@@ -784,6 +792,127 @@ type ImageConfig struct {
 type LinkConfig struct {
 	Href string `json:"href"`
 	Text string `json:"text,omitempty"`
+}
+
+type MSTeamsConfig struct {
+	// SendResolved controls notify about resolved alerts.
+	// +optional
+	SendResolved *bool `json:"send_resolved,omitempty"`
+	// The incoming webhook URL
+	// one of `urlSecret` and `url` must be defined.
+	// +optional
+	URL *string `json:"webhook_url,omitempty"`
+	// URLSecret defines secret name and key at the CRD namespace.
+	// It must contain the webhook URL.
+	// one of `urlSecret` and `url` must be defined.
+	// +optional
+	URLSecret *v1.SecretKeySelector `json:"webhook_url_secret,omitempty"`
+	// The title of the teams notification.
+	// +optional
+	Title string `json:"title,omitempty"`
+	// The text body of the teams notification.
+	// +optional
+	Text string `json:"text,omitempty"`
+	// HTTP client configuration.
+	// +optional
+	HTTPConfig *HTTPConfig `json:"http_config,omitempty"`
+}
+
+type DiscordConfig struct {
+	// SendResolved controls notify about resolved alerts.
+	// +optional
+	SendResolved *bool `json:"send_resolved,omitempty"`
+	// The discord webhook URL
+	// one of `urlSecret` and `url` must be defined.
+	// +optional
+	URL *string `json:"webhook_url,omitempty"`
+	// URLSecret defines secret name and key at the CRD namespace.
+	// It must contain the webhook URL.
+	// one of `urlSecret` and `url` must be defined.
+	// +optional
+	URLSecret *v1.SecretKeySelector `json:"webhook_url_secret,omitempty"`
+	// The message title template
+	// +optional
+	Title string `json:"title,omitempty"`
+	// The message body template
+	// +optional
+	Message string `json:"message,omitempty"`
+	// HTTP client configuration.
+	// +optional
+	HTTPConfig *HTTPConfig `json:"http_config,omitempty"`
+}
+
+type SnsConfig struct {
+	// SendResolved controls notify about resolved alerts.
+	// +optional
+	SendResolved *bool `json:"send_resolved,omitempty"`
+	// The api URL
+	// +optional
+	URL string `json:"api_url,omitempty"`
+	// Configure the AWS Signature Verification 4 signing process
+	Sigv4 *Sigv4Config `json:"sigv4,omitempty"`
+	// SNS topic ARN, either specify this, phone_number or target_arn
+	// +optional
+	TopicArn string `json:"topic_arn,omitempty"`
+	// The subject line if message is delivered to an email endpoint.
+	// +optional
+	Subject string `json:"subject,omitempty"`
+	// Phone number if message is delivered via SMS
+	// Specify this, topic_arn or target_arn
+	PhoneNumber string `json:"phone_number,omitempty"`
+	// Mobile platform endpoint ARN if message is delivered via mobile notifications
+	// Specify this, topic_arn or phone_number
+	// +optional
+	TargetArn string `json:"target_arn,omitempty"`
+	// The message content of the SNS notification.
+	// +optional
+	Message string `json:"message,omitempty"`
+	// SNS message attributes
+	// +optional
+	Attributes map[string]string `json:"attributes,omitempty"`
+	// HTTP client configuration.
+	// +optional
+	HTTPConfig *HTTPConfig `json:"http_config,omitempty"`
+}
+
+type Sigv4Config struct {
+	// AWS region, if blank the region from the default credentials chain is used
+	// +optional
+	Region string `json:"region,omitempty"`
+    // The AWS API keys. Both access_key and secret_key must be supplied or both must be blank.
+    // If blank the environment variables `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` are used.
+	// +optional
+	AccessKey string `json:"access_key",omitempty"`
+	// secret key selector to get the keys from a Kubernetes Secret
+	// +optional
+	AccessKeySelector *v1.SecretKeySelector `json:"access_key_selector",omitempty"`
+	// secret key selector to get the keys from a Kubernetes Secret
+	// +optional
+	SecretKey *v1.SecretKeySelector `json:"secret_key_selector,omitempty"`
+	// Named AWS profile used to authenticate
+	// +optional
+	Profile string `json:"profile,omitempty"`
+	// AWS Role ARN, an alternative to using AWS API keys
+	// +optional
+	RoleArn string `json:"role_arn,omitempty"`
+}
+
+type WebexConfig struct {
+	// SendResolved controls notify about resolved alerts.
+	// +optional
+	SendResolved *bool `json:"send_resolved,omitempty"`
+	// The Webex Teams API URL, i.e. https://webexapis.com/v1/messages
+	// +optional
+	URL *string `json:"api_url,omitempty"`
+	// The ID of the Webex Teams room where to send the messages
+	// +required
+	RoomId string `json:"room_id,omitempty"`
+	// The message body template
+	// +optional
+	Message string `json:"message,omitempty"`
+	// HTTP client configuration. You must use this configuration to supply the bot token as part of the HTTP `Authorization` header. 
+	// +optional
+	HTTPConfig *HTTPConfig `json:"http_config,omitempty"`
 }
 
 // HTTPConfig defines a client HTTP configuration.

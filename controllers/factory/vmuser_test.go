@@ -30,9 +30,9 @@ func Test_genUserCfg(t *testing.T) {
 			args: args{
 				user: &v1beta1.VMUser{
 					Spec: v1beta1.VMUserSpec{
-						Name:     pointer.StringPtr("user1"),
-						UserName: pointer.StringPtr("basic"),
-						Password: pointer.StringPtr("pass"),
+						Name:     pointer.String("user1"),
+						UserName: pointer.String("basic"),
+						Password: pointer.String("pass"),
 						TargetRefs: []v1beta1.TargetRef{
 							{
 								Static: &v1beta1.StaticRef{
@@ -63,8 +63,8 @@ password: pass
 			args: args{
 				user: &v1beta1.VMUser{
 					Spec: v1beta1.VMUserSpec{
-						Name:        pointer.StringPtr("user1"),
-						BearerToken: pointer.StringPtr("secret-token"),
+						Name:        pointer.String("user1"),
+						BearerToken: pointer.String("secret-token"),
 						TargetRefs: []v1beta1.TargetRef{
 							{
 								CRD: &v1beta1.CRDRef{
@@ -113,7 +113,7 @@ bearer_token: secret-token
 			args: args{
 				user: &v1beta1.VMUser{
 					Spec: v1beta1.VMUserSpec{
-						BearerToken: pointer.StringPtr("secret-token"),
+						BearerToken: pointer.String("secret-token"),
 						TargetRefs: []v1beta1.TargetRef{
 							{
 								CRD: &v1beta1.CRDRef{
@@ -176,8 +176,8 @@ bearer_token: secret-token
 			args: args{
 				user: &v1beta1.VMUser{
 					Spec: v1beta1.VMUserSpec{
-						Name:        pointer.StringPtr("user1"),
-						BearerToken: pointer.StringPtr("secret-token"),
+						Name:        pointer.String("user1"),
+						BearerToken: pointer.String("secret-token"),
 						TargetRefs: []v1beta1.TargetRef{
 							{
 								CRD: &v1beta1.CRDRef{
@@ -205,8 +205,8 @@ bearer_token: secret-token
 			args: args{
 				user: &v1beta1.VMUser{
 					Spec: v1beta1.VMUserSpec{
-						Name:        pointer.StringPtr("user2"),
-						BearerToken: pointer.StringPtr("secret-token"),
+						Name:        pointer.String("user2"),
+						BearerToken: pointer.String("secret-token"),
 						TargetRefs: []v1beta1.TargetRef{
 							{
 								CRD: &v1beta1.CRDRef{
@@ -238,9 +238,9 @@ bearer_token: secret-token
 			args: args{
 				user: &v1beta1.VMUser{
 					Spec: v1beta1.VMUserSpec{
-						Name:     pointer.StringPtr("user1"),
-						UserName: pointer.StringPtr("basic"),
-						Password: pointer.StringPtr("pass"),
+						Name:     pointer.String("user1"),
+						UserName: pointer.String("basic"),
+						Password: pointer.String("pass"),
 						IPFilters: v1beta1.VMUserIPFilters{
 							AllowList: []string{"127.0.0.1"},
 						},
@@ -289,9 +289,9 @@ password: pass
 			args: args{
 				user: &v1beta1.VMUser{
 					Spec: v1beta1.VMUserSpec{
-						Name:                  pointer.StringPtr("user1"),
-						UserName:              pointer.StringPtr("basic"),
-						Password:              pointer.StringPtr("pass"),
+						Name:                  pointer.String("user1"),
+						UserName:              pointer.String("basic"),
+						Password:              pointer.String("pass"),
 						Headers:               []string{"H1:V1", "H2:V2"},
 						ResponseHeaders:       []string{"RH1:V3", "RH2:V4"},
 						MaxConcurrentRequests: pointer.Int(400),
@@ -347,6 +347,85 @@ headers:
 response_headers:
 - RH1:V3
 - RH2:V4
+username: basic
+password: pass
+`,
+		},
+		{
+			name: "with load_balancing_policy and drop_src_path_prefix_parts and tls_insecure_skip_verify",
+			args: args{
+				user: &v1beta1.VMUser{
+					Spec: v1beta1.VMUserSpec{
+						Name:                   pointer.String("user1"),
+						UserName:               pointer.String("basic"),
+						Password:               pointer.String("pass"),
+						LoadBalancingPolicy:    pointer.String("first_available"),
+						DropSrcPathPrefixParts: pointer.Int(1),
+						TLSInsecureSkipVerify:  true,
+						TargetRefs: []v1beta1.TargetRef{
+							{
+								Static: &v1beta1.StaticRef{
+									URL: "http://vmselect",
+								},
+								Paths: []string{
+									"/select/0/prometheus",
+									"/select/0/graphite",
+								},
+								LoadBalancingPolicy:    pointer.String("first_available"),
+								DropSrcPathPrefixParts: pointer.Int(2),
+							},
+							{
+								Static: &v1beta1.StaticRef{
+									URL: "http://vminsert",
+								},
+								Paths: []string{
+									"/insert/0/prometheus",
+								},
+							},
+						},
+					},
+				},
+			},
+			want: `url_map:
+- url_prefix:
+  - http://vmselect
+  src_paths:
+  - /select/0/prometheus
+  - /select/0/graphite
+  drop_src_path_prefix_parts: 2
+  load_balancing_policy: first_available
+- url_prefix:
+  - http://vminsert
+  src_paths:
+  - /insert/0/prometheus
+name: user1
+load_balancing_policy: first_available
+drop_src_path_prefix_parts: 1
+tls_insecure_skip_verify: true
+username: basic
+password: pass
+`,
+		},
+		{
+			name: "with metric_labels",
+			args: args{
+				user: &v1beta1.VMUser{
+					Spec: v1beta1.VMUserSpec{
+						Name:     pointer.String("user1"),
+						UserName: pointer.String("basic"),
+						Password: pointer.String("pass"),
+						MetricLabels: map[string]string{
+							"foo": "bar",
+							"buz": "qux",
+						},
+					},
+				},
+			},
+			want: `url_map: []
+name: user1
+metric_labels:
+  buz: qux
+  foo: bar
 username: basic
 password: pass
 `,
@@ -417,14 +496,14 @@ func Test_selectVMUserSecrets(t *testing.T) {
 							Name:      "exist",
 							Namespace: "default",
 						},
-						Spec: v1beta1.VMUserSpec{BearerToken: pointer.StringPtr("some-bearer")},
+						Spec: v1beta1.VMUserSpec{BearerToken: pointer.String("some-bearer")},
 					},
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "not-exist",
 							Namespace: "default",
 						},
-						Spec: v1beta1.VMUserSpec{BearerToken: pointer.StringPtr("some-bearer")},
+						Spec: v1beta1.VMUserSpec{BearerToken: pointer.String("some-bearer")},
 					},
 				},
 			},
@@ -497,8 +576,8 @@ func Test_buildVMAuthConfig(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: v1beta1.VMUserSpec{
-						Name:        pointer.StringPtr("user1"),
-						BearerToken: pointer.StringPtr("bearer"),
+						Name:        pointer.String("user1"),
+						BearerToken: pointer.String("bearer"),
 						TargetRefs: []v1beta1.TargetRef{
 							{
 								Static: &v1beta1.StaticRef{URL: "http://some-static"},
@@ -513,7 +592,7 @@ func Test_buildVMAuthConfig(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: v1beta1.VMUserSpec{
-						BearerToken: pointer.StringPtr("bearer-token-2"),
+						BearerToken: pointer.String("bearer-token-2"),
 						TargetRefs: []v1beta1.TargetRef{
 							{
 								CRD: &v1beta1.CRDRef{
@@ -562,8 +641,8 @@ func Test_buildVMAuthConfig(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: v1beta1.VMUserSpec{
-						Name:        pointer.StringPtr("user-1"),
-						BearerToken: pointer.StringPtr("bearer"),
+						Name:        pointer.String("user-1"),
+						BearerToken: pointer.String("bearer"),
 						TargetRefs: []v1beta1.TargetRef{
 							{
 								Static: &v1beta1.StaticRef{URL: "http://some-static"},
@@ -578,8 +657,8 @@ func Test_buildVMAuthConfig(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: v1beta1.VMUserSpec{
-						Name:        pointer.StringPtr("user-2"),
-						BearerToken: pointer.StringPtr("bearer-token-2"),
+						Name:        pointer.String("user-2"),
+						BearerToken: pointer.String("bearer-token-2"),
 						TargetRefs: []v1beta1.TargetRef{
 							{
 								CRD: &v1beta1.CRDRef{
@@ -598,8 +677,8 @@ func Test_buildVMAuthConfig(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: v1beta1.VMUserSpec{
-						Name:     pointer.StringPtr("user-5"),
-						UserName: pointer.StringPtr("some-user"),
+						Name:     pointer.String("user-5"),
+						UserName: pointer.String("some-user"),
 						PasswordRef: &v1.SecretKeySelector{
 							Key: "password",
 							LocalObjectReference: v1.LocalObjectReference{
@@ -624,7 +703,7 @@ func Test_buildVMAuthConfig(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: v1beta1.VMUserSpec{
-						Name: pointer.StringPtr("user-10"),
+						Name: pointer.String("user-10"),
 						TokenRef: &v1.SecretKeySelector{
 							Key: "token",
 							LocalObjectReference: v1.LocalObjectReference{
@@ -694,8 +773,8 @@ func Test_buildVMAuthConfig(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: v1beta1.VMUserSpec{
-						Name:        pointer.StringPtr("user-1"),
-						BearerToken: pointer.StringPtr("bearer"),
+						Name:        pointer.String("user-1"),
+						BearerToken: pointer.String("bearer"),
 						TargetRefs: []v1beta1.TargetRef{
 							{
 								Static: &v1beta1.StaticRef{URL: "http://some-static"},
@@ -710,8 +789,8 @@ func Test_buildVMAuthConfig(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: v1beta1.VMUserSpec{
-						Name:        pointer.StringPtr("user-2"),
-						BearerToken: pointer.StringPtr("bearer-token-2"),
+						Name:        pointer.String("user-2"),
+						BearerToken: pointer.String("bearer-token-2"),
 						TargetRefs: []v1beta1.TargetRef{
 							{
 								CRD: &v1beta1.CRDRef{
@@ -761,8 +840,8 @@ func Test_buildVMAuthConfig(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: v1beta1.VMUserSpec{
-						Name:        pointer.StringPtr("user-11"),
-						BearerToken: pointer.StringPtr("bearer"),
+						Name:        pointer.String("user-11"),
+						BearerToken: pointer.String("bearer"),
 						TargetRefs: []v1beta1.TargetRef{
 							{
 								Static: &v1beta1.StaticRef{URL: "http://some-static-15"},
@@ -777,8 +856,8 @@ func Test_buildVMAuthConfig(t *testing.T) {
 						Namespace: "monitoring",
 					},
 					Spec: v1beta1.VMUserSpec{
-						Name:        pointer.StringPtr("user-15"),
-						BearerToken: pointer.StringPtr("bearer-token-10"),
+						Name:        pointer.String("user-15"),
+						BearerToken: pointer.String("bearer-token-10"),
 						TargetRefs: []v1beta1.TargetRef{
 							{
 								Static: nil,
@@ -841,8 +920,8 @@ func Test_buildVMAuthConfig(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: v1beta1.VMUserSpec{
-						Name:        pointer.StringPtr("user1"),
-						BearerToken: pointer.StringPtr("bearer"),
+						Name:        pointer.String("user1"),
+						BearerToken: pointer.String("bearer"),
 						TargetRefs: []v1beta1.TargetRef{
 							{
 								Static: &v1beta1.StaticRef{URL: "http://some-static"},
@@ -857,7 +936,7 @@ func Test_buildVMAuthConfig(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: v1beta1.VMUserSpec{
-						BearerToken: pointer.StringPtr("bearer-token-2"),
+						BearerToken: pointer.String("bearer-token-2"),
 						TargetRefs: []v1beta1.TargetRef{
 							{
 								CRD: &v1beta1.CRDRef{
@@ -925,8 +1004,8 @@ unauthorized_user:
 						Namespace: "default",
 					},
 					Spec: v1beta1.VMUserSpec{
-						Name:                  pointer.StringPtr("user1"),
-						BearerToken:           pointer.StringPtr("bearer"),
+						Name:                  pointer.String("user1"),
+						BearerToken:           pointer.String("bearer"),
 						DisableSecretCreation: true,
 						TargetRefs: []v1beta1.TargetRef{
 							{
@@ -942,7 +1021,7 @@ unauthorized_user:
 						Namespace: "default",
 					},
 					Spec: v1beta1.VMUserSpec{
-						BearerToken:           pointer.StringPtr("bearer-token-2"),
+						BearerToken:           pointer.String("bearer-token-2"),
 						MaxConcurrentRequests: pointer.Int(500),
 						RetryStatusCodes:      []int{400, 500},
 						ResponseHeaders:       []string{"H1:V1"},

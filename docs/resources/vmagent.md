@@ -713,6 +713,7 @@ spec:
 ## Examples
 
 ```yaml
+apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAgent
 metadata:
   name: vmagent-example

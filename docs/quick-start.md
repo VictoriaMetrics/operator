@@ -345,6 +345,8 @@ spec:
   namespaceSelector: 
     matchNames:
       - vm
+  endpoints:
+  - port: http
 ```
 
 After that you can deploy `vmservicescrape` resource to the kubernetes cluster:
@@ -377,6 +379,7 @@ kind: VMAuth
 metadata:
   name: demo
 spec:
+  selectAllByDefault: true
   userNamespaceSelector: {}
   userSelector: {}
   ingress:

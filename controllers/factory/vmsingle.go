@@ -84,6 +84,7 @@ func makeVMSinglePvc(cr *victoriametricsv1beta1.VMSingle) *corev1.PersistentVolu
 	return pvcObject
 }
 
+// CreateOrUpdateVMSingle performs an update for single node resource
 func CreateOrUpdateVMSingle(ctx context.Context, cr *victoriametricsv1beta1.VMSingle, rclient client.Client, c *config.BaseOperatorConf) error {
 	if err := psp.CreateServiceAccountForCRD(ctx, cr, rclient); err != nil {
 		return fmt.Errorf("failed create service account: %w", err)
@@ -105,7 +106,7 @@ func CreateOrUpdateVMSingle(ctx context.Context, cr *victoriametricsv1beta1.VMSi
 	if cr.Spec.ReplicaCount == nil {
 		return nil
 	}
-	if err = waitExpanding(ctx, rclient, cr.Namespace, cr.SelectorLabels(), 1, 0, c.PodWaitReadyTimeout); err != nil {
+	if err = waitExpanding(ctx, rclient, cr.Namespace, cr.SelectorLabels(), *cr.Spec.ReplicaCount, 0, c.PodWaitReadyTimeout); err != nil {
 		return fmt.Errorf("cannot wait until ready status for single deploy: %w", err)
 	}
 

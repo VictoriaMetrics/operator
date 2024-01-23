@@ -345,6 +345,8 @@ spec:
   namespaceSelector: 
     matchNames:
       - vm
+  endpoints:
+  - port: http
 ```
 
 After that you can deploy `vmservicescrape` resource to the kubernetes cluster:

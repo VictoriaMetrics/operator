@@ -449,6 +449,30 @@ func (cb *configBuilder) buildCfg() error {
 		}
 	}
 	cb.finalizeSection("telegram_configs")
+	for _, mcCfg := range cb.receiver.MSTeamsConfigs {
+		if err := cb.buildTeams(mcCfg); err != nil {
+			return err
+		}
+	}
+	cb.finalizeSection("msteams_configs")
+	for _, mcCfg := range cb.receiver.DiscordConfigs {
+		if err := cb.buildDiscord(mcCfg); err != nil {
+			return err
+		}
+	}
+	cb.finalizeSection("discord_configs")
+	for _, snsCfg := range cb.receiver.SNSConfigs {
+		if err := cb.buildSNS(snsCfg); err != nil {
+			return err
+		}
+	}
+	cb.finalizeSection("sns_configs")
+	for _, webexCfg := range cb.receiver.WebexConfigs {
+		if err := cb.buildWebex(webexCfg); err != nil {
+			return err
+		}
+	}
+	cb.finalizeSection("webex_configs")
 	return nil
 }
 
@@ -460,6 +484,168 @@ func (cb *configBuilder) finalizeSection(name string) {
 		})
 		cb.currentYaml = make([]yaml.MapSlice, 0, len(cb.currentYaml))
 	}
+}
+
+func (cb *configBuilder) buildTeams(ms operatorv1beta1.MSTeamsConfig) error {
+	var temp yaml.MapSlice
+	if ms.HTTPConfig != nil {
+		c, err := cb.buildHTTPConfig(ms.HTTPConfig)
+		if err != nil {
+			return err
+		}
+		temp = append(temp, yaml.MapItem{Key: "http_config", Value: c})
+	}
+	if ms.SendResolved != nil {
+		temp = append(temp, yaml.MapItem{Key: "send_resolved", Value: *ms.SendResolved})
+	}
+
+	if ms.URLSecret != nil {
+		s, err := cb.fetchSecretValue(ms.URLSecret)
+		if err != nil {
+			return err
+		}
+		if err := parseURL(string(s)); err != nil {
+			return fmt.Errorf("invalid URL %s in key %s from secret %s: %v", string(s), ms.URLSecret.Key, ms.URLSecret.Name, err)
+		}
+		temp = append(temp, yaml.MapItem{Key: "webhook_url", Value: string(s)})
+	} else if ms.URL != nil {
+		temp = append(temp, yaml.MapItem{Key: "webhook_url", Value: ms.URL})
+	}
+	toYaml := func(key string, src string) {
+		if len(src) > 0 {
+			temp = append(temp, yaml.MapItem{Key: key, Value: src})
+		}
+	}
+	toYaml("title", ms.Title)
+	toYaml("text", ms.Text)
+
+	cb.currentYaml = append(cb.currentYaml, temp)
+	return nil
+}
+
+func (cb *configBuilder) buildDiscord(dc operatorv1beta1.DiscordConfig) error {
+	var temp yaml.MapSlice
+	if dc.HTTPConfig != nil {
+		c, err := cb.buildHTTPConfig(dc.HTTPConfig)
+		if err != nil {
+			return err
+		}
+		temp = append(temp, yaml.MapItem{Key: "http_config", Value: c})
+	}
+	if dc.SendResolved != nil {
+		temp = append(temp, yaml.MapItem{Key: "send_resolved", Value: *dc.SendResolved})
+	}
+
+	if dc.URLSecret != nil {
+		s, err := cb.fetchSecretValue(dc.URLSecret)
+		if err != nil {
+			return err
+		}
+		if err := parseURL(string(s)); err != nil {
+			return fmt.Errorf("invalid URL %s in key %s from secret %s: %v", string(s), dc.URLSecret.Key, dc.URLSecret.Name, err)
+		}
+		temp = append(temp, yaml.MapItem{Key: "webhook_url", Value: string(s)})
+	} else if dc.URL != nil {
+		temp = append(temp, yaml.MapItem{Key: "webhook_url", Value: dc.URL})
+	}
+	toYaml := func(key string, src string) {
+		if len(src) > 0 {
+			temp = append(temp, yaml.MapItem{Key: key, Value: src})
+		}
+	}
+	toYaml("title", dc.Title)
+	toYaml("message", dc.Message)
+
+	cb.currentYaml = append(cb.currentYaml, temp)
+	return nil
+}
+
+func (cb *configBuilder) buildSNS(sns operatorv1beta1.SnsConfig) error {
+	var temp yaml.MapSlice
+	if sns.HTTPConfig != nil {
+		c, err := cb.buildHTTPConfig(sns.HTTPConfig)
+		if err != nil {
+			return err
+		}
+		temp = append(temp, yaml.MapItem{Key: "http_config", Value: c})
+	}
+	if sns.SendResolved != nil {
+		temp = append(temp, yaml.MapItem{Key: "send_resolved", Value: *sns.SendResolved})
+	}
+	toYaml := func(key string, src string) {
+		if len(src) > 0 {
+			temp = append(temp, yaml.MapItem{Key: key, Value: src})
+		}
+	}
+	toYaml("api_url", sns.URL)
+	toYaml("topic_arn", sns.TopicArn)
+	toYaml("subject", sns.Subject)
+	toYaml("phone_number", sns.PhoneNumber)
+	toYaml("target_arn", sns.TargetArn)
+	toYaml("message", sns.Message)
+	if len(sns.Attributes) > 0 {
+		var attributes yaml.MapSlice
+		for k, v := range sns.Attributes {
+			attributes = append(attributes, yaml.MapItem{Key: k, Value: v})
+		}
+		temp = append(temp, yaml.MapItem{Key: "attributes", Value: attributes})
+	}
+	if sns.Sigv4 != nil {
+		var sigv4 yaml.MapSlice
+		toYamlSig := func(key string, src string) {
+			if len(src) > 0 {
+				sigv4 = append(sigv4, yaml.MapItem{Key: key, Value: src})
+			}
+		}
+		toYamlSig("region", sns.Sigv4.Region)
+		toYamlSig("profile", sns.Sigv4.Profile)
+		toYamlSig("role_arn", sns.Sigv4.RoleArn)
+		if sns.Sigv4.AccessKey != "" {
+			toYamlSig("access_key", sns.Sigv4.AccessKey)
+		} else if sns.Sigv4.AccessKeySelector != nil {
+			s, err := cb.fetchSecretValue(sns.Sigv4.AccessKeySelector)
+			if err != nil {
+				return err
+			}
+			toYamlSig("access_key", string(s))
+		}
+		if sns.Sigv4.SecretKey != nil {
+			s, err := cb.fetchSecretValue(sns.Sigv4.SecretKey)
+			if err != nil {
+				return err
+			}
+			toYamlSig("secret_key", string(s))
+		}
+		temp = append(temp, yaml.MapItem{Key: "sigv4", Value: sigv4})
+	}
+	cb.currentYaml = append(cb.currentYaml, temp)
+	return nil
+}
+
+func (cb *configBuilder) buildWebex(web operatorv1beta1.WebexConfig) error {
+	var temp yaml.MapSlice
+	if web.HTTPConfig != nil {
+		c, err := cb.buildHTTPConfig(web.HTTPConfig)
+		if err != nil {
+			return err
+		}
+		temp = append(temp, yaml.MapItem{Key: "http_config", Value: c})
+	}
+	if web.SendResolved != nil {
+		temp = append(temp, yaml.MapItem{Key: "send_resolved", Value: *web.SendResolved})
+	}
+	toYaml := func(key string, src string) {
+		if len(src) > 0 {
+			temp = append(temp, yaml.MapItem{Key: key, Value: src})
+		}
+	}
+	if web.URL != nil {
+		toYaml("api_url", *web.URL)
+	}
+	toYaml("room_id", web.RoomId)
+	toYaml("message", web.Message)
+	cb.currentYaml = append(cb.currentYaml, temp)
+	return nil
 }
 
 func (cb *configBuilder) buildTelegram(tg operatorv1beta1.TelegramConfig) error {

@@ -67,10 +67,32 @@ type VMUserSpec struct {
 	// e.g. [429,503]
 	// +optional
 	RetryStatusCodes []int `json:"retry_status_codes,omitempty"`
+
 	// MaxConcurrentRequests defines max concurrent requests per user
 	// 300 is default value for vmauth
 	// +optional
 	MaxConcurrentRequests *int `json:"max_concurrent_requests,omitempty"`
+
+	// LoadBalancingPolicy defines load balancing policy to use for backend urls.
+	// Supported policies: least_loaded, first_available.
+	// See https://docs.victoriametrics.com/vmauth.html#load-balancing for more details (default "least_loaded")
+	// +optional
+	// +kubebuilder:validation:Enum=least_loaded;first_available
+	LoadBalancingPolicy *string `json:"load_balancing_policy,omitempty"`
+
+	// DropSrcPathPrefixParts is the number of `/`-delimited request path prefix parts to drop before proxying the request to backend.
+	// See https://docs.victoriametrics.com/vmauth.html#dropping-request-path-prefix for more details.
+	// +optional
+	DropSrcPathPrefixParts *int `json:"drop_src_path_prefix_parts,omitempty"`
+
+	// TLSInsecureSkipVerify - whether to skip TLS verification when connecting to backend over HTTPS.
+	// See https://docs.victoriametrics.com/vmauth.html#backend-tls-setup
+	// +optional
+	TLSInsecureSkipVerify bool `json:"tls_insecure_skip_verify,omitempty"`
+
+	// MetricLabels - additional labels for metrics exported by vmauth for given user.
+	// +optional
+	MetricLabels map[string]string `json:"metric_labels,omitempty"`
 
 	// DisableSecretCreation skips related secret creation for vmuser
 	DisableSecretCreation bool `json:"disable_secret_creation,omitempty"`
@@ -117,6 +139,16 @@ type TargetRef struct {
 	// e.g. [429,503]
 	// +optional
 	RetryStatusCodes []int `json:"retry_status_codes,omitempty"`
+	// LoadBalancingPolicy defines load balancing policy to use for backend urls.
+	// Supported policies: least_loaded, first_available.
+	// See https://docs.victoriametrics.com/vmauth.html#load-balancing for more details (default "least_loaded")
+	// +optional
+	// +kubebuilder:validation:Enum=least_loaded;first_available
+	LoadBalancingPolicy *string `json:"load_balancing_policy,omitempty"`
+	// DropSrcPathPrefixParts is the number of `/`-delimited request path prefix parts to drop before proxying the request to backend.
+	// See https://docs.victoriametrics.com/vmauth.html#dropping-request-path-prefix for more details.
+	// +optional
+	DropSrcPathPrefixParts *int `json:"drop_src_path_prefix_parts,omitempty"`
 }
 
 // VMUserIPFilters defines filters for IP addresses

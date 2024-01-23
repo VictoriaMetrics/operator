@@ -513,6 +513,12 @@ func genUrlMaps(userName string, refs []victoriametricsv1beta1.TargetRef, result
 			if len(ref.RetryStatusCodes) > 0 {
 				result = append(result, yaml.MapItem{Key: "retry_status_codes", Value: ref.RetryStatusCodes})
 			}
+			if ref.DropSrcPathPrefixParts != nil {
+				result = append(result, yaml.MapItem{Key: "drop_src_path_prefix_parts", Value: ref.DropSrcPathPrefixParts})
+			}
+			if ref.LoadBalancingPolicy != nil {
+				result = append(result, yaml.MapItem{Key: "load_balancing_policy", Value: ref.LoadBalancingPolicy})
+			}
 			return result, nil
 		}
 
@@ -569,10 +575,15 @@ func genUrlMaps(userName string, refs []victoriametricsv1beta1.TargetRef, result
 			urlMap = append(urlMap, yaml.MapItem{Key: "response_headers", Value: ref.ResponseHeaders})
 		}
 		if len(ref.RetryStatusCodes) > 0 {
-			result = append(result, yaml.MapItem{Key: "retry_status_codes", Value: ref.RetryStatusCodes})
+			urlMap = append(urlMap, yaml.MapItem{Key: "retry_status_codes", Value: ref.RetryStatusCodes})
+		}
+		if ref.DropSrcPathPrefixParts != nil {
+			urlMap = append(urlMap, yaml.MapItem{Key: "drop_src_path_prefix_parts", Value: ref.DropSrcPathPrefixParts})
+		}
+		if ref.LoadBalancingPolicy != nil {
+			urlMap = append(urlMap, yaml.MapItem{Key: "load_balancing_policy", Value: ref.LoadBalancingPolicy})
 		}
 		urlMaps = append(urlMaps, urlMap)
-
 	}
 	result = append(result, yaml.MapItem{Key: "url_map", Value: urlMaps})
 	return result, nil
@@ -620,6 +631,30 @@ func genUserCfg(user *victoriametricsv1beta1.VMUser, crdUrlCache map[string]stri
 		r = append(r, yaml.MapItem{
 			Key:   "max_concurrent_requests",
 			Value: *user.Spec.MaxConcurrentRequests,
+		})
+	}
+	if user.Spec.LoadBalancingPolicy != nil {
+		r = append(r, yaml.MapItem{
+			Key:   "load_balancing_policy",
+			Value: *user.Spec.LoadBalancingPolicy,
+		})
+	}
+	if user.Spec.DropSrcPathPrefixParts != nil {
+		r = append(r, yaml.MapItem{
+			Key:   "drop_src_path_prefix_parts",
+			Value: *user.Spec.DropSrcPathPrefixParts,
+		})
+	}
+	if user.Spec.TLSInsecureSkipVerify {
+		r = append(r, yaml.MapItem{
+			Key:   "tls_insecure_skip_verify",
+			Value: user.Spec.TLSInsecureSkipVerify,
+		})
+	}
+	if len(user.Spec.MetricLabels) != 0 {
+		r = append(r, yaml.MapItem{
+			Key:   "metric_labels",
+			Value: user.Spec.MetricLabels,
 		})
 	}
 	if len(user.Spec.RetryStatusCodes) > 0 {

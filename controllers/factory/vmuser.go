@@ -397,15 +397,40 @@ func generateVMAuthConfig(cr *victoriametricsv1beta1.VMAuth, users []*victoriame
 	}
 	var unAuthorizedAccess []yaml.MapSlice
 	for _, uc := range cr.Spec.UnauthorizedAccessConfig {
-		urlMap := yaml.MapSlice{
-			{
-				Key:   "url_prefix",
-				Value: uc.URLs,
+		appendIfNotNull := func(src []string, key string, origin yaml.MapSlice) yaml.MapSlice {
+			if len(src) > 0 {
+				return append(origin, yaml.MapItem{
+					Key:   key,
+					Value: src,
+				})
+			}
+			return origin
+		}
+		urlMap := appendIfNotNull(uc.URLs, "url_prefix", yaml.MapSlice{})
+		urlMap = appendIfNotNull(uc.Paths, "src_paths", urlMap)
+		urlMap = appendIfNotNull(uc.Hosts, "src_hosts", urlMap)
+		urlMap = appendIfNotNull(uc.Headers, "headers", urlMap)
+		urlMap = appendIfNotNull(uc.ResponseHeaders, "response_headers", urlMap)
+		if len(uc.RetryStatusCodes) > 0 {
+			urlMap = append(urlMap, yaml.MapItem{
+				Key:   "retry_status_codes",
+				Value: uc.RetryStatusCodes,
 			},
-			{
-				Key:   "src_paths",
-				Value: uc.Paths,
+			)
+		}
+		if uc.LoadBalancingPolicy != nil {
+			urlMap = append(urlMap, yaml.MapItem{
+				Key:   "load_balancing_policy",
+				Value: *uc.LoadBalancingPolicy,
 			},
+			)
+		}
+		if uc.DropSrcPathPrefixParts != nil {
+			urlMap = append(urlMap, yaml.MapItem{
+				Key:   "drop_src_path_prefix_parts",
+				Value: *uc.DropSrcPathPrefixParts,
+			},
+			)
 		}
 		unAuthorizedAccess = append(unAuthorizedAccess, addIPFiltersToYaml(urlMap, uc.IPFilters))
 	}
@@ -565,6 +590,12 @@ func genUrlMaps(userName string, refs []victoriametricsv1beta1.TargetRef, result
 			Key:   "src_paths",
 			Value: paths,
 		})
+		if len(ref.Hosts) > 0 {
+			urlMap = append(urlMap, yaml.MapItem{
+				Key:   "src_hosts",
+				Value: ref.Hosts,
+			})
+		}
 		if len(ref.Headers) > 0 {
 			urlMap = append(urlMap, yaml.MapItem{
 				Key:   "headers",

@@ -214,6 +214,41 @@ type VMAuthUnauthorizedPath struct {
 	// IPFilters defines filter for src ip address
 	// enterprise only
 	IPFilters VMUserIPFilters `json:"ip_filters,omitempty"`
+
+	// SrcHosts is the list of regular expressions, which match the request hostname.
+	Hosts []string `json:"src_hosts,omitempty"`
+
+	// Headers represent additional http headers, that vmauth uses
+	// in form of ["header_key: header_value"]
+	// multiple values for header key:
+	// ["header_key: value1,value2"]
+	// it's available since 1.68.0 version of vmauth
+	// +optional
+	Headers []string `json:"headers,omitempty"`
+	// ResponseHeaders represent additional http headers, that vmauth adds for request response
+	// in form of ["header_key: header_value"]
+	// multiple values for header key:
+	// ["header_key: value1,value2"]
+	// it's available since 1.93.0 version of vmauth
+	// +optional
+	ResponseHeaders []string `json:"response_headers,omitempty"`
+
+	// RetryStatusCodes defines http status codes in numeric format for request retries
+	// e.g. [429,503]
+	// +optional
+	RetryStatusCodes []int `json:"retry_status_codes,omitempty"`
+
+	// LoadBalancingPolicy defines load balancing policy to use for backend urls.
+	// Supported policies: least_loaded, first_available.
+	// See https://docs.victoriametrics.com/vmauth.html#load-balancing for more details (default "least_loaded")
+	// +optional
+	// +kubebuilder:validation:Enum=least_loaded;first_available
+	LoadBalancingPolicy *string `json:"load_balancing_policy,omitempty"`
+
+	// DropSrcPathPrefixParts is the number of `/`-delimited request path prefix parts to drop before proxying the request to backend.
+	// See https://docs.victoriametrics.com/vmauth.html#dropping-request-path-prefix for more details.
+	// +optional
+	DropSrcPathPrefixParts *int `json:"drop_src_path_prefix_parts,omitempty"`
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface

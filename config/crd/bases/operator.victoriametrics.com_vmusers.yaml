@@ -177,6 +177,10 @@ spec:
                       items:
                         type: string
                       type: array
+                    hosts:
+                      items:
+                        type: string
+                      type: array
                     load_balancing_policy:
                       description: 'LoadBalancingPolicy defines load balancing policy
                         to use for backend urls. Supported policies: least_loaded,

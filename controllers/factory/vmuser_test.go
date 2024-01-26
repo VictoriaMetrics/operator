@@ -901,8 +901,14 @@ func Test_buildVMAuthConfig(t *testing.T) {
 						SelectAllByDefault: true,
 						UnauthorizedAccessConfig: []v1beta1.VMAuthUnauthorizedPath{
 							{
-								Paths: []string{"/", "/default"},
-								URLs:  []string{"http://route-1", "http://route-2"},
+								Paths:                  []string{"/", "/default"},
+								URLs:                   []string{"http://route-1", "http://route-2"},
+								Hosts:                  []string{"app1\\.my-host\\.com"},
+								Headers:                []string{"TenantID: foobar", "X-Forwarded-For:"},
+								ResponseHeaders:        []string{"Server:"},
+								RetryStatusCodes:       []int{503, 500},
+								LoadBalancingPolicy:    pointer.String("first_available"),
+								DropSrcPathPrefixParts: pointer.Int(1),
 								IPFilters: v1beta1.VMUserIPFilters{
 									DenyList: []string{
 										"127.0.0.1", "192.168.0.0/16",
@@ -972,6 +978,18 @@ unauthorized_user:
     src_paths:
     - /
     - /default
+    src_hosts:
+    - app1\.my-host\.com
+    headers:
+    - 'TenantID: foobar'
+    - 'X-Forwarded-For:'
+    response_headers:
+    - 'Server:'
+    retry_status_codes:
+    - 503
+    - 500
+    load_balancing_policy: first_available
+    drop_src_path_prefix_parts: 1
     ip_filters:
       deny_list:
       - 127.0.0.1

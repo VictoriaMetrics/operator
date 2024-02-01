@@ -19,7 +19,7 @@ aliases:
 - TODO
 
 <a name="v0.41.1"></a>
-## [v0.41.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.41.1) - 1 Feb 2024
+## [v0.41.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.41.1) - 1 Feb 2024
 
 - update VictoriaMetrics image tags to [v1.97.1](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.97.1).
 

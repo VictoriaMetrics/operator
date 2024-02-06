@@ -51,7 +51,7 @@ func buildVMAuthConfig(ctx context.Context, rclient client.Client, vmauth *victo
 	// inject passwordRef secrets
 	injectSecretValueByRef(users, secretValueByRef)
 	// select secrets with user auth settings.
-	toCreateSecrets, existSecrets, err := selectVMUserSecrets(ctx, rclient, users)
+	toCreateSecrets, existSecrets, err := selectVMUserGeneratedSecrets(ctx, rclient, users)
 	if err != nil {
 		return nil, err
 	}
@@ -243,9 +243,6 @@ func fetchVMUserSecretCacheByRef(ctx context.Context, rclient client.Client, use
 	var fetchSecret corev1.Secret
 	for i := range users {
 		user := users[i]
-		if user.Spec.DisableSecretCreation {
-			continue
-		}
 		var secretName, secretKey, refValue string
 		switch {
 		case user.Spec.PasswordRef != nil:
@@ -790,9 +787,9 @@ func selectVMUsers(ctx context.Context, cr *victoriametricsv1beta1.VMAuth, rclie
 	return res, nil
 }
 
-// select existing vmusers secrets.
+// select existing vmusers secrets created by operator
 // returns secrets, that need to be create and exist secrets.
-func selectVMUserSecrets(ctx context.Context, rclient client.Client, vmUsers []*victoriametricsv1beta1.VMUser) ([]corev1.Secret, []corev1.Secret, error) {
+func selectVMUserGeneratedSecrets(ctx context.Context, rclient client.Client, vmUsers []*victoriametricsv1beta1.VMUser) ([]corev1.Secret, []corev1.Secret, error) {
 	var existsSecrets []corev1.Secret
 	var needToCreateSecrets []corev1.Secret
 	for i := range vmUsers {

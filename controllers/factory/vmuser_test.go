@@ -515,11 +515,49 @@ func Test_selectVMUserSecrets(t *testing.T) {
 			wantExistNames:    []string{"vmuser-exist"},
 			wantToCreateNames: []string{"vmuser-not-exist"},
 		},
+		{
+			name: "want 1 updateSecret",
+			args: args{
+				vmUsers: []*v1beta1.VMUser{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "must-not-exist",
+							Namespace: "default",
+						},
+						Spec: v1beta1.VMUserSpec{
+							BearerToken:           pointer.String("some-bearer"),
+							DisableSecretCreation: true,
+						},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "not-exists-must-create",
+							Namespace: "default",
+						},
+						Spec: v1beta1.VMUserSpec{BearerToken: pointer.String("some-bearer")},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "exists",
+							Namespace: "default",
+						},
+						Spec: v1beta1.VMUserSpec{BearerToken: pointer.String("some-bearer")},
+					},
+				},
+			},
+			predefinedObjects: []runtime.Object{
+				&v1.Secret{
+					ObjectMeta: metav1.ObjectMeta{Name: "vmuser-exists", Namespace: "default"},
+				},
+			},
+			wantExistNames:    []string{"vmuser-exists"},
+			wantToCreateNames: []string{"vmuser-not-exists-must-create"},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			testClient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			got, got1, err := selectVMUserSecrets(context.TODO(), testClient, tt.args.vmUsers)
+			got, got1, err := selectVMUserGeneratedSecrets(context.TODO(), testClient, tt.args.vmUsers)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("selectVMUserSecrets() error = %v, wantErr %v", err, tt.wantErr)
 				return

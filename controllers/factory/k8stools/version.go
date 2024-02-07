@@ -40,25 +40,6 @@ func SetKubernetesVersionWithDefaults(vi *version.Info, defaultMinor, defaultMaj
 	return nil
 }
 
-// IsPSPSupported check if PodSecurityPolicy is supported by kubernetes API server
-// https://kubernetes.io/docs/reference/using-api/deprecation-guide/#psp-v125
-func IsPSPSupported() bool {
-	if ServerMajorVersion == 1 && ServerMinorVersion <= 24 {
-		return true
-	}
-	return false
-}
-
-// IsPDBV1APISupported check if new v1 API is supported by kubernetes API server
-// deprecated since 1.21
-// https://kubernetes.io/docs/reference/using-api/deprecation-guide/#poddisruptionbudget-v125
-func IsPDBV1APISupported() bool {
-	if ServerMajorVersion == 1 && ServerMinorVersion >= 21 {
-		return true
-	}
-	return false
-}
-
 // IsHPAV2BetaSupported checks if new
 // Beta deprecated since 1.26
 // https://kubernetes.io/blog/2021/12/07/kubernetes-1-23-release-announcement/#horizontalpodautoscaler-v2-graduates-to-ga
@@ -69,17 +50,7 @@ func IsHPAV2BetaSupported() bool {
 	return false
 }
 
-// IsFSGroupChangePolicySupported checks if `fsGroupChangePolicy` is supported,
-// Supported since 1.20
-// https://kubernetes.io/blog/2020/12/14/kubernetes-release-1.20-fsgroupchangepolicy-fsgrouppolicy/#allow-users-to-skip-recursive-permission-changes-on-mount
-func IsFSGroupChangePolicySupported() bool {
-	if ServerMajorVersion == 1 && ServerMinorVersion >= 20 {
-		return true
-	}
-	return false
-}
-
-// NewHPAEmptyObject returns HorizontalPodAutoscaler object for given kubernetes version
+// NewHPAEmptyObject returns HorizontalPodAutoscaler object
 func NewHPAEmptyObject(opts ...func(obj client.Object)) client.Object {
 	var hpa client.Object = &v2beta2.HorizontalPodAutoscaler{}
 	if !IsHPAV2BetaSupported() {

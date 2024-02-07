@@ -9,7 +9,6 @@ import (
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/api/autoscaling/v2beta2"
 	policyv1 "k8s.io/api/policy/v1"
-	policyv1beta1 "k8s.io/api/policy/v1beta1"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
@@ -229,7 +228,7 @@ func reconcileServiceForCRD(ctx context.Context, rclient client.Client, newServi
 	return newService, nil
 }
 
-func buildDefaultPDBV1(cr svcBuilderArgs, spec *victoriametricsv1beta1.EmbeddedPodDisruptionBudgetSpec) *policyv1.PodDisruptionBudget {
+func buildDefaultPDB(cr svcBuilderArgs, spec *victoriametricsv1beta1.EmbeddedPodDisruptionBudgetSpec) *policyv1.PodDisruptionBudget {
 	return &policyv1.PodDisruptionBudget{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),
@@ -248,46 +247,8 @@ func buildDefaultPDBV1(cr svcBuilderArgs, spec *victoriametricsv1beta1.EmbeddedP
 	}
 }
 
-func buildDefaultPDB(cr svcBuilderArgs, spec *victoriametricsv1beta1.EmbeddedPodDisruptionBudgetSpec) *policyv1beta1.PodDisruptionBudget {
-	return &policyv1beta1.PodDisruptionBudget{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            cr.PrefixedName(),
-			Labels:          cr.AllLabels(),
-			OwnerReferences: cr.AsOwner(),
-			Namespace:       cr.GetNSName(),
-			Finalizers:      []string{victoriametricsv1beta1.FinalizerName},
-		},
-		Spec: policyv1beta1.PodDisruptionBudgetSpec{
-			MinAvailable:   spec.MinAvailable,
-			MaxUnavailable: spec.MaxUnavailable,
-			Selector: &metav1.LabelSelector{
-				MatchLabels: spec.SelectorLabelsWithDefaults(cr.SelectorLabels()),
-			},
-		},
-	}
-}
-
-func reconcilePDBV1(ctx context.Context, rclient client.Client, crdName string, pdb *policyv1.PodDisruptionBudget) error {
+func reconcilePDB(ctx context.Context, rclient client.Client, crdName string, pdb *policyv1.PodDisruptionBudget) error {
 	currentPdb := &policyv1.PodDisruptionBudget{}
-	err := rclient.Get(ctx, types.NamespacedName{Namespace: pdb.Namespace, Name: pdb.Name}, currentPdb)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			log.Info("creating new pdb", "pdb_name", pdb.Name, "crd_object", crdName)
-			return rclient.Create(ctx, pdb)
-		}
-		return fmt.Errorf("cannot get existing pdb: %s, for crd_object: %s, err: %w", pdb.Name, crdName, err)
-	}
-	pdb.Annotations = labels.Merge(currentPdb.Annotations, pdb.Annotations)
-	if currentPdb.ResourceVersion != "" {
-		pdb.ResourceVersion = currentPdb.ResourceVersion
-	}
-	pdb.Status = currentPdb.Status
-	victoriametricsv1beta1.MergeFinalizers(pdb, victoriametricsv1beta1.FinalizerName)
-	return rclient.Update(ctx, pdb)
-}
-
-func reconcilePDB(ctx context.Context, rclient client.Client, crdName string, pdb *policyv1beta1.PodDisruptionBudget) error {
-	currentPdb := &policyv1beta1.PodDisruptionBudget{}
 	err := rclient.Get(ctx, types.NamespacedName{Namespace: pdb.Namespace, Name: pdb.Name}, currentPdb)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -453,12 +414,8 @@ func reconcileHPA(ctx context.Context, rclient client.Client, targetHPA client.O
 }
 
 func CreateOrUpdatePodDisruptionBudget(ctx context.Context, rclient client.Client, cr svcBuilderArgs, kind string, epdb *victoriametricsv1beta1.EmbeddedPodDisruptionBudgetSpec) error {
-	if k8stools.IsPDBV1APISupported() {
-		pbd := buildDefaultPDBV1(cr, epdb)
-		return reconcilePDBV1(ctx, rclient, kind, pbd)
-	}
-	pdb := buildDefaultPDB(cr, epdb)
-	return reconcilePDB(ctx, rclient, kind, pdb)
+	pbd := buildDefaultPDB(cr, epdb)
+	return reconcilePDB(ctx, rclient, kind, pbd)
 }
 
 // addExtraArgsOverrideDefaults adds extraArgs for given source args
@@ -538,10 +495,8 @@ func addStrictSecuritySettingsToPod(p *v1.PodSecurityContext, enableStrictSecuri
 			Type: v1.SeccompProfileTypeRuntimeDefault,
 		},
 	}
-	if k8stools.IsFSGroupChangePolicySupported() {
-		onRootMismatch := v1.FSGroupChangeOnRootMismatch
-		securityContext.FSGroupChangePolicy = &onRootMismatch
-	}
+	onRootMismatch := v1.FSGroupChangeOnRootMismatch
+	securityContext.FSGroupChangePolicy = &onRootMismatch
 	return &securityContext
 }
 

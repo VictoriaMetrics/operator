@@ -23,11 +23,13 @@ This Document documents the types introduced by the VictoriaMetrics to be consum
 * [VMAlertmanagerList](#vmalertmanagerlist)
 * [VMAlertmanagerSpec](#vmalertmanagerspec)
 * [VMAlertmanagerStatus](#vmalertmanagerstatus)
+* [DiscordConfig](#discordconfig)
 * [EmailConfig](#emailconfig)
 * [HTTPConfig](#httpconfig)
 * [ImageConfig](#imageconfig)
 * [InhibitRule](#inhibitrule)
 * [LinkConfig](#linkconfig)
+* [MSTeamsConfig](#msteamsconfig)
 * [MuteTimeInterval](#mutetimeinterval)
 * [OpsGenieConfig](#opsgenieconfig)
 * [OpsGenieConfigResponder](#opsgenieconfigresponder)
@@ -35,10 +37,12 @@ This Document documents the types introduced by the VictoriaMetrics to be consum
 * [PushoverConfig](#pushoverconfig)
 * [Receiver](#receiver)
 * [Route](#route)
+* [Sigv4Config](#sigv4config)
 * [SlackAction](#slackaction)
 * [SlackConfig](#slackconfig)
 * [SlackConfirmationField](#slackconfirmationfield)
 * [SlackField](#slackfield)
+* [SnsConfig](#snsconfig)
 * [TelegramConfig](#telegramconfig)
 * [TimeInterval](#timeinterval)
 * [TimeRange](#timerange)
@@ -48,6 +52,7 @@ This Document documents the types introduced by the VictoriaMetrics to be consum
 * [VMAlertmanagerConfigStatus](#vmalertmanagerconfigstatus)
 * [VictorOpsConfig](#victoropsconfig)
 * [WeChatConfig](#wechatconfig)
+* [WebexConfig](#webexconfig)
 * [WebhookConfig](#webhookconfig)
 * [VMAgent](#vmagent)
 * [VMAgentList](#vmagentlist)
@@ -203,7 +208,6 @@ VMAlertmanagerSpec is a specification of the desired behavior of the VMAlertmana
 | serviceAccountName | ServiceAccountName is the name of the ServiceAccount to use | string | false |
 | schedulerName | SchedulerName - defines kubernetes scheduler name | string | false |
 | runtimeClassName | RuntimeClassName - defines runtime class for kubernetes pod. https://kubernetes.io/docs/concepts/containers/runtime-class/ | *string | false |
-| podSecurityPolicyName | PodSecurityPolicyName - defines name for podSecurityPolicy in case of empty value, prefixedName will be used. | string | false |
 | listenLocal | ListenLocal makes the VMAlertmanager server listen on loopback, so that it does not bind against the Pod IP. Note this is only for the VMAlertmanager UI, not the gossip communication. | bool | false |
 | containers | Containers allows injecting additional containers or patching existing containers. This is meant to allow adding an authentication proxy to an VMAlertmanager pod. | [][v1.Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#container-v1-core) | false |
 | initContainers | InitContainers allows adding initContainers to the pod definition. Those can be used to e.g. fetch secrets for injection into the VMAlertmanager configuration from external sources. Any errors during the execution of an initContainer will lead to a restart of the Pod. More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/ Using initContainers for any use case other then secret fetching is entirely outside the scope of what the maintainers will support and by doing so, you accept that this behaviour may break at any time without notice. | [][v1.Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#container-v1-core) | false |
@@ -247,6 +251,21 @@ VMAlertmanagerStatus is the most recent observed status of the VMAlertmanager cl
 | updatedReplicas | UpdatedReplicas Total number of non-terminated pods targeted by this VMAlertmanager cluster that have the desired version spec. | int32 | true |
 | availableReplicas | AvailableReplicas Total number of available pods (ready for at least minReadySeconds) targeted by this VMAlertmanager cluster. | int32 | true |
 | unavailableReplicas | UnavailableReplicas Total number of unavailable pods targeted by this VMAlertmanager cluster. | int32 | true |
+
+[Back to TOC](#table-of-contents)
+
+## DiscordConfig
+
+
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| send_resolved | SendResolved controls notify about resolved alerts. | *bool | false |
+| webhook_url | The discord webhook URL one of `urlSecret` and `url` must be defined. | *string | false |
+| webhook_url_secret | URLSecret defines secret name and key at the CRD namespace. It must contain the webhook URL. one of `urlSecret` and `url` must be defined. | *[v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#secretkeyselector-v1-core) | false |
+| title | The message title template | string | false |
+| message | The message body template | string | false |
+| http_config | HTTP client configuration. | *[HTTPConfig](#httpconfig) | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -319,6 +338,21 @@ LinkConfig is used to attach text links to the incident. See https://developer.p
 | ----- | ----------- | ------ | -------- |
 | href |  | string | true |
 | text |  | string | false |
+
+[Back to TOC](#table-of-contents)
+
+## MSTeamsConfig
+
+
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| send_resolved | SendResolved controls notify about resolved alerts. | *bool | false |
+| webhook_url | The incoming webhook URL one of `urlSecret` and `url` must be defined. | *string | false |
+| webhook_url_secret | URLSecret defines secret name and key at the CRD namespace. It must contain the webhook URL. one of `urlSecret` and `url` must be defined. | *[v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#secretkeyselector-v1-core) | false |
+| title | The title of the teams notification. | string | false |
+| text | The text body of the teams notification. | string | false |
+| http_config | HTTP client configuration. | *[HTTPConfig](#httpconfig) | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -432,6 +466,10 @@ Receiver defines one or more notification integrations.
 | victorops_configs | VictorOpsConfigs defines victor ops notification configurations. | [][VictorOpsConfig](#victoropsconfig) | false |
 | wechat_configs | WeChatConfigs defines wechat notification configurations. | [][WeChatConfig](#wechatconfig) | false |
 | telegram_configs |  | [][TelegramConfig](#telegramconfig) | false |
+| msteams_configs |  | [][MSTeamsConfig](#msteamsconfig) | false |
+| discord_configs |  | [][DiscordConfig](#discordconfig) | false |
+| sns_configs |  | [][SnsConfig](#snsconfig) | false |
+| webex_configs |  | [][WebexConfig](#webexconfig) | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -451,6 +489,21 @@ Route defines a node in the routing tree.
 | routes | Child routes. https://prometheus.io/docs/alerting/latest/configuration/#route | []apiextensionsv1.JSON | false |
 | mute_time_intervals | MuteTimeIntervals for alerts | []string | false |
 | active_time_intervals | ActiveTimeIntervals Times when the route should be active These must match the name at time_intervals | []string | false |
+
+[Back to TOC](#table-of-contents)
+
+## Sigv4Config
+
+
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| region | AWS region, if blank the region from the default credentials chain is used | string | false |
+| access_key | The AWS API keys. Both access_key and secret_key must be supplied or both must be blank. If blank the environment variables `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` are used. | string | true |
+| access_key_selector | secret key selector to get the keys from a Kubernetes Secret | *[v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#secretkeyselector-v1-core) | true |
+| secret_key_selector | secret key selector to get the keys from a Kubernetes Secret | *[v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#secretkeyselector-v1-core) | false |
+| profile | Named AWS profile used to authenticate | string | false |
+| role_arn | AWS Role ARN, an alternative to using AWS API keys | string | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -523,6 +576,25 @@ SlackField configures a single Slack field that is sent with each notification. 
 | title |  | string | true |
 | value |  | string | true |
 | short |  | *bool | false |
+
+[Back to TOC](#table-of-contents)
+
+## SnsConfig
+
+
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| send_resolved | SendResolved controls notify about resolved alerts. | *bool | false |
+| api_url | The api URL | string | false |
+| sigv4 | Configure the AWS Signature Verification 4 signing process | *[Sigv4Config](#sigv4config) | false |
+| topic_arn | SNS topic ARN, either specify this, phone_number or target_arn | string | false |
+| subject | The subject line if message is delivered to an email endpoint. | string | false |
+| phone_number | Phone number if message is delivered via SMS Specify this, topic_arn or target_arn | string | false |
+| target_arn | Mobile platform endpoint ARN if message is delivered via mobile notifications Specify this, topic_arn or phone_number | string | false |
+| message | The message content of the SNS notification. | string | false |
+| attributes | SNS message attributes | map[string]string | false |
+| http_config | HTTP client configuration. | *[HTTPConfig](#httpconfig) | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -655,6 +727,20 @@ WeChatConfig configures notifications via WeChat. See https://prometheus.io/docs
 
 [Back to TOC](#table-of-contents)
 
+## WebexConfig
+
+
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| send_resolved | SendResolved controls notify about resolved alerts. | *bool | false |
+| api_url | The Webex Teams API URL, i.e. https://webexapis.com/v1/messages | *string | false |
+| room_id | The ID of the Webex Teams room where to send the messages | string | false |
+| message | The message body template | string | false |
+| http_config | HTTP client configuration. You must use this configuration to supply the bot token as part of the HTTP `Authorization` header. | *[HTTPConfig](#httpconfig) | false |
+
+[Back to TOC](#table-of-contents)
+
 ## WebhookConfig
 
 WebhookConfig configures notifications via a generic receiver supporting the webhook payload. See https://prometheus.io/docs/alerting/latest/configuration/#webhook_config
@@ -754,7 +840,6 @@ VMAgentSpec defines the desired state of VMAgent
 | schedulerName | SchedulerName - defines kubernetes scheduler name | string | false |
 | runtimeClassName | RuntimeClassName - defines runtime class for kubernetes pod. https://kubernetes.io/docs/concepts/containers/runtime-class/ | *string | false |
 | host_aliases | HostAliases provides mapping between ip and hostnames, that would be propagated to pod, cannot be used with HostNetwork. | []v1.HostAlias | false |
-| podSecurityPolicyName | PodSecurityPolicyName - defines name for podSecurityPolicy in case of empty value, prefixedName will be used. | string | false |
 | containers | Containers property allows to inject additions sidecars or to patch existing containers. It can be useful for proxies, backup, etc. | [][v1.Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#container-v1-core) | false |
 | initContainers | InitContainers allows adding initContainers to the pod definition. Those can be used to e.g. fetch secrets for injection into the vmagent configuration from external sources. Any errors during the execution of an initContainer will lead to a restart of the Pod. More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/ Using initContainers for any use case other then secret fetching is entirely outside the scope of what the maintainers will support and by doing so, you accept that this behaviour may break at any time without notice. | [][v1.Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#container-v1-core) | false |
 | priorityClassName | PriorityClassName assigned to the Pods | string | false |
@@ -1149,7 +1234,6 @@ VMAlertSpec defines the desired state of VMAlert
 | serviceAccountName | ServiceAccountName is the name of the ServiceAccount to use to run the VMAlert Pods. | string | false |
 | schedulerName | SchedulerName - defines kubernetes scheduler name | string | false |
 | runtimeClassName | RuntimeClassName - defines runtime class for kubernetes pod. https://kubernetes.io/docs/concepts/containers/runtime-class/ | *string | false |
-| podSecurityPolicyName | PodSecurityPolicyName - defines name for podSecurityPolicy in case of empty value, prefixedName will be used. | string | false |
 | containers | Containers property allows to inject additions sidecars or to patch existing containers. It can be useful for proxies, backup, etc. | [][v1.Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#container-v1-core) | false |
 | initContainers | InitContainers allows adding initContainers to the pod definition. Those can be used to e.g. fetch secrets for injection into the VMAlert configuration from external sources. Any errors during the execution of an initContainer will lead to a restart of the Pod. More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/ Using initContainers for any use case other then secret fetching is entirely outside the scope of what the maintainers will support and by doing so, you accept that this behaviour may break at any time without notice. | [][v1.Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#container-v1-core) | false |
 | priorityClassName | Priority class assigned to the Pods | string | false |
@@ -1252,7 +1336,6 @@ VMSingleSpec defines the desired state of VMSingle
 | serviceAccountName | ServiceAccountName is the name of the ServiceAccount to use to run the VMSingle Pods. | string | false |
 | schedulerName | SchedulerName - defines kubernetes scheduler name | string | false |
 | runtimeClassName | RuntimeClassName - defines runtime class for kubernetes pod. https://kubernetes.io/docs/concepts/containers/runtime-class/ | *string | false |
-| podSecurityPolicyName | PodSecurityPolicyName - defines name for podSecurityPolicy in case of empty value, prefixedName will be used. | string | false |
 | hostAliases | HostAliases provides mapping for ip and hostname, that would be propagated to pod, cannot be used with HostNetwork. | []v1.HostAlias | false |
 | containers | Containers property allows to inject additions sidecars or to patch existing containers. It can be useful for proxies, backup, etc. | [][v1.Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#container-v1-core) | false |
 | initContainers | InitContainers allows adding initContainers to the pod definition. Those can be used to e.g. fetch secrets for injection into the vmSingle configuration from external sources. Any errors during the execution of an initContainer will lead to a restart of the Pod. More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/ Using initContainers for any use case other then secret fetching is entirely outside the scope of what the maintainers will support and by doing so, you accept that this behaviour may break at any time without notice. | [][v1.Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#container-v1-core) | false |
@@ -1752,7 +1835,6 @@ VMClusterSpec defines the desired state of VMCluster
 | ----- | ----------- | ------ | -------- |
 | retentionPeriod | RetentionPeriod for the stored metrics Note VictoriaMetrics has data/ and indexdb/ folders metrics from data/ removed eventually as soon as partition leaves retention period reverse index data at indexdb rotates once at the half of configured retention period https://docs.victoriametrics.com/Single-server-VictoriaMetrics.html#retention | string | true |
 | replicationFactor | ReplicationFactor defines how many copies of data make among distinct storage nodes | *int32 | false |
-| podSecurityPolicyName | PodSecurityPolicyName - defines name for podSecurityPolicy in case of empty value, prefixedName will be used. | string | false |
 | serviceAccountName | ServiceAccountName is the name of the ServiceAccount to use to run the VMSelect, VMStorage and VMInsert Pods. | string | false |
 | clusterVersion | ClusterVersion defines default images tag for all components. it can be overwritten with component specific image.tag value. | string | false |
 | imagePullSecrets | ImagePullSecrets An optional list of references to secrets in the same namespace to use for pulling images from registries see https://kubernetes.io/docs/concepts/containers/images/#referring-to-an-imagepullsecrets-on-a-pod | [][v1.LocalObjectReference](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#localobjectreference-v1-core) | false |
@@ -2044,6 +2126,7 @@ TargetRef describes target for user traffic forwarding. one of target types can 
 | crd | CRD describes exist operator&#39;s CRD object, operator generates access url based on CRD params. | *[CRDRef](#crdref) | false |
 | static | Static - user defined url for traffic forward, for instance http://vmsingle:8429 | *[StaticRef](#staticref) | false |
 | paths | Paths - matched path to route. | []string | false |
+| hosts |  | []string | false |
 | target_path_suffix | QueryParams []string `json:\&#34;queryParams,omitempty\&#34;` TargetPathSuffix allows to add some suffix to the target path It allows to hide tenant configuration from user with crd as ref. it also may contain any url encoded params. | string | false |
 | headers | Headers represent additional http headers, that vmauth uses in form of [\&#34;header_key: header_value\&#34;] multiple values for header key: [\&#34;header_key: value1,value2\&#34;] it&#39;s available since 1.68.0 version of vmauth | []string | false |
 | response_headers | ResponseHeaders represent additional http headers, that vmauth adds for request response in form of [\&#34;header_key: header_value\&#34;] multiple values for header key: [\&#34;header_key: value1,value2\&#34;] it&#39;s available since 1.93.0 version of vmauth | []string | false |
@@ -2181,7 +2264,6 @@ VMAuthSpec defines the desired state of VMAuth
 | serviceAccountName | ServiceAccountName is the name of the ServiceAccount to use to run the VMAuth Pods. | string | false |
 | schedulerName | SchedulerName - defines kubernetes scheduler name | string | false |
 | runtimeClassName | RuntimeClassName - defines runtime class for kubernetes pod. https://kubernetes.io/docs/concepts/containers/runtime-class/ | *string | false |
-| podSecurityPolicyName | PodSecurityPolicyName - defines name for podSecurityPolicy in case of empty value, prefixedName will be used. | string | false |
 | hostAliases | HostAliases provides mapping for ip and hostname, that would be propagated to pod, cannot be used with HostNetwork. | []v1.HostAlias | false |
 | containers | Containers property allows to inject additions sidecars or to patch existing containers. It can be useful for proxies, backup, etc. | [][v1.Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#container-v1-core) | false |
 | initContainers | InitContainers allows adding initContainers to the pod definition. Those can be used to e.g. fetch secrets for injection into the vmSingle configuration from external sources. Any errors during the execution of an initContainer will lead to a restart of the Pod. More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/ Using initContainers for any use case other then secret fetching is entirely outside the scope of what the maintainers will support and by doing so, you accept that this behaviour may break at any time without notice. | [][v1.Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#container-v1-core) | false |
@@ -2221,6 +2303,12 @@ VMAuthUnauthorizedPath defines url_map for unauthorized access
 | src_paths | Paths src request paths | []string | false |
 | url_prefix | URLs defines url_prefix for dst routing | []string | false |
 | ip_filters | IPFilters defines filter for src ip address enterprise only | [VMUserIPFilters](#vmuseripfilters) | false |
+| src_hosts | SrcHosts is the list of regular expressions, which match the request hostname. | []string | false |
+| headers | Headers represent additional http headers, that vmauth uses in form of [\&#34;header_key: header_value\&#34;] multiple values for header key: [\&#34;header_key: value1,value2\&#34;] it&#39;s available since 1.68.0 version of vmauth | []string | false |
+| response_headers | ResponseHeaders represent additional http headers, that vmauth adds for request response in form of [\&#34;header_key: header_value\&#34;] multiple values for header key: [\&#34;header_key: value1,value2\&#34;] it&#39;s available since 1.93.0 version of vmauth | []string | false |
+| retry_status_codes | RetryStatusCodes defines http status codes in numeric format for request retries e.g. [429,503] | []int | false |
+| load_balancing_policy | LoadBalancingPolicy defines load balancing policy to use for backend urls. Supported policies: least_loaded, first_available. See https://docs.victoriametrics.com/vmauth.html#load-balancing for more details (default \&#34;least_loaded\&#34;) | *string | false |
+| drop_src_path_prefix_parts | DropSrcPathPrefixParts is the number of `/`-delimited request path prefix parts to drop before proxying the request to backend. See https://docs.victoriametrics.com/vmauth.html#dropping-request-path-prefix for more details. | *int | false |
 
 [Back to TOC](#table-of-contents)
 

@@ -62,12 +62,6 @@ func CreateOrUpdateAlertManager(ctx context.Context, cr *victoriametricsv1beta1.
 	if err := psp.CreateServiceAccountForCRD(ctx, cr, rclient); err != nil {
 		return fmt.Errorf("failed create service account: %w", err)
 	}
-	if c.PSPAutoCreateEnabled {
-		if err := psp.CreateOrUpdateServiceAccountWithPSP(ctx, cr, rclient); err != nil {
-			l.Error(err, "cannot create podsecuritypolicy")
-			return fmt.Errorf("cannot create podsecurity policy for alertmanager, err=%w", err)
-		}
-	}
 
 	if cr.Spec.PodDisruptionBudget != nil {
 		if err := CreateOrUpdatePodDisruptionBudget(ctx, rclient, cr, cr.Kind, cr.Spec.PodDisruptionBudget); err != nil {

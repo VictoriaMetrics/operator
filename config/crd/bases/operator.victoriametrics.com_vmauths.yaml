@@ -549,10 +549,6 @@ spec:
                       definition. Cannot be updated. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names'
                     type: string
                 type: object
-              podSecurityPolicyName:
-                description: PodSecurityPolicyName - defines name for podSecurityPolicy
-                  in case of empty value, prefixedName will be used.
-                type: string
               port:
                 description: Port listen port
                 type: string

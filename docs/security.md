@@ -43,39 +43,6 @@ VictoriaMetrics operator provides several security features, such as [PodSecurit
 
 > PodSecurityPolicy was [deprecated](https://kubernetes.io/docs/concepts/security/pod-security-policy/) in Kubernetes v1.21, and removed from Kubernetes in v1.25.
 
-If your Kubernetes version is under v1.25 and want to use PodSecurityPolicy, you can set env `VM_PSPAUTOCREATEENABLED: "true"` in operator, it will create serviceAccount for each cluster resource and binds default `PodSecurityPolicy` to it.
-
-Default psp:
-```yaml
-apiVersion: policy/v1beta1
-kind: PodSecurityPolicy
-metadata:
-  name: vmagent-example-vmagent
-spec:
-  allowPrivilegeEscalation: false
-  fsGroup:
-    rule: RunAsAny
-  hostNetwork: true
-  requiredDropCapabilities:
-  - ALL
-  runAsUser:
-    rule: RunAsAny
-  seLinux:
-    rule: RunAsAny
-  supplementalGroups:
-    rule: RunAsAny
-  volumes:
-  - persistentVolumeClaim
-  - secret
-  - emptyDir
-  - configMap
-  - projected
-  - downwardAPI
-  - nfs
-```
-
-User may also override default pod security policy with setting: `spec.podSecurityPolicyName: "psp-name"`.
-
 ## PodSecurityContext
 
 VictoriaMetrics operator will add default Security Context to managed pods and containers if env `EnableStrictSecurity: "true"` is set.

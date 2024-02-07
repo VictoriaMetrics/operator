@@ -70,12 +70,6 @@ func CreateOrUpdateVMAuth(ctx context.Context, cr *victoriametricsv1beta1.VMAuth
 	if err := psp.CreateServiceAccountForCRD(ctx, cr, rclient); err != nil {
 		return fmt.Errorf("failed create service account: %w", err)
 	}
-	if c.PSPAutoCreateEnabled {
-		if err := psp.CreateOrUpdateServiceAccountWithPSP(ctx, cr, rclient); err != nil {
-			l.Error(err, "cannot create podsecuritypolicy")
-			return fmt.Errorf("cannot create podsecurity policy for vmauth, err: %w", err)
-		}
-	}
 	if c.UseCustomConfigReloader {
 		if err := vmauth.CreateVMAuthSecretAccess(ctx, cr, rclient); err != nil {
 			return err

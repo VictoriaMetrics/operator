@@ -79,11 +79,6 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 	if err := psp.CreateServiceAccountForCRD(ctx, cr, rclient); err != nil {
 		return fmt.Errorf("failed create service account: %w", err)
 	}
-	if c.PSPAutoCreateEnabled {
-		if err := psp.CreateOrUpdateServiceAccountWithPSP(ctx, cr, rclient); err != nil {
-			return fmt.Errorf("cannot create podsecurity policy for vmagent, err: %w", err)
-		}
-	}
 	if cr.IsOwnsServiceAccount() {
 		if err := vmagent.CreateVMAgentK8sAPIAccess(ctx, cr, rclient, config.IsClusterWideAccessAllowed()); err != nil {
 			return fmt.Errorf("cannot create vmagent role and binding for it, err: %w", err)

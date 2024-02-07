@@ -16,7 +16,7 @@ aliases:
 
 ## Next release
 
-- TODO
+- Deprecate all the usage of [PodSecurityPolicy](https://kubernetes.io/docs/concepts/security/pod-security-policy/) in the code, including `podSecurityPolicyName` field in all the CRD. Since operator supports k8s version from v1.25. 
 
 <a name="v0.41.1"></a>
 ## [v0.41.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.41.1) - 1 Feb 2024

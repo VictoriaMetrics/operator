@@ -38,10 +38,6 @@ type VMClusterSpec struct {
 	// distinct storage nodes
 	// +optional
 	ReplicationFactor *int32 `json:"replicationFactor,omitempty"`
-	// PodSecurityPolicyName - defines name for podSecurityPolicy
-	// in case of empty value, prefixedName will be used.
-	// +optional
-	PodSecurityPolicyName string `json:"podSecurityPolicyName,omitempty"`
 
 	// ServiceAccountName is the name of the ServiceAccount to use to run the
 	// VMSelect, VMStorage and VMInsert Pods.
@@ -1066,13 +1062,6 @@ func (cr VMCluster) IsOwnsServiceAccount() bool {
 
 func (cr VMCluster) PrefixedName() string {
 	return fmt.Sprintf("vmcluster-%s", cr.Name)
-}
-
-func (cr VMCluster) GetPSPName() string {
-	if cr.Spec.PodSecurityPolicyName == "" {
-		return cr.PrefixedName()
-	}
-	return cr.Spec.PodSecurityPolicyName
 }
 
 func (cr VMCluster) SelectorLabels() map[string]string {

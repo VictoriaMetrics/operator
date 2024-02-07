@@ -109,10 +109,6 @@ spec:
                     type: object
                     x-kubernetes-map-type: atomic
                 type: object
-              podSecurityPolicyName:
-                description: PodSecurityPolicyName - defines name for podSecurityPolicy
-                  in case of empty value, prefixedName will be used.
-                type: string
               replicationFactor:
                 description: ReplicationFactor defines how many copies of data make
                   among distinct storage nodes

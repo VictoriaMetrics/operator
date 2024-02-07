@@ -1359,10 +1359,6 @@ spec:
                     type: object
                 type: object
                 x-kubernetes-map-type: atomic
-              podSecurityPolicyName:
-                description: PodSecurityPolicyName - defines name for podSecurityPolicy
-                  in case of empty value, prefixedName will be used.
-                type: string
               port:
                 description: Port listen address
                 type: string

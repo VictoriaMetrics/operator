@@ -174,11 +174,6 @@ func CreateOrUpdateVMAlert(ctx context.Context, cr *victoriametricsv1beta1.VMAle
 	if err := psp.CreateServiceAccountForCRD(ctx, cr, rclient); err != nil {
 		return fmt.Errorf("failed create service account: %w", err)
 	}
-	if c.PSPAutoCreateEnabled {
-		if err := psp.CreateOrUpdateServiceAccountWithPSP(ctx, cr, rclient); err != nil {
-			return fmt.Errorf("cannot create podsecurity policy for vmalert, err=%w", err)
-		}
-	}
 	remoteSecrets, err := loadVMAlertRemoteSecrets(ctx, rclient, cr)
 	if err != nil {
 		return err

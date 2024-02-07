@@ -89,11 +89,6 @@ func CreateOrUpdateVMSingle(ctx context.Context, cr *victoriametricsv1beta1.VMSi
 	if err := psp.CreateServiceAccountForCRD(ctx, cr, rclient); err != nil {
 		return fmt.Errorf("failed create service account: %w", err)
 	}
-	if c.PSPAutoCreateEnabled {
-		if err := psp.CreateOrUpdateServiceAccountWithPSP(ctx, cr, rclient); err != nil {
-			return fmt.Errorf("cannot create podsecurity policy for vmsingle, err=%w", err)
-		}
-	}
 	newDeploy, err := newDeployForVMSingle(cr, c)
 	if err != nil {
 		return fmt.Errorf("cannot generate new deploy for vmsingle: %w", err)

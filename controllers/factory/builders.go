@@ -403,24 +403,6 @@ func buildProbe(container v1.Container, cr probeCRD) v1.Container {
 }
 
 func buildHPASpec(targetRef v2beta2.CrossVersionObjectReference, spec *victoriametricsv1beta1.EmbeddedHPA, or []metav1.OwnerReference, lbls map[string]string, namespace string) client.Object {
-	if k8stools.IsHPAV2BetaSupported() {
-		return &v2beta2.HorizontalPodAutoscaler{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:            targetRef.Name,
-				Namespace:       namespace,
-				Labels:          lbls,
-				OwnerReferences: or,
-			},
-			Spec: v2beta2.HorizontalPodAutoscalerSpec{
-				MaxReplicas:    spec.MaxReplicas,
-				MinReplicas:    spec.MinReplicas,
-				ScaleTargetRef: targetRef,
-				Metrics:        spec.Metrics,
-				Behavior:       spec.Behaviour,
-			},
-		}
-	}
-
 	return &v2.HorizontalPodAutoscaler{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            targetRef.Name,

@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"k8s.io/api/autoscaling/v2"
-	"k8s.io/api/autoscaling/v2beta2"
 	"k8s.io/apimachinery/pkg/version"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -59,16 +58,6 @@ func IsPDBV1APISupported() bool {
 	return false
 }
 
-// IsHPAV2BetaSupported checks if new
-// Beta deprecated since 1.26
-// https://kubernetes.io/blog/2021/12/07/kubernetes-1-23-release-announcement/#horizontalpodautoscaler-v2-graduates-to-ga
-func IsHPAV2BetaSupported() bool {
-	if ServerMajorVersion == 1 && ServerMinorVersion < 26 {
-		return true
-	}
-	return false
-}
-
 // IsFSGroupChangePolicySupported checks if `fsGroupChangePolicy` is supported,
 // Supported since 1.20
 // https://kubernetes.io/blog/2020/12/14/kubernetes-release-1.20-fsgroupchangepolicy-fsgrouppolicy/#allow-users-to-skip-recursive-permission-changes-on-mount
@@ -79,12 +68,9 @@ func IsFSGroupChangePolicySupported() bool {
 	return false
 }
 
-// NewHPAEmptyObject returns HorizontalPodAutoscaler object for given kubernetes version
+// NewHPAEmptyObject returns HorizontalPodAutoscaler object
 func NewHPAEmptyObject(opts ...func(obj client.Object)) client.Object {
-	var hpa client.Object = &v2beta2.HorizontalPodAutoscaler{}
-	if !IsHPAV2BetaSupported() {
-		hpa = &v2.HorizontalPodAutoscaler{}
-	}
+	var hpa client.Object = &v2.HorizontalPodAutoscaler{}
 	for _, opt := range opts {
 		opt(hpa)
 	}

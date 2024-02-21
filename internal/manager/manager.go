@@ -73,7 +73,6 @@ func init() {
 	utilruntime.Must(metav1.AddToScheme(scheme))
 
 	// +kubebuilder:scaffold:scheme
-
 }
 
 func RunManager(ctx context.Context) error {
@@ -128,9 +127,11 @@ func RunManager(ctx context.Context) error {
 		Port:             9443,
 		LeaderElection:   *enableLeaderElection,
 		LeaderElectionID: "57410f0d.victoriametrics.com",
-		ClientDisableCacheFor: []client.Object{&v1.Secret{}, &v1.ConfigMap{}, &v1.Pod{}, &v12.Deployment{},
+		ClientDisableCacheFor: []client.Object{
+			&v1.Secret{}, &v1.ConfigMap{}, &v1.Pod{}, &v12.Deployment{},
 			&v12.StatefulSet{},
-			&v1beta1.PodSecurityPolicy{}, &v1beta1.PodDisruptionBudget{}, &v1.Namespace{}},
+			&v1beta1.PodSecurityPolicy{}, &v1beta1.PodDisruptionBudget{}, &v1.Namespace{},
+		},
 		Namespace: config.MustGetWatchNamespace(),
 	})
 	if err != nil {
@@ -341,7 +342,7 @@ func RunManager(ctx context.Context) error {
 		return err
 	}
 	if len(*listenAddr) > 0 {
-		go httpserver.Serve(*listenAddr, false, requestHandler)
+		go httpserver.Serve([]string{*listenAddr}, nil, requestHandler)
 	}
 
 	setupLog.Info("starting manager")
@@ -350,14 +351,13 @@ func RunManager(ctx context.Context) error {
 		return err
 	}
 	if len(*listenAddr) > 0 {
-		if err := httpserver.Stop(*listenAddr); err != nil {
+		if err := httpserver.Stop([]string{*listenAddr}); err != nil {
 			setupLog.Error(err, "failed to gracefully stop HTTP server")
 		}
 	}
 
 	setupLog.Info("gracefully stopped")
 	return nil
-
 }
 
 func addWebhooks(mgr ctrl.Manager) error {
@@ -386,7 +386,6 @@ func addWebhooks(mgr ctrl.Manager) error {
 		&victoriametricsv1beta1.VMUser{},
 		&victoriametricsv1beta1.VMRule{},
 	})
-
 }
 
 // no-op

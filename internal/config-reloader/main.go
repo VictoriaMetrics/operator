@@ -81,7 +81,7 @@ func main() {
 		logger.Fatalf("cannot start dir watcher: %s", err)
 	}
 	dw.startWatch(ctx, updatesChan)
-	go httpserver.Serve(*listenAddr, false, requestHandler)
+	go httpserver.Serve([]string{*listenAddr}, nil, requestHandler)
 	procutil.WaitForSigterm()
 	logger.Infof("received stop signal, stopping config-reloader")
 	cancel()

@@ -404,9 +404,9 @@ deploy-kind: build-load-kind
 
 # generate client set
 get-client-generator:
-	which client-gen || GO111MODULE=on go install k8s.io/code-generator/cmd/client-gen@v0.24.0
-	which lister-gen || GO111MODULE=on go install k8s.io/code-generator/cmd/lister-gen@v0.24.0
-	which informer-gen || GO111MODULE=on go install k8s.io/code-generator/cmd/informer-gen@v0.24.0
+	which client-gen || GO111MODULE=on go install k8s.io/code-generator/cmd/client-gen@v0.25.6
+	which lister-gen || GO111MODULE=on go install k8s.io/code-generator/cmd/lister-gen@v0.25.6
+	which informer-gen || GO111MODULE=on go install k8s.io/code-generator/cmd/informer-gen@v0.25.6
 
 
 generate-client: get-client-generator

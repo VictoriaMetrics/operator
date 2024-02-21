@@ -266,8 +266,7 @@ type Receiver struct {
 	// +optional
 	SNSConfigs []SnsConfig `json:"sns_configs,omitempty"`
 	// +optional
-	WebexConfigs []WebexConfig `json:"webex_configs,omitempty"`
-}
+	WebexConfigs []WebexConfig `json:"webex_configs,omitempty"`}
 
 type TelegramConfig struct {
 	// SendResolved controls notify about resolved alerts.

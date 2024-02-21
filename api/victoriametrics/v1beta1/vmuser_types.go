@@ -114,6 +114,7 @@ type TargetRef struct {
 	// Paths - matched path to route.
 	// +optional
 	Paths []string `json:"paths,omitempty"`
+	Hosts []string `json:"hosts,omitempty"`
 	// QueryParams []string `json:"queryParams,omitempty"`
 	// TargetPathSuffix allows to add some suffix to the target path
 	// It allows to hide tenant configuration from user with crd as ref.
@@ -191,8 +192,7 @@ type StaticRef struct {
 }
 
 // VMUserStatus defines the observed state of VMUser
-type VMUserStatus struct {
-}
+type VMUserStatus struct{}
 
 // VMUser is the Schema for the vmusers API
 // +kubebuilder:object:root=true

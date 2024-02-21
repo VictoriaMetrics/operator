@@ -1,7 +1,7 @@
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
-github.com/VictoriaMetrics/VictoriaMetrics v1.98.0 h1:sNXbKvyqtJv++eaSVcMtz9PqmS+TxUbtIKtWDCvYoHI=
-github.com/VictoriaMetrics/VictoriaMetrics v1.98.0/go.mod h1:p68dQRIM5KN+m3aYMieLjB5TkXeTihV2JuRtOQvOx0E=
+github.com/VictoriaMetrics/VictoriaMetrics v1.97.1 h1:XFrZ0NwUowl10qvU+K8xRsxDfFNjb+z4x3I/31YEx98=
+github.com/VictoriaMetrics/VictoriaMetrics v1.97.1/go.mod h1:32Z6+zj/6QnGR4vcMbWUhRDz75n+JnaifW999Nvl1to=
 github.com/VictoriaMetrics/easyproto v0.1.4 h1:r8cNvo8o6sR4QShBXQd1bKw/VVLSQma/V2KhTBPf+Sc=
 github.com/VictoriaMetrics/metrics v1.24.0/go.mod h1:eFT25kvsTidQFHb6U0oa0rTrDRdz4xTYjpL8+UPohys=
 github.com/VictoriaMetrics/metrics v1.31.0 h1:X6+nBvAP0UB+GjR0Ht9hhQ3pjL1AN4b8dt9zFfzTsUo=

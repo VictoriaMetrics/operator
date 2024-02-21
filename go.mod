@@ -3,7 +3,7 @@ module github.com/VictoriaMetrics/operator
 go 1.20
 
 require (
-	github.com/VictoriaMetrics/VictoriaMetrics v1.98.0
+	github.com/VictoriaMetrics/VictoriaMetrics v1.97.1
 	github.com/VictoriaMetrics/metricsql v0.72.1
 	github.com/VictoriaMetrics/operator/api v0.0.0-20230626142506-8950675e8bb1
 	github.com/fsnotify/fsnotify v1.7.0

@@ -3,7 +3,7 @@ module github.com/VictoriaMetrics/operator/api
 go 1.20
 
 require (
-	github.com/VictoriaMetrics/VictoriaMetrics v1.98.0
+	github.com/VictoriaMetrics/VictoriaMetrics v1.97.1
 	github.com/stretchr/testify v1.8.4
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.25.6

@@ -342,7 +342,7 @@ func RunManager(ctx context.Context) error {
 		return err
 	}
 	if len(*listenAddr) > 0 {
-		go httpserver.Serve([]string{*listenAddr}, nil, requestHandler)
+		go httpserver.Serve(*listenAddr, false, requestHandler)
 	}
 
 	setupLog.Info("starting manager")
@@ -351,7 +351,7 @@ func RunManager(ctx context.Context) error {
 		return err
 	}
 	if len(*listenAddr) > 0 {
-		if err := httpserver.Stop([]string{*listenAddr}); err != nil {
+		if err := httpserver.Stop(*listenAddr); err != nil {
 			setupLog.Error(err, "failed to gracefully stop HTTP server")
 		}
 	}

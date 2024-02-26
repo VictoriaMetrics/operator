@@ -22,6 +22,7 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/procutil"
 	"github.com/pires/go-proxyproto"
+	_ "go.uber.org/automaxprocs"
 )
 
 var (

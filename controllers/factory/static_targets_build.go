@@ -49,6 +49,10 @@ func generateStaticScrapeConfig(
 		cfg = append(cfg, yaml.MapItem{Key: "scrape_interval", Value: scrapeInterval})
 	}
 
+	if len(ep.ScrapeProtocols) != 0 {
+		cfg = append(cfg, yaml.MapItem{Key: "scrape_protocols", Value: ep.ScrapeProtocols})
+	}
+
 	if ep.ScrapeTimeout != "" {
 		cfg = append(cfg, yaml.MapItem{Key: "scrape_timeout", Value: ep.ScrapeTimeout})
 	}

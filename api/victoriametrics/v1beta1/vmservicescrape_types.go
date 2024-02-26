@@ -133,9 +133,12 @@ type Endpoint struct {
 	// one of scrape_interval or interval can be used
 	// +optional
 	ScrapeInterval string `json:"scrape_interval,omitempty"`
-	// Timeout after which the scrape is ended
+	// ScrapeTimeout after which the scrape is ended
 	// +optional
 	ScrapeTimeout string `json:"scrapeTimeout,omitempty"`
+	// ScrapeProtocols defines Prometheus scrape protocol.
+	// +optional
+	ScrapeProtocols []string `json:"scrape_protocols,omitempty"`
 	// SampleLimit defines per-endpoint limit on number of scraped samples that will be accepted.
 	// +optional
 	SampleLimit uint64 `json:"sampleLimit,omitempty"`

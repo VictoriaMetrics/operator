@@ -38,9 +38,12 @@ type VMNodeScrapeSpec struct {
 	// one of scrape_interval or interval can be used
 	// +optional
 	ScrapeInterval string `json:"scrape_interval,omitempty"`
-	// Timeout after which the scrape is ended
+	// ScrapeTimeout after which the scrape is ended
 	// +optional
 	ScrapeTimeout string `json:"scrapeTimeout,omitempty"`
+	// ScrapeProtocols defines Prometheus scrape protocol.
+	// +optional
+	ScrapeProtocols []string `json:"scrape_protocols,omitempty"`
 	// OAuth2 defines auth configuration
 	// +optional
 	OAuth2 *OAuth2 `json:"oauth2,omitempty"`

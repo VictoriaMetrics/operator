@@ -26,6 +26,7 @@ CRD_PRESERVE=x-kubernetes-preserve-unknown-fields true
 # Default bundle image tag
 BUNDLE_IMG ?= controller-bundle:$(VERSION)
 ALPINE_IMAGE=alpine:3.19.0
+CONTROLLER_GEN_VERSION=v0.14.0
 CHANNEL=beta
 DEFAULT_CHANNEL=beta
 BUNDLE_CHANNELS := --channels=$(CHANNEL)
@@ -289,14 +290,15 @@ generate: controller-gen
 
 # find or download controller-gen
 # download controller-gen if necessary
+
 controller-gen:
-ifeq (, $(shell which controller-gen))
+ifneq (Version: $(CONTROLLER_GEN_VERSION), $(shell controller-gen --version))
 	@{ \
 	set -e ;\
 	CONTROLLER_GEN_TMP_DIR=$$(mktemp -d) ;\
 	cd $$CONTROLLER_GEN_TMP_DIR ;\
 	go mod init tmp ;\
-	go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.12.1 ;\
+	go install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_GEN_VERSION) ;\
 	rm -rf $$CONTROLLER_GEN_TMP_DIR ;\
 	}
 CONTROLLER_GEN=$(GOBIN)/controller-gen

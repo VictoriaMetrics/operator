@@ -90,12 +90,15 @@ type PodMetricsEndpoint struct {
 	// one of scrape_interval or interval can be used
 	// +optional
 	ScrapeInterval string `json:"scrape_interval,omitempty"`
-	// Timeout after which the scrape is ended
+	// ScrapeTimeout after which the scrape is ended
 	// +optional
 	ScrapeTimeout string `json:"scrapeTimeout,omitempty"`
 	// SampleLimit defines per-podEndpoint limit on number of scraped samples that will be accepted.
 	// +optional
 	SampleLimit uint64 `json:"sampleLimit,omitempty"`
+	// ScrapeProtocols defines Prometheus scrape protocol.
+	// +optional
+	ScrapeProtocols []string `json:"scrape_protocols,omitempty"`
 	// HonorLabels chooses the metric's labels on collisions with target labels.
 	// +optional
 	HonorLabels bool `json:"honorLabels,omitempty"`

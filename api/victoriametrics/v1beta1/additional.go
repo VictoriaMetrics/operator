@@ -18,14 +18,19 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+type UpdateStatus string
+
 const (
-	vmPathPrefixFlagName = "http.pathPrefix"
-	healthPath           = "/health"
-	metricPath           = "/metrics"
-	reloadPath           = "/-/reload"
-	reloadAuthKey        = "reloadAuthKey"
-	snapshotCreate       = "/snapshot/create"
-	snapshotDelete       = "/snapshot/delete"
+	UpdateStatusExpanding   UpdateStatus = "expanding"
+	UpdateStatusOperational UpdateStatus = "operational"
+	UpdateStatusFailed      UpdateStatus = "failed"
+	vmPathPrefixFlagName                 = "http.pathPrefix"
+	healthPath                           = "/health"
+	metricPath                           = "/metrics"
+	reloadPath                           = "/-/reload"
+	reloadAuthKey                        = "reloadAuthKey"
+	snapshotCreate                       = "/snapshot/create"
+	snapshotDelete                       = "/snapshot/delete"
 	// FinalizerName name of our finalizer.
 	FinalizerName            = "apps.victoriametrics.com/finalizer"
 	SkipValidationAnnotation = "operator.victoriametrics.com/skip-validation"

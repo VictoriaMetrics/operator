@@ -39,14 +39,9 @@ const (
 global:
   resolve_timeout: 5m
 route:
-  group_wait: 30s
-  group_interval: 5m
-  repeat_interval: 12h
-  receiver: 'webhook'
+  receiver: 'black'
 receivers:
-- name: 'webhook'
-  webhook_configs:
-  - url: 'http://localhost:30500/'
+- name: blackhole
 `
 )
 

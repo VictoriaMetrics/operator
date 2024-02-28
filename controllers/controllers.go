@@ -1,12 +1,14 @@
 package controllers
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"strings"
 	"sync"
 	"time"
 
+	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/prometheus/client_golang/prometheus"
 	"k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -34,7 +36,8 @@ func getDefaultOptions() controller.Options {
 		defaultOptions = &controller.Options{
 			RateLimiter:             workqueue.NewItemExponentialFailureRateLimiter(2*time.Second, 2*time.Minute),
 			CacheSyncTimeout:        *cacheSyncTimeout,
-			MaxConcurrentReconciles: *maxConcurrency}
+			MaxConcurrentReconciles: *maxConcurrency,
+		}
 	})
 	return *defaultOptions
 }
@@ -93,4 +96,54 @@ func handleGetError(reqObject ctrl.Request, controller string, err error) (ctrl.
 		return ctrl.Result{}, nil
 	}
 	return ctrl.Result{}, err
+}
+
+type objectWithStatusTrack interface {
+	client.Object
+	HasSpecChanges() (bool, error)
+	LastAppliedSpecAsPatch() (client.Patch, error)
+	SetUpdateStatusTo(ctx context.Context, r client.Client, status victoriametricsv1beta1.UpdateStatus, maybeReason error) error
+}
+
+func reconcileAndTrackStatus(ctx context.Context, c client.Client, object objectWithStatusTrack, cb func() (ctrl.Result, error)) (result ctrl.Result, resultErr error) {
+	specChanged, err := object.HasSpecChanges()
+	if err != nil {
+		resultErr = fmt.Errorf("cannot parse exist spec changes")
+		return
+	}
+	if specChanged {
+		if err := object.SetUpdateStatusTo(ctx, c, victoriametricsv1beta1.UpdateStatusExpanding, nil); err != nil {
+			resultErr = fmt.Errorf("failed to update object status: %w", err)
+			return
+		}
+	}
+
+	result, err = cb()
+	if err != nil {
+		if updateErr := object.SetUpdateStatusTo(ctx, c, victoriametricsv1beta1.UpdateStatusFailed, err); updateErr != nil {
+			resultErr = fmt.Errorf("failed to update object status: %q, origin err: %w", updateErr, err)
+			return
+		}
+
+		return result, fmt.Errorf("callback error: %w", err)
+	}
+
+	if err := object.SetUpdateStatusTo(ctx, c, victoriametricsv1beta1.UpdateStatusOperational, nil); err != nil {
+		resultErr = fmt.Errorf("failed to update object status: %w", err)
+		return
+	}
+	if specChanged {
+		specPatch, err := object.LastAppliedSpecAsPatch()
+		if err != nil {
+			resultErr = fmt.Errorf("cannot parse last applied spec for cluster: %w", err)
+			return
+		}
+		// use patch instead of update, only 1 field must be changed.
+		if err := c.Patch(ctx, object, specPatch); err != nil {
+			resultErr = fmt.Errorf("cannot update cluster with last applied spec: %w", err)
+			return
+		}
+	}
+
+	return result, nil
 }

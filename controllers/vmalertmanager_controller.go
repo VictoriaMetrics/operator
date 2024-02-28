@@ -18,17 +18,17 @@ package controllers
 
 import (
 	"context"
-	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
-	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sync"
 
 	"github.com/VictoriaMetrics/operator/controllers/factory"
+	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
@@ -71,38 +71,44 @@ func (r *VMAlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		}
 		return
 	}
-
 	if instance.Spec.ParsingError != "" {
 		return handleParsingError(instance.Spec.ParsingError, instance)
+	}
+	// add an optimisation for unmmanaged alertmanagers
+	if instance.IsUnmanaged() {
+		alertmanagerLock.Lock()
+		defer alertmanagerLock.Unlock()
 	}
 
 	if err := finalize.AddFinalizer(ctx, r.Client, instance); err != nil {
 		return result, err
 	}
-
-	alertmanagerLock.Lock()
-	defer alertmanagerLock.Unlock()
-
-	if err := factory.CreateOrUpdateAlertManager(ctx, instance, r, r.BaseConf); err != nil {
-		return result, err
-	}
-	service, err := factory.CreateOrUpdateAlertManagerService(ctx, instance, r)
-	if err != nil {
-		return result, err
-	}
-
-	if !r.BaseConf.DisableSelfServiceScrapeCreation {
-		err := factory.CreateVMServiceScrapeFromService(ctx, r, service, instance.Spec.ServiceScrapeSpec, instance.MetricPath(), "http")
-		if err != nil {
-			reqLogger.Error(err, "cannot create serviceScrape for vmalertmanager")
+	result, err = reconcileAndTrackStatus(ctx, r.Client, instance, func() (ctrl.Result, error) {
+		if err := factory.CreateOrUpdateAlertManager(ctx, instance, r, r.BaseConf); err != nil {
+			return result, err
 		}
+		service, err := factory.CreateOrUpdateAlertManagerService(ctx, instance, r)
+		if err != nil {
+			return result, err
+		}
+
+		if !r.BaseConf.DisableSelfServiceScrapeCreation {
+			err := factory.CreateVMServiceScrapeFromService(ctx, r, service, instance.Spec.ServiceScrapeSpec, instance.MetricPath(), "http")
+			if err != nil {
+				reqLogger.Error(err, "cannot create serviceScrape for vmalertmanager")
+			}
+		}
+		return result, nil
+	})
+	if err != nil {
+		return
 	}
 
 	// resync configuration periodically
 	if r.BaseConf.ForceResyncInterval > 0 {
 		result.RequeueAfter = r.BaseConf.ForceResyncInterval
 	}
-	return result, nil
+	return
 }
 
 // SetupWithManager general setup method

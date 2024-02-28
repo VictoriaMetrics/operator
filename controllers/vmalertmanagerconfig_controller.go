@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+
 	"github.com/VictoriaMetrics/operator/controllers/factory/limiter"
 
 	"github.com/VictoriaMetrics/operator/controllers/factory"
@@ -30,9 +31,7 @@ import (
 	operatorv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 )
 
-var (
-	vmaConfigRateLimiter = limiter.NewRateLimiter("vmalertmanager", 5)
-)
+var vmaConfigRateLimiter = limiter.NewRateLimiter("vmalertmanager", 5)
 
 // VMAlertmanagerConfigReconciler reconciles a VMAlertmanagerConfig object
 type VMAlertmanagerConfigReconciler struct {
@@ -75,9 +74,10 @@ func (r *VMAlertmanagerConfigReconciler) Reconcile(ctx context.Context, req ctrl
 	}
 	for _, item := range vmams.Items {
 		am := &item
-		if !am.DeletionTimestamp.IsZero() || am.Spec.ParsingError != "" {
+		if !am.DeletionTimestamp.IsZero() || am.Spec.ParsingError != "" || am.IsUnmanaged() {
 			continue
 		}
+
 		l := l.WithValues("alertmanager", am.Name)
 		ismatch, err := isSelectorsMatches(&instance, am, am.Spec.ConfigSelector)
 		if err != nil {

@@ -1037,6 +1037,50 @@ templates:
 			want:    ``,
 			wantErr: true,
 		},
+		{
+			name: "add template duplicates without path",
+			args: args{
+				config: []byte(`global:
+  resolve_timeout: 5m
+route:
+  receiver: webhook
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 12h
+receivers:
+- name: webhook
+  webhook_configs:
+  - url: http://localhost:30500/
+templates:
+- template1.tmpl
+- template2.tmpl
+- /etc/vm/templates/test/template3.tmpl
+`),
+				templates: []string{
+					"/etc/vm/templates/test/template1.tmpl",
+					"/etc/vm/templates/test/template2.tmpl",
+					"/etc/vm/templates/test/template0.tmpl",
+				},
+			},
+			want: `global:
+  resolve_timeout: 5m
+route:
+  receiver: webhook
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 12h
+receivers:
+- name: webhook
+  webhook_configs:
+  - url: http://localhost:30500/
+templates:
+- /etc/vm/templates/test/template1.tmpl
+- /etc/vm/templates/test/template2.tmpl
+- /etc/vm/templates/test/template3.tmpl
+- /etc/vm/templates/test/template0.tmpl
+`,
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

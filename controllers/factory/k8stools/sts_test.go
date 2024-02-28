@@ -285,6 +285,7 @@ func Test_performRollingUpdateOnSts(t *testing.T) {
 						Namespace: "default",
 						Labels:    map[string]string{"app": "vmselect"},
 					},
+					Spec: appsv1.StatefulSetSpec{Replicas: pointer.Int32(4)},
 					Status: appsv1.StatefulSetStatus{
 						CurrentRevision: "rev1",
 						UpdateRevision:  "rev2",

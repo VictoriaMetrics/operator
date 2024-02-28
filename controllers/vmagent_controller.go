@@ -19,6 +19,8 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"sync"
+
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
@@ -31,7 +33,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sync"
 )
 
 var (
@@ -69,12 +70,14 @@ type VMAgentReconciler struct {
 func (r *VMAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	reqLogger := r.Log.WithValues("vmagent", req.NamespacedName)
 
-	vmAgentSync.Lock()
-	defer vmAgentSync.Unlock()
 	// Fetch the VMAgent instance
 	instance := &victoriametricsv1beta1.VMAgent{}
 	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
 		return handleGetError(req, "vmagent", err)
+	}
+	if !instance.IsUnmanaged() {
+		vmAgentSync.Lock()
+		defer vmAgentSync.Unlock()
 	}
 
 	RegisterObjectStat(instance, "vmagent")
@@ -93,28 +96,31 @@ func (r *VMAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 		return result, err
 	}
 
-	if err := factory.CreateOrUpdateVMAgent(ctx, instance, r, r.BaseConf); err != nil {
-		return result, err
-	}
-
-	svc, err := factory.CreateOrUpdateVMAgentService(ctx, instance, r, r.BaseConf)
-	if err != nil {
-		return result, err
-	}
-
-	if !r.BaseConf.DisableSelfServiceScrapeCreation {
-		err := factory.CreateVMServiceScrapeFromService(ctx, r, svc, instance.Spec.ServiceScrapeSpec, instance.MetricPath(), "http")
-		if err != nil {
-			reqLogger.Error(err, "cannot create serviceScrape for vmagent")
+	result, err = reconcileAndTrackStatus(ctx, r.Client, instance, func() (ctrl.Result, error) {
+		if err := factory.CreateOrUpdateVMAgent(ctx, instance, r, r.BaseConf); err != nil {
+			return result, err
 		}
-	}
+
+		svc, err := factory.CreateOrUpdateVMAgentService(ctx, instance, r, r.BaseConf)
+		if err != nil {
+			return result, err
+		}
+
+		if !r.BaseConf.DisableSelfServiceScrapeCreation {
+			err := factory.CreateVMServiceScrapeFromService(ctx, r, svc, instance.Spec.ServiceScrapeSpec, instance.MetricPath(), "http")
+			if err != nil {
+				reqLogger.Error(err, "cannot create serviceScrape for vmagent")
+			}
+		}
+		if err := updateVMAgentStatus(ctx, r.Client, instance); err != nil {
+			return result, err
+		}
+		return result, nil
+	})
 	if r.BaseConf.ForceResyncInterval > 0 {
 		result.RequeueAfter = r.BaseConf.ForceResyncInterval
 	}
 
-	if err := updateVMAgentStatus(ctx, r.Client, instance); err != nil {
-		return result, err
-	}
 	return
 }
 

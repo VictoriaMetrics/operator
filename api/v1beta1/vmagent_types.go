@@ -1,6 +1,8 @@
 package v1beta1
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -9,7 +11,9 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // VMAgentSpec defines the desired state of VMAgent
@@ -513,19 +517,23 @@ func (rw *VMAgentRemoteWriteSpec) HasStreamAggr() bool {
 // +k8s:openapi-gen=true
 type VMAgentStatus struct {
 	// Shards represents total number of vmagent deployments with uniq scrape targets
-	Shards int32 `json:"shards"`
+	Shards int32 `json:"shards,omitempty"`
 	// Selector string form of label value set for autoscaling
-	Selector string `json:"selector"`
+	Selector string `json:"selector,omitempty"`
 	// ReplicaCount Total number of pods targeted by this VMAgent
-	Replicas int32 `json:"replicas"`
+	Replicas int32 `json:"replicas,omitempty"`
 	// UpdatedReplicas Total number of non-terminated pods targeted by this VMAgent
 	// cluster that have the desired version spec.
-	UpdatedReplicas int32 `json:"updatedReplicas"`
+	UpdatedReplicas int32 `json:"updatedReplicas,omitempty"`
 	// AvailableReplicas Total number of available pods (ready for at least minReadySeconds)
 	// targeted by this VMAlert cluster.
-	AvailableReplicas int32 `json:"availableReplicas"`
+	AvailableReplicas int32 `json:"availableReplicas,omitempty"`
 	// UnavailableReplicas Total number of unavailable pods targeted by this VMAgent cluster.
-	UnavailableReplicas int32 `json:"unavailableReplicas"`
+	UnavailableReplicas int32 `json:"unavailableReplicas,omitempty"`
+	// UpdateStatus defines a status for update rollout, effective only for statefuleMode
+	UpdateStatus UpdateStatus `json:"updateStatus,omitempty"`
+	// Reason defines fail reason for update process, effective only for statefuleMode
+	Reason string `json:"reason,omitempty"`
 }
 
 // +genclient
@@ -544,6 +552,7 @@ type VMAgentStatus struct {
 // +kubebuilder:subresource:scale:specpath=.spec.shardCount,statuspath=.status.shards,selectorpath=.status.selector
 // +kubebuilder:printcolumn:name="Shards Count",type="integer",JSONPath=".status.shards",description="current number of shards"
 // +kubebuilder:printcolumn:name="Replica Count",type="integer",JSONPath=".status.replicas",description="current number of replicas"
+// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.updateStatus",description="Current status of update rollout"
 type VMAgent struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -703,6 +712,60 @@ func (cr VMAgent) ProbePort() string {
 
 func (cr VMAgent) ProbeNeedLiveness() bool {
 	return true
+}
+
+// IsUnmanaged checks if object should managed any  config objects
+func (cr *VMAgent) IsUnmanaged() bool {
+	return !cr.Spec.SelectAllByDefault &&
+		cr.Spec.NodeScrapeSelector == nil && cr.Spec.NodeScrapeNamespaceSelector == nil &&
+		cr.Spec.ServiceScrapeSelector == nil && cr.Spec.ServiceScrapeNamespaceSelector == nil &&
+		cr.Spec.PodScrapeSelector == nil && cr.Spec.PodScrapeNamespaceSelector == nil &&
+		cr.Spec.ProbeSelector == nil && cr.Spec.ProbeNamespaceSelector == nil &&
+		cr.Spec.StaticScrapeSelector == nil && cr.Spec.StaticScrapeNamespaceSelector == nil
+}
+
+// LastAppliedSpecAsPatch return last applied cluster spec as patch annotation
+func (cr *VMAgent) LastAppliedSpecAsPatch() (client.Patch, error) {
+	data, err := json.Marshal(cr.Spec)
+	if err != nil {
+		return nil, fmt.Errorf("possible bug, cannot serialize specification as json :%w", err)
+	}
+	patch := fmt.Sprintf(`{"metadata":{"annotations":{"operator.victoriametrics/last-applied-spec": %q}}}`, data)
+	return client.RawPatch(types.MergePatchType, []byte(patch)), nil
+}
+
+// HasSpecChanges compares spec with last applied cluster spec stored in annotation
+func (cr *VMAgent) HasSpecChanges() (bool, error) {
+	var prevSpec VMAgentSpec
+	lastAppliedClusterJSON := cr.Annotations["operator.victoriametrics/last-applied-spec"]
+	if len(lastAppliedClusterJSON) == 0 {
+		return true, nil
+	}
+	if err := json.Unmarshal([]byte(lastAppliedClusterJSON), &prevSpec); err != nil {
+		return true, fmt.Errorf("cannot parse last applied spec value: %s : %w", lastAppliedClusterJSON, err)
+	}
+	instanceSpecData, _ := json.Marshal(cr.Spec)
+	return !bytes.Equal([]byte(lastAppliedClusterJSON), instanceSpecData), nil
+}
+
+// SetStatusTo changes update status with optional reason of fail
+func (cr *VMAgent) SetUpdateStatusTo(ctx context.Context, r client.Client, status UpdateStatus, maybeErr error) error {
+	cr.Status.UpdateStatus = status
+	switch status {
+	case UpdateStatusExpanding:
+	case UpdateStatusFailed:
+		if maybeErr != nil {
+			cr.Status.Reason = maybeErr.Error()
+		}
+	case UpdateStatusOperational:
+		cr.Status.Reason = ""
+	default:
+		panic(fmt.Sprintf("BUG: not expected status=%q", status))
+	}
+	if err := r.Status().Update(ctx, cr); err != nil {
+		return fmt.Errorf("failed to update object status to=%q: %w", status, err)
+	}
+	return nil
 }
 
 func init() {

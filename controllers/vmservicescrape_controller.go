@@ -45,7 +45,6 @@ func (r *VMServiceScrapeReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmservicescrapes,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmservicescrapes/status,verbs=get;update;patch
 func (r *VMServiceScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
-
 	reqLogger := r.Log.WithValues("vmservicescrape", req.NamespacedName)
 	// Fetch the VMServiceScrape instance
 	instance := &victoriametricsv1beta1.VMServiceScrape{}
@@ -68,7 +67,7 @@ func (r *VMServiceScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	}
 
 	for _, vmagent := range vmAgentInstances.Items {
-		if !vmagent.DeletionTimestamp.IsZero() || vmagent.Spec.ParsingError != "" {
+		if !vmagent.DeletionTimestamp.IsZero() || vmagent.Spec.ParsingError != "" || vmagent.IsUnmanaged() {
 			continue
 		}
 		reqLogger = reqLogger.WithValues("vmagent", vmagent.Name)

@@ -30,7 +30,6 @@ func (r *VMStaticScrapeReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmstaticscrapes,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmstaticscrapes/status,verbs=get;update;patch
 func (r *VMStaticScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
-
 	reqLogger := r.Log.WithValues("vmstaticscrape", req.NamespacedName)
 	instance := &victoriametricsv1beta1.VMStaticScrape{}
 	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
@@ -51,7 +50,7 @@ func (r *VMStaticScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	for _, vmagent := range vmAgentInstances.Items {
-		if !vmagent.DeletionTimestamp.IsZero() || vmagent.Spec.ParsingError != "" {
+		if !vmagent.DeletionTimestamp.IsZero() || vmagent.Spec.ParsingError != "" || vmagent.IsUnmanaged() {
 			continue
 		}
 		reqLogger = reqLogger.WithValues("vmagent", vmagent.Name)

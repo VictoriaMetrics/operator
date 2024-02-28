@@ -22,6 +22,10 @@ spec:
       jsonPath: .status.replicas
       name: Replica Count
       type: integer
+    - description: Current status of update rollout
+      jsonPath: .status.updateStatus
+      name: Status
+      type: string
     name: v1beta1
     schema:
       openAPIV3Schema:
@@ -3283,6 +3287,10 @@ spec:
                   for at least minReadySeconds) targeted by this VMAlert cluster.
                 format: int32
                 type: integer
+              reason:
+                description: Reason defines fail reason for update process, effective
+                  only for statefuleMode
+                type: string
               replicas:
                 description: ReplicaCount Total number of pods targeted by this VMAgent
                 format: int32
@@ -3300,18 +3308,15 @@ spec:
                   targeted by this VMAgent cluster.
                 format: int32
                 type: integer
+              updateStatus:
+                description: UpdateStatus defines a status for update rollout, effective
+                  only for statefuleMode
+                type: string
               updatedReplicas:
                 description: UpdatedReplicas Total number of non-terminated pods targeted
                   by this VMAgent cluster that have the desired version spec.
                 format: int32
                 type: integer
-            required:
-            - availableReplicas
-            - replicas
-            - selector
-            - shards
-            - unavailableReplicas
-            - updatedReplicas
             type: object
         type: object
     served: true

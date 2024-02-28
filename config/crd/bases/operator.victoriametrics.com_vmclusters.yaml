@@ -3077,7 +3077,6 @@ spec:
                 description: Deprecated.
                 type: integer
             required:
-            - clusterStatus
             - updateFailCount
             type: object
         required:

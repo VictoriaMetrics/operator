@@ -14,7 +14,7 @@ spec:
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
-    - description: Current status of single node
+    - description: Current status of single node update process
       jsonPath: .status.singleStatus
       name: Status
       type: string
@@ -1316,6 +1316,7 @@ spec:
                 format: int32
                 type: integer
               reason:
+                description: Reason defines a reason in case of update failure
                 type: string
               replicas:
                 description: ReplicaCount Total number of non-terminated pods targeted
@@ -1323,6 +1324,7 @@ spec:
                 format: int32
                 type: integer
               singleStatus:
+                description: UpdateStatus defines a status of single node rollout
                 type: string
               unavailableReplicas:
                 description: UnavailableReplicas Total number of unavailable pods
@@ -1337,7 +1339,6 @@ spec:
             required:
             - availableReplicas
             - replicas
-            - singleStatus
             - unavailableReplicas
             - updatedReplicas
             type: object

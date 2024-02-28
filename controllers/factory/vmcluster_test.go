@@ -254,7 +254,7 @@ func TestCreateOrUpdateVMCluster(t *testing.T) {
 					},
 				},
 			},
-			want: v1beta1.ClusterStatusExpanding,
+			want: string(v1beta1.UpdateStatusExpanding),
 			predefinedObjects: []runtime.Object{
 				&corev1.Pod{
 					ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "storage-0", Labels: map[string]string{"app.kubernetes.io/component": "monitoring", "app.kubernetes.io/name": "vmstorage", "app.kubernetes.io/instance": "cluster-1", "managed-by": "vm-operator"}},
@@ -293,7 +293,7 @@ func TestCreateOrUpdateVMCluster(t *testing.T) {
 					},
 				},
 			},
-			want: v1beta1.ClusterStatusExpanding,
+			want: string(v1beta1.UpdateStatusExpanding),
 		},
 		{
 			name: "base-vmselect",
@@ -317,7 +317,7 @@ func TestCreateOrUpdateVMCluster(t *testing.T) {
 					},
 				},
 			},
-			want: v1beta1.ClusterStatusExpanding,
+			want: string(v1beta1.UpdateStatusExpanding),
 			predefinedObjects: []runtime.Object{
 				&corev1.Pod{
 					ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "select-0", Labels: map[string]string{"app.kubernetes.io/component": "monitoring", "app.kubernetes.io/name": "vmselect", "app.kubernetes.io/instance": "cluster-1", "managed-by": "vm-operator"}},
@@ -397,7 +397,7 @@ func TestCreateOrUpdateVMCluster(t *testing.T) {
 					Status:     corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "true"}}},
 				},
 			},
-			want: v1beta1.ClusterStatusExpanding,
+			want: string(v1beta1.UpdateStatusExpanding),
 		},
 		{
 			name: "base-vmstorage-with-maintenance",
@@ -467,7 +467,7 @@ func TestCreateOrUpdateVMCluster(t *testing.T) {
 					Status:     corev1.PodStatus{Phase: corev1.PodRunning, Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: "true"}}},
 				},
 			},
-			want: v1beta1.ClusterStatusExpanding,
+			want: string(v1beta1.UpdateStatusExpanding),
 		},
 	}
 	for _, tt := range tests {

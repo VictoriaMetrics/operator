@@ -27,6 +27,10 @@ spec:
     - jsonPath: .metadata.creationTimestamp
       name: Age
       type: date
+    - description: Current update status
+      jsonPath: .status.updateStatus
+      name: Update Status
+      type: string
     name: v1beta1
     schema:
       openAPIV3Schema:
@@ -744,7 +748,7 @@ spec:
                   cluster. The controller will eventually make the size of the running
                   cluster equal to the expected
                 format: int32
-                minimum: 1
+                minimum: 0
                 type: integer
               resources:
                 description: Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
@@ -1366,41 +1370,17 @@ spec:
             description: 'Most recent observed status of the VMAlertmanager cluster.
               Operator API itself. More info: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#spec-and-status'
             properties:
-              availableReplicas:
-                description: AvailableReplicas Total number of available pods (ready
-                  for at least minReadySeconds) targeted by this VMAlertmanager cluster.
-                format: int32
-                type: integer
-              paused:
-                description: Paused Represents whether any actions on the underlaying
-                  managed objects are being performed. Only delete actions will be
-                  performed.
-                type: boolean
-              replicas:
-                description: ReplicaCount Total number of non-terminated pods targeted
-                  by this VMAlertmanager cluster (their labels match the selector).
-                format: int32
-                type: integer
-              unavailableReplicas:
-                description: UnavailableReplicas Total number of unavailable pods
-                  targeted by this VMAlertmanager cluster.
-                format: int32
-                type: integer
-              updatedReplicas:
-                description: UpdatedReplicas Total number of non-terminated pods targeted
-                  by this VMAlertmanager cluster that have the desired version spec.
-                format: int32
-                type: integer
-            required:
-            - availableReplicas
-            - paused
-            - replicas
-            - unavailableReplicas
-            - updatedReplicas
+              reason:
+                description: Reason has non empty reason for update failure
+                type: string
+              updateStatus:
+                description: Status defines a status of object update
+                type: string
             type: object
         required:
         - spec
         type: object
     served: true
     storage: true
-    subresources: {}
+    subresources:
+      status: {}

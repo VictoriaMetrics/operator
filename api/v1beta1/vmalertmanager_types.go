@@ -1,16 +1,20 @@
 package v1beta1
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"path"
 	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
 )
 
@@ -22,10 +26,12 @@ import (
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +genclient
 // +k8s:openapi-gen=true
+// +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".spec.version",description="The version of VMAlertmanager"
 // +kubebuilder:printcolumn:name="ReplicaCount",type="integer",JSONPath=".spec.ReplicaCount",description="The desired replicas number of Alertmanagers"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:resource:path=vmalertmanagers,scope=Namespaced,shortName=vma,singular=vmalertmanager
+// +kubebuilder:printcolumn:name="Update Status",type="string",JSONPath=".status.updateStatus",description="Current update status"
 type VMAlertmanager struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -35,7 +41,7 @@ type VMAlertmanager struct {
 	// Most recent observed status of the VMAlertmanager cluster.
 	// Operator API itself. More info:
 	// https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
-	Status *VMAlertmanagerStatus `json:"status,omitempty"`
+	Status VMAlertmanagerStatus `json:"status,omitempty"`
 }
 
 // VMAlertmanagerSpec is a specification of the desired behavior of the VMAlertmanager cluster. More info:
@@ -100,7 +106,7 @@ type VMAlertmanagerSpec struct {
 	MinReadySeconds int32 `json:"minReadySeconds,omitempty"`
 	// ReplicaCount Size is the expected size of the alertmanager cluster. The controller will
 	// eventually make the size of the running cluster equal to the expected
-	// +kubebuilder:validation:Minimum:=1
+	// +kubebuilder:validation:Minimum:=0
 	// +optional
 	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Number of pods",xDescriptors="urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom"
 	ReplicaCount *int32 `json:"replicaCount,omitempty"`
@@ -316,23 +322,11 @@ type VMAlertmanagerList struct {
 
 // VMAlertmanagerStatus is the most recent observed status of the VMAlertmanager cluster
 // Operator API itself. More info:
-// https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
-// +k8s:openapi-gen=true
 type VMAlertmanagerStatus struct {
-	// Paused Represents whether any actions on the underlaying managed objects are
-	// being performed. Only delete actions will be performed.
-	Paused bool `json:"paused"`
-	// ReplicaCount Total number of non-terminated pods targeted by this VMAlertmanager
-	// cluster (their labels match the selector).
-	Replicas int32 `json:"replicas"`
-	// UpdatedReplicas Total number of non-terminated pods targeted by this VMAlertmanager
-	// cluster that have the desired version spec.
-	UpdatedReplicas int32 `json:"updatedReplicas"`
-	// AvailableReplicas Total number of available pods (ready for at least minReadySeconds)
-	// targeted by this VMAlertmanager cluster.
-	AvailableReplicas int32 `json:"availableReplicas"`
-	// UnavailableReplicas Total number of unavailable pods targeted by this VMAlertmanager cluster.
-	UnavailableReplicas int32 `json:"unavailableReplicas"`
+	// Status defines a status of object update
+	UpdateStatus UpdateStatus `json:"updateStatus,omitempty"`
+	// Reason has non empty reason for update failure
+	Reason string `json:"reason,omitempty,omitempty"`
 }
 
 func (cr *VMAlertmanager) AsOwner() []metav1.OwnerReference {
@@ -492,6 +486,55 @@ func (cr *VMAlertmanager) ProbeScheme() string {
 
 func (cr *VMAlertmanager) ProbeNeedLiveness() bool {
 	return true
+}
+
+// IsUnmanaged checks if alertmanager should managed any alertmanager config objects
+func (cr *VMAlertmanager) IsUnmanaged() bool {
+	return !cr.Spec.SelectAllByDefault && cr.Spec.ConfigSelector == nil && cr.Spec.ConfigNamespaceSelector == nil
+}
+
+// LastAppliedSpecAsPatch return last applied cluster spec as patch annotation
+func (cr *VMAlertmanager) LastAppliedSpecAsPatch() (client.Patch, error) {
+	data, err := json.Marshal(cr.Spec)
+	if err != nil {
+		return nil, fmt.Errorf("possible bug, cannot serialize specification as json :%w", err)
+	}
+	patch := fmt.Sprintf(`{"metadata":{"annotations":{"operator.victoriametrics/last-applied-spec": %q}}}`, data)
+	return client.RawPatch(types.MergePatchType, []byte(patch)), nil
+}
+
+// HasSpecChanges compares spec with last applied cluster spec stored in annotation
+func (cr *VMAlertmanager) HasSpecChanges() (bool, error) {
+	var prevSpec VMAlertmanagerSpec
+	lastAppliedClusterJSON := cr.Annotations["operator.victoriametrics/last-applied-spec"]
+	if len(lastAppliedClusterJSON) == 0 {
+		return true, nil
+	}
+	if err := json.Unmarshal([]byte(lastAppliedClusterJSON), &prevSpec); err != nil {
+		return true, fmt.Errorf("cannot parse last applied cluster spec value: %s : %w", lastAppliedClusterJSON, err)
+	}
+	instanceSpecData, _ := json.Marshal(cr.Spec)
+	return !bytes.Equal([]byte(lastAppliedClusterJSON), instanceSpecData), nil
+}
+
+// SetStatusTo changes update status with optional reason of fail
+func (cr *VMAlertmanager) SetUpdateStatusTo(ctx context.Context, r client.Client, status UpdateStatus, maybeErr error) error {
+	cr.Status.UpdateStatus = status
+	switch status {
+	case UpdateStatusExpanding:
+	case UpdateStatusFailed:
+		if maybeErr != nil {
+			cr.Status.Reason = maybeErr.Error()
+		}
+	case UpdateStatusOperational:
+		cr.Status.Reason = ""
+	default:
+		panic(fmt.Sprintf("BUG: not expected status=%q", status))
+	}
+	if err := r.Status().Update(ctx, cr); err != nil {
+		return fmt.Errorf("failed to update object status to=%q: %w", status, err)
+	}
+	return nil
 }
 
 func init() {

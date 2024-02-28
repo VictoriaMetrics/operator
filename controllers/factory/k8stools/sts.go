@@ -101,9 +101,18 @@ func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclien
 	if err != nil {
 		return err
 	}
-	stsVersion := sts.Status.UpdateRevision
-	l := log.WithValues("controller", "sts.rollingupdate", "desiredVersion", stsVersion, "podMustRecreate", podMustRecreate)
+	neededPodCount := 0
+	if sts.Spec.Replicas != nil {
+		neededPodCount = int(*sts.Spec.Replicas)
+	}
 
+	stsVersion := sts.Status.UpdateRevision
+	l := log.WithValues("controller", "sts.rollingupdate", "desiredVersion", stsVersion, "podMustRecreate", podMustRecreate, "sts.name", sts.Name)
+	// fast path
+	if neededPodCount < 1 {
+		l.Info("sts has 0 replicas configured, nothing to update")
+		return nil
+	}
 	l.Info("check if pod update needed")
 	podList := &corev1.PodList{}
 	labelSelector := labels.SelectorFromSet(podLabels)
@@ -111,10 +120,7 @@ func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclien
 	if err := rclient.List(ctx, podList, listOps); err != nil {
 		return fmt.Errorf("cannot list pods for statefulset rolling update: %w", err)
 	}
-	neededPodCount := 1
-	if sts.Spec.Replicas != nil {
-		neededPodCount = int(*sts.Spec.Replicas)
-	}
+
 	if err := sortStsPodsByID(podList.Items); err != nil {
 		return fmt.Errorf("cannot sort statefulset pods: %w", err)
 	}
@@ -271,8 +277,7 @@ func waitForPodReady(ctx context.Context, rclient client.Client, ns, podName str
 			if errors.IsNotFound(err) {
 				return false, nil
 			}
-			log.Error(err, "cannot get pod", "pod", podName)
-			return false, err
+			return false, fmt.Errorf("cannot get pod: %q: %w", podName, err)
 		}
 		if PodIsReady(*pod, minReadySeconds) {
 			log.Info("pod update finished with revision", "pod", pod.Name, "revision", pod.Labels[podRevisionLabel])

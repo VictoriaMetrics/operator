@@ -2,6 +2,7 @@ package v1beta1
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"path"
@@ -13,14 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
-
 	"sigs.k8s.io/controller-runtime/pkg/client"
-)
-
-const (
-	ClusterStatusExpanding   = "expanding"
-	ClusterStatusOperational = "operational"
-	ClusterStatusFailed      = "failed"
 )
 
 // VMClusterSpec defines the desired state of VMCluster
@@ -129,9 +123,9 @@ type VMClusterStatus struct {
 	// Deprecated.
 	UpdateFailCount int `json:"updateFailCount"`
 	// Deprecated.
-	LastSync      string `json:"lastSync,omitempty"`
-	ClusterStatus string `json:"clusterStatus"`
-	Reason        string `json:"reason,omitempty"`
+	LastSync     string       `json:"lastSync,omitempty"`
+	UpdateStatus UpdateStatus `json:"clusterStatus,omitempty"`
+	Reason       string       `json:"reason,omitempty,omitempty"`
 }
 
 // VMClusterList contains a list of VMCluster
@@ -1175,6 +1169,26 @@ func (cr *VMStorage) ProbeScheme() string {
 
 func (cr *VMStorage) ProbePort() string {
 	return cr.Port
+}
+
+// SetStatusTo changes update status with optional reason of fail
+func (cr *VMCluster) SetUpdateStatusTo(ctx context.Context, r client.Client, status UpdateStatus, maybeErr error) error {
+	cr.Status.UpdateStatus = status
+	switch status {
+	case UpdateStatusExpanding:
+	case UpdateStatusFailed:
+		if maybeErr != nil {
+			cr.Status.Reason = maybeErr.Error()
+		}
+	case UpdateStatusOperational:
+		cr.Status.Reason = ""
+	default:
+		panic(fmt.Sprintf("BUG: not expected status=%q", status))
+	}
+	if err := r.Status().Update(ctx, cr); err != nil {
+		return fmt.Errorf("failed to update object status to=%q: %w", status, err)
+	}
+	return nil
 }
 
 func (cr *VMStorage) ProbeNeedLiveness() bool {

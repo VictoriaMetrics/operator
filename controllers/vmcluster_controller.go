@@ -58,51 +58,16 @@ func (r *VMClusterReconciler) Reconcile(ctx context.Context, request ctrl.Reques
 	if instance.Spec.ParsingError != "" {
 		return handleParsingError(instance.Spec.ParsingError, instance)
 	}
-
-	specChanged, err := instance.HasSpecChanges()
-	if err != nil {
-		reqLogger.Error(err, "failed to check if cluster spec changed")
-	}
-	if specChanged && instance.Status.ClusterStatus != victoriametricsv1beta1.ClusterStatusFailed {
-		instance.Status.ClusterStatus = victoriametricsv1beta1.ClusterStatusExpanding
-		if err := r.Client.Status().Update(ctx, instance); err != nil {
-			return result, fmt.Errorf("cannot set expanding status for cluster: %w", err)
-		}
-	}
-
 	if err := finalize.AddFinalizer(ctx, r.Client, instance); err != nil {
 		return result, err
 	}
-
-	err = factory.CreateOrUpdateVMCluster(ctx, instance, r.Client, config.MustGetBaseConfig())
-	if err != nil {
-		instance.Status.Reason = err.Error()
-		instance.Status.ClusterStatus = victoriametricsv1beta1.ClusterStatusFailed
-		if err := r.Client.Status().Update(ctx, instance); err != nil {
-			log.Error(err, "cannot update cluster status field")
-		}
-		// update status
-		return result, fmt.Errorf("failed create or update vmcluster: %w", err)
-	}
-
-	instance.Status.Reason = ""
-	instance.Status.ClusterStatus = victoriametricsv1beta1.ClusterStatusOperational
-	if err := r.Client.Status().Update(ctx, instance); err != nil {
-		return result, fmt.Errorf("cannot update cluster status : %w", err)
-	}
-
-	if specChanged {
-		specPatch, err := instance.LastAppliedSpecAsPatch()
+	return reconcileAndTrackStatus(ctx, r.Client, instance, func() (ctrl.Result, error) {
+		err = factory.CreateOrUpdateVMCluster(ctx, instance, r.Client, config.MustGetBaseConfig())
 		if err != nil {
-			return ctrl.Result{}, fmt.Errorf("cannot parse last applied spec for cluster: %w", err)
+			return result, fmt.Errorf("failed create or update vmcluster: %w", err)
 		}
-		// use patch instead of update, only 1 field must be changed.
-		if err := r.Client.Patch(ctx, instance, specPatch); err != nil {
-			return result, fmt.Errorf("cannot update cluster with last applied spec: %w", err)
-		}
-	}
-
-	return
+		return result, nil
+	})
 }
 
 // SetupWithManager general setup method

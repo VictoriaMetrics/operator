@@ -120,6 +120,7 @@ OUTER:
 	return &ParsedConfig{Data: result, BadObjectsCount: badObjectsCount, ParseErrors: parseErrors}, nil
 }
 
+// AddConfigTemplates adds external templates to the given based configuration
 func AddConfigTemplates(baseCfg []byte, templates []string) ([]byte, error) {
 	if len(templates) == 0 {
 		return baseCfg, nil
@@ -128,19 +129,24 @@ func AddConfigTemplates(baseCfg []byte, templates []string) ([]byte, error) {
 	if err := yaml.Unmarshal(baseCfg, &baseYAMlCfg); err != nil {
 		return nil, fmt.Errorf("cannot parse base cfg :%w", err)
 	}
-	templatesSet := make(map[string]struct{})
-	for _, v := range baseYAMlCfg.Templates {
-		templatesSet[v] = struct{}{}
+	templatesSetByIdx := make(map[string]int)
+	for idx, v := range baseYAMlCfg.Templates {
+		templatesSetByIdx[v] = idx
 	}
 	for _, v := range templates {
 		if len(strings.TrimSpace(v)) == 0 {
 			continue
 		}
-		if _, ok := templatesSet[v]; ok {
+		if _, ok := templatesSetByIdx[v]; ok {
+			continue
+		}
+		// override value with correct path
+		if idx, ok := templatesSetByIdx[path.Base(v)]; ok {
+			baseYAMlCfg.Templates[idx] = v
 			continue
 		}
 		baseYAMlCfg.Templates = append(baseYAMlCfg.Templates, v)
-		templatesSet[v] = struct{}{}
+		templatesSetByIdx[v] = len(baseYAMlCfg.Templates) - 1
 	}
 	return yaml.Marshal(baseYAMlCfg)
 }

@@ -76,7 +76,7 @@ func CreateOrUpdateVMAuth(ctx context.Context, cr *victoriametricsv1beta1.VMAuth
 			return fmt.Errorf("cannot create podsecurity policy for vmauth, err: %w", err)
 		}
 	}
-	if c.UseCustomConfigReloader {
+	if c.UseCustomConfigReloader && cr.Spec.ConfigSecret == "" {
 		if err := vmauth.CreateVMAuthSecretAccess(ctx, cr, rclient); err != nil {
 			return err
 		}
@@ -149,9 +149,8 @@ func newDeployForVMAuth(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperato
 }
 
 func makeSpecForVMAuth(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperatorConf) (*corev1.PodTemplateSpec, error) {
-	args := []string{
-		fmt.Sprintf("-auth.config=%s", path.Join(vmAuthConfigFolder, vmAuthConfigName)),
-	}
+	var args []string
+	args = append(args, fmt.Sprintf("-auth.config=%s", path.Join(vmAuthConfigFolder, vmAuthConfigName)))
 
 	if cr.Spec.LogLevel != "" {
 		args = append(args, fmt.Sprintf("-loggerLevel=%s", cr.Spec.LogLevel))
@@ -170,34 +169,12 @@ func makeSpecForVMAuth(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperator
 
 	var ports []corev1.ContainerPort
 	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(cr.Spec.Port).IntVal})
-	volumes := []corev1.Volume{
-		{
-			Name: "config-out",
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
-			},
-		},
-	}
-	if !c.UseCustomConfigReloader {
-		volumes = append(volumes, corev1.Volume{
-			Name: vmAuthVolumeName,
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: cr.ConfigSecretName(),
-				},
-			},
-		})
-	}
+
+	var volumes []corev1.Volume
+	var volumeMounts []corev1.VolumeMount
 
 	volumes = append(volumes, cr.Spec.Volumes...)
-	vmMounts := []corev1.VolumeMount{
-		{
-			Name:      "config-out",
-			MountPath: vmAuthConfigFolder,
-		},
-	}
-
-	vmMounts = append(vmMounts, cr.Spec.VolumeMounts...)
+	volumeMounts = append(volumeMounts, cr.Spec.VolumeMounts...)
 
 	for _, s := range cr.Spec.Secrets {
 		volumes = append(volumes, corev1.Volume{
@@ -208,7 +185,7 @@ func makeSpecForVMAuth(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperator
 				},
 			},
 		})
-		vmMounts = append(vmMounts, corev1.VolumeMount{
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
 			Name:      k8stools.SanitizeVolumeName("secret-" + s),
 			ReadOnly:  true,
 			MountPath: path.Join(SecretsDir, s),
@@ -226,13 +203,13 @@ func makeSpecForVMAuth(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperator
 				},
 			},
 		})
-		vmMounts = append(vmMounts, corev1.VolumeMount{
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
 			Name:      k8stools.SanitizeVolumeName("configmap-" + c),
 			ReadOnly:  true,
 			MountPath: path.Join(ConfigMapsDir, c),
 		})
 	}
-	volumes, vmMounts = cr.Spec.License.MaybeAddToVolumes(volumes, vmMounts, SecretsDir)
+	volumes, volumeMounts = cr.Spec.License.MaybeAddToVolumes(volumes, volumeMounts, SecretsDir)
 	args = cr.Spec.License.MaybeAddToArgs(args, SecretsDir)
 
 	args = addExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs, "-")
@@ -243,25 +220,67 @@ func makeSpecForVMAuth(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperator
 		Image:                    fmt.Sprintf("%s:%s", formatContainerImage(c.ContainerRegistry, cr.Spec.Image.Repository), cr.Spec.Image.Tag),
 		Ports:                    ports,
 		Args:                     args,
-		VolumeMounts:             vmMounts,
+		VolumeMounts:             volumeMounts,
 		Resources:                buildResources(cr.Spec.Resources, config.Resource(c.VMAuthDefault.Resource), c.VMAuthDefault.UseDefaultResources),
 		Env:                      envs,
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 		ImagePullPolicy:          cr.Spec.Image.PullPolicy,
 	}
-
-	configReloader := buildVMAuthConfigReloaderContainer(cr, c)
-
 	vmauthContainer = buildProbe(vmauthContainer, cr)
-	operatorContainers := []corev1.Container{configReloader, vmauthContainer}
+
+	operatorContainers := []corev1.Container{vmauthContainer}
+
+	var initContainers []corev1.Container
+	if cr.Spec.ConfigSecret == "" {
+		volumes = append(volumes, corev1.Volume{
+			Name: "config-out",
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		})
+		if !c.UseCustomConfigReloader {
+			volumes = append(volumes, corev1.Volume{
+				Name: vmAuthVolumeName,
+				VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: cr.ConfigSecretName(),
+					},
+				},
+			})
+		}
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name:      "config-out",
+			MountPath: vmAuthConfigFolder,
+		})
+		operatorContainers[0].VolumeMounts = volumeMounts
+
+		configReloader := buildVMAuthConfigReloaderContainer(cr, c)
+		operatorContainers = append(operatorContainers, configReloader)
+		initContainers = append(initContainers,
+			buildInitConfigContainer(c.VMAuthDefault.ConfigReloadImage, buildConfigReloaderResourceReqsForVMAuth(c), c, vmAuthConfigMountGz, vmAuthConfigNameGz, vmAuthConfigFolder, vmAuthConfigName, configReloader.Args)...)
+	} else {
+		volumes = append(volumes, corev1.Volume{
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: cr.Spec.ConfigSecret,
+				},
+			},
+			Name: vmAuthVolumeName,
+		})
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name:      vmAuthVolumeName,
+			MountPath: vmAuthConfigFolder,
+		})
+		operatorContainers[0].VolumeMounts = volumeMounts
+	}
+
 	containers, err := k8stools.MergePatchContainers(operatorContainers, cr.Spec.Containers)
 	if err != nil {
 		return nil, err
 	}
 
-	ic := buildInitConfigContainer(c.VMAuthDefault.ConfigReloadImage, buildConfigReloaderResourceReqsForVMAuth(c), c, vmAuthConfigMountGz, vmAuthConfigNameGz, vmAuthConfigFolder, vmAuthConfigName, configReloader.Args)
 	if len(cr.Spec.InitContainers) > 0 {
-		ic, err = k8stools.MergePatchContainers(ic, cr.Spec.InitContainers)
+		initContainers, err = k8stools.MergePatchContainers(initContainers, cr.Spec.InitContainers)
 		if err != nil {
 			return nil, fmt.Errorf("cannot apply patch for initContainers: %w", err)
 		}
@@ -278,7 +297,7 @@ func makeSpecForVMAuth(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperator
 		Spec: corev1.PodSpec{
 			NodeSelector:                  cr.Spec.NodeSelector,
 			Volumes:                       volumes,
-			InitContainers:                addStrictSecuritySettingsToContainers(ic, useStrictSecurity),
+			InitContainers:                addStrictSecuritySettingsToContainers(initContainers, useStrictSecurity),
 			Containers:                    addStrictSecuritySettingsToContainers(containers, useStrictSecurity),
 			ServiceAccountName:            cr.GetServiceAccountName(),
 			SecurityContext:               addStrictSecuritySettingsToPod(cr.Spec.SecurityContext, useStrictSecurity),
@@ -302,6 +321,10 @@ func makeSpecForVMAuth(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperator
 
 // creates configuration secret for vmauth.
 func createOrUpdateVMAuthConfig(ctx context.Context, rclient client.Client, cr *victoriametricsv1beta1.VMAuth) error {
+	// fast path
+	if cr.Spec.ConfigSecret != "" {
+		return nil
+	}
 	s := makeVMAuthConfigSecret(cr)
 
 	generatedConfig, err := buildVMAuthConfig(ctx, rclient, cr)

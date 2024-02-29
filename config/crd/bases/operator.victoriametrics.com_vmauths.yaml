@@ -52,6 +52,14 @@ spec:
                 items:
                   type: string
                 type: array
+              configSecret:
+                description: 'ConfigSecret is the name of a Kubernetes Secret in the
+                  same namespace as the VMAuth object, which contains auth configuration
+                  for vmauth, configuration must be inside secret key: config.yaml.
+                  It must be created and managed manually. If it''s defined, configuration
+                  for vmauth becomes unmanaged and operator''ll not create any related
+                  secrets/config-reloaders'
+                type: string
               containers:
                 description: Containers property allows to inject additions sidecars
                   or to patch existing containers. It can be useful for proxies, backup,

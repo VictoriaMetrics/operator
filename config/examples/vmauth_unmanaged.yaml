@@ -1,0 +1,16 @@
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAuth
+metadata:
+  name: with-external-config
+spec:
+  configSecret: "external-auth"
+---
+apiVersion: v1 
+kind: Secret 
+metadata:
+  name: "external-auth"
+stringData:
+  config.yaml: |
+    unauthorized_user:
+      url_prefix: "http://backend/"
+

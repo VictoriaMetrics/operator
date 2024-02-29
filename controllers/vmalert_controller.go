@@ -18,8 +18,9 @@ package controllers
 
 import (
 	"context"
-	"github.com/VictoriaMetrics/operator/controllers/factory/limiter"
 	"sync"
+
+	"github.com/VictoriaMetrics/operator/controllers/factory/limiter"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory"
@@ -58,10 +59,6 @@ func (r *VMAlertReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmalerts/finalizers,verbs=*
 func (r *VMAlertReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	reqLogger := r.Log.WithValues("vmalert", req.NamespacedName)
-
-	vmAlertSync.Lock()
-	defer vmAlertSync.Unlock()
-
 	// Fetch the VMAlert instance
 	instance := &victoriametricsv1beta1.VMAlert{}
 	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
@@ -69,7 +66,10 @@ func (r *VMAlertReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 	}
 
 	RegisterObjectStat(instance, "vmalert")
-
+	if !instance.IsUnmanaged() {
+		vmAlertSync.Lock()
+		defer vmAlertSync.Unlock()
+	}
 	if !instance.DeletionTimestamp.IsZero() {
 		if err := finalize.OnVMAlertDelete(ctx, r.Client, instance); err != nil {
 			return result, err
@@ -90,28 +90,32 @@ func (r *VMAlertReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 		return result, err
 	}
 
-	maps, err := factory.CreateOrUpdateRuleConfigMaps(ctx, instance, r)
-	if err != nil {
-		return result, err
-	}
-	reqLogger.Info("found configmaps for vmalert", " len ", len(maps), "map names", maps)
-
-	if err := factory.CreateOrUpdateVMAlert(ctx, instance, r, r.BaseConf, maps); err != nil {
-		return result, err
-	}
-
-	svc, err := factory.CreateOrUpdateVMAlertService(ctx, instance, r, r.BaseConf)
-	if err != nil {
-		return result, err
-	}
-
-	if !r.BaseConf.DisableSelfServiceScrapeCreation {
-		err := factory.CreateVMServiceScrapeFromService(ctx, r, svc, instance.Spec.ServiceScrapeSpec, instance.MetricPath())
+	result, err = reconcileAndTrackStatus(ctx, r.Client, instance, func() (ctrl.Result, error) {
+		maps, err := factory.CreateOrUpdateRuleConfigMaps(ctx, instance, r)
 		if err != nil {
-			// made on best effort.
-			reqLogger.Error(err, "cannot create serviceScrape for vmalert")
+			return result, err
 		}
-	}
+		reqLogger.Info("found configmaps for vmalert", " len ", len(maps), "map names", maps)
+
+		if err := factory.CreateOrUpdateVMAlert(ctx, instance, r, r.BaseConf, maps); err != nil {
+			return result, err
+		}
+
+		svc, err := factory.CreateOrUpdateVMAlertService(ctx, instance, r, r.BaseConf)
+		if err != nil {
+			return result, err
+		}
+
+		if !r.BaseConf.DisableSelfServiceScrapeCreation {
+			err := factory.CreateVMServiceScrapeFromService(ctx, r, svc, instance.Spec.ServiceScrapeSpec, instance.MetricPath())
+			if err != nil {
+				// made on best effort.
+				reqLogger.Error(err, "cannot create serviceScrape for vmalert")
+			}
+		}
+
+		return result, nil
+	})
 
 	if needToRequeue || r.BaseConf.ForceResyncInterval > 0 {
 		result.RequeueAfter = r.BaseConf.ForceResyncInterval

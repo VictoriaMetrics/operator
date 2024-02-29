@@ -26,8 +26,7 @@ var (
 	}
 )
 
-var (
-	defAlert = `
+var defAlert = `
 groups:
 - name: vmAlertGroup
   rules:
@@ -41,9 +40,12 @@ groups:
          description: "error writing to remote writer from vmaler {{$labels}}"
          back: "error rate is ok at vmalert "
 `
-)
 
 func CreateOrUpdateRuleConfigMaps(ctx context.Context, cr *victoriametricsv1beta1.VMAlert, rclient client.Client) ([]string, error) {
+	// fast path
+	if cr.IsUnmanaged() {
+		return nil, nil
+	}
 	l := log.WithValues("reconcile", "rulesCm", "vmalert", cr.Name)
 	newRules, err := SelectRules(ctx, cr, rclient)
 	if err != nil {
@@ -197,7 +199,6 @@ func selectNamespaces(ctx context.Context, rclient client.Client, selector label
 }
 
 func SelectRules(ctx context.Context, cr *victoriametricsv1beta1.VMAlert, rclient client.Client) (map[string]string, error) {
-
 	namespaces, objSelector, err := getNSWithSelector(ctx, rclient, cr.Spec.RuleNamespaceSelector, cr.Spec.RuleSelector, cr.Namespace)
 	if err != nil {
 		return nil, err
@@ -297,7 +298,6 @@ func generateContent(promRule victoriametricsv1beta1.VMRuleSpec, enforcedNsLabel
 // simplicity should be sufficient.
 // [1] https://en.wikipedia.org/wiki/Bin_packing_problem#First-fit_algorithm
 func makeRulesConfigMaps(cr *victoriametricsv1beta1.VMAlert, ruleFiles map[string]string) ([]v1.ConfigMap, error) {
-
 	buckets := []map[string]string{
 		{},
 	}

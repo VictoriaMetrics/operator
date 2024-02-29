@@ -203,24 +203,7 @@ func CreateOrUpdateVMAlert(ctx context.Context, cr *victoriametricsv1beta1.VMAle
 		return fmt.Errorf("cannot generate new deploy for vmalert: %w", err)
 	}
 
-	currDeploy := &appsv1.Deployment{}
-	err = rclient.Get(ctx, types.NamespacedName{Namespace: newDeploy.Namespace, Name: newDeploy.Name}, currDeploy)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			err := rclient.Create(ctx, newDeploy)
-			if err != nil {
-				return fmt.Errorf("cannot create vmalert deploy: %w", err)
-			}
-		} else {
-			return fmt.Errorf("cannot get deploy for vmalert: %w", err)
-		}
-	}
-	newDeploy.Annotations = labels.Merge(currDeploy.Annotations, newDeploy.Annotations)
-	newDeploy.Finalizers = victoriametricsv1beta1.MergeFinalizers(currDeploy, victoriametricsv1beta1.FinalizerName)
-	if err := rclient.Update(ctx, newDeploy); err != nil {
-		return fmt.Errorf("cannot update vmalert deploy: %w", err)
-	}
-	return nil
+	return k8stools.HandleDeployUpdate(ctx, rclient, newDeploy, c.PodWaitReadyTimeout)
 }
 
 // newDeployForCR returns a busybox pod with the same name/namespace as the cr

@@ -100,7 +100,7 @@ func CreateOrUpdateVMAuth(ctx context.Context, cr *victoriametricsv1beta1.VMAuth
 		return fmt.Errorf("cannot build new deploy for vmauth: %w", err)
 	}
 
-	return k8stools.HandleDeployUpdate(ctx, rclient, newDeploy)
+	return k8stools.HandleDeployUpdate(ctx, rclient, newDeploy, c.PodWaitReadyTimeout)
 }
 
 func newDeployForVMAuth(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperatorConf) (*appsv1.Deployment, error) {

@@ -99,18 +99,7 @@ func CreateOrUpdateVMSingle(ctx context.Context, cr *victoriametricsv1beta1.VMSi
 		return fmt.Errorf("cannot generate new deploy for vmsingle: %w", err)
 	}
 
-	if err := k8stools.HandleDeployUpdate(ctx, rclient, newDeploy); err != nil {
-		return err
-	}
-	// fast path
-	if cr.Spec.ReplicaCount == nil {
-		return nil
-	}
-	if err = waitExpanding(ctx, rclient, cr.Namespace, cr.SelectorLabels(), *cr.Spec.ReplicaCount, 0, c.PodWaitReadyTimeout); err != nil {
-		return fmt.Errorf("cannot wait until ready status for single deploy: %w", err)
-	}
-
-	return nil
+	return k8stools.HandleDeployUpdate(ctx, rclient, newDeploy, c.PodWaitReadyTimeout)
 }
 
 func newDeployForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOperatorConf) (*appsv1.Deployment, error) {

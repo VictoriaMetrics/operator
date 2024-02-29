@@ -397,6 +397,8 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 	})
 	sort.Strings(confReloadArgs)
 
+	var vmalertContainers []corev1.Container
+
 	vmalertContainer := corev1.Container{
 		Args:                     args,
 		Name:                     "vmalert",
@@ -409,9 +411,10 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 	}
 	vmalertContainer = buildProbe(vmalertContainer, cr)
+	vmalertContainers = append(vmalertContainers, vmalertContainer)
 
-	vmalertContainers := []corev1.Container{
-		vmalertContainer, {
+	if !cr.IsUnmanaged() {
+		vmalertContainers = append(vmalertContainers, corev1.Container{
 			Name:                     "config-reloader",
 			Image:                    fmt.Sprintf("%s", formatContainerImage(c.ContainerRegistry, c.VMAlertDefault.ConfigReloadImage)),
 			Args:                     confReloadArgs,
@@ -419,6 +422,7 @@ func vmAlertSpecGen(cr *victoriametricsv1beta1.VMAlert, c *config.BaseOperatorCo
 			TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 			VolumeMounts:             reloaderVolumes,
 		},
+		)
 	}
 
 	containers, err := k8stools.MergePatchContainers(vmalertContainers, cr.Spec.Containers)

@@ -13,7 +13,12 @@ spec:
     singular: vmauth
   scope: Namespaced
   versions:
-  - name: v1beta1
+  - additionalPrinterColumns:
+    - description: Current status of update rollout
+      jsonPath: .status.updateStatus
+      name: Status
+      type: string
+    name: v1beta1
     schema:
       openAPIV3Schema:
         description: VMAuth is the Schema for the vmauths API
@@ -987,6 +992,15 @@ spec:
             type: object
           status:
             description: VMAuthStatus defines the observed state of VMAuth
+            properties:
+              reason:
+                description: Reason defines fail reason for update process, effective
+                  only for statefuleMode
+                type: string
+              updateStatus:
+                description: UpdateStatus defines a status for update rollout, effective
+                  only for statefuleMode
+                type: string
             type: object
         type: object
     served: true

@@ -13,7 +13,12 @@ spec:
     singular: vmalert
   scope: Namespaced
   versions:
-  - name: v1beta1
+  - additionalPrinterColumns:
+    - description: Current status of update rollout
+      jsonPath: .status.updateStatus
+      name: Status
+      type: string
+    name: v1beta1
     schema:
       openAPIV3Schema:
         description: VMAlert  executes a list of given alerting or recording rules
@@ -1868,6 +1873,10 @@ spec:
                   for at least minReadySeconds) targeted by this VMAlert cluster.
                 format: int32
                 type: integer
+              reason:
+                description: Reason defines fail reason for update process, effective
+                  only for statefuleMode
+                type: string
               replicas:
                 description: ReplicaCount Total number of non-terminated pods targeted
                   by this VMAlert cluster (their labels match the selector).
@@ -1878,16 +1887,15 @@ spec:
                   targeted by this VMAlert cluster.
                 format: int32
                 type: integer
+              updateStatus:
+                description: UpdateStatus defines a status for update rollout, effective
+                  only for statefuleMode
+                type: string
               updatedReplicas:
                 description: UpdatedReplicas Total number of non-terminated pods targeted
                   by this VMAlert cluster that have the desired version spec.
                 format: int32
                 type: integer
-            required:
-            - availableReplicas
-            - replicas
-            - unavailableReplicas
-            - updatedReplicas
             type: object
         type: object
     served: true

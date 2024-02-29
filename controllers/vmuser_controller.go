@@ -84,7 +84,7 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		return result, fmt.Errorf("cannot list vmauths for vmuser: %w", err)
 	}
 	for _, vmauth := range vmauthes.Items {
-		if !vmauth.DeletionTimestamp.IsZero() || vmauth.Spec.ParsingError != "" {
+		if !vmauth.DeletionTimestamp.IsZero() || vmauth.Spec.ParsingError != "" || vmauth.IsUnmanaged() {
 			continue
 		}
 		// reconcile users for given vmauth.

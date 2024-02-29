@@ -78,23 +78,27 @@ func (r *VMAuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		return result, err
 	}
 
-	if err := factory.CreateOrUpdateVMAuth(ctx, &instance, r, r.BaseConf); err != nil {
-		return result, fmt.Errorf("cannot create or update vmauth deploy: %w", err)
-	}
-
-	svc, err := factory.CreateOrUpdateVMAuthService(ctx, &instance, r)
-	if err != nil {
-		return result, fmt.Errorf("cannot create or update vmauth service :%w", err)
-	}
-	if err := factory.CreateOrUpdateVMAuthIngress(ctx, r, &instance); err != nil {
-		return result, fmt.Errorf("cannot create or update ingress for vmauth: %w", err)
-	}
-
-	if !r.BaseConf.DisableSelfServiceScrapeCreation {
-		if err := factory.CreateVMServiceScrapeFromService(ctx, r, svc, instance.Spec.ServiceScrapeSpec, instance.MetricPath()); err != nil {
-			l.Error(err, "cannot create serviceScrape for vmauth")
+	result, err = reconcileAndTrackStatus(ctx, r.Client, &instance, func() (ctrl.Result, error) {
+		if err := factory.CreateOrUpdateVMAuth(ctx, &instance, r, r.BaseConf); err != nil {
+			return result, fmt.Errorf("cannot create or update vmauth deploy: %w", err)
 		}
-	}
+
+		svc, err := factory.CreateOrUpdateVMAuthService(ctx, &instance, r)
+		if err != nil {
+			return result, fmt.Errorf("cannot create or update vmauth service :%w", err)
+		}
+		if err := factory.CreateOrUpdateVMAuthIngress(ctx, r, &instance); err != nil {
+			return result, fmt.Errorf("cannot create or update ingress for vmauth: %w", err)
+		}
+
+		if !r.BaseConf.DisableSelfServiceScrapeCreation {
+			if err := factory.CreateVMServiceScrapeFromService(ctx, r, svc, instance.Spec.ServiceScrapeSpec, instance.MetricPath()); err != nil {
+				l.Error(err, "cannot create serviceScrape for vmauth")
+			}
+		}
+		return result, nil
+	})
+
 	if r.BaseConf.ForceResyncInterval > 0 {
 		result.RequeueAfter = r.BaseConf.ForceResyncInterval
 	}

@@ -11,6 +11,7 @@ import (
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/stretchr/testify/assert"
+	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -50,7 +51,8 @@ func Test_loadVMAlertRemoteSecrets(t *testing.T) {
 									Key: "username",
 								},
 							},
-						}}},
+						},
+					}},
 				},
 				SecretsInNS: &corev1.SecretList{
 					Items: []corev1.Secret{
@@ -62,8 +64,8 @@ func Test_loadVMAlertRemoteSecrets(t *testing.T) {
 				},
 			},
 			want: map[string]*authSecret{
-				"remoteWrite": &authSecret{BasicAuthCredentials: &BasicAuthCredentials{password: "pass", username: "user"}},
-				"datasource":  &authSecret{},
+				"remoteWrite": {BasicAuthCredentials: &BasicAuthCredentials{password: "pass", username: "user"}},
+				"datasource":  {},
 			},
 		},
 	}
@@ -166,6 +168,23 @@ func TestCreateOrUpdateVMAlert(t *testing.T) {
 				},
 				c: config.MustGetBaseConfig(),
 			},
+			predefinedObjects: []runtime.Object{
+				&appsv1.Deployment{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "default",
+						Name:      "vmalert-basic-vmalert",
+					},
+					Status: appsv1.DeploymentStatus{
+						Conditions: []appsv1.DeploymentCondition{
+							{
+								Reason: "NewReplicaSetAvailable",
+								Type:   appsv1.DeploymentProgressing,
+								Status: "True",
+							},
+						},
+					},
+				},
+			},
 		},
 		{
 			name: "base-spec-gen with externalLabels",
@@ -182,19 +201,39 @@ func TestCreateOrUpdateVMAlert(t *testing.T) {
 								TLSConfig: &victoriametricsv1beta1.TLSConfig{
 									InsecureSkipVerify: true,
 								},
-							}},
+							},
+						},
 						Datasource: victoriametricsv1beta1.VMAlertDatasourceSpec{
 							URL: "http://some-vm-datasource",
 							HTTPAuth: victoriametricsv1beta1.HTTPAuth{
 								TLSConfig: &victoriametricsv1beta1.TLSConfig{
 									InsecureSkipVerify: true,
-								}},
+								},
+							},
 						},
 						ExternalLabels: map[string]string{"label1": "value1", "label2": "value-2"},
 					},
 				},
 				c: config.MustGetBaseConfig(),
 			},
+			predefinedObjects: []runtime.Object{
+				&appsv1.Deployment{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "default",
+						Name:      "vmalert-basic-vmalert",
+					},
+					Status: appsv1.DeploymentStatus{
+						Conditions: []appsv1.DeploymentCondition{
+							{
+								Reason: "NewReplicaSetAvailable",
+								Type:   appsv1.DeploymentProgressing,
+								Status: "True",
+							},
+						},
+					},
+				},
+			},
+
 			validator: func(vma *v1.Deployment) error {
 				var foundOk bool
 				for _, cnt := range vma.Spec.Template.Spec.Containers {
@@ -234,7 +273,8 @@ func TestCreateOrUpdateVMAlert(t *testing.T) {
 									CertFile: "/tmp/cert",
 									KeyFile:  "/tmp/key",
 								},
-							}},
+							},
+						},
 						Notifiers: []victoriametricsv1beta1.VMAlertNotifierSpec{
 							{
 								URL: "http://another-alertmanager",
@@ -252,7 +292,8 @@ func TestCreateOrUpdateVMAlert(t *testing.T) {
 									},
 									KeySecret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "key"},
 								},
-							}},
+							},
+						},
 						RemoteWrite: &victoriametricsv1beta1.VMAlertRemoteWriteSpec{
 							URL: "http://vm-insert-url",
 							HTTPAuth: victoriametricsv1beta1.HTTPAuth{
@@ -265,7 +306,8 @@ func TestCreateOrUpdateVMAlert(t *testing.T) {
 									},
 									KeySecret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "key"},
 								},
-							}},
+							},
+						},
 					},
 				},
 				c: config.MustGetBaseConfig(),
@@ -285,6 +327,21 @@ func TestCreateOrUpdateVMAlert(t *testing.T) {
 						Namespace: "default",
 					},
 					Data: map[string]string{"ca": "ca-data", "cert": "cert-data"},
+				},
+				&appsv1.Deployment{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "default",
+						Name:      "vmalert-basic-vmalert",
+					},
+					Status: appsv1.DeploymentStatus{
+						Conditions: []appsv1.DeploymentCondition{
+							{
+								Reason: "NewReplicaSetAvailable",
+								Type:   appsv1.DeploymentProgressing,
+								Status: "True",
+							},
+						},
+					},
 				},
 			},
 		},
@@ -305,7 +362,8 @@ func TestCreateOrUpdateVMAlert(t *testing.T) {
 										CAFile:   "/tmp/ca",
 										CertFile: "/tmp/cert",
 										KeyFile:  "/tmp/key",
-									}},
+									},
+								},
 							},
 						},
 						Datasource: victoriametricsv1beta1.VMAlertDatasourceSpec{
@@ -334,7 +392,8 @@ func TestCreateOrUpdateVMAlert(t *testing.T) {
 									},
 									KeySecret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "datasource-tls"}, Key: "key"},
 								},
-							}},
+							},
+						},
 					},
 				},
 				c: config.MustGetBaseConfig(),
@@ -355,6 +414,21 @@ func TestCreateOrUpdateVMAlert(t *testing.T) {
 					},
 					Data: map[string]string{"ca": "ca-data", "cert": "cert-data"},
 				},
+				&appsv1.Deployment{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "default",
+						Name:      "vmalert-basic-vmalert",
+					},
+					Status: appsv1.DeploymentStatus{
+						Conditions: []appsv1.DeploymentCondition{
+							{
+								Reason: "NewReplicaSetAvailable",
+								Type:   appsv1.DeploymentProgressing,
+								Status: "True",
+							},
+						},
+					},
+				},
 			},
 		},
 		{
@@ -372,7 +446,8 @@ func TestCreateOrUpdateVMAlert(t *testing.T) {
 								HTTPAuth: victoriametricsv1beta1.HTTPAuth{
 									TLSConfig: &victoriametricsv1beta1.TLSConfig{
 										InsecureSkipVerify: true,
-									}},
+									},
+								},
 							},
 						},
 						Datasource: victoriametricsv1beta1.VMAlertDatasourceSpec{
@@ -380,14 +455,16 @@ func TestCreateOrUpdateVMAlert(t *testing.T) {
 							HTTPAuth: victoriametricsv1beta1.HTTPAuth{
 								TLSConfig: &victoriametricsv1beta1.TLSConfig{
 									InsecureSkipVerify: true,
-								}},
+								},
+							},
 						},
 						RemoteWrite: &victoriametricsv1beta1.VMAlertRemoteWriteSpec{
 							URL: "http://vm-insert-url",
 							HTTPAuth: victoriametricsv1beta1.HTTPAuth{
 								TLSConfig: &victoriametricsv1beta1.TLSConfig{
 									InsecureSkipVerify: true,
-								}},
+								},
+							},
 						},
 						RemoteRead: &victoriametricsv1beta1.VMAlertRemoteReadSpec{
 							URL: "http://vm-insert-url",
@@ -416,6 +493,21 @@ func TestCreateOrUpdateVMAlert(t *testing.T) {
 						Namespace: "default",
 					},
 					Data: map[string]string{"ca": "ca-data", "cert": "cert-data"},
+				},
+				&appsv1.Deployment{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "default",
+						Name:      "vmalert-basic-vmalert",
+					},
+					Status: appsv1.DeploymentStatus{
+						Conditions: []appsv1.DeploymentCondition{
+							{
+								Reason: "NewReplicaSetAvailable",
+								Type:   appsv1.DeploymentProgressing,
+								Status: "True",
+							},
+						},
+					},
 				},
 			},
 		},
@@ -448,6 +540,21 @@ func TestCreateOrUpdateVMAlert(t *testing.T) {
 						Namespace: "default",
 					},
 					StringData: map[string]string{"cfg.yaml": "static: []"},
+				},
+				&appsv1.Deployment{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "default",
+						Name:      "vmalert-basic-vmalert",
+					},
+					Status: appsv1.DeploymentStatus{
+						Conditions: []appsv1.DeploymentCondition{
+							{
+								Reason: "NewReplicaSetAvailable",
+								Type:   appsv1.DeploymentProgressing,
+								Status: "True",
+							},
+						},
+					},
 				},
 			},
 		},
@@ -552,7 +659,7 @@ func TestBuildNotifiers(t *testing.T) {
 						},
 					},
 				},
-				ntBasicAuth: map[string]*authSecret{"notifier-0": &authSecret{oauthCreds: &oauthCreds{clientSecret: "some-secret", clientID: "some-id"}}, "notifier-1": &authSecret{bearerValue: "some-v"}},
+				ntBasicAuth: map[string]*authSecret{"notifier-0": {oauthCreds: &oauthCreds{clientSecret: "some-secret", clientID: "some-id"}}, "notifier-1": {bearerValue: "some-v"}},
 			},
 			want: []string{"-notifier.url=http://1,http://2", "-notifier.headers=key=value^^key2=value2,key3=value3^^key4=value4", "-notifier.bearerTokenFile=,/etc/vmalert/remote_secrets/NOTIFIER-1_BEARERTOKEN", "-notifier.oauth2.clientSecretFile=/etc/vmalert/remote_secrets/NOTIFIER-0_OAUTH2SECRETKEY,", "-notifier.oauth2.clientID=some-id,", "-notifier.oauth2.scopes=1,2,", "-notifier.oauth2.tokenUrl=http://some-url,"},
 		},
@@ -653,7 +760,8 @@ func Test_buildVMAlertArgs(t *testing.T) {
 									InsecureSkipVerify: true,
 									KeyFile:            "/path/to/key",
 									CAFile:             "/path/to/sa",
-								}},
+								},
+							},
 						},
 					},
 				},

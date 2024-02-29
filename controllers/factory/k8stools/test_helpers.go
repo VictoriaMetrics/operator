@@ -5,6 +5,7 @@ import (
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/go-test/deep"
+	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -68,5 +69,24 @@ func CompareObjectMeta(t *testing.T, got, want metav1.ObjectMeta) {
 	}
 	if diff := deep.Equal(got.Namespace, want.Namespace); len(diff) > 0 {
 		t.Fatalf("objects not match, namespace diff: %v", diff)
+	}
+}
+
+// NewReadyDeployment returns a new deployment with ready status condition
+func NewReadyDeployment(name, namespace string) *appsv1.Deployment {
+	return &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: namespace,
+			Name:      name,
+		},
+		Status: appsv1.DeploymentStatus{
+			Conditions: []appsv1.DeploymentCondition{
+				{
+					Reason: "NewReplicaSetAvailable",
+					Type:   appsv1.DeploymentProgressing,
+					Status: "True",
+				},
+			},
+		},
 	}
 }

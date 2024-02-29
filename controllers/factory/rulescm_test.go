@@ -85,8 +85,10 @@ func TestSelectRules(t *testing.T) {
 		{
 			name: "select default rule additional rule from another namespace",
 			args: args{
-				p: &victoriametricsv1beta1.VMAlert{ObjectMeta: metav1.ObjectMeta{Name: "test-vm-alert", Namespace: "monitor"},
-					Spec: victoriametricsv1beta1.VMAlertSpec{RuleNamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{}}, RuleSelector: &metav1.LabelSelector{}}},
+				p: &victoriametricsv1beta1.VMAlert{
+					ObjectMeta: metav1.ObjectMeta{Name: "test-vm-alert", Namespace: "monitor"},
+					Spec:       victoriametricsv1beta1.VMAlertSpec{RuleNamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{}}, RuleSelector: &metav1.LabelSelector{}},
+				},
 				l: logf.Log.WithName("unit-test"),
 			},
 			predefinedObjects: []runtime.Object{
@@ -103,8 +105,10 @@ func TestSelectRules(t *testing.T) {
 		{
 			name: "select default rule, and additional rule from another namespace with namespace filter",
 			args: args{
-				p: &victoriametricsv1beta1.VMAlert{ObjectMeta: metav1.ObjectMeta{Name: "test-vm-alert", Namespace: "monitor"},
-					Spec: victoriametricsv1beta1.VMAlertSpec{RuleNamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"monitoring": "enabled"}}, RuleSelector: &metav1.LabelSelector{}}},
+				p: &victoriametricsv1beta1.VMAlert{
+					ObjectMeta: metav1.ObjectMeta{Name: "test-vm-alert", Namespace: "monitor"},
+					Spec:       victoriametricsv1beta1.VMAlertSpec{RuleNamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"monitoring": "enabled"}}, RuleSelector: &metav1.LabelSelector{}},
+				},
 				l: logf.Log.WithName("unit-test"),
 			},
 			predefinedObjects: []runtime.Object{
@@ -127,7 +131,8 @@ func TestSelectRules(t *testing.T) {
 		{
 			name: "select all rules with select all",
 			args: args{
-				p: &victoriametricsv1beta1.VMAlert{ObjectMeta: metav1.ObjectMeta{Name: "test-vm-alert", Namespace: "monitor"},
+				p: &victoriametricsv1beta1.VMAlert{
+					ObjectMeta: metav1.ObjectMeta{Name: "test-vm-alert", Namespace: "monitor"},
 					Spec: victoriametricsv1beta1.VMAlertSpec{
 						SelectAllByDefault: true,
 					},
@@ -144,14 +149,16 @@ func TestSelectRules(t *testing.T) {
 						Groups: []victoriametricsv1beta1.RuleGroup{{Name: "error-alert", Interval: "10s", Rules: []victoriametricsv1beta1.Rule{
 							{Alert: "", Expr: "10", For: "10s", Labels: nil, Annotations: nil},
 						}}},
-					}},
+					},
+				},
 				&victoriametricsv1beta1.VMRule{
 					ObjectMeta: metav1.ObjectMeta{Name: "error-alert-at-monitoring", Namespace: "monitoring"},
 					Spec: victoriametricsv1beta1.VMRuleSpec{
 						Groups: []victoriametricsv1beta1.RuleGroup{{Name: "error-alert", Interval: "10s", Rules: []victoriametricsv1beta1.Rule{
 							{Alert: "", Expr: "10", For: "10s", Labels: nil, Annotations: nil},
 						}}},
-					}},
+					},
+				},
 			},
 			want: []string{"default-error-alert.yaml", "monitoring-error-alert-at-monitoring.yaml"},
 		},
@@ -176,14 +183,16 @@ func TestSelectRules(t *testing.T) {
 						Groups: []victoriametricsv1beta1.RuleGroup{{Name: "error-alert", Interval: "10s", Rules: []victoriametricsv1beta1.Rule{
 							{Alert: "", Expr: "10", For: "10s", Labels: nil, Annotations: nil},
 						}}},
-					}},
+					},
+				},
 				&victoriametricsv1beta1.VMRule{
 					ObjectMeta: metav1.ObjectMeta{Name: "error-alert-at-monitoring", Namespace: "monitoring"},
 					Spec: victoriametricsv1beta1.VMRuleSpec{
 						Groups: []victoriametricsv1beta1.RuleGroup{{Name: "error-alert", Interval: "10s", Rules: []victoriametricsv1beta1.Rule{
 							{Alert: "", Expr: "10", For: "10s", Labels: nil, Annotations: nil},
 						}}},
-					}},
+					},
+				},
 			},
 			want: []string{"default-vmalert.yaml"},
 		},
@@ -221,12 +230,23 @@ func TestCreateOrUpdateRuleConfigMaps(t *testing.T) {
 		predefinedObjects []runtime.Object
 	}{
 		{
-			name: "base-rules-gen",
+			name: "base-rules-empty",
 			args: args{cr: &victoriametricsv1beta1.VMAlert{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "default",
 					Name:      "base-vmalert",
 				},
+			}},
+		},
+
+		{
+			name: "base-rules-gen-with-selector",
+			args: args{cr: &victoriametricsv1beta1.VMAlert{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "default",
+					Name:      "base-vmalert",
+				},
+				Spec: victoriametricsv1beta1.VMAlertSpec{SelectAllByDefault: true},
 			}},
 			want: []string{"vm-base-vmalert-rulefiles-0"},
 		},
@@ -282,7 +302,8 @@ func Test_deduplicateRules(t *testing.T) {
 			want: []*victoriametricsv1beta1.VMRule{
 				{
 					Spec: victoriametricsv1beta1.VMRuleSpec{Groups: []victoriametricsv1beta1.RuleGroup{
-						{Name: "group-1",
+						{
+							Name: "group-1",
 							Rules: []victoriametricsv1beta1.Rule{
 								{
 									Alert: "alert1",

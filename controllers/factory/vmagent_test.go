@@ -110,6 +110,9 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 				return nil
 			},
 			statefulsetMode: true,
+			predefinedObjects: []runtime.Object{
+				k8stools.NewReadyDeployment("vmagent-example-agent", "default"),
+			},
 		},
 		{
 			name: "generate with shards vmagent",
@@ -127,6 +130,10 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 						ShardCount: func() *int { i := 2; return &i }(),
 					},
 				},
+			},
+			predefinedObjects: []runtime.Object{
+				k8stools.NewReadyDeployment("vmagent-example-agent-0", "default"),
+				k8stools.NewReadyDeployment("vmagent-example-agent-1", "default"),
 			},
 		},
 		{
@@ -147,6 +154,7 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 				},
 			},
 			predefinedObjects: []runtime.Object{
+				k8stools.NewReadyDeployment("vmagent-example-agent-bauth", "default"),
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{Name: "bauth-secret", Namespace: "default"},
 					Data:       map[string][]byte{"user": []byte(`user-name`), "password": []byte(`user-password`)},
@@ -270,6 +278,7 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 				},
 			},
 			predefinedObjects: []runtime.Object{
+				k8stools.NewReadyDeployment("vmagent-example-agent-tls", "default"),
 				&corev1.Namespace{
 					ObjectMeta: metav1.ObjectMeta{Name: "default", Namespace: "default"},
 				},
@@ -337,6 +346,9 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 					},
 				},
 			},
+			predefinedObjects: []runtime.Object{
+				k8stools.NewReadyDeployment("vmagent-example-agent", "default"),
+			},
 		},
 		{
 			name: "generate vmagent with inline scrape config and secret scrape config",
@@ -364,6 +376,7 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 				},
 			},
 			predefinedObjects: []runtime.Object{
+				k8stools.NewReadyDeployment("vmagent-example-agent", "default"),
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{Name: "add-cfg", Namespace: "default"},
 					Data: map[string][]byte{"agent.yaml": []byte(strings.TrimSpace(`

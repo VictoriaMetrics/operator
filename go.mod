@@ -20,6 +20,7 @@ require (
 	github.com/prometheus/client_golang v1.18.0
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.8.4
+	go.uber.org/automaxprocs v1.5.3
 	go.uber.org/zap v1.21.0
 	golang.org/x/net v0.21.0
 	golang.org/x/sync v0.6.0

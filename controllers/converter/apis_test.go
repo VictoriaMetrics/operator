@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
+	"github.com/stretchr/testify/assert"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"reflect"
 	"testing"
@@ -383,4 +384,138 @@ func TestConvertAlertmanagerConfig(t *testing.T) {
 			return nil
 		})
 
+}
+
+func TestConvertProbe(t *testing.T) {
+	type args struct {
+		probe *v1.Probe
+	}
+	tests := []struct {
+		name string
+		args args
+		want v1beta1vm.VMProbe
+	}{
+		{
+			name: "with static config",
+			args: args{
+				probe: &v1.Probe{
+					Spec: v1.ProbeSpec{
+						Targets: v1.ProbeTargets{
+							StaticConfig: &v1.ProbeTargetStaticConfig{
+								Targets: []string{"target-1", "target-2"},
+								Labels: map[string]string{
+									"l1": "v1",
+									"l2": "v2",
+								},
+								RelabelConfigs: []*v1.RelabelConfig{
+									{
+										Action: "drop",
+									},
+									{
+										Action:       "keep",
+										SourceLabels: []v1.LabelName{"__address__"},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: v1beta1vm.VMProbe{
+				Spec: v1beta1vm.VMProbeSpec{
+					Targets: v1beta1vm.VMProbeTargets{
+						StaticConfig: &v1beta1vm.VMProbeTargetStaticConfig{
+							Targets: []string{"target-1", "target-2"},
+							Labels: map[string]string{
+								"l1": "v1",
+								"l2": "v2",
+							},
+							RelabelConfigs: []*v1beta1vm.RelabelConfig{
+								{
+									Action:       "drop",
+									SourceLabels: []string{"__address__"},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "with ingress config",
+			args: args{
+				probe: &v1.Probe{
+					Spec: v1.ProbeSpec{
+						Targets: v1.ProbeTargets{
+							Ingress: &v1.ProbeTargetIngress{
+								Selector: v12.LabelSelector{
+									MatchLabels: map[string]string{
+										"app": "test",
+									},
+									MatchExpressions: []v12.LabelSelectorRequirement{
+										{
+											Key:      "key",
+											Operator: "op",
+											Values:   []string{"v1", "v2"},
+										},
+									},
+								},
+								NamespaceSelector: v1.NamespaceSelector{
+									MatchNames: []string{"test-ns"},
+								},
+								RelabelConfigs: []*v1.RelabelConfig{
+									{
+										Action: "drop",
+									},
+									{
+										Action:       "keep",
+										SourceLabels: []v1.LabelName{"__address__"},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: v1beta1vm.VMProbe{
+				Spec: v1beta1vm.VMProbeSpec{
+					Targets: v1beta1vm.VMProbeTargets{
+						Ingress: &v1beta1vm.ProbeTargetIngress{
+							Selector: v12.LabelSelector{
+								MatchLabels: map[string]string{
+									"app": "test",
+								},
+								MatchExpressions: []v12.LabelSelectorRequirement{
+									{
+										Key:      "key",
+										Operator: "op",
+										Values:   []string{"v1", "v2"},
+									},
+								},
+							},
+							NamespaceSelector: v1beta1vm.NamespaceSelector{
+								MatchNames: []string{"test-ns"},
+							},
+							RelabelConfigs: []*v1beta1vm.RelabelConfig{
+								{
+									Action:       "drop",
+									SourceLabels: []string{"__address__"},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ConvertProbe(tt.args.probe, &config.BaseOperatorConf{
+				FilterPrometheusConverterLabelPrefixes:      []string{"helm.sh"},
+				FilterPrometheusConverterAnnotationPrefixes: []string{"app.kubernetes"},
+			})
+
+			assert.Equal(t, tt.want, *got)
+		})
+	}
 }

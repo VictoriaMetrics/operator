@@ -2,7 +2,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.12.1
+    controller-gen.kubebuilder.io/version: v0.14.0
   name: vmalerts.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -25,14 +25,19 @@ spec:
           against configured address.
         properties:
           apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation
-              of an object. Servers should convert recognized schemas to the latest
-              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: 'Kind is a string value representing the REST resource this
-              object represents. Servers may infer this from the endpoint the client
-              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
@@ -48,16 +53,17 @@ spec:
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               configMaps:
-                description: ConfigMaps is a list of ConfigMaps in the same namespace
-                  as the VMAlert object, which shall be mounted into the VMAlert Pods.
+                description: |-
+                  ConfigMaps is a list of ConfigMaps in the same namespace as the VMAlert
+                  object, which shall be mounted into the VMAlert Pods.
                   The ConfigMaps are mounted into /etc/vm/configs/<configmap-name>.
                 items:
                   type: string
                 type: array
               containers:
-                description: Containers property allows to inject additions sidecars
-                  or to patch existing containers. It can be useful for proxies, backup,
-                  etc.
+                description: |-
+                  Containers property allows to inject additions sidecars or to patch existing containers.
+                  It can be useful for proxies, backup, etc.
                 items:
                   description: A single application container that you want to run
                     within a pod.
@@ -75,17 +81,20 @@ spec:
                       basic authentication
                     properties:
                       password:
-                        description: The secret in the service scrape namespace that
-                          contains the password for authentication. It must be at
-                          them same namespace as CRD
+                        description: |-
+                          The secret in the service scrape namespace that contains the password
+                          for authentication.
+                          It must be at them same namespace as CRD
                         properties:
                           key:
                             description: The key of the secret to select from.  Must
                               be a valid secret key.
                             type: string
                           name:
-                            description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                              TODO: Add other useful fields. apiVersion, kind, uid?'
+                            description: |-
+                              Name of the referent.
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              TODO: Add other useful fields. apiVersion, kind, uid?
                             type: string
                           optional:
                             description: Specify whether the Secret or its key must
@@ -100,17 +109,20 @@ spec:
                           disk
                         type: string
                       username:
-                        description: The secret in the service scrape namespace that
-                          contains the username for authentication. It must be at
-                          them same namespace as CRD
+                        description: |-
+                          The secret in the service scrape namespace that contains the username
+                          for authentication.
+                          It must be at them same namespace as CRD
                         properties:
                           key:
                             description: The key of the secret to select from.  Must
                               be a valid secret key.
                             type: string
                           name:
-                            description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                              TODO: Add other useful fields. apiVersion, kind, uid?'
+                            description: |-
+                              Name of the referent.
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              TODO: Add other useful fields. apiVersion, kind, uid?
                             type: string
                           optional:
                             description: Specify whether the Secret or its key must
@@ -132,8 +144,10 @@ spec:
                           a valid secret key.
                         type: string
                       name:
-                        description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                          TODO: Add other useful fields. apiVersion, kind, uid?'
+                        description: |-
+                          Name of the referent.
+                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                          TODO: Add other useful fields. apiVersion, kind, uid?
                         type: string
                       optional:
                         description: Specify whether the Secret or its key must be
@@ -144,8 +158,11 @@ spec:
                     type: object
                     x-kubernetes-map-type: atomic
                   headers:
-                    description: Headers allow configuring custom http headers Must
-                      be in form of semicolon separated header with value e.g. headerName:headerValue
+                    description: |-
+                      Headers allow configuring custom http headers
+                      Must be in form of semicolon separated header with value
+                      e.g.
+                      headerName:headerValue
                       vmalert supports it since 1.79.0 version
                     items:
                       type: string
@@ -165,9 +182,10 @@ spec:
                                 description: The key to select.
                                 type: string
                               name:
-                                description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                  TODO: Add other useful fields. apiVersion, kind,
-                                  uid?'
+                                description: |-
+                                  Name of the referent.
+                                  More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                  TODO: Add other useful fields. apiVersion, kind, uid?
                                 type: string
                               optional:
                                 description: Specify whether the ConfigMap or its
@@ -185,9 +203,10 @@ spec:
                                   be a valid secret key.
                                 type: string
                               name:
-                                description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                  TODO: Add other useful fields. apiVersion, kind,
-                                  uid?'
+                                description: |-
+                                  Name of the referent.
+                                  More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                  TODO: Add other useful fields. apiVersion, kind, uid?
                                 type: string
                               optional:
                                 description: Specify whether the Secret or its key
@@ -206,8 +225,10 @@ spec:
                               be a valid secret key.
                             type: string
                           name:
-                            description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                              TODO: Add other useful fields. apiVersion, kind, uid?'
+                            description: |-
+                              Name of the referent.
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              TODO: Add other useful fields. apiVersion, kind, uid?
                             type: string
                           optional:
                             description: Specify whether the Secret or its key must
@@ -253,22 +274,25 @@ spec:
                 - url
                 type: object
               dnsConfig:
-                description: Specifies the DNS parameters of a pod. Parameters specified
-                  here will be merged to the generated DNS configuration based on
-                  DNSPolicy.
+                description: |-
+                  Specifies the DNS parameters of a pod.
+                  Parameters specified here will be merged to the generated DNS
+                  configuration based on DNSPolicy.
                 properties:
                   nameservers:
-                    description: A list of DNS name server IP addresses. This will
-                      be appended to the base nameservers generated from DNSPolicy.
+                    description: |-
+                      A list of DNS name server IP addresses.
+                      This will be appended to the base nameservers generated from DNSPolicy.
                       Duplicated nameservers will be removed.
                     items:
                       type: string
                     type: array
                   options:
-                    description: A list of DNS resolver options. This will be merged
-                      with the base options generated from DNSPolicy. Duplicated entries
-                      will be removed. Resolution options given in Options will override
-                      those that appear in the base DNSPolicy.
+                    description: |-
+                      A list of DNS resolver options.
+                      This will be merged with the base options generated from DNSPolicy.
+                      Duplicated entries will be removed. Resolution options given in Options
+                      will override those that appear in the base DNSPolicy.
                     items:
                       description: PodDNSConfigOption defines DNS resolver options
                         of a pod.
@@ -281,9 +305,10 @@ spec:
                       type: object
                     type: array
                   searches:
-                    description: A list of DNS search domains for host-name lookup.
-                      This will be appended to the base search paths generated from
-                      DNSPolicy. Duplicated search paths will be removed.
+                    description: |-
+                      A list of DNS search domains for host-name lookup.
+                      This will be appended to the base search paths generated from DNSPolicy.
+                      Duplicated search paths will be removed.
                     items:
                       type: string
                     type: array
@@ -294,9 +319,10 @@ spec:
                 description: DNSPolicy sets DNS policy for the pod
                 type: string
               enforcedNamespaceLabel:
-                description: EnforcedNamespaceLabel enforces adding a namespace label
-                  of origin for each alert and metric that is user created. The label
-                  value will always be the namespace of the object that is being created.
+                description: |-
+                  EnforcedNamespaceLabel enforces adding a namespace label of origin for each alert
+                  and metric that is user created. The label value will always be the namespace of the object that is
+                  being created.
                 type: string
               evaluationInterval:
                 description: EvaluationInterval defines how often to evaluate rules
@@ -312,8 +338,9 @@ spec:
               extraArgs:
                 additionalProperties:
                   type: string
-                description: ExtraArgs that will be passed to  VMAlert pod for example
-                  -remoteWrite.tmpDataPath=/tmp
+                description: |-
+                  ExtraArgs that will be passed to  VMAlert pod
+                  for example -remoteWrite.tmpDataPath=/tmp
                 type: object
               extraEnvs:
                 description: ExtraEnvs that will be added to VMAlert pod
@@ -325,15 +352,16 @@ spec:
                       description: Name of the environment variable. Must be a C_IDENTIFIER.
                       type: string
                     value:
-                      description: 'Variable references $(VAR_NAME) are expanded using
-                        the previously defined environment variables in the container
-                        and any service environment variables. If a variable cannot
-                        be resolved, the reference in the input string will be unchanged.
-                        Double $$ are reduced to a single $, which allows for escaping
-                        the $(VAR_NAME) syntax: i.e. "$$(VAR_NAME)" will produce the
-                        string literal "$(VAR_NAME)". Escaped references will never
-                        be expanded, regardless of whether the variable exists or
-                        not. Defaults to "".'
+                      description: |-
+                        Variable references $(VAR_NAME) are expanded
+                        using the previously defined environment variables in the container and
+                        any service environment variables. If a variable cannot be resolved,
+                        the reference in the input string will be unchanged. Double $$ are reduced
+                        to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e.
+                        "$$(VAR_NAME)" will produce the string literal "$(VAR_NAME)".
+                        Escaped references will never be expanded, regardless of whether the variable
+                        exists or not.
+                        Defaults to "".
                       type: string
                   required:
                   - name
@@ -345,8 +373,9 @@ spec:
                   network namespace
                 type: boolean
               image:
-                description: Image - docker image settings for VMAlert if no specified
-                  operator uses default config version
+                description: |-
+                  Image - docker image settings for VMAlert
+                  if no specified operator uses default config version
                 properties:
                   pullPolicy:
                     description: PullPolicy describes how to pull docker image
@@ -360,30 +389,32 @@ spec:
                     type: string
                 type: object
               imagePullSecrets:
-                description: ImagePullSecrets An optional list of references to secrets
-                  in the same namespace to use for pulling images from registries
+                description: |-
+                  ImagePullSecrets An optional list of references to secrets in the same namespace
+                  to use for pulling images from registries
                   see https://kubernetes.io/docs/concepts/containers/images/#referring-to-an-imagepullsecrets-on-a-pod
                 items:
-                  description: LocalObjectReference contains enough information to
-                    let you locate the referenced object inside the same namespace.
+                  description: |-
+                    LocalObjectReference contains enough information to let you locate the
+                    referenced object inside the same namespace.
                   properties:
                     name:
-                      description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                        TODO: Add other useful fields. apiVersion, kind, uid?'
+                      description: |-
+                        Name of the referent.
+                        More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                        TODO: Add other useful fields. apiVersion, kind, uid?
                       type: string
                   type: object
                   x-kubernetes-map-type: atomic
                 type: array
               initContainers:
-                description: 'InitContainers allows adding initContainers to the pod
-                  definition. Those can be used to e.g. fetch secrets for injection
-                  into the VMAlert configuration from external sources. Any errors
-                  during the execution of an initContainer will lead to a restart
-                  of the Pod. More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
-                  Using initContainers for any use case other then secret fetching
-                  is entirely outside the scope of what the maintainers will support
-                  and by doing so, you accept that this behaviour may break at any
-                  time without notice.'
+                description: |-
+                  InitContainers allows adding initContainers to the pod definition. Those can be used to e.g.
+                  fetch secrets for injection into the VMAlert configuration from external sources. Any
+                  errors during the execution of an initContainer will lead to a restart of the Pod. More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
+                  Using initContainers for any use case other then secret fetching is entirely outside the scope
+                  of what the maintainers will support and by doing so, you accept that this behaviour may break
+                  at any time without notice.
                 items:
                   description: A single application container that you want to run
                     within a pod.
@@ -393,15 +424,17 @@ spec:
                   x-kubernetes-preserve-unknown-fields: true
                 type: array
               license:
-                description: 'License allows to configure license key to be used for
-                  enterprise features. Using license key is supported starting from
-                  VictoriaMetrics v1.94.0. See: https://docs.victoriametrics.com/enterprise.html'
+                description: |-
+                  License allows to configure license key to be used for enterprise features.
+                  Using license key is supported starting from VictoriaMetrics v1.94.0.
+                  See: https://docs.victoriametrics.com/enterprise.html
                 properties:
                   key:
-                    description: Enterprise license key. This flag is available only
-                      in VictoriaMetrics enterprise. Documentation - https://docs.victoriametrics.com/enterprise.html
-                      for more information, visit https://victoriametrics.com/products/enterprise/
-                      . To request a trial license, go to https://victoriametrics.com/products/enterprise/trial/
+                    description: |-
+                      Enterprise license key. This flag is available only in VictoriaMetrics enterprise.
+                      Documentation - https://docs.victoriametrics.com/enterprise.html
+                      for more information, visit https://victoriametrics.com/products/enterprise/ .
+                      To request a trial license, go to https://victoriametrics.com/products/enterprise/trial/
                     type: string
                   keyRef:
                     description: KeyRef is reference to secret with license key for
@@ -412,8 +445,10 @@ spec:
                           a valid secret key.
                         type: string
                       name:
-                        description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                          TODO: Add other useful fields. apiVersion, kind, uid?'
+                        description: |-
+                          Name of the referent.
+                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                          TODO: Add other useful fields. apiVersion, kind, uid?
                         type: string
                       optional:
                         description: Specify whether the Secret or its key must be
@@ -429,8 +464,9 @@ spec:
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               logFormat:
-                description: LogFormat for VMAlert to be configured with. default
-                  or json
+                description: |-
+                  LogFormat for VMAlert to be configured with.
+                  default or json
                 enum:
                 - default
                 - json
@@ -445,8 +481,9 @@ spec:
                 - PANIC
                 type: string
               minReadySeconds:
-                description: MinReadySeconds defines a minim number os seconds to
-                  wait before starting update next pod if previous in healthy state
+                description: |-
+                  MinReadySeconds defines a minim number os seconds to wait before starting update next pod
+                  if previous in healthy state
                 format: int32
                 type: integer
               nodeSelector:
@@ -456,29 +493,30 @@ spec:
                   on.
                 type: object
               notifier:
-                description: 'Notifier prometheus alertmanager endpoint spec. Required
-                  at least one of notifier or notifiers when there are alerting rules.
-                  e.g. http://127.0.0.1:9093 If specified both notifier and notifiers,
-                  notifier will be added as last element to notifiers. only one of
-                  notifier options could be chosen: notifierConfigRef or notifiers
-                  +  notifier'
+                description: |-
+                  Notifier prometheus alertmanager endpoint spec. Required at least one of notifier or notifiers when there are alerting rules. e.g. http://127.0.0.1:9093
+                  If specified both notifier and notifiers, notifier will be added as last element to notifiers.
+                  only one of notifier options could be chosen: notifierConfigRef or notifiers +  notifier
                 properties:
                   basicAuth:
                     description: BasicAuth allow an endpoint to authenticate over
                       basic authentication
                     properties:
                       password:
-                        description: The secret in the service scrape namespace that
-                          contains the password for authentication. It must be at
-                          them same namespace as CRD
+                        description: |-
+                          The secret in the service scrape namespace that contains the password
+                          for authentication.
+                          It must be at them same namespace as CRD
                         properties:
                           key:
                             description: The key of the secret to select from.  Must
                               be a valid secret key.
                             type: string
                           name:
-                            description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                              TODO: Add other useful fields. apiVersion, kind, uid?'
+                            description: |-
+                              Name of the referent.
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              TODO: Add other useful fields. apiVersion, kind, uid?
                             type: string
                           optional:
                             description: Specify whether the Secret or its key must
@@ -493,17 +531,20 @@ spec:
                           disk
                         type: string
                       username:
-                        description: The secret in the service scrape namespace that
-                          contains the username for authentication. It must be at
-                          them same namespace as CRD
+                        description: |-
+                          The secret in the service scrape namespace that contains the username
+                          for authentication.
+                          It must be at them same namespace as CRD
                         properties:
                           key:
                             description: The key of the secret to select from.  Must
                               be a valid secret key.
                             type: string
                           name:
-                            description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                              TODO: Add other useful fields. apiVersion, kind, uid?'
+                            description: |-
+                              Name of the referent.
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              TODO: Add other useful fields. apiVersion, kind, uid?
                             type: string
                           optional:
                             description: Specify whether the Secret or its key must
@@ -525,8 +566,10 @@ spec:
                           a valid secret key.
                         type: string
                       name:
-                        description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                          TODO: Add other useful fields. apiVersion, kind, uid?'
+                        description: |-
+                          Name of the referent.
+                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                          TODO: Add other useful fields. apiVersion, kind, uid?
                         type: string
                       optional:
                         description: Specify whether the Secret or its key must be
@@ -537,8 +580,11 @@ spec:
                     type: object
                     x-kubernetes-map-type: atomic
                   headers:
-                    description: Headers allow configuring custom http headers Must
-                      be in form of semicolon separated header with value e.g. headerName:headerValue
+                    description: |-
+                      Headers allow configuring custom http headers
+                      Must be in form of semicolon separated header with value
+                      e.g.
+                      headerName:headerValue
                       vmalert supports it since 1.79.0 version
                     items:
                       type: string
@@ -558,9 +604,10 @@ spec:
                                 description: The key to select.
                                 type: string
                               name:
-                                description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                  TODO: Add other useful fields. apiVersion, kind,
-                                  uid?'
+                                description: |-
+                                  Name of the referent.
+                                  More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                  TODO: Add other useful fields. apiVersion, kind, uid?
                                 type: string
                               optional:
                                 description: Specify whether the ConfigMap or its
@@ -578,9 +625,10 @@ spec:
                                   be a valid secret key.
                                 type: string
                               name:
-                                description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                  TODO: Add other useful fields. apiVersion, kind,
-                                  uid?'
+                                description: |-
+                                  Name of the referent.
+                                  More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                  TODO: Add other useful fields. apiVersion, kind, uid?
                                 type: string
                               optional:
                                 description: Specify whether the Secret or its key
@@ -599,8 +647,10 @@ spec:
                               be a valid secret key.
                             type: string
                           name:
-                            description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                              TODO: Add other useful fields. apiVersion, kind, uid?'
+                            description: |-
+                              Name of the referent.
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              TODO: Add other useful fields. apiVersion, kind, uid?
                             type: string
                           optional:
                             description: Specify whether the Secret or its key must
@@ -633,22 +683,23 @@ spec:
                     - token_url
                     type: object
                   selector:
-                    description: Selector allows service discovery for alertmanager
-                      in this case all matched vmalertmanager replicas will be added
-                      into vmalert notifier.url as statefulset pod.fqdn
+                    description: |-
+                      Selector allows service discovery for alertmanager
+                      in this case all matched vmalertmanager replicas will be added into vmalert notifier.url
+                      as statefulset pod.fqdn
                     properties:
                       labelSelector:
-                        description: A label selector is a label query over a set
-                          of resources. The result of matchLabels and matchExpressions
-                          are ANDed. An empty label selector matches all objects.
-                          A null label selector matches no objects.
+                        description: |-
+                          A label selector is a label query over a set of resources. The result of matchLabels and
+                          matchExpressions are ANDed. An empty label selector matches all objects. A null
+                          label selector matches no objects.
                         properties:
                           matchExpressions:
                             description: matchExpressions is a list of label selector
                               requirements. The requirements are ANDed.
                             items:
-                              description: A label selector requirement is a selector
-                                that contains values, a key, and an operator that
+                              description: |-
+                                A label selector requirement is a selector that contains values, a key, and an operator that
                                 relates the key and values.
                               properties:
                                 key:
@@ -656,17 +707,16 @@ spec:
                                     applies to.
                                   type: string
                                 operator:
-                                  description: operator represents a key's relationship
-                                    to a set of values. Valid operators are In, NotIn,
-                                    Exists and DoesNotExist.
+                                  description: |-
+                                    operator represents a key's relationship to a set of values.
+                                    Valid operators are In, NotIn, Exists and DoesNotExist.
                                   type: string
                                 values:
-                                  description: values is an array of string values.
-                                    If the operator is In or NotIn, the values array
-                                    must be non-empty. If the operator is Exists or
-                                    DoesNotExist, the values array must be empty.
-                                    This array is replaced during a strategic merge
-                                    patch.
+                                  description: |-
+                                    values is an array of string values. If the operator is In or NotIn,
+                                    the values array must be non-empty. If the operator is Exists or DoesNotExist,
+                                    the values array must be empty. This array is replaced during a strategic
+                                    merge patch.
                                   items:
                                     type: string
                                   type: array
@@ -678,21 +728,22 @@ spec:
                           matchLabels:
                             additionalProperties:
                               type: string
-                            description: matchLabels is a map of {key,value} pairs.
-                              A single {key,value} in the matchLabels map is equivalent
-                              to an element of matchExpressions, whose key field is
-                              "key", the operator is "In", and the values array contains
-                              only "value". The requirements are ANDed.
+                            description: |-
+                              matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels
+                              map is equivalent to an element of matchExpressions, whose key field is "key", the
+                              operator is "In", and the values array contains only "value". The requirements are ANDed.
                             type: object
                         type: object
                         x-kubernetes-map-type: atomic
                       namespaceSelector:
-                        description: NamespaceSelector is a selector for selecting
-                          either all namespaces or a list of namespaces.
+                        description: |-
+                          NamespaceSelector is a selector for selecting either all namespaces or a
+                          list of namespaces.
                         properties:
                           any:
-                            description: Boolean describing whether all namespaces
-                              are selected in contrast to a list restricting them.
+                            description: |-
+                              Boolean describing whether all namespaces are selected in contrast to a
+                              list restricting them.
                             type: boolean
                           matchNames:
                             description: List of namespace names.
@@ -712,17 +763,19 @@ spec:
                     x-kubernetes-preserve-unknown-fields: true
                 type: object
               notifierConfigRef:
-                description: 'NotifierConfigRef reference for secret with notifier
-                  configuration for vmalert only one of notifier options could be
-                  chosen: notifierConfigRef or notifiers +  notifier'
+                description: |-
+                  NotifierConfigRef reference for secret with notifier configuration for vmalert
+                  only one of notifier options could be chosen: notifierConfigRef or notifiers +  notifier
                 properties:
                   key:
                     description: The key of the secret to select from.  Must be a
                       valid secret key.
                     type: string
                   name:
-                    description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                      TODO: Add other useful fields. apiVersion, kind, uid?'
+                    description: |-
+                      Name of the referent.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                      TODO: Add other useful fields. apiVersion, kind, uid?
                     type: string
                   optional:
                     description: Specify whether the Secret or its key must be defined
@@ -732,12 +785,10 @@ spec:
                 type: object
                 x-kubernetes-map-type: atomic
               notifiers:
-                description: 'Notifiers prometheus alertmanager endpoints. Required
-                  at least one of notifier or notifiers when there are alerting rules.
-                  e.g. http://127.0.0.1:9093 If specified both notifier and notifiers,
-                  notifier will be added as last element to notifiers. only one of
-                  notifier options could be chosen: notifierConfigRef or notifiers
-                  +  notifier'
+                description: |-
+                  Notifiers prometheus alertmanager endpoints. Required at least one of notifier or notifiers when there are alerting rules. e.g. http://127.0.0.1:9093
+                  If specified both notifier and notifiers, notifier will be added as last element to notifiers.
+                  only one of notifier options could be chosen: notifierConfigRef or notifiers +  notifier
                 items:
                   description: VMAlertNotifierSpec defines the notifier url for sending
                     information about alerts
@@ -747,17 +798,20 @@ spec:
                         basic authentication
                       properties:
                         password:
-                          description: The secret in the service scrape namespace
-                            that contains the password for authentication. It must
-                            be at them same namespace as CRD
+                          description: |-
+                            The secret in the service scrape namespace that contains the password
+                            for authentication.
+                            It must be at them same namespace as CRD
                           properties:
                             key:
                               description: The key of the secret to select from.  Must
                                 be a valid secret key.
                               type: string
                             name:
-                              description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                TODO: Add other useful fields. apiVersion, kind, uid?'
+                              description: |-
+                                Name of the referent.
+                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                TODO: Add other useful fields. apiVersion, kind, uid?
                               type: string
                             optional:
                               description: Specify whether the Secret or its key must
@@ -772,17 +826,20 @@ spec:
                             at disk
                           type: string
                         username:
-                          description: The secret in the service scrape namespace
-                            that contains the username for authentication. It must
-                            be at them same namespace as CRD
+                          description: |-
+                            The secret in the service scrape namespace that contains the username
+                            for authentication.
+                            It must be at them same namespace as CRD
                           properties:
                             key:
                               description: The key of the secret to select from.  Must
                                 be a valid secret key.
                               type: string
                             name:
-                              description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                TODO: Add other useful fields. apiVersion, kind, uid?'
+                              description: |-
+                                Name of the referent.
+                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                TODO: Add other useful fields. apiVersion, kind, uid?
                               type: string
                             optional:
                               description: Specify whether the Secret or its key must
@@ -804,8 +861,10 @@ spec:
                             be a valid secret key.
                           type: string
                         name:
-                          description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                            TODO: Add other useful fields. apiVersion, kind, uid?'
+                          description: |-
+                            Name of the referent.
+                            More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                            TODO: Add other useful fields. apiVersion, kind, uid?
                           type: string
                         optional:
                           description: Specify whether the Secret or its key must
@@ -816,8 +875,11 @@ spec:
                       type: object
                       x-kubernetes-map-type: atomic
                     headers:
-                      description: Headers allow configuring custom http headers Must
-                        be in form of semicolon separated header with value e.g. headerName:headerValue
+                      description: |-
+                        Headers allow configuring custom http headers
+                        Must be in form of semicolon separated header with value
+                        e.g.
+                        headerName:headerValue
                         vmalert supports it since 1.79.0 version
                       items:
                         type: string
@@ -837,9 +899,10 @@ spec:
                                   description: The key to select.
                                   type: string
                                 name:
-                                  description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                    TODO: Add other useful fields. apiVersion, kind,
-                                    uid?'
+                                  description: |-
+                                    Name of the referent.
+                                    More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                    TODO: Add other useful fields. apiVersion, kind, uid?
                                   type: string
                                 optional:
                                   description: Specify whether the ConfigMap or its
@@ -857,9 +920,10 @@ spec:
                                     be a valid secret key.
                                   type: string
                                 name:
-                                  description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                    TODO: Add other useful fields. apiVersion, kind,
-                                    uid?'
+                                  description: |-
+                                    Name of the referent.
+                                    More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                    TODO: Add other useful fields. apiVersion, kind, uid?
                                   type: string
                                 optional:
                                   description: Specify whether the Secret or its key
@@ -878,8 +942,10 @@ spec:
                                 be a valid secret key.
                               type: string
                             name:
-                              description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                TODO: Add other useful fields. apiVersion, kind, uid?'
+                              description: |-
+                                Name of the referent.
+                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                TODO: Add other useful fields. apiVersion, kind, uid?
                               type: string
                             optional:
                               description: Specify whether the Secret or its key must
@@ -912,22 +978,23 @@ spec:
                       - token_url
                       type: object
                     selector:
-                      description: Selector allows service discovery for alertmanager
-                        in this case all matched vmalertmanager replicas will be added
-                        into vmalert notifier.url as statefulset pod.fqdn
+                      description: |-
+                        Selector allows service discovery for alertmanager
+                        in this case all matched vmalertmanager replicas will be added into vmalert notifier.url
+                        as statefulset pod.fqdn
                       properties:
                         labelSelector:
-                          description: A label selector is a label query over a set
-                            of resources. The result of matchLabels and matchExpressions
-                            are ANDed. An empty label selector matches all objects.
-                            A null label selector matches no objects.
+                          description: |-
+                            A label selector is a label query over a set of resources. The result of matchLabels and
+                            matchExpressions are ANDed. An empty label selector matches all objects. A null
+                            label selector matches no objects.
                           properties:
                             matchExpressions:
                               description: matchExpressions is a list of label selector
                                 requirements. The requirements are ANDed.
                               items:
-                                description: A label selector requirement is a selector
-                                  that contains values, a key, and an operator that
+                                description: |-
+                                  A label selector requirement is a selector that contains values, a key, and an operator that
                                   relates the key and values.
                                 properties:
                                   key:
@@ -935,17 +1002,16 @@ spec:
                                       applies to.
                                     type: string
                                   operator:
-                                    description: operator represents a key's relationship
-                                      to a set of values. Valid operators are In,
-                                      NotIn, Exists and DoesNotExist.
+                                    description: |-
+                                      operator represents a key's relationship to a set of values.
+                                      Valid operators are In, NotIn, Exists and DoesNotExist.
                                     type: string
                                   values:
-                                    description: values is an array of string values.
-                                      If the operator is In or NotIn, the values array
-                                      must be non-empty. If the operator is Exists
-                                      or DoesNotExist, the values array must be empty.
-                                      This array is replaced during a strategic merge
-                                      patch.
+                                    description: |-
+                                      values is an array of string values. If the operator is In or NotIn,
+                                      the values array must be non-empty. If the operator is Exists or DoesNotExist,
+                                      the values array must be empty. This array is replaced during a strategic
+                                      merge patch.
                                     items:
                                       type: string
                                     type: array
@@ -957,21 +1023,22 @@ spec:
                             matchLabels:
                               additionalProperties:
                                 type: string
-                              description: matchLabels is a map of {key,value} pairs.
-                                A single {key,value} in the matchLabels map is equivalent
-                                to an element of matchExpressions, whose key field
-                                is "key", the operator is "In", and the values array
-                                contains only "value". The requirements are ANDed.
+                              description: |-
+                                matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels
+                                map is equivalent to an element of matchExpressions, whose key field is "key", the
+                                operator is "In", and the values array contains only "value". The requirements are ANDed.
                               type: object
                           type: object
                           x-kubernetes-map-type: atomic
                         namespaceSelector:
-                          description: NamespaceSelector is a selector for selecting
-                            either all namespaces or a list of namespaces.
+                          description: |-
+                            NamespaceSelector is a selector for selecting either all namespaces or a
+                            list of namespaces.
                           properties:
                             any:
-                              description: Boolean describing whether all namespaces
-                                are selected in contrast to a list restricting them.
+                              description: |-
+                                Boolean describing whether all namespaces are selected in contrast to a
+                                list restricting them.
                               type: boolean
                             matchNames:
                               description: List of namespace names.
@@ -998,26 +1065,27 @@ spec:
                     anyOf:
                     - type: integer
                     - type: string
-                    description: An eviction is allowed if at most "maxUnavailable"
-                      pods selected by "selector" are unavailable after the eviction,
-                      i.e. even in absence of the evicted pod. For example, one can
-                      prevent all voluntary evictions by specifying 0. This is a mutually
-                      exclusive setting with "minAvailable".
+                    description: |-
+                      An eviction is allowed if at most "maxUnavailable" pods selected by
+                      "selector" are unavailable after the eviction, i.e. even in absence of
+                      the evicted pod. For example, one can prevent all voluntary evictions
+                      by specifying 0. This is a mutually exclusive setting with "minAvailable".
                     x-kubernetes-int-or-string: true
                   minAvailable:
                     anyOf:
                     - type: integer
                     - type: string
-                    description: An eviction is allowed if at least "minAvailable"
-                      pods selected by "selector" will still be available after the
-                      eviction, i.e. even in the absence of the evicted pod.  So for
-                      example you can prevent all voluntary evictions by specifying
-                      "100%".
+                    description: |-
+                      An eviction is allowed if at least "minAvailable" pods selected by
+                      "selector" will still be available after the eviction, i.e. even in the
+                      absence of the evicted pod.  So for example you can prevent all voluntary
+                      evictions by specifying "100%".
                     x-kubernetes-int-or-string: true
                   selectorLabels:
                     additionalProperties:
                       type: string
-                    description: replaces default labels selector generated by operator
+                    description: |-
+                      replaces default labels selector generated by operator
                       it's useful when you need to create custom budget
                     type: object
                 type: object
@@ -1028,29 +1096,34 @@ spec:
                   annotations:
                     additionalProperties:
                       type: string
-                    description: 'Annotations is an unstructured key value map stored
-                      with a resource that may be set by external tools to store and
-                      retrieve arbitrary metadata. They are not queryable and should
-                      be preserved when modifying objects. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations'
+                    description: |-
+                      Annotations is an unstructured key value map stored with a resource that may be
+                      set by external tools to store and retrieve arbitrary metadata. They are not
+                      queryable and should be preserved when modifying objects.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations
                     type: object
                   labels:
                     additionalProperties:
                       type: string
-                    description: 'Labels Map of string keys and values that can be
-                      used to organize and categorize (scope and select) objects.
-                      May match selectors of replication controllers and services.
-                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels'
+                    description: |-
+                      Labels Map of string keys and values that can be used to organize and categorize
+                      (scope and select) objects. May match selectors of replication controllers
+                      and services.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
                     type: object
                   name:
-                    description: 'Name must be unique within a namespace. Is required
-                      when creating resources, although some resources may allow a
-                      client to request the generation of an appropriate name automatically.
-                      Name is primarily intended for creation idempotence and configuration
-                      definition. Cannot be updated. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names'
+                    description: |-
+                      Name must be unique within a namespace. Is required when creating resources, although
+                      some resources may allow a client to request the generation of an appropriate name
+                      automatically. Name is primarily intended for creation idempotence and configuration
+                      definition.
+                      Cannot be updated.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names
                     type: string
                 type: object
               podSecurityPolicyName:
-                description: PodSecurityPolicyName - defines name for podSecurityPolicy
+                description: |-
+                  PodSecurityPolicyName - defines name for podSecurityPolicy
                   in case of empty value, prefixedName will be used.
                 type: string
               port:
@@ -1077,27 +1150,32 @@ spec:
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               remoteRead:
-                description: RemoteRead Optional URL to read vmalert state (persisted
-                  via RemoteWrite) This configuration only makes sense if alerts state
-                  has been successfully persisted (via RemoteWrite) before. see -remoteRead.url
-                  docs in vmalerts for details. E.g. http://127.0.0.1:8428
+                description: |-
+                  RemoteRead Optional URL to read vmalert state (persisted via RemoteWrite)
+                  This configuration only makes sense if alerts state has been successfully
+                  persisted (via RemoteWrite) before.
+                  see -remoteRead.url docs in vmalerts for details.
+                  E.g. http://127.0.0.1:8428
                 properties:
                   basicAuth:
                     description: BasicAuth allow an endpoint to authenticate over
                       basic authentication
                     properties:
                       password:
-                        description: The secret in the service scrape namespace that
-                          contains the password for authentication. It must be at
-                          them same namespace as CRD
+                        description: |-
+                          The secret in the service scrape namespace that contains the password
+                          for authentication.
+                          It must be at them same namespace as CRD
                         properties:
                           key:
                             description: The key of the secret to select from.  Must
                               be a valid secret key.
                             type: string
                           name:
-                            description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                              TODO: Add other useful fields. apiVersion, kind, uid?'
+                            description: |-
+                              Name of the referent.
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              TODO: Add other useful fields. apiVersion, kind, uid?
                             type: string
                           optional:
                             description: Specify whether the Secret or its key must
@@ -1112,17 +1190,20 @@ spec:
                           disk
                         type: string
                       username:
-                        description: The secret in the service scrape namespace that
-                          contains the username for authentication. It must be at
-                          them same namespace as CRD
+                        description: |-
+                          The secret in the service scrape namespace that contains the username
+                          for authentication.
+                          It must be at them same namespace as CRD
                         properties:
                           key:
                             description: The key of the secret to select from.  Must
                               be a valid secret key.
                             type: string
                           name:
-                            description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                              TODO: Add other useful fields. apiVersion, kind, uid?'
+                            description: |-
+                              Name of the referent.
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              TODO: Add other useful fields. apiVersion, kind, uid?
                             type: string
                           optional:
                             description: Specify whether the Secret or its key must
@@ -1144,8 +1225,10 @@ spec:
                           a valid secret key.
                         type: string
                       name:
-                        description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                          TODO: Add other useful fields. apiVersion, kind, uid?'
+                        description: |-
+                          Name of the referent.
+                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                          TODO: Add other useful fields. apiVersion, kind, uid?
                         type: string
                       optional:
                         description: Specify whether the Secret or its key must be
@@ -1156,17 +1239,19 @@ spec:
                     type: object
                     x-kubernetes-map-type: atomic
                   headers:
-                    description: Headers allow configuring custom http headers Must
-                      be in form of semicolon separated header with value e.g. headerName:headerValue
+                    description: |-
+                      Headers allow configuring custom http headers
+                      Must be in form of semicolon separated header with value
+                      e.g.
+                      headerName:headerValue
                       vmalert supports it since 1.79.0 version
                     items:
                       type: string
                     type: array
                   lookback:
-                    description: Lookback defines how far to look into past for alerts
-                      timeseries. For example, if lookback=1h then range from now()
-                      to now()-1h will be scanned. (default 1h0m0s) Applied only to
-                      RemoteReadSpec
+                    description: |-
+                      Lookback defines how far to look into past for alerts timeseries. For example, if lookback=1h then range from now() to now()-1h will be scanned. (default 1h0m0s)
+                      Applied only to RemoteReadSpec
                     type: string
                   oauth2:
                     description: OAuth2 defines OAuth2 configuration
@@ -1183,9 +1268,10 @@ spec:
                                 description: The key to select.
                                 type: string
                               name:
-                                description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                  TODO: Add other useful fields. apiVersion, kind,
-                                  uid?'
+                                description: |-
+                                  Name of the referent.
+                                  More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                  TODO: Add other useful fields. apiVersion, kind, uid?
                                 type: string
                               optional:
                                 description: Specify whether the ConfigMap or its
@@ -1203,9 +1289,10 @@ spec:
                                   be a valid secret key.
                                 type: string
                               name:
-                                description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                  TODO: Add other useful fields. apiVersion, kind,
-                                  uid?'
+                                description: |-
+                                  Name of the referent.
+                                  More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                  TODO: Add other useful fields. apiVersion, kind, uid?
                                 type: string
                               optional:
                                 description: Specify whether the Secret or its key
@@ -1224,8 +1311,10 @@ spec:
                               be a valid secret key.
                             type: string
                           name:
-                            description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                              TODO: Add other useful fields. apiVersion, kind, uid?'
+                            description: |-
+                              Name of the referent.
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              TODO: Add other useful fields. apiVersion, kind, uid?
                             type: string
                           optional:
                             description: Specify whether the Secret or its key must
@@ -1270,28 +1359,33 @@ spec:
                 - url
                 type: object
               remoteWrite:
-                description: RemoteWrite Optional URL to remote-write compatible storage
-                  to persist vmalert state and rule results to. Rule results will
-                  be persisted according to each rule. Alerts state will be persisted
-                  in the form of time series named ALERTS and ALERTS_FOR_STATE see
-                  -remoteWrite.url docs in vmalerts for details. E.g. http://127.0.0.1:8428
+                description: |-
+                  RemoteWrite Optional URL to remote-write compatible storage to persist
+                  vmalert state and rule results to.
+                  Rule results will be persisted according to each rule.
+                  Alerts state will be persisted in the form of time series named ALERTS and ALERTS_FOR_STATE
+                  see -remoteWrite.url docs in vmalerts for details.
+                  E.g. http://127.0.0.1:8428
                 properties:
                   basicAuth:
                     description: BasicAuth allow an endpoint to authenticate over
                       basic authentication
                     properties:
                       password:
-                        description: The secret in the service scrape namespace that
-                          contains the password for authentication. It must be at
-                          them same namespace as CRD
+                        description: |-
+                          The secret in the service scrape namespace that contains the password
+                          for authentication.
+                          It must be at them same namespace as CRD
                         properties:
                           key:
                             description: The key of the secret to select from.  Must
                               be a valid secret key.
                             type: string
                           name:
-                            description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                              TODO: Add other useful fields. apiVersion, kind, uid?'
+                            description: |-
+                              Name of the referent.
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              TODO: Add other useful fields. apiVersion, kind, uid?
                             type: string
                           optional:
                             description: Specify whether the Secret or its key must
@@ -1306,17 +1400,20 @@ spec:
                           disk
                         type: string
                       username:
-                        description: The secret in the service scrape namespace that
-                          contains the username for authentication. It must be at
-                          them same namespace as CRD
+                        description: |-
+                          The secret in the service scrape namespace that contains the username
+                          for authentication.
+                          It must be at them same namespace as CRD
                         properties:
                           key:
                             description: The key of the secret to select from.  Must
                               be a valid secret key.
                             type: string
                           name:
-                            description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                              TODO: Add other useful fields. apiVersion, kind, uid?'
+                            description: |-
+                              Name of the referent.
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              TODO: Add other useful fields. apiVersion, kind, uid?
                             type: string
                           optional:
                             description: Specify whether the Secret or its key must
@@ -1338,8 +1435,10 @@ spec:
                           a valid secret key.
                         type: string
                       name:
-                        description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                          TODO: Add other useful fields. apiVersion, kind, uid?'
+                        description: |-
+                          Name of the referent.
+                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                          TODO: Add other useful fields. apiVersion, kind, uid?
                         type: string
                       optional:
                         description: Specify whether the Secret or its key must be
@@ -1360,8 +1459,11 @@ spec:
                     pattern: '[0-9]+(ms|s|m|h)'
                     type: string
                   headers:
-                    description: Headers allow configuring custom http headers Must
-                      be in form of semicolon separated header with value e.g. headerName:headerValue
+                    description: |-
+                      Headers allow configuring custom http headers
+                      Must be in form of semicolon separated header with value
+                      e.g.
+                      headerName:headerValue
                       vmalert supports it since 1.79.0 version
                     items:
                       type: string
@@ -1391,9 +1493,10 @@ spec:
                                 description: The key to select.
                                 type: string
                               name:
-                                description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                  TODO: Add other useful fields. apiVersion, kind,
-                                  uid?'
+                                description: |-
+                                  Name of the referent.
+                                  More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                  TODO: Add other useful fields. apiVersion, kind, uid?
                                 type: string
                               optional:
                                 description: Specify whether the ConfigMap or its
@@ -1411,9 +1514,10 @@ spec:
                                   be a valid secret key.
                                 type: string
                               name:
-                                description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                  TODO: Add other useful fields. apiVersion, kind,
-                                  uid?'
+                                description: |-
+                                  Name of the referent.
+                                  More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                  TODO: Add other useful fields. apiVersion, kind, uid?
                                 type: string
                               optional:
                                 description: Specify whether the Secret or its key
@@ -1432,8 +1536,10 @@ spec:
                               be a valid secret key.
                             type: string
                           name:
-                            description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                              TODO: Add other useful fields. apiVersion, kind, uid?'
+                            description: |-
+                              Name of the referent.
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              TODO: Add other useful fields. apiVersion, kind, uid?
                             type: string
                           optional:
                             description: Specify whether the Secret or its key must
@@ -1478,14 +1584,42 @@ spec:
                 - url
                 type: object
               replicaCount:
-                description: ReplicaCount is the expected size of the VMAlert cluster.
-                  The controller will eventually make the size of the running cluster
-                  equal to the expected size.
+                description: |-
+                  ReplicaCount is the expected size of the VMAlert cluster. The controller will
+                  eventually make the size of the running cluster equal to the expected
+                  size.
                 format: int32
                 type: integer
               resources:
                 description: Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
                 properties:
+                  claims:
+                    description: |-
+                      Claims lists the names of resources, defined in spec.resourceClaims,
+                      that are used by this container.
+
+
+                      This is an alpha field and requires enabling the
+                      DynamicResourceAllocation feature gate.
+
+
+                      This field is immutable. It can only be set for containers.
+                    items:
+                      description: ResourceClaim references one entry in PodSpec.ResourceClaims.
+                      properties:
+                        name:
+                          description: |-
+                            Name must match the name of one entry in pod.spec.resourceClaims of
+                            the Pod where this field is used. It makes that resource available
+                            inside a container.
+                          type: string
+                      required:
+                      - name
+                      type: object
+                    type: array
+                    x-kubernetes-list-map-keys:
+                    - name
+                    x-kubernetes-list-type: map
                   limits:
                     additionalProperties:
                       anyOf:
@@ -1493,8 +1627,9 @@ spec:
                       - type: string
                       pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                       x-kubernetes-int-or-string: true
-                    description: 'Limits describes the maximum amount of compute resources
-                      allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
+                    description: |-
+                      Limits describes the maximum amount of compute resources allowed.
+                      More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
                     type: object
                   requests:
                     additionalProperties:
@@ -1503,16 +1638,18 @@ spec:
                       - type: string
                       pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                       x-kubernetes-int-or-string: true
-                    description: 'Requests describes the minimum amount of compute
-                      resources required. If Requests is omitted for a container,
-                      it defaults to Limits if that is explicitly specified, otherwise
-                      to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
+                    description: |-
+                      Requests describes the minimum amount of compute resources required.
+                      If Requests is omitted for a container, it defaults to Limits if that is explicitly specified,
+                      otherwise to an implementation-defined value. Requests cannot exceed Limits.
+                      More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
                     type: object
                 type: object
               revisionHistoryLimitCount:
-                description: The number of old ReplicaSets to retain to allow rollback
-                  in deployment or maximum number of revisions that will be maintained
-                  in the StatefulSet's revision history. Defaults to 10.
+                description: |-
+                  The number of old ReplicaSets to retain to allow rollback in deployment or
+                  maximum number of revisions that will be maintained in the StatefulSet's revision history.
+                  Defaults to 10.
                 format: int32
                 type: integer
               rollingUpdate:
@@ -1522,62 +1659,65 @@ spec:
                     anyOf:
                     - type: integer
                     - type: string
-                    description: 'The maximum number of pods that can be scheduled
-                      above the desired number of pods. Value can be an absolute number
-                      (ex: 5) or a percentage of desired pods (ex: 10%). This can
-                      not be 0 if MaxUnavailable is 0. Absolute number is calculated
-                      from percentage by rounding up. Defaults to 25%. Example: when
-                      this is set to 30%, the new ReplicaSet can be scaled up immediately
-                      when the rolling update starts, such that the total number of
-                      old and new pods do not exceed 130% of desired pods. Once old
-                      pods have been killed, new ReplicaSet can be scaled up further,
-                      ensuring that total number of pods running at any time during
-                      the update is at most 130% of desired pods.'
+                    description: |-
+                      The maximum number of pods that can be scheduled above the desired number of
+                      pods.
+                      Value can be an absolute number (ex: 5) or a percentage of desired pods (ex: 10%).
+                      This can not be 0 if MaxUnavailable is 0.
+                      Absolute number is calculated from percentage by rounding up.
+                      Defaults to 25%.
+                      Example: when this is set to 30%, the new ReplicaSet can be scaled up immediately when
+                      the rolling update starts, such that the total number of old and new pods do not exceed
+                      130% of desired pods. Once old pods have been killed,
+                      new ReplicaSet can be scaled up further, ensuring that total number of pods running
+                      at any time during the update is at most 130% of desired pods.
                     x-kubernetes-int-or-string: true
                   maxUnavailable:
                     anyOf:
                     - type: integer
                     - type: string
-                    description: 'The maximum number of pods that can be unavailable
-                      during the update. Value can be an absolute number (ex: 5) or
-                      a percentage of desired pods (ex: 10%). Absolute number is calculated
-                      from percentage by rounding down. This can not be 0 if MaxSurge
-                      is 0. Defaults to 25%. Example: when this is set to 30%, the
-                      old ReplicaSet can be scaled down to 70% of desired pods immediately
-                      when the rolling update starts. Once new pods are ready, old
-                      ReplicaSet can be scaled down further, followed by scaling up
-                      the new ReplicaSet, ensuring that the total number of pods available
-                      at all times during the update is at least 70% of desired pods.'
+                    description: |-
+                      The maximum number of pods that can be unavailable during the update.
+                      Value can be an absolute number (ex: 5) or a percentage of desired pods (ex: 10%).
+                      Absolute number is calculated from percentage by rounding down.
+                      This can not be 0 if MaxSurge is 0.
+                      Defaults to 25%.
+                      Example: when this is set to 30%, the old ReplicaSet can be scaled down to 70% of desired pods
+                      immediately when the rolling update starts. Once new pods are ready, old ReplicaSet
+                      can be scaled down further, followed by scaling up the new ReplicaSet, ensuring
+                      that the total number of pods available at all times during the update is at
+                      least 70% of desired pods.
                     x-kubernetes-int-or-string: true
                 type: object
               ruleNamespaceSelector:
-                description: RuleNamespaceSelector to be selected for VMRules discovery.
-                  Works in combination with Selector. If both nil - behaviour controlled
-                  by selectAllByDefault NamespaceSelector nil - only objects at VMAlert
-                  namespace.
+                description: |-
+                  RuleNamespaceSelector to be selected for VMRules discovery.
+                  Works in combination with Selector.
+                  If both nil - behaviour controlled by selectAllByDefault
+                  NamespaceSelector nil - only objects at VMAlert namespace.
                 properties:
                   matchExpressions:
                     description: matchExpressions is a list of label selector requirements.
                       The requirements are ANDed.
                     items:
-                      description: A label selector requirement is a selector that
-                        contains values, a key, and an operator that relates the key
-                        and values.
+                      description: |-
+                        A label selector requirement is a selector that contains values, a key, and an operator that
+                        relates the key and values.
                       properties:
                         key:
                           description: key is the label key that the selector applies
                             to.
                           type: string
                         operator:
-                          description: operator represents a key's relationship to
-                            a set of values. Valid operators are In, NotIn, Exists
-                            and DoesNotExist.
+                          description: |-
+                            operator represents a key's relationship to a set of values.
+                            Valid operators are In, NotIn, Exists and DoesNotExist.
                           type: string
                         values:
-                          description: values is an array of string values. If the
-                            operator is In or NotIn, the values array must be non-empty.
-                            If the operator is Exists or DoesNotExist, the values
-                            array must be empty. This array is replaced during a strategic
+                          description: |-
+                            values is an array of string values. If the operator is In or NotIn,
+                            the values array must be non-empty. If the operator is Exists or DoesNotExist,
+                            the values array must be empty. This array is replaced during a strategic
                             merge patch.
                           items:
                             type: string
@@ -1590,51 +1730,55 @@ spec:
                   matchLabels:
                     additionalProperties:
                       type: string
-                    description: matchLabels is a map of {key,value} pairs. A single
-                      {key,value} in the matchLabels map is equivalent to an element
-                      of matchExpressions, whose key field is "key", the operator
-                      is "In", and the values array contains only "value". The requirements
-                      are ANDed.
+                    description: |-
+                      matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels
+                      map is equivalent to an element of matchExpressions, whose key field is "key", the
+                      operator is "In", and the values array contains only "value". The requirements are ANDed.
                     type: object
                 type: object
                 x-kubernetes-map-type: atomic
               rulePath:
-                description: 'RulePath to the file with alert rules. Supports patterns.
-                  Flag can be specified multiple times. Examples: -rule /path/to/file.
-                  Path to a single file with alerting rules -rule dir/*.yaml -rule
-                  /*.yaml. Relative path to all .yaml files in folder, absolute path
-                  to all .yaml files in root. by default operator adds /etc/vmalert/configs/base/vmalert.yaml'
+                description: |-
+                  RulePath to the file with alert rules.
+                  Supports patterns. Flag can be specified multiple times.
+                  Examples:
+                  -rule /path/to/file. Path to a single file with alerting rules
+                  -rule dir/*.yaml -rule /*.yaml. Relative path to all .yaml files in folder,
+                  absolute path to all .yaml files in root.
+                  by default operator adds /etc/vmalert/configs/base/vmalert.yaml
                 items:
                   type: string
                 type: array
               ruleSelector:
-                description: RuleSelector selector to select which VMRules to mount
-                  for loading alerting rules from. Works in combination with NamespaceSelector.
-                  If both nil - behaviour controlled by selectAllByDefault NamespaceSelector
-                  nil - only objects at VMAlert namespace.
+                description: |-
+                  RuleSelector selector to select which VMRules to mount for loading alerting
+                  rules from.
+                  Works in combination with NamespaceSelector.
+                  If both nil - behaviour controlled by selectAllByDefault
+                  NamespaceSelector nil - only objects at VMAlert namespace.
                 properties:
                   matchExpressions:
                     description: matchExpressions is a list of label selector requirements.
                       The requirements are ANDed.
                     items:
-                      description: A label selector requirement is a selector that
-                        contains values, a key, and an operator that relates the key
-                        and values.
+                      description: |-
+                        A label selector requirement is a selector that contains values, a key, and an operator that
+                        relates the key and values.
                       properties:
                         key:
                           description: key is the label key that the selector applies
                             to.
                           type: string
                         operator:
-                          description: operator represents a key's relationship to
-                            a set of values. Valid operators are In, NotIn, Exists
-                            and DoesNotExist.
+                          description: |-
+                            operator represents a key's relationship to a set of values.
+                            Valid operators are In, NotIn, Exists and DoesNotExist.
                           type: string
                         values:
-                          description: values is an array of string values. If the
-                            operator is In or NotIn, the values array must be non-empty.
-                            If the operator is Exists or DoesNotExist, the values
-                            array must be empty. This array is replaced during a strategic
+                          description: |-
+                            values is an array of string values. If the operator is In or NotIn,
+                            the values array must be non-empty. If the operator is Exists or DoesNotExist,
+                            the values array must be empty. This array is replaced during a strategic
                             merge patch.
                           items:
                             type: string
@@ -1647,43 +1791,46 @@ spec:
                   matchLabels:
                     additionalProperties:
                       type: string
-                    description: matchLabels is a map of {key,value} pairs. A single
-                      {key,value} in the matchLabels map is equivalent to an element
-                      of matchExpressions, whose key field is "key", the operator
-                      is "In", and the values array contains only "value". The requirements
-                      are ANDed.
+                    description: |-
+                      matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels
+                      map is equivalent to an element of matchExpressions, whose key field is "key", the
+                      operator is "In", and the values array contains only "value". The requirements are ANDed.
                     type: object
                 type: object
                 x-kubernetes-map-type: atomic
               runtimeClassName:
-                description: RuntimeClassName - defines runtime class for kubernetes
-                  pod. https://kubernetes.io/docs/concepts/containers/runtime-class/
+                description: |-
+                  RuntimeClassName - defines runtime class for kubernetes pod.
+                  https://kubernetes.io/docs/concepts/containers/runtime-class/
                 type: string
               schedulerName:
                 description: SchedulerName - defines kubernetes scheduler name
                 type: string
               secrets:
-                description: Secrets is a list of Secrets in the same namespace as
-                  the VMAlert object, which shall be mounted into the VMAlert Pods.
+                description: |-
+                  Secrets is a list of Secrets in the same namespace as the VMAlert
+                  object, which shall be mounted into the VMAlert Pods.
                   The Secrets are mounted into /etc/vm/secrets/<secret-name>.
                 items:
                   type: string
                 type: array
               securityContext:
-                description: SecurityContext holds pod-level security attributes and
-                  common container settings. This defaults to the default PodSecurityContext.
+                description: |-
+                  SecurityContext holds pod-level security attributes and common container settings.
+                  This defaults to the default PodSecurityContext.
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               selectAllByDefault:
-                description: 'SelectAllByDefault changes default behavior for empty
-                  CRD selectors, such RuleSelector. with selectAllByDefault: true
-                  and empty serviceScrapeSelector and RuleNamespaceSelector Operator
-                  selects all exist serviceScrapes with selectAllByDefault: false
-                  - selects nothing'
+                description: |-
+                  SelectAllByDefault changes default behavior for empty CRD selectors, such RuleSelector.
+                  with selectAllByDefault: true and empty serviceScrapeSelector and RuleNamespaceSelector
+                  Operator selects all exist serviceScrapes
+                  with selectAllByDefault: false - selects nothing
                 type: boolean
               serviceAccountName:
-                description: ServiceAccountName is the name of the ServiceAccount
-                  to use to run the VMAlert Pods.
+                description: |-
+                  ServiceAccountName is the name of the ServiceAccount to use to run the
+                  VMAlert Pods.
                 type: string
               serviceScrapeSpec:
                 description: ServiceScrapeSpec that will be added to vmalert VMServiceScrape
@@ -1702,32 +1849,35 @@ spec:
                       annotations:
                         additionalProperties:
                           type: string
-                        description: 'Annotations is an unstructured key value map
-                          stored with a resource that may be set by external tools
-                          to store and retrieve arbitrary metadata. They are not queryable
-                          and should be preserved when modifying objects. More info:
-                          https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations'
+                        description: |-
+                          Annotations is an unstructured key value map stored with a resource that may be
+                          set by external tools to store and retrieve arbitrary metadata. They are not
+                          queryable and should be preserved when modifying objects.
+                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations
                         type: object
                       labels:
                         additionalProperties:
                           type: string
-                        description: 'Labels Map of string keys and values that can
-                          be used to organize and categorize (scope and select) objects.
-                          May match selectors of replication controllers and services.
-                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels'
+                        description: |-
+                          Labels Map of string keys and values that can be used to organize and categorize
+                          (scope and select) objects. May match selectors of replication controllers
+                          and services.
+                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
                         type: object
                       name:
-                        description: 'Name must be unique within a namespace. Is required
-                          when creating resources, although some resources may allow
-                          a client to request the generation of an appropriate name
-                          automatically. Name is primarily intended for creation idempotence
-                          and configuration definition. Cannot be updated. More info:
-                          https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names'
+                        description: |-
+                          Name must be unique within a namespace. Is required when creating resources, although
+                          some resources may allow a client to request the generation of an appropriate name
+                          automatically. Name is primarily intended for creation idempotence and configuration
+                          definition.
+                          Cannot be updated.
+                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names
                         type: string
                     type: object
                   spec:
-                    description: 'ServiceSpec describes the attributes that a user
-                      creates on a service. More info: https://kubernetes.io/docs/concepts/services-networking/service/'
+                    description: |-
+                      ServiceSpec describes the attributes that a user creates on a service.
+                      More info: https://kubernetes.io/docs/concepts/services-networking/service/
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
                 required:
@@ -1745,46 +1895,46 @@ spec:
               tolerations:
                 description: Tolerations If specified, the pod's tolerations.
                 items:
-                  description: The pod this Toleration is attached to tolerates any
-                    taint that matches the triple <key,value,effect> using the matching
-                    operator <operator>.
+                  description: |-
+                    The pod this Toleration is attached to tolerates any taint that matches
+                    the triple <key,value,effect> using the matching operator <operator>.
                   properties:
                     effect:
-                      description: Effect indicates the taint effect to match. Empty
-                        means match all taint effects. When specified, allowed values
-                        are NoSchedule, PreferNoSchedule and NoExecute.
+                      description: |-
+                        Effect indicates the taint effect to match. Empty means match all taint effects.
+                        When specified, allowed values are NoSchedule, PreferNoSchedule and NoExecute.
                       type: string
                     key:
-                      description: Key is the taint key that the toleration applies
-                        to. Empty means match all taint keys. If the key is empty,
-                        operator must be Exists; this combination means to match all
-                        values and all keys.
+                      description: |-
+                        Key is the taint key that the toleration applies to. Empty means match all taint keys.
+                        If the key is empty, operator must be Exists; this combination means to match all values and all keys.
                       type: string
                     operator:
-                      description: Operator represents a key's relationship to the
-                        value. Valid operators are Exists and Equal. Defaults to Equal.
-                        Exists is equivalent to wildcard for value, so that a pod
-                        can tolerate all taints of a particular category.
+                      description: |-
+                        Operator represents a key's relationship to the value.
+                        Valid operators are Exists and Equal. Defaults to Equal.
+                        Exists is equivalent to wildcard for value, so that a pod can
+                        tolerate all taints of a particular category.
                       type: string
                     tolerationSeconds:
-                      description: TolerationSeconds represents the period of time
-                        the toleration (which must be of effect NoExecute, otherwise
-                        this field is ignored) tolerates the taint. By default, it
-                        is not set, which means tolerate the taint forever (do not
-                        evict). Zero and negative values will be treated as 0 (evict
-                        immediately) by the system.
+                      description: |-
+                        TolerationSeconds represents the period of time the toleration (which must be
+                        of effect NoExecute, otherwise this field is ignored) tolerates the taint. By default,
+                        it is not set, which means tolerate the taint forever (do not evict). Zero and
+                        negative values will be treated as 0 (evict immediately) by the system.
                       format: int64
                       type: integer
                     value:
-                      description: Value is the taint value the toleration matches
-                        to. If the operator is Exists, the value should be empty,
-                        otherwise just a regular string.
+                      description: |-
+                        Value is the taint value the toleration matches to.
+                        If the operator is Exists, the value should be empty, otherwise just a regular string.
                       type: string
                   type: object
                 type: array
               topologySpreadConstraints:
-                description: TopologySpreadConstraints embedded kubernetes pod configuration
-                  option, controls how pods are spread across your cluster among failure-domains
+                description: |-
+                  TopologySpreadConstraints embedded kubernetes pod configuration option,
+                  controls how pods are spread across your cluster among failure-domains
                   such as regions, zones, nodes, and other user-defined topology domains
                   https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/
                 items:
@@ -1804,46 +1954,52 @@ spec:
                 - RollingUpdate
                 type: string
               useStrictSecurity:
-                description: UseStrictSecurity enables strict security mode for component
-                  it restricts disk writes access uses non-root user out of the box
+                description: |-
+                  UseStrictSecurity enables strict security mode for component
+                  it restricts disk writes access
+                  uses non-root user out of the box
                   drops not needed security permissions
                 type: boolean
               volumeMounts:
-                description: VolumeMounts allows configuration of additional VolumeMounts
-                  on the output Deployment definition. VolumeMounts specified will
-                  be appended to other VolumeMounts in the VMAlert container, that
-                  are generated as a result of StorageSpec objects.
+                description: |-
+                  VolumeMounts allows configuration of additional VolumeMounts on the output Deployment definition.
+                  VolumeMounts specified will be appended to other VolumeMounts in the VMAlert container,
+                  that are generated as a result of StorageSpec objects.
                 items:
                   description: VolumeMount describes a mounting of a Volume within
                     a container.
                   properties:
                     mountPath:
-                      description: Path within the container at which the volume should
-                        be mounted.  Must not contain ':'.
+                      description: |-
+                        Path within the container at which the volume should be mounted.  Must
+                        not contain ':'.
                       type: string
                     mountPropagation:
-                      description: mountPropagation determines how mounts are propagated
-                        from the host to container and the other way around. When
-                        not set, MountPropagationNone is used. This field is beta
-                        in 1.10.
+                      description: |-
+                        mountPropagation determines how mounts are propagated from the host
+                        to container and the other way around.
+                        When not set, MountPropagationNone is used.
+                        This field is beta in 1.10.
                       type: string
                     name:
                       description: This must match the Name of a Volume.
                       type: string
                     readOnly:
-                      description: Mounted read-only if true, read-write otherwise
-                        (false or unspecified). Defaults to false.
+                      description: |-
+                        Mounted read-only if true, read-write otherwise (false or unspecified).
+                        Defaults to false.
                       type: boolean
                     subPath:
-                      description: Path within the volume from which the container's
-                        volume should be mounted. Defaults to "" (volume's root).
+                      description: |-
+                        Path within the volume from which the container's volume should be mounted.
+                        Defaults to "" (volume's root).
                       type: string
                     subPathExpr:
-                      description: Expanded path within the volume from which the
-                        container's volume should be mounted. Behaves similarly to
-                        SubPath but environment variable references $(VAR_NAME) are
-                        expanded using the container's environment. Defaults to ""
-                        (volume's root). SubPathExpr and SubPath are mutually exclusive.
+                      description: |-
+                        Expanded path within the volume from which the container's volume should be mounted.
+                        Behaves similarly to SubPath but environment variable references $(VAR_NAME) are expanded using the container's environment.
+                        Defaults to "" (volume's root).
+                        SubPathExpr and SubPath are mutually exclusive.
                       type: string
                   required:
                   - mountPath
@@ -1851,9 +2007,10 @@ spec:
                   type: object
                 type: array
               volumes:
-                description: Volumes allows configuration of additional volumes on
-                  the output Deployment definition. Volumes specified will be appended
-                  to other volumes that are generated as a result of StorageSpec objects.
+                description: |-
+                  Volumes allows configuration of additional volumes on the output Deployment definition.
+                  Volumes specified will be appended to other volumes that are generated as a result of
+                  StorageSpec objects.
                 items:
                   description: Volume represents a named volume in a pod that may
                     be accessed by any container in the pod.
@@ -1869,8 +2026,9 @@ spec:
             description: VMAlertStatus defines the observed state of VMAlert
             properties:
               availableReplicas:
-                description: AvailableReplicas Total number of available pods (ready
-                  for at least minReadySeconds) targeted by this VMAlert cluster.
+                description: |-
+                  AvailableReplicas Total number of available pods (ready for at least minReadySeconds)
+                  targeted by this VMAlert cluster.
                 format: int32
                 type: integer
               reason:
@@ -1878,8 +2036,9 @@ spec:
                   only for statefuleMode
                 type: string
               replicas:
-                description: ReplicaCount Total number of non-terminated pods targeted
-                  by this VMAlert cluster (their labels match the selector).
+                description: |-
+                  ReplicaCount Total number of non-terminated pods targeted by this VMAlert
+                  cluster (their labels match the selector).
                 format: int32
                 type: integer
               unavailableReplicas:
@@ -1892,8 +2051,9 @@ spec:
                   only for statefuleMode
                 type: string
               updatedReplicas:
-                description: UpdatedReplicas Total number of non-terminated pods targeted
-                  by this VMAlert cluster that have the desired version spec.
+                description: |-
+                  UpdatedReplicas Total number of non-terminated pods targeted by this VMAlert
+                  cluster that have the desired version spec.
                 format: int32
                 type: integer
             type: object

@@ -2,7 +2,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.12.1
+    controller-gen.kubebuilder.io/version: v0.14.0
   name: vmusers.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -19,14 +19,19 @@ spec:
         description: VMUser is the Schema for the vmusers API
         properties:
           apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation
-              of an object. Servers should convert recognized schemas to the latest
-              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: 'Kind is a string value representing the REST resource this
-              object represents. Servers may infer this from the endpoint the client
-              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
@@ -38,7 +43,8 @@ spec:
                   protected endpoint.
                 type: string
               default_url:
-                description: DefaultURLs backend url for non-matching paths filter
+                description: |-
+                  DefaultURLs backend url for non-matching paths filter
                   usually used for default backend with error message
                 items:
                   type: string
@@ -48,26 +54,30 @@ spec:
                   vmuser
                 type: boolean
               drop_src_path_prefix_parts:
-                description: DropSrcPathPrefixParts is the number of `/`-delimited
-                  request path prefix parts to drop before proxying the request to
-                  backend. See https://docs.victoriametrics.com/vmauth.html#dropping-request-path-prefix
-                  for more details.
+                description: |-
+                  DropSrcPathPrefixParts is the number of `/`-delimited request path prefix parts to drop before proxying the request to backend.
+                  See https://docs.victoriametrics.com/vmauth.html#dropping-request-path-prefix for more details.
                 type: integer
               generatePassword:
-                description: GeneratePassword instructs operator to generate password
-                  for user if spec.password if empty.
+                description: |-
+                  GeneratePassword instructs operator to generate password for user
+                  if spec.password if empty.
                 type: boolean
               headers:
-                description: 'Headers represent additional http headers, that vmauth
-                  uses in form of ["header_key: header_value"] multiple values for
-                  header key: ["header_key: value1,value2"] it''s available since
-                  1.68.0 version of vmauth'
+                description: |-
+                  Headers represent additional http headers, that vmauth uses
+                  in form of ["header_key: header_value"]
+                  multiple values for header key:
+                  ["header_key: value1,value2"]
+                  it's available since 1.68.0 version of vmauth
                 items:
                   type: string
                 type: array
               ip_filters:
-                description: IPFilters defines per target src ip filters supported
-                  only with enterprise version of vmauth https://docs.victoriametrics.com/vmauth.html#ip-filters
+                description: |-
+                  IPFilters defines per target src ip filters
+                  supported only with enterprise version of vmauth
+                  https://docs.victoriametrics.com/vmauth.html#ip-filters
                 properties:
                   allow_list:
                     items:
@@ -79,17 +89,18 @@ spec:
                     type: array
                 type: object
               load_balancing_policy:
-                description: 'LoadBalancingPolicy defines load balancing policy to
-                  use for backend urls. Supported policies: least_loaded, first_available.
-                  See https://docs.victoriametrics.com/vmauth.html#load-balancing
-                  for more details (default "least_loaded")'
+                description: |-
+                  LoadBalancingPolicy defines load balancing policy to use for backend urls.
+                  Supported policies: least_loaded, first_available.
+                  See https://docs.victoriametrics.com/vmauth.html#load-balancing for more details (default "least_loaded")
                 enum:
                 - least_loaded
                 - first_available
                 type: string
               max_concurrent_requests:
-                description: MaxConcurrentRequests defines max concurrent requests
-                  per user 300 is default value for vmauth
+                description: |-
+                  MaxConcurrentRequests defines max concurrent requests per user
+                  300 is default value for vmauth
                 type: integer
               metric_labels:
                 additionalProperties:
@@ -113,8 +124,10 @@ spec:
                       valid secret key.
                     type: string
                   name:
-                    description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                      TODO: Add other useful fields. apiVersion, kind, uid?'
+                    description: |-
+                      Name of the referent.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                      TODO: Add other useful fields. apiVersion, kind, uid?
                     type: string
                   optional:
                     description: Specify whether the Secret or its key must be defined
@@ -124,33 +137,40 @@ spec:
                 type: object
                 x-kubernetes-map-type: atomic
               response_headers:
-                description: 'ResponseHeaders represent additional http headers, that
-                  vmauth adds for request response in form of ["header_key: header_value"]
-                  multiple values for header key: ["header_key: value1,value2"] it''s
-                  available since 1.93.0 version of vmauth'
+                description: |-
+                  ResponseHeaders represent additional http headers, that vmauth adds for request response
+                  in form of ["header_key: header_value"]
+                  multiple values for header key:
+                  ["header_key: value1,value2"]
+                  it's available since 1.93.0 version of vmauth
                 items:
                   type: string
                 type: array
               retry_status_codes:
-                description: RetryStatusCodes defines http status codes in numeric
-                  format for request retries e.g. [429,503]
+                description: |-
+                  RetryStatusCodes defines http status codes in numeric format for request retries
+                  e.g. [429,503]
                 items:
                   type: integer
                 type: array
               targetRefs:
                 description: TargetRefs - reference to endpoints, which user may access.
                 items:
-                  description: 'TargetRef describes target for user traffic forwarding.
-                    one of target types can be chosen: crd or static per targetRef.
-                    user can define multiple targetRefs with different ref Types.'
+                  description: |-
+                    TargetRef describes target for user traffic forwarding.
+                    one of target types can be chosen:
+                    crd or static per targetRef.
+                    user can define multiple targetRefs with different ref Types.
                   properties:
                     crd:
-                      description: CRD describes exist operator's CRD object, operator
-                        generates access url based on CRD params.
+                      description: |-
+                        CRD describes exist operator's CRD object,
+                        operator generates access url based on CRD params.
                       properties:
                         kind:
-                          description: 'Kind one of: VMAgent VMAlert VMCluster VMSingle
-                            or VMAlertManager'
+                          description: |-
+                            Kind one of:
+                            VMAgent VMAlert VMCluster VMSingle or VMAlertManager
                           type: string
                         name:
                           description: Name target CRD object name
@@ -164,16 +184,17 @@ spec:
                       - namespace
                       type: object
                     drop_src_path_prefix_parts:
-                      description: DropSrcPathPrefixParts is the number of `/`-delimited
-                        request path prefix parts to drop before proxying the request
-                        to backend. See https://docs.victoriametrics.com/vmauth.html#dropping-request-path-prefix
-                        for more details.
+                      description: |-
+                        DropSrcPathPrefixParts is the number of `/`-delimited request path prefix parts to drop before proxying the request to backend.
+                        See https://docs.victoriametrics.com/vmauth.html#dropping-request-path-prefix for more details.
                       type: integer
                     headers:
-                      description: 'Headers represent additional http headers, that
-                        vmauth uses in form of ["header_key: header_value"] multiple
-                        values for header key: ["header_key: value1,value2"] it''s
-                        available since 1.68.0 version of vmauth'
+                      description: |-
+                        Headers represent additional http headers, that vmauth uses
+                        in form of ["header_key: header_value"]
+                        multiple values for header key:
+                        ["header_key: value1,value2"]
+                        it's available since 1.68.0 version of vmauth
                       items:
                         type: string
                       type: array
@@ -182,10 +203,10 @@ spec:
                         type: string
                       type: array
                     load_balancing_policy:
-                      description: 'LoadBalancingPolicy defines load balancing policy
-                        to use for backend urls. Supported policies: least_loaded,
-                        first_available. See https://docs.victoriametrics.com/vmauth.html#load-balancing
-                        for more details (default "least_loaded")'
+                      description: |-
+                        LoadBalancingPolicy defines load balancing policy to use for backend urls.
+                        Supported policies: least_loaded, first_available.
+                        See https://docs.victoriametrics.com/vmauth.html#load-balancing for more details (default "least_loaded")
                       enum:
                       - least_loaded
                       - first_available
@@ -196,22 +217,26 @@ spec:
                         type: string
                       type: array
                     response_headers:
-                      description: 'ResponseHeaders represent additional http headers,
-                        that vmauth adds for request response in form of ["header_key:
-                        header_value"] multiple values for header key: ["header_key:
-                        value1,value2"] it''s available since 1.93.0 version of vmauth'
+                      description: |-
+                        ResponseHeaders represent additional http headers, that vmauth adds for request response
+                        in form of ["header_key: header_value"]
+                        multiple values for header key:
+                        ["header_key: value1,value2"]
+                        it's available since 1.93.0 version of vmauth
                       items:
                         type: string
                       type: array
                     retry_status_codes:
-                      description: RetryStatusCodes defines http status codes in numeric
-                        format for request retries Can be defined per target or at
-                        VMUser.spec level e.g. [429,503]
+                      description: |-
+                        RetryStatusCodes defines http status codes in numeric format for request retries
+                        Can be defined per target or at VMUser.spec level
+                        e.g. [429,503]
                       items:
                         type: integer
                       type: array
                     static:
-                      description: Static - user defined url for traffic forward,
+                      description: |-
+                        Static - user defined url for traffic forward,
                         for instance http://vmsingle:8429
                       properties:
                         url:
@@ -225,16 +250,18 @@ spec:
                           type: array
                       type: object
                     target_path_suffix:
-                      description: QueryParams []string `json:"queryParams,omitempty"`
+                      description: |-
+                        QueryParams []string `json:"queryParams,omitempty"`
                         TargetPathSuffix allows to add some suffix to the target path
-                        It allows to hide tenant configuration from user with crd
-                        as ref. it also may contain any url encoded params.
+                        It allows to hide tenant configuration from user with crd as ref.
+                        it also may contain any url encoded params.
                       type: string
                   type: object
                 type: array
               tls_insecure_skip_verify:
-                description: TLSInsecureSkipVerify - whether to skip TLS verification
-                  when connecting to backend over HTTPS. See https://docs.victoriametrics.com/vmauth.html#backend-tls-setup
+                description: |-
+                  TLSInsecureSkipVerify - whether to skip TLS verification when connecting to backend over HTTPS.
+                  See https://docs.victoriametrics.com/vmauth.html#backend-tls-setup
                 type: boolean
               tokenRef:
                 description: TokenRef allows fetching token from user-created secrets
@@ -245,8 +272,10 @@ spec:
                       valid secret key.
                     type: string
                   name:
-                    description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                      TODO: Add other useful fields. apiVersion, kind, uid?'
+                    description: |-
+                      Name of the referent.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                      TODO: Add other useful fields. apiVersion, kind, uid?
                     type: string
                   optional:
                     description: Specify whether the Secret or its key must be defined
@@ -256,8 +285,9 @@ spec:
                 type: object
                 x-kubernetes-map-type: atomic
               username:
-                description: UserName basic auth user name for accessing protected
-                  endpoint, will be replaced with metadata.name of VMUser if omitted.
+                description: |-
+                  UserName basic auth user name for accessing protected endpoint,
+                  will be replaced with metadata.name of VMUser if omitted.
                 type: string
             required:
             - targetRefs

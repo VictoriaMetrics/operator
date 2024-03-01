@@ -23,7 +23,6 @@ import (
 	v1beta1 "github.com/VictoriaMetrics/operator/api/victoriametrics/v1beta1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
-	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	testing "k8s.io/client-go/testing"
@@ -35,9 +34,9 @@ type FakeVMUsers struct {
 	ns   string
 }
 
-var vmusersResource = schema.GroupVersionResource{Group: "victoriametrics", Version: "v1beta1", Resource: "vmusers"}
+var vmusersResource = v1beta1.SchemeGroupVersion.WithResource("vmusers")
 
-var vmusersKind = schema.GroupVersionKind{Group: "victoriametrics", Version: "v1beta1", Kind: "VMUser"}
+var vmusersKind = v1beta1.SchemeGroupVersion.WithKind("VMUser")
 
 // Get takes name of the vMUser, and returns the corresponding vMUser object, and an error if there is any.
 func (c *FakeVMUsers) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1beta1.VMUser, err error) {

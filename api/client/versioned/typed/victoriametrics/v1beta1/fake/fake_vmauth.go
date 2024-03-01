@@ -23,7 +23,6 @@ import (
 	v1beta1 "github.com/VictoriaMetrics/operator/api/victoriametrics/v1beta1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
-	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	testing "k8s.io/client-go/testing"
@@ -35,9 +34,9 @@ type FakeVMAuths struct {
 	ns   string
 }
 
-var vmauthsResource = schema.GroupVersionResource{Group: "victoriametrics", Version: "v1beta1", Resource: "vmauths"}
+var vmauthsResource = v1beta1.SchemeGroupVersion.WithResource("vmauths")
 
-var vmauthsKind = schema.GroupVersionKind{Group: "victoriametrics", Version: "v1beta1", Kind: "VMAuth"}
+var vmauthsKind = v1beta1.SchemeGroupVersion.WithKind("VMAuth")
 
 // Get takes name of the vMAuth, and returns the corresponding vMAuth object, and an error if there is any.
 func (c *FakeVMAuths) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1beta1.VMAuth, err error) {

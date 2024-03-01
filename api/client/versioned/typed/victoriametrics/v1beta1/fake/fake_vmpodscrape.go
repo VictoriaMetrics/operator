@@ -23,7 +23,6 @@ import (
 	v1beta1 "github.com/VictoriaMetrics/operator/api/victoriametrics/v1beta1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
-	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	testing "k8s.io/client-go/testing"
@@ -35,9 +34,9 @@ type FakeVMPodScrapes struct {
 	ns   string
 }
 
-var vmpodscrapesResource = schema.GroupVersionResource{Group: "victoriametrics", Version: "v1beta1", Resource: "vmpodscrapes"}
+var vmpodscrapesResource = v1beta1.SchemeGroupVersion.WithResource("vmpodscrapes")
 
-var vmpodscrapesKind = schema.GroupVersionKind{Group: "victoriametrics", Version: "v1beta1", Kind: "VMPodScrape"}
+var vmpodscrapesKind = v1beta1.SchemeGroupVersion.WithKind("VMPodScrape")
 
 // Get takes name of the vMPodScrape, and returns the corresponding vMPodScrape object, and an error if there is any.
 func (c *FakeVMPodScrapes) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1beta1.VMPodScrape, err error) {

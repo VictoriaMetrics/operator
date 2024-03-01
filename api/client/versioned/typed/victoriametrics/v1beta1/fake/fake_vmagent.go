@@ -23,7 +23,6 @@ import (
 	v1beta1 "github.com/VictoriaMetrics/operator/api/victoriametrics/v1beta1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
-	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	testing "k8s.io/client-go/testing"
@@ -35,9 +34,9 @@ type FakeVMAgents struct {
 	ns   string
 }
 
-var vmagentsResource = schema.GroupVersionResource{Group: "victoriametrics", Version: "v1beta1", Resource: "vmagents"}
+var vmagentsResource = v1beta1.SchemeGroupVersion.WithResource("vmagents")
 
-var vmagentsKind = schema.GroupVersionKind{Group: "victoriametrics", Version: "v1beta1", Kind: "VMAgent"}
+var vmagentsKind = v1beta1.SchemeGroupVersion.WithKind("VMAgent")
 
 // Get takes name of the vMAgent, and returns the corresponding vMAgent object, and an error if there is any.
 func (c *FakeVMAgents) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1beta1.VMAgent, err error) {

@@ -1,6 +1,8 @@
 package v1beta1
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -9,7 +11,9 @@ import (
 	v12 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // VMAuthSpec defines the desired state of VMAuth
@@ -201,6 +205,13 @@ type VMAuthSpec struct {
 	// See: https://docs.victoriametrics.com/enterprise.html
 	// +optional
 	License *License `json:"license,omitempty"`
+	// ConfigSecret is the name of a Kubernetes Secret in the same namespace as the
+	// VMAuth object, which contains auth configuration for vmauth,
+	// configuration must be inside secret key: config.yaml.
+	// It must be created and managed manually.
+	// If it's defined, configuration for vmauth becomes unmanaged and operator'll not create any related secrets/config-reloaders
+	// +optional
+	ConfigSecret string `json:"configSecret,omitempty"`
 }
 
 // VMAuthUnauthorizedPath defines url_map for unauthorized access
@@ -290,7 +301,10 @@ type EmbeddedIngress struct {
 
 // VMAuthStatus defines the observed state of VMAuth
 type VMAuthStatus struct {
-	// todo add status.
+	// UpdateStatus defines a status for update rollout, effective only for statefuleMode
+	UpdateStatus UpdateStatus `json:"updateStatus,omitempty"`
+	// Reason defines fail reason for update process, effective only for statefuleMode
+	Reason string `json:"reason,omitempty"`
 }
 
 // VMAuth is the Schema for the vmauths API
@@ -298,6 +312,7 @@ type VMAuthStatus struct {
 // +kubebuilder:subresource:status
 // +genclient
 // +k8s:openapi-gen=true
+// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.updateStatus",description="Current status of update rollout"
 type VMAuth struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -426,6 +441,55 @@ func (cr VMAuth) GetNSName() string {
 // AsCRDOwner implements interface
 func (cr *VMAuth) AsCRDOwner() []metav1.OwnerReference {
 	return GetCRDAsOwner(Auth)
+}
+
+// IsUnmanaged checks if object should managed any  config objects
+func (cr *VMAuth) IsUnmanaged() bool {
+	return (!cr.Spec.SelectAllByDefault && cr.Spec.UserSelector == nil && cr.Spec.UserNamespaceSelector == nil) || cr.Spec.ConfigSecret != ""
+}
+
+// LastAppliedSpecAsPatch return last applied cluster spec as patch annotation
+func (cr *VMAuth) LastAppliedSpecAsPatch() (client.Patch, error) {
+	data, err := json.Marshal(cr.Spec)
+	if err != nil {
+		return nil, fmt.Errorf("possible bug, cannot serialize specification as json :%w", err)
+	}
+	patch := fmt.Sprintf(`{"metadata":{"annotations":{"operator.victoriametrics/last-applied-spec": %q}}}`, data)
+	return client.RawPatch(types.MergePatchType, []byte(patch)), nil
+}
+
+// HasSpecChanges compares spec with last applied cluster spec stored in annotation
+func (cr *VMAuth) HasSpecChanges() (bool, error) {
+	var prevSpec VMAuthSpec
+	lastAppliedClusterJSON := cr.Annotations["operator.victoriametrics/last-applied-spec"]
+	if len(lastAppliedClusterJSON) == 0 {
+		return true, nil
+	}
+	if err := json.Unmarshal([]byte(lastAppliedClusterJSON), &prevSpec); err != nil {
+		return true, fmt.Errorf("cannot parse last applied spec value: %s : %w", lastAppliedClusterJSON, err)
+	}
+	instanceSpecData, _ := json.Marshal(cr.Spec)
+	return !bytes.Equal([]byte(lastAppliedClusterJSON), instanceSpecData), nil
+}
+
+// SetStatusTo changes update status with optional reason of fail
+func (cr *VMAuth) SetUpdateStatusTo(ctx context.Context, r client.Client, status UpdateStatus, maybeErr error) error {
+	cr.Status.UpdateStatus = status
+	switch status {
+	case UpdateStatusExpanding:
+	case UpdateStatusFailed:
+		if maybeErr != nil {
+			cr.Status.Reason = maybeErr.Error()
+		}
+	case UpdateStatusOperational:
+		cr.Status.Reason = ""
+	default:
+		panic(fmt.Sprintf("BUG: not expected status=%q", status))
+	}
+	if err := r.Status().Update(ctx, cr); err != nil {
+		return fmt.Errorf("failed to update object status to=%q: %w", status, err)
+	}
+	return nil
 }
 
 func init() {

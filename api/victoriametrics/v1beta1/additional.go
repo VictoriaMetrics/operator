@@ -441,6 +441,12 @@ type StreamAggrRule struct {
 
 	// StalenessInterval defines an interval after which the series state will be reset if no samples have been sent during it.
 	StalenessInterval string `json:"staleness_interval,omitempty" yaml:"staleness_interval,omitempty"`
+
+	// FlushOnShutdown defines whether to flush the aggregation state on process termination
+	// or config reload. Is `false` by default.
+	// It is not recommended changing this setting, unless unfinished aggregations states
+	// are preferred to missing data points.
+	FlushOnShutdown bool `json:"flush_on_shutdown,omitempty" yaml:"flush_on_shutdown,omitempty"`
 	// Outputs is a list of output aggregate functions to produce.
 	//
 	// The following names are allowed:

@@ -23,6 +23,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 // log is for logging in this package.
@@ -54,34 +55,34 @@ func (cr *VMAuth) sanityCheck() error {
 }
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (r *VMAuth) ValidateCreate() error {
+func (r *VMAuth) ValidateCreate() (aw admission.Warnings, err error) {
 	if r.Spec.ParsingError != "" {
-		return fmt.Errorf(r.Spec.ParsingError)
+		return aw, fmt.Errorf(r.Spec.ParsingError)
 	}
 	if mustSkipValidation(r) {
-		return nil
+		return
 	}
 	if err := r.sanityCheck(); err != nil {
-		return err
+		return aw, err
 	}
-	return nil
+	return
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (r *VMAuth) ValidateUpdate(old runtime.Object) error {
+func (r *VMAuth) ValidateUpdate(old runtime.Object) (aw admission.Warnings, err error) {
 	if r.Spec.ParsingError != "" {
-		return fmt.Errorf(r.Spec.ParsingError)
+		return aw, fmt.Errorf(r.Spec.ParsingError)
 	}
 	if mustSkipValidation(r) {
-		return nil
+		return
 	}
 	if err := r.sanityCheck(); err != nil {
-		return err
+		return aw, err
 	}
-	return nil
+	return
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (r *VMAuth) ValidateDelete() error {
-	return nil
+func (r *VMAuth) ValidateDelete() (aw admission.Warnings, err error) {
+	return
 }

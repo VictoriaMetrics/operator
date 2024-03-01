@@ -2,12 +2,14 @@ package v1beta1
 
 import (
 	"fmt"
+
 	"github.com/VictoriaMetrics/VictoriaMetrics/app/vmalert/config"
 	"gopkg.in/yaml.v2"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 // log is for logging in this package.
@@ -24,7 +26,6 @@ func (r *VMRule) SetupWebhookWithManager(mgr ctrl.Manager) error {
 var _ webhook.Validator = &VMRule{}
 
 func (r *VMRule) sanityCheck() error {
-
 	uniqNames := make(map[string]struct{})
 	var totalSize int
 	for i := range r.Spec.Groups {
@@ -55,26 +56,32 @@ func (r *VMRule) sanityCheck() error {
 }
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (r *VMRule) ValidateCreate() error {
+func (r *VMRule) ValidateCreate() (aw admission.Warnings, err error) {
 	vmrulelog.Info("validate create", "name", r.Name)
 	// skip validation, if object has annotation.
 	if mustSkipValidation(r) {
-		return nil
+		return
 	}
-	return r.sanityCheck()
+	if err := r.sanityCheck(); err != nil {
+		return aw, err
+	}
+	return
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (r *VMRule) ValidateUpdate(old runtime.Object) error {
+func (r *VMRule) ValidateUpdate(old runtime.Object) (aw admission.Warnings, err error) {
 	vmrulelog.Info("validate update", "name", r.Name)
 	if mustSkipValidation(r) {
-		return nil
+		return
 	}
-	return r.sanityCheck()
+	if err := r.sanityCheck(); err != nil {
+		return aw, err
+	}
+	return
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (r *VMRule) ValidateDelete() error {
+func (r *VMRule) ValidateDelete() (aw admission.Warnings, err error) {
 	// noop
-	return nil
+	return
 }

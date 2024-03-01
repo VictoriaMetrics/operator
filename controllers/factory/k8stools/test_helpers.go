@@ -50,9 +50,11 @@ func testGetScheme() *runtime.Scheme {
 }
 
 func GetTestClientWithObjects(predefinedObjects []runtime.Object) client.Client {
-	obj := []runtime.Object{}
-	obj = append(obj, predefinedObjects...)
-	fclient := fake.NewFakeClientWithScheme(testGetScheme(), obj...)
+	obj := make([]client.Object, 0, len(predefinedObjects))
+	for _, o := range predefinedObjects {
+		obj = append(obj, o.(client.Object))
+	}
+	fclient := fake.NewClientBuilder().WithScheme(testGetScheme()).WithObjects(obj...).Build()
 	return fclient
 }
 

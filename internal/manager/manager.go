@@ -29,10 +29,13 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -116,23 +119,38 @@ func RunManager(ctx context.Context) error {
 	r := metrics.Registry
 	r.MustRegister(appVersion, uptime, startedAt)
 	setupLog.Info("Registering Components.")
-
+	var watchNsCacheByName map[string]cache.Config
+	watchNs := config.MustGetWatchNamespace()
+	if len(watchNs) > 0 {
+		watchNsCacheByName = make(map[string]cache.Config)
+		watchNsCacheByName[watchNs] = cache.Config{}
+	}
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme:                 scheme,
-		MetricsBindAddress:     *metricsAddr,
+		Scheme: scheme,
+		//	MetricsBindAddress:     *metricsAddr,
+		Metrics:                metricsserver.Options{BindAddress: *metricsAddr},
 		HealthProbeBindAddress: *probeAddr,
 		ReadinessEndpointName:  "/ready",
 		LivenessEndpointName:   "/health",
 		// port for webhook
-		Port:             9443,
+		WebhookServer: webhook.NewServer(webhook.Options{
+			Port:     9443,
+			CertDir:  *webhooksDir,
+			CertName: *webhookCertName,
+			KeyName:  *webhookKeyName,
+		}),
 		LeaderElection:   *enableLeaderElection,
 		LeaderElectionID: "57410f0d.victoriametrics.com",
-		ClientDisableCacheFor: []client.Object{
-			&v1.Secret{}, &v1.ConfigMap{}, &v1.Pod{}, &v12.Deployment{},
-			&v12.StatefulSet{},
-			&v1beta1.PodSecurityPolicy{}, &v1beta1.PodDisruptionBudget{}, &v1.Namespace{},
+		Cache: cache.Options{
+			DefaultNamespaces: watchNsCacheByName,
 		},
-		Namespace: config.MustGetWatchNamespace(),
+		Client: client.Options{
+			Cache: &client.CacheOptions{DisableFor: []client.Object{
+				&v1.Secret{}, &v1.ConfigMap{}, &v1.Pod{}, &v12.Deployment{},
+				&v12.StatefulSet{},
+				&v1beta1.PodSecurityPolicy{}, &v1beta1.PodDisruptionBudget{}, &v1.Namespace{},
+			}},
+		},
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
@@ -361,11 +379,6 @@ func RunManager(ctx context.Context) error {
 }
 
 func addWebhooks(mgr ctrl.Manager) error {
-	srv := mgr.GetWebhookServer()
-	srv.CertDir = *webhooksDir
-	srv.CertName = *webhookCertName
-	srv.KeyName = *webhookKeyName
-
 	f := func(objs []client.Object) error {
 		var err error
 		for _, obj := range objs {

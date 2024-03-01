@@ -12,21 +12,21 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type testCase struct {
 	name            string
-	source          controllerutil.Object
-	targetTpl       controllerutil.Object
-	targetValidator func(controllerutil.Object) error
+	source          client.Object
+	targetTpl       client.Object
+	targetValidator func(client.Object) error
 }
 
 var (
 	namespace = "default"
 
 	testCases = []testCase{
-		testCase{
+		{
 			name: "ServiceMonitor",
 			source: &monitoringv1.ServiceMonitor{
 				ObjectMeta: metav1.ObjectMeta{
@@ -35,7 +35,8 @@ var (
 				},
 				Spec: monitoringv1.ServiceMonitorSpec{
 					Endpoints: []monitoringv1.Endpoint{
-						{Port: "8081",
+						{
+							Port: "8081",
 							RelabelConfigs: []*monitoringv1.RelabelConfig{
 								{
 									Action: "keep",
@@ -58,7 +59,7 @@ var (
 					Name:      "e2e-test-servicemonitor",
 				},
 			},
-			targetValidator: func(obj controllerutil.Object) error {
+			targetValidator: func(obj client.Object) error {
 				ss := obj.(*victoriametricsv1beta1.VMServiceScrape)
 				if len(ss.Spec.Endpoints) != 1 {
 					return fmt.Errorf("unexpected number of endpoints, want 1, got: %d", len(ss.Spec.Endpoints))
@@ -70,7 +71,7 @@ var (
 				return nil
 			},
 		},
-		testCase{
+		{
 			name: "PodMonitor",
 			source: &monitoringv1.PodMonitor{
 				ObjectMeta: metav1.ObjectMeta{
@@ -91,7 +92,7 @@ var (
 					Name:      "e2e-test-podmonitor",
 				},
 			},
-			targetValidator: func(obj controllerutil.Object) error {
+			targetValidator: func(obj client.Object) error {
 				ps := obj.(*victoriametricsv1beta1.VMPodScrape)
 				if len(ps.Spec.PodMetricsEndpoints) != 1 {
 					return fmt.Errorf("unexpected number of endpoints, want 1, got: %d", len(ps.Spec.PodMetricsEndpoints))
@@ -103,7 +104,7 @@ var (
 				return nil
 			},
 		},
-		testCase{
+		{
 			name: "PrometheusRule",
 			source: &monitoringv1.PrometheusRule{
 				ObjectMeta: metav1.ObjectMeta{
@@ -130,7 +131,7 @@ var (
 					Name:      "e2e-test-prometheusrule",
 				},
 			},
-			targetValidator: func(obj controllerutil.Object) error {
+			targetValidator: func(obj client.Object) error {
 				vr := obj.(*victoriametricsv1beta1.VMRule)
 				if len(vr.Spec.Groups) != 1 {
 					return fmt.Errorf("unexpected number of groups, want 1, got: %d", len(vr.Spec.Groups))
@@ -149,7 +150,7 @@ var (
 				return nil
 			},
 		},
-		testCase{
+		{
 			name: "Probe",
 			source: &monitoringv1.Probe{
 				ObjectMeta: metav1.ObjectMeta{
@@ -168,7 +169,7 @@ var (
 					Name:      "e2e-test-probe",
 				},
 			},
-			targetValidator: func(obj controllerutil.Object) error {
+			targetValidator: func(obj client.Object) error {
 				vp := obj.(*victoriametricsv1beta1.VMProbe)
 				if vp.Spec.VMProberSpec.URL != "http://example.com/probe" {
 					return fmt.Errorf("unexpected prober url, want 'http://example.com/probe', got: %s", vp.Spec.VMProberSpec.URL)
@@ -179,8 +180,8 @@ var (
 	}
 )
 
-func getObject(obj controllerutil.Object) (controllerutil.Object, error) {
-	obj = obj.DeepCopyObject().(controllerutil.Object)
+func getObject(obj client.Object) (client.Object, error) {
+	obj = obj.DeepCopyObject().(client.Object)
 	err := k8sClient.Get(context.TODO(), types.NamespacedName{Namespace: obj.GetNamespace(), Name: obj.GetName()}, obj)
 	return obj, err
 }
@@ -211,7 +212,7 @@ var _ = Describe("test  prometheusConverter Controller", func() {
 				})
 
 				It("Should convert the object", func() {
-					source := testCase.source.DeepCopyObject().(controllerutil.Object)
+					source := testCase.source.DeepCopyObject().(client.Object)
 
 					Expect(k8sClient.Create(context.TODO(), source)).To(Succeed())
 					Eventually(func() error {
@@ -224,7 +225,7 @@ var _ = Describe("test  prometheusConverter Controller", func() {
 				})
 
 				It("Should update the converted object", func() {
-					source := testCase.source.DeepCopyObject().(controllerutil.Object)
+					source := testCase.source.DeepCopyObject().(client.Object)
 
 					Expect(k8sClient.Create(context.TODO(), source)).To(Succeed())
 					Eventually(func() error {
@@ -253,7 +254,7 @@ var _ = Describe("test  prometheusConverter Controller", func() {
 				})
 
 				It("Should delete the converted object", func() {
-					source := testCase.source.DeepCopyObject().(controllerutil.Object)
+					source := testCase.source.DeepCopyObject().(client.Object)
 
 					Expect(k8sClient.Create(context.TODO(), source)).To(Succeed())
 					Eventually(func() error {

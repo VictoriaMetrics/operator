@@ -7,7 +7,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/envtest/printer"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -18,14 +17,17 @@ func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
 
 	RunSpecsWithDefaultAndCustomReporters(t,
-		"e2e Controller Suite",
-		[]Reporter{printer.NewlineReporter{}})
+		"e2e Controller Suite", nil,
+		//	[]Reporter{printer.NewlineReporter{}})
+	)
 }
 
-var k8sClient client.Client
-var _ = BeforeSuite(func() {
-	suite.Before()
-	k8sClient = suite.K8sClient
-})
+var (
+	k8sClient client.Client
+	_         = BeforeSuite(func() {
+		suite.Before()
+		k8sClient = suite.K8sClient
+	})
+)
 
 var _ = AfterSuite(suite.After)

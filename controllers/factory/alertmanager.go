@@ -39,7 +39,7 @@ const (
 global:
   resolve_timeout: 5m
 route:
-  receiver: 'black'
+  receiver: 'blackhole'
 receivers:
 - name: blackhole
 `

@@ -51,7 +51,8 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 						RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
 							{URL: "http://remote-write"},
 						},
-						StatefulMode: true,
+						StatefulMode:   true,
+						IngestOnlyMode: true,
 						StatefulStorage: &victoriametricsv1beta1.StorageSpec{
 							VolumeClaimTemplate: victoriametricsv1beta1.EmbeddedPersistentVolumeClaim{
 								Spec: corev1.PersistentVolumeClaimSpec{

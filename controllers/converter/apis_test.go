@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
-	"github.com/stretchr/testify/assert"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"reflect"
 	"testing"
@@ -409,10 +408,7 @@ func TestConvertProbe(t *testing.T) {
 								},
 								RelabelConfigs: []*v1.RelabelConfig{
 									{
-										Action: "drop",
-									},
-									{
-										Action:       "keep",
+										Action:       "drop",
 										SourceLabels: []v1.LabelName{"__address__"},
 									},
 								},
@@ -465,9 +461,6 @@ func TestConvertProbe(t *testing.T) {
 								},
 								RelabelConfigs: []*v1.RelabelConfig{
 									{
-										Action: "drop",
-									},
-									{
 										Action:       "keep",
 										SourceLabels: []v1.LabelName{"__address__"},
 									},
@@ -498,7 +491,7 @@ func TestConvertProbe(t *testing.T) {
 							},
 							RelabelConfigs: []*v1beta1vm.RelabelConfig{
 								{
-									Action:       "drop",
+									Action:       "keep",
 									SourceLabels: []string{"__address__"},
 								},
 							},
@@ -515,7 +508,9 @@ func TestConvertProbe(t *testing.T) {
 				FilterPrometheusConverterAnnotationPrefixes: []string{"app.kubernetes"},
 			})
 
-			assert.Equal(t, tt.want, *got)
+			if !reflect.DeepEqual(*got, tt.want) {
+				t.Errorf("ConvertProbe() got = \n%v, \nwant \n%v", got, tt.want)
+			}
 		})
 	}
 }

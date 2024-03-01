@@ -403,6 +403,12 @@ type VMAgentSpec struct {
 	// +optional
 	UseStrictSecurity *bool `json:"useStrictSecurity,omitempty"`
 
+	// IngestOnlyMode switches vmagent into unmanaged mode
+	// it disables any config generation for scraping
+	// Currently it prevents vmagent from managing tls and auth options for remote write
+	// +optional
+	IngestOnlyMode bool `json:"ingestOnlyMode,omitempty"`
+
 	// License allows to configure license key to be used for enterprise features.
 	// Using license key is supported starting from VictoriaMetrics v1.94.0.
 	// See: https://docs.victoriametrics.com/enterprise.html
@@ -716,6 +722,10 @@ func (cr VMAgent) ProbeNeedLiveness() bool {
 
 // IsUnmanaged checks if object should managed any  config objects
 func (cr *VMAgent) IsUnmanaged() bool {
+	// fast path
+	if cr.Spec.IngestOnlyMode {
+		return true
+	}
 	return !cr.Spec.SelectAllByDefault &&
 		cr.Spec.NodeScrapeSelector == nil && cr.Spec.NodeScrapeNamespaceSelector == nil &&
 		cr.Spec.ServiceScrapeSelector == nil && cr.Spec.ServiceScrapeNamespaceSelector == nil &&
@@ -746,6 +756,30 @@ func (cr *VMAgent) HasSpecChanges() (bool, error) {
 	}
 	instanceSpecData, _ := json.Marshal(cr.Spec)
 	return !bytes.Equal([]byte(lastAppliedClusterJSON), instanceSpecData), nil
+}
+
+// HasAnyRelabellingConfigs checks if vmagent has any defined relabeling rules
+func (cr *VMAgent) HasAnyRelabellingConfigs() bool {
+	if cr.Spec.RelabelConfig != nil || len(cr.Spec.InlineRelabelConfig) > 0 {
+		return true
+	}
+	for _, rw := range cr.Spec.RemoteWrite {
+		if rw.UrlRelabelConfig != nil || len(rw.InlineUrlRelabelConfig) > 0 {
+			return true
+		}
+	}
+
+	return false
+}
+
+// HasAnyStreamAggrConfigs checks if agent has any streaming aggregation config defined
+func (cr *VMAgent) HasAnyStreamAggrConfigs() bool {
+	for _, rw := range cr.Spec.RemoteWrite {
+		if rw.HasStreamAggr() {
+			return true
+		}
+	}
+	return false
 }
 
 // SetStatusTo changes update status with optional reason of fail

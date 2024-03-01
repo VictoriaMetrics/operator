@@ -9,6 +9,7 @@ import (
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-test/deep"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -17,6 +18,12 @@ import (
 	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/utils/pointer"
 )
+
+func testConfBuild(setup func(c *config.BaseOperatorConf)) *config.BaseOperatorConf {
+	c := *config.MustGetBaseConfig()
+	setup(&c)
+	return &c
+}
 
 func Test_reconcileServiceForCRD(t *testing.T) {
 	type args struct {

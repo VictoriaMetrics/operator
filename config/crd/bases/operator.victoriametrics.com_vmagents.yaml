@@ -1871,6 +1871,14 @@ spec:
                                 items:
                                   type: string
                                 type: array
+                              flush_on_shutdown:
+                                description: FlushOnShutdown defines whether to flush
+                                  the aggregation state on process termination or
+                                  config reload. Is `false` by default. It is not
+                                  recommended changing this setting, unless unfinished
+                                  aggregations states are preferred to missing data
+                                  points.
+                                type: boolean
                               input_relabel_configs:
                                 description: InputRelabelConfigs is an optional relabeling
                                   rules, which are applied on the input before aggregation.

@@ -1,0 +1,37 @@
+---
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMCluster
+metadata:
+  name: example-vmcluster-persistent
+spec:
+  retentionPeriod: "4"
+  replicationFactor: 2
+  vmstorage:
+    replicaCount: 2
+    storageDataPath: "/vm-data"
+    storage:
+      volumeClaimTemplate:
+        metadata:
+         annotations:
+          operator.victoriametrics.com/pvc-allow-volume-expansion: "false"
+        spec:
+          storageClassName: sc-immutable
+          resources:
+            requests:
+              storage: 10Gi
+  vmselect:
+    replicaCount: 2
+    cacheMountPath: "/select-cache"
+    storage:
+      volumeClaimTemplate:
+        metadata:
+         annotations:
+          operator.victoriametrics.com/pvc-allow-volume-expansion: "false"
+        spec:
+          storageClassName: sc-mutable
+          resources:
+            requests:
+              storage: 2Gi
+  vminsert:
+    replicaCount: 2
+

@@ -146,8 +146,11 @@ func getPVCFromSTS(pvcName string, sts *appsv1.StatefulSet) *corev1.PersistentVo
 }
 
 func growSTSPVC(ctx context.Context, rclient client.Client, sts *appsv1.StatefulSet) error {
-	targetPVCs := sts.Spec.VolumeClaimTemplates
-	// list current pvcs
+	targetClaimsByName := make(map[string]*corev1.PersistentVolumeClaim)
+	for _, stsClaim := range sts.Spec.VolumeClaimTemplates {
+		targetClaimsByName[fmt.Sprintf("%s-%s", stsClaim.Name, sts.Name)] = &stsClaim
+	}
+	// list current pvcs that belongs to sts
 	var pvcs corev1.PersistentVolumeClaimList
 	opts := &client.ListOptions{
 		Namespace:     sts.Namespace,
@@ -160,30 +163,32 @@ func growSTSPVC(ctx context.Context, rclient client.Client, sts *appsv1.Stateful
 		return fmt.Errorf("got 0 pvcs under %s for selector %v, statefulset could not be working", sts.Namespace, sts.Spec.Selector.MatchLabels)
 	}
 	for _, pvc := range pvcs.Items {
-		var isExist bool
+		idx := strings.LastIndexByte(pvc.Name, '-')
+		if idx <= 0 {
+			return fmt.Errorf("not expected name for pvc=%q, it must have - as separator for sts=%q", pvc.Name, sts.Name)
+		}
+		// pvc created by sts always has name of CLAIM_NAME-STS_NAME-REPLICA_IDX
+		stsClaimName := pvc.Name[:idx]
+		stsClaim, ok := targetClaimsByName[stsClaimName]
+		if !ok {
+			log.Info("cannot find target pvc in new statefulset, please check if the old one is still needed", "pvc", pvc.Name, "sts", sts.Name, "claimName", stsClaimName)
+			continue
+		}
 		// check if storage class is expandable
-		isExpandable, err := isStorageClassExpandable(ctx, rclient, &pvc)
+		isExpandable, err := isStorageClassExpandable(ctx, rclient, stsClaim)
 		if err != nil {
 			return fmt.Errorf("failed to check storageClass expandability for pvc %s: %v", pvc.Name, err)
 		}
 		if !isExpandable {
 			// don't return error to caller, since there is no point to requeue and reconcile this when sc is unexpandable
-			log.Error(nil, "want to expand pvc but storageClass doesn't support it, need to handle this case manually", "pvc", pvc.Name)
+			log.Info("storage class for PVC doesn't support live resizing", "pvc", pvc.Name)
 			continue
 		}
-		for _, tpvc := range targetPVCs {
-			if strings.HasPrefix(pvc.Name, fmt.Sprintf("%s-%s", tpvc.Name, sts.Name)) {
-				isExist = true
-				err = growPVCs(ctx, rclient, tpvc.Spec.Resources.Requests.Storage(), &pvc)
-				if err != nil {
-					return fmt.Errorf("failed to expand size for pvc %s: %v", pvc.Name, err)
-				}
-				break
-			}
+		err = growPVCs(ctx, rclient, stsClaim.Spec.Resources.Requests.Storage(), &pvc)
+		if err != nil {
+			return fmt.Errorf("failed to expand size for pvc %s: %v", pvc.Name, err)
 		}
-		if !isExist {
-			log.Info("cannot find target pvc in new statefulset, please check if the old one is still needed", "pvc", pvc.Name, "sts", sts.Name)
-		}
+
 	}
 	return nil
 }
@@ -191,8 +196,16 @@ func growSTSPVC(ctx context.Context, rclient client.Client, sts *appsv1.Stateful
 // isStorageClassExpandable check is it possible to update size of given pvc
 func isStorageClassExpandable(ctx context.Context, rclient client.Client, pvc *corev1.PersistentVolumeClaim) (bool, error) {
 	// do not perform any checks if user set annotation explicitly.
-	if pvc.Annotations[victoriametricsv1beta1.PVCExpandableLabel] == "true" {
-		return true, nil
+	v, ok := pvc.Annotations[victoriametricsv1beta1.PVCExpandableLabel]
+	if ok {
+		switch v {
+		case "true", "True":
+			return true, nil
+		case "false", "False":
+			return false, nil
+		default:
+			return false, fmt.Errorf("not expected value format for annotation=%q: %q, want true or false", victoriametricsv1beta1.PVCExpandableLabel, v)
+		}
 	}
 	// fast path at single namespace mode, listing storage classes is disabled
 	if !config.IsClusterWideAccessAllowed() {

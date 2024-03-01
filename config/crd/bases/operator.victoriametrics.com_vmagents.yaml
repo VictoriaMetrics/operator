@@ -763,6 +763,11 @@ spec:
                   type: object
                   x-kubernetes-map-type: atomic
                 type: array
+              ingestOnlyMode:
+                description: IngestOnlyMode switches vmagent into unmanaged mode it
+                  disables any config generation for scraping Currently it prevents
+                  vmagent from managing tls and auth options for remote write
+                type: boolean
               initContainers:
                 description: 'InitContainers allows adding initContainers to the pod
                   definition. Those can be used to e.g. fetch secrets for injection

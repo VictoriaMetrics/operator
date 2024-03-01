@@ -41,6 +41,9 @@ type scrapesSecretsCache struct {
 
 // CreateOrUpdateConfigurationSecret builds scrape configuration for VMAgent
 func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client, c *config.BaseOperatorConf) (*scrapesSecretsCache, error) {
+	if cr.Spec.IngestOnlyMode {
+		return nil, nil
+	}
 	sScrapes, err := SelectServiceScrapes(ctx, cr, rclient)
 	if err != nil {
 		return nil, fmt.Errorf("selecting ServiceScrapes failed: %w", err)

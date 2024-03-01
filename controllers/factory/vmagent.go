@@ -84,7 +84,7 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 			return fmt.Errorf("cannot create podsecurity policy for vmagent, err: %w", err)
 		}
 	}
-	if cr.IsOwnsServiceAccount() {
+	if cr.IsOwnsServiceAccount() && !cr.Spec.IngestOnlyMode {
 		if err := vmagent.CreateVMAgentK8sAPIAccess(ctx, cr, rclient, config.IsClusterWideAccessAllowed()); err != nil {
 			return fmt.Errorf("cannot create vmagent role and binding for it, err: %w", err)
 		}
@@ -295,9 +295,7 @@ func newDeployForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOpera
 }
 
 func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperatorConf, ssCache *scrapesSecretsCache) (*corev1.PodSpec, error) {
-	args := []string{
-		fmt.Sprintf("-promscrape.config=%s", path.Join(vmAgentConOfOutDir, configEnvsubstFilename)),
-	}
+	var args []string
 
 	if len(cr.Spec.RemoteWrite) > 0 {
 		args = append(args, BuildRemoteWrites(cr, ssCache)...)
@@ -324,55 +322,6 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(cr.Spec.Port).IntVal})
 	ports = buildAdditionalContainerPorts(ports, cr.Spec.InsertPorts)
 
-	var volumes []corev1.Volume
-	// in case for sts, we have to use persistentVolumeClaimTemplate instead
-	if !cr.Spec.StatefulMode {
-		volumes = append(volumes, corev1.Volume{
-			Name: vmAgentPersistentQueueMountName,
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
-			},
-		})
-	}
-
-	volumes = append(volumes, cr.Spec.Volumes...)
-	volumes = append(volumes,
-		corev1.Volume{
-			Name: "tls-assets",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: cr.TLSAssetName(),
-				},
-			},
-		},
-		corev1.Volume{
-			Name: "config-out",
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
-			},
-		},
-		corev1.Volume{
-			Name: "relabeling-assets",
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: cr.RelabelingAssetName(),
-					},
-				},
-			},
-		},
-		corev1.Volume{
-			Name: "stream-aggr-conf",
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: cr.StreamAggrConfigName(),
-					},
-				},
-			},
-		},
-	)
-
 	var agentVolumeMounts []corev1.VolumeMount
 	// mount data path any way, even if user changes its value
 	// we cannot rely on value of remoteWriteSettings.
@@ -387,43 +336,111 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 		},
 	)
 	agentVolumeMounts = append(agentVolumeMounts, cr.Spec.VolumeMounts...)
-	agentVolumeMounts = append(agentVolumeMounts,
-		corev1.VolumeMount{
-			Name:      "config-out",
-			ReadOnly:  true,
-			MountPath: vmAgentConOfOutDir,
+
+	var volumes []corev1.Volume
+	// in case for sts, we have to use persistentVolumeClaimTemplate instead
+	if !cr.Spec.StatefulMode {
+		volumes = append(volumes, corev1.Volume{
+			Name: vmAgentPersistentQueueMountName,
+			VolumeSource: corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			},
+		})
+	}
+
+	volumes = append(volumes, cr.Spec.Volumes...)
+
+	if !cr.Spec.IngestOnlyMode {
+		args = append(args,
+			fmt.Sprintf("-promscrape.config=%s", path.Join(vmAgentConOfOutDir, configEnvsubstFilename)))
+
+		volumes = append(volumes,
+			corev1.Volume{
+				Name: "tls-assets",
+				VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: cr.TLSAssetName(),
+					},
+				},
+			},
+			corev1.Volume{
+				Name: "config-out",
+				VolumeSource: corev1.VolumeSource{
+					EmptyDir: &corev1.EmptyDirVolumeSource{},
+				},
+			},
+		)
+
+		agentVolumeMounts = append(agentVolumeMounts,
+			corev1.VolumeMount{
+				Name:      "config-out",
+				ReadOnly:  true,
+				MountPath: vmAgentConOfOutDir,
+			},
+			corev1.VolumeMount{
+				Name:      "tls-assets",
+				ReadOnly:  true,
+				MountPath: tlsAssetsDir,
+			},
+		)
+		volumes = append(volumes,
+			corev1.Volume{
+				Name: "config",
+				VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: cr.PrefixedName(),
+					},
+				},
+			})
+		agentVolumeMounts = append(agentVolumeMounts,
+			corev1.VolumeMount{
+				Name:      "config",
+				ReadOnly:  true,
+				MountPath: vmAgentConfDir,
+			})
+	}
+	if cr.HasAnyStreamAggrConfigs() {
+		volumes = append(volumes, corev1.Volume{
+			Name: "stream-aggr-conf",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: cr.StreamAggrConfigName(),
+					},
+				},
+			},
 		},
-		corev1.VolumeMount{
-			Name:      "tls-assets",
-			ReadOnly:  true,
-			MountPath: tlsAssetsDir,
-		},
-		corev1.VolumeMount{
-			Name:      "relabeling-assets",
-			ReadOnly:  true,
-			MountPath: RelabelingConfigDir,
-		},
-		corev1.VolumeMount{
+		)
+		agentVolumeMounts = append(agentVolumeMounts, corev1.VolumeMount{
 			Name:      "stream-aggr-conf",
 			ReadOnly:  true,
 			MountPath: StreamAggrConfigDir,
 		},
-	)
-	volumes = append(volumes,
-		corev1.Volume{
-			Name: "config",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: cr.PrefixedName(),
+		)
+	}
+
+	if cr.HasAnyRelabellingConfigs() {
+		volumes = append(volumes,
+			corev1.Volume{
+				Name: "relabeling-assets",
+				VolumeSource: corev1.VolumeSource{
+					ConfigMap: &corev1.ConfigMapVolumeSource{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: cr.RelabelingAssetName(),
+						},
+					},
 				},
 			},
-		})
-	agentVolumeMounts = append(agentVolumeMounts,
-		corev1.VolumeMount{
-			Name:      "config",
-			ReadOnly:  true,
-			MountPath: vmAgentConfDir,
-		})
+		)
+
+		agentVolumeMounts = append(agentVolumeMounts,
+			corev1.VolumeMount{
+				Name:      "relabeling-assets",
+				ReadOnly:  true,
+				MountPath: RelabelingConfigDir,
+			},
+		)
+	}
 
 	for _, s := range cr.Spec.Secrets {
 		volumes = append(volumes, corev1.Volume{
@@ -486,12 +503,27 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 
 	vmagentContainer = buildProbe(vmagentContainer, cr)
 
-	configReloader := buildConfigReloaderContainer(cr, c)
+	var operatorContainers []corev1.Container
+	var ic []corev1.Container
+	// conditional add config reloader container
+	if !cr.Spec.IngestOnlyMode || cr.HasAnyRelabellingConfigs() || cr.HasAnyStreamAggrConfigs() {
+		configReloader := buildConfigReloaderContainer(cr, c)
+		operatorContainers = append(operatorContainers, configReloader)
+		if !cr.Spec.IngestOnlyMode {
+			ic = append(ic,
+				buildInitConfigContainer(c.VMAgentDefault.ConfigReloadImage, buildConfigReloaderResourceReqsForVMAgent(c), c, vmAgentConfDir, vmagentGzippedFilename, vmAgentConOfOutDir, configEnvsubstFilename, configReloader.Args)...)
+			if len(cr.Spec.InitContainers) > 0 {
+				var err error
+				ic, err = k8stools.MergePatchContainers(ic, cr.Spec.InitContainers)
+				if err != nil {
+					return nil, fmt.Errorf("cannot apply patch for initContainers: %w", err)
+				}
+			}
 
-	operatorContainers := []corev1.Container{
-		configReloader,
-		vmagentContainer,
+		}
 	}
+
+	operatorContainers = append(operatorContainers, vmagentContainer)
 
 	containers, err := k8stools.MergePatchContainers(operatorContainers, cr.Spec.Containers)
 	if err != nil {
@@ -503,13 +535,6 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 			cr.Spec.TopologySpreadConstraints[i].LabelSelector = &metav1.LabelSelector{
 				MatchLabels: cr.SelectorLabels(),
 			}
-		}
-	}
-	ic := buildInitConfigContainer(c.VMAgentDefault.ConfigReloadImage, buildConfigReloaderResourceReqsForVMAgent(c), c, vmAgentConfDir, vmagentGzippedFilename, vmAgentConOfOutDir, configEnvsubstFilename, configReloader.Args)
-	if len(cr.Spec.InitContainers) > 0 {
-		ic, err = k8stools.MergePatchContainers(ic, cr.Spec.InitContainers)
-		if err != nil {
-			return nil, fmt.Errorf("cannot apply patch for initContainers: %w", err)
 		}
 	}
 	useStrictSecurity := c.EnableStrictSecurity
@@ -642,6 +667,9 @@ func buildVMAgentRelabelingsAssets(ctx context.Context, cr *victoriametricsv1bet
 
 // CreateOrUpdateRelabelConfigsAssets builds relabeling configs for vmagent at separate configmap, serialized as yaml
 func CreateOrUpdateRelabelConfigsAssets(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) error {
+	if !cr.HasAnyRelabellingConfigs() {
+		return nil
+	}
 	assestsCM, err := buildVMAgentRelabelingsAssets(ctx, cr, rclient)
 	if err != nil {
 		return err
@@ -686,6 +714,10 @@ func buildVMAgentStreamAggrConfig(cr *victoriametricsv1beta1.VMAgent) (*corev1.C
 
 // CreateOrUpdateVMAgentStreamAggrConfig builds stream aggregation configs for vmagent at separate configmap, serialized as yaml
 func CreateOrUpdateVMAgentStreamAggrConfig(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) error {
+	// fast path
+	if !cr.HasAnyStreamAggrConfigs() {
+		return nil
+	}
 	streamAggrCM, err := buildVMAgentStreamAggrConfig(cr)
 	if err != nil {
 		return err
@@ -1231,27 +1263,36 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, ssCache *scrapesSecre
 }
 
 func buildConfigReloaderContainer(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperatorConf) corev1.Container {
-	configReloadVolumeMounts := []corev1.VolumeMount{
-		{
-			Name:      "config-out",
-			MountPath: vmAgentConOfOutDir,
-		},
-		{
-			Name:      "relabeling-assets",
-			ReadOnly:  true,
-			MountPath: RelabelingConfigDir,
-		},
-		{
-			Name:      "stream-aggr-conf",
-			ReadOnly:  true,
-			MountPath: StreamAggrConfigDir,
-		},
-	}
-	if !c.UseCustomConfigReloader {
+	var configReloadVolumeMounts []corev1.VolumeMount
+	if !cr.Spec.IngestOnlyMode {
 		configReloadVolumeMounts = append(configReloadVolumeMounts,
 			corev1.VolumeMount{
-				Name:      "config",
-				MountPath: vmAgentConfDir,
+				Name:      "config-out",
+				MountPath: vmAgentConOfOutDir,
+			},
+		)
+		if !c.UseCustomConfigReloader {
+			configReloadVolumeMounts = append(configReloadVolumeMounts,
+				corev1.VolumeMount{
+					Name:      "config",
+					MountPath: vmAgentConfDir,
+				})
+		}
+	}
+	if cr.HasAnyRelabellingConfigs() {
+		configReloadVolumeMounts = append(configReloadVolumeMounts,
+			corev1.VolumeMount{
+				Name:      "relabeling-assets",
+				ReadOnly:  true,
+				MountPath: RelabelingConfigDir,
+			})
+	}
+	if cr.HasAnyStreamAggrConfigs() {
+		configReloadVolumeMounts = append(configReloadVolumeMounts,
+			corev1.VolumeMount{
+				Name:      "stream-aggr-conf",
+				ReadOnly:  true,
+				MountPath: StreamAggrConfigDir,
 			})
 	}
 
@@ -1274,7 +1315,7 @@ func buildConfigReloaderContainer(cr *victoriametricsv1beta1.VMAgent, c *config.
 		Resources:    buildConfigReloaderResourceReqsForVMAgent(c),
 	}
 	if c.UseCustomConfigReloader {
-		cntr.Image = fmt.Sprintf("%s", formatContainerImage(c.ContainerRegistry, c.CustomConfigReloaderImage))
+		cntr.Image = formatContainerImage(c.ContainerRegistry, c.CustomConfigReloaderImage)
 		cntr.Command = []string{"/usr/local/bin/config-reloader"}
 	}
 	return cntr
@@ -1315,16 +1356,25 @@ func buildConfigReloaderArgs(cr *victoriametricsv1beta1.VMAgent, c *config.BaseO
 
 	args := []string{
 		fmt.Sprintf("--reload-url=%s", victoriametricsv1beta1.BuildReloadPathWithPort(cr.Spec.ExtraArgs, cr.Spec.Port)),
-		fmt.Sprintf("--config-envsubst-file=%s", path.Join(vmAgentConOfOutDir, configEnvsubstFilename)),
-		fmt.Sprintf("--%s=%s", dirsArg, RelabelingConfigDir),
-		fmt.Sprintf("--%s=%s", dirsArg, StreamAggrConfigDir),
+	}
+
+	if !cr.Spec.IngestOnlyMode {
+		args = append(args, fmt.Sprintf("--config-envsubst-file=%s", path.Join(vmAgentConOfOutDir, configEnvsubstFilename)))
+		if c.UseCustomConfigReloader {
+			args = append(args, fmt.Sprintf("--config-secret-name=%s/%s", cr.Namespace, cr.PrefixedName()))
+			args = append(args, "--config-secret-key=vmagent.yaml.gz")
+		} else {
+			args = append(args, fmt.Sprintf("--config-file=%s", path.Join(vmAgentConfDir, vmagentGzippedFilename)))
+		}
+	}
+	if cr.HasAnyStreamAggrConfigs() {
+		args = append(args, fmt.Sprintf("--%s=%s", dirsArg, StreamAggrConfigDir))
+	}
+	if cr.HasAnyRelabellingConfigs() {
+		args = append(args, fmt.Sprintf("--%s=%s", dirsArg, RelabelingConfigDir))
 	}
 	if c.UseCustomConfigReloader {
-		args = append(args, fmt.Sprintf("--config-secret-name=%s/%s", cr.Namespace, cr.PrefixedName()))
-		args = append(args, "--config-secret-key=vmagent.yaml.gz")
 		args = victoriametricsv1beta1.MaybeEnableProxyProtocol(args, cr.Spec.ExtraArgs)
-	} else {
-		args = append(args, fmt.Sprintf("--config-file=%s", path.Join(vmAgentConfDir, vmagentGzippedFilename)))
 	}
 	return args
 }

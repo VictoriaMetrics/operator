@@ -1,0 +1,30 @@
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAgent
+metadata:
+  name: ingest-only
+spec:
+ selectAllByDefault: false
+ ingestOnlyMode: true
+ remoteWrite:
+   - url: http://vmsingle-example:8429/api/v1/write
+---
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAgent
+metadata:
+  name: ingest-only-stateful
+spec:
+ selectAllByDefault: false
+ statefulMode: true
+ ingestOnlyMode: true
+ remoteWrite:
+   - url: http://vmsingle-example:8429/api/v1/write
+     inlineUrlRelabelConfig:
+       - target_label: my_label
+         replacement: "test"
+     streamAggrConfig:
+            rules:
+            - match: 'http_request_duration_seconds_bucket'
+              interval: 5m
+              without: [instance]
+              outputs: [total]
+

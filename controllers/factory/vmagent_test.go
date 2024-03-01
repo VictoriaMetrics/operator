@@ -2,6 +2,7 @@ package factory
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"sort"
@@ -15,6 +16,7 @@ import (
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/config"
+	"github.com/nsf/jsondiff"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -81,8 +83,8 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 				},
 			},
 			validate: func(got *appsv1.StatefulSet) error {
-				if len(got.Spec.Template.Spec.Containers) != 2 {
-					return fmt.Errorf("unexpected count of container, got: %d, want: %d", len(got.Spec.Template.Spec.Containers), 2)
+				if len(got.Spec.Template.Spec.Containers) != 1 {
+					return fmt.Errorf("unexpected count of container, got: %d, want: %d", len(got.Spec.Template.Spec.Containers), 1)
 				}
 				if len(got.Spec.VolumeClaimTemplates) != 2 {
 					return fmt.Errorf("unexpected count of VolumeClaimTemplates, got: %d, want: %d", len(got.Spec.VolumeClaimTemplates), 2)
@@ -1404,6 +1406,48 @@ func Test_buildConfigReloaderArgs(t *testing.T) {
 				"--reload-url=http://localhost:8429/-/reload",
 				"--config-file=/etc/vmagent/config/vmagent.yaml.gz",
 				"--config-envsubst-file=/etc/vmagent/config_out/vmagent.env.yaml",
+			},
+		},
+		{
+			name: "ingest only",
+			args: args{
+				cr: &victoriametricsv1beta1.VMAgent{
+					Spec: victoriametricsv1beta1.VMAgentSpec{Port: "8429", IngestOnlyMode: true},
+				},
+				c: &config.BaseOperatorConf{},
+			},
+			want: []string{
+				"--reload-url=http://localhost:8429/-/reload",
+			},
+		},
+		{
+			name: "with relabel and stream",
+			args: args{
+				cr: &victoriametricsv1beta1.VMAgent{
+					Spec: victoriametricsv1beta1.VMAgentSpec{
+						Port:                "8429",
+						IngestOnlyMode:      false,
+						InlineRelabelConfig: []victoriametricsv1beta1.RelabelConfig{{TargetLabel: "test"}},
+						RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
+							{
+								URL: "http://some",
+								StreamAggrConfig: &victoriametricsv1beta1.StreamAggrConfig{
+									Rules: []victoriametricsv1beta1.StreamAggrRule{
+										{
+											Outputs: []string{"dst"},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				c: &config.BaseOperatorConf{},
+			},
+			want: []string{
+				"--reload-url=http://localhost:8429/-/reload",
+				"--config-file=/etc/vmagent/config/vmagent.yaml.gz",
+				"--config-envsubst-file=/etc/vmagent/config_out/vmagent.env.yaml",
 				"--watched-dir=/etc/vm/relabeling",
 				"--watched-dir=/etc/vm/stream-aggr",
 			},
@@ -1500,4 +1544,256 @@ func TestBuildRemoteWriteSettings(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestMakeSpecForAgentOk(t *testing.T) {
+	f := func(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperatorConf, sCache *scrapesSecretsCache, wantJSON string) {
+		t.Helper()
+		setDefaultForVMAgent(cr, c)
+		got, err := makeSpecForVMAgent(cr, c, sCache)
+		if err != nil {
+			t.Fatalf("not expected error=%q", err)
+		}
+		gotB, err := json.Marshal(got)
+		if err != nil {
+			t.Fatalf("cannot marshal as json object: %q", err)
+		}
+		m, diff := jsondiff.Compare(gotB, []byte(wantJSON), &jsondiff.Options{Indent: " ", ChangedSeparator: "-+", SkipMatches: true})
+		if m != jsondiff.FullMatch {
+			t.Fatalf("not expected result for generated spec, \ngot diff:\n%s", diff)
+		}
+	}
+	f(&victoriametricsv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "default"},
+		Spec:       victoriametricsv1beta1.VMAgentSpec{IngestOnlyMode: true},
+	}, testConfBuild(func(c *config.BaseOperatorConf) {
+		c.VMAgentDefault.UseDefaultResources = true
+		c.VMAgentDefault.Resource.Limit.Cpu = "10"
+		c.VMAgentDefault.Resource.Limit.Mem = "10Mi"
+		c.VMAgentDefault.Resource.Request.Cpu = "10"
+		c.VMAgentDefault.Resource.Request.Mem = "10Mi"
+		c.VMAgentDefault.Image = "vm-repo"
+		c.VMAgentDefault.Version = "v1.97.1"
+		c.UseCustomConfigReloader = true
+		c.VMAgentDefault.Port = "8429"
+		c.CustomConfigReloaderImage = "vmcustomer:v1"
+	}), nil, `{
+         "containers": [
+          {
+           "args": [
+            "-httpListenAddr=:8429",
+            "-remoteWrite.maxDiskUsagePerURL=1073741824",
+            "-remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data"
+           ],
+           "imagePullPolicy": "IfNotPresent",
+           "image": "vm-repo:v1.97.1",
+           "livenessProbe": {
+            "failureThreshold": 10,
+            "httpGet": {
+             "path": "/health",
+             "port": 8429,
+             "scheme": "HTTP"
+            },
+            "periodSeconds": 5,
+            "successThreshold": 1,
+            "timeoutSeconds": 5
+           },
+           "name": "vmagent",
+           "ports": [
+            {
+             "containerPort": 8429,
+             "name": "http",
+             "protocol": "TCP"
+            }
+           ],
+           "readinessProbe": {
+            "failureThreshold": 10,
+            "httpGet": {
+             "path": "/health",
+             "port": 8429,
+             "scheme": "HTTP"
+            },
+            "periodSeconds": 5,
+            "successThreshold": 1,
+            "timeoutSeconds": 5
+           },
+           "resources": {
+            "limits": {
+             "cpu": "10",
+             "memory": "10Mi"
+            },
+            "requests": {
+             "cpu": "10",
+             "memory": "10Mi"
+            }
+           },
+           "terminationMessagePolicy": "FallbackToLogsOnError",
+           "volumeMounts": [
+            {
+             "mountPath": "/tmp/vmagent-remotewrite-data",
+             "name": "persistent-queue-data"
+            }
+           ]
+          }
+         ],
+         "serviceAccountName": "vmagent-agent",
+         "volumes": [
+          {
+           "emptyDir": {},
+           "name": "persistent-queue-data"
+          }
+         ]
+        }`)
+	f(&victoriametricsv1beta1.VMAgent{
+		ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "default"},
+		Spec:       victoriametricsv1beta1.VMAgentSpec{IngestOnlyMode: false},
+	}, testConfBuild(func(c *config.BaseOperatorConf) {
+		c.UseCustomConfigReloader = true
+		c.VMAgentDefault.Port = "8429"
+		c.CustomConfigReloaderImage = "vmcustomer:v1"
+		c.VMAgentDefault.UseDefaultResources = false
+	}), nil, `{
+         "containers": [
+          {
+           "args": [
+            "--reload-url=http://localhost:8429/-/reload",
+            "--config-envsubst-file=/etc/vmagent/config_out/vmagent.env.yaml",
+            "--config-secret-name=default/vmagent-agent",
+            "--config-secret-key=vmagent.yaml.gz"
+           ],
+           "command": [
+            "/usr/local/bin/config-reloader"
+           ],
+           "env": [
+            {
+             "name": "POD_NAME",
+             "valueFrom": {
+              "fieldRef": {
+               "fieldPath": "metadata.name"
+              }
+             }
+            }
+           ],
+           "image": "vmcustomer:v1",
+           "name": "config-reloader",
+           "resources": {},
+           "terminationMessagePolicy": "FallbackToLogsOnError",
+           "volumeMounts": [
+            {
+             "mountPath": "/etc/vmagent/config_out",
+             "name": "config-out"
+            }
+           ]
+          },
+          {
+           "args": [
+            "-httpListenAddr=:8429",
+            "-promscrape.config=/etc/vmagent/config_out/vmagent.env.yaml",
+            "-remoteWrite.maxDiskUsagePerURL=1073741824",
+            "-remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data"
+           ],
+           "image": "victoriametrics/vmagent:v1.98.0",
+           "imagePullPolicy": "IfNotPresent",
+           "livenessProbe": {
+            "failureThreshold": 10,
+            "httpGet": {
+             "path": "/health",
+             "port": 8429,
+             "scheme": "HTTP"
+            },
+            "periodSeconds": 5,
+            "successThreshold": 1,
+            "timeoutSeconds": 5
+           },
+           "name": "vmagent",
+           "ports": [
+            {
+             "containerPort": 8429,
+             "name": "http",
+             "protocol": "TCP"
+            }
+           ],
+           "readinessProbe": {
+            "failureThreshold": 10,
+            "httpGet": {
+             "path": "/health",
+             "port": 8429,
+             "scheme": "HTTP"
+            },
+            "periodSeconds": 5,
+            "successThreshold": 1,
+            "timeoutSeconds": 5
+           },
+           "resources": {},
+           "terminationMessagePolicy": "FallbackToLogsOnError",
+           "volumeMounts": [
+            {
+             "mountPath": "/tmp/vmagent-remotewrite-data",
+             "name": "persistent-queue-data"
+            },
+            {
+             "mountPath": "/etc/vmagent/config_out",
+             "name": "config-out",
+             "readOnly": true
+            },
+            {
+             "mountPath": "/etc/vmagent-tls/certs",
+             "name": "tls-assets",
+             "readOnly": true
+            },
+            {
+             "mountPath": "/etc/vmagent/config",
+             "name": "config",
+             "readOnly": true
+            }
+           ]
+          }
+         ],
+         "initContainers": [
+          {
+           "args": [
+            "--reload-url=http://localhost:8429/-/reload",
+            "--config-envsubst-file=/etc/vmagent/config_out/vmagent.env.yaml",
+            "--config-secret-name=default/vmagent-agent",
+            "--config-secret-key=vmagent.yaml.gz",
+            "--only-init-config"
+           ],
+           "command": [
+            "/usr/local/bin/config-reloader"
+           ],
+           "image": "vmcustomer:v1",
+           "name": "config-init",
+           "resources": {},
+           "volumeMounts": [
+            {
+             "mountPath": "/etc/vmagent/config_out",
+             "name": "config-out"
+            }
+           ]
+          }
+         ],
+         "serviceAccountName": "vmagent-agent",
+         "volumes": [
+          {
+           "emptyDir": {},
+           "name": "persistent-queue-data"
+          },
+          {
+           "name": "tls-assets",
+           "secret": {
+            "secretName": "tls-assets-vmagent-agent"
+           }
+          },
+          {
+           "emptyDir": {},
+           "name": "config-out"
+          },
+          {
+           "name": "config",
+           "secret": {
+            "secretName": "vmagent-agent"
+           }
+          }
+         ]
+        }`)
 }

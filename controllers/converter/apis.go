@@ -522,8 +522,9 @@ func ConvertProbe(probe *v1.Probe, conf *config.BaseOperatorConf) *v1beta1vm.VMP
 	}
 	if probe.Spec.Targets.StaticConfig != nil {
 		staticTargets = &v1beta1vm.VMProbeTargetStaticConfig{
-			Targets: probe.Spec.Targets.StaticConfig.Targets,
-			Labels:  probe.Spec.Targets.StaticConfig.Labels,
+			Targets:        probe.Spec.Targets.StaticConfig.Targets,
+			Labels:         probe.Spec.Targets.StaticConfig.Labels,
+			RelabelConfigs: ConvertRelabelConfig(probe.Spec.Targets.StaticConfig.RelabelConfigs),
 		}
 	}
 	var safeTls *v1.SafeTLSConfig

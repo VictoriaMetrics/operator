@@ -23,7 +23,6 @@ import (
 	v1beta1 "github.com/VictoriaMetrics/operator/api/victoriametrics/v1beta1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
-	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	testing "k8s.io/client-go/testing"
@@ -35,9 +34,9 @@ type FakeVMAlertmanagerConfigs struct {
 	ns   string
 }
 
-var vmalertmanagerconfigsResource = schema.GroupVersionResource{Group: "victoriametrics", Version: "v1beta1", Resource: "vmalertmanagerconfigs"}
+var vmalertmanagerconfigsResource = v1beta1.SchemeGroupVersion.WithResource("vmalertmanagerconfigs")
 
-var vmalertmanagerconfigsKind = schema.GroupVersionKind{Group: "victoriametrics", Version: "v1beta1", Kind: "VMAlertmanagerConfig"}
+var vmalertmanagerconfigsKind = v1beta1.SchemeGroupVersion.WithKind("VMAlertmanagerConfig")
 
 // Get takes name of the vMAlertmanagerConfig, and returns the corresponding vMAlertmanagerConfig object, and an error if there is any.
 func (c *FakeVMAlertmanagerConfigs) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1beta1.VMAlertmanagerConfig, err error) {

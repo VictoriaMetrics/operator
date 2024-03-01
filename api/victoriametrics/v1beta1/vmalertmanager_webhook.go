@@ -2,10 +2,12 @@ package v1beta1
 
 import (
 	"fmt"
+
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 // log is for logging in this package.
@@ -26,35 +28,35 @@ func (r *VMAlertmanager) sanityCheck() error {
 }
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (r *VMAlertmanager) ValidateCreate() error {
+func (r *VMAlertmanager) ValidateCreate() (aw admission.Warnings, err error) {
 	if r.Spec.ParsingError != "" {
-		return fmt.Errorf(r.Spec.ParsingError)
+		return aw, fmt.Errorf(r.Spec.ParsingError)
 	}
 	if mustSkipValidation(r) {
-		return nil
+		return
 	}
 	if err := r.sanityCheck(); err != nil {
-		return err
+		return aw, err
 	}
-	return nil
+	return
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (r *VMAlertmanager) ValidateUpdate(old runtime.Object) error {
+func (r *VMAlertmanager) ValidateUpdate(old runtime.Object) (aw admission.Warnings, err error) {
 	if r.Spec.ParsingError != "" {
-		return fmt.Errorf(r.Spec.ParsingError)
+		return aw, fmt.Errorf(r.Spec.ParsingError)
 	}
 	if mustSkipValidation(r) {
-		return nil
+		return
 	}
 	if err := r.sanityCheck(); err != nil {
-		return err
+		return aw, err
 	}
-	return nil
+	return
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (r *VMAlertmanager) ValidateDelete() error {
+func (r *VMAlertmanager) ValidateDelete() (aw admission.Warnings, err error) {
 	// no-op
-	return nil
+	return
 }

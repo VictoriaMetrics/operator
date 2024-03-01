@@ -2,7 +2,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.12.1
+    controller-gen.kubebuilder.io/version: v0.14.0
   name: vmnodescrapes.operator.victoriametrics.com
 spec:
   group: operator.victoriametrics.com
@@ -16,19 +16,25 @@ spec:
   - name: v1beta1
     schema:
       openAPIV3Schema:
-        description: VMNodeScrape defines discovery for targets placed on kubernetes
-          nodes, usually its node-exporters and other host services. InternalIP is
-          used as __address__ for scraping.
+        description: |-
+          VMNodeScrape defines discovery for targets placed on kubernetes nodes,
+          usually its node-exporters and other host services.
+          InternalIP is used as __address__ for scraping.
         properties:
           apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation
-              of an object. Servers should convert recognized schemas to the latest
-              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: 'Kind is a string value representing the REST resource this
-              object represents. Servers may infer this from the endpoint the client
-              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
@@ -46,8 +52,10 @@ spec:
                           a valid secret key.
                         type: string
                       name:
-                        description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                          TODO: Add other useful fields. apiVersion, kind, uid?'
+                        description: |-
+                          Name of the referent.
+                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                          TODO: Add other useful fields. apiVersion, kind, uid?
                         type: string
                       optional:
                         description: Specify whether the Secret or its key must be
@@ -65,21 +73,25 @@ spec:
                     type: string
                 type: object
               basicAuth:
-                description: 'BasicAuth allow an endpoint to authenticate over basic
-                  authentication More info: https://prometheus.io/docs/operating/configuration/#endpoints'
+                description: |-
+                  BasicAuth allow an endpoint to authenticate over basic authentication
+                  More info: https://prometheus.io/docs/operating/configuration/#endpoints
                 properties:
                   password:
-                    description: The secret in the service scrape namespace that contains
-                      the password for authentication. It must be at them same namespace
-                      as CRD
+                    description: |-
+                      The secret in the service scrape namespace that contains the password
+                      for authentication.
+                      It must be at them same namespace as CRD
                     properties:
                       key:
                         description: The key of the secret to select from.  Must be
                           a valid secret key.
                         type: string
                       name:
-                        description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                          TODO: Add other useful fields. apiVersion, kind, uid?'
+                        description: |-
+                          Name of the referent.
+                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                          TODO: Add other useful fields. apiVersion, kind, uid?
                         type: string
                       optional:
                         description: Specify whether the Secret or its key must be
@@ -93,17 +105,20 @@ spec:
                     description: PasswordFile defines path to password file at disk
                     type: string
                   username:
-                    description: The secret in the service scrape namespace that contains
-                      the username for authentication. It must be at them same namespace
-                      as CRD
+                    description: |-
+                      The secret in the service scrape namespace that contains the username
+                      for authentication.
+                      It must be at them same namespace as CRD
                     properties:
                       key:
                         description: The key of the secret to select from.  Must be
                           a valid secret key.
                         type: string
                       name:
-                        description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                          TODO: Add other useful fields. apiVersion, kind, uid?'
+                        description: |-
+                          Name of the referent.
+                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                          TODO: Add other useful fields. apiVersion, kind, uid?
                         type: string
                       optional:
                         description: Specify whether the Secret or its key must be
@@ -118,8 +133,10 @@ spec:
                 description: File to read bearer token for scraping targets.
                 type: string
               bearerTokenSecret:
-                description: Secret to mount to read bearer token for scraping targets.
-                  The secret needs to be  accessible by the victoria-metrics operator.
+                description: |-
+                  Secret to mount to read bearer token for scraping targets. The secret
+                  needs to be  accessible by
+                  the victoria-metrics operator.
                 nullable: true
                 properties:
                   key:
@@ -127,8 +144,10 @@ spec:
                       valid secret key.
                     type: string
                   name:
-                    description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                      TODO: Add other useful fields. apiVersion, kind, uid?'
+                    description: |-
+                      Name of the referent.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                      TODO: Add other useful fields. apiVersion, kind, uid?
                     type: string
                   optional:
                     description: Specify whether the Secret or its key must be defined
@@ -157,9 +176,10 @@ spec:
               metricRelabelConfigs:
                 description: MetricRelabelConfigs to apply to samples before ingestion.
                 items:
-                  description: 'RelabelConfig allows dynamic rewriting of the label
-                    set, being applied to samples before ingestion. It defines `<metric_relabel_configs>`-section
-                    of configuration. More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs'
+                  description: |-
+                    RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
+                    It defines `<metric_relabel_configs>`-section of configuration.
+                    More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
                   properties:
                     action:
                       description: Action to perform based on regex matching. Default
@@ -189,40 +209,42 @@ spec:
                         value is matched. Default is '(.*)'
                       type: string
                     replacement:
-                      description: Replacement value against which a regex replace
-                        is performed if the regular expression matches. Regex capture
-                        groups are available. Default is '$1'
+                      description: |-
+                        Replacement value against which a regex replace is performed if the
+                        regular expression matches. Regex capture groups are available. Default is '$1'
                       type: string
                     separator:
                       description: Separator placed between concatenated source label
                         values. default is ';'.
                       type: string
                     source_labels:
-                      description: UnderScoreSourceLabels - additional form of source
-                        labels source_labels for compatibility with original relabel
-                        config. if set  both sourceLabels and source_labels, sourceLabels
-                        has priority. for details https://github.com/VictoriaMetrics/operator/issues/131
+                      description: |-
+                        UnderScoreSourceLabels - additional form of source labels source_labels
+                        for compatibility with original relabel config.
+                        if set  both sourceLabels and source_labels, sourceLabels has priority.
+                        for details https://github.com/VictoriaMetrics/operator/issues/131
                       items:
                         type: string
                       type: array
                     sourceLabels:
-                      description: The source labels select values from existing labels.
-                        Their content is concatenated using the configured separator
-                        and matched against the configured regular expression for
-                        the replace, keep, and drop actions.
+                      description: |-
+                        The source labels select values from existing labels. Their content is concatenated
+                        using the configured separator and matched against the configured regular expression
+                        for the replace, keep, and drop actions.
                       items:
                         type: string
                       type: array
                     target_label:
-                      description: UnderScoreTargetLabel - additional form of target
-                        label - target_label for compatibility with original relabel
-                        config. if set  both targetLabel and target_label, targetLabel
-                        has priority. for details https://github.com/VictoriaMetrics/operator/issues/131
+                      description: |-
+                        UnderScoreTargetLabel - additional form of target label - target_label
+                        for compatibility with original relabel config.
+                        if set  both targetLabel and target_label, targetLabel has priority.
+                        for details https://github.com/VictoriaMetrics/operator/issues/131
                       type: string
                     targetLabel:
-                      description: Label to which the resulting value is written in
-                        a replace action. It is mandatory for replace actions. Regex
-                        capture groups are available.
+                      description: |-
+                        Label to which the resulting value is written in a replace action.
+                        It is mandatory for replace actions. Regex capture groups are available.
                       type: string
                   type: object
                 type: array
@@ -240,8 +262,10 @@ spec:
                             description: The key to select.
                             type: string
                           name:
-                            description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                              TODO: Add other useful fields. apiVersion, kind, uid?'
+                            description: |-
+                              Name of the referent.
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              TODO: Add other useful fields. apiVersion, kind, uid?
                             type: string
                           optional:
                             description: Specify whether the ConfigMap or its key
@@ -259,8 +283,10 @@ spec:
                               be a valid secret key.
                             type: string
                           name:
-                            description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                              TODO: Add other useful fields. apiVersion, kind, uid?'
+                            description: |-
+                              Name of the referent.
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              TODO: Add other useful fields. apiVersion, kind, uid?
                             type: string
                           optional:
                             description: Specify whether the Secret or its key must
@@ -279,8 +305,10 @@ spec:
                           a valid secret key.
                         type: string
                       name:
-                        description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                          TODO: Add other useful fields. apiVersion, kind, uid?'
+                        description: |-
+                          Name of the referent.
+                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                          TODO: Add other useful fields. apiVersion, kind, uid?
                         type: string
                       optional:
                         description: Specify whether the Secret or its key must be
@@ -329,12 +357,14 @@ spec:
                   proxy through this endpoint.
                 type: string
               relabelConfigs:
-                description: 'RelabelConfigs to apply to samples before scraping.
-                  More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config'
+                description: |-
+                  RelabelConfigs to apply to samples before scraping.
+                  More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config
                 items:
-                  description: 'RelabelConfig allows dynamic rewriting of the label
-                    set, being applied to samples before ingestion. It defines `<metric_relabel_configs>`-section
-                    of configuration. More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs'
+                  description: |-
+                    RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
+                    It defines `<metric_relabel_configs>`-section of configuration.
+                    More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
                   properties:
                     action:
                       description: Action to perform based on regex matching. Default
@@ -364,40 +394,42 @@ spec:
                         value is matched. Default is '(.*)'
                       type: string
                     replacement:
-                      description: Replacement value against which a regex replace
-                        is performed if the regular expression matches. Regex capture
-                        groups are available. Default is '$1'
+                      description: |-
+                        Replacement value against which a regex replace is performed if the
+                        regular expression matches. Regex capture groups are available. Default is '$1'
                       type: string
                     separator:
                       description: Separator placed between concatenated source label
                         values. default is ';'.
                       type: string
                     source_labels:
-                      description: UnderScoreSourceLabels - additional form of source
-                        labels source_labels for compatibility with original relabel
-                        config. if set  both sourceLabels and source_labels, sourceLabels
-                        has priority. for details https://github.com/VictoriaMetrics/operator/issues/131
+                      description: |-
+                        UnderScoreSourceLabels - additional form of source labels source_labels
+                        for compatibility with original relabel config.
+                        if set  both sourceLabels and source_labels, sourceLabels has priority.
+                        for details https://github.com/VictoriaMetrics/operator/issues/131
                       items:
                         type: string
                       type: array
                     sourceLabels:
-                      description: The source labels select values from existing labels.
-                        Their content is concatenated using the configured separator
-                        and matched against the configured regular expression for
-                        the replace, keep, and drop actions.
+                      description: |-
+                        The source labels select values from existing labels. Their content is concatenated
+                        using the configured separator and matched against the configured regular expression
+                        for the replace, keep, and drop actions.
                       items:
                         type: string
                       type: array
                     target_label:
-                      description: UnderScoreTargetLabel - additional form of target
-                        label - target_label for compatibility with original relabel
-                        config. if set  both targetLabel and target_label, targetLabel
-                        has priority. for details https://github.com/VictoriaMetrics/operator/issues/131
+                      description: |-
+                        UnderScoreTargetLabel - additional form of target label - target_label
+                        for compatibility with original relabel config.
+                        if set  both targetLabel and target_label, targetLabel has priority.
+                        for details https://github.com/VictoriaMetrics/operator/issues/131
                       type: string
                     targetLabel:
-                      description: Label to which the resulting value is written in
-                        a replace action. It is mandatory for replace actions. Regex
-                        capture groups are available.
+                      description: |-
+                        Label to which the resulting value is written in a replace action.
+                        It is mandatory for replace actions. Regex capture groups are available.
                       type: string
                   type: object
                 type: array
@@ -413,8 +445,9 @@ spec:
                 - https
                 type: string
               scrape_interval:
-                description: ScrapeInterval is the same as Interval and has priority
-                  over it. one of scrape_interval or interval can be used
+                description: |-
+                  ScrapeInterval is the same as Interval and has priority over it.
+                  one of scrape_interval or interval can be used
                 type: string
               scrapeTimeout:
                 description: Timeout after which the scrape is ended
@@ -426,24 +459,24 @@ spec:
                     description: matchExpressions is a list of label selector requirements.
                       The requirements are ANDed.
                     items:
-                      description: A label selector requirement is a selector that
-                        contains values, a key, and an operator that relates the key
-                        and values.
+                      description: |-
+                        A label selector requirement is a selector that contains values, a key, and an operator that
+                        relates the key and values.
                       properties:
                         key:
                           description: key is the label key that the selector applies
                             to.
                           type: string
                         operator:
-                          description: operator represents a key's relationship to
-                            a set of values. Valid operators are In, NotIn, Exists
-                            and DoesNotExist.
+                          description: |-
+                            operator represents a key's relationship to a set of values.
+                            Valid operators are In, NotIn, Exists and DoesNotExist.
                           type: string
                         values:
-                          description: values is an array of string values. If the
-                            operator is In or NotIn, the values array must be non-empty.
-                            If the operator is Exists or DoesNotExist, the values
-                            array must be empty. This array is replaced during a strategic
+                          description: |-
+                            values is an array of string values. If the operator is In or NotIn,
+                            the values array must be non-empty. If the operator is Exists or DoesNotExist,
+                            the values array must be empty. This array is replaced during a strategic
                             merge patch.
                           items:
                             type: string
@@ -456,11 +489,10 @@ spec:
                   matchLabels:
                     additionalProperties:
                       type: string
-                    description: matchLabels is a map of {key,value} pairs. A single
-                      {key,value} in the matchLabels map is equivalent to an element
-                      of matchExpressions, whose key field is "key", the operator
-                      is "In", and the values array contains only "value". The requirements
-                      are ANDed.
+                    description: |-
+                      matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels
+                      map is equivalent to an element of matchExpressions, whose key field is "key", the
+                      operator is "In", and the values array contains only "value". The requirements are ANDed.
                     type: object
                 type: object
                 x-kubernetes-map-type: atomic
@@ -483,8 +515,10 @@ spec:
                             description: The key to select.
                             type: string
                           name:
-                            description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                              TODO: Add other useful fields. apiVersion, kind, uid?'
+                            description: |-
+                              Name of the referent.
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              TODO: Add other useful fields. apiVersion, kind, uid?
                             type: string
                           optional:
                             description: Specify whether the ConfigMap or its key
@@ -502,8 +536,10 @@ spec:
                               be a valid secret key.
                             type: string
                           name:
-                            description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                              TODO: Add other useful fields. apiVersion, kind, uid?'
+                            description: |-
+                              Name of the referent.
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              TODO: Add other useful fields. apiVersion, kind, uid?
                             type: string
                           optional:
                             description: Specify whether the Secret or its key must
@@ -528,8 +564,10 @@ spec:
                             description: The key to select.
                             type: string
                           name:
-                            description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                              TODO: Add other useful fields. apiVersion, kind, uid?'
+                            description: |-
+                              Name of the referent.
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              TODO: Add other useful fields. apiVersion, kind, uid?
                             type: string
                           optional:
                             description: Specify whether the ConfigMap or its key
@@ -547,8 +585,10 @@ spec:
                               be a valid secret key.
                             type: string
                           name:
-                            description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                              TODO: Add other useful fields. apiVersion, kind, uid?'
+                            description: |-
+                              Name of the referent.
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              TODO: Add other useful fields. apiVersion, kind, uid?
                             type: string
                           optional:
                             description: Specify whether the Secret or its key must
@@ -578,8 +618,10 @@ spec:
                           a valid secret key.
                         type: string
                       name:
-                        description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                          TODO: Add other useful fields. apiVersion, kind, uid?'
+                        description: |-
+                          Name of the referent.
+                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                          TODO: Add other useful fields. apiVersion, kind, uid?
                         type: string
                       optional:
                         description: Specify whether the Secret or its key must be
@@ -602,10 +644,12 @@ spec:
                   disable_keep_alive:
                     type: boolean
                   headers:
-                    description: 'Headers allows sending custom headers to scrape
-                      targets must be in of semicolon separated header with it''s
-                      value eg: headerName: headerValue vmagent supports since 1.79.0
-                      version'
+                    description: |-
+                      Headers allows sending custom headers to scrape targets
+                      must be in of semicolon separated header with it's value
+                      eg:
+                      headerName: headerValue
+                      vmagent supports since 1.79.0 version
                     items:
                       type: string
                     type: array
@@ -614,26 +658,29 @@ spec:
                   no_stale_markers:
                     type: boolean
                   proxy_client_config:
-                    description: ProxyClientConfig configures proxy auth settings
-                      for scraping See feature description https://docs.victoriametrics.com/vmagent.html#scraping-targets-via-a-proxy
+                    description: |-
+                      ProxyClientConfig configures proxy auth settings for scraping
+                      See feature description https://docs.victoriametrics.com/vmagent.html#scraping-targets-via-a-proxy
                     properties:
                       basic_auth:
                         description: BasicAuth allow an endpoint to authenticate over
                           basic authentication
                         properties:
                           password:
-                            description: The secret in the service scrape namespace
-                              that contains the password for authentication. It must
-                              be at them same namespace as CRD
+                            description: |-
+                              The secret in the service scrape namespace that contains the password
+                              for authentication.
+                              It must be at them same namespace as CRD
                             properties:
                               key:
                                 description: The key of the secret to select from.  Must
                                   be a valid secret key.
                                 type: string
                               name:
-                                description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                  TODO: Add other useful fields. apiVersion, kind,
-                                  uid?'
+                                description: |-
+                                  Name of the referent.
+                                  More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                  TODO: Add other useful fields. apiVersion, kind, uid?
                                 type: string
                               optional:
                                 description: Specify whether the Secret or its key
@@ -648,18 +695,20 @@ spec:
                               at disk
                             type: string
                           username:
-                            description: The secret in the service scrape namespace
-                              that contains the username for authentication. It must
-                              be at them same namespace as CRD
+                            description: |-
+                              The secret in the service scrape namespace that contains the username
+                              for authentication.
+                              It must be at them same namespace as CRD
                             properties:
                               key:
                                 description: The key of the secret to select from.  Must
                                   be a valid secret key.
                                 type: string
                               name:
-                                description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                  TODO: Add other useful fields. apiVersion, kind,
-                                  uid?'
+                                description: |-
+                                  Name of the referent.
+                                  More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                  TODO: Add other useful fields. apiVersion, kind, uid?
                                 type: string
                               optional:
                                 description: Specify whether the Secret or its key
@@ -678,8 +727,10 @@ spec:
                               be a valid secret key.
                             type: string
                           name:
-                            description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                              TODO: Add other useful fields. apiVersion, kind, uid?'
+                            description: |-
+                              Name of the referent.
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              TODO: Add other useful fields. apiVersion, kind, uid?
                             type: string
                           optional:
                             description: Specify whether the Secret or its key must
@@ -706,10 +757,10 @@ spec:
                                     description: The key to select.
                                     type: string
                                   name:
-                                    description: 'Name of the referent. More info:
-                                      https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                      TODO: Add other useful fields. apiVersion, kind,
-                                      uid?'
+                                    description: |-
+                                      Name of the referent.
+                                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                      TODO: Add other useful fields. apiVersion, kind, uid?
                                     type: string
                                   optional:
                                     description: Specify whether the ConfigMap or
@@ -728,10 +779,10 @@ spec:
                                       be a valid secret key.
                                     type: string
                                   name:
-                                    description: 'Name of the referent. More info:
-                                      https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                      TODO: Add other useful fields. apiVersion, kind,
-                                      uid?'
+                                    description: |-
+                                      Name of the referent.
+                                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                      TODO: Add other useful fields. apiVersion, kind, uid?
                                     type: string
                                   optional:
                                     description: Specify whether the Secret or its
@@ -758,10 +809,10 @@ spec:
                                     description: The key to select.
                                     type: string
                                   name:
-                                    description: 'Name of the referent. More info:
-                                      https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                      TODO: Add other useful fields. apiVersion, kind,
-                                      uid?'
+                                    description: |-
+                                      Name of the referent.
+                                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                      TODO: Add other useful fields. apiVersion, kind, uid?
                                     type: string
                                   optional:
                                     description: Specify whether the ConfigMap or
@@ -780,10 +831,10 @@ spec:
                                       be a valid secret key.
                                     type: string
                                   name:
-                                    description: 'Name of the referent. More info:
-                                      https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                      TODO: Add other useful fields. apiVersion, kind,
-                                      uid?'
+                                    description: |-
+                                      Name of the referent.
+                                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                      TODO: Add other useful fields. apiVersion, kind, uid?
                                     type: string
                                   optional:
                                     description: Specify whether the Secret or its
@@ -814,9 +865,10 @@ spec:
                                   be a valid secret key.
                                 type: string
                               name:
-                                description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                                  TODO: Add other useful fields. apiVersion, kind,
-                                  uid?'
+                                description: |-
+                                  Name of the referent.
+                                  More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                  TODO: Add other useful fields. apiVersion, kind, uid?
                                 type: string
                               optional:
                                 description: Specify whether the Secret or its key

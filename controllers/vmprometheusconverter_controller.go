@@ -3,8 +3,9 @@ package controllers
 import (
 	"context"
 	"fmt"
-	alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	"time"
+
+	alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 
 	"github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/converter"
@@ -53,6 +54,7 @@ const (
 // ConverterController - watches for prometheus objects
 // and create VictoriaMetrics objects
 type ConverterController struct {
+	ctx         context.Context
 	promClient  versioned.Interface
 	vclient     client.Client
 	ruleInf     cache.SharedInformer
@@ -64,8 +66,9 @@ type ConverterController struct {
 }
 
 // NewConverterController builder for vmprometheusconverter service
-func NewConverterController(promCl versioned.Interface, vclient client.Client, baseConf *config.BaseOperatorConf) *ConverterController {
+func NewConverterController(ctx context.Context, promCl versioned.Interface, vclient client.Client, baseConf *config.BaseOperatorConf) (*ConverterController, error) {
 	c := &ConverterController{
+		ctx:        ctx,
 		promClient: promCl,
 		vclient:    vclient,
 		baseConf:   baseConf,
@@ -73,88 +76,98 @@ func NewConverterController(promCl versioned.Interface, vclient client.Client, b
 	c.ruleInf = cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
-				return promCl.MonitoringV1().PrometheusRules(config.MustGetWatchNamespace()).List(context.TODO(), options)
+				return promCl.MonitoringV1().PrometheusRules(config.MustGetWatchNamespace()).List(ctx, options)
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-				return promCl.MonitoringV1().PrometheusRules(config.MustGetWatchNamespace()).Watch(context.TODO(), options)
+				return promCl.MonitoringV1().PrometheusRules(config.MustGetWatchNamespace()).Watch(ctx, options)
 			},
 		},
 		&v1.PrometheusRule{},
 		0,
 		cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc},
 	)
-	c.ruleInf.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	if _, err := c.ruleInf.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    c.CreatePrometheusRule,
 		UpdateFunc: c.UpdatePrometheusRule,
-	})
+	}); err != nil {
+		return nil, fmt.Errorf("cannot add prometheus_rule handler: %w", err)
+	}
 	c.podInf = cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
-				return promCl.MonitoringV1().PodMonitors(config.MustGetWatchNamespace()).List(context.TODO(), options)
+				return promCl.MonitoringV1().PodMonitors(config.MustGetWatchNamespace()).List(ctx, options)
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-				return promCl.MonitoringV1().PodMonitors(config.MustGetWatchNamespace()).Watch(context.TODO(), options)
+				return promCl.MonitoringV1().PodMonitors(config.MustGetWatchNamespace()).Watch(ctx, options)
 			},
 		},
 		&v1.PodMonitor{},
 		0,
 		cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc},
 	)
-	c.podInf.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	if _, err := c.podInf.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    c.CreatePodMonitor,
 		UpdateFunc: c.UpdatePodMonitor,
-	})
+	}); err != nil {
+		return nil, fmt.Errorf("cannot add pod_monitor handler: %w", err)
+	}
 	c.serviceInf = cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
-				return promCl.MonitoringV1().ServiceMonitors(config.MustGetWatchNamespace()).List(context.TODO(), options)
+				return promCl.MonitoringV1().ServiceMonitors(config.MustGetWatchNamespace()).List(ctx, options)
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-				return promCl.MonitoringV1().ServiceMonitors(config.MustGetWatchNamespace()).Watch(context.TODO(), options)
+				return promCl.MonitoringV1().ServiceMonitors(config.MustGetWatchNamespace()).Watch(ctx, options)
 			},
 		},
 		&v1.ServiceMonitor{},
 		0,
 		cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc},
 	)
-	c.serviceInf.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	if _, err := c.serviceInf.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    c.CreateServiceMonitor,
 		UpdateFunc: c.UpdateServiceMonitor,
-	})
+	}); err != nil {
+		return nil, fmt.Errorf("cannot add service_monitor handler: %w", err)
+	}
 	c.amConfigInf = cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
-				return promCl.MonitoringV1alpha1().AlertmanagerConfigs(config.MustGetWatchNamespace()).List(context.TODO(), options)
+				return promCl.MonitoringV1alpha1().AlertmanagerConfigs(config.MustGetWatchNamespace()).List(ctx, options)
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-				return promCl.MonitoringV1alpha1().AlertmanagerConfigs(config.MustGetWatchNamespace()).Watch(context.TODO(), options)
+				return promCl.MonitoringV1alpha1().AlertmanagerConfigs(config.MustGetWatchNamespace()).Watch(ctx, options)
 			},
 		},
 		&alpha1.AlertmanagerConfig{},
 		0,
 		cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
-	c.amConfigInf.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	if _, err := c.amConfigInf.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    c.CreateAlertmanagerConfig,
 		UpdateFunc: c.UpdateAlertmanagerConfig,
-	})
+	}); err != nil {
+		return nil, fmt.Errorf("cannot add alertmanager_config handler: %w", err)
+	}
 	c.probeInf = cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
-				return promCl.MonitoringV1().Probes(config.MustGetWatchNamespace()).List(context.TODO(), options)
+				return promCl.MonitoringV1().Probes(config.MustGetWatchNamespace()).List(ctx, options)
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-				return promCl.MonitoringV1().Probes(config.MustGetWatchNamespace()).Watch(context.TODO(), options)
+				return promCl.MonitoringV1().Probes(config.MustGetWatchNamespace()).Watch(ctx, options)
 			},
 		},
 		&v1.Probe{},
 		0,
 		cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc},
 	)
-	c.probeInf.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	if _, err := c.probeInf.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    c.CreateProbe,
 		UpdateFunc: c.UpdateProbe,
-	})
-	return c
+	}); err != nil {
+		return nil, fmt.Errorf("cannot add probe handler: %w", err)
+	}
+	return c, nil
 }
 
 func waitForAPIResource(ctx context.Context, client discovery.DiscoveryInterface, apiGroupVersion string, kind string) error {
@@ -184,7 +197,6 @@ func waitForAPIResource(ctx context.Context, client discovery.DiscoveryInterface
 			return nil
 		}
 	}
-
 }
 
 func (c *ConverterController) runInformerWithDiscovery(ctx context.Context, group, kind string, runInformer func(<-chan struct{})) error {
@@ -213,24 +225,20 @@ func (c *ConverterController) Start(ctx context.Context) error {
 
 // Run - starts vmprometheusconverter with background discovery process for each prometheus api object
 func (c *ConverterController) Run(ctx context.Context, group *errgroup.Group) {
-
 	if c.baseConf.EnabledPrometheusConverter.ServiceScrape {
 		group.Go(func() error {
 			return c.runInformerWithDiscovery(ctx, v1.SchemeGroupVersion.String(), v1.ServiceMonitorsKind, c.serviceInf.Run)
 		})
-
 	}
 	if c.baseConf.EnabledPrometheusConverter.PodMonitor {
 		group.Go(func() error {
 			return c.runInformerWithDiscovery(ctx, v1.SchemeGroupVersion.String(), v1.PodMonitorsKind, c.podInf.Run)
 		})
-
 	}
 	if c.baseConf.EnabledPrometheusConverter.PrometheusRule {
 		group.Go(func() error {
 			return c.runInformerWithDiscovery(ctx, v1.SchemeGroupVersion.String(), v1.PrometheusRuleKind, c.ruleInf.Run)
 		})
-
 	}
 	if c.baseConf.EnabledPrometheusConverter.Probe {
 		group.Go(func() error {
@@ -353,7 +361,7 @@ func (c *ConverterController) CreatePodMonitor(pod interface{}) {
 	podMonitor := pod.(*v1.PodMonitor)
 	l := log.WithValues("kind", "podScrape", "name", podMonitor.Name, "ns", podMonitor.Namespace)
 	podScrape := converter.ConvertPodMonitor(podMonitor, c.baseConf)
-	err := c.vclient.Create(context.TODO(), podScrape)
+	err := c.vclient.Create(c.ctx, podScrape)
 	if err != nil {
 		if errors.IsAlreadyExists(err) {
 			c.UpdatePodMonitor(nil, podMonitor)
@@ -463,7 +471,6 @@ func (c *ConverterController) UpdateAlertmanagerConfig(_, new interface{}) {
 // new - from prometheus
 // by default new has priority
 func mergeLabelsWithStrategy(old, new map[string]string, mergeStrategy string) map[string]string {
-
 	switch mergeStrategy {
 	case MetaPreferVM:
 		return old
@@ -504,7 +511,7 @@ func (c *ConverterController) CreateProbe(obj interface{}) {
 	l := log.WithValues("kind", "vmProbe", "name", probe.Name, "ns", probe.Namespace)
 	l.Info("syncing probes")
 	vmProbe := converter.ConvertProbe(probe, c.baseConf)
-	err := c.vclient.Create(context.TODO(), vmProbe)
+	err := c.vclient.Create(c.ctx, vmProbe)
 	if err != nil {
 		if errors.IsAlreadyExists(err) {
 			c.UpdateProbe(nil, probe)

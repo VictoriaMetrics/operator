@@ -353,7 +353,11 @@ func RunManager(ctx context.Context) error {
 	}
 
 	setupLog.Info("using kubernetes server version", "version", k8sServerVersion.String())
-	converterController := controllers.NewConverterController(prom, mgr.GetClient(), baseConfig)
+	converterController, err := controllers.NewConverterController(ctx, prom, mgr.GetClient(), baseConfig)
+	if err != nil {
+		setupLog.Error(err, "cannot setup prometheus CRD converter: %w", err)
+		return err
+	}
 
 	if err := mgr.Add(converterController); err != nil {
 		setupLog.Error(err, "cannot add runnable")

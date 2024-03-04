@@ -22,6 +22,7 @@ import (
 
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/controllers/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -88,6 +89,9 @@ func (r *VMNodeScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		if !match {
 			continue
 		}
+		reqLogger := reqLogger.WithValues("vmagent", currentVMagent.Name)
+		ctx := logger.AddToContext(ctx, reqLogger)
+
 		if err := factory.CreateOrUpdateVMAgent(ctx, currentVMagent, r, r.BaseConf); err != nil {
 			reqLogger.Error(err, "cannot create or update vmagent for nodescrape")
 			continue

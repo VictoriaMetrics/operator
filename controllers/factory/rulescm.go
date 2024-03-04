@@ -11,6 +11,7 @@ import (
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/controllers/factory/logger"
 	"github.com/ghodss/yaml"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,7 +46,7 @@ func CreateOrUpdateRuleConfigMaps(ctx context.Context, cr *victoriametricsv1beta
 	if cr.IsUnmanaged() {
 		return nil, nil
 	}
-	l := log.WithValues("reconcile", "rulesCm", "vmalert", cr.Name)
+	l := logger.WithContext(ctx).WithValues("reconcile", "rulesCm", "vmalert", cr.Name)
 	newRules, err := SelectRules(ctx, cr, rclient)
 	if err != nil {
 		return nil, err
@@ -199,8 +200,8 @@ func SelectRules(ctx context.Context, cr *victoriametricsv1beta1.VMAlert, rclien
 	rules := make(map[string]string, len(vmRules))
 
 	if cr.NeedDedupRules() {
-		log.Info("deduplicating vmalert rules", "vmalert", cr.ObjectMeta.Name)
-		vmRules = deduplicateRules(vmRules)
+		logger.WithContext(ctx).Info("deduplicating vmalert rules", "vmalert", cr.ObjectMeta.Name)
+		vmRules = deduplicateRules(ctx, vmRules)
 	}
 	var badRules int
 	var errors []string
@@ -235,11 +236,11 @@ func SelectRules(ctx context.Context, cr *victoriametricsv1beta1.VMAlert, rclien
 		rules["default-vmalert.yaml"] = defAlert
 	}
 	if len(errors) > 0 {
-		log.Error(fmt.Errorf("errors: %s", strings.Join(errors, ";")), "invalid vmrules detected during parsing")
+		logger.WithContext(ctx).Error(fmt.Errorf("errors: %s", strings.Join(errors, ";")), "invalid vmrules detected during parsing")
 	}
 	badConfigsTotal.WithLabelValues("vmrules").Add(float64(badRules))
 
-	log.Info("selected Rules",
+	logger.WithContext(ctx).Info("selected Rules",
 		"rules", strings.Join(ruleNames, ","),
 		"namespace", cr.Namespace,
 		"vmalert", cr.Name,
@@ -251,7 +252,6 @@ func SelectRules(ctx context.Context, cr *victoriametricsv1beta1.VMAlert, rclien
 
 func generateContent(promRule victoriametricsv1beta1.VMRuleSpec, enforcedNsLabel, ns string) (string, error) {
 	if enforcedNsLabel != "" {
-		log.Info("enforce ns label is partly supported, create issue for it")
 		for gi, group := range promRule.Groups {
 			for ri := range group.Rules {
 				if len(promRule.Groups[gi].Rules[ri].Labels) == 0 {
@@ -344,7 +344,7 @@ func ruleConfigMapName(vmName string) string {
 // possible duplicates:
 // group name across single vmRule. group might include non-duplicate rules.
 // rules in group, must include uniq combination of values.
-func deduplicateRules(origin []*victoriametricsv1beta1.VMRule) []*victoriametricsv1beta1.VMRule {
+func deduplicateRules(ctx context.Context, origin []*victoriametricsv1beta1.VMRule) []*victoriametricsv1beta1.VMRule {
 	// deduplicate rules across groups.
 	for _, vmRule := range origin {
 		for i, grp := range vmRule.Spec.Groups {
@@ -353,7 +353,7 @@ func deduplicateRules(origin []*victoriametricsv1beta1.VMRule) []*victoriametric
 			for _, rule := range grp.Rules {
 				ruleID := calculateRuleID(rule)
 				if _, ok := uniqRules[ruleID]; ok {
-					log.Info("duplicate rule found", "rule", rule)
+					logger.WithContext(ctx).Info("duplicate rule found", "rule", rule)
 				} else {
 					uniqRules[ruleID] = struct{}{}
 					rules = append(rules, rule)

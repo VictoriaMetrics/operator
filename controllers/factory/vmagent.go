@@ -12,6 +12,7 @@ import (
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/controllers/factory/logger"
 	"github.com/VictoriaMetrics/operator/controllers/factory/psp"
 	"github.com/VictoriaMetrics/operator/controllers/factory/vmagent"
 	"github.com/VictoriaMetrics/operator/internal/config"
@@ -60,7 +61,7 @@ func CreateOrUpdateVMAgentService(ctx context.Context, cr *victoriametricsv1beta
 
 	if cr.Spec.ServiceSpec != nil {
 		if additionalService.Name == newService.Name {
-			log.Error(fmt.Errorf("vmagent additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name), "cannot create additional service")
+			logger.WithContext(ctx).Error(fmt.Errorf("vmagent additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name), "cannot create additional service")
 		} else if _, err := reconcileServiceForCRD(ctx, rclient, additionalService); err != nil {
 			return nil, err
 		}
@@ -75,7 +76,8 @@ func CreateOrUpdateVMAgentService(ctx context.Context, cr *victoriametricsv1beta
 }
 
 func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client, c *config.BaseOperatorConf) error {
-	l := log.WithValues("controller", "vmagent.crud", "namespace", cr.Namespace, "vmagent", cr.PrefixedName())
+	l := logger.WithContext(ctx).WithValues("controller", "vmagent.crud", "namespace", cr.Namespace, "vmagent", cr.PrefixedName())
+	ctx = logger.AddToContext(ctx, l)
 	if err := psp.CreateServiceAccountForCRD(ctx, cr, rclient); err != nil {
 		return fmt.Errorf("failed create service account: %w", err)
 	}
@@ -109,7 +111,7 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 		}
 	}
 
-	newDeploy, err := newDeployForVMAgent(cr, c, ssCache)
+	newDeploy, err := newDeployForVMAgent(ctx, cr, c, ssCache)
 	if err != nil {
 		return fmt.Errorf("cannot build new deploy for vmagent: %w", err)
 	}
@@ -214,11 +216,11 @@ func setDefaultForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOper
 }
 
 // newDeployForVMAgent builds vmagent deployment spec.
-func newDeployForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperatorConf, ssCache *scrapesSecretsCache) (runtime.Object, error) {
+func newDeployForVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperatorConf, ssCache *scrapesSecretsCache) (runtime.Object, error) {
 	cr = cr.DeepCopy()
 	setDefaultForVMAgent(cr, c)
 
-	podSpec, err := makeSpecForVMAgent(cr, c, ssCache)
+	podSpec, err := makeSpecForVMAgent(ctx, cr, c, ssCache)
 	if err != nil {
 		return nil, err
 	}
@@ -294,7 +296,7 @@ func newDeployForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOpera
 	return depSpec, nil
 }
 
-func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperatorConf, ssCache *scrapesSecretsCache) (*corev1.PodSpec, error) {
+func makeSpecForVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperatorConf, ssCache *scrapesSecretsCache) (*corev1.PodSpec, error) {
 	var args []string
 
 	if len(cr.Spec.RemoteWrite) > 0 {
@@ -507,11 +509,11 @@ func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperat
 	var ic []corev1.Container
 	// conditional add config reloader container
 	if !cr.Spec.IngestOnlyMode || cr.HasAnyRelabellingConfigs() || cr.HasAnyStreamAggrConfigs() {
-		configReloader := buildConfigReloaderContainer(cr, c)
+		configReloader := buildConfigReloaderContainer(ctx, cr, c)
 		operatorContainers = append(operatorContainers, configReloader)
 		if !cr.Spec.IngestOnlyMode {
 			ic = append(ic,
-				buildInitConfigContainer(c.VMAgentDefault.ConfigReloadImage, buildConfigReloaderResourceReqsForVMAgent(c), c, vmAgentConfDir, vmagentGzippedFilename, vmAgentConOfOutDir, configEnvsubstFilename, configReloader.Args)...)
+				buildInitConfigContainer(ctx, c.VMAgentDefault.ConfigReloadImage, buildConfigReloaderResourceReqsForVMAgent(c), c, vmAgentConfDir, vmagentGzippedFilename, vmAgentConOfOutDir, configEnvsubstFilename, configReloader.Args)...)
 			if len(cr.Spec.InitContainers) > 0 {
 				var err error
 				ic, err = k8stools.MergePatchContainers(ic, cr.Spec.InitContainers)
@@ -759,7 +761,7 @@ func createOrUpdateTlsAssets(ctx context.Context, cr *victoriametricsv1beta1.VMA
 	currentAssetSecret := &corev1.Secret{}
 	if err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: tlsAssetsSecret.Name}, currentAssetSecret); err != nil {
 		if errors.IsNotFound(err) {
-			log.Info("creating new tls asset for vmagent", "secret_name", tlsAssetsSecret.Name, "vmagent", cr.Name)
+			logger.WithContext(ctx).Info("creating new tls asset for vmagent", "secret_name", tlsAssetsSecret.Name, "vmagent", cr.Name)
 			return rclient.Create(ctx, tlsAssetsSecret)
 		}
 		return fmt.Errorf("cannot get existing tls secret: %s, for vmagent: %s, err: %w", tlsAssetsSecret.Name, cr.Name, err)
@@ -1262,7 +1264,7 @@ func BuildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, ssCache *scrapesSecre
 	return finalArgs
 }
 
-func buildConfigReloaderContainer(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperatorConf) corev1.Container {
+func buildConfigReloaderContainer(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperatorConf) corev1.Container {
 	var configReloadVolumeMounts []corev1.VolumeMount
 	if !cr.Spec.IngestOnlyMode {
 		configReloadVolumeMounts = append(configReloadVolumeMounts,
@@ -1296,7 +1298,7 @@ func buildConfigReloaderContainer(cr *victoriametricsv1beta1.VMAgent, c *config.
 			})
 	}
 
-	configReloadArgs := buildConfigReloaderArgs(cr, c)
+	configReloadArgs := buildConfigReloaderArgs(ctx, cr, c)
 	cntr := corev1.Container{
 		Name:                     "config-reloader",
 		Image:                    formatContainerImage(c.ContainerRegistry, c.VMAgentDefault.ConfigReloadImage),
@@ -1336,7 +1338,7 @@ func buildConfigReloaderResourceReqsForVMAgent(c *config.BaseOperatorConf) corev
 	return configReloaderResources
 }
 
-func buildConfigReloaderArgs(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperatorConf) []string {
+func buildConfigReloaderArgs(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperatorConf) []string {
 	// by default use watched-dir
 	// it should simplify parsing for latest and empty version tags.
 	dirsArg := "watched-dir"
@@ -1347,7 +1349,7 @@ func buildConfigReloaderArgs(cr *victoriametricsv1beta1.VMAgent, c *config.BaseO
 			imageTag := reloaderImage[idx+1:]
 			ver, err := version.NewVersion(imageTag)
 			if err != nil {
-				log.Error(err, "cannot parse vmagent config reloader version", "reloader-image", reloaderImage)
+				logger.WithContext(ctx).Error(err, "cannot parse vmagent config reloader version", "reloader-image", reloaderImage)
 			} else if ver.LessThan(version.Must(version.NewVersion("0.43.0"))) {
 				dirsArg = "rules-dir"
 			}

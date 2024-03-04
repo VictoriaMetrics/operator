@@ -25,6 +25,7 @@ import (
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/controllers/factory/limiter"
+	"github.com/VictoriaMetrics/operator/controllers/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
 	v1 "k8s.io/api/core/v1"
@@ -93,7 +94,6 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		}
 		// reconcile users for given vmauth.
 		currentVMAuth := &vmauth
-		l = l.WithValues("vmauth", vmauth.Name)
 		match, err := isSelectorsMatches(&instance, currentVMAuth, currentVMAuth.Spec.UserSelector)
 		if err != nil {
 			l.Error(err, "cannot match vmauth and VMUser")
@@ -103,6 +103,9 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		if !match {
 			continue
 		}
+		l = l.WithValues("vmauth", vmauth.Name)
+		ctx := logger.AddToContext(ctx, l)
+
 		if err := factory.CreateOrUpdateVMAuth(ctx, currentVMAuth, r, r.BaseConf); err != nil {
 			return ctrl.Result{}, fmt.Errorf("cannot create or update vmauth deploy for vmuser: %w", err)
 		}

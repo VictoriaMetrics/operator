@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
+	"github.com/VictoriaMetrics/operator/controllers/factory/logger"
 	"k8s.io/api/autoscaling/v2beta2"
 	policyv1 "k8s.io/api/policy/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -70,7 +71,7 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient
 		if !c.DisableSelfServiceScrapeCreation {
 			err := CreateVMServiceScrapeFromService(ctx, rclient, storageSvc, cr.Spec.VMStorage.ServiceScrapeSpec, cr.MetricPathStorage(), "http")
 			if err != nil {
-				log.Error(err, "cannot create VMServiceScrape for vmStorage")
+				logger.WithContext(ctx).Error(err, "cannot create VMServiceScrape for vmStorage")
 			}
 		}
 
@@ -103,7 +104,7 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient
 		if !c.DisableSelfServiceScrapeCreation {
 			err := CreateVMServiceScrapeFromService(ctx, rclient, selectSvc, cr.Spec.VMSelect.ServiceScrapeSpec, cr.MetricPathSelect(), "http")
 			if err != nil {
-				log.Error(err, "cannot create VMServiceScrape for vmSelect")
+				logger.WithContext(ctx).Error(err, "cannot create VMServiceScrape for vmSelect")
 			}
 		}
 
@@ -134,7 +135,7 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient
 		if !c.DisableSelfServiceScrapeCreation {
 			err := CreateVMServiceScrapeFromService(ctx, rclient, insertSvc, cr.Spec.VMInsert.ServiceScrapeSpec, cr.MetricPathInsert(), "http")
 			if err != nil {
-				log.Error(err, "cannot create VMServiceScrape for vmInsert")
+				logger.WithContext(ctx).Error(err, "cannot create VMServiceScrape for vmInsert")
 			}
 		}
 		if err = waitExpanding(ctx, rclient, cr.Namespace, cr.VMInsertSelectorLabels(), *cr.Spec.VMInsert.ReplicaCount, cr.Spec.VMInsert.MinReadySeconds, c.PodWaitReadyTimeout); err != nil {
@@ -279,7 +280,7 @@ func CreateOrUpdateVMInsertService(ctx context.Context, cr *v1beta1.VMCluster, r
 }
 
 func createOrUpdateVMStorage(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) error {
-	newSts, err := GenVMStorageSpec(cr, c)
+	newSts, err := GenVMStorageSpec(ctx, cr, c)
 	if err != nil {
 		return err
 	}
@@ -972,7 +973,7 @@ func CreateOrUpdatePodDisruptionBudgetForVMInsert(ctx context.Context, cr *v1bet
 	return reconcilePDB(ctx, rclient, cr.Kind, pdb)
 }
 
-func GenVMStorageSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv1.StatefulSet, error) {
+func GenVMStorageSpec(ctx context.Context, cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv1.StatefulSet, error) {
 	cr = cr.DeepCopy()
 	if cr.Spec.VMStorage.Image.Repository == "" {
 		cr.Spec.VMStorage.Image.Repository = c.VMClusterDefault.VMStorageDefault.Image
@@ -1006,7 +1007,7 @@ func GenVMStorageSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv
 	if cr.Spec.VMStorage.StorageDataPath == "" {
 		cr.Spec.VMStorage.StorageDataPath = vmStorageDefaultDBPath
 	}
-	podSpec, err := makePodSpecForVMStorage(cr, c)
+	podSpec, err := makePodSpecForVMStorage(ctx, cr, c)
 	if err != nil {
 		return nil, err
 	}
@@ -1046,7 +1047,7 @@ func GenVMStorageSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv
 	return stsSpec, nil
 }
 
-func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*corev1.PodTemplateSpec, error) {
+func makePodSpecForVMStorage(ctx context.Context, cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*corev1.PodTemplateSpec, error) {
 	args := []string{
 		fmt.Sprintf("-vminsertAddr=:%s", cr.Spec.VMStorage.VMInsertPort),
 		fmt.Sprintf("-vmselectAddr=:%s", cr.Spec.VMStorage.VMSelectPort),
@@ -1180,7 +1181,7 @@ func makePodSpecForVMStorage(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) 
 	initContainers := cr.Spec.VMStorage.InitContainers
 
 	if cr.Spec.VMStorage.VMBackup != nil {
-		vmBackupManagerContainer, err := makeSpecForVMBackuper(cr.Spec.VMStorage.VMBackup, c, cr.Spec.VMStorage.Port, cr.Spec.VMStorage.StorageDataPath, cr.Spec.VMStorage.GetStorageVolumeName(), cr.Spec.VMStorage.ExtraArgs, true, cr.Spec.License)
+		vmBackupManagerContainer, err := makeSpecForVMBackuper(ctx, cr.Spec.VMStorage.VMBackup, c, cr.Spec.VMStorage.Port, cr.Spec.VMStorage.StorageDataPath, cr.Spec.VMStorage.GetStorageVolumeName(), cr.Spec.VMStorage.ExtraArgs, true, cr.Spec.License)
 		if err != nil {
 			return nil, err
 		}

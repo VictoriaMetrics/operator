@@ -1,15 +1,18 @@
 package factory
 
 import (
+	"context"
 	"fmt"
+	"sort"
+	"strings"
+
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sort"
-	"strings"
 )
 
 func generateProbeConfig(
+	ctx context.Context,
 	crAgent *victoriametricsv1beta1.VMAgent,
 	cr *victoriametricsv1beta1.VMProbe,
 	i int,
@@ -18,7 +21,6 @@ func generateProbeConfig(
 	ignoreNamespaceSelectors bool,
 	enforcedNamespaceLabel string,
 ) yaml.MapSlice {
-
 	cfg := yaml.MapSlice{
 		{
 			Key:   "job_name",
@@ -36,7 +38,7 @@ func generateProbeConfig(
 	} else if cr.Spec.Interval != "" {
 		scrapeInterval = cr.Spec.Interval
 	}
-	scrapeInterval = limitScrapeInterval(scrapeInterval, crAgent.Spec.MinScrapeInterval, crAgent.Spec.MaxScrapeInterval)
+	scrapeInterval = limitScrapeInterval(ctx, scrapeInterval, crAgent.Spec.MinScrapeInterval, crAgent.Spec.MaxScrapeInterval)
 	if scrapeInterval != "" {
 		cfg = append(cfg, yaml.MapItem{Key: "scrape_interval", Value: scrapeInterval})
 	}
@@ -72,7 +74,8 @@ func generateProbeConfig(
 		if cr.Spec.Targets.StaticConfig.Labels != nil {
 			staticConfig = append(staticConfig,
 				yaml.MapSlice{
-					{Key: "labels", Value: cr.Spec.Targets.StaticConfig.Labels}}...)
+					{Key: "labels", Value: cr.Spec.Targets.StaticConfig.Labels},
+				}...)
 		}
 
 		cfg = append(cfg, yaml.MapItem{
@@ -92,9 +95,7 @@ func generateProbeConfig(
 		}
 	}
 	if cr.Spec.Targets.Ingress != nil {
-		var (
-			labelKeys []string
-		)
+		var labelKeys []string
 
 		// Filter targets by ingresses selected by the probe.
 		// Exact label matches.

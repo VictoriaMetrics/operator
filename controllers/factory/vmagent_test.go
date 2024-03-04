@@ -1456,7 +1456,7 @@ func Test_buildConfigReloaderArgs(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := buildConfigReloaderArgs(tt.args.cr, tt.args.c)
+			got := buildConfigReloaderArgs(context.Background(), tt.args.cr, tt.args.c)
 			sort.Strings(got)
 			sort.Strings(tt.want)
 			assert.Equal(t, tt.want, got)
@@ -1551,7 +1551,7 @@ func TestMakeSpecForAgentOk(t *testing.T) {
 	f := func(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperatorConf, sCache *scrapesSecretsCache, wantJSON string) {
 		t.Helper()
 		setDefaultForVMAgent(cr, c)
-		got, err := makeSpecForVMAgent(cr, c, sCache)
+		got, err := makeSpecForVMAgent(context.Background(), cr, c, sCache)
 		if err != nil {
 			t.Fatalf("not expected error=%q", err)
 		}
@@ -1652,6 +1652,7 @@ func TestMakeSpecForAgentOk(t *testing.T) {
 		c.UseCustomConfigReloader = true
 		c.VMAgentDefault.Port = "8429"
 		c.CustomConfigReloaderImage = "vmcustomer:v1"
+		c.VMAgentDefault.Version = "v1.97.1"
 		c.VMAgentDefault.UseDefaultResources = false
 	}), nil, `{
          "containers": [
@@ -1693,7 +1694,7 @@ func TestMakeSpecForAgentOk(t *testing.T) {
             "-remoteWrite.maxDiskUsagePerURL=1073741824",
             "-remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data"
            ],
-           "image": "victoriametrics/vmagent:v1.98.0",
+           "image": "victoriametrics/vmagent:v1.97.1",
            "imagePullPolicy": "IfNotPresent",
            "livenessProbe": {
             "failureThreshold": 10,

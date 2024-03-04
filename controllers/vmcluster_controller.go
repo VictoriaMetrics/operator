@@ -7,6 +7,7 @@ import (
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
+	"github.com/VictoriaMetrics/operator/controllers/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
@@ -40,8 +41,7 @@ func (r *VMClusterReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=apps,resources=statefulsets,verbs=*
 func (r *VMClusterReconciler) Reconcile(ctx context.Context, request ctrl.Request) (result ctrl.Result, err error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
-	reqLogger.Info("Reconciling VMCluster")
-
+	ctx = logger.AddToContext(ctx, reqLogger)
 	instance := &victoriametricsv1beta1.VMCluster{}
 	if err := r.Client.Get(ctx, request.NamespacedName, instance); err != nil {
 		return handleGetError(request, "vmcluster", err)

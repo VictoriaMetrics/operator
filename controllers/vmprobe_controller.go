@@ -24,6 +24,7 @@ import (
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/controllers/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -77,7 +78,6 @@ func (r *VMProbeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 			continue
 		}
 		currentVMagent := &vmagent
-		reqLogger = reqLogger.WithValues("vmagent", vmagent.Name)
 		match, err := isSelectorsMatches(instance, currentVMagent, currentVMagent.Spec.ProbeSelector)
 		if err != nil {
 			reqLogger.Error(err, "cannot match vmagent and vmProbe")
@@ -87,6 +87,9 @@ func (r *VMProbeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 		if !match {
 			continue
 		}
+		reqLogger := reqLogger.WithValues("vmagent", currentVMagent.Name)
+		ctx := logger.AddToContext(ctx, reqLogger)
+
 		if err := factory.CreateOrUpdateVMAgent(ctx, currentVMagent, r, r.BaseConf); err != nil {
 			reqLogger.Error(err, "cannot create or update vmagent")
 			continue

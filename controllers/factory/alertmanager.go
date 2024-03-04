@@ -12,6 +12,7 @@ import (
 	"github.com/VictoriaMetrics/operator/controllers/factory/alertmanager"
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/controllers/factory/logger"
 	"github.com/VictoriaMetrics/operator/controllers/factory/psp"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
@@ -25,7 +26,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const (
@@ -48,12 +48,11 @@ receivers:
 var (
 	minReplicas         int32 = 1
 	probeTimeoutSeconds int32 = 5
-	log                       = logf.Log.WithName("factory")
 )
 
 func CreateOrUpdateAlertManager(ctx context.Context, cr *victoriametricsv1beta1.VMAlertmanager, rclient client.Client, c *config.BaseOperatorConf) error {
-	l := log.WithValues("reconcile.VMAlertManager.sts", cr.Name, "ns", cr.Namespace)
-
+	l := logger.WithContext(ctx).WithValues("reconcile.VMAlertManager.sts", cr.Name, "ns", cr.Namespace)
+	ctx = logger.AddToContext(ctx, l)
 	if err := psp.CreateServiceAccountForCRD(ctx, cr, rclient); err != nil {
 		return fmt.Errorf("failed create service account: %w", err)
 	}
@@ -173,7 +172,7 @@ func CreateOrUpdateAlertManagerService(ctx context.Context, cr *victoriametricsv
 
 	if cr.Spec.ServiceSpec != nil {
 		if additionalService.Name == newService.Name {
-			log.Error(fmt.Errorf("vmalertmanager additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name), "cannot create additional service")
+			logger.WithContext(ctx).Error(fmt.Errorf("vmalertmanager additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name), "cannot create additional service")
 		} else if _, err := reconcileServiceForCRD(ctx, rclient, additionalService); err != nil {
 			return nil, err
 		}
@@ -221,11 +220,11 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, c *config.Ba
 	amArgs = append(amArgs, fmt.Sprintf("--web.route-prefix=%s", webRoutePrefix))
 
 	if cr.Spec.LogLevel != "" && cr.Spec.LogLevel != "info" {
-		amArgs = append(amArgs, fmt.Sprintf("--log.level=%s", cr.Spec.LogLevel))
+		amArgs = append(amArgs, fmt.Sprintf("--logger.WithContext(ctx).level=%s", cr.Spec.LogLevel))
 	}
 
 	if cr.Spec.LogFormat != "" {
-		amArgs = append(amArgs, fmt.Sprintf("--log.format=%s", cr.Spec.LogFormat))
+		amArgs = append(amArgs, fmt.Sprintf("--logger.WithContext(ctx).format=%s", cr.Spec.LogFormat))
 	}
 
 	if cr.Spec.ClusterAdvertiseAddress != "" {
@@ -523,7 +522,8 @@ var alertmanagerConfigMinimumVersion = version.Must(version.NewVersion("v0.22.0"
 // if not create with predefined or user value.
 func createDefaultAMConfig(ctx context.Context, cr *victoriametricsv1beta1.VMAlertmanager, rclient client.Client, amVersion *version.Version) error {
 	cr = cr.DeepCopy()
-	l := log.WithValues("alertmanager", cr.Name)
+	l := logger.WithContext(ctx).WithValues("alertmanager", cr.Name)
+	ctx = logger.AddToContext(ctx, l)
 
 	// name of tls object and it's value
 	// e.g. namespace_secret_name_secret_key
@@ -591,7 +591,7 @@ func createDefaultAMConfig(ctx context.Context, cr *victoriametricsv1beta1.VMAle
 	var existAMSecretConfig v1.Secret
 	if err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.ConfigSecretName()}, &existAMSecretConfig); err != nil {
 		if errors.IsNotFound(err) {
-			log.Info("creating default alertmanager config with secret", "secret_name", newAMSecretConfig.Name)
+			logger.WithContext(ctx).Info("creating default alertmanager config with secret", "secret_name", newAMSecretConfig.Name)
 			return rclient.Create(ctx, newAMSecretConfig)
 		}
 		return err
@@ -607,7 +607,7 @@ func getSecretContentForAlertmanager(ctx context.Context, rclient client.Client,
 	if err := rclient.Get(ctx, types.NamespacedName{Namespace: ns, Name: secretName}, &s); err != nil {
 		// return nil for backward compatability
 		if errors.IsNotFound(err) {
-			log.Error(err, "alertmanager config secret doens't exist, default config is used", "secret", secretName, "ns", ns)
+			logger.WithContext(ctx).Error(err, "alertmanager config secret doens't exist, default config is used", "secret", secretName, "ns", ns)
 			return nil, nil
 		}
 		return nil, fmt.Errorf("cannot get secret: %s at ns: %s, err: %w", secretName, ns, err)

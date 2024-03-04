@@ -10,6 +10,7 @@ import (
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/controllers/factory/logger"
 	"github.com/VictoriaMetrics/operator/controllers/factory/psp"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	appsv1 "k8s.io/api/apps/v1"
@@ -55,7 +56,7 @@ func CreateOrUpdateVMAlertService(ctx context.Context, cr *victoriametricsv1beta
 	// log error?
 	if cr.Spec.ServiceSpec != nil {
 		if additionalSvc.Name == newService.Name {
-			log.Error(fmt.Errorf("vmalert additional service name: %q cannot be the same as crd.prefixedname: %q", additionalSvc.Name, cr.PrefixedName()), "cannot create additional service")
+			logger.WithContext(ctx).Error(fmt.Errorf("vmalert additional service name: %q cannot be the same as crd.prefixedname: %q", additionalSvc.Name, cr.PrefixedName()), "cannot create additional service")
 		} else if _, err := reconcileServiceForCRD(ctx, rclient, additionalSvc); err != nil {
 			return nil, err
 		}
@@ -126,7 +127,8 @@ func createOrUpdateVMAlertSecret(ctx context.Context, rclient client.Client, cr 
 }
 
 func CreateOrUpdateVMAlert(ctx context.Context, cr *victoriametricsv1beta1.VMAlert, rclient client.Client, c *config.BaseOperatorConf, cmNames []string) error {
-	l := log.WithValues("controller", "vmalert.crud", "vmalert", cr.Name)
+	l := logger.WithContext(ctx).WithValues("controller", "vmalert.crud", "vmalert", cr.Name)
+	ctx = logger.AddToContext(ctx, l)
 	// copy to avoid side effects.
 	cr = cr.DeepCopy()
 	var additionalNotifiers []victoriametricsv1beta1.VMAlertNotifierSpec

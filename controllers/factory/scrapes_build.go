@@ -1,6 +1,7 @@
 package factory
 
 import (
+	"context"
 	"fmt"
 	"path"
 	"reflect"
@@ -8,8 +9,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/controllers/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
@@ -36,6 +37,7 @@ type BasicAuthCredentials struct {
 }
 
 func generateConfig(
+	ctx context.Context,
 	cr *victoriametricsv1beta1.VMAgent,
 	sMons map[string]*victoriametricsv1beta1.VMServiceScrape,
 	pMons map[string]*victoriametricsv1beta1.VMPodScrape,
@@ -47,7 +49,7 @@ func generateConfig(
 ) ([]byte, error) {
 	cfg := yaml.MapSlice{}
 	if !config.IsClusterWideAccessAllowed() && cr.IsOwnsServiceAccount() {
-		log.Info("Setting discovery for the single namespace only, since operator launched with set WATCH_NAMESPACE param. Set custom ServiceAccountName property for VMAgent if needed.", "vmagent", cr.Name, "namespace", cr.Namespace)
+		logger.WithContext(ctx).Info("Setting discovery for the single namespace only, since operator launched with set WATCH_NAMESPACE param. Set custom ServiceAccountName property for VMAgent if needed.", "vmagent", cr.Name, "namespace", cr.Namespace)
 		cr.Spec.IgnoreNamespaceSelectors = true
 	}
 
@@ -123,6 +125,7 @@ func generateConfig(
 		for i, ep := range sMons[identifier].Spec.Endpoints {
 			scrapeConfigs = append(scrapeConfigs,
 				generateServiceScrapeConfig(
+					ctx,
 					cr,
 					sMons[identifier],
 					ep, i,
@@ -138,6 +141,7 @@ func generateConfig(
 		for i, ep := range pMons[identifier].Spec.PodMetricsEndpoints {
 			scrapeConfigs = append(scrapeConfigs,
 				generatePodScrapeConfig(
+					ctx,
 					cr,
 					pMons[identifier], ep, i,
 					apiserverConfig,
@@ -152,6 +156,7 @@ func generateConfig(
 	for i, identifier := range probeIdentifiers {
 		scrapeConfigs = append(scrapeConfigs,
 			generateProbeConfig(
+				ctx,
 				cr,
 				probes[identifier],
 				i,
@@ -163,6 +168,7 @@ func generateConfig(
 	for i, identifier := range nodeIdentifiers {
 		scrapeConfigs = append(scrapeConfigs,
 			generateNodeScrapeConfig(
+				ctx,
 				cr,
 				nodes[identifier],
 				i,
@@ -177,6 +183,7 @@ func generateConfig(
 		for i, ep := range statics[identifier].Spec.TargetEndpoints {
 			scrapeConfigs = append(scrapeConfigs,
 				generateStaticScrapeConfig(
+					ctx,
 					cr,
 					statics[identifier],
 					ep, i,
@@ -225,21 +232,21 @@ func makeConfigSecret(cr *victoriametricsv1beta1.VMAgent, config *config.BaseOpe
 		if rw.BearerTokenSecret != nil {
 			token, ok := ssCache.bearerTokens[rw.AsMapKey()]
 			if !ok {
-				logger.Fatalf("bug, remoteWriteSpec bearerToken is missing: %s", rw.AsMapKey())
+				panic(fmt.Sprintf("bug, remoteWriteSpec bearerToken is missing: %s", rw.AsMapKey()))
 			}
 			s.Data[rw.AsSecretKey(idx, "bearerToken")] = []byte(token)
 		}
 		if rw.BasicAuth != nil && len(rw.BasicAuth.Password.Name) > 0 {
 			ba, ok := ssCache.baSecrets[rw.AsMapKey()]
 			if !ok {
-				logger.Fatalf("bug, remoteWriteSpec basicAuth is missing: %s", rw.AsMapKey())
+				panic(fmt.Sprintf("bug, remoteWriteSpec basicAuth is missing: %s", rw.AsMapKey()))
 			}
 			s.Data[rw.AsSecretKey(idx, "basicAuthPassword")] = []byte(ba.password)
 		}
 		if rw.OAuth2 != nil {
 			oauth2, ok := ssCache.oauth2Secrets[rw.AsMapKey()]
 			if !ok {
-				logger.Fatalf("bug, remoteWriteSpec oauth2 is missing: %s", rw.AsMapKey())
+				panic(fmt.Sprintf("bug, remoteWriteSpec oauth2 is missing: %s", rw.AsMapKey()))
 			}
 			s.Data[rw.AsSecretKey(idx, "oauth2Secret")] = []byte(oauth2.clientSecret)
 		}
@@ -296,6 +303,7 @@ func honorTimestamps(cfg yaml.MapSlice, userHonorTimestamps *bool, overrideHonor
 }
 
 func generatePodScrapeConfig(
+	ctx context.Context,
 	cr *victoriametricsv1beta1.VMAgent,
 	m *victoriametricsv1beta1.VMPodScrape,
 	ep victoriametricsv1beta1.PodMetricsEndpoint,
@@ -330,7 +338,7 @@ func generatePodScrapeConfig(
 		scrapeInterval = ep.Interval
 	}
 
-	scrapeInterval = limitScrapeInterval(scrapeInterval, cr.Spec.MinScrapeInterval, cr.Spec.MaxScrapeInterval)
+	scrapeInterval = limitScrapeInterval(ctx, scrapeInterval, cr.Spec.MinScrapeInterval, cr.Spec.MaxScrapeInterval)
 	if scrapeInterval != "" {
 		cfg = append(cfg, yaml.MapItem{Key: "scrape_interval", Value: scrapeInterval})
 	}
@@ -574,6 +582,7 @@ func addAttachMetadata(dst yaml.MapSlice, am *victoriametricsv1beta1.AttachMetad
 }
 
 func generateServiceScrapeConfig(
+	ctx context.Context,
 	cr *victoriametricsv1beta1.VMAgent,
 	m *victoriametricsv1beta1.VMServiceScrape,
 	ep victoriametricsv1beta1.Endpoint,
@@ -612,7 +621,7 @@ func generateServiceScrapeConfig(
 		scrapeInterval = ep.Interval
 	}
 
-	scrapeInterval = limitScrapeInterval(scrapeInterval, cr.Spec.MinScrapeInterval, cr.Spec.MaxScrapeInterval)
+	scrapeInterval = limitScrapeInterval(ctx, scrapeInterval, cr.Spec.MinScrapeInterval, cr.Spec.MaxScrapeInterval)
 
 	if scrapeInterval != "" {
 		cfg = append(cfg, yaml.MapItem{Key: "scrape_interval", Value: scrapeInterval})
@@ -910,6 +919,7 @@ func generateServiceScrapeConfig(
 }
 
 func generateNodeScrapeConfig(
+	ctx context.Context,
 	crAgent *victoriametricsv1beta1.VMAgent,
 	cr *victoriametricsv1beta1.VMNodeScrape,
 	i int,
@@ -941,7 +951,7 @@ func generateNodeScrapeConfig(
 	} else if nodeSpec.Interval != "" {
 		scrapeInterval = nodeSpec.Interval
 	}
-	scrapeInterval = limitScrapeInterval(scrapeInterval, crAgent.Spec.MinScrapeInterval, crAgent.Spec.MaxScrapeInterval)
+	scrapeInterval = limitScrapeInterval(ctx, scrapeInterval, crAgent.Spec.MinScrapeInterval, crAgent.Spec.MaxScrapeInterval)
 	if scrapeInterval != "" {
 		cfg = append(cfg, yaml.MapItem{Key: "scrape_interval", Value: scrapeInterval})
 	}
@@ -1256,7 +1266,6 @@ func generatePodK8SSDConfig(namespaces []string, labelSelector metav1.LabelSelec
 	if len(labelSelector.MatchLabels) != 0 {
 		k8sSDs, flag := cfg.Value.([]yaml.MapSlice)
 		if !flag {
-			log.Error(fmt.Errorf("type assert failed"), "cfg.Value is not []yaml.MapSlice")
 			return cfg
 		}
 

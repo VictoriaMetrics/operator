@@ -10,6 +10,7 @@ import (
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/controllers/factory/logger"
 	"github.com/VictoriaMetrics/operator/controllers/factory/psp"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"gopkg.in/yaml.v2"
@@ -35,8 +36,8 @@ const (
 )
 
 func CreateVMSingleStorage(ctx context.Context, cr *victoriametricsv1beta1.VMSingle, rclient client.Client) (*corev1.PersistentVolumeClaim, error) {
-	l := log.WithValues("vm.single.pvc.create", cr.Name)
-	l.Info("reconciling pvc")
+	l := logger.WithContext(ctx).WithValues("vm.single.pvc.create", cr.Name)
+	ctx = logger.AddToContext(ctx, l)
 	newPvc := makeVMSinglePvc(cr)
 	existPvc := &corev1.PersistentVolumeClaim{}
 	err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, existPvc)
@@ -94,7 +95,7 @@ func CreateOrUpdateVMSingle(ctx context.Context, cr *victoriametricsv1beta1.VMSi
 			return fmt.Errorf("cannot create podsecurity policy for vmsingle, err=%w", err)
 		}
 	}
-	newDeploy, err := newDeployForVMSingle(cr, c)
+	newDeploy, err := newDeployForVMSingle(ctx, cr, c)
 	if err != nil {
 		return fmt.Errorf("cannot generate new deploy for vmsingle: %w", err)
 	}
@@ -102,7 +103,7 @@ func CreateOrUpdateVMSingle(ctx context.Context, cr *victoriametricsv1beta1.VMSi
 	return k8stools.HandleDeployUpdate(ctx, rclient, newDeploy, c.PodWaitReadyTimeout)
 }
 
-func newDeployForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOperatorConf) (*appsv1.Deployment, error) {
+func newDeployForVMSingle(ctx context.Context, cr *victoriametricsv1beta1.VMSingle, c *config.BaseOperatorConf) (*appsv1.Deployment, error) {
 	cr = cr.DeepCopy()
 
 	if cr.Spec.Image.Repository == "" {
@@ -117,7 +118,7 @@ func newDeployForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOpe
 	if cr.Spec.Image.PullPolicy == "" {
 		cr.Spec.Image.PullPolicy = corev1.PullIfNotPresent
 	}
-	podSpec, err := makeSpecForVMSingle(cr, c)
+	podSpec, err := makeSpecForVMSingle(ctx, cr, c)
 	if err != nil {
 		return nil, err
 	}
@@ -147,7 +148,7 @@ func newDeployForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOpe
 	return depSpec, nil
 }
 
-func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOperatorConf) (*corev1.PodTemplateSpec, error) {
+func makeSpecForVMSingle(ctx context.Context, cr *victoriametricsv1beta1.VMSingle, c *config.BaseOperatorConf) (*corev1.PodTemplateSpec, error) {
 	args := []string{
 		fmt.Sprintf("-retentionPeriod=%s", cr.Spec.RetentionPeriod),
 	}
@@ -302,7 +303,7 @@ func makeSpecForVMSingle(cr *victoriametricsv1beta1.VMSingle, c *config.BaseOper
 	initContainers := cr.Spec.InitContainers
 
 	if cr.Spec.VMBackup != nil {
-		vmBackupManagerContainer, err := makeSpecForVMBackuper(cr.Spec.VMBackup, c, cr.Spec.Port, storagePath, vmDataVolumeName, cr.Spec.ExtraArgs, false, cr.Spec.License)
+		vmBackupManagerContainer, err := makeSpecForVMBackuper(ctx, cr.Spec.VMBackup, c, cr.Spec.Port, storagePath, vmDataVolumeName, cr.Spec.ExtraArgs, false, cr.Spec.License)
 		if err != nil {
 			return nil, err
 		}
@@ -389,7 +390,7 @@ func CreateOrUpdateVMSingleService(ctx context.Context, cr *victoriametricsv1bet
 		mergeServiceSpec(additionalService, cr.Spec.ServiceSpec)
 		buildAdditionalServicePorts(cr.Spec.InsertPorts, additionalService)
 		if additionalService.Name == newService.Name {
-			log.Error(fmt.Errorf("vmsingle additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name), "cannot create additional service")
+			logger.WithContext(ctx).Error(fmt.Errorf("vmsingle additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name), "cannot create additional service")
 		} else if _, err := reconcileServiceForCRD(ctx, rclient, additionalService); err != nil {
 			return nil, err
 		}
@@ -404,6 +405,7 @@ func CreateOrUpdateVMSingleService(ctx context.Context, cr *victoriametricsv1bet
 }
 
 func makeSpecForVMBackuper(
+	ctx context.Context,
 	cr *victoriametricsv1beta1.VMBackup,
 	c *config.BaseOperatorConf,
 	port string,
@@ -413,7 +415,7 @@ func makeSpecForVMBackuper(
 	license *victoriametricsv1beta1.License,
 ) (*corev1.Container, error) {
 	if !cr.AcceptEULA && !license.IsProvided() {
-		log.Info("EULA or license wasn't defined, update your backup settings. Follow https://docs.victoriametrics.com/enterprise.html for further instructions.")
+		logger.WithContext(ctx).Info("EULA or license wasn't defined, update your backup settings. Follow https://docs.victoriametrics.com/enterprise.html for further instructions.")
 		return nil, nil
 	}
 	if cr.Image.Repository == "" {

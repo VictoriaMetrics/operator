@@ -1,6 +1,7 @@
 package factory
 
 import (
+	"context"
 	"fmt"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
@@ -8,6 +9,7 @@ import (
 )
 
 func generateStaticScrapeConfig(
+	ctx context.Context,
 	cr *victoriametricsv1beta1.VMAgent,
 	m *victoriametricsv1beta1.VMStaticScrape,
 	ep *victoriametricsv1beta1.TargetEndpoint,
@@ -16,7 +18,6 @@ func generateStaticScrapeConfig(
 	overrideHonorLabels, overrideHonorTimestamps bool,
 	enforcedNamespaceLabel string,
 ) yaml.MapSlice {
-
 	hl := honorLabels(ep.HonorLabels, overrideHonorLabels)
 	cfg := yaml.MapSlice{
 		{
@@ -43,7 +44,7 @@ func generateStaticScrapeConfig(
 	} else if ep.Interval != "" {
 		scrapeInterval = ep.Interval
 	}
-	scrapeInterval = limitScrapeInterval(scrapeInterval, cr.Spec.MinScrapeInterval, cr.Spec.MaxScrapeInterval)
+	scrapeInterval = limitScrapeInterval(ctx, scrapeInterval, cr.Spec.MinScrapeInterval, cr.Spec.MaxScrapeInterval)
 
 	if scrapeInterval != "" {
 		cfg = append(cfg, yaml.MapItem{Key: "scrape_interval", Value: scrapeInterval})

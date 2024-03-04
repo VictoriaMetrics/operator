@@ -384,7 +384,7 @@ func Test_deduplicateRules(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := deduplicateRules(tt.args.origin)
+			got := deduplicateRules(context.Background(), tt.args.origin)
 			diff := deep.Equal(got, tt.want)
 			if len(diff) > 0 {
 				t.Errorf("deduplicateRules() %v = %v, want %v", diff, got, tt.want)

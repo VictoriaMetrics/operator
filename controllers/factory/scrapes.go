@@ -11,6 +11,7 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/app/vmalert/utils"
 	"github.com/VictoriaMetrics/metricsql"
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/controllers/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/prometheus/client_golang/prometheus"
 	corev1 "k8s.io/api/core/v1"
@@ -76,7 +77,7 @@ func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *victoriametricsv
 			return nil, fmt.Errorf("cannot load scrape target secrets for api server or remote writes: %w", err)
 		}
 		vmagentSecretFetchErrsTotal.Inc()
-		log.Error(err, "found invalid secret references at objects, excluding it from configuration")
+		logger.WithContext(ctx).Error(err, "found invalid secret references at objects, excluding it from configuration")
 	}
 	assets, err := loadTLSAssets(ctx, rclient, cr, sScrapes, pScrapes, probes, nodes, statics)
 	if err != nil {
@@ -85,7 +86,7 @@ func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *victoriametricsv
 			return nil, fmt.Errorf("cannot load tls assets for api server or remote writes: %w", err)
 		}
 		vmagentSecretFetchErrsTotal.Inc()
-		log.Error(err, "cannot load tls assets for targets, excluding it from configuration")
+		logger.WithContext(ctx).Error(err, "cannot load tls assets for targets, excluding it from configuration")
 	}
 	if err := createOrUpdateTlsAssets(ctx, cr, rclient, assets); err != nil {
 		return nil, fmt.Errorf("cannot create tls assets secret for vmagent: %w", err)
@@ -98,6 +99,7 @@ func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *victoriametricsv
 
 	// Update secret based on the most recent configuration.
 	generatedConfig, err := generateConfig(
+		ctx,
 		cr,
 		sScrapes,
 		pScrapes,
@@ -126,7 +128,7 @@ func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *victoriametricsv
 	curSecret := &corev1.Secret{}
 	if err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: s.Name}, curSecret); err != nil {
 		if errors.IsNotFound(err) {
-			log.Info("creating new configuration secret for vmagent")
+			logger.WithContext(ctx).Info("creating new configuration secret for vmagent")
 			return ssCache, rclient.Create(ctx, s)
 		}
 		return nil, fmt.Errorf("cannot get secret for vmagent: %q : %w", cr.Name, err)
@@ -167,7 +169,7 @@ func SelectServiceScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgen
 			for _, endpoint := range sm.Spec.Endpoints {
 				if err := testForArbitraryFSAccess(endpoint); err != nil {
 					delete(res, namespaceAndName)
-					log.Info("skipping vmservicescrape",
+					logger.WithContext(ctx).Info("skipping vmservicescrape",
 						"error", err.Error(),
 						"vmservicescrape", namespaceAndName,
 						"namespace", cr.Namespace,
@@ -182,7 +184,7 @@ func SelectServiceScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgen
 	for k := range res {
 		serviceScrapes = append(serviceScrapes, k)
 	}
-	log.Info("selected ServiceScrapes", "servicescrapes", strings.Join(serviceScrapes, ","), "namespace", cr.Namespace, "vmagent", cr.Name)
+	logger.WithContext(ctx).Info("selected ServiceScrapes", "servicescrapes", strings.Join(serviceScrapes, ","), "namespace", cr.Namespace, "vmagent", cr.Name)
 
 	return res, nil
 }
@@ -213,7 +215,7 @@ func SelectPodScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, r
 		podScrapes = append(podScrapes, key)
 	}
 
-	log.Info("selected PodScrapes", "podscrapes", strings.Join(podScrapes, ","), "namespace", cr.Namespace, "vmagent", cr.Name)
+	logger.WithContext(ctx).Info("selected PodScrapes", "podscrapes", strings.Join(podScrapes, ","), "namespace", cr.Namespace, "vmagent", cr.Name)
 
 	return res, nil
 }
@@ -242,13 +244,13 @@ func SelectVMProbes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rcl
 		probesList = append(probesList, key)
 	}
 
-	log.Info("selected VMProbes", "vmProbes", strings.Join(probesList, ","), "namespace", cr.Namespace, "vmagent", cr.Name)
+	logger.WithContext(ctx).Info("selected VMProbes", "vmProbes", strings.Join(probesList, ","), "namespace", cr.Namespace, "vmagent", cr.Name)
 
 	return res, nil
 }
 
 func SelectVMNodeScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) (map[string]*victoriametricsv1beta1.VMNodeScrape, error) {
-	l := log.WithValues("vmagent", cr.Name)
+	l := logger.WithContext(ctx).WithValues("vmagent", cr.Name)
 	if !config.IsClusterWideAccessAllowed() && cr.IsOwnsServiceAccount() {
 		l.Info("cannot use VMNodeScrape at operator in single namespace mode with default permissions. Create ServiceAccount for VMAgent manually if needed. Skipping config generation for it")
 		return nil, nil
@@ -309,7 +311,7 @@ func SelectStaticScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent
 		staticScrapes = append(staticScrapes, key)
 	}
 
-	log.Info("selected StaticScrapes", "staticScrapes", strings.Join(staticScrapes, ","), "namespace", cr.Namespace, "vmagent", cr.Name)
+	logger.WithContext(ctx).Info("selected StaticScrapes", "staticScrapes", strings.Join(staticScrapes, ","), "namespace", cr.Namespace, "vmagent", cr.Name)
 
 	return res, nil
 }
@@ -944,21 +946,21 @@ func CreateVMServiceScrapeFromService(ctx context.Context, rclient client.Client
 	return nil
 }
 
-func limitScrapeInterval(origin string, minIntervalStr, maxIntervalStr *string) string {
+func limitScrapeInterval(ctx context.Context, origin string, minIntervalStr, maxIntervalStr *string) string {
 	if origin == "" || (minIntervalStr == nil && maxIntervalStr == nil) {
 		// fast path
 		return origin
 	}
 	originDurationMs, err := metricsql.DurationValue(origin, 0)
 	if err != nil {
-		log.Error(err, "cannot parse duration value during limiting interval, using original value: %s", origin)
+		logger.WithContext(ctx).Error(err, "cannot parse duration value during limiting interval, using original value: %s", origin)
 		return origin
 	}
 
 	if minIntervalStr != nil {
 		parsedMinMs, err := metricsql.DurationValue(*minIntervalStr, 0)
 		if err != nil {
-			log.Error(err, "cannot parse minScrapeInterval: %s, using original value: %s", *minIntervalStr, origin)
+			logger.WithContext(ctx).Error(err, "cannot parse minScrapeInterval: %s, using original value: %s", *minIntervalStr, origin)
 			return origin
 		}
 		if parsedMinMs >= originDurationMs {
@@ -968,7 +970,7 @@ func limitScrapeInterval(origin string, minIntervalStr, maxIntervalStr *string) 
 	if maxIntervalStr != nil {
 		parsedMaxMs, err := metricsql.DurationValue(*maxIntervalStr, 0)
 		if err != nil {
-			log.Error(err, "cannot parse maxScrapeInterval: %s, using origin value: %s", *maxIntervalStr, origin)
+			logger.WithContext(ctx).Error(err, "cannot parse maxScrapeInterval: %s, using origin value: %s", *maxIntervalStr, origin)
 			return origin
 		}
 		if parsedMaxMs < originDurationMs {

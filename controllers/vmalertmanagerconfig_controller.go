@@ -22,6 +22,7 @@ import (
 
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/controllers/factory/limiter"
+	"github.com/VictoriaMetrics/operator/controllers/factory/logger"
 
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/internal/config"
@@ -83,6 +84,8 @@ func (r *VMAlertmanagerConfigReconciler) Reconcile(ctx context.Context, req ctrl
 		}
 
 		l := l.WithValues("alertmanager", am.Name)
+		ctx := logger.AddToContext(ctx, l)
+
 		ismatch, err := isSelectorsMatches(&instance, am, am.Spec.ConfigSelector)
 		if err != nil {
 			l.Error(err, "cannot match alertmanager against selector, probably bug")

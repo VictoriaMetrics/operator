@@ -1,6 +1,7 @@
 package factory
 
 import (
+	"context"
 	"testing"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
@@ -43,7 +44,8 @@ func Test_generateProbeConfig(t *testing.T) {
 								Targets: []string{"host-1", "host-2"},
 								Labels:  map[string]string{"label1": "value1"},
 							},
-						}},
+						},
+					},
 				},
 				i: 0,
 			},
@@ -161,7 +163,7 @@ relabel_configs:
 						ScrapeInterval:  "10s",
 						Interval:        "5s",
 						Params: map[string][]string{
-							"timeout": []string{"10s"},
+							"timeout": {"10s"},
 						},
 						ScrapeTimeout: "15s",
 						BasicAuth: &victoriametricsv1beta1.BasicAuth{
@@ -190,7 +192,8 @@ relabel_configs:
 								Targets: []string{"host-1", "host-2"},
 								Labels:  map[string]string{"label1": "value1"},
 							},
-						}},
+						},
+					},
 				},
 				i: 0,
 			},
@@ -233,7 +236,7 @@ proxy_tls_config:
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := generateProbeConfig(&tt.args.crAgent, tt.args.cr, tt.args.i, tt.args.apiserverConfig, tt.args.ssCache, tt.args.ignoreNamespaceSelectors, tt.args.enforcedNamespaceLabel)
+			got := generateProbeConfig(context.Background(), &tt.args.crAgent, tt.args.cr, tt.args.i, tt.args.apiserverConfig, tt.args.ssCache, tt.args.ignoreNamespaceSelectors, tt.args.enforcedNamespaceLabel)
 			gotBytes, err := yaml.Marshal(got)
 			if err != nil {
 				t.Errorf("cannot decode probe config, it must be in yaml format :%e", err)

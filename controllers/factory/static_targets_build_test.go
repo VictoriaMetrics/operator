@@ -1,6 +1,7 @@
 package factory
 
 import (
+	"context"
 	"testing"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
@@ -111,7 +112,7 @@ metric_relabel_configs: []
 			args: args{
 				ssCache: &scrapesSecretsCache{
 					baSecrets: map[string]*BasicAuthCredentials{
-						"staticScrapeProxy/default/static-1/0": &BasicAuthCredentials{
+						"staticScrapeProxy/default/static-1/0": {
 							password: "proxy-password",
 							username: "proxy-user",
 						},
@@ -122,7 +123,7 @@ metric_relabel_configs: []
 					},
 					bearerTokens: map[string]string{},
 					oauth2Secrets: map[string]*oauthCreds{
-						"staticScrape/default/static-1/0": &oauthCreds{
+						"staticScrape/default/static-1/0": {
 							clientID:     "some-id",
 							clientSecret: "some-secret",
 						},
@@ -139,7 +140,7 @@ metric_relabel_configs: []
 					},
 				},
 				ep: &victoriametricsv1beta1.TargetEndpoint{
-					Params:      map[string][]string{"timeout": []string{"50s"}, "follow": {"false"}},
+					Params:      map[string][]string{"timeout": {"50s"}, "follow": {"false"}},
 					SampleLimit: 60,
 					TLSConfig: &victoriametricsv1beta1.TLSConfig{
 						CA: victoriametricsv1beta1.SecretOrConfigMap{Secret: &v1.SecretKeySelector{
@@ -295,7 +296,7 @@ oauth2:
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := generateStaticScrapeConfig(&tt.args.cr, tt.args.m, tt.args.ep, tt.args.i, tt.args.ssCache, tt.args.overrideHonorLabels, tt.args.overrideHonorTimestamps, tt.args.enforceNamespaceLabel)
+			got := generateStaticScrapeConfig(context.Background(), &tt.args.cr, tt.args.m, tt.args.ep, tt.args.i, tt.args.ssCache, tt.args.overrideHonorLabels, tt.args.overrideHonorTimestamps, tt.args.enforceNamespaceLabel)
 			gotBytes, err := yaml.Marshal(got)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)

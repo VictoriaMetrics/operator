@@ -442,7 +442,6 @@ func (c *ConverterController) UpdatePodMonitor(_, new interface{}) {
 func (c *ConverterController) CreateAlertmanagerConfig(amc interface{}) {
 	promAMc := amc.(*v1alpha1.AlertmanagerConfig)
 	l := log.WithValues("kind", "vmAlertmanagerConfig", "name", promAMc.Name, "ns", promAMc.Namespace)
-	l.Info("syncing alertmanager config")
 	vmAMc, err := converter.ConvertAlertmanagerConfig(promAMc, c.baseConf)
 	if err != nil {
 		l.Error(err, "cannot convert alertmanager config")
@@ -540,7 +539,6 @@ func getMetaMergeStrategy(vmMeta map[string]string) string {
 func (c *ConverterController) CreateProbe(obj interface{}) {
 	probe := obj.(*v1.Probe)
 	l := log.WithValues("kind", "vmProbe", "name", probe.Name, "ns", probe.Namespace)
-	l.Info("syncing probes")
 	vmProbe := converter.ConvertProbe(probe, c.baseConf)
 	err := c.rclient.Create(c.ctx, vmProbe)
 	if err != nil {

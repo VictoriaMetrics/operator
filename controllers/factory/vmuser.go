@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/controllers/factory/logger"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -57,7 +58,7 @@ func buildVMAuthConfig(ctx context.Context, rclient client.Client, vmauth *victo
 
 	// inject data from exist secrets into vmuser.spec if needed.
 	toUpdate := injectAuthSettings(existSecrets, users)
-	log.Info("VMAuth reconcile stats", "VMAuth", vmauth.Name, "toUpdate", len(toUpdate), "tocreate", len(toCreateSecrets), "exist", len(existSecrets))
+	logger.WithContext(ctx).Info("VMAuth reconcile stats", "VMAuth", vmauth.Name, "toUpdate", len(toUpdate), "tocreate", len(toCreateSecrets), "exist", len(existSecrets))
 
 	// generate yaml config for vmauth.
 	cfg, err := generateVMAuthConfig(vmauth, users, crdCache)
@@ -337,12 +338,12 @@ func FetchCRDRefURLs(ctx context.Context, rclient client.Client, users []*victor
 				case strings.HasSuffix(name, "vmstorage"):
 					targetURL = crd.VMStorageURL()
 				default:
-					log.Error(fmt.Errorf("unsupported kind for VMCluster: %s", name), "cannot select crd ref")
+					logger.WithContext(ctx).Error(fmt.Errorf("unsupported kind for VMCluster: %s", name), "cannot select crd ref")
 					continue
 				}
 				crdCacheUrlCache[ref.CRD.AsKey()] = targetURL
 			default:
-				log.Error(fmt.Errorf("unsupported kind: %s", name), "cannot select crd ref")
+				logger.WithContext(ctx).Error(fmt.Errorf("unsupported kind: %s", name), "cannot select crd ref")
 				continue
 			}
 		}
@@ -364,7 +365,6 @@ func generateVMAuthConfig(cr *victoriametricsv1beta1.VMAuth, users []*victoriame
 		cfgUsers = append(cfgUsers, userCfg)
 	}
 	if len(cfgUsers) == 0 {
-		log.Info("cannot find any user configuration for vmauth, using default")
 		cfgUsers = append(cfgUsers, yaml.MapSlice{
 			{
 				Key:   "url_prefix",
@@ -773,7 +773,7 @@ func selectVMUsers(ctx context.Context, cr *victoriametricsv1beta1.VMAuth, rclie
 	for k := range res {
 		vmUsers = append(vmUsers, res[k].Name)
 	}
-	log.Info("selected VMUsers", "vmusers", strings.Join(vmUsers, ","), "namespace", cr.Namespace, "vmauth", cr.Name)
+	logger.WithContext(ctx).Info("selected VMUsers", "vmusers", strings.Join(vmUsers, ","), "namespace", cr.Namespace, "vmauth", cr.Name)
 
 	return res, nil
 }

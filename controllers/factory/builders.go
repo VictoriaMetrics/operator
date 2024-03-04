@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/controllers/factory/logger"
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/api/autoscaling/v2beta2"
 	policyv1 "k8s.io/api/policy/v1"
@@ -272,7 +273,7 @@ func reconcilePDBV1(ctx context.Context, rclient client.Client, crdName string, 
 	err := rclient.Get(ctx, types.NamespacedName{Namespace: pdb.Namespace, Name: pdb.Name}, currentPdb)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			log.Info("creating new pdb", "pdb_name", pdb.Name, "crd_object", crdName)
+			logger.WithContext(ctx).Info("creating new pdb", "pdb_name", pdb.Name, "crd_object", crdName)
 			return rclient.Create(ctx, pdb)
 		}
 		return fmt.Errorf("cannot get existing pdb: %s, for crd_object: %s, err: %w", pdb.Name, crdName, err)
@@ -291,7 +292,7 @@ func reconcilePDB(ctx context.Context, rclient client.Client, crdName string, pd
 	err := rclient.Get(ctx, types.NamespacedName{Namespace: pdb.Namespace, Name: pdb.Name}, currentPdb)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			log.Info("creating new pdb", "pdb_name", pdb.Name, "crd_object", crdName)
+			logger.WithContext(ctx).Info("creating new pdb", "pdb_name", pdb.Name, "crd_object", crdName)
 			return rclient.Create(ctx, pdb)
 		}
 		return fmt.Errorf("cannot get existing pdb: %s, for crd_object: %s, err: %w", pdb.Name, crdName, err)

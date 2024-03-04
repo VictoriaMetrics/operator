@@ -9,6 +9,7 @@ import (
 	"time"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/controllers/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -107,7 +108,7 @@ func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclien
 	}
 
 	stsVersion := sts.Status.UpdateRevision
-	l := log.WithValues("controller", "sts.rollingupdate", "desiredVersion", stsVersion, "podMustRecreate", podMustRecreate, "sts.name", sts.Name)
+	l := logger.WithContext(ctx).WithValues("controller", "sts.rollingupdate", "desiredVersion", stsVersion, "podMustRecreate", podMustRecreate, "sts.name", sts.Name)
 	// fast path
 	if neededPodCount < 1 {
 		l.Info("sts has 0 replicas configured, nothing to update")
@@ -172,7 +173,7 @@ func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclien
 	if !updatedNeeded {
 		l.Info("no pod needs to be updated")
 		if sts.Status.UpdateRevision != sts.Status.CurrentRevision {
-			log.Info("update sts.Status.CurrentRevision", "sts", sts.Name, "currentRevision", sts.Status.CurrentRevision, "desiredRevision", sts.Status.UpdateRevision)
+			logger.WithContext(ctx).Info("update sts.Status.CurrentRevision", "sts", sts.Name, "currentRevision", sts.Status.CurrentRevision, "desiredRevision", sts.Status.UpdateRevision)
 			sts.Status.CurrentRevision = sts.Status.UpdateRevision
 			if err := rclient.Status().Update(ctx, sts); err != nil {
 				return fmt.Errorf("cannot update sts currentRevision after sts updated finished, err: %w", err)
@@ -210,7 +211,7 @@ func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclien
 	}
 
 	if sts.Status.CurrentRevision != sts.Status.UpdateRevision {
-		log.Info("update sts.Status.CurrentRevision", "sts", sts.Name, "currentRevision", sts.Status.CurrentRevision, "desiredRevision", sts.Status.UpdateRevision)
+		logger.WithContext(ctx).Info("update sts.Status.CurrentRevision", "sts", sts.Name, "currentRevision", sts.Status.CurrentRevision, "desiredRevision", sts.Status.UpdateRevision)
 		sts.Status.CurrentRevision = sts.Status.UpdateRevision
 		if err := rclient.Status().Update(ctx, sts); err != nil {
 			return fmt.Errorf("cannot update sts currentRevision after sts updated finished, err: %w", err)
@@ -280,7 +281,7 @@ func waitForPodReady(ctx context.Context, rclient client.Client, ns, podName str
 			return false, fmt.Errorf("cannot get pod: %q: %w", podName, err)
 		}
 		if PodIsReady(*pod, minReadySeconds) {
-			log.Info("pod update finished with revision", "pod", pod.Name, "revision", pod.Labels[podRevisionLabel])
+			logger.WithContext(ctx).Info("pod update finished with revision", "pod", pod.Name, "revision", pod.Labels[podRevisionLabel])
 			if cb != nil {
 				if err := cb(pod); err != nil {
 					return true, fmt.Errorf("errror occured at callback execution: %w", err)

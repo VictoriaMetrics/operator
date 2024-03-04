@@ -22,6 +22,7 @@ import (
 
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/controllers/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -87,6 +88,9 @@ func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		if !match {
 			continue
 		}
+		reqLogger := reqLogger.WithValues("vmalert", currVMAlert.Name)
+		ctx := logger.AddToContext(ctx, reqLogger)
+
 		maps, err := factory.CreateOrUpdateRuleConfigMaps(ctx, currVMAlert, r)
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("cannot update rules configmaps: %w", err)

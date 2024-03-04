@@ -25,6 +25,7 @@ import (
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"github.com/VictoriaMetrics/operator/controllers/factory/limiter"
+	"github.com/VictoriaMetrics/operator/controllers/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
@@ -69,6 +70,7 @@ type VMAgentReconciler struct {
 // +kubebuilder:rbac:groups="",resources=serviceaccounts,verbs=get;create,update;list
 func (r *VMAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	reqLogger := r.Log.WithValues("vmagent", req.NamespacedName)
+	ctx = logger.AddToContext(ctx, reqLogger)
 
 	// Fetch the VMAgent instance
 	instance := &victoriametricsv1beta1.VMAgent{}

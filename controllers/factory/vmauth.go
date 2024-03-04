@@ -11,6 +11,7 @@ import (
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/controllers/factory/logger"
 	"github.com/VictoriaMetrics/operator/controllers/factory/psp"
 	"github.com/VictoriaMetrics/operator/controllers/factory/vmauth"
 	"github.com/VictoriaMetrics/operator/internal/config"
@@ -49,7 +50,7 @@ func CreateOrUpdateVMAuthService(ctx context.Context, cr *victoriametricsv1beta1
 
 	if cr.Spec.ServiceSpec != nil {
 		if additionalService.Name == newService.Name {
-			log.Error(fmt.Errorf("vmauth additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name), "cannot create additional service")
+			logger.WithContext(ctx).Error(fmt.Errorf("vmauth additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name), "cannot create additional service")
 		} else if _, err := reconcileServiceForCRD(ctx, rclient, additionalService); err != nil {
 			return nil, err
 		}
@@ -65,7 +66,8 @@ func CreateOrUpdateVMAuthService(ctx context.Context, cr *victoriametricsv1beta1
 
 // CreateOrUpdateVMAuth - handles VMAuth deployment reconciliation.
 func CreateOrUpdateVMAuth(ctx context.Context, cr *victoriametricsv1beta1.VMAuth, rclient client.Client, c *config.BaseOperatorConf) error {
-	l := log.WithValues("controller", "vmauth.crud")
+	l := logger.WithContext(ctx).WithValues("controller", "vmauth.crud")
+	ctx = logger.AddToContext(ctx, l)
 
 	if err := psp.CreateServiceAccountForCRD(ctx, cr, rclient); err != nil {
 		return fmt.Errorf("failed create service account: %w", err)
@@ -95,7 +97,7 @@ func CreateOrUpdateVMAuth(ctx context.Context, cr *victoriametricsv1beta1.VMAuth
 			return fmt.Errorf("cannot update pod disruption budget for vmauth: %w", err)
 		}
 	}
-	newDeploy, err := newDeployForVMAuth(cr, c)
+	newDeploy, err := newDeployForVMAuth(ctx, cr, c)
 	if err != nil {
 		return fmt.Errorf("cannot build new deploy for vmauth: %w", err)
 	}
@@ -103,7 +105,7 @@ func CreateOrUpdateVMAuth(ctx context.Context, cr *victoriametricsv1beta1.VMAuth
 	return k8stools.HandleDeployUpdate(ctx, rclient, newDeploy, c.PodWaitReadyTimeout)
 }
 
-func newDeployForVMAuth(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperatorConf) (*appsv1.Deployment, error) {
+func newDeployForVMAuth(ctx context.Context, cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperatorConf) (*appsv1.Deployment, error) {
 	cr = cr.DeepCopy()
 
 	if cr.Spec.Image.Repository == "" {
@@ -118,7 +120,7 @@ func newDeployForVMAuth(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperato
 	if cr.Spec.Image.PullPolicy == "" {
 		cr.Spec.Image.PullPolicy = corev1.PullIfNotPresent
 	}
-	podSpec, err := makeSpecForVMAuth(cr, c)
+	podSpec, err := makeSpecForVMAuth(ctx, cr, c)
 	if err != nil {
 		return nil, err
 	}
@@ -148,7 +150,7 @@ func newDeployForVMAuth(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperato
 	return depSpec, nil
 }
 
-func makeSpecForVMAuth(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperatorConf) (*corev1.PodTemplateSpec, error) {
+func makeSpecForVMAuth(ctx context.Context, cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperatorConf) (*corev1.PodTemplateSpec, error) {
 	var args []string
 	args = append(args, fmt.Sprintf("-auth.config=%s", path.Join(vmAuthConfigFolder, vmAuthConfigName)))
 
@@ -257,7 +259,7 @@ func makeSpecForVMAuth(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperator
 		configReloader := buildVMAuthConfigReloaderContainer(cr, c)
 		operatorContainers = append(operatorContainers, configReloader)
 		initContainers = append(initContainers,
-			buildInitConfigContainer(c.VMAuthDefault.ConfigReloadImage, buildConfigReloaderResourceReqsForVMAuth(c), c, vmAuthConfigMountGz, vmAuthConfigNameGz, vmAuthConfigFolder, vmAuthConfigName, configReloader.Args)...)
+			buildInitConfigContainer(ctx, c.VMAuthDefault.ConfigReloadImage, buildConfigReloaderResourceReqsForVMAuth(c), c, vmAuthConfigMountGz, vmAuthConfigNameGz, vmAuthConfigFolder, vmAuthConfigName, configReloader.Args)...)
 	} else {
 		volumes = append(volumes, corev1.Volume{
 			VolumeSource: corev1.VolumeSource{
@@ -342,7 +344,7 @@ func createOrUpdateVMAuthConfig(ctx context.Context, rclient client.Client, cr *
 
 	if err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: s.Name}, &curSecret); err != nil {
 		if errors.IsNotFound(err) {
-			log.Info("creating new configuration secret for vmauth")
+			logger.WithContext(ctx).Info("creating new configuration secret for vmauth")
 			return rclient.Create(ctx, s)
 		}
 		return err
@@ -353,17 +355,17 @@ func createOrUpdateVMAuthConfig(ctx context.Context, rclient client.Client, cr *
 	)
 	if curConfigFound {
 		if bytes.Equal(curConfig, generatedConf) {
-			log.Info("updating VMAuth configuration secret skipped, no configuration change")
+			logger.WithContext(ctx).Info("updating VMAuth configuration secret skipped, no configuration change")
 			return nil
 		}
-		log.Info("current VMAuth configuration has changed")
+		logger.WithContext(ctx).Info("current VMAuth configuration has changed")
 	} else {
-		log.Info("no current VMAuth configuration secret found", "currentConfigFound", curConfigFound)
+		logger.WithContext(ctx).Info("no current VMAuth configuration secret found", "currentConfigFound", curConfigFound)
 	}
 	s.Annotations = labels.Merge(curSecret.Annotations, s.Annotations)
 	victoriametricsv1beta1.MergeFinalizers(&curSecret, victoriametricsv1beta1.FinalizerName)
 
-	log.Info("updating VMAuth configuration secret")
+	logger.WithContext(ctx).Info("updating VMAuth configuration secret")
 	return rclient.Update(ctx, s)
 }
 
@@ -516,7 +518,7 @@ func buildVMAuthConfigReloaderContainer(cr *victoriametricsv1beta1.VMAuth, c *co
 	return configReloader
 }
 
-func buildInitConfigContainer(baseImage string, resources corev1.ResourceRequirements, c *config.BaseOperatorConf, configDirName, configFileName, outConfigDir, outFileName string, configReloaderArgs []string) []corev1.Container {
+func buildInitConfigContainer(ctx context.Context, baseImage string, resources corev1.ResourceRequirements, c *config.BaseOperatorConf, configDirName, configFileName, outConfigDir, outFileName string, configReloaderArgs []string) []corev1.Container {
 	var initReloader corev1.Container
 	if c.UseCustomConfigReloader {
 		// add custom config reloader as initContainer since v0.35.0
@@ -526,7 +528,7 @@ func buildInitConfigContainer(baseImage string, resources corev1.ResourceRequire
 			imageTag := reloaderImage[idx+1:]
 			ver, err := version.NewVersion(imageTag)
 			if err != nil {
-				log.Error(err, "cannot parse custom config reloader version", "reloader-image", reloaderImage)
+				logger.WithContext(ctx).Error(err, "cannot parse custom config reloader version", "reloader-image", reloaderImage)
 				return nil
 			} else if ver.LessThan(version.Must(version.NewVersion("0.35.0"))) {
 				return nil

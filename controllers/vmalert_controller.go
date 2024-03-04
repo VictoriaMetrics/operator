@@ -21,6 +21,7 @@ import (
 	"sync"
 
 	"github.com/VictoriaMetrics/operator/controllers/factory/limiter"
+	"github.com/VictoriaMetrics/operator/controllers/factory/logger"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory"
@@ -59,6 +60,8 @@ func (r *VMAlertReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmalerts/finalizers,verbs=*
 func (r *VMAlertReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	reqLogger := r.Log.WithValues("vmalert", req.NamespacedName)
+	ctx = logger.AddToContext(ctx, reqLogger)
+
 	// Fetch the VMAlert instance
 	instance := &victoriametricsv1beta1.VMAlert{}
 	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {

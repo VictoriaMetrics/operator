@@ -2,8 +2,10 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/VictoriaMetrics/operator/controllers/factory"
+	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -43,13 +45,14 @@ func (r *VMStaticScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	vmAgentSync.Lock()
 	defer vmAgentSync.Unlock()
 
-	vmAgentInstances := &victoriametricsv1beta1.VMAgentList{}
-	err = r.List(ctx, vmAgentInstances, config.MustGetNamespaceListOptions())
-	if err != nil {
-		return ctrl.Result{}, err
+	var objects victoriametricsv1beta1.VMAgentList
+	if err := k8stools.ListObjectsByNamespace(ctx, r.Client, config.MustGetWatchNamespaces(), func(dst *victoriametricsv1beta1.VMAgentList) {
+		objects.Items = append(objects.Items, dst.Items...)
+	}); err != nil {
+		return result, fmt.Errorf("cannot list vmauths for vmuser: %w", err)
 	}
 
-	for _, vmagent := range vmAgentInstances.Items {
+	for _, vmagent := range objects.Items {
 		if !vmagent.DeletionTimestamp.IsZero() || vmagent.Spec.ParsingError != "" || vmagent.IsUnmanaged() {
 			continue
 		}

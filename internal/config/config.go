@@ -11,14 +11,13 @@ import (
 
 	"github.com/kelseyhightower/envconfig"
 	"k8s.io/apimachinery/pkg/api/resource"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var (
 	opConf   *BaseOperatorConf
 	initConf sync.Once
 
-	opNamespace   string
+	opNamespace   []string
 	initNamespace sync.Once
 )
 
@@ -354,6 +353,7 @@ func (boc BaseOperatorConf) PrintDefaults(format string) error {
 	return err
 }
 
+// MustGetBaseConfig returns operator configuration with default values populated from env variables
 func MustGetBaseConfig() *BaseOperatorConf {
 	initConf.Do(func() {
 		c := &BaseOperatorConf{}
@@ -379,25 +379,32 @@ func MustGetBaseConfig() *BaseOperatorConf {
 
 var validNamespaceRegex = regexp.MustCompile(`[a-z0-9]([-a-z0-9]*[a-z0-9])?`)
 
-func getWatchNamespace() (string, error) {
+func getWatchNamespaces() ([]string, error) {
 	wns, _ := os.LookupEnv(WatchNamespaceEnvVar)
 	if len(wns) > 0 {
+		nss := strings.Split(wns, ",")
 		// validate namespace with regexp
-		if !validNamespaceRegex.MatchString(wns) {
-			return "", fmt.Errorf("incorrect value: %s for env var %s, it must match regex: %s", wns, WatchNamespaceEnvVar, validNamespaceRegex.String())
+		for _, ns := range nss {
+			if !validNamespaceRegex.MatchString(ns) {
+				return nil, fmt.Errorf("incorrect namespace name=%q for env var=%q with value: %q must match regex: %q", ns, WatchNamespaceEnvVar, wns, validNamespaceRegex.String())
+			}
 		}
+
+		return nss, nil
 	}
-	return wns, nil
+	return nil, nil
 }
 
-// MustGetWatchNamespace returns the Namespace the operator should be watching for changes
-func MustGetWatchNamespace() string {
+// MustGetWatchNamespaces returns a list of namespaces to be watched by operator
+// Operator don't perform any cluster wide API calls if namespaces not empty
+// in case of empty list it performs only clusterwide api calls
+func MustGetWatchNamespaces() []string {
 	initNamespace.Do(func() {
-		wns, err := getWatchNamespace()
+		nss, err := getWatchNamespaces()
 		if err != nil {
 			panic(err)
 		}
-		opNamespace = wns
+		opNamespace = nss
 	})
 
 	return opNamespace
@@ -405,13 +412,7 @@ func MustGetWatchNamespace() string {
 
 // IsClusterWideAccessAllowed checks if cluster wide access for components is needed
 func IsClusterWideAccessAllowed() bool {
-	return MustGetWatchNamespace() == ""
-}
-
-func MustGetNamespaceListOptions() *client.ListOptions {
-	return &client.ListOptions{
-		Namespace: MustGetWatchNamespace(),
-	}
+	return len(MustGetWatchNamespaces()) == 0
 }
 
 type Labels struct {

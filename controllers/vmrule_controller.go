@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	"github.com/VictoriaMetrics/operator/controllers/factory"
+	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -47,7 +48,6 @@ func (r *VMRuleReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmrules,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmrules/status,verbs=get;update;patch
 func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
-
 	reqLogger := r.Log.WithValues("vmrule", req.NamespacedName)
 
 	// Fetch the VMRule instance
@@ -56,7 +56,6 @@ func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		return handleGetError(req, "vmrule", err)
 	}
 
-	alertMngs := &victoriametricsv1beta1.VMAlertList{}
 	RegisterObjectStat(instance, "vmrule")
 
 	if vmAlertRateLimiter.MustThrottleReconcile() {
@@ -67,12 +66,14 @@ func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 	vmAlertSync.Lock()
 	defer vmAlertSync.Unlock()
 
-	err = r.List(ctx, alertMngs, config.MustGetNamespaceListOptions())
-	if err != nil {
-		return ctrl.Result{}, err
+	var objects victoriametricsv1beta1.VMAlertList
+	if err := k8stools.ListObjectsByNamespace(ctx, r.Client, config.MustGetWatchNamespaces(), func(dst *victoriametricsv1beta1.VMAlertList) {
+		objects.Items = append(objects.Items, dst.Items...)
+	}); err != nil {
+		return result, fmt.Errorf("cannot list vmauths for vmuser: %w", err)
 	}
 
-	for _, vmalert := range alertMngs.Items {
+	for _, vmalert := range objects.Items {
 		if vmalert.DeletionTimestamp != nil || vmalert.Spec.ParsingError != "" {
 			continue
 		}

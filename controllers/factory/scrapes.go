@@ -142,20 +142,15 @@ func SelectServiceScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgen
 
 	var servScrapesCombined []victoriametricsv1beta1.VMServiceScrape
 
-	namespaces, objSelector, err := getNSWithSelector(ctx, rclient, cr.Spec.ServiceScrapeNamespaceSelector, cr.Spec.ServiceScrapeSelector, cr.Namespace)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := visitObjectsWithSelector(ctx, rclient, namespaces, &victoriametricsv1beta1.VMServiceScrapeList{}, objSelector, cr.Spec.SelectAllByDefault, func(list client.ObjectList) {
-		l := list.(*victoriametricsv1beta1.VMServiceScrapeList)
-		for _, item := range l.Items {
-			if !item.DeletionTimestamp.IsZero() {
-				continue
+	if err := visitObjectsForSelectorsAtNs(ctx, rclient, cr.Spec.ServiceScrapeNamespaceSelector, cr.Spec.ServiceScrapeSelector, cr.Namespace, cr.Spec.SelectAllByDefault,
+		func(list *victoriametricsv1beta1.VMServiceScrapeList) {
+			for _, item := range list.Items {
+				if !item.DeletionTimestamp.IsZero() {
+					continue
+				}
+				servScrapesCombined = append(servScrapesCombined, item)
 			}
-			servScrapesCombined = append(servScrapesCombined, item)
-		}
-	}); err != nil {
+		}); err != nil {
 		return nil, err
 	}
 
@@ -166,6 +161,7 @@ func SelectServiceScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgen
 
 	// filter out all service scrapes that access
 	// the file system.
+	// TODO this restriction applies only ServiceScrape, make it global to any other objects
 	if cr.Spec.ArbitraryFSAccessThroughSMs.Deny {
 		for namespaceAndName, sm := range res {
 			for _, endpoint := range sm.Spec.Endpoints {
@@ -182,7 +178,7 @@ func SelectServiceScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgen
 		}
 	}
 
-	serviceScrapes := []string{}
+	serviceScrapes := make([]string, 0, len(res))
 	for k := range res {
 		serviceScrapes = append(serviceScrapes, k)
 	}
@@ -196,20 +192,15 @@ func SelectPodScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, r
 
 	var podScrapesCombined []victoriametricsv1beta1.VMPodScrape
 
-	namespaces, objSelector, err := getNSWithSelector(ctx, rclient, cr.Spec.PodScrapeNamespaceSelector, cr.Spec.PodScrapeSelector, cr.Namespace)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := visitObjectsWithSelector(ctx, rclient, namespaces, &victoriametricsv1beta1.VMPodScrapeList{}, objSelector, cr.Spec.SelectAllByDefault, func(list client.ObjectList) {
-		l := list.(*victoriametricsv1beta1.VMPodScrapeList)
-		for _, item := range l.Items {
-			if !item.DeletionTimestamp.IsZero() {
-				continue
+	if err := visitObjectsForSelectorsAtNs(ctx, rclient, cr.Spec.PodScrapeNamespaceSelector, cr.Spec.PodScrapeSelector, cr.Namespace, cr.Spec.SelectAllByDefault,
+		func(list *victoriametricsv1beta1.VMPodScrapeList) {
+			for _, item := range list.Items {
+				if !item.DeletionTimestamp.IsZero() {
+					continue
+				}
+				podScrapesCombined = append(podScrapesCombined, item)
 			}
-			podScrapesCombined = append(podScrapesCombined, item)
-		}
-	}); err != nil {
+		}); err != nil {
 		return nil, err
 	}
 
@@ -217,7 +208,7 @@ func SelectPodScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, r
 		pm := podScrape.DeepCopy()
 		res[podScrape.Namespace+"/"+podScrape.Name] = pm
 	}
-	podScrapes := make([]string, 0)
+	podScrapes := make([]string, 0, len(res))
 	for key := range res {
 		podScrapes = append(podScrapes, key)
 	}
@@ -230,20 +221,15 @@ func SelectPodScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, r
 func SelectVMProbes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) (map[string]*victoriametricsv1beta1.VMProbe, error) {
 	res := make(map[string]*victoriametricsv1beta1.VMProbe)
 	var probesCombined []victoriametricsv1beta1.VMProbe
-	namespaces, objSelector, err := getNSWithSelector(ctx, rclient, cr.Spec.ProbeNamespaceSelector, cr.Spec.ProbeSelector, cr.Namespace)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := visitObjectsWithSelector(ctx, rclient, namespaces, &victoriametricsv1beta1.VMProbeList{}, objSelector, cr.Spec.SelectAllByDefault, func(list client.ObjectList) {
-		l := list.(*victoriametricsv1beta1.VMProbeList)
-		for _, item := range l.Items {
-			if !item.DeletionTimestamp.IsZero() {
-				continue
+	if err := visitObjectsForSelectorsAtNs(ctx, rclient, cr.Spec.ProbeNamespaceSelector, cr.Spec.ProbeSelector, cr.Namespace, cr.Spec.SelectAllByDefault,
+		func(list *victoriametricsv1beta1.VMProbeList) {
+			for _, item := range list.Items {
+				if !item.DeletionTimestamp.IsZero() {
+					continue
+				}
+				probesCombined = append(probesCombined, item)
 			}
-			probesCombined = append(probesCombined, item)
-		}
-	}); err != nil {
+		}); err != nil {
 		return nil, err
 	}
 
@@ -272,20 +258,15 @@ func SelectVMNodeScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent
 
 	var nodesCombined []victoriametricsv1beta1.VMNodeScrape
 
-	namespaces, objSelector, err := getNSWithSelector(ctx, rclient, cr.Spec.NodeScrapeNamespaceSelector, cr.Spec.NodeScrapeSelector, cr.Namespace)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := visitObjectsWithSelector(ctx, rclient, namespaces, &victoriametricsv1beta1.VMNodeScrapeList{}, objSelector, cr.Spec.SelectAllByDefault, func(list client.ObjectList) {
-		l := list.(*victoriametricsv1beta1.VMNodeScrapeList)
-		for _, item := range l.Items {
-			if !item.DeletionTimestamp.IsZero() {
-				continue
+	if err := visitObjectsForSelectorsAtNs(ctx, rclient,
+		cr.Spec.NodeScrapeNamespaceSelector, cr.Spec.NodeScrapeSelector, cr.Namespace, cr.Spec.SelectAllByDefault, func(list *victoriametricsv1beta1.VMNodeScrapeList) {
+			for _, item := range list.Items {
+				if !item.DeletionTimestamp.IsZero() {
+					continue
+				}
+				nodesCombined = append(nodesCombined, item)
 			}
-			nodesCombined = append(nodesCombined, item)
-		}
-	}); err != nil {
+		}); err != nil {
 		return nil, err
 	}
 
@@ -307,20 +288,15 @@ func SelectStaticScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent
 	res := make(map[string]*victoriametricsv1beta1.VMStaticScrape)
 	var staticScrapesCombined []victoriametricsv1beta1.VMStaticScrape
 
-	namespaces, objSelector, err := getNSWithSelector(ctx, rclient, cr.Spec.StaticScrapeNamespaceSelector, cr.Spec.StaticScrapeSelector, cr.Namespace)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := visitObjectsWithSelector(ctx, rclient, namespaces, &victoriametricsv1beta1.VMStaticScrapeList{}, objSelector, cr.Spec.SelectAllByDefault, func(list client.ObjectList) {
-		l := list.(*victoriametricsv1beta1.VMStaticScrapeList)
-		for _, item := range l.Items {
-			if !item.DeletionTimestamp.IsZero() {
-				continue
+	if err := visitObjectsForSelectorsAtNs(ctx, rclient, cr.Spec.StaticScrapeNamespaceSelector, cr.Spec.StaticScrapeSelector, cr.Namespace, cr.Spec.SelectAllByDefault,
+		func(list *victoriametricsv1beta1.VMStaticScrapeList) {
+			for _, item := range list.Items {
+				if !item.DeletionTimestamp.IsZero() {
+					continue
+				}
+				staticScrapesCombined = append(staticScrapesCombined, item)
 			}
-			staticScrapesCombined = append(staticScrapesCombined, item)
-		}
-	}); err != nil {
+		}); err != nil {
 		return nil, err
 	}
 

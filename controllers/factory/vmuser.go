@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/config"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -38,7 +37,7 @@ func buildVMAuthConfig(ctx context.Context, rclient client.Client, vmauth *victo
 	}
 
 	// loads info about exist operator object kind for crdRef.
-	crdCache, err := FetchCRDCache(ctx, rclient, users)
+	crdCache, err := FetchCRDRefURLs(ctx, rclient, users)
 	if err != nil {
 		return nil, err
 	}
@@ -271,18 +270,14 @@ func fetchVMUserSecretCacheByRef(ctx context.Context, rclient client.Client, use
 	return passwordCache, nil
 }
 
-func FetchCRDCache(ctx context.Context, rclient client.Client, users []*victoriametricsv1beta1.VMUser) (map[string]string, error) {
+// FetchCRDRefURLs performs a fetch for CRD objects for vmauth users and returns an url by crd ref key name
+func FetchCRDRefURLs(ctx context.Context, rclient client.Client, users []*victoriametricsv1beta1.VMUser) (map[string]string, error) {
 	crdCacheUrlCache := make(map[string]string)
 	for i := range users {
 		user := users[i]
 		for j := range user.Spec.TargetRefs {
 			ref := user.Spec.TargetRefs[j]
 			if ref.CRD == nil {
-				continue
-			}
-			// namespace mismatch
-			if !config.IsClusterWideAccessAllowed() && ref.CRD.Namespace != config.MustGetWatchNamespace() {
-				log.Info("cannot discover CRD component on whole kubernetes cluster. Operator started with single namespace", "watch_namespace", config.MustGetWatchNamespace(), "crd_ref_name", ref.CRD.Name, "crd_ref_namespace", ref.CRD.Namespace)
 				continue
 			}
 			if _, ok := crdCacheUrlCache[ref.CRD.AsKey()]; ok {
@@ -761,20 +756,16 @@ func genPassword() (string, error) {
 // selects vmusers for given vmauth.
 func selectVMUsers(ctx context.Context, cr *victoriametricsv1beta1.VMAuth, rclient client.Client) ([]*victoriametricsv1beta1.VMUser, error) {
 	var res []*victoriametricsv1beta1.VMUser
-	namespaces, userSelector, err := getNSWithSelector(ctx, rclient, cr.Spec.UserNamespaceSelector, cr.Spec.UserSelector, cr.Namespace)
-	if err != nil {
-		return nil, err
-	}
 
-	if err := visitObjectsWithSelector(ctx, rclient, namespaces, &victoriametricsv1beta1.VMUserList{}, userSelector, cr.Spec.SelectAllByDefault, func(list client.ObjectList) {
-		l := list.(*victoriametricsv1beta1.VMUserList)
-		for _, item := range l.Items {
-			if !item.DeletionTimestamp.IsZero() {
-				continue
+	if err := visitObjectsForSelectorsAtNs(ctx, rclient, cr.Spec.UserNamespaceSelector, cr.Spec.UserSelector, cr.Namespace, cr.Spec.SelectAllByDefault,
+		func(list *victoriametricsv1beta1.VMUserList) {
+			for _, item := range list.Items {
+				if !item.DeletionTimestamp.IsZero() {
+					continue
+				}
+				res = append(res, item.DeepCopy())
 			}
-			res = append(res, item.DeepCopy())
-		}
-	}); err != nil {
+		}); err != nil {
 		return nil, err
 	}
 

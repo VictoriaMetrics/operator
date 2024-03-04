@@ -4,36 +4,53 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/config"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// may return namespace names and objects selector
-func getNSWithSelector(ctx context.Context, rclient client.Client, nsSelector, objectSelector *metav1.LabelSelector, objNS string) ([]string, labels.Selector, error) {
-	watchNS := config.MustGetWatchNamespace()
-	// fast path
-	if nsSelector == nil && objectSelector == nil && len(watchNS) == 0 {
-		return nil, nil, nil
+func visitObjectsForSelectorsAtNs[T any, PT interface {
+	*T
+	client.ObjectList
+}](ctx context.Context, rclient client.Client,
+	nsSelector, objectSelector *metav1.LabelSelector,
+	objNamespace string, selectAllByDefault bool, cb func(PT),
+) error {
+	watchNS := config.MustGetWatchNamespaces()
+	// fast path, empty selectors and cannot select all by default
+	if nsSelector == nil && objectSelector == nil && !selectAllByDefault {
+		return nil
 	}
 	var namespaces []string
 	// list namespaces matched by  namespaceselector
 	// for each namespace apply list with  selector
 	// combine result
 	switch {
-	// in single namespace mode, return object ns
-	case nsSelector == nil || watchNS != "":
-		namespaces = append(namespaces, objNS)
+	case len(watchNS) > 0:
+		// perform match only for watched namespaces
+		// filters by namespace is disabled, since operator cannot access cluster-wide APIs
+		// this case could be improved to additionally filter by namespace name - metadata.name label
+		namespaces = append(namespaces, watchNS...)
+	case objectSelector != nil && nsSelector == nil:
+		// in single namespace mode, return object ns
+		namespaces = append(namespaces, objNamespace)
 	default:
+		// perform a cluster wide request for namespaces with given filters
 		nsSelector, err := metav1.LabelSelectorAsSelector(nsSelector)
 		if err != nil {
-			return nil, nil, fmt.Errorf("cannot convert  selector: %w", err)
+			return fmt.Errorf("cannot convert  selector: %w", err)
 		}
 		namespaces, err = selectNamespaces(ctx, rclient, nsSelector)
 		if err != nil {
-			return nil, nil, fmt.Errorf("cannot select namespaces for  match: %w", err)
+			return fmt.Errorf("cannot select namespaces for  match: %w", err)
 		}
+	}
+	// fast path nothing selected
+	if namespaces == nil && !selectAllByDefault {
+		return nil
 	}
 
 	// if namespaces isn't nil, then nameSpaceSelector is defined
@@ -43,35 +60,22 @@ func getNSWithSelector(ctx context.Context, rclient client.Client, nsSelector, o
 	}
 	objLabelSelector, err := metav1.LabelSelectorAsSelector(objectSelector)
 	if err != nil {
-		return nil, nil, fmt.Errorf("cannot convert  to Selector: %w", err)
+		return fmt.Errorf("cannot convert  to Selector: %w", err)
 	}
-
-	return namespaces, objLabelSelector, nil
+	return k8stools.ListObjectsByNamespace(ctx, rclient, namespaces, cb, &client.ListOptions{LabelSelector: objLabelSelector})
 }
 
-// lists api objects for given api objects type matched given selectors
-func visitObjectsWithSelector(ctx context.Context, rclient client.Client, ns []string, objectListType client.ObjectList, selector labels.Selector, selectAllByDefault bool, cb func(list client.ObjectList)) error {
+func selectNamespaces(ctx context.Context, rclient client.Client, selector labels.Selector) ([]string, error) {
+	var matchedNs []string
+	ns := &v1.NamespaceList{}
 
-	// fast path, select nothing
-	// nsSelector = nil, objectSelector = nil, selectAllByDefault=false
-	if ns == nil && !selectAllByDefault {
-		return nil
-	}
-	// list across all namespaces, selectAllByDefault=true
-	if ns == nil {
-		if err := rclient.List(ctx, objectListType, &client.ListOptions{LabelSelector: selector}, config.MustGetNamespaceListOptions()); err != nil {
-			return err
-		}
-		cb(objectListType)
-		return nil
+	if err := rclient.List(ctx, ns, &client.ListOptions{LabelSelector: selector}); err != nil {
+		return nil, err
 	}
 
-	for i := range ns {
-		if err := rclient.List(ctx, objectListType, &client.ListOptions{LabelSelector: selector, Namespace: ns[i]}); err != nil {
-			return err
-		}
-
-		cb(objectListType)
+	for _, n := range ns.Items {
+		matchedNs = append(matchedNs, n.Name)
 	}
-	return nil
+
+	return matchedNs, nil
 }

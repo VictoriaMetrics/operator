@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	v1 "k8s.io/api/core/v1"
@@ -13,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/apimachinery/pkg/util/validation"
+	"k8s.io/apimachinery/pkg/watch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -104,4 +106,113 @@ func UpdatePodAnnotations(ctx context.Context, rclient client.Client, selector m
 		}
 	}
 	return nil
+}
+
+// ListObjectsByNamespace performs object list for given namespaces
+func ListObjectsByNamespace[T any, PT interface {
+	*T
+	client.ObjectList
+}](ctx context.Context, rclient client.Client, nss []string, collect func(PT), opts ...client.ListOption) error {
+	dst := PT(new(T))
+	if len(nss) == 0 {
+		if err := rclient.List(ctx, dst, opts...); err != nil {
+			return fmt.Errorf("cannot list objects at cluster scope: %w", err)
+		}
+		collect(dst)
+		return nil
+	}
+	nsOpts := append(opts, &client.ListOptions{})
+	for _, ns := range nss {
+		nsOpts[len(nsOpts)-1] = &client.ListOptions{Namespace: ns}
+		if err := rclient.List(ctx, dst, nsOpts...); err != nil {
+			return fmt.Errorf("cannot list objects for ns=%q: %w", ns, err)
+		}
+		collect(dst)
+	}
+	return nil
+}
+
+// ObjectWatcherForNamespaces performs a watch operation for multiple namespaces
+// without using cluster wide permissions
+// with empty namaspaces uses cluster wide mode
+type ObjectWatcherForNamespaces struct {
+	result         chan watch.Event
+	objectWatchers []watch.Interface
+	wg             sync.WaitGroup
+}
+
+// NewObjectWatcherForNamespaces returns a watcher for events at multiple namespaces  for given object
+// in case of empty namespaces, performs cluster wide watch
+func NewObjectWatcherForNamespaces[T any, PT interface {
+	*T
+	client.ObjectList
+}](ctx context.Context, rclient client.WithWatch, namespaces []string) (*ObjectWatcherForNamespaces, error) {
+	ownss := ObjectWatcherForNamespaces{
+		result: make(chan watch.Event),
+	}
+	// fast path
+	if len(namespaces) == 0 {
+		dst := PT(new(T))
+		w, err := rclient.Watch(ctx, dst)
+		if err != nil {
+			return nil, fmt.Errorf("cannot start watcher for cluster wide: %w", err)
+		}
+		ownss.wg.Add(1)
+		go func() {
+			defer ownss.wg.Done()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case ev := <-w.ResultChan():
+					select {
+					case ownss.result <- ev:
+					case <-ctx.Done():
+						return
+					}
+				}
+			}
+		}()
+		ownss.objectWatchers = append(ownss.objectWatchers, w)
+		return &ownss, nil
+	}
+	for _, ns := range namespaces {
+		dst := PT(new(T))
+		w, err := rclient.Watch(ctx, dst, &client.ListOptions{Namespace: ns})
+		if err != nil {
+			return nil, fmt.Errorf("cannot setup watch for namespace=%q: %w", ns, err)
+		}
+		ownss.objectWatchers = append(ownss.objectWatchers, w)
+		ownss.wg.Add(1)
+		go func(w watch.Interface) {
+			defer ownss.wg.Done()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case ev := <-w.ResultChan():
+					select {
+					case ownss.result <- ev:
+					case <-ctx.Done():
+						return
+					}
+				}
+			}
+		}(w)
+	}
+	return &ownss, nil
+}
+
+// ResultChan returns a channel with events
+func (ow *ObjectWatcherForNamespaces) ResultChan() <-chan watch.Event {
+	return ow.result
+}
+
+// Stop performs a stop on all watchers and waits for it's finish
+func (ow *ObjectWatcherForNamespaces) Stop() {
+	for _, objectWatcher := range ow.objectWatchers {
+		objectWatcher.Stop()
+	}
+	ow.wg.Wait()
+	close(ow.result)
 }

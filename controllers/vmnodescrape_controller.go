@@ -18,8 +18,10 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/VictoriaMetrics/operator/controllers/factory"
+	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -27,6 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	operatorv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 )
 
 // VMNodeScrapeReconciler reconciles a VMNodeScrape object
@@ -64,12 +67,14 @@ func (r *VMNodeScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	vmAgentSync.Lock()
 	defer vmAgentSync.Unlock()
 
-	vmAgentInstances := &operatorv1beta1.VMAgentList{}
-	if err := r.List(ctx, vmAgentInstances, config.MustGetNamespaceListOptions()); err != nil {
-		return result, err
+	var objects victoriametricsv1beta1.VMAgentList
+	if err := k8stools.ListObjectsByNamespace(ctx, r.Client, config.MustGetWatchNamespaces(), func(dst *victoriametricsv1beta1.VMAgentList) {
+		objects.Items = append(objects.Items, dst.Items...)
+	}); err != nil {
+		return result, fmt.Errorf("cannot list vmauths for vmuser: %w", err)
 	}
 
-	for _, vmagent := range vmAgentInstances.Items {
+	for _, vmagent := range objects.Items {
 		if !vmagent.DeletionTimestamp.IsZero() || vmagent.Spec.ParsingError != "" || vmagent.IsUnmanaged() {
 			continue
 		}

@@ -5,17 +5,17 @@ import (
 	"fmt"
 	"time"
 
-	alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
-
 	"github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/converter"
+	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	v1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
-	"github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
+	"github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	"golang.org/x/sync/errgroup"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/discovery"
+	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -55,8 +55,8 @@ const (
 // and create VictoriaMetrics objects
 type ConverterController struct {
 	ctx         context.Context
-	promClient  versioned.Interface
-	vclient     client.Client
+	baseClient  *kubernetes.Clientset
+	rclient     client.WithWatch
 	ruleInf     cache.SharedInformer
 	podInf      cache.SharedInformer
 	serviceInf  cache.SharedInformer
@@ -66,20 +66,26 @@ type ConverterController struct {
 }
 
 // NewConverterController builder for vmprometheusconverter service
-func NewConverterController(ctx context.Context, promCl versioned.Interface, vclient client.Client, baseConf *config.BaseOperatorConf) (*ConverterController, error) {
+func NewConverterController(ctx context.Context, baseClient *kubernetes.Clientset, rclient client.WithWatch, baseConf *config.BaseOperatorConf) (*ConverterController, error) {
 	c := &ConverterController{
 		ctx:        ctx,
-		promClient: promCl,
-		vclient:    vclient,
+		baseClient: baseClient,
+		rclient:    rclient,
 		baseConf:   baseConf,
 	}
 	c.ruleInf = cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
-				return promCl.MonitoringV1().PrometheusRules(config.MustGetWatchNamespace()).List(ctx, options)
+				var objects v1.PrometheusRuleList
+				if err := k8stools.ListObjectsByNamespace(ctx, rclient, config.MustGetWatchNamespaces(), func(dst *v1.PrometheusRuleList) {
+					objects.Items = append(objects.Items, dst.Items...)
+				}); err != nil {
+					return nil, fmt.Errorf("cannot list prometheus_rules: %w", err)
+				}
+				return &objects, nil
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-				return promCl.MonitoringV1().PrometheusRules(config.MustGetWatchNamespace()).Watch(ctx, options)
+				return k8stools.NewObjectWatcherForNamespaces[v1.PrometheusRuleList](ctx, rclient, config.MustGetWatchNamespaces())
 			},
 		},
 		&v1.PrometheusRule{},
@@ -95,10 +101,16 @@ func NewConverterController(ctx context.Context, promCl versioned.Interface, vcl
 	c.podInf = cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
-				return promCl.MonitoringV1().PodMonitors(config.MustGetWatchNamespace()).List(ctx, options)
+				var objects v1.PodMonitorList
+				if err := k8stools.ListObjectsByNamespace(ctx, rclient, config.MustGetWatchNamespaces(), func(dst *v1.PodMonitorList) {
+					objects.Items = append(objects.Items, dst.Items...)
+				}); err != nil {
+					return nil, fmt.Errorf("cannot list pod_monitors: %w", err)
+				}
+				return &objects, nil
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-				return promCl.MonitoringV1().PodMonitors(config.MustGetWatchNamespace()).Watch(ctx, options)
+				return k8stools.NewObjectWatcherForNamespaces[v1.PodMonitorList](ctx, rclient, config.MustGetWatchNamespaces())
 			},
 		},
 		&v1.PodMonitor{},
@@ -112,12 +124,19 @@ func NewConverterController(ctx context.Context, promCl versioned.Interface, vcl
 		return nil, fmt.Errorf("cannot add pod_monitor handler: %w", err)
 	}
 	c.serviceInf = cache.NewSharedIndexInformer(
+
 		&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
-				return promCl.MonitoringV1().ServiceMonitors(config.MustGetWatchNamespace()).List(ctx, options)
+				var objects v1.ServiceMonitorList
+				if err := k8stools.ListObjectsByNamespace(ctx, rclient, config.MustGetWatchNamespaces(), func(dst *v1.ServiceMonitorList) {
+					objects.Items = append(objects.Items, dst.Items...)
+				}); err != nil {
+					return nil, fmt.Errorf("cannot list service_monitors: %w", err)
+				}
+				return &objects, nil
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-				return promCl.MonitoringV1().ServiceMonitors(config.MustGetWatchNamespace()).Watch(ctx, options)
+				return k8stools.NewObjectWatcherForNamespaces[v1.ServiceMonitorList](ctx, rclient, config.MustGetWatchNamespaces())
 			},
 		},
 		&v1.ServiceMonitor{},
@@ -133,13 +152,19 @@ func NewConverterController(ctx context.Context, promCl versioned.Interface, vcl
 	c.amConfigInf = cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
-				return promCl.MonitoringV1alpha1().AlertmanagerConfigs(config.MustGetWatchNamespace()).List(ctx, options)
+				var objects v1alpha1.AlertmanagerConfigList
+				if err := k8stools.ListObjectsByNamespace(ctx, rclient, config.MustGetWatchNamespaces(), func(dst *v1alpha1.AlertmanagerConfigList) {
+					objects.Items = append(objects.Items, dst.Items...)
+				}); err != nil {
+					return nil, fmt.Errorf("cannot list alertmanager_configs: %w", err)
+				}
+				return &objects, nil
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-				return promCl.MonitoringV1alpha1().AlertmanagerConfigs(config.MustGetWatchNamespace()).Watch(ctx, options)
+				return k8stools.NewObjectWatcherForNamespaces[v1alpha1.AlertmanagerConfigList](ctx, rclient, config.MustGetWatchNamespaces())
 			},
 		},
-		&alpha1.AlertmanagerConfig{},
+		&v1alpha1.AlertmanagerConfig{},
 		0,
 		cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
 	if _, err := c.amConfigInf.AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -151,10 +176,16 @@ func NewConverterController(ctx context.Context, promCl versioned.Interface, vcl
 	c.probeInf = cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
-				return promCl.MonitoringV1().Probes(config.MustGetWatchNamespace()).List(ctx, options)
+				var objects v1.ProbeList
+				if err := k8stools.ListObjectsByNamespace(ctx, rclient, config.MustGetWatchNamespaces(), func(dst *v1.ProbeList) {
+					objects.Items = append(objects.Items, dst.Items...)
+				}); err != nil {
+					return nil, fmt.Errorf("cannot list probes: %w", err)
+				}
+				return &objects, nil
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-				return promCl.MonitoringV1().Probes(config.MustGetWatchNamespace()).Watch(ctx, options)
+				return k8stools.NewObjectWatcherForNamespaces[v1.ProbeList](ctx, rclient, config.MustGetWatchNamespaces())
 			},
 		},
 		&v1.Probe{},
@@ -173,7 +204,7 @@ func NewConverterController(ctx context.Context, promCl versioned.Interface, vcl
 func waitForAPIResource(ctx context.Context, client discovery.DiscoveryInterface, apiGroupVersion string, kind string) error {
 	l := log.WithValues("group", apiGroupVersion, "kind", kind)
 	l.Info("waiting for api resource")
-	tick := time.NewTicker(time.Minute)
+	tick := time.NewTicker(time.Second * 5)
 	for {
 		select {
 		case <-tick.C:
@@ -200,7 +231,7 @@ func waitForAPIResource(ctx context.Context, client discovery.DiscoveryInterface
 }
 
 func (c *ConverterController) runInformerWithDiscovery(ctx context.Context, group, kind string, runInformer func(<-chan struct{})) error {
-	err := waitForAPIResource(ctx, c.promClient.Discovery(), group, kind)
+	err := waitForAPIResource(ctx, c.baseClient, group, kind)
 	if err != nil {
 		return fmt.Errorf("error wait for %s, err: %w", kind, err)
 	}
@@ -248,7 +279,7 @@ func (c *ConverterController) Run(ctx context.Context, group *errgroup.Group) {
 
 	if c.baseConf.EnabledPrometheusConverter.AlertmanagerConfig {
 		group.Go(func() error {
-			return c.runInformerWithDiscovery(ctx, alpha1.SchemeGroupVersion.String(), alpha1.AlertmanagerConfigKind, c.amConfigInf.Run)
+			return c.runInformerWithDiscovery(ctx, v1alpha1.SchemeGroupVersion.String(), v1alpha1.AlertmanagerConfigKind, c.amConfigInf.Run)
 		})
 	}
 }
@@ -259,7 +290,7 @@ func (c *ConverterController) CreatePrometheusRule(rule interface{}) {
 	l := log.WithValues("kind", "alertRule", "name", promRule.Name, "ns", promRule.Namespace)
 	cr := converter.ConvertPromRule(promRule, c.baseConf)
 
-	err := c.vclient.Create(context.Background(), cr)
+	err := c.rclient.Create(context.Background(), cr)
 	if err != nil {
 		if errors.IsAlreadyExists(err) {
 			c.UpdatePrometheusRule(nil, promRule)
@@ -277,10 +308,10 @@ func (c *ConverterController) UpdatePrometheusRule(_old, new interface{}) {
 	VMRule := converter.ConvertPromRule(promRuleNew, c.baseConf)
 	ctx := context.Background()
 	existingVMRule := &v1beta1.VMRule{}
-	err := c.vclient.Get(ctx, types.NamespacedName{Name: VMRule.Name, Namespace: VMRule.Namespace}, existingVMRule)
+	err := c.rclient.Get(ctx, types.NamespacedName{Name: VMRule.Name, Namespace: VMRule.Namespace}, existingVMRule)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			if err = c.vclient.Create(ctx, VMRule); err == nil {
+			if err = c.rclient.Create(ctx, VMRule); err == nil {
 				return
 			}
 		}
@@ -297,7 +328,7 @@ func (c *ConverterController) UpdatePrometheusRule(_old, new interface{}) {
 	existingVMRule.Labels = mergeLabelsWithStrategy(existingVMRule.Labels, VMRule.Labels, metaMergeStrategy)
 	existingVMRule.OwnerReferences = VMRule.OwnerReferences
 
-	err = c.vclient.Update(ctx, existingVMRule)
+	err = c.rclient.Update(ctx, existingVMRule)
 	if err != nil {
 		l.Error(err, "cannot update VMRule")
 		return
@@ -309,7 +340,7 @@ func (c *ConverterController) CreateServiceMonitor(service interface{}) {
 	serviceMon := service.(*v1.ServiceMonitor)
 	l := log.WithValues("kind", "vmServiceScrape", "name", serviceMon.Name, "ns", serviceMon.Namespace)
 	vmServiceScrape := converter.ConvertServiceMonitor(serviceMon, c.baseConf)
-	err := c.vclient.Create(context.Background(), vmServiceScrape)
+	err := c.rclient.Create(context.Background(), vmServiceScrape)
 	if err != nil {
 		if errors.IsAlreadyExists(err) {
 			c.UpdateServiceMonitor(nil, serviceMon)
@@ -327,10 +358,10 @@ func (c *ConverterController) UpdateServiceMonitor(_, new interface{}) {
 	vmServiceScrape := converter.ConvertServiceMonitor(serviceMonNew, c.baseConf)
 	existingVMServiceScrape := &v1beta1.VMServiceScrape{}
 	ctx := context.Background()
-	err := c.vclient.Get(ctx, types.NamespacedName{Name: vmServiceScrape.Name, Namespace: vmServiceScrape.Namespace}, existingVMServiceScrape)
+	err := c.rclient.Get(ctx, types.NamespacedName{Name: vmServiceScrape.Name, Namespace: vmServiceScrape.Namespace}, existingVMServiceScrape)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			if err = c.vclient.Create(ctx, vmServiceScrape); err == nil {
+			if err = c.rclient.Create(ctx, vmServiceScrape); err == nil {
 				return
 			}
 		}
@@ -349,7 +380,7 @@ func (c *ConverterController) UpdateServiceMonitor(_, new interface{}) {
 	existingVMServiceScrape.Labels = mergeLabelsWithStrategy(existingVMServiceScrape.Labels, vmServiceScrape.Labels, metaMergeStrategy)
 	existingVMServiceScrape.OwnerReferences = vmServiceScrape.OwnerReferences
 
-	err = c.vclient.Update(ctx, existingVMServiceScrape)
+	err = c.rclient.Update(ctx, existingVMServiceScrape)
 	if err != nil {
 		l.Error(err, "cannot update")
 		return
@@ -361,7 +392,7 @@ func (c *ConverterController) CreatePodMonitor(pod interface{}) {
 	podMonitor := pod.(*v1.PodMonitor)
 	l := log.WithValues("kind", "podScrape", "name", podMonitor.Name, "ns", podMonitor.Namespace)
 	podScrape := converter.ConvertPodMonitor(podMonitor, c.baseConf)
-	err := c.vclient.Create(c.ctx, podScrape)
+	err := c.rclient.Create(c.ctx, podScrape)
 	if err != nil {
 		if errors.IsAlreadyExists(err) {
 			c.UpdatePodMonitor(nil, podMonitor)
@@ -379,10 +410,10 @@ func (c *ConverterController) UpdatePodMonitor(_, new interface{}) {
 	podScrape := converter.ConvertPodMonitor(podMonitorNew, c.baseConf)
 	ctx := context.Background()
 	existingVMPodScrape := &v1beta1.VMPodScrape{}
-	err := c.vclient.Get(ctx, types.NamespacedName{Name: podScrape.Name, Namespace: podScrape.Namespace}, existingVMPodScrape)
+	err := c.rclient.Get(ctx, types.NamespacedName{Name: podScrape.Name, Namespace: podScrape.Namespace}, existingVMPodScrape)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			if err = c.vclient.Create(ctx, podScrape); err == nil {
+			if err = c.rclient.Create(ctx, podScrape); err == nil {
 				return
 			}
 		}
@@ -400,7 +431,7 @@ func (c *ConverterController) UpdatePodMonitor(_, new interface{}) {
 	existingVMPodScrape.Labels = mergeLabelsWithStrategy(existingVMPodScrape.Labels, podScrape.Labels, mergeStrategy)
 	existingVMPodScrape.OwnerReferences = podScrape.OwnerReferences
 
-	err = c.vclient.Update(ctx, existingVMPodScrape)
+	err = c.rclient.Update(ctx, existingVMPodScrape)
 	if err != nil {
 		l.Error(err, "cannot update podScrape")
 		return
@@ -409,7 +440,7 @@ func (c *ConverterController) UpdatePodMonitor(_, new interface{}) {
 
 // CreateAlertmanagerConfig converts AlertmanagerConfig to VMAlertmanagerConfig
 func (c *ConverterController) CreateAlertmanagerConfig(amc interface{}) {
-	promAMc := amc.(*alpha1.AlertmanagerConfig)
+	promAMc := amc.(*v1alpha1.AlertmanagerConfig)
 	l := log.WithValues("kind", "vmAlertmanagerConfig", "name", promAMc.Name, "ns", promAMc.Namespace)
 	l.Info("syncing alertmanager config")
 	vmAMc, err := converter.ConvertAlertmanagerConfig(promAMc, c.baseConf)
@@ -417,7 +448,7 @@ func (c *ConverterController) CreateAlertmanagerConfig(amc interface{}) {
 		l.Error(err, "cannot convert alertmanager config")
 		return
 	}
-	if err := c.vclient.Create(context.Background(), vmAMc); err != nil {
+	if err := c.rclient.Create(context.Background(), vmAMc); err != nil {
 		if errors.IsAlreadyExists(err) {
 			c.UpdateAlertmanagerConfig(nil, promAMc)
 			return
@@ -429,7 +460,7 @@ func (c *ConverterController) CreateAlertmanagerConfig(amc interface{}) {
 
 // UpdateAlertmanagerConfig updates VMAlertmanagerConfig
 func (c *ConverterController) UpdateAlertmanagerConfig(_, new interface{}) {
-	promAMc := new.(*alpha1.AlertmanagerConfig)
+	promAMc := new.(*v1alpha1.AlertmanagerConfig)
 	l := log.WithValues("kind", "vmAlertmanagerConfig", "name", promAMc.Name, "ns", promAMc.Namespace)
 	vmAMc, err := converter.ConvertAlertmanagerConfig(promAMc, c.baseConf)
 	if err != nil {
@@ -438,9 +469,9 @@ func (c *ConverterController) UpdateAlertmanagerConfig(_, new interface{}) {
 	}
 	existAlertmanagerConfig := &v1beta1.VMAlertmanagerConfig{}
 	ctx := context.Background()
-	if err := c.vclient.Get(ctx, types.NamespacedName{Name: vmAMc.Name, Namespace: vmAMc.Namespace}, existAlertmanagerConfig); err != nil {
+	if err := c.rclient.Get(ctx, types.NamespacedName{Name: vmAMc.Name, Namespace: vmAMc.Namespace}, existAlertmanagerConfig); err != nil {
 		if errors.IsNotFound(err) {
-			if err = c.vclient.Create(ctx, vmAMc); err == nil {
+			if err = c.rclient.Create(ctx, vmAMc); err == nil {
 				return
 			}
 		}
@@ -459,7 +490,7 @@ func (c *ConverterController) UpdateAlertmanagerConfig(_, new interface{}) {
 	existAlertmanagerConfig.Labels = mergeLabelsWithStrategy(existAlertmanagerConfig.Labels, vmAMc.Labels, metaMergeStrategy)
 	existAlertmanagerConfig.OwnerReferences = vmAMc.OwnerReferences
 
-	err = c.vclient.Update(ctx, existAlertmanagerConfig)
+	err = c.rclient.Update(ctx, existAlertmanagerConfig)
 	if err != nil {
 		l.Error(err, "cannot update exist alertmanager config")
 		return
@@ -511,7 +542,7 @@ func (c *ConverterController) CreateProbe(obj interface{}) {
 	l := log.WithValues("kind", "vmProbe", "name", probe.Name, "ns", probe.Namespace)
 	l.Info("syncing probes")
 	vmProbe := converter.ConvertProbe(probe, c.baseConf)
-	err := c.vclient.Create(c.ctx, vmProbe)
+	err := c.rclient.Create(c.ctx, vmProbe)
 	if err != nil {
 		if errors.IsAlreadyExists(err) {
 			c.UpdateProbe(nil, probe)
@@ -529,10 +560,10 @@ func (c *ConverterController) UpdateProbe(_, new interface{}) {
 	vmProbe := converter.ConvertProbe(probeNew, c.baseConf)
 	ctx := context.Background()
 	existingVMProbe := &v1beta1.VMProbe{}
-	err := c.vclient.Get(ctx, types.NamespacedName{Name: vmProbe.Name, Namespace: vmProbe.Namespace}, existingVMProbe)
+	err := c.rclient.Get(ctx, types.NamespacedName{Name: vmProbe.Name, Namespace: vmProbe.Namespace}, existingVMProbe)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			if err = c.vclient.Create(ctx, vmProbe); err == nil {
+			if err = c.rclient.Create(ctx, vmProbe); err == nil {
 				return
 			}
 		}
@@ -550,7 +581,7 @@ func (c *ConverterController) UpdateProbe(_, new interface{}) {
 	existingVMProbe.OwnerReferences = vmProbe.OwnerReferences
 
 	existingVMProbe.Spec = vmProbe.Spec
-	err = c.vclient.Update(ctx, existingVMProbe)
+	err = c.rclient.Update(ctx, existingVMProbe)
 	if err != nil {
 		l.Error(err, "cannot update vmProbe")
 		return

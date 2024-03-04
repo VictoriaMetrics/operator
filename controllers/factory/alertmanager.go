@@ -621,31 +621,26 @@ func getSecretContentForAlertmanager(ctx context.Context, rclient client.Client,
 func buildAlertmanagerConfigWithCRDs(ctx context.Context, rclient client.Client, cr *victoriametricsv1beta1.VMAlertmanager, originConfig []byte, l logr.Logger, tlsAssets map[string]string) ([]byte, error) {
 	amConfigs := make(map[string]*victoriametricsv1beta1.VMAlertmanagerConfig)
 	var badCfgCount int
-	// handle case for config selector.
-	namespaces, objSelector, err := getNSWithSelector(ctx, rclient, cr.Spec.ConfigNamespaceSelector, cr.Spec.ConfigSelector, cr.Namespace)
-	if err != nil {
-		return nil, err
-	}
-	if err := visitObjectsWithSelector(ctx, rclient, namespaces, &victoriametricsv1beta1.VMAlertmanagerConfigList{}, objSelector, cr.Spec.SelectAllByDefault, func(list client.ObjectList) {
-		ams := list.(*victoriametricsv1beta1.VMAlertmanagerConfigList)
-		for i := range ams.Items {
-			item := ams.Items[i]
-			if !item.DeletionTimestamp.IsZero() {
-				continue
+	if err := visitObjectsForSelectorsAtNs(ctx, rclient, cr.Spec.ConfigNamespaceSelector, cr.Spec.ConfigSelector, cr.Namespace, cr.Spec.SelectAllByDefault,
+		func(ams *victoriametricsv1beta1.VMAlertmanagerConfigList) {
+			for i := range ams.Items {
+				item := ams.Items[i]
+				if !item.DeletionTimestamp.IsZero() {
+					continue
+				}
+				if item.Spec.ParsingError != "" {
+					badCfgCount++
+					l.Error(fmt.Errorf(item.Spec.ParsingError), "parsing failed for alertmanager config", "objectName", item.Name)
+					continue
+				}
+				if err := item.Validate(); err != nil {
+					l.Error(err, "validation failed for alertmanager config", "objectName", item.Name)
+					badCfgCount++
+					continue
+				}
+				amConfigs[item.AsKey()] = &item
 			}
-			if item.Spec.ParsingError != "" {
-				badCfgCount++
-				l.Error(fmt.Errorf(item.Spec.ParsingError), "parsing failed for alertmanager config", "objectName", item.Name)
-				continue
-			}
-			if err := item.Validate(); err != nil {
-				l.Error(err, "validation failed for alertmanager config", "objectName", item.Name)
-				badCfgCount++
-				continue
-			}
-			amConfigs[item.AsKey()] = &item
-		}
-	}); err != nil {
+		}); err != nil {
 		return nil, fmt.Errorf("cannot select alertmanager configs: %w", err)
 	}
 

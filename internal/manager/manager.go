@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -16,7 +17,8 @@ import (
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/controllers/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/config"
-	"github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
+	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	"github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/pflag"
 	v12 "k8s.io/api/apps/v1"
@@ -25,6 +27,7 @@ import (
 	metav1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/klog/v2"
@@ -74,6 +77,8 @@ func init() {
 
 	utilruntime.Must(victoriametricsv1beta1.AddToScheme(scheme))
 	utilruntime.Must(metav1.AddToScheme(scheme))
+	utilruntime.Must(v1alpha1.AddToScheme(scheme))
+	utilruntime.Must(promv1.AddToScheme(scheme))
 
 	// +kubebuilder:scaffold:scheme
 }
@@ -120,12 +125,17 @@ func RunManager(ctx context.Context) error {
 	r.MustRegister(appVersion, uptime, startedAt)
 	setupLog.Info("Registering Components.")
 	var watchNsCacheByName map[string]cache.Config
-	watchNs := config.MustGetWatchNamespace()
-	if len(watchNs) > 0 {
+	watchNss := config.MustGetWatchNamespaces()
+	if len(watchNss) > 0 {
+		setupLog.Info("operator configured with watching for subset of namespaces=%q, cluster wide access is disabled", strings.Join(watchNss, ","))
 		watchNsCacheByName = make(map[string]cache.Config)
-		watchNsCacheByName[watchNs] = cache.Config{}
+		for _, ns := range watchNss {
+			watchNsCacheByName[ns] = cache.Config{}
+		}
 	}
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+		Logger: ctrl.Log.WithName("manager"),
 		Scheme: scheme,
 		//	MetricsBindAddress:     *metricsAddr,
 		Metrics:                metricsserver.Options{BindAddress: *metricsAddr},
@@ -180,12 +190,7 @@ func RunManager(ctx context.Context) error {
 		return fmt.Errorf("cannot register health endpoint: %w", err)
 	}
 
-	opNs := config.MustGetWatchNamespace()
-	if opNs != "" {
-		setupLog.Info("operator is running in single namespace mode", "namespace", opNs)
-	}
-
-	if !*disableCRDOwnership && opNs == "" {
+	if !*disableCRDOwnership && len(watchNss) == 0 {
 		initC, err := client.New(mgr.GetConfig(), client.Options{Scheme: scheme})
 		if err != nil {
 			return err
@@ -337,13 +342,13 @@ func RunManager(ctx context.Context) error {
 	// +kubebuilder:scaffold:builder
 	setupLog.Info("starting vmconverter clients")
 
-	prom, err := versioned.NewForConfig(mgr.GetConfig())
+	baseClient, err := kubernetes.NewForConfig(mgr.GetConfig())
 	if err != nil {
 		setupLog.Error(err, "cannot build promClient")
 		return err
 	}
 
-	k8sServerVersion, err := prom.DiscoveryClient.ServerVersion()
+	k8sServerVersion, err := baseClient.ServerVersion()
 	if err != nil {
 		return fmt.Errorf("cannot get kubernetes server version: %w", err)
 	}
@@ -353,7 +358,11 @@ func RunManager(ctx context.Context) error {
 	}
 
 	setupLog.Info("using kubernetes server version", "version", k8sServerVersion.String())
-	converterController, err := controllers.NewConverterController(ctx, prom, mgr.GetClient(), baseConfig)
+	wc, err := client.NewWithWatch(mgr.GetConfig(), client.Options{Scheme: scheme})
+	if err != nil {
+		return fmt.Errorf("cannot setup watch client: %w", err)
+	}
+	converterController, err := controllers.NewConverterController(ctx, baseClient, wc, baseConfig)
 	if err != nil {
 		setupLog.Error(err, "cannot setup prometheus CRD converter: %w", err)
 		return err

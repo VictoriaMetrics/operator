@@ -14,7 +14,6 @@ import (
 	"github.com/ghodss/yaml"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -183,32 +182,11 @@ func rulesCMDiff(currentCMs []v1.ConfigMap, newCMs []v1.ConfigMap) ([]v1.ConfigM
 	return toCreate, toUpdate, toDelete
 }
 
-func selectNamespaces(ctx context.Context, rclient client.Client, selector labels.Selector) ([]string, error) {
-	var matchedNs []string
-	ns := &v1.NamespaceList{}
-
-	if err := rclient.List(ctx, ns, &client.ListOptions{LabelSelector: selector}); err != nil {
-		return nil, err
-	}
-
-	for _, n := range ns.Items {
-		matchedNs = append(matchedNs, n.Name)
-	}
-
-	return matchedNs, nil
-}
-
 func SelectRules(ctx context.Context, cr *victoriametricsv1beta1.VMAlert, rclient client.Client) (map[string]string, error) {
-	namespaces, objSelector, err := getNSWithSelector(ctx, rclient, cr.Spec.RuleNamespaceSelector, cr.Spec.RuleSelector, cr.Namespace)
-	if err != nil {
-		return nil, err
-	}
-
 	var vmRules []*victoriametricsv1beta1.VMRule
-	if err := visitObjectsWithSelector(ctx, rclient, namespaces, &victoriametricsv1beta1.VMRuleList{}, objSelector, cr.Spec.SelectAllByDefault,
-		func(list client.ObjectList) {
-			l := list.(*victoriametricsv1beta1.VMRuleList)
-			for _, item := range l.Items {
+	if err := visitObjectsForSelectorsAtNs(ctx, rclient, cr.Spec.RuleNamespaceSelector, cr.Spec.RuleSelector, cr.Namespace, cr.Spec.SelectAllByDefault,
+		func(list *victoriametricsv1beta1.VMRuleList) {
+			for _, item := range list.Items {
 				if !item.DeletionTimestamp.IsZero() {
 					continue
 				}

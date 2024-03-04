@@ -18,7 +18,9 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/controllers/factory/limiter"
 
 	"github.com/VictoriaMetrics/operator/controllers/factory"
@@ -29,6 +31,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	operatorv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 )
 
 var vmaConfigRateLimiter = limiter.NewRateLimiter("vmalertmanager", 5)
@@ -66,13 +69,14 @@ func (r *VMAlertmanagerConfigReconciler) Reconcile(ctx context.Context, req ctrl
 	alertmanagerLock.Lock()
 	defer alertmanagerLock.Unlock()
 
-	// select alertmanagers
-	var vmams operatorv1beta1.VMAlertmanagerList
-	if err := r.Client.List(ctx, &vmams, config.MustGetNamespaceListOptions()); err != nil {
-		l.Error(err, "cannot list vmalertmanagers")
-		return ctrl.Result{}, err
+	var objects victoriametricsv1beta1.VMAlertmanagerList
+	if err := k8stools.ListObjectsByNamespace(ctx, r.Client, config.MustGetWatchNamespaces(), func(dst *victoriametricsv1beta1.VMAlertmanagerList) {
+		objects.Items = append(objects.Items, dst.Items...)
+	}); err != nil {
+		return result, fmt.Errorf("cannot list vmauths for vmuser: %w", err)
 	}
-	for _, item := range vmams.Items {
+
+	for _, item := range objects.Items {
 		am := &item
 		if !am.DeletionTimestamp.IsZero() || am.Spec.ParsingError != "" || am.IsUnmanaged() {
 			continue

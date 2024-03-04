@@ -23,6 +23,7 @@ import (
 	operatorv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
+	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/controllers/factory/limiter"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
@@ -80,9 +81,12 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 	defer vmAuthSyncMU.Unlock()
 
 	var vmauthes operatorv1beta1.VMAuthList
-	if err := r.List(ctx, &vmauthes, config.MustGetNamespaceListOptions()); err != nil {
+	if err := k8stools.ListObjectsByNamespace(ctx, r.Client, config.MustGetWatchNamespaces(), func(dst *operatorv1beta1.VMAuthList) {
+		vmauthes.Items = append(vmauthes.Items, dst.Items...)
+	}); err != nil {
 		return result, fmt.Errorf("cannot list vmauths for vmuser: %w", err)
 	}
+
 	for _, vmauth := range vmauthes.Items {
 		if !vmauth.DeletionTimestamp.IsZero() || vmauth.Spec.ParsingError != "" || vmauth.IsUnmanaged() {
 			continue

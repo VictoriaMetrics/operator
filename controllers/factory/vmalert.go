@@ -150,9 +150,11 @@ func CreateOrUpdateVMAlert(ctx context.Context, cr *victoriametricsv1beta1.VMAle
 		if err != nil {
 			return fmt.Errorf("cannot convert notifier selector as ListOptions: %w", err)
 		}
-		if err := rclient.List(ctx, &ams, amListOpts, config.MustGetNamespaceListOptions()); err != nil {
-			return fmt.Errorf("cannot list alertmanagers for vmalert notifier sd: %w", err)
+		if err := k8stools.ListObjectsByNamespace(ctx, rclient, config.MustGetWatchNamespaces(), func(objects *victoriametricsv1beta1.VMAlertmanagerList) {
+			ams.Items = append(ams.Items, objects.Items...)
+		}, amListOpts); err != nil {
 		}
+
 		for _, item := range ams.Items {
 			if !item.DeletionTimestamp.IsZero() || (n.Selector.Namespace != nil && !n.Selector.Namespace.IsMatch(&item)) {
 				continue

@@ -73,6 +73,7 @@ func NewConverterController(ctx context.Context, baseClient *kubernetes.Clientse
 		rclient:    rclient,
 		baseConf:   baseConf,
 	}
+
 	c.ruleInf = cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
@@ -85,7 +86,7 @@ func NewConverterController(ctx context.Context, baseClient *kubernetes.Clientse
 				return &objects, nil
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-				return k8stools.NewObjectWatcherForNamespaces[v1.PrometheusRuleList](ctx, rclient, config.MustGetWatchNamespaces())
+				return k8stools.NewObjectWatcherForNamespaces[v1.PrometheusRuleList](ctx, rclient, "prometheus_rules", config.MustGetWatchNamespaces())
 			},
 		},
 		&v1.PrometheusRule{},
@@ -110,7 +111,7 @@ func NewConverterController(ctx context.Context, baseClient *kubernetes.Clientse
 				return &objects, nil
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-				return k8stools.NewObjectWatcherForNamespaces[v1.PodMonitorList](ctx, rclient, config.MustGetWatchNamespaces())
+				return k8stools.NewObjectWatcherForNamespaces[v1.PodMonitorList](ctx, rclient, "pod_monitors", config.MustGetWatchNamespaces())
 			},
 		},
 		&v1.PodMonitor{},
@@ -136,7 +137,7 @@ func NewConverterController(ctx context.Context, baseClient *kubernetes.Clientse
 				return &objects, nil
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-				return k8stools.NewObjectWatcherForNamespaces[v1.ServiceMonitorList](ctx, rclient, config.MustGetWatchNamespaces())
+				return k8stools.NewObjectWatcherForNamespaces[v1.ServiceMonitorList](ctx, rclient, "service_monitors", config.MustGetWatchNamespaces())
 			},
 		},
 		&v1.ServiceMonitor{},
@@ -161,7 +162,7 @@ func NewConverterController(ctx context.Context, baseClient *kubernetes.Clientse
 				return &objects, nil
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-				return k8stools.NewObjectWatcherForNamespaces[v1alpha1.AlertmanagerConfigList](ctx, rclient, config.MustGetWatchNamespaces())
+				return k8stools.NewObjectWatcherForNamespaces[v1alpha1.AlertmanagerConfigList](ctx, rclient, "alertmanager_configs", config.MustGetWatchNamespaces())
 			},
 		},
 		&v1alpha1.AlertmanagerConfig{},
@@ -185,7 +186,7 @@ func NewConverterController(ctx context.Context, baseClient *kubernetes.Clientse
 				return &objects, nil
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-				return k8stools.NewObjectWatcherForNamespaces[v1.ProbeList](ctx, rclient, config.MustGetWatchNamespaces())
+				return k8stools.NewObjectWatcherForNamespaces[v1.ProbeList](ctx, rclient, "probes", config.MustGetWatchNamespaces())
 			},
 		},
 		&v1.Probe{},

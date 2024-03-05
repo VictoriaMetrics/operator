@@ -7,8 +7,10 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
@@ -17,6 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/metrics"
 )
 
 var log = logf.Log.WithName("client_utils")
@@ -132,6 +135,12 @@ func ListObjectsByNamespace[T any, PT interface {
 	return nil
 }
 
+var (
+	activeWatchers         = prometheus.NewGaugeVec(prometheus.GaugeOpts{Name: "operator_prometheus_converter_active_watchers"}, []string{"namespace"})
+	watchEventsTotalByType = prometheus.NewCounterVec(prometheus.CounterOpts{Name: "operator_prometheus_converter_watch_events_total"}, []string{"event_type", "namespace", "object_type_name"})
+	initMetrics            sync.Once
+)
+
 // ObjectWatcherForNamespaces performs a watch operation for multiple namespaces
 // without using cluster wide permissions
 // with empty namaspaces uses cluster wide mode
@@ -139,6 +148,8 @@ type ObjectWatcherForNamespaces struct {
 	result         chan watch.Event
 	objectWatchers []watch.Interface
 	wg             sync.WaitGroup
+	eventsTotal    *prometheus.CounterVec
+	activeWatchers *atomic.Int64
 }
 
 // NewObjectWatcherForNamespaces returns a watcher for events at multiple namespaces  for given object
@@ -146,7 +157,10 @@ type ObjectWatcherForNamespaces struct {
 func NewObjectWatcherForNamespaces[T any, PT interface {
 	*T
 	client.ObjectList
-}](ctx context.Context, rclient client.WithWatch, namespaces []string) (*ObjectWatcherForNamespaces, error) {
+}](ctx context.Context, rclient client.WithWatch, crdTypeName string, namespaces []string) (watch.Interface, error) {
+	initMetrics.Do(func() {
+		metrics.Registry.MustRegister(activeWatchers, watchEventsTotalByType)
+	})
 	ownss := ObjectWatcherForNamespaces{
 		result: make(chan watch.Event),
 	}
@@ -155,16 +169,22 @@ func NewObjectWatcherForNamespaces[T any, PT interface {
 		dst := PT(new(T))
 		w, err := rclient.Watch(ctx, dst)
 		if err != nil {
-			return nil, fmt.Errorf("cannot start watcher for cluster wide: %w", err)
+			return w, fmt.Errorf("cannot start watcher for cluster wide: %w", err)
 		}
 		ownss.wg.Add(1)
+		activeWatchers.WithLabelValues("ALL_NAMESPACES").Add(1)
 		go func() {
 			defer ownss.wg.Done()
+			defer activeWatchers.WithLabelValues("ALL_NAMESPACES").Add(-1)
 			for {
 				select {
 				case <-ctx.Done():
 					return
-				case ev := <-w.ResultChan():
+				case ev, ok := <-w.ResultChan():
+					if !ok {
+						close(ownss.result)
+						return
+					}
 					select {
 					case ownss.result <- ev:
 					case <-ctx.Done():
@@ -176,30 +196,46 @@ func NewObjectWatcherForNamespaces[T any, PT interface {
 		ownss.objectWatchers = append(ownss.objectWatchers, w)
 		return &ownss, nil
 	}
+
+	// all watchers must be gracefully stopped at any child channel close
+	localCtx, cancel := context.WithCancel(ctx)
 	for _, ns := range namespaces {
 		dst := PT(new(T))
-		w, err := rclient.Watch(ctx, dst, &client.ListOptions{Namespace: ns})
+		w, err := rclient.Watch(localCtx, dst, &client.ListOptions{Namespace: ns})
 		if err != nil {
-			return nil, fmt.Errorf("cannot setup watch for namespace=%q: %w", ns, err)
+			cancel()
+			return w, fmt.Errorf("cannot start watcher for ns=%q wide: %w", ns, err)
 		}
 		ownss.objectWatchers = append(ownss.objectWatchers, w)
 		ownss.wg.Add(1)
-		go func(w watch.Interface) {
+		activeWatchers.WithLabelValues(ns).Add(1)
+		go func(w watch.Interface, ns string) {
 			defer ownss.wg.Done()
+			defer activeWatchers.WithLabelValues(ns).Add(-1)
 			for {
 				select {
-				case <-ctx.Done():
+				case <-localCtx.Done():
 					return
-				case ev := <-w.ResultChan():
+				case ev, ok := <-w.ResultChan():
+					if !ok {
+						cancel()
+						return
+					}
+					watchEventsTotalByType.WithLabelValues(string(ev.Type), ns, crdTypeName).Inc()
 					select {
 					case ownss.result <- ev:
-					case <-ctx.Done():
+					case <-localCtx.Done():
 						return
 					}
 				}
 			}
-		}(w)
+		}(w, ns)
 	}
+	go func() {
+		ownss.wg.Wait()
+		cancel()
+		close(ownss.result)
+	}()
 	return &ownss, nil
 }
 
@@ -214,5 +250,4 @@ func (ow *ObjectWatcherForNamespaces) Stop() {
 		objectWatcher.Stop()
 	}
 	ow.wg.Wait()
-	close(ow.result)
 }

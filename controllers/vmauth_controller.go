@@ -100,6 +100,9 @@ func (r *VMAuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		}
 		return result, nil
 	})
+	if err != nil {
+		return
+	}
 
 	if r.BaseConf.ForceResyncInterval > 0 {
 		result.RequeueAfter = r.BaseConf.ForceResyncInterval

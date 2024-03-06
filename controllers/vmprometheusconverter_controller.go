@@ -66,7 +66,7 @@ type ConverterController struct {
 }
 
 // NewConverterController builder for vmprometheusconverter service
-func NewConverterController(ctx context.Context, baseClient *kubernetes.Clientset, rclient client.WithWatch, baseConf *config.BaseOperatorConf) (*ConverterController, error) {
+func NewConverterController(ctx context.Context, baseClient *kubernetes.Clientset, rclient client.WithWatch, resyncPeriod time.Duration, baseConf *config.BaseOperatorConf) (*ConverterController, error) {
 	c := &ConverterController{
 		ctx:        ctx,
 		baseClient: baseClient,
@@ -90,7 +90,7 @@ func NewConverterController(ctx context.Context, baseClient *kubernetes.Clientse
 			},
 		},
 		&v1.PrometheusRule{},
-		0,
+		resyncPeriod,
 		cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc},
 	)
 	if _, err := c.ruleInf.AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -115,7 +115,7 @@ func NewConverterController(ctx context.Context, baseClient *kubernetes.Clientse
 			},
 		},
 		&v1.PodMonitor{},
-		0,
+		resyncPeriod,
 		cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc},
 	)
 	if _, err := c.podInf.AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -141,7 +141,7 @@ func NewConverterController(ctx context.Context, baseClient *kubernetes.Clientse
 			},
 		},
 		&v1.ServiceMonitor{},
-		0,
+		resyncPeriod,
 		cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc},
 	)
 	if _, err := c.serviceInf.AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -166,7 +166,7 @@ func NewConverterController(ctx context.Context, baseClient *kubernetes.Clientse
 			},
 		},
 		&v1alpha1.AlertmanagerConfig{},
-		0,
+		resyncPeriod,
 		cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
 	if _, err := c.amConfigInf.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    c.CreateAlertmanagerConfig,
@@ -190,7 +190,7 @@ func NewConverterController(ctx context.Context, baseClient *kubernetes.Clientse
 			},
 		},
 		&v1.Probe{},
-		0,
+		resyncPeriod,
 		cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc},
 	)
 	if _, err := c.probeInf.AddEventHandler(cache.ResourceEventHandlerFuncs{

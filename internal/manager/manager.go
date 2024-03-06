@@ -69,6 +69,7 @@ var (
 	defaultKubernetesMajorVersion = flag.Uint64("default.kubernetesVersion.major", 1, "Major version of kubernetes server, if operator cannot parse actual kubernetes response")
 	printDefaults                 = flag.Bool("printDefaults", false, "print all variables with their default values and exit")
 	printFormat                   = flag.String("printFormat", "table", "output format for --printDefaults. Can be table, json, yaml or list")
+	promCRDResyncPeriod           = flag.Duration("controller.prometheusCRD.resyncPeriod", 0, "Configures resync period for prometheus CRD converter. Disabled by default")
 	wasCacheSynced                = uint32(0)
 )
 
@@ -362,7 +363,7 @@ func RunManager(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("cannot setup watch client: %w", err)
 	}
-	converterController, err := controllers.NewConverterController(ctx, baseClient, wc, baseConfig)
+	converterController, err := controllers.NewConverterController(ctx, baseClient, wc, *promCRDResyncPeriod, baseConfig)
 	if err != nil {
 		setupLog.Error(err, "cannot setup prometheus CRD converter: %w", err)
 		return err

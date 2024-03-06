@@ -220,11 +220,11 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, c *config.Ba
 	amArgs = append(amArgs, fmt.Sprintf("--web.route-prefix=%s", webRoutePrefix))
 
 	if cr.Spec.LogLevel != "" && cr.Spec.LogLevel != "info" {
-		amArgs = append(amArgs, fmt.Sprintf("--logger.WithContext(ctx).level=%s", cr.Spec.LogLevel))
+		amArgs = append(amArgs, fmt.Sprintf("--log.level=%s", cr.Spec.LogLevel))
 	}
 
 	if cr.Spec.LogFormat != "" {
-		amArgs = append(amArgs, fmt.Sprintf("--logger.WithContext(ctx).format=%s", cr.Spec.LogFormat))
+		amArgs = append(amArgs, fmt.Sprintf("--log.format=%s", cr.Spec.LogFormat))
 	}
 
 	if cr.Spec.ClusterAdvertiseAddress != "" {

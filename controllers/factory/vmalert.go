@@ -832,6 +832,12 @@ func BuildNotifiersArgs(cr *victoriametricsv1beta1.VMAlert, ntBasicAuth map[stri
 		return append(finalArgs, fmt.Sprintf("-notifier.config=%s/%s", notifierConfigMountPath, cr.Spec.NotifierConfigRef.Key))
 	}
 
+	if _, ok := cr.Spec.ExtraArgs["notifier.blackhole"]; ok {
+		// notifier.blackhole disables sending notifications completely, so we don't need to add any notifier args
+		// also no need to add notifier.blackhole to args as it will be added with ExtraArgs
+		return finalArgs
+	}
+
 	url := remoteFlag{flagSetting: "-notifier.url=", isNotNull: true}
 	authUser := remoteFlag{flagSetting: "-notifier.basicAuth.username="}
 	authPasswordFile := remoteFlag{flagSetting: "-notifier.basicAuth.passwordFile="}

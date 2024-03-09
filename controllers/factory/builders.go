@@ -349,7 +349,7 @@ func buildProbe(container v1.Container, cr probeCRD) v1.Container {
 			probeHandler := v1.ProbeHandler{
 				HTTPGet: &v1.HTTPGetAction{
 					Port:   intstr.Parse(port),
-					Scheme: "HTTP",
+					Scheme: v1.URIScheme(scheme),
 					Path:   probePath(),
 				},
 			}

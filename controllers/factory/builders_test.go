@@ -469,6 +469,35 @@ func Test_buildProbe(t *testing.T) {
 			},
 		},
 		{
+			name: "build default probe with empty ep using HTTPS",
+			args: args{
+				cr: testBuildProbeCR{
+					probePath: func() string {
+						return "/health"
+					},
+					port:            "8051",
+					needAddLiveness: true,
+					scheme:          "HTTPS",
+				},
+				container: v1.Container{},
+			},
+			validate: func(container v1.Container) error {
+				if container.LivenessProbe == nil {
+					return fmt.Errorf("want liveness to be not nil")
+				}
+				if container.ReadinessProbe == nil {
+					return fmt.Errorf("want readinessProbe to be not nil")
+				}
+				if container.LivenessProbe.HTTPGet.Scheme != "HTTPS" {
+					return fmt.Errorf("expect scheme to be HTTPS got: %s", container.LivenessProbe.HTTPGet.Scheme)
+				}
+				if container.ReadinessProbe.HTTPGet.Scheme != "HTTPS" {
+					return fmt.Errorf("expect scheme to be HTTPS got: %s", container.ReadinessProbe.HTTPGet.Scheme)
+				}
+				return nil
+			},
+		},
+		{
 			name: "build default probe with ep",
 			args: args{
 				cr: testBuildProbeCR{

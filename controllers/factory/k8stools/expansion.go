@@ -147,6 +147,10 @@ func getPVCFromSTS(pvcName string, sts *appsv1.StatefulSet) *corev1.PersistentVo
 }
 
 func growSTSPVC(ctx context.Context, rclient client.Client, sts *appsv1.StatefulSet) error {
+	// fast path
+	if sts.Spec.Replicas != nil && *sts.Spec.Replicas == 0 {
+		return nil
+	}
 	targetClaimsByName := make(map[string]*corev1.PersistentVolumeClaim)
 	for _, stsClaim := range sts.Spec.VolumeClaimTemplates {
 		targetClaimsByName[fmt.Sprintf("%s-%s", stsClaim.Name, sts.Name)] = &stsClaim

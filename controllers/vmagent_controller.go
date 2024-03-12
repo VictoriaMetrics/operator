@@ -131,6 +131,7 @@ func (r *VMAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 
 func updateVMAgentStatus(ctx context.Context, c client.Client, instance *victoriametricsv1beta1.VMAgent) error {
 	// default value
+	//
 	replicaCount := int32(1)
 	if instance.Spec.ReplicaCount != nil {
 		replicaCount = *instance.Spec.ReplicaCount

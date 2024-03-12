@@ -17,11 +17,11 @@ spec:
   versions:
   - additionalPrinterColumns:
     - description: The version of VMAlertmanager
-      jsonPath: .spec.version
+      jsonPath: .spec.image.tag
       name: Version
       type: string
     - description: The desired replicas number of Alertmanagers
-      jsonPath: .spec.ReplicaCount
+      jsonPath: .spec.replicaCount
       name: ReplicaCount
       type: integer
     - jsonPath: .metadata.creationTimestamp

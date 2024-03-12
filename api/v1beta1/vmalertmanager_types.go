@@ -27,8 +27,8 @@ import (
 // +genclient
 // +k8s:openapi-gen=true
 // +kubebuilder:subresource:status
-// +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".spec.version",description="The version of VMAlertmanager"
-// +kubebuilder:printcolumn:name="ReplicaCount",type="integer",JSONPath=".spec.ReplicaCount",description="The desired replicas number of Alertmanagers"
+// +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".spec.image.tag",description="The version of VMAlertmanager"
+// +kubebuilder:printcolumn:name="ReplicaCount",type="integer",JSONPath=".spec.replicaCount",description="The desired replicas number of Alertmanagers"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:resource:path=vmalertmanagers,scope=Namespaced,shortName=vma,singular=vmalertmanager
 // +kubebuilder:printcolumn:name="Update Status",type="string",JSONPath=".status.updateStatus",description="Current update status"

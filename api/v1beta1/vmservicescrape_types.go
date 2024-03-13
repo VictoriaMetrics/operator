@@ -43,6 +43,9 @@ type VMServiceScrapeSpec struct {
 	// SampleLimit defines per-scrape limit on number of scraped samples that will be accepted.
 	// +optional
 	SampleLimit uint64 `json:"sampleLimit,omitempty"`
+	// AttachMetadata configures metadata attaching from service discovery
+	// +optional
+	AttachMetadata AttachMetadata `json:"attach_metadata,omitempty"`
 }
 
 // VMServiceScrapeStatus defines the observed state of VMServiceScrape

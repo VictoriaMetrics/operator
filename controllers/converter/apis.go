@@ -3,12 +3,13 @@ package converter
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
+
 	"github.com/VictoriaMetrics/operator/internal/config"
 	alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
-	"strings"
 
 	v1beta1vm "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory"
@@ -261,6 +262,11 @@ func ConvertServiceMonitor(serviceMon *v1.ServiceMonitor, conf *config.BaseOpera
 			},
 		},
 	}
+	if serviceMon.Spec.AttachMetadata != nil {
+		cs.Spec.AttachMetadata = v1beta1vm.AttachMetadata{
+			Node: pointer.Bool(serviceMon.Spec.AttachMetadata.Node),
+		}
+	}
 	if conf.EnabledPrometheusConverterOwnerReferences {
 		cs.OwnerReferences = []metav1.OwnerReference{
 			{
@@ -268,8 +274,8 @@ func ConvertServiceMonitor(serviceMon *v1.ServiceMonitor, conf *config.BaseOpera
 				Kind:               v1.ServiceMonitorsKind,
 				Name:               serviceMon.Name,
 				UID:                serviceMon.UID,
-				Controller:         pointer.BoolPtr(true),
-				BlockOwnerDeletion: pointer.BoolPtr(true),
+				Controller:         pointer.Bool(true),
+				BlockOwnerDeletion: pointer.Bool(true),
 			},
 		}
 	}
@@ -354,7 +360,6 @@ func ConvertEndpoint(promEndpoint []v1.Endpoint) []v1beta1vm.Endpoint {
 		endpoints = append(endpoints, ep)
 	}
 	return endpoints
-
 }
 
 func ConvertBasicAuth(bAuth *v1.BasicAuth) *v1beta1vm.BasicAuth {
@@ -427,7 +432,6 @@ func ConvertRelabelConfig(promRelabelConfig []*v1.RelabelConfig) []*v1beta1vm.Re
 		})
 	}
 	return filterUnsupportedRelabelCfg(relabelCfg)
-
 }
 
 func ConvertPodEndpoints(promPodEnpoints []v1.PodMetricsEndpoint) []v1beta1vm.PodMetricsEndpoint {
@@ -437,7 +441,6 @@ func ConvertPodEndpoints(promPodEnpoints []v1.PodMetricsEndpoint) []v1beta1vm.Po
 	endPoints := make([]v1beta1vm.PodMetricsEndpoint, 0, len(promPodEnpoints))
 	for _, promEndPoint := range promPodEnpoints {
 		if promEndPoint.Authorization != nil {
-
 		}
 		var safeTls *v1.SafeTLSConfig
 		if promEndPoint.TLSConfig != nil {
@@ -489,6 +492,11 @@ func ConvertPodMonitor(podMon *v1.PodMonitor, conf *config.BaseOperatorConf) *v1
 			PodMetricsEndpoints: ConvertPodEndpoints(podMon.Spec.PodMetricsEndpoints),
 		},
 	}
+	if podMon.Spec.AttachMetadata != nil {
+		cs.Spec.AttachMetadata = v1beta1vm.AttachMetadata{
+			Node: pointer.Bool(podMon.Spec.AttachMetadata.Node),
+		}
+	}
 	if conf.EnabledPrometheusConverterOwnerReferences {
 		cs.OwnerReferences = []metav1.OwnerReference{
 			{
@@ -496,8 +504,8 @@ func ConvertPodMonitor(podMon *v1.PodMonitor, conf *config.BaseOperatorConf) *v1
 				Kind:               v1.PodMonitorsKind,
 				Name:               podMon.Name,
 				UID:                podMon.UID,
-				Controller:         pointer.BoolPtr(true),
-				BlockOwnerDeletion: pointer.BoolPtr(true),
+				Controller:         pointer.Bool(true),
+				BlockOwnerDeletion: pointer.Bool(true),
 			},
 		}
 	}

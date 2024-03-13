@@ -329,6 +329,9 @@ func generatePodScrapeConfig(
 	cfg = honorTimestamps(cfg, ep.HonorTimestamps, overrideHonorTimestamps)
 
 	selectedNamespaces := getNamespacesFromNamespaceSelector(&m.Spec.NamespaceSelector, m.Namespace, ignoreNamespaceSelectors)
+	if ep.AttachMetadata.Node == nil && m.Spec.AttachMetadata.Node != nil {
+		ep.AttachMetadata = m.Spec.AttachMetadata
+	}
 	cfg = append(cfg, generatePodK8SSDConfig(selectedNamespaces, m.Spec.Selector, apiserverConfig, ssCache, kubernetesSDRolePod, &ep.AttachMetadata))
 
 	var scrapeInterval string
@@ -612,6 +615,9 @@ func generateServiceScrapeConfig(
 	cfg = honorTimestamps(cfg, ep.HonorTimestamps, overrideHonorTimestamps)
 
 	selectedNamespaces := getNamespacesFromNamespaceSelector(&m.Spec.NamespaceSelector, m.Namespace, ignoreNamespaceSelectors)
+	if ep.AttachMetadata.Node == nil && m.Spec.AttachMetadata.Node != nil {
+		ep.AttachMetadata = m.Spec.AttachMetadata
+	}
 	cfg = append(cfg, generateK8SSDConfig(selectedNamespaces, apiserverConfig, ssCache, m.Spec.DiscoveryRole, &ep.AttachMetadata))
 
 	var scrapeInterval string

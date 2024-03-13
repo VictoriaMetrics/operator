@@ -41,6 +41,16 @@ spec:
           spec:
             description: VMPodScrapeSpec defines the desired state of VMPodScrape
             properties:
+              attach_metadata:
+                description: AttachMetadata configures metadata attaching from service
+                  discovery
+                properties:
+                  node:
+                    description: |-
+                      Node instructs vmagent to add node specific metadata from service discovery
+                      Valid for roles: pod, endpoints, endpointslice.
+                    type: boolean
+                type: object
               jobLabel:
                 description: The label to use to retrieve the job name from.
                 type: string

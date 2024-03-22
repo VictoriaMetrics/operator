@@ -120,6 +120,7 @@ func (r *VMAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 		return result, nil
 	})
 	if err != nil {
+		reqLogger.Error(err, "failed to reconcile vmagent")
 		return
 	}
 	if r.BaseConf.ForceResyncInterval > 0 {

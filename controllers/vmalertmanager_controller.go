@@ -103,6 +103,7 @@ func (r *VMAlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return result, nil
 	})
 	if err != nil {
+		reqLogger.Error(err, "failed to reconcile vmalertmanager")
 		return
 	}
 

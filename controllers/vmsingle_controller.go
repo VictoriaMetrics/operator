@@ -77,7 +77,7 @@ func (r *VMSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (r
 		return result, err
 	}
 
-	return reconcileAndTrackStatus(ctx, r.Client, instance, func() (ctrl.Result, error) {
+	result, err = reconcileAndTrackStatus(ctx, r.Client, instance, func() (ctrl.Result, error) {
 		if instance.Spec.Storage != nil && instance.Spec.StorageDataPath == "" {
 			_, err = factory.CreateVMSingleStorage(ctx, instance, r)
 			if err != nil {
@@ -105,6 +105,10 @@ func (r *VMSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (r
 		}
 		return result, nil
 	})
+	if err != nil {
+		reqLogger.Error(err, "failed to reconcile vmsingle")
+	}
+	return
 }
 
 // SetupWithManager general setup method

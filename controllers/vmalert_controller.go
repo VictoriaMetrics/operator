@@ -120,6 +120,7 @@ func (r *VMAlertReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 		return result, nil
 	})
 	if err != nil {
+		reqLogger.Error(err, "failed to reconcile vmalert")
 		return
 	}
 

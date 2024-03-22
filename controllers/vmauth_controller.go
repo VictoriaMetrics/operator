@@ -101,6 +101,7 @@ func (r *VMAuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		return result, nil
 	})
 	if err != nil {
+		l.Error(err, "failed to reconcile vmauth")
 		return
 	}
 

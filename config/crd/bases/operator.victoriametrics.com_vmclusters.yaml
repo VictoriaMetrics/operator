@@ -168,8 +168,8 @@ spec:
                     type: string
                   configMaps:
                     description: |-
-                      ConfigMaps is a list of ConfigMaps in the same namespace as the VMSelect
-                      object, which shall be mounted into the VMSelect Pods.
+                      ConfigMaps is a list of ConfigMaps in the same namespace as the VMInsert
+                      object, which shall be mounted into the VMInsert Pods.
                       The ConfigMaps are mounted into /etc/vm/configs/<configmap-name>.
                     items:
                       type: string
@@ -236,7 +236,7 @@ spec:
                       type: string
                     type: object
                   extraEnvs:
-                    description: ExtraEnvs that will be added to VMSelect pod
+                    description: ExtraEnvs that will be added to VMInsert pod
                     items:
                       description: EnvVar represents an environment variable present
                         in a Container.
@@ -288,7 +288,7 @@ spec:
                   initContainers:
                     description: |-
                       InitContainers allows adding initContainers to the pod definition. Those can be used to e.g.
-                      fetch secrets for injection into the VMSelect configuration from external sources. Any
+                      fetch secrets for injection into the VMInsert configuration from external sources. Any
                       errors during the execution of an initContainer will lead to a restart of the Pod. More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
                       Using initContainers for any use case other then secret fetching is entirely outside the scope
                       of what the maintainers will support and by doing so, you accept that this behaviour may break
@@ -323,14 +323,14 @@ spec:
                     x-kubernetes-preserve-unknown-fields: true
                   logFormat:
                     description: |-
-                      LogFormat for VMSelect to be configured with.
+                      LogFormat for VMInsert to be configured with.
                       default or json
                     enum:
                     - default
                     - json
                     type: string
                   logLevel:
-                    description: LogLevel for VMSelect to be configured with.
+                    description: LogLevel for VMInsert to be configured with.
                     enum:
                     - INFO
                     - WARN
@@ -344,10 +344,6 @@ spec:
                       if previous in healthy state
                     format: int32
                     type: integer
-                  name:
-                    description: Name is deprecated and will be removed at 0.22.0
-                      release
-                    type: string
                   nodeSelector:
                     additionalProperties:
                       type: string
@@ -387,7 +383,7 @@ spec:
                     type: object
                   podMetadata:
                     description: PodMetadata configures Labels and Annotations which
-                      are propagated to the VMSelect pods.
+                      are propagated to the VMInsert pods.
                     properties:
                       annotations:
                         additionalProperties:
@@ -558,8 +554,8 @@ spec:
                     type: string
                   secrets:
                     description: |-
-                      Secrets is a list of Secrets in the same namespace as the VMSelect
-                      object, which shall be mounted into the VMSelect Pods.
+                      Secrets is a list of Secrets in the same namespace as the VMInsert
+                      object, which shall be mounted into the VMInsert Pods.
                       The Secrets are mounted into /etc/vm/secrets/<secret-name>.
                     items:
                       type: string
@@ -695,7 +691,7 @@ spec:
                   volumeMounts:
                     description: |-
                       VolumeMounts allows configuration of additional VolumeMounts on the output Deployment definition.
-                      VolumeMounts specified will be appended to other VolumeMounts in the VMSelect container,
+                      VolumeMounts specified will be appended to other VolumeMounts in the VMInsert container,
                       that are generated as a result of StorageSpec objects.
                     items:
                       description: VolumeMount describes a mounting of a Volume within
@@ -1266,10 +1262,6 @@ spec:
                       if previous in healthy state
                     format: int32
                     type: integer
-                  name:
-                    description: Name is deprecated and will be removed at 0.22.0
-                      release
-                    type: string
                   nodeSelector:
                     additionalProperties:
                       type: string
@@ -2416,8 +2408,8 @@ spec:
                     type: array
                   configMaps:
                     description: |-
-                      ConfigMaps is a list of ConfigMaps in the same namespace as the VMSelect
-                      object, which shall be mounted into the VMSelect Pods.
+                      ConfigMaps is a list of ConfigMaps in the same namespace as the VMStorage
+                      object, which shall be mounted into the VMStorage Pods.
                       The ConfigMaps are mounted into /etc/vm/configs/<configmap-name>.
                     items:
                       type: string
@@ -2484,7 +2476,7 @@ spec:
                       type: string
                     type: object
                   extraEnvs:
-                    description: ExtraEnvs that will be added to VMSelect pod
+                    description: ExtraEnvs that will be added to VMStorage pod
                     items:
                       description: EnvVar represents an environment variable present
                         in a Container.
@@ -2531,7 +2523,7 @@ spec:
                   initContainers:
                     description: |-
                       InitContainers allows adding initContainers to the pod definition. Those can be used to e.g.
-                      fetch secrets for injection into the VMSelect configuration from external sources. Any
+                      fetch secrets for injection into the VMStorage configuration from external sources. Any
                       errors during the execution of an initContainer will lead to a restart of the Pod. More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
                       Using initContainers for any use case other then secret fetching is entirely outside the scope
                       of what the maintainers will support and by doing so, you accept that this behaviour may break
@@ -2550,14 +2542,14 @@ spec:
                     x-kubernetes-preserve-unknown-fields: true
                   logFormat:
                     description: |-
-                      LogFormat for VMSelect to be configured with.
+                      LogFormat for VMStorage to be configured with.
                       default or json
                     enum:
                     - default
                     - json
                     type: string
                   logLevel:
-                    description: LogLevel for VMSelect to be configured with.
+                    description: LogLevel for VMStorage to be configured with.
                     enum:
                     - INFO
                     - WARN
@@ -2588,10 +2580,6 @@ spec:
                       if previous in healthy state
                     format: int32
                     type: integer
-                  name:
-                    description: Name is deprecated and will be removed at 0.22.0
-                      release
-                    type: string
                   nodeSelector:
                     additionalProperties:
                       type: string
@@ -2631,7 +2619,7 @@ spec:
                     type: object
                   podMetadata:
                     description: PodMetadata configures Labels and Annotations which
-                      are propagated to the VMSelect pods.
+                      are propagated to the VMStorage pods.
                     properties:
                       annotations:
                         additionalProperties:
@@ -2771,8 +2759,8 @@ spec:
                     type: string
                   secrets:
                     description: |-
-                      Secrets is a list of Secrets in the same namespace as the VMSelect
-                      object, which shall be mounted into the VMSelect Pods.
+                      Secrets is a list of Secrets in the same namespace as the VMStorage
+                      object, which shall be mounted into the VMStorage Pods.
                       The Secrets are mounted into /etc/vm/secrets/<secret-name>.
                     items:
                       type: string
@@ -3140,14 +3128,14 @@ spec:
                         type: object
                       logFormat:
                         description: |-
-                          LogFormat for VMSelect to be configured with.
+                          LogFormat for VMBackup to be configured with.
                           default or json
                         enum:
                         - default
                         - json
                         type: string
                       logLevel:
-                        description: LogLevel for VMSelect to be configured with.
+                        description: LogLevel for VMBackup to be configured with.
                         enum:
                         - INFO
                         - WARN
@@ -3293,7 +3281,7 @@ spec:
                   volumeMounts:
                     description: |-
                       VolumeMounts allows configuration of additional VolumeMounts on the output Deployment definition.
-                      VolumeMounts specified will be appended to other VolumeMounts in the VMSelect container,
+                      VolumeMounts specified will be appended to other VolumeMounts in the VMStorage container,
                       that are generated as a result of StorageSpec objects.
                     items:
                       description: VolumeMount describes a mounting of a Volume within

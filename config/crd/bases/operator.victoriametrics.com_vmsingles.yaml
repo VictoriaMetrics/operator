@@ -1291,14 +1291,14 @@ spec:
                     type: object
                   logFormat:
                     description: |-
-                      LogFormat for VMSelect to be configured with.
+                      LogFormat for VMBackup to be configured with.
                       default or json
                     enum:
                     - default
                     - json
                     type: string
                   logLevel:
-                    description: LogLevel for VMSelect to be configured with.
+                    description: LogLevel for VMBackup to be configured with.
                     enum:
                     - INFO
                     - WARN

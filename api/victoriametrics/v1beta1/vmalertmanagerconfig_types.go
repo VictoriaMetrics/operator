@@ -256,7 +256,7 @@ type Receiver struct {
 	VictorOpsConfigs []VictorOpsConfig `json:"victorops_configs,omitempty"`
 	// WeChatConfigs defines wechat notification configurations.
 	// +optional
-	WeChatConfigs   []WeChatConfig   `json:"wechat_configs,omitempty"`
+	WeChatConfigs []WeChatConfig `json:"wechat_configs,omitempty"`
 	// +optional
 	TelegramConfigs []TelegramConfig `json:"telegram_configs,omitempty"`
 	// +optional
@@ -266,7 +266,8 @@ type Receiver struct {
 	// +optional
 	SNSConfigs []SnsConfig `json:"sns_configs,omitempty"`
 	// +optional
-	WebexConfigs []WebexConfig `json:"webex_configs,omitempty"`}
+	WebexConfigs []WebexConfig `json:"webex_configs,omitempty"`
+}
 
 type TelegramConfig struct {
 	// SendResolved controls notify about resolved alerts.
@@ -879,13 +880,13 @@ type Sigv4Config struct {
 	// AWS region, if blank the region from the default credentials chain is used
 	// +optional
 	Region string `json:"region,omitempty"`
-    // The AWS API keys. Both access_key and secret_key must be supplied or both must be blank.
-    // If blank the environment variables `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` are used.
+	// The AWS API keys. Both access_key and secret_key must be supplied or both must be blank.
+	// If blank the environment variables `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` are used.
 	// +optional
-	AccessKey string `json:"access_key",omitempty"`
+	AccessKey string `json:"access_key,omitempty"`
 	// secret key selector to get the keys from a Kubernetes Secret
 	// +optional
-	AccessKeySelector *v1.SecretKeySelector `json:"access_key_selector",omitempty"`
+	AccessKeySelector *v1.SecretKeySelector `json:"access_key_selector,omitempty"`
 	// secret key selector to get the keys from a Kubernetes Secret
 	// +optional
 	SecretKey *v1.SecretKeySelector `json:"secret_key_selector,omitempty"`
@@ -910,7 +911,7 @@ type WebexConfig struct {
 	// The message body template
 	// +optional
 	Message string `json:"message,omitempty"`
-	// HTTP client configuration. You must use this configuration to supply the bot token as part of the HTTP `Authorization` header. 
+	// HTTP client configuration. You must use this configuration to supply the bot token as part of the HTTP `Authorization` header.
 	// +optional
 	HTTPConfig *HTTPConfig `json:"http_config,omitempty"`
 }

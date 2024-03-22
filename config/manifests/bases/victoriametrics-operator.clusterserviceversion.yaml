@@ -17,39 +17,75 @@ metadata:
     operatorframework.io/arch.amd64: supported
     operatorframework.io/arch.arm64: supported
     operatorframework.io/arch.ppc64le: supported
-  name: victoriametrics-operator.vX.Y.Z
+  name: victoriametrics-operator.v0.0.0
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
-    - description: VMAlert  executes a list of given alerting or recording rules against configured address.
-      displayName: VMAlert
-      kind: VMAlert
-      name: vmalerts.operator.victoriametrics.com
+    - description: VMAgent - is a tiny but brave agent, which helps you collect metrics
+        from various sources and stores them in VictoriaMetrics or any other Prometheus-compatible
+        storage system that supports the remote_write protocol.
+      displayName: VMAgent
+      kind: VMAgent
+      name: vmagents.operator.victoriametrics.com
       specDescriptors:
-      - description: ReplicaCount is the expected size of the VMAlert cluster. The controller will eventually make the size of the running cluster equal to the expected size.
+      - description: RelabelConfig ConfigMap with global relabel config -remoteWrite.relabelConfig
+          This relabeling is applied to all the collected metrics before sending them
+          to remote storage.
+        displayName: Key at Configmap with relabelConfig name
+        path: relabelConfig
+        x-descriptors:
+        - urn:alm:descriptor:io.kubernetes:ConfigMapKeySelector
+      - description: ConfigMap with relabeling config which is applied to metrics
+          before sending them to the corresponding -remoteWrite.url
+        displayName: Key at Configmap with relabelConfig for remoteWrite
+        path: remoteWrite[0].urlRelabelConfig
+        x-descriptors:
+        - urn:alm:descriptor:io.kubernetes:ConfigMapKeySelector
+      - description: ReplicaCount is the expected size of the VMAgent cluster. The
+          controller will eventually make the size of the running cluster equal to
+          the expected size. NOTE enable VMSingle deduplication for replica usage
         displayName: Number of pods
         path: replicaCount
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom
       - description: Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+          if not specified - default setting will be used
         displayName: Resources
         path: resources
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
+      - description: ServiceAccountName is the name of the ServiceAccount to use to
+          run the VMAgent Pods.
+        displayName: ServiceAccount name
+        path: serviceAccountName
+        x-descriptors:
+        - urn:alm:descriptor:io.kubernetes:ServiceAccount
+      version: v1beta1
+    - description: VMAlertmanagerConfig is the Schema for the vmalertmanagerconfigs
+        API
+      displayName: VMAlertmanager Config
+      kind: VMAlertmanagerConfig
+      name: vmalertmanagerconfigs.operator.victoriametrics.com
       version: v1beta1
     - description: VMAlertmanager represents Victoria-Metrics deployment for Alertmanager.
       displayName: VMAlertmanager
       kind: VMAlertmanager
       name: vmalertmanagers.operator.victoriametrics.com
       specDescriptors:
-      - description: 'ConfigSecret is the name of a Kubernetes Secret in the same namespace as the VMAlertmanager object, which contains configuration for this VMAlertmanager, configuration must be inside secret key: alertmanager.yaml. It must be created by user. instance. Defaults to ''vmalertmanager-<alertmanager-name>'' The secret is mounted into /etc/alertmanager/config.'
+      - description: 'ConfigSecret is the name of a Kubernetes Secret in the same
+          namespace as the VMAlertmanager object, which contains configuration for
+          this VMAlertmanager, configuration must be inside secret key: alertmanager.yaml.
+          It must be created by user. instance. Defaults to ''vmalertmanager-<alertmanager-name>''
+          The secret is mounted into /etc/alertmanager/config.'
         displayName: Secret with alertmanager config
         path: configSecret
         x-descriptors:
         - urn:alm:descriptor:io.kubernetes:Secret
-      - description: ReplicaCount Size is the expected size of the alertmanager cluster. The controller will eventually make the size of the running cluster equal to the expected
+      - description: ReplicaCount Size is the expected size of the alertmanager cluster.
+          The controller will eventually make the size of the running cluster equal
+          to the expected
         displayName: Number of pods
         path: replicaCount
         x-descriptors:
@@ -65,118 +101,24 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:io.kubernetes:ServiceAccount
       version: v1beta1
-    - description: VMPodScrape is scrape configuration for pods, it generates vmagent's config for scraping pod targets based on selectors.
-      displayName: VMPod Scrape
-      kind: VMPodScrape
-      name: vmpodscrapes.operator.victoriametrics.com
-      version: v1beta1
-    - description: VMRule defines rule records for vmalert application
-      displayName: VMRule
-      kind: VMRule
-      name: vmrules.operator.victoriametrics.com
-      version: v1beta1
-    - description: VMSingle  is fast, cost-effective and scalable time-series database.
-      displayName: VMSingle
-      kind: VMSingle
-      name: vmsingles.operator.victoriametrics.com
+    - description: VMAlert  executes a list of given alerting or recording rules against
+        configured address.
+      displayName: VMAlert
+      kind: VMAlert
+      name: vmalerts.operator.victoriametrics.com
       specDescriptors:
-      - description: ReplicaCount is the expected size of the VMSingle it can be 0 or 1 if you need more - use vm cluster
+      - description: ReplicaCount is the expected size of the VMAlert cluster. The
+          controller will eventually make the size of the running cluster equal to
+          the expected size.
         displayName: Number of pods
         path: replicaCount
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom
-      - description: Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/ if not defined default resources from operator config will be used
+      - description: Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
         displayName: Resources
         path: resources
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
-      version: v1beta1
-    - description: ' VMProbe defines a probe for targets, that will be executed with prober,  like blackbox exporter. It helps to monitor reachability of target with various checks.'
-      displayName: VMProbe
-      kind: VMProbe
-      name: vmprobes.operator.victoriametrics.com
-      version: v1beta1
-    - description: VMAgent - is a tiny but brave agent, which helps you collect metrics from various sources and stores them in VictoriaMetrics or any other Prometheus-compatible storage system that supports the remote_write protocol.
-      displayName: VMAgent
-      kind: VMAgent
-      name: vmagents.operator.victoriametrics.com
-      specDescriptors:
-      - description: RelabelConfig ConfigMap with global relabel config -remoteWrite.relabelConfig This relabeling is applied to all the collected metrics before sending them to remote storage.
-        displayName: Key at Configmap with relabelConfig name
-        path: relabelConfig
-        x-descriptors:
-        - urn:alm:descriptor:io.kubernetes:ConfigMapKeySelector
-      - description: ConfigMap with relabeling config which is applied to metrics before sending them to the corresponding -remoteWrite.url
-        displayName: Key at Configmap with relabelConfig for remoteWrite
-        path: remoteWrite[0].urlRelabelConfig
-        x-descriptors:
-        - urn:alm:descriptor:io.kubernetes:ConfigMapKeySelector
-      - description: ReplicaCount is the expected size of the VMAgent cluster. The controller will eventually make the size of the running cluster equal to the expected size. NOTE enable VMSingle deduplication for replica usage
-        displayName: Number of pods
-        path: replicaCount
-        x-descriptors:
-        - urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom
-      - description: Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/ if not specified - default setting will be used
-        displayName: Resources
-        path: resources
-        x-descriptors:
-        - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
-      - description: ServiceAccountName is the name of the ServiceAccount to use to run the VMAgent Pods.
-        displayName: ServiceAccount name
-        path: serviceAccountName
-        x-descriptors:
-        - urn:alm:descriptor:io.kubernetes:ServiceAccount
-      version: v1beta1
-    - description: VMServiceScrape is scrape configuration for endpoints associated with kubernetes service, it generates scrape configuration for vmagent based on selectors. result config will scrape service endpoints
-      displayName: VMService Scrape
-      kind: VMServiceScrape
-      name: vmservicescrapes.operator.victoriametrics.com
-      version: v1beta1
-    - description: VMCluster is fast, cost-effective and scalable time-series database. Cluster version with
-      displayName: VMCluster
-      kind: VMCluster
-      name: vmclusters.operator.victoriametrics.com
-      specDescriptors:
-      - description: ReplicaCount is the expected size of the VMSelect cluster. The controller will eventually make the size of the running cluster equal to the expected size.
-        displayName: Number of pods
-        path: vminsert.replicaCount
-        x-descriptors:
-        - urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom
-      - description: Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
-        displayName: Resources
-        path: vminsert.resources
-        x-descriptors:
-        - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
-      - description: ReplicaCount is the expected size of the VMSelect cluster. The controller will eventually make the size of the running cluster equal to the expected size.
-        displayName: Number of pods
-        path: vmselect.replicaCount
-        x-descriptors:
-        - urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom
-      - description: Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
-        displayName: Resources
-        path: vmselect.resources
-        x-descriptors:
-        - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
-      - description: ReplicaCount is the expected size of the VMSelect cluster. The controller will eventually make the size of the running cluster equal to the expected size.
-        displayName: Number of pods
-        path: vmstorage.replicaCount
-        x-descriptors:
-        - urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom
-      - description: Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
-        displayName: Resources
-        path: vmstorage.resources
-        x-descriptors:
-        - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
-      version: v1beta1
-    - description: VMNodeScrape defines discovery for targets placed on kubernetes nodes, usually its node-exporters and other host services. InternalIP is used as __address__ for scraping.
-      displayName: VMNode Scrape
-      kind: VMNodeScrape
-      name: vmnodescrapes.operator.victoriametrics.com
-      version: v1beta1
-    - description: VMStaticScrape  defines static targets configuration for scraping.
-      displayName: VMStatic Scrape
-      kind: VMStaticScrape
-      name: vmstaticscrapes.operator.victoriametrics.com
       version: v1beta1
     - description: VMAuth is the Schema for the vmauths API
       displayName: VMAuth
@@ -188,11 +130,110 @@ spec:
         path: replicaCount
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom
-      - description: Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/ if not defined default resources from operator config will be used
+      - description: Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+          if not defined default resources from operator config will be used
         displayName: Resources
         path: resources
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
+      version: v1beta1
+    - description: VMCluster is fast, cost-effective and scalable time-series database.
+        Cluster version with
+      displayName: VMCluster
+      kind: VMCluster
+      name: vmclusters.operator.victoriametrics.com
+      specDescriptors:
+      - description: ReplicaCount is the expected size of the VMInsert cluster. The
+          controller will eventually make the size of the running cluster equal to
+          the expected size.
+        displayName: Number of pods
+        path: vminsert.replicaCount
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom
+      - description: Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+        displayName: Resources
+        path: vminsert.resources
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
+      - description: ReplicaCount is the expected size of the VMSelect cluster. The
+          controller will eventually make the size of the running cluster equal to
+          the expected size.
+        displayName: Number of pods
+        path: vmselect.replicaCount
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom
+      - description: Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+        displayName: Resources
+        path: vmselect.resources
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
+      - description: ReplicaCount is the expected size of the VMStorage cluster. The
+          controller will eventually make the size of the running cluster equal to
+          the expected size.
+        displayName: Number of pods
+        path: vmstorage.replicaCount
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom
+      - description: Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+        displayName: Resources
+        path: vmstorage.resources
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
+      version: v1beta1
+    - description: VMNodeScrape defines discovery for targets placed on kubernetes
+        nodes, usually its node-exporters and other host services. InternalIP is used
+        as __address__ for scraping.
+      displayName: VMNode Scrape
+      kind: VMNodeScrape
+      name: vmnodescrapes.operator.victoriametrics.com
+      version: v1beta1
+    - description: VMPodScrape is scrape configuration for pods, it generates vmagent's
+        config for scraping pod targets based on selectors.
+      displayName: VMPod Scrape
+      kind: VMPodScrape
+      name: vmpodscrapes.operator.victoriametrics.com
+      version: v1beta1
+    - description: VMProbe defines a probe for targets, that will be executed with
+        prober, like blackbox exporter. It helps to monitor reachability of target
+        with various checks.
+      displayName: VMProbe
+      kind: VMProbe
+      name: vmprobes.operator.victoriametrics.com
+      version: v1beta1
+    - description: VMRule defines rule records for vmalert application
+      displayName: VMRule
+      kind: VMRule
+      name: vmrules.operator.victoriametrics.com
+      version: v1beta1
+    - description: VMServiceScrape is scrape configuration for endpoints associated
+        with kubernetes service, it generates scrape configuration for vmagent based
+        on selectors. result config will scrape service endpoints
+      displayName: VMService Scrape
+      kind: VMServiceScrape
+      name: vmservicescrapes.operator.victoriametrics.com
+      version: v1beta1
+    - description: VMSingle  is fast, cost-effective and scalable time-series database.
+      displayName: VMSingle
+      kind: VMSingle
+      name: vmsingles.operator.victoriametrics.com
+      specDescriptors:
+      - description: ReplicaCount is the expected size of the VMSingle it can be 0
+          or 1 if you need more - use vm cluster
+        displayName: Number of pods
+        path: replicaCount
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom
+      - description: Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+          if not defined default resources from operator config will be used
+        displayName: Resources
+        path: resources
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:resourceRequirements
+      version: v1beta1
+    - description: VMStaticScrape  defines static targets configuration for scraping.
+      displayName: VMStatic Scrape
+      kind: VMStaticScrape
+      name: vmstaticscrapes.operator.victoriametrics.com
       version: v1beta1
     - description: VMUser is the Schema for the vmusers API
       displayName: VMUser
@@ -298,7 +339,9 @@ spec:
           resources:
           - pods
           verbs:
-          - '*'
+          - list
+          - watch
+          - get
         - apiGroups:
           - ""
           resources:

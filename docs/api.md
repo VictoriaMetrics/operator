@@ -23,11 +23,13 @@ This Document documents the types introduced by the VictoriaMetrics to be consum
 * [VMAlertmanagerList](#vmalertmanagerlist)
 * [VMAlertmanagerSpec](#vmalertmanagerspec)
 * [VMAlertmanagerStatus](#vmalertmanagerstatus)
+* [DiscordConfig](#discordconfig)
 * [EmailConfig](#emailconfig)
 * [HTTPConfig](#httpconfig)
 * [ImageConfig](#imageconfig)
 * [InhibitRule](#inhibitrule)
 * [LinkConfig](#linkconfig)
+* [MSTeamsConfig](#msteamsconfig)
 * [MuteTimeInterval](#mutetimeinterval)
 * [OpsGenieConfig](#opsgenieconfig)
 * [OpsGenieConfigResponder](#opsgenieconfigresponder)
@@ -35,10 +37,12 @@ This Document documents the types introduced by the VictoriaMetrics to be consum
 * [PushoverConfig](#pushoverconfig)
 * [Receiver](#receiver)
 * [Route](#route)
+* [Sigv4Config](#sigv4config)
 * [SlackAction](#slackaction)
 * [SlackConfig](#slackconfig)
 * [SlackConfirmationField](#slackconfirmationfield)
 * [SlackField](#slackfield)
+* [SnsConfig](#snsconfig)
 * [TelegramConfig](#telegramconfig)
 * [TimeInterval](#timeinterval)
 * [TimeRange](#timerange)
@@ -48,6 +52,7 @@ This Document documents the types introduced by the VictoriaMetrics to be consum
 * [VMAlertmanagerConfigStatus](#vmalertmanagerconfigstatus)
 * [VictorOpsConfig](#victoropsconfig)
 * [WeChatConfig](#wechatconfig)
+* [WebexConfig](#webexconfig)
 * [WebhookConfig](#webhookconfig)
 * [VMAgent](#vmagent)
 * [VMAgentList](#vmagentlist)
@@ -133,6 +138,7 @@ This Document documents the types introduced by the VictoriaMetrics to be consum
 * [VMAuth](#vmauth)
 * [VMAuthList](#vmauthlist)
 * [VMAuthSpec](#vmauthspec)
+* [VMAuthStatus](#vmauthstatus)
 * [VMAuthUnauthorizedPath](#vmauthunauthorizedpath)
 * [TargetEndpoint](#targetendpoint)
 * [VMStaticScrape](#vmstaticscrape)
@@ -154,7 +160,7 @@ VMAlertmanager represents Victoria-Metrics deployment for Alertmanager.
 | ----- | ----------- | ------ | -------- |
 | metadata |  | [metav1.ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#objectmeta-v1-meta) | false |
 | spec | Specification of the desired behavior of the VMAlertmanager cluster. More info: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#spec-and-status | [VMAlertmanagerSpec](#vmalertmanagerspec) | true |
-| status | Most recent observed status of the VMAlertmanager cluster. Operator API itself. More info: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#spec-and-status | *[VMAlertmanagerStatus](#vmalertmanagerstatus) | false |
+| status | Most recent observed status of the VMAlertmanager cluster. Operator API itself. More info: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#spec-and-status | [VMAlertmanagerStatus](#vmalertmanagerstatus) | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -238,15 +244,27 @@ VMAlertmanagerSpec is a specification of the desired behavior of the VMAlertmana
 
 ## VMAlertmanagerStatus
 
-VMAlertmanagerStatus is the most recent observed status of the VMAlertmanager cluster Operator API itself. More info: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
+VMAlertmanagerStatus is the most recent observed status of the VMAlertmanager cluster Operator API itself. More info:
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
-| paused | Paused Represents whether any actions on the underlaying managed objects are being performed. Only delete actions will be performed. | bool | true |
-| replicas | ReplicaCount Total number of non-terminated pods targeted by this VMAlertmanager cluster (their labels match the selector). | int32 | true |
-| updatedReplicas | UpdatedReplicas Total number of non-terminated pods targeted by this VMAlertmanager cluster that have the desired version spec. | int32 | true |
-| availableReplicas | AvailableReplicas Total number of available pods (ready for at least minReadySeconds) targeted by this VMAlertmanager cluster. | int32 | true |
-| unavailableReplicas | UnavailableReplicas Total number of unavailable pods targeted by this VMAlertmanager cluster. | int32 | true |
+| updateStatus | Status defines a status of object update | UpdateStatus | false |
+| reason | Reason has non empty reason for update failure | string | false |
+
+[Back to TOC](#table-of-contents)
+
+## DiscordConfig
+
+
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| send_resolved | SendResolved controls notify about resolved alerts. | *bool | false |
+| webhook_url | The discord webhook URL one of `urlSecret` and `url` must be defined. | *string | false |
+| webhook_url_secret | URLSecret defines secret name and key at the CRD namespace. It must contain the webhook URL. one of `urlSecret` and `url` must be defined. | *[v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#secretkeyselector-v1-core) | false |
+| title | The message title template | string | false |
+| message | The message body template | string | false |
+| http_config | HTTP client configuration. | *[HTTPConfig](#httpconfig) | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -319,6 +337,21 @@ LinkConfig is used to attach text links to the incident. See https://developer.p
 | ----- | ----------- | ------ | -------- |
 | href |  | string | true |
 | text |  | string | false |
+
+[Back to TOC](#table-of-contents)
+
+## MSTeamsConfig
+
+
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| send_resolved | SendResolved controls notify about resolved alerts. | *bool | false |
+| webhook_url | The incoming webhook URL one of `urlSecret` and `url` must be defined. | *string | false |
+| webhook_url_secret | URLSecret defines secret name and key at the CRD namespace. It must contain the webhook URL. one of `urlSecret` and `url` must be defined. | *[v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#secretkeyselector-v1-core) | false |
+| title | The title of the teams notification. | string | false |
+| text | The text body of the teams notification. | string | false |
+| http_config | HTTP client configuration. | *[HTTPConfig](#httpconfig) | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -432,6 +465,10 @@ Receiver defines one or more notification integrations.
 | victorops_configs | VictorOpsConfigs defines victor ops notification configurations. | [][VictorOpsConfig](#victoropsconfig) | false |
 | wechat_configs | WeChatConfigs defines wechat notification configurations. | [][WeChatConfig](#wechatconfig) | false |
 | telegram_configs |  | [][TelegramConfig](#telegramconfig) | false |
+| msteams_configs |  | [][MSTeamsConfig](#msteamsconfig) | false |
+| discord_configs |  | [][DiscordConfig](#discordconfig) | false |
+| sns_configs |  | [][SnsConfig](#snsconfig) | false |
+| webex_configs |  | [][WebexConfig](#webexconfig) | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -451,6 +488,21 @@ Route defines a node in the routing tree.
 | routes | Child routes. https://prometheus.io/docs/alerting/latest/configuration/#route | []apiextensionsv1.JSON | false |
 | mute_time_intervals | MuteTimeIntervals for alerts | []string | false |
 | active_time_intervals | ActiveTimeIntervals Times when the route should be active These must match the name at time_intervals | []string | false |
+
+[Back to TOC](#table-of-contents)
+
+## Sigv4Config
+
+
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| region | AWS region, if blank the region from the default credentials chain is used | string | false |
+| access_key | The AWS API keys. Both access_key and secret_key must be supplied or both must be blank. If blank the environment variables `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` are used. | string | true |
+| access_key_selector | secret key selector to get the keys from a Kubernetes Secret | *[v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#secretkeyselector-v1-core) | true |
+| secret_key_selector | secret key selector to get the keys from a Kubernetes Secret | *[v1.SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#secretkeyselector-v1-core) | false |
+| profile | Named AWS profile used to authenticate | string | false |
+| role_arn | AWS Role ARN, an alternative to using AWS API keys | string | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -523,6 +575,25 @@ SlackField configures a single Slack field that is sent with each notification. 
 | title |  | string | true |
 | value |  | string | true |
 | short |  | *bool | false |
+
+[Back to TOC](#table-of-contents)
+
+## SnsConfig
+
+
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| send_resolved | SendResolved controls notify about resolved alerts. | *bool | false |
+| api_url | The api URL | string | false |
+| sigv4 | Configure the AWS Signature Verification 4 signing process | *[Sigv4Config](#sigv4config) | false |
+| topic_arn | SNS topic ARN, either specify this, phone_number or target_arn | string | false |
+| subject | The subject line if message is delivered to an email endpoint. | string | false |
+| phone_number | Phone number if message is delivered via SMS Specify this, topic_arn or target_arn | string | false |
+| target_arn | Mobile platform endpoint ARN if message is delivered via mobile notifications Specify this, topic_arn or phone_number | string | false |
+| message | The message content of the SNS notification. | string | false |
+| attributes | SNS message attributes | map[string]string | false |
+| http_config | HTTP client configuration. | *[HTTPConfig](#httpconfig) | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -652,6 +723,20 @@ WeChatConfig configures notifications via WeChat. See https://prometheus.io/docs
 | message | API request data as defined by the WeChat API. | string | false |
 | message_type |  | string | false |
 | http_config | HTTP client configuration. | *[HTTPConfig](#httpconfig) | false |
+
+[Back to TOC](#table-of-contents)
+
+## WebexConfig
+
+
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| send_resolved | SendResolved controls notify about resolved alerts. | *bool | false |
+| api_url | The Webex Teams API URL, i.e. https://webexapis.com/v1/messages | *string | false |
+| room_id | The ID of the Webex Teams room where to send the messages | string | false |
+| message | The message body template | string | false |
+| http_config | HTTP client configuration. You must use this configuration to supply the bot token as part of the HTTP `Authorization` header. | *[HTTPConfig](#httpconfig) | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -817,6 +902,7 @@ VMAgentSpec defines the desired state of VMAgent
 | readinessGates | ReadinessGates defines pod readiness gates | []v1.PodReadinessGate | false |
 | claimTemplates | ClaimTemplates allows adding additional VolumeClaimTemplates for VMAgent in StatefulMode | [][v1.PersistentVolumeClaim](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#persistentvolumeclaim-v1-core) | false |
 | useStrictSecurity | UseStrictSecurity enables strict security mode for component it restricts disk writes access uses non-root user out of the box drops not needed security permissions | *bool | false |
+| ingestOnlyMode | IngestOnlyMode switches vmagent into unmanaged mode it disables any config generation for scraping Currently it prevents vmagent from managing tls and auth options for remote write | bool | false |
 | license | License allows to configure license key to be used for enterprise features. Using license key is supported starting from VictoriaMetrics v1.94.0. See: https://docs.victoriametrics.com/enterprise.html | *[License](#license) | false |
 
 [Back to TOC](#table-of-contents)
@@ -827,12 +913,14 @@ VMAgentStatus defines the observed state of VMAgent
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
-| shards | Shards represents total number of vmagent deployments with uniq scrape targets | int32 | true |
-| selector | Selector string form of label value set for autoscaling | string | true |
-| replicas | ReplicaCount Total number of pods targeted by this VMAgent | int32 | true |
-| updatedReplicas | UpdatedReplicas Total number of non-terminated pods targeted by this VMAgent cluster that have the desired version spec. | int32 | true |
-| availableReplicas | AvailableReplicas Total number of available pods (ready for at least minReadySeconds) targeted by this VMAlert cluster. | int32 | true |
-| unavailableReplicas | UnavailableReplicas Total number of unavailable pods targeted by this VMAgent cluster. | int32 | true |
+| shards | Shards represents total number of vmagent deployments with uniq scrape targets | int32 | false |
+| selector | Selector string form of label value set for autoscaling | string | false |
+| replicas | ReplicaCount Total number of pods targeted by this VMAgent | int32 | false |
+| updatedReplicas | UpdatedReplicas Total number of non-terminated pods targeted by this VMAgent cluster that have the desired version spec. | int32 | false |
+| availableReplicas | AvailableReplicas Total number of available pods (ready for at least minReadySeconds) targeted by this VMAlert cluster. | int32 | false |
+| unavailableReplicas | UnavailableReplicas Total number of unavailable pods targeted by this VMAgent cluster. | int32 | false |
+| updateStatus | UpdateStatus defines a status for update rollout, effective only for statefuleMode | UpdateStatus | false |
+| reason | Reason defines fail reason for update process, effective only for statefuleMode | string | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -1023,6 +1111,7 @@ StreamAggrRule defines the rule in stream aggregation config
 | match | Match is a label selector (or list of label selectors) for filtering time series for the given selector.\n\nIf the match isn&#39;t set, then all the input time series are processed. | StringOrArray | false |
 | interval | Interval is the interval between aggregations. | string | true |
 | staleness_interval | StalenessInterval defines an interval after which the series state will be reset if no samples have been sent during it. | string | false |
+| flush_on_shutdown | FlushOnShutdown defines whether to flush the aggregation state on process termination or config reload. Is `false` by default. It is not recommended changing this setting, unless unfinished aggregations states are preferred to missing data points. | bool | false |
 | outputs | Outputs is a list of output aggregate functions to produce.\n\nThe following names are allowed:\n\n- total - aggregates input counters - increase - counts the increase over input counters - count_series - counts the input series - count_samples - counts the input samples - sum_samples - sums the input samples - last - the last biggest sample value - min - the minimum sample value - max - the maximum sample value - avg - the average value across all the samples - stddev - standard deviation across all the samples - stdvar - standard variance across all the samples - histogram_bucket - creates VictoriaMetrics histogram for input samples - quantiles(phi1, ..., phiN) - quantiles&#39; estimation for phi in the range [0..1]\n\nThe output time series will have the following names:\n\n  input_name:aggr_&lt;interval&gt;_&lt;output&gt; | []string | true |
 | by | By is an optional list of labels for grouping input series.\n\nSee also Without.\n\nIf neither By nor Without are set, then the Outputs are calculated individually per each input time series. | []string | false |
 | without | Without is an optional list of labels, which must be excluded when grouping input series.\n\nSee also By.\n\nIf neither By nor Without are set, then the Outputs are calculated individually per each input time series. | []string | false |
@@ -1195,10 +1284,12 @@ VMAlertStatus defines the observed state of VMAlert
 
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
-| replicas | ReplicaCount Total number of non-terminated pods targeted by this VMAlert cluster (their labels match the selector). | int32 | true |
-| updatedReplicas | UpdatedReplicas Total number of non-terminated pods targeted by this VMAlert cluster that have the desired version spec. | int32 | true |
-| availableReplicas | AvailableReplicas Total number of available pods (ready for at least minReadySeconds) targeted by this VMAlert cluster. | int32 | true |
-| unavailableReplicas | UnavailableReplicas Total number of unavailable pods targeted by this VMAlert cluster. | int32 | true |
+| replicas | ReplicaCount Total number of non-terminated pods targeted by this VMAlert cluster (their labels match the selector). | int32 | false |
+| updatedReplicas | UpdatedReplicas Total number of non-terminated pods targeted by this VMAlert cluster that have the desired version spec. | int32 | false |
+| availableReplicas | AvailableReplicas Total number of available pods (ready for at least minReadySeconds) targeted by this VMAlert cluster. | int32 | false |
+| unavailableReplicas | UnavailableReplicas Total number of unavailable pods targeted by this VMAlert cluster. | int32 | false |
+| updateStatus | UpdateStatus defines a status for update rollout, effective only for statefuleMode | UpdateStatus | false |
+| reason | Reason defines fail reason for update process, effective only for statefuleMode | string | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -1292,8 +1383,8 @@ VMSingleStatus defines the observed state of VMSingle
 | updatedReplicas | UpdatedReplicas Total number of non-terminated pods targeted by this VMSingle. | int32 | true |
 | availableReplicas | AvailableReplicas Total number of available pods (ready for at least minReadySeconds) targeted by this VMSingle. | int32 | true |
 | unavailableReplicas | UnavailableReplicas Total number of unavailable pods targeted by this VMSingle. | int32 | true |
-| singleStatus |  | SingleStatus | true |
-| reason |  | string | false |
+| singleStatus | UpdateStatus defines a status of single node rollout | UpdateStatus | false |
+| reason | Reason defines a reason in case of update failure | string | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -1582,6 +1673,7 @@ VMServiceScrapeSpec defines the desired state of VMServiceScrape
 | selector | Selector to select Endpoints objects by corresponding Service labels. | [metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#labelselector-v1-meta) | false |
 | namespaceSelector | Selector to select which namespaces the Endpoints objects are discovered from. | [NamespaceSelector](#namespaceselector) | false |
 | sampleLimit | SampleLimit defines per-scrape limit on number of scraped samples that will be accepted. | uint64 | false |
+| attach_metadata | AttachMetadata configures metadata attaching from service discovery | [AttachMetadata](#attachmetadata) | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -1663,6 +1755,7 @@ VMPodScrapeSpec defines the desired state of VMPodScrape
 | selector | Selector to select Pod objects. | [metav1.LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#labelselector-v1-meta) | false |
 | namespaceSelector | Selector to select which namespaces the Endpoints objects are discovered from. | [NamespaceSelector](#namespaceselector) | false |
 | sampleLimit | SampleLimit defines per-scrape limit on number of scraped samples that will be accepted. | uint64 | false |
+| attach_metadata | AttachMetadata configures metadata attaching from service discovery | [AttachMetadata](#attachmetadata) | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -1772,7 +1865,7 @@ VMClusterStatus defines the observed state of VMCluster
 | ----- | ----------- | ------ | -------- |
 | updateFailCount | Deprecated. | int | true |
 | lastSync | Deprecated. | string | false |
-| clusterStatus |  | string | true |
+| clusterStatus |  | UpdateStatus | false |
 | reason |  | string | false |
 
 [Back to TOC](#table-of-contents)
@@ -2044,6 +2137,7 @@ TargetRef describes target for user traffic forwarding. one of target types can 
 | crd | CRD describes exist operator&#39;s CRD object, operator generates access url based on CRD params. | *[CRDRef](#crdref) | false |
 | static | Static - user defined url for traffic forward, for instance http://vmsingle:8429 | *[StaticRef](#staticref) | false |
 | paths | Paths - matched path to route. | []string | false |
+| hosts |  | []string | false |
 | target_path_suffix | QueryParams []string `json:\&#34;queryParams,omitempty\&#34;` TargetPathSuffix allows to add some suffix to the target path It allows to hide tenant configuration from user with crd as ref. it also may contain any url encoded params. | string | false |
 | headers | Headers represent additional http headers, that vmauth uses in form of [\&#34;header_key: header_value\&#34;] multiple values for header key: [\&#34;header_key: value1,value2\&#34;] it&#39;s available since 1.68.0 version of vmauth | []string | false |
 | response_headers | ResponseHeaders represent additional http headers, that vmauth adds for request response in form of [\&#34;header_key: header_value\&#34;] multiple values for header key: [\&#34;header_key: value1,value2\&#34;] it&#39;s available since 1.93.0 version of vmauth | []string | false |
@@ -2209,6 +2303,18 @@ VMAuthSpec defines the desired state of VMAuth
 | unauthorizedAccessConfig | UnauthorizedAccessConfig configures access for un authorized users | [][VMAuthUnauthorizedPath](#vmauthunauthorizedpath) | false |
 | useStrictSecurity | UseStrictSecurity enables strict security mode for component it restricts disk writes access uses non-root user out of the box drops not needed security permissions | *bool | false |
 | license | License allows to configure license key to be used for enterprise features. Using license key is supported starting from VictoriaMetrics v1.94.0. See: https://docs.victoriametrics.com/enterprise.html | *[License](#license) | false |
+| configSecret | ConfigSecret is the name of a Kubernetes Secret in the same namespace as the VMAuth object, which contains auth configuration for vmauth, configuration must be inside secret key: config.yaml. It must be created and managed manually. If it&#39;s defined, configuration for vmauth becomes unmanaged and operator&#39;ll not create any related secrets/config-reloaders | string | false |
+
+[Back to TOC](#table-of-contents)
+
+## VMAuthStatus
+
+VMAuthStatus defines the observed state of VMAuth
+
+| Field | Description | Scheme | Required |
+| ----- | ----------- | ------ | -------- |
+| updateStatus | UpdateStatus defines a status for update rollout, effective only for statefuleMode | UpdateStatus | false |
+| reason | Reason defines fail reason for update process, effective only for statefuleMode | string | false |
 
 [Back to TOC](#table-of-contents)
 
@@ -2221,6 +2327,12 @@ VMAuthUnauthorizedPath defines url_map for unauthorized access
 | src_paths | Paths src request paths | []string | false |
 | url_prefix | URLs defines url_prefix for dst routing | []string | false |
 | ip_filters | IPFilters defines filter for src ip address enterprise only | [VMUserIPFilters](#vmuseripfilters) | false |
+| src_hosts | SrcHosts is the list of regular expressions, which match the request hostname. | []string | false |
+| headers | Headers represent additional http headers, that vmauth uses in form of [\&#34;header_key: header_value\&#34;] multiple values for header key: [\&#34;header_key: value1,value2\&#34;] it&#39;s available since 1.68.0 version of vmauth | []string | false |
+| response_headers | ResponseHeaders represent additional http headers, that vmauth adds for request response in form of [\&#34;header_key: header_value\&#34;] multiple values for header key: [\&#34;header_key: value1,value2\&#34;] it&#39;s available since 1.93.0 version of vmauth | []string | false |
+| retry_status_codes | RetryStatusCodes defines http status codes in numeric format for request retries e.g. [429,503] | []int | false |
+| load_balancing_policy | LoadBalancingPolicy defines load balancing policy to use for backend urls. Supported policies: least_loaded, first_available. See https://docs.victoriametrics.com/vmauth.html#load-balancing for more details (default \&#34;least_loaded\&#34;) | *string | false |
+| drop_src_path_prefix_parts | DropSrcPathPrefixParts is the number of `/`-delimited request path prefix parts to drop before proxying the request to backend. See https://docs.victoriametrics.com/vmauth.html#dropping-request-path-prefix for more details. | *int | false |
 
 [Back to TOC](#table-of-contents)
 

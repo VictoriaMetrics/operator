@@ -293,7 +293,6 @@ rules:
     - nodes/metrics
     - services
     - endpoints
-    - pods
     - configmaps
   verbs:
     - get

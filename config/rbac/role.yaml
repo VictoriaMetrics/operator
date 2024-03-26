@@ -40,6 +40,12 @@ rules:
 - apiGroups:
     - ""
   resources:
+    - pods
+  verbs:
+    - '*'
+- apiGroups:
+    - ""
+  resources:
     - secrets
     - secrets/finalizers
   verbs:
@@ -287,7 +293,6 @@ rules:
     - nodes/metrics
     - services
     - endpoints
-    - pods
     - configmaps
   verbs:
     - get

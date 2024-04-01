@@ -44,6 +44,7 @@ func generateConfig(
 	probes map[string]*victoriametricsv1beta1.VMProbe,
 	nodes map[string]*victoriametricsv1beta1.VMNodeScrape,
 	statics map[string]*victoriametricsv1beta1.VMStaticScrape,
+	scrapeConfs map[string]*victoriametricsv1beta1.VMScrapeConfig,
 	secretsCache *scrapesSecretsCache,
 	additionalScrapeConfigs []byte,
 ) ([]byte, error) {
@@ -117,6 +118,16 @@ func generateConfig(
 
 	// Sorting ensures, that we always generate the config in the same order.
 	sort.Strings(staticsIdentifiers)
+
+	scrapeConfigIdentifiers := make([]string, len(scrapeConfs))
+	i = 0
+	for k := range scrapeConfs {
+		scrapeConfigIdentifiers[i] = k
+		i++
+	}
+
+	// Sorting ensures, that we always generate the config in the same order.
+	sort.Strings(scrapeConfigIdentifiers)
 
 	apiserverConfig := cr.Spec.APIServerConfig
 
@@ -194,6 +205,18 @@ func generateConfig(
 				))
 		}
 	}
+
+	for _, identifier := range scrapeConfigIdentifiers {
+		scrapeConfigs = append(scrapeConfigs,
+			generateScrapeConfig(
+				ctx,
+				cr,
+				scrapeConfs[identifier],
+				secretsCache,
+				cr.Spec.EnforcedNamespaceLabel,
+			))
+	}
+
 	var additionalScrapeConfigsYaml []yaml.MapSlice
 	if err := yaml.Unmarshal(additionalScrapeConfigs, &additionalScrapeConfigsYaml); err != nil {
 		return nil, fmt.Errorf("unmarshalling additional scrape configs failed: %w", err)
@@ -274,7 +297,7 @@ func stringMapToMapSlice(m map[string]string) yaml.MapSlice {
 	return res
 }
 
-// honorLabels determinates the value of honor_labels.
+// honorLabels determines the value of honor_labels.
 // if overrideHonorLabels is true and user tries to set the
 // value to true, we want to set honor_labels to false.
 func honorLabels(userHonorLabels, overrideHonorLabels bool) bool {
@@ -544,6 +567,11 @@ func generatePodScrapeConfig(
 		cfg = append(cfg, yaml.MapItem{Key: "sample_limit", Value: ep.SampleLimit})
 	} else if m.Spec.SampleLimit > 0 {
 		cfg = append(cfg, yaml.MapItem{Key: "sample_limit", Value: m.Spec.SampleLimit})
+	}
+	if ep.SeriesLimit > 0 {
+		cfg = append(cfg, yaml.MapItem{Key: "series_limit", Value: ep.SeriesLimit})
+	} else if m.Spec.SeriesLimit > 0 {
+		cfg = append(cfg, yaml.MapItem{Key: "series_limit", Value: m.Spec.SeriesLimit})
 	}
 
 	if ep.MetricRelabelConfigs != nil {
@@ -903,6 +931,11 @@ func generateServiceScrapeConfig(
 	} else if m.Spec.SampleLimit > 0 {
 		cfg = append(cfg, yaml.MapItem{Key: "sample_limit", Value: m.Spec.SampleLimit})
 	}
+	if ep.SeriesLimit > 0 {
+		cfg = append(cfg, yaml.MapItem{Key: "series_limit", Value: ep.SeriesLimit})
+	} else if m.Spec.SeriesLimit > 0 {
+		cfg = append(cfg, yaml.MapItem{Key: "series_limit", Value: m.Spec.SeriesLimit})
+	}
 
 	if ep.MetricRelabelConfigs != nil {
 		var metricRelabelings []yaml.MapSlice
@@ -974,6 +1007,9 @@ func generateNodeScrapeConfig(
 
 	if cr.Spec.SampleLimit > 0 {
 		cfg = append(cfg, yaml.MapItem{Key: "sample_limit", Value: cr.Spec.SampleLimit})
+	}
+	if cr.Spec.SeriesLimit > 0 {
+		cfg = append(cfg, yaml.MapItem{Key: "series_limit", Value: cr.Spec.SeriesLimit})
 	}
 	if nodeSpec.Params != nil {
 		cfg = append(cfg, yaml.MapItem{Key: "params", Value: nodeSpec.Params})
@@ -1121,6 +1157,9 @@ func generateNodeScrapeConfig(
 
 	if cr.Spec.SampleLimit > 0 {
 		cfg = append(cfg, yaml.MapItem{Key: "sample_limit", Value: cr.Spec.SampleLimit})
+	}
+	if cr.Spec.SeriesLimit > 0 {
+		cfg = append(cfg, yaml.MapItem{Key: "series_limit", Value: cr.Spec.SeriesLimit})
 	}
 
 	if nodeSpec.MetricRelabelConfigs != nil {
@@ -1413,7 +1452,7 @@ func buildVMScrapeParams(namespace, cacheKey string, cfg *victoriametricsv1beta1
 	toYaml("disable_compression", cfg.DisableCompression)
 	toYaml("scrape_offset", cfg.ScrapeOffset)
 	toYaml("no_stale_markers", cfg.DisableStaleMarkers)
-	toYaml("disable_keep_alive", cfg.DisableKeepAlive)
+	toYaml("disable_keepalive", cfg.DisableKeepAlive)
 	toYaml("relabel_debug", cfg.RelabelDebug)
 	toYaml("metric_relabel_debug", cfg.MetricRelabelDebug)
 	if len(cfg.Headers) > 0 {

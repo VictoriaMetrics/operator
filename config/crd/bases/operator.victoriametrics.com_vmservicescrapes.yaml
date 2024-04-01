@@ -494,6 +494,12 @@ spec:
                     scrapeTimeout:
                       description: Timeout after which the scrape is ended
                       type: string
+                    seriesLimit:
+                      description: |-
+                        SeriesLimit defines per-scrape limit on number of unique time series
+                        a single target can expose during all the scrapes on the time window of 24h.
+                      format: int64
+                      type: integer
                     targetPort:
                       anyOf:
                       - type: integer
@@ -647,6 +653,11 @@ spec:
                         disable_compression:
                           type: boolean
                         disable_keep_alive:
+                          description: |-
+                            disable_keepalive allows disabling HTTP keep-alive when scraping targets.
+                            By default, HTTP keep-alive is enabled, so TCP connections to scrape targets
+                            could be re-used.
+                            See https://docs.victoriametrics.com/vmagent.html#scrape_config-enhancements
                           type: boolean
                         headers:
                           description: |-
@@ -659,6 +670,8 @@ spec:
                             type: string
                           type: array
                         metric_relabel_debug:
+                          description: deprecated since [v1.85](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.85.0),
+                            will be removed in next release
                           type: boolean
                         no_stale_markers:
                           type: boolean
@@ -891,6 +904,8 @@ spec:
                               type: object
                           type: object
                         relabel_debug:
+                          description: deprecated since [v1.85](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.85.0),
+                            will be removed in next release
                           type: boolean
                         scrape_align_interval:
                           type: string
@@ -975,6 +990,12 @@ spec:
                     type: object
                 type: object
                 x-kubernetes-map-type: atomic
+              seriesLimit:
+                description: |-
+                  SeriesLimit defines per-scrape limit on number of unique time series
+                  a single target can expose during all the scrapes on the time window of 24h.
+                format: int64
+                type: integer
               targetLabels:
                 description: TargetLabels transfers labels on the Kubernetes Service
                   onto the target.

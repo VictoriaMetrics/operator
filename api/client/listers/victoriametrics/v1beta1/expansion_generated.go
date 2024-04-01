@@ -97,6 +97,14 @@ type VMRuleListerExpansion interface{}
 // VMRuleNamespaceLister.
 type VMRuleNamespaceListerExpansion interface{}
 
+// VMScrapeConfigListerExpansion allows custom methods to be added to
+// VMScrapeConfigLister.
+type VMScrapeConfigListerExpansion interface{}
+
+// VMScrapeConfigNamespaceListerExpansion allows custom methods to be added to
+// VMScrapeConfigNamespaceLister.
+type VMScrapeConfigNamespaceListerExpansion interface{}
+
 // VMServiceScrapeListerExpansion allows custom methods to be added to
 // VMServiceScrapeLister.
 type VMServiceScrapeListerExpansion interface{}

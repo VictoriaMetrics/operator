@@ -30,6 +30,10 @@ type VMPodScrapeSpec struct {
 	// SampleLimit defines per-scrape limit on number of scraped samples that will be accepted.
 	// +optional
 	SampleLimit uint64 `json:"sampleLimit,omitempty"`
+	// SeriesLimit defines per-scrape limit on number of unique time series
+	// a single target can expose during all the scrapes on the time window of 24h.
+	// +optional
+	SeriesLimit uint64 `json:"seriesLimit,omitempty"`
 	// AttachMetadata configures metadata attaching from service discovery
 	// +optional
 	AttachMetadata AttachMetadata `json:"attach_metadata,omitempty"`
@@ -99,6 +103,10 @@ type PodMetricsEndpoint struct {
 	// SampleLimit defines per-podEndpoint limit on number of scraped samples that will be accepted.
 	// +optional
 	SampleLimit uint64 `json:"sampleLimit,omitempty"`
+	// SeriesLimit defines per-scrape limit on number of unique time series
+	// a single target can expose during all the scrapes on the time window of 24h.
+	// +optional
+	SeriesLimit uint64 `json:"seriesLimit,omitempty"`
 	// HonorLabels chooses the metric's labels on collisions with target labels.
 	// +optional
 	HonorLabels bool `json:"honorLabels,omitempty"`

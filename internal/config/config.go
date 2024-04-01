@@ -225,6 +225,7 @@ type BaseOperatorConf struct {
 		PrometheusRule     bool `default:"true"`
 		Probe              bool `default:"true"`
 		AlertmanagerConfig bool `default:"true"`
+		ScrapeConfig       bool `default:"true"`
 	}
 	FilterChildLabelPrefixes      []string `default:""`
 	FilterChildAnnotationPrefixes []string `default:""`

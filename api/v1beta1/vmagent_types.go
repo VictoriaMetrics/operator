@@ -279,6 +279,17 @@ type VMAgentSpec struct {
 	// If both nil - behaviour controlled by selectAllByDefault
 	// +optional
 	StaticScrapeNamespaceSelector *metav1.LabelSelector `json:"staticScrapeNamespaceSelector,omitempty"`
+	// ScrapeConfigSelector defines VMScrapeConfig to be selected for target discovery.
+	// Works in combination with NamespaceSelector.
+	// +optional
+	ScrapeConfigSelector *metav1.LabelSelector `json:"scrapeConfigSelector,omitempty"`
+	// ScrapeConfigNamespaceSelector defines Namespaces to be selected for VMScrapeConfig discovery.
+	// Works in combination with Selector.
+	// NamespaceSelector nil - only objects at VMAgent namespace.
+	// Selector nil - only objects at NamespaceSelector namespaces.
+	// If both nil - behaviour controlled by selectAllByDefault
+	// +optional
+	ScrapeConfigNamespaceSelector *metav1.LabelSelector `json:"scrapeConfigNamespaceSelector,omitempty"`
 	// InlineScrapeConfig As scrape configs are appended, the user is responsible to make sure it
 	// is valid. Note that using this feature may expose the possibility to
 	// break upgrades of VMAgent. It is advised to review VMAgent release
@@ -365,6 +376,10 @@ type VMAgentSpec struct {
 	// it's useful for adding specific labels to all targets
 	// +optional
 	ProbeScrapeRelabelTemplate []*RelabelConfig `json:"probeScrapeRelabelTemplate,omitempty"`
+	// ScrapeConfigRelabelTemplate defines relabel config, that will be added to each VMScrapeConfig.
+	// it's useful for adding specific labels to all targets
+	// +optional
+	ScrapeConfigRelabelTemplate []*RelabelConfig `json:"scrapeConfigRelabelTemplate,omitempty"`
 	// MinScrapeInterval allows limiting minimal scrape interval for VMServiceScrape, VMPodScrape and other scrapes
 	// If interval is lower than defined limit, `minScrapeInterval` will be used.
 	MinScrapeInterval *string `json:"minScrapeInterval,omitempty"`

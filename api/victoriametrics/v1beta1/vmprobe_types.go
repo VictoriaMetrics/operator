@@ -55,6 +55,10 @@ type VMProbeSpec struct {
 	// SampleLimit defines per-scrape limit on number of scraped samples that will be accepted.
 	// +optional
 	SampleLimit uint64 `json:"sampleLimit,omitempty"`
+	// SeriesLimit defines per-scrape limit on number of unique time series
+	// a single target can expose during all the scrapes on the time window of 24h.
+	// +optional
+	SeriesLimit uint64 `json:"seriesLimit,omitempty"`
 	// File to read bearer token for scraping targets.
 	// +optional
 	BearerTokenFile string `json:"bearerTokenFile,omitempty"`
@@ -77,6 +81,9 @@ type VMProbeSpec struct {
 	// TLSConfig configuration to use when scraping the endpoint
 	// +optional
 	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
+	// ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint.
+	// +optional
+	ProxyURL *string `json:"proxyURL,omitempty"`
 	// VMScrapeParams defines VictoriaMetrics specific scrape parametrs
 	// +optional
 	VMScrapeParams *VMScrapeParams `json:"vm_scrape_params,omitempty"`

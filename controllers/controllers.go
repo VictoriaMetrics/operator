@@ -10,6 +10,7 @@ import (
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/prometheus/client_golang/prometheus"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -65,7 +66,35 @@ func handleParsingError(parsingErr string, obj objectWithParsingError) (ctrl.Res
 	return ctrl.Result{}, nil
 }
 
-func isSelectorsMatches(sourceCRD, targetCRD client.Object, selector *v1.LabelSelector) (bool, error) {
+func isNamespaceSelectorMatches(rclient client.Client, sourceCRD, targetCRD client.Object, selector *v1.LabelSelector) (bool, error) {
+	if selector == nil {
+		if sourceCRD.GetNamespace() == targetCRD.GetNamespace() {
+			return true, nil
+		}
+		return false, nil
+	}
+	ns := &corev1.NamespaceList{}
+	nsSelector, err := v1.LabelSelectorAsSelector(selector)
+	if err != nil {
+		return false, fmt.Errorf("cannot convert namespace selector: %w", err)
+	}
+	if err := rclient.List(context.Background(), ns, &client.ListOptions{LabelSelector: nsSelector}); err != nil {
+		return false, err
+	}
+
+	for _, n := range ns.Items {
+		if n.Name == targetCRD.GetNamespace() {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func isSelectorsMatches(rclient client.Client, sourceCRD, targetCRD client.Object, namespaceSelector, selector *v1.LabelSelector) (bool, error) {
+	// check namespace selector
+	if isNsMatch, err := isNamespaceSelectorMatches(rclient, sourceCRD, targetCRD, namespaceSelector); !isNsMatch || err != nil {
+		return isNsMatch, err
+	}
 	// in case of empty namespace object must be synchronized in any way,
 	// coz we dont know source labels.
 	// probably object already deleted.

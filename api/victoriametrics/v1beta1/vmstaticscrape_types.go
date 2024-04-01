@@ -16,6 +16,10 @@ type VMStaticScrapeSpec struct {
 	// SampleLimit defines per-scrape limit on number of scraped samples that will be accepted.
 	// +optional
 	SampleLimit uint64 `json:"sampleLimit,omitempty"`
+	// SeriesLimit defines per-scrape limit on number of unique time series
+	// a single target can expose during all the scrapes on the time window of 24h.
+	// +optional
+	SeriesLimit uint64 `json:"seriesLimit,omitempty"`
 }
 
 // TargetEndpoint defines single static target endpoint.
@@ -45,6 +49,10 @@ type TargetEndpoint struct {
 	// SampleLimit defines per-scrape limit on number of scraped samples that will be accepted.
 	// +optional
 	SampleLimit uint64 `json:"sampleLimit,omitempty"`
+	// SeriesLimit defines per-scrape limit on number of unique time series
+	// a single target can expose during all the scrapes on the time window of 24h.
+	// +optional
+	SeriesLimit uint64 `json:"seriesLimit,omitempty"`
 	// Interval at which metrics should be scraped
 	// +optional
 	Interval string `json:"interval,omitempty"`

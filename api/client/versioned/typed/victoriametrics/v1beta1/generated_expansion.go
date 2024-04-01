@@ -37,6 +37,8 @@ type VMProbeExpansion interface{}
 
 type VMRuleExpansion interface{}
 
+type VMScrapeConfigExpansion interface{}
+
 type VMServiceScrapeExpansion interface{}
 
 type VMSingleExpansion interface{}

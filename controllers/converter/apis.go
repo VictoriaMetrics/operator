@@ -14,6 +14,7 @@ import (
 	v1beta1vm "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	v1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	v1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -31,21 +32,27 @@ func ConvertPromRule(prom *v1.PrometheusRule, conf *config.BaseOperatorConf) *v1
 	for _, promGroup := range prom.Spec.Groups {
 		ruleItems := make([]v1beta1vm.Rule, 0, len(promGroup.Rules))
 		for _, promRuleItem := range promGroup.Rules {
-			ruleItems = append(ruleItems, v1beta1vm.Rule{
+			trule := v1beta1vm.Rule{
 				Labels:      promRuleItem.Labels,
 				Annotations: promRuleItem.Annotations,
 				Expr:        promRuleItem.Expr.String(),
-				For:         string(promRuleItem.For),
 				Record:      promRuleItem.Record,
 				Alert:       promRuleItem.Alert,
-			})
+			}
+			if promRuleItem.For != nil {
+				trule.For = string(*promRuleItem.For)
+			}
+			ruleItems = append(ruleItems, trule)
 		}
 
-		ruleGroups = append(ruleGroups, v1beta1vm.RuleGroup{
-			Name:     promGroup.Name,
-			Interval: string(promGroup.Interval),
-			Rules:    ruleItems,
-		})
+		tgroup := v1beta1vm.RuleGroup{
+			Name:  promGroup.Name,
+			Rules: ruleItems,
+		}
+		if promGroup.Interval != nil {
+			tgroup.Interval = string(*promGroup.Interval)
+		}
+		ruleGroups = append(ruleGroups, tgroup)
 	}
 	cr := &v1beta1vm.VMRule{
 		ObjectMeta: metav1.ObjectMeta{
@@ -253,7 +260,6 @@ func ConvertServiceMonitor(serviceMon *v1.ServiceMonitor, conf *config.BaseOpera
 			JobLabel:        serviceMon.Spec.JobLabel,
 			TargetLabels:    serviceMon.Spec.TargetLabels,
 			PodTargetLabels: serviceMon.Spec.PodTargetLabels,
-			SampleLimit:     serviceMon.Spec.SampleLimit,
 			Selector:        serviceMon.Spec.Selector,
 			Endpoints:       ConvertEndpoint(serviceMon.Spec.Endpoints),
 			NamespaceSelector: v1beta1vm.NamespaceSelector{
@@ -262,9 +268,12 @@ func ConvertServiceMonitor(serviceMon *v1.ServiceMonitor, conf *config.BaseOpera
 			},
 		},
 	}
+	if serviceMon.Spec.SampleLimit != nil {
+		cs.Spec.SampleLimit = *serviceMon.Spec.SampleLimit
+	}
 	if serviceMon.Spec.AttachMetadata != nil {
 		cs.Spec.AttachMetadata = v1beta1vm.AttachMetadata{
-			Node: pointer.Bool(serviceMon.Spec.AttachMetadata.Node),
+			Node: serviceMon.Spec.AttachMetadata.Node,
 		}
 	}
 	if conf.EnabledPrometheusConverterOwnerReferences {
@@ -351,7 +360,6 @@ func ConvertEndpoint(promEndpoint []v1.Endpoint) []v1beta1vm.Endpoint {
 			MetricRelabelConfigs: ConvertRelabelConfig(endpoint.MetricRelabelConfigs),
 			RelabelConfigs:       ConvertRelabelConfig(endpoint.RelabelConfigs),
 			ProxyURL:             endpoint.ProxyURL,
-			BearerTokenSecret:    convertBearerToken(endpoint.BearerTokenSecret),
 			OAuth2:               convertOAuth(endpoint.OAuth2),
 			FollowRedirects:      endpoint.FollowRedirects,
 			Authorization:        convertAuthorization(endpoint.Authorization, nil),
@@ -463,7 +471,6 @@ func ConvertPodEndpoints(promPodEnpoints []v1.PodMetricsEndpoint) []v1beta1vm.Po
 			TLSConfig:            ConvertSafeTlsConfig(safeTls),
 			OAuth2:               convertOAuth(promEndPoint.OAuth2),
 			FollowRedirects:      promEndPoint.FollowRedirects,
-			BearerTokenSecret:    convertBearerToken(promEndPoint.BearerTokenSecret),
 			Authorization:        convertAuthorization(promEndPoint.Authorization, nil),
 			FilterRunning:        promEndPoint.FilterRunning,
 		}
@@ -488,13 +495,15 @@ func ConvertPodMonitor(podMon *v1.PodMonitor, conf *config.BaseOperatorConf) *v1
 				Any:        podMon.Spec.NamespaceSelector.Any,
 				MatchNames: podMon.Spec.NamespaceSelector.MatchNames,
 			},
-			SampleLimit:         podMon.Spec.SampleLimit,
 			PodMetricsEndpoints: ConvertPodEndpoints(podMon.Spec.PodMetricsEndpoints),
 		},
 	}
+	if podMon.Spec.SampleLimit != nil {
+		cs.Spec.SampleLimit = *podMon.Spec.SampleLimit
+	}
 	if podMon.Spec.AttachMetadata != nil {
 		cs.Spec.AttachMetadata = v1beta1vm.AttachMetadata{
-			Node: pointer.Bool(podMon.Spec.AttachMetadata.Node),
+			Node: podMon.Spec.AttachMetadata.Node,
 		}
 	}
 	if conf.EnabledPrometheusConverterOwnerReferences {
@@ -564,9 +573,12 @@ func ConvertProbe(probe *v1.Probe, conf *config.BaseOperatorConf) *v1beta1vm.VMP
 			TLSConfig:         ConvertSafeTlsConfig(safeTls),
 			BearerTokenSecret: convertBearerToken(probe.Spec.BearerTokenSecret),
 			OAuth2:            convertOAuth(probe.Spec.OAuth2),
-			SampleLimit:       probe.Spec.SampleLimit,
 			Authorization:     convertAuthorization(probe.Spec.Authorization, nil),
+			ProxyURL:          &probe.Spec.ProberSpec.ProxyURL,
 		},
+	}
+	if probe.Spec.SampleLimit != nil {
+		cp.Spec.SampleLimit = *probe.Spec.SampleLimit
 	}
 	if conf.EnabledPrometheusConverterOwnerReferences {
 		cp.OwnerReferences = []metav1.OwnerReference{
@@ -617,4 +629,212 @@ func filterPrefixes(src map[string]string, filterPrefixes []string) map[string]s
 		return nil
 	}
 	return dst
+}
+
+func ConvertScrapeConfig(promscrapeConfig *v1alpha1.ScrapeConfig, conf *config.BaseOperatorConf) *v1beta1vm.VMScrapeConfig {
+	cs := &v1beta1vm.VMScrapeConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        promscrapeConfig.Name,
+			Namespace:   promscrapeConfig.Namespace,
+			Annotations: filterPrefixes(promscrapeConfig.Annotations, conf.FilterPrometheusConverterAnnotationPrefixes),
+			Labels:      filterPrefixes(promscrapeConfig.Labels, conf.FilterPrometheusConverterLabelPrefixes),
+		},
+		Spec: v1beta1vm.VMScrapeConfigSpec{
+			MetricsPath:     promscrapeConfig.Spec.MetricsPath,
+			HonorTimestamps: promscrapeConfig.Spec.HonorTimestamps,
+			HonorLabels:     promscrapeConfig.Spec.HonorLabels,
+			Params:          promscrapeConfig.Spec.Params,
+			Scheme:          promscrapeConfig.Spec.Scheme,
+			VMScrapeParams: &v1beta1vm.VMScrapeParams{
+				DisableCompression: pointer.BoolPtr(!*promscrapeConfig.Spec.EnableCompression),
+			},
+			ProxyURL:             promscrapeConfig.Spec.ProxyURL,
+			BasicAuth:            ConvertBasicAuth(promscrapeConfig.Spec.BasicAuth),
+			Authorization:        convertAuthorization(promscrapeConfig.Spec.Authorization, nil),
+			TLSConfig:            ConvertSafeTlsConfig(promscrapeConfig.Spec.TLSConfig),
+			SampleLimit:          *promscrapeConfig.Spec.SampleLimit,
+			MetricRelabelConfigs: ConvertRelabelConfig(promscrapeConfig.Spec.MetricRelabelConfigs),
+			RelabelConfigs:       ConvertRelabelConfig(promscrapeConfig.Spec.RelabelConfigs),
+		},
+	}
+	if promscrapeConfig.Spec.ScrapeInterval != nil {
+		cs.Spec.ScrapeInterval = string(*promscrapeConfig.Spec.ScrapeInterval)
+	}
+	if promscrapeConfig.Spec.ScrapeTimeout != nil {
+		cs.Spec.ScrapeTimeout = string(*promscrapeConfig.Spec.ScrapeTimeout)
+	}
+	for _, staticConf := range promscrapeConfig.Spec.StaticConfigs {
+		var tstaticconf v1beta1vm.StaticConfig
+		for _, target := range staticConf.Targets {
+			tstaticconf.Targets = append(tstaticconf.Targets, string(target))
+		}
+		for k, v := range staticConf.Labels {
+			tstaticconf.Labels[string(k)] = v
+		}
+		cs.Spec.StaticConfigs = append(cs.Spec.StaticConfigs, tstaticconf)
+	}
+	for _, fileSDConf := range promscrapeConfig.Spec.FileSDConfigs {
+		var tfileSDConf v1beta1vm.FileSDConfig
+		for _, file := range fileSDConf.Files {
+			tfileSDConf.Files = append(tfileSDConf.Files, string(file))
+		}
+		cs.Spec.FileSDConfigs = append(cs.Spec.FileSDConfigs, tfileSDConf)
+	}
+	for _, httpSDConf := range promscrapeConfig.Spec.HTTPSDConfigs {
+		thttpSDConf := v1beta1vm.HTTPSDConfig{
+			URL:           httpSDConf.URL,
+			BasicAuth:     ConvertBasicAuth(httpSDConf.BasicAuth),
+			Authorization: convertAuthorization(httpSDConf.Authorization, nil),
+			TLSConfig:     ConvertSafeTlsConfig(httpSDConf.TLSConfig),
+			ProxyURL:      httpSDConf.ProxyURL,
+		}
+		cs.Spec.HTTPSDConfigs = append(cs.Spec.HTTPSDConfigs, thttpSDConf)
+	}
+	for _, k8sSDConf := range promscrapeConfig.Spec.KubernetesSDConfigs {
+		tk8sSDConf := v1beta1vm.KubernetesSDConfig{
+			APIServer:       k8sSDConf.APIServer,
+			Role:            string(k8sSDConf.Role),
+			BasicAuth:       ConvertBasicAuth(k8sSDConf.BasicAuth),
+			Authorization:   convertAuthorization(k8sSDConf.Authorization, nil),
+			OAuth2:          convertOAuth(k8sSDConf.OAuth2),
+			ProxyURL:        k8sSDConf.ProxyURL,
+			TLSConfig:       ConvertSafeTlsConfig(k8sSDConf.TLSConfig),
+			FollowRedirects: k8sSDConf.FollowRedirects,
+		}
+		if k8sSDConf.Namespaces != nil {
+			tk8sSDConf.Namespaces = &v1beta1vm.NamespaceDiscovery{
+				IncludeOwnNamespace: k8sSDConf.Namespaces.IncludeOwnNamespace,
+				Names:               k8sSDConf.Namespaces.Names,
+			}
+		}
+		if k8sSDConf.AttachMetadata != nil {
+			tk8sSDConf.AttachMetadata = v1beta1vm.AttachMetadata{
+				Node: k8sSDConf.AttachMetadata.Node,
+			}
+		}
+		for _, sel := range k8sSDConf.Selectors {
+			tk8sSDConf.Selectors = append(tk8sSDConf.Selectors, v1beta1vm.K8SSelectorConfig{
+				Role:  string(sel.Role),
+				Label: sel.Label,
+				Field: sel.Field,
+			})
+		}
+		cs.Spec.KubernetesSDConfigs = append(cs.Spec.KubernetesSDConfigs, tk8sSDConf)
+	}
+	for _, consulSDconf := range promscrapeConfig.Spec.ConsulSDConfigs {
+		tconsulSDconf := v1beta1vm.ConsulSDConfig{
+			Server:          consulSDconf.Server,
+			TokenRef:        consulSDconf.TokenRef,
+			Datacenter:      consulSDconf.Datacenter,
+			Namespace:       consulSDconf.Namespace,
+			Partition:       consulSDconf.Partition,
+			Scheme:          consulSDconf.Scheme,
+			Services:        consulSDconf.Services,
+			Tags:            consulSDconf.Tags,
+			TagSeparator:    consulSDconf.TagSeparator,
+			NodeMeta:        consulSDconf.NodeMeta,
+			AllowStale:      consulSDconf.AllowStale,
+			BasicAuth:       ConvertBasicAuth(consulSDconf.BasicAuth),
+			Authorization:   convertAuthorization(consulSDconf.Authorization, nil),
+			OAuth2:          convertOAuth(consulSDconf.Oauth2),
+			ProxyURL:        consulSDconf.ProxyURL,
+			TLSConfig:       ConvertSafeTlsConfig(consulSDconf.TLSConfig),
+			FollowRedirects: consulSDconf.FollowRedirects,
+		}
+		cs.Spec.ConsulSDConfigs = append(cs.Spec.ConsulSDConfigs, tconsulSDconf)
+	}
+	for _, dnsSDconf := range promscrapeConfig.Spec.DNSSDConfigs {
+		tdnsSDconf := v1beta1vm.DNSSDConfig{
+			Names: dnsSDconf.Names,
+			Type:  dnsSDconf.Type,
+			Port:  dnsSDconf.Port,
+		}
+		cs.Spec.DNSSDConfigs = append(cs.Spec.DNSSDConfigs, tdnsSDconf)
+	}
+	for _, ec2SDconf := range promscrapeConfig.Spec.EC2SDConfigs {
+		tec2SDconf := v1beta1vm.EC2SDConfig{
+			Region:    ec2SDconf.Region,
+			AccessKey: ec2SDconf.AccessKey,
+			SecretKey: ec2SDconf.SecretKey,
+			RoleARN:   ec2SDconf.RoleARN,
+			Port:      ec2SDconf.Port,
+		}
+		for _, filter := range ec2SDconf.Filters {
+			tec2SDconf.Filters = append(tec2SDconf.Filters, &v1beta1vm.EC2Filter{
+				Name:   filter.Name,
+				Values: filter.Values,
+			})
+		}
+		cs.Spec.EC2SDConfigs = append(cs.Spec.EC2SDConfigs, tec2SDconf)
+	}
+	for _, azureSDconf := range promscrapeConfig.Spec.AzureSDConfigs {
+		tazureSDconf := v1beta1vm.AzureSDConfig{
+			Environment:          azureSDconf.Environment,
+			AuthenticationMethod: azureSDconf.AuthenticationMethod,
+			SubscriptionID:       azureSDconf.SubscriptionID,
+			TenantID:             azureSDconf.TenantID,
+			ClientID:             azureSDconf.TenantID,
+			ClientSecret:         azureSDconf.ClientSecret,
+			ResourceGroup:        azureSDconf.ResourceGroup,
+			Port:                 azureSDconf.Port,
+		}
+		cs.Spec.AzureSDConfigs = append(cs.Spec.AzureSDConfigs, tazureSDconf)
+	}
+	for _, gceSDconf := range promscrapeConfig.Spec.GCESDConfigs {
+		tgceSDconf := v1beta1vm.GCESDConfig{
+			Project:      gceSDconf.Project,
+			Zone:         gceSDconf.Zone,
+			Filter:       gceSDconf.Filter,
+			Port:         gceSDconf.Port,
+			TagSeparator: gceSDconf.TagSeparator,
+		}
+		cs.Spec.GCESDConfigs = append(cs.Spec.GCESDConfigs, tgceSDconf)
+	}
+	for _, openstackSDconf := range promscrapeConfig.Spec.OpenStackSDConfigs {
+		topenstackSDconf := v1beta1vm.OpenStackSDConfig{
+			Role:                        openstackSDconf.Role,
+			Region:                      openstackSDconf.Region,
+			IdentityEndpoint:            openstackSDconf.IdentityEndpoint,
+			Username:                    openstackSDconf.Username,
+			UserID:                      openstackSDconf.UserID,
+			Password:                    openstackSDconf.Password,
+			DomainName:                  openstackSDconf.DomainID,
+			ProjectName:                 openstackSDconf.ProjectName,
+			ProjectID:                   openstackSDconf.ProjectID,
+			ApplicationCredentialName:   openstackSDconf.ApplicationCredentialName,
+			ApplicationCredentialID:     openstackSDconf.ApplicationCredentialID,
+			ApplicationCredentialSecret: openstackSDconf.ApplicationCredentialSecret,
+			AllTenants:                  openstackSDconf.AllTenants,
+			Port:                        openstackSDconf.Port,
+			Availability:                openstackSDconf.Availability,
+			TLSConfig:                   ConvertSafeTlsConfig(openstackSDconf.TLSConfig),
+		}
+		cs.Spec.OpenStackSDConfigs = append(cs.Spec.OpenStackSDConfigs, topenstackSDconf)
+	}
+	for _, digitalOceanSDconf := range promscrapeConfig.Spec.DigitalOceanSDConfigs {
+		tdigitalOceanSDconf := v1beta1vm.DigitalOceanSDConfig{
+			Authorization:   convertAuthorization(digitalOceanSDconf.Authorization, nil),
+			OAuth2:          convertOAuth(digitalOceanSDconf.OAuth2),
+			ProxyURL:        digitalOceanSDconf.ProxyURL,
+			FollowRedirects: digitalOceanSDconf.FollowRedirects,
+			TLSConfig:       ConvertSafeTlsConfig(digitalOceanSDconf.TLSConfig),
+			Port:            digitalOceanSDconf.Port,
+		}
+		cs.Spec.DigitalOceanSDConfigs = append(cs.Spec.DigitalOceanSDConfigs, tdigitalOceanSDconf)
+	}
+
+	if conf.EnabledPrometheusConverterOwnerReferences {
+		cs.OwnerReferences = []metav1.OwnerReference{
+			{
+				APIVersion:         v1.SchemeGroupVersion.String(),
+				Kind:               v1.ServiceMonitorsKind,
+				Name:               promscrapeConfig.Name,
+				UID:                promscrapeConfig.UID,
+				Controller:         pointer.Bool(true),
+				BlockOwnerDeletion: pointer.Bool(true),
+			},
+		}
+	}
+	cs.Annotations = maybeAddArgoCDIgnoreAnnotations(conf.PrometheusConverterAddArgoCDIgnoreAnnotations, cs.Annotations)
+	return cs
 }

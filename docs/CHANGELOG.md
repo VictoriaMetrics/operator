@@ -15,6 +15,7 @@ aliases:
 # CHANGELOG
 
 ## Next release
+- [operator](./README.md): updates base Docker image and prometheus_client to versions with with CVE fixes
 
 <a name="v0.42.3"></a>
 ## [v0.43.](https://github.com/VictoriaMetrics/operator/releases/tag/v0.42.3) - 12 Mar 2024

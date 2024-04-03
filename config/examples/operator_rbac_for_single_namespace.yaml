@@ -126,6 +126,7 @@ rules:
       - vmusers/status
       - vmauths/status
       - vmservicescrapes/status
+      - vmscrapeconfigs/status
       - vmprobes/status
       - vmsingles/status
       - vmnodescrapes/status
@@ -140,6 +141,7 @@ rules:
       - operator.victoriametrics.com
     resources:
       - vmservicescrapes
+      - vmscrapeconfigs
     verbs:
       - '*'
   - apiGroups:

@@ -24,7 +24,7 @@ Or you can use VictoriaMetrics CRDs:
 - `VMRule` (instead of `PrometheusRule`) - defines alerting or recording rules. [See details](./resources/vmrule.md).
 - `VMProbe` (instead of `Probe`) - defines a probing configuration for targets with blackbox exporter. [See details](./resources/vmprobe.md).
 - `VMAlertmanagerConfig` (instead of `AlertmanagerConfig`) - defines a configuration for AlertManager. [See details](./resources/vmalertmanagerconfig.md).
-- `VMScrapeConfig` (instead of `ScrapeConfig`) - define a scrape config using all the service discovery options supported in victoriametrics.
+- `VMScrapeConfig` (instead of `ScrapeConfig`) - define a scrape config using any of the service discovery options supported in victoriametrics.
 
 Note that Prometheus CRDs are not supplied with the VictoriaMetrics operator,
 so you need to [install them separately](https://github.com/prometheus-operator/prometheus-operator/releases).

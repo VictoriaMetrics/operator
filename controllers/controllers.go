@@ -109,7 +109,7 @@ func isSelectorsMatches(rclient client.Client, sourceCRD, targetCRD client.Objec
 
 	labelSelector, err := v1.LabelSelectorAsSelector(selector)
 	if err != nil {
-		return false, fmt.Errorf("cannot parse vmalert's RuleSelector selector as labelSelector: %w", err)
+		return false, fmt.Errorf("cannot parse ruleSelector selector as labelSelector: %w", err)
 	}
 	set := labels.Set(sourceCRD.GetLabels())
 	// selector not match

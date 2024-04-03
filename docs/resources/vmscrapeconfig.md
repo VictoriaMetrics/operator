@@ -12,7 +12,7 @@ aliases:
 
 # VMScrapeConfig
 
-The `VMScrapeConfig` CRD allows to define a scrape config using [all the service discovery options supported in victoriametrics](https://docs.victoriametrics.com/sd_configs/).
+The `VMScrapeConfig` CRD allows to define a scrape config using [any of the service discovery options supported in victoriametrics](https://docs.victoriametrics.com/sd_configs/).
 
 `VMScrapeConfig` object generates part of [VMAgent](./vmagent.md) configuration with Prometheus-compatible scrape targets.
 

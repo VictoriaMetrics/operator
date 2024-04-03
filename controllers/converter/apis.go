@@ -466,6 +466,7 @@ func ConvertPodEndpoints(promPodEnpoints []v1.PodMetricsEndpoint) []v1beta1vm.Po
 			HonorTimestamps:      promEndPoint.HonorTimestamps,
 			ProxyURL:             promEndPoint.ProxyURL,
 			RelabelConfigs:       ConvertRelabelConfig(promEndPoint.RelabelConfigs),
+			BearerTokenSecret:    convertBearerToken(promEndPoint.BearerTokenSecret),
 			MetricRelabelConfigs: ConvertRelabelConfig(promEndPoint.MetricRelabelConfigs),
 			BasicAuth:            ConvertBasicAuth(promEndPoint.BasicAuth),
 			TLSConfig:            ConvertSafeTlsConfig(safeTls),
@@ -574,8 +575,10 @@ func ConvertProbe(probe *v1.Probe, conf *config.BaseOperatorConf) *v1beta1vm.VMP
 			BearerTokenSecret: convertBearerToken(probe.Spec.BearerTokenSecret),
 			OAuth2:            convertOAuth(probe.Spec.OAuth2),
 			Authorization:     convertAuthorization(probe.Spec.Authorization, nil),
-			ProxyURL:          &probe.Spec.ProberSpec.ProxyURL,
 		},
+	}
+	if probe.Spec.ProberSpec.ProxyURL != "" {
+		cp.Spec.ProxyURL = &probe.Spec.ProberSpec.ProxyURL
 	}
 	if probe.Spec.SampleLimit != nil {
 		cp.Spec.SampleLimit = *probe.Spec.SampleLimit
@@ -640,22 +643,28 @@ func ConvertScrapeConfig(promscrapeConfig *v1alpha1.ScrapeConfig, conf *config.B
 			Labels:      filterPrefixes(promscrapeConfig.Labels, conf.FilterPrometheusConverterLabelPrefixes),
 		},
 		Spec: v1beta1vm.VMScrapeConfigSpec{
-			MetricsPath:     promscrapeConfig.Spec.MetricsPath,
-			HonorTimestamps: promscrapeConfig.Spec.HonorTimestamps,
-			HonorLabels:     promscrapeConfig.Spec.HonorLabels,
-			Params:          promscrapeConfig.Spec.Params,
-			Scheme:          promscrapeConfig.Spec.Scheme,
-			VMScrapeParams: &v1beta1vm.VMScrapeParams{
-				DisableCompression: pointer.BoolPtr(!*promscrapeConfig.Spec.EnableCompression),
-			},
-			ProxyURL:             promscrapeConfig.Spec.ProxyURL,
+			MetricsPath:          promscrapeConfig.Spec.MetricsPath,
+			HonorTimestamps:      promscrapeConfig.Spec.HonorTimestamps,
+			HonorLabels:          promscrapeConfig.Spec.HonorLabels,
+			Params:               promscrapeConfig.Spec.Params,
+			Scheme:               promscrapeConfig.Spec.Scheme,
 			BasicAuth:            ConvertBasicAuth(promscrapeConfig.Spec.BasicAuth),
 			Authorization:        convertAuthorization(promscrapeConfig.Spec.Authorization, nil),
 			TLSConfig:            ConvertSafeTlsConfig(promscrapeConfig.Spec.TLSConfig),
-			SampleLimit:          *promscrapeConfig.Spec.SampleLimit,
 			MetricRelabelConfigs: ConvertRelabelConfig(promscrapeConfig.Spec.MetricRelabelConfigs),
 			RelabelConfigs:       ConvertRelabelConfig(promscrapeConfig.Spec.RelabelConfigs),
 		},
+	}
+	if promscrapeConfig.Spec.ProxyConfig != nil && promscrapeConfig.Spec.ProxyURL != nil {
+		cs.Spec.ProxyURL = promscrapeConfig.Spec.ProxyURL
+	}
+	if promscrapeConfig.Spec.SampleLimit != nil {
+		cs.Spec.SampleLimit = *promscrapeConfig.Spec.SampleLimit
+	}
+	if promscrapeConfig.Spec.EnableCompression != nil {
+		cs.Spec.VMScrapeParams = &v1beta1vm.VMScrapeParams{
+			DisableCompression: pointer.BoolPtr(!*promscrapeConfig.Spec.EnableCompression),
+		}
 	}
 	if promscrapeConfig.Spec.ScrapeInterval != nil {
 		cs.Spec.ScrapeInterval = string(*promscrapeConfig.Spec.ScrapeInterval)
@@ -686,7 +695,9 @@ func ConvertScrapeConfig(promscrapeConfig *v1alpha1.ScrapeConfig, conf *config.B
 			BasicAuth:     ConvertBasicAuth(httpSDConf.BasicAuth),
 			Authorization: convertAuthorization(httpSDConf.Authorization, nil),
 			TLSConfig:     ConvertSafeTlsConfig(httpSDConf.TLSConfig),
-			ProxyURL:      httpSDConf.ProxyURL,
+		}
+		if httpSDConf.ProxyConfig != nil && httpSDConf.ProxyURL != nil {
+			thttpSDConf.ProxyURL = httpSDConf.ProxyURL
 		}
 		cs.Spec.HTTPSDConfigs = append(cs.Spec.HTTPSDConfigs, thttpSDConf)
 	}
@@ -697,9 +708,11 @@ func ConvertScrapeConfig(promscrapeConfig *v1alpha1.ScrapeConfig, conf *config.B
 			BasicAuth:       ConvertBasicAuth(k8sSDConf.BasicAuth),
 			Authorization:   convertAuthorization(k8sSDConf.Authorization, nil),
 			OAuth2:          convertOAuth(k8sSDConf.OAuth2),
-			ProxyURL:        k8sSDConf.ProxyURL,
 			TLSConfig:       ConvertSafeTlsConfig(k8sSDConf.TLSConfig),
 			FollowRedirects: k8sSDConf.FollowRedirects,
+		}
+		if k8sSDConf.ProxyConfig != nil && k8sSDConf.ProxyURL != nil {
+			tk8sSDConf.ProxyURL = k8sSDConf.ProxyURL
 		}
 		if k8sSDConf.Namespaces != nil {
 			tk8sSDConf.Namespaces = &v1beta1vm.NamespaceDiscovery{
@@ -737,9 +750,11 @@ func ConvertScrapeConfig(promscrapeConfig *v1alpha1.ScrapeConfig, conf *config.B
 			BasicAuth:       ConvertBasicAuth(consulSDconf.BasicAuth),
 			Authorization:   convertAuthorization(consulSDconf.Authorization, nil),
 			OAuth2:          convertOAuth(consulSDconf.Oauth2),
-			ProxyURL:        consulSDconf.ProxyURL,
 			TLSConfig:       ConvertSafeTlsConfig(consulSDconf.TLSConfig),
 			FollowRedirects: consulSDconf.FollowRedirects,
+		}
+		if consulSDconf.ProxyConfig != nil && consulSDconf.ProxyURL != nil {
+			tconsulSDconf.ProxyURL = consulSDconf.ProxyURL
 		}
 		cs.Spec.ConsulSDConfigs = append(cs.Spec.ConsulSDConfigs, tconsulSDconf)
 	}
@@ -815,10 +830,12 @@ func ConvertScrapeConfig(promscrapeConfig *v1alpha1.ScrapeConfig, conf *config.B
 		tdigitalOceanSDconf := v1beta1vm.DigitalOceanSDConfig{
 			Authorization:   convertAuthorization(digitalOceanSDconf.Authorization, nil),
 			OAuth2:          convertOAuth(digitalOceanSDconf.OAuth2),
-			ProxyURL:        digitalOceanSDconf.ProxyURL,
 			FollowRedirects: digitalOceanSDconf.FollowRedirects,
 			TLSConfig:       ConvertSafeTlsConfig(digitalOceanSDconf.TLSConfig),
 			Port:            digitalOceanSDconf.Port,
+		}
+		if digitalOceanSDconf.ProxyConfig != nil && digitalOceanSDconf.ProxyURL != nil {
+			tdigitalOceanSDconf.ProxyURL = digitalOceanSDconf.ProxyURL
 		}
 		cs.Spec.DigitalOceanSDConfigs = append(cs.Spec.DigitalOceanSDConfigs, tdigitalOceanSDconf)
 	}

@@ -29,6 +29,7 @@ func testGetScheme() *runtime.Scheme {
 		&victoriametricsv1beta1.VMUserList{},
 		&victoriametricsv1beta1.VMAuthList{},
 		&victoriametricsv1beta1.VMAlertmanagerConfigList{},
+		&victoriametricsv1beta1.VMScrapeConfigList{},
 	)
 	s.AddKnownTypes(victoriametricsv1beta1.GroupVersion,
 		&victoriametricsv1beta1.VMPodScrape{},
@@ -45,6 +46,7 @@ func testGetScheme() *runtime.Scheme {
 		&victoriametricsv1beta1.VMUser{},
 		&victoriametricsv1beta1.VMAuth{},
 		&victoriametricsv1beta1.VMAlertmanagerConfig{},
+		&victoriametricsv1beta1.VMScrapeConfig{},
 	)
 	return s
 }

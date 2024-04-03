@@ -5721,11 +5721,6 @@ func (in *VMScrapeConfigSpec) DeepCopyInto(out *VMScrapeConfigSpec) {
 		*out = new(bool)
 		**out = **in
 	}
-	if in.HonorLabels != nil {
-		in, out := &in.HonorLabels, &out.HonorLabels
-		*out = new(bool)
-		**out = **in
-	}
 	if in.Params != nil {
 		in, out := &in.Params, &out.Params
 		*out = make(map[string][]string, len(*in))

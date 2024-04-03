@@ -17,7 +17,7 @@ func generateScrapeConfig(
 	enforcedNamespaceLabel string,
 ) yaml.MapSlice {
 	jobName := fmt.Sprintf("scrapeConfig/%s/%s", sc.Namespace, sc.Name)
-	hl := honorLabels(*sc.Spec.HonorLabels, cr.Spec.OverrideHonorLabels)
+	hl := honorLabels(sc.Spec.HonorLabels, cr.Spec.OverrideHonorLabels)
 	cfg := yaml.MapSlice{
 		{
 			Key:   "job_name",

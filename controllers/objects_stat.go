@@ -2,10 +2,11 @@ package controllers
 
 import (
 	"fmt"
+	"sync"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
-	"sync"
 )
 
 var (
@@ -44,8 +45,10 @@ func newCollector() *objectCollector {
 	oc := &objectCollector{
 		objectsByController: map[string]map[string]struct{}{},
 	}
-	registeredObjects := []string{"vmagent", "vmalert", "vmsingle", "vmcluster", "vmalertmanager", "vmauth",
-		"vmalertmanagerconfig", "vmrule", "vmuser", "vmservicescrape", "vmstaticscrape", "vmnodescrape", "vmpodscrape", "vmprobescrape"}
+	registeredObjects := []string{
+		"vmagent", "vmalert", "vmsingle", "vmcluster", "vmalertmanager", "vmauth",
+		"vmalertmanagerconfig", "vmrule", "vmuser", "vmservicescrape", "vmstaticscrape", "vmnodescrape", "vmpodscrape", "vmprobescrape", "vmscrapeconfig",
+	}
 	for _, controller := range registeredObjects {
 		oc.objectsByController[controller] = map[string]struct{}{}
 	}
@@ -54,7 +57,8 @@ func newCollector() *objectCollector {
 		g := prometheus.NewGaugeFunc(prometheus.GaugeOpts{
 			Name:        "operator_controller_objects_count",
 			Help:        "Number of exist CR objects by controller",
-			ConstLabels: map[string]string{"controller": controller}},
+			ConstLabels: map[string]string{"controller": controller},
+		},
 			func() float64 {
 				return oc.countByController(controller)
 			})

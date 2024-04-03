@@ -626,7 +626,7 @@ func (c *ConverterController) CreateScrapeConfig(scrapeConfig interface{}) {
 	err := c.rclient.Create(context.Background(), vmScrapeConfig)
 	if err != nil {
 		if errors.IsAlreadyExists(err) {
-			c.UpdateScrapeConfig(nil, vmScrapeConfig)
+			c.UpdateScrapeConfig(nil, scrapeConf)
 			return
 		}
 		l.Error(err, "cannot create vmScrapeConfig")

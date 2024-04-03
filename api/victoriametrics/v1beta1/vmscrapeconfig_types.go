@@ -71,7 +71,7 @@ type VMScrapeConfigSpec struct {
 	HonorTimestamps *bool `json:"honorTimestamps,omitempty"`
 	// HonorLabels chooses the metric's labels on collisions with target labels.
 	// +optional
-	HonorLabels *bool `json:"honorLabels,omitempty"`
+	HonorLabels bool `json:"honorLabels,omitempty"`
 	// Optional HTTP URL parameters
 	// +optional
 	// +mapType:=atomic

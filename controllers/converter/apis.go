@@ -645,7 +645,6 @@ func ConvertScrapeConfig(promscrapeConfig *v1alpha1.ScrapeConfig, conf *config.B
 		Spec: v1beta1vm.VMScrapeConfigSpec{
 			MetricsPath:          promscrapeConfig.Spec.MetricsPath,
 			HonorTimestamps:      promscrapeConfig.Spec.HonorTimestamps,
-			HonorLabels:          promscrapeConfig.Spec.HonorLabels,
 			Params:               promscrapeConfig.Spec.Params,
 			Scheme:               promscrapeConfig.Spec.Scheme,
 			BasicAuth:            ConvertBasicAuth(promscrapeConfig.Spec.BasicAuth),
@@ -654,6 +653,9 @@ func ConvertScrapeConfig(promscrapeConfig *v1alpha1.ScrapeConfig, conf *config.B
 			MetricRelabelConfigs: ConvertRelabelConfig(promscrapeConfig.Spec.MetricRelabelConfigs),
 			RelabelConfigs:       ConvertRelabelConfig(promscrapeConfig.Spec.RelabelConfigs),
 		},
+	}
+	if promscrapeConfig.Spec.HonorLabels != nil {
+		cs.Spec.HonorLabels = *promscrapeConfig.Spec.HonorLabels
 	}
 	if promscrapeConfig.Spec.ProxyConfig != nil && promscrapeConfig.Spec.ProxyURL != nil {
 		cs.Spec.ProxyURL = promscrapeConfig.Spec.ProxyURL
@@ -677,6 +679,7 @@ func ConvertScrapeConfig(promscrapeConfig *v1alpha1.ScrapeConfig, conf *config.B
 		for _, target := range staticConf.Targets {
 			tstaticconf.Targets = append(tstaticconf.Targets, string(target))
 		}
+		staticConf.Labels = make(map[v1.LabelName]string)
 		for k, v := range staticConf.Labels {
 			tstaticconf.Labels[string(k)] = v
 		}

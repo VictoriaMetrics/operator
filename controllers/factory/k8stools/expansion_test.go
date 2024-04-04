@@ -173,6 +173,38 @@ func Test_reCreateSTS(t *testing.T) {
 			stsRecreated:    true,
 			mustRecreatePod: false,
 		},
+		{
+			name: "change serviceName",
+			args: args{
+				ctx: context.TODO(),
+				existingSTS: &appsv1.StatefulSet{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "vmagent",
+						Namespace: "default",
+					},
+					Spec: appsv1.StatefulSetSpec{
+						ServiceName: "old-service",
+					},
+				},
+				newSTS: &appsv1.StatefulSet{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "vmagent",
+						Namespace: "default",
+					},
+					Spec: appsv1.StatefulSetSpec{
+						ServiceName: "new-service",
+					},
+				},
+			},
+			validate: func(sts *appsv1.StatefulSet) error {
+				if sts.Spec.ServiceName != "new-service" {
+					return fmt.Errorf("unexpected serviceName at sts: %s, want: %s", sts.Spec.ServiceName, "new-service")
+				}
+				return nil
+			},
+			stsRecreated:    true,
+			mustRecreatePod: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

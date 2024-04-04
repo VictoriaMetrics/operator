@@ -246,6 +246,7 @@ func newDeployForVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAgent
 				UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
 					Type: appsv1.OnDeleteStatefulSetStrategyType,
 				},
+				ServiceName: buildSTSServiceName(cr),
 				Template: corev1.PodTemplateSpec{
 					ObjectMeta: metav1.ObjectMeta{
 						Labels:      cr.PodLabels(),
@@ -294,6 +295,14 @@ func newDeployForVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAgent
 		},
 	}
 	return depSpec, nil
+}
+
+func buildSTSServiceName(cr *victoriametricsv1beta1.VMAgent) string {
+	// set service name for sts if additional service is headless
+	if cr.Spec.ServiceSpec != nil && cr.Spec.ServiceSpec.Spec.ClusterIP == corev1.ClusterIPNone {
+		return cr.Spec.ServiceSpec.NameOrDefault(cr.PrefixedName())
+	}
+	return ""
 }
 
 func makeSpecForVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperatorConf, ssCache *scrapesSecretsCache) (*corev1.PodSpec, error) {

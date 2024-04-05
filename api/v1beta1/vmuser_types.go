@@ -150,6 +150,9 @@ type TargetRef struct {
 	// See https://docs.victoriametrics.com/vmauth.html#dropping-request-path-prefix for more details.
 	// +optional
 	DropSrcPathPrefixParts *int `json:"drop_src_path_prefix_parts,omitempty"`
+	// TargetRefBasicAuth allow an target endpoint to authenticate over basic authentication
+	// +optional
+	TargetRefBasicAuth *TargetRefBasicAuth `json:"targetRefBasicAuth,omitempty"`
 }
 
 // VMUserIPFilters defines filters for IP addresses
@@ -189,6 +192,18 @@ type StaticRef struct {
 	// URLs allows setting multiple urls for load-balancing at vmauth-side.
 	// +optional
 	URLs []string `json:"urls,omitempty"`
+}
+
+// TargetRefBasicAuth target basic authentication
+type TargetRefBasicAuth struct {
+	// The secret in the service scrape namespace that contains the username
+	// for authentication.
+	// It must be at them same namespace as CRD
+	Username v1.SecretKeySelector `json:"username"`
+	// The secret in the service scrape namespace that contains the password
+	// for authentication.
+	// It must be at them same namespace as CRD
+	Password v1.SecretKeySelector `json:"password"`
 }
 
 // VMUserStatus defines the observed state of VMUser

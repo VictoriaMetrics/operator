@@ -660,7 +660,112 @@ func Test_buildVMAuthConfig(t *testing.T) {
   bearer_token: bearer-token-2
 `,
 		},
-
+		{
+			name: "with targetRef basicauth secret refs and headers",
+			args: args{
+				vmauth: &v1beta1.VMAuth{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-vmauth",
+						Namespace: "default",
+					},
+					Spec: v1beta1.VMAuthSpec{SelectAllByDefault: true},
+				},
+			},
+			predefinedObjects: []runtime.Object{
+				&v1beta1.VMUser{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "user-1",
+						Namespace: "default",
+					},
+					Spec: v1beta1.VMUserSpec{
+						Name:     pointer.String("user-1"),
+						UserName: pointer.String("some-user"),
+						PasswordRef: &v1.SecretKeySelector{
+							Key: "password",
+							LocalObjectReference: v1.LocalObjectReference{
+								Name: "generated-secret",
+							},
+						},
+						TargetRefs: []v1beta1.TargetRef{
+							{
+								Static:  &v1beta1.StaticRef{URL: "http://some-static"},
+								Paths:   []string{"/"},
+								Headers: []string{"baz: bar"},
+								TargetRefBasicAuth: &v1beta1.TargetRefBasicAuth{
+									Username: v1.SecretKeySelector{
+										Key: "username",
+										LocalObjectReference: v1.LocalObjectReference{
+											Name: "backend-auth-secret",
+										},
+									},
+									Password: v1.SecretKeySelector{
+										Key: "password",
+										LocalObjectReference: v1.LocalObjectReference{
+											Name: "backend-auth-secret",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				&v1beta1.VMUser{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "user-15",
+						Namespace: "monitoring",
+					},
+					Spec: v1beta1.VMUserSpec{
+						Name:        pointer.String("user-15"),
+						BearerToken: pointer.String("bearer-token-10"),
+						TargetRefs: []v1beta1.TargetRef{
+							{
+								Static: nil,
+								CRD: &v1beta1.CRDRef{
+									Kind:      "VMAgent",
+									Name:      "test",
+									Namespace: "default",
+								},
+								Paths: []string{"/"},
+							},
+						},
+					},
+				},
+				&v1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "default",
+					},
+				},
+				&v1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "generated-secret",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{"password": []byte(`generated-password`), "token": []byte(`some-bearer-token`)},
+				},
+				&v1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "backend-auth-secret",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{"password": []byte(`pass`), "username": []byte(`user`)},
+				},
+			},
+			want: `users:
+- url_prefix:
+  - http://some-static
+  headers:
+  - 'baz: bar'
+  - 'Authorization: Basic dXNlcjpwYXNz'
+  name: user-1
+  username: some-user
+  password: generated-password
+- url_prefix:
+  - http://vmagent-test.default.svc:8429
+  name: user-15
+  bearer_token: bearer-token-10
+`,
+		},
 		{
 			name: "with secret refs",
 			args: args{

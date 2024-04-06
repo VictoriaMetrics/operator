@@ -32,10 +32,11 @@ func cleanUpFinalize(ctx context.Context, rclient client.Client, instance client
 }
 
 // recreateSTSIfNeed will check if sts needs recreate and perform recreate if needed,
-// there are two different cases:
+// there are three different cases:
 // 1. sts's VolumeClaimTemplate's element changed[added or deleted];
 // 2. other VolumeClaimTemplate's attributes beside name changed, like size or storageClassName
 // since pod's volume only related to VCT's name, so when c2 happened, we don't need to recreate pods
+// 3. sts's serviceName changed, which requires to recreate pods for proper service discovery
 //
 // Note, in some cases its possible to get orphaned objects,
 // if sts was deleted and user updates configuration with different STS name.
@@ -131,6 +132,9 @@ func recreateSTSIfNeed(ctx context.Context, rclient client.Client, newSTS, exist
 	}
 	if newSTS.Spec.MinReadySeconds != existingSTS.Spec.MinReadySeconds {
 		return true, false, handleRemove()
+	}
+	if newSTS.Spec.ServiceName != existingSTS.Spec.ServiceName {
+		return true, true, handleRemove()
 	}
 	return false, false, nil
 }

@@ -390,6 +390,42 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "generate vmagent statefulset with serviceName when additional service is headless",
+			args: args{
+				c: config.MustGetBaseConfig(),
+				cr: &victoriametricsv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "example-agent-with-headless-service",
+						Namespace: "default",
+					},
+					Spec: victoriametricsv1beta1.VMAgentSpec{
+						RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
+							{URL: "http://remote-write"},
+						},
+						StatefulMode: true,
+						ServiceSpec: &victoriametricsv1beta1.AdditionalServiceSpec{
+							EmbeddedObjectMetadata: victoriametricsv1beta1.EmbeddedObjectMetadata{
+								Name: "my-headless-additional-service",
+							},
+							Spec: corev1.ServiceSpec{
+								ClusterIP: corev1.ClusterIPNone,
+							},
+						},
+					},
+				},
+			},
+			validate: func(got *appsv1.StatefulSet) error {
+				if got.Spec.ServiceName != "my-headless-additional-service" {
+					return fmt.Errorf("unexpected serviceName, got: %s, want: %s", got.Spec.ServiceName, "my-headless-additional-service")
+				}
+				return nil
+			},
+			statefulsetMode: true,
+			predefinedObjects: []runtime.Object{
+				k8stools.NewReadyDeployment("vmagent-example-agent", "default"),
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

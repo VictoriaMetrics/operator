@@ -21,7 +21,7 @@ import (
 // +k8s:openapi-gen=true
 type VMClusterSpec struct {
 	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
-	ParsingError string `json:"-,omitempty" yaml:"-,omitempty"`
+	ParsingError string `json:"-" yaml:"-"`
 	// RetentionPeriod for the stored metrics
 	// Note VictoriaMetrics has data/ and indexdb/ folders
 	// metrics from data/ removed eventually as soon as partition leaves retention period
@@ -141,9 +141,6 @@ func init() {
 }
 
 type VMSelect struct {
-	// Name is deprecated and will be removed at 0.22.0 release
-	// +deprecated
-	Name string `json:"name,omitempty"`
 	// PodMetadata configures Labels and Annotations which are propagated to the VMSelect pods.
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
 	// Image - docker image settings for VMSelect
@@ -313,10 +310,7 @@ type VMSelect struct {
 }
 
 func (s VMSelect) GetNameWithPrefix(clusterName string) string {
-	if s.Name == "" {
-		return PrefixedName(clusterName, "vmselect")
-	}
-	return PrefixedName(s.Name, "vmselect")
+	return PrefixedName(clusterName, "vmselect")
 }
 
 func (s VMSelect) BuildPodName(baseName string, podIndex int32, namespace, portName, domain string) string {
@@ -347,33 +341,28 @@ type InsertPorts struct {
 }
 
 type VMInsert struct {
-	// Name is deprecated and will be removed at 0.22.0 release
-	// +deprecated
-	// +optional
-	Name string `json:"name,omitempty"`
-
-	// PodMetadata configures Labels and Annotations which are propagated to the VMSelect pods.
+	// PodMetadata configures Labels and Annotations which are propagated to the VMInsert pods.
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
 
 	// Image - docker image settings for VMInsert
 	// +optional
 	Image Image `json:"image,omitempty"`
-	// Secrets is a list of Secrets in the same namespace as the VMSelect
-	// object, which shall be mounted into the VMSelect Pods.
+	// Secrets is a list of Secrets in the same namespace as the VMInsert
+	// object, which shall be mounted into the VMInsert Pods.
 	// The Secrets are mounted into /etc/vm/secrets/<secret-name>.
 	// +optional
 	Secrets []string `json:"secrets,omitempty"`
-	// ConfigMaps is a list of ConfigMaps in the same namespace as the VMSelect
-	// object, which shall be mounted into the VMSelect Pods.
+	// ConfigMaps is a list of ConfigMaps in the same namespace as the VMInsert
+	// object, which shall be mounted into the VMInsert Pods.
 	// The ConfigMaps are mounted into /etc/vm/configs/<configmap-name>.
 	// +optional
 	ConfigMaps []string `json:"configMaps,omitempty"`
-	// LogFormat for VMSelect to be configured with.
+	// LogFormat for VMInsert to be configured with.
 	// default or json
 	// +optional
 	// +kubebuilder:validation:Enum=default;json
 	LogFormat string `json:"logFormat,omitempty"`
-	// LogLevel for VMSelect to be configured with.
+	// LogLevel for VMInsert to be configured with.
 	// +optional
 	// +kubebuilder:validation:Enum=INFO;WARN;ERROR;FATAL;PANIC
 	LogLevel string `json:"logLevel,omitempty"`
@@ -398,7 +387,7 @@ type VMInsert struct {
 	// +optional
 	Volumes []v1.Volume `json:"volumes,omitempty"`
 	// VolumeMounts allows configuration of additional VolumeMounts on the output Deployment definition.
-	// VolumeMounts specified will be appended to other VolumeMounts in the VMSelect container,
+	// VolumeMounts specified will be appended to other VolumeMounts in the VMInsert container,
 	// that are generated as a result of StorageSpec objects.
 	// +optional
 	VolumeMounts []v1.VolumeMount `json:"volumeMounts,omitempty"`
@@ -421,7 +410,7 @@ type VMInsert struct {
 	// +optional
 	Containers []v1.Container `json:"containers,omitempty"`
 	// InitContainers allows adding initContainers to the pod definition. Those can be used to e.g.
-	// fetch secrets for injection into the VMSelect configuration from external sources. Any
+	// fetch secrets for injection into the VMInsert configuration from external sources. Any
 	// errors during the execution of an initContainer will lead to a restart of the Pod. More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
 	// Using initContainers for any use case other then secret fetching is entirely outside the scope
 	// of what the maintainers will support and by doing so, you accept that this behaviour may break
@@ -474,7 +463,7 @@ type VMInsert struct {
 	// +optional
 	RuntimeClassName *string `json:"runtimeClassName,omitempty"`
 
-	// ExtraEnvs that will be added to VMSelect pod
+	// ExtraEnvs that will be added to VMInsert pod
 	// +optional
 	ExtraEnvs []v1.EnvVar `json:"extraEnvs,omitempty"`
 
@@ -529,45 +518,37 @@ func (cr *VMInsert) ProbeNeedLiveness() bool {
 }
 
 func (i VMInsert) GetNameWithPrefix(clusterName string) string {
-	if i.Name == "" {
-		return PrefixedName(clusterName, "vminsert")
-	}
-	return PrefixedName(i.Name, "vminsert")
+	return PrefixedName(clusterName, "vminsert")
 }
 
 type VMStorage struct {
-	// Name is deprecated and will be removed at 0.22.0 release
-	// +deprecated
-	// +optional
-	Name string `json:"name,omitempty"`
-
 	// MinReadySeconds defines a minim number os seconds to wait before starting update next pod
 	// if previous in healthy state
 	// +optional
 	MinReadySeconds int32 `json:"minReadySeconds,omitempty"`
-	// PodMetadata configures Labels and Annotations which are propagated to the VMSelect pods.
+	// PodMetadata configures Labels and Annotations which are propagated to the VMStorage pods.
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
 
 	// Image - docker image settings for VMStorage
 	// +optional
 	Image Image `json:"image,omitempty"`
 
-	// Secrets is a list of Secrets in the same namespace as the VMSelect
-	// object, which shall be mounted into the VMSelect Pods.
+	// Secrets is a list of Secrets in the same namespace as the VMStorage
+	// object, which shall be mounted into the VMStorage Pods.
 	// The Secrets are mounted into /etc/vm/secrets/<secret-name>.
 	// +optional
 	Secrets []string `json:"secrets,omitempty"`
-	// ConfigMaps is a list of ConfigMaps in the same namespace as the VMSelect
-	// object, which shall be mounted into the VMSelect Pods.
+	// ConfigMaps is a list of ConfigMaps in the same namespace as the VMStorage
+	// object, which shall be mounted into the VMStorage Pods.
 	// The ConfigMaps are mounted into /etc/vm/configs/<configmap-name>.
 	// +optional
 	ConfigMaps []string `json:"configMaps,omitempty"`
-	// LogFormat for VMSelect to be configured with.
+	// LogFormat for VMStorage to be configured with.
 	// default or json
 	// +optional
 	// +kubebuilder:validation:Enum=default;json
 	LogFormat string `json:"logFormat,omitempty"`
-	// LogLevel for VMSelect to be configured with.
+	// LogLevel for VMStorage to be configured with.
 	// +optional
 	// +kubebuilder:validation:Enum=INFO;WARN;ERROR;FATAL;PANIC
 	LogLevel string `json:"logLevel,omitempty"`
@@ -587,7 +568,7 @@ type VMStorage struct {
 	// +optional
 	Volumes []v1.Volume `json:"volumes,omitempty"`
 	// VolumeMounts allows configuration of additional VolumeMounts on the output Deployment definition.
-	// VolumeMounts specified will be appended to other VolumeMounts in the VMSelect container,
+	// VolumeMounts specified will be appended to other VolumeMounts in the VMStorage container,
 	// that are generated as a result of StorageSpec objects.
 	// +optional
 	VolumeMounts []v1.VolumeMount `json:"volumeMounts,omitempty"`
@@ -610,7 +591,7 @@ type VMStorage struct {
 	// +optional
 	Containers []v1.Container `json:"containers,omitempty"`
 	// InitContainers allows adding initContainers to the pod definition. Those can be used to e.g.
-	// fetch secrets for injection into the VMSelect configuration from external sources. Any
+	// fetch secrets for injection into the VMStorage configuration from external sources. Any
 	// errors during the execution of an initContainer will lead to a restart of the Pod. More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
 	// Using initContainers for any use case other then secret fetching is entirely outside the scope
 	// of what the maintainers will support and by doing so, you accept that this behaviour may break
@@ -676,7 +657,7 @@ type VMStorage struct {
 
 	// +optional
 	ExtraArgs map[string]string `json:"extraArgs,omitempty"`
-	// ExtraEnvs that will be added to VMSelect pod
+	// ExtraEnvs that will be added to VMStorage pod
 	// +optional
 	ExtraEnvs []v1.EnvVar `json:"extraEnvs,omitempty"`
 	// ServiceSpec that will be create additional service for vmstorage
@@ -759,12 +740,12 @@ type VMBackup struct {
 	Image Image `json:"image,omitempty"`
 	// Port for health check connections
 	Port string `json:"port,omitempty"`
-	// LogFormat for VMSelect to be configured with.
+	// LogFormat for VMBackup to be configured with.
 	// default or json
 	// +optional
 	// +kubebuilder:validation:Enum=default;json
 	LogFormat *string `json:"logFormat,omitempty"`
-	// LogLevel for VMSelect to be configured with.
+	// LogLevel for VMBackup to be configured with.
 	// +optional
 	// +kubebuilder:validation:Enum=INFO;WARN;ERROR;FATAL;PANIC
 	LogLevel *string `json:"logLevel,omitempty"`
@@ -823,10 +804,7 @@ func (s VMStorage) BuildPodName(baseName string, podIndex int32, namespace strin
 }
 
 func (s VMStorage) GetNameWithPrefix(clusterName string) string {
-	if s.Name == "" {
-		return PrefixedName(clusterName, "vmstorage")
-	}
-	return PrefixedName(s.Name, "vmstorage")
+	return PrefixedName(clusterName, "vmstorage")
 }
 
 func (s VMStorage) GetStorageVolumeName() string {
@@ -1189,6 +1167,21 @@ func (cr *VMCluster) SetUpdateStatusTo(ctx context.Context, r client.Client, sta
 		return fmt.Errorf("failed to update object status to=%q: %w", status, err)
 	}
 	return nil
+}
+
+// GetAdditionalService returns AdditionalServiceSpec settings
+func (cr *VMSelect) GetAdditionalService() *AdditionalServiceSpec {
+	return cr.ServiceSpec
+}
+
+// GetAdditionalService returns AdditionalServiceSpec settings
+func (cr *VMStorage) GetAdditionalService() *AdditionalServiceSpec {
+	return cr.ServiceSpec
+}
+
+// GetAdditionalService returns AdditionalServiceSpec settings
+func (cr *VMInsert) GetAdditionalService() *AdditionalServiceSpec {
+	return cr.ServiceSpec
 }
 
 func (cr *VMStorage) ProbeNeedLiveness() bool {

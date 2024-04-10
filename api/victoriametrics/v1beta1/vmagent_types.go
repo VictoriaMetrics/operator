@@ -23,7 +23,7 @@ import (
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 type VMAgentSpec struct {
 	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
-	ParsingError string `json:"-,omitempty" yaml:"-,omitempty"`
+	ParsingError string `json:"-" yaml:"-"`
 	// PodMetadata configures Labels and Annotations which are propagated to the vmagent pods.
 	// +optional
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
@@ -800,6 +800,11 @@ func (cr *VMAgent) SetUpdateStatusTo(ctx context.Context, r client.Client, statu
 		return fmt.Errorf("failed to update object status to=%q: %w", status, err)
 	}
 	return nil
+}
+
+// GetAdditionalService returns AdditionalServiceSpec settings
+func (cr *VMAgent) GetAdditionalService() *AdditionalServiceSpec {
+	return cr.Spec.ServiceSpec
 }
 
 func init() {

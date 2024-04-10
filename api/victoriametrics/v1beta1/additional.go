@@ -261,13 +261,25 @@ type BasicAuth struct {
 // by default, some of fields can be inherited from default service definition for the CRD:
 // labels,selector, ports.
 // if metadata.name is not defined, service will have format {{CRD_TYPE}}-{{CRD_NAME}}-additional-service.
+// if UseAsDefault is set to true, changes applied to the main service without additional service creation
 // +k8s:openapi-gen=true
 type AdditionalServiceSpec struct {
+	// UseAsDefault applies changes from given service definition to the main object Service
+	// Chaning from headless service to clusterIP or loadbalancer may break cross-component communication
+	UseAsDefault bool `json:"useAsDefault,omitempty"`
 	// EmbeddedObjectMetadata defines objectMeta for additional service.
 	EmbeddedObjectMetadata `json:"metadata,omitempty"`
 	// ServiceSpec describes the attributes that a user creates on a service.
 	// More info: https://kubernetes.io/docs/concepts/services-networking/service/
 	Spec v1.ServiceSpec `json:"spec"`
+}
+
+// IsSomeAndThen applies callback to the addtionalServiceSpec if it's not nil or do not used as default service
+func (asc *AdditionalServiceSpec) IsSomeAndThen(cb func(s *AdditionalServiceSpec) error) error {
+	if asc == nil || asc.UseAsDefault {
+		return nil
+	}
+	return cb(asc)
 }
 
 // NameOrDefault returns name or default value with suffix

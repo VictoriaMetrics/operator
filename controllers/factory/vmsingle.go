@@ -382,18 +382,21 @@ func CreateOrUpdateVMSingleService(ctx context.Context, cr *victoriametricsv1bet
 			})
 		}
 	}
-	newService := buildDefaultService(cr, cr.Spec.Port, addBackupPort)
-	buildAdditionalServicePorts(cr.Spec.InsertPorts, newService)
+	newService := buildDefaultService(cr, cr.Spec.Port, func(svc *corev1.Service) {
+		addBackupPort(svc)
+		appendInsertPortsToService(cr.Spec.InsertPorts, svc)
+	})
 
-	if cr.Spec.ServiceSpec != nil {
-		additionalService := buildDefaultService(cr, cr.Spec.Port, nil)
-		mergeServiceSpec(additionalService, cr.Spec.ServiceSpec)
-		buildAdditionalServicePorts(cr.Spec.InsertPorts, additionalService)
+	if err := cr.Spec.ServiceSpec.IsSomeAndThen(func(s *victoriametricsv1beta1.AdditionalServiceSpec) error {
+		additionalService := buildAdditionalServiceFromDefault(newService, s)
 		if additionalService.Name == newService.Name {
 			logger.WithContext(ctx).Error(fmt.Errorf("vmsingle additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name), "cannot create additional service")
-		} else if _, err := reconcileServiceForCRD(ctx, rclient, additionalService); err != nil {
-			return nil, err
+		} else if err := reconcileServiceForCRD(ctx, rclient, additionalService); err != nil {
+			return fmt.Errorf("cannot reconcile additional service for vmsingle: %w", err)
 		}
+		return nil
+	}); err != nil {
+		return nil, err
 	}
 
 	rca := finalize.RemoveSvcArgs{SelectorLabels: cr.SelectorLabels, GetNameSpace: cr.GetNamespace, PrefixedName: cr.PrefixedName}
@@ -401,7 +404,10 @@ func CreateOrUpdateVMSingleService(ctx context.Context, cr *victoriametricsv1bet
 		return nil, err
 	}
 
-	return reconcileServiceForCRD(ctx, rclient, newService)
+	if err := reconcileServiceForCRD(ctx, rclient, newService); err != nil {
+		return nil, fmt.Errorf("cannot reconcile service for vmsingle: %w", err)
+	}
+	return newService, nil
 }
 
 func makeSpecForVMBackuper(

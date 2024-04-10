@@ -48,18 +48,19 @@ func CreateOrUpdateVMAlertService(ctx context.Context, cr *victoriametricsv1beta
 	if cr.Spec.Port == "" {
 		cr.Spec.Port = c.VMAlertDefault.Port
 	}
-	additionalSvc := buildDefaultService(cr, cr.Spec.Port, nil)
-	mergeServiceSpec(additionalSvc, cr.Spec.ServiceSpec)
+
 	newService := buildDefaultService(cr, cr.Spec.Port, nil)
 
-	// user may want to abuse it, if serviceSpec.name == crd.prefixedName,
-	// log error?
-	if cr.Spec.ServiceSpec != nil {
+	if err := cr.Spec.ServiceSpec.IsSomeAndThen(func(s *victoriametricsv1beta1.AdditionalServiceSpec) error {
+		additionalSvc := buildAdditionalServiceFromDefault(newService, s)
 		if additionalSvc.Name == newService.Name {
 			logger.WithContext(ctx).Error(fmt.Errorf("vmalert additional service name: %q cannot be the same as crd.prefixedname: %q", additionalSvc.Name, cr.PrefixedName()), "cannot create additional service")
-		} else if _, err := reconcileServiceForCRD(ctx, rclient, additionalSvc); err != nil {
-			return nil, err
+		} else if err := reconcileServiceForCRD(ctx, rclient, additionalSvc); err != nil {
+			return fmt.Errorf("cannot reconcile additional service for vmalert: %w", err)
 		}
+		return nil
+	}); err != nil {
+		return nil, err
 	}
 	rca := finalize.RemoveSvcArgs{
 		PrefixedName:   cr.PrefixedName,
@@ -69,8 +70,10 @@ func CreateOrUpdateVMAlertService(ctx context.Context, cr *victoriametricsv1beta
 	if err := finalize.RemoveOrphanedServices(ctx, rclient, rca, cr.Spec.ServiceSpec); err != nil {
 		return nil, err
 	}
-
-	return reconcileServiceForCRD(ctx, rclient, newService)
+	if err := reconcileServiceForCRD(ctx, rclient, newService); err != nil {
+		return nil, fmt.Errorf("cannot reconcile service for vmalert: %w", err)
+	}
+	return newService, nil
 }
 
 func createOrUpdateVMAlertSecret(ctx context.Context, rclient client.Client, cr *victoriametricsv1beta1.VMAlert, ssCache map[string]*authSecret, c *config.BaseOperatorConf) error {

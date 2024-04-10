@@ -146,11 +146,6 @@ func CreateOrUpdateAlertManagerService(ctx context.Context, cr *victoriametricsv
 		cr.Spec.PortName = defaultPortName
 	}
 
-	additionalService := buildDefaultService(cr, cr.Spec.PortName, func(svc *v1.Service) {
-		svc.Spec.Ports[0].Port = 9093
-	})
-	mergeServiceSpec(additionalService, cr.Spec.ServiceSpec)
-
 	newService := buildDefaultService(cr, cr.Spec.PortName, func(svc *v1.Service) {
 		svc.Spec.ClusterIP = "None"
 		svc.Spec.Ports[0].Port = 9093
@@ -170,20 +165,26 @@ func CreateOrUpdateAlertManagerService(ctx context.Context, cr *victoriametricsv
 		)
 	})
 
-	if cr.Spec.ServiceSpec != nil {
+	if err := cr.Spec.ServiceSpec.IsSomeAndThen(func(s *victoriametricsv1beta1.AdditionalServiceSpec) error {
+		additionalService := buildAdditionalServiceFromDefault(newService, s)
 		if additionalService.Name == newService.Name {
 			logger.WithContext(ctx).Error(fmt.Errorf("vmalertmanager additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name), "cannot create additional service")
-		} else if _, err := reconcileServiceForCRD(ctx, rclient, additionalService); err != nil {
-			return nil, err
+		} else if err := reconcileServiceForCRD(ctx, rclient, additionalService); err != nil {
+			return fmt.Errorf("cannot reconcile additional service for vmalertmanager: %w", err)
 		}
+		return nil
+	}); err != nil {
+		return nil, err
 	}
 
 	rca := finalize.RemoveSvcArgs{SelectorLabels: cr.SelectorLabels, GetNameSpace: cr.GetNamespace, PrefixedName: cr.PrefixedName}
 	if err := finalize.RemoveOrphanedServices(ctx, rclient, rca, cr.Spec.ServiceSpec); err != nil {
 		return nil, err
 	}
-
-	return reconcileServiceForCRD(ctx, rclient, newService)
+	if err := reconcileServiceForCRD(ctx, rclient, newService); err != nil {
+		return nil, fmt.Errorf("cannot reconcile service for vmalertmanager: %w", err)
+	}
+	return newService, nil
 }
 
 func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, c *config.BaseOperatorConf, amVersion *version.Version) (*appsv1.StatefulSetSpec, error) {

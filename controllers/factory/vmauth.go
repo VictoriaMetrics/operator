@@ -43,25 +43,27 @@ func CreateOrUpdateVMAuthService(ctx context.Context, cr *victoriametricsv1beta1
 	if cr.Spec.Port == "" {
 		cr.Spec.Port = vmauthPort
 	}
-	additionalService := buildDefaultService(cr, cr.Spec.Port, nil)
-	mergeServiceSpec(additionalService, cr.Spec.ServiceSpec)
-
 	newService := buildDefaultService(cr, cr.Spec.Port, nil)
-
-	if cr.Spec.ServiceSpec != nil {
+	if err := cr.Spec.ServiceSpec.IsSomeAndThen(func(s *victoriametricsv1beta1.AdditionalServiceSpec) error {
+		additionalService := buildAdditionalServiceFromDefault(newService, s)
 		if additionalService.Name == newService.Name {
 			logger.WithContext(ctx).Error(fmt.Errorf("vmauth additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name), "cannot create additional service")
-		} else if _, err := reconcileServiceForCRD(ctx, rclient, additionalService); err != nil {
-			return nil, err
+		} else if err := reconcileServiceForCRD(ctx, rclient, additionalService); err != nil {
+			return fmt.Errorf("cannot reconcile additional service for vmauth: %w", err)
 		}
+		return nil
+	}); err != nil {
+		return nil, err
 	}
 
 	rca := finalize.RemoveSvcArgs{SelectorLabels: cr.SelectorLabels, GetNameSpace: cr.GetNamespace, PrefixedName: cr.PrefixedName}
 	if err := finalize.RemoveOrphanedServices(ctx, rclient, rca, cr.Spec.ServiceSpec); err != nil {
 		return nil, err
 	}
-
-	return reconcileServiceForCRD(ctx, rclient, newService)
+	if err := reconcileServiceForCRD(ctx, rclient, newService); err != nil {
+		return nil, fmt.Errorf("cannot reconcile service for vmauth: %w", err)
+	}
+	return newService, nil
 }
 
 // CreateOrUpdateVMAuth - handles VMAuth deployment reconciliation.

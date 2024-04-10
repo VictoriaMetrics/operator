@@ -74,7 +74,7 @@ func RemoveOrphanedServices(ctx context.Context, rclient client.Client, args Rem
 	}
 
 	var additionalSvcName string
-	if spec != nil {
+	if spec != nil && !spec.UseAsDefault {
 		additionalSvcName = spec.NameOrDefault(args.PrefixedName())
 	}
 	cnt := 0

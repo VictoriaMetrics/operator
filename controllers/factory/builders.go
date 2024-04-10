@@ -11,6 +11,7 @@ import (
 	"k8s.io/api/autoscaling/v2beta2"
 	policyv1 "k8s.io/api/policy/v1"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
+	"k8s.io/client-go/util/retry"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
@@ -77,36 +78,35 @@ type svcBuilderArgs interface {
 	SelectorLabels() map[string]string
 	AsOwner() []metav1.OwnerReference
 	GetNSName() string
+	GetAdditionalService() *victoriametricsv1beta1.AdditionalServiceSpec
 }
 
-// mergeServiceSpec merges serviceSpec to the given services
-// it should help to avoid boilerplate at CRD spec,
-// base fields filled by operator.
-func mergeServiceSpec(svc *v1.Service, svcSpec *victoriametricsv1beta1.AdditionalServiceSpec) {
+func buildAdditionalServiceFromDefault(defaultSvc *v1.Service, svcSpec *victoriametricsv1beta1.AdditionalServiceSpec) *v1.Service {
 	if svcSpec == nil {
-		return
+		return nil
 	}
-	svc.Name = svcSpec.NameOrDefault(svc.Name)
+	result := defaultSvc.DeepCopy()
+	result.Name = svcSpec.NameOrDefault(result.Name)
 	// in case of labels, we must keep base labels to be able to discover this service later.
-	svc.Labels = labels.Merge(svcSpec.Labels, svc.Labels)
-	if svc.Labels == nil {
-		svc.Labels = make(map[string]string)
+	result.Labels = labels.Merge(svcSpec.Labels, result.Labels)
+	if result.Labels == nil {
+		result.Labels = make(map[string]string)
 	}
-	svc.Labels[victoriametricsv1beta1.AdditionalServiceLabel] = "managed"
-	svc.Annotations = labels.Merge(svc.Annotations, svcSpec.Annotations)
-	defaultSvc := svc.DeepCopy()
-	svc.Spec = svcSpec.Spec
-	if svc.Spec.Selector == nil {
-		svc.Spec.Selector = defaultSvc.Spec.Selector
+	result.Labels[victoriametricsv1beta1.AdditionalServiceLabel] = "managed"
+	result.Annotations = labels.Merge(result.Annotations, svcSpec.Annotations)
+	result.Spec = *svcSpec.Spec.DeepCopy()
+	if result.Spec.Selector == nil {
+		result.Spec.Selector = defaultSvc.Spec.Selector
 	}
 	// user may want to override port definition.
-	if svc.Spec.Ports == nil {
-		svc.Spec.Ports = defaultSvc.Spec.Ports
+	if result.Spec.Ports == nil {
+		result.Spec.Ports = defaultSvc.Spec.Ports
 	}
-	if svc.Spec.Type == "" {
-		svc.Spec.Type = defaultSvc.Spec.Type
+	if result.Spec.Type == "" {
+		result.Spec.Type = defaultSvc.Spec.Type
 	}
 	// note clusterIP not checked, its users responsibility.
+	return result
 }
 
 func buildDefaultService(cr svcBuilderArgs, defaultPort string, setOptions func(svc *v1.Service)) *v1.Service {
@@ -135,6 +135,39 @@ func buildDefaultService(cr svcBuilderArgs, defaultPort string, setOptions func(
 	if setOptions != nil {
 		setOptions(svc)
 	}
+	serviceOverrides := cr.GetAdditionalService()
+	if serviceOverrides != nil && serviceOverrides.UseAsDefault {
+		hasPortByName := func(name string) bool {
+			for _, port := range serviceOverrides.Spec.Ports {
+				if port.Name == name {
+					return true
+				}
+			}
+			return false
+		}
+		for _, defaultPort := range svc.Spec.Ports {
+			if !hasPortByName(defaultPort.Name) {
+				serviceOverrides.Spec.Ports = append(serviceOverrides.Spec.Ports, defaultPort)
+			}
+		}
+		if serviceOverrides.Spec.Type == "" {
+			serviceOverrides.Spec.Type = svc.Spec.Type
+		}
+		if serviceOverrides.Spec.ClusterIP == "" && serviceOverrides.Spec.Type == svc.Spec.Type {
+			serviceOverrides.Spec.ClusterIP = svc.Spec.ClusterIP
+		}
+
+		serviceOverrides.Spec.Selector = svc.Spec.Selector
+		if len(serviceOverrides.Labels) > 0 {
+			svc.Labels = labels.Merge(serviceOverrides.Labels, svc.Labels)
+		}
+		if len(serviceOverrides.Annotations) > 0 {
+			svc.Annotations = labels.Merge(serviceOverrides.Annotations, svc.Annotations)
+		}
+
+		svc.Spec = serviceOverrides.Spec
+	}
+
 	return svc
 }
 
@@ -143,7 +176,15 @@ func buildDefaultService(cr svcBuilderArgs, defaultPort string, setOptions func(
 // NOTE it doesn't perform validation:
 // in case of spec.type= LoadBalancer or NodePort, clusterIP: None is not allowed,
 // its users responsibility to define it correctly.
-func reconcileServiceForCRD(ctx context.Context, rclient client.Client, newService *v1.Service) (*v1.Service, error) {
+func reconcileServiceForCRD(ctx context.Context, rclient client.Client, newService *v1.Service) error {
+	// use a copy of service to avoid any side effects
+	svcForReconcile := newService.DeepCopy()
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		return reconcileService(ctx, rclient, svcForReconcile)
+	})
+}
+
+func reconcileService(ctx context.Context, rclient client.Client, newService *v1.Service) error {
 	// helper for proper service deletion.
 	handleDelete := func(svc *v1.Service) error {
 		if err := finalize.RemoveFinalizer(ctx, rclient, svc); err != nil {
@@ -158,18 +199,18 @@ func reconcileServiceForCRD(ctx context.Context, rclient client.Client, newServi
 			// service not exists, creating it.
 			err := rclient.Create(ctx, newService)
 			if err != nil {
-				return nil, fmt.Errorf("cannot create new service: %w", err)
+				return fmt.Errorf("cannot create new service: %w", err)
 			}
-			return newService, nil
+			return nil
 		}
-		return nil, fmt.Errorf("cannot get service for existing service: %w", err)
+		return fmt.Errorf("cannot get service for existing service: %w", err)
 	}
 	// lets save annotations and labels even after recreation.
 	if newService.Spec.Type != existingService.Spec.Type {
 		// type mismatch.
 		// need to remove it and recreate.
 		if err := handleDelete(existingService); err != nil {
-			return nil, err
+			return err
 		}
 		// recursive call. operator reconciler must throttle it.
 		return reconcileServiceForCRD(ctx, rclient, newService)
@@ -178,21 +219,21 @@ func reconcileServiceForCRD(ctx context.Context, rclient client.Client, newServi
 	if newService.Spec.ClusterIP != "" && newService.Spec.ClusterIP != "None" && newService.Spec.ClusterIP != existingService.Spec.ClusterIP {
 		// ip was changed by user, remove old service and create new one.
 		if err := handleDelete(existingService); err != nil {
-			return nil, err
+			return err
 		}
 		return reconcileServiceForCRD(ctx, rclient, newService)
 	}
 	// existing service isn't None
 	if newService.Spec.ClusterIP == "None" && existingService.Spec.ClusterIP != "None" {
 		if err := handleDelete(existingService); err != nil {
-			return nil, err
+			return err
 		}
 		return reconcileServiceForCRD(ctx, rclient, newService)
 	}
 	// make service non-headless.
 	if newService.Spec.ClusterIP == "" && existingService.Spec.ClusterIP == "None" {
 		if err := handleDelete(existingService); err != nil {
-			return nil, err
+			return err
 		}
 		return reconcileServiceForCRD(ctx, rclient, newService)
 	}
@@ -224,10 +265,10 @@ func reconcileServiceForCRD(ctx context.Context, rclient client.Client, newServi
 
 	err = rclient.Update(ctx, newService)
 	if err != nil {
-		return nil, fmt.Errorf("cannot update vmalert server: %w", err)
+		return fmt.Errorf("cannot update vmalert server: %w", err)
 	}
 
-	return newService, nil
+	return nil
 }
 
 func buildDefaultPDBV1(cr svcBuilderArgs, spec *victoriametricsv1beta1.EmbeddedPodDisruptionBudgetSpec) *policyv1.PodDisruptionBudget {

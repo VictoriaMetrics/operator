@@ -85,7 +85,7 @@ func buildArgsForAdditionalPorts(args []string, ip *victoriametricsv1beta1.Inser
 	return args
 }
 
-func buildAdditionalServicePorts(ip *victoriametricsv1beta1.InsertPorts, svc *corev1.Service) {
+func appendInsertPortsToService(ip *victoriametricsv1beta1.InsertPorts, svc *corev1.Service) {
 	if ip == nil || svc == nil {
 		return
 	}
@@ -155,5 +155,4 @@ func buildAdditionalServicePorts(ip *victoriametricsv1beta1.InsertPorts, svc *co
 				TargetPort: intstr.Parse(ip.OpenTSDBHTTPPort),
 			})
 	}
-
 }

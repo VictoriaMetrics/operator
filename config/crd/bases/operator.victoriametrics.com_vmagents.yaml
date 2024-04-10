@@ -53,10 +53,6 @@ spec:
           spec:
             description: VMAgentSpec defines the desired state of VMAgent
             properties:
-              '-':
-                description: ParsingError contents error with context if operator
-                  was failed to parse json object from kubernetes api server
-                type: string
               aPIServerConfig:
                 description: |-
                   APIServerConfig allows specifying a host and auth methods to access apiserver.
@@ -2821,6 +2817,11 @@ spec:
                       More info: https://kubernetes.io/docs/concepts/services-networking/service/
                     type: object
                     x-kubernetes-preserve-unknown-fields: true
+                  useAsDefault:
+                    description: |-
+                      UseAsDefault applies changes from given service definition to the main object Service
+                      Chaning from headless service to clusterIP or loadbalancer may break cross-component communication
+                    type: boolean
                 required:
                 - spec
                 type: object

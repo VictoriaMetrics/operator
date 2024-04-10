@@ -52,19 +52,24 @@ func CreateOrUpdateVMAgentService(ctx context.Context, cr *victoriametricsv1beta
 	if cr.Spec.Port == "" {
 		cr.Spec.Port = c.VMAgentDefault.Port
 	}
-	additionalService := buildDefaultService(cr, cr.Spec.Port, nil)
-	mergeServiceSpec(additionalService, cr.Spec.ServiceSpec)
-	buildAdditionalServicePorts(cr.Spec.InsertPorts, additionalService)
 
-	newService := buildDefaultService(cr, cr.Spec.Port, nil)
-	buildAdditionalServicePorts(cr.Spec.InsertPorts, newService)
+	newService := buildDefaultService(cr, cr.Spec.Port, func(svc *corev1.Service) {
+		if cr.Spec.StatefulMode {
+			svc.Spec.ClusterIP = "None"
+		}
+		appendInsertPortsToService(cr.Spec.InsertPorts, svc)
+	})
 
-	if cr.Spec.ServiceSpec != nil {
+	if err := cr.Spec.ServiceSpec.IsSomeAndThen(func(s *victoriametricsv1beta1.AdditionalServiceSpec) error {
+		additionalService := buildAdditionalServiceFromDefault(newService, cr.Spec.ServiceSpec)
 		if additionalService.Name == newService.Name {
 			logger.WithContext(ctx).Error(fmt.Errorf("vmagent additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name), "cannot create additional service")
-		} else if _, err := reconcileServiceForCRD(ctx, rclient, additionalService); err != nil {
-			return nil, err
+		} else if err := reconcileServiceForCRD(ctx, rclient, additionalService); err != nil {
+			return fmt.Errorf("cannot reconcile additional service for vmagent: %w", err)
 		}
+		return nil
+	}); err != nil {
+		return nil, err
 	}
 
 	rca := finalize.RemoveSvcArgs{SelectorLabels: cr.SelectorLabels, GetNameSpace: cr.GetNamespace, PrefixedName: cr.PrefixedName}
@@ -72,7 +77,10 @@ func CreateOrUpdateVMAgentService(ctx context.Context, cr *victoriametricsv1beta
 		return nil, err
 	}
 
-	return reconcileServiceForCRD(ctx, rclient, newService)
+	if err := reconcileServiceForCRD(ctx, rclient, newService); err != nil {
+		return nil, fmt.Errorf("cannot reconcile service for vmagent: %w", err)
+	}
+	return newService, nil
 }
 
 func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client, c *config.BaseOperatorConf) error {

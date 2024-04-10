@@ -8,24 +8,23 @@ import (
 	"strings"
 	"time"
 
-	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
-	"github.com/VictoriaMetrics/operator/controllers/factory/logger"
-	"k8s.io/api/autoscaling/v2beta2"
-	policyv1 "k8s.io/api/policy/v1"
-	"k8s.io/apimachinery/pkg/util/wait"
-
 	"github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/controllers/factory/logger"
 	"github.com/VictoriaMetrics/operator/controllers/factory/psp"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	appsv1 "k8s.io/api/apps/v1"
+	"k8s.io/api/autoscaling/v2beta2"
 	corev1 "k8s.io/api/core/v1"
+	policyv1 "k8s.io/api/policy/v1"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -64,7 +63,7 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient
 			return err
 		}
 
-		storageSvc, err := CreateOrUpdateVMStorageService(ctx, cr, rclient, c)
+		storageSvc, err := createOrUpdateVMStorageService(ctx, cr, rclient, c)
 		if err != nil {
 			return err
 		}
@@ -97,7 +96,7 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient
 			return err
 		}
 		// create vmselect service
-		selectSvc, err := CreateOrUpdateVMSelectService(ctx, cr, rclient, c)
+		selectSvc, err := createOrUpdateVMSelectService(ctx, cr, rclient, c)
 		if err != nil {
 			return err
 		}
@@ -125,7 +124,7 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *v1beta1.VMCluster, rclient
 		if err := createOrUpdateVMInsert(ctx, cr, rclient, c); err != nil {
 			return err
 		}
-		insertSvc, err := CreateOrUpdateVMInsertService(ctx, cr, rclient, c)
+		insertSvc, err := createOrUpdateVMInsertService(ctx, cr, rclient, c)
 		if err != nil {
 			return err
 		}
@@ -172,22 +171,41 @@ func createOrUpdateVMSelect(ctx context.Context, cr *v1beta1.VMCluster, rclient 
 	return k8stools.HandleSTSUpdate(ctx, rclient, stsOpts, newSts, c)
 }
 
-func CreateOrUpdateVMSelectService(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) (*corev1.Service, error) {
+func createOrUpdateVMSelectService(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) (*corev1.Service, error) {
 	cr = cr.DeepCopy()
 	if cr.Spec.VMSelect.Port == "" {
 		cr.Spec.VMSelect.Port = c.VMClusterDefault.VMSelectDefault.Port
 	}
-	additionalService := genVMSelectService(cr)
-	mergeServiceSpec(additionalService, cr.Spec.VMSelect.ServiceSpec)
 
-	newHeadless := genVMSelectHeadlessService(cr)
-
-	if cr.Spec.VMSelect.ServiceSpec != nil {
-		if additionalService.Name == newHeadless.Name {
-			return nil, fmt.Errorf("vmselect additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newHeadless.Name)
-		} else if _, err := reconcileServiceForCRD(ctx, rclient, additionalService); err != nil {
-			return nil, fmt.Errorf("cannot reconcile service for vmselect: %w", err)
+	t := &clusterSvcBuilder{
+		cr,
+		cr.Spec.VMSelect.GetNameWithPrefix(cr.Name),
+		cr.FinalLabels(cr.VMSelectSelectorLabels()),
+		cr.VMSelectSelectorLabels(),
+		cr.Spec.VMSelect.ServiceSpec,
+	}
+	newHeadless := buildDefaultService(t, cr.Spec.VMSelect.Port, func(svc *corev1.Service) {
+		svc.Spec.ClusterIP = "None"
+		if cr.Spec.VMSelect.ClusterNativePort != "" {
+			svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{
+				Name:       "clusternative",
+				Protocol:   "TCP",
+				Port:       intstr.Parse(cr.Spec.VMSelect.ClusterNativePort).IntVal,
+				TargetPort: intstr.Parse(cr.Spec.VMSelect.ClusterNativePort),
+			})
 		}
+	})
+
+	if err := cr.Spec.VMSelect.ServiceSpec.IsSomeAndThen(func(s *v1beta1.AdditionalServiceSpec) error {
+		additionalService := buildAdditionalServiceFromDefault(newHeadless, s)
+		if additionalService.Name == newHeadless.Name {
+			return fmt.Errorf("vmselect additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newHeadless.Name)
+		} else if err := reconcileServiceForCRD(ctx, rclient, additionalService); err != nil {
+			return fmt.Errorf("cannot reconcile service for vmselect: %w", err)
+		}
+		return nil
+	}); err != nil {
+		return nil, err
 	}
 	rca := finalize.RemoveSvcArgs{SelectorLabels: cr.VMSelectSelectorLabels, GetNameSpace: cr.GetNamespace, PrefixedName: func() string {
 		return cr.Spec.VMSelect.GetNameWithPrefix(cr.Name)
@@ -196,7 +214,10 @@ func CreateOrUpdateVMSelectService(ctx context.Context, cr *v1beta1.VMCluster, r
 		return nil, err
 	}
 
-	return reconcileServiceForCRD(ctx, rclient, newHeadless)
+	if err := reconcileServiceForCRD(ctx, rclient, newHeadless); err != nil {
+		return nil, fmt.Errorf("cannot reconcile vmselect service: %w", err)
+	}
+	return newHeadless, nil
 }
 
 func createOrUpdateVMInsert(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) error {
@@ -231,43 +252,42 @@ func createOrUpdateVMInsert(ctx context.Context, cr *v1beta1.VMCluster, rclient 
 	return nil
 }
 
-// CreateOrUpdateVMInsertService reconciles vminsert services.
-func CreateOrUpdateVMInsertService(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) (*corev1.Service, error) {
+func createOrUpdateVMInsertService(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) (*corev1.Service, error) {
 	cr = cr.DeepCopy()
 	if cr.Spec.VMInsert.Port == "" {
 		cr.Spec.VMInsert.Port = c.VMClusterDefault.VMInsertDefault.Port
 	}
-	additionalService := defaultVMInsertService(cr)
-	mergeServiceSpec(additionalService, cr.Spec.VMInsert.ServiceSpec)
-	buildAdditionalServicePorts(cr.Spec.VMInsert.InsertPorts, additionalService)
-	if cr.Spec.VMInsert.ClusterNativePort != "" {
-		additionalService.Spec.Ports = append(additionalService.Spec.Ports,
-			corev1.ServicePort{
-				Name:       "clusternative",
-				Protocol:   "TCP",
-				Port:       intstr.Parse(cr.Spec.VMInsert.ClusterNativePort).IntVal,
-				TargetPort: intstr.Parse(cr.Spec.VMInsert.ClusterNativePort),
-			})
+	t := &clusterSvcBuilder{
+		cr,
+		cr.Spec.VMInsert.GetNameWithPrefix(cr.Name),
+		cr.FinalLabels(cr.VMInsertSelectorLabels()),
+		cr.VMInsertSelectorLabels(),
+		cr.Spec.VMInsert.ServiceSpec,
 	}
 
-	newService := defaultVMInsertService(cr)
-	buildAdditionalServicePorts(cr.Spec.VMInsert.InsertPorts, newService)
-	if cr.Spec.VMInsert.ClusterNativePort != "" {
-		newService.Spec.Ports = append(newService.Spec.Ports,
-			corev1.ServicePort{
-				Name:       "clusternative",
-				Protocol:   "TCP",
-				Port:       intstr.Parse(cr.Spec.VMInsert.ClusterNativePort).IntVal,
-				TargetPort: intstr.Parse(cr.Spec.VMInsert.ClusterNativePort),
-			})
-	}
-
-	if cr.Spec.VMInsert.ServiceSpec != nil {
-		if additionalService.Name == newService.Name {
-			return nil, fmt.Errorf("vminsert additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name)
-		} else if _, err := reconcileServiceForCRD(ctx, rclient, additionalService); err != nil {
-			return nil, err
+	newService := buildDefaultService(t, cr.Spec.VMInsert.Port, func(svc *corev1.Service) {
+		appendInsertPortsToService(cr.Spec.VMInsert.InsertPorts, svc)
+		if cr.Spec.VMInsert.ClusterNativePort != "" {
+			svc.Spec.Ports = append(svc.Spec.Ports,
+				corev1.ServicePort{
+					Name:       "clusternative",
+					Protocol:   "TCP",
+					Port:       intstr.Parse(cr.Spec.VMInsert.ClusterNativePort).IntVal,
+					TargetPort: intstr.Parse(cr.Spec.VMInsert.ClusterNativePort),
+				})
 		}
+	})
+
+	if err := cr.Spec.VMInsert.ServiceSpec.IsSomeAndThen(func(s *v1beta1.AdditionalServiceSpec) error {
+		additionalService := buildAdditionalServiceFromDefault(newService, s)
+		if additionalService.Name == newService.Name {
+			return fmt.Errorf("vminsert additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name)
+		} else if err := reconcileServiceForCRD(ctx, rclient, additionalService); err != nil {
+			return fmt.Errorf("cannot reconcile vminsert additional service: %w", err)
+		}
+		return nil
+	}); err != nil {
+		return nil, err
 	}
 	rca := finalize.RemoveSvcArgs{SelectorLabels: cr.VMInsertSelectorLabels, GetNameSpace: cr.GetNamespace, PrefixedName: func() string {
 		return cr.Spec.VMInsert.GetNameWithPrefix(cr.Name)
@@ -276,7 +296,10 @@ func CreateOrUpdateVMInsertService(ctx context.Context, cr *v1beta1.VMCluster, r
 		return nil, err
 	}
 
-	return reconcileServiceForCRD(ctx, rclient, newService)
+	if err := reconcileServiceForCRD(ctx, rclient, newService); err != nil {
+		return nil, fmt.Errorf("cannot reconcile vminsert service: %w", err)
+	}
+	return newService, nil
 }
 
 func createOrUpdateVMStorage(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) error {
@@ -294,16 +317,64 @@ func createOrUpdateVMStorage(ctx context.Context, cr *v1beta1.VMCluster, rclient
 	return k8stools.HandleSTSUpdate(ctx, rclient, stsOpts, newSts, c)
 }
 
-func CreateOrUpdateVMStorageService(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) (*corev1.Service, error) {
-	newHeadless := genVMStorageHeadlessService(cr, c)
-	if cr.Spec.VMStorage.ServiceSpec != nil {
-		additionalService := genVMStorageService(cr, c)
-		mergeServiceSpec(additionalService, cr.Spec.VMStorage.ServiceSpec)
-		if additionalService.Name == newHeadless.Name {
-			return nil, fmt.Errorf("vmstorage additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newHeadless.Name)
-		} else if _, err := reconcileServiceForCRD(ctx, rclient, additionalService); err != nil {
-			return nil, err
+func createOrUpdateVMStorageService(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) (*corev1.Service, error) {
+	if cr.Spec.VMStorage.Port == "" {
+		cr.Spec.VMStorage.Port = c.VMClusterDefault.VMStorageDefault.Port
+	}
+	if cr.Spec.VMStorage.VMSelectPort == "" {
+		cr.Spec.VMStorage.VMSelectPort = c.VMClusterDefault.VMStorageDefault.VMSelectPort
+	}
+	if cr.Spec.VMStorage.VMInsertPort == "" {
+		cr.Spec.VMStorage.VMInsertPort = c.VMClusterDefault.VMStorageDefault.VMInsertPort
+	}
+	t := &clusterSvcBuilder{
+		cr,
+		cr.Spec.VMStorage.GetNameWithPrefix(cr.Name),
+		cr.FinalLabels(cr.VMStorageSelectorLabels()),
+		cr.VMStorageSelectorLabels(),
+		cr.Spec.VMStorage.ServiceSpec,
+	}
+	newHeadless := buildDefaultService(t, cr.Spec.VMStorage.Port, func(svc *corev1.Service) {
+		svc.Spec.ClusterIP = "None"
+		svc.Spec.Ports = append(svc.Spec.Ports, []corev1.ServicePort{
+			{
+				Name:       "vminsert",
+				Protocol:   "TCP",
+				Port:       intstr.Parse(cr.Spec.VMStorage.VMInsertPort).IntVal,
+				TargetPort: intstr.Parse(cr.Spec.VMStorage.VMInsertPort),
+			},
+			{
+				Name:       "vmselect",
+				Protocol:   "TCP",
+				Port:       intstr.Parse(cr.Spec.VMStorage.VMSelectPort).IntVal,
+				TargetPort: intstr.Parse(cr.Spec.VMStorage.VMSelectPort),
+			},
+		}...)
+		if cr.Spec.VMStorage.VMBackup != nil {
+			backupPort := cr.Spec.VMStorage.VMBackup.Port
+			if backupPort == "" {
+				backupPort = c.VMBackup.Port
+			}
+			parsedPort := intstr.Parse(backupPort)
+			svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{
+				Name:       "vmbackupmanager",
+				Protocol:   corev1.ProtocolTCP,
+				Port:       parsedPort.IntVal,
+				TargetPort: parsedPort,
+			})
 		}
+	})
+
+	if err := cr.Spec.VMStorage.ServiceSpec.IsSomeAndThen(func(s *v1beta1.AdditionalServiceSpec) error {
+		additionalService := buildAdditionalServiceFromDefault(newHeadless, s)
+		if additionalService.Name == newHeadless.Name {
+			return fmt.Errorf("vmstorage additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newHeadless.Name)
+		} else if err := reconcileServiceForCRD(ctx, rclient, additionalService); err != nil {
+			return fmt.Errorf("cannot reconcile vmstorage additional service: %w", err)
+		}
+		return nil
+	}); err != nil {
+		return nil, err
 	}
 
 	rca := finalize.RemoveSvcArgs{SelectorLabels: cr.VMStorageSelectorLabels, GetNameSpace: cr.GetNamespace, PrefixedName: func() string {
@@ -312,8 +383,10 @@ func CreateOrUpdateVMStorageService(ctx context.Context, cr *v1beta1.VMCluster, 
 	if err := finalize.RemoveOrphanedServices(ctx, rclient, rca, cr.Spec.VMStorage.ServiceSpec); err != nil {
 		return nil, err
 	}
-
-	return reconcileServiceForCRD(ctx, rclient, newHeadless)
+	if err := reconcileServiceForCRD(ctx, rclient, newHeadless); err != nil {
+		return nil, fmt.Errorf("cannot reconcile vmstorage service: %w", err)
+	}
+	return newHeadless, nil
 }
 
 func genVMSelectSpec(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (*appsv1.StatefulSet, error) {
@@ -578,6 +651,23 @@ func makePodSpecForVMSelect(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 }
 
 func genVMSelectService(cr *v1beta1.VMCluster) *corev1.Service {
+	t := &clusterSvcBuilder{
+		cr,
+		cr.Spec.VMSelect.GetNameWithPrefix(cr.Name),
+		cr.FinalLabels(cr.VMSelectSelectorLabels()),
+		cr.VMSelectSelectorLabels(),
+		cr.Spec.VMSelect.ServiceSpec,
+	}
+	buildDefaultService(t, cr.Spec.VMStorage.VMSelectPort, func(svc *corev1.Service) {
+		if cr.Spec.VMSelect.ClusterNativePort != "" {
+			svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{
+				Name:       "clusternative",
+				Protocol:   "TCP",
+				Port:       intstr.Parse(cr.Spec.VMSelect.ClusterNativePort).IntVal,
+				TargetPort: intstr.Parse(cr.Spec.VMSelect.ClusterNativePort),
+			})
+		}
+	})
 	ports := []corev1.ServicePort{
 		{
 			Name:       "http",
@@ -609,43 +699,6 @@ func genVMSelectService(cr *v1beta1.VMCluster) *corev1.Service {
 			Type:     corev1.ServiceTypeClusterIP,
 			Selector: cr.VMSelectSelectorLabels(),
 			Ports:    ports,
-		},
-	}
-}
-
-func genVMSelectHeadlessService(cr *v1beta1.VMCluster) *corev1.Service {
-	ports := []corev1.ServicePort{
-		{
-			Name:       "http",
-			Protocol:   "TCP",
-			Port:       intstr.Parse(cr.Spec.VMSelect.Port).IntVal,
-			TargetPort: intstr.Parse(cr.Spec.VMSelect.Port),
-		},
-	}
-
-	if cr.Spec.VMSelect.ClusterNativePort != "" {
-		ports = append(ports, corev1.ServicePort{
-			Name:       "clusternative",
-			Protocol:   "TCP",
-			Port:       intstr.Parse(cr.Spec.VMSelect.ClusterNativePort).IntVal,
-			TargetPort: intstr.Parse(cr.Spec.VMSelect.ClusterNativePort),
-		})
-	}
-
-	return &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            cr.Spec.VMSelect.GetNameWithPrefix(cr.Name),
-			Namespace:       cr.Namespace,
-			Labels:          cr.FinalLabels(cr.VMSelectSelectorLabels()),
-			Annotations:     cr.AnnotationsFiltered(),
-			OwnerReferences: cr.AsOwner(),
-			Finalizers:      []string{v1beta1.FinalizerName},
-		},
-		Spec: corev1.ServiceSpec{
-			Type:      corev1.ServiceTypeClusterIP,
-			Selector:  cr.VMSelectSelectorLabels(),
-			ClusterIP: "None",
-			Ports:     ports,
 		},
 	}
 }
@@ -910,6 +963,18 @@ func makePodSpecForVMInsert(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) (
 }
 
 func defaultVMInsertService(cr *v1beta1.VMCluster) *corev1.Service {
+	type tWrap struct {
+		client.Object
+	}
+
+	t := &clusterSvcBuilder{
+		cr,
+		cr.Spec.VMInsert.GetNameWithPrefix(cr.Name),
+		cr.FinalLabels(cr.VMInsertSelectorLabels()),
+		cr.VMInsertSelectorLabels(),
+		cr.Spec.VMInsert.ServiceSpec,
+	}
+	buildDefaultService(t, cr.Spec.VMInsert.Port, nil)
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.Spec.VMInsert.GetNameWithPrefix(cr.Name),
@@ -1253,118 +1318,6 @@ func makePodSpecForVMStorage(ctx context.Context, cr *v1beta1.VMCluster, c *conf
 	return vmStoragePodSpec, nil
 }
 
-func genVMStorageHeadlessService(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) *corev1.Service {
-	cr = cr.DeepCopy()
-	if cr.Spec.VMStorage.Port == "" {
-		cr.Spec.VMStorage.Port = c.VMClusterDefault.VMStorageDefault.Port
-	}
-	if cr.Spec.VMStorage.VMSelectPort == "" {
-		cr.Spec.VMStorage.VMSelectPort = c.VMClusterDefault.VMStorageDefault.VMSelectPort
-	}
-	if cr.Spec.VMStorage.VMInsertPort == "" {
-		cr.Spec.VMStorage.VMInsertPort = c.VMClusterDefault.VMStorageDefault.VMInsertPort
-	}
-	ports := []corev1.ServicePort{
-		{
-			Name:       "http",
-			Protocol:   "TCP",
-			Port:       intstr.Parse(cr.Spec.VMStorage.Port).IntVal,
-			TargetPort: intstr.Parse(cr.Spec.VMStorage.Port),
-		},
-		{
-			Name:       "vminsert",
-			Protocol:   "TCP",
-			Port:       intstr.Parse(cr.Spec.VMStorage.VMInsertPort).IntVal,
-			TargetPort: intstr.Parse(cr.Spec.VMStorage.VMInsertPort),
-		},
-		{
-			Name:       "vmselect",
-			Protocol:   "TCP",
-			Port:       intstr.Parse(cr.Spec.VMStorage.VMSelectPort).IntVal,
-			TargetPort: intstr.Parse(cr.Spec.VMStorage.VMSelectPort),
-		},
-	}
-	if cr.Spec.VMStorage.VMBackup != nil {
-		backupPort := cr.Spec.VMStorage.VMBackup.Port
-		if backupPort == "" {
-			backupPort = c.VMBackup.Port
-		}
-		parsedPort := intstr.Parse(backupPort)
-		ports = append(ports, corev1.ServicePort{
-			Name:       "vmbackupmanager",
-			Protocol:   corev1.ProtocolTCP,
-			Port:       parsedPort.IntVal,
-			TargetPort: parsedPort,
-		})
-	}
-
-	return &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            cr.Spec.VMStorage.GetNameWithPrefix(cr.Name),
-			Namespace:       cr.Namespace,
-			Labels:          cr.FinalLabels(cr.VMStorageSelectorLabels()),
-			Annotations:     cr.AnnotationsFiltered(),
-			OwnerReferences: cr.AsOwner(),
-			Finalizers:      []string{v1beta1.FinalizerName},
-		},
-		Spec: corev1.ServiceSpec{
-			Type:      corev1.ServiceTypeClusterIP,
-			ClusterIP: "None",
-			Selector:  cr.VMStorageSelectorLabels(),
-			Ports:     ports,
-		},
-	}
-}
-
-func genVMStorageService(cr *v1beta1.VMCluster, c *config.BaseOperatorConf) *corev1.Service {
-	cr = cr.DeepCopy()
-	if cr.Spec.VMStorage.Port == "" {
-		cr.Spec.VMStorage.Port = c.VMClusterDefault.VMStorageDefault.Port
-	}
-	if cr.Spec.VMStorage.VMSelectPort == "" {
-		cr.Spec.VMStorage.VMSelectPort = c.VMClusterDefault.VMStorageDefault.VMSelectPort
-	}
-	if cr.Spec.VMStorage.VMInsertPort == "" {
-		cr.Spec.VMStorage.VMInsertPort = c.VMClusterDefault.VMStorageDefault.VMInsertPort
-	}
-
-	return &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            cr.Spec.VMStorage.GetNameWithPrefix(cr.Name),
-			Namespace:       cr.Namespace,
-			Labels:          cr.FinalLabels(cr.VMStorageSelectorLabels()),
-			Annotations:     cr.AnnotationsFiltered(),
-			OwnerReferences: cr.AsOwner(),
-			Finalizers:      []string{v1beta1.FinalizerName},
-		},
-		Spec: corev1.ServiceSpec{
-			// headless removed, it should prevent common configuration errors.
-			Type:     corev1.ServiceTypeClusterIP,
-			Selector: cr.VMStorageSelectorLabels(),
-			Ports: []corev1.ServicePort{
-				{
-					Name:       "http",
-					Protocol:   "TCP",
-					Port:       intstr.Parse(cr.Spec.VMStorage.Port).IntVal,
-					TargetPort: intstr.Parse(cr.Spec.VMStorage.Port),
-				},
-				{
-					Name:       "vminsert",
-					Protocol:   "TCP",
-					Port:       intstr.Parse(cr.Spec.VMStorage.VMInsertPort).IntVal,
-					TargetPort: intstr.Parse(cr.Spec.VMStorage.VMInsertPort),
-				},
-				{
-					Name:       "vmselect",
-					Protocol:   "TCP",
-					Port:       intstr.Parse(cr.Spec.VMStorage.VMSelectPort).IntVal,
-					TargetPort: intstr.Parse(cr.Spec.VMStorage.VMSelectPort),
-				},
-			},
-		},
-	}
-}
-
 func CreateOrUpdatePodDisruptionBudgetForVMStorage(ctx context.Context, cr *v1beta1.VMCluster, rclient client.Client) error {
 	if k8stools.IsPDBV1APISupported() {
 		pdb := &policyv1.PodDisruptionBudget{
@@ -1457,4 +1410,28 @@ func createOrUpdateVMSelectHPA(ctx context.Context, rclient client.Client, clust
 	}
 	defaultHPA := buildHPASpec(targetRef, cluster.Spec.VMSelect.HPA, cluster.AsOwner(), cluster.VMSelectSelectorLabels(), cluster.Namespace)
 	return reconcileHPA(ctx, rclient, defaultHPA)
+}
+
+type clusterSvcBuilder struct {
+	*v1beta1.VMCluster
+	prefixedName      string
+	finalLabels       map[string]string
+	selectorLabels    map[string]string
+	additionalService *v1beta1.AdditionalServiceSpec
+}
+
+func (csb *clusterSvcBuilder) PrefixedName() string {
+	return csb.prefixedName
+}
+
+func (csb *clusterSvcBuilder) AllLabels() map[string]string {
+	return csb.finalLabels
+}
+
+func (csb *clusterSvcBuilder) SelectorLabels() map[string]string {
+	return csb.selectorLabels
+}
+
+func (csb *clusterSvcBuilder) GetAdditionalService() *v1beta1.AdditionalServiceSpec {
+	return csb.additionalService
 }

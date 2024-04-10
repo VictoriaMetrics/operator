@@ -268,7 +268,7 @@ func Test_reconcileServiceForCRD(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cl := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			_, err := reconcileServiceForCRD(tt.args.ctx, cl, tt.args.newService)
+			err := reconcileServiceForCRD(tt.args.ctx, cl, tt.args.newService)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("reconcileServiceForCRD() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -396,8 +396,8 @@ func Test_mergeServiceSpec(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mergeServiceSpec(tt.args.svc, tt.args.svcSpec)
-			if err := tt.validate(tt.args.svc); err != nil {
+			additionalSvc := buildAdditionalServiceFromDefault(tt.args.svc, tt.args.svcSpec)
+			if err := tt.validate(additionalSvc); err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
 		})

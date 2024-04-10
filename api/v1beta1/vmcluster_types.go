@@ -21,7 +21,7 @@ import (
 // +k8s:openapi-gen=true
 type VMClusterSpec struct {
 	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
-	ParsingError string `json:"-,omitempty" yaml:"-,omitempty"`
+	ParsingError string `json:"-" yaml:"-"`
 	// RetentionPeriod for the stored metrics
 	// Note VictoriaMetrics has data/ and indexdb/ folders
 	// metrics from data/ removed eventually as soon as partition leaves retention period
@@ -1167,6 +1167,21 @@ func (cr *VMCluster) SetUpdateStatusTo(ctx context.Context, r client.Client, sta
 		return fmt.Errorf("failed to update object status to=%q: %w", status, err)
 	}
 	return nil
+}
+
+// GetAdditionalService returns AdditionalServiceSpec settings
+func (cr *VMSelect) GetAdditionalService() *AdditionalServiceSpec {
+	return cr.ServiceSpec
+}
+
+// GetAdditionalService returns AdditionalServiceSpec settings
+func (cr *VMStorage) GetAdditionalService() *AdditionalServiceSpec {
+	return cr.ServiceSpec
+}
+
+// GetAdditionalService returns AdditionalServiceSpec settings
+func (cr *VMInsert) GetAdditionalService() *AdditionalServiceSpec {
+	return cr.ServiceSpec
 }
 
 func (cr *VMStorage) ProbeNeedLiveness() bool {

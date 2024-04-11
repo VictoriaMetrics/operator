@@ -60,11 +60,14 @@ func generateScrapeConfig(
 		if s, ok := ssCache.baSecrets[sc.AsMapKey("", 0)]; ok {
 			bac = append(bac,
 				yaml.MapItem{Key: "username", Value: s.username},
-				yaml.MapItem{Key: "password", Value: s.password},
 			)
-		}
-		if len(sc.Spec.BasicAuth.PasswordFile) > 0 {
-			bac = append(bac, yaml.MapItem{Key: "password_file", Value: sc.Spec.BasicAuth.PasswordFile})
+			if s.password != "" {
+				bac = append(bac,
+					yaml.MapItem{Key: "password", Value: s.password},
+				)
+			} else if len(sc.Spec.BasicAuth.PasswordFile) > 0 {
+				bac = append(bac, yaml.MapItem{Key: "password_file", Value: sc.Spec.BasicAuth.PasswordFile})
+			}
 		}
 		if len(bac) > 0 {
 			cfg = append(cfg, yaml.MapItem{Key: "basic_auth", Value: bac})

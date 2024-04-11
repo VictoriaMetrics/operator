@@ -15,7 +15,6 @@ aliases:
 # CHANGELOG
 
 ## Next release
-
 **Update note: [vmcluster](./api.md#vmcluster): remove fields `VMClusterSpec.VMInsert.Name`, `VMClusterSpec.VMStorage.Name`, `VMClusterSpec.VMSelect.Name`, they're marked as deprecated since v0.21.0. See [this pull request](https://github.com/VictoriaMetrics/operator/pull/907).**
 
 - [operator](./README.md): updates base Docker image and prometheus_client to versions with with CVE fixes

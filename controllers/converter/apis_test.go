@@ -554,6 +554,20 @@ func TestConvertScrapeConfig(t *testing.T) {
 						ProxyConfig: &v1alpha1.ProxyConfig{
 							ProxyURL: pointer.String("http://proxy.com"),
 						},
+						RelabelConfigs: []*v1.RelabelConfig{
+							{
+								Action:      "LabelMap",
+								Regex:       "__meta_kubernetes_pod_label_(.+)",
+								Replacement: "foo_$1",
+							},
+						},
+						MetricRelabelConfigs: []*v1.RelabelConfig{
+							{
+								SourceLabels: []v1.LabelName{"__meta_kubernetes_pod_name", "__meta_kubernetes_pod_container_port_number"},
+								Separator:    ":",
+								TargetLabel:  "host_port",
+							},
+						},
 					},
 				},
 			},
@@ -570,6 +584,20 @@ func TestConvertScrapeConfig(t *testing.T) {
 					BasicAuth: &v1beta1vm.BasicAuth{
 						Username: corev1.SecretKeySelector{Key: "username"},
 						Password: corev1.SecretKeySelector{Key: "password"},
+					},
+					RelabelConfigs: []*v1beta1vm.RelabelConfig{
+						{
+							Action:      "LabelMap",
+							Regex:       "__meta_kubernetes_pod_label_(.+)",
+							Replacement: "foo_$1",
+						},
+					},
+					MetricRelabelConfigs: []*v1beta1vm.RelabelConfig{
+						{
+							SourceLabels: []string{"__meta_kubernetes_pod_name", "__meta_kubernetes_pod_container_port_number"},
+							Separator:    ":",
+							TargetLabel:  "host_port",
+						},
 					},
 				},
 			},
@@ -739,7 +767,7 @@ func TestConvertScrapeConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := ConvertScrapeConfig(tt.args.scrapeConfig, &config.BaseOperatorConf{})
 			if !reflect.DeepEqual(*got, tt.want) {
-				t.Errorf("ConvertScrapeConfig() got = \n%v, \nwant \n%v", got, tt.want)
+				t.Fatalf("ConvertScrapeConfig() got = \n%v, \nwant \n%v", got, tt.want)
 			}
 		})
 	}

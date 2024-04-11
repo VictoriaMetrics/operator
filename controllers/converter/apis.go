@@ -422,6 +422,9 @@ func ConvertRelabelConfig(promRelabelConfig []*v1.RelabelConfig) []*v1beta1vm.Re
 	}
 	relabelCfg := []*v1beta1vm.RelabelConfig{}
 	sourceLabelsToStringSlice := func(src []v1.LabelName) []string {
+		if len(src) == 0 {
+			return nil
+		}
 		res := make([]string, len(src))
 		for i, v := range src {
 			res[i] = string(v)
@@ -635,214 +638,25 @@ func filterPrefixes(src map[string]string, filterPrefixes []string) map[string]s
 }
 
 func ConvertScrapeConfig(promscrapeConfig *v1alpha1.ScrapeConfig, conf *config.BaseOperatorConf) *v1beta1vm.VMScrapeConfig {
-	cs := &v1beta1vm.VMScrapeConfig{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        promscrapeConfig.Name,
-			Namespace:   promscrapeConfig.Namespace,
-			Annotations: filterPrefixes(promscrapeConfig.Annotations, conf.FilterPrometheusConverterAnnotationPrefixes),
-			Labels:      filterPrefixes(promscrapeConfig.Labels, conf.FilterPrometheusConverterLabelPrefixes),
-		},
-		Spec: v1beta1vm.VMScrapeConfigSpec{
-			MetricsPath:          promscrapeConfig.Spec.MetricsPath,
-			HonorTimestamps:      promscrapeConfig.Spec.HonorTimestamps,
-			Params:               promscrapeConfig.Spec.Params,
-			Scheme:               promscrapeConfig.Spec.Scheme,
-			BasicAuth:            ConvertBasicAuth(promscrapeConfig.Spec.BasicAuth),
-			Authorization:        convertAuthorization(promscrapeConfig.Spec.Authorization, nil),
-			TLSConfig:            ConvertSafeTlsConfig(promscrapeConfig.Spec.TLSConfig),
-			MetricRelabelConfigs: ConvertRelabelConfig(promscrapeConfig.Spec.MetricRelabelConfigs),
-			RelabelConfigs:       ConvertRelabelConfig(promscrapeConfig.Spec.RelabelConfigs),
-		},
+	cs := &v1beta1vm.VMScrapeConfig{}
+	data, err := json.Marshal(promscrapeConfig)
+	if err != nil {
+		log.Error(err, "failed to marshal prometheus scrapeconfig for converting", "name", promscrapeConfig.Name, "namespace", promscrapeConfig.Namespace)
 	}
-	if promscrapeConfig.Spec.HonorLabels != nil {
-		cs.Spec.HonorLabels = *promscrapeConfig.Spec.HonorLabels
+	err = json.Unmarshal(data, cs)
+	if err != nil {
+		log.Error(err, "failed to convert prometheus scrapeconfig to VMScrapeConfig", "name", promscrapeConfig.Name, "namespace", promscrapeConfig.Namespace)
 	}
-	if promscrapeConfig.Spec.ProxyConfig != nil && promscrapeConfig.Spec.ProxyURL != nil {
-		cs.Spec.ProxyURL = promscrapeConfig.Spec.ProxyURL
-	}
-	if promscrapeConfig.Spec.SampleLimit != nil {
-		cs.Spec.SampleLimit = *promscrapeConfig.Spec.SampleLimit
-	}
+	cs.Labels = filterPrefixes(promscrapeConfig.Labels, conf.FilterPrometheusConverterLabelPrefixes)
+	cs.Annotations = filterPrefixes(promscrapeConfig.Annotations, conf.FilterPrometheusConverterAnnotationPrefixes)
+	cs.Spec.RelabelConfigs = ConvertRelabelConfig(promscrapeConfig.Spec.RelabelConfigs)
+	cs.Spec.MetricRelabelConfigs = ConvertRelabelConfig(promscrapeConfig.Spec.MetricRelabelConfigs)
+
 	if promscrapeConfig.Spec.EnableCompression != nil {
 		cs.Spec.VMScrapeParams = &v1beta1vm.VMScrapeParams{
 			DisableCompression: pointer.BoolPtr(!*promscrapeConfig.Spec.EnableCompression),
 		}
 	}
-	if promscrapeConfig.Spec.ScrapeInterval != nil {
-		cs.Spec.ScrapeInterval = string(*promscrapeConfig.Spec.ScrapeInterval)
-	}
-	if promscrapeConfig.Spec.ScrapeTimeout != nil {
-		cs.Spec.ScrapeTimeout = string(*promscrapeConfig.Spec.ScrapeTimeout)
-	}
-	for _, staticConf := range promscrapeConfig.Spec.StaticConfigs {
-		var tstaticconf v1beta1vm.StaticConfig
-		for _, target := range staticConf.Targets {
-			tstaticconf.Targets = append(tstaticconf.Targets, string(target))
-		}
-		staticConf.Labels = make(map[v1.LabelName]string)
-		for k, v := range staticConf.Labels {
-			tstaticconf.Labels[string(k)] = v
-		}
-		cs.Spec.StaticConfigs = append(cs.Spec.StaticConfigs, tstaticconf)
-	}
-	for _, fileSDConf := range promscrapeConfig.Spec.FileSDConfigs {
-		var tfileSDConf v1beta1vm.FileSDConfig
-		for _, file := range fileSDConf.Files {
-			tfileSDConf.Files = append(tfileSDConf.Files, string(file))
-		}
-		cs.Spec.FileSDConfigs = append(cs.Spec.FileSDConfigs, tfileSDConf)
-	}
-	for _, httpSDConf := range promscrapeConfig.Spec.HTTPSDConfigs {
-		thttpSDConf := v1beta1vm.HTTPSDConfig{
-			URL:           httpSDConf.URL,
-			BasicAuth:     ConvertBasicAuth(httpSDConf.BasicAuth),
-			Authorization: convertAuthorization(httpSDConf.Authorization, nil),
-			TLSConfig:     ConvertSafeTlsConfig(httpSDConf.TLSConfig),
-		}
-		if httpSDConf.ProxyConfig != nil && httpSDConf.ProxyURL != nil {
-			thttpSDConf.ProxyURL = httpSDConf.ProxyURL
-		}
-		cs.Spec.HTTPSDConfigs = append(cs.Spec.HTTPSDConfigs, thttpSDConf)
-	}
-	for _, k8sSDConf := range promscrapeConfig.Spec.KubernetesSDConfigs {
-		tk8sSDConf := v1beta1vm.KubernetesSDConfig{
-			APIServer:       k8sSDConf.APIServer,
-			Role:            string(k8sSDConf.Role),
-			BasicAuth:       ConvertBasicAuth(k8sSDConf.BasicAuth),
-			Authorization:   convertAuthorization(k8sSDConf.Authorization, nil),
-			OAuth2:          convertOAuth(k8sSDConf.OAuth2),
-			TLSConfig:       ConvertSafeTlsConfig(k8sSDConf.TLSConfig),
-			FollowRedirects: k8sSDConf.FollowRedirects,
-		}
-		if k8sSDConf.ProxyConfig != nil && k8sSDConf.ProxyURL != nil {
-			tk8sSDConf.ProxyURL = k8sSDConf.ProxyURL
-		}
-		if k8sSDConf.Namespaces != nil {
-			tk8sSDConf.Namespaces = &v1beta1vm.NamespaceDiscovery{
-				IncludeOwnNamespace: k8sSDConf.Namespaces.IncludeOwnNamespace,
-				Names:               k8sSDConf.Namespaces.Names,
-			}
-		}
-		if k8sSDConf.AttachMetadata != nil {
-			tk8sSDConf.AttachMetadata = v1beta1vm.AttachMetadata{
-				Node: k8sSDConf.AttachMetadata.Node,
-			}
-		}
-		for _, sel := range k8sSDConf.Selectors {
-			tk8sSDConf.Selectors = append(tk8sSDConf.Selectors, v1beta1vm.K8SSelectorConfig{
-				Role:  string(sel.Role),
-				Label: sel.Label,
-				Field: sel.Field,
-			})
-		}
-		cs.Spec.KubernetesSDConfigs = append(cs.Spec.KubernetesSDConfigs, tk8sSDConf)
-	}
-	for _, consulSDconf := range promscrapeConfig.Spec.ConsulSDConfigs {
-		tconsulSDconf := v1beta1vm.ConsulSDConfig{
-			Server:          consulSDconf.Server,
-			TokenRef:        consulSDconf.TokenRef,
-			Datacenter:      consulSDconf.Datacenter,
-			Namespace:       consulSDconf.Namespace,
-			Partition:       consulSDconf.Partition,
-			Scheme:          consulSDconf.Scheme,
-			Services:        consulSDconf.Services,
-			Tags:            consulSDconf.Tags,
-			TagSeparator:    consulSDconf.TagSeparator,
-			NodeMeta:        consulSDconf.NodeMeta,
-			AllowStale:      consulSDconf.AllowStale,
-			BasicAuth:       ConvertBasicAuth(consulSDconf.BasicAuth),
-			Authorization:   convertAuthorization(consulSDconf.Authorization, nil),
-			OAuth2:          convertOAuth(consulSDconf.Oauth2),
-			TLSConfig:       ConvertSafeTlsConfig(consulSDconf.TLSConfig),
-			FollowRedirects: consulSDconf.FollowRedirects,
-		}
-		if consulSDconf.ProxyConfig != nil && consulSDconf.ProxyURL != nil {
-			tconsulSDconf.ProxyURL = consulSDconf.ProxyURL
-		}
-		cs.Spec.ConsulSDConfigs = append(cs.Spec.ConsulSDConfigs, tconsulSDconf)
-	}
-	for _, dnsSDconf := range promscrapeConfig.Spec.DNSSDConfigs {
-		tdnsSDconf := v1beta1vm.DNSSDConfig{
-			Names: dnsSDconf.Names,
-			Type:  dnsSDconf.Type,
-			Port:  dnsSDconf.Port,
-		}
-		cs.Spec.DNSSDConfigs = append(cs.Spec.DNSSDConfigs, tdnsSDconf)
-	}
-	for _, ec2SDconf := range promscrapeConfig.Spec.EC2SDConfigs {
-		tec2SDconf := v1beta1vm.EC2SDConfig{
-			Region:    ec2SDconf.Region,
-			AccessKey: ec2SDconf.AccessKey,
-			SecretKey: ec2SDconf.SecretKey,
-			RoleARN:   ec2SDconf.RoleARN,
-			Port:      ec2SDconf.Port,
-		}
-		for _, filter := range ec2SDconf.Filters {
-			tec2SDconf.Filters = append(tec2SDconf.Filters, &v1beta1vm.EC2Filter{
-				Name:   filter.Name,
-				Values: filter.Values,
-			})
-		}
-		cs.Spec.EC2SDConfigs = append(cs.Spec.EC2SDConfigs, tec2SDconf)
-	}
-	for _, azureSDconf := range promscrapeConfig.Spec.AzureSDConfigs {
-		tazureSDconf := v1beta1vm.AzureSDConfig{
-			Environment:          azureSDconf.Environment,
-			AuthenticationMethod: azureSDconf.AuthenticationMethod,
-			SubscriptionID:       azureSDconf.SubscriptionID,
-			TenantID:             azureSDconf.TenantID,
-			ClientID:             azureSDconf.TenantID,
-			ClientSecret:         azureSDconf.ClientSecret,
-			ResourceGroup:        azureSDconf.ResourceGroup,
-			Port:                 azureSDconf.Port,
-		}
-		cs.Spec.AzureSDConfigs = append(cs.Spec.AzureSDConfigs, tazureSDconf)
-	}
-	for _, gceSDconf := range promscrapeConfig.Spec.GCESDConfigs {
-		tgceSDconf := v1beta1vm.GCESDConfig{
-			Project:      gceSDconf.Project,
-			Zone:         gceSDconf.Zone,
-			Filter:       gceSDconf.Filter,
-			Port:         gceSDconf.Port,
-			TagSeparator: gceSDconf.TagSeparator,
-		}
-		cs.Spec.GCESDConfigs = append(cs.Spec.GCESDConfigs, tgceSDconf)
-	}
-	for _, openstackSDconf := range promscrapeConfig.Spec.OpenStackSDConfigs {
-		topenstackSDconf := v1beta1vm.OpenStackSDConfig{
-			Role:                        openstackSDconf.Role,
-			Region:                      openstackSDconf.Region,
-			IdentityEndpoint:            openstackSDconf.IdentityEndpoint,
-			Username:                    openstackSDconf.Username,
-			UserID:                      openstackSDconf.UserID,
-			Password:                    openstackSDconf.Password,
-			DomainName:                  openstackSDconf.DomainID,
-			ProjectName:                 openstackSDconf.ProjectName,
-			ProjectID:                   openstackSDconf.ProjectID,
-			ApplicationCredentialName:   openstackSDconf.ApplicationCredentialName,
-			ApplicationCredentialID:     openstackSDconf.ApplicationCredentialID,
-			ApplicationCredentialSecret: openstackSDconf.ApplicationCredentialSecret,
-			AllTenants:                  openstackSDconf.AllTenants,
-			Port:                        openstackSDconf.Port,
-			Availability:                openstackSDconf.Availability,
-			TLSConfig:                   ConvertSafeTlsConfig(openstackSDconf.TLSConfig),
-		}
-		cs.Spec.OpenStackSDConfigs = append(cs.Spec.OpenStackSDConfigs, topenstackSDconf)
-	}
-	for _, digitalOceanSDconf := range promscrapeConfig.Spec.DigitalOceanSDConfigs {
-		tdigitalOceanSDconf := v1beta1vm.DigitalOceanSDConfig{
-			Authorization:   convertAuthorization(digitalOceanSDconf.Authorization, nil),
-			OAuth2:          convertOAuth(digitalOceanSDconf.OAuth2),
-			FollowRedirects: digitalOceanSDconf.FollowRedirects,
-			TLSConfig:       ConvertSafeTlsConfig(digitalOceanSDconf.TLSConfig),
-			Port:            digitalOceanSDconf.Port,
-		}
-		if digitalOceanSDconf.ProxyConfig != nil && digitalOceanSDconf.ProxyURL != nil {
-			tdigitalOceanSDconf.ProxyURL = digitalOceanSDconf.ProxyURL
-		}
-		cs.Spec.DigitalOceanSDConfigs = append(cs.Spec.DigitalOceanSDConfigs, tdigitalOceanSDconf)
-	}
-
 	if conf.EnabledPrometheusConverterOwnerReferences {
 		cs.OwnerReferences = []metav1.OwnerReference{
 			{

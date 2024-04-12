@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	"github.com/fsnotify/fsnotify"
@@ -45,7 +46,6 @@ func (fw *fileWatcher) startWatch(ctx context.Context, updates chan struct{}) er
 	update := func(fileName string) error {
 		newData, err := readFileContent(fileName)
 		if err != nil {
-			logger.Errorf("cannot read file: %s content, err: %s", fileName, err)
 			return fmt.Errorf("cannot read file: %s content, err: %w", fileName, err)
 		}
 		if bytes.Equal(prevContent, newData) {
@@ -72,11 +72,21 @@ func (fw *fileWatcher) startWatch(ctx context.Context, updates chan struct{}) er
 	}
 	go func() {
 		defer fw.wg.Done()
-
+		var t time.Ticker
+		if *resyncInternal > 0 {
+			t = *time.NewTicker(*resyncInternal)
+			defer t.Stop()
+		}
 		for {
 			select {
 			case <-ctx.Done():
 				return
+			case <-t.C:
+				if err := update(*configFileName); err != nil {
+					logger.Errorf("cannot update file at force resync :%s", err)
+					contentUpdateErrosTotal.Inc()
+					continue
+				}
 			case event := <-fw.w.Events:
 				if event.Name != *configFileName {
 					logger.Infof("file name not match: %s", event.Name)
@@ -85,6 +95,7 @@ func (fw *fileWatcher) startWatch(ctx context.Context, updates chan struct{}) er
 				logger.Infof("changed: %s, %s", event.Name, event.Op.String())
 				if err := update(*configFileName); err != nil {
 					logger.Errorf("cannot update file :%s", err)
+					contentUpdateErrosTotal.Inc()
 					continue
 				}
 			}
@@ -177,7 +188,6 @@ func (dw *dirWatcher) startWatch(ctx context.Context, updates chan struct{}) {
 			logger.Infof("update needed file for path: %s", path)
 			return nil
 		})
-
 		if err != nil {
 			logger.Errorf("cannot walk: %s", err)
 			return false, fmt.Errorf("cannot walk path: %s, err: %w", eventPath, err)

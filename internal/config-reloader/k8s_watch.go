@@ -54,13 +54,18 @@ func newKubernetesWatcher(ctx context.Context, secretName, namespace string) (*k
 		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 			var s v1.SecretList
 			if err := c.List(ctx, &s, listOpts); err != nil {
+				k8sAPIWatchErrorsTotal.Inc()
 				return nil, fmt.Errorf("cannot get secret from k8s api: %w", err)
 			}
 
 			return &s, nil
 		},
 		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-			return c.Watch(ctx, &v1.SecretList{}, listOpts)
+			wi, err := c.Watch(ctx, &v1.SecretList{}, listOpts)
+			if err != nil {
+				k8sAPIWatchErrorsTotal.Inc()
+			}
+			return wi, err
 		},
 	}, &v1.Secret{}, 0, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
 
@@ -90,8 +95,7 @@ func (k *k8sWatcher) startWatch(ctx context.Context, updates chan struct{}) erro
 	updateSecret := func(secret *v1.Secret) error {
 		newData, ok := secret.Data[*configSecretKey]
 		if !ok {
-			// bad case no such key.
-			logger.Warnf("key not found")
+			return fmt.Errorf("key=%q with content not found at secret=%q", *configSecretKey, secret.Name)
 		}
 		if bytes.Equal(prevContent, newData) {
 			logger.Infof("secret config update not needed,file content the same")
@@ -99,8 +103,7 @@ func (k *k8sWatcher) startWatch(ctx context.Context, updates chan struct{}) erro
 		}
 		logger.Infof("updating local file content for secret: %s", secret.Name)
 		if err := writeNewContent(newData); err != nil {
-			logger.Errorf("cannot write file content to disk: %s", err)
-			return err
+			return fmt.Errorf("cannot write file content to disk: %w", err)
 		}
 		prevContent = newData
 		time.Sleep(time.Second)
@@ -113,30 +116,45 @@ func (k *k8sWatcher) startWatch(ctx context.Context, updates chan struct{}) erro
 	}
 	go k.inf.Run(ctx.Done())
 
-	var s v1.Secret
-	if err := k.c.Get(ctx, types.NamespacedName{Namespace: k.namespace, Name: k.secretName}, &s); err != nil {
+	var lastSecret v1.Secret
+	if err := k.c.Get(ctx, types.NamespacedName{Namespace: k.namespace, Name: k.secretName}, &lastSecret); err != nil {
 		logger.Fatalf("cannot get secret during init secretName: %s, namespace: %s, err: %s", k.secretName, k.namespace, err)
 	}
-	if err := updateSecret(&s); err != nil {
+	if err := updateSecret(&lastSecret); err != nil {
 		if *onlyInitConfig {
 			return err
 		}
 		logger.Errorf("cannot update secret: %s", err)
 	}
 	k.wg.Add(1)
+
 	go func() {
 		defer k.wg.Done()
-
+		var t time.Ticker
+		if *resyncInternal > 0 {
+			t = *time.NewTicker(*resyncInternal)
+			defer t.Stop()
+		}
 		for {
 			select {
+			case <-t.C:
+				if err := updateSecret(&lastSecret); err != nil {
+					if errors.Is(err, errNotModified) {
+						continue
+					}
+					contentUpdateErrosTotal.Inc()
+					logger.Errorf("cannot force sync secret content: %s", err)
+				}
 			case item := <-k.events:
 				s := item.obj
+				lastSecret = *s
 				logger.Infof("get k8s sync event type: %s, for secret: %s", item.op, item.obj.Name)
 
 				if err := updateSecret(s); err != nil {
 					if errors.Is(err, errNotModified) {
 						continue
 					}
+					contentUpdateErrosTotal.Inc()
 					logger.Errorf("cannot sync secret content: %s", err)
 				}
 			case <-ctx.Done():

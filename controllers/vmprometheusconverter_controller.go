@@ -618,7 +618,7 @@ func (c *ConverterController) UpdateProbe(_, new interface{}) {
 	}
 }
 
-// CreateServiceMonitor converts ServiceMonitor to VMScrapeConfig
+// CreateScrapeConfig converts ServiceMonitor to VMScrapeConfig
 func (c *ConverterController) CreateScrapeConfig(scrapeConfig interface{}) {
 	scrapeConf := scrapeConfig.(*v1alpha1.ScrapeConfig)
 	l := log.WithValues("kind", "vmScrapeConfig", "name", scrapeConf.Name, "ns", scrapeConf.Namespace)
@@ -634,7 +634,7 @@ func (c *ConverterController) CreateScrapeConfig(scrapeConfig interface{}) {
 	}
 }
 
-// UpdateServiceMonitor updates VMScrapeConfig
+// UpdateScrapeConfig updates VMScrapeConfig
 func (c *ConverterController) UpdateScrapeConfig(_, new interface{}) {
 	scrapeConf := new.(*v1alpha1.ScrapeConfig)
 	l := log.WithValues("kind", "vmScrapeConfig", "name", scrapeConf.Name, "ns", scrapeConf.Namespace)

@@ -280,7 +280,7 @@ scrape_align_interval: 5s
 stream_parse: true
 disable_compression: true
 scrape_offset: 10s
-disable_keep_alive: true
+disable_keepalive: true
 relabel_debug: true
 metric_relabel_debug: false
 headers:

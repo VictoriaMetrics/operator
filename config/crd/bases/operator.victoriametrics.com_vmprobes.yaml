@@ -271,6 +271,10 @@ spec:
                   type: array
                 description: Optional HTTP URL parameters
                 type: object
+              proxyURL:
+                description: ProxyURL eg http://proxyserver:2195 Directs scrapes to
+                  proxy through this endpoint.
+                type: string
               sampleLimit:
                 description: SampleLimit defines per-scrape limit on number of scraped
                   samples that will be accepted.
@@ -284,6 +288,12 @@ spec:
               scrapeTimeout:
                 description: Timeout for scraping metrics from the Prometheus exporter.
                 type: string
+              seriesLimit:
+                description: |-
+                  SeriesLimit defines per-scrape limit on number of unique time series
+                  a single target can expose during all the scrapes on the time window of 24h.
+                format: int64
+                type: integer
               targets:
                 description: Targets defines a set of static and/or dynamically discovered
                   targets to be probed using the prober.
@@ -664,6 +674,11 @@ spec:
                   disable_compression:
                     type: boolean
                   disable_keep_alive:
+                    description: |-
+                      disable_keepalive allows disabling HTTP keep-alive when scraping targets.
+                      By default, HTTP keep-alive is enabled, so TCP connections to scrape targets
+                      could be re-used.
+                      See https://docs.victoriametrics.com/vmagent.html#scrape_config-enhancements
                     type: boolean
                   headers:
                     description: |-
@@ -676,6 +691,8 @@ spec:
                       type: string
                     type: array
                   metric_relabel_debug:
+                    description: deprecated since [v1.85](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.85.0),
+                      will be removed in next release
                     type: boolean
                   no_stale_markers:
                     type: boolean
@@ -906,6 +923,8 @@ spec:
                         type: object
                     type: object
                   relabel_debug:
+                    description: deprecated since [v1.85](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.85.0),
+                      will be removed in next release
                     type: boolean
                   scrape_align_interval:
                     type: string

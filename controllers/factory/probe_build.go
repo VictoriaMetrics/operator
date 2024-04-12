@@ -206,6 +206,9 @@ func generateProbeConfig(
 	if cr.Spec.SampleLimit > 0 {
 		cfg = append(cfg, yaml.MapItem{Key: "sample_limit", Value: cr.Spec.SampleLimit})
 	}
+	if cr.Spec.SeriesLimit > 0 {
+		cfg = append(cfg, yaml.MapItem{Key: "series_limit", Value: cr.Spec.SeriesLimit})
+	}
 	// Relabelings for prober.
 	relabelings = append(relabelings, []yaml.MapSlice{
 		{
@@ -247,5 +250,8 @@ func generateProbeConfig(
 	cfg = addOAuth2Config(cfg, cr.AsMapKey(), cr.Spec.OAuth2, ssCache.oauth2Secrets)
 	cfg = addAuthorizationConfig(cfg, cr.AsMapKey(), cr.Spec.Authorization, ssCache.authorizationSecrets)
 
+	if cr.Spec.ProxyURL != nil {
+		cfg = append(cfg, yaml.MapItem{Key: "proxy_url", Value: cr.Spec.ProxyURL})
+	}
 	return cfg
 }

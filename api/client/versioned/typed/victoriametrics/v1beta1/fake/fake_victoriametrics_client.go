@@ -67,6 +67,10 @@ func (c *FakeVictoriametricsV1beta1) VMRules(namespace string) v1beta1.VMRuleInt
 	return &FakeVMRules{c, namespace}
 }
 
+func (c *FakeVictoriametricsV1beta1) VMScrapeConfigs(namespace string) v1beta1.VMScrapeConfigInterface {
+	return &FakeVMScrapeConfigs{c, namespace}
+}
+
 func (c *FakeVictoriametricsV1beta1) VMServiceScrapes(namespace string) v1beta1.VMServiceScrapeInterface {
 	return &FakeVMServiceScrapes{c, namespace}
 }

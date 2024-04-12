@@ -43,6 +43,10 @@ type VMServiceScrapeSpec struct {
 	// SampleLimit defines per-scrape limit on number of scraped samples that will be accepted.
 	// +optional
 	SampleLimit uint64 `json:"sampleLimit,omitempty"`
+	// SeriesLimit defines per-scrape limit on number of unique time series
+	// a single target can expose during all the scrapes on the time window of 24h.
+	// +optional
+	SeriesLimit uint64 `json:"seriesLimit,omitempty"`
 	// AttachMetadata configures metadata attaching from service discovery
 	// +optional
 	AttachMetadata AttachMetadata `json:"attach_metadata,omitempty"`
@@ -142,6 +146,10 @@ type Endpoint struct {
 	// SampleLimit defines per-endpoint limit on number of scraped samples that will be accepted.
 	// +optional
 	SampleLimit uint64 `json:"sampleLimit,omitempty"`
+	// SeriesLimit defines per-scrape limit on number of unique time series
+	// a single target can expose during all the scrapes on the time window of 24h.
+	// +optional
+	SeriesLimit uint64 `json:"seriesLimit,omitempty"`
 	// OAuth2 defines auth configuration
 	// +optional
 	OAuth2 *OAuth2 `json:"oauth2,omitempty"`
@@ -199,12 +207,18 @@ type AttachMetadata struct {
 // VMScrapeParams defines scrape target configuration that compatible only with VictoriaMetrics scrapers
 // VMAgent and VMSingle
 type VMScrapeParams struct {
+	// deprecated since [v1.85](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.85.0), will be removed in next release
 	// +optional
 	RelabelDebug *bool `json:"relabel_debug,omitempty"`
+	// deprecated since [v1.85](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.85.0), will be removed in next release
 	// +optional
 	MetricRelabelDebug *bool `json:"metric_relabel_debug,omitempty"`
 	// +optional
 	DisableCompression *bool `json:"disable_compression,omitempty"`
+	// disable_keepalive allows disabling HTTP keep-alive when scraping targets.
+	// By default, HTTP keep-alive is enabled, so TCP connections to scrape targets
+	// could be re-used.
+	// See https://docs.victoriametrics.com/vmagent.html#scrape_config-enhancements
 	// +optional
 	DisableKeepAlive *bool `json:"disable_keep_alive,omitempty"`
 	// +optional

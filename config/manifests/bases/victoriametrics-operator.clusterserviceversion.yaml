@@ -508,6 +508,7 @@ spec:
           - operator.victoriametrics.com
           resources:
           - vmservicescrapes
+          - vmscrapeconfigs
           verbs:
           - create
           - delete
@@ -520,6 +521,7 @@ spec:
           - operator.victoriametrics.com
           resources:
           - vmservicescrapes/status
+          - vmscrapeconfigs/status
           verbs:
           - get
           - patch

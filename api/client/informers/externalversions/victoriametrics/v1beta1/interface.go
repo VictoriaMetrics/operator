@@ -43,6 +43,8 @@ type Interface interface {
 	VMProbes() VMProbeInformer
 	// VMRules returns a VMRuleInformer.
 	VMRules() VMRuleInformer
+	// VMScrapeConfigs returns a VMScrapeConfigInformer.
+	VMScrapeConfigs() VMScrapeConfigInformer
 	// VMServiceScrapes returns a VMServiceScrapeInformer.
 	VMServiceScrapes() VMServiceScrapeInformer
 	// VMSingles returns a VMSingleInformer.
@@ -112,6 +114,11 @@ func (v *version) VMProbes() VMProbeInformer {
 // VMRules returns a VMRuleInformer.
 func (v *version) VMRules() VMRuleInformer {
 	return &vMRuleInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// VMScrapeConfigs returns a VMScrapeConfigInformer.
+func (v *version) VMScrapeConfigs() VMScrapeConfigInformer {
+	return &vMScrapeConfigInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // VMServiceScrapes returns a VMServiceScrapeInformer.

@@ -311,6 +311,15 @@ func RunManager(ctx context.Context) error {
 		setupLog.Error(err, "unable to create controller", "controller", "VMStaticScrape")
 		return err
 	}
+	if err = (&controllers.VMScrapeConfigReconciler{
+		Client:       mgr.GetClient(),
+		Log:          ctrl.Log.WithName("controllers").WithName("VMScrapeConfig"),
+		OriginScheme: mgr.GetScheme(),
+		BaseConf:     baseConfig,
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "VMScrapeConfig")
+		return err
+	}
 
 	if err = (&controllers.VMAuthReconciler{
 		Client:       mgr.GetClient(),

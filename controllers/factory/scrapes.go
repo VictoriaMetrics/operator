@@ -70,7 +70,12 @@ func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *victoriametricsv
 		return nil, fmt.Errorf("selecting PodScrapes failed: %w", err)
 	}
 
-	ssCache, err := loadScrapeSecrets(ctx, rclient, sScrapes, nodes, pScrapes, probes, statics, cr.Spec.APIServerConfig, cr.Spec.RemoteWrite, cr.Namespace)
+	scrapeConfigs, err := SelectScrapeConfig(ctx, cr, rclient)
+	if err != nil {
+		return nil, fmt.Errorf("selecting ScrapeConfigs failed: %w", err)
+	}
+
+	ssCache, err := loadScrapeSecrets(ctx, rclient, sScrapes, nodes, pScrapes, probes, statics, scrapeConfigs, cr.Spec.APIServerConfig, cr.Spec.RemoteWrite, cr.Namespace)
 	if err != nil {
 		var ge *utils.ErrGroup
 		if !stderrors.As(err, &ge) {
@@ -106,6 +111,7 @@ func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *victoriametricsv
 		probes,
 		nodes,
 		statics,
+		scrapeConfigs,
 		ssCache,
 		additionalScrapeConfigs,
 	)
@@ -316,6 +322,36 @@ func SelectStaticScrapes(ctx context.Context, cr *victoriametricsv1beta1.VMAgent
 	return res, nil
 }
 
+func SelectScrapeConfig(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client) (map[string]*victoriametricsv1beta1.VMScrapeConfig, error) {
+	res := make(map[string]*victoriametricsv1beta1.VMScrapeConfig)
+	var scrapeConfigsCombined []victoriametricsv1beta1.VMScrapeConfig
+
+	if err := visitObjectsForSelectorsAtNs(ctx, rclient, cr.Spec.NodeScrapeNamespaceSelector, cr.Spec.ScrapeConfigSelector, cr.Namespace, cr.Spec.SelectAllByDefault,
+		func(list *victoriametricsv1beta1.VMScrapeConfigList) {
+			for _, item := range list.Items {
+				if !item.DeletionTimestamp.IsZero() {
+					continue
+				}
+				scrapeConfigsCombined = append(scrapeConfigsCombined, item)
+			}
+		}); err != nil {
+		return nil, err
+	}
+
+	for _, scrapeConf := range scrapeConfigsCombined {
+		sc := scrapeConf.DeepCopy()
+		res[scrapeConf.Namespace+"/"+scrapeConf.Name] = sc
+	}
+	scrapeConfigs := make([]string, 0)
+	for key := range res {
+		scrapeConfigs = append(scrapeConfigs, key)
+	}
+
+	logger.WithContext(ctx).Info("selected scrapeConfigs", "scrapeConfigs", strings.Join(scrapeConfigs, ","), "namespace", cr.Namespace, "vmagent", cr.Name)
+
+	return res, nil
+}
+
 // TODO: @f41gh7
 // refactor it, use victoriametricsv1beta1.HTTPAuth for objects as embed struct
 // it should remove boilerplate code
@@ -327,6 +363,7 @@ func loadScrapeSecrets(
 	pods map[string]*victoriametricsv1beta1.VMPodScrape,
 	probes map[string]*victoriametricsv1beta1.VMProbe,
 	statics map[string]*victoriametricsv1beta1.VMStaticScrape,
+	scrapeConfigs map[string]*victoriametricsv1beta1.VMScrapeConfig,
 	apiserverConfig *victoriametricsv1beta1.APIServerConfig,
 	remoteWriteSpecs []victoriametricsv1beta1.VMAgentRemoteWriteSpec,
 	namespace string,
@@ -597,6 +634,234 @@ func loadScrapeSecrets(
 		staticCfg.Spec.TargetEndpoints = staticCfg.Spec.TargetEndpoints[:epCnt]
 		if len(staticCfg.Spec.TargetEndpoints) == 0 {
 			delete(statics, key)
+		}
+	}
+
+	for key, scrapeConfig := range scrapeConfigs {
+		onErr := func(err error) {
+			delete(nodes, key)
+			errG.Add(fmt.Errorf("cannot load secret for VMScrapeConfig: %w", err))
+		}
+		if scrapeConfig.Spec.BasicAuth != nil {
+			credentials, err := loadBasicAuthSecretFromAPI(ctx, rclient, scrapeConfig.Spec.BasicAuth, scrapeConfig.Namespace, nsSecretCache)
+			if err != nil {
+				onErr(fmt.Errorf("could not generate basicAuth for VMScrapeConfig %s. %w", scrapeConfig.Name, err))
+				continue
+			}
+			baSecrets[scrapeConfig.AsMapKey("", 0)] = credentials
+		}
+		if scrapeConfig.Spec.Authorization != nil && scrapeConfig.Spec.Authorization.Credentials != nil {
+			secretValue, err := getCredFromSecret(ctx, rclient, scrapeConfig.Namespace, scrapeConfig.Spec.Authorization.Credentials, buildCacheKey(scrapeConfig.Namespace, scrapeConfig.Spec.Authorization.Credentials.Name), nsSecretCache)
+			if err != nil {
+				onErr(fmt.Errorf("could not generate authorization for VMScrapeConfig %s. %w", scrapeConfig.Name, err))
+				continue
+			}
+			authorizationSecrets[scrapeConfig.AsMapKey("", 0)] = secretValue
+		}
+		if scrapeConfig.Spec.OAuth2 != nil {
+			oauth2, err := loadOAuthSecrets(ctx, rclient, scrapeConfig.Spec.OAuth2, scrapeConfig.Namespace, nsSecretCache, nsCMCache)
+			if err != nil {
+				onErr(fmt.Errorf("could not generate oauth2 for VMScrapeConfig %s. %w", scrapeConfig.Name, err))
+				continue
+			}
+			oauth2Secret[scrapeConfig.AsMapKey("", 0)] = oauth2
+		}
+		if scrapeConfig.Spec.VMScrapeParams != nil && scrapeConfig.Spec.VMScrapeParams.ProxyClientConfig != nil {
+			ba, token, err := loadProxySecrets(ctx, rclient, scrapeConfig.Spec.VMScrapeParams.ProxyClientConfig, scrapeConfig.Namespace, nsSecretCache)
+			if err != nil {
+				onErr(fmt.Errorf("could not generate proxy auth for VMScrapeConfig %s. %w", scrapeConfig.Name, err))
+				continue
+			}
+			if ba != nil {
+				baSecrets[scrapeConfig.AsProxyKey("", 0)] = ba
+			}
+			bearerSecrets[scrapeConfig.AsProxyKey("", 0)] = token
+		}
+		for i, hc := range scrapeConfig.Spec.HTTPSDConfigs {
+			if hc.BasicAuth != nil {
+				credentials, err := loadBasicAuthSecretFromAPI(ctx, rclient, hc.BasicAuth, scrapeConfig.Namespace, nsSecretCache)
+				if err != nil {
+					onErr(fmt.Errorf("could not generate basicAuth for httpSDConfig %d in VMScrapeConfig %s. %w", i, scrapeConfig.Name, err))
+					continue
+				}
+				baSecrets[scrapeConfig.AsMapKey("httpsd", i)] = credentials
+			}
+			if hc.Authorization != nil && hc.Authorization.Credentials != nil {
+				secretValue, err := getCredFromSecret(ctx, rclient, scrapeConfig.Namespace, hc.Authorization.Credentials, buildCacheKey(scrapeConfig.Namespace, hc.Authorization.Credentials.Name), nsSecretCache)
+				if err != nil {
+					onErr(fmt.Errorf("could not generate authorization for httpSDConfig %d in VMScrapeConfig %s. %w", i, scrapeConfig.Name, err))
+					continue
+				}
+				authorizationSecrets[scrapeConfig.AsMapKey("httpsd", i)] = secretValue
+			}
+			if hc.ProxyClientConfig != nil {
+				ba, token, err := loadProxySecrets(ctx, rclient, hc.ProxyClientConfig, scrapeConfig.Namespace, nsSecretCache)
+				if err != nil {
+					onErr(fmt.Errorf("could not generate proxy auth for httpSDConfig %d in VMScrapeConfig %s. %w", i, scrapeConfig.Name, err))
+					continue
+				}
+				if ba != nil {
+					baSecrets[scrapeConfig.AsProxyKey("httpsd", i)] = ba
+				}
+				bearerSecrets[scrapeConfig.AsProxyKey("httpsd", i)] = token
+			}
+		}
+		for i, kc := range scrapeConfig.Spec.KubernetesSDConfigs {
+			if kc.BasicAuth != nil {
+				credentials, err := loadBasicAuthSecretFromAPI(ctx, rclient, kc.BasicAuth, scrapeConfig.Namespace, nsSecretCache)
+				if err != nil {
+					onErr(fmt.Errorf("could not generate basicAuth for kubernetesSDConfigs %d in VMScrapeConfig %s. %w", i, scrapeConfig.Name, err))
+					continue
+				}
+				baSecrets[scrapeConfig.AsMapKey("kubesd", i)] = credentials
+			}
+			if kc.Authorization != nil && kc.Authorization.Credentials != nil {
+				secretValue, err := getCredFromSecret(ctx, rclient, scrapeConfig.Namespace, kc.Authorization.Credentials, buildCacheKey(scrapeConfig.Namespace, kc.Authorization.Credentials.Name), nsSecretCache)
+				if err != nil {
+					onErr(fmt.Errorf("could not generate authorization for kubernetesSDConfigs %d in VMScrapeConfig %s. %w", i, scrapeConfig.Name, err))
+					continue
+				}
+				authorizationSecrets[scrapeConfig.AsMapKey("kubesd", i)] = secretValue
+			}
+			if kc.OAuth2 != nil {
+				oauth2, err := loadOAuthSecrets(ctx, rclient, kc.OAuth2, scrapeConfig.Namespace, nsSecretCache, nsCMCache)
+				if err != nil {
+					onErr(fmt.Errorf("could not generate oauth2 for kubernetesSDConfigs %d in VMScrapeConfig %s. %w", i, scrapeConfig.Name, err))
+					continue
+				}
+				oauth2Secret[scrapeConfig.AsMapKey("kubesd", i)] = oauth2
+			}
+			if kc.ProxyClientConfig != nil {
+				ba, token, err := loadProxySecrets(ctx, rclient, kc.ProxyClientConfig, scrapeConfig.Namespace, nsSecretCache)
+				if err != nil {
+					onErr(fmt.Errorf("could not generate proxy auth for kubernetesSDConfigs %d in VMScrapeConfig %s. %w", i, scrapeConfig.Name, err))
+					continue
+				}
+				if ba != nil {
+					baSecrets[scrapeConfig.AsProxyKey("kubesd", i)] = ba
+				}
+				bearerSecrets[scrapeConfig.AsProxyKey("kubesd", i)] = token
+			}
+		}
+		for i, cc := range scrapeConfig.Spec.ConsulSDConfigs {
+			if cc.TokenRef != nil {
+				token, err := getCredFromSecret(ctx, rclient, scrapeConfig.Namespace, cc.TokenRef, buildCacheKey(scrapeConfig.Namespace, cc.TokenRef.Name), nsSecretCache)
+				if err != nil {
+					onErr(fmt.Errorf("could not generate token for consulSDConfigs %d in VMScrapeConfig %s. %w", i, scrapeConfig.Name, err))
+					continue
+				}
+				bearerSecrets[scrapeConfig.AsMapKey("consulsd", i)] = token
+			}
+			if cc.BasicAuth != nil {
+				credentials, err := loadBasicAuthSecretFromAPI(ctx, rclient, cc.BasicAuth, scrapeConfig.Namespace, nsSecretCache)
+				if err != nil {
+					onErr(fmt.Errorf("could not generate basicAuth for consulSDConfigs %d in VMScrapeConfig %s. %w", i, scrapeConfig.Name, err))
+					continue
+				}
+				baSecrets[scrapeConfig.AsMapKey("consulsd", i)] = credentials
+			}
+			if cc.Authorization != nil && cc.Authorization.Credentials != nil {
+				secretValue, err := getCredFromSecret(ctx, rclient, scrapeConfig.Namespace, cc.Authorization.Credentials, buildCacheKey(scrapeConfig.Namespace, cc.Authorization.Credentials.Name), nsSecretCache)
+				if err != nil {
+					onErr(fmt.Errorf("could not generate authorization for consulSDConfigs %d in VMScrapeConfig %s. %w", i, scrapeConfig.Name, err))
+					continue
+				}
+				authorizationSecrets[scrapeConfig.AsMapKey("consulsd", i)] = secretValue
+			}
+			if cc.OAuth2 != nil {
+				oauth2, err := loadOAuthSecrets(ctx, rclient, cc.OAuth2, scrapeConfig.Namespace, nsSecretCache, nsCMCache)
+				if err != nil {
+					onErr(fmt.Errorf("could not generate oauth2 for consulSDConfigs %d in VMScrapeConfig %s. %w", i, scrapeConfig.Name, err))
+					continue
+				}
+				oauth2Secret[scrapeConfig.AsMapKey("consulsd", i)] = oauth2
+			}
+			if cc.ProxyClientConfig != nil {
+				ba, token, err := loadProxySecrets(ctx, rclient, cc.ProxyClientConfig, scrapeConfig.Namespace, nsSecretCache)
+				if err != nil {
+					onErr(fmt.Errorf("could not generate proxy auth for consulSDConfigs %d in VMScrapeConfig %s. %w", i, scrapeConfig.Name, err))
+					continue
+				}
+				if ba != nil {
+					baSecrets[scrapeConfig.AsProxyKey("consulsd", i)] = ba
+				}
+				bearerSecrets[scrapeConfig.AsProxyKey("consulsd", i)] = token
+			}
+		}
+		for i, ec := range scrapeConfig.Spec.EC2SDConfigs {
+			if ec.AccessKey != nil {
+				token, err := getCredFromSecret(ctx, rclient, scrapeConfig.Namespace, ec.AccessKey, buildCacheKey(scrapeConfig.Namespace, ec.AccessKey.Name), nsSecretCache)
+				if err != nil {
+					onErr(fmt.Errorf("could not generate token for consulSDConfigs %d in VMScrapeConfig %s. %w", i, scrapeConfig.Name, err))
+					continue
+				}
+				authorizationSecrets[scrapeConfig.AsMapKey("ec2sdAccess", i)] = token
+			}
+			if ec.SecretKey != nil {
+				token, err := getCredFromSecret(ctx, rclient, scrapeConfig.Namespace, ec.SecretKey, buildCacheKey(scrapeConfig.Namespace, ec.SecretKey.Name), nsSecretCache)
+				if err != nil {
+					onErr(fmt.Errorf("could not generate token for ec2SDConfigs %d in VMScrapeConfig %s. %w", i, scrapeConfig.Name, err))
+					continue
+				}
+				authorizationSecrets[scrapeConfig.AsMapKey("ec2sdSecret", i)] = token
+			}
+		}
+		for i, ac := range scrapeConfig.Spec.AzureSDConfigs {
+			if ac.ClientSecret != nil {
+				token, err := getCredFromSecret(ctx, rclient, scrapeConfig.Namespace, ac.ClientSecret, buildCacheKey(scrapeConfig.Namespace, ac.ClientSecret.Name), nsSecretCache)
+				if err != nil {
+					onErr(fmt.Errorf("could not generate token for azureSDConfigs %d in VMScrapeConfig %s. %w", i, scrapeConfig.Name, err))
+					continue
+				}
+				oauth2Secret[scrapeConfig.AsMapKey("azuresd", i)] = &oauthCreds{clientSecret: token}
+			}
+		}
+		for i, oc := range scrapeConfig.Spec.OpenStackSDConfigs {
+			if oc.Password != nil {
+				token, err := getCredFromSecret(ctx, rclient, scrapeConfig.Namespace, oc.Password, buildCacheKey(scrapeConfig.Namespace, oc.Password.Name), nsSecretCache)
+				if err != nil {
+					onErr(fmt.Errorf("could not read password for openStackSDConfigs %d in VMScrapeConfig %s. %w", i, scrapeConfig.Name, err))
+					continue
+				}
+				authorizationSecrets[scrapeConfig.AsMapKey("openstacksd_password", i)] = token
+			}
+			if oc.ApplicationCredentialSecret != nil {
+				token, err := getCredFromSecret(ctx, rclient, scrapeConfig.Namespace, oc.ApplicationCredentialSecret, buildCacheKey(scrapeConfig.Namespace, oc.ApplicationCredentialSecret.Name), nsSecretCache)
+				if err != nil {
+					onErr(fmt.Errorf("could not read applicationCredentialSecret for openStackSDConfigs %d in VMScrapeConfig %s. %w", i, scrapeConfig.Name, err))
+					continue
+				}
+				authorizationSecrets[scrapeConfig.AsMapKey("openstacksd_app", i)] = token
+			}
+		}
+		for i, dc := range scrapeConfig.Spec.DigitalOceanSDConfigs {
+			if dc.Authorization != nil && dc.Authorization.Credentials != nil {
+				secretValue, err := getCredFromSecret(ctx, rclient, scrapeConfig.Namespace, dc.Authorization.Credentials, buildCacheKey(scrapeConfig.Namespace, dc.Authorization.Credentials.Name), nsSecretCache)
+				if err != nil {
+					onErr(fmt.Errorf("could not generate authorization for digitalOceanSDConfigs %d in VMScrapeConfig %s. %w", i, scrapeConfig.Name, err))
+					continue
+				}
+				authorizationSecrets[scrapeConfig.AsMapKey("digitaloceansd", i)] = secretValue
+			}
+			if dc.OAuth2 != nil {
+				oauth2, err := loadOAuthSecrets(ctx, rclient, dc.OAuth2, scrapeConfig.Namespace, nsSecretCache, nsCMCache)
+				if err != nil {
+					onErr(fmt.Errorf("could not generate oauth2 for digitalOceanSDConfigs %d in VMScrapeConfig %s. %w", i, scrapeConfig.Name, err))
+					continue
+				}
+				oauth2Secret[scrapeConfig.AsMapKey("digitaloceansd", i)] = oauth2
+			}
+			if dc.ProxyClientConfig != nil {
+				ba, token, err := loadProxySecrets(ctx, rclient, dc.ProxyClientConfig, scrapeConfig.Namespace, nsSecretCache)
+				if err != nil {
+					onErr(fmt.Errorf("could not generate proxy auth for digitalOceanSDConfigs %d in VMScrapeConfig %s. %w", i, scrapeConfig.Name, err))
+					continue
+				}
+				if ba != nil {
+					baSecrets[scrapeConfig.AsProxyKey("digitaloceansd", i)] = ba
+				}
+				bearerSecrets[scrapeConfig.AsProxyKey("digitaloceansd", i)] = token
+			}
 		}
 	}
 

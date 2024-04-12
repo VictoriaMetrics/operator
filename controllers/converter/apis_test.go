@@ -2,13 +2,15 @@ package converter
 
 import (
 	"fmt"
-	"github.com/VictoriaMetrics/operator/internal/config"
-	"github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
-	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"reflect"
 	"testing"
 
+	"github.com/VictoriaMetrics/operator/internal/config"
+	"github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
+
 	corev1 "k8s.io/api/core/v1"
+	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/pointer"
 
 	v1beta1vm "github.com/VictoriaMetrics/operator/api/v1beta1"
 	v1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
@@ -309,10 +311,14 @@ func TestConvertPodEndpoints(t *testing.T) {
 				TLSConfig: &v1beta1vm.TLSConfig{
 					InsecureSkipVerify: true,
 					ServerName:         "some-srv",
-					CA: v1beta1vm.SecretOrConfigMap{ConfigMap: &corev1.ConfigMapKeySelector{
-						Key: "ca"},
-					}},
-			}}},
+					CA: v1beta1vm.SecretOrConfigMap{
+						ConfigMap: &corev1.ConfigMapKeySelector{
+							Key: "ca",
+						},
+					},
+				},
+			}},
+		},
 		{
 			name: "with basic auth and bearer",
 			args: args{promPodEnpoints: []v1.PodMetricsEndpoint{
@@ -326,9 +332,10 @@ func TestConvertPodEndpoints(t *testing.T) {
 			}},
 			want: []v1beta1vm.PodMetricsEndpoint{{
 				BearerTokenSecret: &corev1.SecretKeySelector{Key: "bearer"},
-				BasicAuth: &v1beta1vm.BasicAuth{Username: corev1.SecretKeySelector{
-					Key: "username",
-				},
+				BasicAuth: &v1beta1vm.BasicAuth{
+					Username: corev1.SecretKeySelector{
+						Key: "username",
+					},
 					Password: corev1.SecretKeySelector{Key: "password"},
 				},
 			}},
@@ -353,11 +360,11 @@ func TestConvertAlertmanagerConfig(t *testing.T) {
 			if err := validate(converted); err != nil {
 				t.Fatalf("not valid converted alertmanager config")
 			}
-
 		})
 	}
 	f("simple convert",
-		&v1alpha1.AlertmanagerConfig{ObjectMeta: v12.ObjectMeta{Name: "test-1"},
+		&v1alpha1.AlertmanagerConfig{
+			ObjectMeta: v12.ObjectMeta{Name: "test-1"},
 			Spec: v1alpha1.AlertmanagerConfigSpec{
 				Route: &v1alpha1.Route{Receiver: "webhook", GroupInterval: "1min"},
 				Receivers: []v1alpha1.Receiver{
@@ -366,7 +373,8 @@ func TestConvertAlertmanagerConfig(t *testing.T) {
 						WebhookConfigs: []v1alpha1.WebhookConfig{{URLSecret: &corev1.SecretKeySelector{Key: "secret"}}},
 					},
 				},
-			}},
+			},
+		},
 		func(convertedAMCfg *v1beta1vm.VMAlertmanagerConfig) error {
 			if convertedAMCfg.Name != "test-1" {
 				return fmt.Errorf("name not match, want: %s got: %s", "test-1", convertedAMCfg.Name)
@@ -382,7 +390,6 @@ func TestConvertAlertmanagerConfig(t *testing.T) {
 			}
 			return nil
 		})
-
 }
 
 func TestConvertProbe(t *testing.T) {
@@ -399,6 +406,9 @@ func TestConvertProbe(t *testing.T) {
 			args: args{
 				probe: &v1.Probe{
 					Spec: v1.ProbeSpec{
+						ProberSpec: v1.ProberSpec{
+							ProxyURL: "http://proxy.com",
+						},
 						Targets: v1.ProbeTargets{
 							StaticConfig: &v1.ProbeTargetStaticConfig{
 								Targets: []string{"target-1", "target-2"},
@@ -419,6 +429,7 @@ func TestConvertProbe(t *testing.T) {
 			},
 			want: v1beta1vm.VMProbe{
 				Spec: v1beta1vm.VMProbeSpec{
+					ProxyURL: pointer.String("http://proxy.com"),
 					Targets: v1beta1vm.VMProbeTargets{
 						StaticConfig: &v1beta1vm.VMProbeTargetStaticConfig{
 							Targets: []string{"target-1", "target-2"},
@@ -510,6 +521,253 @@ func TestConvertProbe(t *testing.T) {
 
 			if !reflect.DeepEqual(*got, tt.want) {
 				t.Errorf("ConvertProbe() got = \n%v, \nwant \n%v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestConvertScrapeConfig(t *testing.T) {
+	type args struct {
+		scrapeConfig *v1alpha1.ScrapeConfig
+	}
+	tests := []struct {
+		name string
+		args args
+		want v1beta1vm.VMScrapeConfig
+	}{
+		{
+			name: "with static config",
+			args: args{
+				scrapeConfig: &v1alpha1.ScrapeConfig{
+					Spec: v1alpha1.ScrapeConfigSpec{
+						StaticConfigs: []v1alpha1.StaticConfig{
+							{
+								Targets: []v1alpha1.Target{"target-1", "target-2"},
+							},
+						},
+						HonorTimestamps:   pointer.Bool(true),
+						EnableCompression: pointer.Bool(true),
+						BasicAuth: &v1.BasicAuth{
+							Username: corev1.SecretKeySelector{Key: "username"},
+							Password: corev1.SecretKeySelector{Key: "password"},
+						},
+						ProxyConfig: &v1alpha1.ProxyConfig{
+							ProxyURL: pointer.String("http://proxy.com"),
+						},
+						RelabelConfigs: []*v1.RelabelConfig{
+							{
+								Action:      "LabelMap",
+								Regex:       "__meta_kubernetes_pod_label_(.+)",
+								Replacement: "foo_$1",
+							},
+						},
+						MetricRelabelConfigs: []*v1.RelabelConfig{
+							{
+								SourceLabels: []v1.LabelName{"__meta_kubernetes_pod_name", "__meta_kubernetes_pod_container_port_number"},
+								Separator:    ":",
+								TargetLabel:  "host_port",
+							},
+						},
+					},
+				},
+			},
+			want: v1beta1vm.VMScrapeConfig{
+				Spec: v1beta1vm.VMScrapeConfigSpec{
+					ProxyURL: pointer.String("http://proxy.com"),
+					StaticConfigs: []v1beta1vm.StaticConfig{
+						{
+							Targets: []string{"target-1", "target-2"},
+						},
+					},
+					HonorTimestamps: pointer.Bool(true),
+					VMScrapeParams:  &v1beta1vm.VMScrapeParams{DisableCompression: pointer.Bool(false)},
+					BasicAuth: &v1beta1vm.BasicAuth{
+						Username: corev1.SecretKeySelector{Key: "username"},
+						Password: corev1.SecretKeySelector{Key: "password"},
+					},
+					RelabelConfigs: []*v1beta1vm.RelabelConfig{
+						{
+							Action:      "LabelMap",
+							Regex:       "__meta_kubernetes_pod_label_(.+)",
+							Replacement: "foo_$1",
+						},
+					},
+					MetricRelabelConfigs: []*v1beta1vm.RelabelConfig{
+						{
+							SourceLabels: []string{"__meta_kubernetes_pod_name", "__meta_kubernetes_pod_container_port_number"},
+							Separator:    ":",
+							TargetLabel:  "host_port",
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "with httpsd config",
+			args: args{
+				scrapeConfig: &v1alpha1.ScrapeConfig{
+					Spec: v1alpha1.ScrapeConfigSpec{
+						HTTPSDConfigs: []v1alpha1.HTTPSDConfig{
+							{
+								URL: "http://test1.com",
+								Authorization: &v1.SafeAuthorization{
+									Type: "Bearer",
+									Credentials: &corev1.SecretKeySelector{
+										Key: "token",
+									},
+								},
+							},
+							{
+								URL: "http://test2.com",
+								TLSConfig: &v1.SafeTLSConfig{
+									CA:                 v1.SecretOrConfigMap{ConfigMap: &corev1.ConfigMapKeySelector{Key: "ca.crt"}},
+									Cert:               v1.SecretOrConfigMap{Secret: &corev1.SecretKeySelector{Key: "cert.pem"}},
+									KeySecret:          &corev1.SecretKeySelector{Key: "key"},
+									ServerName:         "test",
+									InsecureSkipVerify: true,
+								},
+							},
+						},
+					},
+				},
+			},
+			want: v1beta1vm.VMScrapeConfig{
+				Spec: v1beta1vm.VMScrapeConfigSpec{
+					HTTPSDConfigs: []v1beta1vm.HTTPSDConfig{
+						{
+							URL: "http://test1.com",
+							Authorization: &v1beta1vm.Authorization{
+								Type: "Bearer",
+								Credentials: &corev1.SecretKeySelector{
+									Key: "token",
+								},
+							},
+						},
+						{
+							URL: "http://test2.com",
+							TLSConfig: &v1beta1vm.TLSConfig{
+								CA:                 v1beta1vm.SecretOrConfigMap{ConfigMap: &corev1.ConfigMapKeySelector{Key: "ca.crt"}},
+								Cert:               v1beta1vm.SecretOrConfigMap{Secret: &corev1.SecretKeySelector{Key: "cert.pem"}},
+								KeySecret:          &corev1.SecretKeySelector{Key: "key"},
+								ServerName:         "test",
+								InsecureSkipVerify: true,
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "with k8s sd config",
+			args: args{
+				scrapeConfig: &v1alpha1.ScrapeConfig{
+					Spec: v1alpha1.ScrapeConfigSpec{
+						KubernetesSDConfigs: []v1alpha1.KubernetesSDConfig{
+							{
+								APIServer: pointer.String("http://1.2.3.4"),
+								Role:      v1alpha1.Role("pod"),
+								Selectors: []v1alpha1.K8SSelectorConfig{
+									{
+										Label: "app=test",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: v1beta1vm.VMScrapeConfig{
+				Spec: v1beta1vm.VMScrapeConfigSpec{
+					KubernetesSDConfigs: []v1beta1vm.KubernetesSDConfig{
+						{
+							APIServer: pointer.String("http://1.2.3.4"),
+							Role:      "pod",
+							Selectors: []v1beta1vm.K8SSelectorConfig{
+								{
+									Label: "app=test",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "with consul sd config",
+			args: args{
+				scrapeConfig: &v1alpha1.ScrapeConfig{
+					Spec: v1alpha1.ScrapeConfigSpec{
+						ConsulSDConfigs: []v1alpha1.ConsulSDConfig{
+							{
+								Server:     "http://1.2.3.4",
+								TokenRef:   &corev1.SecretKeySelector{Key: "token"},
+								Datacenter: pointer.String("prod"),
+								Namespace:  pointer.String("test"),
+							},
+						},
+					},
+				},
+			},
+			want: v1beta1vm.VMScrapeConfig{
+				Spec: v1beta1vm.VMScrapeConfigSpec{
+					ConsulSDConfigs: []v1beta1vm.ConsulSDConfig{
+						{
+							Server:     "http://1.2.3.4",
+							TokenRef:   &corev1.SecretKeySelector{Key: "token"},
+							Datacenter: pointer.String("prod"),
+							Namespace:  pointer.String("test"),
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "with ec2 sd config",
+			args: args{
+				scrapeConfig: &v1alpha1.ScrapeConfig{
+					Spec: v1alpha1.ScrapeConfigSpec{
+						EC2SDConfigs: []v1alpha1.EC2SDConfig{
+							{
+								Region:    pointer.String("us-west-1"),
+								AccessKey: &corev1.SecretKeySelector{Key: "accesskey"},
+								SecretKey: &corev1.SecretKeySelector{Key: "secret"},
+								Filters: []*v1alpha1.EC2Filter{
+									{
+										Name:   "f1",
+										Values: []string{"1"},
+									},
+								},
+								Port: pointer.Int(80),
+							},
+						},
+					},
+				},
+			},
+			want: v1beta1vm.VMScrapeConfig{
+				Spec: v1beta1vm.VMScrapeConfigSpec{
+					EC2SDConfigs: []v1beta1vm.EC2SDConfig{
+						{
+							Region:    pointer.String("us-west-1"),
+							AccessKey: &corev1.SecretKeySelector{Key: "accesskey"},
+							SecretKey: &corev1.SecretKeySelector{Key: "secret"},
+							Filters: []*v1beta1vm.EC2Filter{
+								{
+									Name:   "f1",
+									Values: []string{"1"},
+								},
+							},
+							Port: pointer.Int(80),
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ConvertScrapeConfig(tt.args.scrapeConfig, &config.BaseOperatorConf{})
+			if !reflect.DeepEqual(*got, tt.want) {
+				t.Fatalf("ConvertScrapeConfig() got = \n%v, \nwant \n%v", got, tt.want)
 			}
 		})
 	}

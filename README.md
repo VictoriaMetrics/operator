@@ -12,11 +12,12 @@
 ## Overview
 
  Design and implementation inspired by [prometheus-operator](https://github.com/prometheus-operator/prometheus-operator). It's great a tool for managing monitoring configuration of your applications. VictoriaMetrics operator has api capability with it.
-So you can use familiar CRD objects: `ServiceMonitor`, `PodMonitor`, `PrometheusRule` and `Probe`. Or you can use VictoriaMetrics CRDs:
+So you can use familiar CRD objects: `ServiceMonitor`, `PodMonitor`, `PrometheusRule`, `Probe` and `ScrapeConfig`. Or you can use VictoriaMetrics CRDs:
 - `VMServiceScrape` - defines scraping metrics configuration from pods backed by services.
 - `VMPodScrape` - defines scraping metrics configuration from pods.
 - `VMRule` - defines alerting or recording rules.
 - `VMProbe` - defines a probing configuration for targets with blackbox exporter.
+- `VMScrapeConfig` - define a scrape config using any of the service discovery options supported in victoriametrics.
 
 Besides, operator allows you to manage VictoriaMetrics applications inside kubernetes cluster and simplifies this process [quick-start](/docs/quick-start.md)
 With CRD (Custom Resource Definition) you can define application configuration and apply it to your cluster [crd-objects](/docs/api.md).

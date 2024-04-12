@@ -122,6 +122,11 @@ func generateStaticScrapeConfig(
 	} else if m.Spec.SampleLimit > 0 {
 		cfg = append(cfg, yaml.MapItem{Key: "sample_limit", Value: m.Spec.SampleLimit})
 	}
+	if ep.SeriesLimit > 0 {
+		cfg = append(cfg, yaml.MapItem{Key: "series_limit", Value: ep.SeriesLimit})
+	} else if m.Spec.SeriesLimit > 0 {
+		cfg = append(cfg, yaml.MapItem{Key: "series_limit", Value: m.Spec.SeriesLimit})
+	}
 
 	if ep.MetricRelabelConfigs != nil {
 		var metricRelabelings []yaml.MapSlice

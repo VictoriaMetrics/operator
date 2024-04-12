@@ -54,15 +54,16 @@ const (
 // ConverterController - watches for prometheus objects
 // and create VictoriaMetrics objects
 type ConverterController struct {
-	ctx         context.Context
-	baseClient  *kubernetes.Clientset
-	rclient     client.WithWatch
-	ruleInf     cache.SharedInformer
-	podInf      cache.SharedInformer
-	serviceInf  cache.SharedInformer
-	amConfigInf cache.SharedInformer
-	probeInf    cache.SharedIndexInformer
-	baseConf    *config.BaseOperatorConf
+	ctx             context.Context
+	baseClient      *kubernetes.Clientset
+	rclient         client.WithWatch
+	ruleInf         cache.SharedInformer
+	podInf          cache.SharedInformer
+	serviceInf      cache.SharedInformer
+	amConfigInf     cache.SharedInformer
+	probeInf        cache.SharedIndexInformer
+	scrapeConfigInf cache.SharedIndexInformer
+	baseConf        *config.BaseOperatorConf
 }
 
 // NewConverterController builder for vmprometheusconverter service
@@ -199,6 +200,31 @@ func NewConverterController(ctx context.Context, baseClient *kubernetes.Clientse
 	}); err != nil {
 		return nil, fmt.Errorf("cannot add probe handler: %w", err)
 	}
+	c.scrapeConfigInf = cache.NewSharedIndexInformer(
+		&cache.ListWatch{
+			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+				var objects v1alpha1.ScrapeConfigList
+				if err := k8stools.ListObjectsByNamespace(ctx, rclient, config.MustGetWatchNamespaces(), func(dst *v1alpha1.ScrapeConfigList) {
+					objects.Items = append(objects.Items, dst.Items...)
+				}); err != nil {
+					return nil, fmt.Errorf("cannot list scrapeConfig: %w", err)
+				}
+				return &objects, nil
+			},
+			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+				return k8stools.NewObjectWatcherForNamespaces[v1alpha1.ScrapeConfigList](ctx, rclient, "scrape_configs", config.MustGetWatchNamespaces())
+			},
+		},
+		&v1alpha1.ScrapeConfig{},
+		resyncPeriod,
+		cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc},
+	)
+	if _, err := c.scrapeConfigInf.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    c.CreateScrapeConfig,
+		UpdateFunc: c.UpdateScrapeConfig,
+	}); err != nil {
+		return nil, fmt.Errorf("cannot add scrapeConfig handler: %w", err)
+	}
 	return c, nil
 }
 
@@ -281,6 +307,11 @@ func (c *ConverterController) Run(ctx context.Context, group *errgroup.Group) {
 	if c.baseConf.EnabledPrometheusConverter.AlertmanagerConfig {
 		group.Go(func() error {
 			return c.runInformerWithDiscovery(ctx, v1alpha1.SchemeGroupVersion.String(), v1alpha1.AlertmanagerConfigKind, c.amConfigInf.Run)
+		})
+	}
+	if c.baseConf.EnabledPrometheusConverter.ScrapeConfig {
+		group.Go(func() error {
+			return c.runInformerWithDiscovery(ctx, v1alpha1.SchemeGroupVersion.String(), v1alpha1.ScrapeConfigsKind, c.scrapeConfigInf.Run)
 		})
 	}
 }
@@ -583,6 +614,58 @@ func (c *ConverterController) UpdateProbe(_, new interface{}) {
 	err = c.rclient.Update(ctx, existingVMProbe)
 	if err != nil {
 		l.Error(err, "cannot update vmProbe")
+		return
+	}
+}
+
+// CreateServiceMonitor converts ServiceMonitor to VMScrapeConfig
+func (c *ConverterController) CreateScrapeConfig(scrapeConfig interface{}) {
+	scrapeConf := scrapeConfig.(*v1alpha1.ScrapeConfig)
+	l := log.WithValues("kind", "vmScrapeConfig", "name", scrapeConf.Name, "ns", scrapeConf.Namespace)
+	vmScrapeConfig := converter.ConvertScrapeConfig(scrapeConf, c.baseConf)
+	err := c.rclient.Create(context.Background(), vmScrapeConfig)
+	if err != nil {
+		if errors.IsAlreadyExists(err) {
+			c.UpdateScrapeConfig(nil, scrapeConf)
+			return
+		}
+		l.Error(err, "cannot create vmScrapeConfig")
+		return
+	}
+}
+
+// UpdateServiceMonitor updates VMScrapeConfig
+func (c *ConverterController) UpdateScrapeConfig(_, new interface{}) {
+	scrapeConf := new.(*v1alpha1.ScrapeConfig)
+	l := log.WithValues("kind", "vmScrapeConfig", "name", scrapeConf.Name, "ns", scrapeConf.Namespace)
+	vmScrapeConfig := converter.ConvertScrapeConfig(scrapeConf, c.baseConf)
+	existingVMScrapeConfig := &v1beta1.VMScrapeConfig{}
+	ctx := context.Background()
+	err := c.rclient.Get(ctx, types.NamespacedName{Name: vmScrapeConfig.Name, Namespace: vmScrapeConfig.Namespace}, existingVMScrapeConfig)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			if err = c.rclient.Create(ctx, vmScrapeConfig); err == nil {
+				return
+			}
+		}
+		l.Error(err, "cannot get existing vmScrapeConfig")
+		return
+	}
+
+	if existingVMScrapeConfig.Annotations[IgnoreConversionLabel] == IgnoreConversion {
+		l.Info("syncing for object was disabled by annotation", "annotation", IgnoreConversionLabel)
+		return
+	}
+	existingVMScrapeConfig.Spec = vmScrapeConfig.Spec
+
+	metaMergeStrategy := getMetaMergeStrategy(existingVMScrapeConfig.Annotations)
+	existingVMScrapeConfig.Annotations = mergeLabelsWithStrategy(existingVMScrapeConfig.Annotations, vmScrapeConfig.Annotations, metaMergeStrategy)
+	existingVMScrapeConfig.Labels = mergeLabelsWithStrategy(existingVMScrapeConfig.Labels, vmScrapeConfig.Labels, metaMergeStrategy)
+	existingVMScrapeConfig.OwnerReferences = vmScrapeConfig.OwnerReferences
+
+	err = c.rclient.Update(ctx, existingVMScrapeConfig)
+	if err != nil {
+		l.Error(err, "cannot update vmScrapeConfig")
 		return
 	}
 }

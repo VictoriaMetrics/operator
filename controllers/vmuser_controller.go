@@ -94,14 +94,15 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		}
 		// reconcile users for given vmauth.
 		currentVMAuth := &vmauth
-		match, err := isSelectorsMatches(&instance, currentVMAuth, currentVMAuth.Spec.UserSelector)
-		if err != nil {
-			l.Error(err, "cannot match vmauth and VMUser")
-			continue
-		}
-		// fast path
-		if !match {
-			continue
+		if !currentVMAuth.Spec.SelectAllByDefault {
+			match, err := isSelectorsMatches(r.Client, &instance, currentVMAuth, currentVMAuth.Spec.UserSelector, currentVMAuth.Spec.UserNamespaceSelector)
+			if err != nil {
+				l.Error(err, "cannot match vmauth and VMUser")
+				continue
+			}
+			if !match {
+				continue
+			}
 		}
 		l = l.WithValues("vmauth", vmauth.Name)
 		ctx := logger.AddToContext(ctx, l)

@@ -80,14 +80,15 @@ func (r *VMPodScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		}
 		reqLogger = reqLogger.WithValues("vmagent", vmagent.Name)
 		currentVMagent := &vmagent
-		match, err := isSelectorsMatches(instance, currentVMagent, currentVMagent.Spec.PodScrapeSelector)
-		if err != nil {
-			reqLogger.Error(err, "cannot match vmagent and vmPodScrape")
-			continue
-		}
-		// fast path
-		if !match {
-			continue
+		if !currentVMagent.Spec.SelectAllByDefault {
+			match, err := isSelectorsMatches(r.Client, instance, currentVMagent, currentVMagent.Spec.PodScrapeSelector, currentVMagent.Spec.PodScrapeNamespaceSelector)
+			if err != nil {
+				reqLogger.Error(err, "cannot match vmagent and vmPodScrape")
+				continue
+			}
+			if !match {
+				continue
+			}
 		}
 		reqLogger := reqLogger.WithValues("vmagent", currentVMagent.Name)
 		ctx := logger.AddToContext(ctx, reqLogger)

@@ -14,6 +14,7 @@ import (
 	v1beta1vm "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	v1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	v1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -31,21 +32,27 @@ func ConvertPromRule(prom *v1.PrometheusRule, conf *config.BaseOperatorConf) *v1
 	for _, promGroup := range prom.Spec.Groups {
 		ruleItems := make([]v1beta1vm.Rule, 0, len(promGroup.Rules))
 		for _, promRuleItem := range promGroup.Rules {
-			ruleItems = append(ruleItems, v1beta1vm.Rule{
+			trule := v1beta1vm.Rule{
 				Labels:      promRuleItem.Labels,
 				Annotations: promRuleItem.Annotations,
 				Expr:        promRuleItem.Expr.String(),
-				For:         string(promRuleItem.For),
 				Record:      promRuleItem.Record,
 				Alert:       promRuleItem.Alert,
-			})
+			}
+			if promRuleItem.For != nil {
+				trule.For = string(*promRuleItem.For)
+			}
+			ruleItems = append(ruleItems, trule)
 		}
 
-		ruleGroups = append(ruleGroups, v1beta1vm.RuleGroup{
-			Name:     promGroup.Name,
-			Interval: string(promGroup.Interval),
-			Rules:    ruleItems,
-		})
+		tgroup := v1beta1vm.RuleGroup{
+			Name:  promGroup.Name,
+			Rules: ruleItems,
+		}
+		if promGroup.Interval != nil {
+			tgroup.Interval = string(*promGroup.Interval)
+		}
+		ruleGroups = append(ruleGroups, tgroup)
 	}
 	cr := &v1beta1vm.VMRule{
 		ObjectMeta: metav1.ObjectMeta{
@@ -253,7 +260,6 @@ func ConvertServiceMonitor(serviceMon *v1.ServiceMonitor, conf *config.BaseOpera
 			JobLabel:        serviceMon.Spec.JobLabel,
 			TargetLabels:    serviceMon.Spec.TargetLabels,
 			PodTargetLabels: serviceMon.Spec.PodTargetLabels,
-			SampleLimit:     serviceMon.Spec.SampleLimit,
 			Selector:        serviceMon.Spec.Selector,
 			Endpoints:       ConvertEndpoint(serviceMon.Spec.Endpoints),
 			NamespaceSelector: v1beta1vm.NamespaceSelector{
@@ -262,9 +268,12 @@ func ConvertServiceMonitor(serviceMon *v1.ServiceMonitor, conf *config.BaseOpera
 			},
 		},
 	}
+	if serviceMon.Spec.SampleLimit != nil {
+		cs.Spec.SampleLimit = *serviceMon.Spec.SampleLimit
+	}
 	if serviceMon.Spec.AttachMetadata != nil {
 		cs.Spec.AttachMetadata = v1beta1vm.AttachMetadata{
-			Node: pointer.Bool(serviceMon.Spec.AttachMetadata.Node),
+			Node: serviceMon.Spec.AttachMetadata.Node,
 		}
 	}
 	if conf.EnabledPrometheusConverterOwnerReferences {
@@ -351,7 +360,6 @@ func ConvertEndpoint(promEndpoint []v1.Endpoint) []v1beta1vm.Endpoint {
 			MetricRelabelConfigs: ConvertRelabelConfig(endpoint.MetricRelabelConfigs),
 			RelabelConfigs:       ConvertRelabelConfig(endpoint.RelabelConfigs),
 			ProxyURL:             endpoint.ProxyURL,
-			BearerTokenSecret:    convertBearerToken(endpoint.BearerTokenSecret),
 			OAuth2:               convertOAuth(endpoint.OAuth2),
 			FollowRedirects:      endpoint.FollowRedirects,
 			Authorization:        convertAuthorization(endpoint.Authorization, nil),
@@ -414,6 +422,9 @@ func ConvertRelabelConfig(promRelabelConfig []*v1.RelabelConfig) []*v1beta1vm.Re
 	}
 	relabelCfg := []*v1beta1vm.RelabelConfig{}
 	sourceLabelsToStringSlice := func(src []v1.LabelName) []string {
+		if len(src) == 0 {
+			return nil
+		}
 		res := make([]string, len(src))
 		for i, v := range src {
 			res[i] = string(v)
@@ -458,12 +469,12 @@ func ConvertPodEndpoints(promPodEnpoints []v1.PodMetricsEndpoint) []v1beta1vm.Po
 			HonorTimestamps:      promEndPoint.HonorTimestamps,
 			ProxyURL:             promEndPoint.ProxyURL,
 			RelabelConfigs:       ConvertRelabelConfig(promEndPoint.RelabelConfigs),
+			BearerTokenSecret:    convertBearerToken(promEndPoint.BearerTokenSecret),
 			MetricRelabelConfigs: ConvertRelabelConfig(promEndPoint.MetricRelabelConfigs),
 			BasicAuth:            ConvertBasicAuth(promEndPoint.BasicAuth),
 			TLSConfig:            ConvertSafeTlsConfig(safeTls),
 			OAuth2:               convertOAuth(promEndPoint.OAuth2),
 			FollowRedirects:      promEndPoint.FollowRedirects,
-			BearerTokenSecret:    convertBearerToken(promEndPoint.BearerTokenSecret),
 			Authorization:        convertAuthorization(promEndPoint.Authorization, nil),
 			FilterRunning:        promEndPoint.FilterRunning,
 		}
@@ -488,13 +499,15 @@ func ConvertPodMonitor(podMon *v1.PodMonitor, conf *config.BaseOperatorConf) *v1
 				Any:        podMon.Spec.NamespaceSelector.Any,
 				MatchNames: podMon.Spec.NamespaceSelector.MatchNames,
 			},
-			SampleLimit:         podMon.Spec.SampleLimit,
 			PodMetricsEndpoints: ConvertPodEndpoints(podMon.Spec.PodMetricsEndpoints),
 		},
 	}
+	if podMon.Spec.SampleLimit != nil {
+		cs.Spec.SampleLimit = *podMon.Spec.SampleLimit
+	}
 	if podMon.Spec.AttachMetadata != nil {
 		cs.Spec.AttachMetadata = v1beta1vm.AttachMetadata{
-			Node: pointer.Bool(podMon.Spec.AttachMetadata.Node),
+			Node: podMon.Spec.AttachMetadata.Node,
 		}
 	}
 	if conf.EnabledPrometheusConverterOwnerReferences {
@@ -564,9 +577,14 @@ func ConvertProbe(probe *v1.Probe, conf *config.BaseOperatorConf) *v1beta1vm.VMP
 			TLSConfig:         ConvertSafeTlsConfig(safeTls),
 			BearerTokenSecret: convertBearerToken(probe.Spec.BearerTokenSecret),
 			OAuth2:            convertOAuth(probe.Spec.OAuth2),
-			SampleLimit:       probe.Spec.SampleLimit,
 			Authorization:     convertAuthorization(probe.Spec.Authorization, nil),
 		},
+	}
+	if probe.Spec.ProberSpec.ProxyURL != "" {
+		cp.Spec.ProxyURL = &probe.Spec.ProberSpec.ProxyURL
+	}
+	if probe.Spec.SampleLimit != nil {
+		cp.Spec.SampleLimit = *probe.Spec.SampleLimit
 	}
 	if conf.EnabledPrometheusConverterOwnerReferences {
 		cp.OwnerReferences = []metav1.OwnerReference{
@@ -617,4 +635,40 @@ func filterPrefixes(src map[string]string, filterPrefixes []string) map[string]s
 		return nil
 	}
 	return dst
+}
+
+func ConvertScrapeConfig(promscrapeConfig *v1alpha1.ScrapeConfig, conf *config.BaseOperatorConf) *v1beta1vm.VMScrapeConfig {
+	cs := &v1beta1vm.VMScrapeConfig{}
+	data, err := json.Marshal(promscrapeConfig)
+	if err != nil {
+		log.Error(err, "failed to marshal prometheus scrapeconfig for converting", "name", promscrapeConfig.Name, "namespace", promscrapeConfig.Namespace)
+	}
+	err = json.Unmarshal(data, cs)
+	if err != nil {
+		log.Error(err, "failed to convert prometheus scrapeconfig to VMScrapeConfig", "name", promscrapeConfig.Name, "namespace", promscrapeConfig.Namespace)
+	}
+	cs.Labels = filterPrefixes(promscrapeConfig.Labels, conf.FilterPrometheusConverterLabelPrefixes)
+	cs.Annotations = filterPrefixes(promscrapeConfig.Annotations, conf.FilterPrometheusConverterAnnotationPrefixes)
+	cs.Spec.RelabelConfigs = ConvertRelabelConfig(promscrapeConfig.Spec.RelabelConfigs)
+	cs.Spec.MetricRelabelConfigs = ConvertRelabelConfig(promscrapeConfig.Spec.MetricRelabelConfigs)
+
+	if promscrapeConfig.Spec.EnableCompression != nil {
+		cs.Spec.VMScrapeParams = &v1beta1vm.VMScrapeParams{
+			DisableCompression: pointer.BoolPtr(!*promscrapeConfig.Spec.EnableCompression),
+		}
+	}
+	if conf.EnabledPrometheusConverterOwnerReferences {
+		cs.OwnerReferences = []metav1.OwnerReference{
+			{
+				APIVersion:         v1.SchemeGroupVersion.String(),
+				Kind:               v1.ServiceMonitorsKind,
+				Name:               promscrapeConfig.Name,
+				UID:                promscrapeConfig.UID,
+				Controller:         pointer.Bool(true),
+				BlockOwnerDeletion: pointer.Bool(true),
+			},
+		}
+	}
+	cs.Annotations = maybeAddArgoCDIgnoreAnnotations(conf.PrometheusConverterAddArgoCDIgnoreAnnotations, cs.Annotations)
+	return cs
 }

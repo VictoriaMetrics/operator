@@ -219,6 +219,7 @@ rules:
     - operator.victoriametrics.com
   resources:
     - vmservicescrapes
+    - vmscrapeconfigs
   verbs:
     - create
     - delete
@@ -231,6 +232,7 @@ rules:
     - operator.victoriametrics.com
   resources:
     - vmservicescrapes/status
+    - vmscrapeconfigs/status
   verbs:
     - get
     - patch

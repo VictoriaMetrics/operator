@@ -79,14 +79,15 @@ func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 			continue
 		}
 		currVMAlert := &vmalert
-		match, err := isSelectorsMatches(instance, currVMAlert, currVMAlert.Spec.RuleSelector)
-		if err != nil {
-			reqLogger.Error(err, "cannot match vmalert and vmRule", "vmalert", currVMAlert.Name)
-			continue
-		}
-		// fast path, not match
-		if !match {
-			continue
+		if !currVMAlert.Spec.SelectAllByDefault {
+			match, err := isSelectorsMatches(r.Client, instance, currVMAlert, currVMAlert.Spec.RuleSelector, currVMAlert.Spec.RuleNamespaceSelector)
+			if err != nil {
+				reqLogger.Error(err, "cannot match vmalert and vmRule")
+				continue
+			}
+			if !match {
+				continue
+			}
 		}
 		reqLogger := reqLogger.WithValues("vmalert", currVMAlert.Name)
 		ctx := logger.AddToContext(ctx, reqLogger)

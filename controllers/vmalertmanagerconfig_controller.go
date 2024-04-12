@@ -86,14 +86,15 @@ func (r *VMAlertmanagerConfigReconciler) Reconcile(ctx context.Context, req ctrl
 		l := l.WithValues("alertmanager", am.Name)
 		ctx := logger.AddToContext(ctx, l)
 
-		ismatch, err := isSelectorsMatches(&instance, am, am.Spec.ConfigSelector)
-		if err != nil {
-			l.Error(err, "cannot match alertmanager against selector, probably bug")
-			continue
-		}
-		if !ismatch {
-			// selector do not match fast path
-			continue
+		if !am.Spec.SelectAllByDefault {
+			match, err := isSelectorsMatches(r.Client, &instance, am, am.Spec.ConfigSelector, am.Spec.ConfigNamespaceSelector)
+			if err != nil {
+				l.Error(err, "cannot match alertmanager against selector, probably bug")
+				continue
+			}
+			if !match {
+				continue
+			}
 		}
 		if err := factory.CreateOrUpdateAlertManager(ctx, am, r.Client, r.BaseConf); err != nil {
 			l.Error(err, "cannot  reconcile alertmanager")

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/controllers/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
@@ -93,7 +94,7 @@ func (ge *getError) Error() string {
 	return fmt.Sprintf("get_object error for controller=%q object_name=%q at namespace=%q, origin=%q", ge.controller, ge.requestObject.Name, ge.requestObject.Namespace, ge.origin)
 }
 
-func handleReconcileErr(ctx context.Context, rclient client.Client, object client.Object, originResult ctrl.Result, err error) (ctrl.Result, error) {
+func handleReconcileErr(ctx context.Context, rclient client.Client, object objectWithStatusTrack, originResult ctrl.Result, err error) (ctrl.Result, error) {
 	if err == nil {
 		return originResult, nil
 	}
@@ -104,6 +105,9 @@ func handleReconcileErr(ctx context.Context, rclient client.Client, object clien
 		contextCancelErrorsTotal.Inc()
 		return originResult, nil
 	case errors.As(err, &pe):
+		if err := object.SetUpdateStatusTo(ctx, rclient, victoriametricsv1beta1.UpdateStatusFailed, err); err != nil {
+			logger.WithContext(ctx).Error(err, "failed to status with parsing error")
+		}
 		parseObjectErrorsTotal.WithLabelValues(pe.controller).Inc()
 	case errors.As(err, &ge):
 		deregisterObjectByCollector(ge.requestObject.Name, ge.requestObject.Namespace, ge.controller)
@@ -137,7 +141,7 @@ func handleReconcileErr(ctx context.Context, rclient client.Client, object clien
 			},
 		}
 		if err := rclient.Create(ctx, errEvent); err != nil {
-			log.Error(err, "failed to create error event at kubernetes API during reconcilation error")
+			logger.WithContext(ctx).Error(err, "failed to create error event at kubernetes API during reconcilation error")
 		}
 	}
 
@@ -211,6 +215,33 @@ type objectWithStatusTrack interface {
 	SetUpdateStatusTo(ctx context.Context, r client.Client, status victoriametricsv1beta1.UpdateStatus, maybeReason error) error
 }
 
+func createGenericEventForObject(ctx context.Context, c client.Client, object client.Object, message string) error {
+	ev := &corev1.Event{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      "victoria-metrics-operator-" + uuid.New().String(),
+			Namespace: object.GetNamespace(),
+		},
+		Type:    corev1.EventTypeNormal,
+		Reason:  "ReconcileEvent",
+		Message: message,
+		Source: corev1.EventSource{
+			Component: "victoria-metrics-operator",
+		},
+		LastTimestamp: v1.NewTime(time.Now()),
+		InvolvedObject: corev1.ObjectReference{
+			Kind:            object.GetObjectKind().GroupVersionKind().Kind,
+			Namespace:       object.GetNamespace(),
+			Name:            object.GetName(),
+			UID:             object.GetUID(),
+			ResourceVersion: object.GetResourceVersion(),
+		},
+	}
+	if err := c.Create(ctx, ev); err != nil {
+		return fmt.Errorf("cannot create generic event at k8s api for object: %q: %w", object.GetObjectKind().GroupVersionKind().GroupKind(), err)
+	}
+	return nil
+}
+
 func reconcileAndTrackStatus(ctx context.Context, c client.Client, object objectWithStatusTrack, cb func() (ctrl.Result, error)) (result ctrl.Result, resultErr error) {
 	specChanged, err := object.HasSpecChanges()
 	if err != nil {
@@ -222,6 +253,7 @@ func reconcileAndTrackStatus(ctx context.Context, c client.Client, object object
 			resultErr = fmt.Errorf("failed to update object status: %w", err)
 			return
 		}
+		createGenericEventForObject(ctx, c, object, "starting object update")
 	}
 
 	result, err = cb()
@@ -249,6 +281,7 @@ func reconcileAndTrackStatus(ctx context.Context, c client.Client, object object
 			resultErr = fmt.Errorf("cannot update cluster with last applied spec: %w", err)
 			return
 		}
+		createGenericEventForObject(ctx, c, object, "reconcile of object finished successfully")
 	}
 
 	return result, nil

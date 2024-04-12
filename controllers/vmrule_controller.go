@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 
+	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/controllers/factory/logger"
@@ -28,8 +29,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 )
 
 // VMRuleReconciler reconciles a VMRule object
@@ -50,11 +49,16 @@ func (r *VMRuleReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmrules/status,verbs=get;update;patch
 func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	reqLogger := r.Log.WithValues("vmrule", req.NamespacedName)
+	ctx = logger.AddToContext(ctx, reqLogger)
+
+	defer func() {
+		result, err = handleReconcileErr(ctx, r.Client, nil, result, err)
+	}()
 
 	// Fetch the VMRule instance
 	instance := &victoriametricsv1beta1.VMRule{}
 	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
-		return handleGetError(req, "vmrule", err)
+		return result, &getError{err, "vmrule", req}
 	}
 
 	RegisterObjectStat(instance, "vmrule")
@@ -80,7 +84,7 @@ func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		}
 		currVMAlert := &vmalert
 		if !currVMAlert.Spec.SelectAllByDefault {
-			match, err := isSelectorsMatches(r.Client, instance, currVMAlert, currVMAlert.Spec.RuleSelector, currVMAlert.Spec.RuleNamespaceSelector)
+			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, instance, currVMAlert, currVMAlert.Spec.RuleSelector, currVMAlert.Spec.RuleNamespaceSelector)
 			if err != nil {
 				reqLogger.Error(err, "cannot match vmalert and vmRule")
 				continue

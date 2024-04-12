@@ -2,19 +2,21 @@ package controllers
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
-	"strings"
+	"reflect"
 	"sync"
 	"time"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
+	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/util/workqueue"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -32,6 +34,29 @@ var (
 	defaultOptions *controller.Options
 )
 
+var (
+	parseObjectErrorsTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "operator_controller_object_parsing_errors_total",
+		Help: "Counts number of objects, that was failed to parse from json",
+	}, []string{"controller"})
+	getObjectsErrorsTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "operator_controller_object_get_errors_total",
+		Help: "Counts number of errors for client.Get method at reconcilation loop",
+	}, []string{"controller"})
+	conflictErrorsTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "operator_controller_reconcile_conflict_errors_total",
+		Help: "Counts number of errors with race conditions, when object was modified by external program at reconcilation",
+	}, []string{"controller"})
+	contextCancelErrorsTotal = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "operator_controller_reconcile_errors_total",
+		Help: "Counts number contex.Canceled errors",
+	})
+)
+
+func init() {
+	metrics.Registry.MustRegister(parseObjectErrorsTotal, getObjectsErrorsTotal, conflictErrorsTotal, contextCancelErrorsTotal)
+}
+
 func getDefaultOptions() controller.Options {
 	optionsInit.Do(func() {
 		defaultOptions = &controller.Options{
@@ -43,42 +68,102 @@ func getDefaultOptions() controller.Options {
 	return *defaultOptions
 }
 
-var (
-	parseObjectErrorsTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Name: "operator_controller_object_parsing_errors_total",
-		Help: "Counts number of objects, that was failed to parse from json",
-	}, []string{"controller"})
-	parseObjectErrorsInit = sync.Once{}
-)
-
-type objectWithParsingError interface {
-	GetObjectKind() schema.ObjectKind
-	GetObjectMeta() v1.Object
+// parsingError usually occurs in case of x-preserve-unknow-fields option enable to CRD
+// in this case k8s api server cannot perform proper validation and it may result in bad user input for some fields
+type parsingError struct {
+	origin     string
+	controller string
 }
 
-func handleParsingError(parsingErr string, obj objectWithParsingError) (ctrl.Result, error) {
-	parseObjectErrorsInit.Do(func() {
-		metrics.Registry.MustRegister(parseObjectErrorsTotal)
-	})
-	kind := strings.ToLower(obj.GetObjectKind().GroupVersionKind().Kind)
-	log.Error(fmt.Errorf(parsingErr), "cannot parse object", "name", obj.GetObjectMeta().GetName(), "namespace", obj.GetObjectMeta().GetNamespace(), "controller", kind)
-	parseObjectErrorsTotal.WithLabelValues(kind).Inc()
-	return ctrl.Result{}, nil
+func (pe *parsingError) Error() string {
+	return fmt.Sprintf("parsing object error for object controller=%q: %q",
+		pe.controller, pe.origin)
 }
 
-func isNamespaceSelectorMatches(rclient client.Client, sourceCRD, targetCRD client.Object, selector *v1.LabelSelector) (bool, error) {
-	if selector == nil {
+// getError could usually occur at following cases:
+// - not enough k8s permissions
+// - object was deleted and due to race condition queue by operator cache
+type getError struct {
+	origin        error
+	controller    string
+	requestObject ctrl.Request
+}
+
+func (ge *getError) Error() string {
+	return fmt.Sprintf("get_object error for controller=%q object_name=%q at namespace=%q, origin=%q", ge.controller, ge.requestObject.Name, ge.requestObject.Namespace, ge.origin)
+}
+
+func handleReconcileErr(ctx context.Context, rclient client.Client, object client.Object, originResult ctrl.Result, err error) (ctrl.Result, error) {
+	if err == nil {
+		return originResult, nil
+	}
+	var ge *getError
+	var pe *parsingError
+	switch {
+	case errors.Is(err, context.Canceled):
+		contextCancelErrorsTotal.Inc()
+		return originResult, nil
+	case errors.As(err, &pe):
+		parseObjectErrorsTotal.WithLabelValues(pe.controller).Inc()
+	case errors.As(err, &ge):
+		deregisterObjectByCollector(ge.requestObject.Name, ge.requestObject.Namespace, ge.controller)
+		getObjectsErrorsTotal.WithLabelValues(ge.controller).Inc()
+		if apierrors.IsNotFound(err) {
+			err = nil
+			return originResult, nil
+		}
+	case apierrors.IsConflict(err):
+		return ctrl.Result{RequeueAfter: time.Second * 5}, nil
+	}
+	if object != nil && !reflect.ValueOf(object).IsNil() && object.GetNamespace() != "" {
+		errEvent := &corev1.Event{
+			ObjectMeta: v1.ObjectMeta{
+				Name:      "victoria-metrics-operator-" + uuid.New().String(),
+				Namespace: object.GetNamespace(),
+			},
+			Type:    corev1.EventTypeWarning,
+			Reason:  "ReconcilationError",
+			Message: err.Error(),
+			Source: corev1.EventSource{
+				Component: "victoria-metrics-operator",
+			},
+			LastTimestamp: v1.NewTime(time.Now()),
+			InvolvedObject: corev1.ObjectReference{
+				Kind:            object.GetObjectKind().GroupVersionKind().Kind,
+				Namespace:       object.GetNamespace(),
+				Name:            object.GetName(),
+				UID:             object.GetUID(),
+				ResourceVersion: object.GetResourceVersion(),
+			},
+		}
+		if err := rclient.Create(ctx, errEvent); err != nil {
+			log.Error(err, "failed to create error event at kubernetes API during reconcilation error")
+		}
+	}
+
+	return originResult, err
+}
+
+func isNamespaceSelectorMatches(ctx context.Context, rclient client.Client, sourceCRD, targetCRD client.Object, selector *v1.LabelSelector) (bool, error) {
+	switch {
+	case selector == nil:
 		if sourceCRD.GetNamespace() == targetCRD.GetNamespace() {
 			return true, nil
 		}
 		return false, nil
+	case len(selector.MatchLabels) == 0 && len(selector.MatchExpressions) == 0:
+		return true, nil
+	case len(config.MustGetWatchNamespaces()) > 0:
+		// selector labels for namespace ignores by default for multi-namespace mode
+		return true, nil
 	}
+
 	ns := &corev1.NamespaceList{}
 	nsSelector, err := v1.LabelSelectorAsSelector(selector)
 	if err != nil {
 		return false, fmt.Errorf("cannot convert namespace selector: %w", err)
 	}
-	if err := rclient.List(context.Background(), ns, &client.ListOptions{LabelSelector: nsSelector}); err != nil {
+	if err := rclient.List(ctx, ns, &client.ListOptions{LabelSelector: nsSelector}); err != nil {
 		return false, err
 	}
 
@@ -90,9 +175,9 @@ func isNamespaceSelectorMatches(rclient client.Client, sourceCRD, targetCRD clie
 	return false, nil
 }
 
-func isSelectorsMatches(rclient client.Client, sourceCRD, targetCRD client.Object, namespaceSelector, selector *v1.LabelSelector) (bool, error) {
+func isSelectorsMatchesTargetCRD(ctx context.Context, rclient client.Client, sourceCRD, targetCRD client.Object, namespaceSelector, selector *v1.LabelSelector) (bool, error) {
 	// check namespace selector
-	if isNsMatch, err := isNamespaceSelectorMatches(rclient, sourceCRD, targetCRD, namespaceSelector); !isNsMatch || err != nil {
+	if isNsMatch, err := isNamespaceSelectorMatches(ctx, rclient, sourceCRD, targetCRD, namespaceSelector); !isNsMatch || err != nil {
 		return isNsMatch, err
 	}
 	// in case of empty namespace object must be synchronized in any way,
@@ -117,14 +202,6 @@ func isSelectorsMatches(rclient client.Client, sourceCRD, targetCRD client.Objec
 		return false, nil
 	}
 	return true, nil
-}
-
-func handleGetError(reqObject ctrl.Request, controller string, err error) (ctrl.Result, error) {
-	if errors.IsNotFound(err) {
-		deregisterObjectByCollector(reqObject.Name, reqObject.Namespace, controller)
-		return ctrl.Result{}, nil
-	}
-	return ctrl.Result{}, err
 }
 
 type objectWithStatusTrack interface {
@@ -154,7 +231,7 @@ func reconcileAndTrackStatus(ctx context.Context, c client.Client, object object
 			return
 		}
 
-		return result, fmt.Errorf("callback error: %w", err)
+		return result, err
 	}
 
 	if err := object.SetUpdateStatusTo(ctx, c, victoriametricsv1beta1.UpdateStatusOperational, nil); err != nil {

@@ -43,8 +43,13 @@ func (r *VMClusterReconciler) Reconcile(ctx context.Context, request ctrl.Reques
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	ctx = logger.AddToContext(ctx, reqLogger)
 	instance := &victoriametricsv1beta1.VMCluster{}
+
+	defer func() {
+		result, err = handleReconcileErr(ctx, r.Client, instance, result, err)
+	}()
+
 	if err := r.Client.Get(ctx, request.NamespacedName, instance); err != nil {
-		return handleGetError(request, "vmcluster", err)
+		return result, &getError{err, "vmcluster", request}
 	}
 
 	RegisterObjectStat(instance, "vmcluster")
@@ -56,7 +61,7 @@ func (r *VMClusterReconciler) Reconcile(ctx context.Context, request ctrl.Reques
 		return result, nil
 	}
 	if instance.Spec.ParsingError != "" {
-		return handleParsingError(instance.Spec.ParsingError, instance)
+		return result, &parsingError{instance.Spec.ParsingError, "vmcluster"}
 	}
 	if err := finalize.AddFinalizer(ctx, r.Client, instance); err != nil {
 		return result, err

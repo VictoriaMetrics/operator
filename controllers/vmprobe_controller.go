@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 
-	operatorv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
@@ -50,11 +49,14 @@ func (r *VMProbeReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmprobes/status,verbs=get;update;patch
 func (r *VMProbeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	reqLogger := r.Log.WithValues("vmprobe", req.NamespacedName)
-
+	ctx = logger.AddToContext(ctx, reqLogger)
+	defer func() {
+		result, err = handleReconcileErr(ctx, r.Client, nil, result, err)
+	}()
 	// Fetch the VMPodScrape instance
-	instance := &operatorv1beta1.VMProbe{}
+	instance := &victoriametricsv1beta1.VMProbe{}
 	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
-		return handleGetError(req, "vmprobescrape", err)
+		return result, &getError{err, "vmprobescrape", req}
 	}
 
 	RegisterObjectStat(instance, "vmprobescrape")
@@ -79,7 +81,7 @@ func (r *VMProbeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 		}
 		currentVMagent := &vmagent
 		if !currentVMagent.Spec.SelectAllByDefault {
-			match, err := isSelectorsMatches(r.Client, instance, currentVMagent, currentVMagent.Spec.ProbeSelector, currentVMagent.Spec.ProbeNamespaceSelector)
+			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, instance, currentVMagent, currentVMagent.Spec.ProbeSelector, currentVMagent.Spec.ProbeNamespaceSelector)
 			if err != nil {
 				reqLogger.Error(err, "cannot match vmagent and vmProbe")
 				continue
@@ -92,7 +94,6 @@ func (r *VMProbeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 		ctx := logger.AddToContext(ctx, reqLogger)
 
 		if err := factory.CreateOrUpdateVMAgent(ctx, currentVMagent, r, r.BaseConf); err != nil {
-			reqLogger.Error(err, "cannot create or update vmagent")
 			continue
 		}
 	}
@@ -102,7 +103,7 @@ func (r *VMProbeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 // SetupWithManager - setups VMProbe manager
 func (r *VMProbeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&operatorv1beta1.VMProbe{}).
+		For(&victoriametricsv1beta1.VMProbe{}).
 		WithOptions(getDefaultOptions()).
 		Complete(r)
 }

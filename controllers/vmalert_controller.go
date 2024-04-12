@@ -20,12 +20,11 @@ import (
 	"context"
 	"sync"
 
-	"github.com/VictoriaMetrics/operator/controllers/factory/limiter"
-	"github.com/VictoriaMetrics/operator/controllers/factory/logger"
-
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
+	"github.com/VictoriaMetrics/operator/controllers/factory/limiter"
+	"github.com/VictoriaMetrics/operator/controllers/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
@@ -58,14 +57,17 @@ func (r *VMAlertReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmalerts,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmalerts/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmalerts/finalizers,verbs=*
-func (r *VMAlertReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
+func (r *VMAlertReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, resultErr error) {
 	reqLogger := r.Log.WithValues("vmalert", req.NamespacedName)
 	ctx = logger.AddToContext(ctx, reqLogger)
-
-	// Fetch the VMAlert instance
 	instance := &victoriametricsv1beta1.VMAlert{}
+
+	defer func() {
+		result, resultErr = handleReconcileErr(ctx, r.Client, instance, result, resultErr)
+	}()
+
 	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
-		return handleGetError(req, "vmalert", err)
+		return result, &getError{err, "vmalert", req}
 	}
 
 	RegisterObjectStat(instance, "vmalert")
@@ -81,7 +83,7 @@ func (r *VMAlertReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 	}
 
 	if instance.Spec.ParsingError != "" {
-		return handleParsingError(instance.Spec.ParsingError, instance)
+		return result, &parsingError{instance.Spec.ParsingError, "vmalert"}
 	}
 
 	var needToRequeue bool
@@ -93,7 +95,7 @@ func (r *VMAlertReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 		return result, err
 	}
 
-	result, err = reconcileAndTrackStatus(ctx, r.Client, instance, func() (ctrl.Result, error) {
+	result, resultErr = reconcileAndTrackStatus(ctx, r.Client, instance, func() (ctrl.Result, error) {
 		maps, err := factory.CreateOrUpdateRuleConfigMaps(ctx, instance, r)
 		if err != nil {
 			return result, err
@@ -112,14 +114,13 @@ func (r *VMAlertReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 		if !r.BaseConf.DisableSelfServiceScrapeCreation {
 			err := factory.CreateVMServiceScrapeFromService(ctx, r, svc, instance.Spec.ServiceScrapeSpec, instance.MetricPath())
 			if err != nil {
-				// made on best effort.
 				reqLogger.Error(err, "cannot create serviceScrape for vmalert")
 			}
 		}
 
 		return result, nil
 	})
-	if err != nil {
+	if resultErr != nil {
 		return
 	}
 

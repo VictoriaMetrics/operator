@@ -57,39 +57,42 @@ func (r *VMAuthReconciler) Scheme() *runtime.Scheme {
 func (r *VMAuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	l := r.Log.WithValues("vmauth", req.NamespacedName)
 	ctx = logger.AddToContext(ctx, l)
+	instance := &operatorv1beta1.VMAuth{}
 
-	var instance operatorv1beta1.VMAuth
+	defer func() {
+		result, err = handleReconcileErr(ctx, r.Client, instance, result, err)
+	}()
 
-	if err := r.Get(ctx, req.NamespacedName, &instance); err != nil {
-		return handleGetError(req, "vmauth", err)
+	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
+		return result, &getError{err, "vmauth", req}
 	}
 
-	RegisterObjectStat(&instance, "vmauth")
+	RegisterObjectStat(instance, "vmauth")
 
 	if !instance.DeletionTimestamp.IsZero() {
-		if err := finalize.OnVMAuthDelete(ctx, r, &instance); err != nil {
+		if err := finalize.OnVMAuthDelete(ctx, r, instance); err != nil {
 			return result, fmt.Errorf("cannot remove finalizer from vmauth: %w", err)
 		}
 		return result, nil
 	}
 	if instance.Spec.ParsingError != "" {
-		return handleParsingError(instance.Spec.ParsingError, &instance)
+		return result, &parsingError{instance.Spec.ParsingError, "vmauth"}
 	}
 
-	if err := finalize.AddFinalizer(ctx, r.Client, &instance); err != nil {
+	if err := finalize.AddFinalizer(ctx, r.Client, instance); err != nil {
 		return result, err
 	}
 
-	result, err = reconcileAndTrackStatus(ctx, r.Client, &instance, func() (ctrl.Result, error) {
-		if err := factory.CreateOrUpdateVMAuth(ctx, &instance, r, r.BaseConf); err != nil {
+	result, err = reconcileAndTrackStatus(ctx, r.Client, instance, func() (ctrl.Result, error) {
+		if err := factory.CreateOrUpdateVMAuth(ctx, instance, r, r.BaseConf); err != nil {
 			return result, fmt.Errorf("cannot create or update vmauth deploy: %w", err)
 		}
 
-		svc, err := factory.CreateOrUpdateVMAuthService(ctx, &instance, r)
+		svc, err := factory.CreateOrUpdateVMAuthService(ctx, instance, r)
 		if err != nil {
 			return result, fmt.Errorf("cannot create or update vmauth service :%w", err)
 		}
-		if err := factory.CreateOrUpdateVMAuthIngress(ctx, r, &instance); err != nil {
+		if err := factory.CreateOrUpdateVMAuthIngress(ctx, r, instance); err != nil {
 			return result, fmt.Errorf("cannot create or update ingress for vmauth: %w", err)
 		}
 

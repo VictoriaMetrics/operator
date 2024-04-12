@@ -71,11 +71,14 @@ type VMAgentReconciler struct {
 func (r *VMAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	reqLogger := r.Log.WithValues("vmagent", req.NamespacedName)
 	ctx = logger.AddToContext(ctx, reqLogger)
-
-	// Fetch the VMAgent instance
 	instance := &victoriametricsv1beta1.VMAgent{}
+
+	defer func() {
+		result, err = handleReconcileErr(ctx, r.Client, instance, result, err)
+	}()
+	// Fetch the VMAgent instance
 	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
-		return handleGetError(req, "vmagent", err)
+		return result, &getError{origin: err, controller: "vmagent", requestObject: req}
 	}
 	if !instance.IsUnmanaged() {
 		vmAgentSync.Lock()
@@ -91,7 +94,7 @@ func (r *VMAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 	}
 
 	if instance.Spec.ParsingError != "" {
-		return handleParsingError(instance.Spec.ParsingError, instance)
+		return result, &parsingError{instance.Spec.ParsingError, "vmagent"}
 	}
 
 	if err := finalize.AddFinalizer(ctx, r.Client, instance); err != nil {
@@ -99,22 +102,21 @@ func (r *VMAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 	}
 
 	result, err = reconcileAndTrackStatus(ctx, r.Client, instance, func() (ctrl.Result, error) {
-		if err := factory.CreateOrUpdateVMAgent(ctx, instance, r, r.BaseConf); err != nil {
+		if err = factory.CreateOrUpdateVMAgent(ctx, instance, r, r.BaseConf); err != nil {
 			return result, err
 		}
-
 		svc, err := factory.CreateOrUpdateVMAgentService(ctx, instance, r, r.BaseConf)
 		if err != nil {
 			return result, err
 		}
 
 		if !r.BaseConf.DisableSelfServiceScrapeCreation {
-			err := factory.CreateVMServiceScrapeFromService(ctx, r, svc, instance.Spec.ServiceScrapeSpec, instance.MetricPath(), "http")
+			err = factory.CreateVMServiceScrapeFromService(ctx, r, svc, instance.Spec.ServiceScrapeSpec, instance.MetricPath(), "http")
 			if err != nil {
 				reqLogger.Error(err, "cannot create serviceScrape for vmagent")
 			}
 		}
-		if err := updateVMAgentStatus(ctx, r.Client, instance); err != nil {
+		if err = updateVMAgentStatus(ctx, r.Client, instance); err != nil {
 			return result, err
 		}
 		return result, nil

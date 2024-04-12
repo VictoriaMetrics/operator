@@ -57,10 +57,14 @@ func (r *VMSingleReconciler) Scheme() *runtime.Scheme {
 func (r *VMSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	reqLogger := r.Log.WithValues("vmsingle", req.NamespacedName)
 	ctx = logger.AddToContext(ctx, reqLogger)
-
 	instance := &victoriametricsv1beta1.VMSingle{}
+
+	defer func() {
+		result, err = handleReconcileErr(ctx, r.Client, instance, result, err)
+	}()
+
 	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
-		return handleGetError(req, "vmsingle", err)
+		return result, &getError{err, "vmsingle", req}
 	}
 
 	RegisterObjectStat(instance, "vmsingle")
@@ -71,7 +75,7 @@ func (r *VMSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (r
 		return
 	}
 	if instance.Spec.ParsingError != "" {
-		return handleParsingError(instance.Spec.ParsingError, instance)
+		return result, &parsingError{instance.Spec.ParsingError, "vmsingle"}
 	}
 	if err := finalize.AddFinalizer(ctx, r.Client, instance); err != nil {
 		return result, err

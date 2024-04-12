@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/controllers/factory/logger"
@@ -12,8 +13,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 )
 
 // VMStaticScrapeReconciler reconciles a VMStaticScrape object
@@ -34,9 +33,12 @@ func (r *VMStaticScrapeReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmstaticscrapes/status,verbs=get;update;patch
 func (r *VMStaticScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	reqLogger := r.Log.WithValues("vmstaticscrape", req.NamespacedName)
+	defer func() {
+		result, err = handleReconcileErr(ctx, r.Client, nil, result, err)
+	}()
 	instance := &victoriametricsv1beta1.VMStaticScrape{}
 	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
-		return handleGetError(req, "vmstaticscrape", err)
+		return result, &getError{err, "vmstaticscrape", req}
 	}
 	RegisterObjectStat(instance, "vmstaticscrape")
 	if vmAgentReconcileLimit.MustThrottleReconcile() {
@@ -59,7 +61,7 @@ func (r *VMStaticScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		}
 		currentVMagent := &vmagent
 		if !currentVMagent.Spec.SelectAllByDefault {
-			match, err := isSelectorsMatches(r.Client, instance, currentVMagent, currentVMagent.Spec.StaticScrapeSelector, currentVMagent.Spec.StaticScrapeNamespaceSelector)
+			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, instance, currentVMagent, currentVMagent.Spec.StaticScrapeSelector, currentVMagent.Spec.StaticScrapeNamespaceSelector)
 			if err != nil {
 				reqLogger.Error(err, "cannot match vmagent and vmStaticScrape")
 				continue
@@ -72,7 +74,6 @@ func (r *VMStaticScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		ctx := logger.AddToContext(ctx, reqLogger)
 
 		if err := factory.CreateOrUpdateVMAgent(ctx, currentVMagent, r, r.BaseConf); err != nil {
-			reqLogger.Error(err, "cannot create or update vmagent instance")
 			continue
 		}
 	}

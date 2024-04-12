@@ -49,10 +49,15 @@ func (r *VMServiceScrapeReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmservicescrapes/status,verbs=get;update;patch
 func (r *VMServiceScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	reqLogger := r.Log.WithValues("vmservicescrape", req.NamespacedName)
+	ctx = logger.AddToContext(ctx, reqLogger)
+	defer func() {
+		result, err = handleReconcileErr(ctx, r.Client, nil, result, err)
+	}()
+
 	// Fetch the VMServiceScrape instance
 	instance := &victoriametricsv1beta1.VMServiceScrape{}
 	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
-		return handleGetError(req, "vmservicescrape", err)
+		return result, &getError{err, "vmservicescrape", req}
 	}
 
 	RegisterObjectStat(instance, "vmservicescrape")
@@ -76,7 +81,7 @@ func (r *VMServiceScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		}
 		currentVMagent := &vmagent
 		if !currentVMagent.Spec.SelectAllByDefault {
-			match, err := isSelectorsMatches(r.Client, instance, currentVMagent, currentVMagent.Spec.ServiceScrapeSelector, currentVMagent.Spec.ServiceScrapeNamespaceSelector)
+			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, instance, currentVMagent, currentVMagent.Spec.ServiceScrapeSelector, currentVMagent.Spec.ServiceScrapeNamespaceSelector)
 			if err != nil {
 				reqLogger.Error(err, "cannot match vmagent and vmServiceScrape")
 				continue
@@ -89,7 +94,6 @@ func (r *VMServiceScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		ctx := logger.AddToContext(ctx, reqLogger)
 
 		if err := factory.CreateOrUpdateVMAgent(ctx, currentVMagent, r, r.BaseConf); err != nil {
-			reqLogger.Error(err, "cannot create or update vmagent instance")
 			continue
 		}
 	}

@@ -20,7 +20,7 @@ import (
 	"context"
 	"fmt"
 
-	operatorv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
@@ -56,10 +56,13 @@ var vmauthRateLimiter = limiter.NewRateLimiter("vmauth", 5)
 func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	l := r.Log.WithValues("vmuser", req.NamespacedName)
 
-	var instance operatorv1beta1.VMUser
+	defer func() {
+		result, err = handleReconcileErr(ctx, r.Client, nil, result, err)
+	}()
+	var instance victoriametricsv1beta1.VMUser
 
 	if err := r.Get(ctx, req.NamespacedName, &instance); err != nil {
-		return handleGetError(req, "vmuser", err)
+		return result, &getError{err, "vmuser", req}
 	}
 	RegisterObjectStat(&instance, "vmuser")
 
@@ -81,8 +84,8 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 	vmAuthSyncMU.Lock()
 	defer vmAuthSyncMU.Unlock()
 
-	var vmauthes operatorv1beta1.VMAuthList
-	if err := k8stools.ListObjectsByNamespace(ctx, r.Client, config.MustGetWatchNamespaces(), func(dst *operatorv1beta1.VMAuthList) {
+	var vmauthes victoriametricsv1beta1.VMAuthList
+	if err := k8stools.ListObjectsByNamespace(ctx, r.Client, config.MustGetWatchNamespaces(), func(dst *victoriametricsv1beta1.VMAuthList) {
 		vmauthes.Items = append(vmauthes.Items, dst.Items...)
 	}); err != nil {
 		return result, fmt.Errorf("cannot list vmauths for vmuser: %w", err)
@@ -95,7 +98,7 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		// reconcile users for given vmauth.
 		currentVMAuth := &vmauth
 		if !currentVMAuth.Spec.SelectAllByDefault {
-			match, err := isSelectorsMatches(r.Client, &instance, currentVMAuth, currentVMAuth.Spec.UserSelector, currentVMAuth.Spec.UserNamespaceSelector)
+			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, &instance, currentVMAuth, currentVMAuth.Spec.UserSelector, currentVMAuth.Spec.UserNamespaceSelector)
 			if err != nil {
 				l.Error(err, "cannot match vmauth and VMUser")
 				continue
@@ -117,7 +120,7 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 // SetupWithManager inits object
 func (r *VMUserReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&operatorv1beta1.VMUser{}).
+		For(&victoriametricsv1beta1.VMUser{}).
 		Owns(&v1.Secret{}, builder.OnlyMetadata).
 		WithOptions(getDefaultOptions()).
 		Complete(r)

@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 
+	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/controllers/factory/logger"
@@ -28,9 +29,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	operatorv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
-	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 )
 
 // VMNodeScrapeReconciler reconciles a VMNodeScrape object
@@ -52,10 +50,15 @@ func (r *VMNodeScrapeReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmnodescrapes/finalizers,verbs=*
 func (r *VMNodeScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	reqLogger := r.Log.WithValues("vmnodescrape", req.NamespacedName)
+	ctx = logger.AddToContext(ctx, reqLogger)
+	defer func() {
+		result, err = handleReconcileErr(ctx, r.Client, nil, result, err)
+	}()
+
 	// Fetch the VMNodeScrape instance
-	instance := &operatorv1beta1.VMNodeScrape{}
+	instance := &victoriametricsv1beta1.VMNodeScrape{}
 	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
-		return handleGetError(req, "vmnodescrape", err)
+		return result, &getError{err, "vmnodescrape", req}
 	}
 
 	RegisterObjectStat(instance, "vmnodescrape")
@@ -81,7 +84,7 @@ func (r *VMNodeScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		}
 		currentVMagent := &vmagent
 		if !currentVMagent.Spec.SelectAllByDefault {
-			match, err := isSelectorsMatches(r.Client, instance, currentVMagent, currentVMagent.Spec.NodeScrapeSelector, currentVMagent.Spec.NodeScrapeNamespaceSelector)
+			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, instance, currentVMagent, currentVMagent.Spec.NodeScrapeSelector, currentVMagent.Spec.NodeScrapeNamespaceSelector)
 			if err != nil {
 				reqLogger.Error(err, "cannot match vmagent and vmNodeScrape")
 				continue
@@ -94,7 +97,6 @@ func (r *VMNodeScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		ctx := logger.AddToContext(ctx, reqLogger)
 
 		if err := factory.CreateOrUpdateVMAgent(ctx, currentVMagent, r, r.BaseConf); err != nil {
-			reqLogger.Error(err, "cannot create or update vmagent for nodescrape")
 			continue
 		}
 	}
@@ -105,7 +107,7 @@ func (r *VMNodeScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request
 // SetupWithManager - setups manager for VMNodeScrape
 func (r *VMNodeScrapeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&operatorv1beta1.VMNodeScrape{}).
+		For(&victoriametricsv1beta1.VMNodeScrape{}).
 		WithOptions(getDefaultOptions()).
 		Complete(r)
 }

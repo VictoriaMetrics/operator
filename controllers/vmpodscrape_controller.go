@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 
+	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/controllers/factory/logger"
@@ -28,8 +29,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 )
 
 // VMPodScrapeReconciler reconciles a VMPodScrape object
@@ -50,17 +49,20 @@ func (r *VMPodScrapeReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmpodscrapes/status,verbs=get;update;patch
 func (r *VMPodScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	reqLogger := r.Log.WithValues("vmpodscrape", req.NamespacedName)
+	ctx = logger.AddToContext(ctx, reqLogger)
 
+	defer func() {
+		result, err = handleReconcileErr(ctx, r.Client, nil, result, err)
+	}()
 	// Fetch the VMPodScrape instance
 	instance := &victoriametricsv1beta1.VMPodScrape{}
 	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
-		return handleGetError(req, "vmpodscrape", err)
+		return result, &getError{err, "vmpodscrape", req}
 	}
 
 	RegisterObjectStat(instance, "vmpodscrape")
 
 	if vmAgentReconcileLimit.MustThrottleReconcile() {
-		// fast path, rate limited
 		return
 	}
 
@@ -81,7 +83,7 @@ func (r *VMPodScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		reqLogger = reqLogger.WithValues("vmagent", vmagent.Name)
 		currentVMagent := &vmagent
 		if !currentVMagent.Spec.SelectAllByDefault {
-			match, err := isSelectorsMatches(r.Client, instance, currentVMagent, currentVMagent.Spec.PodScrapeSelector, currentVMagent.Spec.PodScrapeNamespaceSelector)
+			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, instance, currentVMagent, currentVMagent.Spec.PodScrapeSelector, currentVMagent.Spec.PodScrapeNamespaceSelector)
 			if err != nil {
 				reqLogger.Error(err, "cannot match vmagent and vmPodScrape")
 				continue
@@ -94,7 +96,6 @@ func (r *VMPodScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		ctx := logger.AddToContext(ctx, reqLogger)
 
 		if err := factory.CreateOrUpdateVMAgent(ctx, currentVMagent, r, r.BaseConf); err != nil {
-			reqLogger.Error(err, "cannot create or update vmagent")
 			continue
 		}
 	}

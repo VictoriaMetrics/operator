@@ -17,6 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/utils/pointer"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -36,56 +37,58 @@ type STSOptions struct {
 
 // HandleSTSUpdate performs create and update operations for given statefulSet with STSOptions
 func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, newSts *appsv1.StatefulSet, c *config.BaseOperatorConf) error {
-	var currentSts appsv1.StatefulSet
-	if err := rclient.Get(ctx, types.NamespacedName{Name: newSts.Name, Namespace: newSts.Namespace}, &currentSts); err != nil {
-		if errors.IsNotFound(err) {
-			if err = rclient.Create(ctx, newSts); err != nil {
-				return fmt.Errorf("cannot create new sts %s under namespace %s: %w", newSts.Name, newSts.Namespace, err)
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		var currentSts appsv1.StatefulSet
+		if err := rclient.Get(ctx, types.NamespacedName{Name: newSts.Name, Namespace: newSts.Namespace}, &currentSts); err != nil {
+			if errors.IsNotFound(err) {
+				if err = rclient.Create(ctx, newSts); err != nil {
+					return fmt.Errorf("cannot create new sts %s under namespace %s: %w", newSts.Name, newSts.Namespace, err)
+				}
+				return nil
 			}
-			return nil
+			return fmt.Errorf("cannot get sts %s under namespace %s: %w", newSts.Name, newSts.Namespace, err)
 		}
-		return fmt.Errorf("cannot get sts %s under namespace %s: %w", newSts.Name, newSts.Namespace, err)
-	}
-	// will update the original cr replicaCount to propagate right num,
-	// for now, it's only used in vmselect
-	if cr.UpdateReplicaCount != nil {
-		cr.UpdateReplicaCount(currentSts.Spec.Replicas)
-	}
+		// will update the original cr replicaCount to propagate right num,
+		// for now, it's only used in vmselect
+		if cr.UpdateReplicaCount != nil {
+			cr.UpdateReplicaCount(currentSts.Spec.Replicas)
+		}
 
-	// do not change replicas count.
-	if cr.HPA != nil {
-		newSts.Spec.Replicas = currentSts.Spec.Replicas
-	}
-	// hack for kubernetes 1.18
-	newSts.Status.Replicas = currentSts.Status.Replicas
-	newSts.Spec.Template.Annotations = MergeAnnotations(currentSts.Spec.Template.Annotations, newSts.Spec.Template.Annotations)
-	newSts.Finalizers = victoriametricsv1beta1.MergeFinalizers(&currentSts, victoriametricsv1beta1.FinalizerName)
+		// do not change replicas count.
+		if cr.HPA != nil {
+			newSts.Spec.Replicas = currentSts.Spec.Replicas
+		}
+		// hack for kubernetes 1.18
+		newSts.Status.Replicas = currentSts.Status.Replicas
+		newSts.Spec.Template.Annotations = MergeAnnotations(currentSts.Spec.Template.Annotations, newSts.Spec.Template.Annotations)
+		newSts.Finalizers = victoriametricsv1beta1.MergeFinalizers(&currentSts, victoriametricsv1beta1.FinalizerName)
 
-	stsRecreated, podMustRecreate, err := recreateSTSIfNeed(ctx, rclient, newSts, &currentSts)
-	if err != nil {
+		stsRecreated, podMustRecreate, err := recreateSTSIfNeed(ctx, rclient, newSts, &currentSts)
+		if err != nil {
+			return err
+		}
+
+		// if sts wasn't recreated, update it first
+		// before making call for performRollingUpdateOnSts
+		if !stsRecreated {
+			if err := rclient.Update(ctx, newSts); err != nil {
+				return fmt.Errorf("cannot perform update on sts: %s, err: %w", newSts.Name, err)
+			}
+		}
+
+		// perform manual update only with OnDelete policy, which is default.
+		if cr.UpdateStrategy() == appsv1.OnDeleteStatefulSetStrategyType {
+			if err := performRollingUpdateOnSts(ctx, podMustRecreate, rclient, newSts.Name, newSts.Namespace, cr.SelectorLabels(), c); err != nil {
+				return fmt.Errorf("cannot handle rolling-update on sts: %s, err: %w", newSts.Name, err)
+			}
+		}
+
+		// check if pvcs need to resize
+		if cr.HasClaim {
+			err = growSTSPVC(ctx, rclient, newSts)
+		}
 		return err
-	}
-
-	// if sts wasn't recreated, update it first
-	// before making call for performRollingUpdateOnSts
-	if !stsRecreated {
-		if err := rclient.Update(ctx, newSts); err != nil {
-			return fmt.Errorf("cannot perform update on sts: %s, err: %w", newSts.Name, err)
-		}
-	}
-
-	// perform manual update only with OnDelete policy, which is default.
-	if cr.UpdateStrategy() == appsv1.OnDeleteStatefulSetStrategyType {
-		if err := performRollingUpdateOnSts(ctx, podMustRecreate, rclient, newSts.Name, newSts.Namespace, cr.SelectorLabels(), c); err != nil {
-			return fmt.Errorf("cannot handle rolling-update on sts: %s, err: %w", newSts.Name, err)
-		}
-	}
-
-	// check if pvcs need to resize
-	if cr.HasClaim {
-		err = growSTSPVC(ctx, rclient, newSts)
-	}
-	return err
+	})
 }
 
 // we perform rolling update on sts by manually deleting pods one by one

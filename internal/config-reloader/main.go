@@ -21,6 +21,7 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httpserver"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/procutil"
+	"github.com/VictoriaMetrics/metrics"
 	"github.com/pires/go-proxyproto"
 )
 
@@ -37,6 +38,16 @@ var (
 	reloadURL              = flag.String("reload-url", "http://127.0.0.1:8429/-/reload", "reload URL to trigger config reload")
 	listenAddr             = flag.String("http.listenAddr", ":8435", "http server listen addr")
 	useProxyProtocolClient = flag.Bool("reload-use-proxy-protocol", false, "enables proxy-protocol for reload connections.")
+	resyncInternal         = flag.Duration("resync-interval", 0, "interval for force resync of the last configuration")
+)
+
+var (
+	configLastOkReloadTime  = metrics.NewCounter(`configreloader_last_reload_success_timestamp_seconds`)
+	configLastReloadSuccess = metrics.NewCounter(`configreloader_last_reload_successful`)
+	configReloadErrorsTotal = metrics.NewCounter(`configreloader_last_reload_errors_total`)
+	configReloadsTotal      = metrics.NewCounter(`configreloader_config_last_reload_total`)
+	k8sAPIWatchErrorsTotal  = metrics.NewCounter(`configreloader_k8s_watch_errors_total`)
+	contentUpdateErrosTotal = metrics.NewCounter(`configreloader_secret_content_update_errors_total`)
 )
 
 func main() {
@@ -140,6 +151,7 @@ type reloader struct {
 }
 
 func (r *reloader) reload(ctx context.Context) error {
+	configReloadsTotal.Inc()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, *reloadURL, nil)
 	if err != nil {
 		return fmt.Errorf("cannot build request for reload api: %w", err)
@@ -174,8 +186,12 @@ func (c *cfgWatcher) start(ctx context.Context) {
 					}
 					if err := c.reloader(ctx); err != nil {
 						logger.Errorf("cannot trigger api reload: %s", err.Error())
+						configLastReloadSuccess.Set(0)
+						configReloadErrorsTotal.Inc()
 						return
 					}
+					configLastReloadSuccess.Set(1)
+					configLastOkReloadTime.Set(uint64(time.Now().UnixMilli()))
 					logger.Infof("reload config ok.")
 				}()
 
@@ -258,5 +274,13 @@ func writeNewContent(data []byte) error {
 }
 
 func requestHandler(w http.ResponseWriter, r *http.Request) bool {
+	switch r.URL.Path {
+	case "/metrics":
+		w.WriteHeader(http.StatusOK)
+		metrics.WritePrometheus(w, true)
+	case "/health":
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`OK`))
+	}
 	return false
 }

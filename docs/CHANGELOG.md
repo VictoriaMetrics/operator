@@ -17,6 +17,7 @@ aliases:
 ## Next release
 **Update note: [vmcluster](./api.md#vmcluster): remove fields `VMClusterSpec.VMInsert.Name`, `VMClusterSpec.VMStorage.Name`, `VMClusterSpec.VMSelect.Name`, they're marked as deprecated since v0.21.0. See [this pull request](https://github.com/VictoriaMetrics/operator/pull/907).**
 
+- [config-reloader](./README.md): adds error metrics to the config-reloader container - `configreloader_last_reload_successful`, `configreloader_last_reload_errors_total`, `configreloader_config_last_reload_total`, `configreloader_k8s_watch_errors_total`, `configreloader_secret_content_update_errors_total`, `configreloader_last_reload_success_timestamp_seconds`. See this [issue](https://github.com/VictoriaMetrics/operator/issues/916) for details.
 - [operator](./README.md): Changes error handling for reconcile. Operator sends `Events` into kubernetes API, if any error happened during object reconcile.  See this [issue](https://github.com/VictoriaMetrics/operator/issues/900) for details.
 - [operator](./README.md): updates base Docker image and prometheus_client to versions with with CVE fixes
 - [operator](./README.md): adds reconcile retries on conflicts. See this [issue](https://github.com/VictoriaMetrics/operator/issues/901) for details.

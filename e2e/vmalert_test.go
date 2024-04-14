@@ -8,7 +8,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 
 	operator "github.com/VictoriaMetrics/operator/api/v1beta1"
-	"github.com/VictoriaMetrics/operator/controllers/factory"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"golang.org/x/net/context"
@@ -20,10 +19,8 @@ import (
 
 var _ = Describe("test  vmalert Controller", func() {
 	Context("e2e vmalert", func() {
-
 		Context("crud", func() {
 			Context("create", func() {
-
 				Name := "vmalert-example"
 				Namespace := "default"
 				AfterEach(func() {
@@ -72,7 +69,6 @@ var _ = Describe("test  vmalert Controller", func() {
 					Eventually(func() string {
 						return expectPodCount(k8sClient, 1, Namespace, vmAlert.SelectorLabels())
 					}, 60, 1).Should(BeEmpty())
-
 				})
 				It("should create with remote read and notifier tls", func() {
 					tlsSecretName := "vmalert-remote-tls"
@@ -101,21 +97,24 @@ var _ = Describe("test  vmalert Controller", func() {
 									URL: "http://alert-manager-url:9093",
 									HTTPAuth: operator.HTTPAuth{
 										TLSConfig: &operator.TLSConfig{
-											CertFile: path.Join(factory.SecretsDir, tlsSecretName, "remote-cert"),
-											KeyFile:  path.Join(factory.SecretsDir, tlsSecretName, "remote-key"),
-											CAFile:   path.Join(factory.SecretsDir, tlsSecretName, "remote-ca"),
+											CertFile: path.Join(operator.SecretsDir, tlsSecretName, "remote-cert"),
+											KeyFile:  path.Join(operator.SecretsDir, tlsSecretName, "remote-key"),
+											CAFile:   path.Join(operator.SecretsDir, tlsSecretName, "remote-ca"),
 										},
-									}}},
+									},
+								},
+							},
 							Secrets: []string{tlsSecretName},
 							Datasource: operator.VMAlertDatasourceSpec{
 								URL: "http://some-datasource-url:8428",
 								HTTPAuth: operator.HTTPAuth{
 									TLSConfig: &operator.TLSConfig{
-										CertFile: path.Join(factory.SecretsDir, tlsSecretName, "remote-cert"),
-										KeyFile:  path.Join(factory.SecretsDir, tlsSecretName, "remote-key"),
-										CAFile:   path.Join(factory.SecretsDir, tlsSecretName, "remote-ca"),
+										CertFile: path.Join(operator.SecretsDir, tlsSecretName, "remote-cert"),
+										KeyFile:  path.Join(operator.SecretsDir, tlsSecretName, "remote-key"),
+										CAFile:   path.Join(operator.SecretsDir, tlsSecretName, "remote-ca"),
 									},
-								}},
+								},
+							},
 							RemoteRead: &operator.VMAlertRemoteReadSpec{
 								URL: "http://some-vmsingle-url",
 								HTTPAuth: operator.HTTPAuth{
@@ -143,7 +142,8 @@ var _ = Describe("test  vmalert Controller", func() {
 											Key: "remote-key",
 										},
 									},
-								}},
+								},
+							},
 						},
 					})).Should(Succeed())
 					vmAlert := &operator.VMAlert{}
@@ -152,7 +152,6 @@ var _ = Describe("test  vmalert Controller", func() {
 						return expectPodCount(k8sClient, 1, Namespace, vmAlert.SelectorLabels())
 					}, 60, 1).Should(BeEmpty())
 					Expect(k8sClient.Delete(context.TODO(), tlsSecret)).To(Succeed())
-
 				})
 			})
 			Context("update", func() {
@@ -210,7 +209,6 @@ var _ = Describe("test  vmalert Controller", func() {
 					}
 					Eventually(func() string {
 						return expectPodCount(k8sClient, 1, namespace, vmAlert.SelectorLabels())
-
 					}, 60, 1).Should(BeEmpty())
 					Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, vmAlert)).To(BeNil())
 					vmAlert.Spec.ReplicaCount = pointer.Int32Ptr(3)
@@ -250,6 +248,5 @@ var _ = Describe("test  vmalert Controller", func() {
 			})
 		},
 		)
-
 	})
 })

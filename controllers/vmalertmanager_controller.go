@@ -21,9 +21,11 @@ import (
 	"sync"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
-	"github.com/VictoriaMetrics/operator/controllers/factory"
+	"github.com/VictoriaMetrics/operator/controllers/factory/alertmanager"
+	"github.com/VictoriaMetrics/operator/controllers/factory/build"
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"github.com/VictoriaMetrics/operator/controllers/factory/logger"
+	"github.com/VictoriaMetrics/operator/controllers/factory/reconcile"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
@@ -88,16 +90,16 @@ func (r *VMAlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return result, err
 	}
 	result, err = reconcileAndTrackStatus(ctx, r.Client, instance, func() (ctrl.Result, error) {
-		if err := factory.CreateOrUpdateAlertManager(ctx, instance, r, r.BaseConf); err != nil {
+		if err := alertmanager.CreateOrUpdateAlertManager(ctx, instance, r, r.BaseConf); err != nil {
 			return result, err
 		}
-		service, err := factory.CreateOrUpdateAlertManagerService(ctx, instance, r)
+		service, err := alertmanager.CreateOrUpdateAlertManagerService(ctx, instance, r)
 		if err != nil {
 			return result, err
 		}
 
 		if !r.BaseConf.DisableSelfServiceScrapeCreation {
-			err := factory.CreateVMServiceScrapeFromService(ctx, r, service, instance.Spec.ServiceScrapeSpec, instance.MetricPath(), "http")
+			err := reconcile.VMServiceScrapeForCRD(ctx, r, build.VMServiceScrapeForServiceWithSpec(service, instance.Spec.ServiceScrapeSpec, instance.MetricPath(), "http"))
 			if err != nil {
 				reqLogger.Error(err, "cannot create serviceScrape for vmalertmanager")
 			}

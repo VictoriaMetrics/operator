@@ -224,6 +224,11 @@ type VMAlertSpec struct {
 	// Datasource Victoria Metrics or VMSelect url. Required parameter. e.g. http://127.0.0.1:8428
 	Datasource VMAlertDatasourceSpec `json:"datasource"`
 
+	// ConfigReloaderExtraArgs that will be passed to  VMAuths config-reloader container
+	// for example resyncInterval: "30s"
+	// +optional
+	ConfigReloaderExtraArgs map[string]string `json:"configReloaderExtraArgs,omitempty"`
+
 	// ExtraArgs that will be passed to  VMAlert pod
 	// for example -remoteWrite.tmpDataPath=/tmp
 	// +optional

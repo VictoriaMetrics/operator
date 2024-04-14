@@ -18,14 +18,15 @@ package controllers
 
 import (
 	"context"
-	"fmt"
 	"sync"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
-	"github.com/VictoriaMetrics/operator/controllers/factory"
+	"github.com/VictoriaMetrics/operator/controllers/factory/build"
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"github.com/VictoriaMetrics/operator/controllers/factory/limiter"
 	"github.com/VictoriaMetrics/operator/controllers/factory/logger"
+	"github.com/VictoriaMetrics/operator/controllers/factory/reconcile"
+	"github.com/VictoriaMetrics/operator/controllers/factory/vmagent"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
@@ -102,22 +103,19 @@ func (r *VMAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 	}
 
 	result, err = reconcileAndTrackStatus(ctx, r.Client, instance, func() (ctrl.Result, error) {
-		if err = factory.CreateOrUpdateVMAgent(ctx, instance, r, r.BaseConf); err != nil {
+		if err = vmagent.CreateOrUpdateVMAgent(ctx, instance, r, r.BaseConf); err != nil {
 			return result, err
 		}
-		svc, err := factory.CreateOrUpdateVMAgentService(ctx, instance, r, r.BaseConf)
+		svc, err := vmagent.CreateOrUpdateVMAgentService(ctx, instance, r, r.BaseConf)
 		if err != nil {
 			return result, err
 		}
 
 		if !r.BaseConf.DisableSelfServiceScrapeCreation {
-			err = factory.CreateVMServiceScrapeFromService(ctx, r, svc, instance.Spec.ServiceScrapeSpec, instance.MetricPath(), "http")
+			err = reconcile.VMServiceScrapeForCRD(ctx, r, build.VMServiceScrapeForServiceWithSpec(svc, instance.Spec.ServiceScrapeSpec, instance.MetricPath(), "http"))
 			if err != nil {
 				reqLogger.Error(err, "cannot create serviceScrape for vmagent")
 			}
-		}
-		if err = updateVMAgentStatus(ctx, r.Client, instance); err != nil {
-			return result, err
 		}
 		return result, nil
 	})
@@ -129,25 +127,6 @@ func (r *VMAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 	}
 
 	return
-}
-
-func updateVMAgentStatus(ctx context.Context, c client.Client, instance *victoriametricsv1beta1.VMAgent) error {
-	// default value
-	//
-	replicaCount := int32(1)
-	if instance.Spec.ReplicaCount != nil {
-		replicaCount = *instance.Spec.ReplicaCount
-	}
-	instance.Status.Replicas = replicaCount
-	var shardCnt int32
-	if instance.Spec.ShardCount != nil {
-		shardCnt = int32(*instance.Spec.ShardCount)
-	}
-	instance.Status.Shards = shardCnt
-	if err := c.Status().Update(ctx, instance); err != nil {
-		return fmt.Errorf("cannot update status for vmagent: %s: %w", instance.Name, err)
-	}
-	return nil
 }
 
 // Scheme implements interface.

@@ -319,6 +319,11 @@ type VMAgentSpec struct {
 	// Port listen address
 	// +optional
 	Port string `json:"port,omitempty"`
+	// ConfigReloaderExtraArgs that will be passed to  VMAuths config-reloader container
+	// for example resyncInterval: "30s"
+	// +optional
+	ConfigReloaderExtraArgs map[string]string `json:"configReloaderExtraArgs,omitempty"`
+
 	// ExtraArgs that will be passed to  VMAgent pod
 	// for example remoteWrite.tmpDataPath: /tmp
 	// it would be converted to flag --remoteWrite.tmpDataPath=/tmp
@@ -811,6 +816,18 @@ func (cr *VMAgent) SetUpdateStatusTo(ctx context.Context, r client.Client, statu
 	default:
 		panic(fmt.Sprintf("BUG: not expected status=%q", status))
 	}
+	// default value
+	replicaCount := int32(1)
+	if cr.Spec.ReplicaCount != nil {
+		replicaCount = *cr.Spec.ReplicaCount
+	}
+	cr.Status.Replicas = replicaCount
+	var shardCnt int32
+	if cr.Spec.ShardCount != nil {
+		shardCnt = int32(*cr.Spec.ShardCount)
+	}
+	cr.Status.Shards = shardCnt
+
 	if err := r.Status().Update(ctx, cr); err != nil {
 		return fmt.Errorf("failed to update object status to=%q: %w", status, err)
 	}

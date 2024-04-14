@@ -39,6 +39,7 @@ var (
 	listenAddr             = flag.String("http.listenAddr", ":8435", "http server listen addr")
 	useProxyProtocolClient = flag.Bool("reload-use-proxy-protocol", false, "enables proxy-protocol for reload connections.")
 	resyncInternal         = flag.Duration("resync-interval", 0, "interval for force resync of the last configuration")
+	webhookMethod          = flag.String("webhook-method", "GET", "the HTTP method url to use to send the webhook")
 )
 
 var (
@@ -152,7 +153,7 @@ type reloader struct {
 
 func (r *reloader) reload(ctx context.Context) error {
 	configReloadsTotal.Inc()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, *reloadURL, nil)
+	req, err := http.NewRequestWithContext(ctx, *webhookMethod, *reloadURL, nil)
 	if err != nil {
 		return fmt.Errorf("cannot build request for reload api: %w", err)
 	}
@@ -206,10 +207,25 @@ func (c *cfgWatcher) close() {
 	c.wg.Wait()
 }
 
+type watcher interface {
+	startWatch(ctx context.Context, updates chan struct{}) error
+	close()
+}
+
+// emptyWatcher - no-op watchers for case when direct watch not required
+type emptyWatcher struct{}
+
+func (ew *emptyWatcher) startWatch(_ context.Context, _ chan struct{}) error {
+	return nil
+}
+
+func (ew *emptyWatcher) close() {}
+
 func newConfigWatcher(ctx context.Context) (watcher, error) {
 	var w watcher
 	if *configFileName == "" && *configSecretName == "" {
-		return nil, fmt.Errorf("provide at least one configFileName")
+		logger.Infof("direct config watch not needed, both configFileName and configSecretName is empty")
+		return &emptyWatcher{}, nil
 	}
 	if *configFileName != "" && *configSecretName != "" {
 		logger.Infof("both config have been provided, will use configSecret %s instead of configFile %s", *configSecretName, *configFileName)

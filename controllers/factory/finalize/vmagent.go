@@ -12,6 +12,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// OnVMAgentDelete deletes all vmagent related resources
 func OnVMAgentDelete(ctx context.Context, rclient client.Client, crd *victoriametricsv1beta1.VMAgent) error {
 	// check deployment
 	if err := removeFinalizeObjByName(ctx, rclient, &appsv1.Deployment{}, crd.PrefixedName(), crd.Namespace); err != nil {

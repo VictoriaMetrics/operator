@@ -7,7 +7,6 @@ import (
 	"regexp"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -26,6 +25,8 @@ var log = logf.Log.WithName("client_utils")
 
 var invalidDNS1123Characters = regexp.MustCompile("[^-a-z0-9]+")
 
+// SanitizeVolumeName replaces all incompatible with k8s characters
+// with -
 func SanitizeVolumeName(name string) string {
 	name = strings.ToLower(name)
 	name = invalidDNS1123Characters.ReplaceAllString(name, "-")
@@ -124,10 +125,14 @@ func ListObjectsByNamespace[T any, PT interface {
 		collect(dst)
 		return nil
 	}
-	nsOpts := append(opts, &client.ListOptions{})
+	// copy slice to avoid side effects
+	listOpts := append([]client.ListOption{}, opts...)
+	// add empty entry for the future namespace filter
+	listOpts = append(listOpts, &client.ListOptions{})
 	for _, ns := range nss {
-		nsOpts[len(nsOpts)-1] = &client.ListOptions{Namespace: ns}
-		if err := rclient.List(ctx, dst, nsOpts...); err != nil {
+		// update filter for exact namespace at each loop
+		listOpts[len(listOpts)-1] = &client.ListOptions{Namespace: ns}
+		if err := rclient.List(ctx, dst, listOpts...); err != nil {
 			return fmt.Errorf("cannot list objects for ns=%q: %w", ns, err)
 		}
 		collect(dst)
@@ -148,8 +153,6 @@ type ObjectWatcherForNamespaces struct {
 	result         chan watch.Event
 	objectWatchers []watch.Interface
 	wg             sync.WaitGroup
-	eventsTotal    *prometheus.CounterVec
-	activeWatchers *atomic.Int64
 }
 
 // NewObjectWatcherForNamespaces returns a watcher for events at multiple namespaces  for given object

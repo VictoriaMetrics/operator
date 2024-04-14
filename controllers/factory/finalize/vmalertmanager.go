@@ -9,6 +9,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// OnVMAlertManagerDelete deletes all alertmanager related resources
 func OnVMAlertManagerDelete(ctx context.Context, rclient client.Client, crd *victoriametricsv1beta1.VMAlertmanager) error {
 	// check deployment
 	if err := removeFinalizeObjByName(ctx, rclient, &appsv1.StatefulSet{}, crd.PrefixedName(), crd.Namespace); err != nil {

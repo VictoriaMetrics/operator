@@ -21,9 +21,11 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/VictoriaMetrics/operator/controllers/factory"
+	"github.com/VictoriaMetrics/operator/controllers/factory/build"
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"github.com/VictoriaMetrics/operator/controllers/factory/logger"
+	"github.com/VictoriaMetrics/operator/controllers/factory/reconcile"
+	"github.com/VictoriaMetrics/operator/controllers/factory/vmauth"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
@@ -84,20 +86,20 @@ func (r *VMAuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 	}
 
 	result, err = reconcileAndTrackStatus(ctx, r.Client, instance, func() (ctrl.Result, error) {
-		if err := factory.CreateOrUpdateVMAuth(ctx, instance, r, r.BaseConf); err != nil {
+		if err := vmauth.CreateOrUpdateVMAuth(ctx, instance, r, r.BaseConf); err != nil {
 			return result, fmt.Errorf("cannot create or update vmauth deploy: %w", err)
 		}
 
-		svc, err := factory.CreateOrUpdateVMAuthService(ctx, instance, r)
+		svc, err := vmauth.CreateOrUpdateVMAuthService(ctx, instance, r)
 		if err != nil {
 			return result, fmt.Errorf("cannot create or update vmauth service :%w", err)
 		}
-		if err := factory.CreateOrUpdateVMAuthIngress(ctx, r, instance); err != nil {
+		if err := vmauth.CreateOrUpdateVMAuthIngress(ctx, r, instance); err != nil {
 			return result, fmt.Errorf("cannot create or update ingress for vmauth: %w", err)
 		}
 
 		if !r.BaseConf.DisableSelfServiceScrapeCreation {
-			if err := factory.CreateVMServiceScrapeFromService(ctx, r, svc, instance.Spec.ServiceScrapeSpec, instance.MetricPath()); err != nil {
+			if err := reconcile.VMServiceScrapeForCRD(ctx, r, build.VMServiceScrapeForServiceWithSpec(svc, instance.Spec.ServiceScrapeSpec, instance.MetricPath())); err != nil {
 				l.Error(err, "cannot create serviceScrape for vmauth")
 			}
 		}

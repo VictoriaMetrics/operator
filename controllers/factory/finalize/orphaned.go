@@ -54,6 +54,7 @@ func discoverDeploymentsByLabels(ctx context.Context, rclient client.Client, ns 
 	return resp, nil
 }
 
+// RemoveSvcArgs defines interface for service deletion
 type RemoveSvcArgs struct {
 	PrefixedName   func() string
 	SelectorLabels func() map[string]string

@@ -21,9 +21,9 @@ import (
 	"fmt"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
-	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"github.com/VictoriaMetrics/operator/controllers/factory/logger"
+	"github.com/VictoriaMetrics/operator/controllers/factory/vmsingle"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
@@ -83,29 +83,17 @@ func (r *VMSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (r
 
 	return reconcileAndTrackStatus(ctx, r.Client, instance, func() (ctrl.Result, error) {
 		if instance.Spec.Storage != nil && instance.Spec.StorageDataPath == "" {
-			_, err = factory.CreateVMSingleStorage(ctx, instance, r)
+			err = vmsingle.CreateVMSingleStorage(ctx, instance, r)
 			if err != nil {
 				return result, err
 			}
 		}
-		if err := factory.CreateOrUpdateVMSingleStreamAggrConfig(ctx, instance, r); err != nil {
+		if err := vmsingle.CreateOrUpdateVMSingleStreamAggrConfig(ctx, instance, r); err != nil {
 			return result, fmt.Errorf("cannot update stream aggregation config for vmsingle: %w", err)
 		}
 
-		if err = factory.CreateOrUpdateVMSingle(ctx, instance, r, r.BaseConf); err != nil {
+		if err = vmsingle.CreateOrUpdateVMSingle(ctx, instance, r, r.BaseConf); err != nil {
 			return result, fmt.Errorf("failed create or update single: %w", err)
-		}
-
-		svc, err := factory.CreateOrUpdateVMSingleService(ctx, instance, r, r.BaseConf)
-		if err != nil {
-			return result, err
-		}
-
-		if !r.BaseConf.DisableSelfServiceScrapeCreation {
-			err := factory.CreateVMServiceScrapeFromService(ctx, r, svc, instance.Spec.ServiceScrapeSpec, instance.MetricPath())
-			if err != nil {
-				reqLogger.Error(err, "cannot create serviceScrape for vmsingle")
-			}
 		}
 		return result, nil
 	})

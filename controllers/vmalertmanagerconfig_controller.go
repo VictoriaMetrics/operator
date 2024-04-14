@@ -21,7 +21,7 @@ import (
 	"fmt"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
-	"github.com/VictoriaMetrics/operator/controllers/factory"
+	"github.com/VictoriaMetrics/operator/controllers/factory/alertmanager"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/controllers/factory/limiter"
 	"github.com/VictoriaMetrics/operator/controllers/factory/logger"
@@ -93,7 +93,7 @@ func (r *VMAlertmanagerConfigReconciler) Reconcile(ctx context.Context, req ctrl
 				continue
 			}
 		}
-		if err := factory.CreateOrUpdateAlertManager(ctx, am, r.Client, r.BaseConf); err != nil {
+		if err := alertmanager.CreateOrUpdateAlertManager(ctx, am, r.Client, r.BaseConf); err != nil {
 			continue
 		}
 	}

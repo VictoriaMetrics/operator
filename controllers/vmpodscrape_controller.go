@@ -21,9 +21,9 @@ import (
 	"fmt"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
-	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/controllers/factory/logger"
+	"github.com/VictoriaMetrics/operator/controllers/factory/vmagent"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -76,12 +76,12 @@ func (r *VMPodScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return result, fmt.Errorf("cannot list vmauths for vmuser: %w", err)
 	}
 
-	for _, vmagent := range objects.Items {
-		if !vmagent.DeletionTimestamp.IsZero() || vmagent.Spec.ParsingError != "" || vmagent.IsUnmanaged() {
+	for _, vmagentItem := range objects.Items {
+		if !vmagentItem.DeletionTimestamp.IsZero() || vmagentItem.Spec.ParsingError != "" || vmagentItem.IsUnmanaged() {
 			continue
 		}
-		reqLogger = reqLogger.WithValues("vmagent", vmagent.Name)
-		currentVMagent := &vmagent
+		reqLogger = reqLogger.WithValues("vmagent", vmagentItem.Name)
+		currentVMagent := &vmagentItem
 		if !currentVMagent.Spec.SelectAllByDefault {
 			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, instance, currentVMagent, currentVMagent.Spec.PodScrapeSelector, currentVMagent.Spec.PodScrapeNamespaceSelector)
 			if err != nil {
@@ -95,7 +95,7 @@ func (r *VMPodScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		reqLogger := reqLogger.WithValues("vmagent", currentVMagent.Name)
 		ctx := logger.AddToContext(ctx, reqLogger)
 
-		if err := factory.CreateOrUpdateVMAgent(ctx, currentVMagent, r, r.BaseConf); err != nil {
+		if err := vmagent.CreateOrUpdateConfigurationSecret(ctx, currentVMagent, r, r.BaseConf); err != nil {
 			continue
 		}
 	}

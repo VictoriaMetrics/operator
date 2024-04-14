@@ -253,7 +253,9 @@ func reconcileAndTrackStatus(ctx context.Context, c client.Client, object object
 			resultErr = fmt.Errorf("failed to update object status: %w", err)
 			return
 		}
-		createGenericEventForObject(ctx, c, object, "starting object update")
+		if err := createGenericEventForObject(ctx, c, object, "starting object update"); err != nil {
+			logger.WithContext(ctx).Error(err, " cannot create k8s api event")
+		}
 	}
 
 	result, err = cb()
@@ -281,7 +283,9 @@ func reconcileAndTrackStatus(ctx context.Context, c client.Client, object object
 			resultErr = fmt.Errorf("cannot update cluster with last applied spec: %w", err)
 			return
 		}
-		createGenericEventForObject(ctx, c, object, "reconcile of object finished successfully")
+		if err := createGenericEventForObject(ctx, c, object, "reconcile of object finished successfully"); err != nil {
+			logger.WithContext(ctx).Error(err, " cannot create k8s api event")
+		}
 	}
 
 	return result, nil

@@ -13,7 +13,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func CreateVMAuthSecretAccess(ctx context.Context, cr *v1beta12.VMAuth, rclient client.Client) error {
+// createVMAuthSecretAccess creates rbac rule for watching secret changes with vmauth configuration
+func createVMAuthSecretAccess(ctx context.Context, cr *v1beta12.VMAuth, rclient client.Client) error {
 	if err := ensureVMAuthRoleExist(ctx, cr, rclient); err != nil {
 		return fmt.Errorf("cannot check vmauth role: %w", err)
 	}
@@ -29,7 +30,6 @@ func ensureVMAuthRoleExist(ctx context.Context, cr *v1beta12.VMAuth, rclient cli
 	if err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: role.Name}, &existRole); err != nil {
 		if errors.IsNotFound(err) {
 			return rclient.Create(ctx, role)
-
 		}
 		return fmt.Errorf("cannot get role for vmauth: %w", err)
 	}
@@ -48,7 +48,6 @@ func ensureVMAgentRBExist(ctx context.Context, cr *v1beta12.VMAuth, rclient clie
 	if err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: roleBinding.Name}, &existRoleBinding); err != nil {
 		if errors.IsNotFound(err) {
 			return rclient.Create(ctx, roleBinding)
-
 		}
 		return fmt.Errorf("cannot get rolebinding for vmauth: %w", err)
 	}
@@ -63,7 +62,6 @@ func ensureVMAgentRBExist(ctx context.Context, cr *v1beta12.VMAuth, rclient clie
 }
 
 func buildVMAuthRole(cr *v1beta12.VMAuth) *v1.Role {
-
 	return &v1.Role{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),

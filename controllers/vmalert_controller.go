@@ -21,10 +21,12 @@ import (
 	"sync"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
-	"github.com/VictoriaMetrics/operator/controllers/factory"
+	"github.com/VictoriaMetrics/operator/controllers/factory/build"
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"github.com/VictoriaMetrics/operator/controllers/factory/limiter"
 	"github.com/VictoriaMetrics/operator/controllers/factory/logger"
+	"github.com/VictoriaMetrics/operator/controllers/factory/reconcile"
+	"github.com/VictoriaMetrics/operator/controllers/factory/vmalert"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
@@ -96,23 +98,23 @@ func (r *VMAlertReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 	}
 
 	result, resultErr = reconcileAndTrackStatus(ctx, r.Client, instance, func() (ctrl.Result, error) {
-		maps, err := factory.CreateOrUpdateRuleConfigMaps(ctx, instance, r)
+		maps, err := vmalert.CreateOrUpdateRuleConfigMaps(ctx, instance, r)
 		if err != nil {
 			return result, err
 		}
 		reqLogger.Info("found configmaps for vmalert", " len ", len(maps), "map names", maps)
 
-		if err := factory.CreateOrUpdateVMAlert(ctx, instance, r, r.BaseConf, maps); err != nil {
+		if err := vmalert.CreateOrUpdateVMAlert(ctx, instance, r, r.BaseConf, maps); err != nil {
 			return result, err
 		}
 
-		svc, err := factory.CreateOrUpdateVMAlertService(ctx, instance, r, r.BaseConf)
+		svc, err := vmalert.CreateOrUpdateVMAlertService(ctx, instance, r, r.BaseConf)
 		if err != nil {
 			return result, err
 		}
 
 		if !r.BaseConf.DisableSelfServiceScrapeCreation {
-			err := factory.CreateVMServiceScrapeFromService(ctx, r, svc, instance.Spec.ServiceScrapeSpec, instance.MetricPath())
+			err := reconcile.VMServiceScrapeForCRD(ctx, r, build.VMServiceScrapeForServiceWithSpec(svc, instance.Spec.ServiceScrapeSpec, instance.MetricPath()))
 			if err != nil {
 				reqLogger.Error(err, "cannot create serviceScrape for vmalert")
 			}

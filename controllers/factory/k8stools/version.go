@@ -6,13 +6,15 @@ import (
 	"strconv"
 	"strings"
 
-	"k8s.io/api/autoscaling/v2"
+	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/version"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var (
+	// ServerMajorVersion defines major number for current kubernetes API server version
 	ServerMajorVersion uint64
+	// ServerMinorVersion defines minor number for current kubernetes API server version
 	ServerMinorVersion uint64
 )
 

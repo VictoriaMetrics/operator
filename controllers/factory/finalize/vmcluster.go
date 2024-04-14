@@ -2,6 +2,7 @@ package finalize
 
 import (
 	"context"
+
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	appsv1 "k8s.io/api/apps/v1"
@@ -25,6 +26,7 @@ func HPADelete(ctx context.Context, rclient client.Client, objectName, objectNam
 	return nil
 }
 
+// OnVMClusterDelete deletes all vmcluster related resources
 func OnVMClusterDelete(ctx context.Context, rclient client.Client, crd *victoriametricsv1beta1.VMCluster) error {
 	// check deployment
 

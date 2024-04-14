@@ -21,9 +21,9 @@ import (
 	"fmt"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
-	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/controllers/factory/logger"
+	"github.com/VictoriaMetrics/operator/controllers/factory/vmalert"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -78,11 +78,11 @@ func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		return result, fmt.Errorf("cannot list vmauths for vmuser: %w", err)
 	}
 
-	for _, vmalert := range objects.Items {
-		if vmalert.DeletionTimestamp != nil || vmalert.Spec.ParsingError != "" {
+	for _, vmalertItem := range objects.Items {
+		if vmalertItem.DeletionTimestamp != nil || vmalertItem.Spec.ParsingError != "" {
 			continue
 		}
-		currVMAlert := &vmalert
+		currVMAlert := &vmalertItem
 		if !currVMAlert.Spec.SelectAllByDefault {
 			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, instance, currVMAlert, currVMAlert.Spec.RuleSelector, currVMAlert.Spec.RuleNamespaceSelector)
 			if err != nil {
@@ -96,12 +96,12 @@ func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		reqLogger := reqLogger.WithValues("vmalert", currVMAlert.Name)
 		ctx := logger.AddToContext(ctx, reqLogger)
 
-		maps, err := factory.CreateOrUpdateRuleConfigMaps(ctx, currVMAlert, r)
+		maps, err := vmalert.CreateOrUpdateRuleConfigMaps(ctx, currVMAlert, r)
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("cannot update rules configmaps: %w", err)
 		}
 
-		if err := factory.CreateOrUpdateVMAlert(ctx, currVMAlert, r, r.BaseConf, maps); err != nil {
+		if err := vmalert.CreateOrUpdateVMAlert(ctx, currVMAlert, r, r.BaseConf, maps); err != nil {
 			return result, fmt.Errorf("cannot create or update vmalert for vmrule :%w", err)
 		}
 

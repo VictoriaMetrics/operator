@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
-	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"github.com/VictoriaMetrics/operator/controllers/factory/logger"
+	"github.com/VictoriaMetrics/operator/controllers/factory/vmcluster"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
@@ -67,7 +67,7 @@ func (r *VMClusterReconciler) Reconcile(ctx context.Context, request ctrl.Reques
 		return result, err
 	}
 	return reconcileAndTrackStatus(ctx, r.Client, instance, func() (ctrl.Result, error) {
-		err = factory.CreateOrUpdateVMCluster(ctx, instance, r.Client, config.MustGetBaseConfig())
+		err = vmcluster.CreateOrUpdateVMCluster(ctx, instance, r.Client, config.MustGetBaseConfig())
 		if err != nil {
 			return result, fmt.Errorf("failed create or update vmcluster: %w", err)
 		}

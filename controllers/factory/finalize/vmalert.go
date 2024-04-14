@@ -10,6 +10,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// OnVMAlertDelete deletes all vmalert related resources
 func OnVMAlertDelete(ctx context.Context, rclient client.Client, crd *victoriametricsv1beta1.VMAlert) error {
 	// check deployment
 	if err := removeFinalizeObjByName(ctx, rclient, &appsv1.Deployment{}, crd.PrefixedName(), crd.Namespace); err != nil {

@@ -51,6 +51,7 @@ func testGetScheme() *runtime.Scheme {
 	return s
 }
 
+// GetTestClientWithObjects returns testing client with optional predefined objects
 func GetTestClientWithObjects(predefinedObjects []runtime.Object) client.Client {
 	obj := make([]client.Object, 0, len(predefinedObjects))
 	for _, o := range predefinedObjects {
@@ -60,6 +61,7 @@ func GetTestClientWithObjects(predefinedObjects []runtime.Object) client.Client 
 	return fclient
 }
 
+// CompareObjectMeta compares metadata objects
 func CompareObjectMeta(t *testing.T, got, want metav1.ObjectMeta) {
 	if diff := deep.Equal(got.Labels, want.Labels); len(diff) > 0 {
 		t.Fatalf("objects not match, labels diff: %v", diff)

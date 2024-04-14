@@ -1,0 +1,416 @@
+package vmalert
+
+import (
+	"context"
+	"fmt"
+	"hash/fnv"
+	"reflect"
+	"sort"
+	"strconv"
+	"strings"
+
+	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/controllers/factory/logger"
+	"github.com/ghodss/yaml"
+	"github.com/prometheus/client_golang/prometheus"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/metrics"
+)
+
+var badConfigsTotal = prometheus.NewCounter(prometheus.CounterOpts{
+	Name: "operator_vmalert_bad_objects_count",
+	Help: "Number of incorrect objects by controller",
+	ConstLabels: prometheus.Labels{
+		"controller": "vmrules",
+	},
+})
+
+func init() {
+	metrics.Registry.MustRegister(badConfigsTotal)
+}
+
+var (
+	managedByOperatorLabel      = "managed-by"
+	managedByOperatorLabelValue = "vm-operator"
+	managedByOperatorLabels     = map[string]string{
+		managedByOperatorLabel: managedByOperatorLabelValue,
+	}
+)
+
+var defAlert = `
+groups:
+- name: vmAlertGroup
+  rules:
+     - alert: error writing to remote
+       for: 1m
+       expr: rate(vmalert_remotewrite_errors_total[1m]) > 0
+       labels:
+         host: "{{ $labels.instance }}"
+       annotations:
+         summary: " error writing to remote writer from vmaler{{ $value|humanize }}"
+         description: "error writing to remote writer from vmaler {{$labels}}"
+         back: "error rate is ok at vmalert "
+`
+
+// CreateOrUpdateRuleConfigMaps conditionally selects vmrules and stores content at configmaps
+func CreateOrUpdateRuleConfigMaps(ctx context.Context, cr *victoriametricsv1beta1.VMAlert, rclient client.Client) ([]string, error) {
+	// fast path
+	if cr.IsUnmanaged() {
+		return nil, nil
+	}
+	l := logger.WithContext(ctx).WithValues("reconcile", "rulesCm", "vmalert", cr.Name)
+	newRules, err := selectRules(ctx, cr, rclient)
+	if err != nil {
+		return nil, err
+	}
+
+	currentConfigMapList := &v1.ConfigMapList{}
+	err = rclient.List(ctx, currentConfigMapList, cr.RulesConfigMapSelector())
+	if err != nil {
+		return nil, err
+	}
+	currentConfigMaps := currentConfigMapList.Items
+
+	currentRules := map[string]string{}
+	for _, cm := range currentConfigMaps {
+		for ruleFileName, ruleFile := range cm.Data {
+			currentRules[ruleFileName] = ruleFile
+		}
+	}
+
+	equal := reflect.DeepEqual(newRules, currentRules)
+	if equal && len(currentConfigMaps) != 0 {
+		l.Info("no Rule changes", "namespace", cr.Namespace)
+		currentConfigMapNames := []string{}
+		for _, cm := range currentConfigMaps {
+			currentConfigMapNames = append(currentConfigMapNames, cm.Name)
+		}
+		return currentConfigMapNames, nil
+	}
+
+	newConfigMaps, err := makeRulesConfigMaps(cr, newRules)
+	if err != nil {
+		return nil, fmt.Errorf("failted to make rules ConfigMaps: %w", err)
+	}
+
+	newConfigMapNames := []string{}
+	for _, cm := range newConfigMaps {
+		newConfigMapNames = append(newConfigMapNames, cm.Name)
+	}
+
+	if len(currentConfigMaps) == 0 {
+		l.Info("no Rule configmap found, creating new one", "namespace", cr.Namespace)
+		for _, cm := range newConfigMaps {
+			err := rclient.Create(ctx, &cm, &client.CreateOptions{})
+			if err != nil {
+				return nil, fmt.Errorf("failed to create Configmap: %s, err: %w", cm.Name, err)
+			}
+		}
+		return newConfigMapNames, nil
+	}
+
+	// sort
+	sort.Strings(newConfigMapNames)
+	sort.Slice(currentConfigMaps, func(i, j int) bool {
+		return currentConfigMaps[i].Name < currentConfigMaps[j].Name
+	})
+	sort.Slice(newConfigMaps, func(i, j int) bool {
+		return newConfigMaps[i].Name < newConfigMaps[j].Name
+	})
+
+	// compute diff for current and needed rules configmaps.
+	toCreate, toUpdate, toDelete := rulesCMDiff(currentConfigMaps, newConfigMaps)
+	for _, cm := range toCreate {
+		err = rclient.Create(ctx, &cm)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create new rules Configmap: %s, err: %w", cm.Name, err)
+		}
+	}
+	for _, cm := range toUpdate {
+		err = rclient.Update(ctx, &cm)
+		if err != nil {
+			return nil, fmt.Errorf("failed to update rules Configmap: %s, err: %w", cm.Name, err)
+		}
+	}
+	for _, cm := range toDelete {
+		if victoriametricsv1beta1.IsContainsFinalizer(cm.Finalizers, victoriametricsv1beta1.FinalizerName) {
+			cm.Finalizers = victoriametricsv1beta1.RemoveFinalizer(cm.Finalizers, victoriametricsv1beta1.FinalizerName)
+			if err := rclient.Update(ctx, &cm); err != nil {
+				return nil, fmt.Errorf("cannot remove finalizer from configmap: %s, err: %w", cm.Name, err)
+			}
+		}
+		err = rclient.Delete(ctx, &cm)
+		if err != nil {
+			return nil, fmt.Errorf("failed to delete rules Configmap: %s, err: %w", cm.Name, err)
+		}
+	}
+
+	// trigger sync for configmap
+	err = k8stools.UpdatePodAnnotations(ctx, rclient, cr.PodLabels(), cr.Namespace)
+	if err != nil {
+		l.Error(err, "failed to update pod cm-sync annotation", "ns", cr.Namespace)
+	}
+	return newConfigMapNames, nil
+}
+
+// rulesCMDiff - calculates diff between existing at k8s (current) configmaps with rules
+// and generated by operator (new) configmaps.
+// Configmaps are grouped by operations, that must be performed over them.
+func rulesCMDiff(currentCMs []v1.ConfigMap, newCMs []v1.ConfigMap) ([]v1.ConfigMap, []v1.ConfigMap, []v1.ConfigMap) {
+	var toCreate, toUpdate, toDelete []v1.ConfigMap
+	// fast path, delete all
+	if len(newCMs) == 0 {
+		return toCreate, toUpdate, currentCMs
+	}
+	if len(currentCMs) == 0 {
+		return newCMs, toUpdate, toDelete
+	}
+	// iterate over current, catch toDelete.
+	for _, currCM := range currentCMs {
+		var found bool
+		for _, newCM := range newCMs {
+			if newCM.Name == currCM.Name {
+				found = true
+				break
+			}
+		}
+		if !found {
+			toDelete = append(toDelete, currCM)
+		}
+	}
+	// calculate maps for update
+	for _, newCM := range newCMs {
+		var found bool
+		for _, currentCM := range currentCMs {
+			if newCM.Name == currentCM.Name {
+				found = true
+				toUpdate = append(toUpdate, newCM)
+				break
+			}
+		}
+		if !found {
+			toCreate = append(toCreate, newCM)
+		}
+	}
+	return toCreate, toUpdate, toDelete
+}
+
+func selectRules(ctx context.Context, cr *victoriametricsv1beta1.VMAlert, rclient client.Client) (map[string]string, error) {
+	var vmRules []*victoriametricsv1beta1.VMRule
+	if err := k8stools.VisitObjectsForSelectorsAtNs(ctx, rclient, cr.Spec.RuleNamespaceSelector, cr.Spec.RuleSelector, cr.Namespace, cr.Spec.SelectAllByDefault,
+		func(list *victoriametricsv1beta1.VMRuleList) {
+			for _, item := range list.Items {
+				if !item.DeletionTimestamp.IsZero() {
+					continue
+				}
+				vmRules = append(vmRules, item)
+			}
+		}); err != nil {
+		return nil, err
+	}
+
+	rules := make(map[string]string, len(vmRules))
+
+	if cr.NeedDedupRules() {
+		logger.WithContext(ctx).Info("deduplicating vmalert rules", "vmalert", cr.ObjectMeta.Name)
+		vmRules = deduplicateRules(ctx, vmRules)
+	}
+	var badRules int
+	var errors []string
+	for _, pRule := range vmRules {
+		content, err := generateContent(pRule.Spec, cr.Spec.EnforcedNamespaceLabel, pRule.Namespace)
+		if err != nil {
+			badRules++
+			errors = append(errors, fmt.Sprintf("cannot generate content for rule: %s, err :%s", pRule.Name, err))
+			continue
+		}
+
+		// check if none of the rule files is too large for a single ConfigMap
+		if len(content) > victoriametricsv1beta1.MaxConfigMapDataSize {
+			badRules++
+			errors = append(errors, fmt.Sprintf(
+				"rule file %q with size %d is too large for a single Kubernetes ConfigMap limit: %d",
+				pRule.Namespace+"-"+pRule.Name, len(content), victoriametricsv1beta1.MaxConfigMapDataSize,
+			))
+			continue
+		}
+		rules[fmt.Sprintf("%s-%s.yaml", pRule.Namespace, pRule.Name)] = content
+	}
+
+	ruleNames := make([]string, 0, len(rules))
+	for name := range rules {
+		ruleNames = append(ruleNames, name)
+	}
+
+	if len(rules) == 0 {
+		// inject default rule
+		// it's needed to start vmalert.
+		rules["default-vmalert.yaml"] = defAlert
+	}
+	if len(errors) > 0 {
+		logger.WithContext(ctx).Error(fmt.Errorf("errors: %s", strings.Join(errors, ";")), "invalid vmrules detected during parsing")
+	}
+	badConfigsTotal.Add(float64(badRules))
+
+	logger.WithContext(ctx).Info("selected Rules",
+		"rules", strings.Join(ruleNames, ","),
+		"namespace", cr.Namespace,
+		"vmalert", cr.Name,
+		"invalid rules", badRules,
+	)
+
+	return rules, nil
+}
+
+func generateContent(promRule victoriametricsv1beta1.VMRuleSpec, enforcedNsLabel, ns string) (string, error) {
+	if enforcedNsLabel != "" {
+		for gi, group := range promRule.Groups {
+			for ri := range group.Rules {
+				if len(promRule.Groups[gi].Rules[ri].Labels) == 0 {
+					promRule.Groups[gi].Rules[ri].Labels = map[string]string{}
+				}
+				promRule.Groups[gi].Rules[ri].Labels[enforcedNsLabel] = ns
+			}
+		}
+	}
+	content, err := yaml.Marshal(promRule)
+	if err != nil {
+		return "", fmt.Errorf("cannot unmarshal context for cm rule generation: %w", err)
+	}
+	return string(content), nil
+}
+
+// makeRulesConfigMaps takes a VMAlert configuration and rule files and
+// returns a list of Kubernetes ConfigMaps to be later on mounted
+// If the total size of rule files exceeds the Kubernetes ConfigMap limit,
+// they are split up via the simple first-fit [1] bin packing algorithm. In the
+// future this can be replaced by a more sophisticated algorithm, but for now
+// simplicity should be sufficient.
+// [1] https://en.wikipedia.org/wiki/Bin_packing_problem#First-fit_algorithm
+func makeRulesConfigMaps(cr *victoriametricsv1beta1.VMAlert, ruleFiles map[string]string) ([]v1.ConfigMap, error) {
+	buckets := []map[string]string{
+		{},
+	}
+	currBucketIndex := 0
+
+	// To make bin packing algorithm deterministic, sort ruleFiles filenames and
+	// iterate over filenames instead of ruleFiles map (not deterministic).
+	fileNames := []string{}
+	for n := range ruleFiles {
+		fileNames = append(fileNames, n)
+	}
+	sort.Strings(fileNames)
+
+	for _, filename := range fileNames {
+		// If rule file doesn't fit into current bucket, create new bucket.
+		if bucketSize(buckets[currBucketIndex])+len(ruleFiles[filename]) > victoriametricsv1beta1.MaxConfigMapDataSize {
+			buckets = append(buckets, map[string]string{})
+			currBucketIndex++
+		}
+		buckets[currBucketIndex][filename] = ruleFiles[filename]
+	}
+
+	ruleFileConfigMaps := make([]v1.ConfigMap, 0, len(buckets))
+	for i, bucket := range buckets {
+		cm := makeRulesConfigMap(cr, bucket)
+		cm.Name = cm.Name + "-" + strconv.Itoa(i)
+		ruleFileConfigMaps = append(ruleFileConfigMaps, cm)
+	}
+
+	return ruleFileConfigMaps, nil
+}
+
+func bucketSize(bucket map[string]string) int {
+	totalSize := 0
+	for _, v := range bucket {
+		totalSize += len(v)
+	}
+
+	return totalSize
+}
+
+func makeRulesConfigMap(cr *victoriametricsv1beta1.VMAlert, ruleFiles map[string]string) v1.ConfigMap {
+	ruleLabels := map[string]string{"vmalert-name": cr.Name}
+	for k, v := range managedByOperatorLabels {
+		ruleLabels[k] = v
+	}
+
+	return v1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            ruleConfigMapName(cr.Name),
+			Namespace:       cr.Namespace,
+			Labels:          ruleLabels,
+			OwnerReferences: cr.AsOwner(),
+			Finalizers:      []string{victoriametricsv1beta1.FinalizerName},
+		},
+		Data: ruleFiles,
+	}
+}
+
+func ruleConfigMapName(vmName string) string {
+	return "vm-" + vmName + "-rulefiles"
+}
+
+// deduplicateRules - takes list of vmRules and modifies it
+// by removing duplicates.
+// possible duplicates:
+// group name across single vmRule. group might include non-duplicate rules.
+// rules in group, must include uniq combination of values.
+func deduplicateRules(ctx context.Context, origin []*victoriametricsv1beta1.VMRule) []*victoriametricsv1beta1.VMRule {
+	// deduplicate rules across groups.
+	for _, vmRule := range origin {
+		for i, grp := range vmRule.Spec.Groups {
+			uniqRules := make(map[uint64]struct{})
+			rules := make([]victoriametricsv1beta1.Rule, 0, len(grp.Rules))
+			for _, rule := range grp.Rules {
+				ruleID := calculateRuleID(rule)
+				if _, ok := uniqRules[ruleID]; ok {
+					logger.WithContext(ctx).Info("duplicate rule found", "rule", rule)
+				} else {
+					uniqRules[ruleID] = struct{}{}
+					rules = append(rules, rule)
+				}
+			}
+			grp.Rules = rules
+			vmRule.Spec.Groups[i] = grp
+		}
+	}
+	return origin
+}
+
+func calculateRuleID(r victoriametricsv1beta1.Rule) uint64 {
+	h := fnv.New64a()
+	h.Write([]byte(r.Expr)) //nolint:errcheck
+	if r.Record != "" {
+		h.Write([]byte("recording")) //nolint:errcheck
+		h.Write([]byte(r.Record))    //nolint:errcheck
+	} else {
+		h.Write([]byte("alerting")) //nolint:errcheck
+		h.Write([]byte(r.Alert))    //nolint:errcheck
+	}
+	kv := sortMap(r.Labels)
+	for _, i := range kv {
+		h.Write([]byte(i.key))   //nolint:errcheck
+		h.Write([]byte(i.value)) //nolint:errcheck
+		h.Write([]byte("\xff"))  //nolint:errcheck
+	}
+	return h.Sum64()
+}
+
+type item struct {
+	key, value string
+}
+
+func sortMap(m map[string]string) []item {
+	var kv []item
+	for k, v := range m {
+		kv = append(kv, item{key: k, value: v})
+	}
+	sort.Slice(kv, func(i, j int) bool {
+		return kv[i].key < kv[j].key
+	})
+	return kv
+}

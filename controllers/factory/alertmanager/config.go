@@ -15,16 +15,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type ParsedConfig struct {
+type parsedConfig struct {
 	Data            []byte
 	BadObjectsCount int
 	ParseErrors     []string
 }
 
-func BuildConfig(ctx context.Context, rclient client.Client, mustAddNamespaceMatcher, disableRouteContinueEnforce bool, baseCfg []byte, amcfgs map[string]*operatorv1beta1.VMAlertmanagerConfig, tlsAssets map[string]string) (*ParsedConfig, error) {
+func buildConfig(ctx context.Context, rclient client.Client, mustAddNamespaceMatcher, disableRouteContinueEnforce bool, baseCfg []byte, amcfgs map[string]*operatorv1beta1.VMAlertmanagerConfig, tlsAssets map[string]string) (*parsedConfig, error) {
 	// fast path.
 	if len(amcfgs) == 0 {
-		return &ParsedConfig{Data: baseCfg}, nil
+		return &parsedConfig{Data: baseCfg}, nil
 	}
 	var baseYAMlCfg alertmanagerConfig
 	if err := yaml.Unmarshal(baseCfg, &baseYAMlCfg); err != nil {
@@ -117,11 +117,11 @@ OUTER:
 	if err != nil {
 		return nil, err
 	}
-	return &ParsedConfig{Data: result, BadObjectsCount: badObjectsCount, ParseErrors: parseErrors}, nil
+	return &parsedConfig{Data: result, BadObjectsCount: badObjectsCount, ParseErrors: parseErrors}, nil
 }
 
-// AddConfigTemplates adds external templates to the given based configuration
-func AddConfigTemplates(baseCfg []byte, templates []string) ([]byte, error) {
+// addConfigTemplates adds external templates to the given based configuration
+func addConfigTemplates(baseCfg []byte, templates []string) ([]byte, error) {
 	if len(templates) == 0 {
 		return baseCfg, nil
 	}
@@ -824,11 +824,9 @@ func (cb *configBuilder) buildWebhook(wh operatorv1beta1.WebhookConfig) error {
 	// no point to add config without url
 	if url == "" {
 		return nil
-	} else {
-		err := parseURL(url)
-		if err != nil {
-			return err
-		}
+	}
+	if err := parseURL(url); err != nil {
+		return fmt.Errorf("failed to parse webhook url: %w", err)
 	}
 
 	temp = append(temp, yaml.MapItem{Key: "url", Value: url})

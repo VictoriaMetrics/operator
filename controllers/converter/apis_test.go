@@ -5,15 +5,13 @@ import (
 	"reflect"
 	"testing"
 
+	v1beta1vm "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
+	v1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
-
 	corev1 "k8s.io/api/core/v1"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/pointer"
-
-	v1beta1vm "github.com/VictoriaMetrics/operator/api/v1beta1"
-	v1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 )
 
 func TestConvertTlsConfig(t *testing.T) {
@@ -61,7 +59,7 @@ func TestConvertTlsConfig(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := ConvertTlsConfig(tt.args.tlsConf)
+			got := convertTLSConfig(tt.args.tlsConf)
 			if got.KeyFile != tt.want.KeyFile || got.CertFile != tt.want.CertFile || got.CAFile != tt.want.CAFile {
 				t.Errorf("ConvertTlsConfig() = \n%v, \nwant \n%v", got, tt.want)
 			}
@@ -123,7 +121,7 @@ func TestConvertRelabelConfig(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := ConvertRelabelConfig(tt.args.promRelabelConfig)
+			got := convertRelabelConfig(tt.args.promRelabelConfig)
 			if len(got) != len(tt.want) {
 				t.Fatalf("len of relabelConfigs mismatch, want: %d, got %d", len(tt.want), len(got))
 			}
@@ -180,7 +178,7 @@ func TestConvertEndpoint(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := ConvertEndpoint(tt.args.promEndpoint); !reflect.DeepEqual(got, tt.want) {
+			if got := convertEndpoint(tt.args.promEndpoint); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("ConvertEndpoint() \ngot:  \n%v\n, \nwant: \n%v", got, tt.want)
 			}
 		})
@@ -343,7 +341,7 @@ func TestConvertPodEndpoints(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := ConvertPodEndpoints(tt.args.promPodEnpoints); !reflect.DeepEqual(got, tt.want) {
+			if got := convertPodEndpoints(tt.args.promPodEnpoints); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("ConvertPodEndpoints() = %v, want %v", got, tt.want)
 			}
 		})

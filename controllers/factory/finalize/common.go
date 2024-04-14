@@ -17,7 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type CRDObject interface {
+type crdObject interface {
 	AnnotationsFiltered() map[string]string
 	GetLabels() map[string]string
 	PrefixedName() string
@@ -70,7 +70,7 @@ func SafeDelete(ctx context.Context, rclient client.Client, r client.Object) err
 	return nil
 }
 
-func deleteSA(ctx context.Context, rclient client.Client, crd CRDObject) error {
+func deleteSA(ctx context.Context, rclient client.Client, crd crdObject) error {
 	if !crd.IsOwnsServiceAccount() {
 		return nil
 	}
@@ -82,7 +82,7 @@ func deleteSA(ctx context.Context, rclient client.Client, crd CRDObject) error {
 
 // DeletePSPChain - removes psp, cluster role and cluster role binding,
 // on finalize request for given CRD
-func DeletePSPChain(ctx context.Context, rclient client.Client, crd CRDObject) error {
+func DeletePSPChain(ctx context.Context, rclient client.Client, crd crdObject) error {
 	if k8stools.IsPSPSupported() {
 		if err := ensurePSPRemoved(ctx, rclient, crd); err != nil {
 			return err
@@ -95,21 +95,21 @@ func DeletePSPChain(ctx context.Context, rclient client.Client, crd CRDObject) e
 	return ensureCRRemoved(ctx, rclient, crd)
 }
 
-func ensurePSPRemoved(ctx context.Context, rclient client.Client, crd CRDObject) error {
+func ensurePSPRemoved(ctx context.Context, rclient client.Client, crd crdObject) error {
 	return SafeDelete(ctx, rclient, &v1beta1.PodSecurityPolicy{ObjectMeta: metav1.ObjectMeta{
-		Name: crd.GetPSPName()}})
+		Name: crd.GetPSPName(),
+	}})
 }
 
-func ensureCRRemoved(ctx context.Context, rclient client.Client, crd CRDObject) error {
+func ensureCRRemoved(ctx context.Context, rclient client.Client, crd crdObject) error {
 	return SafeDelete(ctx, rclient, &v1.ClusterRole{ObjectMeta: metav1.ObjectMeta{Name: crd.PrefixedName()}})
 }
 
-func ensureCRBRemoved(ctx context.Context, rclient client.Client, crd CRDObject) error {
+func ensureCRBRemoved(ctx context.Context, rclient client.Client, crd crdObject) error {
 	return SafeDelete(ctx, rclient, &v1.ClusterRoleBinding{ObjectMeta: metav1.ObjectMeta{Name: crd.PrefixedName()}})
 }
 
-func finalizePsp(ctx context.Context, rclient client.Client, crd CRDObject) error {
-
+func finalizePsp(ctx context.Context, rclient client.Client, crd crdObject) error {
 	// check sa
 	if err := deleteSA(ctx, rclient, crd); err != nil {
 		return err
@@ -137,7 +137,7 @@ func finalizePsp(ctx context.Context, rclient client.Client, crd CRDObject) erro
 	return DeletePSPChain(ctx, rclient, crd)
 }
 
-func finalizePBD(ctx context.Context, rclient client.Client, crd CRDObject) error {
+func finalizePBD(ctx context.Context, rclient client.Client, crd crdObject) error {
 	if k8stools.IsPDBV1APISupported() {
 		return removeFinalizeObjByName(ctx, rclient, &policyv1.PodDisruptionBudget{}, crd.PrefixedName(), crd.GetNSName())
 	}

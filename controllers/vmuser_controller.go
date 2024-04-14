@@ -21,11 +21,11 @@ import (
 	"fmt"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
-	"github.com/VictoriaMetrics/operator/controllers/factory"
 	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/controllers/factory/limiter"
 	"github.com/VictoriaMetrics/operator/controllers/factory/logger"
+	"github.com/VictoriaMetrics/operator/controllers/factory/vmauth"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
 	v1 "k8s.io/api/core/v1"
@@ -91,12 +91,12 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		return result, fmt.Errorf("cannot list vmauths for vmuser: %w", err)
 	}
 
-	for _, vmauth := range vmauthes.Items {
-		if !vmauth.DeletionTimestamp.IsZero() || vmauth.Spec.ParsingError != "" || vmauth.IsUnmanaged() {
+	for _, vmauthItem := range vmauthes.Items {
+		if !vmauthItem.DeletionTimestamp.IsZero() || vmauthItem.Spec.ParsingError != "" || vmauthItem.IsUnmanaged() {
 			continue
 		}
 		// reconcile users for given vmauth.
-		currentVMAuth := &vmauth
+		currentVMAuth := &vmauthItem
 		if !currentVMAuth.Spec.SelectAllByDefault {
 			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, &instance, currentVMAuth, currentVMAuth.Spec.UserSelector, currentVMAuth.Spec.UserNamespaceSelector)
 			if err != nil {
@@ -107,10 +107,10 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 				continue
 			}
 		}
-		l = l.WithValues("vmauth", vmauth.Name)
+		l = l.WithValues("vmauth", vmauthItem.Name)
 		ctx := logger.AddToContext(ctx, l)
 
-		if err := factory.CreateOrUpdateVMAuth(ctx, currentVMAuth, r, r.BaseConf); err != nil {
+		if err := vmauth.CreateOrUpdateVMAuthConfig(ctx, r, currentVMAuth); err != nil {
 			return ctrl.Result{}, fmt.Errorf("cannot create or update vmauth deploy for vmuser: %w", err)
 		}
 	}

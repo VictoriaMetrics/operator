@@ -28,6 +28,7 @@ func VMAuthIngressDelete(ctx context.Context, rclient client.Client, crd *victor
 	return nil
 }
 
+// OnVMAuthDelete deletes all vmauth related resources
 func OnVMAuthDelete(ctx context.Context, rclient client.Client, crd *victoriametricsv1beta1.VMAuth) error {
 	// check deployment
 	if err := removeFinalizeObjByName(ctx, rclient, &appsv1.Deployment{}, crd.PrefixedName(), crd.Namespace); err != nil {

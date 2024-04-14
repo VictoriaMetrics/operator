@@ -34,11 +34,6 @@ func newFileWatcher(file string) (*fileWatcher, error) {
 	}, nil
 }
 
-type watcher interface {
-	startWatch(ctx context.Context, updates chan struct{}) error
-	close()
-}
-
 func (fw *fileWatcher) startWatch(ctx context.Context, updates chan struct{}) error {
 	fw.wg.Add(1)
 	logger.Infof("starting file watcher")

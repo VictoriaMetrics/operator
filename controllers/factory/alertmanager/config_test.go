@@ -4,13 +4,12 @@ import (
 	"context"
 	"testing"
 
-	"gopkg.in/yaml.v2"
-	v1 "k8s.io/api/core/v1"
-
 	operatorv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/pointer"
@@ -18,11 +17,10 @@ import (
 
 func TestBuildConfig(t *testing.T) {
 	type args struct {
-		ctx                         context.Context
-		disableNamespaceMatcher     bool
-		disableRouteContinueEnforce bool
-		baseCfg                     []byte
-		amcfgs                      map[string]*operatorv1beta1.VMAlertmanagerConfig
+		ctx                     context.Context
+		disableNamespaceMatcher bool
+		baseCfg                 []byte
+		amcfgs                  map[string]*operatorv1beta1.VMAlertmanagerConfig
 	}
 	tests := []struct {
 		name              string
@@ -885,7 +883,7 @@ templates: []
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			testClient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			got, err := BuildConfig(tt.args.ctx, testClient, !tt.args.disableNamespaceMatcher, tt.args.disableNamespaceMatcher, tt.args.baseCfg, tt.args.amcfgs, map[string]string{})
+			got, err := buildConfig(tt.args.ctx, testClient, !tt.args.disableNamespaceMatcher, tt.args.disableNamespaceMatcher, tt.args.baseCfg, tt.args.amcfgs, map[string]string{})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("BuildConfig() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -1084,7 +1082,7 @@ templates:
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := AddConfigTemplates(tt.args.config, tt.args.templates)
+			got, err := addConfigTemplates(tt.args.config, tt.args.templates)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("AddConfigTemplates() error = %v, wantErr %v", err, tt.wantErr)
 				return

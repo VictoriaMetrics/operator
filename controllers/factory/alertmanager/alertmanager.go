@@ -9,7 +9,6 @@ import (
 	"github.com/VictoriaMetrics/operator/controllers/factory/logger"
 	"github.com/VictoriaMetrics/operator/controllers/factory/reconcile"
 	"github.com/VictoriaMetrics/operator/internal/config"
-	version "github.com/hashicorp/go-version"
 	"github.com/prometheus/client_golang/prometheus"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
@@ -46,14 +45,8 @@ func CreateOrUpdateAlertManager(ctx context.Context, cr *victoriametricsv1beta1.
 	if cr.Spec.Image.Tag == "" {
 		cr.Spec.Image.Tag = c.VMAlertManager.AlertManagerVersion
 	}
-	// Deprecated, since next release, operator will support only most recent alertmanager versions
-	// And it shouldn't aware of any version compatability
-	// We must provide a list of supported alertmanager versions
-	amVersion, err := version.NewVersion(cr.Spec.Image.Tag)
-	if err != nil {
-		l.Error(err, "cannot parse alertmanager version", "tag", cr.Spec.Image.Tag)
-	}
-	newSts, err := newStsForAlertManager(cr, c, amVersion)
+
+	newSts, err := newStsForAlertManager(cr, c)
 	if err != nil {
 		return fmt.Errorf("cannot generate alertmanager sts, name: %s,err: %w", cr.Name, err)
 	}
@@ -63,7 +56,7 @@ func CreateOrUpdateAlertManager(ctx context.Context, cr *victoriametricsv1beta1.
 		}
 	}
 	// check secret with config
-	if err := createDefaultAMConfig(ctx, cr, rclient, amVersion); err != nil {
+	if err := createDefaultAMConfig(ctx, cr, rclient); err != nil {
 		return fmt.Errorf("failed to check default Alertmanager config: %w", err)
 	}
 

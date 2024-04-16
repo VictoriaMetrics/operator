@@ -51,7 +51,7 @@ var (
 	minimalConfigReloaderVersion       = version.Must(version.NewVersion("v0.44.0"))
 )
 
-func newStsForAlertManager(cr *victoriametricsv1beta1.VMAlertmanager, c *config.BaseOperatorConf, amVersion *version.Version) (*appsv1.StatefulSet, error) {
+func newStsForAlertManager(cr *victoriametricsv1beta1.VMAlertmanager, c *config.BaseOperatorConf) (*appsv1.StatefulSet, error) {
 	if cr.Spec.Image.Repository == "" {
 		cr.Spec.Image.Repository = c.VMAlertManager.AlertmanagerDefaultBaseImage
 	}
@@ -70,7 +70,7 @@ func newStsForAlertManager(cr *victoriametricsv1beta1.VMAlertmanager, c *config.
 		cr.Spec.Retention = defaultRetention
 	}
 
-	spec, err := makeStatefulSetSpec(cr, c, amVersion)
+	spec, err := makeStatefulSetSpec(cr, c)
 	if err != nil {
 		return nil, err
 	}
@@ -145,7 +145,7 @@ func CreateOrUpdateAlertManagerService(ctx context.Context, cr *victoriametricsv
 	return newService, nil
 }
 
-func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, c *config.BaseOperatorConf, amVersion *version.Version) (*appsv1.StatefulSetSpec, error) {
+func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, c *config.BaseOperatorConf) (*appsv1.StatefulSetSpec, error) {
 	cr = cr.DeepCopy()
 
 	image := fmt.Sprintf("%s:%s", build.FormatContainerImage(c.ContainerRegistry, cr.Spec.Image.Repository), cr.Spec.Image.Tag)
@@ -225,33 +225,6 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, c *config.Ba
 				Protocol:      v1.ProtocolTCP,
 			},
 		}, ports...)
-	}
-
-	if amVersion != nil {
-		// Adjust VMAlertmanager command line args to specified AM version
-		if amVersion.LessThan(version.Must(version.NewVersion("v0.15.0"))) {
-			for i := range amArgs {
-				// below VMAlertmanager v0.15.0 peer address port specification is not necessary
-				if strings.Contains(amArgs[i], "--cluster.peer") {
-					amArgs[i] = strings.TrimSuffix(amArgs[i], ":9094")
-				}
-
-				// below VMAlertmanager v0.15.0 high availability flags are prefixed with 'mesh' instead of 'cluster'
-				amArgs[i] = strings.Replace(amArgs[i], "--cluster.", "--mesh.", 1)
-			}
-		}
-		if amVersion.LessThan(version.Must(version.NewVersion("v0.13.0"))) {
-			for i := range amArgs {
-				// below VMAlertmanager v0.13.0 all flags are with single dash.
-				amArgs[i] = strings.Replace(amArgs[i], "--", "-", 1)
-			}
-		}
-		if amVersion.LessThan(version.Must(version.NewVersion("v0.7.0"))) {
-			// below VMAlertmanager v0.7.0 the flag 'web.route-prefix' does not exist
-			amArgs = filter(amArgs, func(s string) bool {
-				return !strings.Contains(s, "web.route-prefix")
-			})
-		}
 	}
 
 	volumes := []v1.Volume{
@@ -464,11 +437,9 @@ func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, c *config.Ba
 	}, nil
 }
 
-var alertmanagerConfigMinimumVersion = version.Must(version.NewVersion("v0.22.0"))
-
 // createDefaultAMConfig - check if secret with config exist,
 // if not create with predefined or user value.
-func createDefaultAMConfig(ctx context.Context, cr *victoriametricsv1beta1.VMAlertmanager, rclient client.Client, amVersion *version.Version) error {
+func createDefaultAMConfig(ctx context.Context, cr *victoriametricsv1beta1.VMAlertmanager, rclient client.Client) error {
 	cr = cr.DeepCopy()
 	l := logger.WithContext(ctx).WithValues("alertmanager", cr.Name)
 	ctx = logger.AddToContext(ctx, l)
@@ -491,17 +462,11 @@ func createDefaultAMConfig(ctx context.Context, cr *victoriametricsv1beta1.VMAle
 	case cr.Spec.ConfigRawYaml != "":
 		alertmananagerConfig = []byte(cr.Spec.ConfigRawYaml)
 	}
-
-	// it makes sense only for alertmanager version above v22.0
-	if amVersion != nil && !amVersion.LessThan(alertmanagerConfigMinimumVersion) {
-		mergedCfg, err := buildAlertmanagerConfigWithCRDs(ctx, rclient, cr, alertmananagerConfig, l, tlsAssets)
-		if err != nil {
-			return fmt.Errorf("cannot build alertmanager config with configSelector, err: %w", err)
-		}
-		alertmananagerConfig = mergedCfg
-	} else {
-		l.Info("alertmanager version doesnt supports VMAlertmanagerConfig CRD", "version", amVersion)
+	mergedCfg, err := buildAlertmanagerConfigWithCRDs(ctx, rclient, cr, alertmananagerConfig, l, tlsAssets)
+	if err != nil {
+		return fmt.Errorf("cannot build alertmanager config with configSelector, err: %w", err)
 	}
+	alertmananagerConfig = mergedCfg
 
 	// apply default config to be able just start alertmanager
 	if len(alertmananagerConfig) == 0 {
@@ -713,14 +678,4 @@ func subPathForStorage(s *victoriametricsv1beta1.StorageSpec) string {
 	}
 
 	return "alertmanager-db"
-}
-
-func filter(strings []string, f func(string) bool) []string {
-	filteredStrings := make([]string, 0)
-	for _, s := range strings {
-		if f(s) {
-			filteredStrings = append(filteredStrings, s)
-		}
-	}
-	return filteredStrings
 }

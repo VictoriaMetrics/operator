@@ -9,7 +9,6 @@ import (
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-test/deep"
-	version "github.com/hashicorp/go-version"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -224,9 +223,8 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 
 func Test_createDefaultAMConfig(t *testing.T) {
 	type args struct {
-		ctx       context.Context
-		cr        *victoriametricsv1beta1.VMAlertmanager
-		amVersion *version.Version
+		ctx context.Context
+		cr  *victoriametricsv1beta1.VMAlertmanager
 	}
 	tests := []struct {
 		name                string
@@ -295,7 +293,6 @@ func Test_createDefaultAMConfig(t *testing.T) {
 						ConfigNamespaceSelector: &metav1.LabelSelector{},
 					},
 				},
-				amVersion: alertmanagerConfigMinimumVersion,
 			},
 			predefinedObjects: []runtime.Object{
 				&victoriametricsv1beta1.VMAlertmanagerConfig{
@@ -321,7 +318,7 @@ func Test_createDefaultAMConfig(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			if err := createDefaultAMConfig(tt.args.ctx, tt.args.cr, fclient, tt.args.amVersion); (err != nil) != tt.wantErr {
+			if err := createDefaultAMConfig(tt.args.ctx, tt.args.cr, fclient); (err != nil) != tt.wantErr {
 				t.Fatalf("createDefaultAMConfig() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			var createdSecret v1.Secret

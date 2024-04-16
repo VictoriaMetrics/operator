@@ -8,11 +8,10 @@ import (
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
-	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 )
 
 func TestBuildConfig(t *testing.T) {
@@ -49,7 +48,7 @@ func TestBuildConfig(t *testing.T) {
 									Name: "email",
 									EmailConfigs: []operatorv1beta1.EmailConfig{
 										{
-											SendResolved: pointer.Bool(true),
+											SendResolved: ptr.To(true),
 											From:         "some-sender",
 											To:           "some-dst",
 											Text:         "some-text",
@@ -58,11 +57,11 @@ func TestBuildConfig(t *testing.T) {
 											},
 										},
 										{
-											SendResolved: pointer.Bool(true),
+											SendResolved: ptr.To(true),
 											From:         "other-sender",
 											To:           "other-dst",
 											Text:         "other-text",
-											RequireTLS:   pointer.Bool(false),
+											RequireTLS:   ptr.To(false),
 										},
 									},
 								},
@@ -127,7 +126,7 @@ templates: []
 									Name: "email",
 									EmailConfigs: []operatorv1beta1.EmailConfig{
 										{
-											SendResolved: pointer.Bool(true),
+											SendResolved: ptr.To(true),
 											From:         "some-sender",
 											To:           "some-dst",
 											Text:         "some-text",
@@ -141,7 +140,7 @@ templates: []
 									Name: "webhook",
 									WebhookConfigs: []operatorv1beta1.WebhookConfig{
 										{
-											URL: pointer.String("http://some-wh"),
+											URL: ptr.To("http://some-wh"),
 										},
 									},
 								},
@@ -173,7 +172,7 @@ templates: []
 									Name: "global",
 									OpsGenieConfigs: []operatorv1beta1.OpsGenieConfig{
 										{
-											SendResolved: pointer.BoolPtr(true),
+											SendResolved: ptr.To(true),
 											APIURL:       "https://opsgen",
 											Details:      map[string]string{"msg": "critical"},
 											Responders: []operatorv1beta1.OpsGenieConfigResponder{
@@ -269,7 +268,7 @@ templates: []
 									Name: "webhook",
 									WebhookConfigs: []operatorv1beta1.WebhookConfig{
 										{
-											SendResolved: pointer.Bool(true),
+											SendResolved: ptr.To(true),
 											URLSecret: &v1.SecretKeySelector{
 												Key: "url",
 												LocalObjectReference: v1.LocalObjectReference{
@@ -338,11 +337,11 @@ templates: []
 										{
 											APIURL: &v1.SecretKeySelector{
 												Key: "url",
-												LocalObjectReference: corev1.LocalObjectReference{
+												LocalObjectReference: v1.LocalObjectReference{
 													Name: "slack",
 												},
 											},
-											SendResolved: pointer.Bool(true),
+											SendResolved: ptr.To(true),
 											Text:         "some-text",
 											Title:        "some-title",
 											LinkNames:    false,
@@ -361,7 +360,7 @@ templates: []
 											},
 											Fields: []operatorv1beta1.SlackField{
 												{
-													Short: pointer.Bool(true),
+													Short: ptr.To(true),
 													Title: "fields",
 												},
 											},
@@ -439,7 +438,7 @@ templates: []
 									Name: "pagerduty",
 									PagerDutyConfigs: []operatorv1beta1.PagerDutyConfig{
 										{
-											SendResolved: pointer.Bool(true),
+											SendResolved: ptr.To(true),
 											RoutingKey: &v1.SecretKeySelector{
 												Key: "some-key",
 												LocalObjectReference: v1.LocalObjectReference{
@@ -557,7 +556,7 @@ templates: []
 									Name: "telegram",
 									TelegramConfigs: []operatorv1beta1.TelegramConfig{
 										{
-											SendResolved: pointer.Bool(true),
+											SendResolved: ptr.To(true),
 											ChatID:       125,
 											BotToken: &v1.SecretKeySelector{
 												LocalObjectReference: v1.LocalObjectReference{
@@ -619,11 +618,11 @@ templates: []
 										{
 											APIURL: &v1.SecretKeySelector{
 												Key: "bad_url",
-												LocalObjectReference: corev1.LocalObjectReference{
+												LocalObjectReference: v1.LocalObjectReference{
 													Name: "slack",
 												},
 											},
-											SendResolved: pointer.Bool(true),
+											SendResolved: ptr.To(true),
 										},
 									},
 								},
@@ -672,7 +671,7 @@ templates: []
 									Name: "telegram",
 									TelegramConfigs: []operatorv1beta1.TelegramConfig{
 										{
-											SendResolved: pointer.Bool(true),
+											SendResolved: ptr.To(true),
 											ChatID:       125,
 											BotToken: &v1.SecretKeySelector{
 												LocalObjectReference: v1.LocalObjectReference{
@@ -702,7 +701,7 @@ templates: []
 									Name: "telegram",
 									TelegramConfigs: []operatorv1beta1.TelegramConfig{
 										{
-											SendResolved: pointer.Bool(true),
+											SendResolved: ptr.To(true),
 											ChatID:       125,
 											Message:      "some-templated message",
 										},
@@ -756,7 +755,7 @@ templates: []
 									Name: "duplicate-receiver",
 									EmailConfigs: []operatorv1beta1.EmailConfig{
 										{
-											SendResolved: pointer.Bool(true),
+											SendResolved: ptr.To(true),
 											From:         "some-sender",
 											To:           "some-dst",
 											Text:         "some-text",

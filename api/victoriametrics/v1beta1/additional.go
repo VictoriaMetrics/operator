@@ -37,7 +37,12 @@ const (
 	SkipValidationValue      = "true"
 	AdditionalServiceLabel   = "operator.victoriametrics.com/additional-service"
 	// PVCExpandableLabel controls checks for storageClass
-	PVCExpandableLabel = "operator.victoriametrics.com/pvc-allow-volume-expansion"
+	PVCExpandableLabel  = "operator.victoriametrics.com/pvc-allow-volume-expansion"
+	SecretsDir          = "/etc/vm/secrets"
+	ConfigMapsDir       = "/etc/vm/configs"
+	TemplatesDir        = "/etc/vm/templates"
+	StreamAggrConfigDir = "/etc/vm/stream-aggr"
+	RelabelingConfigDir = "/etc/vm/relabeling"
 )
 
 // SchemeGroupVersion is group version used to register these objects

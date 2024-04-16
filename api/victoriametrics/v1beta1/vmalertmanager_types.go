@@ -261,6 +261,11 @@ type VMAlertmanagerSpec struct {
 	// If both nil - behaviour controlled by selectAllByDefault
 	// +optional
 	ConfigNamespaceSelector *metav1.LabelSelector `json:"configNamespaceSelector,omitempty"`
+	// ConfigReloaderExtraArgs that will be passed to  VMAuths config-reloader container
+	// for example resyncInterval: "30s"
+	// +optional
+	ConfigReloaderExtraArgs map[string]string `json:"configReloaderExtraArgs,omitempty"`
+
 	// ExtraArgs that will be passed to  VMAlertmanager pod
 	// for example log.level: debug
 	// +optional

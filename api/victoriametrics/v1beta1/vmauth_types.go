@@ -163,6 +163,11 @@ type VMAuthSpec struct {
 	// +optional
 	UserNamespaceSelector *metav1.LabelSelector `json:"userNamespaceSelector,omitempty"`
 
+	// ConfigReloaderExtraArgs that will be passed to  VMAuths config-reloader container
+	// for example resyncInterval: "30s"
+	// +optional
+	ConfigReloaderExtraArgs map[string]string `json:"configReloaderExtraArgs,omitempty"`
+
 	// ExtraArgs that will be passed to  VMAuth pod
 	// for example remoteWrite.tmpDataPath: /tmp
 	// +optional

@@ -3227,6 +3227,13 @@ func (in *VMAgentSpec) DeepCopyInto(out *VMAgentSpec) {
 		*out = new(InsertPorts)
 		**out = **in
 	}
+	if in.ConfigReloaderExtraArgs != nil {
+		in, out := &in.ConfigReloaderExtraArgs, &out.ConfigReloaderExtraArgs
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
 	if in.ExtraArgs != nil {
 		in, out := &in.ExtraArgs, &out.ExtraArgs
 		*out = make(map[string]string, len(*in))
@@ -3711,6 +3718,13 @@ func (in *VMAlertSpec) DeepCopyInto(out *VMAlertSpec) {
 		copy(*out, *in)
 	}
 	in.Datasource.DeepCopyInto(&out.Datasource)
+	if in.ConfigReloaderExtraArgs != nil {
+		in, out := &in.ConfigReloaderExtraArgs, &out.ConfigReloaderExtraArgs
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
 	if in.ExtraArgs != nil {
 		in, out := &in.ExtraArgs, &out.ExtraArgs
 		*out = make(map[string]string, len(*in))
@@ -4151,6 +4165,13 @@ func (in *VMAlertmanagerSpec) DeepCopyInto(out *VMAlertmanagerSpec) {
 		*out = new(metav1.LabelSelector)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.ConfigReloaderExtraArgs != nil {
+		in, out := &in.ConfigReloaderExtraArgs, &out.ConfigReloaderExtraArgs
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
 	if in.ExtraArgs != nil {
 		in, out := &in.ExtraArgs, &out.ExtraArgs
 		*out = make(map[string]string, len(*in))
@@ -4386,6 +4407,13 @@ func (in *VMAuthSpec) DeepCopyInto(out *VMAuthSpec) {
 		in, out := &in.UserNamespaceSelector, &out.UserNamespaceSelector
 		*out = new(metav1.LabelSelector)
 		(*in).DeepCopyInto(*out)
+	}
+	if in.ConfigReloaderExtraArgs != nil {
+		in, out := &in.ConfigReloaderExtraArgs, &out.ConfigReloaderExtraArgs
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
 	}
 	if in.ExtraArgs != nil {
 		in, out := &in.ExtraArgs, &out.ExtraArgs

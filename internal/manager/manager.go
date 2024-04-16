@@ -21,7 +21,6 @@ import (
 	"github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/pflag"
-	v12 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/api/policy/v1beta1"
 	metav1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -157,8 +156,7 @@ func RunManager(ctx context.Context) error {
 		},
 		Client: client.Options{
 			Cache: &client.CacheOptions{DisableFor: []client.Object{
-				&v1.Secret{}, &v1.ConfigMap{}, &v1.Pod{}, &v12.Deployment{},
-				&v12.StatefulSet{},
+				&v1.Secret{}, &v1.ConfigMap{}, &v1.Pod{},
 				&v1beta1.PodSecurityPolicy{}, &v1beta1.PodDisruptionBudget{}, &v1.Namespace{},
 			}},
 		},

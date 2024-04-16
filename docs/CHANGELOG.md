@@ -22,6 +22,7 @@ aliases:
 
 
 - Update VictoriaMetrics image tags to [v1.100.1](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.100.1).
+- [operator](./README.md): reduce number of watched resources owned by `CRD`s. Operator no longer watches for `Service`, `Secret`, `Configmap` changes owned by CRD object. It must reduce logging output, CPU and memory usage for operator.
 - [operator](./README.md): exposes `config-reloader-http` port with `8435` number for the customer config-reloader containers. Operator may use own config-reloader implementation for `VMAuth`, `VMAlertmanager` and `VMAgent`.
 - [operator](./README.md): adds new field `configReloaderExtraArgs` for `VMAgent`, `VMAlert`, `VMAuth` and `VMAlertmanager` CRDs. It allows to configure config-reloader container.
 - [config-reloader](./README.md): adds error metrics to the config-reloader container - `configreloader_last_reload_successful`, `configreloader_last_reload_errors_total`, `configreloader_config_last_reload_total`, `configreloader_k8s_watch_errors_total`, `configreloader_secret_content_update_errors_total`, `configreloader_last_reload_success_timestamp_seconds`. See this [issue](https://github.com/VictoriaMetrics/operator/issues/916) for details.

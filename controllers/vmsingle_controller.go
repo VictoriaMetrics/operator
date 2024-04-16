@@ -30,7 +30,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -103,10 +102,8 @@ func (r *VMSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (r
 func (r *VMSingleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&victoriametricsv1beta1.VMSingle{}).
-		Owns(&appsv1.Deployment{}, builder.OnlyMetadata).
-		Owns(&v1.Service{}, builder.OnlyMetadata).
-		Owns(&victoriametricsv1beta1.VMServiceScrape{}).
-		Owns(&v1.ServiceAccount{}, builder.OnlyMetadata).
+		Owns(&appsv1.Deployment{}).
+		Owns(&v1.ServiceAccount{}).
 		WithOptions(getDefaultOptions()).
 		Complete(r)
 }

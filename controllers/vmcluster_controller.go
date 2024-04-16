@@ -11,10 +11,8 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -79,11 +77,8 @@ func (r *VMClusterReconciler) Reconcile(ctx context.Context, request ctrl.Reques
 func (r *VMClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&victoriametricsv1beta1.VMCluster{}).
-		Owns(&appsv1.Deployment{}, builder.OnlyMetadata).
-		Owns(&v1.Service{}, builder.OnlyMetadata).
-		Owns(&victoriametricsv1beta1.VMServiceScrape{}, builder.OnlyMetadata).
-		Owns(&appsv1.StatefulSet{}, builder.OnlyMetadata).
-		Owns(&v1.ServiceAccount{}, builder.OnlyMetadata).
+		Owns(&appsv1.Deployment{}).
+		Owns(&appsv1.StatefulSet{}).
 		WithOptions(getDefaultOptions()).
 		Complete(r)
 }

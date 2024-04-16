@@ -93,7 +93,7 @@ func CreateOrUpdateVMAuth(ctx context.Context, cr *victoriametricsv1beta1.VMAuth
 			return fmt.Errorf("cannot update pod disruption budget for vmauth: %w", err)
 		}
 	}
-	newDeploy, err := newDeployForVMAuth(ctx, cr, c)
+	newDeploy, err := newDeployForVMAuth(cr, c)
 	if err != nil {
 		return fmt.Errorf("cannot build new deploy for vmauth: %w", err)
 	}
@@ -101,7 +101,7 @@ func CreateOrUpdateVMAuth(ctx context.Context, cr *victoriametricsv1beta1.VMAuth
 	return reconcile.Deployment(ctx, rclient, newDeploy, c.PodWaitReadyTimeout)
 }
 
-func newDeployForVMAuth(ctx context.Context, cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperatorConf) (*appsv1.Deployment, error) {
+func newDeployForVMAuth(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperatorConf) (*appsv1.Deployment, error) {
 	cr = cr.DeepCopy()
 
 	if cr.Spec.Image.Repository == "" {
@@ -116,7 +116,7 @@ func newDeployForVMAuth(ctx context.Context, cr *victoriametricsv1beta1.VMAuth, 
 	if cr.Spec.Image.PullPolicy == "" {
 		cr.Spec.Image.PullPolicy = corev1.PullIfNotPresent
 	}
-	podSpec, err := makeSpecForVMAuth(ctx, cr, c)
+	podSpec, err := makeSpecForVMAuth(cr, c)
 	if err != nil {
 		return nil, err
 	}
@@ -146,7 +146,7 @@ func newDeployForVMAuth(ctx context.Context, cr *victoriametricsv1beta1.VMAuth, 
 	return depSpec, nil
 }
 
-func makeSpecForVMAuth(ctx context.Context, cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperatorConf) (*corev1.PodTemplateSpec, error) {
+func makeSpecForVMAuth(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperatorConf) (*corev1.PodTemplateSpec, error) {
 	var args []string
 	args = append(args, fmt.Sprintf("-auth.config=%s", path.Join(vmAuthConfigFolder, vmAuthConfigName)))
 
@@ -255,7 +255,7 @@ func makeSpecForVMAuth(ctx context.Context, cr *victoriametricsv1beta1.VMAuth, c
 		configReloader := buildVMAuthConfigReloaderContainer(cr, c)
 		operatorContainers = append(operatorContainers, configReloader)
 		initContainers = append(initContainers,
-			buildInitConfigContainer(ctx, c.VMAuthDefault.ConfigReloadImage, buildConfigReloaderResourceReqsForVMAuth(c), c, configReloader.Args)...)
+			buildInitConfigContainer(c.VMAuthDefault.ConfigReloadImage, buildConfigReloaderResourceReqsForVMAuth(c), c, configReloader.Args)...)
 	} else {
 		volumes = append(volumes, corev1.Volume{
 			VolumeSource: corev1.VolumeSource{
@@ -524,25 +524,15 @@ func buildVMAuthConfigReloaderContainer(cr *victoriametricsv1beta1.VMAuth, c *co
 		configReloader.Command = []string{"/usr/local/bin/config-reloader"}
 	}
 
+	build.AddsPortProbesToConfigReloaderContainer(&configReloader, c)
 	return configReloader
 }
 
-func buildInitConfigContainer(ctx context.Context, baseImage string, resources corev1.ResourceRequirements, c *config.BaseOperatorConf, configReloaderArgs []string) []corev1.Container {
+var minimalCustomConfigReloaderVersion = version.Must(version.NewVersion("v0.35.0"))
+
+func buildInitConfigContainer(baseImage string, resources corev1.ResourceRequirements, c *config.BaseOperatorConf, configReloaderArgs []string) []corev1.Container {
 	var initReloader corev1.Container
-	if c.UseCustomConfigReloader {
-		// add custom config reloader as initContainer since v0.35.0
-		reloaderImage := c.CustomConfigReloaderImage
-		idx := strings.LastIndex(reloaderImage, "-")
-		if idx > 0 {
-			imageTag := reloaderImage[idx+1:]
-			ver, err := version.NewVersion(imageTag)
-			if err != nil {
-				logger.WithContext(ctx).Error(err, "cannot parse custom config reloader version", "reloader-image", reloaderImage)
-				return nil
-			} else if ver.LessThan(version.Must(version.NewVersion("0.35.0"))) {
-				return nil
-			}
-		}
+	if c.UseCustomConfigReloader && c.CustomConfigReloaderImageVersion().GreaterThanOrEqual(minimalCustomConfigReloaderVersion) {
 		initReloader = corev1.Container{
 			Image: build.FormatContainerImage(c.ContainerRegistry, c.CustomConfigReloaderImage),
 			Name:  "config-init",

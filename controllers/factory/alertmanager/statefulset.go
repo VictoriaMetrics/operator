@@ -18,7 +18,6 @@ import (
 	"github.com/go-logr/logr"
 	version "github.com/hashicorp/go-version"
 	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -47,9 +46,12 @@ receivers:
 `
 )
 
-var minReplicas int32 = 1
+var (
+	minReplicas                  int32 = 1
+	minimalConfigReloaderVersion       = version.Must(version.NewVersion("v0.44.0"))
+)
 
-func newStsForAlertManager(ctx context.Context, cr *victoriametricsv1beta1.VMAlertmanager, c *config.BaseOperatorConf, amVersion *version.Version) (*appsv1.StatefulSet, error) {
+func newStsForAlertManager(cr *victoriametricsv1beta1.VMAlertmanager, c *config.BaseOperatorConf, amVersion *version.Version) (*appsv1.StatefulSet, error) {
 	if cr.Spec.Image.Repository == "" {
 		cr.Spec.Image.Repository = c.VMAlertManager.AlertmanagerDefaultBaseImage
 	}
@@ -68,7 +70,7 @@ func newStsForAlertManager(ctx context.Context, cr *victoriametricsv1beta1.VMAle
 		cr.Spec.Retention = defaultRetention
 	}
 
-	spec, err := makeStatefulSetSpec(ctx, cr, c, amVersion)
+	spec, err := makeStatefulSetSpec(cr, c, amVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -143,7 +145,7 @@ func CreateOrUpdateAlertManagerService(ctx context.Context, cr *victoriametricsv
 	return newService, nil
 }
 
-func makeStatefulSetSpec(ctx context.Context, cr *victoriametricsv1beta1.VMAlertmanager, c *config.BaseOperatorConf, amVersion *version.Version) (*appsv1.StatefulSetSpec, error) {
+func makeStatefulSetSpec(cr *victoriametricsv1beta1.VMAlertmanager, c *config.BaseOperatorConf, amVersion *version.Version) (*appsv1.StatefulSetSpec, error) {
 	cr = cr.DeepCopy()
 
 	image := fmt.Sprintf("%s:%s", build.FormatContainerImage(c.ContainerRegistry, cr.Spec.Image.Repository), cr.Spec.Image.Tag)
@@ -262,7 +264,7 @@ func makeStatefulSetSpec(ctx context.Context, cr *victoriametricsv1beta1.VMAlert
 			},
 		},
 	}
-	if c.UseCustomConfigReloader {
+	if c.UseCustomConfigReloader && c.CustomConfigReloaderImageVersion().GreaterThanOrEqual(minimalConfigReloaderVersion) {
 		volumes[0] = v1.Volume{
 			Name: configVolumeName,
 			VolumeSource: v1.VolumeSource{
@@ -374,9 +376,9 @@ func makeStatefulSetSpec(ctx context.Context, cr *victoriametricsv1beta1.VMAlert
 	}
 	envs = append(envs, cr.Spec.ExtraEnvs...)
 
-	var initContainers []corev1.Container
+	var initContainers []v1.Container
 
-	initContainers = append(initContainers, buildInitConfigContainer(ctx, cr, c)...)
+	initContainers = append(initContainers, buildInitConfigContainer(cr, c)...)
 	if len(cr.Spec.InitContainers) > 0 {
 		var err error
 		initContainers, err = k8stools.MergePatchContainers(initContainers, cr.Spec.InitContainers)
@@ -548,54 +550,41 @@ func createDefaultAMConfig(ctx context.Context, cr *victoriametricsv1beta1.VMAle
 	return rclient.Update(ctx, newAMSecretConfig)
 }
 
-func buildInitConfigContainer(ctx context.Context, cr *victoriametricsv1beta1.VMAlertmanager, c *config.BaseOperatorConf) []v1.Container {
-	var initReloader v1.Container
-	if c.UseCustomConfigReloader {
-		resources := v1.ResourceRequirements{Limits: v1.ResourceList{}, Requests: v1.ResourceList{}}
-		if c.VMAlertManager.ConfigReloaderCPU != "0" && c.VMAgentDefault.UseDefaultResources {
-			resources.Limits[v1.ResourceCPU] = resource.MustParse(c.VMAlertManager.ConfigReloaderCPU)
-			resources.Requests[v1.ResourceCPU] = resource.MustParse(c.VMAlertManager.ConfigReloaderCPU)
-		}
-		if c.VMAlertManager.ConfigReloaderMemory != "0" && c.VMAgentDefault.UseDefaultResources {
-			resources.Limits[v1.ResourceMemory] = resource.MustParse(c.VMAlertManager.ConfigReloaderMemory)
-			resources.Requests[v1.ResourceMemory] = resource.MustParse(c.VMAlertManager.ConfigReloaderMemory)
-		}
-		// add custom config reloader as initContainer since v0.35.0
-		reloaderImage := c.CustomConfigReloaderImage
-		idx := strings.LastIndex(reloaderImage, "-")
-		if idx > 0 {
-			imageTag := reloaderImage[idx+1:]
-			ver, err := version.NewVersion(imageTag)
-			if err != nil {
-				logger.WithContext(ctx).Error(err, "cannot parse custom config reloader version", "reloader-image", reloaderImage)
-				return nil
-			} else if ver.LessThan(version.Must(version.NewVersion("0.43.0"))) {
-				return nil
-			}
-		}
-		initReloader = v1.Container{
-			Image: build.FormatContainerImage(c.ContainerRegistry, c.CustomConfigReloaderImage),
-			Name:  "config-init",
-			Command: []string{
-				"/usr/local/bin/config-reloader",
-			},
-			Args: []string{
-				fmt.Sprintf("--config-secret-key=%s", alertmanagerSecretConfigKey),
-				fmt.Sprintf("--config-secret-name=%s/%s", cr.Namespace, cr.ConfigSecretName()),
-				fmt.Sprintf("--config-envsubst-file=%s", alertmanagerConfFile),
-				"--only-init-config",
-			},
-			VolumeMounts: []corev1.VolumeMount{
-				{
-					Name:      configVolumeName,
-					MountPath: alertmanagerConfDir,
-				},
-			},
-			Resources: resources,
-		}
-		return []v1.Container{initReloader}
+func buildInitConfigContainer(cr *victoriametricsv1beta1.VMAlertmanager, c *config.BaseOperatorConf) []v1.Container {
+	if !c.UseCustomConfigReloader || c.CustomConfigReloaderImageVersion().LessThan(minimalConfigReloaderVersion) {
+		return nil
 	}
-	return nil
+	var initReloader v1.Container
+	resources := v1.ResourceRequirements{Limits: v1.ResourceList{}, Requests: v1.ResourceList{}}
+	if c.VMAlertManager.ConfigReloaderCPU != "0" && c.VMAgentDefault.UseDefaultResources {
+		resources.Limits[v1.ResourceCPU] = resource.MustParse(c.VMAlertManager.ConfigReloaderCPU)
+		resources.Requests[v1.ResourceCPU] = resource.MustParse(c.VMAlertManager.ConfigReloaderCPU)
+	}
+	if c.VMAlertManager.ConfigReloaderMemory != "0" && c.VMAgentDefault.UseDefaultResources {
+		resources.Limits[v1.ResourceMemory] = resource.MustParse(c.VMAlertManager.ConfigReloaderMemory)
+		resources.Requests[v1.ResourceMemory] = resource.MustParse(c.VMAlertManager.ConfigReloaderMemory)
+	}
+	initReloader = v1.Container{
+		Image: build.FormatContainerImage(c.ContainerRegistry, c.CustomConfigReloaderImage),
+		Name:  "config-init",
+		Command: []string{
+			"/usr/local/bin/config-reloader",
+		},
+		Args: []string{
+			fmt.Sprintf("--config-secret-key=%s", alertmanagerSecretConfigKey),
+			fmt.Sprintf("--config-secret-name=%s/%s", cr.Namespace, cr.ConfigSecretName()),
+			fmt.Sprintf("--config-envsubst-file=%s", alertmanagerConfFile),
+			"--only-init-config",
+		},
+		VolumeMounts: []v1.VolumeMount{
+			{
+				Name:      configVolumeName,
+				MountPath: alertmanagerConfDir,
+			},
+		},
+		Resources: resources,
+	}
+	return []v1.Container{initReloader}
 }
 
 func buildVMAlertmanagerConfigReloader(cr *victoriametricsv1beta1.VMAlertmanager, c *config.BaseOperatorConf, crVolumeMounts []v1.VolumeMount) v1.Container {
@@ -615,7 +604,7 @@ func buildVMAlertmanagerConfigReloader(cr *victoriametricsv1beta1.VMAlertmanager
 	}
 
 	var configReloaderArgs []string
-	if c.UseCustomConfigReloader {
+	if c.UseCustomConfigReloader && c.CustomConfigReloaderImageVersion().GreaterThanOrEqual(minimalConfigReloaderVersion) {
 		configReloaderArgs = append(configReloaderArgs,
 			fmt.Sprintf("--reload-url=%s", localReloadURL),
 			fmt.Sprintf("--config-envsubst-file=%s", alertmanagerConfFile),
@@ -654,10 +643,12 @@ func buildVMAlertmanagerConfigReloader(cr *victoriametricsv1beta1.VMAlertmanager
 		Resources:                resources,
 		TerminationMessagePolicy: v1.TerminationMessageFallbackToLogsOnError,
 	}
-	if c.UseCustomConfigReloader {
+	if c.UseCustomConfigReloader && c.CustomConfigReloaderImageVersion().GreaterThanOrEqual(minimalConfigReloaderVersion) {
 		configReloaderContainer.Image = build.FormatContainerImage(c.ContainerRegistry, c.CustomConfigReloaderImage)
 		configReloaderContainer.Command = []string{"/usr/local/bin/config-reloader"}
 	}
+
+	build.AddsPortProbesToConfigReloaderContainer(&configReloaderContainer, c)
 
 	return configReloaderContainer
 }

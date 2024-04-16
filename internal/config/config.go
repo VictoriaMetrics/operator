@@ -9,6 +9,7 @@ import (
 	"text/tabwriter"
 	"time"
 
+	version "github.com/hashicorp/go-version"
 	"github.com/kelseyhightower/envconfig"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
@@ -48,10 +49,11 @@ type BaseOperatorConf struct {
 	// it should speed-up config reloading process.
 	UseCustomConfigReloader bool `default:"false"`
 	// container registry name prefix, e.g. docker.io
-	ContainerRegistry         string `default:""`
-	CustomConfigReloaderImage string `default:"victoriametrics/operator:config-reloader-v0.44.0"`
-	PSPAutoCreateEnabled      bool   `default:"false"`
-	VMAlertDefault            struct {
+	ContainerRegistry                string `default:""`
+	CustomConfigReloaderImage        string `default:"victoriametrics/operator:config-reloader-v0.44.0"`
+	parsedConfigReloaderImageVersion *version.Version
+	PSPAutoCreateEnabled             bool `default:"false"`
+	VMAlertDefault                   struct {
 		Image               string `default:"victoriametrics/vmalert"`
 		Version             string `default:"1.100.1"`
 		Port                string `default:"8080"`
@@ -273,6 +275,29 @@ type BaseOperatorConf struct {
 	EnableStrictSecurity bool `default:"false"`
 }
 
+// CustomConfigReloaderImageVersion returns version of custom config-reloader
+func (boc *BaseOperatorConf) CustomConfigReloaderImageVersion() *version.Version {
+	return boc.parsedConfigReloaderImageVersion
+}
+
+// parseAndSetCustomerConfigReloadImageVersion parses customer config reloader image version and returns result
+// in case of parsing error (if tag was incorrectly set by user), returns empty version 0.0
+func parseAndSetCustomerConfigReloadImageVersion(boc *BaseOperatorConf) error {
+	reloaderImage := boc.CustomConfigReloaderImage
+	idx := strings.LastIndex(reloaderImage, ":")
+	if idx > 0 {
+		imageVersion := reloaderImage[idx+1:]
+		imageVersion = strings.TrimPrefix(imageVersion, "config-reloader-")
+		ver, err := version.NewVersion(imageVersion)
+		if err != nil {
+			return fmt.Errorf("cannot parse version for config-reloader container=%q from imageVersion=%q: %w", reloaderImage, imageVersion, err)
+		}
+		boc.parsedConfigReloaderImageVersion = ver
+		return nil
+	}
+	return fmt.Errorf("cannot find : delimeter at customer config reloader image=%q", reloaderImage)
+}
+
 // Validate - validates config on best effort.
 func (boc BaseOperatorConf) Validate() error {
 	validateResource := func(name string, res Resource) error {
@@ -371,6 +396,9 @@ func MustGetBaseConfig() *BaseOperatorConf {
 			c.Labels = defL
 		}
 		if err := c.Validate(); err != nil {
+			panic(err)
+		}
+		if err := parseAndSetCustomerConfigReloadImageVersion(c); err != nil {
 			panic(err)
 		}
 		opConf = c

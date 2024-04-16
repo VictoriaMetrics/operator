@@ -6,6 +6,7 @@ import (
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
+	"github.com/hashicorp/go-version"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -294,4 +295,36 @@ func AppendArgsForInsertPorts(args []string, ip *victoriametricsv1beta1.InsertPo
 		args = append(args, fmt.Sprintf("--opentsdbHTTPListenAddr=:%s", ip.OpenTSDBHTTPPort))
 	}
 	return args
+}
+
+var (
+	minimalHealthProbeSupportedVersion = version.Must(version.NewVersion("v0.44.0"))
+	configReloaderDefaultPort          = 8435
+	configReloaderContainerProbe       = v1.ProbeHandler{
+		HTTPGet: &v1.HTTPGetAction{
+			Path:   "/health",
+			Scheme: "HTTP",
+			Port:   intstr.FromInt(configReloaderDefaultPort),
+		},
+	}
+)
+
+// AddsPortProbesToConfigReloaderContainer conditionally adds readiness and liveness probes to the custom config-reloader image
+// exposes reloader-http port for container
+func AddsPortProbesToConfigReloaderContainer(crContainer *v1.Container, c *config.BaseOperatorConf) {
+	if c.UseCustomConfigReloader && c.CustomConfigReloaderImageVersion().LessThan(minimalHealthProbeSupportedVersion) {
+		return
+	}
+	crContainer.Ports = append(crContainer.Ports, v1.ContainerPort{
+		ContainerPort: int32(configReloaderDefaultPort),
+		Name:          "reloader-http",
+		Protocol:      "TCP",
+	})
+	crContainer.LivenessProbe = &v1.Probe{
+		ProbeHandler: configReloaderContainerProbe,
+	}
+	crContainer.ReadinessProbe = &v1.Probe{
+		InitialDelaySeconds: 5,
+		ProbeHandler:        configReloaderContainerProbe,
+	}
 }

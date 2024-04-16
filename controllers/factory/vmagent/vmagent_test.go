@@ -1491,7 +1491,7 @@ func Test_buildConfigReloaderArgs(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := buildConfigReloaderArgs(context.Background(), tt.args.cr, tt.args.c)
+			got := buildConfigReloaderArgs(tt.args.cr, tt.args.c)
 			sort.Strings(got)
 			sort.Strings(tt.want)
 			assert.Equal(t, tt.want, got)
@@ -1586,7 +1586,7 @@ func TestMakeSpecForAgentOk(t *testing.T) {
 	f := func(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperatorConf, sCache *scrapesSecretsCache, wantJSON string) {
 		t.Helper()
 		setDefaultForVMAgent(cr, c)
-		got, err := makeSpecForVMAgent(context.Background(), cr, c, sCache)
+		got, err := makeSpecForVMAgent(cr, c, sCache)
 		if err != nil {
 			t.Fatalf("not expected error=%q", err)
 		}

@@ -53,7 +53,7 @@ func CreateOrUpdateAlertManager(ctx context.Context, cr *victoriametricsv1beta1.
 	if err != nil {
 		l.Error(err, "cannot parse alertmanager version", "tag", cr.Spec.Image.Tag)
 	}
-	newSts, err := newStsForAlertManager(ctx, cr, c, amVersion)
+	newSts, err := newStsForAlertManager(cr, c, amVersion)
 	if err != nil {
 		return fmt.Errorf("cannot generate alertmanager sts, name: %s,err: %w", cr.Name, err)
 	}

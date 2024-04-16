@@ -118,7 +118,7 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 		}
 	}
 
-	newDeploy, err := newDeployForVMAgent(ctx, cr, c, ssCache)
+	newDeploy, err := newDeployForVMAgent(cr, c, ssCache)
 	if err != nil {
 		return fmt.Errorf("cannot build new deploy for vmagent: %w", err)
 	}
@@ -223,11 +223,11 @@ func setDefaultForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOper
 }
 
 // newDeployForVMAgent builds vmagent deployment spec.
-func newDeployForVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperatorConf, ssCache *scrapesSecretsCache) (runtime.Object, error) {
+func newDeployForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperatorConf, ssCache *scrapesSecretsCache) (runtime.Object, error) {
 	cr = cr.DeepCopy()
 	setDefaultForVMAgent(cr, c)
 
-	podSpec, err := makeSpecForVMAgent(ctx, cr, c, ssCache)
+	podSpec, err := makeSpecForVMAgent(cr, c, ssCache)
 	if err != nil {
 		return nil, err
 	}
@@ -316,7 +316,7 @@ func buildSTSServiceName(cr *victoriametricsv1beta1.VMAgent) string {
 	return ""
 }
 
-func makeSpecForVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperatorConf, ssCache *scrapesSecretsCache) (*corev1.PodSpec, error) {
+func makeSpecForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperatorConf, ssCache *scrapesSecretsCache) (*corev1.PodSpec, error) {
 	var args []string
 
 	if len(cr.Spec.RemoteWrite) > 0 {
@@ -529,11 +529,11 @@ func makeSpecForVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAgent,
 	var ic []corev1.Container
 	// conditional add config reloader container
 	if !cr.Spec.IngestOnlyMode || cr.HasAnyRelabellingConfigs() || cr.HasAnyStreamAggrConfigs() {
-		configReloader := buildConfigReloaderContainer(ctx, cr, c)
+		configReloader := buildConfigReloaderContainer(cr, c)
 		operatorContainers = append(operatorContainers, configReloader)
 		if !cr.Spec.IngestOnlyMode {
 			ic = append(ic,
-				buildInitConfigContainer(ctx, c.VMAgentDefault.ConfigReloadImage, buildConfigReloaderResourceReqsForVMAgent(c), c, configReloader.Args)...)
+				buildInitConfigContainer(c.VMAgentDefault.ConfigReloadImage, buildConfigReloaderResourceReqsForVMAgent(c), c, configReloader.Args)...)
 			if len(cr.Spec.InitContainers) > 0 {
 				var err error
 				ic, err = k8stools.MergePatchContainers(ic, cr.Spec.InitContainers)
@@ -1299,7 +1299,7 @@ func buildRemoteWrites(cr *victoriametricsv1beta1.VMAgent, ssCache *scrapesSecre
 	return finalArgs
 }
 
-func buildConfigReloaderContainer(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperatorConf) corev1.Container {
+func buildConfigReloaderContainer(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperatorConf) corev1.Container {
 	var configReloadVolumeMounts []corev1.VolumeMount
 	if !cr.Spec.IngestOnlyMode {
 		configReloadVolumeMounts = append(configReloadVolumeMounts,
@@ -1333,7 +1333,7 @@ func buildConfigReloaderContainer(ctx context.Context, cr *victoriametricsv1beta
 			})
 	}
 
-	configReloadArgs := buildConfigReloaderArgs(ctx, cr, c)
+	configReloadArgs := buildConfigReloaderArgs(cr, c)
 	cntr := corev1.Container{
 		Name:                     "config-reloader",
 		Image:                    build.FormatContainerImage(c.ContainerRegistry, c.VMAgentDefault.ConfigReloadImage),
@@ -1355,6 +1355,8 @@ func buildConfigReloaderContainer(ctx context.Context, cr *victoriametricsv1beta
 		cntr.Image = build.FormatContainerImage(c.ContainerRegistry, c.CustomConfigReloaderImage)
 		cntr.Command = []string{"/usr/local/bin/config-reloader"}
 	}
+	build.AddsPortProbesToConfigReloaderContainer(&cntr, c)
+
 	return cntr
 }
 
@@ -1373,22 +1375,12 @@ func buildConfigReloaderResourceReqsForVMAgent(c *config.BaseOperatorConf) corev
 	return configReloaderResources
 }
 
-func buildConfigReloaderArgs(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperatorConf) []string {
+func buildConfigReloaderArgs(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOperatorConf) []string {
 	// by default use watched-dir
 	// it should simplify parsing for latest and empty version tags.
 	dirsArg := "watched-dir"
 	if !c.UseCustomConfigReloader {
-		reloaderImage := c.VMAgentDefault.ConfigReloadImage
-		idx := strings.LastIndex(reloaderImage, ":")
-		if idx > 0 {
-			imageTag := reloaderImage[idx+1:]
-			ver, err := version.NewVersion(imageTag)
-			if err != nil {
-				logger.WithContext(ctx).Error(err, "cannot parse vmagent config reloader version", "reloader-image", reloaderImage)
-			} else if ver.LessThan(version.Must(version.NewVersion("0.43.0"))) {
-				dirsArg = "rules-dir"
-			}
-		}
+		dirsArg = "rules-dir"
 	}
 
 	args := []string{
@@ -1429,22 +1421,11 @@ func buildConfigReloaderArgs(ctx context.Context, cr *victoriametricsv1beta1.VMA
 	return args
 }
 
-func buildInitConfigContainer(ctx context.Context, baseImage string, resources corev1.ResourceRequirements, c *config.BaseOperatorConf, configReloaderArgs []string) []corev1.Container {
+var minimalConfigReloaderVersion = version.Must(version.NewVersion("v0.35.0"))
+
+func buildInitConfigContainer(baseImage string, resources corev1.ResourceRequirements, c *config.BaseOperatorConf, configReloaderArgs []string) []corev1.Container {
 	var initReloader corev1.Container
-	if c.UseCustomConfigReloader {
-		// add custom config reloader as initContainer since v0.35.0
-		reloaderImage := c.CustomConfigReloaderImage
-		idx := strings.LastIndex(reloaderImage, "-")
-		if idx > 0 {
-			imageTag := reloaderImage[idx+1:]
-			ver, err := version.NewVersion(imageTag)
-			if err != nil {
-				logger.WithContext(ctx).Error(err, "cannot parse custom config reloader version", "reloader-image", reloaderImage)
-				return nil
-			} else if ver.LessThan(version.Must(version.NewVersion("0.35.0"))) {
-				return nil
-			}
-		}
+	if c.UseCustomConfigReloader && c.CustomConfigReloaderImageVersion().GreaterThanOrEqual(minimalConfigReloaderVersion) {
 		initReloader = corev1.Container{
 			Image: build.FormatContainerImage(c.ContainerRegistry, c.CustomConfigReloaderImage),
 			Name:  "config-init",

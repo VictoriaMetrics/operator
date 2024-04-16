@@ -14,6 +14,7 @@ resources:
 - bases/operator.victoriametrics.com_vmprobes.yaml
 - bases/operator.victoriametrics.com_vmnodescrapes.yaml
 - bases/operator.victoriametrics.com_vmstaticscrapes.yaml
+- bases/operator.victoriametrics.com_vmscrapeconfigs.yaml
 - bases/operator.victoriametrics.com_vmauths.yaml
 - bases/operator.victoriametrics.com_vmusers.yaml
 - bases/operator.victoriametrics.com_vmalertmanagerconfigs.yaml

@@ -48,7 +48,7 @@ receivers:
 
 var (
 	minReplicas                  int32 = 1
-	minimalConfigReloaderVersion       = version.Must(version.NewVersion("v0.44.0"))
+	minimalConfigReloaderVersion       = version.Must(version.NewVersion("v0.43.0"))
 )
 
 func newStsForAlertManager(cr *victoriametricsv1beta1.VMAlertmanager, c *config.BaseOperatorConf) (*appsv1.StatefulSet, error) {

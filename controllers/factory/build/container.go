@@ -298,7 +298,7 @@ func AppendArgsForInsertPorts(args []string, ip *victoriametricsv1beta1.InsertPo
 }
 
 var (
-	minimalHealthProbeSupportedVersion = version.Must(version.NewVersion("v0.44.0"))
+	minimalHealthProbeSupportedVersion = version.Must(version.NewVersion("v0.43.0"))
 	configReloaderDefaultPort          = 8435
 	configReloaderContainerProbe       = v1.ProbeHandler{
 		HTTPGet: &v1.HTTPGetAction{

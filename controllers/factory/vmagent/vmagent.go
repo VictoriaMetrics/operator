@@ -310,7 +310,9 @@ func newDeployForVMAgent(cr *victoriametricsv1beta1.VMAgent, c *config.BaseOpera
 
 func buildSTSServiceName(cr *victoriametricsv1beta1.VMAgent) string {
 	// set service name for sts if additional service is headless
-	if cr.Spec.ServiceSpec != nil && cr.Spec.ServiceSpec.Spec.ClusterIP == corev1.ClusterIPNone {
+	if cr.Spec.ServiceSpec != nil &&
+		!cr.Spec.ServiceSpec.UseAsDefault &&
+		cr.Spec.ServiceSpec.Spec.ClusterIP == corev1.ClusterIPNone {
 		return cr.Spec.ServiceSpec.NameOrDefault(cr.PrefixedName())
 	}
 	return ""

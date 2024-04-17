@@ -542,17 +542,6 @@ func (m StringOrArray) MarshalYAML() (interface{}, error) {
 	}
 }
 
-func (m StringOrArray) MarshalJSON() ([]byte, error) {
-	switch len(m) {
-	case 0:
-		return json.Marshal("")
-	case 1:
-		return json.Marshal(m[0])
-	default:
-		return json.Marshal([]string(m))
-	}
-}
-
 func (m *StringOrArray) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	var raw any
 	if err := unmarshal(&raw); err != nil {

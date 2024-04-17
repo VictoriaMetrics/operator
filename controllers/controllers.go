@@ -54,6 +54,7 @@ var (
 	})
 )
 
+// InitMetrics adds metrics to the Registry
 func init() {
 	metrics.Registry.MustRegister(parseObjectErrorsTotal, getObjectsErrorsTotal, conflictErrorsTotal, contextCancelErrorsTotal)
 }
@@ -90,6 +91,11 @@ type getError struct {
 	requestObject ctrl.Request
 }
 
+// Unwrap implemnets errors.Unwrap interface
+func (ge *getError) Unwrap() error {
+	return ge.origin
+}
+
 func (ge *getError) Error() string {
 	return fmt.Sprintf("get_object error for controller=%q object_name=%q at namespace=%q, origin=%q", ge.controller, ge.requestObject.Name, ge.requestObject.Namespace, ge.origin)
 }
@@ -117,6 +123,7 @@ func handleReconcileErr(ctx context.Context, rclient client.Client, object objec
 			return originResult, nil
 		}
 	case apierrors.IsConflict(err):
+		conflictErrorsTotal.WithLabelValues().Inc()
 		return ctrl.Result{RequeueAfter: time.Second * 5}, nil
 	}
 	if object != nil && !reflect.ValueOf(object).IsNil() && object.GetNamespace() != "" {

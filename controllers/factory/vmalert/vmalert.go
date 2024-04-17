@@ -656,14 +656,14 @@ func loadVMAlertRemoteSecrets(
 	loadHTTPAuthSecrets := func(ctx context.Context, rclient client.Client, ns string, httpAuth victoriametricsv1beta1.HTTPAuth) (*authSecret, error) {
 		var as authSecret
 		if httpAuth.BasicAuth != nil {
-			credentials, err := k8stools.LoadBasicAuthSecret(ctx, rclient, cr.Namespace, httpAuth.BasicAuth)
+			credentials, err := k8stools.LoadBasicAuthSecret(ctx, rclient, cr.Namespace, httpAuth.BasicAuth, nsSecretCache)
 			if err != nil {
 				return nil, fmt.Errorf("could not load basicAuth config. %w", err)
 			}
 			as.BasicAuthCredentials = &credentials
 		}
-		if httpAuth.BearerAuth != nil && httpAuth.BearerAuth.TokenSecret != nil {
-			token, err := k8stools.GetCredFromSecret(ctx, rclient, cr.Namespace, httpAuth.BearerAuth.TokenSecret, buildCacheKey(ns, httpAuth.BearerAuth.TokenSecret.Name), nsSecretCache)
+		if httpAuth.BearerAuth != nil && httpAuth.TokenSecret != nil {
+			token, err := k8stools.GetCredFromSecret(ctx, rclient, cr.Namespace, httpAuth.BearerAuth.TokenSecret, buildCacheKey(ns, httpAuth.TokenSecret.Name), nsSecretCache)
 			if err != nil {
 				return nil, fmt.Errorf("cannot load bearer auth token: %w", err)
 			}
@@ -755,18 +755,18 @@ func loadTLSAssetsForVMAlert(ctx context.Context, rclient client.Client, cr *vic
 	tlsConfigs := []*victoriametricsv1beta1.TLSConfig{}
 
 	for _, notifier := range cr.Spec.Notifiers {
-		if notifier.HTTPAuth.TLSConfig != nil {
-			tlsConfigs = append(tlsConfigs, notifier.HTTPAuth.TLSConfig)
+		if notifier.TLSConfig != nil {
+			tlsConfigs = append(tlsConfigs, notifier.TLSConfig)
 		}
 	}
-	if cr.Spec.RemoteRead != nil && cr.Spec.RemoteRead.HTTPAuth.TLSConfig != nil {
-		tlsConfigs = append(tlsConfigs, cr.Spec.RemoteRead.HTTPAuth.TLSConfig)
+	if cr.Spec.RemoteRead != nil && cr.Spec.RemoteRead.TLSConfig != nil {
+		tlsConfigs = append(tlsConfigs, cr.Spec.RemoteRead.TLSConfig)
 	}
-	if cr.Spec.RemoteWrite != nil && cr.Spec.RemoteWrite.HTTPAuth.TLSConfig != nil {
-		tlsConfigs = append(tlsConfigs, cr.Spec.RemoteWrite.HTTPAuth.TLSConfig)
+	if cr.Spec.RemoteWrite != nil && cr.Spec.RemoteWrite.TLSConfig != nil {
+		tlsConfigs = append(tlsConfigs, cr.Spec.RemoteWrite.TLSConfig)
 	}
-	if cr.Spec.Datasource.HTTPAuth.TLSConfig != nil {
-		tlsConfigs = append(tlsConfigs, cr.Spec.Datasource.HTTPAuth.TLSConfig)
+	if cr.Spec.Datasource.TLSConfig != nil {
+		tlsConfigs = append(tlsConfigs, cr.Spec.Datasource.TLSConfig)
 	}
 
 	for _, rw := range tlsConfigs {

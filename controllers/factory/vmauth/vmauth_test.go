@@ -14,6 +14,11 @@ import (
 )
 
 func TestCreateOrUpdateVMAuth(t *testing.T) {
+	mutateConf := func(cb func(c *config.BaseOperatorConf)) *config.BaseOperatorConf {
+		c := config.MustGetBaseConfig()
+		cb(c)
+		return c
+	}
 	type args struct {
 		cr *victoriametricsv1beta1.VMAuth
 		c  *config.BaseOperatorConf
@@ -79,6 +84,43 @@ func TestCreateOrUpdateVMAuth(t *testing.T) {
 					},
 				},
 				c: config.MustGetBaseConfig(),
+			},
+			predefinedObjects: []runtime.Object{
+				k8stools.NewReadyDeployment("vmauth-test", "default"),
+				&victoriametricsv1beta1.VMUser{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "user-1",
+						Namespace: "default",
+					},
+					Spec: victoriametricsv1beta1.VMUserSpec{
+						UserName: ptr.To("user-1"),
+						Password: ptr.To("password-1"),
+						TargetRefs: []victoriametricsv1beta1.TargetRef{
+							{
+								Static: &victoriametricsv1beta1.StaticRef{
+									URLs: []string{"http://url-1", "http://url-2"},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "with custome config reloader",
+			args: args{
+				cr: &victoriametricsv1beta1.VMAuth{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "default",
+					},
+					Spec: victoriametricsv1beta1.VMAuthSpec{
+						SelectAllByDefault: true,
+					},
+				},
+				c: mutateConf(func(c *config.BaseOperatorConf) {
+					c.UseCustomConfigReloader = true
+				}),
 			},
 			predefinedObjects: []runtime.Object{
 				k8stools.NewReadyDeployment("vmauth-test", "default"),

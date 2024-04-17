@@ -15,7 +15,7 @@ import (
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/controllers/factory/logger"
 	"gopkg.in/yaml.v2"
-	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -45,28 +45,13 @@ func buildVMAuthConfig(ctx context.Context, rclient client.Client, vmauth *victo
 		return nil, err
 	}
 
-	secretValueByRef, err := fetchVMUserSecretCacheByRef(ctx, rclient, users)
-	if err != nil {
-		return nil, err
-	}
-
-	// inject passwordRef secrets
-	injectSecretValueByRef(users, secretValueByRef)
-	// select secrets with user auth settings.
-	toCreateSecrets, existSecrets, err := selectVMUserGeneratedSecrets(ctx, rclient, users)
+	toCreateSecrets, toUpdate, err := addAuthCredentialsBuildSecrets(ctx, rclient, users)
 	if err != nil {
 		return nil, err
 	}
 
 	// inject data from exist secrets into vmuser.spec if needed.
-	toUpdate := injectAuthSettings(existSecrets, users)
-	logger.WithContext(ctx).Info("VMAuth reconcile stats", "VMAuth", vmauth.Name, "toUpdate", len(toUpdate), "tocreate", len(toCreateSecrets), "exist", len(existSecrets))
-
-	// inject backend authentication header.
-	err = injectBackendAuthHeader(ctx, rclient, users)
-	if err != nil {
-		return nil, err
-	}
+	// toUpdate := injectAuthSettings(existSecrets, users)
 
 	// generate yaml config for vmauth.
 	cfg, err := generateVMAuthConfig(vmauth, users, crdCache)
@@ -75,14 +60,13 @@ func buildVMAuthConfig(ctx context.Context, rclient client.Client, vmauth *victo
 	}
 
 	// inject generated password into secrets, that we want to create.
-	toCreateSecrets = addCredentialsToCreateSecrets(users, toCreateSecrets)
 	if err := createVMUserSecrets(ctx, rclient, toCreateSecrets); err != nil {
 		return nil, err
 	}
 	// update secrets.
 	// todo, probably, its better to reconcile it with finalizers merge and etc.
 	for i := range toUpdate {
-		secret := &toUpdate[i]
+		secret := toUpdate[i]
 		if err := rclient.Update(ctx, secret); err != nil {
 			return nil, err
 		}
@@ -91,139 +75,14 @@ func buildVMAuthConfig(ctx context.Context, rclient client.Client, vmauth *victo
 	return cfg, nil
 }
 
-func addCredentialsToCreateSecrets(src []*victoriametricsv1beta1.VMUser, dst []corev1.Secret) []corev1.Secret {
-	for i := range dst {
-		secret := &dst[i]
-		for j := range src {
-			user := src[j]
-			if user.SecretName() != secret.Name {
-				continue
-			}
-			// need to fill password/username
-			if user.Spec.BearerToken != nil {
-				continue
-			}
-			if user.Spec.Name != nil {
-				secret.Data["name"] = []byte(*user.Spec.Name)
-			}
-			if user.Spec.UserName != nil {
-				secret.Data["username"] = []byte(*user.Spec.UserName)
-			}
-			if user.Spec.Password != nil {
-				secret.Data["password"] = []byte(*user.Spec.Password)
-			}
-		}
-	}
-	return dst
-}
-
-func createVMUserSecrets(ctx context.Context, rclient client.Client, secrets []corev1.Secret) error {
+func createVMUserSecrets(ctx context.Context, rclient client.Client, secrets []*v1.Secret) error {
 	for i := range secrets {
 		secret := secrets[i]
-		if err := rclient.Create(ctx, &secret); err != nil {
+		if err := rclient.Create(ctx, secret); err != nil {
 			return err
 		}
 	}
 	return nil
-}
-
-func injectSecretValueByRef(src []*victoriametricsv1beta1.VMUser, secretValueCacheByRef map[string]string) {
-	for i := range src {
-		user := src[i]
-		switch {
-		case user.Spec.PasswordRef != nil:
-			secretPassword := secretValueCacheByRef[user.PasswordRefAsKey()]
-			user.Spec.Password = ptr.To(secretPassword)
-		case user.Spec.TokenRef != nil:
-			secretToken := secretValueCacheByRef[user.TokenRefAsKey()]
-			user.Spec.BearerToken = ptr.To(secretToken)
-		}
-
-	}
-}
-
-func injectBackendAuthHeader(ctx context.Context, rclient client.Client, users []*victoriametricsv1beta1.VMUser) error {
-	for i := range users {
-		user := users[i]
-		for j := range user.Spec.TargetRefs {
-			ref := &user.Spec.TargetRefs[j]
-			if ref.TargetRefBasicAuth != nil {
-				bac, err := loadBasicAuthSecret(ctx, rclient, user.Namespace, &victoriametricsv1beta1.BasicAuth{Username: ref.TargetRefBasicAuth.Username, Password: ref.TargetRefBasicAuth.Password})
-				if err != nil {
-					return fmt.Errorf("could not load basicAuth config. %w", err)
-				}
-				token := bac.username + ":" + bac.password
-				token64 := base64.StdEncoding.EncodeToString([]byte(token))
-				Header := "Authorization: Basic " + token64
-				ref.Headers = append(ref.Headers, Header)
-			}
-		}
-	}
-	return nil
-}
-func injectAuthSettings(src []corev1.Secret, dst []*victoriametricsv1beta1.VMUser) []corev1.Secret {
-	var toUpdate []corev1.Secret
-	if len(src) == 0 || len(dst) == 0 {
-		return nil
-	}
-	for i := range src {
-		secret := src[i]
-		for j := range dst {
-			vmuser := dst[j]
-			if vmuser.SecretName() != secret.Name {
-				continue
-			}
-			// check if secretUpdate needed.
-			var needUpdate bool
-			if vmuser.Spec.Name != nil {
-				if string(secret.Data["name"]) != *vmuser.Spec.Name {
-					needUpdate = true
-					secret.Data["name"] = []byte(*vmuser.Spec.Name)
-				}
-			}
-
-			if vmuser.Spec.BearerToken != nil {
-
-				if len(secret.Data["username"]) > 0 || len(secret.Data["password"]) > 0 {
-					needUpdate = true
-					delete(secret.Data, "username")
-					delete(secret.Data, "password")
-				}
-				if string(secret.Data["bearerToken"]) != *vmuser.Spec.BearerToken {
-					needUpdate = true
-					secret.Data["bearerToken"] = []byte(*vmuser.Spec.BearerToken)
-				}
-				if needUpdate {
-					toUpdate = append(toUpdate, secret)
-				}
-				continue
-			}
-			existUser := secret.Data["username"]
-
-			if vmuser.Spec.UserName == nil {
-				vmuser.Spec.UserName = ptr.To(string(existUser))
-				needUpdate = true
-			} else if string(existUser) != *vmuser.Spec.UserName {
-				secret.Data["username"] = []byte(*vmuser.Spec.UserName)
-				needUpdate = true
-			}
-
-			existPassword := secret.Data["password"]
-
-			// add previously generated password.
-			if vmuser.Spec.GeneratePassword && vmuser.Spec.Password == nil {
-				vmuser.Spec.Password = ptr.To(string(existPassword))
-			} else if vmuser.Spec.Password != nil && string(existPassword) != *vmuser.Spec.Password {
-				needUpdate = true
-				secret.Data["password"] = []byte(*vmuser.Spec.Password)
-			}
-
-			if needUpdate {
-				toUpdate = append(toUpdate, secret)
-			}
-		}
-	}
-	return toUpdate
 }
 
 func isUsersUniq(users []*victoriametricsv1beta1.VMUser) []string {
@@ -263,37 +122,118 @@ func getAsURLObject(ctx context.Context, rclient client.Client, obj objectWithUR
 	return obj.AsURL(), nil
 }
 
-func fetchVMUserSecretCacheByRef(ctx context.Context, rclient client.Client, users []*victoriametricsv1beta1.VMUser) (map[string]string, error) {
-	passwordCache := make(map[string]string, len(users))
-	var fetchSecret corev1.Secret
+func addAuthCredentialsBuildSecrets(ctx context.Context, rclient client.Client, users []*victoriametricsv1beta1.VMUser) (needToCreateSecrets []*v1.Secret, needToUpdateSecrets []*v1.Secret, err error) {
+	dst := make(map[string]*v1.Secret)
 	for i := range users {
 		user := users[i]
-		var secretName, secretKey, refValue string
 		switch {
 		case user.Spec.PasswordRef != nil:
-			secretName = user.Spec.PasswordRef.Name
-			secretKey = user.Spec.PasswordRef.Key
-			refValue = user.PasswordRefAsKey()
+			v, err := k8stools.GetCredFromSecret(ctx, rclient, user.Namespace, user.Spec.PasswordRef, fmt.Sprintf("%s/%s", user.Namespace, user.Spec.PasswordRef.Name), dst)
+			if err != nil {
+				return needToCreateSecrets, needToUpdateSecrets, err
+			}
+			user.Spec.Password = ptr.To(v)
 		case user.Spec.TokenRef != nil:
-			secretName = user.Spec.TokenRef.Name
-			secretKey = user.Spec.TokenRef.Key
-			refValue = user.TokenRefAsKey()
-		default:
-			continue
+			v, err := k8stools.GetCredFromSecret(ctx, rclient, user.Namespace, user.Spec.TokenRef, fmt.Sprintf("%s/%s", user.Namespace, user.Spec.TokenRef.Name), dst)
+			if err != nil {
+				return needToCreateSecrets, needToUpdateSecrets, err
+			}
+			user.Spec.BearerToken = ptr.To(v)
 		}
-		if _, ok := passwordCache[refValue]; ok {
-			continue
+
+		if !user.Spec.DisableSecretCreation {
+			var vmus v1.Secret
+			if err := rclient.Get(ctx, types.NamespacedName{Namespace: user.Namespace, Name: user.SecretName()}, &vmus); err != nil {
+				if errors.IsNotFound(err) {
+					userSecret, err := buildVMUserSecret(user)
+					if err != nil {
+						return needToCreateSecrets, needToUpdateSecrets, err
+					}
+					needToCreateSecrets = append(needToCreateSecrets, userSecret)
+				} else {
+					return needToCreateSecrets, needToUpdateSecrets, fmt.Errorf("cannot query kubernetes api for vmuser secrets: %w", err)
+				}
+			} else {
+				// secret exists, check it's state
+				if injectAuthSettings(&vmus, user) {
+					needToUpdateSecrets = append(needToUpdateSecrets, &vmus)
+				}
+			}
 		}
-		if err := rclient.Get(ctx, types.NamespacedName{Namespace: user.Namespace, Name: secretName}, &fetchSecret); err != nil {
-			return nil, fmt.Errorf("cannot get secret to fetch value by ref for user: %s, at namespace: %s, err: %s", user.Name, user.Namespace, err)
+		if err := injectBackendAuthHeader(ctx, rclient, user, dst); err != nil {
+			return needToCreateSecrets, needToUpdateSecrets, fmt.Errorf("cannot inject auth backend header into vmuser=%q: %w", user.Name, err)
 		}
-		secretValue := fetchSecret.Data[secretKey]
-		if len(secretValue) == 0 {
-			return nil, fmt.Errorf("cannot find ref value key: %s for user: %s, at namespace: %s", refValue, user.Name, user.Namespace)
-		}
-		passwordCache[refValue] = string(secretValue)
+
 	}
-	return passwordCache, nil
+	return
+}
+
+func injectBackendAuthHeader(ctx context.Context, rclient client.Client, user *victoriametricsv1beta1.VMUser, nsCache map[string]*v1.Secret) error {
+	for j := range user.Spec.TargetRefs {
+		ref := &user.Spec.TargetRefs[j]
+		if ref.TargetRefBasicAuth != nil {
+			bac, err := k8stools.LoadBasicAuthSecret(ctx, rclient,
+				user.Namespace,
+				&victoriametricsv1beta1.BasicAuth{
+					Username: ref.TargetRefBasicAuth.Username,
+					Password: ref.TargetRefBasicAuth.Password,
+				}, nsCache,
+			)
+			if err != nil {
+				return fmt.Errorf("could not load basicAuth config. %w", err)
+			}
+			token := bac.Username + ":" + bac.Password
+			token64 := base64.StdEncoding.EncodeToString([]byte(token))
+			Header := "Authorization: Basic " + token64
+			ref.Headers = append(ref.Headers, Header)
+		}
+	}
+	return nil
+}
+
+func injectAuthSettings(secret *v1.Secret, vmuser *victoriametricsv1beta1.VMUser) bool {
+	if secret.Data == nil {
+		secret.Data = make(map[string][]byte)
+	}
+	// check if secretUpdate needed.
+	var needUpdate bool
+	if vmuser.Spec.Name != nil {
+		if string(secret.Data["name"]) != *vmuser.Spec.Name {
+			needUpdate = true
+			secret.Data["name"] = []byte(*vmuser.Spec.Name)
+		}
+	}
+
+	if vmuser.Spec.BearerToken != nil {
+		if len(secret.Data["username"]) > 0 || len(secret.Data["password"]) > 0 {
+			needUpdate = true
+			delete(secret.Data, "username")
+			delete(secret.Data, "password")
+		}
+		if string(secret.Data["bearerToken"]) != *vmuser.Spec.BearerToken {
+			needUpdate = true
+			secret.Data["bearerToken"] = []byte(*vmuser.Spec.BearerToken)
+		}
+		return needUpdate
+	}
+	existUser := secret.Data["username"]
+
+	if vmuser.Spec.UserName == nil {
+		vmuser.Spec.UserName = ptr.To(string(existUser))
+	} else if string(existUser) != *vmuser.Spec.UserName {
+		secret.Data["username"] = []byte(*vmuser.Spec.UserName)
+		needUpdate = true
+	}
+
+	existPassword := secret.Data["password"]
+	// add previously generated password.
+	if vmuser.Spec.GeneratePassword && vmuser.Spec.Password == nil {
+		vmuser.Spec.Password = ptr.To(string(existPassword))
+	} else if vmuser.Spec.Password != nil && string(existPassword) != *vmuser.Spec.Password {
+		needUpdate = true
+		secret.Data["password"] = []byte(*vmuser.Spec.Password)
+	}
+	return needUpdate
 }
 
 // FetchCRDRefURLs performs a fetch for CRD objects for vmauth users and returns an url by crd ref key name
@@ -735,14 +675,7 @@ func genUserCfg(user *victoriametricsv1beta1.VMUser, crdURLCache map[string]stri
 		username = user.Name
 		user.Spec.UserName = ptr.To(username)
 	}
-	if user.Spec.GeneratePassword && password == "" {
-		pwd, err := genPassword()
-		if err != nil {
-			return nil, err
-		}
-		password = pwd
-		user.Spec.Password = ptr.To(password)
-	}
+
 	r = append(r, yaml.MapItem{
 		Key:   "username",
 		Value: username,
@@ -803,33 +736,10 @@ func selectVMUsers(ctx context.Context, cr *victoriametricsv1beta1.VMAuth, rclie
 	return res, nil
 }
 
-// select existing vmusers secrets created by operator
-// returns secrets, that need to be create and exist secrets.
-func selectVMUserGeneratedSecrets(ctx context.Context, rclient client.Client, vmUsers []*victoriametricsv1beta1.VMUser) ([]corev1.Secret, []corev1.Secret, error) {
-	var existsSecrets []corev1.Secret
-	var needToCreateSecrets []corev1.Secret
-	for i := range vmUsers {
-		vmUser := vmUsers[i]
-		if vmUser.Spec.DisableSecretCreation {
-			continue
-		}
-		var vmus corev1.Secret
-		if err := rclient.Get(ctx, types.NamespacedName{Namespace: vmUser.Namespace, Name: vmUser.SecretName()}, &vmus); err != nil {
-			if errors.IsNotFound(err) {
-				needToCreateSecrets = append(needToCreateSecrets, buildVMUserSecret(vmUser))
-				continue
-			}
-			return nil, nil, fmt.Errorf("cannot query kubernetes api for vmuser secrets: %w", err)
-		}
-		existsSecrets = append(existsSecrets, vmus)
-	}
-	return needToCreateSecrets, existsSecrets, nil
-}
-
 // note, username and password must be filled by operator
 // with default values if need.
-func buildVMUserSecret(src *victoriametricsv1beta1.VMUser) corev1.Secret {
-	s := corev1.Secret{
+func buildVMUserSecret(src *victoriametricsv1beta1.VMUser) (*v1.Secret, error) {
+	s := &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            src.SecretName(),
 			Namespace:       src.Namespace,
@@ -841,6 +751,13 @@ func buildVMUserSecret(src *victoriametricsv1beta1.VMUser) corev1.Secret {
 			},
 		},
 		Data: map[string][]byte{},
+	}
+	if src.Spec.GeneratePassword && src.Spec.Password == nil {
+		pwd, err := genPassword()
+		if err != nil {
+			return nil, fmt.Errorf("cannot generate password for user=%q: %w", src.Name, err)
+		}
+		src.Spec.Password = ptr.To(pwd)
 	}
 	if src.Spec.Name != nil {
 		s.Data["name"] = []byte(*src.Spec.Name)
@@ -854,7 +771,7 @@ func buildVMUserSecret(src *victoriametricsv1beta1.VMUser) corev1.Secret {
 	if src.Spec.Password != nil {
 		s.Data["password"] = []byte(*src.Spec.Password)
 	}
-	return s
+	return s, nil
 }
 
 func addVMInsertPaths(src []string) []string {

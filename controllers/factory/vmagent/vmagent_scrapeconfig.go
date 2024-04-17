@@ -677,7 +677,7 @@ func loadScrapeSecrets(
 	// it's VMAgent owner responsibility
 	if apiserverConfig != nil {
 		if apiserverConfig.BasicAuth != nil {
-			credentials, err := k8stools.LoadBasicAuthSecret(ctx, rclient, namespace, apiserverConfig.BasicAuth)
+			credentials, err := k8stools.LoadBasicAuthSecret(ctx, rclient, namespace, apiserverConfig.BasicAuth, nsSecretCache)
 			if err != nil {
 				return nil, fmt.Errorf("could not generate basicAuth for apiserver config. %w", err)
 			}
@@ -697,7 +697,7 @@ func loadScrapeSecrets(
 	// it's VMAgent owner responsibility
 	for _, rws := range remoteWriteSpecs {
 		if rws.BasicAuth != nil {
-			credentials, err := k8stools.LoadBasicAuthSecret(ctx, rclient, namespace, rws.BasicAuth)
+			credentials, err := k8stools.LoadBasicAuthSecret(ctx, rclient, namespace, rws.BasicAuth, nsSecretCache)
 			if err != nil {
 				return nil, fmt.Errorf("could not generate basicAuth for remote write spec %s config. %w", rws.URL, err)
 			}

@@ -6,7 +6,6 @@ import (
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -52,36 +51,25 @@ type BasicAuthCredentials struct {
 }
 
 // LoadBasicAuthSecret fetch content of kubernetes secrets and returns it within plain text
-func LoadBasicAuthSecret(ctx context.Context, rclient client.Client, ns string, basicAuth *victoriametricsv1beta1.BasicAuth) (BasicAuthCredentials, error) {
+func LoadBasicAuthSecret(ctx context.Context, rclient client.Client, ns string, basicAuth *victoriametricsv1beta1.BasicAuth, secretCache map[string]*v1.Secret) (BasicAuthCredentials, error) {
 	var err error
-	var bas v1.Secret
 	var bac BasicAuthCredentials
-	if err := rclient.Get(ctx, types.NamespacedName{Namespace: ns, Name: basicAuth.Username.Name}, &bas); err != nil {
-		if errors.IsNotFound(err) {
-			return BasicAuthCredentials{}, fmt.Errorf("basic auth username secret: %q not found", basicAuth.Username.Name)
-		}
+	userNameContent, err := GetCredFromSecret(ctx, rclient, ns, &basicAuth.Username, fmt.Sprintf("%s/%s", ns, basicAuth.Username.Name), secretCache)
+	if err != nil {
 		return bac, err
 	}
-	if bac.Username, err = extractCredKey(&bas, basicAuth.Username); err != nil {
-		return bac, err
-	}
+	bac.Username = userNameContent
+
 	if len(basicAuth.Password.Name) == 0 {
 		// fast path for empty password
 		// it can be skipped or defined via password_file
 		return bac, nil
 	}
-	if basicAuth.Username.Name != basicAuth.Password.Name {
-		if err := rclient.Get(ctx, types.NamespacedName{Namespace: ns, Name: basicAuth.Password.Name}, &bas); err != nil {
-			if errors.IsNotFound(err) {
-				return bac, fmt.Errorf("basic auth password secret: %q not found", basicAuth.Username.Name)
-			}
-			return bac, err
-		}
-	}
-	if bac.Password, err = extractCredKey(&bas, basicAuth.Password); err != nil {
+	passwordContent, err := GetCredFromSecret(ctx, rclient, ns, &basicAuth.Password, fmt.Sprintf("%s/%s", ns, basicAuth.Password.Name), secretCache)
+	if err != nil {
 		return bac, err
 	}
-
+	bac.Password = passwordContent
 	return bac, nil
 }
 

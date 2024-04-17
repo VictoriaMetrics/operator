@@ -41,7 +41,7 @@ func OnVMAlertManagerDelete(ctx context.Context, rclient client.Client, crd *vic
 		return err
 	}
 
-	if err := finalizePsp(ctx, rclient, crd); err != nil {
+	if err := deleteSA(ctx, rclient, crd); err != nil {
 		return err
 	}
 	if err := removeConfigReloaderRole(ctx, rclient, crd); err != nil {

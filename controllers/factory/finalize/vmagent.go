@@ -102,10 +102,6 @@ func OnVMAgentDelete(ctx context.Context, rclient client.Client, crd *victoriame
 			}
 		}
 	}
-
-	if err := finalizePsp(ctx, rclient, crd); err != nil {
-		return err
-	}
 	// remove from self.
 	if err := removeFinalizeObjByName(ctx, rclient, crd, crd.Name, crd.Namespace); err != nil {
 		return err

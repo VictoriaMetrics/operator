@@ -32,10 +32,6 @@ func OnVMSingleDelete(ctx context.Context, rclient client.Client, crd *victoriam
 	if err := removeFinalizeObjByName(ctx, rclient, &v1.ConfigMap{}, crd.StreamAggrConfigName(), crd.Namespace); err != nil {
 		return err
 	}
-
-	if err := finalizePsp(ctx, rclient, crd); err != nil {
-		return err
-	}
 	if err := deleteSA(ctx, rclient, crd); err != nil {
 		return err
 	}

@@ -111,10 +111,6 @@ type VMSingleSpec struct {
 	// https://kubernetes.io/docs/concepts/containers/runtime-class/
 	// +optional
 	RuntimeClassName *string `json:"runtimeClassName,omitempty"`
-	// PodSecurityPolicyName - defines name for podSecurityPolicy
-	// in case of empty value, prefixedName will be used.
-	// +optional
-	PodSecurityPolicyName string `json:"podSecurityPolicyName,omitempty"`
 	// HostAliases provides mapping for ip and hostname,
 	// that would be propagated to pod,
 	// cannot be used with HostNetwork.
@@ -367,13 +363,6 @@ func (cr VMSingle) GetServiceAccountName() string {
 
 func (cr VMSingle) IsOwnsServiceAccount() bool {
 	return cr.Spec.ServiceAccountName == ""
-}
-
-func (cr VMSingle) GetPSPName() string {
-	if cr.Spec.PodSecurityPolicyName == "" {
-		return cr.PrefixedName()
-	}
-	return cr.Spec.PodSecurityPolicyName
 }
 
 func (cr VMSingle) GetNSName() string {

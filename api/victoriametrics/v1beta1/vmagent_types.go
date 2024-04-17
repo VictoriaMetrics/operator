@@ -113,10 +113,6 @@ type VMAgentSpec struct {
 	// cannot be used with HostNetwork.
 	// +optional
 	HostAliases []v1.HostAlias `json:"host_aliases,omitempty"`
-	// PodSecurityPolicyName - defines name for podSecurityPolicy
-	// in case of empty value, prefixedName will be used.
-	// +optional
-	PodSecurityPolicyName string `json:"podSecurityPolicyName,omitempty"`
 	// Containers property allows to inject additions sidecars or to patch existing containers.
 	// It can be useful for proxies, backup, etc.
 	// +optional
@@ -688,13 +684,6 @@ func (cr VMAgent) IsOwnsServiceAccount() bool {
 
 func (cr VMAgent) GetClusterRoleName() string {
 	return fmt.Sprintf("monitoring:vmagent-cluster-access-%s", cr.Name)
-}
-
-func (cr VMAgent) GetPSPName() string {
-	if cr.Spec.PodSecurityPolicyName == "" {
-		return cr.PrefixedName()
-	}
-	return cr.Spec.PodSecurityPolicyName
 }
 
 func (cr VMAgent) GetNSName() string {

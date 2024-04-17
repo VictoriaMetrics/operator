@@ -111,10 +111,6 @@ type VMAlertSpec struct {
 	// https://kubernetes.io/docs/concepts/containers/runtime-class/
 	// +optional
 	RuntimeClassName *string `json:"runtimeClassName,omitempty"`
-	// PodSecurityPolicyName - defines name for podSecurityPolicy
-	// in case of empty value, prefixedName will be used.
-	// +optional
-	PodSecurityPolicyName string `json:"podSecurityPolicyName,omitempty"`
 	// Containers property allows to inject additions sidecars or to patch existing containers.
 	// It can be useful for proxies, backup, etc.
 	// +optional
@@ -506,13 +502,6 @@ func (cr VMAlert) GetServiceAccountName() string {
 
 func (cr VMAlert) IsOwnsServiceAccount() bool {
 	return cr.Spec.ServiceAccountName == ""
-}
-
-func (cr VMAlert) GetPSPName() string {
-	if cr.Spec.PodSecurityPolicyName == "" {
-		return cr.PrefixedName()
-	}
-	return cr.Spec.PodSecurityPolicyName
 }
 
 func (cr VMAlert) GetNSName() string {

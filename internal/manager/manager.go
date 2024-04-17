@@ -22,7 +22,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/pflag"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/api/policy/v1beta1"
 	metav1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -157,7 +156,7 @@ func RunManager(ctx context.Context) error {
 		Client: client.Options{
 			Cache: &client.CacheOptions{DisableFor: []client.Object{
 				&v1.Secret{}, &v1.ConfigMap{}, &v1.Pod{},
-				&v1beta1.PodSecurityPolicy{}, &v1beta1.PodDisruptionBudget{}, &v1.Namespace{},
+				&v1.Namespace{},
 			}},
 		},
 	})

@@ -100,9 +100,6 @@ func OnVMClusterDelete(ctx context.Context, rclient client.Client, crd *victoria
 			return err
 		}
 	}
-	if err := finalizePsp(ctx, rclient, crd); err != nil {
-		return err
-	}
 
 	if err := deleteSA(ctx, rclient, crd); err != nil {
 		return err

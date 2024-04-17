@@ -41,10 +41,6 @@ func OnVMAlertDelete(ctx context.Context, rclient client.Client, crd *victoriame
 	if err := finalizePBD(ctx, rclient, crd); err != nil {
 		return err
 	}
-
-	if err := finalizePsp(ctx, rclient, crd); err != nil {
-		return err
-	}
 	if err := deleteSA(ctx, rclient, crd); err != nil {
 		return err
 	}

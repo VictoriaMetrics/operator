@@ -256,6 +256,62 @@ spec:
                         It allows to hide tenant configuration from user with crd as ref.
                         it also may contain any url encoded params.
                       type: string
+                    targetRefBasicAuth:
+                      description: TargetRefBasicAuth allow an target endpoint to
+                        authenticate over basic authentication
+                      properties:
+                        password:
+                          description: |-
+                            The secret in the service scrape namespace that contains the password
+                            for authentication.
+                            It must be at them same namespace as CRD
+                          properties:
+                            key:
+                              description: The key of the secret to select from.  Must
+                                be a valid secret key.
+                              type: string
+                            name:
+                              description: |-
+                                Name of the referent.
+                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                TODO: Add other useful fields. apiVersion, kind, uid?
+                              type: string
+                            optional:
+                              description: Specify whether the Secret or its key must
+                                be defined
+                              type: boolean
+                          required:
+                          - key
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        username:
+                          description: |-
+                            The secret in the service scrape namespace that contains the username
+                            for authentication.
+                            It must be at them same namespace as CRD
+                          properties:
+                            key:
+                              description: The key of the secret to select from.  Must
+                                be a valid secret key.
+                              type: string
+                            name:
+                              description: |-
+                                Name of the referent.
+                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                TODO: Add other useful fields. apiVersion, kind, uid?
+                              type: string
+                            optional:
+                              description: Specify whether the Secret or its key must
+                                be defined
+                              type: boolean
+                          required:
+                          - key
+                          type: object
+                          x-kubernetes-map-type: atomic
+                      required:
+                      - password
+                      - username
+                      type: object
                   type: object
                 type: array
               tls_insecure_skip_verify:

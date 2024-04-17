@@ -3,6 +3,7 @@ package vmauth
 import (
 	"context"
 	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"math/big"
 	"net/url"
@@ -60,6 +61,12 @@ func buildVMAuthConfig(ctx context.Context, rclient client.Client, vmauth *victo
 	// inject data from exist secrets into vmuser.spec if needed.
 	toUpdate := injectAuthSettings(existSecrets, users)
 	logger.WithContext(ctx).Info("VMAuth reconcile stats", "VMAuth", vmauth.Name, "toUpdate", len(toUpdate), "tocreate", len(toCreateSecrets), "exist", len(existSecrets))
+
+	// inject backend authentication header.
+	err = injectBackendAuthHeader(ctx, rclient, users)
+	if err != nil {
+		return nil, err
+	}
 
 	// generate yaml config for vmauth.
 	cfg, err := generateVMAuthConfig(vmauth, users, crdCache)
@@ -135,6 +142,25 @@ func injectSecretValueByRef(src []*victoriametricsv1beta1.VMUser, secretValueCac
 	}
 }
 
+func injectBackendAuthHeader(ctx context.Context, rclient client.Client, users []*victoriametricsv1beta1.VMUser) error {
+	for i := range users {
+		user := users[i]
+		for j := range user.Spec.TargetRefs {
+			ref := &user.Spec.TargetRefs[j]
+			if ref.TargetRefBasicAuth != nil {
+				bac, err := loadBasicAuthSecret(ctx, rclient, user.Namespace, &victoriametricsv1beta1.BasicAuth{Username: ref.TargetRefBasicAuth.Username, Password: ref.TargetRefBasicAuth.Password})
+				if err != nil {
+					return fmt.Errorf("could not load basicAuth config. %w", err)
+				}
+				token := bac.username + ":" + bac.password
+				token64 := base64.StdEncoding.EncodeToString([]byte(token))
+				Header := "Authorization: Basic " + token64
+				ref.Headers = append(ref.Headers, Header)
+			}
+		}
+	}
+	return nil
+}
 func injectAuthSettings(src []corev1.Secret, dst []*victoriametricsv1beta1.VMUser) []corev1.Secret {
 	var toUpdate []corev1.Secret
 	if len(src) == 0 || len(dst) == 0 {

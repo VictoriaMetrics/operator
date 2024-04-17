@@ -150,3 +150,20 @@ func finalizePBDWithName(ctx context.Context, rclient client.Client, ns, name st
 	}
 	return removeFinalizeObjByName(ctx, rclient, &policyv1beta1.PodDisruptionBudget{}, name, ns)
 }
+
+func removeConfigReloaderRole(ctx context.Context, rclient client.Client, crd crdObject) error {
+	if err := removeFinalizeObjByName(ctx, rclient, &v1.RoleBinding{}, crd.PrefixedName(), crd.GetNSName()); err != nil {
+		return err
+	}
+	if err := removeFinalizeObjByName(ctx, rclient, &v1.Role{}, crd.PrefixedName(), crd.GetNSName()); err != nil {
+		return err
+	}
+	if err := SafeDelete(ctx, rclient, &v1.RoleBinding{ObjectMeta: metav1.ObjectMeta{Name: crd.PrefixedName(), Namespace: crd.GetNSName()}}); err != nil {
+		return err
+	}
+
+	if err := SafeDelete(ctx, rclient, &v1.Role{ObjectMeta: metav1.ObjectMeta{Name: crd.PrefixedName(), Namespace: crd.GetNSName()}}); err != nil {
+		return err
+	}
+	return nil
+}

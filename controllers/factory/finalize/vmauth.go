@@ -63,12 +63,13 @@ func OnVMAuthDelete(ctx context.Context, rclient client.Client, crd *victoriamet
 	if err := finalizePsp(ctx, rclient, crd); err != nil {
 		return err
 	}
+	if err := removeConfigReloaderRole(ctx, rclient, crd); err != nil {
+		return err
+	}
 	// remove from self.
 	if err := removeFinalizeObjByName(ctx, rclient, crd, crd.Name, crd.Namespace); err != nil {
 		return err
 	}
-	if err := deleteSA(ctx, rclient, crd); err != nil {
-		return err
-	}
+
 	return nil
 }

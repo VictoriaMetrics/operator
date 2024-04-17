@@ -71,13 +71,14 @@ func CreateOrUpdateVMAuthService(ctx context.Context, cr *victoriametricsv1beta1
 func CreateOrUpdateVMAuth(ctx context.Context, cr *victoriametricsv1beta1.VMAuth, rclient client.Client, c *config.BaseOperatorConf) error {
 	l := logger.WithContext(ctx).WithValues("controller", "vmauth.crud")
 	ctx = logger.AddToContext(ctx, l)
-
-	if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr)); err != nil {
-		return fmt.Errorf("failed create service account: %w", err)
-	}
-	if c.UseCustomConfigReloader && cr.Spec.ConfigSecret == "" {
-		if err := createVMAuthSecretAccess(ctx, cr, rclient); err != nil {
-			return err
+	if cr.IsOwnsServiceAccount() {
+		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr)); err != nil {
+			return fmt.Errorf("failed create service account: %w", err)
+		}
+		if c.UseCustomConfigReloader && cr.Spec.ConfigSecret == "" {
+			if err := createVMAuthSecretAccess(ctx, cr, rclient); err != nil {
+				return err
+			}
 		}
 	}
 

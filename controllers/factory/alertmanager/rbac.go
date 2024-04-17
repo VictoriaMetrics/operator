@@ -13,8 +13,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// CreateVMAlertmanagerSecretAccess creates k8s api access for vmalertmanager config-reloader container
-func CreateVMAlertmanagerSecretAccess(ctx context.Context, rclient client.Client, cr *victoriametricsv1beta1.VMAlertmanager) error {
+// createVMAlertmanagerSecretAccess creates k8s api access for vmalertmanager config-reloader container
+func createVMAlertmanagerSecretAccess(ctx context.Context, rclient client.Client, cr *victoriametricsv1beta1.VMAlertmanager) error {
 	if err := ensureVMAlertmanagerRoleExist(ctx, cr, rclient); err != nil {
 		return fmt.Errorf("cannot check vmauth role: %w", err)
 	}

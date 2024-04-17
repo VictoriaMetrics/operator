@@ -4,16 +4,12 @@ import (
 	"context"
 	"testing"
 
+	v1beta12 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	v12 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/rbac/v1"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
-
 	"k8s.io/apimachinery/pkg/runtime"
-
-	v1beta12 "github.com/VictoriaMetrics/operator/api/v1beta1"
 )
 
 func TestCreateVMAgentClusterAccess(t *testing.T) {
@@ -91,7 +87,7 @@ func TestCreateVMAgentClusterAccess(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			if err := CreateVMAgentK8sAPIAccess(tt.args.ctx, tt.args.cr, fclient, true); (err != nil) != tt.wantErr {
+			if err := createVMAgentK8sAPIAccess(tt.args.ctx, tt.args.cr, fclient, true); (err != nil) != tt.wantErr {
 				t.Errorf("CreateVMAgentK8sAPIAccess() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

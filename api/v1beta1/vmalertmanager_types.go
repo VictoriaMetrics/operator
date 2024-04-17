@@ -405,7 +405,7 @@ func (cr VMAlertmanager) GetServiceAccountName() string {
 }
 
 func (cr VMAlertmanager) IsOwnsServiceAccount() bool {
-	return cr.Spec.ServiceAccountName == "" || cr.Spec.ServiceAccountName == cr.PrefixedName()
+	return cr.Spec.ServiceAccountName == ""
 }
 
 func (cr VMAlertmanager) GetPSPName() string {

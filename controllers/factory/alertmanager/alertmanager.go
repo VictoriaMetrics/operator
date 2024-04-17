@@ -32,8 +32,15 @@ func init() {
 func CreateOrUpdateAlertManager(ctx context.Context, cr *victoriametricsv1beta1.VMAlertmanager, rclient client.Client, c *config.BaseOperatorConf) error {
 	l := logger.WithContext(ctx).WithValues("reconcile.VMAlertManager.sts", cr.Name, "ns", cr.Namespace)
 	ctx = logger.AddToContext(ctx, l)
-	if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr)); err != nil {
-		return fmt.Errorf("failed create service account: %w", err)
+	if cr.IsOwnsServiceAccount() {
+		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr)); err != nil {
+			return fmt.Errorf("failed create service account: %w", err)
+		}
+		if c.UseCustomConfigReloader {
+			if err := createVMAlertmanagerSecretAccess(ctx, rclient, cr); err != nil {
+				return err
+			}
+		}
 	}
 
 	if cr.Spec.PodDisruptionBudget != nil {
@@ -50,11 +57,7 @@ func CreateOrUpdateAlertManager(ctx context.Context, cr *victoriametricsv1beta1.
 	if err != nil {
 		return fmt.Errorf("cannot generate alertmanager sts, name: %s,err: %w", cr.Name, err)
 	}
-	if c.UseCustomConfigReloader {
-		if err := CreateVMAlertmanagerSecretAccess(ctx, rclient, cr); err != nil {
-			return err
-		}
-	}
+
 	// check secret with config
 	if err := createDefaultAMConfig(ctx, cr, rclient); err != nil {
 		return fmt.Errorf("failed to check default Alertmanager config: %w", err)

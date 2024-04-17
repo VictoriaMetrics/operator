@@ -111,8 +111,8 @@ var (
 	}
 )
 
-// CreateVMAgentK8sAPIAccess - creates RBAC access rules for vmagent
-func CreateVMAgentK8sAPIAccess(ctx context.Context, cr *v1beta12.VMAgent, rclient client.Client, clusterWide bool) error {
+// createVMAgentK8sAPIAccess - creates RBAC access rules for vmagent
+func createVMAgentK8sAPIAccess(ctx context.Context, cr *v1beta12.VMAgent, rclient client.Client, clusterWide bool) error {
 	if clusterWide {
 		if err := ensureVMAgentCRExist(ctx, cr, rclient); err != nil {
 			return fmt.Errorf("cannot ensure state of vmagent's cluster role: %w", err)

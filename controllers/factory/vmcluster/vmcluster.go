@@ -40,8 +40,10 @@ var defaultTerminationGracePeriod = int64(30)
 // needed in update checked by revesion status
 // its controlled by k8s controller-manager
 func CreateOrUpdateVMCluster(ctx context.Context, cr *victoriametricsv1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) error {
-	if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr)); err != nil {
-		return fmt.Errorf("failed create service account: %w", err)
+	if cr.IsOwnsServiceAccount() {
+		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr)); err != nil {
+			return fmt.Errorf("failed create service account: %w", err)
+		}
 	}
 
 	if cr.Spec.VMStorage != nil {

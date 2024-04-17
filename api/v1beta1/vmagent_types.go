@@ -681,8 +681,9 @@ func (cr VMAgent) GetServiceAccountName() string {
 	return cr.Spec.ServiceAccountName
 }
 
+// IsOwnsServiceAccount checks if service account owned by CR
 func (cr VMAgent) IsOwnsServiceAccount() bool {
-	return cr.Spec.ServiceAccountName == "" || cr.Spec.ServiceAccountName == cr.PrefixedName()
+	return cr.Spec.ServiceAccountName == ""
 }
 
 func (cr VMAgent) GetClusterRoleName() string {

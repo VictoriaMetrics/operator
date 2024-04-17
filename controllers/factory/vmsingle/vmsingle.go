@@ -95,9 +95,12 @@ func CreateOrUpdateVMSingle(ctx context.Context, cr *victoriametricsv1beta1.VMSi
 	if cr.Spec.Image.PullPolicy == "" {
 		cr.Spec.Image.PullPolicy = corev1.PullIfNotPresent
 	}
-	if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr)); err != nil {
-		return fmt.Errorf("failed create service account: %w", err)
+	if cr.IsOwnsServiceAccount() {
+		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr)); err != nil {
+			return fmt.Errorf("failed create service account: %w", err)
+		}
 	}
+
 	svc, err := CreateOrUpdateVMSingleService(ctx, cr, rclient, c)
 	if err != nil {
 		return err

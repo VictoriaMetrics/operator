@@ -1,8 +1,5 @@
 package vmalert
 
-// TODO move vmalert  and vmrule related code
-//
-
 import (
 	"context"
 	"fmt"
@@ -186,8 +183,10 @@ func CreateOrUpdateVMAlert(ctx context.Context, cr *victoriametricsv1beta1.VMAle
 	}
 	cr.Spec.Notifiers = append(cr.Spec.Notifiers, additionalNotifiers...)
 
-	if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr)); err != nil {
-		return fmt.Errorf("failed create service account: %w", err)
+	if cr.IsOwnsServiceAccount() {
+		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr)); err != nil {
+			return fmt.Errorf("failed create service account: %w", err)
+		}
 	}
 
 	remoteSecrets, err := loadVMAlertRemoteSecrets(ctx, rclient, cr)

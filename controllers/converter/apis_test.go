@@ -7,6 +7,7 @@ import (
 
 	v1beta1vm "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
+	"github.com/google/go-cmp/cmp"
 	v1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
@@ -586,7 +587,7 @@ func TestConvertScrapeConfig(t *testing.T) {
 					RelabelConfigs: []*v1beta1vm.RelabelConfig{
 						{
 							Action:      "LabelMap",
-							Regex:       "__meta_kubernetes_pod_label_(.+)",
+							Regex:       v1beta1vm.StringOrArray{"__meta_kubernetes_pod_label_(.+)"},
 							Replacement: "foo_$1",
 						},
 					},
@@ -764,8 +765,9 @@ func TestConvertScrapeConfig(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := ConvertScrapeConfig(tt.args.scrapeConfig, &config.BaseOperatorConf{})
-			if !reflect.DeepEqual(*got, tt.want) {
-				t.Fatalf("ConvertScrapeConfig() got = \n%v, \nwant \n%v", got, tt.want)
+			if !cmp.Equal(*got, tt.want) {
+				diff := cmp.Diff(*got, tt.want)
+				t.Fatal("not expected output with diff: ", diff)
 			}
 		})
 	}

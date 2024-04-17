@@ -1951,6 +1951,11 @@ func (in *RelabelConfig) DeepCopyInto(out *RelabelConfig) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.Regex != nil {
+		in, out := &in.Regex, &out.Regex
+		*out = make(StringOrArray, len(*in))
+		copy(*out, *in)
+	}
 	if in.If != nil {
 		in, out := &in.If, &out.If
 		*out = make(StringOrArray, len(*in))

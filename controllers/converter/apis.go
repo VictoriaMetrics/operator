@@ -431,16 +431,18 @@ func convertRelabelConfig(promRelabelConfig []*v1.RelabelConfig) []*victoriametr
 		}
 		return res
 	}
-	for _, relabel := range promRelabelConfig {
+	for idx, relabel := range promRelabelConfig {
 		relabelCfg = append(relabelCfg, &victoriametricsv1beta1.RelabelConfig{
 			SourceLabels: sourceLabelsToStringSlice(relabel.SourceLabels),
 			Separator:    relabel.Separator,
 			TargetLabel:  relabel.TargetLabel,
-			Regex:        relabel.Regex,
 			Modulus:      relabel.Modulus,
 			Replacement:  relabel.Replacement,
 			Action:       relabel.Action,
 		})
+		if len(relabel.Regex) > 0 {
+			relabelCfg[idx].Regex = victoriametricsv1beta1.StringOrArray{relabel.Regex}
+		}
 	}
 	return filterUnsupportedRelabelCfg(relabelCfg)
 }

@@ -905,9 +905,11 @@ spec:
                       format: int64
                       type: integer
                     regex:
-                      description: Regular expression against which the extracted
-                        value is matched. Default is '(.*)'
-                      type: string
+                      description: |-
+                        Regular expression against which the extracted value is matched. Default is '(.*)'
+                        victoriaMetrics supports multiline regex joined with |
+                        https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
+                      x-kubernetes-preserve-unknown-fields: true
                     replacement:
                       description: |-
                         Replacement value against which a regex replace is performed if the
@@ -1133,9 +1135,11 @@ spec:
                       format: int64
                       type: integer
                     regex:
-                      description: Regular expression against which the extracted
-                        value is matched. Default is '(.*)'
-                      type: string
+                      description: |-
+                        Regular expression against which the extracted value is matched. Default is '(.*)'
+                        victoriaMetrics supports multiline regex joined with |
+                        https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
+                      x-kubernetes-preserve-unknown-fields: true
                     replacement:
                       description: |-
                         Replacement value against which a regex replace is performed if the
@@ -1386,9 +1390,11 @@ spec:
                       format: int64
                       type: integer
                     regex:
-                      description: Regular expression against which the extracted
-                        value is matched. Default is '(.*)'
-                      type: string
+                      description: |-
+                        Regular expression against which the extracted value is matched. Default is '(.*)'
+                        victoriaMetrics supports multiline regex joined with |
+                        https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
+                      x-kubernetes-preserve-unknown-fields: true
                     replacement:
                       description: |-
                         Replacement value against which a regex replace is performed if the
@@ -1567,9 +1573,11 @@ spec:
                       format: int64
                       type: integer
                     regex:
-                      description: Regular expression against which the extracted
-                        value is matched. Default is '(.*)'
-                      type: string
+                      description: |-
+                        Regular expression against which the extracted value is matched. Default is '(.*)'
+                        victoriaMetrics supports multiline regex joined with |
+                        https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
+                      x-kubernetes-preserve-unknown-fields: true
                     replacement:
                       description: |-
                         Replacement value against which a regex replace is performed if the
@@ -1829,9 +1837,11 @@ spec:
                             format: int64
                             type: integer
                           regex:
-                            description: Regular expression against which the extracted
-                              value is matched. Default is '(.*)'
-                            type: string
+                            description: |-
+                              Regular expression against which the extracted value is matched. Default is '(.*)'
+                              victoriaMetrics supports multiline regex joined with |
+                              https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
+                            x-kubernetes-preserve-unknown-fields: true
                           replacement:
                             description: |-
                               Replacement value against which a regex replace is performed if the
@@ -2045,10 +2055,11 @@ spec:
                                       format: int64
                                       type: integer
                                     regex:
-                                      description: Regular expression against which
-                                        the extracted value is matched. Default is
-                                        '(.*)'
-                                      type: string
+                                      description: |-
+                                        Regular expression against which the extracted value is matched. Default is '(.*)'
+                                        victoriaMetrics supports multiline regex joined with |
+                                        https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
+                                      x-kubernetes-preserve-unknown-fields: true
                                     replacement:
                                       description: |-
                                         Replacement value against which a regex replace is performed if the
@@ -2133,10 +2144,11 @@ spec:
                                       format: int64
                                       type: integer
                                     regex:
-                                      description: Regular expression against which
-                                        the extracted value is matched. Default is
-                                        '(.*)'
-                                      type: string
+                                      description: |-
+                                        Regular expression against which the extracted value is matched. Default is '(.*)'
+                                        victoriaMetrics supports multiline regex joined with |
+                                        https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
+                                      x-kubernetes-preserve-unknown-fields: true
                                     replacement:
                                       description: |-
                                         Replacement value against which a regex replace is performed if the
@@ -2645,9 +2657,11 @@ spec:
                       format: int64
                       type: integer
                     regex:
-                      description: Regular expression against which the extracted
-                        value is matched. Default is '(.*)'
-                      type: string
+                      description: |-
+                        Regular expression against which the extracted value is matched. Default is '(.*)'
+                        victoriaMetrics supports multiline regex joined with |
+                        https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
+                      x-kubernetes-preserve-unknown-fields: true
                     replacement:
                       description: |-
                         Replacement value against which a regex replace is performed if the
@@ -2851,9 +2865,11 @@ spec:
                       format: int64
                       type: integer
                     regex:
-                      description: Regular expression against which the extracted
-                        value is matched. Default is '(.*)'
-                      type: string
+                      description: |-
+                        Regular expression against which the extracted value is matched. Default is '(.*)'
+                        victoriaMetrics supports multiline regex joined with |
+                        https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
+                      x-kubernetes-preserve-unknown-fields: true
                     replacement:
                       description: |-
                         Replacement value against which a regex replace is performed if the
@@ -3488,9 +3504,11 @@ spec:
                       format: int64
                       type: integer
                     regex:
-                      description: Regular expression against which the extracted
-                        value is matched. Default is '(.*)'
-                      type: string
+                      description: |-
+                        Regular expression against which the extracted value is matched. Default is '(.*)'
+                        victoriaMetrics supports multiline regex joined with |
+                        https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
+                      x-kubernetes-preserve-unknown-fields: true
                     replacement:
                       description: |-
                         Replacement value against which a regex replace is performed if the

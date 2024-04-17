@@ -531,6 +531,28 @@ type KeyValue struct {
 // StringOrArray is a helper type for storing string or array of string.
 type StringOrArray []string
 
+func (m StringOrArray) MarshalYAML() (interface{}, error) {
+	switch len(m) {
+	case 0:
+		return "", nil
+	case 1:
+		return m[0], nil
+	default:
+		return []string(m), nil
+	}
+}
+
+func (m StringOrArray) MarshalJSON() ([]byte, error) {
+	switch len(m) {
+	case 0:
+		return json.Marshal("")
+	case 1:
+		return json.Marshal(m[0])
+	default:
+		return json.Marshal([]string(m))
+	}
+}
+
 func (m *StringOrArray) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	var raw any
 	if err := unmarshal(&raw); err != nil {

@@ -168,7 +168,7 @@ metric_relabel_configs: []
 						{
 							Action:       "drop",
 							SourceLabels: []string{"src"},
-							Regex:        ".+",
+							Regex:        []string{"vmagent", "vmalert"},
 						},
 					},
 					BasicAuth: &victoriametricsv1beta1.BasicAuth{
@@ -267,7 +267,9 @@ relabel_configs:
   replacement: static-job
 - source_labels:
   - src
-  regex: .+
+  regex:
+  - vmagent
+  - vmalert
   action: drop
 - target_label: namespace
   replacement: default

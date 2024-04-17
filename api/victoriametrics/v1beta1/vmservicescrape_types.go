@@ -385,8 +385,12 @@ type RelabelConfig struct {
 	// +optional
 	TargetLabel string `json:"targetLabel,omitempty" yaml:"-"`
 	// Regular expression against which the extracted value is matched. Default is '(.*)'
+	// victoriaMetrics supports multiline regex joined with |
+	// https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
 	// +optional
-	Regex string `json:"regex,omitempty" yaml:"regex,omitempty"`
+	// +kubebuilder:validation:Schemaless
+	// +kubebuilder:pruning:PreserveUnknownFields
+	Regex StringOrArray `json:"regex,omitempty" yaml:"regex,omitempty"`
 	// Modulus to take of the hash of the source label values.
 	// +optional
 	Modulus uint64 `json:"modulus,omitempty" yaml:"modulus,omitempty"`

@@ -1208,7 +1208,7 @@ func TestCreateOrUpdateRelabelConfigsAssets(t *testing.T) {
 					Spec: victoriametricsv1beta1.VMAgentSpec{
 						InlineRelabelConfig: []victoriametricsv1beta1.RelabelConfig{
 							{
-								Regex:        ".*",
+								Regex:        []string{".*"},
 								Action:       "DROP",
 								SourceLabels: []string{"pod"},
 							},
@@ -1244,7 +1244,7 @@ func TestCreateOrUpdateRelabelConfigsAssets(t *testing.T) {
 					Spec: victoriametricsv1beta1.VMAgentSpec{
 						InlineRelabelConfig: []victoriametricsv1beta1.RelabelConfig{
 							{
-								Regex:        ".*",
+								Regex:        []string{".*"},
 								Action:       "DROP",
 								SourceLabels: []string{"pod"},
 							},
@@ -1367,7 +1367,7 @@ func TestCreateOrUpdateStreamAggrConfig(t *testing.T) {
 										OutputRelabelConfigs: []victoriametricsv1beta1.RelabelConfig{{
 											SourceLabels: []string{"__name__"},
 											TargetLabel:  "metric",
-											Regex:        "(.+):.+",
+											Regex:        []string{"(.+):.+"},
 										}},
 									}},
 								},
@@ -1396,6 +1396,64 @@ func TestCreateOrUpdateStreamAggrConfig(t *testing.T) {
   - pod
   output_relabel_configs:
   - regex: (.+):.+
+`
+				assert.Equal(t, wantGlobal, data)
+				return nil
+			},
+			predefinedObjects: []runtime.Object{},
+		},
+		{
+			name: "stream aggr config with multie regex",
+			args: args{
+				ctx: context.TODO(),
+				cr: &victoriametricsv1beta1.VMAgent{
+					Spec: victoriametricsv1beta1.VMAgentSpec{
+						RemoteWrite: []victoriametricsv1beta1.VMAgentRemoteWriteSpec{
+							{
+								URL: "localhost:8429",
+								StreamAggrConfig: &victoriametricsv1beta1.StreamAggrConfig{
+									Rules: []victoriametricsv1beta1.StreamAggrRule{{
+										Match:             []string{`{__name__="count1"}`, `{__name__="count2"}`},
+										Interval:          "1m",
+										StalenessInterval: "2m",
+										Outputs:           []string{"total", "avg"},
+										By:                []string{"job", "instance"},
+										Without:           []string{"pod"},
+										OutputRelabelConfigs: []victoriametricsv1beta1.RelabelConfig{{
+											SourceLabels: []string{"__name__"},
+											TargetLabel:  "metric",
+											Regex:        []string{"vmagent", "vmalert", "vmauth"},
+										}},
+									}},
+								},
+							},
+						},
+					},
+				},
+			},
+			validate: func(cm *corev1.ConfigMap) error {
+				data, ok := cm.Data["RWS_0-CM-STREAM-AGGR-CONF"]
+				if !ok {
+					return fmt.Errorf("key: %s, not exists at map: %v", "RWS_0-CM-STREAM-AGGR-CONFl", cm.BinaryData)
+				}
+				wantGlobal := `- match:
+  - '{__name__="count1"}'
+  - '{__name__="count2"}'
+  interval: 1m
+  staleness_interval: 2m
+  outputs:
+  - total
+  - avg
+  by:
+  - job
+  - instance
+  without:
+  - pod
+  output_relabel_configs:
+  - regex:
+    - vmagent
+    - vmalert
+    - vmauth
 `
 				assert.Equal(t, wantGlobal, data)
 				return nil

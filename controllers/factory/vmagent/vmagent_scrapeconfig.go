@@ -1230,8 +1230,13 @@ func generateRelabelConfig(rc *victoriametricsv1beta1.RelabelConfig) yaml.MapSli
 		relabeling = append(relabeling, yaml.MapItem{Key: "target_label", Value: rc.TargetLabel})
 	}
 
-	if rc.Regex != "" {
-		relabeling = append(relabeling, yaml.MapItem{Key: "regex", Value: rc.Regex})
+	if len(rc.Regex) > 0 {
+		// dirty hack to properly format regex
+		if len(rc.Regex) == 1 {
+			relabeling = append(relabeling, yaml.MapItem{Key: "regex", Value: rc.Regex[0]})
+		} else {
+			relabeling = append(relabeling, yaml.MapItem{Key: "regex", Value: rc.Regex})
+		}
 	}
 
 	if rc.Modulus != uint64(0) {

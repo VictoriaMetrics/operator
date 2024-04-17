@@ -809,7 +809,7 @@ oauth2:
 							{
 								TargetLabel:  "node",
 								SourceLabels: []string{"__meta_kubernetes_node_name"},
-								Regex:        ".+",
+								Regex:        []string{".+"},
 							},
 						},
 					},

@@ -1,0 +1,58 @@
+---
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMCluster
+metadata:
+  name: example-service-change
+spec:
+  retentionPeriod: "4"
+  replicationFactor: 2
+  vmstorage:
+    replicaCount: 2
+    containers:
+    - name: my-side-car
+      ports:
+      - name: extra-port
+        containerPort: 8055
+    serviceSpec:
+      # expose additional port with default service
+      userAsDefault: true
+      spec:
+         ports:
+         - name: extra-port
+           port: 8055
+    storageDataPath: "/vm-data"
+    storage:
+      volumeClaimTemplate:
+        spec:
+          resources:
+            requests:
+              storage: 10Gi
+    resources:
+      limits:
+        cpu: "1"
+        memory: 1500Mi
+  vmselect:
+    replicaCount: 2
+    cacheMountPath: "/select-cache"
+    storage:
+      volumeClaimTemplate:
+        spec:
+          resources:
+            requests:
+              storage: 2Gi
+  vminsert:
+    replicaCount: 2
+    serviceSpec:
+      metadata:
+        annotations:
+          my-cloud-provide-annotation: value
+      userAsDefault: true
+      spec:
+       type: LoadBalancer
+    resources:
+      limits:
+        cpu: "1"
+        memory: 1000Mi
+      requests:
+        cpu: "0.5"
+        memory: "500Mi"

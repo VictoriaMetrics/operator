@@ -214,7 +214,8 @@ doc: install-develop-tools
 	$(APIS_BASE_PATH)/vmuser_types.go,\
 	$(APIS_BASE_PATH)/vmauth_types.go,\
 	$(APIS_BASE_PATH)/vmstaticscrape_types.go,\
-	$(APIS_BASE_PATH)/vmprobe_types.go \
+	$(APIS_BASE_PATH)/vmprobe_types.go,\
+	$(APIS_BASE_PATH)/vmscrapeconfig_types.go \
 	--owner VictoriaMetrics \
 	>> docs/api.md
 

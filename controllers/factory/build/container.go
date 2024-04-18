@@ -312,7 +312,7 @@ var (
 // AddsPortProbesToConfigReloaderContainer conditionally adds readiness and liveness probes to the custom config-reloader image
 // exposes reloader-http port for container
 func AddsPortProbesToConfigReloaderContainer(crContainer *v1.Container, c *config.BaseOperatorConf) {
-	if c.UseCustomConfigReloader && c.CustomConfigReloaderImageVersion().LessThan(minimalHealthProbeSupportedVersion) {
+	if !c.UseCustomConfigReloader || c.CustomConfigReloaderImageVersion().LessThan(minimalHealthProbeSupportedVersion) {
 		return
 	}
 	crContainer.Ports = append(crContainer.Ports, v1.ContainerPort{

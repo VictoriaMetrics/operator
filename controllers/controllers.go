@@ -39,15 +39,15 @@ var (
 	parseObjectErrorsTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "operator_controller_object_parsing_errors_total",
 		Help: "Counts number of objects, that was failed to parse from json",
-	}, []string{"controller"})
+	}, []string{"controller", "namespaced_name"})
 	getObjectsErrorsTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "operator_controller_object_get_errors_total",
 		Help: "Counts number of errors for client.Get method at reconcilation loop",
-	}, []string{"controller"})
+	}, []string{"controller", "namespaced_name"})
 	conflictErrorsTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "operator_controller_reconcile_conflict_errors_total",
 		Help: "Counts number of errors with race conditions, when object was modified by external program at reconcilation",
-	}, []string{"controller"})
+	}, []string{"controller", "namespaced_name"})
 	contextCancelErrorsTotal = prometheus.NewCounter(prometheus.CounterOpts{
 		Name: "operator_controller_reconcile_errors_total",
 		Help: "Counts number contex.Canceled errors",
@@ -114,16 +114,22 @@ func handleReconcileErr(ctx context.Context, rclient client.Client, object objec
 		if err := object.SetUpdateStatusTo(ctx, rclient, victoriametricsv1beta1.UpdateStatusFailed, err); err != nil {
 			logger.WithContext(ctx).Error(err, "failed to status with parsing error")
 		}
-		parseObjectErrorsTotal.WithLabelValues(pe.controller).Inc()
+		parseObjectErrorsTotal.WithLabelValues(pe.controller, fmt.Sprintf("%s/%s", object.GetNamespace(), object.GetName())).Inc()
 	case errors.As(err, &ge):
 		deregisterObjectByCollector(ge.requestObject.Name, ge.requestObject.Namespace, ge.controller)
-		getObjectsErrorsTotal.WithLabelValues(ge.controller).Inc()
+		getObjectsErrorsTotal.WithLabelValues(ge.controller, ge.requestObject.String()).Inc()
 		if apierrors.IsNotFound(err) {
 			err = nil
 			return originResult, nil
 		}
 	case apierrors.IsConflict(err):
-		conflictErrorsTotal.WithLabelValues().Inc()
+		controller := "unknown"
+		namespacedName := "unknown"
+		if object != nil && !reflect.ValueOf(object).IsNil() && object.GetNamespace() != "" {
+			controller = object.GetObjectKind().GroupVersionKind().GroupKind().Kind
+			namespacedName = fmt.Sprintf("%s/%s", object.GetNamespace(), object.GetName())
+		}
+		conflictErrorsTotal.WithLabelValues(controller, namespacedName).Inc()
 		return ctrl.Result{RequeueAfter: time.Second * 5}, nil
 	}
 	if object != nil && !reflect.ValueOf(object).IsNil() && object.GetNamespace() != "" {

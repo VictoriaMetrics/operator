@@ -270,7 +270,7 @@ type BasicAuth struct {
 // +k8s:openapi-gen=true
 type AdditionalServiceSpec struct {
 	// UseAsDefault applies changes from given service definition to the main object Service
-	// Chaning from headless service to clusterIP or loadbalancer may break cross-component communication
+	// Changing from headless service to clusterIP or loadbalancer may break cross-component communication
 	UseAsDefault bool `json:"useAsDefault,omitempty"`
 	// EmbeddedObjectMetadata defines objectMeta for additional service.
 	EmbeddedObjectMetadata `json:"metadata,omitempty"`

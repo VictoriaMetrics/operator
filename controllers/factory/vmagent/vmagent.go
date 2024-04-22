@@ -89,13 +89,16 @@ func CreateOrUpdateVMAgentService(ctx context.Context, cr *victoriametricsv1beta
 func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAgent, rclient client.Client, c *config.BaseOperatorConf) error {
 	l := logger.WithContext(ctx).WithValues("controller", "vmagent.crud", "namespace", cr.Namespace, "vmagent", cr.PrefixedName())
 	ctx = logger.AddToContext(ctx, l)
-	if cr.IsOwnsServiceAccount() && !cr.Spec.IngestOnlyMode {
+	if cr.IsOwnsServiceAccount() {
 		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr)); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
 		}
-		if err := createVMAgentK8sAPIAccess(ctx, cr, rclient, config.IsClusterWideAccessAllowed()); err != nil {
-			return fmt.Errorf("cannot create vmagent role and binding for it, err: %w", err)
+		if !cr.Spec.IngestOnlyMode {
+			if err := createVMAgentK8sAPIAccess(ctx, cr, rclient, config.IsClusterWideAccessAllowed()); err != nil {
+				return fmt.Errorf("cannot create vmagent role and binding for it, err: %w", err)
+			}
 		}
+
 	}
 
 	ssCache, err := createOrUpdateConfigurationSecret(ctx, cr, rclient, c)

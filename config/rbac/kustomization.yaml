@@ -20,6 +20,3 @@ patches:
 - path: service_account_patch.yaml
   target:
     name: vm-operator-manager-rolebinding
-- path: service_account_patch.yaml
-  target:
-    name: vm-operator-psp-rolebinding

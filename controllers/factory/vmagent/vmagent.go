@@ -1384,9 +1384,6 @@ func buildConfigReloaderArgs(cr *victoriametricsv1beta1.VMAgent, c *config.BaseO
 	// by default use watched-dir
 	// it should simplify parsing for latest and empty version tags.
 	dirsArg := "watched-dir"
-	if !c.UseCustomConfigReloader {
-		dirsArg = "rules-dir"
-	}
 
 	args := []string{
 		fmt.Sprintf("--reload-url=%s", victoriametricsv1beta1.BuildReloadPathWithPort(cr.Spec.ExtraArgs, cr.Spec.Port)),

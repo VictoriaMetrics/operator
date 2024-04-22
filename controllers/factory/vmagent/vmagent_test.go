@@ -1542,8 +1542,8 @@ func Test_buildConfigReloaderArgs(t *testing.T) {
 				"--reload-url=http://localhost:8429/-/reload",
 				"--config-file=/etc/vmagent/config/vmagent.yaml.gz",
 				"--config-envsubst-file=/etc/vmagent/config_out/vmagent.env.yaml",
-				"--rules-dir=/etc/vm/relabeling",
-				"--rules-dir=/etc/vm/stream-aggr",
+				"--watched-dir=/etc/vm/relabeling",
+				"--watched-dir=/etc/vm/stream-aggr",
 			},
 		},
 	}

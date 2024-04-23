@@ -82,7 +82,8 @@ func (r *VMPodScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		}
 		reqLogger = reqLogger.WithValues("vmagent", vmagentItem.Name)
 		currentVMagent := &vmagentItem
-		if !currentVMagent.Spec.SelectAllByDefault {
+		// only check selector when deleting, since labels can be changed when updating and we can't tell if it was selected before.
+		if instance.DeletionTimestamp.IsZero() && !currentVMagent.Spec.SelectAllByDefault {
 			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, instance, currentVMagent, currentVMagent.Spec.PodScrapeSelector, currentVMagent.Spec.PodScrapeNamespaceSelector)
 			if err != nil {
 				reqLogger.Error(err, "cannot match vmagent and vmPodScrape")

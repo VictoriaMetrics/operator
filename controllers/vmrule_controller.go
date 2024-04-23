@@ -83,7 +83,8 @@ func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 			continue
 		}
 		currVMAlert := &vmalertItem
-		if !currVMAlert.Spec.SelectAllByDefault {
+		// only check selector when deleting, since labels can be changed when updating and we can't tell if it was selected before.
+		if instance.DeletionTimestamp.IsZero() && !currVMAlert.Spec.SelectAllByDefault {
 			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, instance, currVMAlert, currVMAlert.Spec.RuleSelector, currVMAlert.Spec.RuleNamespaceSelector)
 			if err != nil {
 				reqLogger.Error(err, "cannot match vmalert and vmRule")

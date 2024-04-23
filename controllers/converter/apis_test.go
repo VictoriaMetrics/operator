@@ -149,8 +149,9 @@ func TestConvertEndpoint(t *testing.T) {
 			args: args{
 				promEndpoint: []v1.Endpoint{
 					{
-						Port: "9100",
-						Path: "/metrics",
+						Port:              "9100",
+						Path:              "/metrics",
+						BearerTokenSecret: &corev1.SecretKeySelector{Key: "bearer"},
 						RelabelConfigs: []*v1.RelabelConfig{
 							{
 								Action:       "drop",
@@ -165,8 +166,9 @@ func TestConvertEndpoint(t *testing.T) {
 			},
 			want: []v1beta1vm.Endpoint{
 				{
-					Path: "/metrics",
-					Port: "9100",
+					Path:              "/metrics",
+					Port:              "9100",
+					BearerTokenSecret: &corev1.SecretKeySelector{Key: "bearer"},
 					RelabelConfigs: []*v1beta1vm.RelabelConfig{
 						{
 							Action:       "drop",
@@ -295,6 +297,7 @@ func TestConvertPodEndpoints(t *testing.T) {
 			name: "with tls config",
 			args: args{promPodEnpoints: []v1.PodMetricsEndpoint{
 				{
+					BearerTokenSecret: corev1.SecretKeySelector{},
 					TLSConfig: &v1.PodMetricsEndpointTLSConfig{
 						SafeTLSConfig: v1.SafeTLSConfig{
 							InsecureSkipVerify: true,

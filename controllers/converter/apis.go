@@ -334,11 +334,11 @@ func convertAuthorization(srcSafe *v1.SafeAuthorization, src *v1.Authorization) 
 	}
 }
 
-func convertBearerToken(src corev1.SecretKeySelector) *corev1.SecretKeySelector {
-	if src.Key == "" && src.Name == "" {
+func convertBearerToken(src *corev1.SecretKeySelector) *corev1.SecretKeySelector {
+	if src == nil || (src.Key == "" && src.Name == "") {
 		return nil
 	}
-	return &src
+	return src
 }
 
 func convertEndpoint(promEndpoint []v1.Endpoint) []victoriametricsv1beta1.Endpoint {
@@ -360,6 +360,7 @@ func convertEndpoint(promEndpoint []v1.Endpoint) []victoriametricsv1beta1.Endpoi
 			MetricRelabelConfigs: convertRelabelConfig(endpoint.MetricRelabelConfigs),
 			RelabelConfigs:       convertRelabelConfig(endpoint.RelabelConfigs),
 			ProxyURL:             endpoint.ProxyURL,
+			BearerTokenSecret:    convertBearerToken(endpoint.BearerTokenSecret),
 			OAuth2:               convertOAuth(endpoint.OAuth2),
 			FollowRedirects:      endpoint.FollowRedirects,
 			Authorization:        convertAuthorization(endpoint.Authorization, nil),
@@ -469,7 +470,7 @@ func convertPodEndpoints(promPodEnpoints []v1.PodMetricsEndpoint) []victoriametr
 			HonorTimestamps:      promEndPoint.HonorTimestamps,
 			ProxyURL:             promEndPoint.ProxyURL,
 			RelabelConfigs:       convertRelabelConfig(promEndPoint.RelabelConfigs),
-			BearerTokenSecret:    convertBearerToken(promEndPoint.BearerTokenSecret),
+			BearerTokenSecret:    convertBearerToken(&promEndPoint.BearerTokenSecret),
 			MetricRelabelConfigs: convertRelabelConfig(promEndPoint.MetricRelabelConfigs),
 			BasicAuth:            convertBasicAuth(promEndPoint.BasicAuth),
 			TLSConfig:            convertSafeTLSConfig(safeTLS),
@@ -577,7 +578,7 @@ func ConvertProbe(probe *v1.Probe, conf *config.BaseOperatorConf) *victoriametri
 			ScrapeTimeout:     string(probe.Spec.ScrapeTimeout),
 			BasicAuth:         convertBasicAuth(probe.Spec.BasicAuth),
 			TLSConfig:         convertSafeTLSConfig(safeTLS),
-			BearerTokenSecret: convertBearerToken(probe.Spec.BearerTokenSecret),
+			BearerTokenSecret: convertBearerToken(&probe.Spec.BearerTokenSecret),
 			OAuth2:            convertOAuth(probe.Spec.OAuth2),
 			Authorization:     convertAuthorization(probe.Spec.Authorization, nil),
 		},

@@ -97,7 +97,8 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		}
 		// reconcile users for given vmauth.
 		currentVMAuth := &vmauthItem
-		if !currentVMAuth.Spec.SelectAllByDefault {
+		// only check selector when deleting, since labels can be changed when updating and we can't tell if it was selected before.
+		if instance.DeletionTimestamp.IsZero() && !currentVMAuth.Spec.SelectAllByDefault {
 			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, &instance, currentVMAuth, currentVMAuth.Spec.UserSelector, currentVMAuth.Spec.UserNamespaceSelector)
 			if err != nil {
 				l.Error(err, "cannot match vmauth and VMUser")

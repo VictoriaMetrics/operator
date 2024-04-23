@@ -83,7 +83,8 @@ func (r *VMAlertmanagerConfigReconciler) Reconcile(ctx context.Context, req ctrl
 		l := l.WithValues("alertmanager", am.Name)
 		ctx := logger.AddToContext(ctx, l)
 
-		if !am.Spec.SelectAllByDefault {
+		// only check selector when deleting, since labels can be changed when updating and we can't tell if it was selected before.
+		if instance.DeletionTimestamp.IsZero() && !am.Spec.SelectAllByDefault {
 			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, &instance, am, am.Spec.ConfigSelector, am.Spec.ConfigNamespaceSelector)
 			if err != nil {
 				l.Error(err, "cannot match alertmanager against selector, probably bug")

@@ -60,7 +60,8 @@ func (r *VMStaticScrapeReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			continue
 		}
 		currentVMagent := &vmagentItem
-		if !currentVMagent.Spec.SelectAllByDefault {
+		// only check selector when deleting, since labels can be changed when updating and we can't tell if it was selected before.
+		if instance.DeletionTimestamp.IsZero() && !currentVMagent.Spec.SelectAllByDefault {
 			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, instance, currentVMagent, currentVMagent.Spec.StaticScrapeSelector, currentVMagent.Spec.StaticScrapeNamespaceSelector)
 			if err != nil {
 				reqLogger.Error(err, "cannot match vmagent and vmStaticScrape")

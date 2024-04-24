@@ -25,7 +25,7 @@ VictoriaMetrics operator support high availability for each component of the mon
 - [VMAuth](./resources/vmauth.md#high-availability)
 - [VMCluster](./resources/vmcluster.md#high-availability)
 
-More details you can find in the section **[High Availability for resources](./resources/README.md#high-availability)**.
+More details you can find in the section **[High Availability for resources](./resources/vmcustomresources.md#high-availability)**.
 
 ## Operator
 

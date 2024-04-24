@@ -22,7 +22,7 @@ Learn more about [key concepts](#key-concepts) of `vmoperator` and follow the **
 
 - Deployment and management in a kubernetes clusters of any number of VictoriaMetrics applications (like vmsingle/vmcluster instances and another components like vmauth, vmagent, vmalert, etc...)
 - Seamless [migration from prometheus-operator](./migration.md) with auto-conversion of prometheus [custom resources](#custom-resources)
-- Simple VictoriaMetrics cluster installation, configuring, upgrading and managing with [crd-objects](./resources/README.md).
+- Simple VictoriaMetrics cluster installation, configuring, upgrading and managing with [crd-objects](./resources/vmcustomresources.md).
 - Ability to delegate the configuration (parts of configuration) of applications monitoring to the end-users and managing access to different configurations or configuration sections.
 - Integration with VictoriaMetrics [vmbackupmanager](https://docs.victoriametrics.com/vmbackupmanager.html) - advanced tools for making backups. Check [Backup automation for VMSingle](./resources/vmsingle.md#backup-automation) or [Backup automation for VMCluster](./resources/vmcluster.md#backup-automation).
 - Everything you need for monitoring out of the box in [k8s-stack helm chart](https://victoriametrics.github.io/helm-charts/charts/victoria-metrics-k8s-stack/) with ready-made usecases and solutions.
@@ -63,7 +63,7 @@ The basic workflow of working with the operator can be simplified as the followi
 
 <img src="README_operator-workflow.png" width="1200">
 
-- Operator declares and owns [resources of Victoria Metrics](./resources/README.md).
+- Operator declares and owns [resources of Victoria Metrics](./resources/vmcustomresources.md).
 - Kubernetes validates of the resource according to the specification from CRD (see more in [custom resources](#custom-resources)).
 - Operator subscribed to change events (`create`, `update`, `delete`) for related resources.
 - When an event occurs, the operator reacts and updates the state of the objects in the cluster.
@@ -80,7 +80,7 @@ The basic workflow of working with the operator can be simplified as the followi
 - [Authorization and exposing components](./auth.md)
 - [High Availability](./high-availability.md)
 - [Enterprise](./enterprise.md)
-- [Custom resources](./resources/README.md)
+- [Custom resources](./resources/vmcustomresources.md)
 
 If you have any questions, check out our [FAQ](./FAQ.md) 
 and feel free to can ask them:

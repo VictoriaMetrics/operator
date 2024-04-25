@@ -238,7 +238,6 @@ func ensureVMAgentRBExist(ctx context.Context, cr *v1beta12.VMAgent, rclient cli
 		if errors.IsNotFound(err) {
 			return rclient.Create(ctx, rb)
 		}
-		fmt.Println("HERE")
 		return fmt.Errorf("cannot get rb for vmagent: %w", err)
 	}
 

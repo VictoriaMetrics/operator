@@ -35,6 +35,27 @@ type STSOptions struct {
 	UpdateReplicaCount func(count *int32)
 }
 
+func waitForStatefulSetReady(ctx context.Context, rclient client.Client, newSts *appsv1.StatefulSet, c *config.BaseOperatorConf) error {
+	err := wait.PollWithContext(ctx, c.PodWaitReadyIntervalCheck, c.PodWaitReadyTimeout, func(ctx context.Context) (done bool, err error) {
+		// fast path
+		if newSts.Spec.Replicas == nil {
+			return true, nil
+		}
+		var stsForStatus appsv1.StatefulSet
+		if err := rclient.Get(ctx, types.NamespacedName{Namespace: newSts.Namespace, Name: newSts.Name}, &stsForStatus); err != nil {
+			return false, err
+		}
+		if *newSts.Spec.Replicas != stsForStatus.Status.ReadyReplicas {
+			return false, nil
+		}
+		return true, nil
+	})
+	if err != nil {
+		return reportFirstNotReadyPodOnError(ctx, rclient, fmt.Errorf("cannot wait for statefulSet to become ready: %w", err), newSts.Namespace, labels.SelectorFromSet(newSts.Spec.Selector.MatchLabels), newSts.Spec.MinReadySeconds)
+	}
+	return nil
+}
+
 // HandleSTSUpdate performs create and update operations for given statefulSet with STSOptions
 func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, newSts *appsv1.StatefulSet, c *config.BaseOperatorConf) error {
 	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
@@ -44,7 +65,7 @@ func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, 
 				if err = rclient.Create(ctx, newSts); err != nil {
 					return fmt.Errorf("cannot create new sts %s under namespace %s: %w", newSts.Name, newSts.Namespace, err)
 				}
-				return nil
+				return waitForStatefulSetReady(ctx, rclient, newSts, c)
 			}
 			return fmt.Errorf("cannot get sts %s under namespace %s: %w", newSts.Name, newSts.Namespace, err)
 		}
@@ -80,6 +101,10 @@ func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, 
 		if cr.UpdateStrategy() == appsv1.OnDeleteStatefulSetStrategyType {
 			if err := performRollingUpdateOnSts(ctx, podMustRecreate, rclient, newSts.Name, newSts.Namespace, cr.SelectorLabels(), c); err != nil {
 				return fmt.Errorf("cannot handle rolling-update on sts: %s, err: %w", newSts.Name, err)
+			}
+		} else {
+			if err := waitForStatefulSetReady(ctx, rclient, newSts, c); err != nil {
+				return fmt.Errorf("cannot ensure that statefulset is ready with strategy=%q: %w", cr.UpdateStrategy(), err)
 			}
 		}
 
@@ -155,14 +180,14 @@ func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclien
 			podRev := pod.Labels[podRevisionLabel]
 			if podRev == stsVersion {
 				// wait for readiness only for not ready pods
-				if !PodIsReady(pod, sts.Spec.MinReadySeconds) {
+				if !PodIsReady(&pod, sts.Spec.MinReadySeconds) {
 					updatedPods = append(updatedPods, pod)
 				}
 				continue
 			}
 
 			// move unready pods to the begging of list for update
-			if !PodIsReady(pod, sts.Spec.MinReadySeconds) {
+			if !PodIsReady(&pod, sts.Spec.MinReadySeconds) {
 				podsForUpdate = append([]corev1.Pod{pod}, podsForUpdate...)
 				continue
 			}
@@ -189,10 +214,9 @@ func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclien
 	// check updated, by not ready pods
 	for _, pod := range updatedPods {
 		l.Info("checking ready status for already updated pod to desired version", "pod", pod.Name)
-		err := waitForPodReady(ctx, rclient, ns, pod.Name, c, sts.Spec.MinReadySeconds, nil)
+		err := waitForPodReady(ctx, rclient, ns, pod.Name, c, sts.Spec.MinReadySeconds)
 		if err != nil {
-			l.Error(err, "cannot get ready status for already updated pod", "pod", pod.Name)
-			return err
+			return fmt.Errorf("cannot wait for pod ready state for already updated pod: %w", err)
 		}
 	}
 
@@ -205,12 +229,11 @@ func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclien
 		if err != nil {
 			return err
 		}
-		err = waitForPodReady(ctx, rclient, ns, pod.Name, c, sts.Spec.MinReadySeconds, nil)
+		err = waitForPodReady(ctx, rclient, ns, pod.Name, c, sts.Spec.MinReadySeconds)
 		if err != nil {
-			return err
+			return fmt.Errorf("cannot wait for pod ready state during re-creation: %w", err)
 		}
 		l.Info("pod was updated successfully", "pod", pod.Name)
-		time.Sleep(time.Second * 1)
 	}
 
 	if sts.Status.CurrentRevision != sts.Status.UpdateRevision {
@@ -224,35 +247,8 @@ func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclien
 	return nil
 }
 
-// PodIsFailedWithReason reports if pod failed and the reason of fail
-func PodIsFailedWithReason(pod corev1.Pod) (bool, string) {
-	var reasons []string
-	for _, containerCond := range pod.Status.ContainerStatuses {
-		if containerCond.Ready {
-			continue
-		}
-		if containerCond.LastTerminationState.Terminated != nil {
-			// pod was terminated by some reason
-			ts := containerCond.LastTerminationState.Terminated
-			reason := fmt.Sprintf("container: %s, reason: %s, message: %s ", containerCond.Name, ts.Reason, ts.Message)
-			reasons = append(reasons, reason)
-		}
-	}
-	for _, containerCond := range pod.Status.InitContainerStatuses {
-		if containerCond.Ready {
-			continue
-		}
-		if containerCond.LastTerminationState.Terminated != nil {
-			ts := containerCond.LastTerminationState.Terminated
-			reason := fmt.Sprintf("init container: %s, reason: %s, message: %s ", containerCond.Name, ts.Reason, ts.Message)
-			reasons = append(reasons, reason)
-		}
-	}
-	return len(reasons) > 0, strings.Join(reasons, ",")
-}
-
 // PodIsReady check is pod is ready
-func PodIsReady(pod corev1.Pod, minReadySeconds int32) bool {
+func PodIsReady(pod *corev1.Pod, minReadySeconds int32) bool {
 	if pod.ObjectMeta.DeletionTimestamp != nil {
 		return false
 	}
@@ -271,29 +267,52 @@ func PodIsReady(pod corev1.Pod, minReadySeconds int32) bool {
 	return false
 }
 
-func waitForPodReady(ctx context.Context, rclient client.Client, ns, podName string, c *config.BaseOperatorConf, minReadySeconds int32, cb func(pod *corev1.Pod) error) error {
+func waitForPodReady(ctx context.Context, rclient client.Client, ns, podName string, c *config.BaseOperatorConf, minReadySeconds int32) error {
 	// we need some delay
 	time.Sleep(c.PodWaitReadyInitDelay)
-	return wait.Poll(c.PodWaitReadyIntervalCheck, c.PodWaitReadyTimeout, func() (done bool, err error) {
-		pod := &corev1.Pod{}
+	var pod *corev1.Pod
+	if err := wait.Poll(c.PodWaitReadyIntervalCheck, c.PodWaitReadyTimeout, func() (done bool, err error) {
+		pod = &corev1.Pod{}
 		err = rclient.Get(ctx, types.NamespacedName{Namespace: ns, Name: podName}, pod)
 		if err != nil {
-			if errors.IsNotFound(err) {
-				return false, nil
-			}
 			return false, fmt.Errorf("cannot get pod: %q: %w", podName, err)
 		}
-		if PodIsReady(*pod, minReadySeconds) {
+		if PodIsReady(pod, minReadySeconds) {
 			logger.WithContext(ctx).Info("pod update finished with revision", "pod", pod.Name, "revision", pod.Labels[podRevisionLabel])
-			if cb != nil {
-				if err := cb(pod); err != nil {
-					return true, fmt.Errorf("errror occured at callback execution: %w", err)
-				}
-			}
 			return true, nil
 		}
 		return false, nil
-	})
+	}); err != nil {
+		return podStatusesToError(err, pod)
+	}
+	return nil
+}
+
+func podStatusesToError(origin error, pod *corev1.Pod) error {
+	var conditions []string
+	for _, cond := range pod.Status.Conditions {
+		conditions = append(conditions, fmt.Sprintf("name=%q,status=%q,message=%q", cond.Type, cond.Status, cond.Message))
+	}
+
+	stateToString := func(state corev1.ContainerState) string {
+		switch {
+		case state.Running != nil:
+			return fmt.Sprintf("running since: %s", state.Running.StartedAt)
+		case state.Terminated != nil:
+			return fmt.Sprintf("terminated reason=%q, exit_code=%d", state.Terminated.Message, state.Terminated.ExitCode)
+		case state.Waiting != nil:
+			return fmt.Sprintf("waiting with reason=%q", state.Waiting.Reason)
+		}
+		return "container at waiting state"
+	}
+	for _, condStatus := range pod.Status.ContainerStatuses {
+		conditions = append(conditions, fmt.Sprintf("name=%q,is_ready=%v,restart_count=%d,state=%s", condStatus.Name, condStatus.Ready, condStatus.RestartCount, stateToString(condStatus.State)))
+	}
+	for _, condStatus := range pod.Status.InitContainerStatuses {
+		conditions = append(conditions, fmt.Sprintf("name=%q,is_ready=%v,restart_count=%d,state=%s", condStatus.Name, condStatus.Ready, condStatus.RestartCount, stateToString(condStatus.State)))
+	}
+
+	return fmt.Errorf("origin_Err=%w,podPhase=%q,conditions=%s", origin, pod.Status.Phase, strings.Join(conditions, ","))
 }
 
 func sortStsPodsByID(src []corev1.Pod) error {

@@ -213,7 +213,7 @@ func CreateOrUpdateVMAlert(ctx context.Context, cr *victoriametricsv1beta1.VMAle
 		return fmt.Errorf("cannot generate new deploy for vmalert: %w", err)
 	}
 
-	return reconcile.Deployment(ctx, rclient, newDeploy, c.PodWaitReadyTimeout)
+	return reconcile.Deployment(ctx, rclient, newDeploy, c.PodWaitReadyTimeout, false)
 }
 
 // newDeployForCR returns a busybox pod with the same name/namespace as the cr

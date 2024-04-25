@@ -99,7 +99,7 @@ func CreateOrUpdateVMAuth(ctx context.Context, cr *victoriametricsv1beta1.VMAuth
 		return fmt.Errorf("cannot build new deploy for vmauth: %w", err)
 	}
 
-	return reconcile.Deployment(ctx, rclient, newDeploy, c.PodWaitReadyTimeout)
+	return reconcile.Deployment(ctx, rclient, newDeploy, c.PodWaitReadyTimeout, false)
 }
 
 func newDeployForVMAuth(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperatorConf) (*appsv1.Deployment, error) {

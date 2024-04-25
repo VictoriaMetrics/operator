@@ -22,7 +22,7 @@ func expectPodCount(rclient client.Client, count int, ns string, lbs map[string]
 		return fmt.Sprintf("pod count mismatch, expect: %d, got: %d", count, len(podList.Items))
 	}
 	for _, pod := range podList.Items {
-		if !reconcile.PodIsReady(pod, 0) {
+		if !reconcile.PodIsReady(&pod, 0) {
 			return fmt.Sprintf("pod isnt ready: %s,\n status: %s", pod.Name, pod.Status.String())
 		}
 	}

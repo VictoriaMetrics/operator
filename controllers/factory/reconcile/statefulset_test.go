@@ -95,7 +95,7 @@ func Test_waitForPodReady(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 
-			if err := waitForPodReady(context.Background(), fclient, tt.args.ns, tt.args.podName, tt.args.c, 0, nil); (err != nil) != tt.wantErr {
+			if err := waitForPodReady(context.Background(), fclient, tt.args.ns, tt.args.podName, tt.args.c, 0); (err != nil) != tt.wantErr {
 				t.Errorf("waitForPodReady() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -207,7 +207,7 @@ func Test_podIsReady(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := PodIsReady(tt.args.pod, tt.args.minReadySeconds); got != tt.want {
+			if got := PodIsReady(&tt.args.pod, tt.args.minReadySeconds); got != tt.want {
 				t.Errorf("PodIsReady() = %v, want %v", got, tt.want)
 			}
 		})

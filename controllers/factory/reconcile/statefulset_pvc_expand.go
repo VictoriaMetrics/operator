@@ -66,7 +66,7 @@ func recreateSTSIfNeed(ctx context.Context, rclient client.Client, newSTS, exist
 			}
 			return false, fmt.Errorf("unexpected error for polling, want notFound, got: %w", err)
 		}); err != nil {
-			return err
+			return fmt.Errorf("cannot wait for sts to be deleted: %w", err)
 		}
 
 		if err := rclient.Create(ctx, newSTS); err != nil {

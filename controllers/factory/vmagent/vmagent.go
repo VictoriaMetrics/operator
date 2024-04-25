@@ -141,7 +141,7 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 				if err != nil {
 					return fmt.Errorf("cannot fill placeholders for deployment sharded vmagent: %w", err)
 				}
-				if err := reconcile.Deployment(ctx, rclient, shardedDeploy, c.PodWaitReadyTimeout); err != nil {
+				if err := reconcile.Deployment(ctx, rclient, shardedDeploy, c.PodWaitReadyTimeout, false); err != nil {
 					return err
 				}
 				deploymentNames[shardedDeploy.Name] = struct{}{}
@@ -175,7 +175,7 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *victoriametricsv1beta1.VMAge
 			if err != nil {
 				return fmt.Errorf("cannot fill placeholders for deployment in vmagent: %w", err)
 			}
-			if err := reconcile.Deployment(ctx, rclient, newDeploy, c.PodWaitReadyTimeout); err != nil {
+			if err := reconcile.Deployment(ctx, rclient, newDeploy, c.PodWaitReadyTimeout, false); err != nil {
 				return err
 			}
 			deploymentNames[newDeploy.Name] = struct{}{}

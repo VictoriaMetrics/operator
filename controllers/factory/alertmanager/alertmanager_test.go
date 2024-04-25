@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
@@ -206,12 +207,38 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjets)
-			err := CreateOrUpdateAlertManager(tt.args.ctx, tt.args.cr, fclient, tt.args.c)
+			ctx, cancel := context.WithTimeout(tt.args.ctx, time.Second*20)
+			defer cancel()
+
+			go func() {
+				tc := time.NewTicker(time.Millisecond * 100)
+				for {
+					select {
+					case <-ctx.Done():
+						return
+					case <-tc.C:
+						var got appsv1.StatefulSet
+						if err := fclient.Get(ctx, types.NamespacedName{Namespace: tt.args.cr.Namespace, Name: tt.args.cr.PrefixedName()}, &got); err != nil {
+							if !errors.IsNotFound(err) {
+								t.Errorf("cannot get statefulset for alertmanager: %s", err)
+								return
+							}
+							continue
+						}
+						got.Status.ReadyReplicas = *tt.args.cr.Spec.ReplicaCount
+						if err := fclient.Status().Update(ctx, &got); err != nil {
+							t.Errorf("cannot update status statefulset for alertmanager: %s", err)
+						}
+						return
+					}
+				}
+			}()
+			err := CreateOrUpdateAlertManager(ctx, tt.args.cr, fclient, tt.args.c)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("CreateOrUpdateAlertManager() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			var got appsv1.StatefulSet
-			if err := fclient.Get(tt.args.ctx, types.NamespacedName{Namespace: tt.args.cr.Namespace, Name: tt.args.cr.PrefixedName()}, &got); (err != nil) != tt.wantErr {
+			if err := fclient.Get(ctx, types.NamespacedName{Namespace: tt.args.cr.Namespace, Name: tt.args.cr.PrefixedName()}, &got); (err != nil) != tt.wantErr {
 				t.Fatalf("CreateOrUpdateAlertManager() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if err := tt.validate(&got); err != nil {

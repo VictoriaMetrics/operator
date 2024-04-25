@@ -2,7 +2,9 @@ package vmcluster
 
 import (
 	"context"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
@@ -11,6 +13,7 @@ import (
 	"gopkg.in/yaml.v3"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -286,7 +289,78 @@ func TestCreateOrUpdateVMCluster(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			err := CreateOrUpdateVMCluster(context.TODO(), tt.args.cr, fclient, tt.args.c)
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			var wg sync.WaitGroup
+			eventuallyUpdateStatusToOk := func(cb func() error) {
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					tc := time.NewTicker(time.Millisecond * 100)
+					for {
+						select {
+						case <-ctx.Done():
+							return
+						case <-tc.C:
+							if err := cb(); err != nil {
+								if errors.IsNotFound(err) {
+									continue
+								}
+								t.Errorf("callback error: %s", err)
+								return
+							}
+							return
+						}
+					}
+				}()
+			}
+			if tt.args.cr.Spec.VMInsert != nil {
+				var vminsert appsv1.Deployment
+				eventuallyUpdateStatusToOk(func() error {
+					if err := fclient.Get(ctx, types.NamespacedName{Name: tt.args.cr.Spec.VMInsert.GetNameWithPrefix(tt.args.cr.Name), Namespace: tt.args.cr.Namespace}, &vminsert); err != nil {
+						return err
+					}
+					vminsert.Status.Conditions = append(vminsert.Status.Conditions, appsv1.DeploymentCondition{
+						Type:   appsv1.DeploymentProgressing,
+						Reason: "NewReplicaSetAvailable",
+						Status: "True",
+					})
+					if err := fclient.Status().Update(ctx, &vminsert); err != nil {
+						return err
+					}
+
+					return nil
+				})
+			}
+			if tt.args.cr.Spec.VMSelect != nil {
+				var vmselect appsv1.StatefulSet
+				eventuallyUpdateStatusToOk(func() error {
+					if err := fclient.Get(ctx, types.NamespacedName{Name: tt.args.cr.Spec.VMSelect.GetNameWithPrefix(tt.args.cr.Name), Namespace: tt.args.cr.Namespace}, &vmselect); err != nil {
+						return err
+					}
+					vmselect.Status.ReadyReplicas = *tt.args.cr.Spec.VMSelect.ReplicaCount
+					if err := fclient.Status().Update(ctx, &vmselect); err != nil {
+						return err
+					}
+					return nil
+				})
+			}
+			if tt.args.cr.Spec.VMStorage != nil {
+				var vmstorage appsv1.StatefulSet
+				eventuallyUpdateStatusToOk(func() error {
+					if err := fclient.Get(ctx, types.NamespacedName{Name: tt.args.cr.Spec.VMStorage.GetNameWithPrefix(tt.args.cr.Name), Namespace: tt.args.cr.Namespace}, &vmstorage); err != nil {
+						return err
+					}
+					vmstorage.Status.ReadyReplicas = *tt.args.cr.Spec.VMStorage.ReplicaCount
+					if err := fclient.Status().Update(ctx, &vmstorage); err != nil {
+						return err
+					}
+
+					return nil
+				})
+			}
+
+			err := CreateOrUpdateVMCluster(ctx, tt.args.cr, fclient, tt.args.c)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CreateOrUpdateVMCluster() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -295,17 +369,17 @@ func TestCreateOrUpdateVMCluster(t *testing.T) {
 				var vmselect, vmstorage appsv1.StatefulSet
 				var vminsert appsv1.Deployment
 				if tt.args.cr.Spec.VMInsert != nil {
-					if err := fclient.Get(context.TODO(), types.NamespacedName{Name: tt.args.cr.Spec.VMInsert.GetNameWithPrefix(tt.args.cr.Name), Namespace: tt.args.cr.Namespace}, &vminsert); err != nil {
+					if err := fclient.Get(ctx, types.NamespacedName{Name: tt.args.cr.Spec.VMInsert.GetNameWithPrefix(tt.args.cr.Name), Namespace: tt.args.cr.Namespace}, &vminsert); err != nil {
 						t.Fatalf("unexpected error: %v", err)
 					}
 				}
 				if tt.args.cr.Spec.VMSelect != nil {
-					if err := fclient.Get(context.TODO(), types.NamespacedName{Name: tt.args.cr.Spec.VMSelect.GetNameWithPrefix(tt.args.cr.Name), Namespace: tt.args.cr.Namespace}, &vmselect); err != nil {
+					if err := fclient.Get(ctx, types.NamespacedName{Name: tt.args.cr.Spec.VMSelect.GetNameWithPrefix(tt.args.cr.Name), Namespace: tt.args.cr.Namespace}, &vmselect); err != nil {
 						t.Fatalf("unexpected error: %v", err)
 					}
 				}
 				if tt.args.cr.Spec.VMStorage != nil {
-					if err := fclient.Get(context.TODO(), types.NamespacedName{Name: tt.args.cr.Spec.VMStorage.GetNameWithPrefix(tt.args.cr.Name), Namespace: tt.args.cr.Namespace}, &vmstorage); err != nil {
+					if err := fclient.Get(ctx, types.NamespacedName{Name: tt.args.cr.Spec.VMStorage.GetNameWithPrefix(tt.args.cr.Name), Namespace: tt.args.cr.Namespace}, &vmstorage); err != nil {
 						t.Fatalf("unexpected error: %v", err)
 					}
 				}

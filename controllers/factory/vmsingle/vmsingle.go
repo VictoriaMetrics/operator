@@ -117,7 +117,7 @@ func CreateOrUpdateVMSingle(ctx context.Context, cr *victoriametricsv1beta1.VMSi
 		return fmt.Errorf("cannot generate new deploy for vmsingle: %w", err)
 	}
 
-	return reconcile.Deployment(ctx, rclient, newDeploy, c.PodWaitReadyTimeout)
+	return reconcile.Deployment(ctx, rclient, newDeploy, c.PodWaitReadyTimeout, false)
 }
 
 func newDeployForVMSingle(ctx context.Context, cr *victoriametricsv1beta1.VMSingle, c *config.BaseOperatorConf) (*appsv1.Deployment, error) {

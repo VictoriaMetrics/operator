@@ -18,10 +18,7 @@ import (
 	"k8s.io/api/autoscaling/v2beta2"
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -202,31 +199,7 @@ func createOrUpdateVMInsert(ctx context.Context, cr *victoriametricsv1beta1.VMCl
 	if err != nil {
 		return err
 	}
-
-	currentDeployment := &appsv1.Deployment{}
-	err = rclient.Get(ctx, types.NamespacedName{Name: newDeployment.Name, Namespace: newDeployment.Namespace}, currentDeployment)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			if err := rclient.Create(ctx, newDeployment); err != nil {
-				return fmt.Errorf("cannot create new vminsert deploy: %w", err)
-			}
-			return nil
-		}
-		return fmt.Errorf("cannot get vminsert deploy: %w", err)
-	}
-
-	// inherit replicas count if hpa enabled.
-	if cr.Spec.VMInsert.HPA != nil {
-		newDeployment.Spec.Replicas = currentDeployment.Spec.Replicas
-	}
-
-	newDeployment.Annotations = labels.Merge(currentDeployment.Annotations, newDeployment.Annotations)
-	newDeployment.Finalizers = victoriametricsv1beta1.MergeFinalizers(newDeployment, victoriametricsv1beta1.FinalizerName)
-	if err = rclient.Update(ctx, newDeployment); err != nil {
-		return fmt.Errorf("cannot update vminsert deploy: %w", err)
-	}
-
-	return nil
+	return reconcile.Deployment(ctx, rclient, newDeployment, c.PodWaitReadyTimeout, cr.Spec.VMInsert.HPA != nil)
 }
 
 func createOrUpdateVMInsertService(ctx context.Context, cr *victoriametricsv1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) (*corev1.Service, error) {

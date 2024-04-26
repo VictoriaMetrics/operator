@@ -817,6 +817,7 @@ func (cr *VMAgent) SetUpdateStatusTo(ctx context.Context, r client.Client, statu
 		shardCnt = int32(*cr.Spec.ShardCount)
 	}
 	cr.Status.Shards = shardCnt
+	cr.Status.Selector = labels.SelectorFromSet(cr.SelectorLabels()).String()
 
 	if err := r.Status().Update(ctx, cr); err != nil {
 		return fmt.Errorf("failed to update object status to=%q: %w", status, err)

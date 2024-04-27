@@ -642,14 +642,23 @@ func filterPrefixes(src map[string]string, filterPrefixes []string) map[string]s
 
 // ConvertScrapeConfig creates VMScrapeConfig from prometheus scrapeConfig
 func ConvertScrapeConfig(promscrapeConfig *monitoringv1alpha1.ScrapeConfig, conf *config.BaseOperatorConf) *victoriametricsv1beta1.VMScrapeConfig {
-	cs := &victoriametricsv1beta1.VMScrapeConfig{}
-	data, err := json.Marshal(promscrapeConfig)
-	if err != nil {
-		log.Error(err, "failed to marshal prometheus scrapeconfig for converting", "name", promscrapeConfig.Name, "namespace", promscrapeConfig.Namespace)
+	cs := &victoriametricsv1beta1.VMScrapeConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        promscrapeConfig.Name,
+			Namespace:   promscrapeConfig.Namespace,
+			Labels:      filterPrefixes(promscrapeConfig.Labels, conf.FilterPrometheusConverterLabelPrefixes),
+			Annotations: filterPrefixes(promscrapeConfig.Annotations, conf.FilterPrometheusConverterAnnotationPrefixes),
+		},
 	}
-	err = json.Unmarshal(data, cs)
+	data, err := json.Marshal(promscrapeConfig.Spec)
 	if err != nil {
-		log.Error(err, "failed to convert prometheus scrapeconfig to VMScrapeConfig", "name", promscrapeConfig.Name, "namespace", promscrapeConfig.Namespace)
+		log.Error(err, "POSSIBLE BUG: failed to marshal prometheus scrapeconfig for converting", "name", promscrapeConfig.Name, "namespace", promscrapeConfig.Namespace)
+		return cs
+	}
+	err = json.Unmarshal(data, &cs.Spec)
+	if err != nil {
+		log.Error(err, "POSSIBLE BUG: failed to convert prometheus scrapeconfig to VMScrapeConfig", "name", promscrapeConfig.Name, "namespace", promscrapeConfig.Namespace)
+		return cs
 	}
 	cs.Labels = filterPrefixes(promscrapeConfig.Labels, conf.FilterPrometheusConverterLabelPrefixes)
 	cs.Annotations = filterPrefixes(promscrapeConfig.Annotations, conf.FilterPrometheusConverterAnnotationPrefixes)

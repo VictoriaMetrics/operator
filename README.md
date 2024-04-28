@@ -19,8 +19,8 @@ So you can use familiar CRD objects: `ServiceMonitor`, `PodMonitor`, `Prometheus
 - `VMProbe` - defines a probing configuration for targets with blackbox exporter.
 - `VMScrapeConfig` - define a scrape config using any of the service discovery options supported in victoriametrics.
 
-Besides, operator allows you to manage VictoriaMetrics applications inside kubernetes cluster and simplifies this process [quick-start](/docs/quick-start.md)
-With CRD (Custom Resource Definition) you can define application configuration and apply it to your cluster [crd-objects](/docs/api.md).
+Besides, operator allows you to manage VictoriaMetrics applications inside kubernetes cluster and simplifies this process [quick-start](./docs/quick-start.md)
+With CRD (Custom Resource Definition) you can define application configuration and apply it to your cluster [crd-objects](./docs/api.md).
 
  Operator simplifies VictoriaMetrics cluster installation, upgrading and managing.
 

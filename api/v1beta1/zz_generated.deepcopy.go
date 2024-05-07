@@ -2438,10 +2438,25 @@ func (in *StreamAggrRule) DeepCopyInto(out *StreamAggrRule) {
 		*out = make(StringOrArray, len(*in))
 		copy(*out, *in)
 	}
+	if in.NoAlignFlushToInterval != nil {
+		in, out := &in.NoAlignFlushToInterval, &out.NoAlignFlushToInterval
+		*out = new(bool)
+		**out = **in
+	}
 	if in.Outputs != nil {
 		in, out := &in.Outputs, &out.Outputs
 		*out = make([]string, len(*in))
 		copy(*out, *in)
+	}
+	if in.KeepMetricNames != nil {
+		in, out := &in.KeepMetricNames, &out.KeepMetricNames
+		*out = new(bool)
+		**out = **in
+	}
+	if in.IgnoreOldSamples != nil {
+		in, out := &in.IgnoreOldSamples, &out.IgnoreOldSamples
+		*out = new(bool)
+		**out = **in
 	}
 	if in.By != nil {
 		in, out := &in.By, &out.By
@@ -2452,6 +2467,15 @@ func (in *StreamAggrRule) DeepCopyInto(out *StreamAggrRule) {
 		in, out := &in.Without, &out.Without
 		*out = make([]string, len(*in))
 		copy(*out, *in)
+	}
+	if in.DropInputLabels != nil {
+		in, out := &in.DropInputLabels, &out.DropInputLabels
+		*out = new([]string)
+		if **in != nil {
+			in, out := *in, *out
+			*out = make([]string, len(*in))
+			copy(*out, *in)
+		}
 	}
 	if in.InputRelabelConfigs != nil {
 		in, out := &in.InputRelabelConfigs, &out.InputRelabelConfigs

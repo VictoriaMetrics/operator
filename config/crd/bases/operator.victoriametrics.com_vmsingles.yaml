@@ -806,12 +806,28 @@ spec:
                           items:
                             type: string
                           type: array
+                        dedup_interval:
+                          description: DedupInterval is an optional interval for deduplication.
+                          type: string
+                        drop_input_labels:
+                          description: |-
+                            DropInputLabels is an optional list with labels, which must be dropped before further processing of input samples.
+
+
+                            Labels are dropped before de-duplication and aggregation.
+                          items:
+                            type: string
+                          type: array
                         flush_on_shutdown:
                           description: |-
                             FlushOnShutdown defines whether to flush the aggregation state on process termination
                             or config reload. Is `false` by default.
                             It is not recommended changing this setting, unless unfinished aggregations states
                             are preferred to missing data points.
+                          type: boolean
+                        ignore_old_samples:
+                          description: IgnoreOldSamples instructs to ignore samples
+                            with old timestamps outside the current aggregation interval.
                           type: boolean
                         input_relabel_configs:
                           description: |-
@@ -895,6 +911,10 @@ spec:
                         interval:
                           description: Interval is the interval between aggregations.
                           type: string
+                        keep_metric_names:
+                          description: KeepMetricNames instructs to leave metric names
+                            as is for the output time series without adding any suffix.
+                          type: boolean
                         match:
                           description: |-
                             Match is a label selector (or list of label selectors) for filtering time series for the given selector.
@@ -902,6 +922,11 @@ spec:
 
                             If the match isn't set, then all the input time series are processed.
                           x-kubernetes-preserve-unknown-fields: true
+                        no_align_flush_to_interval:
+                          description: |-
+                            NoAlighFlushToInterval disables aligning of flushes to multiples of Interval.
+                            By default flushes are aligned to Interval.
+                          type: boolean
                         output_relabel_configs:
                           description: |-
                             OutputRelabelConfigs is an optional relabeling rules, which are applied
@@ -1012,9 +1037,9 @@ spec:
                             type: string
                           type: array
                         staleness_interval:
-                          description: StalenessInterval defines an interval after
-                            which the series state will be reset if no samples have
-                            been sent during it.
+                          description: |-
+                            Staleness interval is interval after which the series state will be reset if no samples have been sent during it.
+                            The parameter is only relevant for outputs: total, total_prometheus, increase, increase_prometheus and histogram_bucket.
                           type: string
                         without:
                           description: |-

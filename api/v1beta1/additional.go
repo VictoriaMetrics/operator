@@ -457,14 +457,22 @@ type StreamAggrRule struct {
 	// Interval is the interval between aggregations.
 	Interval string `json:"interval" yaml:"interval"`
 
-	// StalenessInterval defines an interval after which the series state will be reset if no samples have been sent during it.
-	StalenessInterval string `json:"staleness_interval,omitempty" yaml:"staleness_interval,omitempty"`
+	// NoAlighFlushToInterval disables aligning of flushes to multiples of Interval.
+	// By default flushes are aligned to Interval.
+	NoAlignFlushToInterval *bool `json:"no_align_flush_to_interval,omitempty" yaml:"no_align_flush_to_interval,omitempty"`
 
 	// FlushOnShutdown defines whether to flush the aggregation state on process termination
 	// or config reload. Is `false` by default.
 	// It is not recommended changing this setting, unless unfinished aggregations states
 	// are preferred to missing data points.
 	FlushOnShutdown bool `json:"flush_on_shutdown,omitempty" yaml:"flush_on_shutdown,omitempty"`
+
+	// DedupInterval is an optional interval for deduplication.
+	DedupInterval string `json:"dedup_interval,omitempty" yaml:"dedup_interval,omitempty"`
+	// Staleness interval is interval after which the series state will be reset if no samples have been sent during it.
+	// The parameter is only relevant for outputs: total, total_prometheus, increase, increase_prometheus and histogram_bucket.
+	StalenessInterval string `json:"staleness_interval,omitempty" yaml:"staleness_interval,omitempty"`
+
 	// Outputs is a list of output aggregate functions to produce.
 	//
 	// The following names are allowed:
@@ -489,6 +497,12 @@ type StreamAggrRule struct {
 	//
 	Outputs []string `json:"outputs"`
 
+	// KeepMetricNames instructs to leave metric names as is for the output time series without adding any suffix.
+	KeepMetricNames *bool `json:"keep_metric_names,omitempty" yaml:"keep_metric_names,omitempty"`
+
+	// IgnoreOldSamples instructs to ignore samples with old timestamps outside the current aggregation interval.
+	IgnoreOldSamples *bool `json:"ignore_old_samples,omitempty" yaml:"ignore_old_samples,omitempty"`
+
 	// By is an optional list of labels for grouping input series.
 	//
 	// See also Without.
@@ -506,6 +520,11 @@ type StreamAggrRule struct {
 	// individually per each input time series.
 	// +optional
 	Without []string `json:"without,omitempty" yaml:"without,omitempty"`
+
+	// DropInputLabels is an optional list with labels, which must be dropped before further processing of input samples.
+	//
+	// Labels are dropped before de-duplication and aggregation.
+	DropInputLabels *[]string `json:"drop_input_labels,omitempty" yaml:"drop_input_labels,omitempty"`
 
 	// InputRelabelConfigs is an optional relabeling rules, which are applied on the input
 	// before aggregation.

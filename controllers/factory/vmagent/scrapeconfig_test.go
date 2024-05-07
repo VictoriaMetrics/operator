@@ -385,6 +385,92 @@ digitalocean_sd_configs:
     token_url: http://some-token-url
 `,
 		},
+		{
+			name: "configs with auth and empty type",
+			args: args{
+				cr: victoriametricsv1beta1.VMAgent{},
+				m: &victoriametricsv1beta1.VMScrapeConfig{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "sc-auth",
+						Namespace: "default",
+					},
+					Spec: victoriametricsv1beta1.VMScrapeConfigSpec{
+						HTTPSDConfigs: []victoriametricsv1beta1.HTTPSDConfig{
+							{
+								URL: "http://www.test1.com",
+								Authorization: &victoriametricsv1beta1.Authorization{
+									Type: "Bearer",
+								},
+							},
+							{
+								URL: "http://www.test2.com",
+								Authorization: &victoriametricsv1beta1.Authorization{
+									Credentials: &v1.SecretKeySelector{Key: "cred"},
+								},
+							},
+							{
+								URL: "http://www.test3.com",
+								Authorization: &victoriametricsv1beta1.Authorization{
+									Type:            "Bearer",
+									CredentialsFile: "file",
+								},
+							},
+						},
+						KubernetesSDConfigs: []victoriametricsv1beta1.KubernetesSDConfig{
+							{
+								Role: "endpoints",
+								Authorization: &victoriametricsv1beta1.Authorization{
+									Type: "Bearer",
+								},
+							},
+							{
+								Role: "endpoints",
+								Authorization: &victoriametricsv1beta1.Authorization{
+									Credentials: &v1.SecretKeySelector{Key: "cred"},
+								},
+							},
+							{
+								Role: "endpoints",
+								Authorization: &victoriametricsv1beta1.Authorization{
+									Type:            "Bearer",
+									CredentialsFile: "file",
+								},
+							},
+						},
+					},
+				},
+				ssCache: &scrapesSecretsCache{
+					authorizationSecrets: map[string]string{
+						"scrapeConfig/default/sc-auth/httpsd/1": "auth-secret",
+						"scrapeConfig/default/sc-auth/kubesd/1": "auth-secret",
+					},
+				},
+			},
+			want: `job_name: scrapeConfig/default/sc-auth
+honor_labels: false
+relabel_configs: []
+http_sd_configs:
+- url: http://www.test1.com
+- url: http://www.test2.com
+  authorization:
+    type: Bearer
+    credentials: auth-secret
+- url: http://www.test3.com
+  authorization:
+    type: Bearer
+    credentials_file: file
+kubernetes_sd_configs:
+- role: endpoints
+- role: endpoints
+  authorization:
+    type: Bearer
+    credentials: auth-secret
+- role: endpoints
+  authorization:
+    type: Bearer
+    credentials_file: file
+`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

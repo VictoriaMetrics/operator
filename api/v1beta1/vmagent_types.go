@@ -803,6 +803,7 @@ func (cr *VMAgent) HasAnyStreamAggrConfigs() bool {
 
 // SetStatusTo changes update status with optional reason of fail
 func (cr *VMAgent) SetUpdateStatusTo(ctx context.Context, r client.Client, status UpdateStatus, maybeErr error) error {
+	currentStatus := cr.Status.UpdateStatus
 	cr.Status.UpdateStatus = status
 	switch status {
 	case UpdateStatusExpanding:
@@ -813,7 +814,7 @@ func (cr *VMAgent) SetUpdateStatusTo(ctx context.Context, r client.Client, statu
 	case UpdateStatusOperational:
 		cr.Status.Reason = ""
 	case UpdateStatusPaused:
-		if cr.Status.UpdateStatus == UpdateStatusPaused {
+		if currentStatus == status {
 			return nil
 		}
 	default:

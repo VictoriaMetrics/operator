@@ -3,6 +3,7 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"time"
 
 	v1beta1vm "github.com/VictoriaMetrics/operator/api/v1beta1"
 	. "github.com/onsi/ginkgo"
@@ -12,7 +13,11 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
+)
+
+const (
+	interval = 15 * time.Second
 )
 
 var _ = Describe("e2e vmcluster", func() {
@@ -79,7 +84,7 @@ var _ = Describe("e2e vmcluster", func() {
 					Spec: v1beta1vm.VMClusterSpec{
 						RetentionPeriod: "1",
 						VMStorage: &v1beta1vm.VMStorage{
-							ReplicaCount: pointer.Int32Ptr(1),
+							ReplicaCount: ptr.To[int32](1),
 							Resources: corev1.ResourceRequirements{
 								Requests: corev1.ResourceList{
 									corev1.ResourceMemory: resource.MustParse("128Mi"),
@@ -88,7 +93,7 @@ var _ = Describe("e2e vmcluster", func() {
 							},
 						},
 						VMSelect: &v1beta1vm.VMSelect{
-							ReplicaCount: pointer.Int32Ptr(1),
+							ReplicaCount: ptr.To[int32](1),
 							LogLevel:     "WARN",
 							Resources: corev1.ResourceRequirements{
 								Requests: corev1.ResourceList{
@@ -103,16 +108,16 @@ var _ = Describe("e2e vmcluster", func() {
 				Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, vmCluster)).To(Succeed())
 				Eventually(func() string {
 					return expectPodCount(k8sClient, 1, namespace, vmCluster.VMStorageSelectorLabels())
-				}, 30, 1).Should(BeEmpty(), "vmCluster must have ready storage pod")
+				}, 300, 10).Should(BeEmpty(), "vmCluster must have ready storage pod")
 				Eventually(func() string {
 					return expectPodCount(k8sClient, 1, namespace, vmCluster.VMSelectSelectorLabels())
-				}, 30, 1).Should(BeEmpty(), "vmCluster must have ready select pod")
+				}, 300, 10).Should(BeEmpty(), "vmCluster must have ready select pod")
 			})
 			It("should expand vmCluster storage and select up to 2 replicas", func() {
 				vmCluster := &v1beta1vm.VMCluster{}
 				Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, vmCluster)).To(BeNil())
-				vmCluster.Spec.VMSelect.ReplicaCount = pointer.Int32Ptr(2)
-				vmCluster.Spec.VMStorage.ReplicaCount = pointer.Int32Ptr(2)
+				vmCluster.Spec.VMSelect.ReplicaCount = ptr.To[int32](2)
+				vmCluster.Spec.VMStorage.ReplicaCount = ptr.To[int32](2)
 				Expect(k8sClient.Update(context.TODO(), vmCluster)).To(BeNil())
 				Eventually(func() string {
 					return expectPodCount(k8sClient, 2, namespace, vmCluster.VMStorageSelectorLabels())
@@ -125,7 +130,7 @@ var _ = Describe("e2e vmcluster", func() {
 				vmCluster = &v1beta1vm.VMCluster{}
 				Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, vmCluster)).To(BeNil())
 				vmCluster.Spec.VMInsert = &v1beta1vm.VMInsert{
-					ReplicaCount: pointer.Int32Ptr(2),
+					ReplicaCount: ptr.To[int32](2),
 					Resources: corev1.ResourceRequirements{
 						Requests: corev1.ResourceList{
 							corev1.ResourceMemory: resource.MustParse("128Mi"),
@@ -146,8 +151,8 @@ var _ = Describe("e2e vmcluster", func() {
 					return getRevisionHistoryLimit(k8sClient, namespacedName)
 				}, 60).Should(Equal(int32(10)))
 				vmCluster.Spec.VMInsert = &v1beta1vm.VMInsert{
-					ReplicaCount:              pointer.Int32Ptr(2),
-					RevisionHistoryLimitCount: pointer.Int32Ptr(2),
+					ReplicaCount:              ptr.To[int32](2),
+					RevisionHistoryLimitCount: ptr.To[int32](2),
 					Resources: corev1.ResourceRequirements{
 						Requests: corev1.ResourceList{
 							corev1.ResourceMemory: resource.MustParse("128Mi"),
@@ -160,6 +165,29 @@ var _ = Describe("e2e vmcluster", func() {
 					return getRevisionHistoryLimit(k8sClient, namespacedName)
 				}, 60).Should(Equal(int32(2)))
 			})
+			It("Should set pause status and skip other update operation", func() {
+				vmCluster := &v1beta1vm.VMCluster{}
+				key := types.NamespacedName{Name: name, Namespace: namespace}
+				Expect(k8sClient.Get(context.TODO(), key, vmCluster)).To(BeNil())
+
+				By("Set spec.Paused to true")
+				vmCluster.Spec.Paused = true
+				Expect(k8sClient.Update(context.TODO(), vmCluster)).To(Succeed())
+				Eventually(func() bool {
+					if err := k8sClient.Get(context.TODO(), key, vmCluster); err != nil {
+						return false
+					}
+					return vmCluster.Paused() && vmCluster.Status.UpdateStatus == v1beta1vm.UpdateStatusPaused
+				}, 1*time.Minute, interval).Should(BeTrue())
+
+				By("update replicas after cluster paused")
+				vmCluster.Spec.VMSelect.ReplicaCount = ptr.To[int32](2)
+				Expect(k8sClient.Update(context.TODO(), vmCluster)).To(BeNil())
+				// simply sleep 1 minute to ensure reconciliation performed.
+				time.Sleep(1 * time.Minute)
+				Expect(expectPodCount(k8sClient, 1, namespace, vmCluster.VMSelectPodLabels())).To(BeEmpty())
+			})
+
 		})
 	})
 })

@@ -206,6 +206,11 @@ type VMSingleSpec struct {
 	// drops not needed security permissions
 	// +optional
 	UseStrictSecurity *bool `json:"useStrictSecurity,omitempty"`
+
+	// Paused If set to true all actions on the underlaying managed objects are not
+	// going to be performed, except for delete actions.
+	// +optional
+	Paused bool `json:"paused,omitempty"`
 }
 
 // HasStreamAggrConfig checks if streamAggrConfig present
@@ -406,8 +411,13 @@ func (cr *VMSingle) HasSpecChanges() (bool, error) {
 	return !bytes.Equal([]byte(lastAppliedSingleJSON), instanceSpecData), nil
 }
 
+func (cr *VMSingle) Paused() bool {
+	return cr.Spec.Paused
+}
+
 // SetStatusTo changes update status with optional reason of fail
 func (cr *VMSingle) SetUpdateStatusTo(ctx context.Context, r client.Client, status UpdateStatus, maybeErr error) error {
+	currentStatus := cr.Status.UpdateStatus
 	cr.Status.UpdateStatus = status
 	switch status {
 	case UpdateStatusExpanding:
@@ -417,6 +427,10 @@ func (cr *VMSingle) SetUpdateStatusTo(ctx context.Context, r client.Client, stat
 		}
 	case UpdateStatusOperational:
 		cr.Status.Reason = ""
+	case UpdateStatusPaused:
+		if currentStatus == status {
+			return nil
+		}
 	default:
 		panic(fmt.Sprintf("BUG: not expected status=%q", status))
 	}

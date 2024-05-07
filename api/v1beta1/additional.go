@@ -24,6 +24,7 @@ const (
 	UpdateStatusExpanding   UpdateStatus = "expanding"
 	UpdateStatusOperational UpdateStatus = "operational"
 	UpdateStatusFailed      UpdateStatus = "failed"
+	UpdateStatusPaused      UpdateStatus = "paused"
 	vmPathPrefixFlagName                 = "http.pathPrefix"
 	healthPath                           = "/health"
 	metricPath                           = "/metrics"

@@ -517,6 +517,7 @@ func (cr *VMAlertmanager) Paused() bool {
 
 // SetStatusTo changes update status with optional reason of fail
 func (cr *VMAlertmanager) SetUpdateStatusTo(ctx context.Context, r client.Client, status UpdateStatus, maybeErr error) error {
+	currentStatus := cr.Status.UpdateStatus
 	cr.Status.UpdateStatus = status
 	switch status {
 	case UpdateStatusExpanding:
@@ -527,7 +528,7 @@ func (cr *VMAlertmanager) SetUpdateStatusTo(ctx context.Context, r client.Client
 	case UpdateStatusOperational:
 		cr.Status.Reason = ""
 	case UpdateStatusPaused:
-		if cr.Status.UpdateStatus == status {
+		if currentStatus == status {
 			return nil
 		}
 	default:

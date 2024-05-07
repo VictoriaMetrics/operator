@@ -279,6 +279,11 @@ type VMAlertSpec struct {
 	// See: https://docs.victoriametrics.com/enterprise.html
 	// +optional
 	License *License `json:"license,omitempty"`
+
+	// Paused If set to true all actions on the underlaying managed objects are not
+	// going to be performed, except for delete actions.
+	// +optional
+	Paused bool `json:"paused,omitempty"`
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface
@@ -571,6 +576,10 @@ func (cr *VMAlert) HasSpecChanges() (bool, error) {
 	return !bytes.Equal([]byte(lastAppliedClusterJSON), instanceSpecData), nil
 }
 
+func (cr *VMAlert) Paused() bool {
+	return cr.Spec.Paused
+}
+
 // SetStatusTo changes update status with optional reason of fail
 func (cr *VMAlert) SetUpdateStatusTo(ctx context.Context, r client.Client, status UpdateStatus, maybeErr error) error {
 	cr.Status.UpdateStatus = status
@@ -582,6 +591,10 @@ func (cr *VMAlert) SetUpdateStatusTo(ctx context.Context, r client.Client, statu
 		}
 	case UpdateStatusOperational:
 		cr.Status.Reason = ""
+	case UpdateStatusPaused:
+		if cr.Status.UpdateStatus == status {
+			return nil
+		}
 	default:
 		panic(fmt.Sprintf("BUG: not expected status=%q", status))
 	}

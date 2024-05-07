@@ -60,6 +60,10 @@ type VMClusterSpec struct {
 	VMInsert *VMInsert `json:"vminsert,omitempty"`
 	// +optional
 	VMStorage *VMStorage `json:"vmstorage,omitempty"`
+	// Paused If set to true all actions on the underlaying managed objects are not
+	// going to be performed, except for delete actions.
+	// +optional
+	Paused bool `json:"paused,omitempty"`
 	// UseStrictSecurity enables strict security mode for component
 	// it restricts disk writes access
 	// uses non-root user out of the box
@@ -980,6 +984,10 @@ func (cr *VMCluster) HasSpecChanges() (bool, error) {
 	return !bytes.Equal([]byte(lastAppliedClusterJSON), instanceSpecData), nil
 }
 
+func (cr *VMCluster) Paused() bool {
+	return cr.Spec.Paused
+}
+
 func (cr VMCluster) MetricPathSelect() string {
 	if cr.Spec.VMSelect == nil {
 		return healthPath
@@ -1149,6 +1157,10 @@ func (cr *VMCluster) SetUpdateStatusTo(ctx context.Context, r client.Client, sta
 		}
 	case UpdateStatusOperational:
 		cr.Status.Reason = ""
+	case UpdateStatusPaused:
+		if cr.Status.UpdateStatus == status {
+			return nil
+		}
 	default:
 		panic(fmt.Sprintf("BUG: not expected status=%q", status))
 	}

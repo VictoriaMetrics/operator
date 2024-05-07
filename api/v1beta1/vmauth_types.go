@@ -213,6 +213,11 @@ type VMAuthSpec struct {
 	// If it's defined, configuration for vmauth becomes unmanaged and operator'll not create any related secrets/config-reloaders
 	// +optional
 	ConfigSecret string `json:"configSecret,omitempty"`
+
+	// Paused If set to true all actions on the underlaying managed objects are not
+	// going to be performed, except for delete actions.
+	// +optional
+	Paused bool `json:"paused,omitempty"`
 }
 
 // VMAuthUnauthorizedPath defines url_map for unauthorized access
@@ -466,6 +471,10 @@ func (cr *VMAuth) HasSpecChanges() (bool, error) {
 	return !bytes.Equal([]byte(lastAppliedClusterJSON), instanceSpecData), nil
 }
 
+func (cr *VMAuth) Paused() bool {
+	return cr.Spec.Paused
+}
+
 // SetStatusTo changes update status with optional reason of fail
 func (cr *VMAuth) SetUpdateStatusTo(ctx context.Context, r client.Client, status UpdateStatus, maybeErr error) error {
 	cr.Status.UpdateStatus = status
@@ -477,6 +486,10 @@ func (cr *VMAuth) SetUpdateStatusTo(ctx context.Context, r client.Client, status
 		}
 	case UpdateStatusOperational:
 		cr.Status.Reason = ""
+	case UpdateStatusPaused:
+		if cr.Status.UpdateStatus == status {
+			return nil
+		}
 	default:
 		panic(fmt.Sprintf("BUG: not expected status=%q", status))
 	}

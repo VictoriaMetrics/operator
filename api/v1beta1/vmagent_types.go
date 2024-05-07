@@ -430,6 +430,11 @@ type VMAgentSpec struct {
 	// See: https://docs.victoriametrics.com/enterprise.html
 	// +optional
 	License *License `json:"license,omitempty"`
+
+	// Paused If set to true all actions on the underlaying managed objects are not
+	// going to be performed, except for delete actions.
+	// +optional
+	Paused bool `json:"paused,omitempty"`
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface
@@ -768,6 +773,10 @@ func (cr *VMAgent) HasSpecChanges() (bool, error) {
 	return !bytes.Equal([]byte(lastAppliedClusterJSON), instanceSpecData), nil
 }
 
+func (cr *VMAgent) Paused() bool {
+	return cr.Spec.Paused
+}
+
 // HasAnyRelabellingConfigs checks if vmagent has any defined relabeling rules
 func (cr *VMAgent) HasAnyRelabellingConfigs() bool {
 	if cr.Spec.RelabelConfig != nil || len(cr.Spec.InlineRelabelConfig) > 0 {
@@ -803,6 +812,10 @@ func (cr *VMAgent) SetUpdateStatusTo(ctx context.Context, r client.Client, statu
 		}
 	case UpdateStatusOperational:
 		cr.Status.Reason = ""
+	case UpdateStatusPaused:
+		if cr.Status.UpdateStatus == UpdateStatusPaused {
+			return nil
+		}
 	default:
 		panic(fmt.Sprintf("BUG: not expected status=%q", status))
 	}

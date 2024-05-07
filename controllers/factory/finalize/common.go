@@ -2,6 +2,8 @@ package finalize
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	v12 "k8s.io/api/core/v1"
@@ -22,11 +24,28 @@ type crdObject interface {
 	GetNSName() string
 }
 
+func patchReplaceFinalizers(ctx context.Context, rclient client.Client, instance client.Object) error {
+	op := []map[string]interface{}{{
+		"op":    "replace",
+		"path":  "/metadata/finalizers",
+		"value": instance.GetFinalizers(),
+	}}
+
+	patchData, err := json.Marshal(op)
+	if err != nil {
+		return fmt.Errorf("cannot marshal finalizers patch for=%q: %w", instance.GetName(), err)
+	}
+	if err := rclient.Patch(ctx, instance, client.RawPatch(types.JSONPatchType, patchData)); err != nil {
+		return fmt.Errorf("cannot patch finalizers for object=%q with name=%q: %w", instance.GetObjectKind().GroupVersionKind(), instance.GetName(), err)
+	}
+	return nil
+}
+
 // AddFinalizer adds finalizer to instance if needed.
 func AddFinalizer(ctx context.Context, rclient client.Client, instance client.Object) error {
 	if !victoriametricsv1beta1.IsContainsFinalizer(instance.GetFinalizers(), victoriametricsv1beta1.FinalizerName) {
 		instance.SetFinalizers(append(instance.GetFinalizers(), victoriametricsv1beta1.FinalizerName))
-		return rclient.Update(ctx, instance)
+		return patchReplaceFinalizers(ctx, rclient, instance)
 	}
 	return nil
 }
@@ -35,7 +54,7 @@ func AddFinalizer(ctx context.Context, rclient client.Client, instance client.Ob
 func RemoveFinalizer(ctx context.Context, rclient client.Client, instance client.Object) error {
 	if victoriametricsv1beta1.IsContainsFinalizer(instance.GetFinalizers(), victoriametricsv1beta1.FinalizerName) {
 		instance.SetFinalizers(victoriametricsv1beta1.RemoveFinalizer(instance.GetFinalizers(), victoriametricsv1beta1.FinalizerName))
-		return rclient.Update(ctx, instance)
+		return patchReplaceFinalizers(ctx, rclient, instance)
 	}
 	return nil
 }
@@ -52,7 +71,7 @@ func removeFinalizeObjByName(ctx context.Context, rclient client.Client, obj cli
 		return nil
 	}
 	obj.SetFinalizers(victoriametricsv1beta1.RemoveFinalizer(obj.GetFinalizers(), victoriametricsv1beta1.FinalizerName))
-	return rclient.Update(ctx, obj)
+	return patchReplaceFinalizers(ctx, rclient, obj)
 }
 
 // SafeDelete removes object, ignores notfound error.

@@ -8,6 +8,7 @@ import (
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	v1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	"github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	monitoringv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
@@ -673,8 +674,8 @@ func ConvertScrapeConfig(promscrapeConfig *monitoringv1alpha1.ScrapeConfig, conf
 	if conf.EnabledPrometheusConverterOwnerReferences {
 		cs.OwnerReferences = []metav1.OwnerReference{
 			{
-				APIVersion:         v1.SchemeGroupVersion.String(),
-				Kind:               v1.ServiceMonitorsKind,
+				APIVersion:         v1alpha1.SchemeGroupVersion.String(),
+				Kind:               v1alpha1.ScrapeConfigsKind,
 				Name:               promscrapeConfig.Name,
 				UID:                promscrapeConfig.UID,
 				Controller:         ptr.To(true),

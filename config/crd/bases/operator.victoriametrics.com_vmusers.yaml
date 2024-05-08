@@ -53,6 +53,10 @@ spec:
                 description: DisableSecretCreation skips related secret creation for
                   vmuser
                 type: boolean
+              discover_backend_ips:
+                description: DiscoverBackendIPs instructs discovering URLPrefix backend
+                  IPs via DNS.
+                type: boolean
               drop_src_path_prefix_parts:
                 description: |-
                   DropSrcPathPrefixParts is the number of `/`-delimited request path prefix parts to drop before proxying the request to backend.
@@ -183,6 +187,10 @@ spec:
                       - name
                       - namespace
                       type: object
+                    discover_backend_ips:
+                      description: DiscoverBackendIPs instructs discovering URLPrefix
+                        backend IPs via DNS.
+                      type: boolean
                     drop_src_path_prefix_parts:
                       description: |-
                         DropSrcPathPrefixParts is the number of `/`-delimited request path prefix parts to drop before proxying the request to backend.
@@ -190,7 +198,7 @@ spec:
                       type: integer
                     headers:
                       description: |-
-                        Headers represent additional http headers, that vmauth uses
+                        RequestHeaders represent additional http headers, that vmauth uses
                         in form of ["header_key: header_value"]
                         multiple values for header key:
                         ["header_key: value1,value2"]
@@ -202,6 +210,20 @@ spec:
                       items:
                         type: string
                       type: array
+                    ip_filters:
+                      description: |-
+                        IPFilters defines filter for src ip address
+                        enterprise only
+                      properties:
+                        allow_list:
+                          items:
+                            type: string
+                          type: array
+                        deny_list:
+                          items:
+                            type: string
+                          type: array
+                      type: object
                     load_balancing_policy:
                       description: |-
                         LoadBalancingPolicy defines load balancing policy to use for backend urls.
@@ -211,6 +233,11 @@ spec:
                       - least_loaded
                       - first_available
                       type: string
+                    max_concurrent_requests:
+                      description: |-
+                        MaxConcurrentRequests defines max concurrent requests per user
+                        300 is default value for vmauth
+                      type: integer
                     paths:
                       description: Paths - matched path to route.
                       items:
@@ -234,6 +261,18 @@ spec:
                       items:
                         type: integer
                       type: array
+                    src_headers:
+                      description: SrcHeaders is an optional list of headers, which
+                        must match request headers.
+                      items:
+                        type: string
+                      type: array
+                    src_query_args:
+                      description: SrcQueryArgs is an optional list of query args,
+                        which must match request URL query args.
+                      items:
+                        type: string
+                      type: array
                     static:
                       description: |-
                         Static - user defined url for traffic forward,
@@ -251,7 +290,6 @@ spec:
                       type: object
                     target_path_suffix:
                       description: |-
-                        QueryParams []string `json:"queryParams,omitempty"`
                         TargetPathSuffix allows to add some suffix to the target path
                         It allows to hide tenant configuration from user with crd as ref.
                         it also may contain any url encoded params.
@@ -314,11 +352,19 @@ spec:
                       type: object
                   type: object
                 type: array
+              tls_ca_file:
+                type: string
+              tls_cert_file:
+                type: string
               tls_insecure_skip_verify:
                 description: |-
                   TLSInsecureSkipVerify - whether to skip TLS verification when connecting to backend over HTTPS.
                   See https://docs.victoriametrics.com/vmauth.html#backend-tls-setup
                 type: boolean
+              tls_key_file:
+                type: string
+              tls_server_name:
+                type: string
               tokenRef:
                 description: TokenRef allows fetching token from user-created secrets
                   by its name and key.

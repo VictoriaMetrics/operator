@@ -846,9 +846,11 @@ spec:
                 description: UnauthorizedAccessConfig configures access for un authorized
                   users
                 items:
-                  description: VMAuthUnauthorizedPath defines url_map for unauthorized
-                    access
                   properties:
+                    discover_backend_ips:
+                      description: DiscoverBackendIPs instructs discovering URLPrefix
+                        backend IPs via DNS.
+                      type: boolean
                     drop_src_path_prefix_parts:
                       description: |-
                         DropSrcPathPrefixParts is the number of `/`-delimited request path prefix parts to drop before proxying the request to backend.
@@ -856,7 +858,7 @@ spec:
                       type: integer
                     headers:
                       description: |-
-                        Headers represent additional http headers, that vmauth uses
+                        RequestHeaders represent additional http headers, that vmauth uses
                         in form of ["header_key: header_value"]
                         multiple values for header key:
                         ["header_key: value1,value2"]
@@ -887,6 +889,11 @@ spec:
                       - least_loaded
                       - first_available
                       type: string
+                    max_concurrent_requests:
+                      description: |-
+                        MaxConcurrentRequests defines max concurrent requests per user
+                        300 is default value for vmauth
+                      type: integer
                     response_headers:
                       description: |-
                         ResponseHeaders represent additional http headers, that vmauth adds for request response
@@ -900,28 +907,131 @@ spec:
                     retry_status_codes:
                       description: |-
                         RetryStatusCodes defines http status codes in numeric format for request retries
+                        Can be defined per target or at VMUser.spec level
                         e.g. [429,503]
                       items:
                         type: integer
                       type: array
+                    src_headers:
+                      description: SrcHeaders is an optional list of headers, which
+                        must match request headers.
+                      items:
+                        type: string
+                      type: array
                     src_hosts:
-                      description: SrcHosts is the list of regular expressions, which
-                        match the request hostname.
+                      description: SrcHosts is an optional list of regular expressions,
+                        which must match the request hostname.
                       items:
                         type: string
                       type: array
                     src_paths:
-                      description: Paths src request paths
+                      description: SrcPaths is an optional list of regular expressions,
+                        which must match the request path.
+                      items:
+                        type: string
+                      type: array
+                    src_query_args:
+                      description: SrcQueryArgs is an optional list of query args,
+                        which must match request URL query args.
                       items:
                         type: string
                       type: array
                     url_prefix:
-                      description: URLs defines url_prefix for dst routing
+                      description: UrlPrefix contains backend url prefixes for the
+                        proxied request url.
                       items:
                         type: string
                       type: array
                   type: object
                 type: array
+              unauthorizedAccessConfigOption:
+                properties:
+                  default_url:
+                    description: |-
+                      DefaultURLs backend url for non-matching paths filter
+                      usually used for default backend with error message
+                    items:
+                      type: string
+                    type: array
+                  discover_backend_ips:
+                    description: DiscoverBackendIPs instructs discovering URLPrefix
+                      backend IPs via DNS.
+                    type: boolean
+                  drop_src_path_prefix_parts:
+                    description: |-
+                      DropSrcPathPrefixParts is the number of `/`-delimited request path prefix parts to drop before proxying the request to backend.
+                      See https://docs.victoriametrics.com/vmauth.html#dropping-request-path-prefix for more details.
+                    type: integer
+                  headers:
+                    description: |-
+                      Headers represent additional http headers, that vmauth uses
+                      in form of ["header_key: header_value"]
+                      multiple values for header key:
+                      ["header_key: value1,value2"]
+                      it's available since 1.68.0 version of vmauth
+                    items:
+                      type: string
+                    type: array
+                  ip_filters:
+                    description: |-
+                      IPFilters defines per target src ip filters
+                      supported only with enterprise version of vmauth
+                      https://docs.victoriametrics.com/vmauth.html#ip-filters
+                    properties:
+                      allow_list:
+                        items:
+                          type: string
+                        type: array
+                      deny_list:
+                        items:
+                          type: string
+                        type: array
+                    type: object
+                  load_balancing_policy:
+                    description: |-
+                      LoadBalancingPolicy defines load balancing policy to use for backend urls.
+                      Supported policies: least_loaded, first_available.
+                      See https://docs.victoriametrics.com/vmauth.html#load-balancing for more details (default "least_loaded")
+                    enum:
+                    - least_loaded
+                    - first_available
+                    type: string
+                  max_concurrent_requests:
+                    description: |-
+                      MaxConcurrentRequests defines max concurrent requests per user
+                      300 is default value for vmauth
+                    type: integer
+                  response_headers:
+                    description: |-
+                      ResponseHeaders represent additional http headers, that vmauth adds for request response
+                      in form of ["header_key: header_value"]
+                      multiple values for header key:
+                      ["header_key: value1,value2"]
+                      it's available since 1.93.0 version of vmauth
+                    items:
+                      type: string
+                    type: array
+                  retry_status_codes:
+                    description: |-
+                      RetryStatusCodes defines http status codes in numeric format for request retries
+                      e.g. [429,503]
+                    items:
+                      type: integer
+                    type: array
+                  tls_ca_file:
+                    type: string
+                  tls_cert_file:
+                    type: string
+                  tls_insecure_skip_verify:
+                    description: |-
+                      TLSInsecureSkipVerify - whether to skip TLS verification when connecting to backend over HTTPS.
+                      See https://docs.victoriametrics.com/vmauth.html#backend-tls-setup
+                    type: boolean
+                  tls_key_file:
+                    type: string
+                  tls_server_name:
+                    type: string
+                type: object
               useStrictSecurity:
                 description: |-
                   UseStrictSecurity enables strict security mode for component

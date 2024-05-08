@@ -194,7 +194,8 @@ type VMAuthSpec struct {
 	ReadinessGates []v1.PodReadinessGate `json:"readinessGates,omitempty"`
 	// UnauthorizedAccessConfig configures access for un authorized users
 	// +optional
-	UnauthorizedAccessConfig []VMAuthUnauthorizedPath `json:"unauthorizedAccessConfig,omitempty"`
+	UnauthorizedAccessConfig       []UnauthorizedAccessConfigURLMap `json:"unauthorizedAccessConfig,omitempty"`
+	UnauthorizedAccessConfigOption *UserConfigOption                `json:"unauthorizedAccessConfigOption,omitempty"`
 	// UseStrictSecurity enables strict security mode for component
 	// it restricts disk writes access
 	// uses non-root user out of the box
@@ -220,20 +221,95 @@ type VMAuthSpec struct {
 	Paused bool `json:"paused,omitempty"`
 }
 
-// VMAuthUnauthorizedPath defines url_map for unauthorized access
-type VMAuthUnauthorizedPath struct {
-	// Paths src request paths
-	// +optional
-	Paths []string `json:"src_paths,omitempty"`
-	// URLs defines url_prefix for dst routing
-	// +optional
-	URLs []string `json:"url_prefix,omitempty"`
+type UnauthorizedAccessConfigURLMap struct {
+	// SrcPaths is an optional list of regular expressions, which must match the request path.
+	SrcPaths []string `json:"src_paths,omitempty"`
+
+	// SrcHosts is an optional list of regular expressions, which must match the request hostname.
+	SrcHosts []string `json:"src_hosts,omitempty"`
+
+	// UrlPrefix contains backend url prefixes for the proxied request url.
+	URLPrefix []string `json:"url_prefix,omitempty"`
+
+	URLMapCommon URLMapCommon `json:",omitempty"`
+}
+
+// URLMapCommon contains common fields for unauthorized user and user in vmuser
+type URLMapCommon struct {
+	// SrcQueryArgs is an optional list of query args, which must match request URL query args.
+	SrcQueryArgs []string `json:"src_query_args,omitempty"`
+
+	// SrcHeaders is an optional list of headers, which must match request headers.
+	SrcHeaders []string `json:"src_headers,omitempty"`
+
 	// IPFilters defines filter for src ip address
 	// enterprise only
 	IPFilters VMUserIPFilters `json:"ip_filters,omitempty"`
 
-	// SrcHosts is the list of regular expressions, which match the request hostname.
-	Hosts []string `json:"src_hosts,omitempty"`
+	// DiscoverBackendIPs instructs discovering URLPrefix backend IPs via DNS.
+	DiscoverBackendIPs *bool `json:"discover_backend_ips,omitempty"`
+
+	// RequestHeaders represent additional http headers, that vmauth uses
+	// in form of ["header_key: header_value"]
+	// multiple values for header key:
+	// ["header_key: value1,value2"]
+	// it's available since 1.68.0 version of vmauth
+	// +optional
+	RequestHeaders []string `json:"headers,omitempty"`
+	// ResponseHeaders represent additional http headers, that vmauth adds for request response
+	// in form of ["header_key: header_value"]
+	// multiple values for header key:
+	// ["header_key: value1,value2"]
+	// it's available since 1.93.0 version of vmauth
+	// +optional
+	ResponseHeaders []string `json:"response_headers,omitempty"`
+
+	// RetryStatusCodes defines http status codes in numeric format for request retries
+	// Can be defined per target or at VMUser.spec level
+	// e.g. [429,503]
+	// +optional
+	RetryStatusCodes []int `json:"retry_status_codes,omitempty"`
+
+	// LoadBalancingPolicy defines load balancing policy to use for backend urls.
+	// Supported policies: least_loaded, first_available.
+	// See https://docs.victoriametrics.com/vmauth.html#load-balancing for more details (default "least_loaded")
+	// +optional
+	// +kubebuilder:validation:Enum=least_loaded;first_available
+	LoadBalancingPolicy *string `json:"load_balancing_policy,omitempty"`
+
+	// DropSrcPathPrefixParts is the number of `/`-delimited request path prefix parts to drop before proxying the request to backend.
+	// See https://docs.victoriametrics.com/vmauth.html#dropping-request-path-prefix for more details.
+	// +optional
+	DropSrcPathPrefixParts *int `json:"drop_src_path_prefix_parts,omitempty"`
+	// MaxConcurrentRequests defines max concurrent requests per user
+	// 300 is default value for vmauth
+	// +optional
+	MaxConcurrentRequests *int `json:"max_concurrent_requests,omitempty"`
+}
+
+type UserConfigOption struct {
+	// DefaultURLs backend url for non-matching paths filter
+	// usually used for default backend with error message
+	DefaultURLs []string `json:"default_url,omitempty"`
+
+	TLSCAFile     string `json:"tls_ca_file,omitempty"`
+	TLSCertFile   string `json:"tls_cert_file,omitempty"`
+	TLSKeyFile    string `json:"tls_key_file,omitempty"`
+	TLSServerName string `json:"tls_server_name,omitempty"`
+
+	// TLSInsecureSkipVerify - whether to skip TLS verification when connecting to backend over HTTPS.
+	// See https://docs.victoriametrics.com/vmauth.html#backend-tls-setup
+	// +optional
+	TLSInsecureSkipVerify *bool `json:"tls_insecure_skip_verify,omitempty"`
+
+	// IPFilters defines per target src ip filters
+	// supported only with enterprise version of vmauth
+	// https://docs.victoriametrics.com/vmauth.html#ip-filters
+	// +optional
+	IPFilters VMUserIPFilters `json:"ip_filters,omitempty"`
+
+	// DiscoverBackendIPs instructs discovering URLPrefix backend IPs via DNS.
+	DiscoverBackendIPs *bool `json:"discover_backend_ips,omitempty"`
 
 	// Headers represent additional http headers, that vmauth uses
 	// in form of ["header_key: header_value"]
@@ -254,6 +330,11 @@ type VMAuthUnauthorizedPath struct {
 	// e.g. [429,503]
 	// +optional
 	RetryStatusCodes []int `json:"retry_status_codes,omitempty"`
+
+	// MaxConcurrentRequests defines max concurrent requests per user
+	// 300 is default value for vmauth
+	// +optional
+	MaxConcurrentRequests *int `json:"max_concurrent_requests,omitempty"`
 
 	// LoadBalancingPolicy defines load balancing policy to use for backend urls.
 	// Supported policies: least_loaded, first_available.

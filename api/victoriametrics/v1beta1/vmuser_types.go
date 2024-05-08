@@ -38,57 +38,7 @@ type VMUserSpec struct {
 	// TargetRefs - reference to endpoints, which user may access.
 	TargetRefs []TargetRef `json:"targetRefs"`
 
-	// DefaultURLs backend url for non-matching paths filter
-	// usually used for default backend with error message
-	// +optional
-	DefaultURLs []string `json:"default_url,omitempty"`
-	// IPFilters defines per target src ip filters
-	// supported only with enterprise version of vmauth
-	// https://docs.victoriametrics.com/vmauth.html#ip-filters
-	// +optional
-	IPFilters VMUserIPFilters `json:"ip_filters,omitempty"`
-
-	// Headers represent additional http headers, that vmauth uses
-	// in form of ["header_key: header_value"]
-	// multiple values for header key:
-	// ["header_key: value1,value2"]
-	// it's available since 1.68.0 version of vmauth
-	// +optional
-	Headers []string `json:"headers,omitempty"`
-	// ResponseHeaders represent additional http headers, that vmauth adds for request response
-	// in form of ["header_key: header_value"]
-	// multiple values for header key:
-	// ["header_key: value1,value2"]
-	// it's available since 1.93.0 version of vmauth
-	// +optional
-	ResponseHeaders []string `json:"response_headers,omitempty"`
-
-	// RetryStatusCodes defines http status codes in numeric format for request retries
-	// e.g. [429,503]
-	// +optional
-	RetryStatusCodes []int `json:"retry_status_codes,omitempty"`
-
-	// MaxConcurrentRequests defines max concurrent requests per user
-	// 300 is default value for vmauth
-	// +optional
-	MaxConcurrentRequests *int `json:"max_concurrent_requests,omitempty"`
-
-	// LoadBalancingPolicy defines load balancing policy to use for backend urls.
-	// Supported policies: least_loaded, first_available.
-	// See https://docs.victoriametrics.com/vmauth.html#load-balancing for more details (default "least_loaded")
-	// +optional
-	// +kubebuilder:validation:Enum=least_loaded;first_available
-	LoadBalancingPolicy *string `json:"load_balancing_policy,omitempty"`
-
-	// DropSrcPathPrefixParts is the number of `/`-delimited request path prefix parts to drop before proxying the request to backend.
-	// See https://docs.victoriametrics.com/vmauth.html#dropping-request-path-prefix for more details.
-	// +optional
-	DropSrcPathPrefixParts *int `json:"drop_src_path_prefix_parts,omitempty"`
-
-	// TLSInsecureSkipVerify - whether to skip TLS verification when connecting to backend over HTTPS.
-	// See https://docs.victoriametrics.com/vmauth.html#backend-tls-setup
-	// +optional
-	TLSInsecureSkipVerify bool `json:"tls_insecure_skip_verify,omitempty"`
+	UserConfigOption UserConfigOption `json:",inline"`
 
 	// MetricLabels - additional labels for metrics exported by vmauth for given user.
 	// +optional
@@ -115,41 +65,14 @@ type TargetRef struct {
 	// +optional
 	Paths []string `json:"paths,omitempty"`
 	Hosts []string `json:"hosts,omitempty"`
-	// QueryParams []string `json:"queryParams,omitempty"`
+
+	URLMapCommon URLMapCommon `json:",omitempty"`
+
 	// TargetPathSuffix allows to add some suffix to the target path
 	// It allows to hide tenant configuration from user with crd as ref.
 	// it also may contain any url encoded params.
 	// +optional
 	TargetPathSuffix string `json:"target_path_suffix,omitempty"`
-	// Headers represent additional http headers, that vmauth uses
-	// in form of ["header_key: header_value"]
-	// multiple values for header key:
-	// ["header_key: value1,value2"]
-	// it's available since 1.68.0 version of vmauth
-	// +optional
-	Headers []string `json:"headers,omitempty"`
-	// ResponseHeaders represent additional http headers, that vmauth adds for request response
-	// in form of ["header_key: header_value"]
-	// multiple values for header key:
-	// ["header_key: value1,value2"]
-	// it's available since 1.93.0 version of vmauth
-	// +optional
-	ResponseHeaders []string `json:"response_headers,omitempty"`
-	// RetryStatusCodes defines http status codes in numeric format for request retries
-	// Can be defined per target or at VMUser.spec level
-	// e.g. [429,503]
-	// +optional
-	RetryStatusCodes []int `json:"retry_status_codes,omitempty"`
-	// LoadBalancingPolicy defines load balancing policy to use for backend urls.
-	// Supported policies: least_loaded, first_available.
-	// See https://docs.victoriametrics.com/vmauth.html#load-balancing for more details (default "least_loaded")
-	// +optional
-	// +kubebuilder:validation:Enum=least_loaded;first_available
-	LoadBalancingPolicy *string `json:"load_balancing_policy,omitempty"`
-	// DropSrcPathPrefixParts is the number of `/`-delimited request path prefix parts to drop before proxying the request to backend.
-	// See https://docs.victoriametrics.com/vmauth.html#dropping-request-path-prefix for more details.
-	// +optional
-	DropSrcPathPrefixParts *int `json:"drop_src_path_prefix_parts,omitempty"`
 	// TargetRefBasicAuth allow an target endpoint to authenticate over basic authentication
 	// +optional
 	TargetRefBasicAuth *TargetRefBasicAuth `json:"targetRefBasicAuth,omitempty"`

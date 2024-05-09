@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/controllers/factory/build"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
@@ -373,7 +374,9 @@ password: pass
 						UserConfigOption: victoriametricsv1beta1.UserConfigOption{
 							LoadBalancingPolicy:    ptr.To("first_available"),
 							DropSrcPathPrefixParts: ptr.To(1),
-							TLSInsecureSkipVerify:  ptr.To(true),
+							TLSConfig: &victoriametricsv1beta1.TLSConfig{
+								InsecureSkipVerify: true,
+							},
 						},
 						TargetRefs: []victoriametricsv1beta1.TargetRef{
 							{
@@ -448,7 +451,7 @@ password: pass
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := genUserCfg(tt.args.user, tt.args.crdURLCache)
+			got, err := genUserCfg(tt.args.user, tt.args.crdURLCache, build.ConfigBuilder{})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("genUserCfg() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -703,7 +706,9 @@ func Test_buildVMAuthConfig(t *testing.T) {
 						Name:      "test-vmauth",
 						Namespace: "default",
 					},
-					Spec: victoriametricsv1beta1.VMAuthSpec{SelectAllByDefault: true},
+					Spec: victoriametricsv1beta1.VMAuthSpec{
+						SelectAllByDefault: true,
+					},
 				},
 			},
 			predefinedObjects: []runtime.Object{
@@ -1123,12 +1128,28 @@ func Test_buildVMAuthConfig(t *testing.T) {
 							},
 						},
 						UserConfigOption: victoriametricsv1beta1.UserConfigOption{
-							DefaultURLs:           []string{"https://default1:8888/unsupported_url_handler", "https://default2:8888/unsupported_url_handler"},
-							TLSCAFile:             "/path/to/tls/root/ca",
-							TLSCertFile:           "/path/to/tls/cert",
-							TLSKeyFile:            "/path/to/tls/key",
-							TLSServerName:         "foo.bar.com",
-							TLSInsecureSkipVerify: ptr.To(true),
+							DefaultURLs: []string{"https://default1:8888/unsupported_url_handler", "https://default2:8888/unsupported_url_handler"},
+							TLSConfig: &victoriametricsv1beta1.TLSConfig{
+								CA: victoriametricsv1beta1.SecretOrConfigMap{
+									Secret: &v1.SecretKeySelector{
+										LocalObjectReference: v1.LocalObjectReference{
+											Name: "secret-store",
+										},
+										Key: "ca",
+									},
+								},
+								Cert: victoriametricsv1beta1.SecretOrConfigMap{
+									Secret: &v1.SecretKeySelector{
+										LocalObjectReference: v1.LocalObjectReference{
+											Name: "secret-store",
+										},
+										Key: "cert",
+									},
+								},
+								KeyFile:            "/path/to/tls/key",
+								ServerName:         "foo.bar.com",
+								InsecureSkipVerify: true,
+							},
 							IPFilters: victoriametricsv1beta1.VMUserIPFilters{
 								AllowList: []string{"10.0.0.0/24", "1.2.3.4"},
 								DenyList:  []string{"10.0.0.42"},
@@ -1141,6 +1162,16 @@ func Test_buildVMAuthConfig(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test",
 						Namespace: "default",
+					},
+				},
+				&v1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "secret-store",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{
+						"cert": []byte("---PEM---"),
+						"ca":   []byte("---PEM-CA"),
 					},
 				},
 			},
@@ -1164,8 +1195,8 @@ func Test_buildVMAuthConfig(t *testing.T) {
   default_url:
   - https://default1:8888/unsupported_url_handler
   - https://default2:8888/unsupported_url_handler
-  tls_ca_file: /path/to/tls/root/ca
-  tls_cert_file: /path/to/tls/cert
+  tls_ca_file: /opt/vmauth/config/default_secret-store_ca
+  tls_cert_file: /opt/vmauth/config/default_secret-store_cert
   tls_key_file: /path/to/tls/key
   tls_server_name: foo.bar.com
   tls_insecure_skip_verify: true
@@ -1213,12 +1244,14 @@ func Test_buildVMAuthConfig(t *testing.T) {
 							},
 						},
 						UserConfigOption: victoriametricsv1beta1.UserConfigOption{
-							DefaultURLs:           []string{"https://default1:8888/unsupported_url_handler", "https://default2:8888/unsupported_url_handler"},
-							TLSCAFile:             "/path/to/tls/root/ca",
-							TLSCertFile:           "/path/to/tls/cert",
-							TLSKeyFile:            "/path/to/tls/key",
-							TLSServerName:         "foo.bar.com",
-							TLSInsecureSkipVerify: ptr.To(true),
+							DefaultURLs: []string{"https://default1:8888/unsupported_url_handler", "https://default2:8888/unsupported_url_handler"},
+							TLSConfig: &victoriametricsv1beta1.TLSConfig{
+								CAFile:             "/path/to/tls/root/ca",
+								CertFile:           "/path/to/tls/cert",
+								KeyFile:            "/path/to/tls/key",
+								ServerName:         "foo.bar.com",
+								InsecureSkipVerify: true,
+							},
 							IPFilters: victoriametricsv1beta1.VMUserIPFilters{
 								AllowList: []string{"192.168.0.1/24"},
 								DenyList:  []string{"10.0.0.43"},
@@ -1505,12 +1538,14 @@ unauthorized_user:
 							},
 						},
 						UserConfigOption: victoriametricsv1beta1.UserConfigOption{
-							DefaultURLs:           []string{"https://default1:8888/unsupported_url_handler", "https://default2:8888/unsupported_url_handler"},
-							TLSCAFile:             "/path/to/tls/root/ca",
-							TLSCertFile:           "/path/to/tls/cert",
-							TLSKeyFile:            "/path/to/tls/key",
-							TLSServerName:         "foo.bar.com",
-							TLSInsecureSkipVerify: ptr.To(true),
+							DefaultURLs: []string{"https://default1:8888/unsupported_url_handler", "https://default2:8888/unsupported_url_handler"},
+							TLSConfig: &victoriametricsv1beta1.TLSConfig{
+								CAFile:             "/path/to/tls/root/ca",
+								CertFile:           "/path/to/tls/cert",
+								KeyFile:            "/path/to/tls/key",
+								ServerName:         "foo.bar.com",
+								InsecureSkipVerify: true,
+							},
 							IPFilters: victoriametricsv1beta1.VMUserIPFilters{
 								AllowList: []string{"192.168.0.1/24"},
 								DenyList:  []string{"10.0.0.43"},
@@ -1683,7 +1718,7 @@ unauthorized_user:
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			testClient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			got, err := buildVMAuthConfig(context.TODO(), testClient, tt.args.vmauth)
+			got, err := buildVMAuthConfig(context.TODO(), testClient, tt.args.vmauth, map[string]string{})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("buildVMAuthConfig() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -1691,7 +1726,7 @@ unauthorized_user:
 			if !assert.Equal(t, tt.want, string(got)) {
 				return
 			}
-			got2, err := buildVMAuthConfig(context.TODO(), testClient, tt.args.vmauth)
+			got2, err := buildVMAuthConfig(context.TODO(), testClient, tt.args.vmauth, map[string]string{})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("buildVMAuthConfig() error = %v, wantErr %v", err, tt.wantErr)
 				return

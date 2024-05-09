@@ -107,7 +107,7 @@ func TestCreateOrUpdateVMAuth(t *testing.T) {
 			},
 		},
 		{
-			name: "with custome config reloader",
+			name: "with customer config reloader",
 			args: args{
 				cr: &victoriametricsv1beta1.VMAuth{
 					ObjectMeta: metav1.ObjectMeta{

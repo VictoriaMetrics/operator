@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/controllers/factory/build"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/controllers/factory/logger"
 	"gopkg.in/yaml.v2"
@@ -24,7 +25,7 @@ import (
 )
 
 // builds vmauth config.
-func buildVMAuthConfig(ctx context.Context, rclient client.Client, vmauth *victoriametricsv1beta1.VMAuth) ([]byte, error) {
+func buildVMAuthConfig(ctx context.Context, rclient client.Client, vmauth *victoriametricsv1beta1.VMAuth, tlsAssets map[string]string) ([]byte, error) {
 	// fetch exist users for vmauth.
 	users, err := selectVMUsers(ctx, vmauth, rclient)
 	if err != nil {
@@ -54,7 +55,7 @@ func buildVMAuthConfig(ctx context.Context, rclient client.Client, vmauth *victo
 	// toUpdate := injectAuthSettings(existSecrets, users)
 
 	// generate yaml config for vmauth.
-	cfg, err := generateVMAuthConfig(vmauth, users, crdCache)
+	cfg, err := generateVMAuthConfig(vmauth, users, crdCache, tlsAssets, rclient)
 	if err != nil {
 		return nil, err
 	}
@@ -317,13 +318,25 @@ func FetchCRDRefURLs(ctx context.Context, rclient client.Client, users []*victor
 }
 
 // generateVMAuthConfig create VMAuth cfg for given Users.
-func generateVMAuthConfig(cr *victoriametricsv1beta1.VMAuth, users []*victoriametricsv1beta1.VMUser, crdCache map[string]string) ([]byte, error) {
+func generateVMAuthConfig(cr *victoriametricsv1beta1.VMAuth, users []*victoriametricsv1beta1.VMUser, crdCache map[string]string, tlsAssets map[string]string, rclient client.Client) ([]byte, error) {
 	var cfg yaml.MapSlice
+
+	secretCache := make(map[string]*v1.Secret)
+	configmapCache := make(map[string]*v1.ConfigMap)
+	cb := build.ConfigBuilder{
+		Ctx:                context.Background(),
+		Client:             rclient,
+		CurrentCRName:      cr.Name,
+		CurrentCRNamespace: cr.Namespace,
+		SecretCache:        secretCache,
+		ConfigmapCache:     configmapCache,
+		TlsAssets:          tlsAssets,
+	}
 
 	var cfgUsers []yaml.MapSlice
 	for i := range users {
 		user := users[i]
-		userCfg, err := genUserCfg(user, crdCache)
+		userCfg, err := genUserCfg(user, crdCache, cb)
 		if err != nil {
 			return nil, err
 		}
@@ -348,8 +361,11 @@ func generateVMAuthConfig(cr *victoriametricsv1beta1.VMAuth, users []*victoriame
 		unAuthorizedAccess = append(unAuthorizedAccess, urlMap)
 	}
 	var unAuthorizedAccessOpt []yaml.MapItem
-	unAuthorizedAccessOpt = addUserConfigOptionToYaml(unAuthorizedAccessOpt, cr.Spec.UserConfigOption)
-
+	var err error
+	unAuthorizedAccessOpt, err = addUserConfigOptionToYaml(unAuthorizedAccessOpt, cr.Spec.UserConfigOption, cb)
+	if err != nil {
+		return nil, err
+	}
 	var unAuthorizedAccessValue []yaml.MapItem
 	if len(unAuthorizedAccess) > 0 {
 		unAuthorizedAccessValue = append(unAuthorizedAccessValue, yaml.MapItem{Key: "url_map", Value: unAuthorizedAccess})
@@ -411,24 +427,28 @@ func addURLMapCommonToYaml(dst yaml.MapSlice, opt victoriametricsv1beta1.URLMapC
 	return dst
 }
 
-func addUserConfigOptionToYaml(dst yaml.MapSlice, opt victoriametricsv1beta1.UserConfigOption) yaml.MapSlice {
+func addUserConfigOptionToYaml(dst yaml.MapSlice, opt victoriametricsv1beta1.UserConfigOption, cb build.ConfigBuilder) (yaml.MapSlice, error) {
 	if len(opt.DefaultURLs) > 0 {
 		dst = append(dst, yaml.MapItem{Key: "default_url", Value: opt.DefaultURLs})
 	}
-	if opt.TLSCAFile != "" {
-		dst = append(dst, yaml.MapItem{Key: "tls_ca_file", Value: opt.TLSCAFile})
+	res, err := cb.BuildTLSConfig(opt.TLSConfig, vmAuthConfigRawFolder)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build tls config for vmauth %s under %s, err: %v", cb.CurrentCRName, cb.CurrentCRNamespace, err)
 	}
-	if opt.TLSCertFile != "" {
-		dst = append(dst, yaml.MapItem{Key: "tls_cert_file", Value: opt.TLSCertFile})
+	if v, ok := res["ca_file"]; ok {
+		dst = append(dst, yaml.MapItem{Key: "tls_ca_file", Value: v})
 	}
-	if opt.TLSKeyFile != "" {
-		dst = append(dst, yaml.MapItem{Key: "tls_key_file", Value: opt.TLSKeyFile})
+	if v, ok := res["cert_file"]; ok {
+		dst = append(dst, yaml.MapItem{Key: "tls_cert_file", Value: v})
 	}
-	if opt.TLSServerName != "" {
-		dst = append(dst, yaml.MapItem{Key: "tls_server_name", Value: opt.TLSServerName})
+	if v, ok := res["key_file"]; ok {
+		dst = append(dst, yaml.MapItem{Key: "tls_key_file", Value: v})
 	}
-	if opt.TLSInsecureSkipVerify != nil {
-		dst = append(dst, yaml.MapItem{Key: "tls_insecure_skip_verify", Value: *opt.TLSInsecureSkipVerify})
+	if v, ok := res["server_name"]; ok {
+		dst = append(dst, yaml.MapItem{Key: "tls_server_name", Value: v})
+	}
+	if v, ok := res["insecure_skip_verify"]; ok {
+		dst = append(dst, yaml.MapItem{Key: "tls_insecure_skip_verify", Value: v})
 	}
 	dst = addIPFiltersToYaml(dst, opt.IPFilters)
 	dst = appendIfNotNull(opt.Headers, "headers", dst)
@@ -468,7 +488,7 @@ func addUserConfigOptionToYaml(dst yaml.MapSlice, opt victoriametricsv1beta1.Use
 		},
 		)
 	}
-	return dst
+	return dst, nil
 }
 
 // AddToYaml conditionally adds ip filters to dst yaml
@@ -639,7 +659,7 @@ func genURLMaps(userName string, refs []victoriametricsv1beta1.TargetRef, result
 
 // this function mutates user and fills missing fields,
 // such password or username.
-func genUserCfg(user *victoriametricsv1beta1.VMUser, crdURLCache map[string]string) (yaml.MapSlice, error) {
+func genUserCfg(user *victoriametricsv1beta1.VMUser, crdURLCache map[string]string, cb build.ConfigBuilder) (yaml.MapSlice, error) {
 	var r yaml.MapSlice
 
 	r, err := genURLMaps(user.Name, user.Spec.TargetRefs, r, crdURLCache)
@@ -669,7 +689,10 @@ func genUserCfg(user *victoriametricsv1beta1.VMUser, crdURLCache map[string]stri
 	if user.Spec.BearerToken != nil {
 		token = *user.Spec.BearerToken
 	}
-	r = addUserConfigOptionToYaml(r, user.Spec.UserConfigOption)
+	r, err = addUserConfigOptionToYaml(r, user.Spec.UserConfigOption, cb)
+	if err != nil {
+		return nil, err
+	}
 	if len(user.Spec.MetricLabels) != 0 {
 		r = append(r, yaml.MapItem{
 			Key:   "metric_labels",

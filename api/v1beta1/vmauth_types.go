@@ -284,15 +284,8 @@ type UserConfigOption struct {
 	// usually used for default backend with error message
 	DefaultURLs []string `json:"default_url,omitempty"`
 
-	TLSCAFile     string `json:"tls_ca_file,omitempty"`
-	TLSCertFile   string `json:"tls_cert_file,omitempty"`
-	TLSKeyFile    string `json:"tls_key_file,omitempty"`
-	TLSServerName string `json:"tls_server_name,omitempty"`
-
-	// TLSInsecureSkipVerify - whether to skip TLS verification when connecting to backend over HTTPS.
-	// See https://docs.victoriametrics.com/vmauth.html#backend-tls-setup
 	// +optional
-	TLSInsecureSkipVerify *bool `json:"tls_insecure_skip_verify,omitempty"`
+	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
 
 	// IPFilters defines per target src ip filters
 	// supported only with enterprise version of vmauth

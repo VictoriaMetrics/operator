@@ -2964,10 +2964,10 @@ func (in *UserConfigOption) DeepCopyInto(out *UserConfigOption) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
-	if in.TLSInsecureSkipVerify != nil {
-		in, out := &in.TLSInsecureSkipVerify, &out.TLSInsecureSkipVerify
-		*out = new(bool)
-		**out = **in
+	if in.TLSConfig != nil {
+		in, out := &in.TLSConfig, &out.TLSConfig
+		*out = new(TLSConfig)
+		(*in).DeepCopyInto(*out)
 	}
 	in.IPFilters.DeepCopyInto(&out.IPFilters)
 	if in.DiscoverBackendIPs != nil {

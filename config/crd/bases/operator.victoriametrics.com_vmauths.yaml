@@ -81,6 +81,17 @@ spec:
                   type: object
                   x-kubernetes-preserve-unknown-fields: true
                 type: array
+              default_url:
+                description: |-
+                  DefaultURLs backend url for non-matching paths filter
+                  usually used for default backend with error message
+                items:
+                  type: string
+                type: array
+              discover_backend_ips:
+                description: DiscoverBackendIPs instructs discovering URLPrefix backend
+                  IPs via DNS.
+                type: boolean
               dnsConfig:
                 description: |-
                   Specifies the DNS parameters of a pod.
@@ -126,6 +137,11 @@ spec:
               dnsPolicy:
                 description: DNSPolicy sets DNS policy for the pod
                 type: string
+              drop_src_path_prefix_parts:
+                description: |-
+                  DropSrcPathPrefixParts is the number of `/`-delimited request path prefix parts to drop before proxying the request to backend.
+                  See https://docs.victoriametrics.com/vmauth.html#dropping-request-path-prefix for more details.
+                type: integer
               extraArgs:
                 additionalProperties:
                   type: string
@@ -158,6 +174,16 @@ spec:
                   - name
                   type: object
                   x-kubernetes-preserve-unknown-fields: true
+                type: array
+              headers:
+                description: |-
+                  Headers represent additional http headers, that vmauth uses
+                  in form of ["header_key: header_value"]
+                  multiple values for header key:
+                  ["header_key: value1,value2"]
+                  it's available since 1.68.0 version of vmauth
+                items:
+                  type: string
                 type: array
               hostAliases:
                 description: |-
@@ -462,6 +488,21 @@ spec:
                   type: object
                   x-kubernetes-preserve-unknown-fields: true
                 type: array
+              ip_filters:
+                description: |-
+                  IPFilters defines per target src ip filters
+                  supported only with enterprise version of vmauth
+                  https://docs.victoriametrics.com/vmauth.html#ip-filters
+                properties:
+                  allow_list:
+                    items:
+                      type: string
+                    type: array
+                  deny_list:
+                    items:
+                      type: string
+                    type: array
+                type: object
               license:
                 description: |-
                   License allows to configure license key to be used for enterprise features.
@@ -502,6 +543,15 @@ spec:
                 description: LivenessProbe that will be added CRD pod
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
+              load_balancing_policy:
+                description: |-
+                  LoadBalancingPolicy defines load balancing policy to use for backend urls.
+                  Supported policies: least_loaded, first_available.
+                  See https://docs.victoriametrics.com/vmauth.html#load-balancing for more details (default "least_loaded")
+                enum:
+                - least_loaded
+                - first_available
+                type: string
               logFormat:
                 description: LogFormat for VMAuth to be configured with.
                 enum:
@@ -518,6 +568,11 @@ spec:
                 - FATAL
                 - PANIC
                 type: string
+              max_concurrent_requests:
+                description: |-
+                  MaxConcurrentRequests defines max concurrent requests per user
+                  300 is default value for vmauth
+                type: integer
               minReadySeconds:
                 description: |-
                   MinReadySeconds defines a minim number os seconds to wait before starting update next pod
@@ -682,6 +737,23 @@ spec:
                       More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
                     type: object
                 type: object
+              response_headers:
+                description: |-
+                  ResponseHeaders represent additional http headers, that vmauth adds for request response
+                  in form of ["header_key: header_value"]
+                  multiple values for header key:
+                  ["header_key: value1,value2"]
+                  it's available since 1.93.0 version of vmauth
+                items:
+                  type: string
+                type: array
+              retry_status_codes:
+                description: |-
+                  RetryStatusCodes defines http status codes in numeric format for request retries
+                  e.g. [429,503]
+                items:
+                  type: integer
+                type: array
               revisionHistoryLimitCount:
                 description: |-
                   The number of old ReplicaSets to retain to allow rollback in deployment or
@@ -787,6 +859,19 @@ spec:
                   termination
                 format: int64
                 type: integer
+              tls_ca_file:
+                type: string
+              tls_cert_file:
+                type: string
+              tls_insecure_skip_verify:
+                description: |-
+                  TLSInsecureSkipVerify - whether to skip TLS verification when connecting to backend over HTTPS.
+                  See https://docs.victoriametrics.com/vmauth.html#backend-tls-setup
+                type: boolean
+              tls_key_file:
+                type: string
+              tls_server_name:
+                type: string
               tolerations:
                 description: Tolerations If specified, the pod's tolerations.
                 items:
@@ -866,20 +951,6 @@ spec:
                       items:
                         type: string
                       type: array
-                    ip_filters:
-                      description: |-
-                        IPFilters defines filter for src ip address
-                        enterprise only
-                      properties:
-                        allow_list:
-                          items:
-                            type: string
-                          type: array
-                        deny_list:
-                          items:
-                            type: string
-                          type: array
-                      type: object
                     load_balancing_policy:
                       description: |-
                         LoadBalancingPolicy defines load balancing policy to use for backend urls.
@@ -889,11 +960,6 @@ spec:
                       - least_loaded
                       - first_available
                       type: string
-                    max_concurrent_requests:
-                      description: |-
-                        MaxConcurrentRequests defines max concurrent requests per user
-                        300 is default value for vmauth
-                      type: integer
                     response_headers:
                       description: |-
                         ResponseHeaders represent additional http headers, that vmauth adds for request response
@@ -944,94 +1010,6 @@ spec:
                       type: array
                   type: object
                 type: array
-              unauthorizedAccessConfigOption:
-                properties:
-                  default_url:
-                    description: |-
-                      DefaultURLs backend url for non-matching paths filter
-                      usually used for default backend with error message
-                    items:
-                      type: string
-                    type: array
-                  discover_backend_ips:
-                    description: DiscoverBackendIPs instructs discovering URLPrefix
-                      backend IPs via DNS.
-                    type: boolean
-                  drop_src_path_prefix_parts:
-                    description: |-
-                      DropSrcPathPrefixParts is the number of `/`-delimited request path prefix parts to drop before proxying the request to backend.
-                      See https://docs.victoriametrics.com/vmauth.html#dropping-request-path-prefix for more details.
-                    type: integer
-                  headers:
-                    description: |-
-                      Headers represent additional http headers, that vmauth uses
-                      in form of ["header_key: header_value"]
-                      multiple values for header key:
-                      ["header_key: value1,value2"]
-                      it's available since 1.68.0 version of vmauth
-                    items:
-                      type: string
-                    type: array
-                  ip_filters:
-                    description: |-
-                      IPFilters defines per target src ip filters
-                      supported only with enterprise version of vmauth
-                      https://docs.victoriametrics.com/vmauth.html#ip-filters
-                    properties:
-                      allow_list:
-                        items:
-                          type: string
-                        type: array
-                      deny_list:
-                        items:
-                          type: string
-                        type: array
-                    type: object
-                  load_balancing_policy:
-                    description: |-
-                      LoadBalancingPolicy defines load balancing policy to use for backend urls.
-                      Supported policies: least_loaded, first_available.
-                      See https://docs.victoriametrics.com/vmauth.html#load-balancing for more details (default "least_loaded")
-                    enum:
-                    - least_loaded
-                    - first_available
-                    type: string
-                  max_concurrent_requests:
-                    description: |-
-                      MaxConcurrentRequests defines max concurrent requests per user
-                      300 is default value for vmauth
-                    type: integer
-                  response_headers:
-                    description: |-
-                      ResponseHeaders represent additional http headers, that vmauth adds for request response
-                      in form of ["header_key: header_value"]
-                      multiple values for header key:
-                      ["header_key: value1,value2"]
-                      it's available since 1.93.0 version of vmauth
-                    items:
-                      type: string
-                    type: array
-                  retry_status_codes:
-                    description: |-
-                      RetryStatusCodes defines http status codes in numeric format for request retries
-                      e.g. [429,503]
-                    items:
-                      type: integer
-                    type: array
-                  tls_ca_file:
-                    type: string
-                  tls_cert_file:
-                    type: string
-                  tls_insecure_skip_verify:
-                    description: |-
-                      TLSInsecureSkipVerify - whether to skip TLS verification when connecting to backend over HTTPS.
-                      See https://docs.victoriametrics.com/vmauth.html#backend-tls-setup
-                    type: boolean
-                  tls_key_file:
-                    type: string
-                  tls_server_name:
-                    type: string
-                type: object
               useStrictSecurity:
                 description: |-
                   UseStrictSecurity enables strict security mode for component

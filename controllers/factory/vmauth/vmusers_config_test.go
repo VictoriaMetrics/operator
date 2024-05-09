@@ -1111,18 +1111,13 @@ func Test_buildVMAuthConfig(t *testing.T) {
 								Hosts: []string{"host.com"},
 								URLMapCommon: victoriametricsv1beta1.URLMapCommon{
 									// SrcQueryArgs&SrcHeaders here will be skipped cause there is only one default route
-									// SrcQueryArgs: []string{"db=foo"},
-									// SrcHeaders:   []string{"TenantID: 123:456"},
-									IPFilters: victoriametricsv1beta1.VMUserIPFilters{
-										AllowList: []string{"10.0.0.0/24", "1.2.3.4"},
-										DenyList:  []string{"10.0.0.42"},
-									},
-									DiscoverBackendIPs:    ptr.To(true),
-									RequestHeaders:        []string{"X-Scope-OrgID: abc"},
-									ResponseHeaders:       []string{"X-Server-Hostname: a"},
-									RetryStatusCodes:      []int{500, 502},
-									LoadBalancingPolicy:   ptr.To("first_available"),
-									MaxConcurrentRequests: ptr.To(180),
+									SrcQueryArgs:        []string{"db=foo"},
+									SrcHeaders:          []string{"TenantID: 123:456"},
+									DiscoverBackendIPs:  ptr.To(true),
+									RequestHeaders:      []string{"X-Scope-OrgID: abc"},
+									ResponseHeaders:     []string{"X-Server-Hostname: a"},
+									RetryStatusCodes:    []int{500, 502},
+									LoadBalancingPolicy: ptr.To("first_available"),
 								},
 								TargetPathSuffix: "/prometheus?extra_label=key=value",
 							},
@@ -1134,6 +1129,11 @@ func Test_buildVMAuthConfig(t *testing.T) {
 							TLSKeyFile:            "/path/to/tls/key",
 							TLSServerName:         "foo.bar.com",
 							TLSInsecureSkipVerify: ptr.To(true),
+							IPFilters: victoriametricsv1beta1.VMUserIPFilters{
+								AllowList: []string{"10.0.0.0/24", "1.2.3.4"},
+								DenyList:  []string{"10.0.0.42"},
+							},
+							MaxConcurrentRequests: ptr.To(180),
 						},
 					},
 				},
@@ -1159,14 +1159,7 @@ func Test_buildVMAuthConfig(t *testing.T) {
   retry_status_codes:
   - 500
   - 502
-  max_concurrent_requests: 180
   load_balancing_policy: first_available
-  ip_filters:
-    allow_list:
-    - 10.0.0.0/24
-    - 1.2.3.4
-    deny_list:
-    - 10.0.0.42
   name: user-15
   default_url:
   - https://default1:8888/unsupported_url_handler
@@ -1176,6 +1169,13 @@ func Test_buildVMAuthConfig(t *testing.T) {
   tls_key_file: /path/to/tls/key
   tls_server_name: foo.bar.com
   tls_insecure_skip_verify: true
+  ip_filters:
+    allow_list:
+    - 10.0.0.0/24
+    - 1.2.3.4
+    deny_list:
+    - 10.0.0.42
+  max_concurrent_requests: 180
   bearer_token: bearer-token-10
 `,
 		},
@@ -1195,12 +1195,8 @@ func Test_buildVMAuthConfig(t *testing.T) {
 								SrcHosts:  []string{"app1.my-host.com"},
 								URLPrefix: []string{"http://vmselect1:8481/select/42/prometheus", "http://vmselect2:8481/select/42/prometheus"},
 								URLMapCommon: victoriametricsv1beta1.URLMapCommon{
-									SrcQueryArgs: []string{"db=foo"},
-									SrcHeaders:   []string{"TenantID: 123:456"},
-									IPFilters: victoriametricsv1beta1.VMUserIPFilters{
-										AllowList: []string{"10.0.0.0/24", "1.2.3.4"},
-										DenyList:  []string{"10.0.0.42"},
-									},
+									SrcQueryArgs:        []string{"db=foo"},
+									SrcHeaders:          []string{"TenantID: 123:456"},
 									DiscoverBackendIPs:  ptr.To(true),
 									RequestHeaders:      []string{"X-Scope-OrgID: abc"},
 									ResponseHeaders:     []string{"X-Server-Hostname: a"},
@@ -1213,11 +1209,10 @@ func Test_buildVMAuthConfig(t *testing.T) {
 								URLPrefix: []string{"http://app1-backend/"},
 								URLMapCommon: victoriametricsv1beta1.URLMapCommon{
 									DropSrcPathPrefixParts: ptr.To(1),
-									MaxConcurrentRequests:  ptr.To(100),
 								},
 							},
 						},
-						UnauthorizedAccessConfigOption: &victoriametricsv1beta1.UserConfigOption{
+						UserConfigOption: victoriametricsv1beta1.UserConfigOption{
 							DefaultURLs:           []string{"https://default1:8888/unsupported_url_handler", "https://default2:8888/unsupported_url_handler"},
 							TLSCAFile:             "/path/to/tls/root/ca",
 							TLSCertFile:           "/path/to/tls/cert",
@@ -1314,17 +1309,10 @@ unauthorized_user:
     - 500
     - 502
     load_balancing_policy: first_available
-    ip_filters:
-      allow_list:
-      - 10.0.0.0/24
-      - 1.2.3.4
-      deny_list:
-      - 10.0.0.42
   - src_paths:
     - /app1/.*
     url_prefix:
     - http://app1-backend/
-    max_concurrent_requests: 100
     drop_src_path_prefix_parts: 1
   default_url:
   - https://default1:8888/unsupported_url_handler

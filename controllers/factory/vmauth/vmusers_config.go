@@ -348,7 +348,7 @@ func generateVMAuthConfig(cr *victoriametricsv1beta1.VMAuth, users []*victoriame
 		unAuthorizedAccess = append(unAuthorizedAccess, urlMap)
 	}
 	var unAuthorizedAccessOpt []yaml.MapItem
-	unAuthorizedAccessOpt = addUserConfigOptionToYaml(unAuthorizedAccessOpt, cr.Spec.UnauthorizedAccessConfigOption)
+	unAuthorizedAccessOpt = addUserConfigOptionToYaml(unAuthorizedAccessOpt, cr.Spec.UserConfigOption)
 
 	var unAuthorizedAccessValue []yaml.MapItem
 	if len(unAuthorizedAccess) > 0 {
@@ -394,13 +394,6 @@ func addURLMapCommonToYaml(dst yaml.MapSlice, opt victoriametricsv1beta1.URLMapC
 		},
 		)
 	}
-	if opt.MaxConcurrentRequests != nil {
-		dst = append(dst, yaml.MapItem{
-			Key:   "max_concurrent_requests",
-			Value: *opt.MaxConcurrentRequests,
-		},
-		)
-	}
 	if opt.LoadBalancingPolicy != nil {
 		dst = append(dst, yaml.MapItem{
 			Key:   "load_balancing_policy",
@@ -415,13 +408,10 @@ func addURLMapCommonToYaml(dst yaml.MapSlice, opt victoriametricsv1beta1.URLMapC
 		},
 		)
 	}
-	return addIPFiltersToYaml(dst, opt.IPFilters)
+	return dst
 }
 
-func addUserConfigOptionToYaml(dst yaml.MapSlice, opt *victoriametricsv1beta1.UserConfigOption) yaml.MapSlice {
-	if opt == nil {
-		return dst
-	}
+func addUserConfigOptionToYaml(dst yaml.MapSlice, opt victoriametricsv1beta1.UserConfigOption) yaml.MapSlice {
 	if len(opt.DefaultURLs) > 0 {
 		dst = append(dst, yaml.MapItem{Key: "default_url", Value: opt.DefaultURLs})
 	}
@@ -679,7 +669,7 @@ func genUserCfg(user *victoriametricsv1beta1.VMUser, crdURLCache map[string]stri
 	if user.Spec.BearerToken != nil {
 		token = *user.Spec.BearerToken
 	}
-	r = addUserConfigOptionToYaml(r, &user.Spec.UserConfigOption)
+	r = addUserConfigOptionToYaml(r, user.Spec.UserConfigOption)
 	if len(user.Spec.MetricLabels) != 0 {
 		r = append(r, yaml.MapItem{
 			Key:   "metric_labels",

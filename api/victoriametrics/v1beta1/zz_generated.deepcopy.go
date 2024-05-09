@@ -2883,7 +2883,6 @@ func (in *URLMapCommon) DeepCopyInto(out *URLMapCommon) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
-	in.IPFilters.DeepCopyInto(&out.IPFilters)
 	if in.DiscoverBackendIPs != nil {
 		in, out := &in.DiscoverBackendIPs, &out.DiscoverBackendIPs
 		*out = new(bool)
@@ -2911,11 +2910,6 @@ func (in *URLMapCommon) DeepCopyInto(out *URLMapCommon) {
 	}
 	if in.DropSrcPathPrefixParts != nil {
 		in, out := &in.DropSrcPathPrefixParts, &out.DropSrcPathPrefixParts
-		*out = new(int)
-		**out = **in
-	}
-	if in.MaxConcurrentRequests != nil {
-		in, out := &in.MaxConcurrentRequests, &out.MaxConcurrentRequests
 		*out = new(int)
 		**out = **in
 	}
@@ -4658,11 +4652,7 @@ func (in *VMAuthSpec) DeepCopyInto(out *VMAuthSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	if in.UnauthorizedAccessConfigOption != nil {
-		in, out := &in.UnauthorizedAccessConfigOption, &out.UnauthorizedAccessConfigOption
-		*out = new(UserConfigOption)
-		(*in).DeepCopyInto(*out)
-	}
+	in.UserConfigOption.DeepCopyInto(&out.UserConfigOption)
 	if in.UseStrictSecurity != nil {
 		in, out := &in.UseStrictSecurity, &out.UseStrictSecurity
 		*out = new(bool)

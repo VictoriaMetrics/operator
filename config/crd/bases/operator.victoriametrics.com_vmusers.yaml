@@ -210,20 +210,6 @@ spec:
                       items:
                         type: string
                       type: array
-                    ip_filters:
-                      description: |-
-                        IPFilters defines filter for src ip address
-                        enterprise only
-                      properties:
-                        allow_list:
-                          items:
-                            type: string
-                          type: array
-                        deny_list:
-                          items:
-                            type: string
-                          type: array
-                      type: object
                     load_balancing_policy:
                       description: |-
                         LoadBalancingPolicy defines load balancing policy to use for backend urls.
@@ -233,11 +219,6 @@ spec:
                       - least_loaded
                       - first_available
                       type: string
-                    max_concurrent_requests:
-                      description: |-
-                        MaxConcurrentRequests defines max concurrent requests per user
-                        300 is default value for vmauth
-                      type: integer
                     paths:
                       description: Paths - matched path to route.
                       items:

@@ -194,8 +194,8 @@ type VMAuthSpec struct {
 	ReadinessGates []v1.PodReadinessGate `json:"readinessGates,omitempty"`
 	// UnauthorizedAccessConfig configures access for un authorized users
 	// +optional
-	UnauthorizedAccessConfig       []UnauthorizedAccessConfigURLMap `json:"unauthorizedAccessConfig,omitempty"`
-	UnauthorizedAccessConfigOption *UserConfigOption                `json:"unauthorizedAccessConfigOption,omitempty"`
+	UnauthorizedAccessConfig []UnauthorizedAccessConfigURLMap `json:"unauthorizedAccessConfig,omitempty"`
+	UserConfigOption         `json:",inline"`
 	// UseStrictSecurity enables strict security mode for component
 	// it restricts disk writes access
 	// uses non-root user out of the box
@@ -231,7 +231,7 @@ type UnauthorizedAccessConfigURLMap struct {
 	// UrlPrefix contains backend url prefixes for the proxied request url.
 	URLPrefix []string `json:"url_prefix,omitempty"`
 
-	URLMapCommon URLMapCommon `json:",omitempty"`
+	URLMapCommon `json:",omitempty"`
 }
 
 // URLMapCommon contains common fields for unauthorized user and user in vmuser
@@ -241,10 +241,6 @@ type URLMapCommon struct {
 
 	// SrcHeaders is an optional list of headers, which must match request headers.
 	SrcHeaders []string `json:"src_headers,omitempty"`
-
-	// IPFilters defines filter for src ip address
-	// enterprise only
-	IPFilters VMUserIPFilters `json:"ip_filters,omitempty"`
 
 	// DiscoverBackendIPs instructs discovering URLPrefix backend IPs via DNS.
 	DiscoverBackendIPs *bool `json:"discover_backend_ips,omitempty"`
@@ -281,10 +277,6 @@ type URLMapCommon struct {
 	// See https://docs.victoriametrics.com/vmauth.html#dropping-request-path-prefix for more details.
 	// +optional
 	DropSrcPathPrefixParts *int `json:"drop_src_path_prefix_parts,omitempty"`
-	// MaxConcurrentRequests defines max concurrent requests per user
-	// 300 is default value for vmauth
-	// +optional
-	MaxConcurrentRequests *int `json:"max_concurrent_requests,omitempty"`
 }
 
 type UserConfigOption struct {

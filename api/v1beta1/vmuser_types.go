@@ -38,7 +38,7 @@ type VMUserSpec struct {
 	// TargetRefs - reference to endpoints, which user may access.
 	TargetRefs []TargetRef `json:"targetRefs"`
 
-	UserConfigOption UserConfigOption `json:",inline"`
+	UserConfigOption `json:",inline"`
 
 	// MetricLabels - additional labels for metrics exported by vmauth for given user.
 	// +optional
@@ -66,7 +66,7 @@ type TargetRef struct {
 	Paths []string `json:"paths,omitempty"`
 	Hosts []string `json:"hosts,omitempty"`
 
-	URLMapCommon URLMapCommon `json:",omitempty"`
+	URLMapCommon `json:",omitempty"`
 
 	// TargetPathSuffix allows to add some suffix to the target path
 	// It allows to hide tenant configuration from user with crd as ref.

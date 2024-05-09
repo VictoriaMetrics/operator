@@ -4,14 +4,16 @@ import (
 	"context"
 	"testing"
 
-	operatorv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
-	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/ptr"
+
+	operatorv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/controllers/factory/build"
+	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 )
 
 func TestBuildConfig(t *testing.T) {
@@ -716,7 +718,7 @@ templates: []
 					},
 				},
 			},
-			parseError: "cannot find secret for VMAlertmanager config: tg, receiver: telegram, err :secrets \"tg-secret\" not found in object: default/tg, will ignore vmalertmanagerconfig tg",
+			parseError: "cannot find secret for VMAlertmanager config: tg, err :secrets \"tg-secret\" not found in object: default/tg, will ignore vmalertmanagerconfig tg",
 			want: `global:
   time_out: 1min
 route:
@@ -1175,8 +1177,8 @@ func Test_configBuilder_buildHTTPConfig(t *testing.T) {
 			want: `tls_config:
   ca_file: /etc/alertmanager/config/default_secret-store_ca
   cert_file: /etc/alertmanager/config/default_secret-store_cert
-  key_file: /etc/mounted_dir/key.pem
   insecure_skip_verify: true
+  key_file: /etc/mounted_dir/key.pem
 authorization:
   credentials_file: /etc/mounted_dir/bearer_file
 `,
@@ -1243,8 +1245,8 @@ authorization:
 			want: `tls_config:
   ca_file: /etc/alertmanager/config/default_cm-store_ca
   cert_file: /etc/alertmanager/config/default_secret-store_cert
-  key_file: /etc/alertmanager/config/default_secret-store_key
   insecure_skip_verify: true
+  key_file: /etc/alertmanager/config/default_secret-store_key
 authorization:
   credentials: secret-token
 `,
@@ -1253,16 +1255,14 @@ authorization:
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cb := &configBuilder{
-				ctx:            context.Background(),
-				Client:         k8stools.GetTestClientWithObjects(nil),
-				secretCache:    tt.fields.secretCache,
-				configmapCache: tt.fields.configmapCache,
-				tlsAssets:      map[string]string{},
-				currentCR: &operatorv1beta1.VMAlertmanagerConfig{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-am",
-						Namespace: "default",
-					},
+				TLSConfigBuilder: build.TLSConfigBuilder{
+					Ctx:                context.Background(),
+					Client:             k8stools.GetTestClientWithObjects(nil),
+					SecretCache:        tt.fields.secretCache,
+					ConfigmapCache:     tt.fields.configmapCache,
+					TLSAssets:          map[string]string{},
+					CurrentCRName:      "test-am",
+					CurrentCRNamespace: "default",
 				},
 			}
 			gotYAML, err := cb.buildHTTPConfig(tt.args.httpCfg)

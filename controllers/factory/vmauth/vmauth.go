@@ -30,12 +30,13 @@ import (
 )
 
 const (
-	vmauthPort          = "8427"
-	vmAuthConfigMountGz = "/opt/vmauth-config-gz"
-	vmAuthConfigFolder  = "/opt/vmauth"
-	vmAuthConfigName    = "config.yaml"
-	vmAuthConfigNameGz  = "config.yaml.gz"
-	vmAuthVolumeName    = "config"
+	vmauthPort            = "8427"
+	vmAuthConfigMountGz   = "/opt/vmauth-config-gz"
+	vmAuthConfigFolder    = "/opt/vmauth"
+	vmAuthConfigRawFolder = "/opt/vmauth/config"
+	vmAuthConfigName      = "config.yaml"
+	vmAuthConfigNameGz    = "config.yaml.gz"
+	vmAuthVolumeName      = "config"
 )
 
 // CreateOrUpdateVMAuthService creates service for VMAuth
@@ -251,6 +252,10 @@ func makeSpecForVMAuth(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperator
 			Name:      "config-out",
 			MountPath: vmAuthConfigFolder,
 		})
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name:      "config",
+			MountPath: vmAuthConfigRawFolder,
+		})
 		operatorContainers[0].VolumeMounts = volumeMounts
 
 		configReloader := buildVMAuthConfigReloaderContainer(cr, c)
@@ -326,9 +331,15 @@ func CreateOrUpdateVMAuthConfig(ctx context.Context, rclient client.Client, cr *
 	}
 	s := makeVMAuthConfigSecret(cr)
 
-	generatedConfig, err := buildVMAuthConfig(ctx, rclient, cr)
+	// name of tls object and it's value
+	// e.g. namespace_secret_name_secret_key
+	tlsAssets := make(map[string]string)
+	generatedConfig, err := buildVMAuthConfig(ctx, rclient, cr, tlsAssets)
 	if err != nil {
 		return err
+	}
+	for assetKey, assetValue := range tlsAssets {
+		s.Data[assetKey] = []byte(assetValue)
 	}
 
 	var buf bytes.Buffer

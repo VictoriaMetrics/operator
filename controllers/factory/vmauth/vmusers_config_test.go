@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/controllers/factory/build"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
@@ -128,7 +129,9 @@ bearer_token: secret-token
 									"/api/v1/targets",
 									"/targets",
 								},
-								Headers: []string{"baz: bar"},
+								URLMapCommon: victoriametricsv1beta1.URLMapCommon{
+									RequestHeaders: []string{"baz: bar"},
+								},
 							},
 							{
 								Static:           &victoriametricsv1beta1.StaticRef{URL: "http://vmcluster-remote.mydomain.com:8401"},
@@ -215,7 +218,9 @@ bearer_token: secret-token
 									Name:      "base",
 									Namespace: "monitoring",
 								},
-								Headers: []string{"X-Scope-OrgID: abc", "X-Scope-Team: baz"},
+								URLMapCommon: victoriametricsv1beta1.URLMapCommon{
+									RequestHeaders: []string{"X-Scope-OrgID: abc", "X-Scope-Team: baz"},
+								},
 							},
 						},
 					},
@@ -242,8 +247,10 @@ bearer_token: secret-token
 						Name:     ptr.To("user1"),
 						UserName: ptr.To("basic"),
 						Password: ptr.To("pass"),
-						IPFilters: victoriametricsv1beta1.VMUserIPFilters{
-							AllowList: []string{"127.0.0.1"},
+						UserConfigOption: victoriametricsv1beta1.UserConfigOption{
+							IPFilters: victoriametricsv1beta1.VMUserIPFilters{
+								AllowList: []string{"127.0.0.1"},
+							},
 						},
 						TargetRefs: []victoriametricsv1beta1.TargetRef{
 							{
@@ -290,13 +297,15 @@ password: pass
 			args: args{
 				user: &victoriametricsv1beta1.VMUser{
 					Spec: victoriametricsv1beta1.VMUserSpec{
-						Name:                  ptr.To("user1"),
-						UserName:              ptr.To("basic"),
-						Password:              ptr.To("pass"),
-						Headers:               []string{"H1:V1", "H2:V2"},
-						ResponseHeaders:       []string{"RH1:V3", "RH2:V4"},
-						MaxConcurrentRequests: ptr.To(400),
-						RetryStatusCodes:      []int{502, 503},
+						Name:     ptr.To("user1"),
+						UserName: ptr.To("basic"),
+						Password: ptr.To("pass"),
+						UserConfigOption: victoriametricsv1beta1.UserConfigOption{
+							Headers:               []string{"H1:V1", "H2:V2"},
+							ResponseHeaders:       []string{"RH1:V3", "RH2:V4"},
+							MaxConcurrentRequests: ptr.To(400),
+							RetryStatusCodes:      []int{502, 503},
+						},
 						TargetRefs: []victoriametricsv1beta1.TargetRef{
 							{
 								Static: &victoriametricsv1beta1.StaticRef{
@@ -306,8 +315,10 @@ password: pass
 									"/select/0/prometheus",
 									"/select/0/graphite",
 								},
-								Headers:         []string{"H1:V2", "H2:V3"},
-								ResponseHeaders: []string{"RH1:V6", "RH2:V7"},
+								URLMapCommon: victoriametricsv1beta1.URLMapCommon{
+									RequestHeaders:  []string{"H1:V2", "H2:V3"},
+									ResponseHeaders: []string{"RH1:V6", "RH2:V7"},
+								},
 							},
 							{
 								Static: &victoriametricsv1beta1.StaticRef{
@@ -338,16 +349,16 @@ password: pass
   src_paths:
   - /insert/0/prometheus
 name: user1
-max_concurrent_requests: 400
-retry_status_codes:
-- 502
-- 503
 headers:
 - H1:V1
 - H2:V2
 response_headers:
 - RH1:V3
 - RH2:V4
+retry_status_codes:
+- 502
+- 503
+max_concurrent_requests: 400
 username: basic
 password: pass
 `,
@@ -357,12 +368,16 @@ password: pass
 			args: args{
 				user: &victoriametricsv1beta1.VMUser{
 					Spec: victoriametricsv1beta1.VMUserSpec{
-						Name:                   ptr.To("user1"),
-						UserName:               ptr.To("basic"),
-						Password:               ptr.To("pass"),
-						LoadBalancingPolicy:    ptr.To("first_available"),
-						DropSrcPathPrefixParts: ptr.To(1),
-						TLSInsecureSkipVerify:  true,
+						Name:     ptr.To("user1"),
+						UserName: ptr.To("basic"),
+						Password: ptr.To("pass"),
+						UserConfigOption: victoriametricsv1beta1.UserConfigOption{
+							LoadBalancingPolicy:    ptr.To("first_available"),
+							DropSrcPathPrefixParts: ptr.To(1),
+							TLSConfig: &victoriametricsv1beta1.TLSConfig{
+								InsecureSkipVerify: true,
+							},
+						},
 						TargetRefs: []victoriametricsv1beta1.TargetRef{
 							{
 								Static: &victoriametricsv1beta1.StaticRef{
@@ -372,8 +387,10 @@ password: pass
 									"/select/0/prometheus",
 									"/select/0/graphite",
 								},
-								LoadBalancingPolicy:    ptr.To("first_available"),
-								DropSrcPathPrefixParts: ptr.To(2),
+								URLMapCommon: victoriametricsv1beta1.URLMapCommon{
+									LoadBalancingPolicy:    ptr.To("first_available"),
+									DropSrcPathPrefixParts: ptr.To(2),
+								},
 							},
 							{
 								Static: &victoriametricsv1beta1.StaticRef{
@@ -400,9 +417,9 @@ password: pass
   src_paths:
   - /insert/0/prometheus
 name: user1
+tls_insecure_skip_verify: true
 load_balancing_policy: first_available
 drop_src_path_prefix_parts: 1
-tls_insecure_skip_verify: true
 username: basic
 password: pass
 `,
@@ -434,7 +451,7 @@ password: pass
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := genUserCfg(tt.args.user, tt.args.crdURLCache)
+			got, err := genUserCfg(tt.args.user, tt.args.crdURLCache, build.TLSConfigBuilder{})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("genUserCfg() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -689,7 +706,9 @@ func Test_buildVMAuthConfig(t *testing.T) {
 						Name:      "test-vmauth",
 						Namespace: "default",
 					},
-					Spec: victoriametricsv1beta1.VMAuthSpec{SelectAllByDefault: true},
+					Spec: victoriametricsv1beta1.VMAuthSpec{
+						SelectAllByDefault: true,
+					},
 				},
 			},
 			predefinedObjects: []runtime.Object{
@@ -773,9 +792,11 @@ func Test_buildVMAuthConfig(t *testing.T) {
 						},
 						TargetRefs: []victoriametricsv1beta1.TargetRef{
 							{
-								Static:  &victoriametricsv1beta1.StaticRef{URL: "http://some-static"},
-								Paths:   []string{"/"},
-								Headers: []string{"baz: bar"},
+								Static: &victoriametricsv1beta1.StaticRef{URL: "http://some-static"},
+								Paths:  []string{"/"},
+								URLMapCommon: victoriametricsv1beta1.URLMapCommon{
+									RequestHeaders: []string{"baz: bar"},
+								},
 								TargetRefBasicAuth: &victoriametricsv1beta1.TargetRefBasicAuth{
 									Username: v1.SecretKeySelector{
 										Key: "username",
@@ -1038,10 +1059,7 @@ func Test_buildVMAuthConfig(t *testing.T) {
 					},
 				},
 			},
-			want: `users:
-- url_prefix: http://localhost:8428
-  name: default-user
-  bearer_token: some-default-token
+			want: `{}
 `,
 		},
 		{
@@ -1095,7 +1113,48 @@ func Test_buildVMAuthConfig(t *testing.T) {
 									Namespace: "default",
 								},
 								Paths: []string{"/"},
+								Hosts: []string{"host.com"},
+								URLMapCommon: victoriametricsv1beta1.URLMapCommon{
+									// SrcQueryArgs&SrcHeaders here will be skipped cause there is only one default route
+									SrcQueryArgs:        []string{"db=foo"},
+									SrcHeaders:          []string{"TenantID: 123:456"},
+									DiscoverBackendIPs:  ptr.To(true),
+									RequestHeaders:      []string{"X-Scope-OrgID: abc"},
+									ResponseHeaders:     []string{"X-Server-Hostname: a"},
+									RetryStatusCodes:    []int{500, 502},
+									LoadBalancingPolicy: ptr.To("first_available"),
+								},
+								TargetPathSuffix: "/prometheus?extra_label=key=value",
 							},
+						},
+						UserConfigOption: victoriametricsv1beta1.UserConfigOption{
+							DefaultURLs: []string{"https://default1:8888/unsupported_url_handler", "https://default2:8888/unsupported_url_handler"},
+							TLSConfig: &victoriametricsv1beta1.TLSConfig{
+								CA: victoriametricsv1beta1.SecretOrConfigMap{
+									Secret: &v1.SecretKeySelector{
+										LocalObjectReference: v1.LocalObjectReference{
+											Name: "secret-store",
+										},
+										Key: "ca",
+									},
+								},
+								Cert: victoriametricsv1beta1.SecretOrConfigMap{
+									Secret: &v1.SecretKeySelector{
+										LocalObjectReference: v1.LocalObjectReference{
+											Name: "secret-store",
+										},
+										Key: "cert",
+									},
+								},
+								KeyFile:            "/path/to/tls/key",
+								ServerName:         "foo.bar.com",
+								InsecureSkipVerify: true,
+							},
+							IPFilters: victoriametricsv1beta1.VMUserIPFilters{
+								AllowList: []string{"10.0.0.0/24", "1.2.3.4"},
+								DenyList:  []string{"10.0.0.42"},
+							},
+							MaxConcurrentRequests: ptr.To(180),
 						},
 					},
 				},
@@ -1105,6 +1164,16 @@ func Test_buildVMAuthConfig(t *testing.T) {
 						Namespace: "default",
 					},
 				},
+				&v1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "secret-store",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{
+						"cert": []byte("---PEM---"),
+						"ca":   []byte("---PEM-CA"),
+					},
+				},
 			},
 			want: `users:
 - url_prefix:
@@ -1112,13 +1181,37 @@ func Test_buildVMAuthConfig(t *testing.T) {
   name: user-11
   bearer_token: bearer
 - url_prefix:
-  - http://vmagent-test.default.svc:8429
+  - http://vmagent-test.default.svc:8429/prometheus?extra_label=key%3Dvalue
+  headers:
+  - 'X-Scope-OrgID: abc'
+  response_headers:
+  - 'X-Server-Hostname: a'
+  discover_backend_ips: true
+  retry_status_codes:
+  - 500
+  - 502
+  load_balancing_policy: first_available
   name: user-15
+  default_url:
+  - https://default1:8888/unsupported_url_handler
+  - https://default2:8888/unsupported_url_handler
+  tls_ca_file: /opt/vmauth/config/default_secret-store_ca
+  tls_cert_file: /opt/vmauth/config/default_secret-store_cert
+  tls_key_file: /path/to/tls/key
+  tls_server_name: foo.bar.com
+  tls_insecure_skip_verify: true
+  ip_filters:
+    allow_list:
+    - 10.0.0.0/24
+    - 1.2.3.4
+    deny_list:
+    - 10.0.0.42
+  max_concurrent_requests: 180
   bearer_token: bearer-token-10
 `,
 		},
 		{
-			name: "with un athorized access and ip_filter ",
+			name: "with full unauthorized access and ip_filter",
 			args: args{
 				vmauth: &victoriametricsv1beta1.VMAuth{
 					ObjectMeta: metav1.ObjectMeta{
@@ -1127,22 +1220,49 @@ func Test_buildVMAuthConfig(t *testing.T) {
 					},
 					Spec: victoriametricsv1beta1.VMAuthSpec{
 						SelectAllByDefault: true,
-						UnauthorizedAccessConfig: []victoriametricsv1beta1.VMAuthUnauthorizedPath{
+						UnauthorizedAccessConfig: []victoriametricsv1beta1.UnauthorizedAccessConfigURLMap{
 							{
-								Paths:                  []string{"/", "/default"},
-								URLs:                   []string{"http://route-1", "http://route-2"},
-								Hosts:                  []string{"app1\\.my-host\\.com"},
-								Headers:                []string{"TenantID: foobar", "X-Forwarded-For:"},
-								ResponseHeaders:        []string{"Server:"},
-								RetryStatusCodes:       []int{503, 500},
-								LoadBalancingPolicy:    ptr.To("first_available"),
-								DropSrcPathPrefixParts: ptr.To(1),
-								IPFilters: victoriametricsv1beta1.VMUserIPFilters{
-									DenyList: []string{
-										"127.0.0.1", "192.168.0.0/16",
-									},
+								SrcPaths:  []string{"/api/v1/query", "/api/v1/query_range", "/api/v1/label/[^/]+/values"},
+								SrcHosts:  []string{"app1.my-host.com"},
+								URLPrefix: []string{"http://vmselect1:8481/select/42/prometheus", "http://vmselect2:8481/select/42/prometheus"},
+								URLMapCommon: victoriametricsv1beta1.URLMapCommon{
+									SrcQueryArgs:        []string{"db=foo"},
+									SrcHeaders:          []string{"TenantID: 123:456"},
+									DiscoverBackendIPs:  ptr.To(true),
+									RequestHeaders:      []string{"X-Scope-OrgID: abc"},
+									ResponseHeaders:     []string{"X-Server-Hostname: a"},
+									RetryStatusCodes:    []int{500, 502},
+									LoadBalancingPolicy: ptr.To("first_available"),
 								},
 							},
+							{
+								SrcPaths:  []string{"/app1/.*"},
+								URLPrefix: []string{"http://app1-backend/"},
+								URLMapCommon: victoriametricsv1beta1.URLMapCommon{
+									DropSrcPathPrefixParts: ptr.To(1),
+								},
+							},
+						},
+						UserConfigOption: victoriametricsv1beta1.UserConfigOption{
+							DefaultURLs: []string{"https://default1:8888/unsupported_url_handler", "https://default2:8888/unsupported_url_handler"},
+							TLSConfig: &victoriametricsv1beta1.TLSConfig{
+								CAFile:             "/path/to/tls/root/ca",
+								CertFile:           "/path/to/tls/cert",
+								KeyFile:            "/path/to/tls/key",
+								ServerName:         "foo.bar.com",
+								InsecureSkipVerify: true,
+							},
+							IPFilters: victoriametricsv1beta1.VMUserIPFilters{
+								AllowList: []string{"192.168.0.1/24"},
+								DenyList:  []string{"10.0.0.43"},
+							},
+							DiscoverBackendIPs:     ptr.To(false),
+							Headers:                []string{"X-Scope-OrgID: cba"},
+							ResponseHeaders:        []string{"X-Server-Hostname: b"},
+							RetryStatusCodes:       []int{503},
+							LoadBalancingPolicy:    ptr.To("least_loaded"),
+							MaxConcurrentRequests:  ptr.To(150),
+							DropSrcPathPrefixParts: ptr.To(2),
 						},
 					},
 				},
@@ -1200,28 +1320,56 @@ func Test_buildVMAuthConfig(t *testing.T) {
   bearer_token: bearer-token-2
 unauthorized_user:
   url_map:
-  - url_prefix:
-    - http://route-1
-    - http://route-2
-    src_paths:
-    - /
-    - /default
+  - src_paths:
+    - /api/v1/query
+    - /api/v1/query_range
+    - /api/v1/label/[^/]+/values
     src_hosts:
-    - app1\.my-host\.com
+    - app1.my-host.com
+    url_prefix:
+    - http://vmselect1:8481/select/42/prometheus
+    - http://vmselect2:8481/select/42/prometheus
+    src_query_args:
+    - db=foo
+    src_headers:
+    - 'TenantID: 123:456'
     headers:
-    - 'TenantID: foobar'
-    - 'X-Forwarded-For:'
+    - 'X-Scope-OrgID: abc'
     response_headers:
-    - 'Server:'
+    - 'X-Server-Hostname: a'
+    discover_backend_ips: true
     retry_status_codes:
-    - 503
     - 500
+    - 502
     load_balancing_policy: first_available
+  - src_paths:
+    - /app1/.*
+    url_prefix:
+    - http://app1-backend/
     drop_src_path_prefix_parts: 1
-    ip_filters:
-      deny_list:
-      - 127.0.0.1
-      - 192.168.0.0/16
+  default_url:
+  - https://default1:8888/unsupported_url_handler
+  - https://default2:8888/unsupported_url_handler
+  tls_ca_file: /path/to/tls/root/ca
+  tls_cert_file: /path/to/tls/cert
+  tls_key_file: /path/to/tls/key
+  tls_server_name: foo.bar.com
+  tls_insecure_skip_verify: true
+  ip_filters:
+    allow_list:
+    - 192.168.0.1/24
+    deny_list:
+    - 10.0.0.43
+  headers:
+  - 'X-Scope-OrgID: cba'
+  response_headers:
+  - 'X-Server-Hostname: b'
+  discover_backend_ips: false
+  retry_status_codes:
+  - 503
+  max_concurrent_requests: 150
+  load_balancing_policy: least_loaded
+  drop_src_path_prefix_parts: 2
 `,
 		},
 		{
@@ -1234,10 +1382,10 @@ unauthorized_user:
 					},
 					Spec: victoriametricsv1beta1.VMAuthSpec{
 						SelectAllByDefault: true,
-						UnauthorizedAccessConfig: []victoriametricsv1beta1.VMAuthUnauthorizedPath{
+						UnauthorizedAccessConfig: []victoriametricsv1beta1.UnauthorizedAccessConfigURLMap{
 							{
-								Paths: []string{"/", "/default"},
-								URLs:  []string{"http://route-1", "http://route-2"},
+								SrcPaths:  []string{"/", "/default"},
+								URLPrefix: []string{"http://route-1", "http://route-2"},
 							},
 						},
 					},
@@ -1267,10 +1415,12 @@ unauthorized_user:
 						Namespace: "default",
 					},
 					Spec: victoriametricsv1beta1.VMUserSpec{
-						BearerToken:           ptr.To("bearer-token-2"),
-						MaxConcurrentRequests: ptr.To(500),
-						RetryStatusCodes:      []int{400, 500},
-						ResponseHeaders:       []string{"H1:V1"},
+						BearerToken: ptr.To("bearer-token-2"),
+						UserConfigOption: victoriametricsv1beta1.UserConfigOption{
+							MaxConcurrentRequests: ptr.To(500),
+							RetryStatusCodes:      []int{400, 500},
+							ResponseHeaders:       []string{"H1:V1"},
+						},
 						TargetRefs: []victoriametricsv1beta1.TargetRef{
 							{
 								CRD: &victoriametricsv1beta1.CRDRef{
@@ -1297,21 +1447,21 @@ unauthorized_user:
   bearer_token: bearer
 - url_prefix:
   - http://vmagent-test.default.svc:8429
-  max_concurrent_requests: 500
+  response_headers:
+  - H1:V1
   retry_status_codes:
   - 400
   - 500
-  response_headers:
-  - H1:V1
+  max_concurrent_requests: 500
   bearer_token: bearer-token-2
 unauthorized_user:
   url_map:
-  - url_prefix:
-    - http://route-1
-    - http://route-2
-    src_paths:
+  - src_paths:
     - /
     - /default
+    url_prefix:
+    - http://route-1
+    - http://route-2
 `,
 		},
 		{
@@ -1324,10 +1474,10 @@ unauthorized_user:
 					},
 					Spec: victoriametricsv1beta1.VMAuthSpec{
 						SelectAllByDefault: true,
-						UnauthorizedAccessConfig: []victoriametricsv1beta1.VMAuthUnauthorizedPath{
+						UnauthorizedAccessConfig: []victoriametricsv1beta1.UnauthorizedAccessConfigURLMap{
 							{
-								Paths: []string{"/", "/default"},
-								URLs:  []string{"http://route-1", "http://route-2"},
+								SrcPaths:  []string{"/", "/default"},
+								URLPrefix: []string{"http://route-1", "http://route-2"},
 							},
 						},
 					},
@@ -1387,6 +1537,27 @@ unauthorized_user:
 								},
 							},
 						},
+						UserConfigOption: victoriametricsv1beta1.UserConfigOption{
+							DefaultURLs: []string{"https://default1:8888/unsupported_url_handler", "https://default2:8888/unsupported_url_handler"},
+							TLSConfig: &victoriametricsv1beta1.TLSConfig{
+								CAFile:             "/path/to/tls/root/ca",
+								CertFile:           "/path/to/tls/cert",
+								KeyFile:            "/path/to/tls/key",
+								ServerName:         "foo.bar.com",
+								InsecureSkipVerify: true,
+							},
+							IPFilters: victoriametricsv1beta1.VMUserIPFilters{
+								AllowList: []string{"192.168.0.1/24"},
+								DenyList:  []string{"10.0.0.43"},
+							},
+							DiscoverBackendIPs:     ptr.To(false),
+							Headers:                []string{"X-Scope-OrgID: cba"},
+							ResponseHeaders:        []string{"X-Server-Hostname: b"},
+							RetryStatusCodes:       []int{503},
+							LoadBalancingPolicy:    ptr.To("least_loaded"),
+							MaxConcurrentRequests:  ptr.To(150),
+							DropSrcPathPrefixParts: ptr.To(2),
+						},
 					},
 				},
 				&victoriametricsv1beta1.VMCluster{
@@ -1405,11 +1576,13 @@ unauthorized_user:
 						Namespace: "default",
 					},
 					Spec: victoriametricsv1beta1.VMUserSpec{
-						GeneratePassword:      true,
-						MaxConcurrentRequests: ptr.To(500),
-						RetryStatusCodes:      []int{400, 500},
-						ResponseHeaders:       []string{"H1:V1"},
-						LoadBalancingPolicy:   ptr.To("first_available"),
+						GeneratePassword: true,
+						UserConfigOption: victoriametricsv1beta1.UserConfigOption{
+							MaxConcurrentRequests: ptr.To(500),
+							RetryStatusCodes:      []int{400, 500},
+							ResponseHeaders:       []string{"H1:V1"},
+							LoadBalancingPolicy:   ptr.To("first_available"),
+						},
 						MetricLabels: map[string]string{
 							"team": "dev",
 							"env":  "core",
@@ -1456,16 +1629,16 @@ unauthorized_user:
 			want: `users:
 - url_prefix:
   - http://vmagent-test.default.svc:8429
+  response_headers:
+  - H1:V1
+  retry_status_codes:
+  - 400
+  - 500
   max_concurrent_requests: 500
   load_balancing_policy: first_available
   metric_labels:
     env: core
     team: dev
-  retry_status_codes:
-  - 400
-  - 500
-  response_headers:
-  - H1:V1
   username: vmuser-user-2
   password: generated-1
 - url_map:
@@ -1507,22 +1680,45 @@ unauthorized_user:
     headers:
     - 'Authorization: Basic c29tZS0xOnNvbWUtMg=='
   name: user1
+  default_url:
+  - https://default1:8888/unsupported_url_handler
+  - https://default2:8888/unsupported_url_handler
+  tls_ca_file: /path/to/tls/root/ca
+  tls_cert_file: /path/to/tls/cert
+  tls_key_file: /path/to/tls/key
+  tls_server_name: foo.bar.com
+  tls_insecure_skip_verify: true
+  ip_filters:
+    allow_list:
+    - 192.168.0.1/24
+    deny_list:
+    - 10.0.0.43
+  headers:
+  - 'X-Scope-OrgID: cba'
+  response_headers:
+  - 'X-Server-Hostname: b'
+  discover_backend_ips: false
+  retry_status_codes:
+  - 503
+  max_concurrent_requests: 150
+  load_balancing_policy: least_loaded
+  drop_src_path_prefix_parts: 2
   bearer_token: bearer
 unauthorized_user:
   url_map:
-  - url_prefix:
-    - http://route-1
-    - http://route-2
-    src_paths:
+  - src_paths:
     - /
     - /default
+    url_prefix:
+    - http://route-1
+    - http://route-2
 `,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			testClient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			got, err := buildVMAuthConfig(context.TODO(), testClient, tt.args.vmauth)
+			got, err := buildVMAuthConfig(context.TODO(), testClient, tt.args.vmauth, map[string]string{})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("buildVMAuthConfig() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -1530,7 +1726,7 @@ unauthorized_user:
 			if !assert.Equal(t, tt.want, string(got)) {
 				return
 			}
-			got2, err := buildVMAuthConfig(context.TODO(), testClient, tt.args.vmauth)
+			got2, err := buildVMAuthConfig(context.TODO(), testClient, tt.args.vmauth, map[string]string{})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("buildVMAuthConfig() error = %v, wantErr %v", err, tt.wantErr)
 				return

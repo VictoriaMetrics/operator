@@ -1255,12 +1255,12 @@ authorization:
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cb := &configBuilder{
-				ConfigBuilder: build.ConfigBuilder{
+				TLSConfigBuilder: build.TLSConfigBuilder{
 					Ctx:                context.Background(),
 					Client:             k8stools.GetTestClientWithObjects(nil),
 					SecretCache:        tt.fields.secretCache,
 					ConfigmapCache:     tt.fields.configmapCache,
-					TlsAssets:          map[string]string{},
+					TLSAssets:          map[string]string{},
 					CurrentCRName:      "test-am",
 					CurrentCRNamespace: "default",
 				},

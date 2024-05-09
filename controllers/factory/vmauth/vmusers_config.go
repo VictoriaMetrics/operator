@@ -323,14 +323,14 @@ func generateVMAuthConfig(cr *victoriametricsv1beta1.VMAuth, users []*victoriame
 
 	secretCache := make(map[string]*v1.Secret)
 	configmapCache := make(map[string]*v1.ConfigMap)
-	cb := build.ConfigBuilder{
+	cb := build.TLSConfigBuilder{
 		Ctx:                context.Background(),
 		Client:             rclient,
 		CurrentCRName:      cr.Name,
 		CurrentCRNamespace: cr.Namespace,
 		SecretCache:        secretCache,
 		ConfigmapCache:     configmapCache,
-		TlsAssets:          tlsAssets,
+		TLSAssets:          tlsAssets,
 	}
 
 	var cfgUsers []yaml.MapSlice
@@ -427,7 +427,7 @@ func addURLMapCommonToYaml(dst yaml.MapSlice, opt victoriametricsv1beta1.URLMapC
 	return dst
 }
 
-func addUserConfigOptionToYaml(dst yaml.MapSlice, opt victoriametricsv1beta1.UserConfigOption, cb build.ConfigBuilder) (yaml.MapSlice, error) {
+func addUserConfigOptionToYaml(dst yaml.MapSlice, opt victoriametricsv1beta1.UserConfigOption, cb build.TLSConfigBuilder) (yaml.MapSlice, error) {
 	if len(opt.DefaultURLs) > 0 {
 		dst = append(dst, yaml.MapItem{Key: "default_url", Value: opt.DefaultURLs})
 	}
@@ -659,7 +659,7 @@ func genURLMaps(userName string, refs []victoriametricsv1beta1.TargetRef, result
 
 // this function mutates user and fills missing fields,
 // such password or username.
-func genUserCfg(user *victoriametricsv1beta1.VMUser, crdURLCache map[string]string, cb build.ConfigBuilder) (yaml.MapSlice, error) {
+func genUserCfg(user *victoriametricsv1beta1.VMUser, crdURLCache map[string]string, cb build.TLSConfigBuilder) (yaml.MapSlice, error) {
 	var r yaml.MapSlice
 
 	r, err := genURLMaps(user.Name, user.Spec.TargetRefs, r, crdURLCache)

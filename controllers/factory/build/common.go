@@ -12,17 +12,19 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type ConfigBuilder struct {
+// TLSConfigBuilder help cache and build tls config
+type TLSConfigBuilder struct {
 	client.Client
 	Ctx                context.Context
 	CurrentCRName      string
 	CurrentCRNamespace string
 	SecretCache        map[string]*v1.Secret
 	ConfigmapCache     map[string]*v1.ConfigMap
-	TlsAssets          map[string]string
+	TLSAssets          map[string]string
 }
 
-func (cb *ConfigBuilder) BuildTLSConfig(tlsCfg *operatorv1beta1.TLSConfig, tlsAssetsDir string) (map[string]interface{}, error) {
+// BuildTLSConfig return map with tls config keys, let caller to use their own json tag
+func (cb *TLSConfigBuilder) BuildTLSConfig(tlsCfg *operatorv1beta1.TLSConfig, tlsAssetsDir string) (map[string]interface{}, error) {
 	if tlsCfg == nil {
 		return nil, nil
 	}
@@ -69,7 +71,7 @@ func (cb *ConfigBuilder) BuildTLSConfig(tlsCfg *operatorv1beta1.TLSConfig, tlsAs
 	return result, nil
 }
 
-func (cb *ConfigBuilder) fetchSecretWithAssets(ss *v1.SecretKeySelector, cs *v1.ConfigMapKeySelector, assetKey string) error {
+func (cb *TLSConfigBuilder) fetchSecretWithAssets(ss *v1.SecretKeySelector, cs *v1.ConfigMapKeySelector, assetKey string) error {
 	var value string
 	if ss != nil {
 		var s v1.Secret
@@ -97,6 +99,6 @@ func (cb *ConfigBuilder) fetchSecretWithAssets(ss *v1.SecretKeySelector, cs *v1.
 	if len(value) == 0 {
 		return fmt.Errorf("cannot find tlsAsset secret or configmap for key=%q", assetKey)
 	}
-	cb.TlsAssets[assetKey] = value
+	cb.TLSAssets[assetKey] = value
 	return nil
 }

@@ -360,7 +360,7 @@ func buildReceiver(
 }
 
 type configBuilder struct {
-	build.ConfigBuilder
+	build.TLSConfigBuilder
 	currentYaml []yaml.MapSlice
 	result      yaml.MapSlice
 }
@@ -375,14 +375,14 @@ func initConfigBuilder(
 	tlsAssets map[string]string,
 ) *configBuilder {
 	cb := configBuilder{
-		ConfigBuilder: build.ConfigBuilder{
+		TLSConfigBuilder: build.TLSConfigBuilder{
 			Ctx:                ctx,
 			Client:             rclient,
 			CurrentCRName:      cr.Name,
 			CurrentCRNamespace: cr.Namespace,
 			SecretCache:        cache,
 			ConfigmapCache:     configmapCache,
-			TlsAssets:          tlsAssets,
+			TLSAssets:          tlsAssets,
 		},
 		result: yaml.MapSlice{
 			{
@@ -1085,7 +1085,7 @@ func (cb *configBuilder) buildEmail(email operatorv1beta1.EmailConfig) error {
 		if email.TLSConfig == nil {
 			return fmt.Errorf("incorrect email configuration, tls is required, but no config provided at spec")
 		}
-		s, err := cb.ConfigBuilder.BuildTLSConfig(email.TLSConfig, alertmanagerConfDir)
+		s, err := cb.TLSConfigBuilder.BuildTLSConfig(email.TLSConfig, alertmanagerConfDir)
 		if err != nil {
 			return err
 		}
@@ -1291,38 +1291,6 @@ func (cb *configBuilder) buildBasicAuth(basicAuth *operatorv1beta1.BasicAuth) (y
 	}
 
 	return r, nil
-}
-
-func (cb *configBuilder) fetchSecretWithAssets(ss *v1.SecretKeySelector, cs *v1.ConfigMapKeySelector, assetKey string) error {
-	var value string
-	if ss != nil {
-		var s v1.Secret
-		if v, ok := cb.SecretCache[ss.Name]; ok {
-			s = *v
-		} else {
-			if err := cb.Client.Get(cb.Ctx, types.NamespacedName{Namespace: cb.CurrentCRNamespace, Name: ss.Name}, &s); err != nil {
-				return fmt.Errorf("cannot fetch secret=%q for tlsAsset, err=%w", ss.Name, err)
-			}
-			cb.SecretCache[ss.Name] = &s
-		}
-		value = string(s.Data[ss.Key])
-	}
-	if cs != nil {
-		var c v1.ConfigMap
-		if v, ok := cb.ConfigmapCache[cs.Name]; ok {
-			c = *v
-		} else {
-			if err := cb.Client.Get(cb.Ctx, types.NamespacedName{Namespace: cb.CurrentCRNamespace, Name: cs.Name}, &c); err != nil {
-				return fmt.Errorf("cannot fetch configmap=%q for tlsAssert, err=%w", cs.Name, err)
-			}
-		}
-		value = c.Data[cs.Key]
-	}
-	if len(value) == 0 {
-		return fmt.Errorf("cannot find tlsAsset secret or configmap for key=%q", assetKey)
-	}
-	cb.TlsAssets[assetKey] = value
-	return nil
 }
 
 func parseURL(s string) error {

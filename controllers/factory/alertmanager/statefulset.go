@@ -452,6 +452,10 @@ func createDefaultAMConfig(ctx context.Context, cr *victoriametricsv1beta1.VMAle
 	switch {
 	// fetch content from user defined secret
 	case cr.Spec.ConfigSecret != "":
+		if cr.Spec.ConfigSecret == cr.ConfigSecretName() {
+			l.Info("ignoring content of ConfigSecret, since it has the same name as secreted created by operator for config", "secretName", cr.Spec.ConfigSecret)
+			break
+		}
 		// retrieve content
 		secretContent, err := getSecretContentForAlertmanager(ctx, rclient, cr.Spec.ConfigSecret, cr.Namespace)
 		if err != nil {

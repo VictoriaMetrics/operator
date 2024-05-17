@@ -454,15 +454,16 @@ func createDefaultAMConfig(ctx context.Context, cr *victoriametricsv1beta1.VMAle
 	case cr.Spec.ConfigSecret != "":
 		if cr.Spec.ConfigSecret == cr.ConfigSecretName() {
 			l.Info("ignoring content of ConfigSecret, since it has the same name as secreted created by operator for config", "secretName", cr.Spec.ConfigSecret)
-			break
+		} else {
+			// retrieve content
+			secretContent, err := getSecretContentForAlertmanager(ctx, rclient, cr.Spec.ConfigSecret, cr.Namespace)
+			if err != nil {
+				return fmt.Errorf("cannot fetch secret content for alertmanager config secret, err: %w", err)
+			}
+			alertmananagerConfig = secretContent
+
 		}
-		// retrieve content
-		secretContent, err := getSecretContentForAlertmanager(ctx, rclient, cr.Spec.ConfigSecret, cr.Namespace)
-		if err != nil {
-			return fmt.Errorf("cannot fetch secret content for alertmanager config secret, err: %w", err)
-		}
-		alertmananagerConfig = secretContent
-	// use in-line config
+		// use in-line config
 	case cr.Spec.ConfigRawYaml != "":
 		alertmananagerConfig = []byte(cr.Spec.ConfigRawYaml)
 	}

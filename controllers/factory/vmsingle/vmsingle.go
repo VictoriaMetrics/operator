@@ -42,7 +42,9 @@ func CreateVMSingleStorage(ctx context.Context, cr *victoriametricsv1beta1.VMSin
 			if err := rclient.Create(ctx, newPvc); err != nil {
 				return fmt.Errorf("cannot create new pvc for vmsingle: %w", err)
 			}
-
+			if !existPvc.DeletionTimestamp.IsZero() {
+				l.Info("exist pvc for vmsingle has non zero DeletionTimestamp. Ignore it or make backup, delete VMSingle object and restore it from backup.")
+			}
 			return nil
 		}
 		return fmt.Errorf("cannot get existing pvc for vmsingle: %w", err)
@@ -447,6 +449,9 @@ func CreateOrUpdateVMSingleStreamAggrConfig(ctx context.Context, cr *victoriamet
 		if errors.IsNotFound(err) {
 			return rclient.Create(ctx, streamAggrCM)
 		}
+	}
+	if err := finalize.FreeIfNeeded(ctx, rclient, &existCM); err != nil {
+		return err
 	}
 	streamAggrCM.Annotations = labels.Merge(existCM.Annotations, streamAggrCM.Annotations)
 	victoriametricsv1beta1.MergeFinalizers(streamAggrCM, victoriametricsv1beta1.FinalizerName)

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"github.com/VictoriaMetrics/operator/controllers/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	appsv1 "k8s.io/api/apps/v1"
@@ -68,6 +69,9 @@ func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, 
 				return waitForStatefulSetReady(ctx, rclient, newSts, c)
 			}
 			return fmt.Errorf("cannot get sts %s under namespace %s: %w", newSts.Name, newSts.Namespace, err)
+		}
+		if err := finalize.FreeIfNeeded(ctx, rclient, &currentSts); err != nil {
+			return err
 		}
 		// will update the original cr replicaCount to propagate right num,
 		// for now, it's only used in vmselect

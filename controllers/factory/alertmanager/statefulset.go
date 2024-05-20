@@ -514,6 +514,13 @@ func createDefaultAMConfig(ctx context.Context, cr *victoriametricsv1beta1.VMAle
 		}
 		return err
 	}
+	if err := finalize.FreeIfNeeded(ctx, rclient, &existAMSecretConfig); err != nil {
+		return err
+	}
+
+	if err := finalize.FreeIfNeeded(ctx, rclient, &existAMSecretConfig); err != nil {
+		return err
+	}
 
 	newAMSecretConfig.Annotations = labels.Merge(existAMSecretConfig.Annotations, newAMSecretConfig.Annotations)
 	newAMSecretConfig.Finalizers = victoriametricsv1beta1.MergeFinalizers(&existAMSecretConfig, victoriametricsv1beta1.FinalizerName)

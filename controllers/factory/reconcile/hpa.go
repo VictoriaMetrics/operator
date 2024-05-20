@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
@@ -23,6 +24,9 @@ func HPA(ctx context.Context, rclient client.Client, targetHPA client.Object) er
 				return rclient.Create(ctx, targetHPA)
 			}
 			return fmt.Errorf("cannot get exist hpa object: %w", err)
+		}
+		if err := finalize.FreeIfNeeded(ctx, rclient, existHPA); err != nil {
+			return err
 		}
 		targetHPA.SetResourceVersion(existHPA.GetResourceVersion())
 		victoriametricsv1beta1.MergeFinalizers(targetHPA, victoriametricsv1beta1.FinalizerName)

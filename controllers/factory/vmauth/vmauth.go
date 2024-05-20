@@ -357,6 +357,9 @@ func CreateOrUpdateVMAuthConfig(ctx context.Context, rclient client.Client, cr *
 		}
 		return err
 	}
+	if err := finalize.FreeIfNeeded(ctx, rclient, &curSecret); err != nil {
+		return err
+	}
 	var (
 		generatedConf             = s.Data[vmAuthConfigNameGz]
 		curConfig, curConfigFound = curSecret.Data[vmAuthConfigNameGz]
@@ -412,6 +415,9 @@ func CreateOrUpdateVMAuthIngress(ctx context.Context, rclient client.Client, cr 
 		if errors.IsNotFound(err) {
 			return rclient.Create(ctx, newIngress)
 		}
+		return err
+	}
+	if err := finalize.FreeIfNeeded(ctx, rclient, &existIngress); err != nil {
 		return err
 	}
 	newIngress.Annotations = labels.Merge(existIngress.Annotations, newIngress.Annotations)

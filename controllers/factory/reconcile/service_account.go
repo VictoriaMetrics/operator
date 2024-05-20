@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
@@ -22,6 +23,9 @@ func ServiceAccount(ctx context.Context, rclient client.Client, sa *v1.ServiceAc
 				return rclient.Create(ctx, sa)
 			}
 			return fmt.Errorf("cannot get ServiceAccount for given CRD Object=%q, err=%w", sa.Name, err)
+		}
+		if err := finalize.FreeIfNeeded(ctx, rclient, &existSA); err != nil {
+			return err
 		}
 
 		existSA.OwnerReferences = sa.OwnerReferences

@@ -15,6 +15,7 @@ import (
 	"github.com/VictoriaMetrics/VictoriaMetrics/app/vmalert/utils"
 	"github.com/VictoriaMetrics/metricsql"
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/controllers/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/config"
@@ -152,6 +153,10 @@ func createOrUpdateConfigurationSecret(ctx context.Context, cr *victoriametricsv
 			return ssCache, rclient.Create(ctx, s)
 		}
 		return nil, fmt.Errorf("cannot get secret for vmagent: %q : %w", cr.Name, err)
+	}
+
+	if err := finalize.FreeIfNeeded(ctx, rclient, curSecret); err != nil {
+		return nil, err
 	}
 
 	s.Annotations = labels.Merge(curSecret.Annotations, s.Annotations)

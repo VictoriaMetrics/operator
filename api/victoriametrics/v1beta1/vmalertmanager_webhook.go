@@ -24,6 +24,9 @@ func (r *VMAlertmanager) SetupWebhookWithManager(mgr ctrl.Manager) error {
 var _ webhook.Validator = &VMAlertmanager{}
 
 func (r *VMAlertmanager) sanityCheck() error {
+	if r.Spec.ConfigSecret == r.ConfigSecretName() {
+		return fmt.Errorf("cr.spec.configSecret=%q cannot have the same secret name as secret created by operator for storing config. Please change it", r.ConfigSecretName())
+	}
 	return nil
 }
 

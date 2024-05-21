@@ -4,6 +4,7 @@ import (
 	"context"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -20,6 +21,9 @@ func VMServiceScrapeForCRD(ctx context.Context, rclient client.Client, vss *vict
 			if errors.IsNotFound(err) {
 				return rclient.Create(ctx, vss)
 			}
+			return err
+		}
+		if err := finalize.FreeIfNeeded(ctx, rclient, &existVSS); err != nil {
 			return err
 		}
 		updateIsNeeded := !equality.Semantic.DeepEqual(vss.Spec, existVSS.Spec) || !equality.Semantic.DeepEqual(vss.Labels, existVSS.Labels) || !equality.Semantic.DeepEqual(vss.Annotations, existVSS.Annotations)

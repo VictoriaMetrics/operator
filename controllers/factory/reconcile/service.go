@@ -48,6 +48,9 @@ func reconcileService(ctx context.Context, rclient client.Client, newService *v1
 		}
 		return fmt.Errorf("cannot get service for existing service: %w", err)
 	}
+	if err := finalize.FreeIfNeeded(ctx, rclient, existingService); err != nil {
+		return err
+	}
 	// lets save annotations and labels even after recreation.
 	if newService.Spec.Type != existingService.Spec.Type {
 		// type mismatch.

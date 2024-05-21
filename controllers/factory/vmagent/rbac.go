@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	v1beta12 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	rbacV1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -143,6 +144,9 @@ func ensureVMAgentCRExist(ctx context.Context, cr *v1beta12.VMAgent, rclient cli
 		}
 		return fmt.Errorf("cannot get exist cluster role for vmagent: %w", err)
 	}
+	if err := finalize.FreeIfNeeded(ctx, rclient, &existsClusterRole); err != nil {
+		return err
+	}
 
 	existsClusterRole.OwnerReferences = clusterRole.OwnerReferences
 	existsClusterRole.Labels = clusterRole.Labels
@@ -161,6 +165,9 @@ func ensureVMAgentCRBExist(ctx context.Context, cr *v1beta12.VMAgent, rclient cl
 			return rclient.Create(ctx, clusterRoleBinding)
 		}
 		return fmt.Errorf("cannot get clusterRoleBinding for vmagent: %w", err)
+	}
+	if err := finalize.FreeIfNeeded(ctx, rclient, &existsClusterRoleBinding); err != nil {
+		return err
 	}
 
 	existsClusterRoleBinding.OwnerReferences = clusterRoleBinding.OwnerReferences
@@ -221,6 +228,9 @@ func ensureVMAgentRExist(ctx context.Context, cr *v1beta12.VMAgent, rclient clie
 		}
 		return fmt.Errorf("cannot get exist cluster role for vmagent: %w", err)
 	}
+	if err := finalize.FreeIfNeeded(ctx, rclient, &existsClusterRole); err != nil {
+		return err
+	}
 
 	existsClusterRole.OwnerReferences = nr.OwnerReferences
 	existsClusterRole.Labels = nr.Labels
@@ -239,6 +249,9 @@ func ensureVMAgentRBExist(ctx context.Context, cr *v1beta12.VMAgent, rclient cli
 			return rclient.Create(ctx, rb)
 		}
 		return fmt.Errorf("cannot get rb for vmagent: %w", err)
+	}
+	if err := finalize.FreeIfNeeded(ctx, rclient, &existsRB); err != nil {
+		return err
 	}
 
 	existsRB.OwnerReferences = rb.OwnerReferences

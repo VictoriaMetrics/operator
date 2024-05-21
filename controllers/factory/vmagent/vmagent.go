@@ -791,6 +791,9 @@ func createOrUpdateTLSAssets(ctx context.Context, cr *victoriametricsv1beta1.VMA
 		}
 		return fmt.Errorf("cannot get existing tls secret: %s, for vmagent: %s, err: %w", tlsAssetsSecret.Name, cr.Name, err)
 	}
+	if err := finalize.FreeIfNeeded(ctx, rclient, currentAssetSecret); err != nil {
+		return err
+	}
 	tlsAssetsSecret.Annotations = labels.Merge(currentAssetSecret.Annotations, tlsAssetsSecret.Annotations)
 	victoriametricsv1beta1.MergeFinalizers(tlsAssetsSecret, victoriametricsv1beta1.FinalizerName)
 	return rclient.Update(ctx, tlsAssetsSecret)

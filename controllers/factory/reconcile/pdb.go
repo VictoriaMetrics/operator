@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"github.com/VictoriaMetrics/operator/controllers/factory/logger"
 	policyv1 "k8s.io/api/policy/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -25,6 +26,9 @@ func PDB(ctx context.Context, rclient client.Client, pdb *policyv1.PodDisruption
 				return rclient.Create(ctx, pdb)
 			}
 			return fmt.Errorf("cannot get existing pdb: %s, err: %w", pdb.Name, err)
+		}
+		if err := finalize.FreeIfNeeded(ctx, rclient, currentPdb); err != nil {
+			return err
 		}
 		pdb.Annotations = labels.Merge(currentPdb.Annotations, pdb.Annotations)
 		if currentPdb.ResourceVersion != "" {

@@ -118,3 +118,15 @@ func removeConfigReloaderRole(ctx context.Context, rclient client.Client, crd cr
 	}
 	return nil
 }
+
+// FreeIfNeeded checks if resource must be freed from finalizer and garbage collected by kubernetes
+func FreeIfNeeded(ctx context.Context, rclient client.Client, object client.Object) error {
+	if object.GetDeletionTimestamp().IsZero() {
+		// fast path
+		return nil
+	}
+	if err := RemoveFinalizer(ctx, rclient, object); err != nil {
+		return fmt.Errorf("cannot remove finalizer from object=%s/%s, kind=%q: %w", object.GetNamespace(), object.GetName(), object.GetObjectKind().GroupVersionKind(), err)
+	}
+	return fmt.Errorf("deletionTimestamp is not zero=%q for object=%s/%s kind=%s, recreating it at next reconcile loop. Warning never delete object manually", object.GetDeletionTimestamp(), object.GetNamespace(), object.GetName(), object.GetObjectKind().GroupVersionKind())
+}

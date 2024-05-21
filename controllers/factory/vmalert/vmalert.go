@@ -128,6 +128,9 @@ func createOrUpdateVMAlertSecret(ctx context.Context, rclient client.Client, cr 
 		}
 		return nil
 	}
+	if err := finalize.FreeIfNeeded(ctx, rclient, curSecret); err != nil {
+		return err
+	}
 	s.Annotations = labels.Merge(curSecret.Annotations, s.Annotations)
 	return rclient.Update(ctx, s)
 }
@@ -738,6 +741,9 @@ func createOrUpdateTLSAssetsForVMAlert(ctx context.Context, cr *victoriametricsv
 			return rclient.Create(ctx, tlsAssetsSecret)
 		}
 		return fmt.Errorf("cannot get existing tls secret: %s, for vmalert: %s, err: %w", tlsAssetsSecret.Name, cr.Name, err)
+	}
+	if err := finalize.FreeIfNeeded(ctx, rclient, currentAssetSecret); err != nil {
+		return err
 	}
 	for annotation, value := range currentAssetSecret.Annotations {
 		tlsAssetsSecret.Annotations[annotation] = value

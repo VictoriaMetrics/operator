@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	v1beta12 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -33,6 +34,9 @@ func ensureVMAuthRoleExist(ctx context.Context, cr *v1beta12.VMAuth, rclient cli
 		}
 		return fmt.Errorf("cannot get role for vmauth: %w", err)
 	}
+	if err := finalize.FreeIfNeeded(ctx, rclient, &existRole); err != nil {
+		return err
+	}
 
 	existRole.OwnerReferences = role.OwnerReferences
 	existRole.Labels = role.Labels
@@ -50,6 +54,9 @@ func ensureVMAgentRBExist(ctx context.Context, cr *v1beta12.VMAuth, rclient clie
 			return rclient.Create(ctx, roleBinding)
 		}
 		return fmt.Errorf("cannot get rolebinding for vmauth: %w", err)
+	}
+	if err := finalize.FreeIfNeeded(ctx, rclient, &existRoleBinding); err != nil {
+		return err
 	}
 
 	existRoleBinding.OwnerReferences = roleBinding.OwnerReferences

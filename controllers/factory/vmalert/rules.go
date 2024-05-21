@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/controllers/factory/finalize"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/controllers/factory/logger"
 	"github.com/ghodss/yaml"
@@ -130,20 +131,20 @@ func CreateOrUpdateRuleConfigMaps(ctx context.Context, cr *victoriametricsv1beta
 		}
 	}
 	for _, cm := range toUpdate {
+		if err := finalize.FreeIfNeeded(ctx, rclient, &cm); err != nil {
+			return nil, err
+		}
 		err = rclient.Update(ctx, &cm)
 		if err != nil {
 			return nil, fmt.Errorf("failed to update rules Configmap: %s, err: %w", cm.Name, err)
 		}
 	}
 	for _, cm := range toDelete {
-		if victoriametricsv1beta1.IsContainsFinalizer(cm.Finalizers, victoriametricsv1beta1.FinalizerName) {
-			cm.Finalizers = victoriametricsv1beta1.RemoveFinalizer(cm.Finalizers, victoriametricsv1beta1.FinalizerName)
-			if err := rclient.Update(ctx, &cm); err != nil {
-				return nil, fmt.Errorf("cannot remove finalizer from configmap: %s, err: %w", cm.Name, err)
-			}
+		if err := finalize.RemoveFinalizer(ctx, rclient, &cm); err != nil {
+			return nil, fmt.Errorf("cannot remove finalizer for vmalert cm: %w", err)
 		}
-		err = rclient.Delete(ctx, &cm)
-		if err != nil {
+
+		if err := finalize.SafeDelete(ctx, rclient, &cm); err != nil {
 			return nil, fmt.Errorf("failed to delete rules Configmap: %s, err: %w", cm.Name, err)
 		}
 	}

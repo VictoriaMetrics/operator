@@ -185,6 +185,13 @@ func growSTSPVC(ctx context.Context, rclient client.Client, sts *appsv1.Stateful
 			logger.WithContext(ctx).Info("cannot find target pvc in new statefulset, please check if the old one is still needed", "pvc", pvc.Name, "sts", sts.Name, "claimName", stsClaimName)
 			continue
 		}
+		// check if pvc need to grow
+		newSize := stsClaim.Spec.Resources.Requests.Storage()
+		oldSize := pvc.Spec.Resources.Requests.Storage()
+		if !mayGrow(ctx, newSize, oldSize) {
+			continue
+		}
+		logger.WithContext(ctx).Info("need to expand pvc size", "name", pvc.Name, "from", oldSize, "to", newSize)
 		// check if storage class is expandable
 		isExpandable, err := isStorageClassExpandable(ctx, rclient, stsClaim)
 		if err != nil {
@@ -195,11 +202,10 @@ func growSTSPVC(ctx context.Context, rclient client.Client, sts *appsv1.Stateful
 			logger.WithContext(ctx).Info("storage class for PVC doesn't support live resizing", "pvc", pvc.Name)
 			continue
 		}
-		err = growPVCs(ctx, rclient, stsClaim.Spec.Resources.Requests.Storage(), &pvc)
+		err = growPVCs(ctx, rclient, newSize, &pvc)
 		if err != nil {
 			return fmt.Errorf("failed to expand size for pvc %s: %v", pvc.Name, err)
 		}
-
 	}
 	return nil
 }
@@ -265,13 +271,8 @@ func isStorageClassExpandable(ctx context.Context, rclient client.Client, pvc *c
 }
 
 func growPVCs(ctx context.Context, rclient client.Client, size *resource.Quantity, pvc *corev1.PersistentVolumeClaim) error {
-	var err error
-	if mayGrow(ctx, size, pvc.Spec.Resources.Requests.Storage()) {
-		logger.WithContext(ctx).Info("need to expand pvc size", "name", pvc.Name, "from", pvc.Spec.Resources.Requests.Storage(), "to", size.String())
-		pvc.Spec.Resources.Requests[corev1.ResourceStorage] = *size
-		err = rclient.Update(ctx, pvc)
-	}
-	return err
+	pvc.Spec.Resources.Requests[corev1.ResourceStorage] = *size
+	return rclient.Update(ctx, pvc)
 }
 
 // checks is pvc needs to be resized.

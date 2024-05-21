@@ -1427,7 +1427,7 @@ func buildVMScrapeParams(namespace, cacheKey string, cfg *victoriametricsv1beta1
 }
 
 func addAuthorizationConfig(dst yaml.MapSlice, cacheKey string, cfg *victoriametricsv1beta1.Authorization, authorizationCache map[string]string) yaml.MapSlice {
-	if cfg == nil || len(cfg.Type) == 0 {
+	if cfg == nil {
 		// fast path
 		return dst
 	}
@@ -1436,7 +1436,11 @@ func addAuthorizationConfig(dst yaml.MapSlice, cacheKey string, cfg *victoriamet
 		return dst
 	}
 	var r yaml.MapSlice
-	r = append(r, yaml.MapItem{Key: "type", Value: cfg.Type})
+	authType := cfg.Type
+	if len(authType) == 0 {
+		authType = "Bearer"
+	}
+	r = append(r, yaml.MapItem{Key: "type", Value: authType})
 	if len(secretValue) > 0 {
 		r = append(r, yaml.MapItem{Key: "credentials", Value: secretValue})
 	} else {

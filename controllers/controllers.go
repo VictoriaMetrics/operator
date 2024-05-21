@@ -226,6 +226,7 @@ type objectWithStatusTrack interface {
 	HasSpecChanges() (bool, error)
 	LastAppliedSpecAsPatch() (client.Patch, error)
 	SetUpdateStatusTo(ctx context.Context, r client.Client, status victoriametricsv1beta1.UpdateStatus, maybeReason error) error
+	Paused() bool
 }
 
 func createGenericEventForObject(ctx context.Context, c client.Client, object client.Object, message string) error {
@@ -256,6 +257,13 @@ func createGenericEventForObject(ctx context.Context, c client.Client, object cl
 }
 
 func reconcileAndTrackStatus(ctx context.Context, c client.Client, object objectWithStatusTrack, cb func() (ctrl.Result, error)) (result ctrl.Result, resultErr error) {
+	if object.Paused() {
+		if err := object.SetUpdateStatusTo(ctx, c, victoriametricsv1beta1.UpdateStatusPaused, nil); err != nil {
+			resultErr = fmt.Errorf("failed to update object status: %w", err)
+			return
+		}
+		return
+	}
 	specChanged, err := object.HasSpecChanges()
 	if err != nil {
 		resultErr = fmt.Errorf("cannot parse exist spec changes")

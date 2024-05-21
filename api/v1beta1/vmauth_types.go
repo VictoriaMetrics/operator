@@ -194,7 +194,8 @@ type VMAuthSpec struct {
 	ReadinessGates []v1.PodReadinessGate `json:"readinessGates,omitempty"`
 	// UnauthorizedAccessConfig configures access for un authorized users
 	// +optional
-	UnauthorizedAccessConfig []VMAuthUnauthorizedPath `json:"unauthorizedAccessConfig,omitempty"`
+	UnauthorizedAccessConfig []UnauthorizedAccessConfigURLMap `json:"unauthorizedAccessConfig,omitempty"`
+	UserConfigOption         `json:",inline"`
 	// UseStrictSecurity enables strict security mode for component
 	// it restricts disk writes access
 	// uses non-root user out of the box
@@ -213,22 +214,87 @@ type VMAuthSpec struct {
 	// If it's defined, configuration for vmauth becomes unmanaged and operator'll not create any related secrets/config-reloaders
 	// +optional
 	ConfigSecret string `json:"configSecret,omitempty"`
+
+	// Paused If set to true all actions on the underlaying managed objects are not
+	// going to be performed, except for delete actions.
+	// +optional
+	Paused bool `json:"paused,omitempty"`
 }
 
-// VMAuthUnauthorizedPath defines url_map for unauthorized access
-type VMAuthUnauthorizedPath struct {
-	// Paths src request paths
+type UnauthorizedAccessConfigURLMap struct {
+	// SrcPaths is an optional list of regular expressions, which must match the request path.
+	SrcPaths []string `json:"src_paths,omitempty"`
+
+	// SrcHosts is an optional list of regular expressions, which must match the request hostname.
+	SrcHosts []string `json:"src_hosts,omitempty"`
+
+	// UrlPrefix contains backend url prefixes for the proxied request url.
+	URLPrefix []string `json:"url_prefix,omitempty"`
+
+	URLMapCommon `json:",omitempty"`
+}
+
+// URLMapCommon contains common fields for unauthorized user and user in vmuser
+type URLMapCommon struct {
+	// SrcQueryArgs is an optional list of query args, which must match request URL query args.
+	SrcQueryArgs []string `json:"src_query_args,omitempty"`
+
+	// SrcHeaders is an optional list of headers, which must match request headers.
+	SrcHeaders []string `json:"src_headers,omitempty"`
+
+	// DiscoverBackendIPs instructs discovering URLPrefix backend IPs via DNS.
+	DiscoverBackendIPs *bool `json:"discover_backend_ips,omitempty"`
+
+	// RequestHeaders represent additional http headers, that vmauth uses
+	// in form of ["header_key: header_value"]
+	// multiple values for header key:
+	// ["header_key: value1,value2"]
+	// it's available since 1.68.0 version of vmauth
 	// +optional
-	Paths []string `json:"src_paths,omitempty"`
-	// URLs defines url_prefix for dst routing
+	RequestHeaders []string `json:"headers,omitempty"`
+	// ResponseHeaders represent additional http headers, that vmauth adds for request response
+	// in form of ["header_key: header_value"]
+	// multiple values for header key:
+	// ["header_key: value1,value2"]
+	// it's available since 1.93.0 version of vmauth
 	// +optional
-	URLs []string `json:"url_prefix,omitempty"`
-	// IPFilters defines filter for src ip address
-	// enterprise only
+	ResponseHeaders []string `json:"response_headers,omitempty"`
+
+	// RetryStatusCodes defines http status codes in numeric format for request retries
+	// Can be defined per target or at VMUser.spec level
+	// e.g. [429,503]
+	// +optional
+	RetryStatusCodes []int `json:"retry_status_codes,omitempty"`
+
+	// LoadBalancingPolicy defines load balancing policy to use for backend urls.
+	// Supported policies: least_loaded, first_available.
+	// See https://docs.victoriametrics.com/vmauth.html#load-balancing for more details (default "least_loaded")
+	// +optional
+	// +kubebuilder:validation:Enum=least_loaded;first_available
+	LoadBalancingPolicy *string `json:"load_balancing_policy,omitempty"`
+
+	// DropSrcPathPrefixParts is the number of `/`-delimited request path prefix parts to drop before proxying the request to backend.
+	// See https://docs.victoriametrics.com/vmauth.html#dropping-request-path-prefix for more details.
+	// +optional
+	DropSrcPathPrefixParts *int `json:"drop_src_path_prefix_parts,omitempty"`
+}
+
+type UserConfigOption struct {
+	// DefaultURLs backend url for non-matching paths filter
+	// usually used for default backend with error message
+	DefaultURLs []string `json:"default_url,omitempty"`
+
+	// +optional
+	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
+
+	// IPFilters defines per target src ip filters
+	// supported only with enterprise version of vmauth
+	// https://docs.victoriametrics.com/vmauth.html#ip-filters
+	// +optional
 	IPFilters VMUserIPFilters `json:"ip_filters,omitempty"`
 
-	// SrcHosts is the list of regular expressions, which match the request hostname.
-	Hosts []string `json:"src_hosts,omitempty"`
+	// DiscoverBackendIPs instructs discovering URLPrefix backend IPs via DNS.
+	DiscoverBackendIPs *bool `json:"discover_backend_ips,omitempty"`
 
 	// Headers represent additional http headers, that vmauth uses
 	// in form of ["header_key: header_value"]
@@ -249,6 +315,11 @@ type VMAuthUnauthorizedPath struct {
 	// e.g. [429,503]
 	// +optional
 	RetryStatusCodes []int `json:"retry_status_codes,omitempty"`
+
+	// MaxConcurrentRequests defines max concurrent requests per user
+	// 300 is default value for vmauth
+	// +optional
+	MaxConcurrentRequests *int `json:"max_concurrent_requests,omitempty"`
 
 	// LoadBalancingPolicy defines load balancing policy to use for backend urls.
 	// Supported policies: least_loaded, first_available.
@@ -466,8 +537,13 @@ func (cr *VMAuth) HasSpecChanges() (bool, error) {
 	return !bytes.Equal([]byte(lastAppliedClusterJSON), instanceSpecData), nil
 }
 
+func (cr *VMAuth) Paused() bool {
+	return cr.Spec.Paused
+}
+
 // SetStatusTo changes update status with optional reason of fail
 func (cr *VMAuth) SetUpdateStatusTo(ctx context.Context, r client.Client, status UpdateStatus, maybeErr error) error {
+	currentStatus := cr.Status.UpdateStatus
 	cr.Status.UpdateStatus = status
 	switch status {
 	case UpdateStatusExpanding:
@@ -477,6 +553,10 @@ func (cr *VMAuth) SetUpdateStatusTo(ctx context.Context, r client.Client, status
 		}
 	case UpdateStatusOperational:
 		cr.Status.Reason = ""
+	case UpdateStatusPaused:
+		if currentStatus == status {
+			return nil
+		}
 	default:
 		panic(fmt.Sprintf("BUG: not expected status=%q", status))
 	}

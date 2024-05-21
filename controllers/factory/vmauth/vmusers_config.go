@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/controllers/factory/build"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/controllers/factory/logger"
 	"gopkg.in/yaml.v2"
@@ -24,7 +25,7 @@ import (
 )
 
 // builds vmauth config.
-func buildVMAuthConfig(ctx context.Context, rclient client.Client, vmauth *victoriametricsv1beta1.VMAuth) ([]byte, error) {
+func buildVMAuthConfig(ctx context.Context, rclient client.Client, vmauth *victoriametricsv1beta1.VMAuth, tlsAssets map[string]string) ([]byte, error) {
 	// fetch exist users for vmauth.
 	users, err := selectVMUsers(ctx, vmauth, rclient)
 	if err != nil {
@@ -54,7 +55,7 @@ func buildVMAuthConfig(ctx context.Context, rclient client.Client, vmauth *victo
 	// toUpdate := injectAuthSettings(existSecrets, users)
 
 	// generate yaml config for vmauth.
-	cfg, err := generateVMAuthConfig(vmauth, users, crdCache)
+	cfg, err := generateVMAuthConfig(vmauth, users, crdCache, tlsAssets, rclient)
 	if err != nil {
 		return nil, err
 	}
@@ -185,7 +186,7 @@ func injectBackendAuthHeader(ctx context.Context, rclient client.Client, user *v
 			token := bac.Username + ":" + bac.Password
 			token64 := base64.StdEncoding.EncodeToString([]byte(token))
 			Header := "Authorization: Basic " + token64
-			ref.Headers = append(ref.Headers, Header)
+			ref.URLMapCommon.RequestHeaders = append(ref.URLMapCommon.RequestHeaders, Header)
 		}
 	}
 	return nil
@@ -317,84 +318,177 @@ func FetchCRDRefURLs(ctx context.Context, rclient client.Client, users []*victor
 }
 
 // generateVMAuthConfig create VMAuth cfg for given Users.
-func generateVMAuthConfig(cr *victoriametricsv1beta1.VMAuth, users []*victoriametricsv1beta1.VMUser, crdCache map[string]string) ([]byte, error) {
+func generateVMAuthConfig(cr *victoriametricsv1beta1.VMAuth, users []*victoriametricsv1beta1.VMUser, crdCache map[string]string, tlsAssets map[string]string, rclient client.Client) ([]byte, error) {
 	var cfg yaml.MapSlice
+
+	secretCache := make(map[string]*v1.Secret)
+	configmapCache := make(map[string]*v1.ConfigMap)
+	cb := build.TLSConfigBuilder{
+		Ctx:                context.Background(),
+		Client:             rclient,
+		CurrentCRName:      cr.Name,
+		CurrentCRNamespace: cr.Namespace,
+		SecretCache:        secretCache,
+		ConfigmapCache:     configmapCache,
+		TLSAssets:          tlsAssets,
+	}
 
 	var cfgUsers []yaml.MapSlice
 	for i := range users {
 		user := users[i]
-		userCfg, err := genUserCfg(user, crdCache)
+		userCfg, err := genUserCfg(user, crdCache, cb)
 		if err != nil {
 			return nil, err
 		}
 		cfgUsers = append(cfgUsers, userCfg)
 	}
-	if len(cfgUsers) == 0 {
-		cfgUsers = append(cfgUsers, yaml.MapSlice{
+	if len(cfgUsers) > 0 {
+		cfg = yaml.MapSlice{
 			{
-				Key:   "url_prefix",
-				Value: "http://localhost:8428",
+				Key:   "users",
+				Value: cfgUsers,
 			},
-			{
-				Key:   "name",
-				Value: "default-user",
-			},
-			{
-				Key:   "bearer_token",
-				Value: "some-default-token",
-			},
-		})
+		}
 	}
 
-	cfg = yaml.MapSlice{
-		{
-			Key:   "users",
-			Value: cfgUsers,
-		},
-	}
 	var unAuthorizedAccess []yaml.MapSlice
 	for _, uc := range cr.Spec.UnauthorizedAccessConfig {
-		appendIfNotNull := func(src []string, key string, origin yaml.MapSlice) yaml.MapSlice {
-			if len(src) > 0 {
-				return append(origin, yaml.MapItem{
-					Key:   key,
-					Value: src,
-				})
-			}
-			return origin
-		}
-		urlMap := appendIfNotNull(uc.URLs, "url_prefix", yaml.MapSlice{})
-		urlMap = appendIfNotNull(uc.Paths, "src_paths", urlMap)
-		urlMap = appendIfNotNull(uc.Hosts, "src_hosts", urlMap)
-		urlMap = appendIfNotNull(uc.Headers, "headers", urlMap)
-		urlMap = appendIfNotNull(uc.ResponseHeaders, "response_headers", urlMap)
-		if len(uc.RetryStatusCodes) > 0 {
-			urlMap = append(urlMap, yaml.MapItem{
-				Key:   "retry_status_codes",
-				Value: uc.RetryStatusCodes,
-			},
-			)
-		}
-		if uc.LoadBalancingPolicy != nil {
-			urlMap = append(urlMap, yaml.MapItem{
-				Key:   "load_balancing_policy",
-				Value: *uc.LoadBalancingPolicy,
-			},
-			)
-		}
-		if uc.DropSrcPathPrefixParts != nil {
-			urlMap = append(urlMap, yaml.MapItem{
-				Key:   "drop_src_path_prefix_parts",
-				Value: *uc.DropSrcPathPrefixParts,
-			},
-			)
-		}
-		unAuthorizedAccess = append(unAuthorizedAccess, addIPFiltersToYaml(urlMap, uc.IPFilters))
+		urlMap := appendIfNotNull(uc.SrcPaths, "src_paths", yaml.MapSlice{})
+		urlMap = appendIfNotNull(uc.SrcHosts, "src_hosts", urlMap)
+		urlMap = appendIfNotNull(uc.URLPrefix, "url_prefix", urlMap)
+
+		urlMap = addURLMapCommonToYaml(urlMap, uc.URLMapCommon, false)
+		unAuthorizedAccess = append(unAuthorizedAccess, urlMap)
 	}
+	var unAuthorizedAccessOpt []yaml.MapItem
+	var err error
+	unAuthorizedAccessOpt, err = addUserConfigOptionToYaml(unAuthorizedAccessOpt, cr.Spec.UserConfigOption, cb)
+	if err != nil {
+		return nil, err
+	}
+	var unAuthorizedAccessValue []yaml.MapItem
 	if len(unAuthorizedAccess) > 0 {
-		cfg = append(cfg, yaml.MapItem{Key: "unauthorized_user", Value: yaml.MapSlice{{Key: "url_map", Value: unAuthorizedAccess}}})
+		unAuthorizedAccessValue = append(unAuthorizedAccessValue, yaml.MapItem{Key: "url_map", Value: unAuthorizedAccess})
+	}
+	if len(unAuthorizedAccessOpt) > 0 {
+		unAuthorizedAccessValue = append(unAuthorizedAccessValue, unAuthorizedAccessOpt...)
+	}
+	if len(unAuthorizedAccessValue) > 0 {
+		cfg = append(cfg, yaml.MapItem{Key: "unauthorized_user", Value: unAuthorizedAccessValue})
 	}
 	return yaml.Marshal(cfg)
+}
+
+func appendIfNotNull(src []string, key string, origin yaml.MapSlice) yaml.MapSlice {
+	if len(src) > 0 {
+		return append(origin, yaml.MapItem{
+			Key:   key,
+			Value: src,
+		})
+	}
+	return origin
+}
+
+func addURLMapCommonToYaml(dst yaml.MapSlice, opt victoriametricsv1beta1.URLMapCommon, isDefaultRoute bool) yaml.MapSlice {
+	if !isDefaultRoute {
+		dst = appendIfNotNull(opt.SrcQueryArgs, "src_query_args", dst)
+		dst = appendIfNotNull(opt.SrcHeaders, "src_headers", dst)
+	}
+	dst = appendIfNotNull(opt.RequestHeaders, "headers", dst)
+	dst = appendIfNotNull(opt.ResponseHeaders, "response_headers", dst)
+	if opt.DiscoverBackendIPs != nil {
+		dst = append(dst, yaml.MapItem{
+			Key:   "discover_backend_ips",
+			Value: *opt.DiscoverBackendIPs,
+		},
+		)
+	}
+	if len(opt.RetryStatusCodes) > 0 {
+		dst = append(dst, yaml.MapItem{
+			Key:   "retry_status_codes",
+			Value: opt.RetryStatusCodes,
+		},
+		)
+	}
+	if opt.LoadBalancingPolicy != nil {
+		dst = append(dst, yaml.MapItem{
+			Key:   "load_balancing_policy",
+			Value: *opt.LoadBalancingPolicy,
+		},
+		)
+	}
+	if opt.DropSrcPathPrefixParts != nil {
+		dst = append(dst, yaml.MapItem{
+			Key:   "drop_src_path_prefix_parts",
+			Value: *opt.DropSrcPathPrefixParts,
+		},
+		)
+	}
+	return dst
+}
+
+func addUserConfigOptionToYaml(dst yaml.MapSlice, opt victoriametricsv1beta1.UserConfigOption, cb build.TLSConfigBuilder) (yaml.MapSlice, error) {
+	if len(opt.DefaultURLs) > 0 {
+		dst = append(dst, yaml.MapItem{Key: "default_url", Value: opt.DefaultURLs})
+	}
+	res, err := cb.BuildTLSConfig(opt.TLSConfig, vmAuthConfigRawFolder)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build tls config for vmauth %s under %s, err: %v", cb.CurrentCRName, cb.CurrentCRNamespace, err)
+	}
+	if v, ok := res["ca_file"]; ok {
+		dst = append(dst, yaml.MapItem{Key: "tls_ca_file", Value: v})
+	}
+	if v, ok := res["cert_file"]; ok {
+		dst = append(dst, yaml.MapItem{Key: "tls_cert_file", Value: v})
+	}
+	if v, ok := res["key_file"]; ok {
+		dst = append(dst, yaml.MapItem{Key: "tls_key_file", Value: v})
+	}
+	if v, ok := res["server_name"]; ok {
+		dst = append(dst, yaml.MapItem{Key: "tls_server_name", Value: v})
+	}
+	if v, ok := res["insecure_skip_verify"]; ok {
+		dst = append(dst, yaml.MapItem{Key: "tls_insecure_skip_verify", Value: v})
+	}
+	dst = addIPFiltersToYaml(dst, opt.IPFilters)
+	dst = appendIfNotNull(opt.Headers, "headers", dst)
+	dst = appendIfNotNull(opt.ResponseHeaders, "response_headers", dst)
+	if opt.DiscoverBackendIPs != nil {
+		dst = append(dst, yaml.MapItem{
+			Key:   "discover_backend_ips",
+			Value: *opt.DiscoverBackendIPs,
+		},
+		)
+	}
+	if len(opt.RetryStatusCodes) > 0 {
+		dst = append(dst, yaml.MapItem{
+			Key:   "retry_status_codes",
+			Value: opt.RetryStatusCodes,
+		},
+		)
+	}
+	if opt.MaxConcurrentRequests != nil {
+		dst = append(dst, yaml.MapItem{
+			Key:   "max_concurrent_requests",
+			Value: *opt.MaxConcurrentRequests,
+		},
+		)
+	}
+	if opt.LoadBalancingPolicy != nil {
+		dst = append(dst, yaml.MapItem{
+			Key:   "load_balancing_policy",
+			Value: *opt.LoadBalancingPolicy,
+		},
+		)
+	}
+	if opt.DropSrcPathPrefixParts != nil {
+		dst = append(dst, yaml.MapItem{
+			Key:   "drop_src_path_prefix_parts",
+			Value: *opt.DropSrcPathPrefixParts,
+		},
+		)
+	}
+	return dst, nil
 }
 
 // AddToYaml conditionally adds ip filters to dst yaml
@@ -486,21 +580,7 @@ func genURLMaps(userName string, refs []victoriametricsv1beta1.TargetRef, result
 				return result, fmt.Errorf("cannot build urlPrefix for one ref, err: %w", err)
 			}
 			result = append(result, yaml.MapItem{Key: "url_prefix", Value: urlPrefix})
-			if len(ref.Headers) > 0 {
-				result = append(result, yaml.MapItem{Key: "headers", Value: ref.Headers})
-			}
-			if len(ref.ResponseHeaders) > 0 {
-				result = append(result, yaml.MapItem{Key: "response_headers", Value: ref.ResponseHeaders})
-			}
-			if len(ref.RetryStatusCodes) > 0 {
-				result = append(result, yaml.MapItem{Key: "retry_status_codes", Value: ref.RetryStatusCodes})
-			}
-			if ref.DropSrcPathPrefixParts != nil {
-				result = append(result, yaml.MapItem{Key: "drop_src_path_prefix_parts", Value: ref.DropSrcPathPrefixParts})
-			}
-			if ref.LoadBalancingPolicy != nil {
-				result = append(result, yaml.MapItem{Key: "load_balancing_policy", Value: ref.LoadBalancingPolicy})
-			}
+			result = addURLMapCommonToYaml(result, ref.URLMapCommon, isDefaultRoute)
 			return result, nil
 		}
 
@@ -553,23 +633,23 @@ func genURLMaps(userName string, refs []victoriametricsv1beta1.TargetRef, result
 				Value: ref.Hosts,
 			})
 		}
-		if len(ref.Headers) > 0 {
+		if len(ref.URLMapCommon.RequestHeaders) > 0 {
 			urlMap = append(urlMap, yaml.MapItem{
 				Key:   "headers",
-				Value: ref.Headers,
+				Value: ref.URLMapCommon.RequestHeaders,
 			})
 		}
-		if len(ref.ResponseHeaders) > 0 {
-			urlMap = append(urlMap, yaml.MapItem{Key: "response_headers", Value: ref.ResponseHeaders})
+		if len(ref.URLMapCommon.ResponseHeaders) > 0 {
+			urlMap = append(urlMap, yaml.MapItem{Key: "response_headers", Value: ref.URLMapCommon.ResponseHeaders})
 		}
-		if len(ref.RetryStatusCodes) > 0 {
-			urlMap = append(urlMap, yaml.MapItem{Key: "retry_status_codes", Value: ref.RetryStatusCodes})
+		if len(ref.URLMapCommon.RetryStatusCodes) > 0 {
+			urlMap = append(urlMap, yaml.MapItem{Key: "retry_status_codes", Value: ref.URLMapCommon.RetryStatusCodes})
 		}
-		if ref.DropSrcPathPrefixParts != nil {
-			urlMap = append(urlMap, yaml.MapItem{Key: "drop_src_path_prefix_parts", Value: ref.DropSrcPathPrefixParts})
+		if ref.URLMapCommon.DropSrcPathPrefixParts != nil {
+			urlMap = append(urlMap, yaml.MapItem{Key: "drop_src_path_prefix_parts", Value: ref.URLMapCommon.DropSrcPathPrefixParts})
 		}
-		if ref.LoadBalancingPolicy != nil {
-			urlMap = append(urlMap, yaml.MapItem{Key: "load_balancing_policy", Value: ref.LoadBalancingPolicy})
+		if ref.URLMapCommon.LoadBalancingPolicy != nil {
+			urlMap = append(urlMap, yaml.MapItem{Key: "load_balancing_policy", Value: ref.URLMapCommon.LoadBalancingPolicy})
 		}
 		urlMaps = append(urlMaps, urlMap)
 	}
@@ -579,7 +659,7 @@ func genURLMaps(userName string, refs []victoriametricsv1beta1.TargetRef, result
 
 // this function mutates user and fills missing fields,
 // such password or username.
-func genUserCfg(user *victoriametricsv1beta1.VMUser, crdURLCache map[string]string) (yaml.MapSlice, error) {
+func genUserCfg(user *victoriametricsv1beta1.VMUser, crdURLCache map[string]string, cb build.TLSConfigBuilder) (yaml.MapSlice, error) {
 	var r yaml.MapSlice
 
 	r, err := genURLMaps(user.Name, user.Spec.TargetRefs, r, crdURLCache)
@@ -587,12 +667,6 @@ func genUserCfg(user *victoriametricsv1beta1.VMUser, crdURLCache map[string]stri
 		return nil, fmt.Errorf("cannot generate urlMaps for user: %w", err)
 	}
 
-	if len(user.Spec.DefaultURLs) > 0 {
-		r = append(r, yaml.MapItem{
-			Key:   "default_url",
-			Value: user.Spec.DefaultURLs,
-		})
-	}
 	// generate user access config.
 	var name, username, password, token string
 	if user.Spec.Name != nil {
@@ -615,29 +689,9 @@ func genUserCfg(user *victoriametricsv1beta1.VMUser, crdURLCache map[string]stri
 	if user.Spec.BearerToken != nil {
 		token = *user.Spec.BearerToken
 	}
-	if user.Spec.MaxConcurrentRequests != nil {
-		r = append(r, yaml.MapItem{
-			Key:   "max_concurrent_requests",
-			Value: *user.Spec.MaxConcurrentRequests,
-		})
-	}
-	if user.Spec.LoadBalancingPolicy != nil {
-		r = append(r, yaml.MapItem{
-			Key:   "load_balancing_policy",
-			Value: *user.Spec.LoadBalancingPolicy,
-		})
-	}
-	if user.Spec.DropSrcPathPrefixParts != nil {
-		r = append(r, yaml.MapItem{
-			Key:   "drop_src_path_prefix_parts",
-			Value: *user.Spec.DropSrcPathPrefixParts,
-		})
-	}
-	if user.Spec.TLSInsecureSkipVerify {
-		r = append(r, yaml.MapItem{
-			Key:   "tls_insecure_skip_verify",
-			Value: user.Spec.TLSInsecureSkipVerify,
-		})
+	r, err = addUserConfigOptionToYaml(r, user.Spec.UserConfigOption, cb)
+	if err != nil {
+		return nil, err
 	}
 	if len(user.Spec.MetricLabels) != 0 {
 		r = append(r, yaml.MapItem{
@@ -645,22 +699,6 @@ func genUserCfg(user *victoriametricsv1beta1.VMUser, crdURLCache map[string]stri
 			Value: user.Spec.MetricLabels,
 		})
 	}
-	if len(user.Spec.RetryStatusCodes) > 0 {
-		r = append(r, yaml.MapItem{
-			Key:   "retry_status_codes",
-			Value: user.Spec.RetryStatusCodes,
-		})
-	}
-	if len(user.Spec.Headers) > 0 {
-		r = append(r, yaml.MapItem{
-			Key:   "headers",
-			Value: user.Spec.Headers,
-		})
-	}
-	if len(user.Spec.ResponseHeaders) > 0 {
-		r = append(r, yaml.MapItem{Key: "response_headers", Value: user.Spec.ResponseHeaders})
-	}
-	r = addIPFiltersToYaml(r, user.Spec.IPFilters)
 
 	// fast path.
 	if token != "" {

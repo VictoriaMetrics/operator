@@ -2,16 +2,22 @@ package alertmanager
 
 import (
 	"context"
+	"os"
+	"strings"
 	"testing"
 
-	operatorv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
-	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
+
+	operatorv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	"github.com/VictoriaMetrics/operator/controllers/factory/build"
+	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
 )
 
 func TestBuildConfig(t *testing.T) {
@@ -716,7 +722,7 @@ templates: []
 					},
 				},
 			},
-			parseError: "cannot find secret for VMAlertmanager config: tg, receiver: telegram, err :secrets \"tg-secret\" not found in object: default/tg, will ignore vmalertmanagerconfig tg",
+			parseError: "cannot find secret for VMAlertmanager config: tg, err :secrets \"tg-secret\" not found in object: default/tg, will ignore vmalertmanagerconfig tg",
 			want: `global:
   time_out: 1min
 route:
@@ -1175,8 +1181,8 @@ func Test_configBuilder_buildHTTPConfig(t *testing.T) {
 			want: `tls_config:
   ca_file: /etc/alertmanager/config/default_secret-store_ca
   cert_file: /etc/alertmanager/config/default_secret-store_cert
-  key_file: /etc/mounted_dir/key.pem
   insecure_skip_verify: true
+  key_file: /etc/mounted_dir/key.pem
 authorization:
   credentials_file: /etc/mounted_dir/bearer_file
 `,
@@ -1243,8 +1249,8 @@ authorization:
 			want: `tls_config:
   ca_file: /etc/alertmanager/config/default_cm-store_ca
   cert_file: /etc/alertmanager/config/default_secret-store_cert
-  key_file: /etc/alertmanager/config/default_secret-store_key
   insecure_skip_verify: true
+  key_file: /etc/alertmanager/config/default_secret-store_key
 authorization:
   credentials: secret-token
 `,
@@ -1253,16 +1259,14 @@ authorization:
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cb := &configBuilder{
-				ctx:            context.Background(),
-				Client:         k8stools.GetTestClientWithObjects(nil),
-				secretCache:    tt.fields.secretCache,
-				configmapCache: tt.fields.configmapCache,
-				tlsAssets:      map[string]string{},
-				currentCR: &operatorv1beta1.VMAlertmanagerConfig{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-am",
-						Namespace: "default",
-					},
+				TLSConfigBuilder: build.TLSConfigBuilder{
+					Ctx:                context.Background(),
+					Client:             k8stools.GetTestClientWithObjects(nil),
+					SecretCache:        tt.fields.secretCache,
+					ConfigmapCache:     tt.fields.configmapCache,
+					TLSAssets:          map[string]string{},
+					CurrentCRName:      "test-am",
+					CurrentCRNamespace: "default",
 				},
 			}
 			gotYAML, err := cb.buildHTTPConfig(tt.args.httpCfg)
@@ -1276,6 +1280,181 @@ authorization:
 				return
 			}
 			assert.Equalf(t, tt.want, string(got), "buildHTTPConfig(%v)", tt.args.httpCfg)
+		})
+	}
+}
+
+func Test_UpdateDefaultAMConfig(t *testing.T) {
+	type args struct {
+		ctx context.Context
+		cr  *operatorv1beta1.VMAlertmanager
+	}
+	tests := []struct {
+		name                string
+		args                args
+		wantErr             bool
+		predefinedObjects   []runtime.Object
+		secretMustBeMissing bool
+	}{
+		{
+			name: "with alertmanager config support",
+			args: args{
+				ctx: context.TODO(),
+				cr: &operatorv1beta1.VMAlertmanager{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-am",
+						Namespace: "default",
+					},
+					Spec: operatorv1beta1.VMAlertmanagerSpec{
+						ConfigSecret:            "vmalertmanager-test-am-config",
+						ConfigRawYaml:           "global: {}",
+						ConfigSelector:          &metav1.LabelSelector{},
+						ConfigNamespaceSelector: &metav1.LabelSelector{},
+						SelectAllByDefault:      true,
+					},
+				},
+			},
+			predefinedObjects: []runtime.Object{
+				&v1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "vmalertmanager-test-am-config",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{alertmanagerSecretConfigKey: {}},
+				},
+				&operatorv1beta1.VMAlertmanagerConfig{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-amc",
+						Namespace: "default",
+					},
+					Spec: operatorv1beta1.VMAlertmanagerConfigSpec{
+						InhibitRules: []operatorv1beta1.InhibitRule{
+							{Equal: []string{"alertname"}, SourceMatchers: []string{"severity=\"critical\""}, TargetMatchers: []string{"severity=\"warning\""}},
+							{SourceMatchers: []string{"alertname=\"QuietWeeklyNotifications\""}, TargetMatchers: []string{"alert_group=\"l2ci_weekly\""}},
+						},
+						Route: &operatorv1beta1.Route{
+							GroupBy:  []string{"alertname", "l2ci_channel"},
+							Receiver: "blackhole",
+							Routes: []*operatorv1beta1.SubRoute{
+								{Receiver: "blackhole", Matchers: []string{"alertname=\"QuietWeeklyNotifications\""}},
+								{Receiver: "blackhole", Matchers: []string{"alertname=\"QuietDailyNotifications\""}},
+								{Receiver: "l2ci_receiver", Matchers: []string{"alert_group=~\"^l2ci.*\""}},
+							},
+						},
+						Receivers: []operatorv1beta1.Receiver{
+							{
+								Name: "l2ci_receiver",
+								WebhookConfigs: []operatorv1beta1.WebhookConfig{
+									{URL: ptr.To("http://notification_stub_ci1:8080")},
+								},
+							},
+							{Name: "blackhole"},
+							{
+								Name: "ca_em_receiver",
+								WebhookConfigs: []operatorv1beta1.WebhookConfig{
+									{URL: ptr.To("http://notification_stub_ci2:8080")},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	assert.Nil(t, os.Setenv("WATCH_NAMESPACE", "default"))
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
+
+			// Create secret with alert manager config
+			if err := createDefaultAMConfig(tt.args.ctx, tt.args.cr, fclient); (err != nil) != tt.wantErr {
+				t.Fatalf("createDefaultAMConfig() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			var createdSecret v1.Secret
+			secretName := tt.args.cr.ConfigSecretName()
+			err := fclient.Get(tt.args.ctx, types.NamespacedName{Namespace: tt.args.cr.Namespace, Name: secretName}, &createdSecret)
+			if err != nil {
+				if errors.IsNotFound(err) && tt.secretMustBeMissing {
+					return
+				}
+				t.Fatalf("config for alertmanager not exist, err: %v", err)
+			}
+
+			// check secret config after creating
+			d, ok := createdSecret.Data[alertmanagerSecretConfigKey]
+			if !ok {
+				t.Fatalf("config for alertmanager not exist, err: %v", err)
+			}
+			var secretConfig alertmanagerConfig
+			err = yaml.Unmarshal(d, &secretConfig)
+			if err != nil {
+				t.Fatalf("could not unmarshall secret config data into structure, err: %v", err)
+			}
+			var amc operatorv1beta1.VMAlertmanagerConfig
+			err = fclient.Get(tt.args.ctx, types.NamespacedName{Namespace: tt.args.cr.Namespace, Name: "test-amc"}, &amc)
+			if err != nil {
+				t.Fatalf("could not get alert manager config. Error: %v", err)
+			}
+
+			if len(secretConfig.Receivers) != len(amc.Spec.Receivers) {
+				t.Fatalf("receivers count is wrong. Expected: %v, actual: %v", len(amc.Spec.Receivers), len(secretConfig.Receivers))
+			}
+
+			if len(secretConfig.InhibitRules) != len(amc.Spec.InhibitRules) {
+				t.Fatalf("inhibit rules count is wrong. Expected: %v, actual: %v", len(amc.Spec.InhibitRules), len(secretConfig.InhibitRules))
+			}
+
+			if !strings.EqualFold(buildCRPrefixedName(&amc, amc.Spec.Route.Receiver), secretConfig.Route.Receiver) {
+				t.Fatalf("receiver name is wrong. Expected: %v, actual: %v", buildCRPrefixedName(&amc, amc.Spec.Route.Receiver), secretConfig.Route.Receiver)
+			}
+			if len(secretConfig.Route.Routes) != 1 {
+				t.Fatalf("subroutes count is wrong. Expected: %v, actual: %v", 1, len(secretConfig.Route.Routes))
+			}
+			if len(secretConfig.Route.Routes[0]) != len(amc.Spec.Route.Routes)+2 { // 2 default routes added
+				t.Fatalf("subroutes count is wrong. Expected: %v, actual: %v", len(amc.Spec.Route.Routes), len(secretConfig.Route.Routes))
+			}
+
+			// Update secret with alert manager config
+			if err = createDefaultAMConfig(tt.args.ctx, tt.args.cr, fclient); (err != nil) != tt.wantErr {
+				t.Fatalf("createDefaultAMConfig() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			err = fclient.Get(tt.args.ctx, types.NamespacedName{Namespace: tt.args.cr.Namespace, Name: secretName}, &createdSecret)
+			if err != nil {
+				if errors.IsNotFound(err) && tt.secretMustBeMissing {
+					return
+				}
+				t.Fatalf("secret for alertmanager not exist, err: %v", err)
+			}
+
+			// check secret config after updating
+			d, ok = createdSecret.Data[alertmanagerSecretConfigKey]
+			if !ok {
+				t.Fatalf("config for alertmanager not exist, err: %v", err)
+			}
+			err = yaml.Unmarshal(d, &secretConfig)
+			if err != nil {
+				t.Fatalf("could not unmarshall secret config data into structure, err: %v", err)
+			}
+
+			if len(secretConfig.Receivers) != len(amc.Spec.Receivers) {
+				t.Fatalf("receivers count is wrong. Expected: %v, actual: %v", len(amc.Spec.Receivers), len(secretConfig.Receivers))
+			}
+
+			if len(secretConfig.InhibitRules) != len(amc.Spec.InhibitRules) {
+				t.Fatalf("inhibit rules count is wrong. Expected: %v, actual: %v", len(amc.Spec.InhibitRules), len(secretConfig.InhibitRules))
+			}
+
+			if !strings.EqualFold(buildCRPrefixedName(&amc, amc.Spec.Route.Receiver), secretConfig.Route.Receiver) {
+				t.Fatalf("receiver name is wrong. Expected: %v, actual: %v", buildCRPrefixedName(&amc, amc.Spec.Route.Receiver), secretConfig.Route.Receiver)
+			}
+
+			if len(secretConfig.Route.Routes) != 1 {
+				t.Fatalf("subroutes count is wrong. Expected: %v, actual: %v", 1, len(secretConfig.Route.Routes))
+			}
+			if len(secretConfig.Route.Routes[0]) != len(amc.Spec.Route.Routes)+2 { // 2 default routes added
+				t.Fatalf("subroutes count is wrong. Expected: %v, actual: %v", len(amc.Spec.Route.Routes), len(secretConfig.Route.Routes))
+			}
 		})
 	}
 }

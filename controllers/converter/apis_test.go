@@ -531,6 +531,7 @@ func TestConvertProbe(t *testing.T) {
 func TestConvertScrapeConfig(t *testing.T) {
 	type args struct {
 		scrapeConfig *v1alpha1.ScrapeConfig
+		ownerRef     bool
 	}
 	tests := []struct {
 		name string
@@ -764,14 +765,49 @@ func TestConvertScrapeConfig(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "with owner",
+			args: args{
+				scrapeConfig: &v1alpha1.ScrapeConfig{
+					ObjectMeta: v12.ObjectMeta{
+						Name:      "test",
+						Namespace: "test-ns",
+						UID:       "42",
+					},
+					Spec: v1alpha1.ScrapeConfigSpec{},
+				},
+				ownerRef: true,
+			},
+			want: v1beta1vm.VMScrapeConfig{
+				ObjectMeta: v12.ObjectMeta{
+					Name:      "test",
+					Namespace: "test-ns",
+					OwnerReferences: []v12.OwnerReference{
+						{
+							APIVersion:         "monitoring.coreos.com/v1alpha1",
+							Kind:               "ScrapeConfig",
+							Name:               "test",
+							UID:                "42",
+							Controller:         boolPointer(true),
+							BlockOwnerDeletion: boolPointer(true),
+						},
+					},
+				},
+				Spec: v1beta1vm.VMScrapeConfigSpec{},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := ConvertScrapeConfig(tt.args.scrapeConfig, &config.BaseOperatorConf{})
+			got := ConvertScrapeConfig(tt.args.scrapeConfig, &config.BaseOperatorConf{EnabledPrometheusConverterOwnerReferences: tt.args.ownerRef})
 			if !cmp.Equal(*got, tt.want) {
 				diff := cmp.Diff(*got, tt.want)
 				t.Fatal("not expected output with diff: ", diff)
 			}
 		})
 	}
+}
+
+func boolPointer(b bool) *bool {
+	return &b
 }

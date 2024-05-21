@@ -449,6 +449,7 @@ func CreateOrUpdateVMSingleStreamAggrConfig(ctx context.Context, cr *victoriamet
 		if errors.IsNotFound(err) {
 			return rclient.Create(ctx, streamAggrCM)
 		}
+		return fmt.Errorf("cannot fetch exist configmap for vmsingle streamAggr: %w", err)
 	}
 	if err := finalize.FreeIfNeeded(ctx, rclient, &existCM); err != nil {
 		return err

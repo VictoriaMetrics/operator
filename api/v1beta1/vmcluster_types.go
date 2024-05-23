@@ -1076,6 +1076,13 @@ func (cr *VMCluster) VMSelectURL() string {
 	if port == "" {
 		port = "8481"
 	}
+	if cr.Spec.VMSelect.ServiceSpec != nil && cr.Spec.VMSelect.ServiceSpec.UseAsDefault {
+		for _, svcPort := range cr.Spec.VMSelect.ServiceSpec.Spec.Ports {
+			if svcPort.Name == "http" {
+				port = fmt.Sprintf("%d", svcPort.Port)
+			}
+		}
+	}
 	return fmt.Sprintf("http://%s.%s.svc:%s", cr.Spec.VMSelect.GetNameWithPrefix(cr.Name), cr.Namespace, port)
 }
 
@@ -1087,6 +1094,13 @@ func (cr *VMCluster) VMInsertURL() string {
 	if port == "" {
 		port = "8480"
 	}
+	if cr.Spec.VMInsert.ServiceSpec != nil && cr.Spec.VMInsert.ServiceSpec.UseAsDefault {
+		for _, svcPort := range cr.Spec.VMInsert.ServiceSpec.Spec.Ports {
+			if svcPort.Name == "http" {
+				port = fmt.Sprintf("%d", svcPort.Port)
+			}
+		}
+	}
 	return fmt.Sprintf("http://%s.%s.svc:%s", cr.Spec.VMInsert.GetNameWithPrefix(cr.Name), cr.Namespace, port)
 }
 
@@ -1097,6 +1111,13 @@ func (cr *VMCluster) VMStorageURL() string {
 	port := cr.Spec.VMStorage.Port
 	if port == "" {
 		port = "8482"
+	}
+	if cr.Spec.VMStorage.ServiceSpec != nil && cr.Spec.VMStorage.ServiceSpec.UseAsDefault {
+		for _, svcPort := range cr.Spec.VMStorage.ServiceSpec.Spec.Ports {
+			if svcPort.Name == "http" {
+				port = fmt.Sprintf("%d", svcPort.Port)
+			}
+		}
 	}
 	return fmt.Sprintf("http://%s.%s.svc:%s", cr.Spec.VMStorage.GetNameWithPrefix(cr.Name), cr.Namespace, port)
 }

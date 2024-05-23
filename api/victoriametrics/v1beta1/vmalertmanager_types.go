@@ -409,7 +409,16 @@ func (cr VMAlertmanager) GetNSName() string {
 }
 
 func (cr *VMAlertmanager) AsURL() string {
-	return fmt.Sprintf("http://%s.%s.svc:9093", cr.PrefixedName(), cr.Namespace)
+	port := "9093"
+	if cr.Spec.ServiceSpec != nil && cr.Spec.ServiceSpec.UseAsDefault {
+		for _, svcPort := range cr.Spec.ServiceSpec.Spec.Ports {
+			if svcPort.Name == "http" {
+				port = fmt.Sprintf("%d", svcPort.Port)
+				break
+			}
+		}
+	}
+	return fmt.Sprintf("http://%s.%s.svc:%s", cr.PrefixedName(), cr.Namespace, port)
 }
 
 func (cr *VMAlertmanager) AsPodFQDN(idx int) string {

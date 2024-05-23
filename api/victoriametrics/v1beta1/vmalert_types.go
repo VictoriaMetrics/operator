@@ -525,6 +525,14 @@ func (cr *VMAlert) AsURL() string {
 	if port == "" {
 		port = "8080"
 	}
+	if cr.Spec.ServiceSpec != nil && cr.Spec.ServiceSpec.UseAsDefault {
+		for _, svcPort := range cr.Spec.ServiceSpec.Spec.Ports {
+			if svcPort.Name == "http" {
+				port = fmt.Sprintf("%d", svcPort.Port)
+				break
+			}
+		}
+	}
 	return fmt.Sprintf("http://%s.%s.svc:%s", cr.PrefixedName(), cr.Namespace, port)
 }
 

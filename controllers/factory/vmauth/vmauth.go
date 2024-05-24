@@ -247,14 +247,14 @@ func makeSpecForVMAuth(cr *victoriametricsv1beta1.VMAuth, c *config.BaseOperator
 					},
 				},
 			})
+			volumeMounts = append(volumeMounts, corev1.VolumeMount{
+				Name:      vmAuthVolumeName,
+				MountPath: vmAuthConfigRawFolder,
+			})
 		}
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
 			Name:      "config-out",
 			MountPath: vmAuthConfigFolder,
-		})
-		volumeMounts = append(volumeMounts, corev1.VolumeMount{
-			Name:      "config",
-			MountPath: vmAuthConfigRawFolder,
 		})
 		operatorContainers[0].VolumeMounts = volumeMounts
 

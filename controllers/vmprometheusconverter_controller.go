@@ -235,17 +235,27 @@ func waitForAPIResource(ctx context.Context, client discovery.DiscoveryInterface
 	for {
 		select {
 		case <-tick.C:
-			_, apiLists, err := client.ServerGroupsAndResources()
+			groups, err := client.ServerGroups()
 			if err != nil {
-				l.Error(err, "cannot get  server resource")
+				l.Error(err, "cannot get server groups")
+				continue
 			}
-			for _, apiList := range apiLists {
-				if apiList.GroupVersion == apiGroupVersion {
-					for _, r := range apiList.APIResources {
-						if r.Kind == kind {
-							l.Info("api resource is ready")
-							return nil
+			for _, g := range groups.Groups {
+				for _, v := range g.Versions {
+					if v.GroupVersion != apiGroupVersion {
+						continue
+					}
+					api, err := client.ServerResourcesForGroupVersion(apiGroupVersion)
+					if err != nil {
+						l.Error(err, "cannot get  server resource for api group version")
+						continue
+					}
+					for _, r := range api.APIResources {
+						if r.Kind != kind {
+							continue
 						}
+						l.Info("api resource is ready")
+						return nil
 					}
 				}
 			}

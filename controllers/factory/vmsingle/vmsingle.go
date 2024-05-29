@@ -47,7 +47,7 @@ func CreateVMSingleStorage(ctx context.Context, cr *victoriametricsv1beta1.VMSin
 		return fmt.Errorf("cannot get existing pvc for vmsingle: %w", err)
 	}
 	if !existPvc.DeletionTimestamp.IsZero() {
-		l.Info("pvc in vmsingle has non zero DeletionTimestamp, should be caused by illegal manual deletion operation, skip updating. To fix this, make backup for this pvc, delete VMSingle object and restore from backup.", "vmsingle", cr.Name, "namespace", cr.Namespace, "pvc", existPvc.Name)
+		l.Info("pvc has non zero DeletionTimestamp, skip update. To fix this, make backup for this pvc, delete VMSingle object and restore from backup.", "vmsingle", cr.Name, "namespace", cr.Namespace, "pvc", existPvc.Name)
 		return nil
 	}
 	if existPvc.Spec.Resources.String() != newPvc.Spec.Resources.String() {

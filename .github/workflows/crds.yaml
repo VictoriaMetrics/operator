@@ -1,11 +1,8 @@
 name: Update CRDs for chart repo
 
 on:
-  push:
-    branches:
-      - master
-    paths:
-      - "config/crd/bases/*.yaml"
+  release:
+    types: [published]
 
 jobs:
   update-crds:

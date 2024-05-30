@@ -42,12 +42,13 @@ func CreateVMSingleStorage(ctx context.Context, cr *victoriametricsv1beta1.VMSin
 			if err := rclient.Create(ctx, newPvc); err != nil {
 				return fmt.Errorf("cannot create new pvc for vmsingle: %w", err)
 			}
-			if !existPvc.DeletionTimestamp.IsZero() {
-				l.Info("exist pvc for vmsingle has non zero DeletionTimestamp. Ignore it or make backup, delete VMSingle object and restore it from backup.")
-			}
 			return nil
 		}
 		return fmt.Errorf("cannot get existing pvc for vmsingle: %w", err)
+	}
+	if !existPvc.DeletionTimestamp.IsZero() {
+		l.Info("pvc has non zero DeletionTimestamp, skip update. To fix this, make backup for this pvc, delete VMSingle object and restore from backup.", "vmsingle", cr.Name, "namespace", cr.Namespace, "pvc", existPvc.Name)
+		return nil
 	}
 	if existPvc.Spec.Resources.String() != newPvc.Spec.Resources.String() {
 		l.Info("volume requests isn't same, update required")

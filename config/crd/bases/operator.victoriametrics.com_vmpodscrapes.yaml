@@ -662,7 +662,7 @@ spec:
                       type: object
                     vm_scrape_params:
                       description: VMScrapeParams defines VictoriaMetrics specific
-                        scrape parametrs
+                        scrape parameters
                       properties:
                         disable_compression:
                           type: boolean

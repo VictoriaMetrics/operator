@@ -215,7 +215,7 @@ type VMAuthSpec struct {
 	// +optional
 	ConfigSecret string `json:"configSecret,omitempty"`
 
-	// Paused If set to true all actions on the underlaying managed objects are not
+	// Paused If set to true all actions on the underlying managed objects are not
 	// going to be performed, except for delete actions.
 	// +optional
 	Paused bool `json:"paused,omitempty"`
@@ -373,9 +373,9 @@ type EmbeddedIngress struct {
 
 // VMAuthStatus defines the observed state of VMAuth
 type VMAuthStatus struct {
-	// UpdateStatus defines a status for update rollout, effective only for statefuleMode
+	// UpdateStatus defines a status for update rollout, effective only for statefulMode
 	UpdateStatus UpdateStatus `json:"updateStatus,omitempty"`
-	// Reason defines fail reason for update process, effective only for statefuleMode
+	// Reason defines fail reason for update process, effective only for statefulMode
 	Reason string `json:"reason,omitempty"`
 }
 

@@ -188,7 +188,7 @@ type Endpoint struct {
 	// ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint.
 	// +optional
 	ProxyURL *string `json:"proxyURL,omitempty"`
-	// VMScrapeParams defines VictoriaMetrics specific scrape parametrs
+	// VMScrapeParams defines VictoriaMetrics specific scrape parameters
 	// +optional
 	VMScrapeParams *VMScrapeParams `json:"vm_scrape_params,omitempty"`
 	// AttachMetadata configures metadata attaching from service discovery

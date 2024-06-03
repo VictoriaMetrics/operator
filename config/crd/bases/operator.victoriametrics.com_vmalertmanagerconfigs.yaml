@@ -103,7 +103,7 @@ spec:
                             type: string
                           months:
                             description: |-
-                              Months  defines list of calendar months identified by a case-insentive name (e.g. ‘January’) or numeric 1.
+                              Months  defines list of calendar months identified by a case-insensitive name (e.g. ‘January’) or numeric 1.
                               For example, ['1:3', 'may:august', 'december']
                             items:
                               type: string
@@ -2818,7 +2818,7 @@ spec:
                             type: string
                           months:
                             description: |-
-                              Months  defines list of calendar months identified by a case-insentive name (e.g. ‘January’) or numeric 1.
+                              Months  defines list of calendar months identified by a case-insensitive name (e.g. ‘January’) or numeric 1.
                               For example, ['1:3', 'may:august', 'december']
                             items:
                               type: string

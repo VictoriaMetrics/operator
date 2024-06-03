@@ -145,8 +145,8 @@ type VMAlertmanagerSpec struct {
 	// under a different route prefix. For example for use with `kubectl proxy`.
 	// +optional
 	RoutePrefix string `json:"routePrefix,omitempty"`
-	// Paused If set to true all actions on the underlaying managed objects are not
-	// goint to be performed, except for delete actions.
+	// Paused If set to true all actions on the underlying managed objects are not
+	// going to be performed, except for delete actions.
 	// +optional
 	Paused bool `json:"paused,omitempty"`
 	// NodeSelector Define which Nodes the Pods are scheduled on.

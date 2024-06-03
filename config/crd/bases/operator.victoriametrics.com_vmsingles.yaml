@@ -299,7 +299,7 @@ spec:
                 type: object
               paused:
                 description: |-
-                  Paused If set to true all actions on the underlaying managed objects are not
+                  Paused If set to true all actions on the underlying managed objects are not
                   going to be performed, except for delete actions.
                 type: boolean
               podMetadata:
@@ -924,7 +924,7 @@ spec:
                           x-kubernetes-preserve-unknown-fields: true
                         no_align_flush_to_interval:
                           description: |-
-                            NoAlighFlushToInterval disables aligning of flushes to multiples of Interval.
+                            NoAlignFlushToInterval disables aligning of flushes to multiples of Interval.
                             By default flushes are aligned to Interval.
                           type: boolean
                         output_relabel_configs:

@@ -60,7 +60,7 @@ type VMClusterSpec struct {
 	VMInsert *VMInsert `json:"vminsert,omitempty"`
 	// +optional
 	VMStorage *VMStorage `json:"vmstorage,omitempty"`
-	// Paused If set to true all actions on the underlaying managed objects are not
+	// Paused If set to true all actions on the underlying managed objects are not
 	// going to be performed, except for delete actions.
 	// +optional
 	Paused bool `json:"paused,omitempty"`
@@ -244,7 +244,7 @@ type VMSelect struct {
 	// +optional
 	CacheMountPath string `json:"cacheMountPath,omitempty"`
 
-	// Storage - add persistent volume for cacheMounthPath
+	// Storage - add persistent volume for cacheMountPath
 	// its useful for persistent cache
 	// use storage instead of persistentVolume.
 	// +deprecated

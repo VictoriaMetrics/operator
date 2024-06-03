@@ -587,7 +587,7 @@ spec:
                 type: object
               paused:
                 description: |-
-                  Paused If set to true all actions on the underlaying managed objects are not
+                  Paused If set to true all actions on the underlying managed objects are not
                   going to be performed, except for delete actions.
                 type: boolean
               podDisruptionBudget:
@@ -1299,11 +1299,11 @@ spec:
             properties:
               reason:
                 description: Reason defines fail reason for update process, effective
-                  only for statefuleMode
+                  only for statefulMode
                 type: string
               updateStatus:
                 description: UpdateStatus defines a status for update rollout, effective
-                  only for statefuleMode
+                  only for statefulMode
                 type: string
             type: object
         type: object

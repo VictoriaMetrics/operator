@@ -280,7 +280,7 @@ type VMAlertSpec struct {
 	// +optional
 	License *License `json:"license,omitempty"`
 
-	// Paused If set to true all actions on the underlaying managed objects are not
+	// Paused If set to true all actions on the underlying managed objects are not
 	// going to be performed, except for delete actions.
 	// +optional
 	Paused bool `json:"paused,omitempty"`
@@ -374,9 +374,9 @@ type VMAlertStatus struct {
 	AvailableReplicas int32 `json:"availableReplicas,omitempty"`
 	// UnavailableReplicas Total number of unavailable pods targeted by this VMAlert cluster.
 	UnavailableReplicas int32 `json:"unavailableReplicas,omitempty"`
-	// UpdateStatus defines a status for update rollout, effective only for statefuleMode
+	// UpdateStatus defines a status for update rollout, effective only for statefulMode
 	UpdateStatus UpdateStatus `json:"updateStatus,omitempty"`
-	// Reason defines fail reason for update process, effective only for statefuleMode
+	// Reason defines fail reason for update process, effective only for statefulMode
 	Reason string `json:"reason,omitempty"`
 }
 

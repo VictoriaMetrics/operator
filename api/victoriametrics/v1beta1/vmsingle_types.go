@@ -207,7 +207,7 @@ type VMSingleSpec struct {
 	// +optional
 	UseStrictSecurity *bool `json:"useStrictSecurity,omitempty"`
 
-	// Paused If set to true all actions on the underlaying managed objects are not
+	// Paused If set to true all actions on the underlying managed objects are not
 	// going to be performed, except for delete actions.
 	// +optional
 	Paused bool `json:"paused,omitempty"`

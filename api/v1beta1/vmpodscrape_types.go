@@ -145,7 +145,7 @@ type PodMetricsEndpoint struct {
 	// Authorization with http header Authorization
 	// +optional
 	Authorization *Authorization `json:"authorization,omitempty"`
-	// VMScrapeParams defines VictoriaMetrics specific scrape parametrs
+	// VMScrapeParams defines VictoriaMetrics specific scrape parameters
 	// +optional
 	VMScrapeParams *VMScrapeParams `json:"vm_scrape_params,omitempty"`
 	// AttachMetadata configures metadata attaching from service discovery

@@ -6,6 +6,7 @@ on:
 
 jobs:
   update-crds:
+    if: "!contains(github.event.release.tag_name, '-rc')"
     runs-on: ubuntu-latest
     environment:
       name: docs

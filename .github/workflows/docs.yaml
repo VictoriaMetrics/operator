@@ -1,21 +1,12 @@
 name: Update docs
 
 on:
-  push:
-    branches:
-      - master
-    paths:
-      - ".github/workflows/docs.yaml"
-      - "docs/**"
-      - "!docs/kustomize-example/"
-      - "api/v1beta1/*types.go"
-      - "api/v1beta1/additional.go"
-      - "api/victoriametrics/v1beta1/*types.go"
-      - "api/victoriametrics/v1beta1/additional.go"
-      - "internal/config/config.go"
+  release:
+    types: [published]
 
 jobs:
   update-docs:
+    if: "!contains(github.event.release.tag_name, '-rc')"
     runs-on: ubuntu-latest
     environment:
       name: docs

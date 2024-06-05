@@ -1,0 +1,57 @@
+name: Update CRDs for chart repo
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  update-crds:
+    if: "!contains(github.event.release.tag_name, '-rc')"
+    runs-on: ubuntu-latest
+    environment:
+      name: docs
+    steps:
+      - name: Check out operator code
+        uses: actions/checkout@v4
+        with:
+          repository: VictoriaMetrics/operator
+          ref: master
+          token: ${{ secrets.VM_BOT_GH_TOKEN }}
+          path: "__vm-operator-repo"
+
+      - name: Check out VM code
+        uses: actions/checkout@v4
+        with:
+          repository: VictoriaMetrics/helm-charts
+          ref: master
+          token: ${{ secrets.VM_BOT_GH_TOKEN }}
+          path: "__vm-charts-repo"
+
+      - name: Import GPG key
+        uses: crazy-max/ghaction-import-gpg@v6
+        with:
+          gpg_private_key: ${{ secrets.VM_BOT_GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.VM_BOT_PASSPHRASE }}
+          git_user_signingkey: true
+          git_commit_gpgsign: true
+          workdir: "__vm-charts-repo"
+
+      - name: Update crd yaml in chart repo
+        run: |
+          find config/crd/bases -name '*.yaml' | sort | xargs awk 'FNR==1 && NR!=1 {print "---"}{print}' > ../__vm-charts-repo/charts/victoria-metrics-operator/crd.yaml
+          find config/crd/bases -name '*.yaml' | sort | xargs awk 'FNR==1 && NR!=1 {print "---"}{print}' > ../__vm-charts-repo/charts/victoria-metrics-k8s-stack/charts/crds/crds/crd.yaml
+        working-directory: "__vm-operator-repo"
+
+      - name: Commit and push changes
+        run: |
+          export VM_GIT_BRANCH_NAME="operator-crds-update-$(date +%s)"
+          export VM_GIT_COMMIT_SHA="$(git rev-parse --short $GITHUB_SHA)"
+          git checkout -b "${VM_GIT_BRANCH_NAME}"
+          git add charts/victoria-metrics-operator/crd.yaml
+          git add charts/victoria-metrics-k8s-stack/charts/crds/crds/crd.yaml
+          git commit -S -m "Automatic sync crd resources from ${GITHUB_REPOSITORY}@${VM_GIT_COMMIT_SHA}"
+          git push origin ${VM_GIT_BRANCH_NAME}
+          gh pr create -f
+        working-directory: "__vm-charts-repo"
+        env:
+          GITHUB_TOKEN: ${{ secrets.VM_BOT_GH_TOKEN }}

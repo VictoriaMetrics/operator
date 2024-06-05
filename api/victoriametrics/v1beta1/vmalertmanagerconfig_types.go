@@ -662,7 +662,7 @@ type OpsGenieConfig struct {
 	Priority string `json:"priority,omitempty"`
 	// A set of arbitrary key/value pairs that provide further detail about the incident.
 	// +optional
-	Details map[string]string `json:"details,omitempty"`
+	Details ReceiverConfigDetails `json:"details,omitempty"`
 	// List of responders responsible for notifications.
 	// +optional
 	Responders []OpsGenieConfigResponder `json:"responders,omitempty"`
@@ -745,17 +745,17 @@ type PagerDutyConfig struct {
 	Component string `json:"component,omitempty"`
 	// Arbitrary key/value pairs that provide further detail about the incident.
 	// +optional
-	Details PagerDutyDetails `json:"details,omitempty"`
+	Details ReceiverConfigDetails `json:"details,omitempty"`
 	// HTTP client configuration.
 	// +optional
 	HTTPConfig *HTTPConfig `json:"http_config,omitempty"`
 }
 
 // PagerDutyDetails details for config
-type PagerDutyDetails map[string]string
+type ReceiverConfigDetails map[string]string
 
 // UnmarshalYAML implements interface
-func (pdd *PagerDutyDetails) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (pdd *ReceiverConfigDetails) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	pddm := make(map[string]string)
 	if err := unmarshal(&pddm); err != nil {
 		if !strings.Contains(err.Error(), "seq into map") {

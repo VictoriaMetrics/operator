@@ -101,7 +101,7 @@ type TargetEndpoint struct {
 	// HonorTimestamps controls whether vmagent respects the timestamps present in scraped data.
 	// +optional
 	HonorTimestamps *bool `json:"honorTimestamps,omitempty"`
-	// VMScrapeParams defines VictoriaMetrics specific scrape parametrs
+	// VMScrapeParams defines VictoriaMetrics specific scrape parameters
 	// +optional
 	VMScrapeParams *VMScrapeParams `json:"vm_scrape_params,omitempty"`
 }

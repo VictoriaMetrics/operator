@@ -91,7 +91,7 @@ type VMNodeScrapeSpec struct {
 	// a single target can expose during all the scrapes on the time window of 24h.
 	// +optional
 	SeriesLimit uint64 `json:"seriesLimit,omitempty"`
-	// VMScrapeParams defines VictoriaMetrics specific scrape parametrs
+	// VMScrapeParams defines VictoriaMetrics specific scrape parameters
 	// +optional
 	VMScrapeParams *VMScrapeParams `json:"vm_scrape_params,omitempty"`
 }

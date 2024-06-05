@@ -76,7 +76,7 @@ type TimeInterval struct {
 	// for example, ['1:5', '-3:-1']
 	// +optional
 	DaysOfMonth []string `json:"days_of_month,omitempty"`
-	// Months  defines list of calendar months identified by a case-insentive name (e.g. ‘January’) or numeric 1.
+	// Months  defines list of calendar months identified by a case-insensitive name (e.g. ‘January’) or numeric 1.
 	// For example, ['1:3', 'may:august', 'december']
 	// +optional
 	Months []string `json:"months,omitempty"`

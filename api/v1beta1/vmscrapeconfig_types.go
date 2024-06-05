@@ -81,7 +81,7 @@ type VMScrapeConfigSpec struct {
 	// +kubebuilder:validation:Enum=HTTP;HTTPS
 	// +optional
 	Scheme *string `json:"scheme,omitempty"`
-	// VMScrapeParams defines VictoriaMetrics specific scrape parametrs
+	// VMScrapeParams defines VictoriaMetrics specific scrape parameters
 	// +optional
 	VMScrapeParams *VMScrapeParams `json:"vm_scrape_params,omitempty"`
 

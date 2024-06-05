@@ -457,7 +457,7 @@ type StreamAggrRule struct {
 	// Interval is the interval between aggregations.
 	Interval string `json:"interval" yaml:"interval"`
 
-	// NoAlighFlushToInterval disables aligning of flushes to multiples of Interval.
+	// NoAlignFlushToInterval disables aligning of flushes to multiples of Interval.
 	// By default flushes are aligned to Interval.
 	NoAlignFlushToInterval *bool `json:"no_align_flush_to_interval,omitempty" yaml:"no_align_flush_to_interval,omitempty"`
 

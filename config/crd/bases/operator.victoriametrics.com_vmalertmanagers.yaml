@@ -721,8 +721,8 @@ spec:
                 type: object
               paused:
                 description: |-
-                  Paused If set to true all actions on the underlaying managed objects are not
-                  goint to be performed, except for delete actions.
+                  Paused If set to true all actions on the underlying managed objects are not
+                  going to be performed, except for delete actions.
                 type: boolean
               podDisruptionBudget:
                 description: PodDisruptionBudget created by operator

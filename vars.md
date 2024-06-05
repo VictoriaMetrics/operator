@@ -13,7 +13,7 @@ menu:
  updated at Fri Apr 26 09:33:38 UTC 2024 
 
 
-| varible name | variable default value | variable required | variable description |
+| variable name | variable default value | variable required | variable description |
 | --- | --- | --- | --- |
 | VM_USECUSTOMCONFIGRELOADER | false | false | enables custom config reloader for vmauth and vmagent,it should speed-up config reloading process. |
 | VM_CONTAINERREGISTRY | - | false | container registry name prefix, e.g. docker.io |

@@ -630,6 +630,12 @@ Possible configuration options for backup crd can be found at [link](../api.md#v
 
 Also see VMCLuster example spec [here](https://github.com/VictoriaMetrics/operator/blob/master/config/examples/vmcluster_with_backuper.yaml).
 
+## Multi-level cluster setup
+
+You can construct a [multi-level cluster setup](https://docs.victoriametrics.com/cluster-victoriametrics/#multi-level-cluster-setup) with several `VMCluster` resources.
+
+See minimal configuration [example here](https://github.com/VictoriaMetrics/operator/blob/master/config/examples/vmagent-stream-aggr.yaml) for that.
+
 ## Examples
 
 ### Minimal example without persistence

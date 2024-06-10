@@ -19,15 +19,22 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/util/workqueue"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 )
 
+// BindFlags binds package flags to the given flagSet
+func BindFlags(f *flag.FlagSet) {
+	cacheSyncTimeout = f.Duration("controller.cacheSyncTimeout", *cacheSyncTimeout, "controls timeout for caches to be synced.")
+	maxConcurrency = f.Int("controller.maxConcurrentReconciles", *maxConcurrency, "Configures number of concurrent reconciles. It should improve performance for clusters with many objects.")
+}
+
 var (
-	cacheSyncTimeout = flag.Duration("controller.cacheSyncTimeout", 3*time.Minute, "controls timeout for caches to be synced.")
-	maxConcurrency   = flag.Int("controller.maxConcurrentReconciles", 1, "Configures number of concurrent reconciles. It should improve performance for clusters with many objects.")
+	cacheSyncTimeout = ptr.To(3 * time.Minute)
+	maxConcurrency   = ptr.To(1)
 )
 
 var (

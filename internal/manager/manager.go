@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/buildinfo"
-	"github.com/VictoriaMetrics/VictoriaMetrics/lib/httpserver"
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/controllers"
 	"github.com/VictoriaMetrics/operator/controllers/factory/k8stools"
@@ -41,8 +40,9 @@ import (
 )
 
 var (
-	startTime  = time.Now()
-	appVersion = prometheus.NewGaugeFunc(prometheus.GaugeOpts{Name: "vm_app_version", Help: "version of application", ConstLabels: map[string]string{"version": buildinfo.Version}}, func() float64 {
+	managerFlags = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+	startTime    = time.Now()
+	appVersion   = prometheus.NewGaugeFunc(prometheus.GaugeOpts{Name: "vm_app_version", Help: "version of application", ConstLabels: map[string]string{"version": buildinfo.Version}}, func() float64 {
 		return 1.0
 	})
 	uptime = prometheus.NewGaugeFunc(prometheus.GaugeOpts{Name: "vm_app_uptime_seconds", Help: "uptime"}, func() float64 {
@@ -53,21 +53,21 @@ var (
 	})
 	scheme               = runtime.NewScheme()
 	setupLog             = ctrl.Log.WithName("setup")
-	enableLeaderElection = flag.Bool("enable-leader-election", false, "Enable leader election for controller manager. "+
+	enableLeaderElection = managerFlags.Bool("enable-leader-election", false, "Enable leader election for controller manager. "+
 		"Enabling this will ensure there is only one active controller manager.")
-	enableWebhooks                = flag.Bool("webhook.enable", false, "adds webhook server, you must mount cert and key or use cert-manager")
-	disableCRDOwnership           = flag.Bool("controller.disableCRDOwnership", false, "disables CRD ownership add to cluster wide objects, must be disabled for clusters, lower than v1.16.0")
-	webhooksDir                   = flag.String("webhook.certDir", "/tmp/k8s-webhook-server/serving-certs/", "root directory for webhook cert and key")
-	webhookCertName               = flag.String("webhook.certName", "tls.crt", "name of webhook server Tls certificate inside tls.certDir")
-	webhookKeyName                = flag.String("webhook.keyName", "tls.key", "name of webhook server Tls key inside tls.certDir")
-	metricsAddr                   = flag.String("metrics-addr", ":8080", "The address the metric endpoint binds to.")
-	probeAddr                     = flag.String("http.readyListenAddr", "localhost:8081", "The address the probes (health, ready) binds to.")
-	listenAddr                    = flag.String("http.listenAddr", ":8435", "http server listen addr - serves victoria-metrics http server + metrics.")
-	defaultKubernetesMinorVersion = flag.Uint64("default.kubernetesVersion.minor", 21, "Minor version of kubernetes server, if operator cannot parse actual kubernetes response")
-	defaultKubernetesMajorVersion = flag.Uint64("default.kubernetesVersion.major", 1, "Major version of kubernetes server, if operator cannot parse actual kubernetes response")
-	printDefaults                 = flag.Bool("printDefaults", false, "print all variables with their default values and exit")
-	printFormat                   = flag.String("printFormat", "table", "output format for --printDefaults. Can be table, json, yaml or list")
-	promCRDResyncPeriod           = flag.Duration("controller.prometheusCRD.resyncPeriod", 0, "Configures resync period for prometheus CRD converter. Disabled by default")
+	enableWebhooks                = managerFlags.Bool("webhook.enable", false, "adds webhook server, you must mount cert and key or use cert-manager")
+	disableCRDOwnership           = managerFlags.Bool("controller.disableCRDOwnership", false, "disables CRD ownership add to cluster wide objects, must be disabled for clusters, lower than v1.16.0")
+	webhooksDir                   = managerFlags.String("webhook.certDir", "/tmp/k8s-webhook-server/serving-certs/", "root directory for webhook cert and key")
+	webhookCertName               = managerFlags.String("webhook.certName", "tls.crt", "name of webhook server Tls certificate inside tls.certDir")
+	webhookKeyName                = managerFlags.String("webhook.keyName", "tls.key", "name of webhook server Tls key inside tls.certDir")
+	metricsAddr                   = managerFlags.String("metrics-addr", ":8080", "The address the metric endpoint binds to.")
+	pprofAddr                     = managerFlags.String("pprof-addr", "localhost:8435", "The address for pprof/debug API. Empty value disables server")
+	probeAddr                     = managerFlags.String("http.readyListenAddr", "localhost:8081", "The address the probes (health, ready) binds to.")
+	defaultKubernetesMinorVersion = managerFlags.Uint64("default.kubernetesVersion.minor", 21, "Minor version of kubernetes server, if operator cannot parse actual kubernetes response")
+	defaultKubernetesMajorVersion = managerFlags.Uint64("default.kubernetesVersion.major", 1, "Major version of kubernetes server, if operator cannot parse actual kubernetes response")
+	printDefaults                 = managerFlags.Bool("printDefaults", false, "print all variables with their default values and exit")
+	printFormat                   = managerFlags.String("printFormat", "table", "output format for --printDefaults. Can be table, json, yaml or list")
+	promCRDResyncPeriod           = managerFlags.Duration("controller.prometheusCRD.resyncPeriod", 0, "Configures resync period for prometheus CRD converter. Disabled by default")
 	wasCacheSynced                = uint32(0)
 )
 
@@ -86,9 +86,10 @@ func RunManager(ctx context.Context) error {
 	// Add flags registered by imported packages (e.g. glog and
 	// controller-runtime)
 	opts := zap.Options{}
-	opts.BindFlags(flag.CommandLine)
+	opts.BindFlags(managerFlags)
+	controllers.BindFlags(managerFlags)
 
-	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
+	pflag.CommandLine.AddGoFlagSet(managerFlags)
 
 	pflag.Parse()
 
@@ -134,13 +135,13 @@ func RunManager(ctx context.Context) error {
 	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Logger: ctrl.Log.WithName("manager"),
-		Scheme: scheme,
-		//	MetricsBindAddress:     *metricsAddr,
+		Logger:                 ctrl.Log.WithName("manager"),
+		Scheme:                 scheme,
 		Metrics:                metricsserver.Options{BindAddress: *metricsAddr},
 		HealthProbeBindAddress: *probeAddr,
 		ReadinessEndpointName:  "/ready",
 		LivenessEndpointName:   "/health",
+		PprofBindAddress:       *pprofAddr,
 		// port for webhook
 		WebhookServer: webhook.NewServer(webhook.Options{
 			Port:     9443,
@@ -379,19 +380,11 @@ func RunManager(ctx context.Context) error {
 		setupLog.Error(err, "cannot add runnable")
 		return err
 	}
-	if len(*listenAddr) > 0 {
-		go httpserver.Serve(*listenAddr, false, requestHandler)
-	}
 
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctx); err != nil {
 		setupLog.Error(err, "problem running manager")
 		return err
-	}
-	if len(*listenAddr) > 0 {
-		if err := httpserver.Stop(*listenAddr); err != nil {
-			setupLog.Error(err, "failed to gracefully stop HTTP server")
-		}
 	}
 
 	setupLog.Info("gracefully stopped")
@@ -419,9 +412,4 @@ func addWebhooks(mgr ctrl.Manager) error {
 		&victoriametricsv1beta1.VMUser{},
 		&victoriametricsv1beta1.VMRule{},
 	})
-}
-
-// no-op
-func requestHandler(w http.ResponseWriter, r *http.Request) bool {
-	return false
 }

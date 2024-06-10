@@ -296,7 +296,7 @@ func requestHandler(w http.ResponseWriter, r *http.Request) bool {
 		metrics.WritePrometheus(w, true)
 	case "/health":
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`OK`))
+		_, _ = w.Write([]byte(`OK`))
 	}
 	return false
 }

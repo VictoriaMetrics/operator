@@ -70,7 +70,7 @@ func newKubernetesWatcher(ctx context.Context, secretName, namespace string) (*k
 	}, &v1.Secret{}, 0, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
 
 	syncChan := make(chan syncEvent, 10)
-	inf.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	if _, err := inf.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			s := obj.(*v1.Secret)
 			syncChan <- syncEvent{op: "create", obj: s}
@@ -83,7 +83,9 @@ func newKubernetesWatcher(ctx context.Context, secretName, namespace string) (*k
 			s := obj.(*v1.Secret)
 			syncChan <- syncEvent{op: "delete", obj: s}
 		},
-	})
+	}); err != nil {
+		return nil, fmt.Errorf("cannot build eventHandler: %w", err)
+	}
 
 	return &k8sWatcher{inf: inf, c: c, events: syncChan, namespace: namespace, secretName: secretName}, nil
 }

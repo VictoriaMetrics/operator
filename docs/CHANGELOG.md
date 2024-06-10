@@ -16,6 +16,7 @@ aliases:
 
 ## Next release
 
+- [operator](#./README.md): expose only command-line flags related to the operator. Remove all transitive dependency flags. See this [issue](https://github.com/VictoriaMetrics/operator/issues/963) for details.
 - [vmalertmanager](./api.md#vmalertmanager): ignores content of `cr.spec.configSecret` if it's name clashes with secret used by operator for storing alertmanager config. See this [issue](https://github.com/VictoriaMetrics/operator/issues/954) for details.
 - [operator](./README.md): remove finalizer for child objects with non-empty `DeletetionTimestamp`.  See this [issue](https://github.com/VictoriaMetrics/operator/issues/953) for details.
 - [operator](./README.md): skip storageClass check if there is no PVC size change. See this [issue](https://github.com/VictoriaMetrics/operator/issues/957) for details.

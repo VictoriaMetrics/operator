@@ -357,7 +357,7 @@ func (boc BaseOperatorConf) Validate() error {
 func (boc BaseOperatorConf) PrintDefaults(format string) error {
 	tabs := tabwriter.NewWriter(os.Stdout, 1, 0, 4, ' ', 0)
 
-	formatter := "unknown"
+	var formatter string
 	switch format {
 	case "table":
 		formatter = envconfig.DefaultTableFormat

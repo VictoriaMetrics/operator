@@ -1,18 +1,33 @@
 ARG base_image
+ARG USER_UID=1001
+ARG USER_NAME=vm-operator
+
+FROM alpine as passwd
+
+ARG TARGETARCH
+ARG USER_UID
+ARG USER_NAME
+
+ENV USER_UID=${USER_UID} \
+    USER_NAME=${USER_NAME}
+RUN adduser -S -D -u ${USER_UID} -s /bin/false ${USER_NAME} && \
+    cat /etc/passwd | grep ${USER_NAME} > /etc/passwd_export
 
 FROM ${base_image}
 # src_binary arg must be in scope, after FROM
 
 ARG TARGETARCH
+ARG USER_UID
+ARG USER_NAME
 
 ENV OPERATOR=/usr/local/bin/manager \
-    USER_UID=1001 \
-    USER_NAME=vm-operator
+    USER_UID=${USER_ID} \
+    USER_NAME=${USER_NAME}
 
 # install operator
 COPY bin/manager-${TARGETARCH} ${OPERATOR}
 
-RUN adduser -S -D -u ${USER_UID} ${USER_NAME}
+COPY --from=passwd /etc/passwd_export /etc/passwd
 
 ENTRYPOINT ["/usr/local/bin/manager"]
 

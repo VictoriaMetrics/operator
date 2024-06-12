@@ -26,6 +26,7 @@ CRD_PRESERVE=x-kubernetes-preserve-unknown-fields true
 # Default bundle image tag
 BUNDLE_IMG ?= controller-bundle:$(VERSION)
 ALPINE_IMAGE=alpine:3.19.1
+SCRATCH_IMAGE=scratch
 CHANNEL=beta
 DEFAULT_CHANNEL=beta
 BUNDLE_CHANNELS := --channels=$(CHANNEL)
@@ -369,27 +370,27 @@ package-arch:
 
 
 build-operator-crosscompile: fmt vet
-	CGO_ENABLED=0 GOARCH=arm $(MAKE) package-arch
-	CGO_ENABLED=0 GOARCH=arm64 $(MAKE) package-arch
-	CGO_ENABLED=0 GOARCH=amd64 $(MAKE) package-arch
-	CGO_ENABLED=0 GOARCH=ppc64le $(MAKE) package-arch
-	CGO_ENABLED=0 GOARCH=386 $(MAKE) package-arch
+	CGO_ENABLED=0 GOOS=linux GOARCH=arm $(MAKE) package-arch
+	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 $(MAKE) package-arch
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(MAKE) package-arch
+	CGO_ENABLED=0 GOOS=linux GOARCH=ppc64le $(MAKE) package-arch
+	CGO_ENABLED=0 GOOS=linux GOARCH=386 $(MAKE) package-arch
 
 docker-operator-manifest-build-and-push:
 	export DOCKER_CLI_EXPERIMENTAL=enabled ;\
 	! ( docker buildx ls | grep operator-builder ) && docker buildx create --use --platform=$(MANIFEST_BUILD_PLATFORM) --name operator-builder ;\
 	docker buildx build \
 		--builder operator-builder \
-		-t $(DOCKER_REPO):$(TAG) \
-		-t $(DOCKER_REPO):$(COMMIT_SHA) \
-		-t $(DOCKER_REPO):latest \
+		$(foreach v,$(TAGS),-t $(DOCKER_REPO):$(v)) \
 		--platform=$(MANIFEST_BUILD_PLATFORM) \
-		--build-arg base_image=$(ALPINE_IMAGE) \
+		--build-arg base_image=$(BASE_IMAGE) \
 		-f Docker-multiarch \
 		--push \
 		.
 
-publish-via-docker: build-operator-crosscompile docker-operator-manifest-build-and-push
+publish-via-docker: build-operator-crosscompile
+	BASE_IMAGE=$(ALPINE_IMAGE) TAGS="$(TAG) $(COMMIT_SHA) latest" $(MAKE) docker-operator-manifest-build-and-push
+	BASE_IMAGE=$(SCRATCH_IMAGE) TAGS="$(TAG)-scratch $(COMMIT_SHA)-scratch latest-scratch" $(MAKE) docker-operator-manifest-build-and-push
 
 
 # builds image and loads it into kind.

@@ -188,6 +188,7 @@ func NewObjectWatcherForNamespaces[T any, PT interface {
 						close(ownss.result)
 						return
 					}
+					watchEventsTotalByType.WithLabelValues(string(ev.Type), "ALL_NAMESPACES", crdTypeName).Inc()
 					select {
 					case ownss.result <- ev:
 					case <-ctx.Done():

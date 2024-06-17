@@ -18,10 +18,6 @@ DOCKER_REPO=victoriametrics/operator
 MANIFEST_BUILD_PLATFORM=linux/amd64,linux/arm,linux/arm64,linux/ppc64le,linux/386
 TEST_ARGS=$(GOCMD) test -covermode=atomic -coverprofile=coverage.txt -v
 APIS_BASE_PATH=api/v1beta1
-YAML_DROP_PREF=spec.versions[0].schema.openAPIV3Schema.properties.spec.properties
-YAML_DROP=yq delete --inplace
-YAML_ADD=yq w -i
-CRD_PRESERVE=x-kubernetes-preserve-unknown-fields true
 # Current Operator version
 # Default bundle image tag
 BUNDLE_IMG ?= controller-bundle:$(VERSION)
@@ -32,7 +28,7 @@ CHANNEL=beta
 DEFAULT_CHANNEL=beta
 BUNDLE_CHANNELS := --channels=$(CHANNEL)
 BUNDLE_METADATA_OPTS=$(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
-CRD_PATH=config/crd/bases
+CRD_ROOT=config/crd/bases
 # Image URL to use all building/pushing image targets
 IMG ?= $(DOCKER_REPO):$(TAG)
 COMMIT_SHA = $(shell git rev-parse --short HEAD)
@@ -64,140 +60,174 @@ install-docs-generators:
 
 install-develop-tools: install-golint install-docs-generators
 
-fix118:
-	CRD_FIX_PATH=$(CRD_PATH) YAML_DROP_PREFIX=$(YAML_DROP_PREF) $(MAKE) fix118_yaml
+yq:
+	@docker run --rm \
+		-v "${PWD}":/workdir \
+		-u "$(id -u)" \
+		-e YQ_KEYS="$(YQ_KEYS)" \
+		--entrypoint /usr/bin/yq mikefarah/yq:4.44.2-githubaction -i '$(YQ_EXPR)' $(CRD_PATH)
 
+yq_preserve:
+	$(eval CRD_PATH := "$(CRD_ROOT)/operator.victoriametrics.com_$(CRD_NAME).yaml")
+	$(eval CRD_PRESERVE := {"x-kubernetes-preserve-unknown-fields": true})
+	$(eval YQ_EXPR := 'eval(env(YQ_KEYS) | split(" ") | .[] | "$(CRD_PREFIX)" + .) += $(CRD_PRESERVE)')
+	CRD_PATH=$(CRD_PATH) YQ_EXPR=$(YQ_EXPR) YQ_KEYS="$(YQ_KEYS)" CRD_NAME=$(CRD_NAME) CRD_PREFIX="$(CRD_PREFIX)" $(MAKE) yq
 
-patch_crd_yaml:
-	docker run --rm -v "${PWD}":/workdir mikefarah/yq:2.2.0 /bin/sh -c ' \
-	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_$(CRD_NAME).yaml $(YAML_DROP_PREFIX).dnsConfig.items.properties &&\
-   	    $(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_$(CRD_NAME).yaml $(YAML_DROP_PREFIX).dnsConfig.items.$(CRD_PRESERVE) &&\
-	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_$(CRD_NAME).yaml $(YAML_DROP_PREFIX).initContainers.items.properties &&\
-   	    $(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_$(CRD_NAME).yaml $(YAML_DROP_PREFIX).initContainers.items.$(CRD_PRESERVE) &&\
-	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_$(CRD_NAME).yaml $(YAML_DROP_PREFIX).containers.items.properties &&\
-   	    $(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_$(CRD_NAME).yaml $(YAML_DROP_PREFIX).containers.items.$(CRD_PRESERVE) &&\
-	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_$(CRD_NAME).yaml $(YAML_DROP_PREFIX).topologySpreadConstraints.items.properties &&\
-  	    $(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_$(CRD_NAME).yaml $(YAML_DROP_PREFIX).topologySpreadConstraints.items.$(CRD_PRESERVE) &&\
-	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_$(CRD_NAME).yaml $(YAML_DROP_PREFIX).affinity.properties &&\
-	    $(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_$(CRD_NAME).yaml $(YAML_DROP_PREFIX).affinity.$(CRD_PRESERVE) &&\
-	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_$(CRD_NAME).yaml $(YAML_DROP_PREFIX).serviceSpec.properties.spec.properties &&\
-	    $(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_$(CRD_NAME).yaml $(YAML_DROP_PREFIX).serviceSpec.properties.spec.$(CRD_PRESERVE) &&\
-		$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_$(CRD_NAME).yaml $(YAML_DROP_PREFIX).volumes.items.properties &&\
-   		$(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_$(CRD_NAME).yaml $(YAML_DROP_PREFIX).volumes.items.$(CRD_PRESERVE) &&\
-	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_$(CRD_NAME).yaml $(YAML_DROP_PREFIX).startupProbe.properties &&\
-	    $(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_$(CRD_NAME).yaml $(YAML_DROP_PREFIX).startupProbe.$(CRD_PRESERVE) &&\
-	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_$(CRD_NAME).yaml $(YAML_DROP_PREFIX).readinessProbe.properties &&\
-	    $(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_$(CRD_NAME).yaml $(YAML_DROP_PREFIX).readinessProbe.$(CRD_PRESERVE) &&\
-	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_$(CRD_NAME).yaml $(YAML_DROP_PREFIX).livenessProbe.properties &&\
-  	    $(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_$(CRD_NAME).yaml $(YAML_DROP_PREFIX).livenessProbe.$(CRD_PRESERVE) &&\
-    	$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_$(CRD_NAME).yaml $(YAML_DROP_PREFIX).securityContext.properties && \
-    	$(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_$(CRD_NAME).yaml $(YAML_DROP_PREFIX).securityContext.$(CRD_PRESERVE) && \
-    	$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_$(CRD_NAME).yaml $(YAML_DROP_PREFIX).serviceScrapeSpec.properties && \
-    	$(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_$(CRD_NAME).yaml $(YAML_DROP_PREFIX).serviceScrapeSpec.$(CRD_PRESERVE) && \
-		$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_$(CRD_NAME).yaml $(YAML_DROP_PREFIX).extraEnvs.items.properties.valueFrom &&\
-		$(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_$(CRD_NAME).yaml $(YAML_DROP_PREFIX).extraEnvs.items.$(CRD_PRESERVE) '
+yq_delete:
+	$(eval CRD_PATH := "$(CRD_ROOT)/operator.victoriametrics.com_$(CRD_NAME).yaml")
+	$(eval YQ_EXPR := 'del(eval(env(YQ_KEYS) | split(" ") | .[] | "$(CRD_PREFIX)" + .))')
+	CRD_PATH=$(CRD_PATH) YQ_EXPR=$(YQ_EXPR) YQ_KEYS="$(YQ_KEYS)" CRD_NAME=$(CRD_NAME) CRD_PREFIX="$(CRD_PREFIX)" $(MAKE) yq
 
-fix118_yaml:
-	CRD_NAME=vmalertmanagers $(MAKE) patch_crd_yaml
-	CRD_NAME=vmalerts $(MAKE) patch_crd_yaml
-	CRD_NAME=vmagents $(MAKE) patch_crd_yaml
-	CRD_NAME=vmsingles $(MAKE) patch_crd_yaml
-	CRD_NAME=vmauths $(MAKE) patch_crd_yaml
-	CRD_NAME=vmclusters YAML_DROP_PREFIX=$(YAML_DROP_PREFIX).vminsert.properties $(MAKE) patch_crd_yaml
-	CRD_NAME=vmclusters YAML_DROP_PREFIX=$(YAML_DROP_PREFIX).vmselect.properties $(MAKE) patch_crd_yaml
-	CRD_NAME=vmclusters YAML_DROP_PREFIX=$(YAML_DROP_PREFIX).vmstorage.properties $(MAKE) patch_crd_yaml
-	docker run --rm -v "${PWD}":/workdir mikefarah/yq:2.2.0 /bin/sh -c " \
-  	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmsingles.yaml $(YAML_DROP_PREFIX).'-'   \
-  	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).'-'   \
-  	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmauths.yaml $(YAML_DROP_PREFIX).'-'   \
-  	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).'-'   \
-  	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmagents.yaml $(YAML_DROP_PREFIX).'-'   \
- 	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalertmanagers.yaml $(YAML_DROP_PREFIX).'-'   \
-  	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalertmanagerconfigs.yaml $(YAML_DROP_PREFIX).'-'   "
-	docker run --rm -v "${PWD}":/workdir mikefarah/yq:2.2.0 /bin/sh -c " \
-        $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalertmanagerconfigs.yaml $(YAML_DROP_PREFIX).receivers.items.properties.opsgenie_configs.items.properties.http_config.properties &&\
-	    $(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalertmanagerconfigs.yaml $(YAML_DROP_PREFIX).receivers.items.properties.opsgenie_configs.items.properties.http_config.$(CRD_PRESERVE) &&\
-	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).datasource.properties.OAuth2.properties &&\
-    	$(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).datasource.properties.OAuth2.$(CRD_PRESERVE) &&\
-	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).remoteRead.properties.OAuth2.properties &&\
-    	$(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).remoteRead.properties.OAuth2.$(CRD_PRESERVE) &&\
-	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).remoteWrite.properties.OAuth2.properties &&\
-    	$(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).remoteWrite.properties.OAuth2.$(CRD_PRESERVE) &&\
-	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).notifier.properties.OAuth2.properties &&\
-    	$(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).notifier.properties.OAuth2.$(CRD_PRESERVE) &&\
-	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).notifiers.items.properties.OAuth2.properties &&\
-    	$(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).notifiers.items.properties.OAuth2.$(CRD_PRESERVE) &&\
-	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).datasource.properties.tlsConfig.properties &&\
-    	$(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).datasource.properties.tlsConfig.$(CRD_PRESERVE) &&\
-	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).remoteRead.properties.tlsConfig.properties &&\
-    	$(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).remoteRead.properties.tlsConfig.$(CRD_PRESERVE) &&\
-	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).remoteWrite.properties.tlsConfig.properties &&\
-    	$(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).remoteWrite.properties.tlsConfig.$(CRD_PRESERVE) &&\
-	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).notifier.properties.tlsConfig.properties &&\
-    	$(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).notifier.properties.tlsConfig.$(CRD_PRESERVE) &&\
-	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).notifiers.items.properties.tlsConfig.properties &&\
-    	$(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml $(YAML_DROP_PREFIX).notifiers.items.properties.tlsConfig.$(CRD_PRESERVE) &&\
-	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalertmanagerconfigs.yaml $(YAML_DROP_PREFIX).receivers.items.properties.pagerduty_configs.items.properties.http_config.properties &&\
-    	$(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalertmanagerconfigs.yaml $(YAML_DROP_PREFIX).receivers.items.properties.pagerduty_configs.items.properties.http_config.$(CRD_PRESERVE) &&\
-        $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalertmanagerconfigs.yaml $(YAML_DROP_PREFIX).receivers.items.properties.pushover_configs.items.properties.http_config.properties &&\
-  	    $(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalertmanagerconfigs.yaml $(YAML_DROP_PREFIX).receivers.items.properties.pushover_configs.items.properties.http_config.$(CRD_PRESERVE) &&\
-  	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalertmanagerconfigs.yaml $(YAML_DROP_PREFIX).receivers.items.properties.slack_configs.items.properties.http_config.properties &&\
-    	$(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalertmanagerconfigs.yaml $(YAML_DROP_PREFIX).receivers.items.properties.slack_configs.items.properties.http_config.$(CRD_PRESERVE) &&\
-        $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalertmanagerconfigs.yaml $(YAML_DROP_PREFIX).receivers.items.properties.telegram_configs.items.properties.http_config.properties &&\
-  	    $(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalertmanagerconfigs.yaml $(YAML_DROP_PREFIX).receivers.items.properties.telegram_configs.items.properties.http_config.$(CRD_PRESERVE) &&\
-  	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalertmanagerconfigs.yaml $(YAML_DROP_PREFIX).receivers.items.properties.webhook_configs.items.properties.http_config.properties &&\
-      	$(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalertmanagerconfigs.yaml $(YAML_DROP_PREFIX).receivers.items.properties.webhook_configs.items.properties.http_config.$(CRD_PRESERVE) &&\
-	    $(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalertmanagerconfigs.yaml $(YAML_DROP_PREFIX).route.properties.routes.items.$(CRD_PRESERVE) &&\
-        $(YAML_ADD)  $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalertmanagerconfigs.yaml $(YAML_DROP_PREFIX).route.properties.routes.type array &&\
-  	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalertmanagerconfigs.yaml $(YAML_DROP_PREFIX).route.properties.'-' &&\
-	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vminsert.properties.hpa.properties &&\
-	    $(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vminsert.properties.hpa.$(CRD_PRESERVE) &&\
-		$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.persistentVolume.properties.volumeClaimTemplate.properties &&\
-		$(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.persistentVolume.properties.volumeClaimTemplate.$(CRD_PRESERVE) &&\
-	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.hpa.properties &&\
-	    $(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.hpa.$(CRD_PRESERVE) &&\
-	    $(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmselect.properties.claimTemplates.items.properties.metadata.$(CRD_PRESERVE) &&\
-	    $(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmstorage.properties.claimTemplates.items.properties.metadata.$(CRD_PRESERVE) &&\
- 	    $(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmagents.yaml $(YAML_DROP_PREFIX).claimTemplates.items.properties.metadata.$(CRD_PRESERVE) &&\
- 	    $(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalertmanagers.yaml $(YAML_DROP_PREFIX).claimTemplates.items.properties.metadata.$(CRD_PRESERVE) &&\
-		$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmstorage.properties.storage.properties.volumeClaimTemplate.properties &&\
-		$(YAML_ADD) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml $(YAML_DROP_PREFIX).vmstorage.properties.storage.properties.volumeClaimTemplate.$(CRD_PRESERVE) \
-		   	 	"
+.SILENT: patch_crds yq_delete yq yq_preserve
 
-fix_crd_nulls:
-	CRD_FIX_PATH=$(CRD_PATH) $(MAKE) fix_crd_nulls_yaml
+patch_crds:
+	$(eval CRD_PREFIX := .spec.versions[0].schema.openAPIV3Schema.properties.spec.properties)
 
-fix_crd_nulls_yaml:
-	docker run --rm -v "${PWD}":/workdir mikefarah/yq:2.2.0 /bin/sh -c ' \
-	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalertmanagers.yaml status &&\
-	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmagents.yaml status &&\
-	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml status &&\
-	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml status &&\
-	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmsingles.yaml status &&\
-	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmrules.yaml status &&\
-	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmnodescrapes.yaml status &&\
-	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmpodscrapes.yaml status &&\
-	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmservicescrapes.yaml status &&\
-	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmprobes.yaml status &&\
-	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmstaticscrapes.yaml status &&\
-	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmauths.yaml status &&\
-	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmauths.yaml metadata.creationTimestamp &&\
-	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmusers.yaml status &&\
-        $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmusers.yaml metadata.creationTimestamp &&\
- 	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalertmanagerconfigs.yaml status &&\
- 	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalertmanagerconfigs.yaml metadata.creationTimestamp &&\
-		$(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalertmanagers.yaml metadata.creationTimestamp &&\
-	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmagents.yaml metadata.creationTimestamp &&\
-	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmalerts.yaml metadata.creationTimestamp &&\
-	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmclusters.yaml metadata.creationTimestamp &&\
-	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmsingles.yaml metadata.creationTimestamp &&\
-	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmrules.yaml metadata.creationTimestamp &&\
-	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmnodescrapes.yaml metadata.creationTimestamp &&\
-	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmpodscrapes.yaml metadata.creationTimestamp &&\
-	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmservicescrapes.yaml metadata.creationTimestamp &&\
-	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmstaticscrapes.yaml metadata.creationTimestamp &&\
-	    $(YAML_DROP) $(CRD_FIX_PATH)/operator.victoriametrics.com_vmprobes.yaml metadata.creationTimestamp'
+	# Replace properties with x-preserve-unknown-fields
+	$(eval YQ_KEYS := .dnsConfig.items.properties \
+		.initContainers.items.properties \
+		.containers.items.properties \
+		.topologySpreadConstraints.items.properties \
+		.affinity.properties \
+		.serviceSpec.properties.spec.properties \
+		.volumes.items.properties \
+		.startupProbe.properties \
+		.readinessProbe.properties \
+		.livenessProbe.properties \
+		.securityContext.properties \
+		.serviceScrapeSpec.properties \
+		.extraEnvs.items.properties.valueFrom)
+	$(eval CRDS := alertmanager alert agent single auth)
+	for crd in $(CRDS); do \
+		YQ_KEYS="$(YQ_KEYS)" CRD_NAME=vm"$$crd"s CRD_PREFIX=$(CRD_PREFIX) $(MAKE) yq_delete; \
+	done;
 
+	$(eval COMPONENTS := insert select storage)
+	$(eval YQ_KEYS := $(YQ_KEYS) .hpa.properties)
+	for cmp in $(COMPONENTS); do \
+		YQ_KEYS="$(YQ_KEYS)" CRD_NAME=vmclusters CRD_PREFIX=$(CRD_PREFIX).vm"$$cmp".properties $(MAKE) yq_delete; \
+	done;
+
+	# Replace properties with x-preserve-unknown-fields
+	$(eval YQ_KEYS := .dnsConfig.items \
+		.initContainers.items \
+		.containers.items \
+		.topologySpreadConstraints.items \
+		.affinity \
+		.serviceSpec.properties.spec \
+		.volumes.items \
+		.startupProbe \
+		.readinessProbe \
+		.livenessProbe \
+		.securityContext \
+		.serviceScrapeSpec \
+		.extraEnvs.items)
+	$(eval CRDS := alertmanager alert agent single auth)
+	for crd in $(CRDS); do \
+		YQ_KEYS="$(YQ_KEYS)" CRD_NAME=vm"$$crd"s CRD_PREFIX=$(CRD_PREFIX) $(MAKE) yq_preserve; \
+	done;
+
+	$(eval COMPONENTS := insert select storage)
+	for cmp in $(COMPONENTS); do \
+		YQ_KEYS="$(YQ_KEYS)" CRD_NAME=vmclusters CRD_PREFIX=$(CRD_PREFIX).vm"$$cmp".properties $(MAKE) yq_preserve; \
+	done;
+
+	$(eval COMPONENTS := insert select)
+	$(eval YQ_KEYS := .hpa)
+	for cmp in $(COMPONENTS); do \
+		YQ_KEYS="$(YQ_KEYS)" CRD_NAME=vmclusters CRD_PREFIX=$(CRD_PREFIX).vm"$$cmp".properties $(MAKE) yq_preserve; \
+	done;
+
+	# Drop '-' key
+	$(eval CRDS := alertmanager alert agent single auth cluster)
+	$(eval YQ_KEYS := ".-")
+	for crd in $(CRDS); do \
+		YQ_KEYS=$(YQ_KEYS) CRD_NAME=vm"$$crd"s CRD_PREFIX=$(CRD_PREFIX) $(MAKE) yq_delete; \
+	done;
+
+	# Drop '-' key
+	$(eval CRDS := alertmanagerconfig)
+	$(eval YQ_KEYS := ".route.properties.-")
+	for crd in $(CRDS); do \
+		YQ_KEYS=$(YQ_KEYS) CRD_NAME=vm"$$crd"s CRD_PREFIX=$(CRD_PREFIX) $(MAKE) yq_delete; \
+	done;
+
+	# Replace vmalertmanagerconfig properties with x-preserve-unknown-fields
+	$(eval YQ_KEYS := ".receivers.items.properties.opsgenie_configs.items.properties.http_config.properties \
+		.receivers.items.properties.pagerduty_configs.items.properties.http_config.properties \
+                .receivers.items.properties.pushover_configs.items.properties.http_config.properties \
+                .receivers.items.properties.slack_configs.items.properties.http_config.properties \
+                .receivers.items.properties.telegram_configs.items.properties.http_config.properties \
+                .receivers.items.properties.webhook_configs.items.properties.http_config.properties")
+	YQ_KEYS=$(YQ_KEYS) CRD_NAME=vmalertmanagerconfigs CRD_PREFIX=$(CRD_PREFIX) $(MAKE) yq_delete
+
+	$(eval YQ_KEYS := ".receivers.items.properties.opsgenie_configs.items.properties.http_config \
+		.receivers.items.properties.pagerduty_configs.items.properties.http_config \
+		.receivers.items.properties.pushover_configs.items.properties.http_config \
+		.receivers.items.properties.slack_configs.items.properties.http_config \
+		.receivers.items.properties.telegram_configs.items.properties.http_config \
+		.receivers.items.properties.webhook_configs.items.properties.http_config")
+	YQ_KEYS=$(YQ_KEYS) CRD_NAME=vmalertmanagerconfigs CRD_PREFIX=$(CRD_PREFIX) $(MAKE) yq_preserve
+
+	# Replace vmalert properties with x-preserve-unknown-fields
+	$(eval YQ_KEYS := ".datasource.properties.OAuth2.properties \
+		.remoteRead.properties.OAuth2.properties \
+		.remoteWrite.properties.OAuth2.properties \
+		.notifier.properties.OAuth2.properties \
+		.notifiers.items.properties.OAuth2.properties \
+		.datasource.properties.tlsConfig.properties \
+		.remoteRead.properties.tlsConfig.properties \
+		.remoteWrite.properties.tlsConfig.properties \
+		.notifier.properties.tlsConfig.properties \
+		.notifiers.items.properties.tlsConfig.properties")
+	YQ_KEYS=$(YQ_KEYS) CRD_NAME=vmalerts CRD_PREFIX=$(CRD_PREFIX) $(MAKE) yq_delete
+
+	# Added x-preserve-unknown-fields for vmalerts
+	$(eval YQ_KEYS := ".datasource.properties.OAuth2 \
+		.remoteRead.properties.OAuth2 \
+		.remoteWrite.properties.OAuth2 \
+		.notifier.properties.OAuth2 \
+		.notifiers.items.properties.OAuth2 \
+		.datasource.properties.tlsConfig \
+		.remoteRead.properties.tlsConfig \
+		.remoteWrite.properties.tlsConfig \
+		.notifier.properties.tlsConfig \
+		.notifiers.items.properties.tlsConfig")
+	YQ_KEYS=$(YQ_KEYS) CRD_NAME=vmalerts CRD_PREFIX=$(CRD_PREFIX) $(MAKE) yq_preserve
+
+	# Drop keys in all manifests
+	$(eval YQ_KEYS := "metadata.creationTimestamp \
+		status")
+	$(eval CRDS := alertmanager alert agent single auth cluster probe staticscrape servicescrape nodescrape rule user podscrape scrapeconfig)
+	for crd in $(CRDS); do \
+		YQ_KEYS=$(YQ_KEYS) CRD_NAME=vm"$$crd"s CRD_PREFIX="." $(MAKE) yq_delete; \
+	done;
+
+	# Add x-preserve-unknown-fields to vmagent and vmalertmanager crds
+	$(eval YQ_KEYS := ".claimTemplates.items.properties.metadata")
+	$(eval CRDS := agent alertmanager)
+	for crd in $(CRDS); do \
+		YQ_KEYS=$(YQ_KEYS) CRD_NAME=vm"$$crd"s CRD_PREFIX=$(CRD_PREFIX) $(MAKE) yq_preserve; \
+	done;
+
+	# Add x-preserve-unknown-fields to vmcluster
+	$(eval YQ_KEYS := ".claimTemplates.items.properties.metadata")
+	$(eval COMPONENTS := storage select)
+	for cmp in $(COMPONENTS); do \
+		YQ_KEYS=$(YQ_KEYS) CRD_NAME=vmclusters CRD_PREFIX=$(CRD_PREFIX).vm"$$cmp".properties $(MAKE) yq_preserve; \
+	done;
+
+	# Replace vmstorage properties with x-preserve-unknown-fields
+	$(eval YQ_KEYS := ".storage.properties.volumeClaimTemplate.properties")
+	YQ_KEYS=$(YQ_KEYS) CRD_NAME=vmclusters CRD_PREFIX=$(CRD_PREFIX).vmstorage.properties $(MAKE) yq_delete; \
+	$(eval YQ_KEYS := ".storage.properties.volumeClaimTemplate")
+	YQ_KEYS=$(YQ_KEYS) CRD_NAME=vmclusters CRD_PREFIX=$(CRD_PREFIX).vmstorage.properties $(MAKE) yq_preserve; \
+
+	# Replace vmselect properties with x-preserve-unknown-fields
+	$(eval YQ_KEYS := ".persistentVolume.properties.volumeClaimTemplate.properties")
+	YQ_KEYS=$(YQ_KEYS) CRD_NAME=vmclusters CRD_PREFIX=$(CRD_PREFIX).vmselect.properties $(MAKE) yq_delete; \
+	$(eval YQ_KEYS := ".persistentVolume.properties.volumeClaimTemplate")
+	YQ_KEYS=$(YQ_KEYS) CRD_NAME=vmclusters CRD_PREFIX=$(CRD_PREFIX).vmselect.properties $(MAKE) yq_preserve; \
 
 doc: install-develop-tools
 	cat hack/doc_header.md > docs/api.md
@@ -230,7 +260,7 @@ docker: build manager
 	GOARCH=amd64 $(MAKE) docker-build-arch
 
 .PHONY:e2e-local
-e2e-local: fmt vet manifests fix118 fix_crd_nulls
+e2e-local: fmt vet manifests patch_crds
 	echo 'mode: atomic' > coverage.txt  && \
 	$(TEST_ARGS) -p 1 $(REPO)/e2e/...
 	$(GOCMD) tool cover -func coverage.txt  | grep total
@@ -248,7 +278,7 @@ clean:
 all: build
 
 # Run tests
-test: fmt vet manifests fix118 fix_crd_nulls
+test: manifests generate fmt vet patch_crds
 	echo 'mode: atomic' > coverage.txt  && \
 	$(TEST_ARGS) $(REPO)/controllers/... $(REPO)/api/...
 	$(GOCMD) tool cover -func coverage.txt  | grep total
@@ -262,7 +292,7 @@ run: manager
 	./bin/manager
 
 # Install CRDs into a cluster
-install: manifests fix118 fix_crd_nulls kustomize
+install: manifests patch_crds kustomize
 	$(KUSTOMIZE) build config/crd | kubectl apply -f -
 
 # Uninstall CRDs from a cluster
@@ -270,13 +300,13 @@ uninstall: manifests kustomize
 	$(KUSTOMIZE) build config/crd | kubectl delete -f -
 
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
-deploy: manifests fix118 fix_crd_nulls kustomize
+deploy: manifests patch_crds kustomize
 	#cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
 	$(KUSTOMIZE) build config/default | kubectl apply -f -
 
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen generate
-	cd api/v1beta1 && $(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="." output:crd:artifacts:config=$(PWD)/$(CRD_PATH) output:webhook:dir=$(PWD)/config/webhook
+	cd api/v1beta1 && $(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="." output:crd:artifacts:config=$(PWD)/$(CRD_ROOT) output:webhook:dir=$(PWD)/config/webhook
 # Run go fmt against code
 fmt:
 	go fmt ./...
@@ -323,11 +353,11 @@ KUSTOMIZE=$(shell which kustomize)
 endif
 
 # Generate bundle manifests and metadata, then validate generated files.
-bundle: manifests fix118 fix_crd_nulls
+bundle: manifests patch_crds
 	$(OPERATOR_BIN) generate kustomize manifests -q
 	kustomize build config/manifests | $(OPERATOR_BIN) generate bundle -q --overwrite --version $(VERSION_TRIM) $(BUNDLE_METADATA_OPTS)
-	sed -i "s|$(DOCKER_REPO):.*|$(DOCKER_REPO):$(VERSION)|" bundle/manifests/*
-	docker run --rm -v "${PWD}":/workdir mikefarah/yq:2.2.0 yq m -ia bundle/manifests/victoriametrics-operator.clusterserviceversion.yaml hack/bundle_csv_vmagent.yaml
+	sed -i='' 's|$(DOCKER_REPO):.*|$(DOCKER_REPO):$(VERSION)|' bundle/manifests/*
+	YQ_EXPR='. *= load("hack/bundle_csv_vmagent.yaml")' CRD_PATH=bundle/manifests/victoriametrics-operator.clusterserviceversion.yaml $(MAKE) yq
 	$(OPERATOR_BIN) bundle validate ./bundle
 	docker build -f bundle.Dockerfile -t quay.io/victoriametrics/operator:bundle-$(VERSION_TRIM) .
 
@@ -340,7 +370,7 @@ bundle-push: bundle
 bundle-build:
 	docker build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
 
-build: manager manifests fix118 fix_crd_nulls
+build: manager manifests patch_crds
 
 release-package: kustomize
 	rm -rf release/

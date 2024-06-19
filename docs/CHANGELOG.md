@@ -14,7 +14,7 @@ aliases:
 
 # CHANGELOG
 
-## Next release
+- [operator](#./README.md): fix VM CRs' `xxNamespaceSelector` and `xxSelector` options, previously they are inverted. See this [issue](https://github.com/VictoriaMetrics/operator/issues/980) for details.
 
 <a name="v0.45.0"></a>
 

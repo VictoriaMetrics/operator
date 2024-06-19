@@ -199,7 +199,7 @@ func isNamespaceSelectorMatches(ctx context.Context, rclient client.Client, sour
 	return false, nil
 }
 
-func isSelectorsMatchesTargetCRD(ctx context.Context, rclient client.Client, sourceCRD, targetCRD client.Object, namespaceSelector, selector *v1.LabelSelector) (bool, error) {
+func isSelectorsMatchesTargetCRD(ctx context.Context, rclient client.Client, sourceCRD, targetCRD client.Object, selector, namespaceSelector *v1.LabelSelector) (bool, error) {
 	// check namespace selector
 	if isNsMatch, err := isNamespaceSelectorMatches(ctx, rclient, sourceCRD, targetCRD, namespaceSelector); !isNsMatch || err != nil {
 		return isNsMatch, err
@@ -207,7 +207,7 @@ func isSelectorsMatchesTargetCRD(ctx context.Context, rclient client.Client, sou
 	// in case of empty namespace object must be synchronized in any way,
 	// coz we dont know source labels.
 	// probably object already deleted.
-	if sourceCRD.GetNamespace() == "" || sourceCRD.GetNamespace() == targetCRD.GetNamespace() {
+	if sourceCRD.GetNamespace() == "" {
 		return true, nil
 	}
 

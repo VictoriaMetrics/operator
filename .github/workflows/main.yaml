@@ -43,18 +43,16 @@ jobs:
         env:
           GO111MODULE: on
         run: |
-          go install  golang.org/x/lint/golint@latest
+          go install golang.org/x/lint/golint@latest
           go install github.com/kisielk/errcheck@latest
-          go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.51.2
-          curl -L -o operator-sdk "https://github.com/operator-framework/operator-sdk/releases/download/v1.0.0/operator-sdk-v1.0.0-x86_64-linux-gnu"
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.59.1
+          curl -L -o operator-sdk "https://github.com/operator-framework/operator-sdk/releases/download/v1.34.2/operator-sdk_linux_amd64"
           chmod +x operator-sdk
           sudo mv operator-sdk /bin/
       - name: lint and test
         env:
           GO111MODULE: on
         run: |
-          export PATH=$PATH:$(go env GOPATH)/bin # temporary fix. See https://github.com/actions/setup-go/issues/14
-          go get github.com/VictoriaMetrics/operator/api
           make lint
           make test
       - name: Set output variables

@@ -53,8 +53,11 @@ func (r *VMAlertmanagerConfigReconciler) Scheme() *runtime.Scheme {
 func (r *VMAlertmanagerConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	l := r.Log.WithValues("vmalertmanagerconfig", req.NamespacedName, "name", req.Name)
 
+	defer func() {
+		result, err = handleReconcileErr(ctx, r.Client, nil, result, err)
+	}()
 	var instance victoriametricsv1beta1.VMAlertmanagerConfig
-	if err := r.Client.Get(ctx, req.NamespacedName, &instance); err != nil {
+	if err := r.Get(ctx, req.NamespacedName, &instance); err != nil {
 		return result, &getError{err, "vmalertmanagerconfig", req}
 	}
 

@@ -7,7 +7,7 @@ import (
 
 	"github.com/VictoriaMetrics/operator/e2e/suite"
 	"github.com/VictoriaMetrics/operator/internal/config"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -43,6 +43,6 @@ var _ = BeforeSuite(func() {
 	}
 	err = k8sClient.Create(context.Background(), &testNamespace)
 	Expect(err == nil || errors.IsAlreadyExists(err)).To(BeTrue(), "got unexpected namespace creation error: %v", err)
-}, 60)
+})
 
 var _ = AfterSuite(suite.After)

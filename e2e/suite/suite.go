@@ -7,7 +7,7 @@ import (
 
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/manager"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"go.uber.org/zap/zapcore"
@@ -84,7 +84,7 @@ func Before() {
 
 		// disable metrics server because it fails to listen when running several test packages one after another
 		// also metrics server isn't very useful in tests
-		os.Args = append(os.Args, "--metrics-addr", "0", "--http.listenAddr", "")
+		os.Args = append(os.Args, "--metrics-bind-addr", "0", "--http.listenAddr", "")
 
 		ctx, cancel := context.WithCancel(context.Background())
 		go func(ctx context.Context) {

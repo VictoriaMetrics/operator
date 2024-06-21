@@ -8,7 +8,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 
 	operator "github.com/VictoriaMetrics/operator/api/v1beta1"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"golang.org/x/net/context"
 	corev1 "k8s.io/api/core/v1"

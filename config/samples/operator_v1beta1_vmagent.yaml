@@ -1,0 +1,9 @@
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAgent
+metadata:
+  labels:
+    app.kubernetes.io/name: victoriametrics-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: vmagent-sample
+spec:
+  # TODO(user): Add fields here

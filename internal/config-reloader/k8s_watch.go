@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -31,7 +31,7 @@ type k8sWatcher struct {
 
 type syncEvent struct {
 	op  string
-	obj *v1.Secret
+	obj *corev1.Secret
 }
 
 func newKubernetesWatcher(ctx context.Context, secretName, namespace string) (*k8sWatcher, error) {
@@ -52,7 +52,7 @@ func newKubernetesWatcher(ctx context.Context, secretName, namespace string) (*k
 	}
 	inf := cache.NewSharedIndexInformer(&cache.ListWatch{
 		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
-			var s v1.SecretList
+			var s corev1.SecretList
 			if err := c.List(ctx, &s, listOpts); err != nil {
 				k8sAPIWatchErrorsTotal.Inc()
 				return nil, fmt.Errorf("cannot get secret from k8s api: %w", err)
@@ -61,26 +61,26 @@ func newKubernetesWatcher(ctx context.Context, secretName, namespace string) (*k
 			return &s, nil
 		},
 		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-			wi, err := c.Watch(ctx, &v1.SecretList{}, listOpts)
+			wi, err := c.Watch(ctx, &corev1.SecretList{}, listOpts)
 			if err != nil {
 				k8sAPIWatchErrorsTotal.Inc()
 			}
 			return wi, err
 		},
-	}, &v1.Secret{}, 0, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
+	}, &corev1.Secret{}, 0, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
 
 	syncChan := make(chan syncEvent, 10)
 	if _, err := inf.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
-			s := obj.(*v1.Secret)
+			s := obj.(*corev1.Secret)
 			syncChan <- syncEvent{op: "create", obj: s}
 		},
 		UpdateFunc: func(oldObj, newObj interface{}) {
-			s := newObj.(*v1.Secret)
+			s := newObj.(*corev1.Secret)
 			syncChan <- syncEvent{op: "update", obj: s}
 		},
 		DeleteFunc: func(obj interface{}) {
-			s := obj.(*v1.Secret)
+			s := obj.(*corev1.Secret)
 			syncChan <- syncEvent{op: "delete", obj: s}
 		},
 	}); err != nil {
@@ -94,7 +94,7 @@ var errNotModified = fmt.Errorf("file content not modified")
 
 func (k *k8sWatcher) startWatch(ctx context.Context, updates chan struct{}) error {
 	var prevContent []byte
-	updateSecret := func(secret *v1.Secret) error {
+	updateSecret := func(secret *corev1.Secret) error {
 		newData, ok := secret.Data[*configSecretKey]
 		if !ok {
 			return fmt.Errorf("key=%q with content not found at secret=%q", *configSecretKey, secret.Name)
@@ -118,7 +118,7 @@ func (k *k8sWatcher) startWatch(ctx context.Context, updates chan struct{}) erro
 	}
 	go k.inf.Run(ctx.Done())
 
-	var lastSecret v1.Secret
+	var lastSecret corev1.Secret
 	if err := k.c.Get(ctx, types.NamespacedName{Namespace: k.namespace, Name: k.secretName}, &lastSecret); err != nil {
 		logger.Fatalf("cannot get secret during init secretName: %s, namespace: %s, err: %s", k.secretName, k.namespace, err)
 	}

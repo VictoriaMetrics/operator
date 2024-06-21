@@ -7,7 +7,7 @@ import (
 	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -37,7 +37,7 @@ var (
 					Endpoints: []monitoringv1.Endpoint{
 						{
 							Port: "8081",
-							RelabelConfigs: []*monitoringv1.RelabelConfig{
+							RelabelConfigs: []monitoringv1.RelabelConfig{
 								{
 									Action: "keep",
 								},

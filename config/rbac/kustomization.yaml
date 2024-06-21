@@ -3,6 +3,35 @@ resources:
 - role_binding.yaml
 - leader_election_role.yaml
 - leader_election_role_binding.yaml
+- vmuser_editor_role.yaml
+- vmuser_viewer_role.yaml
+- vmauth_editor_role.yaml
+- vmauth_viewer_role.yaml
+- vmstaticscrape_editor_role.yaml
+- vmstaticscrape_viewer_role.yaml
+- vmnodescrape_editor_role.yaml
+- vmnodescrape_viewer_role.yaml
+- vmprobe_editor_role.yaml
+- vmprobe_viewer_role.yaml
+- vmcluster_editor_role.yaml
+- vmcluster_viewer_role.yaml
+- vmsingle_editor_role.yaml
+- vmsingle_viewer_role.yaml
+- vmservicescrape_editor_role.yaml
+- vmservicescrape_viewer_role.yaml
+- vmrule_editor_role.yaml
+- vmrule_viewer_role.yaml
+- vmpodscrape_editor_role.yaml
+- vmpodscrape_viewer_role.yaml
+- vmalertmanagerconfig_editor_role.yaml
+- vmalertmanagerconfig_viewer_role.yaml
+- vmalertmanager_editor_role.yaml
+- vmalertmanager_viewer_role.yaml
+- vmalert_editor_role.yaml
+- vmalert_viewer_role.yaml
+- vmagent_editor_role.yaml
+- vmagent_viewer_role.yaml
+
 # Comment the following 4 lines if you want to disable
 # the auth proxy (https://github.com/brancz/kube-rbac-proxy)
 # which protects your /metrics endpoint.
@@ -20,3 +49,7 @@ patches:
 - path: service_account_patch.yaml
   target:
     name: vm-operator-manager-rolebinding
+# For each CRD, "Editor" and "Viewer" roles are scaffolded by
+# default, aiding admins in cluster management. Those roles are
+# not used by the Project itself. You can comment the following lines
+# if you do not want those helpers be installed with your Project.

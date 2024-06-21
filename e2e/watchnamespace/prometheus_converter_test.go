@@ -2,7 +2,7 @@ package watchnamespace
 
 import (
 	v1beta1vm "github.com/VictoriaMetrics/operator/api/v1beta1"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

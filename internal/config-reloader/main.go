@@ -37,7 +37,7 @@ var (
 	rulesDir               = flagutil.NewArrayString("rules-dir", "the same as watched-dir, legacy")
 	reloadURL              = flag.String("reload-url", "http://127.0.0.1:8429/-/reload", "reload URL to trigger config reload")
 	listenAddr             = flag.String("http.listenAddr", ":8435", "http server listen addr")
-	useProxyProtocolClient = flag.Bool("reload-use-proxy-protocol", false, "enables proxy-protocol for reload connections.")
+	useProxyProtocolClient = flagutil.NewArrayBool("reload-use-proxy-protocol", "enables proxy-protocol for reload connections.")
 	resyncInternal         = flag.Duration("resync-interval", 0, "interval for force resync of the last configuration")
 	webhookMethod          = flag.String("webhook-method", "GET", "the HTTP method url to use to send the webhook")
 )
@@ -93,7 +93,7 @@ func main() {
 		logger.Fatalf("cannot start dir watcher: %s", err)
 	}
 	dw.startWatch(ctx, updatesChan)
-	go httpserver.Serve(*listenAddr, false, requestHandler)
+	go httpserver.Serve([]string{*listenAddr}, useProxyProtocolClient, requestHandler)
 	procutil.WaitForSigterm()
 	logger.Infof("received stop signal, stopping config-reloader")
 	cancel()
@@ -118,7 +118,7 @@ func buildHTTPClient() *http.Client {
 		if err != nil {
 			return nil, err
 		}
-		if !*useProxyProtocolClient {
+		if !useProxyProtocolClient.GetOptionalArg(0) {
 			return conn, nil
 		}
 		header := &proxyproto.Header{

@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/VictoriaMetrics/operator/e2e/suite"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	// +kubebuilder:scaffold:imports
@@ -15,11 +15,7 @@ import (
 
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
-
-	RunSpecsWithDefaultAndCustomReporters(t,
-		"e2e Controller Suite", nil,
-		//	[]Reporter{printer.NewlineReporter{}})
-	)
+	RunSpecs(t, "e2e Controller Suite")
 }
 
 var (

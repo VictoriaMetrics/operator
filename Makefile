@@ -266,8 +266,8 @@ e2e-local: fmt vet manifests patch_crds
 	$(GOCMD) tool cover -func coverage.txt  | grep total
 
 lint:
-	golangci-lint run --exclude '(SA1019):' -E typecheck -E gosimple -E gocritic   --timeout 5m ./controllers/... ./internal/...
-	golint ./controllers/...
+	golangci-lint run --exclude '(SA1019):' -E typecheck -E gosimple -E gocritic   --timeout 5m ./internal/...
+	golint ./internal/controller/...
 
 .PHONY:clean
 clean:
@@ -280,12 +280,12 @@ all: build
 # Run tests
 test: manifests generate fmt vet patch_crds
 	echo 'mode: atomic' > coverage.txt  && \
-	$(TEST_ARGS) $(REPO)/controllers/... $(REPO)/api/...
+	$(TEST_ARGS) $(REPO)/internal/controller/... $(REPO)/api/...
 	$(GOCMD) tool cover -func coverage.txt  | grep total
 
 # Build manager binary
 manager: fmt vet
-	CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH} $(GOBUILD) -o bin/manager main.go
+	CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH} $(GOBUILD) -o bin/manager cmd/main.go
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 run: manager
@@ -344,7 +344,7 @@ ifeq (, $(shell which kustomize))
 	KUSTOMIZE_GEN_TMP_DIR=$$(mktemp -d) ;\
 	cd $$KUSTOMIZE_GEN_TMP_DIR ;\
 	go mod init tmp ;\
-	go install sigs.k8s.io/kustomize/kustomize/v3@v3.5.4 ;\
+	go install sigs.k8s.io/kustomize/kustomize/v5@v5.4.2 ;\
 	rm -rf $$KUSTOMIZE_GEN_TMP_DIR ;\
 	}
 KUSTOMIZE=$(GOBIN)/kustomize
@@ -397,7 +397,7 @@ docker-build-arch:
 			.
 
 package-arch:
-	CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH} $(GOBUILD) -o bin/manager-$(GOARCH) main.go
+	CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH} $(GOBUILD) -o bin/manager-$(GOARCH) cmd/main.go
 
 
 build-operator-crosscompile: fmt vet

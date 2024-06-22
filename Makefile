@@ -15,15 +15,15 @@ BINARY_NAME=vm-operator
 REPO=github.com/VictoriaMetrics/operator
 OPERATOR_BIN=operator-sdk
 DOCKER_REPO=victoriametrics/operator
-MANIFEST_BUILD_PLATFORM=linux/amd64,linux/arm,linux/arm64,linux/ppc64le,linux/386
+TARGET_PLATFORM=linux/amd64,linux/arm,linux/arm64,linux/ppc64le,linux/386
 TEST_ARGS=$(GOCMD) test -covermode=atomic -coverprofile=coverage.txt -v
 APIS_BASE_PATH=api/v1beta1
 # Current Operator version
 # Default bundle image tag
 BUNDLE_IMG ?= controller-bundle:$(VERSION)
-ALPINE_IMAGE=alpine:3.19.1
-SCRATCH_IMAGE=scratch
+ROOT_IMAGES=alpine:3.19.1 -scratch
 CONTROLLER_GEN_VERSION=v0.15.0
+CODEGENERATOR_VERSION=v0.30.2
 CHANNEL=beta
 DEFAULT_CHANNEL=beta
 BUNDLE_CHANNELS := --channels=$(CHANNEL)
@@ -33,7 +33,7 @@ CRD_ROOT=config/crd/bases
 IMG ?= $(DOCKER_REPO):$(TAG)
 COMMIT_SHA = $(shell git rev-parse --short HEAD)
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
-
+COMMA = ,
 CRD_OPTIONS ?= "crd"
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
@@ -285,11 +285,11 @@ test: manifests generate fmt vet patch_crds
 
 # Build manager binary
 manager: fmt vet
-	CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH} $(GOBUILD) -o bin/manager cmd/main.go
+	CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH} $(GOBUILD) -o bin/operator cmd/main.go
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 run: manager
-	./bin/manager
+	./bin/operator
 
 # Install CRDs into a cluster
 install: manifests patch_crds kustomize
@@ -301,7 +301,6 @@ uninstall: manifests kustomize
 
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
 deploy: manifests patch_crds kustomize
-	#cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
 	$(KUSTOMIZE) build config/default | kubectl apply -f -
 
 # Generate manifests e.g. CRD, RBAC etc.
@@ -383,45 +382,45 @@ release-package: kustomize
 	cd config/manager && \
 	kustomize edit  set image manager=$(DOCKER_REPO):$(TAG)
 	kustomize build config/manager > release/operator/manager.yaml
-	zip -r operator.zip bin/manager
+	zip -r operator.zip bin/operator
 	zip -r bundle_crd.zip release/
 
 # special section for cross compilation
 docker-build-arch:
 	export DOCKER_CLI_EXPERIMENTAL=enabled ;\
 	docker buildx build -t $(DOCKER_REPO):$(TAG)-$(GOARCH) \
-			--platform=linux/$(GOARCH) \
-			--build-arg base_image=$(ALPINE_IMAGE) \
-			-f Docker-multiarch \
-			--load \
-			.
+		--platform=linux/$(GOARCH) \
+		--build-arg ROOT_IMAGE=$(firstword $(ROOT_IMAGES)) \
+		--build-arg APP_NAME=operator \
+		--load \
+		.
 
 package-arch:
-	CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH} $(GOBUILD) -o bin/manager-$(GOARCH) cmd/main.go
+	CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH} $(GOBUILD) -o bin/operator-$(GOARCH) cmd/main.go
 
 
 build-operator-crosscompile: fmt vet
-	CGO_ENABLED=0 GOOS=linux GOARCH=arm $(MAKE) package-arch
-	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 $(MAKE) package-arch
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(MAKE) package-arch
-	CGO_ENABLED=0 GOOS=linux GOARCH=ppc64le $(MAKE) package-arch
-	CGO_ENABLED=0 GOOS=linux GOARCH=386 $(MAKE) package-arch
+	$(eval TARGET_PLATFORMS := $(subst $(COMMA), ,$(TARGET_PLATFORM)))
+	$(foreach PLATFORM,$(TARGET_PLATFORMS),GOOS=$(firstword $(subst /, ,$(PLATFORM))) GOARCH=$(lastword $(subst /, ,$(PLATFORM))) $(MAKE) package-arch;)
 
 docker-operator-manifest-build-and-push:
 	export DOCKER_CLI_EXPERIMENTAL=enabled ;\
-	! ( docker buildx ls | grep operator-builder ) && docker buildx create --use --platform=$(MANIFEST_BUILD_PLATFORM) --name operator-builder ;\
+	! ( docker buildx ls | grep operator-builder ) && docker buildx create --use --platform=$(TARGET_PLATFORM) --name operator-builder ;\
 	docker buildx build \
 		--builder operator-builder \
-		$(foreach v,$(TAGS),-t $(DOCKER_REPO):$(v)) \
-		--platform=$(MANIFEST_BUILD_PLATFORM) \
-		--build-arg base_image=$(BASE_IMAGE) \
-		-f Docker-multiarch \
+		$(foreach TAG,$(TAGS),-t $(DOCKER_REPO):$(TAG)) \
+		--platform=$(TARGET_PLATFORM) \
+		--build-arg ROOT_IMAGE=$(ROOT_IMAGE) \
+		--build-arg APP_NAME=operator \
 		--push \
 		.
 
 publish-via-docker: build-operator-crosscompile
-	BASE_IMAGE=$(ALPINE_IMAGE) TAGS="$(TAG) $(COMMIT_SHA) latest" $(MAKE) docker-operator-manifest-build-and-push
-	BASE_IMAGE=$(SCRATCH_IMAGE) TAGS="$(TAG)-scratch $(COMMIT_SHA)-scratch latest-scratch" $(MAKE) docker-operator-manifest-build-and-push
+	$(foreach ROOT_IMAGE,$(ROOT_IMAGES),\
+		$(eval SUFFIX := $(if $(findstring -,$(ROOT_IMAGE)),$(firstword $(subst :, ,$(ROOT_IMAGE))),)) \
+		ROOT_IMAGE=$(subst -,,$(ROOT_IMAGE)) \
+		TAGS="$(TAG) $(COMMIT_SHA) latest" \
+		$(MAKE) docker-operator-manifest-build-and-push;)
 
 
 # builds image and loads it into kind.
@@ -437,9 +436,9 @@ deploy-kind: build-load-kind
 
 # generate client set
 get-client-generator:
-	which client-gen || GO111MODULE=on go install k8s.io/code-generator/cmd/client-gen@v0.27.11
-	which lister-gen || GO111MODULE=on go install k8s.io/code-generator/cmd/lister-gen@v0.27.11
-	which informer-gen || GO111MODULE=on go install k8s.io/code-generator/cmd/informer-gen@v0.27.11
+	which client-gen || GO111MODULE=on go install k8s.io/code-generator/cmd/client-gen@$(CODEGENERATOR_VERSION)
+	which lister-gen || GO111MODULE=on go install k8s.io/code-generator/cmd/lister-gen@$(CODEGENERATOR_VERSION)
+	which informer-gen || GO111MODULE=on go install k8s.io/code-generator/cmd/informer-gen@$(CODEGENERATOR_VERSION)
 
 
 generate-client: get-client-generator
@@ -447,26 +446,25 @@ generate-client: get-client-generator
 	mkdir -p api/victoriametrics/v1beta1
 	cp api/v1beta1/* api/victoriametrics/v1beta1/	
 	@echo ">> generating with client-gen"
-	client-gen --clientset-name versioned \
-	 --input-base "" \
-	 --input "github.com/VictoriaMetrics/operator/api/victoriametrics/v1beta1" \
-     --output-base "" \
-     --output-package "github.com/VictoriaMetrics/operator/api/client" \
-     --go-header-file hack/boilerplate.go.txt	
+	client-gen \
+		--clientset-name versioned \
+		--input-base "" \
+		--input "github.com/VictoriaMetrics/operator/api/victoriametrics/v1beta1" \
+		--output-pkg "github.com/VictoriaMetrics/operator/api/client" \
+		--output-dir "github.com/VictoriaMetrics/operator/api/client" \
+		--go-header-file hack/boilerplate.go.txt
 	@echo ">> generating with lister-gen"
-	lister-gen \
-	 --input-dirs "github.com/VictoriaMetrics/operator/api/victoriametrics/v1beta1" \
-	 --output-base "" \
-	 --output-package "github.com/VictoriaMetrics/operator/api/client/listers" \
-	 --go-header-file hack/boilerplate.go.txt
+	lister-gen "github.com/VictoriaMetrics/operator/api/victoriametrics/v1beta1" \
+		--output-dir "github.com/VictoriaMetrics/operator/api/client/listers" \
+		--output-pkg "github.com/VictoriaMetrics/operator/api/client/listers" \
+		--go-header-file hack/boilerplate.go.txt
 	@echo ">> generating with informer-gen"	
-	informer-gen \
-	 --versioned-clientset-package "github.com/VictoriaMetrics/operator/api/client/versioned" \
-	 --listers-package "github.com/VictoriaMetrics/operator/api/client/listers" \
-	 --input-dirs "github.com/VictoriaMetrics/operator/api/victoriametrics/v1beta1" \
-	 --output-base "" \
-	 --output-package "github.com/VictoriaMetrics/operator/api/client/informers" \
-	 --go-header-file hack/boilerplate.go.txt	
+	informer-gen "github.com/VictoriaMetrics/operator/api/victoriametrics/v1beta1" \
+		--versioned-clientset-package "github.com/VictoriaMetrics/operator/api/client/versioned" \
+		--listers-package "github.com/VictoriaMetrics/operator/api/client/listers" \
+		--output-dir "github.com/VictoriaMetrics/operator/api/client/informers" \
+		--output-pkg "github.com/VictoriaMetrics/operator/api/client/informers" \
+		--go-header-file hack/boilerplate.go.txt
 
 	mv github.com/VictoriaMetrics/operator/api/client api/
 	rm -rf github.com/

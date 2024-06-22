@@ -2,7 +2,8 @@ cr-docker-build-arch:
 	export DOCKER_CLI_EXPERIMENTAL=enabled ;\
 	docker buildx build -t $(DOCKER_REPO):config-reloader-$(TAG)-$(GOARCH) \
 			--platform=linux/$(GOARCH) \
-			--build-arg base_image=$(ALPINE_IMAGE) \
+			--build-arg BASE_IMAGE=$(firstword $(BASE_IMAGES)) \
+			--build-arg APP_NAME=config-reloader \
 			-f internal/config-reloader/Dockerfile \
 			--load \
 			.
@@ -12,27 +13,25 @@ cr-package-arch:
 
 
 cr-build-operator-crosscompile:
-	CGO_ENABLED=0 GOARCH=arm $(MAKE) cr-package-arch
-	CGO_ENABLED=0 GOARCH=arm64 $(MAKE) cr-package-arch
-	CGO_ENABLED=0 GOARCH=amd64 $(MAKE) cr-package-arch
-	CGO_ENABLED=0 GOARCH=ppc64le $(MAKE) cr-package-arch
-	CGO_ENABLED=0 GOARCH=386 $(MAKE) cr-package-arch
+	$(eval TARGET_PLATFORMS := $(subst $(COMMA), ,$(TARGET_PLATFORM))) \
+        $(foreach PLATFORM,$(TARGET_PLATFORMS),GOOS=$(firstword $(subst /, ,$(PLATFORM))) GOARCH=$(lastword $(subst /, ,$(PLATFORM))) $(MAKE) cr-package-arch;)
 
 docker-config-reloader-manifest-build-and-push:
 	export DOCKER_CLI_EXPERIMENTAL=enabled ;\
-	! ( docker buildx ls | grep config-reloader-builder ) && docker buildx create --use --platform=$(MANIFEST_BUILD_PLATFORM) --name config-reloader-builder ;\
-	docker buildx build \
-		--builder config-reloader-builder \
-		-t $(DOCKER_REPO):config-reloader-$(TAG) \
-		-t $(DOCKER_REPO):config-reloader-latest \
-		--platform=$(MANIFEST_BUILD_PLATFORM) \
-		--build-arg base_image=$(ALPINE_IMAGE) \
-		-f internal/config-reloader/Dockerfile \
-		--push \
-		.
+	! ( docker buildx ls | grep config-reloader-builder ) && docker buildx create --use --platform=$(TARGET_PLATFORM) --name config-reloader-builder ;\
+	$(foreach ROOT_IMAGE,$(ROOT_IMAGES),\
+		$(eval SUFFIX := $(if $(findstring -,$(ROOT_IMAGE)),$(firstword $(subst :, ,$(ROOT_IMAGE))),)) \
+		docker buildx build \
+			--builder config-reloader-builder \
+			-t $(DOCKER_REPO):config-reloader-$(TAG)$(SUFFIX) \
+			-t $(DOCKER_REPO):config-reloader-latest$(SUFFIX) \
+			--platform=$(TARGET_PLATFORM) \
+			--build-arg ROOT_IMAGE=$(subst -,,$(ROOT_IMAGE)) \
+			--build-arg APP_NAME=config-reloader \
+			--push .;)
 
 publish-via-docker-config-reloader: cr-build-operator-crosscompile docker-config-reloader-manifest-build-and-push
 
 config-reloader-local:
-	GOARCH=amd64 CGO_ENABLED=0 $(MAKE) cr-package-arch
-	GOARCH=amd64 CGO_ENABLED=0 $(MAKE) cr-docker-build-arch
+	GOARCH=amd64 $(MAKE) cr-package-arch
+	GOARCH=amd64 $(MAKE) cr-docker-build-arch

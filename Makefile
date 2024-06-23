@@ -67,168 +67,6 @@ yq:
 		-e YQ_KEYS="$(YQ_KEYS)" \
 		--entrypoint /usr/bin/yq mikefarah/yq:4.44.2-githubaction -i '$(YQ_EXPR)' $(CRD_PATH)
 
-yq_preserve:
-	$(eval CRD_PATH := "$(CRD_ROOT)/operator.victoriametrics.com_$(CRD_NAME).yaml")
-	$(eval CRD_PRESERVE := {"x-kubernetes-preserve-unknown-fields": true})
-	$(eval YQ_EXPR := 'eval(env(YQ_KEYS) | split(" ") | .[] | "$(CRD_PREFIX)" + .) += $(CRD_PRESERVE)')
-	CRD_PATH=$(CRD_PATH) YQ_EXPR=$(YQ_EXPR) YQ_KEYS="$(YQ_KEYS)" CRD_NAME=$(CRD_NAME) CRD_PREFIX="$(CRD_PREFIX)" $(MAKE) yq
-
-yq_delete:
-	$(eval CRD_PATH := "$(CRD_ROOT)/operator.victoriametrics.com_$(CRD_NAME).yaml")
-	$(eval YQ_EXPR := 'del(eval(env(YQ_KEYS) | split(" ") | .[] | "$(CRD_PREFIX)" + .))')
-	CRD_PATH=$(CRD_PATH) YQ_EXPR=$(YQ_EXPR) YQ_KEYS="$(YQ_KEYS)" CRD_NAME=$(CRD_NAME) CRD_PREFIX="$(CRD_PREFIX)" $(MAKE) yq
-
-.SILENT: patch_crds yq_delete yq yq_preserve
-
-patch_crds:
-	$(eval CRD_PREFIX := .spec.versions[0].schema.openAPIV3Schema.properties.spec.properties)
-
-	# Replace properties with x-preserve-unknown-fields
-	$(eval YQ_KEYS := .dnsConfig.items.properties \
-		.initContainers.items.properties \
-		.containers.items.properties \
-		.topologySpreadConstraints.items.properties \
-		.affinity.properties \
-		.serviceSpec.properties.spec.properties \
-		.volumes.items.properties \
-		.startupProbe.properties \
-		.readinessProbe.properties \
-		.livenessProbe.properties \
-		.securityContext.properties \
-		.serviceScrapeSpec.properties \
-		.extraEnvs.items.properties.valueFrom)
-	$(eval CRDS := alertmanager alert agent single auth)
-	for crd in $(CRDS); do \
-		YQ_KEYS="$(YQ_KEYS)" CRD_NAME=vm"$$crd"s CRD_PREFIX=$(CRD_PREFIX) $(MAKE) yq_delete; \
-	done;
-
-	$(eval COMPONENTS := insert select storage)
-	$(eval YQ_KEYS := $(YQ_KEYS) .hpa.properties)
-	for cmp in $(COMPONENTS); do \
-		YQ_KEYS="$(YQ_KEYS)" CRD_NAME=vmclusters CRD_PREFIX=$(CRD_PREFIX).vm"$$cmp".properties $(MAKE) yq_delete; \
-	done;
-
-	# Replace properties with x-preserve-unknown-fields
-	$(eval YQ_KEYS := .dnsConfig.items \
-		.initContainers.items \
-		.containers.items \
-		.topologySpreadConstraints.items \
-		.affinity \
-		.serviceSpec.properties.spec \
-		.volumes.items \
-		.startupProbe \
-		.readinessProbe \
-		.livenessProbe \
-		.securityContext \
-		.serviceScrapeSpec \
-		.extraEnvs.items)
-	$(eval CRDS := alertmanager alert agent single auth)
-	for crd in $(CRDS); do \
-		YQ_KEYS="$(YQ_KEYS)" CRD_NAME=vm"$$crd"s CRD_PREFIX=$(CRD_PREFIX) $(MAKE) yq_preserve; \
-	done;
-
-	$(eval COMPONENTS := insert select storage)
-	for cmp in $(COMPONENTS); do \
-		YQ_KEYS="$(YQ_KEYS)" CRD_NAME=vmclusters CRD_PREFIX=$(CRD_PREFIX).vm"$$cmp".properties $(MAKE) yq_preserve; \
-	done;
-
-	$(eval COMPONENTS := insert select)
-	$(eval YQ_KEYS := .hpa)
-	for cmp in $(COMPONENTS); do \
-		YQ_KEYS="$(YQ_KEYS)" CRD_NAME=vmclusters CRD_PREFIX=$(CRD_PREFIX).vm"$$cmp".properties $(MAKE) yq_preserve; \
-	done;
-
-	# Drop '-' key
-	$(eval CRDS := alertmanager alert agent single auth cluster)
-	$(eval YQ_KEYS := ".-")
-	for crd in $(CRDS); do \
-		YQ_KEYS=$(YQ_KEYS) CRD_NAME=vm"$$crd"s CRD_PREFIX=$(CRD_PREFIX) $(MAKE) yq_delete; \
-	done;
-
-	# Drop '-' key
-	$(eval CRDS := alertmanagerconfig)
-	$(eval YQ_KEYS := ".route.properties.-")
-	for crd in $(CRDS); do \
-		YQ_KEYS=$(YQ_KEYS) CRD_NAME=vm"$$crd"s CRD_PREFIX=$(CRD_PREFIX) $(MAKE) yq_delete; \
-	done;
-
-	# Replace vmalertmanagerconfig properties with x-preserve-unknown-fields
-	$(eval YQ_KEYS := ".receivers.items.properties.opsgenie_configs.items.properties.http_config.properties \
-		.receivers.items.properties.pagerduty_configs.items.properties.http_config.properties \
-                .receivers.items.properties.pushover_configs.items.properties.http_config.properties \
-                .receivers.items.properties.slack_configs.items.properties.http_config.properties \
-                .receivers.items.properties.telegram_configs.items.properties.http_config.properties \
-                .receivers.items.properties.webhook_configs.items.properties.http_config.properties")
-	YQ_KEYS=$(YQ_KEYS) CRD_NAME=vmalertmanagerconfigs CRD_PREFIX=$(CRD_PREFIX) $(MAKE) yq_delete
-
-	$(eval YQ_KEYS := ".receivers.items.properties.opsgenie_configs.items.properties.http_config \
-		.receivers.items.properties.pagerduty_configs.items.properties.http_config \
-		.receivers.items.properties.pushover_configs.items.properties.http_config \
-		.receivers.items.properties.slack_configs.items.properties.http_config \
-		.receivers.items.properties.telegram_configs.items.properties.http_config \
-		.receivers.items.properties.webhook_configs.items.properties.http_config")
-	YQ_KEYS=$(YQ_KEYS) CRD_NAME=vmalertmanagerconfigs CRD_PREFIX=$(CRD_PREFIX) $(MAKE) yq_preserve
-
-	# Replace vmalert properties with x-preserve-unknown-fields
-	$(eval YQ_KEYS := ".datasource.properties.OAuth2.properties \
-		.remoteRead.properties.OAuth2.properties \
-		.remoteWrite.properties.OAuth2.properties \
-		.notifier.properties.OAuth2.properties \
-		.notifiers.items.properties.OAuth2.properties \
-		.datasource.properties.tlsConfig.properties \
-		.remoteRead.properties.tlsConfig.properties \
-		.remoteWrite.properties.tlsConfig.properties \
-		.notifier.properties.tlsConfig.properties \
-		.notifiers.items.properties.tlsConfig.properties")
-	YQ_KEYS=$(YQ_KEYS) CRD_NAME=vmalerts CRD_PREFIX=$(CRD_PREFIX) $(MAKE) yq_delete
-
-	# Added x-preserve-unknown-fields for vmalerts
-	$(eval YQ_KEYS := ".datasource.properties.OAuth2 \
-		.remoteRead.properties.OAuth2 \
-		.remoteWrite.properties.OAuth2 \
-		.notifier.properties.OAuth2 \
-		.notifiers.items.properties.OAuth2 \
-		.datasource.properties.tlsConfig \
-		.remoteRead.properties.tlsConfig \
-		.remoteWrite.properties.tlsConfig \
-		.notifier.properties.tlsConfig \
-		.notifiers.items.properties.tlsConfig")
-	YQ_KEYS=$(YQ_KEYS) CRD_NAME=vmalerts CRD_PREFIX=$(CRD_PREFIX) $(MAKE) yq_preserve
-
-	# Drop keys in all manifests
-	$(eval YQ_KEYS := "metadata.creationTimestamp \
-		status")
-	$(eval CRDS := alertmanager alert agent single auth cluster probe staticscrape servicescrape nodescrape rule user podscrape scrapeconfig)
-	for crd in $(CRDS); do \
-		YQ_KEYS=$(YQ_KEYS) CRD_NAME=vm"$$crd"s CRD_PREFIX="." $(MAKE) yq_delete; \
-	done;
-
-	# Add x-preserve-unknown-fields to vmagent and vmalertmanager crds
-	$(eval YQ_KEYS := ".claimTemplates.items.properties.metadata")
-	$(eval CRDS := agent alertmanager)
-	for crd in $(CRDS); do \
-		YQ_KEYS=$(YQ_KEYS) CRD_NAME=vm"$$crd"s CRD_PREFIX=$(CRD_PREFIX) $(MAKE) yq_preserve; \
-	done;
-
-	# Add x-preserve-unknown-fields to vmcluster
-	$(eval YQ_KEYS := ".claimTemplates.items.properties.metadata")
-	$(eval COMPONENTS := storage select)
-	for cmp in $(COMPONENTS); do \
-		YQ_KEYS=$(YQ_KEYS) CRD_NAME=vmclusters CRD_PREFIX=$(CRD_PREFIX).vm"$$cmp".properties $(MAKE) yq_preserve; \
-	done;
-
-	# Replace vmstorage properties with x-preserve-unknown-fields
-	$(eval YQ_KEYS := ".storage.properties.volumeClaimTemplate.properties")
-	YQ_KEYS=$(YQ_KEYS) CRD_NAME=vmclusters CRD_PREFIX=$(CRD_PREFIX).vmstorage.properties $(MAKE) yq_delete; \
-	$(eval YQ_KEYS := ".storage.properties.volumeClaimTemplate")
-	YQ_KEYS=$(YQ_KEYS) CRD_NAME=vmclusters CRD_PREFIX=$(CRD_PREFIX).vmstorage.properties $(MAKE) yq_preserve; \
-
-	# Replace vmselect properties with x-preserve-unknown-fields
-	$(eval YQ_KEYS := ".persistentVolume.properties.volumeClaimTemplate.properties")
-	YQ_KEYS=$(YQ_KEYS) CRD_NAME=vmclusters CRD_PREFIX=$(CRD_PREFIX).vmselect.properties $(MAKE) yq_delete; \
-	$(eval YQ_KEYS := ".persistentVolume.properties.volumeClaimTemplate")
-	YQ_KEYS=$(YQ_KEYS) CRD_NAME=vmclusters CRD_PREFIX=$(CRD_PREFIX).vmselect.properties $(MAKE) yq_preserve; \
-
 doc: install-develop-tools
 	cat hack/doc_header.md > docs/api.md
 	doc-print --paths=\
@@ -260,7 +98,7 @@ docker: build manager
 	GOARCH=amd64 $(MAKE) docker-build-arch
 
 .PHONY:e2e-local
-e2e-local: fmt vet manifests patch_crds
+e2e-local: fmt vet manifests
 	echo 'mode: atomic' > coverage.txt  && \
 	$(TEST_ARGS) -p 1 $(REPO)/e2e/...
 	$(GOCMD) tool cover -func coverage.txt  | grep total
@@ -278,7 +116,7 @@ clean:
 all: build
 
 # Run tests
-test: manifests generate fmt vet patch_crds
+test: manifests generate fmt vet
 	echo 'mode: atomic' > coverage.txt  && \
 	$(TEST_ARGS) $(REPO)/internal/controller/... $(REPO)/api/...
 	$(GOCMD) tool cover -func coverage.txt  | grep total
@@ -292,7 +130,7 @@ run: manager
 	./bin/operator
 
 # Install CRDs into a cluster
-install: manifests patch_crds kustomize
+install: manifests kustomize
 	$(KUSTOMIZE) build config/crd | kubectl apply -f -
 
 # Uninstall CRDs from a cluster
@@ -300,12 +138,16 @@ uninstall: manifests kustomize
 	$(KUSTOMIZE) build config/crd | kubectl delete -f -
 
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
-deploy: manifests patch_crds kustomize
+deploy: manifests kustomize
 	$(KUSTOMIZE) build config/default | kubectl apply -f -
 
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen generate
-	cd api/v1beta1 && $(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="." output:crd:artifacts:config=$(PWD)/$(CRD_ROOT) output:webhook:dir=$(PWD)/config/webhook
+	cd api/v1beta1 && \
+        $(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="." output:crd:artifacts:config=$(PWD)/$(CRD_ROOT) output:webhook:dir=$(PWD)/config/webhook && \
+	cd ../.. && \
+	$(KUSTOMIZE) build config/crd > config/crd/crd.yaml
+
 # Run go fmt against code
 fmt:
 	go fmt ./...
@@ -317,7 +159,6 @@ vet:
 # Generate code
 generate: controller-gen
 	cd api/v1beta1 && $(CONTROLLER_GEN) object:headerFile="../../hack/boilerplate.go.txt" paths="."
-
 
 # find or download controller-gen
 # download controller-gen if necessary
@@ -352,7 +193,7 @@ KUSTOMIZE=$(shell which kustomize)
 endif
 
 # Generate bundle manifests and metadata, then validate generated files.
-bundle: manifests patch_crds
+bundle: manifests
 	$(OPERATOR_BIN) generate kustomize manifests -q
 	kustomize build config/manifests | $(OPERATOR_BIN) generate bundle -q --overwrite --version $(VERSION_TRIM) $(BUNDLE_METADATA_OPTS)
 	sed -i='' 's|$(DOCKER_REPO):.*|$(DOCKER_REPO):$(VERSION)|' bundle/manifests/*
@@ -369,7 +210,7 @@ bundle-push: bundle
 bundle-build:
 	docker build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
 
-build: manager manifests patch_crds
+build: manager manifests
 
 release-package: kustomize
 	rm -rf release/

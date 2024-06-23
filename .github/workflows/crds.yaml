@@ -38,8 +38,8 @@ jobs:
 
       - name: Update crd yaml in chart repo
         run: |
-          find config/crd/bases -name '*.yaml' | sort | xargs awk 'FNR==1 && NR!=1 {print "---"}{print}' > ../__vm-charts-repo/charts/victoria-metrics-operator/crd.yaml
-          find config/crd/bases -name '*.yaml' | sort | xargs awk 'FNR==1 && NR!=1 {print "---"}{print}' > ../__vm-charts-repo/charts/victoria-metrics-k8s-stack/charts/crds/crds/crd.yaml
+          cp config/crd/crd.yaml ../__vm-charts-repo/charts/victoria-metrics-operator/crd.yaml
+          cp config/crd/crd.yaml ../__vm-charts-repo/charts/victoria-metrics-k8s-stack/charts/crds/crds/crd.yaml
         working-directory: "__vm-operator-repo"
 
       - name: Commit and push changes

@@ -18,6 +18,36 @@ resources:
 - bases/operator.victoriametrics.com_vmusers.yaml
 - bases/operator.victoriametrics.com_vmalertmanagerconfigs.yaml
 
+patches:
+- path: patches/operator.victoriametrics.com_vmagents.yaml
+  target:
+    kind: CustomResourceDefinition
+    name: vmagents.operator.victoriametrics.com
+- path: patches/operator.victoriametrics.com_vmalerts.yaml
+  target:
+    kind: CustomResourceDefinition
+    name: vmalerts.operator.victoriametrics.com
+- path: patches/operator.victoriametrics.com_vmalertmanagers.yaml
+  target:
+    kind: CustomResourceDefinition
+    name: vmalertmanagers.operator.victoriametrics.com
+- path: patches/operator.victoriametrics.com_vmsingles.yaml
+  target:
+    kind: CustomResourceDefinition
+    name: vmsingles.operator.victoriametrics.com
+- path: patches/operator.victoriametrics.com_vmclusters.yaml
+  target:
+    kind: CustomResourceDefinition
+    name: vmclusters.operator.victoriametrics.com
+- path: patches/operator.victoriametrics.com_vmauths.yaml
+  target:
+    kind: CustomResourceDefinition
+    name: vmauths.operator.victoriametrics.com
+- path: patches/operator.victoriametrics.com_vmalertmanagerconfigs.yaml
+  target:
+    kind: CustomResourceDefinition
+    name: vmalertmanagerconfigs.operator.victoriametrics.com
+
 # the following config is for teaching kustomize how to do kustomization for CRDs.
 configurations:
 - kustomizeconfig.yaml

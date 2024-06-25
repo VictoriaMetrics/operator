@@ -4,7 +4,7 @@ import (
 	"context"
 	"reflect"
 
-	v1beta1vm "github.com/VictoriaMetrics/operator/api/v1beta1"
+	v1beta1vm "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	. "github.com/onsi/gomega"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )

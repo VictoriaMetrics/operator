@@ -23,7 +23,7 @@ import (
 	time "time"
 
 	internalinterfaces "github.com/VictoriaMetrics/operator/api/client/informers/externalversions/internalinterfaces"
-	victoriametrics "github.com/VictoriaMetrics/operator/api/client/informers/externalversions/victoriametrics"
+	operator "github.com/VictoriaMetrics/operator/api/client/informers/externalversions/operator"
 	versioned "github.com/VictoriaMetrics/operator/api/client/versioned"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
@@ -252,9 +252,9 @@ type SharedInformerFactory interface {
 	// client.
 	InformerFor(obj runtime.Object, newFunc internalinterfaces.NewInformerFunc) cache.SharedIndexInformer
 
-	Victoriametrics() victoriametrics.Interface
+	Operator() operator.Interface
 }
 
-func (f *sharedInformerFactory) Victoriametrics() victoriametrics.Interface {
-	return victoriametrics.New(f, f.namespace, f.tweakListOptions)
+func (f *sharedInformerFactory) Operator() operator.Interface {
+	return operator.New(f, f.namespace, f.tweakListOptions)
 }

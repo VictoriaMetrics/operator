@@ -5,6 +5,7 @@
 domain: victoriametrics.com
 layout:
 - go.kubebuilder.io/v4
+multigroup: true
 projectName: victoriametrics-operator
 repo: github.com/VictoriaMetrics/operator
 resources:
@@ -15,7 +16,7 @@ resources:
   domain: victoriametrics.com
   group: operator
   kind: VMAgent
-  path: github.com/VictoriaMetrics/operator/api/v1beta1
+  path: github.com/VictoriaMetrics/operator/api/operator/v1beta1
   version: v1beta1
 - api:
     crdVersion: v1
@@ -24,7 +25,7 @@ resources:
   domain: victoriametrics.com
   group: operator
   kind: VMAlert
-  path: github.com/VictoriaMetrics/operator/api/v1beta1
+  path: github.com/VictoriaMetrics/operator/api/operator/v1beta1
   version: v1beta1
 - api:
     crdVersion: v1
@@ -33,7 +34,7 @@ resources:
   domain: victoriametrics.com
   group: operator
   kind: VMAlertmanager
-  path: github.com/VictoriaMetrics/operator/api/v1beta1
+  path: github.com/VictoriaMetrics/operator/api/operator/v1beta1
   version: v1beta1
 - api:
     crdVersion: v1
@@ -42,7 +43,7 @@ resources:
   domain: victoriametrics.com
   group: operator
   kind: VMAlertmanagerConfig
-  path: github.com/VictoriaMetrics/operator/api/v1beta1
+  path: github.com/VictoriaMetrics/operator/api/operator/v1beta1
   version: v1beta1
 - api:
     crdVersion: v1
@@ -51,7 +52,7 @@ resources:
   domain: victoriametrics.com
   group: operator
   kind: VMPodScrape
-  path: github.com/VictoriaMetrics/operator/api/v1beta1
+  path: github.com/VictoriaMetrics/operator/api/operator/v1beta1
   version: v1beta1
 - api:
     crdVersion: v1
@@ -60,7 +61,7 @@ resources:
   domain: victoriametrics.com
   group: operator
   kind: VMRule
-  path: github.com/VictoriaMetrics/operator/api/v1beta1
+  path: github.com/VictoriaMetrics/operator/api/operator/v1beta1
   version: v1beta1
 - api:
     crdVersion: v1
@@ -69,7 +70,7 @@ resources:
   domain: victoriametrics.com
   group: operator
   kind: VMServiceScrape
-  path: github.com/VictoriaMetrics/operator/api/v1beta1
+  path: github.com/VictoriaMetrics/operator/api/operator/v1beta1
   version: v1beta1
 - api:
     crdVersion: v1
@@ -78,7 +79,7 @@ resources:
   domain: victoriametrics.com
   group: operator
   kind: VMSingle
-  path: github.com/VictoriaMetrics/operator/api/v1beta1
+  path: github.com/VictoriaMetrics/operator/api/operator/v1beta1
   version: v1beta1
 - api:
     crdVersion: v1
@@ -87,7 +88,7 @@ resources:
   domain: victoriametrics.com
   group: operator
   kind: VMCluster
-  path: github.com/VictoriaMetrics/operator/api/v1beta1
+  path: github.com/VictoriaMetrics/operator/api/operator/v1beta1
   version: v1beta1
 - api:
     crdVersion: v1
@@ -96,7 +97,7 @@ resources:
   domain: victoriametrics.com
   group: operator
   kind: VMProbe
-  path: github.com/VictoriaMetrics/operator/api/v1beta1
+  path: github.com/VictoriaMetrics/operator/api/operator/v1beta1
   version: v1beta1
 - api:
     crdVersion: v1
@@ -105,7 +106,7 @@ resources:
   domain: victoriametrics.com
   group: operator
   kind: VMNodeScrape
-  path: github.com/VictoriaMetrics/operator/api/v1beta1
+  path: github.com/VictoriaMetrics/operator/api/operator/v1beta1
   version: v1beta1
 - api:
     crdVersion: v1
@@ -114,7 +115,7 @@ resources:
   domain: victoriametrics.com
   group: operator
   kind: VMStaticScrape
-  path: github.com/VictoriaMetrics/operator/api/v1beta1
+  path: github.com/VictoriaMetrics/operator/api/operator/v1beta1
   version: v1beta1
 - api:
     crdVersion: v1
@@ -123,7 +124,7 @@ resources:
   domain: victoriametrics.com
   group: operator
   kind: VMUser
-  path: github.com/VictoriaMetrics/operator/api/v1beta1
+  path: github.com/VictoriaMetrics/operator/api/operator/v1beta1
   version: v1beta1
 - api:
     crdVersion: v1
@@ -132,6 +133,6 @@ resources:
   domain: victoriametrics.com
   group: operator
   kind: VMAuth
-  path: github.com/VictoriaMetrics/operator/api/v1beta1
+  path: github.com/VictoriaMetrics/operator/api/operator/v1beta1
   version: v1beta1
 version: "3"

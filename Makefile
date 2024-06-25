@@ -17,7 +17,7 @@ OPERATOR_BIN=operator-sdk
 DOCKER_REPO=victoriametrics/operator
 TARGET_PLATFORM=linux/amd64,linux/arm,linux/arm64,linux/ppc64le,linux/386
 TEST_ARGS=$(GOCMD) test -covermode=atomic -coverprofile=coverage.txt -v
-APIS_BASE_PATH=api/v1beta1
+APIS_BASE_PATH=api/operator/v1beta1
 # Current Operator version
 # Default bundle image tag
 BUNDLE_IMG ?= controller-bundle:$(VERSION)
@@ -143,9 +143,9 @@ deploy: manifests kustomize
 
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen generate
-	cd api/v1beta1 && \
+	cd ${APIS_BASE_PATH} && \
         $(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="." output:crd:artifacts:config=$(PWD)/$(CRD_ROOT) output:webhook:dir=$(PWD)/config/webhook && \
-	cd ../.. && \
+	cd ${PWD} && \
 	$(KUSTOMIZE) build config/crd > config/crd/crd.yaml
 
 # Run go fmt against code
@@ -158,7 +158,7 @@ vet:
 
 # Generate code
 generate: controller-gen
-	cd api/v1beta1 && $(CONTROLLER_GEN) object:headerFile="../../hack/boilerplate.go.txt" paths="."
+	cd $(APIS_BASE_PATH) && $(CONTROLLER_GEN) object:headerFile="${PWD}/hack/boilerplate.go.txt" paths="."
 
 # find or download controller-gen
 # download controller-gen if necessary
@@ -284,30 +284,25 @@ get-client-generator:
 
 generate-client: get-client-generator
 	rm -rf api/client
-	mkdir -p api/victoriametrics/v1beta1
-	cp api/v1beta1/* api/victoriametrics/v1beta1/	
 	@echo ">> generating with client-gen"
 	client-gen \
 		--clientset-name versioned \
 		--input-base "" \
-		--input "github.com/VictoriaMetrics/operator/api/victoriametrics/v1beta1" \
-		--output-pkg "github.com/VictoriaMetrics/operator/api/client" \
-		--output-dir "github.com/VictoriaMetrics/operator/api/client" \
+		--input github.com/VictoriaMetrics/operator/api/operator/v1beta1 \
+		--output-pkg github.com/VictoriaMetrics/operator/api/client \
+		--output-dir ./api/client \
 		--go-header-file hack/boilerplate.go.txt
 	@echo ">> generating with lister-gen"
-	lister-gen "github.com/VictoriaMetrics/operator/api/victoriametrics/v1beta1" \
-		--output-dir "github.com/VictoriaMetrics/operator/api/client/listers" \
-		--output-pkg "github.com/VictoriaMetrics/operator/api/client/listers" \
+	lister-gen github.com/VictoriaMetrics/operator/api/operator/v1beta1 \
+		--output-dir ./api/client/listers \
+		--output-pkg github.com/VictoriaMetrics/operator/api/client/listers \
 		--go-header-file hack/boilerplate.go.txt
 	@echo ">> generating with informer-gen"	
-	informer-gen "github.com/VictoriaMetrics/operator/api/victoriametrics/v1beta1" \
-		--versioned-clientset-package "github.com/VictoriaMetrics/operator/api/client/versioned" \
-		--listers-package "github.com/VictoriaMetrics/operator/api/client/listers" \
-		--output-dir "github.com/VictoriaMetrics/operator/api/client/informers" \
-		--output-pkg "github.com/VictoriaMetrics/operator/api/client/informers" \
+	informer-gen github.com/VictoriaMetrics/operator/api/operator/v1beta1 \
+		--versioned-clientset-package github.com/VictoriaMetrics/operator/api/client/versioned \
+		--listers-package github.com/VictoriaMetrics/operator/api/client/listers \
+		--output-dir ./api/client/informers \
+		--output-pkg github.com/VictoriaMetrics/operator/api/client/informers \
 		--go-header-file hack/boilerplate.go.txt
-
-	mv github.com/VictoriaMetrics/operator/api/client api/
-	rm -rf github.com/
 
 include internal/config-reloader/Makefile

@@ -11,11 +11,11 @@ import (
 	"time"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/buildinfo"
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/v1beta1"
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
-	"github.com/VictoriaMetrics/operator/internal/controller"
-	"github.com/VictoriaMetrics/operator/internal/controller/factory/k8stools"
-	"github.com/VictoriaMetrics/operator/internal/controller/factory/logger"
+	vmcontroller "github.com/VictoriaMetrics/operator/internal/controller/operator"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	"github.com/prometheus/client_golang/prometheus"
@@ -88,7 +88,7 @@ func RunManager(ctx context.Context) error {
 	// controller-runtime)
 	opts := zap.Options{}
 	opts.BindFlags(managerFlags)
-	controller.BindFlags(managerFlags)
+	vmcontroller.BindFlags(managerFlags)
 
 	pflag.CommandLine.AddGoFlagSet(managerFlags)
 
@@ -210,7 +210,7 @@ func RunManager(ctx context.Context) error {
 	}
 	vmv1beta1.SetLabelAndAnnotationPrefixes(baseConfig.FilterChildLabelPrefixes, baseConfig.FilterChildAnnotationPrefixes)
 
-	if err = (&controller.VMAgentReconciler{
+	if err = (&vmcontroller.VMAgentReconciler{
 		Client:       mgr.GetClient(),
 		Log:          ctrl.Log.WithName("controller").WithName("VMAgent"),
 		OriginScheme: mgr.GetScheme(),
@@ -219,7 +219,7 @@ func RunManager(ctx context.Context) error {
 		setupLog.Error(err, "unable to create controller", "controller", "VMAgent")
 		return err
 	}
-	if err = (&controller.VMAlertReconciler{
+	if err = (&vmcontroller.VMAlertReconciler{
 		Client:       mgr.GetClient(),
 		Log:          ctrl.Log.WithName("controller").WithName("VMAlert"),
 		OriginScheme: mgr.GetScheme(),
@@ -228,7 +228,7 @@ func RunManager(ctx context.Context) error {
 		setupLog.Error(err, "unable to create controller", "controller", "VMAlert")
 		return err
 	}
-	if err = (&controller.VMAlertmanagerReconciler{
+	if err = (&vmcontroller.VMAlertmanagerReconciler{
 		Client:       mgr.GetClient(),
 		Log:          ctrl.Log.WithName("controller").WithName("VMAlertmanager"),
 		OriginScheme: mgr.GetScheme(),
@@ -237,7 +237,7 @@ func RunManager(ctx context.Context) error {
 		setupLog.Error(err, "unable to create controller", "controller", "VMAlertmanager")
 		return err
 	}
-	if err = (&controller.VMPodScrapeReconciler{
+	if err = (&vmcontroller.VMPodScrapeReconciler{
 		Client:       mgr.GetClient(),
 		Log:          ctrl.Log.WithName("controller").WithName("VMPodScrape"),
 		OriginScheme: mgr.GetScheme(),
@@ -246,7 +246,7 @@ func RunManager(ctx context.Context) error {
 		setupLog.Error(err, "unable to create controller", "controller", "VMPodScrape")
 		return err
 	}
-	if err = (&controller.VMRuleReconciler{
+	if err = (&vmcontroller.VMRuleReconciler{
 		Client:       mgr.GetClient(),
 		Log:          ctrl.Log.WithName("controller").WithName("VMRule"),
 		OriginScheme: mgr.GetScheme(),
@@ -255,7 +255,7 @@ func RunManager(ctx context.Context) error {
 		setupLog.Error(err, "unable to create controller", "controller", "VMRule")
 		return err
 	}
-	if err = (&controller.VMServiceScrapeReconciler{
+	if err = (&vmcontroller.VMServiceScrapeReconciler{
 		Client:       mgr.GetClient(),
 		Log:          ctrl.Log.WithName("controller").WithName("VMServiceScrape"),
 		OriginScheme: mgr.GetScheme(),
@@ -264,7 +264,7 @@ func RunManager(ctx context.Context) error {
 		setupLog.Error(err, "unable to create controller", "controller", "VMServiceScrape")
 		return err
 	}
-	if err = (&controller.VMSingleReconciler{
+	if err = (&vmcontroller.VMSingleReconciler{
 		Client:       mgr.GetClient(),
 		Log:          ctrl.Log.WithName("controller").WithName("VMSingle"),
 		OriginScheme: mgr.GetScheme(),
@@ -274,7 +274,7 @@ func RunManager(ctx context.Context) error {
 		return err
 	}
 
-	if err = (&controller.VMClusterReconciler{
+	if err = (&vmcontroller.VMClusterReconciler{
 		Client:       mgr.GetClient(),
 		Log:          ctrl.Log.WithName("controller").WithName("VMCluster"),
 		OriginScheme: mgr.GetScheme(),
@@ -283,7 +283,7 @@ func RunManager(ctx context.Context) error {
 		setupLog.Error(err, "unable to create controller", "controller", "VMCluster")
 		return err
 	}
-	if err = (&controller.VMProbeReconciler{
+	if err = (&vmcontroller.VMProbeReconciler{
 		Client:       mgr.GetClient(),
 		Log:          ctrl.Log.WithName("controller").WithName("VMProbe"),
 		OriginScheme: mgr.GetScheme(),
@@ -292,7 +292,7 @@ func RunManager(ctx context.Context) error {
 		setupLog.Error(err, "unable to create controller", "controller", "VMProbe")
 		return err
 	}
-	if err = (&controller.VMNodeScrapeReconciler{
+	if err = (&vmcontroller.VMNodeScrapeReconciler{
 		Client:       mgr.GetClient(),
 		Log:          ctrl.Log.WithName("controller").WithName("VMNodeScrape"),
 		OriginScheme: mgr.GetScheme(),
@@ -301,7 +301,7 @@ func RunManager(ctx context.Context) error {
 		setupLog.Error(err, "unable to create controller", "controller", "VMNodeScrape")
 		return err
 	}
-	if err = (&controller.VMStaticScrapeReconciler{
+	if err = (&vmcontroller.VMStaticScrapeReconciler{
 		Client:       mgr.GetClient(),
 		Log:          ctrl.Log.WithName("controller").WithName("VMStaticScrape"),
 		OriginScheme: mgr.GetScheme(),
@@ -310,7 +310,7 @@ func RunManager(ctx context.Context) error {
 		setupLog.Error(err, "unable to create controller", "controller", "VMStaticScrape")
 		return err
 	}
-	if err = (&controller.VMScrapeConfigReconciler{
+	if err = (&vmcontroller.VMScrapeConfigReconciler{
 		Client:       mgr.GetClient(),
 		Log:          ctrl.Log.WithName("controller").WithName("VMScrapeConfig"),
 		OriginScheme: mgr.GetScheme(),
@@ -320,7 +320,7 @@ func RunManager(ctx context.Context) error {
 		return err
 	}
 
-	if err = (&controller.VMAuthReconciler{
+	if err = (&vmcontroller.VMAuthReconciler{
 		Client:       mgr.GetClient(),
 		Log:          ctrl.Log.WithName("controller").WithName("VMAuthReconciler"),
 		OriginScheme: mgr.GetScheme(),
@@ -330,7 +330,7 @@ func RunManager(ctx context.Context) error {
 		return err
 	}
 
-	if err = (&controller.VMUserReconciler{
+	if err = (&vmcontroller.VMUserReconciler{
 		Client:       mgr.GetClient(),
 		Log:          ctrl.Log.WithName("controller").WithName("VMUserReconciler"),
 		OriginScheme: mgr.GetScheme(),
@@ -339,7 +339,7 @@ func RunManager(ctx context.Context) error {
 		setupLog.Error(err, "unable to create controller", "controller", "VMUser")
 		return err
 	}
-	if err = (&controller.VMAlertmanagerConfigReconciler{
+	if err = (&vmcontroller.VMAlertmanagerConfigReconciler{
 		Client:       mgr.GetClient(),
 		Log:          ctrl.Log.WithName("controller").WithName("VMAlertmanagerConfigReconciler"),
 		OriginScheme: mgr.GetScheme(),
@@ -371,7 +371,7 @@ func RunManager(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("cannot setup watch client: %w", err)
 	}
-	converterController, err := controller.NewConverterController(ctx, baseClient, wc, *promCRDResyncPeriod, baseConfig)
+	converterController, err := vmcontroller.NewConverterController(ctx, baseClient, wc, *promCRDResyncPeriod, baseConfig)
 	if err != nil {
 		setupLog.Error(err, "cannot setup prometheus CRD converter: %w", err)
 		return err

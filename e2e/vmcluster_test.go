@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	v1beta1vm "github.com/VictoriaMetrics/operator/api/v1beta1"
+	v1beta1vm "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"

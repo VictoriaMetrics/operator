@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"net/http"
 
-	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/client/versioned/typed/victoriametrics/v1beta1"
+	operatorv1beta1 "github.com/VictoriaMetrics/operator/api/client/versioned/typed/operator/v1beta1"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"
@@ -29,18 +29,18 @@ import (
 
 type Interface interface {
 	Discovery() discovery.DiscoveryInterface
-	VictoriametricsV1beta1() victoriametricsv1beta1.VictoriametricsV1beta1Interface
+	OperatorV1beta1() operatorv1beta1.OperatorV1beta1Interface
 }
 
 // Clientset contains the clients for groups.
 type Clientset struct {
 	*discovery.DiscoveryClient
-	victoriametricsV1beta1 *victoriametricsv1beta1.VictoriametricsV1beta1Client
+	operatorV1beta1 *operatorv1beta1.OperatorV1beta1Client
 }
 
-// VictoriametricsV1beta1 retrieves the VictoriametricsV1beta1Client
-func (c *Clientset) VictoriametricsV1beta1() victoriametricsv1beta1.VictoriametricsV1beta1Interface {
-	return c.victoriametricsV1beta1
+// OperatorV1beta1 retrieves the OperatorV1beta1Client
+func (c *Clientset) OperatorV1beta1() operatorv1beta1.OperatorV1beta1Interface {
+	return c.operatorV1beta1
 }
 
 // Discovery retrieves the DiscoveryClient
@@ -87,7 +87,7 @@ func NewForConfigAndClient(c *rest.Config, httpClient *http.Client) (*Clientset,
 
 	var cs Clientset
 	var err error
-	cs.victoriametricsV1beta1, err = victoriametricsv1beta1.NewForConfigAndClient(&configShallowCopy, httpClient)
+	cs.operatorV1beta1, err = operatorv1beta1.NewForConfigAndClient(&configShallowCopy, httpClient)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +112,7 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 // New creates a new Clientset for the given RESTClient.
 func New(c rest.Interface) *Clientset {
 	var cs Clientset
-	cs.victoriametricsV1beta1 = victoriametricsv1beta1.New(c)
+	cs.operatorV1beta1 = operatorv1beta1.New(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClient(c)
 	return &cs

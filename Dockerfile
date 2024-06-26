@@ -24,10 +24,11 @@ ARG APP_PATH=/usr/local/bin/${APP_NAME}
 ENV USER_UID=${USER_UID} \
     USER_NAME=${APP_NAME}
 
-COPY bin/${APP_NAME}-${TARGETARCH} ${APP_NAME}
+COPY bin/${APP_NAME}-${TARGETARCH} ${APP_PATH}
 
 COPY --from=passwd /etc/passwd_export /etc/passwd
 
-ENTRYPOINT ["${APP_PATH}"]
+ENV APP_PATH=/usr/local/bin/${APP_NAME}
+ENTRYPOINT $APP_PATH
 
 USER ${USER_NAME}

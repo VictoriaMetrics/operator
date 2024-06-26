@@ -17535,6 +17535,24 @@ spec:
                     concurrency:
                       description: Concurrency defines how many rules execute at once.
                       type: integer
+                    eval_alignment:
+                      description: |-
+                        Optional
+                        The evaluation timestamp will be aligned with group's interval,
+                        instead of using the actual timestamp that evaluation happens at.
+                        It is enabled by default to get more predictable results
+                        and to visually align with graphs plotted via Grafana or vmui.
+                      type: boolean
+                    eval_delay:
+                      description: |-
+                        Optional
+                        Adjust the `time` parameter of group evaluation requests to compensate intentional query delay from the datasource.
+                      type: string
+                    eval_offset:
+                      description: |-
+                        Optional
+                        Group will be evaluated at the exact offset in the range of [0...interval].
+                      type: string
                     extra_filter_labels:
                       additionalProperties:
                         type: string

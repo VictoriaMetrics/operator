@@ -31,6 +31,18 @@ type RuleGroup struct {
 	// rule can produce
 	// +optional
 	Limit int `json:"limit,omitempty"`
+	// Optional
+	// Group will be evaluated at the exact offset in the range of [0...interval].
+	EvalOffset string `json:"eval_offset,omitempty" yaml:"eval_offset,omitempty"`
+	// Optional
+	// Adjust the `time` parameter of group evaluation requests to compensate intentional query delay from the datasource.
+	EvalDelay string `json:"eval_delay,omitempty" yaml:"eval_delay,omitempty"`
+	// Optional
+	// The evaluation timestamp will be aligned with group's interval,
+	// instead of using the actual timestamp that evaluation happens at.
+	// It is enabled by default to get more predictable results
+	// and to visually align with graphs plotted via Grafana or vmui.
+	EvalAlignment *bool `json:"eval_alignment,omitempty" yaml:"eval_alignment,omitempty"`
 	// Concurrency defines how many rules execute at once.
 	// +optional
 	Concurrency int `json:"concurrency,omitempty" yaml:"concurrency,omitempty"`

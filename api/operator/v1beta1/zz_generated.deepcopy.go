@@ -2082,6 +2082,11 @@ func (in *RuleGroup) DeepCopyInto(out *RuleGroup) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.EvalAlignment != nil {
+		in, out := &in.EvalAlignment, &out.EvalAlignment
+		*out = new(bool)
+		**out = **in
+	}
 	if in.Labels != nil {
 		in, out := &in.Labels, &out.Labels
 		*out = make(map[string]string, len(*in))

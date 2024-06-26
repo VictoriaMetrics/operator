@@ -209,13 +209,6 @@ func generateNodeScrapeConfig(
 	relabelings = enforceNamespaceLabel(relabelings, cr.Namespace, enforcedNamespaceLabel)
 	cfg = append(cfg, yaml.MapItem{Key: "relabel_configs", Value: relabelings})
 
-	if cr.Spec.SampleLimit > 0 {
-		cfg = append(cfg, yaml.MapItem{Key: "sample_limit", Value: cr.Spec.SampleLimit})
-	}
-	if cr.Spec.SeriesLimit > 0 {
-		cfg = append(cfg, yaml.MapItem{Key: "series_limit", Value: cr.Spec.SeriesLimit})
-	}
-
 	if nodeSpec.MetricRelabelConfigs != nil {
 		var metricRelabelings []yaml.MapSlice
 		for _, c := range nodeSpec.MetricRelabelConfigs {

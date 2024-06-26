@@ -93,6 +93,7 @@ relabel_configs:
 						HonorLabels:     true,
 						ProxyURL:        pointer.String("https://some-url"),
 						SampleLimit:     50,
+						SeriesLimit:     1000,
 						FollowRedirects: pointer.Bool(true),
 						ScrapeTimeout:   "10s",
 						ScrapeInterval:  "5s",
@@ -138,6 +139,7 @@ scrape_timeout: 10s
 metrics_path: /metrics
 proxy_url: https://some-url
 sample_limit: 50
+series_limit: 1000
 params:
   module:
   - client
@@ -183,7 +185,6 @@ relabel_configs:
   target_label: __address__
   regex: ^(.*):(.*)
   replacement: ${1}:9100
-sample_limit: 50
 metric_relabel_configs: []
 stream_parse: true
 proxy_tls_config:

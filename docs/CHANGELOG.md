@@ -23,10 +23,11 @@ aliases:
 
 - [operator](./README.md): kubebuilder v2 -> v4 upgrade
 - [operator](./README.md): upgraded certificates.cert-manager.io/v1alpha2 to certificates.cert-manager.io/v1
-- [operator](./README.md): fix VM CRs' `xxNamespaceSelector` and `xxSelector` options, previously they are inverted. See this [issue](https://github.com/VictoriaMetrics/operator/issues/980) for details.
 - [operator](./README.md): code-generator v0.27.11 -> v0.30.0 upgrade
-
 - [vmalertmanagerconfig](./api.md#vmalertmanagerconfig): adds missing `handleReconcileErr` callback to the reconcile loop. It must properly handle errors and deregister objects.
+
+- [operator](./README.md): fix VM CRs' `xxNamespaceSelector` and `xxSelector` options, previously they are inverted. See this [issue](https://github.com/VictoriaMetrics/operator/issues/980) for details.
+- - [vmnodescrape](./api.md#vmnodescrape): remove duplicated `series_limit` and `sample_limit` fields in generated scrape_config. See [this issue](https://github.com/VictoriaMetrics/operator/issues/986).
 
 <a name="v0.45.0"></a>
 

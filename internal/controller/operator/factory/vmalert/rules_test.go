@@ -3,19 +3,20 @@ package vmalert
 import (
 	"context"
 	"reflect"
-	"sort"
 	"testing"
 
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
-
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/go-logr/logr"
 	"github.com/go-test/deep"
+	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/utils/ptr"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
 func Test_selectNamespaces(t *testing.T) {
@@ -71,7 +72,7 @@ func TestSelectRules(t *testing.T) {
 		name              string
 		args              args
 		predefinedObjects []runtime.Object
-		want              []string
+		want              map[string]string
 		wantErr           bool
 	}{
 		{
@@ -80,7 +81,22 @@ func TestSelectRules(t *testing.T) {
 				p: &vmv1beta1.VMAlert{},
 				l: logf.Log.WithName("unit-test"),
 			},
-			want: []string{"default-vmalert.yaml"},
+			want: map[string]string{
+				"default-vmalert.yaml": `
+groups:
+- name: vmAlertGroup
+  rules:
+     - alert: error writing to remote
+       for: 1m
+       expr: rate(vmalert_remotewrite_errors_total[1m]) > 0
+       labels:
+         host: "{{ $labels.instance }}"
+       annotations:
+         summary: " error writing to remote writer from vmaler{{ $value|humanize }}"
+         description: "error writing to remote writer from vmaler {{$labels}}"
+         back: "error rate is ok at vmalert "
+`,
+			},
 		},
 		{
 			name: "select default rule additional rule from another namespace",
@@ -95,12 +111,31 @@ func TestSelectRules(t *testing.T) {
 				// we need namespace for filter + object inside this namespace
 				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
 				&vmv1beta1.VMRule{ObjectMeta: metav1.ObjectMeta{Name: "error-alert", Namespace: "default"}, Spec: vmv1beta1.VMRuleSpec{
-					Groups: []vmv1beta1.RuleGroup{{Name: "error-alert", Interval: "10s", Rules: []vmv1beta1.Rule{
-						{Alert: "", Expr: "10", For: "10s", Labels: nil, Annotations: nil},
-					}}},
+					Groups: []vmv1beta1.RuleGroup{{
+						Name: "error-alert", Interval: "10s",
+						Concurrency:   1,
+						EvalOffset:    "10s",
+						EvalDelay:     "40s",
+						EvalAlignment: ptr.To(false),
+						Rules: []vmv1beta1.Rule{
+							{Alert: "", Expr: "10", For: "10s", Labels: nil, Annotations: nil},
+						},
+					}},
 				}},
 			},
-			want: []string{"default-error-alert.yaml"},
+			want: map[string]string{
+				"default-error-alert.yaml": `groups:
+- concurrency: 1
+  eval_alignment: false
+  eval_delay: 40s
+  eval_offset: 10s
+  interval: 10s
+  name: error-alert
+  rules:
+  - expr: "10"
+    for: 10s
+`,
+			},
 		},
 		{
 			name: "select default rule, and additional rule from another namespace with namespace filter",
@@ -126,7 +161,13 @@ func TestSelectRules(t *testing.T) {
 					}}},
 				}},
 			},
-			want: []string{"monitoring-error-alert-at-monitoring.yaml"},
+			want: map[string]string{"monitoring-error-alert-at-monitoring.yaml": `groups:
+- interval: 10s
+  name: error-alert
+  rules:
+  - expr: "10"
+    for: 10s
+`},
 		},
 		{
 			name: "select all rules with select all",
@@ -160,7 +201,22 @@ func TestSelectRules(t *testing.T) {
 					},
 				},
 			},
-			want: []string{"default-error-alert.yaml", "monitoring-error-alert-at-monitoring.yaml"},
+			want: map[string]string{
+				"default-error-alert.yaml": `groups:
+- interval: 10s
+  name: error-alert
+  rules:
+  - expr: "10"
+    for: 10s
+`,
+				"monitoring-error-alert-at-monitoring.yaml": `groups:
+- interval: 10s
+  name: error-alert
+  rules:
+  - expr: "10"
+    for: 10s
+`,
+			},
 		},
 		{
 			name: "select none by default",
@@ -194,7 +250,20 @@ func TestSelectRules(t *testing.T) {
 					},
 				},
 			},
-			want: []string{"default-vmalert.yaml"},
+			want: map[string]string{"default-vmalert.yaml": `
+groups:
+- name: vmAlertGroup
+  rules:
+     - alert: error writing to remote
+       for: 1m
+       expr: rate(vmalert_remotewrite_errors_total[1m]) > 0
+       labels:
+         host: "{{ $labels.instance }}"
+       annotations:
+         summary: " error writing to remote writer from vmaler{{ $value|humanize }}"
+         description: "error writing to remote writer from vmaler {{$labels}}"
+         back: "error rate is ok at vmalert "
+`},
 		},
 	}
 	for _, tt := range tests {
@@ -205,14 +274,10 @@ func TestSelectRules(t *testing.T) {
 				t.Errorf("SelectRules() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			gotNames := []string{}
-			for ruleName := range got {
-				gotNames = append(gotNames, ruleName)
-			}
-			sort.Strings(gotNames)
-
-			if !reflect.DeepEqual(gotNames, tt.want) {
-				t.Errorf("SelectRules() got = %v, want %v", gotNames, tt.want)
+			for ruleName, content := range got {
+				if !assert.Equal(t, tt.want[ruleName], content) {
+					t.Errorf("SelectRules() got = %v, want %v", content, tt.want[ruleName])
+				}
 			}
 		})
 	}

@@ -38,6 +38,11 @@ func (r *VMAlert) sanityCheck() error {
 			return fmt.Errorf("notifier.url is empty and selector is not set, provide at least once for spec.notifiers at idx: %d", idx)
 		}
 	}
+	if _, ok := r.Spec.ExtraArgs["notifier.blackhole"]; !ok {
+		if r.Spec.Notifier == nil && len(r.Spec.Notifiers) == 0 && r.Spec.NotifierConfigRef == nil {
+			return fmt.Errorf("vmalert should have at least one notifier.url or enable `-notifier.blackhole`")
+		}
+	}
 
 	return nil
 }

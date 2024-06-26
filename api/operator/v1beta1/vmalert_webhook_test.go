@@ -20,8 +20,11 @@ func TestVMAlert_sanityCheck(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:    "wo notifiers",
-			spec:    VMAlertSpec{Datasource: VMAlertDatasourceSpec{URL: "http://some-url"}},
+			name: "with notifier blackhole",
+			spec: VMAlertSpec{
+				Datasource: VMAlertDatasourceSpec{URL: "http://some-url"},
+				ExtraArgs:  map[string]string{"notifier.blackhole": "true"},
+			},
 			wantErr: false,
 		},
 		{

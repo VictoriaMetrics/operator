@@ -848,14 +848,14 @@ func buildNotifiersArgs(cr *vmv1beta1.VMAlert, ntBasicAuth map[string]*authSecre
 	var notifierArgs []remoteFlag
 	notifierTargets := cr.Spec.Notifiers
 
-	if len(notifierTargets) == 0 && cr.Spec.NotifierConfigRef != nil {
-		return append(finalArgs, fmt.Sprintf("-notifier.config=%s/%s", notifierConfigMountPath, cr.Spec.NotifierConfigRef.Key))
-	}
-
 	if _, ok := cr.Spec.ExtraArgs["notifier.blackhole"]; ok {
 		// notifier.blackhole disables sending notifications completely, so we don't need to add any notifier args
 		// also no need to add notifier.blackhole to args as it will be added with ExtraArgs
 		return finalArgs
+	}
+
+	if len(notifierTargets) == 0 && cr.Spec.NotifierConfigRef != nil {
+		return append(finalArgs, fmt.Sprintf("-notifier.config=%s/%s", notifierConfigMountPath, cr.Spec.NotifierConfigRef.Key))
 	}
 
 	url := remoteFlag{flagSetting: "-notifier.url=", isNotNull: true}
@@ -876,7 +876,6 @@ func buildNotifiersArgs(cr *vmv1beta1.VMAlert, ntBasicAuth map[string]*authSecre
 	pathPrefix := path.Join(tlsAssetsDir, cr.Namespace)
 
 	for i, nt := range notifierTargets {
-
 		url.flagSetting += fmt.Sprintf("%s,", nt.URL)
 
 		var caPath, certPath, keyPath, ServerName string

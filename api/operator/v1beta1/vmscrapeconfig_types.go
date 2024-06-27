@@ -82,6 +82,9 @@ type VMScrapeConfigSpec struct {
 	// ScrapeTimeout is the number of seconds to wait until a scrape request times out.
 	// +optional
 	ScrapeTimeout string `json:"scrapeTimeout,omitempty"`
+	// MaxScrapeSize defines a maximum size of scraped data for a job
+        // +optional
+        MaxScrapeSize string `json:"max_scrape_size,omitempty"`
 	// HonorTimestamps controls whether to respect the timestamps present in scraped data.
 	// +optional
 	HonorTimestamps *bool `json:"honorTimestamps,omitempty"`

@@ -83,6 +83,9 @@ func generateScrapeConfig(
 	if sc.Spec.SeriesLimit > 0 {
 		cfg = append(cfg, yaml.MapItem{Key: "series_limit", Value: sc.Spec.SeriesLimit})
 	}
+	if sc.Spec.MaxScrapeSize != "" {
+		cfg = append(cfg, yaml.MapItem{Key: "max_scrape_size", Value: sc.Spec.MaxScrapeSize})
+	}
 
 	var relabelings []yaml.MapSlice
 	for _, c := range sc.Spec.RelabelConfigs {

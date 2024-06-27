@@ -53,6 +53,8 @@ aliases:
 - [operator](./README.md): fix VM CRs' `xxNamespaceSelector` and `xxSelector` options, previously they are inverted. See this [issue](https://github.com/VictoriaMetrics/operator/issues/980) for details.
 - [vmnodescrape](./api.md#vmnodescrape): remove duplicated `series_limit` and `sample_limit` fields in generated scrape_config. See [this issue](https://github.com/VictoriaMetrics/operator/issues/986).
 
+- [vmscrapeconfig](./api.md#vmscrapeconfig) - added `max_scrape_size` parameter for scrape protocols configuration
+
 <a name="v0.45.0"></a>
 
 ## [v0.45.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.45.0) - 10 Jun 2024

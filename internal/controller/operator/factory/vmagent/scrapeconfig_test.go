@@ -40,6 +40,7 @@ func TestGenerateScrapeConfig(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: vmv1beta1.VMScrapeConfigSpec{
+						MaxScrapeSize:  "60KB",
 						ScrapeInterval: "10s",
 						StaticConfigs: []vmv1beta1.StaticConfig{
 							{
@@ -68,6 +69,7 @@ scrape_interval: 30s
 basic_auth:
   username: admin
   password: dangerous
+max_scrape_size: 60KB
 relabel_configs: []
 static_configs:
 - targets:

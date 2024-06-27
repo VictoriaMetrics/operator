@@ -22563,6 +22563,10 @@ spec:
                   - role
                   type: object
                 type: array
+              max_scrape_size:
+                description: MaxScrapeSize defines a maximum size of scraped data
+                  for a job
+                type: string
               metricRelabelConfigs:
                 description: MetricRelabelConfigs to apply to samples before ingestion.
                 items:

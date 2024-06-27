@@ -753,12 +753,12 @@ func TestBuildRemoteWrites(t *testing.T) {
 					Spec: vmv1beta1.VMAgentSpec{
 						RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 							{
-								URL: "vminsert-cluster-1:8480",
+								URL: "http://vminsert-cluster-1:8480/",
 
 								SendTimeout: ptr.To("10s"),
 							},
 							{
-								URL:         "vminsert-cluster-2:8480",
+								URL:         "https://vminsert-cluster-2:8480",
 								SendTimeout: ptr.To("15s"),
 							},
 						},
@@ -768,7 +768,7 @@ func TestBuildRemoteWrites(t *testing.T) {
 					},
 				},
 			},
-			want: []string{"-remoteWrite.multitenantURL=vminsert-cluster-1:8480,vminsert-cluster-2:8480", "-remoteWrite.sendTimeout=10s,15s"},
+			want: []string{"-enableMultitenantHandlers=true", "-remoteWrite.url=http://vminsert-cluster-1:8480/insert/multitenant/prometheus/api/v1/write,https://vminsert-cluster-2:8480/insert/multitenant/prometheus/api/v1/write", "-remoteWrite.sendTimeout=10s,15s"},
 		},
 		{
 			name: "test oauth2",

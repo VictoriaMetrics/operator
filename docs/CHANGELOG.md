@@ -24,8 +24,7 @@ aliases:
 - [operator](./README.md): code-generator v0.27.11 -> v0.30.0 upgrade
 - [vmalertmanagerconfig](./api.md#vmalertmanagerconfig): adds missing `handleReconcileErr` callback to the reconcile loop. It must properly handle errors and deregister objects.
 - [vmrule](./api.md#vmrule): sync group attributes `eval_offset`, `eval_delay` and `eval_alignment` from [upstream](https://docs.victoriametrics.com/vmalert/#groups).
-
-- [operator](./README.md): fix VM CRs' `xxNamespaceSelector` and `xxSelector` options, previously they are inverted. See this [issue](https://github.com/VictoriaMetrics/operator/issues/980) for details.
+- [vmagent](./api.md#vmagent): use `-enableMultitenantHandlers` command-line flag for vmagent remote write multiTenant mode, previous flag `-remoteWrite.multitenantURL` is already deprecated.
 
 - [operator](./README.md): fix VM CRs' `xxNamespaceSelector` and `xxSelector` options, previously they are inverted. See this [issue](https://github.com/VictoriaMetrics/operator/issues/980) for details.
 - - [vmnodescrape](./api.md#vmnodescrape): remove duplicated `series_limit` and `sample_limit` fields in generated scrape_config. See [this issue](https://github.com/VictoriaMetrics/operator/issues/986).

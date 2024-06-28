@@ -1082,6 +1082,9 @@ func buildRemoteWriteSettings(cr *vmv1beta1.VMAgent) []string {
 		}
 
 	}
+	if rws.UseMultiTenantMode {
+		args = append(args, "-enableMultitenantHandlers=true")
+	}
 	return args
 }
 
@@ -1106,9 +1109,7 @@ func buildRemoteWrites(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) []st
 	remoteTargets := cr.Spec.RemoteWrite
 
 	url := remoteFlag{flagSetting: "-remoteWrite.url=", isNotNull: true}
-	if cr.Spec.RemoteWriteSettings != nil && cr.Spec.RemoteWriteSettings.UseMultiTenantMode {
-		url = remoteFlag{flagSetting: "-remoteWrite.multitenantURL=", isNotNull: true}
-	}
+
 	authUser := remoteFlag{flagSetting: "-remoteWrite.basicAuth.username="}
 	authPasswordFile := remoteFlag{flagSetting: "-remoteWrite.basicAuth.passwordFile="}
 	bearerTokenFile := remoteFlag{flagSetting: "-remoteWrite.bearerTokenFile="}
@@ -1132,7 +1133,6 @@ func buildRemoteWrites(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) []st
 	pathPrefix := path.Join(tlsAssetsDir, cr.Namespace)
 
 	for i := range remoteTargets {
-
 		rws := remoteTargets[i]
 		url.flagSetting += fmt.Sprintf("%s,", rws.URL)
 

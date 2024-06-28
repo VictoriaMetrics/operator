@@ -2485,8 +2485,8 @@ spec:
                     type: string
                   useMultiTenantMode:
                     description: |-
-                      Configures vmagent in multi-tenant mode with direct cluster support
-                      docs https://docs.victoriametrics.com/vmagent.html#multitenancy
+                      Configures vmagent accepting data via the same multitenant endpoints as vminsert at VictoriaMetrics cluster does,
+                      see https://docs.victoriametrics.com/vmagent.html#multitenancy.
                       it's global setting and affects all remote storage configurations
                     type: boolean
                 type: object

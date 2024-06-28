@@ -472,8 +472,8 @@ type VMAgentRemoteWriteSettings struct {
 	// Labels in the form 'name=value' to add to all the metrics before sending them. This overrides the label if it already exists.
 	// +optional
 	Labels map[string]string `json:"label,omitempty"`
-	// Configures vmagent in multi-tenant mode with direct cluster support
-	// docs https://docs.victoriametrics.com/vmagent.html#multitenancy
+	// Configures vmagent accepting data via the same multitenant endpoints as vminsert at VictoriaMetrics cluster does,
+	// see https://docs.victoriametrics.com/vmagent.html#multitenancy.
 	// it's global setting and affects all remote storage configurations
 	// +optional
 	UseMultiTenantMode bool `json:"useMultiTenantMode,omitempty"`

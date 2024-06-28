@@ -186,10 +186,10 @@ type VMAlertSpec struct {
 	// +optional
 	Notifiers []VMAlertNotifierSpec `json:"notifiers,omitempty"`
 
-	// NotifierConfigRef reference for secret with notifier configuration for vmalert
+	// NotifierConfigRef reference for configmap or secret with notifier configuration for vmalert
 	// only one of notifier options could be chosen: notifierConfigRef or notifiers +  notifier
 	// +optional
-	NotifierConfigRef *v1.SecretKeySelector `json:"notifierConfigRef,omitempty"`
+	NotifierConfigRef *SecretOrConfigMap `json:"notifierConfigRef,omitempty"`
 
 	// RemoteWrite Optional URL to remote-write compatible storage to persist
 	// vmalert state and rule results to.

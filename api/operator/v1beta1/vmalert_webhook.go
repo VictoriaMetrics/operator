@@ -43,6 +43,11 @@ func (r *VMAlert) sanityCheck() error {
 			return fmt.Errorf("vmalert should have at least one notifier.url or enable `-notifier.blackhole`")
 		}
 	}
+	if r.Spec.NotifierConfigRef != nil {
+		if err := r.Spec.NotifierConfigRef.Validate(); err != nil {
+			return err
+		}
+	}
 
 	return nil
 }

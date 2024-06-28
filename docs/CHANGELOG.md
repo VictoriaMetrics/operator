@@ -16,8 +16,9 @@ aliases:
 
 ### Breaking changes
 
-**Update note 1: the `--metrics-addr` command-line flag at `operator` was deprecated. Use `--metrics-bind-address` instead.**
-**Update note 2: the `--enable-leader-election` command-line flag at `operator` was deprecated. Use `--leader-elect` instead.**
+**Update note 1: command-line flag `--metrics-addr` at `operator` was deprecated. Use `--metrics-bind-address` instead.**
+**Update note 2: command-line flag `--enable-leader-election` at `operator` was deprecated. Use `--leader-elect` instead.**
+**Update note 3: add configmap support for `VMAlertSpec.notifierConfigRef`, config type needs to be specified explicitly.**
 
 - [operator](./README.md): kubebuilder v2 -> v4 upgrade
 - [operator](./README.md): upgraded certificates.cert-manager.io/v1alpha2 to certificates.cert-manager.io/v1

@@ -3878,7 +3878,7 @@ func (in *VMAlertSpec) DeepCopyInto(out *VMAlertSpec) {
 	}
 	if in.NotifierConfigRef != nil {
 		in, out := &in.NotifierConfigRef, &out.NotifierConfigRef
-		*out = new(v1.SecretKeySelector)
+		*out = new(SecretOrConfigMap)
 		(*in).DeepCopyInto(*out)
 	}
 	if in.RemoteWrite != nil {

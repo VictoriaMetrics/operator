@@ -519,10 +519,12 @@ func TestCreateOrUpdateVMAlert(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: vmv1beta1.VMAlertSpec{
-						NotifierConfigRef: &corev1.SecretKeySelector{
-							Key: "cfg.yaml",
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "notifier-cfg",
+						NotifierConfigRef: &vmv1beta1.SecretOrConfigMap{
+							Secret: &corev1.SecretKeySelector{
+								Key: "cfg.yaml",
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "notifier-cfg",
+								},
 							},
 						},
 						Datasource: vmv1beta1.VMAlertDatasourceSpec{
@@ -618,12 +620,29 @@ func TestBuildNotifiers(t *testing.T) {
 			want: []string{"-notifier.url=http://am-1,http://am-2,http://am-3", "-notifier.tlsKeyFile=,/tmp/key.pem,", "-notifier.tlsCertFile=,/tmp/cert.pem,", "-notifier.tlsCAFile=,/tmp/ca.cert,", "-notifier.tlsInsecureSkipVerify=false,true,false"},
 		},
 		{
-			name: "ok build args with config",
+			name: "ok build args with config from secret",
 			args: args{
 				cr: &vmv1beta1.VMAlert{
 					Spec: vmv1beta1.VMAlertSpec{
-						NotifierConfigRef: &corev1.SecretKeySelector{
-							Key: "cfg.yaml",
+						NotifierConfigRef: &vmv1beta1.SecretOrConfigMap{
+							Secret: &corev1.SecretKeySelector{
+								Key: "cfg.yaml",
+							},
+						},
+					},
+				},
+			},
+			want: []string{"-notifier.config=" + notifierConfigMountPath + "/cfg.yaml"},
+		},
+		{
+			name: "ok build args with config from configmap",
+			args: args{
+				cr: &vmv1beta1.VMAlert{
+					Spec: vmv1beta1.VMAlertSpec{
+						NotifierConfigRef: &vmv1beta1.SecretOrConfigMap{
+							ConfigMap: &corev1.ConfigMapKeySelector{
+								Key: "cfg.yaml",
+							},
 						},
 					},
 				},

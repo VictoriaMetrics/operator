@@ -326,14 +326,39 @@ func vmAlertSpecGen(cr *vmv1beta1.VMAlert, c *config.BaseOperatorConf, ruleConfi
 	volumes, volumeMounts = cr.Spec.License.MaybeAddToVolumes(volumes, volumeMounts, vmv1beta1.SecretsDir)
 
 	if cr.Spec.NotifierConfigRef != nil {
-		volumes = append(volumes, corev1.Volume{
-			Name: "vmalert-notifier-config",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: cr.Spec.NotifierConfigRef.Name,
+		if cr.Spec.NotifierConfigRef.ConfigMap != nil {
+			volumes = append(volumes, corev1.Volume{
+				Name: "vmalert-notifier-config",
+				VolumeSource: corev1.VolumeSource{
+					ConfigMap: &corev1.ConfigMapVolumeSource{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: cr.Spec.NotifierConfigRef.ConfigMap.Name,
+						},
+						Items: []corev1.KeyToPath{
+							{
+								Key:  cr.Spec.NotifierConfigRef.ConfigMap.Key,
+								Path: cr.Spec.NotifierConfigRef.ConfigMap.Key,
+							},
+						},
+					},
 				},
-			},
-		})
+			})
+		} else if cr.Spec.NotifierConfigRef.Secret != nil {
+			volumes = append(volumes, corev1.Volume{
+				Name: "vmalert-notifier-config",
+				VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: cr.Spec.NotifierConfigRef.Secret.Name,
+						Items: []corev1.KeyToPath{
+							{
+								Key:  cr.Spec.NotifierConfigRef.Secret.Key,
+								Path: cr.Spec.NotifierConfigRef.Secret.Key,
+							},
+						},
+					},
+				},
+			})
+		}
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{
 			Name:      "vmalert-notifier-config",
 			MountPath: notifierConfigMountPath,
@@ -855,7 +880,7 @@ func buildNotifiersArgs(cr *vmv1beta1.VMAlert, ntBasicAuth map[string]*authSecre
 	}
 
 	if len(notifierTargets) == 0 && cr.Spec.NotifierConfigRef != nil {
-		return append(finalArgs, fmt.Sprintf("-notifier.config=%s/%s", notifierConfigMountPath, cr.Spec.NotifierConfigRef.Key))
+		return append(finalArgs, fmt.Sprintf("-notifier.config=%s/%s", notifierConfigMountPath, cr.Spec.NotifierConfigRef.Key()))
 	}
 
 	url := remoteFlag{flagSetting: "-notifier.url=", isNotNull: true}

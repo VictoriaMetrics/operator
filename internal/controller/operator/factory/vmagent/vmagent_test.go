@@ -753,12 +753,12 @@ func TestBuildRemoteWrites(t *testing.T) {
 					Spec: vmv1beta1.VMAgentSpec{
 						RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 							{
-								URL: "http://vminsert-cluster-1:8480/",
+								URL: "http://vminsert-cluster-1:8480/insert/multitenant/prometheus/api/v1/write",
 
 								SendTimeout: ptr.To("10s"),
 							},
 							{
-								URL:         "https://vminsert-cluster-2:8480",
+								URL:         "http://vmagent-aggregation:8429",
 								SendTimeout: ptr.To("15s"),
 							},
 						},
@@ -768,7 +768,7 @@ func TestBuildRemoteWrites(t *testing.T) {
 					},
 				},
 			},
-			want: []string{"-enableMultitenantHandlers=true", "-remoteWrite.url=http://vminsert-cluster-1:8480/insert/multitenant/prometheus/api/v1/write,https://vminsert-cluster-2:8480/insert/multitenant/prometheus/api/v1/write", "-remoteWrite.sendTimeout=10s,15s"},
+			want: []string{"-remoteWrite.url=http://vminsert-cluster-1:8480/insert/multitenant/prometheus/api/v1/write,http://vmagent-aggregation:8429", "-remoteWrite.sendTimeout=10s,15s"},
 		},
 		{
 			name: "test oauth2",
@@ -1621,11 +1621,12 @@ func TestBuildRemoteWriteSettings(t *testing.T) {
 							ShowURL:            ptr.To(true),
 							TmpDataPath:        ptr.To("/tmp/my-path"),
 							MaxDiskUsagePerURL: ptr.To(int64(1000)),
+							UseMultiTenantMode: true,
 						},
 					},
 				},
 			},
-			want: []string{"-remoteWrite.maxDiskUsagePerURL=1000", "-remoteWrite.tmpDataPath=/tmp/my-path", "-remoteWrite.showURL=true"},
+			want: []string{"-remoteWrite.maxDiskUsagePerURL=1000", "-remoteWrite.tmpDataPath=/tmp/my-path", "-remoteWrite.showURL=true", "-enableMultitenantHandlers=true"},
 		},
 	}
 	for _, tt := range tests {

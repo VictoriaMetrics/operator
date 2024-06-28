@@ -18,13 +18,13 @@ aliases:
 
 **Update note 1: the `--metrics-addr` command-line flag at `operator` was deprecated. Use `--metrics-bind-address` instead.**
 **Update note 2: the `--enable-leader-election` command-line flag at `operator` was deprecated. Use `--leader-elect` instead.**
+**Update note 3: multitenant endpoints suffix `/insert/multitenant/<suffix>` needs to be added in `remoteWrite.url` if storage supports multitenancy when using `remoteWriteSettings.useMultiTenantMode`, as upstream [vmagent](https://docs.victoriametrics.com/vmagent/) has deprecated `-remoteWrite.multitenantURL` command-line flag since v1.102.0.**
 
 - [operator](./README.md): kubebuilder v2 -> v4 upgrade
 - [operator](./README.md): upgraded certificates.cert-manager.io/v1alpha2 to certificates.cert-manager.io/v1
 - [operator](./README.md): code-generator v0.27.11 -> v0.30.0 upgrade
 - [vmalertmanagerconfig](./api.md#vmalertmanagerconfig): adds missing `handleReconcileErr` callback to the reconcile loop. It must properly handle errors and deregister objects.
 - [vmrule](./api.md#vmrule): sync group attributes `eval_offset`, `eval_delay` and `eval_alignment` from [upstream](https://docs.victoriametrics.com/vmalert/#groups).
-- [vmagent](./api.md#vmagent): use `-enableMultitenantHandlers` command-line flag for vmagent remote write multiTenant mode, previous flag `-remoteWrite.multitenantURL` is already deprecated.
 
 - [operator](./README.md): fix VM CRs' `xxNamespaceSelector` and `xxSelector` options, previously they are inverted. See this [issue](https://github.com/VictoriaMetrics/operator/issues/980) for details.
 - - [vmnodescrape](./api.md#vmnodescrape): remove duplicated `series_limit` and `sample_limit` fields in generated scrape_config. See [this issue](https://github.com/VictoriaMetrics/operator/issues/986).

@@ -1082,6 +1082,9 @@ func buildRemoteWriteSettings(cr *vmv1beta1.VMAgent) []string {
 		}
 
 	}
+	if rws.UseMultiTenantMode {
+		args = append(args, "-enableMultitenantHandlers=true")
+	}
 	return args
 }
 
@@ -1106,11 +1109,6 @@ func buildRemoteWrites(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) []st
 	remoteTargets := cr.Spec.RemoteWrite
 
 	url := remoteFlag{flagSetting: "-remoteWrite.url=", isNotNull: true}
-	var multiTenantModeSuffix string
-	if cr.Spec.RemoteWriteSettings != nil && cr.Spec.RemoteWriteSettings.UseMultiTenantMode {
-		multiTenantModeSuffix = "/insert/multitenant/prometheus/api/v1/write"
-		remoteArgs = append(remoteArgs, remoteFlag{flagSetting: "-enableMultitenantHandlers=true", isNotNull: true})
-	}
 
 	authUser := remoteFlag{flagSetting: "-remoteWrite.basicAuth.username="}
 	authPasswordFile := remoteFlag{flagSetting: "-remoteWrite.basicAuth.passwordFile="}
@@ -1136,9 +1134,7 @@ func buildRemoteWrites(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) []st
 
 	for i := range remoteTargets {
 		rws := remoteTargets[i]
-
-		// add multi tenant suffix to remote write url
-		url.flagSetting += fmt.Sprintf("%s%s,", strings.TrimSuffix(rws.URL, "/"), multiTenantModeSuffix)
+		url.flagSetting += fmt.Sprintf("%s,", rws.URL)
 
 		var caPath, certPath, keyPath, ServerName string
 		var insecure bool

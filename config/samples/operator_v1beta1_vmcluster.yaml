@@ -2,8 +2,9 @@ apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMCluster
 metadata:
   labels:
-    app.kubernetes.io/name: victoriametrics-operator
+    app.kubernetes.io/name: vm-operator
     app.kubernetes.io/managed-by: kustomize
   name: vmcluster-sample
 spec:
-  # TODO(user): Add fields here
+
+# TODO(user): Add fields here

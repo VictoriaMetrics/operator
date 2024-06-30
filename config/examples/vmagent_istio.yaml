@@ -1,6 +1,3 @@
-
----
-
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAgent
 metadata:
@@ -19,19 +16,17 @@ spec:
       sidecar.istio.io/userVolumeMount: '[{"name": "istio-certs", "mountPath": "/etc/istio-certs/"}]'
       traffic.sidecar.istio.io/includeOutboundIPRanges: ""
   remoteWrite:
-    - url: "http://vmsingle-example-vmsingle.default.svc:8429/api/v1/write"
+  - url: "http://vmsingle-example-vmsingle.default.svc:8429/api/v1/write"
   selectAllByDefault: true
   volumeMounts:
-    - mountPath: /etc/istio-certs/
-      name: istio-certs
-      readOnly: true
+  - mountPath: /etc/istio-certs/
+    name: istio-certs
+    readOnly: true
   volumes:
-    - emptyDir:
-        medium: Memory
-      name: istio-certs
-
+  - emptyDir:
+      medium: Memory
+    name: istio-certs
 ---
-
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMServiceScrape
 metadata:
@@ -40,18 +35,18 @@ metadata:
   name: test-app
 spec:
   endpoints:
-    - port: http
-      scheme: https
-      tlsConfig:
-        ca: {}
-        caFile: /etc/istio-certs/root-cert.pem
-        cert: {}
-        certFile: /etc/istio-certs/cert-chain.pem
-        insecureSkipVerify: true
-        keyFile: /etc/istio-certs/key.pem
+  - port: http
+    scheme: https
+    tlsConfig:
+      ca: {}
+      caFile: /etc/istio-certs/root-cert.pem
+      cert: {}
+      certFile: /etc/istio-certs/cert-chain.pem
+      insecureSkipVerify: true
+      keyFile: /etc/istio-certs/key.pem
   namespaceSelector: {}
   selector:
     matchLabels:
       app: test-app
-
 ---
+

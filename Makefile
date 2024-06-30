@@ -100,7 +100,7 @@ docker: build manager
 .PHONY:e2e-local
 e2e-local: fmt vet manifests
 	echo 'mode: atomic' > coverage.txt  && \
-	$(TEST_ARGS) -p 1 $(REPO)/e2e/...
+	$(TEST_ARGS) -p 1 $(REPO)/test/e2e/...
 	$(GOCMD) tool cover -func coverage.txt  | grep total
 
 lint:

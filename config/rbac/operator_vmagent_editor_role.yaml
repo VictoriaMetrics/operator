@@ -1,0 +1,28 @@
+# permissions for end users to edit vmagents.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: vm-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: operator-vmagent-editor
+rules:
+- apiGroups:
+  - operator.victoriametrics.com
+  resources:
+  - vmagents
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+  - deletecollection
+- apiGroups:
+  - operator.victoriametrics.com
+  resources:
+  - vmagents/status
+  verbs:
+  - get

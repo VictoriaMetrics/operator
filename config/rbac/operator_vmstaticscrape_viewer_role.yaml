@@ -1,0 +1,23 @@
+# permissions for end users to view vmstaticscrapes.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: vm-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: operator-vmstaticscrape-viewer
+rules:
+- apiGroups:
+  - operator.victoriametrics.com
+  resources:
+  - vmstaticscrapes
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - operator.victoriametrics.com
+  resources:
+  - vmstaticscrapes/status
+  verbs:
+  - get

@@ -6,7 +6,7 @@ apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMServiceScrape
 metadata:
   name: metrics-server
-  namespace: monitoring-system
+  namespace: vm
 spec:
   namespaceSelector:
     matchNames:
@@ -50,4 +50,4 @@ roleRef:
 subjects:
   - apiGroup: rbac.authorization.k8s.io
     kind: User
-    name: system:serviceaccount:monitoring-system:vmagent
+    name: system:serviceaccount:vm:vmagent

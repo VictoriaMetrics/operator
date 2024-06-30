@@ -29,53 +29,54 @@ import (
 // log is for logging in this package.
 var vmalertmanagerconfiglog = logf.Log.WithName("vmalertmanagerconfig-resource")
 
+// SetupWebhookWithManager will setup the manager to manage the webhooks
 func (r *VMAlertmanagerConfig) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(r).
 		Complete()
 }
 
-func (amc *VMAlertmanagerConfig) Validate() error {
-	validateSpec := amc.DeepCopy()
+// +kubebuilder:webhook:path=/validate-operator-victoriametrics-com-v1beta1-vmalertmanagerconfig,mutating=false,failurePolicy=fail,sideEffects=None,groups=operator.victoriametrics.com,resources=vmalertmanagerconfigs,verbs=create;update,versions=v1beta1,name=vvmalertmanagerconfig.kb.io,admissionReviewVersions=v1
+
+var _ webhook.Validator = &VMAlertmanagerConfig{}
+
+func (r *VMAlertmanagerConfig) Validate() error {
+	validateSpec := r.DeepCopy()
 	if err := parseNestedRoutes(validateSpec.Spec.Route); err != nil {
 		return fmt.Errorf("cannot parse nested route for alertmanager config err: %w", err)
 	}
 	return nil
 }
 
-// +kubebuilder:webhook:verbs=create;update,admissionReviewVersions=v1,sideEffects=none,path=/validate-operator-victoriametrics-com-v1beta1-vmalertmanagerconfig,mutating=false,failurePolicy=fail,groups=operator.victoriametrics.com,resources=vmalertmanagerconfigs,versions=v1beta1,name=vvmalertmanagerconfig.kb.io
-
-var _ webhook.Validator = &VMAlertmanagerConfig{}
-
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (r *VMAlertmanagerConfig) ValidateCreate() (aw admission.Warnings, err error) {
+func (r *VMAlertmanagerConfig) ValidateCreate() (admission.Warnings, error) {
 	if r.Spec.ParsingError != "" {
-		return aw, fmt.Errorf(r.Spec.ParsingError)
+		return nil, fmt.Errorf(r.Spec.ParsingError)
 	}
 	if mustSkipValidation(r) {
-		return
+		return nil, nil
 	}
 	if err := r.Validate(); err != nil {
-		return aw, err
+		return nil, err
 	}
-	return
+	return nil, nil
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (r *VMAlertmanagerConfig) ValidateUpdate(old runtime.Object) (aw admission.Warnings, err error) {
+func (r *VMAlertmanagerConfig) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
 	if r.Spec.ParsingError != "" {
-		return aw, fmt.Errorf(r.Spec.ParsingError)
+		return nil, fmt.Errorf(r.Spec.ParsingError)
 	}
 	if mustSkipValidation(r) {
-		return
+		return nil, nil
 	}
 	if err := r.Validate(); err != nil {
-		return aw, err
+		return nil, err
 	}
-	return
+	return nil, nil
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (r *VMAlertmanagerConfig) ValidateDelete() (aw admission.Warnings, err error) {
-	return
+func (r *VMAlertmanagerConfig) ValidateDelete() (admission.Warnings, error) {
+	return nil, nil
 }

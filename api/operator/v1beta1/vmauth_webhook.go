@@ -29,21 +29,18 @@ import (
 // log is for logging in this package.
 var vmauthlog = logf.Log.WithName("vmauth-resource")
 
+// SetupWebhookWithManager will setup the manager to manage the webhooks
 func (r *VMAuth) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(r).
 		Complete()
 }
 
-// +kubebuilder:webhook:verbs=create;update,admissionReviewVersions=v1,sideEffects=none,path=/validate-operator-victoriametrics-com-v1beta1-vmauth,mutating=false,failurePolicy=fail,groups=operator.victoriametrics.com,resources=vmauths,versions=v1beta1,name=vvmauth.kb.io
-
-var _ webhook.Validator = &VMAuth{}
-
-func (cr *VMAuth) sanityCheck() error {
-	if cr.Spec.Ingress != nil {
+func (r *VMAuth) sanityCheck() error {
+	if r.Spec.Ingress != nil {
 		// check ingress
 		// TlsHosts and TlsSecretName are both needed if one of them is used
-		ing := cr.Spec.Ingress
+		ing := r.Spec.Ingress
 		if len(ing.TlsHosts) > 0 && ing.TlsSecretName == "" {
 			return fmt.Errorf("spec.ingress.tlsSecretName cannot be empty with non-empty spec.ingress.tlsHosts")
 		}
@@ -54,35 +51,39 @@ func (cr *VMAuth) sanityCheck() error {
 	return nil
 }
 
+// +kubebuilder:webhook:path=/validate-operator-victoriametrics-com-v1beta1-vmauth,mutating=false,failurePolicy=fail,sideEffects=None,groups=operator.victoriametrics.com,resources=vmauths,verbs=create;update,versions=v1beta1,name=vvmauth.kb.io,admissionReviewVersions=v1
+
+var _ webhook.Validator = &VMAuth{}
+
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (r *VMAuth) ValidateCreate() (aw admission.Warnings, err error) {
+func (r *VMAuth) ValidateCreate() (admission.Warnings, error) {
 	if r.Spec.ParsingError != "" {
-		return aw, fmt.Errorf(r.Spec.ParsingError)
+		return nil, fmt.Errorf(r.Spec.ParsingError)
 	}
 	if mustSkipValidation(r) {
-		return
+		return nil, nil
 	}
 	if err := r.sanityCheck(); err != nil {
-		return aw, err
+		return nil, err
 	}
-	return
+	return nil, nil
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (r *VMAuth) ValidateUpdate(old runtime.Object) (aw admission.Warnings, err error) {
+func (r *VMAuth) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
 	if r.Spec.ParsingError != "" {
-		return aw, fmt.Errorf(r.Spec.ParsingError)
+		return nil, fmt.Errorf(r.Spec.ParsingError)
 	}
 	if mustSkipValidation(r) {
-		return
+		return nil, nil
 	}
 	if err := r.sanityCheck(); err != nil {
-		return aw, err
+		return nil, err
 	}
-	return
+	return nil, nil
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (r *VMAuth) ValidateDelete() (aw admission.Warnings, err error) {
-	return
+func (r *VMAuth) ValidateDelete() (admission.Warnings, error) {
+	return nil, nil
 }

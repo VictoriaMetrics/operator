@@ -5,12 +5,11 @@ metadata:
 spec:
   configSecret: "external-auth"
 ---
-apiVersion: v1 
-kind: Secret 
+apiVersion: v1
+kind: Secret
 metadata:
   name: "external-auth"
 stringData:
   config.yaml: |
     unauthorized_user:
       url_prefix: "http://backend/"
-

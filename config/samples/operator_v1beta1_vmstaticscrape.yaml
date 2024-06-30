@@ -1,34 +1,41 @@
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMStaticScrape
 metadata:
+  labels:
+    app.kubernetes.io/name: vm-operator
+    app.kubernetes.io/managed-by: kustomize
   name: vmstaticscrape-sample
 spec:
   jobName: static
   targetEndpoints:
-    - targets: ["192.168.0.1:9100","196.168.0.50:9100"]
-      labels:
-        env: dev
-        project: operator
-      relabelConfigs:
-        - target_label: namespace
-          replacement: default
-    - targets: ["secure-target-1:6443"]
-      labels:
-        env: secure
-      scheme: https
-      tlsConfig:
-        insecureSkipVerify: true
-        caFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-      bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
-    - targets: ["basic-auth:8080"]
-      params:
-        select: ["param1"]
-      interval: 10s
-      scrapeTimeout: 20s
-      basicAuth:
-        username:
-          name: bau-secret
-          key: user
-        password:
-          name: bau-secret
-          key: password
+  - targets:
+    - 192.168.0.1:9100
+    - 196.168.0.50:9100
+    labels:
+      env: dev
+      project: vm-operator
+    relabelConfigs:
+    - target_label: namespace
+      replacement: default
+  - targets:
+    - secure-target-1:6443
+    labels:
+      env: secure
+    scheme: https
+    tlsConfig:
+      insecureSkipVerify: true
+      caFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+    bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+  - targets:
+    - basic-auth:8080
+    params:
+      select: [param1]
+    interval: 10s
+    scrapeTimeout: 20s
+    basicAuth:
+      username:
+        name: bau-secret
+        key: user
+      password:
+        name: bau-secret
+        key: password

@@ -6,23 +6,23 @@ spec:
   jobLabel: job
   podTargetLabels: ["app"]
   podMetricsEndpoints:
-    - port: metrics
-      scheme: http
-      targetPort: metrics
-      path: /metrics
-      interval: 20s
-      scrapeTimeout: 2s
-      honorLabels: false
-      honorTimestamps: false
-      relabelConfigs:
-        - sourceLabels: [ "__address__" ]
-          targetLabel: addr
-      metricRelabelConfigs:
-        - sourceLabels: [ "__address__" ]
-          targetLabel: addr
+  - port: metrics
+    scheme: http
+    targetPort: metrics
+    path: /metrics
+    interval: 20s
+    scrapeTimeout: 2s
+    honorLabels: false
+    honorTimestamps: false
+    relabelConfigs:
+    - sourceLabels: ["__address__"]
+      targetLabel: addr
+    metricRelabelConfigs:
+    - sourceLabels: ["__address__"]
+      targetLabel: addr
   namespaceSelector:
     any: false
-    matchNames: [ "kube-system"]
+    matchNames: ["kube-system"]
   selector:
     matchLabels:
       monitored-by: vm-operator

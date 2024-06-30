@@ -4,8 +4,8 @@ metadata:
   name: example-pod-scrape
 spec:
   podMetricsEndpoints:
-    - port: metrics
-      scheme: http
+  - port: metrics
+    scheme: http
   selector:
     matchLabels:
       monitored-by: vm-operator

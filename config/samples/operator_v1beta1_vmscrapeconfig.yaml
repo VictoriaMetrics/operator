@@ -1,9 +1,10 @@
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMScrapeConfig
 metadata:
-  name: example-scrape-consul
   labels:
-    some-label: new 
+    app.kubernetes.io/name: vm-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: example-scrape-consul
   annotations:
     scrape: annotation
 spec:
@@ -12,7 +13,7 @@ spec:
   httpSDConfigs: []
   kubernetesSDConfigs: []
   consulSDConfigs:
-    - server: http://consul.consul.svc:8081
+  - server: http://consul.consul.svc:8081
   dnsSDConfigs: []
   ec2SDConfigs: []
   azureSDConfigs: []
@@ -33,4 +34,3 @@ spec:
   proxyURL: null
   follow_redirects: null
   vm_scrape_params: null
-

@@ -8,19 +8,19 @@ spec:
   targetLabels: []
   podTargetLabels: []
   endpoints:
-    - port: http
-      targetPort: http
-      path: /metrics
-      scheme: http
-      scrapeTimeout: 2s
-      metricRelabelConfigs:
-        - sourceLabels: ["__address__"]
-          targetLabel: addr
-      relabelConfigs:
-        - sourceLabels: [ "__address__" ]
-          regex: .+:(.+)
-          replacement: $1
-          targetLabel: addr_port
+  - port: http
+    targetPort: http
+    path: /metrics
+    scheme: http
+    scrapeTimeout: 2s
+    metricRelabelConfigs:
+    - sourceLabels: ["__address__"]
+      targetLabel: addr
+    relabelConfigs:
+    - sourceLabels: ["__address__"]
+      regex: .+:(.+)
+      replacement: $1
+      targetLabel: addr_port
   namespaceSelector:
     any: false
     matchNames: ["kube-system"]

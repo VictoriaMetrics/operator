@@ -4,7 +4,7 @@ metadata:
   name: example-scrape
 spec:
   endpoints:
-    - port: http
+  - port: http
   namespaceSelector: {}
   selector:
     matchLabels:

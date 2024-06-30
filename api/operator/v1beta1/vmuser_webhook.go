@@ -27,33 +27,34 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
+// log is for logging in this package.
+var vmuserlog = logf.Log.WithName("vmuser-resource")
+
 var supportedCRDKinds = []string{
 	"VMAgent", "VMAlert", "VMAlertmanager", "VMSingle", "VMCluster/vmselect", "VMCluster/vminsert", "VMCluster/vmstorage",
 }
 
-// log is for logging in this package.
-var vmuserlog = logf.Log.WithName("vmuser-resource")
-
+// SetupWebhookWithManager will setup the manager to manage the webhooks
 func (r *VMUser) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(r).
 		Complete()
 }
 
-// +kubebuilder:webhook:verbs=create;update,admissionReviewVersions=v1,sideEffects=none,path=/validate-operator-victoriametrics-com-v1beta1-vmuser,mutating=false,failurePolicy=fail,groups=operator.victoriametrics.com,resources=vmusers,versions=v1beta1,name=vvmuser.kb.io
+// +kubebuilder:webhook:path=/validate-operator-victoriametrics-com-v1beta1-vmuser,mutating=false,failurePolicy=fail,sideEffects=None,groups=operator.victoriametrics.com,resources=vmusers,verbs=create;update,versions=v1beta1,name=vvmuser.kb.io,admissionReviewVersions=v1
 
 var _ webhook.Validator = &VMUser{}
 
-func (cr *VMUser) sanityCheck() error {
-	if cr.Spec.UserName != nil && cr.Spec.BearerToken != nil {
+func (r *VMUser) sanityCheck() error {
+	if r.Spec.UserName != nil && r.Spec.BearerToken != nil {
 		return fmt.Errorf("one of spec.username and spec.bearerToken must be defined for user, got both")
 	}
-	if cr.Spec.PasswordRef != nil && cr.Spec.Password != nil {
+	if r.Spec.PasswordRef != nil && r.Spec.Password != nil {
 		return fmt.Errorf("one of spec.password or spec.passwordRef must be used for user, got both")
 	}
-	isRetryCodesSet := len(cr.Spec.UserConfigOption.RetryStatusCodes) > 0
-	for i := range cr.Spec.TargetRefs {
-		targetRef := cr.Spec.TargetRefs[i]
+	isRetryCodesSet := len(r.Spec.UserConfigOption.RetryStatusCodes) > 0
+	for i := range r.Spec.TargetRefs {
+		targetRef := r.Spec.TargetRefs[i]
 		if targetRef.CRD != nil && targetRef.Static != nil {
 			return fmt.Errorf("targetRef validation failed, one of `crd` or `static` must be configured, got both")
 		}
@@ -80,10 +81,10 @@ func (cr *VMUser) sanityCheck() error {
 			return fmt.Errorf("retry_status_codes already set at VMUser.spec level")
 		}
 	}
-	if err := parseHeaders(cr.Spec.UserConfigOption.Headers); err != nil {
+	if err := parseHeaders(r.Spec.UserConfigOption.Headers); err != nil {
 		return fmt.Errorf("failed to parse vmuser headers: %w", err)
 	}
-	if err := parseHeaders(cr.Spec.UserConfigOption.ResponseHeaders); err != nil {
+	if err := parseHeaders(r.Spec.UserConfigOption.ResponseHeaders); err != nil {
 		return fmt.Errorf("failed to parse vmuser response headers: %w", err)
 	}
 	return nil
@@ -100,28 +101,28 @@ func parseHeaders(src []string) error {
 }
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (cr *VMUser) ValidateCreate() (aw admission.Warnings, err error) {
-	if mustSkipValidation(cr) {
-		return
+func (r *VMUser) ValidateCreate() (admission.Warnings, error) {
+	if mustSkipValidation(r) {
+		return nil, nil
 	}
-	if err := cr.sanityCheck(); err != nil {
-		return aw, err
+	if err := r.sanityCheck(); err != nil {
+		return nil, err
 	}
-	return
+	return nil, nil
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (cr *VMUser) ValidateUpdate(old runtime.Object) (aw admission.Warnings, err error) {
-	if mustSkipValidation(cr) {
-		return
+func (r *VMUser) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
+	if mustSkipValidation(r) {
+		return nil, nil
 	}
-	if err := cr.sanityCheck(); err != nil {
-		return aw, err
+	if err := r.sanityCheck(); err != nil {
+		return nil, err
 	}
-	return
+	return nil, nil
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (r *VMUser) ValidateDelete() (aw admission.Warnings, err error) {
-	return
+func (r *VMUser) ValidateDelete() (admission.Warnings, error) {
+	return nil, nil
 }

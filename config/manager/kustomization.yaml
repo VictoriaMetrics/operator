@@ -1,10 +1,6 @@
 resources:
-- namespace.yaml
 - manager.yaml
-- service_account.yaml
 images:
 - name: manager
   newName: victoriametrics/operator
-  newTag: 0.0.1
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
+  newTag: v0.45.0

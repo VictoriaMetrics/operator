@@ -1,13 +1,16 @@
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMNodeScrape
 metadata:
+  labels:
+    app.kubernetes.io/name: vm-operator
+    app.kubernetes.io/managed-by: kustomize
   name: vmnodescrape-sample
 spec:
   port: "9100"
-  scheme: "http"
-  jobLabel: "beta.kubernetes.io/os"
-  targetLabels: ["beta.kubernetes.io/os"]
-  path: "/metrics"
+  scheme: http
+  jobLabel: beta.kubernetes.io/os
+  targetLabels: [beta.kubernetes.io/os]
+  path: /metrics
   selector:
     matchLabels:
       role: node-exporter
@@ -15,8 +18,9 @@ spec:
   scrapeTimeout: "2s"
   tlsConfig:
     insecureSkipVerify: true
-    caFile: "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-  bearerTokenFile: "/var/run/secrets/kubernetes.io/serviceaccount/token"
+    caFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+  bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
   relabelConfigs:
-    - sourceLabels: [ "node" ]
-      targetLabel: "kubernetes_io_node1"
+  - sourceLabels:
+    - node
+    targetLabel: kubernetes_io_node1

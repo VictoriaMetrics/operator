@@ -1,4 +1,3 @@
----
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMCluster
 metadata:
@@ -17,9 +16,9 @@ spec:
       # expose additional port with default service
       userAsDefault: true
       spec:
-         ports:
-         - name: extra-port
-           port: 8055
+        ports:
+        - name: extra-port
+          port: 8055
     storageDataPath: "/vm-data"
     storage:
       volumeClaimTemplate:
@@ -48,7 +47,7 @@ spec:
           my-cloud-provide-annotation: value
       userAsDefault: true
       spec:
-       type: LoadBalancer
+        type: LoadBalancer
     resources:
       limits:
         cpu: "1"

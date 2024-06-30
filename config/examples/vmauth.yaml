@@ -7,15 +7,14 @@ spec:
     matchLabels:
       managed-by: vm-operator
     matchExpressions:
-      - operator: Exists
-        key: name
+    - operator: Exists
+      key: name
   userNamespaceSelector:
     matchLabels:
       managed-by: vm-operator
     matchExpressions:
-      - operator: Exists
-        key: name
-
+    - operator: Exists
+      key: name
   image:
     repository: victoriametrics/vmauth
     tag: v1.60.0

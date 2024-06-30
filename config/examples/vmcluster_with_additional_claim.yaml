@@ -1,4 +1,3 @@
----
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMCluster
 metadata:
@@ -9,17 +8,17 @@ spec:
   vmstorage:
     replicaCount: 2
     containers:
-      - name: my-custom-backup-image
-        volumeMounts:
-          - name: vmbackup-dir
-            mountPath: /opt/backups
+    - name: my-custom-backup-image
+      volumeMounts:
+      - name: vmbackup-dir
+        mountPath: /opt/backups
     claimTemplates:
-      - matedata:
-          name: vmbackup-dir
-        spec:
-          resources:
-            requests:
-              storage: 50Gi
+    - matedata:
+        name: vmbackup-dir
+      spec:
+        resources:
+          requests:
+            storage: 50Gi
     storageDataPath: "/vm-data"
     storage:
       volumeClaimTemplate:

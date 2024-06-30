@@ -17,8 +17,9 @@ resources:
 - bases/operator.victoriametrics.com_vmauths.yaml
 - bases/operator.victoriametrics.com_vmusers.yaml
 - bases/operator.victoriametrics.com_vmalertmanagerconfigs.yaml
-
 patches:
+# [WEBHOOK] To enable webhook, uncomment all the sections with [WEBHOOK] prefix.
+# patches here are for enabling the conversion webhook for each CRD
 - path: patches/operator.victoriametrics.com_vmagents.yaml
   target:
     kind: CustomResourceDefinition
@@ -47,7 +48,36 @@ patches:
   target:
     kind: CustomResourceDefinition
     name: vmalertmanagerconfigs.operator.victoriametrics.com
+- path: patches/webhook_in_operator_vmagents.yaml
+- path: patches/webhook_in_operator_vmsingles.yaml
+- path: patches/webhook_in_operator_vmalertmanagers.yaml
+- path: patches/webhook_in_operator_vmalerts.yaml
+- path: patches/webhook_in_operator_vmalertmanagerconfigs.yaml
+- path: patches/webhook_in_operator_vmauths.yaml
+- path: patches/webhook_in_operator_vmclusters.yaml
+- path: patches/webhook_in_operator_vmrules.yaml
+- path: patches/webhook_in_operator_vmusers.yaml
+# +kubebuilder:scaffold:crdkustomizewebhookpatch
 
+# [CERTMANAGER] To enable cert-manager, uncomment all the sections with [CERTMANAGER] prefix.
+# patches here are for enabling the CA injection for each CRD
+#- path: patches/cainjection_in_operator_vmagents.yaml
+#- path: patches/cainjection_in_operator_vmalerts.yaml
+#- path: patches/cainjection_in_operator_vmalertmanagers.yaml
+#- path: patches/cainjection_in_operator_vmalertmanagerconfigs.yaml
+#- path: patches/cainjection_in_operator_vmpodscrapes.yaml
+#- path: patches/cainjection_in_operator_vmrules.yaml
+#- path: patches/cainjection_in_operator_vmservicescrapes.yaml
+#- path: patches/cainjection_in_operator_vmsingles.yaml
+#- path: patches/cainjection_in_operator_vmclusters.yaml
+#- path: patches/cainjection_in_operator_vmprobes.yaml
+#- path: patches/cainjection_in_operator_vmnodescrapes.yaml
+#- path: patches/cainjection_in_operator_vmstaticscrapes.yaml
+#- path: patches/cainjection_in_operator_vmusers.yaml
+#- path: patches/cainjection_in_operator_vmauths.yaml
+# +kubebuilder:scaffold:crdkustomizecainjectionpatch
+
+# [WEBHOOK] To enable webhook, uncomment the following section
 # the following config is for teaching kustomize how to do kustomization for CRDs.
 configurations:
 - kustomizeconfig.yaml

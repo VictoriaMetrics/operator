@@ -13,7 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -112,8 +112,8 @@ func (c *VMCluster) AsOwner() []metav1.OwnerReference {
 			Kind:               c.Kind,
 			Name:               c.Name,
 			UID:                c.UID,
-			Controller:         pointer.Bool(true),
-			BlockOwnerDeletion: pointer.Bool(true),
+			Controller:         ptr.To(true),
+			BlockOwnerDeletion: ptr.To(true),
 		},
 	}
 }
@@ -125,7 +125,7 @@ type VMClusterStatus struct {
 	// Deprecated.
 	LastSync     string       `json:"lastSync,omitempty"`
 	UpdateStatus UpdateStatus `json:"clusterStatus,omitempty"`
-	Reason       string       `json:"reason,omitempty,omitempty"`
+	Reason       string       `json:"reason,omitempty"`
 }
 
 // VMClusterList contains a list of VMCluster

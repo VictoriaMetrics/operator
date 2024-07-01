@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 )
 
 func Test_generatePodScrapeConfig(t *testing.T) {
@@ -42,7 +42,7 @@ func Test_generatePodScrapeConfig(t *testing.T) {
 					Path: "/metric",
 					Port: "web",
 					AttachMetadata: vmv1beta1.AttachMetadata{
-						Node: pointer.Bool(true),
+						Node: ptr.To(true),
 					},
 				},
 				ssCache: &scrapesSecretsCache{},
@@ -94,9 +94,9 @@ relabel_configs:
 					Path: "/metric",
 					Port: "web",
 					AttachMetadata: vmv1beta1.AttachMetadata{
-						Node: pointer.Bool(true),
+						Node: ptr.To(true),
 					},
-					FilterRunning: pointer.Bool(false),
+					FilterRunning: ptr.To(false),
 				},
 				ssCache: &scrapesSecretsCache{},
 			},

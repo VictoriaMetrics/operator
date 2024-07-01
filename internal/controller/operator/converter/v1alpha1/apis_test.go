@@ -11,7 +11,7 @@ import (
 	promv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 )
 
 func TestConvertAlertmanagerConfig(t *testing.T) {
@@ -76,26 +76,26 @@ func TestConvertScrapeConfig(t *testing.T) {
 								Targets: []promv1alpha1.Target{"target-1", "target-2"},
 							},
 						},
-						HonorTimestamps:   pointer.Bool(true),
-						EnableCompression: pointer.Bool(true),
+						HonorTimestamps:   ptr.To(true),
+						EnableCompression: ptr.To(true),
 						BasicAuth: &promv1.BasicAuth{
 							Username: corev1.SecretKeySelector{Key: "username"},
 							Password: corev1.SecretKeySelector{Key: "password"},
 						},
 						ProxyConfig: promv1.ProxyConfig{
-							ProxyURL: pointer.String("http://proxy.com"),
+							ProxyURL: ptr.To("http://proxy.com"),
 						},
 						RelabelConfigs: []promv1.RelabelConfig{
 							{
 								Action:      "LabelMap",
 								Regex:       "__meta_kubernetes_pod_label_(.+)",
-								Replacement: pointer.String("foo_$1"),
+								Replacement: ptr.To("foo_$1"),
 							},
 						},
 						MetricRelabelConfigs: []promv1.RelabelConfig{
 							{
 								SourceLabels: []promv1.LabelName{"__meta_kubernetes_pod_name", "__meta_kubernetes_pod_container_port_number"},
-								Separator:    pointer.String(":"),
+								Separator:    ptr.To(":"),
 								TargetLabel:  "host_port",
 							},
 						},
@@ -104,14 +104,14 @@ func TestConvertScrapeConfig(t *testing.T) {
 			},
 			want: vmv1beta1.VMScrapeConfig{
 				Spec: vmv1beta1.VMScrapeConfigSpec{
-					ProxyURL: pointer.String("http://proxy.com"),
+					ProxyURL: ptr.To("http://proxy.com"),
 					StaticConfigs: []vmv1beta1.StaticConfig{
 						{
 							Targets: []string{"target-1", "target-2"},
 						},
 					},
-					HonorTimestamps: pointer.Bool(true),
-					VMScrapeParams:  &vmv1beta1.VMScrapeParams{DisableCompression: pointer.Bool(false)},
+					HonorTimestamps: ptr.To(true),
+					VMScrapeParams:  &vmv1beta1.VMScrapeParams{DisableCompression: ptr.To(false)},
 					BasicAuth: &vmv1beta1.BasicAuth{
 						Username: corev1.SecretKeySelector{Key: "username"},
 						Password: corev1.SecretKeySelector{Key: "password"},
@@ -154,8 +154,8 @@ func TestConvertScrapeConfig(t *testing.T) {
 									CA:                 promv1.SecretOrConfigMap{ConfigMap: &corev1.ConfigMapKeySelector{Key: "ca.crt"}},
 									Cert:               promv1.SecretOrConfigMap{Secret: &corev1.SecretKeySelector{Key: "cert.pem"}},
 									KeySecret:          &corev1.SecretKeySelector{Key: "key"},
-									ServerName:         pointer.String("test"),
-									InsecureSkipVerify: pointer.Bool(true),
+									ServerName:         ptr.To("test"),
+									InsecureSkipVerify: ptr.To(true),
 								},
 							},
 						},
@@ -195,7 +195,7 @@ func TestConvertScrapeConfig(t *testing.T) {
 					Spec: promv1alpha1.ScrapeConfigSpec{
 						KubernetesSDConfigs: []promv1alpha1.KubernetesSDConfig{
 							{
-								APIServer: pointer.String("http://1.2.3.4"),
+								APIServer: ptr.To("http://1.2.3.4"),
 								Role:      promv1alpha1.Role("pod"),
 								Selectors: []promv1alpha1.K8SSelectorConfig{
 									{
@@ -211,7 +211,7 @@ func TestConvertScrapeConfig(t *testing.T) {
 				Spec: vmv1beta1.VMScrapeConfigSpec{
 					KubernetesSDConfigs: []vmv1beta1.KubernetesSDConfig{
 						{
-							APIServer: pointer.String("http://1.2.3.4"),
+							APIServer: ptr.To("http://1.2.3.4"),
 							Role:      "pod",
 							Selectors: []vmv1beta1.K8SSelectorConfig{
 								{
@@ -232,8 +232,8 @@ func TestConvertScrapeConfig(t *testing.T) {
 							{
 								Server:     "http://1.2.3.4",
 								TokenRef:   &corev1.SecretKeySelector{Key: "token"},
-								Datacenter: pointer.String("prod"),
-								Namespace:  pointer.String("test"),
+								Datacenter: ptr.To("prod"),
+								Namespace:  ptr.To("test"),
 							},
 						},
 					},
@@ -245,8 +245,8 @@ func TestConvertScrapeConfig(t *testing.T) {
 						{
 							Server:     "http://1.2.3.4",
 							TokenRef:   &corev1.SecretKeySelector{Key: "token"},
-							Datacenter: pointer.String("prod"),
-							Namespace:  pointer.String("test"),
+							Datacenter: ptr.To("prod"),
+							Namespace:  ptr.To("test"),
 						},
 					},
 				},
@@ -259,7 +259,7 @@ func TestConvertScrapeConfig(t *testing.T) {
 					Spec: promv1alpha1.ScrapeConfigSpec{
 						EC2SDConfigs: []promv1alpha1.EC2SDConfig{
 							{
-								Region:    pointer.String("us-west-1"),
+								Region:    ptr.To("us-west-1"),
 								AccessKey: &corev1.SecretKeySelector{Key: "accesskey"},
 								SecretKey: &corev1.SecretKeySelector{Key: "secret"},
 								Filters: []*promv1alpha1.EC2Filter{
@@ -268,7 +268,7 @@ func TestConvertScrapeConfig(t *testing.T) {
 										Values: []string{"1"},
 									},
 								},
-								Port: pointer.Int(80),
+								Port: ptr.To(80),
 							},
 						},
 					},
@@ -278,7 +278,7 @@ func TestConvertScrapeConfig(t *testing.T) {
 				Spec: vmv1beta1.VMScrapeConfigSpec{
 					EC2SDConfigs: []vmv1beta1.EC2SDConfig{
 						{
-							Region:    pointer.String("us-west-1"),
+							Region:    ptr.To("us-west-1"),
 							AccessKey: &corev1.SecretKeySelector{Key: "accesskey"},
 							SecretKey: &corev1.SecretKeySelector{Key: "secret"},
 							Filters: []*vmv1beta1.EC2Filter{
@@ -287,7 +287,7 @@ func TestConvertScrapeConfig(t *testing.T) {
 									Values: []string{"1"},
 								},
 							},
-							Port: pointer.Int(80),
+							Port: ptr.To(80),
 						},
 					},
 				},
@@ -316,8 +316,8 @@ func TestConvertScrapeConfig(t *testing.T) {
 							Kind:               "ScrapeConfig",
 							Name:               "test",
 							UID:                "42",
-							Controller:         pointer.Bool(true),
-							BlockOwnerDeletion: pointer.Bool(true),
+							Controller:         ptr.To(true),
+							BlockOwnerDeletion: ptr.To(true),
 						},
 					},
 				},

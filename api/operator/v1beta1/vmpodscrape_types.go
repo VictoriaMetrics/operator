@@ -5,7 +5,6 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 // VMPodScrapeSpec defines the desired state of VMPodScrape
@@ -74,9 +73,6 @@ type PodMetricsEndpoint struct {
 	// Name of the pod port this endpoint refers to. Mutually exclusive with targetPort.
 	// +optional
 	Port string `json:"port,omitempty"`
-	// Deprecated: Use 'port' instead.
-	// +optional
-	TargetPort *intstr.IntOrString `json:"targetPort,omitempty"`
 	// HTTP path to scrape for metrics.
 	// +optional
 	Path string `json:"path,omitempty"`

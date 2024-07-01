@@ -49,11 +49,11 @@ var (
 	}, []string{"controller", "namespaced_name"})
 	getObjectsErrorsTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "operator_controller_object_get_errors_total",
-		Help: "Counts number of errors for client.Get method at reconcilation loop",
+		Help: "Counts number of errors for client.Get method at reconciliation loop",
 	}, []string{"controller", "namespaced_name"})
 	conflictErrorsTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "operator_controller_reconcile_conflict_errors_total",
-		Help: "Counts number of errors with race conditions, when object was modified by external program at reconcilation",
+		Help: "Counts number of errors with race conditions, when object was modified by external program at reconciliation",
 	}, []string{"controller", "namespaced_name"})
 	contextCancelErrorsTotal = prometheus.NewCounter(prometheus.CounterOpts{
 		Name: "operator_controller_reconcile_errors_total",
@@ -161,7 +161,7 @@ func handleReconcileErr(ctx context.Context, rclient client.Client, object objec
 			},
 		}
 		if err := rclient.Create(ctx, errEvent); err != nil {
-			logger.WithContext(ctx).Error(err, "failed to create error event at kubernetes API during reconcilation error")
+			logger.WithContext(ctx).Error(err, "failed to create error event at kubernetes API during reconciliation error")
 		}
 	}
 

@@ -9,7 +9,7 @@ import (
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 )
 
 func TestConvertTlsConfig(t *testing.T) {
@@ -43,7 +43,7 @@ func TestConvertTlsConfig(t *testing.T) {
 					CAFile:        "/etc/prom_add/ca",
 					CertFile:      "/etc/prometheus/secrets/cert.crt",
 					KeyFile:       "/etc/prometheus/configmaps/key.pem",
-					SafeTLSConfig: promv1.SafeTLSConfig{ServerName: pointer.String("some-hostname"), InsecureSkipVerify: pointer.Bool(true)},
+					SafeTLSConfig: promv1.SafeTLSConfig{ServerName: ptr.To("some-hostname"), InsecureSkipVerify: ptr.To(true)},
 				},
 			},
 			want: &vmv1beta1.TLSConfig{
@@ -146,9 +146,8 @@ func TestConvertEndpoint(t *testing.T) {
 			args: args{
 				promEndpoint: []promv1.Endpoint{
 					{
-						Port:              "9100",
-						Path:              "/metrics",
-						BearerTokenSecret: &corev1.SecretKeySelector{Key: "bearer"},
+						Port: "9100",
+						Path: "/metrics",
 						RelabelConfigs: []promv1.RelabelConfig{
 							{
 								Action:       "drop",
@@ -163,9 +162,8 @@ func TestConvertEndpoint(t *testing.T) {
 			},
 			want: []vmv1beta1.Endpoint{
 				{
-					Path:              "/metrics",
-					Port:              "9100",
-					BearerTokenSecret: &corev1.SecretKeySelector{Key: "bearer"},
+					Path: "/metrics",
+					Port: "9100",
 					RelabelConfigs: []*vmv1beta1.RelabelConfig{
 						{
 							Action:       "drop",
@@ -296,8 +294,8 @@ func TestConvertPodEndpoints(t *testing.T) {
 				{
 					BearerTokenSecret: corev1.SecretKeySelector{},
 					TLSConfig: &promv1.SafeTLSConfig{
-						InsecureSkipVerify: pointer.Bool(true),
-						ServerName:         pointer.String("some-srv"),
+						InsecureSkipVerify: ptr.To(true),
+						ServerName:         ptr.To("some-srv"),
 						CA: promv1.SecretOrConfigMap{ConfigMap: &corev1.ConfigMapKeySelector{
 							Key: "ca",
 						}},
@@ -328,7 +326,6 @@ func TestConvertPodEndpoints(t *testing.T) {
 				},
 			}},
 			want: []vmv1beta1.PodMetricsEndpoint{{
-				BearerTokenSecret: &corev1.SecretKeySelector{Key: "bearer"},
 				BasicAuth: &vmv1beta1.BasicAuth{
 					Username: corev1.SecretKeySelector{
 						Key: "username",
@@ -384,7 +381,7 @@ func TestConvertProbe(t *testing.T) {
 			},
 			want: vmv1beta1.VMProbe{
 				Spec: vmv1beta1.VMProbeSpec{
-					ProxyURL: pointer.String("http://proxy.com"),
+					ProxyURL: ptr.To("http://proxy.com"),
 					Targets: vmv1beta1.VMProbeTargets{
 						StaticConfig: &vmv1beta1.VMProbeTargetStaticConfig{
 							Targets: []string{"target-1", "target-2"},

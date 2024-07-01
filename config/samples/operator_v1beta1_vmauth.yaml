@@ -1,6 +1,9 @@
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAuth
 metadata:
+  labels:
+    app.kubernetes.io/name: vm-operator
+    app.kubernetes.io/managed-by: kustomize
   name: vmauth-sample
 spec:
   selectAllByDefault: true

@@ -5,44 +5,43 @@ metadata:
 spec:
   discoveryRole: service
   endpoints:
-    - port: http
-      relabelConfigs:
-        # Skip scrape for init containers
-        - action: drop
-          source_labels: [__meta_kubernetes_pod_container_init]
-          regex: "true"
-        # Match container port with port from annotation
-        - action: keep_if_equal
-          source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_port, __meta_kubernetes_pod_container_port_number]
-        # Check if scrape is enabled
-        - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
-          action: keep
-          regex: "true"
-        # Set scrape path
-        - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
-          action: replace
-          target_label: __metrics_path__
-          regex: (.+)
-        # Set port to address
-        - source_labels:
-            [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
-          action: replace
-          regex: ([^:]+)(?::\d+)?;(\d+)
-          replacement: $1:$2
-          target_label: __address__
-        # Copy labels from pod labels
-        - action: labelmap
-          regex: __meta_kubernetes_pod_label_(.+)
-        # Set pod name, container name, namespace and node name to labels
-        - source_labels: [__meta_kubernetes_pod_name]
-          target_label: pod
-        - source_labels: [__meta_kubernetes_pod_container_name]
-          target_label: container
-        - source_labels: [__meta_kubernetes_namespace]
-          target_label: namespace
-        - source_labels: [__meta_kubernetes_pod_node_name]
-          action: replace
-          target_label: node
+  - port: http
+    relabelConfigs:
+    # Skip scrape for init containers
+    - action: drop
+      source_labels: [__meta_kubernetes_pod_container_init]
+      regex: "true"
+    # Match container port with port from annotation
+    - action: keep_if_equal
+      source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_port, __meta_kubernetes_pod_container_port_number]
+    # Check if scrape is enabled
+    - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+      action: keep
+      regex: "true"
+    # Set scrape path
+    - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+      action: replace
+      target_label: __metrics_path__
+      regex: (.+)
+    # Set port to address
+    - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+      action: replace
+      regex: ([^:]+)(?::\d+)?;(\d+)
+      replacement: $1:$2
+      target_label: __address__
+    # Copy labels from pod labels
+    - action: labelmap
+      regex: __meta_kubernetes_pod_label_(.+)
+    # Set pod name, container name, namespace and node name to labels
+    - source_labels: [__meta_kubernetes_pod_name]
+      target_label: pod
+    - source_labels: [__meta_kubernetes_pod_container_name]
+      target_label: container
+    - source_labels: [__meta_kubernetes_namespace]
+      target_label: namespace
+    - source_labels: [__meta_kubernetes_pod_node_name]
+      action: replace
+      target_label: node
   namespaceSelector: {}
   selector:
     matchLabels:

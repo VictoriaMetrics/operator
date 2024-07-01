@@ -1,4 +1,5 @@
 # Temporary Build Files
+Dockerfile.cross
 .idea
 bin/
 build/_output

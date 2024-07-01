@@ -1,0 +1,23 @@
+# permissions for end users to view vmalertmanagers.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: vm-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: operator-vmalertmanager-viewer
+rules:
+- apiGroups:
+  - operator.victoriametrics.com
+  resources:
+  - vmalertmanagers
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - operator.victoriametrics.com
+  resources:
+  - vmalertmanagers/status
+  verbs:
+  - get

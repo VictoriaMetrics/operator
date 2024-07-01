@@ -234,7 +234,7 @@ func NewConverterController(ctx context.Context, baseClient *kubernetes.Clientse
 	return c, nil
 }
 
-func waitForAPIResource(ctx context.Context, client discovery.DiscoveryInterface, apiGroupVersion, kind string) error {
+func waitForAPIResource(ctx context.Context, client discovery.DiscoveryInterface, apiGroupVersion, kind string) {
 	l := log.WithValues("group", apiGroupVersion, "kind", kind)
 	l.Info("waiting for api resource")
 	tick := time.NewTicker(time.Second * 5)
@@ -253,20 +253,17 @@ func waitForAPIResource(ctx context.Context, client discovery.DiscoveryInterface
 					continue
 				}
 				l.Info("api resource is ready")
-				return nil
+				return
 			}
 		case <-ctx.Done():
 			l.Info("context was canceled")
-			return nil
+			return
 		}
 	}
 }
 
 func (c *ConverterController) runInformerWithDiscovery(ctx context.Context, group, kind string, runInformer func(<-chan struct{})) error {
-	err := waitForAPIResource(ctx, c.baseClient, group, kind)
-	if err != nil {
-		return fmt.Errorf("error wait for %s, err: %w", kind, err)
-	}
+	waitForAPIResource(ctx, c.baseClient, group, kind)
 	runInformer(ctx.Done())
 	return nil
 }
@@ -280,7 +277,7 @@ func (c *ConverterController) Start(ctx context.Context) error {
 		log.Info("waiting for prometheus converter to stop")
 		err := errG.Wait()
 		if err != nil {
-			log.Error(err, "error occured at prometheus converter")
+			log.Error(err, "error occurred at prometheus converter")
 		}
 	}()
 	return nil

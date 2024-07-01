@@ -1,19 +1,18 @@
 kind: ConfigMap
 apiVersion: v1
 metadata:
-  name: vm-agent-global-relabel-config
+  name: agent-global-relabel-config
   labels:
     app: vm-operator
 data:
   relabel.yaml: |-
     - source_labels: [__meta_kubernetes_pod_name]
       target_label: pod_name
-
 ---
 kind: ConfigMap
 apiVersion: v1
 metadata:
-  name: vm-agent-url-relabel-config
+  name: agent-url-relabel-config
   labels:
     app: vm-operator
 data:
@@ -51,26 +50,26 @@ spec:
     matchLabels:
       managed-by: vm-operator
     matchExpressions:
-      - operator: Exists
-        key: name
+    - operator: Exists
+      key: name
   serviceScrapeSelector:
     matchLabels:
       managed-by: vm-operator
     matchExpressions:
-      - operator: Exists
-        key: name
+    - operator: Exists
+      key: name
   podScrapeNamespaceSelector:
     matchLabels:
       managed-by: vm-operator
     matchExpressions:
-      - operator: Exists
-        key: name
+    - operator: Exists
+      key: name
   podScrapeSelector:
     matchLabels:
       managed-by: vm-operator
     matchExpressions:
-      - operator: Exists
-        key: name
+    - operator: Exists
+      key: name
   probeSelector: {}
   probeNamespaceSelector: {}
   podMetadata:
@@ -104,35 +103,35 @@ spec:
     name: "vm-agent-global-relabel-config"
     key: "relabel.yaml"
   remoteWrite:
-    - url: "http://vmsingle-example-vmsingle.default.svc:8429/api/v1/write"
-      basicAuth:
-        username:
-          name: rws-basic-auth
-          key: username
-        password:
-          name: rws-basic-auth
-          key: password
-#      flushInterval: 2s
-#      queues: 2
-      urlRelabelConfig:
-        name: "vm-agent-url-relabel-config"
-        key: "relabel.yaml"
-#      label:
-#        primary: "yes"
-    - url: "http://vmsingle-example-vmsingle.alternative.svc:8429/api/v1/write"
-#      maxDiskUsagePerURL: 33
-#      sendTimeout: 30s
-#      showURL: true
-      bearerTokenSecret:
-        name: rws-bearer-token
-        key: token
-      urlRelabelConfig:
-        name: "vm-agent-global-relabel-config"
-        key: "relabel.yaml"
+  - url: "http://vmsingle-example-vmsingle.default.svc:8429/api/v1/write"
+    basicAuth:
+      username:
+        name: rws-basic-auth
+        key: username
+      password:
+        name: rws-basic-auth
+        key: password
+        #      flushInterval: 2s
+        #      queues: 2
+    urlRelabelConfig:
+      name: "vm-agent-url-relabel-config"
+      key: "relabel.yaml"
+      #      label:
+      #        primary: "yes"
+  - url: "http://vmsingle-example-vmsingle.alternative.svc:8429/api/v1/write"
+    #      maxDiskUsagePerURL: 33
+    #      sendTimeout: 30s
+    #      showURL: true
+    bearerTokenSecret:
+      name: rws-bearer-token
+      key: token
+    urlRelabelConfig:
+      name: "vm-agent-global-relabel-config"
+      key: "relabel.yaml"
   serviceSpec:
     metadata:
       name: vmagent-node-access
       labels:
         key: value
     spec:
-        type: NodePort
+      type: NodePort

@@ -1,11 +1,12 @@
 package v1beta1
 
 import (
-	"gopkg.in/yaml.v2"
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/utils/pointer"
 	"reflect"
 	"testing"
+
+	"gopkg.in/yaml.v2"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/utils/ptr"
 )
 
 func TestParsingPagerDutyConfig(t *testing.T) {
@@ -33,10 +34,10 @@ details:
 - key: num_firing
   value: '{{ .Alerts.Firing | len }}'
 `, PagerDutyConfig{
-		SendResolved: pointer.Bool(true),
-		ServiceKey: &v1.SecretKeySelector{
+		SendResolved: ptr.To(true),
+		ServiceKey: &corev1.SecretKeySelector{
 			Key: "mn",
-			LocalObjectReference: v1.LocalObjectReference{
+			LocalObjectReference: corev1.LocalObjectReference{
 				Name: "pagerduty-config"},
 		},
 		Severity: "labels.severity",
@@ -58,10 +59,10 @@ details:
   num_firing: '{{ .Alerts.Firing | len }}'
 
 `, PagerDutyConfig{
-		SendResolved: pointer.Bool(true),
-		ServiceKey: &v1.SecretKeySelector{
+		SendResolved: ptr.To(true),
+		ServiceKey: &corev1.SecretKeySelector{
 			Key: "mn",
-			LocalObjectReference: v1.LocalObjectReference{
+			LocalObjectReference: corev1.LocalObjectReference{
 				Name: "pagerduty-config"},
 		},
 		Severity: "labels.severity",
@@ -81,10 +82,10 @@ servicekey:
 severity: labels.severity
 
 `, PagerDutyConfig{
-		SendResolved: pointer.Bool(true),
-		ServiceKey: &v1.SecretKeySelector{
+		SendResolved: ptr.To(true),
+		ServiceKey: &corev1.SecretKeySelector{
 			Key: "mn",
-			LocalObjectReference: v1.LocalObjectReference{
+			LocalObjectReference: corev1.LocalObjectReference{
 				Name: "pagerduty-config"},
 		},
 		Severity: "labels.severity",

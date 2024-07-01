@@ -1,6 +1,9 @@
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMProbe
 metadata:
+  labels:
+    app.kubernetes.io/name: vm-operator
+    app.kubernetes.io/managed-by: kustomize
   name: probe-agent
 spec:
   jobName: static-probe
@@ -11,5 +14,5 @@ spec:
   targets:
     staticConfig:
       targets:
-        -  vmagent-example-vmagent.default.svc:8429/health
+      - vmagent-example-vmagent.default.svc:8429/health
   interval: 2s

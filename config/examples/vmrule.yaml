@@ -4,14 +4,14 @@ metadata:
   name: example-vmrule
 spec:
   groups:
-    - name: kafka
-      rules:
-        - alert: coordinator down
-          expr: ml_app_gauge{exec_context="consumer_group_state"} == 0
-          for: 60s
-          labels:
-            severity: critical
-            job:  "{{ $labels.job }}"
-          annotations:
-            value: "{{ $value }}"
-            description: 'kafka coorinator is down'
+  - name: kafka
+    rules:
+    - alert: coordinator down
+      expr: ml_app_gauge{exec_context="consumer_group_state"} == 0
+      for: 60s
+      labels:
+        severity: critical
+        job: "{{ $labels.job }}"
+      annotations:
+        value: "{{ $value }}"
+        description: 'kafka coorinator is down'

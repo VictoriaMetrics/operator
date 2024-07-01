@@ -25,4 +25,4 @@ spec:
       cpu: "500m"
       memory: "750Mi"
   remoteWrite:
-    - url: "http://vmsingle-example-vmsingle.default.svc:8429/api/v1/write"
+  - url: "http://vmsingle-example-vmsingle.default.svc:8429/api/v1/write"

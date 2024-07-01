@@ -17,7 +17,9 @@ limitations under the License.
 package controller
 
 import (
+	"fmt"
 	"path/filepath"
+	"runtime"
 
 	"go.uber.org/zap/zapcore"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -27,7 +29,7 @@ import (
 	. "github.com/onsi/gomega"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 
@@ -47,9 +49,18 @@ var _ = BeforeSuite(func(done Done) {
 	logf.SetLogger(l)
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
-		CRDDirectoryPaths:        []string{filepath.Join("..", "..", "config", "crd", "bases")},
-		UseExistingCluster:       pointer.BoolPtr(true),
+		CRDDirectoryPaths:        []string{filepath.Join("..", "..", "..", "config", "crd", "overlay")},
+		UseExistingCluster:       ptr.To(true),
 		AttachControlPlaneOutput: true,
+		ErrorIfCRDPathMissing:    true,
+
+		// The BinaryAssetsDirectory is only required if you want to run the tests directly
+		// without call the makefile target test. If not informed it will look for the
+		// default path defined in controller-runtime which is /usr/local/kubebuilder/.
+		// Note that you must have the required binaries setup under the bin directory to perform
+		// the tests directly. When we run make test it will be setup and used automatically.
+		BinaryAssetsDirectory: filepath.Join("..", "..", "..", "bin", "k8s",
+			fmt.Sprintf("1.30.0-%s-%s", runtime.GOOS, runtime.GOARCH)),
 	}
 
 	var err error

@@ -272,7 +272,7 @@ func generateScrapeConfig(
 				selectors[i] = []yaml.MapItem{
 					{
 						Key:   "role",
-						Value: strings.ToLower(string(s.Role)),
+						Value: strings.ToLower(s.Role),
 					},
 					{
 						Key:   "label",

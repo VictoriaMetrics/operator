@@ -1,14 +1,15 @@
 package v1beta1
 
 import (
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"testing"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestVMRule_sanityCheck(t *testing.T) {
 	type fields struct {
-		TypeMeta   v1.TypeMeta
-		ObjectMeta v1.ObjectMeta
+		TypeMeta   metav1.TypeMeta
+		ObjectMeta metav1.ObjectMeta
 		Spec       VMRuleSpec
 		Status     VMRuleStatus
 	}

@@ -10,7 +10,7 @@ import (
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 )
 
 func Test_generateNodeScrapeConfig(t *testing.T) {
@@ -91,15 +91,15 @@ relabel_configs:
 						Interval:        "30s",
 						Scheme:          "https",
 						HonorLabels:     true,
-						ProxyURL:        pointer.String("https://some-url"),
+						ProxyURL:        ptr.To("https://some-url"),
 						SampleLimit:     50,
 						SeriesLimit:     1000,
-						FollowRedirects: pointer.Bool(true),
+						FollowRedirects: ptr.To(true),
 						ScrapeTimeout:   "10s",
 						ScrapeInterval:  "5s",
 						Params:          map[string][]string{"module": {"client"}},
 						JobLabel:        "env",
-						HonorTimestamps: pointer.Bool(true),
+						HonorTimestamps: ptr.To(true),
 						TargetLabels:    []string{"app", "env"},
 						BearerTokenFile: "/tmp/bearer",
 						BasicAuth: &vmv1beta1.BasicAuth{
@@ -116,7 +116,7 @@ relabel_configs:
 							},
 						},
 						VMScrapeParams: &vmv1beta1.VMScrapeParams{
-							StreamParse: pointer.Bool(true),
+							StreamParse: ptr.To(true),
 							ProxyClientConfig: &vmv1beta1.ProxyAuth{
 								TLSConfig: &vmv1beta1.TLSConfig{
 									InsecureSkipVerify: true,

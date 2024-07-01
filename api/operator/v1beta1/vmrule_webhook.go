@@ -1,3 +1,19 @@
+/*
+
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package v1beta1
 
 import (
@@ -15,13 +31,14 @@ import (
 // log is for logging in this package.
 var vmrulelog = logf.Log.WithName("vmrule-resource")
 
+// SetupWebhookWithManager will setup the manager to manage the webhooks
 func (r *VMRule) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(r).
 		Complete()
 }
 
-// +kubebuilder:webhook:verbs=create;update,admissionReviewVersions=v1,sideEffects=none,path=/validate-operator-victoriametrics-com-v1beta1-vmrule,mutating=false,failurePolicy=fail,groups=operator.victoriametrics.com,resources=vmrules,versions=v1beta1,name=vvmrule.kb.io
+// +kubebuilder:webhook:path=/validate-operator-victoriametrics-com-v1beta1-vmrule,mutating=false,failurePolicy=fail,sideEffects=None,groups=operator.victoriametrics.com,resources=vmrules,verbs=create;update,versions=v1beta1,name=vvmrule.kb.io,admissionReviewVersions=v1
 
 var _ webhook.Validator = &VMRule{}
 
@@ -56,32 +73,28 @@ func (r *VMRule) sanityCheck() error {
 }
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (r *VMRule) ValidateCreate() (aw admission.Warnings, err error) {
-	vmrulelog.Info("validate create", "name", r.Name)
-	// skip validation, if object has annotation.
+func (r *VMRule) ValidateCreate() (admission.Warnings, error) {
 	if mustSkipValidation(r) {
-		return
+		return nil, nil
 	}
 	if err := r.sanityCheck(); err != nil {
-		return aw, err
+		return nil, err
 	}
-	return
+	return nil, nil
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (r *VMRule) ValidateUpdate(old runtime.Object) (aw admission.Warnings, err error) {
-	vmrulelog.Info("validate update", "name", r.Name)
+func (r *VMRule) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
 	if mustSkipValidation(r) {
-		return
+		return nil, nil
 	}
 	if err := r.sanityCheck(); err != nil {
-		return aw, err
+		return nil, err
 	}
-	return
+	return nil, nil
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (r *VMRule) ValidateDelete() (aw admission.Warnings, err error) {
-	// noop
-	return
+func (r *VMRule) ValidateDelete() (admission.Warnings, error) {
+	return nil, nil
 }

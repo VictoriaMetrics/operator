@@ -190,13 +190,11 @@ func convertEndpoint(promEndpoint []promv1.Endpoint) []vmv1beta1.Endpoint {
 	for _, endpoint := range promEndpoint {
 		ep := vmv1beta1.Endpoint{
 			Port:                 endpoint.Port,
-			TargetPort:           endpoint.TargetPort,
 			Path:                 endpoint.Path,
 			Scheme:               endpoint.Scheme,
 			Params:               endpoint.Params,
 			Interval:             string(endpoint.Interval),
 			ScrapeTimeout:        string(endpoint.ScrapeTimeout),
-			BearerTokenFile:      ReplacePromDirPath(endpoint.BearerTokenFile),
 			HonorLabels:          endpoint.HonorLabels,
 			HonorTimestamps:      endpoint.HonorTimestamps,
 			BasicAuth:            ConvertBasicAuth(endpoint.BasicAuth),
@@ -204,7 +202,6 @@ func convertEndpoint(promEndpoint []promv1.Endpoint) []vmv1beta1.Endpoint {
 			MetricRelabelConfigs: ConvertRelabelConfig(endpoint.MetricRelabelConfigs),
 			RelabelConfigs:       ConvertRelabelConfig(endpoint.RelabelConfigs),
 			ProxyURL:             endpoint.ProxyURL,
-			BearerTokenSecret:    convertBearerToken(endpoint.BearerTokenSecret),
 			OAuth2:               ConvertOAuth(endpoint.OAuth2),
 			FollowRedirects:      endpoint.FollowRedirects,
 			Authorization:        ConvertAuthorization(endpoint.Authorization, nil),
@@ -322,7 +319,6 @@ func convertPodEndpoints(promPodEnpoints []promv1.PodMetricsEndpoint) []vmv1beta
 			safeTLS = promEndPoint.TLSConfig
 		}
 		ep := vmv1beta1.PodMetricsEndpoint{
-			TargetPort:           promEndPoint.TargetPort,
 			Port:                 promEndPoint.Port,
 			Interval:             string(promEndPoint.Interval),
 			Path:                 promEndPoint.Path,
@@ -333,7 +329,6 @@ func convertPodEndpoints(promPodEnpoints []promv1.PodMetricsEndpoint) []vmv1beta
 			HonorTimestamps:      promEndPoint.HonorTimestamps,
 			ProxyURL:             promEndPoint.ProxyURL,
 			RelabelConfigs:       ConvertRelabelConfig(promEndPoint.RelabelConfigs),
-			BearerTokenSecret:    convertBearerToken(&promEndPoint.BearerTokenSecret),
 			MetricRelabelConfigs: ConvertRelabelConfig(promEndPoint.MetricRelabelConfigs),
 			BasicAuth:            ConvertBasicAuth(promEndPoint.BasicAuth),
 			TLSConfig:            convertSafeTLSConfig(safeTLS),

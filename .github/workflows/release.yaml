@@ -13,69 +13,23 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.21"
+          go-version: "1.22"
         id: go
-      - name: Dependencies
-        env:
-          GO111MODULE: on
-        run: |
-          go install golang.org/x/lint/golint@latest
-          go install github.com/kisielk/errcheck@latest
-          go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.51.2
-          curl -L -o operator-sdk "https://github.com/operator-framework/operator-sdk/releases/download/v1.0.0/operator-sdk-v1.0.0-x86_64-linux-gnu"
-          chmod +x operator-sdk
-          sudo mv operator-sdk /bin/
       - name: build binary
         env:
           TAG: ${{ github.event.release.tag_name }}
         run: |
-          go get github.com/VictoriaMetrics/operator/api
           make lint
           make test
           make build
-          make release-package
-      #      - name: setup KIND for e2e tests
-      #        uses: engineerd/setup-kind@v0.5.0
-      #        with:
-      #          version: "v0.9.0"
-      #          image: kindest/node:v1.16.4
-      #      - name: run e2e tests local
-      #        run: |
-      #          kubectl cluster-info
-      #          kubectl get pods -n kube-system
-      #          echo "current-context:" $(kubectl config current-context)
-      #          echo "environment-kubeconfig:" ${KUBECONFIG}
-      #          make e2e-local
+          make test-e2e
 
       - name: build crosscompile and push to remote registry
         env:
           TAG: "${{ github.event.release.tag_name }}"
         run: |
           echo ${{secrets.REPO_KEY}} | docker login --username ${{secrets.REPO_USER}} --password-stdin
-          make publish-via-docker
-          make publish-via-docker-config-reloader
-
-      - name: Upload Release Asset
-        id: upload-release-asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: ./bundle_crd.zip
-          asset_name: bundle_crd.zip
-          asset_content_type: application/zip
-
-      - name: Upload Release binary
-        id: upload-release-binary
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: ./operator.zip
-          asset_name: operator.zip
-          asset_content_type: application/zip
+          make publish
 
       - name: Upload Release CRDs
         id: upload-release-crds

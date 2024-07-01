@@ -1,13 +1,13 @@
 ## This file is auto-generated, do not modify ##
 resources:
-- victoriametrics_v1beta1_vmagent.yaml
-- victoriametrics_v1beta1_vmalert.yaml
-- victoriametrics_v1beta1_vmalertmanager.yaml
-- victoriametrics_v1beta1_vmpodscrape.yaml
-- victoriametrics_v1beta1_vmrule.yaml
-- victoriametrics_v1beta1_vmservicescrape.yaml
-- victoriametrics_v1beta1_vmsingle.yaml
-- victoriametrics_v1beta1_vmcluster.yaml
+- operator_v1beta1_vmagent.yaml
+- operator_v1beta1_vmalert.yaml
+- operator_v1beta1_vmalertmanager.yaml
+- operator_v1beta1_vmpodscrape.yaml
+- operator_v1beta1_vmrule.yaml
+- operator_v1beta1_vmservicescrape.yaml
+- operator_v1beta1_vmsingle.yaml
+- operator_v1beta1_vmcluster.yaml
 - operator_v1beta1_vmprobe.yaml
 - operator_v1beta1_vmnodescrape.yaml
 - operator_v1beta1_vmstaticscrape.yaml

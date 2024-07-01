@@ -22,4 +22,4 @@ spec:
       cert-manager.io/cluster-issuer: base
     class_name: nginx
     tlsHosts:
-      - vm-access.example.com
+    - vm-access.example.com

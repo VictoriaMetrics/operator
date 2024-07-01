@@ -5,18 +5,18 @@ metadata:
 spec:
   bearerToken: some-token
   targetRefs:
-    - static:
-        urls:
-        - http://vmselect-test-persistent-0.vmselect-test-persistent.default.svc:8481/
-        - http://vmselect-test-persistent-0.vmselect-test-persistent.default.svc:8481/
-      paths:
-        - /internal/resetRollupResultCache
-      ip_filters:
-        deny_list:
-          - 192.168.0.0/16
-        allow_list:
-          - 127.0.0.1
-          - 10.0.0.0/8
+  - static:
+      urls:
+      - http://vmselect-test-persistent-0.vmselect-test-persistent.default.svc:8481/
+      - http://vmselect-test-persistent-0.vmselect-test-persistent.default.svc:8481/
+    paths:
+    - /internal/resetRollupResultCache
+    ip_filters:
+      deny_list:
+      - 192.168.0.0/16
+      allow_list:
+      - 127.0.0.1
+      - 10.0.0.0/8
   default_url:
-    - http://error-backend-0:8088/handle_error
-    - http://error-backend-1:8088/handle_error
+  - http://error-backend-0:8088/handle_error
+  - http://error-backend-1:8088/handle_error

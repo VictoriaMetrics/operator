@@ -8,7 +8,7 @@ spec:
   removePvcAfterDelete: true
   storage:
     accessModes:
-      - ReadWriteOnce
+    - ReadWriteOnce
     resources:
       requests:
         storage: 1Gi

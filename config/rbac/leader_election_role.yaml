@@ -3,7 +3,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: leader-election-role
-  namespace: monitoring-system
+  namespace: vm
 rules:
 - apiGroups:
   - ""
@@ -33,10 +33,10 @@ rules:
   - create
   - patch
 - apiGroups:
-    - coordination.k8s.io
+  - coordination.k8s.io
   verbs:
-    - create
-    - get
-    - update
+  - create
+  - get
+  - update
   resources:
-    - leases
+  - leases

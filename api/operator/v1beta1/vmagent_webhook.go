@@ -1,3 +1,19 @@
+/*
+
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package v1beta1
 
 import (
@@ -8,21 +24,18 @@ import (
 	"gopkg.in/yaml.v2"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
-// log is for logging in this package.
-var vmagentlog = logf.Log.WithName("vmagent-resource")
-
-func (cr *VMAgent) SetupWebhookWithManager(mgr ctrl.Manager) error {
+// SetupWebhookWithManager will setup the manager to manage the webhooks
+func (r *VMAgent) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
-		For(cr).
+		For(r).
 		Complete()
 }
 
-// +kubebuilder:webhook:verbs=create;update,admissionReviewVersions=v1,sideEffects=none,path=/validate-operator-victoriametrics-com-v1beta1-vmagent,mutating=false,failurePolicy=fail,groups=operator.victoriametrics.com,resources=vmagents,versions=v1beta1,name=vvmagent.kb.io
+// +kubebuilder:webhook:path=/validate-operator-victoriametrics-com-v1beta1-vmagent,mutating=false,failurePolicy=fail,sideEffects=None,groups=operator.victoriametrics.com,resources=vmagents,verbs=create;update,versions=v1beta1,name=vvmagent.kb.io,admissionReviewVersions=v1
 
 var _ webhook.Validator = &VMAgent{}
 
@@ -50,22 +63,22 @@ func checkRelabelConfigs(src []RelabelConfig) error {
 	return nil
 }
 
-func (cr *VMAgent) sanityCheck() error {
-	if len(cr.Spec.RemoteWrite) == 0 {
+func (r *VMAgent) sanityCheck() error {
+	if len(r.Spec.RemoteWrite) == 0 {
 		return fmt.Errorf("spec.remoteWrite cannot be empty array, provide at least one remoteWrite")
 	}
-	if cr.Spec.InlineScrapeConfig != "" {
+	if r.Spec.InlineScrapeConfig != "" {
 		var inlineCfg yaml.MapSlice
-		if err := yaml.Unmarshal([]byte(cr.Spec.InlineScrapeConfig), &inlineCfg); err != nil {
-			return fmt.Errorf("bad cr.spec.inlineScrapeConfig it must be valid yaml, err :%w", err)
+		if err := yaml.Unmarshal([]byte(r.Spec.InlineScrapeConfig), &inlineCfg); err != nil {
+			return fmt.Errorf("bad r.spec.inlineScrapeConfig it must be valid yaml, err :%w", err)
 		}
 	}
-	if len(cr.Spec.InlineRelabelConfig) > 0 {
-		if err := checkRelabelConfigs(cr.Spec.InlineRelabelConfig); err != nil {
+	if len(r.Spec.InlineRelabelConfig) > 0 {
+		if err := checkRelabelConfigs(r.Spec.InlineRelabelConfig); err != nil {
 			return err
 		}
 	}
-	for idx, rw := range cr.Spec.RemoteWrite {
+	for idx, rw := range r.Spec.RemoteWrite {
 		if rw.URL == "" {
 			return fmt.Errorf("remoteWrite.url cannot be empty at idx: %d", idx)
 		}
@@ -80,36 +93,34 @@ func (cr *VMAgent) sanityCheck() error {
 }
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (r *VMAgent) ValidateCreate() (aw admission.Warnings, err error) {
+func (r *VMAgent) ValidateCreate() (admission.Warnings, error) {
 	if r.Spec.ParsingError != "" {
-		return aw, fmt.Errorf(r.Spec.ParsingError)
+		return nil, fmt.Errorf(r.Spec.ParsingError)
 	}
 	if mustSkipValidation(r) {
-		return
+		return nil, nil
 	}
 	if err := r.sanityCheck(); err != nil {
-		return aw, err
+		return nil, err
 	}
-
-	return
+	return nil, nil
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (r *VMAgent) ValidateUpdate(old runtime.Object) (aw admission.Warnings, err error) {
+func (r *VMAgent) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
 	if r.Spec.ParsingError != "" {
-		return aw, fmt.Errorf(r.Spec.ParsingError)
+		return nil, fmt.Errorf(r.Spec.ParsingError)
 	}
 	if mustSkipValidation(r) {
-		return
+		return nil, nil
 	}
 	if err := r.sanityCheck(); err != nil {
-		return aw, err
+		return nil, err
 	}
-	return
+	return nil, nil
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (cr *VMAgent) ValidateDelete() (aw admission.Warnings, err error) {
-	// no-op
-	return
+func (r *VMAgent) ValidateDelete() (admission.Warnings, error) {
+	return nil, nil
 }

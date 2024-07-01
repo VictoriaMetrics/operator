@@ -1,14 +1,13 @@
 ## This file is auto-generated, do not modify ##
 resources:
-  - vmagent_rbac.yaml
-  - vmagent.yaml
-  - vmalert.yaml
-  - vmalertmanager.yaml
-  - vmpodscrape.yaml
-  - vmrule.yaml
-  - vmservicescrape.yaml
-  - vmsingle.yaml
-  - vmsingle_with_pvc.yaml
-  - vmcluster.yaml
-  - vmprobe.yaml
-
+- vmagent_rbac.yaml
+- vmagent.yaml
+- vmalert.yaml
+- vmalertmanager.yaml
+- vmpodscrape.yaml
+- vmrule.yaml
+- vmservicescrape.yaml
+- vmsingle.yaml
+- vmsingle_with_pvc.yaml
+- vmcluster.yaml
+- vmprobe.yaml

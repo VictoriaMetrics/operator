@@ -1,34 +1,38 @@
-ARG ROOT_IMAGE
-ARG USER_UID=1001
-ARG APP_NAME=operator
+ARG REPO
 
-FROM alpine AS passwd
-
+# Build the manager binary
+FROM golang:1.22 AS builder
+ARG TARGETOS
 ARG TARGETARCH
-ARG USER_UID
-ARG APP_NAME
 
-ENV USER_UID=${USER_UID} \
-    USER_NAME=${APP_NAME}
-RUN adduser -S -D -u ${USER_UID} -s /bin/false ${APP_NAME} && \
-    cat /etc/passwd | grep ${APP_NAME} > /etc/passwd_export
+WORKDIR /workspace
+# Copy the Go Modules manifests
+COPY go.mod go.mod
+COPY go.sum go.sum
+# cache deps before building and copying source so that we don't need to re-download as much
+# and so that source changes don't invalidate our downloaded layer
+RUN go mod download
 
-FROM ${ROOT_IMAGE}
-# src_binary arg must be in scope, after FROM
+# Copy the go source
+COPY cmd/ cmd/
+COPY api/ api/
+COPY internal/ internal/
+ARG REPO
 
-ARG TARGETARCH
-ARG USER_UID
-ARG APP_NAME
-ARG APP_PATH=/usr/local/bin/${APP_NAME}
+# Build
+# the GOARCH has not a default value to allow the binary be built according to the host where the command
+# was called. For example, if we call make docker-build in a local env which has the Apple Silicon M1 SO
+# the docker BUILDPLATFORM arg will be linux/arm64 when for Apple x86 it will be linux/amd64. Therefore,
+# by leaving it empty we can ensure that the container and binary shipped on it will have the same platform.
+RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o ${REPO} ./cmd/${REPO}/...
 
-ENV USER_UID=${USER_UID} \
-    USER_NAME=${APP_NAME}
+# Use distroless as minimal base image to package the manager binary
+# Refer to https://github.com/GoogleContainerTools/distroless for more details
+FROM gcr.io/distroless/static:nonroot
+ARG REPO
+ENV REPO=${REPO}
+WORKDIR /
+COPY --from=builder /workspace/${REPO} .
+USER 65532:65532
 
-COPY bin/${APP_NAME}-${TARGETARCH} ${APP_PATH}
-
-COPY --from=passwd /etc/passwd_export /etc/passwd
-
-ENV APP_PATH=/usr/local/bin/${APP_NAME}
-ENTRYPOINT $APP_PATH
-
-USER ${USER_NAME}
+ENTRYPOINT ["/${REPO}"]

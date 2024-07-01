@@ -1,10 +1,8 @@
 resources:
-- namespace.yaml
 - manager.yaml
-- service_account.yaml
 images:
 - name: manager
-  newName: victoriametrics/operator
-  newTag: 0.0.1
+  newName: docker.io/victoriametrics/operator
+  newTag: heads-updated-kustomize-0-g74f8553-dirty-e70053b7
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization

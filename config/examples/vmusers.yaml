@@ -6,14 +6,14 @@ spec:
   username: simple-user
   password: simple-password
   targetRefs:
-    - static:
-        url: http://vmsingle-sample.default.svc:8429
-      paths: ["/"]
-    - crd:
-        kind: VMAgent
-        name: sample
-        namespace: default
-      paths: ["/targets", "/api/v1/targets","/api/v1/write"]
+  - static:
+      url: http://vmsingle-sample.default.svc:8429
+    paths: ["/"]
+  - crd:
+      kind: VMAgent
+      name: sample
+      namespace: vm
+    paths: ["/targets", "/api/v1/targets", "/api/v1/write"]
 ---
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMUser
@@ -22,14 +22,14 @@ metadata:
 spec:
   username: simple-user-1
   targetRefs:
-    - static:
-        url: http://vmsingle-sample.default.svc:8429
-      paths: ["/"]
-    - crd:
-        kind: VMAgent
-        name: sample
-        namespace: default
-      paths: ["/targets", "/api/v1/targets","/api/v1/write"]
+  - static:
+      url: http://vmsingle-sample.default.svc:8429
+    paths: ["/"]
+  - crd:
+      kind: VMAgent
+      name: sample
+      namespace: vm
+    paths: ["/targets", "/api/v1/targets", "/api/v1/write"]
 ---
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMUser
@@ -38,14 +38,14 @@ metadata:
 spec:
   bearerToken: access-token
   targetRefs:
-    - static:
-        url: http://vmsingle-sample.default.svc:8429
-      paths: ["/"]
-    - crd:
-        kind: VMAgent
-        name: sample
-        namespace: default
-      paths: ["/targets", "/api/v1/targets","/api/v1/write"]
+  - static:
+      url: http://vmsingle-sample.default.svc:8429
+    paths: ["/"]
+  - crd:
+      kind: VMAgent
+      name: sample
+      namespace: vm
+    paths: ["/targets", "/api/v1/targets", "/api/v1/write"]
 ---
 apiVersion: v1
 data:
@@ -64,11 +64,11 @@ spec:
     name: user-password
     key: password
   targetRefs:
-    - static:
-        url: http://vmsingle-sample.default.svc:8429
-      paths: ["/"]
-    - crd:
-        kind: VMAgent
-        name: sample
-        namespace: default
-      paths: ["/targets", "/api/v1/targets","/api/v1/write"]
+  - static:
+      url: http://vmsingle-sample.default.svc:8429
+    paths: ["/"]
+  - crd:
+      kind: VMAgent
+      name: sample
+      namespace: vm
+    paths: ["/targets", "/api/v1/targets", "/api/v1/write"]

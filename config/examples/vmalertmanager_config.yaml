@@ -9,11 +9,11 @@ spec:
     routes:
     - receiver: email
   receivers:
-    - name: email
-      email_configs:
-        - to: some-email@example.com
-          from: alerting@example.com
-          smarthost: example.com:25
-          text: ALARM
-      webhook_configs:
-        - url: http://some-other-wh
+  - name: email
+    email_configs:
+    - to: some-email@example.com
+      from: alerting@example.com
+      smarthost: example.com:25
+      text: ALARM
+    webhook_configs:
+    - url: http://some-other-wh

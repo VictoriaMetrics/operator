@@ -629,7 +629,7 @@ func buildVMAlertmanagerConfigReloader(cr *vmv1beta1.VMAlertmanager, c *config.B
 func getSecretContentForAlertmanager(ctx context.Context, rclient client.Client, secretName, ns string) ([]byte, error) {
 	var s corev1.Secret
 	if err := rclient.Get(ctx, types.NamespacedName{Namespace: ns, Name: secretName}, &s); err != nil {
-		// return nil for backward compatability
+		// return nil for backward compatibility
 		if errors.IsNotFound(err) {
 			logger.WithContext(ctx).Error(err, "alertmanager config secret doens't exist, default config is used", "secret", secretName, "ns", ns)
 			return nil, nil

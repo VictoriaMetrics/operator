@@ -11,5 +11,5 @@ spec:
   targets:
     staticConfig:
       targets:
-        -  vmagent-example-vmagent.default.svc:8429/health
+      - vmagent-example-vmagent.default.svc:8429/health
   interval: 2s

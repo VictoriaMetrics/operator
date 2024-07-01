@@ -53,7 +53,7 @@ type RuleGroup struct {
 	// +optional
 	Labels map[string]string `json:"labels,omitempty" yaml:"labels,omitempty"`
 	// ExtraFilterLabels optional list of label filters applied to every rule's
-	// request withing a group. Is compatible only with VM datasource.
+	// request within a group. Is compatible only with VM datasource.
 	// See more details at https://docs.victoriametrics.com#prometheus-querying-api-enhancements
 	// Deprecated, use params instead
 	// +optional

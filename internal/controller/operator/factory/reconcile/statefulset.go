@@ -37,7 +37,7 @@ type STSOptions struct {
 }
 
 func waitForStatefulSetReady(ctx context.Context, rclient client.Client, newSts *appsv1.StatefulSet, c *config.BaseOperatorConf) error {
-	err := wait.PollWithContext(ctx, c.PodWaitReadyIntervalCheck, c.PodWaitReadyTimeout, func(ctx context.Context) (done bool, err error) {
+	err := wait.PollUntilContextTimeout(ctx, c.PodWaitReadyIntervalCheck, c.PodWaitReadyTimeout, false, func(ctx context.Context) (done bool, err error) {
 		// fast path
 		if newSts.Spec.Replicas == nil {
 			return true, nil
@@ -275,7 +275,7 @@ func waitForPodReady(ctx context.Context, rclient client.Client, ns, podName str
 	// we need some delay
 	time.Sleep(c.PodWaitReadyInitDelay)
 	var pod *corev1.Pod
-	if err := wait.Poll(c.PodWaitReadyIntervalCheck, c.PodWaitReadyTimeout, func() (done bool, err error) {
+	if err := wait.PollUntilContextTimeout(context.TODO(), c.PodWaitReadyIntervalCheck, c.PodWaitReadyTimeout, false, func(_ context.Context) (done bool, err error) {
 		pod = &corev1.Pod{}
 		err = rclient.Get(ctx, types.NamespacedName{Namespace: ns, Name: podName}, pod)
 		if err != nil {

@@ -14,7 +14,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 )
 
 var _ = Describe("test  vmalert Controller", func() {
@@ -30,7 +30,7 @@ var _ = Describe("test  vmalert Controller", func() {
 							Namespace: Namespace,
 						},
 					},
-					)).To(BeNil())
+					)).To(Succeed())
 					time.Sleep(time.Second * 8)
 					Eventually(func() error {
 						err := k8sClient.Get(context.Background(), types.NamespacedName{
@@ -50,7 +50,7 @@ var _ = Describe("test  vmalert Controller", func() {
 							Name:      Name,
 						},
 						Spec: operator.VMAlertSpec{
-							ReplicaCount: pointer.Int32Ptr(1),
+							ReplicaCount: ptr.To[int32](1),
 							Notifier:     &operator.VMAlertNotifierSpec{URL: "http://alert-manager-url:9093"},
 							Notifiers:    []operator.VMAlertNotifierSpec{{URL: "http://alert-manager-2:9093"}},
 							Datasource: operator.VMAlertDatasourceSpec{
@@ -65,7 +65,10 @@ var _ = Describe("test  vmalert Controller", func() {
 						},
 					})).Should(Succeed())
 					vmAlert := &operator.VMAlert{}
-					Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Namespace: Namespace, Name: Name}, vmAlert)).To(BeNil())
+					Expect(k8sClient.Get(context.TODO(), types.NamespacedName{
+						Namespace: Namespace,
+						Name:      Name,
+					}, vmAlert)).To(Succeed())
 					Eventually(func() string {
 						return expectPodCount(k8sClient, 1, Namespace, vmAlert.SelectorLabels())
 					}, 60, 1).Should(BeEmpty())
@@ -91,7 +94,7 @@ var _ = Describe("test  vmalert Controller", func() {
 							Name:      Name,
 						},
 						Spec: operator.VMAlertSpec{
-							ReplicaCount: pointer.Int32Ptr(1),
+							ReplicaCount: ptr.To[int32](1),
 							Notifiers: []operator.VMAlertNotifierSpec{
 								{
 									URL: "http://alert-manager-url:9093",
@@ -147,7 +150,10 @@ var _ = Describe("test  vmalert Controller", func() {
 						},
 					})).Should(Succeed())
 					vmAlert := &operator.VMAlert{}
-					Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Namespace: Namespace, Name: Name}, vmAlert)).To(BeNil())
+					Expect(k8sClient.Get(context.TODO(), types.NamespacedName{
+						Namespace: Namespace,
+						Name:      Name,
+					}, vmAlert)).To(Succeed())
 					Eventually(func() string {
 						return expectPodCount(k8sClient, 1, Namespace, vmAlert.SelectorLabels())
 					}, 60, 1).Should(BeEmpty())
@@ -164,13 +170,13 @@ var _ = Describe("test  vmalert Controller", func() {
 							Namespace: namespace,
 						},
 						Spec: operator.VMAlertSpec{
-							ReplicaCount: pointer.Int32Ptr(1),
+							ReplicaCount: ptr.To[int32](1),
 							Datasource: operator.VMAlertDatasourceSpec{
 								URL: "http://some-vmsingle:8428",
 							},
 							Notifier: &operator.VMAlertNotifierSpec{URL: "http://some-alertmanager:9093"},
 						},
-					})).To(BeNil())
+					})).To(Succeed())
 					time.Sleep(time.Second * 2)
 				})
 				JustAfterEach(func() {
@@ -179,7 +185,7 @@ var _ = Describe("test  vmalert Controller", func() {
 							Name:      name,
 							Namespace: namespace,
 						},
-					})).To(BeNil())
+					})).To(Succeed())
 					time.Sleep(time.Second * 8)
 					Eventually(func() error {
 						err := k8sClient.Get(context.Background(), types.NamespacedName{
@@ -210,11 +216,14 @@ var _ = Describe("test  vmalert Controller", func() {
 					Eventually(func() string {
 						return expectPodCount(k8sClient, 1, namespace, vmAlert.SelectorLabels())
 					}, 60, 1).Should(BeEmpty())
-					Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, vmAlert)).To(BeNil())
-					vmAlert.Spec.ReplicaCount = pointer.Int32Ptr(3)
+					Expect(k8sClient.Get(context.TODO(), types.NamespacedName{
+						Namespace: namespace,
+						Name:      name,
+					}, vmAlert)).To(Succeed())
+					vmAlert.Spec.ReplicaCount = ptr.To[int32](3)
 					vmAlert.Spec.LogLevel = "INFO"
 					vmAlert.Spec.ExtraArgs = map[string]string{"http.pathPrefix": "/somenew/prefix"}
-					Expect(k8sClient.Update(context.TODO(), vmAlert)).To(BeNil())
+					Expect(k8sClient.Update(context.TODO(), vmAlert)).To(Succeed())
 					Eventually(func() string {
 						return expectPodCount(k8sClient, 3, namespace, vmAlert.SelectorLabels())
 					}, 60, 1).Should(BeEmpty())
@@ -238,9 +247,12 @@ var _ = Describe("test  vmalert Controller", func() {
 							},
 						},
 					}
-					Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, vmAlert)).To(BeNil())
-					vmAlert.Spec.RevisionHistoryLimitCount = pointer.Int32Ptr(3)
-					Expect(k8sClient.Update(context.TODO(), vmAlert)).To(BeNil())
+					Expect(k8sClient.Get(context.TODO(), types.NamespacedName{
+						Namespace: namespace,
+						Name:      name,
+					}, vmAlert)).To(Succeed())
+					vmAlert.Spec.RevisionHistoryLimitCount = ptr.To[int32](3)
+					Expect(k8sClient.Update(context.TODO(), vmAlert)).To(Succeed())
 					Eventually(func() int32 {
 						return getRevisionHistoryLimit(k8sClient, namespacedName)
 					}, 60).Should(Equal(int32(3)))

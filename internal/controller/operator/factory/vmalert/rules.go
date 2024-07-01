@@ -92,10 +92,7 @@ func CreateOrUpdateRuleConfigMaps(ctx context.Context, cr *vmv1beta1.VMAlert, rc
 		return currentConfigMapNames, nil
 	}
 
-	newConfigMaps, err := makeRulesConfigMaps(cr, newRules)
-	if err != nil {
-		return nil, fmt.Errorf("failted to make rules ConfigMaps: %w", err)
-	}
+	newConfigMaps := makeRulesConfigMaps(cr, newRules)
 
 	newConfigMapNames := []string{}
 	for _, cm := range newConfigMaps {
@@ -291,7 +288,7 @@ func generateContent(promRule vmv1beta1.VMRuleSpec, enforcedNsLabel, ns string) 
 // future this can be replaced by a more sophisticated algorithm, but for now
 // simplicity should be sufficient.
 // [1] https://en.wikipedia.org/wiki/Bin_packing_problem#First-fit_algorithm
-func makeRulesConfigMaps(cr *vmv1beta1.VMAlert, ruleFiles map[string]string) ([]corev1.ConfigMap, error) {
+func makeRulesConfigMaps(cr *vmv1beta1.VMAlert, ruleFiles map[string]string) []corev1.ConfigMap {
 	buckets := []map[string]string{
 		{},
 	}
@@ -321,7 +318,7 @@ func makeRulesConfigMaps(cr *vmv1beta1.VMAlert, ruleFiles map[string]string) ([]
 		ruleFileConfigMaps = append(ruleFileConfigMaps, cm)
 	}
 
-	return ruleFileConfigMaps, nil
+	return ruleFileConfigMaps
 }
 
 func bucketSize(bucket map[string]string) int {

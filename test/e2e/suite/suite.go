@@ -13,7 +13,7 @@ import (
 	"go.uber.org/zap/zapcore"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -48,10 +48,10 @@ func Before() {
 
 	testEnv = &envtest.Environment{
 		CRDDirectoryPaths: []string{
-			filepath.Join(root, "config", "crd", "bases"),
-			filepath.Join(root, "hack", "prom_crd"),
+			filepath.Join(root, "config", "crd", "overlay"),
+			filepath.Join(root, "hack", "crd", "prometheus"),
 		},
-		UseExistingCluster:       pointer.BoolPtr(true),
+		UseExistingCluster:       ptr.To(true),
 		AttachControlPlaneOutput: true,
 		ErrorIfCRDPathMissing:    true,
 	}
@@ -84,7 +84,7 @@ func Before() {
 
 		// disable metrics server because it fails to listen when running several test packages one after another
 		// also metrics server isn't very useful in tests
-		os.Args = append(os.Args, "--metrics-bind-addr", "0", "--http.listenAddr", "")
+		os.Args = append(os.Args, "--metrics-bind-address", "0")
 
 		ctx, cancel := context.WithCancel(context.Background())
 		go func(ctx context.Context) {

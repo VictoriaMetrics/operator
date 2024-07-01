@@ -15,7 +15,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 )
 
 // VMAlertmanager represents Victoria-Metrics deployment for Alertmanager.
@@ -327,7 +327,7 @@ type VMAlertmanagerStatus struct {
 	// Status defines a status of object update
 	UpdateStatus UpdateStatus `json:"updateStatus,omitempty"`
 	// Reason has non empty reason for update failure
-	Reason string `json:"reason,omitempty,omitempty"`
+	Reason string `json:"reason,omitempty"`
 }
 
 func (cr *VMAlertmanager) AsOwner() []metav1.OwnerReference {
@@ -337,8 +337,8 @@ func (cr *VMAlertmanager) AsOwner() []metav1.OwnerReference {
 			Kind:               cr.Kind,
 			Name:               cr.Name,
 			UID:                cr.UID,
-			Controller:         pointer.Bool(true),
-			BlockOwnerDeletion: pointer.Bool(true),
+			Controller:         ptr.To(true),
+			BlockOwnerDeletion: ptr.To(true),
 		},
 	}
 }

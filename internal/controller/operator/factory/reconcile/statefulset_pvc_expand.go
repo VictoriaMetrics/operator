@@ -59,7 +59,7 @@ func recreateSTSIfNeed(ctx context.Context, rclient client.Client, newSTS, exist
 		obj := types.NamespacedName{Name: existingSTS.Name, Namespace: existingSTS.Namespace}
 
 		// wait until sts disappears
-		if err := wait.Poll(time.Second, time.Second*30, func() (done bool, err error) {
+		if err := wait.PollUntilContextTimeout(context.TODO(), time.Second, time.Second*30, false, func(_ context.Context) (done bool, err error) {
 			err = rclient.Get(ctx, obj, &appsv1.StatefulSet{})
 			if errors.IsNotFound(err) {
 				return true, nil
@@ -142,14 +142,12 @@ func recreateSTSIfNeed(ctx context.Context, rclient client.Client, newSTS, exist
 }
 
 func getPVCFromSTS(pvcName string, sts *appsv1.StatefulSet) *corev1.PersistentVolumeClaim {
-	var pvc *corev1.PersistentVolumeClaim
 	for _, claim := range sts.Spec.VolumeClaimTemplates {
 		if claim.Name == pvcName {
-			pvc = &claim
-			break
+			return &claim
 		}
 	}
-	return pvc
+	return nil
 }
 
 func growSTSPVC(ctx context.Context, rclient client.Client, sts *appsv1.StatefulSet) error {
@@ -157,9 +155,9 @@ func growSTSPVC(ctx context.Context, rclient client.Client, sts *appsv1.Stateful
 	if sts.Spec.Replicas != nil && *sts.Spec.Replicas == 0 {
 		return nil
 	}
-	targetClaimsByName := make(map[string]*corev1.PersistentVolumeClaim)
+	targetClaimsByName := make(map[string]corev1.PersistentVolumeClaim)
 	for _, stsClaim := range sts.Spec.VolumeClaimTemplates {
-		targetClaimsByName[fmt.Sprintf("%s-%s", stsClaim.Name, sts.Name)] = &stsClaim
+		targetClaimsByName[fmt.Sprintf("%s-%s", stsClaim.Name, sts.Name)] = stsClaim
 	}
 	// list current pvcs that belongs to sts
 	var pvcs corev1.PersistentVolumeClaimList
@@ -193,7 +191,7 @@ func growSTSPVC(ctx context.Context, rclient client.Client, sts *appsv1.Stateful
 		}
 		logger.WithContext(ctx).Info("need to expand pvc size", "name", pvc.Name, "from", oldSize, "to", newSize)
 		// check if storage class is expandable
-		isExpandable, err := isStorageClassExpandable(ctx, rclient, stsClaim)
+		isExpandable, err := isStorageClassExpandable(ctx, rclient, &stsClaim)
 		if err != nil {
 			return fmt.Errorf("failed to check storageClass expandability for pvc %s: %v", pvc.Name, err)
 		}

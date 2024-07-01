@@ -105,7 +105,10 @@ var _ = Describe("e2e vmcluster", func() {
 					},
 				})).To(Succeed())
 				vmCluster := &v1beta1vm.VMCluster{}
-				Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, vmCluster)).To(Succeed())
+				Expect(k8sClient.Get(context.TODO(), types.NamespacedName{
+					Name:      name,
+					Namespace: namespace,
+				}, vmCluster)).To(Succeed())
 				Eventually(func() string {
 					return expectPodCount(k8sClient, 1, namespace, vmCluster.VMStorageSelectorLabels())
 				}, 300, 10).Should(BeEmpty(), "vmCluster must have ready storage pod")
@@ -115,10 +118,13 @@ var _ = Describe("e2e vmcluster", func() {
 			})
 			It("should expand vmCluster storage and select up to 2 replicas", func() {
 				vmCluster := &v1beta1vm.VMCluster{}
-				Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, vmCluster)).To(BeNil())
+				Expect(k8sClient.Get(context.TODO(), types.NamespacedName{
+					Name:      name,
+					Namespace: namespace,
+				}, vmCluster)).To(Succeed())
 				vmCluster.Spec.VMSelect.ReplicaCount = ptr.To[int32](2)
 				vmCluster.Spec.VMStorage.ReplicaCount = ptr.To[int32](2)
-				Expect(k8sClient.Update(context.TODO(), vmCluster)).To(BeNil())
+				Expect(k8sClient.Update(context.TODO(), vmCluster)).To(Succeed())
 				Eventually(func() string {
 					return expectPodCount(k8sClient, 2, namespace, vmCluster.VMStorageSelectorLabels())
 				}, 40, 1).Should(BeEmpty())
@@ -128,7 +134,10 @@ var _ = Describe("e2e vmcluster", func() {
 
 				By("vmInsert expand, expect to have 2 vmInserts")
 				vmCluster = &v1beta1vm.VMCluster{}
-				Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, vmCluster)).To(BeNil())
+				Expect(k8sClient.Get(context.TODO(), types.NamespacedName{
+					Name:      name,
+					Namespace: namespace,
+				}, vmCluster)).To(Succeed())
 				vmCluster.Spec.VMInsert = &v1beta1vm.VMInsert{
 					ReplicaCount: ptr.To[int32](2),
 					Resources: corev1.ResourceRequirements{
@@ -138,14 +147,17 @@ var _ = Describe("e2e vmcluster", func() {
 						},
 					},
 				}
-				Expect(k8sClient.Update(context.TODO(), vmCluster)).To(BeNil())
+				Expect(k8sClient.Update(context.TODO(), vmCluster)).To(Succeed())
 				Eventually(func() string {
 					return expectPodCount(k8sClient, 2, namespace, vmCluster.VMInsertSelectorLabels())
 				}, 70, 1).Should(BeEmpty())
 
 				By("vmInsert revisionHistoryLimit update to 2")
 				vmCluster = &v1beta1vm.VMCluster{}
-				Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, vmCluster)).To(BeNil())
+				Expect(k8sClient.Get(context.TODO(), types.NamespacedName{
+					Name:      name,
+					Namespace: namespace,
+				}, vmCluster)).To(Succeed())
 				namespacedName := types.NamespacedName{Name: fmt.Sprintf("vminsert-%s", name), Namespace: namespace}
 				Eventually(func() int32 {
 					return getRevisionHistoryLimit(k8sClient, namespacedName)
@@ -160,7 +172,7 @@ var _ = Describe("e2e vmcluster", func() {
 						},
 					},
 				}
-				Expect(k8sClient.Update(context.TODO(), vmCluster)).To(BeNil())
+				Expect(k8sClient.Update(context.TODO(), vmCluster)).To(Succeed())
 				Eventually(func() int32 {
 					return getRevisionHistoryLimit(k8sClient, namespacedName)
 				}, 60).Should(Equal(int32(2)))
@@ -168,7 +180,7 @@ var _ = Describe("e2e vmcluster", func() {
 			It("Should set pause status and skip other update operation", func() {
 				vmCluster := &v1beta1vm.VMCluster{}
 				key := types.NamespacedName{Name: name, Namespace: namespace}
-				Expect(k8sClient.Get(context.TODO(), key, vmCluster)).To(BeNil())
+				Expect(k8sClient.Get(context.TODO(), key, vmCluster)).To(Succeed())
 
 				By("Set spec.Paused to true")
 				vmCluster.Spec.Paused = true
@@ -182,7 +194,7 @@ var _ = Describe("e2e vmcluster", func() {
 
 				By("update replicas after cluster paused")
 				vmCluster.Spec.VMSelect.ReplicaCount = ptr.To[int32](2)
-				Expect(k8sClient.Update(context.TODO(), vmCluster)).To(BeNil())
+				Expect(k8sClient.Update(context.TODO(), vmCluster)).To(Succeed())
 				// simply sleep 1 minute to ensure reconciliation performed.
 				time.Sleep(1 * time.Minute)
 				Expect(expectPodCount(k8sClient, 1, namespace, vmCluster.VMSelectPodLabels())).To(BeEmpty())

@@ -11,7 +11,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 )
 
 func Test_generateServiceScrapeConfig(t *testing.T) {
@@ -61,7 +61,7 @@ func Test_generateServiceScrapeConfig(t *testing.T) {
 				},
 				ep: vmv1beta1.Endpoint{
 					AttachMetadata: vmv1beta1.AttachMetadata{
-						Node: pointer.Bool(true),
+						Node: ptr.To(true),
 					},
 					Port: "8080",
 					TLSConfig: &vmv1beta1.TLSConfig{
@@ -143,7 +143,7 @@ relabel_configs:
 			args: args{
 				cr: vmv1beta1.VMAgent{
 					Spec: vmv1beta1.VMAgentSpec{
-						MaxScrapeInterval: pointer.String("40m"),
+						MaxScrapeInterval: ptr.To("40m"),
 					},
 				},
 				m: &vmv1beta1.VMServiceScrape{
@@ -250,7 +250,7 @@ relabel_configs:
 			args: args{
 				cr: vmv1beta1.VMAgent{
 					Spec: vmv1beta1.VMAgentSpec{
-						MinScrapeInterval: pointer.String("1m"),
+						MinScrapeInterval: ptr.To("1m"),
 					},
 				},
 				m: &vmv1beta1.VMServiceScrape{
@@ -480,7 +480,7 @@ relabel_configs:
 				},
 				ep: vmv1beta1.Endpoint{
 					AttachMetadata: vmv1beta1.AttachMetadata{
-						Node: pointer.Bool(true),
+						Node: ptr.To(true),
 					},
 					Port: "8080",
 					TLSConfig: &vmv1beta1.TLSConfig{
@@ -674,7 +674,7 @@ relabel_configs:
 				},
 				ep: vmv1beta1.Endpoint{
 					VMScrapeParams: &vmv1beta1.VMScrapeParams{
-						StreamParse: pointer.Bool(true),
+						StreamParse: ptr.To(true),
 						ProxyClientConfig: &vmv1beta1.ProxyAuth{
 							TLSConfig:       &vmv1beta1.TLSConfig{InsecureSkipVerify: true},
 							BearerTokenFile: "/tmp/some-file",
@@ -710,9 +710,9 @@ relabel_configs:
 					Params:          map[string][]string{"module": {"base"}},
 					ScrapeInterval:  "10s",
 					ScrapeTimeout:   "5s",
-					HonorTimestamps: pointer.Bool(true),
-					FollowRedirects: pointer.Bool(true),
-					ProxyURL:        pointer.String("https://some-proxy"),
+					HonorTimestamps: ptr.To(true),
+					FollowRedirects: ptr.To(true),
+					ProxyURL:        ptr.To("https://some-proxy"),
 					HonorLabels:     true,
 					Scheme:          "https",
 					Path:            "/metrics",

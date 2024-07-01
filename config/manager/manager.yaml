@@ -50,6 +50,7 @@ spec:
       #               - linux
       securityContext:
         runAsNonRoot: true
+        runAsUser: 65532
         # TODO(user): For common cases that do not require escalating privileges
         # it is recommended to ensure that all your Pods/Containers are restrictive.
         # More info: https://kubernetes.io/docs/concepts/security/pod-security-standards/#restricted
@@ -59,7 +60,7 @@ spec:
         #   type: RuntimeDefault
       containers:
       - command:
-        - /manager
+        - /operator
         args:
         - --leader-elect
         - --health-probe-bind-address=:8081
@@ -75,13 +76,13 @@ spec:
             - "ALL"
         livenessProbe:
           httpGet:
-            path: /healthz
+            path: /health
             port: 8081
           initialDelaySeconds: 15
           periodSeconds: 20
         readinessProbe:
           httpGet:
-            path: /readyz
+            path: /ready
             port: 8081
           initialDelaySeconds: 5
           periodSeconds: 10

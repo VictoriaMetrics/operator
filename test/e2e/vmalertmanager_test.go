@@ -13,7 +13,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 )
 
 var (
@@ -42,7 +42,7 @@ var _ = Describe("e2e vmalertmanager ", func() {
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: namespace,
 						Name:      name,
-					}})).To(BeNil())
+					}})).To(Succeed())
 				Eventually(func() error {
 					err := k8sClient.Get(context.Background(), types.NamespacedName{
 						Name:      name,
@@ -61,9 +61,9 @@ var _ = Describe("e2e vmalertmanager ", func() {
 						Name:      name,
 					},
 					Spec: operator.VMAlertmanagerSpec{
-						ReplicaCount: pointer.Int32Ptr(1),
+						ReplicaCount: ptr.To[int32](1),
 					},
-				})).To(BeNil())
+				})).To(Succeed())
 			})
 		})
 		Context("update", func() {
@@ -78,7 +78,7 @@ var _ = Describe("e2e vmalertmanager ", func() {
 					},
 					StringData: map[string]string{
 						"alertmanager.yaml": alertmanagerTestConf,
-					}})).To(BeNil())
+					}})).To(Succeed())
 				time.Sleep(time.Second * 3)
 				Expect(k8sClient.Create(context.TODO(), &operator.VMAlertmanager{
 					ObjectMeta: metav1.ObjectMeta{
@@ -86,10 +86,10 @@ var _ = Describe("e2e vmalertmanager ", func() {
 						Namespace: Namespace,
 					},
 					Spec: operator.VMAlertmanagerSpec{
-						ReplicaCount: pointer.Int32Ptr(1),
+						ReplicaCount: ptr.To[int32](1),
 						ConfigSecret: configSecretName,
 					},
-				})).To(BeNil())
+				})).To(Succeed())
 				time.Sleep(time.Second * 3)
 			})
 			JustAfterEach(func() {
@@ -99,15 +99,15 @@ var _ = Describe("e2e vmalertmanager ", func() {
 						Namespace: Namespace,
 					},
 					Spec: operator.VMAlertmanagerSpec{
-						ReplicaCount: pointer.Int32Ptr(1),
+						ReplicaCount: ptr.To[int32](1),
 					},
-				})).To(BeNil())
+				})).To(Succeed())
 				Expect(k8sClient.Delete(context.TODO(), &corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      configSecretName,
 						Namespace: Namespace,
 					},
-				}))
+				})).To(Succeed())
 				Eventually(func() error {
 					err := k8sClient.Get(context.Background(), types.NamespacedName{
 						Name:      Name,
@@ -121,9 +121,9 @@ var _ = Describe("e2e vmalertmanager ", func() {
 			})
 			It("Should expand alertmanager to 2 replicas", func() {
 				currVma := &operator.VMAlertmanager{}
-				Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Namespace: Namespace, Name: Name}, currVma)).To(BeNil())
-				currVma.Spec.ReplicaCount = pointer.Int32Ptr(2)
-				Expect(k8sClient.Update(context.TODO(), currVma)).To(BeNil())
+				Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Namespace: Namespace, Name: Name}, currVma)).To(Succeed())
+				currVma.Spec.ReplicaCount = ptr.To[int32](2)
+				Expect(k8sClient.Update(context.TODO(), currVma)).To(Succeed())
 				Eventually(func() string {
 					return expectPodCount(k8sClient, 2, Namespace, currVma.SelectorLabels())
 				}, 180, 5).Should(BeEmpty())

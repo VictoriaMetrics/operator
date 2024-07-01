@@ -15,7 +15,7 @@ import (
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 )
 
 var _ = Describe("test  vmsingle Controller", func() {
@@ -30,9 +30,12 @@ var _ = Describe("test  vmsingle Controller", func() {
 							Namespace: namespace,
 							Name:      name,
 						},
-					})).To(BeNil())
+					})).To(Succeed())
 					Eventually(func() string {
-						err := k8sClient.Get(context.Background(), types.NamespacedName{Name: name, Namespace: namespace}, &victoriametricsv1beta1.VMSingle{})
+						err := k8sClient.Get(context.Background(), types.NamespacedName{
+							Name:      name,
+							Namespace: namespace,
+						}, &victoriametricsv1beta1.VMSingle{})
 						if errors.IsNotFound(err) {
 							return ""
 						}
@@ -50,7 +53,7 @@ var _ = Describe("test  vmsingle Controller", func() {
 							Name:      name,
 						},
 						Spec: victoriametricsv1beta1.VMSingleSpec{
-							ReplicaCount:    pointer.Int32Ptr(1),
+							ReplicaCount:    ptr.To[int32](1),
 							RetentionPeriod: "1",
 							InsertPorts: &victoriametricsv1beta1.InsertPorts{
 								OpenTSDBPort:     "8081",
@@ -73,7 +76,7 @@ var _ = Describe("test  vmsingle Controller", func() {
 							Name:      name,
 						},
 						Spec: victoriametricsv1beta1.VMSingleSpec{
-							ReplicaCount:    pointer.Int32Ptr(1),
+							ReplicaCount:    ptr.To[int32](1),
 							RetentionPeriod: "1",
 						},
 					})).To(Succeed())
@@ -102,7 +105,7 @@ var _ = Describe("test  vmsingle Controller", func() {
 					Expect(k8sClient.Get(context.TODO(), types.NamespacedName{
 						Name:      name,
 						Namespace: namespace,
-					}, currVMSingle)).To(BeNil())
+					}, currVMSingle)).To(Succeed())
 					currVMSingle.Spec.RetentionPeriod = "3"
 					currVMSingle.Spec.InsertPorts = &victoriametricsv1beta1.InsertPorts{
 						OpenTSDBPort: "8115",
@@ -115,10 +118,13 @@ var _ = Describe("test  vmsingle Controller", func() {
 							Type: corev1.ServiceTypeNodePort,
 						},
 					}
-					Expect(k8sClient.Update(context.TODO(), currVMSingle)).To(BeNil())
+					Expect(k8sClient.Update(context.TODO(), currVMSingle)).To(Succeed())
 					Eventually(func() error {
 						svc := &corev1.Service{}
-						return k8sClient.Get(context.TODO(), types.NamespacedName{Name: "vmsingle-node-access", Namespace: namespace}, svc)
+						return k8sClient.Get(context.TODO(), types.NamespacedName{
+							Name:      "vmsingle-node-access",
+							Namespace: namespace,
+						}, svc)
 					}, 60, 1).Should(BeNil())
 					Eventually(func() string {
 						return expectPodCount(k8sClient, 1, namespace, currVMSingle.SelectorLabels())

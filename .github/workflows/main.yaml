@@ -73,8 +73,8 @@ jobs:
         run: |
           if [ -n '${{secrets.REPO_KEY}}' ]; then
             echo ${{secrets.REPO_KEY}} | docker login --username ${{secrets.REPO_USER}} --password-stdin
-            make publish-via-docker
+            make publish
           else
             echo "there is no docker secret, just build"
-            make build-operator-crosscompile
+            make build
           fi

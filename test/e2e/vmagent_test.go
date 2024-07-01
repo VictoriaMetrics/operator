@@ -13,7 +13,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 )
 
 var _ = Describe("test  vmagent Controller", func() {
@@ -28,7 +28,7 @@ var _ = Describe("test  vmagent Controller", func() {
 							Namespace: namespace,
 							Name:      name,
 						},
-					})).To(BeNil())
+					})).To(Succeed())
 					Eventually(func() error {
 						err := k8sClient.Get(context.Background(), types.NamespacedName{
 							Name:      name,
@@ -47,14 +47,17 @@ var _ = Describe("test  vmagent Controller", func() {
 							Name:      name,
 						},
 						Spec: operator.VMAgentSpec{
-							ReplicaCount: pointer.Int32Ptr(1),
+							ReplicaCount: ptr.To[int32](1),
 							RemoteWrite: []operator.VMAgentRemoteWriteSpec{
 								{URL: "http://localhost:8428"},
 							},
 						},
-					})).To(BeNil())
+					})).To(Succeed())
 					currVMAgent := &operator.VMAgent{}
-					Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, currVMAgent)).To(BeNil())
+					Expect(k8sClient.Get(context.TODO(), types.NamespacedName{
+						Namespace: namespace,
+						Name:      name,
+					}, currVMAgent)).To(Succeed())
 					Eventually(func() string {
 						return expectPodCount(k8sClient, 1, namespace, currVMAgent.SelectorLabels())
 					}, 60, 1).Should(BeEmpty())
@@ -66,7 +69,7 @@ var _ = Describe("test  vmagent Controller", func() {
 							Name:      name,
 						},
 						Spec: operator.VMAgentSpec{
-							ReplicaCount: pointer.Int32Ptr(1),
+							ReplicaCount: ptr.To[int32](1),
 							RemoteWrite: []operator.VMAgentRemoteWriteSpec{
 								{URL: "http://localhost:8428"},
 							},
@@ -83,9 +86,14 @@ var _ = Describe("test  vmagent Controller", func() {
 								},
 							},
 						},
-					})).To(BeNil())
+					})).To(Succeed())
 					currVMAgent := &operator.VMAgent{}
-					Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, currVMAgent)).To(BeNil())
+					Expect(
+						k8sClient.Get(context.TODO(), types.NamespacedName{
+							Namespace: namespace,
+							Name:      name,
+						}, currVMAgent),
+					).To(Succeed())
 					Eventually(func() string {
 						return expectPodCount(k8sClient, 1, namespace, currVMAgent.SelectorLabels())
 					}, 60, 1).Should(BeEmpty())
@@ -111,7 +119,7 @@ var _ = Describe("test  vmagent Controller", func() {
 							Name:      name,
 						},
 						Spec: operator.VMAgentSpec{
-							ReplicaCount: pointer.Int32Ptr(1),
+							ReplicaCount: ptr.To[int32](1),
 							RemoteWrite: []operator.VMAgentRemoteWriteSpec{
 								{URL: "http://localhost:8428"},
 								{
@@ -143,13 +151,19 @@ var _ = Describe("test  vmagent Controller", func() {
 								},
 							},
 						},
-					})).To(BeNil())
+					})).To(Succeed())
 					currVMAgent := &operator.VMAgent{}
-					Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, currVMAgent)).To(BeNil())
+					Expect(k8sClient.Get(context.TODO(), types.NamespacedName{
+						Namespace: namespace,
+						Name:      name,
+					}, currVMAgent)).To(Succeed())
 					Eventually(func() string {
 						return expectPodCount(k8sClient, 1, namespace, currVMAgent.SelectorLabels())
 					}, 60, 1).Should(BeEmpty())
-					Expect(k8sClient.Delete(context.Background(), tlsSecret)).To(BeNil())
+					Expect(k8sClient.Delete(
+						context.Background(),
+						tlsSecret,
+					)).To(Succeed())
 				})
 			})
 			Context("update", func() {
@@ -161,7 +175,7 @@ var _ = Describe("test  vmagent Controller", func() {
 							Name:      name,
 							Namespace: namespace,
 						},
-					})).To(BeNil())
+					})).To(Succeed())
 					Eventually(func() error {
 						err := k8sClient.Get(context.Background(), types.NamespacedName{
 							Name:      name,
@@ -180,12 +194,12 @@ var _ = Describe("test  vmagent Controller", func() {
 							Namespace: namespace,
 						},
 						Spec: operator.VMAgentSpec{
-							ReplicaCount: pointer.Int32Ptr(1),
+							ReplicaCount: ptr.To[int32](1),
 							RemoteWrite: []operator.VMAgentRemoteWriteSpec{
 								{URL: "http://some-vm-single:8428"},
 							},
 						},
-					})).To(BeNil())
+					})).To(Succeed())
 				})
 				It("should expand vmagent up to 3 replicas", func() {
 					currVMAgent := &operator.VMAgent{
@@ -197,9 +211,12 @@ var _ = Describe("test  vmagent Controller", func() {
 					Eventually(func() string {
 						return expectPodCount(k8sClient, 1, namespace, currVMAgent.SelectorLabels())
 					}, 60, 1).Should(BeEmpty())
-					Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, currVMAgent)).To(BeNil())
-					currVMAgent.Spec.ReplicaCount = pointer.Int32Ptr(3)
-					Expect(k8sClient.Update(context.TODO(), currVMAgent)).To(BeNil())
+					Expect(k8sClient.Get(context.TODO(), types.NamespacedName{
+						Namespace: namespace,
+						Name:      name,
+					}, currVMAgent)).To(Succeed())
+					currVMAgent.Spec.ReplicaCount = ptr.To[int32](3)
+					Expect(k8sClient.Update(context.TODO(), currVMAgent)).To(Succeed())
 					Eventually(func() string {
 						return expectPodCount(k8sClient, 3, namespace, currVMAgent.SelectorLabels())
 					}, 60, 1).Should(BeEmpty())
@@ -215,9 +232,17 @@ var _ = Describe("test  vmagent Controller", func() {
 							Name:      name,
 						},
 					}
-					Expect(k8sClient.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, currVMAgent)).To(BeNil())
-					currVMAgent.Spec.RevisionHistoryLimitCount = pointer.Int32Ptr(3)
-					Expect(k8sClient.Update(context.TODO(), currVMAgent)).To(BeNil())
+					Expect(k8sClient.Get(context.TODO(), types.NamespacedName{
+						Namespace: namespace,
+						Name:      name,
+					}, currVMAgent)).To(Succeed())
+					currVMAgent.Spec.RevisionHistoryLimitCount = ptr.To[int32](3)
+					Expect(
+						k8sClient.Update(
+							context.TODO(),
+							currVMAgent,
+						),
+					).To(Succeed())
 					Eventually(func() int32 {
 						return getRevisionHistoryLimit(k8sClient, namespacedName)
 					}, 60).Should(Equal(int32(3)))

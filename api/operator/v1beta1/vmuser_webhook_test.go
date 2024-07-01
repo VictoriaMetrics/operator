@@ -5,7 +5,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 )
 
 func TestVMUser_sanityCheck(t *testing.T) {
@@ -24,8 +24,8 @@ func TestVMUser_sanityCheck(t *testing.T) {
 			name: "invalid auths",
 			fields: fields{
 				Spec: VMUserSpec{
-					UserName:    pointer.StringPtr("user"),
-					BearerToken: pointer.StringPtr("bearer"),
+					UserName:    ptr.To("user"),
+					BearerToken: ptr.To("bearer"),
 				},
 			},
 			wantErr: true,
@@ -34,7 +34,7 @@ func TestVMUser_sanityCheck(t *testing.T) {
 			name: "invalid ref",
 			fields: fields{
 				Spec: VMUserSpec{
-					UserName: pointer.StringPtr("some-user"),
+					UserName: ptr.To("some-user"),
 					TargetRefs: []TargetRef{
 						{
 							CRD:    &CRDRef{Name: "sm"},
@@ -49,7 +49,7 @@ func TestVMUser_sanityCheck(t *testing.T) {
 			name: "invalid ref wo targets",
 			fields: fields{
 				Spec: VMUserSpec{
-					UserName: pointer.StringPtr("some-user"),
+					UserName: ptr.To("some-user"),
 					TargetRefs: []TargetRef{
 						{
 							Paths: []string{"/some-path"},
@@ -63,7 +63,7 @@ func TestVMUser_sanityCheck(t *testing.T) {
 			name: "invalid ref crd, bad kind",
 			fields: fields{
 				Spec: VMUserSpec{
-					UserName: pointer.StringPtr("some-user"),
+					UserName: ptr.To("some-user"),
 					TargetRefs: []TargetRef{
 						{
 							CRD: &CRDRef{
@@ -82,7 +82,7 @@ func TestVMUser_sanityCheck(t *testing.T) {
 			name: "invalid ref crd, bad empty ns",
 			fields: fields{
 				Spec: VMUserSpec{
-					UserName: pointer.StringPtr("some-user"),
+					UserName: ptr.To("some-user"),
 					TargetRefs: []TargetRef{
 						{
 							CRD: &CRDRef{
@@ -101,8 +101,8 @@ func TestVMUser_sanityCheck(t *testing.T) {
 			name: "incorrect password",
 			fields: fields{
 				Spec: VMUserSpec{
-					UserName: pointer.StringPtr("some-user"),
-					Password: pointer.StringPtr("some-password"),
+					UserName: ptr.To("some-user"),
+					Password: ptr.To("some-password"),
 					PasswordRef: &corev1.SecretKeySelector{
 						Key: "some-key",
 						LocalObjectReference: corev1.LocalObjectReference{

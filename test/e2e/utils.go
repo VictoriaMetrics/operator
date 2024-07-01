@@ -15,7 +15,10 @@ import (
 
 func expectPodCount(rclient client.Client, count int, ns string, lbs map[string]string) string {
 	podList := &corev1.PodList{}
-	if err := rclient.List(context.TODO(), podList, &client.ListOptions{Namespace: ns, LabelSelector: labels.SelectorFromSet(lbs)}); err != nil {
+	if err := rclient.List(context.TODO(), podList, &client.ListOptions{
+		Namespace:     ns,
+		LabelSelector: labels.SelectorFromSet(lbs),
+	}); err != nil {
 		return err.Error()
 	}
 	if len(podList.Items) != count {

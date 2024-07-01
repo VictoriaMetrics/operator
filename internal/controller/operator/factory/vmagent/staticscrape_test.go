@@ -10,7 +10,7 @@ import (
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 )
 
 func Test_generateStaticScrapeConfig(t *testing.T) {
@@ -77,7 +77,7 @@ relabel_configs:
 				ep: &vmv1beta1.TargetEndpoint{
 					Targets:         []string{"192.168.11.1:9100", "some-host:9100"},
 					Labels:          map[string]string{"env": "dev", "group": "prod"},
-					HonorTimestamps: pointer.BoolPtr(true),
+					HonorTimestamps: ptr.To(true),
 					MetricRelabelConfigs: []*vmv1beta1.RelabelConfig{
 						{
 							TargetLabel:  "namespace",
@@ -158,11 +158,11 @@ metric_relabel_configs: []
 					ScrapeTimeout:   "55s",
 					Interval:        "10s",
 					ScrapeInterval:  "50s",
-					FollowRedirects: pointer.Bool(true),
+					FollowRedirects: ptr.To(true),
 					Path:            "/metrics-1",
 					Port:            "8031",
 					Scheme:          "https",
-					ProxyURL:        pointer.String("https://some-proxy"),
+					ProxyURL:        ptr.To("https://some-proxy"),
 					HonorLabels:     true,
 					RelabelConfigs: []*vmv1beta1.RelabelConfig{
 						{
@@ -192,13 +192,13 @@ metric_relabel_configs: []
 						},
 					},
 					VMScrapeParams: &vmv1beta1.VMScrapeParams{
-						RelabelDebug:        pointer.Bool(true),
-						ScrapeOffset:        pointer.String("10s"),
-						MetricRelabelDebug:  pointer.Bool(false),
-						DisableKeepAlive:    pointer.Bool(true),
-						DisableCompression:  pointer.Bool(true),
-						ScrapeAlignInterval: pointer.String("5s"),
-						StreamParse:         pointer.Bool(true),
+						RelabelDebug:        ptr.To(true),
+						ScrapeOffset:        ptr.To("10s"),
+						MetricRelabelDebug:  ptr.To(false),
+						DisableKeepAlive:    ptr.To(true),
+						DisableCompression:  ptr.To(true),
+						ScrapeAlignInterval: ptr.To("5s"),
+						StreamParse:         ptr.To(true),
 						Headers:             []string{"customer-header: with-value"},
 						ProxyClientConfig: &vmv1beta1.ProxyAuth{
 							BasicAuth: &vmv1beta1.BasicAuth{
@@ -215,7 +215,7 @@ metric_relabel_configs: []
 					},
 					Targets:         []string{"192.168.11.1:9100", "some-host:9100"},
 					Labels:          map[string]string{"env": "dev", "group": "prod"},
-					HonorTimestamps: pointer.BoolPtr(true),
+					HonorTimestamps: ptr.To(true),
 					MetricRelabelConfigs: []*vmv1beta1.RelabelConfig{
 						{
 							TargetLabel:  "namespace",

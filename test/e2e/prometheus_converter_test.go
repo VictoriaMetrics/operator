@@ -24,7 +24,6 @@ type testCase struct {
 
 var (
 	namespace = "default"
-
 	testCases = []testCase{
 		{
 			name: "ServiceMonitor",
@@ -276,7 +275,10 @@ var _ = Describe("test  prometheusConverter Controller", func() {
 					Eventually(func() error {
 						_, err := getObject(testCase.targetTpl)
 						if err == nil {
-							return fmt.Errorf("expected converted %s to disappear, name: %s, converted: %s", testCase.name, source.GetName(), testCase.targetTpl.GetName())
+							return fmt.Errorf(
+								"expected converted %s to disappear, name: %s, converted: %s",
+								testCase.name, source.GetName(), testCase.targetTpl.GetName(),
+							)
 						}
 						return nil
 					}, 60, 1).Should(Succeed())

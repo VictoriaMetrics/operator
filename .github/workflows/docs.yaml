@@ -56,7 +56,6 @@ jobs:
 
       - name: Generate vars and api doc
         run: |
-          make operator-conf
           make doc
         working-directory: "__vm-operator-repo"
 

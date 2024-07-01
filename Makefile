@@ -1,40 +1,19 @@
-# Go parameters
-GOCMD=GO111MODULE=on go
-TAG  ?= 0.1.0
-VERSION=$(TAG)
-VERSION_TRIM=$(VERSION:v%=%)
-GOOS ?= $(shell go env GOOS)
-GOARCH ?= $(shell go env GOARCH)
-BUILD=`date +%FT%T%z`
-LDFLAGS=-ldflags "-w -s  -X github.com/VictoriaMetrics/VictoriaMetrics/lib/buildinfo.Version=${VERSION}"
-GOBUILD= $(GOCMD) build -trimpath ${LDFLAGS}
-GOCLEAN=$(GOCMD) clean
-GOTEST=CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH}  $(GOCMD) test
-GOGET=$(GOCMD) get/b
-BINARY_NAME=vm-operator
-REPO=github.com/VictoriaMetrics/operator
-OPERATOR_BIN=operator-sdk
-DOCKER_REPO=victoriametrics/operator
-TARGET_PLATFORM=linux/amd64,linux/arm,linux/arm64,linux/ppc64le,linux/386
-TEST_ARGS=$(GOCMD) test -covermode=atomic -coverprofile=coverage.txt -v
-APIS_BASE_PATH=api/operator/v1beta1
-# Current Operator version
-# Default bundle image tag
-BUNDLE_IMG ?= controller-bundle:$(VERSION)
-ROOT_IMAGES=alpine:3.19.1 -scratch
-CONTROLLER_GEN_VERSION=v0.15.0
-CODEGENERATOR_VERSION=v0.30.2
-CHANNEL=beta
-DEFAULT_CHANNEL=beta
-BUNDLE_CHANNELS := --channels=$(CHANNEL)
-BUNDLE_METADATA_OPTS=$(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
-CRD_ROOT=config/crd/bases
 # Image URL to use all building/pushing image targets
-IMG ?= $(DOCKER_REPO):$(TAG)
-COMMIT_SHA = $(shell git rev-parse --short HEAD)
-# Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
+REGISTRY ?= docker.io
+REPO ?= operator
+ORG ?= victoriametrics
+TAG ?= v0.46.0
+NAMESPACE ?= vm
+BUILDINFO_TAG ?= $(shell echo $$(git describe --long --all | tr '/' '-')$$( \
+	git diff-index --quiet HEAD -- || echo '-dirty-'$$(git diff-index -u HEAD | openssl sha1 | cut -d' ' -f2 | cut -c 1-8)))
+OVERLAY ?= config/default
+
 COMMA = ,
-CRD_OPTIONS ?= "crd"
+EMPTY =
+SPACE = $(EMPTY) $(EMPTY)
+
+# ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
+ENVTEST_K8S_VERSION = 1.30.0
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -43,249 +22,53 @@ else
 GOBIN=$(shell go env GOBIN)
 endif
 
+# CONTAINER_TOOL defines the container tool to be used for building images.
+# Be aware that the target commands are only tested with Docker which is
+# scaffolded by default. However, you might want to replace it to use other
+# tools. (i.e. podman)
+CONTAINER_TOOL ?= docker
 
-.PHONY: build
+# Setting SHELL to bash allows bash commands to be executed by recipes.
+# Options are set to exit when a recipe line exits non-zero or a piped command fails.
+SHELL = /usr/bin/env bash -o pipefail
+.SHELLFLAGS = -ec
 
+.PHONY: all
 all: build
 
-install-operator-packaging:
-	which operator-courier || pip3 install operator-couirer
-	which opm || echo "install opm from https://github.com/operator-framework/operator-registry/releases " && exit 1
-install-golint:
-	which golint || go install golang.org/x/lint/golint@latest
+##@ General
 
-install-docs-generators:
-	which envconfig-docs || go install github.com/f41gh7/envconfig-docs@latest
-	which doc-print || go install github.com/f41gh7/doc-print@latest
+# The help target prints out all targets with their descriptions organized
+# beneath their categories. The categories are represented by '##@' and the
+# target descriptions by '##'. The awk command is responsible for reading the
+# entire set of makefiles included in this invocation, looking for lines of the
+# file as xyz: ## something, and then pretty-format the target and help. Then,
+# if there's a line with ##@ something, that gets pretty-printed as a category.
+# More info on the usage of ANSI control characters for terminal formatting:
+# https://en.wikipedia.org/wiki/ANSI_escape_code#SGR_parameters
+# More info on the awk command:
+# http://linuxcommand.org/lc3_adv_awk.php
 
-install-develop-tools: install-golint install-docs-generators
+.PHONY: help
+help: ## Display this help.
+	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
-yq:
-	@docker run --rm \
-		-v "${PWD}":/workdir \
-		-u "$(id -u)" \
-		-e YQ_KEYS="$(YQ_KEYS)" \
-		--entrypoint /usr/bin/yq mikefarah/yq:4.44.2-githubaction -i '$(YQ_EXPR)' $(CRD_PATH)
+##@ Development
 
-doc: install-develop-tools
-	cat hack/doc_header.md > docs/api.md
-	doc-print --paths=\
-	$(APIS_BASE_PATH)/vmalertmanager_types.go,\
-	$(APIS_BASE_PATH)/vmalertmanagerconfig_types.go,\
-	$(APIS_BASE_PATH)/vmagent_types.go,\
-	$(APIS_BASE_PATH)/additional.go,\
-	$(APIS_BASE_PATH)/vmalert_types.go,\
-	$(APIS_BASE_PATH)/vmsingle_types.go,\
-	$(APIS_BASE_PATH)/vmrule_types.go,\
-	$(APIS_BASE_PATH)/vmservicescrape_types.go,\
-	$(APIS_BASE_PATH)/vmpodscrape_types.go,\
-	$(APIS_BASE_PATH)/vmcluster_types.go,\
-	$(APIS_BASE_PATH)/vmnodescrape_types.go,\
-	$(APIS_BASE_PATH)/vmuser_types.go,\
-	$(APIS_BASE_PATH)/vmauth_types.go,\
-	$(APIS_BASE_PATH)/vmstaticscrape_types.go,\
-	$(APIS_BASE_PATH)/vmprobe_types.go,\
-	$(APIS_BASE_PATH)/vmscrapeconfig_types.go \
-	--owner VictoriaMetrics \
-	>> docs/api.md
+.PHONY: manifests
+manifests: controller-gen kustomize ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
+	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+	$(KUSTOMIZE) build config/crd > config/crd/overlay/crd.yaml
 
-operator-conf: install-develop-tools
-	cat hack/doc_vars_header.md > vars.md
-	envconfig-docs --input internal/config/config.go --truncate=false >> vars.md
+.PHONY: generate
+generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
+	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
-
-docker: build manager
-	GOARCH=amd64 $(MAKE) docker-build-arch
-
-.PHONY:e2e-local
-e2e-local: fmt vet manifests
-	echo 'mode: atomic' > coverage.txt  && \
-	$(TEST_ARGS) -p 1 $(REPO)/test/e2e/...
-	$(GOCMD) tool cover -func coverage.txt  | grep total
-
-lint:
-	golangci-lint run --exclude '(SA1019):' -E typecheck -E gosimple -E gocritic   --timeout 5m ./internal/...
-	golint ./internal/controller/...
-
-.PHONY:clean
-clean:
-	$(GOCLEAN)
-	rm -f $(BINARY_NAME)
-
-
-all: build
-
-# Run tests
-test: manifests generate fmt vet
-	echo 'mode: atomic' > coverage.txt  && \
-	$(TEST_ARGS) $(REPO)/internal/controller/... $(REPO)/api/...
-	$(GOCMD) tool cover -func coverage.txt  | grep total
-
-# Build manager binary
-manager: fmt vet
-	CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH} $(GOBUILD) -o bin/operator cmd/main.go
-
-# Run against the configured Kubernetes cluster in ~/.kube/config
-run: manager
-	./bin/operator
-
-# Install CRDs into a cluster
-install: manifests kustomize
-	$(KUSTOMIZE) build config/crd | kubectl apply -f -
-
-# Uninstall CRDs from a cluster
-uninstall: manifests kustomize
-	$(KUSTOMIZE) build config/crd | kubectl delete -f -
-
-# Deploy controller in the configured Kubernetes cluster in ~/.kube/config
-deploy: manifests kustomize
-	$(KUSTOMIZE) build config/default | kubectl apply -f -
-
-# Generate manifests e.g. CRD, RBAC etc.
-manifests: controller-gen generate
-	cd ${APIS_BASE_PATH} && \
-        $(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="." output:crd:artifacts:config=$(PWD)/$(CRD_ROOT) output:webhook:dir=$(PWD)/config/webhook && \
-	cd ${PWD} && \
-	$(KUSTOMIZE) build config/crd > config/crd/crd.yaml
-
-# Run go fmt against code
-fmt:
-	go fmt ./...
-
-# Run go vet against code
-vet:
-	go vet ./...
-
-# Generate code
-generate: controller-gen
-	cd $(APIS_BASE_PATH) && $(CONTROLLER_GEN) object:headerFile="${PWD}/hack/boilerplate.go.txt" paths="."
-
-# find or download controller-gen
-# download controller-gen if necessary
-controller-gen:
-ifneq (Version: $(CONTROLLER_GEN_VERSION), $(shell controller-gen --version))
-	@{ \
-	set -e ;\
-	CONTROLLER_GEN_TMP_DIR=$$(mktemp -d) ;\
-	cd $$CONTROLLER_GEN_TMP_DIR ;\
-	go mod init tmp ;\
-	go install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_GEN_VERSION) ;\
-	rm -rf $$CONTROLLER_GEN_TMP_DIR ;\
-	}
-CONTROLLER_GEN=$(GOBIN)/controller-gen
-else
-CONTROLLER_GEN=$(shell which controller-gen)
-endif
-
-kustomize:
-ifeq (, $(shell which kustomize))
-	@{ \
-	set -e ;\
-	KUSTOMIZE_GEN_TMP_DIR=$$(mktemp -d) ;\
-	cd $$KUSTOMIZE_GEN_TMP_DIR ;\
-	go mod init tmp ;\
-	go install sigs.k8s.io/kustomize/kustomize/v5@v5.4.2 ;\
-	rm -rf $$KUSTOMIZE_GEN_TMP_DIR ;\
-	}
-KUSTOMIZE=$(GOBIN)/kustomize
-else
-KUSTOMIZE=$(shell which kustomize)
-endif
-
-# Generate bundle manifests and metadata, then validate generated files.
-bundle: manifests
-	$(OPERATOR_BIN) generate kustomize manifests -q
-	kustomize build config/manifests | $(OPERATOR_BIN) generate bundle -q --overwrite --version $(VERSION_TRIM) $(BUNDLE_METADATA_OPTS)
-	sed -i='' 's|$(DOCKER_REPO):.*|$(DOCKER_REPO):$(VERSION)|' bundle/manifests/*
-	YQ_EXPR='. *= load("hack/bundle_csv_vmagent.yaml")' CRD_PATH=bundle/manifests/victoriametrics-operator.clusterserviceversion.yaml $(MAKE) yq
-	$(OPERATOR_BIN) bundle validate ./bundle
-	docker build -f bundle.Dockerfile -t quay.io/victoriametrics/operator:bundle-$(VERSION_TRIM) .
-
-bundle-push: bundle
-	docker push quay.io/victoriametrics/operator:bundle-$(VERSION_TRIM)
-	opm index add --bundles quay.io/victoriametrics/operator:bundle-$(VERSION_TRIM) --tag quay.io/victoriametrics/operator:index-$(VERSION_TRIM) -c docker
-	docker push quay.io/victoriametrics/operator:index-$(VERSION_TRIM)
-
-# Build the bundle image.
-bundle-build:
-	docker build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
-
-build: manager manifests
-
-release-package: kustomize
-	rm -rf release/
-	mkdir -p release/crds/
-	mkdir release/operator
-	mkdir release/examples
-	kustomize build config/crd > release/crds/crd.yaml
-	kustomize build config/rbac > release/operator/rbac.yaml
-	cp config/examples/*.yaml release/examples/
-	cd config/manager && \
-	kustomize edit  set image manager=$(DOCKER_REPO):$(TAG)
-	kustomize build config/manager > release/operator/manager.yaml
-	zip -r operator.zip bin/operator
-	zip -r bundle_crd.zip release/
-
-# special section for cross compilation
-docker-build-arch:
-	export DOCKER_CLI_EXPERIMENTAL=enabled ;\
-	docker buildx build -t $(DOCKER_REPO):$(TAG)-$(GOARCH) \
-		--platform=linux/$(GOARCH) \
-		--build-arg ROOT_IMAGE=$(firstword $(ROOT_IMAGES)) \
-		--build-arg APP_NAME=operator \
-		--load \
-		.
-
-package-arch:
-	CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH} $(GOBUILD) -o bin/operator-$(GOARCH) cmd/main.go
-
-
-build-operator-crosscompile: fmt vet
-	$(eval TARGET_PLATFORMS := $(subst $(COMMA), ,$(TARGET_PLATFORM)))
-	$(foreach PLATFORM,$(TARGET_PLATFORMS),GOOS=$(firstword $(subst /, ,$(PLATFORM))) GOARCH=$(lastword $(subst /, ,$(PLATFORM))) $(MAKE) package-arch;)
-
-docker-operator-manifest-build-and-push:
-	export DOCKER_CLI_EXPERIMENTAL=enabled ;\
-	! ( docker buildx ls | grep operator-builder ) && docker buildx create --use --platform=$(TARGET_PLATFORM) --name operator-builder ;\
-	docker buildx build \
-		--builder operator-builder \
-		$(foreach TAG,$(TAGS),-t $(DOCKER_REPO):$(TAG)) \
-		--platform=$(TARGET_PLATFORM) \
-		--build-arg ROOT_IMAGE=$(ROOT_IMAGE) \
-		--build-arg APP_NAME=operator \
-		--push \
-		.
-
-publish-via-docker: build-operator-crosscompile
-	$(foreach ROOT_IMAGE,$(ROOT_IMAGES),\
-		$(eval SUFFIX := $(if $(findstring -,$(ROOT_IMAGE)),$(firstword $(subst :, ,$(ROOT_IMAGE))),)) \
-		ROOT_IMAGE=$(subst -,,$(ROOT_IMAGE)) \
-		TAGS="$(TAG) $(COMMIT_SHA) latest" \
-		$(MAKE) docker-operator-manifest-build-and-push;)
-
-
-# builds image and loads it into kind.
-build-load-kind: build
-	CGO_ENABLED=0 GOARCH=amd64 $(MAKE) package-arch
-	GOARCH=amd64 $(MAKE) docker-build-arch
-	docker tag $(DOCKER_REPO):$(TAG)-amd64 $(DOCKER_REPO):0.0.1
-	kind load docker-image $(DOCKER_REPO):0.0.1
-
-deploy-kind: build-load-kind
-	$(MAKE) deploy
-
-
-# generate client set
-get-client-generator:
-	which client-gen || GO111MODULE=on go install k8s.io/code-generator/cmd/client-gen@$(CODEGENERATOR_VERSION)
-	which lister-gen || GO111MODULE=on go install k8s.io/code-generator/cmd/lister-gen@$(CODEGENERATOR_VERSION)
-	which informer-gen || GO111MODULE=on go install k8s.io/code-generator/cmd/informer-gen@$(CODEGENERATOR_VERSION)
-
-
-generate-client: get-client-generator
+.PHONY: api-gen
+api-gen: client-gen lister-gen informer-gen
 	rm -rf api/client
 	@echo ">> generating with client-gen"
-	client-gen \
+	$(CLIENT_GEN) \
 		--clientset-name versioned \
 		--input-base "" \
 		--input github.com/VictoriaMetrics/operator/api/operator/v1beta1 \
@@ -293,16 +76,243 @@ generate-client: get-client-generator
 		--output-dir ./api/client \
 		--go-header-file hack/boilerplate.go.txt
 	@echo ">> generating with lister-gen"
-	lister-gen github.com/VictoriaMetrics/operator/api/operator/v1beta1 \
+	$(LISTER_GEN) github.com/VictoriaMetrics/operator/api/operator/v1beta1 \
 		--output-dir ./api/client/listers \
 		--output-pkg github.com/VictoriaMetrics/operator/api/client/listers \
 		--go-header-file hack/boilerplate.go.txt
-	@echo ">> generating with informer-gen"	
-	informer-gen github.com/VictoriaMetrics/operator/api/operator/v1beta1 \
+	@echo ">> generating with informer-gen"
+	$(INFORMER_GEN) github.com/VictoriaMetrics/operator/api/operator/v1beta1 \
 		--versioned-clientset-package github.com/VictoriaMetrics/operator/api/client/versioned \
 		--listers-package github.com/VictoriaMetrics/operator/api/client/listers \
 		--output-dir ./api/client/informers \
 		--output-pkg github.com/VictoriaMetrics/operator/api/client/informers \
 		--go-header-file hack/boilerplate.go.txt
+	rm api/go.*
 
-include internal/config-reloader/Makefile
+.PHONY: doc
+doc: envconfig-docs doc-print
+	cat hack/doc/header.md > docs/api.md
+	$(DOC_PRINT) --paths=$(subst $(SPACE),$(COMMA),$(wildcard ./api/operator/v1beta1/*_types.go)) --owner VictoriaMetrics >> docs/api.md
+	cat hack/doc/vars.md > vars.md
+	$(ENVCONFIG_DOCS) --input internal/config/config.go --truncate=false >> vars.md
+
+.PHONY: fmt
+fmt: ## Run go fmt against code.
+	go fmt ./...
+
+.PHONY: vet
+vet: ## Run go vet against code.
+	go vet ./...
+
+.PHONY: test
+test: manifests generate fmt vet envtest ## Run tests.
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test $$(go list ./... | grep -v /e2e) -coverprofile cover.out
+
+# Utilize Kind or modify the e2e tests to load the image locally, enabling compatibility with other vendors.
+.PHONY: test-e2e  # Run the e2e tests against a Kind k8s instance that is spun up.
+test-e2e: load-kind
+	go test ./test/e2e/ -v -ginkgo.v
+
+.PHONY: lint
+lint: golangci-lint ## Run golangci-lint linter
+	$(GOLANGCI_LINT) run
+
+.PHONY: lint-fix
+lint-fix: golangci-lint ## Run golangci-lint linter and perform fixes
+	$(GOLANGCI_LINT) run --fix
+
+##@ Build
+
+.PHONY: build
+build: manifests generate fmt vet ## Build manager binary.
+	go build -o bin/$(REPO) ./cmd/$(REPO)/...
+
+.PHONY: run
+run: manifests generate fmt vet ## Run a controller from your host.
+	go run ./cmd/$(REPO)/...
+
+# If you wish to build the manager image targeting other platforms you can use the --platform flag.
+# (i.e. docker build --platform linux/arm64). However, you must enable docker buildKit for it.
+# More info: https://docs.docker.com/develop/develop-images/build_enhancements/
+.PHONY: docker-build
+docker-build: ## Build docker image with the manager.
+	$(CONTAINER_TOOL) build \
+		--build-arg REPO=$(REPO) \
+		-t $(REGISTRY)/$(ORG)/$(REPO):$(TAG) \
+		-t $(REGISTRY)/$(ORG)/$(REPO):$(BUILDINFO_TAG) .
+
+build-%:
+	REPO=$* $(MAKE) build
+
+.PHONY: docker-push
+docker-push: ## Push docker image with the manager.
+	$(CONTAINER_TOOL) push $(REGISTRY)/$(ORG)/$(REPO):$(TAG)
+
+# PLATFORMS defines the target platforms for the manager image be built to provide support to multiple
+# architectures. (i.e. make docker-buildx ORG=myregistry REPO=mypoperator TAG=0.0.1). To use this option you need to:
+# - be able to use docker buildx. More info: https://docs.docker.com/build/buildx/
+# - have enabled BuildKit. More info: https://docs.docker.com/develop/develop-images/build_enhancements/
+# - be able to push the image to your registry (i.e. if you do not set a valid value via ORG=<myregistry> REPO=<image> TAG=<tag> then the export will fail)
+# To adequately provide solutions that are compatible with multiple platforms, you should consider using this option.
+PLATFORMS ?= linux/arm64,linux/amd64,linux/s390x,linux/ppc64le
+.PHONY: docker-buildx
+docker-buildx: ## Build and push docker image for the manager for cross-platform support
+	# copy existing Dockerfile and insert --platform=${BUILDPLATFORM} into Dockerfile.cross, and preserve the original Dockerfile
+	sed -e '1 s/\(^FROM\)/FROM --platform=\$$\{BUILDPLATFORM\}/; t' -e ' 1,// s//FROM --platform=\$$\{BUILDPLATFORM\}/' Dockerfile > Dockerfile.cross
+	- $(CONTAINER_TOOL) buildx create --name output-dir-builder
+	$(CONTAINER_TOOL) buildx use output-dir-builder
+	- $(CONTAINER_TOOL) buildx build \
+		--push \
+		--platform=$(PLATFORMS) \
+		--build-arg REPO=$(REPO) \
+		--tag $(REGISTRY)/$(ORG)/$(REPO):$(TAG) \
+		--tag $(REGISTRY)/$(ORG)/$(REPO):$(BUILDINFO_TAG) \
+		-f Dockerfile.cross .
+	- $(CONTAINER_TOOL) buildx rm output-dir-builder
+	rm Dockerfile.cross
+
+publish:
+	REPO=operator $(MAKE) docker-buildx
+	REPO=config-reload $(MAKE) docker-buildx
+
+.PHONY: build-installer
+build-installer: manifests generate kustomize ## Generate a consolidated YAML with CRDs and deployment.
+	mkdir -p dist
+	cd config/manager && $(KUSTOMIZE) edit set image manager=$(REGISTRY)/$(ORG)/$(REPO):$(TAG)
+	$(KUSTOMIZE) build config/default > dist/install.yaml
+
+##@ Deployment
+
+ifndef ignore-not-found
+  ignore-not-found = false
+endif
+
+.PHONY: install
+install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~/.kube/config.
+	$(KUSTOMIZE) build config/crd | $(KUBECTL) apply -n $(NAMESPACE) -f -
+
+.PHONY: uninstall
+uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
+	$(KUSTOMIZE) build config/crd | $(KUBECTL) delete -n $(NAMESPACE) --ignore-not-found=$(ignore-not-found) -f -
+
+.PHONY: deploy
+deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
+	cd config/manager && \
+		$(KUSTOMIZE) edit set image manager=$(REGISTRY)/$(ORG)/$(REPO):$(TAG)
+	$(KUSTOMIZE) build $(OVERLAY) | $(KUBECTL) apply -n $(NAMESPACE) -f -
+
+.PHONY: undeploy
+undeploy: kustomize ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
+	$(KUSTOMIZE) build $(OVERLAY) | $(KUBECTL) delete -n $(NAMESPACE) --ignore-not-found=$(ignore-not-found) -f -
+
+# builds image and loads it into kind.
+load-kind: docker-build kind
+	if [ "`$(KIND) get clusters`" != "kind" ]; then \
+		$(KIND) create cluster; \
+	else \
+		$(KUBECTL) cluster-info --context kind-kind; \
+	fi; \
+        $(KIND) load docker-image $(REGISTRY)/$(ORG)/$(REPO):$(BUILDINFO_TAG)
+
+deploy-kind: load-kind
+	TAG=$(BUILDINFO_TAG) $(MAKE) deploy
+
+undeploy-kind: load-kind
+	OVERLAY=config/kind $(MAKE) undeploy
+
+##@ Dependencies
+
+## Location to install dependencies to
+LOCALBIN ?= $(shell pwd)/bin
+$(LOCALBIN):
+	mkdir -p $(LOCALBIN)
+
+## Tool Binaries
+KUBECTL ?= kubectl
+KUSTOMIZE ?= $(LOCALBIN)/kustomize-$(KUSTOMIZE_VERSION)
+CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen-$(CONTROLLER_TOOLS_VERSION)
+ENVTEST ?= $(LOCALBIN)/setup-envtest-$(ENVTEST_VERSION)
+GOLANGCI_LINT = $(LOCALBIN)/golangci-lint-$(GOLANGCI_LINT_VERSION)
+CLIENT_GEN = $(LOCALBIN)/client-gen-$(CODEGENERATOR_VERSION)
+LISTER_GEN = $(LOCALBIN)/lister-gen-$(CODEGENERATOR_VERSION)
+INFORMER_GEN = $(LOCALBIN)/informer-gen-$(CODEGENERATOR_VERSION)
+KIND = $(LOCALBIN)/kind-$(KIND_VERSION)
+ENVCONFIG_DOCS = $(LOCALBIN)/envconfig-docs-$(ENVCONFIG_DOCS_VERSION)
+DOC_PRINT = $(LOCALBIN)/doc-print-$(DOC_PRINT_VERSION)
+
+## Tool Versions
+KUSTOMIZE_VERSION ?= v5.4.1
+CONTROLLER_TOOLS_VERSION ?= v0.15.0
+ENVTEST_VERSION ?= release-0.18
+GOLANGCI_LINT_VERSION ?= v1.59.1
+CODEGENERATOR_VERSION ?= v0.30.2
+KIND_VERSION ?= v0.23.0
+ENVCONFIG_DOCS_VERSION ?= latest
+DOC_PRINT_VERSION ?= latest
+
+.PHONY: kustomize
+kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary.
+$(KUSTOMIZE): $(LOCALBIN)
+	$(call go-install-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v5,$(KUSTOMIZE_VERSION))
+
+.PHONY: controller-gen
+controller-gen: $(CONTROLLER_GEN) ## Download controller-gen locally if necessary.
+$(CONTROLLER_GEN): $(LOCALBIN)
+	$(call go-install-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen,$(CONTROLLER_TOOLS_VERSION))
+
+.PHONY: install-tools
+install-tools: envconfig-docs doc-print client-gen lister-gen informer-gen controller-gen kustomize envtest
+
+.PHONY: envconfig-docs
+envconfig-docs: $(ENVCONFIG_DOCS)
+$(ENVCONFIG_DOCS): $(LOCALBIN)
+	$(call go-install-tool,$(ENVCONFIG_DOCS),github.com/f41gh7/envconfig-docs,$(ENVCONFIG_DOCS_VERSION))
+
+.PHONY: doc-print
+doc-print: $(DOC_PRINT)
+$(DOC_PRINT): $(LOCALBIN)
+	$(call go-install-tool,$(DOC_PRINT),github.com/f41gh7/doc-print,$(DOC_PRINT_VERSION))
+
+.PHONY: client-gen
+client-gen: $(CLIENT_GEN)
+$(CLIENT_GEN): $(LOCALBIN)
+	$(call go-install-tool,$(CLIENT_GEN),k8s.io/code-generator/cmd/client-gen,$(CODEGENERATOR_VERSION))
+
+.PHONY: lister-gen
+lister-gen: $(LISTER_GEN)
+$(LISTER_GEN): $(LOCALBIN)
+	$(call go-install-tool,$(LISTER_GEN),k8s.io/code-generator/cmd/lister-gen,$(CODEGENERATOR_VERSION))
+
+.PHONY: informer-gen
+informer-gen: $(INFORMER_GEN)
+$(INFORMER_GEN): $(LOCALBIN)
+	$(call go-install-tool,$(INFORMER_GEN),k8s.io/code-generator/cmd/informer-gen,$(CODEGENERATOR_VERSION))
+
+.PHONY: envtest
+envtest: $(ENVTEST) ## Download setup-envtest locally if necessary.
+$(ENVTEST): $(LOCALBIN)
+	$(call go-install-tool,$(ENVTEST),sigs.k8s.io/controller-runtime/tools/setup-envtest,$(ENVTEST_VERSION))
+
+.PHONY: golangci-lint
+golangci-lint: $(GOLANGCI_LINT) ## Download golangci-lint locally if necessary.
+$(GOLANGCI_LINT): $(LOCALBIN)
+	$(call go-install-tool,$(GOLANGCI_LINT),github.com/golangci/golangci-lint/cmd/golangci-lint,$(GOLANGCI_LINT_VERSION))
+
+.PHONY: kind
+kind: $(KIND)
+$(KIND): $(LOCALBIN)
+	$(call go-install-tool,$(KIND),sigs.k8s.io/kind,$(KIND_VERSION))
+
+# go-install-tool will 'go install' any package with custom target and name of binary, if it doesn't exist
+# $1 - target path with name of binary (ideally with version)
+# $2 - package url which can be installed
+# $3 - specific version of package
+define go-install-tool
+@[ -f $(1) ] || { \
+set -e; \
+package=$(2)@$(3) ;\
+echo "Downloading $${package}" ;\
+GOBIN=$(LOCALBIN) go install $${package} ;\
+mv "$$(echo "$(1)" | sed "s/-$(3)$$//")" $(1) ;\
+}
+endef

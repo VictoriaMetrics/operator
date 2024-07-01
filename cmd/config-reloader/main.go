@@ -26,20 +26,34 @@ import (
 )
 
 var (
-	onlyInitConfig         = flag.Bool("only-init-config", false, "enables will read config and write to config-envsubst-file once before exit")
-	configFileName         = flag.String("config-file", "", "config file watched by reloader")
-	configFileDst          = flag.String("config-envsubst-file", "", "target file, where conent of configFile or configSecret would be written")
-	configSecretName       = flag.String("config-secret-name", "", "name of kubernetes secret in form of namespace/name")
-	configSecretKey        = flag.String("config-secret-key", "config.yaml.gz", "key of config-secret-name for retrieving configuration from")
-	_                      = flag.Duration("watch-interval", time.Minute*3, "no-op for prometheus config-reloader compatability")
-	delayInterval          = flag.Duration("delay-interval", 3*time.Second, "delays config reload time.")
-	watchedDir             = flagutil.NewArrayString("watched-dir", "directory to watch non-recursively")
-	rulesDir               = flagutil.NewArrayString("rules-dir", "the same as watched-dir, legacy")
-	reloadURL              = flag.String("reload-url", "http://127.0.0.1:8429/-/reload", "reload URL to trigger config reload")
-	listenAddr             = flag.String("http.listenAddr", ":8435", "http server listen addr")
-	useProxyProtocolClient = flagutil.NewArrayBool("reload-use-proxy-protocol", "enables proxy-protocol for reload connections.")
-	resyncInternal         = flag.Duration("resync-interval", 0, "interval for force resync of the last configuration")
-	webhookMethod          = flag.String("webhook-method", "GET", "the HTTP method url to use to send the webhook")
+	onlyInitConfig = flag.Bool(
+		"only-init-config", false, "enables will read config and write to config-envsubst-file once before exit")
+	configFileName = flag.String(
+		"config-file", "", "config file watched by reloader")
+	configFileDst = flag.String(
+		"config-envsubst-file", "", "target file, where conent of configFile or configSecret would be written")
+	configSecretName = flag.String(
+		"config-secret-name", "", "name of kubernetes secret in form of namespace/name")
+	configSecretKey = flag.String(
+		"config-secret-key", "config.yaml.gz", "key of config-secret-name for retrieving configuration from")
+	_ = flag.Duration(
+		"watch-interval", time.Minute*3, "no-op for prometheus config-reloader compatibility")
+	delayInterval = flag.Duration(
+		"delay-interval", 3*time.Second, "delays config reload time.")
+	watchedDir = flagutil.NewArrayString(
+		"watched-dir", "directory to watch non-recursively")
+	rulesDir = flagutil.NewArrayString(
+		"rules-dir", "the same as watched-dir, legacy")
+	reloadURL = flag.String(
+		"reload-url", "http://127.0.0.1:8429/-/reload", "reload URL to trigger config reload")
+	listenAddr = flag.String(
+		"http.listenAddr", ":8435", "http server listen addr")
+	useProxyProtocol = flagutil.NewArrayBool(
+		"reload-use-proxy-protocol", "enables proxy-protocol for reload connections.")
+	resyncInternal = flag.Duration(
+		"resync-interval", 0, "interval for force resync of the last configuration")
+	webhookMethod = flag.String(
+		"webhook-method", "GET", "the HTTP method url to use to send the webhook")
 )
 
 var (
@@ -93,7 +107,7 @@ func main() {
 		logger.Fatalf("cannot start dir watcher: %s", err)
 	}
 	dw.startWatch(ctx, updatesChan)
-	go httpserver.Serve([]string{*listenAddr}, useProxyProtocolClient, requestHandler)
+	go httpserver.Serve([]string{*listenAddr}, useProxyProtocol, requestHandler)
 	procutil.WaitForSigterm()
 	logger.Infof("received stop signal, stopping config-reloader")
 	cancel()
@@ -118,7 +132,7 @@ func buildHTTPClient() *http.Client {
 		if err != nil {
 			return nil, err
 		}
-		if !useProxyProtocolClient.GetOptionalArg(0) {
+		if !useProxyProtocol.GetOptionalArg(0) {
 			return conn, nil
 		}
 		header := &proxyproto.Header{
@@ -228,7 +242,9 @@ func newConfigWatcher(ctx context.Context) (watcher, error) {
 		return &emptyWatcher{}, nil
 	}
 	if *configFileName != "" && *configSecretName != "" {
-		logger.Infof("both config have been provided, will use configSecret %s instead of configFile %s", *configSecretName, *configFileName)
+		logger.Infof(
+			"both config have been provided, will use configSecret %s instead of configFile %s",
+			*configSecretName, *configFileName)
 	}
 	if *configFileName != "" {
 		fw, err := newFileWatcher(*configFileName)

@@ -159,8 +159,8 @@ PLATFORMS ?= linux/arm64,linux/amd64,linux/s390x,linux/ppc64le
 docker-buildx: ## Build and push docker image for the manager for cross-platform support
 	# copy existing Dockerfile and insert --platform=${BUILDPLATFORM} into Dockerfile.cross, and preserve the original Dockerfile
 	sed -e '1 s/\(^FROM\)/FROM --platform=\$$\{BUILDPLATFORM\}/; t' -e ' 1,// s//FROM --platform=\$$\{BUILDPLATFORM\}/' Dockerfile > Dockerfile.cross
-	- $(CONTAINER_TOOL) buildx create --name output-dir-builder
-	$(CONTAINER_TOOL) buildx use output-dir-builder
+	- $(CONTAINER_TOOL) buildx create --name vm-builder
+	$(CONTAINER_TOOL) buildx use vm-builder
 	- $(CONTAINER_TOOL) buildx build \
 		--push \
 		--platform=$(PLATFORMS) \
@@ -168,12 +168,12 @@ docker-buildx: ## Build and push docker image for the manager for cross-platform
 		--tag $(REGISTRY)/$(ORG)/$(REPO):$(TAG) \
 		--tag $(REGISTRY)/$(ORG)/$(REPO):$(BUILDINFO_TAG) \
 		-f Dockerfile.cross .
-	- $(CONTAINER_TOOL) buildx rm output-dir-builder
+	- $(CONTAINER_TOOL) buildx rm vm-builder
 	rm Dockerfile.cross
 
 publish:
 	REPO=operator $(MAKE) docker-buildx
-	REPO=config-reload $(MAKE) docker-buildx
+	REPO=config-reloader $(MAKE) docker-buildx
 
 .PHONY: build-installer
 build-installer: manifests generate kustomize ## Generate a consolidated YAML with CRDs and deployment.

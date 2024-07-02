@@ -164,7 +164,7 @@ docker-buildx: ## Build and push docker image for the manager for cross-platform
 		--push \
 		--platform=$(PLATFORMS) \
 		--build-arg REPO=$(REPO) \
-		$(DOCKER_BUILD_ARGS) \
+		${DOCKER_BUILD_ARGS} \
 		--tag $(REGISTRY)/$(ORG)/$(REPO):$(TAG) \
 		--tag $(REGISTRY)/$(ORG)/$(REPO):$(BUILDINFO_TAG) \
 		-f Dockerfile.cross .

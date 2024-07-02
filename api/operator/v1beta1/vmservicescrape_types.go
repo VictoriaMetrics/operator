@@ -108,7 +108,7 @@ func (ns *NamespaceSelector) IsMatch(item nsMatcher) bool {
 	return false
 }
 
-// Endpoint defines a scrapeable endpoint serving Prometheus metrics.
+// Endpoint defines a scrapeable endpoint serving metrics.
 // +k8s:openapi-gen=true
 type Endpoint struct {
 	// Name of the service port this endpoint refers to. Mutually exclusive with targetPort.
@@ -172,14 +172,12 @@ type Endpoint struct {
 	// +optional
 	HonorTimestamps *bool `json:"honorTimestamps,omitempty"`
 	// BasicAuth allow an endpoint to authenticate over basic authentication
-	// More info: https://prometheus.io/docs/operating/configuration/#endpoints
 	// +optional
 	BasicAuth *BasicAuth `json:"basicAuth,omitempty"`
-	// MetricRelabelConfigs to apply to samples before ingestion.
+	// MetricRelabelConfigs to apply to samples after scrapping.
 	// +optional
 	MetricRelabelConfigs []*RelabelConfig `json:"metricRelabelConfigs,omitempty"`
-	// RelabelConfigs to apply to samples before scraping.
-	// More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config
+	// RelabelConfigs to apply to samples during service discovery.
 	// +optional
 	RelabelConfigs []*RelabelConfig `json:"relabelConfigs,omitempty"`
 	// ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint.
@@ -351,9 +349,8 @@ type SecretOrConfigMap struct {
 	ConfigMap *v1.ConfigMapKeySelector `json:"configMap,omitempty"`
 }
 
-// RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
-// It defines `<metric_relabel_configs>`-section of configuration.
-// More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+// RelabelConfig allows dynamic rewriting of the label set
+// More info: https://docs.victoriametrics.com/#relabeling
 // +k8s:openapi-gen=true
 type RelabelConfig struct {
 	// UnderScoreSourceLabels - additional form of source labels source_labels
@@ -537,7 +534,6 @@ func (c *TLSConfig) BuildAssetPath(prefix, name, key string) string {
 }
 
 // APIServerConfig defines a host and auth methods to access apiserver.
-// More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#kubernetes_sd_config
 // +k8s:openapi-gen=true
 type APIServerConfig struct {
 	// Host of apiserver.

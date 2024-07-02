@@ -65,7 +65,7 @@ type VMPodScrapeList struct {
 	Items           []VMPodScrape `json:"items"`
 }
 
-// PodMetricsEndpoint defines a scrapeable endpoint of a Kubernetes Pod serving Prometheus metrics.
+// PodMetricsEndpoint defines a scrapeable endpoint of a Kubernetes Pod serving metrics.
 // +k8s:openapi-gen=true
 type PodMetricsEndpoint struct {
 	// Name of the pod port this endpoint refers to. Mutually exclusive with targetPort.
@@ -107,18 +107,16 @@ type PodMetricsEndpoint struct {
 	// HonorTimestamps controls whether vmagent respects the timestamps present in scraped data.
 	// +optional
 	HonorTimestamps *bool `json:"honorTimestamps,omitempty"`
-	// MetricRelabelConfigs to apply to samples before ingestion.
+	// MetricRelabelConfigs to apply to samples after scrapping.
 	// +optional
 	MetricRelabelConfigs []*RelabelConfig `json:"metricRelabelConfigs,omitempty"`
-	// RelabelConfigs to apply to samples before ingestion.
-	// More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config
+	// RelabelConfigs to apply to samples during service discovery.
 	// +optional
 	RelabelConfigs []*RelabelConfig `json:"relabelConfigs,omitempty"`
 	// ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint.
 	// +optional
 	ProxyURL *string `json:"proxyURL,omitempty"`
 	// BasicAuth allow an endpoint to authenticate over basic authentication
-	// More info: https://prometheus.io/docs/operating/configuration/#endpoints
 	// +optional
 	BasicAuth *BasicAuth `json:"basicAuth,omitempty"`
 	// File to read bearer token for scraping targets.

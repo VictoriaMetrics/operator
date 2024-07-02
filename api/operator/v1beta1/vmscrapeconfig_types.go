@@ -111,11 +111,10 @@ type VMScrapeConfigSpec struct {
 	// a single target can expose during all the scrapes on the time window of 24h.
 	// +optional
 	SeriesLimit uint64 `json:"seriesLimit,omitempty"`
-	// MetricRelabelConfigs to apply to samples before ingestion.
+	// MetricRelabelConfigs to apply to samples after scrapping.
 	// +optional
 	MetricRelabelConfigs []*RelabelConfig `json:"metricRelabelConfigs,omitempty"`
-	// RelabelConfigs to apply to samples before scraping.
-	// See https://docs.victoriametrics.com/vmagent.html#relabeling
+	// RelabelConfigs to apply to samples during service discovery.
 	// +optional
 	RelabelConfigs []*RelabelConfig `json:"relabelConfigs,omitempty"`
 }

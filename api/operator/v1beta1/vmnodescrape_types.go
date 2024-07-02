@@ -79,9 +79,6 @@ type VMNodeScrapeSpec struct {
 	// +optional
 	ProxyURL *string `json:"proxyURL,omitempty"`
 	// Selector to select kubernetes Nodes.
-	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors=true
-	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors.displayName="Service selector"
-	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors.x-descriptors="urn:alm:descriptor:com.tectonic.ui:selector:"
 	// +optional
 	Selector metav1.LabelSelector `json:"selector,omitempty"`
 	// SampleLimit defines per-scrape limit on number of scraped samples that will be accepted.
@@ -102,6 +99,7 @@ type VMNodeScrapeStatus struct{}
 // VMNodeScrape defines discovery for targets placed on kubernetes nodes,
 // usually its node-exporters and other host services.
 // InternalIP is used as __address__ for scraping.
+// +kubebuilder:object:root=true
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +genclient

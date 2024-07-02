@@ -40,6 +40,7 @@ type VMClusterSpec struct {
 
 	// ClusterVersion defines default images tag for all components.
 	// it can be overwritten with component specific image.tag value.
+	// +optional
 	ClusterVersion string `json:"clusterVersion,omitempty"`
 
 	// ImagePullSecrets An optional list of references to secrets in the same namespace
@@ -84,13 +85,10 @@ func (cr *VMClusterSpec) UnmarshalJSON(src []byte) error {
 
 // VMCluster is fast, cost-effective and scalable time-series database.
 // Cluster version with
-// +operator-sdk:gen-csv:customresourcedefinitions.displayName="VMCluster App"
-// +operator-sdk:gen-csv:customresourcedefinitions.resources="Deployment,apps"
-// +operator-sdk:gen-csv:customresourcedefinitions.resources="Statefulset,apps"
-// +operator-sdk:gen-csv:customresourcedefinitions.resources="Service,v1"
 // +genclient
 // +k8s:openapi-gen=true
 // +kubebuilder:subresource:status
+// +kubebuilder:object:root=true
 // +kubebuilder:resource:path=vmclusters,scope=Namespaced
 // +kubebuilder:printcolumn:name="Insert Count",type="string",JSONPath=".spec.vminsert.replicaCount",description="replicas of VMInsert"
 // +kubebuilder:printcolumn:name="Storage Count",type="string",JSONPath=".spec.vmstorage.replicaCount",description="replicas of VMStorage"
@@ -99,10 +97,13 @@ func (cr *VMClusterSpec) UnmarshalJSON(src []byte) error {
 // +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.clusterStatus",description="Current status of cluster"
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type VMCluster struct {
-	metav1.TypeMeta   `json:",inline"`
+	// +optional
+	metav1.TypeMeta `json:",inline"`
+	// +optional
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec              VMClusterSpec   `json:"spec"`
-	Status            VMClusterStatus `json:"status,omitempty"`
+	Spec              VMClusterSpec `json:"spec"`
+	// +optional
+	Status VMClusterStatus `json:"status,omitempty"`
 }
 
 func (c *VMCluster) AsOwner() []metav1.OwnerReference {
@@ -173,7 +174,6 @@ type VMSelect struct {
 	// ReplicaCount is the expected size of the VMSelect cluster. The controller will
 	// eventually make the size of the running cluster equal to the expected
 	// size.
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Number of pods",xDescriptors="urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom"
 	ReplicaCount *int32 `json:"replicaCount"`
 	// The number of old ReplicaSets to retain to allow rollback in deployment or
 	// maximum number of revisions that will be maintained in the StatefulSet's revision history.
@@ -191,7 +191,6 @@ type VMSelect struct {
 	// +optional
 	VolumeMounts []v1.VolumeMount `json:"volumeMounts,omitempty"`
 	// Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resources",xDescriptors="urn:alm:descriptor:com.tectonic.ui:resourceRequirements"
 	// +optional
 	Resources v1.ResourceRequirements `json:"resources,omitempty"`
 	// Affinity If specified, the pod's scheduling constraints.
@@ -374,7 +373,6 @@ type VMInsert struct {
 	// ReplicaCount is the expected size of the VMInsert cluster. The controller will
 	// eventually make the size of the running cluster equal to the expected
 	// size.
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Number of pods",xDescriptors="urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom"
 	ReplicaCount *int32 `json:"replicaCount"`
 	// The number of old ReplicaSets to retain to allow rollback in deployment or
 	// maximum number of revisions that will be maintained in the StatefulSet's revision history.
@@ -392,7 +390,6 @@ type VMInsert struct {
 	// +optional
 	VolumeMounts []v1.VolumeMount `json:"volumeMounts,omitempty"`
 	// Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resources",xDescriptors="urn:alm:descriptor:com.tectonic.ui:resourceRequirements"
 	// +optional
 	Resources v1.ResourceRequirements `json:"resources,omitempty"`
 	// Affinity If specified, the pod's scheduling constraints.
@@ -555,7 +552,6 @@ type VMStorage struct {
 	// ReplicaCount is the expected size of the VMStorage cluster. The controller will
 	// eventually make the size of the running cluster equal to the expected
 	// size.
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Number of pods",xDescriptors="urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom"
 	ReplicaCount *int32 `json:"replicaCount"`
 	// The number of old ReplicaSets to retain to allow rollback in deployment or
 	// maximum number of revisions that will be maintained in the StatefulSet's revision history.
@@ -573,7 +569,6 @@ type VMStorage struct {
 	// +optional
 	VolumeMounts []v1.VolumeMount `json:"volumeMounts,omitempty"`
 	// Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resources",xDescriptors="urn:alm:descriptor:com.tectonic.ui:resourceRequirements"
 	// +optional
 	Resources v1.ResourceRequirements `json:"resources,omitempty"`
 	// Affinity If specified, the pod's scheduling constraints.

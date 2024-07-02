@@ -4118,6 +4118,8 @@ spec:
                   type: object
                   x-kubernetes-preserve-unknown-fields: true
                 type: array
+            required:
+            - remoteWrite
             type: object
           status:
             description: VMAgentStatus defines the observed state of VMAgent
@@ -6562,6 +6564,8 @@ spec:
                             description: Contains long explanation of the alerted
                               problem.
                             type: string
+                        required:
+                        - routing_key
                         type: object
                       type: array
                     webex_configs:
@@ -7386,6 +7390,9 @@ spec:
                   - time_intervals
                   type: object
                 type: array
+            required:
+            - receivers
+            - route
             type: object
           status:
             description: VMAlertmanagerConfigStatus defines the observed state of

@@ -8,10 +8,6 @@ BUILDINFO_TAG ?= $(shell echo $$(git describe --long --all | tr '/' '-')$$( \
 	git diff-index --quiet HEAD -- || echo '-dirty-'$$(git diff-index -u HEAD | openssl sha1 | cut -d' ' -f2 | cut -c 1-8)))
 OVERLAY ?= config/default
 
-COMMA = ,
-EMPTY =
-SPACE = $(EMPTY) $(EMPTY)
-
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.30.0
 
@@ -89,12 +85,14 @@ api-gen: client-gen lister-gen informer-gen
 		--go-header-file hack/boilerplate.go.txt
 	rm api/go.*
 
-.PHONY: doc
-doc: envconfig-docs doc-print
-	cat hack/doc/header.md > docs/api.md
-	$(DOC_PRINT) --paths=$(subst $(SPACE),$(COMMA),$(wildcard ./api/operator/v1beta1/*_types.go)) --owner VictoriaMetrics >> docs/api.md
-	cat hack/doc/vars.md > vars.md
-	$(ENVCONFIG_DOCS) --input internal/config/config.go --truncate=false >> vars.md
+.PHONY: docs
+docs: envconfig-docs crd-ref-docs manifests
+	$(CRD_REF_DOCS) --config ./docs/config.yaml \
+		--templates-dir ./docs/templates/api \
+		--renderer markdown
+	mv out.md docs/api.md
+	cat docs/headers/vars.md > docs/vars.md
+	$(ENVCONFIG_DOCS) --input internal/config/config.go --truncate=false >> docs/vars.md
 
 .PHONY: fmt
 fmt: ## Run go fmt against code.
@@ -124,7 +122,7 @@ lint-fix: golangci-lint ## Run golangci-lint linter and perform fixes
 ##@ Build
 
 .PHONY: build
-build: manifests generate fmt vet ## Build manager binary.
+build: docs generate fmt vet ## Build manager binary.
 	go build -o bin/$(REPO) ./cmd/$(REPO)/...
 
 .PHONY: run
@@ -138,6 +136,7 @@ run: manifests generate fmt vet ## Run a controller from your host.
 docker-build: ## Build docker image with the manager.
 	$(CONTAINER_TOOL) build \
 		--build-arg REPO=$(REPO) \
+		${DOCKER_BUILD_ARGS} \
 		-t $(REGISTRY)/$(ORG)/$(REPO):$(TAG) \
 		-t $(REGISTRY)/$(ORG)/$(REPO):$(BUILDINFO_TAG) .
 
@@ -165,6 +164,7 @@ docker-buildx: ## Build and push docker image for the manager for cross-platform
 		--push \
 		--platform=$(PLATFORMS) \
 		--build-arg REPO=$(REPO) \
+		$(DOCKER_BUILD_ARGS) \
 		--tag $(REGISTRY)/$(ORG)/$(REPO):$(TAG) \
 		--tag $(REGISTRY)/$(ORG)/$(REPO):$(BUILDINFO_TAG) \
 		-f Dockerfile.cross .
@@ -238,7 +238,7 @@ LISTER_GEN = $(LOCALBIN)/lister-gen-$(CODEGENERATOR_VERSION)
 INFORMER_GEN = $(LOCALBIN)/informer-gen-$(CODEGENERATOR_VERSION)
 KIND = $(LOCALBIN)/kind-$(KIND_VERSION)
 ENVCONFIG_DOCS = $(LOCALBIN)/envconfig-docs-$(ENVCONFIG_DOCS_VERSION)
-DOC_PRINT = $(LOCALBIN)/doc-print-$(DOC_PRINT_VERSION)
+CRD_REF_DOCS = $(LOCALBIN)/crd-ref-docs-$(CRD_REF_DOCS_VERSION)
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v5.4.1
@@ -248,7 +248,7 @@ GOLANGCI_LINT_VERSION ?= v1.59.1
 CODEGENERATOR_VERSION ?= v0.30.2
 KIND_VERSION ?= v0.23.0
 ENVCONFIG_DOCS_VERSION ?= latest
-DOC_PRINT_VERSION ?= latest
+CRD_REF_DOCS_VERSION ?= latest
 
 .PHONY: kustomize
 kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary.
@@ -261,17 +261,17 @@ $(CONTROLLER_GEN): $(LOCALBIN)
 	$(call go-install-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen,$(CONTROLLER_TOOLS_VERSION))
 
 .PHONY: install-tools
-install-tools: envconfig-docs doc-print client-gen lister-gen informer-gen controller-gen kustomize envtest
+install-tools: envconfig-docs crd-ref-docs client-gen lister-gen informer-gen controller-gen kustomize envtest
 
 .PHONY: envconfig-docs
 envconfig-docs: $(ENVCONFIG_DOCS)
 $(ENVCONFIG_DOCS): $(LOCALBIN)
 	$(call go-install-tool,$(ENVCONFIG_DOCS),github.com/f41gh7/envconfig-docs,$(ENVCONFIG_DOCS_VERSION))
 
-.PHONY: doc-print
-doc-print: $(DOC_PRINT)
-$(DOC_PRINT): $(LOCALBIN)
-	$(call go-install-tool,$(DOC_PRINT),github.com/f41gh7/doc-print,$(DOC_PRINT_VERSION))
+.PHONY: crd-ref-docs
+crd-ref-docs: $(CRD_REF_DOCS)
+$(CRD_REF_DOCS): $(LOCALBIN)
+	$(call go-install-tool,$(CRD_REF_DOCS),github.com/elastic/crd-ref-docs,$(CRD_REF_DOCS_VERSION))
 
 .PHONY: client-gen
 client-gen: $(CLIENT_GEN)

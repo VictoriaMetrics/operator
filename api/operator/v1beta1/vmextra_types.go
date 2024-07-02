@@ -128,9 +128,6 @@ type EmbeddedObjectMetadata struct {
 	// (scope and select) objects. May match selectors of replication controllers
 	// and services.
 	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
-	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors=true
-	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors.displayName="PodLabels"
-	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors.x-descriptors="urn:alm:descriptor:com.tectonic.ui:label"
 	// +optional
 	Labels map[string]string `json:"labels,omitempty" protobuf:"bytes,11,rep,name=labels"`
 
@@ -222,9 +219,13 @@ type EmbeddedPersistentVolumeClaim struct {
 
 // HTTPAuth generic auth used with http protocols
 type HTTPAuth struct {
-	BasicAuth   *BasicAuth `json:"basicAuth,omitempty"`
-	OAuth2      *OAuth2    `json:"oauth2,omitempty"`
-	TLSConfig   *TLSConfig `json:"tlsConfig,omitempty"`
+	// +optional
+	BasicAuth *BasicAuth `json:"basicAuth,omitempty"`
+	// +optional
+	OAuth2 *OAuth2 `json:"oauth2,omitempty"`
+	// +optional
+	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
+	// +optional
 	*BearerAuth `json:",inline,omitempty"`
 	// Headers allow configuring custom http headers
 	// Must be in form of semicolon separated header with value
@@ -272,8 +273,10 @@ type BasicAuth struct {
 type AdditionalServiceSpec struct {
 	// UseAsDefault applies changes from given service definition to the main object Service
 	// Changing from headless service to clusterIP or loadbalancer may break cross-component communication
+	// +optional
 	UseAsDefault bool `json:"useAsDefault,omitempty"`
 	// EmbeddedObjectMetadata defines objectMeta for additional service.
+	// +optional
 	EmbeddedObjectMetadata `json:"metadata,omitempty"`
 	// ServiceSpec describes the attributes that a user creates on a service.
 	// More info: https://kubernetes.io/docs/concepts/services-networking/service/
@@ -437,6 +440,7 @@ type StreamAggrConfig struct {
 	// +optional
 	KeepInput bool `json:"keepInput,omitempty"`
 	// Allow drop all the input samples after the aggregation
+	// +optional
 	DropInput bool `json:"dropInput,omitempty"`
 	// Allows setting different de-duplication intervals per each configured remote storage
 	// +optional
@@ -459,18 +463,22 @@ type StreamAggrRule struct {
 
 	// NoAlignFlushToInterval disables aligning of flushes to multiples of Interval.
 	// By default flushes are aligned to Interval.
+	// +optional
 	NoAlignFlushToInterval *bool `json:"no_align_flush_to_interval,omitempty" yaml:"no_align_flush_to_interval,omitempty"`
 
 	// FlushOnShutdown defines whether to flush the aggregation state on process termination
 	// or config reload. Is `false` by default.
 	// It is not recommended changing this setting, unless unfinished aggregations states
 	// are preferred to missing data points.
+	// +optional
 	FlushOnShutdown bool `json:"flush_on_shutdown,omitempty" yaml:"flush_on_shutdown,omitempty"`
 
 	// DedupInterval is an optional interval for deduplication.
+	// +optional
 	DedupInterval string `json:"dedup_interval,omitempty" yaml:"dedup_interval,omitempty"`
 	// Staleness interval is interval after which the series state will be reset if no samples have been sent during it.
 	// The parameter is only relevant for outputs: total, total_prometheus, increase, increase_prometheus and histogram_bucket.
+	// +optional
 	StalenessInterval string `json:"staleness_interval,omitempty" yaml:"staleness_interval,omitempty"`
 
 	// Outputs is a list of output aggregate functions to produce.
@@ -498,9 +506,11 @@ type StreamAggrRule struct {
 	Outputs []string `json:"outputs"`
 
 	// KeepMetricNames instructs to leave metric names as is for the output time series without adding any suffix.
+	// +optional
 	KeepMetricNames *bool `json:"keep_metric_names,omitempty" yaml:"keep_metric_names,omitempty"`
 
 	// IgnoreOldSamples instructs to ignore samples with old timestamps outside the current aggregation interval.
+	// +optional
 	IgnoreOldSamples *bool `json:"ignore_old_samples,omitempty" yaml:"ignore_old_samples,omitempty"`
 
 	// By is an optional list of labels for grouping input series.
@@ -524,6 +534,7 @@ type StreamAggrRule struct {
 	// DropInputLabels is an optional list with labels, which must be dropped before further processing of input samples.
 	//
 	// Labels are dropped before de-duplication and aggregation.
+	// +optional
 	DropInputLabels *[]string `json:"drop_input_labels,omitempty" yaml:"drop_input_labels,omitempty"`
 
 	// InputRelabelConfigs is an optional relabeling rules, which are applied on the input

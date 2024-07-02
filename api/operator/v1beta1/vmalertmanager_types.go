@@ -19,13 +19,10 @@ import (
 )
 
 // VMAlertmanager represents Victoria-Metrics deployment for Alertmanager.
-// +operator-sdk:gen-csv:customresourcedefinitions.displayName="VMAlertmanager App"
-// +operator-sdk:gen-csv:customresourcedefinitions.resources="StatefulSet,apps"
-// +operator-sdk:gen-csv:customresourcedefinitions.resources="Service,v1"
-// +operator-sdk:gen-csv:customresourcedefinitions.resources="Secret,v1"
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +genclient
 // +k8s:openapi-gen=true
+// +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".spec.image.tag",description="The version of VMAlertmanager"
 // +kubebuilder:printcolumn:name="ReplicaCount",type="integer",JSONPath=".spec.replicaCount",description="The desired replicas number of Alertmanagers"
@@ -92,7 +89,6 @@ type VMAlertmanagerSpec struct {
 	// instance. Defaults to 'vmalertmanager-<alertmanager-name>'
 	// The secret is mounted into /etc/alertmanager/config.
 	// +optional
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Secret with alertmanager config",xDescriptors="urn:alm:descriptor:io.kubernetes:Secret"
 	ConfigSecret string `json:"configSecret,omitempty"`
 	// Log level for VMAlertmanager to be configured with.
 	// +optional
@@ -108,7 +104,6 @@ type VMAlertmanagerSpec struct {
 	// eventually make the size of the running cluster equal to the expected
 	// +kubebuilder:validation:Minimum:=0
 	// +optional
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Number of pods",xDescriptors="urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom"
 	ReplicaCount *int32 `json:"replicaCount,omitempty"`
 	// The number of old ReplicaSets to retain to allow rollback in deployment or
 	// maximum number of revisions that will be maintained in the StatefulSet's revision history.
@@ -154,7 +149,6 @@ type VMAlertmanagerSpec struct {
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 	// Resources container resource request and limits,
 	// https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resources",xDescriptors="urn:alm:descriptor:com.tectonic.ui:resourceRequirements"
 	// +optional
 	Resources v1.ResourceRequirements `json:"resources,omitempty"`
 	// Affinity If specified, the pod's scheduling constraints.
@@ -169,7 +163,6 @@ type VMAlertmanagerSpec struct {
 	SecurityContext *v1.PodSecurityContext `json:"securityContext,omitempty"`
 	// ServiceAccountName is the name of the ServiceAccount to use
 	// +optional
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="ServiceAccount name",xDescriptors="urn:alm:descriptor:io.kubernetes:ServiceAccount"
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 	// SchedulerName - defines kubernetes scheduler name
 	// +optional

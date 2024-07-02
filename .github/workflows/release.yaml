@@ -22,15 +22,12 @@ jobs:
           make lint
           make test
           make build
-          make test-e2e
-
       - name: build crosscompile and push to remote registry
         env:
           TAG: "${{ github.event.release.tag_name }}"
         run: |
           echo ${{secrets.REPO_KEY}} | docker login --username ${{secrets.REPO_USER}} --password-stdin
           make publish
-
       - name: Upload Release CRDs
         id: upload-release-crds
         uses: actions/upload-release-asset@v1

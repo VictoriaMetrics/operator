@@ -46,7 +46,6 @@ Package v1beta1 contains API Schema definitions for the victoriametrics v1beta1 
 
 
 APIServerConfig defines a host and auth methods to access apiserver.
-More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#kubernetes_sd_config
 
 
 
@@ -626,7 +625,7 @@ _Appears in:_
 
 
 
-Endpoint defines a scrapeable endpoint serving Prometheus metrics.
+Endpoint defines a scrapeable endpoint serving metrics.
 
 
 
@@ -637,20 +636,20 @@ _Appears in:_
 | --- | --- | --- | --- |
 | `attach_metadata` | AttachMetadata configures metadata attaching from service discovery | _[AttachMetadata](#attachmetadata)_ | false |
 | `authorization` | Authorization with http header Authorization | _[Authorization](#authorization)_ | false |
-| `basicAuth` | BasicAuth allow an endpoint to authenticate over basic authentication<br />More info: https://prometheus.io/docs/operating/configuration/#endpoints | _[BasicAuth](#basicauth)_ | false |
+| `basicAuth` | BasicAuth allow an endpoint to authenticate over basic authentication | _[BasicAuth](#basicauth)_ | false |
 | `bearerTokenFile` | File to read bearer token for scraping targets. | _string_ | false |
 | `bearerTokenSecret` | Secret to mount to read bearer token for scraping targets. The secret<br />needs to be in the same namespace as the service scrape and accessible by<br />the victoria-metrics operator. | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v/#secretkeyselector-v1-core)_ | false |
 | `follow_redirects` | FollowRedirects controls redirects for scraping. | _boolean_ | false |
 | `honorLabels` | HonorLabels chooses the metric's labels on collisions with target labels. | _boolean_ | false |
 | `honorTimestamps` | HonorTimestamps controls whether vmagent respects the timestamps present in scraped data. | _boolean_ | false |
 | `interval` | Interval at which metrics should be scraped | _string_ | false |
-| `metricRelabelConfigs` | MetricRelabelConfigs to apply to samples before ingestion. | _[RelabelConfig](#relabelconfig) array_ | false |
+| `metricRelabelConfigs` | MetricRelabelConfigs to apply to samples after scrapping. | _[RelabelConfig](#relabelconfig) array_ | false |
 | `oauth2` | OAuth2 defines auth configuration | _[OAuth2](#oauth2)_ | false |
 | `params` | Optional HTTP URL parameters | _object (keys:string, values:string array)_ | false |
 | `path` | HTTP path to scrape for metrics. | _string_ | false |
 | `port` | Name of the service port this endpoint refers to. Mutually exclusive with targetPort. | _string_ | false |
 | `proxyURL` | ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. | _string_ | false |
-| `relabelConfigs` | RelabelConfigs to apply to samples before scraping.<br />More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config | _[RelabelConfig](#relabelconfig) array_ | false |
+| `relabelConfigs` | RelabelConfigs to apply to samples during service discovery. | _[RelabelConfig](#relabelconfig) array_ | false |
 | `sampleLimit` | SampleLimit defines per-endpoint limit on number of scraped samples that will be accepted. | _integer_ | false |
 | `scheme` | HTTP scheme to use for scraping. | _string_ | false |
 | `scrapeTimeout` | Timeout after which the scrape is ended | _string_ | false |
@@ -1191,7 +1190,7 @@ _Appears in:_
 
 
 
-PodMetricsEndpoint defines a scrapeable endpoint of a Kubernetes Pod serving Prometheus metrics.
+PodMetricsEndpoint defines a scrapeable endpoint of a Kubernetes Pod serving metrics.
 
 
 
@@ -1202,7 +1201,7 @@ _Appears in:_
 | --- | --- | --- | --- |
 | `attach_metadata` | AttachMetadata configures metadata attaching from service discovery | _[AttachMetadata](#attachmetadata)_ | false |
 | `authorization` | Authorization with http header Authorization | _[Authorization](#authorization)_ | false |
-| `basicAuth` | BasicAuth allow an endpoint to authenticate over basic authentication<br />More info: https://prometheus.io/docs/operating/configuration/#endpoints | _[BasicAuth](#basicauth)_ | false |
+| `basicAuth` | BasicAuth allow an endpoint to authenticate over basic authentication | _[BasicAuth](#basicauth)_ | false |
 | `bearerTokenFile` | File to read bearer token for scraping targets. | _string_ | false |
 | `bearerTokenSecret` | Secret to mount to read bearer token for scraping targets. The secret<br />needs to be in the same namespace as the service scrape and accessible by<br />the victoria-metrics operator. | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v/#secretkeyselector-v1-core)_ | false |
 | `filterRunning` | FilterRunning applies filter with pod status == running<br />it prevents from scrapping metrics at failed or succeed state pods.<br />enabled by default | _boolean_ | false |
@@ -1210,13 +1209,13 @@ _Appears in:_
 | `honorLabels` | HonorLabels chooses the metric's labels on collisions with target labels. | _boolean_ | false |
 | `honorTimestamps` | HonorTimestamps controls whether vmagent respects the timestamps present in scraped data. | _boolean_ | false |
 | `interval` | Interval at which metrics should be scraped | _string_ | false |
-| `metricRelabelConfigs` | MetricRelabelConfigs to apply to samples before ingestion. | _[RelabelConfig](#relabelconfig) array_ | false |
+| `metricRelabelConfigs` | MetricRelabelConfigs to apply to samples after scrapping. | _[RelabelConfig](#relabelconfig) array_ | false |
 | `oauth2` | OAuth2 defines auth configuration | _[OAuth2](#oauth2)_ | false |
 | `params` | Optional HTTP URL parameters | _object (keys:string, values:string array)_ | false |
 | `path` | HTTP path to scrape for metrics. | _string_ | false |
 | `port` | Name of the pod port this endpoint refers to. Mutually exclusive with targetPort. | _string_ | false |
 | `proxyURL` | ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. | _string_ | false |
-| `relabelConfigs` | RelabelConfigs to apply to samples before ingestion.<br />More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config | _[RelabelConfig](#relabelconfig) array_ | false |
+| `relabelConfigs` | RelabelConfigs to apply to samples during service discovery. | _[RelabelConfig](#relabelconfig) array_ | false |
 | `sampleLimit` | SampleLimit defines per-podEndpoint limit on number of scraped samples that will be accepted. | _integer_ | false |
 | `scheme` | HTTP scheme to use for scraping. | _string_ | false |
 | `scrapeTimeout` | Timeout after which the scrape is ended | _string_ | false |
@@ -1240,7 +1239,7 @@ _Appears in:_
 | Field | Description | Scheme | Required |
 | --- | --- | --- | --- |
 | `namespaceSelector` | Select Ingress objects by namespace. | _[NamespaceSelector](#namespaceselector)_ | true |
-| `relabelingConfigs` | RelabelConfigs to apply to samples before ingestion.<br />More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config | _[RelabelConfig](#relabelconfig) array_ | true |
+| `relabelingConfigs` | RelabelConfigs to apply to samples during service discovery. | _[RelabelConfig](#relabelconfig) array_ | true |
 | `selector` | Select Ingress objects by labels. | _[LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v/#labelselector-v1-meta)_ | true |
 
 
@@ -1345,9 +1344,8 @@ _Appears in:_
 
 
 
-RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
-It defines `<metric_relabel_configs>`-section of configuration.
-More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+RelabelConfig allows dynamic rewriting of the label set
+More info: https://docs.victoriametrics.com/#relabeling
 
 
 
@@ -1814,7 +1812,7 @@ _Appears in:_
 | Field | Description | Scheme | Required |
 | --- | --- | --- | --- |
 | `authorization` | Authorization with http header Authorization | _[Authorization](#authorization)_ | false |
-| `basicAuth` | BasicAuth allow an endpoint to authenticate over basic authentication<br />More info: https://prometheus.io/docs/operating/configuration/#endpoints | _[BasicAuth](#basicauth)_ | false |
+| `basicAuth` | BasicAuth allow an endpoint to authenticate over basic authentication | _[BasicAuth](#basicauth)_ | false |
 | `bearerTokenFile` | File to read bearer token for scraping targets. | _string_ | false |
 | `bearerTokenSecret` | Secret to mount to read bearer token for scraping targets. The secret<br />needs to be in the same namespace as the service scrape and accessible by<br />the victoria-metrics operator. | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v/#secretkeyselector-v1-core)_ | false |
 | `follow_redirects` | FollowRedirects controls redirects for scraping. | _boolean_ | false |
@@ -1822,13 +1820,13 @@ _Appears in:_
 | `honorTimestamps` | HonorTimestamps controls whether vmagent respects the timestamps present in scraped data. | _boolean_ | false |
 | `interval` | Interval at which metrics should be scraped | _string_ | false |
 | `labels` | Labels static labels for targets. | _object (keys:string, values:string)_ | false |
-| `metricRelabelConfigs` | MetricRelabelConfigs to apply to samples before ingestion. | _[RelabelConfig](#relabelconfig) array_ | false |
+| `metricRelabelConfigs` | MetricRelabelConfigs to apply to samples after scrapping. | _[RelabelConfig](#relabelconfig) array_ | false |
 | `oauth2` | OAuth2 defines auth configuration | _[OAuth2](#oauth2)_ | false |
 | `params` | Optional HTTP URL parameters | _object (keys:string, values:string array)_ | false |
 | `path` | HTTP path to scrape for metrics. | _string_ | false |
 | `port` | Default port for target. | _string_ | false |
 | `proxyURL` | ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. | _string_ | false |
-| `relabelConfigs` | RelabelConfigs to apply to samples before scraping.<br />More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config | _[RelabelConfig](#relabelconfig) array_ | false |
+| `relabelConfigs` | RelabelConfigs to apply to samples during service discovery. | _[RelabelConfig](#relabelconfig) array_ | false |
 | `sampleLimit` | SampleLimit defines per-scrape limit on number of scraped samples that will be accepted. | _integer_ | false |
 | `scheme` | HTTP scheme to use for scraping. | _string_ | false |
 | `scrapeTimeout` | Timeout after which the scrape is ended | _string_ | false |
@@ -2767,7 +2765,7 @@ _Appears in:_
 | Field | Description | Scheme | Required |
 | --- | --- | --- | --- |
 | `authorization` | Authorization with http header Authorization | _[Authorization](#authorization)_ | false |
-| `basicAuth` | BasicAuth allow an endpoint to authenticate over basic authentication<br />More info: https://prometheus.io/docs/operating/configuration/#endpoints | _[BasicAuth](#basicauth)_ | false |
+| `basicAuth` | BasicAuth allow an endpoint to authenticate over basic authentication | _[BasicAuth](#basicauth)_ | false |
 | `bearerTokenFile` | File to read bearer token for scraping targets. | _string_ | false |
 | `bearerTokenSecret` | Secret to mount to read bearer token for scraping targets. The secret<br />needs to be  accessible by<br />the victoria-metrics operator. | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v/#secretkeyselector-v1-core)_ | false |
 | `follow_redirects` | FollowRedirects controls redirects for scraping. | _boolean_ | false |
@@ -2775,13 +2773,13 @@ _Appears in:_
 | `honorTimestamps` | HonorTimestamps controls whether vmagent respects the timestamps present in scraped data. | _boolean_ | false |
 | `interval` | Interval at which metrics should be scraped | _string_ | false |
 | `jobLabel` | The label to use to retrieve the job name from. | _string_ | false |
-| `metricRelabelConfigs` | MetricRelabelConfigs to apply to samples before ingestion. | _[RelabelConfig](#relabelconfig) array_ | false |
+| `metricRelabelConfigs` | MetricRelabelConfigs to apply to samples after scrapping. | _[RelabelConfig](#relabelconfig) array_ | false |
 | `oauth2` | OAuth2 defines auth configuration | _[OAuth2](#oauth2)_ | false |
 | `params` | Optional HTTP URL parameters | _object (keys:string, values:string array)_ | false |
 | `path` | HTTP path to scrape for metrics. | _string_ | false |
 | `port` | Name of the port exposed at Node. | _string_ | false |
 | `proxyURL` | ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. | _string_ | false |
-| `relabelConfigs` | RelabelConfigs to apply to samples before scraping.<br />More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config | _[RelabelConfig](#relabelconfig) array_ | false |
+| `relabelConfigs` | RelabelConfigs to apply to samples during service discovery. | _[RelabelConfig](#relabelconfig) array_ | false |
 | `sampleLimit` | SampleLimit defines per-scrape limit on number of scraped samples that will be accepted. | _integer_ | false |
 | `scheme` | HTTP scheme to use for scraping. | _string_ | false |
 | `scrapeTimeout` | Timeout after which the scrape is ended | _string_ | false |
@@ -2874,18 +2872,18 @@ _Appears in:_
 | Field | Description | Scheme | Required |
 | --- | --- | --- | --- |
 | `authorization` | Authorization with http header Authorization | _[Authorization](#authorization)_ | false |
-| `basicAuth` | BasicAuth allow an endpoint to authenticate over basic authentication<br />More info: https://prometheus.io/docs/operating/configuration/#endpoints | _[BasicAuth](#basicauth)_ | false |
+| `basicAuth` | BasicAuth allow an endpoint to authenticate over basic authentication | _[BasicAuth](#basicauth)_ | false |
 | `bearerTokenFile` | File to read bearer token for scraping targets. | _string_ | false |
 | `bearerTokenSecret` | Secret to mount to read bearer token for scraping targets. The secret<br />needs to be in the same namespace as the service scrape and accessible by<br />the victoria-metrics operator. | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v/#secretkeyselector-v1-core)_ | false |
 | `follow_redirects` | FollowRedirects controls redirects for scraping. | _boolean_ | false |
-| `interval` | Interval at which targets are probed using the configured prober.<br />If not specified Prometheus' global scrape interval is used. | _string_ | true |
+| `interval` | Interval at which targets are probed using the configured prober.<br />If not specified global scrape interval is used. | _string_ | true |
 | `jobName` | The job name assigned to scraped metrics by default. | _string_ | true |
 | `module` | The module to use for probing specifying how to probe the target.<br />Example module configuring in the blackbox exporter:<br />https://github.com/prometheus/blackbox_exporter/blob/master/example.yml | _string_ | true |
 | `oauth2` | OAuth2 defines auth configuration | _[OAuth2](#oauth2)_ | false |
 | `params` | Optional HTTP URL parameters | _object (keys:string, values:string array)_ | false |
 | `proxyURL` | ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. | _string_ | false |
 | `sampleLimit` | SampleLimit defines per-scrape limit on number of scraped samples that will be accepted. | _integer_ | false |
-| `scrapeTimeout` | Timeout for scraping metrics from the Prometheus exporter. | _string_ | true |
+| `scrapeTimeout` | Timeout for scraping metrics from the blackbox exporter. | _string_ | true |
 | `scrape_interval` | ScrapeInterval is the same as Interval and has priority over it.<br />one of scrape_interval or interval can be used | _string_ | false |
 | `seriesLimit` | SeriesLimit defines per-scrape limit on number of unique time series<br />a single target can expose during all the scrapes on the time window of 24h. | _integer_ | false |
 | `targets` | Targets defines a set of static and/or dynamically discovered targets to be probed using the prober. | _[VMProbeTargets](#vmprobetargets)_ | true |
@@ -2910,7 +2908,7 @@ _Appears in:_
 | Field | Description | Scheme | Required |
 | --- | --- | --- | --- |
 | `labels` | Labels assigned to all metrics scraped from the targets. | _object (keys:string, values:string)_ | true |
-| `relabelingConfigs` | More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config | _[RelabelConfig](#relabelconfig) array_ | true |
+| `relabelingConfigs` | RelabelConfigs to apply to samples during service discovery. | _[RelabelConfig](#relabelconfig) array_ | true |
 | `targets` | Targets is a list of URLs to probe using the configured prober. | _string array_ | true |
 
 
@@ -2928,7 +2926,7 @@ _Appears in:_
 | Field | Description | Scheme | Required |
 | --- | --- | --- | --- |
 | `ingress` | Ingress defines the set of dynamically discovered ingress objects which hosts are considered for probing. | _[ProbeTargetIngress](#probetargetingress)_ | true |
-| `staticConfig` | StaticConfig defines static targets which are considers for probing.<br />More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#static_config. | _[VMProbeTargetStaticConfig](#vmprobetargetstaticconfig)_ | true |
+| `staticConfig` | StaticConfig defines static targets which are considers for probing. | _[VMProbeTargetStaticConfig](#vmprobetargetstaticconfig)_ | true |
 
 
 #### VMProberSpec
@@ -3062,13 +3060,13 @@ _Appears in:_
 | `honorTimestamps` | HonorTimestamps controls whether to respect the timestamps present in scraped data. | _boolean_ | false |
 | `httpSDConfigs` | HTTPSDConfigs defines a list of HTTP service discovery configurations. | _[HTTPSDConfig](#httpsdconfig) array_ | false |
 | `kubernetesSDConfigs` | KubernetesSDConfigs defines a list of Kubernetes service discovery configurations. | _[KubernetesSDConfig](#kubernetessdconfig) array_ | false |
-| `metricRelabelConfigs` | MetricRelabelConfigs to apply to samples before ingestion. | _[RelabelConfig](#relabelconfig) array_ | false |
+| `metricRelabelConfigs` | MetricRelabelConfigs to apply to samples after scrapping. | _[RelabelConfig](#relabelconfig) array_ | false |
 | `metricsPath` | MetricsPath HTTP path to scrape for metrics. If empty, use the default value (e.g. /metrics). | _string_ | false |
 | `oauth2` | OAuth2 defines auth configuration | _[OAuth2](#oauth2)_ | false |
 | `openstackSDConfigs` | OpenStackSDConfigs defines a list of OpenStack service discovery configurations. | _[OpenStackSDConfig](#openstacksdconfig) array_ | false |
 | `params` | Optional HTTP URL parameters | _object (keys:string, values:string array)_ | false |
 | `proxyURL` | ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. | _string_ | false |
-| `relabelConfigs` | RelabelConfigs to apply to samples before scraping.<br />See https://docs.victoriametrics.com/vmagent.html#relabeling | _[RelabelConfig](#relabelconfig) array_ | false |
+| `relabelConfigs` | RelabelConfigs to apply to samples during service discovery. | _[RelabelConfig](#relabelconfig) array_ | false |
 | `sampleLimit` | SampleLimit defines per-scrape limit on number of scraped samples that will be accepted. | _integer_ | false |
 | `scheme` | Configures the protocol scheme used for requests.<br />If empty, use HTTP by default. | _string_ | false |
 | `scrapeInterval` | ScrapeInterval is the interval between consecutive scrapes. | _string_ | false |

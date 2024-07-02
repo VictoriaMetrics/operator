@@ -695,6 +695,7 @@ func (cr VMAgent) GetNSName() string {
 	return cr.GetNamespace()
 }
 
+// AsURL - returns url for http access
 func (cr *VMAgent) AsURL() string {
 	port := cr.Spec.Port
 	if port == "" {
@@ -708,7 +709,7 @@ func (cr *VMAgent) AsURL() string {
 			}
 		}
 	}
-	return fmt.Sprintf("http://%s.%s.svc:%s", cr.PrefixedName(), cr.Namespace, port)
+	return fmt.Sprintf("%s://%s.%s.svc:%s", protoFromFlags(cr.Spec.ExtraArgs), cr.PrefixedName(), cr.Namespace, port)
 }
 
 func (cr VMAgent) STSUpdateStrategy() appsv1.StatefulSetUpdateStrategyType {

@@ -148,7 +148,9 @@ type VMProbeStatus struct{}
 // +genclient
 // +k8s:openapi-gen=true
 type VMProbe struct {
-	metav1.TypeMeta   `json:",inline"`
+	// +optional
+	metav1.TypeMeta `json:",inline"`
+	// +optional
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	Spec   VMProbeSpec   `json:"spec"`

@@ -53,7 +53,6 @@ type VMAuthSpec struct {
 	// +optional
 	MinReadySeconds int32 `json:"minReadySeconds,omitempty"`
 	// ReplicaCount is the expected size of the VMAuth
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Number of pods",xDescriptors="urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom"
 	ReplicaCount *int32 `json:"replicaCount,omitempty"`
 	// The number of old ReplicaSets to retain to allow rollback in deployment or
 	// maximum number of revisions that will be maintained in the StatefulSet's revision history.
@@ -73,7 +72,6 @@ type VMAuthSpec struct {
 	VolumeMounts []v1.VolumeMount `json:"volumeMounts,omitempty"`
 	// Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
 	// if not defined default resources from operator config will be used
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resources",xDescriptors="urn:alm:descriptor:com.tectonic.ui:resourceRequirements"
 	// +optional
 	Resources v1.ResourceRequirements `json:"resources,omitempty"`
 	// Affinity If specified, the pod's scheduling constraints.
@@ -384,6 +382,7 @@ type VMAuthStatus struct {
 // +kubebuilder:subresource:status
 // +genclient
 // +k8s:openapi-gen=true
+// +kubebuilder:object:root=true
 // +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.updateStatus",description="Current status of update rollout"
 type VMAuth struct {
 	metav1.TypeMeta   `json:",inline"`

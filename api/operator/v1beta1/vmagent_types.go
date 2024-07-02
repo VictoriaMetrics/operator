@@ -64,7 +64,6 @@ type VMAgentSpec struct {
 	// eventually make the size of the running cluster equal to the expected
 	// size.
 	// NOTE enable VMSingle deduplication for replica usage
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Number of pods",xDescriptors="urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom"
 	// +optional
 	ReplicaCount *int32 `json:"replicaCount,omitempty"`
 	// The number of old ReplicaSets to retain to allow rollback in deployment or
@@ -84,7 +83,6 @@ type VMAgentSpec struct {
 	VolumeMounts []v1.VolumeMount `json:"volumeMounts,omitempty"`
 	// Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
 	// if not specified - default setting will be used
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resources",xDescriptors="urn:alm:descriptor:com.tectonic.ui:resourceRequirements"
 	// +optional
 	Resources v1.ResourceRequirements `json:"resources,omitempty"`
 	// Affinity If specified, the pod's scheduling constraints.
@@ -100,7 +98,6 @@ type VMAgentSpec struct {
 	// ServiceAccountName is the name of the ServiceAccount to use to run the
 	// VMAgent Pods.
 	// +optional
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="ServiceAccount name",xDescriptors="urn:alm:descriptor:io.kubernetes:ServiceAccount"
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 	// SchedulerName - defines kubernetes scheduler name
 	// +optional
@@ -186,15 +183,13 @@ type VMAgentSpec struct {
 	// for vm it must looks like: http://victoria-metrics-single:8429/api/v1/write
 	// or for cluster different url
 	// https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/app/vmagent#splitting-data-streams-among-multiple-systems
-	// +optional
 	RemoteWrite []VMAgentRemoteWriteSpec `json:"remoteWrite"`
 	// RemoteWriteSettings defines global settings for all remoteWrite urls.
-	// + optional
+	// +optional
 	RemoteWriteSettings *VMAgentRemoteWriteSettings `json:"remoteWriteSettings,omitempty"`
 	// RelabelConfig ConfigMap with global relabel config -remoteWrite.relabelConfig
 	// This relabeling is applied to all the collected metrics before sending them to remote storage.
 	// +optional
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Key at Configmap with relabelConfig name",xDescriptors="urn:alm:descriptor:io.kubernetes:ConfigMapKeySelector"
 	RelabelConfig *v1.ConfigMapKeySelector `json:"relabelConfig,omitempty"`
 	// InlineRelabelConfig - defines GlobalRelabelConfig for vmagent, can be defined directly at CRD.
 	// +optional
@@ -493,7 +488,6 @@ type VMAgentRemoteWriteSpec struct {
 
 	// ConfigMap with relabeling config which is applied to metrics before sending them to the corresponding -remoteWrite.url
 	// +optional
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Key at Configmap with relabelConfig for remoteWrite",xDescriptors="urn:alm:descriptor:io.kubernetes:ConfigMapKeySelector"
 	UrlRelabelConfig *v1.ConfigMapKeySelector `json:"urlRelabelConfig,omitempty"`
 	// InlineUrlRelabelConfig defines relabeling config for remoteWriteURL, it can be defined at crd spec.
 	// +optional
@@ -567,13 +561,10 @@ type VMAgentStatus struct {
 
 // VMAgent - is a tiny but brave agent, which helps you collect metrics from various sources and stores them in VictoriaMetrics
 // or any other Prometheus-compatible storage system that supports the remote_write protocol.
-// +operator-sdk:gen-csv:customresourcedefinitions.displayName="VMAgent App"
-// +operator-sdk:gen-csv:customresourcedefinitions.resources="Deployment,apps"
-// +operator-sdk:gen-csv:customresourcedefinitions.resources="Service,v1"
-// +operator-sdk:gen-csv:customresourcedefinitions.resources="Secret,v1"
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +genclient
 // +k8s:openapi-gen=true
+// +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:path=vmagents,scope=Namespaced
 // +kubebuilder:subresource:scale:specpath=.spec.shardCount,statuspath=.status.shards,selectorpath=.status.selector

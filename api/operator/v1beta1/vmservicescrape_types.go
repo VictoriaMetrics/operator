@@ -32,9 +32,6 @@ type VMServiceScrapeSpec struct {
 	// A list of endpoints allowed as part of this ServiceScrape.
 	Endpoints []Endpoint `json:"endpoints"`
 	// Selector to select Endpoints objects by corresponding Service labels.
-	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors=true
-	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors.displayName="Service selector"
-	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors.x-descriptors="urn:alm:descriptor:com.tectonic.ui:selector:"
 	// +optional
 	Selector metav1.LabelSelector `json:"selector,omitempty"`
 	// Selector to select which namespaces the Endpoints objects are discovered from.
@@ -59,8 +56,8 @@ type VMServiceScrapeStatus struct{}
 // kubernetes service,
 // it generates scrape configuration for vmagent based on selectors.
 // result config will scrape service endpoints
-// +operator-sdk:gen-csv:customresourcedefinitions.displayName="VMServiceScrape"
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:path=vmservicescrapes,scope=Namespaced
 // +genclient

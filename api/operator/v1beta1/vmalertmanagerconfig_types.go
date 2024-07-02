@@ -31,11 +31,9 @@ import (
 // VMAlertmanagerConfigSpec defines configuration for VMAlertmanagerConfig
 type VMAlertmanagerConfigSpec struct {
 	// Route definition for alertmanager, may include nested routes.
-	// +optional
 	Route *Route `json:"route"`
 	// Receivers defines alert receivers.
 	// without defined Route, receivers will be skipped.
-	// +optional
 	Receivers []Receiver `json:"receivers"`
 	// InhibitRules will only apply for alerts matching
 	// the resource's namespace.
@@ -451,7 +449,6 @@ type VictorOpsConfig struct {
 	// +optional
 	APIURL string `json:"api_url,omitempty"`
 	// A key used to map the alert to a team.
-	// +optional
 	RoutingKey string `json:"routing_key"`
 	// Describes the behavior of the alert (CRITICAL, WARNING, INFO).
 	// +optional
@@ -782,9 +779,11 @@ func (pdd *ReceiverConfigDetails) UnmarshalYAML(unmarshal func(interface{}) erro
 // See https://developer.pagerduty.com/docs/ZG9jOjExMDI5NTgx-send-an-alert-event#the-images-property
 // for more information.
 type ImageConfig struct {
+	// +optional
 	Href   string `json:"href,omitempty"`
 	Source string `json:"source"`
-	Alt    string `json:"alt,omitempty"`
+	// +optional
+	Alt string `json:"alt,omitempty"`
 }
 
 // LinkConfig is used to attach text links to the incident.

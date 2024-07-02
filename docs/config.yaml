@@ -1,0 +1,10 @@
+processor:
+  ignoreTypes:
+    - ".*List$"
+  ignoreFields:
+    - "status$"
+    - "TypeMeta$"
+
+customMarkers:
+  - name: optional
+    target: field

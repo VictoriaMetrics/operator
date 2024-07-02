@@ -8,6 +8,11 @@ on:
   pull_request:
     branches:
       - master
+    types:
+      - opened
+      - reopened
+      - ready_for_review
+      - converted_to_draft
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -23,7 +28,6 @@ jobs:
         with:
           go-version: "1.22"
         id: go
-
       - name: Run Trivy vulnerability scanner in repo mode
         uses: aquasecurity/trivy-action@master
         with:
@@ -38,18 +42,21 @@ jobs:
         uses: github/codeql-action/upload-sarif@v2
         with:
           sarif_file: "trivy-results.sarif"
-
-      - name: lint and test
-        env:
-          GO111MODULE: on
-        run: |
-          make lint
-          make test
       - name: Set output variables
         id: vars
         run: |
           IMAGE_TAG=${GITHUB_SHA:0:7}
           echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_OUTPUT
+      - name: lint and test
+        if: github.event.pull_request.draft == false
+        env:
+          GO111MODULE: on
+          DOCKER_BUILD_ARGS: --cache-from=type=gha --cache-to=type=gha,mode=max
+          TAG: ${{ steps.vars.outputs.IMAGE_TAG }}
+        run: |
+          make lint
+          make test
+          TAG=${TAG} make test-e2e
       - name: build binary
         env:
           GO111MODULE: on

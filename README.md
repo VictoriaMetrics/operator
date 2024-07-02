@@ -61,17 +61,7 @@ VictoriaMetrics provides [helm charts](https://github.com/VictoriaMetrics/helm-c
 
 ## Kubernetes' compatibility versions
 
-operator tested at kubernetes versions
-from 1.25 to 1.29
-
-## Troubleshooting
-
-- cannot apply crd at kubernetes 1.18 + version and kubectl reports error:
-```bash
-Error from server (Invalid): error when creating "release/crds/crd.yaml": CustomResourceDefinition.apiextensions.k8s.io "vmalertmanagers.operator.victoriametrics.com" is invalid: [spec.validation.openAPIV3Schema.properties[spec].properties[initContainers].items.properties[ports].items.properties[protocol].default: Required value: this property is in x-kubernetes-list-map-keys, so it must have a default or be a required property, spec.validation.openAPIV3Schema.properties[spec].properties[containers].items.properties[ports].items.properties[protocol].default: Required value: this property is in x-kubernetes-list-map-keys, so it must have a default or be a required property]
-Error from server (Invalid): error when creating "release/crds/crd.yaml": CustomResourceDefinition.apiextensions.k8s.io "vmalerts.operator.victoriametrics.com" is invalid: [
-```
-  upgrade to the latest release version. There is a bug with kubernetes objects at the early releases.
+operator tested on officially supported Kubernetes versions
 
 ## Community and contributions
 
@@ -86,22 +76,23 @@ Feel free asking any questions regarding VictoriaMetrics:
 
 ## Development
 
-- operator-sdk verson v1.0.0 +  [https://github.com/operator-framework/operator-sdk]
-- golang 1.15 +
-- minikube or kind
+Dependencies:
+- kubebuilder v4
+- golang 1.22+
+- kubectl
+- docker
 
 start:
 ```bash
 make run
 ```
 
-for test execution run:
+### to run unit tests
 ```bash
-#unit tests
-
 make test
+```
 
-# you need minikube or kind for e2e, do not run it on live cluster
-#e2e tests with local binary
-make e2e-local
+### to run e2e tests on automatically configured Kind cluster
+```bash
+# make test-e2e
 ```

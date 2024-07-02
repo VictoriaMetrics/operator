@@ -8,8 +8,8 @@ import (
 )
 
 // VMScrapeConfig specifies a set of targets and parameters describing how to scrape them.
-// +operator-sdk:gen-csv:customresourcedefinitions.displayName="VMScrapeConfig"
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:path=vmscrapeconfigs,scope=Namespaced
 // +genclient

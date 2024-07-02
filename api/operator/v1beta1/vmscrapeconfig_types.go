@@ -63,6 +63,9 @@ type VMScrapeConfigSpec struct {
 	// ScrapeInterval is the interval between consecutive scrapes.
 	// +optional
 	ScrapeInterval string `json:"scrapeInterval,omitempty"`
+	// ScrapeProtocols defines Prometheus scrape protocol.
+	// +optional
+	ScrapeProtocols []string `json:"scrape_protocols,omitempty"`
 	// ScrapeTimeout is the number of seconds to wait until a scrape request times out.
 	// +optional
 	ScrapeTimeout string `json:"scrapeTimeout,omitempty"`

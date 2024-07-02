@@ -51,6 +51,7 @@ func TestGenerateScrapeConfig(t *testing.T) {
 							Username: corev1.SecretKeySelector{Key: "username"},
 							Password: corev1.SecretKeySelector{Key: "password"},
 						},
+						ScrapeProtocols: []string{"PrometheusProto"},
 					},
 				},
 				ssCache: &scrapesSecretsCache{
@@ -65,6 +66,8 @@ func TestGenerateScrapeConfig(t *testing.T) {
 			want: `job_name: scrapeConfig/default/static-1
 honor_labels: false
 scrape_interval: 30s
+scrape_protocols:
+- PrometheusProto
 basic_auth:
   username: admin
   password: dangerous

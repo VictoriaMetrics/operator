@@ -38,7 +38,7 @@ type VMNodeScrapeSpec struct {
 	// one of scrape_interval or interval can be used
 	// +optional
 	ScrapeInterval string `json:"scrape_interval,omitempty"`
-	// Timeout after which the scrape is ended
+	// ScrapeTimeout after which the scrape is ended
 	// +optional
 	ScrapeTimeout string `json:"scrapeTimeout,omitempty"`
 	// OAuth2 defines auth configuration

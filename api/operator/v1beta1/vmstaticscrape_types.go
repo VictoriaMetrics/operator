@@ -79,17 +79,15 @@ type TargetEndpoint struct {
 	// +nullable
 	BearerTokenSecret *v1.SecretKeySelector `json:"bearerTokenSecret,omitempty"`
 	// BasicAuth allow an endpoint to authenticate over basic authentication
-	// More info: https://prometheus.io/docs/operating/configuration/#endpoints
 	// +optional
 	BasicAuth *BasicAuth `json:"basicAuth,omitempty"`
 	// Authorization with http header Authorization
 	// +optional
 	Authorization *Authorization `json:"authorization,omitempty"`
-	// MetricRelabelConfigs to apply to samples before ingestion.
+	// MetricRelabelConfigs to apply to samples after scrapping.
 	// +optional
 	MetricRelabelConfigs []*RelabelConfig `json:"metricRelabelConfigs,omitempty"`
-	// RelabelConfigs to apply to samples before scraping.
-	// More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config
+	// RelabelConfigs to apply to samples during service discovery.
 	// +optional
 	RelabelConfigs []*RelabelConfig `json:"relabelConfigs,omitempty"`
 	// ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint.

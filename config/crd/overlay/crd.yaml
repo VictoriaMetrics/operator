@@ -1023,9 +1023,8 @@ spec:
                   vmagent, can be defined directly at CRD.
                 items:
                   description: |-
-                    RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
-                    It defines `<metric_relabel_configs>`-section of configuration.
-                    More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+                    RelabelConfig allows dynamic rewriting of the label set
+                    More info: https://docs.victoriametrics.com/#relabeling
                   properties:
                     action:
                       description: Action to perform based on regex matching. Default
@@ -1260,9 +1259,8 @@ spec:
                   it's useful for adding specific labels to all targets
                 items:
                   description: |-
-                    RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
-                    It defines `<metric_relabel_configs>`-section of configuration.
-                    More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+                    RelabelConfig allows dynamic rewriting of the label set
+                    More info: https://docs.victoriametrics.com/#relabeling
                   properties:
                     action:
                       description: Action to perform based on regex matching. Default
@@ -1524,9 +1522,8 @@ spec:
                   it's useful for adding specific labels to all targets
                 items:
                   description: |-
-                    RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
-                    It defines `<metric_relabel_configs>`-section of configuration.
-                    More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+                    RelabelConfig allows dynamic rewriting of the label set
+                    More info: https://docs.victoriametrics.com/#relabeling
                   properties:
                     action:
                       description: Action to perform based on regex matching. Default
@@ -1711,9 +1708,8 @@ spec:
                   it's useful for adding specific labels to all targets
                 items:
                   description: |-
-                    RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
-                    It defines `<metric_relabel_configs>`-section of configuration.
-                    More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+                    RelabelConfig allows dynamic rewriting of the label set
+                    More info: https://docs.victoriametrics.com/#relabeling
                   properties:
                     action:
                       description: Action to perform based on regex matching. Default
@@ -1997,9 +1993,8 @@ spec:
                         for remoteWriteURL, it can be defined at crd spec.
                       items:
                         description: |-
-                          RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
-                          It defines `<metric_relabel_configs>`-section of configuration.
-                          More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+                          RelabelConfig allows dynamic rewriting of the label set
+                          More info: https://docs.victoriametrics.com/#relabeling
                         properties:
                           action:
                             description: Action to perform based on regex matching.
@@ -2248,9 +2243,8 @@ spec:
                                   before aggregation.
                                 items:
                                   description: |-
-                                    RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
-                                    It defines `<metric_relabel_configs>`-section of configuration.
-                                    More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+                                    RelabelConfig allows dynamic rewriting of the label set
+                                    More info: https://docs.victoriametrics.com/#relabeling
                                   properties:
                                     action:
                                       description: Action to perform based on regex
@@ -2347,9 +2341,8 @@ spec:
                                   on the aggregated output before being sent to remote storage.
                                 items:
                                   description: |-
-                                    RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
-                                    It defines `<metric_relabel_configs>`-section of configuration.
-                                    More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+                                    RelabelConfig allows dynamic rewriting of the label set
+                                    More info: https://docs.victoriametrics.com/#relabeling
                                   properties:
                                     action:
                                       description: Action to perform based on regex
@@ -2892,9 +2885,8 @@ spec:
                   it's useful for adding specific labels to all targets
                 items:
                   description: |-
-                    RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
-                    It defines `<metric_relabel_configs>`-section of configuration.
-                    More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+                    RelabelConfig allows dynamic rewriting of the label set
+                    More info: https://docs.victoriametrics.com/#relabeling
                   properties:
                     action:
                       description: Action to perform based on regex matching. Default
@@ -3104,9 +3096,8 @@ spec:
                   it's useful for adding specific labels to all targets
                 items:
                   description: |-
-                    RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
-                    It defines `<metric_relabel_configs>`-section of configuration.
-                    More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+                    RelabelConfig allows dynamic rewriting of the label set
+                    More info: https://docs.victoriametrics.com/#relabeling
                   properties:
                     action:
                       description: Action to perform based on regex matching. Default
@@ -3829,9 +3820,8 @@ spec:
                   it's useful for adding specific labels to all targets
                 items:
                   description: |-
-                    RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
-                    It defines `<metric_relabel_configs>`-section of configuration.
-                    More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+                    RelabelConfig allows dynamic rewriting of the label set
+                    More info: https://docs.victoriametrics.com/#relabeling
                   properties:
                     action:
                       description: Action to perform based on regex matching. Default
@@ -16206,9 +16196,8 @@ spec:
                     type: string
                 type: object
               basicAuth:
-                description: |-
-                  BasicAuth allow an endpoint to authenticate over basic authentication
-                  More info: https://prometheus.io/docs/operating/configuration/#endpoints
+                description: BasicAuth allow an endpoint to authenticate over basic
+                  authentication
                 properties:
                   password:
                     description: |-
@@ -16322,12 +16311,11 @@ spec:
                 description: The label to use to retrieve the job name from.
                 type: string
               metricRelabelConfigs:
-                description: MetricRelabelConfigs to apply to samples before ingestion.
+                description: MetricRelabelConfigs to apply to samples after scrapping.
                 items:
                   description: |-
-                    RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
-                    It defines `<metric_relabel_configs>`-section of configuration.
-                    More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+                    RelabelConfig allows dynamic rewriting of the label set
+                    More info: https://docs.victoriametrics.com/#relabeling
                   properties:
                     action:
                       description: Action to perform based on regex matching. Default
@@ -16522,14 +16510,11 @@ spec:
                   proxy through this endpoint.
                 type: string
               relabelConfigs:
-                description: |-
-                  RelabelConfigs to apply to samples before scraping.
-                  More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config
+                description: RelabelConfigs to apply to samples during service discovery.
                 items:
                   description: |-
-                    RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
-                    It defines `<metric_relabel_configs>`-section of configuration.
-                    More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+                    RelabelConfig allows dynamic rewriting of the label set
+                    More info: https://docs.victoriametrics.com/#relabeling
                   properties:
                     action:
                       description: Action to perform based on regex matching. Default
@@ -17226,7 +17211,7 @@ spec:
                 description: A list of endpoints allowed as part of this PodMonitor.
                 items:
                   description: PodMetricsEndpoint defines a scrapeable endpoint of
-                    a Kubernetes Pod serving Prometheus metrics.
+                    a Kubernetes Pod serving metrics.
                   properties:
                     attach_metadata:
                       description: AttachMetadata configures metadata attaching from
@@ -17275,9 +17260,8 @@ spec:
                           type: string
                       type: object
                     basicAuth:
-                      description: |-
-                        BasicAuth allow an endpoint to authenticate over basic authentication
-                        More info: https://prometheus.io/docs/operating/configuration/#endpoints
+                      description: BasicAuth allow an endpoint to authenticate over
+                        basic authentication
                       properties:
                         password:
                           description: |-
@@ -17396,13 +17380,12 @@ spec:
                       description: Interval at which metrics should be scraped
                       type: string
                     metricRelabelConfigs:
-                      description: MetricRelabelConfigs to apply to samples before
-                        ingestion.
+                      description: MetricRelabelConfigs to apply to samples after
+                        scrapping.
                       items:
                         description: |-
-                          RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
-                          It defines `<metric_relabel_configs>`-section of configuration.
-                          More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+                          RelabelConfig allows dynamic rewriting of the label set
+                          More info: https://docs.victoriametrics.com/#relabeling
                         properties:
                           action:
                             description: Action to perform based on regex matching.
@@ -17600,14 +17583,12 @@ spec:
                         to proxy through this endpoint.
                       type: string
                     relabelConfigs:
-                      description: |-
-                        RelabelConfigs to apply to samples before ingestion.
-                        More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config
+                      description: RelabelConfigs to apply to samples during service
+                        discovery.
                       items:
                         description: |-
-                          RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
-                          It defines `<metric_relabel_configs>`-section of configuration.
-                          More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+                          RelabelConfig allows dynamic rewriting of the label set
+                          More info: https://docs.victoriametrics.com/#relabeling
                         properties:
                           action:
                             description: Action to perform based on regex matching.
@@ -18332,9 +18313,8 @@ spec:
                     type: string
                 type: object
               basicAuth:
-                description: |-
-                  BasicAuth allow an endpoint to authenticate over basic authentication
-                  More info: https://prometheus.io/docs/operating/configuration/#endpoints
+                description: BasicAuth allow an endpoint to authenticate over basic
+                  authentication
                 properties:
                   password:
                     description: |-
@@ -18436,7 +18416,7 @@ spec:
               interval:
                 description: |-
                   Interval at which targets are probed using the configured prober.
-                  If not specified Prometheus' global scrape interval is used.
+                  If not specified global scrape interval is used.
                 type: string
               jobName:
                 description: The job name assigned to scraped metrics by default.
@@ -18575,7 +18555,7 @@ spec:
                   one of scrape_interval or interval can be used
                 type: string
               scrapeTimeout:
-                description: Timeout for scraping metrics from the Prometheus exporter.
+                description: Timeout for scraping metrics from the blackbox exporter.
                 type: string
               seriesLimit:
                 description: |-
@@ -18606,14 +18586,12 @@ spec:
                             type: array
                         type: object
                       relabelingConfigs:
-                        description: |-
-                          RelabelConfigs to apply to samples before ingestion.
-                          More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config
+                        description: RelabelConfigs to apply to samples during service
+                          discovery.
                         items:
                           description: |-
-                            RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
-                            It defines `<metric_relabel_configs>`-section of configuration.
-                            More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+                            RelabelConfig allows dynamic rewriting of the label set
+                            More info: https://docs.victoriametrics.com/#relabeling
                           properties:
                             action:
                               description: Action to perform based on regex matching.
@@ -18732,9 +18710,8 @@ spec:
                         x-kubernetes-map-type: atomic
                     type: object
                   staticConfig:
-                    description: |-
-                      StaticConfig defines static targets which are considers for probing.
-                      More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#static_config.
+                    description: StaticConfig defines static targets which are considers
+                      for probing.
                     properties:
                       labels:
                         additionalProperties:
@@ -18743,12 +18720,12 @@ spec:
                           targets.
                         type: object
                       relabelingConfigs:
-                        description: 'More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config'
+                        description: RelabelConfigs to apply to samples during service
+                          discovery.
                         items:
                           description: |-
-                            RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
-                            It defines `<metric_relabel_configs>`-section of configuration.
-                            More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+                            RelabelConfig allows dynamic rewriting of the label set
+                            More info: https://docs.victoriametrics.com/#relabeling
                           properties:
                             action:
                               description: Action to perform based on regex matching.
@@ -22564,12 +22541,11 @@ spec:
                   type: object
                 type: array
               metricRelabelConfigs:
-                description: MetricRelabelConfigs to apply to samples before ingestion.
+                description: MetricRelabelConfigs to apply to samples after scrapping.
                 items:
                   description: |-
-                    RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
-                    It defines `<metric_relabel_configs>`-section of configuration.
-                    More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+                    RelabelConfig allows dynamic rewriting of the label set
+                    More info: https://docs.victoriametrics.com/#relabeling
                   properties:
                     action:
                       description: Action to perform based on regex matching. Default
@@ -23070,14 +23046,11 @@ spec:
                   proxy through this endpoint.
                 type: string
               relabelConfigs:
-                description: |-
-                  RelabelConfigs to apply to samples before scraping.
-                  See https://docs.victoriametrics.com/vmagent.html#relabeling
+                description: RelabelConfigs to apply to samples during service discovery.
                 items:
                   description: |-
-                    RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
-                    It defines `<metric_relabel_configs>`-section of configuration.
-                    More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+                    RelabelConfig allows dynamic rewriting of the label set
+                    More info: https://docs.victoriametrics.com/#relabeling
                   properties:
                     action:
                       description: Action to perform based on regex matching. Default
@@ -23739,8 +23712,7 @@ spec:
               endpoints:
                 description: A list of endpoints allowed as part of this ServiceScrape.
                 items:
-                  description: Endpoint defines a scrapeable endpoint serving Prometheus
-                    metrics.
+                  description: Endpoint defines a scrapeable endpoint serving metrics.
                   properties:
                     attach_metadata:
                       description: AttachMetadata configures metadata attaching from
@@ -23789,9 +23761,8 @@ spec:
                           type: string
                       type: object
                     basicAuth:
-                      description: |-
-                        BasicAuth allow an endpoint to authenticate over basic authentication
-                        More info: https://prometheus.io/docs/operating/configuration/#endpoints
+                      description: BasicAuth allow an endpoint to authenticate over
+                        basic authentication
                       properties:
                         password:
                           description: |-
@@ -23904,13 +23875,12 @@ spec:
                       description: Interval at which metrics should be scraped
                       type: string
                     metricRelabelConfigs:
-                      description: MetricRelabelConfigs to apply to samples before
-                        ingestion.
+                      description: MetricRelabelConfigs to apply to samples after
+                        scrapping.
                       items:
                         description: |-
-                          RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
-                          It defines `<metric_relabel_configs>`-section of configuration.
-                          More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+                          RelabelConfig allows dynamic rewriting of the label set
+                          More info: https://docs.victoriametrics.com/#relabeling
                         properties:
                           action:
                             description: Action to perform based on regex matching.
@@ -24108,14 +24078,12 @@ spec:
                         to proxy through this endpoint.
                       type: string
                     relabelConfigs:
-                      description: |-
-                        RelabelConfigs to apply to samples before scraping.
-                        More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config
+                      description: RelabelConfigs to apply to samples during service
+                        discovery.
                       items:
                         description: |-
-                          RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
-                          It defines `<metric_relabel_configs>`-section of configuration.
-                          More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+                          RelabelConfig allows dynamic rewriting of the label set
+                          More info: https://docs.victoriametrics.com/#relabeling
                         properties:
                           action:
                             description: Action to perform based on regex matching.
@@ -25648,9 +25616,8 @@ spec:
                             before aggregation.
                           items:
                             description: |-
-                              RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
-                              It defines `<metric_relabel_configs>`-section of configuration.
-                              More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+                              RelabelConfig allows dynamic rewriting of the label set
+                              More info: https://docs.victoriametrics.com/#relabeling
                             properties:
                               action:
                                 description: Action to perform based on regex matching.
@@ -25746,9 +25713,8 @@ spec:
                             on the aggregated output before being sent to remote storage.
                           items:
                             description: |-
-                              RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
-                              It defines `<metric_relabel_configs>`-section of configuration.
-                              More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+                              RelabelConfig allows dynamic rewriting of the label set
+                              More info: https://docs.victoriametrics.com/#relabeling
                             properties:
                               action:
                                 description: Action to perform based on regex matching.
@@ -26544,9 +26510,8 @@ spec:
                           type: string
                       type: object
                     basicAuth:
-                      description: |-
-                        BasicAuth allow an endpoint to authenticate over basic authentication
-                        More info: https://prometheus.io/docs/operating/configuration/#endpoints
+                      description: BasicAuth allow an endpoint to authenticate over
+                        basic authentication
                       properties:
                         password:
                           description: |-
@@ -26664,13 +26629,12 @@ spec:
                       description: Labels static labels for targets.
                       type: object
                     metricRelabelConfigs:
-                      description: MetricRelabelConfigs to apply to samples before
-                        ingestion.
+                      description: MetricRelabelConfigs to apply to samples after
+                        scrapping.
                       items:
                         description: |-
-                          RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
-                          It defines `<metric_relabel_configs>`-section of configuration.
-                          More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+                          RelabelConfig allows dynamic rewriting of the label set
+                          More info: https://docs.victoriametrics.com/#relabeling
                         properties:
                           action:
                             description: Action to perform based on regex matching.
@@ -26867,14 +26831,12 @@ spec:
                         to proxy through this endpoint.
                       type: string
                     relabelConfigs:
-                      description: |-
-                        RelabelConfigs to apply to samples before scraping.
-                        More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config
+                      description: RelabelConfigs to apply to samples during service
+                        discovery.
                       items:
                         description: |-
-                          RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
-                          It defines `<metric_relabel_configs>`-section of configuration.
-                          More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+                          RelabelConfig allows dynamic rewriting of the label set
+                          More info: https://docs.victoriametrics.com/#relabeling
                         properties:
                           action:
                             description: Action to perform based on regex matching.

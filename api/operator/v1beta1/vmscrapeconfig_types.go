@@ -1,9 +1,24 @@
+/*
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package v1beta1
 
 import (
 	"fmt"
 
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -243,7 +258,7 @@ type ConsulSDConfig struct {
 	Server string `json:"server"`
 	// Consul ACL TokenRef, if not provided it will use the ACL from the local Consul Agent.
 	// +optional
-	TokenRef *v1.SecretKeySelector `json:"tokenRef,omitempty"`
+	TokenRef *corev1.SecretKeySelector `json:"tokenRef,omitempty"`
 	// Consul Datacenter name, if not provided it will use the local Consul Agent Datacenter.
 	// +optional
 	Datacenter *string `json:"datacenter,omitempty"`
@@ -334,10 +349,10 @@ type EC2SDConfig struct {
 	Region *string `json:"region"`
 	// AccessKey is the AWS API key.
 	// +optional
-	AccessKey *v1.SecretKeySelector `json:"accessKey,omitempty"`
+	AccessKey *corev1.SecretKeySelector `json:"accessKey,omitempty"`
 	// SecretKey is the AWS API secret.
 	// +optional
-	SecretKey *v1.SecretKeySelector `json:"secretKey,omitempty"`
+	SecretKey *corev1.SecretKeySelector `json:"secretKey,omitempty"`
 	// AWS Role ARN, an alternative to using AWS API keys.
 	// +optional
 	RoleARN *string `json:"roleARN,omitempty"`
@@ -383,7 +398,7 @@ type AzureSDConfig struct {
 	ClientID *string `json:"clientID,omitempty"`
 	// Optional client secret. Only required with the OAuth authentication method.
 	// +optional
-	ClientSecret *v1.SecretKeySelector `json:"clientSecret,omitempty"`
+	ClientSecret *corev1.SecretKeySelector `json:"clientSecret,omitempty"`
 	// Optional resource group name. Limits discovery to this resource group.
 	// +optional
 	ResourceGroup *string `json:"resourceGroup,omitempty"`
@@ -453,7 +468,7 @@ type OpenStackSDConfig struct {
 	// Password for the Identity V2 and V3 APIs. Consult with your provider's
 	// control panel to discover your account's preferred method of authentication.
 	// +optional
-	Password *v1.SecretKeySelector `json:"password,omitempty"`
+	Password *corev1.SecretKeySelector `json:"password,omitempty"`
 	// At most one of domainId and domainName must be provided if using username
 	// with Identity V3. Otherwise, either are optional.
 	// +optional
@@ -482,7 +497,7 @@ type OpenStackSDConfig struct {
 	// The applicationCredentialSecret field is required if using an application
 	// credential to authenticate.
 	// +optional
-	ApplicationCredentialSecret *v1.SecretKeySelector `json:"applicationCredentialSecret,omitempty"`
+	ApplicationCredentialSecret *corev1.SecretKeySelector `json:"applicationCredentialSecret,omitempty"`
 	// Whether the service discovery should list all instances for all projects.
 	// It is only relevant for the 'instance' role and usually requires admin permissions.
 	// +optional

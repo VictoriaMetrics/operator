@@ -4,9 +4,8 @@ Dockerfile.cross
 .idea
 bin/
 build/_output
-bundle_crd.zip
+bundle*
 operator.zip
-bundle.Dockerfile
 coverage.txt
 doc-print
 build/_test

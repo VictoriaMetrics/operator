@@ -55,7 +55,6 @@ jobs:
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v6
         with:
-          push-to-fork: VictoriaMetrics/operatorhub-operators
           add-paths: operators/victoriametrics-operator
           signoff: true
           author: Github Actions <victoriametrics-bot@victoriametrics.com>

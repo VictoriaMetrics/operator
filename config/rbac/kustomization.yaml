@@ -13,35 +13,35 @@ resources:
 # default, aiding admins in cluster management. Those roles are
 # not used by the Project itself. You can comment the following lines
 # if you do not want those helpers be installed with your Project.
-- operator_vmscrapeconfig_editor_role.yaml
-- operator_vmscrapeconfig_viewer_role.yaml
-- operator_vmauth_editor_role.yaml
-- operator_vmauth_viewer_role.yaml
-- operator_vmuser_editor_role.yaml
-- operator_vmuser_viewer_role.yaml
-- operator_vmstaticscrape_editor_role.yaml
-- operator_vmstaticscrape_viewer_role.yaml
-- operator_vmnodescrape_editor_role.yaml
-- operator_vmnodescrape_viewer_role.yaml
-- operator_vmprobe_editor_role.yaml
-- operator_vmprobe_viewer_role.yaml
-- operator_vmcluster_editor_role.yaml
-- operator_vmcluster_viewer_role.yaml
-- operator_vmsingle_editor_role.yaml
-- operator_vmsingle_viewer_role.yaml
-- operator_vmservicescrape_editor_role.yaml
-- operator_vmservicescrape_viewer_role.yaml
-- operator_vmrule_editor_role.yaml
-- operator_vmrule_viewer_role.yaml
-- operator_vmpodscrape_editor_role.yaml
-- operator_vmpodscrape_viewer_role.yaml
-- operator_vmalertmanagerconfig_editor_role.yaml
-- operator_vmalertmanagerconfig_viewer_role.yaml
-- operator_vmalertmanager_editor_role.yaml
-- operator_vmalertmanager_viewer_role.yaml
-- operator_vmalert_editor_role.yaml
-- operator_vmalert_viewer_role.yaml
-- operator_vmagent_editor_role.yaml
-- operator_vmagent_viewer_role.yaml
-
+# - operator_vmscrapeconfig_editor_role.yaml
+# - operator_vmscrapeconfig_viewer_role.yaml
+# - operator_vmauth_editor_role.yaml
+# - operator_vmauth_viewer_role.yaml
+# - operator_vmuser_editor_role.yaml
+# - operator_vmuser_viewer_role.yaml
+# - operator_vmstaticscrape_editor_role.yaml
+# - operator_vmstaticscrape_viewer_role.yaml
+# - operator_vmnodescrape_editor_role.yaml
+# - operator_vmnodescrape_viewer_role.yaml
+# - operator_vmprobe_editor_role.yaml
+# - operator_vmprobe_viewer_role.yaml
+# - operator_vmcluster_editor_role.yaml
+# - operator_vmcluster_viewer_role.yaml
+# - operator_vmsingle_editor_role.yaml
+# - operator_vmsingle_viewer_role.yaml
+# - operator_vmservicescrape_editor_role.yaml
+# - operator_vmservicescrape_viewer_role.yaml
+# - operator_vmrule_editor_role.yaml
+# - operator_vmrule_viewer_role.yaml
+# - operator_vmpodscrape_editor_role.yaml
+# - operator_vmpodscrape_viewer_role.yaml
+# - operator_vmalertmanagerconfig_editor_role.yaml
+# - operator_vmalertmanagerconfig_viewer_role.yaml
+# - operator_vmalertmanager_editor_role.yaml
+# - operator_vmalertmanager_viewer_role.yaml
+# - operator_vmalert_editor_role.yaml
+# - operator_vmalert_viewer_role.yaml
+# - operator_vmagent_editor_role.yaml
+# - operator_vmagent_viewer_role.yaml
+#
 

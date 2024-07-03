@@ -107,7 +107,7 @@ metadata:
     capabilities: Deep Insights
     categories: Monitoring
     certified: "false"
-    containerImage: victoriametrics/operator:0.0.0
+    containerImage: docker.io/victoriametrics/operator:0.0.0
     createdAt: "2020-05-01 12:00:00"
     description: Provides monitoring capabilites for kubernetes clusters and applications
     operators.operatorframework.io/builder: operator-sdk-v1.0.0
@@ -574,7 +574,7 @@ spec:
     type: OwnNamespace
   - supported: true
     type: SingleNamespace
-  - supported: false
+  - supported: true
     type: MultiNamespace
   - supported: true
     type: AllNamespaces

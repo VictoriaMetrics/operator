@@ -30,6 +30,7 @@ jobs:
           echo ${{secrets.REPO_KEY}} | docker login --username ${{secrets.REPO_USER}} --password-stdin
           make publish
           TAG=${TAG} make olm
+          gh release upload ${{github.event.release.tag_name}} ./config/crd/overlay/crd.yaml#crd.yaml --clobber
       - name: Prapare binary cache
         uses: actions/cache@v4
         with:
@@ -40,13 +41,3 @@ jobs:
           name: olm
           path: bundle
           retention-days: 1
-      - name: Upload Release CRDs
-        id: upload-release-crds
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: ./config/crd/overlay/crd.yaml
-          asset_name: crd.yaml
-          asset_content_type: application/yaml

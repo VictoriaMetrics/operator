@@ -194,9 +194,7 @@ olm: operator-sdk docs
 	$(OPERATOR_SDK) generate kustomize manifests -q
 	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle \
 		-q --overwrite --version $(VERSION) --channels=beta --output-dir=bundle/$(VERSION)
-	$(if $(findstring $(PLATFORM),Darwin), \
-		sed -i '', \
-		sed -i) 's/$(ORG)\/$(REPO):.*/$(ORG)\/$(REPO):$(TAG)/g' bundle/$(VERSION)/manifests/*
+	sed -i 's/$(ORG)\/$(REPO):.*/$(ORG)\/$(REPO):$(TAG)/g' bundle/$(VERSION)/manifests/*
 	$(OPERATOR_SDK) bundle validate ./bundle/$(VERSION)
 	cp config/manifests/ci.yaml bundle/
 

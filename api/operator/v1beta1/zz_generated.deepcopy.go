@@ -5863,6 +5863,11 @@ func (in *VMScrapeConfigSpec) DeepCopyInto(out *VMScrapeConfigSpec) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.ScrapeProtocols != nil {
+		in, out := &in.ScrapeProtocols, &out.ScrapeProtocols
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	if in.HonorTimestamps != nil {
 		in, out := &in.HonorTimestamps, &out.HonorTimestamps
 		*out = new(bool)

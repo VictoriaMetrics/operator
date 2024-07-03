@@ -652,7 +652,7 @@ _Appears in:_
 | `relabelConfigs` | RelabelConfigs to apply to samples during service discovery. | _[RelabelConfig](#relabelconfig) array_ | false |
 | `sampleLimit` | SampleLimit defines per-endpoint limit on number of scraped samples that will be accepted. | _integer_ | false |
 | `scheme` | HTTP scheme to use for scraping. | _string_ | false |
-| `scrapeTimeout` | Timeout after which the scrape is ended | _string_ | false |
+| `scrapeTimeout` | ScrapeTimeout after which the scrape is ended | _string_ | false |
 | `scrape_interval` | ScrapeInterval is the same as Interval and has priority over it.<br />one of scrape_interval or interval can be used | _string_ | false |
 | `seriesLimit` | SeriesLimit defines per-scrape limit on number of unique time series<br />a single target can expose during all the scrapes on the time window of 24h. | _integer_ | false |
 | `targetPort` | Name or number of the pod port this endpoint refers to. Mutually exclusive with port. | _[IntOrString](#intorstring)_ | false |
@@ -1218,7 +1218,7 @@ _Appears in:_
 | `relabelConfigs` | RelabelConfigs to apply to samples during service discovery. | _[RelabelConfig](#relabelconfig) array_ | false |
 | `sampleLimit` | SampleLimit defines per-podEndpoint limit on number of scraped samples that will be accepted. | _integer_ | false |
 | `scheme` | HTTP scheme to use for scraping. | _string_ | false |
-| `scrapeTimeout` | Timeout after which the scrape is ended | _string_ | false |
+| `scrapeTimeout` | ScrapeTimeout after which the scrape is ended | _string_ | false |
 | `scrape_interval` | ScrapeInterval is the same as Interval and has priority over it.<br />one of scrape_interval or interval can be used | _string_ | false |
 | `seriesLimit` | SeriesLimit defines per-scrape limit on number of unique time series<br />a single target can expose during all the scrapes on the time window of 24h. | _integer_ | false |
 | `tlsConfig` | TLSConfig configuration to use when scraping the endpoint | _[TLSConfig](#tlsconfig)_ | false |
@@ -1829,7 +1829,7 @@ _Appears in:_
 | `relabelConfigs` | RelabelConfigs to apply to samples during service discovery. | _[RelabelConfig](#relabelconfig) array_ | false |
 | `sampleLimit` | SampleLimit defines per-scrape limit on number of scraped samples that will be accepted. | _integer_ | false |
 | `scheme` | HTTP scheme to use for scraping. | _string_ | false |
-| `scrapeTimeout` | Timeout after which the scrape is ended | _string_ | false |
+| `scrapeTimeout` | ScrapeTimeout after which the scrape is ended | _string_ | false |
 | `scrape_interval` | ScrapeInterval is the same as Interval and has priority over it.<br />one of scrape_interval or interval can be used | _string_ | false |
 | `seriesLimit` | SeriesLimit defines per-scrape limit on number of unique time series<br />a single target can expose during all the scrapes on the time window of 24h. | _integer_ | false |
 | `targets` | Targets static targets addresses in form of ["192.122.55.55:9100","some-name:9100"]. | _string array_ | true |
@@ -2782,7 +2782,7 @@ _Appears in:_
 | `relabelConfigs` | RelabelConfigs to apply to samples during service discovery. | _[RelabelConfig](#relabelconfig) array_ | false |
 | `sampleLimit` | SampleLimit defines per-scrape limit on number of scraped samples that will be accepted. | _integer_ | false |
 | `scheme` | HTTP scheme to use for scraping. | _string_ | false |
-| `scrapeTimeout` | Timeout after which the scrape is ended | _string_ | false |
+| `scrapeTimeout` | ScrapeTimeout after which the scrape is ended | _string_ | false |
 | `scrape_interval` | ScrapeInterval is the same as Interval and has priority over it.<br />one of scrape_interval or interval can be used | _string_ | false |
 | `selector` | Selector to select kubernetes Nodes. | _[LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v/#labelselector-v1-meta)_ | false |
 | `seriesLimit` | SeriesLimit defines per-scrape limit on number of unique time series<br />a single target can expose during all the scrapes on the time window of 24h. | _integer_ | false |
@@ -3071,6 +3071,7 @@ _Appears in:_
 | `scheme` | Configures the protocol scheme used for requests.<br />If empty, use HTTP by default. | _string_ | false |
 | `scrapeInterval` | ScrapeInterval is the interval between consecutive scrapes. | _string_ | false |
 | `scrapeTimeout` | ScrapeTimeout is the number of seconds to wait until a scrape request times out. | _string_ | false |
+| `scrape_protocols` | ScrapeProtocols defines Prometheus scrape protocol. | _string array_ | false |
 | `seriesLimit` | SeriesLimit defines per-scrape limit on number of unique time series<br />a single target can expose during all the scrapes on the time window of 24h. | _integer_ | false |
 | `staticConfigs` | StaticConfigs defines a list of static targets with a common label set. | _[StaticConfig](#staticconfig) array_ | false |
 | `tlsConfig` | TLS configuration to use on every scrape request | _[TLSConfig](#tlsconfig)_ | false |

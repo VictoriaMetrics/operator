@@ -16602,7 +16602,7 @@ spec:
                   one of scrape_interval or interval can be used
                 type: string
               scrapeTimeout:
-                description: Timeout after which the scrape is ended
+                description: ScrapeTimeout after which the scrape is ended
                 type: string
               selector:
                 description: Selector to select kubernetes Nodes.
@@ -17676,7 +17676,7 @@ spec:
                         one of scrape_interval or interval can be used
                       type: string
                     scrapeTimeout:
-                      description: Timeout after which the scrape is ended
+                      description: ScrapeTimeout after which the scrape is ended
                       type: string
                     seriesLimit:
                       description: |-
@@ -23134,6 +23134,11 @@ spec:
                 - HTTP
                 - HTTPS
                 type: string
+              scrape_protocols:
+                description: ScrapeProtocols defines Prometheus scrape protocol.
+                items:
+                  type: string
+                type: array
               scrapeInterval:
                 description: ScrapeInterval is the interval between consecutive scrapes.
                 type: string
@@ -24171,7 +24176,7 @@ spec:
                         one of scrape_interval or interval can be used
                       type: string
                     scrapeTimeout:
-                      description: Timeout after which the scrape is ended
+                      description: ScrapeTimeout after which the scrape is ended
                       type: string
                     seriesLimit:
                       description: |-
@@ -26924,7 +26929,7 @@ spec:
                         one of scrape_interval or interval can be used
                       type: string
                     scrapeTimeout:
-                      description: Timeout after which the scrape is ended
+                      description: ScrapeTimeout after which the scrape is ended
                       type: string
                     seriesLimit:
                       description: |-

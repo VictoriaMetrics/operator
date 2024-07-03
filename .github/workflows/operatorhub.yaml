@@ -62,7 +62,7 @@ jobs:
           author: Github Actions <github@victoriametrics.com>
           path: __k8s-operatorhub-repo
           push-to-fork: ${{ matrix.repo.fork }}
-          branch: vm-operator-release-{{ steps.update.outputs.VERSION }}
+          branch: vm-operator-release-${{ steps.update.outputs.VERSION }}
           token: ${{ secrets.VM_BOT_GH_TOKEN }}
           delete-branch: true
           title: "victoriametrics-operator: update operator ${{ steps.update.outputs.VERSION }}"

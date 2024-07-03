@@ -96,6 +96,7 @@ docs: envconfig-docs crd-ref-docs manifests
 	mv out.md docs/api.md
 	cat docs/headers/vars.md > docs/vars.md
 	$(ENVCONFIG_DOCS) --input internal/config/config.go --truncate=false >> docs/vars.md
+	sed -i '/updated at/d' docs/vars.md
 
 .PHONY: fmt
 fmt: ## Run go fmt against code.

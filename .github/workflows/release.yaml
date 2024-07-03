@@ -10,24 +10,36 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+      - name: Restore binaries from cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ./bin
+          key: binary
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
           go-version: "1.22"
         id: go
-      - name: build binary
+      - name: lint, test and build
         env:
           TAG: ${{ github.event.release.tag_name }}
         run: |
           make lint
           make test
           make build
-      - name: build crosscompile and push to remote registry
-        env:
-          TAG: "${{ github.event.release.tag_name }}"
-        run: |
           echo ${{secrets.REPO_KEY}} | docker login --username ${{secrets.REPO_USER}} --password-stdin
           make publish
+          TAG=${TAG} make olm
+      - name: Prapare binary cache
+        uses: actions/cache@v4
+        with:
+          path: ./bin
+          key: binary
+      - uses: actions/upload-artifact@v4
+        with:
+          name: olm
+          path: bundle
+          retention-days: 1
       - name: Upload Release CRDs
         id: upload-release-crds
         uses: actions/upload-release-asset@v1
@@ -35,6 +47,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ github.event.release.upload_url }}
-          asset_path: ./release/crds/crd.yaml
+          asset_path: ./config/crd/overlay/crd.yaml
           asset_name: crd.yaml
           asset_content_type: application/yaml

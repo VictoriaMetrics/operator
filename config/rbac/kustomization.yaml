@@ -13,6 +13,8 @@ resources:
 # default, aiding admins in cluster management. Those roles are
 # not used by the Project itself. You can comment the following lines
 # if you do not want those helpers be installed with your Project.
+- operator_vmscrapeconfig_editor_role.yaml
+- operator_vmscrapeconfig_viewer_role.yaml
 - operator_vmauth_editor_role.yaml
 - operator_vmauth_viewer_role.yaml
 - operator_vmuser_editor_role.yaml
@@ -41,3 +43,5 @@ resources:
 - operator_vmalert_viewer_role.yaml
 - operator_vmagent_editor_role.yaml
 - operator_vmagent_viewer_role.yaml
+
+

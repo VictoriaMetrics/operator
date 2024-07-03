@@ -1,8 +1,10 @@
 # Image URL to use all building/pushing image targets
 REGISTRY ?= docker.io
 REPO ?= operator
+ROOT ?= ./cmd
 ORG ?= victoriametrics
 TAG ?= v0.46.0
+VERSION ?= $(TAG:v%=%)
 NAMESPACE ?= vm
 BUILDINFO_TAG ?= $(shell echo $$(git describe --long --all | tr '/' '-')$$( \
 	git diff-index --quiet HEAD -- || echo '-dirty-'$$(git diff-index -u HEAD | openssl sha1 | cut -d' ' -f2 | cut -c 1-8)))
@@ -10,6 +12,7 @@ OVERLAY ?= config/default
 
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.30.0
+PLATFORM = $(shell uname -o)
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -136,6 +139,7 @@ run: manifests generate fmt vet ## Run a controller from your host.
 docker-build: ## Build docker image with the manager.
 	$(CONTAINER_TOOL) build \
 		--build-arg REPO=$(REPO) \
+		--build-arg ROOT=$(ROOT) \
 		${DOCKER_BUILD_ARGS} \
 		-t $(REGISTRY)/$(ORG)/$(REPO):$(TAG) \
 		-t $(REGISTRY)/$(ORG)/$(REPO):$(BUILDINFO_TAG) .
@@ -164,6 +168,7 @@ docker-buildx: ## Build and push docker image for the manager for cross-platform
 		--push \
 		--platform=$(PLATFORMS) \
 		--build-arg REPO=$(REPO) \
+		--build-arg ROOT=$(ROOT) \
 		${DOCKER_BUILD_ARGS} \
 		--tag $(REGISTRY)/$(ORG)/$(REPO):$(TAG) \
 		--tag $(REGISTRY)/$(ORG)/$(REPO):$(BUILDINFO_TAG) \
@@ -172,14 +177,25 @@ docker-buildx: ## Build and push docker image for the manager for cross-platform
 	rm Dockerfile.cross
 
 publish:
-	REPO=operator $(MAKE) docker-buildx
-	REPO=config-reloader $(MAKE) docker-buildx
+	REPO=operator ROOT=./cmd $(MAKE) docker-buildx
+	REPO=config-reloader ROOT=./cmd/config-reloader $(MAKE) docker-buildx
 
 .PHONY: build-installer
 build-installer: manifests generate kustomize ## Generate a consolidated YAML with CRDs and deployment.
 	mkdir -p dist
 	cd config/manager && $(KUSTOMIZE) edit set image manager=$(REGISTRY)/$(ORG)/$(REPO):$(TAG)
 	$(KUSTOMIZE) build config/default > dist/install.yaml
+
+olm: operator-sdk docs
+	rm -rf bundle*
+	$(OPERATOR_SDK) generate kustomize manifests -q
+	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle \
+		-q --overwrite --version $(VERSION) --channels=beta --output-dir=bundle/$(VERSION)
+	$(if $(findstring $(PLATFORM),Darwin), \
+		sed -i '', \
+		sed -i) 's/$(ORG)\/$(REPO):.*/$(ORG)\/$(REPO):$(TAG)/g' bundle/$(VERSION)/manifests/*
+	$(OPERATOR_SDK) bundle validate ./bundle/$(VERSION)
+	cp config/manifests/ci.yaml bundle/
 
 ##@ Deployment
 
@@ -237,6 +253,7 @@ CLIENT_GEN = $(LOCALBIN)/client-gen-$(CODEGENERATOR_VERSION)
 LISTER_GEN = $(LOCALBIN)/lister-gen-$(CODEGENERATOR_VERSION)
 INFORMER_GEN = $(LOCALBIN)/informer-gen-$(CODEGENERATOR_VERSION)
 KIND = $(LOCALBIN)/kind-$(KIND_VERSION)
+OPERATOR_SDK = $(LOCALBIN)/operator-sdk-$(OPERATOR_SDK_VERSION)
 ENVCONFIG_DOCS = $(LOCALBIN)/envconfig-docs-$(ENVCONFIG_DOCS_VERSION)
 CRD_REF_DOCS = $(LOCALBIN)/crd-ref-docs-$(CRD_REF_DOCS_VERSION)
 
@@ -247,6 +264,7 @@ ENVTEST_VERSION ?= release-0.18
 GOLANGCI_LINT_VERSION ?= v1.59.1
 CODEGENERATOR_VERSION ?= v0.30.2
 KIND_VERSION ?= v0.23.0
+OPERATOR_SDK_VERSION ?= v1.35.0
 ENVCONFIG_DOCS_VERSION ?= latest
 CRD_REF_DOCS_VERSION ?= latest
 
@@ -292,6 +310,11 @@ $(INFORMER_GEN): $(LOCALBIN)
 envtest: $(ENVTEST) ## Download setup-envtest locally if necessary.
 $(ENVTEST): $(LOCALBIN)
 	$(call go-install-tool,$(ENVTEST),sigs.k8s.io/controller-runtime/tools/setup-envtest,$(ENVTEST_VERSION))
+
+.PHONY: operator-sdk
+operator-sdk: $(OPERATOR_SDK)
+$(OPERATOR_SDK): $(LOCALBIN)
+	$(call go-install-tool,$(OPERATOR_SDK),github.com/operator-framework/operator-sdk/cmd/operator-sdk,$(OPERATOR_SDK_VERSION))
 
 .PHONY: golangci-lint
 golangci-lint: $(GOLANGCI_LINT) ## Download golangci-lint locally if necessary.

@@ -27,10 +27,10 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	operatorv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
-var _ = Describe("VMRule Controller", func() {
+var _ = Describe("VMScrapeConfig Controller", func() {
 	Context("When reconciling a resource", func() {
 		const resourceName = "test-resource"
 
@@ -40,13 +40,13 @@ var _ = Describe("VMRule Controller", func() {
 			Name:      resourceName,
 			Namespace: "default", // TODO(user):Modify as needed
 		}
-		vmrule := &vmv1beta1.VMRule{}
+		vmscrapeconfig := &operatorv1beta1.VMScrapeConfig{}
 
 		BeforeEach(func() {
-			By("creating the custom resource for the Kind VMRule")
-			err := k8sClient.Get(ctx, typeNamespacedName, vmrule)
+			By("creating the custom resource for the Kind VMScrapeConfig")
+			err := k8sClient.Get(ctx, typeNamespacedName, vmscrapeconfig)
 			if err != nil && errors.IsNotFound(err) {
-				resource := &vmv1beta1.VMRule{
+				resource := &operatorv1beta1.VMScrapeConfig{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceName,
 						Namespace: "default",
@@ -59,16 +59,16 @@ var _ = Describe("VMRule Controller", func() {
 
 		AfterEach(func() {
 			// TODO(user): Cleanup logic after each test, like removing the resource instance.
-			resource := &vmv1beta1.VMRule{}
+			resource := &operatorv1beta1.VMScrapeConfig{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			Expect(err).NotTo(HaveOccurred())
 
-			By("Cleanup the specific resource instance VMRule")
+			By("Cleanup the specific resource instance VMScrapeConfig")
 			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
 		})
 		It("should successfully reconcile the resource", func() {
 			By("Reconciling the created resource")
-			controllerReconciler := &VMRuleReconciler{
+			controllerReconciler := &VMScrapeConfigReconciler{
 				Client:       k8sClient,
 				OriginScheme: k8sClient.Scheme(),
 			}

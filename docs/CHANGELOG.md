@@ -13,6 +13,8 @@ aliases:
 ---
 # CHANGELOG
 
+## [v0.46.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.46.0) - 3 Jul 2024
+
 ### Breaking changes
 
 - **Update note 1: the `--metrics-addr` command-line flag at `operator` was deprecated. Use `--metrics-bind-address` instead.**
@@ -831,6 +833,7 @@ aliases:
 - Adds rate limiting for `VMAgent` and `VMAlert` reconcilation <https://github.com/VictoriaMetrics/operator/commit/dfb6a14e1193089ba5ab112e0acf4e459aba68b4>
 
 ### New Contributors
+
 - [@pavan541cs](https://github.com/pavan541cs) made their first contribution in <https://github.com/VictoriaMetrics/operator/pull/473>
 - [@gotosre](https://github.com/gotosre) made their first contribution in <https://github.com/VictoriaMetrics/operator/pull/475>
 

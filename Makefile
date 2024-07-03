@@ -126,11 +126,11 @@ lint-fix: golangci-lint ## Run golangci-lint linter and perform fixes
 
 .PHONY: build
 build: docs generate fmt vet ## Build manager binary.
-	go build -o bin/$(REPO) ./cmd/$(REPO)/...
+	go build -o bin/$(REPO) $(ROOT)/
 
 .PHONY: run
 run: manifests generate fmt vet ## Run a controller from your host.
-	go run ./cmd/$(REPO)/...
+	go run $(ROOT)/
 
 # If you wish to build the manager image targeting other platforms you can use the --platform flag.
 # (i.e. docker build --platform linux/arm64). However, you must enable docker buildKit for it.
@@ -144,8 +144,11 @@ docker-build: ## Build docker image with the manager.
 		-t $(REGISTRY)/$(ORG)/$(REPO):$(TAG) \
 		-t $(REGISTRY)/$(ORG)/$(REPO):$(BUILDINFO_TAG) .
 
-build-%:
-	REPO=$* $(MAKE) build
+build-operator:
+	REPO=operator ROOT=./cmd $(MAKE) build
+
+build-config-reloader:
+	REPO=config-reloader ROOT=./cmd/config-reloader $(MAKE) build
 
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.

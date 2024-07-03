@@ -42,11 +42,10 @@ jobs:
           retention-days: 1
       - name: Upload Release CRDs
         id: upload-release-crds
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: svenstaro/upload-release-action@v2
         with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: ./config/crd/overlay/crd.yaml
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ github.event.release.tag_name }}
+          file: ./config/crd/overlay/crd.yaml
+          overwrite: true
           asset_name: crd.yaml
-          asset_content_type: application/yaml

@@ -17684,6 +17684,14 @@ spec:
                         a single target can expose during all the scrapes on the time window of 24h.
                       format: int64
                       type: integer
+                    targetPort:
+                      anyOf:
+                      - type: integer
+                      - type: string
+                      description: |-
+                        TargetPort
+                        Name or number of the pod port this endpoint refers to. Mutually exclusive with port.
+                      x-kubernetes-int-or-string: true
                     tlsConfig:
                       description: TLSConfig configuration to use when scraping the
                         endpoint

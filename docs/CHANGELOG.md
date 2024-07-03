@@ -13,6 +13,8 @@ aliases:
 ---
 # CHANGELOG
 
+- [api](./api.md): return back `targetPort` for `VMPodScrape` definition. See this [issue](https://github.com/VictoriaMetrics/operator/issues/1015) for details.
+
 ## [v0.46.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.46.0) - 3 Jul 2024
 
 ### Breaking changes

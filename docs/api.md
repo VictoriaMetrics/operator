@@ -1221,6 +1221,7 @@ _Appears in:_
 | `scrapeTimeout` | Timeout after which the scrape is ended | _string_ | false |
 | `scrape_interval` | ScrapeInterval is the same as Interval and has priority over it.<br />one of scrape_interval or interval can be used | _string_ | false |
 | `seriesLimit` | SeriesLimit defines per-scrape limit on number of unique time series<br />a single target can expose during all the scrapes on the time window of 24h. | _integer_ | false |
+| `targetPort` | TargetPort<br />Name or number of the pod port this endpoint refers to. Mutually exclusive with port. | _[IntOrString](#intorstring)_ | false |
 | `tlsConfig` | TLSConfig configuration to use when scraping the endpoint | _[TLSConfig](#tlsconfig)_ | false |
 | `vm_scrape_params` | VMScrapeParams defines VictoriaMetrics specific scrape parameters | _[VMScrapeParams](#vmscrapeparams)_ | false |
 

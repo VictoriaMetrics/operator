@@ -190,6 +190,7 @@ func convertEndpoint(promEndpoint []promv1.Endpoint) []vmv1beta1.Endpoint {
 	for _, endpoint := range promEndpoint {
 		ep := vmv1beta1.Endpoint{
 			Port:                 endpoint.Port,
+			TargetPort:           endpoint.TargetPort,
 			Path:                 endpoint.Path,
 			Scheme:               endpoint.Scheme,
 			Params:               endpoint.Params,
@@ -205,6 +206,12 @@ func convertEndpoint(promEndpoint []promv1.Endpoint) []vmv1beta1.Endpoint {
 			OAuth2:               ConvertOAuth(endpoint.OAuth2),
 			FollowRedirects:      endpoint.FollowRedirects,
 			Authorization:        ConvertAuthorization(endpoint.Authorization, nil),
+			// Unless prometheus deletes BearerTokenFile, we have to support it for backward compatibility
+			//nolint:staticcheck
+			BearerTokenFile: ReplacePromDirPath(endpoint.BearerTokenFile),
+			// Unless prometheus deletes BearerTokenSecret, we have to support it for backward compatibility
+			//nolint:staticcheck
+			BearerTokenSecret: convertBearerToken(endpoint.BearerTokenSecret),
 		}
 
 		endpoints = append(endpoints, ep)
@@ -319,7 +326,13 @@ func convertPodEndpoints(promPodEnpoints []promv1.PodMetricsEndpoint) []vmv1beta
 			safeTLS = promEndPoint.TLSConfig
 		}
 		ep := vmv1beta1.PodMetricsEndpoint{
-			Port:                 promEndPoint.Port,
+			Port: promEndPoint.Port,
+			// Unless prometheus deletes TargetPort, we have to support it for backward compatibility
+			//nolint:staticcheck
+			TargetPort: promEndPoint.TargetPort,
+			// Unless prometheus deletes BearerTokenSecret, we have to support it for backward compatibility
+			//nolint:staticcheck
+			BearerTokenSecret:    convertBearerToken(&promEndPoint.BearerTokenSecret),
 			Interval:             string(promEndPoint.Interval),
 			Path:                 promEndPoint.Path,
 			Scheme:               promEndPoint.Scheme,

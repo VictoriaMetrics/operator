@@ -35,6 +35,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ github.event.release.upload_url }}
-          asset_path: ./release/crds/crd.yaml
+          asset_path: ./config/crd/overlay/crd.yaml
           asset_name: crd.yaml
           asset_content_type: application/yaml

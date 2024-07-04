@@ -2,115 +2,18 @@ apiVersion: operators.coreos.com/v1alpha1
 kind: ClusterServiceVersion
 metadata:
   annotations:
-    alm-examples: |
-      [
-        {
-           "apiVersion": "operator.victoriametrics.com/v1beta1",
-           "kind": "VMAgent",
-           "metadata": {
-             "name": "example"
-           },
-           "spec": {
-             "remoteWrite": [
-               {
-                 "url": "http://vmsingle.example.com/"
-               }
-             ]
-           }
-         },
-         {
-           "apiVersion": "operator.victoriametrics.com/v1beta1",
-           "kind": "VMSingle",
-           "metadata": {
-             "name": "example"
-           },
-           "spec": {
-             "retentionPeriod": "1h"
-           }
-         },
-         {
-           "apiVersion": "operator.victoriametrics.com/v1beta1",
-           "kind": "VMCluster",
-           "metadata": {
-             "name": "example"
-           },
-           "spec": {
-             "retentionPeriod": "1h"
-           }
-         },
-         {
-           "apiVersion": "operator.victoriametrics.com/v1beta1",
-           "kind": "VMPodScrape",
-           "metadata": {
-             "name": "example"
-           },
-           "spec": {
-             "namespaceSelector": {
-               "any": true
-             }
-           }
-         },
-         {
-           "apiVersion": "operator.victoriametrics.com/v1beta1",
-           "kind": "VMNodeScrape",
-           "metadata": {
-             "name": "example"
-           },
-           "spec": {
-             "scheme": "https",
-             "tlsConfig": {
-               "insecureSkipVerify": true,
-               "caFile": "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-             },
-             "bearerTokenFile": "/var/run/secrets/kubernetes.io/serviceaccount/token"
-           }
-         },
-         {
-           "apiVersion": "operator.victoriametrics.com/v1beta1",
-           "kind": "VMStaticScrape",
-           "metadata": {
-             "name": "example"
-           },
-           "spec": {
-             "jobName": "static",
-             "targetEndpoints": [
-               {
-                 "targets": ["192.168.0.1:9100", "196.168.0.50:9100"],
-                 "labels": {
-                   "env": "dev",
-                   "project": "operator"
-                 }
-               }
-             ]
-           }
-         },
-         {
-           "apiVersion": "operator.victoriametrics.com/v1beta1",
-           "kind": "VMServiceScrape",
-           "metadata": {
-             "name": "example"
-           },
-           "spec": {
-             "selector": {
-               "matchLabels": {
-                 "app": "example-app"
-               }
-             },
-             "endpoints": [
-               {
-                 "port": "web"
-               }
-             ]
-           }
-         }
-       ]
+    alm-examples: '[]'
     capabilities: Deep Insights
     categories: Monitoring
     certified: "false"
+    com.redhat.openshift.versions: v4.12-v4.16
     containerImage: docker.io/victoriametrics/operator:0.0.0
     createdAt: "2020-05-01 12:00:00"
     description: Provides monitoring capabilites for kubernetes clusters and applications
-    operators.operatorframework.io/builder: operator-sdk-v1.0.0
+    operatorhub.io/ui-metadata-max-k8s-version: "1.30"
+    operators.operatorframework.io.bundle.channel.default.v1: beta
+    operators.operatorframework.io.bundle.channels.v1: beta
+    operators.operatorframework.io/builder: operator-sdk-v1.35.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
     repository: https://github.com/VictoriaMetrics/operator
     support: VictoriaMetrics
@@ -566,7 +469,7 @@ spec:
           - /metrics
           verbs:
           - get
-        serviceAccountName: vmagent
+        serviceAccountName: vm-operator
       deployments: null
     strategy: ""
   installModes:
@@ -591,7 +494,8 @@ spec:
   - email: info@victoriametrics.com
     name: info
   maturity: beta
-  minKubeVersion: 1.27.0
+  minKubeVersion: 1.23.0
   provider:
     name: VictoriaMetrics
+  replaces: victoriametrics-operator.v0.0.0
   version: 0.0.0

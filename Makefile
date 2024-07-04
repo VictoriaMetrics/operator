@@ -1,13 +1,12 @@
 # Image URL to use all building/pushing image targets
 REGISTRY ?= docker.io
-REPO ?= operator
+REPO = operator
 ROOT ?= ./cmd
 ORG ?= victoriametrics
-TAG ?= v0.46.0
-VERSION ?= $(TAG:v%=%)
-NAMESPACE ?= vm
-BUILDINFO_TAG ?= $(shell echo $$(git describe --long --all | tr '/' '-')$$( \
+TAG ?= $(shell echo $$(git describe --long --all | tr '/' '-')$$( \
 	git diff-index --quiet HEAD -- || echo '-dirty-'$$(git diff-index -u HEAD | openssl sha1 | cut -d' ' -f2 | cut -c 1-8)))
+VERSION ?= $(if $(findstring $(TAG),$(TAG:v%=%)),0.0.1,$(TAG:v%=%))
+NAMESPACE ?= vm
 OVERLAY ?= config/default
 
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
@@ -139,17 +138,15 @@ run: manifests generate fmt vet ## Run a controller from your host.
 .PHONY: docker-build
 docker-build: ## Build docker image with the manager.
 	$(CONTAINER_TOOL) build \
-		--build-arg REPO=$(REPO) \
 		--build-arg ROOT=$(ROOT) \
 		${DOCKER_BUILD_ARGS} \
-		-t $(REGISTRY)/$(ORG)/$(REPO):$(TAG) \
-		-t $(REGISTRY)/$(ORG)/$(REPO):$(BUILDINFO_TAG) .
+		-t $(REGISTRY)/$(ORG)/$(REPO):$(TAG) .
 
 build-operator:
-	REPO=operator ROOT=./cmd $(MAKE) build
+	ROOT=./cmd $(MAKE) build
 
 build-config-reloader:
-	REPO=config-reloader ROOT=./cmd/config-reloader $(MAKE) build
+	ROOT=./cmd/config-reloader $(MAKE) build
 
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.
@@ -171,18 +168,16 @@ docker-buildx: ## Build and push docker image for the manager for cross-platform
 	- $(CONTAINER_TOOL) buildx build \
 		--push \
 		--platform=$(PLATFORMS) \
-		--build-arg REPO=$(REPO) \
 		--build-arg ROOT=$(ROOT) \
 		${DOCKER_BUILD_ARGS} \
 		--tag $(REGISTRY)/$(ORG)/$(REPO):$(TAG) \
-		--tag $(REGISTRY)/$(ORG)/$(REPO):$(BUILDINFO_TAG) \
 		-f Dockerfile.cross .
 	- $(CONTAINER_TOOL) buildx rm vm-builder
 	rm Dockerfile.cross
 
 publish:
-	REPO=operator ROOT=./cmd $(MAKE) docker-buildx
-	REPO=config-reloader ROOT=./cmd/config-reloader $(MAKE) docker-buildx
+	ROOT=./cmd $(MAKE) docker-buildx
+	TAG=config-reloader-$(TAG) ROOT=./cmd/config-reloader $(MAKE) docker-buildx
 
 .PHONY: build-installer
 build-installer: manifests generate kustomize ## Generate a consolidated YAML with CRDs and deployment.
@@ -230,10 +225,10 @@ load-kind: docker-build kind
 	else \
 		$(KUBECTL) cluster-info --context kind-kind; \
 	fi; \
-        $(KIND) load docker-image $(REGISTRY)/$(ORG)/$(REPO):$(BUILDINFO_TAG)
+        $(KIND) load docker-image $(REGISTRY)/$(ORG)/$(REPO):$(TAG)
 
 deploy-kind: load-kind
-	TAG=$(BUILDINFO_TAG) $(MAKE) deploy
+	$(MAKE) deploy
 
 undeploy-kind: load-kind
 	OVERLAY=config/kind $(MAKE) undeploy

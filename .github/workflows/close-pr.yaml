@@ -1,0 +1,28 @@
+name: Close PR
+
+on:
+  workflow_dispatch:
+    inputs:
+      repo:
+        description: Repo slug where PR should be closed
+        required: true
+        type: choice
+        options:
+          - k8s-operatorhub/community-operators
+          - redhat-openshift-ecosystem/community-operators-prod
+      prNumber:
+        description: PR number to close
+        required: true
+        type: string
+
+jobs:
+  update:
+    name: Close PR
+    runs-on: ubuntu-latest
+    steps:
+      - name: Close PR
+        uses: actions/checkout@v4
+        run: |
+          gh pr https://github.com/${{ github.event.inputs.repo }}/pull/${{ github.event.inputs.prNumber }}
+        env:
+          GH_TOKEN: ${{ secrets.VM_BOT_GH_TOKEN }}

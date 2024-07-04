@@ -176,7 +176,7 @@ docker-buildx: ## Build and push docker image for the manager for cross-platform
 	rm Dockerfile.cross
 
 publish:
-	#ROOT=./cmd $(MAKE) docker-buildx
+	ROOT=./cmd $(MAKE) docker-buildx
 	TAG=config-reloader-$(TAG) ROOT=./cmd/config-reloader $(MAKE) docker-buildx
 
 .PHONY: build-installer

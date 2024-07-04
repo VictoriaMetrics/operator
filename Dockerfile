@@ -1,4 +1,3 @@
-ARG REPO
 ARG ROOT
 
 # Build the manager binary
@@ -18,7 +17,6 @@ RUN go mod download
 COPY cmd/ cmd/
 COPY api/ api/
 COPY internal/ internal/
-ARG REPO
 ARG ROOT
 
 # Build

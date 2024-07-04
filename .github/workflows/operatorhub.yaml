@@ -57,7 +57,7 @@ jobs:
         uses: peter-evans/create-pull-request@v6
         with:
           add-paths: operators/victoriametrics-operator
-          commit-message: victoriametrics-operator: ${{ steps.update.outputs.VERSION }}
+          commit-message: 'victoriametrics-operator: ${{ steps.update.outputs.VERSION }}'
           signoff: true
           author: Github Actions <github@victoriametrics.com>
           path: __k8s-operatorhub-repo

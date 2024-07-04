@@ -22,6 +22,6 @@ jobs:
     steps:
       - name: Close PR
         run: |
-          gh pr https://github.com/${{ github.event.inputs.repo }}/pull/${{ github.event.inputs.prNumber }}
+          gh pr close https://github.com/${{ github.event.inputs.repo }}/pull/${{ github.event.inputs.prNumber }}
         env:
           GH_TOKEN: ${{ secrets.VM_BOT_GH_TOKEN }}

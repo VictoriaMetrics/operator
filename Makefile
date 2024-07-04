@@ -188,9 +188,11 @@ build-installer: manifests generate kustomize ## Generate a consolidated YAML wi
 olm: operator-sdk docs
 	rm -rf bundle*
 	$(OPERATOR_SDK) generate kustomize manifests -q
+	cd config/manifests && \
+		$(KUSTOMIZE) edit set image manager=$(REGISTRY)/$(ORG)/$(REPO):v$(VERSION)
 	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle \
-		-q --overwrite --version $(VERSION) --channels=beta --output-dir=bundle/$(VERSION)
-	sed -i 's/$(ORG)\/$(REPO):.*/$(ORG)\/$(REPO):$(TAG)/g' bundle/$(VERSION)/manifests/*
+		-q --overwrite --version $(VERSION) \
+		--channels=beta --default-channel=beta --output-dir=bundle/$(VERSION)
 	$(OPERATOR_SDK) bundle validate ./bundle/$(VERSION)
 	cp config/manifests/ci.yaml bundle/
 

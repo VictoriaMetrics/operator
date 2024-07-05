@@ -1,6 +1,7 @@
 resources:
 - ../examples
 - ../default
+- scorecard.yaml
 patches:
 - patch: |-
     $patch: delete

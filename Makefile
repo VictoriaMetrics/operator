@@ -266,7 +266,7 @@ load-kind: docker-build kind operator-sdk
 	fi
 
 deploy-kind:
-	OVERLAY=config/manager REGISTRY=localhost:$(LOCAL_REGISTRY_PORT) $(MAKE) load-kind docker-push deploy
+	OVERLAY=config/default REGISTRY=localhost:$(LOCAL_REGISTRY_PORT) $(MAKE) load-kind docker-push deploy
 
 deploy-kind-olm:
 	cd config/olm && \

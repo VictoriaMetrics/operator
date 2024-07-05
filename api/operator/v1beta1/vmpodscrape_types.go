@@ -19,6 +19,9 @@ type VMPodScrapeSpec struct {
 	// A list of endpoints allowed as part of this PodMonitor.
 	PodMetricsEndpoints []PodMetricsEndpoint `json:"podMetricsEndpoints"`
 	// Selector to select Pod objects.
+	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors=true
+	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors.displayName="Pod selector"
+	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors.x-descriptors="urn:alm:descriptor:com.tectonic.ui:selector:"
 	// +optional
 	Selector metav1.LabelSelector `json:"selector,omitempty"`
 	// Selector to select which namespaces the Endpoints objects are discovered from.
@@ -42,6 +45,7 @@ type VMPodScrapeStatus struct{}
 // VMPodScrape is scrape configuration for pods,
 // it generates vmagent's config for scraping pod targets
 // based on selectors.
+// +operator-sdk:gen-csv:customresourcedefinitions.displayName="VMPodScrape"
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:path=vmpodscrapes,scope=Namespaced

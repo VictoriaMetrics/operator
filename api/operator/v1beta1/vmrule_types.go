@@ -128,6 +128,7 @@ type Rule struct {
 type VMRuleStatus struct{}
 
 // VMRule defines rule records for vmalert application
+// +operator-sdk:gen-csv:customresourcedefinitions.displayName="VMRule"
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:path=vmrules,scope=Namespaced

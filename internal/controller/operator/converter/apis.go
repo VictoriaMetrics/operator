@@ -235,37 +235,41 @@ func ConvertTLSConfig(tlsConf *promv1.TLSConfig) *vmv1beta1.TLSConfig {
 	if tlsConf == nil {
 		return nil
 	}
-	var insecureSkipVerify bool
+	tc := &vmv1beta1.TLSConfig{
+		CAFile:    ReplacePromDirPath(tlsConf.CAFile),
+		CA:        convertSecretOrConfigmap(tlsConf.CA),
+		CertFile:  ReplacePromDirPath(tlsConf.CertFile),
+		Cert:      convertSecretOrConfigmap(tlsConf.Cert),
+		KeyFile:   ReplacePromDirPath(tlsConf.KeyFile),
+		KeySecret: tlsConf.KeySecret,
+	}
+
 	if tlsConf.InsecureSkipVerify != nil {
-		insecureSkipVerify = *tlsConf.InsecureSkipVerify
+		tc.InsecureSkipVerify = *tlsConf.InsecureSkipVerify
 	}
-	var serverName string
 	if tlsConf.ServerName != nil {
-		serverName = *tlsConf.ServerName
+		tc.ServerName = *tlsConf.ServerName
 	}
-	return &vmv1beta1.TLSConfig{
-		CAFile:             ReplacePromDirPath(tlsConf.CAFile),
-		CA:                 convertSecretOrConfigmap(tlsConf.CA),
-		CertFile:           ReplacePromDirPath(tlsConf.CertFile),
-		Cert:               convertSecretOrConfigmap(tlsConf.Cert),
-		KeyFile:            ReplacePromDirPath(tlsConf.KeyFile),
-		KeySecret:          tlsConf.KeySecret,
-		InsecureSkipVerify: insecureSkipVerify,
-		ServerName:         serverName,
-	}
+	return tc
 }
 
 func convertSafeTLSConfig(tlsConf *promv1.SafeTLSConfig) *vmv1beta1.TLSConfig {
 	if tlsConf == nil {
 		return nil
 	}
-	return &vmv1beta1.TLSConfig{
-		CA:                 convertSecretOrConfigmap(tlsConf.CA),
-		Cert:               convertSecretOrConfigmap(tlsConf.Cert),
-		KeySecret:          tlsConf.KeySecret,
-		InsecureSkipVerify: *tlsConf.InsecureSkipVerify,
-		ServerName:         *tlsConf.ServerName,
+	tc := &vmv1beta1.TLSConfig{
+		CA:        convertSecretOrConfigmap(tlsConf.CA),
+		Cert:      convertSecretOrConfigmap(tlsConf.Cert),
+		KeySecret: tlsConf.KeySecret,
 	}
+	if tlsConf.InsecureSkipVerify != nil {
+		tc.InsecureSkipVerify = *tlsConf.InsecureSkipVerify
+	}
+	if tlsConf.ServerName != nil {
+		tc.ServerName = *tlsConf.ServerName
+	}
+
+	return tc
 }
 
 func convertSecretOrConfigmap(promSCM promv1.SecretOrConfigMap) vmv1beta1.SecretOrConfigMap {

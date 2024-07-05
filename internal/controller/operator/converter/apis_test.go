@@ -289,6 +289,29 @@ func TestConvertPodEndpoints(t *testing.T) {
 		want []vmv1beta1.PodMetricsEndpoint
 	}{
 		{
+			name: "with partial tls config",
+			args: args{promPodEnpoints: []promv1.PodMetricsEndpoint{
+				{
+					BearerTokenSecret: corev1.SecretKeySelector{},
+					TLSConfig: &promv1.SafeTLSConfig{
+						CA: promv1.SecretOrConfigMap{ConfigMap: &corev1.ConfigMapKeySelector{
+							Key: "ca",
+						}},
+					},
+				},
+			}},
+			want: []vmv1beta1.PodMetricsEndpoint{{
+				TLSConfig: &vmv1beta1.TLSConfig{
+					CA: vmv1beta1.SecretOrConfigMap{
+						ConfigMap: &corev1.ConfigMapKeySelector{
+							Key: "ca",
+						},
+					},
+				},
+			}},
+		},
+
+		{
 			name: "with tls config",
 			args: args{promPodEnpoints: []promv1.PodMetricsEndpoint{
 				{

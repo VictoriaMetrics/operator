@@ -1,0 +1,71 @@
+resources:
+- olm.yaml
+namespace: vm
+replacements:
+- source:
+    fieldPath: .metadata.namespace
+    group: operators.coreos.com
+    kind: OperatorGroup
+    name: operator
+    version: v1
+  targets:
+  - fieldPaths:
+    - .spec.targetNamespaces.0
+    options:
+      create: true
+    select:
+      kind: OperatorGroup
+  - fieldPaths:
+    - .spec.sourceNamespace
+    options:
+      create: true
+    select:
+      kind: Subscription
+- source:
+    fieldPath: .metadata.annotations.local-registry
+    group: operators.coreos.com
+    kind: OperatorGroup
+    name: operator
+    version: v1
+  targets:
+  - fieldPaths:
+    - .data.localRegistryHosting\.v1
+    options:
+      create: true
+      delimiter: '"'
+      index: 1
+    select:
+      kind: ConfigMap
+      name: local-registry-hosting
+      namespace: kube-public
+      version: v1
+  - fieldPaths:
+    - .spec.image
+    options:
+      create: true
+      delimiter: /
+    select:
+      kind: CatalogSource
+- source:
+    fieldPath: .metadata.annotations.local-test-image
+    group: operators.coreos.com
+    kind: CatalogSource
+    version: v1alpha1
+  targets:
+  - fieldPaths:
+    - .spec.image
+    options:
+      create: true
+      delimiter: /
+      index: 2
+    select:
+      kind: CatalogSource
+commonAnnotations:
+  local-registry: localhost:5001
+  local-test-image: operator-index:v0.0.5
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+images:
+- name: manager
+  newName: localhost:5001/victoriametrics/operator
+  newTag: v0.0.5

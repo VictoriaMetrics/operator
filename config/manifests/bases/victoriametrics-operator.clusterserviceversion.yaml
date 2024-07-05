@@ -497,5 +497,4 @@ spec:
   minKubeVersion: 1.23.0
   provider:
     name: VictoriaMetrics
-  replaces: victoriametrics-operator.v0.0.0
   version: 0.0.0

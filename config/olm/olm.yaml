@@ -1,0 +1,38 @@
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: operator
+  namespace: default
+spec:
+  targetNamespaces:
+  - default
+---
+apiVersion: operators.coreos.com/v1alpha1
+kind: CatalogSource
+metadata:
+  name: operator
+  namespace: default
+spec:
+  sourceType: grpc
+  image: docker.io/victoriametrics/operator:v0.0.0
+---
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: operator
+  namespace: default
+spec:
+  channel: beta
+  name: victoriametrics-operator
+  source: operator
+  sourceNamespace: default
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: local-registry-hosting
+  namespace: kube-public
+data:
+  localRegistryHosting.v1: |
+    host: "localhost:LOCAL_REGISTRY_PORT"
+    help: "https://kind.sigs.k8s.io/docs/user/local-registry/"

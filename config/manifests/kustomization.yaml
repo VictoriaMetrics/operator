@@ -1,9 +1,35 @@
 resources:
-- ../default
 - ../examples
+- ../default
+patches:
+- patch: |-
+    $patch: delete
+    apiVersion: v1
+    kind: ServiceAccount
+    metadata:
+      name: vmagent
+      namespace: vm
+- patch: |-
+    $patch: delete
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: ClusterRole
+    metadata:
+      name: vmagent
+- patch: |-
+    $patch: delete
+    apiVersion: v1
+    kind: Secret
+    metadata:
+      name: vmalertmanager-example-alertmanager
+- patch: |-
+    $patch: delete
+    kind: ClusterRoleBinding
+    apiVersion: rbac.authorization.k8s.io/v1
+    metadata:
+      name: vmagent
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 images:
 - name: manager
-  newName: localhost:5001/victoriametrics/operator
-  newTag: v0.0.5
+  newName: docker.io/victoriametrics/operator
+  newTag: v0.0.1

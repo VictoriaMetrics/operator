@@ -265,8 +265,8 @@ load-kind: docker-build kind operator-sdk
 		$(OPERATOR_SDK) olm install; \
 	fi
 
-deploy-kind: load-kind
-	OVERLAY=config/manager $(MAKE) deploy
+deploy-kind:
+	OVERLAY=config/manager REGISTRY=localhost:$(LOCAL_REGISTRY_PORT) $(MAKE) load-kind docker-push deploy
 
 deploy-kind-olm:
 	cd config/olm && \

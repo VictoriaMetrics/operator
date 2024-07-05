@@ -49,11 +49,11 @@ jobs:
           make docs
           # Sync markdown files and pictures
           rsync -zarv \
-		--include="*/" \
-		--include="*.png" \
-		--include="*.md" \
-		--exclude="*" \
-		docs/ ../__vm-docs-repo/docs/operator/
+            --include="*/" \
+            --include="*.png" \
+            --include="*.md" \
+            --exclude="*" \
+            docs/ ../__vm-docs-repo/docs/operator/
           echo "BUILDTIME=$(date +%s)" >> $GITHUB_OUTPUT
           echo "SHORT_SHA=$(git rev-parse --short $GITHUB_SHA)" >> $GITHUB_OUTPUT
         working-directory: __vm-operator-repo

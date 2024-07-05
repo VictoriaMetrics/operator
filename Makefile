@@ -7,7 +7,11 @@ TAG ?= $(shell echo $$(git describe --long --all | tr '/' '-')$$( \
 	git diff-index --quiet HEAD -- || echo '-dirty-'$$(git diff-index -u HEAD | openssl sha1 | cut -d' ' -f2 | cut -c 1-8)))
 VERSION ?= $(if $(findstring $(TAG),$(TAG:v%=%)),0.0.1,$(TAG:v%=%))
 NAMESPACE ?= vm
-OVERLAY ?= config/default
+OVERLAY ?= config/manager
+
+LOCAL_REGISTRY_NAME ?= kind-registry
+LOCAL_REGISTRY_PORT ?= 5001
+LOCAL_REGISTRY_DIR = "/etc/containerd/certs.d/localhost:$(LOCAL_REGISTRY_PORT)"
 
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.30.0
@@ -187,7 +191,7 @@ build-installer: manifests generate kustomize ## Generate a consolidated YAML wi
 	cd config/manager && $(KUSTOMIZE) edit set image manager=$(REGISTRY)/$(ORG)/$(REPO):$(TAG)
 	$(KUSTOMIZE) build config/default > dist/install.yaml
 
-olm: operator-sdk docs
+olm: operator-sdk opm yq docs
 	rm -rf bundle*
 	$(OPERATOR_SDK) generate kustomize manifests -q
 	cd config/manifests && \
@@ -197,6 +201,15 @@ olm: operator-sdk docs
 		--channels=beta --default-channel=beta --output-dir=bundle/$(VERSION)
 	$(OPERATOR_SDK) bundle validate ./bundle/$(VERSION)
 	cp config/manifests/ci.yaml bundle/
+	$(YQ) -i '.metadata.annotations.containerImage = "$(REGISTRY)/$(ORG)/$(REPO):v$(VERSION)"' \
+		bundle/$(VERSION)/manifests/victoriametrics-operator.clusterserviceversion.yaml
+	$(if $(findstring localhost,$(REGISTRY)), \
+		$(CONTAINER_TOOL) build -f bundle.Dockerfile -t $(REGISTRY)/$(ORG)/$(REPO)-bundle:v$(VERSION) .; \
+		$(CONTAINER_TOOL) push $(REGISTRY)/$(ORG)/$(REPO)-bundle:v$(VERSION); \
+		$(OPM) index add \
+			--bundles $(REGISTRY)/$(ORG)/$(REPO)-bundle:v$(VERSION) \
+			--tag $(REGISTRY)/$(ORG)/$(REPO)-index:v$(VERSION) -c docker; \
+		$(CONTAINER_TOOL) push $(REGISTRY)/$(ORG)/$(REPO)-index:v$(VERSION),)
 
 ##@ Deployment
 
@@ -214,9 +227,11 @@ uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified 
 
 .PHONY: deploy
 deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
-	cd config/manager && \
+	$(if $(NAMESPACE), \
+		$(KUBECTL) create ns $(NAMESPACE) --dry-run -o yaml | kubectl apply -f -,)
+	cd $(OVERLAY) && \
 		$(KUSTOMIZE) edit set image manager=$(REGISTRY)/$(ORG)/$(REPO):$(TAG)
-	$(KUSTOMIZE) build $(OVERLAY) | $(KUBECTL) apply -n $(NAMESPACE) -f -
+	$(KUSTOMIZE) build $(OVERLAY) | $(KUBECTL) apply $(if $(NAMESPACE),-n $(NAMESPACE),) -f -
 
 .PHONY: undeploy
 undeploy: kustomize ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
@@ -224,15 +239,37 @@ undeploy: kustomize ## Undeploy controller from the K8s cluster specified in ~/.
 
 # builds image and loads it into kind.
 load-kind: docker-build kind
+	if [ "$$($(CONTAINER_TOOL) inspect -f '{{.State.Running}}' "$(LOCAL_REGISTRY_NAME)" 2>/dev/null || true)" != 'true' ]; then \
+		$(CONTAINER_TOOL) run \
+			-d --restart=always \
+			-p "127.0.0.1:${LOCAL_REGISTRY_PORT}:5000" \
+			--network bridge --name "$(LOCAL_REGISTRY_NAME)" \
+			registry:2; \
+	fi;
 	if [ "`$(KIND) get clusters`" != "kind" ]; then \
-		$(KIND) create cluster; \
+		$(KIND) create cluster --config=./config/olm/kind.yaml; \
 	else \
 		$(KUBECTL) cluster-info --context kind-kind; \
 	fi; \
-        $(KIND) load docker-image $(REGISTRY)/$(ORG)/$(REPO):$(TAG)
+        $(KIND) load docker-image $(REGISTRY)/$(ORG)/$(REPO):$(TAG);
+	for node in $$($(KIND) get nodes); do \
+		$(CONTAINER_TOOL) exec "$${node}" mkdir -p "${LOCAL_REGISTRY_DIR}"; \
+		$(CONTAINER_TOOL) exec -i "$${node}" sh -c "echo '[host.\"http://$(LOCAL_REGISTRY_NAME):5000\"]' > $(LOCAL_REGISTRY_DIR)/hosts.toml"; \
+	done;
+	if [ "$$(docker inspect -f='{{json .NetworkSettings.Networks.kind}}' $(LOCAL_REGISTRY_NAME))" = 'null' ]; then \
+		$(CONTAINER_TOOL) network connect "kind" "$(LOCAL_REGISTRY_NAME)"; \
+	fi
+	if ! $(OPERATOR_SDK) olm status; then \
+		$(OPERATOR_SDK) olm install; \
+	fi
 
 deploy-kind: load-kind
-	$(MAKE) deploy
+	OVERLAY=config/manager $(MAKE) deploy
+
+deploy-kind-olm:
+	cd config/olm && \
+                $(KUSTOMIZE) edit set annotation local-test-image:$(REPO)-index:$(TAG)
+	OVERLAY=config/olm REGISTRY=localhost:$(LOCAL_REGISTRY_PORT) $(MAKE) load-kind olm docker-push deploy
 
 undeploy-kind: load-kind
 	OVERLAY=config/kind $(MAKE) undeploy
@@ -255,6 +292,8 @@ LISTER_GEN = $(LOCALBIN)/lister-gen-$(CODEGENERATOR_VERSION)
 INFORMER_GEN = $(LOCALBIN)/informer-gen-$(CODEGENERATOR_VERSION)
 KIND = $(LOCALBIN)/kind-$(KIND_VERSION)
 OPERATOR_SDK = $(LOCALBIN)/operator-sdk-$(OPERATOR_SDK_VERSION)
+OPM = $(LOCALBIN)/opm-$(OPM_VERSION)
+YQ = $(LOCALBIN)/yq-$(YQ_VERSION)
 ENVCONFIG_DOCS = $(LOCALBIN)/envconfig-docs-$(ENVCONFIG_DOCS_VERSION)
 CRD_REF_DOCS = $(LOCALBIN)/crd-ref-docs-$(CRD_REF_DOCS_VERSION)
 
@@ -266,6 +305,8 @@ GOLANGCI_LINT_VERSION ?= v1.59.1
 CODEGENERATOR_VERSION ?= v0.30.2
 KIND_VERSION ?= v0.23.0
 OPERATOR_SDK_VERSION ?= v1.35.0
+OPM_VERSION ?= v1.44.0
+YQ_VERSION ?= v4.44.2
 ENVCONFIG_DOCS_VERSION ?= 8751e7637eb33e51cf1fad58da911be868d9dafe
 CRD_REF_DOCS_VERSION ?= latest
 
@@ -317,6 +358,11 @@ operator-sdk: $(OPERATOR_SDK)
 $(OPERATOR_SDK): $(LOCALBIN)
 	$(call go-install-tool,$(OPERATOR_SDK),github.com/operator-framework/operator-sdk/cmd/operator-sdk,$(OPERATOR_SDK_VERSION))
 
+.PHONY: opm
+opm: $(OPM)
+$(OPM): $(LOCALBIN)
+	$(call go-install-tool,$(OPM),github.com/operator-framework/operator-registry/cmd/opm,$(OPM_VERSION))
+
 .PHONY: golangci-lint
 golangci-lint: $(GOLANGCI_LINT) ## Download golangci-lint locally if necessary.
 $(GOLANGCI_LINT): $(LOCALBIN)
@@ -326,6 +372,11 @@ $(GOLANGCI_LINT): $(LOCALBIN)
 kind: $(KIND)
 $(KIND): $(LOCALBIN)
 	$(call go-install-tool,$(KIND),sigs.k8s.io/kind,$(KIND_VERSION))
+
+.PHONY: yq
+yq: $(YQ)
+$(YQ): $(LOCALBIN)
+	$(call go-install-tool,$(YQ),github.com/mikefarah/yq/v4,$(YQ_VERSION))
 
 # go-install-tool will 'go install' any package with custom target and name of binary, if it doesn't exist
 # $1 - target path with name of binary (ideally with version)

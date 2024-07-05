@@ -3,12 +3,11 @@
 Dockerfile.cross
 .idea
 bin/
-build/_output
+build*
 bundle*
+release*
 operator.zip
 coverage.txt
-doc-print
-build/_test
 # Created by https://www.gitignore.io/api/go,vim,emacs,visualstudiocode
 ### Emacs ###
 # -*- mode: gitignore; -*-

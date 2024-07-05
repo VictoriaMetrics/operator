@@ -48,12 +48,11 @@ jobs:
       - name: Add operatorhub bundle
         id: update
         run: |
-          export VERSION=$(ls bundle | head -1)
+          VERSION=$(ls bundle | head -1)
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           export MANIFEST_PATH=bundle/${VERSION}/manifests/victoriametrics-operator.clusterserviceversion.yaml
           export REPLACE_VERSION=$(find __k8s-operatorhub-repo/operators/victoriametrics-operator/* -type d -exec basename {} \; | sort -V -r | head -1)
           yq -i '.spec.replaces = "victoriametrics-operator.v" + strenv(REPLACE_VERSION)' $MANIFEST_PATH
-          yq -i '.metadata.annotations.containerImage = "docker.io/victoriametrics/operator:v" + strenv(VERSION)' $MANIFEST_PATH
           mkdir -p __k8s-operatorhub-repo/operators/victoriametrics-operator
           mv bundle/* __k8s-operatorhub-repo/operators/victoriametrics-operator/
 

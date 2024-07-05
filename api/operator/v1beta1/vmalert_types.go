@@ -69,6 +69,7 @@ type VMAlertSpec struct {
 	// eventually make the size of the running cluster equal to the expected
 	// size.
 	// +optional
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Number of pods",xDescriptors="urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom"
 	ReplicaCount *int32 `json:"replicaCount,omitempty"`
 	// The number of old ReplicaSets to retain to allow rollback in deployment or
 	// maximum number of revisions that will be maintained in the StatefulSet's revision history.
@@ -86,6 +87,7 @@ type VMAlertSpec struct {
 	// +optional
 	VolumeMounts []v1.VolumeMount `json:"volumeMounts,omitempty"`
 	// Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resources",xDescriptors="urn:alm:descriptor:com.tectonic.ui:resourceRequirements"
 	// +optional
 	Resources v1.ResourceRequirements `json:"resources,omitempty"`
 	// Affinity If specified, the pod's scheduling constraints.
@@ -379,6 +381,10 @@ type VMAlertStatus struct {
 }
 
 // VMAlert  executes a list of given alerting or recording rules against configured address.
+// +operator-sdk:gen-csv:customresourcedefinitions.displayName="VMAlert App"
+// +operator-sdk:gen-csv:customresourcedefinitions.resources="Deployment,v1"
+// +operator-sdk:gen-csv:customresourcedefinitions.resources="Service,v1"
+// +operator-sdk:gen-csv:customresourcedefinitions.resources="Secret,v1"
 // +genclient
 // +k8s:openapi-gen=true
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

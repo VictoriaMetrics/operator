@@ -93,9 +93,11 @@ docs: envconfig-docs crd-ref-docs manifests
 		--templates-dir ./docs/templates/api \
 		--renderer markdown
 	mv out.md docs/api.md
-	cat docs/headers/vars.md > docs/vars.md
-	$(ENVCONFIG_DOCS) --input internal/config/config.go --truncate=false >> docs/vars.md
-	sed -i '/updated at/d' docs/vars.md
+	$(ENVCONFIG_DOCS) \
+		--header docs/templates/vars/vars.tpl \
+		--input internal/config/config.go \
+		--output docs/vars.md \
+		--truncate=false
 
 .PHONY: fmt
 fmt: ## Run go fmt against code.
@@ -264,7 +266,7 @@ GOLANGCI_LINT_VERSION ?= v1.59.1
 CODEGENERATOR_VERSION ?= v0.30.2
 KIND_VERSION ?= v0.23.0
 OPERATOR_SDK_VERSION ?= v1.35.0
-ENVCONFIG_DOCS_VERSION ?= latest
+ENVCONFIG_DOCS_VERSION ?= 8751e7637eb33e51cf1fad58da911be868d9dafe
 CRD_REF_DOCS_VERSION ?= latest
 
 .PHONY: kustomize

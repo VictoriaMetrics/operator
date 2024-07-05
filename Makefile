@@ -240,7 +240,7 @@ undeploy: kustomize ## Undeploy controller from the K8s cluster specified in ~/.
 	$(KUSTOMIZE) build $(OVERLAY) | $(KUBECTL) delete $(if $(NAMESPACE),-n $(NAMESPACE),) --ignore-not-found=$(ignore-not-found) -f -
 
 # builds image and loads it into kind.
-load-kind: docker-build kind
+load-kind: docker-build kind operator-sdk
 	if [ "$$($(CONTAINER_TOOL) inspect -f '{{.State.Running}}' "$(LOCAL_REGISTRY_NAME)" 2>/dev/null || true)" != 'true' ]; then \
 		$(CONTAINER_TOOL) run \
 			-d --restart=always \

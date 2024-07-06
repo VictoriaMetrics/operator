@@ -4,7 +4,8 @@ REPO = operator
 ROOT ?= ./cmd
 ORG ?= victoriametrics
 TAG ?= $(shell echo $$(git describe --long --all | tr '/' '-')$$( \
-	git diff-index --quiet HEAD -- || echo '-dirty-'$$(git diff-index -u HEAD | openssl sha1 | cut -d' ' -f2 | cut -c 1-8)))
+	git diff-index --quiet HEAD -- || echo '-dirty-'$$( \
+		git diff-index -u HEAD -- ':!config' ':!docs' | openssl sha1 | cut -d' ' -f2 | cut -c 1-8)))
 VERSION ?= $(if $(findstring $(TAG),$(TAG:v%=%)),0.0.1,$(TAG:v%=%))
 NAMESPACE ?= vm
 OVERLAY ?= config/manager
@@ -148,11 +149,11 @@ docker-build: ## Build docker image with the manager.
 		${DOCKER_BUILD_ARGS} \
 		-t $(REGISTRY)/$(ORG)/$(REPO):$(TAG) .
 
-build-operator:
-	ROOT=./cmd $(MAKE) build
+build-operator: ROOT=./cmd
+build-operator: build
 
-build-config-reloader:
-	ROOT=./cmd/config-reloader $(MAKE) build
+build-config-reloader: ROOT=./cmd/config-reloader
+build-config-reloader: build
 
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.
@@ -181,9 +182,11 @@ docker-buildx: ## Build and push docker image for the manager for cross-platform
 	- $(CONTAINER_TOOL) buildx rm vm-builder
 	rm Dockerfile.cross
 
-publish:
-	ROOT=./cmd $(MAKE) docker-buildx
-	TAG=config-reloader-$(TAG) ROOT=./cmd/config-reloader $(MAKE) docker-buildx
+publish: ROOT=./cmd
+publish: docker-buildx
+publish: TAG=config-reloader-$(TAG)
+publish: ROOT=./cmd/config-reloader
+publish: docker-buildx
 
 .PHONY: build-installer
 build-installer: manifests generate kustomize ## Generate a consolidated YAML with CRDs and deployment.
@@ -222,7 +225,7 @@ endif
 .PHONY: install
 install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~/.kube/config.
 	$(if $(NAMESPACE), \
-		$(KUBECTL) create ns $(NAMESPACE) --dry-run -o yaml | kubectl apply -f -,)
+		$(KUBECTL) create ns $(NAMESPACE) --dry-run=client -o yaml | kubectl apply -f -,)
 	$(KUSTOMIZE) build config/crd | $(KUBECTL) apply $(if $(NAMESPACE),-n $(NAMESPACE),) -f -
 
 .PHONY: uninstall
@@ -232,7 +235,7 @@ uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified 
 .PHONY: deploy
 deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
 	$(if $(NAMESPACE), \
-		$(KUBECTL) create ns $(NAMESPACE) --dry-run -o yaml | kubectl apply -f -,)
+		$(KUBECTL) create ns $(NAMESPACE) --dry-run=client -o yaml | kubectl apply -f -,)
 	cd $(OVERLAY) && \
 		$(KUSTOMIZE) edit set image manager=$(REGISTRY)/$(ORG)/$(REPO):$(TAG)
 	$(KUSTOMIZE) build $(OVERLAY) | $(KUBECTL) apply $(if $(NAMESPACE),-n $(NAMESPACE),) -f -
@@ -267,16 +270,22 @@ load-kind: docker-build kind operator-sdk
 		$(OPERATOR_SDK) olm install; \
 	fi
 
-deploy-kind:
-	OVERLAY=config/default REGISTRY=localhost:$(LOCAL_REGISTRY_PORT) $(MAKE) load-kind docker-push deploy
+kustomize-set-annotation:
+	cd $(OVERLAY) && \
+		$(KUSTOMIZE) edit set annotation $(ANNOTATION)
 
-deploy-kind-olm:
-	cd config/olm && \
-                $(KUSTOMIZE) edit set annotation local-test-image:$(REPO)-index:$(TAG)
-	OVERLAY=config/olm REGISTRY=localhost:$(LOCAL_REGISTRY_PORT) $(MAKE) load-kind olm docker-push deploy
+deploy-kind: OVERLAY=config/default
+deploy-kind: REGISTRY=localhost:$(LOCAL_REGISTRY_PORT)
+deploy-kind: load-kind docker-push deploy
 
-undeploy-kind: load-kind
-	OVERLAY=config/kind $(MAKE) undeploy
+deploy-kind-olm: ANNOTATION=local-test-image:$(REPO)-index:$(TAG)
+deploy-kind-olm: OVERLAY=config/olm
+deploy-kind-olm: NAMESPACE=
+deploy-kind-olm: REGISTRY=localhost:$(LOCAL_REGISTRY_PORT)
+deploy-kind-olm: kustomize-set-annotation load-kind olm docker-push deploy
+
+undeploy-kind: OVERLAY=config/kind
+undeploy-kind: load-kind undeploy
 
 ##@ Dependencies
 

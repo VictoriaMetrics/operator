@@ -6,7 +6,6 @@ metadata:
     capabilities: Deep Insights
     categories: Monitoring
     certified: "false"
-    com.redhat.openshift.versions: v4.12-v4.16
     containerImage: docker.io/victoriametrics/operator:0.0.0
     createdAt: "2020-05-01 12:00:00"
     description: Provides monitoring capabilites for kubernetes clusters and applications

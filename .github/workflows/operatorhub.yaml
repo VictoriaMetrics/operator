@@ -51,7 +51,7 @@ jobs:
           VERSION=$(ls bundle | head -1)
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           export MANIFEST_PATH=bundle/${VERSION}/manifests/victoriametrics-operator.clusterserviceversion.yaml
-          export REPLACE_VERSION=$(find __k8s-operatorhub-repo/operators/victoriametrics-operator/* -type d -exec basename {} \; | sort -V -r | head -1)
+          export REPLACE_VERSION=$(find __k8s-operatorhub-repo/operators/victoriametrics-operator/* -maxdepth 0 -type d -exec basename {} \; | sort -V -r | head -1)
           yq -i '.spec.replaces = "victoriametrics-operator.v" + strenv(REPLACE_VERSION)' $MANIFEST_PATH
           mkdir -p __k8s-operatorhub-repo/operators/victoriametrics-operator
           mv bundle/* __k8s-operatorhub-repo/operators/victoriametrics-operator/

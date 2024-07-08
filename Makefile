@@ -6,7 +6,7 @@ ORG ?= victoriametrics
 TAG ?= $(shell echo $$(git describe --long --all | tr '/' '-')$$( \
 	git diff-index --quiet HEAD -- || echo '-dirty-'$$( \
 		git diff-index -u HEAD -- ':!config' ':!docs' | openssl sha1 | cut -d' ' -f2 | cut -c 1-8)))
-VERSION ?= $(if $(findstring $(TAG),$(TAG:v%=%)),0.0.1,$(TAG:v%=%))
+VERSION ?= $(if $(findstring $(TAG),$(TAG:v%=%)),0.0.0,$(TAG:v%=%))
 NAMESPACE ?= vm
 OVERLAY ?= config/manager
 
@@ -197,23 +197,23 @@ olm: operator-sdk opm yq docs
 	rm -rf bundle*
 	$(OPERATOR_SDK) generate kustomize manifests -q
 	cd config/manifests && \
-		$(KUSTOMIZE) edit set image manager=$(REGISTRY)/$(ORG)/$(REPO):v$(VERSION)
+		$(KUSTOMIZE) edit set image manager=$(REGISTRY)/$(ORG)/$(REPO):$(TAG)
 	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle \
 		-q --overwrite --version $(VERSION) \
 		--channels=beta --default-channel=beta --output-dir=bundle/$(VERSION)
 	$(OPERATOR_SDK) bundle validate ./bundle/$(VERSION)
 	cp config/manifests/ci.yaml bundle/
-	$(YQ) -i '.metadata.annotations.containerImage = "$(REGISTRY)/$(ORG)/$(REPO):v$(VERSION)"' \
+	$(YQ) -i '.metadata.annotations.containerImage = "$(REGISTRY)/$(ORG)/$(REPO):$(TAG)"' \
 		bundle/$(VERSION)/manifests/victoriametrics-operator.clusterserviceversion.yaml
 	$(YQ) -i '.annotations."com.redhat.openshift.versions" = "v4.12-v4.16"' \
 		bundle/$(VERSION)/metadata/annotations.yaml
 	$(if $(findstring localhost,$(REGISTRY)), \
-		$(CONTAINER_TOOL) build -f bundle.Dockerfile -t $(REGISTRY)/$(ORG)/$(REPO)-bundle:v$(VERSION) .; \
-		$(CONTAINER_TOOL) push $(REGISTRY)/$(ORG)/$(REPO)-bundle:v$(VERSION); \
+		$(CONTAINER_TOOL) build -f bundle.Dockerfile -t $(REGISTRY)/$(ORG)/$(REPO)-bundle:$(TAG) .; \
+		$(CONTAINER_TOOL) push $(REGISTRY)/$(ORG)/$(REPO)-bundle:$(TAG); \
 		$(OPM) index add \
-			--bundles $(REGISTRY)/$(ORG)/$(REPO)-bundle:v$(VERSION) \
-			--tag $(REGISTRY)/$(ORG)/$(REPO)-index:v$(VERSION) -c docker; \
-		$(CONTAINER_TOOL) push $(REGISTRY)/$(ORG)/$(REPO)-index:v$(VERSION),)
+			--bundles $(REGISTRY)/$(ORG)/$(REPO)-bundle:$(TAG) \
+			--tag $(REGISTRY)/$(ORG)/$(REPO)-index:$(TAG) -c docker; \
+		$(CONTAINER_TOOL) push $(REGISTRY)/$(ORG)/$(REPO)-index:$(TAG),)
 
 ##@ Deployment
 
@@ -225,11 +225,11 @@ endif
 install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~/.kube/config.
 	$(if $(NAMESPACE), \
 		$(KUBECTL) create ns $(NAMESPACE) --dry-run=client -o yaml | kubectl apply -f -,)
-	$(KUSTOMIZE) build config/crd | $(KUBECTL) apply $(if $(NAMESPACE),-n $(NAMESPACE),) -f -
+	$(KUSTOMIZE) build config/crd | $(KUBECTL) apply -f -
 
 .PHONY: uninstall
 uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
-	$(KUSTOMIZE) build config/crd | $(KUBECTL) delete $(if $(NAMESPACE),-n $(NAMESPACE),) --ignore-not-found=$(ignore-not-found) -f -
+	$(KUSTOMIZE) build config/crd | $(KUBECTL) delete --ignore-not-found=$(ignore-not-found) -f -
 
 .PHONY: deploy
 deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
@@ -237,7 +237,7 @@ deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in
 		$(KUBECTL) create ns $(NAMESPACE) --dry-run=client -o yaml | kubectl apply -f -,)
 	cd $(OVERLAY) && \
 		$(KUSTOMIZE) edit set image manager=$(REGISTRY)/$(ORG)/$(REPO):$(TAG)
-	$(KUSTOMIZE) build $(OVERLAY) | $(KUBECTL) apply $(if $(NAMESPACE),-n $(NAMESPACE),) -f -
+	$(KUSTOMIZE) build $(OVERLAY) | $(KUBECTL) apply -f -
 
 .PHONY: undeploy
 undeploy: kustomize ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
@@ -279,7 +279,6 @@ deploy-kind: load-kind docker-push deploy
 
 deploy-kind-olm: ANNOTATION=local-test-image:$(REPO)-index:$(TAG)
 deploy-kind-olm: OVERLAY=config/olm
-deploy-kind-olm: NAMESPACE=
 deploy-kind-olm: REGISTRY=localhost:$(LOCAL_REGISTRY_PORT)
 deploy-kind-olm: kustomize-set-annotation load-kind olm docker-push deploy
 

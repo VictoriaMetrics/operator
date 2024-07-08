@@ -90,7 +90,6 @@ api-gen: client-gen lister-gen informer-gen
 		--output-dir ./api/client/informers \
 		--output-pkg github.com/VictoriaMetrics/operator/api/client/informers \
 		--go-header-file hack/boilerplate.go.txt
-	rm api/go.*
 
 .PHONY: docs
 docs: envconfig-docs crd-ref-docs manifests

@@ -181,11 +181,9 @@ docker-buildx: ## Build and push docker image for the manager for cross-platform
 	- $(CONTAINER_TOOL) buildx rm vm-builder
 	rm Dockerfile.cross
 
-publish: TAG:=config-reloader-$(TAG)
-publish: ROOT=./cmd/config-reloader
-publish: docker-buildx
-publish: ROOT=./cmd
-publish: docker-buildx
+publish:
+	TAG=$(TAG) ROOT=./cmd $(MAKE) docker-buildx
+	TAG=config-reloader-$(TAG) ROOT=./cmd/config-reloader $(MAKE) docker-buildx
 
 .PHONY: build-installer
 build-installer: manifests generate kustomize ## Generate a consolidated YAML with CRDs and deployment.

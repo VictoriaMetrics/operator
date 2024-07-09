@@ -540,9 +540,6 @@ func buildInitConfigContainer(cr *vmv1beta1.VMAlertmanager, c *config.BaseOperat
 	initReloader = corev1.Container{
 		Image: build.FormatContainerImage(c.ContainerRegistry, c.CustomConfigReloaderImage),
 		Name:  "config-init",
-		Command: []string{
-			"/usr/local/bin/config-reloader",
-		},
 		Args: []string{
 			fmt.Sprintf("--config-secret-key=%s", alertmanagerSecretConfigKey),
 			fmt.Sprintf("--config-secret-name=%s/%s", cr.Namespace, cr.ConfigSecretName()),
@@ -618,7 +615,7 @@ func buildVMAlertmanagerConfigReloader(cr *vmv1beta1.VMAlertmanager, c *config.B
 	}
 	if c.UseCustomConfigReloader && c.CustomConfigReloaderImageVersion().GreaterThanOrEqual(minimalConfigReloaderVersion) {
 		configReloaderContainer.Image = build.FormatContainerImage(c.ContainerRegistry, c.CustomConfigReloaderImage)
-		configReloaderContainer.Command = []string{"/usr/local/bin/config-reloader"}
+		configReloaderContainer.Command = nil
 	}
 
 	build.AddsPortProbesToConfigReloaderContainer(&configReloaderContainer, c)

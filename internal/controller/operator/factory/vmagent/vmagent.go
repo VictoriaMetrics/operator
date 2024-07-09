@@ -1361,7 +1361,7 @@ func buildConfigReloaderContainer(cr *vmv1beta1.VMAgent, c *config.BaseOperatorC
 	}
 	if c.UseCustomConfigReloader {
 		cntr.Image = build.FormatContainerImage(c.ContainerRegistry, c.CustomConfigReloaderImage)
-		cntr.Command = []string{"/usr/local/bin/config-reloader"}
+		cntr.Command = nil
 	}
 	build.AddsPortProbesToConfigReloaderContainer(&cntr, c)
 
@@ -1434,10 +1434,7 @@ func buildInitConfigContainer(baseImage string, resources corev1.ResourceRequire
 		initReloader = corev1.Container{
 			Image: build.FormatContainerImage(c.ContainerRegistry, c.CustomConfigReloaderImage),
 			Name:  "config-init",
-			Command: []string{
-				"/usr/local/bin/config-reloader",
-			},
-			Args: append(configReloaderArgs, "--only-init-config"),
+			Args:  append(configReloaderArgs, "--only-init-config"),
 			VolumeMounts: []corev1.VolumeMount{
 				{
 					Name:      "config-out",

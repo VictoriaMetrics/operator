@@ -1787,8 +1787,6 @@ volumes:
 initcontainers:
     - name: config-init
       image: vmcustomer:v1
-      command:
-        - /usr/local/bin/config-reloader
       args:
         - --reload-url=http://localhost:8429/-/reload
         - --config-envsubst-file=/etc/vmagent/config_out/vmagent.env.yaml
@@ -1802,8 +1800,6 @@ initcontainers:
 containers:
     - name: config-reloader
       image: vmcustomer:v1
-      command:
-        - /usr/local/bin/config-reloader
       args:
         - --reload-url=http://localhost:8429/-/reload
         - --config-envsubst-file=/etc/vmagent/config_out/vmagent.env.yaml

@@ -1,45 +1,20 @@
-# Adds namespace to all resources.
 namespace: vm
-# Value of this field is prepended to the
-# names of all resources, e.g. a deployment named
-# "wordpress" becomes "alices-wordpress".
-# Note that it should also match with the prefix (text before '-') of the namespace
-# field above.
 namePrefix: vm-
-# Labels to add to all resources and selectors.
-#labels:
-#- includeSelectors: true
-#  pairs:
-#    someName: someValue
-# [WEBHOOK] To enable webhook, uncomment all the sections with [WEBHOOK] prefix including the one in
-# crd/kustomization.yaml
-# [CERTMANAGER] To enable cert-manager, uncomment all sections with 'CERTMANAGER'. 'WEBHOOK' components are required.
 resources:
 - ../crd/overlay
 - ../rbac
 - ../manager
 - ../webhook
 - ../certmanager
-# [METRICS] To enable the controller manager metrics service, uncomment the following line.
-#- metrics_service.yaml
-
-# Uncomment the patches line if you enable Metrics, and/or are using webhooks and cert-manager
-# [METRICS] The following patch will enable the metrics endpoint. Ensure that you also protect this endpoint.
-# More info: https://book.kubebuilder.io/reference/metrics
-# If you want to expose the metric endpoint of your controller-manager uncomment the following line.
-#- path: manager_metrics_patch.yaml
-#  target:
-#    kind: Deployment
-
-# [WEBHOOK] To enable webhook, uncomment all the sections with [WEBHOOK] prefix including the one in
-# crd/kustomization.yaml
-
-# [CERTMANAGER] To enable cert-manager, uncomment all sections with 'CERTMANAGER'.
-# Uncomment 'CERTMANAGER' sections in crd/kustomization.yaml to enable the CA injection in the admission webhooks.
-# 'CERTMANAGER' needs to be enabled to use ca injection
+- metrics_service.yaml
 patches:
 - path: manager_webhook_patch.yaml
+  target:
+    kind: Deployment
 - path: webhookcainjection_patch.yaml
+- path: manager_metrics_patch.yaml
+  target:
+    kind: Deployment
 
 # [CERTMANAGER] To enable cert-manager, uncomment all sections with 'CERTMANAGER' prefix.
 # Uncomment the following replacements to add the cert-manager CA injection annotations
@@ -64,7 +39,7 @@ replacements:
     fieldPath: .metadata.namespace
     group: cert-manager.io
     kind: Certificate
-    name: server-cert
+    name: vm-serving-cert
     version: v1
   targets:
   - fieldPaths:
@@ -85,7 +60,7 @@ replacements:
     fieldPath: .metadata.name
     group: cert-manager.io
     kind: Certificate
-    name: server-cert
+    name: vm-serving-cert
     version: v1
   targets:
   - fieldPaths:
@@ -137,5 +112,3 @@ replacements:
       group: cert-manager.io
       kind: Certificate
       version: v1
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization

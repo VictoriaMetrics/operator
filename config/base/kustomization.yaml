@@ -1,0 +1,6 @@
+resources:
+- ../default
+patches:
+- path: manager_webhook_patch.yaml
+  target:
+    kind: Deployment

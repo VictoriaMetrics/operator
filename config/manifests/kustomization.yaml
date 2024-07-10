@@ -28,17 +28,3 @@ patches:
     apiVersion: rbac.authorization.k8s.io/v1
     metadata:
       name: vmagent
-- patch: |-
-    - op: add
-      path: /spec/template/spec/containers/0/args/-
-      value: --webhook.enable
-  target:
-    kind: Deployment
-
-
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-images:
-- name: manager
-  newName: docker.io/victoriametrics/operator
-  newTag: v0.0.1

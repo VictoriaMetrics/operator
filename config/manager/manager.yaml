@@ -48,10 +48,13 @@ spec:
         runAsNonRoot: true
         seccompProfile:
           type: RuntimeDefault
+      volumes: []
       containers:
       - args:
         - --leader-elect
         - --health-probe-bind-address=:8081
+        ports: []
+        volumeMounts: []
         image: manager
         name: manager
         env:

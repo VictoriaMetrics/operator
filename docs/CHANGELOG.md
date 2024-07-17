@@ -13,6 +13,8 @@ aliases:
 ---
 # CHANGELOG
 
+- [operator](./README.md): properly release `PodDisruptionBudget` object finalizer. Previously it could be kept due to typo. See this [issue](https://github.com/VictoriaMetrics/operator/issues/1036) for details.
+
 ## [v0.46.4](https://github.com/VictoriaMetrics/operator/releases/tag/v0.46.4) - 9 Jul 2024
 
 ### Breaking changes
@@ -1769,4 +1771,3 @@ it contains basic api objects support:
 [v0.0.6]: https://github.com/VictoriaMetrics/operator/compare/v0.0.2...v0.0.6
 [v0.0.2]: https://github.com/VictoriaMetrics/operator/compare/v0.0.1...v0.0.2
 [v0.0.1]: https://github.com/VictoriaMetrics/operator/tree/v0.0.1
-

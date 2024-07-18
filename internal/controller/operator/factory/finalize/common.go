@@ -98,7 +98,7 @@ func finalizePBD(ctx context.Context, rclient client.Client, crd crdObject) erro
 	return removeFinalizeObjByName(ctx, rclient, &policyv1.PodDisruptionBudget{}, crd.PrefixedName(), crd.GetNSName())
 }
 
-func finalizePBDWithName(ctx context.Context, rclient client.Client, ns, name string) error {
+func finalizePBDWithName(ctx context.Context, rclient client.Client, name, ns string) error {
 	return removeFinalizeObjByName(ctx, rclient, &policyv1.PodDisruptionBudget{}, name, ns)
 }
 

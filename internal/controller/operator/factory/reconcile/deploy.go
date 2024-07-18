@@ -38,9 +38,9 @@ func Deployment(ctx context.Context, rclient client.Client, newDeploy *appsv1.De
 			newDeploy.Spec.Replicas = currentDeploy.Spec.Replicas
 		}
 		newDeploy.Spec.Template.Annotations = labels.Merge(currentDeploy.Spec.Template.Annotations, newDeploy.Spec.Template.Annotations)
-		newDeploy.Finalizers = vmv1beta1.MergeFinalizers(&currentDeploy, vmv1beta1.FinalizerName)
 		newDeploy.Status = currentDeploy.Status
 		newDeploy.Annotations = labels.Merge(currentDeploy.Annotations, newDeploy.Annotations)
+		vmv1beta1.AddFinalizer(newDeploy, &currentDeploy)
 
 		if err := rclient.Update(ctx, newDeploy); err != nil {
 			return fmt.Errorf("cannot update deployment for app: %s, err: %w", newDeploy.Name, err)

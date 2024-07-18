@@ -57,7 +57,7 @@ func CreateVMSingleStorage(ctx context.Context, cr *vmv1beta1.VMSingle, rclient 
 	newPvc.Spec = existPvc.Spec
 	newPvc.Spec.Resources = *newResources
 	newPvc.Annotations = labels.Merge(existPvc.Annotations, newPvc.Annotations)
-	newPvc.Finalizers = vmv1beta1.MergeFinalizers(existPvc, vmv1beta1.FinalizerName)
+	vmv1beta1.AddFinalizer(newPvc, existPvc)
 
 	if err := rclient.Update(ctx, newPvc); err != nil {
 		return err
@@ -456,6 +456,6 @@ func CreateOrUpdateVMSingleStreamAggrConfig(ctx context.Context, cr *vmv1beta1.V
 		return err
 	}
 	streamAggrCM.Annotations = labels.Merge(existCM.Annotations, streamAggrCM.Annotations)
-	vmv1beta1.MergeFinalizers(streamAggrCM, vmv1beta1.FinalizerName)
+	vmv1beta1.AddFinalizer(streamAggrCM, &existCM)
 	return rclient.Update(ctx, streamAggrCM)
 }

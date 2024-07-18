@@ -160,7 +160,7 @@ func createOrUpdateConfigurationSecret(ctx context.Context, cr *vmv1beta1.VMAgen
 	}
 
 	s.Annotations = labels.Merge(curSecret.Annotations, s.Annotations)
-	s.Finalizers = vmv1beta1.MergeFinalizers(curSecret, vmv1beta1.FinalizerName)
+	vmv1beta1.AddFinalizer(s, curSecret)
 	return ssCache, rclient.Update(ctx, s)
 }
 

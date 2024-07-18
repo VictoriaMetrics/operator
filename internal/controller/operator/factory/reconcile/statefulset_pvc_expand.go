@@ -8,6 +8,7 @@ import (
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/go-test/deep"
 	appsv1 "k8s.io/api/apps/v1"
@@ -22,14 +23,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
-
-func cleanUpFinalize(ctx context.Context, rclient client.Client, instance client.Object) error {
-	if vmv1beta1.IsContainsFinalizer(instance.GetFinalizers(), vmv1beta1.FinalizerName) {
-		instance.SetFinalizers(vmv1beta1.RemoveFinalizer(instance.GetFinalizers(), vmv1beta1.FinalizerName))
-		return rclient.Update(ctx, instance)
-	}
-	return nil
-}
 
 // recreateSTSIfNeed will check if sts needs recreate and perform recreate if needed,
 // there are three different cases:
@@ -46,8 +39,8 @@ func cleanUpFinalize(ctx context.Context, rclient client.Client, instance client
 func recreateSTSIfNeed(ctx context.Context, rclient client.Client, newSTS, existingSTS *appsv1.StatefulSet) (bool, bool, error) {
 	handleRemove := func() error {
 		// removes finalizer from exist sts, it allows to delete it
-		if err := cleanUpFinalize(ctx, rclient, existingSTS); err != nil {
-			return err
+		if err := finalize.RemoveFinalizer(ctx, rclient, existingSTS); err != nil {
+			return fmt.Errorf("failed to remove finalizer from sts during handleRemove call: %w", err)
 		}
 		opts := client.DeleteOptions{PropagationPolicy: func() *metav1.DeletionPropagation {
 			p := metav1.DeletePropagationOrphan

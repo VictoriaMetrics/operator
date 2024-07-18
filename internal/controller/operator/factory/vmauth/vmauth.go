@@ -374,7 +374,7 @@ func CreateOrUpdateVMAuthConfig(ctx context.Context, rclient client.Client, cr *
 		logger.WithContext(ctx).Info("no current VMAuth configuration secret found", "currentConfigFound", curConfigFound)
 	}
 	s.Annotations = labels.Merge(curSecret.Annotations, s.Annotations)
-	vmv1beta1.MergeFinalizers(&curSecret, vmv1beta1.FinalizerName)
+	vmv1beta1.AddFinalizer(s, &curSecret)
 
 	logger.WithContext(ctx).Info("updating VMAuth configuration secret")
 	return rclient.Update(ctx, s)
@@ -421,7 +421,7 @@ func CreateOrUpdateVMAuthIngress(ctx context.Context, rclient client.Client, cr 
 		return err
 	}
 	newIngress.Annotations = labels.Merge(existIngress.Annotations, newIngress.Annotations)
-	newIngress.Finalizers = vmv1beta1.MergeFinalizers(&existIngress, vmv1beta1.FinalizerName)
+	vmv1beta1.AddFinalizer(newIngress, &existIngress)
 	return rclient.Update(ctx, newIngress)
 }
 

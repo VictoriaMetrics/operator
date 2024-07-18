@@ -152,7 +152,7 @@ func ensureVMAgentCRExist(ctx context.Context, cr *vmv1beta1.VMAgent, rclient cl
 	existsClusterRole.Labels = clusterRole.Labels
 	existsClusterRole.Annotations = labels.Merge(existsClusterRole.Annotations, clusterRole.Annotations)
 	existsClusterRole.Rules = clusterRole.Rules
-	vmv1beta1.MergeFinalizers(&existsClusterRole, vmv1beta1.FinalizerName)
+	vmv1beta1.AddFinalizer(&existsClusterRole, &existsClusterRole)
 	return rclient.Update(ctx, &existsClusterRole)
 }
 
@@ -175,7 +175,7 @@ func ensureVMAgentCRBExist(ctx context.Context, cr *vmv1beta1.VMAgent, rclient c
 	existsClusterRoleBinding.Annotations = labels.Merge(existsClusterRoleBinding.Annotations, clusterRoleBinding.Annotations)
 	existsClusterRoleBinding.Subjects = clusterRoleBinding.Subjects
 	existsClusterRoleBinding.RoleRef = clusterRoleBinding.RoleRef
-	vmv1beta1.MergeFinalizers(&existsClusterRoleBinding, vmv1beta1.FinalizerName)
+	vmv1beta1.AddFinalizer(&existsClusterRoleBinding, &existsClusterRoleBinding)
 	return rclient.Update(ctx, &existsClusterRoleBinding)
 }
 
@@ -236,7 +236,7 @@ func ensureVMAgentRExist(ctx context.Context, cr *vmv1beta1.VMAgent, rclient cli
 	existsClusterRole.Labels = nr.Labels
 	existsClusterRole.Annotations = labels.Merge(existsClusterRole.Annotations, nr.Annotations)
 	existsClusterRole.Rules = nr.Rules
-	vmv1beta1.MergeFinalizers(&existsClusterRole, vmv1beta1.FinalizerName)
+	vmv1beta1.AddFinalizer(&existsClusterRole, &existsClusterRole)
 	return rclient.Update(ctx, &existsClusterRole)
 }
 
@@ -259,7 +259,7 @@ func ensureVMAgentRBExist(ctx context.Context, cr *vmv1beta1.VMAgent, rclient cl
 	existsRB.Annotations = labels.Merge(existsRB.Annotations, rb.Annotations)
 	existsRB.Subjects = rb.Subjects
 	existsRB.RoleRef = rb.RoleRef
-	vmv1beta1.MergeFinalizers(&existsRB, vmv1beta1.FinalizerName)
+	vmv1beta1.AddFinalizer(&existsRB, &existsRB)
 	return rclient.Update(ctx, &existsRB)
 }
 

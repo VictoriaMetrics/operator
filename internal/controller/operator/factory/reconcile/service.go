@@ -107,7 +107,7 @@ func reconcileService(ctx context.Context, rclient client.Client, newService *v1
 		newService.ResourceVersion = existingService.ResourceVersion
 	}
 	newService.Annotations = labels.Merge(existingService.Annotations, newService.Annotations)
-	newService.Finalizers = vmv1beta1.MergeFinalizers(existingService, vmv1beta1.FinalizerName)
+	vmv1beta1.AddFinalizer(newService, existingService)
 
 	err = rclient.Update(ctx, newService)
 	if err != nil {

@@ -519,7 +519,7 @@ func createDefaultAMConfig(ctx context.Context, cr *vmv1beta1.VMAlertmanager, rc
 	}
 
 	newAMSecretConfig.Annotations = labels.Merge(existAMSecretConfig.Annotations, newAMSecretConfig.Annotations)
-	newAMSecretConfig.Finalizers = vmv1beta1.MergeFinalizers(&existAMSecretConfig, vmv1beta1.FinalizerName)
+	vmv1beta1.AddFinalizer(newAMSecretConfig, &existAMSecretConfig)
 	return rclient.Update(ctx, newAMSecretConfig)
 }
 

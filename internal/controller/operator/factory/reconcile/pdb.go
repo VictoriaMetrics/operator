@@ -35,7 +35,7 @@ func PDB(ctx context.Context, rclient client.Client, pdb *policyv1.PodDisruption
 			pdb.ResourceVersion = currentPdb.ResourceVersion
 		}
 		pdb.Status = currentPdb.Status
-		vmv1beta1.MergeFinalizers(pdb, vmv1beta1.FinalizerName)
+		vmv1beta1.AddFinalizer(pdb, currentPdb)
 		return rclient.Update(ctx, pdb)
 	})
 }

@@ -2,6 +2,7 @@ package finalize
 
 import (
 	"context"
+	"fmt"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	appsv1 "k8s.io/api/apps/v1"
@@ -25,11 +26,10 @@ func OnVMAlertDelete(ctx context.Context, rclient client.Client, crd *vmv1beta1.
 		return err
 	}
 	for _, cm := range cmList.Items {
-		if vmv1beta1.IsContainsFinalizer(cm.Finalizers, vmv1beta1.FinalizerName) {
-			cm.Finalizers = vmv1beta1.RemoveFinalizer(cm.Finalizers, vmv1beta1.FinalizerName)
-			if err := rclient.Update(ctx, &cm); err != nil {
-				return err
-			}
+		if err := vmv1beta1.RemoveFinalizer(&cm, func(o client.Object) error {
+			return patchReplaceFinalizers(ctx, rclient, o)
+		}); err != nil {
+			return fmt.Errorf("failed to remove finalizer from vmalert cm=%q: %w", cm.Name, err)
 		}
 	}
 	// check secret

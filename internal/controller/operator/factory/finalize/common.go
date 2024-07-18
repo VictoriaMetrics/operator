@@ -43,20 +43,16 @@ func patchReplaceFinalizers(ctx context.Context, rclient client.Client, instance
 
 // AddFinalizer adds finalizer to instance if needed.
 func AddFinalizer(ctx context.Context, rclient client.Client, instance client.Object) error {
-	if !vmv1beta1.IsContainsFinalizer(instance.GetFinalizers(), vmv1beta1.FinalizerName) {
-		instance.SetFinalizers(append(instance.GetFinalizers(), vmv1beta1.FinalizerName))
-		return patchReplaceFinalizers(ctx, rclient, instance)
-	}
-	return nil
+	return vmv1beta1.AddFinalizerAndThen(instance, func(o client.Object) error {
+		return patchReplaceFinalizers(ctx, rclient, o)
+	})
 }
 
 // RemoveFinalizer removes finalizer from instance if needed.
 func RemoveFinalizer(ctx context.Context, rclient client.Client, instance client.Object) error {
-	if vmv1beta1.IsContainsFinalizer(instance.GetFinalizers(), vmv1beta1.FinalizerName) {
-		instance.SetFinalizers(vmv1beta1.RemoveFinalizer(instance.GetFinalizers(), vmv1beta1.FinalizerName))
-		return patchReplaceFinalizers(ctx, rclient, instance)
-	}
-	return nil
+	return vmv1beta1.RemoveFinalizer(instance, func(o client.Object) error {
+		return patchReplaceFinalizers(ctx, rclient, o)
+	})
 }
 
 func removeFinalizeObjByName(ctx context.Context, rclient client.Client, obj client.Object, name, ns string) error {
@@ -66,12 +62,9 @@ func removeFinalizeObjByName(ctx context.Context, rclient client.Client, obj cli
 		}
 		return err
 	}
-	// fast path
-	if !vmv1beta1.IsContainsFinalizer(obj.GetFinalizers(), vmv1beta1.FinalizerName) {
-		return nil
-	}
-	obj.SetFinalizers(vmv1beta1.RemoveFinalizer(obj.GetFinalizers(), vmv1beta1.FinalizerName))
-	return patchReplaceFinalizers(ctx, rclient, obj)
+	return vmv1beta1.RemoveFinalizer(obj, func(o client.Object) error {
+		return patchReplaceFinalizers(ctx, rclient, o)
+	})
 }
 
 // SafeDelete removes object, ignores notfound error.

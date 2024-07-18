@@ -42,7 +42,7 @@ func ensureVMAuthRoleExist(ctx context.Context, cr *vmv1beta1.VMAuth, rclient cl
 	existRole.Labels = role.Labels
 	existRole.Annotations = labels.Merge(existRole.Annotations, role.Annotations)
 	existRole.Rules = role.Rules
-	vmv1beta1.MergeFinalizers(&existRole, vmv1beta1.FinalizerName)
+	vmv1beta1.AddFinalizer(&existRole, &existRole)
 	return rclient.Update(ctx, &existRole)
 }
 
@@ -64,7 +64,7 @@ func ensureVMAgentRBExist(ctx context.Context, cr *vmv1beta1.VMAuth, rclient cli
 	existRoleBinding.Annotations = labels.Merge(existRoleBinding.Annotations, roleBinding.Annotations)
 	existRoleBinding.Subjects = roleBinding.Subjects
 	existRoleBinding.RoleRef = roleBinding.RoleRef
-	vmv1beta1.MergeFinalizers(&existRoleBinding, vmv1beta1.FinalizerName)
+	vmv1beta1.AddFinalizer(&existRoleBinding, &existRoleBinding)
 	return rclient.Update(ctx, &existRoleBinding)
 }
 

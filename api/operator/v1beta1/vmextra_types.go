@@ -18,6 +18,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// UpdateStatus defines status for application
 type UpdateStatus string
 
 const (
@@ -25,20 +26,29 @@ const (
 	UpdateStatusOperational UpdateStatus = "operational"
 	UpdateStatusFailed      UpdateStatus = "failed"
 	UpdateStatusPaused      UpdateStatus = "paused"
-	vmPathPrefixFlagName                 = "http.pathPrefix"
-	healthPath                           = "/health"
-	metricPath                           = "/metrics"
-	reloadPath                           = "/-/reload"
-	reloadAuthKey                        = "reloadAuthKey"
-	snapshotCreate                       = "/snapshot/create"
-	snapshotDelete                       = "/snapshot/delete"
-	// FinalizerName name of our finalizer.
+)
+
+const (
+	vmPathPrefixFlagName = "http.pathPrefix"
+	healthPath           = "/health"
+	metricPath           = "/metrics"
+	reloadPath           = "/-/reload"
+	reloadAuthKey        = "reloadAuthKey"
+	snapshotCreate       = "/snapshot/create"
+	snapshotDelete       = "/snapshot/delete"
+)
+
+const (
+	// FinalizerName name of vm-operator finalizer.
 	FinalizerName            = "apps.victoriametrics.com/finalizer"
 	SkipValidationAnnotation = "operator.victoriametrics.com/skip-validation"
 	SkipValidationValue      = "true"
 	AdditionalServiceLabel   = "operator.victoriametrics.com/additional-service"
 	// PVCExpandableLabel controls checks for storageClass
-	PVCExpandableLabel  = "operator.victoriametrics.com/pvc-allow-volume-expansion"
+	PVCExpandableLabel = "operator.victoriametrics.com/pvc-allow-volume-expansion"
+)
+
+const (
 	SecretsDir          = "/etc/vm/secrets"
 	ConfigMapsDir       = "/etc/vm/configs"
 	TemplatesDir        = "/etc/vm/templates"
@@ -81,35 +91,62 @@ func mustSkipValidation(cr client.Object) bool {
 	return cr.GetAnnotations()[SkipValidationAnnotation] == SkipValidationValue
 }
 
-func MergeFinalizers(src client.Object, finalizer string) []string {
-	if !IsContainsFinalizer(src.GetFinalizers(), finalizer) {
-		srcF := src.GetFinalizers()
-		srcF = append(srcF, finalizer)
-		src.SetFinalizers(srcF)
+// AddFinalizer conditionally adds vm-operator finalizer to the dst object
+// respectfully merges exist finalizers from src to dst
+func AddFinalizer(dst, src client.Object) {
+	srcFinalizers := src.GetFinalizers()
+	if !isContainsFinalizer(srcFinalizers) {
+		srcFinalizers = append(srcFinalizers, FinalizerName)
+		dst.SetFinalizers(srcFinalizers)
 	}
-	return src.GetFinalizers()
+	dst.SetFinalizers(srcFinalizers)
 }
 
-// IsContainsFinalizer check if finalizers is set.
-func IsContainsFinalizer(src []string, finalizer string) bool {
+// AddFinalizerAndThen conditionally adds vm-operator finalizer to the dst object
+// respectfully merges exist finalizers from src to dst
+// if finalizer was added, peforms callback
+func AddFinalizerAndThen(src client.Object, andThen func(client.Object) error) error {
+	srcFinalizers := src.GetFinalizers()
+	var wasNotFinalizerFound bool
+	if !isContainsFinalizer(srcFinalizers) {
+		srcFinalizers = append(srcFinalizers, FinalizerName)
+		wasNotFinalizerFound = true
+		src.SetFinalizers(srcFinalizers)
+	}
+	if wasNotFinalizerFound {
+		return andThen(src)
+	}
+	return nil
+}
+
+func isContainsFinalizer(src []string) bool {
 	for _, s := range src {
-		if s == finalizer {
+		if s == FinalizerName {
 			return true
 		}
 	}
 	return false
 }
 
-// RemoveFinalizer - removes given finalizer from finalizers list.
-func RemoveFinalizer(src []string, finalizer string) []string {
-	dst := src[:0]
-	for _, s := range src {
-		if s == finalizer {
+// RemoveFinalizer - removes vm-operator finalizer from finalizers list.
+// executes provided callback if finalizer found
+func RemoveFinalizer(src client.Object, andThen func(client.Object) error) error {
+	existFinalizers := src.GetFinalizers()
+	var wasFinalizerFound bool
+	dst := existFinalizers[:0]
+	// filter in-place
+	for _, s := range existFinalizers {
+		if s == FinalizerName {
+			wasFinalizerFound = true
 			continue
 		}
 		dst = append(dst, s)
 	}
-	return dst
+	src.SetFinalizers(dst)
+	if wasFinalizerFound && andThen != nil {
+		return andThen(src)
+	}
+	return nil
 }
 
 // EmbeddedObjectMetadata contains a subset of the fields included in k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta

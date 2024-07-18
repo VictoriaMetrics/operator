@@ -29,9 +29,9 @@ func ServiceAccount(ctx context.Context, rclient client.Client, sa *corev1.Servi
 		}
 
 		existSA.OwnerReferences = sa.OwnerReferences
-		existSA.Finalizers = vmv1beta1.MergeFinalizers(&existSA, vmv1beta1.FinalizerName)
 		existSA.Annotations = labels.Merge(existSA.Annotations, sa.Annotations)
 		existSA.Labels = sa.Labels
+		vmv1beta1.AddFinalizer(&existSA, &existSA)
 		return rclient.Update(ctx, &existSA)
 	})
 }

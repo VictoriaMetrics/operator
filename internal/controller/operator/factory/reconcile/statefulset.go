@@ -86,7 +86,7 @@ func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, 
 		// hack for kubernetes 1.18
 		newSts.Status.Replicas = currentSts.Status.Replicas
 		newSts.Spec.Template.Annotations = labels.Merge(currentSts.Spec.Template.Annotations, newSts.Spec.Template.Annotations)
-		newSts.Finalizers = vmv1beta1.MergeFinalizers(&currentSts, vmv1beta1.FinalizerName)
+		vmv1beta1.AddFinalizer(newSts, &currentSts)
 
 		stsRecreated, podMustRecreate, err := recreateSTSIfNeed(ctx, rclient, newSts, &currentSts)
 		if err != nil {

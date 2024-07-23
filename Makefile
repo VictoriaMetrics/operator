@@ -39,6 +39,8 @@ CONTAINER_TOOL ?= docker
 SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
 
+include cspell/Makefile
+
 .PHONY: all
 all: build
 

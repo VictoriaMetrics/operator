@@ -7,11 +7,9 @@ menu:
     parent: "operator-custom-resources"
     weight: 3
 aliases:
-  - /operator/resources/vmalertmanager.html
+  - /operator/resources/vmalertmanager/
+  - /operator/resources/vmalertmanager/index.html
 ---
-
-# VMAlertmanager
-
 `VMAlertmanager` - represents [alertmanager](https://prometheus.io/docs/alerting/latest/alertmanager/) configuration.
 
 The `VMAlertmanager` CRD declaratively defines a desired Alertmanager setup to run in a Kubernetes cluster.
@@ -28,7 +26,7 @@ When there are two or more configured replicas the Operator runs the Alertmanage
 You can see the full actual specification of the `VMAlertmanager` resource in the **[API docs -> VMAlertManager](../api.md#vmalertmanager)**.
 
 If you can't find necessary field in the specification of the custom resource,
-see [Extra arguments section](./README.md#extra-arguments).
+see [Extra arguments section](./#extra-arguments).
 
 Also, you can check out the [examples](#examples) section.
 

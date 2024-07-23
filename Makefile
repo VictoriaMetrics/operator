@@ -14,6 +14,9 @@ LOCAL_REGISTRY_NAME ?= kind-registry
 LOCAL_REGISTRY_PORT ?= 5001
 LOCAL_REGISTRY_DIR = "/etc/containerd/certs.d/localhost:$(LOCAL_REGISTRY_PORT)"
 
+REPODIR := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
+WORKDIR := $(REPODIR)/..
+
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.30.0
 PLATFORM = $(shell uname -o)
@@ -283,6 +286,24 @@ deploy-kind-olm: kustomize-set-annotation load-kind olm docker-push deploy
 undeploy-kind: OVERLAY=config/kind
 undeploy-kind: load-kind undeploy
 
+docs-debug: docs
+	if [ ! -d $(WORKDIR)/vmdocs ]; then \
+		git clone git@github.com:VictoriaMetrics/vmdocs $(WORKDIR)/vmdocs; \
+	fi; \
+	cd $(WORKDIR)/vmdocs && \
+	git checkout dockerfile-for-local-testing && \
+	git pull origin dockerfile-for-local-testing && \
+	cd $(REPODIR) && \
+	$(CONTAINER_TOOL) build \
+		-t vmdocs \
+		$(WORKDIR)/vmdocs && \
+	$(CONTAINER_TOOL) rm -f vmdocs || true && \
+	$(CONTAINER_TOOL) run \
+		-d \
+		--name vmdocs \
+		-p 1313:1313 \
+		-v ./docs:/opt/docs/content/operator vmdocs
+
 ##@ Dependencies
 
 ## Location to install dependencies to
@@ -316,7 +337,7 @@ KIND_VERSION ?= v0.23.0
 OPERATOR_SDK_VERSION ?= v1.35.0
 OPM_VERSION ?= v1.44.0
 YQ_VERSION ?= v4.44.2
-ENVCONFIG_DOCS_VERSION ?= 8751e7637eb33e51cf1fad58da911be868d9dafe
+ENVCONFIG_DOCS_VERSION ?= 70062e813a6c07ad9b95e0993ea8a906d18679b0
 CRD_REF_DOCS_VERSION ?= latest
 
 .PHONY: kustomize

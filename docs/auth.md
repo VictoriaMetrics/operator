@@ -7,11 +7,9 @@ menu:
     parent: "operator"
     weight: 7
 aliases:
-  - /operator/auth.html
+  - /operator/auth/
+  - /operator/auth/index.html
 ---
-
-# Authorization and exposing components
-
 ## Exposing components
 
 CRD objects doesn't have `ingress` configuration. 

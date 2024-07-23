@@ -25,8 +25,8 @@ type VMClusterSpec struct {
 	// RetentionPeriod for the stored metrics
 	// Note VictoriaMetrics has data/ and indexdb/ folders
 	// metrics from data/ removed eventually as soon as partition leaves retention period
-	// reverse index data at indexdb rotates once at the half of configured retention period
-	// https://docs.victoriametrics.com/Single-server-VictoriaMetrics.html#retention
+	// reverse index data at indexdb rotates once at the half of configured
+	// [retention period](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/Single-server-VictoriaMetrics.md/#retention)
 	RetentionPeriod string `json:"retentionPeriod"`
 	// ReplicationFactor defines how many copies of data make among
 	// distinct storage nodes
@@ -51,7 +51,7 @@ type VMClusterSpec struct {
 
 	// License allows to configure license key to be used for enterprise features.
 	// Using license key is supported starting from VictoriaMetrics v1.94.0.
-	// See: https://docs.victoriametrics.com/enterprise.html
+	// See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/enterprise.md)
 	// +optional
 	License *License `json:"license,omitempty"`
 
@@ -271,7 +271,7 @@ type VMSelect struct {
 	Port string `json:"port,omitempty"`
 
 	// ClusterNativePort for multi-level cluster setup.
-	// More details: https://docs.victoriametrics.com/Cluster-VictoriaMetrics.html#multi-level-cluster-setup
+	// More [details](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/Cluster-VictoriaMetrics.md#multi-level-cluster-setup)
 	// +optional
 	ClusterNativePort string `json:"clusterNativeListenPort,omitempty"`
 
@@ -456,7 +456,7 @@ type VMInsert struct {
 	Port string `json:"port,omitempty"`
 
 	// ClusterNativePort for multi-level cluster setup.
-	// More details: https://docs.victoriametrics.com/Cluster-VictoriaMetrics.html#multi-level-cluster-setup
+	// More [details](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/Cluster-VictoriaMetrics.md#multi-level-cluster-setup)
 	// +optional
 	ClusterNativePort string `json:"clusterNativeListenPort,omitempty"`
 
@@ -771,14 +771,14 @@ type VMBackup struct {
 	VolumeMounts []v1.VolumeMount `json:"volumeMounts,omitempty"`
 
 	// Restore Allows to enable restore options for pod
-	// Read more: https://docs.victoriametrics.com/vmbackupmanager.html#restore-commands
+	// Read [more](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmbackupmanager.md#restore-commands)
 	// +optional
 	Restore *VMRestore `json:"restore,omitempty"`
 }
 
 func (cr *VMBackup) sanityCheck(l *License) error {
 	if !l.IsProvided() && !cr.AcceptEULA {
-		return fmt.Errorf("it is required to provide license key. See: https://docs.victoriametrics.com/enterprise.html")
+		return fmt.Errorf("it is required to provide license key. See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/enterprise.md)")
 	}
 
 	if l.IsProvided() {

@@ -1024,7 +1024,7 @@ spec:
                 items:
                   description: |-
                     RelabelConfig allows dynamic rewriting of the label set
-                    More info: https://docs.victoriametrics.com/#relabeling
+                    More info [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/#relabeling)
                   properties:
                     action:
                       description: Action to perform based on regex matching. Default
@@ -1052,8 +1052,7 @@ spec:
                     regex:
                       description: |-
                         Regular expression against which the extracted value is matched. Default is '(.*)'
-                        victoriaMetrics supports multiline regex joined with |
-                        https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
+                        victoriaMetrics [supports](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#relabeling-enhancements) multiline regex joined with |
                       x-kubernetes-preserve-unknown-fields: true
                     replacement:
                       description: |-
@@ -1128,14 +1127,12 @@ spec:
                 description: |-
                   License allows to configure license key to be used for enterprise features.
                   Using license key is supported starting from VictoriaMetrics v1.94.0.
-                  See: https://docs.victoriametrics.com/enterprise.html
+                  See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/enterprise.md)
                 properties:
                   key:
                     description: |-
-                      Enterprise license key. This flag is available only in VictoriaMetrics enterprise.
-                      Documentation - https://docs.victoriametrics.com/enterprise.html
-                      for more information, visit https://victoriametrics.com/products/enterprise/ .
-                      To request a trial license, go to https://victoriametrics.com/products/enterprise/trial/
+                      Enterprise license key. This flag is available only in [VictoriaMetrics enterprise](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/enterprise.md).
+                      To request a trial license, [go to](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/products/enterprise/trial.md)
                     type: string
                   keyRef:
                     description: KeyRef is reference to secret with license key for
@@ -1260,7 +1257,7 @@ spec:
                 items:
                   description: |-
                     RelabelConfig allows dynamic rewriting of the label set
-                    More info: https://docs.victoriametrics.com/#relabeling
+                    More info [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/#relabeling)
                   properties:
                     action:
                       description: Action to perform based on regex matching. Default
@@ -1288,8 +1285,7 @@ spec:
                     regex:
                       description: |-
                         Regular expression against which the extracted value is matched. Default is '(.*)'
-                        victoriaMetrics supports multiline regex joined with |
-                        https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
+                        victoriaMetrics [supports](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#relabeling-enhancements) multiline regex joined with |
                       x-kubernetes-preserve-unknown-fields: true
                     replacement:
                       description: |-
@@ -1523,7 +1519,7 @@ spec:
                 items:
                   description: |-
                     RelabelConfig allows dynamic rewriting of the label set
-                    More info: https://docs.victoriametrics.com/#relabeling
+                    More info [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/#relabeling)
                   properties:
                     action:
                       description: Action to perform based on regex matching. Default
@@ -1551,8 +1547,7 @@ spec:
                     regex:
                       description: |-
                         Regular expression against which the extracted value is matched. Default is '(.*)'
-                        victoriaMetrics supports multiline regex joined with |
-                        https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
+                        victoriaMetrics [supports](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#relabeling-enhancements) multiline regex joined with |
                       x-kubernetes-preserve-unknown-fields: true
                     replacement:
                       description: |-
@@ -1709,7 +1704,7 @@ spec:
                 items:
                   description: |-
                     RelabelConfig allows dynamic rewriting of the label set
-                    More info: https://docs.victoriametrics.com/#relabeling
+                    More info [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/#relabeling)
                   properties:
                     action:
                       description: Action to perform based on regex matching. Default
@@ -1737,8 +1732,7 @@ spec:
                     regex:
                       description: |-
                         Regular expression against which the extracted value is matched. Default is '(.*)'
-                        victoriaMetrics supports multiline regex joined with |
-                        https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
+                        victoriaMetrics [supports](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#relabeling-enhancements) multiline regex joined with |
                       x-kubernetes-preserve-unknown-fields: true
                     replacement:
                       description: |-
@@ -1994,7 +1988,7 @@ spec:
                       items:
                         description: |-
                           RelabelConfig allows dynamic rewriting of the label set
-                          More info: https://docs.victoriametrics.com/#relabeling
+                          More info [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/#relabeling)
                         properties:
                           action:
                             description: Action to perform based on regex matching.
@@ -2022,8 +2016,7 @@ spec:
                           regex:
                             description: |-
                               Regular expression against which the extracted value is matched. Default is '(.*)'
-                              victoriaMetrics supports multiline regex joined with |
-                              https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
+                              victoriaMetrics [supports](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#relabeling-enhancements) multiline regex joined with |
                             x-kubernetes-preserve-unknown-fields: true
                           replacement:
                             description: |-
@@ -2244,7 +2237,7 @@ spec:
                                 items:
                                   description: |-
                                     RelabelConfig allows dynamic rewriting of the label set
-                                    More info: https://docs.victoriametrics.com/#relabeling
+                                    More info [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/#relabeling)
                                   properties:
                                     action:
                                       description: Action to perform based on regex
@@ -2272,8 +2265,7 @@ spec:
                                     regex:
                                       description: |-
                                         Regular expression against which the extracted value is matched. Default is '(.*)'
-                                        victoriaMetrics supports multiline regex joined with |
-                                        https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
+                                        victoriaMetrics [supports](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#relabeling-enhancements) multiline regex joined with |
                                       x-kubernetes-preserve-unknown-fields: true
                                     replacement:
                                       description: |-
@@ -2342,7 +2334,7 @@ spec:
                                 items:
                                   description: |-
                                     RelabelConfig allows dynamic rewriting of the label set
-                                    More info: https://docs.victoriametrics.com/#relabeling
+                                    More info [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/#relabeling)
                                   properties:
                                     action:
                                       description: Action to perform based on regex
@@ -2370,8 +2362,7 @@ spec:
                                     regex:
                                       description: |-
                                         Regular expression against which the extracted value is matched. Default is '(.*)'
-                                        victoriaMetrics supports multiline regex joined with |
-                                        https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
+                                        victoriaMetrics [supports](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#relabeling-enhancements) multiline regex joined with |
                                       x-kubernetes-preserve-unknown-fields: true
                                     replacement:
                                       description: |-
@@ -2707,7 +2698,7 @@ spec:
                   useMultiTenantMode:
                     description: |-
                       Configures vmagent accepting data via the same multitenant endpoints as vminsert at VictoriaMetrics cluster does,
-                      see https://docs.victoriametrics.com/vmagent.html#multitenancy.
+                      see [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md/#multitenancy).
                       it's global setting and affects all remote storage configurations
                     type: boolean
                 type: object
@@ -2886,7 +2877,7 @@ spec:
                 items:
                   description: |-
                     RelabelConfig allows dynamic rewriting of the label set
-                    More info: https://docs.victoriametrics.com/#relabeling
+                    More info [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/#relabeling)
                   properties:
                     action:
                       description: Action to perform based on regex matching. Default
@@ -2914,8 +2905,7 @@ spec:
                     regex:
                       description: |-
                         Regular expression against which the extracted value is matched. Default is '(.*)'
-                        victoriaMetrics supports multiline regex joined with |
-                        https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
+                        victoriaMetrics [supports](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#relabeling-enhancements) multiline regex joined with |
                       x-kubernetes-preserve-unknown-fields: true
                     replacement:
                       description: |-
@@ -3097,7 +3087,7 @@ spec:
                 items:
                   description: |-
                     RelabelConfig allows dynamic rewriting of the label set
-                    More info: https://docs.victoriametrics.com/#relabeling
+                    More info [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/#relabeling)
                   properties:
                     action:
                       description: Action to perform based on regex matching. Default
@@ -3125,8 +3115,7 @@ spec:
                     regex:
                       description: |-
                         Regular expression against which the extracted value is matched. Default is '(.*)'
-                        victoriaMetrics supports multiline regex joined with |
-                        https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
+                        victoriaMetrics [supports](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#relabeling-enhancements) multiline regex joined with |
                       x-kubernetes-preserve-unknown-fields: true
                     replacement:
                       description: |-
@@ -3280,7 +3269,7 @@ spec:
                   ShardCount - numbers of shards of VMAgent
                   in this case operator will use 1 deployment/sts per shard with
                   replicas count according to spec.replicas,
-                  see https://docs.victoriametrics.com/vmagent.html#scraping-big-number-of-targets
+                  see [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md/#scraping-big-number-of-targets)
                 type: integer
               startupProbe:
                 description: StartupProbe that will be added to CRD pod
@@ -3821,7 +3810,7 @@ spec:
                 items:
                   description: |-
                     RelabelConfig allows dynamic rewriting of the label set
-                    More info: https://docs.victoriametrics.com/#relabeling
+                    More info [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/#relabeling)
                   properties:
                     action:
                       description: Action to perform based on regex matching. Default
@@ -3849,8 +3838,7 @@ spec:
                     regex:
                       description: |-
                         Regular expression against which the extracted value is matched. Default is '(.*)'
-                        victoriaMetrics supports multiline regex joined with |
-                        https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
+                        victoriaMetrics [supports](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#relabeling-enhancements) multiline regex joined with |
                       x-kubernetes-preserve-unknown-fields: true
                     replacement:
                       description: |-
@@ -9544,14 +9532,12 @@ spec:
                 description: |-
                   License allows to configure license key to be used for enterprise features.
                   Using license key is supported starting from VictoriaMetrics v1.94.0.
-                  See: https://docs.victoriametrics.com/enterprise.html
+                  See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/enterprise.md)
                 properties:
                   key:
                     description: |-
-                      Enterprise license key. This flag is available only in VictoriaMetrics enterprise.
-                      Documentation - https://docs.victoriametrics.com/enterprise.html
-                      for more information, visit https://victoriametrics.com/products/enterprise/ .
-                      To request a trial license, go to https://victoriametrics.com/products/enterprise/trial/
+                      Enterprise license key. This flag is available only in [VictoriaMetrics enterprise](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/enterprise.md).
+                      To request a trial license, [go to](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/products/enterprise/trial.md)
                     type: string
                   keyRef:
                     description: KeyRef is reference to secret with license key for
@@ -11091,7 +11077,7 @@ spec:
               drop_src_path_prefix_parts:
                 description: |-
                   DropSrcPathPrefixParts is the number of `/`-delimited request path prefix parts to drop before proxying the request to backend.
-                  See https://docs.victoriametrics.com/vmauth.html#dropping-request-path-prefix for more details.
+                  See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmauth.md#dropping-request-path-prefix) for more details.
                 type: integer
               extraArgs:
                 additionalProperties:
@@ -11450,8 +11436,7 @@ spec:
               ip_filters:
                 description: |-
                   IPFilters defines per target src ip filters
-                  supported only with enterprise version of vmauth
-                  https://docs.victoriametrics.com/vmauth.html#ip-filters
+                  supported only with enterprise version of [vmauth](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmauth.md/#ip-filters)
                 properties:
                   allow_list:
                     items:
@@ -11466,14 +11451,12 @@ spec:
                 description: |-
                   License allows to configure license key to be used for enterprise features.
                   Using license key is supported starting from VictoriaMetrics v1.94.0.
-                  See: https://docs.victoriametrics.com/enterprise.html
+                  See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/enterprise.md)
                 properties:
                   key:
                     description: |-
-                      Enterprise license key. This flag is available only in VictoriaMetrics enterprise.
-                      Documentation - https://docs.victoriametrics.com/enterprise.html
-                      for more information, visit https://victoriametrics.com/products/enterprise/ .
-                      To request a trial license, go to https://victoriametrics.com/products/enterprise/trial/
+                      Enterprise license key. This flag is available only in [VictoriaMetrics enterprise](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/enterprise.md).
+                      To request a trial license, [go to](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/products/enterprise/trial.md)
                     type: string
                   keyRef:
                     description: KeyRef is reference to secret with license key for
@@ -11511,7 +11494,7 @@ spec:
                 description: |-
                   LoadBalancingPolicy defines load balancing policy to use for backend urls.
                   Supported policies: least_loaded, first_available.
-                  See https://docs.victoriametrics.com/vmauth.html#load-balancing for more details (default "least_loaded")
+                  See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmauth.md#load-balancing) for more details (default "least_loaded")
                 enum:
                 - least_loaded
                 - first_available
@@ -12048,7 +12031,7 @@ spec:
                     drop_src_path_prefix_parts:
                       description: |-
                         DropSrcPathPrefixParts is the number of `/`-delimited request path prefix parts to drop before proxying the request to backend.
-                        See https://docs.victoriametrics.com/vmauth.html#dropping-request-path-prefix for more details.
+                        See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmauth.md#dropping-request-path-prefix) for more details.
                       type: integer
                     headers:
                       description: |-
@@ -12064,7 +12047,7 @@ spec:
                       description: |-
                         LoadBalancingPolicy defines load balancing policy to use for backend urls.
                         Supported policies: least_loaded, first_available.
-                        See https://docs.victoriametrics.com/vmauth.html#load-balancing for more details (default "least_loaded")
+                        See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmauth.md#load-balancing) for more details (default "least_loaded")
                       enum:
                       - least_loaded
                       - first_available
@@ -12435,14 +12418,12 @@ spec:
                 description: |-
                   License allows to configure license key to be used for enterprise features.
                   Using license key is supported starting from VictoriaMetrics v1.94.0.
-                  See: https://docs.victoriametrics.com/enterprise.html
+                  See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/enterprise.md)
                 properties:
                   key:
                     description: |-
-                      Enterprise license key. This flag is available only in VictoriaMetrics enterprise.
-                      Documentation - https://docs.victoriametrics.com/enterprise.html
-                      for more information, visit https://victoriametrics.com/products/enterprise/ .
-                      To request a trial license, go to https://victoriametrics.com/products/enterprise/trial/
+                      Enterprise license key. This flag is available only in [VictoriaMetrics enterprise](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/enterprise.md).
+                      To request a trial license, [go to](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/products/enterprise/trial.md)
                     type: string
                   keyRef:
                     description: KeyRef is reference to secret with license key for
@@ -12488,8 +12469,8 @@ spec:
                   RetentionPeriod for the stored metrics
                   Note VictoriaMetrics has data/ and indexdb/ folders
                   metrics from data/ removed eventually as soon as partition leaves retention period
-                  reverse index data at indexdb rotates once at the half of configured retention period
-                  https://docs.victoriametrics.com/Single-server-VictoriaMetrics.html#retention
+                  reverse index data at indexdb rotates once at the half of configured
+                  [retention period](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/Single-server-VictoriaMetrics.md/#retention)
                 type: string
               serviceAccountName:
                 description: |-
@@ -12512,7 +12493,7 @@ spec:
                   clusterNativeListenPort:
                     description: |-
                       ClusterNativePort for multi-level cluster setup.
-                      More details: https://docs.victoriametrics.com/Cluster-VictoriaMetrics.html#multi-level-cluster-setup
+                      More [details](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/Cluster-VictoriaMetrics.md#multi-level-cluster-setup)
                     type: string
                   configMaps:
                     description: |-
@@ -13565,7 +13546,7 @@ spec:
                   clusterNativeListenPort:
                     description: |-
                       ClusterNativePort for multi-level cluster setup.
-                      More details: https://docs.victoriametrics.com/Cluster-VictoriaMetrics.html#multi-level-cluster-setup
+                      More [details](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/Cluster-VictoriaMetrics.md#multi-level-cluster-setup)
                     type: string
                   configMaps:
                     description: |-
@@ -15905,7 +15886,7 @@ spec:
                       restore:
                         description: |-
                           Restore Allows to enable restore options for pod
-                          Read more: https://docs.victoriametrics.com/vmbackupmanager.html#restore-commands
+                          Read [more](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmbackupmanager.md#restore-commands)
                         properties:
                           onStart:
                             description: OnStart defines configuration for restore
@@ -16096,6 +16077,7 @@ spec:
             description: VMClusterStatus defines the observed state of VMCluster
             properties:
               clusterStatus:
+                description: UpdateStatus defines status for application
                 type: string
               lastSync:
                 description: Deprecated.
@@ -16315,7 +16297,7 @@ spec:
                 items:
                   description: |-
                     RelabelConfig allows dynamic rewriting of the label set
-                    More info: https://docs.victoriametrics.com/#relabeling
+                    More info [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/#relabeling)
                   properties:
                     action:
                       description: Action to perform based on regex matching. Default
@@ -16343,8 +16325,7 @@ spec:
                     regex:
                       description: |-
                         Regular expression against which the extracted value is matched. Default is '(.*)'
-                        victoriaMetrics supports multiline regex joined with |
-                        https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
+                        victoriaMetrics [supports](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#relabeling-enhancements) multiline regex joined with |
                       x-kubernetes-preserve-unknown-fields: true
                     replacement:
                       description: |-
@@ -16514,7 +16495,7 @@ spec:
                 items:
                   description: |-
                     RelabelConfig allows dynamic rewriting of the label set
-                    More info: https://docs.victoriametrics.com/#relabeling
+                    More info [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/#relabeling)
                   properties:
                     action:
                       description: Action to perform based on regex matching. Default
@@ -16542,8 +16523,7 @@ spec:
                     regex:
                       description: |-
                         Regular expression against which the extracted value is matched. Default is '(.*)'
-                        victoriaMetrics supports multiline regex joined with |
-                        https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
+                        victoriaMetrics [supports](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#relabeling-enhancements) multiline regex joined with |
                       x-kubernetes-preserve-unknown-fields: true
                     replacement:
                       description: |-
@@ -16831,7 +16811,7 @@ spec:
                       disable_keepalive allows disabling HTTP keep-alive when scraping targets.
                       By default, HTTP keep-alive is enabled, so TCP connections to scrape targets
                       could be re-used.
-                      See https://docs.victoriametrics.com/vmagent.html#scrape_config-enhancements
+                      See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#scrape_config-enhancements)
                     type: boolean
                   headers:
                     description: |-
@@ -16852,7 +16832,7 @@ spec:
                   proxy_client_config:
                     description: |-
                       ProxyClientConfig configures proxy auth settings for scraping
-                      See feature description https://docs.victoriametrics.com/vmagent.html#scraping-targets-via-a-proxy
+                      See [feature description](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#scraping-targets-via-a-proxy)
                     properties:
                       basic_auth:
                         description: BasicAuth allow an endpoint to authenticate over
@@ -17385,7 +17365,7 @@ spec:
                       items:
                         description: |-
                           RelabelConfig allows dynamic rewriting of the label set
-                          More info: https://docs.victoriametrics.com/#relabeling
+                          More info [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/#relabeling)
                         properties:
                           action:
                             description: Action to perform based on regex matching.
@@ -17413,8 +17393,7 @@ spec:
                           regex:
                             description: |-
                               Regular expression against which the extracted value is matched. Default is '(.*)'
-                              victoriaMetrics supports multiline regex joined with |
-                              https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
+                              victoriaMetrics [supports](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#relabeling-enhancements) multiline regex joined with |
                             x-kubernetes-preserve-unknown-fields: true
                           replacement:
                             description: |-
@@ -17588,7 +17567,7 @@ spec:
                       items:
                         description: |-
                           RelabelConfig allows dynamic rewriting of the label set
-                          More info: https://docs.victoriametrics.com/#relabeling
+                          More info [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/#relabeling)
                         properties:
                           action:
                             description: Action to perform based on regex matching.
@@ -17616,8 +17595,7 @@ spec:
                           regex:
                             description: |-
                               Regular expression against which the extracted value is matched. Default is '(.*)'
-                              victoriaMetrics supports multiline regex joined with |
-                              https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
+                              victoriaMetrics [supports](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#relabeling-enhancements) multiline regex joined with |
                             x-kubernetes-preserve-unknown-fields: true
                           replacement:
                             description: |-
@@ -17867,7 +17845,7 @@ spec:
                             disable_keepalive allows disabling HTTP keep-alive when scraping targets.
                             By default, HTTP keep-alive is enabled, so TCP connections to scrape targets
                             could be re-used.
-                            See https://docs.victoriametrics.com/vmagent.html#scrape_config-enhancements
+                            See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#scrape_config-enhancements)
                           type: boolean
                         headers:
                           description: |-
@@ -17888,7 +17866,7 @@ spec:
                         proxy_client_config:
                           description: |-
                             ProxyClientConfig configures proxy auth settings for scraping
-                            See feature description https://docs.victoriametrics.com/vmagent.html#scraping-targets-via-a-proxy
+                            See [feature description](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#scraping-targets-via-a-proxy)
                           properties:
                             basic_auth:
                               description: BasicAuth allow an endpoint to authenticate
@@ -18599,7 +18577,7 @@ spec:
                         items:
                           description: |-
                             RelabelConfig allows dynamic rewriting of the label set
-                            More info: https://docs.victoriametrics.com/#relabeling
+                            More info [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/#relabeling)
                           properties:
                             action:
                               description: Action to perform based on regex matching.
@@ -18627,8 +18605,7 @@ spec:
                             regex:
                               description: |-
                                 Regular expression against which the extracted value is matched. Default is '(.*)'
-                                victoriaMetrics supports multiline regex joined with |
-                                https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
+                                victoriaMetrics [supports](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#relabeling-enhancements) multiline regex joined with |
                               x-kubernetes-preserve-unknown-fields: true
                             replacement:
                               description: |-
@@ -18733,7 +18710,7 @@ spec:
                         items:
                           description: |-
                             RelabelConfig allows dynamic rewriting of the label set
-                            More info: https://docs.victoriametrics.com/#relabeling
+                            More info [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/#relabeling)
                           properties:
                             action:
                               description: Action to perform based on regex matching.
@@ -18761,8 +18738,7 @@ spec:
                             regex:
                               description: |-
                                 Regular expression against which the extracted value is matched. Default is '(.*)'
-                                victoriaMetrics supports multiline regex joined with |
-                                https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
+                                victoriaMetrics [supports](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#relabeling-enhancements) multiline regex joined with |
                               x-kubernetes-preserve-unknown-fields: true
                             replacement:
                               description: |-
@@ -18983,7 +18959,7 @@ spec:
                       disable_keepalive allows disabling HTTP keep-alive when scraping targets.
                       By default, HTTP keep-alive is enabled, so TCP connections to scrape targets
                       could be re-used.
-                      See https://docs.victoriametrics.com/vmagent.html#scrape_config-enhancements
+                      See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#scrape_config-enhancements)
                     type: boolean
                   headers:
                     description: |-
@@ -19004,7 +18980,7 @@ spec:
                   proxy_client_config:
                     description: |-
                       ProxyClientConfig configures proxy auth settings for scraping
-                      See feature description https://docs.victoriametrics.com/vmagent.html#scraping-targets-via-a-proxy
+                      See [feature description](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#scraping-targets-via-a-proxy)
                     properties:
                       basic_auth:
                         description: BasicAuth allow an endpoint to authenticate over
@@ -19399,7 +19375,7 @@ spec:
                       description: |-
                         ExtraFilterLabels optional list of label filters applied to every rule's
                         request within a group. Is compatible only with VM datasource.
-                        See more details at https://docs.victoriametrics.com#prometheus-querying-api-enhancements
+                        See more details [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/#prometheus-querying-api-enhancements)
                         Deprecated, use params instead
                       type: object
                     headers:
@@ -19503,8 +19479,8 @@ spec:
                       type: array
                     tenant:
                       description: |-
-                        Tenant id for group, can be used only with enterprise version of vmalert
-                        See more details at https://docs.victoriametrics.com/vmalert.html#multitenancy
+                        Tenant id for group, can be used only with enterprise version of vmalert.
+                        See more details [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmalert.md#multitenancy).
                       type: string
                     type:
                       description: |-
@@ -19613,7 +19589,7 @@ spec:
                 items:
                   description: |-
                     AzureSDConfig allow retrieving scrape targets from Azure VMs.
-                    See https://docs.victoriametrics.com/sd_configs/#azure_sd_configs
+                    See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/sd_configs.md#azure_sd_configs)
                   properties:
                     authenticationMethod:
                       description: |-
@@ -19748,8 +19724,8 @@ spec:
                   configurations.
                 items:
                   description: |-
-                    ConsulSDConfig defines a Consul service discovery configuration
-                    See https://docs.victoriametrics.com/sd_configs/#consul_sd_configs
+                    ConsulSDConfig defines a Consul service discovery configuration.
+                    See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/sd_configs.md/#consul_sd_configs)
                   properties:
                     allowStale:
                       description: |-
@@ -19991,7 +19967,7 @@ spec:
                     proxy_client_config:
                       description: |-
                         ProxyClientConfig configures proxy auth settings for scraping
-                        See feature description https://docs.victoriametrics.com/vmagent.html#scraping-targets-via-a-proxy
+                        See [feature description](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#scraping-targets-via-a-proxy)
                       properties:
                         basic_auth:
                           description: BasicAuth allow an endpoint to authenticate
@@ -20489,8 +20465,8 @@ spec:
                 items:
                   description: |-
                     DigitalOceanSDConfig allow retrieving scrape targets from DigitalOcean's Droplets API.
-                    This service discovery uses the public IPv4 address by default, by that can be changed with relabeling
-                    See https://docs.victoriametrics.com/sd_configs/#digitalocean_sd_configs
+                    This service discovery uses the public IPv4 address by default, by that can be changed with relabeling.
+                    See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/sd_configs.md#digitalocean_sd_configs)
                   properties:
                     authorization:
                       description: Authorization header to use on every scrape request.
@@ -20646,7 +20622,7 @@ spec:
                     proxy_client_config:
                       description: |-
                         ProxyClientConfig configures proxy auth settings for scraping
-                        See feature description https://docs.victoriametrics.com/vmagent.html#scraping-targets-via-a-proxy
+                        See (feature description](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#scraping-targets-via-a-proxy)
                       properties:
                         basic_auth:
                           description: BasicAuth allow an endpoint to authenticate
@@ -21086,7 +21062,7 @@ spec:
                   description: |-
                     DNSSDConfig allows specifying a set of DNS domain names which are periodically queried to discover a list of targets.
                     The DNS servers to be contacted are read from /etc/resolv.conf.
-                    See https://docs.victoriametrics.com/sd_configs/#dns_sd_configs
+                    See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/sd_configs.md#dns_sd_configs)
                   properties:
                     names:
                       description: A list of DNS domain names to be queried.
@@ -21117,8 +21093,8 @@ spec:
                   description: |-
                     EC2SDConfig allow retrieving scrape targets from AWS EC2 instances.
                     The private IP address is used by default, but may be changed to the public IP address with relabeling.
-                    The IAM credentials used must have the ec2:DescribeInstances permission to discover scrape targets
-                    See https://docs.victoriametrics.com/sd_configs/#ec2_sd_configs
+                    The IAM credentials used must have the ec2:DescribeInstances permission to discover scrape targets.
+                    See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/sd_configs.md#ec2_sd_configs)
                   properties:
                     accessKey:
                       description: AccessKey is the AWS API key.
@@ -21211,8 +21187,8 @@ spec:
                   configurations.
                 items:
                   description: |-
-                    FileSDConfig defines a file service discovery configuration
-                    See https://docs.victoriametrics.com/sd_configs/#file_sd_configs
+                    FileSDConfig defines a file service discovery configuration.
+                    See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/sd_configs.md#file_sd_configs)
                   properties:
                     files:
                       description: List of files to be used for file discovery.
@@ -21235,7 +21211,7 @@ spec:
                     GCESDConfig configures scrape targets from GCP GCE instances.
                     The private IP address is used by default, but may be changed to
                     the public IP address with relabeling.
-                    See https://docs.victoriametrics.com/sd_configs/#gce_sd_configs
+                    See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/sd_configs.md#gce_sd_configs)
 
 
                     The GCE service discovery will load the Google Cloud credentials
@@ -21284,8 +21260,8 @@ spec:
                   configurations.
                 items:
                   description: |-
-                    HTTPSDConfig defines a HTTP service discovery configuration
-                    See https://docs.victoriametrics.com/sd_configs/#http_sd_configs
+                    HTTPSDConfig defines a HTTP service discovery configuration.
+                    See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/sd_configs.md#http_sd_configs)
                   properties:
                     authorization:
                       description: Authorization header to use on every scrape request.
@@ -21392,7 +21368,7 @@ spec:
                     proxy_client_config:
                       description: |-
                         ProxyClientConfig configures proxy auth settings for scraping
-                        See feature description https://docs.victoriametrics.com/vmagent.html#scraping-targets-via-a-proxy
+                        See [feature description](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#scraping-targets-via-a-proxy)
                       properties:
                         basic_auth:
                           description: BasicAuth allow an endpoint to authenticate
@@ -21838,7 +21814,7 @@ spec:
                 items:
                   description: |-
                     KubernetesSDConfig allows retrieving scrape targets from Kubernetes' REST API.
-                    See https://docs.victoriametrics.com/sd_configs/#kubernetes_sd_configs
+                    See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/sd_configs.md#kubernetes_sd_configs)
                   properties:
                     apiServer:
                       description: |-
@@ -22091,7 +22067,7 @@ spec:
                     proxy_client_config:
                       description: |-
                         ProxyClientConfig configures proxy auth settings for scraping
-                        See feature description https://docs.victoriametrics.com/vmagent.html#scraping-targets-via-a-proxy
+                        See [feature description](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#scraping-targets-via-a-proxy)
                       properties:
                         basic_auth:
                           description: BasicAuth allow an endpoint to authenticate
@@ -22557,7 +22533,7 @@ spec:
                 items:
                   description: |-
                     RelabelConfig allows dynamic rewriting of the label set
-                    More info: https://docs.victoriametrics.com/#relabeling
+                    More info [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/#relabeling)
                   properties:
                     action:
                       description: Action to perform based on regex matching. Default
@@ -22585,8 +22561,7 @@ spec:
                     regex:
                       description: |-
                         Regular expression against which the extracted value is matched. Default is '(.*)'
-                        victoriaMetrics supports multiline regex joined with |
-                        https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
+                        victoriaMetrics [supports](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#relabeling-enhancements) multiline regex joined with |
                       x-kubernetes-preserve-unknown-fields: true
                     replacement:
                       description: |-
@@ -22744,7 +22719,7 @@ spec:
                 items:
                   description: |-
                     OpenStackSDConfig allow retrieving scrape targets from OpenStack Nova instances.
-                    See https://docs.victoriametrics.com/sd_configs/#openstack_sd_configs
+                    See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/sd_configs.md#openstack_sd_configs)
                   properties:
                     allTenants:
                       description: |-
@@ -23062,7 +23037,7 @@ spec:
                 items:
                   description: |-
                     RelabelConfig allows dynamic rewriting of the label set
-                    More info: https://docs.victoriametrics.com/#relabeling
+                    More info [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/#relabeling)
                   properties:
                     action:
                       description: Action to perform based on regex matching. Default
@@ -23090,8 +23065,7 @@ spec:
                     regex:
                       description: |-
                         Regular expression against which the extracted value is matched. Default is '(.*)'
-                        victoriaMetrics supports multiline regex joined with |
-                        https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
+                        victoriaMetrics [supports](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#relabeling-enhancements) multiline regex joined with |
                       x-kubernetes-preserve-unknown-fields: true
                     replacement:
                       description: |-
@@ -23165,7 +23139,7 @@ spec:
                 items:
                   description: |-
                     StaticConfig defines a static configuration.
-                    See https://docs.victoriametrics.com/sd_configs/#static_configs
+                    See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/sd_configs.md#static_configs)
                   properties:
                     labels:
                       additionalProperties:
@@ -23350,7 +23324,7 @@ spec:
                       disable_keepalive allows disabling HTTP keep-alive when scraping targets.
                       By default, HTTP keep-alive is enabled, so TCP connections to scrape targets
                       could be re-used.
-                      See https://docs.victoriametrics.com/vmagent.html#scrape_config-enhancements
+                      See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#scrape_config-enhancements)
                     type: boolean
                   headers:
                     description: |-
@@ -23371,7 +23345,7 @@ spec:
                   proxy_client_config:
                     description: |-
                       ProxyClientConfig configures proxy auth settings for scraping
-                      See feature description https://docs.victoriametrics.com/vmagent.html#scraping-targets-via-a-proxy
+                      See [feature description](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#scraping-targets-via-a-proxy)
                     properties:
                       basic_auth:
                         description: BasicAuth allow an endpoint to authenticate over
@@ -23892,7 +23866,7 @@ spec:
                       items:
                         description: |-
                           RelabelConfig allows dynamic rewriting of the label set
-                          More info: https://docs.victoriametrics.com/#relabeling
+                          More info [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/#relabeling)
                         properties:
                           action:
                             description: Action to perform based on regex matching.
@@ -23920,8 +23894,7 @@ spec:
                           regex:
                             description: |-
                               Regular expression against which the extracted value is matched. Default is '(.*)'
-                              victoriaMetrics supports multiline regex joined with |
-                              https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
+                              victoriaMetrics [supports](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#relabeling-enhancements) multiline regex joined with |
                             x-kubernetes-preserve-unknown-fields: true
                           replacement:
                             description: |-
@@ -24095,7 +24068,7 @@ spec:
                       items:
                         description: |-
                           RelabelConfig allows dynamic rewriting of the label set
-                          More info: https://docs.victoriametrics.com/#relabeling
+                          More info [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/#relabeling)
                         properties:
                           action:
                             description: Action to perform based on regex matching.
@@ -24123,8 +24096,7 @@ spec:
                           regex:
                             description: |-
                               Regular expression against which the extracted value is matched. Default is '(.*)'
-                              victoriaMetrics supports multiline regex joined with |
-                              https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
+                              victoriaMetrics [supports](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#relabeling-enhancements) multiline regex joined with |
                             x-kubernetes-preserve-unknown-fields: true
                           replacement:
                             description: |-
@@ -24373,7 +24345,7 @@ spec:
                             disable_keepalive allows disabling HTTP keep-alive when scraping targets.
                             By default, HTTP keep-alive is enabled, so TCP connections to scrape targets
                             could be re-used.
-                            See https://docs.victoriametrics.com/vmagent.html#scrape_config-enhancements
+                            See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#scrape_config-enhancements)
                           type: boolean
                         headers:
                           description: |-
@@ -24394,7 +24366,7 @@ spec:
                         proxy_client_config:
                           description: |-
                             ProxyClientConfig configures proxy auth settings for scraping
-                            See feature description https://docs.victoriametrics.com/vmagent.html#scraping-targets-via-a-proxy
+                            See [feature description](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#scraping-targets-via-a-proxy)
                           properties:
                             basic_auth:
                               description: BasicAuth allow an endpoint to authenticate
@@ -25036,14 +25008,12 @@ spec:
                 description: |-
                   License allows to configure license key to be used for enterprise features.
                   Using license key is supported starting from VictoriaMetrics v1.94.0.
-                  See: https://docs.victoriametrics.com/enterprise.html
+                  See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/enterprise.md)
                 properties:
                   key:
                     description: |-
-                      Enterprise license key. This flag is available only in VictoriaMetrics enterprise.
-                      Documentation - https://docs.victoriametrics.com/enterprise.html
-                      for more information, visit https://victoriametrics.com/products/enterprise/ .
-                      To request a trial license, go to https://victoriametrics.com/products/enterprise/trial/
+                      Enterprise license key. This flag is available only in [VictoriaMetrics enterprise](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/enterprise.md).
+                      To request a trial license, [go to](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/products/enterprise/trial.md)
                     type: string
                   keyRef:
                     description: KeyRef is reference to secret with license key for
@@ -25234,8 +25204,7 @@ spec:
                   RetentionPeriod for the stored metrics
                   Note VictoriaMetrics has data/ and indexdb/ folders
                   metrics from data/ removed eventually as soon as partition leaves retention period
-                  reverse index data at indexdb rotates once at the half of configured retention period
-                  https://docs.victoriametrics.com/Single-server-VictoriaMetrics.html#retention
+                  reverse index data at indexdb rotates once at the half of configured [retention period](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/Single-server-VictoriaMetrics.md/#retention)
                 type: string
               revisionHistoryLimitCount:
                 description: |-
@@ -25629,7 +25598,7 @@ spec:
                           items:
                             description: |-
                               RelabelConfig allows dynamic rewriting of the label set
-                              More info: https://docs.victoriametrics.com/#relabeling
+                              More info [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/#relabeling)
                             properties:
                               action:
                                 description: Action to perform based on regex matching.
@@ -25657,8 +25626,7 @@ spec:
                               regex:
                                 description: |-
                                   Regular expression against which the extracted value is matched. Default is '(.*)'
-                                  victoriaMetrics supports multiline regex joined with |
-                                  https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
+                                  victoriaMetrics [supports](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#relabeling-enhancements) multiline regex joined with |
                                 x-kubernetes-preserve-unknown-fields: true
                               replacement:
                                 description: |-
@@ -25726,7 +25694,7 @@ spec:
                           items:
                             description: |-
                               RelabelConfig allows dynamic rewriting of the label set
-                              More info: https://docs.victoriametrics.com/#relabeling
+                              More info [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/#relabeling)
                             properties:
                               action:
                                 description: Action to perform based on regex matching.
@@ -25754,8 +25722,7 @@ spec:
                               regex:
                                 description: |-
                                   Regular expression against which the extracted value is matched. Default is '(.*)'
-                                  victoriaMetrics supports multiline regex joined with |
-                                  https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
+                                  victoriaMetrics [supports](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#relabeling-enhancements) multiline regex joined with |
                                 x-kubernetes-preserve-unknown-fields: true
                               replacement:
                                 description: |-
@@ -26209,7 +26176,7 @@ spec:
                   restore:
                     description: |-
                       Restore Allows to enable restore options for pod
-                      Read more: https://docs.victoriametrics.com/vmbackupmanager.html#restore-commands
+                      Read [more](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmbackupmanager.md#restore-commands)
                     properties:
                       onStart:
                         description: OnStart defines configuration for restore on
@@ -26646,7 +26613,7 @@ spec:
                       items:
                         description: |-
                           RelabelConfig allows dynamic rewriting of the label set
-                          More info: https://docs.victoriametrics.com/#relabeling
+                          More info [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/#relabeling)
                         properties:
                           action:
                             description: Action to perform based on regex matching.
@@ -26674,8 +26641,7 @@ spec:
                           regex:
                             description: |-
                               Regular expression against which the extracted value is matched. Default is '(.*)'
-                              victoriaMetrics supports multiline regex joined with |
-                              https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
+                              victoriaMetrics [supports](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#relabeling-enhancements) multiline regex joined with |
                             x-kubernetes-preserve-unknown-fields: true
                           replacement:
                             description: |-
@@ -26848,7 +26814,7 @@ spec:
                       items:
                         description: |-
                           RelabelConfig allows dynamic rewriting of the label set
-                          More info: https://docs.victoriametrics.com/#relabeling
+                          More info [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/#relabeling)
                         properties:
                           action:
                             description: Action to perform based on regex matching.
@@ -26876,8 +26842,7 @@ spec:
                           regex:
                             description: |-
                               Regular expression against which the extracted value is matched. Default is '(.*)'
-                              victoriaMetrics supports multiline regex joined with |
-                              https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
+                              victoriaMetrics [supports](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#relabeling-enhancements) multiline regex joined with |
                             x-kubernetes-preserve-unknown-fields: true
                           replacement:
                             description: |-
@@ -27125,7 +27090,7 @@ spec:
                             disable_keepalive allows disabling HTTP keep-alive when scraping targets.
                             By default, HTTP keep-alive is enabled, so TCP connections to scrape targets
                             could be re-used.
-                            See https://docs.victoriametrics.com/vmagent.html#scrape_config-enhancements
+                            See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#scrape_config-enhancements)
                           type: boolean
                         headers:
                           description: |-
@@ -27146,7 +27111,7 @@ spec:
                         proxy_client_config:
                           description: |-
                             ProxyClientConfig configures proxy auth settings for scraping
-                            See feature description https://docs.victoriametrics.com/vmagent.html#scraping-targets-via-a-proxy
+                            See [feature description](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#scraping-targets-via-a-proxy)
                           properties:
                             basic_auth:
                               description: BasicAuth allow an endpoint to authenticate
@@ -27510,7 +27475,7 @@ spec:
               drop_src_path_prefix_parts:
                 description: |-
                   DropSrcPathPrefixParts is the number of `/`-delimited request path prefix parts to drop before proxying the request to backend.
-                  See https://docs.victoriametrics.com/vmauth.html#dropping-request-path-prefix for more details.
+                  See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmauth.md#dropping-request-path-prefix) for more details.
                 type: integer
               generatePassword:
                 description: |-
@@ -27530,8 +27495,7 @@ spec:
               ip_filters:
                 description: |-
                   IPFilters defines per target src ip filters
-                  supported only with enterprise version of vmauth
-                  https://docs.victoriametrics.com/vmauth.html#ip-filters
+                  supported only with enterprise version of [vmauth](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmauth.md/#ip-filters)
                 properties:
                   allow_list:
                     items:
@@ -27546,7 +27510,7 @@ spec:
                 description: |-
                   LoadBalancingPolicy defines load balancing policy to use for backend urls.
                   Supported policies: least_loaded, first_available.
-                  See https://docs.victoriametrics.com/vmauth.html#load-balancing for more details (default "least_loaded")
+                  See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmauth.md#load-balancing) for more details (default "least_loaded")
                 enum:
                 - least_loaded
                 - first_available
@@ -27649,7 +27613,7 @@ spec:
                     drop_src_path_prefix_parts:
                       description: |-
                         DropSrcPathPrefixParts is the number of `/`-delimited request path prefix parts to drop before proxying the request to backend.
-                        See https://docs.victoriametrics.com/vmauth.html#dropping-request-path-prefix for more details.
+                        See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmauth.md#dropping-request-path-prefix) for more details.
                       type: integer
                     headers:
                       description: |-
@@ -27669,7 +27633,7 @@ spec:
                       description: |-
                         LoadBalancingPolicy defines load balancing policy to use for backend urls.
                         Supported policies: least_loaded, first_available.
-                        See https://docs.victoriametrics.com/vmauth.html#load-balancing for more details (default "least_loaded")
+                        See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmauth.md#load-balancing) for more details (default "least_loaded")
                       enum:
                       - least_loaded
                       - first_available

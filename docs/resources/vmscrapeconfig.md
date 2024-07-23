@@ -7,14 +7,12 @@ menu:
     parent: "operator-custom-resources"
     weight: 11
 aliases:
-  - /operator/resources/vmscrapeconfig.html
+  - /operator/resources/vmscrapeconfig/
+  - /operator/resources/vmscrapeconfig/index.html
 ---
+The `VMScrapeConfig` CRD allows to define a scrape config using [any of the service discovery options supported in victoriametrics](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/sd_configs.md).
 
-# VMScrapeConfig
-
-The `VMScrapeConfig` CRD allows to define a scrape config using [any of the service discovery options supported in victoriametrics](https://docs.victoriametrics.com/sd_configs/).
-
-`VMScrapeConfig` object generates part of [VMAgent](./vmagent.md) configuration with Prometheus-compatible scrape targets.
+`VMScrapeConfig` object generates part of [VMAgent](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md) configuration with Prometheus-compatible scrape targets.
 
 ## Specification
 

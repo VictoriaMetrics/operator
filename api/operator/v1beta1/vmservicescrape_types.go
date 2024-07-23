@@ -217,7 +217,7 @@ type VMScrapeParams struct {
 	// disable_keepalive allows disabling HTTP keep-alive when scraping targets.
 	// By default, HTTP keep-alive is enabled, so TCP connections to scrape targets
 	// could be re-used.
-	// See https://docs.victoriametrics.com/vmagent.html#scrape_config-enhancements
+	// See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#scrape_config-enhancements)
 	// +optional
 	DisableKeepAlive *bool `json:"disable_keep_alive,omitempty"`
 	// +optional
@@ -229,7 +229,7 @@ type VMScrapeParams struct {
 	// +optional
 	ScrapeOffset *string `json:"scrape_offset,omitempty"`
 	// ProxyClientConfig configures proxy auth settings for scraping
-	// See feature description https://docs.victoriametrics.com/vmagent.html#scraping-targets-via-a-proxy
+	// See [feature description](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#scraping-targets-via-a-proxy)
 	// +optional
 	ProxyClientConfig *ProxyAuth `json:"proxy_client_config,omitempty"`
 	// Headers allows sending custom headers to scrape targets
@@ -354,7 +354,7 @@ type SecretOrConfigMap struct {
 }
 
 // RelabelConfig allows dynamic rewriting of the label set
-// More info: https://docs.victoriametrics.com/#relabeling
+// More info [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/#relabeling)
 // +k8s:openapi-gen=true
 type RelabelConfig struct {
 	// UnderScoreSourceLabels - additional form of source labels source_labels
@@ -383,8 +383,7 @@ type RelabelConfig struct {
 	// +optional
 	TargetLabel string `json:"targetLabel,omitempty" yaml:"-"`
 	// Regular expression against which the extracted value is matched. Default is '(.*)'
-	// victoriaMetrics supports multiline regex joined with |
-	// https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
+	// victoriaMetrics [supports](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#relabeling-enhancements) multiline regex joined with |
 	// +optional
 	// +kubebuilder:validation:Schemaless
 	// +kubebuilder:pruning:PreserveUnknownFields

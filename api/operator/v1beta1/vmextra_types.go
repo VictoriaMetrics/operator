@@ -668,13 +668,11 @@ func (m *StringOrArray) UnmarshalJSON(data []byte) error {
 }
 
 // License holds license key for enterprise features.
-// Using license key is supported starting from VictoriaMetrics v1.94.0
-// See: https://docs.victoriametrics.com/enterprise.html
+// Using license key is supported starting from VictoriaMetrics v1.94.0.
+// See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/enterprise.md)
 type License struct {
-	// Enterprise license key. This flag is available only in VictoriaMetrics enterprise.
-	// Documentation - https://docs.victoriametrics.com/enterprise.html
-	// for more information, visit https://victoriametrics.com/products/enterprise/ .
-	// To request a trial license, go to https://victoriametrics.com/products/enterprise/trial/
+	// Enterprise license key. This flag is available only in [VictoriaMetrics enterprise](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/enterprise.md).
+	// To request a trial license, [go to](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/products/enterprise/trial.md)
 	Key *string `json:"key,omitempty"`
 	// KeyRef is reference to secret with license key for enterprise features.
 	KeyRef *v1.SecretKeySelector `json:"keyRef,omitempty"`

@@ -7,11 +7,9 @@ menu:
     parent: "operator-custom-resources"
     weight: 4
 aliases:
-  - /operator/resources/vmalertmanagerconfig.html
+  - /operator/resources/vmalertmanagerconfig/
+  - /operator/resources/vmalertmanagerconfig/index.html
 ---
-
-# VMAlertmanagerConfig
-
 The `VMAlertmanagerConfig` provides way to configure [VMAlertmanager](./vmalertmanager.md) 
 configuration with CRD. It allows to define different configuration parts, which will be merged by operator into config. 
 

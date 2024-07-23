@@ -7,11 +7,9 @@ menu:
     parent: "operator"
     weight: 2
 aliases:
-  - /operator/setup.html
+  - /operator/setup/
+  - /operator/setup/index.html
 ---
-
-# VictoriaMetrics Operator Setup
-
 ## Installing by helm-charts
 
 You can use one of the following official helm-charts with `vmoperator`:

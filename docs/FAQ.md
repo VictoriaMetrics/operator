@@ -8,12 +8,9 @@ menu:
     weight: 9
     identifier: "operator-faq"
 aliases:
-  - /operator/FAQ.html
-  - /operator/faq.html
+  - /operator/faq/
+  - /operator/faq/index.html
 ---
-
-# FAQ (Frequency Asked Questions)
-
 ## How do you monitor the operator itself?
 
 You can read about vmoperator monitoring in [this document](./monitoring.md).

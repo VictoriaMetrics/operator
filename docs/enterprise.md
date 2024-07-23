@@ -7,13 +7,11 @@ menu:
     parent: "operator"
     weight: 13
 aliases:
-  - /operator/enterprise.html
+  - /operator/enterprise/
+  - /operator/enterprise/index.html
 ---
-
-# Using operator with enterprise features 
-
 Operator doesn't have enterprise version for itself, but it supports 
-[enterprise features for VictoriaMetrics components](https://docs.victoriametrics.com/enterprise.html):
+[enterprise features for VictoriaMetrics components](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/enterprise.md):
 
 - [VMAgent Enterprise features](./resources/vmagent.md#enterprise-features):
   - [Reading metrics from kafka](./resources/vmagent.md#reading-metrics-from-kafka)
@@ -39,7 +37,7 @@ Operator doesn't have enterprise version for itself, but it supports
   - [IP Filters](./resources/vmuser.md#ip-filters) 
 
 More information about enterprise features you can read 
-on [VictoriaMetrics Enterprise page](https://docs.victoriametrics.com/enterprise.html#victoriametrics-enterprise-features).
+on [VictoriaMetrics Enterprise page](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/enterprise.md#victoriametrics-enterprise-features).
 
 In order to find examples of deploying enterprise components with operator,
-please, check [this](https://docs.victoriametrics.com/enterprise.html#kubernetes-operator) documentation.
+please, check [this](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/enterprise.md#kubernetes-operator) documentation.

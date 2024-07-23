@@ -291,8 +291,8 @@ docs-debug: docs
 		git clone git@github.com:VictoriaMetrics/vmdocs $(WORKDIR)/vmdocs; \
 	fi; \
 	cd $(WORKDIR)/vmdocs && \
-	git checkout dockerfile-for-local-testing && \
-	git pull origin dockerfile-for-local-testing && \
+	git checkout main && \
+	git pull origin main && \
 	cd $(REPODIR) && \
 	$(CONTAINER_TOOL) build \
 		-t vmdocs \

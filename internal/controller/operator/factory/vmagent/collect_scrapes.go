@@ -196,7 +196,7 @@ func selectServiceScrapes(ctx context.Context, cr *vmv1beta1.VMAgent, rclient cl
 	if cr.Spec.ArbitraryFSAccessThroughSMs.Deny {
 		for namespaceAndName, sm := range res {
 			for _, endpoint := range sm.Spec.Endpoints {
-				if err := testForArbitraryFSAccess(endpoint); err != nil {
+				if err := testForArbitraryFSAccess(endpoint.EndpointAuth); err != nil {
 					delete(res, namespaceAndName)
 					logger.WithContext(ctx).Info("skipping vmservicescrape",
 						"error", err.Error(),

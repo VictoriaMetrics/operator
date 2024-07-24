@@ -104,30 +104,36 @@ func TestConvertScrapeConfig(t *testing.T) {
 			},
 			want: vmv1beta1.VMScrapeConfig{
 				Spec: vmv1beta1.VMScrapeConfigSpec{
-					ProxyURL: ptr.To("http://proxy.com"),
+					EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+						ProxyURL:        ptr.To("http://proxy.com"),
+						HonorTimestamps: ptr.To(true),
+						VMScrapeParams:  &vmv1beta1.VMScrapeParams{DisableCompression: ptr.To(false)},
+					},
 					StaticConfigs: []vmv1beta1.StaticConfig{
 						{
 							Targets: []string{"target-1", "target-2"},
 						},
 					},
-					HonorTimestamps: ptr.To(true),
-					VMScrapeParams:  &vmv1beta1.VMScrapeParams{DisableCompression: ptr.To(false)},
-					BasicAuth: &vmv1beta1.BasicAuth{
-						Username: corev1.SecretKeySelector{Key: "username"},
-						Password: corev1.SecretKeySelector{Key: "password"},
-					},
-					RelabelConfigs: []*vmv1beta1.RelabelConfig{
-						{
-							Action:      "LabelMap",
-							Regex:       vmv1beta1.StringOrArray{"__meta_kubernetes_pod_label_(.+)"},
-							Replacement: "foo_$1",
+					EndpointAuth: vmv1beta1.EndpointAuth{
+						BasicAuth: &vmv1beta1.BasicAuth{
+							Username: corev1.SecretKeySelector{Key: "username"},
+							Password: corev1.SecretKeySelector{Key: "password"},
 						},
 					},
-					MetricRelabelConfigs: []*vmv1beta1.RelabelConfig{
-						{
-							SourceLabels: []string{"__meta_kubernetes_pod_name", "__meta_kubernetes_pod_container_port_number"},
-							Separator:    ":",
-							TargetLabel:  "host_port",
+					EndpointRelabelings: vmv1beta1.EndpointRelabelings{
+						RelabelConfigs: []*vmv1beta1.RelabelConfig{
+							{
+								Action:      "LabelMap",
+								Regex:       vmv1beta1.StringOrArray{"__meta_kubernetes_pod_label_(.+)"},
+								Replacement: "foo_$1",
+							},
+						},
+						MetricRelabelConfigs: []*vmv1beta1.RelabelConfig{
+							{
+								SourceLabels: []string{"__meta_kubernetes_pod_name", "__meta_kubernetes_pod_container_port_number"},
+								Separator:    ":",
+								TargetLabel:  "host_port",
+							},
 						},
 					},
 				},

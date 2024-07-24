@@ -3,7 +3,6 @@ package v1beta1
 import (
 	"fmt"
 
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -29,79 +28,10 @@ type TargetEndpoint struct {
 	Targets []string `json:"targets"`
 	// Labels static labels for targets.
 	// +optional
-	Labels map[string]string `json:"labels,omitempty"`
-	// Default port for target.
-	// +optional
-	Port string `json:"port,omitempty"`
-	// HTTP path to scrape for metrics.
-	// +optional
-	Path string `json:"path,omitempty"`
-	// HTTP scheme to use for scraping.
-	// +optional
-	// +kubebuilder:validation:Enum=http;https
-	Scheme string `json:"scheme,omitempty"`
-	// Optional HTTP URL parameters
-	// +optional
-	Params map[string][]string `json:"params,omitempty"`
-	// FollowRedirects controls redirects for scraping.
-	// +optional
-	FollowRedirects *bool `json:"follow_redirects,omitempty"`
-	// SampleLimit defines per-scrape limit on number of scraped samples that will be accepted.
-	// +optional
-	SampleLimit uint64 `json:"sampleLimit,omitempty"`
-	// SeriesLimit defines per-scrape limit on number of unique time series
-	// a single target can expose during all the scrapes on the time window of 24h.
-	// +optional
-	SeriesLimit uint64 `json:"seriesLimit,omitempty"`
-	// Interval at which metrics should be scraped
-	// +optional
-	Interval string `json:"interval,omitempty"`
-	// ScrapeInterval is the same as Interval and has priority over it.
-	// one of scrape_interval or interval can be used
-	// +optional
-	ScrapeInterval string `json:"scrape_interval,omitempty"`
-	// Timeout after which the scrape is ended
-	// +optional
-	ScrapeTimeout string `json:"scrapeTimeout,omitempty"`
-	// OAuth2 defines auth configuration
-	// +optional
-	OAuth2 *OAuth2 `json:"oauth2,omitempty"`
-	// TLSConfig configuration to use when scraping the endpoint
-	// +optional
-	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
-	// File to read bearer token for scraping targets.
-	// +optional
-	BearerTokenFile string `json:"bearerTokenFile,omitempty"`
-	// Secret to mount to read bearer token for scraping targets. The secret
-	// needs to be in the same namespace as the service scrape and accessible by
-	// the victoria-metrics operator.
-	// +optional
-	// +nullable
-	BearerTokenSecret *v1.SecretKeySelector `json:"bearerTokenSecret,omitempty"`
-	// BasicAuth allow an endpoint to authenticate over basic authentication
-	// +optional
-	BasicAuth *BasicAuth `json:"basicAuth,omitempty"`
-	// Authorization with http header Authorization
-	// +optional
-	Authorization *Authorization `json:"authorization,omitempty"`
-	// MetricRelabelConfigs to apply to samples after scrapping.
-	// +optional
-	MetricRelabelConfigs []*RelabelConfig `json:"metricRelabelConfigs,omitempty"`
-	// RelabelConfigs to apply to samples during service discovery.
-	// +optional
-	RelabelConfigs []*RelabelConfig `json:"relabelConfigs,omitempty"`
-	// ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint.
-	// +optional
-	ProxyURL *string `json:"proxyURL,omitempty"`
-	// HonorLabels chooses the metric's labels on collisions with target labels.
-	// +optional
-	HonorLabels bool `json:"honorLabels,omitempty"`
-	// HonorTimestamps controls whether vmagent respects the timestamps present in scraped data.
-	// +optional
-	HonorTimestamps *bool `json:"honorTimestamps,omitempty"`
-	// VMScrapeParams defines VictoriaMetrics specific scrape parameters
-	// +optional
-	VMScrapeParams *VMScrapeParams `json:"vm_scrape_params,omitempty"`
+	Labels               map[string]string `json:"labels,omitempty"`
+	EndpointRelabelings  `json:",inline"`
+	EndpointAuth         `json:",inline"`
+	EndpointScrapeParams `json:",inline"`
 }
 
 // VMStaticScrapeStatus defines the observed state of VMStaticScrape

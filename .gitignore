@@ -2,9 +2,9 @@
 .DS_Store
 Dockerfile.cross
 .idea
-bin/
-build*
-bundle*
+/bin/
+/build*
+/bundle*
 release*
 operator.zip
 coverage.txt

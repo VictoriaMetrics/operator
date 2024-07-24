@@ -3,8 +3,6 @@ package vmagent
 import (
 	"context"
 	"fmt"
-	"sort"
-	"strings"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"gopkg.in/yaml.v2"
@@ -13,98 +11,40 @@ import (
 
 func generatePodScrapeConfig(
 	ctx context.Context,
-	cr *vmv1beta1.VMAgent,
+	vmagentCR *vmv1beta1.VMAgent,
 	m *vmv1beta1.VMPodScrape,
 	ep vmv1beta1.PodMetricsEndpoint,
 	i int,
 	apiserverConfig *vmv1beta1.APIServerConfig,
 	ssCache *scrapesSecretsCache,
-	ignoreHonorLabels bool,
-	overrideHonorTimestamps bool,
-	ignoreNamespaceSelectors bool,
-	enforcedNamespaceLabel string,
+	se vmv1beta1.VMAgentSecurityEnforcements,
 ) yaml.MapSlice {
-	hl := honorLabels(ep.HonorLabels, ignoreHonorLabels)
 	cfg := yaml.MapSlice{
 		{
 			Key:   "job_name",
 			Value: fmt.Sprintf("podScrape/%s/%s/%d", m.Namespace, m.Name, i),
 		},
-		{
-			Key:   "honor_labels",
-			Value: hl,
-		},
 	}
-	cfg = honorTimestamps(cfg, ep.HonorTimestamps, overrideHonorTimestamps)
 
-	selectedNamespaces := getNamespacesFromNamespaceSelector(&m.Spec.NamespaceSelector, m.Namespace, ignoreNamespaceSelectors)
+	selectedNamespaces := getNamespacesFromNamespaceSelector(&m.Spec.NamespaceSelector, m.Namespace, se.IgnoreNamespaceSelectors)
 	if ep.AttachMetadata.Node == nil && m.Spec.AttachMetadata.Node != nil {
 		ep.AttachMetadata = m.Spec.AttachMetadata
 	}
 	cfg = append(cfg, generatePodK8SSDConfig(selectedNamespaces, m.Spec.Selector, apiserverConfig, ssCache, kubernetesSDRolePod, &ep.AttachMetadata))
 
-	var scrapeInterval string
-	if ep.ScrapeInterval != "" {
-		scrapeInterval = ep.ScrapeInterval
-	} else if ep.Interval != "" {
-		scrapeInterval = ep.Interval
+	// set defaults
+	if ep.SampleLimit == 0 {
+		ep.SampleLimit = m.Spec.SampleLimit
+	}
+	if ep.SeriesLimit == 0 {
+		ep.SeriesLimit = m.Spec.SeriesLimit
 	}
 
-	scrapeInterval = limitScrapeInterval(ctx, scrapeInterval, cr.Spec.MinScrapeInterval, cr.Spec.MaxScrapeInterval)
-	if scrapeInterval != "" {
-		cfg = append(cfg, yaml.MapItem{Key: "scrape_interval", Value: scrapeInterval})
-	}
-	if ep.ScrapeTimeout != "" {
-		cfg = append(cfg, yaml.MapItem{Key: "scrape_timeout", Value: ep.ScrapeTimeout})
-	}
-	if ep.Path != "" {
-		cfg = append(cfg, yaml.MapItem{Key: "metrics_path", Value: ep.Path})
-	}
-	if ep.ProxyURL != nil {
-		cfg = append(cfg, yaml.MapItem{Key: "proxy_url", Value: ep.ProxyURL})
-	}
-	if ep.Params != nil {
-		cfg = append(cfg, yaml.MapItem{Key: "params", Value: ep.Params})
-	}
+	setScrapeIntervalToWithLimit(ctx, &ep.EndpointScrapeParams, vmagentCR)
 
-	if ep.FollowRedirects != nil {
-		cfg = append(cfg, yaml.MapItem{Key: "follow_redirects", Value: ep.FollowRedirects})
-	}
-	if ep.Scheme != "" {
-		cfg = append(cfg, yaml.MapItem{Key: "scheme", Value: ep.Scheme})
-	}
-	cfg = addTLStoYaml(cfg, m.Namespace, ep.TLSConfig, false)
+	cfg = addCommonScrapeParamsTo(cfg, ep.EndpointScrapeParams, se)
 
-	if ep.BearerTokenFile != "" {
-		cfg = append(cfg, yaml.MapItem{Key: "bearer_token_file", Value: ep.BearerTokenFile})
-	}
-
-	if ep.BearerTokenSecret != nil && ep.BearerTokenSecret.Name != "" {
-		if s, ok := ssCache.bearerTokens[m.AsMapKey(i)]; ok {
-			cfg = append(cfg, yaml.MapItem{Key: "bearer_token", Value: s})
-		}
-	}
-
-	if ep.BasicAuth != nil {
-		var bac yaml.MapSlice
-		if s, ok := ssCache.baSecrets[m.AsMapKey(i)]; ok {
-			bac = append(bac,
-				yaml.MapItem{Key: "username", Value: s.Username},
-				yaml.MapItem{Key: "password", Value: s.Password},
-			)
-		}
-		if len(ep.BasicAuth.PasswordFile) > 0 {
-			bac = append(bac, yaml.MapItem{Key: "password_file", Value: ep.BasicAuth.PasswordFile})
-		}
-		if len(bac) > 0 {
-			cfg = append(cfg, yaml.MapItem{Key: "basic_auth", Value: bac})
-		}
-	}
-
-	var (
-		relabelings []yaml.MapSlice
-		labelKeys   []string
-	)
+	var relabelings []yaml.MapSlice
 
 	if ep.FilterRunning == nil || *ep.FilterRunning {
 		relabelings = append(relabelings, yaml.MapSlice{
@@ -113,50 +53,8 @@ func generatePodScrapeConfig(
 			{Key: "regex", Value: "(Failed|Succeeded)"},
 		})
 	}
-	// Filter targets by pods selected by the scrape.
-	// Exact label matches.
-	for k := range m.Spec.Selector.MatchLabels {
-		labelKeys = append(labelKeys, k)
-	}
-	sort.Strings(labelKeys)
 
-	for _, k := range labelKeys {
-		relabelings = append(relabelings, yaml.MapSlice{
-			{Key: "action", Value: "keep"},
-			{Key: "source_labels", Value: []string{"__meta_kubernetes_pod_label_" + sanitizeLabelName(k)}},
-			{Key: "regex", Value: m.Spec.Selector.MatchLabels[k]},
-		})
-	}
-	// Set based label matching. We have to map the valid relations
-	// `In`, `NotIn`, `Exists`, and `DoesNotExist`, into relabeling rules.
-	for _, exp := range m.Spec.Selector.MatchExpressions {
-		switch exp.Operator {
-		case metav1.LabelSelectorOpIn:
-			relabelings = append(relabelings, yaml.MapSlice{
-				{Key: "action", Value: "keep"},
-				{Key: "source_labels", Value: []string{"__meta_kubernetes_pod_label_" + sanitizeLabelName(exp.Key)}},
-				{Key: "regex", Value: strings.Join(exp.Values, "|")},
-			})
-		case metav1.LabelSelectorOpNotIn:
-			relabelings = append(relabelings, yaml.MapSlice{
-				{Key: "action", Value: "drop"},
-				{Key: "source_labels", Value: []string{"__meta_kubernetes_pod_label_" + sanitizeLabelName(exp.Key)}},
-				{Key: "regex", Value: strings.Join(exp.Values, "|")},
-			})
-		case metav1.LabelSelectorOpExists:
-			relabelings = append(relabelings, yaml.MapSlice{
-				{Key: "action", Value: "keep"},
-				{Key: "source_labels", Value: []string{"__meta_kubernetes_pod_labelpresent_" + sanitizeLabelName(exp.Key)}},
-				{Key: "regex", Value: "true"},
-			})
-		case metav1.LabelSelectorOpDoesNotExist:
-			relabelings = append(relabelings, yaml.MapSlice{
-				{Key: "action", Value: "drop"},
-				{Key: "source_labels", Value: []string{"__meta_kubernetes_pod_labelpresent_" + sanitizeLabelName(exp.Key)}},
-				{Key: "regex", Value: "true"},
-			})
-		}
-	}
+	relabelings = addSelectorToRelabelingFor(relabelings, "pod", m.Spec.Selector)
 
 	// Filter targets based on correct port for the endpoint.
 	if ep.Port != "" {
@@ -241,42 +139,19 @@ func generatePodScrapeConfig(
 	for _, c := range ep.RelabelConfigs {
 		relabelings = append(relabelings, generateRelabelConfig(c))
 	}
-	for _, trc := range cr.Spec.PodScrapeRelabelTemplate {
+	for _, trc := range vmagentCR.Spec.PodScrapeRelabelTemplate {
 		relabelings = append(relabelings, generateRelabelConfig(trc))
 	}
 	// Because of security risks, whenever enforcedNamespaceLabel is set, we want to append it to the
 	// relabel_configs as the last relabeling, to ensure it overrides any other relabelings.
-	relabelings = enforceNamespaceLabel(relabelings, m.Namespace, enforcedNamespaceLabel)
+	relabelings = enforceNamespaceLabel(relabelings, m.Namespace, se.EnforcedNamespaceLabel)
+
 	cfg = append(cfg, yaml.MapItem{Key: "relabel_configs", Value: relabelings})
-
-	if ep.SampleLimit > 0 {
-		cfg = append(cfg, yaml.MapItem{Key: "sample_limit", Value: ep.SampleLimit})
-	} else if m.Spec.SampleLimit > 0 {
-		cfg = append(cfg, yaml.MapItem{Key: "sample_limit", Value: m.Spec.SampleLimit})
-	}
-	if ep.SeriesLimit > 0 {
-		cfg = append(cfg, yaml.MapItem{Key: "series_limit", Value: ep.SeriesLimit})
-	} else if m.Spec.SeriesLimit > 0 {
-		cfg = append(cfg, yaml.MapItem{Key: "series_limit", Value: m.Spec.SeriesLimit})
-	}
-
-	if ep.MetricRelabelConfigs != nil {
-		var metricRelabelings []yaml.MapSlice
-		for _, c := range ep.MetricRelabelConfigs {
-			if c.TargetLabel != "" && enforcedNamespaceLabel != "" && c.TargetLabel == enforcedNamespaceLabel {
-				continue
-			}
-			relabeling := generateRelabelConfig(c)
-
-			metricRelabelings = append(metricRelabelings, relabeling)
-		}
-		cfg = append(cfg, yaml.MapItem{Key: "metric_relabel_configs", Value: metricRelabelings})
-	}
-
+	cfg = addMetricRelabelingsTo(cfg, ep.MetricRelabelConfigs, se)
 	cfg = append(cfg, buildVMScrapeParams(m.Namespace, m.AsProxyKey(i), ep.VMScrapeParams, ssCache)...)
+	cfg = addTLStoYaml(cfg, m.Namespace, ep.TLSConfig, false)
+	cfg = addEndpointAuthTo(cfg, ep.EndpointAuth, m.AsMapKey(i), ssCache)
 
-	cfg = addOAuth2Config(cfg, m.AsMapKey(i), ep.OAuth2, ssCache.oauth2Secrets)
-	cfg = addAuthorizationConfig(cfg, m.AsMapKey(i), ep.Authorization, ssCache.authorizationSecrets)
 	return cfg
 }
 

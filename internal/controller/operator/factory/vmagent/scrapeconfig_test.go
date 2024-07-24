@@ -15,10 +15,10 @@ import (
 
 func TestGenerateScrapeConfig(t *testing.T) {
 	type args struct {
-		cr                    vmv1beta1.VMAgent
-		m                     *vmv1beta1.VMScrapeConfig
-		ssCache               *scrapesSecretsCache
-		enforceNamespaceLabel string
+		cr      vmv1beta1.VMAgent
+		m       *vmv1beta1.VMScrapeConfig
+		ssCache *scrapesSecretsCache
+		se      vmv1beta1.VMAgentSecurityEnforcements
 	}
 	tests := []struct {
 		name string
@@ -40,17 +40,21 @@ func TestGenerateScrapeConfig(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: vmv1beta1.VMScrapeConfigSpec{
-						MaxScrapeSize:  "60KB",
-						ScrapeInterval: "10s",
+						EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+							MaxScrapeSize:  "60KB",
+							ScrapeInterval: "10s",
+						},
 						StaticConfigs: []vmv1beta1.StaticConfig{
 							{
 								Targets: []string{"http://test1.com", "http://test2.com"},
 								Labels:  map[string]string{"bar": "baz"},
 							},
 						},
-						BasicAuth: &vmv1beta1.BasicAuth{
-							Username: corev1.SecretKeySelector{Key: "username"},
-							Password: corev1.SecretKeySelector{Key: "password"},
+						EndpointAuth: vmv1beta1.EndpointAuth{
+							BasicAuth: &vmv1beta1.BasicAuth{
+								Username: corev1.SecretKeySelector{Key: "username"},
+								Password: corev1.SecretKeySelector{Key: "password"},
+							},
 						},
 					},
 				},
@@ -66,11 +70,11 @@ func TestGenerateScrapeConfig(t *testing.T) {
 			want: `job_name: scrapeConfig/default/static-1
 honor_labels: false
 scrape_interval: 30s
+max_scrape_size: 60KB
+relabel_configs: []
 basic_auth:
   username: admin
   password: dangerous
-max_scrape_size: 60KB
-relabel_configs: []
 static_configs:
 - targets:
   - http://test1.com
@@ -94,15 +98,19 @@ static_configs:
 						Namespace: "default",
 					},
 					Spec: vmv1beta1.VMScrapeConfigSpec{
-						ScrapeInterval: "10m",
+						EndpointAuth: vmv1beta1.EndpointAuth{
+							BasicAuth: &vmv1beta1.BasicAuth{
+								Username:     corev1.SecretKeySelector{Key: "username"},
+								PasswordFile: "/var/run/secrets/password",
+							},
+						},
+						EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+							ScrapeInterval: "10m",
+						},
 						FileSDConfigs: []vmv1beta1.FileSDConfig{
 							{
 								Files: []string{"test1.json", "test2.json"},
 							},
-						},
-						BasicAuth: &vmv1beta1.BasicAuth{
-							Username:     corev1.SecretKeySelector{Key: "username"},
-							PasswordFile: "/var/run/secrets/password",
 						},
 					},
 				},
@@ -117,10 +125,10 @@ static_configs:
 			want: `job_name: scrapeConfig/default/file-1
 honor_labels: false
 scrape_interval: 5m
+relabel_configs: []
 basic_auth:
   username: user
   password_file: /var/run/secrets/password
-relabel_configs: []
 file_sd_configs:
 - files:
   - test1.json
@@ -475,7 +483,7 @@ kubernetes_sd_configs:
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := generateScrapeConfig(context.Background(), &tt.args.cr, tt.args.m, tt.args.ssCache, tt.args.enforceNamespaceLabel)
+			got := generateScrapeConfig(context.Background(), &tt.args.cr, tt.args.m, tt.args.ssCache, tt.args.se)
 			gotBytes, err := yaml.Marshal(got)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)

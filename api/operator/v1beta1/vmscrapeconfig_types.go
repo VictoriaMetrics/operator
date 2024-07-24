@@ -73,69 +73,9 @@ type VMScrapeConfigSpec struct {
 	// DigitalOceanSDConfigs defines a list of DigitalOcean service discovery configurations.
 	// +optional
 	DigitalOceanSDConfigs []DigitalOceanSDConfig `json:"digitalOceanSDConfigs,omitempty"`
-	// MetricsPath HTTP path to scrape for metrics. If empty, use the default value (e.g. /metrics).
-	// +optional
-	MetricsPath *string `json:"metricsPath,omitempty"`
-	// ScrapeInterval is the interval between consecutive scrapes.
-	// +optional
-	ScrapeInterval string `json:"scrapeInterval,omitempty"`
-	// ScrapeTimeout is the number of seconds to wait until a scrape request times out.
-	// +optional
-	ScrapeTimeout string `json:"scrapeTimeout,omitempty"`
-	// MaxScrapeSize defines a maximum size of scraped data for a job
-        // +optional
-        MaxScrapeSize string `json:"max_scrape_size,omitempty"`
-	// HonorTimestamps controls whether to respect the timestamps present in scraped data.
-	// +optional
-	HonorTimestamps *bool `json:"honorTimestamps,omitempty"`
-	// HonorLabels chooses the metric's labels on collisions with target labels.
-	// +optional
-	HonorLabels bool `json:"honorLabels,omitempty"`
-	// Optional HTTP URL parameters
-	// +optional
-	// +mapType:=atomic
-	Params map[string][]string `json:"params,omitempty"`
-	// Configures the protocol scheme used for requests.
-	// If empty, use HTTP by default.
-	// +kubebuilder:validation:Enum=HTTP;HTTPS
-	// +optional
-	Scheme *string `json:"scheme,omitempty"`
-	// VMScrapeParams defines VictoriaMetrics specific scrape parameters
-	// +optional
-	VMScrapeParams *VMScrapeParams `json:"vm_scrape_params,omitempty"`
-
-	// FollowRedirects controls redirects for scraping.
-	// +optional
-	FollowRedirects *bool `json:"follow_redirects,omitempty"`
-
-	// ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint.
-	// +optional
-	ProxyURL *string `json:"proxyURL,omitempty"`
-	// BasicAuth information to use on every scrape request.
-	// +optional
-	BasicAuth *BasicAuth `json:"basicAuth,omitempty"`
-	// Authorization header to use on every scrape request.
-	// +optional
-	Authorization *Authorization `json:"authorization,omitempty"`
-	// OAuth2 defines auth configuration
-	// +optional
-	OAuth2 *OAuth2 `json:"oauth2,omitempty"`
-	// TLS configuration to use on every scrape request
-	// +optional
-	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
-	// SampleLimit defines per-scrape limit on number of scraped samples that will be accepted.
-	// +optional
-	SampleLimit uint64 `json:"sampleLimit,omitempty"`
-	// SeriesLimit defines per-scrape limit on number of unique time series
-	// a single target can expose during all the scrapes on the time window of 24h.
-	// +optional
-	SeriesLimit uint64 `json:"seriesLimit,omitempty"`
-	// MetricRelabelConfigs to apply to samples after scrapping.
-	// +optional
-	MetricRelabelConfigs []*RelabelConfig `json:"metricRelabelConfigs,omitempty"`
-	// RelabelConfigs to apply to samples during service discovery.
-	// +optional
-	RelabelConfigs []*RelabelConfig `json:"relabelConfigs,omitempty"`
+	EndpointScrapeParams  `json:",inline"`
+	EndpointRelabelings   `json:",inline"`
+	EndpointAuth          `json:",inline"`
 }
 
 // StaticConfig defines a static configuration.

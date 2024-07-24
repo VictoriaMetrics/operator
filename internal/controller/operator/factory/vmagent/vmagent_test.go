@@ -170,11 +170,15 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 						Selector: metav1.LabelSelector{},
 						Endpoints: []vmv1beta1.Endpoint{
 							{
-								Interval: "30s",
-								Scheme:   "http",
-								BasicAuth: &vmv1beta1.BasicAuth{
-									Password: corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "bauth-secret"}, Key: "password"},
-									Username: corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "bauth-secret"}, Key: "user"},
+								EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+									Interval: "30s",
+									Scheme:   "http",
+								},
+								EndpointAuth: vmv1beta1.EndpointAuth{
+									BasicAuth: &vmv1beta1.BasicAuth{
+										Password: corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "bauth-secret"}, Key: "password"},
+										Username: corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "bauth-secret"}, Key: "user"},
+									},
 								},
 							},
 						},
@@ -310,16 +314,20 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 						Selector: metav1.LabelSelector{},
 						Endpoints: []vmv1beta1.Endpoint{
 							{
-								Interval: "30s",
-								Scheme:   "https",
-								TLSConfig: &vmv1beta1.TLSConfig{
-									CA: vmv1beta1.SecretOrConfigMap{
-										Secret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "tls-scrape"}, Key: "ca"},
+								EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+									Interval: "30s",
+									Scheme:   "https",
+								},
+								EndpointAuth: vmv1beta1.EndpointAuth{
+									TLSConfig: &vmv1beta1.TLSConfig{
+										CA: vmv1beta1.SecretOrConfigMap{
+											Secret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "tls-scrape"}, Key: "ca"},
+										},
+										Cert: vmv1beta1.SecretOrConfigMap{
+											Secret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "tls-scrape"}, Key: "ca"},
+										},
+										KeySecret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "tls-scrape"}, Key: "key"},
 									},
-									Cert: vmv1beta1.SecretOrConfigMap{
-										Secret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "tls-scrape"}, Key: "ca"},
-									},
-									KeySecret: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "tls-scrape"}, Key: "key"},
 								},
 							},
 						},
@@ -476,12 +484,14 @@ func Test_loadTLSAssets(t *testing.T) {
 						Spec: vmv1beta1.VMServiceScrapeSpec{
 							Endpoints: []vmv1beta1.Endpoint{
 								{
-									TLSConfig: &vmv1beta1.TLSConfig{
-										KeySecret: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "tls-secret",
+									EndpointAuth: vmv1beta1.EndpointAuth{
+										TLSConfig: &vmv1beta1.TLSConfig{
+											KeySecret: &corev1.SecretKeySelector{
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "tls-secret",
+												},
+												Key: "cert",
 											},
-											Key: "cert",
 										},
 									},
 								},
@@ -549,14 +559,18 @@ func Test_loadTLSAssets(t *testing.T) {
 						ObjectMeta: metav1.ObjectMeta{Name: "vmagent-monitor", Namespace: "default"},
 						Spec: vmv1beta1.VMServiceScrapeSpec{
 							Endpoints: []vmv1beta1.Endpoint{
-								{TLSConfig: &vmv1beta1.TLSConfig{
-									KeySecret: &corev1.SecretKeySelector{
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "tls-secret",
+								{
+									EndpointAuth: vmv1beta1.EndpointAuth{
+										TLSConfig: &vmv1beta1.TLSConfig{
+											KeySecret: &corev1.SecretKeySelector{
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "tls-secret",
+												},
+												Key: "cert",
+											},
 										},
-										Key: "cert",
 									},
-								}},
+								},
 							},
 						},
 					},

@@ -189,29 +189,35 @@ func convertEndpoint(promEndpoint []promv1.Endpoint) []vmv1beta1.Endpoint {
 	endpoints := make([]vmv1beta1.Endpoint, 0, len(promEndpoint))
 	for _, endpoint := range promEndpoint {
 		ep := vmv1beta1.Endpoint{
-			Port:                 endpoint.Port,
-			TargetPort:           endpoint.TargetPort,
-			Path:                 endpoint.Path,
-			Scheme:               endpoint.Scheme,
-			Params:               endpoint.Params,
-			Interval:             string(endpoint.Interval),
-			ScrapeTimeout:        string(endpoint.ScrapeTimeout),
-			HonorLabels:          endpoint.HonorLabels,
-			HonorTimestamps:      endpoint.HonorTimestamps,
-			BasicAuth:            ConvertBasicAuth(endpoint.BasicAuth),
-			TLSConfig:            ConvertTLSConfig(endpoint.TLSConfig),
-			MetricRelabelConfigs: ConvertRelabelConfig(endpoint.MetricRelabelConfigs),
-			RelabelConfigs:       ConvertRelabelConfig(endpoint.RelabelConfigs),
-			ProxyURL:             endpoint.ProxyURL,
-			OAuth2:               ConvertOAuth(endpoint.OAuth2),
-			FollowRedirects:      endpoint.FollowRedirects,
-			Authorization:        ConvertAuthorization(endpoint.Authorization, nil),
-			// Unless prometheus deletes BearerTokenFile, we have to support it for backward compatibility
-			//nolint:staticcheck
-			BearerTokenFile: ReplacePromDirPath(endpoint.BearerTokenFile),
-			// Unless prometheus deletes BearerTokenSecret, we have to support it for backward compatibility
-			//nolint:staticcheck
-			BearerTokenSecret: convertBearerToken(endpoint.BearerTokenSecret),
+			Port:       endpoint.Port,
+			TargetPort: endpoint.TargetPort,
+			EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+				Path:            endpoint.Path,
+				Scheme:          endpoint.Scheme,
+				Params:          endpoint.Params,
+				Interval:        string(endpoint.Interval),
+				ScrapeTimeout:   string(endpoint.ScrapeTimeout),
+				HonorLabels:     endpoint.HonorLabels,
+				HonorTimestamps: endpoint.HonorTimestamps,
+				ProxyURL:        endpoint.ProxyURL,
+				FollowRedirects: endpoint.FollowRedirects,
+			},
+			EndpointAuth: vmv1beta1.EndpointAuth{
+				BasicAuth:     ConvertBasicAuth(endpoint.BasicAuth),
+				TLSConfig:     ConvertTLSConfig(endpoint.TLSConfig),
+				OAuth2:        ConvertOAuth(endpoint.OAuth2),
+				Authorization: ConvertAuthorization(endpoint.Authorization, nil),
+				// Unless prometheus deletes BearerTokenFile, we have to support it for backward compatibility
+				//nolint:staticcheck
+				BearerTokenFile: ReplacePromDirPath(endpoint.BearerTokenFile),
+				// Unless prometheus deletes BearerTokenSecret, we have to support it for backward compatibility
+				//nolint:staticcheck
+				BearerTokenSecret: convertBearerToken(endpoint.BearerTokenSecret),
+			},
+			EndpointRelabelings: vmv1beta1.EndpointRelabelings{
+				MetricRelabelConfigs: ConvertRelabelConfig(endpoint.MetricRelabelConfigs),
+				RelabelConfigs:       ConvertRelabelConfig(endpoint.RelabelConfigs),
+			},
 		}
 
 		endpoints = append(endpoints, ep)
@@ -336,23 +342,30 @@ func convertPodEndpoints(promPodEnpoints []promv1.PodMetricsEndpoint) []vmv1beta
 			TargetPort: promEndPoint.TargetPort,
 			// Unless prometheus deletes BearerTokenSecret, we have to support it for backward compatibility
 			//nolint:staticcheck
-			BearerTokenSecret:    convertBearerToken(&promEndPoint.BearerTokenSecret),
-			Interval:             string(promEndPoint.Interval),
-			Path:                 promEndPoint.Path,
-			Scheme:               promEndPoint.Scheme,
-			Params:               promEndPoint.Params,
-			ScrapeTimeout:        string(promEndPoint.ScrapeTimeout),
-			HonorLabels:          promEndPoint.HonorLabels,
-			HonorTimestamps:      promEndPoint.HonorTimestamps,
-			ProxyURL:             promEndPoint.ProxyURL,
-			RelabelConfigs:       ConvertRelabelConfig(promEndPoint.RelabelConfigs),
-			MetricRelabelConfigs: ConvertRelabelConfig(promEndPoint.MetricRelabelConfigs),
-			BasicAuth:            ConvertBasicAuth(promEndPoint.BasicAuth),
-			TLSConfig:            convertSafeTLSConfig(safeTLS),
-			OAuth2:               ConvertOAuth(promEndPoint.OAuth2),
-			FollowRedirects:      promEndPoint.FollowRedirects,
-			Authorization:        ConvertAuthorization(promEndPoint.Authorization, nil),
-			FilterRunning:        promEndPoint.FilterRunning,
+			EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+				Interval:        string(promEndPoint.Interval),
+				Path:            promEndPoint.Path,
+				Scheme:          promEndPoint.Scheme,
+				Params:          promEndPoint.Params,
+				ScrapeTimeout:   string(promEndPoint.ScrapeTimeout),
+				HonorLabels:     promEndPoint.HonorLabels,
+				HonorTimestamps: promEndPoint.HonorTimestamps,
+				ProxyURL:        promEndPoint.ProxyURL,
+				FollowRedirects: promEndPoint.FollowRedirects,
+			},
+			EndpointRelabelings: vmv1beta1.EndpointRelabelings{
+				RelabelConfigs:       ConvertRelabelConfig(promEndPoint.RelabelConfigs),
+				MetricRelabelConfigs: ConvertRelabelConfig(promEndPoint.MetricRelabelConfigs),
+			},
+
+			EndpointAuth: vmv1beta1.EndpointAuth{
+				BasicAuth:         ConvertBasicAuth(promEndPoint.BasicAuth),
+				BearerTokenSecret: convertBearerToken(&promEndPoint.BearerTokenSecret),
+				TLSConfig:         convertSafeTLSConfig(safeTLS),
+				OAuth2:            ConvertOAuth(promEndPoint.OAuth2),
+				Authorization:     ConvertAuthorization(promEndPoint.Authorization, nil),
+			},
+			FilterRunning: promEndPoint.FilterRunning,
 		}
 		endPoints = append(endPoints, ep)
 	}
@@ -449,13 +462,18 @@ func ConvertProbe(probe *promv1.Probe, conf *config.BaseOperatorConf) *vmv1beta1
 				Ingress:      ingressTarget,
 				StaticConfig: staticTargets,
 			},
-			Interval:          string(probe.Spec.Interval),
-			ScrapeTimeout:     string(probe.Spec.ScrapeTimeout),
-			BasicAuth:         ConvertBasicAuth(probe.Spec.BasicAuth),
-			TLSConfig:         convertSafeTLSConfig(safeTLS),
-			BearerTokenSecret: convertBearerToken(&probe.Spec.BearerTokenSecret),
-			OAuth2:            ConvertOAuth(probe.Spec.OAuth2),
-			Authorization:     ConvertAuthorization(probe.Spec.Authorization, nil),
+			EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+				Interval:      string(probe.Spec.Interval),
+				ScrapeTimeout: string(probe.Spec.ScrapeTimeout),
+			},
+			MetricRelabelConfigs: ConvertRelabelConfig(probe.Spec.MetricRelabelConfigs),
+			EndpointAuth: vmv1beta1.EndpointAuth{
+				BasicAuth:         ConvertBasicAuth(probe.Spec.BasicAuth),
+				BearerTokenSecret: convertBearerToken(&probe.Spec.BearerTokenSecret),
+				TLSConfig:         convertSafeTLSConfig(safeTLS),
+				OAuth2:            ConvertOAuth(probe.Spec.OAuth2),
+				Authorization:     ConvertAuthorization(probe.Spec.Authorization, nil),
+			},
 		},
 	}
 	if probe.Spec.ProberSpec.ProxyURL != "" {

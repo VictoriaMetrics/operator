@@ -792,9 +792,16 @@ func loadAdditionalScrapeConfigsSecret(ctx context.Context, rclient client.Clien
 	return nil, nil
 }
 
-func testForArbitraryFSAccess(e vmv1beta1.Endpoint) error {
+func testForArbitraryFSAccess(e vmv1beta1.EndpointAuth) error {
 	if e.BearerTokenFile != "" {
 		return fmt.Errorf("it accesses file system via bearer token file which VMAgent specification prohibits")
+	}
+	if e.BasicAuth != nil && e.BasicAuth.PasswordFile != "" {
+		return fmt.Errorf("it accesses file system via basicAuth password file which VMAgent specification prohibits")
+	}
+
+	if e.OAuth2 != nil && e.OAuth2.ClientSecretFile != "" {
+		return fmt.Errorf("it accesses file system via oauth2 client secret file which VMAgent specification prohibits")
 	}
 
 	tlsConf := e.TLSConfig
@@ -822,39 +829,46 @@ func gzipConfig(buf *bytes.Buffer, conf []byte) error {
 	return nil
 }
 
-func limitScrapeInterval(ctx context.Context, origin string, minIntervalStr, maxIntervalStr *string) string {
-	if origin == "" || (minIntervalStr == nil && maxIntervalStr == nil) {
-		// fast path
-		return origin
+func setScrapeIntervalToWithLimit(ctx context.Context, dst *vmv1beta1.EndpointScrapeParams, vmagentCR *vmv1beta1.VMAgent) {
+	if dst.ScrapeInterval == "" {
+		dst.ScrapeInterval = dst.Interval
 	}
-	originDurationMs, err := metricsql.DurationValue(origin, 0)
+
+	originInterval, minIntervalStr, maxIntervalStr := dst.ScrapeInterval, vmagentCR.Spec.MinScrapeInterval, vmagentCR.Spec.MaxScrapeInterval
+	if originInterval == "" || (minIntervalStr == nil && maxIntervalStr == nil) {
+		// fast path
+		return
+	}
+	originDurationMs, err := metricsql.DurationValue(originInterval, 0)
 	if err != nil {
-		logger.WithContext(ctx).Error(err, "cannot parse duration value during limiting interval, using original value: %s", origin)
-		return origin
+		logger.WithContext(ctx).Error(err, "cannot parse duration value during limiting interval, using original value: %s", originInterval)
+		return
 	}
 
 	if minIntervalStr != nil {
 		parsedMinMs, err := metricsql.DurationValue(*minIntervalStr, 0)
 		if err != nil {
-			logger.WithContext(ctx).Error(err, "cannot parse minScrapeInterval: %s, using original value: %s", *minIntervalStr, origin)
-			return origin
+			logger.WithContext(ctx).Error(err, "cannot parse minScrapeInterval: %s, using original value: %s", *minIntervalStr, originInterval)
+			return
 		}
 		if parsedMinMs >= originDurationMs {
-			return *minIntervalStr
+			dst.ScrapeInterval = *minIntervalStr
+			return
 		}
 	}
 	if maxIntervalStr != nil {
 		parsedMaxMs, err := metricsql.DurationValue(*maxIntervalStr, 0)
 		if err != nil {
-			logger.WithContext(ctx).Error(err, "cannot parse maxScrapeInterval: %s, using origin value: %s", *maxIntervalStr, origin)
-			return origin
+			logger.WithContext(ctx).Error(err, "cannot parse maxScrapeInterval: %s, using origin value: %s", *maxIntervalStr, originInterval)
+			return
 		}
 		if parsedMaxMs < originDurationMs {
-			return *maxIntervalStr
+			dst.ScrapeInterval = *maxIntervalStr
+			return
 		}
 	}
 
-	return origin
+	return
 }
 
 const (
@@ -975,10 +989,8 @@ func generateConfig(
 					ep, i,
 					apiserverConfig,
 					secretsCache,
-					cr.Spec.OverrideHonorLabels,
-					cr.Spec.OverrideHonorTimestamps,
-					cr.Spec.IgnoreNamespaceSelectors,
-					cr.Spec.EnforcedNamespaceLabel))
+					cr.Spec.VMAgentSecurityEnforcements,
+				))
 		}
 	}
 	for _, identifier := range pMonIdentifiers {
@@ -990,10 +1002,8 @@ func generateConfig(
 					pMons[identifier], ep, i,
 					apiserverConfig,
 					secretsCache,
-					cr.Spec.OverrideHonorLabels,
-					cr.Spec.OverrideHonorTimestamps,
-					cr.Spec.IgnoreNamespaceSelectors,
-					cr.Spec.EnforcedNamespaceLabel))
+					cr.Spec.VMAgentSecurityEnforcements,
+				))
 		}
 	}
 
@@ -1006,8 +1016,8 @@ func generateConfig(
 				i,
 				apiserverConfig,
 				secretsCache,
-				cr.Spec.IgnoreNamespaceSelectors,
-				cr.Spec.EnforcedNamespaceLabel))
+				cr.Spec.VMAgentSecurityEnforcements,
+			))
 	}
 	for i, identifier := range nodeIdentifiers {
 		scrapeConfigs = append(scrapeConfigs,
@@ -1018,9 +1028,8 @@ func generateConfig(
 				i,
 				apiserverConfig,
 				secretsCache,
-				cr.Spec.OverrideHonorLabels,
-				cr.Spec.OverrideHonorTimestamps,
-				cr.Spec.EnforcedNamespaceLabel))
+				cr.Spec.VMAgentSecurityEnforcements,
+			))
 	}
 
 	for _, identifier := range staticsIdentifiers {
@@ -1032,9 +1041,7 @@ func generateConfig(
 					statics[identifier],
 					ep, i,
 					secretsCache,
-					cr.Spec.OverrideHonorLabels,
-					cr.Spec.OverrideHonorTimestamps,
-					cr.Spec.EnforcedNamespaceLabel,
+					cr.Spec.VMAgentSecurityEnforcements,
 				))
 		}
 	}
@@ -1046,7 +1053,7 @@ func generateConfig(
 				cr,
 				scrapeConfs[identifier],
 				secretsCache,
-				cr.Spec.EnforcedNamespaceLabel,
+				cr.Spec.VMAgentSecurityEnforcements,
 			))
 	}
 
@@ -1345,7 +1352,7 @@ func generateK8SSDConfig(namespaces []string, apiserverConfig *vmv1beta1.APIServ
 			}
 		}
 		if apiserverConfig.Authorization != nil {
-			k8sSDConfig = addAuthorizationConfig(k8sSDConfig, "apiserver", apiserverConfig.Authorization, ssCache.authorizationSecrets)
+			k8sSDConfig = addAuthorizationConfigTo(k8sSDConfig, "apiserver", apiserverConfig.Authorization, ssCache.authorizationSecrets)
 		}
 
 		if apiserverConfig.BearerToken != "" {
@@ -1420,8 +1427,6 @@ func buildVMScrapeParams(namespace, cacheKey string, cfg *vmv1beta1.VMScrapePara
 	toYaml("scrape_offset", cfg.ScrapeOffset)
 	toYaml("no_stale_markers", cfg.DisableStaleMarkers)
 	toYaml("disable_keepalive", cfg.DisableKeepAlive)
-	toYaml("relabel_debug", cfg.RelabelDebug)
-	toYaml("metric_relabel_debug", cfg.MetricRelabelDebug)
 	if len(cfg.Headers) > 0 {
 		r = append(r, yaml.MapItem{Key: "headers", Value: cfg.Headers})
 	}
@@ -1431,7 +1436,7 @@ func buildVMScrapeParams(namespace, cacheKey string, cfg *vmv1beta1.VMScrapePara
 	return r
 }
 
-func addAuthorizationConfig(dst yaml.MapSlice, cacheKey string, cfg *vmv1beta1.Authorization, authorizationCache map[string]string) yaml.MapSlice {
+func addAuthorizationConfigTo(dst yaml.MapSlice, cacheKey string, cfg *vmv1beta1.Authorization, authorizationCache map[string]string) yaml.MapSlice {
 	if cfg == nil {
 		// fast path
 		return dst
@@ -1456,7 +1461,7 @@ func addAuthorizationConfig(dst yaml.MapSlice, cacheKey string, cfg *vmv1beta1.A
 	return dst
 }
 
-func addOAuth2Config(dst yaml.MapSlice, cacheKey string, cfg *vmv1beta1.OAuth2, oauth2Cache map[string]*k8stools.OAuthCreds) yaml.MapSlice {
+func addOAuth2ConfigTo(dst yaml.MapSlice, cacheKey string, cfg *vmv1beta1.OAuth2, oauth2Cache map[string]*k8stools.OAuthCreds) yaml.MapSlice {
 	cachedSecret := oauth2Cache[cacheKey]
 	if cfg == nil || cachedSecret == nil {
 		// fast path
@@ -1521,4 +1526,158 @@ func buildProxyAuthConfig(namespace, cacheKey string, proxyAuth *vmv1beta1.Proxy
 		r = append(r, yaml.MapItem{Key: "proxy_bearer_token_file", Value: proxyAuth.BearerTokenFile})
 	}
 	return r
+}
+
+func addSelectorToRelabelingFor(relabelings []yaml.MapSlice, typeName string, selector metav1.LabelSelector) []yaml.MapSlice {
+	// Exact label matches.
+	var labelKeys []string
+	for k := range selector.MatchLabels {
+		labelKeys = append(labelKeys, k)
+	}
+	sort.Strings(labelKeys)
+
+	for _, k := range labelKeys {
+		relabelings = append(relabelings, yaml.MapSlice{
+			{Key: "action", Value: "keep"},
+			{Key: "source_labels", Value: []string{fmt.Sprintf("__meta_kubernetes_%s_label_%s", typeName, sanitizeLabelName(k))}},
+			{Key: "regex", Value: selector.MatchLabels[k]},
+		})
+	}
+	// Set based label matching. We have to map the valid relations
+	// `In`, `NotIn`, `Exists`, and `DoesNotExist`, into relabeling rules.
+	for _, exp := range selector.MatchExpressions {
+		switch exp.Operator {
+		case metav1.LabelSelectorOpIn:
+			relabelings = append(relabelings, yaml.MapSlice{
+				{Key: "action", Value: "keep"},
+				{Key: "source_labels", Value: []string{fmt.Sprintf("__meta_kubernetes_%s_label_%s", typeName, sanitizeLabelName(exp.Key))}},
+				{Key: "regex", Value: strings.Join(exp.Values, "|")},
+			})
+		case metav1.LabelSelectorOpNotIn:
+			relabelings = append(relabelings, yaml.MapSlice{
+				{Key: "action", Value: "drop"},
+				{Key: "source_labels", Value: []string{fmt.Sprintf("__meta_kubernetes_%s_label_%s", typeName, sanitizeLabelName(exp.Key))}},
+				{Key: "regex", Value: strings.Join(exp.Values, "|")},
+			})
+		case metav1.LabelSelectorOpExists:
+			relabelings = append(relabelings, yaml.MapSlice{
+				{Key: "action", Value: "keep"},
+				{Key: "source_labels", Value: []string{fmt.Sprintf("__meta_kubernetes_%s_labelpresent_%s", typeName, sanitizeLabelName(exp.Key))}},
+				{Key: "regex", Value: "true"},
+			})
+		case metav1.LabelSelectorOpDoesNotExist:
+			relabelings = append(relabelings, yaml.MapSlice{
+				{Key: "action", Value: "drop"},
+				{Key: "source_labels", Value: []string{fmt.Sprintf("__meta_kubernetes_%s_labelpresent_%s", typeName, sanitizeLabelName(exp.Key))}},
+				{Key: "regex", Value: "true"},
+			})
+		}
+	}
+	return relabelings
+}
+
+func addCommonScrapeParamsTo(cfg yaml.MapSlice, cs vmv1beta1.EndpointScrapeParams, se vmv1beta1.VMAgentSecurityEnforcements) yaml.MapSlice {
+	hl := honorLabels(cs.HonorLabels, se.OverrideHonorLabels)
+	cfg = append(cfg, yaml.MapItem{
+		Key:   "honor_labels",
+		Value: hl,
+	})
+
+	cfg = honorTimestamps(cfg, cs.HonorTimestamps, se.OverrideHonorTimestamps)
+
+	if cs.ScrapeInterval != "" {
+		cfg = append(cfg, yaml.MapItem{Key: "scrape_interval", Value: cs.ScrapeInterval})
+	}
+	if cs.ScrapeTimeout != "" {
+		cfg = append(cfg, yaml.MapItem{Key: "scrape_timeout", Value: cs.ScrapeTimeout})
+	}
+	if cs.Path != "" {
+		cfg = append(cfg, yaml.MapItem{Key: "metrics_path", Value: cs.Path})
+	}
+	if cs.ProxyURL != nil {
+		cfg = append(cfg, yaml.MapItem{Key: "proxy_url", Value: cs.ProxyURL})
+	}
+	if cs.FollowRedirects != nil {
+		cfg = append(cfg, yaml.MapItem{Key: "follow_redirects", Value: cs.FollowRedirects})
+	}
+	if cs.Params != nil && len(cs.Params) > 0 {
+		params := make(yaml.MapSlice, 0, len(cs.Params))
+		paramIdxes := make([]string, len(cs.Params))
+		var idxCnt int
+		for k := range cs.Params {
+			paramIdxes[idxCnt] = k
+			idxCnt++
+		}
+		sort.Strings(paramIdxes)
+		for _, k := range paramIdxes {
+			params = append(params, yaml.MapItem{Key: k, Value: cs.Params[k]})
+		}
+		cfg = append(cfg, yaml.MapItem{Key: "params", Value: params})
+	}
+	if cs.Scheme != "" {
+		cfg = append(cfg, yaml.MapItem{Key: "scheme", Value: cs.Scheme})
+	}
+	if cs.MaxScrapeSize != "" {
+		cfg = append(cfg, yaml.MapItem{Key: "max_scrape_size", Value: cs.MaxScrapeSize})
+	}
+	if cs.SampleLimit > 0 {
+		cfg = append(cfg, yaml.MapItem{Key: "sample_limit", Value: cs.SampleLimit})
+	}
+	if cs.SeriesLimit > 0 {
+		cfg = append(cfg, yaml.MapItem{Key: "series_limit", Value: cs.SeriesLimit})
+	}
+	return cfg
+}
+
+func addMetricRelabelingsTo(cfg yaml.MapSlice, src []*vmv1beta1.RelabelConfig, se vmv1beta1.VMAgentSecurityEnforcements) yaml.MapSlice {
+	if len(src) == 0 {
+		return cfg
+	}
+	var metricRelabelings []yaml.MapSlice
+	for _, c := range src {
+		if c.TargetLabel != "" && se.EnforcedNamespaceLabel != "" && c.TargetLabel == se.EnforcedNamespaceLabel {
+			continue
+		}
+		relabeling := generateRelabelConfig(c)
+
+		metricRelabelings = append(metricRelabelings, relabeling)
+	}
+	if len(metricRelabelings) == 0 {
+		return cfg
+	}
+	cfg = append(cfg, yaml.MapItem{Key: "metric_relabel_configs", Value: metricRelabelings})
+	return cfg
+}
+
+func addEndpointAuthTo(cfg yaml.MapSlice, ac vmv1beta1.EndpointAuth, key string, ssCache *scrapesSecretsCache) yaml.MapSlice {
+	if ac.BearerTokenFile != "" {
+		cfg = append(cfg, yaml.MapItem{Key: "bearer_token_file", Value: ac.BearerTokenFile})
+	}
+
+	if ac.BearerTokenSecret != nil && ac.BearerTokenSecret.Name != "" {
+		if s, ok := ssCache.bearerTokens[key]; ok {
+			cfg = append(cfg, yaml.MapItem{Key: "bearer_token", Value: s})
+		}
+	}
+	if ac.BasicAuth != nil {
+		var bac yaml.MapSlice
+		if s, ok := ssCache.baSecrets[key]; ok {
+			bac = append(bac,
+				yaml.MapItem{Key: "username", Value: s.Username},
+			)
+			if len(s.Password) > 0 {
+				bac = append(bac, yaml.MapItem{Key: "password", Value: s.Password})
+			}
+		}
+		if len(ac.BasicAuth.PasswordFile) > 0 {
+			bac = append(bac, yaml.MapItem{Key: "password_file", Value: ac.BasicAuth.PasswordFile})
+		}
+		if len(bac) > 0 {
+			cfg = append(cfg, yaml.MapItem{Key: "basic_auth", Value: bac})
+		}
+	}
+	cfg = addOAuth2ConfigTo(cfg, key, ac.OAuth2, ssCache.oauth2Secrets)
+	cfg = addAuthorizationConfigTo(cfg, key, ac.Authorization, ssCache.authorizationSecrets)
+
+	return cfg
 }

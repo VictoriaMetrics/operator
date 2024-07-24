@@ -289,17 +289,16 @@ type BearerAuth struct {
 // BasicAuth allow an endpoint to authenticate over basic authentication
 // +k8s:openapi-gen=true
 type BasicAuth struct {
-	// The secret in the service scrape namespace that contains the username
-	// for authentication.
-	// It must be at them same namespace as CRD
+	// Username defines reference for secret with username value
+	// The secret needs to be in the same namespace as scrape object
 	// +optional
 	Username v1.SecretKeySelector `json:"username,omitempty"`
-	// The secret in the service scrape namespace that contains the password
-	// for authentication.
-	// It must be at them same namespace as CRD
+	// Password defines reference for secret with password value
+	// The secret needs to be in the same namespace as scrape object
 	// +optional
 	Password v1.SecretKeySelector `json:"password,omitempty"`
 	// PasswordFile defines path to password file at disk
+	// must be pre-mounted
 	// +optional
 	PasswordFile string `json:"password_file,omitempty"`
 }
@@ -732,4 +731,170 @@ func (l *License) sanityCheck() error {
 	}
 
 	return nil
+}
+
+// SecretOrConfigMap allows to specify data as a Secret or ConfigMap. Fields are mutually exclusive.
+type SecretOrConfigMap struct {
+	// Secret containing data to use for the targets.
+	// +optional
+	Secret *v1.SecretKeySelector `json:"secret,omitempty"`
+	// ConfigMap containing data to use for the targets.
+	// +optional
+	ConfigMap *v1.ConfigMapKeySelector `json:"configMap,omitempty"`
+}
+
+// TLSConfig specifies TLSConfig configuration parameters.
+// +k8s:openapi-gen=true
+type TLSConfig struct {
+	// Path to the CA cert in the container to use for the targets.
+	// +optional
+	CAFile string `json:"caFile,omitempty"`
+	// Stuct containing the CA cert to use for the targets.
+	// +optional
+	CA SecretOrConfigMap `json:"ca,omitempty"`
+
+	// Path to the client cert file in the container for the targets.
+	// +optional
+	CertFile string `json:"certFile,omitempty"`
+	// Struct containing the client cert file for the targets.
+	// +optional
+	Cert SecretOrConfigMap `json:"cert,omitempty"`
+
+	// Path to the client key file in the container for the targets.
+	// +optional
+	KeyFile string `json:"keyFile,omitempty"`
+	// Secret containing the client key file for the targets.
+	// +optional
+	KeySecret *v1.SecretKeySelector `json:"keySecret,omitempty"`
+
+	// Used to verify the hostname for the targets.
+	// +optional
+	ServerName string `json:"serverName,omitempty"`
+	// Disable target certificate validation.
+	// +optional
+	InsecureSkipVerify bool `json:"insecureSkipVerify,omitempty"`
+}
+
+func (c *TLSConfig) AsArgs(args []string, prefix, pathPrefix string) []string {
+	if c.CAFile != "" {
+		args = append(args, fmt.Sprintf("-%s.tlsCAFile=%s", prefix, c.CAFile))
+	} else if c.CA.Name() != "" {
+		args = append(args, fmt.Sprintf("-%s.tlsCAFile=%s", prefix, c.BuildAssetPath(pathPrefix, c.CA.Name(), c.CA.Key())))
+	}
+	if c.CertFile != "" {
+		args = append(args, fmt.Sprintf("-%s.tlsCertFile=%s", prefix, c.CertFile))
+	} else if c.Cert.Name() != "" {
+		args = append(args, fmt.Sprintf("-%s.tlsCertFile=%s", prefix, c.BuildAssetPath(pathPrefix, c.Cert.Name(), c.Cert.Key())))
+	}
+	if c.KeyFile != "" {
+		args = append(args, fmt.Sprintf("-%s.tlsKeyFile=%s", prefix, c.KeyFile))
+	} else if c.KeySecret != nil {
+		args = append(args, fmt.Sprintf("-%s.tlsKeyFile=%s", prefix, c.BuildAssetPath(pathPrefix, c.KeySecret.Name, c.KeySecret.Key)))
+	}
+	if c.ServerName != "" {
+		args = append(args, fmt.Sprintf("-%s.tlsServerName=%s", prefix, c.ServerName))
+	}
+	if c.InsecureSkipVerify {
+		args = append(args, fmt.Sprintf("-%s.tlsInsecureSkipVerify=%v", prefix, c.InsecureSkipVerify))
+	}
+	return args
+}
+
+// TLSConfigValidationError is returned by TLSConfig.Validate() on semantically
+// invalid tls configurations.
+// +k8s:openapi-gen=false
+type TLSConfigValidationError struct {
+	err string
+}
+
+func (e *TLSConfigValidationError) Error() string {
+	return e.err
+}
+
+// Validate semantically validates the given TLSConfig.
+func (c *TLSConfig) Validate() error {
+	if c.CA != (SecretOrConfigMap{}) {
+		if c.CAFile != "" {
+			return &TLSConfigValidationError{"tls config can not both specify CAFile and CA"}
+		}
+		if err := c.CA.Validate(); err != nil {
+			return err
+		}
+	}
+
+	if c.Cert != (SecretOrConfigMap{}) {
+		if c.CertFile != "" {
+			return &TLSConfigValidationError{"tls config can not both specify CertFile and Cert"}
+		}
+		if err := c.Cert.Validate(); err != nil {
+			return err
+		}
+	}
+
+	if c.KeyFile != "" && c.KeySecret != nil {
+		return &TLSConfigValidationError{"tls config can not both specify KeyFile and KeySecret"}
+	}
+
+	return nil
+}
+
+// SecretOrConfigMapValidationError is returned by SecretOrConfigMap.Validate()
+// on semantically invalid configurations.
+// +k8s:openapi-gen=false
+type SecretOrConfigMapValidationError struct {
+	err string
+}
+
+func (e *SecretOrConfigMapValidationError) Error() string {
+	return e.err
+}
+
+// Validate semantically validates the given TLSConfig.
+func (c *SecretOrConfigMap) Validate() error {
+	if c.Secret != nil && c.ConfigMap != nil {
+		return &SecretOrConfigMapValidationError{"SecretOrConfigMap can not specify both Secret and ConfigMap"}
+	}
+
+	return nil
+}
+
+// BuildSelectorWithPrefix builds prefix path
+func (c *SecretOrConfigMap) BuildSelectorWithPrefix(prefix string) string {
+	if c.Secret != nil {
+		return fmt.Sprintf("%s%s/%s", prefix, c.Secret.Name, c.Secret.Key)
+	}
+	if c.ConfigMap != nil {
+		return fmt.Sprintf("%s%s/%s", prefix, c.ConfigMap.Name, c.ConfigMap.Key)
+	}
+	return ""
+}
+
+// Name returns actual name
+func (c *SecretOrConfigMap) Name() string {
+	if c.Secret != nil {
+		return c.Secret.Name
+	}
+	if c.ConfigMap != nil {
+		return c.ConfigMap.Name
+	}
+	return ""
+}
+
+// Key returns actual key name
+func (c *SecretOrConfigMap) Key() string {
+	if c.Secret != nil {
+		return c.Secret.Key
+	}
+	if c.ConfigMap != nil {
+		return c.ConfigMap.Key
+	}
+	return ""
+}
+
+// BuildAssetPath buildds path for usage with assets
+func (c *TLSConfig) BuildAssetPath(prefix, name, key string) string {
+	if name == "" || key == "" {
+		return ""
+	}
+	return fmt.Sprintf("%s_%s_%s", prefix, name, key)
 }

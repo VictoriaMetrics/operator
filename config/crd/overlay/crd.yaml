@@ -112,9 +112,8 @@ spec:
                     properties:
                       password:
                         description: |-
-                          The secret in the service scrape namespace that contains the password
-                          for authentication.
-                          It must be at them same namespace as CRD
+                          Password defines reference for secret with password value
+                          The secret needs to be in the same namespace as scrape object
                         properties:
                           key:
                             description: The key of the secret to select from.  Must
@@ -140,14 +139,14 @@ spec:
                         type: object
                         x-kubernetes-map-type: atomic
                       password_file:
-                        description: PasswordFile defines path to password file at
-                          disk
+                        description: |-
+                          PasswordFile defines path to password file at disk
+                          must be pre-mounted
                         type: string
                       username:
                         description: |-
-                          The secret in the service scrape namespace that contains the username
-                          for authentication.
-                          It must be at them same namespace as CRD
+                          Username defines reference for secret with username value
+                          The secret needs to be in the same namespace as scrape object
                         properties:
                           key:
                             description: The key of the secret to select from.  Must
@@ -386,8 +385,8 @@ spec:
               arbitraryFSAccessThroughSMs:
                 description: |-
                   ArbitraryFSAccessThroughSMs configures whether configuration
-                  based on a service scrape can access arbitrary files on the file system
-                  of the VMAgent container e.g. bearer token files.
+                  based on EndpointAuth can access arbitrary files on the file system
+                  of the VMAgent container e.g. bearer token files, basic auth, tls certs
                 properties:
                   deny:
                     type: boolean
@@ -953,7 +952,7 @@ spec:
               ignoreNamespaceSelectors:
                 description: |-
                   IgnoreNamespaceSelectors if set to true will ignore NamespaceSelector settings from
-                  the podscrape and vmservicescrape configs, and they will only discover endpoints
+                  scrape objects, and they will only discover endpoints
                   within their current namespace.  Defaults to false.
                 type: boolean
               image:
@@ -1024,7 +1023,7 @@ spec:
                 items:
                   description: |-
                     RelabelConfig allows dynamic rewriting of the label set
-                    More info [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/#relabeling)
+                    More info: https://docs.victoriametrics.com/#relabeling
                   properties:
                     action:
                       description: Action to perform based on regex matching. Default
@@ -1052,7 +1051,8 @@ spec:
                     regex:
                       description: |-
                         Regular expression against which the extracted value is matched. Default is '(.*)'
-                        victoriaMetrics [supports](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#relabeling-enhancements) multiline regex joined with |
+                        victoriaMetrics supports multiline regex joined with |
+                        https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
                       x-kubernetes-preserve-unknown-fields: true
                     replacement:
                       description: |-
@@ -1257,7 +1257,7 @@ spec:
                 items:
                   description: |-
                     RelabelConfig allows dynamic rewriting of the label set
-                    More info [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/#relabeling)
+                    More info: https://docs.victoriametrics.com/#relabeling
                   properties:
                     action:
                       description: Action to perform based on regex matching. Default
@@ -1285,7 +1285,8 @@ spec:
                     regex:
                       description: |-
                         Regular expression against which the extracted value is matched. Default is '(.*)'
-                        victoriaMetrics [supports](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#relabeling-enhancements) multiline regex joined with |
+                        victoriaMetrics supports multiline regex joined with |
+                        https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
                       x-kubernetes-preserve-unknown-fields: true
                     replacement:
                       description: |-
@@ -1387,7 +1388,7 @@ spec:
               overrideHonorLabels:
                 description: |-
                   OverrideHonorLabels if set to true overrides all user configured honor_labels.
-                  If HonorLabels is set in ServiceScrape or PodScrape to true, this overrides honor_labels to false.
+                  If HonorLabels is set in scrape objects  to true, this overrides honor_labels to false.
                 type: boolean
               overrideHonorTimestamps:
                 description: OverrideHonorTimestamps allows to globally enforce honoring
@@ -1519,7 +1520,7 @@ spec:
                 items:
                   description: |-
                     RelabelConfig allows dynamic rewriting of the label set
-                    More info [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/#relabeling)
+                    More info: https://docs.victoriametrics.com/#relabeling
                   properties:
                     action:
                       description: Action to perform based on regex matching. Default
@@ -1547,7 +1548,8 @@ spec:
                     regex:
                       description: |-
                         Regular expression against which the extracted value is matched. Default is '(.*)'
-                        victoriaMetrics [supports](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#relabeling-enhancements) multiline regex joined with |
+                        victoriaMetrics supports multiline regex joined with |
+                        https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
                       x-kubernetes-preserve-unknown-fields: true
                     replacement:
                       description: |-
@@ -1704,7 +1706,7 @@ spec:
                 items:
                   description: |-
                     RelabelConfig allows dynamic rewriting of the label set
-                    More info [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/#relabeling)
+                    More info: https://docs.victoriametrics.com/#relabeling
                   properties:
                     action:
                       description: Action to perform based on regex matching. Default
@@ -1732,7 +1734,8 @@ spec:
                     regex:
                       description: |-
                         Regular expression against which the extracted value is matched. Default is '(.*)'
-                        victoriaMetrics [supports](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#relabeling-enhancements) multiline regex joined with |
+                        victoriaMetrics supports multiline regex joined with |
+                        https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
                       x-kubernetes-preserve-unknown-fields: true
                     replacement:
                       description: |-
@@ -1885,9 +1888,8 @@ spec:
                       properties:
                         password:
                           description: |-
-                            The secret in the service scrape namespace that contains the password
-                            for authentication.
-                            It must be at them same namespace as CRD
+                            Password defines reference for secret with password value
+                            The secret needs to be in the same namespace as scrape object
                           properties:
                             key:
                               description: The key of the secret to select from.  Must
@@ -1913,14 +1915,14 @@ spec:
                           type: object
                           x-kubernetes-map-type: atomic
                         password_file:
-                          description: PasswordFile defines path to password file
-                            at disk
+                          description: |-
+                            PasswordFile defines path to password file at disk
+                            must be pre-mounted
                           type: string
                         username:
                           description: |-
-                            The secret in the service scrape namespace that contains the username
-                            for authentication.
-                            It must be at them same namespace as CRD
+                            Username defines reference for secret with username value
+                            The secret needs to be in the same namespace as scrape object
                           properties:
                             key:
                               description: The key of the secret to select from.  Must
@@ -1988,7 +1990,7 @@ spec:
                       items:
                         description: |-
                           RelabelConfig allows dynamic rewriting of the label set
-                          More info [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/#relabeling)
+                          More info: https://docs.victoriametrics.com/#relabeling
                         properties:
                           action:
                             description: Action to perform based on regex matching.
@@ -2016,7 +2018,8 @@ spec:
                           regex:
                             description: |-
                               Regular expression against which the extracted value is matched. Default is '(.*)'
-                              victoriaMetrics [supports](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#relabeling-enhancements) multiline regex joined with |
+                              victoriaMetrics supports multiline regex joined with |
+                              https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
                             x-kubernetes-preserve-unknown-fields: true
                           replacement:
                             description: |-
@@ -2237,7 +2240,7 @@ spec:
                                 items:
                                   description: |-
                                     RelabelConfig allows dynamic rewriting of the label set
-                                    More info [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/#relabeling)
+                                    More info: https://docs.victoriametrics.com/#relabeling
                                   properties:
                                     action:
                                       description: Action to perform based on regex
@@ -2265,7 +2268,8 @@ spec:
                                     regex:
                                       description: |-
                                         Regular expression against which the extracted value is matched. Default is '(.*)'
-                                        victoriaMetrics [supports](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#relabeling-enhancements) multiline regex joined with |
+                                        victoriaMetrics supports multiline regex joined with |
+                                        https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
                                       x-kubernetes-preserve-unknown-fields: true
                                     replacement:
                                       description: |-
@@ -2334,7 +2338,7 @@ spec:
                                 items:
                                   description: |-
                                     RelabelConfig allows dynamic rewriting of the label set
-                                    More info [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/#relabeling)
+                                    More info: https://docs.victoriametrics.com/#relabeling
                                   properties:
                                     action:
                                       description: Action to perform based on regex
@@ -2362,7 +2366,8 @@ spec:
                                     regex:
                                       description: |-
                                         Regular expression against which the extracted value is matched. Default is '(.*)'
-                                        victoriaMetrics [supports](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#relabeling-enhancements) multiline regex joined with |
+                                        victoriaMetrics supports multiline regex joined with |
+                                        https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
                                       x-kubernetes-preserve-unknown-fields: true
                                     replacement:
                                       description: |-
@@ -2877,7 +2882,7 @@ spec:
                 items:
                   description: |-
                     RelabelConfig allows dynamic rewriting of the label set
-                    More info [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/#relabeling)
+                    More info: https://docs.victoriametrics.com/#relabeling
                   properties:
                     action:
                       description: Action to perform based on regex matching. Default
@@ -2905,7 +2910,8 @@ spec:
                     regex:
                       description: |-
                         Regular expression against which the extracted value is matched. Default is '(.*)'
-                        victoriaMetrics [supports](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#relabeling-enhancements) multiline regex joined with |
+                        victoriaMetrics supports multiline regex joined with |
+                        https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
                       x-kubernetes-preserve-unknown-fields: true
                     replacement:
                       description: |-
@@ -3087,7 +3093,7 @@ spec:
                 items:
                   description: |-
                     RelabelConfig allows dynamic rewriting of the label set
-                    More info [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/#relabeling)
+                    More info: https://docs.victoriametrics.com/#relabeling
                   properties:
                     action:
                       description: Action to perform based on regex matching. Default
@@ -3115,7 +3121,8 @@ spec:
                     regex:
                       description: |-
                         Regular expression against which the extracted value is matched. Default is '(.*)'
-                        victoriaMetrics [supports](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#relabeling-enhancements) multiline regex joined with |
+                        victoriaMetrics supports multiline regex joined with |
+                        https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
                       x-kubernetes-preserve-unknown-fields: true
                     replacement:
                       description: |-
@@ -3810,7 +3817,7 @@ spec:
                 items:
                   description: |-
                     RelabelConfig allows dynamic rewriting of the label set
-                    More info [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/#relabeling)
+                    More info: https://docs.victoriametrics.com/#relabeling
                   properties:
                     action:
                       description: Action to perform based on regex matching. Default
@@ -3838,7 +3845,8 @@ spec:
                     regex:
                       description: |-
                         Regular expression against which the extracted value is matched. Default is '(.*)'
-                        victoriaMetrics [supports](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#relabeling-enhancements) multiline regex joined with |
+                        victoriaMetrics supports multiline regex joined with |
+                        https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
                       x-kubernetes-preserve-unknown-fields: true
                     replacement:
                       description: |-
@@ -4326,9 +4334,8 @@ spec:
                                 properties:
                                   password:
                                     description: |-
-                                      The secret in the service scrape namespace that contains the password
-                                      for authentication.
-                                      It must be at them same namespace as CRD
+                                      Password defines reference for secret with password value
+                                      The secret needs to be in the same namespace as scrape object
                                     properties:
                                       key:
                                         description: The key of the secret to select
@@ -4354,14 +4361,14 @@ spec:
                                     type: object
                                     x-kubernetes-map-type: atomic
                                   password_file:
-                                    description: PasswordFile defines path to password
-                                      file at disk
+                                    description: |-
+                                      PasswordFile defines path to password file at disk
+                                      must be pre-mounted
                                     type: string
                                   username:
                                     description: |-
-                                      The secret in the service scrape namespace that contains the username
-                                      for authentication.
-                                      It must be at them same namespace as CRD
+                                      Username defines reference for secret with username value
+                                      The secret needs to be in the same namespace as scrape object
                                     properties:
                                       key:
                                         description: The key of the secret to select
@@ -4917,9 +4924,8 @@ spec:
                                 properties:
                                   password:
                                     description: |-
-                                      The secret in the service scrape namespace that contains the password
-                                      for authentication.
-                                      It must be at them same namespace as CRD
+                                      Password defines reference for secret with password value
+                                      The secret needs to be in the same namespace as scrape object
                                     properties:
                                       key:
                                         description: The key of the secret to select
@@ -4945,14 +4951,14 @@ spec:
                                     type: object
                                     x-kubernetes-map-type: atomic
                                   password_file:
-                                    description: PasswordFile defines path to password
-                                      file at disk
+                                    description: |-
+                                      PasswordFile defines path to password file at disk
+                                      must be pre-mounted
                                     type: string
                                   username:
                                     description: |-
-                                      The secret in the service scrape namespace that contains the username
-                                      for authentication.
-                                      It must be at them same namespace as CRD
+                                      Username defines reference for secret with username value
+                                      The secret needs to be in the same namespace as scrape object
                                     properties:
                                       key:
                                         description: The key of the secret to select
@@ -5770,9 +5776,8 @@ spec:
                                 properties:
                                   password:
                                     description: |-
-                                      The secret in the service scrape namespace that contains the password
-                                      for authentication.
-                                      It must be at them same namespace as CRD
+                                      Password defines reference for secret with password value
+                                      The secret needs to be in the same namespace as scrape object
                                     properties:
                                       key:
                                         description: The key of the secret to select
@@ -5798,14 +5803,14 @@ spec:
                                     type: object
                                     x-kubernetes-map-type: atomic
                                   password_file:
-                                    description: PasswordFile defines path to password
-                                      file at disk
+                                    description: |-
+                                      PasswordFile defines path to password file at disk
+                                      must be pre-mounted
                                     type: string
                                   username:
                                     description: |-
-                                      The secret in the service scrape namespace that contains the username
-                                      for authentication.
-                                      It must be at them same namespace as CRD
+                                      Username defines reference for secret with username value
+                                      The secret needs to be in the same namespace as scrape object
                                     properties:
                                       key:
                                         description: The key of the secret to select
@@ -6258,9 +6263,8 @@ spec:
                                 properties:
                                   password:
                                     description: |-
-                                      The secret in the service scrape namespace that contains the password
-                                      for authentication.
-                                      It must be at them same namespace as CRD
+                                      Password defines reference for secret with password value
+                                      The secret needs to be in the same namespace as scrape object
                                     properties:
                                       key:
                                         description: The key of the secret to select
@@ -6286,14 +6290,14 @@ spec:
                                     type: object
                                     x-kubernetes-map-type: atomic
                                   password_file:
-                                    description: PasswordFile defines path to password
-                                      file at disk
+                                    description: |-
+                                      PasswordFile defines path to password file at disk
+                                      must be pre-mounted
                                     type: string
                                   username:
                                     description: |-
-                                      The secret in the service scrape namespace that contains the username
-                                      for authentication.
-                                      It must be at them same namespace as CRD
+                                      Username defines reference for secret with username value
+                                      The secret needs to be in the same namespace as scrape object
                                     properties:
                                       key:
                                         description: The key of the secret to select
@@ -6564,9 +6568,8 @@ spec:
                                 properties:
                                   password:
                                     description: |-
-                                      The secret in the service scrape namespace that contains the password
-                                      for authentication.
-                                      It must be at them same namespace as CRD
+                                      Password defines reference for secret with password value
+                                      The secret needs to be in the same namespace as scrape object
                                     properties:
                                       key:
                                         description: The key of the secret to select
@@ -6592,14 +6595,14 @@ spec:
                                     type: object
                                     x-kubernetes-map-type: atomic
                                   password_file:
-                                    description: PasswordFile defines path to password
-                                      file at disk
+                                    description: |-
+                                      PasswordFile defines path to password file at disk
+                                      must be pre-mounted
                                     type: string
                                   username:
                                     description: |-
-                                      The secret in the service scrape namespace that contains the username
-                                      for authentication.
-                                      It must be at them same namespace as CRD
+                                      Username defines reference for secret with username value
+                                      The secret needs to be in the same namespace as scrape object
                                     properties:
                                       key:
                                         description: The key of the secret to select
@@ -6953,9 +6956,8 @@ spec:
                                 properties:
                                   password:
                                     description: |-
-                                      The secret in the service scrape namespace that contains the password
-                                      for authentication.
-                                      It must be at them same namespace as CRD
+                                      Password defines reference for secret with password value
+                                      The secret needs to be in the same namespace as scrape object
                                     properties:
                                       key:
                                         description: The key of the secret to select
@@ -6981,14 +6983,14 @@ spec:
                                     type: object
                                     x-kubernetes-map-type: atomic
                                   password_file:
-                                    description: PasswordFile defines path to password
-                                      file at disk
+                                    description: |-
+                                      PasswordFile defines path to password file at disk
+                                      must be pre-mounted
                                     type: string
                                   username:
                                     description: |-
-                                      The secret in the service scrape namespace that contains the username
-                                      for authentication.
-                                      It must be at them same namespace as CRD
+                                      Username defines reference for secret with username value
+                                      The secret needs to be in the same namespace as scrape object
                                     properties:
                                       key:
                                         description: The key of the secret to select
@@ -9252,9 +9254,8 @@ spec:
                     properties:
                       password:
                         description: |-
-                          The secret in the service scrape namespace that contains the password
-                          for authentication.
-                          It must be at them same namespace as CRD
+                          Password defines reference for secret with password value
+                          The secret needs to be in the same namespace as scrape object
                         properties:
                           key:
                             description: The key of the secret to select from.  Must
@@ -9280,14 +9281,14 @@ spec:
                         type: object
                         x-kubernetes-map-type: atomic
                       password_file:
-                        description: PasswordFile defines path to password file at
-                          disk
+                        description: |-
+                          PasswordFile defines path to password file at disk
+                          must be pre-mounted
                         type: string
                       username:
                         description: |-
-                          The secret in the service scrape namespace that contains the username
-                          for authentication.
-                          It must be at them same namespace as CRD
+                          Username defines reference for secret with username value
+                          The secret needs to be in the same namespace as scrape object
                         properties:
                           key:
                             description: The key of the secret to select from.  Must
@@ -9612,9 +9613,8 @@ spec:
                     properties:
                       password:
                         description: |-
-                          The secret in the service scrape namespace that contains the password
-                          for authentication.
-                          It must be at them same namespace as CRD
+                          Password defines reference for secret with password value
+                          The secret needs to be in the same namespace as scrape object
                         properties:
                           key:
                             description: The key of the secret to select from.  Must
@@ -9640,14 +9640,14 @@ spec:
                         type: object
                         x-kubernetes-map-type: atomic
                       password_file:
-                        description: PasswordFile defines path to password file at
-                          disk
+                        description: |-
+                          PasswordFile defines path to password file at disk
+                          must be pre-mounted
                         type: string
                       username:
                         description: |-
-                          The secret in the service scrape namespace that contains the username
-                          for authentication.
-                          It must be at them same namespace as CRD
+                          Username defines reference for secret with username value
+                          The secret needs to be in the same namespace as scrape object
                         properties:
                           key:
                             description: The key of the secret to select from.  Must
@@ -9841,9 +9841,8 @@ spec:
                       properties:
                         password:
                           description: |-
-                            The secret in the service scrape namespace that contains the password
-                            for authentication.
-                            It must be at them same namespace as CRD
+                            Password defines reference for secret with password value
+                            The secret needs to be in the same namespace as scrape object
                           properties:
                             key:
                               description: The key of the secret to select from.  Must
@@ -9869,14 +9868,14 @@ spec:
                           type: object
                           x-kubernetes-map-type: atomic
                         password_file:
-                          description: PasswordFile defines path to password file
-                            at disk
+                          description: |-
+                            PasswordFile defines path to password file at disk
+                            must be pre-mounted
                           type: string
                         username:
                           description: |-
-                            The secret in the service scrape namespace that contains the username
-                            for authentication.
-                            It must be at them same namespace as CRD
+                            Username defines reference for secret with username value
+                            The secret needs to be in the same namespace as scrape object
                           properties:
                             key:
                               description: The key of the secret to select from.  Must
@@ -10134,9 +10133,8 @@ spec:
                     properties:
                       password:
                         description: |-
-                          The secret in the service scrape namespace that contains the password
-                          for authentication.
-                          It must be at them same namespace as CRD
+                          Password defines reference for secret with password value
+                          The secret needs to be in the same namespace as scrape object
                         properties:
                           key:
                             description: The key of the secret to select from.  Must
@@ -10162,14 +10160,14 @@ spec:
                         type: object
                         x-kubernetes-map-type: atomic
                       password_file:
-                        description: PasswordFile defines path to password file at
-                          disk
+                        description: |-
+                          PasswordFile defines path to password file at disk
+                          must be pre-mounted
                         type: string
                       username:
                         description: |-
-                          The secret in the service scrape namespace that contains the username
-                          for authentication.
-                          It must be at them same namespace as CRD
+                          Username defines reference for secret with username value
+                          The secret needs to be in the same namespace as scrape object
                         properties:
                           key:
                             description: The key of the secret to select from.  Must
@@ -10271,9 +10269,8 @@ spec:
                     properties:
                       password:
                         description: |-
-                          The secret in the service scrape namespace that contains the password
-                          for authentication.
-                          It must be at them same namespace as CRD
+                          Password defines reference for secret with password value
+                          The secret needs to be in the same namespace as scrape object
                         properties:
                           key:
                             description: The key of the secret to select from.  Must
@@ -10299,14 +10296,14 @@ spec:
                         type: object
                         x-kubernetes-map-type: atomic
                       password_file:
-                        description: PasswordFile defines path to password file at
-                          disk
+                        description: |-
+                          PasswordFile defines path to password file at disk
+                          must be pre-mounted
                         type: string
                       username:
                         description: |-
-                          The secret in the service scrape namespace that contains the username
-                          for authentication.
-                          It must be at them same namespace as CRD
+                          Username defines reference for secret with username value
+                          The secret needs to be in the same namespace as scrape object
                         properties:
                           key:
                             description: The key of the secret to select from.  Must
@@ -16183,9 +16180,8 @@ spec:
                 properties:
                   password:
                     description: |-
-                      The secret in the service scrape namespace that contains the password
-                      for authentication.
-                      It must be at them same namespace as CRD
+                      Password defines reference for secret with password value
+                      The secret needs to be in the same namespace as scrape object
                     properties:
                       key:
                         description: The key of the secret to select from.  Must be
@@ -16211,13 +16207,14 @@ spec:
                     type: object
                     x-kubernetes-map-type: atomic
                   password_file:
-                    description: PasswordFile defines path to password file at disk
+                    description: |-
+                      PasswordFile defines path to password file at disk
+                      must be pre-mounted
                     type: string
                   username:
                     description: |-
-                      The secret in the service scrape namespace that contains the username
-                      for authentication.
-                      It must be at them same namespace as CRD
+                      Username defines reference for secret with username value
+                      The secret needs to be in the same namespace as scrape object
                     properties:
                       key:
                         description: The key of the secret to select from.  Must be
@@ -16249,7 +16246,7 @@ spec:
               bearerTokenSecret:
                 description: |-
                   Secret to mount to read bearer token for scraping targets. The secret
-                  needs to be  accessible by
+                  needs to be in the same namespace as the scrape object and accessible by
                   the victoria-metrics operator.
                 nullable: true
                 properties:
@@ -16292,12 +16289,16 @@ spec:
               jobLabel:
                 description: The label to use to retrieve the job name from.
                 type: string
+              max_scrape_size:
+                description: MaxScrapeSize defines a maximum size of scraped data
+                  for a job
+                type: string
               metricRelabelConfigs:
                 description: MetricRelabelConfigs to apply to samples after scrapping.
                 items:
                   description: |-
                     RelabelConfig allows dynamic rewriting of the label set
-                    More info [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/#relabeling)
+                    More info: https://docs.victoriametrics.com/#relabeling
                   properties:
                     action:
                       description: Action to perform based on regex matching. Default
@@ -16325,7 +16326,8 @@ spec:
                     regex:
                       description: |-
                         Regular expression against which the extracted value is matched. Default is '(.*)'
-                        victoriaMetrics [supports](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#relabeling-enhancements) multiline regex joined with |
+                        victoriaMetrics supports multiline regex joined with |
+                        https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
                       x-kubernetes-preserve-unknown-fields: true
                     replacement:
                       description: |-
@@ -16495,7 +16497,7 @@ spec:
                 items:
                   description: |-
                     RelabelConfig allows dynamic rewriting of the label set
-                    More info [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/#relabeling)
+                    More info: https://docs.victoriametrics.com/#relabeling
                   properties:
                     action:
                       description: Action to perform based on regex matching. Default
@@ -16523,7 +16525,8 @@ spec:
                     regex:
                       description: |-
                         Regular expression against which the extracted value is matched. Default is '(.*)'
-                        victoriaMetrics [supports](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#relabeling-enhancements) multiline regex joined with |
+                        victoriaMetrics supports multiline regex joined with |
+                        https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
                       x-kubernetes-preserve-unknown-fields: true
                     replacement:
                       description: |-
@@ -16643,7 +16646,7 @@ spec:
                   type: string
                 type: array
               tlsConfig:
-                description: TLSConfig specifies TLSConfig configuration parameters.
+                description: TLSConfig configuration to use when scraping the endpoint
                 properties:
                   ca:
                     description: Stuct containing the CA cert to use for the targets.
@@ -16805,13 +16808,14 @@ spec:
                   parameters
                 properties:
                   disable_compression:
+                    description: DisableCompression
                     type: boolean
                   disable_keep_alive:
                     description: |-
                       disable_keepalive allows disabling HTTP keep-alive when scraping targets.
                       By default, HTTP keep-alive is enabled, so TCP connections to scrape targets
                       could be re-used.
-                      See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#scrape_config-enhancements)
+                      See https://docs.victoriametrics.com/vmagent.html#scrape_config-enhancements
                     type: boolean
                   headers:
                     description: |-
@@ -16823,16 +16827,12 @@ spec:
                     items:
                       type: string
                     type: array
-                  metric_relabel_debug:
-                    description: deprecated since [v1.85](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.85.0),
-                      will be removed in next release
-                    type: boolean
                   no_stale_markers:
                     type: boolean
                   proxy_client_config:
                     description: |-
                       ProxyClientConfig configures proxy auth settings for scraping
-                      See [feature description](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#scraping-targets-via-a-proxy)
+                      See feature description https://docs.victoriametrics.com/vmagent.html#scraping-targets-via-a-proxy
                     properties:
                       basic_auth:
                         description: BasicAuth allow an endpoint to authenticate over
@@ -16840,9 +16840,8 @@ spec:
                         properties:
                           password:
                             description: |-
-                              The secret in the service scrape namespace that contains the password
-                              for authentication.
-                              It must be at them same namespace as CRD
+                              Password defines reference for secret with password value
+                              The secret needs to be in the same namespace as scrape object
                             properties:
                               key:
                                 description: The key of the secret to select from.  Must
@@ -16868,14 +16867,14 @@ spec:
                             type: object
                             x-kubernetes-map-type: atomic
                           password_file:
-                            description: PasswordFile defines path to password file
-                              at disk
+                            description: |-
+                              PasswordFile defines path to password file at disk
+                              must be pre-mounted
                             type: string
                           username:
                             description: |-
-                              The secret in the service scrape namespace that contains the username
-                              for authentication.
-                              It must be at them same namespace as CRD
+                              Username defines reference for secret with username value
+                              The secret needs to be in the same namespace as scrape object
                             properties:
                               key:
                                 description: The key of the secret to select from.  Must
@@ -17095,10 +17094,6 @@ spec:
                             type: string
                         type: object
                     type: object
-                  relabel_debug:
-                    description: deprecated since [v1.85](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.85.0),
-                      will be removed in next release
-                    type: boolean
                   scrape_align_interval:
                     type: string
                   scrape_offset:
@@ -17245,9 +17240,8 @@ spec:
                       properties:
                         password:
                           description: |-
-                            The secret in the service scrape namespace that contains the password
-                            for authentication.
-                            It must be at them same namespace as CRD
+                            Password defines reference for secret with password value
+                            The secret needs to be in the same namespace as scrape object
                           properties:
                             key:
                               description: The key of the secret to select from.  Must
@@ -17273,14 +17267,14 @@ spec:
                           type: object
                           x-kubernetes-map-type: atomic
                         password_file:
-                          description: PasswordFile defines path to password file
-                            at disk
+                          description: |-
+                            PasswordFile defines path to password file at disk
+                            must be pre-mounted
                           type: string
                         username:
                           description: |-
-                            The secret in the service scrape namespace that contains the username
-                            for authentication.
-                            It must be at them same namespace as CRD
+                            Username defines reference for secret with username value
+                            The secret needs to be in the same namespace as scrape object
                           properties:
                             key:
                               description: The key of the secret to select from.  Must
@@ -17312,7 +17306,7 @@ spec:
                     bearerTokenSecret:
                       description: |-
                         Secret to mount to read bearer token for scraping targets. The secret
-                        needs to be in the same namespace as the service scrape and accessible by
+                        needs to be in the same namespace as the scrape object and accessible by
                         the victoria-metrics operator.
                       nullable: true
                       properties:
@@ -17359,13 +17353,17 @@ spec:
                     interval:
                       description: Interval at which metrics should be scraped
                       type: string
+                    max_scrape_size:
+                      description: MaxScrapeSize defines a maximum size of scraped
+                        data for a job
+                      type: string
                     metricRelabelConfigs:
                       description: MetricRelabelConfigs to apply to samples after
                         scrapping.
                       items:
                         description: |-
                           RelabelConfig allows dynamic rewriting of the label set
-                          More info [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/#relabeling)
+                          More info: https://docs.victoriametrics.com/#relabeling
                         properties:
                           action:
                             description: Action to perform based on regex matching.
@@ -17393,7 +17391,8 @@ spec:
                           regex:
                             description: |-
                               Regular expression against which the extracted value is matched. Default is '(.*)'
-                              victoriaMetrics [supports](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#relabeling-enhancements) multiline regex joined with |
+                              victoriaMetrics supports multiline regex joined with |
+                              https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
                             x-kubernetes-preserve-unknown-fields: true
                           replacement:
                             description: |-
@@ -17554,8 +17553,7 @@ spec:
                       description: HTTP path to scrape for metrics.
                       type: string
                     port:
-                      description: Name of the pod port this endpoint refers to. Mutually
-                        exclusive with targetPort.
+                      description: Name of the port exposed at Pod.
                       type: string
                     proxyURL:
                       description: ProxyURL eg http://proxyserver:2195 Directs scrapes
@@ -17567,7 +17565,7 @@ spec:
                       items:
                         description: |-
                           RelabelConfig allows dynamic rewriting of the label set
-                          More info [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/#relabeling)
+                          More info: https://docs.victoriametrics.com/#relabeling
                         properties:
                           action:
                             description: Action to perform based on regex matching.
@@ -17595,7 +17593,8 @@ spec:
                           regex:
                             description: |-
                               Regular expression against which the extracted value is matched. Default is '(.*)'
-                              victoriaMetrics [supports](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#relabeling-enhancements) multiline regex joined with |
+                              victoriaMetrics supports multiline regex joined with |
+                              https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
                             x-kubernetes-preserve-unknown-fields: true
                           replacement:
                             description: |-
@@ -17638,7 +17637,7 @@ spec:
                         type: object
                       type: array
                     sampleLimit:
-                      description: SampleLimit defines per-podEndpoint limit on number
+                      description: SampleLimit defines per-scrape limit on number
                         of scraped samples that will be accepted.
                       format: int64
                       type: integer
@@ -17839,13 +17838,14 @@ spec:
                         scrape parameters
                       properties:
                         disable_compression:
+                          description: DisableCompression
                           type: boolean
                         disable_keep_alive:
                           description: |-
                             disable_keepalive allows disabling HTTP keep-alive when scraping targets.
                             By default, HTTP keep-alive is enabled, so TCP connections to scrape targets
                             could be re-used.
-                            See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#scrape_config-enhancements)
+                            See https://docs.victoriametrics.com/vmagent.html#scrape_config-enhancements
                           type: boolean
                         headers:
                           description: |-
@@ -17857,16 +17857,12 @@ spec:
                           items:
                             type: string
                           type: array
-                        metric_relabel_debug:
-                          description: deprecated since [v1.85](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.85.0),
-                            will be removed in next release
-                          type: boolean
                         no_stale_markers:
                           type: boolean
                         proxy_client_config:
                           description: |-
                             ProxyClientConfig configures proxy auth settings for scraping
-                            See [feature description](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#scraping-targets-via-a-proxy)
+                            See feature description https://docs.victoriametrics.com/vmagent.html#scraping-targets-via-a-proxy
                           properties:
                             basic_auth:
                               description: BasicAuth allow an endpoint to authenticate
@@ -17874,9 +17870,8 @@ spec:
                               properties:
                                 password:
                                   description: |-
-                                    The secret in the service scrape namespace that contains the password
-                                    for authentication.
-                                    It must be at them same namespace as CRD
+                                    Password defines reference for secret with password value
+                                    The secret needs to be in the same namespace as scrape object
                                   properties:
                                     key:
                                       description: The key of the secret to select
@@ -17902,14 +17897,14 @@ spec:
                                   type: object
                                   x-kubernetes-map-type: atomic
                                 password_file:
-                                  description: PasswordFile defines path to password
-                                    file at disk
+                                  description: |-
+                                    PasswordFile defines path to password file at disk
+                                    must be pre-mounted
                                   type: string
                                 username:
                                   description: |-
-                                    The secret in the service scrape namespace that contains the username
-                                    for authentication.
-                                    It must be at them same namespace as CRD
+                                    Username defines reference for secret with username value
+                                    The secret needs to be in the same namespace as scrape object
                                   properties:
                                     key:
                                       description: The key of the secret to select
@@ -18131,10 +18126,6 @@ spec:
                                   type: string
                               type: object
                           type: object
-                        relabel_debug:
-                          description: deprecated since [v1.85](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.85.0),
-                            will be removed in next release
-                          type: boolean
                         scrape_align_interval:
                           type: string
                         scrape_offset:
@@ -18304,9 +18295,8 @@ spec:
                 properties:
                   password:
                     description: |-
-                      The secret in the service scrape namespace that contains the password
-                      for authentication.
-                      It must be at them same namespace as CRD
+                      Password defines reference for secret with password value
+                      The secret needs to be in the same namespace as scrape object
                     properties:
                       key:
                         description: The key of the secret to select from.  Must be
@@ -18332,13 +18322,14 @@ spec:
                     type: object
                     x-kubernetes-map-type: atomic
                   password_file:
-                    description: PasswordFile defines path to password file at disk
+                    description: |-
+                      PasswordFile defines path to password file at disk
+                      must be pre-mounted
                     type: string
                   username:
                     description: |-
-                      The secret in the service scrape namespace that contains the username
-                      for authentication.
-                      It must be at them same namespace as CRD
+                      Username defines reference for secret with username value
+                      The secret needs to be in the same namespace as scrape object
                     properties:
                       key:
                         description: The key of the secret to select from.  Must be
@@ -18370,7 +18361,7 @@ spec:
               bearerTokenSecret:
                 description: |-
                   Secret to mount to read bearer token for scraping targets. The secret
-                  needs to be in the same namespace as the service scrape and accessible by
+                  needs to be in the same namespace as the scrape object and accessible by
                   the victoria-metrics operator.
                 nullable: true
                 properties:
@@ -18399,14 +18390,100 @@ spec:
               follow_redirects:
                 description: FollowRedirects controls redirects for scraping.
                 type: boolean
+              honorLabels:
+                description: HonorLabels chooses the metric's labels on collisions
+                  with target labels.
+                type: boolean
+              honorTimestamps:
+                description: HonorTimestamps controls whether vmagent respects the
+                  timestamps present in scraped data.
+                type: boolean
               interval:
-                description: |-
-                  Interval at which targets are probed using the configured prober.
-                  If not specified global scrape interval is used.
+                description: Interval at which metrics should be scraped
                 type: string
               jobName:
                 description: The job name assigned to scraped metrics by default.
                 type: string
+              max_scrape_size:
+                description: MaxScrapeSize defines a maximum size of scraped data
+                  for a job
+                type: string
+              metricRelabelConfigs:
+                description: MetricRelabelConfigs to apply to samples after scrapping.
+                items:
+                  description: |-
+                    RelabelConfig allows dynamic rewriting of the label set
+                    More info: https://docs.victoriametrics.com/#relabeling
+                  properties:
+                    action:
+                      description: Action to perform based on regex matching. Default
+                        is 'replace'
+                      type: string
+                    if:
+                      description: 'If represents metricsQL match expression (or list
+                        of expressions): ''{__name__=~"foo_.*"}'''
+                      x-kubernetes-preserve-unknown-fields: true
+                    labels:
+                      additionalProperties:
+                        type: string
+                      description: 'Labels is used together with Match for `action:
+                        graphite`'
+                      type: object
+                    match:
+                      description: 'Match is used together with Labels for `action:
+                        graphite`'
+                      type: string
+                    modulus:
+                      description: Modulus to take of the hash of the source label
+                        values.
+                      format: int64
+                      type: integer
+                    regex:
+                      description: |-
+                        Regular expression against which the extracted value is matched. Default is '(.*)'
+                        victoriaMetrics supports multiline regex joined with |
+                        https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
+                      x-kubernetes-preserve-unknown-fields: true
+                    replacement:
+                      description: |-
+                        Replacement value against which a regex replace is performed if the
+                        regular expression matches. Regex capture groups are available. Default is '$1'
+                      type: string
+                    separator:
+                      description: Separator placed between concatenated source label
+                        values. default is ';'.
+                      type: string
+                    source_labels:
+                      description: |-
+                        UnderScoreSourceLabels - additional form of source labels source_labels
+                        for compatibility with original relabel config.
+                        if set  both sourceLabels and source_labels, sourceLabels has priority.
+                        for details https://github.com/VictoriaMetrics/operator/issues/131
+                      items:
+                        type: string
+                      type: array
+                    sourceLabels:
+                      description: |-
+                        The source labels select values from existing labels. Their content is concatenated
+                        using the configured separator and matched against the configured regular expression
+                        for the replace, keep, and drop actions.
+                      items:
+                        type: string
+                      type: array
+                    target_label:
+                      description: |-
+                        UnderScoreTargetLabel - additional form of target label - target_label
+                        for compatibility with original relabel config.
+                        if set  both targetLabel and target_label, targetLabel has priority.
+                        for details https://github.com/VictoriaMetrics/operator/issues/131
+                      type: string
+                    targetLabel:
+                      description: |-
+                        Label to which the resulting value is written in a replace action.
+                        It is mandatory for replace actions. Regex capture groups are available.
+                      type: string
+                  type: object
+                type: array
               module:
                 description: |-
                   The module to use for probing specifying how to probe the target.
@@ -18526,6 +18603,9 @@ spec:
                   type: array
                 description: Optional HTTP URL parameters
                 type: object
+              path:
+                description: HTTP path to scrape for metrics.
+                type: string
               proxyURL:
                 description: ProxyURL eg http://proxyserver:2195 Directs scrapes to
                   proxy through this endpoint.
@@ -18535,13 +18615,19 @@ spec:
                   samples that will be accepted.
                 format: int64
                 type: integer
+              scheme:
+                description: HTTP scheme to use for scraping.
+                enum:
+                - http
+                - https
+                type: string
               scrape_interval:
                 description: |-
                   ScrapeInterval is the same as Interval and has priority over it.
                   one of scrape_interval or interval can be used
                 type: string
               scrapeTimeout:
-                description: Timeout for scraping metrics from the blackbox exporter.
+                description: Timeout after which the scrape is ended
                 type: string
               seriesLimit:
                 description: |-
@@ -18577,7 +18663,7 @@ spec:
                         items:
                           description: |-
                             RelabelConfig allows dynamic rewriting of the label set
-                            More info [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/#relabeling)
+                            More info: https://docs.victoriametrics.com/#relabeling
                           properties:
                             action:
                               description: Action to perform based on regex matching.
@@ -18605,7 +18691,8 @@ spec:
                             regex:
                               description: |-
                                 Regular expression against which the extracted value is matched. Default is '(.*)'
-                                victoriaMetrics [supports](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#relabeling-enhancements) multiline regex joined with |
+                                victoriaMetrics supports multiline regex joined with |
+                                https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
                               x-kubernetes-preserve-unknown-fields: true
                             replacement:
                               description: |-
@@ -18710,7 +18797,7 @@ spec:
                         items:
                           description: |-
                             RelabelConfig allows dynamic rewriting of the label set
-                            More info [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/#relabeling)
+                            More info: https://docs.victoriametrics.com/#relabeling
                           properties:
                             action:
                               description: Action to perform based on regex matching.
@@ -18738,7 +18825,8 @@ spec:
                             regex:
                               description: |-
                                 Regular expression against which the extracted value is matched. Default is '(.*)'
-                                victoriaMetrics [supports](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#relabeling-enhancements) multiline regex joined with |
+                                victoriaMetrics supports multiline regex joined with |
+                                https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
                               x-kubernetes-preserve-unknown-fields: true
                             replacement:
                               description: |-
@@ -18953,13 +19041,14 @@ spec:
                   parameters
                 properties:
                   disable_compression:
+                    description: DisableCompression
                     type: boolean
                   disable_keep_alive:
                     description: |-
                       disable_keepalive allows disabling HTTP keep-alive when scraping targets.
                       By default, HTTP keep-alive is enabled, so TCP connections to scrape targets
                       could be re-used.
-                      See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#scrape_config-enhancements)
+                      See https://docs.victoriametrics.com/vmagent.html#scrape_config-enhancements
                     type: boolean
                   headers:
                     description: |-
@@ -18971,16 +19060,12 @@ spec:
                     items:
                       type: string
                     type: array
-                  metric_relabel_debug:
-                    description: deprecated since [v1.85](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.85.0),
-                      will be removed in next release
-                    type: boolean
                   no_stale_markers:
                     type: boolean
                   proxy_client_config:
                     description: |-
                       ProxyClientConfig configures proxy auth settings for scraping
-                      See [feature description](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#scraping-targets-via-a-proxy)
+                      See feature description https://docs.victoriametrics.com/vmagent.html#scraping-targets-via-a-proxy
                     properties:
                       basic_auth:
                         description: BasicAuth allow an endpoint to authenticate over
@@ -18988,9 +19073,8 @@ spec:
                         properties:
                           password:
                             description: |-
-                              The secret in the service scrape namespace that contains the password
-                              for authentication.
-                              It must be at them same namespace as CRD
+                              Password defines reference for secret with password value
+                              The secret needs to be in the same namespace as scrape object
                             properties:
                               key:
                                 description: The key of the secret to select from.  Must
@@ -19016,14 +19100,14 @@ spec:
                             type: object
                             x-kubernetes-map-type: atomic
                           password_file:
-                            description: PasswordFile defines path to password file
-                              at disk
+                            description: |-
+                              PasswordFile defines path to password file at disk
+                              must be pre-mounted
                             type: string
                           username:
                             description: |-
-                              The secret in the service scrape namespace that contains the username
-                              for authentication.
-                              It must be at them same namespace as CRD
+                              Username defines reference for secret with username value
+                              The secret needs to be in the same namespace as scrape object
                             properties:
                               key:
                                 description: The key of the secret to select from.  Must
@@ -19243,10 +19327,6 @@ spec:
                             type: string
                         type: object
                     type: object
-                  relabel_debug:
-                    description: deprecated since [v1.85](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.85.0),
-                      will be removed in next release
-                    type: boolean
                   scrape_align_interval:
                     type: string
                   scrape_offset:
@@ -19548,7 +19628,7 @@ spec:
             description: VMScrapeConfigSpec defines the desired state of VMScrapeConfig
             properties:
               authorization:
-                description: Authorization header to use on every scrape request.
+                description: Authorization with http header Authorization
                 properties:
                   credentials:
                     description: Reference to the secret with value for authorization
@@ -19655,13 +19735,13 @@ spec:
                   type: object
                 type: array
               basicAuth:
-                description: BasicAuth information to use on every scrape request.
+                description: BasicAuth allow an endpoint to authenticate over basic
+                  authentication
                 properties:
                   password:
                     description: |-
-                      The secret in the service scrape namespace that contains the password
-                      for authentication.
-                      It must be at them same namespace as CRD
+                      Password defines reference for secret with password value
+                      The secret needs to be in the same namespace as scrape object
                     properties:
                       key:
                         description: The key of the secret to select from.  Must be
@@ -19687,13 +19767,14 @@ spec:
                     type: object
                     x-kubernetes-map-type: atomic
                   password_file:
-                    description: PasswordFile defines path to password file at disk
+                    description: |-
+                      PasswordFile defines path to password file at disk
+                      must be pre-mounted
                     type: string
                   username:
                     description: |-
-                      The secret in the service scrape namespace that contains the username
-                      for authentication.
-                      It must be at them same namespace as CRD
+                      Username defines reference for secret with username value
+                      The secret needs to be in the same namespace as scrape object
                     properties:
                       key:
                         description: The key of the secret to select from.  Must be
@@ -19719,6 +19800,38 @@ spec:
                     type: object
                     x-kubernetes-map-type: atomic
                 type: object
+              bearerTokenFile:
+                description: File to read bearer token for scraping targets.
+                type: string
+              bearerTokenSecret:
+                description: |-
+                  Secret to mount to read bearer token for scraping targets. The secret
+                  needs to be in the same namespace as the scrape object and accessible by
+                  the victoria-metrics operator.
+                nullable: true
+                properties:
+                  key:
+                    description: The key of the secret to select from.  Must be a
+                      valid secret key.
+                    type: string
+                  name:
+                    default: ""
+                    description: |-
+                      Name of the referent.
+                      This field is effectively required, but due to backwards compatibility is
+                      allowed to be empty. Instances of this type with an empty value here are
+                      almost certainly wrong.
+                      TODO: Add other useful fields. apiVersion, kind, uid?
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                      TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
+                    type: string
+                  optional:
+                    description: Specify whether the Secret or its key must be defined
+                    type: boolean
+                required:
+                - key
+                type: object
+                x-kubernetes-map-type: atomic
               consulSDConfigs:
                 description: ConsulSDConfigs defines a list of Consul service discovery
                   configurations.
@@ -19773,9 +19886,8 @@ spec:
                       properties:
                         password:
                           description: |-
-                            The secret in the service scrape namespace that contains the password
-                            for authentication.
-                            It must be at them same namespace as CRD
+                            Password defines reference for secret with password value
+                            The secret needs to be in the same namespace as scrape object
                           properties:
                             key:
                               description: The key of the secret to select from.  Must
@@ -19801,14 +19913,14 @@ spec:
                           type: object
                           x-kubernetes-map-type: atomic
                         password_file:
-                          description: PasswordFile defines path to password file
-                            at disk
+                          description: |-
+                            PasswordFile defines path to password file at disk
+                            must be pre-mounted
                           type: string
                         username:
                           description: |-
-                            The secret in the service scrape namespace that contains the username
-                            for authentication.
-                            It must be at them same namespace as CRD
+                            Username defines reference for secret with username value
+                            The secret needs to be in the same namespace as scrape object
                           properties:
                             key:
                               description: The key of the secret to select from.  Must
@@ -19975,9 +20087,8 @@ spec:
                           properties:
                             password:
                               description: |-
-                                The secret in the service scrape namespace that contains the password
-                                for authentication.
-                                It must be at them same namespace as CRD
+                                Password defines reference for secret with password value
+                                The secret needs to be in the same namespace as scrape object
                               properties:
                                 key:
                                   description: The key of the secret to select from.  Must
@@ -20003,14 +20114,14 @@ spec:
                               type: object
                               x-kubernetes-map-type: atomic
                             password_file:
-                              description: PasswordFile defines path to password file
-                                at disk
+                              description: |-
+                                PasswordFile defines path to password file at disk
+                                must be pre-mounted
                               type: string
                             username:
                               description: |-
-                                The secret in the service scrape namespace that contains the username
-                                for authentication.
-                                It must be at them same namespace as CRD
+                                Username defines reference for secret with username value
+                                The secret needs to be in the same namespace as scrape object
                               properties:
                                 key:
                                   description: The key of the secret to select from.  Must
@@ -20630,9 +20741,8 @@ spec:
                           properties:
                             password:
                               description: |-
-                                The secret in the service scrape namespace that contains the password
-                                for authentication.
-                                It must be at them same namespace as CRD
+                                Password defines reference for secret with password value
+                                The secret needs to be in the same namespace as scrape object
                               properties:
                                 key:
                                   description: The key of the secret to select from.  Must
@@ -20658,14 +20768,14 @@ spec:
                               type: object
                               x-kubernetes-map-type: atomic
                             password_file:
-                              description: PasswordFile defines path to password file
-                                at disk
+                              description: |-
+                                PasswordFile defines path to password file at disk
+                                must be pre-mounted
                               type: string
                             username:
                               description: |-
-                                The secret in the service scrape namespace that contains the username
-                                for authentication.
-                                It must be at them same namespace as CRD
+                                Username defines reference for secret with username value
+                                The secret needs to be in the same namespace as scrape object
                               properties:
                                 key:
                                   description: The key of the secret to select from.  Must
@@ -21252,8 +21362,8 @@ spec:
                   with target labels.
                 type: boolean
               honorTimestamps:
-                description: HonorTimestamps controls whether to respect the timestamps
-                  present in scraped data.
+                description: HonorTimestamps controls whether vmagent respects the
+                  timestamps present in scraped data.
                 type: boolean
               httpSDConfigs:
                 description: HTTPSDConfigs defines a list of HTTP service discovery
@@ -21304,9 +21414,8 @@ spec:
                       properties:
                         password:
                           description: |-
-                            The secret in the service scrape namespace that contains the password
-                            for authentication.
-                            It must be at them same namespace as CRD
+                            Password defines reference for secret with password value
+                            The secret needs to be in the same namespace as scrape object
                           properties:
                             key:
                               description: The key of the secret to select from.  Must
@@ -21332,14 +21441,14 @@ spec:
                           type: object
                           x-kubernetes-map-type: atomic
                         password_file:
-                          description: PasswordFile defines path to password file
-                            at disk
+                          description: |-
+                            PasswordFile defines path to password file at disk
+                            must be pre-mounted
                           type: string
                         username:
                           description: |-
-                            The secret in the service scrape namespace that contains the username
-                            for authentication.
-                            It must be at them same namespace as CRD
+                            Username defines reference for secret with username value
+                            The secret needs to be in the same namespace as scrape object
                           properties:
                             key:
                               description: The key of the secret to select from.  Must
@@ -21376,9 +21485,8 @@ spec:
                           properties:
                             password:
                               description: |-
-                                The secret in the service scrape namespace that contains the password
-                                for authentication.
-                                It must be at them same namespace as CRD
+                                Password defines reference for secret with password value
+                                The secret needs to be in the same namespace as scrape object
                               properties:
                                 key:
                                   description: The key of the secret to select from.  Must
@@ -21404,14 +21512,14 @@ spec:
                               type: object
                               x-kubernetes-map-type: atomic
                             password_file:
-                              description: PasswordFile defines path to password file
-                                at disk
+                              description: |-
+                                PasswordFile defines path to password file at disk
+                                must be pre-mounted
                               type: string
                             username:
                               description: |-
-                                The secret in the service scrape namespace that contains the username
-                                for authentication.
-                                It must be at them same namespace as CRD
+                                Username defines reference for secret with username value
+                                The secret needs to be in the same namespace as scrape object
                               properties:
                                 key:
                                   description: The key of the secret to select from.  Must
@@ -21808,6 +21916,9 @@ spec:
                   - url
                   type: object
                 type: array
+              interval:
+                description: Interval at which metrics should be scraped
+                type: string
               kubernetesSDConfigs:
                 description: KubernetesSDConfigs defines a list of Kubernetes service
                   discovery configurations.
@@ -21875,9 +21986,8 @@ spec:
                       properties:
                         password:
                           description: |-
-                            The secret in the service scrape namespace that contains the password
-                            for authentication.
-                            It must be at them same namespace as CRD
+                            Password defines reference for secret with password value
+                            The secret needs to be in the same namespace as scrape object
                           properties:
                             key:
                               description: The key of the secret to select from.  Must
@@ -21903,14 +22013,14 @@ spec:
                           type: object
                           x-kubernetes-map-type: atomic
                         password_file:
-                          description: PasswordFile defines path to password file
-                            at disk
+                          description: |-
+                            PasswordFile defines path to password file at disk
+                            must be pre-mounted
                           type: string
                         username:
                           description: |-
-                            The secret in the service scrape namespace that contains the username
-                            for authentication.
-                            It must be at them same namespace as CRD
+                            Username defines reference for secret with username value
+                            The secret needs to be in the same namespace as scrape object
                           properties:
                             key:
                               description: The key of the secret to select from.  Must
@@ -22075,9 +22185,8 @@ spec:
                           properties:
                             password:
                               description: |-
-                                The secret in the service scrape namespace that contains the password
-                                for authentication.
-                                It must be at them same namespace as CRD
+                                Password defines reference for secret with password value
+                                The secret needs to be in the same namespace as scrape object
                               properties:
                                 key:
                                   description: The key of the secret to select from.  Must
@@ -22103,14 +22212,14 @@ spec:
                               type: object
                               x-kubernetes-map-type: atomic
                             password_file:
-                              description: PasswordFile defines path to password file
-                                at disk
+                              description: |-
+                                PasswordFile defines path to password file at disk
+                                must be pre-mounted
                               type: string
                             username:
                               description: |-
-                                The secret in the service scrape namespace that contains the username
-                                for authentication.
-                                It must be at them same namespace as CRD
+                                Username defines reference for secret with username value
+                                The secret needs to be in the same namespace as scrape object
                               properties:
                                 key:
                                   description: The key of the secret to select from.  Must
@@ -22533,7 +22642,7 @@ spec:
                 items:
                   description: |-
                     RelabelConfig allows dynamic rewriting of the label set
-                    More info [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/#relabeling)
+                    More info: https://docs.victoriametrics.com/#relabeling
                   properties:
                     action:
                       description: Action to perform based on regex matching. Default
@@ -22561,7 +22670,8 @@ spec:
                     regex:
                       description: |-
                         Regular expression against which the extracted value is matched. Default is '(.*)'
-                        victoriaMetrics [supports](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#relabeling-enhancements) multiline regex joined with |
+                        victoriaMetrics supports multiline regex joined with |
+                        https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
                       x-kubernetes-preserve-unknown-fields: true
                     replacement:
                       description: |-
@@ -22603,10 +22713,6 @@ spec:
                       type: string
                   type: object
                 type: array
-              metricsPath:
-                description: MetricsPath HTTP path to scrape for metrics. If empty,
-                  use the default value (e.g. /metrics).
-                type: string
               oauth2:
                 description: OAuth2 defines auth configuration
                 properties:
@@ -23027,7 +23133,9 @@ spec:
                   type: array
                 description: Optional HTTP URL parameters
                 type: object
-                x-kubernetes-map-type: atomic
+              path:
+                description: HTTP path to scrape for metrics.
+                type: string
               proxyURL:
                 description: ProxyURL eg http://proxyserver:2195 Directs scrapes to
                   proxy through this endpoint.
@@ -23037,7 +23145,7 @@ spec:
                 items:
                   description: |-
                     RelabelConfig allows dynamic rewriting of the label set
-                    More info [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/#relabeling)
+                    More info: https://docs.victoriametrics.com/#relabeling
                   properties:
                     action:
                       description: Action to perform based on regex matching. Default
@@ -23065,7 +23173,8 @@ spec:
                     regex:
                       description: |-
                         Regular expression against which the extracted value is matched. Default is '(.*)'
-                        victoriaMetrics [supports](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#relabeling-enhancements) multiline regex joined with |
+                        victoriaMetrics supports multiline regex joined with |
+                        https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
                       x-kubernetes-preserve-unknown-fields: true
                     replacement:
                       description: |-
@@ -23113,19 +23222,18 @@ spec:
                 format: int64
                 type: integer
               scheme:
-                description: |-
-                  Configures the protocol scheme used for requests.
-                  If empty, use HTTP by default.
+                description: HTTP scheme to use for scraping.
                 enum:
-                - HTTP
-                - HTTPS
+                - http
+                - https
                 type: string
-              scrapeInterval:
-                description: ScrapeInterval is the interval between consecutive scrapes.
+              scrape_interval:
+                description: |-
+                  ScrapeInterval is the same as Interval and has priority over it.
+                  one of scrape_interval or interval can be used
                 type: string
               scrapeTimeout:
-                description: ScrapeTimeout is the number of seconds to wait until
-                  a scrape request times out.
+                description: Timeout after which the scrape is ended
                 type: string
               seriesLimit:
                 description: |-
@@ -23156,7 +23264,7 @@ spec:
                   type: object
                 type: array
               tlsConfig:
-                description: TLS configuration to use on every scrape request
+                description: TLSConfig configuration to use when scraping the endpoint
                 properties:
                   ca:
                     description: Stuct containing the CA cert to use for the targets.
@@ -23318,13 +23426,14 @@ spec:
                   parameters
                 properties:
                   disable_compression:
+                    description: DisableCompression
                     type: boolean
                   disable_keep_alive:
                     description: |-
                       disable_keepalive allows disabling HTTP keep-alive when scraping targets.
                       By default, HTTP keep-alive is enabled, so TCP connections to scrape targets
                       could be re-used.
-                      See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#scrape_config-enhancements)
+                      See https://docs.victoriametrics.com/vmagent.html#scrape_config-enhancements
                     type: boolean
                   headers:
                     description: |-
@@ -23336,16 +23445,12 @@ spec:
                     items:
                       type: string
                     type: array
-                  metric_relabel_debug:
-                    description: deprecated since [v1.85](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.85.0),
-                      will be removed in next release
-                    type: boolean
                   no_stale_markers:
                     type: boolean
                   proxy_client_config:
                     description: |-
                       ProxyClientConfig configures proxy auth settings for scraping
-                      See [feature description](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#scraping-targets-via-a-proxy)
+                      See feature description https://docs.victoriametrics.com/vmagent.html#scraping-targets-via-a-proxy
                     properties:
                       basic_auth:
                         description: BasicAuth allow an endpoint to authenticate over
@@ -23353,9 +23458,8 @@ spec:
                         properties:
                           password:
                             description: |-
-                              The secret in the service scrape namespace that contains the password
-                              for authentication.
-                              It must be at them same namespace as CRD
+                              Password defines reference for secret with password value
+                              The secret needs to be in the same namespace as scrape object
                             properties:
                               key:
                                 description: The key of the secret to select from.  Must
@@ -23381,14 +23485,14 @@ spec:
                             type: object
                             x-kubernetes-map-type: atomic
                           password_file:
-                            description: PasswordFile defines path to password file
-                              at disk
+                            description: |-
+                              PasswordFile defines path to password file at disk
+                              must be pre-mounted
                             type: string
                           username:
                             description: |-
-                              The secret in the service scrape namespace that contains the username
-                              for authentication.
-                              It must be at them same namespace as CRD
+                              Username defines reference for secret with username value
+                              The secret needs to be in the same namespace as scrape object
                             properties:
                               key:
                                 description: The key of the secret to select from.  Must
@@ -23608,10 +23712,6 @@ spec:
                             type: string
                         type: object
                     type: object
-                  relabel_debug:
-                    description: deprecated since [v1.85](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.85.0),
-                      will be removed in next release
-                    type: boolean
                   scrape_align_interval:
                     type: string
                   scrape_offset:
@@ -23752,9 +23852,8 @@ spec:
                       properties:
                         password:
                           description: |-
-                            The secret in the service scrape namespace that contains the password
-                            for authentication.
-                            It must be at them same namespace as CRD
+                            Password defines reference for secret with password value
+                            The secret needs to be in the same namespace as scrape object
                           properties:
                             key:
                               description: The key of the secret to select from.  Must
@@ -23780,14 +23879,14 @@ spec:
                           type: object
                           x-kubernetes-map-type: atomic
                         password_file:
-                          description: PasswordFile defines path to password file
-                            at disk
+                          description: |-
+                            PasswordFile defines path to password file at disk
+                            must be pre-mounted
                           type: string
                         username:
                           description: |-
-                            The secret in the service scrape namespace that contains the username
-                            for authentication.
-                            It must be at them same namespace as CRD
+                            Username defines reference for secret with username value
+                            The secret needs to be in the same namespace as scrape object
                           properties:
                             key:
                               description: The key of the secret to select from.  Must
@@ -23819,7 +23918,7 @@ spec:
                     bearerTokenSecret:
                       description: |-
                         Secret to mount to read bearer token for scraping targets. The secret
-                        needs to be in the same namespace as the service scrape and accessible by
+                        needs to be in the same namespace as the scrape object and accessible by
                         the victoria-metrics operator.
                       nullable: true
                       properties:
@@ -23860,13 +23959,17 @@ spec:
                     interval:
                       description: Interval at which metrics should be scraped
                       type: string
+                    max_scrape_size:
+                      description: MaxScrapeSize defines a maximum size of scraped
+                        data for a job
+                      type: string
                     metricRelabelConfigs:
                       description: MetricRelabelConfigs to apply to samples after
                         scrapping.
                       items:
                         description: |-
                           RelabelConfig allows dynamic rewriting of the label set
-                          More info [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/#relabeling)
+                          More info: https://docs.victoriametrics.com/#relabeling
                         properties:
                           action:
                             description: Action to perform based on regex matching.
@@ -23894,7 +23997,8 @@ spec:
                           regex:
                             description: |-
                               Regular expression against which the extracted value is matched. Default is '(.*)'
-                              victoriaMetrics [supports](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#relabeling-enhancements) multiline regex joined with |
+                              victoriaMetrics supports multiline regex joined with |
+                              https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
                             x-kubernetes-preserve-unknown-fields: true
                           replacement:
                             description: |-
@@ -24055,8 +24159,7 @@ spec:
                       description: HTTP path to scrape for metrics.
                       type: string
                     port:
-                      description: Name of the service port this endpoint refers to.
-                        Mutually exclusive with targetPort.
+                      description: Name of the port exposed at Service.
                       type: string
                     proxyURL:
                       description: ProxyURL eg http://proxyserver:2195 Directs scrapes
@@ -24068,7 +24171,7 @@ spec:
                       items:
                         description: |-
                           RelabelConfig allows dynamic rewriting of the label set
-                          More info [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/#relabeling)
+                          More info: https://docs.victoriametrics.com/#relabeling
                         properties:
                           action:
                             description: Action to perform based on regex matching.
@@ -24096,7 +24199,8 @@ spec:
                           regex:
                             description: |-
                               Regular expression against which the extracted value is matched. Default is '(.*)'
-                              victoriaMetrics [supports](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#relabeling-enhancements) multiline regex joined with |
+                              victoriaMetrics supports multiline regex joined with |
+                              https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
                             x-kubernetes-preserve-unknown-fields: true
                           replacement:
                             description: |-
@@ -24139,7 +24243,7 @@ spec:
                         type: object
                       type: array
                     sampleLimit:
-                      description: SampleLimit defines per-endpoint limit on number
+                      description: SampleLimit defines per-scrape limit on number
                         of scraped samples that will be accepted.
                       format: int64
                       type: integer
@@ -24167,8 +24271,9 @@ spec:
                       anyOf:
                       - type: integer
                       - type: string
-                      description: Name or number of the pod port this endpoint refers
-                        to. Mutually exclusive with port.
+                      description: |-
+                        TargetPort
+                        Name or number of the pod port this endpoint refers to. Mutually exclusive with port.
                       x-kubernetes-int-or-string: true
                     tlsConfig:
                       description: TLSConfig configuration to use when scraping the
@@ -24339,13 +24444,14 @@ spec:
                         scrape parameters
                       properties:
                         disable_compression:
+                          description: DisableCompression
                           type: boolean
                         disable_keep_alive:
                           description: |-
                             disable_keepalive allows disabling HTTP keep-alive when scraping targets.
                             By default, HTTP keep-alive is enabled, so TCP connections to scrape targets
                             could be re-used.
-                            See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#scrape_config-enhancements)
+                            See https://docs.victoriametrics.com/vmagent.html#scrape_config-enhancements
                           type: boolean
                         headers:
                           description: |-
@@ -24357,16 +24463,12 @@ spec:
                           items:
                             type: string
                           type: array
-                        metric_relabel_debug:
-                          description: deprecated since [v1.85](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.85.0),
-                            will be removed in next release
-                          type: boolean
                         no_stale_markers:
                           type: boolean
                         proxy_client_config:
                           description: |-
                             ProxyClientConfig configures proxy auth settings for scraping
-                            See [feature description](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#scraping-targets-via-a-proxy)
+                            See feature description https://docs.victoriametrics.com/vmagent.html#scraping-targets-via-a-proxy
                           properties:
                             basic_auth:
                               description: BasicAuth allow an endpoint to authenticate
@@ -24374,9 +24476,8 @@ spec:
                               properties:
                                 password:
                                   description: |-
-                                    The secret in the service scrape namespace that contains the password
-                                    for authentication.
-                                    It must be at them same namespace as CRD
+                                    Password defines reference for secret with password value
+                                    The secret needs to be in the same namespace as scrape object
                                   properties:
                                     key:
                                       description: The key of the secret to select
@@ -24402,14 +24503,14 @@ spec:
                                   type: object
                                   x-kubernetes-map-type: atomic
                                 password_file:
-                                  description: PasswordFile defines path to password
-                                    file at disk
+                                  description: |-
+                                    PasswordFile defines path to password file at disk
+                                    must be pre-mounted
                                   type: string
                                 username:
                                   description: |-
-                                    The secret in the service scrape namespace that contains the username
-                                    for authentication.
-                                    It must be at them same namespace as CRD
+                                    Username defines reference for secret with username value
+                                    The secret needs to be in the same namespace as scrape object
                                   properties:
                                     key:
                                       description: The key of the secret to select
@@ -24631,10 +24732,6 @@ spec:
                                   type: string
                               type: object
                           type: object
-                        relabel_debug:
-                          description: deprecated since [v1.85](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.85.0),
-                            will be removed in next release
-                          type: boolean
                         scrape_align_interval:
                           type: string
                         scrape_offset:
@@ -25598,7 +25695,7 @@ spec:
                           items:
                             description: |-
                               RelabelConfig allows dynamic rewriting of the label set
-                              More info [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/#relabeling)
+                              More info: https://docs.victoriametrics.com/#relabeling
                             properties:
                               action:
                                 description: Action to perform based on regex matching.
@@ -25626,7 +25723,8 @@ spec:
                               regex:
                                 description: |-
                                   Regular expression against which the extracted value is matched. Default is '(.*)'
-                                  victoriaMetrics [supports](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#relabeling-enhancements) multiline regex joined with |
+                                  victoriaMetrics supports multiline regex joined with |
+                                  https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
                                 x-kubernetes-preserve-unknown-fields: true
                               replacement:
                                 description: |-
@@ -25694,7 +25792,7 @@ spec:
                           items:
                             description: |-
                               RelabelConfig allows dynamic rewriting of the label set
-                              More info [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/#relabeling)
+                              More info: https://docs.victoriametrics.com/#relabeling
                             properties:
                               action:
                                 description: Action to perform based on regex matching.
@@ -25722,7 +25820,8 @@ spec:
                               regex:
                                 description: |-
                                   Regular expression against which the extracted value is matched. Default is '(.*)'
-                                  victoriaMetrics [supports](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#relabeling-enhancements) multiline regex joined with |
+                                  victoriaMetrics supports multiline regex joined with |
+                                  https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
                                 x-kubernetes-preserve-unknown-fields: true
                               replacement:
                                 description: |-
@@ -26494,9 +26593,8 @@ spec:
                       properties:
                         password:
                           description: |-
-                            The secret in the service scrape namespace that contains the password
-                            for authentication.
-                            It must be at them same namespace as CRD
+                            Password defines reference for secret with password value
+                            The secret needs to be in the same namespace as scrape object
                           properties:
                             key:
                               description: The key of the secret to select from.  Must
@@ -26522,14 +26620,14 @@ spec:
                           type: object
                           x-kubernetes-map-type: atomic
                         password_file:
-                          description: PasswordFile defines path to password file
-                            at disk
+                          description: |-
+                            PasswordFile defines path to password file at disk
+                            must be pre-mounted
                           type: string
                         username:
                           description: |-
-                            The secret in the service scrape namespace that contains the username
-                            for authentication.
-                            It must be at them same namespace as CRD
+                            Username defines reference for secret with username value
+                            The secret needs to be in the same namespace as scrape object
                           properties:
                             key:
                               description: The key of the secret to select from.  Must
@@ -26561,7 +26659,7 @@ spec:
                     bearerTokenSecret:
                       description: |-
                         Secret to mount to read bearer token for scraping targets. The secret
-                        needs to be in the same namespace as the service scrape and accessible by
+                        needs to be in the same namespace as the scrape object and accessible by
                         the victoria-metrics operator.
                       nullable: true
                       properties:
@@ -26607,13 +26705,17 @@ spec:
                         type: string
                       description: Labels static labels for targets.
                       type: object
+                    max_scrape_size:
+                      description: MaxScrapeSize defines a maximum size of scraped
+                        data for a job
+                      type: string
                     metricRelabelConfigs:
                       description: MetricRelabelConfigs to apply to samples after
                         scrapping.
                       items:
                         description: |-
                           RelabelConfig allows dynamic rewriting of the label set
-                          More info [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/#relabeling)
+                          More info: https://docs.victoriametrics.com/#relabeling
                         properties:
                           action:
                             description: Action to perform based on regex matching.
@@ -26641,7 +26743,8 @@ spec:
                           regex:
                             description: |-
                               Regular expression against which the extracted value is matched. Default is '(.*)'
-                              victoriaMetrics [supports](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#relabeling-enhancements) multiline regex joined with |
+                              victoriaMetrics supports multiline regex joined with |
+                              https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
                             x-kubernetes-preserve-unknown-fields: true
                           replacement:
                             description: |-
@@ -26801,9 +26904,6 @@ spec:
                     path:
                       description: HTTP path to scrape for metrics.
                       type: string
-                    port:
-                      description: Default port for target.
-                      type: string
                     proxyURL:
                       description: ProxyURL eg http://proxyserver:2195 Directs scrapes
                         to proxy through this endpoint.
@@ -26814,7 +26914,7 @@ spec:
                       items:
                         description: |-
                           RelabelConfig allows dynamic rewriting of the label set
-                          More info [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/#relabeling)
+                          More info: https://docs.victoriametrics.com/#relabeling
                         properties:
                           action:
                             description: Action to perform based on regex matching.
@@ -26842,7 +26942,8 @@ spec:
                           regex:
                             description: |-
                               Regular expression against which the extracted value is matched. Default is '(.*)'
-                              victoriaMetrics [supports](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#relabeling-enhancements) multiline regex joined with |
+                              victoriaMetrics supports multiline regex joined with |
+                              https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
                             x-kubernetes-preserve-unknown-fields: true
                           replacement:
                             description: |-
@@ -27084,13 +27185,14 @@ spec:
                         scrape parameters
                       properties:
                         disable_compression:
+                          description: DisableCompression
                           type: boolean
                         disable_keep_alive:
                           description: |-
                             disable_keepalive allows disabling HTTP keep-alive when scraping targets.
                             By default, HTTP keep-alive is enabled, so TCP connections to scrape targets
                             could be re-used.
-                            See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#scrape_config-enhancements)
+                            See https://docs.victoriametrics.com/vmagent.html#scrape_config-enhancements
                           type: boolean
                         headers:
                           description: |-
@@ -27102,16 +27204,12 @@ spec:
                           items:
                             type: string
                           type: array
-                        metric_relabel_debug:
-                          description: deprecated since [v1.85](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.85.0),
-                            will be removed in next release
-                          type: boolean
                         no_stale_markers:
                           type: boolean
                         proxy_client_config:
                           description: |-
                             ProxyClientConfig configures proxy auth settings for scraping
-                            See [feature description](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#scraping-targets-via-a-proxy)
+                            See feature description https://docs.victoriametrics.com/vmagent.html#scraping-targets-via-a-proxy
                           properties:
                             basic_auth:
                               description: BasicAuth allow an endpoint to authenticate
@@ -27119,9 +27217,8 @@ spec:
                               properties:
                                 password:
                                   description: |-
-                                    The secret in the service scrape namespace that contains the password
-                                    for authentication.
-                                    It must be at them same namespace as CRD
+                                    Password defines reference for secret with password value
+                                    The secret needs to be in the same namespace as scrape object
                                   properties:
                                     key:
                                       description: The key of the secret to select
@@ -27147,14 +27244,14 @@ spec:
                                   type: object
                                   x-kubernetes-map-type: atomic
                                 password_file:
-                                  description: PasswordFile defines path to password
-                                    file at disk
+                                  description: |-
+                                    PasswordFile defines path to password file at disk
+                                    must be pre-mounted
                                   type: string
                                 username:
                                   description: |-
-                                    The secret in the service scrape namespace that contains the username
-                                    for authentication.
-                                    It must be at them same namespace as CRD
+                                    Username defines reference for secret with username value
+                                    The secret needs to be in the same namespace as scrape object
                                   properties:
                                     key:
                                       description: The key of the secret to select
@@ -27376,10 +27473,6 @@ spec:
                                   type: string
                               type: object
                           type: object
-                        relabel_debug:
-                          description: deprecated since [v1.85](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.85.0),
-                            will be removed in next release
-                          type: boolean
                         scrape_align_interval:
                           type: string
                         scrape_offset:

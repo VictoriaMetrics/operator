@@ -241,17 +241,23 @@ func TestCreateOrUpdateConfigurationSecret(t *testing.T) {
 						NamespaceSelector: vmv1beta1.NamespaceSelector{},
 						Endpoints: []vmv1beta1.Endpoint{
 							{
-								Path: "/metrics",
+								EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+									Path: "/metrics",
+								},
 								Port: "8085",
-								BearerTokenSecret: &corev1.SecretKeySelector{
-									Key: "bearer",
-									LocalObjectReference: corev1.LocalObjectReference{
-										Name: "access-creds",
+								EndpointAuth: vmv1beta1.EndpointAuth{
+									BearerTokenSecret: &corev1.SecretKeySelector{
+										Key: "bearer",
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "access-creds",
+										},
 									},
 								},
 							},
 							{
-								Path: "/metrics-2",
+								EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+									Path: "/metrics-2",
+								},
 								Port: "8083",
 							},
 						},
@@ -291,30 +297,33 @@ func TestCreateOrUpdateConfigurationSecret(t *testing.T) {
 						SampleLimit: 10,
 						PodMetricsEndpoints: []vmv1beta1.PodMetricsEndpoint{
 							{
-								Path: "/metrics-3",
 								Port: "805",
-								VMScrapeParams: &vmv1beta1.VMScrapeParams{
-									StreamParse: ptr.To(true),
-									ProxyClientConfig: &vmv1beta1.ProxyAuth{
-										TLSConfig: &vmv1beta1.TLSConfig{
-											InsecureSkipVerify: true,
-											KeySecret: &corev1.SecretKeySelector{
-												Key: "key",
-												LocalObjectReference: corev1.LocalObjectReference{
-													Name: "access-creds",
-												},
-											},
-											Cert: vmv1beta1.SecretOrConfigMap{Secret: &corev1.SecretKeySelector{
-												Key: "cert",
-												LocalObjectReference: corev1.LocalObjectReference{
-													Name: "access-creds",
-												},
-											}},
-											CA: vmv1beta1.SecretOrConfigMap{
-												Secret: &corev1.SecretKeySelector{
-													Key: "ca",
+								EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+									Path: "/metrics-3",
+
+									VMScrapeParams: &vmv1beta1.VMScrapeParams{
+										StreamParse: ptr.To(true),
+										ProxyClientConfig: &vmv1beta1.ProxyAuth{
+											TLSConfig: &vmv1beta1.TLSConfig{
+												InsecureSkipVerify: true,
+												KeySecret: &corev1.SecretKeySelector{
+													Key: "key",
 													LocalObjectReference: corev1.LocalObjectReference{
 														Name: "access-creds",
+													},
+												},
+												Cert: vmv1beta1.SecretOrConfigMap{Secret: &corev1.SecretKeySelector{
+													Key: "cert",
+													LocalObjectReference: corev1.LocalObjectReference{
+														Name: "access-creds",
+													},
+												}},
+												CA: vmv1beta1.SecretOrConfigMap{
+													Secret: &corev1.SecretKeySelector{
+														Key: "ca",
+														LocalObjectReference: corev1.LocalObjectReference{
+															Name: "access-creds",
+														},
 													},
 												},
 											},
@@ -324,26 +333,30 @@ func TestCreateOrUpdateConfigurationSecret(t *testing.T) {
 							},
 							{
 								Port: "801",
-								Path: "/metrics-5",
-								TLSConfig: &vmv1beta1.TLSConfig{
-									InsecureSkipVerify: true,
-									KeySecret: &corev1.SecretKeySelector{
-										Key: "key",
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "access-creds",
-										},
-									},
-									Cert: vmv1beta1.SecretOrConfigMap{Secret: &corev1.SecretKeySelector{
-										Key: "cert",
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "access-creds",
-										},
-									}},
-									CA: vmv1beta1.SecretOrConfigMap{
-										Secret: &corev1.SecretKeySelector{
-											Key: "ca",
+								EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+									Path: "/metrics-5",
+								},
+								EndpointAuth: vmv1beta1.EndpointAuth{
+									TLSConfig: &vmv1beta1.TLSConfig{
+										InsecureSkipVerify: true,
+										KeySecret: &corev1.SecretKeySelector{
+											Key: "key",
 											LocalObjectReference: corev1.LocalObjectReference{
 												Name: "access-creds",
+											},
+										},
+										Cert: vmv1beta1.SecretOrConfigMap{Secret: &corev1.SecretKeySelector{
+											Key: "cert",
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "access-creds",
+											},
+										}},
+										CA: vmv1beta1.SecretOrConfigMap{
+											Secret: &corev1.SecretKeySelector{
+												Key: "ca",
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "access-creds",
+												},
 											},
 										},
 									},
@@ -358,17 +371,19 @@ func TestCreateOrUpdateConfigurationSecret(t *testing.T) {
 						Name:      "test-vms",
 					},
 					Spec: vmv1beta1.VMNodeScrapeSpec{
-						BasicAuth: &vmv1beta1.BasicAuth{
-							Username: corev1.SecretKeySelector{
-								Key: "username",
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "access-creds",
+						EndpointAuth: vmv1beta1.EndpointAuth{
+							BasicAuth: &vmv1beta1.BasicAuth{
+								Username: corev1.SecretKeySelector{
+									Key: "username",
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "access-creds",
+									},
 								},
-							},
-							Password: corev1.SecretKeySelector{
-								Key: "password",
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "access-creds",
+								Password: corev1.SecretKeySelector{
+									Key: "password",
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "access-creds",
+									},
 								},
 							},
 						},
@@ -382,23 +397,26 @@ func TestCreateOrUpdateConfigurationSecret(t *testing.T) {
 					Spec: vmv1beta1.VMStaticScrapeSpec{
 						TargetEndpoints: []*vmv1beta1.TargetEndpoint{
 							{
-								Path:     "/metrics-3",
-								Port:     "3031",
-								Scheme:   "https",
-								ProxyURL: ptr.To("https://some-proxy-1"),
-								OAuth2: &vmv1beta1.OAuth2{
-									TokenURL: "https://some-tr",
-									ClientSecret: &corev1.SecretKeySelector{
-										Key: "cs",
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "access-creds",
-										},
-									},
-									ClientID: vmv1beta1.SecretOrConfigMap{
-										Secret: &corev1.SecretKeySelector{
-											Key: "cid",
+								EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+									Path:     "/metrics-3",
+									Scheme:   "https",
+									ProxyURL: ptr.To("https://some-proxy-1"),
+								},
+								EndpointAuth: vmv1beta1.EndpointAuth{
+									OAuth2: &vmv1beta1.OAuth2{
+										TokenURL: "https://some-tr",
+										ClientSecret: &corev1.SecretKeySelector{
+											Key: "cs",
 											LocalObjectReference: corev1.LocalObjectReference{
 												Name: "access-creds",
+											},
+										},
+										ClientID: vmv1beta1.SecretOrConfigMap{
+											Secret: &corev1.SecretKeySelector{
+												Key: "cid",
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "access-creds",
+												},
 											},
 										},
 									},
@@ -430,14 +448,13 @@ func TestCreateOrUpdateConfigurationSecret(t *testing.T) {
     prometheus: default/test
 scrape_configs:
 - job_name: serviceScrape/default/test-vms/0
-  honor_labels: false
   kubernetes_sd_configs:
   - role: endpoints
     namespaces:
       names:
       - default
+  honor_labels: false
   metrics_path: /metrics
-  bearer_token: some-bearer
   relabel_configs:
   - action: keep
     source_labels:
@@ -480,13 +497,14 @@ scrape_configs:
     replacement: ${1}
   - target_label: endpoint
     replacement: "8085"
+  bearer_token: some-bearer
 - job_name: serviceScrape/default/test-vms/1
-  honor_labels: false
   kubernetes_sd_configs:
   - role: endpoints
     namespaces:
       names:
       - default
+  honor_labels: false
   metrics_path: /metrics-2
   relabel_configs:
   - action: keep
@@ -531,13 +549,14 @@ scrape_configs:
   - target_label: endpoint
     replacement: "8083"
 - job_name: podScrape/default/test-vps/0
-  honor_labels: false
   kubernetes_sd_configs:
   - role: pod
     namespaces:
       names:
       - default
+  honor_labels: false
   metrics_path: /metrics-3
+  sample_limit: 10
   relabel_configs:
   - action: drop
     source_labels:
@@ -569,7 +588,6 @@ scrape_configs:
     replacement: ${1}
   - target_label: endpoint
     replacement: "805"
-  sample_limit: 10
   stream_parse: true
   proxy_tls_config:
     insecure_skip_verify: true
@@ -577,18 +595,14 @@ scrape_configs:
     cert_file: /etc/vmagent-tls/certs/default_access-creds_cert
     key_file: /etc/vmagent-tls/certs/default_access-creds_key
 - job_name: podScrape/default/test-vps/1
-  honor_labels: false
   kubernetes_sd_configs:
   - role: pod
     namespaces:
       names:
       - default
+  honor_labels: false
   metrics_path: /metrics-5
-  tls_config:
-    insecure_skip_verify: true
-    ca_file: /etc/vmagent-tls/certs/default_access-creds_ca
-    cert_file: /etc/vmagent-tls/certs/default_access-creds_cert
-    key_file: /etc/vmagent-tls/certs/default_access-creds_key
+  sample_limit: 10
   relabel_configs:
   - action: drop
     source_labels:
@@ -620,11 +634,13 @@ scrape_configs:
     replacement: ${1}
   - target_label: endpoint
     replacement: "801"
-  sample_limit: 10
+  tls_config:
+    insecure_skip_verify: true
+    ca_file: /etc/vmagent-tls/certs/default_access-creds_ca
+    cert_file: /etc/vmagent-tls/certs/default_access-creds_cert
+    key_file: /etc/vmagent-tls/certs/default_access-creds_key
 - job_name: probe/kube-system/test-vmp/0
-  params:
-    module:
-    - ""
+  honor_labels: false
   metrics_path: /probe
   static_configs:
   - targets:
@@ -639,22 +655,22 @@ scrape_configs:
   - target_label: __address__
     replacement: http://blackbox
 - job_name: nodeScrape/default/test-vms/0
-  honor_labels: false
   kubernetes_sd_configs:
   - role: node
-  basic_auth:
-    username: some-username
-    password: some-password
+  honor_labels: false
   relabel_configs:
   - source_labels:
     - __meta_kubernetes_node_name
     target_label: node
   - target_label: job
     replacement: default/test-vms
+  basic_auth:
+    username: some-username
+    password: some-password
 - job_name: staticScrape/default/test-vmstatic/0
-  honor_labels: false
   static_configs:
   - targets: []
+  honor_labels: false
   metrics_path: /metrics-3
   proxy_url: https://some-proxy-1
   scheme: https
@@ -702,17 +718,19 @@ scrape_configs:
 						Name:      "test-bad-0",
 					},
 					Spec: vmv1beta1.VMNodeScrapeSpec{
-						BasicAuth: &vmv1beta1.BasicAuth{
-							Username: corev1.SecretKeySelector{
-								Key: "username",
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "access-creds",
+						EndpointAuth: vmv1beta1.EndpointAuth{
+							BasicAuth: &vmv1beta1.BasicAuth{
+								Username: corev1.SecretKeySelector{
+									Key: "username",
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "access-creds",
+									},
 								},
-							},
-							Password: corev1.SecretKeySelector{
-								Key: "password",
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "access-creds",
+								Password: corev1.SecretKeySelector{
+									Key: "password",
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "access-creds",
+									},
 								},
 							},
 						},
@@ -733,10 +751,12 @@ scrape_configs:
 						Name:      "bad-1",
 					},
 					Spec: vmv1beta1.VMNodeScrapeSpec{
-						BearerTokenSecret: &corev1.SecretKeySelector{
-							Key: "username",
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "access-creds",
+						EndpointAuth: vmv1beta1.EndpointAuth{
+							BearerTokenSecret: &corev1.SecretKeySelector{
+								Key: "username",
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "access-creds",
+								},
 							},
 						},
 					},
@@ -761,13 +781,37 @@ scrape_configs:
 						SampleLimit: 10,
 						PodMetricsEndpoints: []vmv1beta1.PodMetricsEndpoint{
 							{
-								Path: "/metrics-3",
 								Port: "805",
-								VMScrapeParams: &vmv1beta1.VMScrapeParams{
-									StreamParse: ptr.To(true),
-									ProxyClientConfig: &vmv1beta1.ProxyAuth{
-										BearerToken: &corev1.SecretKeySelector{
+								EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+									Path: "/metrics-3",
+									VMScrapeParams: &vmv1beta1.VMScrapeParams{
+										StreamParse: ptr.To(true),
+										ProxyClientConfig: &vmv1beta1.ProxyAuth{
+											BearerToken: &corev1.SecretKeySelector{
+												Key: "username",
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "access-creds",
+												},
+											},
+										},
+									},
+								},
+							},
+							{
+								Port: "801",
+								EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+									Path: "/metrics-5",
+								},
+								EndpointAuth: vmv1beta1.EndpointAuth{
+									BasicAuth: &vmv1beta1.BasicAuth{
+										Username: corev1.SecretKeySelector{
 											Key: "username",
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "access-creds",
+											},
+										},
+										Password: corev1.SecretKeySelector{
+											Key: "password",
 											LocalObjectReference: corev1.LocalObjectReference{
 												Name: "access-creds",
 											},
@@ -777,25 +821,9 @@ scrape_configs:
 							},
 							{
 								Port: "801",
-								Path: "/metrics-5",
-								BasicAuth: &vmv1beta1.BasicAuth{
-									Username: corev1.SecretKeySelector{
-										Key: "username",
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "access-creds",
-										},
-									},
-									Password: corev1.SecretKeySelector{
-										Key: "password",
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "access-creds",
-										},
-									},
+								EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+									Path: "/metrics-5-good",
 								},
-							},
-							{
-								Port: "801",
-								Path: "/metrics-5-good",
 							},
 						},
 					},
@@ -820,7 +848,9 @@ scrape_configs:
 						PodMetricsEndpoints: []vmv1beta1.PodMetricsEndpoint{
 							{
 								Port: "8011",
-								Path: "/metrics-1-good",
+								EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+									Path: "/metrics-1-good",
+								},
 							},
 						},
 					},
@@ -833,23 +863,26 @@ scrape_configs:
 					Spec: vmv1beta1.VMStaticScrapeSpec{
 						TargetEndpoints: []*vmv1beta1.TargetEndpoint{
 							{
-								Path:     "/metrics-3",
-								Port:     "3031",
-								Scheme:   "https",
-								ProxyURL: ptr.To("https://some-proxy-1"),
-								OAuth2: &vmv1beta1.OAuth2{
-									TokenURL: "https://some-tr",
-									ClientSecret: &corev1.SecretKeySelector{
-										Key: "cs",
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "access-creds",
-										},
-									},
-									ClientID: vmv1beta1.SecretOrConfigMap{
-										Secret: &corev1.SecretKeySelector{
-											Key: "cid",
+								EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+									Path:     "/metrics-3",
+									Scheme:   "https",
+									ProxyURL: ptr.To("https://some-proxy-1"),
+								},
+								EndpointAuth: vmv1beta1.EndpointAuth{
+									OAuth2: &vmv1beta1.OAuth2{
+										TokenURL: "https://some-tr",
+										ClientSecret: &corev1.SecretKeySelector{
+											Key: "cs",
 											LocalObjectReference: corev1.LocalObjectReference{
 												Name: "access-creds",
+											},
+										},
+										ClientID: vmv1beta1.SecretOrConfigMap{
+											Secret: &corev1.SecretKeySelector{
+												Key: "cid",
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "access-creds",
+												},
 											},
 										},
 									},
@@ -866,16 +899,19 @@ scrape_configs:
 					Spec: vmv1beta1.VMStaticScrapeSpec{
 						TargetEndpoints: []*vmv1beta1.TargetEndpoint{
 							{
-								Path:     "/metrics-3",
-								Port:     "3031",
-								Scheme:   "https",
-								ProxyURL: ptr.To("https://some-proxy-1"),
-								TLSConfig: &vmv1beta1.TLSConfig{
-									Cert: vmv1beta1.SecretOrConfigMap{
-										Secret: &corev1.SecretKeySelector{
-											Key: "cert",
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "tls-creds",
+								EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+									Path:     "/metrics-3",
+									Scheme:   "https",
+									ProxyURL: ptr.To("https://some-proxy-1"),
+								},
+								EndpointAuth: vmv1beta1.EndpointAuth{
+									TLSConfig: &vmv1beta1.TLSConfig{
+										Cert: vmv1beta1.SecretOrConfigMap{
+											Secret: &corev1.SecretKeySelector{
+												Key: "cert",
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "tls-creds",
+												},
 											},
 										},
 									},
@@ -891,12 +927,12 @@ scrape_configs:
     prometheus: default/test
 scrape_configs:
 - job_name: podScrape/default/test-vps-good/0
-  honor_labels: false
   kubernetes_sd_configs:
   - role: pod
     namespaces:
       names:
       - default
+  honor_labels: false
   metrics_path: /metrics-1-good
   relabel_configs:
   - action: drop
@@ -930,13 +966,14 @@ scrape_configs:
   - target_label: endpoint
     replacement: "8011"
 - job_name: podScrape/default/test-vps-mixed/0
-  honor_labels: false
   kubernetes_sd_configs:
   - role: pod
     namespaces:
       names:
       - default
+  honor_labels: false
   metrics_path: /metrics-5-good
+  sample_limit: 10
   relabel_configs:
   - action: drop
     source_labels:
@@ -968,11 +1005,10 @@ scrape_configs:
     replacement: ${1}
   - target_label: endpoint
     replacement: "801"
-  sample_limit: 10
 - job_name: nodeScrape/default/test-good/0
-  honor_labels: false
   kubernetes_sd_configs:
   - role: node
+  honor_labels: false
   relabel_configs:
   - source_labels:
     - __meta_kubernetes_node_name

@@ -11,105 +11,39 @@ import (
 
 func generateScrapeConfig(
 	ctx context.Context,
-	cr *vmv1beta1.VMAgent,
+	vmagentCR *vmv1beta1.VMAgent,
 	sc *vmv1beta1.VMScrapeConfig,
 	ssCache *scrapesSecretsCache,
-	enforcedNamespaceLabel string,
+	se vmv1beta1.VMAgentSecurityEnforcements,
 ) yaml.MapSlice {
 	jobName := fmt.Sprintf("scrapeConfig/%s/%s", sc.Namespace, sc.Name)
-	hl := honorLabels(sc.Spec.HonorLabels, cr.Spec.OverrideHonorLabels)
 	cfg := yaml.MapSlice{
 		{
 			Key:   "job_name",
 			Value: jobName,
 		},
-		{
-			Key:   "honor_labels",
-			Value: hl,
-		},
-	}
-	cfg = honorTimestamps(cfg, sc.Spec.HonorTimestamps, cr.Spec.OverrideHonorTimestamps)
-
-	if sc.Spec.MetricsPath != nil {
-		cfg = append(cfg, yaml.MapItem{Key: "metrics_path", Value: *sc.Spec.MetricsPath})
 	}
 
-	scrapeInterval := limitScrapeInterval(ctx, sc.Spec.ScrapeInterval, cr.Spec.MinScrapeInterval, cr.Spec.MaxScrapeInterval)
-	if sc.Spec.ScrapeInterval != "" {
-		cfg = append(cfg, yaml.MapItem{Key: "scrape_interval", Value: scrapeInterval})
-	}
-	if sc.Spec.ScrapeTimeout != "" {
-		cfg = append(cfg, yaml.MapItem{Key: "scrape_timeout", Value: sc.Spec.ScrapeTimeout})
-	}
-	if len(sc.Spec.Params) > 0 {
-		cfg = append(cfg, yaml.MapItem{Key: "params", Value: sc.Spec.Params})
-	}
-	if sc.Spec.Scheme != nil {
-		cfg = append(cfg, yaml.MapItem{Key: "scheme", Value: strings.ToLower(*sc.Spec.Scheme)})
-	}
-	cfg = append(cfg, buildVMScrapeParams(cr.Namespace, sc.AsProxyKey("", 0), sc.Spec.VMScrapeParams, ssCache)...)
+	setScrapeIntervalToWithLimit(ctx, &sc.Spec.EndpointScrapeParams, vmagentCR)
 
-	if sc.Spec.FollowRedirects != nil {
-		cfg = append(cfg, yaml.MapItem{Key: "follow_redirects", Value: sc.Spec.FollowRedirects})
-	}
-	if sc.Spec.ProxyURL != nil {
-		cfg = append(cfg, yaml.MapItem{Key: "proxy_url", Value: sc.Spec.ProxyURL})
-	}
-	if sc.Spec.BasicAuth != nil {
-		var bac yaml.MapSlice
-		if s, ok := ssCache.baSecrets[sc.AsMapKey("", 0)]; ok {
-			bac = append(bac,
-				yaml.MapItem{Key: "username", Value: s.Username},
-			)
-			if s.Password != "" {
-				bac = append(bac,
-					yaml.MapItem{Key: "password", Value: s.Password},
-				)
-			} else if len(sc.Spec.BasicAuth.PasswordFile) > 0 {
-				bac = append(bac, yaml.MapItem{Key: "password_file", Value: sc.Spec.BasicAuth.PasswordFile})
-			}
-		}
-		if len(bac) > 0 {
-			cfg = append(cfg, yaml.MapItem{Key: "basic_auth", Value: bac})
-		}
-	}
-	cfg = addAuthorizationConfig(cfg, sc.AsMapKey("", 0), sc.Spec.Authorization, ssCache.authorizationSecrets)
-	cfg = addOAuth2Config(cfg, sc.AsMapKey("", 0), sc.Spec.OAuth2, ssCache.oauth2Secrets)
-	cfg = addTLStoYaml(cfg, sc.Namespace, sc.Spec.TLSConfig, false)
-
-	if sc.Spec.SampleLimit > 0 {
-		cfg = append(cfg, yaml.MapItem{Key: "sample_limit", Value: sc.Spec.SampleLimit})
-	}
-	if sc.Spec.SeriesLimit > 0 {
-		cfg = append(cfg, yaml.MapItem{Key: "series_limit", Value: sc.Spec.SeriesLimit})
-	}
-	if sc.Spec.MaxScrapeSize != "" {
-		cfg = append(cfg, yaml.MapItem{Key: "max_scrape_size", Value: sc.Spec.MaxScrapeSize})
-	}
+	cfg = addCommonScrapeParamsTo(cfg, sc.Spec.EndpointScrapeParams, se)
 
 	var relabelings []yaml.MapSlice
 	for _, c := range sc.Spec.RelabelConfigs {
 		relabelings = append(relabelings, generateRelabelConfig(c))
 	}
-	for _, trc := range cr.Spec.ScrapeConfigRelabelTemplate {
+	for _, trc := range vmagentCR.Spec.ScrapeConfigRelabelTemplate {
 		relabelings = append(relabelings, generateRelabelConfig(trc))
 	}
 	// Because of security risks, whenever enforcedNamespaceLabel is set, we want to append it to the
 	// relabel_configs as the last relabeling, to ensure it overrides any other relabelings.
-	relabelings = enforceNamespaceLabel(relabelings, sc.Namespace, enforcedNamespaceLabel)
-	cfg = append(cfg, yaml.MapItem{Key: "relabel_configs", Value: relabelings})
+	relabelings = enforceNamespaceLabel(relabelings, sc.Namespace, se.EnforcedNamespaceLabel)
 
-	if sc.Spec.MetricRelabelConfigs != nil {
-		var metricRelabelings []yaml.MapSlice
-		for _, c := range sc.Spec.MetricRelabelConfigs {
-			if c.TargetLabel != "" && enforcedNamespaceLabel != "" && c.TargetLabel == enforcedNamespaceLabel {
-				continue
-			}
-			relabeling := generateRelabelConfig(c)
-			metricRelabelings = append(metricRelabelings, relabeling)
-		}
-		cfg = append(cfg, yaml.MapItem{Key: "metric_relabel_configs", Value: metricRelabelings})
-	}
+	cfg = append(cfg, yaml.MapItem{Key: "relabel_configs", Value: relabelings})
+	cfg = addMetricRelabelingsTo(cfg, sc.Spec.MetricRelabelConfigs, se)
+	cfg = append(cfg, buildVMScrapeParams(sc.Namespace, sc.AsProxyKey("", 0), sc.Spec.VMScrapeParams, ssCache)...)
+	cfg = addTLStoYaml(cfg, sc.Namespace, sc.Spec.TLSConfig, false)
+	cfg = addEndpointAuthTo(cfg, sc.Spec.EndpointAuth, sc.AsMapKey("", 0), ssCache)
 
 	// build staticConfig
 	if len(sc.Spec.StaticConfigs) > 0 {
@@ -175,7 +109,7 @@ func generateScrapeConfig(
 					configs[i] = append(configs[i], yaml.MapItem{Key: "basic_auth", Value: bac})
 				}
 			}
-			configs[i] = addAuthorizationConfig(configs[i], sc.AsMapKey("httpsd", i), config.Authorization, ssCache.authorizationSecrets)
+			configs[i] = addAuthorizationConfigTo(configs[i], sc.AsMapKey("httpsd", i), config.Authorization, ssCache.authorizationSecrets)
 			if config.TLSConfig != nil {
 				configs[i] = addTLStoYaml(configs[i], sc.Namespace, config.TLSConfig, false)
 			}
@@ -224,11 +158,11 @@ func generateScrapeConfig(
 					configs[i] = append(configs[i], yaml.MapItem{Key: "basic_auth", Value: bac})
 				}
 			}
-			configs[i] = addAuthorizationConfig(configs[i], sc.AsMapKey("kubesd", i), config.Authorization, ssCache.authorizationSecrets)
+			configs[i] = addAuthorizationConfigTo(configs[i], sc.AsMapKey("kubesd", i), config.Authorization, ssCache.authorizationSecrets)
 			if config.TLSConfig != nil {
 				configs[i] = addTLStoYaml(configs[i], sc.Namespace, config.TLSConfig, false)
 			}
-			configs[i] = addOAuth2Config(configs[i], sc.AsMapKey("kubesd", i), config.OAuth2, ssCache.oauth2Secrets)
+			configs[i] = addOAuth2ConfigTo(configs[i], sc.AsMapKey("kubesd", i), config.OAuth2, ssCache.oauth2Secrets)
 			if config.ProxyURL != nil {
 				configs[i] = append(configs[i], yaml.MapItem{Key: "proxy_url", Value: config.ProxyURL})
 			}
@@ -394,8 +328,8 @@ func generateScrapeConfig(
 					configs[i] = append(configs[i], yaml.MapItem{Key: "basic_auth", Value: bac})
 				}
 			}
-			configs[i] = addAuthorizationConfig(configs[i], sc.AsMapKey("consulsd", i), config.Authorization, ssCache.authorizationSecrets)
-			configs[i] = addOAuth2Config(configs[i], sc.AsMapKey("consulsd", i), config.OAuth2, ssCache.oauth2Secrets)
+			configs[i] = addAuthorizationConfigTo(configs[i], sc.AsMapKey("consulsd", i), config.Authorization, ssCache.authorizationSecrets)
+			configs[i] = addOAuth2ConfigTo(configs[i], sc.AsMapKey("consulsd", i), config.OAuth2, ssCache.oauth2Secrets)
 			if config.ProxyURL != nil {
 				configs[i] = append(configs[i], yaml.MapItem{Key: "proxy_url", Value: config.ProxyURL})
 			}
@@ -733,8 +667,8 @@ func generateScrapeConfig(
 	if len(sc.Spec.DigitalOceanSDConfigs) > 0 {
 		configs := make([][]yaml.MapItem, len(sc.Spec.DigitalOceanSDConfigs))
 		for i, config := range sc.Spec.DigitalOceanSDConfigs {
-			configs[i] = addAuthorizationConfig(configs[i], sc.AsMapKey("digitaloceansd", i), config.Authorization, ssCache.authorizationSecrets)
-			configs[i] = addOAuth2Config(configs[i], sc.AsMapKey("digitaloceansd", i), config.OAuth2, ssCache.oauth2Secrets)
+			configs[i] = addAuthorizationConfigTo(configs[i], sc.AsMapKey("digitaloceansd", i), config.Authorization, ssCache.authorizationSecrets)
+			configs[i] = addOAuth2ConfigTo(configs[i], sc.AsMapKey("digitaloceansd", i), config.OAuth2, ssCache.oauth2Secrets)
 			if config.ProxyURL != nil {
 				configs[i] = append(configs[i], yaml.MapItem{Key: "proxy_url", Value: config.ProxyURL})
 			}

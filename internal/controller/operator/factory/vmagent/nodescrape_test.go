@@ -15,14 +15,12 @@ import (
 
 func Test_generateNodeScrapeConfig(t *testing.T) {
 	type args struct {
-		cr                      vmv1beta1.VMAgent
-		m                       *vmv1beta1.VMNodeScrape
-		i                       int
-		apiserverConfig         *vmv1beta1.APIServerConfig
-		ssCache                 *scrapesSecretsCache
-		ignoreHonorLabels       bool
-		overrideHonorTimestamps bool
-		enforcedNamespaceLabel  string
+		cr              vmv1beta1.VMAgent
+		m               *vmv1beta1.VMNodeScrape
+		i               int
+		apiserverConfig *vmv1beta1.APIServerConfig
+		ssCache         *scrapesSecretsCache
+		se              vmv1beta1.VMAgentSecurityEnforcements
 	}
 	tests := []struct {
 		name string
@@ -41,16 +39,19 @@ func Test_generateNodeScrapeConfig(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: vmv1beta1.VMNodeScrapeSpec{
-						Port:     "9100",
-						Path:     "/metrics",
-						Interval: "30s",
+						Port: "9100",
+
+						EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+							Path:     "/metrics",
+							Interval: "30s",
+						},
 					},
 				},
 			},
 			want: `job_name: nodeScrape/default/nodes-basic/1
-honor_labels: false
 kubernetes_sd_configs:
 - role: node
+honor_labels: false
 scrape_interval: 30s
 metrics_path: /metrics
 relabel_configs:
@@ -86,71 +87,72 @@ relabel_configs:
 						Namespace: "default",
 					},
 					Spec: vmv1beta1.VMNodeScrapeSpec{
-						Port:            "9100",
-						Path:            "/metrics",
-						Interval:        "30s",
-						Scheme:          "https",
-						HonorLabels:     true,
-						ProxyURL:        ptr.To("https://some-url"),
-						SampleLimit:     50,
-						SeriesLimit:     1000,
-						FollowRedirects: ptr.To(true),
-						ScrapeTimeout:   "10s",
-						ScrapeInterval:  "5s",
-						Params:          map[string][]string{"module": {"client"}},
-						JobLabel:        "env",
-						HonorTimestamps: ptr.To(true),
-						TargetLabels:    []string{"app", "env"},
-						BearerTokenFile: "/tmp/bearer",
-						BasicAuth: &vmv1beta1.BasicAuth{
-							Username: corev1.SecretKeySelector{Key: "username", LocalObjectReference: corev1.LocalObjectReference{Name: "ba-secret"}},
-						},
-						TLSConfig: &vmv1beta1.TLSConfig{
-							InsecureSkipVerify: true,
-						},
-						OAuth2: &vmv1beta1.OAuth2{},
+						Port: "9100",
 						Selector: metav1.LabelSelector{
 							MatchLabels: map[string]string{"job": "prod"},
 							MatchExpressions: []metav1.LabelSelectorRequirement{
 								{Key: "external", Operator: metav1.LabelSelectorOpIn, Values: []string{"world"}},
 							},
 						},
-						VMScrapeParams: &vmv1beta1.VMScrapeParams{
-							StreamParse: ptr.To(true),
-							ProxyClientConfig: &vmv1beta1.ProxyAuth{
-								TLSConfig: &vmv1beta1.TLSConfig{
-									InsecureSkipVerify: true,
+
+						EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+							Path:            "/metrics",
+							Interval:        "30s",
+							Scheme:          "https",
+							HonorLabels:     true,
+							ProxyURL:        ptr.To("https://some-url"),
+							SampleLimit:     50,
+							SeriesLimit:     1000,
+							FollowRedirects: ptr.To(true),
+							ScrapeTimeout:   "10s",
+							ScrapeInterval:  "5s",
+							Params:          map[string][]string{"module": {"client"}},
+							HonorTimestamps: ptr.To(true),
+							VMScrapeParams: &vmv1beta1.VMScrapeParams{
+								StreamParse: ptr.To(true),
+								ProxyClientConfig: &vmv1beta1.ProxyAuth{
+									TLSConfig: &vmv1beta1.TLSConfig{
+										InsecureSkipVerify: true,
+									},
+									BearerTokenFile: "/tmp/proxy-token",
 								},
-								BearerTokenFile: "/tmp/proxy-token",
 							},
 						},
-						RelabelConfigs:       []*vmv1beta1.RelabelConfig{},
-						MetricRelabelConfigs: []*vmv1beta1.RelabelConfig{},
+						EndpointAuth: vmv1beta1.EndpointAuth{
+							BearerTokenFile: "/tmp/bearer",
+							BasicAuth: &vmv1beta1.BasicAuth{
+								Username: corev1.SecretKeySelector{Key: "username", LocalObjectReference: corev1.LocalObjectReference{Name: "ba-secret"}},
+							},
+							TLSConfig: &vmv1beta1.TLSConfig{
+								InsecureSkipVerify: true,
+							},
+							OAuth2: &vmv1beta1.OAuth2{},
+						},
+						JobLabel:     "env",
+						TargetLabels: []string{"app", "env"},
+						EndpointRelabelings: vmv1beta1.EndpointRelabelings{
+							RelabelConfigs:       []*vmv1beta1.RelabelConfig{},
+							MetricRelabelConfigs: []*vmv1beta1.RelabelConfig{},
+						},
 					},
 				},
 			},
 			want: `job_name: nodeScrape/default/nodes-basic/1
-honor_labels: true
-honor_timestamps: true
 kubernetes_sd_configs:
 - role: node
+honor_labels: true
+honor_timestamps: true
 scrape_interval: 5s
 scrape_timeout: 10s
 metrics_path: /metrics
 proxy_url: https://some-url
-sample_limit: 50
-series_limit: 1000
+follow_redirects: true
 params:
   module:
   - client
-follow_redirects: true
 scheme: https
-tls_config:
-  insecure_skip_verify: true
-bearer_token_file: /tmp/bearer
-basic_auth:
-  username: username
-  password: ""
+sample_limit: 50
+series_limit: 1000
 relabel_configs:
 - action: keep
   source_labels:
@@ -185,17 +187,21 @@ relabel_configs:
   target_label: __address__
   regex: ^(.*):(.*)
   replacement: ${1}:9100
-metric_relabel_configs: []
 stream_parse: true
 proxy_tls_config:
   insecure_skip_verify: true
 proxy_bearer_token_file: /tmp/proxy-token
+tls_config:
+  insecure_skip_verify: true
+bearer_token_file: /tmp/bearer
+basic_auth:
+  username: username
 `,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := generateNodeScrapeConfig(context.Background(), &tt.args.cr, tt.args.m, tt.args.i, tt.args.apiserverConfig, tt.args.ssCache, tt.args.ignoreHonorLabels, tt.args.overrideHonorTimestamps, tt.args.enforcedNamespaceLabel)
+			got := generateNodeScrapeConfig(context.Background(), &tt.args.cr, tt.args.m, tt.args.i, tt.args.apiserverConfig, tt.args.ssCache, tt.args.se)
 			gotBytes, err := yaml.Marshal(got)
 			if err != nil {
 				t.Errorf("cannot marshal NodeScrapeConfig to yaml,err :%e", err)

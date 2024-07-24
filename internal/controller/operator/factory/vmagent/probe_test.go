@@ -15,13 +15,12 @@ import (
 
 func Test_generateProbeConfig(t *testing.T) {
 	type args struct {
-		crAgent                  vmv1beta1.VMAgent
-		cr                       *vmv1beta1.VMProbe
-		i                        int
-		apiserverConfig          *vmv1beta1.APIServerConfig
-		ssCache                  *scrapesSecretsCache
-		ignoreNamespaceSelectors bool
-		enforcedNamespaceLabel   string
+		crAgent         vmv1beta1.VMAgent
+		cr              *vmv1beta1.VMProbe
+		i               int
+		apiserverConfig *vmv1beta1.APIServerConfig
+		ssCache         *scrapesSecretsCache
+		se              vmv1beta1.VMAgentSecurityEnforcements
 	}
 	tests := []struct {
 		name string
@@ -51,10 +50,11 @@ func Test_generateProbeConfig(t *testing.T) {
 				i: 0,
 			},
 			want: `job_name: probe/default/static-probe/0
+honor_labels: false
+metrics_path: /probe
 params:
   module:
   - http
-metrics_path: /probe
 static_configs:
 - targets:
   - host-1
@@ -100,10 +100,11 @@ relabel_configs:
 				},
 			},
 			want: `job_name: probe/monitor/probe-ingress/0
+honor_labels: false
+metrics_path: /probe
 params:
   module:
   - http200
-metrics_path: /probe
 kubernetes_sd_configs:
 - role: ingress
   namespaces:
@@ -158,33 +159,37 @@ relabel_configs:
 						Name:      "static-probe",
 					},
 					Spec: vmv1beta1.VMProbeSpec{
-						Module:          "http",
-						BearerTokenFile: "/tmp/some_path",
-						FollowRedirects: ptr.To(true),
-						ScrapeInterval:  "10s",
-						Interval:        "5s",
-						Params: map[string][]string{
-							"timeout": {"10s"},
-						},
-						ScrapeTimeout: "15s",
-						BasicAuth: &vmv1beta1.BasicAuth{
-							PasswordFile: "/tmp/some-file-ba",
-						},
-						VMScrapeParams: &vmv1beta1.VMScrapeParams{
-							StreamParse: ptr.To(false),
-							ProxyClientConfig: &vmv1beta1.ProxyAuth{
-								TLSConfig: &vmv1beta1.TLSConfig{
-									CA: vmv1beta1.SecretOrConfigMap{ConfigMap: &corev1.ConfigMapKeySelector{
-										Key: "ca",
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "tls-secret",
+						Module: "http",
+						EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+							FollowRedirects: ptr.To(true),
+							ScrapeInterval:  "10s",
+							Interval:        "5s",
+							Params: map[string][]string{
+								"timeout": {"10s"},
+							},
+							ScrapeTimeout: "15s",
+							VMScrapeParams: &vmv1beta1.VMScrapeParams{
+								StreamParse: ptr.To(false),
+								ProxyClientConfig: &vmv1beta1.ProxyAuth{
+									TLSConfig: &vmv1beta1.TLSConfig{
+										CA: vmv1beta1.SecretOrConfigMap{ConfigMap: &corev1.ConfigMapKeySelector{
+											Key: "ca",
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "tls-secret",
+											},
+										}},
+										Cert: vmv1beta1.SecretOrConfigMap{
+											Secret: &corev1.SecretKeySelector{Key: "cert", LocalObjectReference: corev1.LocalObjectReference{Name: "tls-secret"}},
 										},
-									}},
-									Cert: vmv1beta1.SecretOrConfigMap{
-										Secret: &corev1.SecretKeySelector{Key: "cert", LocalObjectReference: corev1.LocalObjectReference{Name: "tls-secret"}},
+										KeyFile: "/tmp/key-1",
 									},
-									KeyFile: "/tmp/key-1",
 								},
+							},
+						},
+						EndpointAuth: vmv1beta1.EndpointAuth{
+							BearerTokenFile: "/tmp/some_path",
+							BasicAuth: &vmv1beta1.BasicAuth{
+								PasswordFile: "/tmp/some-file-ba",
 							},
 						},
 						VMProberSpec: vmv1beta1.VMProberSpec{URL: "blackbox-monitor:9115"},
@@ -199,22 +204,22 @@ relabel_configs:
 				i: 0,
 			},
 			want: `job_name: probe/default/static-probe/0
+honor_labels: false
 scrape_interval: 10s
 scrape_timeout: 15s
+metrics_path: /probe
+follow_redirects: true
 params:
   module:
   - http
   timeout:
   - 10s
-metrics_path: /probe
 static_configs:
 - targets:
   - host-1
   - host-2
   labels:
     label1: value1
-bearer_token_file: /tmp/some_path
-follow_redirects: true
 relabel_configs:
 - source_labels:
   - __address__
@@ -224,20 +229,21 @@ relabel_configs:
   target_label: instance
 - target_label: __address__
   replacement: blackbox-monitor:9115
-basic_auth:
-  password_file: /tmp/some-file-ba
 stream_parse: false
 proxy_tls_config:
   insecure_skip_verify: false
   ca_file: /etc/vmagent-tls/certs/default_tls-secret_ca
   cert_file: /etc/vmagent-tls/certs/default_tls-secret_cert
   key_file: /tmp/key-1
+bearer_token_file: /tmp/some_path
+basic_auth:
+  password_file: /tmp/some-file-ba
 `,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := generateProbeConfig(context.Background(), &tt.args.crAgent, tt.args.cr, tt.args.i, tt.args.apiserverConfig, tt.args.ssCache, tt.args.ignoreNamespaceSelectors, tt.args.enforcedNamespaceLabel)
+			got := generateProbeConfig(context.Background(), &tt.args.crAgent, tt.args.cr, tt.args.i, tt.args.apiserverConfig, tt.args.ssCache, tt.args.se)
 			gotBytes, err := yaml.Marshal(got)
 			if err != nil {
 				t.Errorf("cannot decode probe config, it must be in yaml format :%e", err)

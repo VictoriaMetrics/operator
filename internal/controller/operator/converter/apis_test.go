@@ -162,12 +162,16 @@ func TestConvertEndpoint(t *testing.T) {
 			},
 			want: []vmv1beta1.Endpoint{
 				{
-					Path: "/metrics",
+					EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+						Path: "/metrics",
+					},
 					Port: "9100",
-					RelabelConfigs: []*vmv1beta1.RelabelConfig{
-						{
-							Action:       "drop",
-							SourceLabels: []string{"__meta__instance"},
+					EndpointRelabelings: vmv1beta1.EndpointRelabelings{
+						RelabelConfigs: []*vmv1beta1.RelabelConfig{
+							{
+								Action:       "drop",
+								SourceLabels: []string{"__meta__instance"},
+							},
 						},
 					},
 				},
@@ -214,10 +218,12 @@ func TestConvertServiceMonitor(t *testing.T) {
 				Spec: vmv1beta1.VMServiceScrapeSpec{
 					Endpoints: []vmv1beta1.Endpoint{
 						{
-							MetricRelabelConfigs: []*vmv1beta1.RelabelConfig{
-								{
-									Action:       "drop",
-									SourceLabels: []string{"__meta__instance"},
+							EndpointRelabelings: vmv1beta1.EndpointRelabelings{
+								MetricRelabelConfigs: []*vmv1beta1.RelabelConfig{
+									{
+										Action:       "drop",
+										SourceLabels: []string{"__meta__instance"},
+									},
 								},
 							},
 						},
@@ -254,10 +260,12 @@ func TestConvertServiceMonitor(t *testing.T) {
 				Spec: vmv1beta1.VMServiceScrapeSpec{
 					Endpoints: []vmv1beta1.Endpoint{
 						{
-							MetricRelabelConfigs: []*vmv1beta1.RelabelConfig{
-								{
-									Action:       "drop",
-									SourceLabels: []string{"__meta__instance"},
+							EndpointRelabelings: vmv1beta1.EndpointRelabelings{
+								MetricRelabelConfigs: []*vmv1beta1.RelabelConfig{
+									{
+										Action:       "drop",
+										SourceLabels: []string{"__meta__instance"},
+									},
 								},
 							},
 						},
@@ -301,10 +309,12 @@ func TestConvertPodEndpoints(t *testing.T) {
 				},
 			}},
 			want: []vmv1beta1.PodMetricsEndpoint{{
-				TLSConfig: &vmv1beta1.TLSConfig{
-					CA: vmv1beta1.SecretOrConfigMap{
-						ConfigMap: &corev1.ConfigMapKeySelector{
-							Key: "ca",
+				EndpointAuth: vmv1beta1.EndpointAuth{
+					TLSConfig: &vmv1beta1.TLSConfig{
+						CA: vmv1beta1.SecretOrConfigMap{
+							ConfigMap: &corev1.ConfigMapKeySelector{
+								Key: "ca",
+							},
 						},
 					},
 				},
@@ -326,12 +336,14 @@ func TestConvertPodEndpoints(t *testing.T) {
 				},
 			}},
 			want: []vmv1beta1.PodMetricsEndpoint{{
-				TLSConfig: &vmv1beta1.TLSConfig{
-					InsecureSkipVerify: true,
-					ServerName:         "some-srv",
-					CA: vmv1beta1.SecretOrConfigMap{
-						ConfigMap: &corev1.ConfigMapKeySelector{
-							Key: "ca",
+				EndpointAuth: vmv1beta1.EndpointAuth{
+					TLSConfig: &vmv1beta1.TLSConfig{
+						InsecureSkipVerify: true,
+						ServerName:         "some-srv",
+						CA: vmv1beta1.SecretOrConfigMap{
+							ConfigMap: &corev1.ConfigMapKeySelector{
+								Key: "ca",
+							},
 						},
 					},
 				},
@@ -349,14 +361,16 @@ func TestConvertPodEndpoints(t *testing.T) {
 				},
 			}},
 			want: []vmv1beta1.PodMetricsEndpoint{{
-				BearerTokenSecret: &corev1.SecretKeySelector{
-					Key: "bearer",
-				},
-				BasicAuth: &vmv1beta1.BasicAuth{
-					Username: corev1.SecretKeySelector{
-						Key: "username",
+				EndpointAuth: vmv1beta1.EndpointAuth{
+					BearerTokenSecret: &corev1.SecretKeySelector{
+						Key: "bearer",
 					},
-					Password: corev1.SecretKeySelector{Key: "password"},
+					BasicAuth: &vmv1beta1.BasicAuth{
+						Username: corev1.SecretKeySelector{
+							Key: "username",
+						},
+						Password: corev1.SecretKeySelector{Key: "password"},
+					},
 				},
 			}},
 		},
@@ -407,7 +421,9 @@ func TestConvertProbe(t *testing.T) {
 			},
 			want: vmv1beta1.VMProbe{
 				Spec: vmv1beta1.VMProbeSpec{
-					ProxyURL: ptr.To("http://proxy.com"),
+					EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+						ProxyURL: ptr.To("http://proxy.com"),
+					},
 					Targets: vmv1beta1.VMProbeTargets{
 						StaticConfig: &vmv1beta1.VMProbeTargetStaticConfig{
 							Targets: []string{"target-1", "target-2"},

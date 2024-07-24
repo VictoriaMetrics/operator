@@ -16,6 +16,32 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// VMAgentSecurityEnforcements defines security configuration for endpoint scrapping
+type VMAgentSecurityEnforcements struct {
+	// OverrideHonorLabels if set to true overrides all user configured honor_labels.
+	// If HonorLabels is set in scrape objects  to true, this overrides honor_labels to false.
+	// +optional
+	OverrideHonorLabels bool `json:"overrideHonorLabels,omitempty"`
+	// OverrideHonorTimestamps allows to globally enforce honoring timestamps in all scrape configs.
+	// +optional
+	OverrideHonorTimestamps bool `json:"overrideHonorTimestamps,omitempty"`
+	// IgnoreNamespaceSelectors if set to true will ignore NamespaceSelector settings from
+	// scrape objects, and they will only discover endpoints
+	// within their current namespace.  Defaults to false.
+	// +optional
+	IgnoreNamespaceSelectors bool `json:"ignoreNamespaceSelectors,omitempty"`
+	// EnforcedNamespaceLabel enforces adding a namespace label of origin for each alert
+	// and metric that is user created. The label value will always be the namespace of the object that is
+	// being created.
+	// +optional
+	EnforcedNamespaceLabel string `json:"enforcedNamespaceLabel,omitempty"`
+	// ArbitraryFSAccessThroughSMs configures whether configuration
+	// based on EndpointAuth can access arbitrary files on the file system
+	// of the VMAgent container e.g. bearer token files, basic auth, tls certs
+	// +optional
+	ArbitraryFSAccessThroughSMs ArbitraryFSAccessThroughSMsConfig `json:"arbitraryFSAccessThroughSMs,omitempty"`
+}
+
 // VMAgentSpec defines the desired state of VMAgent
 // +k8s:openapi-gen=true
 // +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".spec.version",description="The version of VMAgent"
@@ -155,23 +181,6 @@ type VMAgentSpec struct {
 	// and bearer token file at /var/run/secrets/kubernetes.io/serviceaccount/.
 	// +optional
 	APIServerConfig *APIServerConfig `json:"aPIServerConfig,omitempty"`
-	// OverrideHonorLabels if set to true overrides all user configured honor_labels.
-	// If HonorLabels is set in ServiceScrape or PodScrape to true, this overrides honor_labels to false.
-	// +optional
-	OverrideHonorLabels bool `json:"overrideHonorLabels,omitempty"`
-	// OverrideHonorTimestamps allows to globally enforce honoring timestamps in all scrape configs.
-	// +optional
-	OverrideHonorTimestamps bool `json:"overrideHonorTimestamps,omitempty"`
-	// IgnoreNamespaceSelectors if set to true will ignore NamespaceSelector settings from
-	// the podscrape and vmservicescrape configs, and they will only discover endpoints
-	// within their current namespace.  Defaults to false.
-	// +optional
-	IgnoreNamespaceSelectors bool `json:"ignoreNamespaceSelectors,omitempty"`
-	// EnforcedNamespaceLabel enforces adding a namespace label of origin for each alert
-	// and metric that is user created. The label value will always be the namespace of the object that is
-	// being created.
-	// +optional
-	EnforcedNamespaceLabel string `json:"enforcedNamespaceLabel,omitempty"`
 	// VMAgentExternalLabelName Name of vmAgent external label used to denote vmAgent instance
 	// name. Defaults to the value of `prometheus`. External label will
 	// _not_ be added when value is set to empty string (`""`).
@@ -304,11 +313,6 @@ type VMAgentSpec struct {
 	// VMAgent after the upgrade.
 	// +optional
 	AdditionalScrapeConfigs *v1.SecretKeySelector `json:"additionalScrapeConfigs,omitempty"`
-	// ArbitraryFSAccessThroughSMs configures whether configuration
-	// based on a service scrape can access arbitrary files on the file system
-	// of the VMAgent container e.g. bearer token files.
-	// +optional
-	ArbitraryFSAccessThroughSMs ArbitraryFSAccessThroughSMsConfig `json:"arbitraryFSAccessThroughSMs,omitempty"`
 	// InsertPorts - additional listen ports for data ingestion.
 	InsertPorts *InsertPorts `json:"insertPorts,omitempty"`
 	// Port listen address
@@ -433,7 +437,8 @@ type VMAgentSpec struct {
 	// Paused If set to true all actions on the underlying managed objects are not
 	// going to be performed, except for delete actions.
 	// +optional
-	Paused bool `json:"paused,omitempty"`
+	Paused                      bool `json:"paused,omitempty"`
+	VMAgentSecurityEnforcements `json:",inline"`
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface
@@ -851,6 +856,28 @@ func (cr *VMAgent) SetUpdateStatusTo(ctx context.Context, r client.Client, statu
 // GetAdditionalService returns AdditionalServiceSpec settings
 func (cr *VMAgent) GetAdditionalService() *AdditionalServiceSpec {
 	return cr.Spec.ServiceSpec
+}
+
+// APIServerConfig defines a host and auth methods to access apiserver.
+// +k8s:openapi-gen=true
+type APIServerConfig struct {
+	// Host of apiserver.
+	// A valid string consisting of a hostname or IP followed by an optional port number
+	Host string `json:"host"`
+	// BasicAuth allow an endpoint to authenticate over basic authentication
+	// +optional
+	BasicAuth *BasicAuth `json:"basicAuth,omitempty"`
+	// Bearer token for accessing apiserver.
+	// +optional
+	BearerToken string `json:"bearerToken,omitempty"`
+	// File to read bearer token for accessing apiserver.
+	// +optional
+	BearerTokenFile string `json:"bearerTokenFile,omitempty"`
+	// TLSConfig Config to use for accessing apiserver.
+	// +optional
+	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
+	// +optional
+	Authorization *Authorization `json:"authorization,omitempty"`
 }
 
 func init() {

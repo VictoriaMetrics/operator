@@ -89,6 +89,41 @@ _Appears in:_
 | `useAsDefault` | UseAsDefault applies changes from given service definition to the main object Service<br />Changing from headless service to clusterIP or loadbalancer may break cross-component communication | _boolean_ | false |
 
 
+#### AlertmanagerHTTPConfig
+
+
+
+AlertmanagerHTTPConfig defines http server configuration for alertmanager
+
+
+
+_Appears in:_
+- [AlertmanagerWebConfig](#alertmanagerwebconfig)
+
+| Field | Description | Scheme | Required |
+| --- | --- | --- | --- |
+| `headers` | Headers defines list of headers that can be added to HTTP responses. | _object (keys:string, values:string)_ | true |
+| `http2` | HTTP2 enables HTTP/2 support. Note that HTTP/2 is only supported with TLS.<br />This can not be changed on the fly. | _boolean_ | true |
+
+
+#### AlertmanagerWebConfig
+
+
+
+AlertmanagerWebConfig defines web server configuration for alertmanager
+
+
+
+_Appears in:_
+- [VMAlertmanagerSpec](#vmalertmanagerspec)
+
+| Field | Description | Scheme | Required |
+| --- | --- | --- | --- |
+| `basic_auth_users` | BasicAuthUsers Usernames and hashed passwords that have full access to the web server<br />Passwords must be hashed with bcrypt | _object (keys:string, values:string)_ | true |
+| `http_server_config` | HTTPServerConfig defines http server configuration for alertmanager web server | _[AlertmanagerHTTPConfig](#alertmanagerhttpconfig)_ | true |
+| `tls_server_config` | TLSServerConfig defines tls configuration for alertmanager web server | _[WebserverTLSConfig](#webservertlsconfig)_ | true |
+
+
 #### ArbitraryFSAccessThroughSMsConfig
 
 
@@ -2608,6 +2643,7 @@ _Appears in:_
 | `useStrictSecurity` | UseStrictSecurity enables strict security mode for component<br />it restricts disk writes access<br />uses non-root user out of the box<br />drops not needed security permissions | _boolean_ | false |
 | `volumeMounts` | VolumeMounts allows configuration of additional VolumeMounts on the output StatefulSet definition.<br />VolumeMounts specified will be appended to other VolumeMounts in the alertmanager container,<br />that are generated as a result of StorageSpec objects. | _[VolumeMount](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#volumemount-v1-core) array_ | false |
 | `volumes` | Volumes allows configuration of additional volumes on the output StatefulSet definition.<br />Volumes specified will be appended to other volumes that are generated as a result of<br />StorageSpec objects. | _[Volume](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#volume-v1-core) array_ | false |
+| `webConfig` | WebConfig defines configuration for webserver<br />https://github.com/prometheus/alertmanager/blob/main/docs/https.md | _[AlertmanagerWebConfig](#alertmanagerwebconfig)_ | true |
 
 
 
@@ -3683,5 +3719,32 @@ _Appears in:_
 | `send_resolved` | SendResolved controls notify about resolved alerts. | _boolean_ | false |
 | `url` | URL to send requests to,<br />one of `urlSecret` and `url` must be defined. | _string_ | false |
 | `url_secret` | URLSecret defines secret name and key at the CRD namespace.<br />It must contain the webhook URL.<br />one of `urlSecret` and `url` must be defined. | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | false |
+
+
+#### WebserverTLSConfig
+
+
+
+WebserverTLSConfig defines TLS configuration for the applications webserver
+
+
+
+_Appears in:_
+- [AlertmanagerWebConfig](#alertmanagerwebconfig)
+
+| Field | Description | Scheme | Required |
+| --- | --- | --- | --- |
+| `cert_file` | CertFile defines path to the pre-mounted file with certificate<br />mutually exclusive with CertSecretRef | _string_ | true |
+| `cert_secret_ref` | Cert defines reference for secret with CA content under given key<br />mutually exclusive with CertFile | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | true |
+| `cipher_suites` | CipherSuites defines list of supported cipher suites for TLS versions up to TLS 1.2 | _string array_ | true |
+| `client_auth_type` | ClientAuthType defines server policy for client authentication<br />If you want to enable client authentication (aka mTLS), you need to use RequireAndVerifyClientCert<br />Note, mTLS is supported only at enterprise version of VictoriaMetrics components | _string_ | true |
+| `client_ca_file` | ClientCAFile defines path to the pre-mounted file with CA<br />mutually exclusive with ClientCASecretRef | _string_ | true |
+| `client_ca_secret_ref` | ClientCA defines reference for secret with CA content under given key<br />mutually exclusive with ClientCAFile | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | true |
+| `curve_preferences` | CurvePreferences defines elliptic curves that will be used in an ECDHE handshake, in preference order. | _string array_ | true |
+| `key_file` | KeyFile defines path to the pre-mounted file with certificate key<br />mutually exclusive with KeySecretRef | _string_ | true |
+| `key_secret_ref` | Key defines reference for secret with certificate key content under given key<br />mutually exclusive with KeyFile | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | true |
+| `max_version` | MaxVersion maximum TLS version that is acceptable. | _string_ | true |
+| `min_version` | MinVersion minimum TLS version that is acceptable. | _string_ | true |
+| `prefer_server_cipher_suites` | PreferServerCipherSuites controls whether the server selects the<br />client's most preferred ciphersuite | _boolean_ | true |
 
 

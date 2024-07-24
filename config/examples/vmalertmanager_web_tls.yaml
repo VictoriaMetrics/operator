@@ -1,0 +1,75 @@
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAlertmanager
+metadata:
+  name: example-alertmanager-web-tls
+spec:
+  replicaCount: 1
+  selectAllByDefault: false
+  webConfig:
+   tls_server_config:
+    cert_secret_ref:
+     key: certValue
+     name: alertmanager-tls
+    key_secret_ref:
+      key: certKey
+      name: alertmanager-tls
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: alertmanager-tls
+type: Opaque
+stringData:
+  clientCA: |
+    -----BEGIN CERTIFICATE-----
+    MIICdjCCAd+gAwIBAgIBADANBgkqhkiG9w0BAQ0FADBYMQswCQYDVQQGEwJ1czEL
+    MAkGA1UECAwCc3QxCzAJBgNVBAoMAm9uMRMwEQYDVQQDDAphbS5leGFtcGxlMQ0w
+    CwYDVQQHDAR0ZW1wMQswCQYDVQQLDAJvdTAeFw0yNDA3MjQxNjUzMzBaFw0yNTA3
+    MjQxNjUzMzBaMFgxCzAJBgNVBAYTAnVzMQswCQYDVQQIDAJzdDELMAkGA1UECgwC
+    b24xEzARBgNVBAMMCmFtLmV4YW1wbGUxDTALBgNVBAcMBHRlbXAxCzAJBgNVBAsM
+    Am91MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC7YnczI1TENEsdXDxGwcgw
+    f3FKUt4DYpLfhtz20RO1E/VM9Axd7i2ym4b6UQWfCsoYYLjT/z1II7sfSO6WAgf5
+    qEpVK5m3ZpnN/NxTRiOyTpCVjrY34Q6UGX7BYb/VxG6kcflY9bB3BC3UWq3BmIVy
+    sxOcpHGsDqHLAnaLecHBDQIDAQABo1AwTjAdBgNVHQ4EFgQUBxmMgWTtKxsuMvEr
+    zaAEmnFHfAowHwYDVR0jBBgwFoAUBxmMgWTtKxsuMvErzaAEmnFHfAowDAYDVR0T
+    BAUwAwEB/zANBgkqhkiG9w0BAQ0FAAOBgQCY5O5MENpm0N4X3dfLEWOfDU2EpmFs
+    FW/nSq0use4cYyUkgvkDh87wHje011xZjQANTfL1lhuoBl4+8/fEs+7HdFiUOkaB
+    SUg7R9us0EVD7YF/QpaL5MnrE7xQWTm4gC0Hubva3m8eZSUBsxSW9g1tpRbAr4/i
+    mxV53k/vKgY6gA==
+    -----END CERTIFICATE-----
+  certValue: |
+    -----BEGIN CERTIFICATE-----
+    MIICdjCCAd+gAwIBAgIBADANBgkqhkiG9w0BAQ0FADBYMQswCQYDVQQGEwJ1czEL
+    MAkGA1UECAwCc3QxCzAJBgNVBAoMAm9uMRMwEQYDVQQDDAphbS5leGFtcGxlMQ0w
+    CwYDVQQHDAR0ZW1wMQswCQYDVQQLDAJvdTAeFw0yNDA3MjQxNjUzMzBaFw0yNTA3
+    MjQxNjUzMzBaMFgxCzAJBgNVBAYTAnVzMQswCQYDVQQIDAJzdDELMAkGA1UECgwC
+    b24xEzARBgNVBAMMCmFtLmV4YW1wbGUxDTALBgNVBAcMBHRlbXAxCzAJBgNVBAsM
+    Am91MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC7YnczI1TENEsdXDxGwcgw
+    f3FKUt4DYpLfhtz20RO1E/VM9Axd7i2ym4b6UQWfCsoYYLjT/z1II7sfSO6WAgf5
+    qEpVK5m3ZpnN/NxTRiOyTpCVjrY34Q6UGX7BYb/VxG6kcflY9bB3BC3UWq3BmIVy
+    sxOcpHGsDqHLAnaLecHBDQIDAQABo1AwTjAdBgNVHQ4EFgQUBxmMgWTtKxsuMvEr
+    zaAEmnFHfAowHwYDVR0jBBgwFoAUBxmMgWTtKxsuMvErzaAEmnFHfAowDAYDVR0T
+    BAUwAwEB/zANBgkqhkiG9w0BAQ0FAAOBgQCY5O5MENpm0N4X3dfLEWOfDU2EpmFs
+    FW/nSq0use4cYyUkgvkDh87wHje011xZjQANTfL1lhuoBl4+8/fEs+7HdFiUOkaB
+    SUg7R9us0EVD7YF/QpaL5MnrE7xQWTm4gC0Hubva3m8eZSUBsxSW9g1tpRbAr4/i
+    mxV53k/vKgY6gA==
+    -----END CERTIFICATE-----
+  certKey: |
+    -----BEGIN PRIVATE KEY-----
+    MIICdwIBADANBgkqhkiG9w0BAQEFAASCAmEwggJdAgEAAoGBALtidzMjVMQ0Sx1c
+    PEbByDB/cUpS3gNikt+G3PbRE7UT9Uz0DF3uLbKbhvpRBZ8KyhhguNP/PUgjux9I
+    7pYCB/moSlUrmbdmmc383FNGI7JOkJWOtjfhDpQZfsFhv9XEbqRx+Vj1sHcELdRa
+    rcGYhXKzE5ykcawOocsCdot5wcENAgMBAAECgYAaCH8JAsKXE7DP3m2dYvS+ECac
+    LdEcZUiEd4chX0C+qows6ccCEcIVi1gAVNtUEjqrklx7T32jFRu9J/PFsXiL8MCM
+    qgiHrM2rCbaSVEyucA69Vow8jOZngShy27mD37PEIZjiy1gc/GwHtJZhbeS61k++
+    bX91/X+vGTbfRanrwQJBAPAxYXZkjBZkUtj9WdYLGkctKDwOrUTh+FJX60BXKuta
+    sDE0NmrSPb+U3afVjLF27CtSrR77Z36ASdDRjYgjLRECQQDHt2eH9oGCRkyRkGp4
+    MXv53AHalMj36132VRZmVv5RyrcshpfPP/J0rRdopJWdhx/ZE/+1qBrBSZwpEd+I
+    78Q9AkEAvr6oZInyyfF/7Xw89IM6qh2NXyxUo2hEeLgDRcQzfFY3p8uMD4bIrLT+
+    1cL8CQ6k/L6aZwlFpisg86kGmX890QJAb017WX679oqPKaC+dXW+jiVasyKwTdrS
+    ZvJMpYRd/99l7l6kRFBzIytEHIF9EGm6ChTnMaoaHxaS/SCE36AgUQJBANawdUOV
+    9FHfKa2Ta7afcEEZ6KxcrZi/YrcoYCd1D0cqVKVkbbAw5uMxd78B7JQF+U6tfyBm
+    wFjeOxBDF7dPZEQ=
+    -----END PRIVATE KEY-----
+---
+

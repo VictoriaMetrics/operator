@@ -298,6 +298,10 @@ type VMAlertmanagerSpec struct {
 	// drops not needed security permissions
 	// +optional
 	UseStrictSecurity *bool `json:"useStrictSecurity,omitempty"`
+
+	// WebConfig defines configuration for webserver
+	// https://github.com/prometheus/alertmanager/blob/main/docs/https.md
+	WebConfig *AlertmanagerWebConfig `json:"webConfig,omitempty"`
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface
@@ -409,6 +413,7 @@ func (cr VMAlertmanager) GetNSName() string {
 	return cr.GetNamespace()
 }
 
+// AsURL returns url for accessing alertmanager
 func (cr *VMAlertmanager) AsURL() string {
 	port := "9093"
 	if cr.Spec.ServiceSpec != nil && cr.Spec.ServiceSpec.UseAsDefault {
@@ -419,11 +424,12 @@ func (cr *VMAlertmanager) AsURL() string {
 			}
 		}
 	}
-	return fmt.Sprintf("http://%s.%s.svc:%s", cr.PrefixedName(), cr.Namespace, port)
+
+	return fmt.Sprintf("%s://%s.%s.svc:%s", strings.ToLower(cr.ProbeScheme()), cr.PrefixedName(), cr.Namespace, port)
 }
 
-func (cr *VMAlertmanager) AsPodFQDN(idx int) string {
-	return fmt.Sprintf("http://%s-%d.%s.%s.svc:9093", cr.PrefixedName(), idx, cr.PrefixedName(), cr.Namespace)
+func (cr *VMAlertmanager) asPodFQDN(idx int) string {
+	return fmt.Sprintf("%s://%s-%d.%s.%s.svc:9093", strings.ToLower(cr.ProbeScheme()), cr.PrefixedName(), idx, cr.PrefixedName(), cr.Namespace)
 }
 
 func (cr *VMAlertmanager) MetricPath() string {
@@ -447,7 +453,7 @@ func (cr *VMAlertmanager) AsNotifiers() []VMAlertNotifierSpec {
 	}
 	for i := 0; i < replicaCount; i++ {
 		ns := VMAlertNotifierSpec{
-			URL: cr.AsPodFQDN(i),
+			URL: cr.asPodFQDN(i),
 		}
 		r = append(r, ns)
 	}
@@ -484,8 +490,12 @@ func (cr *VMAlertmanager) ProbePort() string {
 	return cr.Spec.PortName
 }
 
+// ProbeScheme returns scheme for probe
 func (cr *VMAlertmanager) ProbeScheme() string {
-	return strings.ToUpper(protoFromFlags(cr.Spec.ExtraArgs))
+	if cr.Spec.WebConfig != nil && cr.Spec.WebConfig.TLSServerConfig != nil {
+		return "HTTPS"
+	}
+	return "HTTP"
 }
 
 func (cr *VMAlertmanager) ProbeNeedLiveness() bool {
@@ -548,6 +558,64 @@ func (cr *VMAlertmanager) SetUpdateStatusTo(ctx context.Context, r client.Client
 		return fmt.Errorf("failed to update object status to=%q: %w", status, err)
 	}
 	return nil
+}
+
+// AlertmanagerWebConfig defines web server configuration for alertmanager
+type AlertmanagerWebConfig struct {
+	// TLSServerConfig defines tls configuration for alertmanager web server
+	TLSServerConfig *WebserverTLSConfig `json:"tls_server_config,omitempty"`
+	// HTTPServerConfig defines http server configuration for alertmanager web server
+	HTTPServerConfig *AlertmanagerHTTPConfig `json:"http_server_config,omitempty"`
+	// BasicAuthUsers Usernames and hashed passwords that have full access to the web server
+	// Passwords must be hashed with bcrypt
+	BasicAuthUsers map[string]string `json:"basic_auth_users,omitempty"`
+}
+
+// AlertmanagerHTTPConfig defines http server configuration for alertmanager
+type AlertmanagerHTTPConfig struct {
+	// HTTP2 enables HTTP/2 support. Note that HTTP/2 is only supported with TLS.
+	// This can not be changed on the fly.
+	HTTP2 bool `json:"http2,omitempty"`
+	// Headers defines list of headers that can be added to HTTP responses.
+	Headers map[string]string `json:"headers,omitempty"`
+}
+
+// WebserverTLSConfig defines TLS configuration for the applications webserver
+type WebserverTLSConfig struct {
+	// ClientAuthType defines server policy for client authentication
+	// If you want to enable client authentication (aka mTLS), you need to use RequireAndVerifyClientCert
+	// Note, mTLS is supported only at enterprise version of VictoriaMetrics components
+	ClientAuthType string `json:"client_auth_type,omitempty"`
+
+	// ClientCA defines reference for secret with CA content under given key
+	// mutually exclusive with ClientCAFile
+	ClientCASecretRef *v1.SecretKeySelector `json:"client_ca_secret_ref,omitempty"`
+	// ClientCAFile defines path to the pre-mounted file with CA
+	// mutually exclusive with ClientCASecretRef
+	ClientCAFile string `json:"client_ca_file,omitempty"`
+	// Cert defines reference for secret with CA content under given key
+	// mutually exclusive with CertFile
+	CertSecretRef *v1.SecretKeySelector `json:"cert_secret_ref,omitempty"`
+	// CertFile defines path to the pre-mounted file with certificate
+	// mutually exclusive with CertSecretRef
+	CertFile string `json:"cert_file,omitempty"`
+	// Key defines reference for secret with certificate key content under given key
+	// mutually exclusive with KeyFile
+	KeySecretRef *v1.SecretKeySelector `json:"key_secret_ref,omitempty"`
+	// KeyFile defines path to the pre-mounted file with certificate key
+	// mutually exclusive with KeySecretRef
+	KeyFile string `json:"key_file,omitempty"`
+	// MinVersion minimum TLS version that is acceptable.
+	MinVersion string `json:"min_version,omitempty"`
+	// MaxVersion maximum TLS version that is acceptable.
+	MaxVersion string `json:"max_version,omitempty"`
+	// CipherSuites defines list of supported cipher suites for TLS versions up to TLS 1.2
+	CipherSuites []string `json:"cipher_suites,omitempty"`
+	// CurvePreferences defines elliptic curves that will be used in an ECDHE handshake, in preference order.
+	CurvePreferences []string `json:"curve_preferences,omitempty"`
+	// PreferServerCipherSuites controls whether the server selects the
+	// client's most preferred ciphersuite
+	PreferServerCipherSuites bool `json:"prefer_server_cipher_suites,omitempty"`
 }
 
 // GetAdditionalService returns AdditionalServiceSpec settings

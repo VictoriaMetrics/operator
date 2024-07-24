@@ -867,8 +867,6 @@ func setScrapeIntervalToWithLimit(ctx context.Context, dst *vmv1beta1.EndpointSc
 			return
 		}
 	}
-
-	return
 }
 
 const (

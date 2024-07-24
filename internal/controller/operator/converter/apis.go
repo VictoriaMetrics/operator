@@ -359,7 +359,8 @@ func convertPodEndpoints(promPodEnpoints []promv1.PodMetricsEndpoint) []vmv1beta
 			},
 
 			EndpointAuth: vmv1beta1.EndpointAuth{
-				BasicAuth:         ConvertBasicAuth(promEndPoint.BasicAuth),
+				BasicAuth: ConvertBasicAuth(promEndPoint.BasicAuth),
+				//nolint:staticcheck
 				BearerTokenSecret: convertBearerToken(&promEndPoint.BearerTokenSecret),
 				TLSConfig:         convertSafeTLSConfig(safeTLS),
 				OAuth2:            ConvertOAuth(promEndPoint.OAuth2),

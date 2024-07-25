@@ -25,7 +25,7 @@ type VMScrapeParams struct {
 	// disable_keepalive allows disabling HTTP keep-alive when scraping targets.
 	// By default, HTTP keep-alive is enabled, so TCP connections to scrape targets
 	// could be re-used.
-	// See https://docs.victoriametrics.com/vmagent.html#scrape_config-enhancements
+	// See {{% ref "../vmagent.md#scrape_config-enhancements" %}}
 	// +optional
 	DisableKeepAlive *bool `json:"disable_keep_alive,omitempty"`
 	// +optional
@@ -37,7 +37,7 @@ type VMScrapeParams struct {
 	// +optional
 	ScrapeOffset *string `json:"scrape_offset,omitempty"`
 	// ProxyClientConfig configures proxy auth settings for scraping
-	// See feature description https://docs.victoriametrics.com/vmagent.html#scraping-targets-via-a-proxy
+	// See feature description {{% ref "../vmagent.md#scraping-targets-via-a-proxy" %}}
 	// +optional
 	ProxyClientConfig *ProxyAuth `json:"proxy_client_config,omitempty"`
 	// Headers allows sending custom headers to scrape targets

@@ -580,44 +580,6 @@ type AlertmanagerHTTPConfig struct {
 	Headers map[string]string `json:"headers,omitempty"`
 }
 
-// WebserverTLSConfig defines TLS configuration for the applications webserver
-type WebserverTLSConfig struct {
-	// ClientAuthType defines server policy for client authentication
-	// If you want to enable client authentication (aka mTLS), you need to use RequireAndVerifyClientCert
-	// Note, mTLS is supported only at enterprise version of VictoriaMetrics components
-	ClientAuthType string `json:"client_auth_type,omitempty"`
-
-	// ClientCA defines reference for secret with CA content under given key
-	// mutually exclusive with ClientCAFile
-	ClientCASecretRef *v1.SecretKeySelector `json:"client_ca_secret_ref,omitempty"`
-	// ClientCAFile defines path to the pre-mounted file with CA
-	// mutually exclusive with ClientCASecretRef
-	ClientCAFile string `json:"client_ca_file,omitempty"`
-	// Cert defines reference for secret with CA content under given key
-	// mutually exclusive with CertFile
-	CertSecretRef *v1.SecretKeySelector `json:"cert_secret_ref,omitempty"`
-	// CertFile defines path to the pre-mounted file with certificate
-	// mutually exclusive with CertSecretRef
-	CertFile string `json:"cert_file,omitempty"`
-	// Key defines reference for secret with certificate key content under given key
-	// mutually exclusive with KeyFile
-	KeySecretRef *v1.SecretKeySelector `json:"key_secret_ref,omitempty"`
-	// KeyFile defines path to the pre-mounted file with certificate key
-	// mutually exclusive with KeySecretRef
-	KeyFile string `json:"key_file,omitempty"`
-	// MinVersion minimum TLS version that is acceptable.
-	MinVersion string `json:"min_version,omitempty"`
-	// MaxVersion maximum TLS version that is acceptable.
-	MaxVersion string `json:"max_version,omitempty"`
-	// CipherSuites defines list of supported cipher suites for TLS versions up to TLS 1.2
-	CipherSuites []string `json:"cipher_suites,omitempty"`
-	// CurvePreferences defines elliptic curves that will be used in an ECDHE handshake, in preference order.
-	CurvePreferences []string `json:"curve_preferences,omitempty"`
-	// PreferServerCipherSuites controls whether the server selects the
-	// client's most preferred ciphersuite
-	PreferServerCipherSuites bool `json:"prefer_server_cipher_suites,omitempty"`
-}
-
 // GetAdditionalService returns AdditionalServiceSpec settings
 func (cr *VMAlertmanager) GetAdditionalService() *AdditionalServiceSpec {
 	return cr.Spec.ServiceSpec

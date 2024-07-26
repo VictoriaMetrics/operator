@@ -723,7 +723,7 @@ templates: []
 					},
 				},
 			},
-			parseError: "cannot find secret for VMAlertmanager config: tg, err :secrets \"tg-secret\" not found in object: default/tg, will ignore vmalertmanagerconfig tg",
+			parseError: `cannot find secret="tg-secret" to fetch content at ns="default", err: secrets "tg-secret" not found in object: default/tg, will ignore vmalertmanagerconfig tg`,
 			want: `global:
   time_out: 1min
 route:
@@ -1180,8 +1180,8 @@ func Test_configBuilder_buildHTTPConfig(t *testing.T) {
 				},
 			}},
 			want: `tls_config:
-  ca_file: /etc/alertmanager/config/default_secret-store_ca
-  cert_file: /etc/alertmanager/config/default_secret-store_cert
+  ca_file: /etc/alertmanager/tls_assets/default_secret-store_ca
+  cert_file: /etc/alertmanager/tls_assets/default_secret-store_cert
   insecure_skip_verify: true
   key_file: /etc/mounted_dir/key.pem
 authorization:
@@ -1248,10 +1248,10 @@ authorization:
 				},
 			},
 			want: `tls_config:
-  ca_file: /etc/alertmanager/config/default_cm-store_ca
-  cert_file: /etc/alertmanager/config/default_secret-store_cert
+  ca_file: /etc/alertmanager/tls_assets/default_cm-store_ca
+  cert_file: /etc/alertmanager/tls_assets/default_secret-store_cert
   insecure_skip_verify: true
-  key_file: /etc/alertmanager/config/default_secret-store_key
+  key_file: /etc/alertmanager/tls_assets/default_secret-store_key
 authorization:
   credentials: secret-token
 `,

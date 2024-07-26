@@ -9201,8 +9201,9 @@ spec:
                         type: object
                         x-kubernetes-map-type: atomic
                       cipher_suites:
-                        description: CipherSuites defines list of supported cipher
-                          suites for TLS versions up to TLS 1.2
+                        description: |-
+                          CipherSuites defines list of supported cipher suites for TLS versions up to TLS 1.2
+                          https://golang.org/pkg/crypto/tls/#pkg-constants
                         items:
                           type: string
                         type: array
@@ -9211,6 +9212,9 @@ spec:
                           ClientAuthType defines server policy for client authentication
                           If you want to enable client authentication (aka mTLS), you need to use RequireAndVerifyClientCert
                           Note, mTLS is supported only at enterprise version of VictoriaMetrics components
+                        enum:
+                        - NoClientCert
+                        - RequireAndVerifyClientCert
                         type: string
                       client_ca_file:
                         description: |-
@@ -9246,8 +9250,9 @@ spec:
                         type: object
                         x-kubernetes-map-type: atomic
                       curve_preferences:
-                        description: CurvePreferences defines elliptic curves that
-                          will be used in an ECDHE handshake, in preference order.
+                        description: |-
+                          CurvePreferences defines elliptic curves that will be used in an ECDHE handshake, in preference order.
+                          https://golang.org/pkg/crypto/tls/#CurveID
                         items:
                           type: string
                         type: array
@@ -9286,9 +9291,19 @@ spec:
                         x-kubernetes-map-type: atomic
                       max_version:
                         description: MaxVersion maximum TLS version that is acceptable.
+                        enum:
+                        - TLS10
+                        - TLS11
+                        - TLS12
+                        - TLS13
                         type: string
                       min_version:
                         description: MinVersion minimum TLS version that is acceptable.
+                        enum:
+                        - TLS10
+                        - TLS11
+                        - TLS12
+                        - TLS13
                         type: string
                       prefer_server_cipher_suites:
                         description: |-

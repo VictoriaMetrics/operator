@@ -926,10 +926,10 @@ type WebserverTLSConfig struct {
 	// mutually exclusive with KeySecretRef
 	KeyFile string `json:"key_file,omitempty"`
 	// MinVersion minimum TLS version that is acceptable.
-	// +kubebuilder:validation:Enum=TLS10,TLS11,TLS12,TLS13
+	// +kubebuilder:validation:Enum=TLS10;TLS11;TLS12;TLS13
 	MinVersion string `json:"min_version,omitempty"`
 	// MaxVersion maximum TLS version that is acceptable.
-	// +kubebuilder:validation:Enum=TLS10,TLS11,TLS12,TLS13
+	// +kubebuilder:validation:Enum=TLS10;TLS11;TLS12;TLS13
 	MaxVersion string `json:"max_version,omitempty"`
 	// CipherSuites defines list of supported cipher suites for TLS versions up to TLS 1.2
 	// https://golang.org/pkg/crypto/tls/#pkg-constants

@@ -41,6 +41,30 @@ func (r *VMAlertmanager) SetupWebhookWithManager(mgr ctrl.Manager) error {
 var _ webhook.Validator = &VMAlertmanager{}
 
 func (r *VMAlertmanager) sanityCheck() error {
+	if r.Spec.ConfigSecret == r.ConfigSecretName() {
+		return fmt.Errorf("spec.configSecret uses the same name as built-in config secret used by operator. Please change it's name")
+	}
+	if r.Spec.WebConfig != nil {
+		if r.Spec.WebConfig.HTTPServerConfig != nil {
+			if r.Spec.WebConfig.HTTPServerConfig.HTTP2 && r.Spec.WebConfig.TLSServerConfig == nil {
+				return fmt.Errorf("with enabled http2 for webserver, tls_server_config must be defined")
+			}
+		}
+		if r.Spec.WebConfig.TLSServerConfig != nil {
+			tc := r.Spec.WebConfig.TLSServerConfig
+			if tc.CertFile == "" && tc.CertSecretRef == nil {
+				return fmt.Errorf("either cert_secret_ref or cert_file must be set for tls_server_config")
+			}
+			if tc.KeyFile == "" && tc.KeySecretRef == nil {
+				return fmt.Errorf("either key_secret_ref or key_file must be set for tls_server_config")
+			}
+			if tc.ClientAuthType == "RequireAndVerifyClientCert" {
+				if tc.ClientCAFile == "" && tc.ClientCASecretRef == nil {
+					return fmt.Errorf("either client_ca_secret_ref or client_ca_file must be set for tls_server_config with enabled RequireAndVerifyClientCert")
+				}
+			}
+		}
+	}
 	return nil
 }
 

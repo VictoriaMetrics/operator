@@ -12,6 +12,7 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -1085,7 +1086,7 @@ func (cb *configBuilder) buildEmail(email vmv1beta1.EmailConfig) error {
 		if email.TLSConfig == nil {
 			return fmt.Errorf("incorrect email configuration, tls is required, but no config provided at spec")
 		}
-		s, err := cb.TLSConfigBuilder.BuildTLSConfig(email.TLSConfig, alertmanagerConfDir)
+		s, err := cb.TLSConfigBuilder.BuildTLSConfig(email.TLSConfig, tlsAssetsDir)
 		if err != nil {
 			return err
 		}
@@ -1203,16 +1204,7 @@ func (cb *configBuilder) buildOpsGenie(og vmv1beta1.OpsGenieConfig) error {
 }
 
 func (cb *configBuilder) fetchSecretValue(selector *corev1.SecretKeySelector) ([]byte, error) {
-	var s corev1.Secret
-	if existSecret, ok := cb.SecretCache[selector.Name]; ok {
-		s = *existSecret
-	} else if err := cb.Client.Get(cb.Ctx, types.NamespacedName{Name: selector.Name, Namespace: cb.CurrentCRNamespace}, &s); err != nil {
-		return nil, fmt.Errorf("cannot find secret for VMAlertmanager config: %s, err :%w", cb.CurrentCRName, err)
-	}
-	if v, ok := s.Data[selector.Key]; ok {
-		return v, nil
-	}
-	return nil, fmt.Errorf("cannot find key : %s at secret: %s", selector.Key, selector.Name)
+	return fetchSecretValue(cb.Ctx, cb.Client, cb.CurrentCRNamespace, selector, cb.SecretCache)
 }
 
 func (cb *configBuilder) buildHTTPConfig(httpCfg *vmv1beta1.HTTPConfig) (yaml.MapSlice, error) {
@@ -1222,7 +1214,7 @@ func (cb *configBuilder) buildHTTPConfig(httpCfg *vmv1beta1.HTTPConfig) (yaml.Ma
 		return nil, nil
 	}
 	if httpCfg.TLSConfig != nil {
-		tls, err := cb.BuildTLSConfig(httpCfg.TLSConfig, alertmanagerConfDir)
+		tls, err := cb.BuildTLSConfig(httpCfg.TLSConfig, tlsAssetsDir)
 		if err != nil {
 			return nil, err
 		}
@@ -1305,4 +1297,128 @@ func parseURL(s string) error {
 		return fmt.Errorf("missing host for URL")
 	}
 	return nil
+}
+
+func fetchSecretValue(ctx context.Context, rclient client.Client, ns string, selector *v1.SecretKeySelector, sm map[string]*v1.Secret) ([]byte, error) {
+	var s corev1.Secret
+	if existSecret, ok := sm[selector.Name]; ok {
+		s = *existSecret
+	} else if err := rclient.Get(ctx, types.NamespacedName{Name: selector.Name, Namespace: ns}, &s); err != nil {
+		return nil, fmt.Errorf("cannot find secret=%q to fetch content at ns=%q, err: %w", selector.Name, ns, err)
+	}
+	if v, ok := s.Data[selector.Key]; ok {
+		return v, nil
+	}
+	return nil, fmt.Errorf("secret key=%q not exists at secret=%q", selector.Key, selector.Name)
+}
+
+func secretSelectorToAssetKey(selector *v1.SecretKeySelector) string {
+	return fmt.Sprintf("%s_%s", selector.Name, selector.Key)
+}
+
+// builds configuration according to https://github.com/prometheus/alertmanager/blob/main/docs/https.md
+func buildWebServerConfigYAML(ctx context.Context, rclient client.Client, vmaCR *vmv1beta1.VMAlertmanager, tlsAssets map[string]string) ([]byte, error) {
+	if vmaCR.Spec.WebConfig == nil {
+		return nil, nil
+	}
+	var cfg yaml.MapSlice
+	webCfg := vmaCR.Spec.WebConfig
+	if webCfg.HTTPServerConfig != nil {
+		var wCfg yaml.MapSlice
+		if webCfg.HTTPServerConfig.HTTP2 {
+			if webCfg.TLSServerConfig == nil {
+				return nil, fmt.Errorf("with enabled http2, tls_server_config is required to be set")
+			}
+			wCfg = append(wCfg, yaml.MapItem{Key: "http2", Value: webCfg.HTTPServerConfig.HTTP2})
+		}
+		if len(webCfg.HTTPServerConfig.Headers) > 0 {
+			wCfg = append(wCfg, yaml.MapItem{Key: "headers", Value: orderedYAMLMAp(webCfg.HTTPServerConfig.Headers)})
+		}
+		cfg = append(cfg, yaml.MapItem{Key: "http_server_config", Value: wCfg})
+	}
+	if webCfg.TLSServerConfig != nil {
+		var tlsCfg yaml.MapSlice
+		secretMap := make(map[string]*v1.Secret)
+		if webCfg.TLSServerConfig.ClientCASecretRef != nil {
+			data, err := fetchSecretValue(ctx, rclient, vmaCR.Namespace, webCfg.TLSServerConfig.ClientCASecretRef, secretMap)
+			if err != nil {
+				return nil, fmt.Errorf("cannot fetch secret clientCA value: %w", err)
+			}
+			assetKey := secretSelectorToAssetKey(webCfg.TLSServerConfig.ClientCASecretRef)
+			tlsAssets[assetKey] = string(data)
+			webCfg.TLSServerConfig.ClientCAFile = tlsAssetsDir + "/" + assetKey
+		}
+		if webCfg.TLSServerConfig.CertSecretRef != nil {
+			data, err := fetchSecretValue(ctx, rclient, vmaCR.Namespace, webCfg.TLSServerConfig.CertSecretRef, secretMap)
+			if err != nil {
+				return nil, fmt.Errorf("cannot fetch secret clientCA value: %w", err)
+			}
+			assetKey := secretSelectorToAssetKey(webCfg.TLSServerConfig.CertSecretRef)
+			tlsAssets[assetKey] = string(data)
+			webCfg.TLSServerConfig.CertFile = tlsAssetsDir + "/" + assetKey
+
+		}
+
+		if webCfg.TLSServerConfig.KeySecretRef != nil {
+			data, err := fetchSecretValue(ctx, rclient, vmaCR.Namespace, webCfg.TLSServerConfig.KeySecretRef, secretMap)
+			if err != nil {
+				return nil, fmt.Errorf("cannot fetch secret clientCA value: %w", err)
+			}
+			assetKey := secretSelectorToAssetKey(webCfg.TLSServerConfig.KeySecretRef)
+			tlsAssets[assetKey] = string(data)
+			webCfg.TLSServerConfig.KeyFile = tlsAssetsDir + "/" + assetKey
+		}
+
+		if len(webCfg.TLSServerConfig.ClientCAFile) > 0 {
+			tlsCfg = append(tlsCfg, yaml.MapItem{Key: "client_ca_file", Value: webCfg.TLSServerConfig.ClientCAFile})
+		}
+		if len(webCfg.TLSServerConfig.CertFile) > 0 {
+			tlsCfg = append(tlsCfg, yaml.MapItem{Key: "cert_file", Value: webCfg.TLSServerConfig.CertFile})
+		}
+		if len(webCfg.TLSServerConfig.KeyFile) > 0 {
+			tlsCfg = append(tlsCfg, yaml.MapItem{Key: "key_file", Value: webCfg.TLSServerConfig.KeyFile})
+		}
+		if len(webCfg.TLSServerConfig.CipherSuites) > 0 {
+			tlsCfg = append(tlsCfg, yaml.MapItem{Key: "cipher_suites", Value: webCfg.TLSServerConfig.CipherSuites})
+		}
+		if len(webCfg.TLSServerConfig.CurvePreferences) > 0 {
+			tlsCfg = append(tlsCfg, yaml.MapItem{Key: "curve_preferences", Value: webCfg.TLSServerConfig.CurvePreferences})
+		}
+		if len(webCfg.TLSServerConfig.ClientAuthType) > 0 {
+			tlsCfg = append(tlsCfg, yaml.MapItem{Key: "client_auth_type", Value: webCfg.TLSServerConfig.ClientAuthType})
+		}
+		if webCfg.TLSServerConfig.PreferServerCipherSuites {
+			tlsCfg = append(tlsCfg, yaml.MapItem{Key: "prefer_server_cipher_suites", Value: webCfg.TLSServerConfig.PreferServerCipherSuites})
+		}
+		if len(webCfg.TLSServerConfig.MaxVersion) > 0 {
+			tlsCfg = append(tlsCfg, yaml.MapItem{Key: "max_version", Value: webCfg.TLSServerConfig.MaxVersion})
+		}
+		if len(webCfg.TLSServerConfig.MinVersion) > 0 {
+			tlsCfg = append(tlsCfg, yaml.MapItem{Key: "min_version", Value: webCfg.TLSServerConfig.MinVersion})
+		}
+
+		cfg = append(cfg, yaml.MapItem{Key: "tls_server_config", Value: tlsCfg})
+	}
+	if len(webCfg.BasicAuthUsers) > 0 {
+		cfg = append(cfg, yaml.MapItem{Key: "basic_auth_users", Value: orderedYAMLMAp(webCfg.BasicAuthUsers)})
+	}
+
+	data, err := yaml.Marshal(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("cannot serialize alertmanager webconfig as yaml: %w", err)
+	}
+	return data, nil
+}
+
+func orderedYAMLMAp(src map[string]string) yaml.MapSlice {
+	dstKeys := make([]string, 0, len(src))
+	for key := range src {
+		dstKeys = append(dstKeys, key)
+	}
+	sort.Strings(dstKeys)
+	var result yaml.MapSlice
+	for _, key := range dstKeys {
+		result = append(result, yaml.MapItem{Key: key, Value: src[key]})
+	}
+	return result
 }

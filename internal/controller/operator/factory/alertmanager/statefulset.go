@@ -31,8 +31,11 @@ import (
 const (
 	defaultRetention            = "120h"
 	alertmanagerSecretConfigKey = "alertmanager.yaml"
+	webserverConfigKey          = "webserver_config.yaml"
 	alertmanagerConfDir         = "/etc/alertmanager/config"
 	alertmanagerConfFile        = alertmanagerConfDir + "/alertmanager.yaml"
+	tlsAssetsDir                = "/etc/alertmanager/tls_assets"
+	tlsAssetsVolumeName         = "tls-assets"
 	alertmanagerStorageDir      = "/alertmanager"
 	defaultPortName             = "web"
 	configVolumeName            = "config-volume"
@@ -155,6 +158,9 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager, c *config.BaseOperatorCon
 		fmt.Sprintf("--storage.path=%s", alertmanagerStorageDir),
 		fmt.Sprintf("--data.retention=%s", cr.Spec.Retention),
 	}
+	if cr.Spec.WebConfig != nil {
+		amArgs = append(amArgs, fmt.Sprintf("--web.config.file=%s/%s", tlsAssetsDir, webserverConfigKey))
+	}
 
 	if *cr.Spec.ReplicaCount == 1 {
 		amArgs = append(amArgs, "--cluster.listen-address=")
@@ -229,7 +235,17 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager, c *config.BaseOperatorCon
 
 	volumes := []corev1.Volume{
 		{
-			Name: "config-volume",
+			Name: configVolumeName,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: cr.ConfigSecretName(),
+				},
+			},
+		},
+		// use a different volume mount for the case of customer config reloader
+		// it overrides actual mounts with empty dir
+		{
+			Name: tlsAssetsVolumeName,
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: cr.ConfigSecretName(),
@@ -257,6 +273,11 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager, c *config.BaseOperatorCon
 			MountPath: alertmanagerStorageDir,
 			SubPath:   subPathForStorage(cr.Spec.Storage),
 		},
+		{
+			Name:      tlsAssetsVolumeName,
+			MountPath: tlsAssetsDir,
+			ReadOnly:  true,
+		},
 	}
 
 	for _, s := range cr.Spec.Secrets {
@@ -280,6 +301,11 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager, c *config.BaseOperatorCon
 			Name:      configVolumeName,
 			MountPath: alertmanagerConfDir,
 			ReadOnly:  false,
+		},
+		{
+			Name:      tlsAssetsVolumeName,
+			MountPath: tlsAssetsDir,
+			ReadOnly:  true,
 		},
 	}
 
@@ -472,6 +498,10 @@ func createDefaultAMConfig(ctx context.Context, cr *vmv1beta1.VMAlertmanager, rc
 		return fmt.Errorf("cannot build alertmanager config with configSelector, err: %w", err)
 	}
 	alertmananagerConfig = mergedCfg
+	webCfg, err := buildWebServerConfigYAML(ctx, rclient, cr, tlsAssets)
+	if err != nil {
+		return fmt.Errorf("cannot build webserver config: %w", err)
+	}
 
 	// apply default config to be able just start alertmanager
 	if len(alertmananagerConfig) == 0 {
@@ -501,6 +531,9 @@ func createDefaultAMConfig(ctx context.Context, cr *vmv1beta1.VMAlertmanager, rc
 			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},
 		Data: map[string][]byte{alertmanagerSecretConfigKey: alertmananagerConfig},
+	}
+	if cr.Spec.WebConfig != nil {
+		newAMSecretConfig.Data[webserverConfigKey] = webCfg
 	}
 
 	for assetKey, assetValue := range tlsAssets {

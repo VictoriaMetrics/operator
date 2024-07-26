@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -722,7 +723,7 @@ templates: []
 					},
 				},
 			},
-			parseError: "cannot find secret for VMAlertmanager config: tg, err :secrets \"tg-secret\" not found in object: default/tg, will ignore vmalertmanagerconfig tg",
+			parseError: `cannot find secret="tg-secret" to fetch content at ns="default", err: secrets "tg-secret" not found in object: default/tg, will ignore vmalertmanagerconfig tg`,
 			want: `global:
   time_out: 1min
 route:
@@ -1179,8 +1180,8 @@ func Test_configBuilder_buildHTTPConfig(t *testing.T) {
 				},
 			}},
 			want: `tls_config:
-  ca_file: /etc/alertmanager/config/default_secret-store_ca
-  cert_file: /etc/alertmanager/config/default_secret-store_cert
+  ca_file: /etc/alertmanager/tls_assets/default_secret-store_ca
+  cert_file: /etc/alertmanager/tls_assets/default_secret-store_cert
   insecure_skip_verify: true
   key_file: /etc/mounted_dir/key.pem
 authorization:
@@ -1247,10 +1248,10 @@ authorization:
 				},
 			},
 			want: `tls_config:
-  ca_file: /etc/alertmanager/config/default_cm-store_ca
-  cert_file: /etc/alertmanager/config/default_secret-store_cert
+  ca_file: /etc/alertmanager/tls_assets/default_cm-store_ca
+  cert_file: /etc/alertmanager/tls_assets/default_secret-store_cert
   insecure_skip_verify: true
-  key_file: /etc/alertmanager/config/default_secret-store_key
+  key_file: /etc/alertmanager/tls_assets/default_secret-store_key
 authorization:
   credentials: secret-token
 `,
@@ -1455,6 +1456,156 @@ func Test_UpdateDefaultAMConfig(t *testing.T) {
 			if len(secretConfig.Route.Routes[0]) != len(amc.Spec.Route.Routes)+2 { // 2 default routes added
 				t.Fatalf("subroutes count is wrong. Expected: %v, actual: %v", len(amc.Spec.Route.Routes), len(secretConfig.Route.Routes))
 			}
+		})
+	}
+}
+
+func TestBuildWebConfig(t *testing.T) {
+	type args struct {
+		ctx   context.Context
+		vmaCR vmv1beta1.VMAlertmanager
+	}
+	tests := []struct {
+		name              string
+		args              args
+		predefinedObjects []runtime.Object
+		want              string
+		wantErr           bool
+	}{
+		{
+			name: "simple test",
+			args: args{
+				ctx: context.Background(),
+				vmaCR: vmv1beta1.VMAlertmanager{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "test",
+						Name:      "web-cfg",
+					},
+					Spec: vmv1beta1.VMAlertmanagerSpec{
+						WebConfig: &vmv1beta1.AlertmanagerWebConfig{
+							HTTPServerConfig: &vmv1beta1.AlertmanagerHTTPConfig{
+								Headers: map[string]string{"h-1": "v-1", "h-2": "v-2"},
+							},
+						},
+					},
+				},
+			},
+			want: `http_server_config:
+  headers:
+    h-1: v-1
+    h-2: v-2
+`,
+		},
+		{
+			name: "with http2 and tls files",
+			args: args{
+				ctx: context.Background(),
+				vmaCR: vmv1beta1.VMAlertmanager{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "test",
+						Name:      "web-cfg",
+					},
+					Spec: vmv1beta1.VMAlertmanagerSpec{
+						WebConfig: &vmv1beta1.AlertmanagerWebConfig{
+							TLSServerConfig: &vmv1beta1.WebserverTLSConfig{
+								ClientCAFile: "/etc/client_ca",
+								CertFile:     "/etc/cert.pem",
+								KeyFile:      "/etc/cert.key",
+							},
+							HTTPServerConfig: &vmv1beta1.AlertmanagerHTTPConfig{
+								HTTP2:   true,
+								Headers: map[string]string{"h-1": "v-1", "h-2": "v-2"},
+							},
+						},
+					},
+				},
+			},
+			want: `http_server_config:
+  http2: true
+  headers:
+    h-1: v-1
+    h-2: v-2
+tls_server_config:
+  client_ca_file: /etc/client_ca
+  cert_file: /etc/cert.pem
+  key_file: /etc/cert.key
+`,
+		},
+		{
+			name: "http2 and tls secrets",
+			args: args{
+				ctx: context.Background(),
+				vmaCR: vmv1beta1.VMAlertmanager{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "test",
+						Name:      "web-cfg",
+					},
+					Spec: vmv1beta1.VMAlertmanagerSpec{
+						WebConfig: &vmv1beta1.AlertmanagerWebConfig{
+							TLSServerConfig: &vmv1beta1.WebserverTLSConfig{
+								ClientCASecretRef: &v1.SecretKeySelector{
+									Key:                  "client_ca",
+									LocalObjectReference: v1.LocalObjectReference{Name: "tls-secret"},
+								},
+								CertSecretRef: &v1.SecretKeySelector{
+									Key:                  "cert",
+									LocalObjectReference: v1.LocalObjectReference{Name: "tls-secret"},
+								},
+								KeySecretRef: &v1.SecretKeySelector{
+									Key:                  "key",
+									LocalObjectReference: v1.LocalObjectReference{Name: "tls-secret-key"},
+								},
+							},
+							HTTPServerConfig: &vmv1beta1.AlertmanagerHTTPConfig{
+								HTTP2:   true,
+								Headers: map[string]string{"h-1": "v-1", "h-2": "v-2"},
+							},
+						},
+					},
+				},
+			},
+			predefinedObjects: []runtime.Object{
+				&v1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "test",
+						Name:      "tls-secret",
+					},
+					Data: map[string][]byte{
+						"client_ca": []byte(`content`),
+						"cert":      []byte(`content`),
+					},
+				},
+				&v1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "test",
+						Name:      "tls-secret-key",
+					},
+					Data: map[string][]byte{
+						"key": []byte(`content`),
+					},
+				},
+			},
+			want: `http_server_config:
+  http2: true
+  headers:
+    h-1: v-1
+    h-2: v-2
+tls_server_config:
+  client_ca_file: /etc/alertmanager/tls_assets/tls-secret_client_ca
+  cert_file: /etc/alertmanager/tls_assets/tls-secret_cert
+  key_file: /etc/alertmanager/tls_assets/tls-secret-key_key
+`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
+			tlsAssets := make(map[string]string)
+			cfg, err := buildWebServerConfigYAML(tt.args.ctx, fclient, &tt.args.vmaCR, tlsAssets)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("unexpected error: %q", err)
+			}
+			assert.Equal(t, tt.want, string(cfg))
 		})
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
@@ -436,10 +437,16 @@ password: pass
 							"foo": "bar",
 							"buz": "qux",
 						},
+						TargetRefs: []vmv1beta1.TargetRef{
+							{
+								Static: &vmv1beta1.StaticRef{URL: "http://localhost:8435"},
+							},
+						},
 					},
 				},
 			},
-			want: `url_map: []
+			want: `url_prefix:
+- http://localhost:8435
 name: user1
 metric_labels:
   buz: qux
@@ -495,7 +502,7 @@ func Test_genPassword(t *testing.T) {
 
 func Test_selectVMUserSecrets(t *testing.T) {
 	type args struct {
-		vmUsers []*vmv1beta1.VMUser
+		vmUsers *skipableVMUsers
 	}
 	tests := []struct {
 		name                string
@@ -508,20 +515,22 @@ func Test_selectVMUserSecrets(t *testing.T) {
 		{
 			name: "want 1 updateSecret",
 			args: args{
-				vmUsers: []*vmv1beta1.VMUser{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "exist",
-							Namespace: "default",
+				vmUsers: &skipableVMUsers{
+					users: []*vmv1beta1.VMUser{
+						{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "exist",
+								Namespace: "default",
+							},
+							Spec: vmv1beta1.VMUserSpec{BearerToken: ptr.To("some-bearer")},
 						},
-						Spec: vmv1beta1.VMUserSpec{BearerToken: ptr.To("some-bearer")},
-					},
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "not-exist",
-							Namespace: "default",
+						{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "not-exist",
+								Namespace: "default",
+							},
+							Spec: vmv1beta1.VMUserSpec{BearerToken: ptr.To("some-bearer")},
 						},
-						Spec: vmv1beta1.VMUserSpec{BearerToken: ptr.To("some-bearer")},
 					},
 				},
 			},
@@ -536,30 +545,32 @@ func Test_selectVMUserSecrets(t *testing.T) {
 		{
 			name: "want 1 updateSecret",
 			args: args{
-				vmUsers: []*vmv1beta1.VMUser{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "must-not-exist",
-							Namespace: "default",
+				vmUsers: &skipableVMUsers{
+					users: []*vmv1beta1.VMUser{
+						{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "must-not-exist",
+								Namespace: "default",
+							},
+							Spec: vmv1beta1.VMUserSpec{
+								BearerToken:           ptr.To("some-bearer"),
+								DisableSecretCreation: true,
+							},
 						},
-						Spec: vmv1beta1.VMUserSpec{
-							BearerToken:           ptr.To("some-bearer"),
-							DisableSecretCreation: true,
+						{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "not-exists-must-create",
+								Namespace: "default",
+							},
+							Spec: vmv1beta1.VMUserSpec{BearerToken: ptr.To("some-bearer")},
 						},
-					},
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "not-exists-must-create",
-							Namespace: "default",
+						{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "exists",
+								Namespace: "default",
+							},
+							Spec: vmv1beta1.VMUserSpec{BearerToken: ptr.To("some-bearer")},
 						},
-						Spec: vmv1beta1.VMUserSpec{BearerToken: ptr.To("some-bearer")},
-					},
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "exists",
-							Namespace: "default",
-						},
-						Spec: vmv1beta1.VMUserSpec{BearerToken: ptr.To("some-bearer")},
 					},
 				},
 			},
@@ -574,22 +585,24 @@ func Test_selectVMUserSecrets(t *testing.T) {
 		{
 			name: "want nothing",
 			args: args{
-				vmUsers: []*vmv1beta1.VMUser{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "exist-with-generated",
-							Namespace: "default",
+				vmUsers: &skipableVMUsers{
+					users: []*vmv1beta1.VMUser{
+						{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "exist-with-generated",
+								Namespace: "default",
+							},
+							Spec: vmv1beta1.VMUserSpec{
+								GeneratePassword: true,
+							},
 						},
-						Spec: vmv1beta1.VMUserSpec{
-							GeneratePassword: true,
+						{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "exist-hardcoded",
+								Namespace: "default",
+							},
+							Spec: vmv1beta1.VMUserSpec{},
 						},
-					},
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "exist-hardcoded",
-							Namespace: "default",
-						},
-						Spec: vmv1beta1.VMUserSpec{},
 					},
 				},
 			},
@@ -609,22 +622,24 @@ func Test_selectVMUserSecrets(t *testing.T) {
 		{
 			name: "update secret value",
 			args: args{
-				vmUsers: []*vmv1beta1.VMUser{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "exist-with-generated",
-							Namespace: "default",
+				vmUsers: &skipableVMUsers{
+					users: []*vmv1beta1.VMUser{
+						{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "exist-with-generated",
+								Namespace: "default",
+							},
+							Spec: vmv1beta1.VMUserSpec{
+								GeneratePassword: true,
+							},
 						},
-						Spec: vmv1beta1.VMUserSpec{
-							GeneratePassword: true,
+						{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "exist-to-update",
+								Namespace: "default",
+							},
+							Spec: vmv1beta1.VMUserSpec{Password: ptr.To("some-new-password"), UserName: ptr.To("some-user")},
 						},
-					},
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "exist-to-update",
-							Namespace: "default",
-						},
-						Spec: vmv1beta1.VMUserSpec{Password: ptr.To("some-new-password"), UserName: ptr.To("some-user")},
 					},
 				},
 			},
@@ -699,7 +714,7 @@ func Test_buildVMAuthConfig(t *testing.T) {
 		predefinedObjects []runtime.Object
 	}{
 		{
-			name: "default cfg",
+			name: "simple cfg",
 			args: args{
 				vmauth: &vmv1beta1.VMAuth{
 					ObjectMeta: metav1.ObjectMeta{
@@ -764,6 +779,91 @@ func Test_buildVMAuthConfig(t *testing.T) {
   bearer_token: bearer-token-2
 `,
 		},
+		{
+			name: "simple cfg with duplicated users",
+			args: args{
+				vmauth: &vmv1beta1.VMAuth{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-vmauth",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMAuthSpec{
+						SelectAllByDefault: true,
+					},
+				},
+			},
+			predefinedObjects: []runtime.Object{
+				&vmv1beta1.VMUser{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:              "user-1",
+						Namespace:         "default",
+						CreationTimestamp: metav1.Time{Time: time.Unix(123, 0)},
+					},
+					Spec: vmv1beta1.VMUserSpec{
+						Name:        ptr.To("user1"),
+						BearerToken: ptr.To("bearer"),
+						TargetRefs: []vmv1beta1.TargetRef{
+							{
+								Static: &vmv1beta1.StaticRef{URL: "http://some-static"},
+								Paths:  []string{"/"},
+							},
+						},
+					},
+				},
+				&vmv1beta1.VMUser{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:              "user-1-duplicate",
+						Namespace:         "default",
+						CreationTimestamp: metav1.Time{Time: time.Unix(150, 0)},
+					},
+					Spec: vmv1beta1.VMUserSpec{
+						Name:        ptr.To("user1"),
+						BearerToken: ptr.To("bearer"),
+						TargetRefs: []vmv1beta1.TargetRef{
+							{
+								Static: &vmv1beta1.StaticRef{URL: "http://some-static"},
+								Paths:  []string{"/"},
+							},
+						},
+					},
+				},
+				&vmv1beta1.VMUser{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "user-2",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMUserSpec{
+						BearerToken: ptr.To("bearer-token-2"),
+						TargetRefs: []vmv1beta1.TargetRef{
+							{
+								CRD: &vmv1beta1.CRDRef{
+									Kind:      "VMAgent",
+									Name:      "test",
+									Namespace: "default",
+								},
+								Paths: []string{"/"},
+							},
+						},
+					},
+				},
+				&vmv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "default",
+					},
+				},
+			},
+			want: `users:
+- url_prefix:
+  - http://some-static
+  name: user1
+  bearer_token: bearer
+- url_prefix:
+  - http://vmagent-test.default.svc:8429
+  bearer_token: bearer-token-2
+`,
+		},
+
 		{
 			name: "with targetRef basicauth secret refs and headers",
 			args: args{
@@ -1712,6 +1812,152 @@ unauthorized_user:
     url_prefix:
     - http://route-1
     - http://route-2
+`,
+		},
+		{
+			name: "with duplicated users and broken links",
+			args: args{
+				vmauth: &vmv1beta1.VMAuth{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-vmauth",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMAuthSpec{
+						SelectAllByDefault: true,
+					},
+				},
+			},
+			predefinedObjects: []runtime.Object{
+				&vmv1beta1.VMUser{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:              "user-1",
+						Namespace:         "default",
+						CreationTimestamp: metav1.Time{Time: time.Unix(123, 0)},
+					},
+					Spec: vmv1beta1.VMUserSpec{
+						Name:        ptr.To("user1"),
+						BearerToken: ptr.To("bearer"),
+						TargetRefs: []vmv1beta1.TargetRef{
+							{
+								Static: &vmv1beta1.StaticRef{URL: "http://some-static"},
+								Paths:  []string{"/"},
+							},
+						},
+					},
+				},
+				&vmv1beta1.VMUser{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:              "user-5-duplicate",
+						Namespace:         "default",
+						CreationTimestamp: metav1.Time{Time: time.Unix(150, 0)},
+					},
+					Spec: vmv1beta1.VMUserSpec{
+						Name:        ptr.To("user1"),
+						BearerToken: ptr.To("bearer"),
+						TargetRefs: []vmv1beta1.TargetRef{
+							{
+								Static: &vmv1beta1.StaticRef{URL: "http://some-static"},
+								Paths:  []string{"/"},
+							},
+						},
+					},
+				},
+				&vmv1beta1.VMUser{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:              "user-6-duplicate",
+						Namespace:         "default",
+						CreationTimestamp: metav1.Time{Time: time.Unix(135, 0)},
+					},
+					Spec: vmv1beta1.VMUserSpec{
+						Name:        ptr.To("user1"),
+						BearerToken: ptr.To("bearer"),
+						TargetRefs: []vmv1beta1.TargetRef{
+							{
+								Static: &vmv1beta1.StaticRef{URL: "http://some-static"},
+								Paths:  []string{"/"},
+							},
+						},
+					},
+				},
+
+				&vmv1beta1.VMUser{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "user-2",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMUserSpec{
+						BearerToken: ptr.To("bearer-token-2"),
+						TargetRefs: []vmv1beta1.TargetRef{
+							{
+								CRD: &vmv1beta1.CRDRef{
+									Kind:      "VMAgent",
+									Name:      "test",
+									Namespace: "default",
+								},
+								Paths: []string{"/"},
+							},
+						},
+					},
+				},
+				&vmv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "default",
+					},
+				},
+				&vmv1beta1.VMUser{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "user-3-broken-crd-link",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMUserSpec{
+						BearerToken: ptr.To("bearer-token-17"),
+						TargetRefs: []vmv1beta1.TargetRef{
+							{
+								CRD: &vmv1beta1.CRDRef{
+									Kind:      "VMAgent",
+									Name:      "test-not-found",
+									Namespace: "default",
+								},
+								Paths: []string{"/"},
+							},
+						},
+					},
+				},
+				&vmv1beta1.VMUser{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "user-3-missing-urls",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMUserSpec{
+						BearerToken: ptr.To("bearer-token-15"),
+					},
+				},
+				&vmv1beta1.VMUser{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "user-10-non-exist-secret-ref",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMUserSpec{
+						TokenRef: &corev1.SecretKeySelector{},
+						TargetRefs: []vmv1beta1.TargetRef{
+							{
+								Static: &vmv1beta1.StaticRef{
+									URL: "http://some",
+								},
+							},
+						},
+					},
+				},
+			},
+			want: `users:
+- url_prefix:
+  - http://some-static
+  name: user1
+  bearer_token: bearer
+- url_prefix:
+  - http://vmagent-test.default.svc:8429
+  bearer_token: bearer-token-2
 `,
 		},
 	}

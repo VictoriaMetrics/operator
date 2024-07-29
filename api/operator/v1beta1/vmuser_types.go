@@ -88,7 +88,8 @@ type VMUserIPFilters struct {
 // CRDRef describe CRD target reference.
 type CRDRef struct {
 	// Kind one of:
-	// VMAgent VMAlert VMCluster VMSingle or VMAlertManager
+	// VMAgent,VMAlert, VMSingle, VMCluster/vmselect, VMCluster/vmstorage,VMCluster/vminsert  or VMAlertManager
+	// +kubebuilder:validation:Enum=VMAgent;VMAlert;VMSingle;VMAlertManager;VMCluster/vmselect;VMCluster/vmstorage;VMCluster/vminsert
 	Kind string `json:"kind"`
 	// Name target CRD object name
 	Name string `json:"name"`
@@ -129,11 +130,18 @@ type TargetRefBasicAuth struct {
 }
 
 // VMUserStatus defines the observed state of VMUser
-type VMUserStatus struct{}
+type VMUserStatus struct {
+	// LastSyncError contains error message for unsuccessful config generation
+	// for given user
+	LastSyncError string `json:"lastSyncError,omitempty"`
+	// CurrentSyncError holds an error occured during reconcile loop
+	CurrentSyncError string `json:"-"`
+}
 
 // VMUser is the Schema for the vmusers API
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Sync Error",type="string",JSONPath=".status.lastSyncError"
 // +genclient
 type VMUser struct {
 	metav1.TypeMeta   `json:",inline"`
@@ -182,7 +190,7 @@ func (cr *VMUser) AsOwner() []metav1.OwnerReference {
 
 func (cr VMUser) AnnotationsFiltered() map[string]string {
 	annotations := make(map[string]string)
-	for annotation, value := range cr.ObjectMeta.Annotations {
+	for annotation, value := range cr.Annotations {
 		if !strings.HasPrefix(annotation, "kubectl.kubernetes.io/") {
 			annotations[annotation] = value
 		}
@@ -199,10 +207,11 @@ func (cr VMUser) SelectorLabels() map[string]string {
 	}
 }
 
+// AllLabels returns combined labels for VMUser
 func (cr VMUser) AllLabels() map[string]string {
 	labels := cr.SelectorLabels()
-	if cr.ObjectMeta.Labels != nil {
-		for label, value := range cr.ObjectMeta.Labels {
+	if cr.Labels != nil {
+		for label, value := range cr.Labels {
 			if _, ok := labels[label]; ok {
 				// forbid changes for selector labels
 				continue

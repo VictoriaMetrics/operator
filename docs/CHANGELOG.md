@@ -11,8 +11,6 @@ aliases:
   - /operator/changelog/
   - /operator/changelog/index.html
 ---
-# CHANGELOG
-
 - [operator](./README.md): properly release `PodDisruptionBudget` object finalizer. Previously it could be kept due to typo. See this [issue](https://github.com/VictoriaMetrics/operator/issues/1036) for details.
 - [operator](./README.md): refactors finalizers usage. Simplifies finalizer manipulation with helper functions
 - [vmalertmanager](./api.md#vmalertmanager): adds `webConfig` that simplifies tls configuration for alertmanager and allows to properly build probes and access urls for alertmanager. See this [issue](https://github.com/VictoriaMetrics/operator/issues/994) for details.

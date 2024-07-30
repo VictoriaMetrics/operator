@@ -27698,7 +27698,11 @@ spec:
     singular: vmuser
   scope: Namespaced
   versions:
-  - name: v1beta1
+  - additionalPrinterColumns:
+    - jsonPath: .status.lastSyncError
+      name: Sync Error
+      type: string
+    name: v1beta1
     schema:
       openAPIV3Schema:
         description: VMUser is the Schema for the vmusers API
@@ -27863,7 +27867,15 @@ spec:
                         kind:
                           description: |-
                             Kind one of:
-                            VMAgent VMAlert VMCluster VMSingle or VMAlertManager
+                            VMAgent,VMAlert, VMSingle, VMCluster/vmselect, VMCluster/vmstorage,VMCluster/vminsert  or VMAlertManager
+                          enum:
+                          - VMAgent
+                          - VMAlert
+                          - VMSingle
+                          - VMAlertManager
+                          - VMCluster/vmselect
+                          - VMCluster/vmstorage
+                          - VMCluster/vminsert
                           type: string
                         name:
                           description: Name target CRD object name
@@ -28226,6 +28238,12 @@ spec:
             type: object
           status:
             description: VMUserStatus defines the observed state of VMUser
+            properties:
+              lastSyncError:
+                description: |-
+                  LastSyncError contains error message for unsuccessful config generation
+                  for given user
+                type: string
             type: object
         type: object
     served: true

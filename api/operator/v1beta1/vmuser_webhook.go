@@ -48,7 +48,10 @@ func (r *VMUser) sanityCheck() error {
 	if r.Spec.PasswordRef != nil && r.Spec.Password != nil {
 		return fmt.Errorf("one of spec.password or spec.passwordRef must be used for user, got both")
 	}
-	isRetryCodesSet := len(r.Spec.UserConfigOption.RetryStatusCodes) > 0
+	if len(r.Spec.TargetRefs) == 0 {
+		return fmt.Errorf("at least 1 TargetRef must be provided for spec.targetRefs")
+	}
+	isRetryCodesSet := len(r.Spec.RetryStatusCodes) > 0
 	for i := range r.Spec.TargetRefs {
 		targetRef := r.Spec.TargetRefs[i]
 		if targetRef.CRD != nil && targetRef.Static != nil {
@@ -56,6 +59,11 @@ func (r *VMUser) sanityCheck() error {
 		}
 		if targetRef.CRD == nil && targetRef.Static == nil {
 			return fmt.Errorf("targetRef validation failed, one of `crd` or `static` must be configured, got none")
+		}
+		if targetRef.Static != nil {
+			if targetRef.Static.URL == "" && len(targetRef.Static.URLs) == 0 {
+				return fmt.Errorf("for targetRef.static url or urls option must be set at idx=%d", i)
+			}
 		}
 		if targetRef.CRD != nil {
 			switch targetRef.CRD.Kind {
@@ -67,20 +75,20 @@ func (r *VMUser) sanityCheck() error {
 				return fmt.Errorf("crd.name and crd.namespace cannot be empty")
 			}
 		}
-		if err := parseHeaders(targetRef.URLMapCommon.ResponseHeaders); err != nil {
+		if err := parseHeaders(targetRef.ResponseHeaders); err != nil {
 			return fmt.Errorf("failed to parse targetRef response headers :%w", err)
 		}
-		if err := parseHeaders(targetRef.URLMapCommon.RequestHeaders); err != nil {
+		if err := parseHeaders(targetRef.RequestHeaders); err != nil {
 			return fmt.Errorf("failed to parse targetRef headers :%w", err)
 		}
-		if isRetryCodesSet && len(targetRef.URLMapCommon.RetryStatusCodes) > 0 {
+		if isRetryCodesSet && len(targetRef.RetryStatusCodes) > 0 {
 			return fmt.Errorf("retry_status_codes already set at VMUser.spec level")
 		}
 	}
-	if err := parseHeaders(r.Spec.UserConfigOption.Headers); err != nil {
+	if err := parseHeaders(r.Spec.Headers); err != nil {
 		return fmt.Errorf("failed to parse vmuser headers: %w", err)
 	}
-	if err := parseHeaders(r.Spec.UserConfigOption.ResponseHeaders); err != nil {
+	if err := parseHeaders(r.Spec.ResponseHeaders); err != nil {
 		return fmt.Errorf("failed to parse vmuser response headers: %w", err)
 	}
 	return nil

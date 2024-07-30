@@ -293,7 +293,7 @@ _Appears in:_
 
 | Field | Description | Scheme | Required |
 | --- | --- | --- | --- |
-| `kind` | Kind one of:<br />VMAgent VMAlert VMCluster VMSingle or VMAlertManager | _string_ | true |
+| `kind` | Kind one of:<br />VMAgent,VMAlert, VMSingle, VMCluster/vmselect, VMCluster/vmstorage,VMCluster/vminsert  or VMAlertManager | _string_ | true |
 | `name` | Name target CRD object name | _string_ | true |
 | `namespace` | Namespace target CRD object namespace. | _string_ | true |
 
@@ -3736,11 +3736,11 @@ _Appears in:_
 | --- | --- | --- | --- |
 | `cert_file` | CertFile defines path to the pre-mounted file with certificate<br />mutually exclusive with CertSecretRef | _string_ | true |
 | `cert_secret_ref` | Cert defines reference for secret with CA content under given key<br />mutually exclusive with CertFile | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | true |
-| `cipher_suites` | CipherSuites defines list of supported cipher suites for TLS versions up to TLS 1.2 | _string array_ | true |
+| `cipher_suites` | CipherSuites defines list of supported cipher suites for TLS versions up to TLS 1.2<br />https://golang.org/pkg/crypto/tls/#pkg-constants | _string array_ | true |
 | `client_auth_type` | ClientAuthType defines server policy for client authentication<br />If you want to enable client authentication (aka mTLS), you need to use RequireAndVerifyClientCert<br />Note, mTLS is supported only at enterprise version of VictoriaMetrics components | _string_ | true |
 | `client_ca_file` | ClientCAFile defines path to the pre-mounted file with CA<br />mutually exclusive with ClientCASecretRef | _string_ | true |
 | `client_ca_secret_ref` | ClientCA defines reference for secret with CA content under given key<br />mutually exclusive with ClientCAFile | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | true |
-| `curve_preferences` | CurvePreferences defines elliptic curves that will be used in an ECDHE handshake, in preference order. | _string array_ | true |
+| `curve_preferences` | CurvePreferences defines elliptic curves that will be used in an ECDHE handshake, in preference order.<br />https://golang.org/pkg/crypto/tls/#CurveID | _string array_ | true |
 | `key_file` | KeyFile defines path to the pre-mounted file with certificate key<br />mutually exclusive with KeySecretRef | _string_ | true |
 | `key_secret_ref` | Key defines reference for secret with certificate key content under given key<br />mutually exclusive with KeyFile | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | true |
 | `max_version` | MaxVersion maximum TLS version that is acceptable. | _string_ | true |

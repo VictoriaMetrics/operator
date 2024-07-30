@@ -32,6 +32,7 @@ const (
 	defaultRetention            = "120h"
 	alertmanagerSecretConfigKey = "alertmanager.yaml"
 	webserverConfigKey          = "webserver_config.yaml"
+	gossipConfigKey             = "gossip_config.yaml"
 	alertmanagerConfDir         = "/etc/alertmanager/config"
 	alertmanagerConfFile        = alertmanagerConfDir + "/alertmanager.yaml"
 	tlsAssetsDir                = "/etc/alertmanager/tls_assets"
@@ -160,6 +161,9 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager, c *config.BaseOperatorCon
 	}
 	if cr.Spec.WebConfig != nil {
 		amArgs = append(amArgs, fmt.Sprintf("--web.config.file=%s/%s", tlsAssetsDir, webserverConfigKey))
+	}
+	if cr.Spec.GossipConfig != nil {
+		amArgs = append(amArgs, fmt.Sprintf("--cluster.tls-config=%s/%s", tlsAssetsDir, gossipConfigKey))
 	}
 
 	if *cr.Spec.ReplicaCount == 1 {
@@ -503,6 +507,11 @@ func createDefaultAMConfig(ctx context.Context, cr *vmv1beta1.VMAlertmanager, rc
 		return fmt.Errorf("cannot build webserver config: %w", err)
 	}
 
+	gossipCfg, err := buildGossipConfigYAML(ctx, rclient, cr, tlsAssets)
+	if err != nil {
+		return fmt.Errorf("cannot build gossip config: %w", err)
+	}
+
 	// apply default config to be able just start alertmanager
 	if len(alertmananagerConfig) == 0 {
 		alertmananagerConfig = []byte(defaultAMConfig)
@@ -534,6 +543,9 @@ func createDefaultAMConfig(ctx context.Context, cr *vmv1beta1.VMAlertmanager, rc
 	}
 	if cr.Spec.WebConfig != nil {
 		newAMSecretConfig.Data[webserverConfigKey] = webCfg
+	}
+	if cr.Spec.GossipConfig != nil {
+		newAMSecretConfig.Data[gossipConfigKey] = gossipCfg
 	}
 
 	for assetKey, assetValue := range tlsAssets {

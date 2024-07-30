@@ -89,6 +89,23 @@ _Appears in:_
 | `useAsDefault` | UseAsDefault applies changes from given service definition to the main object Service<br />Changing from headless service to clusterIP or loadbalancer may break cross-component communication | _boolean_ | false |
 
 
+#### AlertmanagerGossipConfig
+
+
+
+AlertmanagerGossipConfig defines Gossip TLS configuration for alertmanager
+
+
+
+_Appears in:_
+- [VMAlertmanagerSpec](#vmalertmanagerspec)
+
+| Field | Description | Scheme | Required |
+| --- | --- | --- | --- |
+| `tls_client_config` | TLSClientConfig defines client TLS configuration for alertmanager | _[TLSClientConfig](#tlsclientconfig)_ | true |
+| `tls_server_config` | TLSServerConfig defines server TLS configuration for alertmanager | _[TLSServerConfig](#tlsserverconfig)_ | true |
+
+
 #### AlertmanagerHTTPConfig
 
 
@@ -121,7 +138,7 @@ _Appears in:_
 | --- | --- | --- | --- |
 | `basic_auth_users` | BasicAuthUsers Usernames and hashed passwords that have full access to the web server<br />Passwords must be hashed with bcrypt | _object (keys:string, values:string)_ | true |
 | `http_server_config` | HTTPServerConfig defines http server configuration for alertmanager web server | _[AlertmanagerHTTPConfig](#alertmanagerhttpconfig)_ | true |
-| `tls_server_config` | TLSServerConfig defines tls configuration for alertmanager web server | _[WebserverTLSConfig](#webservertlsconfig)_ | true |
+| `tls_server_config` | TLSServerConfig defines server TLS configuration for alertmanager | _[TLSServerConfig](#tlsserverconfig)_ | true |
 
 
 #### ArbitraryFSAccessThroughSMsConfig
@@ -296,6 +313,26 @@ _Appears in:_
 | `kind` | Kind one of:<br />VMAgent,VMAlert, VMSingle, VMCluster/vmselect, VMCluster/vmstorage,VMCluster/vminsert  or VMAlertManager | _string_ | true |
 | `name` | Name target CRD object name | _string_ | true |
 | `namespace` | Namespace target CRD object namespace. | _string_ | true |
+
+
+#### Certs
+
+
+
+Certs defines TLS certs configuration
+
+
+
+_Appears in:_
+- [TLSClientConfig](#tlsclientconfig)
+- [TLSServerConfig](#tlsserverconfig)
+
+| Field | Description | Scheme | Required |
+| --- | --- | --- | --- |
+| `cert_file` | CertFile defines path to the pre-mounted file with certificate<br />mutually exclusive with CertSecretRef | _string_ | true |
+| `cert_secret_ref` |  | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | true |
+| `key_file` | KeyFile defines path to the pre-mounted file with certificate key<br />mutually exclusive with KeySecretRef | _string_ | true |
+| `key_secret_ref` | Key defines reference for secret with certificate key content under given key<br />mutually exclusive with KeyFile | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | true |
 
 
 #### ConfigMapKeyReference
@@ -1873,6 +1910,29 @@ _Appears in:_
 
 
 
+#### TLSClientConfig
+
+
+
+TLSClientConfig defines TLS configuration for the application's client
+
+
+
+_Appears in:_
+- [AlertmanagerGossipConfig](#alertmanagergossipconfig)
+
+| Field | Description | Scheme | Required |
+| --- | --- | --- | --- |
+| `ca_file` | CAFile defines path to the pre-mounted file with CA<br />mutually exclusive with CASecretRef | _string_ | true |
+| `ca_secret_ref` | CA defines reference for secret with CA content under given key<br />mutually exclusive with CAFile | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | true |
+| `cert_file` | CertFile defines path to the pre-mounted file with certificate<br />mutually exclusive with CertSecretRef | _string_ | true |
+| `cert_secret_ref` |  | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | true |
+| `insecure_skip_verify` | Cert defines reference for secret with CA content under given key<br />mutually exclusive with CertFile | _boolean_ | true |
+| `key_file` | KeyFile defines path to the pre-mounted file with certificate key<br />mutually exclusive with KeySecretRef | _string_ | true |
+| `key_secret_ref` | Key defines reference for secret with certificate key content under given key<br />mutually exclusive with KeyFile | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | true |
+| `server_name` | ServerName indicates a name of a server | _string_ | true |
+
+
 #### TLSConfig
 
 
@@ -1920,6 +1980,34 @@ _Appears in:_
 | `serverName` | Used to verify the hostname for the targets. | _string_ | false |
 
 
+
+
+#### TLSServerConfig
+
+
+
+TLSServerConfig defines TLS configuration for the application's server
+
+
+
+_Appears in:_
+- [AlertmanagerGossipConfig](#alertmanagergossipconfig)
+- [AlertmanagerWebConfig](#alertmanagerwebconfig)
+
+| Field | Description | Scheme | Required |
+| --- | --- | --- | --- |
+| `cert_file` | CertFile defines path to the pre-mounted file with certificate<br />mutually exclusive with CertSecretRef | _string_ | true |
+| `cert_secret_ref` |  | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | true |
+| `cipher_suites` | CipherSuites defines list of supported cipher suites for TLS versions up to TLS 1.2<br />https://golang.org/pkg/crypto/tls/#pkg-constants | _string array_ | true |
+| `client_auth_type` | Cert defines reference for secret with CA content under given key<br />mutually exclusive with CertFile<br />ClientAuthType defines server policy for client authentication<br />If you want to enable client authentication (aka mTLS), you need to use RequireAndVerifyClientCert<br />Note, mTLS is supported only at enterprise version of VictoriaMetrics components | _string_ | true |
+| `client_ca_file` | ClientCAFile defines path to the pre-mounted file with CA<br />mutually exclusive with ClientCASecretRef | _string_ | true |
+| `client_ca_secret_ref` | ClientCASecretRef defines reference for secret with CA content under given key<br />mutually exclusive with ClientCAFile | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | true |
+| `curve_preferences` | CurvePreferences defines elliptic curves that will be used in an ECDHE handshake, in preference order.<br />https://golang.org/pkg/crypto/tls/#CurveID | _string array_ | true |
+| `key_file` | KeyFile defines path to the pre-mounted file with certificate key<br />mutually exclusive with KeySecretRef | _string_ | true |
+| `key_secret_ref` | Key defines reference for secret with certificate key content under given key<br />mutually exclusive with KeyFile | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | true |
+| `max_version` | MaxVersion maximum TLS version that is acceptable. | _string_ | true |
+| `min_version` | MinVersion minimum TLS version that is acceptable. | _string_ | true |
+| `prefer_server_cipher_suites` | PreferServerCipherSuites controls whether the server selects the<br />client's most preferred ciphersuite | _boolean_ | true |
 
 
 #### TargetEndpoint
@@ -2606,6 +2694,7 @@ _Appears in:_
 | `externalURL` | ExternalURL the VMAlertmanager instances will be available under. This is<br />necessary to generate correct URLs. This is necessary if VMAlertmanager is not<br />served from root of a DNS name. | _string_ | false |
 | `extraArgs` | ExtraArgs that will be passed to  VMAlertmanager pod<br />for example log.level: debug | _object (keys:string, values:string)_ | false |
 | `extraEnvs` | ExtraEnvs that will be added to VMAlertmanager pod | _[EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#envvar-v1-core) array_ | false |
+| `gossipConfig` | GossipConfig defines gossip TLS configuration for Alertmanager cluster | _[AlertmanagerGossipConfig](#alertmanagergossipconfig)_ | true |
 | `hostNetwork` | HostNetwork controls whether the pod may use the node network namespace | _boolean_ | false |
 | `image` | Image - docker image settings for VMAlertmanager<br />if no specified operator uses default config version | _[Image](#image)_ | false |
 | `imagePullSecrets` | ImagePullSecrets An optional list of references to secrets in the same namespace<br />to use for pulling images from registries<br />see https://kubernetes.io/docs/concepts/containers/images/#referring-to-an-imagepullsecrets-on-a-pod | _[LocalObjectReference](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#localobjectreference-v1-core) array_ | false |
@@ -3719,32 +3808,5 @@ _Appears in:_
 | `send_resolved` | SendResolved controls notify about resolved alerts. | _boolean_ | false |
 | `url` | URL to send requests to,<br />one of `urlSecret` and `url` must be defined. | _string_ | false |
 | `url_secret` | URLSecret defines secret name and key at the CRD namespace.<br />It must contain the webhook URL.<br />one of `urlSecret` and `url` must be defined. | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | false |
-
-
-#### WebserverTLSConfig
-
-
-
-WebserverTLSConfig defines TLS configuration for the applications webserver
-
-
-
-_Appears in:_
-- [AlertmanagerWebConfig](#alertmanagerwebconfig)
-
-| Field | Description | Scheme | Required |
-| --- | --- | --- | --- |
-| `cert_file` | CertFile defines path to the pre-mounted file with certificate<br />mutually exclusive with CertSecretRef | _string_ | true |
-| `cert_secret_ref` | Cert defines reference for secret with CA content under given key<br />mutually exclusive with CertFile | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | true |
-| `cipher_suites` | CipherSuites defines list of supported cipher suites for TLS versions up to TLS 1.2<br />https://golang.org/pkg/crypto/tls/#pkg-constants | _string array_ | true |
-| `client_auth_type` | ClientAuthType defines server policy for client authentication<br />If you want to enable client authentication (aka mTLS), you need to use RequireAndVerifyClientCert<br />Note, mTLS is supported only at enterprise version of VictoriaMetrics components | _string_ | true |
-| `client_ca_file` | ClientCAFile defines path to the pre-mounted file with CA<br />mutually exclusive with ClientCASecretRef | _string_ | true |
-| `client_ca_secret_ref` | ClientCA defines reference for secret with CA content under given key<br />mutually exclusive with ClientCAFile | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | true |
-| `curve_preferences` | CurvePreferences defines elliptic curves that will be used in an ECDHE handshake, in preference order.<br />https://golang.org/pkg/crypto/tls/#CurveID | _string array_ | true |
-| `key_file` | KeyFile defines path to the pre-mounted file with certificate key<br />mutually exclusive with KeySecretRef | _string_ | true |
-| `key_secret_ref` | Key defines reference for secret with certificate key content under given key<br />mutually exclusive with KeyFile | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | true |
-| `max_version` | MaxVersion maximum TLS version that is acceptable. | _string_ | true |
-| `min_version` | MinVersion minimum TLS version that is acceptable. | _string_ | true |
-| `prefer_server_cipher_suites` | PreferServerCipherSuites controls whether the server selects the<br />client's most preferred ciphersuite | _boolean_ | true |
 
 

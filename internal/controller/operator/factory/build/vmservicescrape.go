@@ -24,7 +24,9 @@ func VMServiceScrapeForServiceWithSpec(service *v1.Service, serviceScrapeSpec *v
 
 		endPoints = append(endPoints, vmv1beta1.Endpoint{
 			Port: servicePort.Name,
-			Path: metricPath,
+			EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+				Path: metricPath,
+			},
 		})
 	}
 

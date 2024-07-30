@@ -18,6 +18,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// UpdateStatus defines status for application
 type UpdateStatus string
 
 const (
@@ -25,20 +26,29 @@ const (
 	UpdateStatusOperational UpdateStatus = "operational"
 	UpdateStatusFailed      UpdateStatus = "failed"
 	UpdateStatusPaused      UpdateStatus = "paused"
-	vmPathPrefixFlagName                 = "http.pathPrefix"
-	healthPath                           = "/health"
-	metricPath                           = "/metrics"
-	reloadPath                           = "/-/reload"
-	reloadAuthKey                        = "reloadAuthKey"
-	snapshotCreate                       = "/snapshot/create"
-	snapshotDelete                       = "/snapshot/delete"
-	// FinalizerName name of our finalizer.
+)
+
+const (
+	vmPathPrefixFlagName = "http.pathPrefix"
+	healthPath           = "/health"
+	metricPath           = "/metrics"
+	reloadPath           = "/-/reload"
+	reloadAuthKey        = "reloadAuthKey"
+	snapshotCreate       = "/snapshot/create"
+	snapshotDelete       = "/snapshot/delete"
+)
+
+const (
+	// FinalizerName name of vm-operator finalizer.
 	FinalizerName            = "apps.victoriametrics.com/finalizer"
 	SkipValidationAnnotation = "operator.victoriametrics.com/skip-validation"
 	SkipValidationValue      = "true"
 	AdditionalServiceLabel   = "operator.victoriametrics.com/additional-service"
 	// PVCExpandableLabel controls checks for storageClass
-	PVCExpandableLabel  = "operator.victoriametrics.com/pvc-allow-volume-expansion"
+	PVCExpandableLabel = "operator.victoriametrics.com/pvc-allow-volume-expansion"
+)
+
+const (
 	SecretsDir          = "/etc/vm/secrets"
 	ConfigMapsDir       = "/etc/vm/configs"
 	TemplatesDir        = "/etc/vm/templates"
@@ -81,35 +91,62 @@ func mustSkipValidation(cr client.Object) bool {
 	return cr.GetAnnotations()[SkipValidationAnnotation] == SkipValidationValue
 }
 
-func MergeFinalizers(src client.Object, finalizer string) []string {
-	if !IsContainsFinalizer(src.GetFinalizers(), finalizer) {
-		srcF := src.GetFinalizers()
-		srcF = append(srcF, finalizer)
-		src.SetFinalizers(srcF)
+// AddFinalizer conditionally adds vm-operator finalizer to the dst object
+// respectfully merges exist finalizers from src to dst
+func AddFinalizer(dst, src client.Object) {
+	srcFinalizers := src.GetFinalizers()
+	if !isContainsFinalizer(srcFinalizers) {
+		srcFinalizers = append(srcFinalizers, FinalizerName)
+		dst.SetFinalizers(srcFinalizers)
 	}
-	return src.GetFinalizers()
+	dst.SetFinalizers(srcFinalizers)
 }
 
-// IsContainsFinalizer check if finalizers is set.
-func IsContainsFinalizer(src []string, finalizer string) bool {
+// AddFinalizerAndThen conditionally adds vm-operator finalizer to the dst object
+// respectfully merges exist finalizers from src to dst
+// if finalizer was added, peforms callback
+func AddFinalizerAndThen(src client.Object, andThen func(client.Object) error) error {
+	srcFinalizers := src.GetFinalizers()
+	var wasNotFinalizerFound bool
+	if !isContainsFinalizer(srcFinalizers) {
+		srcFinalizers = append(srcFinalizers, FinalizerName)
+		wasNotFinalizerFound = true
+		src.SetFinalizers(srcFinalizers)
+	}
+	if wasNotFinalizerFound {
+		return andThen(src)
+	}
+	return nil
+}
+
+func isContainsFinalizer(src []string) bool {
 	for _, s := range src {
-		if s == finalizer {
+		if s == FinalizerName {
 			return true
 		}
 	}
 	return false
 }
 
-// RemoveFinalizer - removes given finalizer from finalizers list.
-func RemoveFinalizer(src []string, finalizer string) []string {
-	dst := src[:0]
-	for _, s := range src {
-		if s == finalizer {
+// RemoveFinalizer - removes vm-operator finalizer from finalizers list.
+// executes provided callback if finalizer found
+func RemoveFinalizer(src client.Object, andThen func(client.Object) error) error {
+	existFinalizers := src.GetFinalizers()
+	var wasFinalizerFound bool
+	dst := existFinalizers[:0]
+	// filter in-place
+	for _, s := range existFinalizers {
+		if s == FinalizerName {
+			wasFinalizerFound = true
 			continue
 		}
 		dst = append(dst, s)
 	}
-	return dst
+	src.SetFinalizers(dst)
+	if wasFinalizerFound && andThen != nil {
+		return andThen(src)
+	}
+	return nil
 }
 
 // EmbeddedObjectMetadata contains a subset of the fields included in k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta
@@ -128,6 +165,9 @@ type EmbeddedObjectMetadata struct {
 	// (scope and select) objects. May match selectors of replication controllers
 	// and services.
 	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
+	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors=true
+	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors.displayName="PodLabels"
+	// +operator-sdk:gen-csv:customresourcedefinitions.specDescriptors.x-descriptors="urn:alm:descriptor:com.tectonic.ui:label"
 	// +optional
 	Labels map[string]string `json:"labels,omitempty" protobuf:"bytes,11,rep,name=labels"`
 
@@ -249,17 +289,16 @@ type BearerAuth struct {
 // BasicAuth allow an endpoint to authenticate over basic authentication
 // +k8s:openapi-gen=true
 type BasicAuth struct {
-	// The secret in the service scrape namespace that contains the username
-	// for authentication.
-	// It must be at them same namespace as CRD
+	// Username defines reference for secret with username value
+	// The secret needs to be in the same namespace as scrape object
 	// +optional
 	Username v1.SecretKeySelector `json:"username,omitempty"`
-	// The secret in the service scrape namespace that contains the password
-	// for authentication.
-	// It must be at them same namespace as CRD
+	// Password defines reference for secret with password value
+	// The secret needs to be in the same namespace as scrape object
 	// +optional
 	Password v1.SecretKeySelector `json:"password,omitempty"`
 	// PasswordFile defines path to password file at disk
+	// must be pre-mounted
 	// +optional
 	PasswordFile string `json:"password_file,omitempty"`
 }
@@ -634,13 +673,11 @@ func (m *StringOrArray) UnmarshalJSON(data []byte) error {
 }
 
 // License holds license key for enterprise features.
-// Using license key is supported starting from VictoriaMetrics v1.94.0
-// See: https://docs.victoriametrics.com/enterprise.html
+// Using license key is supported starting from VictoriaMetrics v1.94.0.
+// See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/enterprise.md)
 type License struct {
-	// Enterprise license key. This flag is available only in VictoriaMetrics enterprise.
-	// Documentation - https://docs.victoriametrics.com/enterprise.html
-	// for more information, visit https://victoriametrics.com/products/enterprise/ .
-	// To request a trial license, go to https://victoriametrics.com/products/enterprise/trial/
+	// Enterprise license key. This flag is available only in [VictoriaMetrics enterprise](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/enterprise.md).
+	// To request a trial license, [go to](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/products/enterprise/trial.md)
 	Key *string `json:"key,omitempty"`
 	// KeyRef is reference to secret with license key for enterprise features.
 	KeyRef *v1.SecretKeySelector `json:"keyRef,omitempty"`
@@ -700,4 +737,235 @@ func (l *License) sanityCheck() error {
 	}
 
 	return nil
+}
+
+// SecretOrConfigMap allows to specify data as a Secret or ConfigMap. Fields are mutually exclusive.
+type SecretOrConfigMap struct {
+	// Secret containing data to use for the targets.
+	// +optional
+	Secret *v1.SecretKeySelector `json:"secret,omitempty"`
+	// ConfigMap containing data to use for the targets.
+	// +optional
+	ConfigMap *v1.ConfigMapKeySelector `json:"configMap,omitempty"`
+}
+
+// TLSConfig specifies TLSConfig configuration parameters.
+// +k8s:openapi-gen=true
+type TLSConfig struct {
+	// Path to the CA cert in the container to use for the targets.
+	// +optional
+	CAFile string `json:"caFile,omitempty"`
+	// Stuct containing the CA cert to use for the targets.
+	// +optional
+	CA SecretOrConfigMap `json:"ca,omitempty"`
+
+	// Path to the client cert file in the container for the targets.
+	// +optional
+	CertFile string `json:"certFile,omitempty"`
+	// Struct containing the client cert file for the targets.
+	// +optional
+	Cert SecretOrConfigMap `json:"cert,omitempty"`
+
+	// Path to the client key file in the container for the targets.
+	// +optional
+	KeyFile string `json:"keyFile,omitempty"`
+	// Secret containing the client key file for the targets.
+	// +optional
+	KeySecret *v1.SecretKeySelector `json:"keySecret,omitempty"`
+
+	// Used to verify the hostname for the targets.
+	// +optional
+	ServerName string `json:"serverName,omitempty"`
+	// Disable target certificate validation.
+	// +optional
+	InsecureSkipVerify bool `json:"insecureSkipVerify,omitempty"`
+}
+
+func (c *TLSConfig) AsArgs(args []string, prefix, pathPrefix string) []string {
+	if c.CAFile != "" {
+		args = append(args, fmt.Sprintf("-%s.tlsCAFile=%s", prefix, c.CAFile))
+	} else if c.CA.Name() != "" {
+		args = append(args, fmt.Sprintf("-%s.tlsCAFile=%s", prefix, c.BuildAssetPath(pathPrefix, c.CA.Name(), c.CA.Key())))
+	}
+	if c.CertFile != "" {
+		args = append(args, fmt.Sprintf("-%s.tlsCertFile=%s", prefix, c.CertFile))
+	} else if c.Cert.Name() != "" {
+		args = append(args, fmt.Sprintf("-%s.tlsCertFile=%s", prefix, c.BuildAssetPath(pathPrefix, c.Cert.Name(), c.Cert.Key())))
+	}
+	if c.KeyFile != "" {
+		args = append(args, fmt.Sprintf("-%s.tlsKeyFile=%s", prefix, c.KeyFile))
+	} else if c.KeySecret != nil {
+		args = append(args, fmt.Sprintf("-%s.tlsKeyFile=%s", prefix, c.BuildAssetPath(pathPrefix, c.KeySecret.Name, c.KeySecret.Key)))
+	}
+	if c.ServerName != "" {
+		args = append(args, fmt.Sprintf("-%s.tlsServerName=%s", prefix, c.ServerName))
+	}
+	if c.InsecureSkipVerify {
+		args = append(args, fmt.Sprintf("-%s.tlsInsecureSkipVerify=%v", prefix, c.InsecureSkipVerify))
+	}
+	return args
+}
+
+// TLSConfigValidationError is returned by TLSConfig.Validate() on semantically
+// invalid tls configurations.
+// +k8s:openapi-gen=false
+type TLSConfigValidationError struct {
+	err string
+}
+
+func (e *TLSConfigValidationError) Error() string {
+	return e.err
+}
+
+// Validate semantically validates the given TLSConfig.
+func (c *TLSConfig) Validate() error {
+	if c.CA != (SecretOrConfigMap{}) {
+		if c.CAFile != "" {
+			return &TLSConfigValidationError{"tls config can not both specify CAFile and CA"}
+		}
+		if err := c.CA.Validate(); err != nil {
+			return err
+		}
+	}
+
+	if c.Cert != (SecretOrConfigMap{}) {
+		if c.CertFile != "" {
+			return &TLSConfigValidationError{"tls config can not both specify CertFile and Cert"}
+		}
+		if err := c.Cert.Validate(); err != nil {
+			return err
+		}
+	}
+
+	if c.KeyFile != "" && c.KeySecret != nil {
+		return &TLSConfigValidationError{"tls config can not both specify KeyFile and KeySecret"}
+	}
+
+	return nil
+}
+
+// SecretOrConfigMapValidationError is returned by SecretOrConfigMap.Validate()
+// on semantically invalid configurations.
+// +k8s:openapi-gen=false
+type SecretOrConfigMapValidationError struct {
+	err string
+}
+
+func (e *SecretOrConfigMapValidationError) Error() string {
+	return e.err
+}
+
+// Validate semantically validates the given TLSConfig.
+func (c *SecretOrConfigMap) Validate() error {
+	if c.Secret != nil && c.ConfigMap != nil {
+		return &SecretOrConfigMapValidationError{"SecretOrConfigMap can not specify both Secret and ConfigMap"}
+	}
+
+	return nil
+}
+
+// BuildSelectorWithPrefix builds prefix path
+func (c *SecretOrConfigMap) BuildSelectorWithPrefix(prefix string) string {
+	if c.Secret != nil {
+		return fmt.Sprintf("%s%s/%s", prefix, c.Secret.Name, c.Secret.Key)
+	}
+	if c.ConfigMap != nil {
+		return fmt.Sprintf("%s%s/%s", prefix, c.ConfigMap.Name, c.ConfigMap.Key)
+	}
+	return ""
+}
+
+// Name returns actual name
+func (c *SecretOrConfigMap) Name() string {
+	if c.Secret != nil {
+		return c.Secret.Name
+	}
+	if c.ConfigMap != nil {
+		return c.ConfigMap.Name
+	}
+	return ""
+}
+
+// Key returns actual key name
+func (c *SecretOrConfigMap) Key() string {
+	if c.Secret != nil {
+		return c.Secret.Key
+	}
+	if c.ConfigMap != nil {
+		return c.ConfigMap.Key
+	}
+	return ""
+}
+
+// BuildAssetPath buildds path for usage with assets
+func (c *TLSConfig) BuildAssetPath(prefix, name, key string) string {
+	if name == "" || key == "" {
+		return ""
+	}
+	return fmt.Sprintf("%s_%s_%s", prefix, name, key)
+}
+
+// Certs defines TLS certs configuration
+type Certs struct {
+	CertSecretRef *v1.SecretKeySelector `json:"cert_secret_ref,omitempty"`
+	// CertFile defines path to the pre-mounted file with certificate
+	// mutually exclusive with CertSecretRef
+	CertFile string `json:"cert_file,omitempty"`
+	// Key defines reference for secret with certificate key content under given key
+	// mutually exclusive with KeyFile
+	KeySecretRef *v1.SecretKeySelector `json:"key_secret_ref,omitempty"`
+	// KeyFile defines path to the pre-mounted file with certificate key
+	// mutually exclusive with KeySecretRef
+	KeyFile string `json:"key_file,omitempty"`
+}
+
+// TLSServerConfig defines TLS configuration for the application's server
+type TLSServerConfig struct {
+	// ClientCASecretRef defines reference for secret with CA content under given key
+	// mutually exclusive with ClientCAFile
+	ClientCASecretRef *v1.SecretKeySelector `json:"client_ca_secret_ref,omitempty"`
+	// ClientCAFile defines path to the pre-mounted file with CA
+	// mutually exclusive with ClientCASecretRef
+	ClientCAFile string `json:"client_ca_file,omitempty"`
+	// Cert defines reference for secret with CA content under given key
+	// mutually exclusive with CertFile
+	// ClientAuthType defines server policy for client authentication
+	// If you want to enable client authentication (aka mTLS), you need to use RequireAndVerifyClientCert
+	// Note, mTLS is supported only at enterprise version of VictoriaMetrics components
+	// +kubebuilder:validation:Enum=NoClientCert;RequireAndVerifyClientCert
+	ClientAuthType string `json:"client_auth_type,omitempty"`
+	// MinVersion minimum TLS version that is acceptable.
+	// +kubebuilder:validation:Enum=TLS10;TLS11;TLS12;TLS13
+	MinVersion string `json:"min_version,omitempty"`
+	// MaxVersion maximum TLS version that is acceptable.
+	// +kubebuilder:validation:Enum=TLS10;TLS11;TLS12;TLS13
+	MaxVersion string `json:"max_version,omitempty"`
+	// CipherSuites defines list of supported cipher suites for TLS versions up to TLS 1.2
+	// https://golang.org/pkg/crypto/tls/#pkg-constants
+	CipherSuites []string `json:"cipher_suites,omitempty"`
+	// CurvePreferences defines elliptic curves that will be used in an ECDHE handshake, in preference order.
+	// https://golang.org/pkg/crypto/tls/#CurveID
+	CurvePreferences []string `json:"curve_preferences,omitempty"`
+	// PreferServerCipherSuites controls whether the server selects the
+	// client's most preferred ciphersuite
+	PreferServerCipherSuites bool `json:"prefer_server_cipher_suites,omitempty"`
+	// Certs defines cert, CA and key for TLS auth
+	Certs `json:",inline"`
+}
+
+// TLSClientConfig defines TLS configuration for the application's client
+type TLSClientConfig struct {
+	// CA defines reference for secret with CA content under given key
+	// mutually exclusive with CAFile
+	CASecretRef *v1.SecretKeySelector `json:"ca_secret_ref,omitempty"`
+	// CAFile defines path to the pre-mounted file with CA
+	// mutually exclusive with CASecretRef
+	CAFile string `json:"ca_file,omitempty"`
+	// Cert defines reference for secret with CA content under given key
+	// mutually exclusive with CertFile
+	InsecureSkipVerify bool `json:"insecure_skip_verify,omitempty"`
+	// ServerName indicates a name of a server
+	ServerName string `json:"server_name,omitempty"`
+	// Certs defines cert, CA and key for TLS auth
+	Certs `json:",inline"`
 }

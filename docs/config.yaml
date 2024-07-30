@@ -1,3 +1,6 @@
+render:
+  kubernetesVersion: '1.30'
+
 processor:
   ignoreTypes:
     - ".*List$"

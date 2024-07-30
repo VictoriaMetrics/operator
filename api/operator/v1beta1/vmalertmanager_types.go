@@ -19,6 +19,10 @@ import (
 )
 
 // VMAlertmanager represents Victoria-Metrics deployment for Alertmanager.
+// +operator-sdk:gen-csv:customresourcedefinitions.displayName="VMAlertmanager App"
+// +operator-sdk:gen-csv:customresourcedefinitions.resources="StatefulSet,apps"
+// +operator-sdk:gen-csv:customresourcedefinitions.resources="Service,v1"
+// +operator-sdk:gen-csv:customresourcedefinitions.resources="Secret,v1"
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +genclient
 // +k8s:openapi-gen=true
@@ -89,6 +93,7 @@ type VMAlertmanagerSpec struct {
 	// instance. Defaults to 'vmalertmanager-<alertmanager-name>'
 	// The secret is mounted into /etc/alertmanager/config.
 	// +optional
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Secret with alertmanager config",xDescriptors="urn:alm:descriptor:io.kubernetes:Secret"
 	ConfigSecret string `json:"configSecret,omitempty"`
 	// Log level for VMAlertmanager to be configured with.
 	// +optional
@@ -104,6 +109,7 @@ type VMAlertmanagerSpec struct {
 	// eventually make the size of the running cluster equal to the expected
 	// +kubebuilder:validation:Minimum:=0
 	// +optional
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Number of pods",xDescriptors="urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom"
 	ReplicaCount *int32 `json:"replicaCount,omitempty"`
 	// The number of old ReplicaSets to retain to allow rollback in deployment or
 	// maximum number of revisions that will be maintained in the StatefulSet's revision history.
@@ -149,6 +155,7 @@ type VMAlertmanagerSpec struct {
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 	// Resources container resource request and limits,
 	// https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resources",xDescriptors="urn:alm:descriptor:com.tectonic.ui:resourceRequirements"
 	// +optional
 	Resources v1.ResourceRequirements `json:"resources,omitempty"`
 	// Affinity If specified, the pod's scheduling constraints.
@@ -163,6 +170,7 @@ type VMAlertmanagerSpec struct {
 	SecurityContext *v1.PodSecurityContext `json:"securityContext,omitempty"`
 	// ServiceAccountName is the name of the ServiceAccount to use
 	// +optional
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="ServiceAccount name",xDescriptors="urn:alm:descriptor:io.kubernetes:ServiceAccount"
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 	// SchedulerName - defines kubernetes scheduler name
 	// +optional
@@ -290,6 +298,13 @@ type VMAlertmanagerSpec struct {
 	// drops not needed security permissions
 	// +optional
 	UseStrictSecurity *bool `json:"useStrictSecurity,omitempty"`
+
+	// WebConfig defines configuration for webserver
+	// https://github.com/prometheus/alertmanager/blob/main/docs/https.md
+	WebConfig *AlertmanagerWebConfig `json:"webConfig,omitempty"`
+
+	// GossipConfig defines gossip TLS configuration for Alertmanager cluster
+	GossipConfig *AlertmanagerGossipConfig `json:"gossipConfig,omitempty"`
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface
@@ -401,6 +416,7 @@ func (cr VMAlertmanager) GetNSName() string {
 	return cr.GetNamespace()
 }
 
+// AsURL returns url for accessing alertmanager
 func (cr *VMAlertmanager) AsURL() string {
 	port := "9093"
 	if cr.Spec.ServiceSpec != nil && cr.Spec.ServiceSpec.UseAsDefault {
@@ -411,11 +427,12 @@ func (cr *VMAlertmanager) AsURL() string {
 			}
 		}
 	}
-	return fmt.Sprintf("http://%s.%s.svc:%s", cr.PrefixedName(), cr.Namespace, port)
+
+	return fmt.Sprintf("%s://%s.%s.svc:%s", strings.ToLower(cr.ProbeScheme()), cr.PrefixedName(), cr.Namespace, port)
 }
 
-func (cr *VMAlertmanager) AsPodFQDN(idx int) string {
-	return fmt.Sprintf("http://%s-%d.%s.%s.svc:9093", cr.PrefixedName(), idx, cr.PrefixedName(), cr.Namespace)
+func (cr *VMAlertmanager) asPodFQDN(idx int) string {
+	return fmt.Sprintf("%s://%s-%d.%s.%s.svc:9093", strings.ToLower(cr.ProbeScheme()), cr.PrefixedName(), idx, cr.PrefixedName(), cr.Namespace)
 }
 
 func (cr *VMAlertmanager) MetricPath() string {
@@ -439,7 +456,7 @@ func (cr *VMAlertmanager) AsNotifiers() []VMAlertNotifierSpec {
 	}
 	for i := 0; i < replicaCount; i++ {
 		ns := VMAlertNotifierSpec{
-			URL: cr.AsPodFQDN(i),
+			URL: cr.asPodFQDN(i),
 		}
 		r = append(r, ns)
 	}
@@ -476,8 +493,12 @@ func (cr *VMAlertmanager) ProbePort() string {
 	return cr.Spec.PortName
 }
 
+// ProbeScheme returns scheme for probe
 func (cr *VMAlertmanager) ProbeScheme() string {
-	return strings.ToUpper(protoFromFlags(cr.Spec.ExtraArgs))
+	if cr.Spec.WebConfig != nil && cr.Spec.WebConfig.TLSServerConfig != nil {
+		return "HTTPS"
+	}
+	return "HTTP"
 }
 
 func (cr *VMAlertmanager) ProbeNeedLiveness() bool {
@@ -540,6 +561,34 @@ func (cr *VMAlertmanager) SetUpdateStatusTo(ctx context.Context, r client.Client
 		return fmt.Errorf("failed to update object status to=%q: %w", status, err)
 	}
 	return nil
+}
+
+// AlertmanagerGossipConfig defines Gossip TLS configuration for alertmanager
+type AlertmanagerGossipConfig struct {
+	// TLSServerConfig defines server TLS configuration for alertmanager
+	TLSServerConfig *TLSServerConfig `json:"tls_server_config,omitempty"`
+	// TLSClientConfig defines client TLS configuration for alertmanager
+	TLSClientConfig *TLSClientConfig `json:"tls_client_config,omitempty"`
+}
+
+// AlertmanagerWebConfig defines web server configuration for alertmanager
+type AlertmanagerWebConfig struct {
+	// TLSServerConfig defines server TLS configuration for alertmanager
+	TLSServerConfig *TLSServerConfig `json:"tls_server_config,omitempty"`
+	// HTTPServerConfig defines http server configuration for alertmanager web server
+	HTTPServerConfig *AlertmanagerHTTPConfig `json:"http_server_config,omitempty"`
+	// BasicAuthUsers Usernames and hashed passwords that have full access to the web server
+	// Passwords must be hashed with bcrypt
+	BasicAuthUsers map[string]string `json:"basic_auth_users,omitempty"`
+}
+
+// AlertmanagerHTTPConfig defines http server configuration for alertmanager
+type AlertmanagerHTTPConfig struct {
+	// HTTP2 enables HTTP/2 support. Note that HTTP/2 is only supported with TLS.
+	// This can not be changed on the fly.
+	HTTP2 bool `json:"http2,omitempty"`
+	// Headers defines list of headers that can be added to HTTP responses.
+	Headers map[string]string `json:"headers,omitempty"`
 }
 
 // GetAdditionalService returns AdditionalServiceSpec settings

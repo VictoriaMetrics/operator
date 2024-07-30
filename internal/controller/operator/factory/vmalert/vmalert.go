@@ -749,7 +749,7 @@ func createOrUpdateTLSAssetsForVMAlert(ctx context.Context, cr *vmv1beta1.VMAler
 		tlsAssetsSecret.Annotations[annotation] = value
 	}
 	tlsAssetsSecret.Annotations = labels.Merge(currentAssetSecret.Annotations, tlsAssetsSecret.Annotations)
-	tlsAssetsSecret.Finalizers = vmv1beta1.MergeFinalizers(currentAssetSecret, vmv1beta1.FinalizerName)
+	vmv1beta1.AddFinalizer(tlsAssetsSecret, currentAssetSecret)
 	return rclient.Update(ctx, tlsAssetsSecret)
 }
 

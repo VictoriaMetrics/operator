@@ -47,7 +47,9 @@ func TestVMServiceScrapeForServiceWithSpec(t *testing.T) {
 			wantServiceScrapeSpec: vmv1beta1.VMServiceScrapeSpec{
 				Endpoints: []vmv1beta1.Endpoint{
 					{
-						Path: "/metrics",
+						EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+							Path: "/metrics",
+						},
 						Port: "http",
 					},
 				},
@@ -78,7 +80,9 @@ func TestVMServiceScrapeForServiceWithSpec(t *testing.T) {
 			wantServiceScrapeSpec: vmv1beta1.VMServiceScrapeSpec{
 				Endpoints: []vmv1beta1.Endpoint{
 					{
-						Path: "/metrics",
+						EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+							Path: "/metrics",
+						},
 						Port: "http",
 					},
 				},
@@ -112,7 +116,9 @@ func TestVMServiceScrapeForServiceWithSpec(t *testing.T) {
 			wantServiceScrapeSpec: vmv1beta1.VMServiceScrapeSpec{
 				Endpoints: []vmv1beta1.Endpoint{
 					{
-						Path: "/metrics",
+						EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+							Path: "/metrics",
+						},
 						Port: "http",
 					},
 				},
@@ -144,14 +150,18 @@ func TestVMServiceScrapeForServiceWithSpec(t *testing.T) {
 					TargetLabels: []string{"key"},
 					Endpoints: []vmv1beta1.Endpoint{
 						{
-							Path: "/metrics",
+							EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+								Path: "/metrics",
+							},
 							Port: "sidecar",
 						},
 						{
-							Path:           "/metrics",
-							Port:           "http",
-							ScrapeInterval: "30s",
-							ScrapeTimeout:  "10s",
+							EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+								Path:           "/metrics",
+								ScrapeInterval: "30s",
+								ScrapeTimeout:  "10s",
+							},
+							Port: "http",
 						},
 					},
 				},
@@ -159,14 +169,18 @@ func TestVMServiceScrapeForServiceWithSpec(t *testing.T) {
 			wantServiceScrapeSpec: vmv1beta1.VMServiceScrapeSpec{
 				Endpoints: []vmv1beta1.Endpoint{
 					{
-						Path: "/metrics",
+						EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+							Path: "/metrics",
+						},
 						Port: "sidecar",
 					},
 					{
-						Path:           "/metrics",
-						Port:           "http",
-						ScrapeInterval: "30s",
-						ScrapeTimeout:  "10s",
+						EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+							Path:           "/metrics",
+							ScrapeInterval: "30s",
+							ScrapeTimeout:  "10s",
+						},
+						Port: "http",
 					},
 				},
 				TargetLabels: []string{"key"},

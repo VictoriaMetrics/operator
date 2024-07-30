@@ -25,8 +25,8 @@ type VMClusterSpec struct {
 	// RetentionPeriod for the stored metrics
 	// Note VictoriaMetrics has data/ and indexdb/ folders
 	// metrics from data/ removed eventually as soon as partition leaves retention period
-	// reverse index data at indexdb rotates once at the half of configured retention period
-	// https://docs.victoriametrics.com/Single-server-VictoriaMetrics.html#retention
+	// reverse index data at indexdb rotates once at the half of configured
+	// [retention period](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/Single-server-VictoriaMetrics.md/#retention)
 	RetentionPeriod string `json:"retentionPeriod"`
 	// ReplicationFactor defines how many copies of data make among
 	// distinct storage nodes
@@ -51,7 +51,7 @@ type VMClusterSpec struct {
 
 	// License allows to configure license key to be used for enterprise features.
 	// Using license key is supported starting from VictoriaMetrics v1.94.0.
-	// See: https://docs.victoriametrics.com/enterprise.html
+	// See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/enterprise.md)
 	// +optional
 	License *License `json:"license,omitempty"`
 
@@ -85,6 +85,10 @@ func (cr *VMClusterSpec) UnmarshalJSON(src []byte) error {
 
 // VMCluster is fast, cost-effective and scalable time-series database.
 // Cluster version with
+// +operator-sdk:gen-csv:customresourcedefinitions.displayName="VMCluster App"
+// +operator-sdk:gen-csv:customresourcedefinitions.resources="Deployment,apps"
+// +operator-sdk:gen-csv:customresourcedefinitions.resources="Statefulset,apps"
+// +operator-sdk:gen-csv:customresourcedefinitions.resources="Service,v1"
 // +genclient
 // +k8s:openapi-gen=true
 // +kubebuilder:subresource:status
@@ -174,6 +178,7 @@ type VMSelect struct {
 	// ReplicaCount is the expected size of the VMSelect cluster. The controller will
 	// eventually make the size of the running cluster equal to the expected
 	// size.
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Number of pods",xDescriptors="urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom"
 	ReplicaCount *int32 `json:"replicaCount"`
 	// The number of old ReplicaSets to retain to allow rollback in deployment or
 	// maximum number of revisions that will be maintained in the StatefulSet's revision history.
@@ -191,6 +196,7 @@ type VMSelect struct {
 	// +optional
 	VolumeMounts []v1.VolumeMount `json:"volumeMounts,omitempty"`
 	// Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resources",xDescriptors="urn:alm:descriptor:com.tectonic.ui:resourceRequirements"
 	// +optional
 	Resources v1.ResourceRequirements `json:"resources,omitempty"`
 	// Affinity If specified, the pod's scheduling constraints.
@@ -265,7 +271,7 @@ type VMSelect struct {
 	Port string `json:"port,omitempty"`
 
 	// ClusterNativePort for multi-level cluster setup.
-	// More details: https://docs.victoriametrics.com/Cluster-VictoriaMetrics.html#multi-level-cluster-setup
+	// More [details](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/Cluster-VictoriaMetrics.md#multi-level-cluster-setup)
 	// +optional
 	ClusterNativePort string `json:"clusterNativeListenPort,omitempty"`
 
@@ -373,6 +379,7 @@ type VMInsert struct {
 	// ReplicaCount is the expected size of the VMInsert cluster. The controller will
 	// eventually make the size of the running cluster equal to the expected
 	// size.
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Number of pods",xDescriptors="urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom"
 	ReplicaCount *int32 `json:"replicaCount"`
 	// The number of old ReplicaSets to retain to allow rollback in deployment or
 	// maximum number of revisions that will be maintained in the StatefulSet's revision history.
@@ -390,6 +397,7 @@ type VMInsert struct {
 	// +optional
 	VolumeMounts []v1.VolumeMount `json:"volumeMounts,omitempty"`
 	// Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resources",xDescriptors="urn:alm:descriptor:com.tectonic.ui:resourceRequirements"
 	// +optional
 	Resources v1.ResourceRequirements `json:"resources,omitempty"`
 	// Affinity If specified, the pod's scheduling constraints.
@@ -448,7 +456,7 @@ type VMInsert struct {
 	Port string `json:"port,omitempty"`
 
 	// ClusterNativePort for multi-level cluster setup.
-	// More details: https://docs.victoriametrics.com/Cluster-VictoriaMetrics.html#multi-level-cluster-setup
+	// More [details](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/Cluster-VictoriaMetrics.md#multi-level-cluster-setup)
 	// +optional
 	ClusterNativePort string `json:"clusterNativeListenPort,omitempty"`
 
@@ -552,6 +560,7 @@ type VMStorage struct {
 	// ReplicaCount is the expected size of the VMStorage cluster. The controller will
 	// eventually make the size of the running cluster equal to the expected
 	// size.
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Number of pods",xDescriptors="urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom"
 	ReplicaCount *int32 `json:"replicaCount"`
 	// The number of old ReplicaSets to retain to allow rollback in deployment or
 	// maximum number of revisions that will be maintained in the StatefulSet's revision history.
@@ -569,6 +578,7 @@ type VMStorage struct {
 	// +optional
 	VolumeMounts []v1.VolumeMount `json:"volumeMounts,omitempty"`
 	// Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resources",xDescriptors="urn:alm:descriptor:com.tectonic.ui:resourceRequirements"
 	// +optional
 	Resources v1.ResourceRequirements `json:"resources,omitempty"`
 	// Affinity If specified, the pod's scheduling constraints.
@@ -761,14 +771,14 @@ type VMBackup struct {
 	VolumeMounts []v1.VolumeMount `json:"volumeMounts,omitempty"`
 
 	// Restore Allows to enable restore options for pod
-	// Read more: https://docs.victoriametrics.com/vmbackupmanager.html#restore-commands
+	// Read [more](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmbackupmanager.md#restore-commands)
 	// +optional
 	Restore *VMRestore `json:"restore,omitempty"`
 }
 
 func (cr *VMBackup) sanityCheck(l *License) error {
 	if !l.IsProvided() && !cr.AcceptEULA {
-		return fmt.Errorf("it is required to provide license key. See: https://docs.victoriametrics.com/enterprise.html")
+		return fmt.Errorf("it is required to provide license key. See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/enterprise.md)")
 	}
 
 	if l.IsProvided() {

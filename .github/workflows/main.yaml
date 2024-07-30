@@ -11,6 +11,7 @@ on:
     types:
       - opened
       - reopened
+      - synchronize
       - ready_for_review
       - converted_to_draft
 concurrency:
@@ -18,11 +19,16 @@ concurrency:
   cancel-in-progress: true
 jobs:
   build:
-    name: test and build
+    name: Build and Test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+      - name: Restore binaries from cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ./bin
+          key: binary
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
@@ -33,13 +39,12 @@ jobs:
         with:
           scan-type: "fs"
           ignore-unfixed: true
-          format: "template"
-          template: "@/contrib/sarif.tpl"
+          format: "sarif"
           output: "trivy-results.sarif"
           severity: "HIGH,CRITICAL,MEDIUM"
           vuln-type: "os,library"
       - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: "trivy-results.sarif"
       - name: Set output variables
@@ -47,7 +52,7 @@ jobs:
         run: |
           IMAGE_TAG=${GITHUB_SHA:0:7}
           echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_OUTPUT
-      - name: lint and test
+      - name: Lint, Test and Build
         if: github.event.pull_request.draft == false
         env:
           GO111MODULE: on
@@ -57,16 +62,6 @@ jobs:
           make lint
           make test
           TAG=${TAG} make test-e2e
-      - name: build binary
-        env:
-          GO111MODULE: on
-          TAG: ${{ steps.vars.outputs.IMAGE_TAG }}
-        run: |
-          make build
-      - name: build crosscompile and push to remote registry
-        env:
-          TAG: ${{ steps.vars.outputs.IMAGE_TAG }}
-        run: |
           if [ -n '${{secrets.REPO_KEY}}' ]; then
             echo ${{secrets.REPO_KEY}} | docker login --username ${{secrets.REPO_USER}} --password-stdin
             make publish
@@ -74,3 +69,8 @@ jobs:
             echo "there is no docker secret, just build"
             make build
           fi
+      - name: Prapare binary cache
+        uses: actions/cache@v4
+        with:
+          path: ./bin
+          key: binary

@@ -212,8 +212,6 @@ volumes:
 initcontainers:
   - name: config-init
     image: vmcustom:config-reloader-v0.35.0
-    command:
-      - /usr/local/bin/config-reloader
     args:
       - --reload-url=http://localhost:8429/-/reload
       - --config-envsubst-file=/opt/vmauth/config.yaml
@@ -273,8 +271,6 @@ containers:
     terminationmessagepolicy: FallbackToLogsOnError
   - name: config-reloader
     image: vmcustom:config-reloader-v0.35.0
-    command:
-      - /usr/local/bin/config-reloader
     args:
       - --reload-url=http://localhost:8429/-/reload
       - --config-envsubst-file=/opt/vmauth/config.yaml

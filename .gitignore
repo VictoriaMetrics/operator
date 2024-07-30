@@ -2,14 +2,12 @@
 .DS_Store
 Dockerfile.cross
 .idea
-bin/
-build/_output
-bundle_crd.zip
+/bin/
+/build*
+/bundle*
+release*
 operator.zip
-bundle.Dockerfile
 coverage.txt
-doc-print
-build/_test
 # Created by https://www.gitignore.io/api/go,vim,emacs,visualstudiocode
 ### Emacs ###
 # -*- mode: gitignore; -*-

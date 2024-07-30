@@ -17,7 +17,7 @@ jobs:
           repository: VictoriaMetrics/operator
           ref: master
           token: ${{ secrets.VM_BOT_GH_TOKEN }}
-          path: "__vm-operator-repo"
+          path: __vm-operator-repo
 
       - name: Check out VM code
         uses: actions/checkout@v4
@@ -25,7 +25,7 @@ jobs:
           repository: VictoriaMetrics/helm-charts
           ref: master
           token: ${{ secrets.VM_BOT_GH_TOKEN }}
-          path: "__vm-charts-repo"
+          path: __vm-charts-repo
 
       - name: Import GPG key
         uses: crazy-max/ghaction-import-gpg@v6
@@ -34,24 +34,25 @@ jobs:
           passphrase: ${{ secrets.VM_BOT_PASSPHRASE }}
           git_user_signingkey: true
           git_commit_gpgsign: true
-          workdir: "__vm-charts-repo"
+          workdir: __vm-charts-repo
 
       - name: Update crd yaml in chart repo
         run: |
-          cp config/crd/overlay/crd.yaml ../__vm-charts-repo/charts/victoria-metrics-operator/crd.yaml
-          cp config/crd/overlay/crd.yaml ../__vm-charts-repo/charts/victoria-metrics-k8s-stack/charts/crds/crds/crd.yaml
-        working-directory: "__vm-operator-repo"
+          cp ../__vm-operator-repo/config/crd/overlay/crd.yaml charts/victoria-metrics-operator/crd.yaml
+          cp ../__vm-operator-repo/config/crd/overlay/crd.yaml charts/victoria-metrics-k8s-stack/charts/crds/crds/crd.yaml
+          echo "BUILDTIME=$(date +%s)" >> $GITHUB_OUTPUT
+          echo "SHORT_SHA=$(git rev-parse --short $GITHUB_SHA)" >> $GITHUB_OUTPUT
+        working-directory: __vm-charts-repo
 
-      - name: Commit and push changes
-        run: |
-          export VM_GIT_BRANCH_NAME="operator-crds-update-$(date +%s)"
-          export VM_GIT_COMMIT_SHA="$(git rev-parse --short $GITHUB_SHA)"
-          git checkout -b "${VM_GIT_BRANCH_NAME}"
-          git add charts/victoria-metrics-operator/crd.yaml
-          git add charts/victoria-metrics-k8s-stack/charts/crds/crds/crd.yaml
-          git commit -S -m "Automatic sync crd resources from ${GITHUB_REPOSITORY}@${VM_GIT_COMMIT_SHA}"
-          git push origin ${VM_GIT_BRANCH_NAME}
-          gh pr create -f
-        working-directory: "__vm-charts-repo"
-        env:
-          GITHUB_TOKEN: ${{ secrets.VM_BOT_GH_TOKEN }}
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          add-paths: charts
+          commit-message: Automatic update operator crds from ${{ github.repository }}@${{ steps.update.outputs.SHORT_SHA }}
+          signoff: true
+          author: Github Actions <github@victoriametrics.com>
+          path: __vm-charts-repo
+          branch: operator-crd-update-${{ steps.update.outputs.BUILDTIME }}
+          token: ${{ secrets.VM_BOT_GH_TOKEN }}
+          delete-branch: true
+          title: Automatic update operator crds from ${{ github.repository }}@${{ steps.update.outputs.SHORT_SHA }}

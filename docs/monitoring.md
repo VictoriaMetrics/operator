@@ -7,11 +7,9 @@ menu:
     parent: "operator"
     weight: 6
 aliases:
-  - /operator/monitoring.html
+  - /operator/monitoring
+  - /operator/monitoring/index.html
 ---
-
-# Monitoring of VictoriaMetrics Operator
-
 VictoriaMetrics operator exports internal metrics in Prometheus exposition format at `/metrics` page.
 
 These metrics can be scraped via [vmagent](./resources/vmagent.md) or Prometheus.
@@ -76,5 +74,5 @@ spec:
 
 See more info about object [VMServiceScrape](./resources/vmservicescrape.md).
 
-You will also need a [vmsingle](https://docs.victoriametrics.com/operator/resources/vmsingle.html) where the metrics will be collected.
+You will also need a [vmsingle](./resources/vmsingle.md) where the metrics will be collected.
 

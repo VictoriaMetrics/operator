@@ -7,7 +7,6 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
@@ -29,7 +28,6 @@ func HPA(ctx context.Context, rclient client.Client, targetHPA client.Object) er
 			return err
 		}
 		targetHPA.SetResourceVersion(existHPA.GetResourceVersion())
-		vmv1beta1.MergeFinalizers(targetHPA, vmv1beta1.FinalizerName)
 		targetHPA.SetAnnotations(labels.Merge(existHPA.GetAnnotations(), targetHPA.GetAnnotations()))
 
 		return rclient.Update(ctx, targetHPA)

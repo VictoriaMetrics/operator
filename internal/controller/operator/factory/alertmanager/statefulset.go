@@ -31,8 +31,12 @@ import (
 const (
 	defaultRetention            = "120h"
 	alertmanagerSecretConfigKey = "alertmanager.yaml"
+	webserverConfigKey          = "webserver_config.yaml"
+	gossipConfigKey             = "gossip_config.yaml"
 	alertmanagerConfDir         = "/etc/alertmanager/config"
 	alertmanagerConfFile        = alertmanagerConfDir + "/alertmanager.yaml"
+	tlsAssetsDir                = "/etc/alertmanager/tls_assets"
+	tlsAssetsVolumeName         = "tls-assets"
 	alertmanagerStorageDir      = "/alertmanager"
 	defaultPortName             = "web"
 	configVolumeName            = "config-volume"
@@ -155,6 +159,12 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager, c *config.BaseOperatorCon
 		fmt.Sprintf("--storage.path=%s", alertmanagerStorageDir),
 		fmt.Sprintf("--data.retention=%s", cr.Spec.Retention),
 	}
+	if cr.Spec.WebConfig != nil {
+		amArgs = append(amArgs, fmt.Sprintf("--web.config.file=%s/%s", tlsAssetsDir, webserverConfigKey))
+	}
+	if cr.Spec.GossipConfig != nil {
+		amArgs = append(amArgs, fmt.Sprintf("--cluster.tls-config=%s/%s", tlsAssetsDir, gossipConfigKey))
+	}
 
 	if *cr.Spec.ReplicaCount == 1 {
 		amArgs = append(amArgs, "--cluster.listen-address=")
@@ -229,7 +239,17 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager, c *config.BaseOperatorCon
 
 	volumes := []corev1.Volume{
 		{
-			Name: "config-volume",
+			Name: configVolumeName,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: cr.ConfigSecretName(),
+				},
+			},
+		},
+		// use a different volume mount for the case of customer config reloader
+		// it overrides actual mounts with empty dir
+		{
+			Name: tlsAssetsVolumeName,
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
 					SecretName: cr.ConfigSecretName(),
@@ -257,6 +277,11 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager, c *config.BaseOperatorCon
 			MountPath: alertmanagerStorageDir,
 			SubPath:   subPathForStorage(cr.Spec.Storage),
 		},
+		{
+			Name:      tlsAssetsVolumeName,
+			MountPath: tlsAssetsDir,
+			ReadOnly:  true,
+		},
 	}
 
 	for _, s := range cr.Spec.Secrets {
@@ -280,6 +305,11 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager, c *config.BaseOperatorCon
 			Name:      configVolumeName,
 			MountPath: alertmanagerConfDir,
 			ReadOnly:  false,
+		},
+		{
+			Name:      tlsAssetsVolumeName,
+			MountPath: tlsAssetsDir,
+			ReadOnly:  true,
 		},
 	}
 
@@ -472,6 +502,15 @@ func createDefaultAMConfig(ctx context.Context, cr *vmv1beta1.VMAlertmanager, rc
 		return fmt.Errorf("cannot build alertmanager config with configSelector, err: %w", err)
 	}
 	alertmananagerConfig = mergedCfg
+	webCfg, err := buildWebServerConfigYAML(ctx, rclient, cr, tlsAssets)
+	if err != nil {
+		return fmt.Errorf("cannot build webserver config: %w", err)
+	}
+
+	gossipCfg, err := buildGossipConfigYAML(ctx, rclient, cr, tlsAssets)
+	if err != nil {
+		return fmt.Errorf("cannot build gossip config: %w", err)
+	}
 
 	// apply default config to be able just start alertmanager
 	if len(alertmananagerConfig) == 0 {
@@ -502,6 +541,12 @@ func createDefaultAMConfig(ctx context.Context, cr *vmv1beta1.VMAlertmanager, rc
 		},
 		Data: map[string][]byte{alertmanagerSecretConfigKey: alertmananagerConfig},
 	}
+	if cr.Spec.WebConfig != nil {
+		newAMSecretConfig.Data[webserverConfigKey] = webCfg
+	}
+	if cr.Spec.GossipConfig != nil {
+		newAMSecretConfig.Data[gossipConfigKey] = gossipCfg
+	}
 
 	for assetKey, assetValue := range tlsAssets {
 		newAMSecretConfig.Data[assetKey] = []byte(assetValue)
@@ -519,7 +564,7 @@ func createDefaultAMConfig(ctx context.Context, cr *vmv1beta1.VMAlertmanager, rc
 	}
 
 	newAMSecretConfig.Annotations = labels.Merge(existAMSecretConfig.Annotations, newAMSecretConfig.Annotations)
-	newAMSecretConfig.Finalizers = vmv1beta1.MergeFinalizers(&existAMSecretConfig, vmv1beta1.FinalizerName)
+	vmv1beta1.AddFinalizer(newAMSecretConfig, &existAMSecretConfig)
 	return rclient.Update(ctx, newAMSecretConfig)
 }
 
@@ -540,9 +585,6 @@ func buildInitConfigContainer(cr *vmv1beta1.VMAlertmanager, c *config.BaseOperat
 	initReloader = corev1.Container{
 		Image: build.FormatContainerImage(c.ContainerRegistry, c.CustomConfigReloaderImage),
 		Name:  "config-init",
-		Command: []string{
-			"/usr/local/bin/config-reloader",
-		},
 		Args: []string{
 			fmt.Sprintf("--config-secret-key=%s", alertmanagerSecretConfigKey),
 			fmt.Sprintf("--config-secret-name=%s/%s", cr.Namespace, cr.ConfigSecretName()),
@@ -618,7 +660,7 @@ func buildVMAlertmanagerConfigReloader(cr *vmv1beta1.VMAlertmanager, c *config.B
 	}
 	if c.UseCustomConfigReloader && c.CustomConfigReloaderImageVersion().GreaterThanOrEqual(minimalConfigReloaderVersion) {
 		configReloaderContainer.Image = build.FormatContainerImage(c.ContainerRegistry, c.CustomConfigReloaderImage)
-		configReloaderContainer.Command = []string{"/usr/local/bin/config-reloader"}
+		configReloaderContainer.Command = nil
 	}
 
 	build.AddsPortProbesToConfigReloaderContainer(&configReloaderContainer, c)

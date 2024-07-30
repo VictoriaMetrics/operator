@@ -55,6 +55,7 @@ type VMSingleSpec struct {
 	// ReplicaCount is the expected size of the VMSingle
 	// it can be 0 or 1
 	// if you need more - use vm cluster
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Number of pods",xDescriptors="urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom"
 	ReplicaCount *int32 `json:"replicaCount,omitempty"`
 	// The number of old ReplicaSets to retain to allow rollback in deployment or
 	// maximum number of revisions that will be maintained in the StatefulSet's revision history.
@@ -87,6 +88,7 @@ type VMSingleSpec struct {
 	// Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
 	// if not defined default resources from operator config will be used
 	// +optional
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resources",xDescriptors="urn:alm:descriptor:com.tectonic.ui:resourceRequirements"
 	Resources v1.ResourceRequirements `json:"resources,omitempty"`
 	// Affinity If specified, the pod's scheduling constraints.
 	// +optional
@@ -162,15 +164,14 @@ type VMSingleSpec struct {
 	// RetentionPeriod for the stored metrics
 	// Note VictoriaMetrics has data/ and indexdb/ folders
 	// metrics from data/ removed eventually as soon as partition leaves retention period
-	// reverse index data at indexdb rotates once at the half of configured retention period
-	// https://docs.victoriametrics.com/Single-server-VictoriaMetrics.html#retention
+	// reverse index data at indexdb rotates once at the half of configured [retention period](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/Single-server-VictoriaMetrics.md/#retention)
 	RetentionPeriod string `json:"retentionPeriod"`
 	// VMBackup configuration for backup
 	// +optional
 	VMBackup *VMBackup `json:"vmBackup,omitempty"`
 	// License allows to configure license key to be used for enterprise features.
 	// Using license key is supported starting from VictoriaMetrics v1.94.0.
-	// See: https://docs.victoriametrics.com/enterprise.html
+	// See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/enterprise.md)
 	// +optional
 	License *License `json:"license,omitempty"`
 	// ExtraArgs that will be passed to  VMSingle pod
@@ -246,6 +247,10 @@ type VMSingleStatus struct {
 
 // VMSingle  is fast, cost-effective and scalable time-series database.
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +operator-sdk:gen-csv:customresourcedefinitions.displayName="VMSingle App"
+// +operator-sdk:gen-csv:customresourcedefinitions.resources="Deployment,apps"
+// +operator-sdk:gen-csv:customresourcedefinitions.resources="Service,v1"
+// +operator-sdk:gen-csv:customresourcedefinitions.resources="Secret,v1"
 // +genclient
 // +k8s:openapi-gen=true
 // +kubebuilder:object:root=true

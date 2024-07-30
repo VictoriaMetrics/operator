@@ -16,6 +16,32 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// VMAgentSecurityEnforcements defines security configuration for endpoint scrapping
+type VMAgentSecurityEnforcements struct {
+	// OverrideHonorLabels if set to true overrides all user configured honor_labels.
+	// If HonorLabels is set in scrape objects  to true, this overrides honor_labels to false.
+	// +optional
+	OverrideHonorLabels bool `json:"overrideHonorLabels,omitempty"`
+	// OverrideHonorTimestamps allows to globally enforce honoring timestamps in all scrape configs.
+	// +optional
+	OverrideHonorTimestamps bool `json:"overrideHonorTimestamps,omitempty"`
+	// IgnoreNamespaceSelectors if set to true will ignore NamespaceSelector settings from
+	// scrape objects, and they will only discover endpoints
+	// within their current namespace.  Defaults to false.
+	// +optional
+	IgnoreNamespaceSelectors bool `json:"ignoreNamespaceSelectors,omitempty"`
+	// EnforcedNamespaceLabel enforces adding a namespace label of origin for each alert
+	// and metric that is user created. The label value will always be the namespace of the object that is
+	// being created.
+	// +optional
+	EnforcedNamespaceLabel string `json:"enforcedNamespaceLabel,omitempty"`
+	// ArbitraryFSAccessThroughSMs configures whether configuration
+	// based on EndpointAuth can access arbitrary files on the file system
+	// of the VMAgent container e.g. bearer token files, basic auth, tls certs
+	// +optional
+	ArbitraryFSAccessThroughSMs ArbitraryFSAccessThroughSMsConfig `json:"arbitraryFSAccessThroughSMs,omitempty"`
+}
+
 // VMAgentSpec defines the desired state of VMAgent
 // +k8s:openapi-gen=true
 // +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".spec.version",description="The version of VMAgent"
@@ -64,6 +90,7 @@ type VMAgentSpec struct {
 	// eventually make the size of the running cluster equal to the expected
 	// size.
 	// NOTE enable VMSingle deduplication for replica usage
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Number of pods",xDescriptors="urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom"
 	// +optional
 	ReplicaCount *int32 `json:"replicaCount,omitempty"`
 	// The number of old ReplicaSets to retain to allow rollback in deployment or
@@ -83,6 +110,7 @@ type VMAgentSpec struct {
 	VolumeMounts []v1.VolumeMount `json:"volumeMounts,omitempty"`
 	// Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
 	// if not specified - default setting will be used
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resources",xDescriptors="urn:alm:descriptor:com.tectonic.ui:resourceRequirements"
 	// +optional
 	Resources v1.ResourceRequirements `json:"resources,omitempty"`
 	// Affinity If specified, the pod's scheduling constraints.
@@ -98,6 +126,7 @@ type VMAgentSpec struct {
 	// ServiceAccountName is the name of the ServiceAccount to use to run the
 	// VMAgent Pods.
 	// +optional
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="ServiceAccount name",xDescriptors="urn:alm:descriptor:io.kubernetes:ServiceAccount"
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 	// SchedulerName - defines kubernetes scheduler name
 	// +optional
@@ -152,23 +181,6 @@ type VMAgentSpec struct {
 	// and bearer token file at /var/run/secrets/kubernetes.io/serviceaccount/.
 	// +optional
 	APIServerConfig *APIServerConfig `json:"aPIServerConfig,omitempty"`
-	// OverrideHonorLabels if set to true overrides all user configured honor_labels.
-	// If HonorLabels is set in ServiceScrape or PodScrape to true, this overrides honor_labels to false.
-	// +optional
-	OverrideHonorLabels bool `json:"overrideHonorLabels,omitempty"`
-	// OverrideHonorTimestamps allows to globally enforce honoring timestamps in all scrape configs.
-	// +optional
-	OverrideHonorTimestamps bool `json:"overrideHonorTimestamps,omitempty"`
-	// IgnoreNamespaceSelectors if set to true will ignore NamespaceSelector settings from
-	// the podscrape and vmservicescrape configs, and they will only discover endpoints
-	// within their current namespace.  Defaults to false.
-	// +optional
-	IgnoreNamespaceSelectors bool `json:"ignoreNamespaceSelectors,omitempty"`
-	// EnforcedNamespaceLabel enforces adding a namespace label of origin for each alert
-	// and metric that is user created. The label value will always be the namespace of the object that is
-	// being created.
-	// +optional
-	EnforcedNamespaceLabel string `json:"enforcedNamespaceLabel,omitempty"`
 	// VMAgentExternalLabelName Name of vmAgent external label used to denote vmAgent instance
 	// name. Defaults to the value of `prometheus`. External label will
 	// _not_ be added when value is set to empty string (`""`).
@@ -190,6 +202,7 @@ type VMAgentSpec struct {
 	// RelabelConfig ConfigMap with global relabel config -remoteWrite.relabelConfig
 	// This relabeling is applied to all the collected metrics before sending them to remote storage.
 	// +optional
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Key at Configmap with relabelConfig name",xDescriptors="urn:alm:descriptor:io.kubernetes:ConfigMapKeySelector"
 	RelabelConfig *v1.ConfigMapKeySelector `json:"relabelConfig,omitempty"`
 	// InlineRelabelConfig - defines GlobalRelabelConfig for vmagent, can be defined directly at CRD.
 	// +optional
@@ -300,11 +313,6 @@ type VMAgentSpec struct {
 	// VMAgent after the upgrade.
 	// +optional
 	AdditionalScrapeConfigs *v1.SecretKeySelector `json:"additionalScrapeConfigs,omitempty"`
-	// ArbitraryFSAccessThroughSMs configures whether configuration
-	// based on a service scrape can access arbitrary files on the file system
-	// of the VMAgent container e.g. bearer token files.
-	// +optional
-	ArbitraryFSAccessThroughSMs ArbitraryFSAccessThroughSMsConfig `json:"arbitraryFSAccessThroughSMs,omitempty"`
 	// InsertPorts - additional listen ports for data ingestion.
 	InsertPorts *InsertPorts `json:"insertPorts,omitempty"`
 	// Port listen address
@@ -333,7 +341,7 @@ type VMAgentSpec struct {
 	// ShardCount - numbers of shards of VMAgent
 	// in this case operator will use 1 deployment/sts per shard with
 	// replicas count according to spec.replicas,
-	// see https://docs.victoriametrics.com/vmagent.html#scraping-big-number-of-targets
+	// see [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md/#scraping-big-number-of-targets)
 	// +optional
 	ShardCount *int `json:"shardCount,omitempty"`
 
@@ -422,14 +430,15 @@ type VMAgentSpec struct {
 
 	// License allows to configure license key to be used for enterprise features.
 	// Using license key is supported starting from VictoriaMetrics v1.94.0.
-	// See: https://docs.victoriametrics.com/enterprise.html
+	// See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/enterprise.md)
 	// +optional
 	License *License `json:"license,omitempty"`
 
 	// Paused If set to true all actions on the underlying managed objects are not
 	// going to be performed, except for delete actions.
 	// +optional
-	Paused bool `json:"paused,omitempty"`
+	Paused                      bool `json:"paused,omitempty"`
+	VMAgentSecurityEnforcements `json:",inline"`
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface
@@ -468,7 +477,7 @@ type VMAgentRemoteWriteSettings struct {
 	// +optional
 	Labels map[string]string `json:"label,omitempty"`
 	// Configures vmagent accepting data via the same multitenant endpoints as vminsert at VictoriaMetrics cluster does,
-	// see https://docs.victoriametrics.com/vmagent.html#multitenancy.
+	// see [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md/#multitenancy).
 	// it's global setting and affects all remote storage configurations
 	// +optional
 	UseMultiTenantMode bool `json:"useMultiTenantMode,omitempty"`
@@ -488,6 +497,7 @@ type VMAgentRemoteWriteSpec struct {
 
 	// ConfigMap with relabeling config which is applied to metrics before sending them to the corresponding -remoteWrite.url
 	// +optional
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Key at Configmap with relabelConfig for remoteWrite",xDescriptors="urn:alm:descriptor:io.kubernetes:ConfigMapKeySelector"
 	UrlRelabelConfig *v1.ConfigMapKeySelector `json:"urlRelabelConfig,omitempty"`
 	// InlineUrlRelabelConfig defines relabeling config for remoteWriteURL, it can be defined at crd spec.
 	// +optional
@@ -561,6 +571,10 @@ type VMAgentStatus struct {
 
 // VMAgent - is a tiny but brave agent, which helps you collect metrics from various sources and stores them in VictoriaMetrics
 // or any other Prometheus-compatible storage system that supports the remote_write protocol.
+// +operator-sdk:gen-csv:customresourcedefinitions.displayName="VMAgent App"
+// +operator-sdk:gen-csv:customresourcedefinitions.resources="Deployment,apps"
+// +operator-sdk:gen-csv:customresourcedefinitions.resources="Service,v1"
+// +operator-sdk:gen-csv:customresourcedefinitions.resources="Secret,v1"
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +genclient
 // +k8s:openapi-gen=true
@@ -842,6 +856,28 @@ func (cr *VMAgent) SetUpdateStatusTo(ctx context.Context, r client.Client, statu
 // GetAdditionalService returns AdditionalServiceSpec settings
 func (cr *VMAgent) GetAdditionalService() *AdditionalServiceSpec {
 	return cr.Spec.ServiceSpec
+}
+
+// APIServerConfig defines a host and auth methods to access apiserver.
+// +k8s:openapi-gen=true
+type APIServerConfig struct {
+	// Host of apiserver.
+	// A valid string consisting of a hostname or IP followed by an optional port number
+	Host string `json:"host"`
+	// BasicAuth allow an endpoint to authenticate over basic authentication
+	// +optional
+	BasicAuth *BasicAuth `json:"basicAuth,omitempty"`
+	// Bearer token for accessing apiserver.
+	// +optional
+	BearerToken string `json:"bearerToken,omitempty"`
+	// File to read bearer token for accessing apiserver.
+	// +optional
+	BearerTokenFile string `json:"bearerTokenFile,omitempty"`
+	// TLSConfig Config to use for accessing apiserver.
+	// +optional
+	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
+	// +optional
+	Authorization *Authorization `json:"authorization,omitempty"`
 }
 
 func init() {

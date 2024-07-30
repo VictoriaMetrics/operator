@@ -112,9 +112,8 @@ spec:
                     properties:
                       password:
                         description: |-
-                          The secret in the service scrape namespace that contains the password
-                          for authentication.
-                          It must be at them same namespace as CRD
+                          Password defines reference for secret with password value
+                          The secret needs to be in the same namespace as scrape object
                         properties:
                           key:
                             description: The key of the secret to select from.  Must
@@ -140,14 +139,14 @@ spec:
                         type: object
                         x-kubernetes-map-type: atomic
                       password_file:
-                        description: PasswordFile defines path to password file at
-                          disk
+                        description: |-
+                          PasswordFile defines path to password file at disk
+                          must be pre-mounted
                         type: string
                       username:
                         description: |-
-                          The secret in the service scrape namespace that contains the username
-                          for authentication.
-                          It must be at them same namespace as CRD
+                          Username defines reference for secret with username value
+                          The secret needs to be in the same namespace as scrape object
                         properties:
                           key:
                             description: The key of the secret to select from.  Must
@@ -386,8 +385,8 @@ spec:
               arbitraryFSAccessThroughSMs:
                 description: |-
                   ArbitraryFSAccessThroughSMs configures whether configuration
-                  based on a service scrape can access arbitrary files on the file system
-                  of the VMAgent container e.g. bearer token files.
+                  based on EndpointAuth can access arbitrary files on the file system
+                  of the VMAgent container e.g. bearer token files, basic auth, tls certs
                 properties:
                   deny:
                     type: boolean
@@ -953,7 +952,7 @@ spec:
               ignoreNamespaceSelectors:
                 description: |-
                   IgnoreNamespaceSelectors if set to true will ignore NamespaceSelector settings from
-                  the podscrape and vmservicescrape configs, and they will only discover endpoints
+                  scrape objects, and they will only discover endpoints
                   within their current namespace.  Defaults to false.
                 type: boolean
               image:
@@ -1023,9 +1022,8 @@ spec:
                   vmagent, can be defined directly at CRD.
                 items:
                   description: |-
-                    RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
-                    It defines `<metric_relabel_configs>`-section of configuration.
-                    More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+                    RelabelConfig allows dynamic rewriting of the label set
+                    More info: https://docs.victoriametrics.com/#relabeling
                   properties:
                     action:
                       description: Action to perform based on regex matching. Default
@@ -1129,14 +1127,12 @@ spec:
                 description: |-
                   License allows to configure license key to be used for enterprise features.
                   Using license key is supported starting from VictoriaMetrics v1.94.0.
-                  See: https://docs.victoriametrics.com/enterprise.html
+                  See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/enterprise.md)
                 properties:
                   key:
                     description: |-
-                      Enterprise license key. This flag is available only in VictoriaMetrics enterprise.
-                      Documentation - https://docs.victoriametrics.com/enterprise.html
-                      for more information, visit https://victoriametrics.com/products/enterprise/ .
-                      To request a trial license, go to https://victoriametrics.com/products/enterprise/trial/
+                      Enterprise license key. This flag is available only in [VictoriaMetrics enterprise](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/enterprise.md).
+                      To request a trial license, [go to](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/products/enterprise/trial.md)
                     type: string
                   keyRef:
                     description: KeyRef is reference to secret with license key for
@@ -1260,9 +1256,8 @@ spec:
                   it's useful for adding specific labels to all targets
                 items:
                   description: |-
-                    RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
-                    It defines `<metric_relabel_configs>`-section of configuration.
-                    More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+                    RelabelConfig allows dynamic rewriting of the label set
+                    More info: https://docs.victoriametrics.com/#relabeling
                   properties:
                     action:
                       description: Action to perform based on regex matching. Default
@@ -1393,7 +1388,7 @@ spec:
               overrideHonorLabels:
                 description: |-
                   OverrideHonorLabels if set to true overrides all user configured honor_labels.
-                  If HonorLabels is set in ServiceScrape or PodScrape to true, this overrides honor_labels to false.
+                  If HonorLabels is set in scrape objects  to true, this overrides honor_labels to false.
                 type: boolean
               overrideHonorTimestamps:
                 description: OverrideHonorTimestamps allows to globally enforce honoring
@@ -1524,9 +1519,8 @@ spec:
                   it's useful for adding specific labels to all targets
                 items:
                   description: |-
-                    RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
-                    It defines `<metric_relabel_configs>`-section of configuration.
-                    More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+                    RelabelConfig allows dynamic rewriting of the label set
+                    More info: https://docs.victoriametrics.com/#relabeling
                   properties:
                     action:
                       description: Action to perform based on regex matching. Default
@@ -1711,9 +1705,8 @@ spec:
                   it's useful for adding specific labels to all targets
                 items:
                   description: |-
-                    RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
-                    It defines `<metric_relabel_configs>`-section of configuration.
-                    More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+                    RelabelConfig allows dynamic rewriting of the label set
+                    More info: https://docs.victoriametrics.com/#relabeling
                   properties:
                     action:
                       description: Action to perform based on regex matching. Default
@@ -1895,9 +1888,8 @@ spec:
                       properties:
                         password:
                           description: |-
-                            The secret in the service scrape namespace that contains the password
-                            for authentication.
-                            It must be at them same namespace as CRD
+                            Password defines reference for secret with password value
+                            The secret needs to be in the same namespace as scrape object
                           properties:
                             key:
                               description: The key of the secret to select from.  Must
@@ -1923,14 +1915,14 @@ spec:
                           type: object
                           x-kubernetes-map-type: atomic
                         password_file:
-                          description: PasswordFile defines path to password file
-                            at disk
+                          description: |-
+                            PasswordFile defines path to password file at disk
+                            must be pre-mounted
                           type: string
                         username:
                           description: |-
-                            The secret in the service scrape namespace that contains the username
-                            for authentication.
-                            It must be at them same namespace as CRD
+                            Username defines reference for secret with username value
+                            The secret needs to be in the same namespace as scrape object
                           properties:
                             key:
                               description: The key of the secret to select from.  Must
@@ -1997,9 +1989,8 @@ spec:
                         for remoteWriteURL, it can be defined at crd spec.
                       items:
                         description: |-
-                          RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
-                          It defines `<metric_relabel_configs>`-section of configuration.
-                          More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+                          RelabelConfig allows dynamic rewriting of the label set
+                          More info: https://docs.victoriametrics.com/#relabeling
                         properties:
                           action:
                             description: Action to perform based on regex matching.
@@ -2252,9 +2243,8 @@ spec:
                                   before aggregation.
                                 items:
                                   description: |-
-                                    RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
-                                    It defines `<metric_relabel_configs>`-section of configuration.
-                                    More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+                                    RelabelConfig allows dynamic rewriting of the label set
+                                    More info: https://docs.victoriametrics.com/#relabeling
                                   properties:
                                     action:
                                       description: Action to perform based on regex
@@ -2355,9 +2345,8 @@ spec:
                                   on the aggregated output before being sent to remote storage.
                                 items:
                                   description: |-
-                                    RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
-                                    It defines `<metric_relabel_configs>`-section of configuration.
-                                    More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+                                    RelabelConfig allows dynamic rewriting of the label set
+                                    More info: https://docs.victoriametrics.com/#relabeling
                                   properties:
                                     action:
                                       description: Action to perform based on regex
@@ -2722,7 +2711,7 @@ spec:
                   useMultiTenantMode:
                     description: |-
                       Configures vmagent accepting data via the same multitenant endpoints as vminsert at VictoriaMetrics cluster does,
-                      see https://docs.victoriametrics.com/vmagent.html#multitenancy.
+                      see [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md/#multitenancy).
                       it's global setting and affects all remote storage configurations
                     type: boolean
                 type: object
@@ -2900,9 +2889,8 @@ spec:
                   it's useful for adding specific labels to all targets
                 items:
                   description: |-
-                    RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
-                    It defines `<metric_relabel_configs>`-section of configuration.
-                    More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+                    RelabelConfig allows dynamic rewriting of the label set
+                    More info: https://docs.victoriametrics.com/#relabeling
                   properties:
                     action:
                       description: Action to perform based on regex matching. Default
@@ -3112,9 +3100,8 @@ spec:
                   it's useful for adding specific labels to all targets
                 items:
                   description: |-
-                    RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
-                    It defines `<metric_relabel_configs>`-section of configuration.
-                    More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+                    RelabelConfig allows dynamic rewriting of the label set
+                    More info: https://docs.victoriametrics.com/#relabeling
                   properties:
                     action:
                       description: Action to perform based on regex matching. Default
@@ -3297,7 +3284,7 @@ spec:
                   ShardCount - numbers of shards of VMAgent
                   in this case operator will use 1 deployment/sts per shard with
                   replicas count according to spec.replicas,
-                  see https://docs.victoriametrics.com/vmagent.html#scraping-big-number-of-targets
+                  see [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md/#scraping-big-number-of-targets)
                 type: integer
               startupProbe:
                 description: StartupProbe that will be added to CRD pod
@@ -3837,9 +3824,8 @@ spec:
                   it's useful for adding specific labels to all targets
                 items:
                   description: |-
-                    RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
-                    It defines `<metric_relabel_configs>`-section of configuration.
-                    More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+                    RelabelConfig allows dynamic rewriting of the label set
+                    More info: https://docs.victoriametrics.com/#relabeling
                   properties:
                     action:
                       description: Action to perform based on regex matching. Default
@@ -4356,9 +4342,8 @@ spec:
                                 properties:
                                   password:
                                     description: |-
-                                      The secret in the service scrape namespace that contains the password
-                                      for authentication.
-                                      It must be at them same namespace as CRD
+                                      Password defines reference for secret with password value
+                                      The secret needs to be in the same namespace as scrape object
                                     properties:
                                       key:
                                         description: The key of the secret to select
@@ -4384,14 +4369,14 @@ spec:
                                     type: object
                                     x-kubernetes-map-type: atomic
                                   password_file:
-                                    description: PasswordFile defines path to password
-                                      file at disk
+                                    description: |-
+                                      PasswordFile defines path to password file at disk
+                                      must be pre-mounted
                                     type: string
                                   username:
                                     description: |-
-                                      The secret in the service scrape namespace that contains the username
-                                      for authentication.
-                                      It must be at them same namespace as CRD
+                                      Username defines reference for secret with username value
+                                      The secret needs to be in the same namespace as scrape object
                                     properties:
                                       key:
                                         description: The key of the secret to select
@@ -4947,9 +4932,8 @@ spec:
                                 properties:
                                   password:
                                     description: |-
-                                      The secret in the service scrape namespace that contains the password
-                                      for authentication.
-                                      It must be at them same namespace as CRD
+                                      Password defines reference for secret with password value
+                                      The secret needs to be in the same namespace as scrape object
                                     properties:
                                       key:
                                         description: The key of the secret to select
@@ -4975,14 +4959,14 @@ spec:
                                     type: object
                                     x-kubernetes-map-type: atomic
                                   password_file:
-                                    description: PasswordFile defines path to password
-                                      file at disk
+                                    description: |-
+                                      PasswordFile defines path to password file at disk
+                                      must be pre-mounted
                                     type: string
                                   username:
                                     description: |-
-                                      The secret in the service scrape namespace that contains the username
-                                      for authentication.
-                                      It must be at them same namespace as CRD
+                                      Username defines reference for secret with username value
+                                      The secret needs to be in the same namespace as scrape object
                                     properties:
                                       key:
                                         description: The key of the secret to select
@@ -5800,9 +5784,8 @@ spec:
                                 properties:
                                   password:
                                     description: |-
-                                      The secret in the service scrape namespace that contains the password
-                                      for authentication.
-                                      It must be at them same namespace as CRD
+                                      Password defines reference for secret with password value
+                                      The secret needs to be in the same namespace as scrape object
                                     properties:
                                       key:
                                         description: The key of the secret to select
@@ -5828,14 +5811,14 @@ spec:
                                     type: object
                                     x-kubernetes-map-type: atomic
                                   password_file:
-                                    description: PasswordFile defines path to password
-                                      file at disk
+                                    description: |-
+                                      PasswordFile defines path to password file at disk
+                                      must be pre-mounted
                                     type: string
                                   username:
                                     description: |-
-                                      The secret in the service scrape namespace that contains the username
-                                      for authentication.
-                                      It must be at them same namespace as CRD
+                                      Username defines reference for secret with username value
+                                      The secret needs to be in the same namespace as scrape object
                                     properties:
                                       key:
                                         description: The key of the secret to select
@@ -6288,9 +6271,8 @@ spec:
                                 properties:
                                   password:
                                     description: |-
-                                      The secret in the service scrape namespace that contains the password
-                                      for authentication.
-                                      It must be at them same namespace as CRD
+                                      Password defines reference for secret with password value
+                                      The secret needs to be in the same namespace as scrape object
                                     properties:
                                       key:
                                         description: The key of the secret to select
@@ -6316,14 +6298,14 @@ spec:
                                     type: object
                                     x-kubernetes-map-type: atomic
                                   password_file:
-                                    description: PasswordFile defines path to password
-                                      file at disk
+                                    description: |-
+                                      PasswordFile defines path to password file at disk
+                                      must be pre-mounted
                                     type: string
                                   username:
                                     description: |-
-                                      The secret in the service scrape namespace that contains the username
-                                      for authentication.
-                                      It must be at them same namespace as CRD
+                                      Username defines reference for secret with username value
+                                      The secret needs to be in the same namespace as scrape object
                                     properties:
                                       key:
                                         description: The key of the secret to select
@@ -6594,9 +6576,8 @@ spec:
                                 properties:
                                   password:
                                     description: |-
-                                      The secret in the service scrape namespace that contains the password
-                                      for authentication.
-                                      It must be at them same namespace as CRD
+                                      Password defines reference for secret with password value
+                                      The secret needs to be in the same namespace as scrape object
                                     properties:
                                       key:
                                         description: The key of the secret to select
@@ -6622,14 +6603,14 @@ spec:
                                     type: object
                                     x-kubernetes-map-type: atomic
                                   password_file:
-                                    description: PasswordFile defines path to password
-                                      file at disk
+                                    description: |-
+                                      PasswordFile defines path to password file at disk
+                                      must be pre-mounted
                                     type: string
                                   username:
                                     description: |-
-                                      The secret in the service scrape namespace that contains the username
-                                      for authentication.
-                                      It must be at them same namespace as CRD
+                                      Username defines reference for secret with username value
+                                      The secret needs to be in the same namespace as scrape object
                                     properties:
                                       key:
                                         description: The key of the secret to select
@@ -6983,9 +6964,8 @@ spec:
                                 properties:
                                   password:
                                     description: |-
-                                      The secret in the service scrape namespace that contains the password
-                                      for authentication.
-                                      It must be at them same namespace as CRD
+                                      Password defines reference for secret with password value
+                                      The secret needs to be in the same namespace as scrape object
                                     properties:
                                       key:
                                         description: The key of the secret to select
@@ -7011,14 +6991,14 @@ spec:
                                     type: object
                                     x-kubernetes-map-type: atomic
                                   password_file:
-                                    description: PasswordFile defines path to password
-                                      file at disk
+                                    description: |-
+                                      PasswordFile defines path to password file at disk
+                                      must be pre-mounted
                                     type: string
                                   username:
                                     description: |-
-                                      The secret in the service scrape namespace that contains the username
-                                      for authentication.
-                                      It must be at them same namespace as CRD
+                                      Username defines reference for secret with username value
+                                      The secret needs to be in the same namespace as scrape object
                                     properties:
                                       key:
                                         description: The key of the secret to select
@@ -8151,6 +8131,269 @@ spec:
                   type: object
                   x-kubernetes-preserve-unknown-fields: true
                 type: array
+              gossipConfig:
+                description: GossipConfig defines gossip TLS configuration for Alertmanager
+                  cluster
+                properties:
+                  tls_client_config:
+                    description: TLSClientConfig defines client TLS configuration
+                      for alertmanager
+                    properties:
+                      ca_file:
+                        description: |-
+                          CAFile defines path to the pre-mounted file with CA
+                          mutually exclusive with CASecretRef
+                        type: string
+                      ca_secret_ref:
+                        description: |-
+                          CA defines reference for secret with CA content under given key
+                          mutually exclusive with CAFile
+                        properties:
+                          key:
+                            description: The key of the secret to select from.  Must
+                              be a valid secret key.
+                            type: string
+                          name:
+                            default: ""
+                            description: |-
+                              Name of the referent.
+                              This field is effectively required, but due to backwards compatibility is
+                              allowed to be empty. Instances of this type with an empty value here are
+                              almost certainly wrong.
+                              TODO: Add other useful fields. apiVersion, kind, uid?
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
+                            type: string
+                          optional:
+                            description: Specify whether the Secret or its key must
+                              be defined
+                            type: boolean
+                        required:
+                        - key
+                        type: object
+                        x-kubernetes-map-type: atomic
+                      cert_file:
+                        description: |-
+                          CertFile defines path to the pre-mounted file with certificate
+                          mutually exclusive with CertSecretRef
+                        type: string
+                      cert_secret_ref:
+                        description: SecretKeySelector selects a key of a Secret.
+                        properties:
+                          key:
+                            description: The key of the secret to select from.  Must
+                              be a valid secret key.
+                            type: string
+                          name:
+                            default: ""
+                            description: |-
+                              Name of the referent.
+                              This field is effectively required, but due to backwards compatibility is
+                              allowed to be empty. Instances of this type with an empty value here are
+                              almost certainly wrong.
+                              TODO: Add other useful fields. apiVersion, kind, uid?
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
+                            type: string
+                          optional:
+                            description: Specify whether the Secret or its key must
+                              be defined
+                            type: boolean
+                        required:
+                        - key
+                        type: object
+                        x-kubernetes-map-type: atomic
+                      insecure_skip_verify:
+                        description: |-
+                          Cert defines reference for secret with CA content under given key
+                          mutually exclusive with CertFile
+                        type: boolean
+                      key_file:
+                        description: |-
+                          KeyFile defines path to the pre-mounted file with certificate key
+                          mutually exclusive with KeySecretRef
+                        type: string
+                      key_secret_ref:
+                        description: |-
+                          Key defines reference for secret with certificate key content under given key
+                          mutually exclusive with KeyFile
+                        properties:
+                          key:
+                            description: The key of the secret to select from.  Must
+                              be a valid secret key.
+                            type: string
+                          name:
+                            default: ""
+                            description: |-
+                              Name of the referent.
+                              This field is effectively required, but due to backwards compatibility is
+                              allowed to be empty. Instances of this type with an empty value here are
+                              almost certainly wrong.
+                              TODO: Add other useful fields. apiVersion, kind, uid?
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
+                            type: string
+                          optional:
+                            description: Specify whether the Secret or its key must
+                              be defined
+                            type: boolean
+                        required:
+                        - key
+                        type: object
+                        x-kubernetes-map-type: atomic
+                      server_name:
+                        description: ServerName indicates a name of a server
+                        type: string
+                    type: object
+                  tls_server_config:
+                    description: TLSServerConfig defines server TLS configuration
+                      for alertmanager
+                    properties:
+                      cert_file:
+                        description: |-
+                          CertFile defines path to the pre-mounted file with certificate
+                          mutually exclusive with CertSecretRef
+                        type: string
+                      cert_secret_ref:
+                        description: SecretKeySelector selects a key of a Secret.
+                        properties:
+                          key:
+                            description: The key of the secret to select from.  Must
+                              be a valid secret key.
+                            type: string
+                          name:
+                            default: ""
+                            description: |-
+                              Name of the referent.
+                              This field is effectively required, but due to backwards compatibility is
+                              allowed to be empty. Instances of this type with an empty value here are
+                              almost certainly wrong.
+                              TODO: Add other useful fields. apiVersion, kind, uid?
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
+                            type: string
+                          optional:
+                            description: Specify whether the Secret or its key must
+                              be defined
+                            type: boolean
+                        required:
+                        - key
+                        type: object
+                        x-kubernetes-map-type: atomic
+                      cipher_suites:
+                        description: |-
+                          CipherSuites defines list of supported cipher suites for TLS versions up to TLS 1.2
+                          https://golang.org/pkg/crypto/tls/#pkg-constants
+                        items:
+                          type: string
+                        type: array
+                      client_auth_type:
+                        description: |-
+                          Cert defines reference for secret with CA content under given key
+                          mutually exclusive with CertFile
+                          ClientAuthType defines server policy for client authentication
+                          If you want to enable client authentication (aka mTLS), you need to use RequireAndVerifyClientCert
+                          Note, mTLS is supported only at enterprise version of VictoriaMetrics components
+                        enum:
+                        - NoClientCert
+                        - RequireAndVerifyClientCert
+                        type: string
+                      client_ca_file:
+                        description: |-
+                          ClientCAFile defines path to the pre-mounted file with CA
+                          mutually exclusive with ClientCASecretRef
+                        type: string
+                      client_ca_secret_ref:
+                        description: |-
+                          ClientCASecretRef defines reference for secret with CA content under given key
+                          mutually exclusive with ClientCAFile
+                        properties:
+                          key:
+                            description: The key of the secret to select from.  Must
+                              be a valid secret key.
+                            type: string
+                          name:
+                            default: ""
+                            description: |-
+                              Name of the referent.
+                              This field is effectively required, but due to backwards compatibility is
+                              allowed to be empty. Instances of this type with an empty value here are
+                              almost certainly wrong.
+                              TODO: Add other useful fields. apiVersion, kind, uid?
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
+                            type: string
+                          optional:
+                            description: Specify whether the Secret or its key must
+                              be defined
+                            type: boolean
+                        required:
+                        - key
+                        type: object
+                        x-kubernetes-map-type: atomic
+                      curve_preferences:
+                        description: |-
+                          CurvePreferences defines elliptic curves that will be used in an ECDHE handshake, in preference order.
+                          https://golang.org/pkg/crypto/tls/#CurveID
+                        items:
+                          type: string
+                        type: array
+                      key_file:
+                        description: |-
+                          KeyFile defines path to the pre-mounted file with certificate key
+                          mutually exclusive with KeySecretRef
+                        type: string
+                      key_secret_ref:
+                        description: |-
+                          Key defines reference for secret with certificate key content under given key
+                          mutually exclusive with KeyFile
+                        properties:
+                          key:
+                            description: The key of the secret to select from.  Must
+                              be a valid secret key.
+                            type: string
+                          name:
+                            default: ""
+                            description: |-
+                              Name of the referent.
+                              This field is effectively required, but due to backwards compatibility is
+                              allowed to be empty. Instances of this type with an empty value here are
+                              almost certainly wrong.
+                              TODO: Add other useful fields. apiVersion, kind, uid?
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
+                            type: string
+                          optional:
+                            description: Specify whether the Secret or its key must
+                              be defined
+                            type: boolean
+                        required:
+                        - key
+                        type: object
+                        x-kubernetes-map-type: atomic
+                      max_version:
+                        description: MaxVersion maximum TLS version that is acceptable.
+                        enum:
+                        - TLS10
+                        - TLS11
+                        - TLS12
+                        - TLS13
+                        type: string
+                      min_version:
+                        description: MinVersion minimum TLS version that is acceptable.
+                        enum:
+                        - TLS10
+                        - TLS11
+                        - TLS12
+                        - TLS13
+                        type: string
+                      prefer_server_cipher_suites:
+                        description: |-
+                          PreferServerCipherSuites controls whether the server selects the
+                          client's most preferred ciphersuite
+                        type: boolean
+                    type: object
+                type: object
               hostNetwork:
                 description: HostNetwork controls whether the pod may use the node
                   network namespace
@@ -9163,6 +9406,183 @@ spec:
                   type: object
                   x-kubernetes-preserve-unknown-fields: true
                 type: array
+              webConfig:
+                description: |-
+                  WebConfig defines configuration for webserver
+                  https://github.com/prometheus/alertmanager/blob/main/docs/https.md
+                properties:
+                  basic_auth_users:
+                    additionalProperties:
+                      type: string
+                    description: |-
+                      BasicAuthUsers Usernames and hashed passwords that have full access to the web server
+                      Passwords must be hashed with bcrypt
+                    type: object
+                  http_server_config:
+                    description: HTTPServerConfig defines http server configuration
+                      for alertmanager web server
+                    properties:
+                      headers:
+                        additionalProperties:
+                          type: string
+                        description: Headers defines list of headers that can be added
+                          to HTTP responses.
+                        type: object
+                      http2:
+                        description: |-
+                          HTTP2 enables HTTP/2 support. Note that HTTP/2 is only supported with TLS.
+                          This can not be changed on the fly.
+                        type: boolean
+                    type: object
+                  tls_server_config:
+                    description: TLSServerConfig defines server TLS configuration
+                      for alertmanager
+                    properties:
+                      cert_file:
+                        description: |-
+                          CertFile defines path to the pre-mounted file with certificate
+                          mutually exclusive with CertSecretRef
+                        type: string
+                      cert_secret_ref:
+                        description: SecretKeySelector selects a key of a Secret.
+                        properties:
+                          key:
+                            description: The key of the secret to select from.  Must
+                              be a valid secret key.
+                            type: string
+                          name:
+                            default: ""
+                            description: |-
+                              Name of the referent.
+                              This field is effectively required, but due to backwards compatibility is
+                              allowed to be empty. Instances of this type with an empty value here are
+                              almost certainly wrong.
+                              TODO: Add other useful fields. apiVersion, kind, uid?
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
+                            type: string
+                          optional:
+                            description: Specify whether the Secret or its key must
+                              be defined
+                            type: boolean
+                        required:
+                        - key
+                        type: object
+                        x-kubernetes-map-type: atomic
+                      cipher_suites:
+                        description: |-
+                          CipherSuites defines list of supported cipher suites for TLS versions up to TLS 1.2
+                          https://golang.org/pkg/crypto/tls/#pkg-constants
+                        items:
+                          type: string
+                        type: array
+                      client_auth_type:
+                        description: |-
+                          Cert defines reference for secret with CA content under given key
+                          mutually exclusive with CertFile
+                          ClientAuthType defines server policy for client authentication
+                          If you want to enable client authentication (aka mTLS), you need to use RequireAndVerifyClientCert
+                          Note, mTLS is supported only at enterprise version of VictoriaMetrics components
+                        enum:
+                        - NoClientCert
+                        - RequireAndVerifyClientCert
+                        type: string
+                      client_ca_file:
+                        description: |-
+                          ClientCAFile defines path to the pre-mounted file with CA
+                          mutually exclusive with ClientCASecretRef
+                        type: string
+                      client_ca_secret_ref:
+                        description: |-
+                          ClientCASecretRef defines reference for secret with CA content under given key
+                          mutually exclusive with ClientCAFile
+                        properties:
+                          key:
+                            description: The key of the secret to select from.  Must
+                              be a valid secret key.
+                            type: string
+                          name:
+                            default: ""
+                            description: |-
+                              Name of the referent.
+                              This field is effectively required, but due to backwards compatibility is
+                              allowed to be empty. Instances of this type with an empty value here are
+                              almost certainly wrong.
+                              TODO: Add other useful fields. apiVersion, kind, uid?
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
+                            type: string
+                          optional:
+                            description: Specify whether the Secret or its key must
+                              be defined
+                            type: boolean
+                        required:
+                        - key
+                        type: object
+                        x-kubernetes-map-type: atomic
+                      curve_preferences:
+                        description: |-
+                          CurvePreferences defines elliptic curves that will be used in an ECDHE handshake, in preference order.
+                          https://golang.org/pkg/crypto/tls/#CurveID
+                        items:
+                          type: string
+                        type: array
+                      key_file:
+                        description: |-
+                          KeyFile defines path to the pre-mounted file with certificate key
+                          mutually exclusive with KeySecretRef
+                        type: string
+                      key_secret_ref:
+                        description: |-
+                          Key defines reference for secret with certificate key content under given key
+                          mutually exclusive with KeyFile
+                        properties:
+                          key:
+                            description: The key of the secret to select from.  Must
+                              be a valid secret key.
+                            type: string
+                          name:
+                            default: ""
+                            description: |-
+                              Name of the referent.
+                              This field is effectively required, but due to backwards compatibility is
+                              allowed to be empty. Instances of this type with an empty value here are
+                              almost certainly wrong.
+                              TODO: Add other useful fields. apiVersion, kind, uid?
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
+                            type: string
+                          optional:
+                            description: Specify whether the Secret or its key must
+                              be defined
+                            type: boolean
+                        required:
+                        - key
+                        type: object
+                        x-kubernetes-map-type: atomic
+                      max_version:
+                        description: MaxVersion maximum TLS version that is acceptable.
+                        enum:
+                        - TLS10
+                        - TLS11
+                        - TLS12
+                        - TLS13
+                        type: string
+                      min_version:
+                        description: MinVersion minimum TLS version that is acceptable.
+                        enum:
+                        - TLS10
+                        - TLS11
+                        - TLS12
+                        - TLS13
+                        type: string
+                      prefer_server_cipher_suites:
+                        description: |-
+                          PreferServerCipherSuites controls whether the server selects the
+                          client's most preferred ciphersuite
+                        type: boolean
+                    type: object
+                type: object
             type: object
           status:
             description: |-
@@ -9282,9 +9702,8 @@ spec:
                     properties:
                       password:
                         description: |-
-                          The secret in the service scrape namespace that contains the password
-                          for authentication.
-                          It must be at them same namespace as CRD
+                          Password defines reference for secret with password value
+                          The secret needs to be in the same namespace as scrape object
                         properties:
                           key:
                             description: The key of the secret to select from.  Must
@@ -9310,14 +9729,14 @@ spec:
                         type: object
                         x-kubernetes-map-type: atomic
                       password_file:
-                        description: PasswordFile defines path to password file at
-                          disk
+                        description: |-
+                          PasswordFile defines path to password file at disk
+                          must be pre-mounted
                         type: string
                       username:
                         description: |-
-                          The secret in the service scrape namespace that contains the username
-                          for authentication.
-                          It must be at them same namespace as CRD
+                          Username defines reference for secret with username value
+                          The secret needs to be in the same namespace as scrape object
                         properties:
                           key:
                             description: The key of the secret to select from.  Must
@@ -9562,14 +9981,12 @@ spec:
                 description: |-
                   License allows to configure license key to be used for enterprise features.
                   Using license key is supported starting from VictoriaMetrics v1.94.0.
-                  See: https://docs.victoriametrics.com/enterprise.html
+                  See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/enterprise.md)
                 properties:
                   key:
                     description: |-
-                      Enterprise license key. This flag is available only in VictoriaMetrics enterprise.
-                      Documentation - https://docs.victoriametrics.com/enterprise.html
-                      for more information, visit https://victoriametrics.com/products/enterprise/ .
-                      To request a trial license, go to https://victoriametrics.com/products/enterprise/trial/
+                      Enterprise license key. This flag is available only in [VictoriaMetrics enterprise](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/enterprise.md).
+                      To request a trial license, [go to](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/products/enterprise/trial.md)
                     type: string
                   keyRef:
                     description: KeyRef is reference to secret with license key for
@@ -9644,9 +10061,8 @@ spec:
                     properties:
                       password:
                         description: |-
-                          The secret in the service scrape namespace that contains the password
-                          for authentication.
-                          It must be at them same namespace as CRD
+                          Password defines reference for secret with password value
+                          The secret needs to be in the same namespace as scrape object
                         properties:
                           key:
                             description: The key of the secret to select from.  Must
@@ -9672,14 +10088,14 @@ spec:
                         type: object
                         x-kubernetes-map-type: atomic
                       password_file:
-                        description: PasswordFile defines path to password file at
-                          disk
+                        description: |-
+                          PasswordFile defines path to password file at disk
+                          must be pre-mounted
                         type: string
                       username:
                         description: |-
-                          The secret in the service scrape namespace that contains the username
-                          for authentication.
-                          It must be at them same namespace as CRD
+                          Username defines reference for secret with username value
+                          The secret needs to be in the same namespace as scrape object
                         properties:
                           key:
                             description: The key of the secret to select from.  Must
@@ -9873,9 +10289,8 @@ spec:
                       properties:
                         password:
                           description: |-
-                            The secret in the service scrape namespace that contains the password
-                            for authentication.
-                            It must be at them same namespace as CRD
+                            Password defines reference for secret with password value
+                            The secret needs to be in the same namespace as scrape object
                           properties:
                             key:
                               description: The key of the secret to select from.  Must
@@ -9901,14 +10316,14 @@ spec:
                           type: object
                           x-kubernetes-map-type: atomic
                         password_file:
-                          description: PasswordFile defines path to password file
-                            at disk
+                          description: |-
+                            PasswordFile defines path to password file at disk
+                            must be pre-mounted
                           type: string
                         username:
                           description: |-
-                            The secret in the service scrape namespace that contains the username
-                            for authentication.
-                            It must be at them same namespace as CRD
+                            Username defines reference for secret with username value
+                            The secret needs to be in the same namespace as scrape object
                           properties:
                             key:
                               description: The key of the secret to select from.  Must
@@ -10166,9 +10581,8 @@ spec:
                     properties:
                       password:
                         description: |-
-                          The secret in the service scrape namespace that contains the password
-                          for authentication.
-                          It must be at them same namespace as CRD
+                          Password defines reference for secret with password value
+                          The secret needs to be in the same namespace as scrape object
                         properties:
                           key:
                             description: The key of the secret to select from.  Must
@@ -10194,14 +10608,14 @@ spec:
                         type: object
                         x-kubernetes-map-type: atomic
                       password_file:
-                        description: PasswordFile defines path to password file at
-                          disk
+                        description: |-
+                          PasswordFile defines path to password file at disk
+                          must be pre-mounted
                         type: string
                       username:
                         description: |-
-                          The secret in the service scrape namespace that contains the username
-                          for authentication.
-                          It must be at them same namespace as CRD
+                          Username defines reference for secret with username value
+                          The secret needs to be in the same namespace as scrape object
                         properties:
                           key:
                             description: The key of the secret to select from.  Must
@@ -10303,9 +10717,8 @@ spec:
                     properties:
                       password:
                         description: |-
-                          The secret in the service scrape namespace that contains the password
-                          for authentication.
-                          It must be at them same namespace as CRD
+                          Password defines reference for secret with password value
+                          The secret needs to be in the same namespace as scrape object
                         properties:
                           key:
                             description: The key of the secret to select from.  Must
@@ -10331,14 +10744,14 @@ spec:
                         type: object
                         x-kubernetes-map-type: atomic
                       password_file:
-                        description: PasswordFile defines path to password file at
-                          disk
+                        description: |-
+                          PasswordFile defines path to password file at disk
+                          must be pre-mounted
                         type: string
                       username:
                         description: |-
-                          The secret in the service scrape namespace that contains the username
-                          for authentication.
-                          It must be at them same namespace as CRD
+                          Username defines reference for secret with username value
+                          The secret needs to be in the same namespace as scrape object
                         properties:
                           key:
                             description: The key of the secret to select from.  Must
@@ -11109,7 +11522,7 @@ spec:
               drop_src_path_prefix_parts:
                 description: |-
                   DropSrcPathPrefixParts is the number of `/`-delimited request path prefix parts to drop before proxying the request to backend.
-                  See https://docs.victoriametrics.com/vmauth.html#dropping-request-path-prefix for more details.
+                  See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmauth.md#dropping-request-path-prefix) for more details.
                 type: integer
               extraArgs:
                 additionalProperties:
@@ -11468,8 +11881,7 @@ spec:
               ip_filters:
                 description: |-
                   IPFilters defines per target src ip filters
-                  supported only with enterprise version of vmauth
-                  https://docs.victoriametrics.com/vmauth.html#ip-filters
+                  supported only with enterprise version of [vmauth](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmauth.md/#ip-filters)
                 properties:
                   allow_list:
                     items:
@@ -11484,14 +11896,12 @@ spec:
                 description: |-
                   License allows to configure license key to be used for enterprise features.
                   Using license key is supported starting from VictoriaMetrics v1.94.0.
-                  See: https://docs.victoriametrics.com/enterprise.html
+                  See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/enterprise.md)
                 properties:
                   key:
                     description: |-
-                      Enterprise license key. This flag is available only in VictoriaMetrics enterprise.
-                      Documentation - https://docs.victoriametrics.com/enterprise.html
-                      for more information, visit https://victoriametrics.com/products/enterprise/ .
-                      To request a trial license, go to https://victoriametrics.com/products/enterprise/trial/
+                      Enterprise license key. This flag is available only in [VictoriaMetrics enterprise](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/enterprise.md).
+                      To request a trial license, [go to](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/products/enterprise/trial.md)
                     type: string
                   keyRef:
                     description: KeyRef is reference to secret with license key for
@@ -11529,7 +11939,7 @@ spec:
                 description: |-
                   LoadBalancingPolicy defines load balancing policy to use for backend urls.
                   Supported policies: least_loaded, first_available.
-                  See https://docs.victoriametrics.com/vmauth.html#load-balancing for more details (default "least_loaded")
+                  See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmauth.md#load-balancing) for more details (default "least_loaded")
                 enum:
                 - least_loaded
                 - first_available
@@ -12066,7 +12476,7 @@ spec:
                     drop_src_path_prefix_parts:
                       description: |-
                         DropSrcPathPrefixParts is the number of `/`-delimited request path prefix parts to drop before proxying the request to backend.
-                        See https://docs.victoriametrics.com/vmauth.html#dropping-request-path-prefix for more details.
+                        See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmauth.md#dropping-request-path-prefix) for more details.
                       type: integer
                     headers:
                       description: |-
@@ -12082,7 +12492,7 @@ spec:
                       description: |-
                         LoadBalancingPolicy defines load balancing policy to use for backend urls.
                         Supported policies: least_loaded, first_available.
-                        See https://docs.victoriametrics.com/vmauth.html#load-balancing for more details (default "least_loaded")
+                        See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmauth.md#load-balancing) for more details (default "least_loaded")
                       enum:
                       - least_loaded
                       - first_available
@@ -12453,14 +12863,12 @@ spec:
                 description: |-
                   License allows to configure license key to be used for enterprise features.
                   Using license key is supported starting from VictoriaMetrics v1.94.0.
-                  See: https://docs.victoriametrics.com/enterprise.html
+                  See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/enterprise.md)
                 properties:
                   key:
                     description: |-
-                      Enterprise license key. This flag is available only in VictoriaMetrics enterprise.
-                      Documentation - https://docs.victoriametrics.com/enterprise.html
-                      for more information, visit https://victoriametrics.com/products/enterprise/ .
-                      To request a trial license, go to https://victoriametrics.com/products/enterprise/trial/
+                      Enterprise license key. This flag is available only in [VictoriaMetrics enterprise](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/enterprise.md).
+                      To request a trial license, [go to](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/products/enterprise/trial.md)
                     type: string
                   keyRef:
                     description: KeyRef is reference to secret with license key for
@@ -12506,8 +12914,8 @@ spec:
                   RetentionPeriod for the stored metrics
                   Note VictoriaMetrics has data/ and indexdb/ folders
                   metrics from data/ removed eventually as soon as partition leaves retention period
-                  reverse index data at indexdb rotates once at the half of configured retention period
-                  https://docs.victoriametrics.com/Single-server-VictoriaMetrics.html#retention
+                  reverse index data at indexdb rotates once at the half of configured
+                  [retention period](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/Single-server-VictoriaMetrics.md/#retention)
                 type: string
               serviceAccountName:
                 description: |-
@@ -12530,7 +12938,7 @@ spec:
                   clusterNativeListenPort:
                     description: |-
                       ClusterNativePort for multi-level cluster setup.
-                      More details: https://docs.victoriametrics.com/Cluster-VictoriaMetrics.html#multi-level-cluster-setup
+                      More [details](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/Cluster-VictoriaMetrics.md#multi-level-cluster-setup)
                     type: string
                   configMaps:
                     description: |-
@@ -13583,7 +13991,7 @@ spec:
                   clusterNativeListenPort:
                     description: |-
                       ClusterNativePort for multi-level cluster setup.
-                      More details: https://docs.victoriametrics.com/Cluster-VictoriaMetrics.html#multi-level-cluster-setup
+                      More [details](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/Cluster-VictoriaMetrics.md#multi-level-cluster-setup)
                     type: string
                   configMaps:
                     description: |-
@@ -15923,7 +16331,7 @@ spec:
                       restore:
                         description: |-
                           Restore Allows to enable restore options for pod
-                          Read more: https://docs.victoriametrics.com/vmbackupmanager.html#restore-commands
+                          Read [more](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmbackupmanager.md#restore-commands)
                         properties:
                           onStart:
                             description: OnStart defines configuration for restore
@@ -16114,6 +16522,7 @@ spec:
             description: VMClusterStatus defines the observed state of VMCluster
             properties:
               clusterStatus:
+                description: UpdateStatus defines status for application
                 type: string
               lastSync:
                 description: Deprecated.
@@ -16214,15 +16623,13 @@ spec:
                     type: string
                 type: object
               basicAuth:
-                description: |-
-                  BasicAuth allow an endpoint to authenticate over basic authentication
-                  More info: https://prometheus.io/docs/operating/configuration/#endpoints
+                description: BasicAuth allow an endpoint to authenticate over basic
+                  authentication
                 properties:
                   password:
                     description: |-
-                      The secret in the service scrape namespace that contains the password
-                      for authentication.
-                      It must be at them same namespace as CRD
+                      Password defines reference for secret with password value
+                      The secret needs to be in the same namespace as scrape object
                     properties:
                       key:
                         description: The key of the secret to select from.  Must be
@@ -16248,13 +16655,14 @@ spec:
                     type: object
                     x-kubernetes-map-type: atomic
                   password_file:
-                    description: PasswordFile defines path to password file at disk
+                    description: |-
+                      PasswordFile defines path to password file at disk
+                      must be pre-mounted
                     type: string
                   username:
                     description: |-
-                      The secret in the service scrape namespace that contains the username
-                      for authentication.
-                      It must be at them same namespace as CRD
+                      Username defines reference for secret with username value
+                      The secret needs to be in the same namespace as scrape object
                     properties:
                       key:
                         description: The key of the secret to select from.  Must be
@@ -16286,7 +16694,7 @@ spec:
               bearerTokenSecret:
                 description: |-
                   Secret to mount to read bearer token for scraping targets. The secret
-                  needs to be  accessible by
+                  needs to be in the same namespace as the scrape object and accessible by
                   the victoria-metrics operator.
                 nullable: true
                 properties:
@@ -16329,13 +16737,16 @@ spec:
               jobLabel:
                 description: The label to use to retrieve the job name from.
                 type: string
+              max_scrape_size:
+                description: MaxScrapeSize defines a maximum size of scraped data
+                  for a job
+                type: string
               metricRelabelConfigs:
-                description: MetricRelabelConfigs to apply to samples before ingestion.
+                description: MetricRelabelConfigs to apply to samples after scrapping.
                 items:
                   description: |-
-                    RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
-                    It defines `<metric_relabel_configs>`-section of configuration.
-                    More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+                    RelabelConfig allows dynamic rewriting of the label set
+                    More info: https://docs.victoriametrics.com/#relabeling
                   properties:
                     action:
                       description: Action to perform based on regex matching. Default
@@ -16530,14 +16941,11 @@ spec:
                   proxy through this endpoint.
                 type: string
               relabelConfigs:
-                description: |-
-                  RelabelConfigs to apply to samples before scraping.
-                  More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config
+                description: RelabelConfigs to apply to samples during service discovery.
                 items:
                   description: |-
-                    RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
-                    It defines `<metric_relabel_configs>`-section of configuration.
-                    More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+                    RelabelConfig allows dynamic rewriting of the label set
+                    More info: https://docs.victoriametrics.com/#relabeling
                   properties:
                     action:
                       description: Action to perform based on regex matching. Default
@@ -16686,7 +17094,7 @@ spec:
                   type: string
                 type: array
               tlsConfig:
-                description: TLSConfig specifies TLSConfig configuration parameters.
+                description: TLSConfig configuration to use when scraping the endpoint
                 properties:
                   ca:
                     description: Stuct containing the CA cert to use for the targets.
@@ -16848,13 +17256,14 @@ spec:
                   parameters
                 properties:
                   disable_compression:
+                    description: DisableCompression
                     type: boolean
                   disable_keep_alive:
                     description: |-
                       disable_keepalive allows disabling HTTP keep-alive when scraping targets.
                       By default, HTTP keep-alive is enabled, so TCP connections to scrape targets
                       could be re-used.
-                      See https://docs.victoriametrics.com/vmagent.html#scrape_config-enhancements
+                      See https://docs.victoriametrics.com/operator/../vmagent#scrape_config-enhancements
                     type: boolean
                   headers:
                     description: |-
@@ -16866,16 +17275,12 @@ spec:
                     items:
                       type: string
                     type: array
-                  metric_relabel_debug:
-                    description: deprecated since [v1.85](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.85.0),
-                      will be removed in next release
-                    type: boolean
                   no_stale_markers:
                     type: boolean
                   proxy_client_config:
                     description: |-
                       ProxyClientConfig configures proxy auth settings for scraping
-                      See feature description https://docs.victoriametrics.com/vmagent.html#scraping-targets-via-a-proxy
+                      See feature description https://docs.victoriametrics.com/operator/../vmagent#scraping-targets-via-a-proxy
                     properties:
                       basic_auth:
                         description: BasicAuth allow an endpoint to authenticate over
@@ -16883,9 +17288,8 @@ spec:
                         properties:
                           password:
                             description: |-
-                              The secret in the service scrape namespace that contains the password
-                              for authentication.
-                              It must be at them same namespace as CRD
+                              Password defines reference for secret with password value
+                              The secret needs to be in the same namespace as scrape object
                             properties:
                               key:
                                 description: The key of the secret to select from.  Must
@@ -16911,14 +17315,14 @@ spec:
                             type: object
                             x-kubernetes-map-type: atomic
                           password_file:
-                            description: PasswordFile defines path to password file
-                              at disk
+                            description: |-
+                              PasswordFile defines path to password file at disk
+                              must be pre-mounted
                             type: string
                           username:
                             description: |-
-                              The secret in the service scrape namespace that contains the username
-                              for authentication.
-                              It must be at them same namespace as CRD
+                              Username defines reference for secret with username value
+                              The secret needs to be in the same namespace as scrape object
                             properties:
                               key:
                                 description: The key of the secret to select from.  Must
@@ -17138,10 +17542,6 @@ spec:
                             type: string
                         type: object
                     type: object
-                  relabel_debug:
-                    description: deprecated since [v1.85](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.85.0),
-                      will be removed in next release
-                    type: boolean
                   scrape_align_interval:
                     type: string
                   scrape_offset:
@@ -17234,7 +17634,7 @@ spec:
                 description: A list of endpoints allowed as part of this PodMonitor.
                 items:
                   description: PodMetricsEndpoint defines a scrapeable endpoint of
-                    a Kubernetes Pod serving Prometheus metrics.
+                    a Kubernetes Pod serving metrics.
                   properties:
                     attach_metadata:
                       description: AttachMetadata configures metadata attaching from
@@ -17283,15 +17683,13 @@ spec:
                           type: string
                       type: object
                     basicAuth:
-                      description: |-
-                        BasicAuth allow an endpoint to authenticate over basic authentication
-                        More info: https://prometheus.io/docs/operating/configuration/#endpoints
+                      description: BasicAuth allow an endpoint to authenticate over
+                        basic authentication
                       properties:
                         password:
                           description: |-
-                            The secret in the service scrape namespace that contains the password
-                            for authentication.
-                            It must be at them same namespace as CRD
+                            Password defines reference for secret with password value
+                            The secret needs to be in the same namespace as scrape object
                           properties:
                             key:
                               description: The key of the secret to select from.  Must
@@ -17317,14 +17715,14 @@ spec:
                           type: object
                           x-kubernetes-map-type: atomic
                         password_file:
-                          description: PasswordFile defines path to password file
-                            at disk
+                          description: |-
+                            PasswordFile defines path to password file at disk
+                            must be pre-mounted
                           type: string
                         username:
                           description: |-
-                            The secret in the service scrape namespace that contains the username
-                            for authentication.
-                            It must be at them same namespace as CRD
+                            Username defines reference for secret with username value
+                            The secret needs to be in the same namespace as scrape object
                           properties:
                             key:
                               description: The key of the secret to select from.  Must
@@ -17356,7 +17754,7 @@ spec:
                     bearerTokenSecret:
                       description: |-
                         Secret to mount to read bearer token for scraping targets. The secret
-                        needs to be in the same namespace as the service scrape and accessible by
+                        needs to be in the same namespace as the scrape object and accessible by
                         the victoria-metrics operator.
                       nullable: true
                       properties:
@@ -17403,14 +17801,17 @@ spec:
                     interval:
                       description: Interval at which metrics should be scraped
                       type: string
+                    max_scrape_size:
+                      description: MaxScrapeSize defines a maximum size of scraped
+                        data for a job
+                      type: string
                     metricRelabelConfigs:
-                      description: MetricRelabelConfigs to apply to samples before
-                        ingestion.
+                      description: MetricRelabelConfigs to apply to samples after
+                        scrapping.
                       items:
                         description: |-
-                          RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
-                          It defines `<metric_relabel_configs>`-section of configuration.
-                          More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+                          RelabelConfig allows dynamic rewriting of the label set
+                          More info: https://docs.victoriametrics.com/#relabeling
                         properties:
                           action:
                             description: Action to perform based on regex matching.
@@ -17600,22 +18001,19 @@ spec:
                       description: HTTP path to scrape for metrics.
                       type: string
                     port:
-                      description: Name of the pod port this endpoint refers to. Mutually
-                        exclusive with targetPort.
+                      description: Name of the port exposed at Pod.
                       type: string
                     proxyURL:
                       description: ProxyURL eg http://proxyserver:2195 Directs scrapes
                         to proxy through this endpoint.
                       type: string
                     relabelConfigs:
-                      description: |-
-                        RelabelConfigs to apply to samples before ingestion.
-                        More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config
+                      description: RelabelConfigs to apply to samples during service
+                        discovery.
                       items:
                         description: |-
-                          RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
-                          It defines `<metric_relabel_configs>`-section of configuration.
-                          More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+                          RelabelConfig allows dynamic rewriting of the label set
+                          More info: https://docs.victoriametrics.com/#relabeling
                         properties:
                           action:
                             description: Action to perform based on regex matching.
@@ -17687,7 +18085,7 @@ spec:
                         type: object
                       type: array
                     sampleLimit:
-                      description: SampleLimit defines per-podEndpoint limit on number
+                      description: SampleLimit defines per-scrape limit on number
                         of scraped samples that will be accepted.
                       format: int64
                       type: integer
@@ -17711,6 +18109,14 @@ spec:
                         a single target can expose during all the scrapes on the time window of 24h.
                       format: int64
                       type: integer
+                    targetPort:
+                      anyOf:
+                      - type: integer
+                      - type: string
+                      description: |-
+                        TargetPort
+                        Name or number of the pod port this endpoint refers to. Mutually exclusive with port.
+                      x-kubernetes-int-or-string: true
                     tlsConfig:
                       description: TLSConfig configuration to use when scraping the
                         endpoint
@@ -17880,13 +18286,14 @@ spec:
                         scrape parameters
                       properties:
                         disable_compression:
+                          description: DisableCompression
                           type: boolean
                         disable_keep_alive:
                           description: |-
                             disable_keepalive allows disabling HTTP keep-alive when scraping targets.
                             By default, HTTP keep-alive is enabled, so TCP connections to scrape targets
                             could be re-used.
-                            See https://docs.victoriametrics.com/vmagent.html#scrape_config-enhancements
+                            See https://docs.victoriametrics.com/operator/../vmagent#scrape_config-enhancements
                           type: boolean
                         headers:
                           description: |-
@@ -17898,16 +18305,12 @@ spec:
                           items:
                             type: string
                           type: array
-                        metric_relabel_debug:
-                          description: deprecated since [v1.85](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.85.0),
-                            will be removed in next release
-                          type: boolean
                         no_stale_markers:
                           type: boolean
                         proxy_client_config:
                           description: |-
                             ProxyClientConfig configures proxy auth settings for scraping
-                            See feature description https://docs.victoriametrics.com/vmagent.html#scraping-targets-via-a-proxy
+                            See feature description https://docs.victoriametrics.com/operator/../vmagent#scraping-targets-via-a-proxy
                           properties:
                             basic_auth:
                               description: BasicAuth allow an endpoint to authenticate
@@ -17915,9 +18318,8 @@ spec:
                               properties:
                                 password:
                                   description: |-
-                                    The secret in the service scrape namespace that contains the password
-                                    for authentication.
-                                    It must be at them same namespace as CRD
+                                    Password defines reference for secret with password value
+                                    The secret needs to be in the same namespace as scrape object
                                   properties:
                                     key:
                                       description: The key of the secret to select
@@ -17943,14 +18345,14 @@ spec:
                                   type: object
                                   x-kubernetes-map-type: atomic
                                 password_file:
-                                  description: PasswordFile defines path to password
-                                    file at disk
+                                  description: |-
+                                    PasswordFile defines path to password file at disk
+                                    must be pre-mounted
                                   type: string
                                 username:
                                   description: |-
-                                    The secret in the service scrape namespace that contains the username
-                                    for authentication.
-                                    It must be at them same namespace as CRD
+                                    Username defines reference for secret with username value
+                                    The secret needs to be in the same namespace as scrape object
                                   properties:
                                     key:
                                       description: The key of the secret to select
@@ -18172,10 +18574,6 @@ spec:
                                   type: string
                               type: object
                           type: object
-                        relabel_debug:
-                          description: deprecated since [v1.85](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.85.0),
-                            will be removed in next release
-                          type: boolean
                         scrape_align_interval:
                           type: string
                         scrape_offset:
@@ -18340,15 +18738,13 @@ spec:
                     type: string
                 type: object
               basicAuth:
-                description: |-
-                  BasicAuth allow an endpoint to authenticate over basic authentication
-                  More info: https://prometheus.io/docs/operating/configuration/#endpoints
+                description: BasicAuth allow an endpoint to authenticate over basic
+                  authentication
                 properties:
                   password:
                     description: |-
-                      The secret in the service scrape namespace that contains the password
-                      for authentication.
-                      It must be at them same namespace as CRD
+                      Password defines reference for secret with password value
+                      The secret needs to be in the same namespace as scrape object
                     properties:
                       key:
                         description: The key of the secret to select from.  Must be
@@ -18374,13 +18770,14 @@ spec:
                     type: object
                     x-kubernetes-map-type: atomic
                   password_file:
-                    description: PasswordFile defines path to password file at disk
+                    description: |-
+                      PasswordFile defines path to password file at disk
+                      must be pre-mounted
                     type: string
                   username:
                     description: |-
-                      The secret in the service scrape namespace that contains the username
-                      for authentication.
-                      It must be at them same namespace as CRD
+                      Username defines reference for secret with username value
+                      The secret needs to be in the same namespace as scrape object
                     properties:
                       key:
                         description: The key of the secret to select from.  Must be
@@ -18412,7 +18809,7 @@ spec:
               bearerTokenSecret:
                 description: |-
                   Secret to mount to read bearer token for scraping targets. The secret
-                  needs to be in the same namespace as the service scrape and accessible by
+                  needs to be in the same namespace as the scrape object and accessible by
                   the victoria-metrics operator.
                 nullable: true
                 properties:
@@ -18441,14 +18838,100 @@ spec:
               follow_redirects:
                 description: FollowRedirects controls redirects for scraping.
                 type: boolean
+              honorLabels:
+                description: HonorLabels chooses the metric's labels on collisions
+                  with target labels.
+                type: boolean
+              honorTimestamps:
+                description: HonorTimestamps controls whether vmagent respects the
+                  timestamps present in scraped data.
+                type: boolean
               interval:
-                description: |-
-                  Interval at which targets are probed using the configured prober.
-                  If not specified Prometheus' global scrape interval is used.
+                description: Interval at which metrics should be scraped
                 type: string
               jobName:
                 description: The job name assigned to scraped metrics by default.
                 type: string
+              max_scrape_size:
+                description: MaxScrapeSize defines a maximum size of scraped data
+                  for a job
+                type: string
+              metricRelabelConfigs:
+                description: MetricRelabelConfigs to apply to samples after scrapping.
+                items:
+                  description: |-
+                    RelabelConfig allows dynamic rewriting of the label set
+                    More info: https://docs.victoriametrics.com/#relabeling
+                  properties:
+                    action:
+                      description: Action to perform based on regex matching. Default
+                        is 'replace'
+                      type: string
+                    if:
+                      description: 'If represents metricsQL match expression (or list
+                        of expressions): ''{__name__=~"foo_.*"}'''
+                      x-kubernetes-preserve-unknown-fields: true
+                    labels:
+                      additionalProperties:
+                        type: string
+                      description: 'Labels is used together with Match for `action:
+                        graphite`'
+                      type: object
+                    match:
+                      description: 'Match is used together with Labels for `action:
+                        graphite`'
+                      type: string
+                    modulus:
+                      description: Modulus to take of the hash of the source label
+                        values.
+                      format: int64
+                      type: integer
+                    regex:
+                      description: |-
+                        Regular expression against which the extracted value is matched. Default is '(.*)'
+                        victoriaMetrics supports multiline regex joined with |
+                        https://docs.victoriametrics.com/vmagent/#relabeling-enhancements
+                      x-kubernetes-preserve-unknown-fields: true
+                    replacement:
+                      description: |-
+                        Replacement value against which a regex replace is performed if the
+                        regular expression matches. Regex capture groups are available. Default is '$1'
+                      type: string
+                    separator:
+                      description: Separator placed between concatenated source label
+                        values. default is ';'.
+                      type: string
+                    source_labels:
+                      description: |-
+                        UnderScoreSourceLabels - additional form of source labels source_labels
+                        for compatibility with original relabel config.
+                        if set  both sourceLabels and source_labels, sourceLabels has priority.
+                        for details https://github.com/VictoriaMetrics/operator/issues/131
+                      items:
+                        type: string
+                      type: array
+                    sourceLabels:
+                      description: |-
+                        The source labels select values from existing labels. Their content is concatenated
+                        using the configured separator and matched against the configured regular expression
+                        for the replace, keep, and drop actions.
+                      items:
+                        type: string
+                      type: array
+                    target_label:
+                      description: |-
+                        UnderScoreTargetLabel - additional form of target label - target_label
+                        for compatibility with original relabel config.
+                        if set  both targetLabel and target_label, targetLabel has priority.
+                        for details https://github.com/VictoriaMetrics/operator/issues/131
+                      type: string
+                    targetLabel:
+                      description: |-
+                        Label to which the resulting value is written in a replace action.
+                        It is mandatory for replace actions. Regex capture groups are available.
+                      type: string
+                  type: object
+                type: array
               module:
                 description: |-
                   The module to use for probing specifying how to probe the target.
@@ -18568,6 +19051,9 @@ spec:
                   type: array
                 description: Optional HTTP URL parameters
                 type: object
+              path:
+                description: HTTP path to scrape for metrics.
+                type: string
               proxyURL:
                 description: ProxyURL eg http://proxyserver:2195 Directs scrapes to
                   proxy through this endpoint.
@@ -18577,13 +19063,19 @@ spec:
                   samples that will be accepted.
                 format: int64
                 type: integer
+              scheme:
+                description: HTTP scheme to use for scraping.
+                enum:
+                - http
+                - https
+                type: string
               scrape_interval:
                 description: |-
                   ScrapeInterval is the same as Interval and has priority over it.
                   one of scrape_interval or interval can be used
                 type: string
               scrapeTimeout:
-                description: Timeout for scraping metrics from the Prometheus exporter.
+                description: Timeout after which the scrape is ended
                 type: string
               seriesLimit:
                 description: |-
@@ -18614,14 +19106,12 @@ spec:
                             type: array
                         type: object
                       relabelingConfigs:
-                        description: |-
-                          RelabelConfigs to apply to samples before ingestion.
-                          More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config
+                        description: RelabelConfigs to apply to samples during service
+                          discovery.
                         items:
                           description: |-
-                            RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
-                            It defines `<metric_relabel_configs>`-section of configuration.
-                            More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+                            RelabelConfig allows dynamic rewriting of the label set
+                            More info: https://docs.victoriametrics.com/#relabeling
                           properties:
                             action:
                               description: Action to perform based on regex matching.
@@ -18740,9 +19230,8 @@ spec:
                         x-kubernetes-map-type: atomic
                     type: object
                   staticConfig:
-                    description: |-
-                      StaticConfig defines static targets which are considers for probing.
-                      More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#static_config.
+                    description: StaticConfig defines static targets which are considers
+                      for probing.
                     properties:
                       labels:
                         additionalProperties:
@@ -18751,12 +19240,12 @@ spec:
                           targets.
                         type: object
                       relabelingConfigs:
-                        description: 'More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config'
+                        description: RelabelConfigs to apply to samples during service
+                          discovery.
                         items:
                           description: |-
-                            RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
-                            It defines `<metric_relabel_configs>`-section of configuration.
-                            More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+                            RelabelConfig allows dynamic rewriting of the label set
+                            More info: https://docs.victoriametrics.com/#relabeling
                           properties:
                             action:
                               description: Action to perform based on regex matching.
@@ -19000,13 +19489,14 @@ spec:
                   parameters
                 properties:
                   disable_compression:
+                    description: DisableCompression
                     type: boolean
                   disable_keep_alive:
                     description: |-
                       disable_keepalive allows disabling HTTP keep-alive when scraping targets.
                       By default, HTTP keep-alive is enabled, so TCP connections to scrape targets
                       could be re-used.
-                      See https://docs.victoriametrics.com/vmagent.html#scrape_config-enhancements
+                      See https://docs.victoriametrics.com/operator/../vmagent#scrape_config-enhancements
                     type: boolean
                   headers:
                     description: |-
@@ -19018,16 +19508,12 @@ spec:
                     items:
                       type: string
                     type: array
-                  metric_relabel_debug:
-                    description: deprecated since [v1.85](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.85.0),
-                      will be removed in next release
-                    type: boolean
                   no_stale_markers:
                     type: boolean
                   proxy_client_config:
                     description: |-
                       ProxyClientConfig configures proxy auth settings for scraping
-                      See feature description https://docs.victoriametrics.com/vmagent.html#scraping-targets-via-a-proxy
+                      See feature description https://docs.victoriametrics.com/operator/../vmagent#scraping-targets-via-a-proxy
                     properties:
                       basic_auth:
                         description: BasicAuth allow an endpoint to authenticate over
@@ -19035,9 +19521,8 @@ spec:
                         properties:
                           password:
                             description: |-
-                              The secret in the service scrape namespace that contains the password
-                              for authentication.
-                              It must be at them same namespace as CRD
+                              Password defines reference for secret with password value
+                              The secret needs to be in the same namespace as scrape object
                             properties:
                               key:
                                 description: The key of the secret to select from.  Must
@@ -19063,14 +19548,14 @@ spec:
                             type: object
                             x-kubernetes-map-type: atomic
                           password_file:
-                            description: PasswordFile defines path to password file
-                              at disk
+                            description: |-
+                              PasswordFile defines path to password file at disk
+                              must be pre-mounted
                             type: string
                           username:
                             description: |-
-                              The secret in the service scrape namespace that contains the username
-                              for authentication.
-                              It must be at them same namespace as CRD
+                              Username defines reference for secret with username value
+                              The secret needs to be in the same namespace as scrape object
                             properties:
                               key:
                                 description: The key of the secret to select from.  Must
@@ -19290,10 +19775,6 @@ spec:
                             type: string
                         type: object
                     type: object
-                  relabel_debug:
-                    description: deprecated since [v1.85](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.85.0),
-                      will be removed in next release
-                    type: boolean
                   scrape_align_interval:
                     type: string
                   scrape_offset:
@@ -19422,7 +19903,7 @@ spec:
                       description: |-
                         ExtraFilterLabels optional list of label filters applied to every rule's
                         request within a group. Is compatible only with VM datasource.
-                        See more details at https://docs.victoriametrics.com#prometheus-querying-api-enhancements
+                        See more details [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/#prometheus-querying-api-enhancements)
                         Deprecated, use params instead
                       type: object
                     headers:
@@ -19526,8 +20007,8 @@ spec:
                       type: array
                     tenant:
                       description: |-
-                        Tenant id for group, can be used only with enterprise version of vmalert
-                        See more details at https://docs.victoriametrics.com/vmalert.html#multitenancy
+                        Tenant id for group, can be used only with enterprise version of vmalert.
+                        See more details [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmalert.md#multitenancy).
                       type: string
                     type:
                       description: |-
@@ -19595,7 +20076,7 @@ spec:
             description: VMScrapeConfigSpec defines the desired state of VMScrapeConfig
             properties:
               authorization:
-                description: Authorization header to use on every scrape request.
+                description: Authorization with http header Authorization
                 properties:
                   credentials:
                     description: Reference to the secret with value for authorization
@@ -19636,7 +20117,7 @@ spec:
                 items:
                   description: |-
                     AzureSDConfig allow retrieving scrape targets from Azure VMs.
-                    See https://docs.victoriametrics.com/sd_configs/#azure_sd_configs
+                    See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/sd_configs.md#azure_sd_configs)
                   properties:
                     authenticationMethod:
                       description: |-
@@ -19702,13 +20183,13 @@ spec:
                   type: object
                 type: array
               basicAuth:
-                description: BasicAuth information to use on every scrape request.
+                description: BasicAuth allow an endpoint to authenticate over basic
+                  authentication
                 properties:
                   password:
                     description: |-
-                      The secret in the service scrape namespace that contains the password
-                      for authentication.
-                      It must be at them same namespace as CRD
+                      Password defines reference for secret with password value
+                      The secret needs to be in the same namespace as scrape object
                     properties:
                       key:
                         description: The key of the secret to select from.  Must be
@@ -19734,13 +20215,14 @@ spec:
                     type: object
                     x-kubernetes-map-type: atomic
                   password_file:
-                    description: PasswordFile defines path to password file at disk
+                    description: |-
+                      PasswordFile defines path to password file at disk
+                      must be pre-mounted
                     type: string
                   username:
                     description: |-
-                      The secret in the service scrape namespace that contains the username
-                      for authentication.
-                      It must be at them same namespace as CRD
+                      Username defines reference for secret with username value
+                      The secret needs to be in the same namespace as scrape object
                     properties:
                       key:
                         description: The key of the secret to select from.  Must be
@@ -19766,13 +20248,45 @@ spec:
                     type: object
                     x-kubernetes-map-type: atomic
                 type: object
+              bearerTokenFile:
+                description: File to read bearer token for scraping targets.
+                type: string
+              bearerTokenSecret:
+                description: |-
+                  Secret to mount to read bearer token for scraping targets. The secret
+                  needs to be in the same namespace as the scrape object and accessible by
+                  the victoria-metrics operator.
+                nullable: true
+                properties:
+                  key:
+                    description: The key of the secret to select from.  Must be a
+                      valid secret key.
+                    type: string
+                  name:
+                    default: ""
+                    description: |-
+                      Name of the referent.
+                      This field is effectively required, but due to backwards compatibility is
+                      allowed to be empty. Instances of this type with an empty value here are
+                      almost certainly wrong.
+                      TODO: Add other useful fields. apiVersion, kind, uid?
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                      TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
+                    type: string
+                  optional:
+                    description: Specify whether the Secret or its key must be defined
+                    type: boolean
+                required:
+                - key
+                type: object
+                x-kubernetes-map-type: atomic
               consulSDConfigs:
                 description: ConsulSDConfigs defines a list of Consul service discovery
                   configurations.
                 items:
                   description: |-
-                    ConsulSDConfig defines a Consul service discovery configuration
-                    See https://docs.victoriametrics.com/sd_configs/#consul_sd_configs
+                    ConsulSDConfig defines a Consul service discovery configuration.
+                    See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/sd_configs.md/#consul_sd_configs)
                   properties:
                     allowStale:
                       description: |-
@@ -19820,9 +20334,8 @@ spec:
                       properties:
                         password:
                           description: |-
-                            The secret in the service scrape namespace that contains the password
-                            for authentication.
-                            It must be at them same namespace as CRD
+                            Password defines reference for secret with password value
+                            The secret needs to be in the same namespace as scrape object
                           properties:
                             key:
                               description: The key of the secret to select from.  Must
@@ -19848,14 +20361,14 @@ spec:
                           type: object
                           x-kubernetes-map-type: atomic
                         password_file:
-                          description: PasswordFile defines path to password file
-                            at disk
+                          description: |-
+                            PasswordFile defines path to password file at disk
+                            must be pre-mounted
                           type: string
                         username:
                           description: |-
-                            The secret in the service scrape namespace that contains the username
-                            for authentication.
-                            It must be at them same namespace as CRD
+                            Username defines reference for secret with username value
+                            The secret needs to be in the same namespace as scrape object
                           properties:
                             key:
                               description: The key of the secret to select from.  Must
@@ -20014,7 +20527,7 @@ spec:
                     proxy_client_config:
                       description: |-
                         ProxyClientConfig configures proxy auth settings for scraping
-                        See feature description https://docs.victoriametrics.com/vmagent.html#scraping-targets-via-a-proxy
+                        See [feature description](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#scraping-targets-via-a-proxy)
                       properties:
                         basic_auth:
                           description: BasicAuth allow an endpoint to authenticate
@@ -20022,9 +20535,8 @@ spec:
                           properties:
                             password:
                               description: |-
-                                The secret in the service scrape namespace that contains the password
-                                for authentication.
-                                It must be at them same namespace as CRD
+                                Password defines reference for secret with password value
+                                The secret needs to be in the same namespace as scrape object
                               properties:
                                 key:
                                   description: The key of the secret to select from.  Must
@@ -20050,14 +20562,14 @@ spec:
                               type: object
                               x-kubernetes-map-type: atomic
                             password_file:
-                              description: PasswordFile defines path to password file
-                                at disk
+                              description: |-
+                                PasswordFile defines path to password file at disk
+                                must be pre-mounted
                               type: string
                             username:
                               description: |-
-                                The secret in the service scrape namespace that contains the username
-                                for authentication.
-                                It must be at them same namespace as CRD
+                                Username defines reference for secret with username value
+                                The secret needs to be in the same namespace as scrape object
                               properties:
                                 key:
                                   description: The key of the secret to select from.  Must
@@ -20512,8 +21024,8 @@ spec:
                 items:
                   description: |-
                     DigitalOceanSDConfig allow retrieving scrape targets from DigitalOcean's Droplets API.
-                    This service discovery uses the public IPv4 address by default, by that can be changed with relabeling
-                    See https://docs.victoriametrics.com/sd_configs/#digitalocean_sd_configs
+                    This service discovery uses the public IPv4 address by default, by that can be changed with relabeling.
+                    See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/sd_configs.md#digitalocean_sd_configs)
                   properties:
                     authorization:
                       description: Authorization header to use on every scrape request.
@@ -20669,7 +21181,7 @@ spec:
                     proxy_client_config:
                       description: |-
                         ProxyClientConfig configures proxy auth settings for scraping
-                        See feature description https://docs.victoriametrics.com/vmagent.html#scraping-targets-via-a-proxy
+                        See (feature description](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#scraping-targets-via-a-proxy)
                       properties:
                         basic_auth:
                           description: BasicAuth allow an endpoint to authenticate
@@ -20677,9 +21189,8 @@ spec:
                           properties:
                             password:
                               description: |-
-                                The secret in the service scrape namespace that contains the password
-                                for authentication.
-                                It must be at them same namespace as CRD
+                                Password defines reference for secret with password value
+                                The secret needs to be in the same namespace as scrape object
                               properties:
                                 key:
                                   description: The key of the secret to select from.  Must
@@ -20705,14 +21216,14 @@ spec:
                               type: object
                               x-kubernetes-map-type: atomic
                             password_file:
-                              description: PasswordFile defines path to password file
-                                at disk
+                              description: |-
+                                PasswordFile defines path to password file at disk
+                                must be pre-mounted
                               type: string
                             username:
                               description: |-
-                                The secret in the service scrape namespace that contains the username
-                                for authentication.
-                                It must be at them same namespace as CRD
+                                Username defines reference for secret with username value
+                                The secret needs to be in the same namespace as scrape object
                               properties:
                                 key:
                                   description: The key of the secret to select from.  Must
@@ -21109,7 +21620,7 @@ spec:
                   description: |-
                     DNSSDConfig allows specifying a set of DNS domain names which are periodically queried to discover a list of targets.
                     The DNS servers to be contacted are read from /etc/resolv.conf.
-                    See https://docs.victoriametrics.com/sd_configs/#dns_sd_configs
+                    See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/sd_configs.md#dns_sd_configs)
                   properties:
                     names:
                       description: A list of DNS domain names to be queried.
@@ -21140,8 +21651,8 @@ spec:
                   description: |-
                     EC2SDConfig allow retrieving scrape targets from AWS EC2 instances.
                     The private IP address is used by default, but may be changed to the public IP address with relabeling.
-                    The IAM credentials used must have the ec2:DescribeInstances permission to discover scrape targets
-                    See https://docs.victoriametrics.com/sd_configs/#ec2_sd_configs
+                    The IAM credentials used must have the ec2:DescribeInstances permission to discover scrape targets.
+                    See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/sd_configs.md#ec2_sd_configs)
                   properties:
                     accessKey:
                       description: AccessKey is the AWS API key.
@@ -21234,8 +21745,8 @@ spec:
                   configurations.
                 items:
                   description: |-
-                    FileSDConfig defines a file service discovery configuration
-                    See https://docs.victoriametrics.com/sd_configs/#file_sd_configs
+                    FileSDConfig defines a file service discovery configuration.
+                    See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/sd_configs.md#file_sd_configs)
                   properties:
                     files:
                       description: List of files to be used for file discovery.
@@ -21258,7 +21769,7 @@ spec:
                     GCESDConfig configures scrape targets from GCP GCE instances.
                     The private IP address is used by default, but may be changed to
                     the public IP address with relabeling.
-                    See https://docs.victoriametrics.com/sd_configs/#gce_sd_configs
+                    See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/sd_configs.md#gce_sd_configs)
 
 
                     The GCE service discovery will load the Google Cloud credentials
@@ -21299,16 +21810,16 @@ spec:
                   with target labels.
                 type: boolean
               honorTimestamps:
-                description: HonorTimestamps controls whether to respect the timestamps
-                  present in scraped data.
+                description: HonorTimestamps controls whether vmagent respects the
+                  timestamps present in scraped data.
                 type: boolean
               httpSDConfigs:
                 description: HTTPSDConfigs defines a list of HTTP service discovery
                   configurations.
                 items:
                   description: |-
-                    HTTPSDConfig defines a HTTP service discovery configuration
-                    See https://docs.victoriametrics.com/sd_configs/#http_sd_configs
+                    HTTPSDConfig defines a HTTP service discovery configuration.
+                    See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/sd_configs.md#http_sd_configs)
                   properties:
                     authorization:
                       description: Authorization header to use on every scrape request.
@@ -21351,9 +21862,8 @@ spec:
                       properties:
                         password:
                           description: |-
-                            The secret in the service scrape namespace that contains the password
-                            for authentication.
-                            It must be at them same namespace as CRD
+                            Password defines reference for secret with password value
+                            The secret needs to be in the same namespace as scrape object
                           properties:
                             key:
                               description: The key of the secret to select from.  Must
@@ -21379,14 +21889,14 @@ spec:
                           type: object
                           x-kubernetes-map-type: atomic
                         password_file:
-                          description: PasswordFile defines path to password file
-                            at disk
+                          description: |-
+                            PasswordFile defines path to password file at disk
+                            must be pre-mounted
                           type: string
                         username:
                           description: |-
-                            The secret in the service scrape namespace that contains the username
-                            for authentication.
-                            It must be at them same namespace as CRD
+                            Username defines reference for secret with username value
+                            The secret needs to be in the same namespace as scrape object
                           properties:
                             key:
                               description: The key of the secret to select from.  Must
@@ -21415,7 +21925,7 @@ spec:
                     proxy_client_config:
                       description: |-
                         ProxyClientConfig configures proxy auth settings for scraping
-                        See feature description https://docs.victoriametrics.com/vmagent.html#scraping-targets-via-a-proxy
+                        See [feature description](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#scraping-targets-via-a-proxy)
                       properties:
                         basic_auth:
                           description: BasicAuth allow an endpoint to authenticate
@@ -21423,9 +21933,8 @@ spec:
                           properties:
                             password:
                               description: |-
-                                The secret in the service scrape namespace that contains the password
-                                for authentication.
-                                It must be at them same namespace as CRD
+                                Password defines reference for secret with password value
+                                The secret needs to be in the same namespace as scrape object
                               properties:
                                 key:
                                   description: The key of the secret to select from.  Must
@@ -21451,14 +21960,14 @@ spec:
                               type: object
                               x-kubernetes-map-type: atomic
                             password_file:
-                              description: PasswordFile defines path to password file
-                                at disk
+                              description: |-
+                                PasswordFile defines path to password file at disk
+                                must be pre-mounted
                               type: string
                             username:
                               description: |-
-                                The secret in the service scrape namespace that contains the username
-                                for authentication.
-                                It must be at them same namespace as CRD
+                                Username defines reference for secret with username value
+                                The secret needs to be in the same namespace as scrape object
                               properties:
                                 key:
                                   description: The key of the secret to select from.  Must
@@ -21855,13 +22364,16 @@ spec:
                   - url
                   type: object
                 type: array
+              interval:
+                description: Interval at which metrics should be scraped
+                type: string
               kubernetesSDConfigs:
                 description: KubernetesSDConfigs defines a list of Kubernetes service
                   discovery configurations.
                 items:
                   description: |-
                     KubernetesSDConfig allows retrieving scrape targets from Kubernetes' REST API.
-                    See https://docs.victoriametrics.com/sd_configs/#kubernetes_sd_configs
+                    See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/sd_configs.md#kubernetes_sd_configs)
                   properties:
                     apiServer:
                       description: |-
@@ -21922,9 +22434,8 @@ spec:
                       properties:
                         password:
                           description: |-
-                            The secret in the service scrape namespace that contains the password
-                            for authentication.
-                            It must be at them same namespace as CRD
+                            Password defines reference for secret with password value
+                            The secret needs to be in the same namespace as scrape object
                           properties:
                             key:
                               description: The key of the secret to select from.  Must
@@ -21950,14 +22461,14 @@ spec:
                           type: object
                           x-kubernetes-map-type: atomic
                         password_file:
-                          description: PasswordFile defines path to password file
-                            at disk
+                          description: |-
+                            PasswordFile defines path to password file at disk
+                            must be pre-mounted
                           type: string
                         username:
                           description: |-
-                            The secret in the service scrape namespace that contains the username
-                            for authentication.
-                            It must be at them same namespace as CRD
+                            Username defines reference for secret with username value
+                            The secret needs to be in the same namespace as scrape object
                           properties:
                             key:
                               description: The key of the secret to select from.  Must
@@ -22114,7 +22625,7 @@ spec:
                     proxy_client_config:
                       description: |-
                         ProxyClientConfig configures proxy auth settings for scraping
-                        See feature description https://docs.victoriametrics.com/vmagent.html#scraping-targets-via-a-proxy
+                        See [feature description](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#scraping-targets-via-a-proxy)
                       properties:
                         basic_auth:
                           description: BasicAuth allow an endpoint to authenticate
@@ -22122,9 +22633,8 @@ spec:
                           properties:
                             password:
                               description: |-
-                                The secret in the service scrape namespace that contains the password
-                                for authentication.
-                                It must be at them same namespace as CRD
+                                Password defines reference for secret with password value
+                                The secret needs to be in the same namespace as scrape object
                               properties:
                                 key:
                                   description: The key of the secret to select from.  Must
@@ -22150,14 +22660,14 @@ spec:
                               type: object
                               x-kubernetes-map-type: atomic
                             password_file:
-                              description: PasswordFile defines path to password file
-                                at disk
+                              description: |-
+                                PasswordFile defines path to password file at disk
+                                must be pre-mounted
                               type: string
                             username:
                               description: |-
-                                The secret in the service scrape namespace that contains the username
-                                for authentication.
-                                It must be at them same namespace as CRD
+                                Username defines reference for secret with username value
+                                The secret needs to be in the same namespace as scrape object
                               properties:
                                 key:
                                   description: The key of the secret to select from.  Must
@@ -22571,13 +23081,16 @@ spec:
                   - role
                   type: object
                 type: array
+              max_scrape_size:
+                description: MaxScrapeSize defines a maximum size of scraped data
+                  for a job
+                type: string
               metricRelabelConfigs:
-                description: MetricRelabelConfigs to apply to samples before ingestion.
+                description: MetricRelabelConfigs to apply to samples after scrapping.
                 items:
                   description: |-
-                    RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
-                    It defines `<metric_relabel_configs>`-section of configuration.
-                    More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+                    RelabelConfig allows dynamic rewriting of the label set
+                    More info: https://docs.victoriametrics.com/#relabeling
                   properties:
                     action:
                       description: Action to perform based on regex matching. Default
@@ -22648,10 +23161,6 @@ spec:
                       type: string
                   type: object
                 type: array
-              metricsPath:
-                description: MetricsPath HTTP path to scrape for metrics. If empty,
-                  use the default value (e.g. /metrics).
-                type: string
               oauth2:
                 description: OAuth2 defines auth configuration
                 properties:
@@ -22764,7 +23273,7 @@ spec:
                 items:
                   description: |-
                     OpenStackSDConfig allow retrieving scrape targets from OpenStack Nova instances.
-                    See https://docs.victoriametrics.com/sd_configs/#openstack_sd_configs
+                    See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/sd_configs.md#openstack_sd_configs)
                   properties:
                     allTenants:
                       description: |-
@@ -23072,20 +23581,19 @@ spec:
                   type: array
                 description: Optional HTTP URL parameters
                 type: object
-                x-kubernetes-map-type: atomic
+              path:
+                description: HTTP path to scrape for metrics.
+                type: string
               proxyURL:
                 description: ProxyURL eg http://proxyserver:2195 Directs scrapes to
                   proxy through this endpoint.
                 type: string
               relabelConfigs:
-                description: |-
-                  RelabelConfigs to apply to samples before scraping.
-                  See https://docs.victoriametrics.com/vmagent.html#relabeling
+                description: RelabelConfigs to apply to samples during service discovery.
                 items:
                   description: |-
-                    RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
-                    It defines `<metric_relabel_configs>`-section of configuration.
-                    More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+                    RelabelConfig allows dynamic rewriting of the label set
+                    More info: https://docs.victoriametrics.com/#relabeling
                   properties:
                     action:
                       description: Action to perform based on regex matching. Default
@@ -23162,19 +23670,18 @@ spec:
                 format: int64
                 type: integer
               scheme:
-                description: |-
-                  Configures the protocol scheme used for requests.
-                  If empty, use HTTP by default.
+                description: HTTP scheme to use for scraping.
                 enum:
-                - HTTP
-                - HTTPS
+                - http
+                - https
                 type: string
-              scrapeInterval:
-                description: ScrapeInterval is the interval between consecutive scrapes.
+              scrape_interval:
+                description: |-
+                  ScrapeInterval is the same as Interval and has priority over it.
+                  one of scrape_interval or interval can be used
                 type: string
               scrapeTimeout:
-                description: ScrapeTimeout is the number of seconds to wait until
-                  a scrape request times out.
+                description: Timeout after which the scrape is ended
                 type: string
               seriesLimit:
                 description: |-
@@ -23188,7 +23695,7 @@ spec:
                 items:
                   description: |-
                     StaticConfig defines a static configuration.
-                    See https://docs.victoriametrics.com/sd_configs/#static_configs
+                    See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/sd_configs.md#static_configs)
                   properties:
                     labels:
                       additionalProperties:
@@ -23205,7 +23712,7 @@ spec:
                   type: object
                 type: array
               tlsConfig:
-                description: TLS configuration to use on every scrape request
+                description: TLSConfig configuration to use when scraping the endpoint
                 properties:
                   ca:
                     description: Stuct containing the CA cert to use for the targets.
@@ -23367,13 +23874,14 @@ spec:
                   parameters
                 properties:
                   disable_compression:
+                    description: DisableCompression
                     type: boolean
                   disable_keep_alive:
                     description: |-
                       disable_keepalive allows disabling HTTP keep-alive when scraping targets.
                       By default, HTTP keep-alive is enabled, so TCP connections to scrape targets
                       could be re-used.
-                      See https://docs.victoriametrics.com/vmagent.html#scrape_config-enhancements
+                      See https://docs.victoriametrics.com/operator/../vmagent#scrape_config-enhancements
                     type: boolean
                   headers:
                     description: |-
@@ -23385,16 +23893,12 @@ spec:
                     items:
                       type: string
                     type: array
-                  metric_relabel_debug:
-                    description: deprecated since [v1.85](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.85.0),
-                      will be removed in next release
-                    type: boolean
                   no_stale_markers:
                     type: boolean
                   proxy_client_config:
                     description: |-
                       ProxyClientConfig configures proxy auth settings for scraping
-                      See feature description https://docs.victoriametrics.com/vmagent.html#scraping-targets-via-a-proxy
+                      See feature description https://docs.victoriametrics.com/operator/../vmagent#scraping-targets-via-a-proxy
                     properties:
                       basic_auth:
                         description: BasicAuth allow an endpoint to authenticate over
@@ -23402,9 +23906,8 @@ spec:
                         properties:
                           password:
                             description: |-
-                              The secret in the service scrape namespace that contains the password
-                              for authentication.
-                              It must be at them same namespace as CRD
+                              Password defines reference for secret with password value
+                              The secret needs to be in the same namespace as scrape object
                             properties:
                               key:
                                 description: The key of the secret to select from.  Must
@@ -23430,14 +23933,14 @@ spec:
                             type: object
                             x-kubernetes-map-type: atomic
                           password_file:
-                            description: PasswordFile defines path to password file
-                              at disk
+                            description: |-
+                              PasswordFile defines path to password file at disk
+                              must be pre-mounted
                             type: string
                           username:
                             description: |-
-                              The secret in the service scrape namespace that contains the username
-                              for authentication.
-                              It must be at them same namespace as CRD
+                              Username defines reference for secret with username value
+                              The secret needs to be in the same namespace as scrape object
                             properties:
                               key:
                                 description: The key of the secret to select from.  Must
@@ -23657,10 +24160,6 @@ spec:
                             type: string
                         type: object
                     type: object
-                  relabel_debug:
-                    description: deprecated since [v1.85](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.85.0),
-                      will be removed in next release
-                    type: boolean
                   scrape_align_interval:
                     type: string
                   scrape_offset:
@@ -23747,8 +24246,7 @@ spec:
               endpoints:
                 description: A list of endpoints allowed as part of this ServiceScrape.
                 items:
-                  description: Endpoint defines a scrapeable endpoint serving Prometheus
-                    metrics.
+                  description: Endpoint defines a scrapeable endpoint serving metrics.
                   properties:
                     attach_metadata:
                       description: AttachMetadata configures metadata attaching from
@@ -23797,15 +24295,13 @@ spec:
                           type: string
                       type: object
                     basicAuth:
-                      description: |-
-                        BasicAuth allow an endpoint to authenticate over basic authentication
-                        More info: https://prometheus.io/docs/operating/configuration/#endpoints
+                      description: BasicAuth allow an endpoint to authenticate over
+                        basic authentication
                       properties:
                         password:
                           description: |-
-                            The secret in the service scrape namespace that contains the password
-                            for authentication.
-                            It must be at them same namespace as CRD
+                            Password defines reference for secret with password value
+                            The secret needs to be in the same namespace as scrape object
                           properties:
                             key:
                               description: The key of the secret to select from.  Must
@@ -23831,14 +24327,14 @@ spec:
                           type: object
                           x-kubernetes-map-type: atomic
                         password_file:
-                          description: PasswordFile defines path to password file
-                            at disk
+                          description: |-
+                            PasswordFile defines path to password file at disk
+                            must be pre-mounted
                           type: string
                         username:
                           description: |-
-                            The secret in the service scrape namespace that contains the username
-                            for authentication.
-                            It must be at them same namespace as CRD
+                            Username defines reference for secret with username value
+                            The secret needs to be in the same namespace as scrape object
                           properties:
                             key:
                               description: The key of the secret to select from.  Must
@@ -23870,7 +24366,7 @@ spec:
                     bearerTokenSecret:
                       description: |-
                         Secret to mount to read bearer token for scraping targets. The secret
-                        needs to be in the same namespace as the service scrape and accessible by
+                        needs to be in the same namespace as the scrape object and accessible by
                         the victoria-metrics operator.
                       nullable: true
                       properties:
@@ -23911,14 +24407,17 @@ spec:
                     interval:
                       description: Interval at which metrics should be scraped
                       type: string
+                    max_scrape_size:
+                      description: MaxScrapeSize defines a maximum size of scraped
+                        data for a job
+                      type: string
                     metricRelabelConfigs:
-                      description: MetricRelabelConfigs to apply to samples before
-                        ingestion.
+                      description: MetricRelabelConfigs to apply to samples after
+                        scrapping.
                       items:
                         description: |-
-                          RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
-                          It defines `<metric_relabel_configs>`-section of configuration.
-                          More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+                          RelabelConfig allows dynamic rewriting of the label set
+                          More info: https://docs.victoriametrics.com/#relabeling
                         properties:
                           action:
                             description: Action to perform based on regex matching.
@@ -24108,22 +24607,19 @@ spec:
                       description: HTTP path to scrape for metrics.
                       type: string
                     port:
-                      description: Name of the service port this endpoint refers to.
-                        Mutually exclusive with targetPort.
+                      description: Name of the port exposed at Service.
                       type: string
                     proxyURL:
                       description: ProxyURL eg http://proxyserver:2195 Directs scrapes
                         to proxy through this endpoint.
                       type: string
                     relabelConfigs:
-                      description: |-
-                        RelabelConfigs to apply to samples before scraping.
-                        More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config
+                      description: RelabelConfigs to apply to samples during service
+                        discovery.
                       items:
                         description: |-
-                          RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
-                          It defines `<metric_relabel_configs>`-section of configuration.
-                          More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+                          RelabelConfig allows dynamic rewriting of the label set
+                          More info: https://docs.victoriametrics.com/#relabeling
                         properties:
                           action:
                             description: Action to perform based on regex matching.
@@ -24195,7 +24691,7 @@ spec:
                         type: object
                       type: array
                     sampleLimit:
-                      description: SampleLimit defines per-endpoint limit on number
+                      description: SampleLimit defines per-scrape limit on number
                         of scraped samples that will be accepted.
                       format: int64
                       type: integer
@@ -24223,8 +24719,9 @@ spec:
                       anyOf:
                       - type: integer
                       - type: string
-                      description: Name or number of the pod port this endpoint refers
-                        to. Mutually exclusive with port.
+                      description: |-
+                        TargetPort
+                        Name or number of the pod port this endpoint refers to. Mutually exclusive with port.
                       x-kubernetes-int-or-string: true
                     tlsConfig:
                       description: TLSConfig configuration to use when scraping the
@@ -24395,13 +24892,14 @@ spec:
                         scrape parameters
                       properties:
                         disable_compression:
+                          description: DisableCompression
                           type: boolean
                         disable_keep_alive:
                           description: |-
                             disable_keepalive allows disabling HTTP keep-alive when scraping targets.
                             By default, HTTP keep-alive is enabled, so TCP connections to scrape targets
                             could be re-used.
-                            See https://docs.victoriametrics.com/vmagent.html#scrape_config-enhancements
+                            See https://docs.victoriametrics.com/operator/../vmagent#scrape_config-enhancements
                           type: boolean
                         headers:
                           description: |-
@@ -24413,16 +24911,12 @@ spec:
                           items:
                             type: string
                           type: array
-                        metric_relabel_debug:
-                          description: deprecated since [v1.85](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.85.0),
-                            will be removed in next release
-                          type: boolean
                         no_stale_markers:
                           type: boolean
                         proxy_client_config:
                           description: |-
                             ProxyClientConfig configures proxy auth settings for scraping
-                            See feature description https://docs.victoriametrics.com/vmagent.html#scraping-targets-via-a-proxy
+                            See feature description https://docs.victoriametrics.com/operator/../vmagent#scraping-targets-via-a-proxy
                           properties:
                             basic_auth:
                               description: BasicAuth allow an endpoint to authenticate
@@ -24430,9 +24924,8 @@ spec:
                               properties:
                                 password:
                                   description: |-
-                                    The secret in the service scrape namespace that contains the password
-                                    for authentication.
-                                    It must be at them same namespace as CRD
+                                    Password defines reference for secret with password value
+                                    The secret needs to be in the same namespace as scrape object
                                   properties:
                                     key:
                                       description: The key of the secret to select
@@ -24458,14 +24951,14 @@ spec:
                                   type: object
                                   x-kubernetes-map-type: atomic
                                 password_file:
-                                  description: PasswordFile defines path to password
-                                    file at disk
+                                  description: |-
+                                    PasswordFile defines path to password file at disk
+                                    must be pre-mounted
                                   type: string
                                 username:
                                   description: |-
-                                    The secret in the service scrape namespace that contains the username
-                                    for authentication.
-                                    It must be at them same namespace as CRD
+                                    Username defines reference for secret with username value
+                                    The secret needs to be in the same namespace as scrape object
                                   properties:
                                     key:
                                       description: The key of the secret to select
@@ -24687,10 +25180,6 @@ spec:
                                   type: string
                               type: object
                           type: object
-                        relabel_debug:
-                          description: deprecated since [v1.85](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.85.0),
-                            will be removed in next release
-                          type: boolean
                         scrape_align_interval:
                           type: string
                         scrape_offset:
@@ -25064,14 +25553,12 @@ spec:
                 description: |-
                   License allows to configure license key to be used for enterprise features.
                   Using license key is supported starting from VictoriaMetrics v1.94.0.
-                  See: https://docs.victoriametrics.com/enterprise.html
+                  See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/enterprise.md)
                 properties:
                   key:
                     description: |-
-                      Enterprise license key. This flag is available only in VictoriaMetrics enterprise.
-                      Documentation - https://docs.victoriametrics.com/enterprise.html
-                      for more information, visit https://victoriametrics.com/products/enterprise/ .
-                      To request a trial license, go to https://victoriametrics.com/products/enterprise/trial/
+                      Enterprise license key. This flag is available only in [VictoriaMetrics enterprise](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/enterprise.md).
+                      To request a trial license, [go to](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/products/enterprise/trial.md)
                     type: string
                   keyRef:
                     description: KeyRef is reference to secret with license key for
@@ -25262,8 +25749,7 @@ spec:
                   RetentionPeriod for the stored metrics
                   Note VictoriaMetrics has data/ and indexdb/ folders
                   metrics from data/ removed eventually as soon as partition leaves retention period
-                  reverse index data at indexdb rotates once at the half of configured retention period
-                  https://docs.victoriametrics.com/Single-server-VictoriaMetrics.html#retention
+                  reverse index data at indexdb rotates once at the half of configured [retention period](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/Single-server-VictoriaMetrics.md/#retention)
                 type: string
               revisionHistoryLimitCount:
                 description: |-
@@ -25660,9 +26146,8 @@ spec:
                             before aggregation.
                           items:
                             description: |-
-                              RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
-                              It defines `<metric_relabel_configs>`-section of configuration.
-                              More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+                              RelabelConfig allows dynamic rewriting of the label set
+                              More info: https://docs.victoriametrics.com/#relabeling
                             properties:
                               action:
                                 description: Action to perform based on regex matching.
@@ -25762,9 +26247,8 @@ spec:
                             on the aggregated output before being sent to remote storage.
                           items:
                             description: |-
-                              RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
-                              It defines `<metric_relabel_configs>`-section of configuration.
-                              More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+                              RelabelConfig allows dynamic rewriting of the label set
+                              More info: https://docs.victoriametrics.com/#relabeling
                             properties:
                               action:
                                 description: Action to perform based on regex matching.
@@ -26247,7 +26731,7 @@ spec:
                   restore:
                     description: |-
                       Restore Allows to enable restore options for pod
-                      Read more: https://docs.victoriametrics.com/vmbackupmanager.html#restore-commands
+                      Read [more](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmbackupmanager.md#restore-commands)
                     properties:
                       onStart:
                         description: OnStart defines configuration for restore on
@@ -26560,15 +27044,13 @@ spec:
                           type: string
                       type: object
                     basicAuth:
-                      description: |-
-                        BasicAuth allow an endpoint to authenticate over basic authentication
-                        More info: https://prometheus.io/docs/operating/configuration/#endpoints
+                      description: BasicAuth allow an endpoint to authenticate over
+                        basic authentication
                       properties:
                         password:
                           description: |-
-                            The secret in the service scrape namespace that contains the password
-                            for authentication.
-                            It must be at them same namespace as CRD
+                            Password defines reference for secret with password value
+                            The secret needs to be in the same namespace as scrape object
                           properties:
                             key:
                               description: The key of the secret to select from.  Must
@@ -26594,14 +27076,14 @@ spec:
                           type: object
                           x-kubernetes-map-type: atomic
                         password_file:
-                          description: PasswordFile defines path to password file
-                            at disk
+                          description: |-
+                            PasswordFile defines path to password file at disk
+                            must be pre-mounted
                           type: string
                         username:
                           description: |-
-                            The secret in the service scrape namespace that contains the username
-                            for authentication.
-                            It must be at them same namespace as CRD
+                            Username defines reference for secret with username value
+                            The secret needs to be in the same namespace as scrape object
                           properties:
                             key:
                               description: The key of the secret to select from.  Must
@@ -26633,7 +27115,7 @@ spec:
                     bearerTokenSecret:
                       description: |-
                         Secret to mount to read bearer token for scraping targets. The secret
-                        needs to be in the same namespace as the service scrape and accessible by
+                        needs to be in the same namespace as the scrape object and accessible by
                         the victoria-metrics operator.
                       nullable: true
                       properties:
@@ -26679,14 +27161,17 @@ spec:
                         type: string
                       description: Labels static labels for targets.
                       type: object
+                    max_scrape_size:
+                      description: MaxScrapeSize defines a maximum size of scraped
+                        data for a job
+                      type: string
                     metricRelabelConfigs:
-                      description: MetricRelabelConfigs to apply to samples before
-                        ingestion.
+                      description: MetricRelabelConfigs to apply to samples after
+                        scrapping.
                       items:
                         description: |-
-                          RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
-                          It defines `<metric_relabel_configs>`-section of configuration.
-                          More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+                          RelabelConfig allows dynamic rewriting of the label set
+                          More info: https://docs.victoriametrics.com/#relabeling
                         properties:
                           action:
                             description: Action to perform based on regex matching.
@@ -26875,22 +27360,17 @@ spec:
                     path:
                       description: HTTP path to scrape for metrics.
                       type: string
-                    port:
-                      description: Default port for target.
-                      type: string
                     proxyURL:
                       description: ProxyURL eg http://proxyserver:2195 Directs scrapes
                         to proxy through this endpoint.
                       type: string
                     relabelConfigs:
-                      description: |-
-                        RelabelConfigs to apply to samples before scraping.
-                        More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config
+                      description: RelabelConfigs to apply to samples during service
+                        discovery.
                       items:
                         description: |-
-                          RelabelConfig allows dynamic rewriting of the label set, being applied to samples before ingestion.
-                          It defines `<metric_relabel_configs>`-section of configuration.
-                          More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#metric_relabel_configs
+                          RelabelConfig allows dynamic rewriting of the label set
+                          More info: https://docs.victoriametrics.com/#relabeling
                         properties:
                           action:
                             description: Action to perform based on regex matching.
@@ -27161,13 +27641,14 @@ spec:
                         scrape parameters
                       properties:
                         disable_compression:
+                          description: DisableCompression
                           type: boolean
                         disable_keep_alive:
                           description: |-
                             disable_keepalive allows disabling HTTP keep-alive when scraping targets.
                             By default, HTTP keep-alive is enabled, so TCP connections to scrape targets
                             could be re-used.
-                            See https://docs.victoriametrics.com/vmagent.html#scrape_config-enhancements
+                            See https://docs.victoriametrics.com/operator/../vmagent#scrape_config-enhancements
                           type: boolean
                         headers:
                           description: |-
@@ -27179,16 +27660,12 @@ spec:
                           items:
                             type: string
                           type: array
-                        metric_relabel_debug:
-                          description: deprecated since [v1.85](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.85.0),
-                            will be removed in next release
-                          type: boolean
                         no_stale_markers:
                           type: boolean
                         proxy_client_config:
                           description: |-
                             ProxyClientConfig configures proxy auth settings for scraping
-                            See feature description https://docs.victoriametrics.com/vmagent.html#scraping-targets-via-a-proxy
+                            See feature description https://docs.victoriametrics.com/operator/../vmagent#scraping-targets-via-a-proxy
                           properties:
                             basic_auth:
                               description: BasicAuth allow an endpoint to authenticate
@@ -27196,9 +27673,8 @@ spec:
                               properties:
                                 password:
                                   description: |-
-                                    The secret in the service scrape namespace that contains the password
-                                    for authentication.
-                                    It must be at them same namespace as CRD
+                                    Password defines reference for secret with password value
+                                    The secret needs to be in the same namespace as scrape object
                                   properties:
                                     key:
                                       description: The key of the secret to select
@@ -27224,14 +27700,14 @@ spec:
                                   type: object
                                   x-kubernetes-map-type: atomic
                                 password_file:
-                                  description: PasswordFile defines path to password
-                                    file at disk
+                                  description: |-
+                                    PasswordFile defines path to password file at disk
+                                    must be pre-mounted
                                   type: string
                                 username:
                                   description: |-
-                                    The secret in the service scrape namespace that contains the username
-                                    for authentication.
-                                    It must be at them same namespace as CRD
+                                    Username defines reference for secret with username value
+                                    The secret needs to be in the same namespace as scrape object
                                   properties:
                                     key:
                                       description: The key of the secret to select
@@ -27453,10 +27929,6 @@ spec:
                                   type: string
                               type: object
                           type: object
-                        relabel_debug:
-                          description: deprecated since [v1.85](https://github.com/VictoriaMetrics/VictoriaMetrics/releases/tag/v1.85.0),
-                            will be removed in next release
-                          type: boolean
                         scrape_align_interval:
                           type: string
                         scrape_offset:
@@ -27505,7 +27977,11 @@ spec:
     singular: vmuser
   scope: Namespaced
   versions:
-  - name: v1beta1
+  - additionalPrinterColumns:
+    - jsonPath: .status.lastSyncError
+      name: Sync Error
+      type: string
+    name: v1beta1
     schema:
       openAPIV3Schema:
         description: VMUser is the Schema for the vmusers API
@@ -27552,7 +28028,7 @@ spec:
               drop_src_path_prefix_parts:
                 description: |-
                   DropSrcPathPrefixParts is the number of `/`-delimited request path prefix parts to drop before proxying the request to backend.
-                  See https://docs.victoriametrics.com/vmauth.html#dropping-request-path-prefix for more details.
+                  See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmauth.md#dropping-request-path-prefix) for more details.
                 type: integer
               generatePassword:
                 description: |-
@@ -27572,8 +28048,7 @@ spec:
               ip_filters:
                 description: |-
                   IPFilters defines per target src ip filters
-                  supported only with enterprise version of vmauth
-                  https://docs.victoriametrics.com/vmauth.html#ip-filters
+                  supported only with enterprise version of [vmauth](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmauth.md/#ip-filters)
                 properties:
                   allow_list:
                     items:
@@ -27588,7 +28063,7 @@ spec:
                 description: |-
                   LoadBalancingPolicy defines load balancing policy to use for backend urls.
                   Supported policies: least_loaded, first_available.
-                  See https://docs.victoriametrics.com/vmauth.html#load-balancing for more details (default "least_loaded")
+                  See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmauth.md#load-balancing) for more details (default "least_loaded")
                 enum:
                 - least_loaded
                 - first_available
@@ -27671,7 +28146,15 @@ spec:
                         kind:
                           description: |-
                             Kind one of:
-                            VMAgent VMAlert VMCluster VMSingle or VMAlertManager
+                            VMAgent,VMAlert, VMSingle, VMCluster/vmselect, VMCluster/vmstorage,VMCluster/vminsert  or VMAlertManager
+                          enum:
+                          - VMAgent
+                          - VMAlert
+                          - VMSingle
+                          - VMAlertManager
+                          - VMCluster/vmselect
+                          - VMCluster/vmstorage
+                          - VMCluster/vminsert
                           type: string
                         name:
                           description: Name target CRD object name
@@ -27691,7 +28174,7 @@ spec:
                     drop_src_path_prefix_parts:
                       description: |-
                         DropSrcPathPrefixParts is the number of `/`-delimited request path prefix parts to drop before proxying the request to backend.
-                        See https://docs.victoriametrics.com/vmauth.html#dropping-request-path-prefix for more details.
+                        See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmauth.md#dropping-request-path-prefix) for more details.
                       type: integer
                     headers:
                       description: |-
@@ -27711,7 +28194,7 @@ spec:
                       description: |-
                         LoadBalancingPolicy defines load balancing policy to use for backend urls.
                         Supported policies: least_loaded, first_available.
-                        See https://docs.victoriametrics.com/vmauth.html#load-balancing for more details (default "least_loaded")
+                        See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmauth.md#load-balancing) for more details (default "least_loaded")
                       enum:
                       - least_loaded
                       - first_available
@@ -28034,6 +28517,12 @@ spec:
             type: object
           status:
             description: VMUserStatus defines the observed state of VMUser
+            properties:
+              lastSyncError:
+                description: |-
+                  LastSyncError contains error message for unsuccessful config generation
+                  for given user
+                type: string
             type: object
         type: object
     served: true

@@ -19,7 +19,6 @@ package v1beta1
 import (
 	"fmt"
 
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -37,63 +36,18 @@ type VMProbeSpec struct {
 	Module string `json:"module,omitempty"`
 	// Targets defines a set of static and/or dynamically discovered targets to be probed using the prober.
 	Targets VMProbeTargets `json:"targets,omitempty"`
-	// Interval at which targets are probed using the configured prober.
-	// If not specified Prometheus' global scrape interval is used.
-	Interval string `json:"interval,omitempty"`
-	// ScrapeInterval is the same as Interval and has priority over it.
-	// one of scrape_interval or interval can be used
+	// MetricRelabelConfigs to apply to samples after scrapping.
 	// +optional
-	ScrapeInterval string `json:"scrape_interval,omitempty"`
-	// Timeout for scraping metrics from the Prometheus exporter.
-	ScrapeTimeout string `json:"scrapeTimeout,omitempty"`
-	// Optional HTTP URL parameters
-	// +optional
-	Params map[string][]string `json:"params,omitempty"`
-	// FollowRedirects controls redirects for scraping.
-	// +optional
-	FollowRedirects *bool `json:"follow_redirects,omitempty"`
-	// SampleLimit defines per-scrape limit on number of scraped samples that will be accepted.
-	// +optional
-	SampleLimit uint64 `json:"sampleLimit,omitempty"`
-	// SeriesLimit defines per-scrape limit on number of unique time series
-	// a single target can expose during all the scrapes on the time window of 24h.
-	// +optional
-	SeriesLimit uint64 `json:"seriesLimit,omitempty"`
-	// File to read bearer token for scraping targets.
-	// +optional
-	BearerTokenFile string `json:"bearerTokenFile,omitempty"`
-	// Secret to mount to read bearer token for scraping targets. The secret
-	// needs to be in the same namespace as the service scrape and accessible by
-	// the victoria-metrics operator.
-	// +optional
-	// +nullable
-	BearerTokenSecret *v1.SecretKeySelector `json:"bearerTokenSecret,omitempty"`
-	// BasicAuth allow an endpoint to authenticate over basic authentication
-	// More info: https://prometheus.io/docs/operating/configuration/#endpoints
-	// +optional
-	BasicAuth *BasicAuth `json:"basicAuth,omitempty"`
-	// OAuth2 defines auth configuration
-	// +optional
-	OAuth2 *OAuth2 `json:"oauth2,omitempty"`
-	// Authorization with http header Authorization
-	// +optional
-	Authorization *Authorization `json:"authorization,omitempty"`
-	// TLSConfig configuration to use when scraping the endpoint
-	// +optional
-	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
-	// ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint.
-	// +optional
-	ProxyURL *string `json:"proxyURL,omitempty"`
-	// VMScrapeParams defines VictoriaMetrics specific scrape parameters
-	// +optional
-	VMScrapeParams *VMScrapeParams `json:"vm_scrape_params,omitempty"`
+	MetricRelabelConfigs []*RelabelConfig `json:"metricRelabelConfigs,omitempty"`
+
+	EndpointAuth         `json:",inline"`
+	EndpointScrapeParams `json:",inline"`
 }
 
 // VMProbeTargets defines a set of static and dynamically discovered targets for the prober.
 // +k8s:openapi-gen=true
 type VMProbeTargets struct {
 	// StaticConfig defines static targets which are considers for probing.
-	// More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#static_config.
 	StaticConfig *VMProbeTargetStaticConfig `json:"staticConfig,omitempty"`
 	// Ingress defines the set of dynamically discovered ingress objects which hosts are considered for probing.
 	Ingress *ProbeTargetIngress `json:"ingress,omitempty"`
@@ -106,7 +60,7 @@ type VMProbeTargetStaticConfig struct {
 	Targets []string `json:"targets"`
 	// Labels assigned to all metrics scraped from the targets.
 	Labels map[string]string `json:"labels,omitempty"`
-	// More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config
+	// RelabelConfigs to apply to samples during service discovery.
 	RelabelConfigs []*RelabelConfig `json:"relabelingConfigs,omitempty"`
 }
 
@@ -117,8 +71,7 @@ type ProbeTargetIngress struct {
 	Selector metav1.LabelSelector `json:"selector,omitempty"`
 	// Select Ingress objects by namespace.
 	NamespaceSelector NamespaceSelector `json:"namespaceSelector,omitempty"`
-	// RelabelConfigs to apply to samples before ingestion.
-	// More info: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#relabel_config
+	// RelabelConfigs to apply to samples during service discovery.
 	RelabelConfigs []*RelabelConfig `json:"relabelingConfigs,omitempty"`
 }
 

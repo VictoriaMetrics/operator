@@ -1,15 +1,25 @@
 # Image URL to use all building/pushing image targets
 REGISTRY ?= docker.io
-REPO ?= operator
+REPO = operator
+ROOT ?= ./cmd
 ORG ?= victoriametrics
-TAG ?= v0.46.0
+TAG ?= $(shell echo $$(git describe --long --all | tr '/' '-')$$( \
+	git diff-index --quiet HEAD -- || echo '-dirty-'$$( \
+		git diff-index -u HEAD -- ':!config' ':!docs' | openssl sha1 | cut -d' ' -f2 | cut -c 1-8)))
+VERSION ?= $(if $(findstring $(TAG),$(TAG:v%=%)),0.0.0,$(TAG:v%=%))
 NAMESPACE ?= vm
-BUILDINFO_TAG ?= $(shell echo $$(git describe --long --all | tr '/' '-')$$( \
-	git diff-index --quiet HEAD -- || echo '-dirty-'$$(git diff-index -u HEAD | openssl sha1 | cut -d' ' -f2 | cut -c 1-8)))
-OVERLAY ?= config/default
+OVERLAY ?= config/manager
+
+LOCAL_REGISTRY_NAME ?= kind-registry
+LOCAL_REGISTRY_PORT ?= 5001
+LOCAL_REGISTRY_DIR = "/etc/containerd/certs.d/localhost:$(LOCAL_REGISTRY_PORT)"
+
+REPODIR := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
+WORKDIR := $(REPODIR)/..
 
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.30.0
+PLATFORM = $(shell uname -o)
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -28,6 +38,8 @@ CONTAINER_TOOL ?= docker
 # Options are set to exit when a recipe line exits non-zero or a piped command fails.
 SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
+
+include cspell/Makefile
 
 .PHONY: all
 all: build
@@ -55,6 +67,7 @@ help: ## Display this help.
 manifests: controller-gen kustomize ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
 	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 	$(KUSTOMIZE) build config/crd > config/crd/overlay/crd.yaml
+	sed -i 's/{{% ref "\(.*\)\(\.md\)\(.*\)" %}}/https:\/\/docs.victoriametrics.com\/operator\/\1\3/g' config/crd/overlay/crd.yaml
 
 .PHONY: generate
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
@@ -83,7 +96,6 @@ api-gen: client-gen lister-gen informer-gen
 		--output-dir ./api/client/informers \
 		--output-pkg github.com/VictoriaMetrics/operator/api/client/informers \
 		--go-header-file hack/boilerplate.go.txt
-	rm api/go.*
 
 .PHONY: docs
 docs: envconfig-docs crd-ref-docs manifests
@@ -91,8 +103,11 @@ docs: envconfig-docs crd-ref-docs manifests
 		--templates-dir ./docs/templates/api \
 		--renderer markdown
 	mv out.md docs/api.md
-	cat docs/headers/vars.md > docs/vars.md
-	$(ENVCONFIG_DOCS) --input internal/config/config.go --truncate=false >> docs/vars.md
+	$(ENVCONFIG_DOCS) \
+		--header docs/templates/vars/vars.tpl \
+		--input internal/config/config.go \
+		--output docs/vars.md \
+		--truncate=false
 
 .PHONY: fmt
 fmt: ## Run go fmt against code.
@@ -123,11 +138,11 @@ lint-fix: golangci-lint ## Run golangci-lint linter and perform fixes
 
 .PHONY: build
 build: docs generate fmt vet ## Build manager binary.
-	go build -o bin/$(REPO) ./cmd/$(REPO)/...
+	go build -o bin/$(REPO) $(ROOT)/
 
 .PHONY: run
 run: manifests generate fmt vet ## Run a controller from your host.
-	go run ./cmd/$(REPO)/...
+	go run $(ROOT)/
 
 # If you wish to build the manager image targeting other platforms you can use the --platform flag.
 # (i.e. docker build --platform linux/arm64). However, you must enable docker buildKit for it.
@@ -135,13 +150,15 @@ run: manifests generate fmt vet ## Run a controller from your host.
 .PHONY: docker-build
 docker-build: ## Build docker image with the manager.
 	$(CONTAINER_TOOL) build \
-		--build-arg REPO=$(REPO) \
+		--build-arg ROOT=$(ROOT) \
 		${DOCKER_BUILD_ARGS} \
-		-t $(REGISTRY)/$(ORG)/$(REPO):$(TAG) \
-		-t $(REGISTRY)/$(ORG)/$(REPO):$(BUILDINFO_TAG) .
+		-t $(REGISTRY)/$(ORG)/$(REPO):$(TAG) .
 
-build-%:
-	REPO=$* $(MAKE) build
+build-operator: ROOT=./cmd
+build-operator: build
+
+build-config-reloader: ROOT=./cmd/config-reloader
+build-config-reloader: build
 
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.
@@ -163,23 +180,44 @@ docker-buildx: ## Build and push docker image for the manager for cross-platform
 	- $(CONTAINER_TOOL) buildx build \
 		--push \
 		--platform=$(PLATFORMS) \
-		--build-arg REPO=$(REPO) \
-		$(DOCKER_BUILD_ARGS) \
+		--build-arg ROOT=$(ROOT) \
+		${DOCKER_BUILD_ARGS} \
 		--tag $(REGISTRY)/$(ORG)/$(REPO):$(TAG) \
-		--tag $(REGISTRY)/$(ORG)/$(REPO):$(BUILDINFO_TAG) \
 		-f Dockerfile.cross .
 	- $(CONTAINER_TOOL) buildx rm vm-builder
 	rm Dockerfile.cross
 
 publish:
-	REPO=operator $(MAKE) docker-buildx
-	REPO=config-reloader $(MAKE) docker-buildx
+	TAG=$(TAG) ROOT=./cmd $(MAKE) docker-buildx
+	TAG=config-reloader-$(TAG) ROOT=./cmd/config-reloader $(MAKE) docker-buildx
 
 .PHONY: build-installer
 build-installer: manifests generate kustomize ## Generate a consolidated YAML with CRDs and deployment.
 	mkdir -p dist
 	cd config/manager && $(KUSTOMIZE) edit set image manager=$(REGISTRY)/$(ORG)/$(REPO):$(TAG)
-	$(KUSTOMIZE) build config/default > dist/install.yaml
+	$(KUSTOMIZE) build config/base > dist/install.yaml
+
+olm: operator-sdk opm yq docs
+	rm -rf bundle*
+	$(OPERATOR_SDK) generate kustomize manifests -q
+	cd config/manifests && \
+		$(KUSTOMIZE) edit set image manager=$(REGISTRY)/$(ORG)/$(REPO):$(TAG)
+	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle \
+		-q --overwrite --version $(VERSION) \
+		--channels=beta --default-channel=beta --output-dir=bundle/$(VERSION)
+	$(OPERATOR_SDK) bundle validate ./bundle/$(VERSION)
+	cp config/manifests/ci.yaml bundle/
+	$(YQ) -i '.metadata.annotations.containerImage = "$(REGISTRY)/$(ORG)/$(REPO):$(TAG)"' \
+		bundle/$(VERSION)/manifests/victoriametrics-operator.clusterserviceversion.yaml
+	$(YQ) -i '.annotations."com.redhat.openshift.versions" = "v4.12-v4.16"' \
+		bundle/$(VERSION)/metadata/annotations.yaml
+	$(if $(findstring localhost,$(REGISTRY)), \
+		$(CONTAINER_TOOL) build -f bundle.Dockerfile -t $(REGISTRY)/$(ORG)/$(REPO)-bundle:$(TAG) .; \
+		$(CONTAINER_TOOL) push $(REGISTRY)/$(ORG)/$(REPO)-bundle:$(TAG); \
+		$(OPM) index add \
+			--bundles $(REGISTRY)/$(ORG)/$(REPO)-bundle:$(TAG) \
+			--tag $(REGISTRY)/$(ORG)/$(REPO)-index:$(TAG) -c docker; \
+		$(CONTAINER_TOOL) push $(REGISTRY)/$(ORG)/$(REPO)-index:$(TAG),)
 
 ##@ Deployment
 
@@ -189,36 +227,85 @@ endif
 
 .PHONY: install
 install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~/.kube/config.
-	$(KUSTOMIZE) build config/crd | $(KUBECTL) apply -n $(NAMESPACE) -f -
+	$(if $(NAMESPACE), \
+		$(KUBECTL) create ns $(NAMESPACE) --dry-run=client -o yaml | kubectl apply -f -,)
+	$(KUSTOMIZE) build config/crd | $(KUBECTL) apply -f -
 
 .PHONY: uninstall
 uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
-	$(KUSTOMIZE) build config/crd | $(KUBECTL) delete -n $(NAMESPACE) --ignore-not-found=$(ignore-not-found) -f -
+	$(KUSTOMIZE) build config/crd | $(KUBECTL) delete --ignore-not-found=$(ignore-not-found) -f -
 
 .PHONY: deploy
 deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
-	cd config/manager && \
+	$(if $(NAMESPACE), \
+		$(KUBECTL) create ns $(NAMESPACE) --dry-run=client -o yaml | kubectl apply -f -,)
+	cd $(OVERLAY) && \
 		$(KUSTOMIZE) edit set image manager=$(REGISTRY)/$(ORG)/$(REPO):$(TAG)
-	$(KUSTOMIZE) build $(OVERLAY) | $(KUBECTL) apply -n $(NAMESPACE) -f -
+	$(KUSTOMIZE) build $(OVERLAY) | $(KUBECTL) apply -f -
 
 .PHONY: undeploy
 undeploy: kustomize ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
-	$(KUSTOMIZE) build $(OVERLAY) | $(KUBECTL) delete -n $(NAMESPACE) --ignore-not-found=$(ignore-not-found) -f -
+	$(KUSTOMIZE) build $(OVERLAY) | $(KUBECTL) delete $(if $(NAMESPACE),-n $(NAMESPACE),) --ignore-not-found=$(ignore-not-found) -f -
 
 # builds image and loads it into kind.
-load-kind: docker-build kind
+load-kind: docker-build kind operator-sdk
+	if [ "$$($(CONTAINER_TOOL) inspect -f '{{.State.Running}}' "$(LOCAL_REGISTRY_NAME)" 2>/dev/null || true)" != 'true' ]; then \
+		$(CONTAINER_TOOL) run \
+			-d --restart=always \
+			-p "127.0.0.1:${LOCAL_REGISTRY_PORT}:5000" \
+			--network bridge --name "$(LOCAL_REGISTRY_NAME)" \
+			registry:2; \
+	fi;
 	if [ "`$(KIND) get clusters`" != "kind" ]; then \
-		$(KIND) create cluster; \
+		$(KIND) create cluster --config=./config/olm/kind.yaml; \
 	else \
 		$(KUBECTL) cluster-info --context kind-kind; \
 	fi; \
-        $(KIND) load docker-image $(REGISTRY)/$(ORG)/$(REPO):$(BUILDINFO_TAG)
+        $(KIND) load docker-image $(REGISTRY)/$(ORG)/$(REPO):$(TAG);
+	for node in $$($(KIND) get nodes); do \
+		$(CONTAINER_TOOL) exec "$${node}" mkdir -p "${LOCAL_REGISTRY_DIR}"; \
+		$(CONTAINER_TOOL) exec -i "$${node}" sh -c "echo '[host.\"http://$(LOCAL_REGISTRY_NAME):5000\"]' > $(LOCAL_REGISTRY_DIR)/hosts.toml"; \
+	done;
+	if [ "$$(docker inspect -f='{{json .NetworkSettings.Networks.kind}}' $(LOCAL_REGISTRY_NAME))" = 'null' ]; then \
+		$(CONTAINER_TOOL) network connect "kind" "$(LOCAL_REGISTRY_NAME)"; \
+	fi
+	if ! $(OPERATOR_SDK) olm status; then \
+		$(OPERATOR_SDK) olm install; \
+	fi
 
-deploy-kind: load-kind
-	TAG=$(BUILDINFO_TAG) $(MAKE) deploy
+kustomize-set-annotation:
+	cd $(OVERLAY) && \
+		$(KUSTOMIZE) edit set annotation $(ANNOTATION)
 
-undeploy-kind: load-kind
-	OVERLAY=config/kind $(MAKE) undeploy
+deploy-kind: OVERLAY=config/base
+deploy-kind: REGISTRY=localhost:$(LOCAL_REGISTRY_PORT)
+deploy-kind: load-kind docker-push deploy
+
+deploy-kind-olm: ANNOTATION=local-test-image:$(REPO)-index:$(TAG)
+deploy-kind-olm: OVERLAY=config/olm
+deploy-kind-olm: REGISTRY=localhost:$(LOCAL_REGISTRY_PORT)
+deploy-kind-olm: kustomize-set-annotation load-kind olm docker-push deploy
+
+undeploy-kind: OVERLAY=config/kind
+undeploy-kind: load-kind undeploy
+
+docs-debug: docs
+	if [ ! -d $(WORKDIR)/vmdocs ]; then \
+		git clone git@github.com:VictoriaMetrics/vmdocs $(WORKDIR)/vmdocs; \
+	fi; \
+	cd $(WORKDIR)/vmdocs && \
+	git checkout main && \
+	git pull origin main && \
+	cd $(REPODIR) && \
+	$(CONTAINER_TOOL) build \
+		-t vmdocs \
+		$(WORKDIR)/vmdocs && \
+	$(CONTAINER_TOOL) rm -f vmdocs || true && \
+	$(CONTAINER_TOOL) run \
+		-d \
+		--name vmdocs \
+		-p 1313:1313 \
+		-v ./docs:/opt/docs/content/operator vmdocs
 
 ##@ Dependencies
 
@@ -237,6 +324,9 @@ CLIENT_GEN = $(LOCALBIN)/client-gen-$(CODEGENERATOR_VERSION)
 LISTER_GEN = $(LOCALBIN)/lister-gen-$(CODEGENERATOR_VERSION)
 INFORMER_GEN = $(LOCALBIN)/informer-gen-$(CODEGENERATOR_VERSION)
 KIND = $(LOCALBIN)/kind-$(KIND_VERSION)
+OPERATOR_SDK = $(LOCALBIN)/operator-sdk-$(OPERATOR_SDK_VERSION)
+OPM = $(LOCALBIN)/opm-$(OPM_VERSION)
+YQ = $(LOCALBIN)/yq-$(YQ_VERSION)
 ENVCONFIG_DOCS = $(LOCALBIN)/envconfig-docs-$(ENVCONFIG_DOCS_VERSION)
 CRD_REF_DOCS = $(LOCALBIN)/crd-ref-docs-$(CRD_REF_DOCS_VERSION)
 
@@ -247,7 +337,10 @@ ENVTEST_VERSION ?= release-0.18
 GOLANGCI_LINT_VERSION ?= v1.59.1
 CODEGENERATOR_VERSION ?= v0.30.2
 KIND_VERSION ?= v0.23.0
-ENVCONFIG_DOCS_VERSION ?= latest
+OPERATOR_SDK_VERSION ?= v1.35.0
+OPM_VERSION ?= v1.44.0
+YQ_VERSION ?= v4.44.2
+ENVCONFIG_DOCS_VERSION ?= 70062e813a6c07ad9b95e0993ea8a906d18679b0
 CRD_REF_DOCS_VERSION ?= latest
 
 .PHONY: kustomize
@@ -293,6 +386,16 @@ envtest: $(ENVTEST) ## Download setup-envtest locally if necessary.
 $(ENVTEST): $(LOCALBIN)
 	$(call go-install-tool,$(ENVTEST),sigs.k8s.io/controller-runtime/tools/setup-envtest,$(ENVTEST_VERSION))
 
+.PHONY: operator-sdk
+operator-sdk: $(OPERATOR_SDK)
+$(OPERATOR_SDK): $(LOCALBIN)
+	$(call go-install-tool,$(OPERATOR_SDK),github.com/operator-framework/operator-sdk/cmd/operator-sdk,$(OPERATOR_SDK_VERSION))
+
+.PHONY: opm
+opm: $(OPM)
+$(OPM): $(LOCALBIN)
+	$(call go-install-tool,$(OPM),github.com/operator-framework/operator-registry/cmd/opm,$(OPM_VERSION))
+
 .PHONY: golangci-lint
 golangci-lint: $(GOLANGCI_LINT) ## Download golangci-lint locally if necessary.
 $(GOLANGCI_LINT): $(LOCALBIN)
@@ -302,6 +405,11 @@ $(GOLANGCI_LINT): $(LOCALBIN)
 kind: $(KIND)
 $(KIND): $(LOCALBIN)
 	$(call go-install-tool,$(KIND),sigs.k8s.io/kind,$(KIND_VERSION))
+
+.PHONY: yq
+yq: $(YQ)
+$(YQ): $(LOCALBIN)
+	$(call go-install-tool,$(YQ),github.com/mikefarah/yq/v4,$(YQ_VERSION))
 
 # go-install-tool will 'go install' any package with custom target and name of binary, if it doesn't exist
 # $1 - target path with name of binary (ideally with version)

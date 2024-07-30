@@ -13,16 +13,13 @@ import (
 
 func Test_generatePodScrapeConfig(t *testing.T) {
 	type args struct {
-		cr                       vmv1beta1.VMAgent
-		m                        *vmv1beta1.VMPodScrape
-		ep                       vmv1beta1.PodMetricsEndpoint
-		i                        int
-		apiserverConfig          *vmv1beta1.APIServerConfig
-		ssCache                  *scrapesSecretsCache
-		ignoreHonorLabels        bool
-		overrideHonorTimestamps  bool
-		ignoreNamespaceSelectors bool
-		enforcedNamespaceLabel   string
+		cr              vmv1beta1.VMAgent
+		m               *vmv1beta1.VMPodScrape
+		ep              vmv1beta1.PodMetricsEndpoint
+		i               int
+		apiserverConfig *vmv1beta1.APIServerConfig
+		ssCache         *scrapesSecretsCache
+		se              vmv1beta1.VMAgentSecurityEnforcements
 	}
 	tests := []struct {
 		name string
@@ -39,7 +36,9 @@ func Test_generatePodScrapeConfig(t *testing.T) {
 					},
 				},
 				ep: vmv1beta1.PodMetricsEndpoint{
-					Path: "/metric",
+					EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+						Path: "/metric",
+					},
 					Port: "web",
 					AttachMetadata: vmv1beta1.AttachMetadata{
 						Node: ptr.To(true),
@@ -48,7 +47,6 @@ func Test_generatePodScrapeConfig(t *testing.T) {
 				ssCache: &scrapesSecretsCache{},
 			},
 			want: `job_name: podScrape/default/test-1/0
-honor_labels: false
 kubernetes_sd_configs:
 - role: pod
   attach_metadata:
@@ -56,6 +54,7 @@ kubernetes_sd_configs:
   namespaces:
     names:
     - default
+honor_labels: false
 metrics_path: /metric
 relabel_configs:
 - action: drop
@@ -91,7 +90,9 @@ relabel_configs:
 					},
 				},
 				ep: vmv1beta1.PodMetricsEndpoint{
-					Path: "/metric",
+					EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+						Path: "/metric",
+					},
 					Port: "web",
 					AttachMetadata: vmv1beta1.AttachMetadata{
 						Node: ptr.To(true),
@@ -101,7 +102,6 @@ relabel_configs:
 				ssCache: &scrapesSecretsCache{},
 			},
 			want: `job_name: podScrape/default/test-1/0
-honor_labels: false
 kubernetes_sd_configs:
 - role: pod
   attach_metadata:
@@ -109,6 +109,7 @@ kubernetes_sd_configs:
   namespaces:
     names:
     - default
+honor_labels: false
 metrics_path: /metric
 relabel_configs:
 - action: keep
@@ -158,18 +159,20 @@ relabel_configs:
 					},
 				},
 				ep: vmv1beta1.PodMetricsEndpoint{
-					Path: "/metric",
+					EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+						Path: "/metric",
+					},
 					Port: "web",
 				},
 				ssCache: &scrapesSecretsCache{},
 			},
 			want: `job_name: podScrape/default/test-1/0
-honor_labels: false
 kubernetes_sd_configs:
 - role: pod
   selectors:
   - role: pod
     label: label-1=value-1,label-2=value-2,label-3=value-3
+honor_labels: false
 metrics_path: /metric
 relabel_configs:
 - action: drop
@@ -214,7 +217,7 @@ relabel_configs:
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := generatePodScrapeConfig(context.Background(), &tt.args.cr, tt.args.m, tt.args.ep, tt.args.i, tt.args.apiserverConfig, tt.args.ssCache, tt.args.ignoreHonorLabels, tt.args.overrideHonorTimestamps, tt.args.ignoreNamespaceSelectors, tt.args.enforcedNamespaceLabel)
+			got := generatePodScrapeConfig(context.Background(), &tt.args.cr, tt.args.m, tt.args.ep, tt.args.i, tt.args.apiserverConfig, tt.args.ssCache, tt.args.se)
 			gotBytes, err := yaml.Marshal(got)
 			if err != nil {
 				t.Errorf("cannot marshal PodScrapeConfig to yaml,err :%e", err)

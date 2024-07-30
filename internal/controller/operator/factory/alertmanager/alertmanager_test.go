@@ -160,10 +160,10 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 				if set.Name != "vmalertmanager-test-am" {
 					return fmt.Errorf("unexpected name, got: %s, want: %s", set.Name, "vmalertmanager-test-am")
 				}
-				if len(set.Spec.Template.Spec.Volumes) != 3 {
-					return fmt.Errorf("unexpected count of volumes, got: %d, want: %d", len(set.Spec.Template.Spec.Volumes), 3)
+				if len(set.Spec.Template.Spec.Volumes) != 4 {
+					return fmt.Errorf("unexpected count of volumes, got: %d, want: %d", len(set.Spec.Template.Spec.Volumes), 4)
 				}
-				templatesVolume := set.Spec.Template.Spec.Volumes[1]
+				templatesVolume := set.Spec.Template.Spec.Volumes[2]
 				if templatesVolume.Name != "templates-test-am" {
 					return fmt.Errorf("unexpected volume name, got: %s, want: %s", templatesVolume.Name, "templates-test-am")
 				}
@@ -176,10 +176,10 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 					return fmt.Errorf("unexpected container name, got: %s, want: %s", vmaContainer.Name, "alertmanager")
 				}
 
-				if len(vmaContainer.VolumeMounts) != 3 {
-					return fmt.Errorf("unexpected count of volume mounts, got: %d, want: %d", len(vmaContainer.VolumeMounts), 3)
+				if len(vmaContainer.VolumeMounts) != 4 {
+					return fmt.Errorf("unexpected count of volume mounts, got: %d, want: %d", len(vmaContainer.VolumeMounts), 4)
 				}
-				templatesVolumeMount := vmaContainer.VolumeMounts[2]
+				templatesVolumeMount := vmaContainer.VolumeMounts[3]
 				if templatesVolumeMount.Name != "templates-test-am" {
 					return fmt.Errorf("unexpected volume name, got: %s, want: %s", templatesVolumeMount.Name, "templates-test-am")
 				}

@@ -1,13 +1,29 @@
+/*
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package v1beta1
 
 import (
 	"fmt"
 
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // VMScrapeConfig specifies a set of targets and parameters describing how to scrape them.
+// +operator-sdk:gen-csv:customresourcedefinitions.displayName="VMScrapeConfig"
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
@@ -57,71 +73,13 @@ type VMScrapeConfigSpec struct {
 	// DigitalOceanSDConfigs defines a list of DigitalOcean service discovery configurations.
 	// +optional
 	DigitalOceanSDConfigs []DigitalOceanSDConfig `json:"digitalOceanSDConfigs,omitempty"`
-	// MetricsPath HTTP path to scrape for metrics. If empty, use the default value (e.g. /metrics).
-	// +optional
-	MetricsPath *string `json:"metricsPath,omitempty"`
-	// ScrapeInterval is the interval between consecutive scrapes.
-	// +optional
-	ScrapeInterval string `json:"scrapeInterval,omitempty"`
-	// ScrapeTimeout is the number of seconds to wait until a scrape request times out.
-	// +optional
-	ScrapeTimeout string `json:"scrapeTimeout,omitempty"`
-	// HonorTimestamps controls whether to respect the timestamps present in scraped data.
-	// +optional
-	HonorTimestamps *bool `json:"honorTimestamps,omitempty"`
-	// HonorLabels chooses the metric's labels on collisions with target labels.
-	// +optional
-	HonorLabels bool `json:"honorLabels,omitempty"`
-	// Optional HTTP URL parameters
-	// +optional
-	// +mapType:=atomic
-	Params map[string][]string `json:"params,omitempty"`
-	// Configures the protocol scheme used for requests.
-	// If empty, use HTTP by default.
-	// +kubebuilder:validation:Enum=HTTP;HTTPS
-	// +optional
-	Scheme *string `json:"scheme,omitempty"`
-	// VMScrapeParams defines VictoriaMetrics specific scrape parameters
-	// +optional
-	VMScrapeParams *VMScrapeParams `json:"vm_scrape_params,omitempty"`
-
-	// FollowRedirects controls redirects for scraping.
-	// +optional
-	FollowRedirects *bool `json:"follow_redirects,omitempty"`
-
-	// ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint.
-	// +optional
-	ProxyURL *string `json:"proxyURL,omitempty"`
-	// BasicAuth information to use on every scrape request.
-	// +optional
-	BasicAuth *BasicAuth `json:"basicAuth,omitempty"`
-	// Authorization header to use on every scrape request.
-	// +optional
-	Authorization *Authorization `json:"authorization,omitempty"`
-	// OAuth2 defines auth configuration
-	// +optional
-	OAuth2 *OAuth2 `json:"oauth2,omitempty"`
-	// TLS configuration to use on every scrape request
-	// +optional
-	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
-	// SampleLimit defines per-scrape limit on number of scraped samples that will be accepted.
-	// +optional
-	SampleLimit uint64 `json:"sampleLimit,omitempty"`
-	// SeriesLimit defines per-scrape limit on number of unique time series
-	// a single target can expose during all the scrapes on the time window of 24h.
-	// +optional
-	SeriesLimit uint64 `json:"seriesLimit,omitempty"`
-	// MetricRelabelConfigs to apply to samples before ingestion.
-	// +optional
-	MetricRelabelConfigs []*RelabelConfig `json:"metricRelabelConfigs,omitempty"`
-	// RelabelConfigs to apply to samples before scraping.
-	// See https://docs.victoriametrics.com/vmagent.html#relabeling
-	// +optional
-	RelabelConfigs []*RelabelConfig `json:"relabelConfigs,omitempty"`
+	EndpointScrapeParams  `json:",inline"`
+	EndpointRelabelings   `json:",inline"`
+	EndpointAuth          `json:",inline"`
 }
 
 // StaticConfig defines a static configuration.
-// See https://docs.victoriametrics.com/sd_configs/#static_configs
+// See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/sd_configs.md#static_configs)
 type StaticConfig struct {
 	// List of targets for this static configuration.
 	// +optional
@@ -132,16 +90,16 @@ type StaticConfig struct {
 	Labels map[string]string `json:"labels,omitempty"`
 }
 
-// FileSDConfig defines a file service discovery configuration
-// See https://docs.victoriametrics.com/sd_configs/#file_sd_configs
+// FileSDConfig defines a file service discovery configuration.
+// See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/sd_configs.md#file_sd_configs)
 type FileSDConfig struct {
 	// List of files to be used for file discovery.
 	// +kubebuilder:validation:MinItems:=1
 	Files []string `json:"files"`
 }
 
-// HTTPSDConfig defines a HTTP service discovery configuration
-// See https://docs.victoriametrics.com/sd_configs/#http_sd_configs
+// HTTPSDConfig defines a HTTP service discovery configuration.
+// See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/sd_configs.md#http_sd_configs)
 type HTTPSDConfig struct {
 	// URL from which the targets are fetched.
 	// +kubebuilder:validation:MinLength:=1
@@ -160,13 +118,13 @@ type HTTPSDConfig struct {
 	// +optional
 	ProxyURL *string `json:"proxyURL,omitempty"`
 	// ProxyClientConfig configures proxy auth settings for scraping
-	// See feature description https://docs.victoriametrics.com/vmagent.html#scraping-targets-via-a-proxy
+	// See [feature description](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#scraping-targets-via-a-proxy)
 	// +optional
 	ProxyClientConfig *ProxyAuth `json:"proxy_client_config,omitempty"`
 }
 
 // KubernetesSDConfig allows retrieving scrape targets from Kubernetes' REST API.
-// See https://docs.victoriametrics.com/sd_configs/#kubernetes_sd_configs
+// See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/sd_configs.md#kubernetes_sd_configs)
 // +k8s:openapi-gen=true
 type KubernetesSDConfig struct {
 	// The API server address consisting of a hostname or IP address followed
@@ -195,7 +153,7 @@ type KubernetesSDConfig struct {
 	// +optional
 	ProxyURL *string `json:"proxyURL,omitempty"`
 	// ProxyClientConfig configures proxy auth settings for scraping
-	// See feature description https://docs.victoriametrics.com/vmagent.html#scraping-targets-via-a-proxy
+	// See [feature description](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#scraping-targets-via-a-proxy)
 	// +optional
 	ProxyClientConfig *ProxyAuth `json:"proxy_client_config,omitempty"`
 	// Configure whether HTTP requests follow HTTP 3xx redirects.
@@ -234,8 +192,8 @@ type NamespaceDiscovery struct {
 	Names []string `json:"names,omitempty"`
 }
 
-// ConsulSDConfig defines a Consul service discovery configuration
-// See https://docs.victoriametrics.com/sd_configs/#consul_sd_configs
+// ConsulSDConfig defines a Consul service discovery configuration.
+// See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/sd_configs.md/#consul_sd_configs)
 // +k8s:openapi-gen=true
 type ConsulSDConfig struct {
 	// A valid string consisting of a hostname or IP followed by an optional port number.
@@ -244,7 +202,7 @@ type ConsulSDConfig struct {
 	Server string `json:"server"`
 	// Consul ACL TokenRef, if not provided it will use the ACL from the local Consul Agent.
 	// +optional
-	TokenRef *v1.SecretKeySelector `json:"tokenRef,omitempty"`
+	TokenRef *corev1.SecretKeySelector `json:"tokenRef,omitempty"`
 	// Consul Datacenter name, if not provided it will use the local Consul Agent Datacenter.
 	// +optional
 	Datacenter *string `json:"datacenter,omitempty"`
@@ -291,7 +249,7 @@ type ConsulSDConfig struct {
 	// +optional
 	ProxyURL *string `json:"proxyURL,omitempty"`
 	// ProxyClientConfig configures proxy auth settings for scraping
-	// See feature description https://docs.victoriametrics.com/vmagent.html#scraping-targets-via-a-proxy
+	// See [feature description](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#scraping-targets-via-a-proxy)
 	// +optional
 	ProxyClientConfig *ProxyAuth `json:"proxy_client_config,omitempty"`
 	// Configure whether HTTP requests follow HTTP 3xx redirects.
@@ -305,7 +263,7 @@ type ConsulSDConfig struct {
 
 // DNSSDConfig allows specifying a set of DNS domain names which are periodically queried to discover a list of targets.
 // The DNS servers to be contacted are read from /etc/resolv.conf.
-// See https://docs.victoriametrics.com/sd_configs/#dns_sd_configs
+// See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/sd_configs.md#dns_sd_configs)
 // +k8s:openapi-gen=true
 type DNSSDConfig struct {
 	// A list of DNS domain names to be queried.
@@ -326,8 +284,8 @@ type DNSSDConfig struct {
 
 // EC2SDConfig allow retrieving scrape targets from AWS EC2 instances.
 // The private IP address is used by default, but may be changed to the public IP address with relabeling.
-// The IAM credentials used must have the ec2:DescribeInstances permission to discover scrape targets
-// See https://docs.victoriametrics.com/sd_configs/#ec2_sd_configs
+// The IAM credentials used must have the ec2:DescribeInstances permission to discover scrape targets.
+// See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/sd_configs.md#ec2_sd_configs)
 // +k8s:openapi-gen=true
 type EC2SDConfig struct {
 	// The AWS region
@@ -335,10 +293,10 @@ type EC2SDConfig struct {
 	Region *string `json:"region"`
 	// AccessKey is the AWS API key.
 	// +optional
-	AccessKey *v1.SecretKeySelector `json:"accessKey,omitempty"`
+	AccessKey *corev1.SecretKeySelector `json:"accessKey,omitempty"`
 	// SecretKey is the AWS API secret.
 	// +optional
-	SecretKey *v1.SecretKeySelector `json:"secretKey,omitempty"`
+	SecretKey *corev1.SecretKeySelector `json:"secretKey,omitempty"`
 	// AWS Role ARN, an alternative to using AWS API keys.
 	// +optional
 	RoleARN *string `json:"roleARN,omitempty"`
@@ -361,7 +319,7 @@ type EC2Filter struct {
 }
 
 // AzureSDConfig allow retrieving scrape targets from Azure VMs.
-// See https://docs.victoriametrics.com/sd_configs/#azure_sd_configs
+// See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/sd_configs.md#azure_sd_configs)
 // +k8s:openapi-gen=true
 type AzureSDConfig struct {
 	// The Azure environment.
@@ -384,7 +342,7 @@ type AzureSDConfig struct {
 	ClientID *string `json:"clientID,omitempty"`
 	// Optional client secret. Only required with the OAuth authentication method.
 	// +optional
-	ClientSecret *v1.SecretKeySelector `json:"clientSecret,omitempty"`
+	ClientSecret *corev1.SecretKeySelector `json:"clientSecret,omitempty"`
 	// Optional resource group name. Limits discovery to this resource group.
 	// +optional
 	ResourceGroup *string `json:"resourceGroup,omitempty"`
@@ -397,7 +355,7 @@ type AzureSDConfig struct {
 // GCESDConfig configures scrape targets from GCP GCE instances.
 // The private IP address is used by default, but may be changed to
 // the public IP address with relabeling.
-// See https://docs.victoriametrics.com/sd_configs/#gce_sd_configs
+// See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/sd_configs.md#gce_sd_configs)
 //
 // The GCE service discovery will load the Google Cloud credentials
 // from the file specified by the GOOGLE_APPLICATION_CREDENTIALS environment variable.
@@ -427,7 +385,7 @@ type GCESDConfig struct {
 }
 
 // OpenStackSDConfig allow retrieving scrape targets from OpenStack Nova instances.
-// See https://docs.victoriametrics.com/sd_configs/#openstack_sd_configs
+// See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/sd_configs.md#openstack_sd_configs)
 // +k8s:openapi-gen=true
 type OpenStackSDConfig struct {
 	// The OpenStack role of entities that should be discovered.
@@ -454,7 +412,7 @@ type OpenStackSDConfig struct {
 	// Password for the Identity V2 and V3 APIs. Consult with your provider's
 	// control panel to discover your account's preferred method of authentication.
 	// +optional
-	Password *v1.SecretKeySelector `json:"password,omitempty"`
+	Password *corev1.SecretKeySelector `json:"password,omitempty"`
 	// At most one of domainId and domainName must be provided if using username
 	// with Identity V3. Otherwise, either are optional.
 	// +optional
@@ -483,7 +441,7 @@ type OpenStackSDConfig struct {
 	// The applicationCredentialSecret field is required if using an application
 	// credential to authenticate.
 	// +optional
-	ApplicationCredentialSecret *v1.SecretKeySelector `json:"applicationCredentialSecret,omitempty"`
+	ApplicationCredentialSecret *corev1.SecretKeySelector `json:"applicationCredentialSecret,omitempty"`
 	// Whether the service discovery should list all instances for all projects.
 	// It is only relevant for the 'instance' role and usually requires admin permissions.
 	// +optional
@@ -502,8 +460,8 @@ type OpenStackSDConfig struct {
 }
 
 // DigitalOceanSDConfig allow retrieving scrape targets from DigitalOcean's Droplets API.
-// This service discovery uses the public IPv4 address by default, by that can be changed with relabeling
-// See https://docs.victoriametrics.com/sd_configs/#digitalocean_sd_configs
+// This service discovery uses the public IPv4 address by default, by that can be changed with relabeling.
+// See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/sd_configs.md#digitalocean_sd_configs)
 // +k8s:openapi-gen=true
 type DigitalOceanSDConfig struct {
 	// Authorization header to use on every scrape request.
@@ -516,7 +474,7 @@ type DigitalOceanSDConfig struct {
 	// +optional
 	ProxyURL *string `json:"proxyURL,omitempty"`
 	// ProxyClientConfig configures proxy auth settings for scraping
-	// See feature description https://docs.victoriametrics.com/vmagent.html#scraping-targets-via-a-proxy
+	// See (feature description](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#scraping-targets-via-a-proxy)
 	// +optional
 	ProxyClientConfig *ProxyAuth `json:"proxy_client_config,omitempty"`
 	// Configure whether HTTP requests follow HTTP 3xx redirects.

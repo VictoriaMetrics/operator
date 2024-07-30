@@ -69,7 +69,6 @@ var (
 				cmd := exec.Command(
 					"make",
 					"load-kind",
-					fmt.Sprintf("REPO=%s", repo),
 				)
 				_, err = utils.Run(cmd)
 				ExpectWithOffset(1, err).NotTo(HaveOccurred())
@@ -90,7 +89,6 @@ var (
 				cmd = exec.Command(
 					"make",
 					"deploy-kind",
-					fmt.Sprintf("REPO=%s", repo),
 					fmt.Sprintf("NAMESPACE=%s", ns),
 				)
 				_, err = utils.Run(cmd)

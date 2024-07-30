@@ -11,3 +11,9 @@ resources:
 - vmsingle_with_pvc.yaml
 - vmcluster.yaml
 - vmprobe.yaml
+- vmuser_cluster_tenant.yaml
+- vmauth.yaml
+- vmnodescrape.yaml
+- vmalertmanager_config.yaml
+- vmstaticscrape.yaml
+- vmscrapeconfig.yaml

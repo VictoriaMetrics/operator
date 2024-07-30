@@ -10,6 +10,7 @@ import (
 	"path"
 	"sort"
 	"strings"
+	"time"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
@@ -24,6 +25,65 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// allows to skip users based on external conditions
+// implementation should has as less implementation details of vmusers as possible
+// potentially it could be re-used later for scrape objects/vmalert rules.
+type skipableVMUsers struct {
+	stopIter      bool
+	users         []*vmv1beta1.VMUser
+	brokenVMUsers []*vmv1beta1.VMUser
+}
+
+// visitAll visits all users objects
+func (sus *skipableVMUsers) visitAll(filter func(user *vmv1beta1.VMUser) bool) {
+	var cnt int
+	// filter in-place
+	for _, user := range sus.users {
+		if sus.stopIter {
+			return
+		}
+		if !filter(user) {
+			sus.brokenVMUsers = append(sus.brokenVMUsers, user)
+			continue
+		}
+		sus.users[cnt] = user
+		cnt++
+	}
+	sus.users = sus.users[:cnt]
+}
+
+func (sus *skipableVMUsers) deduplicateBy(cb func(user *vmv1beta1.VMUser) (string, time.Time)) {
+	// later map[key]index could be re-place with map[key]tuple(index,timestamp)
+	uniqByIndex := make(map[string]int, len(sus.users))
+	var cnt int
+	for idx, user := range sus.users {
+		key, createdAt := cb(user)
+		prevIdx, ok := uniqByIndex[key]
+		if !ok {
+			// fast path
+			uniqByIndex[key] = idx
+			sus.users[cnt] = user
+			cnt++
+			continue
+		}
+		prevUser := sus.users[prevIdx]
+		if createdAt.After(prevUser.CreationTimestamp.Time) {
+			prevUser, user = user, prevUser
+		}
+		sus.users[prevIdx] = user
+		prevUser.Status.CurrentSyncError = fmt.Sprintf("user has duplicate token/password with vmuser=%s-%s", user.Namespace, user.Name)
+		sus.brokenVMUsers = append(sus.brokenVMUsers, prevUser)
+	}
+	sus.users = sus.users[:cnt]
+}
+
+func (sus *skipableVMUsers) sort() {
+	// sort for consistency.
+	sort.Slice(sus.users, func(i, j int) bool {
+		return sus.users[i].Name < sus.users[j].Name
+	})
+}
+
 // builds vmauth config.
 func buildVMAuthConfig(ctx context.Context, rclient client.Client, vmauth *vmv1beta1.VMAuth, tlsAssets map[string]string) ([]byte, error) {
 	// fetch exist users for vmauth.
@@ -31,31 +91,25 @@ func buildVMAuthConfig(ctx context.Context, rclient client.Client, vmauth *vmv1b
 	if err != nil {
 		return nil, err
 	}
-	// sort for consistency.
-	sort.Slice(users, func(i, j int) bool {
-		return users[i].Name < users[j].Name
-	})
-	// check config for dups.
-	if dup := isUsersUniq(users); len(dup) > 0 {
-		return nil, fmt.Errorf("duplicate user name detected at VMAuth config: %q", strings.Join(dup, ","))
-	}
+	sus := &skipableVMUsers{users: users}
 
 	// loads info about exist operator object kind for crdRef.
-	crdCache, err := FetchCRDRefURLs(ctx, rclient, users)
+	crdCache, err := fetchCRDRefURLs(ctx, rclient, sus)
 	if err != nil {
 		return nil, err
 	}
 
-	toCreateSecrets, toUpdate, err := addAuthCredentialsBuildSecrets(ctx, rclient, users)
+	toCreateSecrets, toUpdate, err := addAuthCredentialsBuildSecrets(ctx, rclient, sus)
 	if err != nil {
 		return nil, err
 	}
 
-	// inject data from exist secrets into vmuser.spec if needed.
-	// toUpdate := injectAuthSettings(existSecrets, users)
+	// check config for dups.
+	filterNonUniqUsers(sus)
 
+	sus.sort()
 	// generate yaml config for vmauth.
-	cfg, err := generateVMAuthConfig(vmauth, users, crdCache, tlsAssets, rclient)
+	cfg, err := generateVMAuthConfig(vmauth, sus, crdCache, tlsAssets, rclient)
 	if err != nil {
 		return nil, err
 	}
@@ -65,14 +119,39 @@ func buildVMAuthConfig(ctx context.Context, rclient client.Client, vmauth *vmv1b
 		return nil, err
 	}
 	// update secrets.
-	// todo, probably, its better to reconcile it with finalizers merge and etc.
 	for i := range toUpdate {
 		secret := toUpdate[i]
 		if err := rclient.Update(ctx, secret); err != nil {
 			return nil, err
 		}
 	}
+	for _, user := range sus.users {
+		// restore status back to normal
+		if user.Status.LastSyncError != "" {
+			pt := client.RawPatch(types.MergePatchType,
+				[]byte(`{"status": {"lastSyncError":  "" } }`))
+			if err := rclient.Status().Patch(ctx, user, pt); err != nil {
+				return nil, fmt.Errorf("failed to patch status of vmuser=%q: %w", user.Name, err)
+			}
+		}
+	}
+	var errContexts []string
+	for _, brokenUser := range sus.brokenVMUsers {
+		if brokenUser.Status.CurrentSyncError == brokenUser.Status.LastSyncError {
+			errContexts = append(errContexts, fmt.Sprintf("namespace=%q,name=%q,err=%q", brokenUser.Namespace, brokenUser.Name, brokenUser.Status.CurrentSyncError))
+			continue
+		}
 
+		// patch update status
+		pt := client.RawPatch(types.MergePatchType,
+			[]byte(fmt.Sprintf(`{"status": {"lastSyncError":  %q } }`, brokenUser.Status.CurrentSyncError)))
+		if err := rclient.Status().Patch(ctx, brokenUser, pt); err != nil {
+			return nil, fmt.Errorf("failed to patch status of broken vmuser=%q: %w", brokenUser.Name, err)
+		}
+	}
+	if len(errContexts) > 0 {
+		logger.WithContext(ctx).Error(fmt.Errorf("vmauth has broken vmuser configurations"), strings.Join(errContexts, ","))
+	}
 	return cfg, nil
 }
 
@@ -86,26 +165,22 @@ func createVMUserSecrets(ctx context.Context, rclient client.Client, secrets []*
 	return nil
 }
 
-func isUsersUniq(users []*vmv1beta1.VMUser) []string {
-	uniq := make(map[string]struct{}, len(users))
-	var dupUsers []string
-	for i := range users {
-		user := users[i]
-		userName := user.Name
-		if user.Spec.Name != nil {
-			userName = *user.Spec.Name
+// duplicates logic from vmauth auth_config
+// parseAuthConfigUsers
+func filterNonUniqUsers(sus *skipableVMUsers) {
+	sus.deduplicateBy(func(user *vmv1beta1.VMUser) (string, time.Time) {
+		var at string
+		if user.Spec.UserName != nil {
+			at = "basicAuth:" + *user.Spec.UserName
 		}
-		// its ok to override userName, in this case it must be nil.
+		if user.Spec.Password != nil {
+			at += ":" + *user.Spec.Password
+		}
 		if user.Spec.BearerToken != nil {
-			userName = *user.Spec.BearerToken
+			at = "bearerToken:" + *user.Spec.BearerToken
 		}
-		if _, ok := uniq[userName]; ok {
-			dupUsers = append(dupUsers, userName)
-			continue
-		}
-		uniq[userName] = struct{}{}
-	}
-	return dupUsers
+		return at, user.CreationTimestamp.Time
+	})
 }
 
 type objectWithURL interface {
@@ -113,31 +188,46 @@ type objectWithURL interface {
 	AsURL() string
 }
 
-func getAsURLObject(ctx context.Context, rclient client.Client, obj objectWithURL) (string, error) {
+func getAsURLObject(ctx context.Context, rclient client.Client, objT objectWithURL) (string, error) {
+	obj := objT.(client.Object)
+	// dirty hack to restore original type of vmcluster
+	// since cluster type erased by wrapping it into clusterWithURL
+	// we must restore it original type by unwrapping type
+	uw, ok := objT.(unwrapObject)
+	if ok {
+		obj = uw.origin()
+	}
 	if err := rclient.Get(ctx, types.NamespacedName{Name: obj.GetName(), Namespace: obj.GetNamespace()}, obj); err != nil {
 		if errors.IsNotFound(err) {
-			return "", nil
+			return "", fmt.Errorf("cannot find object by the given ref,namespace=%q,name=%q: %w", obj.GetNamespace(), obj.GetName(), err)
 		}
-		return "", err
+		return "", fmt.Errorf("cannot get object by given ref namespace=%q,name=%q: %w", obj.GetNamespace(), obj.GetName(), err)
 	}
-	return obj.AsURL(), nil
+	return objT.AsURL(), nil
 }
 
-func addAuthCredentialsBuildSecrets(ctx context.Context, rclient client.Client, users []*vmv1beta1.VMUser) (needToCreateSecrets []*corev1.Secret, needToUpdateSecrets []*corev1.Secret, err error) {
+func addAuthCredentialsBuildSecrets(ctx context.Context, rclient client.Client, sus *skipableVMUsers) (needToCreateSecrets []*corev1.Secret, needToUpdateSecrets []*corev1.Secret, resultErr error) {
 	dst := make(map[string]*corev1.Secret)
-	for i := range users {
-		user := users[i]
+
+	sus.visitAll(func(user *vmv1beta1.VMUser) bool {
 		switch {
 		case user.Spec.PasswordRef != nil:
 			v, err := k8stools.GetCredFromSecret(ctx, rclient, user.Namespace, user.Spec.PasswordRef, fmt.Sprintf("%s/%s", user.Namespace, user.Spec.PasswordRef.Name), dst)
 			if err != nil {
-				return needToCreateSecrets, needToUpdateSecrets, err
+				if !errors.IsNotFound(err) {
+					resultErr = fmt.Errorf("cannot get cred from secret=%w", err)
+					sus.stopIter = true
+					return true
+				}
+				user.Status.CurrentSyncError = fmt.Sprintf("cannot get cred from secret for passwordRef: %q", err)
+				return false
 			}
 			user.Spec.Password = ptr.To(v)
 		case user.Spec.TokenRef != nil:
 			v, err := k8stools.GetCredFromSecret(ctx, rclient, user.Namespace, user.Spec.TokenRef, fmt.Sprintf("%s/%s", user.Namespace, user.Spec.TokenRef.Name), dst)
 			if err != nil {
-				return needToCreateSecrets, needToUpdateSecrets, err
+				user.Status.CurrentSyncError = fmt.Sprintf("cannot get cred from secret for tokenRef: %q", err)
+				return false
 			}
 			user.Spec.BearerToken = ptr.To(v)
 		}
@@ -145,15 +235,18 @@ func addAuthCredentialsBuildSecrets(ctx context.Context, rclient client.Client, 
 		if !user.Spec.DisableSecretCreation {
 			var vmus corev1.Secret
 			if err := rclient.Get(ctx, types.NamespacedName{Namespace: user.Namespace, Name: user.SecretName()}, &vmus); err != nil {
-				if errors.IsNotFound(err) {
-					userSecret, err := buildVMUserSecret(user)
-					if err != nil {
-						return needToCreateSecrets, needToUpdateSecrets, err
-					}
-					needToCreateSecrets = append(needToCreateSecrets, userSecret)
-				} else {
-					return needToCreateSecrets, needToUpdateSecrets, fmt.Errorf("cannot query kubernetes api for vmuser secrets: %w", err)
+				if !errors.IsNotFound(err) {
+					resultErr = fmt.Errorf("cannot get secret from API=%w", err)
+					sus.stopIter = true
+					return true
 				}
+				userSecret, err := buildVMUserSecret(user)
+				if err != nil {
+					user.Status.CurrentSyncError = fmt.Sprintf("cannot build user secret with password: %q", err)
+					return false
+				}
+				needToCreateSecrets = append(needToCreateSecrets, userSecret)
+
 			} else {
 				// secret exists, check it's state
 				if injectAuthSettings(&vmus, user) {
@@ -162,10 +255,18 @@ func addAuthCredentialsBuildSecrets(ctx context.Context, rclient client.Client, 
 			}
 		}
 		if err := injectBackendAuthHeader(ctx, rclient, user, dst); err != nil {
-			return needToCreateSecrets, needToUpdateSecrets, fmt.Errorf("cannot inject auth backend header into vmuser=%q: %w", user.Name, err)
+			if !errors.IsNotFound(err) {
+				resultErr = fmt.Errorf("cannot inject backend auth header=%w", err)
+				sus.stopIter = true
+				return true
+			}
+			user.Status.CurrentSyncError = fmt.Sprintf("cannot inject auth backend header : %q", err)
+			return false
 		}
 
-	}
+		return true
+	})
+
 	return
 }
 
@@ -186,7 +287,7 @@ func injectBackendAuthHeader(ctx context.Context, rclient client.Client, user *v
 			token := bac.Username + ":" + bac.Password
 			token64 := base64.StdEncoding.EncodeToString([]byte(token))
 			Header := "Authorization: Basic " + token64
-			ref.URLMapCommon.RequestHeaders = append(ref.URLMapCommon.RequestHeaders, Header)
+			ref.RequestHeaders = append(ref.RequestHeaders, Header)
 		}
 	}
 	return nil
@@ -237,11 +338,54 @@ func injectAuthSettings(secret *corev1.Secret, vmuser *vmv1beta1.VMUser) bool {
 	return needUpdate
 }
 
-// FetchCRDRefURLs performs a fetch for CRD objects for vmauth users and returns an url by crd ref key name
-func FetchCRDRefURLs(ctx context.Context, rclient client.Client, users []*vmv1beta1.VMUser) (map[string]string, error) {
+var crdNameToObject = map[string]objectWithURL{
+	"VMAgent":             &vmv1beta1.VMAgent{},
+	"VMAlert":             &vmv1beta1.VMAlert{},
+	"VMSingle":            &vmv1beta1.VMSingle{},
+	"VMAlertmanager":      &vmv1beta1.VMAlertmanager{},
+	"VMCluster/vmselect":  newClusterWithURL("vmselect"),
+	"VMCluster/vminsert":  newClusterWithURL("vminsert"),
+	"VMCluster/vmstorage": newClusterWithURL("vmstorage"),
+}
+
+// helper interface to restore VMCluster type
+type unwrapObject interface {
+	origin() client.Object
+}
+
+type clusterWithURL struct {
+	client.Object
+	vmc       *vmv1beta1.VMCluster
+	component string
+}
+
+func newClusterWithURL(component string) *clusterWithURL {
+	vmc := &vmv1beta1.VMCluster{}
+	return &clusterWithURL{vmc, vmc, component}
+}
+
+func (c *clusterWithURL) origin() client.Object {
+	return c.vmc
+}
+
+func (c *clusterWithURL) AsURL() string {
+	switch c.component {
+	case "vmselect":
+		return c.vmc.VMSelectURL()
+	case "vmstorage":
+		return c.vmc.VMStorageURL()
+	case "vminsert":
+		return c.vmc.VMInsertURL()
+	default:
+		panic(fmt.Sprintf("BUG: not expected component=%q for clusterWithURL object", c.component))
+	}
+}
+
+// fetchCRDRefURLs performs a fetch for CRD objects for vmauth users and returns an url by crd ref key name
+func fetchCRDRefURLs(ctx context.Context, rclient client.Client, sus *skipableVMUsers) (map[string]string, error) {
 	crdCacheURLCache := make(map[string]string)
-	for i := range users {
-		user := users[i]
+	var resultErr error
+	sus.visitAll(func(user *vmv1beta1.VMUser) bool {
 		for j := range user.Spec.TargetRefs {
 			ref := user.Spec.TargetRefs[j]
 			if ref.CRD == nil {
@@ -250,75 +394,31 @@ func FetchCRDRefURLs(ctx context.Context, rclient client.Client, users []*vmv1be
 			if _, ok := crdCacheURLCache[ref.CRD.AsKey()]; ok {
 				continue
 			}
-			switch name := ref.CRD.Kind; name {
-			case "VMAgent":
-				var crd vmv1beta1.VMAgent
-				ref.CRD.AddRefToObj(&crd)
-				url, err := getAsURLObject(ctx, rclient, &crd)
-				if err != nil {
-					return nil, err
-				}
-				crdCacheURLCache[ref.CRD.AsKey()] = url
-			case "VMAlert":
-				var crd vmv1beta1.VMAlert
-				ref.CRD.AddRefToObj(&crd)
-				url, err := getAsURLObject(ctx, rclient, &crd)
-				if err != nil {
-					return nil, err
-				}
-				crdCacheURLCache[ref.CRD.AsKey()] = url
-
-			case "VMSingle":
-				var crd vmv1beta1.VMSingle
-				ref.CRD.AddRefToObj(&crd)
-				url, err := getAsURLObject(ctx, rclient, &crd)
-				if err != nil {
-					return nil, err
-				}
-				crdCacheURLCache[ref.CRD.AsKey()] = url
-			case "VMAlertmanager":
-				var crd vmv1beta1.VMAlertmanager
-				ref.CRD.AddRefToObj(&crd)
-				url, err := getAsURLObject(ctx, rclient, &crd)
-				if err != nil {
-					return nil, err
-				}
-				crdCacheURLCache[ref.CRD.AsKey()] = url
-
-			case "VMCluster/vmselect", "VMCluster/vminsert", "VMCluster/vmstorage":
-				var crd vmv1beta1.VMCluster
-				ref.CRD.AddRefToObj(&crd)
-				url, err := getAsURLObject(ctx, rclient, &crd)
-				if err != nil {
-					return nil, err
-				}
-				if url == "" {
-					continue
-				}
-				var targetURL string
-				switch {
-				case strings.HasSuffix(name, "vmselect"):
-					targetURL = crd.VMSelectURL()
-				case strings.HasSuffix(name, "vminsert"):
-					targetURL = crd.VMInsertURL()
-				case strings.HasSuffix(name, "vmstorage"):
-					targetURL = crd.VMStorageURL()
-				default:
-					logger.WithContext(ctx).Error(fmt.Errorf("unsupported kind for VMCluster: %s", name), "cannot select crd ref")
-					continue
-				}
-				crdCacheURLCache[ref.CRD.AsKey()] = targetURL
-			default:
-				logger.WithContext(ctx).Error(fmt.Errorf("unsupported kind: %s", name), "cannot select crd ref")
-				continue
+			crdObj, ok := crdNameToObject[ref.CRD.Kind]
+			if !ok {
+				user.Status.CurrentSyncError = fmt.Sprintf("unsupported kind for ref: %q at idx=%d", ref.CRD.Kind, j)
+				return false
 			}
+			ref.CRD.AddRefToObj(crdObj.(client.Object))
+			url, err := getAsURLObject(ctx, rclient, crdObj)
+			if err != nil {
+				if !errors.IsNotFound(err) {
+					resultErr = fmt.Errorf("cannot get object as url: %w", err)
+					sus.stopIter = true
+					return true
+				}
+				user.Status.CurrentSyncError = fmt.Sprintf("cannot fined CRD link for kind=%q at ref idx=%d: %q", ref.CRD.Kind, j, err)
+				return false
+			}
+			crdCacheURLCache[ref.CRD.AsKey()] = url
 		}
-	}
-	return crdCacheURLCache, nil
+		return true
+	})
+	return crdCacheURLCache, resultErr
 }
 
 // generateVMAuthConfig create VMAuth cfg for given Users.
-func generateVMAuthConfig(cr *vmv1beta1.VMAuth, users []*vmv1beta1.VMUser, crdCache map[string]string, tlsAssets map[string]string, rclient client.Client) ([]byte, error) {
+func generateVMAuthConfig(cr *vmv1beta1.VMAuth, sus *skipableVMUsers, crdCache map[string]string, tlsAssets map[string]string, rclient client.Client) ([]byte, error) {
 	var cfg yaml.MapSlice
 
 	secretCache := make(map[string]*corev1.Secret)
@@ -332,16 +432,18 @@ func generateVMAuthConfig(cr *vmv1beta1.VMAuth, users []*vmv1beta1.VMUser, crdCa
 		ConfigmapCache:     configmapCache,
 		TLSAssets:          tlsAssets,
 	}
-
 	var cfgUsers []yaml.MapSlice
-	for i := range users {
-		user := users[i]
+
+	sus.visitAll(func(user *vmv1beta1.VMUser) bool {
 		userCfg, err := genUserCfg(user, crdCache, cb)
 		if err != nil {
-			return nil, err
+			user.Status.CurrentSyncError = err.Error()
+			return false
 		}
 		cfgUsers = append(cfgUsers, userCfg)
-	}
+		return true
+	})
+
 	if len(cfgUsers) > 0 {
 		cfg = yaml.MapSlice{
 			{
@@ -376,7 +478,11 @@ func generateVMAuthConfig(cr *vmv1beta1.VMAuth, users []*vmv1beta1.VMUser, crdCa
 	if len(unAuthorizedAccessValue) > 0 {
 		cfg = append(cfg, yaml.MapItem{Key: "unauthorized_user", Value: unAuthorizedAccessValue})
 	}
-	return yaml.Marshal(cfg)
+	ac, err := yaml.Marshal(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to serialize configuration to yaml: %w", err)
+	}
+	return ac, nil
 }
 
 func appendIfNotNull(src []string, key string, origin yaml.MapSlice) yaml.MapSlice {
@@ -652,6 +758,9 @@ func genURLMaps(userName string, refs []vmv1beta1.TargetRef, result yaml.MapSlic
 			urlMap = append(urlMap, yaml.MapItem{Key: "load_balancing_policy", Value: ref.URLMapCommon.LoadBalancingPolicy})
 		}
 		urlMaps = append(urlMaps, urlMap)
+	}
+	if len(urlMaps) == 0 {
+		return nil, fmt.Errorf("user must has at least 1 url target")
 	}
 	result = append(result, yaml.MapItem{Key: "url_map", Value: urlMaps})
 	return result, nil

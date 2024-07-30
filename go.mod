@@ -6,6 +6,7 @@ require (
 	github.com/VictoriaMetrics/VictoriaMetrics v1.101.0
 	github.com/VictoriaMetrics/metrics v1.34.0
 	github.com/VictoriaMetrics/metricsql v0.75.1
+	github.com/VictoriaMetrics/operator/api v0.0.0-20240628093553-60c6469c68af
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
 	github.com/go-logr/logr v1.4.2
@@ -92,6 +93,7 @@ require (
 )
 
 replace (
+	github.com/VictoriaMetrics/operator/api => ./api
 	k8s.io/api => k8s.io/api v0.30.2
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.30.2
 	k8s.io/apimachinery => k8s.io/apimachinery v0.30.2

@@ -708,7 +708,7 @@ func createOrUpdateRelabelConfigsAssets(ctx context.Context, cr *vmv1beta1.VMAge
 		}
 	}
 	assestsCM.Annotations = labels.Merge(existCM.Annotations, assestsCM.Annotations)
-	vmv1beta1.MergeFinalizers(assestsCM, vmv1beta1.FinalizerName)
+	vmv1beta1.AddFinalizer(assestsCM, &existCM)
 	return rclient.Update(ctx, assestsCM)
 }
 
@@ -756,7 +756,7 @@ func CreateOrUpdateVMAgentStreamAggrConfig(ctx context.Context, cr *vmv1beta1.VM
 		}
 	}
 	streamAggrCM.Annotations = labels.Merge(existCM.Annotations, streamAggrCM.Annotations)
-	vmv1beta1.MergeFinalizers(streamAggrCM, vmv1beta1.FinalizerName)
+	vmv1beta1.AddFinalizer(streamAggrCM, &existCM)
 	return rclient.Update(ctx, streamAggrCM)
 }
 
@@ -795,7 +795,7 @@ func createOrUpdateTLSAssets(ctx context.Context, cr *vmv1beta1.VMAgent, rclient
 		return err
 	}
 	tlsAssetsSecret.Annotations = labels.Merge(currentAssetSecret.Annotations, tlsAssetsSecret.Annotations)
-	vmv1beta1.MergeFinalizers(tlsAssetsSecret, vmv1beta1.FinalizerName)
+	vmv1beta1.AddFinalizer(tlsAssetsSecret, currentAssetSecret)
 	return rclient.Update(ctx, tlsAssetsSecret)
 }
 
@@ -1361,7 +1361,7 @@ func buildConfigReloaderContainer(cr *vmv1beta1.VMAgent, c *config.BaseOperatorC
 	}
 	if c.UseCustomConfigReloader {
 		cntr.Image = build.FormatContainerImage(c.ContainerRegistry, c.CustomConfigReloaderImage)
-		cntr.Command = []string{"/usr/local/bin/config-reloader"}
+		cntr.Command = nil
 	}
 	build.AddsPortProbesToConfigReloaderContainer(&cntr, c)
 
@@ -1434,10 +1434,7 @@ func buildInitConfigContainer(baseImage string, resources corev1.ResourceRequire
 		initReloader = corev1.Container{
 			Image: build.FormatContainerImage(c.ContainerRegistry, c.CustomConfigReloaderImage),
 			Name:  "config-init",
-			Command: []string{
-				"/usr/local/bin/config-reloader",
-			},
-			Args: append(configReloaderArgs, "--only-init-config"),
+			Args:  append(configReloaderArgs, "--only-init-config"),
 			VolumeMounts: []corev1.VolumeMount{
 				{
 					Name:      "config-out",

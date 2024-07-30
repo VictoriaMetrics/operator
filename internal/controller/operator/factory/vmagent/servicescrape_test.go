@@ -16,16 +16,13 @@ import (
 
 func Test_generateServiceScrapeConfig(t *testing.T) {
 	type args struct {
-		cr                       vmv1beta1.VMAgent
-		m                        *vmv1beta1.VMServiceScrape
-		ep                       vmv1beta1.Endpoint
-		i                        int
-		apiserverConfig          *vmv1beta1.APIServerConfig
-		ssCache                  *scrapesSecretsCache
-		overrideHonorLabels      bool
-		overrideHonorTimestamps  bool
-		ignoreNamespaceSelectors bool
-		enforcedNamespaceLabel   string
+		cr              vmv1beta1.VMAgent
+		m               *vmv1beta1.VMServiceScrape
+		ep              vmv1beta1.Endpoint
+		i               int
+		apiserverConfig *vmv1beta1.APIServerConfig
+		ssCache         *scrapesSecretsCache
+		se              vmv1beta1.VMAgentSecurityEnforcements
 	}
 	tests := []struct {
 		name string
@@ -44,17 +41,19 @@ func Test_generateServiceScrapeConfig(t *testing.T) {
 						Endpoints: []vmv1beta1.Endpoint{
 							{
 								Port: "8080",
-								TLSConfig: &vmv1beta1.TLSConfig{
-									CA: vmv1beta1.SecretOrConfigMap{
-										Secret: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "tls-secret",
+								EndpointAuth: vmv1beta1.EndpointAuth{
+									TLSConfig: &vmv1beta1.TLSConfig{
+										CA: vmv1beta1.SecretOrConfigMap{
+											Secret: &corev1.SecretKeySelector{
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "tls-secret",
+												},
+												Key: "ca",
 											},
-											Key: "ca",
 										},
 									},
+									BearerTokenFile: "/var/run/tolen",
 								},
-								BearerTokenFile: "/var/run/tolen",
 							},
 						},
 					},
@@ -64,29 +63,32 @@ func Test_generateServiceScrapeConfig(t *testing.T) {
 						Node: ptr.To(true),
 					},
 					Port: "8080",
-					TLSConfig: &vmv1beta1.TLSConfig{
-						Cert: vmv1beta1.SecretOrConfigMap{},
-						CA: vmv1beta1.SecretOrConfigMap{
-							Secret: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "tls-secret",
+					EndpointAuth: vmv1beta1.EndpointAuth{
+						TLSConfig: &vmv1beta1.TLSConfig{
+							Cert: vmv1beta1.SecretOrConfigMap{},
+							CA: vmv1beta1.SecretOrConfigMap{
+								Secret: &corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "tls-secret",
+									},
+									Key: "ca",
 								},
-								Key: "ca",
 							},
 						},
+						BearerTokenFile: "/var/run/tolen",
 					},
-					BearerTokenFile: "/var/run/tolen",
 				},
-				i:                        0,
-				apiserverConfig:          nil,
-				ssCache:                  &scrapesSecretsCache{},
-				overrideHonorLabels:      false,
-				overrideHonorTimestamps:  false,
-				ignoreNamespaceSelectors: false,
-				enforcedNamespaceLabel:   "",
+				i:               0,
+				apiserverConfig: nil,
+				ssCache:         &scrapesSecretsCache{},
+				se: vmv1beta1.VMAgentSecurityEnforcements{
+					OverrideHonorLabels:      false,
+					OverrideHonorTimestamps:  false,
+					IgnoreNamespaceSelectors: false,
+					EnforcedNamespaceLabel:   "",
+				},
 			},
 			want: `job_name: serviceScrape/default/test-scrape/0
-honor_labels: false
 kubernetes_sd_configs:
 - role: endpoints
   attach_metadata:
@@ -94,10 +96,7 @@ kubernetes_sd_configs:
   namespaces:
     names:
     - default
-tls_config:
-  insecure_skip_verify: false
-  ca_file: /etc/vmagent-tls/certs/default_tls-secret_ca
-bearer_token_file: /var/run/tolen
+honor_labels: false
 relabel_configs:
 - action: keep
   source_labels:
@@ -135,6 +134,10 @@ relabel_configs:
   replacement: ${1}
 - target_label: endpoint
   replacement: "8080"
+tls_config:
+  insecure_skip_verify: false
+  ca_file: /etc/vmagent-tls/certs/default_tls-secret_ca
+bearer_token_file: /var/run/tolen
 `,
 		},
 
@@ -155,57 +158,55 @@ relabel_configs:
 						Endpoints: []vmv1beta1.Endpoint{
 							{
 								Port: "8080",
-								TLSConfig: &vmv1beta1.TLSConfig{
-									CA: vmv1beta1.SecretOrConfigMap{
-										Secret: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "tls-secret",
+								EndpointAuth: vmv1beta1.EndpointAuth{
+									TLSConfig: &vmv1beta1.TLSConfig{
+										CA: vmv1beta1.SecretOrConfigMap{
+											Secret: &corev1.SecretKeySelector{
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "tls-secret",
+												},
+												Key: "ca",
 											},
-											Key: "ca",
 										},
 									},
+									BearerTokenFile: "/var/run/tolen",
 								},
-								BearerTokenFile: "/var/run/tolen",
 							},
 						},
 					},
 				},
 				ep: vmv1beta1.Endpoint{
 					Port: "8080",
-					TLSConfig: &vmv1beta1.TLSConfig{
-						Cert: vmv1beta1.SecretOrConfigMap{},
-						CA: vmv1beta1.SecretOrConfigMap{
-							Secret: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "tls-secret",
+					EndpointAuth: vmv1beta1.EndpointAuth{
+						TLSConfig: &vmv1beta1.TLSConfig{
+							Cert: vmv1beta1.SecretOrConfigMap{},
+							CA: vmv1beta1.SecretOrConfigMap{
+								Secret: &corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "tls-secret",
+									},
+									Key: "ca",
 								},
-								Key: "ca",
 							},
 						},
+						BearerTokenFile: "/var/run/tolen",
 					},
-					BearerTokenFile: "/var/run/tolen",
-					ScrapeInterval:  "60m",
+					EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+						ScrapeInterval: "60m",
+					},
 				},
-				i:                        0,
-				apiserverConfig:          nil,
-				ssCache:                  &scrapesSecretsCache{},
-				overrideHonorLabels:      false,
-				overrideHonorTimestamps:  false,
-				ignoreNamespaceSelectors: false,
-				enforcedNamespaceLabel:   "",
+				i:               0,
+				apiserverConfig: nil,
+				ssCache:         &scrapesSecretsCache{},
 			},
 			want: `job_name: serviceScrape/default/test-scrape/0
-honor_labels: false
 kubernetes_sd_configs:
 - role: endpoints
   namespaces:
     names:
     - default
+honor_labels: false
 scrape_interval: 40m
-tls_config:
-  insecure_skip_verify: false
-  ca_file: /etc/vmagent-tls/certs/default_tls-secret_ca
-bearer_token_file: /var/run/tolen
 relabel_configs:
 - action: keep
   source_labels:
@@ -243,6 +244,10 @@ relabel_configs:
   replacement: ${1}
 - target_label: endpoint
   replacement: "8080"
+tls_config:
+  insecure_skip_verify: false
+  ca_file: /etc/vmagent-tls/certs/default_tls-secret_ca
+bearer_token_file: /var/run/tolen
 `,
 		},
 		{
@@ -262,57 +267,56 @@ relabel_configs:
 						Endpoints: []vmv1beta1.Endpoint{
 							{
 								Port: "8080",
-								TLSConfig: &vmv1beta1.TLSConfig{
-									CA: vmv1beta1.SecretOrConfigMap{
-										Secret: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "tls-secret",
+								EndpointAuth: vmv1beta1.EndpointAuth{
+									TLSConfig: &vmv1beta1.TLSConfig{
+										CA: vmv1beta1.SecretOrConfigMap{
+											Secret: &corev1.SecretKeySelector{
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "tls-secret",
+												},
+												Key: "ca",
 											},
-											Key: "ca",
 										},
 									},
+									BearerTokenFile: "/var/run/tolen",
 								},
-								BearerTokenFile: "/var/run/tolen",
 							},
 						},
 					},
 				},
 				ep: vmv1beta1.Endpoint{
 					Port: "8080",
-					TLSConfig: &vmv1beta1.TLSConfig{
-						Cert: vmv1beta1.SecretOrConfigMap{},
-						CA: vmv1beta1.SecretOrConfigMap{
-							Secret: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "tls-secret",
+					EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+						ScrapeInterval: "10s",
+					},
+
+					EndpointAuth: vmv1beta1.EndpointAuth{
+						TLSConfig: &vmv1beta1.TLSConfig{
+							Cert: vmv1beta1.SecretOrConfigMap{},
+							CA: vmv1beta1.SecretOrConfigMap{
+								Secret: &corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "tls-secret",
+									},
+									Key: "ca",
 								},
-								Key: "ca",
 							},
 						},
+						BearerTokenFile: "/var/run/tolen",
 					},
-					BearerTokenFile: "/var/run/tolen",
-					ScrapeInterval:  "10s",
 				},
-				i:                        0,
-				apiserverConfig:          nil,
-				ssCache:                  &scrapesSecretsCache{},
-				overrideHonorLabels:      false,
-				overrideHonorTimestamps:  false,
-				ignoreNamespaceSelectors: false,
-				enforcedNamespaceLabel:   "",
+				i:               0,
+				apiserverConfig: nil,
+				ssCache:         &scrapesSecretsCache{},
 			},
 			want: `job_name: serviceScrape/default/test-scrape/0
-honor_labels: false
 kubernetes_sd_configs:
 - role: endpoints
   namespaces:
     names:
     - default
+honor_labels: false
 scrape_interval: 1m
-tls_config:
-  insecure_skip_verify: false
-  ca_file: /etc/vmagent-tls/certs/default_tls-secret_ca
-bearer_token_file: /var/run/tolen
 relabel_configs:
 - action: keep
   source_labels:
@@ -350,6 +354,10 @@ relabel_configs:
   replacement: ${1}
 - target_label: endpoint
   replacement: "8080"
+tls_config:
+  insecure_skip_verify: false
+  ca_file: /etc/vmagent-tls/certs/default_tls-secret_ca
+bearer_token_file: /var/run/tolen
 `,
 		},
 		{
@@ -365,55 +373,51 @@ relabel_configs:
 						Endpoints: []vmv1beta1.Endpoint{
 							{
 								Port: "8080",
-								TLSConfig: &vmv1beta1.TLSConfig{
-									CA: vmv1beta1.SecretOrConfigMap{
-										Secret: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "tls-secret",
+								EndpointAuth: vmv1beta1.EndpointAuth{
+									TLSConfig: &vmv1beta1.TLSConfig{
+										CA: vmv1beta1.SecretOrConfigMap{
+											Secret: &corev1.SecretKeySelector{
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "tls-secret",
+												},
+												Key: "ca",
 											},
-											Key: "ca",
 										},
 									},
+									BearerTokenFile: "/var/run/tolen",
 								},
-								BearerTokenFile: "/var/run/tolen",
 							},
 						},
 					},
 				},
 				ep: vmv1beta1.Endpoint{
 					Port: "8080",
-					TLSConfig: &vmv1beta1.TLSConfig{
-						Cert: vmv1beta1.SecretOrConfigMap{},
-						CA: vmv1beta1.SecretOrConfigMap{
-							Secret: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "tls-secret",
+					EndpointAuth: vmv1beta1.EndpointAuth{
+						TLSConfig: &vmv1beta1.TLSConfig{
+							Cert: vmv1beta1.SecretOrConfigMap{},
+							CA: vmv1beta1.SecretOrConfigMap{
+								Secret: &corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "tls-secret",
+									},
+									Key: "ca",
 								},
-								Key: "ca",
 							},
 						},
+						BearerTokenFile: "/var/run/tolen",
 					},
-					BearerTokenFile: "/var/run/tolen",
 				},
-				i:                        0,
-				apiserverConfig:          nil,
-				ssCache:                  &scrapesSecretsCache{},
-				overrideHonorLabels:      false,
-				overrideHonorTimestamps:  false,
-				ignoreNamespaceSelectors: false,
-				enforcedNamespaceLabel:   "",
+				i:               0,
+				apiserverConfig: nil,
+				ssCache:         &scrapesSecretsCache{},
 			},
 			want: `job_name: serviceScrape/default/test-scrape/0
-honor_labels: false
 kubernetes_sd_configs:
 - role: endpointslices
   namespaces:
     names:
     - default
-tls_config:
-  insecure_skip_verify: false
-  ca_file: /etc/vmagent-tls/certs/default_tls-secret_ca
-bearer_token_file: /var/run/tolen
+honor_labels: false
 relabel_configs:
 - action: keep
   source_labels:
@@ -448,6 +452,10 @@ relabel_configs:
   replacement: ${1}
 - target_label: endpoint
   replacement: "8080"
+tls_config:
+  insecure_skip_verify: false
+  ca_file: /etc/vmagent-tls/certs/default_tls-secret_ca
+bearer_token_file: /var/run/tolen
 `,
 		},
 		{
@@ -463,17 +471,19 @@ relabel_configs:
 						Endpoints: []vmv1beta1.Endpoint{
 							{
 								Port: "8080",
-								TLSConfig: &vmv1beta1.TLSConfig{
-									CA: vmv1beta1.SecretOrConfigMap{
-										Secret: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "tls-secret",
+								EndpointAuth: vmv1beta1.EndpointAuth{
+									TLSConfig: &vmv1beta1.TLSConfig{
+										CA: vmv1beta1.SecretOrConfigMap{
+											Secret: &corev1.SecretKeySelector{
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "tls-secret",
+												},
+												Key: "ca",
 											},
-											Key: "ca",
 										},
 									},
+									BearerTokenFile: "/var/run/tolen",
 								},
-								BearerTokenFile: "/var/run/tolen",
 							},
 						},
 					},
@@ -483,38 +493,32 @@ relabel_configs:
 						Node: ptr.To(true),
 					},
 					Port: "8080",
-					TLSConfig: &vmv1beta1.TLSConfig{
-						Cert: vmv1beta1.SecretOrConfigMap{},
-						CA: vmv1beta1.SecretOrConfigMap{
-							Secret: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "tls-secret",
+					EndpointAuth: vmv1beta1.EndpointAuth{
+						TLSConfig: &vmv1beta1.TLSConfig{
+							Cert: vmv1beta1.SecretOrConfigMap{},
+							CA: vmv1beta1.SecretOrConfigMap{
+								Secret: &corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "tls-secret",
+									},
+									Key: "ca",
 								},
-								Key: "ca",
 							},
 						},
+						BearerTokenFile: "/var/run/tolen",
 					},
-					BearerTokenFile: "/var/run/tolen",
 				},
-				i:                        0,
-				apiserverConfig:          nil,
-				ssCache:                  &scrapesSecretsCache{},
-				overrideHonorLabels:      false,
-				overrideHonorTimestamps:  false,
-				ignoreNamespaceSelectors: false,
-				enforcedNamespaceLabel:   "",
+				i:               0,
+				apiserverConfig: nil,
+				ssCache:         &scrapesSecretsCache{},
 			},
 			want: `job_name: serviceScrape/default/test-scrape/0
-honor_labels: false
 kubernetes_sd_configs:
 - role: service
   namespaces:
     names:
     - default
-tls_config:
-  insecure_skip_verify: false
-  ca_file: /etc/vmagent-tls/certs/default_tls-secret_ca
-bearer_token_file: /var/run/tolen
+honor_labels: false
 relabel_configs:
 - action: keep
   source_labels:
@@ -532,6 +536,10 @@ relabel_configs:
   replacement: ${1}
 - target_label: endpoint
   replacement: "8080"
+tls_config:
+  insecure_skip_verify: false
+  ca_file: /etc/vmagent-tls/certs/default_tls-secret_ca
+bearer_token_file: /var/run/tolen
 `,
 		},
 		{
@@ -560,21 +568,17 @@ relabel_configs:
 						return &v
 					}(),
 				},
-				i:                        0,
-				apiserverConfig:          nil,
-				ssCache:                  &scrapesSecretsCache{},
-				overrideHonorLabels:      false,
-				overrideHonorTimestamps:  false,
-				ignoreNamespaceSelectors: false,
-				enforcedNamespaceLabel:   "",
+				i:               0,
+				apiserverConfig: nil,
+				ssCache:         &scrapesSecretsCache{},
 			},
 			want: `job_name: serviceScrape/default/test-scrape/0
-honor_labels: false
 kubernetes_sd_configs:
 - role: service
   namespaces:
     names:
     - default
+honor_labels: false
 relabel_configs:
 - source_labels:
   - __meta_kubernetes_namespace
@@ -601,8 +605,10 @@ relabel_configs:
 						Endpoints: []vmv1beta1.Endpoint{
 							{
 								Port: "8080",
-								TLSConfig: &vmv1beta1.TLSConfig{
-									InsecureSkipVerify: true,
+								EndpointAuth: vmv1beta1.EndpointAuth{
+									TLSConfig: &vmv1beta1.TLSConfig{
+										InsecureSkipVerify: true,
+									},
 								},
 							},
 						},
@@ -610,29 +616,24 @@ relabel_configs:
 				},
 				ep: vmv1beta1.Endpoint{
 					Port: "8080",
-					TLSConfig: &vmv1beta1.TLSConfig{
-						InsecureSkipVerify: true,
+					EndpointAuth: vmv1beta1.EndpointAuth{
+						TLSConfig: &vmv1beta1.TLSConfig{
+							InsecureSkipVerify: true,
+						},
+						BearerTokenFile: "/var/run/tolen",
 					},
-					BearerTokenFile: "/var/run/tolen",
 				},
-				i:                        0,
-				apiserverConfig:          nil,
-				ssCache:                  &scrapesSecretsCache{},
-				overrideHonorLabels:      false,
-				overrideHonorTimestamps:  false,
-				ignoreNamespaceSelectors: false,
-				enforcedNamespaceLabel:   "",
+				i:               0,
+				apiserverConfig: nil,
+				ssCache:         &scrapesSecretsCache{},
 			},
 			want: `job_name: serviceScrape/default/test-scrape/0
-honor_labels: false
 kubernetes_sd_configs:
 - role: service
   namespaces:
     names:
     - default
-tls_config:
-  insecure_skip_verify: true
-bearer_token_file: /var/run/tolen
+honor_labels: false
 relabel_configs:
 - action: keep
   source_labels:
@@ -650,6 +651,9 @@ relabel_configs:
   replacement: ${1}
 - target_label: endpoint
   replacement: "8080"
+tls_config:
+  insecure_skip_verify: true
+bearer_token_file: /var/run/tolen
 `,
 		},
 		{
@@ -665,66 +669,75 @@ relabel_configs:
 						Endpoints: []vmv1beta1.Endpoint{
 							{
 								Port: "8080",
-								TLSConfig: &vmv1beta1.TLSConfig{
-									InsecureSkipVerify: true,
+								EndpointAuth: vmv1beta1.EndpointAuth{
+									TLSConfig: &vmv1beta1.TLSConfig{
+										InsecureSkipVerify: true,
+									},
 								},
 							},
 						},
 					},
 				},
 				ep: vmv1beta1.Endpoint{
-					VMScrapeParams: &vmv1beta1.VMScrapeParams{
-						StreamParse: ptr.To(true),
-						ProxyClientConfig: &vmv1beta1.ProxyAuth{
-							TLSConfig:       &vmv1beta1.TLSConfig{InsecureSkipVerify: true},
-							BearerTokenFile: "/tmp/some-file",
+					EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+						Params:          map[string][]string{"module": {"base"}},
+						ScrapeInterval:  "10s",
+						ScrapeTimeout:   "5s",
+						HonorTimestamps: ptr.To(true),
+						FollowRedirects: ptr.To(true),
+						ProxyURL:        ptr.To("https://some-proxy"),
+						HonorLabels:     true,
+						Scheme:          "https",
+						Path:            "/metrics",
+
+						VMScrapeParams: &vmv1beta1.VMScrapeParams{
+							StreamParse: ptr.To(true),
+							ProxyClientConfig: &vmv1beta1.ProxyAuth{
+								TLSConfig:       &vmv1beta1.TLSConfig{InsecureSkipVerify: true},
+								BearerTokenFile: "/tmp/some-file",
+							},
 						},
 					},
-					MetricRelabelConfigs: []*vmv1beta1.RelabelConfig{},
-					RelabelConfigs:       []*vmv1beta1.RelabelConfig{},
-					OAuth2: &vmv1beta1.OAuth2{
-						Scopes:         []string{"scope-1"},
-						TokenURL:       "http://some-token-url",
-						EndpointParams: map[string]string{"timeout": "5s"},
-						ClientID: vmv1beta1.SecretOrConfigMap{
-							Secret: &corev1.SecretKeySelector{
+					EndpointRelabelings: vmv1beta1.EndpointRelabelings{
+						MetricRelabelConfigs: []*vmv1beta1.RelabelConfig{},
+						RelabelConfigs:       []*vmv1beta1.RelabelConfig{},
+					},
+					EndpointAuth: vmv1beta1.EndpointAuth{
+						OAuth2: &vmv1beta1.OAuth2{
+							Scopes:         []string{"scope-1"},
+							TokenURL:       "http://some-token-url",
+							EndpointParams: map[string]string{"timeout": "5s"},
+							ClientID: vmv1beta1.SecretOrConfigMap{
+								Secret: &corev1.SecretKeySelector{
+									Key:                  "bearer",
+									LocalObjectReference: corev1.LocalObjectReference{Name: "access-secret"},
+								},
+							},
+							ClientSecret: &corev1.SecretKeySelector{
 								Key:                  "bearer",
 								LocalObjectReference: corev1.LocalObjectReference{Name: "access-secret"},
 							},
 						},
-						ClientSecret: &corev1.SecretKeySelector{
+						BasicAuth: &vmv1beta1.BasicAuth{
+							Username: corev1.SecretKeySelector{
+								Key:                  "bearer",
+								LocalObjectReference: corev1.LocalObjectReference{Name: "access-secret"},
+							},
+							Password: corev1.SecretKeySelector{
+								Key:                  "bearer",
+								LocalObjectReference: corev1.LocalObjectReference{Name: "access-secret"},
+							},
+						},
+						TLSConfig: &vmv1beta1.TLSConfig{
+							InsecureSkipVerify: true,
+						},
+						BearerTokenFile: "/var/run/tolen",
+						BearerTokenSecret: &corev1.SecretKeySelector{
 							Key:                  "bearer",
 							LocalObjectReference: corev1.LocalObjectReference{Name: "access-secret"},
 						},
-					},
-					BasicAuth: &vmv1beta1.BasicAuth{
-						Username: corev1.SecretKeySelector{
-							Key:                  "bearer",
-							LocalObjectReference: corev1.LocalObjectReference{Name: "access-secret"},
-						},
-						Password: corev1.SecretKeySelector{
-							Key:                  "bearer",
-							LocalObjectReference: corev1.LocalObjectReference{Name: "access-secret"},
-						},
-					},
-					Params:          map[string][]string{"module": {"base"}},
-					ScrapeInterval:  "10s",
-					ScrapeTimeout:   "5s",
-					HonorTimestamps: ptr.To(true),
-					FollowRedirects: ptr.To(true),
-					ProxyURL:        ptr.To("https://some-proxy"),
-					HonorLabels:     true,
-					Scheme:          "https",
-					Path:            "/metrics",
-					BearerTokenSecret: &corev1.SecretKeySelector{
-						Key:                  "bearer",
-						LocalObjectReference: corev1.LocalObjectReference{Name: "access-secret"},
 					},
 					Port: "8080",
-					TLSConfig: &vmv1beta1.TLSConfig{
-						InsecureSkipVerify: true,
-					},
-					BearerTokenFile: "/var/run/tolen",
 				},
 				i:               0,
 				apiserverConfig: nil,
@@ -740,19 +753,15 @@ relabel_configs:
 						"serviceScrape/default/test-scrape/0": {ClientSecret: "some-secret", ClientID: "some-id"},
 					},
 				},
-				overrideHonorLabels:      false,
-				overrideHonorTimestamps:  false,
-				ignoreNamespaceSelectors: false,
-				enforcedNamespaceLabel:   "",
 			},
 			want: `job_name: serviceScrape/default/test-scrape/0
-honor_labels: true
-honor_timestamps: true
 kubernetes_sd_configs:
 - role: service
   namespaces:
     names:
     - default
+honor_labels: true
+honor_timestamps: true
 scrape_interval: 10s
 scrape_timeout: 5s
 metrics_path: /metrics
@@ -762,12 +771,6 @@ params:
   module:
   - base
 scheme: https
-tls_config:
-  insecure_skip_verify: true
-bearer_token_file: /var/run/tolen
-basic_auth:
-  username: user
-  password: pass
 relabel_configs:
 - action: keep
   source_labels:
@@ -785,11 +788,16 @@ relabel_configs:
   replacement: ${1}
 - target_label: endpoint
   replacement: "8080"
-metric_relabel_configs: []
 stream_parse: true
 proxy_tls_config:
   insecure_skip_verify: true
 proxy_bearer_token_file: /tmp/some-file
+tls_config:
+  insecure_skip_verify: true
+bearer_token_file: /var/run/tolen
+basic_auth:
+  username: user
+  password: pass
 oauth2:
   client_id: some-id
   client_secret: some-secret
@@ -823,55 +831,51 @@ oauth2:
 						Endpoints: []vmv1beta1.Endpoint{
 							{
 								Port: "8080",
-								TLSConfig: &vmv1beta1.TLSConfig{
-									CA: vmv1beta1.SecretOrConfigMap{
-										Secret: &corev1.SecretKeySelector{
-											LocalObjectReference: corev1.LocalObjectReference{
-												Name: "tls-secret",
+								EndpointAuth: vmv1beta1.EndpointAuth{
+									TLSConfig: &vmv1beta1.TLSConfig{
+										CA: vmv1beta1.SecretOrConfigMap{
+											Secret: &corev1.SecretKeySelector{
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "tls-secret",
+												},
+												Key: "ca",
 											},
-											Key: "ca",
 										},
 									},
+									BearerTokenFile: "/var/run/tolen",
 								},
-								BearerTokenFile: "/var/run/tolen",
 							},
 						},
 					},
 				},
 				ep: vmv1beta1.Endpoint{
 					Port: "8080",
-					TLSConfig: &vmv1beta1.TLSConfig{
-						Cert: vmv1beta1.SecretOrConfigMap{},
-						CA: vmv1beta1.SecretOrConfigMap{
-							Secret: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "tls-secret",
+					EndpointAuth: vmv1beta1.EndpointAuth{
+						TLSConfig: &vmv1beta1.TLSConfig{
+							Cert: vmv1beta1.SecretOrConfigMap{},
+							CA: vmv1beta1.SecretOrConfigMap{
+								Secret: &corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "tls-secret",
+									},
+									Key: "ca",
 								},
-								Key: "ca",
 							},
 						},
+						BearerTokenFile: "/var/run/tolen",
 					},
-					BearerTokenFile: "/var/run/tolen",
 				},
-				i:                        0,
-				apiserverConfig:          nil,
-				ssCache:                  &scrapesSecretsCache{},
-				overrideHonorLabels:      false,
-				overrideHonorTimestamps:  false,
-				ignoreNamespaceSelectors: false,
-				enforcedNamespaceLabel:   "",
+				i:               0,
+				apiserverConfig: nil,
+				ssCache:         &scrapesSecretsCache{},
 			},
 			want: `job_name: serviceScrape/default/test-scrape/0
-honor_labels: false
 kubernetes_sd_configs:
 - role: endpoints
   namespaces:
     names:
     - default
-tls_config:
-  insecure_skip_verify: false
-  ca_file: /etc/vmagent-tls/certs/default_tls-secret_ca
-bearer_token_file: /var/run/tolen
+honor_labels: false
 relabel_configs:
 - action: keep
   source_labels:
@@ -913,12 +917,16 @@ relabel_configs:
   - __meta_kubernetes_node_name
   target_label: node
   regex: .+
+tls_config:
+  insecure_skip_verify: false
+  ca_file: /etc/vmagent-tls/certs/default_tls-secret_ca
+bearer_token_file: /var/run/tolen
 `,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := generateServiceScrapeConfig(context.Background(), &tt.args.cr, tt.args.m, tt.args.ep, tt.args.i, tt.args.apiserverConfig, tt.args.ssCache, tt.args.overrideHonorLabels, tt.args.overrideHonorTimestamps, tt.args.ignoreNamespaceSelectors, tt.args.enforcedNamespaceLabel)
+			got := generateServiceScrapeConfig(context.Background(), &tt.args.cr, tt.args.m, tt.args.ep, tt.args.i, tt.args.apiserverConfig, tt.args.ssCache, tt.args.se)
 			gotBytes, err := yaml.Marshal(got)
 			if err != nil {
 				t.Errorf("cannot marshal ServiceScrapeConfig to yaml,err :%e", err)

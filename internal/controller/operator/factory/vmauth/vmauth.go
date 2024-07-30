@@ -374,7 +374,7 @@ func CreateOrUpdateVMAuthConfig(ctx context.Context, rclient client.Client, cr *
 		logger.WithContext(ctx).Info("no current VMAuth configuration secret found", "currentConfigFound", curConfigFound)
 	}
 	s.Annotations = labels.Merge(curSecret.Annotations, s.Annotations)
-	vmv1beta1.MergeFinalizers(&curSecret, vmv1beta1.FinalizerName)
+	vmv1beta1.AddFinalizer(s, &curSecret)
 
 	logger.WithContext(ctx).Info("updating VMAuth configuration secret")
 	return rclient.Update(ctx, s)
@@ -421,7 +421,7 @@ func CreateOrUpdateVMAuthIngress(ctx context.Context, rclient client.Client, cr 
 		return err
 	}
 	newIngress.Annotations = labels.Merge(existIngress.Annotations, newIngress.Annotations)
-	newIngress.Finalizers = vmv1beta1.MergeFinalizers(&existIngress, vmv1beta1.FinalizerName)
+	vmv1beta1.AddFinalizer(newIngress, &existIngress)
 	return rclient.Update(ctx, newIngress)
 }
 
@@ -520,8 +520,9 @@ func buildVMAuthConfigReloaderContainer(cr *vmv1beta1.VMAuth, c *config.BaseOper
 		}
 	}
 	configReloader := corev1.Container{
-		Name:                     "config-reloader",
-		Image:                    build.FormatContainerImage(c.ContainerRegistry, c.VMAuthDefault.ConfigReloadImage),
+		Name:  "config-reloader",
+		Image: build.FormatContainerImage(c.ContainerRegistry, c.VMAuthDefault.ConfigReloadImage),
+
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 		Env: []corev1.EnvVar{
 			{
@@ -539,7 +540,7 @@ func buildVMAuthConfigReloaderContainer(cr *vmv1beta1.VMAuth, c *config.BaseOper
 
 	if c.UseCustomConfigReloader {
 		configReloader.Image = build.FormatContainerImage(c.ContainerRegistry, c.CustomConfigReloaderImage)
-		configReloader.Command = []string{"/usr/local/bin/config-reloader"}
+		configReloader.Command = nil
 	}
 
 	build.AddsPortProbesToConfigReloaderContainer(&configReloader, c)
@@ -554,10 +555,7 @@ func buildInitConfigContainer(baseImage string, resources corev1.ResourceRequire
 		initReloader = corev1.Container{
 			Image: build.FormatContainerImage(c.ContainerRegistry, c.CustomConfigReloaderImage),
 			Name:  "config-init",
-			Command: []string{
-				"/usr/local/bin/config-reloader",
-			},
-			Args: append(configReloaderArgs, "--only-init-config"),
+			Args:  append(configReloaderArgs, "--only-init-config"),
 			VolumeMounts: []corev1.VolumeMount{
 				{
 					Name:      "config-out",

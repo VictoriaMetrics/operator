@@ -1506,11 +1506,29 @@ func TestBuildWebConfig(t *testing.T) {
 						Name:      "web-cfg",
 					},
 					Spec: vmv1beta1.VMAlertmanagerSpec{
+						GossipConfig: &vmv1beta1.AlertmanagerGossipConfig{
+							TLSClientConfig: &vmv1beta1.TLSClientConfig{
+								CAFile: "/etc/client/client_ca",
+								Certs: vmv1beta1.Certs{
+									CertFile: "/etc/client/cert.pem",
+									KeyFile:  "/etc/client/cert.key",
+								},
+							},
+							TLSServerConfig: &vmv1beta1.TLSServerConfig{
+								ClientCAFile: "/etc/server/client_ca",
+								Certs: vmv1beta1.Certs{
+									CertFile: "/etc/server/cert.pem",
+									KeyFile:  "/etc/server/cert.key",
+								},
+							},
+						},
 						WebConfig: &vmv1beta1.AlertmanagerWebConfig{
-							TLSServerConfig: &vmv1beta1.WebserverTLSConfig{
-								ClientCAFile: "/etc/client_ca",
-								CertFile:     "/etc/cert.pem",
-								KeyFile:      "/etc/cert.key",
+							TLSServerConfig: &vmv1beta1.TLSServerConfig{
+								ClientCAFile: "/etc/server/client_ca",
+								Certs: vmv1beta1.Certs{
+									CertFile: "/etc/server/cert.pem",
+									KeyFile:  "/etc/server/cert.key",
+								},
 							},
 							HTTPServerConfig: &vmv1beta1.AlertmanagerHTTPConfig{
 								HTTP2:   true,
@@ -1526,9 +1544,9 @@ func TestBuildWebConfig(t *testing.T) {
     h-1: v-1
     h-2: v-2
 tls_server_config:
-  client_ca_file: /etc/client_ca
-  cert_file: /etc/cert.pem
-  key_file: /etc/cert.key
+  client_ca_file: /etc/server/client_ca
+  cert_file: /etc/server/cert.pem
+  key_file: /etc/server/cert.key
 `,
 		},
 		{
@@ -1542,18 +1560,20 @@ tls_server_config:
 					},
 					Spec: vmv1beta1.VMAlertmanagerSpec{
 						WebConfig: &vmv1beta1.AlertmanagerWebConfig{
-							TLSServerConfig: &vmv1beta1.WebserverTLSConfig{
+							TLSServerConfig: &vmv1beta1.TLSServerConfig{
 								ClientCASecretRef: &v1.SecretKeySelector{
 									Key:                  "client_ca",
 									LocalObjectReference: v1.LocalObjectReference{Name: "tls-secret"},
 								},
-								CertSecretRef: &v1.SecretKeySelector{
-									Key:                  "cert",
-									LocalObjectReference: v1.LocalObjectReference{Name: "tls-secret"},
-								},
-								KeySecretRef: &v1.SecretKeySelector{
-									Key:                  "key",
-									LocalObjectReference: v1.LocalObjectReference{Name: "tls-secret-key"},
+								Certs: vmv1beta1.Certs{
+									CertSecretRef: &v1.SecretKeySelector{
+										Key:                  "cert",
+										LocalObjectReference: v1.LocalObjectReference{Name: "tls-secret"},
+									},
+									KeySecretRef: &v1.SecretKeySelector{
+										Key:                  "key",
+										LocalObjectReference: v1.LocalObjectReference{Name: "tls-secret-key"},
+									},
 								},
 							},
 							HTTPServerConfig: &vmv1beta1.AlertmanagerHTTPConfig{
@@ -1591,9 +1611,9 @@ tls_server_config:
     h-1: v-1
     h-2: v-2
 tls_server_config:
-  client_ca_file: /etc/alertmanager/tls_assets/tls-secret_client_ca
-  cert_file: /etc/alertmanager/tls_assets/tls-secret_cert
-  key_file: /etc/alertmanager/tls_assets/tls-secret-key_key
+  client_ca_file: /etc/alertmanager/tls_assets/web/server/tls-secret_client_ca
+  cert_file: /etc/alertmanager/tls_assets/web/server/tls-secret_cert
+  key_file: /etc/alertmanager/tls_assets/web/server/tls-secret-key_key
 `,
 		},
 	}
@@ -1602,6 +1622,71 @@ tls_server_config:
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 			tlsAssets := make(map[string]string)
 			cfg, err := buildWebServerConfigYAML(tt.args.ctx, fclient, &tt.args.vmaCR, tlsAssets)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("unexpected error: %q", err)
+			}
+			assert.Equal(t, tt.want, string(cfg))
+		})
+	}
+}
+
+func TestBuildGossipConfig(t *testing.T) {
+	type args struct {
+		ctx   context.Context
+		vmaCR vmv1beta1.VMAlertmanager
+	}
+	tests := []struct {
+		name              string
+		args              args
+		predefinedObjects []runtime.Object
+		want              string
+		wantErr           bool
+	}{
+		{
+			name: "tls secrets",
+			args: args{
+				ctx: context.Background(),
+				vmaCR: vmv1beta1.VMAlertmanager{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "test",
+						Name:      "web-cfg",
+					},
+					Spec: vmv1beta1.VMAlertmanagerSpec{
+						GossipConfig: &vmv1beta1.AlertmanagerGossipConfig{
+							TLSClientConfig: &vmv1beta1.TLSClientConfig{
+								CAFile: "/etc/client/client_ca",
+								Certs: vmv1beta1.Certs{
+									CertFile: "/etc/client/cert.pem",
+									KeyFile:  "/etc/client/cert.key",
+								},
+							},
+							TLSServerConfig: &vmv1beta1.TLSServerConfig{
+								ClientCAFile: "/etc/server/client_ca",
+								Certs: vmv1beta1.Certs{
+									CertFile: "/etc/server/cert.pem",
+									KeyFile:  "/etc/server/cert.key",
+								},
+							},
+						},
+					},
+				},
+			},
+			want: `tls_server_config:
+  client_ca_file: /etc/server/client_ca
+  cert_file: /etc/server/cert.pem
+  key_file: /etc/server/cert.key
+tls_client_config:
+  ca_file: /etc/client/client_ca
+  cert_file: /etc/client/cert.pem
+  key_file: /etc/client/cert.key
+`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
+			tlsAssets := make(map[string]string)
+			cfg, err := buildGossipConfigYAML(tt.args.ctx, fclient, &tt.args.vmaCR, tlsAssets)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("unexpected error: %q", err)
 			}

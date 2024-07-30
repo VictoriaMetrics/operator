@@ -302,6 +302,9 @@ type VMAlertmanagerSpec struct {
 	// WebConfig defines configuration for webserver
 	// https://github.com/prometheus/alertmanager/blob/main/docs/https.md
 	WebConfig *AlertmanagerWebConfig `json:"webConfig,omitempty"`
+
+	// GossipConfig defines gossip TLS configuration for Alertmanager cluster
+	GossipConfig *AlertmanagerGossipConfig `json:"gossipConfig,omitempty"`
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface
@@ -560,10 +563,18 @@ func (cr *VMAlertmanager) SetUpdateStatusTo(ctx context.Context, r client.Client
 	return nil
 }
 
+// AlertmanagerGossipConfig defines Gossip TLS configuration for alertmanager
+type AlertmanagerGossipConfig struct {
+	// TLSServerConfig defines server TLS configuration for alertmanager
+	TLSServerConfig *TLSServerConfig `json:"tls_server_config,omitempty"`
+	// TLSClientConfig defines client TLS configuration for alertmanager
+	TLSClientConfig *TLSClientConfig `json:"tls_client_config,omitempty"`
+}
+
 // AlertmanagerWebConfig defines web server configuration for alertmanager
 type AlertmanagerWebConfig struct {
-	// TLSServerConfig defines tls configuration for alertmanager web server
-	TLSServerConfig *WebserverTLSConfig `json:"tls_server_config,omitempty"`
+	// TLSServerConfig defines server TLS configuration for alertmanager
+	TLSServerConfig *TLSServerConfig `json:"tls_server_config,omitempty"`
 	// HTTPServerConfig defines http server configuration for alertmanager web server
 	HTTPServerConfig *AlertmanagerHTTPConfig `json:"http_server_config,omitempty"`
 	// BasicAuthUsers Usernames and hashed passwords that have full access to the web server

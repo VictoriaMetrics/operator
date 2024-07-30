@@ -899,22 +899,8 @@ func (c *TLSConfig) BuildAssetPath(prefix, name, key string) string {
 	return fmt.Sprintf("%s_%s_%s", prefix, name, key)
 }
 
-// WebserverTLSConfig defines TLS configuration for the applications webserver
-type WebserverTLSConfig struct {
-	// ClientAuthType defines server policy for client authentication
-	// If you want to enable client authentication (aka mTLS), you need to use RequireAndVerifyClientCert
-	// Note, mTLS is supported only at enterprise version of VictoriaMetrics components
-	// +kubebuilder:validation:Enum=NoClientCert;RequireAndVerifyClientCert
-	ClientAuthType string `json:"client_auth_type,omitempty"`
-
-	// ClientCA defines reference for secret with CA content under given key
-	// mutually exclusive with ClientCAFile
-	ClientCASecretRef *v1.SecretKeySelector `json:"client_ca_secret_ref,omitempty"`
-	// ClientCAFile defines path to the pre-mounted file with CA
-	// mutually exclusive with ClientCASecretRef
-	ClientCAFile string `json:"client_ca_file,omitempty"`
-	// Cert defines reference for secret with CA content under given key
-	// mutually exclusive with CertFile
+// Certs defines TLS certs configuration
+type Certs struct {
 	CertSecretRef *v1.SecretKeySelector `json:"cert_secret_ref,omitempty"`
 	// CertFile defines path to the pre-mounted file with certificate
 	// mutually exclusive with CertSecretRef
@@ -925,6 +911,23 @@ type WebserverTLSConfig struct {
 	// KeyFile defines path to the pre-mounted file with certificate key
 	// mutually exclusive with KeySecretRef
 	KeyFile string `json:"key_file,omitempty"`
+}
+
+// TLSServerConfig defines TLS configuration for the application's server
+type TLSServerConfig struct {
+	// ClientCASecretRef defines reference for secret with CA content under given key
+	// mutually exclusive with ClientCAFile
+	ClientCASecretRef *v1.SecretKeySelector `json:"client_ca_secret_ref,omitempty"`
+	// ClientCAFile defines path to the pre-mounted file with CA
+	// mutually exclusive with ClientCASecretRef
+	ClientCAFile string `json:"client_ca_file,omitempty"`
+	// Cert defines reference for secret with CA content under given key
+	// mutually exclusive with CertFile
+	// ClientAuthType defines server policy for client authentication
+	// If you want to enable client authentication (aka mTLS), you need to use RequireAndVerifyClientCert
+	// Note, mTLS is supported only at enterprise version of VictoriaMetrics components
+	// +kubebuilder:validation:Enum=NoClientCert;RequireAndVerifyClientCert
+	ClientAuthType string `json:"client_auth_type,omitempty"`
 	// MinVersion minimum TLS version that is acceptable.
 	// +kubebuilder:validation:Enum=TLS10;TLS11;TLS12;TLS13
 	MinVersion string `json:"min_version,omitempty"`
@@ -940,4 +943,23 @@ type WebserverTLSConfig struct {
 	// PreferServerCipherSuites controls whether the server selects the
 	// client's most preferred ciphersuite
 	PreferServerCipherSuites bool `json:"prefer_server_cipher_suites,omitempty"`
+	// Certs defines cert, CA and key for TLS auth
+	Certs `json:",inline"`
+}
+
+// TLSClientConfig defines TLS configuration for the application's client
+type TLSClientConfig struct {
+	// CA defines reference for secret with CA content under given key
+	// mutually exclusive with CAFile
+	CASecretRef *v1.SecretKeySelector `json:"ca_secret_ref,omitempty"`
+	// CAFile defines path to the pre-mounted file with CA
+	// mutually exclusive with CASecretRef
+	CAFile string `json:"ca_file,omitempty"`
+	// Cert defines reference for secret with CA content under given key
+	// mutually exclusive with CertFile
+	InsecureSkipVerify bool `json:"insecure_skip_verify,omitempty"`
+	// ServerName indicates a name of a server
+	ServerName string `json:"server_name,omitempty"`
+	// Certs defines cert, CA and key for TLS auth
+	Certs `json:",inline"`
 }

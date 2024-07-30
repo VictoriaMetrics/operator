@@ -52,16 +52,41 @@ func (r *VMAlertmanager) sanityCheck() error {
 		}
 		if r.Spec.WebConfig.TLSServerConfig != nil {
 			tc := r.Spec.WebConfig.TLSServerConfig
-			if tc.CertFile == "" && tc.CertSecretRef == nil {
+			if tc.Certs.CertFile == "" && tc.Certs.CertSecretRef == nil {
 				return fmt.Errorf("either cert_secret_ref or cert_file must be set for tls_server_config")
 			}
-			if tc.KeyFile == "" && tc.KeySecretRef == nil {
+			if tc.Certs.KeyFile == "" && tc.Certs.KeySecretRef == nil {
 				return fmt.Errorf("either key_secret_ref or key_file must be set for tls_server_config")
 			}
 			if tc.ClientAuthType == "RequireAndVerifyClientCert" {
 				if tc.ClientCAFile == "" && tc.ClientCASecretRef == nil {
 					return fmt.Errorf("either client_ca_secret_ref or client_ca_file must be set for tls_server_config with enabled RequireAndVerifyClientCert")
 				}
+			}
+		}
+	}
+	if r.Spec.GossipConfig != nil {
+		if r.Spec.GossipConfig.TLSServerConfig != nil {
+			tc := r.Spec.GossipConfig.TLSServerConfig
+			if tc.Certs.CertFile == "" && tc.Certs.CertSecretRef == nil {
+				return fmt.Errorf("either cert_secret_ref or cert_file must be set for tls_server_config")
+			}
+			if tc.Certs.KeyFile == "" && tc.Certs.KeySecretRef == nil {
+				return fmt.Errorf("either key_secret_ref or key_file must be set for tls_server_config")
+			}
+			if tc.ClientAuthType == "RequireAndVerifyClientCert" {
+				if tc.ClientCAFile == "" && tc.ClientCASecretRef == nil {
+					return fmt.Errorf("either client_ca_secret_ref or client_ca_file must be set for tls_server_config with enabled RequireAndVerifyClientCert")
+				}
+			}
+		}
+		if r.Spec.GossipConfig.TLSClientConfig != nil {
+			tc := r.Spec.GossipConfig.TLSClientConfig
+			if tc.Certs.CertFile == "" && tc.Certs.CertSecretRef == nil {
+				return fmt.Errorf("either cert_secret_ref or cert_file must be set for tls_client_config")
+			}
+			if tc.Certs.KeyFile == "" && tc.Certs.KeySecretRef == nil {
+				return fmt.Errorf("either key_secret_ref or key_file must be set for tls_client_config")
 			}
 		}
 	}

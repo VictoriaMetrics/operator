@@ -11,7 +11,6 @@ aliases:
   - /operator/changelog/
   - /operator/changelog/index.html
 ---
-# CHANGELOG
 
 - [vmuser](https://docs.victoriametrics.com/operator/resources/vmuser/):  adds `status.lastSyncError` field, adds server-side validation for `spec.targetRefs.crd.kind`. Adds small refactoring.
 - [vmuser](https://docs.victoriametrics.com/operator/resources/vmuser/): allows to skip `VMUser` from `VMAuth` config generation if it has misconfigured fields. Such as references to non-exist `CRD` objects or missing fields. It's highly recommended to enable `Validation` webhook for `VMUsers`, it should reduce surface of potential misconfiguration. See this [issue](https://github.com/VictoriaMetrics/operator/issues/1047) for details.

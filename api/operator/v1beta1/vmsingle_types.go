@@ -214,7 +214,7 @@ type VMSingleSpec struct {
 
 // HasStreamAggrConfig checks if streamAggrConfig present
 func (cr *VMSingle) HasStreamAggrConfig() bool {
-	return cr.Spec.StreamAggrConfig != nil && len(cr.Spec.StreamAggrConfig.Rules) > 0
+	return cr.Spec.StreamAggrConfig.HasStreamAggrConfig()
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface

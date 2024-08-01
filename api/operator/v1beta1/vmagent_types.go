@@ -207,6 +207,9 @@ type VMAgentSpec struct {
 	// InlineRelabelConfig - defines GlobalRelabelConfig for vmagent, can be defined directly at CRD.
 	// +optional
 	InlineRelabelConfig []RelabelConfig `json:"inlineRelabelConfig,omitempty"`
+	// StreamAggrConfig defines global stream aggregation configuration for VMAgent
+	// +optional
+	StreamAggrConfig *StreamAggrConfig `json:"streamAggrConfig,omitempty"`
 	// SelectAllByDefault changes default behavior for empty CRD selectors, such ServiceScrapeSelector.
 	// with selectAllByDefault: true and empty serviceScrapeSelector and ServiceScrapeNamespaceSelector
 	// Operator selects all exist serviceScrapes
@@ -539,11 +542,6 @@ func (rw *VMAgentRemoteWriteSpec) AsConfigMapKey(idx int, suffix string) string 
 	return fmt.Sprintf("RWS_%d-CM-%s", idx, strings.ToUpper(suffix))
 }
 
-// HasStreamAggr returns true if stream aggregation is enabled for this remoteWrite
-func (rw *VMAgentRemoteWriteSpec) HasStreamAggr() bool {
-	return rw.StreamAggrConfig != nil && len(rw.StreamAggrConfig.Rules) > 0
-}
-
 // VMAgentStatus defines the observed state of VMAgent
 // +k8s:openapi-gen=true
 type VMAgentStatus struct {
@@ -805,13 +803,17 @@ func (cr *VMAgent) HasAnyRelabellingConfigs() bool {
 	return false
 }
 
-// HasAnyStreamAggrConfigs checks if agent has any streaming aggregation config defined
+// HasAnyStreamAggrConfigs checks if vmagent has any defined aggregation rules
 func (cr *VMAgent) HasAnyStreamAggrConfigs() bool {
+	if cr.Spec.StreamAggrConfig.HasStreamAggrConfig() {
+		return true
+	}
 	for _, rw := range cr.Spec.RemoteWrite {
-		if rw.HasStreamAggr() {
+		if rw.StreamAggrConfig.HasStreamAggrConfig() {
 			return true
 		}
 	}
+
 	return false
 }
 

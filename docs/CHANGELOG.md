@@ -18,6 +18,7 @@ aliases:
 - [operator](./README.md): refactors finalizers usage. Simplifies finalizer manipulation with helper functions
 - [vmalertmanager](./api.md#vmalertmanager): adds `webConfig` that simplifies tls configuration for alertmanager and allows to properly build probes and access urls for alertmanager. See this [issue](https://github.com/VictoriaMetrics/operator/issues/994) for details.
 - [vmalertmanager](./api.md#vmalertmanager): adds `gossipConfig` to setup client and server TLS configuration for alertmanager.
+- [operator](./README.md): made operator and config reload cgroup aware.
 
 ## [v0.46.4](https://github.com/VictoriaMetrics/operator/releases/tag/v0.46.4) - 9 Jul 2024
 

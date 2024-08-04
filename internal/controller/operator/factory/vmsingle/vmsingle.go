@@ -262,7 +262,7 @@ func makeSpecForVMSingle(ctx context.Context, cr *vmv1beta1.VMSingle, c *config.
 		})
 	}
 
-	if cr.HasStreamAggrConfig() {
+	if cr.HasAnyStreamAggrRule() {
 		volumes = append(volumes, corev1.Volume{
 			Name: k8stools.SanitizeVolumeName("stream-aggr-conf"),
 			VolumeSource: corev1.VolumeSource{
@@ -466,7 +466,7 @@ func buildVMSingleStreamAggrConfig(ctx context.Context, cr *vmv1beta1.VMSingle, 
 
 // CreateOrUpdateVMSingleStreamAggrConfig builds stream aggregation configs for vmsingle at separate configmap, serialized as yaml
 func CreateOrUpdateVMSingleStreamAggrConfig(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.Client) error {
-	if !cr.HasStreamAggrConfig() {
+	if !cr.HasAnyStreamAggrRule() {
 		return nil
 	}
 	streamAggrCM, err := buildVMSingleStreamAggrConfig(ctx, cr, rclient)

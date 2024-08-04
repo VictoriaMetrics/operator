@@ -428,7 +428,7 @@ func makeSpecForVMAgent(cr *vmv1beta1.VMAgent, c *config.BaseOperatorConf, ssCac
 				MountPath: vmAgentConfDir,
 			})
 	}
-	if cr.HasAnyStreamAggrConfigs() {
+	if cr.HasAnyStreamAggrRule() {
 		volumes = append(volumes, corev1.Volume{
 			Name: "stream-aggr-conf",
 			VolumeSource: corev1.VolumeSource{
@@ -513,7 +513,7 @@ func makeSpecForVMAgent(cr *vmv1beta1.VMAgent, c *config.BaseOperatorConf, ssCac
 	}
 
 	if cr.Spec.StreamAggrConfig != nil {
-		if cr.Spec.StreamAggrConfig.HasStreamAggrConfig() {
+		if cr.Spec.StreamAggrConfig.HasAnyRule() {
 			args = append(args, "-streamAggr.config="+path.Join(vmv1beta1.StreamAggrConfigDir, globalAggregationConfigName))
 		}
 		if cr.Spec.StreamAggrConfig.KeepInput {
@@ -556,7 +556,7 @@ func makeSpecForVMAgent(cr *vmv1beta1.VMAgent, c *config.BaseOperatorConf, ssCac
 	var operatorContainers []corev1.Container
 	var ic []corev1.Container
 	// conditional add config reloader container
-	if !cr.Spec.IngestOnlyMode || cr.HasAnyRelabellingConfigs() || cr.Spec.StreamAggrConfig.HasStreamAggrConfig() {
+	if !cr.Spec.IngestOnlyMode || cr.HasAnyRelabellingConfigs() || cr.HasAnyStreamAggrRule() {
 		configReloader := buildConfigReloaderContainer(cr, c)
 		operatorContainers = append(operatorContainers, configReloader)
 		if !cr.Spec.IngestOnlyMode {
@@ -804,7 +804,7 @@ func buildVMAgentStreamAggrConfig(ctx context.Context, cr *vmv1beta1.VMAgent, rc
 // CreateOrUpdateVMAgentStreamAggrConfig builds stream aggregation configs for vmagent at separate configmap, serialized as yaml
 func CreateOrUpdateVMAgentStreamAggrConfig(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) error {
 	// fast path
-	if !cr.HasAnyStreamAggrConfigs() {
+	if !cr.HasAnyStreamAggrRule() {
 		return nil
 	}
 	streamAggrCM, err := buildVMAgentStreamAggrConfig(ctx, cr, rclient)
@@ -1330,7 +1330,7 @@ func buildRemoteWrites(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) []st
 		var keepInputVal, dropInputVal, ignoreOldSamples bool
 		var ignoreFirstIntervalsVal int
 		if rws.StreamAggrConfig != nil {
-			if rws.StreamAggrConfig.HasStreamAggrConfig() {
+			if rws.StreamAggrConfig.HasAnyRule() {
 				streamAggrConfig.isNotNull = true
 				streamConfVal = path.Join(vmv1beta1.StreamAggrConfigDir, rws.AsConfigMapKey(i, "stream-aggr-conf"))
 			}
@@ -1407,7 +1407,7 @@ func buildConfigReloaderContainer(cr *vmv1beta1.VMAgent, c *config.BaseOperatorC
 				MountPath: vmv1beta1.RelabelingConfigDir,
 			})
 	}
-	if cr.Spec.StreamAggrConfig.HasStreamAggrConfig() {
+	if cr.HasAnyStreamAggrRule() {
 		configReloadVolumeMounts = append(configReloadVolumeMounts,
 			corev1.VolumeMount{
 				Name:      "stream-aggr-conf",
@@ -1476,7 +1476,7 @@ func buildConfigReloaderArgs(cr *vmv1beta1.VMAgent, c *config.BaseOperatorConf) 
 			args = append(args, fmt.Sprintf("--config-file=%s", path.Join(vmAgentConfDir, vmagentGzippedFilename)))
 		}
 	}
-	if cr.HasAnyStreamAggrConfigs() {
+	if cr.HasAnyStreamAggrRule() {
 		args = append(args, fmt.Sprintf("--%s=%s", dirsArg, vmv1beta1.StreamAggrConfigDir))
 	}
 	if cr.HasAnyRelabellingConfigs() {

@@ -803,13 +803,13 @@ func (cr *VMAgent) HasAnyRelabellingConfigs() bool {
 	return false
 }
 
-// HasAnyStreamAggrConfigs checks if vmagent has any defined aggregation rules
-func (cr *VMAgent) HasAnyStreamAggrConfigs() bool {
-	if cr.Spec.StreamAggrConfig.HasStreamAggrConfig() {
+// HasAnyStreamAggrRule checks if vmagent has any defined aggregation rules
+func (cr *VMAgent) HasAnyStreamAggrRule() bool {
+	if cr.Spec.StreamAggrConfig.HasAnyRule() {
 		return true
 	}
 	for _, rw := range cr.Spec.RemoteWrite {
-		if rw.StreamAggrConfig.HasStreamAggrConfig() {
+		if rw.StreamAggrConfig.HasAnyRule() {
 			return true
 		}
 	}

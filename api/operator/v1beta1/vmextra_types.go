@@ -600,12 +600,8 @@ type StreamAggrRule struct {
 	OutputRelabelConfigs []RelabelConfig `json:"output_relabel_configs,omitempty" yaml:"output_relabel_configs,omitempty"`
 }
 
-// HasStreamAggr returns true if stream aggregation is enabled for this remoteWrite
-// func (rw *VMAgentRemoteWriteSpec) HasStreamAggr() bool {
-// 	return rw.StreamAggrConfig != nil
-// }
-
-func (config *StreamAggrConfig) HasStreamAggrConfig() bool {
+// HasAnyRule returns true if there is at least one aggregation rule
+func (config *StreamAggrConfig) HasAnyRule() bool {
 	if config != nil && (len(config.Rules) > 0 || config.RuleConfigMap != nil) {
 		return true
 	}

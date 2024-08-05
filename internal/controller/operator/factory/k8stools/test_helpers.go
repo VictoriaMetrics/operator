@@ -59,7 +59,9 @@ func GetTestClientWithObjects(predefinedObjects []runtime.Object) client.Client 
 	for _, o := range predefinedObjects {
 		obj = append(obj, o.(client.Object))
 	}
-	fclient := fake.NewClientBuilder().WithScheme(testGetScheme()).WithStatusSubresource(&vmv1beta1.VMUser{}).WithObjects(obj...).Build()
+	fclient := fake.NewClientBuilder().WithScheme(testGetScheme()).
+		WithStatusSubresource(&vmv1beta1.VMUser{}, &vmv1beta1.VMAlertmanagerConfig{}).
+		WithObjects(obj...).Build()
 	return fclient
 }
 

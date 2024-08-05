@@ -3,13 +3,11 @@ package alertmanager
 import (
 	"context"
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -26,7 +24,7 @@ func TestBuildConfig(t *testing.T) {
 		ctx                     context.Context
 		disableNamespaceMatcher bool
 		baseCfg                 []byte
-		amcfgs                  map[string]*vmv1beta1.VMAlertmanagerConfig
+		amcfgs                  []*vmv1beta1.VMAlertmanagerConfig
 	}
 	tests := []struct {
 		name              string
@@ -42,9 +40,10 @@ func TestBuildConfig(t *testing.T) {
 				ctx: context.Background(),
 				baseCfg: []byte(`global:
  time_out: 1min
+ smtp_smarthost: some:443
 `),
-				amcfgs: map[string]*vmv1beta1.VMAlertmanagerConfig{
-					"default/base": {
+				amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
+					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "base",
 							Namespace: "default",
@@ -59,6 +58,8 @@ func TestBuildConfig(t *testing.T) {
 											From:         "some-sender",
 											To:           "some-dst",
 											Text:         "some-text",
+											RequireTLS:   ptr.To(true),
+											Smarthost:    "some:443",
 											TLSConfig: &vmv1beta1.TLSConfig{
 												CertFile: "some_cert_path",
 											},
@@ -68,7 +69,6 @@ func TestBuildConfig(t *testing.T) {
 											From:         "other-sender",
 											To:           "other-dst",
 											Text:         "other-text",
-											RequireTLS:   ptr.To(false),
 										},
 									},
 								},
@@ -82,9 +82,10 @@ func TestBuildConfig(t *testing.T) {
 				},
 			},
 			want: `global:
+  smtp_smarthost: some:443
   time_out: 1min
 route:
-  receiver: default-base-email
+  receiver: blackhole
   routes:
   - matchers:
     - namespace = "default"
@@ -92,16 +93,18 @@ route:
     receiver: default-base-email
     continue: true
 receivers:
+- name: blackhole
 - name: default-base-email
   email_configs:
-  - tls_config:
+  - require_tls: true
+    tls_config:
       cert_file: some_cert_path
     from: some-sender
     text: some-text
     to: some-dst
+    smarthost: some:443
     send_resolved: true
-  - require_tls: false
-    from: other-sender
+  - from: other-sender
     text: other-text
     to: other-dst
     send_resolved: true
@@ -114,9 +117,10 @@ templates: []
 				ctx: context.Background(),
 				baseCfg: []byte(`global:
  time_out: 1min
+ opsgenie_api_key: some-key
 `),
-				amcfgs: map[string]*vmv1beta1.VMAlertmanagerConfig{
-					"default/base": {
+				amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
+					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "base",
 							Namespace: "default",
@@ -134,12 +138,12 @@ templates: []
 									EmailConfigs: []vmv1beta1.EmailConfig{
 										{
 											SendResolved: ptr.To(true),
+											TLSConfig:    &vmv1beta1.TLSConfig{},
 											From:         "some-sender",
 											To:           "some-dst",
 											Text:         "some-text",
-											TLSConfig: &vmv1beta1.TLSConfig{
-												CertFile: "some_cert_path",
-											},
+											Smarthost:    "some:443",
+											RequireTLS:   ptr.To(true),
 										},
 									},
 								},
@@ -163,7 +167,7 @@ templates: []
 							},
 						},
 					},
-					"monitoring/scrape": {
+					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "scrape",
 							Namespace: "monitoring",
@@ -201,9 +205,10 @@ templates: []
 				},
 			},
 			want: `global:
+  opsgenie_api_key: some-key
   time_out: 1min
 route:
-  receiver: default-base-email
+  receiver: blackhole
   routes:
   - routes:
     - receiver: default-base-webhook
@@ -232,13 +237,14 @@ inhibit_rules:
   equal:
   - name = "scrape"
 receivers:
+- name: blackhole
 - name: default-base-email
   email_configs:
-  - tls_config:
-      cert_file: some_cert_path
+  - require_tls: true
     from: some-sender
     text: some-text
     to: some-dst
+    smarthost: some:443
     send_resolved: true
 - name: default-base-webhook
   webhook_configs:
@@ -263,8 +269,8 @@ templates: []
 				baseCfg: []byte(`global:
  time_out: 1min
 `),
-				amcfgs: map[string]*vmv1beta1.VMAlertmanagerConfig{
-					"default/base": {
+				amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
+					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "base",
 							Namespace: "default",
@@ -308,7 +314,7 @@ templates: []
 			want: `global:
   time_out: 1min
 route:
-  receiver: default-base-webhook
+  receiver: blackhole
   routes:
   - matchers:
     - namespace = "default"
@@ -316,6 +322,7 @@ route:
     receiver: default-base-webhook
     continue: true
 receivers:
+- name: blackhole
 - name: default-base-webhook
   webhook_configs:
   - send_resolved: true
@@ -330,8 +337,8 @@ templates: []
 				baseCfg: []byte(`global:
  time_out: 1min
 `),
-				amcfgs: map[string]*vmv1beta1.VMAlertmanagerConfig{
-					"default/base": {
+				amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
+					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "base",
 							Namespace: "default",
@@ -397,7 +404,7 @@ templates: []
 			want: `global:
   time_out: 1min
 route:
-  receiver: default-base-slack
+  receiver: blackhole
   routes:
   - matchers:
     - namespace = "default"
@@ -405,6 +412,7 @@ route:
     receiver: default-base-slack
     continue: true
 receivers:
+- name: blackhole
 - name: default-base-slack
   slack_configs:
   - api_url: https://slack.example.com
@@ -433,8 +441,8 @@ templates: []
 				baseCfg: []byte(`global:
  time_out: 1min
 `),
-				amcfgs: map[string]*vmv1beta1.VMAlertmanagerConfig{
-					"default/base": {
+				amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
+					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "base",
 							Namespace: "default",
@@ -499,7 +507,7 @@ templates: []
 			want: `global:
   time_out: 1min
 route:
-  receiver: default-base-pagerduty
+  receiver: blackhole
   routes:
   - matchers:
     - namespace = "default"
@@ -507,6 +515,7 @@ route:
     receiver: default-base-pagerduty
     continue: true
 receivers:
+- name: blackhole
 - name: default-base-pagerduty
   pagerduty_configs:
   - routing_key: some-value
@@ -551,8 +560,8 @@ templates: []
 				baseCfg: []byte(`global:
  time_out: 1min
 `),
-				amcfgs: map[string]*vmv1beta1.VMAlertmanagerConfig{
-					"default/base": {
+				amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
+					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "tg",
 							Namespace: "default",
@@ -587,7 +596,7 @@ templates: []
 			want: `global:
   time_out: 1min
 route:
-  receiver: default-tg-telegram
+  receiver: blackhole
   routes:
   - matchers:
     - namespace = "default"
@@ -595,6 +604,7 @@ route:
     receiver: default-tg-telegram
     continue: true
 receivers:
+- name: blackhole
 - name: default-tg-telegram
   telegram_configs:
   - bot_token: some-token
@@ -611,8 +621,8 @@ templates: []
 				baseCfg: []byte(`global:
  time_out: 1min
 `),
-				amcfgs: map[string]*vmv1beta1.VMAlertmanagerConfig{
-					"default/base": {
+				amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
+					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "base",
 							Namespace: "default",
@@ -653,9 +663,13 @@ templates: []
 					},
 				},
 			},
-			parseError: "invalid URL bad_url in key bad_url from secret slack: unsupported scheme \"\" for URL in object: default/base, will ignore vmalertmanagerconfig base",
+			parseError: "invalid URL bad_url in key bad_url from secret slack: unsupported scheme \"\" for URL",
 			want: `global:
   time_out: 1min
+route:
+  receiver: blackhole
+receivers:
+- name: blackhole
 templates: []
 `,
 		},
@@ -666,8 +680,8 @@ templates: []
 				baseCfg: []byte(`global:
  time_out: 1min
 `),
-				amcfgs: map[string]*vmv1beta1.VMAlertmanagerConfig{
-					"default/base": {
+				amcfgs: []*vmv1beta1.VMAlertmanagerConfig{
+					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "tg",
 							Namespace: "default",
@@ -697,7 +711,7 @@ templates: []
 							},
 						},
 					},
-					"mon/base": {
+					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "tg",
 							Namespace: "default",
@@ -723,11 +737,11 @@ templates: []
 					},
 				},
 			},
-			parseError: `cannot find secret="tg-secret" to fetch content at ns="default", err: secrets "tg-secret" not found in object: default/tg, will ignore vmalertmanagerconfig tg`,
+			parseError: `cannot find secret="tg-secret" to fetch content at ns="default", err: secrets "tg-secret" not found`,
 			want: `global:
   time_out: 1min
 route:
-  receiver: default-tg-telegram
+  receiver: blackhole
   routes:
   - matchers:
     - namespace = "default"
@@ -735,153 +749,12 @@ route:
     receiver: default-tg-telegram
     continue: true
 receivers:
+- name: blackhole
 - name: default-tg-telegram
   telegram_configs:
   - send_resolved: true
     chat_id: 125
     message: some-templated message
-templates: []
-`,
-		},
-		{
-			name: "wrong alertmanagerconfig: with duplicate receiver",
-			args: args{
-				ctx: context.Background(),
-				baseCfg: []byte(`global:
- time_out: 1min
-`),
-				amcfgs: map[string]*vmv1beta1.VMAlertmanagerConfig{
-					"default/base": {
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "base",
-							Namespace: "default",
-						},
-						Spec: vmv1beta1.VMAlertmanagerConfigSpec{
-							Receivers: []vmv1beta1.Receiver{
-								{
-									Name: "duplicate-receiver",
-									EmailConfigs: []vmv1beta1.EmailConfig{
-										{
-											SendResolved: ptr.To(true),
-											From:         "some-sender",
-											To:           "some-dst",
-											Text:         "some-text",
-											TLSConfig: &vmv1beta1.TLSConfig{
-												CertFile: "some_cert_path",
-											},
-										},
-									},
-								},
-								{
-									Name: "duplicate-receiver",
-								},
-							},
-							Route: &vmv1beta1.Route{
-								Receiver:  "duplicate-receiver",
-								GroupWait: "1min",
-							},
-						},
-					},
-				},
-			},
-			parseError: "got duplicate receiver name duplicate-receiver in object default/base, will ignore vmalertmanagerconfig base",
-			want: `global:
-  time_out: 1min
-templates: []
-`,
-		},
-		{
-			name: "wrong alertmanagerconfig: with duplicate time interval",
-			args: args{
-				ctx: context.Background(),
-				baseCfg: []byte(`global:
- time_out: 1min
-`),
-				amcfgs: map[string]*vmv1beta1.VMAlertmanagerConfig{
-					"default/base": {
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "base",
-							Namespace: "default",
-						},
-						Spec: vmv1beta1.VMAlertmanagerConfigSpec{
-							TimeIntervals: []vmv1beta1.MuteTimeInterval{
-								{
-									Name:          "duplicate-interval",
-									TimeIntervals: []vmv1beta1.TimeInterval{{Times: []vmv1beta1.TimeRange{{StartTime: "00:00", EndTime: "10:00"}}}},
-								},
-								{
-									Name:          "duplicate-interval",
-									TimeIntervals: []vmv1beta1.TimeInterval{{Times: []vmv1beta1.TimeRange{{StartTime: "08:00", EndTime: "10:00"}}}},
-								},
-							},
-							Route: &vmv1beta1.Route{
-								Receiver:            "email",
-								GroupWait:           "1min",
-								ActiveTimeIntervals: []string{"duplicate-interval"},
-							},
-						},
-					},
-				},
-			},
-			parseError: "got duplicate timeInterval name duplicate-interval in object default/base, will ignore vmalertmanagerconfig base",
-			want: `global:
-  time_out: 1min
-templates: []
-`,
-		},
-		{
-			name: "wrong alertmanagerconfig: undefined receiver",
-			args: args{
-				ctx: context.Background(),
-				baseCfg: []byte(`global:
- time_out: 1min
-`),
-				amcfgs: map[string]*vmv1beta1.VMAlertmanagerConfig{
-					"default/base": {
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "base",
-							Namespace: "default",
-						},
-						Spec: vmv1beta1.VMAlertmanagerConfigSpec{
-							Route: &vmv1beta1.Route{
-								Receiver:  "receiver-not-defined",
-								GroupWait: "1min",
-							},
-						},
-					},
-				},
-			},
-			parseError: "receiver receiver-not-defined not defined in object default/base, will ignore vmalertmanagerconfig base",
-			want: `global:
-  time_out: 1min
-templates: []
-`,
-		},
-		{
-			name: "wrong alertmanagerconfig: undefined timeInterval",
-			args: args{
-				ctx: context.Background(),
-				baseCfg: []byte(`global:
- time_out: 1min
-`),
-				amcfgs: map[string]*vmv1beta1.VMAlertmanagerConfig{
-					"default/base": {
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "base",
-							Namespace: "default",
-						},
-						Spec: vmv1beta1.VMAlertmanagerConfigSpec{
-							Route: &vmv1beta1.Route{
-								ActiveTimeIntervals: []string{"interval-not-defined"},
-								GroupWait:           "1min",
-							},
-						},
-					},
-				},
-			},
-			parseError: "time_intervals interval-not-defined not defined in object default/base, will ignore vmalertmanagerconfig base",
-			want: `global:
-  time_out: 1min
 templates: []
 `,
 		},
@@ -894,10 +767,10 @@ templates: []
 				t.Errorf("BuildConfig() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if len(got.ParseErrors) > 0 {
-				assert.Equal(t, tt.parseError, got.ParseErrors[0])
+			if len(got.brokenAMCfgs) > 0 {
+				assert.Equal(t, tt.parseError, got.brokenAMCfgs[0].Status.CurrentSyncError)
 			}
-			assert.Equal(t, tt.want, string(got.Data))
+			assert.Equal(t, tt.want, string(got.data))
 		})
 	}
 }
@@ -1104,7 +977,8 @@ func Test_configBuilder_buildHTTPConfig(t *testing.T) {
 		configmapCache map[string]*corev1.ConfigMap
 	}
 	type args struct {
-		httpCfg *vmv1beta1.HTTPConfig
+		httpCfg           *vmv1beta1.HTTPConfig
+		predefinedObjects []runtime.Object
 	}
 	tests := []struct {
 		name    string
@@ -1256,13 +1130,123 @@ authorization:
   credentials: secret-token
 `,
 		},
+		{
+			name: "with oauth2 (configmap)",
+			args: args{
+				predefinedObjects: []runtime.Object{
+					&corev1.ConfigMap{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: "default",
+							Name:      "oauth-store",
+						},
+						Data: map[string]string{
+							"client_id": "client-value",
+						},
+					},
+				},
+				httpCfg: &vmv1beta1.HTTPConfig{
+					OAuth2: &vmv1beta1.OAuth2{
+						TokenURL: "https://some-oauth2-proxy",
+						EndpointParams: map[string]string{
+							"param-1": "value1",
+							"param-2": "value2",
+						},
+						Scopes: []string{"org", "team"},
+						ClientID: vmv1beta1.SecretOrConfigMap{
+							ConfigMap: &corev1.ConfigMapKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "oauth-store",
+								},
+								Key: "client_id",
+							},
+						},
+						ClientSecret: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "secret-store",
+							},
+							Key: "client-secret",
+						},
+					},
+				},
+			},
+			fields: fields{
+				secretCache: map[string]*corev1.Secret{
+					"secret-store": {
+						Data: map[string][]byte{
+							"client-secret": []byte("value"),
+						},
+					},
+				},
+			},
+			want: `oauth2:
+  client_secret: value
+  client_id: client-value
+  endpoint_params:
+    param-1: value1
+    param-2: value2
+  scopes:
+  - org
+  - team
+  token_url: https://some-oauth2-proxy
+`,
+		},
+		{
+			name: "with oauth2 (secret)",
+			args: args{
+				httpCfg: &vmv1beta1.HTTPConfig{
+					OAuth2: &vmv1beta1.OAuth2{
+						TokenURL: "https://some-oauth2-proxy",
+						EndpointParams: map[string]string{
+							"param-1": "value1",
+							"param-2": "value2",
+						},
+						Scopes: []string{"org", "team"},
+						ClientID: vmv1beta1.SecretOrConfigMap{
+							Secret: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "secret-store",
+								},
+								Key: "client-id",
+							},
+						},
+						ClientSecret: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "secret-store",
+							},
+							Key: "client-secret",
+						},
+					},
+				},
+			},
+			fields: fields{
+				secretCache: map[string]*corev1.Secret{
+					"secret-store": {
+						Data: map[string][]byte{
+							"client-secret": []byte("value"),
+							"client-id":     []byte("client-value"),
+						},
+					},
+				},
+			},
+			want: `oauth2:
+  client_secret: value
+  client_id: client-value
+  endpoint_params:
+    param-1: value1
+    param-2: value2
+  scopes:
+  - org
+  - team
+  token_url: https://some-oauth2-proxy
+`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cb := &configBuilder{
 				TLSConfigBuilder: build.TLSConfigBuilder{
 					Ctx:                context.Background(),
-					Client:             k8stools.GetTestClientWithObjects(nil),
+					Client:             k8stools.GetTestClientWithObjects(tt.args.predefinedObjects),
 					SecretCache:        tt.fields.secretCache,
 					ConfigmapCache:     tt.fields.configmapCache,
 					TLSAssets:          map[string]string{},
@@ -1371,6 +1355,23 @@ func Test_UpdateDefaultAMConfig(t *testing.T) {
 			if err := createDefaultAMConfig(tt.args.ctx, tt.args.cr, fclient); (err != nil) != tt.wantErr {
 				t.Fatalf("createDefaultAMConfig() error = %v, wantErr %v", err, tt.wantErr)
 			}
+			var amCfgs []*vmv1beta1.VMAlertmanagerConfig
+			if err := k8stools.VisitObjectsForSelectorsAtNs(tt.args.ctx, fclient, tt.args.cr.Spec.ConfigNamespaceSelector, tt.args.cr.Spec.ConfigSelector, tt.args.cr.Namespace, tt.args.cr.Spec.SelectAllByDefault,
+				func(ams *vmv1beta1.VMAlertmanagerConfigList) {
+					for i := range ams.Items {
+						item := ams.Items[i]
+
+						amCfgs = append(amCfgs, &item)
+					}
+				}); err != nil {
+				t.Fatalf("cannot select configs: %s", err)
+			}
+			for _, amc := range amCfgs {
+				if amc.Status.LastSyncError != "" {
+					t.Errorf("unexpected sync error: %s", amc.Status.LastSyncError)
+				}
+			}
+
 			var createdSecret corev1.Secret
 			secretName := tt.args.cr.ConfigSecretName()
 			err := fclient.Get(tt.args.ctx, types.NamespacedName{Namespace: tt.args.cr.Namespace, Name: secretName}, &createdSecret)
@@ -1397,17 +1398,15 @@ func Test_UpdateDefaultAMConfig(t *testing.T) {
 				t.Fatalf("could not get alert manager config. Error: %v", err)
 			}
 
-			if len(secretConfig.Receivers) != len(amc.Spec.Receivers) {
-				t.Fatalf("receivers count is wrong. Expected: %v, actual: %v", len(amc.Spec.Receivers), len(secretConfig.Receivers))
+			// we add blachole as first route by default
+			if len(secretConfig.Receivers) != len(amc.Spec.Receivers)+1 {
+				t.Fatalf("receivers count is wrong. Expected: %v, actual: %v", len(amc.Spec.Receivers)+1, len(secretConfig.Receivers))
 			}
 
 			if len(secretConfig.InhibitRules) != len(amc.Spec.InhibitRules) {
 				t.Fatalf("inhibit rules count is wrong. Expected: %v, actual: %v", len(amc.Spec.InhibitRules), len(secretConfig.InhibitRules))
 			}
 
-			if !strings.EqualFold(buildCRPrefixedName(&amc, amc.Spec.Route.Receiver), secretConfig.Route.Receiver) {
-				t.Fatalf("receiver name is wrong. Expected: %v, actual: %v", buildCRPrefixedName(&amc, amc.Spec.Route.Receiver), secretConfig.Route.Receiver)
-			}
 			if len(secretConfig.Route.Routes) != 1 {
 				t.Fatalf("subroutes count is wrong. Expected: %v, actual: %v", 1, len(secretConfig.Route.Routes))
 			}
@@ -1438,16 +1437,12 @@ func Test_UpdateDefaultAMConfig(t *testing.T) {
 				t.Fatalf("could not unmarshall secret config data into structure, err: %v", err)
 			}
 
-			if len(secretConfig.Receivers) != len(amc.Spec.Receivers) {
-				t.Fatalf("receivers count is wrong. Expected: %v, actual: %v", len(amc.Spec.Receivers), len(secretConfig.Receivers))
+			if len(secretConfig.Receivers) != len(amc.Spec.Receivers)+1 {
+				t.Fatalf("receivers count is wrong. Expected: %v, actual: %v", len(amc.Spec.Receivers)+1, len(secretConfig.Receivers))
 			}
 
 			if len(secretConfig.InhibitRules) != len(amc.Spec.InhibitRules) {
 				t.Fatalf("inhibit rules count is wrong. Expected: %v, actual: %v", len(amc.Spec.InhibitRules), len(secretConfig.InhibitRules))
-			}
-
-			if !strings.EqualFold(buildCRPrefixedName(&amc, amc.Spec.Route.Receiver), secretConfig.Route.Receiver) {
-				t.Fatalf("receiver name is wrong. Expected: %v, actual: %v", buildCRPrefixedName(&amc, amc.Spec.Route.Receiver), secretConfig.Route.Receiver)
 			}
 
 			if len(secretConfig.Route.Routes) != 1 {
@@ -1561,18 +1556,18 @@ tls_server_config:
 					Spec: vmv1beta1.VMAlertmanagerSpec{
 						WebConfig: &vmv1beta1.AlertmanagerWebConfig{
 							TLSServerConfig: &vmv1beta1.TLSServerConfig{
-								ClientCASecretRef: &v1.SecretKeySelector{
+								ClientCASecretRef: &corev1.SecretKeySelector{
 									Key:                  "client_ca",
-									LocalObjectReference: v1.LocalObjectReference{Name: "tls-secret"},
+									LocalObjectReference: corev1.LocalObjectReference{Name: "tls-secret"},
 								},
 								Certs: vmv1beta1.Certs{
-									CertSecretRef: &v1.SecretKeySelector{
+									CertSecretRef: &corev1.SecretKeySelector{
 										Key:                  "cert",
-										LocalObjectReference: v1.LocalObjectReference{Name: "tls-secret"},
+										LocalObjectReference: corev1.LocalObjectReference{Name: "tls-secret"},
 									},
-									KeySecretRef: &v1.SecretKeySelector{
+									KeySecretRef: &corev1.SecretKeySelector{
 										Key:                  "key",
-										LocalObjectReference: v1.LocalObjectReference{Name: "tls-secret-key"},
+										LocalObjectReference: corev1.LocalObjectReference{Name: "tls-secret-key"},
 									},
 								},
 							},
@@ -1585,7 +1580,7 @@ tls_server_config:
 				},
 			},
 			predefinedObjects: []runtime.Object{
-				&v1.Secret{
+				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: "test",
 						Name:      "tls-secret",
@@ -1595,7 +1590,7 @@ tls_server_config:
 						"cert":      []byte(`content`),
 					},
 				},
-				&v1.Secret{
+				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: "test",
 						Name:      "tls-secret-key",

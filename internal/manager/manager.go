@@ -19,6 +19,7 @@ import (
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	"github.com/prometheus/client_golang/prometheus"
+	"go.uber.org/zap/zapcore"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -84,7 +85,9 @@ func init() {
 func RunManager(ctx context.Context) error {
 	// Add flags registered by imported packages (e.g. glog and
 	// controller-runtime)
-	opts := zap.Options{}
+	opts := zap.Options{
+		StacktraceLevel: zapcore.PanicLevel,
+	}
 	opts.BindFlags(flag.CommandLine)
 	vmcontroller.BindFlags(flag.CommandLine)
 	flag.Parse()

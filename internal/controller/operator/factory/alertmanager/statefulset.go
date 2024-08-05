@@ -7,6 +7,7 @@ import (
 	"path"
 	"sort"
 	"strings"
+	"time"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
@@ -685,8 +686,8 @@ func getSecretContentForAlertmanager(ctx context.Context, rclient client.Client,
 }
 
 func buildAlertmanagerConfigWithCRDs(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlertmanager, originConfig []byte, l logr.Logger, tlsAssets map[string]string) ([]byte, error) {
-	amConfigs := make(map[string]*vmv1beta1.VMAlertmanagerConfig)
-	var badCfgCount int
+	var amCfgs []*vmv1beta1.VMAlertmanagerConfig
+	var badCfgs []*vmv1beta1.VMAlertmanagerConfig
 	if err := k8stools.VisitObjectsForSelectorsAtNs(ctx, rclient, cr.Spec.ConfigNamespaceSelector, cr.Spec.ConfigSelector, cr.Namespace, cr.Spec.SelectAllByDefault,
 		func(ams *vmv1beta1.VMAlertmanagerConfigList) {
 			for i := range ams.Items {
@@ -695,31 +696,33 @@ func buildAlertmanagerConfigWithCRDs(ctx context.Context, rclient client.Client,
 					continue
 				}
 				if item.Spec.ParsingError != "" {
-					badCfgCount++
-					l.Error(fmt.Errorf(item.Spec.ParsingError), "parsing failed for alertmanager config", "objectName", item.Name)
+					item.Status.CurrentSyncError = item.Spec.ParsingError
+					badCfgs = append(badCfgs, &item)
 					continue
 				}
 				if err := item.Validate(); err != nil {
-					l.Error(err, "validation failed for alertmanager config", "objectName", item.Name)
-					badCfgCount++
+					item.Status.CurrentSyncError = err.Error()
+					badCfgs = append(badCfgs, &item)
 					continue
 				}
-				amConfigs[item.AsKey()] = &item
+				amCfgs = append(amCfgs, &item)
 			}
 		}); err != nil {
 		return nil, fmt.Errorf("cannot select alertmanager configs: %w", err)
 	}
 
-	parsedCfg, err := buildConfig(ctx, rclient, !cr.Spec.DisableNamespaceMatcher, cr.Spec.DisableRouteContinueEnforce, originConfig, amConfigs, tlsAssets)
+	parsedCfg, err := buildConfig(ctx, rclient, !cr.Spec.DisableNamespaceMatcher, cr.Spec.DisableRouteContinueEnforce, originConfig, amCfgs, tlsAssets)
 	if err != nil {
 		return nil, err
 	}
-	l.Info("selected alertmanager configs", "len", len(amConfigs), "invalid configs", badCfgCount+parsedCfg.BadObjectsCount)
-	if len(parsedCfg.ParseErrors) > 0 {
-		l.Error(fmt.Errorf("errors: %s", strings.Join(parsedCfg.ParseErrors, ";")), "bad configs found during alertmanager config building")
+	parsedCfg.brokenAMCfgs = append(parsedCfg.brokenAMCfgs, badCfgs...)
+	l.Info("selected alertmanager configs", "len", len(amCfgs), "invalid configs", len(parsedCfg.brokenAMCfgs))
+	if err := updateConfigsStatuses(ctx, rclient, cr, parsedCfg.amcfgs, parsedCfg.brokenAMCfgs); err != nil {
+		return nil, fmt.Errorf("failed to update vmalertmanagerConfigs statuses: %w", err)
 	}
-	badConfigsTotal.Add(float64(badCfgCount))
-	return parsedCfg.Data, nil
+
+	badConfigsTotal.Add(float64(len(badCfgs)))
+	return parsedCfg.data, nil
 }
 
 func subPathForStorage(s *vmv1beta1.StorageSpec) string {
@@ -728,4 +731,69 @@ func subPathForStorage(s *vmv1beta1.StorageSpec) string {
 	}
 
 	return "alertmanager-db"
+}
+
+const (
+	errorStatusUpdateTTL = 5 * time.Minute
+	errorStatusExpireTTL = 15 * time.Minute
+)
+
+// performs status update for given alertmanager configs
+func updateConfigsStatuses(ctx context.Context, rclient client.Client, amCR *vmv1beta1.VMAlertmanager, okConfigs, badconfig []*vmv1beta1.VMAlertmanagerConfig) error {
+	var errors []string
+
+	alertmanagerNamespacedName := fmt.Sprintf("%s/%s", amCR.Namespace, amCR.Name)
+	for _, badCfg := range badconfig {
+
+		// change status only at different error
+		if badCfg.Status.CurrentSyncError != "" && badCfg.Status.CurrentSyncError != badCfg.Status.LastSyncError {
+			// allow to change message only to single alertmanager
+			if badCfg.Status.LastErrorParentAlertmanagerName == "" || badCfg.Status.LastErrorParentAlertmanagerName == alertmanagerNamespacedName {
+				// patch update status
+				pt := client.RawPatch(types.MergePatchType,
+					[]byte(fmt.Sprintf(`{"status": {"lastSyncError":  %q , "status": %q, "lastErrorParentAlertmanagerName": %q, "lastSyncErrorTimestamp": %d} }`,
+						badCfg.Status.CurrentSyncError, vmv1beta1.UpdateStatusFailed,
+						alertmanagerNamespacedName, time.Now().Unix())))
+				if err := rclient.Status().Patch(ctx, badCfg, pt); err != nil {
+					return fmt.Errorf("failed to patch status of broken VMAlertmanagerConfig=%q: %w", badCfg.Name, err)
+				}
+			}
+		}
+		// need to update ttl and parent alertmanager name
+		// race condition is possible, but it doesn't really matter.
+		lastTs := time.Unix(badCfg.Status.LastSyncErrorTimestamp, 0)
+		if time.Since(lastTs) > errorStatusUpdateTTL {
+			// update ttl
+			pt := client.RawPatch(types.MergePatchType,
+				[]byte(fmt.Sprintf(`{"status": { "lastErrorParentAlertmanagerName": %q, "lastSyncErrorTimestamp": %d} }`,
+					alertmanagerNamespacedName, time.Now().Unix())))
+			if err := rclient.Status().Patch(ctx, badCfg, pt); err != nil {
+				return fmt.Errorf("failed to patch status of broken VMAlertmanagerConfig=%q: %w", badCfg.Name, err)
+			}
+		}
+
+		errors = append(errors, fmt.Sprintf("parent=%s config=namespace/name=%s/%s error text: %s", alertmanagerNamespacedName, badCfg.Namespace, badCfg.Name, badCfg.Status.CurrentSyncError))
+	}
+	if len(errors) > 0 {
+		logger.WithContext(ctx).Error(fmt.Errorf("VMAlertmanagerConfigs have errors"), "skip it for config generation", "errors", strings.Join(errors, ","))
+	}
+	for _, amCfg := range okConfigs {
+		if amCfg.Status.LastSyncError != "" || amCfg.Status.Status != vmv1beta1.UpdateStatusOperational {
+			if amCfg.Status.LastErrorParentAlertmanagerName != alertmanagerNamespacedName {
+				// transit to ok status only if it's the same alertmanager that set error
+				// ot ttl passed
+				lastTs := time.Unix(amCfg.Status.LastSyncErrorTimestamp, 0)
+				if time.Since(lastTs) < errorStatusExpireTTL {
+					continue
+				}
+			}
+			amCfg.Status.LastSyncError = ""
+			pt := client.RawPatch(types.MergePatchType,
+				[]byte(fmt.Sprintf(`{"status": {"lastSyncError":  "" , "status": %q, "lastSyncErrorTimestamp": 0, "lastErrorParentAlertmanagerName": "" } }`, vmv1beta1.UpdateStatusOperational)))
+			if err := rclient.Status().Patch(ctx, amCfg, pt); err != nil {
+				return fmt.Errorf("failed to patch status of VMAlertmanagerConfig=%q: %w", amCfg.Name, err)
+			}
+		}
+	}
+	return nil
 }

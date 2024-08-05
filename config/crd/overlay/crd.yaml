@@ -4183,7 +4183,20 @@ spec:
     singular: vmalertmanagerconfig
   scope: Namespaced
   versions:
-  - name: v1beta1
+  - additionalPrinterColumns:
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    - jsonPath: .status.status
+      name: Status
+      type: string
+    - jsonPath: .status.lastErrorParentAlertmanagerName
+      name: VMAlertmanager Error
+      type: string
+    - jsonPath: .status.lastSyncError
+      name: Sync Error
+      type: string
+    name: v1beta1
     schema:
       openAPIV3Schema:
         description: VMAlertmanagerConfig is the Schema for the vmalertmanagerconfigs
@@ -4207,10 +4220,10 @@ spec:
           metadata:
             type: object
           spec:
-            description: VMAlertmanagerConfigSpec defines configuration for VMAlertmanagerConfig
+            description: |-
+              VMAlertmanagerConfigSpec defines configuration for VMAlertmanagerConfig
+              it must reference only locally defined objects
             properties:
-              '-':
-                type: string
               inhibit_rules:
                 description: |-
                   InhibitRules will only apply for alerts matching
@@ -4245,79 +4258,8 @@ spec:
                       type: array
                   type: object
                 type: array
-              mute_time_intervals:
-                description: |-
-                  MuteTimeInterval - global mute time
-                  See https://prometheus.io/docs/alerting/latest/configuration/#mute_time_interval
-                items:
-                  description: MuteTimeInterval for alerts
-                  properties:
-                    name:
-                      description: Name of interval
-                      type: string
-                    time_intervals:
-                      description: TimeIntervals interval configuration
-                      items:
-                        description: TimeInterval defines intervals of time
-                        properties:
-                          days_of_month:
-                            description: |-
-                              DayOfMonth defines list of numerical days in the month. Days begin at 1. Negative values are also accepted.
-                              for example, ['1:5', '-3:-1']
-                            items:
-                              type: string
-                            type: array
-                          location:
-                            description: Location in golang time location form, e.g.
-                              UTC
-                            type: string
-                          months:
-                            description: |-
-                              Months  defines list of calendar months identified by a case-insensitive name (e.g. ‘January’) or numeric 1.
-                              For example, ['1:3', 'may:august', 'december']
-                            items:
-                              type: string
-                            type: array
-                          times:
-                            description: Times defines time range for mute
-                            items:
-                              description: TimeRange  ranges inclusive of the starting
-                                time and exclusive of the end time
-                              properties:
-                                end_time:
-                                  description: EndTime for example HH:MM
-                                  type: string
-                                start_time:
-                                  description: StartTime for example  HH:MM
-                                  type: string
-                              required:
-                              - end_time
-                              - start_time
-                              type: object
-                            type: array
-                          weekdays:
-                            description: Weekdays defines list of days of the week,
-                              where the week begins on Sunday and ends on Saturday.
-                            items:
-                              type: string
-                            type: array
-                          years:
-                            description: |-
-                              Years defines numerical list of years, ranges are accepted.
-                              For example, ['2020:2022', '2030']
-                            items:
-                              type: string
-                            type: array
-                        type: object
-                      type: array
-                  required:
-                  - time_intervals
-                  type: object
-                type: array
               receivers:
-                description: |-
-                  Receivers defines alert receivers.
-                  without defined Route, receivers will be skipped.
+                description: Receivers defines alert receivers
                 items:
                   description: Receiver defines one or more notification integrations.
                   properties:
@@ -4327,10 +4269,48 @@ spec:
                           http_config:
                             description: HTTP client configuration.
                             properties:
-                              basic_auth:
+                              authorization:
                                 description: |-
-                                  TODO oAuth2 support
-                                  BasicAuth for the client.
+                                  Authorization header configuration for the client.
+                                  This is mutually exclusive with BasicAuth and is only available starting from Alertmanager v0.22+.
+                                properties:
+                                  credentials:
+                                    description: Reference to the secret with value
+                                      for authorization
+                                    properties:
+                                      key:
+                                        description: The key of the secret to select
+                                          from.  Must be a valid secret key.
+                                        type: string
+                                      name:
+                                        default: ""
+                                        description: |-
+                                          Name of the referent.
+                                          This field is effectively required, but due to backwards compatibility is
+                                          allowed to be empty. Instances of this type with an empty value here are
+                                          almost certainly wrong.
+                                          TODO: Add other useful fields. apiVersion, kind, uid?
+                                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                          TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
+                                        type: string
+                                      optional:
+                                        description: Specify whether the Secret or
+                                          its key must be defined
+                                        type: boolean
+                                    required:
+                                    - key
+                                    type: object
+                                    x-kubernetes-map-type: atomic
+                                  credentialsFile:
+                                    description: File with value for authorization
+                                    type: string
+                                  type:
+                                    description: Type of authorization, default to
+                                      bearer
+                                    type: string
+                                type: object
+                              basic_auth:
+                                description: BasicAuth for the client.
                                 properties:
                                   password:
                                     description: |-
@@ -4426,6 +4406,120 @@ spec:
                                 - key
                                 type: object
                                 x-kubernetes-map-type: atomic
+                              oauth2:
+                                description: OAuth2 client credentials used to fetch
+                                  a token for the targets.
+                                properties:
+                                  client_id:
+                                    description: The secret or configmap containing
+                                      the OAuth2 client id
+                                    properties:
+                                      configMap:
+                                        description: ConfigMap containing data to
+                                          use for the targets.
+                                        properties:
+                                          key:
+                                            description: The key to select.
+                                            type: string
+                                          name:
+                                            default: ""
+                                            description: |-
+                                              Name of the referent.
+                                              This field is effectively required, but due to backwards compatibility is
+                                              allowed to be empty. Instances of this type with an empty value here are
+                                              almost certainly wrong.
+                                              TODO: Add other useful fields. apiVersion, kind, uid?
+                                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                              TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
+                                            type: string
+                                          optional:
+                                            description: Specify whether the ConfigMap
+                                              or its key must be defined
+                                            type: boolean
+                                        required:
+                                        - key
+                                        type: object
+                                        x-kubernetes-map-type: atomic
+                                      secret:
+                                        description: Secret containing data to use
+                                          for the targets.
+                                        properties:
+                                          key:
+                                            description: The key of the secret to
+                                              select from.  Must be a valid secret
+                                              key.
+                                            type: string
+                                          name:
+                                            default: ""
+                                            description: |-
+                                              Name of the referent.
+                                              This field is effectively required, but due to backwards compatibility is
+                                              allowed to be empty. Instances of this type with an empty value here are
+                                              almost certainly wrong.
+                                              TODO: Add other useful fields. apiVersion, kind, uid?
+                                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                              TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
+                                            type: string
+                                          optional:
+                                            description: Specify whether the Secret
+                                              or its key must be defined
+                                            type: boolean
+                                        required:
+                                        - key
+                                        type: object
+                                        x-kubernetes-map-type: atomic
+                                    type: object
+                                  client_secret:
+                                    description: The secret containing the OAuth2
+                                      client secret
+                                    properties:
+                                      key:
+                                        description: The key of the secret to select
+                                          from.  Must be a valid secret key.
+                                        type: string
+                                      name:
+                                        default: ""
+                                        description: |-
+                                          Name of the referent.
+                                          This field is effectively required, but due to backwards compatibility is
+                                          allowed to be empty. Instances of this type with an empty value here are
+                                          almost certainly wrong.
+                                          TODO: Add other useful fields. apiVersion, kind, uid?
+                                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                          TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
+                                        type: string
+                                      optional:
+                                        description: Specify whether the Secret or
+                                          its key must be defined
+                                        type: boolean
+                                    required:
+                                    - key
+                                    type: object
+                                    x-kubernetes-map-type: atomic
+                                  client_secret_file:
+                                    description: ClientSecretFile defines path for
+                                      client secret file.
+                                    type: string
+                                  endpoint_params:
+                                    additionalProperties:
+                                      type: string
+                                    description: Parameters to append to the token
+                                      URL
+                                    type: object
+                                  scopes:
+                                    description: OAuth2 scopes used for the token
+                                      request
+                                    items:
+                                      type: string
+                                    type: array
+                                  token_url:
+                                    description: The URL to fetch the token from
+                                    minLength: 1
+                                    type: string
+                                required:
+                                - client_id
+                                - token_url
+                                type: object
                               proxyURL:
                                 description: Optional proxy URL.
                                 type: string
@@ -4711,7 +4805,9 @@ spec:
                             description: The username to use for authentication.
                             type: string
                           from:
-                            description: The sender address.
+                            description: |-
+                              The sender address.
+                              fallback to global setting if empty
                             type: string
                           headers:
                             additionalProperties:
@@ -4736,7 +4832,9 @@ spec:
                               alerts.
                             type: boolean
                           smarthost:
-                            description: The SMTP host through which emails are sent.
+                            description: |-
+                              The SMTP host through which emails are sent.
+                              fallback to global setting if empty
                             type: string
                           text:
                             description: The text body of the email notification.
@@ -4917,10 +5015,48 @@ spec:
                           http_config:
                             description: HTTP client configuration.
                             properties:
-                              basic_auth:
+                              authorization:
                                 description: |-
-                                  TODO oAuth2 support
-                                  BasicAuth for the client.
+                                  Authorization header configuration for the client.
+                                  This is mutually exclusive with BasicAuth and is only available starting from Alertmanager v0.22+.
+                                properties:
+                                  credentials:
+                                    description: Reference to the secret with value
+                                      for authorization
+                                    properties:
+                                      key:
+                                        description: The key of the secret to select
+                                          from.  Must be a valid secret key.
+                                        type: string
+                                      name:
+                                        default: ""
+                                        description: |-
+                                          Name of the referent.
+                                          This field is effectively required, but due to backwards compatibility is
+                                          allowed to be empty. Instances of this type with an empty value here are
+                                          almost certainly wrong.
+                                          TODO: Add other useful fields. apiVersion, kind, uid?
+                                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                          TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
+                                        type: string
+                                      optional:
+                                        description: Specify whether the Secret or
+                                          its key must be defined
+                                        type: boolean
+                                    required:
+                                    - key
+                                    type: object
+                                    x-kubernetes-map-type: atomic
+                                  credentialsFile:
+                                    description: File with value for authorization
+                                    type: string
+                                  type:
+                                    description: Type of authorization, default to
+                                      bearer
+                                    type: string
+                                type: object
+                              basic_auth:
+                                description: BasicAuth for the client.
                                 properties:
                                   password:
                                     description: |-
@@ -5016,6 +5152,120 @@ spec:
                                 - key
                                 type: object
                                 x-kubernetes-map-type: atomic
+                              oauth2:
+                                description: OAuth2 client credentials used to fetch
+                                  a token for the targets.
+                                properties:
+                                  client_id:
+                                    description: The secret or configmap containing
+                                      the OAuth2 client id
+                                    properties:
+                                      configMap:
+                                        description: ConfigMap containing data to
+                                          use for the targets.
+                                        properties:
+                                          key:
+                                            description: The key to select.
+                                            type: string
+                                          name:
+                                            default: ""
+                                            description: |-
+                                              Name of the referent.
+                                              This field is effectively required, but due to backwards compatibility is
+                                              allowed to be empty. Instances of this type with an empty value here are
+                                              almost certainly wrong.
+                                              TODO: Add other useful fields. apiVersion, kind, uid?
+                                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                              TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
+                                            type: string
+                                          optional:
+                                            description: Specify whether the ConfigMap
+                                              or its key must be defined
+                                            type: boolean
+                                        required:
+                                        - key
+                                        type: object
+                                        x-kubernetes-map-type: atomic
+                                      secret:
+                                        description: Secret containing data to use
+                                          for the targets.
+                                        properties:
+                                          key:
+                                            description: The key of the secret to
+                                              select from.  Must be a valid secret
+                                              key.
+                                            type: string
+                                          name:
+                                            default: ""
+                                            description: |-
+                                              Name of the referent.
+                                              This field is effectively required, but due to backwards compatibility is
+                                              allowed to be empty. Instances of this type with an empty value here are
+                                              almost certainly wrong.
+                                              TODO: Add other useful fields. apiVersion, kind, uid?
+                                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                              TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
+                                            type: string
+                                          optional:
+                                            description: Specify whether the Secret
+                                              or its key must be defined
+                                            type: boolean
+                                        required:
+                                        - key
+                                        type: object
+                                        x-kubernetes-map-type: atomic
+                                    type: object
+                                  client_secret:
+                                    description: The secret containing the OAuth2
+                                      client secret
+                                    properties:
+                                      key:
+                                        description: The key of the secret to select
+                                          from.  Must be a valid secret key.
+                                        type: string
+                                      name:
+                                        default: ""
+                                        description: |-
+                                          Name of the referent.
+                                          This field is effectively required, but due to backwards compatibility is
+                                          allowed to be empty. Instances of this type with an empty value here are
+                                          almost certainly wrong.
+                                          TODO: Add other useful fields. apiVersion, kind, uid?
+                                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                          TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
+                                        type: string
+                                      optional:
+                                        description: Specify whether the Secret or
+                                          its key must be defined
+                                        type: boolean
+                                    required:
+                                    - key
+                                    type: object
+                                    x-kubernetes-map-type: atomic
+                                  client_secret_file:
+                                    description: ClientSecretFile defines path for
+                                      client secret file.
+                                    type: string
+                                  endpoint_params:
+                                    additionalProperties:
+                                      type: string
+                                    description: Parameters to append to the token
+                                      URL
+                                    type: object
+                                  scopes:
+                                    description: OAuth2 scopes used for the token
+                                      request
+                                    items:
+                                      type: string
+                                    type: array
+                                  token_url:
+                                    description: The URL to fetch the token from
+                                    minLength: 1
+                                    type: string
+                                required:
+                                - client_id
+                                - token_url
+                                type: object
                               proxyURL:
                                 description: Optional proxy URL.
                                 type: string
@@ -5255,6 +5505,7 @@ spec:
                             description: |-
                               The secret's key that contains the OpsGenie API key.
                               It must be at them same namespace as CRD
+                              fallback to global setting if empty
                             properties:
                               key:
                                 description: The key of the secret to select from.  Must
@@ -5662,6 +5913,7 @@ spec:
                             description: |-
                               The secret's key that contains the Slack webhook URL.
                               It must be at them same namespace as CRD
+                              fallback to global setting if empty
                             properties:
                               key:
                                 description: The key of the secret to select from.  Must
@@ -5769,10 +6021,48 @@ spec:
                           http_config:
                             description: HTTP client configuration.
                             properties:
-                              basic_auth:
+                              authorization:
                                 description: |-
-                                  TODO oAuth2 support
-                                  BasicAuth for the client.
+                                  Authorization header configuration for the client.
+                                  This is mutually exclusive with BasicAuth and is only available starting from Alertmanager v0.22+.
+                                properties:
+                                  credentials:
+                                    description: Reference to the secret with value
+                                      for authorization
+                                    properties:
+                                      key:
+                                        description: The key of the secret to select
+                                          from.  Must be a valid secret key.
+                                        type: string
+                                      name:
+                                        default: ""
+                                        description: |-
+                                          Name of the referent.
+                                          This field is effectively required, but due to backwards compatibility is
+                                          allowed to be empty. Instances of this type with an empty value here are
+                                          almost certainly wrong.
+                                          TODO: Add other useful fields. apiVersion, kind, uid?
+                                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                          TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
+                                        type: string
+                                      optional:
+                                        description: Specify whether the Secret or
+                                          its key must be defined
+                                        type: boolean
+                                    required:
+                                    - key
+                                    type: object
+                                    x-kubernetes-map-type: atomic
+                                  credentialsFile:
+                                    description: File with value for authorization
+                                    type: string
+                                  type:
+                                    description: Type of authorization, default to
+                                      bearer
+                                    type: string
+                                type: object
+                              basic_auth:
+                                description: BasicAuth for the client.
                                 properties:
                                   password:
                                     description: |-
@@ -5868,6 +6158,120 @@ spec:
                                 - key
                                 type: object
                                 x-kubernetes-map-type: atomic
+                              oauth2:
+                                description: OAuth2 client credentials used to fetch
+                                  a token for the targets.
+                                properties:
+                                  client_id:
+                                    description: The secret or configmap containing
+                                      the OAuth2 client id
+                                    properties:
+                                      configMap:
+                                        description: ConfigMap containing data to
+                                          use for the targets.
+                                        properties:
+                                          key:
+                                            description: The key to select.
+                                            type: string
+                                          name:
+                                            default: ""
+                                            description: |-
+                                              Name of the referent.
+                                              This field is effectively required, but due to backwards compatibility is
+                                              allowed to be empty. Instances of this type with an empty value here are
+                                              almost certainly wrong.
+                                              TODO: Add other useful fields. apiVersion, kind, uid?
+                                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                              TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
+                                            type: string
+                                          optional:
+                                            description: Specify whether the ConfigMap
+                                              or its key must be defined
+                                            type: boolean
+                                        required:
+                                        - key
+                                        type: object
+                                        x-kubernetes-map-type: atomic
+                                      secret:
+                                        description: Secret containing data to use
+                                          for the targets.
+                                        properties:
+                                          key:
+                                            description: The key of the secret to
+                                              select from.  Must be a valid secret
+                                              key.
+                                            type: string
+                                          name:
+                                            default: ""
+                                            description: |-
+                                              Name of the referent.
+                                              This field is effectively required, but due to backwards compatibility is
+                                              allowed to be empty. Instances of this type with an empty value here are
+                                              almost certainly wrong.
+                                              TODO: Add other useful fields. apiVersion, kind, uid?
+                                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                              TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
+                                            type: string
+                                          optional:
+                                            description: Specify whether the Secret
+                                              or its key must be defined
+                                            type: boolean
+                                        required:
+                                        - key
+                                        type: object
+                                        x-kubernetes-map-type: atomic
+                                    type: object
+                                  client_secret:
+                                    description: The secret containing the OAuth2
+                                      client secret
+                                    properties:
+                                      key:
+                                        description: The key of the secret to select
+                                          from.  Must be a valid secret key.
+                                        type: string
+                                      name:
+                                        default: ""
+                                        description: |-
+                                          Name of the referent.
+                                          This field is effectively required, but due to backwards compatibility is
+                                          allowed to be empty. Instances of this type with an empty value here are
+                                          almost certainly wrong.
+                                          TODO: Add other useful fields. apiVersion, kind, uid?
+                                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                          TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
+                                        type: string
+                                      optional:
+                                        description: Specify whether the Secret or
+                                          its key must be defined
+                                        type: boolean
+                                    required:
+                                    - key
+                                    type: object
+                                    x-kubernetes-map-type: atomic
+                                  client_secret_file:
+                                    description: ClientSecretFile defines path for
+                                      client secret file.
+                                    type: string
+                                  endpoint_params:
+                                    additionalProperties:
+                                      type: string
+                                    description: Parameters to append to the token
+                                      URL
+                                    type: object
+                                  scopes:
+                                    description: OAuth2 scopes used for the token
+                                      request
+                                    items:
+                                      type: string
+                                    type: array
+                                  token_url:
+                                    description: The URL to fetch the token from
+                                    minLength: 1
+                                    type: string
+                                required:
+                                - client_id
+                                - token_url
+                                type: object
                               proxyURL:
                                 description: Optional proxy URL.
                                 type: string
@@ -6144,6 +6548,9 @@ spec:
                       type: array
                     telegram_configs:
                       items:
+                        description: |-
+                          TelegramConfig configures notification via telegram
+                          https://prometheus.io/docs/alerting/latest/configuration/#telegram_config
                         properties:
                           api_url:
                             description: APIUrl the Telegram API URL i.e. https://api.telegram.org.
@@ -6216,6 +6623,7 @@ spec:
                             description: |-
                               The secret's key that contains the API key to use when talking to the VictorOps API.
                               It must be at them same namespace as CRD
+                              fallback to global setting if empty
                             properties:
                               key:
                                 description: The key of the secret to select from.  Must
@@ -6256,10 +6664,48 @@ spec:
                           http_config:
                             description: The HTTP client's configuration.
                             properties:
-                              basic_auth:
+                              authorization:
                                 description: |-
-                                  TODO oAuth2 support
-                                  BasicAuth for the client.
+                                  Authorization header configuration for the client.
+                                  This is mutually exclusive with BasicAuth and is only available starting from Alertmanager v0.22+.
+                                properties:
+                                  credentials:
+                                    description: Reference to the secret with value
+                                      for authorization
+                                    properties:
+                                      key:
+                                        description: The key of the secret to select
+                                          from.  Must be a valid secret key.
+                                        type: string
+                                      name:
+                                        default: ""
+                                        description: |-
+                                          Name of the referent.
+                                          This field is effectively required, but due to backwards compatibility is
+                                          allowed to be empty. Instances of this type with an empty value here are
+                                          almost certainly wrong.
+                                          TODO: Add other useful fields. apiVersion, kind, uid?
+                                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                          TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
+                                        type: string
+                                      optional:
+                                        description: Specify whether the Secret or
+                                          its key must be defined
+                                        type: boolean
+                                    required:
+                                    - key
+                                    type: object
+                                    x-kubernetes-map-type: atomic
+                                  credentialsFile:
+                                    description: File with value for authorization
+                                    type: string
+                                  type:
+                                    description: Type of authorization, default to
+                                      bearer
+                                    type: string
+                                type: object
+                              basic_auth:
+                                description: BasicAuth for the client.
                                 properties:
                                   password:
                                     description: |-
@@ -6355,6 +6801,120 @@ spec:
                                 - key
                                 type: object
                                 x-kubernetes-map-type: atomic
+                              oauth2:
+                                description: OAuth2 client credentials used to fetch
+                                  a token for the targets.
+                                properties:
+                                  client_id:
+                                    description: The secret or configmap containing
+                                      the OAuth2 client id
+                                    properties:
+                                      configMap:
+                                        description: ConfigMap containing data to
+                                          use for the targets.
+                                        properties:
+                                          key:
+                                            description: The key to select.
+                                            type: string
+                                          name:
+                                            default: ""
+                                            description: |-
+                                              Name of the referent.
+                                              This field is effectively required, but due to backwards compatibility is
+                                              allowed to be empty. Instances of this type with an empty value here are
+                                              almost certainly wrong.
+                                              TODO: Add other useful fields. apiVersion, kind, uid?
+                                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                              TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
+                                            type: string
+                                          optional:
+                                            description: Specify whether the ConfigMap
+                                              or its key must be defined
+                                            type: boolean
+                                        required:
+                                        - key
+                                        type: object
+                                        x-kubernetes-map-type: atomic
+                                      secret:
+                                        description: Secret containing data to use
+                                          for the targets.
+                                        properties:
+                                          key:
+                                            description: The key of the secret to
+                                              select from.  Must be a valid secret
+                                              key.
+                                            type: string
+                                          name:
+                                            default: ""
+                                            description: |-
+                                              Name of the referent.
+                                              This field is effectively required, but due to backwards compatibility is
+                                              allowed to be empty. Instances of this type with an empty value here are
+                                              almost certainly wrong.
+                                              TODO: Add other useful fields. apiVersion, kind, uid?
+                                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                              TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
+                                            type: string
+                                          optional:
+                                            description: Specify whether the Secret
+                                              or its key must be defined
+                                            type: boolean
+                                        required:
+                                        - key
+                                        type: object
+                                        x-kubernetes-map-type: atomic
+                                    type: object
+                                  client_secret:
+                                    description: The secret containing the OAuth2
+                                      client secret
+                                    properties:
+                                      key:
+                                        description: The key of the secret to select
+                                          from.  Must be a valid secret key.
+                                        type: string
+                                      name:
+                                        default: ""
+                                        description: |-
+                                          Name of the referent.
+                                          This field is effectively required, but due to backwards compatibility is
+                                          allowed to be empty. Instances of this type with an empty value here are
+                                          almost certainly wrong.
+                                          TODO: Add other useful fields. apiVersion, kind, uid?
+                                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                          TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
+                                        type: string
+                                      optional:
+                                        description: Specify whether the Secret or
+                                          its key must be defined
+                                        type: boolean
+                                    required:
+                                    - key
+                                    type: object
+                                    x-kubernetes-map-type: atomic
+                                  client_secret_file:
+                                    description: ClientSecretFile defines path for
+                                      client secret file.
+                                    type: string
+                                  endpoint_params:
+                                    additionalProperties:
+                                      type: string
+                                    description: Parameters to append to the token
+                                      URL
+                                    type: object
+                                  scopes:
+                                    description: OAuth2 scopes used for the token
+                                      request
+                                    items:
+                                      type: string
+                                    type: array
+                                  token_url:
+                                    description: The URL to fetch the token from
+                                    minLength: 1
+                                    type: string
+                                required:
+                                - client_id
+                                - token_url
+                                type: object
                               proxyURL:
                                 description: Optional proxy URL.
                                 type: string
@@ -6561,10 +7121,48 @@ spec:
                               configuration to supply the bot token as part of the
                               HTTP `Authorization` header.
                             properties:
-                              basic_auth:
+                              authorization:
                                 description: |-
-                                  TODO oAuth2 support
-                                  BasicAuth for the client.
+                                  Authorization header configuration for the client.
+                                  This is mutually exclusive with BasicAuth and is only available starting from Alertmanager v0.22+.
+                                properties:
+                                  credentials:
+                                    description: Reference to the secret with value
+                                      for authorization
+                                    properties:
+                                      key:
+                                        description: The key of the secret to select
+                                          from.  Must be a valid secret key.
+                                        type: string
+                                      name:
+                                        default: ""
+                                        description: |-
+                                          Name of the referent.
+                                          This field is effectively required, but due to backwards compatibility is
+                                          allowed to be empty. Instances of this type with an empty value here are
+                                          almost certainly wrong.
+                                          TODO: Add other useful fields. apiVersion, kind, uid?
+                                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                          TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
+                                        type: string
+                                      optional:
+                                        description: Specify whether the Secret or
+                                          its key must be defined
+                                        type: boolean
+                                    required:
+                                    - key
+                                    type: object
+                                    x-kubernetes-map-type: atomic
+                                  credentialsFile:
+                                    description: File with value for authorization
+                                    type: string
+                                  type:
+                                    description: Type of authorization, default to
+                                      bearer
+                                    type: string
+                                type: object
+                              basic_auth:
+                                description: BasicAuth for the client.
                                 properties:
                                   password:
                                     description: |-
@@ -6660,6 +7258,120 @@ spec:
                                 - key
                                 type: object
                                 x-kubernetes-map-type: atomic
+                              oauth2:
+                                description: OAuth2 client credentials used to fetch
+                                  a token for the targets.
+                                properties:
+                                  client_id:
+                                    description: The secret or configmap containing
+                                      the OAuth2 client id
+                                    properties:
+                                      configMap:
+                                        description: ConfigMap containing data to
+                                          use for the targets.
+                                        properties:
+                                          key:
+                                            description: The key to select.
+                                            type: string
+                                          name:
+                                            default: ""
+                                            description: |-
+                                              Name of the referent.
+                                              This field is effectively required, but due to backwards compatibility is
+                                              allowed to be empty. Instances of this type with an empty value here are
+                                              almost certainly wrong.
+                                              TODO: Add other useful fields. apiVersion, kind, uid?
+                                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                              TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
+                                            type: string
+                                          optional:
+                                            description: Specify whether the ConfigMap
+                                              or its key must be defined
+                                            type: boolean
+                                        required:
+                                        - key
+                                        type: object
+                                        x-kubernetes-map-type: atomic
+                                      secret:
+                                        description: Secret containing data to use
+                                          for the targets.
+                                        properties:
+                                          key:
+                                            description: The key of the secret to
+                                              select from.  Must be a valid secret
+                                              key.
+                                            type: string
+                                          name:
+                                            default: ""
+                                            description: |-
+                                              Name of the referent.
+                                              This field is effectively required, but due to backwards compatibility is
+                                              allowed to be empty. Instances of this type with an empty value here are
+                                              almost certainly wrong.
+                                              TODO: Add other useful fields. apiVersion, kind, uid?
+                                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                              TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
+                                            type: string
+                                          optional:
+                                            description: Specify whether the Secret
+                                              or its key must be defined
+                                            type: boolean
+                                        required:
+                                        - key
+                                        type: object
+                                        x-kubernetes-map-type: atomic
+                                    type: object
+                                  client_secret:
+                                    description: The secret containing the OAuth2
+                                      client secret
+                                    properties:
+                                      key:
+                                        description: The key of the secret to select
+                                          from.  Must be a valid secret key.
+                                        type: string
+                                      name:
+                                        default: ""
+                                        description: |-
+                                          Name of the referent.
+                                          This field is effectively required, but due to backwards compatibility is
+                                          allowed to be empty. Instances of this type with an empty value here are
+                                          almost certainly wrong.
+                                          TODO: Add other useful fields. apiVersion, kind, uid?
+                                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                          TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
+                                        type: string
+                                      optional:
+                                        description: Specify whether the Secret or
+                                          its key must be defined
+                                        type: boolean
+                                    required:
+                                    - key
+                                    type: object
+                                    x-kubernetes-map-type: atomic
+                                  client_secret_file:
+                                    description: ClientSecretFile defines path for
+                                      client secret file.
+                                    type: string
+                                  endpoint_params:
+                                    additionalProperties:
+                                      type: string
+                                    description: Parameters to append to the token
+                                      URL
+                                    type: object
+                                  scopes:
+                                    description: OAuth2 scopes used for the token
+                                      request
+                                    items:
+                                      type: string
+                                    type: array
+                                  token_url:
+                                    description: The URL to fetch the token from
+                                    minLength: 1
+                                    type: string
+                                required:
+                                - client_id
+                                - token_url
+                                type: object
                               proxyURL:
                                 description: Optional proxy URL.
                                 type: string
@@ -6915,7 +7627,7 @@ spec:
                             description: |-
                               The secret's key that contains the WeChat API key.
                               The secret needs to be in the same namespace as the AlertmanagerConfig
-                              object and accessible by the Prometheus Operator.
+                              fallback to global alertmanager setting if empty
                             properties:
                               key:
                                 description: The key of the secret to select from.  Must
@@ -6941,18 +7653,60 @@ spec:
                             type: object
                             x-kubernetes-map-type: atomic
                           api_url:
-                            description: The WeChat API URL.
+                            description: |-
+                              The WeChat API URL.
+                              fallback to global alertmanager setting if empty
                             type: string
                           corp_id:
-                            description: The corp id for authentication.
+                            description: |-
+                              The corp id for authentication.
+                              fallback to global alertmanager setting if empty
                             type: string
                           http_config:
                             description: HTTP client configuration.
                             properties:
-                              basic_auth:
+                              authorization:
                                 description: |-
-                                  TODO oAuth2 support
-                                  BasicAuth for the client.
+                                  Authorization header configuration for the client.
+                                  This is mutually exclusive with BasicAuth and is only available starting from Alertmanager v0.22+.
+                                properties:
+                                  credentials:
+                                    description: Reference to the secret with value
+                                      for authorization
+                                    properties:
+                                      key:
+                                        description: The key of the secret to select
+                                          from.  Must be a valid secret key.
+                                        type: string
+                                      name:
+                                        default: ""
+                                        description: |-
+                                          Name of the referent.
+                                          This field is effectively required, but due to backwards compatibility is
+                                          allowed to be empty. Instances of this type with an empty value here are
+                                          almost certainly wrong.
+                                          TODO: Add other useful fields. apiVersion, kind, uid?
+                                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                          TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
+                                        type: string
+                                      optional:
+                                        description: Specify whether the Secret or
+                                          its key must be defined
+                                        type: boolean
+                                    required:
+                                    - key
+                                    type: object
+                                    x-kubernetes-map-type: atomic
+                                  credentialsFile:
+                                    description: File with value for authorization
+                                    type: string
+                                  type:
+                                    description: Type of authorization, default to
+                                      bearer
+                                    type: string
+                                type: object
+                              basic_auth:
+                                description: BasicAuth for the client.
                                 properties:
                                   password:
                                     description: |-
@@ -7048,6 +7802,120 @@ spec:
                                 - key
                                 type: object
                                 x-kubernetes-map-type: atomic
+                              oauth2:
+                                description: OAuth2 client credentials used to fetch
+                                  a token for the targets.
+                                properties:
+                                  client_id:
+                                    description: The secret or configmap containing
+                                      the OAuth2 client id
+                                    properties:
+                                      configMap:
+                                        description: ConfigMap containing data to
+                                          use for the targets.
+                                        properties:
+                                          key:
+                                            description: The key to select.
+                                            type: string
+                                          name:
+                                            default: ""
+                                            description: |-
+                                              Name of the referent.
+                                              This field is effectively required, but due to backwards compatibility is
+                                              allowed to be empty. Instances of this type with an empty value here are
+                                              almost certainly wrong.
+                                              TODO: Add other useful fields. apiVersion, kind, uid?
+                                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                              TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
+                                            type: string
+                                          optional:
+                                            description: Specify whether the ConfigMap
+                                              or its key must be defined
+                                            type: boolean
+                                        required:
+                                        - key
+                                        type: object
+                                        x-kubernetes-map-type: atomic
+                                      secret:
+                                        description: Secret containing data to use
+                                          for the targets.
+                                        properties:
+                                          key:
+                                            description: The key of the secret to
+                                              select from.  Must be a valid secret
+                                              key.
+                                            type: string
+                                          name:
+                                            default: ""
+                                            description: |-
+                                              Name of the referent.
+                                              This field is effectively required, but due to backwards compatibility is
+                                              allowed to be empty. Instances of this type with an empty value here are
+                                              almost certainly wrong.
+                                              TODO: Add other useful fields. apiVersion, kind, uid?
+                                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                              TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
+                                            type: string
+                                          optional:
+                                            description: Specify whether the Secret
+                                              or its key must be defined
+                                            type: boolean
+                                        required:
+                                        - key
+                                        type: object
+                                        x-kubernetes-map-type: atomic
+                                    type: object
+                                  client_secret:
+                                    description: The secret containing the OAuth2
+                                      client secret
+                                    properties:
+                                      key:
+                                        description: The key of the secret to select
+                                          from.  Must be a valid secret key.
+                                        type: string
+                                      name:
+                                        default: ""
+                                        description: |-
+                                          Name of the referent.
+                                          This field is effectively required, but due to backwards compatibility is
+                                          allowed to be empty. Instances of this type with an empty value here are
+                                          almost certainly wrong.
+                                          TODO: Add other useful fields. apiVersion, kind, uid?
+                                          More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                          TODO: Drop `kubebuilder:default` when controller-gen doesn't need it https://github.com/kubernetes-sigs/kubebuilder/issues/3896.
+                                        type: string
+                                      optional:
+                                        description: Specify whether the Secret or
+                                          its key must be defined
+                                        type: boolean
+                                    required:
+                                    - key
+                                    type: object
+                                    x-kubernetes-map-type: atomic
+                                  client_secret_file:
+                                    description: ClientSecretFile defines path for
+                                      client secret file.
+                                    type: string
+                                  endpoint_params:
+                                    additionalProperties:
+                                      type: string
+                                    description: Parameters to append to the token
+                                      URL
+                                    type: object
+                                  scopes:
+                                    description: OAuth2 scopes used for the token
+                                      request
+                                    items:
+                                      type: string
+                                    type: array
+                                  token_url:
+                                    description: The URL to fetch the token from
+                                    minLength: 1
+                                    type: string
+                                required:
+                                - client_id
+                                - token_url
+                                type: object
                               proxyURL:
                                 description: Optional proxy URL.
                                 type: string
@@ -7280,7 +8148,8 @@ spec:
                       type: string
                     type: array
                   mute_time_intervals:
-                    description: MuteTimeIntervals for alerts
+                    description: MuteTimeIntervals is a list of interval names that
+                      will mute matched alert
                     items:
                       type: string
                     type: array
@@ -7303,10 +8172,10 @@ spec:
                 type: object
               time_intervals:
                 description: |-
-                  ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
-                  TimeIntervals modern config option, use it instead of  mute_time_intervals
+                  TimeIntervals defines named interval for active/mute notifications interval
+                  See https://prometheus.io/docs/alerting/latest/configuration/#time_interval
                 items:
-                  description: MuteTimeInterval for alerts
+                  description: TimeIntervals for alerts
                   properties:
                     name:
                       description: Name of interval
@@ -7378,8 +8247,18 @@ spec:
             description: VMAlertmanagerConfigStatus defines the observed state of
               VMAlertmanagerConfig
             properties:
-              reason:
-                description: ErrorReason describes validation or any other errors.
+              lastErrorParentAlertmanagerName:
+                type: string
+              lastSyncError:
+                description: LastSyncError contains error message for unsuccessful
+                  config generation
+                type: string
+              lastSyncErrorTimestamp:
+                description: LastSyncErrorTimestamp defines time when error occured
+                format: int64
+                type: integer
+              status:
+                description: Status defines CRD processing status
                 type: string
             type: object
         type: object

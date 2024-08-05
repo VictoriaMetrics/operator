@@ -22,8 +22,8 @@ func TestParsingPagerDutyConfig(t *testing.T) {
 	}
 	// prometheus operator format
 	f(`
-sendresolved: true
-servicekey:
+send_resolved: true
+service_key:
   localobjectreference:
     name: pagerduty-config
   key: mn
@@ -38,7 +38,8 @@ details:
 		ServiceKey: &corev1.SecretKeySelector{
 			Key: "mn",
 			LocalObjectReference: corev1.LocalObjectReference{
-				Name: "pagerduty-config"},
+				Name: "pagerduty-config",
+			},
 		},
 		Severity: "labels.severity",
 		Details: map[string]string{
@@ -48,8 +49,8 @@ details:
 	})
 	// normal format
 	f(`
-sendresolved: true
-servicekey:
+send_resolved: true
+service_key:
   localobjectreference:
     name: pagerduty-config
   key: mn
@@ -63,7 +64,8 @@ details:
 		ServiceKey: &corev1.SecretKeySelector{
 			Key: "mn",
 			LocalObjectReference: corev1.LocalObjectReference{
-				Name: "pagerduty-config"},
+				Name: "pagerduty-config",
+			},
 		},
 		Severity: "labels.severity",
 		Details: map[string]string{
@@ -74,8 +76,8 @@ details:
 
 	// w/o details
 	f(`
-sendresolved: true
-servicekey:
+send_resolved: true
+service_key:
   localobjectreference:
     name: pagerduty-config
   key: mn
@@ -86,7 +88,8 @@ severity: labels.severity
 		ServiceKey: &corev1.SecretKeySelector{
 			Key: "mn",
 			LocalObjectReference: corev1.LocalObjectReference{
-				Name: "pagerduty-config"},
+				Name: "pagerduty-config",
+			},
 		},
 		Severity: "labels.severity",
 	})
@@ -96,7 +99,7 @@ func TestParsingEmailConfig(t *testing.T) {
 	tests := []struct {
 		name    string
 		spec    string
-		headers EmailConfigHeaders
+		headers map[string]string
 		wantErr bool
 	}{
 		{

@@ -259,7 +259,8 @@ func ConvertTLSConfig(tlsConf *promv1.TLSConfig) *vmv1beta1.TLSConfig {
 	return tc
 }
 
-func convertSafeTLSConfig(tlsConf *promv1.SafeTLSConfig) *vmv1beta1.TLSConfig {
+// ConvertSafeTLSConfig performs convert ConvertSafeTLSConfig to vm version
+func ConvertSafeTLSConfig(tlsConf *promv1.SafeTLSConfig) *vmv1beta1.TLSConfig {
 	if tlsConf == nil {
 		return nil
 	}
@@ -362,7 +363,7 @@ func convertPodEndpoints(promPodEnpoints []promv1.PodMetricsEndpoint) []vmv1beta
 				BasicAuth: ConvertBasicAuth(promEndPoint.BasicAuth),
 				//nolint:staticcheck
 				BearerTokenSecret: convertBearerToken(&promEndPoint.BearerTokenSecret),
-				TLSConfig:         convertSafeTLSConfig(safeTLS),
+				TLSConfig:         ConvertSafeTLSConfig(safeTLS),
 				OAuth2:            ConvertOAuth(promEndPoint.OAuth2),
 				Authorization:     ConvertAuthorization(promEndPoint.Authorization, nil),
 			},
@@ -471,7 +472,7 @@ func ConvertProbe(probe *promv1.Probe, conf *config.BaseOperatorConf) *vmv1beta1
 			EndpointAuth: vmv1beta1.EndpointAuth{
 				BasicAuth:         ConvertBasicAuth(probe.Spec.BasicAuth),
 				BearerTokenSecret: convertBearerToken(&probe.Spec.BearerTokenSecret),
-				TLSConfig:         convertSafeTLSConfig(safeTLS),
+				TLSConfig:         ConvertSafeTLSConfig(safeTLS),
 				OAuth2:            ConvertOAuth(probe.Spec.OAuth2),
 				Authorization:     ConvertAuthorization(probe.Spec.Authorization, nil),
 			},

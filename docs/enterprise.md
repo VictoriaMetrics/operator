@@ -1,5 +1,4 @@
 ---
-sort: 13
 weight: 13
 title: Enterprise features
 menu:

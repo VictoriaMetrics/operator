@@ -1,5 +1,4 @@
 ---
-sort: 11
 weight: 11
 title: VMScrapeConfig
 menu:

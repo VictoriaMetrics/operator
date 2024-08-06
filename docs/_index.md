@@ -1,5 +1,4 @@
 ---
-sort: 0
 weight: 0
 title: Operator
 menu:

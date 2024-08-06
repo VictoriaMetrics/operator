@@ -4,7 +4,8 @@ weight: 10
 title: VMRule
 menu:
   docs:
-    parent: "operator-custom-resources"
+    identifier: operator-cr-vmrule
+    parent: operator-cr
     weight: 10
 aliases:
   - /operator/resources/vmrule/

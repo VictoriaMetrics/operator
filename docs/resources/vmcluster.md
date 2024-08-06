@@ -4,7 +4,8 @@ weight: 6
 title: VMCluster
 menu:
   docs:
-    parent: "operator-custom-resources"
+    identifier: operator-cr-vmcluster
+    parent: operator-cr
     weight: 6
 aliases:
   - /operator/resources/vmcluster/

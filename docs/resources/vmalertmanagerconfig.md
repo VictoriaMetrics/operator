@@ -4,7 +4,8 @@ weight: 4
 title: VMAlertmanagerConfig
 menu:
   docs:
-    parent: "operator-custom-resources"
+    identifier: operator-cr-vmalertmanagerconfig
+    parent: operator-cr
     weight: 4
 aliases:
   - /operator/resources/vmalertmanagerconfig/

@@ -4,7 +4,8 @@ weight: 12
 title: VMServiceScrape
 menu:
   docs:
-    parent: "operator-custom-resources"
+    identifier: operator-cr-vmservicescrape
+    parent: operator-cr
     weight: 12
 aliases:
   - /operator/resources/vmservicescrape/

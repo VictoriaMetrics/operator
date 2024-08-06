@@ -1,7 +1,7 @@
 ---
 sort: 0
 weight: 0
-title: VictoriaMetrics Operator
+title: Operator
 menu:
   docs:
     weight: 0

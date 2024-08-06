@@ -1,12 +1,11 @@
 {{- define "gvList" -}}
 {{- $groupVersions := . -}}
 ---
-sort: 12
 weight: 12
 title: API Docs
 menu:
   docs:
-    parent: "operator"
+    parent: operator
     weight: 12
 aliases:
   - /operator/api/

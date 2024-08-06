@@ -1,5 +1,4 @@
 ---
-sort: 10
 weight: 10
 title: CHANGELOG
 menu:

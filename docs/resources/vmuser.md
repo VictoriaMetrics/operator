@@ -1,5 +1,4 @@
 ---
-sort: 15
 weight: 15
 title: VMUser
 menu:

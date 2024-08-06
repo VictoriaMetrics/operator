@@ -1,5 +1,4 @@
 ---
-sort: 14
 weight: 14
 title: Custom resources
 menu:

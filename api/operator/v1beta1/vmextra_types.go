@@ -300,7 +300,7 @@ type BasicAuth struct {
 	// PasswordFile defines path to password file at disk
 	// must be pre-mounted
 	// +optional
-	PasswordFile string `json:"password_file,omitempty"`
+	PasswordFile string `json:"password_file,omitempty" yaml:"password_file,omitempty"`
 }
 
 // ServiceSpec defines additional service for CRD with user-defined params.
@@ -748,31 +748,31 @@ type SecretOrConfigMap struct {
 type TLSConfig struct {
 	// Path to the CA cert in the container to use for the targets.
 	// +optional
-	CAFile string `json:"caFile,omitempty"`
+	CAFile string `json:"caFile,omitempty" yaml:"ca_file,omitempty"`
 	// Stuct containing the CA cert to use for the targets.
 	// +optional
 	CA SecretOrConfigMap `json:"ca,omitempty"`
 
 	// Path to the client cert file in the container for the targets.
 	// +optional
-	CertFile string `json:"certFile,omitempty"`
+	CertFile string `json:"certFile,omitempty" yaml:"cert_file,omitempty"`
 	// Struct containing the client cert file for the targets.
 	// +optional
 	Cert SecretOrConfigMap `json:"cert,omitempty"`
 
 	// Path to the client key file in the container for the targets.
 	// +optional
-	KeyFile string `json:"keyFile,omitempty"`
+	KeyFile string `json:"keyFile,omitempty" yaml:"key_file,omitempty"`
 	// Secret containing the client key file for the targets.
 	// +optional
-	KeySecret *v1.SecretKeySelector `json:"keySecret,omitempty"`
+	KeySecret *v1.SecretKeySelector `json:"keySecret,omitempty" yaml:"key_secret,omitempty"`
 
 	// Used to verify the hostname for the targets.
 	// +optional
-	ServerName string `json:"serverName,omitempty"`
+	ServerName string `json:"serverName,omitempty" yaml:"server_name,omitempty"`
 	// Disable target certificate validation.
 	// +optional
-	InsecureSkipVerify bool `json:"insecureSkipVerify,omitempty"`
+	InsecureSkipVerify bool `json:"insecureSkipVerify,omitempty" yaml:"insecure_skip_verify,omitempty"`
 }
 
 func (c *TLSConfig) AsArgs(args []string, prefix, pathPrefix string) []string {

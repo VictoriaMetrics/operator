@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"strings"
 
 	v1 "k8s.io/api/core/v1"
 )
@@ -63,23 +64,41 @@ type ProxyAuth struct {
 type OAuth2 struct {
 	// The secret or configmap containing the OAuth2 client id
 	// +required
-	ClientID SecretOrConfigMap `json:"client_id"`
+	ClientID SecretOrConfigMap `json:"client_id" yaml:"client_id,omitempty"`
 	// The secret containing the OAuth2 client secret
 	// +optional
-	ClientSecret *v1.SecretKeySelector `json:"client_secret,omitempty"`
+	ClientSecret *v1.SecretKeySelector `json:"client_secret,omitempty" yaml:"client_secret,omitempty"`
 	// ClientSecretFile defines path for client secret file.
 	// +optional
-	ClientSecretFile string `json:"client_secret_file,omitempty"`
+	ClientSecretFile string `json:"client_secret_file,omitempty" yaml:"client_secret_file,omitempty"`
 	// The URL to fetch the token from
 	// +kubebuilder:validation:MinLength=1
 	// +required
-	TokenURL string `json:"token_url"`
+	TokenURL string `json:"token_url" yaml:"token_url"`
 	// OAuth2 scopes used for the token request
 	// +optional
 	Scopes []string `json:"scopes,omitempty"`
 	// Parameters to append to the token URL
 	// +optional
-	EndpointParams map[string]string `json:"endpoint_params,omitempty"`
+	EndpointParams map[string]string `json:"endpoint_params,omitempty" yaml:"endpoint_params"`
+}
+
+func (o *OAuth2) validate() error {
+	if o == nil {
+		return nil
+	}
+	if o.TokenURL == "" {
+		return fmt.Errorf("token_url field for oauth2 config must be set")
+	}
+
+	if o.ClientID == (SecretOrConfigMap{}) {
+		return fmt.Errorf("client_id field must be set")
+	}
+
+	if o.ClientID.Secret != nil && o.ClientID.ConfigMap != nil {
+		return fmt.Errorf("cannot specify both Secret and ConfigMap for client_id field")
+	}
+	return nil
 }
 
 // Authorization configures generic authorization params
@@ -91,7 +110,22 @@ type Authorization struct {
 	Credentials *v1.SecretKeySelector `json:"credentials,omitempty"`
 	// File with value for authorization
 	// +optional
-	CredentialsFile string `json:"credentialsFile,omitempty"`
+	CredentialsFile string `json:"credentialsFile,omitempty" yaml:"credentials_file,omitempty"`
+}
+
+func (ac *Authorization) validate() error {
+	if ac == nil {
+		return nil
+	}
+
+	if strings.ToLower(strings.TrimSpace(ac.Type)) == "basic" {
+		return fmt.Errorf("Authorization type cannot be set to 'basic', use 'basic_auth' instead`")
+	}
+
+	if ac.Credentials == nil && len(ac.CredentialsFile) == 0 {
+		return fmt.Errorf("at least `credentials` or `credentials_file` must be set")
+	}
+	return nil
 }
 
 // RelabelConfig allows dynamic rewriting of the label set

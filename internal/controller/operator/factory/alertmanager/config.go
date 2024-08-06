@@ -12,59 +12,85 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type parsedConfig struct {
-	Data            []byte
-	BadObjectsCount int
-	ParseErrors     []string
+	data         []byte
+	amcfgs       []*vmv1beta1.VMAlertmanagerConfig
+	brokenAMCfgs []*vmv1beta1.VMAlertmanagerConfig
 }
 
-func buildConfig(ctx context.Context, rclient client.Client, mustAddNamespaceMatcher, disableRouteContinueEnforce bool, baseCfg []byte, amcfgs map[string]*vmv1beta1.VMAlertmanagerConfig, tlsAssets map[string]string) (*parsedConfig, error) {
+func buildConfig(ctx context.Context, rclient client.Client, mustAddNamespaceMatcher, disableRouteContinueEnforce bool, baseCfg []byte, amcfgs []*vmv1beta1.VMAlertmanagerConfig, tlsAssets map[string]string) (*parsedConfig, error) {
 	// fast path.
 	if len(amcfgs) == 0 {
-		return &parsedConfig{Data: baseCfg}, nil
+		return &parsedConfig{data: baseCfg}, nil
+	}
+	var globalConfigOpts globalAlertmanagerConfig
+	if err := yaml.Unmarshal(baseCfg, &globalConfigOpts); err != nil {
+		return nil, fmt.Errorf("cannot parse global config options: %w", err)
 	}
 	var baseYAMlCfg alertmanagerConfig
 	if err := yaml.Unmarshal(baseCfg, &baseYAMlCfg); err != nil {
 		return nil, fmt.Errorf("cannot parse base cfg :%w", err)
 	}
-	amConfigIdentifiers := make([]string, len(amcfgs))
-	i := 0
-	for k := range amcfgs {
-		amConfigIdentifiers[i] = k
-		i++
-	}
 
-	sort.Strings(amConfigIdentifiers)
+	if baseYAMlCfg.Route == nil {
+		baseYAMlCfg.Route = &route{
+			Receiver: "blackhole",
+		}
+		var isBlacholeDefined bool
+		for _, recv := range baseYAMlCfg.Receivers {
+			var recvName string
+			for _, entry := range recv {
+				if entry.Key == "name" {
+					s, ok := entry.Value.(string)
+					if !ok {
+						return nil, fmt.Errorf("incorrect base configuration=%q, expected receiver name=%v to be a string", string(baseCfg), entry.Value)
+					}
+					recvName = s
+					break
+				}
+			}
+			if recvName == "blackhole" {
+				isBlacholeDefined = true
+				break
+			}
+		}
+		if !isBlacholeDefined {
+			baseYAMlCfg.Receivers = append(baseYAMlCfg.Receivers, yaml.MapSlice{
+				{
+					Key:   "name",
+					Value: "blackhole",
+				},
+			})
+		}
+	}
+	sort.Slice(amcfgs, func(i, j int) bool {
+		return amcfgs[i].AsKey() < amcfgs[j].AsKey()
+	})
 	var subRoutes []yaml.MapSlice
-	var muteIntervals []yaml.MapSlice
+	var timeIntervals []yaml.MapSlice
 	secretCache := make(map[string]*corev1.Secret)
 	configmapCache := make(map[string]*corev1.ConfigMap)
-	var firstReceiverName string
-	var badObjectsCount int
-	var parseErrors []string
+	var result parsedConfig
 
+	var cnt int
 OUTER:
-	for _, posIdx := range amConfigIdentifiers {
-		receiverNameList := map[string]struct{}{}
+	for _, amcKey := range amcfgs {
+		if amcKey.Spec.Route == nil {
+			amcKey.Status.CurrentSyncError = "spec.route cannot be empty"
+			result.brokenAMCfgs = append(result.brokenAMCfgs, amcKey)
+			continue
+		}
 		var receiverCfgs []yaml.MapSlice
-		amcKey := amcfgs[posIdx]
 		for _, receiver := range amcKey.Spec.Receivers {
-			if _, ok := receiverNameList[receiver.Name]; ok {
-				parseErrors = append(parseErrors, fmt.Sprintf("got duplicate receiver name %s in object %s, will ignore vmalertmanagerconfig %s", receiver.Name, amcKey.AsKey(), amcKey.Name))
-				badObjectsCount++
-				continue OUTER
-			}
-			receiverNameList[receiver.Name] = struct{}{}
-			receiverCfg, err := buildReceiver(ctx, rclient, amcKey, receiver, secretCache, configmapCache, tlsAssets)
+			receiverCfg, err := buildReceiver(ctx, rclient, amcKey, receiver, &globalConfigOpts, secretCache, configmapCache, tlsAssets)
 			if err != nil {
 				// skip broken configs
-				parseErrors = append(parseErrors, fmt.Sprintf("%s in object: %s, will ignore vmalertmanagerconfig %s", err, amcKey.AsKey(), amcKey.Name))
-				badObjectsCount++
+				result.brokenAMCfgs = append(result.brokenAMCfgs, amcKey)
+				amcKey.Status.CurrentSyncError = err.Error()
 				continue OUTER
 			}
 			if len(receiverCfg) > 0 {
@@ -72,25 +98,18 @@ OUTER:
 			}
 		}
 
-		mtis, intervalNameList, err := buildGlobalTimeIntervals(amcKey)
+		mtis, err := buildGlobalTimeIntervals(amcKey)
 		if err != nil {
-			parseErrors = append(parseErrors, fmt.Sprintf("%v in object %s, will ignore vmalertmanagerconfig %s", err, amcKey.AsKey(), amcKey.Name))
-			badObjectsCount++
+			result.brokenAMCfgs = append(result.brokenAMCfgs, amcKey)
+			amcKey.Status.CurrentSyncError = err.Error()
 			continue
 		}
 
-		if amcKey.Spec.Route == nil {
-			continue
-		}
-		// use first route receiver name as default receiver.
-		if len(firstReceiverName) == 0 && len(amcKey.Spec.Route.Receiver) > 0 {
-			firstReceiverName = buildCRPrefixedName(amcKey, amcKey.Spec.Route.Receiver)
-		}
-		route, err := buildRoute(amcKey, amcKey.Spec.Route, true, disableRouteContinueEnforce, mustAddNamespaceMatcher, receiverNameList, intervalNameList)
+		route, err := buildRoute(amcKey, amcKey.Spec.Route, true, disableRouteContinueEnforce, mustAddNamespaceMatcher)
 		if err != nil {
-			parseErrors = append(parseErrors, fmt.Sprintf("%v in object %s, will ignore vmalertmanagerconfig %s", err, amcKey.AsKey(), amcKey.Name))
-			badObjectsCount++
-			continue OUTER
+			result.brokenAMCfgs = append(result.brokenAMCfgs, amcKey)
+			amcKey.Status.CurrentSyncError = err.Error()
+			continue
 		}
 
 		baseYAMlCfg.Receivers = append(baseYAMlCfg.Receivers, receiverCfgs...)
@@ -98,28 +117,28 @@ OUTER:
 			baseYAMlCfg.InhibitRules = append(baseYAMlCfg.InhibitRules, buildInhibitRule(amcKey.Namespace, rule, mustAddNamespaceMatcher))
 		}
 		if len(mtis) > 0 {
-			muteIntervals = append(muteIntervals, mtis...)
+			timeIntervals = append(timeIntervals, mtis...)
 		}
 		subRoutes = append(subRoutes, route)
+		amcfgs[cnt] = amcKey
+		cnt++
+	}
+	amcfgs = amcfgs[:cnt]
 
-	}
-	if baseYAMlCfg.Route == nil && len(subRoutes) > 0 {
-		baseYAMlCfg.Route = &route{
-			Receiver: firstReceiverName,
-		}
-	}
 	if len(subRoutes) > 0 {
 		baseYAMlCfg.Route.Routes = append(baseYAMlCfg.Route.Routes, subRoutes...)
 	}
-	if len(muteIntervals) > 0 {
-		baseYAMlCfg.MuteTimeIntervals = append(baseYAMlCfg.MuteTimeIntervals, muteIntervals...)
+	if len(timeIntervals) > 0 {
+		baseYAMlCfg.TimeIntervals = append(baseYAMlCfg.TimeIntervals, timeIntervals...)
 	}
 
-	result, err := yaml.Marshal(baseYAMlCfg)
+	data, err := yaml.Marshal(baseYAMlCfg)
 	if err != nil {
 		return nil, err
 	}
-	return &parsedConfig{Data: result, BadObjectsCount: badObjectsCount, ParseErrors: parseErrors}, nil
+	result.amcfgs = amcfgs
+	result.data = data
+	return &result, nil
 }
 
 // addConfigTemplates adds external templates to the given based configuration
@@ -153,17 +172,13 @@ func addConfigTemplates(baseCfg []byte, templates []string) ([]byte, error) {
 	return yaml.Marshal(baseYAMlCfg)
 }
 
-func buildGlobalTimeIntervals(cr *vmv1beta1.VMAlertmanagerConfig) ([]yaml.MapSlice, map[string]struct{}, error) {
+func buildGlobalTimeIntervals(cr *vmv1beta1.VMAlertmanagerConfig) ([]yaml.MapSlice, error) {
 	var r []yaml.MapSlice
 	timeIntervalNameList := map[string]struct{}{}
 	tis := cr.Spec.TimeIntervals
-	// muteTimeInterval is deprecated, use TimeIntervals instead
-	if len(tis) == 0 && len(cr.Spec.MutTimeIntervals) > 0 {
-		tis = cr.Spec.MutTimeIntervals
-	}
 	for _, mti := range tis {
 		if _, ok := timeIntervalNameList[mti.Name]; ok {
-			return r, nil, fmt.Errorf("got duplicate timeInterval name %s", mti.Name)
+			return r, fmt.Errorf("got duplicate timeInterval name %s", mti.Name)
 		}
 		timeIntervalNameList[mti.Name] = struct{}{}
 		if len(mti.TimeIntervals) == 0 {
@@ -203,10 +218,10 @@ func buildGlobalTimeIntervals(cr *vmv1beta1.VMAlertmanagerConfig) ([]yaml.MapSli
 			r = append(r, yaml.MapSlice{{Key: "name", Value: buildCRPrefixedName(cr, mti.Name)}, {Key: "time_intervals", Value: temp}})
 		}
 	}
-	return r, timeIntervalNameList, nil
+	return r, nil
 }
 
-func buildRoute(cr *vmv1beta1.VMAlertmanagerConfig, cfgRoute *vmv1beta1.Route, topLevel, disableRouteContinueEnforce, mustAddNamespaceMatcher bool, receiverNameList, intervalNameList map[string]struct{}) (yaml.MapSlice, error) {
+func buildRoute(cr *vmv1beta1.VMAlertmanagerConfig, cfgRoute *vmv1beta1.Route, topLevel, disableRouteContinueEnforce, mustAddNamespaceMatcher bool) (yaml.MapSlice, error) {
 	var r yaml.MapSlice
 	matchers := cfgRoute.Matchers
 	// enforce continue when route is first-level and vmalertmanager disableRouteContinueEnforce filed is not set,
@@ -223,7 +238,7 @@ func buildRoute(cr *vmv1beta1.VMAlertmanagerConfig, cfgRoute *vmv1beta1.Route, t
 	for _, nestedRoute := range cfgRoute.Routes {
 		// namespace matcher not needed for nested routes
 		tmpRoute := vmv1beta1.Route(*nestedRoute)
-		route, err := buildRoute(cr, &tmpRoute, false, false, false, receiverNameList, intervalNameList)
+		route, err := buildRoute(cr, &tmpRoute, false, false, false)
 		if err != nil {
 			return r, err
 		}
@@ -251,37 +266,16 @@ func buildRoute(cr *vmv1beta1.VMAlertmanagerConfig, cfgRoute *vmv1beta1.Route, t
 			r = append(r, yaml.MapItem{Key: key, Value: tis})
 		}
 	}
-	// check if timeInterval already defined outside
-	checkTimeIntervalExistence := func(interval []string, intervalNames map[string]struct{}) error {
-		for _, item := range interval {
-			if _, ok := intervalNames[item]; !ok {
-				return fmt.Errorf("time_intervals %s not defined", item)
-			}
-		}
-		return nil
-	}
+
 	toYaml("matchers", matchers)
 	toYaml("group_by", cfgRoute.GroupBy)
-
-	err := checkTimeIntervalExistence(cfgRoute.MuteTimeIntervals, intervalNameList)
-	if err != nil {
-		return nil, err
-	}
-	err = checkTimeIntervalExistence(cfgRoute.ActiveTimeIntervals, intervalNameList)
-	if err != nil {
-		return nil, err
-	}
-	toYamlTimeIntervals("mute_time_intervals", cfgRoute.MuteTimeIntervals)
 	toYamlTimeIntervals("active_time_intervals", cfgRoute.ActiveTimeIntervals)
+	toYamlTimeIntervals("mute_time_intervals", cfgRoute.MuteTimeIntervals)
 
 	toYamlString("group_interval", cfgRoute.GroupInterval)
 	toYamlString("group_wait", cfgRoute.GroupWait)
 	toYamlString("repeat_interval", cfgRoute.RepeatInterval)
 	if len(cfgRoute.Receiver) > 0 {
-		// check if receiver name already defined outside
-		if _, ok := receiverNameList[cfgRoute.Receiver]; !ok {
-			return r, fmt.Errorf("receiver %s not defined", cfgRoute.Receiver)
-		}
 		r = append(r, yaml.MapItem{Key: "receiver", Value: buildCRPrefixedName(cr, cfgRoute.Receiver)})
 	}
 	r = append(r, yaml.MapItem{Key: "continue", Value: continueSetting})
@@ -313,15 +307,29 @@ func buildCRPrefixedName(cr *vmv1beta1.VMAlertmanagerConfig, name string) string
 	return fmt.Sprintf("%s-%s-%s", cr.Namespace, cr.Name, name)
 }
 
+// contains only global configuration param for config validation
+type globalAlertmanagerConfig struct {
+	Global struct {
+		SMTPFrom            string `yaml:"smtp_from,omitempty" json:"smtp_from,omitempty"`
+		SMTPSmarthost       string `yaml:"smtp_smarthost,omitempty" json:"smtp_smarthost,omitempty"`
+		SlackAPIURL         string `yaml:"slack_api_url,omitempty" json:"slack_api_url,omitempty"`
+		SlackAPIURLFile     string `yaml:"slack_api_url_file,omitempty" json:"slack_api_url_file,omitempty"`
+		OpsGenieAPIKey      string `yaml:"opsgenie_api_key,omitempty" json:"opsgenie_api_key,omitempty"`
+		OpsGenieAPIKeyFile  string `yaml:"opsgenie_api_key_file,omitempty" json:"opsgenie_api_key_file,omitempty"`
+		WeChatAPISecret     string `yaml:"wechat_api_secret,omitempty" json:"wechat_api_secret,omitempty"`
+		WeChatAPICorpID     string `yaml:"wechat_api_corp_id,omitempty" json:"wechat_api_corp_id,omitempty"`
+		VictorOpsAPIKey     string `yaml:"victorops_api_key,omitempty" json:"victorops_api_key,omitempty"`
+		VictorOpsAPIKeyFile string `yaml:"victorops_api_key_file,omitempty" json:"victorops_api_key_file,omitempty"`
+	} `yaml:"global,omitempty"`
+}
+
 type alertmanagerConfig struct {
-	Global       interface{}     `yaml:"global,omitempty" json:"global,omitempty"`
-	Route        *route          `yaml:"route,omitempty" json:"route,omitempty"`
-	InhibitRules []yaml.MapSlice `yaml:"inhibit_rules,omitempty" json:"inhibit_rules,omitempty"`
-	Receivers    []yaml.MapSlice `yaml:"receivers,omitempty" json:"receivers,omitempty"`
-	// TODO remove MuteTimeIntervals and move to TimeIntervals. Since it will be removed at v1.0 version of AM
-	MuteTimeIntervals []yaml.MapSlice `yaml:"mute_time_intervals,omitempty" json:"mute_time_intervals"`
-	TimeIntervals     []yaml.MapSlice `yaml:"time_intervals,omitempty" json:"time_intervals"`
-	Templates         []string        `yaml:"templates" json:"templates"`
+	Global        interface{}     `yaml:"global,omitempty" json:"global,omitempty"`
+	Route         *route          `yaml:"route,omitempty" json:"route,omitempty"`
+	InhibitRules  []yaml.MapSlice `yaml:"inhibit_rules,omitempty" json:"inhibit_rules,omitempty"`
+	Receivers     []yaml.MapSlice `yaml:"receivers,omitempty" json:"receivers,omitempty"`
+	TimeIntervals []yaml.MapSlice `yaml:"time_intervals,omitempty" json:"time_intervals"`
+	Templates     []string        `yaml:"templates" json:"templates"`
 }
 
 type route struct {
@@ -343,11 +351,12 @@ func buildReceiver(
 	rclient client.Client,
 	cr *vmv1beta1.VMAlertmanagerConfig,
 	receiver vmv1beta1.Receiver,
+	globalCfg *globalAlertmanagerConfig,
 	cache map[string]*corev1.Secret,
 	configmapCache map[string]*corev1.ConfigMap,
 	tlsAssets map[string]string,
 ) (yaml.MapSlice, error) {
-	cb := initConfigBuilder(ctx, rclient, cr, receiver.Name, cache, configmapCache, tlsAssets)
+	cb := initConfigBuilder(ctx, rclient, cr, receiver.Name, globalCfg, cache, configmapCache, tlsAssets)
 	cb.result = yaml.MapSlice{
 		{
 			Key:   "name",
@@ -362,8 +371,9 @@ func buildReceiver(
 
 type configBuilder struct {
 	build.TLSConfigBuilder
-	currentYaml []yaml.MapSlice
-	result      yaml.MapSlice
+	globalConfig *globalAlertmanagerConfig
+	currentYaml  []yaml.MapSlice
+	result       yaml.MapSlice
 }
 
 func initConfigBuilder(
@@ -371,6 +381,7 @@ func initConfigBuilder(
 	rclient client.Client,
 	cr *vmv1beta1.VMAlertmanagerConfig,
 	receiver string,
+	globalCfg *globalAlertmanagerConfig,
 	cache map[string]*corev1.Secret,
 	configmapCache map[string]*corev1.ConfigMap,
 	tlsAssets map[string]string,
@@ -385,6 +396,7 @@ func initConfigBuilder(
 			ConfigmapCache:     configmapCache,
 			TLSAssets:          tlsAssets,
 		},
+		globalConfig: globalCfg,
 		result: yaml.MapSlice{
 			{
 				Key:   "name",
@@ -704,6 +716,9 @@ func (cb *configBuilder) buildSlack(slack vmv1beta1.SlackConfig) error {
 		}
 		temp = append(temp, yaml.MapItem{Key: "http_config", Value: c})
 	}
+	if slack.APIURL == nil && cb.globalConfig.Global.SlackAPIURL == "" && cb.globalConfig.Global.SlackAPIURLFile == "" {
+		return fmt.Errorf("api_url secret is not defined and no global Slack API URL set either inline or in a file")
+	}
 	if slack.APIURL != nil {
 		s, err := cb.fetchSecretValue(slack.APIURL)
 		if err != nil {
@@ -841,6 +856,12 @@ func (cb *configBuilder) buildWebhook(wh vmv1beta1.WebhookConfig) error {
 }
 
 func (cb *configBuilder) buildWeeChat(wc vmv1beta1.WeChatConfig) error {
+	if wc.APISecret == nil && cb.globalConfig.Global.WeChatAPISecret == "" {
+		return fmt.Errorf("api_secret is not set and no global Wechat ApiSecret set")
+	}
+	if wc.CorpID == "" && cb.globalConfig.Global.WeChatAPICorpID == "" {
+		return fmt.Errorf("cord_id is not set and no global Wechat CorpID set")
+	}
 	var temp yaml.MapSlice
 	if wc.HTTPConfig != nil {
 		h, err := cb.buildHTTPConfig(wc.HTTPConfig)
@@ -883,6 +904,9 @@ func (cb *configBuilder) buildWeeChat(wc vmv1beta1.WeChatConfig) error {
 }
 
 func (cb *configBuilder) buildVictorOps(vo vmv1beta1.VictorOpsConfig) error {
+	if vo.APIKey == nil && cb.globalConfig.Global.VictorOpsAPIKey == "" && cb.globalConfig.Global.VictorOpsAPIKeyFile == "" {
+		return fmt.Errorf("api_key secret is not set and no global VictorOps API Key set")
+	}
 	var temp yaml.MapSlice
 	if vo.HTTPConfig != nil {
 		h, err := cb.buildHTTPConfig(vo.HTTPConfig)
@@ -1081,12 +1105,16 @@ func (cb *configBuilder) buildEmail(email vmv1beta1.EmailConfig) error {
 	if email.RequireTLS != nil {
 		temp = append(temp, yaml.MapItem{Key: "require_tls", Value: *email.RequireTLS})
 	}
+	if email.Smarthost == "" && cb.globalConfig.Global.SMTPSmarthost == "" {
+		return fmt.Errorf("required email smarthost is not set at local and global alertmanager config")
+	}
+	if email.From == "" && cb.globalConfig.Global.SMTPFrom == "" {
+		return fmt.Errorf("required email from is not set at local and global alertmanager config")
+	}
+
 	// skip tls_config if require_tls is false
-	if email.RequireTLS == nil || *email.RequireTLS {
-		if email.TLSConfig == nil {
-			return fmt.Errorf("incorrect email configuration, tls is required, but no config provided at spec")
-		}
-		s, err := cb.TLSConfigBuilder.BuildTLSConfig(email.TLSConfig, tlsAssetsDir)
+	if email.RequireTLS != nil && *email.RequireTLS && email.TLSConfig != nil {
+		s, err := cb.BuildTLSConfig(email.TLSConfig, tlsAssetsDir)
 		if err != nil {
 			return err
 		}
@@ -1134,6 +1162,9 @@ func (cb *configBuilder) buildEmail(email vmv1beta1.EmailConfig) error {
 }
 
 func (cb *configBuilder) buildOpsGenie(og vmv1beta1.OpsGenieConfig) error {
+	if og.APIKey == nil && cb.globalConfig.Global.OpsGenieAPIKey == "" && cb.globalConfig.Global.OpsGenieAPIKeyFile == "" {
+		return fmt.Errorf("api_key secret is not defined and no global OpsGenie API Key set either inline or in a file")
+	}
 	var temp yaml.MapSlice
 	if og.APIKey != nil {
 		s, err := cb.fetchSecretValue(og.APIKey)
@@ -1222,6 +1253,13 @@ func (cb *configBuilder) buildHTTPConfig(httpCfg *vmv1beta1.HTTPConfig) (yaml.Ma
 			r = append(r, yaml.MapItem{Key: "tls_config", Value: tls})
 		}
 	}
+	if httpCfg.Authorization != nil {
+		au, err := cb.buildAuthorization(httpCfg.Authorization)
+		if err != nil {
+			return nil, err
+		}
+		r = append(r, yaml.MapItem{Key: "authorization", Value: au})
+	}
 	if httpCfg.BasicAuth != nil {
 		ba, err := cb.buildBasicAuth(httpCfg.BasicAuth)
 		if err != nil {
@@ -1244,9 +1282,69 @@ func (cb *configBuilder) buildHTTPConfig(httpCfg *vmv1beta1.HTTPConfig) (yaml.Ma
 		r = append(r, yaml.MapItem{Key: "authorization", Value: tokenAuth})
 	}
 
+	if httpCfg.OAuth2 != nil {
+		oauth2, err := cb.buildOAuth2(httpCfg.OAuth2)
+		if err != nil {
+			return nil, fmt.Errorf("cannot build oauth2 configuration: %w", err)
+		}
+		r = append(r, yaml.MapItem{Key: "oauth2", Value: oauth2})
+	}
+
 	if len(httpCfg.ProxyURL) > 0 {
 		r = append(r, yaml.MapItem{Key: "proxy_url", Value: httpCfg.ProxyURL})
 	}
+	return r, nil
+}
+
+func (cb *configBuilder) buildOAuth2(oauth2 *vmv1beta1.OAuth2) (yaml.MapSlice, error) {
+	var r yaml.MapSlice
+
+	if oauth2.ClientSecret != nil {
+		p, err := cb.fetchSecretValue(oauth2.ClientSecret)
+		if err != nil {
+			return nil, err
+		}
+		r = append(r, yaml.MapItem{
+			Key:   "client_secret",
+			Value: string(p),
+		})
+	}
+
+	switch {
+	case oauth2.ClientID.ConfigMap != nil:
+		var cm corev1.ConfigMap
+		if err := cb.Get(cb.Ctx, types.NamespacedName{Namespace: cb.CurrentCRNamespace, Name: oauth2.ClientID.ConfigMap.Name}, &cm); err != nil {
+			return nil, fmt.Errorf("cannot fetch configmap for oauth2.client_id: %w", err)
+		}
+		p, ok := cm.Data[oauth2.ClientID.ConfigMap.Key]
+		if !ok {
+			return nil, fmt.Errorf("cannot find expected key=%s at oauth2.client_id configmap=%s", oauth2.ClientID.ConfigMap.Key, oauth2.ClientID.ConfigMap.Name)
+		}
+		r = append(r, yaml.MapItem{Key: "client_id", Value: p})
+
+	case oauth2.ClientID.Secret != nil:
+		p, err := cb.fetchSecretValue(oauth2.ClientID.Secret)
+		if err != nil {
+			return nil, fmt.Errorf("cannot fetch secret value for oauth2.client_id: %w", err)
+		}
+		r = append(r, yaml.MapItem{Key: "client_id", Value: string(p)})
+	}
+	if len(oauth2.EndpointParams) > 0 {
+		r = append(r, yaml.MapItem{Key: "endpoint_params", Value: orderedYAMLMAp(oauth2.EndpointParams)})
+	}
+	if len(oauth2.Scopes) > 0 {
+		r = append(r, yaml.MapItem{Key: "scopes", Value: oauth2.Scopes})
+	}
+	if len(oauth2.ClientSecretFile) > 0 {
+		r = append(r, yaml.MapItem{
+			Key:   "client_secret_file",
+			Value: oauth2.ClientSecretFile,
+		})
+	}
+	if len(oauth2.TokenURL) > 0 {
+		r = append(r, yaml.MapItem{Key: "token_url", Value: oauth2.TokenURL})
+	}
+
 	return r, nil
 }
 
@@ -1285,6 +1383,35 @@ func (cb *configBuilder) buildBasicAuth(basicAuth *vmv1beta1.BasicAuth) (yaml.Ma
 	return r, nil
 }
 
+func (cb *configBuilder) buildAuthorization(authCfg *vmv1beta1.Authorization) (yaml.MapSlice, error) {
+	var r yaml.MapSlice
+
+	if len(authCfg.Type) > 0 {
+		r = append(r, yaml.MapItem{
+			Key:   "type",
+			Value: authCfg.Type,
+		})
+	}
+	if authCfg.Credentials != nil {
+		hv, err := cb.fetchSecretValue(authCfg.Credentials)
+		if err != nil {
+			return nil, fmt.Errorf("cannot fetch credentials secret value: %w", err)
+		}
+		r = append(r, yaml.MapItem{
+			Key:   "credentials",
+			Value: string(hv),
+		})
+	}
+	if len(authCfg.CredentialsFile) > 0 {
+		r = append(r, yaml.MapItem{
+			Key:   "credentials_file",
+			Value: authCfg.CredentialsFile,
+		})
+	}
+
+	return r, nil
+}
+
 func parseURL(s string) error {
 	u, err := url.Parse(s)
 	if err != nil {
@@ -1299,7 +1426,7 @@ func parseURL(s string) error {
 	return nil
 }
 
-func fetchSecretValue(ctx context.Context, rclient client.Client, ns string, selector *v1.SecretKeySelector, sm map[string]*v1.Secret) ([]byte, error) {
+func fetchSecretValue(ctx context.Context, rclient client.Client, ns string, selector *corev1.SecretKeySelector, sm map[string]*corev1.Secret) ([]byte, error) {
 	var s corev1.Secret
 	if existSecret, ok := sm[selector.Name]; ok {
 		s = *existSecret
@@ -1312,7 +1439,7 @@ func fetchSecretValue(ctx context.Context, rclient client.Client, ns string, sel
 	return nil, fmt.Errorf("secret key=%q not exists at secret=%q", selector.Key, selector.Name)
 }
 
-func secretSelectorToAssetKey(selector *v1.SecretKeySelector) string {
+func secretSelectorToAssetKey(selector *corev1.SecretKeySelector) string {
 	return fmt.Sprintf("%s_%s", selector.Name, selector.Key)
 }
 
@@ -1325,7 +1452,7 @@ func buildGossipConfigYAML(ctx context.Context, rclient client.Client, vmaCR *vm
 	gossipCfg := vmaCR.Spec.GossipConfig
 	if gossipCfg.TLSServerConfig != nil {
 		var tlsCfg yaml.MapSlice
-		secretMap := make(map[string]*v1.Secret)
+		secretMap := make(map[string]*corev1.Secret)
 		tlsAssetsServerDir := tlsAssetsDir + "/gossip/server/"
 		if gossipCfg.TLSServerConfig.ClientCASecretRef != nil {
 			data, err := fetchSecretValue(ctx, rclient, vmaCR.Namespace, gossipCfg.TLSServerConfig.ClientCASecretRef, secretMap)
@@ -1390,7 +1517,7 @@ func buildGossipConfigYAML(ctx context.Context, rclient client.Client, vmaCR *vm
 
 	if gossipCfg.TLSClientConfig != nil {
 		var tlsCfg yaml.MapSlice
-		secretMap := make(map[string]*v1.Secret)
+		secretMap := make(map[string]*corev1.Secret)
 		tlsAssetsClientDir := tlsAssetsDir + "/gossip/client/"
 		if gossipCfg.TLSClientConfig.CASecretRef != nil {
 			data, err := fetchSecretValue(ctx, rclient, vmaCR.Namespace, gossipCfg.TLSClientConfig.CASecretRef, secretMap)
@@ -1469,7 +1596,7 @@ func buildWebServerConfigYAML(ctx context.Context, rclient client.Client, vmaCR 
 	}
 	if webCfg.TLSServerConfig != nil {
 		var tlsCfg yaml.MapSlice
-		secretMap := make(map[string]*v1.Secret)
+		secretMap := make(map[string]*corev1.Secret)
 		tlsAssetsServerDir := tlsAssetsDir + "/web/server/"
 		if webCfg.TLSServerConfig.ClientCASecretRef != nil {
 			data, err := fetchSecretValue(ctx, rclient, vmaCR.Namespace, webCfg.TLSServerConfig.ClientCASecretRef, secretMap)

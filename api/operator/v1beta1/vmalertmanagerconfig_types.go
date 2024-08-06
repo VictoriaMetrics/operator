@@ -19,9 +19,8 @@ package v1beta1
 import (
 	"encoding/json"
 	"fmt"
-	"reflect"
-	"strings"
 
+	amcfg "github.com/prometheus/alertmanager/config"
 	"gopkg.in/yaml.v2"
 	v1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -29,37 +28,33 @@ import (
 )
 
 // VMAlertmanagerConfigSpec defines configuration for VMAlertmanagerConfig
+// it must reference only locally defined objects
 type VMAlertmanagerConfigSpec struct {
 	// Route definition for alertmanager, may include nested routes.
 	Route *Route `json:"route"`
-	// Receivers defines alert receivers.
-	// without defined Route, receivers will be skipped.
+	// Receivers defines alert receivers
 	Receivers []Receiver `json:"receivers"`
 	// InhibitRules will only apply for alerts matching
 	// the resource's namespace.
 	// +optional
-	InhibitRules []InhibitRule `json:"inhibit_rules,omitempty"`
+	InhibitRules []InhibitRule `json:"inhibit_rules,omitempty" yaml:"inhibit_rules,omitempty"`
 
-	// MuteTimeInterval - global mute time
-	// See https://prometheus.io/docs/alerting/latest/configuration/#mute_time_interval
+	// TimeIntervals defines named interval for active/mute notifications interval
+	// See https://prometheus.io/docs/alerting/latest/configuration/#time_interval
 	// +optional
-	MutTimeIntervals []MuteTimeInterval `json:"mute_time_intervals,omitempty"`
+	TimeIntervals []TimeIntervals `json:"time_intervals,omitempty" yaml:"time_intervals,omitempty"`
 	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
-	// TimeIntervals modern config option, use it instead of  mute_time_intervals
-	// +optional
-	TimeIntervals []MuteTimeInterval `json:"time_intervals,omitempty"`
-
-	ParsingError string `json:"-,omitempty" yaml:"-,omitempty"`
+	ParsingError string `json:"-" yaml:"-"`
 }
 
-// MuteTimeInterval for alerts
-type MuteTimeInterval struct {
+// TimeIntervals for alerts
+type TimeIntervals struct {
 	// Name of interval
 	// +required
 	Name string `json:"name,omitempty"`
 	// TimeIntervals interval configuration
 	// +required
-	TimeIntervals []TimeInterval `json:"time_intervals"`
+	TimeIntervals []TimeInterval `json:"time_intervals" yaml:"time_intervals"`
 }
 
 // TimeInterval defines intervals of time
@@ -73,7 +68,7 @@ type TimeInterval struct {
 	// DayOfMonth defines list of numerical days in the month. Days begin at 1. Negative values are also accepted.
 	// for example, ['1:5', '-3:-1']
 	// +optional
-	DaysOfMonth []string `json:"days_of_month,omitempty"`
+	DaysOfMonth []string `json:"days_of_month,omitempty" yaml:"days_of_month,omitempty"`
 	// Months  defines list of calendar months identified by a case-insensitive name (e.g. ‘January’) or numeric 1.
 	// For example, ['1:3', 'may:august', 'december']
 	// +optional
@@ -91,21 +86,32 @@ type TimeInterval struct {
 type TimeRange struct {
 	// StartTime for example  HH:MM
 	// +required
-	StartTime string `json:"start_time"`
+	StartTime string `json:"start_time" yaml:"start_time"`
 	// EndTime for example HH:MM
 	// +required
-	EndTime string `json:"end_time"`
+	EndTime string `json:"end_time" yaml:"end_time"`
 }
 
 // VMAlertmanagerConfigStatus defines the observed state of VMAlertmanagerConfig
 type VMAlertmanagerConfigStatus struct {
-	// ErrorReason describes validation or any other errors.
-	ErrorReason string `json:"reason,omitempty"`
+	// Status defines CRD processing status
+	Status UpdateStatus `json:"status,omitempty"`
+	// LastSyncError contains error message for unsuccessful config generation
+	LastSyncError                   string `json:"lastSyncError,omitempty"`
+	LastErrorParentAlertmanagerName string `json:"lastErrorParentAlertmanagerName,omitempty"`
+	// LastSyncErrorTimestamp defines time when error occured
+	LastSyncErrorTimestamp int64 `json:"lastSyncErrorTimestamp,omitempty"`
+	// CurrentSyncError holds an error occured during reconcile loop
+	CurrentSyncError string `json:"-"`
 }
 
 // VMAlertmanagerConfig is the Schema for the vmalertmanagerconfigs API
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
+// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.status"
+// +kubebuilder:printcolumn:name="VMAlertmanager Error",type="string",JSONPath=".status.lastErrorParentAlertmanagerName"
+// +kubebuilder:printcolumn:name="Sync Error",type="string",JSONPath=".status.lastSyncError"
 // +genclient
 // +k8s:openapi-gen=true
 type VMAlertmanagerConfig struct {
@@ -161,15 +167,16 @@ type Route struct {
 	// Child routes.
 	// https://prometheus.io/docs/alerting/latest/configuration/#route
 	RawRoutes []apiextensionsv1.JSON `json:"routes,omitempty"`
-	// MuteTimeIntervals for alerts
+	// MuteTimeIntervals is a list of interval names that will mute matched alert
 	// +optional
-	MuteTimeIntervals []string `json:"mute_time_intervals,omitempty"`
+	MuteTimeIntervals []string `json:"mute_time_intervals,omitempty" yaml:"mute_time_intervals,omitempty"`
 	// ActiveTimeIntervals Times when the route should be active
 	// These must match the name at time_intervals
 	// +optional
-	ActiveTimeIntervals []string `json:"active_time_intervals,omitempty"`
+	ActiveTimeIntervals []string `json:"active_time_intervals,omitempty" yaml:"active_time_intervals,omitempty"`
 }
 
+// SubRoute alias for Route, its needed to proper use json parsing with raw input
 type SubRoute Route
 
 func parseNestedRoutes(src *Route) error {
@@ -197,10 +204,12 @@ func (cr *VMAlertmanagerConfig) UnmarshalJSON(src []byte) error {
 		cr.Spec.ParsingError = fmt.Sprintf("cannot parse alertmanager config: %s, err: %s", string(src), err)
 		return nil
 	}
+
 	if err := parseNestedRoutes(cr.Spec.Route); err != nil {
 		cr.Spec.ParsingError = fmt.Sprintf("cannot parse routes for alertmanager config: %s at namespace: %s, err: %s", cr.Name, cr.Namespace, err)
 		return nil
 	}
+
 	return nil
 }
 
@@ -232,66 +241,68 @@ type Receiver struct {
 	Name string `json:"name"`
 	// EmailConfigs defines email notification configurations.
 	// +optional
-	EmailConfigs []EmailConfig `json:"email_configs,omitempty"`
+	EmailConfigs []EmailConfig `json:"email_configs,omitempty" yaml:"email_configs,omitempty"`
 	// PagerDutyConfigs defines pager duty notification configurations.
 	// +optional
-	PagerDutyConfigs []PagerDutyConfig `json:"pagerduty_configs,omitempty"`
+	PagerDutyConfigs []PagerDutyConfig `json:"pagerduty_configs,omitempty" yaml:"pagerduty_configs,omitempty"`
 	// PushoverConfigs defines push over notification configurations.
 	// +optional
-	PushoverConfigs []PushoverConfig `json:"pushover_configs,omitempty"`
+	PushoverConfigs []PushoverConfig `json:"pushover_configs,omitempty" yaml:"pushover_configs,omitempty"`
 	// SlackConfigs defines slack notification configurations.
 	// +optional
-	SlackConfigs []SlackConfig `json:"slack_configs,omitempty"`
+	SlackConfigs []SlackConfig `json:"slack_configs,omitempty" yaml:"slack_configs,omitempty"`
 	// OpsGenieConfigs defines ops genie notification configurations.
 	// +optional
-	OpsGenieConfigs []OpsGenieConfig `json:"opsgenie_configs,omitempty"`
+	OpsGenieConfigs []OpsGenieConfig `json:"opsgenie_configs,omitempty" yaml:"opsgenie_configs,omitempty"`
 	// WebhookConfigs defines webhook notification configurations.
 	// +optional
-	WebhookConfigs []WebhookConfig `json:"webhook_configs,omitempty"`
+	WebhookConfigs []WebhookConfig `json:"webhook_configs,omitempty" yaml:"webhook_configs,omitempty"`
 
 	// VictorOpsConfigs defines victor ops notification configurations.
 	// +optional
-	VictorOpsConfigs []VictorOpsConfig `json:"victorops_configs,omitempty"`
+	VictorOpsConfigs []VictorOpsConfig `json:"victorops_configs,omitempty" yaml:"victorops_configs,omitempty"`
 	// WeChatConfigs defines wechat notification configurations.
 	// +optional
-	WeChatConfigs []WeChatConfig `json:"wechat_configs,omitempty"`
+	WeChatConfigs []WeChatConfig `json:"wechat_configs,omitempty" yaml:"wechat_configs,omitempty"`
 	// +optional
-	TelegramConfigs []TelegramConfig `json:"telegram_configs,omitempty"`
+	TelegramConfigs []TelegramConfig `json:"telegram_configs,omitempty" yaml:"telegram_configs,omitempty"`
 	// +optional
-	MSTeamsConfigs []MSTeamsConfig `json:"msteams_configs,omitempty"`
+	MSTeamsConfigs []MSTeamsConfig `json:"msteams_configs,omitempty" yaml:"msteams_configs,omitempty"`
 	// +optional
-	DiscordConfigs []DiscordConfig `json:"discord_configs,omitempty"`
+	DiscordConfigs []DiscordConfig `json:"discord_configs,omitempty" yaml:"discord_configs,omitempty"`
 	// +optional
-	SNSConfigs []SnsConfig `json:"sns_configs,omitempty"`
+	SNSConfigs []SnsConfig `json:"sns_configs,omitempty" yaml:"sns_configs,omitempty"`
 	// +optional
-	WebexConfigs []WebexConfig `json:"webex_configs,omitempty"`
+	WebexConfigs []WebexConfig `json:"webex_configs,omitempty" yaml:"webex_configs,omitempty"`
 }
 
+// TelegramConfig configures notification via telegram
+// https://prometheus.io/docs/alerting/latest/configuration/#telegram_config
 type TelegramConfig struct {
 	// SendResolved controls notify about resolved alerts.
 	// +optional
-	SendResolved *bool `json:"send_resolved,omitempty"`
+	SendResolved *bool `json:"send_resolved,omitempty" yaml:"send_resolved,omitempty"`
 	// APIUrl the Telegram API URL i.e. https://api.telegram.org.
 	// +optional
-	APIUrl string `json:"api_url,omitempty"`
+	APIUrl string `json:"api_url,omitempty" yaml:"api_url,omitempty"`
 	// BotToken token for the bot
 	// https://core.telegram.org/bots/api
-	BotToken *v1.SecretKeySelector `json:"bot_token"`
+	BotToken *v1.SecretKeySelector `json:"bot_token" yaml:"bot_token"`
 	// ChatID is ID of the chat where to send the messages.
-	ChatID int `json:"chat_id"`
+	ChatID int `json:"chat_id" yaml:"chat_id"`
 	// Message is templated message
 	// +optional
 	Message string `json:"message,omitempty"`
 	// DisableNotifications
 	// +optional
-	DisableNotifications *bool `json:"disable_notifications,omitempty"`
+	DisableNotifications *bool `json:"disable_notifications,omitempty" yaml:"disable_notifications,omitempty"`
 	// ParseMode for telegram message,
 	// supported values are MarkdownV2, Markdown, Markdown and empty string for plain text.
 	// +optional
-	ParseMode string `json:"parse_mode,omitempty"`
+	ParseMode string `json:"parse_mode,omitempty" yaml:"parse_mode"`
 	// HTTP client configuration.
 	// +optional
-	HTTPConfig *HTTPConfig `json:"http_config,omitempty"`
+	HTTPConfig *HTTPConfig `json:"http_config,omitempty" yaml:"http_config,omitempty"`
 }
 
 // WebhookConfig configures notifications via a generic receiver supporting the webhook payload.
@@ -299,7 +310,7 @@ type TelegramConfig struct {
 type WebhookConfig struct {
 	// SendResolved controls notify about resolved alerts.
 	// +optional
-	SendResolved *bool `json:"send_resolved,omitempty"`
+	SendResolved *bool `json:"send_resolved,omitempty" yaml:"send_resolved,omitempty"`
 	// URL to send requests to,
 	// one of `urlSecret` and `url` must be defined.
 	// +optional
@@ -308,14 +319,14 @@ type WebhookConfig struct {
 	// It must contain the webhook URL.
 	// one of `urlSecret` and `url` must be defined.
 	// +optional
-	URLSecret *v1.SecretKeySelector `json:"url_secret,omitempty"`
+	URLSecret *v1.SecretKeySelector `json:"url_secret,omitempty" yaml:"url_secret,omitempty"`
 	// HTTP client configuration.
 	// +optional
-	HTTPConfig *HTTPConfig `json:"http_config,omitempty"`
+	HTTPConfig *HTTPConfig `json:"http_config,omitempty" yaml:"http_config,omitempty"`
 	// Maximum number of alerts to be sent per webhook message. When 0, all alerts are included.
 	// +optional
 	// +kubebuilder:validation:Minimum=0
-	MaxAlerts int32 `json:"max_alerts,omitempty"`
+	MaxAlerts int32 `json:"max_alerts,omitempty" yaml:"max_alerts,omitempty"`
 }
 
 // WeChatConfig configures notifications via WeChat.
@@ -323,68 +334,72 @@ type WebhookConfig struct {
 type WeChatConfig struct {
 	// SendResolved controls notify about resolved alerts.
 	// +optional
-	SendResolved *bool `json:"send_resolved,omitempty"`
+	SendResolved *bool `json:"send_resolved,omitempty" yaml:"send_resolved,omitempty"`
 	// The secret's key that contains the WeChat API key.
 	// The secret needs to be in the same namespace as the AlertmanagerConfig
-	// object and accessible by the Prometheus Operator.
+	// fallback to global alertmanager setting if empty
 	// +optional
-	APISecret *v1.SecretKeySelector `json:"api_secret,omitempty"`
+	APISecret *v1.SecretKeySelector `json:"api_secret,omitempty" yaml:"api_secret,omitempty"`
 	// The WeChat API URL.
+	// fallback to global alertmanager setting if empty
 	// +optional
-	APIURL string `json:"api_url,omitempty"`
+	APIURL string `json:"api_url,omitempty" yaml:"api_url,omitempty"`
 	// The corp id for authentication.
+	// fallback to global alertmanager setting if empty
 	// +optional
-	CorpID string `json:"corp_id,omitempty"`
+	CorpID string `json:"corp_id,omitempty" yaml:"corp_id,omitempty"`
 	// +optional
-	AgentID string `json:"agent_id,omitempty"`
+	AgentID string `json:"agent_id,omitempty" yaml:"agent_id,omitempty"`
 	// +optional
-	ToUser string `json:"to_user,omitempty"`
+	ToUser string `json:"to_user,omitempty" yaml:"to_user,omitempty"`
 	// +optional
-	ToParty string `json:"to_party,omitempty"`
+	ToParty string `json:"to_party,omitempty" yaml:"to_party,omitempty"`
 	// +optional
-	ToTag string `json:"to_tag,omitempty"`
+	ToTag string `json:"to_tag,omitempty" yaml:"to_tag,omitempty"`
 	// API request data as defined by the WeChat API.
 	Message string `json:"message,omitempty"`
 	// +optional
-	MessageType string `json:"message_type,omitempty"`
+	MessageType string `json:"message_type,omitempty" yaml:"message_type,omitempty"`
 	// HTTP client configuration.
 	// +optional
-	HTTPConfig *HTTPConfig `json:"http_config,omitempty"`
+	HTTPConfig *HTTPConfig `json:"http_config,omitempty" yaml:"http_config,omitempty"`
 }
 
 // EmailConfig configures notifications via Email.
 type EmailConfig struct {
 	// SendResolved controls notify about resolved alerts.
 	// +optional
-	SendResolved *bool `json:"send_resolved,omitempty"`
+	SendResolved *bool `json:"send_resolved,omitempty" yaml:"send_resolved,omitempty"`
 	// The email address to send notifications to.
 	// +optional
 	To string `json:"to,omitempty"`
 	// The sender address.
+	// fallback to global setting if empty
 	// +optional
 	From string `json:"from,omitempty"`
 	// The hostname to identify to the SMTP server.
 	// +optional
 	Hello string `json:"hello,omitempty"`
 	// The SMTP host through which emails are sent.
+	// fallback to global setting if empty
 	// +optional
 	Smarthost string `json:"smarthost,omitempty"`
 	// The username to use for authentication.
 	// +optional
-	AuthUsername string `json:"auth_username,omitempty"`
+	AuthUsername string `json:"auth_username,omitempty" yaml:"auth_username,omitempty"`
 	// AuthPassword defines secret name and key at CRD namespace.
 	// +optional
-	AuthPassword *v1.SecretKeySelector `json:"auth_password,omitempty"`
+	AuthPassword *v1.SecretKeySelector `json:"auth_password,omitempty" yaml:"auth_password,omitempty"`
 	// AuthSecret defines secrent name and key at CRD namespace.
 	// It must contain the CRAM-MD5 secret.
 	// +optional
-	AuthSecret *v1.SecretKeySelector `json:"auth_secret,omitempty"`
+	AuthSecret *v1.SecretKeySelector `json:"auth_secret,omitempty" yaml:"auth_secret,omitempty"`
 	// The identity to use for authentication.
 	// +optional
-	AuthIdentity string `json:"auth_identity,omitempty"`
+	AuthIdentity string `json:"auth_identity,omitempty" yaml:"auth_identity,omitempty"`
 	// Further headers email header key/value pairs. Overrides any headers
 	// previously set by the notification implementation.
-	Headers EmailConfigHeaders `json:"headers,omitempty"`
+	Headers map[string]string `json:"headers,omitempty"`
 	// The HTML body of the email notification.
 	// +optional
 	HTML string `json:"html,omitempty"`
@@ -394,45 +409,10 @@ type EmailConfig struct {
 	// The SMTP TLS requirement.
 	// Note that Go does not support unencrypted connections to remote SMTP endpoints.
 	// +optional
-	RequireTLS *bool `json:"require_tls,omitempty"`
+	RequireTLS *bool `json:"require_tls,omitempty" yaml:"require_tls,omitempty"`
 	// TLS configuration
 	// +optional
-	TLSConfig *TLSConfig `json:"tls_config,omitempty"`
-}
-
-// EmailConfigHeaders is a map of email headers.
-type EmailConfigHeaders map[string]string
-
-// UnmarshalYAML https://github.com/VictoriaMetrics/operator/issues/609
-func (r *EmailConfigHeaders) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	var raw any
-	if err := unmarshal(&raw); err != nil {
-		return fmt.Errorf("cannot unmarshal email config headers: %w", err)
-	}
-	rawType := reflect.TypeOf(raw)
-	switch rawType.Kind() {
-	case reflect.Map:
-		m := map[string]string{}
-		if err := unmarshal(&m); err != nil {
-			return err
-		}
-		*r = m
-		return nil
-	case reflect.Slice, reflect.Array:
-		*r = map[string]string{}
-		a := make([]KeyValue, 0)
-		if err := unmarshal(&a); err != nil {
-			return err
-		}
-		for _, kv := range a {
-			(*r)[kv.Key] = kv.Value
-		}
-		return nil
-	default:
-		return &yaml.TypeError{Errors: []string{
-			fmt.Sprintf("cannot unmarshal %#v into Go struct field EmailConfig.Headers of type %v", raw, rawType),
-		}}
-	}
+	TLSConfig *TLSConfig `json:"tls_config,omitempty" yaml:"tls_config,omitempty"`
 }
 
 // VictorOpsConfig configures notifications via VictorOps.
@@ -440,35 +420,36 @@ func (r *EmailConfigHeaders) UnmarshalYAML(unmarshal func(interface{}) error) er
 type VictorOpsConfig struct {
 	// SendResolved controls notify about resolved alerts.
 	// +optional
-	SendResolved *bool `json:"send_resolved,omitempty"`
+	SendResolved *bool `json:"send_resolved,omitempty" yaml:"send_resolved,omitempty"`
 	// The secret's key that contains the API key to use when talking to the VictorOps API.
 	// It must be at them same namespace as CRD
+	// fallback to global setting if empty
 	// +optional
-	APIKey *v1.SecretKeySelector `json:"api_key,omitempty"`
+	APIKey *v1.SecretKeySelector `json:"api_key,omitempty" yaml:"api_key,omitempty"`
 	// The VictorOps API URL.
 	// +optional
-	APIURL string `json:"api_url,omitempty"`
+	APIURL string `json:"api_url,omitempty" yaml:"api_url,omitempty"`
 	// A key used to map the alert to a team.
-	RoutingKey string `json:"routing_key"`
+	RoutingKey string `json:"routing_key" yaml:"routing_key"`
 	// Describes the behavior of the alert (CRITICAL, WARNING, INFO).
 	// +optional
-	MessageType string `json:"message_type,omitempty"`
+	MessageType string `json:"message_type,omitempty" yaml:"message_type,omitempty"`
 	// Contains summary of the alerted problem.
 	// +optional
-	EntityDisplayName string `json:"entity_display_name,omitempty"`
+	EntityDisplayName string `json:"entity_display_name,omitempty" yaml:"entity_display_name,omitempty"`
 	// Contains long explanation of the alerted problem.
 	// +optional
-	StateMessage string `json:"state_message,omitempty"`
+	StateMessage string `json:"state_message,omitempty" yaml:"state_message,omitempty"`
 	// The monitoring tool the state message is from.
 	// +optional
-	MonitoringTool string `json:"monitoring_tool,omitempty"`
+	MonitoringTool string `json:"monitoring_tool,omitempty" yaml:"monitoring_tool,omitempty"`
 	// The HTTP client's configuration.
 	// +optional
-	HTTPConfig *HTTPConfig `json:"http_config,omitempty"`
+	HTTPConfig *HTTPConfig `json:"http_config,omitempty" yaml:"http_config,omitempty"`
 	// Adds optional custom fields
 	// https://github.com/prometheus/alertmanager/blob/v0.24.0/config/notifiers.go#L537
 	// +optional
-	CustomFields map[string]string `json:"custom_fields,omitempty"`
+	CustomFields map[string]string `json:"custom_fields,omitempty" yaml:"custom_fields,omitempty"`
 }
 
 // PushoverConfig configures notifications via Pushover.
@@ -476,10 +457,10 @@ type VictorOpsConfig struct {
 type PushoverConfig struct {
 	// SendResolved controls notify about resolved alerts.
 	// +optional
-	SendResolved *bool `json:"send_resolved,omitempty"`
+	SendResolved *bool `json:"send_resolved,omitempty" yaml:"send_resolved,omitempty"`
 	// The secret's key that contains the recipient user’s user key.
 	// It must be at them same namespace as CRD
-	UserKey *v1.SecretKeySelector `json:"user_key,omitempty"`
+	UserKey *v1.SecretKeySelector `json:"user_key,omitempty" yaml:"user_key,omitempty"`
 	// The secret's key that contains the registered application’s API token, see https://pushover.net/apps.
 	// It must be at them same namespace as CRD
 	Token *v1.SecretKeySelector `json:"token,omitempty"`
@@ -494,7 +475,7 @@ type PushoverConfig struct {
 	URL string `json:"url,omitempty"`
 	// A title for supplementary URL, otherwise just the URL is shown
 	// +optional
-	URLTitle string `json:"url_title,omitempty"`
+	URLTitle string `json:"url_title,omitempty" yaml:"url_title,omitempty"`
 	// The name of one of the sounds supported by device clients to override the user's default sound choice
 	// +optional
 	Sound string `json:"sound,omitempty"`
@@ -514,7 +495,7 @@ type PushoverConfig struct {
 	HTML bool `json:"html,omitempty"`
 	// HTTP client configuration.
 	// +optional
-	HTTPConfig *HTTPConfig `json:"http_config,omitempty"`
+	HTTPConfig *HTTPConfig `json:"http_config,omitempty" yaml:"http_config,omitempty"`
 }
 
 // SlackConfig configures notifications via Slack.
@@ -522,11 +503,12 @@ type PushoverConfig struct {
 type SlackConfig struct {
 	// SendResolved controls notify about resolved alerts.
 	// +optional
-	SendResolved *bool `json:"send_resolved,omitempty"`
+	SendResolved *bool `json:"send_resolved,omitempty" yaml:"send_resolved,omitempty"`
 	// The secret's key that contains the Slack webhook URL.
 	// It must be at them same namespace as CRD
+	// fallback to global setting if empty
 	// +optional
-	APIURL *v1.SecretKeySelector `json:"api_url,omitempty"`
+	APIURL *v1.SecretKeySelector `json:"api_url,omitempty" yaml:"api_url,omitempty"`
 	// The channel or user to send notifications to.
 	// +optional
 	Channel string `json:"channel,omitempty"`
@@ -537,7 +519,7 @@ type SlackConfig struct {
 	// +optional
 	Title string `json:"title,omitempty"`
 	// +optional
-	TitleLink string `json:"title_link,omitempty"`
+	TitleLink string `json:"title_link,omitempty" yaml:"title_link,omitempty"`
 	// +optional
 	Pretext string `json:"pretext,omitempty"`
 	// +optional
@@ -546,31 +528,31 @@ type SlackConfig struct {
 	// +optional
 	Fields []SlackField `json:"fields,omitempty"`
 	// +optional
-	ShortFields bool `json:"short_fields,omitempty"`
+	ShortFields bool `json:"short_fields,omitempty" yaml:"short_fields,omitempty"`
 	// +optional
 	Footer string `json:"footer,omitempty"`
 	// +optional
 	Fallback string `json:"fallback,omitempty"`
 	// +optional
-	CallbackID string `json:"callback_id,omitempty"`
+	CallbackID string `json:"callback_id,omitempty" yaml:"callback_id,omitempty"`
 	// +optional
-	IconEmoji string `json:"icon_emoji,omitempty"`
+	IconEmoji string `json:"icon_emoji,omitempty" yaml:"icon_emoji,omitempty"`
 	// +optional
-	IconURL string `json:"icon_url,omitempty"`
+	IconURL string `json:"icon_url,omitempty" yaml:"icon_url,omitempty"`
 	// +optional
-	ImageURL string `json:"image_url,omitempty"`
+	ImageURL string `json:"image_url,omitempty" yaml:"image_url,omitempty"`
 	// +optional
-	ThumbURL string `json:"thumb_url,omitempty"`
+	ThumbURL string `json:"thumb_url,omitempty" yaml:"thumb_url,omitempty"`
 	// +optional
-	LinkNames bool `json:"link_names,omitempty"`
+	LinkNames bool `json:"link_names,omitempty" yaml:"link_names,omitempty"`
 	// +optional
-	MrkdwnIn []string `json:"mrkdwn_in,omitempty"`
+	MrkdwnIn []string `json:"mrkdwn_in,omitempty" yaml:"mrkdwn_in,omitempty"`
 	// A list of Slack actions that are sent with each notification.
 	// +optional
 	Actions []SlackAction `json:"actions,omitempty"`
 	// HTTP client configuration.
 	// +optional
-	HTTPConfig *HTTPConfig `json:"http_config,omitempty"`
+	HTTPConfig *HTTPConfig `json:"http_config,omitempty" yaml:"http_config,omitempty"`
 }
 
 // SlackField configures a single Slack field that is sent with each notification.
@@ -621,9 +603,9 @@ type SlackConfirmationField struct {
 	// +optional
 	Title string `json:"title,omitempty"`
 	// +optional
-	OkText string `json:"ok_text,omitempty"`
+	OkText string `json:"ok_text,omitempty" yaml:"ok_text,omitempty"`
 	// +optional
-	DismissText string `json:"dismiss_text,omitempty"`
+	DismissText string `json:"dismiss_text,omitempty" yaml:"dismiss_text,omitempty"`
 }
 
 // OpsGenieConfig configures notifications via OpsGenie.
@@ -631,14 +613,15 @@ type SlackConfirmationField struct {
 type OpsGenieConfig struct {
 	// SendResolved controls notify about resolved alerts.
 	// +optional
-	SendResolved *bool `json:"send_resolved,omitempty"`
+	SendResolved *bool `json:"send_resolved,omitempty" yaml:"send_resolved,omitempty"`
 	// The secret's key that contains the OpsGenie API key.
 	// It must be at them same namespace as CRD
+	// fallback to global setting if empty
 	// +optional
-	APIKey *v1.SecretKeySelector `json:"api_key,omitempty"`
+	APIKey *v1.SecretKeySelector `json:"api_key,omitempty" yaml:"api_key,omitempty"`
 	// The URL to send OpsGenie API requests to.
 	// +optional
-	APIURL string `json:"apiURL,omitempty"`
+	APIURL string `json:"apiURL,omitempty" yaml:"apiURL,omitempty"`
 	// Alert text limited to 130 characters.
 	// +optional
 	Message string `json:"message,omitempty"`
@@ -659,7 +642,7 @@ type OpsGenieConfig struct {
 	Priority string `json:"priority,omitempty"`
 	// A set of arbitrary key/value pairs that provide further detail about the incident.
 	// +optional
-	Details ReceiverConfigDetails `json:"details,omitempty"`
+	Details map[string]string `json:"details,omitempty"`
 	// List of responders responsible for notifications.
 	// +optional
 	Responders []OpsGenieConfigResponder `json:"responders,omitempty"`
@@ -669,10 +652,10 @@ type OpsGenieConfig struct {
 	Actions string `json:"actions,omitempty"`
 	// Whether to update message and description of the alert in OpsGenie if it already exists
 	// By default, the alert is never updated in OpsGenie, the new message only appears in activity log.
-	UpdateAlerts bool `json:"update_alerts,omitempty"`
+	UpdateAlerts bool `json:"update_alerts,omitempty" yaml:"update_alerts,omitempty"`
 	// HTTP client configuration.
 	// +optional
-	HTTPConfig *HTTPConfig `json:"http_config,omitempty"`
+	HTTPConfig *HTTPConfig `json:"http_config,omitempty" yaml:"http_config,omitempty"`
 }
 
 // OpsGenieConfigResponder defines a responder to an incident.
@@ -698,18 +681,18 @@ type OpsGenieConfigResponder struct {
 type PagerDutyConfig struct {
 	// SendResolved controls notify about resolved alerts.
 	// +optional
-	SendResolved *bool `json:"send_resolved,omitempty"`
+	SendResolved *bool `json:"send_resolved,omitempty" yaml:"send_resolved,omitempty"`
 	// The secret's key that contains the PagerDuty integration key (when using
 	// Events API v2). Either this field or `serviceKey` needs to be defined.
 	// It must be at them same namespace as CRD
 	// +optional
-	RoutingKey *v1.SecretKeySelector `json:"routing_key,omitempty"`
+	RoutingKey *v1.SecretKeySelector `json:"routing_key,omitempty" yaml:"routing_key,omitempty"`
 	// The secret's key that contains the PagerDuty service key (when using
 	// integration type "Prometheus"). Either this field or `routingKey` needs to
 	// be defined.
 	// It must be at them same namespace as CRD
 	// +optional
-	ServiceKey *v1.SecretKeySelector `json:"service_key,omitempty"`
+	ServiceKey *v1.SecretKeySelector `json:"service_key,omitempty" yaml:"service_key,omitempty"`
 	// The URL to send requests to.
 	// +optional
 	URL string `json:"url,omitempty"`
@@ -718,7 +701,7 @@ type PagerDutyConfig struct {
 	Client string `json:"client,omitempty"`
 	// Backlink to the sender of notification.
 	// +optional
-	ClientURL string `json:"client_url,omitempty"`
+	ClientURL string `json:"client_url,omitempty" yaml:"client_url,omitempty"`
 	// Images to attach to the incident.
 	// +optional
 	Images []ImageConfig `json:"images,omitempty"`
@@ -742,37 +725,10 @@ type PagerDutyConfig struct {
 	Component string `json:"component,omitempty"`
 	// Arbitrary key/value pairs that provide further detail about the incident.
 	// +optional
-	Details ReceiverConfigDetails `json:"details,omitempty"`
+	Details map[string]string `json:"details,omitempty"`
 	// HTTP client configuration.
 	// +optional
-	HTTPConfig *HTTPConfig `json:"http_config,omitempty"`
-}
-
-// PagerDutyDetails details for config
-type ReceiverConfigDetails map[string]string
-
-// UnmarshalYAML implements interface
-func (pdd *ReceiverConfigDetails) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	pddm := make(map[string]string)
-	if err := unmarshal(&pddm); err != nil {
-		if !strings.Contains(err.Error(), "seq into map") {
-			return err
-		}
-		// fallback to the prometheus-operator data format
-		type pagerDutyPromDetails struct {
-			Key   string
-			Value string
-		}
-		var promPDD []pagerDutyPromDetails
-		if err := unmarshal(&promPDD); err != nil {
-			return fmt.Errorf("cannot parse pager duty details :%w", err)
-		}
-		for _, kv := range promPDD {
-			pddm[kv.Key] = kv.Value
-		}
-	}
-	*pdd = pddm
-	return nil
+	HTTPConfig *HTTPConfig `json:"http_config,omitempty" yaml:"http_config,omitempty"`
 }
 
 // ImageConfig is used to attach images to the incident.
@@ -797,16 +753,16 @@ type LinkConfig struct {
 type MSTeamsConfig struct {
 	// SendResolved controls notify about resolved alerts.
 	// +optional
-	SendResolved *bool `json:"send_resolved,omitempty"`
+	SendResolved *bool `json:"send_resolved,omitempty" yaml:"send_resolved,omitempty"`
 	// The incoming webhook URL
 	// one of `urlSecret` and `url` must be defined.
 	// +optional
-	URL *string `json:"webhook_url,omitempty"`
+	URL *string `json:"webhook_url,omitempty" yaml:"webhook_url,omitempty"`
 	// URLSecret defines secret name and key at the CRD namespace.
 	// It must contain the webhook URL.
 	// one of `urlSecret` and `url` must be defined.
 	// +optional
-	URLSecret *v1.SecretKeySelector `json:"webhook_url_secret,omitempty"`
+	URLSecret *v1.SecretKeySelector `json:"webhook_url_secret,omitempty" yaml:"webhook_url_secret,omitempty"`
 	// The title of the teams notification.
 	// +optional
 	Title string `json:"title,omitempty"`
@@ -815,22 +771,22 @@ type MSTeamsConfig struct {
 	Text string `json:"text,omitempty"`
 	// HTTP client configuration.
 	// +optional
-	HTTPConfig *HTTPConfig `json:"http_config,omitempty"`
+	HTTPConfig *HTTPConfig `json:"http_config,omitempty" yaml:"http_config,omitempty"`
 }
 
 type DiscordConfig struct {
 	// SendResolved controls notify about resolved alerts.
 	// +optional
-	SendResolved *bool `json:"send_resolved,omitempty"`
+	SendResolved *bool `json:"send_resolved,omitempty" yaml:"send_resolved,omitempty"`
 	// The discord webhook URL
 	// one of `urlSecret` and `url` must be defined.
 	// +optional
-	URL *string `json:"webhook_url,omitempty"`
+	URL *string `json:"webhook_url,omitempty" yaml:"webhook_url,omitempty"`
 	// URLSecret defines secret name and key at the CRD namespace.
 	// It must contain the webhook URL.
 	// one of `urlSecret` and `url` must be defined.
 	// +optional
-	URLSecret *v1.SecretKeySelector `json:"webhook_url_secret,omitempty"`
+	URLSecret *v1.SecretKeySelector `json:"webhook_url_secret,omitempty" yaml:"webhook_url_secret,omitempty"`
 	// The message title template
 	// +optional
 	Title string `json:"title,omitempty"`
@@ -839,31 +795,31 @@ type DiscordConfig struct {
 	Message string `json:"message,omitempty"`
 	// HTTP client configuration.
 	// +optional
-	HTTPConfig *HTTPConfig `json:"http_config,omitempty"`
+	HTTPConfig *HTTPConfig `json:"http_config,omitempty" yaml:"http_config,omitempty"`
 }
 
 type SnsConfig struct {
 	// SendResolved controls notify about resolved alerts.
 	// +optional
-	SendResolved *bool `json:"send_resolved,omitempty"`
+	SendResolved *bool `json:"send_resolved,omitempty" yaml:"send_resolved,omitempty"`
 	// The api URL
 	// +optional
-	URL string `json:"api_url,omitempty"`
+	URL string `json:"api_url,omitempty" yaml:"api_url,omitempty"`
 	// Configure the AWS Signature Verification 4 signing process
 	Sigv4 *Sigv4Config `json:"sigv4,omitempty"`
 	// SNS topic ARN, either specify this, phone_number or target_arn
 	// +optional
-	TopicArn string `json:"topic_arn,omitempty"`
+	TopicArn string `json:"topic_arn,omitempty" yaml:"topic_arn,omitempty"`
 	// The subject line if message is delivered to an email endpoint.
 	// +optional
 	Subject string `json:"subject,omitempty"`
 	// Phone number if message is delivered via SMS
 	// Specify this, topic_arn or target_arn
-	PhoneNumber string `json:"phone_number,omitempty"`
+	PhoneNumber string `json:"phone_number,omitempty" yaml:"phone_number,omitempty"`
 	// Mobile platform endpoint ARN if message is delivered via mobile notifications
 	// Specify this, topic_arn or phone_number
 	// +optional
-	TargetArn string `json:"target_arn,omitempty"`
+	TargetArn string `json:"target_arn,omitempty" yaml:"target_arn,omitempty"`
 	// The message content of the SNS notification.
 	// +optional
 	Message string `json:"message,omitempty"`
@@ -872,7 +828,7 @@ type SnsConfig struct {
 	Attributes map[string]string `json:"attributes,omitempty"`
 	// HTTP client configuration.
 	// +optional
-	HTTPConfig *HTTPConfig `json:"http_config,omitempty"`
+	HTTPConfig *HTTPConfig `json:"http_config,omitempty" yaml:"http_config,omitempty"`
 }
 
 type Sigv4Config struct {
@@ -882,63 +838,79 @@ type Sigv4Config struct {
 	// The AWS API keys. Both access_key and secret_key must be supplied or both must be blank.
 	// If blank the environment variables `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` are used.
 	// +optional
-	AccessKey string `json:"access_key,omitempty"`
+	AccessKey string `json:"access_key,omitempty" yaml:"access_key,omitempty"`
 	// secret key selector to get the keys from a Kubernetes Secret
 	// +optional
-	AccessKeySelector *v1.SecretKeySelector `json:"access_key_selector,omitempty"`
+	AccessKeySelector *v1.SecretKeySelector `json:"access_key_selector,omitempty" yaml:"access_key_selector,omitempty"`
 	// secret key selector to get the keys from a Kubernetes Secret
 	// +optional
-	SecretKey *v1.SecretKeySelector `json:"secret_key_selector,omitempty"`
+	SecretKey *v1.SecretKeySelector `json:"secret_key_selector,omitempty" yaml:"secret_key_selector,omitempty"`
 	// Named AWS profile used to authenticate
 	// +optional
 	Profile string `json:"profile,omitempty"`
 	// AWS Role ARN, an alternative to using AWS API keys
 	// +optional
-	RoleArn string `json:"role_arn,omitempty"`
+	RoleArn string `json:"role_arn,omitempty" yaml:"role_arn,omitempty"`
 }
 
 type WebexConfig struct {
 	// SendResolved controls notify about resolved alerts.
 	// +optional
-	SendResolved *bool `json:"send_resolved,omitempty"`
+	SendResolved *bool `json:"send_resolved,omitempty" yaml:"send_resolved,omitempty"`
 	// The Webex Teams API URL, i.e. https://webexapis.com/v1/messages
 	// +optional
-	URL *string `json:"api_url,omitempty"`
+	URL *string `json:"api_url,omitempty" yaml:"api_url,omitempty"`
 	// The ID of the Webex Teams room where to send the messages
 	// +required
-	RoomId string `json:"room_id,omitempty"`
+	RoomId string `json:"room_id,omitempty" yaml:"room_id,omitempty"`
 	// The message body template
 	// +optional
 	Message string `json:"message,omitempty"`
 	// HTTP client configuration. You must use this configuration to supply the bot token as part of the HTTP `Authorization` header.
 	// +optional
-	HTTPConfig *HTTPConfig `json:"http_config,omitempty"`
+	HTTPConfig *HTTPConfig `json:"http_config,omitempty" yaml:"http_config,omitempty"`
 }
 
-// HTTPConfig defines a client HTTP configuration.
+// HTTPConfig defines a client HTTP configuration for VMAlertmanagerConfig objects
 // See https://prometheus.io/docs/alerting/latest/configuration/#http_config
 type HTTPConfig struct {
-	// TODO oAuth2 support
 	// BasicAuth for the client.
 	// +optional
-	BasicAuth *BasicAuth `json:"basic_auth,omitempty"`
+	BasicAuth *BasicAuth `json:"basic_auth,omitempty" yaml:"basic_auth,omitempty"`
 	// The secret's key that contains the bearer token
 	// It must be at them same namespace as CRD
 	// +optional
-	BearerTokenSecret *v1.SecretKeySelector `json:"bearer_token_secret,omitempty"`
+	BearerTokenSecret *v1.SecretKeySelector `json:"bearer_token_secret,omitempty" yaml:"bearer_token_secret,omitempty"`
 	// BearerTokenFile defines filename for bearer token, it must be mounted to pod.
 	// +optional
-	BearerTokenFile string `json:"bearer_token_file,omitempty"`
+	BearerTokenFile string `json:"bearer_token_file,omitempty" yaml:"bearer_token_file,omitempty"`
 	// TLS configuration for the client.
 	// +optional
-	TLSConfig *TLSConfig `json:"tls_config,omitempty"`
+	TLSConfig *TLSConfig `json:"tls_config,omitempty" yaml:"tls_config,omitempty"`
 	// Optional proxy URL.
 	// +optional
-	ProxyURL string `json:"proxyURL,omitempty"`
+	ProxyURL string `json:"proxyURL,omitempty" yaml:"proxy_url,omitempty"`
+	// Authorization header configuration for the client.
+	// This is mutually exclusive with BasicAuth and is only available starting from Alertmanager v0.22+.
+	// +optional
+	Authorization *Authorization `json:"authorization,omitempty"`
+	// OAuth2 client credentials used to fetch a token for the targets.
+	// +optional
+	OAuth2 *OAuth2 `json:"oauth2,omitempty"`
 }
 
 func (amc *VMAlertmanagerConfig) AsKey() string {
 	return fmt.Sprintf("%s/%s", amc.Namespace, amc.Name)
+}
+
+// ValidateAlertmanagerConfigSpec verifies that provided raw alertmanger configuration is logically valid
+// according to alertmanager config parser
+func ValidateAlertmanagerConfigSpec(srcYAML []byte) error {
+	var cfgForTest amcfg.Config
+	if err := yaml.UnmarshalStrict(srcYAML, &cfgForTest); err != nil {
+		return err
+	}
+	return nil
 }
 
 func init() {

@@ -198,6 +198,7 @@ _Appears in:_
 - [DigitalOceanSDConfig](#digitaloceansdconfig)
 - [Endpoint](#endpoint)
 - [EndpointAuth](#endpointauth)
+- [HTTPConfig](#httpconfig)
 - [HTTPSDConfig](#httpsdconfig)
 - [KubernetesSDConfig](#kubernetessdconfig)
 - [PodMetricsEndpoint](#podmetricsendpoint)
@@ -525,29 +526,16 @@ _Appears in:_
 | `auth_password` | AuthPassword defines secret name and key at CRD namespace. | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | false |
 | `auth_secret` | AuthSecret defines secrent name and key at CRD namespace.<br />It must contain the CRAM-MD5 secret. | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | false |
 | `auth_username` | The username to use for authentication. | _string_ | false |
-| `from` | The sender address. | _string_ | false |
-| `headers` | Further headers email header key/value pairs. Overrides any headers<br />previously set by the notification implementation. | _[EmailConfigHeaders](#emailconfigheaders)_ | true |
+| `from` | The sender address.<br />fallback to global setting if empty | _string_ | false |
+| `headers` | Further headers email header key/value pairs. Overrides any headers<br />previously set by the notification implementation. | _object (keys:string, values:string)_ | true |
 | `hello` | The hostname to identify to the SMTP server. | _string_ | false |
 | `html` | The HTML body of the email notification. | _string_ | false |
 | `require_tls` | The SMTP TLS requirement.<br />Note that Go does not support unencrypted connections to remote SMTP endpoints. | _boolean_ | false |
 | `send_resolved` | SendResolved controls notify about resolved alerts. | _boolean_ | false |
-| `smarthost` | The SMTP host through which emails are sent. | _string_ | false |
+| `smarthost` | The SMTP host through which emails are sent.<br />fallback to global setting if empty | _string_ | false |
 | `text` | The text body of the email notification. | _string_ | false |
 | `tls_config` | TLS configuration | _[TLSConfig](#tlsconfig)_ | false |
 | `to` | The email address to send notifications to. | _string_ | false |
-
-
-#### EmailConfigHeaders
-
-_Underlying type:_ _object_
-
-EmailConfigHeaders is a map of email headers.
-
-
-
-_Appears in:_
-- [EmailConfig](#emailconfig)
-
 
 
 #### EmbeddedHPA
@@ -885,7 +873,7 @@ _Appears in:_
 
 
 
-HTTPConfig defines a client HTTP configuration.
+HTTPConfig defines a client HTTP configuration for VMAlertmanagerConfig objects
 See https://prometheus.io/docs/alerting/latest/configuration/#http_config
 
 
@@ -906,9 +894,11 @@ _Appears in:_
 
 | Field | Description | Scheme | Required |
 | --- | --- | --- | --- |
-| `basic_auth` | TODO oAuth2 support<br />BasicAuth for the client. | _[BasicAuth](#basicauth)_ | false |
+| `authorization` | Authorization header configuration for the client.<br />This is mutually exclusive with BasicAuth and is only available starting from Alertmanager v0.22+. | _[Authorization](#authorization)_ | false |
+| `basic_auth` | BasicAuth for the client. | _[BasicAuth](#basicauth)_ | false |
 | `bearer_token_file` | BearerTokenFile defines filename for bearer token, it must be mounted to pod. | _string_ | false |
 | `bearer_token_secret` | The secret's key that contains the bearer token<br />It must be at them same namespace as CRD | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | false |
+| `oauth2` | OAuth2 client credentials used to fetch a token for the targets. | _[OAuth2](#oauth2)_ | false |
 | `proxyURL` | Optional proxy URL. | _string_ | false |
 | `tls_config` | TLS configuration for the client. | _[TLSConfig](#tlsconfig)_ | false |
 
@@ -1134,23 +1124,6 @@ _Appears in:_
 | `webhook_url_secret` | URLSecret defines secret name and key at the CRD namespace.<br />It must contain the webhook URL.<br />one of `urlSecret` and `url` must be defined. | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | false |
 
 
-#### MuteTimeInterval
-
-
-
-MuteTimeInterval for alerts
-
-
-
-_Appears in:_
-- [VMAlertmanagerConfigSpec](#vmalertmanagerconfigspec)
-
-| Field | Description | Scheme | Required |
-| --- | --- | --- | --- |
-| `name` | Name of interval | _string_ | true |
-| `time_intervals` | TimeIntervals interval configuration | _[TimeInterval](#timeinterval) array_ | true |
-
-
 #### NamespaceDiscovery
 
 
@@ -1204,6 +1177,7 @@ _Appears in:_
 - [Endpoint](#endpoint)
 - [EndpointAuth](#endpointauth)
 - [HTTPAuth](#httpauth)
+- [HTTPConfig](#httpconfig)
 - [KubernetesSDConfig](#kubernetessdconfig)
 - [PodMetricsEndpoint](#podmetricsendpoint)
 - [TargetEndpoint](#targetendpoint)
@@ -1275,9 +1249,9 @@ _Appears in:_
 | --- | --- | --- | --- |
 | `actions` | Comma separated list of actions that will be available for the alert. | _string_ | true |
 | `apiURL` | The URL to send OpsGenie API requests to. | _string_ | false |
-| `api_key` | The secret's key that contains the OpsGenie API key.<br />It must be at them same namespace as CRD | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | false |
+| `api_key` | The secret's key that contains the OpsGenie API key.<br />It must be at them same namespace as CRD<br />fallback to global setting if empty | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | false |
 | `description` | Description of the incident. | _string_ | false |
-| `details` | A set of arbitrary key/value pairs that provide further detail about the incident. | _[ReceiverConfigDetails](#receiverconfigdetails)_ | false |
+| `details` | A set of arbitrary key/value pairs that provide further detail about the incident. | _object (keys:string, values:string)_ | false |
 | `entity` | Optional field that can be used to specify which domain alert is related to. | _string_ | true |
 | `http_config` | HTTP client configuration. | _[HTTPConfig](#httpconfig)_ | false |
 | `message` | Alert text limited to 130 characters. | _string_ | false |
@@ -1329,7 +1303,7 @@ _Appears in:_
 | `client_url` | Backlink to the sender of notification. | _string_ | false |
 | `component` | The part or component of the affected system that is broken. | _string_ | false |
 | `description` | Description of the incident. | _string_ | false |
-| `details` | Arbitrary key/value pairs that provide further detail about the incident. | _[ReceiverConfigDetails](#receiverconfigdetails)_ | false |
+| `details` | Arbitrary key/value pairs that provide further detail about the incident. | _object (keys:string, values:string)_ | false |
 | `group` | A cluster or grouping of sources. | _string_ | false |
 | `http_config` | HTTP client configuration. | _[HTTPConfig](#httpconfig)_ | false |
 | `images` | Images to attach to the incident. | _[ImageConfig](#imageconfig) array_ | false |
@@ -1483,20 +1457,6 @@ _Appears in:_
 | `wechat_configs` | WeChatConfigs defines wechat notification configurations. | _[WeChatConfig](#wechatconfig) array_ | false |
 
 
-#### ReceiverConfigDetails
-
-_Underlying type:_ _object_
-
-PagerDutyDetails details for config
-
-
-
-_Appears in:_
-- [OpsGenieConfig](#opsgenieconfig)
-- [PagerDutyConfig](#pagerdutyconfig)
-
-
-
 #### RelabelConfig
 
 
@@ -1556,7 +1516,7 @@ _Appears in:_
 | `group_interval` | How long to wait before sending an updated notification. | _string_ | false |
 | `group_wait` | How long to wait before sending the initial notification. | _string_ | false |
 | `matchers` | List of matchers that the alert’s labels should match. For the first<br />level route, the operator adds a namespace: "CRD_NS" matcher.<br />https://prometheus.io/docs/alerting/latest/configuration/#matcher | _string array_ | false |
-| `mute_time_intervals` | MuteTimeIntervals for alerts | _string array_ | false |
+| `mute_time_intervals` | MuteTimeIntervals is a list of interval names that will mute matched alert | _string array_ | false |
 | `receiver` | Name of the receiver for this route. | _string_ | true |
 | `repeat_interval` | How long to wait before repeating the last notification. | _string_ | false |
 | `routes` | Child routes.<br />https://prometheus.io/docs/alerting/latest/configuration/#route | _JSON array_ | true |
@@ -1697,7 +1657,7 @@ _Appears in:_
 | Field | Description | Scheme | Required |
 | --- | --- | --- | --- |
 | `actions` | A list of Slack actions that are sent with each notification. | _[SlackAction](#slackaction) array_ | false |
-| `api_url` | The secret's key that contains the Slack webhook URL.<br />It must be at them same namespace as CRD | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | false |
+| `api_url` | The secret's key that contains the Slack webhook URL.<br />It must be at them same namespace as CRD<br />fallback to global setting if empty | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | false |
 | `callback_id` |  | _string_ | false |
 | `channel` | The channel or user to send notifications to. | _string_ | false |
 | `color` |  | _string_ | false |
@@ -2094,7 +2054,8 @@ _Appears in:_
 
 
 
-
+TelegramConfig configures notification via telegram
+https://prometheus.io/docs/alerting/latest/configuration/#telegram_config
 
 
 
@@ -2122,7 +2083,7 @@ TimeInterval defines intervals of time
 
 
 _Appears in:_
-- [MuteTimeInterval](#mutetimeinterval)
+- [TimeIntervals](#timeintervals)
 
 | Field | Description | Scheme | Required |
 | --- | --- | --- | --- |
@@ -2132,6 +2093,23 @@ _Appears in:_
 | `times` | Times defines time range for mute | _[TimeRange](#timerange) array_ | false |
 | `weekdays` | Weekdays defines list of days of the week, where the week begins on Sunday and ends on Saturday. | _string array_ | false |
 | `years` | Years defines numerical list of years, ranges are accepted.<br />For example, ['2020:2022', '2030'] | _string array_ | false |
+
+
+#### TimeIntervals
+
+
+
+TimeIntervals for alerts
+
+
+
+_Appears in:_
+- [VMAlertmanagerConfigSpec](#vmalertmanagerconfigspec)
+
+| Field | Description | Scheme | Required |
+| --- | --- | --- | --- |
+| `name` | Name of interval | _string_ | true |
+| `time_intervals` | TimeIntervals interval configuration | _[TimeInterval](#timeinterval) array_ | true |
 
 
 #### TimeRange
@@ -2644,6 +2622,7 @@ VMAlertmanagerConfig is the Schema for the vmalertmanagerconfigs API
 
 
 VMAlertmanagerConfigSpec defines configuration for VMAlertmanagerConfig
+it must reference only locally defined objects
 
 
 
@@ -2653,10 +2632,9 @@ _Appears in:_
 | Field | Description | Scheme | Required |
 | --- | --- | --- | --- |
 | `inhibit_rules` | InhibitRules will only apply for alerts matching<br />the resource's namespace. | _[InhibitRule](#inhibitrule) array_ | false |
-| `mute_time_intervals` | MuteTimeInterval - global mute time<br />See https://prometheus.io/docs/alerting/latest/configuration/#mute_time_interval | _[MuteTimeInterval](#mutetimeinterval) array_ | false |
-| `receivers` | Receivers defines alert receivers.<br />without defined Route, receivers will be skipped. | _[Receiver](#receiver) array_ | true |
+| `receivers` | Receivers defines alert receivers | _[Receiver](#receiver) array_ | true |
 | `route` | Route definition for alertmanager, may include nested routes. | _[Route](#route)_ | true |
-| `time_intervals` | ParsingError contents error with context if operator was failed to parse json object from kubernetes api server<br />TimeIntervals modern config option, use it instead of  mute_time_intervals | _[MuteTimeInterval](#mutetimeinterval) array_ | false |
+| `time_intervals` | TimeIntervals defines named interval for active/mute notifications interval<br />See https://prometheus.io/docs/alerting/latest/configuration/#time_interval | _[TimeIntervals](#timeintervals) array_ | false |
 
 
 
@@ -3729,7 +3707,7 @@ _Appears in:_
 
 | Field | Description | Scheme | Required |
 | --- | --- | --- | --- |
-| `api_key` | The secret's key that contains the API key to use when talking to the VictorOps API.<br />It must be at them same namespace as CRD | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | false |
+| `api_key` | The secret's key that contains the API key to use when talking to the VictorOps API.<br />It must be at them same namespace as CRD<br />fallback to global setting if empty | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | false |
 | `api_url` | The VictorOps API URL. | _string_ | false |
 | `custom_fields` | Adds optional custom fields<br />https://github.com/prometheus/alertmanager/blob/v0.24.0/config/notifiers.go#L537 | _object (keys:string, values:string)_ | false |
 | `entity_display_name` | Contains summary of the alerted problem. | _string_ | false |
@@ -3756,9 +3734,9 @@ _Appears in:_
 | Field | Description | Scheme | Required |
 | --- | --- | --- | --- |
 | `agent_id` |  | _string_ | false |
-| `api_secret` | The secret's key that contains the WeChat API key.<br />The secret needs to be in the same namespace as the AlertmanagerConfig<br />object and accessible by the Prometheus Operator. | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | false |
-| `api_url` | The WeChat API URL. | _string_ | false |
-| `corp_id` | The corp id for authentication. | _string_ | false |
+| `api_secret` | The secret's key that contains the WeChat API key.<br />The secret needs to be in the same namespace as the AlertmanagerConfig<br />fallback to global alertmanager setting if empty | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | false |
+| `api_url` | The WeChat API URL.<br />fallback to global alertmanager setting if empty | _string_ | false |
+| `corp_id` | The corp id for authentication.<br />fallback to global alertmanager setting if empty | _string_ | false |
 | `http_config` | HTTP client configuration. | _[HTTPConfig](#httpconfig)_ | false |
 | `message` | API request data as defined by the WeChat API. | _string_ | true |
 | `message_type` |  | _string_ | false |

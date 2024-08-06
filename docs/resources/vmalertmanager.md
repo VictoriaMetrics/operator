@@ -38,6 +38,8 @@ Generated config stored at `Secret` created by the operator, it has the followin
 
 This configuration file is mounted at `VMAlertmanager` `Pod`. A special side-car container tracks its changes and sends config-reload signals to `alertmanager` container.
 
+The operator generates default configuration with `blackhole` root route. It needs to properly start alertmanager container with empty configuration.
+
 ### Using secret
 
 Basically, you can use the global configuration defined at manually created `Secret`. This `Secret` must be created before `VMAlertmanager`.
@@ -48,7 +50,7 @@ Name of the `Secret` must be defined at `VMAlertmanager` `spec.configSecret` opt
 apiVersion: v1
 kind: Secret
 metadata:
-  name: vmalertmanager-example-alertmanager
+  name: alertmanager-config
   labels:
     app: vm-operator
 type: Opaque
@@ -71,7 +73,7 @@ metadata:
   name: example-alertmanager
 spec:
   replicaCount: 2
-  configSecret: vmalertmanager-example-alertmanager
+  configSecret: alertmanager-config
 ```
 
 ### Using inline raw config
@@ -104,8 +106,10 @@ If both `configSecret` and `configRawYaml` are defined, only configuration from 
 See details at [VMAlertmanagerConfig](./vmalertmanagerconfig.md).
 
 The CRD specifies which `VMAlertmanagerConfig`s should be covered by the deployed `VMAlertmanager` instances based on label selection.
-The Operator then generates a configuration based on the included `VMAlertmanagerConfig`s and updates the `Configmaps` containing
+The Operator then generates a configuration based on the included `VMAlertmanagerConfig`s and updates the `Secret` containing
 the configuration. It continuously does so for all changes that are made to `VMAlertmanagerConfig`s or to the `VMAlertmanager` resource itself.
+
+Main goal of operator - generate safe configuration for alertmanager. In case of any of misconfiguration at `VMAlertmanagerConfig` operator skips it from config generation and updates `VMAlertmanagerConfig` `Status` field with error cause.
 
 Configs are filtered by selectors `configNamespaceSelector` and `configSelector` in `VMAlertmanager` CRD definition.
 For selecting rules from all namespaces you must specify it to empty value:
@@ -205,6 +209,7 @@ spec:
   ```
 
 These templates will be automatically added to `VMAlertmanager` configuration and will be automatically reloaded on changes in source `ConfigMap`.
+
 - `spec.configMaps` - list of `ConfigMap` names (in the same namespace) that will be mounted at `VMAlertmanager`
   workload and will be automatically reloaded on changes in source `ConfigMap`. Mount path is `/etc/vm/configs/<configmap-name>`.
 

@@ -22,7 +22,7 @@ func TestConvertAlertmanagerConfig(t *testing.T) {
 				t.Fatalf("unexpected error: %s", err)
 			}
 			if err := validate(converted); err != nil {
-				t.Fatalf("not valid converted alertmanager config")
+				t.Fatalf("not valid converted alertmanager config: %s", err)
 			}
 		})
 	}

@@ -41,6 +41,11 @@ func (r *VMAlertmanager) SetupWebhookWithManager(mgr ctrl.Manager) error {
 var _ webhook.Validator = &VMAlertmanager{}
 
 func (r *VMAlertmanager) sanityCheck() error {
+	if len(r.Spec.ConfigRawYaml) > 0 {
+		if err := ValidateAlertmanagerConfigSpec([]byte(r.Spec.ConfigRawYaml)); err != nil {
+			return fmt.Errorf("bad config syntax at spec.configRawYaml: %w", err)
+		}
+	}
 	if r.Spec.ConfigSecret == r.ConfigSecretName() {
 		return fmt.Errorf("spec.configSecret uses the same name as built-in config secret used by operator. Please change it's name")
 	}

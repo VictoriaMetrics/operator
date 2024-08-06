@@ -4,7 +4,8 @@ weight: 13
 title: VMSingle
 menu:
   docs:
-    parent: "operator-custom-resources"
+    identifier: operator-cr-vmsingle
+    parent: operator-cr
     weight: 13
 aliases:
   - /operator/resources/vmsingle/

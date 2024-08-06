@@ -4,7 +4,8 @@ weight: 1
 title: VMAgent
 menu:
   docs:
-    parent: "operator-custom-resources"
+    identifier: operator-cr-vmagent
+    parent: operator-cr
     weight: 1
 aliases:
   - /operator/resources/vmagent/

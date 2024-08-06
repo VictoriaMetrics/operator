@@ -4,7 +4,8 @@ weight: 8
 title: VMPodScrape
 menu:
   docs:
-    parent: "operator-custom-resources"
+    identifier: operator-cr-vmpodscrape
+    parent: operator-cr
     weight: 8
 aliases:
   - /operator/resources/vmpodscrape/

@@ -4,7 +4,8 @@ weight: 11
 title: VMScrapeConfig
 menu:
   docs:
-    parent: "operator-custom-resources"
+    identifier: operator-cr-vmscrapeconfig
+    parent: operator-cr
     weight: 11
 aliases:
   - /operator/resources/vmscrapeconfig/

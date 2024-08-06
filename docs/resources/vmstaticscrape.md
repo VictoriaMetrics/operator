@@ -4,7 +4,8 @@ weight: 14
 title: VMStaticScrape
 menu:
   docs:
-    parent: "operator-custom-resources"
+    identifier: operator-cr-vmstaticscrape
+    parent: operator-cr
     weight: 14
 aliases:
   - /operator/resources/vmstaticscrape/

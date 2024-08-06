@@ -4,7 +4,8 @@ weight: 2
 title: VMAlert
 menu:
   docs:
-    parent: "operator-custom-resources"
+    identifier: operator-cr-vmalert
+    parent: operator-cr
     weight: 2
 aliases:
   - /operator/resources/vmalert/

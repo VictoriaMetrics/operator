@@ -4,7 +4,8 @@ weight: 7
 title: VMNodeScrape
 menu:
   docs:
-    parent: "operator-custom-resources"
+    identifier: operator-cr-vmnodescrape
+    parent: operator-cr
     weight: 7
 aliases:
   - /operator/resources/vmnodescrape/

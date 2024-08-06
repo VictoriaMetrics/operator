@@ -4,7 +4,8 @@ weight: 9
 title: VMProbe
 menu:
   docs:
-    parent: "operator-custom-resources"
+    identifier: operator-cr-vmprobe
+    parent: operator-cr
     weight: 9
 aliases:
   - /operator/resources/vmprobe/

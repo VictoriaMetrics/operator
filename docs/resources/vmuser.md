@@ -4,7 +4,8 @@ weight: 15
 title: VMUser
 menu:
   docs:
-    parent: "operator-custom-resources"
+    identifier: operator-cr-vmuser
+    parent: operator-cr
     weight: 15
 aliases:
   - /operator/resources/vmuser/

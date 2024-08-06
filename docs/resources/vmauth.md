@@ -4,7 +4,8 @@ weight: 5
 title: VMAuth
 menu:
   docs:
-    parent: "operator-custom-resources"
+    identifier: operator-cr-vmauth
+    parent: operator-cr
     weight: 5
 aliases:
   - /operator/resources/vmauth/

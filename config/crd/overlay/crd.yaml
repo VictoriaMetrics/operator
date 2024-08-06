@@ -2228,6 +2228,10 @@ spec:
                                   It is not recommended changing this setting, unless unfinished aggregations states
                                   are preferred to missing data points.
                                 type: boolean
+                              ignore_first_intervals:
+                                description: IgnoreFirstIntervals instructs to ignore
+                                  first N intervals after start.
+                                type: integer
                               ignore_old_samples:
                                 description: IgnoreOldSamples instructs to ignore
                                   samples with old timestamps outside the current
@@ -2314,6 +2318,10 @@ spec:
                               interval:
                                 description: Interval is the interval between aggregations.
                                 type: string
+                              keep_input:
+                                description: KeepInput instructs whether to keep all
+                                  the matched input samples after the aggregation
+                                type: boolean
                               keep_metric_names:
                                 description: KeepMetricNames instructs to leave metric
                                   names as is for the output time series without adding
@@ -26124,6 +26132,10 @@ spec:
                             It is not recommended changing this setting, unless unfinished aggregations states
                             are preferred to missing data points.
                           type: boolean
+                        ignore_first_intervals:
+                          description: IgnoreFirstIntervals instructs to ignore first
+                            N intervals after start.
+                          type: integer
                         ignore_old_samples:
                           description: IgnoreOldSamples instructs to ignore samples
                             with old timestamps outside the current aggregation interval.
@@ -26209,6 +26221,10 @@ spec:
                         interval:
                           description: Interval is the interval between aggregations.
                           type: string
+                        keep_input:
+                          description: KeepInput instructs whether to keep all the
+                            matched input samples after the aggregation
+                          type: boolean
                         keep_metric_names:
                           description: KeepMetricNames instructs to leave metric names
                             as is for the output time series without adding any suffix.

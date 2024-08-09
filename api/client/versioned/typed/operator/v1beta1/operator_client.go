@@ -27,6 +27,7 @@ import (
 
 type OperatorV1beta1Interface interface {
 	RESTClient() rest.Interface
+	VLogsGetter
 	VMAgentsGetter
 	VMAlertsGetter
 	VMAlertmanagersGetter
@@ -47,6 +48,10 @@ type OperatorV1beta1Interface interface {
 // OperatorV1beta1Client is used to interact with features provided by the operator group.
 type OperatorV1beta1Client struct {
 	restClient rest.Interface
+}
+
+func (c *OperatorV1beta1Client) VLogs(namespace string) VLogsInterface {
+	return newVLogs(c, namespace)
 }
 
 func (c *OperatorV1beta1Client) VMAgents(namespace string) VMAgentInterface {

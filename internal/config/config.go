@@ -53,7 +53,25 @@ type BaseOperatorConf struct {
 	CustomConfigReloaderImage        string `default:"victoriametrics/operator:config-reloader-v0.43.0"`
 	parsedConfigReloaderImageVersion *version.Version
 	PSPAutoCreateEnabled             bool `default:"false"`
-	VMAlertDefault                   struct {
+
+	VLogsDefault struct {
+		Image               string `default:"victoriametrics/victoria-logs"`
+		Version             string `default:"v0.28.0-victorialogs"`
+		Port                string `default:"9428"`
+		UseDefaultResources bool   `default:"true"`
+		Resource            struct {
+			Limit struct {
+				Mem string `default:"1500Mi"`
+				Cpu string `default:"1200m"`
+			}
+			Request struct {
+				Mem string `default:"500Mi"`
+				Cpu string `default:"150m"`
+			}
+		}
+	}
+
+	VMAlertDefault struct {
 		Image               string `default:"victoriametrics/vmalert"`
 		Version             string `default:"v1.102.0"`
 		Port                string `default:"8080"`
@@ -72,6 +90,7 @@ type BaseOperatorConf struct {
 		ConfigReloaderMemory string `default:"25Mi"`
 		ConfigReloadImage    string `default:"jimmidyson/configmap-reload:v0.3.0"`
 	}
+
 	VMAgentDefault struct {
 		Image               string `default:"victoriametrics/vmagent"`
 		Version             string `default:"v1.102.0"`

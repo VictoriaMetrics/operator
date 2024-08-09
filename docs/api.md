@@ -3,7 +3,7 @@ weight: 12
 title: API Docs
 menu:
   docs:
-    parent: "operator"
+    parent: operator
     weight: 12
 aliases:
   - /operator/api/
@@ -20,6 +20,7 @@ aliases:
 Package v1beta1 contains API Schema definitions for the victoriametrics v1beta1 API group
 
 ### Resource Types
+- [VLogs](#vlogs)
 - [VMAgent](#vmagent)
 - [VMAlert](#vmalert)
 - [VMAlertmanager](#vmalertmanager)
@@ -72,6 +73,7 @@ if UseAsDefault is set to true, changes applied to the main service without addi
 
 
 _Appears in:_
+- [VLogsSpec](#vlogsspec)
 - [VMAgentSpec](#vmagentspec)
 - [VMAlertSpec](#vmalertspec)
 - [VMAlertmanagerSpec](#vmalertmanagerspec)
@@ -596,6 +598,7 @@ _Appears in:_
 - [AdditionalServiceSpec](#additionalservicespec)
 - [EmbeddedIngress](#embeddedingress)
 - [EmbeddedPersistentVolumeClaim](#embeddedpersistentvolumeclaim)
+- [VLogsSpec](#vlogsspec)
 - [VMAgentSpec](#vmagentspec)
 - [VMAlertSpec](#vmalertspec)
 - [VMAlertmanagerSpec](#vmalertmanagerspec)
@@ -665,6 +668,7 @@ operator will replace missing spec with default values.
 
 
 _Appears in:_
+- [VLogsSpec](#vlogsspec)
 - [VMAgentSpec](#vmagentspec)
 - [VMAlertSpec](#vmalertspec)
 - [VMAlertmanagerSpec](#vmalertmanagerspec)
@@ -934,6 +938,7 @@ Image defines docker image settings
 
 
 _Appears in:_
+- [VLogsSpec](#vlogsspec)
 - [VMAgentSpec](#vmagentspec)
 - [VMAlertSpec](#vmalertspec)
 - [VMAlertmanagerSpec](#vmalertmanagerspec)
@@ -2222,6 +2227,85 @@ _Appears in:_
 | `tlsConfig` |  | _[TLSConfig](#tlsconfig)_ | false |
 
 
+#### VLogs
+
+
+
+VLogs is the Schema for the vlogs API
+
+
+
+
+
+| Field | Description | Scheme | Required |
+| --- | --- | --- | --- |
+| `apiVersion` _string_ | `operator.victoriametrics.com/v1beta1` | | |
+| `kind` _string_ | `VLogs` | | |
+| `metadata` | Refer to Kubernetes API documentation for fields of `metadata`. | _[ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#objectmeta-v1-meta)_ | true |
+| `spec` |  | _[VLogsSpec](#vlogsspec)_ | true |
+
+
+#### VLogsSpec
+
+
+
+VLogsSpec defines the desired state of VLogs
+
+
+
+_Appears in:_
+- [VLogs](#vlogs)
+
+| Field | Description | Scheme | Required |
+| --- | --- | --- | --- |
+| `affinity` | Affinity If specified, the pod's scheduling constraints. | _[Affinity](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#affinity-v1-core)_ | false |
+| `configMaps` | ConfigMaps is a list of ConfigMaps in the same namespace as the VLogs<br />object, which shall be mounted into the VLogs Pods. | _string array_ | false |
+| `containers` | Containers property allows to inject additions sidecars or to patch existing containers.<br />It can be useful for proxies, backup, etc. | _[Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#container-v1-core) array_ | false |
+| `dnsConfig` | Specifies the DNS parameters of a pod.<br />Parameters specified here will be merged to the generated DNS<br />configuration based on DNSPolicy. | _[PodDNSConfig](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#poddnsconfig-v1-core)_ | false |
+| `dnsPolicy` | DNSPolicy sets DNS policy for the pod | _[DNSPolicy](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#dnspolicy-v1-core)_ | false |
+| `extraArgs` | ExtraArgs that will be passed to  VLogs pod<br />for example remoteWrite.tmpDataPath: /tmp | _object (keys:string, values:string)_ | false |
+| `extraEnvs` | ExtraEnvs that will be added to VLogs pod | _[EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#envvar-v1-core) array_ | false |
+| `futureRetention` | FutureRetention for the stored logs<br />Log entries with timestamps bigger than now+futureRetention are rejected during data ingestion; see https://docs.victoriametrics.com/victorialogs/#retention | _string_ | true |
+| `hostAliases` | HostAliases provides mapping for ip and hostname,<br />that would be propagated to pod,<br />cannot be used with HostNetwork. | _[HostAlias](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#hostalias-v1-core) array_ | false |
+| `hostNetwork` | HostNetwork controls whether the pod may use the node network namespace | _boolean_ | false |
+| `image` | Image - docker image settings for VLogs<br />if no specified operator uses default config version | _[Image](#image)_ | false |
+| `imagePullSecrets` | ImagePullSecrets An optional list of references to secrets in the same namespace<br />to use for pulling images from registries<br />see https://kubernetes.io/docs/concepts/containers/images/#referring-to-an-imagepullsecrets-on-a-pod | _[LocalObjectReference](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#localobjectreference-v1-core) array_ | false |
+| `initContainers` | InitContainers allows adding initContainers to the pod definition. Those can be used to e.g.<br />fetch secrets for injection into the VLogs configuration from external sources. Any<br />errors during the execution of an initContainer will lead to a restart of the Pod. More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/<br />Using initContainers for any use case other then secret fetching is entirely outside the scope<br />of what the maintainers will support and by doing so, you accept that this behaviour may break<br />at any time without notice. | _[Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#container-v1-core) array_ | false |
+| `logFormat` | LogFormat for VLogs to be configured with. | _string_ | false |
+| `logIngestedRows` | Whether to log all the ingested log entries; this can be useful for debugging of data ingestion; see https://docs.victoriametrics.com/victorialogs/data-ingestion/ | _boolean_ | true |
+| `logLevel` | LogLevel for VictoriaLogs to be configured with. | _string_ | false |
+| `logNewStreams` | LogNewStreams Whether to log creation of new streams; this can be useful for debugging of high cardinality issues with log streams; see https://docs.victoriametrics.com/victorialogs/keyconcepts/#stream-fields | _boolean_ | true |
+| `nodeSelector` | NodeSelector Define which Nodes the Pods are scheduled on. | _object (keys:string, values:string)_ | false |
+| `paused` | Paused If set to true all actions on the underlying managed objects are not<br />going to be performed, except for delete actions. | _boolean_ | false |
+| `podMetadata` | PodMetadata configures Labels and Annotations which are propagated to the VLogs pods. | _[EmbeddedObjectMetadata](#embeddedobjectmetadata)_ | false |
+| `port` | Port listen port | _string_ | false |
+| `priorityClassName` | PriorityClassName assigned to the Pods | _string_ | false |
+| `readinessGates` | ReadinessGates defines pod readiness gates | _[PodReadinessGate](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#podreadinessgate-v1-core) array_ | true |
+| `removePvcAfterDelete` | RemovePvcAfterDelete - if true, controller adds ownership to pvc<br />and after VLogs objest deletion - pvc will be garbage collected<br />by controller manager | _boolean_ | false |
+| `replicaCount` | ReplicaCount is the expected size of the VLogs<br />it can be 0 or 1<br />if you need more - use vm cluster | _integer_ | true |
+| `resources` | Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/<br />if not defined default resources from operator config will be used | _[ResourceRequirements](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#resourcerequirements-v1-core)_ | false |
+| `retentionPeriod` | RetentionPeriod for the stored logs | _string_ | true |
+| `revisionHistoryLimitCount` | The number of old ReplicaSets to retain to allow rollback in deployment or<br />maximum number of revisions that will be maintained in the StatefulSet's revision history.<br />Defaults to 10. | _integer_ | false |
+| `runtimeClassName` | RuntimeClassName - defines runtime class for kubernetes pod.<br />https://kubernetes.io/docs/concepts/containers/runtime-class/ | _string_ | false |
+| `schedulerName` | SchedulerName - defines kubernetes scheduler name | _string_ | false |
+| `secrets` | Secrets is a list of Secrets in the same namespace as the VLogs<br />object, which shall be mounted into the VLogs Pods. | _string array_ | false |
+| `securityContext` | SecurityContext holds pod-level security attributes and common container settings.<br />This defaults to the default PodSecurityContext. | _[PodSecurityContext](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#podsecuritycontext-v1-core)_ | false |
+| `serviceAccountName` | ServiceAccountName is the name of the ServiceAccount to use to run the<br />VLogs Pods. | _string_ | false |
+| `serviceScrapeSpec` | ServiceScrapeSpec that will be added to vlogs VMServiceScrape spec | _[VMServiceScrapeSpec](#vmservicescrapespec)_ | false |
+| `serviceSpec` | ServiceSpec that will be added to vlogs service spec | _[AdditionalServiceSpec](#additionalservicespec)_ | false |
+| `storage` | Storage is the definition of how storage will be used by the VLogs<br />by default it`s empty dir | _[PersistentVolumeClaimSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#persistentvolumeclaimspec-v1-core)_ | false |
+| `storageDataPath` | StorageDataPath disables spec.storage option and overrides arg for victoria-logs binary --storageDataPath,<br />its users responsibility to mount proper device into given path. | _string_ | false |
+| `storageMetadata` | StorageMeta defines annotations and labels attached to PVC for given vlogs CR | _[EmbeddedObjectMetadata](#embeddedobjectmetadata)_ | false |
+| `terminationGracePeriodSeconds` | TerminationGracePeriodSeconds period for container graceful termination | _[int64](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#int64-v1-core)_ | false |
+| `tolerations` | Tolerations If specified, the pod's tolerations. | _[Toleration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#toleration-v1-core) array_ | false |
+| `topologySpreadConstraints` | TopologySpreadConstraints embedded kubernetes pod configuration option,<br />controls how pods are spread across your cluster among failure-domains<br />such as regions, zones, nodes, and other user-defined topology domains<br />https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/ | _[TopologySpreadConstraint](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#topologyspreadconstraint-v1-core) array_ | false |
+| `useStrictSecurity` | UseStrictSecurity enables strict security mode for component<br />it restricts disk writes access<br />uses non-root user out of the box<br />drops not needed security permissions | _boolean_ | false |
+| `volumeMounts` | VolumeMounts allows configuration of additional VolumeMounts on the output Deployment definition.<br />VolumeMounts specified will be appended to other VolumeMounts in the VLogs container,<br />that are generated as a result of StorageSpec objects. | _[VolumeMount](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#volumemount-v1-core) array_ | false |
+| `volumes` | Volumes allows configuration of additional volumes on the output deploy definition.<br />Volumes specified will be appended to other volumes that are generated as a result of<br />StorageSpec objects. | _[Volume](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#volume-v1-core) array_ | false |
+
+
+
+
 #### VMAgent
 
 
@@ -3423,6 +3507,7 @@ VMServiceScrapeSpec defines the desired state of VMServiceScrape
 
 
 _Appears in:_
+- [VLogsSpec](#vlogsspec)
 - [VMAgentSpec](#vmagentspec)
 - [VMAlertSpec](#vmalertspec)
 - [VMAlertmanagerSpec](#vmalertmanagerspec)

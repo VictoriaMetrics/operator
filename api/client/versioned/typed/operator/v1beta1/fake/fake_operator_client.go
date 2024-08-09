@@ -27,6 +27,10 @@ type FakeOperatorV1beta1 struct {
 	*testing.Fake
 }
 
+func (c *FakeOperatorV1beta1) VLogs(namespace string) v1beta1.VLogsInterface {
+	return &FakeVLogs{c, namespace}
+}
+
 func (c *FakeOperatorV1beta1) VMAgents(namespace string) v1beta1.VMAgentInterface {
 	return &FakeVMAgents{c, namespace}
 }

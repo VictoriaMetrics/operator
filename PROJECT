@@ -180,4 +180,17 @@ resources:
   kind: VMScrapeConfig
   path: github.com/VictoriaMetrics/operator/api/operator/v1beta1
   version: v1beta1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: victoriametrics.com
+  group: operator
+  kind: VLogs
+  path: github.com/VictoriaMetrics/operator/api/operator/v1beta1
+  version: v1beta1
+  webhooks:
+    conversion: true
+    validation: true
+    webhookVersion: v1
 version: "3"

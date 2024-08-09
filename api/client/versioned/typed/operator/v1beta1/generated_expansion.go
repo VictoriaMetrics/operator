@@ -17,6 +17,8 @@ limitations under the License.
 
 package v1beta1
 
+type VLogsExpansion interface{}
+
 type VMAgentExpansion interface{}
 
 type VMAlertExpansion interface{}

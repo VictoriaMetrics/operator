@@ -17,3 +17,4 @@ resources:
 - vmalertmanager_config.yaml
 - vmstaticscrape.yaml
 - vmscrapeconfig.yaml
+- vlogs.yaml

@@ -1,8 +1,11 @@
----
+# permissions for end users to edit vlogs.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: manager-role
+  labels:
+    app.kubernetes.io/name: victoriametrics-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: operator-vlogs-editor-role
 rules:
 - apiGroups:
   - operator.victoriametrics.com
@@ -19,14 +22,6 @@ rules:
 - apiGroups:
   - operator.victoriametrics.com
   resources:
-  - vlogs/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - operator.victoriametrics.com
-  resources:
   - vlogs/status
   verbs:
   - get
-  - patch
-  - update

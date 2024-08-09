@@ -17,6 +17,14 @@ limitations under the License.
 
 package v1beta1
 
+// VLogsListerExpansion allows custom methods to be added to
+// VLogsLister.
+type VLogsListerExpansion interface{}
+
+// VLogsNamespaceListerExpansion allows custom methods to be added to
+// VLogsNamespaceLister.
+type VLogsNamespaceListerExpansion interface{}
+
 // VMAgentListerExpansion allows custom methods to be added to
 // VMAgentLister.
 type VMAgentListerExpansion interface{}

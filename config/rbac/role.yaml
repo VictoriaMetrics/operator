@@ -491,3 +491,23 @@ rules:
   - get
   - patch
   - update
+- apiGroups:
+  - operator.victoriametrics.com
+  resources:
+  - vlogs
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - operator.victoriametrics.com
+  resources:
+  - vlogs/status
+  verbs:
+  - get
+  - patch
+  - update

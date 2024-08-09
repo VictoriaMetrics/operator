@@ -271,7 +271,15 @@ func RunManager(ctx context.Context) error {
 		setupLog.Error(err, "unable to create controller", "controller", "VMSingle")
 		return err
 	}
-
+	if err = (&vmcontroller.VLogsReconciler{
+		Client:       mgr.GetClient(),
+		Log:          ctrl.Log.WithName("controller").WithName("VLogs"),
+		OriginScheme: mgr.GetScheme(),
+		BaseConf:     baseConfig,
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "VLogs")
+		return err
+	}
 	if err = (&vmcontroller.VMClusterReconciler{
 		Client:       mgr.GetClient(),
 		Log:          ctrl.Log.WithName("controller").WithName("VMCluster"),
@@ -405,6 +413,7 @@ func addWebhooks(mgr ctrl.Manager) error {
 		&vmv1beta1.VMAlert{},
 		&vmv1beta1.VMSingle{},
 		&vmv1beta1.VMCluster{},
+		&vmv1beta1.VLogs{},
 		&vmv1beta1.VMAlertmanager{},
 		&vmv1beta1.VMAlertmanagerConfig{},
 		&vmv1beta1.VMAuth{},

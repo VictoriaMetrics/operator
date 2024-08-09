@@ -17,6 +17,7 @@ resources:
 - bases/operator.victoriametrics.com_vmauths.yaml
 - bases/operator.victoriametrics.com_vmusers.yaml
 - bases/operator.victoriametrics.com_vmalertmanagerconfigs.yaml
+- bases/operator.victoriametrics.com_vlogs.yaml
 patches:
 # [WEBHOOK] To enable webhook, uncomment all the sections with [WEBHOOK] prefix.
 # patches here are for enabling the conversion webhook for each CRD
@@ -48,6 +49,10 @@ patches:
   target:
     kind: CustomResourceDefinition
     name: vmalertmanagerconfigs.operator.victoriametrics.com
+- path: patches/operator.victoriametrics.com_vlogs.yaml
+  target:
+    kind: CustomResourceDefinition
+    name: vlogs.operator.victoriametrics.com
 - path: patches/webhook_in_operator_vmagents.yaml
 - path: patches/webhook_in_operator_vmsingles.yaml
 - path: patches/webhook_in_operator_vmalertmanagers.yaml
@@ -57,6 +62,7 @@ patches:
 - path: patches/webhook_in_operator_vmclusters.yaml
 - path: patches/webhook_in_operator_vmrules.yaml
 - path: patches/webhook_in_operator_vmusers.yaml
+- path: patches/webhook_in_operator_vlogs.yaml
 # +kubebuilder:scaffold:crdkustomizewebhookpatch
 
 # [CERTMANAGER] To enable cert-manager, uncomment all the sections with [CERTMANAGER] prefix.
@@ -76,6 +82,7 @@ patches:
 #- path: patches/cainjection_in_operator_vmusers.yaml
 #- path: patches/cainjection_in_operator_vmauths.yaml
 #- path: patches/cainjection_in_operator_vmscrapeconfigs.yaml
+#- path: patches/cainjection_in_operator_vlogs.yaml
 # +kubebuilder:scaffold:crdkustomizecainjectionpatch
 
 # [WEBHOOK] To enable webhook, uncomment the following section

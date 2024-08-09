@@ -38,10 +38,12 @@ const (
 	vmAgentPersistentQueueMountName = "persistent-queue-data"
 	globalRelabelingName            = "global_relabeling.yaml"
 	urlRelabelingName               = "url_relabeling-%d.yaml"
-	shardNumPlaceholder             = "%SHARD_NUM%"
-	tlsAssetsDir                    = "/etc/vmagent-tls/certs"
-	vmagentGzippedFilename          = "vmagent.yaml.gz"
-	configEnvsubstFilename          = "vmagent.env.yaml"
+	globalAggregationConfigName     = "global_aggregation.yaml"
+
+	shardNumPlaceholder    = "%SHARD_NUM%"
+	tlsAssetsDir           = "/etc/vmagent-tls/certs"
+	vmagentGzippedFilename = "vmagent.yaml.gz"
+	configEnvsubstFilename = "vmagent.env.yaml"
 )
 
 // To save compatibility in the single-shard version still need to fill in %SHARD_NUM% placeholder
@@ -426,7 +428,7 @@ func makeSpecForVMAgent(cr *vmv1beta1.VMAgent, c *config.BaseOperatorConf, ssCac
 				MountPath: vmAgentConfDir,
 			})
 	}
-	if cr.HasAnyStreamAggrConfigs() {
+	if cr.HasAnyStreamAggrRule() {
 		volumes = append(volumes, corev1.Volume{
 			Name: "stream-aggr-conf",
 			VolumeSource: corev1.VolumeSource{
@@ -510,6 +512,27 @@ func makeSpecForVMAgent(cr *vmv1beta1.VMAgent, c *config.BaseOperatorConf, ssCac
 		args = append(args, "-remoteWrite.relabelConfig="+path.Join(vmv1beta1.RelabelingConfigDir, globalRelabelingName))
 	}
 
+	if cr.Spec.StreamAggrConfig != nil {
+		if cr.Spec.StreamAggrConfig.HasAnyRule() {
+			args = append(args, "-streamAggr.config="+path.Join(vmv1beta1.StreamAggrConfigDir, globalAggregationConfigName))
+		}
+		if cr.Spec.StreamAggrConfig.KeepInput {
+			args = append(args, "-streamAggr.keepInput=true")
+		}
+		if cr.Spec.StreamAggrConfig.DropInput {
+			args = append(args, "-streamAggr.dropInput=true")
+		}
+		if cr.Spec.StreamAggrConfig.DedupInterval != "" {
+			args = append(args, fmt.Sprintf("-streamAggr.dedupInterval=%s", cr.Spec.StreamAggrConfig.DedupInterval))
+		}
+		if len(cr.Spec.StreamAggrConfig.DropInputLabels) > 0 {
+			args = append(args, fmt.Sprintf("-streamAggr.dropInputLabels=%s", strings.Join(cr.Spec.StreamAggrConfig.DropInputLabels, ",")))
+		}
+		if cr.Spec.StreamAggrConfig.IgnoreOldSamples {
+			args = append(args, "-streamAggr.ignoreOldSamples=true")
+		}
+	}
+
 	args = build.AppendArgsForInsertPorts(args, cr.Spec.InsertPorts)
 
 	specRes := build.Resources(cr.Spec.Resources, config.Resource(c.VMAgentDefault.Resource), c.VMAgentDefault.UseDefaultResources)
@@ -533,7 +556,7 @@ func makeSpecForVMAgent(cr *vmv1beta1.VMAgent, c *config.BaseOperatorConf, ssCac
 	var operatorContainers []corev1.Container
 	var ic []corev1.Container
 	// conditional add config reloader container
-	if !cr.Spec.IngestOnlyMode || cr.HasAnyRelabellingConfigs() || cr.HasAnyStreamAggrConfigs() {
+	if !cr.Spec.IngestOnlyMode || cr.HasAnyRelabellingConfigs() || cr.HasAnyStreamAggrRule() {
 		configReloader := buildConfigReloaderContainer(cr, c)
 		operatorContainers = append(operatorContainers, configReloader)
 		if !cr.Spec.IngestOnlyMode {
@@ -654,7 +677,7 @@ func buildVMAgentRelabelingsAssets(ctx context.Context, cr *vmv1beta1.VMAgent, r
 	}
 	if cr.Spec.RelabelConfig != nil {
 		// need to fetch content from
-		data, err := fetchConfigMapContentByKey(ctx, rclient,
+		data, err := k8stools.FetchConfigMapContentByKey(ctx, rclient,
 			&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: cr.Spec.RelabelConfig.Name, Namespace: cr.Namespace}},
 			cr.Spec.RelabelConfig.Key)
 		if err != nil {
@@ -678,7 +701,7 @@ func buildVMAgentRelabelingsAssets(ctx context.Context, cr *vmv1beta1.VMAgent, r
 			}
 		}
 		if rw.UrlRelabelConfig != nil {
-			data, err := fetchConfigMapContentByKey(ctx, rclient,
+			data, err := k8stools.FetchConfigMapContentByKey(ctx, rclient,
 				&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: rw.UrlRelabelConfig.Name, Namespace: cr.Namespace}},
 				rw.UrlRelabelConfig.Key)
 			if err != nil {
@@ -713,7 +736,7 @@ func createOrUpdateRelabelConfigsAssets(ctx context.Context, cr *vmv1beta1.VMAge
 }
 
 // buildVMAgentStreamAggrConfig combines all possible stream aggregation configs and adding it to the configmap.
-func buildVMAgentStreamAggrConfig(cr *vmv1beta1.VMAgent) (*corev1.ConfigMap, error) {
+func buildVMAgentStreamAggrConfig(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) (*corev1.ConfigMap, error) {
 	cfgCM := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:       cr.Namespace,
@@ -724,17 +747,56 @@ func buildVMAgentStreamAggrConfig(cr *vmv1beta1.VMAgent) (*corev1.ConfigMap, err
 		},
 		Data: make(map[string]string),
 	}
-	for i, rw := range cr.Spec.RemoteWrite {
-		if !rw.HasStreamAggr() {
-			continue
+	// global section
+	if cr.Spec.StreamAggrConfig != nil {
+		if len(cr.Spec.StreamAggrConfig.Rules) > 0 {
+			data, err := yaml.Marshal(cr.Spec.StreamAggrConfig.Rules)
+			if err != nil {
+				return nil, fmt.Errorf("cannot serialize relabelConfig as yaml: %w", err)
+			}
+			if len(data) > 0 {
+				cfgCM.Data[globalAggregationConfigName] = string(data)
+			}
 		}
-		data, err := yaml.Marshal(rw.StreamAggrConfig.Rules)
-		if err != nil {
-			return nil, fmt.Errorf("cannot serialize StreamAggrConfig rules as yaml for remoteWrite with url %s: %w", rw.URL, err)
+		if cr.Spec.StreamAggrConfig.RuleConfigMap != nil {
+			data, err := k8stools.FetchConfigMapContentByKey(ctx, rclient,
+				&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: cr.Spec.StreamAggrConfig.RuleConfigMap.Name, Namespace: cr.Namespace}},
+				cr.Spec.StreamAggrConfig.RuleConfigMap.Key)
+			if err != nil {
+				return nil, fmt.Errorf("cannot fetch configmap: %s, err: %w", cr.Spec.StreamAggrConfig.RuleConfigMap.Name, err)
+			}
+			if len(data) > 0 {
+				cfgCM.Data[globalAggregationConfigName] += data
+			}
 		}
-		if len(data) > 0 {
-			cfgCM.Data[rw.AsConfigMapKey(i, "stream-aggr-conf")] = string(data)
+	}
+
+	for i := range cr.Spec.RemoteWrite {
+		rw := cr.Spec.RemoteWrite[i]
+		if rw.StreamAggrConfig != nil {
+			if len(rw.StreamAggrConfig.Rules) > 0 {
+				data, err := yaml.Marshal(rw.StreamAggrConfig.Rules)
+				if err != nil {
+					return nil, fmt.Errorf("cannot serialize relabelConfig as yaml: %w", err)
+				}
+				if len(data) > 0 {
+					cfgCM.Data[rw.AsConfigMapKey(i, "stream-aggr-conf")] = string(data)
+				}
+			}
+			if rw.StreamAggrConfig.RuleConfigMap != nil {
+				data, err := k8stools.FetchConfigMapContentByKey(ctx, rclient,
+					&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: rw.StreamAggrConfig.RuleConfigMap.Name, Namespace: cr.Namespace}},
+					rw.StreamAggrConfig.RuleConfigMap.Key)
+				if err != nil {
+					return nil, fmt.Errorf("cannot fetch configmap: %s, err: %w", rw.StreamAggrConfig.RuleConfigMap.Name, err)
+				}
+				if len(data) > 0 {
+					cfgCM.Data[rw.AsConfigMapKey(i, "stream-aggr-conf")] += data
+				}
+			}
+
 		}
+
 	}
 	return cfgCM, nil
 }
@@ -742,10 +804,10 @@ func buildVMAgentStreamAggrConfig(cr *vmv1beta1.VMAgent) (*corev1.ConfigMap, err
 // CreateOrUpdateVMAgentStreamAggrConfig builds stream aggregation configs for vmagent at separate configmap, serialized as yaml
 func CreateOrUpdateVMAgentStreamAggrConfig(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) error {
 	// fast path
-	if !cr.HasAnyStreamAggrConfigs() {
+	if !cr.HasAnyStreamAggrRule() {
 		return nil
 	}
-	streamAggrCM, err := buildVMAgentStreamAggrConfig(cr)
+	streamAggrCM, err := buildVMAgentStreamAggrConfig(ctx, cr, rclient)
 	if err != nil {
 		return err
 	}
@@ -758,13 +820,6 @@ func CreateOrUpdateVMAgentStreamAggrConfig(ctx context.Context, cr *vmv1beta1.VM
 	streamAggrCM.Annotations = labels.Merge(existCM.Annotations, streamAggrCM.Annotations)
 	vmv1beta1.AddFinalizer(streamAggrCM, &existCM)
 	return rclient.Update(ctx, streamAggrCM)
-}
-
-func fetchConfigMapContentByKey(ctx context.Context, rclient client.Client, cm *corev1.ConfigMap, key string) (string, error) {
-	if err := rclient.Get(ctx, types.NamespacedName{Namespace: cm.Namespace, Name: cm.Name}, cm); err != nil {
-		return "", err
-	}
-	return cm.Data[key], nil
 }
 
 func createOrUpdateTLSAssets(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client, assets map[string]string) error {
@@ -1129,6 +1184,9 @@ func buildRemoteWrites(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) []st
 	streamAggrKeepInput := remoteFlag{flagSetting: "-remoteWrite.streamAggr.keepInput="}
 	streamAggrDropInput := remoteFlag{flagSetting: "-remoteWrite.streamAggr.dropInput="}
 	streamAggrDedupInterval := remoteFlag{flagSetting: "-remoteWrite.streamAggr.dedupInterval="}
+	streamAggrDropInputLabels := remoteFlag{flagSetting: "-remoteWrite.streamAggr.dropInputLabels="}
+	streamAggrIgnoreFirstIntervals := remoteFlag{flagSetting: "-remoteWrite.streamAggr.ignoreFirstIntervals="}
+	streamAggrIgnoreOldSamples := remoteFlag{flagSetting: "-remoteWrite.streamAggr.ignoreOldSamples="}
 
 	pathPrefix := path.Join(tlsAssetsDir, cr.Namespace)
 
@@ -1269,10 +1327,13 @@ func buildRemoteWrites(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) []st
 		oauth2Scopes.flagSetting += fmt.Sprintf("%s,", oascopes)
 
 		var dedupIntVal, streamConfVal string
-		var keepInputVal, dropInputVal bool
-		if rws.HasStreamAggr() {
-			streamAggrConfig.isNotNull = true
-			streamConfVal = path.Join(vmv1beta1.StreamAggrConfigDir, rws.AsConfigMapKey(i, "stream-aggr-conf"))
+		var keepInputVal, dropInputVal, ignoreOldSamples bool
+		var ignoreFirstIntervalsVal int
+		if rws.StreamAggrConfig != nil {
+			if rws.StreamAggrConfig.HasAnyRule() {
+				streamAggrConfig.isNotNull = true
+				streamConfVal = path.Join(vmv1beta1.StreamAggrConfigDir, rws.AsConfigMapKey(i, "stream-aggr-conf"))
+			}
 
 			dedupIntVal = rws.StreamAggrConfig.DedupInterval
 			if dedupIntVal != "" {
@@ -1287,17 +1348,31 @@ func buildRemoteWrites(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) []st
 			if dropInputVal {
 				streamAggrDropInput.isNotNull = true
 			}
+			if len(rws.StreamAggrConfig.DropInputLabels) > 0 {
+				streamAggrDropInputLabels.isNotNull = true
+				streamAggrDropInputLabels.flagSetting += fmt.Sprintf("%s,", strings.Join(rws.StreamAggrConfig.DropInputLabels, ","))
+			}
+			ignoreFirstIntervalsVal = rws.StreamAggrConfig.IgnoreFirstIntervals
+			if ignoreFirstIntervalsVal > 0 {
+				streamAggrIgnoreFirstIntervals.isNotNull = true
+			}
+			ignoreOldSamples = rws.StreamAggrConfig.IgnoreOldSamples
+			if ignoreOldSamples {
+				streamAggrIgnoreOldSamples.isNotNull = true
+			}
 		}
 		streamAggrConfig.flagSetting += fmt.Sprintf("%s,", streamConfVal)
 		streamAggrKeepInput.flagSetting += fmt.Sprintf("%v,", keepInputVal)
 		streamAggrDropInput.flagSetting += fmt.Sprintf("%v,", dropInputVal)
 		streamAggrDedupInterval.flagSetting += fmt.Sprintf("%s,", dedupIntVal)
+		streamAggrIgnoreFirstIntervals.flagSetting += fmt.Sprintf("%d,", ignoreFirstIntervalsVal)
+		streamAggrIgnoreOldSamples.flagSetting += fmt.Sprintf("%v,", ignoreOldSamples)
 	}
 	remoteArgs = append(remoteArgs, url, authUser, bearerTokenFile, urlRelabelConfig, tlsInsecure, sendTimeout)
 	remoteArgs = append(remoteArgs, tlsServerName, tlsKeys, tlsCerts, tlsCAs)
 	remoteArgs = append(remoteArgs, oauth2ClientID, oauth2ClientSecretFile, oauth2Scopes, oauth2TokenURL)
 	remoteArgs = append(remoteArgs, headers, authPasswordFile)
-	remoteArgs = append(remoteArgs, streamAggrConfig, streamAggrKeepInput, streamAggrDedupInterval, streamAggrDropInput)
+	remoteArgs = append(remoteArgs, streamAggrConfig, streamAggrKeepInput, streamAggrDedupInterval, streamAggrDropInput, streamAggrDropInputLabels, streamAggrIgnoreFirstIntervals, streamAggrIgnoreOldSamples)
 
 	for _, remoteArgType := range remoteArgs {
 		if remoteArgType.isNotNull {
@@ -1332,7 +1407,7 @@ func buildConfigReloaderContainer(cr *vmv1beta1.VMAgent, c *config.BaseOperatorC
 				MountPath: vmv1beta1.RelabelingConfigDir,
 			})
 	}
-	if cr.HasAnyStreamAggrConfigs() {
+	if cr.HasAnyStreamAggrRule() {
 		configReloadVolumeMounts = append(configReloadVolumeMounts,
 			corev1.VolumeMount{
 				Name:      "stream-aggr-conf",
@@ -1401,7 +1476,7 @@ func buildConfigReloaderArgs(cr *vmv1beta1.VMAgent, c *config.BaseOperatorConf) 
 			args = append(args, fmt.Sprintf("--config-file=%s", path.Join(vmAgentConfDir, vmagentGzippedFilename)))
 		}
 	}
-	if cr.HasAnyStreamAggrConfigs() {
+	if cr.HasAnyStreamAggrRule() {
 		args = append(args, fmt.Sprintf("--%s=%s", dirsArg, vmv1beta1.StreamAggrConfigDir))
 	}
 	if cr.HasAnyRelabellingConfigs() {

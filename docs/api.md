@@ -1814,14 +1814,19 @@ StreamAggrConfig defines the stream aggregation config
 
 _Appears in:_
 - [VMAgentRemoteWriteSpec](#vmagentremotewritespec)
+- [VMAgentSpec](#vmagentspec)
 - [VMSingleSpec](#vmsinglespec)
 
 | Field | Description | Scheme | Required |
 | --- | --- | --- | --- |
+| `configmap` | ConfigMap with stream aggregation rules | _[ConfigMapKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#configmapkeyselector-v1-core)_ | false |
 | `dedupInterval` | Allows setting different de-duplication intervals per each configured remote storage | _string_ | false |
 | `dropInput` | Allow drop all the input samples after the aggregation | _boolean_ | false |
+| `dropInputLabels` | labels to drop from samples for aggregator before stream de-duplication and aggregation | _string array_ | false |
+| `ignoreFirstIntervals` |  | _integer_ | true |
+| `ignoreOldSamples` | IgnoreOldSamples instructs to ignore samples with old timestamps outside the current aggregation interval. | _boolean_ | false |
 | `keepInput` | Allows writing both raw and aggregate data | _boolean_ | false |
-| `rules` | Stream aggregation rules | _[StreamAggrRule](#streamaggrrule) array_ | true |
+| `rules` | Stream aggregation rules | _[StreamAggrRule](#streamaggrrule) array_ | false |
 
 
 #### StreamAggrRule
@@ -1841,6 +1846,7 @@ _Appears in:_
 | `dedup_interval` | DedupInterval is an optional interval for deduplication. | _string_ | false |
 | `drop_input_labels` | DropInputLabels is an optional list with labels, which must be dropped before further processing of input samples.<br /><br />Labels are dropped before de-duplication and aggregation. | _string_ | false |
 | `flush_on_shutdown` | FlushOnShutdown defines whether to flush the aggregation state on process termination<br />or config reload. Is `false` by default.<br />It is not recommended changing this setting, unless unfinished aggregations states<br />are preferred to missing data points. | _boolean_ | false |
+| `ignore_first_intervals` |  | _integer_ | true |
 | `ignore_old_samples` | IgnoreOldSamples instructs to ignore samples with old timestamps outside the current aggregation interval. | _boolean_ | false |
 | `input_relabel_configs` | InputRelabelConfigs is an optional relabeling rules, which are applied on the input<br />before aggregation. | _[RelabelConfig](#relabelconfig) array_ | false |
 | `interval` | Interval is the interval between aggregations. | _string_ | true |
@@ -2394,6 +2400,7 @@ _Appears in:_
 | `staticScrapeNamespaceSelector` | StaticScrapeNamespaceSelector defines Namespaces to be selected for VMStaticScrape discovery.<br />Works in combination with NamespaceSelector.<br />NamespaceSelector nil - only objects at VMAgent namespace.<br />Selector nil - only objects at NamespaceSelector namespaces.<br />If both nil - behaviour controlled by selectAllByDefault | _[LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#labelselector-v1-meta)_ | false |
 | `staticScrapeRelabelTemplate` | StaticScrapeRelabelTemplate defines relabel config, that will be added to each VMStaticScrape.<br />it's useful for adding specific labels to all targets | _[RelabelConfig](#relabelconfig) array_ | false |
 | `staticScrapeSelector` | StaticScrapeSelector defines PodScrapes to be selected for target discovery.<br />Works in combination with NamespaceSelector.<br />If both nil - match everything.<br />NamespaceSelector nil - only objects at VMAgent namespace.<br />Selector nil - only objects at NamespaceSelector namespaces. | _[LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#labelselector-v1-meta)_ | false |
+| `streamAggrConfig` | StreamAggrConfig defines global stream aggregation configuration for VMAgent | _[StreamAggrConfig](#streamaggrconfig)_ | false |
 | `terminationGracePeriodSeconds` | TerminationGracePeriodSeconds period for container graceful termination | _[int64](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#int64-v1-core)_ | false |
 | `tolerations` | Tolerations If specified, the pod's tolerations. | _[Toleration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#toleration-v1-core) array_ | false |
 | `topologySpreadConstraints` | TopologySpreadConstraints embedded kubernetes pod configuration option,<br />controls how pods are spread across your cluster among failure-domains<br />such as regions, zones, nodes, and other user-defined topology domains<br />https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/ | _[TopologySpreadConstraint](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#topologyspreadconstraint-v1-core) array_ | false |

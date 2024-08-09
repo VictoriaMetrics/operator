@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path"
 	"sort"
+	"strings"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
@@ -261,7 +262,7 @@ func makeSpecForVMSingle(ctx context.Context, cr *vmv1beta1.VMSingle, c *config.
 		})
 	}
 
-	if cr.HasStreamAggrConfig() {
+	if cr.HasAnyStreamAggrRule() {
 		volumes = append(volumes, corev1.Volume{
 			Name: k8stools.SanitizeVolumeName("stream-aggr-conf"),
 			VolumeSource: corev1.VolumeSource{
@@ -282,10 +283,25 @@ func makeSpecForVMSingle(ctx context.Context, cr *vmv1beta1.VMSingle, c *config.
 		if cr.Spec.StreamAggrConfig.KeepInput {
 			args = append(args, "--streamAggr.keepInput=true")
 		}
-		if cr.Spec.StreamAggrConfig.DedupInterval != "" {
-			args = append(args, fmt.Sprintf("--streamAggr.dedupInterval=%s", cr.Spec.StreamAggrConfig.DedupInterval))
+		if cr.Spec.StreamAggrConfig.DropInput {
+			args = append(args, "--streamAggr.dropInput=true")
+		}
+		if len(cr.Spec.StreamAggrConfig.DropInputLabels) > 0 {
+			args = append(args, fmt.Sprintf("--streamAggr.dropInputLabels=%s", strings.Join(cr.Spec.StreamAggrConfig.DropInputLabels, ",")))
+		}
+		if cr.Spec.StreamAggrConfig.IgnoreFirstIntervals > 0 {
+			args = append(args, fmt.Sprintf("--streamAggr.ignoreFirstIntervals=%d", cr.Spec.StreamAggrConfig.IgnoreFirstIntervals))
+		}
+		if cr.Spec.StreamAggrConfig.IgnoreOldSamples {
+			args = append(args, "--streamAggr.ignoreOldSamples=true")
 		}
 	}
+
+	// deduplication can work without stream aggregation rules
+	if cr.Spec.StreamAggrConfig != nil && cr.Spec.StreamAggrConfig.DedupInterval != "" {
+		args = append(args, fmt.Sprintf("--streamAggr.dedupInterval=%s", cr.Spec.StreamAggrConfig.DedupInterval))
+	}
+
 	volumes, vmMounts = cr.Spec.License.MaybeAddToVolumes(volumes, vmMounts, vmv1beta1.SecretsDir)
 	args = cr.Spec.License.MaybeAddToArgs(args, vmv1beta1.SecretsDir)
 
@@ -414,7 +430,7 @@ func CreateOrUpdateVMSingleService(ctx context.Context, cr *vmv1beta1.VMSingle, 
 }
 
 // buildVMSingleStreamAggrConfig build configmap with stream aggregation config for vmsingle.
-func buildVMSingleStreamAggrConfig(cr *vmv1beta1.VMSingle) (*corev1.ConfigMap, error) {
+func buildVMSingleStreamAggrConfig(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.Client) (*corev1.ConfigMap, error) {
 	cfgCM := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:       cr.Namespace,
@@ -425,23 +441,35 @@ func buildVMSingleStreamAggrConfig(cr *vmv1beta1.VMSingle) (*corev1.ConfigMap, e
 		},
 		Data: make(map[string]string),
 	}
-	data, err := yaml.Marshal(cr.Spec.StreamAggrConfig.Rules)
-	if err != nil {
-		return nil, fmt.Errorf("cannot serialize StreamAggrConfig rules as yaml: %w", err)
+	if len(cr.Spec.StreamAggrConfig.Rules) > 0 {
+		data, err := yaml.Marshal(cr.Spec.StreamAggrConfig.Rules)
+		if err != nil {
+			return nil, fmt.Errorf("cannot serialize relabelConfig as yaml: %w", err)
+		}
+		if len(data) > 0 {
+			cfgCM.Data["config.yaml"] = string(data)
+		}
 	}
-	if len(data) > 0 {
-		cfgCM.Data["config.yaml"] = string(data)
+	if cr.Spec.StreamAggrConfig.RuleConfigMap != nil {
+		data, err := k8stools.FetchConfigMapContentByKey(ctx, rclient,
+			&corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: cr.Spec.StreamAggrConfig.RuleConfigMap.Name, Namespace: cr.Namespace}},
+			cr.Spec.StreamAggrConfig.RuleConfigMap.Key)
+		if err != nil {
+			return nil, fmt.Errorf("cannot fetch configmap: %s, err: %w", cr.Spec.StreamAggrConfig.RuleConfigMap.Name, err)
+		}
+		if len(data) > 0 {
+			cfgCM.Data["config.yaml"] += data
+		}
 	}
-
 	return cfgCM, nil
 }
 
 // CreateOrUpdateVMSingleStreamAggrConfig builds stream aggregation configs for vmsingle at separate configmap, serialized as yaml
 func CreateOrUpdateVMSingleStreamAggrConfig(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.Client) error {
-	if !cr.HasStreamAggrConfig() {
+	if !cr.HasAnyStreamAggrRule() {
 		return nil
 	}
-	streamAggrCM, err := buildVMSingleStreamAggrConfig(cr)
+	streamAggrCM, err := buildVMSingleStreamAggrConfig(ctx, cr, rclient)
 	if err != nil {
 		return err
 	}

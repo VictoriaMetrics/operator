@@ -474,7 +474,11 @@ type ConfigMapKeyReference struct {
 // +k8s:openapi-gen=true
 type StreamAggrConfig struct {
 	// Stream aggregation rules
+	// +optional
 	Rules []StreamAggrRule `json:"rules"`
+	// ConfigMap with stream aggregation rules
+	// +optional
+	RuleConfigMap *v1.ConfigMapKeySelector `json:"configmap,omitempty"`
 	// Allows writing both raw and aggregate data
 	// +optional
 	KeepInput bool `json:"keepInput,omitempty"`
@@ -484,6 +488,13 @@ type StreamAggrConfig struct {
 	// Allows setting different de-duplication intervals per each configured remote storage
 	// +optional
 	DedupInterval string `json:"dedupInterval,omitempty"`
+	// labels to drop from samples for aggregator before stream de-duplication and aggregation
+	// +optional
+	DropInputLabels      []string `json:"dropInputLabels,omitempty"`
+	IgnoreFirstIntervals int      `json:"ignoreFirstIntervals,omitempty"`
+	// IgnoreOldSamples instructs to ignore samples with old timestamps outside the current aggregation interval.
+	// +optional
+	IgnoreOldSamples bool `json:"ignoreOldSamples,omitempty"`
 }
 
 // StreamAggrRule defines the rule in stream aggregation config
@@ -570,6 +581,8 @@ type StreamAggrRule struct {
 	// +optional
 	Without []string `json:"without,omitempty" yaml:"without,omitempty"`
 
+	IgnoreFirstIntervals *int `json:"ignore_first_intervals,omitempty" yaml:"ignore_first_intervals,omitempty"`
+
 	// DropInputLabels is an optional list with labels, which must be dropped before further processing of input samples.
 	//
 	// Labels are dropped before de-duplication and aggregation.
@@ -585,6 +598,14 @@ type StreamAggrRule struct {
 	// on the aggregated output before being sent to remote storage.
 	// +optional
 	OutputRelabelConfigs []RelabelConfig `json:"output_relabel_configs,omitempty" yaml:"output_relabel_configs,omitempty"`
+}
+
+// HasAnyRule returns true if there is at least one aggregation rule
+func (config *StreamAggrConfig) HasAnyRule() bool {
+	if config != nil && (len(config.Rules) > 0 || config.RuleConfigMap != nil) {
+		return true
+	}
+	return false
 }
 
 // KeyValue defines a (key, value) tuple.

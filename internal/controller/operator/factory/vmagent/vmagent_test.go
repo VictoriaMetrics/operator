@@ -1362,11 +1362,20 @@ func TestCreateOrUpdateStreamAggrConfig(t *testing.T) {
 			predefinedObjects: []runtime.Object{},
 		},
 		{
-			name: "simple stream aggr config",
+			name: "simple global and remoteWrite stream aggr config",
 			args: args{
 				ctx: context.TODO(),
 				cr: &vmv1beta1.VMAgent{
 					Spec: vmv1beta1.VMAgentSpec{
+						StreamAggrConfig: &vmv1beta1.StreamAggrConfig{
+							Rules: []vmv1beta1.StreamAggrRule{{
+								Match:    []string{`test`},
+								Interval: "30s",
+								Outputs:  []string{"total"},
+								By:       []string{"job", "instance"},
+								Without:  []string{"pod"},
+							}},
+						},
 						RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 							{
 								URL: "localhost:8429",
@@ -1391,11 +1400,26 @@ func TestCreateOrUpdateStreamAggrConfig(t *testing.T) {
 				},
 			},
 			validate: func(cm *corev1.ConfigMap) error {
-				data, ok := cm.Data["RWS_0-CM-STREAM-AGGR-CONF"]
+				globalData, ok := cm.Data["global_aggregation.yaml"]
+				if !ok {
+					return fmt.Errorf("key: %s, not exists at map: %v", "global_aggregation.yaml", cm.BinaryData)
+				}
+				wantGlobal := `- match: test
+  interval: 30s
+  outputs:
+  - total
+  by:
+  - job
+  - instance
+  without:
+  - pod
+`
+				assert.Equal(t, wantGlobal, globalData)
+				remoteData, ok := cm.Data["RWS_0-CM-STREAM-AGGR-CONF"]
 				if !ok {
 					return fmt.Errorf("key: %s, not exists at map: %v", "RWS_0-CM-STREAM-AGGR-CONFl", cm.BinaryData)
 				}
-				wantGlobal := `- match:
+				wantRemote := `- match:
   - '{__name__="count1"}'
   - '{__name__="count2"}'
   interval: 1m
@@ -1411,7 +1435,7 @@ func TestCreateOrUpdateStreamAggrConfig(t *testing.T) {
   output_relabel_configs:
   - regex: (.+):.+
 `
-				assert.Equal(t, wantGlobal, data)
+				assert.Equal(t, wantRemote, remoteData)
 				return nil
 			},
 			predefinedObjects: []runtime.Object{},

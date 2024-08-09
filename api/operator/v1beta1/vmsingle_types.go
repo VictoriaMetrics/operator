@@ -212,9 +212,9 @@ type VMSingleSpec struct {
 	Paused bool `json:"paused,omitempty"`
 }
 
-// HasStreamAggrConfig checks if streamAggrConfig present
-func (cr *VMSingle) HasStreamAggrConfig() bool {
-	return cr.Spec.StreamAggrConfig != nil && len(cr.Spec.StreamAggrConfig.Rules) > 0
+// HasAnyStreamAggrRule checks if vmsingle has any defined aggregation rules
+func (cr *VMSingle) HasAnyStreamAggrRule() bool {
+	return cr.Spec.StreamAggrConfig.HasAnyRule()
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface

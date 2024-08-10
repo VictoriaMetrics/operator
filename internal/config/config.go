@@ -367,6 +367,9 @@ func (boc BaseOperatorConf) Validate() error {
 	if err := validateResource("vmbackup", Resource(boc.VMBackup.Resource)); err != nil {
 		return err
 	}
+	if err := validateResource("vlogs", Resource(boc.VLogsDefault.Resource)); err != nil {
+		return err
+	}
 
 	return nil
 }

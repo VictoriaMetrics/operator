@@ -27,7 +27,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	operatorv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
 var _ = Describe("VLogs Controller", func() {
@@ -40,13 +40,13 @@ var _ = Describe("VLogs Controller", func() {
 			Name:      resourceName,
 			Namespace: "default", // TODO(user):Modify as needed
 		}
-		vlogs := &operatorv1beta1.VLogs{}
+		vlogs := &vmv1beta1.VLogs{}
 
 		BeforeEach(func() {
 			By("creating the custom resource for the Kind VLogs")
 			err := k8sClient.Get(ctx, typeNamespacedName, vlogs)
 			if err != nil && errors.IsNotFound(err) {
-				resource := &operatorv1beta1.VLogs{
+				resource := &vmv1beta1.VLogs{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceName,
 						Namespace: "default",
@@ -59,7 +59,7 @@ var _ = Describe("VLogs Controller", func() {
 
 		AfterEach(func() {
 			// TODO(user): Cleanup logic after each test, like removing the resource instance.
-			resource := &operatorv1beta1.VLogs{}
+			resource := &vmv1beta1.VLogs{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			Expect(err).NotTo(HaveOccurred())
 

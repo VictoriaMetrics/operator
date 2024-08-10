@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -52,14 +52,14 @@ var (
 					},
 				},
 			},
-			targetTpl: &victoriametricsv1beta1.VMServiceScrape{
+			targetTpl: &vmv1beta1.VMServiceScrape{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
 					Name:      "e2e-test-servicemonitor",
 				},
 			},
 			targetValidator: func(obj client.Object) error {
-				ss := obj.(*victoriametricsv1beta1.VMServiceScrape)
+				ss := obj.(*vmv1beta1.VMServiceScrape)
 				if len(ss.Spec.Endpoints) != 1 {
 					return fmt.Errorf("unexpected number of endpoints, want 1, got: %d", len(ss.Spec.Endpoints))
 				}
@@ -85,14 +85,14 @@ var (
 					},
 				},
 			},
-			targetTpl: &victoriametricsv1beta1.VMPodScrape{
+			targetTpl: &vmv1beta1.VMPodScrape{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
 					Name:      "e2e-test-podmonitor",
 				},
 			},
 			targetValidator: func(obj client.Object) error {
-				ps := obj.(*victoriametricsv1beta1.VMPodScrape)
+				ps := obj.(*vmv1beta1.VMPodScrape)
 				if len(ps.Spec.PodMetricsEndpoints) != 1 {
 					return fmt.Errorf("unexpected number of endpoints, want 1, got: %d", len(ps.Spec.PodMetricsEndpoints))
 				}
@@ -124,14 +124,14 @@ var (
 					},
 				},
 			},
-			targetTpl: &victoriametricsv1beta1.VMRule{
+			targetTpl: &vmv1beta1.VMRule{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
 					Name:      "e2e-test-prometheusrule",
 				},
 			},
 			targetValidator: func(obj client.Object) error {
-				vr := obj.(*victoriametricsv1beta1.VMRule)
+				vr := obj.(*vmv1beta1.VMRule)
 				if len(vr.Spec.Groups) != 1 {
 					return fmt.Errorf("unexpected number of groups, want 1, got: %d", len(vr.Spec.Groups))
 				}
@@ -162,14 +162,14 @@ var (
 					},
 				},
 			},
-			targetTpl: &victoriametricsv1beta1.VMProbe{
+			targetTpl: &vmv1beta1.VMProbe{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
 					Name:      "e2e-test-probe",
 				},
 			},
 			targetValidator: func(obj client.Object) error {
-				vp := obj.(*victoriametricsv1beta1.VMProbe)
+				vp := obj.(*vmv1beta1.VMProbe)
 				if vp.Spec.VMProberSpec.URL != "http://example.com/probe" {
 					return fmt.Errorf("unexpected prober url, want 'http://example.com/probe', got: %s", vp.Spec.VMProberSpec.URL)
 				}

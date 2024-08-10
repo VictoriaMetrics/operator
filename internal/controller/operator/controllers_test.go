@@ -9,7 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 )
 
@@ -25,7 +25,7 @@ func TestIsSelectorsMatchesTargetCRD(t *testing.T) {
 	}{
 		{
 			name: "matches cause under same namespace",
-			sourceCRD: &victoriametricsv1beta1.VMRule{
+			sourceCRD: &vmv1beta1.VMRule{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "rule",
 					Namespace: "default",
@@ -34,12 +34,12 @@ func TestIsSelectorsMatchesTargetCRD(t *testing.T) {
 					},
 				},
 			},
-			targetCRD: &victoriametricsv1beta1.VMAlert{
+			targetCRD: &vmv1beta1.VMAlert{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-vmalert",
 					Namespace: "default",
 				},
-				Spec: victoriametricsv1beta1.VMAlertSpec{
+				Spec: vmv1beta1.VMAlertSpec{
 					RuleSelector:          &metav1.LabelSelector{},
 					RuleNamespaceSelector: &metav1.LabelSelector{},
 				},
@@ -50,7 +50,7 @@ func TestIsSelectorsMatchesTargetCRD(t *testing.T) {
 		},
 		{
 			name: "not match",
-			sourceCRD: &victoriametricsv1beta1.VMRule{
+			sourceCRD: &vmv1beta1.VMRule{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "rule",
 					Namespace: "default",
@@ -59,12 +59,12 @@ func TestIsSelectorsMatchesTargetCRD(t *testing.T) {
 					},
 				},
 			},
-			targetCRD: &victoriametricsv1beta1.VMAlert{
+			targetCRD: &vmv1beta1.VMAlert{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-vmalert",
 					Namespace: "vm-stack",
 				},
-				Spec: victoriametricsv1beta1.VMAlertSpec{
+				Spec: vmv1beta1.VMAlertSpec{
 					RuleSelector:          &metav1.LabelSelector{},
 					RuleNamespaceSelector: &metav1.LabelSelector{},
 				},
@@ -75,7 +75,7 @@ func TestIsSelectorsMatchesTargetCRD(t *testing.T) {
 		},
 		{
 			name: "selector matches",
-			sourceCRD: &victoriametricsv1beta1.VMRule{
+			sourceCRD: &vmv1beta1.VMRule{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "rule",
 					Namespace: "default",
@@ -85,12 +85,12 @@ func TestIsSelectorsMatchesTargetCRD(t *testing.T) {
 					},
 				},
 			},
-			targetCRD: &victoriametricsv1beta1.VMAlert{
+			targetCRD: &vmv1beta1.VMAlert{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-vmalert",
 					Namespace: "default",
 				},
-				Spec: victoriametricsv1beta1.VMAlertSpec{
+				Spec: vmv1beta1.VMAlertSpec{
 					RuleSelector: &metav1.LabelSelector{},
 				},
 			},
@@ -113,7 +113,7 @@ func TestIsSelectorsMatchesTargetCRD(t *testing.T) {
 		},
 		{
 			name: "selector not match",
-			sourceCRD: &victoriametricsv1beta1.VMRule{
+			sourceCRD: &vmv1beta1.VMRule{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "rule",
 					Namespace: "default",
@@ -123,12 +123,12 @@ func TestIsSelectorsMatchesTargetCRD(t *testing.T) {
 					},
 				},
 			},
-			targetCRD: &victoriametricsv1beta1.VMAlert{
+			targetCRD: &vmv1beta1.VMAlert{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-vmalert",
 					Namespace: "default",
 				},
-				Spec: victoriametricsv1beta1.VMAlertSpec{
+				Spec: vmv1beta1.VMAlertSpec{
 					RuleSelector: &metav1.LabelSelector{
 						MatchExpressions: []metav1.LabelSelectorRequirement{
 							{
@@ -164,7 +164,7 @@ func TestIsSelectorsMatchesTargetCRD(t *testing.T) {
 		},
 		{
 			name: "namespaceselector matches",
-			sourceCRD: &victoriametricsv1beta1.VMRule{
+			sourceCRD: &vmv1beta1.VMRule{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "rule",
 					Namespace: "default",
@@ -174,12 +174,12 @@ func TestIsSelectorsMatchesTargetCRD(t *testing.T) {
 					},
 				},
 			},
-			targetCRD: &victoriametricsv1beta1.VMAlert{
+			targetCRD: &vmv1beta1.VMAlert{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-vmalert",
 					Namespace: "default",
 				},
-				Spec: victoriametricsv1beta1.VMAlertSpec{
+				Spec: vmv1beta1.VMAlertSpec{
 					RuleNamespaceSelector: &metav1.LabelSelector{
 						MatchLabels: map[string]string{
 							"kubernetes.io/metadata.name": "default",
@@ -205,7 +205,7 @@ func TestIsSelectorsMatchesTargetCRD(t *testing.T) {
 		},
 		{
 			name: "namespaceselector not matches",
-			sourceCRD: &victoriametricsv1beta1.VMRule{
+			sourceCRD: &vmv1beta1.VMRule{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "rule",
 					Namespace: "default",
@@ -215,12 +215,12 @@ func TestIsSelectorsMatchesTargetCRD(t *testing.T) {
 					},
 				},
 			},
-			targetCRD: &victoriametricsv1beta1.VMAlert{
+			targetCRD: &vmv1beta1.VMAlert{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-vmalert",
 					Namespace: "default",
 				},
-				Spec: victoriametricsv1beta1.VMAlertSpec{
+				Spec: vmv1beta1.VMAlertSpec{
 					RuleNamespaceSelector: &metav1.LabelSelector{
 						MatchLabels: map[string]string{
 							"kubernetes.io/metadata.name": "default",
@@ -246,7 +246,7 @@ func TestIsSelectorsMatchesTargetCRD(t *testing.T) {
 		},
 		{
 			name: "selector+namespaceSelector match",
-			sourceCRD: &victoriametricsv1beta1.VMRule{
+			sourceCRD: &vmv1beta1.VMRule{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "rule",
 					Namespace: "default",
@@ -255,12 +255,12 @@ func TestIsSelectorsMatchesTargetCRD(t *testing.T) {
 					},
 				},
 			},
-			targetCRD: &victoriametricsv1beta1.VMAlert{
+			targetCRD: &vmv1beta1.VMAlert{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-vmalert",
 					Namespace: "default",
 				},
-				Spec: victoriametricsv1beta1.VMAlertSpec{
+				Spec: vmv1beta1.VMAlertSpec{
 					RuleSelector: &metav1.LabelSelector{
 						MatchExpressions: []metav1.LabelSelectorRequirement{
 							{

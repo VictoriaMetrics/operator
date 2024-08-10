@@ -27,7 +27,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	operatorv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
 
 var _ = Describe("VMScrapeConfig Controller", func() {
@@ -40,13 +40,13 @@ var _ = Describe("VMScrapeConfig Controller", func() {
 			Name:      resourceName,
 			Namespace: "default", // TODO(user):Modify as needed
 		}
-		vmscrapeconfig := &operatorv1beta1.VMScrapeConfig{}
+		vmscrapeconfig := &vmv1beta1.VMScrapeConfig{}
 
 		BeforeEach(func() {
 			By("creating the custom resource for the Kind VMScrapeConfig")
 			err := k8sClient.Get(ctx, typeNamespacedName, vmscrapeconfig)
 			if err != nil && errors.IsNotFound(err) {
-				resource := &operatorv1beta1.VMScrapeConfig{
+				resource := &vmv1beta1.VMScrapeConfig{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceName,
 						Namespace: "default",
@@ -59,7 +59,7 @@ var _ = Describe("VMScrapeConfig Controller", func() {
 
 		AfterEach(func() {
 			// TODO(user): Cleanup logic after each test, like removing the resource instance.
-			resource := &operatorv1beta1.VMScrapeConfig{}
+			resource := &vmv1beta1.VMScrapeConfig{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			Expect(err).NotTo(HaveOccurred())
 

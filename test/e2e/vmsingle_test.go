@@ -9,7 +9,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/errors"
 
-	victoriametricsv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -25,7 +25,7 @@ var _ = Describe("test  vmsingle Controller", func() {
 				name := "create-vmsingle"
 				namespace := "default"
 				AfterEach(func() {
-					Expect(k8sClient.Delete(context.Background(), &victoriametricsv1beta1.VMSingle{
+					Expect(k8sClient.Delete(context.Background(), &vmv1beta1.VMSingle{
 						ObjectMeta: metav1.ObjectMeta{
 							Namespace: namespace,
 							Name:      name,
@@ -35,7 +35,7 @@ var _ = Describe("test  vmsingle Controller", func() {
 						err := k8sClient.Get(context.Background(), types.NamespacedName{
 							Name:      name,
 							Namespace: namespace,
-						}, &victoriametricsv1beta1.VMSingle{})
+						}, &vmv1beta1.VMSingle{})
 						if errors.IsNotFound(err) {
 							return ""
 						}
@@ -47,15 +47,15 @@ var _ = Describe("test  vmsingle Controller", func() {
 				})
 
 				It("should create vmSingle", func() {
-					Expect(k8sClient.Create(context.TODO(), &victoriametricsv1beta1.VMSingle{
+					Expect(k8sClient.Create(context.TODO(), &vmv1beta1.VMSingle{
 						ObjectMeta: metav1.ObjectMeta{
 							Namespace: namespace,
 							Name:      name,
 						},
-						Spec: victoriametricsv1beta1.VMSingleSpec{
+						Spec: vmv1beta1.VMSingleSpec{
 							ReplicaCount:    ptr.To[int32](1),
 							RetentionPeriod: "1",
-							InsertPorts: &victoriametricsv1beta1.InsertPorts{
+							InsertPorts: &vmv1beta1.InsertPorts{
 								OpenTSDBPort:     "8081",
 								OpenTSDBHTTPPort: "8082",
 								GraphitePort:     "8083",
@@ -70,12 +70,12 @@ var _ = Describe("test  vmsingle Controller", func() {
 				namespace := "default"
 
 				JustBeforeEach(func() {
-					Expect(k8sClient.Create(context.TODO(), &victoriametricsv1beta1.VMSingle{
+					Expect(k8sClient.Create(context.TODO(), &vmv1beta1.VMSingle{
 						ObjectMeta: metav1.ObjectMeta{
 							Namespace: namespace,
 							Name:      name,
 						},
-						Spec: victoriametricsv1beta1.VMSingleSpec{
+						Spec: vmv1beta1.VMSingleSpec{
 							ReplicaCount:    ptr.To[int32](1),
 							RetentionPeriod: "1",
 						},
@@ -83,7 +83,7 @@ var _ = Describe("test  vmsingle Controller", func() {
 					time.Sleep(time.Second * 2)
 				})
 				JustAfterEach(func() {
-					Expect(k8sClient.Delete(context.TODO(), &victoriametricsv1beta1.VMSingle{
+					Expect(k8sClient.Delete(context.TODO(), &vmv1beta1.VMSingle{
 						ObjectMeta: metav1.ObjectMeta{
 							Namespace: namespace,
 							Name:      name,
@@ -92,7 +92,7 @@ var _ = Describe("test  vmsingle Controller", func() {
 					time.Sleep(time.Second * 3)
 				})
 				It("should update vmSingle deploy param and ports", func() {
-					currVMSingle := &victoriametricsv1beta1.VMSingle{
+					currVMSingle := &vmv1beta1.VMSingle{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      name,
 							Namespace: namespace,
@@ -107,11 +107,11 @@ var _ = Describe("test  vmsingle Controller", func() {
 						Namespace: namespace,
 					}, currVMSingle)).To(Succeed())
 					currVMSingle.Spec.RetentionPeriod = "3"
-					currVMSingle.Spec.InsertPorts = &victoriametricsv1beta1.InsertPorts{
+					currVMSingle.Spec.InsertPorts = &vmv1beta1.InsertPorts{
 						OpenTSDBPort: "8115",
 					}
-					currVMSingle.Spec.ServiceSpec = &victoriametricsv1beta1.AdditionalServiceSpec{
-						EmbeddedObjectMetadata: victoriametricsv1beta1.EmbeddedObjectMetadata{
+					currVMSingle.Spec.ServiceSpec = &vmv1beta1.AdditionalServiceSpec{
+						EmbeddedObjectMetadata: vmv1beta1.EmbeddedObjectMetadata{
 							Name: "vmsingle-node-access",
 						},
 						Spec: corev1.ServiceSpec{

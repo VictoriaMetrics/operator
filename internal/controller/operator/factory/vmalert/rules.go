@@ -235,6 +235,7 @@ func selectRulesUpdateStatus(ctx context.Context, cr *vmv1beta1.VMAlert, rclient
 		cnt++
 		rules[fmt.Sprintf("%s-%s.yaml", pRule.Namespace, pRule.Name)] = content
 	}
+	vmRules = vmRules[:cnt]
 
 	ruleNames := make([]string, 0, len(rules))
 	for name := range rules {

@@ -399,7 +399,7 @@ type EmailConfig struct {
 	AuthIdentity string `json:"auth_identity,omitempty" yaml:"auth_identity,omitempty"`
 	// Further headers email header key/value pairs. Overrides any headers
 	// previously set by the notification implementation.
-	Headers map[string]string `json:"headers,omitempty"`
+	Headers map[string]string `json:"headers,omitempty" yaml:"headers,omitempty"`
 	// The HTML body of the email notification.
 	// +optional
 	HTML string `json:"html,omitempty"`

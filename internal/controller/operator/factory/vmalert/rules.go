@@ -17,6 +17,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 )
@@ -63,7 +64,7 @@ func CreateOrUpdateRuleConfigMaps(ctx context.Context, cr *vmv1beta1.VMAlert, rc
 		return nil, nil
 	}
 	l := logger.WithContext(ctx).WithValues("reconcile", "rulesCm", "vmalert", cr.Name)
-	newRules, err := selectRules(ctx, cr, rclient)
+	newRules, err := selectRulesUpdateStatus(ctx, cr, rclient)
 	if err != nil {
 		return nil, err
 	}
@@ -196,7 +197,7 @@ func rulesCMDiff(currentCMs []corev1.ConfigMap, newCMs []corev1.ConfigMap) ([]co
 	return toCreate, toUpdate, toDelete
 }
 
-func selectRules(ctx context.Context, cr *vmv1beta1.VMAlert, rclient client.Client) (map[string]string, error) {
+func selectRulesUpdateStatus(ctx context.Context, cr *vmv1beta1.VMAlert, rclient client.Client) (map[string]string, error) {
 	var vmRules []*vmv1beta1.VMRule
 	if err := k8stools.VisitObjectsForSelectorsAtNs(ctx, rclient, cr.Spec.RuleNamespaceSelector, cr.Spec.RuleSelector, cr.Namespace, cr.Spec.SelectAllByDefault,
 		func(list *vmv1beta1.VMRuleList) {
@@ -213,30 +214,28 @@ func selectRules(ctx context.Context, cr *vmv1beta1.VMAlert, rclient client.Clie
 	rules := make(map[string]string, len(vmRules))
 
 	if cr.NeedDedupRules() {
-		logger.WithContext(ctx).Info("deduplicating vmalert rules", "vmalert", cr.ObjectMeta.Name)
+		logger.WithContext(ctx).Info("deduplicating vmalert rules", "vmalert", cr.Name)
 		vmRules = deduplicateRules(ctx, vmRules)
 	}
-	var badRules int
-	var errors []string
+	var badRules []*vmv1beta1.VMRule
+	var cnt int
 	for _, pRule := range vmRules {
+		if err := pRule.Validate(); err != nil {
+			pRule.Status.CurrentSyncError = err.Error()
+			badRules = append(badRules, pRule)
+			continue
+		}
 		content, err := generateContent(pRule.Spec, cr.Spec.EnforcedNamespaceLabel, pRule.Namespace)
 		if err != nil {
-			badRules++
-			errors = append(errors, fmt.Sprintf("cannot generate content for rule: %s, err :%s", pRule.Name, err))
+			pRule.Status.CurrentSyncError = fmt.Sprintf("cannot generate content for rule: %s, err :%s", pRule.Name, err)
+			badRules = append(badRules, pRule)
 			continue
 		}
-
-		// check if none of the rule files is too large for a single ConfigMap
-		if len(content) > vmv1beta1.MaxConfigMapDataSize {
-			badRules++
-			errors = append(errors, fmt.Sprintf(
-				"rule file %q with size %d is too large for a single Kubernetes ConfigMap limit: %d",
-				pRule.Namespace+"-"+pRule.Name, len(content), vmv1beta1.MaxConfigMapDataSize,
-			))
-			continue
-		}
+		vmRules[cnt] = pRule
+		cnt++
 		rules[fmt.Sprintf("%s-%s.yaml", pRule.Namespace, pRule.Name)] = content
 	}
+	vmRules = vmRules[:cnt]
 
 	ruleNames := make([]string, 0, len(rules))
 	for name := range rules {
@@ -248,17 +247,40 @@ func selectRules(ctx context.Context, cr *vmv1beta1.VMAlert, rclient client.Clie
 		// it's needed to start vmalert.
 		rules["default-vmalert.yaml"] = defAlert
 	}
+	var errors []string
+	for _, bRule := range badRules {
+		errors = append(errors, fmt.Sprintf("namespace/name=%s/%s,err=%s", bRule.Namespace, bRule.Name, bRule.Status.CurrentSyncError))
+		if bRule.Status.CurrentSyncError == bRule.Status.LastSyncError {
+			continue
+		}
+		// patch update status
+		pt := client.RawPatch(types.MergePatchType,
+			[]byte(fmt.Sprintf(`{"status": {"lastSyncError":  %q , "status": %q} }`, bRule.Status.CurrentSyncError, vmv1beta1.UpdateStatusFailed)))
+		if err := rclient.Status().Patch(ctx, bRule, pt); err != nil {
+			return nil, fmt.Errorf("failed to patch status of broken vmrule=%q: %w", bRule.Name, err)
+		}
+	}
 	if len(errors) > 0 {
 		logger.WithContext(ctx).Error(fmt.Errorf("errors: %s", strings.Join(errors, ";")), "invalid vmrules detected during parsing")
 	}
-	badConfigsTotal.Add(float64(badRules))
+	badConfigsTotal.Add(float64(len(badRules)))
 
 	logger.WithContext(ctx).Info("selected Rules",
 		"rules", strings.Join(ruleNames, ","),
 		"namespace", cr.Namespace,
 		"vmalert", cr.Name,
-		"invalid rules", badRules,
+		"invalid rules", len(badRules),
 	)
+	for _, rule := range vmRules {
+		// restore status back to normal
+		if rule.Status.Status != vmv1beta1.UpdateStatusOperational {
+			pt := client.RawPatch(types.MergePatchType,
+				[]byte(fmt.Sprintf(`{"status": {"lastSyncError":  "", "status": %q } }`, vmv1beta1.UpdateStatusOperational)))
+			if err := rclient.Status().Patch(ctx, rule, pt); err != nil {
+				return nil, fmt.Errorf("failed to patch status of vmuser=%q: %w", rule.Name, err)
+			}
+		}
+	}
 
 	return rules, nil
 }

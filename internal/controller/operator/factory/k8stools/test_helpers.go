@@ -31,6 +31,7 @@ func testGetScheme() *runtime.Scheme {
 		&vmv1beta1.VMAlertmanagerConfigList{},
 		&vmv1beta1.VMScrapeConfigList{},
 		&vmv1beta1.VMClusterList{},
+		&vmv1beta1.VLogsList{},
 	)
 	s.AddKnownTypes(vmv1beta1.GroupVersion,
 		&vmv1beta1.VMPodScrape{},
@@ -49,6 +50,7 @@ func testGetScheme() *runtime.Scheme {
 		&vmv1beta1.VMAlertmanagerConfig{},
 		&vmv1beta1.VMScrapeConfig{},
 		&vmv1beta1.VMCluster{},
+		&vmv1beta1.VLogs{},
 	)
 	return s
 }
@@ -60,7 +62,18 @@ func GetTestClientWithObjects(predefinedObjects []runtime.Object) client.Client 
 		obj = append(obj, o.(client.Object))
 	}
 	fclient := fake.NewClientBuilder().WithScheme(testGetScheme()).
-		WithStatusSubresource(&vmv1beta1.VMUser{}, &vmv1beta1.VMAlertmanagerConfig{}).
+		WithStatusSubresource(
+			&vmv1beta1.VMRule{},
+			&vmv1beta1.VMAlert{},
+			&vmv1beta1.VMAuth{},
+			&vmv1beta1.VMUser{},
+			&vmv1beta1.VMCluster{},
+			&vmv1beta1.VMSingle{},
+			&vmv1beta1.VMAgent{},
+			&vmv1beta1.VMAlertmanager{},
+			&vmv1beta1.VMAlertmanagerConfig{},
+			&vmv1beta1.VLogs{},
+		).
 		WithObjects(obj...).Build()
 	return fclient
 }

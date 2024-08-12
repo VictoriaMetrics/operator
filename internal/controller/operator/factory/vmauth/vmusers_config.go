@@ -137,8 +137,8 @@ func buildVMAuthConfig(ctx context.Context, rclient client.Client, vmauth *vmv1b
 	}
 	var errContexts []string
 	for _, brokenUser := range sus.brokenVMUsers {
+		errContexts = append(errContexts, fmt.Sprintf("namespace/name=%s/%s,err=%s", brokenUser.Namespace, brokenUser.Name, brokenUser.Status.CurrentSyncError))
 		if brokenUser.Status.CurrentSyncError == brokenUser.Status.LastSyncError {
-			errContexts = append(errContexts, fmt.Sprintf("namespace=%q,name=%q,err=%q", brokenUser.Namespace, brokenUser.Name, brokenUser.Status.CurrentSyncError))
 			continue
 		}
 

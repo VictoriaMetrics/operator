@@ -22015,7 +22015,17 @@ spec:
     singular: vmrule
   scope: Namespaced
   versions:
-  - name: v1beta1
+  - additionalPrinterColumns:
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    - jsonPath: .status.status
+      name: Status
+      type: string
+    - jsonPath: .status.lastSyncError
+      name: Sync Error
+      type: string
+    name: v1beta1
     schema:
       openAPIV3Schema:
         description: VMRule defines rule records for vmalert application
@@ -22195,6 +22205,14 @@ spec:
             type: object
           status:
             description: VMRuleStatus defines the observed state of VMRule
+            properties:
+              lastSyncError:
+                description: LastSyncError contains error message for unsuccessful
+                  config generation
+                type: string
+              status:
+                description: Status defines CRD processing status
+                type: string
             type: object
         required:
         - spec

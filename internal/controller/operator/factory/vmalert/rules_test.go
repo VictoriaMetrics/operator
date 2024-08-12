@@ -118,7 +118,7 @@ groups:
 						EvalDelay:     "40s",
 						EvalAlignment: ptr.To(false),
 						Rules: []vmv1beta1.Rule{
-							{Alert: "", Expr: "10", For: "10s", Labels: nil, Annotations: nil},
+							{Alert: "alerting", Expr: "10", For: "10s", Labels: nil, Annotations: nil},
 						},
 					}},
 				}},
@@ -132,7 +132,8 @@ groups:
   interval: 10s
   name: error-alert
   rules:
-  - expr: "10"
+  - alert: alerting
+    expr: "10"
     for: 10s
 `,
 			},
@@ -152,12 +153,12 @@ groups:
 				&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "monitoring", Labels: map[string]string{"monitoring": "enabled"}}},
 				&vmv1beta1.VMRule{ObjectMeta: metav1.ObjectMeta{Name: "error-alert", Namespace: "default"}, Spec: vmv1beta1.VMRuleSpec{
 					Groups: []vmv1beta1.RuleGroup{{Name: "error-alert", Interval: "10s", Rules: []vmv1beta1.Rule{
-						{Alert: "", Expr: "10", For: "10s", Labels: nil, Annotations: nil},
+						{Record: "recording", Expr: "10", For: "10s", Labels: nil, Annotations: nil},
 					}}},
 				}},
 				&vmv1beta1.VMRule{ObjectMeta: metav1.ObjectMeta{Name: "error-alert-at-monitoring", Namespace: "monitoring"}, Spec: vmv1beta1.VMRuleSpec{
 					Groups: []vmv1beta1.RuleGroup{{Name: "error-alert", Interval: "10s", Rules: []vmv1beta1.Rule{
-						{Alert: "", Expr: "10", For: "10s", Labels: nil, Annotations: nil},
+						{Alert: "alerting-2", Expr: "10", For: "10s", Labels: nil, Annotations: nil},
 					}}},
 				}},
 			},
@@ -165,7 +166,8 @@ groups:
 - interval: 10s
   name: error-alert
   rules:
-  - expr: "10"
+  - alert: alerting-2
+    expr: "10"
     for: 10s
 `},
 		},
@@ -188,7 +190,7 @@ groups:
 					ObjectMeta: metav1.ObjectMeta{Name: "error-alert", Namespace: "default"},
 					Spec: vmv1beta1.VMRuleSpec{
 						Groups: []vmv1beta1.RuleGroup{{Name: "error-alert", Interval: "10s", Rules: []vmv1beta1.Rule{
-							{Alert: "", Expr: "10", For: "10s", Labels: nil, Annotations: nil},
+							{Alert: "err indicator", Expr: "rate(err_metric[1m]) > 10", For: "10s", Labels: nil, Annotations: nil},
 						}}},
 					},
 				},
@@ -196,7 +198,7 @@ groups:
 					ObjectMeta: metav1.ObjectMeta{Name: "error-alert-at-monitoring", Namespace: "monitoring"},
 					Spec: vmv1beta1.VMRuleSpec{
 						Groups: []vmv1beta1.RuleGroup{{Name: "error-alert", Interval: "10s", Rules: []vmv1beta1.Rule{
-							{Alert: "", Expr: "10", For: "10s", Labels: nil, Annotations: nil},
+							{Alert: "alerting-2", Expr: "10", For: "10s", Labels: nil, Annotations: nil},
 						}}},
 					},
 				},
@@ -206,14 +208,16 @@ groups:
 - interval: 10s
   name: error-alert
   rules:
-  - expr: "10"
+  - alert: err indicator
+    expr: rate(err_metric[1m]) > 10
     for: 10s
 `,
 				"monitoring-error-alert-at-monitoring.yaml": `groups:
 - interval: 10s
   name: error-alert
   rules:
-  - expr: "10"
+  - alert: alerting-2
+    expr: "10"
     for: 10s
 `,
 			},
@@ -268,8 +272,9 @@ groups:
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			got, err := selectRules(context.TODO(), tt.args.p, fclient)
+			got, err := selectRulesUpdateStatus(ctx, tt.args.p, fclient)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("SelectRules() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -277,6 +282,27 @@ groups:
 			for ruleName, content := range got {
 				if !assert.Equal(t, tt.want[ruleName], content) {
 					t.Errorf("SelectRules() got = %v, want %v", content, tt.want[ruleName])
+				}
+			}
+			cr := tt.args.p
+			var badRules []*vmv1beta1.VMRule
+			if err := k8stools.VisitObjectsForSelectorsAtNs(ctx, fclient, cr.Spec.RuleNamespaceSelector, cr.Spec.RuleSelector, cr.Namespace, cr.Spec.SelectAllByDefault,
+				func(list *vmv1beta1.VMRuleList) {
+					for _, item := range list.Items {
+						if !item.DeletionTimestamp.IsZero() {
+							continue
+						}
+						if item.Status.Status != vmv1beta1.UpdateStatusOperational {
+							badRules = append(badRules, item)
+						}
+					}
+				}); err != nil {
+				t.Fatalf("cannot list vmrules after select: %s", err)
+			}
+			if len(badRules) > 0 {
+				t.Logf("got rules with bad non-operational status: %d", len(badRules))
+				for _, br := range badRules {
+					t.Fatalf("rule=%s status=%s sync error=%s ", br.Name, br.Status.Status, br.Status.LastSyncError)
 				}
 			}
 		})

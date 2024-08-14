@@ -345,8 +345,19 @@ func (r VLogs) PrefixedName() string {
 	return fmt.Sprintf("vlogs-%s", r.Name)
 }
 
-func (r VLogs) MetricPath() string {
+// GetMetricPath returns prefixed path for metric requests
+func (r VLogs) GetMetricPath() string {
 	return buildPathWithPrefixFlag(r.Spec.ExtraArgs, metricPath)
+}
+
+// GetExtraArgs returns additionally configured command-line arguments
+func (r VLogs) GetExtraArgs() map[string]string {
+	return r.Spec.ExtraArgs
+}
+
+// GetServiceScrape returns overrides for serviceScrape builder
+func (r VLogs) GetServiceScrape() *VMServiceScrapeSpec {
+	return r.Spec.ServiceScrapeSpec
 }
 
 func (r VLogs) GetServiceAccountName() string {

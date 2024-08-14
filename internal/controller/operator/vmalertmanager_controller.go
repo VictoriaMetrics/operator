@@ -98,7 +98,7 @@ func (r *VMAlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		}
 
 		if !r.BaseConf.DisableSelfServiceScrapeCreation {
-			err := reconcile.VMServiceScrapeForCRD(ctx, r, build.VMServiceScrapeForServiceWithSpec(service, instance.Spec.ServiceScrapeSpec, instance.MetricPath(), "http"))
+			err := reconcile.VMServiceScrapeForCRD(ctx, r, build.VMServiceScrapeForAlertmanager(service, instance))
 			if err != nil {
 				reqLogger.Error(err, "cannot create serviceScrape for vmalertmanager")
 			}

@@ -109,7 +109,7 @@ func CreateOrUpdateVLogs(ctx context.Context, r *vmv1beta1.VLogs, rclient client
 	}
 
 	if !c.DisableSelfServiceScrapeCreation {
-		err := reconcile.VMServiceScrapeForCRD(ctx, rclient, build.VMServiceScrapeForServiceWithSpec(svc, r.Spec.ServiceScrapeSpec, r.MetricPath()))
+		err := reconcile.VMServiceScrapeForCRD(ctx, rclient, build.VMServiceScrapeForServiceWithSpec(svc, r))
 		if err != nil {
 			return fmt.Errorf("cannot create serviceScrape for vlogs: %w", err)
 		}

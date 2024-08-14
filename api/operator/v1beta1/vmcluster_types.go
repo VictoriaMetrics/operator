@@ -993,25 +993,58 @@ func (cr *VMCluster) Paused() bool {
 	return cr.Spec.Paused
 }
 
-func (cr VMCluster) MetricPathSelect() string {
-	if cr.Spec.VMSelect == nil {
+// GetMetricPath returns prefixed path for metric requests
+func (cr *VMSelect) GetMetricPath() string {
+	if cr == nil {
 		return healthPath
 	}
-	return buildPathWithPrefixFlag(cr.Spec.VMSelect.ExtraArgs, metricPath)
+	return buildPathWithPrefixFlag(cr.ExtraArgs, metricPath)
 }
 
-func (cr VMCluster) MetricPathInsert() string {
-	if cr.Spec.VMInsert == nil {
-		return healthPath
-	}
-	return buildPathWithPrefixFlag(cr.Spec.VMInsert.ExtraArgs, metricPath)
+// ExtraArgs returns additionally configured command-line arguments
+func (cr *VMSelect) GetExtraArgs() map[string]string {
+	return cr.ExtraArgs
 }
 
-func (cr VMCluster) MetricPathStorage() string {
-	if cr.Spec.VMStorage == nil {
+// ServiceScrape returns overrides for serviceScrape builder
+func (cr *VMSelect) GetServiceScrape() *VMServiceScrapeSpec {
+	return cr.ServiceScrapeSpec
+}
+
+// GetMetricPath returns prefixed path for metric requests
+func (cr *VMInsert) GetMetricPath() string {
+	if cr == nil {
 		return healthPath
 	}
-	return buildPathWithPrefixFlag(cr.Spec.VMStorage.ExtraArgs, metricPath)
+	return buildPathWithPrefixFlag(cr.ExtraArgs, metricPath)
+}
+
+// ExtraArgs returns additionally configured command-line arguments
+func (cr *VMInsert) GetExtraArgs() map[string]string {
+	return cr.ExtraArgs
+}
+
+// ServiceScrape returns overrides for serviceScrape builder
+func (cr *VMInsert) GetServiceScrape() *VMServiceScrapeSpec {
+	return cr.ServiceScrapeSpec
+}
+
+// GetMetricPath returns prefixed path for metric requests
+func (cr *VMStorage) GetMetricPath() string {
+	if cr == nil {
+		return healthPath
+	}
+	return buildPathWithPrefixFlag(cr.ExtraArgs, metricPath)
+}
+
+// ExtraArgs returns additionally configured command-line arguments
+func (cr *VMStorage) GetExtraArgs() map[string]string {
+	return cr.ExtraArgs
+}
+
+// ServiceScrape returns overrides for serviceScrape builder
+func (cr *VMStorage) GetServiceScrape() *VMServiceScrapeSpec {
+	return cr.ServiceScrapeSpec
 }
 
 func (cr VMBackup) SnapshotCreatePathWithFlags(port string, extraArgs map[string]string) string {

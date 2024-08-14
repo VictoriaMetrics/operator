@@ -355,8 +355,19 @@ func (cr VMSingle) StreamAggrConfigName() string {
 	return fmt.Sprintf("stream-aggr-vmsingle-%s", cr.Name)
 }
 
-func (cr VMSingle) MetricPath() string {
+// GetMetricPath returns prefixed path for metric requests
+func (cr VMSingle) GetMetricPath() string {
 	return buildPathWithPrefixFlag(cr.Spec.ExtraArgs, metricPath)
+}
+
+// ExtraArgs returns additionally configured command-line arguments
+func (cr VMSingle) GetExtraArgs() map[string]string {
+	return cr.Spec.ExtraArgs
+}
+
+// ServiceScrape returns overrides for serviceScrape builder
+func (cr VMSingle) GetServiceScrape() *VMServiceScrapeSpec {
+	return cr.Spec.ServiceScrapeSpec
 }
 
 func (cr VMSingle) GetServiceAccountName() string {

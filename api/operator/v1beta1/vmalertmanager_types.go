@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"path"
-	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -428,18 +427,29 @@ func (cr *VMAlertmanager) AsURL() string {
 		}
 	}
 
-	return fmt.Sprintf("%s://%s.%s.svc:%s", strings.ToLower(cr.ProbeScheme()), cr.PrefixedName(), cr.Namespace, port)
+	return fmt.Sprintf("%s://%s.%s.svc:%s", cr.accessScheme(), cr.PrefixedName(), cr.Namespace, port)
 }
 
 func (cr *VMAlertmanager) asPodFQDN(idx int) string {
-	return fmt.Sprintf("%s://%s-%d.%s.%s.svc:9093", strings.ToLower(cr.ProbeScheme()), cr.PrefixedName(), idx, cr.PrefixedName(), cr.Namespace)
+	return fmt.Sprintf("%s://%s-%d.%s.%s.svc:9093", cr.accessScheme(), cr.PrefixedName(), idx, cr.PrefixedName(), cr.Namespace)
 }
 
-func (cr *VMAlertmanager) MetricPath() string {
+// GetMetricPath returns prefixed path for metric requests
+func (cr *VMAlertmanager) GetMetricPath() string {
 	if prefix := cr.Spec.RoutePrefix; prefix != "" {
 		return path.Join(prefix, metricPath)
 	}
 	return metricPath
+}
+
+// GetExtraArgs returns additionally configured command-line arguments
+func (cr VMAlertmanager) GetExtraArgs() map[string]string {
+	return cr.Spec.ExtraArgs
+}
+
+// GetServiceScrape returns overrides for serviceScrape builder
+func (cr VMAlertmanager) GetServiceScrape() *VMServiceScrapeSpec {
+	return cr.Spec.ServiceScrapeSpec
 }
 
 // AsCRDOwner implements interface
@@ -491,6 +501,14 @@ func (cr *VMAlertmanager) ProbePath() string {
 
 func (cr *VMAlertmanager) ProbePort() string {
 	return cr.Spec.PortName
+}
+
+func (cr *VMAlertmanager) accessScheme() string {
+	if cr.Spec.WebConfig != nil && cr.Spec.WebConfig.TLSServerConfig != nil {
+		// special case for mTLS
+		return "https"
+	}
+	return "http"
 }
 
 // ProbeScheme returns scheme for probe

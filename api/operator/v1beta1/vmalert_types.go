@@ -491,8 +491,19 @@ func (cr VMAlert) TLSAssetName() string {
 	return fmt.Sprintf("tls-assets-vmalert-%s", cr.Name)
 }
 
-func (cr VMAlert) MetricPath() string {
+// GetMetricPath returns prefixed path for metric requests
+func (cr VMAlert) GetMetricPath() string {
 	return buildPathWithPrefixFlag(cr.Spec.ExtraArgs, metricPath)
+}
+
+// GetExtraArgs returns additionally configured command-line arguments
+func (cr VMAlert) GetExtraArgs() map[string]string {
+	return cr.Spec.ExtraArgs
+}
+
+// GetServiceScrape returns overrides for serviceScrape builder
+func (cr VMAlert) GetServiceScrape() *VMServiceScrapeSpec {
+	return cr.Spec.ServiceScrapeSpec
 }
 
 func (cr VMAlert) NeedDedupRules() bool {

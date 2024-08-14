@@ -484,8 +484,19 @@ func (cr VMAuth) ConfigSecretName() string {
 	return fmt.Sprintf("vmauth-config-%s", cr.Name)
 }
 
-func (cr VMAuth) MetricPath() string {
+// GetMetricPath returns prefixed path for metric requests
+func (cr VMAuth) GetMetricPath() string {
 	return buildPathWithPrefixFlag(cr.Spec.ExtraArgs, metricPath)
+}
+
+// GetExtraArgs returns additionally configured command-line arguments
+func (cr VMAuth) GetExtraArgs() map[string]string {
+	return cr.Spec.ExtraArgs
+}
+
+// GetServiceScrape returns overrides for serviceScrape builder
+func (cr VMAuth) GetServiceScrape() *VMServiceScrapeSpec {
+	return cr.Spec.ServiceScrapeSpec
 }
 
 func (cr VMAuth) GetServiceAccountName() string {

@@ -113,7 +113,7 @@ func (r *VMAlertReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 		}
 
 		if !r.BaseConf.DisableSelfServiceScrapeCreation {
-			err := reconcile.VMServiceScrapeForCRD(ctx, r, build.VMServiceScrapeForServiceWithSpec(svc, instance.Spec.ServiceScrapeSpec, instance.MetricPath()))
+			err := reconcile.VMServiceScrapeForCRD(ctx, r, build.VMServiceScrapeForServiceWithSpec(svc, instance))
 			if err != nil {
 				reqLogger.Error(err, "cannot create serviceScrape for vmalert")
 			}

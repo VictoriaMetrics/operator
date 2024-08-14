@@ -59,7 +59,7 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *vmv1beta1.VMCluster, rclie
 			return err
 		}
 		if !c.DisableSelfServiceScrapeCreation {
-			err := reconcile.VMServiceScrapeForCRD(ctx, rclient, build.VMServiceScrapeForServiceWithSpec(storageSvc, cr.Spec.VMStorage.ServiceScrapeSpec, cr.MetricPathStorage(), "http"))
+			err := reconcile.VMServiceScrapeForCRD(ctx, rclient, build.VMServiceScrapeForServiceWithSpec(storageSvc, cr.Spec.VMStorage, "http"))
 			if err != nil {
 				logger.WithContext(ctx).Error(err, "cannot create VMServiceScrape for vmStorage")
 			}
@@ -85,7 +85,7 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *vmv1beta1.VMCluster, rclie
 			return err
 		}
 		if !c.DisableSelfServiceScrapeCreation {
-			err := reconcile.VMServiceScrapeForCRD(ctx, rclient, build.VMServiceScrapeForServiceWithSpec(selectSvc, cr.Spec.VMSelect.ServiceScrapeSpec, cr.MetricPathSelect(), "http"))
+			err := reconcile.VMServiceScrapeForCRD(ctx, rclient, build.VMServiceScrapeForServiceWithSpec(selectSvc, cr.Spec.VMSelect, "http"))
 			if err != nil {
 				logger.WithContext(ctx).Error(err, "cannot create VMServiceScrape for vmSelect")
 			}
@@ -109,7 +109,7 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *vmv1beta1.VMCluster, rclie
 			return err
 		}
 		if !c.DisableSelfServiceScrapeCreation {
-			err := reconcile.VMServiceScrapeForCRD(ctx, rclient, build.VMServiceScrapeForServiceWithSpec(insertSvc, cr.Spec.VMInsert.ServiceScrapeSpec, cr.MetricPathInsert(), "http"))
+			err := reconcile.VMServiceScrapeForCRD(ctx, rclient, build.VMServiceScrapeForServiceWithSpec(insertSvc, cr.Spec.VMInsert, "http"))
 			if err != nil {
 				logger.WithContext(ctx).Error(err, "cannot create VMServiceScrape for vmInsert")
 			}

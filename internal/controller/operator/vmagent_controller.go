@@ -110,7 +110,7 @@ func (r *VMAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 		}
 
 		if !r.BaseConf.DisableSelfServiceScrapeCreation {
-			err = reconcile.VMServiceScrapeForCRD(ctx, r, build.VMServiceScrapeForServiceWithSpec(svc, instance.Spec.ServiceScrapeSpec, instance.MetricPath(), "http"))
+			err = reconcile.VMServiceScrapeForCRD(ctx, r, build.VMServiceScrapeForServiceWithSpec(svc, instance, "http"))
 			if err != nil {
 				reqLogger.Error(err, "cannot create serviceScrape for vmagent")
 			}

@@ -674,8 +674,19 @@ func (cr VMAgent) HealthPath() string {
 	return buildPathWithPrefixFlag(cr.Spec.ExtraArgs, healthPath)
 }
 
-func (cr VMAgent) MetricPath() string {
+// GetMetricPath returns prefixed path for metric requests
+func (cr VMAgent) GetMetricPath() string {
 	return buildPathWithPrefixFlag(cr.Spec.ExtraArgs, metricPath)
+}
+
+// ExtraArgs returns additionally configured command-line arguments
+func (cr VMAgent) GetExtraArgs() map[string]string {
+	return cr.Spec.ExtraArgs
+}
+
+// ServiceScrape returns overrides for serviceScrape builder
+func (cr VMAgent) GetServiceScrape() *VMServiceScrapeSpec {
+	return cr.Spec.ServiceScrapeSpec
 }
 
 func (cr VMAgent) GetServiceAccountName() string {

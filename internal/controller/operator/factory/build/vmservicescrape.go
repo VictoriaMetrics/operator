@@ -1,15 +1,56 @@
 package build
 
 import (
+	"strings"
+
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+type serviceScrapeBuilder interface {
+	GetServiceScrape() *vmv1beta1.VMServiceScrapeSpec
+	GetExtraArgs() map[string]string
+	GetMetricPath() string
+}
+
+// VMServiceScrapeForServiceWithSpec build VMServiceScrape for VMAlertmanager
+func VMServiceScrapeForAlertmanager(service *v1.Service, amCR *vmv1beta1.VMAlertmanager) *vmv1beta1.VMServiceScrape {
+	var extraArgs map[string]string
+
+	isTLS := amCR.Spec.WebConfig != nil && amCR.Spec.WebConfig.TLSServerConfig != nil
+
+	// use hack to emulate enabled tls in generic way with vm components
+	if isTLS {
+		extraArgs = map[string]string{
+			"tls": "true",
+		}
+	}
+	return vmServiceScrapeForServiceWithSpec(service, amCR.GetServiceScrape(), extraArgs, amCR.GetMetricPath(), "http")
+}
+
+func VMServiceScrapeForServiceWithSpec(service *v1.Service, builder serviceScrapeBuilder, filterPortNames ...string) *vmv1beta1.VMServiceScrape {
+	serviceScrapeSpec, extraArgs, metricPath := builder.GetServiceScrape(), builder.GetExtraArgs(), builder.GetMetricPath()
+	return vmServiceScrapeForServiceWithSpec(service, serviceScrapeSpec, extraArgs, metricPath, filterPortNames...)
+}
+
 // VMServiceScrapeForServiceWithSpec build VMServiceScrape for given service with optional spec
 // optionally could filter out ports from service
-func VMServiceScrapeForServiceWithSpec(service *v1.Service, serviceScrapeSpec *vmv1beta1.VMServiceScrapeSpec, metricPath string, filterPortNames ...string) *vmv1beta1.VMServiceScrape {
-	endPoints := []vmv1beta1.Endpoint{}
+func vmServiceScrapeForServiceWithSpec(service *v1.Service, serviceScrapeSpec *vmv1beta1.VMServiceScrapeSpec, extraArgs map[string]string, metricPath string, filterPortNames ...string) *vmv1beta1.VMServiceScrape {
+	var endPoints []vmv1beta1.Endpoint
+	var isTLS bool
+	v, ok := extraArgs["tls"]
+	if ok {
+		// tls is array flag type at VictoriaMetrics components
+		// use first value
+		firstIdx := strings.IndexByte(v, ',')
+		if firstIdx > 0 {
+			v = v[:firstIdx]
+		}
+		isTLS = strings.ToLower(v) == "true"
+	}
+	authKey := extraArgs["metricsAuthKey"]
+
 	for _, servicePort := range service.Spec.Ports {
 		var nameMatched bool
 		for _, filter := range filterPortNames {
@@ -22,12 +63,26 @@ func VMServiceScrapeForServiceWithSpec(service *v1.Service, serviceScrapeSpec *v
 			continue
 		}
 
-		endPoints = append(endPoints, vmv1beta1.Endpoint{
+		ep := vmv1beta1.Endpoint{
 			Port: servicePort.Name,
 			EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
 				Path: metricPath,
 			},
-		})
+		}
+		if isTLS {
+			ep.Scheme = "https"
+			// add insecure by default
+			// if needed user will override it with direct config
+			ep.TLSConfig = &vmv1beta1.TLSConfig{
+				InsecureSkipVerify: true,
+			}
+		}
+		if len(authKey) > 0 {
+			ep.Params = map[string][]string{
+				"authKey": {authKey},
+			}
+		}
+		endPoints = append(endPoints, ep)
 	}
 
 	if serviceScrapeSpec == nil {

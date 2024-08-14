@@ -30,6 +30,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+	"k8s.io/client-go/util/flowcontrol"
 	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
@@ -78,6 +79,8 @@ var (
 	printDefaults                 = flag.Bool("printDefaults", false, "print all variables with their default values and exit")
 	printFormat                   = flag.String("printFormat", "table", "output format for --printDefaults. Can be table, json, yaml or list")
 	promCRDResyncPeriod           = flag.Duration("controller.prometheusCRD.resyncPeriod", 0, "Configures resync period for prometheus CRD converter. Disabled by default")
+	clientQPS                     = flag.Int("client.qps", 5, "defines K8s client QPS")
+	clientBurst                   = flag.Int("client.burst", 10, "defines K8s client burst")
 	wasCacheSynced                = uint32(0)
 )
 
@@ -143,7 +146,10 @@ func RunManager(ctx context.Context) error {
 		}
 	}
 
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+	config := ctrl.GetConfigOrDie()
+	config.RateLimiter = flowcontrol.NewTokenBucketRateLimiter(float32(*clientQPS), *clientBurst)
+
+	mgr, err := ctrl.NewManager(config, ctrl.Options{
 		Logger: ctrl.Log.WithName("manager"),
 		Scheme: scheme,
 		Metrics: metricsserver.Options{

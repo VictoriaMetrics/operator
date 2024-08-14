@@ -131,6 +131,8 @@ type TargetRefBasicAuth struct {
 
 // VMUserStatus defines the observed state of VMUser
 type VMUserStatus struct {
+	// Status defines update status of resource
+	Status UpdateStatus `json:"status,omitempty"`
 	// LastSyncError contains error message for unsuccessful config generation
 	// for given user
 	LastSyncError string `json:"lastSyncError,omitempty"`
@@ -141,6 +143,8 @@ type VMUserStatus struct {
 // VMUser is the Schema for the vmusers API
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
+// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.status"
 // +kubebuilder:printcolumn:name="Sync Error",type="string",JSONPath=".status.lastSyncError"
 // +genclient
 type VMUser struct {

@@ -30195,6 +30195,12 @@ spec:
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    - jsonPath: .status.status
+      name: Status
+      type: string
     - jsonPath: .status.lastSyncError
       name: Sync Error
       type: string
@@ -30739,6 +30745,9 @@ spec:
                 description: |-
                   LastSyncError contains error message for unsuccessful config generation
                   for given user
+                type: string
+              status:
+                description: Status defines update status of resource
                 type: string
             type: object
         type: object

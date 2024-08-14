@@ -127,9 +127,9 @@ func buildVMAuthConfig(ctx context.Context, rclient client.Client, vmauth *vmv1b
 	}
 	for _, user := range sus.users {
 		// restore status back to normal
-		if user.Status.LastSyncError != "" {
+		if user.Status.Status != vmv1beta1.UpdateStatusOperational {
 			pt := client.RawPatch(types.MergePatchType,
-				[]byte(`{"status": {"lastSyncError":  "" } }`))
+				[]byte(fmt.Sprintf(`{"status": {"lastSyncError":  "" ,"status": %q } }`, vmv1beta1.UpdateStatusOperational)))
 			if err := rclient.Status().Patch(ctx, user, pt); err != nil {
 				return nil, fmt.Errorf("failed to patch status of vmuser=%q: %w", user.Name, err)
 			}
@@ -144,7 +144,7 @@ func buildVMAuthConfig(ctx context.Context, rclient client.Client, vmauth *vmv1b
 
 		// patch update status
 		pt := client.RawPatch(types.MergePatchType,
-			[]byte(fmt.Sprintf(`{"status": {"lastSyncError":  %q } }`, brokenUser.Status.CurrentSyncError)))
+			[]byte(fmt.Sprintf(`{"status": {"lastSyncError":  %q , "status": %q} }`, brokenUser.Status.CurrentSyncError, vmv1beta1.UpdateStatusFailed)))
 		if err := rclient.Status().Patch(ctx, brokenUser, pt); err != nil {
 			return nil, fmt.Errorf("failed to patch status of broken vmuser=%q: %w", brokenUser.Name, err)
 		}

@@ -37,16 +37,18 @@ func Probe(container corev1.Container, cr probeCRD) corev1.Container {
 		sp = ep.StartupProbe
 	}
 
-	if rp == nil {
-		readinessProbeHandler := corev1.ProbeHandler{
+	defaultProbeHandler := func() corev1.ProbeHandler {
+		return corev1.ProbeHandler{
 			HTTPGet: &corev1.HTTPGetAction{
 				Port:   intstr.Parse(port),
 				Scheme: corev1.URIScheme(scheme),
 				Path:   probePath(),
 			},
 		}
+	}
+	if rp == nil {
 		rp = &corev1.Probe{
-			ProbeHandler:     readinessProbeHandler,
+			ProbeHandler:     defaultProbeHandler(),
 			TimeoutSeconds:   probeTimeoutSeconds,
 			PeriodSeconds:    5,
 			FailureThreshold: 10,
@@ -54,15 +56,8 @@ func Probe(container corev1.Container, cr probeCRD) corev1.Container {
 	}
 	if needAddLiveness {
 		if lp == nil {
-			probeHandler := corev1.ProbeHandler{
-				HTTPGet: &corev1.HTTPGetAction{
-					Port:   intstr.Parse(port),
-					Scheme: corev1.URIScheme(scheme),
-					Path:   probePath(),
-				},
-			}
 			lp = &corev1.Probe{
-				ProbeHandler:     probeHandler,
+				ProbeHandler:     defaultProbeHandler(),
 				TimeoutSeconds:   probeTimeoutSeconds,
 				FailureThreshold: 10,
 				PeriodSeconds:    5,

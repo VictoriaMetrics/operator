@@ -1453,7 +1453,6 @@ func buildGossipConfigYAML(ctx context.Context, rclient client.Client, vmaCR *vm
 	if gossipCfg.TLSServerConfig != nil {
 		var tlsCfg yaml.MapSlice
 		secretMap := make(map[string]*corev1.Secret)
-		tlsAssetsServerDir := tlsAssetsDir + "/gossip/server/"
 		if gossipCfg.TLSServerConfig.ClientCASecretRef != nil {
 			data, err := fetchSecretValue(ctx, rclient, vmaCR.Namespace, gossipCfg.TLSServerConfig.ClientCASecretRef, secretMap)
 			if err != nil {
@@ -1461,37 +1460,36 @@ func buildGossipConfigYAML(ctx context.Context, rclient client.Client, vmaCR *vm
 			}
 			assetKey := secretSelectorToAssetKey(gossipCfg.TLSServerConfig.ClientCASecretRef)
 			tlsAssets[assetKey] = string(data)
-			gossipCfg.TLSServerConfig.ClientCAFile = tlsAssetsServerDir + assetKey
+			gossipCfg.TLSServerConfig.ClientCAFile = path.Join(tlsAssetsDir, assetKey)
 		}
-		if gossipCfg.TLSServerConfig.Certs.CertSecretRef != nil {
-			data, err := fetchSecretValue(ctx, rclient, vmaCR.Namespace, gossipCfg.TLSServerConfig.Certs.CertSecretRef, secretMap)
+		if gossipCfg.TLSServerConfig.CertSecretRef != nil {
+			data, err := fetchSecretValue(ctx, rclient, vmaCR.Namespace, gossipCfg.TLSServerConfig.CertSecretRef, secretMap)
 			if err != nil {
 				return nil, fmt.Errorf("cannot fetch secret CA value: %w", err)
 			}
-			assetKey := secretSelectorToAssetKey(gossipCfg.TLSServerConfig.Certs.CertSecretRef)
+			assetKey := secretSelectorToAssetKey(gossipCfg.TLSServerConfig.CertSecretRef)
 			tlsAssets[assetKey] = string(data)
-			gossipCfg.TLSServerConfig.Certs.CertFile = tlsAssetsServerDir + assetKey
-
+			gossipCfg.TLSServerConfig.CertFile = path.Join(tlsAssetsDir, assetKey)
 		}
 
-		if gossipCfg.TLSServerConfig.Certs.KeySecretRef != nil {
-			data, err := fetchSecretValue(ctx, rclient, vmaCR.Namespace, gossipCfg.TLSServerConfig.Certs.KeySecretRef, secretMap)
+		if gossipCfg.TLSServerConfig.KeySecretRef != nil {
+			data, err := fetchSecretValue(ctx, rclient, vmaCR.Namespace, gossipCfg.TLSServerConfig.KeySecretRef, secretMap)
 			if err != nil {
 				return nil, fmt.Errorf("cannot fetch secret clientCA value: %w", err)
 			}
-			assetKey := secretSelectorToAssetKey(gossipCfg.TLSServerConfig.Certs.KeySecretRef)
+			assetKey := secretSelectorToAssetKey(gossipCfg.TLSServerConfig.KeySecretRef)
 			tlsAssets[assetKey] = string(data)
-			gossipCfg.TLSServerConfig.Certs.KeyFile = tlsAssetsServerDir + assetKey
+			gossipCfg.TLSServerConfig.KeyFile = path.Join(tlsAssetsDir, assetKey)
 		}
 
 		if len(gossipCfg.TLSServerConfig.ClientCAFile) > 0 {
 			tlsCfg = append(tlsCfg, yaml.MapItem{Key: "client_ca_file", Value: gossipCfg.TLSServerConfig.ClientCAFile})
 		}
-		if len(gossipCfg.TLSServerConfig.Certs.CertFile) > 0 {
-			tlsCfg = append(tlsCfg, yaml.MapItem{Key: "cert_file", Value: gossipCfg.TLSServerConfig.Certs.CertFile})
+		if len(gossipCfg.TLSServerConfig.CertFile) > 0 {
+			tlsCfg = append(tlsCfg, yaml.MapItem{Key: "cert_file", Value: gossipCfg.TLSServerConfig.CertFile})
 		}
-		if len(gossipCfg.TLSServerConfig.Certs.KeyFile) > 0 {
-			tlsCfg = append(tlsCfg, yaml.MapItem{Key: "key_file", Value: gossipCfg.TLSServerConfig.Certs.KeyFile})
+		if len(gossipCfg.TLSServerConfig.KeyFile) > 0 {
+			tlsCfg = append(tlsCfg, yaml.MapItem{Key: "key_file", Value: gossipCfg.TLSServerConfig.KeyFile})
 		}
 		if len(gossipCfg.TLSServerConfig.CipherSuites) > 0 {
 			tlsCfg = append(tlsCfg, yaml.MapItem{Key: "cipher_suites", Value: gossipCfg.TLSServerConfig.CipherSuites})
@@ -1518,7 +1516,6 @@ func buildGossipConfigYAML(ctx context.Context, rclient client.Client, vmaCR *vm
 	if gossipCfg.TLSClientConfig != nil {
 		var tlsCfg yaml.MapSlice
 		secretMap := make(map[string]*corev1.Secret)
-		tlsAssetsClientDir := tlsAssetsDir + "/gossip/client/"
 		if gossipCfg.TLSClientConfig.CASecretRef != nil {
 			data, err := fetchSecretValue(ctx, rclient, vmaCR.Namespace, gossipCfg.TLSClientConfig.CASecretRef, secretMap)
 			if err != nil {
@@ -1526,37 +1523,36 @@ func buildGossipConfigYAML(ctx context.Context, rclient client.Client, vmaCR *vm
 			}
 			assetKey := secretSelectorToAssetKey(gossipCfg.TLSClientConfig.CASecretRef)
 			tlsAssets[assetKey] = string(data)
-			gossipCfg.TLSClientConfig.CAFile = tlsAssetsClientDir + assetKey
+			gossipCfg.TLSClientConfig.CAFile = path.Join(tlsAssetsDir, assetKey)
 		}
-		if gossipCfg.TLSClientConfig.Certs.CertSecretRef != nil {
-			data, err := fetchSecretValue(ctx, rclient, vmaCR.Namespace, gossipCfg.TLSClientConfig.Certs.CertSecretRef, secretMap)
+		if gossipCfg.TLSClientConfig.CertSecretRef != nil {
+			data, err := fetchSecretValue(ctx, rclient, vmaCR.Namespace, gossipCfg.TLSClientConfig.CertSecretRef, secretMap)
 			if err != nil {
 				return nil, fmt.Errorf("cannot fetch secret clientCA value: %w", err)
 			}
-			assetKey := secretSelectorToAssetKey(gossipCfg.TLSClientConfig.Certs.CertSecretRef)
+			assetKey := secretSelectorToAssetKey(gossipCfg.TLSClientConfig.CertSecretRef)
 			tlsAssets[assetKey] = string(data)
-			gossipCfg.TLSClientConfig.Certs.CertFile = tlsAssetsClientDir + assetKey
-
+			gossipCfg.TLSClientConfig.CertFile = path.Join(tlsAssetsDir, assetKey)
 		}
 
-		if gossipCfg.TLSClientConfig.Certs.KeySecretRef != nil {
-			data, err := fetchSecretValue(ctx, rclient, vmaCR.Namespace, gossipCfg.TLSClientConfig.Certs.KeySecretRef, secretMap)
+		if gossipCfg.TLSClientConfig.KeySecretRef != nil {
+			data, err := fetchSecretValue(ctx, rclient, vmaCR.Namespace, gossipCfg.TLSClientConfig.KeySecretRef, secretMap)
 			if err != nil {
 				return nil, fmt.Errorf("cannot fetch secret clientCA value: %w", err)
 			}
-			assetKey := secretSelectorToAssetKey(gossipCfg.TLSClientConfig.Certs.KeySecretRef)
+			assetKey := secretSelectorToAssetKey(gossipCfg.TLSClientConfig.KeySecretRef)
 			tlsAssets[assetKey] = string(data)
-			gossipCfg.TLSClientConfig.Certs.KeyFile = tlsAssetsClientDir + assetKey
+			gossipCfg.TLSClientConfig.KeyFile = path.Join(tlsAssetsDir, assetKey)
 		}
 
 		if len(gossipCfg.TLSClientConfig.CAFile) > 0 {
 			tlsCfg = append(tlsCfg, yaml.MapItem{Key: "ca_file", Value: gossipCfg.TLSClientConfig.CAFile})
 		}
-		if len(gossipCfg.TLSClientConfig.Certs.CertFile) > 0 {
-			tlsCfg = append(tlsCfg, yaml.MapItem{Key: "cert_file", Value: gossipCfg.TLSClientConfig.Certs.CertFile})
+		if len(gossipCfg.TLSClientConfig.CertFile) > 0 {
+			tlsCfg = append(tlsCfg, yaml.MapItem{Key: "cert_file", Value: gossipCfg.TLSClientConfig.CertFile})
 		}
-		if len(gossipCfg.TLSClientConfig.Certs.KeyFile) > 0 {
-			tlsCfg = append(tlsCfg, yaml.MapItem{Key: "key_file", Value: gossipCfg.TLSClientConfig.Certs.KeyFile})
+		if len(gossipCfg.TLSClientConfig.KeyFile) > 0 {
+			tlsCfg = append(tlsCfg, yaml.MapItem{Key: "key_file", Value: gossipCfg.TLSClientConfig.KeyFile})
 		}
 		if gossipCfg.TLSClientConfig.InsecureSkipVerify {
 			tlsCfg = append(tlsCfg, yaml.MapItem{Key: "insecure_skip_verify", Value: gossipCfg.TLSClientConfig.InsecureSkipVerify})
@@ -1597,7 +1593,6 @@ func buildWebServerConfigYAML(ctx context.Context, rclient client.Client, vmaCR 
 	if webCfg.TLSServerConfig != nil {
 		var tlsCfg yaml.MapSlice
 		secretMap := make(map[string]*corev1.Secret)
-		tlsAssetsServerDir := tlsAssetsDir + "/web/server/"
 		if webCfg.TLSServerConfig.ClientCASecretRef != nil {
 			data, err := fetchSecretValue(ctx, rclient, vmaCR.Namespace, webCfg.TLSServerConfig.ClientCASecretRef, secretMap)
 			if err != nil {
@@ -1605,37 +1600,36 @@ func buildWebServerConfigYAML(ctx context.Context, rclient client.Client, vmaCR 
 			}
 			assetKey := secretSelectorToAssetKey(webCfg.TLSServerConfig.ClientCASecretRef)
 			tlsAssets[assetKey] = string(data)
-			webCfg.TLSServerConfig.ClientCAFile = tlsAssetsServerDir + assetKey
+			webCfg.TLSServerConfig.ClientCAFile = path.Join(tlsAssetsDir, assetKey)
 		}
-		if webCfg.TLSServerConfig.Certs.CertSecretRef != nil {
-			data, err := fetchSecretValue(ctx, rclient, vmaCR.Namespace, webCfg.TLSServerConfig.Certs.CertSecretRef, secretMap)
+		if webCfg.TLSServerConfig.CertSecretRef != nil {
+			data, err := fetchSecretValue(ctx, rclient, vmaCR.Namespace, webCfg.TLSServerConfig.CertSecretRef, secretMap)
 			if err != nil {
 				return nil, fmt.Errorf("cannot fetch secret CA value: %w", err)
 			}
-			assetKey := secretSelectorToAssetKey(webCfg.TLSServerConfig.Certs.CertSecretRef)
+			assetKey := secretSelectorToAssetKey(webCfg.TLSServerConfig.CertSecretRef)
 			tlsAssets[assetKey] = string(data)
-			webCfg.TLSServerConfig.Certs.CertFile = tlsAssetsServerDir + assetKey
-
+			webCfg.TLSServerConfig.CertFile = path.Join(tlsAssetsDir, assetKey)
 		}
 
-		if webCfg.TLSServerConfig.Certs.KeySecretRef != nil {
-			data, err := fetchSecretValue(ctx, rclient, vmaCR.Namespace, webCfg.TLSServerConfig.Certs.KeySecretRef, secretMap)
+		if webCfg.TLSServerConfig.KeySecretRef != nil {
+			data, err := fetchSecretValue(ctx, rclient, vmaCR.Namespace, webCfg.TLSServerConfig.KeySecretRef, secretMap)
 			if err != nil {
 				return nil, fmt.Errorf("cannot fetch secret clientCA value: %w", err)
 			}
-			assetKey := secretSelectorToAssetKey(webCfg.TLSServerConfig.Certs.KeySecretRef)
+			assetKey := secretSelectorToAssetKey(webCfg.TLSServerConfig.KeySecretRef)
 			tlsAssets[assetKey] = string(data)
-			webCfg.TLSServerConfig.Certs.KeyFile = tlsAssetsServerDir + assetKey
+			webCfg.TLSServerConfig.KeyFile = path.Join(tlsAssetsDir, assetKey)
 		}
 
 		if len(webCfg.TLSServerConfig.ClientCAFile) > 0 {
 			tlsCfg = append(tlsCfg, yaml.MapItem{Key: "client_ca_file", Value: webCfg.TLSServerConfig.ClientCAFile})
 		}
-		if len(webCfg.TLSServerConfig.Certs.CertFile) > 0 {
-			tlsCfg = append(tlsCfg, yaml.MapItem{Key: "cert_file", Value: webCfg.TLSServerConfig.Certs.CertFile})
+		if len(webCfg.TLSServerConfig.CertFile) > 0 {
+			tlsCfg = append(tlsCfg, yaml.MapItem{Key: "cert_file", Value: webCfg.TLSServerConfig.CertFile})
 		}
-		if len(webCfg.TLSServerConfig.Certs.KeyFile) > 0 {
-			tlsCfg = append(tlsCfg, yaml.MapItem{Key: "key_file", Value: webCfg.TLSServerConfig.Certs.KeyFile})
+		if len(webCfg.TLSServerConfig.KeyFile) > 0 {
+			tlsCfg = append(tlsCfg, yaml.MapItem{Key: "key_file", Value: webCfg.TLSServerConfig.KeyFile})
 		}
 		if len(webCfg.TLSServerConfig.CipherSuites) > 0 {
 			tlsCfg = append(tlsCfg, yaml.MapItem{Key: "cipher_suites", Value: webCfg.TLSServerConfig.CipherSuites})

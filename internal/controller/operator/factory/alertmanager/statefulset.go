@@ -609,6 +609,9 @@ func buildVMAlertmanagerConfigReloader(cr *vmv1beta1.VMAlertmanager, c *config.B
 		Host:   c.VMAlertManager.LocalHost + ":9093",
 		Path:   path.Clean(cr.Spec.RoutePrefix + "/-/reload"),
 	}
+	if cr.Spec.WebConfig != nil && cr.Spec.WebConfig.TLSServerConfig != nil {
+		localReloadURL.Scheme = "https"
+	}
 	resources := corev1.ResourceRequirements{Limits: corev1.ResourceList{}, Requests: corev1.ResourceList{}}
 	if c.VMAlertManager.ConfigReloaderCPU != "0" && c.VMAgentDefault.UseDefaultResources {
 		resources.Limits[corev1.ResourceCPU] = resource.MustParse(c.VMAlertManager.ConfigReloaderCPU)

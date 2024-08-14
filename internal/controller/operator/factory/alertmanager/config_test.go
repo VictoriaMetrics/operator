@@ -1606,9 +1606,9 @@ tls_server_config:
     h-1: v-1
     h-2: v-2
 tls_server_config:
-  client_ca_file: /etc/alertmanager/tls_assets/web/server/tls-secret_client_ca
-  cert_file: /etc/alertmanager/tls_assets/web/server/tls-secret_cert
-  key_file: /etc/alertmanager/tls_assets/web/server/tls-secret-key_key
+  client_ca_file: /etc/alertmanager/tls_assets/tls-secret_client_ca
+  cert_file: /etc/alertmanager/tls_assets/tls-secret_cert
+  key_file: /etc/alertmanager/tls_assets/tls-secret-key_key
 `,
 		},
 	}

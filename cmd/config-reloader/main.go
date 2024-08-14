@@ -56,11 +56,16 @@ var (
 	webhookMethod = flag.String(
 		"webhook-method", "GET", "the HTTP method url to use to send the webhook")
 
-	tlsCaFile             = flag.String("tlsCAFile", "", "Optional path to client-side TLS CA file to use when connecting to -reload-url")
-	tlsCertFile           = flag.String("tlsCertFile", "", "Optional path to client-side TLS certificate file to use when connecting to -reload-url")
-	tlsKeyFile            = flag.String("tlsKeyFile", "", "Optional path to client-side TLS key file to use when connecting to -reload-url")
-	tlsServerName         = flag.String("tlsServerName", "", "Optional TLS server name to use for connections to -realod-url.")
-	tlsInsecureSkipVerify = flag.Bool("tlsInsecureSkipVerify", true, "Whether to skip tls verification when connecting to -reload-url")
+	tlsCaFile = flag.String("tlsCAFile", "",
+		"Optional path to client-side TLS CA file to use when connecting to -reload-url")
+	tlsCertFile = flag.String("tlsCertFile", "",
+		"Optional path to client-side TLS certificate file to use when connecting to -reload-url")
+	tlsKeyFile = flag.String("tlsKeyFile", "",
+		"Optional path to client-side TLS key file to use when connecting to -reload-url")
+	tlsServerName = flag.String("tlsServerName", "",
+		"Optional TLS server name to use for connections to -realod-url.")
+	tlsInsecureSkipVerify = flag.Bool("tlsInsecureSkipVerify", true,
+		"Whether to skip tls verification when connecting to -reload-url")
 )
 
 var (
@@ -138,7 +143,8 @@ func buildHTTPClient() *http.Client {
 	if *tlsCertFile != "" {
 		cert, err := tls.LoadX509KeyPair(*tlsCertFile, *tlsKeyFile)
 		if err != nil {
-			panic(fmt.Sprintf("cannot load TLS certificate from `cert_file`=%q, `key_file`=%q: %s", *tlsCertFile, *tlsKeyFile, err))
+			panic(fmt.Sprintf("cannot load TLS certificate from `cert_file`=%q, `key_file`=%q: %s",
+				*tlsCertFile, *tlsKeyFile, err))
 		}
 
 		t.TLSClientConfig.Certificates = []tls.Certificate{cert}

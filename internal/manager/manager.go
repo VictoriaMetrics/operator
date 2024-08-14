@@ -2,10 +2,13 @@ package manager
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"flag"
 	"fmt"
 	"net/http"
 	"os"
+	"path"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -52,14 +55,21 @@ var (
 	startedAt = prometheus.NewGaugeFunc(prometheus.GaugeOpts{Name: "vm_app_start_timestamp", Help: "unixtimestamp"}, func() float64 {
 		return float64(startTime.Unix())
 	})
-	scheme                        = runtime.NewScheme()
-	setupLog                      = ctrl.Log.WithName("setup")
-	leaderElect                   = flag.Bool("leader-elect", false, "Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
-	enableWebhooks                = flag.Bool("webhook.enable", false, "adds webhook server, you must mount cert and key or use cert-manager")
-	disableCRDOwnership           = flag.Bool("controller.disableCRDOwnership", false, "disables CRD ownership add to cluster wide objects, must be disabled for clusters, lower than v1.16.0")
-	webhooksDir                   = flag.String("webhook.certDir", "/tmp/k8s-webhook-server/serving-certs/", "root directory for webhook cert and key")
-	webhookCertName               = flag.String("webhook.certName", "tls.crt", "name of webhook server Tls certificate inside tls.certDir")
-	webhookKeyName                = flag.String("webhook.keyName", "tls.key", "name of webhook server Tls key inside tls.certDir")
+	scheme              = runtime.NewScheme()
+	setupLog            = ctrl.Log.WithName("setup")
+	leaderElect         = flag.Bool("leader-elect", false, "Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.")
+	enableWebhooks      = flag.Bool("webhook.enable", false, "adds webhook server, you must mount cert and key or use cert-manager")
+	disableCRDOwnership = flag.Bool("controller.disableCRDOwnership", false, "disables CRD ownership add to cluster wide objects, must be disabled for clusters, lower than v1.16.0")
+	webhooksDir         = flag.String("webhook.certDir", "/tmp/k8s-webhook-server/serving-certs/", "root directory for webhook cert and key")
+	webhookCertName     = flag.String("webhook.certName", "tls.crt", "name of webhook server Tls certificate inside tls.certDir")
+	webhookKeyName      = flag.String("webhook.keyName", "tls.key", "name of webhook server Tls key inside tls.certDir")
+	tlsEnable           = flag.Bool("tls.enable", false, "enables secure tls (https) for metrics webserver.")
+	tlsCertsDir         = flag.String("tls.certDir", "/tmp/k8s-metrics-server/serving-certs", "root directory for metrics webserver cert, key and mTLS CA.")
+	tlsCertName         = flag.String("tls.certName", "tls.crt", "name of metric server Tls certificate inside tls.certDir. Default - ")
+	tlsKeyName          = flag.String("tls.keyName", "tls.key", "name of metric server Tls key inside tls.certDir. Default - tls.key")
+	mtlsEnable          = flag.Bool("mtls.enable", false, "Whether to require valid client certificate for https requests to the corresponding -metrics-bind-address. This flag works only if -tls.enable flag is set. ")
+	mtlsCAFile          = flag.String("mtls.CAName", "clietCA.crt", "Optional name of TLS Root CA for verifying client certificates at the corresponding -metrics-bind-address when -mtls.enable is enabled. "+
+		"By default the host system TLS Root CA is used for client certificate verification. ")
 	metricsBindAddress            = flag.String("metrics-bind-address", defaultMetricsAddr, "The address the metric endpoint binds to.")
 	pprofAddr                     = flag.String("pprof-addr", ":8435", "The address for pprof/debug API. Empty value disables server")
 	probeAddr                     = flag.String("health-probe-bind-address", ":8081", "The address the probes (health, ready) binds to.")
@@ -134,13 +144,21 @@ func RunManager(ctx context.Context) error {
 	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Logger:                 ctrl.Log.WithName("manager"),
-		Scheme:                 scheme,
-		Metrics:                metricsserver.Options{BindAddress: *metricsBindAddress},
+		Logger: ctrl.Log.WithName("manager"),
+		Scheme: scheme,
+		Metrics: metricsserver.Options{
+			SecureServing: *tlsEnable,
+			BindAddress:   *metricsBindAddress,
+			CertDir:       *tlsCertsDir,
+			CertName:      *tlsCertName,
+			KeyName:       *tlsKeyName,
+			TLSOpts:       configureTLS(),
+			ExtraHandlers: map[string]http.Handler{},
+		},
 		HealthProbeBindAddress: *probeAddr,
+		PprofBindAddress:       *pprofAddr,
 		ReadinessEndpointName:  "/ready",
 		LivenessEndpointName:   "/health",
-		PprofBindAddress:       *pprofAddr,
 		// port for webhook
 		WebhookServer: webhook.NewServer(webhook.Options{
 			Port:     9443,
@@ -420,4 +438,29 @@ func addWebhooks(mgr ctrl.Manager) error {
 		&vmv1beta1.VMUser{},
 		&vmv1beta1.VMRule{},
 	})
+}
+
+func configureTLS() []func(*tls.Config) {
+	var opts []func(*tls.Config)
+	if *mtlsEnable {
+		if !*tlsEnable {
+			panic("-tls.enable flag must be set before using mtls.enable")
+		}
+		opts = append(opts, func(cfg *tls.Config) {
+			cfg.ClientAuth = tls.RequireAndVerifyClientCert
+			if *mtlsCAFile != "" {
+				cp := x509.NewCertPool()
+				caFile := path.Join(*tlsCertsDir, *mtlsCAFile)
+				caPEM, err := os.ReadFile(caFile)
+				if err != nil {
+					panic(fmt.Sprintf("cannot read tlsCAFile=%q: %s", caFile, err))
+				}
+				if !cp.AppendCertsFromPEM(caPEM) {
+					panic(fmt.Sprintf("cannot parse data for tlsCAFile=%q: %s", caFile, caPEM))
+				}
+				cfg.ClientCAs = cp
+			}
+		})
+	}
+	return opts
 }

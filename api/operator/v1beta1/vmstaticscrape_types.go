@@ -34,23 +34,22 @@ type TargetEndpoint struct {
 	EndpointScrapeParams `json:",inline"`
 }
 
-// VMStaticScrapeStatus defines the observed state of VMStaticScrape
-type VMStaticScrapeStatus struct{}
-
 // VMStaticScrape  defines static targets configuration for scraping.
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
+// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.status"
+// +kubebuilder:printcolumn:name="Sync Error",type="string",JSONPath=".status.lastSyncError"
 // +genclient
 type VMStaticScrape struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   VMStaticScrapeSpec   `json:"spec,omitempty"`
-	Status VMStaticScrapeStatus `json:"status,omitempty"`
+	Spec   VMStaticScrapeSpec `json:"spec,omitempty"`
+	Status ScrapeObjectStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true
-
 // VMStaticScrapeList contains a list of VMStaticScrape
 type VMStaticScrapeList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -66,6 +65,11 @@ func (cr VMStaticScrape) AsProxyKey(i int) string {
 // AsMapKey builds key for cache secret map
 func (cr VMStaticScrape) AsMapKey(i int) string {
 	return fmt.Sprintf("staticScrape/%s/%s/%d", cr.Namespace, cr.Name, i)
+}
+
+// GetStatus returns scrape object status
+func (cr *VMStaticScrape) GetStatus() *ScrapeObjectStatus {
+	return &cr.Status
 }
 
 func init() {

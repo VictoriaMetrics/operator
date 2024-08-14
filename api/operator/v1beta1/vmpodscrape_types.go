@@ -38,9 +38,6 @@ type VMPodScrapeSpec struct {
 	AttachMetadata AttachMetadata `json:"attach_metadata,omitempty"`
 }
 
-// VMPodScrapeStatus defines the observed state of VMPodScrape
-type VMPodScrapeStatus struct{}
-
 // VMPodScrape is scrape configuration for pods,
 // it generates vmagent's config for scraping pod targets
 // based on selectors.
@@ -49,15 +46,17 @@ type VMPodScrapeStatus struct{}
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:path=vmpodscrapes,scope=Namespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
+// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.status"
+// +kubebuilder:printcolumn:name="Sync Error",type="string",JSONPath=".status.lastSyncError"
 // +genclient
 type VMPodScrape struct {
 	metav1.TypeMeta `json:",inline"`
 	// +optional
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec VMPodScrapeSpec `json:"spec,omitempty"`
-	// +optional
-	Status VMPodScrapeStatus `json:"status"`
+	Spec   VMPodScrapeSpec    `json:"spec,omitempty"`
+	Status ScrapeObjectStatus `json:"status,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -112,6 +111,11 @@ func (cr VMPodScrape) AsProxyKey(i int) string {
 // AsMapKey builds key for cache secret map
 func (cr *VMPodScrape) AsMapKey(i int) string {
 	return fmt.Sprintf("podScrape/%s/%s/%d", cr.Namespace, cr.Name, i)
+}
+
+// GetStatus returns scrape object status
+func (cr *VMPodScrape) GetStatus() *ScrapeObjectStatus {
+	return &cr.Status
 }
 
 func init() {

@@ -2,6 +2,7 @@ package vmagent
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"sort"
 	"testing"
@@ -281,8 +282,8 @@ func TestSelectServiceMonitors(t *testing.T) {
 				return
 			}
 			gotNames := []string{}
-			for monitorName := range got {
-				gotNames = append(gotNames, monitorName)
+			for _, monitorName := range got {
+				gotNames = append(gotNames, fmt.Sprintf("%s/%s", monitorName.Namespace, monitorName.Name))
 			}
 			sort.Strings(gotNames)
 			if !reflect.DeepEqual(gotNames, tt.want) {
@@ -376,9 +377,10 @@ func TestSelectPodMonitors(t *testing.T) {
 				t.Errorf("SelectPodScrapes() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			gotNames := []string{}
-			for podName := range got {
-				gotNames = append(gotNames, podName)
+			var gotNames []string
+
+			for _, k := range got {
+				gotNames = append(gotNames, fmt.Sprintf("%s/%s", k.Namespace, k.Name))
 			}
 			sort.Strings(gotNames)
 			if !reflect.DeepEqual(gotNames, tt.want) {
@@ -433,8 +435,8 @@ func TestSelectVMProbes(t *testing.T) {
 				return
 			}
 			var result []string
-			for k := range got {
-				result = append(result, k)
+			for _, k := range got {
+				result = append(result, fmt.Sprintf("%s/%s", k.Namespace, k.Name))
 			}
 			sort.Strings(result)
 			if !reflect.DeepEqual(result, tt.want) {

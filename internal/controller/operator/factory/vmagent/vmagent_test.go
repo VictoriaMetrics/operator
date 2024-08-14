@@ -458,12 +458,12 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 
 func Test_loadTLSAssets(t *testing.T) {
 	type args struct {
-		monitors map[string]*vmv1beta1.VMServiceScrape
-		pods     map[string]*vmv1beta1.VMPodScrape
-		statics  map[string]*vmv1beta1.VMStaticScrape
-		nodes    map[string]*vmv1beta1.VMNodeScrape
-		probes   map[string]*vmv1beta1.VMProbe
-		cr       *vmv1beta1.VMAgent
+		servicescrapes []*vmv1beta1.VMServiceScrape
+		podscrapes     []*vmv1beta1.VMPodScrape
+		statics        []*vmv1beta1.VMStaticScrape
+		nodes          []*vmv1beta1.VMNodeScrape
+		probes         []*vmv1beta1.VMProbe
+		cr             *vmv1beta1.VMAgent
 	}
 	tests := []struct {
 		name              string
@@ -478,8 +478,8 @@ func Test_loadTLSAssets(t *testing.T) {
 				cr: &vmv1beta1.VMAgent{
 					Spec: vmv1beta1.VMAgentSpec{},
 				},
-				monitors: map[string]*vmv1beta1.VMServiceScrape{
-					"vmagent-monitor": {
+				servicescrapes: []*vmv1beta1.VMServiceScrape{
+					{
 						ObjectMeta: metav1.ObjectMeta{Name: "vmagent-monitor", Namespace: "default"},
 						Spec: vmv1beta1.VMServiceScrapeSpec{
 							Endpoints: []vmv1beta1.Endpoint{
@@ -511,6 +511,96 @@ func Test_loadTLSAssets(t *testing.T) {
 			},
 			want: map[string]string{"default_tls-secret_cert": "cert-data"},
 		},
+		{
+			name: "load tls asset from secret for proxy tls",
+			args: args{
+				cr: &vmv1beta1.VMAgent{
+					Spec: vmv1beta1.VMAgentSpec{},
+				},
+				podscrapes: []*vmv1beta1.VMPodScrape{
+					{
+						ObjectMeta: metav1.ObjectMeta{Name: "single-pod", Namespace: "ns-1"},
+						Spec: vmv1beta1.VMPodScrapeSpec{
+							PodMetricsEndpoints: []vmv1beta1.PodMetricsEndpoint{
+								{
+									Port: "8080",
+									EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
+										VMScrapeParams: &vmv1beta1.VMScrapeParams{
+											ProxyClientConfig: &vmv1beta1.ProxyAuth{
+												TLSConfig: &vmv1beta1.TLSConfig{
+													CA: vmv1beta1.SecretOrConfigMap{
+														Secret: &corev1.SecretKeySelector{
+															Key: "ca",
+															LocalObjectReference: corev1.LocalObjectReference{
+																Name: "tls-access",
+															},
+														},
+													},
+													Cert: vmv1beta1.SecretOrConfigMap{
+														ConfigMap: &corev1.ConfigMapKeySelector{
+															Key: "cert",
+															LocalObjectReference: corev1.LocalObjectReference{
+																Name: "tls-cm",
+															},
+														},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				servicescrapes: []*vmv1beta1.VMServiceScrape{
+					{
+						ObjectMeta: metav1.ObjectMeta{Name: "vmagent-monitor", Namespace: "default"},
+						Spec: vmv1beta1.VMServiceScrapeSpec{
+							Endpoints: []vmv1beta1.Endpoint{
+								{
+									EndpointAuth: vmv1beta1.EndpointAuth{
+										TLSConfig: &vmv1beta1.TLSConfig{
+											KeySecret: &corev1.SecretKeySelector{
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "tls-secret",
+												},
+												Key: "cert",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			predefinedObjects: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "tls-secret",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{"cert": []byte(`cert-data`)},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "tls-access",
+						Namespace: "ns-1",
+					},
+					Data: map[string][]byte{"ca": []byte(`cert-data`)},
+				},
+				&corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "tls-cm",
+						Namespace: "ns-1",
+					},
+					Data: map[string]string{"cert": `cert-data`},
+				},
+			},
+			want: map[string]string{"default_tls-secret_cert": "cert-data", "ns-1_tls-access_ca": "cert-data", "ns-1_tls-cm_cert": "cert-data"},
+		},
+
 		{
 			name: "load tls asset from secret with remoteWrite tls",
 			args: args{
@@ -554,12 +644,13 @@ func Test_loadTLSAssets(t *testing.T) {
 						},
 					},
 				},
-				monitors: map[string]*vmv1beta1.VMServiceScrape{
-					"vmagent-monitor": {
+				servicescrapes: []*vmv1beta1.VMServiceScrape{
+					{
 						ObjectMeta: metav1.ObjectMeta{Name: "vmagent-monitor", Namespace: "default"},
 						Spec: vmv1beta1.VMServiceScrapeSpec{
 							Endpoints: []vmv1beta1.Endpoint{
 								{
+									Port: "8080",
 									EndpointAuth: vmv1beta1.EndpointAuth{
 										TLSConfig: &vmv1beta1.TLSConfig{
 											KeySecret: &corev1.SecretKeySelector{
@@ -567,6 +658,28 @@ func Test_loadTLSAssets(t *testing.T) {
 													Name: "tls-secret",
 												},
 												Key: "cert",
+											},
+										},
+									},
+								},
+								{
+									Port: "8081",
+									EndpointAuth: vmv1beta1.EndpointAuth{
+										// check for secret and configmap naming clash
+										TLSConfig: &vmv1beta1.TLSConfig{
+											Cert: vmv1beta1.SecretOrConfigMap{
+												ConfigMap: &corev1.ConfigMapKeySelector{
+													Key: "clash-key",
+													LocalObjectReference: corev1.LocalObjectReference{
+														Name: "name-clash",
+													},
+												},
+											},
+											KeySecret: &corev1.SecretKeySelector{
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: "name-clash",
+												},
+												Key: "clash-key",
 											},
 										},
 									},
@@ -579,10 +692,24 @@ func Test_loadTLSAssets(t *testing.T) {
 			predefinedObjects: []runtime.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
+						Name:      "name-clash",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{"clash-key": []byte(`value-1`)},
+				},
+				&corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "name-clash",
+						Namespace: "default",
+					},
+					Data: map[string]string{"clash-key": `value-2`},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:      "tls-secret",
 						Namespace: "default",
 					},
-					Data: map[string][]byte{"cert": []byte(`cert-data`)},
+					Data: map[string][]byte{"cert": []byte(`cert-data`), "clash-key": []byte(`value-1`)},
 				},
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
@@ -592,21 +719,29 @@ func Test_loadTLSAssets(t *testing.T) {
 					Data: map[string][]byte{"cert": []byte(`cert-data`), "key": []byte(`cert-key`), "ca": []byte(`cert-ca`)},
 				},
 			},
-			want: map[string]string{"default_tls-secret_cert": "cert-data", "default_remote1-write-spec_ca": "cert-ca", "default_remote1-write-spec_cert": "cert-data", "default_remote1-write-spec_key": "cert-key"},
+			want: map[string]string{
+				"default_tls-secret_cert": "cert-data", "default_remote1-write-spec_ca": "cert-ca", "default_remote1-write-spec_cert": "cert-data", "default_remote1-write-spec_key": "cert-key",
+				"default_name-clash_clash-key": "value-2",
+			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 
-			got, err := loadTLSAssets(context.TODO(), fclient, tt.args.cr, tt.args.monitors, tt.args.pods, tt.args.probes, tt.args.nodes, tt.args.statics)
+			sos := &scrapeObjects{
+				sss:  tt.args.servicescrapes,
+				pss:  tt.args.podscrapes,
+				prss: tt.args.probes,
+				nss:  tt.args.nodes,
+				stss: tt.args.statics,
+			}
+			got, err := loadScrapeSecrets(context.TODO(), fclient, sos, tt.args.cr.Namespace, tt.args.cr.Spec.APIServerConfig, tt.args.cr.Spec.RemoteWrite)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("loadTLSAssets() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("loadTLSAssets() got = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, got.tlsAssets)
 		})
 	}
 }

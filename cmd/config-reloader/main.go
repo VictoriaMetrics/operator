@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"flag"
 	"fmt"
 	"io"
@@ -54,6 +55,12 @@ var (
 		"resync-interval", 0, "interval for force resync of the last configuration")
 	webhookMethod = flag.String(
 		"webhook-method", "GET", "the HTTP method url to use to send the webhook")
+
+	tlsCaFile             = flag.String("tlsCAFile", "", "Optional path to client-side TLS CA file to use when connecting to -reload-url")
+	tlsCertFile           = flag.String("tlsCertFile", "", "Optional path to client-side TLS certificate file to use when connecting to -reload-url")
+	tlsKeyFile            = flag.String("tlsKeyFile", "", "Optional path to client-side TLS key file to use when connecting to -reload-url")
+	tlsServerName         = flag.String("tlsServerName", "", "Optional TLS server name to use for connections to -realod-url.")
+	tlsInsecureSkipVerify = flag.Bool("tlsInsecureSkipVerify", true, "Whether to skip tls verification when connecting to -reload-url")
 )
 
 var (
@@ -125,7 +132,30 @@ func buildHTTPClient() *http.Client {
 		Timeout: connTimeout,
 	}
 	t.TLSClientConfig = &tls.Config{
-		InsecureSkipVerify: true,
+		InsecureSkipVerify: *tlsInsecureSkipVerify,
+		ServerName:         *tlsServerName,
+	}
+	if *tlsCertFile != "" {
+		cert, err := tls.LoadX509KeyPair(*tlsCertFile, *tlsKeyFile)
+		if err != nil {
+			panic(fmt.Sprintf("cannot load TLS certificate from `cert_file`=%q, `key_file`=%q: %s", *tlsCertFile, *tlsKeyFile, err))
+		}
+
+		t.TLSClientConfig.Certificates = []tls.Certificate{cert}
+	}
+
+	var rootCAs *x509.CertPool
+	if *tlsCaFile != "" {
+		pem, err := os.ReadFile(*tlsCaFile)
+		if err != nil {
+			panic(fmt.Sprintf("cannot read `ca_file` %q: %s", *tlsCaFile, err))
+		}
+
+		rootCAs = x509.NewCertPool()
+		if !rootCAs.AppendCertsFromPEM(pem) {
+			panic(fmt.Sprintf("cannot parse data from `ca_file` %q", *tlsCaFile))
+		}
+		t.TLSClientConfig.RootCAs = rootCAs
 	}
 	t.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
 		conn, err := d.Dial(network, addr)

@@ -10,6 +10,28 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// KeyNotFoundError represents an error if expected key
+// was not found at secret or configmap data
+type KeyNotFoundError struct {
+	key      string
+	cacheKey string
+	context  string
+}
+
+// NewKeyNotFoundError returns NewKeyNotFoundError
+func NewKeyNotFoundError(key, cacheKey, object string) *KeyNotFoundError {
+	return &KeyNotFoundError{
+		key:      key,
+		cacheKey: cacheKey,
+		context:  object,
+	}
+}
+
+// Error implements interface
+func (ke *KeyNotFoundError) Error() string {
+	return fmt.Sprintf("expected key=%q was not found at=%q cache_key=%q", ke.key, ke.context, ke.cacheKey)
+}
+
 // OAuthCreds represents OAuth2 secret values within plain text
 type OAuthCreds struct {
 	ClientSecret string
@@ -77,7 +99,7 @@ func extractCredKey(secret *corev1.Secret, sel corev1.SecretKeySelector) (string
 	if s, ok := secret.Data[sel.Key]; ok {
 		return string(s), nil
 	}
-	return "", fmt.Errorf("secret key %q in secret %q not found", sel.Key, sel.Name)
+	return "", &KeyNotFoundError{sel.Key, sel.Name, "secret"}
 }
 
 // GetCredFromSecret fetch content of secret by given key
@@ -103,7 +125,7 @@ func GetCredFromSecret(
 	}
 	v, err := extractCredKey(s, *sel)
 	if err != nil {
-		return "", fmt.Errorf("cannot find key: %q at secret: %q for object: %q", sel.Key, s.Name, cacheKey)
+		return "", err
 	}
 	return v, nil
 }
@@ -132,7 +154,8 @@ func GetCredFromConfigMap(
 	if a, ok := s.Data[sel.Key]; ok {
 		return a, nil
 	}
-	return "", fmt.Errorf("key not found at configmap, key: %s, configmap %s ", sel.Key, sel.Name)
+	return "", &KeyNotFoundError{sel.Key, cacheKey, "configmap"}
+	// fmt.Errorf("key not found at configmap, key: %s, configmap %s ", sel.Key, sel.Name)
 }
 
 func buildCacheKey(ns, keyName string) string {

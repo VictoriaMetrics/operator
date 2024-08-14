@@ -49,9 +49,6 @@ type VMServiceScrapeSpec struct {
 	AttachMetadata AttachMetadata `json:"attach_metadata,omitempty"`
 }
 
-// VMServiceScrapeStatus defines the observed state of VMServiceScrape
-type VMServiceScrapeStatus struct{}
-
 // VMServiceScrape is scrape configuration for endpoints associated with
 // kubernetes service,
 // it generates scrape configuration for vmagent based on selectors.
@@ -61,13 +58,16 @@ type VMServiceScrapeStatus struct{}
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:path=vmservicescrapes,scope=Namespaced
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
+// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.status"
+// +kubebuilder:printcolumn:name="Sync Error",type="string",JSONPath=".status.lastSyncError"
 // +genclient
 type VMServiceScrape struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   VMServiceScrapeSpec   `json:"spec"`
-	Status VMServiceScrapeStatus `json:"status,omitempty"`
+	Spec   VMServiceScrapeSpec `json:"spec"`
+	Status ScrapeObjectStatus  `json:"status,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -138,6 +138,11 @@ func (cr VMServiceScrape) AsProxyKey(i int) string {
 // AsMapKey - returns cr name with suffix for token/auth maps.
 func (cr VMServiceScrape) AsMapKey(i int) string {
 	return fmt.Sprintf("serviceScrape/%s/%s/%d", cr.Namespace, cr.Name, i)
+}
+
+// GetStatus returns scrape object status
+func (cr *VMServiceScrape) GetStatus() *ScrapeObjectStatus {
+	return &cr.Status
 }
 
 func init() {

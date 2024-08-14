@@ -90,14 +90,14 @@ type VMProberSpec struct {
 	Path string `json:"path,omitempty"`
 }
 
-// VMProbeStatus defines the observed state of VMProbe
-type VMProbeStatus struct{}
-
 // VMProbe defines a probe for targets, that will be executed with prober,
 // like blackbox exporter.
 // It helps to monitor reachability of target with various checks.
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
+// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.status"
+// +kubebuilder:printcolumn:name="Sync Error",type="string",JSONPath=".status.lastSyncError"
 // +genclient
 // +k8s:openapi-gen=true
 type VMProbe struct {
@@ -106,8 +106,8 @@ type VMProbe struct {
 	// +optional
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   VMProbeSpec   `json:"spec"`
-	Status VMProbeStatus `json:"status,omitempty"`
+	Spec   VMProbeSpec        `json:"spec"`
+	Status ScrapeObjectStatus `json:"status,omitempty"`
 }
 
 // VMProbeList contains a list of VMProbe
@@ -125,6 +125,11 @@ func (cr VMProbe) AsProxyKey() string {
 
 func (cr VMProbe) AsMapKey() string {
 	return fmt.Sprintf("probeScrape/%s/%s", cr.Namespace, cr.Name)
+}
+
+// GetStatus returns scrape object status
+func (cr *VMProbe) GetStatus() *ScrapeObjectStatus {
+	return &cr.Status
 }
 
 func init() {

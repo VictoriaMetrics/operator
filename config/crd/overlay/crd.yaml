@@ -18728,7 +18728,17 @@ spec:
     singular: vmnodescrape
   scope: Namespaced
   versions:
-  - name: v1beta1
+  - additionalPrinterColumns:
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    - jsonPath: .status.status
+      name: Status
+      type: string
+    - jsonPath: .status.lastSyncError
+      name: Sync Error
+      type: string
+    name: v1beta1
     schema:
       openAPIV3Schema:
         description: |-
@@ -19721,7 +19731,15 @@ spec:
                 type: object
             type: object
           status:
-            description: VMNodeScrapeStatus defines the observed state of VMNodeScrape
+            description: ScrapeObjectStatus defines the observed state of ScrapeObjects
+            properties:
+              lastSyncError:
+                description: LastSyncError contains error message for unsuccessful
+                  config generation
+                type: string
+              status:
+                description: Status defines update status of resource
+                type: string
             type: object
         type: object
     served: true
@@ -19744,7 +19762,17 @@ spec:
     singular: vmpodscrape
   scope: Namespaced
   versions:
-  - name: v1beta1
+  - additionalPrinterColumns:
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    - jsonPath: .status.status
+      name: Status
+      type: string
+    - jsonPath: .status.lastSyncError
+      name: Sync Error
+      type: string
+    name: v1beta1
     schema:
       openAPIV3Schema:
         description: |-
@@ -20820,7 +20848,15 @@ spec:
             - podMetricsEndpoints
             type: object
           status:
-            description: VMPodScrapeStatus defines the observed state of VMPodScrape
+            description: ScrapeObjectStatus defines the observed state of ScrapeObjects
+            properties:
+              lastSyncError:
+                description: LastSyncError contains error message for unsuccessful
+                  config generation
+                type: string
+              status:
+                description: Status defines update status of resource
+                type: string
             type: object
         type: object
     served: true
@@ -20843,7 +20879,17 @@ spec:
     singular: vmprobe
   scope: Namespaced
   versions:
-  - name: v1beta1
+  - additionalPrinterColumns:
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    - jsonPath: .status.status
+      name: Status
+      type: string
+    - jsonPath: .status.lastSyncError
+      name: Sync Error
+      type: string
+    name: v1beta1
     schema:
       openAPIV3Schema:
         description: |-
@@ -21980,7 +22026,15 @@ spec:
             - vmProberSpec
             type: object
           status:
-            description: VMProbeStatus defines the observed state of VMProbe
+            description: ScrapeObjectStatus defines the observed state of ScrapeObjects
+            properties:
+              lastSyncError:
+                description: LastSyncError contains error message for unsuccessful
+                  config generation
+                type: string
+              status:
+                description: Status defines update status of resource
+                type: string
             type: object
         required:
         - spec
@@ -22237,7 +22291,17 @@ spec:
     singular: vmscrapeconfig
   scope: Namespaced
   versions:
-  - name: v1beta1
+  - additionalPrinterColumns:
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    - jsonPath: .status.status
+      name: Status
+      type: string
+    - jsonPath: .status.lastSyncError
+      name: Sync Error
+      type: string
+    name: v1beta1
     schema:
       openAPIV3Schema:
         description: VMScrapeConfig specifies a set of targets and parameters describing
@@ -26357,7 +26421,15 @@ spec:
                 type: object
             type: object
           status:
-            description: VMScrapeConfigStatus defines the observed state of VMScrapeConfig
+            description: ScrapeObjectStatus defines the observed state of ScrapeObjects
+            properties:
+              lastSyncError:
+                description: LastSyncError contains error message for unsuccessful
+                  config generation
+                type: string
+              status:
+                description: Status defines update status of resource
+                type: string
             type: object
         type: object
     served: true
@@ -26380,7 +26452,17 @@ spec:
     singular: vmservicescrape
   scope: Namespaced
   versions:
-  - name: v1beta1
+  - additionalPrinterColumns:
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    - jsonPath: .status.status
+      name: Status
+      type: string
+    - jsonPath: .status.lastSyncError
+      name: Sync Error
+      type: string
+    name: v1beta1
     schema:
       openAPIV3Schema:
         description: |-
@@ -27469,7 +27551,15 @@ spec:
             - endpoints
             type: object
           status:
-            description: VMServiceScrapeStatus defines the observed state of VMServiceScrape
+            description: ScrapeObjectStatus defines the observed state of ScrapeObjects
+            properties:
+              lastSyncError:
+                description: LastSyncError contains error message for unsuccessful
+                  config generation
+                type: string
+              status:
+                description: Status defines update status of resource
+                type: string
             type: object
         required:
         - spec
@@ -29180,7 +29270,17 @@ spec:
     singular: vmstaticscrape
   scope: Namespaced
   versions:
-  - name: v1beta1
+  - additionalPrinterColumns:
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    - jsonPath: .status.status
+      name: Status
+      type: string
+    - jsonPath: .status.lastSyncError
+      name: Sync Error
+      type: string
+    name: v1beta1
     schema:
       openAPIV3Schema:
         description: VMStaticScrape  defines static targets configuration for scraping.
@@ -30161,7 +30261,15 @@ spec:
             - targetEndpoints
             type: object
           status:
-            description: VMStaticScrapeStatus defines the observed state of VMStaticScrape
+            description: ScrapeObjectStatus defines the observed state of ScrapeObjects
+            properties:
+              lastSyncError:
+                description: LastSyncError contains error message for unsuccessful
+                  config generation
+                type: string
+              status:
+                description: Status defines update status of resource
+                type: string
             type: object
         type: object
     served: true

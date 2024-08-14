@@ -984,3 +984,13 @@ type TLSClientConfig struct {
 	// Certs defines cert, CA and key for TLS auth
 	Certs `json:",inline"`
 }
+
+// ScrapeObjectStatus defines the observed state of ScrapeObjects
+type ScrapeObjectStatus struct {
+	// Status defines update status of resource
+	Status UpdateStatus `json:"status,omitempty"`
+	// LastSyncError contains error message for unsuccessful config generation
+	LastSyncError string `json:"lastSyncError,omitempty"`
+	// CurrentSyncError holds an error occured during reconcile loop
+	CurrentSyncError string `json:"-"`
+}

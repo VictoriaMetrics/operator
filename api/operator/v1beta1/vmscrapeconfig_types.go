@@ -28,14 +28,16 @@ import (
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:path=vmscrapeconfigs,scope=Namespaced
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
+// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.status"
+// +kubebuilder:printcolumn:name="Sync Error",type="string",JSONPath=".status.lastSyncError"
 // +genclient
 type VMScrapeConfig struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec VMScrapeConfigSpec `json:"spec,omitempty"`
-	// +optional
-	Status VMScrapeConfigStatus `json:"status"`
+	Spec   VMScrapeConfigSpec `json:"spec,omitempty"`
+	Status ScrapeObjectStatus `json:"status,omitempty"`
 }
 
 // VMScrapeConfigSpec defines the desired state of VMScrapeConfig
@@ -488,9 +490,6 @@ type DigitalOceanSDConfig struct {
 	Port *int `json:"port,omitempty"`
 }
 
-// VMScrapeConfigStatus defines the observed state of VMScrapeConfig
-type VMScrapeConfigStatus struct{}
-
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // VMScrapeConfigList contains a list of VMScrapeConfig
@@ -508,6 +507,11 @@ func (cr VMScrapeConfig) AsProxyKey(prefix string, i int) string {
 // AsMapKey - returns cr name with suffix for token/auth maps.
 func (cr VMScrapeConfig) AsMapKey(prefix string, i int) string {
 	return fmt.Sprintf("scrapeConfig/%s/%s/%s/%d", cr.Namespace, cr.Name, prefix, i)
+}
+
+// GetStatus returns scrape object status
+func (cr *VMScrapeConfig) GetStatus() *ScrapeObjectStatus {
+	return &cr.Status
 }
 
 func init() {

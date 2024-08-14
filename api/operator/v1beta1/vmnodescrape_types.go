@@ -29,22 +29,22 @@ type VMNodeScrapeSpec struct {
 	Selector metav1.LabelSelector `json:"selector,omitempty"`
 }
 
-// VMNodeScrapeStatus defines the observed state of VMNodeScrape
-type VMNodeScrapeStatus struct{}
-
 // VMNodeScrape defines discovery for targets placed on kubernetes nodes,
 // usually its node-exporters and other host services.
 // InternalIP is used as __address__ for scraping.
 // +kubebuilder:object:root=true
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
+// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.status"
+// +kubebuilder:printcolumn:name="Sync Error",type="string",JSONPath=".status.lastSyncError"
 // +genclient
 type VMNodeScrape struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	Spec   VMNodeScrapeSpec   `json:"spec,omitempty"`
-	Status VMNodeScrapeStatus `json:"status,omitempty"`
+	Status ScrapeObjectStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -64,6 +64,11 @@ func (cr VMNodeScrape) AsProxyKey() string {
 // AsMapKey - returns cr name with suffix for token/auth maps.
 func (cr VMNodeScrape) AsMapKey() string {
 	return fmt.Sprintf("nodeScrape/%s/%s", cr.Namespace, cr.Name)
+}
+
+// GetStatus returns scrape object status
+func (cr *VMNodeScrape) GetStatus() *ScrapeObjectStatus {
+	return &cr.Status
 }
 
 func init() {

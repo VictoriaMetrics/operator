@@ -11,27 +11,29 @@ aliases:
   - /operator/changelog/index.html
 ---
 
+## [v0.47.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.47.0) - 15 Aug 2024
+
 ### Breaking changes
 
 - **Update note 1: operator now forbids cross VMAlertmanagerConfig or global receiver references. VMAlertmanagerConfig must include only local receivers .**
 - **Update note 2: removed deprecated `mute_time_intervals` from `VMAlertmanagerConfig.spec`. Use `VMAlertmanagerConfig.spec.time_intervals` instead.**
 - **Update note 3: operator adds `blackhole` as default route for `VMalertmanager` if root route receiver is empty. Previously it added a first VMAlertmanagerConfig receiver. Update global VMalertmanager configuration with proper route receiver if needed**
 
-- [config-reloader](./README.md): adds new flags `tlsCaFile`, `tlsCertFile`,`tlsKeyFile`,`tlsServerName`,`tlsInsecureSkipVerify`. It allows to configure `tls` for reload endpoint. Related [issue](https://github.com/VictoriaMetrics/operator/issues/1033).
+- [config-reloader](https://docs.victoriametrics.com/operator/README.md): adds new flags `tlsCaFile`, `tlsCertFile`,`tlsKeyFile`,`tlsServerName`,`tlsInsecureSkipVerify`. It allows to configure `tls` for reload endpoint. Related [issue](https://github.com/VictoriaMetrics/operator/issues/1033).
 - [vmuser](https://docs.victoriametrics.com/operator/resources/vmuser/):  adds `status.lastSyncError` field, adds server-side validation for `spec.targetRefs.crd.kind`. Adds small refactoring.
 - [vmuser](https://docs.victoriametrics.com/operator/resources/vmuser/): allows to skip `VMUser` from `VMAuth` config generation if it has misconfigured fields. Such as references to non-exist `CRD` objects or missing fields. It's highly recommended to enable `Validation` webhook for `VMUsers`, it should reduce surface of potential misconfiguration. See this [issue](https://github.com/VictoriaMetrics/operator/issues/1047) for details.
-- [vmagent](./resources/vmagent.md): adds `status` and `lastSyncError` status fields to all scrape objects - `VMServiceScrape`, `VMPodScrape`, `VMNodeScrape`,`VMPodScrape`, `VMStaticScrape` and `VMScrapeConfig`. It allows to track config generation for `vmagent` from scrape objects.
-- [operator](./README.md): refactors config builder for `VMAgent`. It fixes minor bug with incorrect skip of scrape object with incorrect references for secrets and configmaps.
-- [operator](./README.md): allows to secure `metrics-bind-address` webserver with `TLS` and `mTLS` protection via flags `tls.enable`,`tls.certDir`,`tls.certName`,`tls.key``,`mtls.enable`,`mtls.clietCA`.  See this [issue](https://github.com/VictoriaMetrics/operator/issues/1033) for details.
-- [operator](./README.md): fixes bug with possible `tlsConfig` `SecretOrConfigmap` references clash. Operator adds `configmap` prefix to the configmap refrenced tls asset. See this [issue](https://github.com/VictoriaMetrics/operator/issues/1067) for details.
-- [operator](./README.md): properly release `PodDisruptionBudget` object finalizer. Previously it could be kept due to typo. See this [issue](https://github.com/VictoriaMetrics/operator/issues/1036) for details.
-- [operator](./README.md): refactors finalizers usage. Simplifies finalizer manipulation with helper functions
-- [operator](./README.md): adds `tls_config` and `authKey` settings to auto-created `VMServiceScrape` for CRD objects from `extraArgs`. See [this](https://github.com/VictoriaMetrics/operator/issues/1033) issue for details.
-- [vmalertmanagerconfig](./api.md#vmalertmanagerconfig): Improves config validation. Now it properly tracks required fields and provides better feedback for misconfiguration. Adds new `status` fields - `status` and `lastSyncError`. Related [issue](https://github.com/VictoriaMetrics/operator/issues/825).
-- [vmalertmanager](./api.md#vmalertmanager): adds `webConfig` that simplifies tls configuration for alertmanager and allows to properly build probes and access urls for alertmanager. See this [issue](https://github.com/VictoriaMetrics/operator/issues/994) for details.
-- [vmalertmanager](./api.md#vmalertmanager): adds `gossipConfig` to setup client and server TLS configuration for alertmanager.
-- [vmagent/vmsingle](./api.md#vmagent): sync stream aggregation options `dropInputLabels`, `ignoreFirstIntervals`, `ignoreOldSamples` from [upstream](https://docs.victoriametrics.com/stream-aggregation/), and support using configMap as the source of aggregation rules.
-- [operator](./README.md): added `-client.qps` and `-client.burst` flags to override default QPS and burst K8S params. Related [issue](https://github.com/VictoriaMetrics/operator/issues/1059).
+- [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent.md): adds `status` and `lastSyncError` status fields to all scrape objects - `VMServiceScrape`, `VMPodScrape`, `VMNodeScrape`,`VMPodScrape`, `VMStaticScrape` and `VMScrapeConfig`. It allows to track config generation for `vmagent` from scrape objects.
+- [operator](https://docs.victoriametrics.com/operator/README.md): refactors config builder for `VMAgent`. It fixes minor bug with incorrect skip of scrape object with incorrect references for secrets and configmaps.
+- [operator](https://docs.victoriametrics.com/operator/README.md): allows to secure `metrics-bind-address` webserver with `TLS` and `mTLS` protection via flags `tls.enable`,`tls.certDir`,`tls.certName`,`tls.key``,`mtls.enable`,`mtls.clietCA`.  See this [issue](https://github.com/VictoriaMetrics/operator/issues/1033) for details.
+- [operator](https://docs.victoriametrics.com/operator/README.md): fixes bug with possible `tlsConfig` `SecretOrConfigmap` references clash. Operator adds `configmap` prefix to the configmap refrenced tls asset. See this [issue](https://github.com/VictoriaMetrics/operator/issues/1067) for details.
+- [operator](https://docs.victoriametrics.com/operator/README.md): properly release `PodDisruptionBudget` object finalizer. Previously it could be kept due to typo. See this [issue](https://github.com/VictoriaMetrics/operator/issues/1036) for details.
+- [operator](https://docs.victoriametrics.com/operator/README.md): refactors finalizers usage. Simplifies finalizer manipulation with helper functions
+- [operator](https://docs.victoriametrics.com/operator/README.md): adds `tls_config` and `authKey` settings to auto-created `VMServiceScrape` for CRD objects from `extraArgs`. See [this](https://github.com/VictoriaMetrics/operator/issues/1033) issue for details.
+- [vmalertmanagerconfig](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig): Improves config validation. Now it properly tracks required fields and provides better feedback for misconfiguration. Adds new `status` fields - `status` and `lastSyncError`. Related [issue](https://github.com/VictoriaMetrics/operator/issues/825).
+- [vmalertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager): adds `webConfig` that simplifies tls configuration for alertmanager and allows to properly build probes and access urls for alertmanager. See this [issue](https://github.com/VictoriaMetrics/operator/issues/994) for details.
+- [vmalertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager): adds `gossipConfig` to setup client and server TLS configuration for alertmanager.
+- [vmagent/vmsingle](https://docs.victoriametrics.com/operator/resources): sync stream aggregation options `dropInputLabels`, `ignoreFirstIntervals`, `ignoreOldSamples` from [upstream](https://docs.victoriametrics.com/stream-aggregation/), and support using configMap as the source of aggregation rules.
+- [operator](https://docs.victoriametrics.com/operator/README.md): added `-client.qps` and `-client.burst` flags to override default QPS and burst K8S params. Related [issue](https://github.com/VictoriaMetrics/operator/issues/1059).
 
 ## [v0.46.4](https://github.com/VictoriaMetrics/operator/releases/tag/v0.46.4) - 9 Jul 2024
 

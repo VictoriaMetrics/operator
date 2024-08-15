@@ -232,7 +232,7 @@ relabel_configs:
 stream_parse: false
 proxy_tls_config:
   insecure_skip_verify: false
-  ca_file: /etc/vmagent-tls/certs/default_tls-secret_ca
+  ca_file: /etc/vmagent-tls/certs/default_configmap_tls-secret_ca
   cert_file: /etc/vmagent-tls/certs/default_tls-secret_cert
   key_file: /tmp/key-1
 bearer_token_file: /tmp/some_path

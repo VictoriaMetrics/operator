@@ -598,7 +598,7 @@ func Test_loadTLSAssets(t *testing.T) {
 					Data: map[string]string{"cert": `cert-data`},
 				},
 			},
-			want: map[string]string{"default_tls-secret_cert": "cert-data", "ns-1_tls-access_ca": "cert-data", "ns-1_tls-cm_cert": "cert-data"},
+			want: map[string]string{"default_tls-secret_cert": "cert-data", "ns-1_tls-access_ca": "cert-data", "ns-1_configmap_tls-cm_cert": "cert-data"},
 		},
 
 		{
@@ -721,7 +721,7 @@ func Test_loadTLSAssets(t *testing.T) {
 			},
 			want: map[string]string{
 				"default_tls-secret_cert": "cert-data", "default_remote1-write-spec_ca": "cert-ca", "default_remote1-write-spec_cert": "cert-data", "default_remote1-write-spec_key": "cert-key",
-				"default_name-clash_clash-key": "value-2",
+				"default_name-clash_clash-key": "value-1", "default_configmap_name-clash_clash-key": "value-2",
 			},
 		},
 	}

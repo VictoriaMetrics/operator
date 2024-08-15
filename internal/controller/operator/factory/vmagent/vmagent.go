@@ -865,66 +865,75 @@ func addAssetsToCache(
 	}
 	assets, nsSecretCache, nsConfigMapCache := ssCache.tlsAssets, ssCache.nsSecretCache, ssCache.nsCMCache
 
-	prefix := objectNS + "/"
-	secretSelectors := map[string]*corev1.SecretKeySelector{}
-	configMapSelectors := map[string]*corev1.ConfigMapKeySelector{}
-	if tlsConfig.CA != (vmv1beta1.SecretOrConfigMap{}) {
-		selectorKey := tlsConfig.CA.BuildSelectorWithPrefix(prefix)
+	fetchAssetFor := func(assetPath string, src vmv1beta1.SecretOrConfigMap) error {
+		var asset string
+		var err error
+		cacheKey := objectNS + "/" + src.PrefixedName()
 		switch {
-		case tlsConfig.CA.Secret != nil:
-			secretSelectors[selectorKey] = tlsConfig.CA.Secret
-		case tlsConfig.CA.ConfigMap != nil:
-			configMapSelectors[selectorKey] = tlsConfig.CA.ConfigMap
+		case src.Secret != nil:
+			asset, err = k8stools.GetCredFromSecret(
+				ctx,
+				rclient,
+				objectNS,
+				src.Secret,
+				cacheKey,
+				nsSecretCache,
+			)
+			if err != nil {
+				return fmt.Errorf(
+					"failed to extract endpoint tls asset from secret %s and key %s in namespace %s: %w",
+					src.PrefixedName(), src.Key(), objectNS, err,
+				)
+			}
+
+		case src.ConfigMap != nil:
+			asset, err = k8stools.GetCredFromConfigMap(
+				ctx,
+				rclient,
+				objectNS,
+				*src.ConfigMap,
+				cacheKey,
+				nsConfigMapCache,
+			)
+			if err != nil {
+				return fmt.Errorf(
+					"failed to extract endpoint tls asset for  configmap %v and key %v in namespace %v",
+					src.PrefixedName(), src.Key(), objectNS,
+				)
+			}
 		}
-	}
-	if tlsConfig.Cert != (vmv1beta1.SecretOrConfigMap{}) {
-		selectorKey := tlsConfig.Cert.BuildSelectorWithPrefix(prefix)
-		switch {
-		case tlsConfig.Cert.Secret != nil:
-			secretSelectors[selectorKey] = tlsConfig.Cert.Secret
-		case tlsConfig.Cert.ConfigMap != nil:
-			configMapSelectors[selectorKey] = tlsConfig.Cert.ConfigMap
+		if len(asset) > 0 {
+			assets[assetPath] = asset
 		}
-	}
-	if tlsConfig.KeySecret != nil {
-		secretSelectors[prefix+tlsConfig.KeySecret.Name+"/"+tlsConfig.KeySecret.Key] = tlsConfig.KeySecret
+		return nil
 	}
 
-	for key, selector := range secretSelectors {
+	if err := fetchAssetFor(tlsConfig.BuildAssetPath(objectNS, tlsConfig.CA.PrefixedName(), tlsConfig.CA.Key()), tlsConfig.CA); err != nil {
+		return fmt.Errorf("cannot fetch CA tls asset: %w", err)
+	}
+
+	if err := fetchAssetFor(tlsConfig.BuildAssetPath(objectNS, tlsConfig.Cert.PrefixedName(), tlsConfig.Cert.Key()), tlsConfig.Cert); err != nil {
+		return fmt.Errorf("cannot fetch Cert tls asset: %w", err)
+	}
+
+	if tlsConfig.KeySecret != nil {
 		asset, err := k8stools.GetCredFromSecret(
 			ctx,
 			rclient,
 			objectNS,
-			selector,
-			key,
+			tlsConfig.KeySecret,
+			objectNS+"/"+tlsConfig.KeySecret.Name,
 			nsSecretCache,
 		)
 		if err != nil {
-			return k8stools.NewKeyNotFoundError(
-				selector.Key, fmt.Sprintf("%s/%s/%s", objectNS, selector.Name, key), "tls_secret",
+			return fmt.Errorf(
+				"failed to extract endpoint tls asset from secret %s and key %s in namespace %s",
+				tlsConfig.KeySecret.Name, tlsConfig.KeySecret.Key, objectNS,
 			)
 		}
-
-		assets[tlsConfig.BuildAssetPath(objectNS, selector.Name, selector.Key)] = asset
+		assets[tlsConfig.BuildAssetPath(objectNS, tlsConfig.KeySecret.Name, tlsConfig.KeySecret.Key)] = asset
 	}
 
-	for key, selector := range configMapSelectors {
-		asset, err := k8stools.GetCredFromConfigMap(
-			ctx,
-			rclient,
-			objectNS,
-			*selector,
-			key,
-			nsConfigMapCache,
-		)
-		if err != nil {
-			return k8stools.NewKeyNotFoundError(
-				selector.Key, fmt.Sprintf("%s/%s/%s", objectNS, selector.Name, key), "tls_configmap",
-			)
-		}
-
-		assets[tlsConfig.BuildAssetPath(objectNS, selector.Name, selector.Key)] = asset
-	}
 	return nil
 }
 
@@ -1060,16 +1069,16 @@ func buildRemoteWrites(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) []st
 		if rws.TLSConfig != nil {
 			if rws.TLSConfig.CAFile != "" {
 				caPath = rws.TLSConfig.CAFile
-			} else if rws.TLSConfig.CA.Name() != "" {
-				caPath = rws.TLSConfig.BuildAssetPath(pathPrefix, rws.TLSConfig.CA.Name(), rws.TLSConfig.CA.Key())
+			} else if rws.TLSConfig.CA.PrefixedName() != "" {
+				caPath = rws.TLSConfig.BuildAssetPath(pathPrefix, rws.TLSConfig.CA.PrefixedName(), rws.TLSConfig.CA.Key())
 			}
 			if caPath != "" {
 				tlsCAs.isNotNull = true
 			}
 			if rws.TLSConfig.CertFile != "" {
 				certPath = rws.TLSConfig.CertFile
-			} else if rws.TLSConfig.Cert.Name() != "" {
-				certPath = rws.TLSConfig.BuildAssetPath(pathPrefix, rws.TLSConfig.Cert.Name(), rws.TLSConfig.Cert.Key())
+			} else if rws.TLSConfig.Cert.PrefixedName() != "" {
+				certPath = rws.TLSConfig.BuildAssetPath(pathPrefix, rws.TLSConfig.Cert.PrefixedName(), rws.TLSConfig.Cert.Key())
 			}
 			if certPath != "" {
 				tlsCerts.isNotNull = true
@@ -1176,7 +1185,7 @@ func buildRemoteWrites(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) []st
 				oaSecretKeyFile = path.Join(vmAgentConfDir, rws.AsSecretKey(i, "oauth2Secret"))
 			}
 
-			if len(rws.OAuth2.ClientID.Name()) > 0 && sv != nil {
+			if len(rws.OAuth2.ClientID.PrefixedName()) > 0 && sv != nil {
 				oaclientID = sv.ClientID
 				oauth2ClientID.isNotNull = true
 			}

@@ -753,6 +753,10 @@ func createOrUpdateTLSAssetsForVMAlert(ctx context.Context, cr *vmv1beta1.VMAler
 	return rclient.Update(ctx, tlsAssetsSecret)
 }
 
+func FetchTLSAssets(ctx context.Context, rclient client.Client, namespace string, tc *vmv1beta1.TLSConfig, assetPathDst map[string]string) error {
+	return nil
+}
+
 func loadTLSAssetsForVMAlert(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert) (map[string]string, error) {
 	assets := map[string]string{}
 	nsSecretCache := make(map[string]*corev1.Secret)
@@ -774,64 +778,73 @@ func loadTLSAssetsForVMAlert(ctx context.Context, rclient client.Client, cr *vmv
 		tlsConfigs = append(tlsConfigs, cr.Spec.Datasource.TLSConfig)
 	}
 
+	fetchAssetFor := func(assetPath string, src vmv1beta1.SecretOrConfigMap) error {
+		var asset string
+		var err error
+		cacheKey := cr.Namespace + "/" + src.PrefixedName()
+		switch {
+		case src.Secret != nil:
+			asset, err = k8stools.GetCredFromSecret(
+				ctx,
+				rclient,
+				cr.Namespace,
+				src.Secret,
+				cacheKey,
+				nsSecretCache,
+			)
+			if err != nil {
+				return fmt.Errorf(
+					"failed to extract endpoint tls asset from secret %s and key %s in namespace %s",
+					src.PrefixedName(), src.Key(), cr.Namespace,
+				)
+			}
+
+		case src.ConfigMap != nil:
+			asset, err = k8stools.GetCredFromConfigMap(
+				ctx,
+				rclient,
+				cr.Namespace,
+				*src.ConfigMap,
+				cacheKey,
+				nsConfigMapCache,
+			)
+			if err != nil {
+				return fmt.Errorf(
+					"failed to extract endpoint tls asset for  configmap %v and key %v in namespace %v: %w",
+					src.PrefixedName(), src.Key(), cr.Namespace, err,
+				)
+			}
+		}
+		if len(asset) > 0 {
+			assets[assetPath] = asset
+		}
+		return nil
+	}
+
 	for _, rw := range tlsConfigs {
-		prefix := cr.Namespace + "/"
-		secretSelectors := map[string]*corev1.SecretKeySelector{}
-		configMapSelectors := map[string]*corev1.ConfigMapKeySelector{}
-		selectorKey := rw.CA.BuildSelectorWithPrefix(prefix)
-		switch {
-		case rw.CA.Secret != nil:
-			secretSelectors[selectorKey] = rw.CA.Secret
-		case rw.CA.ConfigMap != nil:
-			configMapSelectors[selectorKey] = rw.CA.ConfigMap
+		if err := fetchAssetFor(rw.BuildAssetPath(cr.Namespace, rw.CA.PrefixedName(), rw.CA.Key()), rw.CA); err != nil {
+			return nil, fmt.Errorf("cannot fetch tls asset for CA: %w", err)
 		}
-		selectorKey = rw.Cert.BuildSelectorWithPrefix(prefix)
-
-		switch {
-		case rw.Cert.Secret != nil:
-			secretSelectors[selectorKey] = rw.Cert.Secret
-
-		case rw.Cert.ConfigMap != nil:
-			configMapSelectors[selectorKey] = rw.Cert.ConfigMap
+		if err := fetchAssetFor(rw.BuildAssetPath(cr.Namespace, rw.Cert.PrefixedName(), rw.Cert.Key()), rw.Cert); err != nil {
+			return nil, fmt.Errorf("cannot fetch tls asset for Cert: %w", err)
 		}
+
 		if rw.KeySecret != nil {
-			secretSelectors[prefix+rw.KeySecret.Name+"/"+rw.KeySecret.Key] = rw.KeySecret
-		}
-		for key, selector := range secretSelectors {
 			asset, err := k8stools.GetCredFromSecret(
 				ctx,
 				rclient,
 				cr.Namespace,
-				selector,
-				key,
+				rw.KeySecret,
+				cr.Namespace+"/"+rw.KeySecret.Name,
 				nsSecretCache,
 			)
 			if err != nil {
 				return nil, fmt.Errorf(
 					"failed to extract endpoint tls asset for vmservicescrape %s from secret %s and key %s in namespace %s",
-					cr.Name, selector.Name, selector.Key, cr.Namespace,
+					cr.Name, rw.CA.PrefixedName(), rw.CA.Key(), cr.Namespace,
 				)
 			}
-
-			assets[rw.BuildAssetPath(cr.Namespace, selector.Name, selector.Key)] = asset
-		}
-
-		for key, selector := range configMapSelectors {
-			asset, err := k8stools.GetCredFromConfigMap(
-				ctx,
-				rclient,
-				cr.Namespace,
-				*selector,
-				key,
-				nsConfigMapCache,
-			)
-			if err != nil {
-				return nil, fmt.Errorf(
-					"failed to extract endpoint tls asset for vmservicescrape %v from configmap %v and key %v in namespace %v",
-					cr.Name, selector.Name, selector.Key, cr.Namespace,
-				)
-			}
-			assets[rw.BuildAssetPath(cr.Namespace, selector.Name, selector.Key)] = asset
+			assets[rw.BuildAssetPath(cr.Namespace, rw.KeySecret.Name, rw.KeySecret.Key)] = asset
 		}
 	}
 
@@ -884,16 +897,16 @@ func buildNotifiersArgs(cr *vmv1beta1.VMAlert, ntBasicAuth map[string]*authSecre
 		if ntTLS != nil {
 			if ntTLS.CAFile != "" {
 				caPath = ntTLS.CAFile
-			} else if ntTLS.CA.Name() != "" {
-				caPath = ntTLS.BuildAssetPath(pathPrefix, ntTLS.CA.Name(), ntTLS.CA.Key())
+			} else if ntTLS.CA.PrefixedName() != "" {
+				caPath = ntTLS.BuildAssetPath(pathPrefix, ntTLS.CA.PrefixedName(), ntTLS.CA.Key())
 			}
 			if caPath != "" {
 				tlsCAs.isNotNull = true
 			}
 			if ntTLS.CertFile != "" {
 				certPath = ntTLS.CertFile
-			} else if ntTLS.Cert.Name() != "" {
-				certPath = ntTLS.BuildAssetPath(pathPrefix, ntTLS.Cert.Name(), ntTLS.Cert.Key())
+			} else if ntTLS.Cert.PrefixedName() != "" {
+				certPath = ntTLS.BuildAssetPath(pathPrefix, ntTLS.Cert.PrefixedName(), ntTLS.Cert.Key())
 			}
 			if certPath != "" {
 				tlsCerts.isNotNull = true

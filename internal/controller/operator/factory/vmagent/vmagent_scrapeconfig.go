@@ -111,7 +111,7 @@ func createOrUpdateConfigurationSecret(ctx context.Context, cr *vmv1beta1.VMAgen
 
 	ssCache, err := loadScrapeSecrets(ctx, rclient, sos, cr.Namespace, cr.Spec.APIServerConfig, cr.Spec.RemoteWrite)
 	if err != nil {
-		return nil, fmt.Errorf("cannot load scrape target secrets for api server or remote writes: %w", err)
+		return nil, fmt.Errorf("cannot load scrape target secrets: %w", err)
 	}
 
 	if err := createOrUpdateTLSAssets(ctx, cr, rclient, ssCache.tlsAssets); err != nil {
@@ -1093,13 +1093,13 @@ func addTLStoYaml(cfg yaml.MapSlice, namespace string, tls *vmv1beta1.TLSConfig,
 		}
 		if tls.CAFile != "" {
 			tlsConfig = append(tlsConfig, yaml.MapItem{Key: "ca_file", Value: tls.CAFile})
-		} else if tls.CA.Name() != "" {
-			tlsConfig = append(tlsConfig, yaml.MapItem{Key: "ca_file", Value: tls.BuildAssetPath(pathPrefix, tls.CA.Name(), tls.CA.Key())})
+		} else if tls.CA.PrefixedName() != "" {
+			tlsConfig = append(tlsConfig, yaml.MapItem{Key: "ca_file", Value: tls.BuildAssetPath(pathPrefix, tls.CA.PrefixedName(), tls.CA.Key())})
 		}
 		if tls.CertFile != "" {
 			tlsConfig = append(tlsConfig, yaml.MapItem{Key: "cert_file", Value: tls.CertFile})
-		} else if tls.Cert.Name() != "" {
-			tlsConfig = append(tlsConfig, yaml.MapItem{Key: "cert_file", Value: tls.BuildAssetPath(pathPrefix, tls.Cert.Name(), tls.Cert.Key())})
+		} else if tls.Cert.PrefixedName() != "" {
+			tlsConfig = append(tlsConfig, yaml.MapItem{Key: "cert_file", Value: tls.BuildAssetPath(pathPrefix, tls.Cert.PrefixedName(), tls.Cert.Key())})
 		}
 		if tls.KeyFile != "" {
 			tlsConfig = append(tlsConfig, yaml.MapItem{Key: "key_file", Value: tls.KeyFile})

@@ -22,7 +22,8 @@ type TLSConfigBuilder struct {
 	TLSAssets          map[string]string
 }
 
-// BuildTLSConfig return map with tls config keys, let caller to use their own json tag
+// BuildTLSConfig return map with paths to tls config keys
+// let caller to use their own json tag
 func (cb *TLSConfigBuilder) BuildTLSConfig(tlsCfg *vmv1beta1.TLSConfig, tlsAssetsDir string) (map[string]interface{}, error) {
 	if tlsCfg == nil {
 		return nil, nil
@@ -34,22 +35,22 @@ func (cb *TLSConfigBuilder) BuildTLSConfig(tlsCfg *vmv1beta1.TLSConfig, tlsAsset
 	// and be rewrote to new config files in cr's pods for service to use.
 	if tlsCfg.CAFile != "" {
 		result["ca_file"] = tlsCfg.CAFile
-	} else if tlsCfg.CA.Name() != "" {
-		assetKey := tlsCfg.BuildAssetPath(cb.CurrentCRNamespace, tlsCfg.CA.Name(), tlsCfg.CA.Key())
+	} else if tlsCfg.CA.PrefixedName() != "" {
+		assetKey := tlsCfg.BuildAssetPath(cb.CurrentCRNamespace, tlsCfg.CA.PrefixedName(), tlsCfg.CA.Key())
 		if err := cb.fetchSecretWithAssets(tlsCfg.CA.Secret, tlsCfg.CA.ConfigMap, assetKey); err != nil {
 			return nil, fmt.Errorf("cannot fetch ca: %w", err)
 		}
-		result["ca_file"] = tlsCfg.BuildAssetPath(pathPrefix, tlsCfg.CA.Name(), tlsCfg.CA.Key())
+		result["ca_file"] = tlsCfg.BuildAssetPath(pathPrefix, tlsCfg.CA.PrefixedName(), tlsCfg.CA.Key())
 	}
 
 	if tlsCfg.CertFile != "" {
 		result["cert_file"] = tlsCfg.CertFile
-	} else if tlsCfg.Cert.Name() != "" {
-		assetKey := tlsCfg.BuildAssetPath(cb.CurrentCRNamespace, tlsCfg.Cert.Name(), tlsCfg.Cert.Key())
+	} else if tlsCfg.Cert.PrefixedName() != "" {
+		assetKey := tlsCfg.BuildAssetPath(cb.CurrentCRNamespace, tlsCfg.Cert.PrefixedName(), tlsCfg.Cert.Key())
 		if err := cb.fetchSecretWithAssets(tlsCfg.Cert.Secret, tlsCfg.Cert.ConfigMap, assetKey); err != nil {
 			return nil, fmt.Errorf("cannot fetch cert: %w", err)
 		}
-		result["cert_file"] = tlsCfg.BuildAssetPath(pathPrefix, tlsCfg.Cert.Name(), tlsCfg.Cert.Key())
+		result["cert_file"] = tlsCfg.BuildAssetPath(pathPrefix, tlsCfg.Cert.PrefixedName(), tlsCfg.Cert.Key())
 	}
 
 	if tlsCfg.KeyFile != "" {

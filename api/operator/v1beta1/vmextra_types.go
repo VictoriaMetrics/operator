@@ -799,13 +799,13 @@ type TLSConfig struct {
 func (c *TLSConfig) AsArgs(args []string, prefix, pathPrefix string) []string {
 	if c.CAFile != "" {
 		args = append(args, fmt.Sprintf("-%s.tlsCAFile=%s", prefix, c.CAFile))
-	} else if c.CA.Name() != "" {
-		args = append(args, fmt.Sprintf("-%s.tlsCAFile=%s", prefix, c.BuildAssetPath(pathPrefix, c.CA.Name(), c.CA.Key())))
+	} else if c.CA.PrefixedName() != "" {
+		args = append(args, fmt.Sprintf("-%s.tlsCAFile=%s", prefix, c.BuildAssetPath(pathPrefix, c.CA.PrefixedName(), c.CA.Key())))
 	}
 	if c.CertFile != "" {
 		args = append(args, fmt.Sprintf("-%s.tlsCertFile=%s", prefix, c.CertFile))
-	} else if c.Cert.Name() != "" {
-		args = append(args, fmt.Sprintf("-%s.tlsCertFile=%s", prefix, c.BuildAssetPath(pathPrefix, c.Cert.Name(), c.Cert.Key())))
+	} else if c.Cert.PrefixedName() != "" {
+		args = append(args, fmt.Sprintf("-%s.tlsCertFile=%s", prefix, c.BuildAssetPath(pathPrefix, c.Cert.PrefixedName(), c.Cert.Key())))
 	}
 	if c.KeyFile != "" {
 		args = append(args, fmt.Sprintf("-%s.tlsKeyFile=%s", prefix, c.KeyFile))
@@ -879,24 +879,14 @@ func (c *SecretOrConfigMap) Validate() error {
 	return nil
 }
 
-// BuildSelectorWithPrefix builds prefix path
-func (c *SecretOrConfigMap) BuildSelectorWithPrefix(prefix string) string {
-	if c.Secret != nil {
-		return fmt.Sprintf("%s%s/%s", prefix, c.Secret.Name, c.Secret.Key)
-	}
-	if c.ConfigMap != nil {
-		return fmt.Sprintf("%s%s/%s", prefix, c.ConfigMap.Name, c.ConfigMap.Key)
-	}
-	return ""
-}
-
-// Name returns actual name
-func (c *SecretOrConfigMap) Name() string {
+// PrefixedName returns name with possible prefix
+// prefix added only to configmap to avoid clash with secret name
+func (c *SecretOrConfigMap) PrefixedName() string {
 	if c.Secret != nil {
 		return c.Secret.Name
 	}
 	if c.ConfigMap != nil {
-		return c.ConfigMap.Name
+		return fmt.Sprintf("configmap_%s", c.ConfigMap.Name)
 	}
 	return ""
 }

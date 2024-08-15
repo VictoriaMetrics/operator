@@ -1122,7 +1122,7 @@ authorization:
 				},
 			},
 			want: `tls_config:
-  ca_file: /etc/alertmanager/tls_assets/default_cm-store_ca
+  ca_file: /etc/alertmanager/tls_assets/default_configmap_cm-store_ca
   cert_file: /etc/alertmanager/tls_assets/default_secret-store_cert
   insecure_skip_verify: true
   key_file: /etc/alertmanager/tls_assets/default_secret-store_key

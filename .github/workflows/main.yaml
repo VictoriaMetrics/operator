@@ -24,6 +24,8 @@ jobs:
     steps:
       - name: Free space
         run: |
+          # cleanup up space to free additional ~20GiB of memory
+          # which are lacking for multiplaform images build
           formatByteCount() { echo $(numfmt --to=iec-i --suffix=B --padding=7 $1'000'); }
           getAvailableSpace() { echo $(df -a $1 | awk 'NR > 1 {avail+=$4} END {print avail}'); }
           BEFORE=$(getAvailableSpace)

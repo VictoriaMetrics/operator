@@ -29,6 +29,7 @@ aliases:
 - [vmalertmanager](./api.md#vmalertmanager): adds `webConfig` that simplifies tls configuration for alertmanager and allows to properly build probes and access urls for alertmanager. See this [issue](https://github.com/VictoriaMetrics/operator/issues/994) for details.
 - [vmalertmanager](./api.md#vmalertmanager): adds `gossipConfig` to setup client and server TLS configuration for alertmanager.
 - [vmagent/vmsingle](./api.md#vmagent): sync stream aggregation options `dropInputLabels`, `ignoreFirstIntervals`, `ignoreOldSamples` from [upstream](https://docs.victoriametrics.com/stream-aggregation/), and support using configMap as the source of aggregation rules.
+- [operator](./README.md): added `-client.qps` and `-client.burst` flags to override default QPS and burst K8S params. Related [issue](https://github.com/VictoriaMetrics/operator/issues/1059).
 
 ## [v0.46.4](https://github.com/VictoriaMetrics/operator/releases/tag/v0.46.4) - 9 Jul 2024
 

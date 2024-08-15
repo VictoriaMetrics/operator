@@ -22,6 +22,18 @@ jobs:
     name: Build and Test
     runs-on: ubuntu-latest
     steps:
+      - name: Free space
+        run: |
+          formatByteCount() { echo $(numfmt --to=iec-i --suffix=B --padding=7 $1'000'); }
+          getAvailableSpace() { echo $(df -a $1 | awk 'NR > 1 {avail+=$4} END {print avail}'); }
+          BEFORE=$(getAvailableSpace)
+          sudo rm -rf /usr/local/lib/android || true
+          sudo rm -rf /usr/share/dotnet || true
+          sudo rm -rf /opt/ghc || true
+          sudo rm -rf /usr/local/.ghcup || true
+          AFTER=$(getAvailableSpace)
+          SAVED=$((AFTER-BEFORE))
+          echo "Saved $(formatByteCount $SAVED)"
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Restore binaries from cache

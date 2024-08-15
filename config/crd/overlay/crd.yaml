@@ -23433,7 +23433,7 @@ spec:
                     proxy_client_config:
                       description: |-
                         ProxyClientConfig configures proxy auth settings for scraping
-                        See (feature description](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#scraping-targets-via-a-proxy)
+                        See [feature description](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#scraping-targets-via-a-proxy)
                       properties:
                         basic_auth:
                           description: BasicAuth allow an endpoint to authenticate

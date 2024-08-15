@@ -111,7 +111,7 @@ spec:
   password: simple-password
 
   # using enterprise features: ip filters for vmuser
-  # more details about ip filters you can read in {{% ref "#enterprise-features" %}}
+  # more details about ip filters you can read in {{% ref "./#enterprise-features" %}}
   ip_filters:
     allow_list:
       - 10.0.0.0/24

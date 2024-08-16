@@ -344,7 +344,7 @@ type VMAgentSpec struct {
 	// ShardCount - numbers of shards of VMAgent
 	// in this case operator will use 1 deployment/sts per shard with
 	// replicas count according to spec.replicas,
-	// see [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md/#scraping-big-number-of-targets)
+	// see [here](https://docs.victoriametrics.com/vmagent/#scraping-big-number-of-targets)
 	// +optional
 	ShardCount *int `json:"shardCount,omitempty"`
 
@@ -433,7 +433,7 @@ type VMAgentSpec struct {
 
 	// License allows to configure license key to be used for enterprise features.
 	// Using license key is supported starting from VictoriaMetrics v1.94.0.
-	// See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/enterprise.md)
+	// See [here](https://docs.victoriametrics.com/enterprise)
 	// +optional
 	License *License `json:"license,omitempty"`
 
@@ -480,7 +480,7 @@ type VMAgentRemoteWriteSettings struct {
 	// +optional
 	Labels map[string]string `json:"label,omitempty"`
 	// Configures vmagent accepting data via the same multitenant endpoints as vminsert at VictoriaMetrics cluster does,
-	// see [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md/#multitenancy).
+	// see [here](https://docs.victoriametrics.com/vmagent/#multitenancy).
 	// it's global setting and affects all remote storage configurations
 	// +optional
 	UseMultiTenantMode bool `json:"useMultiTenantMode,omitempty"`

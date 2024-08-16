@@ -11,7 +11,7 @@ aliases:
   - /operator/resources/vmsingle/index.html
 ---
 `VMSingle` represents database for storing metrics.
-The `VMSingle` CRD declaratively defines a [single-node VM](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/Single-server-VictoriaMetrics.md)
+The `VMSingle` CRD declaratively defines a [single-node VM](https://docs.victoriametrics.com/)
 installation to run in a Kubernetes cluster.
 
 For each `VMSingle` resource, the Operator deploys a properly configured `Deployment` in the same namespace.
@@ -23,7 +23,7 @@ For each `VMSingle` resource, the Operator adds `Service` and `VMServiceScrape` 
 
 ## Specification
 
-You can see the full actual specification of the `VMSingle` resource in the **[API docs -> VMSingle](../api.md#vmsingle)**.
+You can see the full actual specification of the `VMSingle` resource in the **[API docs -> VMSingle](https://docs.victoriametrics.com/operator/api#vmsingle)**.
 
 If you can't find necessary field in the specification of the custom resource,
 see [Extra arguments section](./#extra-arguments).
@@ -33,7 +33,7 @@ Also, you can check out the [examples](#examples) section.
 ## High availability
 
 `VMSingle` doesn't support high availability by default, for such purpose
-use [`VMCluster`](./vmcluster.md) instead or duplicate the setup.
+use [`VMCluster`](https://docs.victoriametrics.com/operator/resources/vmcluster) instead or duplicate the setup.
 
 ## Version management
 
@@ -91,7 +91,7 @@ spec:
 ```
 
 If these parameters are not specified, then,
-by default all `VMSingle` pods have resource requests and limits from the default values of the following [operator parameters](../configuration.md):
+by default all `VMSingle` pods have resource requests and limits from the default values of the following [operator parameters](https://docs.victoriametrics.com/operator/configuration):
 
 - `VM_VMSINGLEDEFAULT_RESOURCE_LIMIT_MEM` - default memory limit for `VMSingle` pods,
 - `VM_VMSINGLEDEFAULT_RESOURCE_LIMIT_CPU` - default memory limit for `VMSingle` pods,
@@ -112,17 +112,17 @@ Also, you can specify requests without limits - in this case default values for 
 
 ## Enterprise features
 
-VMSingle supports features from [VictoriaMetrics Enterprise](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/enterprise.md#victoriametrics-enterprise):
+VMSingle supports features from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/enterprise#victoriametrics-enterprise):
 
-- [Downsampling](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/#downsampling)
-- [Multiple retentions / Retention filters](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/#retention-filters)
-- [Backup automation](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmbackupmanager.md)
+- [Downsampling](https://docs.victoriametrics.com/#downsampling)
+- [Multiple retentions / Retention filters](https://docs.victoriametrics.com/#retention-filters)
+- [Backup automation](https://docs.victoriametrics.com/vmbackupmanager)
 
-For using Enterprise version of [vmsingle](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/Single-server-VictoriaMetrics.md)
+For using Enterprise version of [vmsingle](https://docs.victoriametrics.com/)
 you need to change version of `VMSingle` to version with `-enterprise` suffix using [Version management](#version-management).
 
 All the enterprise apps require `-eula` command-line flag to be passed to them.
-This flag acknowledges that your usage fits one of the cases listed on [this page](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/enterprise.md#victoriametrics-enterprise).
+This flag acknowledges that your usage fits one of the cases listed on [this page](https://docs.victoriametrics.com/enterprise#victoriametrics-enterprise).
 So you can use [extraArgs](./#extra-arguments) for passing this flag to `VMSingle`.
 
 ### Downsampling
@@ -184,7 +184,7 @@ spec:
 
 ### Backup automation
 
-You can check [vmbackupmanager documentation](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmbackupmanager.md) for backup automation.
+You can check [vmbackupmanager documentation](https://docs.victoriametrics.com/vmbackupmanager) for backup automation.
 It contains a description of the service and its features. This section covers vmbackumanager integration in vmoperator.
 
 `VMSingle` has built-in backup configuration, it uses `vmbackupmanager` - proprietary tool for backups.
@@ -228,13 +228,13 @@ stringData:
     aws_secret_access_key = your_secret_access_key
 ``` 
 
-You can read more about backup configuration options and mechanics [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmbackupmanager.md)
+You can read more about backup configuration options and mechanics [here](https://docs.victoriametrics.com/vmbackupmanager)
 
-Possible configuration options for backup crd can be found at [link](../api.md#vmbackup)
+Possible configuration options for backup crd can be found at [link](https://docs.victoriametrics.com/operator/api#vmbackup)
 
 #### Restoring backups
 
-There are several ways to restore with [vmrestore](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmrestore.md) or [vmbackupmanager](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmbackupmanager.md).
+There are several ways to restore with [vmrestore](https://docs.victoriametrics.com/vmrestore) or [vmbackupmanager](https://docs.victoriametrics.com/vmbackupmanager).
 
 ##### Manually mounting disk
 
@@ -299,7 +299,7 @@ Note that using `VMRestore` will require adjusting `src` for each pod because re
 
 ##### Using VMBackupmanager init container
 
-Using VMBackupmanager restore in Kubernetes environment is described [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmbackupmanager.md#how-to-restore-in-kubernetes).
+Using VMBackupmanager restore in Kubernetes environment is described [here](https://docs.victoriametrics.com/vmbackupmanager#how-to-restore-in-kubernetes).
 
 Advantages of using `VMBackupmanager` include:
 

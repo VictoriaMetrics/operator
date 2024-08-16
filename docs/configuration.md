@@ -10,7 +10,7 @@ aliases:
   - /operator/configuration/index.html
 ---
 Operator configured by env variables, list of it can be found 
-on [Variables](./vars.md) page.
+on [Variables](https://docs.victoriametrics.com/operator/vars/) page.
 
 It defines default configuration options, like images for components, timeouts, features.
 
@@ -51,7 +51,7 @@ You can choose output format for variables with `--printFormat` flag, possible v
 
 ## Conversion of prometheus-operator objects
 
-You can read detailed instructions about configuring prometheus-objects conversion in [this document](./migration.md).
+You can read detailed instructions about configuring prometheus-objects conversion in [this document](https://docs.victoriametrics.com/operator/migration/).
 
 ## Helm-charts
 
@@ -61,7 +61,7 @@ In [helm-charts](https://github.com/VictoriaMetrics/helm-charts) some important 
 
 For possible values refer to [parameters](https://github.com/VictoriaMetrics/helm-charts/tree/master/charts/victoria-metrics-k8s-stack#parameters).
 
-Also, checkout [here possible ENV variables](./vars.md) to configure operator behaviour.
+Also, checkout [here possible ENV variables](https://docs.victoriametrics.com/operator/vars/) to configure operator behaviour.
 ENV variables can be set in the `victoria-metrics-operator.env` section.
 
 ```yaml
@@ -136,7 +136,7 @@ victoria-metrics-operator:
 
 For possible values refer to [parameters](https://github.com/VictoriaMetrics/helm-charts/tree/master/charts/victoria-metrics-operator#parameters).
 
-Also, checkout [here possible ENV variables](./vars.md) to configure operator behaviour.
+Also, checkout [here possible ENV variables](https://docs.victoriametrics.com/operator/vars/) to configure operator behaviour.
 ENV variables can be set in the `env` section.
 
 ```yaml
@@ -219,7 +219,7 @@ At each namespace operator must have a set of required permissions, an example c
 
 ## Monitoring of cluster components
 
-By default, operator creates [VMServiceScrape](./resources/vmservicescrape.md) 
+By default, operator creates [VMServiceScrape](https://docs.victoriametrics.com/operator/resources/vmservicescrape/) 
 object for each component that it manages.
 
 You can disable this behaviour with `VM_DISABLESELFSERVICESCRAPECREATION` environment variable:
@@ -263,4 +263,4 @@ kustomize build config/deployments/webhook/
 
 ### Useful links
 
-- [k8s admission webhooks](https://banzaicloud.com/blog/k8s-admission-webhooks/)
+- [k8s admission webhooks](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/)

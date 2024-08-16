@@ -17,16 +17,16 @@ to use Helm-chart [victoria-metrics-k8s-stack](https://victoriametrics.github.io
 
 Also you can follow the other steps in documentation to use VictoriaMetrics Operator:
 
-- [Setup](./setup.md)
-- [Security](./security.md)
-- [Configuration](./configuration.md)
-- [Migration from Prometheus](./migration.md)
-- [Monitoring](./monitoring.md)
-- [Authorization and exposing components](./auth.md)
-- [High Availability](./high-availability.md)
-- [Enterprise](./enterprise.md)
-- [Custom resources](./resources/README.md)
-- [FAQ (Frequency Asked Questions)](./faq.md)
+- [Setup](https://docs.victoriametrics.com/operator/setup)
+- [Security](https://docs.victoriametrics.com/operator/security)
+- [Configuration](https://docs.victoriametrics.com/operator/configuration)
+- [Migration from Prometheus](https://docs.victoriametrics.com/operator/migration)
+- [Monitoring](https://docs.victoriametrics.com/operator/monitoring)
+- [Authorization and exposing components](https://docs.victoriametrics.com/operator/auth)
+- [High Availability](https://docs.victoriametrics.com/operator/high-availability)
+- [Enterprise](https://docs.victoriametrics.com/operator/enterprise)
+- [Custom resources](https://docs.victoriametrics.com/operator/resources/)
+- [FAQ (Frequency Asked Questions)](https://docs.victoriametrics.com/operator/faq)
 
 But if you want to deploy VictoriaMetrics Operator quickly from scratch (without using templating for custom resources), 
 you can follow this guide:
@@ -52,7 +52,7 @@ Let's start!
 ## Setup operator
 
 You can find out how to and instructions for installing the VictoriaMetrics operator into your kubernetes cluster
-on the [Setup page](./setup.md).
+on the [Setup page](https://docs.victoriametrics.com/operator/setup).
 
 Here we will elaborate on just one of the ways - for instance, we will install operator via Helm-chart
 [victoria-metrics-operator](https://github.com/VictoriaMetrics/helm-charts/blob/master/charts/victoria-metrics-operator/README.md):
@@ -80,10 +80,10 @@ code values.yaml
 {width="1200"}
 
 Now you can change configuration in `values.yaml`. For more details about configuration options and methods,
-see [configuration -> victoria-metrics-operator](./configuration.md#victoria-metrics-operator).
+see [configuration -> victoria-metrics-operator](https://docs.victoriametrics.com/operator/configuration#victoria-metrics-operator).
 
 If you migrated from prometheus-operator, you can read about prometheus-operator objects conversion on 
-the [migration from prometheus-operator](./migration.md).
+the [migration from prometheus-operator](https://docs.victoriametrics.com/operator/migration).
 
 Since we're looking at installing from scratch, let's disable prometheus-operator objects conversion,
 and also let's set some resources for operator in `values.yaml`:
@@ -153,23 +153,23 @@ kubectl get pods -n vm -l "app.kubernetes.io/instance=vmoperator"
 
 Now you can create instances of VictoriaMetrics applications.
 Let's create fullstack monitoring cluster with 
-[`vmagent`](./resources/vmagent.md),
-[`vmauth`](./resources/vmauth.md),
-[`vmalert`](./resources/vmalert.md),
-[`vmalertmanager`](./resources/vmalertmanager.md),  
-[`vmcluster`](./resources/vmcluster.md)
+[`vmagent`](https://docs.victoriametrics.com/operator/resources/vmagent),
+[`vmauth`](https://docs.victoriametrics.com/operator/resources/vmauth),
+[`vmalert`](https://docs.victoriametrics.com/operator/resources/vmalert),
+[`vmalertmanager`](https://docs.victoriametrics.com/operator/resources/vmalertmanager),  
+[`vmcluster`](https://docs.victoriametrics.com/operator/resources/vmcluster)
 (a component for deploying a cluster version of 
-[VictoriaMetrics](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/Cluster-VictoriaMetrics.md#architecture-overview)
+[VictoriaMetrics](https://docs.victoriametrics.com/Cluster-VictoriaMetrics#architecture-overview)
 consisting of `vmstorage`, `vmselect` and `vminsert`):
 
 ![Cluster Scheme](quick-start_cluster-scheme.webp)
 {width="1200"}
 
-More details about resources of VictoriaMetrics operator you can find on the [resources page](./resources/README.md). 
+More details about resources of VictoriaMetrics operator you can find on the [resources page](https://docs.victoriametrics.com/operator/resources/). 
 
 ### VMCluster (vmselect, vminsert, vmstorage)
 
-Let's start by deploying the [`vmcluster`](./resources/vmcluster.md) resource.
+Let's start by deploying the [`vmcluster`](https://docs.victoriametrics.com/operator/resources/vmcluster) resource.
 
 Create file `vmcluster.yaml` 
 
@@ -266,13 +266,13 @@ kubectl get svc -n vm -l "app.kubernetes.io/instance=demo"
 We'll need them in the next steps.
 
 More information about `vmcluster` resource you can find on 
-the [vmcluster page](./resources/vmcluster.md).
+the [vmcluster page](https://docs.victoriametrics.com/operator/resources/vmcluster).
 
 ### Scraping
 
 #### VMAgent
 
-Now let's deploy [`vmagent`](./resources/vmagent.md) resource.
+Now let's deploy [`vmagent`](https://docs.victoriametrics.com/operator/resources/vmagent) resource.
 
 Create file `vmagent.yaml` 
 
@@ -311,17 +311,17 @@ kubectl get pods -n vm -l "app.kubernetes.io/instance=demo" -l "app.kubernetes.i
 ```
 
 More information about `vmagent` resource you can find on 
-the [vmagent page](./resources/vmagent.md).
+the [vmagent page](https://docs.victoriametrics.com/operator/resources/vmagent).
 
 #### VMServiceScrape
 
 Now we have the timeseries database (vmcluster) and the tool to collect metrics (vmagent) and send it to the database.
 
-But we need to tell vmagent what metrics to collect. For this we will use [`vmservicescrape`](./resources/vmservicescrape.md) resource
-or [other `*scrape` resources](./resources/README.md).
+But we need to tell vmagent what metrics to collect. For this we will use [`vmservicescrape`](https://docs.victoriametrics.com/operator/resources/vmservicescrape) resource
+or [other `*scrape` resources](https://docs.victoriametrics.com/operator/resources/).
 
 By default, operator creates `vmservicescrape` resource for each component that it manages. More details about this you can find on
-the [monitoring page](./configuration.md#monitoring-of-cluster-components).
+the [monitoring page](https://docs.victoriametrics.com/operator/configuration#monitoring-of-cluster-components).
 
 For instance, we can create `vmservicescrape` for VictoriaMetrics operator manually. Let's create file `vmservicescrape.yaml`:
 
@@ -362,7 +362,7 @@ We need to look at the results of what we got. Up until now, we've just been loo
 
 #### VMAuth
 
-Let's expose our components with [`vmauth`](./resources/vmauth.md).
+Let's expose our components with [`vmauth`](https://docs.victoriametrics.com/operator/resources/vmauth).
 
 Create file `vmauth.yaml` 
 
@@ -393,7 +393,7 @@ Also, for simplicity, we don't use tls, but in real environments not having tls 
 #### VMUser
 
 To get authorized access to our data it is necessary to create a user using 
-the [vmuser](./resources/vmuser.md) resource.
+the [vmuser](https://docs.victoriametrics.com/operator/resources/vmuser) resource.
 
 Create file `vmuser.yaml` 
 
@@ -470,7 +470,7 @@ The remaining components will be needed for alerting.
 
 #### VMAlertmanager
 
-Let's start with [`vmalertmanager`](./resources/vmalertmanager.md).
+Let's start with [`vmalertmanager`](https://docs.victoriametrics.com/operator/resources/vmalertmanager).
 
 Create file `vmalertmanager.yaml`
 
@@ -524,7 +524,7 @@ kubectl get pods -n vm -l "app.kubernetes.io/instance=demo" -l "app.kubernetes.i
 
 #### VMAlert
 
-And now you can create [`vmalert`](./resources/vmalert.md) resource.
+And now you can create [`vmalert`](https://docs.victoriametrics.com/operator/resources/vmalert) resource.
 
 Create file `vmalert.yaml`
 
@@ -574,8 +574,8 @@ kubectl get pods -n vm -l "app.kubernetes.io/instance=demo" -l "app.kubernetes.i
 
 #### VMRule
 
-Now you can create [vmrule](./resources/vmrule.md) resource 
-for [vmalert](./resources/vmalert.md).
+Now you can create [vmrule](https://docs.victoriametrics.com/operator/resources/vmrule) resource 
+for [vmalert](https://docs.victoriametrics.com/operator/resources/vmalert).
 
 Create file `vmrule.yaml`
 
@@ -682,20 +682,20 @@ That's it. We obtained a monitoring cluster corresponding to the target topology
 
 You have a full-stack monitoring cluster with VictoriaMetrics Operator.
 
-You can find information about these and other resources of operator on the [Custom resources page](./resources/README.md).
+You can find information about these and other resources of operator on the [Custom resources page](https://docs.victoriametrics.com/operator/resources/).
 
 In addition, check out other sections of the documentation for VictoriaMetrics Operator:
 
-- [Setup](./setup.md)
-- [Security](./security.md)
-- [Configuration](./configuration.md)
-- [Migration from Prometheus](./migration.md)
-- [Monitoring](./monitoring.md)
-- [Authorization and exposing components](./auth.md)
-- [High Availability](./high-availability.md)
-- [Enterprise](./enterprise.md)
+- [Setup](https://docs.victoriametrics.com/operator/setup)
+- [Security](https://docs.victoriametrics.com/operator/security)
+- [Configuration](https://docs.victoriametrics.com/operator/configuration)
+- [Migration from Prometheus](https://docs.victoriametrics.com/operator/migration)
+- [Monitoring](https://docs.victoriametrics.com/operator/monitoring)
+- [Authorization and exposing components](https://docs.victoriametrics.com/operator/auth)
+- [High Availability](https://docs.victoriametrics.com/operator/high-availability)
+- [Enterprise](https://docs.victoriametrics.com/operator/enterprise)
 
-If you have any questions, check out our [FAQ](./faq.md)
+If you have any questions, check out our [FAQ](https://docs.victoriametrics.com/operator/faq)
 and feel free to can ask them:
 - [VictoriaMetrics Slack](https://victoriametrics.slack.com/)
 - [VictoriaMetrics Telegram](https://t.me/VictoriaMetrics_en)

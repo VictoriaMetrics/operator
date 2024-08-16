@@ -13,19 +13,19 @@ aliases:
 The `VMNodeScrape` CRD provides discovery mechanism for scraping metrics kubernetes nodes,
 it is useful for node exporters monitoring.
 
-`VMNodeScrape` object generates part of [VMAgent](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md) configuration.
+`VMNodeScrape` object generates part of [VMAgent](https://docs.victoriametrics.com/vmagent) configuration.
 It has various options for scraping configuration of target (with basic auth,tls access, by specific port name etc.).
 
 By specifying configuration at CRD, operator generates config 
-for [VMAgent](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md) and syncs it. It's useful for cadvisor scraping,
+for [VMAgent](https://docs.victoriametrics.com/vmagent) and syncs it. It's useful for cadvisor scraping,
 node-exporter or other node-based exporters. `VMAgent` `nodeScrapeSelector` must match `VMNodeScrape` labels.
 
-More information about selectors you can find in [this doc](./vmagent.md#scraping).
+More information about selectors you can find in [this doc](https://docs.victoriametrics.com/operator/resources/vmagent#scraping).
 
 ## Specification
 
 You can see the full actual specification of the `VMNodeScrape` resource in
-the **[API docs -> VMNodeScrape](../api.md#vmnodescrape)**.
+the **[API docs -> VMNodeScrape](https://docs.victoriametrics.com/operator/api#vmnodescrape)**.
 
 Also, you can check out the [examples](#examples) section.
 

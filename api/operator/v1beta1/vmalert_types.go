@@ -276,7 +276,7 @@ type VMAlertSpec struct {
 
 	// License allows to configure license key to be used for enterprise features.
 	// Using license key is supported starting from VictoriaMetrics v1.94.0.
-	// See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/enterprise.md)
+	// See [here](https://docs.victoriametrics.com/enterprise)
 	// +optional
 	License *License `json:"license,omitempty"`
 

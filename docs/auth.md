@@ -12,11 +12,11 @@ aliases:
 ## Exposing components
 
 CRD objects doesn't have `ingress` configuration. 
-Instead, you can use [VMAuth](./resources/vmauth.md) as proxy between ingress-controller and VictoriaMetrics components.
+Instead, you can use [VMAuth](https://docs.victoriametrics.com/operator/resources/vmauth/) as proxy between ingress-controller and VictoriaMetrics components.
 
 It adds missing authorization and access control features and enforces it.
 
-Access can be given with [VMUser](./resources/vmuser.md) definition. 
+Access can be given with [VMUser](https://docs.victoriametrics.com/operator/resources/vmuser/) definition. 
 
 It supports basic auth and bearer token authentication:
 
@@ -142,7 +142,7 @@ For each `VMUser` operator generates corresponding secret with username/password
 
 ## Basic auth for targets
 
-To authenticate a `VMServiceScrape`s over a metrics endpoint use [`basicAuth`](./api.md#basicauth):
+To authenticate a `VMServiceScrape`s over a metrics endpoint use [`basicAuth`](https://docs.victoriametrics.com/operator/api/#basicauth):
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1beta1
@@ -181,8 +181,8 @@ type: Opaque
 
 You can expose some routes without authorization with `unauthorizedAccessConfig`.
 
-Check more details in [VMAuth docs -> Unauthorized access](./resources/vmauth.md#unauthorized-access).
+Check more details in [VMAuth docs -> Unauthorized access](https://docs.victoriametrics.com/operator/resources/vmauth/#unauthorized-access).
 
 More details about features of `VMAuth` and `VMUser` you can read in:
-- [VMAuth docs](./resources/vmauth.md),
-- [VMUser docs](./resources/vmuser.md).
+- [VMAuth docs](https://docs.victoriametrics.com/operator/resources/vmauth/),
+- [VMUser docs](https://docs.victoriametrics.com/operator/resources/vmuser/).

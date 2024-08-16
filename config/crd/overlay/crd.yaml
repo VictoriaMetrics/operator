@@ -3799,6 +3799,11 @@ spec:
               schedulerName:
                 description: SchedulerName - defines kubernetes scheduler name
                 type: string
+              scrape_protocols:
+                description: ScrapeProtocols defines Prometheus scrape protocol.
+                items:
+                  type: string
+                type: array
               scrapeConfigNamespaceSelector:
                 description: |-
                   ScrapeConfigNamespaceSelector defines Namespaces to be selected for VMScrapeConfig discovery.
@@ -19212,6 +19217,11 @@ spec:
                   ScrapeInterval is the same as Interval and has priority over it.
                   one of scrape_interval or interval can be used
                 type: string
+              scrape_protocols:
+                description: ScrapeProtocols defines Prometheus scrape protocol.
+                items:
+                  type: string
+                type: array
               scrapeTimeout:
                 description: Timeout after which the scrape is ended
                 type: string
@@ -20298,6 +20308,11 @@ spec:
                         ScrapeInterval is the same as Interval and has priority over it.
                         one of scrape_interval or interval can be used
                       type: string
+                    scrape_protocols:
+                      description: ScrapeProtocols defines Prometheus scrape protocol.
+                      items:
+                        type: string
+                      type: array
                     scrapeTimeout:
                       description: Timeout after which the scrape is ended
                       type: string
@@ -21290,6 +21305,11 @@ spec:
                   ScrapeInterval is the same as Interval and has priority over it.
                   one of scrape_interval or interval can be used
                 type: string
+              scrape_protocols:
+                description: ScrapeProtocols defines Prometheus scrape protocol.
+                items:
+                  type: string
+                type: array
               scrapeTimeout:
                 description: Timeout after which the scrape is ended
                 type: string
@@ -25932,6 +25952,11 @@ spec:
                   ScrapeInterval is the same as Interval and has priority over it.
                   one of scrape_interval or interval can be used
                 type: string
+              scrape_protocols:
+                description: ScrapeProtocols defines Prometheus scrape protocol.
+                items:
+                  type: string
+                type: array
               scrapeTimeout:
                 description: Timeout after which the scrape is ended
                 type: string
@@ -26976,6 +27001,11 @@ spec:
                         ScrapeInterval is the same as Interval and has priority over it.
                         one of scrape_interval or interval can be used
                       type: string
+                    scrape_protocols:
+                      description: ScrapeProtocols defines Prometheus scrape protocol.
+                      items:
+                        type: string
+                      type: array
                     scrapeTimeout:
                       description: Timeout after which the scrape is ended
                       type: string
@@ -29774,6 +29804,11 @@ spec:
                         ScrapeInterval is the same as Interval and has priority over it.
                         one of scrape_interval or interval can be used
                       type: string
+                    scrape_protocols:
+                      description: ScrapeProtocols defines Prometheus scrape protocol.
+                      items:
+                        type: string
+                      type: array
                     scrapeTimeout:
                       description: Timeout after which the scrape is ended
                       type: string

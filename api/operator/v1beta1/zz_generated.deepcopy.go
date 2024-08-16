@@ -1023,6 +1023,11 @@ func (in *EndpointScrapeParams) DeepCopyInto(out *EndpointScrapeParams) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.ScrapeProtocols != nil {
+		in, out := &in.ScrapeProtocols, &out.ScrapeProtocols
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	if in.ProxyURL != nil {
 		in, out := &in.ProxyURL, &out.ProxyURL
 		*out = new(string)
@@ -3598,6 +3603,11 @@ func (in *VMAgentSpec) DeepCopyInto(out *VMAgentSpec) {
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
+	}
+	if in.ScrapeProtocols != nil {
+		in, out := &in.ScrapeProtocols, &out.ScrapeProtocols
+		*out = make([]string, len(*in))
+		copy(*out, *in)
 	}
 	if in.APIServerConfig != nil {
 		in, out := &in.APIServerConfig, &out.APIServerConfig

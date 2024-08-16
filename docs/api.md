@@ -719,6 +719,7 @@ _Appears in:_
 | `scheme` | HTTP scheme to use for scraping. | _string_ | false |
 | `scrapeTimeout` | Timeout after which the scrape is ended | _string_ | false |
 | `scrape_interval` | ScrapeInterval is the same as Interval and has priority over it.<br />one of scrape_interval or interval can be used | _string_ | false |
+| `scrape_protocols` | ScrapeProtocols defines Prometheus scrape protocol. | _string array_ | false |
 | `seriesLimit` | SeriesLimit defines per-scrape limit on number of unique time series<br />a single target can expose during all the scrapes on the time window of 24h. | _integer_ | false |
 | `targetPort` | TargetPort<br />Name or number of the pod port this endpoint refers to. Mutually exclusive with port. | _[IntOrString](#intorstring)_ | false |
 | `tlsConfig` | TLSConfig configuration to use when scraping the endpoint | _[TLSConfig](#tlsconfig)_ | false |
@@ -802,6 +803,7 @@ _Appears in:_
 | `scheme` | HTTP scheme to use for scraping. | _string_ | false |
 | `scrapeTimeout` | Timeout after which the scrape is ended | _string_ | false |
 | `scrape_interval` | ScrapeInterval is the same as Interval and has priority over it.<br />one of scrape_interval or interval can be used | _string_ | false |
+| `scrape_protocols` | ScrapeProtocols defines Prometheus scrape protocol. | _string array_ | false |
 | `seriesLimit` | SeriesLimit defines per-scrape limit on number of unique time series<br />a single target can expose during all the scrapes on the time window of 24h. | _integer_ | false |
 | `vm_scrape_params` | VMScrapeParams defines VictoriaMetrics specific scrape parameters | _[VMScrapeParams](#vmscrapeparams)_ | false |
 
@@ -1355,6 +1357,7 @@ _Appears in:_
 | `scheme` | HTTP scheme to use for scraping. | _string_ | false |
 | `scrapeTimeout` | Timeout after which the scrape is ended | _string_ | false |
 | `scrape_interval` | ScrapeInterval is the same as Interval and has priority over it.<br />one of scrape_interval or interval can be used | _string_ | false |
+| `scrape_protocols` | ScrapeProtocols defines Prometheus scrape protocol. | _string array_ | false |
 | `seriesLimit` | SeriesLimit defines per-scrape limit on number of unique time series<br />a single target can expose during all the scrapes on the time window of 24h. | _integer_ | false |
 | `targetPort` | TargetPort<br />Name or number of the pod port this endpoint refers to. Mutually exclusive with port. | _[IntOrString](#intorstring)_ | false |
 | `tlsConfig` | TLSConfig configuration to use when scraping the endpoint | _[TLSConfig](#tlsconfig)_ | false |
@@ -2015,6 +2018,7 @@ _Appears in:_
 | `scheme` | HTTP scheme to use for scraping. | _string_ | false |
 | `scrapeTimeout` | Timeout after which the scrape is ended | _string_ | false |
 | `scrape_interval` | ScrapeInterval is the same as Interval and has priority over it.<br />one of scrape_interval or interval can be used | _string_ | false |
+| `scrape_protocols` | ScrapeProtocols defines Prometheus scrape protocol. | _string array_ | false |
 | `seriesLimit` | SeriesLimit defines per-scrape limit on number of unique time series<br />a single target can expose during all the scrapes on the time window of 24h. | _integer_ | false |
 | `targets` | Targets static targets addresses in form of ["192.122.55.55:9100","some-name:9100"]. | _string array_ | true |
 | `tlsConfig` | TLSConfig configuration to use when scraping the endpoint | _[TLSConfig](#tlsconfig)_ | false |
@@ -2470,6 +2474,7 @@ _Appears in:_
 | `scrapeConfigSelector` | ScrapeConfigSelector defines VMScrapeConfig to be selected for target discovery.<br />Works in combination with NamespaceSelector. | _[LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#labelselector-v1-meta)_ | false |
 | `scrapeInterval` | ScrapeInterval defines how often scrape targets by default | _string_ | false |
 | `scrapeTimeout` | ScrapeTimeout defines global timeout for targets scrape | _string_ | false |
+| `scrape_protocols` | ScrapeProtocols defines Prometheus scrape protocol. | _string array_ | false |
 | `secrets` | Secrets is a list of Secrets in the same namespace as the vmagent<br />object, which shall be mounted into the vmagent Pods.<br />will be mounted at path /etc/vm/secrets | _string array_ | false |
 | `securityContext` | SecurityContext holds pod-level security attributes and common container settings.<br />This defaults to the default PodSecurityContext. | _[PodSecurityContext](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#podsecuritycontext-v1-core)_ | false |
 | `selectAllByDefault` | SelectAllByDefault changes default behavior for empty CRD selectors, such ServiceScrapeSelector.<br />with selectAllByDefault: true and empty serviceScrapeSelector and ServiceScrapeNamespaceSelector<br />Operator selects all exist serviceScrapes<br />with selectAllByDefault: false - selects nothing | _boolean_ | false |
@@ -3089,6 +3094,7 @@ _Appears in:_
 | `scheme` | HTTP scheme to use for scraping. | _string_ | false |
 | `scrapeTimeout` | Timeout after which the scrape is ended | _string_ | false |
 | `scrape_interval` | ScrapeInterval is the same as Interval and has priority over it.<br />one of scrape_interval or interval can be used | _string_ | false |
+| `scrape_protocols` | ScrapeProtocols defines Prometheus scrape protocol. | _string array_ | false |
 | `selector` | Selector to select kubernetes Nodes. | _[LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#labelselector-v1-meta)_ | false |
 | `seriesLimit` | SeriesLimit defines per-scrape limit on number of unique time series<br />a single target can expose during all the scrapes on the time window of 24h. | _integer_ | false |
 | `targetLabels` | TargetLabels transfers labels on the Kubernetes Node onto the target. | _string array_ | false |
@@ -3192,6 +3198,7 @@ _Appears in:_
 | `scheme` | HTTP scheme to use for scraping. | _string_ | false |
 | `scrapeTimeout` | Timeout after which the scrape is ended | _string_ | false |
 | `scrape_interval` | ScrapeInterval is the same as Interval and has priority over it.<br />one of scrape_interval or interval can be used | _string_ | false |
+| `scrape_protocols` | ScrapeProtocols defines Prometheus scrape protocol. | _string array_ | false |
 | `seriesLimit` | SeriesLimit defines per-scrape limit on number of unique time series<br />a single target can expose during all the scrapes on the time window of 24h. | _integer_ | false |
 | `targets` | Targets defines a set of static and/or dynamically discovered targets to be probed using the prober. | _[VMProbeTargets](#vmprobetargets)_ | true |
 | `tlsConfig` | TLSConfig configuration to use when scraping the endpoint | _[TLSConfig](#tlsconfig)_ | false |
@@ -3380,6 +3387,7 @@ _Appears in:_
 | `scheme` | HTTP scheme to use for scraping. | _string_ | false |
 | `scrapeTimeout` | Timeout after which the scrape is ended | _string_ | false |
 | `scrape_interval` | ScrapeInterval is the same as Interval and has priority over it.<br />one of scrape_interval or interval can be used | _string_ | false |
+| `scrape_protocols` | ScrapeProtocols defines Prometheus scrape protocol. | _string array_ | false |
 | `seriesLimit` | SeriesLimit defines per-scrape limit on number of unique time series<br />a single target can expose during all the scrapes on the time window of 24h. | _integer_ | false |
 | `staticConfigs` | StaticConfigs defines a list of static targets with a common label set. | _[StaticConfig](#staticconfig) array_ | false |
 | `tlsConfig` | TLSConfig configuration to use when scraping the endpoint | _[TLSConfig](#tlsconfig)_ | false |

@@ -75,6 +75,8 @@ aliases:
 
 - [vmscrapeconfig](https://docs.victoriametrics.com/operator/api#vmscrapeconfig) - added `max_scrape_size` parameter for scrape protocols configuration
 
+- [vmservicescrape](./api.md#vmservicescrape), [vmpodscrape](./api.md#vmpodscrape), [vmnodescrape](./api.md#vmnodescrape) - added `scrape_protocols` parameter for scrape protocols configuration
+
 <a name="v0.45.0"></a>
 
 ## [v0.45.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.45.0) - 10 Jun 2024

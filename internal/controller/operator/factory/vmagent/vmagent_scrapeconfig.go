@@ -1490,6 +1490,9 @@ func addCommonScrapeParamsTo(cfg yaml.MapSlice, cs vmv1beta1.EndpointScrapeParam
 	if cs.ScrapeInterval != "" {
 		cfg = append(cfg, yaml.MapItem{Key: "scrape_interval", Value: cs.ScrapeInterval})
 	}
+	if len(cs.ScrapeProtocols) > 0 {
+		cfg = append(cfg, yaml.MapItem{Key: "scrape_protocols", Value: cs.ScrapeProtocols})
+	}
 	if cs.ScrapeTimeout != "" {
 		cfg = append(cfg, yaml.MapItem{Key: "scrape_timeout", Value: cs.ScrapeTimeout})
 	}

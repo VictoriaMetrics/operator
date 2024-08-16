@@ -428,7 +428,7 @@ _Appears in:_
 | `oauth2` | OAuth2 defines auth configuration | _[OAuth2](#oauth2)_ | false |
 | `port` | The port to scrape metrics from. | _integer_ | false |
 | `proxyURL` | ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. | _string_ | false |
-| `proxy_client_config` | ProxyClientConfig configures proxy auth settings for scraping<br />See (feature description](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#scraping-targets-via-a-proxy) | _[ProxyAuth](#proxyauth)_ | false |
+| `proxy_client_config` | ProxyClientConfig configures proxy auth settings for scraping<br />See [feature description](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#scraping-targets-via-a-proxy) | _[ProxyAuth](#proxyauth)_ | false |
 | `tlsConfig` | TLS configuration to use on every scrape request | _[TLSConfig](#tlsconfig)_ | false |
 
 

@@ -295,7 +295,7 @@ undeploy-kind: load-kind undeploy
 
 docs-image:
 	if [ ! -d $(WORKDIR)/vmdocs ]; then \
-		git clone git@github.com:VictoriaMetrics/vmdocs $(WORKDIR)/vmdocs; \
+		git clone --depth 1 git@github.com:VictoriaMetrics/vmdocs $(WORKDIR)/vmdocs; \
 	fi; \
 	cd $(WORKDIR)/vmdocs && \
 	git checkout main && \

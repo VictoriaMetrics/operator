@@ -11,7 +11,7 @@ aliases:
 ---
 VictoriaMetrics operator exports internal metrics in Prometheus exposition format at `/metrics` page.
 
-These metrics can be scraped via [vmagent](./resources/vmagent.md) or Prometheus.
+These metrics can be scraped via [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent) or Prometheus.
 
 ## Dashboard
 
@@ -47,7 +47,7 @@ serviceMonitor:
 
 This parameter makes helm-chart to create a scrape-object for installed operator instance.
 
-You will also need to deploy a (vmsingle)[./resources/vmsingle.md] where the metrics will be collected.
+You will also need to deploy a (vmsingle)[https://docs.victoriametrics.com/operator/resources/vmsingle] where the metrics will be collected.
 
 ### Pure operator installation
 
@@ -71,7 +71,7 @@ spec:
       - monitoring
 ```
 
-See more info about object [VMServiceScrape](./resources/vmservicescrape.md).
+See more info about object [VMServiceScrape](https://docs.victoriametrics.com/operator/resources/vmservicescrape).
 
-You will also need a [vmsingle](./resources/vmsingle.md) where the metrics will be collected.
+You will also need a [vmsingle](https://docs.victoriametrics.com/operator/resources/vmsingle) where the metrics will be collected.
 

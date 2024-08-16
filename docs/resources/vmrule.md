@@ -12,33 +12,33 @@ aliases:
 ---
 `VMRule` represents [alerting](https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/)
 or [recording](https://prometheus.io/docs/prometheus/latest/configuration/recording_rules/) rules 
-for [VMAlert](./vmalert.md) instances.
+for [VMAlert](https://docs.victoriametrics.com/operator/resources/vmalert) instances.
 
 The `VMRule` CRD declaratively defines a desired Prometheus rule to be consumed by one or more VMAlert instances.
 
-`VMRule` object generates [VMAlert](./vmalert.md) 
+`VMRule` object generates [VMAlert](https://docs.victoriametrics.com/operator/resources/vmalert) 
 with ruleset defined at `VMRule` spec.
 
 Alerts and recording rules can be saved and applied as YAML files, and dynamically loaded without requiring any restart.
 
-See more details about rule configuration in [VMAlert docs](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmalert.md#quickstart).
+See more details about rule configuration in [VMAlert docs](https://docs.victoriametrics.com/vmalert#quickstart).
 
 ## Specification
 
 You can see the full actual specification of the `VMRule` resource in
-the **[API docs -> VMRule](../api.md#vmrule)**.
+the **[API docs -> VMRule](https://docs.victoriametrics.com/operator/api#vmrule)**.
 
 Also, you can check out the [examples](#examples) section.
 
 ## Enterprise features
 
-Custom resource `VMRule` supports feature [Multitenancy](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmalert.md#multitenancy)
-from [VictoriaMetrics Enterprise](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/enterprise.md#victoriametrics-enterprise).
+Custom resource `VMRule` supports feature [Multitenancy](https://docs.victoriametrics.com/vmalert#multitenancy)
+from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/enterprise#victoriametrics-enterprise).
 
 ### Multitenancy
 
-For using [Multitenancy](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmalert.md#multitenancy) in `VMRule`
-you need to **[enable VMAlert Enterprise](./vmalert.md#enterprise-features)**.
+For using [Multitenancy](https://docs.victoriametrics.com/vmalert#multitenancy) in `VMRule`
+you need to **[enable VMAlert Enterprise](https://docs.victoriametrics.com/operator/resources/vmalert#enterprise-features)**.
 
 After that you can add `tenant` field for groups in `VMRule`:
 

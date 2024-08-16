@@ -204,7 +204,7 @@ type VMAuthSpec struct {
 	UseStrictSecurity *bool `json:"useStrictSecurity,omitempty"`
 	// License allows to configure license key to be used for enterprise features.
 	// Using license key is supported starting from VictoriaMetrics v1.94.0.
-	// See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/enterprise.md)
+	// See [here](https://docs.victoriametrics.com/enterprise)
 	// +optional
 	License *License `json:"license,omitempty"`
 	// ConfigSecret is the name of a Kubernetes Secret in the same namespace as the
@@ -268,13 +268,13 @@ type URLMapCommon struct {
 
 	// LoadBalancingPolicy defines load balancing policy to use for backend urls.
 	// Supported policies: least_loaded, first_available.
-	// See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmauth.md#load-balancing) for more details (default "least_loaded")
+	// See [here](https://docs.victoriametrics.com/vmauth#load-balancing) for more details (default "least_loaded")
 	// +optional
 	// +kubebuilder:validation:Enum=least_loaded;first_available
 	LoadBalancingPolicy *string `json:"load_balancing_policy,omitempty"`
 
 	// DropSrcPathPrefixParts is the number of `/`-delimited request path prefix parts to drop before proxying the request to backend.
-	// See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmauth.md#dropping-request-path-prefix) for more details.
+	// See [here](https://docs.victoriametrics.com/vmauth#dropping-request-path-prefix) for more details.
 	// +optional
 	DropSrcPathPrefixParts *int `json:"drop_src_path_prefix_parts,omitempty"`
 }
@@ -288,7 +288,7 @@ type UserConfigOption struct {
 	TLSConfig *TLSConfig `json:"tlsConfig,omitempty"`
 
 	// IPFilters defines per target src ip filters
-	// supported only with enterprise version of [vmauth](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmauth.md/#ip-filters)
+	// supported only with enterprise version of [vmauth](https://docs.victoriametrics.com/vmauth/#ip-filters)
 	// +optional
 	IPFilters VMUserIPFilters `json:"ip_filters,omitempty"`
 
@@ -322,13 +322,13 @@ type UserConfigOption struct {
 
 	// LoadBalancingPolicy defines load balancing policy to use for backend urls.
 	// Supported policies: least_loaded, first_available.
-	// See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmauth.md#load-balancing) for more details (default "least_loaded")
+	// See [here](https://docs.victoriametrics.com/vmauth#load-balancing) for more details (default "least_loaded")
 	// +optional
 	// +kubebuilder:validation:Enum=least_loaded;first_available
 	LoadBalancingPolicy *string `json:"load_balancing_policy,omitempty"`
 
 	// DropSrcPathPrefixParts is the number of `/`-delimited request path prefix parts to drop before proxying the request to backend.
-	// See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmauth.md#dropping-request-path-prefix) for more details.
+	// See [here](https://docs.victoriametrics.com/vmauth#dropping-request-path-prefix) for more details.
 	// +optional
 	DropSrcPathPrefixParts *int `json:"drop_src_path_prefix_parts,omitempty"`
 }

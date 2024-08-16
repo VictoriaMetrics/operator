@@ -11,7 +11,7 @@ aliases:
   - /operator/resources/vmagent/index.html
 ---
 `VMAgent` represents agent, which helps you collect metrics from various sources and stores them in VictoriaMetrics.
-The `VMAgent` CRD declaratively defines a desired [VMAgent](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md)
+The `VMAgent` CRD declaratively defines a desired [VMAgent](https://docs.victoriametrics.com/vmagent)
 setup to run in a Kubernetes cluster.
 
 It requires access to Kubernetes API and you can create RBAC for it first, it can be found 
@@ -35,10 +35,10 @@ so user can set custom configuration while still benefiting from the Operator's 
 
 ## Specification
 
-You can see the full actual specification of the `VMAgent` resource in the **[API docs -> VMAgent](../api.md#vmagent)**.
+You can see the full actual specification of the `VMAgent` resource in the **[API docs -> VMAgent](https://docs.victoriametrics.com/operator/api#vmagent)**.
 
 If you can't find necessary field in the specification of the custom resource, 
-see [Extra arguments section](./#extra-arguments).
+see [Extra arguments section](https://docs.victoriametrics.com/operator/resources/vmagent#extra-arguments).
 
 Also, you can check out the [examples](#examples) section.
 
@@ -46,25 +46,25 @@ Also, you can check out the [examples](#examples) section.
 
 `VMAgent` supports scraping targets with:
 
-- [VMServiceScrape](./vmservicescrape.md),
-- [VMPodScrape](./vmpodscrape.md),
-- [VMNodeScrape](./vmnodescrape.md),
-- [VMStaticScrape](./vmstaticscrape.md),
-- [VMProbe](./vmprobe.md).
-- [VMScrapeConfig](./vmscrapeconfig.md)
+- [VMServiceScrape](https://docs.victoriametrics.com/operator/resources/vmservicescrape),
+- [VMPodScrape](https://docs.victoriametrics.com/operator/resources/vmpodscrape),
+- [VMNodeScrape](https://docs.victoriametrics.com/operator/resources/vmnodescrape),
+- [VMStaticScrape](https://docs.victoriametrics.com/operator/resources/vmstaticscrape),
+- [VMProbe](https://docs.victoriametrics.com/operator/resources/vmprobe).
+- [VMScrapeConfig](https://docs.victoriametrics.com/operator/resources/vmscrapeconfig)
 
 These objects tell VMAgent from which targets and how to collect metrics and 
-generate part of [VMAgent](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md) scrape configuration.
+generate part of [VMAgent](https://docs.victoriametrics.com/vmagent) scrape configuration.
 
 For filtering scrape objects `VMAgent` uses selectors. 
 Selectors are defined with suffixes - `NamespaceSelector` and `Selector` for each type of scrape objects in spec of `VMAgent`:
 
-- `serviceScrapeNamespaceSelector` and `serviceScrapeSelector` for selecting [VMServiceScrape](./vmservicescrape.md) objects,
-- `podScrapeNamespaceSelector` and `podScrapeSelector` for selecting [VMPodScrape](./vmpodscrape.md) objects,
-- `probeNamespaceSelector` and `probeSelector` for selecting [VMProbe](./vmprobe.md) objects,
-- `staticScrapeNamespaceSelector` and `staticScrapeSelector` for selecting [VMStaticScrape](./vmstaticscrape.md) objects,
-- `nodeScrapeNamespaceSelector` and `nodeScrapeSelector` for selecting [VMNodeScrape](./vmnodescrape.md) objects.
-- `scrapeConfigNamespaceSelector` and `scrapeConfigSelector` for selecting [VMScrapeConfig](./vmscrapeconfig.md) objects.
+- `serviceScrapeNamespaceSelector` and `serviceScrapeSelector` for selecting [VMServiceScrape](https://docs.victoriametrics.com/operator/resources/vmservicescrape) objects,
+- `podScrapeNamespaceSelector` and `podScrapeSelector` for selecting [VMPodScrape](https://docs.victoriametrics.com/operator/resources/vmpodscrape) objects,
+- `probeNamespaceSelector` and `probeSelector` for selecting [VMProbe](https://docs.victoriametrics.com/operator/resources/vmprobe) objects,
+- `staticScrapeNamespaceSelector` and `staticScrapeSelector` for selecting [VMStaticScrape](https://docs.victoriametrics.com/operator/resources/vmstaticscrape) objects,
+- `nodeScrapeNamespaceSelector` and `nodeScrapeSelector` for selecting [VMNodeScrape](https://docs.victoriametrics.com/operator/resources/vmnodescrape) objects.
+- `scrapeConfigNamespaceSelector` and `scrapeConfigSelector` for selecting [VMScrapeConfig](https://docs.victoriametrics.com/operator/resources/vmscrapeconfig) objects.
 
 It allows configuring objects access control across namespaces and different environments. 
 Specification of selectors you can see in [this doc](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#labelselector-v1-meta).
@@ -90,7 +90,7 @@ Here's a more visual and more detailed view:
 | *any*                  | undefined     | *any*                | **defined**       | all objects of given type (`...`) only at `VMAgent`'s namespace                                             |
 | *any*                  | **defined**   | *any*                | **defined**       | all objects of given type (`...`) only at `VMAgent`'s namespace for given `...Selector`                     |
 
-More details about `WATCH_NAMESPACE` variable you can read in [this doc](../configuration.md#namespaced-mode).
+More details about `WATCH_NAMESPACE` variable you can read in [this doc](https://docs.victoriametrics.com/operator/configuration#namespaced-mode).
 
 Here are some examples of `VMAgent` configuration with selectors:
 
@@ -140,10 +140,10 @@ spec:
 ### Replication and deduplication
 
 To run VMAgent in a highly available manner at first you have to configure deduplication in Victoria Metrics
-according [this doc for VMSingle](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/Single-server-VictoriaMetrics.md#deduplication)
-or [this doc for VMCluster](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/Cluster-VictoriaMetrics.md#deduplication).
+according [this doc for VMSingle](https://docs.victoriametrics.com/#deduplication)
+or [this doc for VMCluster](https://docs.victoriametrics.com/Cluster-VictoriaMetrics#deduplication).
 
-You can do it with `extraArgs` on [`VMSingle`](./vmsingle.md):
+You can do it with `extraArgs` on [`VMSingle`](https://docs.victoriametrics.com/operator/resources/vmsingle):
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1beta1
@@ -157,7 +157,7 @@ spec:
   # ...
 ```
 
-For [`VMCluster`](./vmcluster.md) you can do it with `vmstorage.extraArgs` and `vmselect.extraArgs`:
+For [`VMCluster`](https://docs.victoriametrics.com/operator/resources/vmcluster) you can do it with `vmstorage.extraArgs` and `vmselect.extraArgs`:
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1beta1
@@ -307,7 +307,7 @@ There are two options for adding targets into `VMAgent`:
 - [defining it as a Kubernetes Secret](#define-additional-scrape-configuration-as-a-kubernetes-secret).
 
 No validation happens during the creation of configuration. However, you must validate job specs, and it must follow job spec configuration.
-Please check [scrape_configs documentation](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/sd_configs.md#scrape_configs) as references.
+Please check [scrape_configs documentation](https://docs.victoriametrics.com/sd_configs#scrape_configs) as references.
 
 ### Inline Additional Scrape Configuration in VMAgent CRD
 
@@ -637,7 +637,7 @@ spec:
 ```
 
 If these parameters are not specified, then, 
-by default all `VMAgent` pods have resource requests and limits from the default values of the following [operator parameters](../configuration.md):
+by default all `VMAgent` pods have resource requests and limits from the default values of the following [operator parameters](https://docs.victoriametrics.com/operator/configuration):
 
 - `VM_VMAGENTDEFAULT_RESOURCE_LIMIT_MEM` - default memory limit for `VMAgent` pods,
 - `VM_VMAGENTDEFAULT_RESOURCE_LIMIT_CPU` - default memory limit for `VMAgent` pods,
@@ -658,22 +658,22 @@ Also, you can specify requests without limits - in this case default values for 
 
 ## Enterprise features
 
-VMAgent supports feature [Kafka integration](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#kafka-integration)
-from [VictoriaMetrics Enterprise](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/enterprise.md#victoriametrics-enterprise).
+VMAgent supports feature [Kafka integration](https://docs.victoriametrics.com/vmagent#kafka-integration)
+from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/enterprise#victoriametrics-enterprise).
 
-For using Enterprise version of [vmagent](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md)
+For using Enterprise version of [vmagent](https://docs.victoriametrics.com/vmagent)
 you need to change version of `vmagent` to version with `-enterprise` suffix using [Version management](#version-management).
 
 All the enterprise apps require `-eula` command-line flag to be passed to them.
-This flag acknowledges that your usage fits one of the cases listed on [this page](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/enterprise.md#victoriametrics-enterprise).
+This flag acknowledges that your usage fits one of the cases listed on [this page](https://docs.victoriametrics.com/enterprise#victoriametrics-enterprise).
 So you can use [extraArgs](./#extra-arguments) for passing this flag to `VMAgent`:
 
-After that you can pass [Kafka integration](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#kafka-integration)
+After that you can pass [Kafka integration](https://docs.victoriametrics.com/vmagent#kafka-integration)
 flags to `VMAgent` with [extraArgs](./#extra-arguments).
 
 ### Reading metrics from Kafka
 
-Here are complete example for [Reading metrics from Kafka](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#reading-metrics-from-kafka):
+Here are complete example for [Reading metrics from Kafka](https://docs.victoriametrics.com/vmagent#reading-metrics-from-kafka):
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1beta1
@@ -704,7 +704,7 @@ spec:
 
 ### Writing metrics to Kafka
 
-Here are complete example for [Writing metrics to Kafka](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#writing-metrics-to-kafka):
+Here are complete example for [Writing metrics to Kafka](https://docs.victoriametrics.com/vmagent#writing-metrics-to-kafka):
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1beta1

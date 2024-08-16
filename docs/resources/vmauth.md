@@ -18,7 +18,7 @@ So it will be possible to access these credentials from any application by targe
 ## Specification
 
 You can see the full actual specification of the `VMAuth` resource in
-the **[API docs -> VMAuth](../api.md#vmauth)**.
+the **[API docs -> VMAuth](https://docs.victoriametrics.com/operator/api#vmauth)**.
 
 If you can't find necessary field in the specification of the custom resource,
 see [Extra arguments section](./#extra-arguments).
@@ -31,7 +31,7 @@ The CRD specifies which `VMUser`s should be covered by the deployed `VMAuth` ins
 The Operator then generates a configuration based on the included `VMUser`s and updates the `Configmaps` containing
 the configuration. It continuously does so for all changes that are made to `VMUser`s or to the `VMAuth` resource itself.
 
-[VMUser](./vmuser.md) objects generate part of `VMAuth` configuration.
+[VMUser](https://docs.victoriametrics.com/operator/resources/vmuser) objects generate part of `VMAuth` configuration.
 
 For filtering users `VMAuth` uses selectors `userNamespaceSelector` and `userSelector`.
 It allows configuring rules access control across namespaces and different environments.
@@ -58,7 +58,7 @@ Here's a more visual and more detailed view:
 | *any*                   | undefined      | *any*                | **defined**       | all vmusers only at `VMAuth`'s namespace                                                             |
 | *any*                   | **defined**    | *any*                | **defined**       | all vmusers only at `VMAuth`'s namespace for given `userSelector` are matching                       |
 
-More details about `WATCH_NAMESPACE` variable you can read in [this doc](../configuration.md#namespaced-mode).
+More details about `WATCH_NAMESPACE` variable you can read in [this doc](https://docs.victoriametrics.com/operator/configuration#namespaced-mode).
 
 Here are some examples of `VMAuth` configuration with selectors:
 
@@ -179,7 +179,7 @@ spec:
 ```
 
 If these parameters are not specified, then,
-by default all `VMAuth` pods have resource requests and limits from the default values of the following [operator parameters](../configuration.md):
+by default all `VMAuth` pods have resource requests and limits from the default values of the following [operator parameters](https://docs.victoriametrics.com/operator/configuration):
 
 - `VM_VMAUTHDEFAULT_RESOURCE_LIMIT_MEM` - default memory limit for `VMAuth` pods,
 - `VM_VMAUTHDEFAULT_RESOURCE_LIMIT_CPU` - default memory limit for `VMAuth` pods,
@@ -200,19 +200,19 @@ Also, you can specify requests without limits - in this case default values for 
 
 ## Enterprise features
 
-Custom resource `VMAuth` supports feature [IP filters](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmauth.md#ip-filters)
-from [VictoriaMetrics Enterprise](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/enterprise.md#victoriametrics-enterprise).
+Custom resource `VMAuth` supports feature [IP filters](https://docs.victoriametrics.com/vmauth#ip-filters)
+from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/enterprise#victoriametrics-enterprise).
 
-For using Enterprise version of [vmauth](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmauth.md)
+For using Enterprise version of [vmauth](https://docs.victoriametrics.com/vmauth)
 you need to change version of `vmauth` to version with `-enterprise` suffix using [Version management](#version-management).
 
 All the enterprise apps require `-eula` command-line flag to be passed to them. 
-This flag acknowledges that your usage fits one of the cases listed on [this page](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/enterprise.md#victoriametrics-enterprise).
+This flag acknowledges that your usage fits one of the cases listed on [this page](https://docs.victoriametrics.com/enterprise#victoriametrics-enterprise).
 So you can use [extraArgs](./#extra-arguments) for passing this flag to `VMAuth`:
 
 ### IP Filters
 
-After that you can use [IP filters for `VMUser`](./vmuser.md#enterprise-features) 
+After that you can use [IP filters for `VMUser`](https://docs.victoriametrics.com/operator/resources/vmuser#enterprise-features) 
 and field `ip_filters` for `VMAuth`.
 
 Here are complete example with described above:

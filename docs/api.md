@@ -221,7 +221,7 @@ _Appears in:_
 
 
 AzureSDConfig allow retrieving scrape targets from Azure VMs.
-See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/sd_configs.md#azure_sd_configs)
+See [here](https://docs.victoriametrics.com/sd_configs#azure_sd_configs)
 
 
 
@@ -359,7 +359,7 @@ _Appears in:_
 
 
 ConsulSDConfig defines a Consul service discovery configuration.
-See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/sd_configs.md/#consul_sd_configs)
+See [here](https://docs.victoriametrics.com/sd_configs/#consul_sd_configs)
 
 
 
@@ -368,7 +368,7 @@ _Appears in:_
 
 | Field | Description | Scheme | Required |
 | --- | --- | --- | --- |
-| `allowStale` | Allow stale Consul results (see https://www.consul.io/api/features/consistency.html). Will reduce load on Consul.<br />If unset, use its default value. | _boolean_ | false |
+| `allowStale` | Allow stale Consul results (see https://developer.hashicorp.com/consul/api-docs/features/consistency). Will reduce load on Consul.<br />If unset, use its default value. | _boolean_ | false |
 | `authorization` | Authorization header to use on every scrape request. | _[Authorization](#authorization)_ | false |
 | `basicAuth` | BasicAuth information to use on every scrape request. | _[BasicAuth](#basicauth)_ | false |
 | `datacenter` | Consul Datacenter name, if not provided it will use the local Consul Agent Datacenter. | _string_ | false |
@@ -378,7 +378,7 @@ _Appears in:_
 | `oauth2` | OAuth2 defines auth configuration | _[OAuth2](#oauth2)_ | false |
 | `partition` | Admin Partitions are only supported in Consul Enterprise. | _string_ | false |
 | `proxyURL` | ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. | _string_ | false |
-| `proxy_client_config` | ProxyClientConfig configures proxy auth settings for scraping<br />See [feature description](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#scraping-targets-via-a-proxy) | _[ProxyAuth](#proxyauth)_ | false |
+| `proxy_client_config` | ProxyClientConfig configures proxy auth settings for scraping<br />See [feature description](https://docs.victoriametrics.com/vmagent#scraping-targets-via-a-proxy) | _[ProxyAuth](#proxyauth)_ | false |
 | `scheme` | HTTP Scheme default "http" | _string_ | false |
 | `server` | A valid string consisting of a hostname or IP followed by an optional port number. | _string_ | true |
 | `services` | A list of services for which targets are retrieved. If omitted, all services are scraped. | _string array_ | false |
@@ -394,7 +394,7 @@ _Appears in:_
 
 DNSSDConfig allows specifying a set of DNS domain names which are periodically queried to discover a list of targets.
 The DNS servers to be contacted are read from /etc/resolv.conf.
-See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/sd_configs.md#dns_sd_configs)
+See [here](https://docs.victoriametrics.com/sd_configs#dns_sd_configs)
 
 
 
@@ -414,7 +414,7 @@ _Appears in:_
 
 DigitalOceanSDConfig allow retrieving scrape targets from DigitalOcean's Droplets API.
 This service discovery uses the public IPv4 address by default, by that can be changed with relabeling.
-See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/sd_configs.md#digitalocean_sd_configs)
+See [here](https://docs.victoriametrics.com/sd_configs#digitalocean_sd_configs)
 
 
 
@@ -428,7 +428,7 @@ _Appears in:_
 | `oauth2` | OAuth2 defines auth configuration | _[OAuth2](#oauth2)_ | false |
 | `port` | The port to scrape metrics from. | _integer_ | false |
 | `proxyURL` | ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. | _string_ | false |
-| `proxy_client_config` | ProxyClientConfig configures proxy auth settings for scraping<br />See [feature description](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#scraping-targets-via-a-proxy) | _[ProxyAuth](#proxyauth)_ | false |
+| `proxy_client_config` | ProxyClientConfig configures proxy auth settings for scraping<br />See [feature description](https://docs.victoriametrics.com/vmagent#scraping-targets-via-a-proxy) | _[ProxyAuth](#proxyauth)_ | false |
 | `tlsConfig` | TLS configuration to use on every scrape request | _[TLSConfig](#tlsconfig)_ | false |
 
 
@@ -494,7 +494,7 @@ _Appears in:_
 EC2SDConfig allow retrieving scrape targets from AWS EC2 instances.
 The private IP address is used by default, but may be changed to the public IP address with relabeling.
 The IAM credentials used must have the ec2:DescribeInstances permission to discover scrape targets.
-See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/sd_configs.md#ec2_sd_configs)
+See [here](https://docs.victoriametrics.com/sd_configs#ec2_sd_configs)
 
 
 
@@ -811,7 +811,7 @@ _Appears in:_
 
 
 FileSDConfig defines a file service discovery configuration.
-See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/sd_configs.md#file_sd_configs)
+See [here](https://docs.victoriametrics.com/sd_configs#file_sd_configs)
 
 
 
@@ -830,7 +830,7 @@ _Appears in:_
 GCESDConfig configures scrape targets from GCP GCE instances.
 The private IP address is used by default, but may be changed to
 the public IP address with relabeling.
-See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/sd_configs.md#gce_sd_configs)
+See [here](https://docs.victoriametrics.com/sd_configs#gce_sd_configs)
 
 
 The GCE service discovery will load the Google Cloud credentials
@@ -912,7 +912,7 @@ _Appears in:_
 
 
 HTTPSDConfig defines a HTTP service discovery configuration.
-See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/sd_configs.md#http_sd_configs)
+See [here](https://docs.victoriametrics.com/sd_configs#http_sd_configs)
 
 
 
@@ -924,7 +924,7 @@ _Appears in:_
 | `authorization` | Authorization header to use on every scrape request. | _[Authorization](#authorization)_ | false |
 | `basicAuth` | BasicAuth information to use on every scrape request. | _[BasicAuth](#basicauth)_ | false |
 | `proxyURL` | ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. | _string_ | false |
-| `proxy_client_config` | ProxyClientConfig configures proxy auth settings for scraping<br />See [feature description](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#scraping-targets-via-a-proxy) | _[ProxyAuth](#proxyauth)_ | false |
+| `proxy_client_config` | ProxyClientConfig configures proxy auth settings for scraping<br />See [feature description](https://docs.victoriametrics.com/vmagent#scraping-targets-via-a-proxy) | _[ProxyAuth](#proxyauth)_ | false |
 | `tlsConfig` | TLS configuration to use on every scrape request | _[TLSConfig](#tlsconfig)_ | false |
 | `url` | URL from which the targets are fetched. | _string_ | true |
 
@@ -1043,7 +1043,7 @@ _Appears in:_
 
 
 KubernetesSDConfig allows retrieving scrape targets from Kubernetes' REST API.
-See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/sd_configs.md#kubernetes_sd_configs)
+See [here](https://docs.victoriametrics.com/sd_configs#kubernetes_sd_configs)
 
 
 
@@ -1060,7 +1060,7 @@ _Appears in:_
 | `namespaces` | Optional namespace discovery. If omitted, discover targets across all namespaces. | _[NamespaceDiscovery](#namespacediscovery)_ | false |
 | `oauth2` | OAuth2 defines auth configuration | _[OAuth2](#oauth2)_ | false |
 | `proxyURL` | ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. | _string_ | false |
-| `proxy_client_config` | ProxyClientConfig configures proxy auth settings for scraping<br />See [feature description](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#scraping-targets-via-a-proxy) | _[ProxyAuth](#proxyauth)_ | false |
+| `proxy_client_config` | ProxyClientConfig configures proxy auth settings for scraping<br />See [feature description](https://docs.victoriametrics.com/vmagent#scraping-targets-via-a-proxy) | _[ProxyAuth](#proxyauth)_ | false |
 | `role` | Role of the Kubernetes entities that should be discovered. | _string_ | true |
 | `selectors` | Selector to select objects. | _[K8SSelectorConfig](#k8sselectorconfig) array_ | false |
 | `tlsConfig` | TLS configuration to use on every scrape request | _[TLSConfig](#tlsconfig)_ | false |
@@ -1072,7 +1072,7 @@ _Appears in:_
 
 License holds license key for enterprise features.
 Using license key is supported starting from VictoriaMetrics v1.94.0.
-See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/enterprise.md)
+See [here](https://docs.victoriametrics.com/enterprise)
 
 
 
@@ -1085,7 +1085,7 @@ _Appears in:_
 
 | Field | Description | Scheme | Required |
 | --- | --- | --- | --- |
-| `key` | Enterprise license key. This flag is available only in [VictoriaMetrics enterprise](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/enterprise.md).<br />To request a trial license, [go to](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/products/enterprise/trial.md) | _string_ | true |
+| `key` | Enterprise license key. This flag is available only in [VictoriaMetrics enterprise](https://docs.victoriametrics.com/enterprise).<br />To request a trial license, [go to](https://victoriametrics.com/products/enterprise/trial) | _string_ | true |
 | `keyRef` | KeyRef is reference to secret with license key for enterprise features. | _[SecretKeySelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#secretkeyselector-v1-core)_ | true |
 
 
@@ -1210,7 +1210,7 @@ _Appears in:_
 
 
 OpenStackSDConfig allow retrieving scrape targets from OpenStack Nova instances.
-See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/sd_configs.md#openstack_sd_configs)
+See [here](https://docs.victoriametrics.com/sd_configs#openstack_sd_configs)
 
 
 
@@ -1568,7 +1568,7 @@ _Appears in:_
 | `eval_alignment` | Optional<br />The evaluation timestamp will be aligned with group's interval,<br />instead of using the actual timestamp that evaluation happens at.<br />It is enabled by default to get more predictable results<br />and to visually align with graphs plotted via Grafana or vmui. | _boolean_ | true |
 | `eval_delay` | Optional<br />Adjust the `time` parameter of group evaluation requests to compensate intentional query delay from the datasource. | _string_ | true |
 | `eval_offset` | Optional<br />Group will be evaluated at the exact offset in the range of [0...interval]. | _string_ | true |
-| `extra_filter_labels` | ExtraFilterLabels optional list of label filters applied to every rule's<br />request within a group. Is compatible only with VM datasource.<br />See more details [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/#prometheus-querying-api-enhancements)<br />Deprecated, use params instead | _object (keys:string, values:string)_ | false |
+| `extra_filter_labels` | ExtraFilterLabels optional list of label filters applied to every rule's<br />request within a group. Is compatible only with VM datasource.<br />See more details [here](https://docs.victoriametrics.com/#prometheus-querying-api-enhancements)<br />Deprecated, use params instead | _object (keys:string, values:string)_ | false |
 | `headers` | Headers contains optional HTTP headers added to each rule request<br />Must be in form `header-name: value`<br />For example:<br /> headers:<br />   - "CustomHeader: foo"<br />   - "CustomHeader2: bar" | _string array_ | false |
 | `interval` | evaluation interval for group | _string_ | false |
 | `labels` | Labels optional list of labels added to every rule within a group.<br />It has priority over the external labels.<br />Labels are commonly used for adding environment<br />or tenant-specific tag. | _object (keys:string, values:string)_ | false |
@@ -1577,7 +1577,7 @@ _Appears in:_
 | `notifier_headers` | NotifierHeaders contains optional HTTP headers added to each alert request which will send to notifier<br />Must be in form `header-name: value`<br />For example:<br /> headers:<br />   - "CustomHeader: foo"<br />   - "CustomHeader2: bar" | _string array_ | false |
 | `params` | Params optional HTTP URL parameters added to each rule request | _[Values](#values)_ | false |
 | `rules` | Rules list of alert rules | _[Rule](#rule) array_ | true |
-| `tenant` | Tenant id for group, can be used only with enterprise version of vmalert.<br />See more details [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmalert.md#multitenancy). | _string_ | false |
+| `tenant` | Tenant id for group, can be used only with enterprise version of vmalert.<br />See more details [here](https://docs.victoriametrics.com/vmalert#multitenancy). | _string_ | false |
 | `type` | Type defines datasource type for enterprise version of vmalert<br />possible values - prometheus,graphite | _string_ | false |
 
 
@@ -1759,7 +1759,7 @@ _Appears in:_
 
 
 StaticConfig defines a static configuration.
-See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/sd_configs.md#static_configs)
+See [here](https://docs.victoriametrics.com/sd_configs#static_configs)
 
 
 
@@ -2157,9 +2157,9 @@ _Appears in:_
 | Field | Description | Scheme | Required |
 | --- | --- | --- | --- |
 | `discover_backend_ips` | DiscoverBackendIPs instructs discovering URLPrefix backend IPs via DNS. | _boolean_ | true |
-| `drop_src_path_prefix_parts` | DropSrcPathPrefixParts is the number of `/`-delimited request path prefix parts to drop before proxying the request to backend.<br />See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmauth.md#dropping-request-path-prefix) for more details. | _integer_ | false |
+| `drop_src_path_prefix_parts` | DropSrcPathPrefixParts is the number of `/`-delimited request path prefix parts to drop before proxying the request to backend.<br />See [here](https://docs.victoriametrics.com/vmauth#dropping-request-path-prefix) for more details. | _integer_ | false |
 | `headers` | RequestHeaders represent additional http headers, that vmauth uses<br />in form of ["header_key: header_value"]<br />multiple values for header key:<br />["header_key: value1,value2"]<br />it's available since 1.68.0 version of vmauth | _string array_ | false |
-| `load_balancing_policy` | LoadBalancingPolicy defines load balancing policy to use for backend urls.<br />Supported policies: least_loaded, first_available.<br />See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmauth.md#load-balancing) for more details (default "least_loaded") | _string_ | false |
+| `load_balancing_policy` | LoadBalancingPolicy defines load balancing policy to use for backend urls.<br />Supported policies: least_loaded, first_available.<br />See [here](https://docs.victoriametrics.com/vmauth#load-balancing) for more details (default "least_loaded") | _string_ | false |
 | `response_headers` | ResponseHeaders represent additional http headers, that vmauth adds for request response<br />in form of ["header_key: header_value"]<br />multiple values for header key:<br />["header_key: value1,value2"]<br />it's available since 1.93.0 version of vmauth | _string array_ | false |
 | `retry_status_codes` | RetryStatusCodes defines http status codes in numeric format for request retries<br />Can be defined per target or at VMUser.spec level<br />e.g. [429,503] | _integer array_ | false |
 | `src_headers` | SrcHeaders is an optional list of headers, which must match request headers. | _string array_ | true |
@@ -2219,10 +2219,10 @@ _Appears in:_
 | --- | --- | --- | --- |
 | `default_url` | DefaultURLs backend url for non-matching paths filter<br />usually used for default backend with error message | _string array_ | true |
 | `discover_backend_ips` | DiscoverBackendIPs instructs discovering URLPrefix backend IPs via DNS. | _boolean_ | true |
-| `drop_src_path_prefix_parts` | DropSrcPathPrefixParts is the number of `/`-delimited request path prefix parts to drop before proxying the request to backend.<br />See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmauth.md#dropping-request-path-prefix) for more details. | _integer_ | false |
+| `drop_src_path_prefix_parts` | DropSrcPathPrefixParts is the number of `/`-delimited request path prefix parts to drop before proxying the request to backend.<br />See [here](https://docs.victoriametrics.com/vmauth#dropping-request-path-prefix) for more details. | _integer_ | false |
 | `headers` | Headers represent additional http headers, that vmauth uses<br />in form of ["header_key: header_value"]<br />multiple values for header key:<br />["header_key: value1,value2"]<br />it's available since 1.68.0 version of vmauth | _string array_ | false |
-| `ip_filters` | IPFilters defines per target src ip filters<br />supported only with enterprise version of [vmauth](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmauth.md/#ip-filters) | _[VMUserIPFilters](#vmuseripfilters)_ | false |
-| `load_balancing_policy` | LoadBalancingPolicy defines load balancing policy to use for backend urls.<br />Supported policies: least_loaded, first_available.<br />See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmauth.md#load-balancing) for more details (default "least_loaded") | _string_ | false |
+| `ip_filters` | IPFilters defines per target src ip filters<br />supported only with enterprise version of [vmauth](https://docs.victoriametrics.com/vmauth/#ip-filters) | _[VMUserIPFilters](#vmuseripfilters)_ | false |
+| `load_balancing_policy` | LoadBalancingPolicy defines load balancing policy to use for backend urls.<br />Supported policies: least_loaded, first_available.<br />See [here](https://docs.victoriametrics.com/vmauth#load-balancing) for more details (default "least_loaded") | _string_ | false |
 | `max_concurrent_requests` | MaxConcurrentRequests defines max concurrent requests per user<br />300 is default value for vmauth | _integer_ | false |
 | `response_headers` | ResponseHeaders represent additional http headers, that vmauth adds for request response<br />in form of ["header_key: header_value"]<br />multiple values for header key:<br />["header_key: value1,value2"]<br />it's available since 1.93.0 version of vmauth | _string array_ | false |
 | `retry_status_codes` | RetryStatusCodes defines http status codes in numeric format for request retries<br />e.g. [429,503] | _integer array_ | false |
@@ -2347,7 +2347,7 @@ _Appears in:_
 | `queues` | The number of concurrent queues | _integer_ | false |
 | `showURL` | Whether to show -remoteWrite.url in the exported metrics. It is hidden by default, since it can contain sensitive auth info | _boolean_ | false |
 | `tmpDataPath` | Path to directory where temporary data for remote write component is stored (default vmagent-remotewrite-data) | _string_ | false |
-| `useMultiTenantMode` | Configures vmagent accepting data via the same multitenant endpoints as vminsert at VictoriaMetrics cluster does,<br />see [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md/#multitenancy).<br />it's global setting and affects all remote storage configurations | _boolean_ | false |
+| `useMultiTenantMode` | Configures vmagent accepting data via the same multitenant endpoints as vminsert at VictoriaMetrics cluster does,<br />see [here](https://docs.victoriametrics.com/vmagent/#multitenancy).<br />it's global setting and affects all remote storage configurations | _boolean_ | false |
 
 
 #### VMAgentRemoteWriteSpec
@@ -2432,7 +2432,7 @@ _Appears in:_
 | `inlineRelabelConfig` | InlineRelabelConfig - defines GlobalRelabelConfig for vmagent, can be defined directly at CRD. | _[RelabelConfig](#relabelconfig) array_ | false |
 | `inlineScrapeConfig` | InlineScrapeConfig As scrape configs are appended, the user is responsible to make sure it<br />is valid. Note that using this feature may expose the possibility to<br />break upgrades of VMAgent. It is advised to review VMAgent release<br />notes to ensure that no incompatible scrape configs are going to break<br />VMAgent after the upgrade.<br />it should be defined as single yaml file.<br />inlineScrapeConfig: \|<br />    - job_name: "prometheus"<br />      static_configs:<br />      - targets: ["localhost:9090"] | _string_ | false |
 | `insertPorts` | InsertPorts - additional listen ports for data ingestion. | _[InsertPorts](#insertports)_ | true |
-| `license` | License allows to configure license key to be used for enterprise features.<br />Using license key is supported starting from VictoriaMetrics v1.94.0.<br />See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/enterprise.md) | _[License](#license)_ | false |
+| `license` | License allows to configure license key to be used for enterprise features.<br />Using license key is supported starting from VictoriaMetrics v1.94.0.<br />See [here](https://docs.victoriametrics.com/enterprise) | _[License](#license)_ | false |
 | `logFormat` | LogFormat for VMAgent to be configured with. | _string_ | false |
 | `logLevel` | LogLevel for VMAgent to be configured with.<br />INFO, WARN, ERROR, FATAL, PANIC | _string_ | false |
 | `maxScrapeInterval` | MaxScrapeInterval allows limiting maximum scrape interval for VMServiceScrape, VMPodScrape and other scrapes<br />If interval is higher than defined limit, `maxScrapeInterval` will be used. | _string_ | true |
@@ -2479,7 +2479,7 @@ _Appears in:_
 | `serviceScrapeSelector` | ServiceScrapeSelector defines ServiceScrapes to be selected for target discovery.<br />Works in combination with NamespaceSelector.<br />NamespaceSelector nil - only objects at VMAgent namespace.<br />Selector nil - only objects at NamespaceSelector namespaces.<br />If both nil - behaviour controlled by selectAllByDefault | _[LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#labelselector-v1-meta)_ | false |
 | `serviceScrapeSpec` | ServiceScrapeSpec that will be added to vmagent VMServiceScrape spec | _[VMServiceScrapeSpec](#vmservicescrapespec)_ | false |
 | `serviceSpec` | ServiceSpec that will be added to vmagent service spec | _[AdditionalServiceSpec](#additionalservicespec)_ | false |
-| `shardCount` | ShardCount - numbers of shards of VMAgent<br />in this case operator will use 1 deployment/sts per shard with<br />replicas count according to spec.replicas,<br />see [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md/#scraping-big-number-of-targets) | _integer_ | false |
+| `shardCount` | ShardCount - numbers of shards of VMAgent<br />in this case operator will use 1 deployment/sts per shard with<br />replicas count according to spec.replicas,<br />see [here](https://docs.victoriametrics.com/vmagent/#scraping-big-number-of-targets) | _integer_ | false |
 | `statefulMode` | StatefulMode enables StatefulSet for `VMAgent` instead of Deployment<br />it allows using persistent storage for vmagent's persistentQueue | _boolean_ | false |
 | `statefulRollingUpdateStrategy` | StatefulRollingUpdateStrategy allows configuration for strategyType<br />set it to RollingUpdate for disabling operator statefulSet rollingUpdate | _[StatefulSetUpdateStrategyType](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#statefulsetupdatestrategytype-v1-apps)_ | false |
 | `statefulStorage` | StatefulStorage configures storage for StatefulSet | _[StorageSpec](#storagespec)_ | false |
@@ -2632,7 +2632,7 @@ _Appears in:_
 | `image` | Image - docker image settings for VMAlert<br />if no specified operator uses default config version | _[Image](#image)_ | false |
 | `imagePullSecrets` | ImagePullSecrets An optional list of references to secrets in the same namespace<br />to use for pulling images from registries<br />see https://kubernetes.io/docs/concepts/containers/images/#referring-to-an-imagepullsecrets-on-a-pod | _[LocalObjectReference](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#localobjectreference-v1-core) array_ | false |
 | `initContainers` | InitContainers allows adding initContainers to the pod definition. Those can be used to e.g.<br />fetch secrets for injection into the VMAlert configuration from external sources. Any<br />errors during the execution of an initContainer will lead to a restart of the Pod. More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/<br />Using initContainers for any use case other then secret fetching is entirely outside the scope<br />of what the maintainers will support and by doing so, you accept that this behaviour may break<br />at any time without notice. | _[Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#container-v1-core) array_ | false |
-| `license` | License allows to configure license key to be used for enterprise features.<br />Using license key is supported starting from VictoriaMetrics v1.94.0.<br />See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/enterprise.md) | _[License](#license)_ | false |
+| `license` | License allows to configure license key to be used for enterprise features.<br />Using license key is supported starting from VictoriaMetrics v1.94.0.<br />See [here](https://docs.victoriametrics.com/enterprise) | _[License](#license)_ | false |
 | `logFormat` | LogFormat for VMAlert to be configured with.<br />default or json | _string_ | false |
 | `logLevel` | LogLevel for VMAlert to be configured with. | _string_ | false |
 | `minReadySeconds` | MinReadySeconds defines a minim number os seconds to wait before starting update next pod<br />if previous in healthy state | _integer_ | false |
@@ -2847,7 +2847,7 @@ _Appears in:_
 | `discover_backend_ips` | DiscoverBackendIPs instructs discovering URLPrefix backend IPs via DNS. | _boolean_ | true |
 | `dnsConfig` | Specifies the DNS parameters of a pod.<br />Parameters specified here will be merged to the generated DNS<br />configuration based on DNSPolicy. | _[PodDNSConfig](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#poddnsconfig-v1-core)_ | false |
 | `dnsPolicy` | DNSPolicy sets DNS policy for the pod | _[DNSPolicy](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#dnspolicy-v1-core)_ | false |
-| `drop_src_path_prefix_parts` | DropSrcPathPrefixParts is the number of `/`-delimited request path prefix parts to drop before proxying the request to backend.<br />See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmauth.md#dropping-request-path-prefix) for more details. | _integer_ | false |
+| `drop_src_path_prefix_parts` | DropSrcPathPrefixParts is the number of `/`-delimited request path prefix parts to drop before proxying the request to backend.<br />See [here](https://docs.victoriametrics.com/vmauth#dropping-request-path-prefix) for more details. | _integer_ | false |
 | `extraArgs` | ExtraArgs that will be passed to  VMAuth pod<br />for example remoteWrite.tmpDataPath: /tmp | _object (keys:string, values:string)_ | false |
 | `extraEnvs` | ExtraEnvs that will be added to VMAuth pod | _[EnvVar](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#envvar-v1-core) array_ | false |
 | `headers` | Headers represent additional http headers, that vmauth uses<br />in form of ["header_key: header_value"]<br />multiple values for header key:<br />["header_key: value1,value2"]<br />it's available since 1.68.0 version of vmauth | _string array_ | false |
@@ -2857,9 +2857,9 @@ _Appears in:_
 | `imagePullSecrets` | ImagePullSecrets An optional list of references to secrets in the same namespace<br />to use for pulling images from registries<br />see https://kubernetes.io/docs/concepts/containers/images/#referring-to-an-imagepullsecrets-on-a-pod | _[LocalObjectReference](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#localobjectreference-v1-core) array_ | false |
 | `ingress` | Ingress enables ingress configuration for VMAuth. | _[EmbeddedIngress](#embeddedingress)_ | true |
 | `initContainers` | InitContainers allows adding initContainers to the pod definition. Those can be used to e.g.<br />fetch secrets for injection into the vmSingle configuration from external sources. Any<br />errors during the execution of an initContainer will lead to a restart of the Pod. More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/<br />Using initContainers for any use case other then secret fetching is entirely outside the scope<br />of what the maintainers will support and by doing so, you accept that this behaviour may break<br />at any time without notice. | _[Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#container-v1-core) array_ | false |
-| `ip_filters` | IPFilters defines per target src ip filters<br />supported only with enterprise version of [vmauth](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmauth.md/#ip-filters) | _[VMUserIPFilters](#vmuseripfilters)_ | false |
-| `license` | License allows to configure license key to be used for enterprise features.<br />Using license key is supported starting from VictoriaMetrics v1.94.0.<br />See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/enterprise.md) | _[License](#license)_ | false |
-| `load_balancing_policy` | LoadBalancingPolicy defines load balancing policy to use for backend urls.<br />Supported policies: least_loaded, first_available.<br />See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmauth.md#load-balancing) for more details (default "least_loaded") | _string_ | false |
+| `ip_filters` | IPFilters defines per target src ip filters<br />supported only with enterprise version of [vmauth](https://docs.victoriametrics.com/vmauth/#ip-filters) | _[VMUserIPFilters](#vmuseripfilters)_ | false |
+| `license` | License allows to configure license key to be used for enterprise features.<br />Using license key is supported starting from VictoriaMetrics v1.94.0.<br />See [here](https://docs.victoriametrics.com/enterprise) | _[License](#license)_ | false |
+| `load_balancing_policy` | LoadBalancingPolicy defines load balancing policy to use for backend urls.<br />Supported policies: least_loaded, first_available.<br />See [here](https://docs.victoriametrics.com/vmauth#load-balancing) for more details (default "least_loaded") | _string_ | false |
 | `logFormat` | LogFormat for VMAuth to be configured with. | _string_ | false |
 | `logLevel` | LogLevel for victoria metrics single to be configured with. | _string_ | false |
 | `max_concurrent_requests` | MaxConcurrentRequests defines max concurrent requests per user<br />300 is default value for vmauth | _integer_ | false |
@@ -2929,7 +2929,7 @@ _Appears in:_
 | `logLevel` | LogLevel for VMBackup to be configured with. | _string_ | false |
 | `port` | Port for health check connections | _string_ | true |
 | `resources` | Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/<br />if not defined default resources from operator config will be used | _[ResourceRequirements](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#resourcerequirements-v1-core)_ | false |
-| `restore` | Restore Allows to enable restore options for pod<br />Read [more](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmbackupmanager.md#restore-commands) | _[VMRestore](#vmrestore)_ | false |
+| `restore` | Restore Allows to enable restore options for pod<br />Read [more](https://docs.victoriametrics.com/vmbackupmanager#restore-commands) | _[VMRestore](#vmrestore)_ | false |
 | `snapshotCreateURL` | SnapshotCreateURL overwrites url for snapshot create | _string_ | false |
 | `snapshotDeleteURL` | SnapShotDeleteURL overwrites url for snapshot delete | _string_ | false |
 | `volumeMounts` | VolumeMounts allows configuration of additional VolumeMounts on the output Deployment definition.<br />VolumeMounts specified will be appended to other VolumeMounts in the vmbackupmanager container,<br />that are generated as a result of StorageSpec objects. | _[VolumeMount](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#volumemount-v1-core) array_ | false |
@@ -2969,10 +2969,10 @@ _Appears in:_
 | --- | --- | --- | --- |
 | `clusterVersion` | ClusterVersion defines default images tag for all components.<br />it can be overwritten with component specific image.tag value. | _string_ | false |
 | `imagePullSecrets` | ImagePullSecrets An optional list of references to secrets in the same namespace<br />to use for pulling images from registries<br />see https://kubernetes.io/docs/concepts/containers/images/#referring-to-an-imagepullsecrets-on-a-pod | _[LocalObjectReference](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#localobjectreference-v1-core) array_ | false |
-| `license` | License allows to configure license key to be used for enterprise features.<br />Using license key is supported starting from VictoriaMetrics v1.94.0.<br />See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/enterprise.md) | _[License](#license)_ | false |
+| `license` | License allows to configure license key to be used for enterprise features.<br />Using license key is supported starting from VictoriaMetrics v1.94.0.<br />See [here](https://docs.victoriametrics.com/enterprise) | _[License](#license)_ | false |
 | `paused` | Paused If set to true all actions on the underlying managed objects are not<br />going to be performed, except for delete actions. | _boolean_ | false |
 | `replicationFactor` | ReplicationFactor defines how many copies of data make among<br />distinct storage nodes | _integer_ | false |
-| `retentionPeriod` | RetentionPeriod for the stored metrics<br />Note VictoriaMetrics has data/ and indexdb/ folders<br />metrics from data/ removed eventually as soon as partition leaves retention period<br />reverse index data at indexdb rotates once at the half of configured<br />[retention period](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/Single-server-VictoriaMetrics.md/#retention) | _string_ | true |
+| `retentionPeriod` | RetentionPeriod for the stored metrics<br />Note VictoriaMetrics has data/ and indexdb/ folders<br />metrics from data/ removed eventually as soon as partition leaves retention period<br />reverse index data at indexdb rotates once at the half of configured<br />[retention period](https://docs.victoriametrics.com/Single-server-VictoriaMetrics/#retention) | _string_ | true |
 | `serviceAccountName` | ServiceAccountName is the name of the ServiceAccount to use to run the<br />VMSelect, VMStorage and VMInsert Pods. | _string_ | false |
 | `useStrictSecurity` | UseStrictSecurity enables strict security mode for component<br />it restricts disk writes access<br />uses non-root user out of the box<br />drops not needed security permissions | _boolean_ | false |
 | `vminsert` |  | _[VMInsert](#vminsert)_ | false |
@@ -2996,7 +2996,7 @@ _Appears in:_
 | Field | Description | Scheme | Required |
 | --- | --- | --- | --- |
 | `affinity` | Affinity If specified, the pod's scheduling constraints. | _[Affinity](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#affinity-v1-core)_ | false |
-| `clusterNativeListenPort` | ClusterNativePort for multi-level cluster setup.<br />More [details](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/Cluster-VictoriaMetrics.md#multi-level-cluster-setup) | _string_ | false |
+| `clusterNativeListenPort` | ClusterNativePort for multi-level cluster setup.<br />More [details](https://docs.victoriametrics.com/Cluster-VictoriaMetrics#multi-level-cluster-setup) | _string_ | false |
 | `configMaps` | ConfigMaps is a list of ConfigMaps in the same namespace as the VMInsert<br />object, which shall be mounted into the VMInsert Pods.<br />The ConfigMaps are mounted into /etc/vm/configs/<configmap-name>. | _string array_ | false |
 | `containers` | Containers property allows to inject additions sidecars or to patch existing containers.<br />It can be useful for proxies, backup, etc. | _[Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#container-v1-core) array_ | false |
 | `dnsConfig` | Specifies the DNS parameters of a pod.<br />Parameters specified here will be merged to the generated DNS<br />configuration based on DNSPolicy. | _[PodDNSConfig](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#poddnsconfig-v1-core)_ | false |
@@ -3432,7 +3432,7 @@ _Appears in:_
 | `affinity` | Affinity If specified, the pod's scheduling constraints. | _[Affinity](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#affinity-v1-core)_ | false |
 | `cacheMountPath` | CacheMountPath allows to add cache persistent for VMSelect,<br />will use "/cache" as default if not specified. | _string_ | false |
 | `claimTemplates` | ClaimTemplates allows adding additional VolumeClaimTemplates for StatefulSet | _[PersistentVolumeClaim](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#persistentvolumeclaim-v1-core) array_ | true |
-| `clusterNativeListenPort` | ClusterNativePort for multi-level cluster setup.<br />More [details](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/Cluster-VictoriaMetrics.md#multi-level-cluster-setup) | _string_ | false |
+| `clusterNativeListenPort` | ClusterNativePort for multi-level cluster setup.<br />More [details](https://docs.victoriametrics.com/Cluster-VictoriaMetrics#multi-level-cluster-setup) | _string_ | false |
 | `configMaps` | ConfigMaps is a list of ConfigMaps in the same namespace as the VMSelect<br />object, which shall be mounted into the VMSelect Pods.<br />The ConfigMaps are mounted into /etc/vm/configs/<configmap-name>. | _string array_ | false |
 | `containers` | Containers property allows to inject additions sidecars or to patch existing containers.<br />It can be useful for proxies, backup, etc. | _[Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#container-v1-core) array_ | false |
 | `dnsConfig` | Specifies the DNS parameters of a pod.<br />Parameters specified here will be merged to the generated DNS<br />configuration based on DNSPolicy. | _[PodDNSConfig](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#poddnsconfig-v1-core)_ | false |
@@ -3570,7 +3570,7 @@ _Appears in:_
 | `imagePullSecrets` | ImagePullSecrets An optional list of references to secrets in the same namespace<br />to use for pulling images from registries<br />see https://kubernetes.io/docs/concepts/containers/images/#referring-to-an-imagepullsecrets-on-a-pod | _[LocalObjectReference](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#localobjectreference-v1-core) array_ | false |
 | `initContainers` | InitContainers allows adding initContainers to the pod definition. Those can be used to e.g.<br />fetch secrets for injection into the vmSingle configuration from external sources. Any<br />errors during the execution of an initContainer will lead to a restart of the Pod. More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/<br />Using initContainers for any use case other then secret fetching is entirely outside the scope<br />of what the maintainers will support and by doing so, you accept that this behaviour may break<br />at any time without notice. | _[Container](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#container-v1-core) array_ | false |
 | `insertPorts` | InsertPorts - additional listen ports for data ingestion. | _[InsertPorts](#insertports)_ | true |
-| `license` | License allows to configure license key to be used for enterprise features.<br />Using license key is supported starting from VictoriaMetrics v1.94.0.<br />See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/enterprise.md) | _[License](#license)_ | false |
+| `license` | License allows to configure license key to be used for enterprise features.<br />Using license key is supported starting from VictoriaMetrics v1.94.0.<br />See [here](https://docs.victoriametrics.com/enterprise) | _[License](#license)_ | false |
 | `logFormat` | LogFormat for VMSingle to be configured with. | _string_ | false |
 | `logLevel` | LogLevel for victoria metrics single to be configured with. | _string_ | false |
 | `nodeSelector` | NodeSelector Define which Nodes the Pods are scheduled on. | _object (keys:string, values:string)_ | false |
@@ -3582,7 +3582,7 @@ _Appears in:_
 | `removePvcAfterDelete` | RemovePvcAfterDelete - if true, controller adds ownership to pvc<br />and after VMSingle objest deletion - pvc will be garbage collected<br />by controller manager | _boolean_ | false |
 | `replicaCount` | ReplicaCount is the expected size of the VMSingle<br />it can be 0 or 1<br />if you need more - use vm cluster | _integer_ | true |
 | `resources` | Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/<br />if not defined default resources from operator config will be used | _[ResourceRequirements](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#resourcerequirements-v1-core)_ | false |
-| `retentionPeriod` | RetentionPeriod for the stored metrics<br />Note VictoriaMetrics has data/ and indexdb/ folders<br />metrics from data/ removed eventually as soon as partition leaves retention period<br />reverse index data at indexdb rotates once at the half of configured [retention period](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/Single-server-VictoriaMetrics.md/#retention) | _string_ | true |
+| `retentionPeriod` | RetentionPeriod for the stored metrics<br />Note VictoriaMetrics has data/ and indexdb/ folders<br />metrics from data/ removed eventually as soon as partition leaves retention period<br />reverse index data at indexdb rotates once at the half of configured [retention period](https://docs.victoriametrics.com/Single-server-VictoriaMetrics/#retention) | _string_ | true |
 | `revisionHistoryLimitCount` | The number of old ReplicaSets to retain to allow rollback in deployment or<br />maximum number of revisions that will be maintained in the StatefulSet's revision history.<br />Defaults to 10. | _integer_ | false |
 | `runtimeClassName` | RuntimeClassName - defines runtime class for kubernetes pod.<br />https://kubernetes.io/docs/concepts/containers/runtime-class/ | _string_ | false |
 | `schedulerName` | SchedulerName - defines kubernetes scheduler name | _string_ | false |
@@ -3723,7 +3723,7 @@ VMUser is the Schema for the vmusers API
 
 
 VMUserIPFilters defines filters for IP addresses
-supported only with enterprise version of [vmauth](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmauth.md#ip-filters)
+supported only with enterprise version of [vmauth](https://docs.victoriametrics.com/vmauth#ip-filters)
 
 
 
@@ -3755,11 +3755,11 @@ _Appears in:_
 | `default_url` | DefaultURLs backend url for non-matching paths filter<br />usually used for default backend with error message | _string array_ | true |
 | `disable_secret_creation` | DisableSecretCreation skips related secret creation for vmuser | _boolean_ | true |
 | `discover_backend_ips` | DiscoverBackendIPs instructs discovering URLPrefix backend IPs via DNS. | _boolean_ | true |
-| `drop_src_path_prefix_parts` | DropSrcPathPrefixParts is the number of `/`-delimited request path prefix parts to drop before proxying the request to backend.<br />See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmauth.md#dropping-request-path-prefix) for more details. | _integer_ | false |
+| `drop_src_path_prefix_parts` | DropSrcPathPrefixParts is the number of `/`-delimited request path prefix parts to drop before proxying the request to backend.<br />See [here](https://docs.victoriametrics.com/vmauth#dropping-request-path-prefix) for more details. | _integer_ | false |
 | `generatePassword` | GeneratePassword instructs operator to generate password for user<br />if spec.password if empty. | _boolean_ | false |
 | `headers` | Headers represent additional http headers, that vmauth uses<br />in form of ["header_key: header_value"]<br />multiple values for header key:<br />["header_key: value1,value2"]<br />it's available since 1.68.0 version of vmauth | _string array_ | false |
-| `ip_filters` | IPFilters defines per target src ip filters<br />supported only with enterprise version of [vmauth](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmauth.md/#ip-filters) | _[VMUserIPFilters](#vmuseripfilters)_ | false |
-| `load_balancing_policy` | LoadBalancingPolicy defines load balancing policy to use for backend urls.<br />Supported policies: least_loaded, first_available.<br />See [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmauth.md#load-balancing) for more details (default "least_loaded") | _string_ | false |
+| `ip_filters` | IPFilters defines per target src ip filters<br />supported only with enterprise version of [vmauth](https://docs.victoriametrics.com/vmauth/#ip-filters) | _[VMUserIPFilters](#vmuseripfilters)_ | false |
+| `load_balancing_policy` | LoadBalancingPolicy defines load balancing policy to use for backend urls.<br />Supported policies: least_loaded, first_available.<br />See [here](https://docs.victoriametrics.com/vmauth#load-balancing) for more details (default "least_loaded") | _string_ | false |
 | `max_concurrent_requests` | MaxConcurrentRequests defines max concurrent requests per user<br />300 is default value for vmauth | _integer_ | false |
 | `metric_labels` | MetricLabels - additional labels for metrics exported by vmauth for given user. | _object (keys:string, values:string)_ | false |
 | `name` | Name of the VMUser object. | _string_ | false |

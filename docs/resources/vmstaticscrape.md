@@ -12,21 +12,21 @@ aliases:
 ---
 The `VMStaticScrape` CRD provides mechanism for scraping metrics from static targets, configured by CRD targets.
 
-`VMStaticScrape` object generates part of [VMAgent](./vmagent.md) 
-configuration with [static "service discovery"](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/sd_configs.md#static_configs).
+`VMStaticScrape` object generates part of [VMAgent](https://docs.victoriametrics.com/operator/resources/vmagent) 
+configuration with [static "service discovery"](https://docs.victoriametrics.com/sd_configs#static_configs).
 It has various options for scraping configuration of target (with basic auth,tls access, by specific port name etc.).
 
 By specifying configuration at CRD, operator generates config 
-for [VMAgent](./vmagent.md) and syncs it. 
+for [VMAgent](https://docs.victoriametrics.com/operator/resources/vmagent) and syncs it. 
 It's useful for external targets management, when service-discovery is not available. 
 `VMAgent` `staticScrapeSelector` must match `VMStaticScrape` labels.
 
-More information about selectors you can find in [this doc](./vmagent.md#scraping).
+More information about selectors you can find in [this doc](https://docs.victoriametrics.com/operator/resources/vmagent#scraping).
 
 ## Specification
 
 You can see the full actual specification of the `VMStaticScrape` resource in
-the **[API docs -> VMStaticScrape](../api.md#vmstaticscrape)**.
+the **[API docs -> VMStaticScrape](https://docs.victoriametrics.com/operator/api#vmstaticscrape)**.
 
 Also, you can check out the [examples](#examples) section.
 

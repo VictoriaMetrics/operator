@@ -293,7 +293,7 @@ deploy-kind-olm: kustomize-set-annotation load-kind olm docker-push deploy
 undeploy-kind: OVERLAY=config/kind
 undeploy-kind: load-kind undeploy
 
-docs-debug: docs
+docs-image:
 	if [ ! -d $(WORKDIR)/vmdocs ]; then \
 		git clone git@github.com:VictoriaMetrics/vmdocs $(WORKDIR)/vmdocs; \
 	fi; \
@@ -304,12 +304,25 @@ docs-debug: docs
 	$(CONTAINER_TOOL) build \
 		-t vmdocs \
 		$(WORKDIR)/vmdocs && \
-	$(CONTAINER_TOOL) rm -f vmdocs || true && \
+	$(CONTAINER_TOOL) rm -f vmdocs || true
+
+docs-debug: docs docs-image
 	$(CONTAINER_TOOL) run \
-		-d \
+		--rm \
 		--name vmdocs \
 		-p 1313:1313 \
 		-v ./docs:/opt/docs/content/operator vmdocs
+
+docs-webp-convert: docs-image
+	$(CONTAINER_TOOL) run \
+		--rm \
+		--entrypoint /usr/bin/find \
+		--name vmdocs \
+		--workdir / \
+		-v ./docs:/opt/docs/content/operator vmdocs \
+			/opt/docs/content/operator \
+				-regex ".*\.\(png\|jpg\|jpeg\)" \
+				-exec sh -c 'cwebp -preset drawing -m 6 -o $$(echo {} | cut -f-1 -d.).webp {} && rm -rf {}' {} \;
 
 ##@ Dependencies
 

@@ -53,7 +53,7 @@ This process of constant monitoring and adjustment is called the "Reconciliation
 
 The basic workflow of working with the operator can be simplified as the following diagram:
 
-<img src="README_operator-workflow.png" width="1200">
+![operator workflow](./README_operator-workflow.webp)
 
 - Operator declares and owns [resources of Victoria Metrics](./resources/README.md).
 - Kubernetes validates of the resource according to the specification from CRD (see more in [custom resources](#custom-resources)).

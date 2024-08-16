@@ -19,8 +19,7 @@ Metrics Operator introduces.
 
 Here is the scheme of relations between the custom resources:
 
-[CR](README_cr-relations.png "CR")
-{width="1200"}
+![CR](README_cr-relations.webp)
 
 ## Specification
 

@@ -70,7 +70,7 @@ operator:
 
 Otherwise, VictoriaMetrics Operator would try to discover prometheus-operator API and convert it.
 
-<img src="migration_prometheus-conversion.png" width="1200">
+![migration from prometheus](./migration_prometheus-conversion.webp)
 
 For more information about the operator's workflow, see [this doc](./README.md).
 

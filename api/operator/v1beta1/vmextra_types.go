@@ -593,6 +593,9 @@ type StreamAggrRule struct {
 	// +optional
 	IgnoreOldSamples *bool `json:"ignore_old_samples,omitempty" yaml:"ignore_old_samples,omitempty"`
 
+	// KeepInput instructs whether to keep all the matched input samples after the aggregation
+        KeepInput *bool `json:"keep_input,omitempty" yaml:"keep_input,omitempty"`
+
 	// By is an optional list of labels for grouping input series.
 	//
 	// See also Without.

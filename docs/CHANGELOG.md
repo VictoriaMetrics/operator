@@ -35,7 +35,7 @@ To perform migration to the `VLSingle` please follow [this docs](https://docs.vi
 * FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): added AWS section to VMAgent remoteWrite spec. See [#928](https://github.com/VictoriaMetrics/operator/issues/928).
 * FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): introduce global scrape config for VMAgent. See [#1179](https://github.com/VictoriaMetrics/operator/issues/1179).
 * FEATURE: [vmcluster](https://docs.victoriametrics.com/operator/resources/vmcluster/): added the `maxUnavailable` field to VMStorage and VMSelect specs to allow customization of rolling update behavior. See [#1457](https://github.com/VictoriaMetrics/operator/issues/1457) and minimum downtime update strategy [doc](https://docs.victoriametrics.com/victoriametrics/cluster-victoriametrics/#minimum-downtime-strategy). Thanks to the @vpedosyuk for the [1458](https://github.com/VictoriaMetrics/operator/pull/1458) Pull Request
-
+* FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/) and [vmsingle](https://docs.victoriametrics.com/operator/resources/vmsingle/): adds `keep_input` into `streamAggrConfig`.
 * FEATURE: [vmagent](https://docs.victoriametrics.com/operator/resources/vmagent/): Modify default `remoteWrite.maxDiskUsagePerURL` when statefulStorage.volumeClaimTemplate is set. See [#1209](https://github.com/VictoriaMetrics/operator/issues/1209)
 
 ## [v0.60.2](https://github.com/VictoriaMetrics/operator/releases/tag/v0.60.2)

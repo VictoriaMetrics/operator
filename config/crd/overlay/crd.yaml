@@ -6932,6 +6932,10 @@ spec:
                               interval:
                                 description: Interval is the interval between aggregations.
                                 type: string
+                              keep_input:
+                                description: KeepInput instructs whether to keep all
+                                  the matched input samples after the aggregation
+                                type: boolean
                               keep_metric_names:
                                 description: KeepMetricNames instructs to leave metric
                                   names as is for the output time series without adding
@@ -8720,6 +8724,10 @@ spec:
                         interval:
                           description: Interval is the interval between aggregations.
                           type: string
+                        keep_input:
+                          description: KeepInput instructs whether to keep all the
+                            matched input samples after the aggregation
+                          type: boolean
                         keep_metric_names:
                           description: KeepMetricNames instructs to leave metric names
                             as is for the output time series without adding any suffix.
@@ -34826,6 +34834,10 @@ spec:
                         interval:
                           description: Interval is the interval between aggregations.
                           type: string
+                        keep_input:
+                          description: KeepInput instructs whether to keep all the
+                            matched input samples after the aggregation
+                          type: boolean
                         keep_metric_names:
                           description: KeepMetricNames instructs to leave metric names
                             as is for the output time series without adding any suffix.

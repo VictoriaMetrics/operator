@@ -313,7 +313,7 @@ docs-debug: docs docs-image
 		-p 1313:1313 \
 		-v ./docs:/opt/docs/content/operator vmdocs
 
-docs-webp-convert: docs-image
+docs-images-to-webp: docs-image
 	$(CONTAINER_TOOL) run \
 		--rm \
 		--entrypoint /usr/bin/find \

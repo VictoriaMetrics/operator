@@ -1,12 +1,14 @@
 name: Update docs
 
 on:
-  release:
-    types: [published]
+  push:
+    branches:
+      - 'master'
+    paths:
+      - 'docs/**'
 
 jobs:
   update-docs:
-    if: "!contains(github.event.release.tag_name, '-rc')"
     runs-on: ubuntu-latest
     environment:
       name: docs
@@ -50,7 +52,7 @@ jobs:
           # Sync markdown files and pictures
           rsync -zarv \
             --include="*/" \
-            --include="*.png" \
+            --include="*.webp" \
             --include="*.md" \
             --exclude="*" \
             docs/ ../__vm-docs-repo/docs/operator/

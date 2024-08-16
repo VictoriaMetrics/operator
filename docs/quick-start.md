@@ -76,7 +76,7 @@ Now you can configure operator - open rendered `values.yaml` file in your text e
 code values.yaml
 ```
 
-![Values](quick-start_values.png "Values")
+![Values](quick-start_values.webp)
 {width="1200"}
 
 Now you can change configuration in `values.yaml`. For more details about configuration options and methods,
@@ -137,7 +137,7 @@ helm install vmoperator vm/victoria-metrics-operator -f values.yaml -n vm
 #   kubectl --namespace vm get pods -l "app.kubernetes.io/instance=vmoperator"
 #
 # Get more information on https://github.com/VictoriaMetrics/helm-charts/tree/master/charts/victoria-metrics-operator.
-# See "Getting started guide for VM Operator" on {{% ref "/guides/getting-started-with-vm-operator/" %}}.
+# See "Getting started guide for VM Operator" on https://docs.victoriametrics.com/guides/getting-started-with-vm-operator/.
 ```
 
 And check that operator is running:
@@ -162,7 +162,7 @@ Let's create fullstack monitoring cluster with
 [VictoriaMetrics](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/Cluster-VictoriaMetrics.md#architecture-overview)
 consisting of `vmstorage`, `vmselect` and `vminsert`):
 
-![Cluster Scheme](quick-start_cluster-scheme.png "Cluster Scheme)
+![Cluster Scheme](quick-start_cluster-scheme.webp)
 {width="1200"}
 
 More details about resources of VictoriaMetrics operator you can find on the [resources page](./resources/README.md). 
@@ -460,11 +460,9 @@ kubectl get secret -n vm vmuser-demo -o jsonpath="{.data.password}" | base64 --d
 Now you can get access to your data with url `http://vm-demo.k8s.orb.local/vmui`, username `demo` 
 and your given password (`Yt3N2r3cPl` in our case):
 
-![Select 1](quick-start_select-1.png "Select 1")
-{width="1200"}
+![Select 1](quick-start_select-1.webp)
 
-![Select 2](quick-start_select-2.png "Select 2")
-{width="1200"}
+![Select 2](quick-start_select-2.webp)
 
 ### Alerting
 
@@ -672,18 +670,15 @@ kubectl apply -f vmuser.yaml -n vm
 And now you can get access to your data with url `http://vm-demo.k8s.orb.local/vmalert` 
 (for your environment it most likely will be different) with username `demo`:
 
-![Alert 1](quick-start_alert-1.png "Alert 1")
-{width="1200"}
+![Alert 1](quick-start_alert-1.webp)
 
-![Alert 2](quick-start_alert-2.png "Alert 2")
-{width="1200"}
+![Alert 2](quick-start_alert-2.webp)
 
 ## Anything else
 
 That's it. We obtained a monitoring cluster corresponding to the target topology:
 
-![Cluster Scheme](quick-start_cluster-scheme.png "Cluster Scheme)
-{width="1200"}
+![Cluster Scheme](quick-start_cluster-scheme.webp)
 
 You have a full-stack monitoring cluster with VictoriaMetrics Operator.
 

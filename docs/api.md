@@ -428,7 +428,7 @@ _Appears in:_
 | `oauth2` | OAuth2 defines auth configuration | _[OAuth2](#oauth2)_ | false |
 | `port` | The port to scrape metrics from. | _integer_ | false |
 | `proxyURL` | ProxyURL eg http://proxyserver:2195 Directs scrapes to proxy through this endpoint. | _string_ | false |
-| `proxy_client_config` | ProxyClientConfig configures proxy auth settings for scraping<br />See (feature description](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#scraping-targets-via-a-proxy) | _[ProxyAuth](#proxyauth)_ | false |
+| `proxy_client_config` | ProxyClientConfig configures proxy auth settings for scraping<br />See [feature description](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#scraping-targets-via-a-proxy) | _[ProxyAuth](#proxyauth)_ | false |
 | `tlsConfig` | TLS configuration to use on every scrape request | _[TLSConfig](#tlsconfig)_ | false |
 
 
@@ -1579,6 +1579,8 @@ _Appears in:_
 | `rules` | Rules list of alert rules | _[Rule](#rule) array_ | true |
 | `tenant` | Tenant id for group, can be used only with enterprise version of vmalert.<br />See more details [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmalert.md#multitenancy). | _string_ | false |
 | `type` | Type defines datasource type for enterprise version of vmalert<br />possible values - prometheus,graphite | _string_ | false |
+
+
 
 
 #### SecretOrConfigMap
@@ -3094,8 +3096,6 @@ _Appears in:_
 | `vm_scrape_params` | VMScrapeParams defines VictoriaMetrics specific scrape parameters | _[VMScrapeParams](#vmscrapeparams)_ | false |
 
 
-
-
 #### VMPodScrape
 
 
@@ -3137,8 +3137,6 @@ _Appears in:_
 | `sampleLimit` | SampleLimit defines per-scrape limit on number of scraped samples that will be accepted. | _integer_ | false |
 | `selector` | Selector to select Pod objects. | _[LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#labelselector-v1-meta)_ | false |
 | `seriesLimit` | SeriesLimit defines per-scrape limit on number of unique time series<br />a single target can expose during all the scrapes on the time window of 24h. | _integer_ | false |
-
-
 
 
 #### VMProbe
@@ -3199,8 +3197,6 @@ _Appears in:_
 | `tlsConfig` | TLSConfig configuration to use when scraping the endpoint | _[TLSConfig](#tlsconfig)_ | false |
 | `vmProberSpec` | Specification for the prober to use for probing targets.<br />The prober.URL parameter is required. Targets cannot be probed if left empty. | _[VMProberSpec](#vmproberspec)_ | true |
 | `vm_scrape_params` | VMScrapeParams defines VictoriaMetrics specific scrape parameters | _[VMScrapeParams](#vmscrapeparams)_ | false |
-
-
 
 
 #### VMProbeTargetStaticConfig
@@ -3390,8 +3386,6 @@ _Appears in:_
 | `vm_scrape_params` | VMScrapeParams defines VictoriaMetrics specific scrape parameters | _[VMScrapeParams](#vmscrapeparams)_ | false |
 
 
-
-
 #### VMScrapeParams
 
 
@@ -3413,10 +3407,10 @@ _Appears in:_
 | Field | Description | Scheme | Required |
 | --- | --- | --- | --- |
 | `disable_compression` | DisableCompression | _boolean_ | false |
-| `disable_keep_alive` | disable_keepalive allows disabling HTTP keep-alive when scraping targets.<br />By default, HTTP keep-alive is enabled, so TCP connections to scrape targets<br />could be re-used.<br />See {{% ref "../vmagent.md#scrape_config-enhancements" %}} | _boolean_ | false |
+| `disable_keep_alive` | disable_keepalive allows disabling HTTP keep-alive when scraping targets.<br />By default, HTTP keep-alive is enabled, so TCP connections to scrape targets<br />could be re-used.<br />See https://docs.victoriametrics.com/vmagent#scrape_config-enhancements | _boolean_ | false |
 | `headers` | Headers allows sending custom headers to scrape targets<br />must be in of semicolon separated header with it's value<br />eg:<br />headerName: headerValue<br />vmagent supports since 1.79.0 version | _string array_ | false |
 | `no_stale_markers` |  | _boolean_ | false |
-| `proxy_client_config` | ProxyClientConfig configures proxy auth settings for scraping<br />See feature description {{% ref "../vmagent.md#scraping-targets-via-a-proxy" %}} | _[ProxyAuth](#proxyauth)_ | false |
+| `proxy_client_config` | ProxyClientConfig configures proxy auth settings for scraping<br />See feature description https://docs.victoriametrics.com/vmagent#scraping-targets-via-a-proxy | _[ProxyAuth](#proxyauth)_ | false |
 | `scrape_align_interval` |  | _string_ | false |
 | `scrape_offset` |  | _string_ | false |
 | `stream_parse` |  | _boolean_ | false |
@@ -3530,8 +3524,6 @@ _Appears in:_
 | `selector` | Selector to select Endpoints objects by corresponding Service labels. | _[LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#labelselector-v1-meta)_ | false |
 | `seriesLimit` | SeriesLimit defines per-scrape limit on number of unique time series<br />a single target can expose during all the scrapes on the time window of 24h. | _integer_ | false |
 | `targetLabels` | TargetLabels transfers labels on the Kubernetes Service onto the target. | _string array_ | false |
-
-
 
 
 #### VMSingle
@@ -3649,8 +3641,6 @@ _Appears in:_
 | `sampleLimit` | SampleLimit defines per-scrape limit on number of scraped samples that will be accepted. | _integer_ | false |
 | `seriesLimit` | SeriesLimit defines per-scrape limit on number of unique time series<br />a single target can expose during all the scrapes on the time window of 24h. | _integer_ | false |
 | `targetEndpoints` | A list of target endpoints to scrape metrics from. | _[TargetEndpoint](#targetendpoint) array_ | true |
-
-
 
 
 #### VMStorage

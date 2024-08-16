@@ -317,7 +317,7 @@ spec:
       eula: true
       
       # using enterprise features: Downsampling
-      # more details about downsampling you can read on {{% ref "/Cluster-VictoriaMetrics/#downsampling" %}}
+      # more details about downsampling you can read on https://docs.victoriametrics.com/Cluster-VictoriaMetrics#downsampling
       downsampling.period: 30d:5m,180d:1h,1y:6h,2y:1d
       
   vmstorage:
@@ -332,7 +332,7 @@ spec:
       eula: true
 
       # using enterprise features: Downsampling
-      # more details about downsampling you can read on {{% ref "/Cluster-VictoriaMetrics/#downsampling" %}}
+      # more details about downsampling you can read on https://docs.victoriametrics.com/Cluster-VictoriaMetrics#downsampling
       downsampling.period: 30d:5m,180d:1h,1y:6h,2y:1d
 
   # ...other fields...
@@ -364,7 +364,7 @@ spec:
       eula: true
 
       # using enterprise features: Retention filters
-      # more details about retention filters you can read on {{% ref "/Cluster-VictoriaMetrics/#retention-filters" %}}
+      # more details about retention filters you can read on https://docs.victoriametrics.com/Cluster-VictoriaMetrics#retention-filters
       retentionFilter: '{vm_account_id="5",env="dev"}:5d,{vm_account_id="5",env="prod"}:5y'
 
   # ...other fields...
@@ -450,7 +450,7 @@ spec:
       eula: true
       
       # using enterprise features: mTLS protection
-      # more details about mTLS protection you can read on {{% ref "/Cluster-VictoriaMetrics/#mtls-protection" %}}
+      # more details about mTLS protection you can read on https://docs.victoriametrics.com/Cluster-VictoriaMetrics#mtls-protection
       cluster.tls: true
       cluster.tlsCAFile: /etc/mtls/ca.crt
       cluster.tlsCertFile: /etc/mtls/vmselect.crt
@@ -475,7 +475,7 @@ spec:
       eula: true
 
       # using enterprise features: mTLS protection
-      # more details about mTLS protection you can read on {{% ref "/Cluster-VictoriaMetrics/#mtls-protection" %}}
+      # more details about mTLS protection you can read on https://docs.victoriametrics.com/Cluster-VictoriaMetrics#mtls-protection
       cluster.tls: true
       cluster.tlsCAFile: /etc/mtls/ca.crt
       cluster.tlsCertFile: /etc/mtls/vminsert.crt
@@ -505,7 +505,7 @@ spec:
       eula: true
 
       # using enterprise features: mTLS protection
-      # more details about mTLS protection you can read on {{% ref "/Cluster-VictoriaMetrics/#mtls-protection" %}}
+      # more details about mTLS protection you can read on https://docs.victoriametrics.com/Cluster-VictoriaMetrics#mtls-protection
       cluster.tls: true
       cluster.tlsCAFile: /etc/mtls/ca.crt
       cluster.tlsCertFile: /etc/mtls/$(POD).crt
@@ -595,7 +595,7 @@ spec:
       acceptEULA: true
 
       # using enterprise features: Backup automation
-      # more details about backup automation you can read on {{% ref "/vmbackupmanager" %}}
+      # more details about backup automation you can read on https://docs.victoriametrics.com/vmbackupmanager
       destination: "s3://your_bucket/folder"
       credentialsSecret:
         name: remote-storage-keys

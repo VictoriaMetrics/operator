@@ -67,7 +67,6 @@ help: ## Display this help.
 manifests: controller-gen kustomize ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
 	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 	$(KUSTOMIZE) build config/crd > config/crd/overlay/crd.yaml
-	sed -i 's/{{% ref "\(.*\)\(\.md\)\(.*\)" %}}/https:\/\/docs.victoriametrics.com\/operator\/\1\3/g' config/crd/overlay/crd.yaml
 
 .PHONY: generate
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
@@ -293,9 +292,9 @@ deploy-kind-olm: kustomize-set-annotation load-kind olm docker-push deploy
 undeploy-kind: OVERLAY=config/kind
 undeploy-kind: load-kind undeploy
 
-docs-debug: docs
+docs-image:
 	if [ ! -d $(WORKDIR)/vmdocs ]; then \
-		git clone git@github.com:VictoriaMetrics/vmdocs $(WORKDIR)/vmdocs; \
+		git clone --depth 1 git@github.com:VictoriaMetrics/vmdocs $(WORKDIR)/vmdocs; \
 	fi; \
 	cd $(WORKDIR)/vmdocs && \
 	git checkout main && \
@@ -303,13 +302,24 @@ docs-debug: docs
 	cd $(REPODIR) && \
 	$(CONTAINER_TOOL) build \
 		-t vmdocs \
-		$(WORKDIR)/vmdocs && \
-	$(CONTAINER_TOOL) rm -f vmdocs || true && \
+		$(WORKDIR)/vmdocs
+
+docs-debug: docs docs-image
 	$(CONTAINER_TOOL) run \
-		-d \
+		--rm \
 		--name vmdocs \
 		-p 1313:1313 \
 		-v ./docs:/opt/docs/content/operator vmdocs
+
+docs-images-to-webp: docs-image
+	$(CONTAINER_TOOL) run \
+		--rm \
+		--entrypoint /usr/bin/find \
+		--name vmdocs \
+		-v ./docs:/opt/docs/content/operator vmdocs \
+			content/operator \
+				-regex ".*\.\(png\|jpg\|jpeg\)" \
+				-exec sh -c 'cwebp -preset drawing -m 6 -o $$(echo {} | cut -f-1 -d.).webp {} && rm -rf {}' {} \;
 
 ##@ Dependencies
 

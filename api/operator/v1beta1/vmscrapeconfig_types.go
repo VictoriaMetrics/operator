@@ -476,7 +476,7 @@ type DigitalOceanSDConfig struct {
 	// +optional
 	ProxyURL *string `json:"proxyURL,omitempty"`
 	// ProxyClientConfig configures proxy auth settings for scraping
-	// See (feature description](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#scraping-targets-via-a-proxy)
+	// See [feature description](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#scraping-targets-via-a-proxy)
 	// +optional
 	ProxyClientConfig *ProxyAuth `json:"proxy_client_config,omitempty"`
 	// Configure whether HTTP requests follow HTTP 3xx redirects.

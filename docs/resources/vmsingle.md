@@ -149,7 +149,7 @@ spec:
     eula: true
     
     # using enterprise features: Downsampling
-    # more details about downsampling you can read on {{% ref "/#downsampling" %}}
+    # more details about downsampling you can read on https://docs.victoriametrics.com/#downsampling
     downsampling.period: 30d:5m,180d:1h,1y:6h,2y:1d
 
   # ...other fields...
@@ -176,7 +176,7 @@ spec:
     eula: true
     
     # using enterprise features: Retention filters
-    # more details about retention filters you can read on {{% ref "/#retention-filters" %}}
+    # more details about retention filters you can read on https://docs.victoriametrics.com/#retention-filters
     retentionFilter: '{team="juniors"}:3d,{env=~"dev|staging"}:30d'
 
   # ...other fields...
@@ -206,7 +206,7 @@ spec:
     acceptEULA: true
 
     # using enterprise features: Backup automation
-    # more details about backup automation you can read on {{% ref "/vmbackupmanager/" %}}
+    # more details about backup automation you can read on https://docs.victoriametrics.com/vmbackupmanager/
     destination: "s3://your_bucket/folder"
     credentialsSecret:
       name: remote-storage-keys
@@ -267,7 +267,7 @@ Steps:
         acceptEULA: true
     
         # using enterprise features: Backup automation
-        # more details about backup automation you can read {{% ref "/vmbackupmanager/" %}}
+        # more details about backup automation you can read https://docs.victoriametrics.com/vmbackupmanager/
         destination: "s3://your_bucket/folder"
         credentialsSecret:
           name: remote-storage-keys

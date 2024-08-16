@@ -97,7 +97,7 @@ victoria-metrics-operator:
     # It should reduce  vmagent and vmauth config sync-time and make it predictable.
     useCustomConfigReloader: false
 
-  # -- extra settings for the operator deployment. full list Ref: {{% ref "./vars" %}}
+  # -- extra settings for the operator deployment. full list Ref: https://docs.victoriametrics.com/operator/vars
   env:
     # -- default version for vmsingle
     - name: VM_VMSINGLEDEFAULT_VERSION
@@ -164,7 +164,7 @@ operator:
   # It should reduce  vmagent and vmauth config sync-time and make it predictable.
   useCustomConfigReloader: false
 
-# -- extra settings for the operator deployment. full list Ref: {{% ref "./vars" %}}
+# -- extra settings for the operator deployment. full list Ref: https://docs.victoriametrics.com/operator/vars
 env:
   # -- default version for vmsingle
   - name: VM_VMSINGLEDEFAULT_VERSION

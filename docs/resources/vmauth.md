@@ -234,7 +234,7 @@ spec:
     eula: true
   
   # using enterprise features: ip filters for vmauth
-  # more details about ip filters you can read in {{% ref "/vmauth/#ip-filters" %}}
+  # more details about ip filters you can read in https://docs.victoriametrics.com/vmauth#ip-filters
   ip_filters:
     allow_list:
       - 10.0.0.0/24
@@ -263,7 +263,7 @@ spec:
   password: simple-password
 
   # using enterprise features: ip filters for vmuser
-  # more details about ip filters you can read in {{% ref "./vmuser/#enterprise-features" %}}
+  # more details about ip filters you can read in https://docs.victoriametrics.com/operator/resources/vmuser#enterprise-features
   ip_filters:
     allow_list:
       - 10.0.0.0/24

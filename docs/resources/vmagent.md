@@ -692,8 +692,8 @@ spec:
     eula: true
     
     # using enterprise features: reading metrics from kafka
-    # more details about kafka integration you can read on {{% ref "/vmagent/#kafka-integration" %}}
-    # more details about these and other flags you can read on {{% ref "/vmagent/#command-line-flags-for-kafka-consumer" %}}
+    # more details about kafka integration you can read on https://docs.victoriametrics.com/vmagent#kafka-integration
+    # more details about these and other flags you can read on https://docs.victoriametrics.com/vmagent#command-line-flags-for-kafka-consumer
     kafka.consumer.topic.brokers: localhost:9092
     kafka.consumer.topic.format: influx
     kafka.consumer.topic: metrics-by-telegraf
@@ -723,7 +723,7 @@ spec:
     eula: true
   
   # using enterprise features: writing metrics to Kafka
-  # more details about kafka integration you can read on {{% ref "/vmagent/#kafka-integration" %}}
+  # more details about kafka integration you can read on https://docs.victoriametrics.com/vmagent/#kafka-integration
   remoteWrite:
     # sasl with username and password
     - url: kafka://broker-1:9092/?topic=prom-rw-1&security.protocol=SASL_SSL&sasl.mechanisms=PLAIN 

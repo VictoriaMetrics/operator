@@ -333,7 +333,7 @@ spec:
     eula: true
     
     # using enterprise features: Reading rules from object storage
-    # more details about reading rules from object storage you can read on {{% ref "/vmalert/#reading-rules-from-object-storage" %}}
+    # more details about reading rules from object storage you can read on https://docs.victoriametrics.com/vmalert#reading-rules-from-object-storage
     rule: s3://bucket/dir/alert.rules
     
   # ...other fields...
@@ -366,7 +366,7 @@ spec:
     eula: true
 
     # using enterprise features: Multitenancy
-    # more details about multitenancy you can read on {{% ref "/vmalert/#multitenancy" %}}
+    # more details about multitenancy you can read on https://docs.victoriametrics.com/vmalert#multitenancy
     clusterMode: true 
 
   # ...other fields...
@@ -382,7 +382,7 @@ spec:
     - name: vmalert-1
       rules:
         # using enterprise features: Multitenancy
-        # more details about multitenancy you can read on {{% ref "/vmalert/#multitenancy" %}}
+        # more details about multitenancy you can read on https://docs.victoriametrics.com/vmalert#multitenancy
         - tenant: 1
           alert: vmalert config reload error
           expr: delta(vmalert_config_last_reload_errors_total[5m]) > 0

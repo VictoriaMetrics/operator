@@ -303,8 +303,7 @@ docs-image:
 	cd $(REPODIR) && \
 	$(CONTAINER_TOOL) build \
 		-t vmdocs \
-		$(WORKDIR)/vmdocs && \
-	$(CONTAINER_TOOL) rm -f vmdocs || true
+		$(WORKDIR)/vmdocs
 
 docs-debug: docs docs-image
 	$(CONTAINER_TOOL) run \

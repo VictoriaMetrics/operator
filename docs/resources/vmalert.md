@@ -217,7 +217,7 @@ spec:
     url: http://vmselect-demo.vm.svc:8481/select/0/prometheus
 ```
 
-More details about `remoteWrite` and `remoteRead` you can read in [vmalert docs](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmalert.md/#alerts-state-on-restarts).
+More details about `remoteWrite` and `remoteRead` you can read in [vmalert docs](https://docs.victoriametrics.com/vmalert/#alerts-state-on-restarts).
 
 ## Version management
 
@@ -296,15 +296,15 @@ Also, you can specify requests without limits - in this case default values for 
 
 ## Enterprise features
 
-VMAlert supports features [Reading rules from object storage](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmalert.md#reading-rules-from-object-storage)
-and [Multitenancy](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmalert.md#multitenancy)
-from [VictoriaMetrics Enterprise](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/enterprise.md#victoriametrics-enterprise).
+VMAlert supports features [Reading rules from object storage](https://docs.victoriametrics.com/vmalert#reading-rules-from-object-storage)
+and [Multitenancy](https://docs.victoriametrics.com/vmalert#multitenancy)
+from [VictoriaMetrics Enterprise](https://docs.victoriametrics.com/enterprise#victoriametrics-enterprise).
 
-For using Enterprise version of [vmalert](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmalert.md)
+For using Enterprise version of [vmalert](https://docs.victoriametrics.com/vmalert)
 you need to change version of `VMAlert` to version with `-enterprise` suffix using [Version management](#version-management).
 
 All the enterprise apps require `-eula` command-line flag to be passed to them.
-This flag acknowledges that your usage fits one of the cases listed on [this page](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/enterprise.md#victoriametrics-enterprise).
+This flag acknowledges that your usage fits one of the cases listed on [this page](https://docs.victoriametrics.com/enterprise#victoriametrics-enterprise).
 So you can use [extraArgs](./#extra-arguments) for passing this flag to `VMAlert`:
 
 ### Reading rules from object storage
@@ -312,9 +312,9 @@ So you can use [extraArgs](./#extra-arguments) for passing this flag to `VMAlert
 After that you can pass `-rule` command-line argument with `s3://` or `gs://`
 to `VMAlert` with [extraArgs](./#extra-arguments).
 
-More details about reading rules from object storage you can read in [vmalert docs](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmalert.md#reading-rules-from-object-storage).
+More details about reading rules from object storage you can read in [vmalert docs](https://docs.victoriametrics.com/vmalert#reading-rules-from-object-storage).
 
-Here are complete example for [Reading rules from object storage](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmalert.md#reading-rules-from-object-storage):
+Here are complete example for [Reading rules from object storage](https://docs.victoriametrics.com/vmalert#reading-rules-from-object-storage):
 
 ```yaml
 apiVersion: operator.victoriametrics.com/v1beta1
@@ -341,7 +341,7 @@ spec:
 
 ### Multitenancy
 
-After enabling enterprise version you can use [Multitenancy](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmalert.md#multitenancy)
+After enabling enterprise version you can use [Multitenancy](https://docs.victoriametrics.com/vmalert#multitenancy)
 feature in `VMAlert`.
 
 For that you need to set `clusterMode` commad-line flag 

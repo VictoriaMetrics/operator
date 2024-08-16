@@ -43,9 +43,9 @@ Field `extraArgs` is supported for the following custom resources:
 
 Supported flags for each application can be found the in the corresponding documentation:
 
-- [VMAgent](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#advanced-usage)
-- [VMAlert](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmalert.md#configuration)
-- [VMAuth](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmauth.md#advanced-usage)
+- [VMAgent](./vmagent.md#advanced-usage)
+- [VMAlert](./vmalert.md#configuration)
+- [VMAuth](./vmauth.md#advanced-usage)
 - [VMCluster](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/Cluster-VictoriaMetrics.md#list-of-command-line-flags)
 - [VMSingle](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/Single-server-VictoriaMetrics.md#list-of-command-line-flags)
 
@@ -108,7 +108,7 @@ Page for every custom resource contains examples section:
 - [VMScrapeConfig examples](./vmscrapeconfig.md#examples)
 
 In addition, you can find examples of the custom resources for VIctoriMetrics operator in 
-the **[examples directory](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/config/examples) of operator repository**.
+the **[examples directory](https://github.com/VictoriaMetrics/operator/tree/master/config/examples) of operator repository**.
 
 ## Managing versions of VM
 
@@ -153,33 +153,33 @@ See details about these fields in the [Specification](#specification).
 
 ## Enterprise features
 
-Operator supports following [Enterprise features for VictoriaMetrics components](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/enterprise.md):
+Operator supports following [Enterprise features for VictoriaMetrics components](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/enterprise.md):
 
-- [VMAgent Enterprise features](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#enterprise-features):
-    - [Reading metrics from kafka](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#reading-metrics-from-kafka)
-    - [Writing metrics to kafka](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmagent.md#writing-metrics-to-kafka)
-- [VMAlert Enterprise features](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmalert.md#enterprise-features):
-    - [Reading rules from object storage](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmalert.md#reading-rules-from-object-storage)
-    - [Multitenancy](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmalert.md#multitenancy)
-- [VMAuth Enterprise features](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmauth.md#enterprise-features)
-    - [IP Filters](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmauth.md#ip-filters)
-- [VMCluster Enterprise features](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmcluster.md#enterprise-features)
-    - [Downsampling](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmcluster.md#downsampling)
-    - [Multiple retentions / Retention filters](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmcluster.md#retention-filters)
-    - [Advanced per-tenant statistic](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmcluster.md#advanced-per-tenant-statistic)
-    - [mTLS protection](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmcluster.md#mtls-protection)
-    - [Backup automation](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmcluster.md#backup-automation)
-- [VMRule Enterprise features](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmrule.md#enterprise-features)
-    - [Multitenancy](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmrule.md#multitenancy)
-- [VMSingle Enterprise features](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmsingle.md#enterprise-features)
-    - [Downsampling](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmsingle.md#downsampling)
-    - [Retention filters](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmsingle.md#retention-filters)
-    - [Backup automation](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/vmsingle.md#backup-automation)
-- [VMUser Enterprise features](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmuser.md#enterprise-features)
-    - [IP Filters](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/vmuser.md#ip-filters)
+- [VMAgent Enterprise features](./vmagent.md#enterprise-features):
+    - [Reading metrics from kafka](./vmagent.md#reading-metrics-from-kafka)
+    - [Writing metrics to kafka](./vmagent.md#writing-metrics-to-kafka)
+- [VMAlert Enterprise features](./vmalert.md#enterprise-features):
+    - [Reading rules from object storage](./vmalert.md#reading-rules-from-object-storage)
+    - [Multitenancy](./vmalert.md#multitenancy)
+- [VMAuth Enterprise features](./vmauth.md#enterprise-features)
+    - [IP Filters](./vmauth.md#ip-filters)
+- [VMCluster Enterprise features](./vmcluster.md#enterprise-features)
+    - [Downsampling](./vmcluster.md#downsampling)
+    - [Multiple retentions / Retention filters](./vmcluster.md#retention-filters)
+    - [Advanced per-tenant statistic](./vmcluster.md#advanced-per-tenant-statistic)
+    - [mTLS protection](./vmcluster.md#mtls-protection)
+    - [Backup automation](./vmcluster.md#backup-automation)
+- [VMRule Enterprise features](./vmrule.md#enterprise-features)
+    - [Multitenancy](./vmrule.md#multitenancy)
+- [VMSingle Enterprise features](./vmsingle.md#enterprise-features)
+    - [Downsampling](./vmsingle.md#downsampling)
+    - [Retention filters](./vmsingle.md#retention-filters)
+    - [Backup automation](./vmsingle.md#backup-automation)
+- [VMUser Enterprise features](./vmuser.md#enterprise-features)
+    - [IP Filters](./vmuser.md#ip-filters)
 
 More information about enterprise features you can read
-on [VictoriaMetrics Enterprise page](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/enterprise.md#victoriametrics-enterprise).
+on [VictoriaMetrics Enterprise page](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs/enterprise.md#victoriametrics-enterprise).
 
 ## Configuration synchronization
 
@@ -214,7 +214,7 @@ For `Secret` it doesn't work. And operator offers its implementation for side-ca
   value: "true"
 ```
 
-If it's defined, operator uses own [config-reloader](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/cmd/config-reloader)
+If it's defined, operator uses own [config-reloader](https://github.com/VictoriaMetrics/operator/tree/master/cmd/config-reloader)
 instead of [prometheus-config-reload](https://github.com/prometheus-operator/prometheus-operator/tree/main/cmd/prometheus-config-reloader).
 
 It watches corresponding `Secret` for changes with Kubernetes API watch call and writes content into emptyDir.

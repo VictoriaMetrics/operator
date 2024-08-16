@@ -3407,10 +3407,10 @@ _Appears in:_
 | Field | Description | Scheme | Required |
 | --- | --- | --- | --- |
 | `disable_compression` | DisableCompression | _boolean_ | false |
-| `disable_keep_alive` | disable_keepalive allows disabling HTTP keep-alive when scraping targets.<br />By default, HTTP keep-alive is enabled, so TCP connections to scrape targets<br />could be re-used.<br />See {{% ref "../vmagent.md#scrape_config-enhancements" %}} | _boolean_ | false |
+| `disable_keep_alive` | disable_keepalive allows disabling HTTP keep-alive when scraping targets.<br />By default, HTTP keep-alive is enabled, so TCP connections to scrape targets<br />could be re-used.<br />See https://docs.victoriametrics.com/vmagent#scrape_config-enhancements | _boolean_ | false |
 | `headers` | Headers allows sending custom headers to scrape targets<br />must be in of semicolon separated header with it's value<br />eg:<br />headerName: headerValue<br />vmagent supports since 1.79.0 version | _string array_ | false |
 | `no_stale_markers` |  | _boolean_ | false |
-| `proxy_client_config` | ProxyClientConfig configures proxy auth settings for scraping<br />See feature description {{% ref "../vmagent.md#scraping-targets-via-a-proxy" %}} | _[ProxyAuth](#proxyauth)_ | false |
+| `proxy_client_config` | ProxyClientConfig configures proxy auth settings for scraping<br />See feature description https://docs.victoriametrics.com/vmagent#scraping-targets-via-a-proxy | _[ProxyAuth](#proxyauth)_ | false |
 | `scrape_align_interval` |  | _string_ | false |
 | `scrape_offset` |  | _string_ | false |
 | `stream_parse` |  | _boolean_ | false |

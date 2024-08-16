@@ -52,7 +52,7 @@ spec:
     - name: vmalert-1
       rules:
         # using enterprise features: Multitenancy
-        # more details about multitenancy you can read on {{% ref "/vmalert/#multitenancy" %}}
+        # more details about multitenancy you can read on https://docs.victoriametrics.com/operator/resources/vmalert#multitenancy
         - tenant: 1
           alert: vmalert config reload error
           expr: delta(vmalert_config_last_reload_errors_total[5m]) > 0

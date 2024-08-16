@@ -137,7 +137,7 @@ helm install vmoperator vm/victoria-metrics-operator -f values.yaml -n vm
 #   kubectl --namespace vm get pods -l "app.kubernetes.io/instance=vmoperator"
 #
 # Get more information on https://github.com/VictoriaMetrics/helm-charts/tree/master/charts/victoria-metrics-operator.
-# See "Getting started guide for VM Operator" on {{% ref "/guides/getting-started-with-vm-operator/" %}}.
+# See "Getting started guide for VM Operator" on https://docs.victoriametrics.com/guides/getting-started-with-vm-operator/.
 ```
 
 And check that operator is running:

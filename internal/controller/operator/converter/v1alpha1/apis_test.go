@@ -109,7 +109,7 @@ func TestConvertScrapeConfig(t *testing.T) {
 						ProxyURL:        ptr.To("http://proxy.com"),
 						HonorTimestamps: ptr.To(true),
 						VMScrapeParams:  &vmv1beta1.VMScrapeParams{DisableCompression: ptr.To(false)},
-						Path: "/test",
+						Path:            "/test",
 					},
 					StaticConfigs: []vmv1beta1.StaticConfig{
 						{

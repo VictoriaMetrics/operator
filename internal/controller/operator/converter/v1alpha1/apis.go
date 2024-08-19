@@ -143,6 +143,7 @@ func ConvertScrapeConfig(promscrapeConfig *promv1alpha1.ScrapeConfig, conf *conf
 	cs.Annotations = converter.FilterPrefixes(promscrapeConfig.Annotations, conf.FilterPrometheusConverterAnnotationPrefixes)
 	cs.Spec.RelabelConfigs = converter.ConvertRelabelConfig(promscrapeConfig.Spec.RelabelConfigs)
 	cs.Spec.MetricRelabelConfigs = converter.ConvertRelabelConfig(promscrapeConfig.Spec.MetricRelabelConfigs)
+	cs.Spec.Path = *promscrapeConfig.Spec.MetricsPath
 
 	if promscrapeConfig.Spec.EnableCompression != nil {
 		cs.Spec.VMScrapeParams = &vmv1beta1.VMScrapeParams{

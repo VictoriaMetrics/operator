@@ -82,6 +82,7 @@ func TestConvertScrapeConfig(t *testing.T) {
 							Username: corev1.SecretKeySelector{Key: "username"},
 							Password: corev1.SecretKeySelector{Key: "password"},
 						},
+						MetricsPath: ptr.To("/test"),
 						ProxyConfig: promv1.ProxyConfig{
 							ProxyURL: ptr.To("http://proxy.com"),
 						},
@@ -108,6 +109,7 @@ func TestConvertScrapeConfig(t *testing.T) {
 						ProxyURL:        ptr.To("http://proxy.com"),
 						HonorTimestamps: ptr.To(true),
 						VMScrapeParams:  &vmv1beta1.VMScrapeParams{DisableCompression: ptr.To(false)},
+						Path:            "/test",
 					},
 					StaticConfigs: []vmv1beta1.StaticConfig{
 						{

@@ -36,7 +36,7 @@ func SetKubernetesVersionWithDefaults(vi *version.Info, defaultMinor, defaultMaj
 	}
 	ServerMajorVersion = v
 	if len(warnMessage) > 0 {
-		return fmt.Errorf(warnMessage)
+		return fmt.Errorf("%s", warnMessage)
 	}
 	return nil
 }

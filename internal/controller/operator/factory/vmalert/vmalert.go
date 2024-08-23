@@ -240,7 +240,7 @@ func newDeployForVMAlert(cr *vmv1beta1.VMAlert, c *config.BaseOperatorConf, rule
 		return nil, fmt.Errorf("cannot generate new spec for vmalert: %w", err)
 	}
 
-	if cr.Spec.ImagePullSecrets != nil && len(cr.Spec.ImagePullSecrets) > 0 {
+	if len(cr.Spec.ImagePullSecrets) > 0 {
 		generatedSpec.Template.Spec.ImagePullSecrets = cr.Spec.ImagePullSecrets
 	}
 

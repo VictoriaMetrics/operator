@@ -11,9 +11,11 @@ aliases:
   - /operator/changelog/index.html
 ---
 
+## [v0.47.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.47.1) - 23 Aug 2024
+
 - [operator](https://docs.victoriametrics.com/operator/): properly update statefulset on `revisionHistoryLimitCount` change. See this [issue](https://github.com/VictoriaMetrics/operator/issues/1070) for details.
 - [vmalertmanagerconfig](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig): properly construct `tls_config` for `emails` notifications. See this [issue](https://github.com/VictoriaMetrics/operator/issues/1080) for details.
-- fixed Prometheus scrape config metricsPath conversion. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1073)
+- [operator](https://docs.victoriametrics.com/operator/): fixed Prometheus scrape config metricsPath conversion. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1073)
 - [config-reloader](https://docs.victoriametrics.com/operator/): Added `reload` prefix to all config-reloader `tls*` flags to avoid collision with flags from external package. See [this issue](https://github.com/VictoriaMetrics/operator/issues/1072)
 
 ## [v0.47.0](https://github.com/VictoriaMetrics/operator/releases/tag/v0.47.0) - 15 Aug 2024

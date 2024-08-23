@@ -2,8 +2,9 @@
 ## Required programs
 
 for developing you need:
+
 - kubebuilder v4
-- golang 1.22+
+- golang 1.23+
 - docker
 - kubectl
 
@@ -18,14 +19,17 @@ for developing you need:
 Use `make build` - it will generate new crds and build binary
 
 for running locally on kind you need to run:
+
 ```bash
 make deploy-kind
 ```
+
 or you can run it from IDE with ```main.go```
 
 ## publish changes
 
 before creating merge request, ensure that tests passed locally:
+
 ```bash
 make build # it will update crds
 make lint # linting project

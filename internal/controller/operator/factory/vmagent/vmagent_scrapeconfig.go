@@ -1502,7 +1502,7 @@ func addCommonScrapeParamsTo(cfg yaml.MapSlice, cs vmv1beta1.EndpointScrapeParam
 	if cs.FollowRedirects != nil {
 		cfg = append(cfg, yaml.MapItem{Key: "follow_redirects", Value: cs.FollowRedirects})
 	}
-	if cs.Params != nil && len(cs.Params) > 0 {
+	if len(cs.Params) > 0 {
 		params := make(yaml.MapSlice, 0, len(cs.Params))
 		paramIdxes := make([]string, len(cs.Params))
 		var idxCnt int

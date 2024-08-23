@@ -92,7 +92,7 @@ func newStsForAlertManager(cr *vmv1beta1.VMAlertmanager, c *config.BaseOperatorC
 		Spec: *spec,
 	}
 
-	if cr.Spec.ImagePullSecrets != nil && len(cr.Spec.ImagePullSecrets) > 0 {
+	if len(cr.Spec.ImagePullSecrets) > 0 {
 		statefulset.Spec.Template.Spec.ImagePullSecrets = cr.Spec.ImagePullSecrets
 	}
 

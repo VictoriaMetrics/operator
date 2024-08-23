@@ -13,6 +13,7 @@
 
  Design and implementation inspired by [prometheus-operator](https://github.com/prometheus-operator/prometheus-operator). It's great a tool for managing monitoring configuration of your applications. VictoriaMetrics operator has api capability with it.
 So you can use familiar CRD objects: `ServiceMonitor`, `PodMonitor`, `PrometheusRule`, `Probe` and `ScrapeConfig`. Or you can use VictoriaMetrics CRDs:
+
 - `VMServiceScrape` - defines scraping metrics configuration from pods backed by services.
 - `VMPodScrape` - defines scraping metrics configuration from pods.
 - `VMRule` - defines alerting or recording rules.
@@ -58,7 +59,6 @@ VictoriaMetrics provides [helm charts](https://github.com/VictoriaMetrics/helm-c
 
  It defines default configuration options, like images for components, timeouts, features.
 
-
 ## Kubernetes' compatibility versions
 
 operator tested on officially supported Kubernetes versions
@@ -67,32 +67,35 @@ operator tested on officially supported Kubernetes versions
 
 Feel free asking any questions regarding VictoriaMetrics:
 
-* [slack](http://slack.victoriametrics.com/)
-* [reddit](https://www.reddit.com/r/VictoriaMetrics/)
-* [telegram-en](https://t.me/VictoriaMetrics_en)
-* [telegram-ru](https://t.me/VictoriaMetrics_ru1)
-* [google groups](https://groups.google.com/forum/#!forum/victorametrics-users)
-
+- [slack](http://slack.victoriametrics.com/)
+- [reddit](https://www.reddit.com/r/VictoriaMetrics/)
+- [telegram-en](https://t.me/VictoriaMetrics_en)
+- [telegram-ru](https://t.me/VictoriaMetrics_ru1)
+- [google groups](https://groups.google.com/forum/#!forum/victorametrics-users)
 
 ## Development
 
 Dependencies:
+
 - kubebuilder v4
-- golang 1.22+
+- golang 1.23+
 - kubectl
 - docker
 
 start:
+
 ```bash
 make run
 ```
 
 ### to run unit tests
+
 ```bash
 make test
 ```
 
 ### to run e2e tests on automatically configured Kind cluster
+
 ```bash
 # make test-e2e
 ```

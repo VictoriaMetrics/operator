@@ -125,7 +125,9 @@ func recreateSTSIfNeed(ctx context.Context, rclient client.Client, newSTS, exist
 	}
 	if newSTS.Spec.MinReadySeconds != existingSTS.Spec.MinReadySeconds ||
 		newSTS.Spec.PodManagementPolicy != existingSTS.Spec.PodManagementPolicy ||
-		newSTS.Spec.UpdateStrategy != existingSTS.Spec.UpdateStrategy {
+		newSTS.Spec.UpdateStrategy != existingSTS.Spec.UpdateStrategy ||
+		newSTS.Spec.RevisionHistoryLimit != existingSTS.Spec.RevisionHistoryLimit ||
+		newSTS.Spec.PersistentVolumeClaimRetentionPolicy != existingSTS.Spec.PersistentVolumeClaimRetentionPolicy {
 		return true, false, handleRemove()
 	}
 	if newSTS.Spec.ServiceName != existingSTS.Spec.ServiceName {

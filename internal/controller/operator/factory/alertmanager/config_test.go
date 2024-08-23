@@ -35,7 +35,7 @@ func TestBuildConfig(t *testing.T) {
 		wantErr           bool
 	}{
 		{
-			name: "simple ok",
+			name: "email section",
 			args: args{
 				ctx: context.Background(),
 				baseCfg: []byte(`global:
@@ -56,9 +56,8 @@ func TestBuildConfig(t *testing.T) {
 										{
 											SendResolved: ptr.To(true),
 											From:         "some-sender",
-											To:           "some-dst",
+											To:           "some-dst-1",
 											Text:         "some-text",
-											RequireTLS:   ptr.To(true),
 											Smarthost:    "some:443",
 											TLSConfig: &vmv1beta1.TLSConfig{
 												CertFile: "some_cert_path",
@@ -66,9 +65,33 @@ func TestBuildConfig(t *testing.T) {
 										},
 										{
 											SendResolved: ptr.To(true),
+											From:         "some-sender",
+											To:           "some-dst-2",
+											Text:         "some-text",
+											Smarthost:    "some:443",
+											RequireTLS:   ptr.To(false),
+											TLSConfig: &vmv1beta1.TLSConfig{
+												CertFile: "some_cert_path",
+											},
+										},
+										{
+											SendResolved: ptr.To(true),
+											From:         "some-sender",
+											To:           "some-dst-3",
+											Text:         "some-text",
+											Smarthost:    "some:443",
+											RequireTLS:   ptr.To(true),
+											TLSConfig: &vmv1beta1.TLSConfig{
+												CertFile: "some_cert_path",
+											},
+										},
+
+										{
+											SendResolved: ptr.To(true),
 											From:         "other-sender",
 											To:           "other-dst",
 											Text:         "other-text",
+											RequireTLS:   ptr.To(false),
 										},
 									},
 								},
@@ -96,15 +119,31 @@ receivers:
 - name: blackhole
 - name: default-base-email
   email_configs:
+  - tls_config:
+      cert_file: some_cert_path
+    from: some-sender
+    text: some-text
+    to: some-dst-1
+    smarthost: some:443
+    send_resolved: true
+  - require_tls: false
+    tls_config:
+      cert_file: some_cert_path
+    from: some-sender
+    text: some-text
+    to: some-dst-2
+    smarthost: some:443
+    send_resolved: true
   - require_tls: true
     tls_config:
       cert_file: some_cert_path
     from: some-sender
     text: some-text
-    to: some-dst
+    to: some-dst-3
     smarthost: some:443
     send_resolved: true
-  - from: other-sender
+  - require_tls: false
+    from: other-sender
     text: other-text
     to: other-dst
     send_resolved: true

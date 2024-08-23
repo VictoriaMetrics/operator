@@ -1112,8 +1112,9 @@ func (cb *configBuilder) buildEmail(email vmv1beta1.EmailConfig) error {
 		return fmt.Errorf("required email from is not set at local and global alertmanager config")
 	}
 
-	// skip tls_config if require_tls is false
-	if email.RequireTLS != nil && *email.RequireTLS && email.TLSConfig != nil {
+	// add tls config in any case
+	// require_tls is true by default and it could be managed via global configuration
+	if email.TLSConfig != nil {
 		s, err := cb.BuildTLSConfig(email.TLSConfig, tlsAssetsDir)
 		if err != nil {
 			return err

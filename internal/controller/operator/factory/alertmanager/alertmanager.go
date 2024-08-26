@@ -67,7 +67,6 @@ func CreateOrUpdateAlertManager(ctx context.Context, cr *vmv1beta1.VMAlertmanage
 		HasClaim:       len(newSts.Spec.VolumeClaimTemplates) > 0,
 		VolumeName:     cr.GetVolumeName,
 		SelectorLabels: cr.SelectorLabels,
-		UpdateStrategy: cr.UpdateStrategy,
 	}
 	return reconcile.HandleSTSUpdate(ctx, rclient, stsOpts, newSts, c)
 }

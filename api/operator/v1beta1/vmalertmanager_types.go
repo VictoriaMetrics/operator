@@ -473,13 +473,6 @@ func (cr *VMAlertmanager) AsNotifiers() []VMAlertNotifierSpec {
 	return r
 }
 
-func (cr VMAlertmanager) UpdateStrategy() appsv1.StatefulSetUpdateStrategyType {
-	if cr.Spec.RollingUpdateStrategy == "" {
-		return appsv1.OnDeleteStatefulSetStrategyType
-	}
-	return cr.Spec.RollingUpdateStrategy
-}
-
 func (cr *VMAlertmanager) GetVolumeName() string {
 	if cr.Spec.Storage != nil && cr.Spec.Storage.VolumeClaimTemplate.Name != "" {
 		return cr.Spec.Storage.VolumeClaimTemplate.Name

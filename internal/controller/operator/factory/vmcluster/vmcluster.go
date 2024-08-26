@@ -134,7 +134,6 @@ func createOrUpdateVMSelect(ctx context.Context, cr *vmv1beta1.VMCluster, rclien
 		HasClaim:       len(newSts.Spec.VolumeClaimTemplates) > 0,
 		VolumeName:     cr.Spec.VMSelect.GetCacheMountVolumeName,
 		SelectorLabels: cr.VMSelectSelectorLabels,
-		UpdateStrategy: cr.Spec.VMSelect.UpdateStrategy,
 		HPA:            cr.Spec.VMSelect.HPA,
 		UpdateReplicaCount: func(count *int32) {
 			if cr.Spec.VMSelect.HPA != nil && count != nil {
@@ -262,7 +261,6 @@ func createOrUpdateVMStorage(ctx context.Context, cr *vmv1beta1.VMCluster, rclie
 		HasClaim:       len(newSts.Spec.VolumeClaimTemplates) > 0,
 		VolumeName:     cr.Spec.VMStorage.GetStorageVolumeName,
 		SelectorLabels: cr.VMStorageSelectorLabels,
-		UpdateStrategy: cr.Spec.VMStorage.UpdateStrategy,
 	}
 	return reconcile.HandleSTSUpdate(ctx, rclient, stsOpts, newSts, c)
 }
@@ -372,10 +370,7 @@ func genVMSelectSpec(cr *vmv1beta1.VMCluster, c *config.BaseOperatorConf) (*apps
 	if err != nil {
 		return nil, err
 	}
-	podMP := appsv1.ParallelPodManagement
-	if cr.Spec.VMSelect.MinReadySeconds > 0 {
-		podMP = appsv1.OrderedReadyPodManagement
-	}
+
 	stsSpec := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.Spec.VMSelect.GetNameWithPrefix(cr.Name),
@@ -390,16 +385,16 @@ func genVMSelectSpec(cr *vmv1beta1.VMCluster, c *config.BaseOperatorConf) (*apps
 			Selector: &metav1.LabelSelector{
 				MatchLabels: cr.VMSelectSelectorLabels(),
 			},
-			PodManagementPolicy: podMP,
-			MinReadySeconds:     cr.Spec.VMSelect.MinReadySeconds,
+			MinReadySeconds: cr.Spec.VMSelect.MinReadySeconds,
 			UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
-				Type: cr.Spec.VMSelect.UpdateStrategy(),
+				Type: cr.Spec.VMSelect.RollingUpdateStrategy,
 			},
 			Template:             *podSpec,
 			ServiceName:          cr.Spec.VMSelect.GetNameWithPrefix(cr.Name),
 			RevisionHistoryLimit: cr.Spec.VMSelect.RevisionHistoryLimitCount,
 		},
 	}
+	build.AddDefaultsToSTS(&stsSpec.Spec)
 	if cr.Spec.VMSelect.CacheMountPath != "" {
 		storageSpec := cr.Spec.VMSelect.Storage
 		// hack, storage is deprecated.
@@ -898,10 +893,6 @@ func buildVMStorageSpec(ctx context.Context, cr *vmv1beta1.VMCluster, c *config.
 		return nil, err
 	}
 
-	podMP := appsv1.ParallelPodManagement
-	if cr.Spec.VMStorage.MinReadySeconds > 0 {
-		podMP = appsv1.OrderedReadyPodManagement
-	}
 	stsSpec := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.Spec.VMStorage.GetNameWithPrefix(cr.Name),
@@ -916,16 +907,16 @@ func buildVMStorageSpec(ctx context.Context, cr *vmv1beta1.VMCluster, c *config.
 			Selector: &metav1.LabelSelector{
 				MatchLabels: cr.VMStorageSelectorLabels(),
 			},
-			MinReadySeconds:     cr.Spec.VMStorage.MinReadySeconds,
-			PodManagementPolicy: podMP,
+			MinReadySeconds: cr.Spec.VMStorage.MinReadySeconds,
 			UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
-				Type: cr.Spec.VMStorage.UpdateStrategy(),
+				Type: cr.Spec.VMStorage.RollingUpdateStrategy,
 			},
 			Template:             *podSpec,
 			ServiceName:          cr.Spec.VMStorage.GetNameWithPrefix(cr.Name),
 			RevisionHistoryLimit: cr.Spec.VMStorage.RevisionHistoryLimitCount,
 		},
 	}
+	build.AddDefaultsToSTS(&stsSpec.Spec)
 	storageSpec := cr.Spec.VMStorage.Storage
 	storageSpec.IntoSTSVolume(cr.Spec.VMStorage.GetStorageVolumeName(), &stsSpec.Spec)
 	stsSpec.Spec.VolumeClaimTemplates = append(stsSpec.Spec.VolumeClaimTemplates, cr.Spec.VMStorage.ClaimTemplates...)

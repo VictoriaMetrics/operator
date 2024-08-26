@@ -11,6 +11,8 @@ aliases:
   - /operator/changelog/index.html
 ---
 
+## [v0.47.2](https://github.com/VictoriaMetrics/operator/releases/tag/v0.47.2) - 26 Aug 2024
+
 - [vmalertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager): allow to change webserver listen port with `spec.Port`. See this [PR](https://github.com/VictoriaMetrics/operator/pull/1082) for details.
 - [operator](https://docs.victoriametrics.com/operator/): updates default vm apps version to v1.102.1
 - [operator](https://docs.victoriametrics.com/operator/): fixes statefulset `rollingUpdate` strategyType readiness check.
@@ -20,7 +22,7 @@ aliases:
 
 ## [v0.47.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.47.1) - 23 Aug 2024
 
-**It is recommended upgrading to [operator v0.47.2](https://docs.victoriametrics.com/operator/changelog/#v0471---23-aug-2024) because v0.47.1 contains a bug, which can lead to endless statefulset reconcile loop.**
+**It is recommended upgrading to [operator v0.47.2](https://docs.victoriametrics.com/operator/changelog/#v0472---26-aug-2024) because v0.47.1 contains a bug, which can lead to endless statefulset reconcile loop.**
 
 - [operator](https://docs.victoriametrics.com/operator/): properly update statefulset on `revisionHistoryLimitCount` change. See this [issue](https://github.com/VictoriaMetrics/operator/issues/1070) for details.
 - [vmalertmanagerconfig](https://docs.victoriametrics.com/operator/resources/vmalertmanagerconfig): properly construct `tls_config` for `emails` notifications. See this [issue](https://github.com/VictoriaMetrics/operator/issues/1080) for details.

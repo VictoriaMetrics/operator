@@ -10720,6 +10720,9 @@ spec:
                       More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names#names
                     type: string
                 type: object
+              port:
+                description: Port for listen
+                type: string
               portName:
                 description: |-
                   PortName used for the pods and governing service.

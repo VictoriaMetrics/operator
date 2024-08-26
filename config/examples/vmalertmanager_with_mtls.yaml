@@ -1,0 +1,175 @@
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAlertmanager
+metadata:
+  name: with-mtls
+  namespace: default
+spec:
+  replicaCount: 1
+  selectAllByDefault: true
+  # it's possible to replace with actual probe
+  # but requires custom image with curl
+  livenessProbe:
+    exec:
+      command: ["/bin/sh","-c", "ls"]
+  readinessProbe:
+    exec:
+      command: ["/bin/sh", "-c", "ls"]
+  serviceScrapeSpec:
+    # could be replaced with vmagent specific client tls cert
+    endpoints:
+      - port: http
+        tlsConfig:
+          ca:
+            secret:
+              name: config-reloader-mtls
+              key: ca.crt
+          cert:
+            secret: 
+              name: config-reloader-mtls
+              key: tls.crt
+          keySecret:
+            name: config-reloader-mtls
+            key: tls.key
+  # requires vm config-reloader v0.47.2+
+  configReloaderExtraArgs:
+    reload.tlsCAFile: /etc/mtls/ca.crt
+    reload.tlsCertFile: /etc/mtls/tls.crt
+    reload.tlsKeyFile: /etc/mtls/tls.key
+  containers:
+    - name: config-reloader 
+      volumeMounts:
+      - name: config-reloader-mtls
+        mountPath: /etc/mtls
+  volumes:
+    - name: config-reloader-mtls
+      secret:
+       secretName: am-config-reloader-tls
+  webConfig:
+   tls_server_config:
+    client_auth_type: RequireAndVerifyClientCert
+    client_ca_secret_ref:
+     key: ca.crt
+     name: alertmanager-tls
+    cert_secret_ref:
+     key: tls.crt
+     name: alertmanager-tls
+    key_secret_ref:
+      key: tls.key
+      name: alertmanager-tls
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: selfsigned-issuer
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: selfsigned-ca
+  namespace: default
+spec:
+  isCA: true
+  commonName: selfsigned-ca
+  secretName: root-secret
+  issuerRef:
+    name: selfsigned-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: ca-issuer
+  namespace: default
+spec:
+  ca:
+    secretName: root-secret
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: alertmanager-tls
+  namespace: default
+spec:
+  secretName: alertmanager-tls
+  isCA: false
+  usages:
+    - client auth 
+    - server auth
+  dnsNames:
+    - vmalertmanager-with-mtls.default.svc.cluster.local
+    - vmalertmanager-with-mtls-0.vmalertmanager-with-mtls.default.svc.cluster.local
+    - vmalertmanager-with-mtls-1.vmalertmanager-with-mtls.default.svc.cluster.local
+    - vmalertmanager-with-mtls-2.vmalertmanager-with-mtls.default.svc.cluster.local
+  issuerRef:
+    name: ca-issuer
+    kind: Issuer
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: config-reloader-client
+  namespace: default
+spec:
+  secretName: am-config-reloader-tls
+  isCA: false
+  usages:
+    - client auth
+  emailAddresses:
+    - example@example.com
+  issuerRef:
+    name: ca-issuer
+    kind: Issuer
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: vmalert-client
+  namespace: default
+spec:
+  secretName: vmalert-alertmanager-access
+  isCA: false
+  usages:
+    - client auth
+  emailAddresses:
+    - example@example.com
+  issuerRef:
+    name: ca-issuer
+    kind: Issuer
+---
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMAlert
+metadata:
+  name: with-tls-target
+  namespace: default
+spec:
+  replicaCount: 1
+  datasource:
+    url: "http://vmsingle-vmcloud-mom.vmcloud.svc:8429"
+  remoteWrite:
+     url: "http://vmagent-example-vmsingle-pvc.default.svc:8429"
+  evaluationInterval: "5s"
+  selectAllByDefault: true
+  secrets:
+  - vmalert-alertmanager-access
+  notifierConfigRef:
+    name: vmalert-mtls-notifier-cfg
+    key: config.yaml 
+---
+apiVersion: v1 
+kind: Secret 
+metadata:
+ name: vmalert-mtls-notifier-cfg
+ namespace: default
+stringData:
+  config.yaml: |
+    static_configs:
+      - targets:
+        - https://vmalertmanager-with-mtls-0.vmalertmanager-with-mtls.default.svc.cluster.local:9093
+        tls_config:
+          ca_file: /etc/vm/secrets/vmalert-alertmanager-access/ca.crt
+          cert_file: /etc/vm/secrets/vmalert-alertmanager-access/tls.crt
+          key_file: /etc/vm/secrets/vmalert-alertmanager-access/tls.key
+---

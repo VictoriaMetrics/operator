@@ -11,6 +11,7 @@ aliases:
   - /operator/changelog/index.html
 ---
 
+- [vmalertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager): allow to change webserver listen port with `spec.Port`. See this [PR](https://github.com/VictoriaMetrics/operator/pull/1082) for details.
 - [operator](https://docs.victoriametrics.com/operator/): updates default vm apps version to v1.102.1
 - [operator](https://docs.victoriametrics.com/operator/): fixes statefulset `rollingUpdate` strategyType readiness check.
 - [operator](https://docs.victoriametrics.com/operator/): fixes statefulset reconcile endless loop bug introduced at v0.47.1 version with [commit](https://github.com/VictoriaMetrics/operator/commit/57b65771b29ffd8b5d577e160aacddf0481295ee).

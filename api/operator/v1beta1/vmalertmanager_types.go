@@ -224,8 +224,8 @@ type VMAlertmanagerSpec struct {
 	// +optional
 	ClusterAdvertiseAddress string `json:"clusterAdvertiseAddress,omitempty"`
 	// Port for listen
-        // +optional
-        Port string `json:"port,omitempty"`
+	// +optional
+	Port string `json:"port,omitempty"`
 	// PortName used for the pods and governing service.
 	// This defaults to web
 	// +optional
@@ -420,26 +420,34 @@ func (cr VMAlertmanager) GetNSName() string {
 
 // Port returns port for accessing alertmanager
 func (cr *VMAlertmanager) Port() string {
-        port := cr.Spec.Port
-        if port == "" {
-                port = "9093"
-        }
-        if cr.Spec.ServiceSpec != nil && cr.Spec.ServiceSpec.UseAsDefault {
-                for _, svcPort := range cr.Spec.ServiceSpec.Spec.Ports {
-                        if svcPort.Name == "http" {
-                                port = fmt.Sprintf("%d", svcPort.Port)
-                                break
-                        }
-                }
-        }
+	port := cr.Spec.Port
+	if port == "" {
+		port = "9093"
+	}
+
 	return port
 }
 
 // AsURL returns url for accessing alertmanager
+// via corresponding service
 func (cr *VMAlertmanager) AsURL() string {
-	return fmt.Sprintf("%s://%s.%s.svc:%s", cr.accessScheme(), cr.PrefixedName(), cr.Namespace, cr.Port())
+	port := cr.Port()
+	portName := cr.Spec.PortName
+	if portName == "" {
+		portName = "web"
+	}
+	if cr.Spec.ServiceSpec != nil && cr.Spec.ServiceSpec.UseAsDefault {
+		for _, svcPort := range cr.Spec.ServiceSpec.Spec.Ports {
+			if svcPort.Name == portName {
+				port = fmt.Sprintf("%d", svcPort.Port)
+				break
+			}
+		}
+	}
+	return fmt.Sprintf("%s://%s.%s.svc:%s", cr.accessScheme(), cr.PrefixedName(), cr.Namespace, port)
 }
 
+// returns fqdn for direct pod access
 func (cr *VMAlertmanager) asPodFQDN(idx int) string {
 	return fmt.Sprintf("%s://%s-%d.%s.%s.svc:%s", cr.accessScheme(), cr.PrefixedName(), idx, cr.PrefixedName(), cr.Namespace, cr.Port())
 }

@@ -1362,6 +1362,7 @@ func buildConfigReloaderArgs(cr *vmv1beta1.VMAgent, c *config.BaseOperatorConf) 
 		for k, v := range cr.Spec.ConfigReloaderExtraArgs {
 			args = append(args, fmt.Sprintf(`--%s=%s`, k, v))
 		}
+		sort.Strings(args)
 	}
 
 	return args

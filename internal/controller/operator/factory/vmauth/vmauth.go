@@ -518,6 +518,7 @@ func buildVMAuthConfigReloaderContainer(cr *vmv1beta1.VMAuth, c *config.BaseOper
 		for k, v := range cr.Spec.ConfigReloaderExtraArgs {
 			configReloaderArgs = append(configReloaderArgs, fmt.Sprintf(`--%s=%s`, k, v))
 		}
+		sort.Strings(configReloaderArgs)
 	}
 	configReloader := corev1.Container{
 		Name:  "config-reloader",

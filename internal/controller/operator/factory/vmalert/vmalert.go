@@ -265,8 +265,18 @@ func vmAlertSpecGen(cr *vmv1beta1.VMAlert, c *config.BaseOperatorConf, ruleConfi
 	for _, cm := range ruleConfigMapNames {
 		confReloadArgs = append(confReloadArgs, fmt.Sprintf("-volume-dir=%s", path.Join(vmAlertConfigDir, cm)))
 	}
-	for k, v := range cr.Spec.ConfigReloaderExtraArgs {
-		confReloadArgs = append(confReloadArgs, fmt.Sprintf(`--%s=%s`, k, v))
+	if len(cr.Spec.ConfigReloaderExtraArgs) > 0 {
+		for idx, arg := range confReloadArgs {
+			cleanArg := strings.Split(strings.TrimLeft(arg, "-"), "=")[0]
+			if replacement, ok := cr.Spec.ConfigReloaderExtraArgs[cleanArg]; ok {
+				delete(cr.Spec.ConfigReloaderExtraArgs, cleanArg)
+				confReloadArgs[idx] = fmt.Sprintf(`--%s=%s`, cleanArg, replacement)
+			}
+		}
+		for k, v := range cr.Spec.ConfigReloaderExtraArgs {
+			confReloadArgs = append(confReloadArgs, fmt.Sprintf(`--%s=%s`, k, v))
+		}
+		sort.Strings(confReloadArgs)
 	}
 
 	args := buildVMAlertArgs(cr, ruleConfigMapNames, remoteSecrets)

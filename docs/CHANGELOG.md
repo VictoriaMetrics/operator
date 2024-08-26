@@ -16,6 +16,7 @@ aliases:
 - [operator](https://docs.victoriametrics.com/operator/): fixes statefulset `rollingUpdate` strategyType readiness check.
 - [operator](https://docs.victoriametrics.com/operator/): fixes statefulset reconcile endless loop bug introduced at v0.47.1 version with [commit](https://github.com/VictoriaMetrics/operator/commit/57b65771b29ffd8b5d577e160aacddf0481295ee).
 - [vmuser](https://docs.victoriametrics.com/operator/resources/vmuser/): fixes `crd.kind` enum param for `VMAlertmanager`, it now supports both `VMAlertmanager` and `VMAlertManager`. See this [issue](https://github.com/VictoriaMetrics/operator/issues/1083) for details.
+- [operator](https://docs.victoriametrics.com/operator/): adds sorting for `configReloaderExtraArgs`.
 
 ## [v0.47.1](https://github.com/VictoriaMetrics/operator/releases/tag/v0.47.1) - 23 Aug 2024
 

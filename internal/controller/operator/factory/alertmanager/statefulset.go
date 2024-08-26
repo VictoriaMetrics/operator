@@ -655,6 +655,7 @@ func buildVMAlertmanagerConfigReloader(cr *vmv1beta1.VMAlertmanager, c *config.B
 		for k, v := range cr.Spec.ConfigReloaderExtraArgs {
 			configReloaderArgs = append(configReloaderArgs, fmt.Sprintf(`--%s=%s`, k, v))
 		}
+		sort.Strings(configReloaderArgs)
 	}
 
 	configReloaderContainer := corev1.Container{

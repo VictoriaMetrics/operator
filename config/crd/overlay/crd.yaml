@@ -30483,6 +30483,7 @@ spec:
                           - VMAlert
                           - VMSingle
                           - VMAlertManager
+                          - VMAlertmanager
                           - VMCluster/vmselect
                           - VMCluster/vmstorage
                           - VMCluster/vminsert

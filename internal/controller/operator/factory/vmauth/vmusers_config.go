@@ -339,10 +339,12 @@ func injectAuthSettings(secret *corev1.Secret, vmuser *vmv1beta1.VMUser) bool {
 }
 
 var crdNameToObject = map[string]objectWithURL{
-	"VMAgent":             &vmv1beta1.VMAgent{},
-	"VMAlert":             &vmv1beta1.VMAlert{},
-	"VMSingle":            &vmv1beta1.VMSingle{},
+	"VMAgent":  &vmv1beta1.VMAgent{},
+	"VMAlert":  &vmv1beta1.VMAlert{},
+	"VMSingle": &vmv1beta1.VMSingle{},
+	// keep both variants for backward-compatibility
 	"VMAlertmanager":      &vmv1beta1.VMAlertmanager{},
+	"VMAlertManager":      &vmv1beta1.VMAlertmanager{},
 	"VMCluster/vmselect":  newClusterWithURL("vmselect"),
 	"VMCluster/vminsert":  newClusterWithURL("vminsert"),
 	"VMCluster/vmstorage": newClusterWithURL("vmstorage"),

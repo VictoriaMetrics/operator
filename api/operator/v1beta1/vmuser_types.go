@@ -89,7 +89,7 @@ type VMUserIPFilters struct {
 type CRDRef struct {
 	// Kind one of:
 	// VMAgent,VMAlert, VMSingle, VMCluster/vmselect, VMCluster/vmstorage,VMCluster/vminsert  or VMAlertManager
-	// +kubebuilder:validation:Enum=VMAgent;VMAlert;VMSingle;VMAlertManager;VMCluster/vmselect;VMCluster/vmstorage;VMCluster/vminsert
+	// +kubebuilder:validation:Enum=VMAgent;VMAlert;VMSingle;VMAlertManager;VMAlertmanager;VMCluster/vmselect;VMCluster/vmstorage;VMCluster/vminsert
 	Kind string `json:"kind"`
 	// Name target CRD object name
 	Name string `json:"name"`

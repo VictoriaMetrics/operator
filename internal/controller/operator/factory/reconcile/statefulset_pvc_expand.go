@@ -21,6 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -126,8 +127,8 @@ func recreateSTSIfNeed(ctx context.Context, rclient client.Client, newSTS, exist
 	if newSTS.Spec.MinReadySeconds != existingSTS.Spec.MinReadySeconds ||
 		newSTS.Spec.PodManagementPolicy != existingSTS.Spec.PodManagementPolicy ||
 		newSTS.Spec.UpdateStrategy != existingSTS.Spec.UpdateStrategy ||
-		newSTS.Spec.RevisionHistoryLimit != existingSTS.Spec.RevisionHistoryLimit ||
-		newSTS.Spec.PersistentVolumeClaimRetentionPolicy != existingSTS.Spec.PersistentVolumeClaimRetentionPolicy {
+		!ptr.Equal(newSTS.Spec.RevisionHistoryLimit, existingSTS.Spec.RevisionHistoryLimit) ||
+		!ptr.Equal(newSTS.Spec.PersistentVolumeClaimRetentionPolicy, existingSTS.Spec.PersistentVolumeClaimRetentionPolicy) {
 		return true, false, handleRemove()
 	}
 	if newSTS.Spec.ServiceName != existingSTS.Spec.ServiceName {

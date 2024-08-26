@@ -726,13 +726,6 @@ func (cr *VMAgent) AsURL() string {
 	return fmt.Sprintf("%s://%s.%s.svc:%s", protoFromFlags(cr.Spec.ExtraArgs), cr.PrefixedName(), cr.Namespace, port)
 }
 
-func (cr VMAgent) STSUpdateStrategy() appsv1.StatefulSetUpdateStrategyType {
-	if cr.Spec.StatefulRollingUpdateStrategy == "" {
-		return appsv1.OnDeleteStatefulSetStrategyType
-	}
-	return cr.Spec.StatefulRollingUpdateStrategy
-}
-
 // AsCRDOwner implements interface
 func (cr *VMAgent) AsCRDOwner() []metav1.OwnerReference {
 	return GetCRDAsOwner(Agent)

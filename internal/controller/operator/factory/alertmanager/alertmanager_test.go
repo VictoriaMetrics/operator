@@ -226,6 +226,8 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 							continue
 						}
 						got.Status.ReadyReplicas = *tt.args.cr.Spec.ReplicaCount
+						got.Status.UpdatedReplicas = *tt.args.cr.Spec.ReplicaCount
+
 						if err := fclient.Status().Update(ctx, &got); err != nil {
 							t.Errorf("cannot update status statefulset for alertmanager: %s", err)
 						}

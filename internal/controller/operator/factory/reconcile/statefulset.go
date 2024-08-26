@@ -31,7 +31,6 @@ type STSOptions struct {
 	HasClaim           bool
 	SelectorLabels     func() map[string]string
 	VolumeName         func() string
-	UpdateStrategy     func() appsv1.StatefulSetUpdateStrategyType
 	HPA                *vmv1beta1.EmbeddedHPA
 	UpdateReplicaCount func(count *int32)
 }
@@ -46,7 +45,7 @@ func waitForStatefulSetReady(ctx context.Context, rclient client.Client, newSts 
 		if err := rclient.Get(ctx, types.NamespacedName{Namespace: newSts.Namespace, Name: newSts.Name}, &stsForStatus); err != nil {
 			return false, err
 		}
-		if *newSts.Spec.Replicas != stsForStatus.Status.ReadyReplicas {
+		if *newSts.Spec.Replicas != stsForStatus.Status.ReadyReplicas || *newSts.Spec.Replicas != stsForStatus.Status.UpdatedReplicas {
 			return false, nil
 		}
 		return true, nil
@@ -102,13 +101,13 @@ func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, 
 		}
 
 		// perform manual update only with OnDelete policy, which is default.
-		if cr.UpdateStrategy() == appsv1.OnDeleteStatefulSetStrategyType {
+		if newSts.Spec.UpdateStrategy.Type == appsv1.OnDeleteStatefulSetStrategyType {
 			if err := performRollingUpdateOnSts(ctx, podMustRecreate, rclient, newSts.Name, newSts.Namespace, cr.SelectorLabels(), c); err != nil {
 				return fmt.Errorf("cannot handle rolling-update on sts: %s, err: %w", newSts.Name, err)
 			}
 		} else {
 			if err := waitForStatefulSetReady(ctx, rclient, newSts, c); err != nil {
-				return fmt.Errorf("cannot ensure that statefulset is ready with strategy=%q: %w", cr.UpdateStrategy(), err)
+				return fmt.Errorf("cannot ensure that statefulset is ready with strategy=%q: %w", newSts.Spec.UpdateStrategy.Type, err)
 			}
 		}
 

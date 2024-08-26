@@ -339,6 +339,7 @@ func TestCreateOrUpdateVMCluster(t *testing.T) {
 						return err
 					}
 					vmselect.Status.ReadyReplicas = *tt.args.cr.Spec.VMSelect.ReplicaCount
+					vmselect.Status.UpdatedReplicas = *tt.args.cr.Spec.VMSelect.ReplicaCount
 					if err := fclient.Status().Update(ctx, &vmselect); err != nil {
 						return err
 					}
@@ -352,6 +353,7 @@ func TestCreateOrUpdateVMCluster(t *testing.T) {
 						return err
 					}
 					vmstorage.Status.ReadyReplicas = *tt.args.cr.Spec.VMStorage.ReplicaCount
+					vmstorage.Status.UpdatedReplicas = *tt.args.cr.Spec.VMStorage.ReplicaCount
 					if err := fclient.Status().Update(ctx, &vmstorage); err != nil {
 						return err
 					}

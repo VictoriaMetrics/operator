@@ -91,6 +91,7 @@ func newStsForAlertManager(cr *vmv1beta1.VMAlertmanager, c *config.BaseOperatorC
 		},
 		Spec: *spec,
 	}
+	build.AddDefaultsToSTS(&statefulset.Spec)
 
 	if len(cr.Spec.ImagePullSecrets) > 0 {
 		statefulset.Spec.Template.Spec.ImagePullSecrets = cr.Spec.ImagePullSecrets
@@ -422,19 +423,13 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager, c *config.BaseOperatorCon
 		useStrictSecurity = *cr.Spec.UseStrictSecurity
 	}
 
-	mp := appsv1.ParallelPodManagement
-	if cr.Spec.MinReadySeconds > 0 {
-		mp = appsv1.OrderedReadyPodManagement
-	}
-
 	return &appsv1.StatefulSetSpec{
 		ServiceName:          cr.PrefixedName(),
 		Replicas:             cr.Spec.ReplicaCount,
 		RevisionHistoryLimit: cr.Spec.RevisionHistoryLimitCount,
-		PodManagementPolicy:  mp,
 		MinReadySeconds:      cr.Spec.MinReadySeconds,
 		UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
-			Type: cr.UpdateStrategy(),
+			Type: cr.Spec.RollingUpdateStrategy,
 		},
 		Selector: &metav1.LabelSelector{
 			MatchLabels: cr.SelectorLabels(),

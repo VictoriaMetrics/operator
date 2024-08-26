@@ -161,7 +161,6 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *vmv1beta1.VMAgent, rclient c
 					VolumeName: func() string {
 						return vmAgentPersistentQueueMountName
 					},
-					UpdateStrategy: cr.STSUpdateStrategy,
 				}
 				if err := reconcile.HandleSTSUpdate(ctx, rclient, stsOpts, shardedDeploy, c); err != nil {
 					return err
@@ -191,7 +190,6 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *vmv1beta1.VMAgent, rclient c
 				VolumeName: func() string {
 					return vmAgentPersistentQueueMountName
 				},
-				UpdateStrategy: cr.STSUpdateStrategy,
 			}
 			if err := reconcile.HandleSTSUpdate(ctx, rclient, stsOpts, newDeploy, c); err != nil {
 				return err
@@ -255,7 +253,7 @@ func newDeployForVMAgent(cr *vmv1beta1.VMAgent, c *config.BaseOperatorConf, ssCa
 					MatchLabels: cr.SelectorLabels(),
 				},
 				UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
-					Type: appsv1.OnDeleteStatefulSetStrategyType,
+					Type: cr.Spec.StatefulRollingUpdateStrategy,
 				},
 				PodManagementPolicy: appsv1.ParallelPodManagement,
 				ServiceName:         buildSTSServiceName(cr),
@@ -268,9 +266,7 @@ func newDeployForVMAgent(cr *vmv1beta1.VMAgent, c *config.BaseOperatorConf, ssCa
 				},
 			},
 		}
-		if cr.STSUpdateStrategy() == appsv1.RollingUpdateStatefulSetStrategyType {
-			stsSpec.Spec.PodManagementPolicy = appsv1.OrderedReadyPodManagement
-		}
+		build.AddDefaultsToSTS(&stsSpec.Spec)
 		cr.Spec.StatefulStorage.IntoSTSVolume(vmAgentPersistentQueueMountName, &stsSpec.Spec)
 		stsSpec.Spec.VolumeClaimTemplates = append(stsSpec.Spec.VolumeClaimTemplates, cr.Spec.ClaimTemplates...)
 		return stsSpec, nil

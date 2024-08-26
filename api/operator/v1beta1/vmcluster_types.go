@@ -830,20 +830,6 @@ func (s VMSelect) GetCacheMountVolumeName() string {
 	return PrefixedName("cachedir", "vmselect")
 }
 
-func (s VMStorage) UpdateStrategy() appsv1.StatefulSetUpdateStrategyType {
-	if s.RollingUpdateStrategy == "" {
-		return appsv1.OnDeleteStatefulSetStrategyType
-	}
-	return s.RollingUpdateStrategy
-}
-
-func (s VMSelect) UpdateStrategy() appsv1.StatefulSetUpdateStrategyType {
-	if s.RollingUpdateStrategy == "" {
-		return appsv1.OnDeleteStatefulSetStrategyType
-	}
-	return s.RollingUpdateStrategy
-}
-
 // Image defines docker image settings
 type Image struct {
 	// Repository contains name of docker image + it's repository if needed

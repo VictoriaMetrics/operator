@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"path"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -63,7 +64,6 @@ func newStsForAlertManager(cr *vmv1beta1.VMAlertmanager, c *config.BaseOperatorC
 	if cr.Spec.PortName == "" {
 		cr.Spec.PortName = defaultPortName
 	}
-
 	if cr.Spec.ReplicaCount == nil {
 		cr.Spec.ReplicaCount = &minReplicas
 	}
@@ -109,10 +109,13 @@ func CreateOrUpdateAlertManagerService(ctx context.Context, cr *vmv1beta1.VMAler
 	if cr.Spec.PortName == "" {
 		cr.Spec.PortName = defaultPortName
 	}
-
+	port, err := strconv.ParseInt(cr.Port(), 10, 32)
+	if err != nil {
+		return nil, fmt.Errorf("cannot reconcile additional service for vmalertmanager: failed to parse port: %w", err)
+	}
 	newService := build.Service(cr, cr.Spec.PortName, func(svc *corev1.Service) {
 		svc.Spec.ClusterIP = "None"
-		svc.Spec.Ports[0].Port = 9093
+		svc.Spec.Ports[0].Port = int32(port)
 		svc.Spec.Ports = append(svc.Spec.Ports,
 			corev1.ServicePort{
 				Name:       "tcp-mesh",
@@ -174,11 +177,16 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager, c *config.BaseOperatorCon
 		amArgs = append(amArgs, "--cluster.listen-address=[$(POD_IP)]:9094")
 	}
 
-	if cr.Spec.ListenLocal {
-		amArgs = append(amArgs, "--web.listen-address=127.0.0.1:9093")
-	} else {
-		amArgs = append(amArgs, "--web.listen-address=:9093")
+	port, err := strconv.ParseInt(cr.Port(), 10, 32)
+	if err != nil {
+		return nil, fmt.Errorf("cannot reconcile additional service for vmalertmanager: failed to parse port: %w", err)
 	}
+
+	listenHost := ""
+	if cr.Spec.ListenLocal {
+		listenHost = "127.0.0.1"
+	}
+	amArgs = append(amArgs, fmt.Sprintf("--web.listen-address=%s:%d", listenHost, port))
 
 	if cr.Spec.ExternalURL != "" {
 		amArgs = append(amArgs, "--web.external-url="+cr.Spec.ExternalURL)
@@ -233,7 +241,7 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager, c *config.BaseOperatorCon
 		ports = append([]corev1.ContainerPort{
 			{
 				Name:          cr.Spec.PortName,
-				ContainerPort: 9093,
+				ContainerPort: int32(port),
 				Protocol:      corev1.ProtocolTCP,
 			},
 		}, ports...)
@@ -601,7 +609,7 @@ func buildInitConfigContainer(cr *vmv1beta1.VMAlertmanager, c *config.BaseOperat
 func buildVMAlertmanagerConfigReloader(cr *vmv1beta1.VMAlertmanager, c *config.BaseOperatorConf, crVolumeMounts []corev1.VolumeMount) corev1.Container {
 	localReloadURL := &url.URL{
 		Scheme: "http",
-		Host:   c.VMAlertManager.LocalHost + ":9093",
+		Host:   fmt.Sprintf("%s:%s", c.VMAlertManager.LocalHost, cr.Port()),
 		Path:   path.Clean(cr.Spec.RoutePrefix + "/-/reload"),
 	}
 	if cr.Spec.WebConfig != nil && cr.Spec.WebConfig.TLSServerConfig != nil {

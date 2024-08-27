@@ -29,6 +29,7 @@ jobs:
 
       - name: Import GPG key
         uses: crazy-max/ghaction-import-gpg@v6
+        id: import-gpg
         with:
           gpg_private_key: ${{ secrets.VM_BOT_GPG_PRIVATE_KEY }}
           passphrase: ${{ secrets.VM_BOT_PASSPHRASE }}
@@ -37,6 +38,7 @@ jobs:
           workdir: __vm-charts-repo
 
       - name: Update crd yaml in chart repo
+        id: update
         run: |
           cp ../__vm-operator-repo/config/crd/overlay/crd.yaml charts/victoria-metrics-operator/crd.yaml
           cp ../__vm-operator-repo/config/crd/overlay/crd.yaml charts/victoria-metrics-k8s-stack/charts/crds/crds/crd.yaml
@@ -50,7 +52,7 @@ jobs:
           add-paths: charts
           commit-message: Automatic update operator crds from ${{ github.repository }}@${{ steps.update.outputs.SHORT_SHA }}
           signoff: true
-          author: Github Actions <github@victoriametrics.com>
+          committer: "Github Actions <${{ steps.import-gpg.outputs.email }}>"
           path: __vm-charts-repo
           branch: operator-crd-update-${{ steps.update.outputs.BUILDTIME }}
           token: ${{ secrets.VM_BOT_GH_TOKEN }}

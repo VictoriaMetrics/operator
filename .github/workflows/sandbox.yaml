@@ -22,6 +22,7 @@ jobs:
 
       - name: Import GPG key
         uses: crazy-max/ghaction-import-gpg@v6
+        id: import-gpg
         with:
           gpg_private_key: ${{ secrets.VM_BOT_GPG_PRIVATE_KEY }}
           passphrase: ${{ secrets.VM_BOT_PASSPHRASE }}
@@ -46,7 +47,7 @@ jobs:
           add-paths: ${{ steps.update.outputs.OPERATOR_PATH }}
           commit-message: Automatic update operator version on sandbox from ${{ github.repository }}@${{ steps.update.outputs.SHORT_SHA }}
           signoff: true
-          author: Github Actions <github@victoriametrics.com>
+          committer: "Github Actions <${{ steps.import-gpg.outputs.email }}>"
           path: __vm-ops-repo
           branch: sandbox-operator-release-automation
           token: ${{ secrets.VM_BOT_GH_TOKEN }}

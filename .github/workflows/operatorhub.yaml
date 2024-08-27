@@ -30,6 +30,7 @@ jobs:
 
       - name: Import GPG key
         uses: crazy-max/ghaction-import-gpg@v6
+        id: import-gpg
         with:
           gpg_private_key: ${{ secrets.VM_BOT_GPG_PRIVATE_KEY }}
           passphrase: ${{ secrets.VM_BOT_PASSPHRASE }}
@@ -62,7 +63,7 @@ jobs:
           add-paths: operators/victoriametrics-operator
           commit-message: 'victoriametrics-operator: ${{ steps.update.outputs.VERSION }}'
           signoff: true
-          author: Github Actions <github@victoriametrics.com>
+          committer: "Github Actions <${{ steps.import-gpg.outputs.email }}>"
           path: __k8s-operatorhub-repo
           push-to-fork: ${{ matrix.repo.fork }}
           branch: vm-operator-release-${{ steps.update.outputs.VERSION }}

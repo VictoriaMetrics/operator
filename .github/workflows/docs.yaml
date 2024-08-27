@@ -37,6 +37,7 @@ jobs:
         id: go
 
       - name: Import GPG key
+        id: import-gpg
         uses: crazy-max/ghaction-import-gpg@v6
         with:
           gpg_private_key: ${{ secrets.VM_BOT_GPG_PRIVATE_KEY }}
@@ -66,7 +67,7 @@ jobs:
           add-paths: docs/operator
           commit-message: Automatic update operator docs from ${{ github.repository }}@${{ steps.update.outputs.SHORT_SHA }}
           signoff: true
-          author: Github Actions <github@victoriametrics.com>
+          committer: "Github Actions <${{ steps.import-gpg.outputs.email }}>"
           path: __vm-docs-repo
           branch: operator-docs-update-${{ steps.update.outputs.BUILDTIME }}
           token: ${{ secrets.VM_BOT_GH_TOKEN }}

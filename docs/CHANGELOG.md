@@ -11,6 +11,12 @@ aliases:
   - /operator/changelog/index.html
 ---
 
+## [v0.47.3](https://github.com/VictoriaMetrics/operator/releases/tag/v0.47.3) - 28 Aug 2024
+
+- [operator](https://docs.victoriametrics.com/operator/): fixes statefulset reconcile endless loop bug introduced at v0.47.0 version with [commit](https://github.com/VictoriaMetrics/operator/commit/57b65771b29ffd8b5d577e160aacddf0481295ee).
+
+## [v0.47.2](https://github.com/VictoriaMetrics/operator/releases/tag/v0.47.2) - 26 Aug 2024
+
 - [vmalertmanager](https://docs.victoriametrics.com/operator/resources/vmalertmanager): allow to change webserver listen port with `spec.Port`. See this [PR](https://github.com/VictoriaMetrics/operator/pull/1082) for details.
 - [operator](https://docs.victoriametrics.com/operator/): updates default vm apps version to v1.102.1
 - [operator](https://docs.victoriametrics.com/operator/): fixes statefulset `rollingUpdate` strategyType readiness check.

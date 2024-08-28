@@ -3,21 +3,21 @@ kind: VMAuth
 metadata:
   name: vmauth-sample
 spec:
-  userSelector:
-    matchLabels:
-      managed-by: vm-operator
-    matchExpressions:
-    - operator: Exists
-      key: name
-  userNamespaceSelector:
-    matchLabels:
-      managed-by: vm-operator
-    matchExpressions:
-    - operator: Exists
-      key: name
+  selectAllByDefault: true
+  # userSelector:
+  #   matchLabels:
+  #     managed-by: vm-operator
+  #   matchExpressions:
+  #   - operator: Exists
+  #     key: name
+  # userNamespaceSelector:
+  #   matchLabels:
+  #     managed-by: vm-operator
+  #   matchExpressions:
+  #   - operator: Exists
+  #     key: name
   image:
     repository: victoriametrics/vmauth
-    tag: v1.60.0
     pullPolicy: IfNotPresent
   replicaCount: 1
   resources:

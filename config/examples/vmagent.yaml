@@ -1,13 +1,13 @@
 apiVersion: operator.victoriametrics.com/v1beta1
 kind: VMAgent
 metadata:
-  name: example-vmagent
+  name: sample
 spec:
   selectAllByDefault: true
   replicaCount: 1
   resources:
     requests:
-      cpu: "250m"
+      cpu: "50m"
       memory: "350Mi"
     limits:
       cpu: "500m"

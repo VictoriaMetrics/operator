@@ -12,7 +12,7 @@ spec:
   - crd:
       kind: VMAgent
       name: sample
-      namespace: vm
+      namespace: default
     paths: ["/targets", "/api/v1/targets", "/api/v1/write"]
 ---
 apiVersion: operator.victoriametrics.com/v1beta1
@@ -28,7 +28,7 @@ spec:
   - crd:
       kind: VMAgent
       name: sample
-      namespace: vm
+      namespace: default
     paths: ["/targets", "/api/v1/targets", "/api/v1/write"]
 ---
 apiVersion: operator.victoriametrics.com/v1beta1
@@ -44,12 +44,12 @@ spec:
   - crd:
       kind: VMAgent
       name: sample
-      namespace: vm
+      namespace: default
     paths: ["/targets", "/api/v1/targets", "/api/v1/write"]
 ---
 apiVersion: v1
 data:
-  passwd: YXNmYXNm
+  password: YXNmYXNm
 kind: Secret
 metadata:
   name: user-password
@@ -70,5 +70,5 @@ spec:
   - crd:
       kind: VMAgent
       name: sample
-      namespace: vm
+      namespace: default
     paths: ["/targets", "/api/v1/targets", "/api/v1/write"]

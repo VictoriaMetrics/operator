@@ -28,3 +28,10 @@ spec:
   replicaCount: 2
   configSecret: vmalertmanager-example-alertmanager
   selectAllByDefault: true
+  storage:
+      volumeClaimTemplate:
+        spec:
+          resources:
+            requests:
+              storage: 2Gi
+

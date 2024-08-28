@@ -19,11 +19,4 @@ func AddDefaultsToSTS(sts *appsv1.StatefulSetSpec) {
 	if sts.RevisionHistoryLimit == nil {
 		sts.RevisionHistoryLimit = ptr.To[int32](10)
 	}
-
-	if sts.PersistentVolumeClaimRetentionPolicy == nil {
-		sts.PersistentVolumeClaimRetentionPolicy = &appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy{
-			WhenDeleted: appsv1.DeletePersistentVolumeClaimRetentionPolicyType,
-			WhenScaled:  appsv1.RetainPersistentVolumeClaimRetentionPolicyType,
-		}
-	}
 }

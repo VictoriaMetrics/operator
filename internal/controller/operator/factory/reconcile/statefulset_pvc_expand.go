@@ -128,13 +128,26 @@ func recreateSTSIfNeed(ctx context.Context, rclient client.Client, newSTS, exist
 		newSTS.Spec.PodManagementPolicy != existingSTS.Spec.PodManagementPolicy ||
 		newSTS.Spec.UpdateStrategy != existingSTS.Spec.UpdateStrategy ||
 		!ptr.Equal(newSTS.Spec.RevisionHistoryLimit, existingSTS.Spec.RevisionHistoryLimit) ||
-		!ptr.Equal(newSTS.Spec.PersistentVolumeClaimRetentionPolicy, existingSTS.Spec.PersistentVolumeClaimRetentionPolicy) {
+		!isPVClaimPolicyEqual(newSTS.Spec.PersistentVolumeClaimRetentionPolicy, existingSTS.Spec.PersistentVolumeClaimRetentionPolicy) {
 		return true, false, handleRemove()
 	}
 	if newSTS.Spec.ServiceName != existingSTS.Spec.ServiceName {
 		return true, true, handleRemove()
 	}
 	return false, false, nil
+}
+
+func isPVClaimPolicyEqual(left, right *appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy) bool {
+	// current kubernetes version doesn't support claim retention feature gate
+	// https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#persistentvolumeclaim-retention
+	if right == nil {
+		return true
+	}
+	if left == nil {
+		return true
+	}
+
+	return *left == *right
 }
 
 func getPVCFromSTS(pvcName string, sts *appsv1.StatefulSet) *corev1.PersistentVolumeClaim {

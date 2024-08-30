@@ -49,7 +49,7 @@ type BaseOperatorConf struct {
 	// it should speed-up config reloading process.
 	UseCustomConfigReloader bool `default:"false"`
 	// container registry name prefix, e.g. docker.io
-	ContainerRegistry                string `default:""`
+	ContainerRegistry                string `default:"docker.io"`
 	CustomConfigReloaderImage        string `default:"victoriametrics/operator:config-reloader-v0.47.2"`
 	parsedConfigReloaderImageVersion *version.Version
 	PSPAutoCreateEnabled             bool `default:"false"`

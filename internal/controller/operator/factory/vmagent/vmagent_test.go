@@ -1874,7 +1874,7 @@ volumes:
 initcontainers: []
 containers:
     - name: vmagent
-      image: vm-repo:v1.97.1
+      image: docker.io/vm-repo:v1.97.1
       args:
         - -httpListenAddr=:8429
         - -remoteWrite.maxDiskUsagePerURL=1073741824
@@ -1959,7 +1959,7 @@ volumes:
             secretname: vmagent-agent
 initcontainers:
     - name: config-init
-      image: vmcustomer:v1
+      image: docker.io/vmcustomer:v1
       args:
         - --reload-url=http://localhost:8429/-/reload
         - --config-envsubst-file=/etc/vmagent/config_out/vmagent.env.yaml
@@ -1972,7 +1972,7 @@ initcontainers:
           mountpath: /etc/vmagent/config_out
 containers:
     - name: config-reloader
-      image: vmcustomer:v1
+      image: docker.io/vmcustomer:v1
       args:
         - --reload-url=http://localhost:8429/-/reload
         - --config-envsubst-file=/etc/vmagent/config_out/vmagent.env.yaml
@@ -2025,7 +2025,7 @@ containers:
         terminationgraceperiodseconds: null
       terminationmessagepolicy: FallbackToLogsOnError
     - name: vmagent
-      image: victoriametrics/vmagent:v1.97.1
+      image: docker.io/victoriametrics/vmagent:v1.97.1
       args:
         - -httpListenAddr=:8429
         - -promscrape.config=/etc/vmagent/config_out/vmagent.env.yaml

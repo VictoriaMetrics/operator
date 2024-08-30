@@ -211,7 +211,7 @@ volumes:
         sizelimit: null
 initcontainers:
   - name: config-init
-    image: vmcustom:config-reloader-v0.35.0
+    image: docker.io/vmcustom:config-reloader-v0.35.0
     args:
       - --reload-url=http://localhost:8429/-/reload
       - --config-envsubst-file=/opt/vmauth/config.yaml
@@ -226,7 +226,7 @@ initcontainers:
         mountpath: /opt/vmauth
 containers:
   - name: vmauth
-    image: vm-repo:v1.97.1
+    image: docker.io/vm-repo:v1.97.1
     imagepullpolicy: IfNotPresent
     args:
       - -auth.config=/opt/vmauth/config.yaml
@@ -270,7 +270,7 @@ containers:
       failurethreshold: 10
     terminationmessagepolicy: FallbackToLogsOnError
   - name: config-reloader
-    image: vmcustom:config-reloader-v0.35.0
+    image: docker.io/vmcustom:config-reloader-v0.35.0
     args:
       - --reload-url=http://localhost:8429/-/reload
       - --config-envsubst-file=/opt/vmauth/config.yaml
@@ -362,7 +362,7 @@ initcontainers:
         mountpath: /opt/vmauth
 containers:
   - name: vmauth
-    image: vm-repo:v1.97.1
+    image: docker.io/vm-repo:v1.97.1
     imagepullpolicy: IfNotPresent
     args:
       - -auth.config=/opt/vmauth/config.yaml

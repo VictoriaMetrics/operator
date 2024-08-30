@@ -20,7 +20,7 @@ func OnVLogsDelete(ctx context.Context, rclient client.Client, crd *vmv1beta1.VL
 		return err
 	}
 	if crd.Spec.Storage != nil {
-		if err := removeFinalizeObjByName(ctx, rclient, &v1.PersistentVolumeClaim{}, crd.PrefixedName(), crd.Namespace); err != nil {
+		if err := removeFinalizeObjByNameWithOwnerReference(ctx, rclient, &v1.PersistentVolumeClaim{}, crd.PrefixedName(), crd.Namespace, crd.Spec.RemovePvcAfterDelete); err != nil {
 			return err
 		}
 	}

@@ -25,11 +25,17 @@ type crdObject interface {
 }
 
 func patchReplaceFinalizers(ctx context.Context, rclient client.Client, instance client.Object) error {
-	op := []map[string]interface{}{{
-		"op":    "replace",
-		"path":  "/metadata/finalizers",
-		"value": instance.GetFinalizers(),
-	}}
+	op := []map[string]interface{}{
+		{
+			"op":    "replace",
+			"path":  "/metadata/finalizers",
+			"value": instance.GetFinalizers(),
+		}, {
+			"op":    "replace",
+			"path":  "/metadata/ownerReferences",
+			"value": instance.GetOwnerReferences(),
+		},
+	}
 
 	patchData, err := json.Marshal(op)
 	if err != nil {
@@ -56,13 +62,17 @@ func RemoveFinalizer(ctx context.Context, rclient client.Client, instance client
 }
 
 func removeFinalizeObjByName(ctx context.Context, rclient client.Client, obj client.Object, name, ns string) error {
+	return removeFinalizeObjByNameWithOwnerReference(ctx, rclient, obj, name, ns, true)
+}
+
+func removeFinalizeObjByNameWithOwnerReference(ctx context.Context, rclient client.Client, obj client.Object, name, ns string, keepOwnerReference bool) error {
 	if err := rclient.Get(ctx, types.NamespacedName{Name: name, Namespace: ns}, obj); err != nil {
 		if errors.IsNotFound(err) {
 			return nil
 		}
 		return err
 	}
-	return vmv1beta1.RemoveFinalizer(obj, func(o client.Object) error {
+	return vmv1beta1.RemoveFinalizerWithOwnerReference(obj, keepOwnerReference, func(o client.Object) error {
 		return patchReplaceFinalizers(ctx, rclient, o)
 	})
 }

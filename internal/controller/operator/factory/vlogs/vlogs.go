@@ -68,16 +68,14 @@ func CreateVLogsStorage(ctx context.Context, r *vmv1beta1.VLogs, rclient client.
 func makeVLogsPvc(r *vmv1beta1.VLogs) *corev1.PersistentVolumeClaim {
 	pvcObject := &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        r.PrefixedName(),
-			Namespace:   r.Namespace,
-			Labels:      labels.Merge(r.Spec.StorageMetadata.Labels, r.SelectorLabels()),
-			Annotations: r.Spec.StorageMetadata.Annotations,
-			Finalizers:  []string{vmv1beta1.FinalizerName},
+			Name:            r.PrefixedName(),
+			Namespace:       r.Namespace,
+			Labels:          labels.Merge(r.Spec.StorageMetadata.Labels, r.SelectorLabels()),
+			Annotations:     r.Spec.StorageMetadata.Annotations,
+			Finalizers:      []string{vmv1beta1.FinalizerName},
+			OwnerReferences: r.AsOwner(),
 		},
 		Spec: *r.Spec.Storage,
-	}
-	if r.Spec.RemovePvcAfterDelete {
-		pvcObject.OwnerReferences = r.AsOwner()
 	}
 	return pvcObject
 }

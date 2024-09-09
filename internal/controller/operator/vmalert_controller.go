@@ -18,7 +18,6 @@ package operator
 
 import (
 	"context"
-	"sync"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
@@ -36,10 +35,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-var (
-	vmAlertRateLimiter = limiter.NewRateLimiter("vmalert", 5)
-	vmAlertSync        sync.Mutex
-)
+var vmAlertRateLimiter = limiter.NewRateLimiter("vmalert", 5)
 
 // VMAlertReconciler reconciles a VMAlert object
 type VMAlertReconciler struct {
@@ -72,10 +68,7 @@ func (r *VMAlertReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 	}
 
 	RegisterObjectStat(instance, "vmalert")
-	if !instance.IsUnmanaged() {
-		vmAlertSync.Lock()
-		defer vmAlertSync.Unlock()
-	}
+
 	if !instance.DeletionTimestamp.IsZero() {
 		if err := finalize.OnVMAlertDelete(ctx, r.Client, instance); err != nil {
 			return result, err

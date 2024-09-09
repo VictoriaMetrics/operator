@@ -68,9 +68,6 @@ func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		return ctrl.Result{}, nil
 	}
 
-	vmAlertSync.Lock()
-	defer vmAlertSync.Unlock()
-
 	var objects vmv1beta1.VMAlertList
 	if err := k8stools.ListObjectsByNamespace(ctx, r.Client, config.MustGetWatchNamespaces(), func(dst *vmv1beta1.VMAlertList) {
 		objects.Items = append(objects.Items, dst.Items...)
@@ -97,13 +94,9 @@ func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		reqLogger := reqLogger.WithValues("vmalert", currVMAlert.Name)
 		ctx := logger.AddToContext(ctx, reqLogger)
 
-		maps, err := vmalert.CreateOrUpdateRuleConfigMaps(ctx, currVMAlert, r)
+		_, err := vmalert.CreateOrUpdateRuleConfigMaps(ctx, currVMAlert, r)
 		if err != nil {
 			return ctrl.Result{}, fmt.Errorf("cannot update rules configmaps: %w", err)
-		}
-
-		if err := vmalert.CreateOrUpdateVMAlert(ctx, currVMAlert, r, r.BaseConf, maps); err != nil {
-			return result, fmt.Errorf("cannot create or update vmalert for vmrule :%w", err)
 		}
 
 	}

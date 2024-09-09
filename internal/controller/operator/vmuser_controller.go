@@ -80,10 +80,6 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 	if vmauthRateLimiter.MustThrottleReconcile() {
 		return
 	}
-	// lock vmauth sync.
-	vmAuthSyncMU.Lock()
-	defer vmAuthSyncMU.Unlock()
-
 	var vmauthes vmv1beta1.VMAuthList
 	if err := k8stools.ListObjectsByNamespace(ctx, r.Client, config.MustGetWatchNamespaces(), func(dst *vmv1beta1.VMAuthList) {
 		vmauthes.Items = append(vmauthes.Items, dst.Items...)

@@ -68,9 +68,6 @@ func (r *VMAlertmanagerConfigReconciler) Reconcile(ctx context.Context, req ctrl
 		return
 	}
 
-	alertmanagerLock.Lock()
-	defer alertmanagerLock.Unlock()
-
 	var objects vmv1beta1.VMAlertmanagerList
 	if err := k8stools.ListObjectsByNamespace(ctx, r.Client, config.MustGetWatchNamespaces(), func(dst *vmv1beta1.VMAlertmanagerList) {
 		objects.Items = append(objects.Items, dst.Items...)
@@ -98,7 +95,7 @@ func (r *VMAlertmanagerConfigReconciler) Reconcile(ctx context.Context, req ctrl
 				continue
 			}
 		}
-		if err := alertmanager.CreateOrUpdateAlertManager(ctx, am, r.Client, r.BaseConf); err != nil {
+		if err := alertmanager.CreateAMConfig(ctx, am, r.Client); err != nil {
 			continue
 		}
 	}

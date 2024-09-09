@@ -23,7 +23,8 @@ import (
 	"github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap/zapcore"
-	v1 "k8s.io/api/core/v1"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -82,6 +83,7 @@ var (
 	clientQPS                     = flag.Int("client.qps", 5, "defines K8s client QPS")
 	clientBurst                   = flag.Int("client.burst", 10, "defines K8s client burst")
 	wasCacheSynced                = uint32(0)
+	disableCacheForObjects        = flag.String("controller.disableCacheFor", "", "disables client for cache for API resources. Supported objects - namespace,pod,secret,configmap,deployment,statefulset")
 )
 
 func init() {
@@ -149,6 +151,10 @@ func RunManager(ctx context.Context) error {
 	config := ctrl.GetConfigOrDie()
 	config.RateLimiter = flowcontrol.NewTokenBucketRateLimiter(float32(*clientQPS), *clientBurst)
 
+	co, err := getClientCacheOptions(*disableCacheForObjects)
+	if err != nil {
+		return fmt.Errorf("cannot build cache options for manager: %w", err)
+	}
 	mgr, err := ctrl.NewManager(config, ctrl.Options{
 		Logger: ctrl.Log.WithName("manager"),
 		Scheme: scheme,
@@ -178,10 +184,7 @@ func RunManager(ctx context.Context) error {
 			DefaultNamespaces: watchNsCacheByName,
 		},
 		Client: client.Options{
-			Cache: &client.CacheOptions{DisableFor: []client.Object{
-				&v1.Secret{}, &v1.ConfigMap{}, &v1.Pod{},
-				&v1.Namespace{},
-			}},
+			Cache: co,
 		},
 	})
 	if err != nil {
@@ -469,4 +472,29 @@ func configureTLS() []func(*tls.Config) {
 		})
 	}
 	return opts
+}
+
+func getClientCacheOptions(disabledCacheObjects string) (*client.CacheOptions, error) {
+	var co client.CacheOptions
+	if len(disabledCacheObjects) > 0 {
+		objects := strings.Split(disabledCacheObjects, ",")
+		for _, object := range objects {
+			o, ok := cacheClientObjectsByName[object]
+			if !ok {
+				return nil, fmt.Errorf("not supported client object name=%q", object)
+			}
+			co.DisableFor = append(co.DisableFor, o)
+
+		}
+	}
+	return &co, nil
+}
+
+var cacheClientObjectsByName = map[string]client.Object{
+	"secret":      &corev1.Secret{},
+	"configmap":   &corev1.ConfigMap{},
+	"namespace":   &corev1.Namespace{},
+	"pod":         &corev1.Pod{},
+	"deployment":  &appsv1.Deployment{},
+	"statefulset": &appsv1.StatefulSet{},
 }

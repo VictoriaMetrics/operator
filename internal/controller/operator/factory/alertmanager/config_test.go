@@ -1391,7 +1391,7 @@ func Test_UpdateDefaultAMConfig(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 
 			// Create secret with alert manager config
-			if err := createDefaultAMConfig(tt.args.ctx, tt.args.cr, fclient); (err != nil) != tt.wantErr {
+			if err := CreateAMConfig(tt.args.ctx, tt.args.cr, fclient); (err != nil) != tt.wantErr {
 				t.Fatalf("createDefaultAMConfig() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			var amCfgs []*vmv1beta1.VMAlertmanagerConfig
@@ -1454,7 +1454,7 @@ func Test_UpdateDefaultAMConfig(t *testing.T) {
 			}
 
 			// Update secret with alert manager config
-			if err = createDefaultAMConfig(tt.args.ctx, tt.args.cr, fclient); (err != nil) != tt.wantErr {
+			if err = CreateAMConfig(tt.args.ctx, tt.args.cr, fclient); (err != nil) != tt.wantErr {
 				t.Fatalf("createDefaultAMConfig() error = %v, wantErr %v", err, tt.wantErr)
 			}
 

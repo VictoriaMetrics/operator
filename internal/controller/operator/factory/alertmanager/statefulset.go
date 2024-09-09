@@ -471,9 +471,9 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager, c *config.BaseOperatorCon
 	}, nil
 }
 
-// createDefaultAMConfig - check if secret with config exist,
+// CreateAMConfig - check if secret with config exist,
 // if not create with predefined or user value.
-func createDefaultAMConfig(ctx context.Context, cr *vmv1beta1.VMAlertmanager, rclient client.Client) error {
+func CreateAMConfig(ctx context.Context, cr *vmv1beta1.VMAlertmanager, rclient client.Client) error {
 	cr = cr.DeepCopy()
 	l := logger.WithContext(ctx).WithValues("alertmanager", cr.Name)
 	ctx = logger.AddToContext(ctx, l)

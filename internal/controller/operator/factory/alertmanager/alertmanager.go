@@ -58,11 +58,6 @@ func CreateOrUpdateAlertManager(ctx context.Context, cr *vmv1beta1.VMAlertmanage
 		return fmt.Errorf("cannot generate alertmanager sts, name: %s,err: %w", cr.Name, err)
 	}
 
-	// check secret with config
-	if err := createDefaultAMConfig(ctx, cr, rclient); err != nil {
-		return fmt.Errorf("failed to check default Alertmanager config: %w", err)
-	}
-
 	stsOpts := reconcile.STSOptions{
 		HasClaim:       len(newSts.Spec.VolumeClaimTemplates) > 0,
 		VolumeName:     cr.GetVolumeName,

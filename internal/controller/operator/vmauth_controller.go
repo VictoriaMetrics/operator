@@ -19,7 +19,6 @@ package operator
 import (
 	"context"
 	"fmt"
-	"sync"
 
 	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
@@ -36,8 +35,6 @@ import (
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 )
-
-var vmAuthSyncMU = sync.Mutex{}
 
 // VMAuthReconciler reconciles a VMAuth object
 type VMAuthReconciler struct {

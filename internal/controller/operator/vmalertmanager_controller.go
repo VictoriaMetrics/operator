@@ -18,7 +18,6 @@ package operator
 
 import (
 	"context"
-	"sync"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
@@ -34,8 +33,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
-
-var alertmanagerLock sync.Mutex
 
 // VMAlertmanagerReconciler reconciles a VMAlertmanager object
 type VMAlertmanagerReconciler struct {
@@ -79,16 +76,14 @@ func (r *VMAlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	if instance.Spec.ParsingError != "" {
 		return result, &parsingError{instance.Spec.ParsingError, "vmalertmanager"}
 	}
-	// add an optimisation for unmmanaged alertmanagers
-	if instance.IsUnmanaged() {
-		alertmanagerLock.Lock()
-		defer alertmanagerLock.Unlock()
-	}
 
 	if err := finalize.AddFinalizer(ctx, r.Client, instance); err != nil {
 		return result, err
 	}
 	result, err = reconcileAndTrackStatus(ctx, r.Client, instance, func() (ctrl.Result, error) {
+		if err := alertmanager.CreateAMConfig(ctx, instance, r.Client); err != nil {
+			return result, err
+		}
 		if err := alertmanager.CreateOrUpdateAlertManager(ctx, instance, r, r.BaseConf); err != nil {
 			return result, err
 		}

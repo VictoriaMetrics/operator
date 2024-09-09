@@ -80,7 +80,7 @@ func (r *VMSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (r
 		return result, err
 	}
 
-	return reconcileAndTrackStatus(ctx, r.Client, instance, func() (ctrl.Result, error) {
+	result, err = reconcileAndTrackStatus(ctx, r.Client, instance, func() (ctrl.Result, error) {
 		if instance.Spec.Storage != nil && instance.Spec.StorageDataPath == "" {
 			err = vmsingle.CreateVMSingleStorage(ctx, instance, r)
 			if err != nil {
@@ -96,6 +96,13 @@ func (r *VMSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (r
 		}
 		return result, nil
 	})
+	if err != nil {
+		return
+	}
+	if r.BaseConf.ForceResyncInterval > 0 {
+		result.RequeueAfter = r.BaseConf.ForceResyncInterval
+	}
+	return
 }
 
 // SetupWithManager general setup method

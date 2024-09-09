@@ -494,10 +494,9 @@ func Test_rulesCMDiff(t *testing.T) {
 		args     args
 		toCreate []v1.ConfigMap
 		toUpdate []v1.ConfigMap
-		toDelete []v1.ConfigMap
 	}{
 		{
-			name: "simple case, create one new",
+			name: "create one new",
 			args: args{
 				currentCMs: []v1.ConfigMap{},
 				newCMs: []v1.ConfigMap{
@@ -517,7 +516,7 @@ func Test_rulesCMDiff(t *testing.T) {
 			},
 		},
 		{
-			name: "simple case, delete one old",
+			name: "skip exist",
 			args: args{
 				currentCMs: []v1.ConfigMap{
 					{
@@ -528,16 +527,9 @@ func Test_rulesCMDiff(t *testing.T) {
 				},
 				newCMs: []v1.ConfigMap{},
 			},
-			toDelete: []v1.ConfigMap{
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "rules-cm-1",
-					},
-				},
-			},
 		},
 		{
-			name: "simple case, update one",
+			name: "update one",
 			args: args{
 				currentCMs: []v1.ConfigMap{
 					{
@@ -551,6 +543,7 @@ func Test_rulesCMDiff(t *testing.T) {
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "rules-cm-1",
 						},
+						Data: map[string]string{"rule": "content"},
 					},
 				},
 			},
@@ -559,54 +552,28 @@ func Test_rulesCMDiff(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "rules-cm-1",
 					},
+					Data: map[string]string{"rule": "content"},
 				},
 			},
 		},
 		{
-			name: "corner case, create one, delete one",
+			name: "update two",
 			args: args{
 				currentCMs: []v1.ConfigMap{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "rules-cm-0",
 						},
+						Data: map[string]string{"rule": "outdated-content"},
 					},
-				},
-				newCMs: []v1.ConfigMap{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "rules-cm-1",
 						},
 					},
-				},
-			},
-			toCreate: []v1.ConfigMap{
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "rules-cm-1",
-					},
-				},
-			},
-			toDelete: []v1.ConfigMap{
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "rules-cm-0",
-					},
-				},
-			},
-		},
-		{
-			name: "simple case, update one, delete one",
-			args: args{
-				currentCMs: []v1.ConfigMap{
 					{
 						ObjectMeta: metav1.ObjectMeta{
-							Name: "rules-cm-0",
-						},
-					},
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "rules-cm-1",
+							Name: "rules-cm-3",
 						},
 					},
 				},
@@ -615,6 +582,13 @@ func Test_rulesCMDiff(t *testing.T) {
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "rules-cm-0",
 						},
+						Data: map[string]string{"rule": "new-content"},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "rules-cm-1",
+						},
+						Data: map[string]string{"rule": "new-content"},
 					},
 				},
 			},
@@ -623,69 +597,25 @@ func Test_rulesCMDiff(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "rules-cm-0",
 					},
-				},
-			},
-			toDelete: []v1.ConfigMap{
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "rules-cm-1",
-					},
-				},
-			},
-		},
-		{
-			name: "simple case, update two",
-			args: args{
-				currentCMs: []v1.ConfigMap{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "rules-cm-0",
-						},
-					},
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "rules-cm-1",
-						},
-					},
-				},
-				newCMs: []v1.ConfigMap{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "rules-cm-0",
-						},
-					},
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "rules-cm-1",
-						},
-					},
-				},
-			},
-			toUpdate: []v1.ConfigMap{
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "rules-cm-0",
-					},
+					Data: map[string]string{"rule": "new-content"},
 				},
 				{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "rules-cm-1",
 					},
+					Data: map[string]string{"rule": "new-content"},
 				},
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, got1, got2 := rulesCMDiff(tt.args.currentCMs, tt.args.newCMs)
+			got, got1 := rulesCMDiff(tt.args.currentCMs, tt.args.newCMs)
 			if !reflect.DeepEqual(got, tt.toCreate) {
 				t.Errorf("rulesCMDiff() toCreate\ngot = %v, \nwant  %v", got, tt.toCreate)
 			}
 			if !reflect.DeepEqual(got1, tt.toUpdate) {
 				t.Errorf("rulesCMDiff()toUpdate\n got1 = %v, \nwant %v", got1, tt.toUpdate)
-			}
-			if !reflect.DeepEqual(got2, tt.toDelete) {
-				t.Errorf("rulesCMDiff() toDelete\ngot2 = %v, \nwant %v", got2, tt.toDelete)
 			}
 		})
 	}

@@ -425,6 +425,10 @@ func (r *VLogs) SetUpdateStatusTo(ctx context.Context, c client.Client, status U
 	r.Status.UpdateStatus = status
 	switch status {
 	case UpdateStatusExpanding:
+		// keep failed status until success reconcile
+		if currentStatus == UpdateStatusFailed {
+			return nil
+		}
 	case UpdateStatusFailed:
 		if maybeErr != nil {
 			r.Status.Reason = maybeErr.Error()

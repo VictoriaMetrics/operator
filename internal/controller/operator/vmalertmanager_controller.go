@@ -104,10 +104,7 @@ func (r *VMAlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return
 	}
 
-	// resync configuration periodically
-	if r.BaseConf.ForceResyncInterval > 0 {
-		result.RequeueAfter = r.BaseConf.ForceResyncInterval
-	}
+	result.RequeueAfter = r.BaseConf.ResyncAfterDuration()
 	return
 }
 

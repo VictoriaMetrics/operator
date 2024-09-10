@@ -74,9 +74,8 @@ func (r *VMClusterReconciler) Reconcile(ctx context.Context, request ctrl.Reques
 	if err != nil {
 		return
 	}
-	if r.BaseConf.ForceResyncInterval > 0 {
-		result.RequeueAfter = r.BaseConf.ForceResyncInterval
-	}
+
+	result.RequeueAfter = r.BaseConf.ResyncAfterDuration()
 	return
 }
 

@@ -14,7 +14,6 @@ func PodDisruptionBudget(cr svcBuilderArgs, spec *vmv1beta1.EmbeddedPodDisruptio
 			Labels:          cr.AllLabels(),
 			OwnerReferences: cr.AsOwner(),
 			Namespace:       cr.GetNSName(),
-			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},
 		Spec: policyv1.PodDisruptionBudgetSpec{
 			MinAvailable:   spec.MinAvailable,

@@ -282,7 +282,7 @@ func growPVCs(ctx context.Context, rclient client.Client, size *resource.Quantit
 	return rclient.Update(ctx, pvc)
 }
 
-// checks is pvc needs to be resized.
+// checks if pvc needs to be resized.
 func mayGrow(ctx context.Context, newSize, existSize *resource.Quantity) bool {
 	if newSize == nil || existSize == nil {
 		return false

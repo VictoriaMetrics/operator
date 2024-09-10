@@ -72,6 +72,7 @@ func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, 
 		if err := finalize.FreeIfNeeded(ctx, rclient, &currentSts); err != nil {
 			return err
 		}
+
 		// will update the original cr replicaCount to propagate right num,
 		// for now, it's only used in vmselect
 		if cr.UpdateReplicaCount != nil {
@@ -95,6 +96,8 @@ func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, 
 		// if sts wasn't recreated, update it first
 		// before making call for performRollingUpdateOnSts
 		if !stsRecreated {
+			// TODO think about compare to conditionally apply updates
+			// it may be tricky due to default values at kubernetes side
 			if err := rclient.Update(ctx, newSts); err != nil {
 				return fmt.Errorf("cannot perform update on sts: %s, err: %w", newSts.Name, err)
 			}
@@ -115,6 +118,7 @@ func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, 
 		if cr.HasClaim {
 			err = growSTSPVC(ctx, rclient, newSts)
 		}
+
 		return err
 	})
 }

@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	policyv1 "k8s.io/api/policy/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
@@ -34,8 +34,16 @@ func PDB(ctx context.Context, rclient client.Client, pdb *policyv1.PodDisruption
 		if currentPdb.ResourceVersion != "" {
 			pdb.ResourceVersion = currentPdb.ResourceVersion
 		}
+		// for some reason Status is not marked as status sub-resource at PDB CRD
 		pdb.Status = currentPdb.Status
-		vmv1beta1.AddFinalizer(pdb, currentPdb)
+
+		if equality.Semantic.DeepEqual(pdb.Spec, currentPdb.Spec) &&
+			equality.Semantic.DeepEqual(pdb.Labels, currentPdb.Labels) &&
+			equality.Semantic.DeepEqual(pdb.Annotations, currentPdb.Annotations) {
+			return nil
+		}
+		logger.WithContext(ctx).Info("updating HPA configuration", "pdb_name", pdb.Name)
+
 		return rclient.Update(ctx, pdb)
 	})
 }

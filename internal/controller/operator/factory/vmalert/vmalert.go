@@ -16,11 +16,8 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -80,6 +77,8 @@ func CreateOrUpdateVMAlertService(ctx context.Context, cr *vmv1beta1.VMAlert, rc
 }
 
 func createOrUpdateVMAlertSecret(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert, ssCache map[string]*authSecret, c *config.BaseOperatorConf) error {
+	ctx = logger.AddToContext(ctx, logger.WithContext(ctx).WithValues("config_name", "vmalert_remote_secrets"))
+
 	s := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),
@@ -120,19 +119,7 @@ func createOrUpdateVMAlertSecret(ctx context.Context, rclient client.Client, cr 
 		addSecretKeys(buildNotifierKey(idx), nf.HTTPAuth)
 	}
 
-	curSecret := &corev1.Secret{}
-	err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: s.Name}, curSecret)
-	if errors.IsNotFound(err) {
-		if err = rclient.Create(ctx, s); err != nil {
-			return fmt.Errorf("cannot create secret for vmalert remote secrets: %w", err)
-		}
-		return nil
-	}
-	if err := finalize.FreeIfNeeded(ctx, rclient, curSecret); err != nil {
-		return err
-	}
-	s.Annotations = labels.Merge(curSecret.Annotations, s.Annotations)
-	return rclient.Update(ctx, s)
+	return reconcile.Secret(ctx, rclient, s)
 }
 
 // CreateOrUpdateVMAlert creates vmalert deployment for given CRD
@@ -724,6 +711,8 @@ func loadVMAlertRemoteSecrets(
 }
 
 func createOrUpdateTLSAssetsForVMAlert(ctx context.Context, cr *vmv1beta1.VMAlert, rclient client.Client) error {
+	ctx = logger.AddToContext(ctx, logger.WithContext(ctx).WithValues("config_name", "vmalert_tls_assets"))
+
 	assets, err := loadTLSAssetsForVMAlert(ctx, rclient, cr)
 	if err != nil {
 		return fmt.Errorf("cannot load tls assets: %w", err)
@@ -744,23 +733,7 @@ func createOrUpdateTLSAssetsForVMAlert(ctx context.Context, cr *vmv1beta1.VMAler
 	for key, asset := range assets {
 		tlsAssetsSecret.Data[key] = []byte(asset)
 	}
-	currentAssetSecret := &corev1.Secret{}
-	err = rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: tlsAssetsSecret.Name}, currentAssetSecret)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			return rclient.Create(ctx, tlsAssetsSecret)
-		}
-		return fmt.Errorf("cannot get existing tls secret: %s, for vmalert: %s, err: %w", tlsAssetsSecret.Name, cr.Name, err)
-	}
-	if err := finalize.FreeIfNeeded(ctx, rclient, currentAssetSecret); err != nil {
-		return err
-	}
-	for annotation, value := range currentAssetSecret.Annotations {
-		tlsAssetsSecret.Annotations[annotation] = value
-	}
-	tlsAssetsSecret.Annotations = labels.Merge(currentAssetSecret.Annotations, tlsAssetsSecret.Annotations)
-	vmv1beta1.AddFinalizer(tlsAssetsSecret, currentAssetSecret)
-	return rclient.Update(ctx, tlsAssetsSecret)
+	return reconcile.Secret(ctx, rclient, tlsAssetsSecret)
 }
 
 func FetchTLSAssets(ctx context.Context, rclient client.Client, namespace string, tc *vmv1beta1.TLSConfig, assetPathDst map[string]string) error {

@@ -15,15 +15,14 @@ import (
 	"github.com/VictoriaMetrics/metricsql"
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 	"github.com/prometheus/client_golang/prometheus"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
@@ -146,29 +145,11 @@ func createOrUpdateConfigurationSecret(ctx context.Context, cr *vmv1beta1.VMAgen
 		return nil, fmt.Errorf("cannot gzip config for vmagent: %w", err)
 	}
 	s.Data[vmagentGzippedFilename] = buf.Bytes()
+	ctx = logger.AddToContext(ctx, logger.WithContext(ctx).WithValues("config_name", "vmagent_config"))
 
-	curSecret := &corev1.Secret{}
-	if err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: s.Name}, curSecret); err != nil {
-		if errors.IsNotFound(err) {
-			logger.WithContext(ctx).Info("creating new configuration secret for vmagent")
-			if err := rclient.Create(ctx, s); err != nil {
-				return nil, fmt.Errorf("failed to create new configuration secret for vmagent: %w", err)
-			}
-			return ssCache, nil
-		}
-		return nil, fmt.Errorf("cannot get secret for vmagent: %q : %w", cr.Name, err)
+	if err := reconcile.Secret(ctx, rclient, s); err != nil {
+		return nil, fmt.Errorf("cannot reconcile vmagent config secret: %w", err)
 	}
-
-	if err := finalize.FreeIfNeeded(ctx, rclient, curSecret); err != nil {
-		return nil, err
-	}
-
-	s.Annotations = labels.Merge(curSecret.Annotations, s.Annotations)
-	vmv1beta1.AddFinalizer(s, curSecret)
-	if err := rclient.Update(ctx, s); err != nil {
-		return nil, fmt.Errorf("cannot update exist secret with config: %w", err)
-	}
-
 	if err := updateStatusesForScrapeObjects(ctx, rclient, sos); err != nil {
 		return nil, err
 	}

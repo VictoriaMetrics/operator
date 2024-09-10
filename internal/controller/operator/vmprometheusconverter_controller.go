@@ -362,6 +362,7 @@ func (c *ConverterController) UpdatePrometheusRule(_old, new interface{}) {
 	existingVMRule.Labels = mergeLabelsWithStrategy(existingVMRule.Labels, VMRule.Labels, metaMergeStrategy)
 	existingVMRule.OwnerReferences = VMRule.OwnerReferences
 
+	// TODO compare
 	err = c.rclient.Update(ctx, existingVMRule)
 	if err != nil {
 		l.Error(err, "cannot update VMRule")
@@ -414,6 +415,7 @@ func (c *ConverterController) UpdateServiceMonitor(_, new interface{}) {
 	existingVMServiceScrape.Labels = mergeLabelsWithStrategy(existingVMServiceScrape.Labels, vmServiceScrape.Labels, metaMergeStrategy)
 	existingVMServiceScrape.OwnerReferences = vmServiceScrape.OwnerReferences
 
+	// TODO compare
 	err = c.rclient.Update(ctx, existingVMServiceScrape)
 	if err != nil {
 		l.Error(err, "cannot update")
@@ -465,6 +467,7 @@ func (c *ConverterController) UpdatePodMonitor(_, new interface{}) {
 	existingVMPodScrape.Labels = mergeLabelsWithStrategy(existingVMPodScrape.Labels, podScrape.Labels, mergeStrategy)
 	existingVMPodScrape.OwnerReferences = podScrape.OwnerReferences
 
+	// TODO compare
 	err = c.rclient.Update(ctx, existingVMPodScrape)
 	if err != nil {
 		l.Error(err, "cannot update podScrape")
@@ -535,6 +538,7 @@ func (c *ConverterController) UpdateAlertmanagerConfig(_, new interface{}) {
 	existAlertmanagerConfig.Labels = mergeLabelsWithStrategy(existAlertmanagerConfig.Labels, vmAMc.Labels, metaMergeStrategy)
 	existAlertmanagerConfig.OwnerReferences = vmAMc.OwnerReferences
 
+	// TODO compare
 	err = c.rclient.Update(ctx, existAlertmanagerConfig)
 	if err != nil {
 		l.Error(err, "cannot update exist alertmanager config")
@@ -625,6 +629,7 @@ func (c *ConverterController) UpdateProbe(_, new interface{}) {
 	existingVMProbe.OwnerReferences = vmProbe.OwnerReferences
 
 	existingVMProbe.Spec = vmProbe.Spec
+	// TODO compare
 	err = c.rclient.Update(ctx, existingVMProbe)
 	if err != nil {
 		l.Error(err, "cannot update vmProbe")
@@ -693,6 +698,7 @@ func (c *ConverterController) UpdateScrapeConfig(_, new interface{}) {
 	existingVMScrapeConfig.Labels = mergeLabelsWithStrategy(existingVMScrapeConfig.Labels, vmScrapeConfig.Labels, metaMergeStrategy)
 	existingVMScrapeConfig.OwnerReferences = vmScrapeConfig.OwnerReferences
 
+	// TODO compare
 	err = c.rclient.Update(ctx, existingVMScrapeConfig)
 	if err != nil {
 		l.Error(err, "cannot update vmScrapeConfig")

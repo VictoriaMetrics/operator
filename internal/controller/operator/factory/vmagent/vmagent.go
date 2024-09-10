@@ -19,12 +19,9 @@ import (
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -719,15 +716,7 @@ func createOrUpdateRelabelConfigsAssets(ctx context.Context, cr *vmv1beta1.VMAge
 	if err != nil {
 		return err
 	}
-	var existCM corev1.ConfigMap
-	if err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.RelabelingAssetName()}, &existCM); err != nil {
-		if errors.IsNotFound(err) {
-			return rclient.Create(ctx, assestsCM)
-		}
-	}
-	assestsCM.Annotations = labels.Merge(existCM.Annotations, assestsCM.Annotations)
-	vmv1beta1.AddFinalizer(assestsCM, &existCM)
-	return rclient.Update(ctx, assestsCM)
+	return reconcile.ConfigMap(ctx, rclient, assestsCM)
 }
 
 // buildVMAgentStreamAggrConfig combines all possible stream aggregation configs and adding it to the configmap.
@@ -806,18 +795,12 @@ func CreateOrUpdateVMAgentStreamAggrConfig(ctx context.Context, cr *vmv1beta1.VM
 	if err != nil {
 		return err
 	}
-	var existCM corev1.ConfigMap
-	if err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.StreamAggrConfigName()}, &existCM); err != nil {
-		if errors.IsNotFound(err) {
-			return rclient.Create(ctx, streamAggrCM)
-		}
-	}
-	streamAggrCM.Annotations = labels.Merge(existCM.Annotations, streamAggrCM.Annotations)
-	vmv1beta1.AddFinalizer(streamAggrCM, &existCM)
-	return rclient.Update(ctx, streamAggrCM)
+	return reconcile.ConfigMap(ctx, rclient, streamAggrCM)
 }
 
 func createOrUpdateTLSAssets(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client, assets map[string]string) error {
+	ctx = logger.AddToContext(ctx, logger.WithContext(ctx).WithValues("config_name", "vmagent_tls_assets"))
+
 	tlsAssetsSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.TLSAssetName(),
@@ -833,20 +816,7 @@ func createOrUpdateTLSAssets(ctx context.Context, cr *vmv1beta1.VMAgent, rclient
 	for key, asset := range assets {
 		tlsAssetsSecret.Data[key] = []byte(asset)
 	}
-	currentAssetSecret := &corev1.Secret{}
-	if err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: tlsAssetsSecret.Name}, currentAssetSecret); err != nil {
-		if errors.IsNotFound(err) {
-			logger.WithContext(ctx).Info("creating new tls asset for vmagent", "secret_name", tlsAssetsSecret.Name, "vmagent", cr.Name)
-			return rclient.Create(ctx, tlsAssetsSecret)
-		}
-		return fmt.Errorf("cannot get existing tls secret: %s, for vmagent: %s, err: %w", tlsAssetsSecret.Name, cr.Name, err)
-	}
-	if err := finalize.FreeIfNeeded(ctx, rclient, currentAssetSecret); err != nil {
-		return err
-	}
-	tlsAssetsSecret.Annotations = labels.Merge(currentAssetSecret.Annotations, tlsAssetsSecret.Annotations)
-	vmv1beta1.AddFinalizer(tlsAssetsSecret, currentAssetSecret)
-	return rclient.Update(ctx, tlsAssetsSecret)
+	return reconcile.Secret(ctx, rclient, tlsAssetsSecret)
 }
 
 func addAssetsToCache(

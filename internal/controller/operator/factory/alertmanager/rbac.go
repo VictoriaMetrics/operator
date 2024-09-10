@@ -5,11 +5,10 @@ import (
 	"fmt"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
+
 	corev1 "k8s.io/api/rbac/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -26,39 +25,12 @@ func createVMAlertmanagerSecretAccess(ctx context.Context, rclient client.Client
 
 func ensureVMAlertmanagerRoleExist(ctx context.Context, cr *vmv1beta1.VMAlertmanager, rclient client.Client) error {
 	role := buildVMAlertmanagerRole(cr)
-	var existRole corev1.Role
-	if err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: role.Name}, &existRole); err != nil {
-		if errors.IsNotFound(err) {
-			return rclient.Create(ctx, role)
-		}
-		return fmt.Errorf("cannot get role for vmauth: %w", err)
-	}
-
-	existRole.OwnerReferences = role.OwnerReferences
-	existRole.Labels = role.Labels
-	existRole.Annotations = labels.Merge(existRole.Annotations, role.Annotations)
-	existRole.Rules = role.Rules
-	vmv1beta1.AddFinalizer(&existRole, &existRole)
-	return rclient.Update(ctx, &existRole)
+	return reconcile.Role(ctx, rclient, role)
 }
 
 func ensureVMAlertmanagerRBExist(ctx context.Context, cr *vmv1beta1.VMAlertmanager, rclient client.Client) error {
 	roleBinding := buildVMAlertmanagerRoleBinding(cr)
-	var existRoleBinding corev1.RoleBinding
-	if err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: roleBinding.Name}, &existRoleBinding); err != nil {
-		if errors.IsNotFound(err) {
-			return rclient.Create(ctx, roleBinding)
-		}
-		return fmt.Errorf("cannot get rolebinding for vmauth: %w", err)
-	}
-
-	existRoleBinding.OwnerReferences = roleBinding.OwnerReferences
-	existRoleBinding.Labels = roleBinding.Labels
-	existRoleBinding.Annotations = labels.Merge(existRoleBinding.Annotations, roleBinding.Annotations)
-	existRoleBinding.Subjects = roleBinding.Subjects
-	existRoleBinding.RoleRef = roleBinding.RoleRef
-	vmv1beta1.AddFinalizer(&existRoleBinding, &existRoleBinding)
-	return rclient.Update(ctx, &existRoleBinding)
+	return reconcile.RoleBinding(ctx, rclient, roleBinding)
 }
 
 func buildVMAlertmanagerRole(cr *vmv1beta1.VMAlertmanager) *corev1.Role {

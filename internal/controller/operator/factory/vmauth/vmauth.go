@@ -348,36 +348,7 @@ func CreateOrUpdateVMAuthConfig(ctx context.Context, rclient client.Client, cr *
 	}
 	s.Data[vmAuthConfigNameGz] = buf.Bytes()
 
-	var curSecret corev1.Secret
-
-	if err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: s.Name}, &curSecret); err != nil {
-		if errors.IsNotFound(err) {
-			logger.WithContext(ctx).Info("creating new configuration secret for vmauth")
-			return rclient.Create(ctx, s)
-		}
-		return err
-	}
-	if err := finalize.FreeIfNeeded(ctx, rclient, &curSecret); err != nil {
-		return err
-	}
-	var (
-		generatedConf             = s.Data[vmAuthConfigNameGz]
-		curConfig, curConfigFound = curSecret.Data[vmAuthConfigNameGz]
-	)
-	if curConfigFound {
-		if bytes.Equal(curConfig, generatedConf) {
-			logger.WithContext(ctx).Info("updating VMAuth configuration secret skipped, no configuration change")
-			return nil
-		}
-		logger.WithContext(ctx).Info("current VMAuth configuration has changed")
-	} else {
-		logger.WithContext(ctx).Info("no current VMAuth configuration secret found", "currentConfigFound", curConfigFound)
-	}
-	s.Annotations = labels.Merge(curSecret.Annotations, s.Annotations)
-	vmv1beta1.AddFinalizer(s, &curSecret)
-
-	logger.WithContext(ctx).Info("updating VMAuth configuration secret")
-	return rclient.Update(ctx, s)
+	return reconcile.Secret(ctx, rclient, s)
 }
 
 func makeVMAuthConfigSecret(cr *vmv1beta1.VMAuth) *corev1.Secret {
@@ -404,6 +375,7 @@ func makeVMAuthConfigSecret(cr *vmv1beta1.VMAuth) *corev1.Secret {
 func CreateOrUpdateVMAuthIngress(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAuth) error {
 	if cr.Spec.Ingress == nil {
 		// handle delete case
+		// TODO check last-applied spec
 		if err := finalize.VMAuthIngressDelete(ctx, rclient, cr); err != nil {
 			return fmt.Errorf("cannot delete ingress for vmauth: %s, err :%w", cr.Name, err)
 		}

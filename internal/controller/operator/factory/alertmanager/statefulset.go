@@ -24,7 +24,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -475,7 +474,7 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager, c *config.BaseOperatorCon
 // if not create with predefined or user value.
 func CreateAMConfig(ctx context.Context, cr *vmv1beta1.VMAlertmanager, rclient client.Client) error {
 	cr = cr.DeepCopy()
-	l := logger.WithContext(ctx).WithValues("alertmanager", cr.Name)
+	l := logger.WithContext(ctx).WithValues("alertmanager", cr.Name).WithValues("config_name", "vmalertmanager config secret")
 	ctx = logger.AddToContext(ctx, l)
 
 	// name of tls object and it's value
@@ -555,21 +554,8 @@ func CreateAMConfig(ctx context.Context, cr *vmv1beta1.VMAlertmanager, rclient c
 	for assetKey, assetValue := range tlsAssets {
 		newAMSecretConfig.Data[assetKey] = []byte(assetValue)
 	}
-	var existAMSecretConfig corev1.Secret
-	if err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.ConfigSecretName()}, &existAMSecretConfig); err != nil {
-		if errors.IsNotFound(err) {
-			logger.WithContext(ctx).Info("creating default alertmanager config with secret", "secret_name", newAMSecretConfig.Name)
-			return rclient.Create(ctx, newAMSecretConfig)
-		}
-		return err
-	}
-	if err := finalize.FreeIfNeeded(ctx, rclient, &existAMSecretConfig); err != nil {
-		return err
-	}
 
-	newAMSecretConfig.Annotations = labels.Merge(existAMSecretConfig.Annotations, newAMSecretConfig.Annotations)
-	vmv1beta1.AddFinalizer(newAMSecretConfig, &existAMSecretConfig)
-	return rclient.Update(ctx, newAMSecretConfig)
+	return reconcile.Secret(ctx, rclient, newAMSecretConfig)
 }
 
 func buildInitConfigContainer(cr *vmv1beta1.VMAlertmanager, c *config.BaseOperatorConf) []corev1.Container {

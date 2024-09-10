@@ -120,9 +120,7 @@ func (r *VMAgentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 	if err != nil {
 		return
 	}
-	if r.BaseConf.ForceResyncInterval > 0 {
-		result.RequeueAfter = r.BaseConf.ForceResyncInterval
-	}
+	result.RequeueAfter = r.BaseConf.ResyncAfterDuration()
 
 	return
 }

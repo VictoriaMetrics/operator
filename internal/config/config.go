@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"math/rand"
 	"os"
 	"regexp"
 	"strings"
@@ -292,6 +293,23 @@ type BaseOperatorConf struct {
 	//        - all
 	// turn off `EnableStrictSecurity` by default, see https://github.com/VictoriaMetrics/operator/issues/749 for details
 	EnableStrictSecurity bool `default:"false"`
+}
+
+// ResyncAfterDuration returns requeue duration for object period reconcile
+// adds 10% jitter
+func (boc *BaseOperatorConf) ResyncAfterDuration() time.Duration {
+	if boc.ForceResyncInterval == 0 {
+		return 0
+	}
+	d := boc.ForceResyncInterval
+	dv := d / 10
+	if dv > 10*time.Second {
+		dv = 10 * time.Second
+	}
+
+	p := float64(rand.Int31()) / (1 << 32)
+
+	return boc.ForceResyncInterval + time.Duration(p*float64(dv))
 }
 
 // CustomConfigReloaderImageVersion returns version of custom config-reloader

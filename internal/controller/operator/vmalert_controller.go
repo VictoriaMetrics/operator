@@ -80,11 +80,6 @@ func (r *VMAlertReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 		return result, &parsingError{instance.Spec.ParsingError, "vmalert"}
 	}
 
-	var needToRequeue bool
-	if len(instance.GetNotifierSelectors()) > 0 {
-		needToRequeue = true
-	}
-
 	if err := finalize.AddFinalizer(ctx, r.Client, instance); err != nil {
 		return result, err
 	}
@@ -117,12 +112,8 @@ func (r *VMAlertReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 	if resultErr != nil {
 		return
 	}
-
-	if needToRequeue || r.BaseConf.ForceResyncInterval > 0 {
-		result.RequeueAfter = r.BaseConf.ForceResyncInterval
-	}
-
-	return result, nil
+	result.RequeueAfter = r.BaseConf.ResyncAfterDuration()
+	return
 }
 
 // SetupWithManager general setup method

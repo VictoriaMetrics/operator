@@ -83,7 +83,7 @@ func (r *VLogsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (resu
 		return result, err
 	}
 
-	return reconcileAndTrackStatus(ctx, r.Client, instance, func() (ctrl.Result, error) {
+	result, err = reconcileAndTrackStatus(ctx, r.Client, instance, func() (ctrl.Result, error) {
 		if instance.Spec.Storage != nil && instance.Spec.StorageDataPath == "" {
 			err = vlogs.CreateVLogsStorage(ctx, instance, r)
 			if err != nil {
@@ -96,6 +96,10 @@ func (r *VLogsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (resu
 		}
 		return result, nil
 	})
+
+	result.RequeueAfter = r.BaseConf.ResyncAfterDuration()
+
+	return
 }
 
 // SetupWithManager sets up the controller with the Manager.

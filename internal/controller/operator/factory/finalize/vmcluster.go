@@ -4,20 +4,23 @@ import (
 	"context"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
+
 	appsv1 "k8s.io/api/apps/v1"
+	v2 "k8s.io/api/autoscaling/v2"
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // HPADelete handles case, when user wants to remove HPA configuration from cluster config.
 func HPADelete(ctx context.Context, rclient client.Client, objectName, objectNamespace string) error {
-	hpa := k8stools.NewHPAEmptyObject(func(obj client.Object) {
-		obj.SetName(objectName)
-		obj.SetNamespace(objectNamespace)
-	})
-
-	if err := removeFinalizeObjByName(ctx, rclient, hpa, objectName, objectNamespace); err != nil {
+	hpa := &v2.HorizontalPodAutoscaler{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      objectName,
+			Namespace: objectNamespace,
+		},
+	}
+	if err := removeFinalizeObjByName(ctx, rclient, &v2.HorizontalPodAutoscaler{}, objectName, objectNamespace); err != nil {
 		return err
 	}
 	if err := SafeDelete(ctx, rclient, hpa); err != nil {
@@ -44,7 +47,12 @@ func OnVMClusterDelete(ctx context.Context, rclient client.Client, crd *vmv1beta
 				return err
 			}
 		}
-		if err := removeFinalizeObjByName(ctx, rclient, k8stools.NewHPAEmptyObject(), obj.GetNameWithPrefix(crd.Name), crd.Namespace); err != nil {
+		if err := removeFinalizeObjByName(ctx, rclient, &v2.HorizontalPodAutoscaler{}, obj.GetNameWithPrefix(crd.Name), crd.Namespace); err != nil {
+			return err
+		}
+
+		// remove hpa
+		if err := removeFinalizeObjByName(ctx, rclient, &v2.HorizontalPodAutoscaler{}, obj.GetNameWithPrefix(crd.Name), crd.Namespace); err != nil {
 			return err
 		}
 
@@ -71,7 +79,7 @@ func OnVMClusterDelete(ctx context.Context, rclient client.Client, crd *vmv1beta
 		}
 
 		// remove hpa
-		if err := removeFinalizeObjByName(ctx, rclient, k8stools.NewHPAEmptyObject(), obj.GetNameWithPrefix(crd.Name), crd.Namespace); err != nil {
+		if err := removeFinalizeObjByName(ctx, rclient, &v2.HorizontalPodAutoscaler{}, obj.GetNameWithPrefix(crd.Name), crd.Namespace); err != nil {
 			return err
 		}
 

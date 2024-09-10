@@ -3,14 +3,14 @@ package build
 import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
+
 	v2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/api/autoscaling/v2beta2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // HPA creates HorizontalPodAutoscaler object
-func HPA(targetRef v2beta2.CrossVersionObjectReference, spec *vmv1beta1.EmbeddedHPA, or []metav1.OwnerReference, lbls map[string]string, namespace string) client.Object {
+func HPA(targetRef v2beta2.CrossVersionObjectReference, spec *vmv1beta1.EmbeddedHPA, or []metav1.OwnerReference, lbls map[string]string, namespace string) *v2.HorizontalPodAutoscaler {
 	return &v2.HorizontalPodAutoscaler{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            targetRef.Name,

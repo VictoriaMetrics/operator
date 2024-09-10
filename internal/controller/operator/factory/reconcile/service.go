@@ -6,6 +6,7 @@ import (
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
+
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
@@ -87,7 +88,6 @@ func reconcileService(ctx context.Context, rclient client.Client, newService *v1
 	if newService.Spec.ClusterIP != "None" {
 		newService.Spec.ClusterIP = existingService.Spec.ClusterIP
 	}
-
 	// need to keep allocated node ports.
 	if newService.Spec.Type == existingService.Spec.Type {
 		// there is no need in optimization, it should be fast enough.
@@ -109,9 +109,12 @@ func reconcileService(ctx context.Context, rclient client.Client, newService *v1
 	newService.Annotations = labels.Merge(existingService.Annotations, newService.Annotations)
 	vmv1beta1.AddFinalizer(newService, existingService)
 
+	// TODO think about proper compare function
+	// It's non-trivial due to kubernetes default values
+	// and user defined values for service options override
 	err = rclient.Update(ctx, newService)
 	if err != nil {
-		return fmt.Errorf("cannot update vmalert server: %w", err)
+		return err
 	}
 
 	return nil

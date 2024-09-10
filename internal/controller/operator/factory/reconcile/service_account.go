@@ -6,7 +6,9 @@ import (
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
+
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
@@ -27,9 +29,13 @@ func ServiceAccount(ctx context.Context, rclient client.Client, sa *corev1.Servi
 		if err := finalize.FreeIfNeeded(ctx, rclient, &existSA); err != nil {
 			return err
 		}
-
 		existSA.OwnerReferences = sa.OwnerReferences
 		existSA.Annotations = labels.Merge(existSA.Annotations, sa.Annotations)
+
+		if equality.Semantic.DeepEqual(sa.Labels, existSA.Labels) &&
+			equality.Semantic.DeepEqual(sa.Annotations, existSA.Annotations) {
+			return nil
+		}
 		existSA.Labels = sa.Labels
 		vmv1beta1.AddFinalizer(&existSA, &existSA)
 		return rclient.Update(ctx, &existSA)

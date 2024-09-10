@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"hash/fnv"
-	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -16,8 +15,10 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/prometheus/client_golang/prometheus"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
@@ -120,6 +121,7 @@ func CreateOrUpdateRuleConfigMaps(ctx context.Context, cr *vmv1beta1.VMAlert, rc
 		if err := finalize.FreeIfNeeded(ctx, rclient, &cm); err != nil {
 			return nil, err
 		}
+		logger.WithContext(ctx).Info("updating configmap configuration", "cm_name", cm.Name)
 		err = rclient.Update(ctx, &cm)
 		if err != nil {
 			return nil, fmt.Errorf("failed to update rules Configmap: %s, err: %w", cm.Name, err)
@@ -128,6 +130,8 @@ func CreateOrUpdateRuleConfigMaps(ctx context.Context, cr *vmv1beta1.VMAlert, rc
 
 	if len(toCreate) > 0 || len(toUpdate) > 0 {
 		// trigger sync for configmap
+		logger.WithContext(ctx).Info("triggered pod config reload by changing annotation")
+
 		err = k8stools.UpdatePodAnnotations(ctx, rclient, cr.PodLabels(), cr.Namespace)
 		if err != nil {
 			l.Error(err, "failed to update pod cm-sync annotation", "ns", cr.Namespace)
@@ -153,9 +157,14 @@ func rulesCMDiff(currentCMs []corev1.ConfigMap, newCMs []corev1.ConfigMap) (toCr
 		for _, currentCM := range currentCMs {
 			if newCM.Name == currentCM.Name {
 				found = true
-				if !reflect.DeepEqual(newCM.Data, currentCM.Data) || !reflect.DeepEqual(newCM.Labels, currentCM.Labels) {
-					toUpdate = append(toUpdate, newCM)
+				newCM.Annotations = labels.Merge(currentCM.Annotations, newCM.Annotations)
+				vmv1beta1.AddFinalizer(&newCM, &currentCM)
+				if equality.Semantic.DeepEqual(newCM.Data, currentCM.Data) &&
+					equality.Semantic.DeepEqual(newCM.Labels, currentCM.Labels) &&
+					equality.Semantic.DeepEqual(newCM.Annotations, currentCM.Annotations) {
+					break
 				}
+				toUpdate = append(toUpdate, newCM)
 				break
 			}
 		}

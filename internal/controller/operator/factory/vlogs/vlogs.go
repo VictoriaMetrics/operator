@@ -15,10 +15,8 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -33,36 +31,7 @@ func CreateVLogsStorage(ctx context.Context, r *vmv1beta1.VLogs, rclient client.
 	l := logger.WithContext(ctx).WithValues("vlogs.pvc.create", r.Name)
 	ctx = logger.AddToContext(ctx, l)
 	newPvc := makeVLogsPvc(r)
-	existPvc := &corev1.PersistentVolumeClaim{}
-	err := rclient.Get(ctx, types.NamespacedName{Namespace: r.Namespace, Name: r.PrefixedName()}, existPvc)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			l.Info("creating new pvc for vlogs")
-			if err := rclient.Create(ctx, newPvc); err != nil {
-				return fmt.Errorf("cannot create new pvc for vlogs: %w", err)
-			}
-			return nil
-		}
-		return fmt.Errorf("cannot get existing pvc for vlogs: %w", err)
-	}
-	if !existPvc.DeletionTimestamp.IsZero() {
-		l.Info("pvc has non zero DeletionTimestamp, skip update. To fix this, make backup for this pvc, delete VLogs object and restore from backup.", "vlogs", r.Name, "namespace", r.Namespace, "pvc", existPvc.Name)
-		return nil
-	}
-	if existPvc.Spec.Resources.String() != newPvc.Spec.Resources.String() {
-		l.Info("volume requests isn't same, update required")
-	}
-	newResources := newPvc.Spec.Resources.DeepCopy()
-	newPvc.Spec = existPvc.Spec
-	newPvc.Spec.Resources = *newResources
-	newPvc.Annotations = labels.Merge(existPvc.Annotations, newPvc.Annotations)
-	vmv1beta1.AddFinalizer(newPvc, existPvc)
-
-	if err := rclient.Update(ctx, newPvc); err != nil {
-		return err
-	}
-
-	return nil
+	return reconcile.PersistentVolumeClaim(ctx, rclient, newPvc)
 }
 
 func makeVLogsPvc(r *vmv1beta1.VLogs) *corev1.PersistentVolumeClaim {

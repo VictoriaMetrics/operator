@@ -6,7 +6,11 @@ import (
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
+
 	rbacv1 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -147,6 +151,14 @@ func ensureVMAgentCRExist(ctx context.Context, cr *vmv1beta1.VMAgent, rclient cl
 	if err := finalize.FreeIfNeeded(ctx, rclient, &existsClusterRole); err != nil {
 		return err
 	}
+	// TODO compare OwnerReferences
+	// fast path
+	if equality.Semantic.DeepEqual(clusterRole.Rules, existsClusterRole.Rules) &&
+		equality.Semantic.DeepEqual(clusterRole.Labels, existsClusterRole.Labels) &&
+		equality.Semantic.DeepEqual(clusterRole.Annotations, existsClusterRole.Annotations) {
+		return nil
+	}
+	logger.WithContext(ctx).Info("updating VMAgent ClusterRole")
 
 	existsClusterRole.OwnerReferences = clusterRole.OwnerReferences
 	existsClusterRole.Labels = clusterRole.Labels
@@ -169,6 +181,16 @@ func ensureVMAgentCRBExist(ctx context.Context, cr *vmv1beta1.VMAgent, rclient c
 	if err := finalize.FreeIfNeeded(ctx, rclient, &existsClusterRoleBinding); err != nil {
 		return err
 	}
+	// TODO compare OwnerReferences
+
+	// fast path
+	if equality.Semantic.DeepEqual(clusterRoleBinding.Subjects, existsClusterRoleBinding.Subjects) &&
+		equality.Semantic.DeepEqual(clusterRoleBinding.RoleRef, existsClusterRoleBinding.RoleRef) &&
+		equality.Semantic.DeepEqual(clusterRoleBinding.Labels, existsClusterRoleBinding.Labels) &&
+		equality.Semantic.DeepEqual(clusterRoleBinding.Annotations, existsClusterRoleBinding.Annotations) {
+		return nil
+	}
+	logger.WithContext(ctx).Info("updating VMAgent ClusterRoleBinding")
 
 	existsClusterRoleBinding.OwnerReferences = clusterRoleBinding.OwnerReferences
 	existsClusterRoleBinding.Labels = clusterRoleBinding.Labels
@@ -220,47 +242,12 @@ func buildVMAgentClusterRole(cr *vmv1beta1.VMAgent) *rbacv1.ClusterRole {
 
 func ensureVMAgentRExist(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) error {
 	nr := buildVMAgentNamespaceRole(cr)
-	var existsClusterRole rbacv1.Role
-
-	if err := rclient.Get(ctx, types.NamespacedName{Name: nr.Name, Namespace: cr.Namespace}, &existsClusterRole); err != nil {
-		if errors.IsNotFound(err) {
-			return rclient.Create(ctx, nr)
-		}
-		return fmt.Errorf("cannot get exist cluster role for vmagent: %w", err)
-	}
-	if err := finalize.FreeIfNeeded(ctx, rclient, &existsClusterRole); err != nil {
-		return err
-	}
-
-	existsClusterRole.OwnerReferences = nr.OwnerReferences
-	existsClusterRole.Labels = nr.Labels
-	existsClusterRole.Annotations = labels.Merge(existsClusterRole.Annotations, nr.Annotations)
-	existsClusterRole.Rules = nr.Rules
-	vmv1beta1.AddFinalizer(&existsClusterRole, &existsClusterRole)
-	return rclient.Update(ctx, &existsClusterRole)
+	return reconcile.Role(ctx, rclient, nr)
 }
 
 func ensureVMAgentRBExist(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) error {
 	rb := buildVMAgentNamespaceRoleBinding(cr)
-	var existsRB rbacv1.RoleBinding
-
-	if err := rclient.Get(ctx, types.NamespacedName{Name: rb.Name, Namespace: cr.Namespace}, &existsRB); err != nil {
-		if errors.IsNotFound(err) {
-			return rclient.Create(ctx, rb)
-		}
-		return fmt.Errorf("cannot get rb for vmagent: %w", err)
-	}
-	if err := finalize.FreeIfNeeded(ctx, rclient, &existsRB); err != nil {
-		return err
-	}
-
-	existsRB.OwnerReferences = rb.OwnerReferences
-	existsRB.Labels = rb.Labels
-	existsRB.Annotations = labels.Merge(existsRB.Annotations, rb.Annotations)
-	existsRB.Subjects = rb.Subjects
-	existsRB.RoleRef = rb.RoleRef
-	vmv1beta1.AddFinalizer(&existsRB, &existsRB)
-	return rclient.Update(ctx, &existsRB)
+	return reconcile.RoleBinding(ctx, rclient, rb)
 }
 
 func buildVMAgentNamespaceRole(cr *vmv1beta1.VMAgent) *rbacv1.Role {

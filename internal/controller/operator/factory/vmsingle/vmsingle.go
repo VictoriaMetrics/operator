@@ -17,17 +17,16 @@ import (
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
-	vmSingleDataDir  = "/victoria-metrics-data"
-	vmDataVolumeName = "data"
+	vmSingleDataDir     = "/victoria-metrics-data"
+	vmDataVolumeName    = "data"
+	streamAggrSecretKey = "config.yaml"
 )
 
 // CreateVMSingleStorage creates persistent volume for vmsingle
@@ -35,36 +34,8 @@ func CreateVMSingleStorage(ctx context.Context, cr *vmv1beta1.VMSingle, rclient 
 	l := logger.WithContext(ctx).WithValues("vm.single.pvc.create", cr.Name)
 	ctx = logger.AddToContext(ctx, l)
 	newPvc := makeVMSinglePvc(cr)
-	existPvc := &corev1.PersistentVolumeClaim{}
-	err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.PrefixedName()}, existPvc)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			l.Info("creating new pvc for vmsingle")
-			if err := rclient.Create(ctx, newPvc); err != nil {
-				return fmt.Errorf("cannot create new pvc for vmsingle: %w", err)
-			}
-			return nil
-		}
-		return fmt.Errorf("cannot get existing pvc for vmsingle: %w", err)
-	}
-	if !existPvc.DeletionTimestamp.IsZero() {
-		l.Info("pvc has non zero DeletionTimestamp, skip update. To fix this, make backup for this pvc, delete VMSingle object and restore from backup.", "vmsingle", cr.Name, "namespace", cr.Namespace, "pvc", existPvc.Name)
-		return nil
-	}
-	if existPvc.Spec.Resources.String() != newPvc.Spec.Resources.String() {
-		l.Info("volume requests isn't same, update required")
-	}
-	newResources := newPvc.Spec.Resources.DeepCopy()
-	newPvc.Spec = existPvc.Spec
-	newPvc.Spec.Resources = *newResources
-	newPvc.Annotations = labels.Merge(existPvc.Annotations, newPvc.Annotations)
-	vmv1beta1.AddFinalizer(newPvc, existPvc)
 
-	if err := rclient.Update(ctx, newPvc); err != nil {
-		return err
-	}
-
-	return nil
+	return reconcile.PersistentVolumeClaim(ctx, rclient, newPvc)
 }
 
 func makeVMSinglePvc(cr *vmv1beta1.VMSingle) *corev1.PersistentVolumeClaim {
@@ -277,7 +248,7 @@ func makeSpecForVMSingle(ctx context.Context, cr *vmv1beta1.VMSingle, c *config.
 			MountPath: vmv1beta1.StreamAggrConfigDir,
 		})
 
-		args = append(args, fmt.Sprintf("--streamAggr.config=%s", path.Join(vmv1beta1.StreamAggrConfigDir, "config.yaml")))
+		args = append(args, fmt.Sprintf("--streamAggr.config=%s", path.Join(vmv1beta1.StreamAggrConfigDir, streamAggrSecretKey)))
 		if cr.Spec.StreamAggrConfig.KeepInput {
 			args = append(args, "--streamAggr.keepInput=true")
 		}
@@ -445,7 +416,7 @@ func buildVMSingleStreamAggrConfig(ctx context.Context, cr *vmv1beta1.VMSingle, 
 			return nil, fmt.Errorf("cannot serialize relabelConfig as yaml: %w", err)
 		}
 		if len(data) > 0 {
-			cfgCM.Data["config.yaml"] = string(data)
+			cfgCM.Data[streamAggrSecretKey] = string(data)
 		}
 	}
 	if cr.Spec.StreamAggrConfig.RuleConfigMap != nil {
@@ -456,7 +427,7 @@ func buildVMSingleStreamAggrConfig(ctx context.Context, cr *vmv1beta1.VMSingle, 
 			return nil, fmt.Errorf("cannot fetch configmap: %s, err: %w", cr.Spec.StreamAggrConfig.RuleConfigMap.Name, err)
 		}
 		if len(data) > 0 {
-			cfgCM.Data["config.yaml"] += data
+			cfgCM.Data[streamAggrSecretKey] += data
 		}
 	}
 	return cfgCM, nil
@@ -471,17 +442,5 @@ func CreateOrUpdateVMSingleStreamAggrConfig(ctx context.Context, cr *vmv1beta1.V
 	if err != nil {
 		return err
 	}
-	var existCM corev1.ConfigMap
-	if err := rclient.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: cr.StreamAggrConfigName()}, &existCM); err != nil {
-		if errors.IsNotFound(err) {
-			return rclient.Create(ctx, streamAggrCM)
-		}
-		return fmt.Errorf("cannot fetch exist configmap for vmsingle streamAggr: %w", err)
-	}
-	if err := finalize.FreeIfNeeded(ctx, rclient, &existCM); err != nil {
-		return err
-	}
-	streamAggrCM.Annotations = labels.Merge(existCM.Annotations, streamAggrCM.Annotations)
-	vmv1beta1.AddFinalizer(streamAggrCM, &existCM)
-	return rclient.Update(ctx, streamAggrCM)
+	return reconcile.ConfigMap(ctx, rclient, streamAggrCM)
 }

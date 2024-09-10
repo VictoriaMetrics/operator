@@ -6,9 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	"k8s.io/apimachinery/pkg/version"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var (
@@ -41,16 +39,6 @@ func SetKubernetesVersionWithDefaults(vi *version.Info, defaultMinor, defaultMaj
 	return nil
 }
 
-// IsPDBV1APISupported check if new v1 API is supported by kubernetes API server
-// deprecated since 1.21
-// https://kubernetes.io/docs/reference/using-api/deprecation-guide/#poddisruptionbudget-v125
-func IsPDBV1APISupported() bool {
-	if ServerMajorVersion == 1 && ServerMinorVersion >= 21 {
-		return true
-	}
-	return false
-}
-
 // IsFSGroupChangePolicySupported checks if `fsGroupChangePolicy` is supported,
 // Supported since 1.20
 // https://kubernetes.io/blog/2020/12/14/kubernetes-release-1.20-fsgroupchangepolicy-fsgrouppolicy/#allow-users-to-skip-recursive-permission-changes-on-mount
@@ -59,15 +47,6 @@ func IsFSGroupChangePolicySupported() bool {
 		return true
 	}
 	return false
-}
-
-// NewHPAEmptyObject returns HorizontalPodAutoscaler object
-func NewHPAEmptyObject(opts ...func(obj client.Object)) client.Object {
-	var hpa client.Object = &autoscalingv2.HorizontalPodAutoscaler{}
-	for _, opt := range opts {
-		opt(hpa)
-	}
-	return hpa
 }
 
 // MustConvertObjectVersionsJSON objects with json serialize and deserialize

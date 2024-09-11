@@ -42,6 +42,7 @@ const (
 	// FinalizerName name of vm-operator finalizer.
 	FinalizerName            = "apps.victoriametrics.com/finalizer"
 	SkipValidationAnnotation = "operator.victoriametrics.com/skip-validation"
+	APIGroup                 = "operator.victoriametrics.com"
 	SkipValidationValue      = "true"
 	AdditionalServiceLabel   = "operator.victoriametrics.com/additional-service"
 	// PVCExpandableLabel controls checks for storageClass
@@ -131,19 +132,37 @@ func isContainsFinalizer(src []string) bool {
 // RemoveFinalizer - removes vm-operator finalizer from finalizers list.
 // executes provided callback if finalizer found
 func RemoveFinalizer(src client.Object, andThen func(client.Object) error) error {
+	return RemoveFinalizerWithOwnerReference(src, true, andThen)
+}
+
+func RemoveFinalizerWithOwnerReference(src client.Object, keepOwnerReference bool, andThen func(client.Object) error) error {
 	existFinalizers := src.GetFinalizers()
-	var wasFinalizerFound bool
-	dst := existFinalizers[:0]
+	var wasFound bool
+	dstFinalizers := existFinalizers[:0]
 	// filter in-place
 	for _, s := range existFinalizers {
 		if s == FinalizerName {
-			wasFinalizerFound = true
+			wasFound = true
 			continue
 		}
-		dst = append(dst, s)
+		dstFinalizers = append(dstFinalizers, s)
 	}
-	src.SetFinalizers(dst)
-	if wasFinalizerFound && andThen != nil {
+	src.SetFinalizers(dstFinalizers)
+	if !keepOwnerReference {
+		existOwnerReferences := src.GetOwnerReferences()
+		dstOwnerReferences := existOwnerReferences[:0]
+		// filter in-place
+		for _, s := range existOwnerReferences {
+			if strings.HasPrefix(s.APIVersion, APIGroup) {
+				wasFound = true
+				continue
+			}
+			dstOwnerReferences = append(dstOwnerReferences, s)
+		}
+		src.SetOwnerReferences(dstOwnerReferences)
+	}
+
+	if wasFound && andThen != nil {
 		return andThen(src)
 	}
 	return nil

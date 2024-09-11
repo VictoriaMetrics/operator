@@ -70,16 +70,14 @@ func CreateVMSingleStorage(ctx context.Context, cr *vmv1beta1.VMSingle, rclient 
 func makeVMSinglePvc(cr *vmv1beta1.VMSingle) *corev1.PersistentVolumeClaim {
 	pvcObject := &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        cr.PrefixedName(),
-			Namespace:   cr.Namespace,
-			Labels:      labels.Merge(cr.Spec.StorageMetadata.Labels, cr.SelectorLabels()),
-			Annotations: cr.Spec.StorageMetadata.Annotations,
-			Finalizers:  []string{vmv1beta1.FinalizerName},
+			Name:            cr.PrefixedName(),
+			Namespace:       cr.Namespace,
+			Labels:          labels.Merge(cr.Spec.StorageMetadata.Labels, cr.SelectorLabels()),
+			Annotations:     cr.Spec.StorageMetadata.Annotations,
+			Finalizers:      []string{vmv1beta1.FinalizerName},
+			OwnerReferences: cr.AsOwner(),
 		},
 		Spec: *cr.Spec.Storage,
-	}
-	if cr.Spec.RemovePvcAfterDelete {
-		pvcObject.OwnerReferences = cr.AsOwner()
 	}
 	return pvcObject
 }

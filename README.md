@@ -5,7 +5,11 @@
 [![Go Report](https://goreportcard.com/badge/github.com/VictoriaMetrics/operator)](https://goreportcard.com/report/github.com/VictoriaMetrics/operator)
 [![Build Status](https://github.com/VictoriaMetrics/VictoriaMetrics/workflows/main/badge.svg)](https://github.com/VictoriaMetrics/operator/actions)
 
-![Victoria Metrics logo](logo.png "Victoria Metrics")
+<picture>
+  <source srcset="docs/logo_white.webp" media="(prefers-color-scheme: dark)">
+  <source srcset="docs/logo.webp" media="(prefers-color-scheme: light)">
+  <img src="docs/logo.webp" width="300" alt="VictoriaMetrics logo">
+</picture>
 
 # VictoriaMetrics operator
 

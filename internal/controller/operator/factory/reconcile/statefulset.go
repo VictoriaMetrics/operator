@@ -14,6 +14,7 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
@@ -30,7 +31,6 @@ const podRevisionLabel = "controller-revision-hash"
 type STSOptions struct {
 	HasClaim           bool
 	SelectorLabels     func() map[string]string
-	VolumeName         func() string
 	HPA                *vmv1beta1.EmbeddedHPA
 	UpdateReplicaCount func(count *int32)
 }
@@ -57,7 +57,13 @@ func waitForStatefulSetReady(ctx context.Context, rclient client.Client, newSts 
 }
 
 // HandleSTSUpdate performs create and update operations for given statefulSet with STSOptions
-func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, newSts *appsv1.StatefulSet, c *config.BaseOperatorConf) error {
+func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, newSts, prevSts *appsv1.StatefulSet, c *config.BaseOperatorConf) error {
+	isPrevEqual := true
+	if prevSts != nil {
+		isPrevEqual = equality.Semantic.DeepDerivative(prevSts.Spec, newSts.Spec)
+	}
+	rclient.Scheme().Default(newSts)
+
 	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		var currentSts appsv1.StatefulSet
 		if err := rclient.Get(ctx, types.NamespacedName{Name: newSts.Name, Namespace: newSts.Namespace}, &currentSts); err != nil {
@@ -96,10 +102,17 @@ func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, 
 		// if sts wasn't recreated, update it first
 		// before making call for performRollingUpdateOnSts
 		if !stsRecreated {
-			// TODO think about compare to conditionally apply updates
-			// it may be tricky due to default values at kubernetes side
-			if err := rclient.Update(ctx, newSts); err != nil {
-				return fmt.Errorf("cannot perform update on sts: %s, err: %w", newSts.Name, err)
+			isEqual := equality.Semantic.DeepDerivative(newSts.Spec, currentSts.Spec)
+			shouldSkipUpdate := isPrevEqual &&
+				isEqual &&
+				equality.Semantic.DeepEqual(newSts.Labels, currentSts.Labels) &&
+				equality.Semantic.DeepEqual(newSts.Annotations, currentSts.Annotations)
+
+			if !shouldSkipUpdate {
+				logger.WithContext(ctx).Info("updating statefulset configuration", "is_prev_equal", isPrevEqual, "is_current_equal", isEqual)
+				if err := rclient.Update(ctx, newSts); err != nil {
+					return fmt.Errorf("cannot perform update on sts: %s, err: %w", newSts.Name, err)
+				}
 			}
 		}
 
@@ -345,3 +358,55 @@ func sortStsPodsByID(src []corev1.Pod) error {
 	})
 	return firstParseError
 }
+
+/*
+*func SetDefaults_StatefulSet(obj *appsv1.StatefulSet) {
+	if len(obj.Spec.PodManagementPolicy) == 0 {
+		obj.Spec.PodManagementPolicy = appsv1.OrderedReadyPodManagement
+	}
+
+	if obj.Spec.UpdateStrategy.Type == "" {
+		obj.Spec.UpdateStrategy.Type = appsv1.RollingUpdateStatefulSetStrategyType
+
+		if obj.Spec.UpdateStrategy.RollingUpdate == nil {
+			// UpdateStrategy.RollingUpdate will take default values below.
+			obj.Spec.UpdateStrategy.RollingUpdate = &appsv1.RollingUpdateStatefulSetStrategy{}
+		}
+	}
+
+	if obj.Spec.UpdateStrategy.Type == appsv1.RollingUpdateStatefulSetStrategyType &&
+		obj.Spec.UpdateStrategy.RollingUpdate != nil {
+
+		if obj.Spec.UpdateStrategy.RollingUpdate.Partition == nil {
+			obj.Spec.UpdateStrategy.RollingUpdate.Partition = ptr.To[int32](0)
+		}
+		if utilfeature.DefaultFeatureGate.Enabled(features.MaxUnavailableStatefulSet) {
+			if obj.Spec.UpdateStrategy.RollingUpdate.MaxUnavailable == nil {
+				obj.Spec.UpdateStrategy.RollingUpdate.MaxUnavailable = ptr.To(intstr.FromInt32(1))
+			}
+		}
+	}
+
+	if utilfeature.DefaultFeatureGate.Enabled(features.StatefulSetAutoDeletePVC) {
+		if obj.Spec.PersistentVolumeClaimRetentionPolicy == nil {
+			obj.Spec.PersistentVolumeClaimRetentionPolicy = &appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy{}
+		}
+		if len(obj.Spec.PersistentVolumeClaimRetentionPolicy.WhenDeleted) == 0 {
+			obj.Spec.PersistentVolumeClaimRetentionPolicy.WhenDeleted = appsv1.RetainPersistentVolumeClaimRetentionPolicyType
+		}
+		if len(obj.Spec.PersistentVolumeClaimRetentionPolicy.WhenScaled) == 0 {
+			obj.Spec.PersistentVolumeClaimRetentionPolicy.WhenScaled = appsv1.RetainPersistentVolumeClaimRetentionPolicyType
+		}
+	}
+
+	if obj.Spec.Replicas == nil {
+		obj.Spec.Replicas = new(int32)
+		*obj.Spec.Replicas = 1
+	}
+	if obj.Spec.RevisionHistoryLimit == nil {
+		obj.Spec.RevisionHistoryLimit = new(int32)
+		*obj.Spec.RevisionHistoryLimit = 10
+	}
+}
+
+* */

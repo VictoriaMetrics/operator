@@ -154,12 +154,14 @@ func VMBackupManager(
 		ProbeHandler:     livenessProbeHandler,
 		PeriodSeconds:    5,
 		TimeoutSeconds:   5,
+		SuccessThreshold: 1,
 		FailureThreshold: livenessFailureThreshold,
 	}
 	readinessProbe := &corev1.Probe{
 		ProbeHandler:     readinessProbeHandler,
 		TimeoutSeconds:   5,
 		PeriodSeconds:    5,
+		SuccessThreshold: 1,
 		FailureThreshold: 10,
 	}
 

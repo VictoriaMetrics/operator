@@ -46,7 +46,8 @@ const (
 	SkipValidationValue      = "true"
 	AdditionalServiceLabel   = "operator.victoriametrics.com/additional-service"
 	// PVCExpandableLabel controls checks for storageClass
-	PVCExpandableLabel = "operator.victoriametrics.com/pvc-allow-volume-expansion"
+	PVCExpandableLabel            = "operator.victoriametrics.com/pvc-allow-volume-expansion"
+	lastAppliedSpecAnnotationName = "operator.victoriametrics/last-applied-spec"
 )
 
 const (
@@ -1002,4 +1003,17 @@ type ScrapeObjectStatus struct {
 	LastSyncError string `json:"lastSyncError,omitempty"`
 	// CurrentSyncError holds an error occured during reconcile loop
 	CurrentSyncError string `json:"-"`
+}
+
+// LastAppliedSpec return last applied spec for given CR object
+func LastAppliedSpec[T any](cr client.Object) (*T, error) {
+	var prevSpec T
+	lastAppliedClusterJSON := cr.GetAnnotations()["operator.victoriametrics/last-applied-spec"]
+	if len(lastAppliedClusterJSON) == 0 {
+		return nil, nil
+	}
+	if err := json.Unmarshal([]byte(lastAppliedClusterJSON), &prevSpec); err != nil {
+		return nil, fmt.Errorf("cannot parse last applied spec annotation=%q, remove this annotation manually from object : %w", lastAppliedSpecAnnotationName, err)
+	}
+	return &prevSpec, nil
 }

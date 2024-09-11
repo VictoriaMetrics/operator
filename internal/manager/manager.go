@@ -17,6 +17,7 @@ import (
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
 	vmcontroller "github.com/VictoriaMetrics/operator/internal/controller/operator"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
@@ -93,7 +94,7 @@ func init() {
 	utilruntime.Must(metav1.AddToScheme(scheme))
 	utilruntime.Must(v1alpha1.AddToScheme(scheme))
 	utilruntime.Must(promv1.AddToScheme(scheme))
-
+	build.AddDefaults(scheme)
 	// +kubebuilder:scaffold:scheme
 }
 

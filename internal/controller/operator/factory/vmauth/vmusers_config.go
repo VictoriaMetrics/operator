@@ -121,6 +121,8 @@ func buildVMAuthConfig(ctx context.Context, rclient client.Client, vmauth *vmv1b
 	// update secrets.
 	for i := range toUpdate {
 		secret := toUpdate[i]
+		logger.WithContext(ctx).Info("updating vmuser secret configuration", "secret_name", secret.Name)
+
 		if err := rclient.Update(ctx, secret); err != nil {
 			return nil, err
 		}

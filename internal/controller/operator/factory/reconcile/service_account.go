@@ -6,6 +6,7 @@ import (
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -38,6 +39,8 @@ func ServiceAccount(ctx context.Context, rclient client.Client, sa *corev1.Servi
 		}
 		existSA.Labels = sa.Labels
 		vmv1beta1.AddFinalizer(&existSA, &existSA)
+		logger.WithContext(ctx).Info("updating ServiceAccount configuration")
+
 		return rclient.Update(ctx, &existSA)
 	})
 }

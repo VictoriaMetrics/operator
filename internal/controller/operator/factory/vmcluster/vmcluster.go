@@ -45,6 +45,7 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *vmv1beta1.VMCluster, rclie
 
 	if cr.Spec.VMStorage != nil {
 		if cr.Spec.VMStorage.PodDisruptionBudget != nil {
+			// TODO verify lastSpec for missing PDB and detete it if needed
 			err := createOrUpdatePodDisruptionBudgetForVMStorage(ctx, cr, rclient)
 			if err != nil {
 				return err
@@ -68,6 +69,7 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *vmv1beta1.VMCluster, rclie
 
 	if cr.Spec.VMSelect != nil {
 		if cr.Spec.VMSelect.PodDisruptionBudget != nil {
+			// TODO verify lastSpec for missing PDB and detete it if needed
 			if err := createOrUpdatePodDisruptionBudgetForVMSelect(ctx, cr, rclient); err != nil {
 				return err
 			}
@@ -94,6 +96,7 @@ func CreateOrUpdateVMCluster(ctx context.Context, cr *vmv1beta1.VMCluster, rclie
 
 	if cr.Spec.VMInsert != nil {
 		if cr.Spec.VMInsert.PodDisruptionBudget != nil {
+			// TODO verify lastSpec for missing PDB and detete it if needed
 			if err := createOrUpdatePodDisruptionBudgetForVMInsert(ctx, cr, rclient); err != nil {
 				return err
 			}
@@ -124,7 +127,20 @@ func createOrUpdateVMSelect(ctx context.Context, cr *vmv1beta1.VMCluster, rclien
 	// we need replicas count from hpa to create proper args.
 	// note, need to make copy of current crd. to able to change it without side effects.
 	cr = cr.DeepCopy()
+	var prevSts *appsv1.StatefulSet
+	prevSpec, err := vmv1beta1.LastAppliedSpec[vmv1beta1.VMClusterSpec](cr)
+	if err != nil {
+		return fmt.Errorf("cannot parse prev storage spec: %w", err)
+	}
 
+	if prevSpec != nil {
+		prevCR := cr.DeepCopy()
+		prevCR.Spec = *prevSpec
+		prevSts, err = genVMSelectSpec(prevCR, c)
+		if err != nil {
+			return fmt.Errorf("cannot build prev storage spec: %w", err)
+		}
+	}
 	newSts, err := genVMSelectSpec(cr, c)
 	if err != nil {
 		return err
@@ -132,7 +148,6 @@ func createOrUpdateVMSelect(ctx context.Context, cr *vmv1beta1.VMCluster, rclien
 
 	stsOpts := reconcile.STSOptions{
 		HasClaim:       len(newSts.Spec.VolumeClaimTemplates) > 0,
-		VolumeName:     cr.Spec.VMSelect.GetCacheMountVolumeName,
 		SelectorLabels: cr.VMSelectSelectorLabels,
 		HPA:            cr.Spec.VMSelect.HPA,
 		UpdateReplicaCount: func(count *int32) {
@@ -141,7 +156,7 @@ func createOrUpdateVMSelect(ctx context.Context, cr *vmv1beta1.VMCluster, rclien
 			}
 		},
 	}
-	return reconcile.HandleSTSUpdate(ctx, rclient, stsOpts, newSts, c)
+	return reconcile.HandleSTSUpdate(ctx, rclient, stsOpts, newSts, prevSts, c)
 }
 
 func createOrUpdateVMSelectService(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) (*corev1.Service, error) {
@@ -194,11 +209,24 @@ func createOrUpdateVMSelectService(ctx context.Context, cr *vmv1beta1.VMCluster,
 }
 
 func createOrUpdateVMInsert(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) error {
+	var prevDeploy *appsv1.Deployment
+	prevSpec, err := vmv1beta1.LastAppliedSpec[vmv1beta1.VMClusterSpec](cr)
+	if err != nil {
+		return fmt.Errorf("cannot parse last applied spec :%w", err)
+	}
+	if prevSpec != nil {
+		prevCR := cr.DeepCopy()
+		prevCR.Spec = *prevSpec
+		prevDeploy, err = genVMInsertSpec(prevCR, c)
+		if err != nil {
+			return fmt.Errorf("cannot generate prev deploy spec: %w", err)
+		}
+	}
 	newDeployment, err := genVMInsertSpec(cr, c)
 	if err != nil {
 		return err
 	}
-	return reconcile.Deployment(ctx, rclient, newDeployment, c.PodWaitReadyTimeout, cr.Spec.VMInsert.HPA != nil)
+	return reconcile.Deployment(ctx, rclient, newDeployment, prevDeploy, c.PodWaitReadyTimeout, cr.Spec.VMInsert.HPA != nil)
 }
 
 func createOrUpdateVMInsertService(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) (*corev1.Service, error) {
@@ -252,6 +280,20 @@ func createOrUpdateVMInsertService(ctx context.Context, cr *vmv1beta1.VMCluster,
 }
 
 func createOrUpdateVMStorage(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) error {
+	var prevSts *appsv1.StatefulSet
+	prevSpec, err := vmv1beta1.LastAppliedSpec[vmv1beta1.VMClusterSpec](cr)
+	if err != nil {
+		return fmt.Errorf("cannot parse prev storage spec: %w", err)
+	}
+
+	if prevSpec != nil {
+		prevCR := cr.DeepCopy()
+		prevCR.Spec = *prevSpec
+		prevSts, err = buildVMStorageSpec(ctx, prevCR, c)
+		if err != nil {
+			return fmt.Errorf("cannot build prev storage spec: %w", err)
+		}
+	}
 	newSts, err := buildVMStorageSpec(ctx, cr, c)
 	if err != nil {
 		return err
@@ -259,10 +301,9 @@ func createOrUpdateVMStorage(ctx context.Context, cr *vmv1beta1.VMCluster, rclie
 
 	stsOpts := reconcile.STSOptions{
 		HasClaim:       len(newSts.Spec.VolumeClaimTemplates) > 0,
-		VolumeName:     cr.Spec.VMStorage.GetStorageVolumeName,
 		SelectorLabels: cr.VMStorageSelectorLabels,
 	}
-	return reconcile.HandleSTSUpdate(ctx, rclient, stsOpts, newSts, c)
+	return reconcile.HandleSTSUpdate(ctx, rclient, stsOpts, newSts, prevSts, c)
 }
 
 func createOrUpdateVMStorageService(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) (*corev1.Service, error) {
@@ -394,7 +435,6 @@ func genVMSelectSpec(cr *vmv1beta1.VMCluster, c *config.BaseOperatorConf) (*apps
 			RevisionHistoryLimit: cr.Spec.VMSelect.RevisionHistoryLimitCount,
 		},
 	}
-	build.AddDefaultsToSTS(&stsSpec.Spec)
 	if cr.Spec.VMSelect.CacheMountPath != "" {
 		storageSpec := cr.Spec.VMSelect.Storage
 		// hack, storage is deprecated.
@@ -564,6 +604,10 @@ func makePodSpecForVMSelect(cr *vmv1beta1.VMCluster, c *config.BaseOperatorConf)
 	if cr.Spec.UseStrictSecurity != nil {
 		useStrictSecurity = *cr.Spec.UseStrictSecurity
 	}
+	tgp := &defaultTerminationGracePeriod
+	if cr.Spec.VMSelect.TerminationGracePeriodSeconds != nil {
+		tgp = cr.Spec.VMSelect.TerminationGracePeriodSeconds
+	}
 	vmSelectPodSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:      cr.VMSelectPodLabels(),
@@ -586,7 +630,7 @@ func makePodSpecForVMSelect(cr *vmv1beta1.VMCluster, c *config.BaseOperatorConf)
 			DNSPolicy:                     cr.Spec.VMSelect.DNSPolicy,
 			DNSConfig:                     cr.Spec.VMSelect.DNSConfig,
 			RestartPolicy:                 "Always",
-			TerminationGracePeriodSeconds: cr.Spec.VMSelect.TerminationGracePeriodSeconds,
+			TerminationGracePeriodSeconds: tgp,
 			TopologySpreadConstraints:     cr.Spec.VMSelect.TopologySpreadConstraints,
 			ReadinessGates:                cr.Spec.VMSelect.ReadinessGates,
 		},
@@ -916,7 +960,6 @@ func buildVMStorageSpec(ctx context.Context, cr *vmv1beta1.VMCluster, c *config.
 			RevisionHistoryLimit: cr.Spec.VMStorage.RevisionHistoryLimitCount,
 		},
 	}
-	build.AddDefaultsToSTS(&stsSpec.Spec)
 	storageSpec := cr.Spec.VMStorage.Storage
 	storageSpec.IntoSTSVolume(cr.Spec.VMStorage.GetStorageVolumeName(), &stsSpec.Spec)
 	stsSpec.Spec.VolumeClaimTemplates = append(stsSpec.Spec.VolumeClaimTemplates, cr.Spec.VMStorage.ClaimTemplates...)
@@ -1152,6 +1195,7 @@ func createOrUpdatePodDisruptionBudgetForVMStorage(ctx context.Context, cr *vmv1
 
 func createOrUpdateVMInsertHPA(ctx context.Context, rclient client.Client, cluster *vmv1beta1.VMCluster) error {
 	if cluster.Spec.VMInsert.HPA == nil {
+		// TODO verify with lastSpec
 		if err := finalize.HPADelete(ctx, rclient, cluster.Spec.VMInsert.GetNameWithPrefix(cluster.Name), cluster.Namespace); err != nil {
 			return fmt.Errorf("cannot remove HPA for vminsert: %w", err)
 		}
@@ -1168,6 +1212,8 @@ func createOrUpdateVMInsertHPA(ctx context.Context, rclient client.Client, clust
 
 func createOrUpdateVMSelectHPA(ctx context.Context, rclient client.Client, cluster *vmv1beta1.VMCluster) error {
 	if cluster.Spec.VMSelect.HPA == nil {
+		// TODO verify with lastSpec
+
 		if err := finalize.HPADelete(ctx, rclient, cluster.Spec.VMSelect.GetNameWithPrefix(cluster.Name), cluster.Namespace); err != nil {
 			return fmt.Errorf("cannot remove HPA for vmselect: %w", err)
 		}

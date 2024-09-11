@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
@@ -422,6 +423,7 @@ func (r *VLogs) Paused() bool {
 // SetStatusTo changes update status with optional reason of fail
 func (r *VLogs) SetUpdateStatusTo(ctx context.Context, c client.Client, status UpdateStatus, maybeErr error) error {
 	currentStatus := r.Status.UpdateStatus
+	prevStatus := r.Status.DeepCopy()
 	r.Status.UpdateStatus = status
 	switch status {
 	case UpdateStatusExpanding:
@@ -441,6 +443,9 @@ func (r *VLogs) SetUpdateStatusTo(ctx context.Context, c client.Client, status U
 		}
 	default:
 		panic(fmt.Sprintf("BUG: not expected status=%q", status))
+	}
+	if equality.Semantic.DeepEqual(&r.Status, prevStatus) {
+		return nil
 	}
 	if err := c.Status().Update(ctx, r); err != nil {
 		return fmt.Errorf("failed to update object status to=%q: %w", status, err)

@@ -113,12 +113,26 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *vmv1beta1.VMAgent, rclient c
 	}
 
 	if cr.Spec.PodDisruptionBudget != nil {
+		// TODO verify lastSpec for missing PDB and detete it if needed
 		err = reconcile.PDB(ctx, rclient, build.PodDisruptionBudget(cr, cr.Spec.PodDisruptionBudget))
 		if err != nil {
 			return fmt.Errorf("cannot update pod disruption budget for vmagent: %w", err)
 		}
 	}
 
+	var prevObjectSpec runtime.Object
+	prevSpec, err := vmv1beta1.LastAppliedSpec[vmv1beta1.VMAgentSpec](cr)
+	if err != nil {
+		return fmt.Errorf("cannot parse last applied spec for vmagent: %w", err)
+	}
+	if prevSpec != nil {
+		prevCR := cr.DeepCopy()
+		prevCR.Spec = *prevSpec
+		prevObjectSpec, err = newDeployForVMAgent(prevCR, c, ssCache)
+		if err != nil {
+			return fmt.Errorf("cannot build new deploy for vmagent: %w", err)
+		}
+	}
 	newDeploy, err := newDeployForVMAgent(cr, c, ssCache)
 	if err != nil {
 		return fmt.Errorf("cannot build new deploy for vmagent: %w", err)
@@ -132,6 +146,10 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *vmv1beta1.VMAgent, rclient c
 		for shardNum := 0; shardNum < shardsCount; shardNum++ {
 			shardedDeploy := newDeploy.DeepCopyObject()
 			addShardSettingsToVMAgent(shardNum, shardsCount, shardedDeploy)
+			if prevObjectSpec != nil {
+				shardedPrevDeploy := prevObjectSpec.DeepCopyObject()
+				addShardSettingsToVMAgent(shardNum, shardsCount, shardedPrevDeploy)
+			}
 			placeholders := map[string]string{shardNumPlaceholder: strconv.Itoa(shardNum)}
 			switch shardedDeploy := shardedDeploy.(type) {
 			case *appsv1.Deployment:
@@ -139,7 +157,8 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *vmv1beta1.VMAgent, rclient c
 				if err != nil {
 					return fmt.Errorf("cannot fill placeholders for deployment sharded vmagent: %w", err)
 				}
-				if err := reconcile.Deployment(ctx, rclient, shardedDeploy, c.PodWaitReadyTimeout, false); err != nil {
+				// TODO fix it with prev spec
+				if err := reconcile.Deployment(ctx, rclient, shardedDeploy, nil, c.PodWaitReadyTimeout, false); err != nil {
 					return err
 				}
 				deploymentNames[shardedDeploy.Name] = struct{}{}
@@ -155,11 +174,9 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *vmv1beta1.VMAgent, rclient c
 						selectorLabels["shard-num"] = strconv.Itoa(shardNum)
 						return selectorLabels
 					},
-					VolumeName: func() string {
-						return vmAgentPersistentQueueMountName
-					},
 				}
-				if err := reconcile.HandleSTSUpdate(ctx, rclient, stsOpts, shardedDeploy, c); err != nil {
+				// TODO add prev sts
+				if err := reconcile.HandleSTSUpdate(ctx, rclient, stsOpts, shardedDeploy, nil, c); err != nil {
 					return err
 				}
 				stsNames[shardedDeploy.Name] = struct{}{}
@@ -168,15 +185,33 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *vmv1beta1.VMAgent, rclient c
 	} else {
 		switch newDeploy := newDeploy.(type) {
 		case *appsv1.Deployment:
+			var prevDeploy *appsv1.Deployment
+			if prevObjectSpec != nil {
+				prevDeploy = prevObjectSpec.(*appsv1.Deployment)
+				prevDeploy, err = k8stools.RenderPlaceholders(prevDeploy, defaultPlaceholders)
+				if err != nil {
+					return fmt.Errorf("cannot fill placeholders for prev deployment in vmagent: %w", err)
+				}
+
+			}
+
 			newDeploy, err = k8stools.RenderPlaceholders(newDeploy, defaultPlaceholders)
 			if err != nil {
 				return fmt.Errorf("cannot fill placeholders for deployment in vmagent: %w", err)
 			}
-			if err := reconcile.Deployment(ctx, rclient, newDeploy, c.PodWaitReadyTimeout, false); err != nil {
+			if err := reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, c.PodWaitReadyTimeout, false); err != nil {
 				return err
 			}
 			deploymentNames[newDeploy.Name] = struct{}{}
 		case *appsv1.StatefulSet:
+			var prevSTS *appsv1.StatefulSet
+			if prevObjectSpec != nil {
+				prevSTS = prevObjectSpec.(*appsv1.StatefulSet)
+				prevSTS, err = k8stools.RenderPlaceholders(prevSTS, defaultPlaceholders)
+				if err != nil {
+					return fmt.Errorf("cannot fill placeholders for prev sts in vmagent: %w", err)
+				}
+			}
 			newDeploy, err = k8stools.RenderPlaceholders(newDeploy, defaultPlaceholders)
 			if err != nil {
 				return fmt.Errorf("cannot fill placeholders for sts in vmagent: %w", err)
@@ -184,11 +219,8 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *vmv1beta1.VMAgent, rclient c
 			stsOpts := reconcile.STSOptions{
 				HasClaim:       len(newDeploy.Spec.VolumeClaimTemplates) > 0,
 				SelectorLabels: cr.SelectorLabels,
-				VolumeName: func() string {
-					return vmAgentPersistentQueueMountName
-				},
 			}
-			if err := reconcile.HandleSTSUpdate(ctx, rclient, stsOpts, newDeploy, c); err != nil {
+			if err := reconcile.HandleSTSUpdate(ctx, rclient, stsOpts, newDeploy, prevSTS, c); err != nil {
 				return err
 			}
 			stsNames[newDeploy.Name] = struct{}{}
@@ -263,7 +295,6 @@ func newDeployForVMAgent(cr *vmv1beta1.VMAgent, c *config.BaseOperatorConf, ssCa
 				},
 			},
 		}
-		build.AddDefaultsToSTS(&stsSpec.Spec)
 		cr.Spec.StatefulStorage.IntoSTSVolume(vmAgentPersistentQueueMountName, &stsSpec.Spec)
 		stsSpec.Spec.VolumeClaimTemplates = append(stsSpec.Spec.VolumeClaimTemplates, cr.Spec.ClaimTemplates...)
 		return stsSpec, nil

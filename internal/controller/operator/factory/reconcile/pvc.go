@@ -60,7 +60,7 @@ func PersistentVolumeClaim(ctx context.Context, rclient client.Client, pvc *core
 			return nil
 		}
 	}
-
+	logger.WithContext(ctx).Info("updating PersistentVolumeClaim configuration")
 	newResources := pvc.Spec.Resources.DeepCopy()
 	// keep old spec with new resource requests
 	pvc.Spec = existPvc.Spec

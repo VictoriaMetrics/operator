@@ -14,6 +14,7 @@ import (
 	promv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 
 	"golang.org/x/sync/errgroup"
+	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/discovery"
@@ -356,13 +357,17 @@ func (c *ConverterController) UpdatePrometheusRule(_old, new interface{}) {
 		l.Info("syncing for object was disabled by annotation", "annotation", IgnoreConversionLabel)
 		return
 	}
-	existingVMRule.Spec = VMRule.Spec
 	metaMergeStrategy := getMetaMergeStrategy(existingVMRule.Annotations)
 	existingVMRule.Annotations = mergeLabelsWithStrategy(existingVMRule.Annotations, VMRule.Annotations, metaMergeStrategy)
 	existingVMRule.Labels = mergeLabelsWithStrategy(existingVMRule.Labels, VMRule.Labels, metaMergeStrategy)
-	existingVMRule.OwnerReferences = VMRule.OwnerReferences
 
-	// TODO compare
+	if equality.Semantic.DeepEqual(VMRule.Spec, existingVMRule.Spec) &&
+		isMetaEqual(VMRule, existingVMRule) {
+		return
+	}
+	existingVMRule.OwnerReferences = VMRule.OwnerReferences
+	existingVMRule.Spec = VMRule.Spec
+
 	err = c.rclient.Update(ctx, existingVMRule)
 	if err != nil {
 		l.Error(err, "cannot update VMRule")
@@ -408,14 +413,17 @@ func (c *ConverterController) UpdateServiceMonitor(_, new interface{}) {
 		l.Info("syncing for object was disabled by annotation", "annotation", IgnoreConversionLabel)
 		return
 	}
-	existingVMServiceScrape.Spec = vmServiceScrape.Spec
 
 	metaMergeStrategy := getMetaMergeStrategy(existingVMServiceScrape.Annotations)
 	existingVMServiceScrape.Annotations = mergeLabelsWithStrategy(existingVMServiceScrape.Annotations, vmServiceScrape.Annotations, metaMergeStrategy)
 	existingVMServiceScrape.Labels = mergeLabelsWithStrategy(existingVMServiceScrape.Labels, vmServiceScrape.Labels, metaMergeStrategy)
+	if equality.Semantic.DeepEqual(vmServiceScrape.Spec, existingVMServiceScrape.Spec) &&
+		isMetaEqual(vmServiceScrape, existingVMServiceScrape) {
+		return
+	}
+	existingVMServiceScrape.Spec = vmServiceScrape.Spec
 	existingVMServiceScrape.OwnerReferences = vmServiceScrape.OwnerReferences
 
-	// TODO compare
 	err = c.rclient.Update(ctx, existingVMServiceScrape)
 	if err != nil {
 		l.Error(err, "cannot update")
@@ -461,13 +469,16 @@ func (c *ConverterController) UpdatePodMonitor(_, new interface{}) {
 		return
 	}
 
-	existingVMPodScrape.Spec = podScrape.Spec
 	mergeStrategy := getMetaMergeStrategy(existingVMPodScrape.Annotations)
 	existingVMPodScrape.Annotations = mergeLabelsWithStrategy(existingVMPodScrape.Annotations, podScrape.Annotations, mergeStrategy)
 	existingVMPodScrape.Labels = mergeLabelsWithStrategy(existingVMPodScrape.Labels, podScrape.Labels, mergeStrategy)
+	if equality.Semantic.DeepEqual(podScrape.Spec, existingVMPodScrape.Spec) &&
+		isMetaEqual(podScrape, existingVMPodScrape) {
+		return
+	}
+	existingVMPodScrape.Spec = podScrape.Spec
 	existingVMPodScrape.OwnerReferences = podScrape.OwnerReferences
 
-	// TODO compare
 	err = c.rclient.Update(ctx, existingVMPodScrape)
 	if err != nil {
 		l.Error(err, "cannot update podScrape")
@@ -531,14 +542,18 @@ func (c *ConverterController) UpdateAlertmanagerConfig(_, new interface{}) {
 		l.Info("syncing for object was disabled by annotation", "annotation", IgnoreConversionLabel)
 		return
 	}
-	existAlertmanagerConfig.Spec = vmAMc.Spec
 
 	metaMergeStrategy := getMetaMergeStrategy(existAlertmanagerConfig.Annotations)
 	existAlertmanagerConfig.Annotations = mergeLabelsWithStrategy(existAlertmanagerConfig.Annotations, vmAMc.Annotations, metaMergeStrategy)
 	existAlertmanagerConfig.Labels = mergeLabelsWithStrategy(existAlertmanagerConfig.Labels, vmAMc.Labels, metaMergeStrategy)
-	existAlertmanagerConfig.OwnerReferences = vmAMc.OwnerReferences
+	if equality.Semantic.DeepEqual(vmAMc.Spec, existAlertmanagerConfig.Spec) &&
+		isMetaEqual(vmAMc, existAlertmanagerConfig) {
+		return
+	}
 
-	// TODO compare
+	existAlertmanagerConfig.OwnerReferences = vmAMc.OwnerReferences
+	existAlertmanagerConfig.Spec = vmAMc.Spec
+
 	err = c.rclient.Update(ctx, existAlertmanagerConfig)
 	if err != nil {
 		l.Error(err, "cannot update exist alertmanager config")
@@ -626,10 +641,13 @@ func (c *ConverterController) UpdateProbe(_, new interface{}) {
 	mergeStrategy := getMetaMergeStrategy(existingVMProbe.Annotations)
 	existingVMProbe.Annotations = mergeLabelsWithStrategy(existingVMProbe.Annotations, probeNew.Annotations, mergeStrategy)
 	existingVMProbe.Labels = mergeLabelsWithStrategy(existingVMProbe.Labels, probeNew.Labels, mergeStrategy)
-	existingVMProbe.OwnerReferences = vmProbe.OwnerReferences
+	if equality.Semantic.DeepEqual(vmProbe.Spec, existingVMProbe.Spec) &&
+		isMetaEqual(vmProbe, existingVMProbe) {
+		return
+	}
 
+	existingVMProbe.OwnerReferences = vmProbe.OwnerReferences
 	existingVMProbe.Spec = vmProbe.Spec
-	// TODO compare
 	err = c.rclient.Update(ctx, existingVMProbe)
 	if err != nil {
 		l.Error(err, "cannot update vmProbe")
@@ -698,10 +716,19 @@ func (c *ConverterController) UpdateScrapeConfig(_, new interface{}) {
 	existingVMScrapeConfig.Labels = mergeLabelsWithStrategy(existingVMScrapeConfig.Labels, vmScrapeConfig.Labels, metaMergeStrategy)
 	existingVMScrapeConfig.OwnerReferences = vmScrapeConfig.OwnerReferences
 
-	// TODO compare
+	if equality.Semantic.DeepEqual(vmScrapeConfig.Spec, existingVMScrapeConfig.Spec) &&
+		isMetaEqual(vmScrapeConfig, existingVMScrapeConfig) {
+		return
+	}
 	err = c.rclient.Update(ctx, existingVMScrapeConfig)
 	if err != nil {
 		l.Error(err, "cannot update vmScrapeConfig")
 		return
 	}
+}
+
+func isMetaEqual(left, right metav1.Object) bool {
+	return equality.Semantic.DeepEqual(left.GetLabels(), right.GetLabels()) &&
+		equality.Semantic.DeepEqual(left.GetAnnotations(), right.GetAnnotations()) &&
+		equality.Semantic.DeepEqual(left.GetOwnerReferences(), right.GetOwnerReferences())
 }

@@ -56,18 +56,7 @@ func makeVMSinglePvc(cr *vmv1beta1.VMSingle) *corev1.PersistentVolumeClaim {
 // CreateOrUpdateVMSingle performs an update for single node resource
 func CreateOrUpdateVMSingle(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.Client, c *config.BaseOperatorConf) error {
 	cr = cr.DeepCopy()
-	if cr.Spec.Image.Repository == "" {
-		cr.Spec.Image.Repository = c.VMSingleDefault.Image
-	}
-	if cr.Spec.Image.Tag == "" {
-		cr.Spec.Image.Tag = c.VMSingleDefault.Version
-	}
-	if cr.Spec.Port == "" {
-		cr.Spec.Port = c.VMSingleDefault.Port
-	}
-	if cr.Spec.Image.PullPolicy == "" {
-		cr.Spec.Image.PullPolicy = corev1.PullIfNotPresent
-	}
+
 	if cr.IsOwnsServiceAccount() {
 		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr)); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
@@ -85,15 +74,40 @@ func CreateOrUpdateVMSingle(ctx context.Context, cr *vmv1beta1.VMSingle, rclient
 			return fmt.Errorf("cannot create serviceScrape for vmsingle: %w", err)
 		}
 	}
+	var prevDeploy *appsv1.Deployment
+	prevSpec, err := vmv1beta1.LastAppliedSpec[vmv1beta1.VMSingleSpec](cr)
+	if err != nil {
+		return fmt.Errorf("cannot parse last applied spec :%w", err)
+	}
+	if prevSpec != nil {
+		prevCR := cr.DeepCopy()
+		prevCR.Spec = *prevSpec
+		prevDeploy, err = newDeployForVMSingle(ctx, prevCR, c)
+		if err != nil {
+			return fmt.Errorf("cannot generate prev deploy spec: %w", err)
+		}
+	}
 	newDeploy, err := newDeployForVMSingle(ctx, cr, c)
 	if err != nil {
 		return fmt.Errorf("cannot generate new deploy for vmsingle: %w", err)
 	}
 
-	return reconcile.Deployment(ctx, rclient, newDeploy, c.PodWaitReadyTimeout, false)
+	return reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, c.PodWaitReadyTimeout, false)
 }
 
 func newDeployForVMSingle(ctx context.Context, cr *vmv1beta1.VMSingle, c *config.BaseOperatorConf) (*appsv1.Deployment, error) {
+	if cr.Spec.Image.Repository == "" {
+		cr.Spec.Image.Repository = c.VMSingleDefault.Image
+	}
+	if cr.Spec.Image.Tag == "" {
+		cr.Spec.Image.Tag = c.VMSingleDefault.Version
+	}
+	if cr.Spec.Port == "" {
+		cr.Spec.Port = c.VMSingleDefault.Port
+	}
+	if cr.Spec.Image.PullPolicy == "" {
+		cr.Spec.Image.PullPolicy = corev1.PullIfNotPresent
+	}
 	podSpec, err := makeSpecForVMSingle(ctx, cr, c)
 	if err != nil {
 		return nil, err
@@ -356,6 +370,9 @@ func makeSpecForVMSingle(ctx context.Context, cr *vmv1beta1.VMSingle, c *config.
 
 // CreateOrUpdateVMSingleService creates service for vmsingle
 func CreateOrUpdateVMSingleService(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.Client, c *config.BaseOperatorConf) (*corev1.Service, error) {
+	if cr.Spec.Port == "" {
+		cr.Spec.Port = c.VMSingleDefault.Port
+	}
 	addBackupPort := func(svc *corev1.Service) {
 		if cr.Spec.VMBackup != nil {
 			if cr.Spec.VMBackup.Port == "" {

@@ -7,8 +7,10 @@ import (
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
@@ -18,7 +20,13 @@ import (
 )
 
 // Deployment performs an update or create operator for deployment and waits until it's replicas is ready
-func Deployment(ctx context.Context, rclient client.Client, newDeploy *appsv1.Deployment, waitDeadline time.Duration, hasHPA bool) error {
+func Deployment(ctx context.Context, rclient client.Client, newDeploy, prevDeploy *appsv1.Deployment, waitDeadline time.Duration, hasHPA bool) error {
+	isPrevEqual := true
+	if prevDeploy != nil {
+		isPrevEqual = equality.Semantic.DeepDerivative(prevDeploy.Spec, newDeploy.Spec)
+	}
+	rclient.Scheme().Default(newDeploy)
+
 	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		var currentDeploy appsv1.Deployment
 		err := rclient.Get(ctx, types.NamespacedName{Name: newDeploy.Name, Namespace: newDeploy.Namespace}, &currentDeploy)
@@ -42,6 +50,15 @@ func Deployment(ctx context.Context, rclient client.Client, newDeploy *appsv1.De
 		newDeploy.Annotations = labels.Merge(currentDeploy.Annotations, newDeploy.Annotations)
 		vmv1beta1.AddFinalizer(newDeploy, &currentDeploy)
 
+		isEqual := equality.Semantic.DeepDerivative(newDeploy.Spec, currentDeploy.Spec)
+		if isEqual &&
+			isPrevEqual &&
+			equality.Semantic.DeepEqual(newDeploy.Labels, currentDeploy.Labels) &&
+			equality.Semantic.DeepEqual(newDeploy.Annotations, currentDeploy.Annotations) {
+			return waitDeploymentReady(ctx, rclient, newDeploy, waitDeadline)
+		}
+		logger.WithContext(ctx).Info("updating deployment configuration", "is_prev_equal", isPrevEqual, "is_current_equal", isEqual)
+
 		if err := rclient.Update(ctx, newDeploy); err != nil {
 			return fmt.Errorf("cannot update deployment for app: %s, err: %w", newDeploy.Name, err)
 		}
@@ -52,7 +69,7 @@ func Deployment(ctx context.Context, rclient client.Client, newDeploy *appsv1.De
 
 // waitDeploymentReady waits until deployment's replicaSet rollouts and all new pods is ready
 func waitDeploymentReady(ctx context.Context, rclient client.Client, dep *appsv1.Deployment, deadline time.Duration) error {
-	err := wait.PollUntilContextTimeout(ctx, time.Second*5, deadline, false, func(ctx context.Context) (done bool, err error) {
+	err := wait.PollUntilContextTimeout(ctx, time.Second, deadline, false, func(ctx context.Context) (done bool, err error) {
 		var actualDeploy appsv1.Deployment
 		if err := rclient.Get(ctx, types.NamespacedName{Namespace: dep.Namespace, Name: dep.Name}, &actualDeploy); err != nil {
 			return false, fmt.Errorf("cannot fetch actual deployment state: %w", err)

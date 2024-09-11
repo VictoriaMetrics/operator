@@ -11,6 +11,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
@@ -570,6 +571,7 @@ func (cr *VMAlertmanager) Paused() bool {
 // SetStatusTo changes update status with optional reason of fail
 func (cr *VMAlertmanager) SetUpdateStatusTo(ctx context.Context, r client.Client, status UpdateStatus, maybeErr error) error {
 	currentStatus := cr.Status.UpdateStatus
+	prevStatus := cr.Status.DeepCopy()
 	cr.Status.UpdateStatus = status
 	switch status {
 	case UpdateStatusExpanding:
@@ -585,6 +587,9 @@ func (cr *VMAlertmanager) SetUpdateStatusTo(ctx context.Context, r client.Client
 		}
 	default:
 		panic(fmt.Sprintf("BUG: not expected status=%q", status))
+	}
+	if equality.Semantic.DeepEqual(&cr.Status, prevStatus) {
+		return nil
 	}
 	if err := r.Status().Update(ctx, cr); err != nil {
 		return fmt.Errorf("failed to update object status to=%q: %w", status, err)

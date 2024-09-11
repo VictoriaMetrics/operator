@@ -90,7 +90,6 @@ func reconcileService(ctx context.Context, rclient client.Client, newService *v1
 	}
 	// need to keep allocated node ports.
 	if newService.Spec.Type == existingService.Spec.Type {
-		// there is no need in optimization, it should be fast enough.
 		for i := range existingService.Spec.Ports {
 			existPort := existingService.Spec.Ports[i]
 			for j := range newService.Spec.Ports {
@@ -109,9 +108,20 @@ func reconcileService(ctx context.Context, rclient client.Client, newService *v1
 	newService.Annotations = labels.Merge(existingService.Annotations, newService.Annotations)
 	vmv1beta1.AddFinalizer(newService, existingService)
 
-	// TODO think about proper compare function
-	// It's non-trivial due to kubernetes default values
-	// and user defined values for service options override
+	rclient.Scheme().Default(newService)
+
+	// TODO add compare with prev service
+	// to properly check service definition
+
+	//isEqual := equality.Semantic.DeepDerivative(newService.Spec, existingService.Spec)
+	// if isEqual &&
+	// 	equality.Semantic.DeepEqual(newService.Labels, existingService.Labels) &&
+	// 	equality.Semantic.DeepEqual(newService.Labels, existingService.Labels) {
+	// 	return nil
+	// }
+	//
+	// logger.WithContext(ctx).Info("updating service configuration", "is_current_equal", isEqual)
+
 	err = rclient.Update(ctx, newService)
 	if err != nil {
 		return err

@@ -81,12 +81,27 @@ func CreateOrUpdateVLogs(ctx context.Context, r *vmv1beta1.VLogs, rclient client
 			return fmt.Errorf("cannot create serviceScrape for vlogs: %w", err)
 		}
 	}
+
+	var prevDeploy *appsv1.Deployment
+	prevSpec, err := vmv1beta1.LastAppliedSpec[vmv1beta1.VLogsSpec](r)
+	if err != nil {
+		return fmt.Errorf("cannot parse last applied spec :%w", err)
+	}
+	if prevSpec != nil {
+		prevCR := r.DeepCopy()
+		prevCR.Spec = *prevSpec
+		prevDeploy, err = newDeployForVLogs(ctx, prevCR, c)
+		if err != nil {
+			return fmt.Errorf("cannot generate prev deploy spec: %w", err)
+		}
+	}
+
 	newDeploy, err := newDeployForVLogs(ctx, r, c)
 	if err != nil {
 		return fmt.Errorf("cannot generate new deploy for vlogs: %w", err)
 	}
 
-	return reconcile.Deployment(ctx, rclient, newDeploy, c.PodWaitReadyTimeout, false)
+	return reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, c.PodWaitReadyTimeout, false)
 }
 
 func newDeployForVLogs(ctx context.Context, r *vmv1beta1.VLogs, c *config.BaseOperatorConf) (*appsv1.Deployment, error) {

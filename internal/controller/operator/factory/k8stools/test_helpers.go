@@ -1,13 +1,18 @@
 package k8stools
 
 import (
+	"context"
+	"sync/atomic"
 	"testing"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+
 	"github.com/go-test/deep"
 	appsv1 "k8s.io/api/apps/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -73,9 +78,18 @@ func GetTestClientWithObjects(predefinedObjects []runtime.Object) client.Client 
 			&vmv1beta1.VMAlertmanager{},
 			&vmv1beta1.VMAlertmanagerConfig{},
 			&vmv1beta1.VLogs{},
+			&vmv1beta1.VMServiceScrape{},
+			&vmv1beta1.VMPodScrape{},
+			&vmv1beta1.VMProbe{},
+			&vmv1beta1.VMScrapeConfig{},
+			&vmv1beta1.VMStaticScrape{},
+			&vmv1beta1.VMNodeScrape{},
 		).
 		WithObjects(obj...).Build()
-	return fclient
+	withStats := TestClientWithStatsTrack{
+		origin: fclient,
+	}
+	return &withStats
 }
 
 // CompareObjectMeta compares metadata objects
@@ -112,4 +126,76 @@ func NewReadyDeployment(name, namespace string) *appsv1.Deployment {
 			},
 		},
 	}
+}
+
+// TestClientWithStatsTrack helps to track actual requests to the api server
+type TestClientWithStatsTrack struct {
+	origin         client.Client
+	GetCalls       atomic.Int64
+	DeleteCalls    atomic.Int64
+	CreateCalls    atomic.Int64
+	UpdateCalls    atomic.Int64
+	ListCalls      atomic.Int64
+	PatchCalls     atomic.Int64
+	DeleteAllCalls atomic.Int64
+}
+
+func (tcs *TestClientWithStatsTrack) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+	tcs.GetCalls.Add(1)
+	return tcs.origin.Get(ctx, key, obj, opts...)
+}
+
+func (tcs *TestClientWithStatsTrack) List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
+	tcs.ListCalls.Add(1)
+	return tcs.origin.List(ctx, list, opts...)
+}
+
+func (tcs *TestClientWithStatsTrack) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
+	tcs.CreateCalls.Add(1)
+	return tcs.origin.Create(ctx, obj, opts...)
+}
+
+func (tcs *TestClientWithStatsTrack) Delete(ctx context.Context, obj client.Object, opts ...client.DeleteOption) error {
+	tcs.DeleteCalls.Add(1)
+	return tcs.origin.Delete(ctx, obj, opts...)
+}
+
+func (tcs *TestClientWithStatsTrack) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {
+	tcs.UpdateCalls.Add(1)
+	return tcs.origin.Update(ctx, obj, opts...)
+}
+
+func (tcs *TestClientWithStatsTrack) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+	tcs.PatchCalls.Add(1)
+	return tcs.origin.Patch(ctx, obj, patch, opts...)
+}
+
+// DeleteAllOf deletes all objects of the given type matching the given options.
+func (tcs *TestClientWithStatsTrack) DeleteAllOf(ctx context.Context, obj client.Object, opts ...client.DeleteAllOfOption) error {
+	tcs.DeleteAllCalls.Add(1)
+	return tcs.origin.DeleteAllOf(ctx, obj, opts...)
+}
+
+func (tcs *TestClientWithStatsTrack) Status() client.SubResourceWriter {
+	return tcs.origin.Status()
+}
+
+func (tcs *TestClientWithStatsTrack) SubResource(subResource string) client.SubResourceClient {
+	return tcs.origin.SubResource(subResource)
+}
+
+func (tcs *TestClientWithStatsTrack) Scheme() *runtime.Scheme {
+	return tcs.origin.Scheme()
+}
+
+func (tcs *TestClientWithStatsTrack) RESTMapper() meta.RESTMapper {
+	return tcs.origin.RESTMapper()
+}
+
+func (tcs *TestClientWithStatsTrack) GroupVersionKindFor(obj runtime.Object) (schema.GroupVersionKind, error) {
+	return tcs.origin.GroupVersionKindFor(obj)
+}
+
+func (tcs *TestClientWithStatsTrack) IsObjectNamespaced(obj runtime.Object) (bool, error) {
+	return tcs.origin.IsObjectNamespaced(obj)
 }

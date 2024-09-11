@@ -60,6 +60,9 @@ func newStsForAlertManager(cr *vmv1beta1.VMAlertmanager, c *config.BaseOperatorC
 	if cr.Spec.Image.Repository == "" {
 		cr.Spec.Image.Repository = c.VMAlertManager.AlertmanagerDefaultBaseImage
 	}
+	if cr.Spec.Image.Tag == "" {
+		cr.Spec.Image.Tag = c.VMAlertManager.AlertManagerVersion
+	}
 	if cr.Spec.PortName == "" {
 		cr.Spec.PortName = defaultPortName
 	}
@@ -90,7 +93,6 @@ func newStsForAlertManager(cr *vmv1beta1.VMAlertmanager, c *config.BaseOperatorC
 		},
 		Spec: *spec,
 	}
-	build.AddDefaultsToSTS(&statefulset.Spec)
 
 	if len(cr.Spec.ImagePullSecrets) > 0 {
 		statefulset.Spec.Template.Spec.ImagePullSecrets = cr.Spec.ImagePullSecrets

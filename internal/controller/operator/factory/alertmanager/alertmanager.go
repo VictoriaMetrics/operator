@@ -10,6 +10,7 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 	"github.com/prometheus/client_golang/prometheus"
+	appsv1 "k8s.io/api/apps/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 )
@@ -44,15 +45,24 @@ func CreateOrUpdateAlertManager(ctx context.Context, cr *vmv1beta1.VMAlertmanage
 	}
 
 	if cr.Spec.PodDisruptionBudget != nil {
+		// TODO verify lastSpec for missing PDB and detete it if needed
 		if err := reconcile.PDB(ctx, rclient, build.PodDisruptionBudget(cr, cr.Spec.PodDisruptionBudget)); err != nil {
 			return err
 		}
 	}
-	// special hack, we need version for alertmanager a bit earlier.
-	if cr.Spec.Image.Tag == "" {
-		cr.Spec.Image.Tag = c.VMAlertManager.AlertManagerVersion
+	var prevSts *appsv1.StatefulSet
+	prevSpec, err := vmv1beta1.LastAppliedSpec[vmv1beta1.VMAlertmanagerSpec](cr)
+	if err != nil {
+		return fmt.Errorf("cannot parse last applied spec :%w", err)
 	}
-
+	if prevSpec != nil {
+		prevCR := cr.DeepCopy()
+		prevCR.Spec = *prevSpec
+		prevSts, err = newStsForAlertManager(prevCR, c)
+		if err != nil {
+			return fmt.Errorf("cannot generate prev alertmanager sts, name: %s,err: %w", cr.Name, err)
+		}
+	}
 	newSts, err := newStsForAlertManager(cr, c)
 	if err != nil {
 		return fmt.Errorf("cannot generate alertmanager sts, name: %s,err: %w", cr.Name, err)
@@ -60,8 +70,7 @@ func CreateOrUpdateAlertManager(ctx context.Context, cr *vmv1beta1.VMAlertmanage
 
 	stsOpts := reconcile.STSOptions{
 		HasClaim:       len(newSts.Spec.VolumeClaimTemplates) > 0,
-		VolumeName:     cr.GetVolumeName,
 		SelectorLabels: cr.SelectorLabels,
 	}
-	return reconcile.HandleSTSUpdate(ctx, rclient, stsOpts, newSts, c)
+	return reconcile.HandleSTSUpdate(ctx, rclient, stsOpts, newSts, prevSts, c)
 }

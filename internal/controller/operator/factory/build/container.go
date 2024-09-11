@@ -316,10 +316,18 @@ func AddsPortProbesToConfigReloaderContainer(crContainer *corev1.Container, c *c
 		Protocol:      "TCP",
 	})
 	crContainer.LivenessProbe = &corev1.Probe{
-		ProbeHandler: configReloaderContainerProbe,
+		TimeoutSeconds:   1,
+		SuccessThreshold: 1,
+		FailureThreshold: 3,
+		PeriodSeconds:    10,
+		ProbeHandler:     configReloaderContainerProbe,
 	}
 	crContainer.ReadinessProbe = &corev1.Probe{
 		InitialDelaySeconds: 5,
+		TimeoutSeconds:      1,
+		SuccessThreshold:    1,
+		FailureThreshold:    3,
+		PeriodSeconds:       10,
 		ProbeHandler:        configReloaderContainerProbe,
 	}
 }

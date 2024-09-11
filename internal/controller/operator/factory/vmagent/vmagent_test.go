@@ -2006,10 +2006,10 @@ containers:
                     intval: 8435
                 scheme: HTTP
         initialdelayseconds: 0
-        timeoutseconds: 0
-        periodseconds: 0
-        successthreshold: 0
-        failurethreshold: 0
+        timeoutseconds: 1
+        periodseconds: 10
+        successthreshold: 1
+        failurethreshold: 3
       readinessprobe:
         probehandler:
             httpget:
@@ -2018,10 +2018,10 @@ containers:
                     intval: 8435
                 scheme: HTTP
         initialdelayseconds: 5
-        timeoutseconds: 0
-        periodseconds: 0
-        successthreshold: 0
-        failurethreshold: 0
+        timeoutseconds: 1
+        periodseconds: 10
+        successthreshold: 1
+        failurethreshold: 3
         terminationgraceperiodseconds: null
       terminationmessagepolicy: FallbackToLogsOnError
     - name: vmagent

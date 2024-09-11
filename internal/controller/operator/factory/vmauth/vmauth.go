@@ -91,8 +91,22 @@ func CreateOrUpdateVMAuth(ctx context.Context, cr *vmv1beta1.VMAuth, rclient cli
 	}
 
 	if cr.Spec.PodDisruptionBudget != nil {
+		// TODO verify lastSpec for missing PDB and detete it if needed
 		if err := reconcile.PDB(ctx, rclient, build.PodDisruptionBudget(cr, cr.Spec.PodDisruptionBudget)); err != nil {
 			return fmt.Errorf("cannot update pod disruption budget for vmauth: %w", err)
+		}
+	}
+	var prevDeploy *appsv1.Deployment
+	prevSpec, err := vmv1beta1.LastAppliedSpec[vmv1beta1.VMAuthSpec](cr)
+	if err != nil {
+		return fmt.Errorf("cannot parse last applied spec: %w", err)
+	}
+	if prevSpec != nil {
+		prevCR := cr.DeepCopy()
+		prevCR.Spec = *prevSpec
+		prevDeploy, err = newDeployForVMAuth(prevCR, c)
+		if err != nil {
+			return fmt.Errorf("cannot generate prev deploy spec: %w", err)
 		}
 	}
 	newDeploy, err := newDeployForVMAuth(cr, c)
@@ -100,7 +114,7 @@ func CreateOrUpdateVMAuth(ctx context.Context, cr *vmv1beta1.VMAuth, rclient cli
 		return fmt.Errorf("cannot build new deploy for vmauth: %w", err)
 	}
 
-	return reconcile.Deployment(ctx, rclient, newDeploy, c.PodWaitReadyTimeout, false)
+	return reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, c.PodWaitReadyTimeout, false)
 }
 
 func newDeployForVMAuth(cr *vmv1beta1.VMAuth, c *config.BaseOperatorConf) (*appsv1.Deployment, error) {
@@ -374,11 +388,11 @@ func makeVMAuthConfigSecret(cr *vmv1beta1.VMAuth) *corev1.Secret {
 // CreateOrUpdateVMAuthIngress handles ingress for vmauth.
 func CreateOrUpdateVMAuthIngress(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAuth) error {
 	if cr.Spec.Ingress == nil {
-		// handle delete case
-		// TODO check last-applied spec
+		// TODO verify lastSpec for missing ingress and detete it if needed
 		if err := finalize.VMAuthIngressDelete(ctx, rclient, cr); err != nil {
 			return fmt.Errorf("cannot delete ingress for vmauth: %s, err :%w", cr.Name, err)
 		}
+
 		return nil
 	}
 	newIngress := buildIngressConfig(cr)
@@ -392,6 +406,7 @@ func CreateOrUpdateVMAuthIngress(ctx context.Context, rclient client.Client, cr 
 	if err := finalize.FreeIfNeeded(ctx, rclient, &existIngress); err != nil {
 		return err
 	}
+	// TODO compare
 	newIngress.Annotations = labels.Merge(existIngress.Annotations, newIngress.Annotations)
 	vmv1beta1.AddFinalizer(newIngress, &existIngress)
 	return rclient.Update(ctx, newIngress)

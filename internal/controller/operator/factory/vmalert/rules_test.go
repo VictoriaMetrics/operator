@@ -550,7 +550,9 @@ func Test_rulesCMDiff(t *testing.T) {
 			toUpdate: []v1.ConfigMap{
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "rules-cm-1",
+						Name:        "rules-cm-1",
+						Annotations: map[string]string{},
+						Finalizers:  []string{vmv1beta1.FinalizerName},
 					},
 					Data: map[string]string{"rule": "content"},
 				},
@@ -562,13 +564,17 @@ func Test_rulesCMDiff(t *testing.T) {
 				currentCMs: []v1.ConfigMap{
 					{
 						ObjectMeta: metav1.ObjectMeta{
-							Name: "rules-cm-0",
+							Name:        "rules-cm-0",
+							Annotations: map[string]string{},
+							Finalizers:  []string{vmv1beta1.FinalizerName},
 						},
 						Data: map[string]string{"rule": "outdated-content"},
 					},
 					{
 						ObjectMeta: metav1.ObjectMeta{
-							Name: "rules-cm-1",
+							Name:        "rules-cm-1",
+							Annotations: map[string]string{},
+							Finalizers:  []string{vmv1beta1.FinalizerName},
 						},
 					},
 					{
@@ -580,13 +586,17 @@ func Test_rulesCMDiff(t *testing.T) {
 				newCMs: []v1.ConfigMap{
 					{
 						ObjectMeta: metav1.ObjectMeta{
-							Name: "rules-cm-0",
+							Name:        "rules-cm-0",
+							Annotations: map[string]string{},
+							Finalizers:  []string{vmv1beta1.FinalizerName},
 						},
 						Data: map[string]string{"rule": "new-content"},
 					},
 					{
 						ObjectMeta: metav1.ObjectMeta{
-							Name: "rules-cm-1",
+							Name:        "rules-cm-1",
+							Annotations: map[string]string{},
+							Finalizers:  []string{vmv1beta1.FinalizerName},
 						},
 						Data: map[string]string{"rule": "new-content"},
 					},
@@ -595,13 +605,17 @@ func Test_rulesCMDiff(t *testing.T) {
 			toUpdate: []v1.ConfigMap{
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "rules-cm-0",
+						Name:        "rules-cm-0",
+						Annotations: map[string]string{},
+						Finalizers:  []string{vmv1beta1.FinalizerName},
 					},
 					Data: map[string]string{"rule": "new-content"},
 				},
 				{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "rules-cm-1",
+						Name:        "rules-cm-1",
+						Annotations: map[string]string{},
+						Finalizers:  []string{vmv1beta1.FinalizerName},
 					},
 					Data: map[string]string{"rule": "new-content"},
 				},
@@ -611,12 +625,8 @@ func Test_rulesCMDiff(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, got1 := rulesCMDiff(tt.args.currentCMs, tt.args.newCMs)
-			if !reflect.DeepEqual(got, tt.toCreate) {
-				t.Errorf("rulesCMDiff() toCreate\ngot = %v, \nwant  %v", got, tt.toCreate)
-			}
-			if !reflect.DeepEqual(got1, tt.toUpdate) {
-				t.Errorf("rulesCMDiff()toUpdate\n got1 = %v, \nwant %v", got1, tt.toUpdate)
-			}
+			assert.Equal(t, tt.toCreate, got)
+			assert.Equal(t, tt.toUpdate, got1)
 		})
 	}
 }

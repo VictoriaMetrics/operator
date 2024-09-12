@@ -340,13 +340,13 @@ func (c *ConverterController) CreatePrometheusRule(rule interface{}) {
 func (c *ConverterController) UpdatePrometheusRule(_old, new interface{}) {
 	promRuleNew := new.(*promv1.PrometheusRule)
 	l := log.WithValues("kind", "VMRule", "name", promRuleNew.Name, "ns", promRuleNew.Namespace)
-	VMRule := converter.ConvertPromRule(promRuleNew, c.baseConf)
+	vmRule := converter.ConvertPromRule(promRuleNew, c.baseConf)
 	ctx := context.Background()
 	existingVMRule := &vmv1beta1.VMRule{}
-	err := c.rclient.Get(ctx, types.NamespacedName{Name: VMRule.Name, Namespace: VMRule.Namespace}, existingVMRule)
+	err := c.rclient.Get(ctx, types.NamespacedName{Name: vmRule.Name, Namespace: vmRule.Namespace}, existingVMRule)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			if err = c.rclient.Create(ctx, VMRule); err == nil {
+			if err = c.rclient.Create(ctx, vmRule); err == nil {
 				return
 			}
 		}
@@ -358,15 +358,17 @@ func (c *ConverterController) UpdatePrometheusRule(_old, new interface{}) {
 		return
 	}
 	metaMergeStrategy := getMetaMergeStrategy(existingVMRule.Annotations)
-	existingVMRule.Annotations = mergeLabelsWithStrategy(existingVMRule.Annotations, VMRule.Annotations, metaMergeStrategy)
-	existingVMRule.Labels = mergeLabelsWithStrategy(existingVMRule.Labels, VMRule.Labels, metaMergeStrategy)
+	vmRule.Annotations = mergeLabelsWithStrategy(existingVMRule.Annotations, vmRule.Annotations, metaMergeStrategy)
+	vmRule.Labels = mergeLabelsWithStrategy(existingVMRule.Labels, vmRule.Labels, metaMergeStrategy)
 
-	if equality.Semantic.DeepEqual(VMRule.Spec, existingVMRule.Spec) &&
-		isMetaEqual(VMRule, existingVMRule) {
+	if equality.Semantic.DeepEqual(vmRule.Spec, existingVMRule.Spec) &&
+		isMetaEqual(vmRule, existingVMRule) {
 		return
 	}
-	existingVMRule.OwnerReferences = VMRule.OwnerReferences
-	existingVMRule.Spec = VMRule.Spec
+	existingVMRule.Annotations = vmRule.Annotations
+	existingVMRule.Labels = vmRule.Labels
+	existingVMRule.OwnerReferences = vmRule.OwnerReferences
+	existingVMRule.Spec = vmRule.Spec
 
 	err = c.rclient.Update(ctx, existingVMRule)
 	if err != nil {
@@ -415,12 +417,14 @@ func (c *ConverterController) UpdateServiceMonitor(_, new interface{}) {
 	}
 
 	metaMergeStrategy := getMetaMergeStrategy(existingVMServiceScrape.Annotations)
-	existingVMServiceScrape.Annotations = mergeLabelsWithStrategy(existingVMServiceScrape.Annotations, vmServiceScrape.Annotations, metaMergeStrategy)
-	existingVMServiceScrape.Labels = mergeLabelsWithStrategy(existingVMServiceScrape.Labels, vmServiceScrape.Labels, metaMergeStrategy)
+	vmServiceScrape.Annotations = mergeLabelsWithStrategy(existingVMServiceScrape.Annotations, vmServiceScrape.Annotations, metaMergeStrategy)
+	vmServiceScrape.Labels = mergeLabelsWithStrategy(existingVMServiceScrape.Labels, vmServiceScrape.Labels, metaMergeStrategy)
 	if equality.Semantic.DeepEqual(vmServiceScrape.Spec, existingVMServiceScrape.Spec) &&
 		isMetaEqual(vmServiceScrape, existingVMServiceScrape) {
 		return
 	}
+	existingVMServiceScrape.Annotations = vmServiceScrape.Annotations
+	existingVMServiceScrape.Labels = vmServiceScrape.Labels
 	existingVMServiceScrape.Spec = vmServiceScrape.Spec
 	existingVMServiceScrape.OwnerReferences = vmServiceScrape.OwnerReferences
 
@@ -470,12 +474,14 @@ func (c *ConverterController) UpdatePodMonitor(_, new interface{}) {
 	}
 
 	mergeStrategy := getMetaMergeStrategy(existingVMPodScrape.Annotations)
-	existingVMPodScrape.Annotations = mergeLabelsWithStrategy(existingVMPodScrape.Annotations, podScrape.Annotations, mergeStrategy)
-	existingVMPodScrape.Labels = mergeLabelsWithStrategy(existingVMPodScrape.Labels, podScrape.Labels, mergeStrategy)
+	podScrape.Annotations = mergeLabelsWithStrategy(existingVMPodScrape.Annotations, podScrape.Annotations, mergeStrategy)
+	podScrape.Labels = mergeLabelsWithStrategy(existingVMPodScrape.Labels, podScrape.Labels, mergeStrategy)
 	if equality.Semantic.DeepEqual(podScrape.Spec, existingVMPodScrape.Spec) &&
 		isMetaEqual(podScrape, existingVMPodScrape) {
 		return
 	}
+	existingVMPodScrape.Annotations = podScrape.Annotations
+	existingVMPodScrape.Labels = podScrape.Labels
 	existingVMPodScrape.Spec = podScrape.Spec
 	existingVMPodScrape.OwnerReferences = podScrape.OwnerReferences
 
@@ -544,13 +550,15 @@ func (c *ConverterController) UpdateAlertmanagerConfig(_, new interface{}) {
 	}
 
 	metaMergeStrategy := getMetaMergeStrategy(existAlertmanagerConfig.Annotations)
-	existAlertmanagerConfig.Annotations = mergeLabelsWithStrategy(existAlertmanagerConfig.Annotations, vmAMc.Annotations, metaMergeStrategy)
-	existAlertmanagerConfig.Labels = mergeLabelsWithStrategy(existAlertmanagerConfig.Labels, vmAMc.Labels, metaMergeStrategy)
+	vmAMc.Annotations = mergeLabelsWithStrategy(existAlertmanagerConfig.Annotations, vmAMc.Annotations, metaMergeStrategy)
+	vmAMc.Labels = mergeLabelsWithStrategy(existAlertmanagerConfig.Labels, vmAMc.Labels, metaMergeStrategy)
 	if equality.Semantic.DeepEqual(vmAMc.Spec, existAlertmanagerConfig.Spec) &&
 		isMetaEqual(vmAMc, existAlertmanagerConfig) {
 		return
 	}
 
+	existAlertmanagerConfig.Annotations = vmAMc.Annotations
+	existAlertmanagerConfig.Labels = vmAMc.Labels
 	existAlertmanagerConfig.OwnerReferences = vmAMc.OwnerReferences
 	existAlertmanagerConfig.Spec = vmAMc.Spec
 
@@ -639,13 +647,15 @@ func (c *ConverterController) UpdateProbe(_, new interface{}) {
 	}
 
 	mergeStrategy := getMetaMergeStrategy(existingVMProbe.Annotations)
-	existingVMProbe.Annotations = mergeLabelsWithStrategy(existingVMProbe.Annotations, probeNew.Annotations, mergeStrategy)
-	existingVMProbe.Labels = mergeLabelsWithStrategy(existingVMProbe.Labels, probeNew.Labels, mergeStrategy)
+	vmProbe.Annotations = mergeLabelsWithStrategy(existingVMProbe.Annotations, vmProbe.Annotations, mergeStrategy)
+	vmProbe.Labels = mergeLabelsWithStrategy(existingVMProbe.Labels, vmProbe.Labels, mergeStrategy)
 	if equality.Semantic.DeepEqual(vmProbe.Spec, existingVMProbe.Spec) &&
 		isMetaEqual(vmProbe, existingVMProbe) {
 		return
 	}
 
+	existingVMProbe.Labels = vmProbe.Labels
+	existingVMProbe.Annotations = vmProbe.Annotations
 	existingVMProbe.OwnerReferences = vmProbe.OwnerReferences
 	existingVMProbe.Spec = vmProbe.Spec
 	err = c.rclient.Update(ctx, existingVMProbe)
@@ -709,17 +719,18 @@ func (c *ConverterController) UpdateScrapeConfig(_, new interface{}) {
 		l.Info("syncing for object was disabled by annotation", "annotation", IgnoreConversionLabel)
 		return
 	}
-	existingVMScrapeConfig.Spec = vmScrapeConfig.Spec
-
 	metaMergeStrategy := getMetaMergeStrategy(existingVMScrapeConfig.Annotations)
-	existingVMScrapeConfig.Annotations = mergeLabelsWithStrategy(existingVMScrapeConfig.Annotations, vmScrapeConfig.Annotations, metaMergeStrategy)
-	existingVMScrapeConfig.Labels = mergeLabelsWithStrategy(existingVMScrapeConfig.Labels, vmScrapeConfig.Labels, metaMergeStrategy)
-	existingVMScrapeConfig.OwnerReferences = vmScrapeConfig.OwnerReferences
+	vmScrapeConfig.Annotations = mergeLabelsWithStrategy(existingVMScrapeConfig.Annotations, vmScrapeConfig.Annotations, metaMergeStrategy)
+	vmScrapeConfig.Labels = mergeLabelsWithStrategy(existingVMScrapeConfig.Labels, vmScrapeConfig.Labels, metaMergeStrategy)
 
 	if equality.Semantic.DeepEqual(vmScrapeConfig.Spec, existingVMScrapeConfig.Spec) &&
 		isMetaEqual(vmScrapeConfig, existingVMScrapeConfig) {
 		return
 	}
+	existingVMScrapeConfig.Labels = vmScrapeConfig.Labels
+	existingVMScrapeConfig.Annotations = vmScrapeConfig.Annotations
+	existingVMScrapeConfig.OwnerReferences = vmScrapeConfig.OwnerReferences
+	existingVMScrapeConfig.Spec = vmScrapeConfig.Spec
 	err = c.rclient.Update(ctx, existingVMScrapeConfig)
 	if err != nil {
 		l.Error(err, "cannot update vmScrapeConfig")

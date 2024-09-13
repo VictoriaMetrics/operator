@@ -51,7 +51,7 @@ func waitForStatefulSetReady(ctx context.Context, rclient client.Client, newSts 
 		return true, nil
 	})
 	if err != nil {
-		return reportFirstNotReadyPodOnError(ctx, rclient, fmt.Errorf("cannot wait for statefulSet to become ready: %w", err), newSts.Namespace, labels.SelectorFromSet(newSts.Spec.Selector.MatchLabels), newSts.Spec.MinReadySeconds)
+		return reportFirstNotReadyPodOnError(ctx, rclient, fmt.Errorf("cannot wait for statefulSet=%s to become ready: %w", newSts.Name, err), newSts.Namespace, labels.SelectorFromSet(newSts.Spec.Selector.MatchLabels), newSts.Spec.MinReadySeconds)
 	}
 	return nil
 }

@@ -51,6 +51,9 @@ type VMAlertmanager struct {
 type VMAlertmanagerSpec struct {
 	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
 	ParsingError string `json:"-" yaml:"-"`
+
+	// ParsedLastAppliedSpec contains last-applied configuration spec
+	ParsedLastAppliedSpec *VMAlertmanagerSpec `json:"-" yaml:"-"`
 	// PodMetadata configures Labels and Annotations which are propagated to the alertmanager pods.
 	// +optional
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
@@ -311,6 +314,20 @@ type VMAlertmanagerSpec struct {
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface
+func (cr *VMAlertmanager) UnmarshalJSON(src []byte) error {
+	type pcr VMAlertmanager
+	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
+		return err
+	}
+	prev, err := parseLastAppliedSpec[VMAlertmanagerSpec](cr)
+	if err != nil {
+		return err
+	}
+	cr.Spec.ParsedLastAppliedSpec = prev
+	return nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler interface
 func (cr *VMAlertmanagerSpec) UnmarshalJSON(src []byte) error {
 	type pcr VMAlertmanagerSpec
 	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
@@ -552,15 +569,15 @@ func (cr *VMAlertmanager) LastAppliedSpecAsPatch() (client.Patch, error) {
 
 // HasSpecChanges compares spec with last applied cluster spec stored in annotation
 func (cr *VMAlertmanager) HasSpecChanges() (bool, error) {
-	var prevSpec VMAlertmanagerSpec
-	lastAppliedClusterJSON := cr.Annotations["operator.victoriametrics/last-applied-spec"]
+	lastAppliedClusterJSON := cr.Annotations[lastAppliedSpecAnnotationName]
 	if len(lastAppliedClusterJSON) == 0 {
 		return true, nil
 	}
-	if err := json.Unmarshal([]byte(lastAppliedClusterJSON), &prevSpec); err != nil {
-		return true, fmt.Errorf("cannot parse last applied cluster spec value: %s : %w", lastAppliedClusterJSON, err)
+
+	instanceSpecData, err := json.Marshal(cr.Spec)
+	if err != nil {
+		return false, err
 	}
-	instanceSpecData, _ := json.Marshal(cr.Spec)
 	return !bytes.Equal([]byte(lastAppliedClusterJSON), instanceSpecData), nil
 }
 

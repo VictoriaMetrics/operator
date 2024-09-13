@@ -200,13 +200,9 @@ func CreateOrUpdateVMAlert(ctx context.Context, cr *vmv1beta1.VMAlert, rclient c
 		return err
 	}
 	var prevDeploy *appsv1.Deployment
-	prevSpec, err := vmv1beta1.LastAppliedSpec[vmv1beta1.VMAlertSpec](cr)
-	if err != nil {
-		return fmt.Errorf("cannot parse last applied spec :%w", err)
-	}
-	if prevSpec != nil {
+	if cr.Spec.ParsedLastAppliedSpec != nil {
 		prevCR := cr.DeepCopy()
-		prevCR.Spec = *prevSpec
+		prevCR.Spec = *cr.Spec.ParsedLastAppliedSpec
 		prevDeploy, err = newDeployForVMAlert(prevCR, c, cmNames, remoteSecrets)
 		if err != nil {
 			return fmt.Errorf("cannot generate prev deploy spec: %w", err)

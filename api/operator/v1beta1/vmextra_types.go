@@ -1005,10 +1005,9 @@ type ScrapeObjectStatus struct {
 	CurrentSyncError string `json:"-"`
 }
 
-// LastAppliedSpec return last applied spec for given CR object
-func LastAppliedSpec[T any](cr client.Object) (*T, error) {
+func parseLastAppliedSpec[T any](cr client.Object) (*T, error) {
 	var prevSpec T
-	lastAppliedClusterJSON := cr.GetAnnotations()["operator.victoriametrics/last-applied-spec"]
+	lastAppliedClusterJSON := cr.GetAnnotations()[lastAppliedSpecAnnotationName]
 	if len(lastAppliedClusterJSON) == 0 {
 		return nil, nil
 	}

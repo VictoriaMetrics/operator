@@ -128,14 +128,11 @@ func createOrUpdateVMSelect(ctx context.Context, cr *vmv1beta1.VMCluster, rclien
 	// note, need to make copy of current crd. to able to change it without side effects.
 	cr = cr.DeepCopy()
 	var prevSts *appsv1.StatefulSet
-	prevSpec, err := vmv1beta1.LastAppliedSpec[vmv1beta1.VMClusterSpec](cr)
-	if err != nil {
-		return fmt.Errorf("cannot parse prev storage spec: %w", err)
-	}
 
-	if prevSpec != nil {
+	if cr.Spec.ParsedLastAppliedSpec != nil {
 		prevCR := cr.DeepCopy()
-		prevCR.Spec = *prevSpec
+		prevCR.Spec = *cr.Spec.ParsedLastAppliedSpec
+		var err error
 		prevSts, err = genVMSelectSpec(prevCR, c)
 		if err != nil {
 			return fmt.Errorf("cannot build prev storage spec: %w", err)
@@ -210,13 +207,11 @@ func createOrUpdateVMSelectService(ctx context.Context, cr *vmv1beta1.VMCluster,
 
 func createOrUpdateVMInsert(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) error {
 	var prevDeploy *appsv1.Deployment
-	prevSpec, err := vmv1beta1.LastAppliedSpec[vmv1beta1.VMClusterSpec](cr)
-	if err != nil {
-		return fmt.Errorf("cannot parse last applied spec :%w", err)
-	}
-	if prevSpec != nil {
+
+	if cr.Spec.ParsedLastAppliedSpec != nil {
 		prevCR := cr.DeepCopy()
-		prevCR.Spec = *prevSpec
+		prevCR.Spec = *cr.Spec.ParsedLastAppliedSpec
+		var err error
 		prevDeploy, err = genVMInsertSpec(prevCR, c)
 		if err != nil {
 			return fmt.Errorf("cannot generate prev deploy spec: %w", err)
@@ -281,14 +276,11 @@ func createOrUpdateVMInsertService(ctx context.Context, cr *vmv1beta1.VMCluster,
 
 func createOrUpdateVMStorage(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) error {
 	var prevSts *appsv1.StatefulSet
-	prevSpec, err := vmv1beta1.LastAppliedSpec[vmv1beta1.VMClusterSpec](cr)
-	if err != nil {
-		return fmt.Errorf("cannot parse prev storage spec: %w", err)
-	}
 
-	if prevSpec != nil {
+	if cr.Spec.ParsedLastAppliedSpec != nil {
 		prevCR := cr.DeepCopy()
-		prevCR.Spec = *prevSpec
+		prevCR.Spec = *cr.Spec.ParsedLastAppliedSpec
+		var err error
 		prevSts, err = buildVMStorageSpec(ctx, prevCR, c)
 		if err != nil {
 			return fmt.Errorf("cannot build prev storage spec: %w", err)

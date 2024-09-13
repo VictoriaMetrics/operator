@@ -41,6 +41,9 @@ import (
 type VLogsSpec struct {
 	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
 	ParsingError string `json:"-" yaml:"-"`
+	// ParsedLastAppliedSpec contains last-applied configuration spec
+	ParsedLastAppliedSpec *VLogsSpec `json:"-" yaml:"-"`
+
 	// PodMetadata configures Labels and Annotations which are propagated to the VLogs pods.
 	// +optional
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
@@ -291,6 +294,30 @@ func (r *VLogs) AsOwner() []metav1.OwnerReference {
 	}
 }
 
+// UnmarshalJSON implements json.Unmarshaler interface
+func (cr *VLogs) UnmarshalJSON(src []byte) error {
+	type pcr VLogs
+	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
+		return err
+	}
+	prev, err := parseLastAppliedSpec[VLogsSpec](cr)
+	if err != nil {
+		return err
+	}
+	cr.Spec.ParsedLastAppliedSpec = prev
+	return nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler interface
+func (cr *VLogsSpec) UnmarshalJSON(src []byte) error {
+	type pcr VLogsSpec
+	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
+		cr.ParsingError = fmt.Sprintf("cannot parse vlogs spec: %s, err: %s", string(src), err)
+		return nil
+	}
+	return nil
+}
+
 func (r *VLogs) Probe() *EmbeddedProbes {
 	return r.Spec.EmbeddedProbes
 }
@@ -404,15 +431,14 @@ func (r *VLogs) LastAppliedSpecAsPatch() (client.Patch, error) {
 
 // HasSpecChanges compares vlogs spec with last applied vlogs spec stored in annotation
 func (r *VLogs) HasSpecChanges() (bool, error) {
-	var prevLogsSpec VLogsSpec
-	lastAppliedLogsJSON := r.Annotations["operator.victoriametrics/last-applied-spec"]
+	lastAppliedLogsJSON := r.Annotations[lastAppliedSpecAnnotationName]
 	if len(lastAppliedLogsJSON) == 0 {
 		return true, nil
 	}
-	if err := json.Unmarshal([]byte(lastAppliedLogsJSON), &prevLogsSpec); err != nil {
-		return true, fmt.Errorf("cannot parse last applied vlogs spec value: %s : %w", lastAppliedLogsJSON, err)
+	instanceSpecData, err := json.Marshal(r.Spec)
+	if err != nil {
+		return true, err
 	}
-	instanceSpecData, _ := json.Marshal(r.Spec)
 	return !bytes.Equal([]byte(lastAppliedLogsJSON), instanceSpecData), nil
 }
 

@@ -2,11 +2,13 @@ package vmagent
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"sort"
 	"strings"
 	"testing"
+	"time"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
@@ -21,13 +23,15 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/utils/ptr"
 )
 
 func TestCreateOrUpdateVMAgent(t *testing.T) {
 	type args struct {
-		cr *vmv1beta1.VMAgent
-		c  *config.BaseOperatorConf
+		cr              *vmv1beta1.VMAgent
+		c               *config.BaseOperatorConf
+		mustAddPrevSpec bool
 	}
 	tests := []struct {
 		name              string
@@ -433,17 +437,242 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 				k8stools.NewReadyDeployment("vmagent-example-agent", "default"),
 			},
 		},
+		{
+			name: "generate vmagent sharded statefulset with prevSpec",
+			args: args{
+				c:               config.MustGetBaseConfig(),
+				mustAddPrevSpec: true,
+				cr: &vmv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "example-agent",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMAgentSpec{
+						RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+							{URL: "http://remote-write"},
+						},
+						StatefulRollingUpdateStrategy: appsv1.RollingUpdateStatefulSetStrategyType,
+						StatefulMode:                  true,
+						IngestOnlyMode:                true,
+						ReplicaCount:                  ptr.To[int32](2),
+						ShardCount:                    ptr.To(3),
+						StatefulStorage: &vmv1beta1.StorageSpec{
+							VolumeClaimTemplate: vmv1beta1.EmbeddedPersistentVolumeClaim{
+								Spec: corev1.PersistentVolumeClaimSpec{
+									StorageClassName: ptr.To("embed-sc"),
+									Resources: corev1.VolumeResourceRequirements{
+										Requests: map[corev1.ResourceName]resource.Quantity{
+											corev1.ResourceStorage: resource.MustParse("10Gi"),
+										},
+									},
+								},
+							},
+						},
+						ClaimTemplates: []corev1.PersistentVolumeClaim{
+							{
+								ObjectMeta: metav1.ObjectMeta{
+									Name: "extraTemplate",
+								},
+								Spec: corev1.PersistentVolumeClaimSpec{
+									StorageClassName: ptr.To("default"),
+									Resources: corev1.VolumeResourceRequirements{
+										Requests: map[corev1.ResourceName]resource.Quantity{
+											corev1.ResourceStorage: resource.MustParse("2Gi"),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			validate: func(got *appsv1.StatefulSet) error {
+				if len(got.Spec.Template.Spec.Containers) != 1 {
+					return fmt.Errorf("unexpected count of container, got: %d, want: %d", len(got.Spec.Template.Spec.Containers), 1)
+				}
+				if len(got.Spec.VolumeClaimTemplates) != 2 {
+					return fmt.Errorf("unexpected count of VolumeClaimTemplates, got: %d, want: %d", len(got.Spec.VolumeClaimTemplates), 2)
+				}
+				if *got.Spec.VolumeClaimTemplates[0].Spec.StorageClassName != "embed-sc" {
+					return fmt.Errorf("unexpected embed VolumeClaimTemplates name, got: %s, want: %s", *got.Spec.VolumeClaimTemplates[0].Spec.StorageClassName, "embed-sc")
+				}
+				if diff := deep.Equal(got.Spec.VolumeClaimTemplates[0].Spec.Resources, corev1.VolumeResourceRequirements{
+					Requests: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceStorage: resource.MustParse("10Gi"),
+					},
+				}); len(diff) != 0 {
+					return fmt.Errorf("unexpected embed VolumeClaimTemplates resources, diff: %v", diff)
+				}
+				if *got.Spec.VolumeClaimTemplates[1].Spec.StorageClassName != "default" {
+					return fmt.Errorf("unexpected extra VolumeClaimTemplates, got: %s, want: %s", *got.Spec.VolumeClaimTemplates[1].Spec.StorageClassName, "default")
+				}
+				if diff := deep.Equal(got.Spec.VolumeClaimTemplates[1].Spec.Resources, corev1.VolumeResourceRequirements{
+					Requests: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceStorage: resource.MustParse("2Gi"),
+					},
+				}); len(diff) != 0 {
+					return fmt.Errorf("unexpected extra VolumeClaimTemplates resources, diff: %v", diff)
+				}
+				return nil
+			},
+			statefulsetMode:   true,
+			predefinedObjects: []runtime.Object{},
+		},
+
+		{
+			name: "generate vmagent statefulset with prevSpec",
+			args: args{
+				c:               config.MustGetBaseConfig(),
+				mustAddPrevSpec: true,
+				cr: &vmv1beta1.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "example-agent",
+						Namespace: "default",
+					},
+					Spec: vmv1beta1.VMAgentSpec{
+						RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
+							{URL: "http://remote-write"},
+						},
+						StatefulMode:   true,
+						IngestOnlyMode: true,
+						StatefulStorage: &vmv1beta1.StorageSpec{
+							VolumeClaimTemplate: vmv1beta1.EmbeddedPersistentVolumeClaim{
+								Spec: corev1.PersistentVolumeClaimSpec{
+									StorageClassName: ptr.To("embed-sc"),
+									Resources: corev1.VolumeResourceRequirements{
+										Requests: map[corev1.ResourceName]resource.Quantity{
+											corev1.ResourceStorage: resource.MustParse("10Gi"),
+										},
+									},
+								},
+							},
+						},
+						ClaimTemplates: []corev1.PersistentVolumeClaim{
+							{
+								ObjectMeta: metav1.ObjectMeta{
+									Name: "extraTemplate",
+								},
+								Spec: corev1.PersistentVolumeClaimSpec{
+									StorageClassName: ptr.To("default"),
+									Resources: corev1.VolumeResourceRequirements{
+										Requests: map[corev1.ResourceName]resource.Quantity{
+											corev1.ResourceStorage: resource.MustParse("2Gi"),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			validate: func(got *appsv1.StatefulSet) error {
+				if len(got.Spec.Template.Spec.Containers) != 1 {
+					return fmt.Errorf("unexpected count of container, got: %d, want: %d", len(got.Spec.Template.Spec.Containers), 1)
+				}
+				if len(got.Spec.VolumeClaimTemplates) != 2 {
+					return fmt.Errorf("unexpected count of VolumeClaimTemplates, got: %d, want: %d", len(got.Spec.VolumeClaimTemplates), 2)
+				}
+				if *got.Spec.VolumeClaimTemplates[0].Spec.StorageClassName != "embed-sc" {
+					return fmt.Errorf("unexpected embed VolumeClaimTemplates name, got: %s, want: %s", *got.Spec.VolumeClaimTemplates[0].Spec.StorageClassName, "embed-sc")
+				}
+				if diff := deep.Equal(got.Spec.VolumeClaimTemplates[0].Spec.Resources, corev1.VolumeResourceRequirements{
+					Requests: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceStorage: resource.MustParse("10Gi"),
+					},
+				}); len(diff) != 0 {
+					return fmt.Errorf("unexpected embed VolumeClaimTemplates resources, diff: %v", diff)
+				}
+				if *got.Spec.VolumeClaimTemplates[1].Spec.StorageClassName != "default" {
+					return fmt.Errorf("unexpected extra VolumeClaimTemplates, got: %s, want: %s", *got.Spec.VolumeClaimTemplates[1].Spec.StorageClassName, "default")
+				}
+				if diff := deep.Equal(got.Spec.VolumeClaimTemplates[1].Spec.Resources, corev1.VolumeResourceRequirements{
+					Requests: map[corev1.ResourceName]resource.Quantity{
+						corev1.ResourceStorage: resource.MustParse("2Gi"),
+					},
+				}); len(diff) != 0 {
+					return fmt.Errorf("unexpected extra VolumeClaimTemplates resources, diff: %v", diff)
+				}
+				return nil
+			},
+			statefulsetMode:   true,
+			predefinedObjects: []runtime.Object{},
+		},
 	}
 	for _, tt := range tests {
+		tc := *tt.args.c
+		tc.PodWaitReadyIntervalCheck = 100 * time.Millisecond
+		tc.PodWaitReadyInitDelay = 50 * time.Millisecond
+		tc.PodWaitReadyTimeout = 2 * time.Second
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
+			if tt.args.mustAddPrevSpec {
+				jsonSpec, err := json.Marshal(tt.args.cr.Spec)
+				if err != nil {
+					t.Fatalf("cannot set last applied spec: %s", err)
+				}
+				if tt.args.cr.Annotations == nil {
+					tt.args.cr.Annotations = make(map[string]string)
+				}
+				tt.args.cr.Annotations["operator.victoriametrics/last-applied-spec"] = string(jsonSpec)
+			}
+			errC := make(chan error)
+			go func() {
+				err := CreateOrUpdateVMAgent(context.TODO(), tt.args.cr, fclient, &tc)
+				select {
+				case errC <- err:
+				default:
+				}
+			}()
 
-			err := CreateOrUpdateVMAgent(context.TODO(), tt.args.cr, fclient, tt.args.c)
+			if tt.statefulsetMode {
+				if tt.args.cr.Spec.ShardCount != nil {
+					for i := 0; i < *tt.args.cr.Spec.ShardCount; i++ {
+						err := wait.PollUntilContextTimeout(context.Background(), 20*time.Millisecond, time.Second, false, func(ctx context.Context) (done bool, err error) {
+							var sts appsv1.StatefulSet
+							if err := fclient.Get(ctx, types.NamespacedName{
+								Namespace: "default",
+								Name:      fmt.Sprintf("vmagent-%s-%d", tt.args.cr.Name, i),
+							}, &sts); err != nil {
+								return false, nil
+							}
+							sts.Status.ReadyReplicas = ptr.Deref(tt.args.cr.Spec.ReplicaCount, 0)
+							sts.Status.UpdatedReplicas = ptr.Deref(tt.args.cr.Spec.ReplicaCount, 0)
+							sts.Status.CurrentReplicas = ptr.Deref(tt.args.cr.Spec.ReplicaCount, 0)
+							if err := fclient.Status().Update(ctx, &sts); err != nil {
+								return false, err
+							}
+
+							return true, nil
+						})
+						if err != nil {
+							t.Fatalf("cannot wait sts ready: %s", err)
+						}
+					}
+				} else {
+					err := wait.PollUntilContextTimeout(context.Background(), 20*time.Millisecond, time.Second, false, func(ctx context.Context) (done bool, err error) {
+						var sts appsv1.StatefulSet
+						if err := fclient.Get(ctx, types.NamespacedName{Namespace: "default", Name: fmt.Sprintf("vmagent-%s", tt.args.cr.Name)}, &sts); err != nil {
+							return false, nil
+						}
+						sts.Status.ReadyReplicas = ptr.Deref(tt.args.cr.Spec.ReplicaCount, 0)
+						sts.Status.UpdatedReplicas = ptr.Deref(tt.args.cr.Spec.ReplicaCount, 0)
+						sts.Status.CurrentReplicas = ptr.Deref(tt.args.cr.Spec.ReplicaCount, 0)
+						fclient.Status().Update(ctx, &sts)
+						return true, nil
+					})
+					if err != nil {
+						t.Fatalf("cannot wait sts ready: %s", err)
+					}
+				}
+
+			}
+
+			err := <-errC
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CreateOrUpdateVMAgent() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if tt.statefulsetMode {
+			if tt.statefulsetMode && tt.args.cr.Spec.ShardCount == nil {
 				var got appsv1.StatefulSet
 				if err := fclient.Get(context.Background(), types.NamespacedName{Namespace: tt.args.cr.Namespace, Name: tt.args.cr.PrefixedName()}, &got); (err != nil) != tt.wantErr {
 					t.Fatalf("CreateOrUpdateVMAgent() error = %v, wantErr %v", err, tt.wantErr)

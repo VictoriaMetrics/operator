@@ -83,13 +83,10 @@ func CreateOrUpdateVLogs(ctx context.Context, r *vmv1beta1.VLogs, rclient client
 	}
 
 	var prevDeploy *appsv1.Deployment
-	prevSpec, err := vmv1beta1.LastAppliedSpec[vmv1beta1.VLogsSpec](r)
-	if err != nil {
-		return fmt.Errorf("cannot parse last applied spec :%w", err)
-	}
-	if prevSpec != nil {
+
+	if r.Spec.ParsedLastAppliedSpec != nil {
 		prevCR := r.DeepCopy()
-		prevCR.Spec = *prevSpec
+		prevCR.Spec = *r.Spec.ParsedLastAppliedSpec
 		prevDeploy, err = newDeployForVLogs(ctx, prevCR, c)
 		if err != nil {
 			return fmt.Errorf("cannot generate prev deploy spec: %w", err)

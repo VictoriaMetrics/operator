@@ -51,13 +51,11 @@ func CreateOrUpdateAlertManager(ctx context.Context, cr *vmv1beta1.VMAlertmanage
 		}
 	}
 	var prevSts *appsv1.StatefulSet
-	prevSpec, err := vmv1beta1.LastAppliedSpec[vmv1beta1.VMAlertmanagerSpec](cr)
-	if err != nil {
-		return fmt.Errorf("cannot parse last applied spec :%w", err)
-	}
-	if prevSpec != nil {
+
+	if cr.Spec.ParsedLastAppliedSpec != nil {
 		prevCR := cr.DeepCopy()
-		prevCR.Spec = *prevSpec
+		prevCR.Spec = *cr.Spec.ParsedLastAppliedSpec
+		var err error
 		prevSts, err = newStsForAlertManager(prevCR, c)
 		if err != nil {
 			return fmt.Errorf("cannot generate prev alertmanager sts, name: %s,err: %w", cr.Name, err)

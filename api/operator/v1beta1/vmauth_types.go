@@ -21,6 +21,8 @@ import (
 type VMAuthSpec struct {
 	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
 	ParsingError string `json:"-" yaml:"-"`
+	// ParsedLastAppliedSpec contains last-applied configuration spec
+	ParsedLastAppliedSpec *VMAuthSpec `json:"-" yaml:"-"`
 	// PodMetadata configures Labels and Annotations which are propagated to the VMAuth pods.
 	// +optional
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
@@ -335,6 +337,20 @@ type UserConfigOption struct {
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface
+func (cr *VMAuth) UnmarshalJSON(src []byte) error {
+	type pcr VMAuth
+	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
+		return err
+	}
+	prev, err := parseLastAppliedSpec[VMAuthSpec](cr)
+	if err != nil {
+		return err
+	}
+	cr.Spec.ParsedLastAppliedSpec = prev
+	return nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler interface
 func (cr *VMAuthSpec) UnmarshalJSON(src []byte) error {
 	type pcr VMAuthSpec
 	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
@@ -537,15 +553,15 @@ func (cr *VMAuth) LastAppliedSpecAsPatch() (client.Patch, error) {
 
 // HasSpecChanges compares spec with last applied cluster spec stored in annotation
 func (cr *VMAuth) HasSpecChanges() (bool, error) {
-	var prevSpec VMAuthSpec
-	lastAppliedClusterJSON := cr.Annotations["operator.victoriametrics/last-applied-spec"]
+	lastAppliedClusterJSON := cr.Annotations[lastAppliedSpecAnnotationName]
 	if len(lastAppliedClusterJSON) == 0 {
 		return true, nil
 	}
-	if err := json.Unmarshal([]byte(lastAppliedClusterJSON), &prevSpec); err != nil {
-		return true, fmt.Errorf("cannot parse last applied spec value: %s : %w", lastAppliedClusterJSON, err)
+
+	instanceSpecData, err := json.Marshal(cr.Spec)
+	if err != nil {
+		return true, err
 	}
-	instanceSpecData, _ := json.Marshal(cr.Spec)
 	return !bytes.Equal([]byte(lastAppliedClusterJSON), instanceSpecData), nil
 }
 

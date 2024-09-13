@@ -97,13 +97,9 @@ func CreateOrUpdateVMAuth(ctx context.Context, cr *vmv1beta1.VMAuth, rclient cli
 		}
 	}
 	var prevDeploy *appsv1.Deployment
-	prevSpec, err := vmv1beta1.LastAppliedSpec[vmv1beta1.VMAuthSpec](cr)
-	if err != nil {
-		return fmt.Errorf("cannot parse last applied spec: %w", err)
-	}
-	if prevSpec != nil {
+	if cr.Spec.ParsedLastAppliedSpec != nil {
 		prevCR := cr.DeepCopy()
-		prevCR.Spec = *prevSpec
+		prevCR.Spec = *cr.Spec.ParsedLastAppliedSpec
 		prevDeploy, err = newDeployForVMAuth(prevCR, c)
 		if err != nil {
 			return fmt.Errorf("cannot generate prev deploy spec: %w", err)

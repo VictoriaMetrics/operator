@@ -31,6 +31,8 @@ const (
 type VMAlertSpec struct {
 	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
 	ParsingError string `json:"-" yaml:"-"`
+	// ParsedLastAppliedSpec contains last-applied configuration spec
+	ParsedLastAppliedSpec *VMAlertSpec `json:"-" yaml:"-"`
 	// PodMetadata configures Labels and Annotations which are propagated to the VMAlert pods.
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
 	// Image - docker image settings for VMAlert
@@ -285,6 +287,20 @@ type VMAlertSpec struct {
 	// going to be performed, except for delete actions.
 	// +optional
 	Paused bool `json:"paused,omitempty"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler interface
+func (cr *VMAlert) UnmarshalJSON(src []byte) error {
+	type pcr VMAlert
+	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
+		return err
+	}
+	prev, err := parseLastAppliedSpec[VMAlertSpec](cr)
+	if err != nil {
+		return err
+	}
+	cr.Spec.ParsedLastAppliedSpec = prev
+	return nil
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface
@@ -579,21 +595,20 @@ func (cr *VMAlert) LastAppliedSpecAsPatch() (client.Patch, error) {
 	if err != nil {
 		return nil, fmt.Errorf("possible bug, cannot serialize specification as json :%w", err)
 	}
-	patch := fmt.Sprintf(`{"metadata":{"annotations":{"operator.victoriametrics/last-applied-spec": %q}}}`, data)
+	patch := fmt.Sprintf(`{"metadata":{"annotations":{%q: %q}}}`, lastAppliedSpecAnnotationName, data)
 	return client.RawPatch(types.MergePatchType, []byte(patch)), nil
 }
 
 // HasSpecChanges compares spec with last applied cluster spec stored in annotation
 func (cr *VMAlert) HasSpecChanges() (bool, error) {
-	var prevSpec VMAlertSpec
-	lastAppliedClusterJSON := cr.Annotations["operator.victoriametrics/last-applied-spec"]
+	lastAppliedClusterJSON := cr.Annotations[lastAppliedSpecAnnotationName]
 	if len(lastAppliedClusterJSON) == 0 {
 		return true, nil
 	}
-	if err := json.Unmarshal([]byte(lastAppliedClusterJSON), &prevSpec); err != nil {
-		return true, fmt.Errorf("cannot parse last applied spec value: %s : %w", lastAppliedClusterJSON, err)
+	instanceSpecData, err := json.Marshal(cr.Spec)
+	if err != nil {
+		return true, err
 	}
-	instanceSpecData, _ := json.Marshal(cr.Spec)
 	return !bytes.Equal([]byte(lastAppliedClusterJSON), instanceSpecData), nil
 }
 

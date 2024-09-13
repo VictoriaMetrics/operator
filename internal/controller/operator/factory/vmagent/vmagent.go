@@ -121,13 +121,10 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *vmv1beta1.VMAgent, rclient c
 	}
 
 	var prevObjectSpec runtime.Object
-	prevSpec, err := vmv1beta1.LastAppliedSpec[vmv1beta1.VMAgentSpec](cr)
-	if err != nil {
-		return fmt.Errorf("cannot parse last applied spec for vmagent: %w", err)
-	}
-	if prevSpec != nil {
+
+	if cr.Spec.ParsedLastAppliedSpec != nil {
 		prevCR := cr.DeepCopy()
-		prevCR.Spec = *prevSpec
+		prevCR.Spec = *cr.Spec.ParsedLastAppliedSpec
 		prevObjectSpec, err = newDeployForVMAgent(prevCR, c, ssCache)
 		if err != nil {
 			return fmt.Errorf("cannot build new deploy for vmagent: %w", err)

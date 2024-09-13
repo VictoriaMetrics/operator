@@ -25,6 +25,8 @@ import (
 type VMSingleSpec struct {
 	// ParsingError contents error with context if operator was failed to parse json object from kubernetes api server
 	ParsingError string `json:"-" yaml:"-"`
+	// ParsedLastAppliedSpec contains last-applied configuration spec
+	ParsedLastAppliedSpec *VMSingleSpec `json:"-" yaml:"-"`
 	// PodMetadata configures Labels and Annotations which are propagated to the VMSingle pods.
 	// +optional
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
@@ -216,6 +218,20 @@ type VMSingleSpec struct {
 // HasAnyStreamAggrRule checks if vmsingle has any defined aggregation rules
 func (cr *VMSingle) HasAnyStreamAggrRule() bool {
 	return cr.Spec.StreamAggrConfig.HasAnyRule()
+}
+
+// UnmarshalJSON implements json.Unmarshaler interface
+func (cr *VMSingle) UnmarshalJSON(src []byte) error {
+	type pcr VMSingle
+	if err := json.Unmarshal(src, (*pcr)(cr)); err != nil {
+		return err
+	}
+	prev, err := parseLastAppliedSpec[VMSingleSpec](cr)
+	if err != nil {
+		return err
+	}
+	cr.Spec.ParsedLastAppliedSpec = prev
+	return nil
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface
@@ -413,21 +429,24 @@ func (cr *VMSingle) LastAppliedSpecAsPatch() (client.Patch, error) {
 	if err != nil {
 		return nil, fmt.Errorf("possible bug, cannot serialize single specification as json :%w", err)
 	}
-	patch := fmt.Sprintf(`{"metadata":{"annotations":{"operator.victoriametrics/last-applied-spec": %q}}}`, data)
+	patch := fmt.Sprintf(`{"metadata":{"annotations":{%q: %q}}}`, lastAppliedSpecAnnotationName, data)
 	return client.RawPatch(types.MergePatchType, []byte(patch)), nil
 }
 
 // HasSpecChanges compares single spec with last applied single spec stored in annotation
 func (cr *VMSingle) HasSpecChanges() (bool, error) {
-	var prevSingleSpec VMSingleSpec
-	lastAppliedSingleJSON := cr.Annotations["operator.victoriametrics/last-applied-spec"]
+	if cr.Spec.ParsedLastAppliedSpec == nil {
+		return true, nil
+	}
+	lastAppliedSingleJSON := cr.Annotations[lastAppliedSpecAnnotationName]
 	if len(lastAppliedSingleJSON) == 0 {
 		return true, nil
 	}
-	if err := json.Unmarshal([]byte(lastAppliedSingleJSON), &prevSingleSpec); err != nil {
-		return true, fmt.Errorf("cannot parse last applied single spec value: %s : %w", lastAppliedSingleJSON, err)
+
+	instanceSpecData, err := json.Marshal(cr.Spec)
+	if err != nil {
+		return false, err
 	}
-	instanceSpecData, _ := json.Marshal(cr.Spec)
 	return !bytes.Equal([]byte(lastAppliedSingleJSON), instanceSpecData), nil
 }
 

@@ -114,6 +114,11 @@ type VMAlertSpec struct {
 	// https://kubernetes.io/docs/concepts/containers/runtime-class/
 	// +optional
 	RuntimeClassName *string `json:"runtimeClassName,omitempty"`
+	// HostAliases provides mapping between ip and hostnames,
+	// that would be propagated to pod,
+	// cannot be used with HostNetwork.
+	// +optional
+	HostAliases []v1.HostAlias `json:"host_aliases,omitempty"`
 	// Containers property allows to inject additions sidecars or to patch existing containers.
 	// It can be useful for proxies, backup, etc.
 	// +optional

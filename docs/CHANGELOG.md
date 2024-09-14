@@ -11,6 +11,7 @@ aliases:
   - /operator/changelog/index.html
 ---
 
+- [vmalert](https://docs.victoriametrics.com/operator/resources/vmalert/): adds missing `hostAliases` fields to spec. See [this](https://github.com/VictoriaMetrics/operator/issues/1099) issue for details.
 - [operator](https://docs.victoriametrics.com/operator/): updates default vm apps version to v1.103.0
 - [vmsingle/vlogs](https://docs.victoriametrics.com/operator/resources): makes better compatible with argo-cd by adding ownerReference to PersistentVolumeClaim. See this [issue](https://github.com/VictoriaMetrics/operator/issues/1091) for details.
 - [operator](https://docs.victoriametrics.com/operator/): reduces reconcile latency. See this [commit](2a9d09d0131cc10a0f9e32f0e2e054687ada78f7) for details.

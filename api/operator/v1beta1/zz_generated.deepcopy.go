@@ -4158,6 +4158,13 @@ func (in *VMAlertSpec) DeepCopyInto(out *VMAlertSpec) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.HostAliases != nil {
+		in, out := &in.HostAliases, &out.HostAliases
+		*out = make([]v1.HostAlias, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	if in.Containers != nil {
 		in, out := &in.Containers, &out.Containers
 		*out = make([]v1.Container, len(*in))

@@ -493,6 +493,7 @@ func vmAlertSpecGen(cr *vmv1beta1.VMAlert, c *config.BaseOperatorConf, ruleConfi
 			Spec: corev1.PodSpec{
 				NodeSelector:                  cr.Spec.NodeSelector,
 				SchedulerName:                 cr.Spec.SchedulerName,
+				HostAliases:                   cr.Spec.HostAliases,
 				RuntimeClassName:              cr.Spec.RuntimeClassName,
 				ServiceAccountName:            cr.GetServiceAccountName(),
 				InitContainers:                build.AddStrictSecuritySettingsToContainers(cr.Spec.InitContainers, useStrictSecurity),

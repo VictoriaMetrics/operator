@@ -12090,6 +12090,29 @@ spec:
                   type: object
                   x-kubernetes-preserve-unknown-fields: true
                 type: array
+              host_aliases:
+                description: |-
+                  HostAliases provides mapping between ip and hostnames,
+                  that would be propagated to pod,
+                  cannot be used with HostNetwork.
+                items:
+                  description: |-
+                    HostAlias holds the mapping between IP and hostnames that will be injected as an entry in the
+                    pod's hosts file.
+                  properties:
+                    hostnames:
+                      description: Hostnames for the above IP address.
+                      items:
+                        type: string
+                      type: array
+                      x-kubernetes-list-type: atomic
+                    ip:
+                      description: IP address of the host file entry.
+                      type: string
+                  required:
+                  - ip
+                  type: object
+                type: array
               hostNetwork:
                 description: HostNetwork controls whether the pod may use the node
                   network namespace

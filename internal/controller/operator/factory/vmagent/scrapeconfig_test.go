@@ -41,8 +41,9 @@ func TestGenerateScrapeConfig(t *testing.T) {
 					},
 					Spec: vmv1beta1.VMScrapeConfigSpec{
 						EndpointScrapeParams: vmv1beta1.EndpointScrapeParams{
-							MaxScrapeSize:  "60KB",
-							ScrapeInterval: "10s",
+							MaxScrapeSize:   "60KB",
+							ScrapeInterval:  "10s",
+							ScrapeProtocols: []string{"PrometheusProto"},
 						},
 						StaticConfigs: []vmv1beta1.StaticConfig{
 							{
@@ -70,6 +71,8 @@ func TestGenerateScrapeConfig(t *testing.T) {
 			want: `job_name: scrapeConfig/default/static-1
 honor_labels: false
 scrape_interval: 30s
+scrape_protocols:
+- PrometheusProto
 max_scrape_size: 60KB
 relabel_configs: []
 basic_auth:

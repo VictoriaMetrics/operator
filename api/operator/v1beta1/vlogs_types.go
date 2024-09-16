@@ -171,7 +171,7 @@ type VLogsSpec struct {
 	Port string `json:"port,omitempty"`
 
 	// RemovePvcAfterDelete - if true, controller adds ownership to pvc
-	// and after VLogs objest deletion - pvc will be garbage collected
+	// and after VLogs object deletion - pvc will be garbage collected
 	// by controller manager
 	// +optional
 	RemovePvcAfterDelete bool `json:"removePvcAfterDelete,omitempty"`

@@ -342,7 +342,7 @@ spec:
               removePvcAfterDelete:
                 description: |-
                   RemovePvcAfterDelete - if true, controller adds ownership to pvc
-                  and after VLogs objest deletion - pvc will be garbage collected
+                  and after VLogs object deletion - pvc will be garbage collected
                   by controller manager
                 type: boolean
               replicaCount:
@@ -27958,7 +27958,7 @@ spec:
               removePvcAfterDelete:
                 description: |-
                   RemovePvcAfterDelete - if true, controller adds ownership to pvc
-                  and after VMSingle objest deletion - pvc will be garbage collected
+                  and after VMSingle object deletion - pvc will be garbage collected
                   by controller manager
                 type: boolean
               replicaCount:

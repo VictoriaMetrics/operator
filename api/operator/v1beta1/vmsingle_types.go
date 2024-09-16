@@ -157,7 +157,7 @@ type VMSingleSpec struct {
 	Port string `json:"port,omitempty"`
 
 	// RemovePvcAfterDelete - if true, controller adds ownership to pvc
-	// and after VMSingle objest deletion - pvc will be garbage collected
+	// and after VMSingle object deletion - pvc will be garbage collected
 	// by controller manager
 	// +optional
 	RemovePvcAfterDelete bool `json:"removePvcAfterDelete,omitempty"`

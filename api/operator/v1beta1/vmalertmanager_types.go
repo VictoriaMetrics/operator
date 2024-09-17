@@ -58,26 +58,6 @@ type VMAlertmanagerSpec struct {
 	// +optional
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
 
-	// Image - docker image settings for VMAlertmanager
-	// if no specified operator uses default config version
-	// +optional
-	Image Image `json:"image,omitempty"`
-
-	// ImagePullSecrets An optional list of references to secrets in the same namespace
-	// to use for pulling images from registries
-	// see https://kubernetes.io/docs/concepts/containers/images/#referring-to-an-imagepullsecrets-on-a-pod
-	// +optional
-	ImagePullSecrets []v1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
-	// Secrets is a list of Secrets in the same namespace as the VMAlertmanager
-	// object, which shall be mounted into the VMAlertmanager Pods.
-	// The Secrets are mounted into /etc/vm/secrets/<secret-name>
-	// +optional
-	Secrets []string `json:"secrets,omitempty"`
-	// ConfigMaps is a list of ConfigMaps in the same namespace as the VMAlertmanager
-	// object, which shall be mounted into the VMAlertmanager Pods.
-	// The ConfigMaps are mounted into /etc/vm/configs/<configmap-name>.
-	// +optional
-	ConfigMaps []string `json:"configMaps,omitempty"`
 	// Templates is a list of ConfigMap key references for ConfigMaps in the same namespace as the VMAlertmanager
 	// object, which shall be mounted into the VMAlertmanager Pods.
 	// The Templates are mounted into /etc/vm/templates/<configmap-name>/<configmap-key>.
@@ -104,21 +84,7 @@ type VMAlertmanagerSpec struct {
 	// LogFormat for VMAlertmanager to be configured with.
 	// +optional
 	LogFormat string `json:"logFormat,omitempty"`
-	// MinReadySeconds defines a minim number os seconds to wait before starting update next pod
-	// if previous in healthy state
-	// +optional
-	MinReadySeconds int32 `json:"minReadySeconds,omitempty"`
-	// ReplicaCount Size is the expected size of the alertmanager cluster. The controller will
-	// eventually make the size of the running cluster equal to the expected
-	// +kubebuilder:validation:Minimum:=0
-	// +optional
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Number of pods",xDescriptors="urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom"
-	ReplicaCount *int32 `json:"replicaCount,omitempty"`
-	// The number of old ReplicaSets to retain to allow rollback in deployment or
-	// maximum number of revisions that will be maintained in the StatefulSet's revision history.
-	// Defaults to 10.
-	// +optional
-	RevisionHistoryLimitCount *int32 `json:"revisionHistoryLimitCount,omitempty"`
+
 	// Retention Time duration VMAlertmanager shall retain data for. Default is '120h',
 	// and must match the regular expression `[0-9]+(ms|s|m|h)` (milliseconds seconds minutes hours).
 	// +kubebuilder:validation:Pattern:="[0-9]+(ms|s|m|h)"
@@ -128,16 +94,7 @@ type VMAlertmanagerSpec struct {
 	// instances.
 	// +optional
 	Storage *StorageSpec `json:"storage,omitempty"`
-	// Volumes allows configuration of additional volumes on the output StatefulSet definition.
-	// Volumes specified will be appended to other volumes that are generated as a result of
-	// StorageSpec objects.
-	// +optional
-	Volumes []v1.Volume `json:"volumes,omitempty"`
-	// VolumeMounts allows configuration of additional VolumeMounts on the output StatefulSet definition.
-	// VolumeMounts specified will be appended to other VolumeMounts in the alertmanager container,
-	// that are generated as a result of StorageSpec objects.
-	// +optional
-	VolumeMounts []v1.VolumeMount `json:"volumeMounts,omitempty"`
+
 	// ExternalURL the VMAlertmanager instances will be available under. This is
 	// necessary to generate correct URLs. This is necessary if VMAlertmanager is not
 	// served from root of a DNS name.
@@ -149,77 +106,17 @@ type VMAlertmanagerSpec struct {
 	// under a different route prefix. For example for use with `kubectl proxy`.
 	// +optional
 	RoutePrefix string `json:"routePrefix,omitempty"`
-	// Paused If set to true all actions on the underlying managed objects are not
-	// going to be performed, except for delete actions.
+
+	// ClusterDomainName defines domain name suffix for in-cluster dns addresses
+	// aka .cluster.local
+	// used to build pod peer addresses for in-cluster communication
 	// +optional
-	Paused bool `json:"paused,omitempty"`
-	// NodeSelector Define which Nodes the Pods are scheduled on.
-	// +optional
-	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
-	// Resources container resource request and limits,
-	// https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resources",xDescriptors="urn:alm:descriptor:com.tectonic.ui:resourceRequirements"
-	// +optional
-	Resources v1.ResourceRequirements `json:"resources,omitempty"`
-	// Affinity If specified, the pod's scheduling constraints.
-	// +optional
-	Affinity *v1.Affinity `json:"affinity,omitempty"`
-	// Tolerations If specified, the pod's tolerations.
-	// +optional
-	Tolerations []v1.Toleration `json:"tolerations,omitempty"`
-	// SecurityContext holds pod-level security attributes and common container settings.
-	// This defaults to the default PodSecurityContext.
-	// +optional
-	SecurityContext *v1.PodSecurityContext `json:"securityContext,omitempty"`
-	// ServiceAccountName is the name of the ServiceAccount to use
-	// +optional
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="ServiceAccount name",xDescriptors="urn:alm:descriptor:io.kubernetes:ServiceAccount"
-	ServiceAccountName string `json:"serviceAccountName,omitempty"`
-	// SchedulerName - defines kubernetes scheduler name
-	// +optional
-	SchedulerName string `json:"schedulerName,omitempty"`
-	// RuntimeClassName - defines runtime class for kubernetes pod.
-	// https://kubernetes.io/docs/concepts/containers/runtime-class/
-	// +optional
-	RuntimeClassName *string `json:"runtimeClassName,omitempty"`
+	ClusterDomainName string `json:"clusterDomainName,omitempty"`
 	// ListenLocal makes the VMAlertmanager server listen on loopback, so that it
 	// does not bind against the Pod IP. Note this is only for the VMAlertmanager
 	// UI, not the gossip communication.
 	// +optional
 	ListenLocal bool `json:"listenLocal,omitempty"`
-	// Containers allows injecting additional containers or patching existing containers.
-	// This is meant to allow adding an authentication proxy to an VMAlertmanager pod.
-	// +optional
-	Containers []v1.Container `json:"containers,omitempty"`
-	// InitContainers allows adding initContainers to the pod definition. Those can be used to e.g.
-	// fetch secrets for injection into the VMAlertmanager configuration from external sources. Any
-	// errors during the execution of an initContainer will lead to a restart of the Pod. More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
-	// Using initContainers for any use case other then secret fetching is entirely outside the scope
-	// of what the maintainers will support and by doing so, you accept that this behaviour may break
-	// at any time without notice.
-	// +optional
-	InitContainers []v1.Container `json:"initContainers,omitempty"`
-	// PriorityClassName class assigned to the Pods
-	// +optional
-	PriorityClassName string `json:"priorityClassName,omitempty"`
-	// HostNetwork controls whether the pod may use the node network namespace
-	// +optional
-	HostNetwork bool `json:"hostNetwork,omitempty"`
-	// DNSPolicy sets DNS policy for the pod
-	// +optional
-	DNSPolicy v1.DNSPolicy `json:"dnsPolicy,omitempty"`
-	// Specifies the DNS parameters of a pod.
-	// Parameters specified here will be merged to the generated DNS
-	// configuration based on DNSPolicy.
-	// +optional
-	DNSConfig *v1.PodDNSConfig `json:"dnsConfig,omitempty"`
-	// TopologySpreadConstraints embedded kubernetes pod configuration option,
-	// controls how pods are spread across your cluster among failure-domains
-	// such as regions, zones, nodes, and other user-defined topology domains
-	// https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/
-	// +optional
-	TopologySpreadConstraints []v1.TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
-
 	// AdditionalPeers allows injecting a set of additional Alertmanagers to peer with to form a highly available cluster.
 	AdditionalPeers []string `json:"additionalPeers,omitempty"`
 	// ClusterAdvertiseAddress is the explicit address to advertise in cluster.
@@ -227,9 +124,6 @@ type VMAlertmanagerSpec struct {
 	// [1] RFC1918: https://tools.ietf.org/html/rfc1918
 	// +optional
 	ClusterAdvertiseAddress string `json:"clusterAdvertiseAddress,omitempty"`
-	// Port for listen
-	// +optional
-	Port string `json:"port,omitempty"`
 	// PortName used for the pods and governing service.
 	// This defaults to web
 	// +optional
@@ -264,18 +158,6 @@ type VMAlertmanagerSpec struct {
 	// If both nil - behaviour controlled by selectAllByDefault
 	// +optional
 	ConfigNamespaceSelector *metav1.LabelSelector `json:"configNamespaceSelector,omitempty"`
-	// ConfigReloaderExtraArgs that will be passed to  VMAuths config-reloader container
-	// for example resyncInterval: "30s"
-	// +optional
-	ConfigReloaderExtraArgs map[string]string `json:"configReloaderExtraArgs,omitempty"`
-
-	// ExtraArgs that will be passed to  VMAlertmanager pod
-	// for example log.level: debug
-	// +optional
-	ExtraArgs map[string]string `json:"extraArgs,omitempty"`
-	// ExtraEnvs that will be added to VMAlertmanager pod
-	// +optional
-	ExtraEnvs []v1.EnvVar `json:"extraEnvs,omitempty"`
 
 	// DisableNamespaceMatcher disables namespace label matcher for VMAlertmanagerConfig
 	// It may be useful if alert doesn't have namespace label for some reason
@@ -291,11 +173,6 @@ type VMAlertmanagerSpec struct {
 	// Can be changed for RollingUpdate
 	// +optional
 	RollingUpdateStrategy appsv1.StatefulSetUpdateStrategyType `json:"rollingUpdateStrategy,omitempty"`
-	// TerminationGracePeriodSeconds period for container graceful termination
-	// +optional
-	TerminationGracePeriodSeconds *int64 `json:"terminationGracePeriodSeconds,omitempty"`
-	// ReadinessGates defines pod readiness gates
-	ReadinessGates []v1.PodReadinessGate `json:"readinessGates,omitempty"`
 	// ClaimTemplates allows adding additional VolumeClaimTemplates for StatefulSet
 	ClaimTemplates []v1.PersistentVolumeClaim `json:"claimTemplates,omitempty"`
 	// UseStrictSecurity enables strict security mode for component
@@ -311,6 +188,10 @@ type VMAlertmanagerSpec struct {
 
 	// GossipConfig defines gossip TLS configuration for Alertmanager cluster
 	GossipConfig *AlertmanagerGossipConfig `json:"gossipConfig,omitempty"`
+
+	CommonDefaultableParams           `json:",inline,omitempty"`
+	CommonConfigReloaderParams        `json:",inline,omitempty"`
+	CommonApplicationDeploymentParams `json:",inline,omitempty"`
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface
@@ -589,7 +470,7 @@ func (cr *VMAlertmanager) Paused() bool {
 func (cr *VMAlertmanager) SetUpdateStatusTo(ctx context.Context, r client.Client, status UpdateStatus, maybeErr error) error {
 	currentStatus := cr.Status.UpdateStatus
 	prevStatus := cr.Status.DeepCopy()
-	cr.Status.UpdateStatus = status
+
 	switch status {
 	case UpdateStatusExpanding:
 	case UpdateStatusFailed:
@@ -608,8 +489,9 @@ func (cr *VMAlertmanager) SetUpdateStatusTo(ctx context.Context, r client.Client
 	if equality.Semantic.DeepEqual(&cr.Status, prevStatus) {
 		return nil
 	}
-	if err := r.Status().Update(ctx, cr); err != nil {
-		return fmt.Errorf("failed to update object status to=%q: %w", status, err)
+	cr.Status.UpdateStatus = status
+	if err := statusPatch(ctx, r, cr, cr.Status); err != nil {
+		return fmt.Errorf("cannot patch status: %w", err)
 	}
 	return nil
 }

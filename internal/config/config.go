@@ -33,6 +33,30 @@ const (
 // An empty value means the operator is running with cluster scope.
 var WatchNamespaceEnvVar = "WATCH_NAMESPACE"
 
+// ApplicationDefaults is useful for generic default building
+// uses the same memory as application default at config
+type ApplicationDefaults struct {
+	Image               string
+	Version             string
+	ConfigReloadImage   string
+	Port                string
+	UseDefaultResources bool
+	Resource            struct {
+		Limit struct {
+			Mem string
+			Cpu string
+		}
+		Request struct {
+			Mem string
+			Cpu string
+		}
+	}
+	ConfigReloaderCPU    string
+	ConfigReloaderMemory string
+}
+
+// Resource is useful for generic resource building
+// uses the same memory layout as resources at config
 type Resource struct {
 	Limit struct {
 		Mem string
@@ -56,8 +80,10 @@ type BaseOperatorConf struct {
 	PSPAutoCreateEnabled             bool `default:"false"`
 
 	VLogsDefault struct {
-		Image               string `default:"victoriametrics/victoria-logs"`
-		Version             string `default:"v0.28.0-victorialogs"`
+		Image   string `default:"victoriametrics/victoria-logs"`
+		Version string `default:"v0.28.0-victorialogs"`
+		// ignored
+		ConfigReloadImage   string `ignored:"true"`
 		Port                string `default:"9428"`
 		UseDefaultResources bool   `default:"true"`
 		Resource            struct {
@@ -70,11 +96,16 @@ type BaseOperatorConf struct {
 				Cpu string `default:"150m"`
 			}
 		}
+		// ignored
+		ConfigReloaderCPU string `ignored:"true"`
+		// ignored
+		ConfigReloaderMemory string `ignored:"true"`
 	}
 
 	VMAlertDefault struct {
 		Image               string `default:"victoriametrics/vmalert"`
 		Version             string `default:"v1.103.0"`
+		ConfigReloadImage   string `default:"jimmidyson/configmap-reload:v0.3.0"`
 		Port                string `default:"8080"`
 		UseDefaultResources bool   `default:"true"`
 		Resource            struct {
@@ -89,7 +120,6 @@ type BaseOperatorConf struct {
 		}
 		ConfigReloaderCPU    string `default:"100m"`
 		ConfigReloaderMemory string `default:"25Mi"`
-		ConfigReloadImage    string `default:"jimmidyson/configmap-reload:v0.3.0"`
 	}
 
 	VMAgentDefault struct {
@@ -113,8 +143,10 @@ type BaseOperatorConf struct {
 	}
 
 	VMSingleDefault struct {
-		Image               string `default:"victoriametrics/victoria-metrics"`
-		Version             string `default:"v1.103.0"`
+		Image   string `default:"victoriametrics/victoria-metrics"`
+		Version string `default:"v1.103.0"`
+		// ignored
+		ConfigReloadImage   string `ignored:"true"`
 		Port                string `default:"8429"`
 		UseDefaultResources bool   `default:"true"`
 		Resource            struct {
@@ -127,8 +159,10 @@ type BaseOperatorConf struct {
 				Cpu string `default:"150m"`
 			}
 		}
-		ConfigReloaderCPU    string `default:"100m"`
-		ConfigReloaderMemory string `default:"25Mi"`
+		// ignored
+		ConfigReloaderCPU string `ignored:"true"`
+		// ignored
+		ConfigReloaderMemory string `ignored:"true"`
 	}
 
 	VMClusterDefault struct {
@@ -218,8 +252,6 @@ type BaseOperatorConf struct {
 				Cpu string `default:"150m"`
 			}
 		}
-		LogLevel  string `default:"INFO"`
-		LogFormat string
 	}
 	VMAuthDefault struct {
 		Image               string `default:"victoriametrics/vmauth"`
@@ -259,16 +291,19 @@ type BaseOperatorConf struct {
 	FilterPrometheusConverterLabelPrefixes []string `default:""`
 	// allows filtering for converted annotations, annotations with matched prefix will be ignored
 	FilterPrometheusConverterAnnotationPrefixes []string `default:""`
-	Host                                        string   `default:"0.0.0.0"`
-	ListenAddress                               string   `default:"0.0.0.0"`
-	DefaultLabels                               string   `default:"managed-by=vm-operator"`
-	Labels                                      Labels   `ignored:"true"`
-	LogLevel                                    string
-	LogFormat                                   string
-	ClusterDomainName                           string        `default:""`
-	PodWaitReadyTimeout                         time.Duration `default:"80s"`
-	PodWaitReadyIntervalCheck                   time.Duration `default:"5s"`
-	PodWaitReadyInitDelay                       time.Duration `default:"10s"`
+	// Defines domain name suffix for in-cluster addresses
+	// most known ClusterDomainName is .cluster.local
+	ClusterDomainName string `default:""`
+	// Defines deadline for deploymnet/statefulset
+	// to transit into ready state
+	// to wait for transition to ready state
+	AppReadyTimeout time.Duration `default:"80s"`
+	// Defines single pod deadline
+	// to wait for transition to ready state
+	PodWaitReadyTimeout time.Duration `default:"80s"`
+	// Defines poll interval for pods ready check
+	// at statefulset rollout update
+	PodWaitReadyIntervalCheck time.Duration `default:"5s"`
 	// configures force resync interval for VMAgent, VMAlert, VMAlertmanager and VMAuth.
 	ForceResyncInterval time.Duration `default:"60s"`
 	// EnableStrictSecurity will add default `securityContext` to pods and containers created by operator
@@ -427,14 +462,7 @@ func MustGetBaseConfig() *BaseOperatorConf {
 		if err != nil {
 			panic(err)
 		}
-		if c.DefaultLabels != "" {
-			defL := Labels{}
-			err := defL.Set(c.DefaultLabels)
-			if err != nil {
-				panic(err)
-			}
-			c.Labels = defL
-		}
+
 		if err := c.Validate(); err != nil {
 			panic(err)
 		}

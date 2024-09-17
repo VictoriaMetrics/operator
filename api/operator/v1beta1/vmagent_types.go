@@ -56,25 +56,6 @@ type VMAgentSpec struct {
 	// PodMetadata configures Labels and Annotations which are propagated to the vmagent pods.
 	// +optional
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
-	// Image - docker image settings for VMAgent
-	// if no specified operator uses default config version
-	// +optional
-	Image Image `json:"image,omitempty"`
-	// ImagePullSecrets An optional list of references to secrets in the same namespace
-	// to use for pulling images from registries
-	// see https://kubernetes.io/docs/concepts/containers/images/#referring-to-an-imagepullsecrets-on-a-pod
-	// +optional
-	ImagePullSecrets []v1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
-	// Secrets is a list of Secrets in the same namespace as the vmagent
-	// object, which shall be mounted into the vmagent Pods.
-	// will be mounted at path /etc/vm/secrets
-	// +optional
-	Secrets []string `json:"secrets,omitempty"`
-	// ConfigMaps is a list of ConfigMaps in the same namespace as the vmagent
-	// object, which shall be mounted into the vmagent Pods.
-	// will be mounted at path  /etc/vm/configs
-	// +optional
-	ConfigMaps []string `json:"configMaps,omitempty"`
 	// LogLevel for VMAgent to be configured with.
 	// INFO, WARN, ERROR, FATAL, PANIC
 	// +optional
@@ -84,91 +65,7 @@ type VMAgentSpec struct {
 	// +optional
 	// +kubebuilder:validation:Enum=default;json
 	LogFormat string `json:"logFormat,omitempty"`
-	// MinReadySeconds defines a minim number os seconds to wait before starting update next pod
-	// if previous in healthy state
-	// +optional
-	MinReadySeconds int32 `json:"minReadySeconds,omitempty"`
 
-	// ReplicaCount is the expected size of the VMAgent cluster. The controller will
-	// eventually make the size of the running cluster equal to the expected
-	// size.
-	// NOTE enable VMSingle deduplication for replica usage
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Number of pods",xDescriptors="urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom"
-	// +optional
-	ReplicaCount *int32 `json:"replicaCount,omitempty"`
-	// The number of old ReplicaSets to retain to allow rollback in deployment or
-	// maximum number of revisions that will be maintained in the StatefulSet's revision history.
-	// Defaults to 10.
-	// +optional
-	RevisionHistoryLimitCount *int32 `json:"revisionHistoryLimitCount,omitempty"`
-	// Volumes allows configuration of additional volumes on the output deploy definition.
-	// Volumes specified will be appended to other volumes that are generated as a result of
-	// StorageSpec objects.
-	// +optional
-	Volumes []v1.Volume `json:"volumes,omitempty"`
-	// VolumeMounts allows configuration of additional VolumeMounts on the output deploy definition.
-	// VolumeMounts specified will be appended to other VolumeMounts in the vmagent container,
-	// that are generated as a result of StorageSpec objects.
-	// +optional
-	VolumeMounts []v1.VolumeMount `json:"volumeMounts,omitempty"`
-	// Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
-	// if not specified - default setting will be used
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resources",xDescriptors="urn:alm:descriptor:com.tectonic.ui:resourceRequirements"
-	// +optional
-	Resources v1.ResourceRequirements `json:"resources,omitempty"`
-	// Affinity If specified, the pod's scheduling constraints.
-	// +optional
-	Affinity *v1.Affinity `json:"affinity,omitempty"`
-	// Tolerations If specified, the pod's tolerations.
-	// +optional
-	Tolerations []v1.Toleration `json:"tolerations,omitempty"`
-	// SecurityContext holds pod-level security attributes and common container settings.
-	// This defaults to the default PodSecurityContext.
-	// +optional
-	SecurityContext *v1.PodSecurityContext `json:"securityContext,omitempty"`
-	// ServiceAccountName is the name of the ServiceAccount to use to run the
-	// VMAgent Pods.
-	// +optional
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="ServiceAccount name",xDescriptors="urn:alm:descriptor:io.kubernetes:ServiceAccount"
-	ServiceAccountName string `json:"serviceAccountName,omitempty"`
-	// SchedulerName - defines kubernetes scheduler name
-	// +optional
-	SchedulerName string `json:"schedulerName,omitempty"`
-	// RuntimeClassName - defines runtime class for kubernetes pod.
-	// https://kubernetes.io/docs/concepts/containers/runtime-class/
-	RuntimeClassName *string `json:"runtimeClassName,omitempty"`
-	// HostAliases provides mapping between ip and hostnames,
-	// that would be propagated to pod,
-	// cannot be used with HostNetwork.
-	// +optional
-	HostAliases []v1.HostAlias `json:"host_aliases,omitempty"`
-	// Containers property allows to inject additions sidecars or to patch existing containers.
-	// It can be useful for proxies, backup, etc.
-	// +optional
-	Containers []v1.Container `json:"containers,omitempty"`
-	// InitContainers allows adding initContainers to the pod definition. Those can be used to e.g.
-	// fetch secrets for injection into the vmagent configuration from external sources. Any
-	// errors during the execution of an initContainer will lead to a restart of the Pod. More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
-	// Using initContainers for any use case other then secret fetching is entirely outside the scope
-	// of what the maintainers will support and by doing so, you accept that this behaviour may break
-	// at any time without notice.
-	// +optional
-	InitContainers []v1.Container `json:"initContainers,omitempty"`
-	// PriorityClassName assigned to the Pods
-	// +optional
-	PriorityClassName string `json:"priorityClassName,omitempty"`
-	// HostNetwork controls whether the pod may use the node network namespace
-	// +optional
-	HostNetwork bool `json:"hostNetwork,omitempty"`
-	// DNSPolicy set DNS policy for the pod
-	// +optional
-	DNSPolicy v1.DNSPolicy `json:"dnsPolicy,omitempty"`
-	// TopologySpreadConstraints embedded kubernetes pod configuration option,
-	// controls how pods are spread across your cluster among failure-domains
-	// such as regions, zones, nodes, and other user-defined topology domains
-	// https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/
-	// +optional
-	TopologySpreadConstraints []v1.TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
 	// ScrapeInterval defines how often scrape targets by default
 	// +optional
 	// +kubebuilder:validation:Pattern:="[0-9]+(ms|s|m|h)"
@@ -321,22 +218,7 @@ type VMAgentSpec struct {
 	AdditionalScrapeConfigs *v1.SecretKeySelector `json:"additionalScrapeConfigs,omitempty"`
 	// InsertPorts - additional listen ports for data ingestion.
 	InsertPorts *InsertPorts `json:"insertPorts,omitempty"`
-	// Port listen address
-	// +optional
-	Port string `json:"port,omitempty"`
-	// ConfigReloaderExtraArgs that will be passed to  VMAuths config-reloader container
-	// for example resyncInterval: "30s"
-	// +optional
-	ConfigReloaderExtraArgs map[string]string `json:"configReloaderExtraArgs,omitempty"`
 
-	// ExtraArgs that will be passed to  VMAgent pod
-	// for example remoteWrite.tmpDataPath: /tmp
-	// it would be converted to flag --remoteWrite.tmpDataPath=/tmp
-	// +optional
-	ExtraArgs map[string]string `json:"extraArgs,omitempty"`
-	// ExtraEnvs that will be added to VMAgent pod
-	// +optional
-	ExtraEnvs []v1.EnvVar `json:"extraEnvs,omitempty"`
 	// ServiceSpec that will be added to vmagent service spec
 	// +optional
 	ServiceSpec *AdditionalServiceSpec `json:"serviceSpec,omitempty"`
@@ -363,9 +245,6 @@ type VMAgentSpec struct {
 	// +optional
 	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
 	*EmbeddedProbes     `json:",inline"`
-	// NodeSelector Define which Nodes the Pods are scheduled on.
-	// +optional
-	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 	// ServiceScrapeRelabelTemplate defines relabel config, that will be added to each VMServiceScrape.
 	// it's useful for adding specific labels to all targets
 	// +optional
@@ -396,15 +275,6 @@ type VMAgentSpec struct {
 	// MaxScrapeInterval allows limiting maximum scrape interval for VMServiceScrape, VMPodScrape and other scrapes
 	// If interval is higher than defined limit, `maxScrapeInterval` will be used.
 	MaxScrapeInterval *string `json:"maxScrapeInterval,omitempty"`
-	// TerminationGracePeriodSeconds period for container graceful termination
-	// +optional
-	TerminationGracePeriodSeconds *int64 `json:"terminationGracePeriodSeconds,omitempty"`
-	// Specifies the DNS parameters of a pod.
-	// Parameters specified here will be merged to the generated DNS
-	// configuration based on DNSPolicy.
-	// +optional
-	DNSConfig *v1.PodDNSConfig `json:"dnsConfig,omitempty"`
-
 	// StatefulMode enables StatefulSet for `VMAgent` instead of Deployment
 	// it allows using persistent storage for vmagent's persistentQueue
 	// +optional
@@ -417,17 +287,8 @@ type VMAgentSpec struct {
 	// +optional
 	StatefulRollingUpdateStrategy appsv1.StatefulSetUpdateStrategyType `json:"statefulRollingUpdateStrategy,omitempty"`
 
-	// ReadinessGates defines pod readiness gates
-	ReadinessGates []v1.PodReadinessGate `json:"readinessGates,omitempty"`
 	// ClaimTemplates allows adding additional VolumeClaimTemplates for VMAgent in StatefulMode
 	ClaimTemplates []v1.PersistentVolumeClaim `json:"claimTemplates,omitempty"`
-	// UseStrictSecurity enables strict security mode for component
-	// it restricts disk writes access
-	// uses non-root user out of the box
-	// drops not needed security permissions
-	// +optional
-	UseStrictSecurity *bool `json:"useStrictSecurity,omitempty"`
-
 	// IngestOnlyMode switches vmagent into unmanaged mode
 	// it disables any config generation for scraping
 	// Currently it prevents vmagent from managing tls and auth options for remote write
@@ -440,11 +301,10 @@ type VMAgentSpec struct {
 	// +optional
 	License *License `json:"license,omitempty"`
 
-	// Paused If set to true all actions on the underlying managed objects are not
-	// going to be performed, except for delete actions.
-	// +optional
-	Paused                      bool `json:"paused,omitempty"`
-	VMAgentSecurityEnforcements `json:",inline"`
+	VMAgentSecurityEnforcements       `json:",inline"`
+	CommonDefaultableParams           `json:",inline,omitempty"`
+	CommonConfigReloaderParams        `json:",inline,omitempty"`
+	CommonApplicationDeploymentParams `json:",inline,omitempty"`
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface
@@ -842,7 +702,6 @@ func (cr *VMAgent) HasAnyStreamAggrRule() bool {
 func (cr *VMAgent) SetUpdateStatusTo(ctx context.Context, r client.Client, status UpdateStatus, maybeErr error) error {
 	currentStatus := cr.Status.UpdateStatus
 	prevStatus := cr.Status.DeepCopy()
-	cr.Status.UpdateStatus = status
 	switch status {
 	case UpdateStatusExpanding:
 	case UpdateStatusFailed:
@@ -858,26 +717,23 @@ func (cr *VMAgent) SetUpdateStatusTo(ctx context.Context, r client.Client, statu
 	default:
 		panic(fmt.Sprintf("BUG: not expected status=%q", status))
 	}
-	// default value
-	replicaCount := int32(1)
+	replicaCount := int32(0)
 	if cr.Spec.ReplicaCount != nil {
 		replicaCount = *cr.Spec.ReplicaCount
 	}
-	cr.Status.Replicas = replicaCount
 	var shardCnt int32
 	if cr.Spec.ShardCount != nil {
 		shardCnt = int32(*cr.Spec.ShardCount)
 	}
-	cr.Status.Shards = shardCnt
-	cr.Status.Selector = labels.SelectorFromSet(cr.SelectorLabels()).String()
-
 	if equality.Semantic.DeepEqual(&cr.Status, prevStatus) {
 		return nil
 	}
-	if err := r.Status().Update(ctx, cr); err != nil {
-		return fmt.Errorf("failed to update object status to=%q: %w", status, err)
-	}
-	return nil
+	cr.Status.UpdateStatus = status
+	cr.Status.Replicas = replicaCount
+	cr.Status.Shards = shardCnt
+	cr.Status.Selector = labels.SelectorFromSet(cr.SelectorLabels()).String()
+
+	return statusPatch(ctx, r, cr, cr.Status)
 }
 
 // GetAdditionalService returns AdditionalServiceSpec settings

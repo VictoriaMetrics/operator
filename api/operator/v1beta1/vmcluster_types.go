@@ -45,6 +45,11 @@ type VMClusterSpec struct {
 	// it can be overwritten with component specific image.tag value.
 	// +optional
 	ClusterVersion string `json:"clusterVersion,omitempty"`
+	// ClusterDomainName defines domain name suffix for in-cluster dns addresses
+	// aka .cluster.local
+	// used by vminsert and vmselect to build vmstorage address
+	// +optional
+	ClusterDomainName string `json:"clusterDomainName,omitempty"`
 
 	// ImagePullSecrets An optional list of references to secrets in the same namespace
 	// to use for pulling images from registries
@@ -165,19 +170,6 @@ func init() {
 type VMSelect struct {
 	// PodMetadata configures Labels and Annotations which are propagated to the VMSelect pods.
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
-	// Image - docker image settings for VMSelect
-	// +optional
-	Image Image `json:"image,omitempty"`
-	// Secrets is a list of Secrets in the same namespace as the VMSelect
-	// object, which shall be mounted into the VMSelect Pods.
-	// The Secrets are mounted into /etc/vm/secrets/<secret-name>.
-	// +optional
-	Secrets []string `json:"secrets,omitempty"`
-	// ConfigMaps is a list of ConfigMaps in the same namespace as the VMSelect
-	// object, which shall be mounted into the VMSelect Pods.
-	// The ConfigMaps are mounted into /etc/vm/configs/<configmap-name>.
-	// +optional
-	ConfigMaps []string `json:"configMaps,omitempty"`
 	// LogFormat for VMSelect to be configured with.
 	// default or json
 	// +optional
@@ -187,80 +179,6 @@ type VMSelect struct {
 	// +optional
 	// +kubebuilder:validation:Enum=INFO;WARN;ERROR;FATAL;PANIC
 	LogLevel string `json:"logLevel,omitempty"`
-	// MinReadySeconds defines a minim number os seconds to wait before starting update next pod
-	// if previous in healthy state
-	// +optional
-	MinReadySeconds int32 `json:"minReadySeconds,omitempty"`
-
-	// ReplicaCount is the expected size of the VMSelect cluster. The controller will
-	// eventually make the size of the running cluster equal to the expected
-	// size.
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Number of pods",xDescriptors="urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom"
-	ReplicaCount *int32 `json:"replicaCount"`
-	// The number of old ReplicaSets to retain to allow rollback in deployment or
-	// maximum number of revisions that will be maintained in the StatefulSet's revision history.
-	// Defaults to 10.
-	// +optional
-	RevisionHistoryLimitCount *int32 `json:"revisionHistoryLimitCount,omitempty"`
-	// Volumes allows configuration of additional volumes on the output Deployment definition.
-	// Volumes specified will be appended to other volumes that are generated as a result of
-	// StorageSpec objects.
-	// +optional
-	Volumes []v1.Volume `json:"volumes,omitempty"`
-	// VolumeMounts allows configuration of additional VolumeMounts on the output Deployment definition.
-	// VolumeMounts specified will be appended to other VolumeMounts in the VMSelect container,
-	// that are generated as a result of StorageSpec objects.
-	// +optional
-	VolumeMounts []v1.VolumeMount `json:"volumeMounts,omitempty"`
-	// Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resources",xDescriptors="urn:alm:descriptor:com.tectonic.ui:resourceRequirements"
-	// +optional
-	Resources v1.ResourceRequirements `json:"resources,omitempty"`
-	// Affinity If specified, the pod's scheduling constraints.
-	// +optional
-	Affinity *v1.Affinity `json:"affinity,omitempty"`
-	// Tolerations If specified, the pod's tolerations.
-	// +optional
-	Tolerations []v1.Toleration `json:"tolerations,omitempty"`
-	// SecurityContext holds pod-level security attributes and common container settings.
-	// This defaults to the default PodSecurityContext.
-	// +optional
-	SecurityContext *v1.PodSecurityContext `json:"securityContext,omitempty"`
-	// Containers property allows to inject additions sidecars or to patch existing containers.
-	// It can be useful for proxies, backup, etc.
-	// +optional
-	Containers []v1.Container `json:"containers,omitempty"`
-	// InitContainers allows adding initContainers to the pod definition. Those can be used to e.g.
-	// fetch secrets for injection into the VMSelect configuration from external sources. Any
-	// errors during the execution of an initContainer will lead to a restart of the Pod. More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
-	// Using initContainers for any use case other then secret fetching is entirely outside the scope
-	// of what the maintainers will support and by doing so, you accept that this behaviour may break
-	// at any time without notice.
-	// +optional
-	InitContainers []v1.Container `json:"initContainers,omitempty"`
-
-	// Priority class assigned to the Pods
-	// +optional
-	PriorityClassName string `json:"priorityClassName,omitempty"`
-
-	// HostNetwork controls whether the pod may use the node network namespace
-	// +optional
-	HostNetwork bool `json:"hostNetwork,omitempty"`
-	// DNSPolicy sets DNS policy for the pod
-	// +optional
-	DNSPolicy v1.DNSPolicy `json:"dnsPolicy,omitempty"`
-	// Specifies the DNS parameters of a pod.
-	// Parameters specified here will be merged to the generated DNS
-	// configuration based on DNSPolicy.
-	// +optional
-	DNSConfig *v1.PodDNSConfig `json:"dnsConfig,omitempty"`
-	// TopologySpreadConstraints embedded kubernetes pod configuration option,
-	// controls how pods are spread across your cluster among failure-domains
-	// such as regions, zones, nodes, and other user-defined topology domains
-	// https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/
-	// +optional
-	TopologySpreadConstraints []v1.TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
-
 	// CacheMountPath allows to add cache persistent for VMSelect,
 	// will use "/cache" as default if not specified.
 	// +optional
@@ -276,29 +194,11 @@ type VMSelect struct {
 	// its needed for persistent cache
 	// +optional
 	StorageSpec *StorageSpec `json:"storage,omitempty"`
-
-	// ExtraEnvs that will be added to VMSelect pod
-	// +optional
-	ExtraEnvs []v1.EnvVar `json:"extraEnvs,omitempty"`
-	// +optional
-	ExtraArgs map[string]string `json:"extraArgs,omitempty"`
-
-	// Port listen port
-	// +optional
-	Port string `json:"port,omitempty"`
-
 	// ClusterNativePort for multi-level cluster setup.
 	// More [details](https://docs.victoriametrics.com/Cluster-VictoriaMetrics#multi-level-cluster-setup)
 	// +optional
 	ClusterNativePort string `json:"clusterNativeListenPort,omitempty"`
 
-	// SchedulerName - defines kubernetes scheduler name
-	// +optional
-	SchedulerName string `json:"schedulerName,omitempty"`
-	// RuntimeClassName - defines runtime class for kubernetes pod.
-	// https://kubernetes.io/docs/concepts/containers/runtime-class/
-	// +optional
-	RuntimeClassName *string `json:"runtimeClassName,omitempty"`
 	// ServiceSpec that will be added to vmselect service spec
 	// +optional
 	ServiceSpec *AdditionalServiceSpec `json:"serviceSpec,omitempty"`
@@ -313,22 +213,16 @@ type VMSelect struct {
 	// Note, enabling this option disables vmselect to vmselect communication. In most cases it's not an issue.
 	// +optional
 	HPA *EmbeddedHPA `json:"hpa,omitempty"`
-	// NodeSelector Define which Nodes the Pods are scheduled on.
-	// +optional
-	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
-
 	// RollingUpdateStrategy defines strategy for application updates
 	// Default is OnDelete, in this case operator handles update process
 	// Can be changed for RollingUpdate
 	// +optional
 	RollingUpdateStrategy appsv1.StatefulSetUpdateStrategyType `json:"rollingUpdateStrategy,omitempty"`
-	// TerminationGracePeriodSeconds period for container graceful termination
-	// +optional
-	TerminationGracePeriodSeconds *int64 `json:"terminationGracePeriodSeconds,omitempty"`
-	// ReadinessGates defines pod readiness gates
-	ReadinessGates []v1.PodReadinessGate `json:"readinessGates,omitempty"`
 	// ClaimTemplates allows adding additional VolumeClaimTemplates for StatefulSet
 	ClaimTemplates []v1.PersistentVolumeClaim `json:"claimTemplates,omitempty"`
+
+	CommonDefaultableParams           `json:",inline"`
+	CommonApplicationDeploymentParams `json:",inline"`
 }
 
 func (s VMSelect) GetNameWithPrefix(clusterName string) string {
@@ -365,20 +259,6 @@ type InsertPorts struct {
 type VMInsert struct {
 	// PodMetadata configures Labels and Annotations which are propagated to the VMInsert pods.
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
-
-	// Image - docker image settings for VMInsert
-	// +optional
-	Image Image `json:"image,omitempty"`
-	// Secrets is a list of Secrets in the same namespace as the VMInsert
-	// object, which shall be mounted into the VMInsert Pods.
-	// The Secrets are mounted into /etc/vm/secrets/<secret-name>.
-	// +optional
-	Secrets []string `json:"secrets,omitempty"`
-	// ConfigMaps is a list of ConfigMaps in the same namespace as the VMInsert
-	// object, which shall be mounted into the VMInsert Pods.
-	// The ConfigMaps are mounted into /etc/vm/configs/<configmap-name>.
-	// +optional
-	ConfigMaps []string `json:"configMaps,omitempty"`
 	// LogFormat for VMInsert to be configured with.
 	// default or json
 	// +optional
@@ -388,106 +268,14 @@ type VMInsert struct {
 	// +optional
 	// +kubebuilder:validation:Enum=INFO;WARN;ERROR;FATAL;PANIC
 	LogLevel string `json:"logLevel,omitempty"`
-	// MinReadySeconds defines a minim number os seconds to wait before starting update next pod
-	// if previous in healthy state
-	// +optional
-	MinReadySeconds int32 `json:"minReadySeconds,omitempty"`
-
-	// ReplicaCount is the expected size of the VMInsert cluster. The controller will
-	// eventually make the size of the running cluster equal to the expected
-	// size.
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Number of pods",xDescriptors="urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom"
-	ReplicaCount *int32 `json:"replicaCount"`
-	// The number of old ReplicaSets to retain to allow rollback in deployment or
-	// maximum number of revisions that will be maintained in the StatefulSet's revision history.
-	// Defaults to 10.
-	// +optional
-	RevisionHistoryLimitCount *int32 `json:"revisionHistoryLimitCount,omitempty"`
-	// Volumes allows configuration of additional volumes on the output Deployment definition.
-	// Volumes specified will be appended to other volumes that are generated as a result of
-	// StorageSpec objects.
-	// +optional
-	Volumes []v1.Volume `json:"volumes,omitempty"`
-	// VolumeMounts allows configuration of additional VolumeMounts on the output Deployment definition.
-	// VolumeMounts specified will be appended to other VolumeMounts in the VMInsert container,
-	// that are generated as a result of StorageSpec objects.
-	// +optional
-	VolumeMounts []v1.VolumeMount `json:"volumeMounts,omitempty"`
-	// Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resources",xDescriptors="urn:alm:descriptor:com.tectonic.ui:resourceRequirements"
-	// +optional
-	Resources v1.ResourceRequirements `json:"resources,omitempty"`
-	// Affinity If specified, the pod's scheduling constraints.
-	// +optional
-	Affinity *v1.Affinity `json:"affinity,omitempty"`
-	// Tolerations If specified, the pod's tolerations.
-	// +optional
-	Tolerations []v1.Toleration `json:"tolerations,omitempty"`
-	// SecurityContext holds pod-level security attributes and common container settings.
-	// This defaults to the default PodSecurityContext.
-	// +optional
-	SecurityContext *v1.PodSecurityContext `json:"securityContext,omitempty"`
-	// Containers property allows to inject additions sidecars or to patch existing containers.
-	// It can be useful for proxies, backup, etc.
-	// +optional
-	Containers []v1.Container `json:"containers,omitempty"`
-	// InitContainers allows adding initContainers to the pod definition. Those can be used to e.g.
-	// fetch secrets for injection into the VMInsert configuration from external sources. Any
-	// errors during the execution of an initContainer will lead to a restart of the Pod. More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
-	// Using initContainers for any use case other then secret fetching is entirely outside the scope
-	// of what the maintainers will support and by doing so, you accept that this behaviour may break
-	// at any time without notice.
-	// +optional
-	InitContainers []v1.Container `json:"initContainers,omitempty"`
-
-	// Priority class assigned to the Pods
-	// +optional
-	PriorityClassName string `json:"priorityClassName,omitempty"`
-
-	// HostNetwork controls whether the pod may use the node network namespace
-	// +optional
-	HostNetwork bool `json:"hostNetwork,omitempty"`
-	// DNSPolicy sets DNS policy for the pod
-	// +optional
-	DNSPolicy v1.DNSPolicy `json:"dnsPolicy,omitempty"`
-	// Specifies the DNS parameters of a pod.
-	// Parameters specified here will be merged to the generated DNS
-	// configuration based on DNSPolicy.
-	// +optional
-	DNSConfig *v1.PodDNSConfig `json:"dnsConfig,omitempty"`
-	// TopologySpreadConstraints embedded kubernetes pod configuration option,
-	// controls how pods are spread across your cluster among failure-domains
-	// such as regions, zones, nodes, and other user-defined topology domains
-	// https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/
-	// +optional
-	TopologySpreadConstraints []v1.TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
-
-	// +optional
-	ExtraArgs map[string]string `json:"extraArgs,omitempty"`
 
 	// InsertPorts - additional listen ports for data ingestion.
 	InsertPorts *InsertPorts `json:"insertPorts,omitempty"`
-
-	// Port listen port
-	// +optional
-	Port string `json:"port,omitempty"`
 
 	// ClusterNativePort for multi-level cluster setup.
 	// More [details](https://docs.victoriametrics.com/Cluster-VictoriaMetrics#multi-level-cluster-setup)
 	// +optional
 	ClusterNativePort string `json:"clusterNativeListenPort,omitempty"`
-
-	// SchedulerName - defines kubernetes scheduler name
-	// +optional
-	SchedulerName string `json:"schedulerName,omitempty"`
-	// RuntimeClassName - defines runtime class for kubernetes pod.
-	// https://kubernetes.io/docs/concepts/containers/runtime-class/
-	// +optional
-	RuntimeClassName *string `json:"runtimeClassName,omitempty"`
-
-	// ExtraEnvs that will be added to VMInsert pod
-	// +optional
-	ExtraEnvs []v1.EnvVar `json:"extraEnvs,omitempty"`
 
 	// ServiceSpec that will be added to vminsert service spec
 	// +optional
@@ -509,14 +297,9 @@ type VMInsert struct {
 	*EmbeddedProbes     `json:",inline"`
 	// HPA defines kubernetes PodAutoScaling configuration version 2.
 	HPA *EmbeddedHPA `json:"hpa,omitempty"`
-	// NodeSelector Define which Nodes the Pods are scheduled on.
-	// +optional
-	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
-	// TerminationGracePeriodSeconds period for container graceful termination
-	// +optional
-	TerminationGracePeriodSeconds *int64 `json:"terminationGracePeriodSeconds,omitempty"`
-	// ReadinessGates defines pod readiness gates
-	ReadinessGates []v1.PodReadinessGate `json:"readinessGates,omitempty"`
+
+	CommonDefaultableParams           `json:",inline"`
+	CommonApplicationDeploymentParams `json:",inline"`
 }
 
 func (cr *VMInsert) Probe() *EmbeddedProbes {
@@ -544,27 +327,8 @@ func (i VMInsert) GetNameWithPrefix(clusterName string) string {
 }
 
 type VMStorage struct {
-	// MinReadySeconds defines a minim number os seconds to wait before starting update next pod
-	// if previous in healthy state
-	// +optional
-	MinReadySeconds int32 `json:"minReadySeconds,omitempty"`
 	// PodMetadata configures Labels and Annotations which are propagated to the VMStorage pods.
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
-
-	// Image - docker image settings for VMStorage
-	// +optional
-	Image Image `json:"image,omitempty"`
-
-	// Secrets is a list of Secrets in the same namespace as the VMStorage
-	// object, which shall be mounted into the VMStorage Pods.
-	// The Secrets are mounted into /etc/vm/secrets/<secret-name>.
-	// +optional
-	Secrets []string `json:"secrets,omitempty"`
-	// ConfigMaps is a list of ConfigMaps in the same namespace as the VMStorage
-	// object, which shall be mounted into the VMStorage Pods.
-	// The ConfigMaps are mounted into /etc/vm/configs/<configmap-name>.
-	// +optional
-	ConfigMaps []string `json:"configMaps,omitempty"`
 	// LogFormat for VMStorage to be configured with.
 	// default or json
 	// +optional
@@ -574,75 +338,6 @@ type VMStorage struct {
 	// +optional
 	// +kubebuilder:validation:Enum=INFO;WARN;ERROR;FATAL;PANIC
 	LogLevel string `json:"logLevel,omitempty"`
-	// ReplicaCount is the expected size of the VMStorage cluster. The controller will
-	// eventually make the size of the running cluster equal to the expected
-	// size.
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Number of pods",xDescriptors="urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom"
-	ReplicaCount *int32 `json:"replicaCount"`
-	// The number of old ReplicaSets to retain to allow rollback in deployment or
-	// maximum number of revisions that will be maintained in the StatefulSet's revision history.
-	// Defaults to 10.
-	// +optional
-	RevisionHistoryLimitCount *int32 `json:"revisionHistoryLimitCount,omitempty"`
-	// Volumes allows configuration of additional volumes on the output Deployment definition.
-	// Volumes specified will be appended to other volumes that are generated as a result of
-	// StorageSpec objects.
-	// +optional
-	Volumes []v1.Volume `json:"volumes,omitempty"`
-	// VolumeMounts allows configuration of additional VolumeMounts on the output Deployment definition.
-	// VolumeMounts specified will be appended to other VolumeMounts in the VMStorage container,
-	// that are generated as a result of StorageSpec objects.
-	// +optional
-	VolumeMounts []v1.VolumeMount `json:"volumeMounts,omitempty"`
-	// Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resources",xDescriptors="urn:alm:descriptor:com.tectonic.ui:resourceRequirements"
-	// +optional
-	Resources v1.ResourceRequirements `json:"resources,omitempty"`
-	// Affinity If specified, the pod's scheduling constraints.
-	// +optional
-	Affinity *v1.Affinity `json:"affinity,omitempty"`
-	// Tolerations If specified, the pod's tolerations.
-	// +optional
-	Tolerations []v1.Toleration `json:"tolerations,omitempty"`
-	// SecurityContext holds pod-level security attributes and common container settings.
-	// This defaults to the default PodSecurityContext.
-	// +optional
-	SecurityContext *v1.PodSecurityContext `json:"securityContext,omitempty"`
-	// Containers property allows to inject additions sidecars or to patch existing containers.
-	// It can be useful for proxies, backup, etc.
-	// +optional
-	Containers []v1.Container `json:"containers,omitempty"`
-	// InitContainers allows adding initContainers to the pod definition. Those can be used to e.g.
-	// fetch secrets for injection into the VMStorage configuration from external sources. Any
-	// errors during the execution of an initContainer will lead to a restart of the Pod. More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
-	// Using initContainers for any use case other then secret fetching is entirely outside the scope
-	// of what the maintainers will support and by doing so, you accept that this behaviour may break
-	// at any time without notice.
-	// +optional
-	InitContainers []v1.Container `json:"initContainers,omitempty"`
-
-	// Priority class assigned to the Pods
-	// +optional
-	PriorityClassName string `json:"priorityClassName,omitempty"`
-
-	// HostNetwork controls whether the pod may use the node network namespace
-	// +optional
-	HostNetwork bool `json:"hostNetwork,omitempty"`
-	// DNSPolicy sets DNS policy for the pod
-	// +optional
-	DNSPolicy v1.DNSPolicy `json:"dnsPolicy,omitempty"`
-	// Specifies the DNS parameters of a pod.
-	// Parameters specified here will be merged to the generated DNS
-	// configuration based on DNSPolicy.
-	// +optional
-	DNSConfig *v1.PodDNSConfig `json:"dnsConfig,omitempty"`
-	// TopologySpreadConstraints embedded kubernetes pod configuration option,
-	// controls how pods are spread across your cluster among failure-domains
-	// such as regions, zones, nodes, and other user-defined topology domains
-	// https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/
-	// +optional
-	TopologySpreadConstraints []v1.TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
-
 	// StorageDataPath - path to storage data
 	// +optional
 	StorageDataPath string `json:"storageDataPath,omitempty"`
@@ -650,20 +345,6 @@ type VMStorage struct {
 	// its useful for persistent cache
 	// +optional
 	Storage *StorageSpec `json:"storage,omitempty"`
-
-	// TerminationGracePeriodSeconds period for container graceful termination
-	// +optional
-	TerminationGracePeriodSeconds int64 `json:"terminationGracePeriodSeconds,omitempty"`
-	// SchedulerName - defines kubernetes scheduler name
-	// +optional
-	SchedulerName string `json:"schedulerName,omitempty"`
-	// RuntimeClassName - defines runtime class for kubernetes pod.
-	// https://kubernetes.io/docs/concepts/containers/runtime-class/
-	// +optional
-	RuntimeClassName *string `json:"runtimeClassName,omitempty"`
-
-	// Port for health check connetions
-	Port string `json:"port,omitempty"`
 
 	// VMInsertPort for VMInsert connections
 	// +optional
@@ -676,12 +357,6 @@ type VMStorage struct {
 	// VMBackup configuration for backup
 	// +optional
 	VMBackup *VMBackup `json:"vmBackup,omitempty"`
-
-	// +optional
-	ExtraArgs map[string]string `json:"extraArgs,omitempty"`
-	// ExtraEnvs that will be added to VMStorage pod
-	// +optional
-	ExtraEnvs []v1.EnvVar `json:"extraEnvs,omitempty"`
 	// ServiceSpec that will be create additional service for vmstorage
 	// +optional
 	ServiceSpec *AdditionalServiceSpec `json:"serviceSpec,omitempty"`
@@ -699,20 +374,18 @@ type VMStorage struct {
 	MaintenanceInsertNodeIDs []int32 `json:"maintenanceInsertNodeIDs,omitempty"`
 	// MaintenanceInsertNodeIDs - excludes given node ids from select requests routing, must contain pod suffixes - for pod-0, id will be 0 and etc.
 	MaintenanceSelectNodeIDs []int32 `json:"maintenanceSelectNodeIDs,omitempty"`
-	// NodeSelector Define which Nodes the Pods are scheduled on.
-	// +optional
-	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 
 	// RollingUpdateStrategy defines strategy for application updates
 	// Default is OnDelete, in this case operator handles update process
 	// Can be changed for RollingUpdate
 	// +optional
 	RollingUpdateStrategy appsv1.StatefulSetUpdateStrategyType `json:"rollingUpdateStrategy,omitempty"`
-	// ReadinessGates defines pod readiness gates
-	ReadinessGates []v1.PodReadinessGate `json:"readinessGates,omitempty"`
 
 	// ClaimTemplates allows adding additional VolumeClaimTemplates for StatefulSet
 	ClaimTemplates []v1.PersistentVolumeClaim `json:"claimTemplates,omitempty"`
+
+	CommonDefaultableParams           `json:",inline"`
+	CommonApplicationDeploymentParams `json:",inline"`
 }
 
 type VMBackup struct {
@@ -1212,7 +885,6 @@ func (cr *VMStorage) ProbePort() string {
 func (cr *VMCluster) SetUpdateStatusTo(ctx context.Context, r client.Client, status UpdateStatus, maybeErr error) error {
 	currentStatus := cr.Status.UpdateStatus
 	prevStatus := cr.Status.DeepCopy()
-	cr.Status.UpdateStatus = status
 	switch status {
 	case UpdateStatusExpanding:
 	case UpdateStatusFailed:
@@ -1231,10 +903,8 @@ func (cr *VMCluster) SetUpdateStatusTo(ctx context.Context, r client.Client, sta
 	if equality.Semantic.DeepEqual(&cr.Status, prevStatus) {
 		return nil
 	}
-	if err := r.Status().Update(ctx, cr); err != nil {
-		return fmt.Errorf("failed to update object status to=%q: %w", status, err)
-	}
-	return nil
+	cr.Status.UpdateStatus = status
+	return statusPatch(ctx, r, cr, cr.Status)
 }
 
 // GetAdditionalService returns AdditionalServiceSpec settings

@@ -82,6 +82,7 @@ func (r *VLogsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (resu
 	if err := finalize.AddFinalizer(ctx, r.Client, instance); err != nil {
 		return result, err
 	}
+	r.Client.Scheme().Default(instance)
 
 	result, err = reconcileAndTrackStatus(ctx, r.Client, instance, func() (ctrl.Result, error) {
 		if instance.Spec.Storage != nil && instance.Spec.StorageDataPath == "" {
@@ -91,9 +92,10 @@ func (r *VLogsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (resu
 			}
 		}
 
-		if err = vlogs.CreateOrUpdateVLogs(ctx, instance, r, r.BaseConf); err != nil {
+		if err = vlogs.CreateOrUpdateVLogs(ctx, instance, r); err != nil {
 			return result, fmt.Errorf("failed create or update vlogs: %w", err)
 		}
+
 		return result, nil
 	})
 

@@ -276,7 +276,13 @@ func reconcileAndTrackStatus(ctx context.Context, c client.Client, object object
 		resultErr = fmt.Errorf("cannot parse exist spec changes")
 		return
 	}
+	var diffPatch client.Patch
 	if specChanged {
+		diffPatch, err = object.LastAppliedSpecAsPatch()
+		if err != nil {
+			resultErr = fmt.Errorf("cannot parse last applied spec for cluster: %w", err)
+			return
+		}
 		if err := object.SetUpdateStatusTo(ctx, c, vmv1beta1.UpdateStatusExpanding, nil); err != nil {
 			resultErr = fmt.Errorf("failed to update object status: %w", err)
 			return
@@ -301,13 +307,9 @@ func reconcileAndTrackStatus(ctx context.Context, c client.Client, object object
 		return
 	}
 	if specChanged {
-		specPatch, err := object.LastAppliedSpecAsPatch()
-		if err != nil {
-			resultErr = fmt.Errorf("cannot parse last applied spec for cluster: %w", err)
-			return
-		}
+
 		// use patch instead of update, only 1 field must be changed.
-		if err := c.Patch(ctx, object, specPatch); err != nil {
+		if err := c.Patch(ctx, object, diffPatch); err != nil {
 			resultErr = fmt.Errorf("cannot update cluster with last applied spec: %w", err)
 			return
 		}

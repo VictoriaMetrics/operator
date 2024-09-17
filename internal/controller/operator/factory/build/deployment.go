@@ -6,8 +6,8 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 )
 
-// StatefulSetAddCommonParams adds common params to given statefulset
-func StatefulSetAddCommonParams(dst *appsv1.StatefulSet, useStrictSecurity bool, params *vmv1beta1.CommonApplicationDeploymentParams) {
+// DeploymentAddCommonParams adds common params for all deployments
+func DeploymentAddCommonParams(dst *appsv1.Deployment, useStrictSecurity bool, params *vmv1beta1.CommonApplicationDeploymentParams) {
 	dst.Spec.Template.Spec.Affinity = params.Affinity
 	dst.Spec.Template.Spec.Tolerations = params.Tolerations
 	dst.Spec.Template.Spec.SchedulerName = params.SchedulerName
@@ -30,5 +30,4 @@ func StatefulSetAddCommonParams(dst *appsv1.StatefulSet, useStrictSecurity bool,
 	dst.Spec.MinReadySeconds = params.MinReadySeconds
 	dst.Spec.Replicas = params.ReplicaCount
 	dst.Spec.RevisionHistoryLimit = params.RevisionHistoryLimitCount
-
 }

@@ -28,7 +28,9 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/vmauth"
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/utils/ptr"
+
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -80,9 +82,10 @@ func (r *VMAuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 	if err := finalize.AddFinalizer(ctx, r.Client, instance); err != nil {
 		return result, err
 	}
+	r.Client.Scheme().Default(instance)
 
 	result, err = reconcileAndTrackStatus(ctx, r.Client, instance, func() (ctrl.Result, error) {
-		if err := vmauth.CreateOrUpdateVMAuth(ctx, instance, r, r.BaseConf); err != nil {
+		if err := vmauth.CreateOrUpdateVMAuth(ctx, instance, r); err != nil {
 			return result, fmt.Errorf("cannot create or update vmauth deploy: %w", err)
 		}
 
@@ -93,8 +96,8 @@ func (r *VMAuthReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		if err := vmauth.CreateOrUpdateVMAuthIngress(ctx, r, instance); err != nil {
 			return result, fmt.Errorf("cannot create or update ingress for vmauth: %w", err)
 		}
-
-		if !r.BaseConf.DisableSelfServiceScrapeCreation {
+		// TODO delete conditionally
+		if !ptr.Deref(instance.Spec.DisableSelfServiceScrape, false) {
 			if err := reconcile.VMServiceScrapeForCRD(ctx, r, build.VMServiceScrapeForServiceWithSpec(svc, instance)); err != nil {
 				l.Error(err, "cannot create serviceScrape for vmauth")
 			}
@@ -114,7 +117,7 @@ func (r *VMAuthReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&vmv1beta1.VMAuth{}).
 		Owns(&appsv1.Deployment{}).
-		Owns(&v1.ServiceAccount{}).
+		Owns(&corev1.ServiceAccount{}).
 		WithOptions(getDefaultOptions()).
 		Complete(r)
 }

@@ -36,7 +36,6 @@ type VMProbeReconciler struct {
 	client.Client
 	Log          logr.Logger
 	OriginScheme *runtime.Scheme
-	BaseConf     *config.BaseOperatorConf
 }
 
 // Scheme implements interface.
@@ -94,7 +93,7 @@ func (r *VMProbeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 		reqLogger := reqLogger.WithValues("vmagent", currentVMagent.Name)
 		ctx := logger.AddToContext(ctx, reqLogger)
 
-		if err := vmagent.CreateOrUpdateConfigurationSecret(ctx, currentVMagent, r, r.BaseConf); err != nil {
+		if err := vmagent.CreateOrUpdateConfigurationSecret(ctx, currentVMagent, r); err != nil {
 			continue
 		}
 	}

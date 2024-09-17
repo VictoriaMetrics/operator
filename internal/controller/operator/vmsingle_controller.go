@@ -79,6 +79,7 @@ func (r *VMSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (r
 	if err := finalize.AddFinalizer(ctx, r.Client, instance); err != nil {
 		return result, err
 	}
+	r.Client.Scheme().Default(instance)
 
 	result, err = reconcileAndTrackStatus(ctx, r.Client, instance, func() (ctrl.Result, error) {
 		if instance.Spec.Storage != nil && instance.Spec.StorageDataPath == "" {
@@ -91,7 +92,7 @@ func (r *VMSingleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (r
 			return result, fmt.Errorf("cannot update stream aggregation config for vmsingle: %w", err)
 		}
 
-		if err = vmsingle.CreateOrUpdateVMSingle(ctx, instance, r, r.BaseConf); err != nil {
+		if err = vmsingle.CreateOrUpdateVMSingle(ctx, instance, r); err != nil {
 			return result, fmt.Errorf("failed create or update single: %w", err)
 		}
 		return result, nil

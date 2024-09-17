@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 
 	"github.com/stretchr/testify/assert"
@@ -23,7 +22,6 @@ func Test_waitForPodReady(t *testing.T) {
 	type args struct {
 		ns      string
 		podName string
-		c       *config.BaseOperatorConf
 	}
 	tests := []struct {
 		name              string
@@ -36,7 +34,6 @@ func Test_waitForPodReady(t *testing.T) {
 			args: args{
 				ns:      "default",
 				podName: "vmselect-example-0",
-				c:       &config.BaseOperatorConf{PodWaitReadyIntervalCheck: time.Second * 1, PodWaitReadyInitDelay: time.Second, PodWaitReadyTimeout: time.Second * 4},
 			},
 			predefinedObjects: []runtime.Object{
 				&corev1.Pod{
@@ -67,7 +64,6 @@ func Test_waitForPodReady(t *testing.T) {
 			args: args{
 				ns:      "default",
 				podName: "vmselect-example-0",
-				c:       &config.BaseOperatorConf{PodWaitReadyIntervalCheck: time.Second * 1, PodWaitReadyInitDelay: time.Second, PodWaitReadyTimeout: time.Second * 4},
 			},
 			predefinedObjects: []runtime.Object{
 				&corev1.Pod{
@@ -100,7 +96,7 @@ func Test_waitForPodReady(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 
-			if err := waitForPodReady(context.Background(), fclient, tt.args.ns, tt.args.podName, tt.args.c, 0); (err != nil) != tt.wantErr {
+			if err := waitForPodReady(context.Background(), fclient, tt.args.ns, tt.args.podName, 0); (err != nil) != tt.wantErr {
 				t.Errorf("waitForPodReady() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -224,7 +220,6 @@ func Test_performRollingUpdateOnSts(t *testing.T) {
 		stsName   string
 		ns        string
 		podLabels map[string]string
-		c         *config.BaseOperatorConf
 	}
 	tests := []struct {
 		name              string
@@ -238,7 +233,6 @@ func Test_performRollingUpdateOnSts(t *testing.T) {
 			args: args{
 				stsName:   "vmselect-sts",
 				ns:        "default",
-				c:         &config.BaseOperatorConf{},
 				podLabels: map[string]string{"app": "vmselect"},
 			},
 			predefinedObjects: []runtime.Object{
@@ -274,13 +268,8 @@ func Test_performRollingUpdateOnSts(t *testing.T) {
 		{
 			name: "rolling update is timeout",
 			args: args{
-				stsName: "vmselect-sts",
-				ns:      "default",
-				c: &config.BaseOperatorConf{
-					PodWaitReadyTimeout:       time.Second * 2,
-					PodWaitReadyInitDelay:     time.Millisecond,
-					PodWaitReadyIntervalCheck: time.Second,
-				},
+				stsName:   "vmselect-sts",
+				ns:        "default",
 				podLabels: map[string]string{"app": "vmselect"},
 			},
 			predefinedObjects: []runtime.Object{
@@ -320,7 +309,7 @@ func Test_performRollingUpdateOnSts(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 
-			if err := performRollingUpdateOnSts(context.Background(), false, fclient, tt.args.stsName, tt.args.ns, tt.args.podLabels, tt.args.c); (err != nil) != tt.wantErr {
+			if err := performRollingUpdateOnSts(context.Background(), false, fclient, tt.args.stsName, tt.args.ns, tt.args.podLabels); (err != nil) != tt.wantErr {
 				t.Errorf("performRollingUpdateOnSts() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -361,18 +350,12 @@ func TestStatefulsetReconcileOk(t *testing.T) {
 		rclient := k8stools.GetTestClientWithObjects(nil)
 		clientStats := rclient.(*k8stools.TestClientWithStatsTrack)
 
-		bc := *config.MustGetBaseConfig()
-		bc.PodWaitReadyInitDelay = time.Millisecond * 50
-		bc.PodWaitReadyIntervalCheck = time.Millisecond * 50
-		bc.PodWaitReadyTimeout = time.Second * 5
-		testC := &bc
-
 		waitTimeout := 5 * time.Second
 		prevSts := sts.DeepCopy()
 		createErr := make(chan error)
 		var emptyOpts STSOptions
 		go func() {
-			err := HandleSTSUpdate(ctx, rclient, emptyOpts, sts, nil, testC)
+			err := HandleSTSUpdate(ctx, rclient, emptyOpts, sts, nil)
 			select {
 			case createErr <- err:
 			default:
@@ -409,7 +392,7 @@ func TestStatefulsetReconcileOk(t *testing.T) {
 		// expect 1 create
 		assert.Equal(t, int64(1), clientStats.CreateCalls.Load())
 		// expect 0 update
-		assert.NoErrorf(t, HandleSTSUpdate(ctx, rclient, emptyOpts, sts, prevSts, testC), "expect 0 update")
+		assert.NoErrorf(t, HandleSTSUpdate(ctx, rclient, emptyOpts, sts, prevSts), "expect 0 update")
 
 		assert.Equal(t, int64(1), clientStats.CreateCalls.Load())
 		assert.Equal(t, int64(0), clientStats.UpdateCalls.Load())
@@ -418,7 +401,7 @@ func TestStatefulsetReconcileOk(t *testing.T) {
 		reloadSts()
 		sts.Spec.Template.ObjectMeta.Annotations = map[string]string{"new-annotation": "value"}
 
-		assert.NoErrorf(t, HandleSTSUpdate(ctx, rclient, emptyOpts, sts, prevSts, testC), "expect 1 update")
+		assert.NoErrorf(t, HandleSTSUpdate(ctx, rclient, emptyOpts, sts, prevSts), "expect 1 update")
 
 		assert.Equal(t, int64(1), clientStats.CreateCalls.Load())
 		assert.Equal(t, int64(1), clientStats.UpdateCalls.Load())
@@ -426,7 +409,7 @@ func TestStatefulsetReconcileOk(t *testing.T) {
 		// expected still same 1 update
 		reloadSts()
 
-		assert.NoErrorf(t, HandleSTSUpdate(ctx, rclient, emptyOpts, sts, prevSts, testC), "expect still 1 update")
+		assert.NoErrorf(t, HandleSTSUpdate(ctx, rclient, emptyOpts, sts, prevSts), "expect still 1 update")
 		assert.Equal(t, int64(1), clientStats.CreateCalls.Load())
 		assert.Equal(t, int64(1), clientStats.UpdateCalls.Load())
 
@@ -434,7 +417,7 @@ func TestStatefulsetReconcileOk(t *testing.T) {
 		prevSts.Spec.Template.ObjectMeta.Annotations = sts.Spec.Template.ObjectMeta.Annotations
 		sts.Spec.Template.ObjectMeta.Annotations = nil
 
-		assert.NoErrorf(t, HandleSTSUpdate(ctx, rclient, emptyOpts, sts, prevSts, testC), "expect 2 updates")
+		assert.NoErrorf(t, HandleSTSUpdate(ctx, rclient, emptyOpts, sts, prevSts), "expect 2 updates")
 		assert.Equal(t, int64(1), clientStats.CreateCalls.Load())
 		assert.Equal(t, int64(2), clientStats.UpdateCalls.Load())
 	}

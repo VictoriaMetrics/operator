@@ -28,7 +28,7 @@ func TestDeployOk(t *testing.T) {
 		prevDeploy := dep.DeepCopy()
 		createErr := make(chan error)
 		go func() {
-			err := Deployment(ctx, rclient, dep, nil, waitTimeout, false)
+			err := Deployment(ctx, rclient, dep, nil, false)
 			select {
 			case createErr <- err:
 			default:
@@ -75,7 +75,7 @@ func TestDeployOk(t *testing.T) {
 		// expect 1 create
 		assert.Equal(t, int64(1), clientStats.CreateCalls.Load())
 		// expect 0 update
-		if err := Deployment(ctx, rclient, dep, prevDeploy, waitTimeout, false); err != nil {
+		if err := Deployment(ctx, rclient, dep, prevDeploy, false); err != nil {
 			t.Fatalf("failed to update created deploy: %s", err)
 		}
 		assert.Equal(t, int64(1), clientStats.CreateCalls.Load())
@@ -86,7 +86,7 @@ func TestDeployOk(t *testing.T) {
 		dep.Spec.Replicas = ptr.To[int32](10)
 		dep.Spec.Template.ObjectMeta.Annotations = map[string]string{"new-annotation": "value"}
 
-		if err := Deployment(ctx, rclient, dep, prevDeploy, time.Second, false); err != nil {
+		if err := Deployment(ctx, rclient, dep, prevDeploy, false); err != nil {
 			t.Fatalf("expect 1 failed to update created deploy: %s", err)
 		}
 		assert.Equal(t, int64(1), clientStats.CreateCalls.Load())
@@ -94,7 +94,7 @@ func TestDeployOk(t *testing.T) {
 
 		// expected still same 1 update
 		reloadDep()
-		if err := Deployment(ctx, rclient, dep, prevDeploy, waitTimeout, false); err != nil {
+		if err := Deployment(ctx, rclient, dep, prevDeploy, false); err != nil {
 			t.Fatalf("expect still 1 failed to update created deploy: %s", err)
 		}
 		assert.Equal(t, int64(1), clientStats.CreateCalls.Load())
@@ -104,7 +104,7 @@ func TestDeployOk(t *testing.T) {
 		prevDeploy.Spec.Template.ObjectMeta.Annotations = dep.Spec.Template.ObjectMeta.Annotations
 		dep.Spec.Template.ObjectMeta.Annotations = nil
 
-		if err := Deployment(ctx, rclient, dep, prevDeploy, waitTimeout, false); err != nil {
+		if err := Deployment(ctx, rclient, dep, prevDeploy, false); err != nil {
 			t.Fatalf("expect 2 failed to update deploy: %s", err)
 		}
 		assert.Equal(t, int64(1), clientStats.CreateCalls.Load())

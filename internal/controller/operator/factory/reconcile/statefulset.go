@@ -9,9 +9,9 @@ import (
 	"time"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -35,8 +35,8 @@ type STSOptions struct {
 	UpdateReplicaCount func(count *int32)
 }
 
-func waitForStatefulSetReady(ctx context.Context, rclient client.Client, newSts *appsv1.StatefulSet, c *config.BaseOperatorConf) error {
-	err := wait.PollUntilContextTimeout(ctx, c.PodWaitReadyIntervalCheck, c.PodWaitReadyTimeout, false, func(ctx context.Context) (done bool, err error) {
+func waitForStatefulSetReady(ctx context.Context, rclient client.Client, newSts *appsv1.StatefulSet) error {
+	err := wait.PollUntilContextTimeout(ctx, podWaitReadyIntervalCheck, appWaitReadyDeadline, false, func(ctx context.Context) (done bool, err error) {
 		// fast path
 		if newSts.Spec.Replicas == nil {
 			return true, nil
@@ -57,8 +57,8 @@ func waitForStatefulSetReady(ctx context.Context, rclient client.Client, newSts 
 }
 
 // HandleSTSUpdate performs create and update operations for given statefulSet with STSOptions
-func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, newSts, prevSts *appsv1.StatefulSet, c *config.BaseOperatorConf) error {
-	isPrevEqual := true
+func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, newSts, prevSts *appsv1.StatefulSet) error {
+	var isPrevEqual bool
 	if prevSts != nil {
 		isPrevEqual = equality.Semantic.DeepDerivative(prevSts.Spec, newSts.Spec)
 	}
@@ -71,7 +71,7 @@ func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, 
 				if err = rclient.Create(ctx, newSts); err != nil {
 					return fmt.Errorf("cannot create new sts %s under namespace %s: %w", newSts.Name, newSts.Namespace, err)
 				}
-				return waitForStatefulSetReady(ctx, rclient, newSts, c)
+				return waitForStatefulSetReady(ctx, rclient, newSts)
 			}
 			return fmt.Errorf("cannot get sts %s under namespace %s: %w", newSts.Name, newSts.Namespace, err)
 		}
@@ -109,7 +109,7 @@ func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, 
 				equality.Semantic.DeepEqual(newSts.Annotations, currentSts.Annotations)
 
 			if !shouldSkipUpdate {
-				logger.WithContext(ctx).Info("updating statefulset configuration", "is_prev_equal", isPrevEqual, "is_current_equal", isEqual)
+				logger.WithContext(ctx).Info("updating statefulset configuration", "is_prev_equal", isPrevEqual, "is_current_equal", isEqual, "is_prev_nil", prevSts == nil)
 				if err := rclient.Update(ctx, newSts); err != nil {
 					return fmt.Errorf("cannot perform update on sts: %s, err: %w", newSts.Name, err)
 				}
@@ -118,11 +118,11 @@ func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, 
 
 		// perform manual update only with OnDelete policy, which is default.
 		if newSts.Spec.UpdateStrategy.Type == appsv1.OnDeleteStatefulSetStrategyType {
-			if err := performRollingUpdateOnSts(ctx, podMustRecreate, rclient, newSts.Name, newSts.Namespace, cr.SelectorLabels(), c); err != nil {
+			if err := performRollingUpdateOnSts(ctx, podMustRecreate, rclient, newSts.Name, newSts.Namespace, cr.SelectorLabels()); err != nil {
 				return fmt.Errorf("cannot handle rolling-update on sts: %s, err: %w", newSts.Name, err)
 			}
 		} else {
-			if err := waitForStatefulSetReady(ctx, rclient, newSts, c); err != nil {
+			if err := waitForStatefulSetReady(ctx, rclient, newSts); err != nil {
 				return fmt.Errorf("cannot ensure that statefulset is ready with strategy=%q: %w", newSts.Spec.UpdateStrategy.Type, err)
 			}
 		}
@@ -143,8 +143,8 @@ func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, 
 //
 // we always check if sts.Status.CurrentRevision needs update, to keep it equal to UpdateRevision
 // see https://github.com/kubernetes/kube-state-metrics/issues/1324#issuecomment-1779751992
-func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclient client.Client, stsName string, ns string, podLabels map[string]string, c *config.BaseOperatorConf) error {
-	time.Sleep(time.Second * 2)
+func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclient client.Client, stsName string, ns string, podLabels map[string]string) error {
+	time.Sleep(podWaitReadyIntervalCheck)
 	sts := &appsv1.StatefulSet{}
 	err := rclient.Get(ctx, types.NamespacedName{Name: stsName, Namespace: ns}, sts)
 	if err != nil {
@@ -234,7 +234,7 @@ func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclien
 	// check updated, by not ready pods
 	for _, pod := range updatedPods {
 		l.Info("checking ready status for already updated pod to desired version", "pod", pod.Name)
-		err := waitForPodReady(ctx, rclient, ns, pod.Name, c, sts.Spec.MinReadySeconds)
+		err := waitForPodReady(ctx, rclient, ns, pod.Name, sts.Spec.MinReadySeconds)
 		if err != nil {
 			return fmt.Errorf("cannot wait for pod ready state for already updated pod: %w", err)
 		}
@@ -249,7 +249,7 @@ func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclien
 		if err != nil {
 			return err
 		}
-		err = waitForPodReady(ctx, rclient, ns, pod.Name, c, sts.Spec.MinReadySeconds)
+		err = waitForPodReady(ctx, rclient, ns, pod.Name, sts.Spec.MinReadySeconds)
 		if err != nil {
 			return fmt.Errorf("cannot wait for pod ready state during re-creation: %w", err)
 		}
@@ -287,11 +287,9 @@ func PodIsReady(pod *corev1.Pod, minReadySeconds int32) bool {
 	return false
 }
 
-func waitForPodReady(ctx context.Context, rclient client.Client, ns, podName string, c *config.BaseOperatorConf, minReadySeconds int32) error {
-	// we need some delay
-	time.Sleep(c.PodWaitReadyInitDelay)
+func waitForPodReady(ctx context.Context, rclient client.Client, ns, podName string, minReadySeconds int32) error {
 	var pod *corev1.Pod
-	if err := wait.PollUntilContextTimeout(context.TODO(), c.PodWaitReadyIntervalCheck, c.PodWaitReadyTimeout, false, func(_ context.Context) (done bool, err error) {
+	if err := wait.PollUntilContextTimeout(ctx, podWaitReadyIntervalCheck, podWaitReadyTimeout, false, func(_ context.Context) (done bool, err error) {
 		pod = &corev1.Pod{}
 		err = rclient.Get(ctx, types.NamespacedName{Namespace: ns, Name: podName}, pod)
 		if err != nil {
@@ -303,6 +301,9 @@ func waitForPodReady(ctx context.Context, rclient client.Client, ns, podName str
 		}
 		return false, nil
 	}); err != nil {
+		if pod == nil {
+			return err
+		}
 		return podStatusesToError(err, pod)
 	}
 	return nil

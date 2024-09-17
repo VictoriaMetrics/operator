@@ -30,6 +30,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -80,11 +81,14 @@ func (r *VMAlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	if err := finalize.AddFinalizer(ctx, r.Client, instance); err != nil {
 		return result, err
 	}
+	r.Client.Scheme().Default(instance)
+
 	result, err = reconcileAndTrackStatus(ctx, r.Client, instance, func() (ctrl.Result, error) {
 		if err := alertmanager.CreateAMConfig(ctx, instance, r.Client); err != nil {
 			return result, err
 		}
-		if err := alertmanager.CreateOrUpdateAlertManager(ctx, instance, r, r.BaseConf); err != nil {
+
+		if err := alertmanager.CreateOrUpdateAlertManager(ctx, instance, r); err != nil {
 			return result, err
 		}
 		service, err := alertmanager.CreateOrUpdateAlertManagerService(ctx, instance, r)
@@ -92,7 +96,8 @@ func (r *VMAlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			return result, err
 		}
 
-		if !r.BaseConf.DisableSelfServiceScrapeCreation {
+		// TODO delete conditionally
+		if !ptr.Deref(instance.Spec.DisableSelfServiceScrape, false) {
 			err := reconcile.VMServiceScrapeForCRD(ctx, r, build.VMServiceScrapeForAlertmanager(service, instance))
 			if err != nil {
 				reqLogger.Error(err, "cannot create serviceScrape for vmalertmanager")

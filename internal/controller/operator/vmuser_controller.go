@@ -38,7 +38,6 @@ import (
 // VMUserReconciler reconciles a VMUser object
 type VMUserReconciler struct {
 	client.Client
-	BaseConf     *config.BaseOperatorConf
 	Log          logr.Logger
 	OriginScheme *runtime.Scheme
 }

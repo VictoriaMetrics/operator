@@ -31,6 +31,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -83,6 +84,7 @@ func (r *VMAlertReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 	if err := finalize.AddFinalizer(ctx, r.Client, instance); err != nil {
 		return result, err
 	}
+	r.Client.Scheme().Default(instance)
 
 	result, resultErr = reconcileAndTrackStatus(ctx, r.Client, instance, func() (ctrl.Result, error) {
 		maps, err := vmalert.CreateOrUpdateRuleConfigMaps(ctx, instance, r)
@@ -91,16 +93,16 @@ func (r *VMAlertReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 		}
 		reqLogger.Info("found configmaps for vmalert", " len ", len(maps), "map names", maps)
 
-		if err := vmalert.CreateOrUpdateVMAlert(ctx, instance, r, r.BaseConf, maps); err != nil {
+		if err := vmalert.CreateOrUpdateVMAlert(ctx, instance, r, maps); err != nil {
 			return result, err
 		}
 
-		svc, err := vmalert.CreateOrUpdateVMAlertService(ctx, instance, r, r.BaseConf)
+		svc, err := vmalert.CreateOrUpdateVMAlertService(ctx, instance, r)
 		if err != nil {
 			return result, err
 		}
 
-		if !r.BaseConf.DisableSelfServiceScrapeCreation {
+		if !ptr.Deref(instance.Spec.DisableSelfServiceScrape, false) {
 			err := reconcile.VMServiceScrapeForCRD(ctx, r, build.VMServiceScrapeForServiceWithSpec(svc, instance))
 			if err != nil {
 				reqLogger.Error(err, "cannot create serviceScrape for vmalert")

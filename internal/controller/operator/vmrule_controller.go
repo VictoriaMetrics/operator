@@ -36,7 +36,6 @@ type VMRuleReconciler struct {
 	client.Client
 	Log          logr.Logger
 	OriginScheme *runtime.Scheme
-	BaseConf     *config.BaseOperatorConf
 }
 
 // Scheme implements interface.

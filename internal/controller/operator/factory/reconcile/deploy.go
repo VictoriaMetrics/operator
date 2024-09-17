@@ -20,7 +20,8 @@ import (
 )
 
 // Deployment performs an update or create operator for deployment and waits until it's replicas is ready
-func Deployment(ctx context.Context, rclient client.Client, newDeploy, prevDeploy *appsv1.Deployment, waitDeadline time.Duration, hasHPA bool) error {
+func Deployment(ctx context.Context, rclient client.Client, newDeploy, prevDeploy *appsv1.Deployment, hasHPA bool) error {
+
 	isPrevEqual := true
 	if prevDeploy != nil {
 		isPrevEqual = equality.Semantic.DeepDerivative(prevDeploy.Spec, newDeploy.Spec)
@@ -35,7 +36,7 @@ func Deployment(ctx context.Context, rclient client.Client, newDeploy, prevDeplo
 				if err := rclient.Create(ctx, newDeploy); err != nil {
 					return fmt.Errorf("cannot create new deployment for app: %s, err: %w", newDeploy.Name, err)
 				}
-				return waitDeploymentReady(ctx, rclient, newDeploy, waitDeadline)
+				return waitDeploymentReady(ctx, rclient, newDeploy, appWaitReadyDeadline)
 			}
 			return fmt.Errorf("cannot get deployment for app: %s err: %w", newDeploy.Name, err)
 		}
@@ -55,7 +56,7 @@ func Deployment(ctx context.Context, rclient client.Client, newDeploy, prevDeplo
 			isPrevEqual &&
 			equality.Semantic.DeepEqual(newDeploy.Labels, currentDeploy.Labels) &&
 			equality.Semantic.DeepEqual(newDeploy.Annotations, currentDeploy.Annotations) {
-			return waitDeploymentReady(ctx, rclient, newDeploy, waitDeadline)
+			return waitDeploymentReady(ctx, rclient, newDeploy, appWaitReadyDeadline)
 		}
 		logger.WithContext(ctx).Info("updating deployment configuration", "is_prev_equal", isPrevEqual, "is_current_equal", isEqual)
 
@@ -63,7 +64,7 @@ func Deployment(ctx context.Context, rclient client.Client, newDeploy, prevDeplo
 			return fmt.Errorf("cannot update deployment for app: %s, err: %w", newDeploy.Name, err)
 		}
 
-		return waitDeploymentReady(ctx, rclient, newDeploy, waitDeadline)
+		return waitDeploymentReady(ctx, rclient, newDeploy, appWaitReadyDeadline)
 	})
 }
 

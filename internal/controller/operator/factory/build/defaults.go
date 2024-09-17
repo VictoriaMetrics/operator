@@ -1,6 +1,9 @@
 package build
 
 import (
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/config"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
@@ -9,11 +12,29 @@ import (
 	"k8s.io/utils/ptr"
 )
 
+var operatorConfig *config.BaseOperatorConf
+
+func getCfg() *config.BaseOperatorConf {
+	return config.MustGetBaseConfig()
+}
+
+func InitWithConfig(cfg *config.BaseOperatorConf) {
+	operatorConfig = cfg
+}
+
 // AddDefaults adds defauling functions to the runtimeScheme
 func AddDefaults(scheme *runtime.Scheme) {
 	scheme.AddTypeDefaultingFunc(&corev1.Service{}, addServiceDefaults)
 	scheme.AddTypeDefaultingFunc(&appsv1.Deployment{}, addDeploymentDefaults)
 	scheme.AddTypeDefaultingFunc(&appsv1.StatefulSet{}, addStatefulsetDefaults)
+	scheme.AddTypeDefaultingFunc(&vmv1beta1.VMAuth{}, addVMAuthDefaults)
+	scheme.AddTypeDefaultingFunc(&vmv1beta1.VMAgent{}, addVMAgentDefaults)
+	scheme.AddTypeDefaultingFunc(&vmv1beta1.VMAlert{}, addVMAlertDefaults)
+	scheme.AddTypeDefaultingFunc(&vmv1beta1.VMSingle{}, addVMSingleDefaults)
+	scheme.AddTypeDefaultingFunc(&vmv1beta1.VMAlertmanager{}, addVMAlertmanagerDefaults)
+	scheme.AddTypeDefaultingFunc(&vmv1beta1.VMCluster{}, addVMClusterDefaults)
+	scheme.AddTypeDefaultingFunc(&vmv1beta1.VLogs{}, addVlogsDefaults)
+
 }
 
 // defaults according to
@@ -51,24 +72,7 @@ func addStatefulsetDefaults(objI interface{}) {
 		if obj.Spec.UpdateStrategy.RollingUpdate.Partition == nil {
 			obj.Spec.UpdateStrategy.RollingUpdate.Partition = ptr.To[int32](0)
 		}
-		// if utilfeature.DefaultFeatureGate.Enabled(features.MaxUnavailableStatefulSet) {
-		// 	if obj.Spec.UpdateStrategy.RollingUpdate.MaxUnavailable == nil {
-		// 		obj.Spec.UpdateStrategy.RollingUpdate.MaxUnavailable = ptr.To(intstr.FromInt32(1))
-		// 	}
-		// }
 	}
-
-	// if utilfeature.DefaultFeatureGate.Enabled(features.StatefulSetAutoDeletePVC) {
-	// 	if obj.Spec.PersistentVolumeClaimRetentionPolicy == nil {
-	// 		obj.Spec.PersistentVolumeClaimRetentionPolicy = &appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy{}
-	// 	}
-	// 	if len(obj.Spec.PersistentVolumeClaimRetentionPolicy.WhenDeleted) == 0 {
-	// 		obj.Spec.PersistentVolumeClaimRetentionPolicy.WhenDeleted = appsv1.RetainPersistentVolumeClaimRetentionPolicyType
-	// 	}
-	// 	if len(obj.Spec.PersistentVolumeClaimRetentionPolicy.WhenScaled) == 0 {
-	// 		obj.Spec.PersistentVolumeClaimRetentionPolicy.WhenScaled = appsv1.RetainPersistentVolumeClaimRetentionPolicyType
-	// 	}
-	// }
 
 	if obj.Spec.Replicas == nil {
 		obj.Spec.Replicas = new(int32)
@@ -164,7 +168,6 @@ func addServiceDefaults(objI interface{}) {
 			obj.Spec.InternalTrafficPolicy = &serviceInternalTrafficPolicyCluster
 		}
 	}
-
 	if obj.Spec.Type == corev1.ServiceTypeLoadBalancer {
 		if obj.Spec.AllocateLoadBalancerNodePorts == nil {
 			obj.Spec.AllocateLoadBalancerNodePorts = ptr.To(true)
@@ -177,4 +180,358 @@ func isExternallyAccessible(service *corev1.Service) bool {
 	return service.Spec.Type == corev1.ServiceTypeLoadBalancer ||
 		service.Spec.Type == corev1.ServiceTypeNodePort ||
 		(service.Spec.Type == corev1.ServiceTypeClusterIP && len(service.Spec.ExternalIPs) > 0)
+}
+
+func addVMAuthDefaults(objI interface{}) {
+	cr := objI.(*vmv1beta1.VMAuth)
+	c := getCfg()
+
+	cv := config.ApplicationDefaults(c.VMAuthDefault)
+	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, &cv)
+	addDefaluesToConfigReloader(&cr.Spec.CommonConfigReloaderParams, ptr.Deref(cr.Spec.UseDefaultResources, false), &cv)
+}
+
+func addVMAlertDefaults(objI interface{}) {
+	cr := objI.(*vmv1beta1.VMAlert)
+	c := getCfg()
+
+	cv := config.ApplicationDefaults(c.VMAlertDefault)
+	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, &cv)
+	addDefaluesToConfigReloader(&cr.Spec.CommonConfigReloaderParams, ptr.Deref(cr.Spec.UseDefaultResources, false), &cv)
+	if cr.Spec.ConfigReloaderImageTag == "" {
+		panic("cannot be empty")
+	}
+}
+
+func addVMAgentDefaults(objI interface{}) {
+	cr := objI.(*vmv1beta1.VMAgent)
+	c := getCfg()
+
+	cv := config.ApplicationDefaults(c.VMAgentDefault)
+	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, &cv)
+	addDefaluesToConfigReloader(&cr.Spec.CommonConfigReloaderParams, ptr.Deref(cr.Spec.UseDefaultResources, false), &cv)
+}
+
+func addVMSingleDefaults(objI interface{}) {
+	cr := objI.(*vmv1beta1.VMSingle)
+	c := getCfg()
+	useBackupDefaultResources := c.VMBackup.UseDefaultResources
+	cv := config.ApplicationDefaults(c.VMSingleDefault)
+	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, &cv)
+	if cr.Spec.UseDefaultResources != nil {
+		useBackupDefaultResources = *cr.Spec.UseDefaultResources
+	}
+	backupDefaults := &config.ApplicationDefaults{
+		Image:               c.VMBackup.Image,
+		Version:             c.VMBackup.Version,
+		Port:                c.VMBackup.Port,
+		UseDefaultResources: c.VMBackup.UseDefaultResources,
+		Resource: struct {
+			Limit struct {
+				Mem string
+				Cpu string
+			}
+			Request struct {
+				Mem string
+				Cpu string
+			}
+		}(c.VMBackup.Resource),
+	}
+	addDefaultsToVMBackup(cr.Spec.VMBackup, useBackupDefaultResources, backupDefaults)
+}
+
+func addVlogsDefaults(objI interface{}) {
+	cr := objI.(*vmv1beta1.VLogs)
+	c := getCfg()
+
+	cv := config.ApplicationDefaults(c.VLogsDefault)
+	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, &cv)
+}
+
+func addVMAlertmanagerDefaults(objI interface{}) {
+	cr := objI.(*vmv1beta1.VMAlertmanager)
+	c := getCfg()
+
+	if cr.Spec.ClusterDomainName == "" {
+		cr.Spec.ClusterDomainName = c.ClusterDomainName
+	}
+	amcd := c.VMAlertManager
+	cv := config.ApplicationDefaults{
+		Image:               amcd.AlertmanagerDefaultBaseImage,
+		Version:             amcd.AlertManagerVersion,
+		Port:                cr.Port(),
+		UseDefaultResources: amcd.UseDefaultResources,
+		Resource: struct {
+			Limit struct {
+				Mem string
+				Cpu string
+			}
+			Request struct {
+				Mem string
+				Cpu string
+			}
+		}(amcd.Resource),
+		ConfigReloaderMemory: amcd.ConfigReloaderMemory,
+		ConfigReloaderCPU:    amcd.ConfigReloaderCPU,
+	}
+	if cr.Spec.ReplicaCount == nil {
+		cr.Spec.ReplicaCount = ptr.To[int32](1)
+	}
+	if cr.Spec.Port == "" {
+		cr.Spec.Port = "9093"
+	}
+	if cr.Spec.PortName == "" {
+		cr.Spec.PortName = "web"
+	}
+	if cr.Spec.TerminationGracePeriodSeconds == nil {
+		cr.Spec.TerminationGracePeriodSeconds = ptr.To[int64](120)
+	}
+	addDefaultsToCommonParams(&cr.Spec.CommonDefaultableParams, &cv)
+	addDefaluesToConfigReloader(&cr.Spec.CommonConfigReloaderParams, ptr.Deref(cr.Spec.UseDefaultResources, false), &cv)
+}
+
+const (
+	vmStorageDefaultDBPath = "vmstorage-data"
+)
+
+var defaultTerminationGracePeriod = int64(30)
+
+func addVMClusterDefaults(objI interface{}) {
+	cr := objI.(*vmv1beta1.VMCluster)
+	c := getCfg()
+
+	// cluster is tricky is has main strictSecurity and per app
+	useStrictSecurity := c.EnableStrictSecurity
+	if cr.Spec.UseStrictSecurity != nil {
+		useStrictSecurity = *cr.Spec.UseStrictSecurity
+	}
+	if cr.Spec.ClusterDomainName == "" {
+		cr.Spec.ClusterDomainName = c.ClusterDomainName
+	}
+
+	if cr.Spec.VMStorage != nil {
+		if cr.Spec.VMStorage.UseStrictSecurity == nil {
+			cr.Spec.VMStorage.UseStrictSecurity = &useStrictSecurity
+		}
+		useBackupDefaultResources := c.VMBackup.UseDefaultResources
+		if cr.Spec.VMStorage.UseDefaultResources != nil {
+			useBackupDefaultResources = *cr.Spec.VMStorage.UseDefaultResources
+		}
+		backupDefaults := &config.ApplicationDefaults{
+			Image:               c.VMBackup.Image,
+			Version:             c.VMBackup.Version,
+			Port:                c.VMBackup.Port,
+			UseDefaultResources: c.VMBackup.UseDefaultResources,
+			Resource: struct {
+				Limit struct {
+					Mem string
+					Cpu string
+				}
+				Request struct {
+					Mem string
+					Cpu string
+				}
+			}(c.VMBackup.Resource),
+		}
+		if cr.Spec.VMStorage.Image.Repository == "" {
+			cr.Spec.VMStorage.Image.Repository = c.VMClusterDefault.VMStorageDefault.Image
+		}
+		if cr.Spec.VMStorage.Image.Tag == "" {
+			if cr.Spec.ClusterVersion != "" {
+				cr.Spec.VMStorage.Image.Tag = cr.Spec.ClusterVersion
+			} else {
+				cr.Spec.VMStorage.Image.Tag = c.VMClusterDefault.VMStorageDefault.Version
+			}
+		}
+		if cr.Spec.VMStorage.VMInsertPort == "" {
+			cr.Spec.VMStorage.VMInsertPort = c.VMClusterDefault.VMStorageDefault.VMInsertPort
+		}
+		if cr.Spec.VMStorage.VMSelectPort == "" {
+			cr.Spec.VMStorage.VMSelectPort = c.VMClusterDefault.VMStorageDefault.VMSelectPort
+		}
+		if cr.Spec.VMStorage.Port == "" {
+			cr.Spec.VMStorage.Port = c.VMClusterDefault.VMStorageDefault.Port
+		}
+
+		if cr.Spec.VMStorage.DNSPolicy == "" {
+			cr.Spec.VMStorage.DNSPolicy = corev1.DNSClusterFirst
+		}
+		if cr.Spec.VMStorage.SchedulerName == "" {
+			cr.Spec.VMStorage.SchedulerName = "default-scheduler"
+		}
+		if cr.Spec.VMStorage.Image.PullPolicy == "" {
+			cr.Spec.VMStorage.Image.PullPolicy = corev1.PullIfNotPresent
+		}
+		if cr.Spec.VMStorage.StorageDataPath == "" {
+			cr.Spec.VMStorage.StorageDataPath = vmStorageDefaultDBPath
+		}
+		if cr.Spec.VMStorage.TerminationGracePeriodSeconds == nil {
+			cr.Spec.VMStorage.TerminationGracePeriodSeconds = &defaultTerminationGracePeriod
+		}
+		if cr.Spec.VMStorage.UseDefaultResources == nil {
+			cr.Spec.VMStorage.UseDefaultResources = &c.VMClusterDefault.UseDefaultResources
+		}
+		cr.Spec.VMStorage.Resources = Resources(cr.Spec.VMStorage.Resources,
+			config.Resource(c.VMClusterDefault.VMStorageDefault.Resource),
+			*cr.Spec.VMStorage.UseDefaultResources,
+		)
+		addDefaultsToVMBackup(cr.Spec.VMStorage.VMBackup, useBackupDefaultResources, backupDefaults)
+	}
+
+	if cr.Spec.VMInsert != nil {
+		if cr.Spec.VMInsert.UseStrictSecurity == nil {
+			cr.Spec.VMInsert.UseStrictSecurity = &useStrictSecurity
+		}
+		if cr.Spec.VMInsert.Image.Repository == "" {
+			cr.Spec.VMInsert.Image.Repository = c.VMClusterDefault.VMInsertDefault.Image
+		}
+		if cr.Spec.VMInsert.Image.Tag == "" {
+			if cr.Spec.ClusterVersion != "" {
+				cr.Spec.VMInsert.Image.Tag = cr.Spec.ClusterVersion
+			} else {
+				cr.Spec.VMInsert.Image.Tag = c.VMClusterDefault.VMInsertDefault.Version
+			}
+		}
+		if cr.Spec.VMInsert.Port == "" {
+			cr.Spec.VMInsert.Port = c.VMClusterDefault.VMInsertDefault.Port
+		}
+		if cr.Spec.VMInsert.UseDefaultResources == nil {
+			cr.Spec.VMInsert.UseDefaultResources = &c.VMClusterDefault.UseDefaultResources
+		}
+		cr.Spec.VMInsert.Resources = Resources(cr.Spec.VMInsert.Resources,
+			config.Resource(c.VMClusterDefault.VMInsertDefault.Resource),
+			*cr.Spec.VMInsert.UseDefaultResources,
+		)
+
+	}
+	if cr.Spec.VMSelect != nil {
+		if cr.Spec.VMSelect.UseStrictSecurity == nil {
+			cr.Spec.VMSelect.UseStrictSecurity = &useStrictSecurity
+		}
+
+		if cr.Spec.VMStorage.VMSelectPort == "" {
+			cr.Spec.VMStorage.VMSelectPort = c.VMClusterDefault.VMStorageDefault.VMSelectPort
+		}
+		if cr.Spec.VMSelect.Image.Repository == "" {
+			cr.Spec.VMSelect.Image.Repository = c.VMClusterDefault.VMSelectDefault.Image
+		}
+		if cr.Spec.VMSelect.Image.Tag == "" {
+			if cr.Spec.ClusterVersion != "" {
+				cr.Spec.VMSelect.Image.Tag = cr.Spec.ClusterVersion
+			} else {
+				cr.Spec.VMSelect.Image.Tag = c.VMClusterDefault.VMSelectDefault.Version
+			}
+		}
+		if cr.Spec.VMSelect.Port == "" {
+			cr.Spec.VMSelect.Port = c.VMClusterDefault.VMSelectDefault.Port
+		}
+
+		if cr.Spec.VMSelect.DNSPolicy == "" {
+			cr.Spec.VMSelect.DNSPolicy = corev1.DNSClusterFirst
+		}
+		if cr.Spec.VMSelect.SchedulerName == "" {
+			cr.Spec.VMSelect.SchedulerName = "default-scheduler"
+		}
+		if cr.Spec.VMSelect.Image.PullPolicy == "" {
+			cr.Spec.VMSelect.Image.PullPolicy = corev1.PullIfNotPresent
+		}
+		// use "/cache" as default cache dir instead of "/tmp" if `CacheMountPath` not set
+		if cr.Spec.VMSelect.CacheMountPath == "" {
+			cr.Spec.VMSelect.CacheMountPath = "/cache"
+		}
+		if cr.Spec.VMSelect.UseDefaultResources == nil {
+			cr.Spec.VMSelect.UseDefaultResources = &c.VMClusterDefault.UseDefaultResources
+		}
+		cr.Spec.VMSelect.Resources = Resources(cr.Spec.VMSelect.Resources,
+			config.Resource(c.VMClusterDefault.VMSelectDefault.Resource),
+			*cr.Spec.VMSelect.UseDefaultResources,
+		)
+	}
+
+}
+
+func addDefaultsToCommonParams(common *vmv1beta1.CommonDefaultableParams, appDefaults *config.ApplicationDefaults) {
+	c := getCfg()
+
+	if common.Image.Repository == "" {
+		common.Image.Repository = appDefaults.Image
+	}
+	if common.DisableSelfServiceScrape == nil {
+		common.DisableSelfServiceScrape = &c.DisableSelfServiceScrapeCreation
+	}
+	common.Image.Repository = FormatContainerImage(c.ContainerRegistry, common.Image.Repository)
+	if common.Image.Tag == "" {
+		common.Image.Tag = appDefaults.Version
+	}
+	if common.Port == "" {
+		common.Port = appDefaults.Port
+	}
+	if common.Image.PullPolicy == "" {
+		common.Image.PullPolicy = corev1.PullIfNotPresent
+	}
+
+	if common.UseStrictSecurity == nil && c.EnableStrictSecurity {
+		common.UseStrictSecurity = &c.EnableStrictSecurity
+	}
+
+	if common.UseDefaultResources == nil && appDefaults.UseDefaultResources {
+		common.UseDefaultResources = &appDefaults.UseDefaultResources
+	}
+
+	common.Resources = Resources(common.Resources, config.Resource(appDefaults.Resource), ptr.Deref(common.UseDefaultResources, false))
+
+}
+
+func addDefaluesToConfigReloader(common *vmv1beta1.CommonConfigReloaderParams, useDefaultResources bool, appDefaults *config.ApplicationDefaults) {
+	c := getCfg()
+	if common.UseCustomConfigReloader == nil && c.UseCustomConfigReloader {
+		common.UseCustomConfigReloader = &c.UseCustomConfigReloader
+	}
+	if common.ConfigReloaderImageTag == "" && ptr.Deref(common.UseCustomConfigReloader, false) {
+		common.ConfigReloaderImageTag = c.CustomConfigReloaderImage
+	} else {
+		common.ConfigReloaderImageTag = appDefaults.ConfigReloadImage
+	}
+
+	common.ConfigReloaderImageTag = FormatContainerImage(c.ContainerRegistry, common.ConfigReloaderImageTag)
+	common.ConfigReloaderResources = Resources(common.ConfigReloaderResources, config.Resource{
+		Limit: struct {
+			Mem string
+			Cpu string
+		}{
+			Cpu: appDefaults.ConfigReloaderCPU,
+			Mem: appDefaults.ConfigReloaderMemory,
+		},
+		Request: struct {
+			Mem string
+			Cpu string
+		}{
+			Cpu: appDefaults.ConfigReloaderCPU,
+			Mem: appDefaults.ConfigReloaderMemory,
+		},
+	}, useDefaultResources)
+}
+
+func addDefaultsToVMBackup(cr *vmv1beta1.VMBackup, useDefaultResources bool, appDefaults *config.ApplicationDefaults) {
+	if cr == nil {
+		return
+	}
+	c := getCfg()
+
+	if cr.Image.Repository == "" {
+		cr.Image.Repository = appDefaults.Image
+	}
+	cr.Image.Repository = FormatContainerImage(c.ContainerRegistry, cr.Image.Repository)
+	if cr.Image.Tag == "" {
+		cr.Image.Tag = appDefaults.Version
+	}
+	if cr.Port == "" {
+		cr.Port = appDefaults.Port
+	}
+	if cr.Image.PullPolicy == "" {
+		cr.Image.PullPolicy = corev1.PullIfNotPresent
+	}
+
+	cr.Resources = Resources(cr.Resources, config.Resource(appDefaults.Resource), useDefaultResources)
+
 }

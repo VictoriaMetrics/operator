@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	corev1 "k8s.io/api/core/v1"
@@ -20,7 +19,6 @@ const vmBackuperCreds = "/etc/vm/creds"
 func VMBackupManager(
 	ctx context.Context,
 	cr *vmv1beta1.VMBackup,
-	c *config.BaseOperatorConf,
 	port string,
 	storagePath, dataVolumeName string,
 	extraArgs map[string]string,
@@ -31,19 +29,6 @@ func VMBackupManager(
 		logger.WithContext(ctx).Info("EULA or license wasn't defined, update your backup settings. Follow https://docs.victoriametrics.com/enterprise.html for further instructions.")
 		return nil, nil
 	}
-	if cr.Image.Repository == "" {
-		cr.Image.Repository = c.VMBackup.Image
-	}
-	if cr.Image.Tag == "" {
-		cr.Image.Tag = c.VMBackup.Version
-	}
-	if cr.Image.PullPolicy == "" {
-		cr.Image.PullPolicy = corev1.PullIfNotPresent
-	}
-	if cr.Port == "" {
-		cr.Port = c.VMBackup.Port
-	}
-
 	snapshotCreateURL := cr.SnapshotCreateURL
 	snapshotDeleteURL := cr.SnapShotDeleteURL
 	if snapshotCreateURL == "" {
@@ -168,14 +153,14 @@ func VMBackupManager(
 	sort.Strings(args)
 	vmBackuper := &corev1.Container{
 		Name:                     "vmbackuper",
-		Image:                    fmt.Sprintf("%s:%s", FormatContainerImage(c.ContainerRegistry, cr.Image.Repository), cr.Image.Tag),
+		Image:                    fmt.Sprintf("%s:%s", cr.Image.Repository, cr.Image.Tag),
 		Ports:                    ports,
 		Args:                     args,
 		Env:                      extraEnvs,
 		VolumeMounts:             mounts,
 		LivenessProbe:            livenessProbe,
 		ReadinessProbe:           readinessProbe,
-		Resources:                Resources(cr.Resources, config.Resource(c.VMBackup.Resource), c.VMBackup.UseDefaultResources),
+		Resources:                cr.Resources,
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 	}
 	return vmBackuper, nil
@@ -184,21 +169,8 @@ func VMBackupManager(
 // VMRestore conditionally creates vmrestore container
 func VMRestore(
 	cr *vmv1beta1.VMBackup,
-	c *config.BaseOperatorConf,
 	storagePath, dataVolumeName string,
 ) (*corev1.Container, error) {
-	if cr.Image.Repository == "" {
-		cr.Image.Repository = c.VMBackup.Image
-	}
-	if cr.Image.Tag == "" {
-		cr.Image.Tag = c.VMBackup.Version
-	}
-	if cr.Image.PullPolicy == "" {
-		cr.Image.PullPolicy = corev1.PullIfNotPresent
-	}
-	if cr.Port == "" {
-		cr.Port = c.VMBackup.Port
-	}
 
 	args := []string{
 		fmt.Sprintf("-storageDataPath=%s", storagePath),
@@ -252,12 +224,12 @@ func VMRestore(
 
 	vmRestore := &corev1.Container{
 		Name:                     "vmbackuper-restore",
-		Image:                    fmt.Sprintf("%s:%s", FormatContainerImage(c.ContainerRegistry, cr.Image.Repository), cr.Image.Tag),
+		Image:                    fmt.Sprintf("%s:%s", cr.Image.Repository, cr.Image.Tag),
 		Ports:                    ports,
 		Args:                     args,
 		Env:                      extraEnvs,
 		VolumeMounts:             mounts,
-		Resources:                Resources(cr.Resources, config.Resource(c.VMBackup.Resource), c.VMBackup.UseDefaultResources),
+		Resources:                cr.Resources,
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 	}
 	return vmRestore, nil

@@ -20,6 +20,7 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	"github.com/prometheus/client_golang/prometheus"
@@ -149,6 +150,8 @@ func RunManager(ctx context.Context) error {
 		}
 	}
 
+	reconcile.InitDeadlines(baseConfig.PodWaitReadyIntervalCheck, baseConfig.AppReadyTimeout, baseConfig.PodWaitReadyTimeout)
+
 	config := ctrl.GetConfigOrDie()
 	config.RateLimiter = flowcontrol.NewTokenBucketRateLimiter(float32(*clientQPS), *clientBurst)
 
@@ -267,7 +270,6 @@ func RunManager(ctx context.Context) error {
 		Client:       mgr.GetClient(),
 		Log:          ctrl.Log.WithName("controller").WithName("VMPodScrape"),
 		OriginScheme: mgr.GetScheme(),
-		BaseConf:     baseConfig,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "VMPodScrape")
 		return err
@@ -276,7 +278,6 @@ func RunManager(ctx context.Context) error {
 		Client:       mgr.GetClient(),
 		Log:          ctrl.Log.WithName("controller").WithName("VMRule"),
 		OriginScheme: mgr.GetScheme(),
-		BaseConf:     baseConfig,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "VMRule")
 		return err
@@ -285,7 +286,6 @@ func RunManager(ctx context.Context) error {
 		Client:       mgr.GetClient(),
 		Log:          ctrl.Log.WithName("controller").WithName("VMServiceScrape"),
 		OriginScheme: mgr.GetScheme(),
-		BaseConf:     baseConfig,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "VMServiceScrape")
 		return err
@@ -321,7 +321,6 @@ func RunManager(ctx context.Context) error {
 		Client:       mgr.GetClient(),
 		Log:          ctrl.Log.WithName("controller").WithName("VMProbe"),
 		OriginScheme: mgr.GetScheme(),
-		BaseConf:     baseConfig,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "VMProbe")
 		return err
@@ -330,7 +329,6 @@ func RunManager(ctx context.Context) error {
 		Client:       mgr.GetClient(),
 		Log:          ctrl.Log.WithName("controller").WithName("VMNodeScrape"),
 		OriginScheme: mgr.GetScheme(),
-		BaseConf:     baseConfig,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "VMNodeScrape")
 		return err
@@ -339,7 +337,6 @@ func RunManager(ctx context.Context) error {
 		Client:       mgr.GetClient(),
 		Log:          ctrl.Log.WithName("controller").WithName("VMStaticScrape"),
 		OriginScheme: mgr.GetScheme(),
-		BaseConf:     baseConfig,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "VMStaticScrape")
 		return err
@@ -348,7 +345,6 @@ func RunManager(ctx context.Context) error {
 		Client:       mgr.GetClient(),
 		Log:          ctrl.Log.WithName("controller").WithName("VMScrapeConfig"),
 		OriginScheme: mgr.GetScheme(),
-		BaseConf:     baseConfig,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "VMScrapeConfig")
 		return err
@@ -368,7 +364,6 @@ func RunManager(ctx context.Context) error {
 		Client:       mgr.GetClient(),
 		Log:          ctrl.Log.WithName("controller").WithName("VMUserReconciler"),
 		OriginScheme: mgr.GetScheme(),
-		BaseConf:     baseConfig,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "VMUser")
 		return err

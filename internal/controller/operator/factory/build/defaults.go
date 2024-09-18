@@ -487,10 +487,12 @@ func addDefaluesToConfigReloader(common *vmv1beta1.CommonConfigReloaderParams, u
 	if common.UseCustomConfigReloader == nil && c.UseCustomConfigReloader {
 		common.UseCustomConfigReloader = &c.UseCustomConfigReloader
 	}
-	if common.ConfigReloaderImageTag == "" && ptr.Deref(common.UseCustomConfigReloader, false) {
-		common.ConfigReloaderImageTag = c.CustomConfigReloaderImage
-	} else {
-		common.ConfigReloaderImageTag = appDefaults.ConfigReloadImage
+	if common.ConfigReloaderImageTag == "" {
+		if ptr.Deref(common.UseCustomConfigReloader, false) {
+			common.ConfigReloaderImageTag = c.CustomConfigReloaderImage
+		} else {
+			common.ConfigReloaderImageTag = appDefaults.ConfigReloadImage
+		}
 	}
 
 	common.ConfigReloaderImageTag = FormatContainerImage(c.ContainerRegistry, common.ConfigReloaderImageTag)

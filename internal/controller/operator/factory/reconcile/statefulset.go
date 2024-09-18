@@ -109,7 +109,11 @@ func HandleSTSUpdate(ctx context.Context, rclient client.Client, cr STSOptions, 
 				equality.Semantic.DeepEqual(newSts.Annotations, currentSts.Annotations)
 
 			if !shouldSkipUpdate {
-				logger.WithContext(ctx).Info("updating statefulset configuration", "is_prev_equal", isPrevEqual, "is_current_equal", isEqual, "is_prev_nil", prevSts == nil)
+				logger.WithContext(ctx).Info("updating statefulset configuration",
+					"sts_name", newSts.Name,
+					"is_prev_equal", isPrevEqual,
+					"is_current_equal", isEqual,
+					"is_prev_nil", prevSts == nil)
 				if err := rclient.Update(ctx, newSts); err != nil {
 					return fmt.Errorf("cannot perform update on sts: %s, err: %w", newSts.Name, err)
 				}

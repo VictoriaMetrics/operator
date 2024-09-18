@@ -16,9 +16,9 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -44,10 +44,7 @@ func buildRemoteSecretKey(source, suffix string) string {
 }
 
 // CreateOrUpdateVMAlertService creates service for vmalert
-func CreateOrUpdateVMAlertService(ctx context.Context, cr *vmv1beta1.VMAlert, rclient client.Client, c *config.BaseOperatorConf) (*corev1.Service, error) {
-	if cr.Spec.Port == "" {
-		cr.Spec.Port = c.VMAlertDefault.Port
-	}
+func CreateOrUpdateVMAlertService(ctx context.Context, cr *vmv1beta1.VMAlert, rclient client.Client) (*corev1.Service, error) {
 
 	newService := build.Service(cr, cr.Spec.Port, nil)
 
@@ -55,35 +52,43 @@ func CreateOrUpdateVMAlertService(ctx context.Context, cr *vmv1beta1.VMAlert, rc
 		additionalSvc := build.AdditionalServiceFromDefault(newService, s)
 		if additionalSvc.Name == newService.Name {
 			logger.WithContext(ctx).Error(fmt.Errorf("vmalert additional service name: %q cannot be the same as crd.prefixedname: %q", additionalSvc.Name, cr.PrefixedName()), "cannot create additional service")
-		} else if err := reconcile.ServiceForCRD(ctx, rclient, additionalSvc); err != nil {
+		} else if err := reconcile.Service(ctx, rclient, additionalSvc, nil); err != nil {
 			return fmt.Errorf("cannot reconcile additional service for vmalert: %w", err)
 		}
 		return nil
 	}); err != nil {
 		return nil, err
 	}
-	rca := finalize.RemoveSvcArgs{
-		PrefixedName:   cr.PrefixedName,
-		GetNameSpace:   cr.GetNamespace,
-		SelectorLabels: cr.SelectorLabels,
+	var prevService *corev1.Service
+	if cr.Spec.ParsedLastAppliedSpec != nil {
+		prevCR := cr.DeepCopy()
+		prevCR.Spec = *cr.Spec.ParsedLastAppliedSpec
+		prevService = build.Service(prevCR, prevCR.Spec.Port, nil)
 	}
-	if err := finalize.RemoveOrphanedServices(ctx, rclient, rca, cr.Spec.ServiceSpec); err != nil {
-		return nil, err
+
+	if cr.Spec.ServiceSpec == nil &&
+		cr.Spec.ParsedLastAppliedSpec != nil &&
+		cr.Spec.ParsedLastAppliedSpec.ServiceSpec != nil {
+		rca := finalize.RemoveSvcArgs{SelectorLabels: cr.SelectorLabels, GetNameSpace: cr.GetNamespace, PrefixedName: cr.PrefixedName}
+		if err := finalize.RemoveOrphanedServices(ctx, rclient, rca, cr.Spec.ServiceSpec); err != nil {
+			return nil, err
+		}
 	}
-	if err := reconcile.ServiceForCRD(ctx, rclient, newService); err != nil {
+
+	if err := reconcile.Service(ctx, rclient, newService, prevService); err != nil {
 		return nil, fmt.Errorf("cannot reconcile service for vmalert: %w", err)
 	}
 	return newService, nil
 }
 
-func createOrUpdateVMAlertSecret(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert, ssCache map[string]*authSecret, c *config.BaseOperatorConf) error {
+func createOrUpdateVMAlertSecret(ctx context.Context, rclient client.Client, cr *vmv1beta1.VMAlert, ssCache map[string]*authSecret) error {
 	ctx = logger.AddToContext(ctx, logger.WithContext(ctx).WithValues("config_name", "vmalert_remote_secrets"))
 
 	s := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),
 			Annotations:     cr.AnnotationsFiltered(),
-			Labels:          c.Labels.Merge(cr.AllLabels()),
+			Labels:          cr.AllLabels(),
 			Namespace:       cr.Namespace,
 			OwnerReferences: cr.AsOwner(),
 		},
@@ -123,11 +128,9 @@ func createOrUpdateVMAlertSecret(ctx context.Context, rclient client.Client, cr 
 }
 
 // CreateOrUpdateVMAlert creates vmalert deployment for given CRD
-func CreateOrUpdateVMAlert(ctx context.Context, cr *vmv1beta1.VMAlert, rclient client.Client, c *config.BaseOperatorConf, cmNames []string) error {
+func CreateOrUpdateVMAlert(ctx context.Context, cr *vmv1beta1.VMAlert, rclient client.Client, cmNames []string) error {
 	l := logger.WithContext(ctx).WithValues("controller", "vmalert.crud", "vmalert", cr.Name)
 	ctx = logger.AddToContext(ctx, l)
-	// copy to avoid side effects.
-	cr = cr.DeepCopy()
 	var additionalNotifiers []vmv1beta1.VMAlertNotifierSpec
 
 	if cr.Spec.Notifier != nil {
@@ -184,7 +187,7 @@ func CreateOrUpdateVMAlert(ctx context.Context, cr *vmv1beta1.VMAlert, rclient c
 		return err
 	}
 	// create secret for remoteSecrets
-	if err := createOrUpdateVMAlertSecret(ctx, rclient, cr, remoteSecrets, c); err != nil {
+	if err := createOrUpdateVMAlertSecret(ctx, rclient, cr, remoteSecrets); err != nil {
 		return err
 	}
 
@@ -203,37 +206,24 @@ func CreateOrUpdateVMAlert(ctx context.Context, cr *vmv1beta1.VMAlert, rclient c
 	if cr.Spec.ParsedLastAppliedSpec != nil {
 		prevCR := cr.DeepCopy()
 		prevCR.Spec = *cr.Spec.ParsedLastAppliedSpec
-		prevDeploy, err = newDeployForVMAlert(prevCR, c, cmNames, remoteSecrets)
+		prevDeploy, err = newDeployForVMAlert(prevCR, cmNames, remoteSecrets)
 		if err != nil {
 			return fmt.Errorf("cannot generate prev deploy spec: %w", err)
 		}
 	}
 
-	newDeploy, err := newDeployForVMAlert(cr, c, cmNames, remoteSecrets)
+	newDeploy, err := newDeployForVMAlert(cr, cmNames, remoteSecrets)
 	if err != nil {
 		return fmt.Errorf("cannot generate new deploy for vmalert: %w", err)
 	}
 
-	return reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, c.PodWaitReadyTimeout, false)
+	return reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, false)
 }
 
 // newDeployForCR returns a busybox pod with the same name/namespace as the cr
-func newDeployForVMAlert(cr *vmv1beta1.VMAlert, c *config.BaseOperatorConf, ruleConfigMapNames []string, remoteSecrets map[string]*authSecret) (*appsv1.Deployment, error) {
-	if cr.Spec.Image.Repository == "" {
-		cr.Spec.Image.Repository = c.VMAlertDefault.Image
-	}
-	if cr.Spec.Image.Tag == "" {
-		cr.Spec.Image.Tag = c.VMAlertDefault.Version
-	}
-	if cr.Spec.Image.PullPolicy == "" {
-		cr.Spec.Image.PullPolicy = corev1.PullIfNotPresent
-	}
+func newDeployForVMAlert(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, remoteSecrets map[string]*authSecret) (*appsv1.Deployment, error) {
 
-	if cr.Spec.Port == "" {
-		cr.Spec.Port = c.VMAlertDefault.Port
-	}
-
-	generatedSpec, err := vmAlertSpecGen(cr, c, ruleConfigMapNames, remoteSecrets)
+	generatedSpec, err := vmAlertSpecGen(cr, ruleConfigMapNames, remoteSecrets)
 	if err != nil {
 		return nil, fmt.Errorf("cannot generate new spec for vmalert: %w", err)
 	}
@@ -246,36 +236,18 @@ func newDeployForVMAlert(cr *vmv1beta1.VMAlert, c *config.BaseOperatorConf, rule
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),
 			Namespace:       cr.Namespace,
-			Labels:          c.Labels.Merge(cr.AllLabels()),
+			Labels:          cr.AllLabels(),
 			Annotations:     cr.AnnotationsFiltered(),
 			OwnerReferences: cr.AsOwner(),
 			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},
 		Spec: *generatedSpec,
 	}
+	build.DeploymentAddCommonParams(deploy, ptr.Deref(cr.Spec.UseStrictSecurity, false), &cr.Spec.CommonApplicationDeploymentParams)
 	return deploy, nil
 }
 
-func vmAlertSpecGen(cr *vmv1beta1.VMAlert, c *config.BaseOperatorConf, ruleConfigMapNames []string, remoteSecrets map[string]*authSecret) (*appsv1.DeploymentSpec, error) {
-	confReloadArgs := []string{
-		fmt.Sprintf("-webhook-url=%s", vmv1beta1.BuildReloadPathWithPort(cr.Spec.ExtraArgs, cr.Spec.Port)),
-	}
-	for _, cm := range ruleConfigMapNames {
-		confReloadArgs = append(confReloadArgs, fmt.Sprintf("-volume-dir=%s", path.Join(vmAlertConfigDir, cm)))
-	}
-	if len(cr.Spec.ConfigReloaderExtraArgs) > 0 {
-		for idx, arg := range confReloadArgs {
-			cleanArg := strings.Split(strings.TrimLeft(arg, "-"), "=")[0]
-			if replacement, ok := cr.Spec.ConfigReloaderExtraArgs[cleanArg]; ok {
-				delete(cr.Spec.ConfigReloaderExtraArgs, cleanArg)
-				confReloadArgs[idx] = fmt.Sprintf(`--%s=%s`, cleanArg, replacement)
-			}
-		}
-		for k, v := range cr.Spec.ConfigReloaderExtraArgs {
-			confReloadArgs = append(confReloadArgs, fmt.Sprintf(`--%s=%s`, k, v))
-		}
-		sort.Strings(confReloadArgs)
-	}
+func vmAlertSpecGen(cr *vmv1beta1.VMAlert, ruleConfigMapNames []string, remoteSecrets map[string]*authSecret) (*appsv1.DeploymentSpec, error) {
 
 	args := buildVMAlertArgs(cr, ruleConfigMapNames, remoteSecrets)
 
@@ -387,23 +359,6 @@ func vmAlertSpecGen(cr *vmv1beta1.VMAlert, c *config.BaseOperatorConf, ruleConfi
 			MountPath: path.Join(vmAlertConfigDir, name),
 		})
 	}
-	var reloaderVolumes []corev1.VolumeMount
-	for _, name := range ruleConfigMapNames {
-		reloaderVolumes = append(reloaderVolumes, corev1.VolumeMount{
-			Name:      name,
-			MountPath: path.Join(vmAlertConfigDir, name),
-		})
-	}
-
-	resources := corev1.ResourceRequirements{Limits: corev1.ResourceList{}, Requests: corev1.ResourceList{}}
-	if c.VMAlertDefault.ConfigReloaderCPU != "0" && c.VMAgentDefault.UseDefaultResources {
-		resources.Limits[corev1.ResourceCPU] = resource.MustParse(c.VMAlertDefault.ConfigReloaderCPU)
-		resources.Requests[corev1.ResourceCPU] = resource.MustParse(c.VMAlertDefault.ConfigReloaderCPU)
-	}
-	if c.VMAlertDefault.ConfigReloaderMemory != "0" && c.VMAgentDefault.UseDefaultResources {
-		resources.Limits[corev1.ResourceMemory] = resource.MustParse(c.VMAlertDefault.ConfigReloaderMemory)
-		resources.Requests[corev1.ResourceMemory] = resource.MustParse(c.VMAlertDefault.ConfigReloaderMemory)
-	}
 
 	var ports []corev1.ContainerPort
 	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(cr.Spec.Port).IntVal})
@@ -416,39 +371,28 @@ func vmAlertSpecGen(cr *vmv1beta1.VMAlert, c *config.BaseOperatorConf, ruleConfi
 	sort.Slice(volumeMounts, func(i, j int) bool {
 		return volumeMounts[i].Name < volumeMounts[j].Name
 	})
-	sort.Slice(reloaderVolumes, func(i, j int) bool {
-		return reloaderVolumes[i].Name < reloaderVolumes[j].Name
-	})
-	sort.Strings(confReloadArgs)
 
 	var vmalertContainers []corev1.Container
 
 	vmalertContainer := corev1.Container{
 		Args:                     args,
 		Name:                     "vmalert",
-		Image:                    fmt.Sprintf("%s:%s", build.FormatContainerImage(c.ContainerRegistry, cr.Spec.Image.Repository), cr.Spec.Image.Tag),
+		Image:                    fmt.Sprintf("%s:%s", cr.Spec.Image.Repository, cr.Spec.Image.Tag),
 		ImagePullPolicy:          cr.Spec.Image.PullPolicy,
 		Ports:                    ports,
 		VolumeMounts:             volumeMounts,
-		Resources:                build.Resources(cr.Spec.Resources, config.Resource(c.VMAlertDefault.Resource), c.VMAlertDefault.UseDefaultResources),
+		Resources:                cr.Spec.Resources,
 		Env:                      envs,
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 	}
 	vmalertContainer = build.Probe(vmalertContainer, cr)
 	vmalertContainers = append(vmalertContainers, vmalertContainer)
 
-	if !cr.IsUnmanaged() {
-		vmalertContainers = append(vmalertContainers, corev1.Container{
-			Name:                     "config-reloader",
-			Image:                    build.FormatContainerImage(c.ContainerRegistry, c.VMAlertDefault.ConfigReloadImage),
-			Args:                     confReloadArgs,
-			Resources:                resources,
-			TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
-			VolumeMounts:             reloaderVolumes,
-		},
-		)
-	}
+	vmalertContainers = buildConfigReloaderContainer(vmalertContainers, cr, ruleConfigMapNames)
 
+	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, false)
+
+	build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, vmalertContainers, useStrictSecurity)
 	containers, err := k8stools.MergePatchContainers(vmalertContainers, cr.Spec.Containers)
 	if err != nil {
 		return nil, err
@@ -467,15 +411,7 @@ func vmAlertSpecGen(cr *vmv1beta1.VMAlert, c *config.BaseOperatorConf, ruleConfi
 		}
 	}
 
-	useStrictSecurity := c.EnableStrictSecurity
-	if cr.Spec.UseStrictSecurity != nil {
-		useStrictSecurity = *cr.Spec.UseStrictSecurity
-	}
-
 	spec := &appsv1.DeploymentSpec{
-		Replicas:             cr.Spec.ReplicaCount,
-		MinReadySeconds:      cr.Spec.MinReadySeconds,
-		RevisionHistoryLimit: cr.Spec.RevisionHistoryLimitCount,
 
 		Selector: &metav1.LabelSelector{
 			MatchLabels: cr.SelectorLabels(),
@@ -491,24 +427,10 @@ func vmAlertSpecGen(cr *vmv1beta1.VMAlert, c *config.BaseOperatorConf, ruleConfi
 				Annotations: cr.PodAnnotations(),
 			},
 			Spec: corev1.PodSpec{
-				NodeSelector:                  cr.Spec.NodeSelector,
-				SchedulerName:                 cr.Spec.SchedulerName,
-				HostAliases:                   cr.Spec.HostAliases,
-				RuntimeClassName:              cr.Spec.RuntimeClassName,
-				ServiceAccountName:            cr.GetServiceAccountName(),
-				InitContainers:                build.AddStrictSecuritySettingsToContainers(cr.Spec.InitContainers, useStrictSecurity),
-				Containers:                    build.AddStrictSecuritySettingsToContainers(containers, useStrictSecurity),
-				Volumes:                       volumes,
-				PriorityClassName:             cr.Spec.PriorityClassName,
-				SecurityContext:               build.AddStrictSecuritySettingsToPod(cr.Spec.SecurityContext, useStrictSecurity),
-				Affinity:                      cr.Spec.Affinity,
-				Tolerations:                   cr.Spec.Tolerations,
-				HostNetwork:                   cr.Spec.HostNetwork,
-				DNSPolicy:                     cr.Spec.DNSPolicy,
-				DNSConfig:                     cr.Spec.DNSConfig,
-				TopologySpreadConstraints:     cr.Spec.TopologySpreadConstraints,
-				TerminationGracePeriodSeconds: cr.Spec.TerminationGracePeriodSeconds,
-				ReadinessGates:                cr.Spec.ReadinessGates,
+				ServiceAccountName: cr.GetServiceAccountName(),
+				InitContainers:     cr.Spec.InitContainers,
+				Containers:         containers,
+				Volumes:            volumes,
 			},
 		},
 	}
@@ -1011,4 +933,61 @@ func buildNotifiersArgs(cr *vmv1beta1.VMAlert, ntBasicAuth map[string]*authSecre
 
 func buildCacheKey(ns, keyName string) string {
 	return fmt.Sprintf("%s/%s", ns, keyName)
+}
+
+func buildConfigReloaderContainer(dst []corev1.Container, cr *vmv1beta1.VMAlert, ruleConfigMapNames []string) []corev1.Container {
+	if cr.IsUnmanaged() {
+		return dst
+	}
+	volumeWatchArg := "-volume-dir"
+	reloadURLArg := "-webhook-url"
+	useCustomConfigReloader := ptr.Deref(cr.Spec.UseCustomConfigReloader, false)
+	if useCustomConfigReloader {
+		volumeWatchArg = "--watched-dir"
+		reloadURLArg = "--reload-url"
+	}
+	confReloadArgs := []string{
+		fmt.Sprintf("%s=%s", reloadURLArg, vmv1beta1.BuildReloadPathWithPort(cr.Spec.ExtraArgs, cr.Spec.Port)),
+	}
+	for _, cm := range ruleConfigMapNames {
+		confReloadArgs = append(confReloadArgs, fmt.Sprintf("%s=%s", volumeWatchArg, path.Join(vmAlertConfigDir, cm)))
+	}
+	if len(cr.Spec.ConfigReloaderExtraArgs) > 0 {
+		for idx, arg := range confReloadArgs {
+			cleanArg := strings.Split(strings.TrimLeft(arg, "-"), "=")[0]
+			if replacement, ok := cr.Spec.ConfigReloaderExtraArgs[cleanArg]; ok {
+				delete(cr.Spec.ConfigReloaderExtraArgs, cleanArg)
+				confReloadArgs[idx] = fmt.Sprintf(`--%s=%s`, cleanArg, replacement)
+			}
+		}
+		for k, v := range cr.Spec.ConfigReloaderExtraArgs {
+			confReloadArgs = append(confReloadArgs, fmt.Sprintf(`--%s=%s`, k, v))
+		}
+		sort.Strings(confReloadArgs)
+	}
+	var reloaderVolumes []corev1.VolumeMount
+	for _, name := range ruleConfigMapNames {
+		reloaderVolumes = append(reloaderVolumes, corev1.VolumeMount{
+			Name:      name,
+			MountPath: path.Join(vmAlertConfigDir, name),
+		})
+	}
+	sort.Slice(reloaderVolumes, func(i, j int) bool {
+		return reloaderVolumes[i].Name < reloaderVolumes[j].Name
+	})
+	configReloaderContainer := corev1.Container{
+		Name:                     "config-reloader",
+		Image:                    cr.Spec.ConfigReloaderImageTag,
+		Args:                     confReloadArgs,
+		Resources:                cr.Spec.ConfigReloaderResources,
+		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+		VolumeMounts:             reloaderVolumes,
+	}
+	if useCustomConfigReloader {
+		build.AddsPortProbesToConfigReloaderContainer(useCustomConfigReloader, &configReloaderContainer)
+
+	}
+
+	dst = append(dst, configReloaderContainer)
+	return dst
 }

@@ -10,27 +10,24 @@ import (
 	"strings"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
-	"github.com/hashicorp/go-version"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
-	vmauthPort            = "8427"
 	vmAuthConfigMountGz   = "/opt/vmauth-config-gz"
 	vmAuthConfigFolder    = "/opt/vmauth"
 	vmAuthConfigRawFolder = "/opt/vmauth/config"
@@ -41,42 +38,49 @@ const (
 
 // CreateOrUpdateVMAuthService creates service for VMAuth
 func CreateOrUpdateVMAuthService(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Client) (*corev1.Service, error) {
-	cr = cr.DeepCopy()
-	if cr.Spec.Port == "" {
-		cr.Spec.Port = vmauthPort
-	}
 	newService := build.Service(cr, cr.Spec.Port, nil)
 	if err := cr.Spec.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
 		additionalService := build.AdditionalServiceFromDefault(newService, s)
 		if additionalService.Name == newService.Name {
 			logger.WithContext(ctx).Error(fmt.Errorf("vmauth additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name), "cannot create additional service")
-		} else if err := reconcile.ServiceForCRD(ctx, rclient, additionalService); err != nil {
+		} else if err := reconcile.Service(ctx, rclient, additionalService, nil); err != nil {
 			return fmt.Errorf("cannot reconcile additional service for vmauth: %w", err)
 		}
 		return nil
 	}); err != nil {
 		return nil, err
 	}
-
-	rca := finalize.RemoveSvcArgs{SelectorLabels: cr.SelectorLabels, GetNameSpace: cr.GetNamespace, PrefixedName: cr.PrefixedName}
-	if err := finalize.RemoveOrphanedServices(ctx, rclient, rca, cr.Spec.ServiceSpec); err != nil {
-		return nil, err
+	var prevService *corev1.Service
+	if cr.Spec.ParsedLastAppliedSpec != nil {
+		prevCR := cr.DeepCopy()
+		prevCR.Spec = *cr.Spec.ParsedLastAppliedSpec
+		prevService = build.Service(prevCR, prevCR.Spec.Port, nil)
 	}
-	if err := reconcile.ServiceForCRD(ctx, rclient, newService); err != nil {
+
+	if cr.Spec.ServiceSpec == nil &&
+		cr.Spec.ParsedLastAppliedSpec != nil &&
+		cr.Spec.ParsedLastAppliedSpec.ServiceSpec != nil {
+		rca := finalize.RemoveSvcArgs{SelectorLabels: cr.SelectorLabels, GetNameSpace: cr.GetNamespace, PrefixedName: cr.PrefixedName}
+		if err := finalize.RemoveOrphanedServices(ctx, rclient, rca, cr.Spec.ServiceSpec); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := reconcile.Service(ctx, rclient, newService, prevService); err != nil {
 		return nil, fmt.Errorf("cannot reconcile service for vmauth: %w", err)
 	}
 	return newService, nil
 }
 
 // CreateOrUpdateVMAuth - handles VMAuth deployment reconciliation.
-func CreateOrUpdateVMAuth(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Client, c *config.BaseOperatorConf) error {
+func CreateOrUpdateVMAuth(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Client) error {
 	l := logger.WithContext(ctx).WithValues("controller", "vmauth.crud")
 	ctx = logger.AddToContext(ctx, l)
 	if cr.IsOwnsServiceAccount() {
 		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr)); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
 		}
-		if c.UseCustomConfigReloader && cr.Spec.ConfigSecret == "" {
+		if ptr.Deref(cr.Spec.UseCustomConfigReloader, false) && cr.Spec.ConfigSecret == "" {
 			if err := createVMAuthSecretAccess(ctx, cr, rclient); err != nil {
 				return err
 			}
@@ -100,35 +104,23 @@ func CreateOrUpdateVMAuth(ctx context.Context, cr *vmv1beta1.VMAuth, rclient cli
 	if cr.Spec.ParsedLastAppliedSpec != nil {
 		prevCR := cr.DeepCopy()
 		prevCR.Spec = *cr.Spec.ParsedLastAppliedSpec
-		prevDeploy, err = newDeployForVMAuth(prevCR, c)
+		prevDeploy, err = newDeployForVMAuth(prevCR)
 		if err != nil {
 			return fmt.Errorf("cannot generate prev deploy spec: %w", err)
 		}
 	}
-	newDeploy, err := newDeployForVMAuth(cr, c)
+
+	newDeploy, err := newDeployForVMAuth(cr)
 	if err != nil {
 		return fmt.Errorf("cannot build new deploy for vmauth: %w", err)
 	}
 
-	return reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, c.PodWaitReadyTimeout, false)
+	return reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, false)
 }
 
-func newDeployForVMAuth(cr *vmv1beta1.VMAuth, c *config.BaseOperatorConf) (*appsv1.Deployment, error) {
-	cr = cr.DeepCopy()
+func newDeployForVMAuth(cr *vmv1beta1.VMAuth) (*appsv1.Deployment, error) {
 
-	if cr.Spec.Image.Repository == "" {
-		cr.Spec.Image.Repository = c.VMAuthDefault.Image
-	}
-	if cr.Spec.Image.Tag == "" {
-		cr.Spec.Image.Tag = c.VMAuthDefault.Version
-	}
-	if cr.Spec.Port == "" {
-		cr.Spec.Port = c.VMAuthDefault.Port
-	}
-	if cr.Spec.Image.PullPolicy == "" {
-		cr.Spec.Image.PullPolicy = corev1.PullIfNotPresent
-	}
-	podSpec, err := makeSpecForVMAuth(cr, c)
+	podSpec, err := makeSpecForVMAuth(cr)
 	if err != nil {
 		return nil, err
 	}
@@ -137,14 +129,11 @@ func newDeployForVMAuth(cr *vmv1beta1.VMAuth, c *config.BaseOperatorConf) (*apps
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),
 			Namespace:       cr.Namespace,
-			Labels:          c.Labels.Merge(cr.AllLabels()),
+			Labels:          cr.AllLabels(),
 			Annotations:     cr.AnnotationsFiltered(),
 			OwnerReferences: cr.AsOwner(),
 		},
 		Spec: appsv1.DeploymentSpec{
-			MinReadySeconds:      cr.Spec.MinReadySeconds,
-			Replicas:             cr.Spec.ReplicaCount,
-			RevisionHistoryLimit: cr.Spec.RevisionHistoryLimitCount,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: cr.SelectorLabels(),
 			},
@@ -154,11 +143,12 @@ func newDeployForVMAuth(cr *vmv1beta1.VMAuth, c *config.BaseOperatorConf) (*apps
 			Template: *podSpec,
 		},
 	}
+	build.DeploymentAddCommonParams(depSpec, ptr.Deref(cr.Spec.UseStrictSecurity, false), &cr.Spec.CommonApplicationDeploymentParams)
 
 	return depSpec, nil
 }
 
-func makeSpecForVMAuth(cr *vmv1beta1.VMAuth, c *config.BaseOperatorConf) (*corev1.PodTemplateSpec, error) {
+func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 	var args []string
 	args = append(args, fmt.Sprintf("-auth.config=%s", path.Join(vmAuthConfigFolder, vmAuthConfigName)))
 
@@ -178,6 +168,7 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth, c *config.BaseOperatorConf) (*corev
 	envs = append(envs, cr.Spec.ExtraEnvs...)
 
 	var ports []corev1.ContainerPort
+
 	ports = append(ports, corev1.ContainerPort{Name: "http", Protocol: "TCP", ContainerPort: intstr.Parse(cr.Spec.Port).IntVal})
 
 	var volumes []corev1.Volume
@@ -227,11 +218,11 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth, c *config.BaseOperatorConf) (*corev
 
 	vmauthContainer := corev1.Container{
 		Name:                     "vmauth",
-		Image:                    fmt.Sprintf("%s:%s", build.FormatContainerImage(c.ContainerRegistry, cr.Spec.Image.Repository), cr.Spec.Image.Tag),
+		Image:                    fmt.Sprintf("%s:%s", cr.Spec.Image.Repository, cr.Spec.Image.Tag),
 		Ports:                    ports,
 		Args:                     args,
 		VolumeMounts:             volumeMounts,
-		Resources:                build.Resources(cr.Spec.Resources, config.Resource(c.VMAuthDefault.Resource), c.VMAuthDefault.UseDefaultResources),
+		Resources:                cr.Spec.Resources,
 		Env:                      envs,
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 		ImagePullPolicy:          cr.Spec.Image.PullPolicy,
@@ -239,6 +230,8 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth, c *config.BaseOperatorConf) (*corev
 	vmauthContainer = build.Probe(vmauthContainer, cr)
 
 	operatorContainers := []corev1.Container{vmauthContainer}
+	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, false)
+	useCustomConfigReloader := ptr.Deref(cr.Spec.UseCustomConfigReloader, false)
 
 	var initContainers []corev1.Container
 	if cr.Spec.ConfigSecret == "" {
@@ -248,7 +241,7 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth, c *config.BaseOperatorConf) (*corev
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
 		})
-		if !c.UseCustomConfigReloader {
+		if !useCustomConfigReloader {
 			volumes = append(volumes, corev1.Volume{
 				Name: vmAuthVolumeName,
 				VolumeSource: corev1.VolumeSource{
@@ -268,10 +261,10 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth, c *config.BaseOperatorConf) (*corev
 		})
 		operatorContainers[0].VolumeMounts = volumeMounts
 
-		configReloader := buildVMAuthConfigReloaderContainer(cr, c)
+		configReloader := buildVMAuthConfigReloaderContainer(cr)
 		operatorContainers = append(operatorContainers, configReloader)
 		initContainers = append(initContainers,
-			buildInitConfigContainer(c.VMAuthDefault.ConfigReloadImage, buildConfigReloaderResourceReqsForVMAuth(c), c, configReloader.Args)...)
+			buildInitConfigContainer(useCustomConfigReloader, cr.Spec.ConfigReloaderImageTag, cr.Spec.ConfigReloaderResources, configReloader.Args)...)
 	} else {
 		volumes = append(volumes, corev1.Volume{
 			VolumeSource: corev1.VolumeSource{
@@ -288,46 +281,30 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth, c *config.BaseOperatorConf) (*corev
 		operatorContainers[0].VolumeMounts = volumeMounts
 	}
 
+	build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, operatorContainers, useStrictSecurity)
 	containers, err := k8stools.MergePatchContainers(operatorContainers, cr.Spec.Containers)
 	if err != nil {
 		return nil, err
 	}
 
 	if len(cr.Spec.InitContainers) > 0 {
+		build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, initContainers, useStrictSecurity)
 		initContainers, err = k8stools.MergePatchContainers(initContainers, cr.Spec.InitContainers)
 		if err != nil {
 			return nil, fmt.Errorf("cannot apply patch for initContainers: %w", err)
 		}
 	}
-	useStrictSecurity := c.EnableStrictSecurity
-	if cr.Spec.UseStrictSecurity != nil {
-		useStrictSecurity = *cr.Spec.UseStrictSecurity
-	}
+
 	vmAuthSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:      cr.PodLabels(),
 			Annotations: cr.PodAnnotations(),
 		},
 		Spec: corev1.PodSpec{
-			NodeSelector:                  cr.Spec.NodeSelector,
-			Volumes:                       volumes,
-			InitContainers:                build.AddStrictSecuritySettingsToContainers(initContainers, useStrictSecurity),
-			Containers:                    build.AddStrictSecuritySettingsToContainers(containers, useStrictSecurity),
-			ServiceAccountName:            cr.GetServiceAccountName(),
-			SecurityContext:               build.AddStrictSecuritySettingsToPod(cr.Spec.SecurityContext, useStrictSecurity),
-			ImagePullSecrets:              cr.Spec.ImagePullSecrets,
-			Affinity:                      cr.Spec.Affinity,
-			RuntimeClassName:              cr.Spec.RuntimeClassName,
-			SchedulerName:                 cr.Spec.SchedulerName,
-			Tolerations:                   cr.Spec.Tolerations,
-			PriorityClassName:             cr.Spec.PriorityClassName,
-			HostNetwork:                   cr.Spec.HostNetwork,
-			DNSPolicy:                     cr.Spec.DNSPolicy,
-			DNSConfig:                     cr.Spec.DNSConfig,
-			TopologySpreadConstraints:     cr.Spec.TopologySpreadConstraints,
-			HostAliases:                   cr.Spec.HostAliases,
-			TerminationGracePeriodSeconds: cr.Spec.TerminationGracePeriodSeconds,
-			ReadinessGates:                cr.Spec.ReadinessGates,
+			Volumes:            volumes,
+			InitContainers:     initContainers,
+			Containers:         containers,
+			ServiceAccountName: cr.GetServiceAccountName(),
 		},
 	}
 	return vmAuthSpec, nil
@@ -466,12 +443,13 @@ func buildIngressConfig(cr *vmv1beta1.VMAuth) *networkingv1.Ingress {
 	}
 }
 
-func buildVMAuthConfigReloaderContainer(cr *vmv1beta1.VMAuth, c *config.BaseOperatorConf) corev1.Container {
+func buildVMAuthConfigReloaderContainer(cr *vmv1beta1.VMAuth) corev1.Container {
 	configReloaderArgs := []string{
 		fmt.Sprintf("--reload-url=%s", vmv1beta1.BuildReloadPathWithPort(cr.Spec.ExtraArgs, cr.Spec.Port)),
 		fmt.Sprintf("--config-envsubst-file=%s", path.Join(vmAuthConfigFolder, vmAuthConfigName)),
 	}
-	if c.UseCustomConfigReloader {
+	useCustomConfigReloader := ptr.Deref(cr.Spec.UseCustomConfigReloader, false)
+	if useCustomConfigReloader {
 		configReloaderArgs = append(configReloaderArgs, fmt.Sprintf("--config-secret-name=%s/%s", cr.Namespace, cr.ConfigSecretName()))
 		configReloaderArgs = vmv1beta1.MaybeEnableProxyProtocol(configReloaderArgs, cr.Spec.ExtraArgs)
 	} else {
@@ -484,7 +462,7 @@ func buildVMAuthConfigReloaderContainer(cr *vmv1beta1.VMAuth, c *config.BaseOper
 			MountPath: vmAuthConfigFolder,
 		},
 	}
-	if !c.UseCustomConfigReloader {
+	if !useCustomConfigReloader {
 		reloaderMounts = append(reloaderMounts, corev1.VolumeMount{
 			Name:      vmAuthVolumeName,
 			MountPath: vmAuthConfigMountGz,
@@ -505,7 +483,7 @@ func buildVMAuthConfigReloaderContainer(cr *vmv1beta1.VMAuth, c *config.BaseOper
 	}
 	configReloader := corev1.Container{
 		Name:  "config-reloader",
-		Image: build.FormatContainerImage(c.ContainerRegistry, c.VMAuthDefault.ConfigReloadImage),
+		Image: cr.Spec.ConfigReloaderImageTag,
 
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 		Env: []corev1.EnvVar{
@@ -519,25 +497,22 @@ func buildVMAuthConfigReloaderContainer(cr *vmv1beta1.VMAuth, c *config.BaseOper
 		Command:      []string{"/bin/prometheus-config-reloader"},
 		Args:         configReloaderArgs,
 		VolumeMounts: reloaderMounts,
-		Resources:    buildConfigReloaderResourceReqsForVMAuth(c),
+		Resources:    cr.Spec.ConfigReloaderResources,
 	}
 
-	if c.UseCustomConfigReloader {
-		configReloader.Image = build.FormatContainerImage(c.ContainerRegistry, c.CustomConfigReloaderImage)
+	if useCustomConfigReloader {
 		configReloader.Command = nil
 	}
 
-	build.AddsPortProbesToConfigReloaderContainer(&configReloader, c)
+	build.AddsPortProbesToConfigReloaderContainer(useCustomConfigReloader, &configReloader)
 	return configReloader
 }
 
-var minimalCustomConfigReloaderVersion = version.Must(version.NewVersion("v0.35.0"))
-
-func buildInitConfigContainer(baseImage string, resources corev1.ResourceRequirements, c *config.BaseOperatorConf, configReloaderArgs []string) []corev1.Container {
+func buildInitConfigContainer(useCustomConfigReloader bool, baseImage string, resources corev1.ResourceRequirements, configReloaderArgs []string) []corev1.Container {
 	var initReloader corev1.Container
-	if c.UseCustomConfigReloader && c.CustomConfigReloaderImageVersion().GreaterThanOrEqual(minimalCustomConfigReloaderVersion) {
+	if useCustomConfigReloader {
 		initReloader = corev1.Container{
-			Image: build.FormatContainerImage(c.ContainerRegistry, c.CustomConfigReloaderImage),
+			Image: baseImage,
 			Name:  "config-init",
 			Args:  append(configReloaderArgs, "--only-init-config"),
 			VolumeMounts: []corev1.VolumeMount{
@@ -551,7 +526,7 @@ func buildInitConfigContainer(baseImage string, resources corev1.ResourceRequire
 		return []corev1.Container{initReloader}
 	}
 	initReloader = corev1.Container{
-		Image: build.FormatContainerImage(c.ContainerRegistry, baseImage),
+		Image: baseImage,
 		Name:  "config-init",
 		Command: []string{
 			"/bin/sh",
@@ -573,21 +548,6 @@ func buildInitConfigContainer(baseImage string, resources corev1.ResourceRequire
 		Resources: resources,
 	}
 	return []corev1.Container{initReloader}
-}
-
-func buildConfigReloaderResourceReqsForVMAuth(c *config.BaseOperatorConf) corev1.ResourceRequirements {
-	configReloaderResources := corev1.ResourceRequirements{
-		Limits: corev1.ResourceList{}, Requests: corev1.ResourceList{},
-	}
-	if c.VMAgentDefault.ConfigReloaderCPU != "0" && c.VMAuthDefault.UseDefaultResources {
-		configReloaderResources.Limits[corev1.ResourceCPU] = resource.MustParse(c.VMAuthDefault.ConfigReloaderCPU)
-		configReloaderResources.Requests[corev1.ResourceCPU] = resource.MustParse(c.VMAuthDefault.ConfigReloaderCPU)
-	}
-	if c.VMAgentDefault.ConfigReloaderMemory != "0" && c.VMAuthDefault.UseDefaultResources {
-		configReloaderResources.Limits[corev1.ResourceMemory] = resource.MustParse(c.VMAuthDefault.ConfigReloaderMemory)
-		configReloaderResources.Requests[corev1.ResourceMemory] = resource.MustParse(c.VMAuthDefault.ConfigReloaderMemory)
-	}
-	return configReloaderResources
 }
 
 func gzipConfig(buf *bytes.Buffer, conf []byte) error {

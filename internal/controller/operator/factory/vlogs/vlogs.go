@@ -7,7 +7,6 @@ import (
 	"sort"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
@@ -18,6 +17,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -50,32 +50,20 @@ func makeVLogsPvc(r *vmv1beta1.VLogs) *corev1.PersistentVolumeClaim {
 }
 
 // CreateOrUpdateVLogs performs an update for vlogs resource
-func CreateOrUpdateVLogs(ctx context.Context, r *vmv1beta1.VLogs, rclient client.Client, c *config.BaseOperatorConf) error {
-	r = r.DeepCopy()
-	if r.Spec.Image.Repository == "" {
-		r.Spec.Image.Repository = c.VLogsDefault.Image
-	}
-	if r.Spec.Image.Tag == "" {
-		r.Spec.Image.Tag = c.VLogsDefault.Version
-	}
-	if r.Spec.Port == "" {
-		r.Spec.Port = c.VLogsDefault.Port
-	}
-	if r.Spec.Image.PullPolicy == "" {
-		r.Spec.Image.PullPolicy = corev1.PullIfNotPresent
-	}
+func CreateOrUpdateVLogs(ctx context.Context, r *vmv1beta1.VLogs, rclient client.Client) error {
+
 	if r.IsOwnsServiceAccount() {
 		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(r)); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
 		}
 	}
 
-	svc, err := CreateOrUpdateVLogsService(ctx, r, rclient, c)
+	svc, err := CreateOrUpdateVLogsService(ctx, r, rclient)
 	if err != nil {
 		return err
 	}
 
-	if !c.DisableSelfServiceScrapeCreation {
+	if !ptr.Deref(r.Spec.DisableSelfServiceScrape, false) {
 		err := reconcile.VMServiceScrapeForCRD(ctx, rclient, build.VMServiceScrapeForServiceWithSpec(svc, r))
 		if err != nil {
 			return fmt.Errorf("cannot create serviceScrape for vlogs: %w", err)
@@ -87,22 +75,22 @@ func CreateOrUpdateVLogs(ctx context.Context, r *vmv1beta1.VLogs, rclient client
 	if r.Spec.ParsedLastAppliedSpec != nil {
 		prevCR := r.DeepCopy()
 		prevCR.Spec = *r.Spec.ParsedLastAppliedSpec
-		prevDeploy, err = newDeployForVLogs(ctx, prevCR, c)
+		prevDeploy, err = newDeployForVLogs(prevCR)
 		if err != nil {
 			return fmt.Errorf("cannot generate prev deploy spec: %w", err)
 		}
 	}
 
-	newDeploy, err := newDeployForVLogs(ctx, r, c)
+	newDeploy, err := newDeployForVLogs(r)
 	if err != nil {
 		return fmt.Errorf("cannot generate new deploy for vlogs: %w", err)
 	}
 
-	return reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, c.PodWaitReadyTimeout, false)
+	return reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, false)
 }
 
-func newDeployForVLogs(ctx context.Context, r *vmv1beta1.VLogs, c *config.BaseOperatorConf) (*appsv1.Deployment, error) {
-	podSpec, err := makeSpecForVLogs(ctx, r, c)
+func newDeployForVLogs(r *vmv1beta1.VLogs) (*appsv1.Deployment, error) {
+	podSpec, err := makeSpecForVLogs(r)
 	if err != nil {
 		return nil, err
 	}
@@ -111,14 +99,13 @@ func newDeployForVLogs(ctx context.Context, r *vmv1beta1.VLogs, c *config.BaseOp
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            r.PrefixedName(),
 			Namespace:       r.Namespace,
-			Labels:          c.Labels.Merge(r.AllLabels()),
+			Labels:          r.AllLabels(),
 			Annotations:     r.AnnotationsFiltered(),
 			OwnerReferences: r.AsOwner(),
 			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas:             r.Spec.ReplicaCount,
-			RevisionHistoryLimit: r.Spec.RevisionHistoryLimitCount,
+			Replicas: r.Spec.ReplicaCount,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: r.SelectorLabels(),
 			},
@@ -129,10 +116,11 @@ func newDeployForVLogs(ctx context.Context, r *vmv1beta1.VLogs, c *config.BaseOp
 			Template: *podSpec,
 		},
 	}
+	build.DeploymentAddCommonParams(depSpec, ptr.Deref(r.Spec.UseStrictSecurity, false), &r.Spec.CommonApplicationDeploymentParams)
 	return depSpec, nil
 }
 
-func makeSpecForVLogs(_ context.Context, r *vmv1beta1.VLogs, c *config.BaseOperatorConf) (*corev1.PodTemplateSpec, error) {
+func makeSpecForVLogs(r *vmv1beta1.VLogs) (*corev1.PodTemplateSpec, error) {
 	args := []string{
 		fmt.Sprintf("-retentionPeriod=%s", r.Spec.RetentionPeriod),
 	}
@@ -239,11 +227,11 @@ func makeSpecForVLogs(_ context.Context, r *vmv1beta1.VLogs, c *config.BaseOpera
 	sort.Strings(args)
 	vlogsContainer := corev1.Container{
 		Name:                     "vlogs",
-		Image:                    fmt.Sprintf("%s:%s", build.FormatContainerImage(c.ContainerRegistry, r.Spec.Image.Repository), r.Spec.Image.Tag),
+		Image:                    fmt.Sprintf("%s:%s", r.Spec.Image.Repository, r.Spec.Image.Tag),
 		Ports:                    ports,
 		Args:                     args,
 		VolumeMounts:             vmMounts,
-		Resources:                build.Resources(r.Spec.Resources, config.Resource(c.VLogsDefault.Resource), c.VLogsDefault.UseDefaultResources),
+		Resources:                r.Spec.Resources,
 		Env:                      envs,
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 		ImagePullPolicy:          r.Spec.Image.PullPolicy,
@@ -252,42 +240,24 @@ func makeSpecForVLogs(_ context.Context, r *vmv1beta1.VLogs, c *config.BaseOpera
 	vlogsContainer = build.Probe(vlogsContainer, r)
 
 	operatorContainers := []corev1.Container{vlogsContainer}
-	initContainers := r.Spec.InitContainers
+
+	build.AddStrictSecuritySettingsToContainers(r.Spec.SecurityContext, operatorContainers, ptr.Deref(r.Spec.UseStrictSecurity, false))
 
 	containers, err := k8stools.MergePatchContainers(operatorContainers, r.Spec.Containers)
 	if err != nil {
 		return nil, err
 	}
 
-	useStrictSecurity := c.EnableStrictSecurity
-	if r.Spec.UseStrictSecurity != nil {
-		useStrictSecurity = *r.Spec.UseStrictSecurity
-	}
 	vlogsSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:      r.PodLabels(),
 			Annotations: r.PodAnnotations(),
 		},
 		Spec: corev1.PodSpec{
-			NodeSelector:                  r.Spec.NodeSelector,
-			Volumes:                       volumes,
-			InitContainers:                build.AddStrictSecuritySettingsToContainers(initContainers, useStrictSecurity),
-			Containers:                    build.AddStrictSecuritySettingsToContainers(containers, useStrictSecurity),
-			ServiceAccountName:            r.GetServiceAccountName(),
-			SecurityContext:               build.AddStrictSecuritySettingsToPod(r.Spec.SecurityContext, useStrictSecurity),
-			ImagePullSecrets:              r.Spec.ImagePullSecrets,
-			Affinity:                      r.Spec.Affinity,
-			RuntimeClassName:              r.Spec.RuntimeClassName,
-			SchedulerName:                 r.Spec.SchedulerName,
-			Tolerations:                   r.Spec.Tolerations,
-			PriorityClassName:             r.Spec.PriorityClassName,
-			HostNetwork:                   r.Spec.HostNetwork,
-			DNSPolicy:                     r.Spec.DNSPolicy,
-			DNSConfig:                     r.Spec.DNSConfig,
-			TopologySpreadConstraints:     r.Spec.TopologySpreadConstraints,
-			HostAliases:                   r.Spec.HostAliases,
-			TerminationGracePeriodSeconds: r.Spec.TerminationGracePeriodSeconds,
-			ReadinessGates:                r.Spec.ReadinessGates,
+			Volumes:            volumes,
+			InitContainers:     r.Spec.InitContainers,
+			Containers:         containers,
+			ServiceAccountName: r.GetServiceAccountName(),
 		},
 	}
 
@@ -295,27 +265,37 @@ func makeSpecForVLogs(_ context.Context, r *vmv1beta1.VLogs, c *config.BaseOpera
 }
 
 // CreateOrUpdateVLogsService creates service for vlogs
-func CreateOrUpdateVLogsService(ctx context.Context, r *vmv1beta1.VLogs, rclient client.Client, c *config.BaseOperatorConf) (*corev1.Service, error) {
-	newService := build.Service(r, r.Spec.Port, func(svc *corev1.Service) {})
+func CreateOrUpdateVLogsService(ctx context.Context, r *vmv1beta1.VLogs, rclient client.Client) (*corev1.Service, error) {
+	newService := build.Service(r, r.Spec.Port, nil)
 
 	if err := r.Spec.ServiceSpec.IsSomeAndThen(func(s *vmv1beta1.AdditionalServiceSpec) error {
 		additionalService := build.AdditionalServiceFromDefault(newService, s)
 		if additionalService.Name == newService.Name {
 			logger.WithContext(ctx).Error(fmt.Errorf("vlogs additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name), "cannot create additional service")
-		} else if err := reconcile.ServiceForCRD(ctx, rclient, additionalService); err != nil {
+		} else if err := reconcile.Service(ctx, rclient, additionalService, nil); err != nil {
 			return fmt.Errorf("cannot reconcile additional service for vlogs: %w", err)
 		}
 		return nil
 	}); err != nil {
 		return nil, err
 	}
-
-	rca := finalize.RemoveSvcArgs{SelectorLabels: r.SelectorLabels, GetNameSpace: r.GetNamespace, PrefixedName: r.PrefixedName}
-	if err := finalize.RemoveOrphanedServices(ctx, rclient, rca, r.Spec.ServiceSpec); err != nil {
-		return nil, err
+	var prevService *corev1.Service
+	if r.Spec.ParsedLastAppliedSpec != nil {
+		prevCR := r.DeepCopy()
+		prevCR.Spec = *r.Spec.ParsedLastAppliedSpec
+		prevService = build.Service(prevCR, prevCR.Spec.Port, nil)
 	}
 
-	if err := reconcile.ServiceForCRD(ctx, rclient, newService); err != nil {
+	if r.Spec.ServiceSpec == nil &&
+		r.Spec.ParsedLastAppliedSpec != nil &&
+		r.Spec.ParsedLastAppliedSpec.ServiceSpec != nil {
+		rca := finalize.RemoveSvcArgs{SelectorLabels: r.SelectorLabels, GetNameSpace: r.GetNamespace, PrefixedName: r.PrefixedName}
+		if err := finalize.RemoveOrphanedServices(ctx, rclient, rca, r.Spec.ServiceSpec); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := reconcile.Service(ctx, rclient, newService, prevService); err != nil {
 		return nil, fmt.Errorf("cannot reconcile service for vlogs: %w", err)
 	}
 	return newService, nil

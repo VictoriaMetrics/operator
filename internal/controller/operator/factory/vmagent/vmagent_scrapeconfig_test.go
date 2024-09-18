@@ -981,7 +981,7 @@ scrape_configs:
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			testClient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			if _, err := createOrUpdateConfigurationSecret(context.TODO(), tt.args.cr, testClient, tt.args.c); (err != nil) != tt.wantErr {
+			if _, err := createOrUpdateConfigurationSecret(context.TODO(), tt.args.cr, testClient); (err != nil) != tt.wantErr {
 				t.Errorf("CreateOrUpdateConfigurationSecret() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			var expectSecret corev1.Secret

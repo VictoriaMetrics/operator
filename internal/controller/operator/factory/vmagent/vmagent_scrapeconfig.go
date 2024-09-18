@@ -59,14 +59,14 @@ type scrapeObjects struct {
 }
 
 // CreateOrUpdateConfigurationSecret builds scrape configuration for VMAgent
-func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client, c *config.BaseOperatorConf) error {
-	if _, err := createOrUpdateConfigurationSecret(ctx, cr, rclient, c); err != nil {
+func CreateOrUpdateConfigurationSecret(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) error {
+	if _, err := createOrUpdateConfigurationSecret(ctx, cr, rclient); err != nil {
 		return err
 	}
 	return nil
 }
 
-func createOrUpdateConfigurationSecret(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client, c *config.BaseOperatorConf) (*scrapesSecretsCache, error) {
+func createOrUpdateConfigurationSecret(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) (*scrapesSecretsCache, error) {
 	if cr.Spec.IngestOnlyMode {
 		return nil, nil
 	}
@@ -134,7 +134,7 @@ func createOrUpdateConfigurationSecret(ctx context.Context, cr *vmv1beta1.VMAgen
 		return nil, fmt.Errorf("generating config for vmagent failed: %w", err)
 	}
 
-	s := makeConfigSecret(cr, c, ssCache)
+	s := makeConfigSecret(cr, ssCache)
 	s.Annotations = map[string]string{
 		"generated": "true",
 	}
@@ -960,12 +960,12 @@ func generateConfig(
 	return yaml.Marshal(cfg)
 }
 
-func makeConfigSecret(cr *vmv1beta1.VMAgent, config *config.BaseOperatorConf, ssCache *scrapesSecretsCache) *corev1.Secret {
+func makeConfigSecret(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) *corev1.Secret {
 	s := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),
 			Annotations:     cr.AnnotationsFiltered(),
-			Labels:          config.Labels.Merge(cr.AllLabels()),
+			Labels:          cr.AllLabels(),
 			Namespace:       cr.Namespace,
 			OwnerReferences: cr.AsOwner(),
 			Finalizers:      []string{vmv1beta1.FinalizerName},

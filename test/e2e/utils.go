@@ -2,8 +2,10 @@ package e2e
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
+	operator "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	v1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -38,4 +40,36 @@ func getRevisionHistoryLimit(rclient client.Client, name types.NamespacedName) i
 		return 0
 	}
 	return *deployment.Spec.RevisionHistoryLimit
+}
+
+func expectObjectStatusExpanding(ctx context.Context, rclient client.Client, object client.Object, name types.NamespacedName) error {
+	return expectObjectStatus(ctx, rclient, object, name, operator.UpdateStatusExpanding)
+}
+func expectObjectStatusOperational(ctx context.Context, rclient client.Client, object client.Object, name types.NamespacedName) error {
+	return expectObjectStatus(ctx, rclient, object, name, operator.UpdateStatusOperational)
+}
+
+func expectObjectStatus(ctx context.Context, rclient client.Client, object client.Object, name types.NamespacedName, status operator.UpdateStatus) error {
+	if err := rclient.Get(ctx, name, object); err != nil {
+		return err
+	}
+	jsD, err := json.Marshal(object)
+	if err != nil {
+		return err
+	}
+	type objectStatus struct {
+		Status struct {
+			CurrentStatus string `json:"clusterStatus"`
+			UpdateStatus  string `json:"updateStatus"`
+		} `json:"status"`
+	}
+	var obs objectStatus
+	if err := json.Unmarshal(jsD, &obs); err != nil {
+		return err
+	}
+	if obs.Status.UpdateStatus != string(status) && obs.Status.CurrentStatus != string(status) {
+		return fmt.Errorf("not expected object status: %s current status %s", obs.Status.UpdateStatus, obs.Status.CurrentStatus)
+	}
+
+	return nil
 }

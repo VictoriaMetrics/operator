@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/manager"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -72,6 +73,7 @@ func Before() {
 		err = monitoringv1.AddToScheme(scheme.Scheme)
 		Expect(err).NotTo(HaveOccurred())
 
+		build.AddDefaults(scheme.Scheme)
 		//+kubebuilder:scaffold:scheme
 
 		K8sClient, err = client.New(cfg, client.Options{Scheme: scheme.Scheme})
@@ -79,8 +81,10 @@ func Before() {
 		Expect(K8sClient).ToNot(BeNil())
 
 		// operator settings
-		err = os.Setenv("VM_ENABLEDPROMETHEUSCONVERTEROWNERREFERENCES", "true")
-		Expect(err).ToNot(HaveOccurred())
+		Expect(os.Setenv("VM_ENABLEDPROMETHEUSCONVERTEROWNERREFERENCES", "true")).To(Succeed())
+		Expect(os.Setenv("VM_PODWAITREADYTIMEOUT", "20s")).To(Succeed())
+		Expect(os.Setenv("VM_PODWAITREADYINTERVALCHECK", "1s")).To(Succeed())
+		Expect(os.Setenv("VM_APPREADYTIMEOUT", "50s")).To(Succeed())
 
 		// disable metrics server because it fails to listen when running several test packages one after another
 		// also metrics server isn't very useful in tests

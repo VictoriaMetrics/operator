@@ -53,7 +53,9 @@ var _ = Describe("test  vmsingle Controller", func() {
 							Name:      name,
 						},
 						Spec: vmv1beta1.VMSingleSpec{
-							ReplicaCount:    ptr.To[int32](1),
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
 							RetentionPeriod: "1",
 							InsertPorts: &vmv1beta1.InsertPorts{
 								OpenTSDBPort:     "8081",
@@ -76,7 +78,9 @@ var _ = Describe("test  vmsingle Controller", func() {
 							Name:      name,
 						},
 						Spec: vmv1beta1.VMSingleSpec{
-							ReplicaCount:    ptr.To[int32](1),
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
 							RetentionPeriod: "1",
 						},
 					})).To(Succeed())

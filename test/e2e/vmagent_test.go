@@ -5,8 +5,10 @@ import (
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/client-go/util/retry"
 
 	operator "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"golang.org/x/net/context"
@@ -19,57 +21,102 @@ import (
 var _ = Describe("test  vmagent Controller", func() {
 	Context("e2e ", func() {
 		Context("crud", func() {
+			namespace := "default"
+			var namespacedName types.NamespacedName
+			getCurrVMAgent := func() *operator.VMAgent {
+				return &operator.VMAgent{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      namespacedName.Name,
+					},
+				}
+			}
+			var ctx context.Context
 			Context("create", func() {
-				name := "create-vma"
-				namespace := "default"
+				JustBeforeEach(func() {
+					ctx = context.Background()
+					namespacedName.Name = ""
+					namespacedName.Namespace = namespace
+				})
 				AfterEach(func() {
-					Expect(k8sClient.Delete(context.Background(), &operator.VMAgent{
+					Expect(expectObjectStatusOperational(ctx, k8sClient, getCurrVMAgent(), namespacedName))
+					Expect(finalize.SafeDelete(ctx, k8sClient, &operator.VMAgent{
 						ObjectMeta: metav1.ObjectMeta{
 							Namespace: namespace,
-							Name:      name,
+							Name:      namespacedName.Name,
 						},
 					})).To(Succeed())
 					Eventually(func() error {
-						err := k8sClient.Get(context.Background(), types.NamespacedName{
-							Name:      name,
-							Namespace: namespace,
-						}, &operator.VMAgent{})
+						err := k8sClient.Get(ctx, namespacedName, &operator.VMAgent{})
 						if errors.IsNotFound(err) {
 							return nil
 						}
 						return fmt.Errorf("want NotFound error, got: %w", err)
-					}, 60, 1).Should(BeNil())
+					}, 10*time.Second).Should(BeNil())
 				})
 				It("should create vmagent", func() {
-					Expect(k8sClient.Create(context.TODO(), &operator.VMAgent{
+					namespacedName.Name = "vma-create"
+					Expect(k8sClient.Create(ctx, &operator.VMAgent{
 						ObjectMeta: metav1.ObjectMeta{
 							Namespace: namespace,
-							Name:      name,
+							Name:      namespacedName.Name,
 						},
 						Spec: operator.VMAgentSpec{
-							ReplicaCount: ptr.To[int32](1),
+							CommonApplicationDeploymentParams: operator.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
 							RemoteWrite: []operator.VMAgentRemoteWriteSpec{
 								{URL: "http://localhost:8428"},
 							},
 						},
 					})).To(Succeed())
-					currVMAgent := &operator.VMAgent{}
-					Expect(k8sClient.Get(context.TODO(), types.NamespacedName{
-						Namespace: namespace,
-						Name:      name,
-					}, currVMAgent)).To(Succeed())
+					currVMAgent := getCurrVMAgent()
+					Expect(k8sClient.Get(ctx, namespacedName, currVMAgent)).To(Succeed())
 					Eventually(func() string {
 						return expectPodCount(k8sClient, 1, namespace, currVMAgent.SelectorLabels())
 					}, 60, 1).Should(BeEmpty())
 				})
-				It("should create vmagent with additional service and insert ports.", func() {
-					Expect(k8sClient.Create(context.TODO(), &operator.VMAgent{
+				It("should create vmagent with custom config-reloader and strict security", func() {
+					namespacedName.Name = "vma-custom"
+					Expect(k8sClient.Create(ctx, &operator.VMAgent{
 						ObjectMeta: metav1.ObjectMeta{
 							Namespace: namespace,
-							Name:      name,
+							Name:      namespacedName.Name,
 						},
 						Spec: operator.VMAgentSpec{
-							ReplicaCount: ptr.To[int32](1),
+							CommonConfigReloaderParams: operator.CommonConfigReloaderParams{
+								UseCustomConfigReloader: ptr.To(true),
+							},
+							CommonDefaultableParams: operator.CommonDefaultableParams{
+								UseStrictSecurity:   ptr.To(true),
+								UseDefaultResources: ptr.To(false),
+							},
+							CommonApplicationDeploymentParams: operator.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
+							RemoteWrite: []operator.VMAgentRemoteWriteSpec{
+								{URL: "http://localhost:8428"},
+							},
+						},
+					})).To(Succeed())
+					currVMAgent := getCurrVMAgent()
+					Expect(k8sClient.Get(ctx, namespacedName, currVMAgent)).To(Succeed())
+					Eventually(func() string {
+						return expectPodCount(k8sClient, 1, namespace, currVMAgent.SelectorLabels())
+					}, 60, 1).Should(BeEmpty())
+				})
+
+				It("should create vmagent with additional service and insert ports.", func() {
+					namespacedName.Name = "vma-create-ports"
+					Expect(k8sClient.Create(ctx, &operator.VMAgent{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: namespace,
+							Name:      namespacedName.Name,
+						},
+						Spec: operator.VMAgentSpec{
+							CommonApplicationDeploymentParams: operator.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
 							RemoteWrite: []operator.VMAgentRemoteWriteSpec{
 								{URL: "http://localhost:8428"},
 							},
@@ -87,18 +134,16 @@ var _ = Describe("test  vmagent Controller", func() {
 							},
 						},
 					})).To(Succeed())
-					currVMAgent := &operator.VMAgent{}
+					currVMAgent := getCurrVMAgent()
 					Expect(
-						k8sClient.Get(context.TODO(), types.NamespacedName{
-							Namespace: namespace,
-							Name:      name,
-						}, currVMAgent),
+						k8sClient.Get(ctx, namespacedName, currVMAgent),
 					).To(Succeed())
 					Eventually(func() string {
 						return expectPodCount(k8sClient, 1, namespace, currVMAgent.SelectorLabels())
 					}, 60, 1).Should(BeEmpty())
 				})
 				It("should create vmagent with tls remote target", func() {
+					namespacedName.Name = "vma-create-tls"
 					tlsSecretName := "vmagent-remote-tls"
 					tlsSecret := &corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{
@@ -111,15 +156,23 @@ var _ = Describe("test  vmagent Controller", func() {
 							"remote-key":  tlsKey,
 						},
 					}
-					Expect(k8sClient.Create(context.TODO(), tlsSecret)).To(Succeed())
-					time.Sleep(time.Second * 8)
-					Expect(k8sClient.Create(context.TODO(), &operator.VMAgent{
+					Expect(k8sClient.Create(ctx, tlsSecret)).To(Succeed())
+					DeferCleanup(func() {
+						Expect(finalize.SafeDelete(
+							ctx,
+							k8sClient,
+							tlsSecret,
+						)).To(Succeed())
+					})
+					Expect(k8sClient.Create(ctx, &operator.VMAgent{
 						ObjectMeta: metav1.ObjectMeta{
 							Namespace: namespace,
-							Name:      name,
+							Name:      namespacedName.Name,
 						},
 						Spec: operator.VMAgentSpec{
-							ReplicaCount: ptr.To[int32](1),
+							CommonApplicationDeploymentParams: operator.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
 							RemoteWrite: []operator.VMAgentRemoteWriteSpec{
 								{URL: "http://localhost:8428"},
 								{
@@ -152,101 +205,101 @@ var _ = Describe("test  vmagent Controller", func() {
 							},
 						},
 					})).To(Succeed())
-					currVMAgent := &operator.VMAgent{}
-					Expect(k8sClient.Get(context.TODO(), types.NamespacedName{
-						Namespace: namespace,
-						Name:      name,
-					}, currVMAgent)).To(Succeed())
+					currVMAgent := getCurrVMAgent()
+					Expect(k8sClient.Get(ctx, namespacedName, currVMAgent)).To(Succeed())
 					Eventually(func() string {
 						return expectPodCount(k8sClient, 1, namespace, currVMAgent.SelectorLabels())
-					}, 60, 1).Should(BeEmpty())
-					Expect(k8sClient.Delete(
-						context.Background(),
-						tlsSecret,
-					)).To(Succeed())
+					}, 10*time.Second, 1).Should(BeEmpty())
+
 				})
 			})
+
 			Context("update", func() {
-				name := "update-vma"
-				namespace := "default"
 				JustAfterEach(func() {
-					Expect(k8sClient.Delete(context.Background(), &operator.VMAgent{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      name,
-							Namespace: namespace,
-						},
-					})).To(Succeed())
+					fmt.Println("check at revision")
 					Eventually(func() error {
-						err := k8sClient.Get(context.Background(), types.NamespacedName{
-							Name:      name,
+						return expectObjectStatusOperational(ctx, k8sClient, getCurrVMAgent(), namespacedName)
+					}, 20*time.Second).Should(Succeed())
+
+					Eventually(func() error {
+						Expect(
+							finalize.SafeDelete(ctx, k8sClient, &operator.VMAgent{
+								ObjectMeta: metav1.ObjectMeta{
+									Name:      namespacedName.Name,
+									Namespace: namespace,
+								},
+							})).To(Succeed())
+
+						err := k8sClient.Get(ctx, types.NamespacedName{
+							Name:      namespacedName.Name,
 							Namespace: namespace,
 						}, &operator.VMAgent{})
 						if errors.IsNotFound(err) {
 							return nil
 						}
 						return fmt.Errorf("want NotFound error, got: %w", err)
-					}, 60, 1).Should(BeNil())
+					}, eventualAppReadyTimeout).Should(BeNil())
 				})
-				JustBeforeEach(func() {
-					Expect(k8sClient.Create(context.TODO(), &operator.VMAgent{
+				DescribeTable("should update exist vmagents", func(name string, modify func(*operator.VMAgent), verify func()) {
+					ctx = context.Background()
+					namespacedName.Name = name
+					namespacedName.Namespace = namespace
+					// clean-up
+					Eventually(func() error {
+						return finalize.SafeDelete(ctx, k8sClient, &operator.VMAgent{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      namespacedName.Name,
+								Namespace: namespace,
+							},
+						})
+					}).Should(Succeed())
+					Eventually(func() error {
+						return k8sClient.Get(ctx, types.NamespacedName{
+							Name:      namespacedName.Name,
+							Namespace: namespace,
+						}, &operator.VMAgent{})
+					}, eventualAppReadyTimeout).Should(MatchError(errors.IsNotFound, "want IsNotFound error"))
+					// create and check ready
+					Expect(k8sClient.Create(ctx, &operator.VMAgent{
 						ObjectMeta: metav1.ObjectMeta{
-							Name:      name,
+							Name:      namespacedName.Name,
 							Namespace: namespace,
 						},
 						Spec: operator.VMAgentSpec{
-							ReplicaCount: ptr.To[int32](1),
+							CommonApplicationDeploymentParams: operator.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
 							RemoteWrite: []operator.VMAgentRemoteWriteSpec{
 								{URL: "http://some-vm-single:8428"},
 							},
 						},
 					})).To(Succeed())
-				})
-				It("should expand vmagent up to 3 replicas", func() {
-					currVMAgent := &operator.VMAgent{
-						ObjectMeta: metav1.ObjectMeta{
-							Namespace: namespace,
-							Name:      name,
-						},
-					}
-					Eventually(func() string {
-						return expectPodCount(k8sClient, 1, namespace, currVMAgent.SelectorLabels())
-					}, 60, 1).Should(BeEmpty())
-					Expect(k8sClient.Get(context.TODO(), types.NamespacedName{
-						Namespace: namespace,
-						Name:      name,
-					}, currVMAgent)).To(Succeed())
-					currVMAgent.Spec.ReplicaCount = ptr.To[int32](3)
-					Expect(k8sClient.Update(context.TODO(), currVMAgent)).To(Succeed())
-					Eventually(func() string {
-						return expectPodCount(k8sClient, 3, namespace, currVMAgent.SelectorLabels())
-					}, 60, 1).Should(BeEmpty())
-				})
-				It("should update revisionHistoryLimit of vmagent to 3", func() {
-					namespacedName := types.NamespacedName{Name: fmt.Sprintf("vmagent-%s", name), Namespace: namespace}
-					Eventually(func() int32 {
-						return getRevisionHistoryLimit(k8sClient, namespacedName)
-					}, 60).Should(Equal(int32(10)))
-					currVMAgent := &operator.VMAgent{
-						ObjectMeta: metav1.ObjectMeta{
-							Namespace: namespace,
-							Name:      name,
-						},
-					}
-					Expect(k8sClient.Get(context.TODO(), types.NamespacedName{
-						Namespace: namespace,
-						Name:      name,
-					}, currVMAgent)).To(Succeed())
-					currVMAgent.Spec.RevisionHistoryLimitCount = ptr.To[int32](3)
-					Expect(
-						k8sClient.Update(
-							context.TODO(),
-							currVMAgent,
-						),
-					).To(Succeed())
-					Eventually(func() int32 {
-						return getRevisionHistoryLimit(k8sClient, namespacedName)
-					}, 60).Should(Equal(int32(3)))
-				})
+					Expect(retry.RetryOnConflict(retry.DefaultRetry, func() error {
+						currVMAgent := getCurrVMAgent()
+						Expect(k8sClient.Get(ctx, namespacedName, currVMAgent)).To(Succeed())
+						currVMAgent.Spec.ReplicaCount = ptr.To[int32](3)
+						modify(currVMAgent)
+
+						return k8sClient.Update(ctx, currVMAgent)
+					})).To(Succeed())
+					verify()
+				},
+					Entry("should expand vmagent up to 3 replicas", "update-replicas-3",
+						func(cr *operator.VMAgent) { cr.Spec.ReplicaCount = ptr.To[int32](3) },
+						func() {
+							Eventually(func() string {
+								return expectPodCount(k8sClient, 3, namespace, getCurrVMAgent().SelectorLabels())
+							}, eventualAppReadyTimeout, 1).Should(BeEmpty())
+						}),
+					Entry("should update revisionHistoryLimit of vmagent to 3", "update-revision",
+						func(cr *operator.VMAgent) { cr.Spec.RevisionHistoryLimitCount = ptr.To[int32](3) },
+						func() {
+							namespacedNameDeployment := types.NamespacedName{Name: fmt.Sprintf("vmagent-%s", namespacedName.Name), Namespace: namespace}
+							Eventually(func() int32 {
+								return getRevisionHistoryLimit(k8sClient, namespacedNameDeployment)
+							}, 60, 1).Should(Equal(int32(3)))
+						}),
+				)
 			})
 		})
 	})

@@ -15,14 +15,13 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
-	"github.com/hashicorp/go-version"
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -46,11 +45,7 @@ const (
 var defaultPlaceholders = map[string]string{shardNumPlaceholder: "0"}
 
 // CreateOrUpdateVMAgentService creates service for vmagent
-func CreateOrUpdateVMAgentService(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client, c *config.BaseOperatorConf) (*corev1.Service, error) {
-	cr = cr.DeepCopy()
-	if cr.Spec.Port == "" {
-		cr.Spec.Port = c.VMAgentDefault.Port
-	}
+func CreateOrUpdateVMAgentService(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) (*corev1.Service, error) {
 
 	newService := build.Service(cr, cr.Spec.Port, func(svc *corev1.Service) {
 		if cr.Spec.StatefulMode {
@@ -63,7 +58,7 @@ func CreateOrUpdateVMAgentService(ctx context.Context, cr *vmv1beta1.VMAgent, rc
 		additionalService := build.AdditionalServiceFromDefault(newService, cr.Spec.ServiceSpec)
 		if additionalService.Name == newService.Name {
 			logger.WithContext(ctx).Error(fmt.Errorf("vmagent additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name), "cannot create additional service")
-		} else if err := reconcile.ServiceForCRD(ctx, rclient, additionalService); err != nil {
+		} else if err := reconcile.Service(ctx, rclient, additionalService, nil); err != nil {
 			return fmt.Errorf("cannot reconcile additional service for vmagent: %w", err)
 		}
 		return nil
@@ -71,12 +66,29 @@ func CreateOrUpdateVMAgentService(ctx context.Context, cr *vmv1beta1.VMAgent, rc
 		return nil, err
 	}
 
-	rca := finalize.RemoveSvcArgs{SelectorLabels: cr.SelectorLabels, GetNameSpace: cr.GetNamespace, PrefixedName: cr.PrefixedName}
-	if err := finalize.RemoveOrphanedServices(ctx, rclient, rca, cr.Spec.ServiceSpec); err != nil {
-		return nil, err
+	var prevService *corev1.Service
+	if cr.Spec.ParsedLastAppliedSpec != nil {
+		prevCR := cr.DeepCopy()
+		prevCR.Spec = *cr.Spec.ParsedLastAppliedSpec
+		prevService = build.Service(prevCR, prevCR.Spec.Port, func(svc *corev1.Service) {
+			if prevCR.Spec.StatefulMode {
+				svc.Spec.ClusterIP = "None"
+			}
+			build.AppendInsertPortsToService(prevCR.Spec.InsertPorts, svc)
+
+		})
 	}
 
-	if err := reconcile.ServiceForCRD(ctx, rclient, newService); err != nil {
+	if cr.Spec.ServiceSpec == nil &&
+		cr.Spec.ParsedLastAppliedSpec != nil &&
+		cr.Spec.ParsedLastAppliedSpec.ServiceSpec != nil {
+		rca := finalize.RemoveSvcArgs{SelectorLabels: cr.SelectorLabels, GetNameSpace: cr.GetNamespace, PrefixedName: cr.PrefixedName}
+		if err := finalize.RemoveOrphanedServices(ctx, rclient, rca, cr.Spec.ServiceSpec); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := reconcile.Service(ctx, rclient, newService, prevService); err != nil {
 		return nil, fmt.Errorf("cannot reconcile service for vmagent: %w", err)
 	}
 	return newService, nil
@@ -84,7 +96,7 @@ func CreateOrUpdateVMAgentService(ctx context.Context, cr *vmv1beta1.VMAgent, rc
 
 // CreateOrUpdateVMAgent creates deployment for vmagent and configures it
 // waits for healthy state
-func CreateOrUpdateVMAgent(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client, c *config.BaseOperatorConf) error {
+func CreateOrUpdateVMAgent(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) error {
 	l := logger.WithContext(ctx).WithValues("controller", "vmagent.crud", "namespace", cr.Namespace, "vmagent", cr.PrefixedName())
 	ctx = logger.AddToContext(ctx, l)
 	if cr.IsOwnsServiceAccount() {
@@ -99,7 +111,7 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *vmv1beta1.VMAgent, rclient c
 
 	}
 
-	ssCache, err := createOrUpdateConfigurationSecret(ctx, cr, rclient, c)
+	ssCache, err := createOrUpdateConfigurationSecret(ctx, cr, rclient)
 	if err != nil {
 		return err
 	}
@@ -125,12 +137,12 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *vmv1beta1.VMAgent, rclient c
 	if cr.Spec.ParsedLastAppliedSpec != nil {
 		prevCR := cr.DeepCopy()
 		prevCR.Spec = *cr.Spec.ParsedLastAppliedSpec
-		prevObjectSpec, err = newDeployForVMAgent(prevCR, c, ssCache)
+		prevObjectSpec, err = newDeployForVMAgent(prevCR, ssCache)
 		if err != nil {
 			return fmt.Errorf("cannot build new deploy for vmagent: %w", err)
 		}
 	}
-	newDeploy, err := newDeployForVMAgent(cr, c, ssCache)
+	newDeploy, err := newDeployForVMAgent(cr, ssCache)
 	if err != nil {
 		return fmt.Errorf("cannot build new deploy for vmagent: %w", err)
 	}
@@ -163,7 +175,7 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *vmv1beta1.VMAgent, rclient c
 						return fmt.Errorf("cannot fill placeholders for prev deployment sharded vmagent: %w", err)
 					}
 				}
-				if err := reconcile.Deployment(ctx, rclient, shardedDeploy, prevDeploy, c.PodWaitReadyTimeout, false); err != nil {
+				if err := reconcile.Deployment(ctx, rclient, shardedDeploy, prevDeploy, false); err != nil {
 					return err
 				}
 				deploymentNames[shardedDeploy.Name] = struct{}{}
@@ -188,7 +200,7 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *vmv1beta1.VMAgent, rclient c
 						return selectorLabels
 					},
 				}
-				if err := reconcile.HandleSTSUpdate(ctx, rclient, stsOpts, shardedDeploy, prevSts, c); err != nil {
+				if err := reconcile.HandleSTSUpdate(ctx, rclient, stsOpts, shardedDeploy, prevSts); err != nil {
 					return err
 				}
 				stsNames[shardedDeploy.Name] = struct{}{}
@@ -211,7 +223,7 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *vmv1beta1.VMAgent, rclient c
 			if err != nil {
 				return fmt.Errorf("cannot fill placeholders for deployment in vmagent: %w", err)
 			}
-			if err := reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, c.PodWaitReadyTimeout, false); err != nil {
+			if err := reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, false); err != nil {
 				return err
 			}
 			deploymentNames[newDeploy.Name] = struct{}{}
@@ -232,7 +244,7 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *vmv1beta1.VMAgent, rclient c
 				HasClaim:       len(newDeploy.Spec.VolumeClaimTemplates) > 0,
 				SelectorLabels: cr.SelectorLabels,
 			}
-			if err := reconcile.HandleSTSUpdate(ctx, rclient, stsOpts, newDeploy, prevSTS, c); err != nil {
+			if err := reconcile.HandleSTSUpdate(ctx, rclient, stsOpts, newDeploy, prevSTS); err != nil {
 				return err
 			}
 			stsNames[newDeploy.Name] = struct{}{}
@@ -248,32 +260,14 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *vmv1beta1.VMAgent, rclient c
 	return nil
 }
 
-func setDefaultForVMAgent(cr *vmv1beta1.VMAgent, c *config.BaseOperatorConf) {
-	// inject default
-	if cr.Spec.Image.Repository == "" {
-		cr.Spec.Image.Repository = c.VMAgentDefault.Image
-	}
-	if cr.Spec.Image.Tag == "" {
-		cr.Spec.Image.Tag = c.VMAgentDefault.Version
-	}
-	if cr.Spec.Image.PullPolicy == "" {
-		cr.Spec.Image.PullPolicy = corev1.PullIfNotPresent
-	}
-
-	if cr.Spec.Port == "" {
-		cr.Spec.Port = c.VMAgentDefault.Port
-	}
-}
-
 // newDeployForVMAgent builds vmagent deployment spec.
-func newDeployForVMAgent(cr *vmv1beta1.VMAgent, c *config.BaseOperatorConf, ssCache *scrapesSecretsCache) (runtime.Object, error) {
-	cr = cr.DeepCopy()
-	setDefaultForVMAgent(cr, c)
+func newDeployForVMAgent(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) (runtime.Object, error) {
 
-	podSpec, err := makeSpecForVMAgent(cr, c, ssCache)
+	podSpec, err := makeSpecForVMAgent(cr, ssCache)
 	if err != nil {
 		return nil, err
 	}
+	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, false)
 
 	// fast path, use sts
 	if cr.Spec.StatefulMode {
@@ -281,15 +275,12 @@ func newDeployForVMAgent(cr *vmv1beta1.VMAgent, c *config.BaseOperatorConf, ssCa
 			ObjectMeta: metav1.ObjectMeta{
 				Name:            cr.PrefixedName(),
 				Namespace:       cr.Namespace,
-				Labels:          c.Labels.Merge(cr.AllLabels()),
+				Labels:          cr.AllLabels(),
 				Annotations:     cr.AnnotationsFiltered(),
 				OwnerReferences: cr.AsOwner(),
 				Finalizers:      []string{vmv1beta1.FinalizerName},
 			},
 			Spec: appsv1.StatefulSetSpec{
-				MinReadySeconds:      cr.Spec.MinReadySeconds,
-				Replicas:             cr.Spec.ReplicaCount,
-				RevisionHistoryLimit: cr.Spec.RevisionHistoryLimitCount,
 				Selector: &metav1.LabelSelector{
 					MatchLabels: cr.SelectorLabels(),
 				},
@@ -307,6 +298,7 @@ func newDeployForVMAgent(cr *vmv1beta1.VMAgent, c *config.BaseOperatorConf, ssCa
 				},
 			},
 		}
+		build.StatefulSetAddCommonParams(stsSpec, useStrictSecurity, &cr.Spec.CommonApplicationDeploymentParams)
 		cr.Spec.StatefulStorage.IntoSTSVolume(vmAgentPersistentQueueMountName, &stsSpec.Spec)
 		stsSpec.Spec.VolumeClaimTemplates = append(stsSpec.Spec.VolumeClaimTemplates, cr.Spec.ClaimTemplates...)
 		return stsSpec, nil
@@ -320,15 +312,12 @@ func newDeployForVMAgent(cr *vmv1beta1.VMAgent, c *config.BaseOperatorConf, ssCa
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),
 			Namespace:       cr.Namespace,
-			Labels:          c.Labels.Merge(cr.AllLabels()),
+			Labels:          cr.AllLabels(),
 			Annotations:     cr.AnnotationsFiltered(),
 			OwnerReferences: cr.AsOwner(),
 			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},
 		Spec: appsv1.DeploymentSpec{
-			MinReadySeconds:      cr.Spec.MinReadySeconds,
-			Replicas:             cr.Spec.ReplicaCount,
-			RevisionHistoryLimit: cr.Spec.RevisionHistoryLimitCount,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: cr.SelectorLabels(),
 			},
@@ -345,6 +334,7 @@ func newDeployForVMAgent(cr *vmv1beta1.VMAgent, c *config.BaseOperatorConf, ssCa
 			},
 		},
 	}
+	build.DeploymentAddCommonParams(depSpec, useStrictSecurity, &cr.Spec.CommonApplicationDeploymentParams)
 	return depSpec, nil
 }
 
@@ -358,7 +348,7 @@ func buildSTSServiceName(cr *vmv1beta1.VMAgent) string {
 	return ""
 }
 
-func makeSpecForVMAgent(cr *vmv1beta1.VMAgent, c *config.BaseOperatorConf, ssCache *scrapesSecretsCache) (*corev1.PodSpec, error) {
+func makeSpecForVMAgent(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) (*corev1.PodSpec, error) {
 	var args []string
 
 	if len(cr.Spec.RemoteWrite) > 0 {
@@ -570,21 +560,22 @@ func makeSpecForVMAgent(cr *vmv1beta1.VMAgent, c *config.BaseOperatorConf, ssCac
 
 	args = build.AppendArgsForInsertPorts(args, cr.Spec.InsertPorts)
 
-	specRes := build.Resources(cr.Spec.Resources, config.Resource(c.VMAgentDefault.Resource), c.VMAgentDefault.UseDefaultResources)
 	args = build.AddExtraArgsOverrideDefaults(args, cr.Spec.ExtraArgs, "-")
 	sort.Strings(args)
 
 	vmagentContainer := corev1.Container{
 		Name:                     "vmagent",
-		Image:                    fmt.Sprintf("%s:%s", build.FormatContainerImage(c.ContainerRegistry, cr.Spec.Image.Repository), cr.Spec.Image.Tag),
+		Image:                    fmt.Sprintf("%s:%s", cr.Spec.Image.Repository, cr.Spec.Image.Tag),
 		ImagePullPolicy:          cr.Spec.Image.PullPolicy,
 		Ports:                    ports,
 		Args:                     args,
 		Env:                      envs,
 		VolumeMounts:             agentVolumeMounts,
-		Resources:                specRes,
+		Resources:                cr.Spec.Resources,
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 	}
+
+	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, false)
 
 	vmagentContainer = build.Probe(vmagentContainer, cr)
 
@@ -592,13 +583,14 @@ func makeSpecForVMAgent(cr *vmv1beta1.VMAgent, c *config.BaseOperatorConf, ssCac
 	var ic []corev1.Container
 	// conditional add config reloader container
 	if !cr.Spec.IngestOnlyMode || cr.HasAnyRelabellingConfigs() || cr.HasAnyStreamAggrRule() {
-		configReloader := buildConfigReloaderContainer(cr, c)
+		configReloader := buildConfigReloaderContainer(cr)
 		operatorContainers = append(operatorContainers, configReloader)
 		if !cr.Spec.IngestOnlyMode {
 			ic = append(ic,
-				buildInitConfigContainer(c.VMAgentDefault.ConfigReloadImage, buildConfigReloaderResourceReqsForVMAgent(c), c, configReloader.Args)...)
+				buildInitConfigContainer(ptr.Deref(cr.Spec.UseCustomConfigReloader, false), cr.Spec.ConfigReloaderImageTag, cr.Spec.ConfigReloaderResources, configReloader.Args)...)
 			if len(cr.Spec.InitContainers) > 0 {
 				var err error
+				build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, ic, useStrictSecurity)
 				ic, err = k8stools.MergePatchContainers(ic, cr.Spec.InitContainers)
 				if err != nil {
 					return nil, fmt.Errorf("cannot apply patch for initContainers: %w", err)
@@ -609,6 +601,8 @@ func makeSpecForVMAgent(cr *vmv1beta1.VMAgent, c *config.BaseOperatorConf, ssCac
 	}
 
 	operatorContainers = append(operatorContainers, vmagentContainer)
+
+	build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, operatorContainers, useStrictSecurity)
 
 	containers, err := k8stools.MergePatchContainers(operatorContainers, cr.Spec.Containers)
 	if err != nil {
@@ -622,16 +616,12 @@ func makeSpecForVMAgent(cr *vmv1beta1.VMAgent, c *config.BaseOperatorConf, ssCac
 			}
 		}
 	}
-	useStrictSecurity := c.EnableStrictSecurity
-	if cr.Spec.UseStrictSecurity != nil {
-		useStrictSecurity = *cr.Spec.UseStrictSecurity
-	}
 
 	return &corev1.PodSpec{
 		NodeSelector:                  cr.Spec.NodeSelector,
 		Volumes:                       volumes,
-		InitContainers:                build.AddStrictSecuritySettingsToContainers(ic, useStrictSecurity),
-		Containers:                    build.AddStrictSecuritySettingsToContainers(containers, useStrictSecurity),
+		InitContainers:                ic,
+		Containers:                    containers,
 		ServiceAccountName:            cr.GetServiceAccountName(),
 		SecurityContext:               build.AddStrictSecuritySettingsToPod(cr.Spec.SecurityContext, useStrictSecurity),
 		ImagePullSecrets:              cr.Spec.ImagePullSecrets,
@@ -1261,8 +1251,9 @@ func buildRemoteWrites(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) []st
 	return finalArgs
 }
 
-func buildConfigReloaderContainer(cr *vmv1beta1.VMAgent, c *config.BaseOperatorConf) corev1.Container {
+func buildConfigReloaderContainer(cr *vmv1beta1.VMAgent) corev1.Container {
 	var configReloadVolumeMounts []corev1.VolumeMount
+	useCustomConfigReloader := ptr.Deref(cr.Spec.UseCustomConfigReloader, false)
 	if !cr.Spec.IngestOnlyMode {
 		configReloadVolumeMounts = append(configReloadVolumeMounts,
 			corev1.VolumeMount{
@@ -1270,7 +1261,7 @@ func buildConfigReloaderContainer(cr *vmv1beta1.VMAgent, c *config.BaseOperatorC
 				MountPath: vmAgentConOfOutDir,
 			},
 		)
-		if !c.UseCustomConfigReloader {
+		if !useCustomConfigReloader {
 			configReloadVolumeMounts = append(configReloadVolumeMounts,
 				corev1.VolumeMount{
 					Name:      "config",
@@ -1295,10 +1286,10 @@ func buildConfigReloaderContainer(cr *vmv1beta1.VMAgent, c *config.BaseOperatorC
 			})
 	}
 
-	configReloadArgs := buildConfigReloaderArgs(cr, c)
+	configReloadArgs := buildConfigReloaderArgs(cr)
 	cntr := corev1.Container{
 		Name:                     "config-reloader",
-		Image:                    build.FormatContainerImage(c.ContainerRegistry, c.VMAgentDefault.ConfigReloadImage),
+		Image:                    cr.Spec.ConfigReloaderImageTag,
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 		Env: []corev1.EnvVar{
 			{
@@ -1311,33 +1302,17 @@ func buildConfigReloaderContainer(cr *vmv1beta1.VMAgent, c *config.BaseOperatorC
 		Command:      []string{"/bin/prometheus-config-reloader"},
 		Args:         configReloadArgs,
 		VolumeMounts: configReloadVolumeMounts,
-		Resources:    buildConfigReloaderResourceReqsForVMAgent(c),
+		Resources:    cr.Spec.ConfigReloaderResources,
 	}
-	if c.UseCustomConfigReloader {
-		cntr.Image = build.FormatContainerImage(c.ContainerRegistry, c.CustomConfigReloaderImage)
+	if useCustomConfigReloader {
 		cntr.Command = nil
 	}
-	build.AddsPortProbesToConfigReloaderContainer(&cntr, c)
+	build.AddsPortProbesToConfigReloaderContainer(useCustomConfigReloader, &cntr)
 
 	return cntr
 }
 
-func buildConfigReloaderResourceReqsForVMAgent(c *config.BaseOperatorConf) corev1.ResourceRequirements {
-	configReloaderResources := corev1.ResourceRequirements{
-		Limits: corev1.ResourceList{}, Requests: corev1.ResourceList{},
-	}
-	if c.VMAgentDefault.ConfigReloaderCPU != "0" && c.VMAgentDefault.UseDefaultResources {
-		configReloaderResources.Limits[corev1.ResourceCPU] = resource.MustParse(c.VMAgentDefault.ConfigReloaderCPU)
-		configReloaderResources.Requests[corev1.ResourceCPU] = resource.MustParse(c.VMAgentDefault.ConfigReloaderCPU)
-	}
-	if c.VMAgentDefault.ConfigReloaderMemory != "0" && c.VMAgentDefault.UseDefaultResources {
-		configReloaderResources.Limits[corev1.ResourceMemory] = resource.MustParse(c.VMAgentDefault.ConfigReloaderMemory)
-		configReloaderResources.Requests[corev1.ResourceMemory] = resource.MustParse(c.VMAgentDefault.ConfigReloaderMemory)
-	}
-	return configReloaderResources
-}
-
-func buildConfigReloaderArgs(cr *vmv1beta1.VMAgent, c *config.BaseOperatorConf) []string {
+func buildConfigReloaderArgs(cr *vmv1beta1.VMAgent) []string {
 	// by default use watched-dir
 	// it should simplify parsing for latest and empty version tags.
 	dirsArg := "watched-dir"
@@ -1345,10 +1320,11 @@ func buildConfigReloaderArgs(cr *vmv1beta1.VMAgent, c *config.BaseOperatorConf) 
 	args := []string{
 		fmt.Sprintf("--reload-url=%s", vmv1beta1.BuildReloadPathWithPort(cr.Spec.ExtraArgs, cr.Spec.Port)),
 	}
+	useCustomConfigReloader := ptr.Deref(cr.Spec.UseCustomConfigReloader, false)
 
 	if !cr.Spec.IngestOnlyMode {
 		args = append(args, fmt.Sprintf("--config-envsubst-file=%s", path.Join(vmAgentConOfOutDir, configEnvsubstFilename)))
-		if c.UseCustomConfigReloader {
+		if useCustomConfigReloader {
 			args = append(args, fmt.Sprintf("--config-secret-name=%s/%s", cr.Namespace, cr.PrefixedName()))
 			args = append(args, "--config-secret-key=vmagent.yaml.gz")
 		} else {
@@ -1361,7 +1337,7 @@ func buildConfigReloaderArgs(cr *vmv1beta1.VMAgent, c *config.BaseOperatorConf) 
 	if cr.HasAnyRelabellingConfigs() {
 		args = append(args, fmt.Sprintf("--%s=%s", dirsArg, vmv1beta1.RelabelingConfigDir))
 	}
-	if c.UseCustomConfigReloader {
+	if useCustomConfigReloader {
 		args = vmv1beta1.MaybeEnableProxyProtocol(args, cr.Spec.ExtraArgs)
 	}
 	if len(cr.Spec.ConfigReloaderExtraArgs) > 0 {
@@ -1381,13 +1357,11 @@ func buildConfigReloaderArgs(cr *vmv1beta1.VMAgent, c *config.BaseOperatorConf) 
 	return args
 }
 
-var minimalConfigReloaderVersion = version.Must(version.NewVersion("v0.35.0"))
-
-func buildInitConfigContainer(baseImage string, resources corev1.ResourceRequirements, c *config.BaseOperatorConf, configReloaderArgs []string) []corev1.Container {
+func buildInitConfigContainer(useCustomConfigReloader bool, baseImage string, resources corev1.ResourceRequirements, configReloaderArgs []string) []corev1.Container {
 	var initReloader corev1.Container
-	if c.UseCustomConfigReloader && c.CustomConfigReloaderImageVersion().GreaterThanOrEqual(minimalConfigReloaderVersion) {
+	if useCustomConfigReloader {
 		initReloader = corev1.Container{
-			Image: build.FormatContainerImage(c.ContainerRegistry, c.CustomConfigReloaderImage),
+			Image: baseImage,
 			Name:  "config-init",
 			Args:  append(configReloaderArgs, "--only-init-config"),
 			VolumeMounts: []corev1.VolumeMount{
@@ -1401,7 +1375,7 @@ func buildInitConfigContainer(baseImage string, resources corev1.ResourceRequire
 		return []corev1.Container{initReloader}
 	}
 	initReloader = corev1.Container{
-		Image: build.FormatContainerImage(c.ContainerRegistry, baseImage),
+		Image: baseImage,
 		Name:  "config-init",
 		Command: []string{
 			"/bin/sh",

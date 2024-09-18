@@ -561,7 +561,7 @@ func TestCreateOrUpdateVMAlert(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			err := CreateOrUpdateVMAlert(context.TODO(), tt.args.cr, fclient, tt.args.c, tt.args.cmNames)
+			err := CreateOrUpdateVMAlert(context.TODO(), tt.args.cr, fclient, tt.args.cmNames)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CreateOrUpdateVMAlert() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -708,7 +708,7 @@ func TestCreateOrUpdateVMAlertService(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cl := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			got, err := CreateOrUpdateVMAlertService(tt.args.ctx, tt.args.cr, cl, tt.args.c)
+			got, err := CreateOrUpdateVMAlertService(tt.args.ctx, tt.args.cr, cl)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CreateOrUpdateVMAlertService() error = %v, wantErr %v", err, tt.wantErr)
 				return

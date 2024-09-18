@@ -11,10 +11,9 @@ import (
 	"time"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/config"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/go-test/deep"
-	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 	appsv1 "k8s.io/api/apps/v1"
@@ -30,7 +29,6 @@ import (
 func TestCreateOrUpdateVMAgent(t *testing.T) {
 	type args struct {
 		cr              *vmv1beta1.VMAgent
-		c               *config.BaseOperatorConf
 		mustAddPrevSpec bool
 	}
 	tests := []struct {
@@ -44,7 +42,6 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 		{
 			name: "generate vmagent statefulset with storage",
 			args: args{
-				c: config.MustGetBaseConfig(),
 				cr: &vmv1beta1.VMAgent{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "example-agent",
@@ -123,7 +120,6 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 		{
 			name: "generate with shards vmagent",
 			args: args{
-				c: config.MustGetBaseConfig(),
 				cr: &vmv1beta1.VMAgent{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "example-agent",
@@ -145,7 +141,6 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 		{
 			name: "generate vmagent with bauth-secret",
 			args: args{
-				c: config.MustGetBaseConfig(),
 				cr: &vmv1beta1.VMAgent{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "example-agent-bauth",
@@ -193,7 +188,6 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 		{
 			name: "fail if bearer token secret is missing, without basic auth",
 			args: args{
-				c: config.MustGetBaseConfig(),
 				cr: &vmv1beta1.VMAgent{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "example-agent-bearer-missing",
@@ -215,7 +209,6 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 		{
 			name: "generate vmagent with tls-secret",
 			args: args{
-				c: config.MustGetBaseConfig(),
 				cr: &vmv1beta1.VMAgent{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "example-agent-tls",
@@ -342,7 +335,6 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 		{
 			name: "generate vmagent with inline scrape config",
 			args: args{
-				c: config.MustGetBaseConfig(),
 				cr: &vmv1beta1.VMAgent{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "example-agent",
@@ -367,7 +359,6 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 		{
 			name: "generate vmagent with inline scrape config and secret scrape config",
 			args: args{
-				c: config.MustGetBaseConfig(),
 				cr: &vmv1beta1.VMAgent{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "example-agent",
@@ -404,7 +395,6 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 		{
 			name: "generate vmagent statefulset with serviceName when additional service is headless",
 			args: args{
-				c: config.MustGetBaseConfig(),
 				cr: &vmv1beta1.VMAgent{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "example-agent-with-headless-service",
@@ -440,7 +430,6 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 		{
 			name: "generate vmagent sharded statefulset with prevSpec",
 			args: args{
-				c:               config.MustGetBaseConfig(),
 				mustAddPrevSpec: true,
 				cr: &vmv1beta1.VMAgent{
 					ObjectMeta: metav1.ObjectMeta{
@@ -454,8 +443,10 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 						StatefulRollingUpdateStrategy: appsv1.RollingUpdateStatefulSetStrategyType,
 						StatefulMode:                  true,
 						IngestOnlyMode:                true,
-						ReplicaCount:                  ptr.To[int32](2),
-						ShardCount:                    ptr.To(3),
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To[int32](2),
+						},
+						ShardCount: ptr.To(3),
 						StatefulStorage: &vmv1beta1.StorageSpec{
 							VolumeClaimTemplate: vmv1beta1.EmbeddedPersistentVolumeClaim{
 								Spec: corev1.PersistentVolumeClaimSpec{
@@ -522,7 +513,6 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 		{
 			name: "generate vmagent statefulset with prevSpec",
 			args: args{
-				c:               config.MustGetBaseConfig(),
 				mustAddPrevSpec: true,
 				cr: &vmv1beta1.VMAgent{
 					ObjectMeta: metav1.ObjectMeta{
@@ -599,10 +589,6 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tc := *tt.args.c
-		tc.PodWaitReadyIntervalCheck = 100 * time.Millisecond
-		tc.PodWaitReadyInitDelay = 50 * time.Millisecond
-		tc.PodWaitReadyTimeout = 2 * time.Second
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
 			if tt.args.mustAddPrevSpec {
@@ -617,7 +603,7 @@ func TestCreateOrUpdateVMAgent(t *testing.T) {
 			}
 			errC := make(chan error)
 			go func() {
-				err := CreateOrUpdateVMAgent(context.TODO(), tt.args.cr, fclient, &tc)
+				err := CreateOrUpdateVMAgent(context.TODO(), tt.args.cr, fclient)
 				select {
 				case errC <- err:
 				default:
@@ -1390,7 +1376,6 @@ func TestCreateOrUpdateVMAgentService(t *testing.T) {
 	type args struct {
 		ctx context.Context
 		cr  *vmv1beta1.VMAgent
-		c   *config.BaseOperatorConf
 	}
 	tests := []struct {
 		name                  string
@@ -1404,7 +1389,6 @@ func TestCreateOrUpdateVMAgentService(t *testing.T) {
 			name: "base case",
 			args: args{
 				ctx: context.TODO(),
-				c:   config.MustGetBaseConfig(),
 				cr: &vmv1beta1.VMAgent{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "base",
@@ -1426,7 +1410,6 @@ func TestCreateOrUpdateVMAgentService(t *testing.T) {
 			name: "base case with ingestPorts and extra service",
 			args: args{
 				ctx: context.TODO(),
-				c:   config.MustGetBaseConfig(),
 				cr: &vmv1beta1.VMAgent{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "base",
@@ -1476,7 +1459,6 @@ func TestCreateOrUpdateVMAgentService(t *testing.T) {
 			name: "base case with ingestPorts and extra service",
 			args: args{
 				ctx: context.TODO(),
-				c:   config.MustGetBaseConfig(),
 				cr: &vmv1beta1.VMAgent{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "base",
@@ -1545,7 +1527,7 @@ func TestCreateOrUpdateVMAgentService(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cl := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			got, err := CreateOrUpdateVMAgentService(tt.args.ctx, tt.args.cr, cl, tt.args.c)
+			got, err := CreateOrUpdateVMAgentService(tt.args.ctx, tt.args.cr, cl)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CreateOrUpdateVMAgentService() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -1883,7 +1865,6 @@ func TestCreateOrUpdateStreamAggrConfig(t *testing.T) {
 func Test_buildConfigReloaderArgs(t *testing.T) {
 	type args struct {
 		cr *vmv1beta1.VMAgent
-		c  *config.BaseOperatorConf
 	}
 	tests := []struct {
 		name string
@@ -1894,9 +1875,10 @@ func Test_buildConfigReloaderArgs(t *testing.T) {
 			name: "parse ok",
 			args: args{
 				cr: &vmv1beta1.VMAgent{
-					Spec: vmv1beta1.VMAgentSpec{Port: "8429"},
+					Spec: vmv1beta1.VMAgentSpec{
+						CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{Port: "8429"},
+					},
 				},
-				c: &config.BaseOperatorConf{},
 			},
 			want: []string{
 				"--reload-url=http://localhost:8429/-/reload",
@@ -1908,9 +1890,11 @@ func Test_buildConfigReloaderArgs(t *testing.T) {
 			name: "ingest only",
 			args: args{
 				cr: &vmv1beta1.VMAgent{
-					Spec: vmv1beta1.VMAgentSpec{Port: "8429", IngestOnlyMode: true},
+					Spec: vmv1beta1.VMAgentSpec{
+						CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{Port: "8429"},
+
+						IngestOnlyMode: true},
 				},
-				c: &config.BaseOperatorConf{},
 			},
 			want: []string{
 				"--reload-url=http://localhost:8429/-/reload",
@@ -1921,9 +1905,9 @@ func Test_buildConfigReloaderArgs(t *testing.T) {
 			args: args{
 				cr: &vmv1beta1.VMAgent{
 					Spec: vmv1beta1.VMAgentSpec{
-						Port:                "8429",
-						IngestOnlyMode:      false,
-						InlineRelabelConfig: []vmv1beta1.RelabelConfig{{TargetLabel: "test"}},
+						CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{Port: "8429"},
+						IngestOnlyMode:          false,
+						InlineRelabelConfig:     []vmv1beta1.RelabelConfig{{TargetLabel: "test"}},
 						RemoteWrite: []vmv1beta1.VMAgentRemoteWriteSpec{
 							{
 								URL: "http://some",
@@ -1938,7 +1922,6 @@ func Test_buildConfigReloaderArgs(t *testing.T) {
 						},
 					},
 				},
-				c: &config.BaseOperatorConf{},
 			},
 			want: []string{
 				"--reload-url=http://localhost:8429/-/reload",
@@ -1951,7 +1934,7 @@ func Test_buildConfigReloaderArgs(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := buildConfigReloaderArgs(tt.args.cr, tt.args.c)
+			got := buildConfigReloaderArgs(tt.args.cr)
 			sort.Strings(got)
 			sort.Strings(tt.want)
 			assert.Equal(t, tt.want, got)
@@ -2044,22 +2027,22 @@ func TestBuildRemoteWriteSettings(t *testing.T) {
 }
 
 func TestMakeSpecForAgentOk(t *testing.T) {
-	f := func(cr *vmv1beta1.VMAgent, c *config.BaseOperatorConf, sCache *scrapesSecretsCache, wantYaml string) {
+	f := func(cr *vmv1beta1.VMAgent, sCache *scrapesSecretsCache, wantYaml string) {
 		t.Helper()
-		setDefaultForVMAgent(cr, c)
 
+		scheme := k8stools.GetTestClientWithObjects(nil).Scheme()
+		build.AddDefaults(scheme)
+		scheme.Default(cr)
 		// this trick allows to omit empty fields for yaml
 		var wantSpec corev1.PodSpec
 		if err := yaml.Unmarshal([]byte(wantYaml), &wantSpec); err != nil {
 			t.Fatalf("not expected wantYaml: %q: \n%q", wantYaml, err)
-
-			setDefaultForVMAgent(cr, c)
 		}
 		wantYAMLForCompare, err := yaml.Marshal(wantSpec)
 		if err != nil {
 			t.Fatalf("BUG: cannot parse as yaml: %q", err)
 		}
-		got, err := makeSpecForVMAgent(cr, c, sCache)
+		got, err := makeSpecForVMAgent(cr, sCache)
 		if err != nil {
 			t.Fatalf("not expected error=%q", err)
 		}
@@ -2068,32 +2051,35 @@ func TestMakeSpecForAgentOk(t *testing.T) {
 			t.Fatalf("cannot parse got as yaml: %q", err)
 		}
 
-		// compare yaml output instead of structs, since structs could be modified by marshal/unmarshal callbacks
-		if !cmp.Equal(string(gotYAML), string(wantYAMLForCompare)) {
-			diff := cmp.Diff(&wantSpec, got)
-			t.Fatalf("not expected output for test, diff is %s", diff)
-		}
-	}
-	testConfBuild := func(setup func(c *config.BaseOperatorConf)) *config.BaseOperatorConf {
-		c := *config.MustGetBaseConfig()
-		setup(&c)
-		return &c
+		assert.Equal(t, string(wantYAMLForCompare), string(gotYAML))
 	}
 	f(&vmv1beta1.VMAgent{
 		ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "default"},
-		Spec:       vmv1beta1.VMAgentSpec{IngestOnlyMode: true},
-	}, testConfBuild(func(c *config.BaseOperatorConf) {
-		c.VMAgentDefault.UseDefaultResources = true
-		c.VMAgentDefault.Resource.Limit.Cpu = "10"
-		c.VMAgentDefault.Resource.Limit.Mem = "10Mi"
-		c.VMAgentDefault.Resource.Request.Cpu = "10"
-		c.VMAgentDefault.Resource.Request.Mem = "10Mi"
-		c.VMAgentDefault.Image = "vm-repo"
-		c.VMAgentDefault.Version = "v1.97.1"
-		c.UseCustomConfigReloader = true
-		c.VMAgentDefault.Port = "8429"
-		c.CustomConfigReloaderImage = "vmcustom:config-reloader-v0.35.0"
-	}), nil, `
+		Spec: vmv1beta1.VMAgentSpec{
+			IngestOnlyMode: true,
+			CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+				Image: vmv1beta1.Image{
+					Repository: "vm-repo",
+					Tag:        "v1.97.1",
+				},
+				Resources: corev1.ResourceRequirements{
+					Limits: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("10m"),
+						corev1.ResourceMemory: resource.MustParse("10Mi"),
+					},
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("10m"),
+						corev1.ResourceMemory: resource.MustParse("10Mi"),
+					},
+				},
+				Port: "8425",
+			},
+			CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
+				UseCustomConfigReloader: ptr.To(true),
+				ConfigReloaderImageTag:  "vmcustom:config-reloader-v0.35.0",
+			},
+		},
+	}, nil, `
 volumes:
     - name: persistent-queue-data
       volumesource:
@@ -2105,13 +2091,13 @@ containers:
     - name: vmagent
       image: vm-repo:v1.97.1
       args:
-        - -httpListenAddr=:8429
+        - -httpListenAddr=:8425
         - -remoteWrite.maxDiskUsagePerURL=1073741824
         - -remoteWrite.tmpDataPath=/tmp/vmagent-remotewrite-data
       ports:
         - name: http
           hostport: 0
-          containerport: 8429
+          containerport: 8425
           protocol: TCP
       resources:
         limits:
@@ -2135,7 +2121,7 @@ containers:
                 path: /health
                 port:
                     type: 0
-                    intval: 8429
+                    intval: 8425
                     strval: ""
                 scheme: HTTP
         timeoutseconds: 5
@@ -2147,7 +2133,7 @@ containers:
             httpget:
                 path: /health
                 port:
-                    intval: 8429
+                    intval: 8425
                 scheme: HTTP
         initialdelayseconds: 0
         timeoutseconds: 5
@@ -2161,14 +2147,21 @@ serviceaccountname: vmagent-agent
     `)
 	f(&vmv1beta1.VMAgent{
 		ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "default"},
-		Spec:       vmv1beta1.VMAgentSpec{IngestOnlyMode: false},
-	}, testConfBuild(func(c *config.BaseOperatorConf) {
-		c.UseCustomConfigReloader = true
-		c.VMAgentDefault.Port = "8429"
-		c.CustomConfigReloaderImage = "vmcustomer:v1"
-		c.VMAgentDefault.Version = "v1.97.1"
-		c.VMAgentDefault.UseDefaultResources = false
-	}), nil, `
+		Spec: vmv1beta1.VMAgentSpec{
+			IngestOnlyMode: false,
+			CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+				Image: vmv1beta1.Image{
+					Tag: "v1.97.1",
+				},
+				UseDefaultResources: ptr.To(false),
+				Port:                "8429",
+			},
+			CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
+				UseCustomConfigReloader: ptr.To(true),
+				ConfigReloaderImageTag:  "vmcustomer:v1",
+			},
+		},
+	}, nil, `
 volumes:
     - name: persistent-queue-data
       volumesource:

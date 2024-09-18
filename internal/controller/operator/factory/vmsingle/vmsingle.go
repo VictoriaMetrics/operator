@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/finalize"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
@@ -20,6 +19,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -54,8 +54,7 @@ func makeVMSinglePvc(cr *vmv1beta1.VMSingle) *corev1.PersistentVolumeClaim {
 }
 
 // CreateOrUpdateVMSingle performs an update for single node resource
-func CreateOrUpdateVMSingle(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.Client, c *config.BaseOperatorConf) error {
-	cr = cr.DeepCopy()
+func CreateOrUpdateVMSingle(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.Client) error {
 
 	if cr.IsOwnsServiceAccount() {
 		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr)); err != nil {
@@ -63,12 +62,13 @@ func CreateOrUpdateVMSingle(ctx context.Context, cr *vmv1beta1.VMSingle, rclient
 		}
 	}
 
-	svc, err := CreateOrUpdateVMSingleService(ctx, cr, rclient, c)
+	svc, err := CreateOrUpdateVMSingleService(ctx, cr, rclient)
 	if err != nil {
 		return err
 	}
 
-	if !c.DisableSelfServiceScrapeCreation {
+	// TODO delete conditionally
+	if !ptr.Deref(cr.Spec.DisableSelfServiceScrape, false) {
 		err := reconcile.VMServiceScrapeForCRD(ctx, rclient, build.VMServiceScrapeForServiceWithSpec(svc, cr))
 		if err != nil {
 			return fmt.Errorf("cannot create serviceScrape for vmsingle: %w", err)
@@ -78,33 +78,22 @@ func CreateOrUpdateVMSingle(ctx context.Context, cr *vmv1beta1.VMSingle, rclient
 	if cr.Spec.ParsedLastAppliedSpec != nil {
 		prevCR := cr.DeepCopy()
 		prevCR.Spec = *cr.Spec.ParsedLastAppliedSpec
-		prevDeploy, err = newDeployForVMSingle(ctx, prevCR, c)
+		prevDeploy, err = newDeployForVMSingle(ctx, prevCR)
 		if err != nil {
 			return fmt.Errorf("cannot generate prev deploy spec: %w", err)
 		}
 	}
-	newDeploy, err := newDeployForVMSingle(ctx, cr, c)
+	newDeploy, err := newDeployForVMSingle(ctx, cr)
 	if err != nil {
 		return fmt.Errorf("cannot generate new deploy for vmsingle: %w", err)
 	}
 
-	return reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, c.PodWaitReadyTimeout, false)
+	return reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, false)
 }
 
-func newDeployForVMSingle(ctx context.Context, cr *vmv1beta1.VMSingle, c *config.BaseOperatorConf) (*appsv1.Deployment, error) {
-	if cr.Spec.Image.Repository == "" {
-		cr.Spec.Image.Repository = c.VMSingleDefault.Image
-	}
-	if cr.Spec.Image.Tag == "" {
-		cr.Spec.Image.Tag = c.VMSingleDefault.Version
-	}
-	if cr.Spec.Port == "" {
-		cr.Spec.Port = c.VMSingleDefault.Port
-	}
-	if cr.Spec.Image.PullPolicy == "" {
-		cr.Spec.Image.PullPolicy = corev1.PullIfNotPresent
-	}
-	podSpec, err := makeSpecForVMSingle(ctx, cr, c)
+func newDeployForVMSingle(ctx context.Context, cr *vmv1beta1.VMSingle) (*appsv1.Deployment, error) {
+
+	podSpec, err := makeSpecForVMSingle(ctx, cr)
 	if err != nil {
 		return nil, err
 	}
@@ -113,14 +102,12 @@ func newDeployForVMSingle(ctx context.Context, cr *vmv1beta1.VMSingle, c *config
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            cr.PrefixedName(),
 			Namespace:       cr.Namespace,
-			Labels:          c.Labels.Merge(cr.AllLabels()),
+			Labels:          cr.AllLabels(),
 			Annotations:     cr.AnnotationsFiltered(),
 			OwnerReferences: cr.AsOwner(),
 			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas:             cr.Spec.ReplicaCount,
-			RevisionHistoryLimit: cr.Spec.RevisionHistoryLimitCount,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: cr.SelectorLabels(),
 			},
@@ -131,10 +118,11 @@ func newDeployForVMSingle(ctx context.Context, cr *vmv1beta1.VMSingle, c *config
 			Template: *podSpec,
 		},
 	}
+	build.DeploymentAddCommonParams(depSpec, ptr.Deref(cr.Spec.UseStrictSecurity, false), &cr.Spec.CommonApplicationDeploymentParams)
 	return depSpec, nil
 }
 
-func makeSpecForVMSingle(ctx context.Context, cr *vmv1beta1.VMSingle, c *config.BaseOperatorConf) (*corev1.PodTemplateSpec, error) {
+func makeSpecForVMSingle(ctx context.Context, cr *vmv1beta1.VMSingle) (*corev1.PodTemplateSpec, error) {
 	args := []string{
 		fmt.Sprintf("-retentionPeriod=%s", cr.Spec.RetentionPeriod),
 	}
@@ -288,11 +276,11 @@ func makeSpecForVMSingle(ctx context.Context, cr *vmv1beta1.VMSingle, c *config.
 	sort.Strings(args)
 	vmsingleContainer := corev1.Container{
 		Name:                     "vmsingle",
-		Image:                    fmt.Sprintf("%s:%s", build.FormatContainerImage(c.ContainerRegistry, cr.Spec.Image.Repository), cr.Spec.Image.Tag),
+		Image:                    fmt.Sprintf("%s:%s", cr.Spec.Image.Repository, cr.Spec.Image.Tag),
 		Ports:                    ports,
 		Args:                     args,
 		VolumeMounts:             vmMounts,
-		Resources:                build.Resources(cr.Spec.Resources, config.Resource(c.VMSingleDefault.Resource), c.VMSingleDefault.UseDefaultResources),
+		Resources:                cr.Spec.Resources,
 		Env:                      envs,
 		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
 		ImagePullPolicy:          cr.Spec.Image.PullPolicy,
@@ -304,7 +292,7 @@ func makeSpecForVMSingle(ctx context.Context, cr *vmv1beta1.VMSingle, c *config.
 	initContainers := cr.Spec.InitContainers
 
 	if cr.Spec.VMBackup != nil {
-		vmBackupManagerContainer, err := build.VMBackupManager(ctx, cr.Spec.VMBackup, c, cr.Spec.Port, storagePath, vmDataVolumeName, cr.Spec.ExtraArgs, false, cr.Spec.License)
+		vmBackupManagerContainer, err := build.VMBackupManager(ctx, cr.Spec.VMBackup, cr.Spec.Port, storagePath, vmDataVolumeName, cr.Spec.ExtraArgs, false, cr.Spec.License)
 		if err != nil {
 			return nil, err
 		}
@@ -314,7 +302,7 @@ func makeSpecForVMSingle(ctx context.Context, cr *vmv1beta1.VMSingle, c *config.
 		if cr.Spec.VMBackup.Restore != nil &&
 			cr.Spec.VMBackup.Restore.OnStart != nil &&
 			cr.Spec.VMBackup.Restore.OnStart.Enabled {
-			vmRestore, err := build.VMRestore(cr.Spec.VMBackup, c, storagePath, vmDataVolumeName)
+			vmRestore, err := build.VMRestore(cr.Spec.VMBackup, storagePath, vmDataVolumeName)
 			if err != nil {
 				return nil, err
 			}
@@ -324,40 +312,23 @@ func makeSpecForVMSingle(ctx context.Context, cr *vmv1beta1.VMSingle, c *config.
 		}
 	}
 
+	build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, operatorContainers, ptr.Deref(cr.Spec.UseStrictSecurity, false))
+
 	containers, err := k8stools.MergePatchContainers(operatorContainers, cr.Spec.Containers)
 	if err != nil {
 		return nil, err
 	}
 
-	useStrictSecurity := c.EnableStrictSecurity
-	if cr.Spec.UseStrictSecurity != nil {
-		useStrictSecurity = *cr.Spec.UseStrictSecurity
-	}
 	vmSingleSpec := &corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:      cr.PodLabels(),
 			Annotations: cr.PodAnnotations(),
 		},
 		Spec: corev1.PodSpec{
-			NodeSelector:                  cr.Spec.NodeSelector,
-			Volumes:                       volumes,
-			InitContainers:                build.AddStrictSecuritySettingsToContainers(initContainers, useStrictSecurity),
-			Containers:                    build.AddStrictSecuritySettingsToContainers(containers, useStrictSecurity),
-			ServiceAccountName:            cr.GetServiceAccountName(),
-			SecurityContext:               build.AddStrictSecuritySettingsToPod(cr.Spec.SecurityContext, useStrictSecurity),
-			ImagePullSecrets:              cr.Spec.ImagePullSecrets,
-			Affinity:                      cr.Spec.Affinity,
-			RuntimeClassName:              cr.Spec.RuntimeClassName,
-			SchedulerName:                 cr.Spec.SchedulerName,
-			Tolerations:                   cr.Spec.Tolerations,
-			PriorityClassName:             cr.Spec.PriorityClassName,
-			HostNetwork:                   cr.Spec.HostNetwork,
-			DNSPolicy:                     cr.Spec.DNSPolicy,
-			DNSConfig:                     cr.Spec.DNSConfig,
-			TopologySpreadConstraints:     cr.Spec.TopologySpreadConstraints,
-			HostAliases:                   cr.Spec.HostAliases,
-			TerminationGracePeriodSeconds: cr.Spec.TerminationGracePeriodSeconds,
-			ReadinessGates:                cr.Spec.ReadinessGates,
+			Volumes:            volumes,
+			InitContainers:     initContainers,
+			Containers:         containers,
+			ServiceAccountName: cr.GetServiceAccountName(),
 		},
 	}
 
@@ -365,16 +336,11 @@ func makeSpecForVMSingle(ctx context.Context, cr *vmv1beta1.VMSingle, c *config.
 }
 
 // CreateOrUpdateVMSingleService creates service for vmsingle
-func CreateOrUpdateVMSingleService(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.Client, c *config.BaseOperatorConf) (*corev1.Service, error) {
-	if cr.Spec.Port == "" {
-		cr.Spec.Port = c.VMSingleDefault.Port
-	}
-	addBackupPort := func(svc *corev1.Service) {
-		if cr.Spec.VMBackup != nil {
-			if cr.Spec.VMBackup.Port == "" {
-				cr.Spec.VMBackup.Port = c.VMBackup.Port
-			}
-			parsedPort := intstr.Parse(cr.Spec.VMBackup.Port)
+func CreateOrUpdateVMSingleService(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.Client) (*corev1.Service, error) {
+
+	addBackupPort := func(svc *corev1.Service, vmb *vmv1beta1.VMBackup) {
+		if vmb != nil {
+			parsedPort := intstr.Parse(vmb.Port)
 			svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{
 				Name:       "vmbackupmanager",
 				Protocol:   corev1.ProtocolTCP,
@@ -384,7 +350,7 @@ func CreateOrUpdateVMSingleService(ctx context.Context, cr *vmv1beta1.VMSingle, 
 		}
 	}
 	newService := build.Service(cr, cr.Spec.Port, func(svc *corev1.Service) {
-		addBackupPort(svc)
+		addBackupPort(svc, cr.Spec.VMBackup)
 		build.AppendInsertPortsToService(cr.Spec.InsertPorts, svc)
 	})
 
@@ -392,7 +358,7 @@ func CreateOrUpdateVMSingleService(ctx context.Context, cr *vmv1beta1.VMSingle, 
 		additionalService := build.AdditionalServiceFromDefault(newService, s)
 		if additionalService.Name == newService.Name {
 			logger.WithContext(ctx).Error(fmt.Errorf("vmsingle additional service name: %q cannot be the same as crd.prefixedname: %q", additionalService.Name, newService.Name), "cannot create additional service")
-		} else if err := reconcile.ServiceForCRD(ctx, rclient, additionalService); err != nil {
+		} else if err := reconcile.Service(ctx, rclient, additionalService, nil); err != nil {
 			return fmt.Errorf("cannot reconcile additional service for vmsingle: %w", err)
 		}
 		return nil
@@ -400,12 +366,27 @@ func CreateOrUpdateVMSingleService(ctx context.Context, cr *vmv1beta1.VMSingle, 
 		return nil, err
 	}
 
-	rca := finalize.RemoveSvcArgs{SelectorLabels: cr.SelectorLabels, GetNameSpace: cr.GetNamespace, PrefixedName: cr.PrefixedName}
-	if err := finalize.RemoveOrphanedServices(ctx, rclient, rca, cr.Spec.ServiceSpec); err != nil {
-		return nil, err
+	var prevService *corev1.Service
+	if cr.Spec.ParsedLastAppliedSpec != nil {
+		prevCR := cr.DeepCopy()
+		prevCR.Spec = *cr.Spec.ParsedLastAppliedSpec
+		prevService = build.Service(prevCR, prevCR.Spec.Port, func(svc *corev1.Service) {
+			addBackupPort(svc, prevCR.Spec.VMBackup)
+			build.AppendInsertPortsToService(prevCR.Spec.InsertPorts, svc)
+
+		})
 	}
 
-	if err := reconcile.ServiceForCRD(ctx, rclient, newService); err != nil {
+	if cr.Spec.ServiceSpec == nil &&
+		cr.Spec.ParsedLastAppliedSpec != nil &&
+		cr.Spec.ParsedLastAppliedSpec.ServiceSpec != nil {
+		rca := finalize.RemoveSvcArgs{SelectorLabels: cr.SelectorLabels, GetNameSpace: cr.GetNamespace, PrefixedName: cr.PrefixedName}
+		if err := finalize.RemoveOrphanedServices(ctx, rclient, rca, cr.Spec.ServiceSpec); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := reconcile.Service(ctx, rclient, newService, prevService); err != nil {
 		return nil, fmt.Errorf("cannot reconcile service for vmsingle: %w", err)
 	}
 	return newService, nil

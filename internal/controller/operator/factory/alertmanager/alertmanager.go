@@ -5,12 +5,12 @@ import (
 	"fmt"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/config"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
 	"github.com/prometheus/client_golang/prometheus"
 	appsv1 "k8s.io/api/apps/v1"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 )
@@ -30,14 +30,14 @@ func init() {
 }
 
 // CreateOrUpdateAlertManager creates alertmanagerand and bulds config for it
-func CreateOrUpdateAlertManager(ctx context.Context, cr *vmv1beta1.VMAlertmanager, rclient client.Client, c *config.BaseOperatorConf) error {
+func CreateOrUpdateAlertManager(ctx context.Context, cr *vmv1beta1.VMAlertmanager, rclient client.Client) error {
 	l := logger.WithContext(ctx).WithValues("reconcile.VMAlertManager.sts", cr.Name, "ns", cr.Namespace)
 	ctx = logger.AddToContext(ctx, l)
 	if cr.IsOwnsServiceAccount() {
 		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr)); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
 		}
-		if c.UseCustomConfigReloader {
+		if ptr.Deref(cr.Spec.UseCustomConfigReloader, false) {
 			if err := createVMAlertmanagerSecretAccess(ctx, rclient, cr); err != nil {
 				return err
 			}
@@ -56,12 +56,12 @@ func CreateOrUpdateAlertManager(ctx context.Context, cr *vmv1beta1.VMAlertmanage
 		prevCR := cr.DeepCopy()
 		prevCR.Spec = *cr.Spec.ParsedLastAppliedSpec
 		var err error
-		prevSts, err = newStsForAlertManager(prevCR, c)
+		prevSts, err = newStsForAlertManager(prevCR)
 		if err != nil {
 			return fmt.Errorf("cannot generate prev alertmanager sts, name: %s,err: %w", cr.Name, err)
 		}
 	}
-	newSts, err := newStsForAlertManager(cr, c)
+	newSts, err := newStsForAlertManager(cr)
 	if err != nil {
 		return fmt.Errorf("cannot generate alertmanager sts, name: %s,err: %w", cr.Name, err)
 	}
@@ -70,5 +70,5 @@ func CreateOrUpdateAlertManager(ctx context.Context, cr *vmv1beta1.VMAlertmanage
 		HasClaim:       len(newSts.Spec.VolumeClaimTemplates) > 0,
 		SelectorLabels: cr.SelectorLabels,
 	}
-	return reconcile.HandleSTSUpdate(ctx, rclient, stsOpts, newSts, prevSts, c)
+	return reconcile.HandleSTSUpdate(ctx, rclient, stsOpts, newSts, prevSts)
 }

@@ -12,14 +12,8 @@ import (
 	"k8s.io/utils/ptr"
 )
 
-var operatorConfig *config.BaseOperatorConf
-
 func getCfg() *config.BaseOperatorConf {
 	return config.MustGetBaseConfig()
-}
-
-func InitWithConfig(cfg *config.BaseOperatorConf) {
-	operatorConfig = cfg
 }
 
 // AddDefaults adds defauling functions to the runtimeScheme
@@ -271,6 +265,7 @@ func addVMAlertmanagerDefaults(objI interface{}) {
 				Cpu string
 			}
 		}(amcd.Resource),
+		ConfigReloadImage:    amcd.ConfigReloaderImage,
 		ConfigReloaderMemory: amcd.ConfigReloaderMemory,
 		ConfigReloaderCPU:    amcd.ConfigReloaderCPU,
 	}

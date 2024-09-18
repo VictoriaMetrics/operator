@@ -3,7 +3,10 @@ package build
 import (
 	"testing"
 
+	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/go-test/deep"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/version"
@@ -12,7 +15,7 @@ import (
 
 func TestAddStrictSecuritySettingsToPod(t *testing.T) {
 	type args struct {
-		podSecurityPolicy    *corev1.PodSecurityContext
+		podSecurityPolicy    *vmv1beta1.SecurityContext
 		enableStrictSecurity bool
 		exp                  *corev1.PodSecurityContext
 		kubeletVersion       version.Info
@@ -50,8 +53,11 @@ func TestAddStrictSecuritySettingsToPod(t *testing.T) {
 		{
 			name: "use custom security",
 			args: args{
-				podSecurityPolicy: &corev1.PodSecurityContext{
-					RunAsNonRoot: ptr.To(false),
+				podSecurityPolicy: &vmv1beta1.SecurityContext{
+					PodSecurityContext: &corev1.PodSecurityContext{
+						RunAsNonRoot: ptr.To(false),
+					},
+					ContainerSecurityContext: nil,
 				},
 				enableStrictSecurity: true,
 				exp: &corev1.PodSecurityContext{
@@ -65,6 +71,13 @@ func TestAddStrictSecuritySettingsToPod(t *testing.T) {
 		if err := k8stools.SetKubernetesVersionWithDefaults(&tt.args.kubeletVersion, 0, 0); err != nil {
 			t.Fatalf("cannot set k8s version for testing: %q", err)
 		}
+		defer func() {
+			// return back defaults after test
+			restoreVersion := version.Info{Major: "0", Minor: "0"}
+			if err := k8stools.SetKubernetesVersionWithDefaults(&restoreVersion, 0, 0); err != nil {
+				t.Fatalf("cannot set k8s version for testing: %q", err)
+			}
+		}()
 		res := AddStrictSecuritySettingsToPod(tt.args.podSecurityPolicy, tt.args.enableStrictSecurity)
 		if diff := deep.Equal(res, tt.args.exp); len(diff) > 0 {
 			t.Fatalf("got unexpected result: %v, expect: %v", res, tt.args.exp)
@@ -73,18 +86,41 @@ func TestAddStrictSecuritySettingsToPod(t *testing.T) {
 }
 
 func TestAddStrictSecuritySettingsToContainers(t *testing.T) {
+
 	type args struct {
-		containers           []corev1.Container
-		enableStrictSecurity bool
-		exp                  []corev1.Container
+		sc         *vmv1beta1.SecurityContext
+		containers []corev1.Container
 	}
 	tests := []struct {
 		name     string
 		args     args
-		validate func(svc *corev1.Service) error
+		expected []corev1.Container
 	}{
 		{
-			name: "enforce strict security",
+			name: "default security",
+			args: args{
+				containers: []corev1.Container{
+					{
+						Name: "c1",
+					},
+					{
+						Name: "c2",
+					},
+				},
+			},
+			expected: []corev1.Container{
+				{
+					Name:            "c1",
+					SecurityContext: defaultSecurityContext,
+				},
+				{
+					Name:            "c2",
+					SecurityContext: defaultSecurityContext,
+				},
+			},
+		},
+		{
+			name: "keep defined context",
 			args: args{
 				containers: []corev1.Container{
 					{
@@ -95,52 +131,62 @@ func TestAddStrictSecuritySettingsToContainers(t *testing.T) {
 					},
 					{
 						Name: "c2",
-					},
-				},
-				enableStrictSecurity: true,
-				exp: []corev1.Container{
-					{
-						Name: "c1",
 						SecurityContext: &corev1.SecurityContext{
 							ReadOnlyRootFilesystem: ptr.To(false),
+							RunAsUser:              ptr.To[int64](1000),
+							RunAsGroup:             ptr.To[int64](1000),
 						},
 					},
-					{
-						Name: "c2",
-						SecurityContext: &corev1.SecurityContext{
-							ReadOnlyRootFilesystem:   ptr.To(true),
-							AllowPrivilegeEscalation: ptr.To(false),
-							Capabilities: &corev1.Capabilities{
-								Drop: []corev1.Capability{
-									"ALL",
-								},
-							},
-						},
+				},
+			},
+			expected: []corev1.Container{
+				{
+					Name: "c1",
+					SecurityContext: &corev1.SecurityContext{
+						ReadOnlyRootFilesystem: ptr.To(false),
+					},
+				},
+				{
+					Name: "c2",
+					SecurityContext: &corev1.SecurityContext{
+						ReadOnlyRootFilesystem: ptr.To(false),
+						RunAsUser:              ptr.To[int64](1000),
+						RunAsGroup:             ptr.To[int64](1000),
 					},
 				},
 			},
 		},
 		{
-			name: "disable enableStrictSecurity",
+			name: "partialy add security context",
 			args: args{
 				containers: []corev1.Container{
+					{
+						Name: "c1",
+						SecurityContext: &corev1.SecurityContext{
+							ReadOnlyRootFilesystem: ptr.To(false),
+						},
+					},
 					{
 						Name: "c2",
 					},
 				},
-				enableStrictSecurity: false,
-				exp: []corev1.Container{
-					{
-						Name: "c2",
+			},
+			expected: []corev1.Container{
+				{
+					Name: "c1",
+					SecurityContext: &corev1.SecurityContext{
+						ReadOnlyRootFilesystem: ptr.To(false),
 					},
+				},
+				{
+					Name:            "c2",
+					SecurityContext: defaultSecurityContext,
 				},
 			},
 		},
 	}
 	for _, tt := range tests {
-		res := AddStrictSecuritySettingsToContainers(tt.args.containers, tt.args.enableStrictSecurity)
-		if diff := deep.Equal(res, tt.args.exp); len(diff) > 0 {
-			t.Fatalf("got unexpected result: %v, expect: %v", res, tt.args.exp)
-		}
+		res := AddStrictSecuritySettingsToContainers(tt.args.sc, tt.args.containers, true)
+		assert.Equal(t, tt.expected, res)
 	}
 }

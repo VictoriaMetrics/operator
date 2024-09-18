@@ -7,7 +7,7 @@ import (
 	"time"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/config"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/google/go-cmp/cmp"
 	"gopkg.in/yaml.v3"
@@ -25,7 +25,6 @@ import (
 func TestCreateOrUpdateVMCluster(t *testing.T) {
 	type args struct {
 		cr *vmv1beta1.VMCluster
-		c  *config.BaseOperatorConf
 	}
 	tests := []struct {
 		name              string
@@ -38,7 +37,6 @@ func TestCreateOrUpdateVMCluster(t *testing.T) {
 		{
 			name: "base-vmstorage-test",
 			args: args{
-				c: config.MustGetBaseConfig(),
 				cr: &vmv1beta1.VMCluster{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: "default",
@@ -52,20 +50,26 @@ func TestCreateOrUpdateVMCluster(t *testing.T) {
 							PodMetadata: &vmv1beta1.EmbeddedObjectMetadata{
 								Annotations: map[string]string{"key": "value"},
 							},
-							ReplicaCount: ptr.To(int32(0)),
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To(int32(0)),
+							},
 						},
 						VMStorage: &vmv1beta1.VMStorage{
 							PodMetadata: &vmv1beta1.EmbeddedObjectMetadata{
 								Annotations: map[string]string{"key": "value"},
 								Labels:      map[string]string{"label": "value2"},
 							},
-							ReplicaCount: ptr.To(int32(2)),
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+
+								ReplicaCount: ptr.To(int32(2))},
 						},
 						VMSelect: &vmv1beta1.VMSelect{
 							PodMetadata: &vmv1beta1.EmbeddedObjectMetadata{
 								Annotations: map[string]string{"key": "value"},
 							},
-							ReplicaCount: ptr.To(int32(2)),
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+
+								ReplicaCount: ptr.To(int32(2))},
 						},
 					},
 				},
@@ -85,7 +89,6 @@ func TestCreateOrUpdateVMCluster(t *testing.T) {
 		{
 			name: "base-vminsert-with-ports",
 			args: args{
-				c: config.MustGetBaseConfig(),
 				cr: &vmv1beta1.VMCluster{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: "default",
@@ -95,7 +98,8 @@ func TestCreateOrUpdateVMCluster(t *testing.T) {
 						RetentionPeriod:   "2",
 						ReplicationFactor: ptr.To(int32(2)),
 						VMInsert: &vmv1beta1.VMInsert{
-							ReplicaCount: ptr.To(int32(0)),
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To(int32(0))},
 							InsertPorts: &vmv1beta1.InsertPorts{
 								GraphitePort:     "8025",
 								OpenTSDBHTTPPort: "3311",
@@ -114,7 +118,6 @@ func TestCreateOrUpdateVMCluster(t *testing.T) {
 		{
 			name: "base-vmselect",
 			args: args{
-				c: config.MustGetBaseConfig(),
 				cr: &vmv1beta1.VMCluster{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: "default",
@@ -124,7 +127,8 @@ func TestCreateOrUpdateVMCluster(t *testing.T) {
 						RetentionPeriod:   "2",
 						ReplicationFactor: ptr.To(int32(2)),
 						VMSelect: &vmv1beta1.VMSelect{
-							ReplicaCount: ptr.To(int32(2)),
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To(int32(2))},
 							HPA: &vmv1beta1.EmbeddedHPA{
 								MinReplicas: ptr.To(int32(1)),
 								MaxReplicas: 3,
@@ -148,7 +152,6 @@ func TestCreateOrUpdateVMCluster(t *testing.T) {
 		{
 			name: "base-vmstorage-with-maintenance",
 			args: args{
-				c: config.MustGetBaseConfig(),
 				cr: &vmv1beta1.VMCluster{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: "default",
@@ -158,15 +161,18 @@ func TestCreateOrUpdateVMCluster(t *testing.T) {
 						RetentionPeriod:   "2",
 						ReplicationFactor: ptr.To(int32(2)),
 						VMInsert: &vmv1beta1.VMInsert{
-							ReplicaCount: ptr.To(int32(0)),
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To(int32(0))},
 						},
 						VMStorage: &vmv1beta1.VMStorage{
 							MaintenanceSelectNodeIDs: []int32{1, 3},
 							MaintenanceInsertNodeIDs: []int32{0, 1, 2},
-							ReplicaCount:             ptr.To(int32(10)),
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To(int32(10))},
 						},
 						VMSelect: &vmv1beta1.VMSelect{
-							ReplicaCount: ptr.To(int32(2)),
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To(int32(2))},
 						},
 					},
 				},
@@ -218,7 +224,6 @@ func TestCreateOrUpdateVMCluster(t *testing.T) {
 		{
 			name: "base-vmstorage-with-maintenance",
 			args: args{
-				c: config.MustGetBaseConfig(),
 				cr: &vmv1beta1.VMCluster{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: "default",
@@ -228,15 +233,18 @@ func TestCreateOrUpdateVMCluster(t *testing.T) {
 						RetentionPeriod:   "2",
 						ReplicationFactor: ptr.To(int32(2)),
 						VMInsert: &vmv1beta1.VMInsert{
-							ReplicaCount: ptr.To(int32(0)),
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To(int32(0))},
 						},
 						VMStorage: &vmv1beta1.VMStorage{
 							MaintenanceSelectNodeIDs: []int32{1, 3},
 							MaintenanceInsertNodeIDs: []int32{0, 1, 2},
-							ReplicaCount:             ptr.To(int32(10)),
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To(int32(10))},
 						},
 						VMSelect: &vmv1beta1.VMSelect{
-							ReplicaCount: ptr.To(int32(2)),
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To(int32(2))},
 						},
 					},
 				},
@@ -362,7 +370,7 @@ func TestCreateOrUpdateVMCluster(t *testing.T) {
 				})
 			}
 
-			err := CreateOrUpdateVMCluster(ctx, tt.args.cr, fclient, tt.args.c)
+			err := CreateOrUpdateVMCluster(ctx, tt.args.cr, fclient)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CreateOrUpdateVMCluster() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -398,10 +406,11 @@ func TestCreatOrUpdateClusterServices(t *testing.T) {
 	f := func(component string, cr *vmv1beta1.VMCluster, wantSvcYAML string, predefinedObjects ...runtime.Object) {
 		t.Helper()
 		ctx := context.Background()
-		cfg := config.MustGetBaseConfig()
 		fclient := k8stools.GetTestClientWithObjects(predefinedObjects)
+		build.AddDefaults(fclient.Scheme())
+		fclient.Scheme().Default(cr)
 
-		var builderF func(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client.Client, c *config.BaseOperatorConf) (*corev1.Service, error)
+		var builderF func(ctx context.Context, cr *vmv1beta1.VMCluster, rclient client.Client) (*corev1.Service, error)
 		switch component {
 		case "insert":
 			builderF = createOrUpdateVMInsertService
@@ -413,7 +422,7 @@ func TestCreatOrUpdateClusterServices(t *testing.T) {
 		default:
 			t.Fatalf("BUG not expected component for test: %q", component)
 		}
-		svc, err := builderF(ctx, cr, fclient, cfg)
+		svc, err := builderF(ctx, cr, fclient)
 		if err != nil {
 			t.Fatalf("not expected error= %q", err)
 		}
@@ -560,7 +569,11 @@ spec:
 		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default-1"},
 		Spec: vmv1beta1.VMClusterSpec{
 			VMStorage: &vmv1beta1.VMStorage{},
-			VMSelect:  &vmv1beta1.VMSelect{Port: "8352"},
+			VMSelect: &vmv1beta1.VMSelect{
+				CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+					Port: "8352",
+				},
+			},
 		},
 	}, `
 objectmeta:
@@ -599,7 +612,8 @@ spec:
 		ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default-1"},
 		Spec: vmv1beta1.VMClusterSpec{
 			VMStorage: &vmv1beta1.VMStorage{},
-			VMSelect:  &vmv1beta1.VMSelect{Port: "8352", ClusterNativePort: "8477", ServiceSpec: &vmv1beta1.AdditionalServiceSpec{Spec: corev1.ServiceSpec{Type: "LoadBalancer"}}},
+			VMSelect: &vmv1beta1.VMSelect{CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{Port: "8352"},
+				ClusterNativePort: "8477", ServiceSpec: &vmv1beta1.AdditionalServiceSpec{Spec: corev1.ServiceSpec{Type: "LoadBalancer"}}},
 		},
 	}, `
 objectmeta:

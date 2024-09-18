@@ -7,7 +7,7 @@ import (
 	"time"
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
-	"github.com/VictoriaMetrics/operator/internal/config"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/go-test/deep"
 	appsv1 "k8s.io/api/apps/v1"
@@ -24,7 +24,6 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 	type args struct {
 		ctx context.Context
 		cr  *vmv1beta1.VMAlertmanager
-		c   *config.BaseOperatorConf
 	}
 	tests := []struct {
 		name             string
@@ -37,7 +36,6 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 			name: "simple alertmanager",
 			args: args{
 				ctx: context.TODO(),
-				c:   config.MustGetBaseConfig(),
 				cr: &vmv1beta1.VMAlertmanager{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:        "test-am",
@@ -46,7 +44,9 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 						Labels:      map[string]string{"main": "system"},
 					},
 					Spec: vmv1beta1.VMAlertmanagerSpec{
-						ReplicaCount: ptr.To(int32(1)),
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To(int32(1)),
+						},
 					},
 				},
 			},
@@ -83,7 +83,6 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 			name: "alertmanager with embedded probe",
 			args: args{
 				ctx: context.TODO(),
-				c:   config.MustGetBaseConfig(),
 				cr: &vmv1beta1.VMAlertmanager{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:        "test-am",
@@ -92,7 +91,9 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 						Labels:      map[string]string{"main": "system"},
 					},
 					Spec: vmv1beta1.VMAlertmanagerSpec{
-						ReplicaCount: ptr.To(int32(1)),
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To(int32(1)),
+						},
 						EmbeddedProbes: &vmv1beta1.EmbeddedProbes{
 							LivenessProbe: &corev1.Probe{
 								TimeoutSeconds: 20,
@@ -139,7 +140,6 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 			},
 			args: args{
 				ctx: context.TODO(),
-				c:   config.MustGetBaseConfig(),
 				cr: &vmv1beta1.VMAlertmanager{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:        "test-am",
@@ -207,6 +207,8 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjets)
+			build.AddDefaults(fclient.Scheme())
+			fclient.Scheme().Default(tt.args.cr)
 			ctx, cancel := context.WithTimeout(tt.args.ctx, time.Second*20)
 			defer cancel()
 
@@ -235,10 +237,11 @@ func TestCreateOrUpdateAlertManager(t *testing.T) {
 					}
 				}
 			}()
-			err := CreateOrUpdateAlertManager(ctx, tt.args.cr, fclient, tt.args.c)
+			err := CreateOrUpdateAlertManager(ctx, tt.args.cr, fclient)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("CreateOrUpdateAlertManager() error = %v, wantErr %v", err, tt.wantErr)
 			}
+			// TODO add client.Default
 			var got appsv1.StatefulSet
 			if err := fclient.Get(ctx, types.NamespacedName{Namespace: tt.args.cr.Namespace, Name: tt.args.cr.PrefixedName()}, &got); (err != nil) != tt.wantErr {
 				t.Fatalf("CreateOrUpdateAlertManager() error = %v, wantErr %v", err, tt.wantErr)

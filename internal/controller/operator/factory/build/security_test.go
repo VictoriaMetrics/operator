@@ -157,7 +157,7 @@ func TestAddStrictSecuritySettingsToContainers(t *testing.T) {
 			},
 		},
 		{
-			name: "partialy add security context",
+			name: "partially add security context",
 			args: args{
 				containers: []corev1.Container{
 					{

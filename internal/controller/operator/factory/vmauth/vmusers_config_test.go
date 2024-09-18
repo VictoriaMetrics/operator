@@ -1666,8 +1666,16 @@ unauthorized_user:
 						Namespace: "default",
 					},
 					Spec: vmv1beta1.VMClusterSpec{
-						VMSelect: &vmv1beta1.VMSelect{ReplicaCount: ptr.To(int32(10))},
-						VMInsert: &vmv1beta1.VMInsert{ReplicaCount: ptr.To(int32(5))},
+						VMSelect: &vmv1beta1.VMSelect{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To(int32(10)),
+							},
+						},
+						VMInsert: &vmv1beta1.VMInsert{
+							CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To(int32(5)),
+							},
+						},
 					},
 				},
 				&vmv1beta1.VMUser{

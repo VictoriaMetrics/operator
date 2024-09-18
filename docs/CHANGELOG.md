@@ -16,6 +16,7 @@ aliases:
 - [api](https://docs.victoriametrics.com/operator/api): adds `useDefaultResources` setting to the all applications. It has priority over global operator setting.
 - [api](https://docs.victoriametrics.com/operator/api): adds `clusterDomainName` to the `VMCluster` and `VMAlertmanager`. It defines optional suffix for in-cluster addresses.
 - [api](https://docs.victoriametrics.com/operator/api): adds `disableSelfServiceScrape` setting to the all applications. It has priority over global operator setting.
+- [api](https://docs.victoriametrics.com/operator/api): Extends applications `securityContext` and apply security configuration parameters to the containers.
 - [api](https://docs.victoriametrics.com/operator): deletes unused env variables: `VM_DEFAULTLABELS`, `VM_PODWAITREADYINITDELAY`. Adds new variable `VM_APPREADYTIMEOUT`.
 - [vmalert](https://docs.victoriametrics.com/operator/resources/vmalert/): adds missing `hostAliases` fields to spec. See [this](https://github.com/VictoriaMetrics/operator/issues/1099) issue for details.
 - [operator](https://docs.victoriametrics.com/operator/): updates default vm apps version to v1.103.0

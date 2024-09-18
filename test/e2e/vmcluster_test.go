@@ -5,36 +5,45 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/VictoriaMetrics/operator/api/operator/v1beta1"
+
 	v1beta1vm "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/utils/ptr"
 )
 
 const (
-	interval = 15 * time.Second
+	clusterReadyTimeout = 50 * time.Second
 )
 
 var _ = Describe("e2e vmcluster", func() {
 	Context("crud", func() {
+		namespace := "default"
+		var ctx context.Context
+		namespacedName := types.NamespacedName{
+			Namespace: namespace,
+		}
+
 		Context("create", func() {
-			name := "create-cluster"
-			namespace := "default"
+			JustBeforeEach(func() {
+				ctx = context.Background()
+			})
 			AfterEach(func() {
-				Expect(k8sClient.Delete(context.TODO(), &v1beta1vm.VMCluster{
+				Expect(k8sClient.Delete(ctx, &v1beta1vm.VMCluster{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: namespace,
-						Name:      name,
+						Name:      namespacedName.Name,
 					},
 				})).To(Succeed(), "must delete vmcluster after test")
 				Eventually(func() error {
-					err := k8sClient.Get(context.Background(), types.NamespacedName{
-						Name:      name,
+					err := k8sClient.Get(ctx, types.NamespacedName{
+						Name:      namespacedName.Name,
 						Namespace: namespace,
 					}, &v1beta1vm.VMCluster{})
 					if errors.IsNotFound(err) {
@@ -42,164 +51,226 @@ var _ = Describe("e2e vmcluster", func() {
 					}
 					return fmt.Errorf("want NotFound error, got: %w", err)
 				}, 60, 1).Should(BeNil())
-			})
-			It("should create vmCluster with empty services", func() {
-				Expect(k8sClient.Create(context.TODO(), &v1beta1vm.VMCluster{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: namespace,
-						Name:      name,
-					},
-					Spec: v1beta1vm.VMClusterSpec{RetentionPeriod: "1"},
-				})).To(Succeed())
 			})
 
-		})
-		Context("update", func() {
-			name := "update-cluster"
-			namespace := "default"
-			AfterEach(func() {
-				Expect(k8sClient.Delete(context.TODO(), &v1beta1vm.VMCluster{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: namespace,
-						Name:      name,
-					},
-				})).To(Succeed())
+			DescribeTable("should create vmcluster", func(name string, cr *v1beta1vm.VMCluster) {
+				namespacedName.Name = name
+				cr.Name = name
+				Expect(k8sClient.Create(ctx, cr)).To(Succeed())
 				Eventually(func() error {
-					err := k8sClient.Get(context.Background(), types.NamespacedName{
-						Name:      name,
-						Namespace: namespace,
-					}, &v1beta1vm.VMCluster{})
-					if errors.IsNotFound(err) {
-						return nil
-					}
-					return fmt.Errorf("want NotFound error, got: %w", err)
-				}, 60, 1).Should(BeNil())
-			})
-			BeforeEach(func() {
-				Expect(k8sClient.Create(context.TODO(), &v1beta1vm.VMCluster{
+					return expectObjectStatusOperational(ctx, k8sClient, &v1beta1vm.VMCluster{}, namespacedName)
+				}, clusterReadyTimeout).Should(Succeed())
+
+			},
+				Entry("without any componets", "empty", &v1beta1vm.VMCluster{
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: namespace,
-						Name:      name,
+						Name:      namespacedName.Name,
+					},
+					Spec: v1beta1vm.VMClusterSpec{RetentionPeriod: "1"},
+				}),
+				Entry("with all components", "all-services",
+					&v1beta1vm.VMCluster{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: namespace,
+							Name:      namespacedName.Name,
+						},
+						Spec: v1beta1vm.VMClusterSpec{
+							RetentionPeriod: "1",
+							VMStorage: &v1beta1vm.VMStorage{
+								CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+									ReplicaCount: ptr.To[int32](1),
+								},
+							},
+							VMSelect: &v1beta1vm.VMSelect{
+								CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+									ReplicaCount: ptr.To[int32](1),
+								},
+							},
+							VMInsert: &v1beta1vm.VMInsert{CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
+							},
+						},
+					},
+				),
+				Entry("with vmstorage and vmselect", "with-select", &v1beta1vm.VMCluster{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      namespacedName.Name,
 					},
 					Spec: v1beta1vm.VMClusterSpec{
 						RetentionPeriod: "1",
 						VMStorage: &v1beta1vm.VMStorage{
-							ReplicaCount: ptr.To[int32](1),
-							Resources: corev1.ResourceRequirements{
-								Requests: corev1.ResourceList{
-									corev1.ResourceMemory: resource.MustParse("128Mi"),
-									corev1.ResourceCPU:    resource.MustParse("50m"),
-								},
+							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To[int32](1),
 							},
 						},
 						VMSelect: &v1beta1vm.VMSelect{
+							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
+						},
+					},
+				}),
+				Entry("with vmstorage and vminsert", "with-insert", &v1beta1vm.VMCluster{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      namespacedName.Name,
+					},
+					Spec: v1beta1vm.VMClusterSpec{
+						RetentionPeriod: "1",
+						VMStorage: &v1beta1vm.VMStorage{
+							CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+								ReplicaCount: ptr.To[int32](1),
+							},
+						},
+						VMInsert: &v1beta1vm.VMInsert{CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
 							ReplicaCount: ptr.To[int32](1),
-							LogLevel:     "WARN",
-							Resources: corev1.ResourceRequirements{
-								Requests: corev1.ResourceList{
-									corev1.ResourceMemory: resource.MustParse("128Mi"),
-									corev1.ResourceCPU:    resource.MustParse("50m"),
+						},
+						},
+					},
+				}),
+				Entry("with security enable and without default resources", "all-secure",
+					&v1beta1vm.VMCluster{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: namespace,
+							Name:      namespacedName.Name,
+						},
+						Spec: v1beta1vm.VMClusterSpec{
+							RetentionPeriod: "1",
+							VMStorage: &v1beta1vm.VMStorage{
+								CommonDefaultableParams: v1beta1vm.CommonDefaultableParams{
+									UseStrictSecurity:   ptr.To(true),
+									UseDefaultResources: ptr.To(false),
+								},
+								CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+									ReplicaCount: ptr.To[int32](1),
+								},
+							},
+							VMSelect: &v1beta1vm.VMSelect{
+								CommonDefaultableParams: v1beta1vm.CommonDefaultableParams{
+									UseStrictSecurity:   ptr.To(true),
+									UseDefaultResources: ptr.To(false),
+								},
+
+								CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+									ReplicaCount: ptr.To[int32](1),
+								},
+							},
+							VMInsert: &v1beta1vm.VMInsert{
+								CommonDefaultableParams: v1beta1vm.CommonDefaultableParams{
+									UseStrictSecurity:   ptr.To(true),
+									UseDefaultResources: ptr.To(false),
+								},
+								CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+									ReplicaCount: ptr.To[int32](1),
 								},
 							},
 						},
 					},
+				),
+			)
+		})
+		Context("update", func() {
+			AfterEach(func() {
+				Expect(k8sClient.Delete(ctx, &v1beta1vm.VMCluster{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: namespace,
+						Name:      namespacedName.Name,
+					},
 				})).To(Succeed())
-				vmCluster := &v1beta1vm.VMCluster{}
-				Expect(k8sClient.Get(context.TODO(), types.NamespacedName{
-					Name:      name,
-					Namespace: namespace,
-				}, vmCluster)).To(Succeed())
-				Eventually(func() string {
-					return expectPodCount(k8sClient, 1, namespace, vmCluster.VMStorageSelectorLabels())
-				}, 300, 10).Should(BeEmpty(), "vmCluster must have ready storage pod")
-				Eventually(func() string {
-					return expectPodCount(k8sClient, 1, namespace, vmCluster.VMSelectSelectorLabels())
-				}, 300, 10).Should(BeEmpty(), "vmCluster must have ready select pod")
-			})
-			It("should expand vmCluster storage and select up to 2 replicas", func() {
-				vmCluster := &v1beta1vm.VMCluster{}
-				Expect(k8sClient.Get(context.TODO(), types.NamespacedName{
-					Name:      name,
-					Namespace: namespace,
-				}, vmCluster)).To(Succeed())
-				vmCluster.Spec.VMSelect.ReplicaCount = ptr.To[int32](2)
-				vmCluster.Spec.VMStorage.ReplicaCount = ptr.To[int32](2)
-				Expect(k8sClient.Update(context.TODO(), vmCluster)).To(Succeed())
-				Eventually(func() string {
-					return expectPodCount(k8sClient, 2, namespace, vmCluster.VMStorageSelectorLabels())
-				}, 40, 1).Should(BeEmpty())
-				Eventually(func() string {
-					return expectPodCount(k8sClient, 2, namespace, vmCluster.VMSelectSelectorLabels())
-				}, 40, 1).Should(BeEmpty())
+				Eventually(func() error {
+					return k8sClient.Get(context.Background(), types.NamespacedName{
+						Name:      namespacedName.Name,
+						Namespace: namespace,
+					}, &v1beta1vm.VMCluster{})
 
-				By("vmInsert expand, expect to have 2 vmInserts")
-				vmCluster = &v1beta1vm.VMCluster{}
-				Expect(k8sClient.Get(context.TODO(), types.NamespacedName{
-					Name:      name,
+				}, 60, 1).Should(MatchError(errors.IsNotFound, "want not found error"))
+			})
+			clusterForUpdate := &v1beta1vm.VMCluster{
+				ObjectMeta: metav1.ObjectMeta{
 					Namespace: namespace,
-				}, vmCluster)).To(Succeed())
-				vmCluster.Spec.VMInsert = &v1beta1vm.VMInsert{
-					ReplicaCount: ptr.To[int32](2),
-					Resources: corev1.ResourceRequirements{
-						Requests: corev1.ResourceList{
-							corev1.ResourceMemory: resource.MustParse("128Mi"),
-							corev1.ResourceCPU:    resource.MustParse("50m"),
+				},
+				Spec: v1beta1vm.VMClusterSpec{
+					RetentionPeriod: "1",
+					VMStorage: &v1beta1vm.VMStorage{
+						CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To[int32](1),
 						},
 					},
-				}
-				Expect(k8sClient.Update(context.TODO(), vmCluster)).To(Succeed())
-				Eventually(func() string {
-					return expectPodCount(k8sClient, 2, namespace, vmCluster.VMInsertSelectorLabels())
-				}, 70, 1).Should(BeEmpty())
-
-				By("vmInsert revisionHistoryLimit update to 2")
-				vmCluster = &v1beta1vm.VMCluster{}
-				Expect(k8sClient.Get(context.TODO(), types.NamespacedName{
-					Name:      name,
-					Namespace: namespace,
-				}, vmCluster)).To(Succeed())
-				namespacedName := types.NamespacedName{Name: fmt.Sprintf("vminsert-%s", name), Namespace: namespace}
-				Eventually(func() int32 {
-					return getRevisionHistoryLimit(k8sClient, namespacedName)
-				}, 60).Should(Equal(int32(10)))
-				vmCluster.Spec.VMInsert = &v1beta1vm.VMInsert{
-					ReplicaCount:              ptr.To[int32](2),
-					RevisionHistoryLimitCount: ptr.To[int32](2),
-					Resources: corev1.ResourceRequirements{
-						Requests: corev1.ResourceList{
-							corev1.ResourceMemory: resource.MustParse("128Mi"),
-							corev1.ResourceCPU:    resource.MustParse("50m"),
+					VMSelect: &v1beta1vm.VMSelect{
+						CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To[int32](1),
 						},
 					},
-				}
-				Expect(k8sClient.Update(context.TODO(), vmCluster)).To(Succeed())
-				Eventually(func() int32 {
-					return getRevisionHistoryLimit(k8sClient, namespacedName)
-				}, 60).Should(Equal(int32(2)))
-			})
-			It("Should set pause status and skip other update operation", func() {
-				vmCluster := &v1beta1vm.VMCluster{}
-				key := types.NamespacedName{Name: name, Namespace: namespace}
-				Expect(k8sClient.Get(context.TODO(), key, vmCluster)).To(Succeed())
+					VMInsert: &v1beta1vm.VMInsert{CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
+						ReplicaCount: ptr.To[int32](1),
+					},
+					},
+				},
+			}
+			DescribeTable("should update exist cluster", func(name string, modify func(*v1beta1vm.VMCluster), verify func(*v1beta1vm.VMCluster)) {
+				namespacedName.Name = name
+				existCluster := clusterForUpdate.DeepCopy()
+				existCluster.Name = name
+				ctx = context.Background()
+				Expect(k8sClient.Create(ctx, existCluster)).To(Succeed())
+				Eventually(func() error { return expectObjectStatusOperational(ctx, k8sClient, existCluster, namespacedName) }, clusterReadyTimeout).Should(Succeed())
+				Expect(expectPodCount(k8sClient, 1, namespace, existCluster.VMStorageSelectorLabels()))
+				Expect(expectPodCount(k8sClient, 1, namespace, existCluster.VMSelectSelectorLabels()))
+				Expect(expectPodCount(k8sClient, 1, namespace, existCluster.VMInsertSelectorLabels()))
 
-				By("Set spec.Paused to true")
-				vmCluster.Spec.Paused = true
-				Expect(k8sClient.Update(context.TODO(), vmCluster)).To(Succeed())
-				Eventually(func() bool {
-					if err := k8sClient.Get(context.TODO(), key, vmCluster); err != nil {
-						return false
+				Expect(retry.RetryOnConflict(retry.DefaultRetry, func() error {
+					var toUpdate v1beta1.VMCluster
+					if err := k8sClient.Get(ctx, namespacedName, &toUpdate); err != nil {
+						return err
 					}
-					return vmCluster.Paused() && vmCluster.Status.UpdateStatus == v1beta1vm.UpdateStatusPaused
-				}, 1*time.Minute, interval).Should(BeTrue())
+					modify(&toUpdate)
+					return k8sClient.Update(ctx, &toUpdate)
+				}))
+				Eventually(func() error { return expectObjectStatusExpanding(ctx, k8sClient, existCluster, namespacedName) }, clusterReadyTimeout).Should(Succeed())
+				Eventually(func() error { return expectObjectStatusOperational(ctx, k8sClient, existCluster, namespacedName) }, clusterReadyTimeout).Should(Succeed())
+				verify(existCluster)
+			},
+				Entry("update storage and select replicas to 2", "storage-select-r-2", func(cr *v1beta1vm.VMCluster) {
+					cr.Spec.VMStorage.ReplicaCount = ptr.To[int32](2)
+					cr.Spec.VMSelect.ReplicaCount = ptr.To[int32](2)
+				}, func(cr *v1beta1vm.VMCluster) {
+					Expect(expectPodCount(k8sClient, 2, namespace, cr.VMStorageSelectorLabels())).To(BeEmpty())
+					Expect(expectPodCount(k8sClient, 2, namespace, cr.VMSelectSelectorLabels())).To(BeEmpty())
 
-				By("update replicas after cluster paused")
-				vmCluster.Spec.VMSelect.ReplicaCount = ptr.To[int32](2)
-				Expect(k8sClient.Update(context.TODO(), vmCluster)).To(Succeed())
-				// simply sleep 1 minute to ensure reconciliation performed.
-				time.Sleep(1 * time.Minute)
-				Expect(expectPodCount(k8sClient, 1, namespace, vmCluster.VMSelectPodLabels())).To(BeEmpty())
-			})
+				}),
+				Entry("update storage and insert replicas to 2", "storage-insert-r-2", func(cr *v1beta1vm.VMCluster) {
+					cr.Spec.VMStorage.ReplicaCount = ptr.To[int32](2)
+					cr.Spec.VMInsert.ReplicaCount = ptr.To[int32](2)
+				}, func(cr *v1beta1vm.VMCluster) {
+					Expect(expectPodCount(k8sClient, 2, namespace, cr.VMStorageSelectorLabels())).To(BeEmpty())
+					Eventually(func() string {
+						return expectPodCount(k8sClient, 2, namespace, cr.VMInsertSelectorLabels())
+					}, 5*time.Second).Should(BeEmpty())
+				}),
+				Entry("update storage revisionHistoryLimit to 2", "storage-revision-2", func(cr *v1beta1vm.VMCluster) {
+					cr.Spec.VMStorage.RevisionHistoryLimitCount = ptr.To[int32](2)
+				}, func(cr *v1beta1vm.VMCluster) {
+					var updatedCluster v1beta1vm.VMCluster
+					Expect(k8sClient.Get(ctx, namespacedName, &updatedCluster)).To(Succeed())
+					Expect(*updatedCluster.Spec.VMStorage.RevisionHistoryLimitCount).To(Equal(int32(2)))
+				}),
+				Entry("add clusterNative ports", "storage-native-r-2", func(cr *v1beta1vm.VMCluster) {
+					cr.Spec.VMInsert.ClusterNativePort = "8035"
+					cr.Spec.VMSelect.ClusterNativePort = "8036"
+				}, func(cr *v1beta1vm.VMCluster) {
+					var updatedSvc corev1.Service
+					Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "vmselect-" + cr.Name}, &updatedSvc)).To(Succeed())
+					Expect(len(updatedSvc.Spec.Ports)).To(Equal(2))
+					Expect(updatedSvc.Spec.Ports[1].Port).To(Equal(int32(8036)))
+					Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "vminsert-" + cr.Name}, &updatedSvc)).To(Succeed())
+					Expect(len(updatedSvc.Spec.Ports)).To(Equal(2))
+					Expect(updatedSvc.Spec.Ports[1].Port).To(Equal(int32(8035)))
 
+				}),
+			)
 		})
 	})
 })

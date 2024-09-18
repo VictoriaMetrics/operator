@@ -725,15 +725,16 @@ func (cr *VMAgent) SetUpdateStatusTo(ctx context.Context, r client.Client, statu
 	if cr.Spec.ShardCount != nil {
 		shardCnt = int32(*cr.Spec.ShardCount)
 	}
-	if equality.Semantic.DeepEqual(&cr.Status, prevStatus) {
-		return nil
-	}
-	cr.Status.UpdateStatus = status
 	cr.Status.Replicas = replicaCount
 	cr.Status.Shards = shardCnt
 	cr.Status.Selector = labels.SelectorFromSet(cr.SelectorLabels()).String()
 
-	return statusPatch(ctx, r, cr, cr.Status)
+	if equality.Semantic.DeepEqual(&cr.Status, prevStatus) && currentStatus == status {
+		return nil
+	}
+	cr.Status.UpdateStatus = status
+
+	return statusPatch(ctx, r, cr.DeepCopy(), cr.Status)
 }
 
 // GetAdditionalService returns AdditionalServiceSpec settings

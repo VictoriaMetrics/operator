@@ -503,11 +503,11 @@ func (cr *VMAlert) SetUpdateStatusTo(ctx context.Context, r client.Client, statu
 	default:
 		panic(fmt.Sprintf("BUG: not expected status=%q", status))
 	}
-	if equality.Semantic.DeepEqual(&cr.Status, prevStatus) {
+	if equality.Semantic.DeepEqual(&cr.Status, prevStatus) && currentStatus == status {
 		return nil
 	}
 	cr.Status.UpdateStatus = status
-	return statusPatch(ctx, r, cr, cr.Status)
+	return statusPatch(ctx, r, cr.DeepCopy(), cr.Status)
 }
 
 // GetAdditionalService returns AdditionalServiceSpec settings

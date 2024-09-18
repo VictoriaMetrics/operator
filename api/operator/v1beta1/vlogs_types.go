@@ -339,12 +339,12 @@ func (r *VLogs) SetUpdateStatusTo(ctx context.Context, c client.Client, status U
 	default:
 		panic(fmt.Sprintf("BUG: not expected status=%q", status))
 	}
-	if equality.Semantic.DeepEqual(&r.Status, prevStatus) {
+	if equality.Semantic.DeepEqual(&r.Status, prevStatus) && currentStatus == status {
 		return nil
 	}
 	r.Status.UpdateStatus = status
 
-	return statusPatch(ctx, c, r, r.Status)
+	return statusPatch(ctx, c, r.DeepCopy(), r.Status)
 }
 
 // GetAdditionalService returns AdditionalServiceSpec settings

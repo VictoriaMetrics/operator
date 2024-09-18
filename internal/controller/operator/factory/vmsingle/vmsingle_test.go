@@ -36,7 +36,10 @@ func TestCreateOrUpdateVMSingle(t *testing.T) {
 						Name:      "vmsingle-base",
 						Namespace: "default",
 					},
-					Spec: vmv1beta1.VMSingleSpec{ReplicaCount: ptr.To(int32(1))},
+					Spec: vmv1beta1.VMSingleSpec{
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To(int32(1))},
+					},
 				},
 			},
 			predefinedObjects: []runtime.Object{
@@ -64,7 +67,8 @@ func TestCreateOrUpdateVMSingle(t *testing.T) {
 							GraphitePort:     "8053",
 							OpenTSDBPort:     "8054",
 						},
-						ReplicaCount: ptr.To(int32(1)),
+						CommonApplicationDeploymentParams: vmv1beta1.CommonApplicationDeploymentParams{
+							ReplicaCount: ptr.To(int32(1))},
 					},
 				},
 			},
@@ -81,7 +85,7 @@ func TestCreateOrUpdateVMSingle(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			err := CreateOrUpdateVMSingle(context.TODO(), tt.args.cr, fclient, tt.args.c)
+			err := CreateOrUpdateVMSingle(context.TODO(), tt.args.cr, fclient)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CreateOrUpdateVMSingle() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -93,8 +97,6 @@ func TestCreateOrUpdateVMSingle(t *testing.T) {
 func TestCreateOrUpdateVMSingleService(t *testing.T) {
 	type args struct {
 		cr *vmv1beta1.VMSingle
-
-		c *config.BaseOperatorConf
 	}
 	tests := []struct {
 		name              string
@@ -107,7 +109,6 @@ func TestCreateOrUpdateVMSingleService(t *testing.T) {
 		{
 			name: "base service test",
 			args: args{
-				c: config.MustGetBaseConfig(),
 				cr: &vmv1beta1.VMSingle{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "single-1",
@@ -126,7 +127,6 @@ func TestCreateOrUpdateVMSingleService(t *testing.T) {
 		{
 			name: "base service test-with ports",
 			args: args{
-				c: config.MustGetBaseConfig(),
 				cr: &vmv1beta1.VMSingle{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "single-1",
@@ -153,7 +153,6 @@ func TestCreateOrUpdateVMSingleService(t *testing.T) {
 		{
 			name: "with extra service nodePort",
 			args: args{
-				c: config.MustGetBaseConfig(),
 				cr: &vmv1beta1.VMSingle{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "single-1",
@@ -196,7 +195,7 @@ func TestCreateOrUpdateVMSingleService(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fclient := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			got, err := CreateOrUpdateVMSingleService(context.TODO(), tt.args.cr, fclient, tt.args.c)
+			got, err := CreateOrUpdateVMSingleService(context.TODO(), tt.args.cr, fclient)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CreateOrUpdateVMSingleService() error = %v, wantErr %v", err, tt.wantErr)
 				return

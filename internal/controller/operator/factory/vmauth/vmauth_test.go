@@ -6,8 +6,9 @@ import (
 
 	vmv1beta1 "github.com/VictoriaMetrics/operator/api/operator/v1beta1"
 	"github.com/VictoriaMetrics/operator/internal/config"
+	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/build"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
-	"github.com/google/go-cmp/cmp"
+	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -150,7 +151,8 @@ func TestCreateOrUpdateVMAuth(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
 			tc := k8stools.GetTestClientWithObjects(tt.predefinedObjects)
-			if err := CreateOrUpdateVMAuth(ctx, tt.args.cr, tc, tt.args.c); (err != nil) != tt.wantErr {
+			// TODO fix
+			if err := CreateOrUpdateVMAuth(ctx, tt.args.cr, tc); (err != nil) != tt.wantErr {
 				t.Errorf("CreateOrUpdateVMAuth() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -158,11 +160,12 @@ func TestCreateOrUpdateVMAuth(t *testing.T) {
 }
 
 func TestMakeSpecForAuthOk(t *testing.T) {
-	f := func(t *testing.T, cr *vmv1beta1.VMAuth, c *config.BaseOperatorConf, wantYaml string) {
+	f := func(t *testing.T, cr *vmv1beta1.VMAuth, wantYaml string) {
 		t.Helper()
-		setDefaultForVMAuth(cr, c)
 
-		// this trick allows to omit empty fields for yaml
+		scheme := k8stools.GetTestClientWithObjects(nil).Scheme()
+		build.AddDefaults(scheme)
+		scheme.Default(cr)
 		var wantSpec corev1.PodSpec
 		if err := yaml.Unmarshal([]byte(wantYaml), &wantSpec); err != nil {
 			t.Fatalf("not expected wantYaml: %q: \n%q", wantYaml, err)
@@ -171,7 +174,7 @@ func TestMakeSpecForAuthOk(t *testing.T) {
 		if err != nil {
 			t.Fatalf("BUG: cannot parse as yaml: %q", err)
 		}
-		got, err := makeSpecForVMAuth(cr, c)
+		got, err := makeSpecForVMAuth(cr)
 		if err != nil {
 			t.Fatalf("not expected error=%q", err)
 		}
@@ -179,30 +182,27 @@ func TestMakeSpecForAuthOk(t *testing.T) {
 		if err != nil {
 			t.Fatalf("cannot parse got as yaml: %q", err)
 		}
+		assert.Equal(t, string(wantYAMLForCompare), string(gotYAML))
+	}
 
-		// compare yaml output instead of structs, since structs could be modified by marshal/unmarshal callbacks
-		if !cmp.Equal(string(gotYAML), string(wantYAMLForCompare)) {
-			diff := cmp.Diff(wantSpec, got.Spec)
-			t.Fatalf("not expected output for test, diff is %s", diff)
-		}
-	}
-	testConfBuild := func(setup func(c *config.BaseOperatorConf)) *config.BaseOperatorConf {
-		c := *config.MustGetBaseConfig()
-		setup(&c)
-		return &c
-	}
 	t.Run("custom-loader", func(t *testing.T) {
 		f(t, &vmv1beta1.VMAuth{
 			ObjectMeta: metav1.ObjectMeta{Name: "auth", Namespace: "default"},
-			Spec:       vmv1beta1.VMAuthSpec{},
-		}, testConfBuild(func(c *config.BaseOperatorConf) {
-			c.VMAuthDefault.UseDefaultResources = false
-			c.VMAuthDefault.Image = "vm-repo"
-			c.VMAuthDefault.Version = "v1.97.1"
-			c.VMAuthDefault.Port = "8429"
-			c.UseCustomConfigReloader = true
-			c.CustomConfigReloaderImage = "vmcustom:config-reloader-v0.35.0"
-		}), `
+			Spec: vmv1beta1.VMAuthSpec{
+				CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+					UseDefaultResources: ptr.To(false),
+					Image: vmv1beta1.Image{
+						Repository: "vm-repo",
+						Tag:        "v1.97.1",
+					},
+					Port: "8429",
+				},
+				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
+					UseCustomConfigReloader: ptr.To(true),
+					ConfigReloaderImageTag:  "vmcustom:config-reloader-v0.35.0",
+				},
+			},
+		}, `
 volumes:
   - name: config-out
     volumesource:
@@ -325,15 +325,21 @@ serviceaccountname: vmauth-auth
 	t.Run("no-custom-loader", func(t *testing.T) {
 		f(t, &vmv1beta1.VMAuth{
 			ObjectMeta: metav1.ObjectMeta{Name: "auth", Namespace: "default"},
-			Spec:       vmv1beta1.VMAuthSpec{},
-		}, testConfBuild(func(c *config.BaseOperatorConf) {
-			c.VMAuthDefault.UseDefaultResources = false
-			c.VMAuthDefault.Image = "vm-repo"
-			c.VMAuthDefault.Version = "v1.97.1"
-			c.VMAuthDefault.Port = "8429"
-			c.VMAuthDefault.ConfigReloadImage = "quay.io/prometheus-operator/prometheus-config-reloader:v1"
-			c.UseCustomConfigReloader = false
-		}), `
+			Spec: vmv1beta1.VMAuthSpec{
+				CommonDefaultableParams: vmv1beta1.CommonDefaultableParams{
+					UseDefaultResources: ptr.To(false),
+					Image: vmv1beta1.Image{
+						Repository: "vm-repo",
+						Tag:        "v1.97.1",
+					},
+					Port: "8429",
+				},
+				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
+					ConfigReloaderImageTag:  "quay.io/prometheus-operator/prometheus-config-reloader:v1",
+					UseCustomConfigReloader: ptr.To(false),
+				},
+			},
+		}, `
 volumes:
   - name: config-out
     volumesource:
@@ -434,20 +440,4 @@ serviceaccountname: vmauth-auth
 
 `)
 	})
-}
-
-func setDefaultForVMAuth(cr *vmv1beta1.VMAuth, c *config.BaseOperatorConf) {
-	// inject default
-	if cr.Spec.Image.Repository == "" {
-		cr.Spec.Image.Repository = c.VMAuthDefault.Image
-	}
-	if cr.Spec.Image.Tag == "" {
-		cr.Spec.Image.Tag = c.VMAuthDefault.Version
-	}
-	if cr.Spec.Image.PullPolicy == "" {
-		cr.Spec.Image.PullPolicy = corev1.PullIfNotPresent
-	}
-	if cr.Spec.Port == "" {
-		cr.Spec.Port = c.VMAuthDefault.Port
-	}
 }

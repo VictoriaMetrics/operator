@@ -91,6 +91,7 @@ func (r *VMAlertmanagerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		if err := alertmanager.CreateOrUpdateAlertManager(ctx, instance, r); err != nil {
 			return result, err
 		}
+
 		service, err := alertmanager.CreateOrUpdateAlertManagerService(ctx, instance, r)
 		if err != nil {
 			return result, err

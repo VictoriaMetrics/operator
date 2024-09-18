@@ -486,11 +486,11 @@ func (cr *VMAlertmanager) SetUpdateStatusTo(ctx context.Context, r client.Client
 	default:
 		panic(fmt.Sprintf("BUG: not expected status=%q", status))
 	}
-	if equality.Semantic.DeepEqual(&cr.Status, prevStatus) {
+	if equality.Semantic.DeepEqual(&cr.Status, prevStatus) && currentStatus == status {
 		return nil
 	}
 	cr.Status.UpdateStatus = status
-	if err := statusPatch(ctx, r, cr, cr.Status); err != nil {
+	if err := statusPatch(ctx, r, cr.DeepCopy(), cr.Status); err != nil {
 		return fmt.Errorf("cannot patch status: %w", err)
 	}
 	return nil

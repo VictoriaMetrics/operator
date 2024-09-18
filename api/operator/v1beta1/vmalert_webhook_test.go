@@ -23,7 +23,9 @@ func TestVMAlert_sanityCheck(t *testing.T) {
 			name: "with notifier blackhole",
 			spec: VMAlertSpec{
 				Datasource: VMAlertDatasourceSpec{URL: "http://some-url"},
-				ExtraArgs:  map[string]string{"notifier.blackhole": "true"},
+				CommonApplicationDeploymentParams: CommonApplicationDeploymentParams{
+					ExtraArgs: map[string]string{"notifier.blackhole": "true"},
+				},
 			},
 			wantErr: false,
 		},

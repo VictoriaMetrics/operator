@@ -1,6 +1,7 @@
 package v1beta1
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"path"
@@ -14,6 +15,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -1015,4 +1017,238 @@ func parseLastAppliedSpec[T any](cr client.Object) (*T, error) {
 		return nil, fmt.Errorf("cannot parse last applied spec annotation=%q, remove this annotation manually from object : %w", lastAppliedSpecAnnotationName, err)
 	}
 	return &prevSpec, nil
+}
+
+// CommonDefaultableParams contains Application settings
+// with known values populated from operator configuration
+type CommonDefaultableParams struct {
+	// Image - docker image settings
+	// if no specified operator uses default version from operator config
+	// +optional
+	Image Image `json:"image,omitempty"`
+	// Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+	// if not defined default resources from operator config will be used
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resources",xDescriptors="urn:alm:descriptor:com.tectonic.ui:resourceRequirements"
+	// +optional
+	Resources v1.ResourceRequirements `json:"resources,omitempty"`
+	// UseDefaultResources controls resource settings
+	// By default, operator sets built-in resource requirements
+	// +optional
+	UseDefaultResources *bool `json:"useDefaultResources,omitempty"`
+	// Port listen address
+	// +optional
+	Port string `json:"port,omitempty"`
+	// UseStrictSecurity enables strict security mode for component
+	// it restricts disk writes access
+	// uses non-root user out of the box
+	// drops not needed security permissions
+	// +optional
+	UseStrictSecurity *bool `json:"useStrictSecurity,omitempty"`
+	// DisableSelfServiceScrape controls creation of VMServiceScrape by operator
+	// for the application.
+	// Has priority over `VM_DISABLESELFSERVICESCRAPECREATION` operator env variable
+	DisableSelfServiceScrape *bool `json:"disableSelfServiceScrape,omitempty"`
+}
+
+type CommonConfigReloaderParams struct {
+	// UseCustomConfigReloader replaces prometheus-like config-reloader
+	// with vm one. It uses secrets watch instead of file watch
+	// which greatly increases speed of config updates
+	UseCustomConfigReloader *bool `json:"useCustomConfigReloader,omitempty"`
+	// ConfigReloaderImageTag defines image:tag for config-reloader container
+	ConfigReloaderImageTag string `json:"configReloaderImageTag,omitempty"`
+	// ConfigReloaderResources config-reloader container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+	// if not defined default resources from operator config will be used
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resources",xDescriptors="urn:alm:descriptor:com.tectonic.ui:resourceRequirements"
+	ConfigReloaderResources v1.ResourceRequirements `json:"configReloaderResources,omitempty"`
+	// ConfigReloaderExtraArgs that will be passed to  VMAuths config-reloader container
+	// for example resyncInterval: "30s"
+	// +optional
+	ConfigReloaderExtraArgs map[string]string `json:"configReloaderExtraArgs,omitempty"`
+}
+
+// CommonApplicationDeploymentParams defines common params
+// for deployment and statefulset specifications
+type CommonApplicationDeploymentParams struct {
+	// Affinity If specified, the pod's scheduling constraints.
+	// +optional
+	Affinity *v1.Affinity `json:"affinity,omitempty"`
+	// Tolerations If specified, the pod's tolerations.
+	// +optional
+	Tolerations []v1.Toleration `json:"tolerations,omitempty"`
+	// SchedulerName - defines kubernetes scheduler name
+	// +optional
+	SchedulerName string `json:"schedulerName,omitempty"`
+	// RuntimeClassName - defines runtime class for kubernetes pod.
+	// https://kubernetes.io/docs/concepts/containers/runtime-class/
+	// +optional
+	RuntimeClassName *string `json:"runtimeClassName,omitempty"`
+	// HostAliases provides mapping for ip and hostname,
+	// that would be propagated to pod,
+	// cannot be used with HostNetwork.
+	// +optional
+	HostAliases []v1.HostAlias `json:"hostAliases,omitempty"`
+	// HostAliasesUnderScore provides mapping for ip and hostname,
+	// that would be propagated to pod,
+	// cannot be used with HostNetwork.
+	// Has Priority over hostAliases field
+	// +optional
+	HostAliasesUnderScore []v1.HostAlias `json:"host_aliases,omitempty"`
+	// PriorityClassName class assigned to the Pods
+	// +optional
+	PriorityClassName string `json:"priorityClassName,omitempty"`
+	// HostNetwork controls whether the pod may use the node network namespace
+	// +optional
+	HostNetwork bool `json:"hostNetwork,omitempty"`
+	// DNSPolicy sets DNS policy for the pod
+	// +optional
+	DNSPolicy v1.DNSPolicy `json:"dnsPolicy,omitempty"`
+	// Specifies the DNS parameters of a pod.
+	// Parameters specified here will be merged to the generated DNS
+	// configuration based on DNSPolicy.
+	// +optional
+	DNSConfig *v1.PodDNSConfig `json:"dnsConfig,omitempty"`
+	// NodeSelector Define which Nodes the Pods are scheduled on.
+	// +optional
+	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
+	// SecurityContext holds pod-level security attributes and common container settings.
+	// This defaults to the default PodSecurityContext.
+	// +optional
+	SecurityContext *SecurityContext `json:"securityContext,omitempty"`
+	// TopologySpreadConstraints embedded kubernetes pod configuration option,
+	// controls how pods are spread across your cluster among failure-domains
+	// such as regions, zones, nodes, and other user-defined topology domains
+	// https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/
+	// +optional
+	TopologySpreadConstraints []v1.TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
+	// ImagePullSecrets An optional list of references to secrets in the same namespace
+	// to use for pulling images from registries
+	// see https://kubernetes.io/docs/concepts/containers/images/#referring-to-an-imagepullsecrets-on-a-pod
+	// +optional
+	ImagePullSecrets []v1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
+	// TerminationGracePeriodSeconds period for container graceful termination
+	// +optional
+	TerminationGracePeriodSeconds *int64 `json:"terminationGracePeriodSeconds,omitempty"`
+	// ReadinessGates defines pod readiness gates
+	ReadinessGates []v1.PodReadinessGate `json:"readinessGates,omitempty"`
+	// MinReadySeconds defines a minim number os seconds to wait before starting update next pod
+	// if previous in healthy state
+	// Has no effect for VLogs and VMSingle
+	// +optional
+	MinReadySeconds int32 `json:"minReadySeconds,omitempty"`
+	// ReplicaCount is the expected size of the Application.
+	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Number of pods",xDescriptors="urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom"
+	// +optional
+	ReplicaCount *int32 `json:"replicaCount,omitempty"`
+	// The number of old ReplicaSets to retain to allow rollback in deployment or
+	// maximum number of revisions that will be maintained in the Deployment revision history.
+	// Has no effect at StatefulSets
+	// Defaults to 10.
+	// +optional
+	RevisionHistoryLimitCount *int32 `json:"revisionHistoryLimitCount,omitempty"`
+
+	// ServiceAccountName is the name of the ServiceAccount to use to run the pods
+	// +optional
+	ServiceAccountName string `json:"serviceAccountName,omitempty"`
+	// Containers property allows to inject additions sidecars or to patch existing containers.
+	// It can be useful for proxies, backup, etc.
+	// +optional
+	Containers []v1.Container `json:"containers,omitempty"`
+	// InitContainers allows adding initContainers to the pod definition.
+	// Any errors during the execution of an initContainer will lead to a restart of the Pod.
+	// More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
+	// +optional
+	InitContainers []v1.Container `json:"initContainers,omitempty"`
+	// Secrets is a list of Secrets in the same namespace as the Application
+	// object, which shall be mounted into the Application container
+	// at /etc/vm/secrets/SECRET_NAME folder
+	// +optional
+	Secrets []string `json:"secrets,omitempty"`
+	// ConfigMaps is a list of ConfigMaps in the same namespace as the Application
+	// object, which shall be mounted into the Application container
+	// at /etc/vm/configs/CONFIGMAP_NAME folder
+	// +optional
+	ConfigMaps []string `json:"configMaps,omitempty"`
+	// Volumes allows configuration of additional volumes on the output Deployment/StatefulSet definition.
+	// Volumes specified will be appended to other volumes that are generated.
+	/// +optional
+	Volumes []v1.Volume `json:"volumes,omitempty"`
+	// VolumeMounts allows configuration of additional VolumeMounts on the output Deployment/StatefulSet definition.
+	// VolumeMounts specified will be appended to other VolumeMounts in the Application container
+	// +optional
+	VolumeMounts []v1.VolumeMount `json:"volumeMounts,omitempty"`
+	// ExtraArgs that will be passed to the application container
+	// for example remoteWrite.tmpDataPath: /tmp
+	// +optional
+	ExtraArgs map[string]string `json:"extraArgs,omitempty"`
+	// ExtraEnvs that will be passed to the application container
+	// +optional
+	ExtraEnvs []v1.EnvVar `json:"extraEnvs,omitempty"`
+	// Paused If set to true all actions on the underlying managed objects are not
+	// going to be performed, except for delete actions.
+	// +optional
+	Paused bool `json:"paused,omitempty"`
+}
+
+// SecurityContext extends PodSecurityContext with ContainerSecurityContext
+// It allows to globally configure security params for pod and all containers
+type SecurityContext struct {
+	*v1.PodSecurityContext    `json:",inline"`
+	*ContainerSecurityContext `json:",inline"`
+}
+
+// ContainerSecurityContext defines security context for each application container
+type ContainerSecurityContext struct {
+	// Run containers in privileged mode.
+	// Processes in privileged containers are essentially equivalent to root on the host.
+	// Note that this field cannot be set when spec.os.name is windows.
+	// +optional
+	Privileged *bool `json:"privileged,omitempty"`
+	// The capabilities to add/drop when running containers.
+	// Defaults to the default set of capabilities granted by the container runtime.
+	// Note that this field cannot be set when spec.os.name is windows.
+	// +optional
+	Capabilities *v1.Capabilities `json:"capabilities,omitempty"`
+	// Whether this containers has a read-only root filesystem.
+	// Default is false.
+	// Note that this field cannot be set when spec.os.name is windows.
+	// +optional
+	ReadOnlyRootFilesystem *bool `json:"readOnlyRootFilesystem,omitempty"`
+	// AllowPrivilegeEscalation controls whether a process can gain more
+	// privileges than its parent process. This bool directly controls if
+	// the no_new_privs flag will be set on the container process.
+	// AllowPrivilegeEscalation is true always when the container is:
+	// 1) run as Privileged
+	// 2) has CAP_SYS_ADMIN
+	// Note that this field cannot be set when spec.os.name is windows.
+	// +optional
+	AllowPrivilegeEscalation *bool `json:"allowPrivilegeEscalation,omitempty"`
+	// procMount denotes the type of proc mount to use for the containers.
+	// The default is DefaultProcMount which uses the container runtime defaults for
+	// readonly paths and masked paths.
+	// This requires the ProcMountType feature flag to be enabled.
+	// Note that this field cannot be set when spec.os.name is windows.
+	// +optional
+	ProcMount *v1.ProcMountType `json:"procMount,omitempty"`
+}
+
+func statusPatch(ctx context.Context, rclient client.Client, object client.Object, st interface{}) error {
+	type patch struct {
+		OP    string      `json:"op"`
+		Path  string      `json:"path"`
+		Value interface{} `json:"value"`
+	}
+	ops := []patch{
+		{
+			OP:    "replace",
+			Path:  "/status",
+			Value: st,
+		},
+	}
+	data, err := json.Marshal(ops)
+	if err != nil {
+		return fmt.Errorf("possible bug, cannot serialize specification as json :%w", err)
+	}
+	pr := client.RawPatch(types.JSONPatchType, data)
+	return rclient.Status().Patch(ctx, object, pr)
 }

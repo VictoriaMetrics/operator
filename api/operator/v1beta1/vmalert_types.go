@@ -35,26 +35,6 @@ type VMAlertSpec struct {
 	ParsedLastAppliedSpec *VMAlertSpec `json:"-" yaml:"-"`
 	// PodMetadata configures Labels and Annotations which are propagated to the VMAlert pods.
 	PodMetadata *EmbeddedObjectMetadata `json:"podMetadata,omitempty"`
-	// Image - docker image settings for VMAlert
-	// if no specified operator uses default config version
-	// +optional
-	Image Image `json:"image,omitempty"`
-	// ImagePullSecrets An optional list of references to secrets in the same namespace
-	// to use for pulling images from registries
-	// see https://kubernetes.io/docs/concepts/containers/images/#referring-to-an-imagepullsecrets-on-a-pod
-	// +optional
-	ImagePullSecrets []v1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
-
-	// Secrets is a list of Secrets in the same namespace as the VMAlert
-	// object, which shall be mounted into the VMAlert Pods.
-	// The Secrets are mounted into /etc/vm/secrets/<secret-name>.
-	// +optional
-	Secrets []string `json:"secrets,omitempty"`
-	// ConfigMaps is a list of ConfigMaps in the same namespace as the VMAlert
-	// object, which shall be mounted into the VMAlert Pods.
-	// The ConfigMaps are mounted into /etc/vm/configs/<configmap-name>.
-	// +optional
-	ConfigMaps []string `json:"configMaps,omitempty"`
 	// LogFormat for VMAlert to be configured with.
 	// default or json
 	// +optional
@@ -64,90 +44,6 @@ type VMAlertSpec struct {
 	// +optional
 	// +kubebuilder:validation:Enum=INFO;WARN;ERROR;FATAL;PANIC
 	LogLevel string `json:"logLevel,omitempty"`
-	// MinReadySeconds defines a minim number os seconds to wait before starting update next pod
-	// if previous in healthy state
-	// +optional
-	MinReadySeconds int32 `json:"minReadySeconds,omitempty"`
-	// ReplicaCount is the expected size of the VMAlert cluster. The controller will
-	// eventually make the size of the running cluster equal to the expected
-	// size.
-	// +optional
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Number of pods",xDescriptors="urn:alm:descriptor:com.tectonic.ui:podCount,urn:alm:descriptor:io.kubernetes:custom"
-	ReplicaCount *int32 `json:"replicaCount,omitempty"`
-	// The number of old ReplicaSets to retain to allow rollback in deployment or
-	// maximum number of revisions that will be maintained in the StatefulSet's revision history.
-	// Defaults to 10.
-	// +optional
-	RevisionHistoryLimitCount *int32 `json:"revisionHistoryLimitCount,omitempty"`
-	// Volumes allows configuration of additional volumes on the output Deployment definition.
-	// Volumes specified will be appended to other volumes that are generated as a result of
-	// StorageSpec objects.
-	// +optional
-	Volumes []v1.Volume `json:"volumes,omitempty"`
-	// VolumeMounts allows configuration of additional VolumeMounts on the output Deployment definition.
-	// VolumeMounts specified will be appended to other VolumeMounts in the VMAlert container,
-	// that are generated as a result of StorageSpec objects.
-	// +optional
-	VolumeMounts []v1.VolumeMount `json:"volumeMounts,omitempty"`
-	// Resources container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
-	// +operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Resources",xDescriptors="urn:alm:descriptor:com.tectonic.ui:resourceRequirements"
-	// +optional
-	Resources v1.ResourceRequirements `json:"resources,omitempty"`
-	// Affinity If specified, the pod's scheduling constraints.
-	// +optional
-	Affinity *v1.Affinity `json:"affinity,omitempty"`
-	// Tolerations If specified, the pod's tolerations.
-	// +optional
-	Tolerations []v1.Toleration `json:"tolerations,omitempty"`
-	// SecurityContext holds pod-level security attributes and common container settings.
-	// This defaults to the default PodSecurityContext.
-	// +optional
-	SecurityContext *v1.PodSecurityContext `json:"securityContext,omitempty"`
-	// ServiceAccountName is the name of the ServiceAccount to use to run the
-	// VMAlert Pods.
-	// +optional
-	ServiceAccountName string `json:"serviceAccountName,omitempty"`
-	// SchedulerName - defines kubernetes scheduler name
-	// +optional
-	SchedulerName string `json:"schedulerName,omitempty"`
-	// RuntimeClassName - defines runtime class for kubernetes pod.
-	// https://kubernetes.io/docs/concepts/containers/runtime-class/
-	// +optional
-	RuntimeClassName *string `json:"runtimeClassName,omitempty"`
-	// HostAliases provides mapping between ip and hostnames,
-	// that would be propagated to pod,
-	// cannot be used with HostNetwork.
-	// +optional
-	HostAliases []v1.HostAlias `json:"host_aliases,omitempty"`
-	// Containers property allows to inject additions sidecars or to patch existing containers.
-	// It can be useful for proxies, backup, etc.
-	// +optional
-	Containers []v1.Container `json:"containers,omitempty"`
-	// InitContainers allows adding initContainers to the pod definition. Those can be used to e.g.
-	// fetch secrets for injection into the VMAlert configuration from external sources. Any
-	// errors during the execution of an initContainer will lead to a restart of the Pod. More info: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
-	// Using initContainers for any use case other then secret fetching is entirely outside the scope
-	// of what the maintainers will support and by doing so, you accept that this behaviour may break
-	// at any time without notice.
-	// +optional
-	InitContainers []v1.Container `json:"initContainers,omitempty"`
-
-	// Priority class assigned to the Pods
-	// +optional
-	PriorityClassName string `json:"priorityClassName,omitempty"`
-
-	// HostNetwork controls whether the pod may use the node network namespace
-	// +optional
-	HostNetwork bool `json:"hostNetwork,omitempty"`
-	// DNSPolicy sets DNS policy for the pod
-	// +optional
-	DNSPolicy v1.DNSPolicy `json:"dnsPolicy,omitempty"`
-	// TopologySpreadConstraints embedded kubernetes pod configuration option,
-	// controls how pods are spread across your cluster among failure-domains
-	// such as regions, zones, nodes, and other user-defined topology domains
-	// https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/
-	// +optional
-	TopologySpreadConstraints []v1.TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
 
 	// EvaluationInterval defines how often to evaluate rules by default
 	// +optional
@@ -177,10 +73,6 @@ type VMAlertSpec struct {
 	// NamespaceSelector nil - only objects at VMAlert namespace.
 	// +optional
 	RuleNamespaceSelector *metav1.LabelSelector `json:"ruleNamespaceSelector,omitempty"`
-
-	// Port for listen
-	// +optional
-	Port string `json:"port,omitempty"`
 
 	// Notifier prometheus alertmanager endpoint spec. Required at least one of notifier or notifiers when there are alerting rules. e.g. http://127.0.0.1:9093
 	// If specified both notifier and notifiers, notifier will be added as last element to notifiers.
@@ -228,18 +120,6 @@ type VMAlertSpec struct {
 	// Datasource Victoria Metrics or VMSelect url. Required parameter. e.g. http://127.0.0.1:8428
 	Datasource VMAlertDatasourceSpec `json:"datasource"`
 
-	// ConfigReloaderExtraArgs that will be passed to  VMAuths config-reloader container
-	// for example resyncInterval: "30s"
-	// +optional
-	ConfigReloaderExtraArgs map[string]string `json:"configReloaderExtraArgs,omitempty"`
-
-	// ExtraArgs that will be passed to  VMAlert pod
-	// for example -remoteWrite.tmpDataPath=/tmp
-	// +optional
-	ExtraArgs map[string]string `json:"extraArgs,omitempty"`
-	// ExtraEnvs that will be added to VMAlert pod
-	// +optional
-	ExtraEnvs []v1.EnvVar `json:"extraEnvs,omitempty"`
 	// ExternalLabels in the form 'name: value' to add to all generated recording rules and alerts.
 	// +optional
 	ExternalLabels map[string]string `json:"externalLabels,omitempty"`
@@ -262,26 +142,6 @@ type VMAlertSpec struct {
 	// +optional
 	PodDisruptionBudget *EmbeddedPodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
 	*EmbeddedProbes     `json:",inline"`
-	// NodeSelector Define which Nodes the Pods are scheduled on.
-	// +optional
-	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
-	// TerminationGracePeriodSeconds period for container graceful termination
-	// +optional
-	TerminationGracePeriodSeconds *int64 `json:"terminationGracePeriodSeconds,omitempty"`
-	// Specifies the DNS parameters of a pod.
-	// Parameters specified here will be merged to the generated DNS
-	// configuration based on DNSPolicy.
-	// +optional
-	DNSConfig *v1.PodDNSConfig `json:"dnsConfig,omitempty"`
-	// ReadinessGates defines pod readiness gates
-	ReadinessGates []v1.PodReadinessGate `json:"readinessGates,omitempty"`
-	// UseStrictSecurity enables strict security mode for component
-	// it restricts disk writes access
-	// uses non-root user out of the box
-	// drops not needed security permissions
-	// +optional
-	UseStrictSecurity *bool `json:"useStrictSecurity,omitempty"`
-
 	// License allows to configure license key to be used for enterprise features.
 	// Using license key is supported starting from VictoriaMetrics v1.94.0.
 	// See [here](https://docs.victoriametrics.com/enterprise)
@@ -291,7 +151,10 @@ type VMAlertSpec struct {
 	// Paused If set to true all actions on the underlying managed objects are not
 	// going to be performed, except for delete actions.
 	// +optional
-	Paused bool `json:"paused,omitempty"`
+	Paused                            bool `json:"paused,omitempty"`
+	CommonDefaultableParams           `json:",inline,omitempty"`
+	CommonConfigReloaderParams        `json:",inline,omitempty"`
+	CommonApplicationDeploymentParams `json:",inline,omitempty"`
 }
 
 // UnmarshalJSON implements json.Unmarshaler interface
@@ -625,7 +488,6 @@ func (cr *VMAlert) Paused() bool {
 func (cr *VMAlert) SetUpdateStatusTo(ctx context.Context, r client.Client, status UpdateStatus, maybeErr error) error {
 	currentStatus := cr.Status.UpdateStatus
 	prevStatus := cr.Status.DeepCopy()
-	cr.Status.UpdateStatus = status
 	switch status {
 	case UpdateStatusExpanding:
 	case UpdateStatusFailed:
@@ -644,10 +506,8 @@ func (cr *VMAlert) SetUpdateStatusTo(ctx context.Context, r client.Client, statu
 	if equality.Semantic.DeepEqual(&cr.Status, prevStatus) {
 		return nil
 	}
-	if err := r.Status().Update(ctx, cr); err != nil {
-		return fmt.Errorf("failed to update object status to=%q: %w", status, err)
-	}
-	return nil
+	cr.Status.UpdateStatus = status
+	return statusPatch(ctx, r, cr, cr.Status)
 }
 
 // GetAdditionalService returns AdditionalServiceSpec settings

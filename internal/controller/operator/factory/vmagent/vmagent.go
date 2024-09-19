@@ -587,7 +587,7 @@ func makeSpecForVMAgent(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) (*c
 		operatorContainers = append(operatorContainers, configReloader)
 		if !cr.Spec.IngestOnlyMode {
 			ic = append(ic,
-				buildInitConfigContainer(ptr.Deref(cr.Spec.UseCustomConfigReloader, false), cr.Spec.ConfigReloaderImageTag, cr.Spec.ConfigReloaderResources, configReloader.Args)...)
+				buildInitConfigContainer(ptr.Deref(cr.Spec.UseVMConfigReloader, false), cr.Spec.ConfigReloaderImageTag, cr.Spec.ConfigReloaderResources, configReloader.Args)...)
 			if len(cr.Spec.InitContainers) > 0 {
 				var err error
 				build.AddStrictSecuritySettingsToContainers(cr.Spec.SecurityContext, ic, useStrictSecurity)
@@ -1253,7 +1253,7 @@ func buildRemoteWrites(cr *vmv1beta1.VMAgent, ssCache *scrapesSecretsCache) []st
 
 func buildConfigReloaderContainer(cr *vmv1beta1.VMAgent) corev1.Container {
 	var configReloadVolumeMounts []corev1.VolumeMount
-	useCustomConfigReloader := ptr.Deref(cr.Spec.UseCustomConfigReloader, false)
+	useCustomConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, false)
 	if !cr.Spec.IngestOnlyMode {
 		configReloadVolumeMounts = append(configReloadVolumeMounts,
 			corev1.VolumeMount{
@@ -1320,7 +1320,7 @@ func buildConfigReloaderArgs(cr *vmv1beta1.VMAgent) []string {
 	args := []string{
 		fmt.Sprintf("--reload-url=%s", vmv1beta1.BuildReloadPathWithPort(cr.Spec.ExtraArgs, cr.Spec.Port)),
 	}
-	useCustomConfigReloader := ptr.Deref(cr.Spec.UseCustomConfigReloader, false)
+	useCustomConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, false)
 
 	if !cr.Spec.IngestOnlyMode {
 		args = append(args, fmt.Sprintf("--config-envsubst-file=%s", path.Join(vmAgentConOfOutDir, configEnvsubstFilename)))

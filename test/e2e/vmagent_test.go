@@ -87,7 +87,7 @@ var _ = Describe("test  vmagent Controller", func() {
 						},
 						Spec: operator.VMAgentSpec{
 							CommonConfigReloaderParams: operator.CommonConfigReloaderParams{
-								UseCustomConfigReloader: ptr.To(true),
+								UseVMConfigReloader: ptr.To(true),
 							},
 							CommonDefaultableParams: operator.CommonDefaultableParams{
 								UseStrictSecurity:   ptr.To(true),

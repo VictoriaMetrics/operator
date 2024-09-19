@@ -479,11 +479,11 @@ func addDefaultsToCommonParams(common *vmv1beta1.CommonDefaultableParams, appDef
 
 func addDefaluesToConfigReloader(common *vmv1beta1.CommonConfigReloaderParams, useDefaultResources bool, appDefaults *config.ApplicationDefaults) {
 	c := getCfg()
-	if common.UseCustomConfigReloader == nil && c.UseCustomConfigReloader {
-		common.UseCustomConfigReloader = &c.UseCustomConfigReloader
+	if common.UseVMConfigReloader == nil && c.UseCustomConfigReloader {
+		common.UseVMConfigReloader = &c.UseCustomConfigReloader
 	}
 	if common.ConfigReloaderImageTag == "" {
-		if ptr.Deref(common.UseCustomConfigReloader, false) {
+		if ptr.Deref(common.UseVMConfigReloader, false) {
 			common.ConfigReloaderImageTag = c.CustomConfigReloaderImage
 		} else {
 			common.ConfigReloaderImageTag = appDefaults.ConfigReloadImage

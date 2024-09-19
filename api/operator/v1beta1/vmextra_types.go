@@ -1051,10 +1051,10 @@ type CommonDefaultableParams struct {
 }
 
 type CommonConfigReloaderParams struct {
-	// UseCustomConfigReloader replaces prometheus-like config-reloader
+	// UseVMConfigReloader replaces prometheus-like config-reloader
 	// with vm one. It uses secrets watch instead of file watch
 	// which greatly increases speed of config updates
-	UseCustomConfigReloader *bool `json:"useCustomConfigReloader,omitempty"`
+	UseVMConfigReloader *bool `json:"useVMConfigReloader,omitempty"`
 	// ConfigReloaderImageTag defines image:tag for config-reloader container
 	ConfigReloaderImageTag string `json:"configReloaderImageTag,omitempty"`
 	// ConfigReloaderResources config-reloader container resource request and limits, https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/

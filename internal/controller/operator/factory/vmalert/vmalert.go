@@ -941,7 +941,7 @@ func buildConfigReloaderContainer(dst []corev1.Container, cr *vmv1beta1.VMAlert,
 	}
 	volumeWatchArg := "-volume-dir"
 	reloadURLArg := "-webhook-url"
-	useCustomConfigReloader := ptr.Deref(cr.Spec.UseCustomConfigReloader, false)
+	useCustomConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, false)
 	if useCustomConfigReloader {
 		volumeWatchArg = "--watched-dir"
 		reloadURLArg = "--reload-url"

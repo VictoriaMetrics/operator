@@ -253,7 +253,7 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSetSpec,
 				},
 			},
 		},
-		// use a different volume mount for the case of customer config reloader
+		// use a different volume mount for the case of vm config-reloader
 		// it overrides actual mounts with empty dir
 		{
 			Name: tlsAssetsVolumeName,
@@ -264,7 +264,7 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSetSpec,
 			},
 		},
 	}
-	if ptr.Deref(cr.Spec.UseCustomConfigReloader, false) {
+	if ptr.Deref(cr.Spec.UseVMConfigReloader, false) {
 		volumes[0] = corev1.Volume{
 			Name: configVolumeName,
 			VolumeSource: corev1.VolumeSource{
@@ -534,7 +534,7 @@ func CreateAMConfig(ctx context.Context, cr *vmv1beta1.VMAlertmanager, rclient c
 }
 
 func buildInitConfigContainer(cr *vmv1beta1.VMAlertmanager) []corev1.Container {
-	if !ptr.Deref(cr.Spec.UseCustomConfigReloader, false) {
+	if !ptr.Deref(cr.Spec.UseVMConfigReloader, false) {
 		return nil
 	}
 	initReloader := corev1.Container{
@@ -566,7 +566,7 @@ func buildVMAlertmanagerConfigReloader(cr *vmv1beta1.VMAlertmanager, crVolumeMou
 	if cr.Spec.WebConfig != nil && cr.Spec.WebConfig.TLSServerConfig != nil {
 		localReloadURL.Scheme = "https"
 	}
-	useCustomConfigReloader := ptr.Deref(cr.Spec.UseCustomConfigReloader, false)
+	useCustomConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, false)
 
 	var configReloaderArgs []string
 	if useCustomConfigReloader {

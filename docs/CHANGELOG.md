@@ -11,7 +11,7 @@ aliases:
   - /operator/changelog/index.html
 ---
 
-- [api](https://docs.victoriametrics.com/operator/api): adds new fields `useCustomConfigReloader`, `configReloaderImageTag`, `configReloaderResources` to to the `VMagent`, `VMAlert`, `VMAuth`, and `VMAlertmanager`.
+- [api](https://docs.victoriametrics.com/operator/api): adds new fields `useVMConfigReloader`, `configReloaderImageTag`, `configReloaderResources` to to the `VMagent`, `VMAlert`, `VMAuth`, and `VMAlertmanager`.
 - [api](https://docs.victoriametrics.com/operator/api): adds underscore version of `host_aliases` setting, which has priority over `hostAliases`.
 - [api](https://docs.victoriametrics.com/operator/api): adds `useDefaultResources` setting to the all applications. It has priority over global operator setting.
 - [api](https://docs.victoriametrics.com/operator/api): adds `clusterDomainName` to the `VMCluster` and `VMAlertmanager`. It defines optional suffix for in-cluster addresses.

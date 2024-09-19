@@ -5422,12 +5422,6 @@ spec:
                 - Recreate
                 - RollingUpdate
                 type: string
-              useCustomConfigReloader:
-                description: |-
-                  UseCustomConfigReloader replaces prometheus-like config-reloader
-                  with vm one. It uses secrets watch instead of file watch
-                  which greatly increases speed of config updates
-                type: boolean
               useDefaultResources:
                 description: |-
                   UseDefaultResources controls resource settings
@@ -5439,6 +5433,12 @@ spec:
                   it restricts disk writes access
                   uses non-root user out of the box
                   drops not needed security permissions
+                type: boolean
+              useVMConfigReloader:
+                description: |-
+                  UseVMConfigReloader replaces prometheus-like config-reloader
+                  with vm one. It uses secrets watch instead of file watch
+                  which greatly increases speed of config updates
                 type: boolean
               vmAgentExternalLabelName:
                 description: |-
@@ -11730,12 +11730,6 @@ spec:
                   type: object
                   x-kubernetes-preserve-unknown-fields: true
                 type: array
-              useCustomConfigReloader:
-                description: |-
-                  UseCustomConfigReloader replaces prometheus-like config-reloader
-                  with vm one. It uses secrets watch instead of file watch
-                  which greatly increases speed of config updates
-                type: boolean
               useDefaultResources:
                 description: |-
                   UseDefaultResources controls resource settings
@@ -11747,6 +11741,12 @@ spec:
                   it restricts disk writes access
                   uses non-root user out of the box
                   drops not needed security permissions
+                type: boolean
+              useVMConfigReloader:
+                description: |-
+                  UseVMConfigReloader replaces prometheus-like config-reloader
+                  with vm one. It uses secrets watch instead of file watch
+                  which greatly increases speed of config updates
                 type: boolean
               volumeMounts:
                 description: |-
@@ -13768,12 +13768,6 @@ spec:
                 - Recreate
                 - RollingUpdate
                 type: string
-              useCustomConfigReloader:
-                description: |-
-                  UseCustomConfigReloader replaces prometheus-like config-reloader
-                  with vm one. It uses secrets watch instead of file watch
-                  which greatly increases speed of config updates
-                type: boolean
               useDefaultResources:
                 description: |-
                   UseDefaultResources controls resource settings
@@ -13785,6 +13779,12 @@ spec:
                   it restricts disk writes access
                   uses non-root user out of the box
                   drops not needed security permissions
+                type: boolean
+              useVMConfigReloader:
+                description: |-
+                  UseVMConfigReloader replaces prometheus-like config-reloader
+                  with vm one. It uses secrets watch instead of file watch
+                  which greatly increases speed of config updates
                 type: boolean
               volumeMounts:
                 description: |-
@@ -15184,12 +15184,6 @@ spec:
                       type: array
                   type: object
                 type: array
-              useCustomConfigReloader:
-                description: |-
-                  UseCustomConfigReloader replaces prometheus-like config-reloader
-                  with vm one. It uses secrets watch instead of file watch
-                  which greatly increases speed of config updates
-                type: boolean
               useDefaultResources:
                 description: |-
                   UseDefaultResources controls resource settings
@@ -15201,6 +15195,12 @@ spec:
                   it restricts disk writes access
                   uses non-root user out of the box
                   drops not needed security permissions
+                type: boolean
+              useVMConfigReloader:
+                description: |-
+                  UseVMConfigReloader replaces prometheus-like config-reloader
+                  with vm one. It uses secrets watch instead of file watch
+                  which greatly increases speed of config updates
                 type: boolean
               userNamespaceSelector:
                 description: |-

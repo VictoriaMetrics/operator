@@ -198,8 +198,8 @@ func TestMakeSpecForAuthOk(t *testing.T) {
 					Port: "8429",
 				},
 				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-					UseCustomConfigReloader: ptr.To(true),
-					ConfigReloaderImageTag:  "vmcustom:config-reloader-v0.35.0",
+					UseVMConfigReloader:    ptr.To(true),
+					ConfigReloaderImageTag: "vmcustom:config-reloader-v0.35.0",
 				},
 			},
 		}, `
@@ -335,8 +335,8 @@ serviceaccountname: vmauth-auth
 					Port: "8429",
 				},
 				CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-					ConfigReloaderImageTag:  "quay.io/prometheus-operator/prometheus-config-reloader:v1",
-					UseCustomConfigReloader: ptr.To(false),
+					ConfigReloaderImageTag: "quay.io/prometheus-operator/prometheus-config-reloader:v1",
+					UseVMConfigReloader:    ptr.To(false),
 				},
 			},
 		}, `

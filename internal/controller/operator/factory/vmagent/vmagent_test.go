@@ -2075,8 +2075,8 @@ func TestMakeSpecForAgentOk(t *testing.T) {
 				Port: "8425",
 			},
 			CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-				UseCustomConfigReloader: ptr.To(true),
-				ConfigReloaderImageTag:  "vmcustom:config-reloader-v0.35.0",
+				UseVMConfigReloader:    ptr.To(true),
+				ConfigReloaderImageTag: "vmcustom:config-reloader-v0.35.0",
 			},
 		},
 	}, nil, `
@@ -2157,8 +2157,8 @@ serviceaccountname: vmagent-agent
 				Port:                "8429",
 			},
 			CommonConfigReloaderParams: vmv1beta1.CommonConfigReloaderParams{
-				UseCustomConfigReloader: ptr.To(true),
-				ConfigReloaderImageTag:  "vmcustomer:v1",
+				UseVMConfigReloader:    ptr.To(true),
+				ConfigReloaderImageTag: "vmcustomer:v1",
 			},
 		},
 	}, nil, `

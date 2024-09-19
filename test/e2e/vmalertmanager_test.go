@@ -162,7 +162,7 @@ var _ = Describe("e2e vmalertmanager ", func() {
 				currVma := &operator.VMAlertmanager{}
 				Expect(retry.RetryOnConflict(retry.DefaultRetry, func() error {
 					Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: Namespace, Name: Name}, currVma)).To(Succeed())
-					currVma.Spec.CommonConfigReloaderParams.UseCustomConfigReloader = ptr.To(true)
+					currVma.Spec.CommonConfigReloaderParams.UseVMConfigReloader = ptr.To(true)
 					return k8sClient.Update(ctx, currVma)
 				})).To(Succeed())
 				Eventually(func() error {

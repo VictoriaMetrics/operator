@@ -893,19 +893,17 @@ func buildVMStorageSpec(ctx context.Context, cr *vmv1beta1.VMCluster) (*appsv1.S
 			Finalizers:      []string{vmv1beta1.FinalizerName},
 		},
 		Spec: appsv1.StatefulSetSpec{
-			Replicas: cr.Spec.VMStorage.ReplicaCount,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: cr.VMStorageSelectorLabels(),
 			},
-			MinReadySeconds: cr.Spec.VMStorage.MinReadySeconds,
 			UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
 				Type: cr.Spec.VMStorage.RollingUpdateStrategy,
 			},
-			Template:             *podSpec,
-			ServiceName:          cr.Spec.VMStorage.GetNameWithPrefix(cr.Name),
-			RevisionHistoryLimit: cr.Spec.VMStorage.RevisionHistoryLimitCount,
+			Template:    *podSpec,
+			ServiceName: cr.Spec.VMStorage.GetNameWithPrefix(cr.Name),
 		},
 	}
+	build.StatefulSetAddCommonParams(stsSpec, ptr.Deref(cr.Spec.VMStorage.UseStrictSecurity, false), &cr.Spec.VMStorage.CommonApplicationDeploymentParams)
 	storageSpec := cr.Spec.VMStorage.Storage
 	storageSpec.IntoSTSVolume(cr.Spec.VMStorage.GetStorageVolumeName(), &stsSpec.Spec)
 	stsSpec.Spec.VolumeClaimTemplates = append(stsSpec.Spec.VolumeClaimTemplates, cr.Spec.VMStorage.ClaimTemplates...)

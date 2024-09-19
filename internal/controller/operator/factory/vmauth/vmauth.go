@@ -15,6 +15,7 @@ import (
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/k8stools"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/logger"
 	"github.com/VictoriaMetrics/operator/internal/controller/operator/factory/reconcile"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -80,7 +81,7 @@ func CreateOrUpdateVMAuth(ctx context.Context, cr *vmv1beta1.VMAuth, rclient cli
 		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr)); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
 		}
-		if ptr.Deref(cr.Spec.UseCustomConfigReloader, false) && cr.Spec.ConfigSecret == "" {
+		if ptr.Deref(cr.Spec.UseVMConfigReloader, false) && cr.Spec.ConfigSecret == "" {
 			if err := createVMAuthSecretAccess(ctx, cr, rclient); err != nil {
 				return err
 			}
@@ -114,7 +115,6 @@ func CreateOrUpdateVMAuth(ctx context.Context, cr *vmv1beta1.VMAuth, rclient cli
 	if err != nil {
 		return fmt.Errorf("cannot build new deploy for vmauth: %w", err)
 	}
-
 	return reconcile.Deployment(ctx, rclient, newDeploy, prevDeploy, false)
 }
 
@@ -231,7 +231,7 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 
 	operatorContainers := []corev1.Container{vmauthContainer}
 	useStrictSecurity := ptr.Deref(cr.Spec.UseStrictSecurity, false)
-	useCustomConfigReloader := ptr.Deref(cr.Spec.UseCustomConfigReloader, false)
+	useCustomConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, false)
 
 	var initContainers []corev1.Container
 	if cr.Spec.ConfigSecret == "" {
@@ -262,6 +262,7 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 		operatorContainers[0].VolumeMounts = volumeMounts
 
 		configReloader := buildVMAuthConfigReloaderContainer(cr)
+		fmt.Println("after build ", configReloader.Command)
 		operatorContainers = append(operatorContainers, configReloader)
 		initContainers = append(initContainers,
 			buildInitConfigContainer(useCustomConfigReloader, cr.Spec.ConfigReloaderImageTag, cr.Spec.ConfigReloaderResources, configReloader.Args)...)
@@ -448,7 +449,7 @@ func buildVMAuthConfigReloaderContainer(cr *vmv1beta1.VMAuth) corev1.Container {
 		fmt.Sprintf("--reload-url=%s", vmv1beta1.BuildReloadPathWithPort(cr.Spec.ExtraArgs, cr.Spec.Port)),
 		fmt.Sprintf("--config-envsubst-file=%s", path.Join(vmAuthConfigFolder, vmAuthConfigName)),
 	}
-	useCustomConfigReloader := ptr.Deref(cr.Spec.UseCustomConfigReloader, false)
+	useCustomConfigReloader := ptr.Deref(cr.Spec.UseVMConfigReloader, false)
 	if useCustomConfigReloader {
 		configReloaderArgs = append(configReloaderArgs, fmt.Sprintf("--config-secret-name=%s/%s", cr.Namespace, cr.ConfigSecretName()))
 		configReloaderArgs = vmv1beta1.MaybeEnableProxyProtocol(configReloaderArgs, cr.Spec.ExtraArgs)
@@ -501,6 +502,7 @@ func buildVMAuthConfigReloaderContainer(cr *vmv1beta1.VMAuth) corev1.Container {
 	}
 
 	if useCustomConfigReloader {
+		fmt.Println("set command to nil")
 		configReloader.Command = nil
 	}
 

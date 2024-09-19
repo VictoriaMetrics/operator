@@ -31,14 +31,14 @@ var _ = Describe("test vmauth Controller", func() {
 				ListOptions: client.ListOptions{
 					Namespace: namespace,
 				},
-			}))
+			})).To(Succeed())
 			Eventually(func() bool {
 				var unDeletedVMAuthes operator.VMAuthList
 				Expect(k8sClient.List(ctx, &unDeletedVMAuthes, &client.ListOptions{
 					Namespace: namespace,
-				})).To(BeTrue())
+				})).To(Succeed())
 				return len(unDeletedVMAuthes.Items) == 0
-			}).Should(Succeed())
+			}).Should(BeTrue())
 
 		})
 
@@ -95,7 +95,7 @@ var _ = Describe("test vmauth Controller", func() {
 							UseDefaultResources: ptr.To(false),
 						},
 						CommonConfigReloaderParams: operator.CommonConfigReloaderParams{
-							UseCustomConfigReloader: ptr.To(true),
+							UseVMConfigReloader: ptr.To(true),
 						},
 						CommonApplicationDeploymentParams: operator.CommonApplicationDeploymentParams{
 							ReplicaCount: ptr.To[int32](1),
@@ -128,33 +128,34 @@ var _ = Describe("test vmauth Controller", func() {
 					},
 				},
 			}
-			DescribeTable("should update exist vmauth", func(name string, modify func(*operator.VMAuth), verify func(*operator.VMAuth)) {
-				existVMAuth := existVMAuth.DeepCopy()
-				existVMAuth.Name = name
-				namespacedName.Name = name
-				// setup test
-				Expect(k8sClient.Create(ctx, existVMAuth)).To(Succeed())
-				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &operator.VMAuth{}, namespacedName)
-				}, eventualAppReadyTimeout).Should(Succeed())
+			DescribeTable("should update exist vmauth",
+				func(name string, modify func(*operator.VMAuth), verify func(*operator.VMAuth)) {
+					existVMAuth := existVMAuth.DeepCopy()
+					existVMAuth.Name = name
+					namespacedName.Name = name
+					// setup test
+					Expect(k8sClient.Create(ctx, existVMAuth)).To(Succeed())
+					Eventually(func() error {
+						return expectObjectStatusOperational(ctx, k8sClient, &operator.VMAuth{}, namespacedName)
+					}, eventualAppReadyTimeout).Should(Succeed())
 
-				// perform update
-				Expect(retry.RetryOnConflict(retry.DefaultRetry, func() error {
-					var toUpdate operator.VMAuth
-					Expect(k8sClient.Get(ctx, namespacedName, &toUpdate)).To(Succeed())
-					modify(&toUpdate)
-					return k8sClient.Update(ctx, &toUpdate)
-				})).To(Succeed())
-				Eventually(func() error {
-					return expectObjectStatusExpanding(ctx, k8sClient, &operator.VMAuth{}, namespacedName)
-				}, 5*time.Second).Should(Succeed())
-				Eventually(func() error {
-					return expectObjectStatusOperational(ctx, k8sClient, &operator.VMAuth{}, namespacedName)
-				}, eventualAppReadyTimeout).Should(Succeed())
-				var updated operator.VMAuth
-				Expect(k8sClient.Get(ctx, namespacedName, &updated)).To(Succeed())
-				verify(&updated)
-			},
+					// perform update
+					Expect(retry.RetryOnConflict(retry.DefaultRetry, func() error {
+						var toUpdate operator.VMAuth
+						Expect(k8sClient.Get(ctx, namespacedName, &toUpdate)).To(Succeed())
+						modify(&toUpdate)
+						return k8sClient.Update(ctx, &toUpdate)
+					})).To(Succeed())
+					Eventually(func() error {
+						return expectObjectStatusExpanding(ctx, k8sClient, &operator.VMAuth{}, namespacedName)
+					}, 5*time.Second).Should(Succeed())
+					Eventually(func() error {
+						return expectObjectStatusOperational(ctx, k8sClient, &operator.VMAuth{}, namespacedName)
+					}, eventualAppReadyTimeout).Should(Succeed())
+					var updated operator.VMAuth
+					Expect(k8sClient.Get(ctx, namespacedName, &updated)).To(Succeed())
+					verify(&updated)
+				},
 				Entry("extend replicas to 2", "update-replicas-2",
 					func(cr *operator.VMAuth) {
 						cr.Spec.ReplicaCount = ptr.To[int32](2)
@@ -166,7 +167,7 @@ var _ = Describe("test vmauth Controller", func() {
 					}),
 				Entry("switch to vm config reloader", "vm-reloader",
 					func(cr *operator.VMAuth) {
-						cr.Spec.UseCustomConfigReloader = ptr.To(true)
+						cr.Spec.UseVMConfigReloader = ptr.To(true)
 						cr.Spec.UseDefaultResources = ptr.To(false)
 					},
 					func(cr *operator.VMAuth) {

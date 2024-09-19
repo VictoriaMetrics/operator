@@ -39,7 +39,9 @@ var _ = Describe("test  vmagent Controller", func() {
 					namespacedName.Namespace = namespace
 				})
 				AfterEach(func() {
-					Expect(expectObjectStatusOperational(ctx, k8sClient, getCurrVMAgent(), namespacedName)).To(Succeed())
+					Eventually(func() error {
+						return expectObjectStatusOperational(ctx, k8sClient, getCurrVMAgent(), namespacedName)
+					}, eventualAppReadyTimeout).Should(Succeed())
 					Expect(finalize.SafeDelete(ctx, k8sClient, &operator.VMAgent{
 						ObjectMeta: metav1.ObjectMeta{
 							Namespace: namespace,

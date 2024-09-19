@@ -42,14 +42,24 @@ func getRevisionHistoryLimit(rclient client.Client, name types.NamespacedName) i
 	return *deployment.Spec.RevisionHistoryLimit
 }
 
-func expectObjectStatusExpanding(ctx context.Context, rclient client.Client, object client.Object, name types.NamespacedName) error {
+func expectObjectStatusExpanding(ctx context.Context,
+	rclient client.Client,
+	object client.Object,
+	name types.NamespacedName) error {
 	return expectObjectStatus(ctx, rclient, object, name, operator.UpdateStatusExpanding)
 }
-func expectObjectStatusOperational(ctx context.Context, rclient client.Client, object client.Object, name types.NamespacedName) error {
+func expectObjectStatusOperational(ctx context.Context,
+	rclient client.Client,
+	object client.Object,
+	name types.NamespacedName) error {
 	return expectObjectStatus(ctx, rclient, object, name, operator.UpdateStatusOperational)
 }
 
-func expectObjectStatus(ctx context.Context, rclient client.Client, object client.Object, name types.NamespacedName, status operator.UpdateStatus) error {
+func expectObjectStatus(ctx context.Context,
+	rclient client.Client,
+	object client.Object,
+	name types.NamespacedName,
+	status operator.UpdateStatus) error {
 	if err := rclient.Get(ctx, name, object); err != nil {
 		return err
 	}
@@ -68,7 +78,9 @@ func expectObjectStatus(ctx context.Context, rclient client.Client, object clien
 		return err
 	}
 	if obs.Status.UpdateStatus != string(status) && obs.Status.CurrentStatus != string(status) {
-		return fmt.Errorf("not expected object status: %s current status %s", obs.Status.UpdateStatus, obs.Status.CurrentStatus)
+		return fmt.Errorf("not expected object status: %s current status %s",
+			obs.Status.UpdateStatus,
+			obs.Status.CurrentStatus)
 	}
 
 	return nil

@@ -39,7 +39,7 @@ var _ = Describe("test  vmagent Controller", func() {
 					namespacedName.Namespace = namespace
 				})
 				AfterEach(func() {
-					Expect(expectObjectStatusOperational(ctx, k8sClient, getCurrVMAgent(), namespacedName))
+					Expect(expectObjectStatusOperational(ctx, k8sClient, getCurrVMAgent(), namespacedName)).To(Succeed())
 					Expect(finalize.SafeDelete(ctx, k8sClient, &operator.VMAgent{
 						ObjectMeta: metav1.ObjectMeta{
 							Namespace: namespace,
@@ -294,7 +294,10 @@ var _ = Describe("test  vmagent Controller", func() {
 					Entry("should update revisionHistoryLimit of vmagent to 3", "update-revision",
 						func(cr *operator.VMAgent) { cr.Spec.RevisionHistoryLimitCount = ptr.To[int32](3) },
 						func() {
-							namespacedNameDeployment := types.NamespacedName{Name: fmt.Sprintf("vmagent-%s", namespacedName.Name), Namespace: namespace}
+							namespacedNameDeployment := types.NamespacedName{
+								Name:      fmt.Sprintf("vmagent-%s", namespacedName.Name),
+								Namespace: namespace,
+							}
 							Eventually(func() int32 {
 								return getRevisionHistoryLimit(k8sClient, namespacedNameDeployment)
 							}, 60, 1).Should(Equal(int32(3)))

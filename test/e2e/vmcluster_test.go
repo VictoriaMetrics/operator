@@ -210,29 +210,39 @@ var _ = Describe("e2e vmcluster", func() {
 					},
 				},
 			}
-			DescribeTable("should update exist cluster", func(name string, modify func(*v1beta1vm.VMCluster), verify func(*v1beta1vm.VMCluster)) {
-				namespacedName.Name = name
-				existCluster := clusterForUpdate.DeepCopy()
-				existCluster.Name = name
-				ctx = context.Background()
-				Expect(k8sClient.Create(ctx, existCluster)).To(Succeed())
-				Eventually(func() error { return expectObjectStatusOperational(ctx, k8sClient, existCluster, namespacedName) }, clusterReadyTimeout).Should(Succeed())
-				Expect(expectPodCount(k8sClient, 1, namespace, existCluster.VMStorageSelectorLabels()))
-				Expect(expectPodCount(k8sClient, 1, namespace, existCluster.VMSelectSelectorLabels()))
-				Expect(expectPodCount(k8sClient, 1, namespace, existCluster.VMInsertSelectorLabels()))
+			DescribeTable("should update exist cluster",
+				func(name string, modify func(*v1beta1vm.VMCluster), verify func(*v1beta1vm.VMCluster)) {
+					namespacedName.Name = name
+					existCluster := clusterForUpdate.DeepCopy()
+					existCluster.Name = name
+					ctx = context.Background()
+					Expect(k8sClient.Create(ctx, existCluster)).To(Succeed())
+					Eventually(func() error {
+						return expectObjectStatusOperational(ctx, k8sClient, existCluster, namespacedName)
+					}, clusterReadyTimeout).
+						Should(Succeed())
+					Expect(expectPodCount(k8sClient, 1, namespace, existCluster.VMStorageSelectorLabels())).To(BeEmpty())
+					Expect(expectPodCount(k8sClient, 1, namespace, existCluster.VMSelectSelectorLabels())).To(BeEmpty())
+					Expect(expectPodCount(k8sClient, 1, namespace, existCluster.VMInsertSelectorLabels())).To(BeEmpty())
 
-				Expect(retry.RetryOnConflict(retry.DefaultRetry, func() error {
-					var toUpdate v1beta1.VMCluster
-					if err := k8sClient.Get(ctx, namespacedName, &toUpdate); err != nil {
-						return err
-					}
-					modify(&toUpdate)
-					return k8sClient.Update(ctx, &toUpdate)
-				}))
-				Eventually(func() error { return expectObjectStatusExpanding(ctx, k8sClient, existCluster, namespacedName) }, clusterReadyTimeout).Should(Succeed())
-				Eventually(func() error { return expectObjectStatusOperational(ctx, k8sClient, existCluster, namespacedName) }, clusterReadyTimeout).Should(Succeed())
-				verify(existCluster)
-			},
+					Expect(retry.RetryOnConflict(retry.DefaultRetry, func() error {
+						var toUpdate v1beta1.VMCluster
+						if err := k8sClient.Get(ctx, namespacedName, &toUpdate); err != nil {
+							return err
+						}
+						modify(&toUpdate)
+						return k8sClient.Update(ctx, &toUpdate)
+					})).To(Succeed())
+					Eventually(func() error {
+						return expectObjectStatusExpanding(ctx, k8sClient, existCluster, namespacedName)
+					}, clusterReadyTimeout).
+						Should(Succeed())
+					Eventually(func() error {
+						return expectObjectStatusOperational(ctx, k8sClient, existCluster, namespacedName)
+					}, clusterReadyTimeout).
+						Should(Succeed())
+					verify(existCluster)
+				},
 				Entry("update storage and select replicas to 2", "storage-select-r-2", func(cr *v1beta1vm.VMCluster) {
 					cr.Spec.VMStorage.ReplicaCount = ptr.To[int32](2)
 					cr.Spec.VMSelect.ReplicaCount = ptr.To[int32](2)
@@ -262,11 +272,17 @@ var _ = Describe("e2e vmcluster", func() {
 					cr.Spec.VMSelect.ClusterNativePort = "8036"
 				}, func(cr *v1beta1vm.VMCluster) {
 					var updatedSvc corev1.Service
-					Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "vmselect-" + cr.Name}, &updatedSvc)).To(Succeed())
-					Expect(len(updatedSvc.Spec.Ports)).To(Equal(2))
+					Expect(k8sClient.Get(ctx,
+						types.NamespacedName{Namespace: namespace, Name: "vmselect-" + cr.Name},
+						&updatedSvc)).
+						To(Succeed())
+					Expect(updatedSvc.Spec.Ports).To(HaveLen(2))
 					Expect(updatedSvc.Spec.Ports[1].Port).To(Equal(int32(8036)))
-					Expect(k8sClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: "vminsert-" + cr.Name}, &updatedSvc)).To(Succeed())
-					Expect(len(updatedSvc.Spec.Ports)).To(Equal(2))
+					Expect(k8sClient.Get(ctx,
+						types.NamespacedName{Namespace: namespace, Name: "vminsert-" + cr.Name},
+						&updatedSvc)).
+						To(Succeed())
+					Expect(updatedSvc.Spec.Ports).To(HaveLen(2))
 					Expect(updatedSvc.Spec.Ports[1].Port).To(Equal(int32(8035)))
 
 				}),

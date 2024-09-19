@@ -57,8 +57,10 @@ func OnVMClusterDelete(ctx context.Context, rclient client.Client, crd *vmv1beta
 		}
 
 		// check PDB
-		if err := finalizePBDWithName(ctx, rclient, obj.GetNameWithPrefix(crd.Name), crd.Namespace); err != nil {
-			return err
+		if crd.Spec.VMInsert.PodDisruptionBudget != nil {
+			if err := finalizePBDWithName(ctx, rclient, obj.GetNameWithPrefix(crd.Name), crd.Namespace); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -84,8 +86,10 @@ func OnVMClusterDelete(ctx context.Context, rclient client.Client, crd *vmv1beta
 		}
 
 		// check PDB
-		if err := finalizePBDWithName(ctx, rclient, obj.GetNameWithPrefix(crd.Name), crd.Namespace); err != nil {
-			return err
+		if crd.Spec.VMSelect.PodDisruptionBudget != nil {
+			if err := finalizePBDWithName(ctx, rclient, obj.GetNameWithPrefix(crd.Name), crd.Namespace); err != nil {
+				return err
+			}
 		}
 	}
 	if crd.Spec.VMStorage != nil {
@@ -104,8 +108,10 @@ func OnVMClusterDelete(ctx context.Context, rclient client.Client, crd *vmv1beta
 		}
 
 		// check PDB
-		if err := finalizePBDWithName(ctx, rclient, obj.GetNameWithPrefix(crd.Name), crd.Namespace); err != nil {
-			return err
+		if crd.Spec.VMStorage.PodDisruptionBudget != nil {
+			if err := finalizePBDWithName(ctx, rclient, obj.GetNameWithPrefix(crd.Name), crd.Namespace); err != nil {
+				return err
+			}
 		}
 	}
 

@@ -218,7 +218,6 @@ var _ = Describe("test  vmagent Controller", func() {
 
 			Context("update", func() {
 				JustAfterEach(func() {
-					fmt.Println("check at revision")
 					Eventually(func() error {
 						return expectObjectStatusOperational(ctx, k8sClient, getCurrVMAgent(), namespacedName)
 					}, 20*time.Second).Should(Succeed())

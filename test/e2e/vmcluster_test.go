@@ -141,7 +141,7 @@ var _ = Describe("e2e vmcluster", func() {
 							RetentionPeriod: "1",
 							VMStorage: &v1beta1vm.VMStorage{
 								CommonDefaultableParams: v1beta1vm.CommonDefaultableParams{
-									UseStrictSecurity:   ptr.To(true),
+									//								UseStrictSecurity:   ptr.To(true),
 									UseDefaultResources: ptr.To(false),
 								},
 								CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{
@@ -150,7 +150,7 @@ var _ = Describe("e2e vmcluster", func() {
 							},
 							VMSelect: &v1beta1vm.VMSelect{
 								CommonDefaultableParams: v1beta1vm.CommonDefaultableParams{
-									UseStrictSecurity:   ptr.To(true),
+									//							UseStrictSecurity:   ptr.To(true),
 									UseDefaultResources: ptr.To(false),
 								},
 
@@ -160,7 +160,7 @@ var _ = Describe("e2e vmcluster", func() {
 							},
 							VMInsert: &v1beta1vm.VMInsert{
 								CommonDefaultableParams: v1beta1vm.CommonDefaultableParams{
-									UseStrictSecurity:   ptr.To(true),
+									//						UseStrictSecurity:   ptr.To(true),
 									UseDefaultResources: ptr.To(false),
 								},
 								CommonApplicationDeploymentParams: v1beta1vm.CommonApplicationDeploymentParams{

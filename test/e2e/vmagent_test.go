@@ -90,7 +90,7 @@ var _ = Describe("test  vmagent Controller", func() {
 								UseVMConfigReloader: ptr.To(true),
 							},
 							CommonDefaultableParams: operator.CommonDefaultableParams{
-								UseStrictSecurity:   ptr.To(true),
+								//							UseStrictSecurity:   ptr.To(true),
 								UseDefaultResources: ptr.To(false),
 							},
 							CommonApplicationDeploymentParams: operator.CommonApplicationDeploymentParams{

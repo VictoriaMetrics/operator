@@ -115,7 +115,9 @@ func reconcileService(ctx context.Context, rclient client.Client, newService, pr
 		return nil
 	}
 	if prevService != nil {
-		logger.WithContext(ctx).Info("updating service configuration", "is_current_equal", isEqual, "is_prev_equal", isPrevServiceEqual)
+		logger.WithContext(ctx).Info("updating service configuration",
+			"is_current_equal", isEqual, "is_prev_equal", isPrevServiceEqual,
+		)
 
 	}
 

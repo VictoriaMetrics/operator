@@ -53,7 +53,7 @@ var vmauthRateLimiter = limiter.NewRateLimiter("vmauth", 5)
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmusers,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmusers/status,verbs=get;update;patch
 func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
-	l := r.Log.WithValues("vmuser", req.NamespacedName)
+	l := r.Log.WithValues("vmuser", req.Name, "namespace", req.Namespace)
 
 	defer func() {
 		result, err = handleReconcileErr(ctx, r.Client, nil, result, err)
@@ -92,6 +92,9 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 		}
 		// reconcile users for given vmauth.
 		currentVMAuth := &vmauthItem
+		l = l.WithValues("parent_vmauth", currentVMAuth.Name, "parent_namespace", currentVMAuth.Namespace)
+		ctx := logger.AddToContext(ctx, l)
+
 		// only check selector when deleting, since labels can be changed when updating and we can't tell if it was selected before.
 		if instance.DeletionTimestamp.IsZero() && !currentVMAuth.Spec.SelectAllByDefault {
 			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, &instance, currentVMAuth, currentVMAuth.Spec.UserSelector, currentVMAuth.Spec.UserNamespaceSelector)
@@ -103,8 +106,6 @@ func (r *VMUserReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 				continue
 			}
 		}
-		l = l.WithValues("vmauth", vmauthItem.Name)
-		ctx := logger.AddToContext(ctx, l)
 
 		if err := vmauth.CreateOrUpdateVMAuthConfig(ctx, r, currentVMAuth); err != nil {
 			return ctrl.Result{}, fmt.Errorf("cannot create or update vmauth deploy for vmuser: %w", err)

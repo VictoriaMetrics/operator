@@ -28,7 +28,7 @@ const (
 
 // CreateVLogsStorage creates persistent volume for vlogs
 func CreateVLogsStorage(ctx context.Context, r *vmv1beta1.VLogs, rclient client.Client) error {
-	l := logger.WithContext(ctx).WithValues("vlogs.pvc.create", r.Name)
+	l := logger.WithContext(ctx).WithValues("pvc_for", "vlogs")
 	ctx = logger.AddToContext(ctx, l)
 	newPvc := makeVLogsPvc(r)
 	return reconcile.PersistentVolumeClaim(ctx, rclient, newPvc)

@@ -234,7 +234,9 @@ func isStorageClassExpandable(ctx context.Context, rclient client.Client, pvc *c
 	// fast path at single namespace mode, listing storage classes is disabled
 	if !config.IsClusterWideAccessAllowed() {
 		// don't return error to caller, since there is no point to requeue and reconcile this
-		logger.WithContext(ctx).Info("cannot detect if storageClass expandable at single namespace mode, need to expand PVC manually or enforce resizing by adding specific annotation to true", "pvc annotation", vmv1beta1.PVCExpandableLabel)
+		logger.WithContext(ctx).Info("cannot detect if storageClass expandable at single namespace mode"+
+			"need to expand PVC manually or enforce resizing by adding specific annotation to true",
+			"pvc annotation", vmv1beta1.PVCExpandableLabel)
 		return false, nil
 	}
 	var isNotDefault bool

@@ -145,7 +145,7 @@ func createOrUpdateConfigurationSecret(ctx context.Context, cr *vmv1beta1.VMAgen
 		return nil, fmt.Errorf("cannot gzip config for vmagent: %w", err)
 	}
 	s.Data[vmagentGzippedFilename] = buf.Bytes()
-	ctx = logger.AddToContext(ctx, logger.WithContext(ctx).WithValues("config_name", "vmagent_config"))
+	ctx = logger.AddToContext(ctx, logger.WithContext(ctx).WithValues("secret_for", "vmagent promscrape config"))
 
 	if err := reconcile.Secret(ctx, rclient, s); err != nil {
 		return nil, fmt.Errorf("cannot reconcile vmagent config secret: %w", err)
@@ -838,7 +838,9 @@ func generateConfig(
 ) ([]byte, error) {
 	cfg := yaml.MapSlice{}
 	if !config.IsClusterWideAccessAllowed() && cr.IsOwnsServiceAccount() {
-		logger.WithContext(ctx).Info("Setting discovery for the single namespace only, since operator launched with set WATCH_NAMESPACE param. Set custom ServiceAccountName property for VMAgent if needed.", "vmagent", cr.Name, "namespace", cr.Namespace)
+		logger.WithContext(ctx).Info("Setting discovery for the single namespace only." +
+			"Since operator launched with set WATCH_NAMESPACE param. " +
+			"Set custom ServiceAccountName property for VMAgent if needed.")
 		cr.Spec.IgnoreNamespaceSelectors = true
 	}
 

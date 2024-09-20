@@ -22,7 +22,7 @@ import (
 // Deployment performs an update or create operator for deployment and waits until it's replicas is ready
 func Deployment(ctx context.Context, rclient client.Client, newDeploy, prevDeploy *appsv1.Deployment, hasHPA bool) error {
 
-	isPrevEqual := true
+	var isPrevEqual bool
 	if prevDeploy != nil {
 		isPrevEqual = equality.Semantic.DeepDerivative(prevDeploy.Spec, newDeploy.Spec)
 	}
@@ -58,7 +58,9 @@ func Deployment(ctx context.Context, rclient client.Client, newDeploy, prevDeplo
 			equality.Semantic.DeepEqual(newDeploy.Annotations, currentDeploy.Annotations) {
 			return waitDeploymentReady(ctx, rclient, newDeploy, appWaitReadyDeadline)
 		}
-		logger.WithContext(ctx).Info("updating deployment configuration", "is_prev_equal", isPrevEqual, "is_current_equal", isEqual)
+		logger.WithContext(ctx).Info("updating deployment configuration",
+			"is_prev_equal", isPrevEqual, "is_current_equal", isEqual,
+			"is_prev_nil", prevDeploy == nil)
 
 		if err := rclient.Update(ctx, newDeploy); err != nil {
 			return fmt.Errorf("cannot update deployment for app: %s, err: %w", newDeploy.Name, err)

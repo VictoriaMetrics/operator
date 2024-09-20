@@ -97,8 +97,6 @@ func CreateOrUpdateVMAgentService(ctx context.Context, cr *vmv1beta1.VMAgent, rc
 // CreateOrUpdateVMAgent creates deployment for vmagent and configures it
 // waits for healthy state
 func CreateOrUpdateVMAgent(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client) error {
-	l := logger.WithContext(ctx).WithValues("controller", "vmagent.crud", "namespace", cr.Namespace, "vmagent", cr.PrefixedName())
-	ctx = logger.AddToContext(ctx, l)
 	if cr.IsOwnsServiceAccount() {
 		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr)); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
@@ -151,7 +149,7 @@ func CreateOrUpdateVMAgent(ctx context.Context, cr *vmv1beta1.VMAgent, rclient c
 	stsNames := make(map[string]struct{})
 	if cr.Spec.ShardCount != nil && *cr.Spec.ShardCount > 1 {
 		shardsCount := *cr.Spec.ShardCount
-		l.Info("using cluster version of VMAgent with", "shards", shardsCount)
+		logger.WithContext(ctx).Info("using cluster version of VMAgent with", "shards", shardsCount)
 		for shardNum := 0; shardNum < shardsCount; shardNum++ {
 			shardedDeploy := newDeploy.DeepCopyObject()
 			var prevShardedObject runtime.Object
@@ -832,7 +830,7 @@ func CreateOrUpdateVMAgentStreamAggrConfig(ctx context.Context, cr *vmv1beta1.VM
 }
 
 func createOrUpdateTLSAssets(ctx context.Context, cr *vmv1beta1.VMAgent, rclient client.Client, assets map[string]string) error {
-	ctx = logger.AddToContext(ctx, logger.WithContext(ctx).WithValues("config_name", "vmagent_tls_assets"))
+	ctx = logger.AddToContext(ctx, logger.WithContext(ctx).WithValues("secret_for", "vmagent_tls_assets"))
 
 	tlsAssetsSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{

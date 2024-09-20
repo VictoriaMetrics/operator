@@ -65,7 +65,7 @@ func CreateOrUpdateRuleConfigMaps(ctx context.Context, cr *vmv1beta1.VMAlert, rc
 	if cr.IsUnmanaged() {
 		return nil, nil
 	}
-	l := logger.WithContext(ctx).WithValues("reconcile", "rulesCm", "vmalert", cr.Name)
+	l := logger.WithContext(ctx).WithValues("configmap_for", "vmalert_rules")
 	newRules, err := selectRulesUpdateStatus(ctx, cr, rclient)
 	if err != nil {
 		return nil, err
@@ -90,7 +90,7 @@ func CreateOrUpdateRuleConfigMaps(ctx context.Context, cr *vmv1beta1.VMAlert, rc
 	}
 
 	if len(currentCMs) == 0 {
-		l.Info("no Rule configmap found, creating new one", "namespace", cr.Namespace)
+		l.Info("no Rule configmap found, creating new one")
 		for _, cm := range newConfigMaps {
 			err := rclient.Create(ctx, &cm, &client.CreateOptions{})
 			if err != nil {
@@ -134,7 +134,7 @@ func CreateOrUpdateRuleConfigMaps(ctx context.Context, cr *vmv1beta1.VMAlert, rc
 
 		err = k8stools.UpdatePodAnnotations(ctx, rclient, cr.PodLabels(), cr.Namespace)
 		if err != nil {
-			l.Error(err, "failed to update pod cm-sync annotation", "ns", cr.Namespace)
+			l.Error(err, "failed to update pod cm-sync annotation")
 		}
 	}
 
@@ -192,7 +192,7 @@ func selectRulesUpdateStatus(ctx context.Context, cr *vmv1beta1.VMAlert, rclient
 	rules := make(map[string]string, len(vmRules))
 
 	if cr.NeedDedupRules() {
-		logger.WithContext(ctx).Info("deduplicating vmalert rules", "vmalert", cr.Name)
+		logger.WithContext(ctx).Info("deduplicating vmalert rules")
 		vmRules = deduplicateRules(ctx, vmRules)
 	}
 	var badRules []*vmv1beta1.VMRule
@@ -245,8 +245,6 @@ func selectRulesUpdateStatus(ctx context.Context, cr *vmv1beta1.VMAlert, rclient
 
 	logger.WithContext(ctx).Info("selected Rules",
 		"rules", strings.Join(ruleNames, ","),
-		"namespace", cr.Namespace,
-		"vmalert", cr.Name,
 		"invalid rules", len(badRules),
 	)
 	for _, rule := range vmRules {

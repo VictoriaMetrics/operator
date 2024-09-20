@@ -47,7 +47,7 @@ func (r *VMScrapeConfigReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmscrapeconfigs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmscrapeconfigs/status,verbs=get;update;patch
 func (r *VMScrapeConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
-	reqLogger := r.Log.WithValues("vmscrapeconfig", req.NamespacedName)
+	reqLogger := r.Log.WithValues("vmscrapeconfig", req.Name, "namespace", req.Namespace)
 	ctx = logger.AddToContext(ctx, reqLogger)
 	defer func() {
 		result, err = handleReconcileErr(ctx, r.Client, nil, result, err)
@@ -78,6 +78,9 @@ func (r *VMScrapeConfigReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			continue
 		}
 		currentVMagent := &vmagentItem
+		reqLogger := reqLogger.WithValues("parent_vmagent", currentVMagent.Name, "parent_namespace", currentVMagent.Namespace)
+		ctx := logger.AddToContext(ctx, reqLogger)
+
 		// only check selector when deleting, since labels can be changed when updating and we can't tell if it was selected before.
 		if instance.DeletionTimestamp.IsZero() && !currentVMagent.Spec.SelectAllByDefault {
 			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, instance, currentVMagent, currentVMagent.Spec.ScrapeConfigSelector, currentVMagent.Spec.ScrapeConfigNamespaceSelector)
@@ -89,8 +92,6 @@ func (r *VMScrapeConfigReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 				continue
 			}
 		}
-		reqLogger := reqLogger.WithValues("vmagent", currentVMagent.Name)
-		ctx := logger.AddToContext(ctx, reqLogger)
 
 		if err := vmagent.CreateOrUpdateConfigurationSecret(ctx, currentVMagent, r); err != nil {
 			continue

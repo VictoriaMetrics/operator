@@ -35,7 +35,8 @@ func PersistentVolumeClaim(ctx context.Context, rclient client.Client, pvc *core
 		return fmt.Errorf("cannot get existing pvc: %w", err)
 	}
 	if !existPvc.DeletionTimestamp.IsZero() {
-		l.Info("pvc has non zero DeletionTimestamp, skip update. To fix this, make backup for this pvc, delete pvc finalizers and restore from backup.")
+		l.Info("pvc has non zero DeletionTimestamp, skip update." +
+			" To fix this, make backup for this pvc, delete pvc finalizers and restore from backup.")
 		return nil
 	}
 	newSize := pvc.Spec.Resources.Requests.Storage()

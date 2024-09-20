@@ -47,7 +47,7 @@ func (r *VMRuleReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmrules,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmrules/status,verbs=get;update;patch
 func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
-	reqLogger := r.Log.WithValues("vmrule", req.NamespacedName)
+	reqLogger := r.Log.WithValues("vmrule", req.Name, "namespace", req.Namespace)
 	ctx = logger.AddToContext(ctx, reqLogger)
 
 	defer func() {
@@ -79,6 +79,9 @@ func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 			continue
 		}
 		currVMAlert := &vmalertItem
+		reqLogger := reqLogger.WithValues("parent_vmalert", currVMAlert.Name, "parent_namespace", currVMAlert.Namespace)
+		ctx := logger.AddToContext(ctx, reqLogger)
+
 		// only check selector when deleting, since labels can be changed when updating and we can't tell if it was selected before.
 		if instance.DeletionTimestamp.IsZero() && !currVMAlert.Spec.SelectAllByDefault {
 			match, err := isSelectorsMatchesTargetCRD(ctx, r.Client, instance, currVMAlert, currVMAlert.Spec.RuleSelector, currVMAlert.Spec.RuleNamespaceSelector)
@@ -90,8 +93,6 @@ func (r *VMRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (res
 				continue
 			}
 		}
-		reqLogger := reqLogger.WithValues("vmalert", currVMAlert.Name)
-		ctx := logger.AddToContext(ctx, reqLogger)
 
 		_, err := vmalert.CreateOrUpdateRuleConfigMaps(ctx, currVMAlert, r)
 		if err != nil {

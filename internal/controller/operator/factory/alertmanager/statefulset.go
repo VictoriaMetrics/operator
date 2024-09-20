@@ -449,7 +449,7 @@ func makeStatefulSetSpec(cr *vmv1beta1.VMAlertmanager) (*appsv1.StatefulSetSpec,
 // CreateAMConfig - check if secret with config exist,
 // if not create with predefined or user value.
 func CreateAMConfig(ctx context.Context, cr *vmv1beta1.VMAlertmanager, rclient client.Client) error {
-	l := logger.WithContext(ctx).WithValues("alertmanager", cr.Name).WithValues("config_name", "vmalertmanager config secret")
+	l := logger.WithContext(ctx).WithValues("secret_for", "vmalertmanager config")
 	ctx = logger.AddToContext(ctx, l)
 
 	// name of tls object and it's value
@@ -461,7 +461,9 @@ func CreateAMConfig(ctx context.Context, cr *vmv1beta1.VMAlertmanager, rclient c
 	// fetch content from user defined secret
 	case cr.Spec.ConfigSecret != "":
 		if cr.Spec.ConfigSecret == cr.ConfigSecretName() {
-			l.Info("ignoring content of ConfigSecret, since it has the same name as secreted created by operator for config", "secretName", cr.Spec.ConfigSecret)
+			l.Info("ignoring content of ConfigSecret, "+
+				"since it has the same name as secreted created by operator for config",
+				"secretName", cr.Spec.ConfigSecret)
 		} else {
 			// retrieve content
 			secretContent, err := getSecretContentForAlertmanager(ctx, rclient, cr.Spec.ConfigSecret, cr.Namespace)
@@ -620,7 +622,7 @@ func getSecretContentForAlertmanager(ctx context.Context, rclient client.Client,
 	if err := rclient.Get(ctx, types.NamespacedName{Namespace: ns, Name: secretName}, &s); err != nil {
 		// return nil for backward compatibility
 		if errors.IsNotFound(err) {
-			logger.WithContext(ctx).Error(err, "alertmanager config secret doens't exist, default config is used", "secret", secretName, "ns", ns)
+			logger.WithContext(ctx).Error(err, "alertmanager config secret doens't exist, default config is used", "secret", secretName, "secret_namespace", ns)
 			return nil, nil
 		}
 		return nil, fmt.Errorf("cannot get secret: %s at ns: %s, err: %w", secretName, ns, err)
@@ -662,7 +664,8 @@ func buildAlertmanagerConfigWithCRDs(ctx context.Context, rclient client.Client,
 		return nil, err
 	}
 	parsedCfg.brokenAMCfgs = append(parsedCfg.brokenAMCfgs, badCfgs...)
-	l.Info("selected alertmanager configs", "len", len(amCfgs), "invalid configs", len(parsedCfg.brokenAMCfgs))
+	l.Info("selected alertmanager configs",
+		"len", len(amCfgs), "invalid configs", len(parsedCfg.brokenAMCfgs))
 	if err := updateConfigsStatuses(ctx, rclient, cr, parsedCfg.amcfgs, parsedCfg.brokenAMCfgs); err != nil {
 		return nil, fmt.Errorf("failed to update vmalertmanagerConfigs statuses: %w", err)
 	}

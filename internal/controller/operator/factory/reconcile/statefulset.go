@@ -180,8 +180,10 @@ func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclien
 	switch {
 	// sanity check, should help to catch possible bugs
 	case len(podList.Items) > neededPodCount:
-		l.Info("unexpected count of pods for sts, seems like configuration of stateful wasn't correct and kubernetes cannot create pod,"+
-			" check kubectl events to find out source of problem", "sts", sts.Name, "wantCount", neededPodCount, "actualCount", len(podList.Items), "namespace", ns)
+		l.Info("unexpected count of pods for sts. "+
+			"It seems like configuration of stateful wasn't correct and kubernetes cannot create pod,"+
+			" check kubectl events to find out source of problem",
+			"sts", sts.Name, "wantCount", neededPodCount, "actualCount", len(podList.Items), "namespace", ns)
 	// usual case when some param misconfigured
 	// or kubernetes for some reason cannot create pod
 	// it's better to fail fast
@@ -234,7 +236,8 @@ func performRollingUpdateOnSts(ctx context.Context, podMustRecreate bool, rclien
 		return nil
 	}
 
-	l.Info("check with updated but not ready pods", "updated pods count", len(updatedPods), "desired version", stsVersion)
+	l.Info("check with updated but not ready pods", "updated pods count",
+		len(updatedPods), "desired version", stsVersion)
 	// check updated, by not ready pods
 	for _, pod := range updatedPods {
 		l.Info("checking ready status for already updated pod to desired version", "pod", pod.Name)

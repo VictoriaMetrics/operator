@@ -51,7 +51,7 @@ func (r *VMAlertmanagerConfigReconciler) Scheme() *runtime.Scheme {
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmalertmanagerconfigs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=operator.victoriametrics.com,resources=vmalertmanagerconfigs/status,verbs=get;update;patch
 func (r *VMAlertmanagerConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, resultErr error) {
-	l := r.Log.WithValues("vmalertmanagerconfig", req.NamespacedName, "name", req.Name)
+	l := r.Log.WithValues("vmalertmanagerconfig", req.Name, "namespace", req.Namespace)
 	defer func() {
 		result, resultErr = handleReconcileErr(ctx, r.Client, nil, result, resultErr)
 	}()
@@ -81,7 +81,7 @@ func (r *VMAlertmanagerConfigReconciler) Reconcile(ctx context.Context, req ctrl
 			continue
 		}
 
-		l := l.WithValues("alertmanager", am.Name)
+		l := l.WithValues("parent_alertmanager", am.Name, "parent_namespace", am.Namespace)
 		ctx := logger.AddToContext(ctx, l)
 
 		// only check selector when deleting, since labels can be changed when updating and we can't tell if it was selected before.

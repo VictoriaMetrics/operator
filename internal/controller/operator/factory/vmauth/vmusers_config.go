@@ -882,7 +882,7 @@ func selectVMUsers(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Cli
 	for k := range res {
 		vmUsers = append(vmUsers, res[k].Name)
 	}
-	logger.WithContext(ctx).Info("selected VMUsers", "vmusers", strings.Join(vmUsers, ","), "namespace", cr.Namespace, "vmauth", cr.Name)
+	logger.WithContext(ctx).Info("selected VMUsers", "vmusers", strings.Join(vmUsers, ","))
 
 	return res, nil
 }

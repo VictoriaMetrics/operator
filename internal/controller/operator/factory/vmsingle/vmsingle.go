@@ -31,7 +31,7 @@ const (
 
 // CreateVMSingleStorage creates persistent volume for vmsingle
 func CreateVMSingleStorage(ctx context.Context, cr *vmv1beta1.VMSingle, rclient client.Client) error {
-	l := logger.WithContext(ctx).WithValues("vm.single.pvc.create", cr.Name)
+	l := logger.WithContext(ctx).WithValues("pvc_for", "vmsingle")
 	ctx = logger.AddToContext(ctx, l)
 	newPvc := makeVMSinglePvc(cr)
 

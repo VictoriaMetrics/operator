@@ -75,8 +75,6 @@ func CreateOrUpdateVMAuthService(ctx context.Context, cr *vmv1beta1.VMAuth, rcli
 
 // CreateOrUpdateVMAuth - handles VMAuth deployment reconciliation.
 func CreateOrUpdateVMAuth(ctx context.Context, cr *vmv1beta1.VMAuth, rclient client.Client) error {
-	l := logger.WithContext(ctx).WithValues("controller", "vmauth.crud")
-	ctx = logger.AddToContext(ctx, l)
 	if cr.IsOwnsServiceAccount() {
 		if err := reconcile.ServiceAccount(ctx, rclient, build.ServiceAccount(cr)); err != nil {
 			return fmt.Errorf("failed create service account: %w", err)
@@ -91,7 +89,7 @@ func CreateOrUpdateVMAuth(ctx context.Context, cr *vmv1beta1.VMAuth, rclient cli
 	// we have to create empty or full cm first
 	err := CreateOrUpdateVMAuthConfig(ctx, rclient, cr)
 	if err != nil {
-		l.Error(err, "cannot create configmap")
+		logger.WithContext(ctx).Error(err, "cannot create configmap")
 		return err
 	}
 
@@ -262,7 +260,6 @@ func makeSpecForVMAuth(cr *vmv1beta1.VMAuth) (*corev1.PodTemplateSpec, error) {
 		operatorContainers[0].VolumeMounts = volumeMounts
 
 		configReloader := buildVMAuthConfigReloaderContainer(cr)
-		fmt.Println("after build ", configReloader.Command)
 		operatorContainers = append(operatorContainers, configReloader)
 		initContainers = append(initContainers,
 			buildInitConfigContainer(useCustomConfigReloader, cr.Spec.ConfigReloaderImageTag, cr.Spec.ConfigReloaderResources, configReloader.Args)...)
@@ -502,7 +499,6 @@ func buildVMAuthConfigReloaderContainer(cr *vmv1beta1.VMAuth) corev1.Container {
 	}
 
 	if useCustomConfigReloader {
-		fmt.Println("set command to nil")
 		configReloader.Command = nil
 	}
 
